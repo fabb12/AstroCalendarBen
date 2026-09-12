@@ -110,6 +110,13 @@ function skyAdesso() { return new Date(); }
 // il giorno che divergono le stelle si staccano dai pianeti senza che
 // nessuna delle due parti sembri sbagliata. Il §8 le mette a confronto.
 const SKY_D_MIN = -0.9995;
+// I due estremi del campo visivo. Sono una **copia** di quelli di `app.js`,
+// come tutto in questo blocco, e stanno qui perché senza di loro il §25
+// moriva su un `ReferenceError` — portandosi via, in silenzio, il §26, il §27
+// e il §32 interi. È la trappola dello `<script>` unico di questa pagina, e
+// una prova sparita non fallisce: semplicemente non compare.
+const SKY_FOV_MIN = 0.25;
+const SKY_FOV_MAX = 180;
 const SKY_D2R = Math.PI / 180, SKY_R2D = 180 / Math.PI;
 function skyFocale() { return (sky.altezza / 2) / (2 * Math.tan(sky.fov / 4 * SKY_D2R)); }
 function skyDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
@@ -12036,6 +12043,351 @@ if (typeof Visione === 'undefined') {
     prova('e a convergenza non si muove più', Math.abs(fermo - ancora) < 1e-3);
     prova('un\'ancora più grande del massimo si rifiuta invece di volare via',
       V.VIS_ANCORA_MAX > 0 && V.VIS_ANCORA_MAX < 30, V.VIS_ANCORA_MAX + '°');
+  }
+
+  // --- Dove guardare, e perché non tutto il fotogramma --------------
+  //
+  // È la famiglia che risponde a «la realtà aumentata è troppo pesante», e la
+  // cosa da sapere è che il costo non stava nel riconoscimento: stava nel
+  // **guardare il terreno**. Il rivelatore girava su tutto il fotogramma e
+  // solo dopo chiedeva al cielo calcolato che cosa ci fosse da riconoscere;
+  // sotto la linea dell'orizzonte, dove per costruzione non c'è nessun
+  // candidato d'assetto, ci sono tetti, rami, finestre accese e fari — cioè
+  // migliaia di picchi di contrasto, tutti da centroidare e tutti da scartare
+  // un istante dopo. Misurato in node, un giro del rivelatore: 18,5 ms
+  // guardando il mare, 31,8 una collina con qualche luce, 53,5 una skyline di
+  // città. Il costo dipendeva dal paesaggio, che è l'unica cosa che a questo
+  // modulo non serve.
+  //
+  // A occhio non si giudica in nessun modo: un motore lento e un motore
+  // svelto danno **la stessa immagine**, appena più a scatti. Quindi non si
+  // guarda un'immagine, si contano i pixel guardati e si controlla che dentro
+  // alle finestre si trovi quello che si trovava prima.
+  {
+    const fot = { largo: 133, alto: 200, perPixelX: sky.larghezza / 133, perPixelY: sky.altezza / 200 };
+    const oriz = baseVerso2(0, 0);        // il telefono puntato all'orizzonte
+    const metti = (c) => {
+      const p = skyProietta(c.vettore, oriz, focaleAR);
+      return Object.assign({}, c, { px: p.px, py: p.py });
+    };
+    const luna = metti({ id: 'Moon', vettore: skyVettore(0, 18), raggioAtteso: 0.27, cancello: 0 });
+    const bassa = metti({ id: 'X', vettore: skyVettore(0, 1.5), raggioAtteso: 0.05, cancello: 0 });
+
+    const f1 = V.visFinestre([luna], fot, oriz, focaleAR, V.VIS_CANCELLO_STRETTO);
+    prova('un astro in quadro dà una finestra, e piccola',
+      f1.length === 1 && (f1[0].x1 - f1[0].x0) * (f1[0].y1 - f1[0].y0) < fot.largo * fot.alto * 0.1,
+      f1.length ? `${f1[0].x1 - f1[0].x0}×${f1[0].y1 - f1[0].y0} su ${fot.largo}×${fot.alto}` : 'nessuna');
+
+    // Il taglio all'orizzonte. Non si decide con la geometria del cerchio di
+    // `skyCerchioOrizzonte` — sarebbe una copia che il giorno che diverge non
+    // lo dice nessuno — ma col segno della terza componente di `skyDirezione`.
+    const larga = V.visFinestre([bassa], fot, oriz, focaleAR, V.VIS_CANCELLO_LARGO);
+    const cyBassa = bassa.py / fot.perPixelY - 0.5;
+    const senzaTaglio = Math.ceil(cyBassa + V.VIS_CANCELLO_LARGO * focaleAR * (Math.PI / 180) / fot.perPixelY);
+    prova('la finestra di un astro basso si ferma alla linea dell\'orizzonte',
+      larga.length === 1 && larga[0].y1 < senzaTaglio,
+      larga.length ? `y1=${larga[0].y1}, senza taglio sarebbe ${senzaTaglio}` : 'nessuna');
+    prova('e dentro a quella finestra ogni riga è cielo',
+      larga.length === 1 &&
+      V.visRigheDiCielo(larga[0].x0, larga[0].x1, larga[0].y0, larga[0].y1, fot, oriz, focaleAR).y1 === larga[0].y1);
+
+    // Il telefono puntato per terra: **zero** finestre, zero pixel letti. È
+    // la risposta giusta data a costo zero, e prima costava il giro intero.
+    const giu = baseVerso2(0, -60);
+    prova('puntato in giù non si guarda niente',
+      V.visFinestre([luna, bassa], fot, giu, focaleAR, V.VIS_CANCELLO_LARGO).length === 0);
+    prova('e allora non c\'è nessuna fascia di righe da leggere',
+      V.visFasciaDaFinestre([], fot.alto) === null);
+
+    // Le finestre che si sovrappongono si **fondono**, e non è
+    // un'ottimizzazione: il residuo si scrive in una memoria sola e il raggio
+    // del fondo è per finestra, quindi un pixel in due finestre di raggio
+    // diverso avrebbe due residui e a vincere sarebbe l'ordine.
+    const vicine = [metti({ id: 'A', vettore: skyVettore(0, 18), raggioAtteso: 0.27, cancello: 0 }),
+                    metti({ id: 'B', vettore: skyVettore(1.5, 18.5), raggioAtteso: 0.27, cancello: 0 })];
+    prova('due candidati a un grado e mezzo, col cancello largo, fanno una finestra sola',
+      V.visFinestre(vicine, fot, oriz, focaleAR, V.VIS_CANCELLO_LARGO).length === 1);
+    const sparsi = [metti({ id: 'A', vettore: skyVettore(0, 22), raggioAtteso: 0.05, cancello: 0 }),
+                    metti({ id: 'B', vettore: skyVettore(0, 4), raggioAtteso: 0.05, cancello: 0 })];
+    const due = V.visFinestre(sparsi, fot, oriz, focaleAR, V.VIS_CANCELLO_STRETTO);
+    prova('due candidati lontani, col cancello stretto, restano due finestre',
+      due.length === 2, 'finestre ' + due.length);
+    let toccano = false;
+    for (let i = 0; i < due.length; i++) for (let j = i + 1; j < due.length; j++) {
+      const A = due[i], B = due[j];
+      if (!(A.x1 <= B.x0 || B.x1 <= A.x0 || A.y1 <= B.y0 || B.y1 <= A.y0)) toccano = true;
+    }
+    prova('e le finestre restituite non si sovrappongono mai — è la condizione del residuo',
+      !toccano);
+
+    // La fascia di righe da leggere è più larga delle finestre del raggio
+    // massimo del fondo: la scatola di un pixel sul bordo pesca fuori, e lì
+    // la luminanza deve essere quella di adesso.
+    const fascia = V.visFasciaDaFinestre(f1, fot.alto);
+    prova('la fascia letta abbraccia le finestre col margine del fondo',
+      fascia && fascia.y0 <= f1[0].y0 && fascia.y1 >= f1[0].y1 &&
+      (f1[0].y0 - fascia.y0 === V.VIS_FONDO_MAX || fascia.y0 === 0));
+  }
+
+  // --- Lo scarto tipico: un istogramma, non un ordinamento ----------
+  //
+  // La voce che non sembrava una voce. Il calcolo della soglia campionava un
+  // pixel su otto — e il commento parlava del campionamento e si fermava lì —
+  // poi metteva i quattromila valori in un array normale e li ordinava con un
+  // comparatore: **1,42 ms**, misurati, cioè un quarto dell'intero giro e più
+  // del residuo, dei massimi locali e della conversione della luminanza messi
+  // insieme. Per un numero che serve solo come scala di una soglia.
+  {
+    const N = 20000;
+    const res = new Float32Array(N);
+    let seme = 4242;
+    const caso = () => { seme = (seme * 1103515245 + 12345) & 0x7fffffff; return seme / 0x7fffffff; };
+    const mediana = () => {
+      const c = []; const passo = Math.max(1, Math.floor(N / 4096));
+      for (let i = 0; i < N; i += passo) c.push(Math.abs(res[i]));
+      c.sort((a, b) => a - b);
+      return Math.max(0.4, c[c.length >> 1] * 1.4826);
+    };
+    // Il contro-esempio, che è la ragione delle **due** passate: scalando le
+    // caselle sul massimo, una sorgente forte dentro al campione — ed è il
+    // caso normale, perché le finestre si aprono attorno agli astri — porta
+    // il fondo scala a duecento livelli e la mediana casca tutta nella
+    // casella zero. Il numero che uscirebbe è mezza casella, cioè una
+    // quantizzazione travestita da misura.
+    for (const scala of [0.5, 1.4, 6, 50]) {
+      for (let i = 0; i < N; i++) {
+        let u = 0; for (let k = 0; k < 6; k++) u += caso();
+        res[i] = (u - 3) * scala + (caso() < 0.004 ? 220 : 0);
+      }
+      const esatta = mediana(), isto = V.visRumore(res);
+      prova(`lo scarto tipico con rumore ${scala} torna con la mediana esatta`,
+        Math.abs(isto - esatta) / esatta < 0.02,
+        `esatto ${esatta.toFixed(4)}, istogramma ${isto.toFixed(4)}`);
+    }
+    prova('un residuo tutto zero non divide per zero', V.visRumore(new Float32Array(64)) === 0.4);
+  }
+
+  // --- La scatola del fondo si **misura**, non si dichiara ----------
+  //
+  // «Il fondo si stima con una scatola molto più grande delle macchie» era
+  // scritto da sempre, e quando quella condizione cade non cade piano.
+  // Misurato col modulo vero su un disco saturo con l'alone che sfuma, cioè
+  // un astro come lo riprende un telefono: a raggio 7,5 una macchia col
+  // centro esatto, a raggio 9 il centro sbagliato di 2,6 px, a raggio 11
+  // **quattro** macchie con la migliore sbagliata di 7 px, a 16 dodici px. E
+  // quattro copie della stessa macchia sono, per la regola dell'ambiguità,
+  // quattro riferimenti ambigui: **nessuno**. Sopra i nove pixel di alone la
+  // Luna non si agganciava affatto, e il motore diceva «cerco riferimenti» —
+  // cioè la frase che si dice anche quando in cielo non c'è niente.
+  {
+    const L = 150, H = 150;
+    let seme = 77;
+    const caso = () => { seme = (seme * 1103515245 + 12345) & 0x7fffffff; return seme / 0x7fffffff; };
+    const cx = 75.5, cy = 73.5;
+    const dipingi = (r) => {
+      const a = new Float32Array(L * H);
+      for (let i = 0; i < a.length; i++) a[i] = 50 + caso() * 1.5;
+      for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) {
+        const d = Math.hypot(x - cx, y - cy);
+        if (d <= r) a[y * L + x] = 252;
+        else a[y * L + x] += 200 * Math.exp(-(d - r) * (d - r) / (2 * 1.6 * 1.6));
+      }
+      return a;
+    };
+    for (const r of [11, 16]) {
+      const a = dipingi(r);
+      const prima = V.visRilevaMacchie(a, L, H, {});
+      prova(`col raggio fisso un disco largo ${r} px dà più di una macchia — è il difetto`,
+        prima.macchie.length > 1, 'macchie ' + prima.macchie.length);
+      const f = { x0: Math.max(0, Math.round(cx - 3 * r)), y0: Math.max(0, Math.round(cy - 3 * r)),
+                  x1: Math.min(L, Math.round(cx + 3 * r)), y1: Math.min(H, Math.round(cy + 3 * r)) };
+      f.raggioFondo = V.visScalaFondo(a, L, H, f);
+      f.raggioCentroide = Math.max(V.VIS_CENTROIDE_RAGGIO, Math.round(f.raggioFondo * 0.54));
+      const dopo = V.visRilevaMacchie(a, L, H, { finestre: [f] });
+      prova(`e col raggio misurato ne dà una sola, col centro esatto`,
+        dopo.macchie.length === 1 && Math.hypot(dopo.macchie[0].x - cx, dopo.macchie[0].y - cy) < 0.5,
+        `fondo r=${f.raggioFondo}, macchie ${dopo.macchie.length}, errore ` +
+        (dopo.macchie.length ? Math.hypot(dopo.macchie[0].x - cx, dopo.macchie[0].y - cy).toFixed(2) + ' px' : '—'));
+      prova('il raggio misurato resta dentro al suo tetto',
+        f.raggioFondo >= V.VIS_FONDO_RAGGIO && f.raggioFondo <= V.VIS_FONDO_MAX, f.raggioFondo + ' px');
+    }
+    // Un punto resta un punto: la misura non deve allargare niente dove non
+    // c'è niente da allargare, se no si perde tutto il risparmio.
+    const punto = new Float32Array(L * H);
+    for (let i = 0; i < punto.length; i++) punto[i] = 50 + caso() * 1.5;
+    for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) {
+      const d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+      punto[y * L + x] += 120 * Math.exp(-d2 / (2 * 1.2 * 1.2));
+    }
+    prova('nella finestra di un punto luminoso il raggio resta quello fine',
+      V.visScalaFondo(punto, L, H, { x0: 45, y0: 45, x1: 106, y1: 106 }) === V.VIS_FONDO_RAGGIO);
+    // E la finestra di una sagoma **scura** non si fa ingannare dal pixel più
+    // chiaro, che lì è cielo: camminare fin dove «scende sotto metà»
+    // vorrebbe dire attraversare tutta la finestra.
+    const controluce = new Float32Array(L * H);
+    for (let i = 0; i < controluce.length; i++) controluce[i] = 185 + caso() * 3;
+    for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) {
+      if (Math.hypot(x - cx, y - cy) <= 1.7) controluce[y * L + x] = 55;
+    }
+    prova('nella finestra di una sagoma controluce il raggio resta quello fine',
+      V.visScalaFondo(controluce, L, H, { x0: 45, y0: 45, x1: 106, y1: 106 }) === V.VIS_FONDO_RAGGIO);
+  }
+
+  // --- La finestra deve contenere la macchia, e la taglia torna indietro
+  //
+  // Il difetto che la cura di sopra ha prodotto, e che è saltato fuori
+  // misurando: ad aggancio fatto il cancello è di due gradi, cioè una
+  // finestra di ventinove pixel, e una Luna sfondata ci sta dentro tutta —
+  // quindi la cornice da cui si misura il livello del cielo **è alone** e la
+  // scatola del fondo è tutta Luna. Il centro veniva sbagliato di 4,6 px e il
+  // pianeta nella finestra accanto sparire del tutto. La cura è una
+  // retroazione e non una costante: la taglia che una finestra ha misurato
+  // dimensiona la finestra del giro dopo, quindi un pianeta resta un punto
+  // con la sua finestra di ventinove pixel e solo la Luna si allarga.
+  {
+    const fot = { largo: 133, alto: 200, perPixelX: sky.larghezza / 133, perPixelY: sky.altezza / 200 };
+    const oriz = baseVerso2(0, 0);
+    const c = Object.assign({ id: 'Moon', vettore: skyVettore(0, 18), raggioAtteso: 0.27, cancello: 0 },
+      (() => { const p = skyProietta(skyVettore(0, 18), oriz, focaleAR); return { px: p.px, py: p.py }; })());
+    V.stato.taglie.clear();
+    const stretta = V.visFinestre([c], fot, oriz, focaleAR, V.VIS_CANCELLO_STRETTO);
+    const primaLarghezza = stretta[0].x1 - stretta[0].x0;
+    stretta[0].raggioFondo = 18;                 // come se l'avesse misurato
+    V.visRicordaTaglie(stretta, [c], fot);
+    prova('la taglia misurata si ricorda per candidato', V.visTagliaDi('Moon') === 18);
+    const dopo = V.visFinestre([c], fot, oriz, focaleAR, V.VIS_CANCELLO_STRETTO);
+    const dopoLarghezza = dopo[0].x1 - dopo[0].x0;
+    prova('e il giro dopo la finestra si allarga per contenerla',
+      dopoLarghezza > primaLarghezza * 1.8, `${primaLarghezza} → ${dopoLarghezza} px`);
+    prova('larga abbastanza che la macchia sia una minoranza dei suoi pixel',
+      dopoLarghezza / 2 >= 18 * V.VIS_FINESTRA_PER_FONDO,
+      `mezza finestra ${dopoLarghezza / 2} px, serve ${18 * V.VIS_FINESTRA_PER_FONDO}`);
+    // Tornata a essere un punto, la finestra non deve restare larga: una
+    // finestra tenuta grande per una Luna che non c'è più è lavoro per niente.
+    dopo[0].raggioFondo = V.VIS_FONDO_RAGGIO;
+    V.visRicordaTaglie(dopo, [c], fot);
+    prova('e quando torna un punto la finestra si restringe', V.visTagliaDi('Moon') === null);
+    V.stato.taglie.clear();
+  }
+
+  // --- La soglia è per finestra, non una per tutte -------------------
+  //
+  // Una misura sola per tutte vuol dire che la sorgente più forte in quadro
+  // alza la soglia anche dove non c'è. Misurato con una Luna sfondata e una
+  // stellina a settanta pixel: sigma 3,0 nella finestra della Luna, 1,7 in
+  // quella della stella, 2,8 mettendole insieme — e con la soglia comune la
+  // stellina si perde per colpa di un oggetto che sta da un'altra parte.
+  {
+    const L = 129, H = 232;
+    let seme = 991;
+    const caso = () => { seme = (seme * 1103515245 + 12345) & 0x7fffffff; return seme / 0x7fffffff; };
+    const a = new Float32Array(L * H);
+    for (let i = 0; i < a.length; i++) a[i] = 20 + caso() * 4.5;
+    const posa = (px, py, amp, s) => {
+      for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) {
+        const d2 = (x - px) * (x - px) + (y - py) * (y - py);
+        a[y * L + x] += amp * Math.exp(-d2 / (2 * s * s));
+      }
+    };
+    posa(40, 40, 230, 4.6);      // la Luna sfondata
+    posa(95, 120, 8.2, 1.15);    // una stellina al limite
+    const fLuna = { x0: 10, y0: 10, x1: 71, y1: 71 };
+    const fStella = { x0: 80, y0: 105, x1: 110, y1: 135 };
+    for (const f of [fLuna, fStella]) {
+      f.raggioFondo = V.visScalaFondo(a, L, H, f);
+      f.raggioCentroide = Math.max(V.VIS_CENTROIDE_RAGGIO, Math.round(f.raggioFondo * 0.54));
+    }
+    const fin = [fLuna, fStella];
+    const res = V.visResiduo(a, L, H, 7, fin);
+    const sLuna = V.visRumore(res, [fLuna], L);
+    const sStella = V.visRumore(res, [fStella], L);
+    const sTutte = V.visRumore(res, fin, L);
+    prova('la finestra di una sorgente forte ha un rumore più alto delle altre',
+      sLuna > sStella * 1.4,
+      `Luna ${sLuna.toFixed(2)}, stella ${sStella.toFixed(2)}, insieme ${sTutte.toFixed(2)}`);
+    const laStella = (out) => out.macchie.some(m => Math.hypot(m.x - 95, m.y - 120) < 2.5);
+    prova('con la soglia per finestra la stellina si trova',
+      laStella(V.visRilevaMacchie(a, L, H, { finestre: fin, residuo: res })));
+    prova('con una soglia sola per tutte si perde — è il contro-esempio',
+      !laStella(V.visRilevaMacchie(a, L, H, { finestre: fin, residuo: res, rumore: sTutte })));
+    prova('e la sorgente forte si trova comunque, in tutt\'e due i modi',
+      V.visRilevaMacchie(a, L, H, { finestre: fin, residuo: res })
+        .macchie.some(m => Math.hypot(m.x - 40, m.y - 40) < 1));
+  }
+
+  // --- Il paesaggio: serve a tenere una mira, non a trovarla ---------
+  //
+  // Inseguire i dettagli del paesaggio era la voce più cara del modulo — 2,1
+  // ms per giro, più del residuo, dei massimi locali e della conversione
+  // della luminanza insieme — e si pagava **sempre**, anche con due astri in
+  // mano, dove i riferimenti di scena pesano 0,35 e non possono correggere
+  // più di quattro gradi: quello che aggiungono è dentro al rumore.
+  {
+    V.stato.scena = { L: 4, H: 4, luma: new Float32Array(16), punti: [] };
+    prova('con due astri il paesaggio non si segue',
+      V.visScenaDaFare(V.VIS_SCENA_ASTRI_BASTANO) === false);
+    prova('e il fotogramma di riferimento si dimentica, se no al giro in cui tornasse utile sarebbe vecchio',
+      V.stato.scena === null);
+    prova('con un astro solo il paesaggio serve', V.visScenaDaFare(1) === true);
+    prova('senza astri pure', V.visScenaDaFare(0) === true);
+    prova('e due astri bastano: uno non potrebbe dire come sei girato attorno a lui',
+      V.VIS_SCENA_ASTRI_BASTANO >= 2);
+
+    // La ricerca del dettaglio: dove sarà finito **lo dice il giroscopio**,
+    // quindi si cerca in venticinque posizioni e non in centosessantanove.
+    prova('la ricerca guidata è molto più corta di quella a tentoni',
+      (2 * V.VIS_SCENA_RICERCA + 1) ** 2 * 5 < 13 * 13,
+      `${(2 * V.VIS_SCENA_RICERCA + 1) ** 2} posizioni contro 169`);
+
+    // L'abbandono anticipato non deve cambiare il minimo trovato: è la sola
+    // cosa che di quella scorciatoia si possa sbagliare.
+    const L = 64, H = 64;
+    let seme = 31337;
+    const caso = () => { seme = (seme * 1103515245 + 12345) & 0x7fffffff; return seme / 0x7fffffff; };
+    const prima = new Float32Array(L * H);
+    for (let i = 0; i < prima.length; i++) prima[i] = caso() * 255;
+    const dopo = new Float32Array(L * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) {
+      const sx = x - 2, sy = y + 1;          // traslato di (+2, −1)
+      dopo[y * L + x] = (sx >= 0 && sx < L && sy >= 0 && sy < H) ? prima[sy * L + sx] + 30 : 0;
+    }
+    const m = V.mediaPatch(prima, L, H, 32, 32);
+    let libero = null, coiTetti = null;
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+      const e = V.visErrorePatch(prima, dopo, L, H, 32, 32, 32 + dx, 32 + dy, m.media);
+      if (!libero || e < libero.e) libero = { dx, dy, e };
+      const t = V.visErrorePatch(prima, dopo, L, H, 32, 32, 32 + dx, 32 + dy, m.media,
+        coiTetti ? coiTetti.e : undefined);
+      if (!coiTetti || t < coiTetti.e) coiTetti = { dx, dy, e: t };
+    }
+    prova('il confronto fra patch trova la traslazione vera',
+      libero.dx === 2 && libero.dy === -1, `(${libero.dx}, ${libero.dy})`);
+    prova('e la media togliata rende irrilevante un salto d\'esposizione di trenta livelli',
+      libero.e < 1e-3, libero.e.toExponential(2));
+    prova('l\'abbandono anticipato dà lo stesso minimo, nello stesso posto',
+      coiTetti.dx === libero.dx && coiTetti.dy === libero.dy &&
+      Math.abs(coiTetti.e - libero.e) < 1e-9);
+
+    // I punti del paesaggio si scelgono a griglia: il migliore di ogni cella,
+    // che è la stessa cosa dell'elenco ordinato ma senza trecento oggetti
+    // allocati per giro e senza il confronto di ognuno con tutti gli altri.
+    const lu = new Float32Array(133 * 200);
+    for (let y = 0; y < 200; y++) for (let x = 0; x < 133; x++) {
+      lu[y * 133 + x] = 60 + (Math.sin(x * 0.9) * Math.cos(y * 1.1) > 0.2 ? 80 : 0) + caso() * 4;
+    }
+    const punti = V.visPuntiScena(lu, 133, 200);
+    prova('i punti del paesaggio ci sono, e non più del tetto',
+      punti.length > 5 && punti.length <= V.VIS_SCENA_MAX, 'punti ' + punti.length);
+    let minimo = Infinity;
+    for (let i = 0; i < punti.length; i++) for (let j = i + 1; j < punti.length; j++) {
+      minimo = Math.min(minimo, Math.max(Math.abs(punti[i].x - punti[j].x),
+        Math.abs(punti[i].y - punti[j].y)));
+    }
+    prova('e nessuna coppia più vicina del passo della griglia',
+      minimo >= V.VIS_SCENA_DISTANZA, 'minimo ' + (isFinite(minimo) ? minimo : '—'));
+    const muro = new Float32Array(133 * 200);
+    for (let i = 0; i < muro.length; i++) muro[i] = 100 + caso() * 0.5;
+    prova('un muro liscio non dà nessun punto', V.visPuntiScena(muro, 133, 200).length === 0);
   }
 
   // --- Le soglie, che devono restare quello che dicono ---------------

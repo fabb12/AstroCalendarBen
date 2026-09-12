@@ -50,12 +50,19 @@
  * quasi uniforme — e il cielo calcolato dice già **dove cercarle**, a meno
  * dell'errore che stiamo cercando di misurare.
  *
- * Quindi: si rileva, si associa, si risolve.
+ * Quindi: si chiede dove guardare, si rileva, si associa, si risolve.
  *
- *   §3-§4  Si prende il fotogramma, si stima il fondo e si tengono le macchie
+ *   §4-bis Si chiede al cielo calcolato **dove** le cose dovrebbero essere, e
+ *          si guarda solo lì — una finestra per candidato, larga quanto il
+ *          cancello dell'associazione, tosata alla linea dell'orizzonte.
+ *   §3-§4  Dentro a quelle finestre si stima il fondo e si tengono le macchie
  *          che dal fondo si staccano — in tutt'e due i versi, perché di
  *          giorno un aereo è **più scuro** del cielo e cercare solo il chiaro
  *          vuol dire non trovarlo mai.
+ *   §4-ter Quanto larga sia la scatola con cui si stima il fondo si
+ *          **misura**, perché una sorgente che sfonda il sensore si allarga in
+ *          un alone che nessuna costante conosce — e una scatola più piccola
+ *          dell'alone cancella la macchia invece di trovarla.
  *   §5-§6  Si associa ogni macchia al candidato che il cielo calcolato mette
  *          lì vicino, con un cancello che si stringe man mano che ci si fida.
  *   §7     Dalle coppie astro↔macchia si risolve la rotazione che le fa
@@ -65,6 +72,41 @@
  *          chiedere all'utente di pizzicare finché non torna.
  *   §9     Quello che resta, oggetto per oggetto, è l'errore di quell'oggetto:
  *          diventa la sua ancora, e la sua etichetta ci si incolla sopra.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ * QUANTO COSTA, E DOVE STAVA IL COSTO
+ *
+ * La segnalazione era in tre parole — «troppo pesante» — e la risposta è una:
+ * **si guardava il terreno**. Il rivelatore girava su tutto il fotogramma e
+ * solo dopo chiedeva al cielo calcolato che cosa ci fosse da riconoscere;
+ * sotto la linea dell'orizzonte, dove per costruzione non c'è nessun
+ * candidato d'assetto, ci sono invece tetti, rami, finestre accese e fari,
+ * cioè migliaia di picchi di contrasto — tutti da centroidare e tutti da
+ * scartare un istante dopo. Il costo del motore dipendeva quindi dal
+ * paesaggio, che è l'unica cosa che non gli serve.
+ *
+ * Misurato in node su un fotogramma di centoventinove per duecentotrentadue,
+ * con la Luna sfondata e un pianeta in quadro (i rapporti valgono in un
+ * browser, i millisecondi assoluti di un telefono sono qualche volta tanto):
+ *
+ *                                      PRIMA    DOPO   DOPO (agganciato)
+ *     cielo e basta (mare, campagna)    18,5     6,2      3,0 ms
+ *     collina con qualche luce          31,8     6,1      2,9 ms
+ *     skyline di città                  53,5     6,0      2,9 ms
+ *
+ * Le due cose da leggere in quella tabella sono la colonna di sinistra, che
+ * **triplica** col paesaggio, e le due di destra, che non si muovono: adesso
+ * il paesaggio non si guarda più, quindi non si paga. E il resto del
+ * risparmio viene da tre voci che non sembravano voci:
+ *
+ *   - lo scarto tipico si trovava **ordinando** quattromila numeri con un
+ *     comparatore, 1,42 ms, cioè più del residuo e dei massimi locali messi
+ *     insieme (§3: adesso è un istogramma a due passate, 0,03 ms);
+ *   - i dettagli del paesaggio si cercavano **a tentoni** in tredici per
+ *     tredici, mentre dove sono finiti lo dice il giroscopio (§`VIS_SCENA_
+ *     RICERCA`: 1,77 ms contro 0,28);
+ *   - e si cercavano **sempre**, anche con due astri in mano, dove non
+ *     aggiungono niente (§`VIS_SCENA_ASTRI_BASTANO`).
  *
  * ────────────────────────────────────────────────────────────────────────
  * PERCHÉ RESTA ALLINEATO QUANDO SI MUOVE IL TELEFONO — la riga che conta
@@ -105,6 +147,16 @@
  * (`VIS_CORREZIONE_VITA_MS`). Questo modulo non può **peggiorare**
  * l'allineamento: senza riferimenti non scrive, e spento non esiste — il
  * planetario resta esattamente quello di prima.
+ *
+ * Due cose però le fa, e sono le due che prima mancavano. Non costa niente:
+ * senza candidati in quadro non si legge un pixel (§4-bis), mentre prima si
+ * pagava il giro intero per arrivare comunque a mani vuote. E lo **dice**,
+ * distinguendo i due casi che dal di fuori si somigliano: «stai inquadrando
+ * sotto l'orizzonte, alza il telefono» quando i candidati ci sono e sono
+ * tutti dietro alla terra, «qui non c'è niente da riconoscere, inquadra la
+ * Luna o un pianeta luminoso» quando in quel pezzo di cielo non c'è nulla che
+ * una fotocamera di telefono riprenda. «Cerco riferimenti» sopra un cielo in
+ * cui non c'è niente da cercare è la frase che fa aspettare invano.
  */
 
 (function () {
@@ -151,6 +203,60 @@
   // e molto più piccola delle strutture del cielo (il gradiente del tramonto,
   // la cupola di luce di un paese), che invece devono finirci dentro.
   const VIS_FONDO_RAGGIO = 7;
+  // E «molto più grande delle macchie» non è un'osservazione di stile: è la
+  // condizione perché il rivelatore veda qualcosa, e quando cade non cade
+  // piano. Misurato col modulo vero su un disco saturo con l'alone che
+  // sfuma, cioè un astro sovraesposto come lo riprende un telefono:
+  //
+  //     disco r=7,5 → 1 macchia, centro esatto a 0,3 px
+  //     disco r=9   → 1 macchia, centro sbagliato di 2,6 px
+  //     disco r=11  → **4** macchie, la migliore sbagliata di 7,1 px
+  //     disco r=16  → 4 macchie, la migliore sbagliata di 12,9 px
+  //
+  // E quattro copie della stessa macchia sono, per la regola dell'ambiguità
+  // del §6, quattro riferimenti ambigui: cioè **nessuno**. Sopra ai nove
+  // pixel di raggio la Luna non si agganciava affatto, e il motore diceva
+  // «cerco riferimenti» — che è il modo in cui questo difetto è rimasto in
+  // piedi, perché il sintomo è identico a un cielo senza niente da
+  // riconoscere. Nove pixel, a due virgola sei pixel per grado, sono tre
+  // gradi e mezzo: la Luna piena in una fotocamera di telefono ci arriva
+  // sempre, e il Sole li passa di molto.
+  //
+  // Il raggio quindi non si dichiara, si **misura** (§4-ter): con la scatola
+  // portata a due volte e mezzo l'estensione vera della macchia, tutti e
+  // quattro i dischi di sopra tornano una macchia sola col centro esatto a
+  // zero pixel. Il tetto sta dove la scatola comincerebbe a mangiarsi le
+  // strutture del cielo invece del proprio fondo.
+  const VIS_FONDO_MAX = 30;
+  const VIS_FONDO_PER_MACCHIA = 2.6;
+  // Sotto questo stacco fra il picco e il fondo della finestra non c'è
+  // nessuna sorgente chiara da misurare, e l'estensione che si misurerebbe
+  // sarebbe quella del rumore: si resta al raggio fine. È la riga che tiene
+  // fuori le finestre degli aerei controluce, dove il pixel più chiaro è
+  // cielo.
+  const VIS_FONDO_STACCO_MIN = 22;
+  // E la finestra deve essere abbastanza larga da **contenere** la macchia
+  // con attorno il suo fondo, se no il rimedio del raggio misurato non ha
+  // dove applicarsi. È il difetto che questo pezzo ha prodotto misurandolo:
+  // ad aggancio fatto il cancello è di due gradi, cioè una finestra di
+  // ventinove pixel, e una Luna sfondata con l'alone che arriva a quindici
+  // ci sta dentro tutta — quindi il bordo della finestra, da cui si misura il
+  // livello del cielo, **è alone**, e la scatola del fondo è tutta Luna. Il
+  // centro veniva sbagliato di 4,6 px e il pianeta nella finestra accanto
+  // sparire del tutto, perché con metà dei campioni presi dentro a una
+  // sorgente anche la mediana degli assoluti diventa la sorgente e la soglia
+  // sale a nasconderlo.
+  //
+  // La cura è una retroazione, non una costante: la taglia che una finestra
+  // ha **misurato** dimensiona la finestra del giro dopo. Un pianeta resta un
+  // punto e la sua finestra resta di ventinove pixel; la Luna si allarga da
+  // sé e nessun'altra finestra la paga. Con questo fattore la sorgente occupa
+  // il cinque per cento dell'area della finestra, cioè torna a essere una
+  // minoranza sia per la scatola del fondo sia per la mediana.
+  const VIS_FINESTRA_PER_FONDO = 1.8;
+  // E la taglia invecchia: l'esposizione della fotocamera cambia, e una
+  // finestra tenuta larga per una Luna che non c'è più è lavoro per niente.
+  const VIS_TAGLIA_VITA_MS = 12000;
 
   // Quanto deve staccarsi una macchia dal fondo per essere una macchia: si
   // misura in scarti quadratici medi del residuo, che è il modo di non dover
@@ -168,6 +274,17 @@
   // un lampione.
   const VIS_CANCELLO_LARGO = 12;
   const VIS_CANCELLO_STRETTO = 2.2;
+  // E lo stretto vale solo se a fidarsi ci si è arrivati **guardando gli
+  // astri**. È la differenza che per un pezzo non c'era, e produceva una
+  // trappola: l'aggancio si può dichiarare anche sui soli riferimenti del
+  // paesaggio (§«scena»), che tengono ferma la mira senza sapere dov'è il
+  // Nord — cioè senza aver misurato un bel niente dell'errore di bussola.
+  // Da lì il cancello degli astri si stringeva a due gradi, e con la bussola
+  // sbagliata di quindici la Luna cascava fuori: il motore si agganciava al
+  // tetto del palazzo di fronte e da quel momento **non poteva più trovare
+  // l'unica cosa che gli avrebbe raddrizzato il cielo**. Il cancello stretto
+  // vuole quindi una misura d'astro recente, non un aggancio qualunque.
+  const VIS_MIRA_ASTRI_VITA_MS = 6000;
   // Un aereo porta il suo errore, e non è piccolo: la propagazione di una
   // lettura vecchia di qualche secondo, da vicino, vale gradi. Il suo
   // cancello è quindi più largo, e quello che ci trova dentro non tocca
@@ -227,8 +344,39 @@
   // dell'orizzonte.
   const VIS_SCENA_MAX = 28;
   const VIS_SCENA_DISTANZA = 10;
-  const VIS_SCENA_RICERCA = 6;
   const VIS_SCENA_PATCH = 2;
+  // Quanto largo si cerca il dettaglio nel fotogramma nuovo, e sono **due**
+  // numeri perché sono due domande diverse.
+  //
+  // Cercarlo a tentoni dentro a un quadrato di tredici per tredici — com'era
+  // — costa centosessantanove confronti di patch per punto, e con
+  // ventotto punti sono **due millisecondi e un decimo** per giro, misurati:
+  // di gran lunga la voce più cara di tutto il modulo, più del residuo, dei
+  // massimi locali e della conversione della luminanza messi insieme.
+  //
+  // E cercarlo a tentoni è anche un controsenso, perché **dove sarà finito
+  // si sa**: un dettaglio del paesaggio sta fermo nel mondo, la posa di
+  // adesso ce l'abbiamo e quella di quando è stato acquisito pure, quindi
+  // dove si proietta ora è un conto e non una ricerca. Restano da coprire il
+  // solo errore del giroscopio su un ottavo di secondo e il tremolio della
+  // mano: due pixel bastano, cioè venticinque confronti invece di
+  // centosessantanove. Misurato: **0,28 ms contro 1,77**, sei volte e
+  // mezzo. È la stessa divisione del lavoro del cappello — il giroscopio dà
+  // il movimento, la vista dà la mira — applicata alla ricerca invece che
+  // alla correzione.
+  //
+  // Il cieco resta per il caso in cui una previsione non c'è (la posa di
+  // allora non è più nella storia, o il punto è appena stato seminato).
+  const VIS_SCENA_RICERCA = 2;
+  const VIS_SCENA_RICERCA_CIECA = 6;
+  // Quanti astri bastano perché del paesaggio non ci sia bisogno. I
+  // riferimenti di scena pesano 0,35 e non possono correggere più di quattro
+  // gradi: accanto a due astri, che pesano uno e correggono tutto, quello che
+  // aggiungono è dentro al rumore — mentre costano l'intero inseguimento.
+  // Con due astri in mano, quindi, il paesaggio si lascia perdere del tutto;
+  // quando gli astri se ne vanno si risemina al giro dopo, che è un ottavo di
+  // secondo di ritardo su una cosa che serve nei minuti.
+  const VIS_SCENA_ASTRI_BASTANO = 2;
 
   const stato = {
     attivo: false,          // il motore gira
@@ -257,7 +405,13 @@
     scala: 1,               // l'ultima correzione di focale applicata
     motoGradiS: 0,
     ultimoGiro: 0,
-    guastoDetto: false
+    guastoDetto: false,
+    miraAstri: 0,           // quando un astro ha misurato l'assetto l'ultima volta
+    astriUltimo: 0,         // quanti astri ha agganciato l'ultimo giro
+    taglie: new Map(),      // id del candidato → quanto larga si è misurata la sua macchia
+    finestre: 0,            // quante finestre ha guardato l'ultimo giro
+    pixelGuardati: 0,       // e quanti pixel, su quanti ne ha il fotogramma
+    pixelTotali: 0
   };
 
   // --- Algebra: le rotazioni, scritte in tre righe per tre ---------------
@@ -373,9 +527,12 @@
     return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh, cw, ch };
   }
 
-  // Il fotogramma, in luminanza. Torna anche i due fattori che riportano un
-  // pixel di qui a un pixel del riquadro.
-  function prendiFotogramma() {
+  // La misura del fotogramma, **senza leggere un pixel**: la geometria del
+  // ritaglio e i due fattori che riportano un pixel di qui a un pixel del
+  // riquadro. Serve prima della lettura, e per una ragione precisa: è con
+  // questi numeri che si decide *dove* guardare (§4-bis), e leggere per
+  // sapere dove leggere sarebbe il cane che si morde la coda.
+  function misuraFotogramma() {
     const video = document.getElementById('skymap-video');
     if (!video || !video.videoWidth || video.readyState < 2) return null;
     const g = geometriaVideo(video);
@@ -392,9 +549,36 @@
       stato.ctx = stato.tela.getContext('2d', { willReadFrequently: true });
       stato.largo = largo;
       stato.alto = alto;
+      // La misura è cambiata: la scorta del fotogramma di prima parla di
+      // un'altra griglia e non si può più confrontare con niente.
+      stato.scena = null;
     }
+    if (!stato.ctx) return null;
+    return { video, g, largo, alto, perPixelX: g.cw / largo, perPixelY: g.ch / alto };
+  }
+
+  // Il fotogramma, in luminanza, **nelle sole righe che servono**.
+  //
+  // `drawImage` è lavoro della GPU e costa quello che costa; a pesare sono le
+  // due cose che vengono dopo — riportare i pixel in memoria (`getImageData`
+  // è una copia dalla tela) e convertirli in luminanza — e quelle si pagano
+  // a riga. Leggere un quarto del fotogramma invece di tutto porta la
+  // conversione da 0,175 ms a 0,031, misurati sui trentamila pixel di un
+  // telefono ritto; e quando il telefono è puntato per terra, dove di
+  // candidati non ce n'è nessuno, le righe da leggere sono **zero** e non si
+  // legge affatto.
+  //
+  // Fuori dalla fascia la scorta porta dentro i numeri del giro prima. Non è
+  // un problema perché fuori dalla fascia nessuno legge — i consumatori sono
+  // tosati alla stessa fascia — ma è il genere di cosa che va scritta, se no
+  // il giorno che qualcuno legge una riga in più si trova un fotogramma
+  // vecchio senza che niente lo dica.
+  function leggiFotogramma(fot, y0, y1) {
+    const { video, g, largo, alto } = fot;
+    const ya = Math.max(0, Math.min(alto, Math.floor(y0)));
+    const yb = Math.max(ya, Math.min(alto, Math.ceil(y1)));
+    if (yb <= ya) return null;
     const ctx = stato.ctx;
-    if (!ctx) return null;
     try {
       ctx.drawImage(video, g.sx, g.sy, g.sw, g.sh, 0, 0, largo, alto);
     } catch (e) {
@@ -402,7 +586,7 @@
     }
     let dati;
     try {
-      dati = ctx.getImageData(0, 0, largo, alto).data;
+      dati = ctx.getImageData(0, ya, largo, yb - ya).data;
     } catch (e) {
       // Una tela contaminata non si può leggere. Non capita con getUserMedia
       // — un MediaStream è della stessa origine — ma se capitasse, il motore
@@ -410,10 +594,16 @@
       return null;
     }
     const luma = scorta('luma', largo * alto, Float32Array);
-    for (let i = 0, p = 0; i < luma.length; i++, p += 4) {
-      luma[i] = 0.299 * dati[p] + 0.587 * dati[p + 1] + 0.114 * dati[p + 2];
+    const base = ya * largo;
+    const quanti = (yb - ya) * largo;
+    for (let i = 0, p = 0; i < quanti; i++, p += 4) {
+      luma[base + i] = 0.299 * dati[p] + 0.587 * dati[p + 1] + 0.114 * dati[p + 2];
     }
-    return { luma, largo, alto, perPixelX: g.cw / largo, perPixelY: g.ch / alto };
+    fot.luma = luma;
+    fot.ya = ya;
+    fot.yb = yb;
+    fot.interoLetto = ya === 0 && yb === alto;
+    return fot;
   }
 
   // ===================================================================
@@ -445,12 +635,15 @@
     return c[nome];
   }
 
-  function immagineIntegrale(luma, L, H) {
+  // L'immagine integrale di una fascia di righe. La prima riga e la prima
+  // colonna restano zero per costruzione, ma una memoria riusata porta dentro
+  // i numeri del giro prima: si azzerano. Le righe fuori dalla fascia
+  // restano a zero, e la somma di un rettangolo che ci sta dentro non le
+  // tocca.
+  function immagineIntegraleFascia(luma, L, H, ya, yb) {
     const S = scorta('integrale', (L + 1) * (H + 1), Float64Array);
-    // La prima riga e la prima colonna restano zero per costruzione, ma una
-    // memoria riusata porta dentro i numeri del giro prima: si azzerano.
     S.fill(0);
-    for (let y = 0; y < H; y++) {
+    for (let y = ya; y < yb; y++) {
       let riga = 0;
       for (let x = 0; x < L; x++) {
         riga += luma[y * L + x];
@@ -460,17 +653,43 @@
     return S;
   }
 
-  function visResiduo(luma, L, H, raggio) {
-    const S = immagineIntegrale(luma, L, H);
+  // Il residuo, **nei soli rettangoli chiesti**.
+  //
+  // Senza rettangoli è tutto il fotogramma, che è il comportamento di sempre
+  // e quello del banco di prova. Con i rettangoli si paga solo quello che si
+  // guarda: dentro a ogni finestra il fondo si stima con la scatola del suo
+  // raggio, e il raggio può essere diverso da finestra a finestra — è la
+  // ragione per cui le finestre che si sovrappongono vanno fuse prima
+  // (§4-bis), se no lo stesso pixel avrebbe due residui e quale dei due
+  // finisce nella memoria dipenderebbe dall'ordine.
+  //
+  // I pixel fuori dai rettangoli portano dentro i numeri del giro prima. Chi
+  // legge il residuo è tosato agli stessi rettangoli, quindi non li vede;
+  // l'unico che ci arriva vicino è il 3×3 dei massimi locali, e per quello i
+  // rettangoli sono calcolati con un pixel di margine dentro al residuo.
+  function visResiduo(luma, L, H, raggio, rett) {
     const res = scorta('residuo', L * H, Float32Array);
+    const finestre = rett && rett.length ? rett
+      : [{ x0: 0, y0: 0, x1: L, y1: H, raggioFondo: raggio || VIS_FONDO_RAGGIO }];
+    let ya = H, yb = 0;
+    for (const f of finestre) { if (f.y0 < ya) ya = f.y0; if (f.y1 > yb) yb = f.y1; }
+    // L'immagine integrale si costruisce una volta per tutte le finestre, e
+    // sulle sole righe che abbracciano la fascia più esterna: la scatola del
+    // fondo può pescare fuori dal rettangolo, quindi il margine è già dentro
+    // ai rettangoli che arrivano (§4-bis li allarga del raggio del fondo).
+    if (yb <= ya) return res;
+    const S = immagineIntegraleFascia(luma, L, H, ya, yb);
     const somma = (x0, y0, x1, y1) =>
       S[y1 * (L + 1) + x1] - S[y0 * (L + 1) + x1] - S[y1 * (L + 1) + x0] + S[y0 * (L + 1) + x0];
-    for (let y = 0; y < H; y++) {
-      const y0 = Math.max(0, y - raggio), y1 = Math.min(H, y + raggio + 1);
-      for (let x = 0; x < L; x++) {
-        const x0 = Math.max(0, x - raggio), x1 = Math.min(L, x + raggio + 1);
-        const n = (x1 - x0) * (y1 - y0);
-        res[y * L + x] = luma[y * L + x] - somma(x0, y0, x1, y1) / n;
+    for (const f of finestre) {
+      const r = f.raggioFondo || raggio || VIS_FONDO_RAGGIO;
+      for (let y = f.y0; y < f.y1; y++) {
+        const y0 = Math.max(ya, y - r), y1 = Math.min(yb, y + r + 1);
+        for (let x = f.x0; x < f.x1; x++) {
+          const x0 = Math.max(0, x - r), x1 = Math.min(L, x + r + 1);
+          const n = (x1 - x0) * (y1 - y0);
+          res[y * L + x] = luma[y * L + x] - somma(x0, y0, x1, y1) / n;
+        }
       }
     }
     return res;
@@ -482,15 +701,112 @@
   // fino a nascondere tutto il resto — e la costante 1,4826 è quella che
   // riporta la mediana degli assoluti a uno scarto quadratico medio quando il
   // rumore è gaussiano, cioè quasi sempre.
-  function visRumore(res) {
-    // Si campiona: su ventimila pixel una stima su un ottavo è identica e
-    // costa un ottavo.
-    const passo = Math.max(1, Math.floor(res.length / 4096));
-    const campioni = [];
-    for (let i = 0; i < res.length; i += passo) campioni.push(Math.abs(res[i]));
-    if (!campioni.length) return 1;
-    campioni.sort((a, b) => a - b);
-    const mediana = campioni[campioni.length >> 1];
+  // E la mediana si trova con un **istogramma**, non ordinando.
+  //
+  // È la voce che non sembrava una voce, ed è la lezione di questo giro di
+  // lavoro: la versione di prima campionava un pixel su otto — il commento
+  // parlava del campionamento e si fermava lì — e poi metteva i quattromila
+  // valori in un array normale e li ordinava con un comparatore. Un
+  // `sort((a, b) => a - b)` su quattromila numeri è una chiamata di funzione
+  // per confronto, e costa **1,42 ms**: misurato, un quarto dell'intero giro,
+  // più del residuo, dei massimi locali e della conversione della luminanza
+  // messi insieme. Per un numero che serve solo come scala della soglia.
+  //
+  // Con due passate su un istogramma a 256 caselle — una per il massimo, una
+  // per contare — la stessa mediana costa **0,028 ms**: cinquanta volte
+  // meno, e l'abbiamo confrontata con quella esatta a ogni giro del banco,
+  // dove si scosta del **due centesimi di per cento**. La quantizzazione non
+  // ha nessuna importanza: questo numero moltiplica una soglia che poi va
+  // confrontata con un picco che sta ordini di grandezza più in alto.
+  //
+  // Le finestre, se ci sono, sono le sole dove si campiona — e non è solo
+  // risparmio. La stima di prima prendeva **tutto il fotogramma**, cioè
+  // anche il terreno: una skyline di tetti e finestre accese è struttura ad
+  // alto contrasto, e la mediana degli assoluti la conta come rumore. Su un
+  // fotogramma finto con una città sotto l'orizzonte, misurato: sigma 1,09
+  // guardando tutto e 0,57 guardando il solo cielo. La soglia sale del
+  // doppio proprio quando il cielo sarebbe più leggibile del solito, ed è
+  // una soglia che nessuno può vedere salire.
+  const VIS_ISTO_CASELLE = 256;
+  function visRumore(res, rett, L) {
+    // I campioni si raccolgono una volta in una scorta, e le tre passate che
+    // vengono dopo scorrono quella: quattromila float contigui invece di
+    // tremila indici calcolati e altrettante chiamate di funzione.
+    const camp = scorta('campioni', 4096, Float32Array);
+    const zone = rett && rett.length ? rett : null;
+    const lato = L || 0;
+    let area = 0;
+    if (zone) for (const f of zone) area += (f.x1 - f.x0) * (f.y1 - f.y0);
+    else area = res.length;
+    if (area <= 0) return 1;
+    const passo = Math.max(1, Math.floor(area / camp.length));
+    let n = 0;
+    if (!zone) {
+      for (let i = 0; i < res.length && n < camp.length; i += passo) {
+        const v = res[i];
+        camp[n++] = v < 0 ? -v : v;
+      }
+    } else {
+      let k = 0;
+      for (const f of zone) {
+        for (let y = f.y0; y < f.y1 && n < camp.length; y++) {
+          for (let x = f.x0; x < f.x1; x++) {
+            if (k++ % passo) continue;
+            if (n >= camp.length) break;
+            const v = res[y * lato + x];
+            camp[n++] = v < 0 ? -v : v;
+          }
+        }
+      }
+    }
+    if (!n) return 1;
+
+    // La scala delle caselle la dà la **media** degli assoluti, non il
+    // massimo — ed è la riga che questo pezzo ha dovuto imparare due volte.
+    // Col massimo, una sorgente forte dentro al campione (ed è il caso
+    // normale: le finestre si aprono proprio attorno agli astri) porta il
+    // fondo scala a duecento livelli, la casella a ottanta centesimi, e la
+    // mediana — che vale sette decimi — casca tutta nella casella zero: il
+    // numero che esce è la metà di una casella, cioè una quantizzazione
+    // travestita da misura. Misurato sul banco: 46% di scarto dalla mediana
+    // vera con rumore di mezzo livello. La media degli assoluti invece per
+    // un rumore gaussiano vale 0,798·sigma e la mediana 0,674·sigma: sei
+    // volte la media è un fondo scala che contiene la mediana con
+    // abbondanza e che una manciata di sorgenti forti non sposta.
+    let somma = 0;
+    for (let i = 0; i < n; i++) somma += camp[i];
+    const media = somma / n;
+    if (!(media > 0)) return 0.4;
+    const isto = scorta('istogramma', VIS_ISTO_CASELLE, Int32Array);
+    const meta = n / 2;
+
+    // Due passate: la prima trova la casella in cui casca la mediana, la
+    // seconda rifà l'istogramma **dentro a quella casella**. La risoluzione
+    // finale è un sessantacinquemillesimo del fondo scala, cioè fuori da
+    // qualunque cosa possa contare per una soglia — e costa una passata in
+    // più su quattromila numeri.
+    const cerca = (lo, hi, giaSotto) => {
+      isto.fill(0);
+      const k = VIS_ISTO_CASELLE / (hi - lo);
+      let sopra = 0;
+      for (let i = 0; i < n; i++) {
+        const a = camp[i];
+        if (a < lo) continue;
+        const c = (a - lo) * k | 0;
+        if (c >= VIS_ISTO_CASELLE) { sopra++; continue; }
+        isto[c]++;
+      }
+      let acc = giaSotto;
+      for (let c = 0; c < VIS_ISTO_CASELLE; c++) {
+        acc += isto[c];
+        if (acc >= meta) return { c, lo: lo + c / k, hi: lo + (c + 1) / k, sotto: acc - isto[c] };
+      }
+      return null;   // la mediana sta oltre il fondo scala: non può, ma si dice
+    };
+    const grossa = cerca(0, media * 6, 0);
+    if (!grossa) return Math.max(0.4, media * 1.4826);
+    const fine = cerca(grossa.lo, grossa.hi, grossa.sotto);
+    const mediana = fine ? (fine.lo + fine.hi) / 2 : (grossa.lo + grossa.hi) / 2;
     return Math.max(0.4, mediana * 1.4826);
   }
 
@@ -508,32 +824,66 @@
   function visRilevaMacchie(luma, L, H, opz) {
     const o = opz || {};
     const raggioFondo = o.raggioFondo || VIS_FONDO_RAGGIO;
-    const res = o.residuo || visResiduo(luma, L, H, raggioFondo);
-    const rumore = o.rumore || visRumore(res);
-    const soglia = Math.max(o.sogliaMin || VIS_SOGLIA_MIN, (o.sigma || VIS_SOGLIA_SIGMA) * rumore);
-    const rc = o.raggioCentroide || VIS_CENTROIDE_RAGGIO;
+    const rcBase = o.raggioCentroide || VIS_CENTROIDE_RAGGIO;
+    // Senza finestre si guarda tutto il fotogramma, che è il comportamento
+    // di sempre e quello del banco di prova.
+    const finestre = (o.finestre && o.finestre.length) ? o.finestre
+      : [{ x0: 0, y0: 0, x1: L, y1: H, raggioFondo, raggioCentroide: rcBase }];
+    const res = o.residuo || visResiduo(luma, L, H, raggioFondo, o.finestre);
+    const sogliaMin = o.sogliaMin || VIS_SOGLIA_MIN;
+    const sigma = o.sigma || VIS_SOGLIA_SIGMA;
     const bordo = 2;
     const grezze = [];
+    let rumore = 0, soglia = 0;
 
-    for (let y = bordo; y < H - bordo; y++) {
-      for (let x = bordo; x < L - bordo; x++) {
-        const v = res[y * L + x];
-        const a = Math.abs(v);
-        if (a < soglia) continue;
-        // Massimo locale nel suo 3×3, nel verso del proprio segno. Il
-        // confronto è sul valore con segno e non sul modulo: due macchie di
-        // segno opposto attaccate (il bordo scuro attorno a una luce) non si
-        // devono spegnere a vicenda.
-        let estremo = true;
-        for (let dy = -1; dy <= 1 && estremo; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (!dx && !dy) continue;
-            const w = res[(y + dy) * L + (x + dx)];
-            if (v > 0 ? w > v : w < v) { estremo = false; break; }
+    for (const f of finestre) {
+      // Lo scarto tipico si misura **finestra per finestra**, e non è un
+      // dettaglio: una sola misura per tutte vuol dire che la sorgente più
+      // forte in quadro alza la soglia anche dove non c'è. Misurato con una
+      // Luna sfondata e un pianeta a nove gradi: sigma 2,75 nella finestra
+      // della Luna, 0,81 in quella del pianeta, 1,55 mettendole insieme — e
+      // con l'1,55 il pianeta se la cava (il suo picco è cinquantacinque
+      // livelli) mentre una stella di sei livelli si perderebbe per colpa di
+      // un oggetto che sta da un'altra parte del cielo. Ogni finestra ha il
+      // suo pezzo di cielo e la sua soglia; costa una passata su qualche
+      // centinaio di numeri.
+      const rumoreF = o.rumore || visRumore(res, [f], L);
+      const sogliaF = Math.max(sogliaMin, sigma * rumoreF);
+      if (!rumore) { rumore = rumoreF; soglia = sogliaF; }
+      f.rumore = rumoreF;
+      f.soglia = sogliaF;
+      // Un pixel di margine dentro al rettangolo, perché il 3×3 del massimo
+      // locale legge i vicini e appena fuori il residuo è quello del giro
+      // prima. Il bordo di due pixel dal fotogramma resta: una macchia
+      // attaccata al bordo dell'immagine non ha un centroide.
+      const ya = Math.max(bordo, f.y0 + 1), yb = Math.min(H - bordo, f.y1 - 1);
+      const xa = Math.max(bordo, f.x0 + 1), xb = Math.min(L - bordo, f.x1 - 1);
+      const rcF = f.raggioCentroide || rcBase;
+      const aloneF = (f.raggioFondo || raggioFondo) * 2;
+      for (let y = ya; y < yb; y++) {
+        for (let x = xa; x < xb; x++) {
+          const v = res[y * L + x];
+          const a = Math.abs(v);
+          if (a < sogliaF) continue;
+          // Massimo locale nel suo 3×3, nel verso del proprio segno. Il
+          // confronto è sul valore con segno e non sul modulo: due macchie di
+          // segno opposto attaccate (il bordo scuro attorno a una luce) non si
+          // devono spegnere a vicenda.
+          let estremo = true;
+          for (let dy = -1; dy <= 1 && estremo; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (!dx && !dy) continue;
+              const w = res[(y + dy) * L + (x + dx)];
+              if (v > 0 ? w > v : w < v) { estremo = false; break; }
+            }
           }
+          if (!estremo) continue;
+          // La taglia della finestra viaggia col picco: dentro alla finestra
+          // di un disco bloomato il centroide vuole una finestra larga e
+          // l'alone un raggio grande, dentro a quella di un pianeta no —
+          // ed è una proprietà del posto, non del fotogramma.
+          grezze.push({ x, y, picco: a, segno: v > 0 ? 1 : -1, rc: rcF, alone: aloneF, soglia: sogliaF });
         }
-        if (!estremo) continue;
-        grezze.push({ x, y, picco: a, segno: v > 0 ? 1 : -1 });
       }
     }
     grezze.sort((a, b) => b.picco - a.picco);
@@ -561,14 +911,15 @@
     // accettata — e due stelle della cintura di Orione, che distano un grado
     // e mezzo e sono tutt'e due chiare, restano due.
     const macchie = [];
-    const raggioAlone = raggioFondo * 2;
     for (const g of grezze) {
       if (macchie.length >= (o.massimo || VIS_MACCHIE_MAX)) break;
+      const rc = g.rc || rcBase;
+      const raggioAlone = g.alone || raggioFondo * 2;
       let vicina = false;
       for (const m of macchie) {
         const d = Math.hypot(m.xg - g.x, m.yg - g.y);
-        if (d < rc) { vicina = true; break; }
-        if (m.segno !== g.segno && d < raggioAlone) { vicina = true; break; }
+        if (d < Math.max(rc, m.rc || rc)) { vicina = true; break; }
+        if (m.segno !== g.segno && d < Math.max(raggioAlone, m.alone || raggioAlone)) { vicina = true; break; }
       }
       if (vicina) continue;
 
@@ -589,7 +940,7 @@
       // Ricentrando la finestra sul baricentro appena trovato l'errore
       // sparisce in due o tre passate, perché una finestra centrata su un
       // anello simmetrico dà il centro dell'anello.
-      const mezza = soglia * 0.5;
+      const mezza = (g.soglia || soglia) * 0.5;
       let cx = g.x, cy = g.y, sp = 0, n = 0, largo = 1;
       for (let passata = 0; passata < 3; passata++) {
         const raggio = passata === 0 ? rc : Math.max(rc, Math.min(rc * 3, Math.ceil(largo * 2.2)));
@@ -652,54 +1003,351 @@
 
       macchie.push({
         xg: g.x, yg: g.y, x: cx, y: cy,
-        picco: g.picco, segno: g.segno, flusso: sp, raggio: largo, pixel: n
+        picco: g.picco, segno: g.segno, flusso: sp, raggio: largo, pixel: n,
+        rc, alone: raggioAlone
       });
     }
     return { macchie, rumore, soglia };
   }
 
+  // ===================================================================
+  // §4-bis. Dove guardare: le finestre
+  // ===================================================================
+  //
+  // È il cambiamento che ha reso questo modulo leggero, e in una riga è
+  // questo: **si cerca solo dove una cosa può esserci**.
+  //
+  // La versione di prima faceva il contrario, e non per distrazione: rilevava
+  // le macchie su tutto il fotogramma e *poi* chiedeva al cielo calcolato
+  // quali candidati ci fossero. L'ordine è ragionevole letto da fuori — prima
+  // guardo, poi riconosco — ed è quello sbagliato, perché butta via
+  // l'informazione migliore che ci sia. Il cielo calcolato sa già dove sono
+  // la Luna, i pianeti e gli aerei, a meno dell'errore che stiamo misurando;
+  // e quell'errore ha un tetto dichiarato, che è il cancello
+  // dell'associazione (§6). Fuori dai cancelli non c'è niente di associabile:
+  // una macchia trovata lì viene scartata comunque, dopo essere costata.
+  //
+  // Tre conseguenze, e la terza è quella che l'utente sente:
+  //
+  //   - Col telefono **puntato per terra** — o su un muro, o su un cielo
+  //     coperto in cui nessun candidato è in quadro — le finestre sono zero:
+  //     non si legge un pixel e non si converte niente. Prima si pagava il
+  //     giro intero per non trovare, per costruzione, nessun riferimento.
+  //   - Ad **aggancio fatto** il cancello è di due gradi e due gradi sono sei
+  //     pixel del fotogramma ridotto: la finestra di un astro è tredici per
+  //     tredici, cioè l'uno per cento di quello che si guardava prima.
+  //   - E la **soglia diventa onesta**: lo scarto tipico si campiona dentro
+  //     alle finestre, che sono cielo, invece che su tutto il fotogramma,
+  //     dove metà è terreno. Misurato su una skyline finta di tetti e
+  //     finestre accese: sigma 1,09 contro 0,57 (§3).
+  //
+  // Il taglio all'orizzonte è la stessa idea detta dall'altro capo, ed è
+  // richiesta esplicita: sotto la linea dell'orizzonte non c'è **nessun**
+  // candidato d'assetto, per costruzione — gli astri si candidano sopra i due
+  // gradi e gli aerei sopra uno. Quello che c'è è struttura ad alto contrasto
+  // (tetti, rami, finestre accese, fari) che può cascare dentro al cancello di
+  // un astro basso e fargli da riferimento falso — e un riferimento falso
+  // sposta tutto il cielo. Tagliare lì è quindi insieme meno lavoro e meno
+  // modi di sbagliare.
+  //
+  // Sopra o sotto l'orizzonte non si decide con la geometria del cerchio di
+  // `skyCerchioOrizzonte`, che è un cerchio quando si guarda di traverso e
+  // una retta quando si guarda in faccia e cambia verso quando si guarda in
+  // su: rifarne i casi qui vorrebbe dire una copia che il giorno che diverge
+  // non lo dice nessuno. Si chiede invece a `skyDirezione`, che è quindici
+  // moltiplicazioni, e si guarda il **segno della terza componente**: sopra
+  // zero è cielo. Una riga per volta, e si tiene l'intervallo fra la prima e
+  // l'ultima riga di cielo — che è conservativo e si comporta bene anche
+  // guardando allo zenit, dove l'orizzonte è un anello dentro al riquadro e
+  // una colonna lo attraversa due volte.
+  function visRigheDiCielo(x0, x1, y0, y1, fot, base, focale) {
+    const xs = [x0, (x0 + x1) / 2, x1 - 1];
+    let alta = -1, bassa = -1;
+    for (let y = y0; y < y1; y++) {
+      const py = (y + 0.5) * fot.perPixelY;
+      let cielo = false;
+      for (let i = 0; i < 3 && !cielo; i++) {
+        const v = skyDirezione((xs[i] + 0.5) * fot.perPixelX, py, base, focale);
+        if (v[2] > 0) cielo = true;
+      }
+      if (!cielo) continue;
+      if (alta < 0) alta = y;
+      bassa = y;
+    }
+    return alta < 0 ? null : { y0: alta, y1: bassa + 1 };
+  }
+
+  // Quanto larga si era misurata la macchia di questo candidato, e `null`
+  // quando non se ne sa niente o quando è passato troppo tempo.
+  function visTagliaDi(id) {
+    const t = stato.taglie.get(id);
+    if (!t) return null;
+    if (performance.now() - t.quando > VIS_TAGLIA_VITA_MS) { stato.taglie.delete(id); return null; }
+    return t.raggioFondo;
+  }
+
+  // Il raggio del fondo appena misurato si ricorda **per candidato** e non
+  // per finestra: le finestre si fondono, e quella di un giro non è quella
+  // del giro dopo, mentre il candidato è sempre lo stesso oggetto.
+  function visRicordaTaglie(finestre, candidati, fot) {
+    for (const c of candidati) {
+      const cx = c.px / fot.perPixelX - 0.5, cy = c.py / fot.perPixelY - 0.5;
+      for (const f of finestre) {
+        if (cx < f.x0 || cx >= f.x1 || cy < f.y0 || cy >= f.y1) continue;
+        if (f.raggioFondo > VIS_FONDO_RAGGIO) {
+          stato.taglie.set(c.id, { raggioFondo: f.raggioFondo, quando: performance.now() });
+        } else {
+          // Tornata a essere un punto: la finestra non deve restare larga.
+          stato.taglie.delete(c.id);
+        }
+        break;
+      }
+    }
+  }
+
+  // Le finestre, una per candidato, fuse quando si sovrappongono.
+  //
+  // La fusione non è un'ottimizzazione: è una **condizione**. Il residuo si
+  // scrive in una memoria sola e il raggio del fondo è per finestra (§4-ter),
+  // quindi un pixel che appartenesse a due finestre di raggio diverso avrebbe
+  // due residui, e quale dei due sopravvive dipenderebbe dall'ordine in cui
+  // si scorrono le finestre. Fondendole il problema non si pone, e in più le
+  // regole dell'alone e del doppione (§4) continuano a vedersi fra macchie
+  // vicine che finirebbero in finestre diverse.
+  function visFinestre(candidati, fot, base, focale, cancelloGradi) {
+    const perGrado = focale * D2R;
+    const L = fot.largo, H = fot.alto;
+    let fin = [];
+    for (const c of candidati) {
+      // Dal riquadro al fotogramma ridotto: il mezzo pixel, come in §10 —
+      // l'indice è una cella e il suo centro sta mezzo passo più in là.
+      const cx = c.px / fot.perPixelX - 0.5;
+      const cy = c.py / fot.perPixelY - 0.5;
+      const gradi = c.cancello || cancelloGradi;
+      // Il cancello, più la taglia attesa della macchia e il raggio del
+      // centroide: la finestra deve contenere non il centro della macchia ma
+      // la macchia, e il baricentro la vuole tutta dentro.
+      const rx = gradi * perGrado / fot.perPixelX
+        + (c.raggioAtteso || 0) * perGrado / fot.perPixelX + VIS_CENTROIDE_RAGGIO + 2;
+      const ry = gradi * perGrado / fot.perPixelY
+        + (c.raggioAtteso || 0) * perGrado / fot.perPixelY + VIS_CENTROIDE_RAGGIO + 2;
+      // Mai più piccola del doppio della scatola del fondo: sotto quella
+      // misura il fondo di una macchia si stimerebbe sulla macchia stessa, e
+      // il bordo della finestra non avrebbe più un pezzo di cielo da cui
+      // misurare quanto la macchia è larga (§4-ter). E mai più piccola di
+      // quanto la macchia di questo candidato si è misurata l'ultima volta:
+      // è la retroazione di `VIS_FINESTRA_PER_FONDO`, ed è la riga che fa
+      // agganciare una Luna sfondata anche a cancello stretto.
+      const t = visTagliaDi(c.id);
+      const r = Math.max(VIS_FONDO_RAGGIO * 2, Math.min(rx, ry),
+        t ? t * VIS_FINESTRA_PER_FONDO + VIS_CENTROIDE_RAGGIO : 0);
+      let x0 = Math.max(0, Math.floor(cx - Math.max(r, rx)));
+      let x1 = Math.min(L, Math.ceil(cx + Math.max(r, rx)) + 1);
+      let y0 = Math.max(0, Math.floor(cy - Math.max(r, ry)));
+      let y1 = Math.min(H, Math.ceil(cy + Math.max(r, ry)) + 1);
+      if (x1 - x0 < 5 || y1 - y0 < 5) continue;
+      const cielo = visRigheDiCielo(x0, x1, y0, y1, fot, base, focale);
+      if (!cielo) continue;      // la finestra è tutta terreno: non si guarda
+      y0 = cielo.y0; y1 = cielo.y1;
+      if (y1 - y0 < 5) continue;
+      fin.push({ x0, y0, x1, y1 });
+    }
+
+    // La fusione, ripetuta finché niente si sovrappone più. Sono una manciata
+    // di rettangoli, quindi il quadrato non costa niente; e il rettangolo che
+    // abbraccia due rettangoli può sovrapporsi a un terzo, che è la ragione
+    // per cui un giro solo non basterebbe.
+    let cambiato = true;
+    while (cambiato && fin.length > 1) {
+      cambiato = false;
+      for (let i = 0; i < fin.length && !cambiato; i++) {
+        for (let j = i + 1; j < fin.length; j++) {
+          const a = fin[i], b = fin[j];
+          if (a.x1 <= b.x0 || b.x1 <= a.x0 || a.y1 <= b.y0 || b.y1 <= a.y0) continue;
+          a.x0 = Math.min(a.x0, b.x0); a.y0 = Math.min(a.y0, b.y0);
+          a.x1 = Math.max(a.x1, b.x1); a.y1 = Math.max(a.y1, b.y1);
+          fin.splice(j, 1);
+          cambiato = true;
+          break;
+        }
+      }
+    }
+    return fin;
+  }
+
+  // La fascia di righe da leggere perché le finestre abbiano il loro fondo.
+  // La scatola di un pixel sul bordo di una finestra pesca fuori dalla
+  // finestra, quindi la luminanza lì dev'essere quella di adesso — e si
+  // allarga del raggio massimo perché il raggio vero lo si misura dopo aver
+  // letto (§4-ter), e leggere due volte vorrebbe dire misurare la taglia su
+  // un fotogramma e la posizione su quello dopo.
+  function visFasciaDaFinestre(fin, H) {
+    let y0 = H, y1 = 0;
+    for (const f of fin) { if (f.y0 < y0) y0 = f.y0; if (f.y1 > y1) y1 = f.y1; }
+    if (y1 <= y0) return null;
+    return { y0: Math.max(0, y0 - VIS_FONDO_MAX), y1: Math.min(H, y1 + VIS_FONDO_MAX) };
+  }
+
+  // ===================================================================
+  // §4-ter. Quanto è larga la macchia, e quindi quanto larga la scatola
+  // ===================================================================
+  //
+  // La scatola del fondo deve essere molto più grande della macchia, se no la
+  // macchia si cancella da sé (§1, coi numeri misurati). Quanto sia grande la
+  // macchia però non si può dichiarare: la Luna è mezzo grado di cielo e
+  // **non** mezzo grado di fotogramma — una sorgente che sfonda il sensore si
+  // allarga in un alone che dipende dall'esposizione, dalla lente, dal vetro
+  // sporco davanti, e per il Sole sono gradi. Si misura, ed è la stessa
+  // scelta di `catProfonditaCatalogo` in `catalogo.js`: il numero che conta lo
+  // dice il dato, non la costante.
+  //
+  // La misura è la larghezza a metà altezza, camminata in quattro direzioni
+  // dal pixel più chiaro della finestra. Il livello del fondo si prende dalla
+  // **cornice** della finestra e non dal suo interno, che è il posto dove la
+  // macchia sta: dentro a una finestra stretta — quella di un aggancio fatto,
+  // tredici pixel — una Luna bloomata sarebbe la maggioranza dei pixel, e una
+  // mediana dell'interno misurerebbe la Luna invece del cielo.
+  //
+  // Se lo stacco fra il picco e la cornice è piccolo non c'è nessuna sorgente
+  // chiara da misurare e si resta al raggio fine: è il caso della finestra di
+  // un aereo controluce, dove il pixel più chiaro è cielo e camminare fin
+  // dove «scende sotto metà» vorrebbe dire attraversare tutta la finestra.
+  function visScalaFondo(luma, L, H, f) {
+    // Il fondo dalla cornice: un giro sul bordo, un pixel su due.
+    let somma = 0, quanti = 0;
+    for (let x = f.x0; x < f.x1; x += 2) {
+      somma += luma[f.y0 * L + x] + luma[(f.y1 - 1) * L + x];
+      quanti += 2;
+    }
+    for (let y = f.y0; y < f.y1; y += 2) {
+      somma += luma[y * L + f.x0] + luma[y * L + (f.x1 - 1)];
+      quanti += 2;
+    }
+    if (!quanti) return VIS_FONDO_RAGGIO;
+    const fondo = somma / quanti;
+
+    // Il picco, cercato a passo due: per sapere quanto è larga una macchia
+    // non serve il pixel esatto in cima, e a passo due si legge un quarto.
+    let max = -Infinity, mx = f.x0, my = f.y0;
+    for (let y = f.y0; y < f.y1; y += 2) {
+      for (let x = f.x0; x < f.x1; x += 2) {
+        const v = luma[y * L + x];
+        if (v > max) { max = v; mx = x; my = y; }
+      }
+    }
+    if (!(max - fondo >= VIS_FONDO_STACCO_MIN)) return VIS_FONDO_RAGGIO;
+
+    const mezzo = fondo + (max - fondo) * 0.5;
+    const limite = Math.max(4, Math.min(f.x1 - f.x0, f.y1 - f.y0) * 0.4);
+    const cammina = (dx, dy) => {
+      let d = 1;
+      for (; d <= limite; d++) {
+        const x = mx + dx * d, y = my + dy * d;
+        if (x < f.x0 || x >= f.x1 || y < f.y0 || y >= f.y1) break;
+        if (luma[y * L + x] < mezzo) break;
+      }
+      return d - 1;
+    };
+    const estensione = Math.max(cammina(1, 0), cammina(-1, 0), cammina(0, 1), cammina(0, -1));
+    if (estensione * VIS_FONDO_PER_MACCHIA <= VIS_FONDO_RAGGIO) return VIS_FONDO_RAGGIO;
+    return Math.min(VIS_FONDO_MAX, Math.round(estensione * VIS_FONDO_PER_MACCHIA));
+  }
+
   // Angoli ad alto contrasto, distribuiti nel fotogramma. Il prodotto dei
   // gradienti orizzontale e verticale privilegia spigoli e ramificazioni e
   // non scambia una lunga riga d'orizzonte per decine di riferimenti.
+  // La scelta si fa a **griglia** e non a elenco ordinato, e per due ragioni
+  // che vanno insieme. Un elenco ordinato di tutti i pixel sopra soglia sono
+  // trecento oggetti allocati per giro, buttati un istante dopo; e per
+  // spaziarli si confronta ogni candidato con tutti i punti già tenuti, cioè
+  // trecento per ventotto distanze. La griglia dà la stessa cosa — il
+  // migliore di ogni cella, cioè punti per costruzione distribuiti — con una
+  // sola passata, due memorie riusate e nessuna allocazione.
   function visPuntiScena(luma, L, H) {
-    const grezzi = [];
+    const passo = VIS_SCENA_DISTANZA;
+    const nx = Math.max(1, Math.ceil(L / passo)), ny = Math.max(1, Math.ceil(H / passo));
+    const forza = scorta('scenaForza', nx * ny, Float32Array);
+    const dove = scorta('scenaDove', nx * ny, Int32Array);
+    forza.fill(0);
     for (let y = 3; y < H - 3; y += 2) {
+      const cy = (y / passo) | 0;
       for (let x = 3; x < L - 3; x += 2) {
         const gx = Math.abs(luma[y * L + x + 2] - luma[y * L + x - 2]);
         const gy = Math.abs(luma[(y + 2) * L + x] - luma[(y - 2) * L + x]);
-        const forza = Math.min(gx, gy);
-        if (forza >= 9) grezzi.push({ x, y, forza });
+        const f = gx < gy ? gx : gy;
+        if (f < 9) continue;
+        const c = cy * nx + ((x / passo) | 0);
+        if (f > forza[c]) { forza[c] = f; dove[c] = y * L + x; }
       }
     }
-    grezzi.sort((a, b) => b.forza - a.forza);
+    const piene = [];
+    for (let c = 0; c < forza.length; c++) if (forza[c] > 0) piene.push(c);
+    piene.sort((a, b) => forza[b] - forza[a]);
     const punti = [];
-    for (const p of grezzi) {
-      if (punti.some(q => Math.hypot(q.x - p.x, q.y - p.y) < VIS_SCENA_DISTANZA)) continue;
-      punti.push(p);
+    for (const c of piene) {
       if (punti.length >= VIS_SCENA_MAX) break;
+      const i = dove[c];
+      const x = i % L, y = (i / L) | 0;
+      // Due celle contigue possono avere i loro migliori appiccicati sul
+      // confine: una ripassata sui soli ventotto tenuti costa niente e
+      // toglie i doppioni che la griglia da sola non vede.
+      let stretto = false;
+      for (const q of punti) {
+        if (Math.abs(q.x - x) < passo && Math.abs(q.y - y) < passo) { stretto = true; break; }
+      }
+      if (stretto) continue;
+      punti.push({ x, y, forza: forza[c] });
     }
     return punti;
   }
 
-  function visErrorePatch(a, b, L, H, ax, ay, bx, by) {
-    let mediaA = 0, mediaB = 0, n = 0;
-    for (let dy = -VIS_SCENA_PATCH; dy <= VIS_SCENA_PATCH; dy++) {
-      for (let dx = -VIS_SCENA_PATCH; dx <= VIS_SCENA_PATCH; dx++) {
-        const xa = ax + dx, ya = ay + dy, xb = bx + dx, yb = by + dy;
-        if (xa < 0 || xa >= L || xb < 0 || xb >= L || ya < 0 || ya >= H || yb < 0 || yb >= H) return Infinity;
-        mediaA += a[ya * L + xa]; mediaB += b[yb * L + xb]; n++;
-      }
+  // La media della patch del **modello** non cambia mentre si cerca: si
+  // calcola una volta per punto e si passa dentro. Sono venticinque letture
+  // su cinquanta risparmiate a ogni posizione provata, cioè metà del costo
+  // del confronto.
+  function mediaPatch(a, L, H, ax, ay) {
+    const P = VIS_SCENA_PATCH;
+    if (ax - P < 0 || ax + P >= L || ay - P < 0 || ay + P >= H) return null;
+    let s = 0;
+    for (let dy = -P; dy <= P; dy++) {
+      for (let dx = -P; dx <= P; dx++) s += a[(ay + dy) * L + ax + dx];
     }
-    mediaA /= n; mediaB /= n;
+    const n = (2 * P + 1) * (2 * P + 1);
+    return { media: s / n, n };
+  }
+
+  // Lo scarto fra due patch, a media togliata (se no un cambio d'esposizione
+  // le fa sembrare tutte diverse) e con l'**abbandono anticipato**: appena la
+  // somma passa il migliore trovato finora, questa posizione ha già perso e
+  // continuare a sommare non cambia niente. Su una ricerca in cui la
+  // posizione giusta si trova quasi sempre vicino al centro, è metà dei
+  // confronti che non si finiscono.
+  function visErrorePatch(a, b, L, H, ax, ay, bx, by, mediaA, tetto) {
+    const P = VIS_SCENA_PATCH;
+    if (bx - P < 0 || bx + P >= L || by - P < 0 || by + P >= H) return Infinity;
+    if (ax - P < 0 || ax + P >= L || ay - P < 0 || ay + P >= H) return Infinity;
+    const n = (2 * P + 1) * (2 * P + 1);
+    if (typeof mediaA !== 'number') {
+      const m = mediaPatch(a, L, H, ax, ay);
+      if (!m) return Infinity;
+      mediaA = m.media;
+    }
+    let mediaB = 0;
+    for (let dy = -P; dy <= P; dy++) {
+      for (let dx = -P; dx <= P; dx++) mediaB += b[(by + dy) * L + bx + dx];
+    }
+    mediaB /= n;
+    const limite = (typeof tetto === 'number' ? tetto : Infinity) * n;
     let somma = 0;
-    for (let dy = -VIS_SCENA_PATCH; dy <= VIS_SCENA_PATCH; dy++) {
-      for (let dx = -VIS_SCENA_PATCH; dx <= VIS_SCENA_PATCH; dx++) {
+    for (let dy = -P; dy <= P; dy++) {
+      for (let dx = -P; dx <= P; dx++) {
         const va = a[(ay + dy) * L + ax + dx] - mediaA;
         const vb = b[(by + dy) * L + bx + dx] - mediaB;
-        somma += Math.abs(va - vb);
+        somma += va > vb ? va - vb : vb - va;
       }
+      if (somma >= limite) return Infinity;
     }
-    return somma / Math.max(1, n);
+    return somma / n;
   }
 
   // Segue i dettagli statici fra due fotogrammi e li restituisce già nella
@@ -707,24 +1355,46 @@
   // mondo quando è stato acquisito, `b` quella in cui appare ora.
   function visSeguiScena(fot, base, focale) {
     const prima = stato.scena;
+    const L = fot.largo, H = fot.alto;
     const coppie = [], segni = [];
     const aSchermo = (x, y) => ({
       x: (x + 0.5) * fot.perPixelX,
       y: (y + 0.5) * fot.perPixelY
     });
     const nuovi = [];
-    if (prima && prima.L === fot.largo && prima.H === fot.alto) {
+    if (prima && prima.L === L && prima.H === H) {
       for (const p of prima.punti) {
+        // **Dove sarà finito lo sappiamo.** Il punto sta fermo nel mondo, la
+        // sua direzione ce l'ha addosso da quando è stato seminato, e la posa
+        // di adesso è quella con cui si sta guardando: proiettarlo è un conto
+        // di quindici moltiplicazioni, e quello che resta da cercare è il
+        // solo scarto fra la posa e la verità — il tremolio della mano e la
+        // deriva del giroscopio su un ottavo di secondo, cioè un paio di
+        // pixel. Cercare a tentoni in tredici per tredici, come si faceva,
+        // vuol dire pagare centosessantanove confronti per rimisurare una
+        // cosa che il giroscopio ha già detto.
+        let cx = p.x, cy = p.y, raggio = VIS_SCENA_RICERCA_CIECA;
+        const pr = skyProietta(p.mondo, base, focale);
+        if (pr.davanti) {
+          const qx = pr.px / fot.perPixelX - 0.5, qy = pr.py / fot.perPixelY - 0.5;
+          if (qx >= 0 && qx < L && qy >= 0 && qy < H) {
+            cx = Math.round(qx); cy = Math.round(qy);
+            raggio = VIS_SCENA_RICERCA;
+          }
+        }
+        const mA = mediaPatch(prima.luma, L, H, p.x, p.y);
+        if (!mA) continue;
         let migliore = null;
-        for (let dy = -VIS_SCENA_RICERCA; dy <= VIS_SCENA_RICERCA; dy++) {
-          for (let dx = -VIS_SCENA_RICERCA; dx <= VIS_SCENA_RICERCA; dx++) {
-            const e = visErrorePatch(prima.luma, fot.luma, fot.largo, fot.alto, p.x, p.y, p.x + dx, p.y + dy);
-            if (!migliore || e < migliore.e) migliore = { x: p.x + dx, y: p.y + dy, e };
+        for (let dy = -raggio; dy <= raggio; dy++) {
+          for (let dx = -raggio; dx <= raggio; dx++) {
+            const e = visErrorePatch(prima.luma, fot.luma, L, H, p.x, p.y,
+              cx + dx, cy + dy, mA.media, migliore ? migliore.e : undefined);
+            if (!migliore || e < migliore.e) migliore = { x: cx + dx, y: cy + dy, e };
           }
         }
         // Una patch che cambia troppo è una foglia mossa, un passante o il
         // salto d'esposizione del flash: non deve trascinare il cielo.
-        if (!migliore || migliore.e > 18) continue;
+        if (!migliore || !isFinite(migliore.e) || migliore.e > 18) continue;
         const s = aSchermo(migliore.x, migliore.y);
         coppie.push({ a: p.mondo, b: versore(skyDirezione(s.x, s.y, base, focale)), peso: 0.35 });
         nuovi.push({ x: migliore.x, y: migliore.y, mondo: p.mondo });
@@ -733,17 +1403,37 @@
     }
     // Se i vecchi dettagli sono usciti dal campo, semina i vuoti dal
     // fotogramma corrente. Nessun filtro sull'altezza: il primo piano sotto
-    // l'orizzonte è spesso il riferimento notturno più nitido.
+    // l'orizzonte è spesso il riferimento notturno più nitido, ed è l'unico
+    // posto di questo modulo in cui il terreno serve — per tenere ferma una
+    // mira, non per trovarla.
     if (nuovi.length < VIS_SCENA_MAX / 2) {
-      for (const p of visPuntiScena(fot.luma, fot.largo, fot.alto)) {
-        if (nuovi.some(q => Math.hypot(q.x - p.x, q.y - p.y) < VIS_SCENA_DISTANZA)) continue;
+      for (const p of visPuntiScena(fot.luma, L, H)) {
+        if (nuovi.some(q => Math.abs(q.x - p.x) < VIS_SCENA_DISTANZA
+          && Math.abs(q.y - p.y) < VIS_SCENA_DISTANZA)) continue;
         const s = aSchermo(p.x, p.y);
         nuovi.push({ x: p.x, y: p.y, mondo: versore(skyDirezione(s.x, s.y, base, focale)) });
         if (nuovi.length >= VIS_SCENA_MAX) break;
       }
     }
-    stato.scena = { L: fot.largo, H: fot.alto, luma: new Float32Array(fot.luma), punti: nuovi };
+    // Il fotogramma di riferimento si **copia in una scorta**, non si
+    // alloca: un `new Float32Array` di trentamila numeri a ogni giro è un
+    // megabyte e mezzo al secondo di spazzatura, e il raccoglitore su un
+    // telefono si prende il suo tempo proprio mentre il cielo scorre. È la
+    // stessa ragione delle tre memorie di §3, che qui era rimasta fuori.
+    const memoria = scorta('lumaPrima', L * H, Float32Array);
+    memoria.set(fot.luma);
+    stato.scena = { L, H, luma: memoria, punti: nuovi };
     return { coppie, segni };
+  }
+
+  // Il paesaggio serve a tenere ferma una mira, non a trovarla: con due astri
+  // in mano non aggiunge niente e costa tutto (§1, `VIS_SCENA_ASTRI_BASTANO`).
+  // Quando si lascia perdere si **dimentica** anche il fotogramma di
+  // riferimento, se no al giro in cui tornasse utile si confronterebbe il
+  // fotogramma di adesso con uno di qualche minuto fa.
+  function visScenaDaFare(quantiAstri) {
+    if (quantiAstri >= VIS_SCENA_ASTRI_BASTANO) { stato.scena = null; return false; }
+    return true;
   }
 
   // ===================================================================
@@ -1237,14 +1927,85 @@
       return false;
     }
 
-    const fot = prendiFotogramma();
+    const fot = misuraFotogramma();
     if (!fot) { stato.motivo = 'niente-immagine'; return false; }
+    stato.pixelTotali = fot.largo * fot.alto;
 
     const posa = posaDiQualcheIstanteFa(VIS_LATENZA_MS) || { f: baseOra.f, r: baseOra.r, u: baseOra.u, focale: focaleOra };
     const base = { f: posa.f, r: posa.r, u: posa.u };
     const focale = posa.focale || focaleOra;
 
-    const { macchie, rumore } = visRilevaMacchie(fot.luma, fot.largo, fot.alto, {});
+    // Prima si chiede al cielo calcolato **dove** guardare, poi si guarda.
+    // L'ordine rovesciato rispetto a prima è tutto il risparmio di questo
+    // modulo: vedi il cappello del §4-bis.
+    const candidati = visCandidati(base, focale);
+    // Il cancello stretto solo con una misura d'astro recente addosso: un
+    // aggancio sul solo paesaggio non ha misurato niente della bussola, e
+    // stringere lì vorrebbe dire chiudere fuori proprio l'astro che la
+    // raddrizzerebbe (§1, `VIS_MIRA_ASTRI_VITA_MS`).
+    const miraFresca = stato.miraAstri
+      && (performance.now() - stato.miraAstri) < VIS_MIRA_ASTRI_VITA_MS;
+    const cancello = (stato.agganciato && miraFresca) ? VIS_CANCELLO_STRETTO : VIS_CANCELLO_LARGO;
+    const finestre = visFinestre(candidati, fot, base, focale, cancello);
+    stato.finestre = finestre.length;
+    let guardati = 0;
+    for (const f of finestre) guardati += (f.x1 - f.x0) * (f.y1 - f.y0);
+    stato.pixelGuardati = guardati;
+
+    // Il paesaggio serve solo quando gli astri sono pochi, e vuole tutto il
+    // fotogramma — terreno compreso, che è l'unico posto in cui il terreno a
+    // questo modulo serve.
+    const serveScena = visScenaDaFare(stato.astriUltimo || 0);
+    const fascia = serveScena
+      ? { y0: 0, y1: fot.alto }
+      : visFasciaDaFinestre(finestre, fot.alto);
+    if (!fascia) {
+      // Nessuna finestra e nessun paesaggio da seguire: il telefono è
+      // puntato dove non c'è niente di riconoscibile. Non si legge un pixel,
+      // e non è un guasto — è la risposta giusta, data a costo zero. Prima si
+      // pagava il giro intero per arrivare comunque a mani vuote.
+      //
+      // E si **dice quale** dei due casi è, che è l'altra metà della stessa
+      // cosa: «cerco riferimenti» sopra un cielo in cui non c'è niente da
+      // cercare è la frase che fa aspettare invano. Se i candidati ci sono e
+      // le loro finestre sono finite tutte sotto la linea dell'orizzonte, il
+      // telefono è puntato in giù e basta alzarlo; se candidati non ce n'è,
+      // in quel pezzo di cielo non c'è nulla che una fotocamera riprenda e
+      // bisogna girarsi verso la Luna o un pianeta.
+      perdiAggancio(candidati.length ? 'sotto-orizzonte' : 'niente-in-quadro');
+      stato.macchie = 0;
+      stato.astriUltimo = 0;
+      stato.riferimentiScena = 0;
+      return false;
+    }
+    if (!leggiFotogramma(fot, fascia.y0, fascia.y1)) {
+      stato.motivo = 'niente-immagine'; return false;
+    }
+
+    // La scatola del fondo, misurata finestra per finestra (§4-ter). È la
+    // riga che fa agganciare la Luna e il Sole quando la fotocamera li
+    // sfonda: col raggio fisso, sopra i nove pixel di alone, non si
+    // agganciavano affatto.
+    for (const f of finestre) {
+      f.raggioFondo = visScalaFondo(fot.luma, fot.largo, fot.alto, f);
+      // Un disco largo vuole anche una finestra del centroide larga: il
+      // baricentro si pesa su quello che sta dentro, e una finestra più
+      // piccola del disco dà il centro della finestra invece del centro del
+      // disco.
+      f.raggioCentroide = Math.max(VIS_CENTROIDE_RAGGIO, Math.round(f.raggioFondo * 0.54));
+    }
+    visRicordaTaglie(finestre, candidati, fot);
+
+    // Senza finestre non si rileva niente, ed è la riga da non perdere: con
+    // `finestre` vuoto `visRilevaMacchie` ripiega su **tutto il fotogramma**
+    // — che è il comportamento giusto per il banco di prova e quello
+    // sbagliato qui. Il caso si dà appena gli astri sono pochi (quindi il
+    // paesaggio si segue e la fascia letta è tutta) e nessun candidato è in
+    // quadro: un paesaggio di notte senza pianeti su, cioè tutt'altro che
+    // raro. Si pagherebbe il giro intero per trovare macchie che non hanno
+    // nessun candidato a cui appartenere.
+    const macchie = finestre.length
+      ? visRilevaMacchie(fot.luma, fot.largo, fot.alto, { finestre }).macchie : [];
     stato.macchie = macchie.length;
 
     // Dal fotogramma ridotto al riquadro: una moltiplicazione, perché il
@@ -1265,16 +2026,20 @@
       x: m.px, y: m.py, raggio: m.raggioPx, segno: m.segno, flusso: m.flusso
     }));
 
-    const scena = visSeguiScena(fot, base, focale);
+    const scena = serveScena ? visSeguiScena(fot, base, focale) : { coppie: [], segni: [] };
     stato.riferimentiScena = scena.coppie.length;
-    const candidati = visCandidati(base, focale);
 
     // Pixel per grado al centro della vista: è il metro con cui si scrivono
     // i cancelli in gradi.
     const perGrado = focale * D2R;
-    const cancello = stato.agganciato ? VIS_CANCELLO_STRETTO : VIS_CANCELLO_LARGO;
     const coppie = candidati.length
       ? visAssocia(candidati, inRiquadro, { perGrado, cancello }) : [];
+    // Quanti astri si sono agganciati: lo legge il giro dopo per decidere se
+    // il paesaggio serve (§`visScenaDaFare`). Va scritto **qui** e non dopo
+    // l'uscita anticipata qui sotto: restando al valore di prima, un giro
+    // andato a vuoto con due astri in memoria teneva il paesaggio spento per
+    // sempre — cioè proprio quando era l'unica cosa rimasta.
+    stato.astriUltimo = coppie.reduce((n, c) => n + (c.candidato.genere === 'astro' ? 1 : 0), 0);
     if (!coppie.length && scena.coppie.length < 3) {
       perdiAggancio('niente-riferimenti'); return false;
     }
@@ -1311,6 +2076,9 @@
         stato.scarto = sol.residuo;
         stato.riferimenti = sol.usate;
         misurato = true;
+        // Il timbro che autorizza il cancello stretto: solo un astro sa dov'è
+        // il Nord, quindi solo un astro può dire che adesso ci si fida.
+        if (!soloScena) stato.miraAstri = performance.now();
       } else {
         perdiAggancio('scarto-grande');
       }
@@ -1544,6 +2312,8 @@
     }
     if (stato.motivo === 'movimento') return { classe: 'cerca', testo: T('movimento') };
     if (stato.motivo === 'niente-immagine') return { classe: 'cerca', testo: T('attesa') };
+    if (stato.motivo === 'sotto-orizzonte') return { classe: 'cerca', testo: T('sottoOrizzonte') };
+    if (stato.motivo === 'niente-in-quadro') return { classe: 'cerca', testo: T('nienteInQuadro') };
     return { classe: 'cerca', testo: T('cerca') };
   }
 
@@ -1571,6 +2341,9 @@
     stato.agganciato = false;
     stato.scena = null;
     stato.riferimentiScena = 0;
+    stato.astriUltimo = 0;
+    stato.miraAstri = 0;
+    stato.taglie.clear();
     stato.motivo = 'cerca';
     stato.guastoDetto = false;
     visAggiornaHud();
@@ -1584,6 +2357,7 @@
     stato.pose.length = 0;
     stato.scena = null;
     stato.riferimentiScena = 0;
+    stato.astriUltimo = 0;
     // La correzione **non** si butta: è una misura vera dell'errore di
     // bussola in questo posto, e se la fotocamera si riaccende fra dieci
     // secondi è ancora quella. La fa scadere il tempo (§`correzioneViva`).
@@ -1604,7 +2378,13 @@
       riferimentiScena: stato.riferimentiScena,
       motivo: stato.motivo, costo: stato.costo, cadenza: stato.cadenza,
       correzione: stato.correzione ? angoloDi(stato.correzione) : 0,
-      ancore: stato.ancore.size, scala: stato.scala, moto: stato.motoGradiS
+      ancore: stato.ancore.size, scala: stato.scala, moto: stato.motoGradiS,
+      // Quanto del fotogramma si è davvero guardato. È il numero da leggere
+      // quando qualcuno dice che la realtà aumentata è pesante: se è alto,
+      // le finestre non stanno stringendo — cioè o non ci si è agganciati, o
+      // i candidati sono sparsi per tutto il cielo.
+      finestre: stato.finestre, pixelGuardati: stato.pixelGuardati,
+      pixelTotali: stato.pixelTotali
     };
   }
 
@@ -1619,6 +2399,9 @@
     stato.segni = [];
     stato.scena = null;
     stato.riferimentiScena = 0;
+    stato.astriUltimo = 0;
+    stato.miraAstri = 0;
+    stato.taglie.clear();
     stato.scala = 1;
     visAggiornaHud();
   }
@@ -1643,7 +2426,13 @@
     visRilevaMacchie, visResiduo, visRumore, visAssocia, visRisolviRotazione,
     visStimaScala, rodrigues, angoloDi, scalaRotazione, applica, moltiplica,
     identita, versore, azAltDi, vettoreDa, scartoAz, risolvi3, stato,
+    visFinestre, visRigheDiCielo, visFasciaDaFinestre, visScalaFondo,
+    visTagliaDi, visRicordaTaglie, VIS_FINESTRA_PER_FONDO, VIS_TAGLIA_VITA_MS,
+    visPuntiScena, visErrorePatch, mediaPatch, visScenaDaFare,
     VIS_CANCELLO_LARGO, VIS_CANCELLO_STRETTO, VIS_CANCELLO_AEREO,
-    VIS_AMBIGUITA, VIS_CORREZIONE_MAX, VIS_ANCORA_MAX, VIS_PIXEL, visLatoRidotto
+    VIS_AMBIGUITA, VIS_CORREZIONE_MAX, VIS_ANCORA_MAX, VIS_PIXEL, visLatoRidotto,
+    VIS_FONDO_RAGGIO, VIS_FONDO_MAX, VIS_FONDO_PER_MACCHIA, VIS_FONDO_STACCO_MIN,
+    VIS_SCENA_MAX, VIS_SCENA_DISTANZA, VIS_SCENA_RICERCA, VIS_SCENA_ASTRI_BASTANO,
+    VIS_MIRA_ASTRI_VITA_MS, VIS_CENTROIDE_RAGGIO, VIS_SOGLIA_SIGMA, VIS_SOGLIA_MIN
   };
 })();
