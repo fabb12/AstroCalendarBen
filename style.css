@@ -10233,6 +10233,8 @@ body button.did-ponte:active { transform: translateY(1px); }
   font-size:.75rem; font-weight:600;
 }
 .aereo-foto { width:100%; max-height:190px; object-fit:cover; border-radius:10px; margin:8px 0 10px; background:#0f172a; }
+.aereo-foto-wikipedia { display:block; border-radius:10px; }
+.aereo-foto-wikipedia:focus-visible { outline:2px solid #fbbf24; outline-offset:3px; }
 .aereo-foto-credito { color:#64748b; font-size:.68rem; margin-top:-7px; margin-bottom:9px; }
 .aereo-azioni { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
 .aereo-azioni .tasto-cielo { flex:1 1 130px; }
