@@ -100,6 +100,12 @@ function ok(nome, condizione, extra) {
     ok('la guida non propone più di dichiarare gli ostacoli',
       !(await pagina.locator('body').innerText()).includes('Dichiara cosa hai davanti'));
 
+    const testoGuida = await pagina.locator('body').innerText();
+    const riferimentiInterni = ['Nel codice', 'localStorage', 'service worker'];
+    const riferimentiPresenti = riferimentiInterni.filter(testo => testoGuida.includes(testo));
+    ok('la guida parla all\'utente senza nomi interni del codice',
+      riferimentiPresenti.length === 0, riferimentiPresenti.join(', ') || 'nessuno');
+
     const mancanti = await pagina.evaluate(
       ids => ids.filter(id => !document.getElementById(id)), promesse);
     ok('ogni ancoraggio linkato dalle impostazioni esiste davvero',

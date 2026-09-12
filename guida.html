@@ -317,21 +317,20 @@ tbody tr:last-child td { border-bottom: 0; }
         <span class="etichetta">Nessun server</span>
         <h3>I conti si fanno qui</h3>
         <p class="desc">Fasi lunari, eclissi, sorgere e tramonto, congiunzioni, passaggi della Stazione Spaziale:
-        tutto calcolato nel browser con Astronomy Engine. Non c'è nessun servizio da interrogare
-        e nessun elenco di eventi scaricato da qualche parte.</p>
+        l'app calcola tutto direttamente sul dispositivo, anche quando non c'è rete.</p>
       </div>
       <div class="scheda">
         <span class="etichetta">Nessun account</span>
         <h3>I dati restano sul dispositivo</h3>
         <p class="desc">Posizione, diario, profilo del telescopio, forma del terreno attorno a casa:
-        tutto in <code>localStorage</code>. Si porta altrove con un file di backup, non con un login.</p>
+        tutto resta sul dispositivo. Puoi portarlo altrove con un file di backup, senza creare un account.</p>
       </div>
       <div class="scheda">
         <span class="etichetta">Offline</span>
         <h3>Funziona in montagna</h3>
-        <p class="desc">Un service worker tiene l'app in cache. Quello che manca senza rete è solo
-        il meteo aggiornato, il traffico aereo e le nuove ricerche di terreno — il cielo no,
-        quello si calcola comunque.</p>
+        <p class="desc">L'app conserva ciò che serve per continuare a funzionare. Senza rete mancano solo
+        il meteo aggiornato, il traffico aereo e le nuove ricerche di terreno — il cielo invece
+        resta disponibile.</p>
       </div>
       <div class="scheda">
         <span class="etichetta">Due lingue</span>
@@ -565,8 +564,8 @@ tbody tr:last-child td { border-bottom: 0; }
   <section id="planetario">
     <h2><span class="capitolo">Capitolo 03</span>Il planetario, a fondo</h2>
     <p class="guida">
-      Nel codice si chiama ancora <code>cielo</code>, sullo schermo è il Planetario. È la vista che fa
-      quasi tutto: punta il telefono e il cielo segue, oppure trascina col dito. Sotto, il paesaggio
+      Il Planetario è la vista che riunisce quasi tutto: punta il telefono e il cielo segue,
+      oppure trascina col dito. Sotto, il paesaggio
       vero del posto in cui sei. Sopra, la macchina del tempo.
     </p>
 
@@ -1094,9 +1093,9 @@ tbody tr:last-child td { border-bottom: 0; }
       <div class="scheda">
         <span class="etichetta">Linguetta 3</span>
         <h3>Dati</h3>
-        <p class="desc"><b>Esporta backup</b> e <b>Ripristina backup</b> (un file JSON con tutto: diario,
-        posizione, telescopio, terreno, albo di Missione Cielo), e <b>Scarica i prossimi 12 mesi</b> come
-        file <code>.ics</code> per il tuo calendario.</p>
+        <p class="desc"><b>Esporta backup</b> e <b>Ripristina backup</b> per salvare o recuperare diario,
+        posizione, telescopio, terreno e albo di Missione Cielo; <b>Scarica i prossimi 12 mesi</b>
+        crea invece un file da aggiungere al tuo calendario.</p>
       </div>
     </div>
 
@@ -1112,7 +1111,7 @@ tbody tr:last-child td { border-bottom: 0; }
 
     <h3 style="margin-top:26px">Condividere</h3>
     <p>Ogni cosa che esce dall'app <strong>si porta dietro il luogo</strong>: la condivisione di un evento
-    scrive il posto accanto alla data, il file <code>.ics</code> compila <code>LOCATION</code> e le coordinate,
+    scrive il posto accanto alla data, il file per il calendario include luogo e coordinate,
     la firma impressa nei filmati dice dove e quando. Un orario astronomico senza il suo luogo è un
     orario che chi lo riceve legge come se valesse a casa sua.</p>
   </section>
@@ -1131,7 +1130,7 @@ tbody tr:last-child td { border-bottom: 0; }
         <thead><tr><th>Cosa</th><th>Senza rete</th></tr></thead>
         <tbody>
           <tr><td><b>Tutto il cielo calcolato</b><br><span class="mini">effemeridi, fasi, eclissi, sorgere e tramonto, congiunzioni</span></td><td><span class="pillola ok">funziona</span> Si calcola nel browser: non c'è niente da scaricare.</td></tr>
-          <tr><td><b>Stelle, costellazioni, cielo profondo</b></td><td><span class="pillola ok">funziona</span> I cataloghi sono nell'app e li tiene il service worker.</td></tr>
+          <tr><td><b>Stelle, costellazioni, cielo profondo</b></td><td><span class="pillola ok">funziona</span> I cataloghi sono già inclusi nell'app.</td></tr>
           <tr><td><b>Terreno e paesaggio già scaricati</b></td><td><span class="pillola ok">funziona</span> Restano salvati: una collina è dove era. L'app ne tiene gli ultimi quattro posti.</td></tr>
           <tr><td><b>Diario, telescopio, impostazioni</b></td><td><span class="pillola ok">funziona</span> Sono tutti sul dispositivo.</td></tr>
           <tr><td><b>Meteo, seeing, trasparenza</b></td><td><span class="pillola att">ultimo valore</span> Resta l'ultima previsione scaricata, con la sua data.</td></tr>
@@ -1250,8 +1249,8 @@ tbody tr:last-child td { border-bottom: 0; }
           </tr>
           <tr>
             <td><b>Non vedo una modifica appena pubblicata</b></td>
-            <td>È la <b>PWA installata</b> che serve la versione in cache. Si risolve ricaricando a fondo
-            (o chiudendo e riaprendo l'app installata).</td>
+            <td>L'app installata può mostrare ancora la versione precedente. Ricarica la pagina
+            oppure chiudi e riapri l'app.</td>
           </tr>
           <tr>
             <td><b>La posizione è quella sbagliata</b></td>
@@ -1297,9 +1296,9 @@ tbody tr:last-child td { border-bottom: 0; }
 <footer class="guscio chiusura">
   <p style="max-width:66ch;margin:0">
     <strong>AstroCalendario di Ben</strong> — applicazione web per l'osservazione amatoriale del cielo.
-    Nessun account, nessun server, nessuna traccia: i conti si fanno nel browser e i dati restano
-    sul dispositivo. I cataloghi vengono da d3-celestial (Hipparcos, Yale BSC, Messier), gli elementi
-    orbitali da Stellarium (MPC e JPL), le distanze dal database HYG.
+    Nessun account, nessun server, nessuna traccia: i calcoli avvengono sul dispositivo e i tuoi dati
+    restano lì. Le informazioni astronomiche provengono dai cataloghi Hipparcos, Yale BSC, Messier e HYG;
+    le orbite di pianeti e corpi minori dai cataloghi MPC e JPL distribuiti da Stellarium.
   </p>
   <p style="margin:16px 0 0">
     <a href="index.html">← Torna all'app</a> &nbsp;·&nbsp; <a href="#inbreve">Torna all'inizio ↑</a>
