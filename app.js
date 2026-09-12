@@ -8184,6 +8184,7 @@ const sky = {
   reg: {
     durataSec: 15,
     attiva: false,
+    preparazione: false,      // la scheda viene rasterizzata prima di avviare il video
     avvio: 0,              // performance.now() della prima immagine presa
     tela: null,            // la tela di montaggio: fotocamera + cielo + firma
     ctx: null,
@@ -28132,6 +28133,7 @@ function skyRegFirma(ctx, L, H) {
 // --- Avvio, presa dei fotogrammi, arresto ---------------------------------
 
 function skyRegAlterna() {
+  if (sky.reg.preparazione) return;
   if (sky.reg.attiva) skyRegFerma();
   else skyRegAvvia();
 }
@@ -28143,10 +28145,12 @@ function skyRegAlternaDa(origine) {
   skyRegAlterna();
 }
 
-function skyRegAvvia() {
+async function skyRegAvvia() {
   const r = sky.reg;
   const sorgente = r.origine === 'solare' ? sol.canvas : sky.canvas;
-  if (r.attiva || !sorgente) return;
+  if (r.attiva || r.preparazione || !sorgente) return;
+
+  r.preparazione = true;
 
   // Un risultato per volta: quello di prima si butta solo adesso, così chi ha
   // fatto due registrazioni di fila non si ritrova la prima sparita a metà
@@ -28155,12 +28159,22 @@ function skyRegAvvia() {
   skyRegChiudiPannello();
 
   if (!skyRegPreparaTela()) {
+    r.preparazione = false;
     skyAvviso('registra', 'Non riesco a preparare la registrazione su questo dispositivo.', 8000);
     return;
   }
-  if (!skyRegAvviaVideo()) return;
+
+  // Le schede sono HTML e le loro fotografie possono arrivare dalla rete.
+  // Prepararle soltanto dal primo fotogramma significava che, soprattutto nei
+  // filmati da cinque secondi, il testo compariva subito ma l'immagine poteva
+  // arrivare quando la registrazione era già finita. Attendiamo qui la prima
+  // rasterizzazione: il cronometro e MediaRecorder non sono ancora partiti,
+  // quindi il filmato nasce già completo.
+  if (r.origine !== 'solare') await skyRegPreparaSchedeVisibili();
+  if (!skyRegAvviaVideo()) { r.preparazione = false; return; }
 
   r.attiva = true;
+  r.preparazione = false;
   r.avvio = performance.now();
   r.ultimoConto = 0;
   skyAvviso('registra', '');
@@ -28168,6 +28182,20 @@ function skyRegAvvia() {
   // pannello aperto copre metà di quello che sta riprendendo
   skyMostraGruppo('');
   skyRegAggiornaComando(r.durataSec);
+}
+
+async function skyRegPreparaSchedeVisibili() {
+  const visibili = [];
+  const fumetto = document.getElementById('skymap-fumetto');
+  if (fumetto && fumetto.classList.contains('visibile') &&
+      fumetto.style.visibility !== 'hidden') visibili.push(fumetto);
+  const pannello = document.getElementById('skymap-dettaglio');
+  if (pannello && pannello.classList.contains('visibile')) visibili.push(pannello);
+
+  await Promise.all(visibili.map(pannello => {
+    const impronta = skyRegImprontaRiquadro(pannello);
+    return skyRegFotografaRiquadro(pannello, impronta);
+  }));
 }
 
 function skyRegAvviaVideo() {

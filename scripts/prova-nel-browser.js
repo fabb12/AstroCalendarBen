@@ -390,6 +390,35 @@ const server = http.createServer((req, res) => {
       firmaVideo.larghezza <= firmaVideo.massimo,
     `${firmaVideo.accorciato} (${firmaVideo.larghezza.toFixed(1)}/${firmaVideo.massimo}px)`);
 
+  // La registrazione deve partire soltanto quando la fotografia contenuta nel
+  // fumetto è già stata incorporata nella sua rasterizzazione. Altrimenti una
+  // clip breve conserva il testo del ripiego ma perde proprio l'immagine.
+  const immagineNelRiquadroRegistrato = await pagina.evaluate(async () => {
+    const fumetto = document.getElementById('skymap-fumetto');
+    const corpo = document.getElementById('skymap-fumetto-corpo');
+    const stato = {
+      classe: fumetto.className,
+      html: corpo.innerHTML,
+      visibility: fumetto.style.visibility
+    };
+    fumetto.classList.add('visibile');
+    fumetto.style.visibility = 'visible';
+    corpo.innerHTML = '<img alt="prova" width="24" height="24" ' +
+      'src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22%3E%3Crect width=%2224%22 height=%2224%22 fill=%22%23f00%22/%3E%3C/svg%3E">';
+    sky.reg.riquadri.clear();
+    await skyRegPreparaSchedeVisibili();
+    const memoria = sky.reg.riquadri.get(fumetto);
+    const pronta = !!(memoria && memoria.immagine && !memoria.inCorso &&
+      memoria.immagine.naturalWidth > 0);
+    fumetto.className = stato.classe;
+    fumetto.style.visibility = stato.visibility;
+    corpo.innerHTML = stato.html;
+    sky.reg.riquadri.clear();
+    return pronta;
+  });
+  ok('la registrazione aspetta anche le immagini del box informativo',
+    immagineNelRiquadroRegistrato === true);
+
   const salvataggiRipetuti = await pagina.evaluate(async () => {
     const cartellaOriginale = videoCartella;
     const autorizzazioneOriginale = videoCartellaAutorizzata;
