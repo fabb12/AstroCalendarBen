@@ -24242,10 +24242,6 @@ function skyFumettoDatiAstro(o) {
     // che tiene il conto di quale candidata ha caricato davvero.
     foto: satFotoDi(sat),
     wikipedia: skyWikipediaUrl(o),
-    // I nomi delle stelle del catalogo possono essere descrizioni complete
-    // (codice, magnitudine e costellazione): non vanno accorciati con i
-    // puntini proprio nel fumetto che deve identificare l'astro toccato.
-    nomeSempreIntero: o.tipo === 'stella',
     righe
   };
 }
@@ -24305,7 +24301,6 @@ function skyAggiornaFumetto() {
   // indica devono dire la stessa cosa anche di sfuggita.
   f.style.setProperty('--fumetto-tinta', dati.colore || 'rgba(148, 197, 255, .85)');
   f.classList.toggle('fumetto-aereo', dati.classe === 'fumetto-aereo');
-  f.classList.toggle('fumetto-nome-intero', dati.nomeSempreIntero === true);
 
   const forma = `${dati.chiave}|${dati.foto ? dati.foto.src : ''}|${dati.righe.map(r => r.chiave).join(',')}`;
   if (f.dataset.chiave !== forma) {
