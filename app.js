@@ -23017,6 +23017,7 @@ const SKY_FAMIGLIE = [
   { chiave: 'pianeti',   etichetta: 'Pianeti',     titolo: 'Pianeti',           tipi: ['pianeta'] },
   { chiave: 'stelle',    etichetta: 'Stelle',      titolo: 'Stelle',            tipi: ['stella'] },
   { chiave: 'profondo',  etichetta: 'Profondo',    titolo: 'Cielo profondo',    tipi: ['profondo'] },
+  { chiave: 'costellazioni', etichetta: 'Costellazioni', titolo: 'Costellazioni', tipi: ['costellazione'] },
   // Comete e asteroidi non avevano una famiglia, e senza famiglia non
   // esistevano: `skyCostruisciElenco()` scrive solo i tipi elencati qui, e
   // il tipo `corpoMinore` non era in nessuna riga. Le comete si calcolavano,
@@ -23065,14 +23066,29 @@ function skyCostruisciElenco() {
   skyCostruisciCategorie();
   const cont = document.getElementById('skymap-oggetti');
   if (!cont || cont.dataset.pronto === 'si') return;
-  const tutti = skyElenco();
+  // Le costellazioni condividono la ricerca degli astri: chi scrive
+  // "Orione" non deve sapere che esiste un atlante separato. Nome italiano,
+  // latino e sigla sono tutti indicizzati, così funzionano anche "Ursa
+  // Major" e "UMa". Il Serpente compare in due tronconi nei dati delle
+  // figure, ma qui deve naturalmente essere un solo risultato.
+  const costellazioni = typeof COSTELLAZIONI_IAU === 'undefined' ? [] :
+    Array.from(new Map(COSTELLAZIONI_IAU.map(c => [c.sigla, {
+      id: `costellazione:${c.sigla}`,
+      tipo: 'costellazione',
+      sigla: c.sigla,
+      nome: c.nome.replace(/\u2005/g, ' '),
+      cerca: `${c.nome} ${c.latino} ${c.sigla}`,
+      disegno: 'costellazione'
+    }])).values());
+  const tutti = skyElenco().concat(costellazioni);
   cont.innerHTML = SKY_FAMIGLIE.map(f => {
     const astri = tutti.filter(a => f.tipi.includes(a.tipo));
     if (!astri.length) return '';
     // Il nome normalizzato viaggia col tasto: la ricerca non deve rifare
     // diciannove volte lo stesso lavoro a ogni lettera digitata
     const chip = astri.map(a =>
-      `<button type="button" data-astro="${a.id}" data-nome="${normalizzaTesto(a.nome)}" ` +
+      `<button type="button" data-astro="${a.id}" data-tipo="${a.tipo}" data-sigla="${a.sigla || ''}" ` +
+      `data-nome="${normalizzaTesto(a.cerca || a.nome)}" ` +
       `data-famiglia="${f.chiave}" data-fuori="no" class="chip-astro">` +
       `${icona(a.disegno, 15)}<span class="nome-astro">${a.nome}</span><span class="sky-alt"></span></button>`
     ).join('');
@@ -23084,11 +23100,22 @@ function skyCostruisciElenco() {
     // Scegliere un astro è l'azione, non la navigazione: il pannello si
     // chiude subito, come per ogni altro comando effettivo, così la mappa
     // torna visibile per guardare l'oggetto appena scelto.
-    btn.addEventListener('click', () => skyScegliAstroDaElenco(btn.dataset.astro));
+    btn.addEventListener('click', () => skyScegliRisultatoDaElenco(btn));
   });
   cont.dataset.pronto = 'si';
   skyAggiornaStileElenco();
   skyFiltraElenco();
+}
+
+function skyScegliRisultatoDaElenco(btn, opzioni = {}) {
+  if (btn.dataset.tipo === 'costellazione') {
+    const campo = document.getElementById('skymap-astri-cerca');
+    if (campo && document.activeElement === campo) campo.blur();
+    if (typeof costMostraInCielo === 'function') costMostraInCielo(btn.dataset.sigla);
+    skyMostraGruppo('');
+    return;
+  }
+  skyScegliAstroDaElenco(btn.dataset.astro, opzioni);
 }
 
 function skyScegliAstroDaElenco(id, opzioni = {}) {
@@ -23225,8 +23252,8 @@ function skyImpostaTipoRicerca(tipo) {
   const campo = document.getElementById('skymap-astri-cerca');
   if (campo) {
     campo.value = '';
-    campo.placeholder = skyTipoRicerca === 'luoghi' ? 'Es. Roma o Monte Bianco…' : 'Cerca per nome…';
-    campo.setAttribute('aria-label', skyTipoRicerca === 'luoghi' ? 'Cerca una città o una montagna' : 'Cerca un astro per nome');
+    campo.placeholder = skyTipoRicerca === 'luoghi' ? 'Es. Roma o Monte Bianco…' : 'Cerca astri e costellazioni…';
+    campo.setAttribute('aria-label', skyTipoRicerca === 'luoghi' ? 'Cerca una città o una montagna' : 'Cerca un astro o una costellazione per nome');
   }
   document.getElementById('skymap-luoghi-risultati')?.classList.toggle('hidden', skyTipoRicerca !== 'luoghi');
   skyFiltraElenco();
@@ -23245,6 +23272,7 @@ function skyStileChip(id, o) {
 
 function skyAggiornaStileElenco() {
   document.querySelectorAll('.chip-astro').forEach(btn => {
+    if (btn.dataset.tipo === 'costellazione') return;
     btn.className = skyStileChip(btn.dataset.astro, skyVoceDiId(btn.dataset.astro));
   });
 }
@@ -23279,12 +23307,15 @@ function skyFiltraElenco() {
 
   document.querySelectorAll('#skymap-oggetti .chip-astro').forEach(btn => {
     const nome = btn.dataset.nome || '';
-    const o = skyVoceDiId(btn.dataset.astro);
+    const costellazione = btn.dataset.tipo === 'costellazione';
+    const o = costellazione ? null : skyVoceDiId(btn.dataset.astro);
     const perNome = parole.every(p => nome.includes(p));
     const perFamiglia = famiglia === 'tutte' || btn.dataset.famiglia === famiglia;
     // Finché le posizioni non sono state calcolate "Su ora" non toglie
     // niente: un elenco vuoto all'apertura sembrerebbe un guasto
-    const perAltezza = !sky.soloAstriVisibili || !o || o.alt > 0;
+    // Una costellazione copre un'area, non un punto: il filtro d'altezza non
+    // può dichiararla tramontata guardandone arbitrariamente il centro.
+    const perAltezza = costellazione || !sky.soloAstriVisibili || !o || o.alt > 0;
     const dentro = perNome && perFamiglia && perAltezza;
     btn.dataset.fuori = dentro ? 'no' : 'si';
     if (dentro) trovati++;
@@ -23299,7 +23330,7 @@ function skyFiltraElenco() {
   if (vuoto) {
     vuoto.textContent = sky.soloAstriVisibili && !parole.length
       ? 'In questa categoria, adesso, non c\'è niente sopra l\'orizzonte.'
-      : 'Nessun astro con questo nome.';
+      : 'Nessun astro o costellazione con questo nome.';
     vuoto.classList.toggle('hidden', trovati > 0);
   }
 }
@@ -23318,6 +23349,7 @@ function skyFiltraElenco() {
 function skyAggiornaEtichette() {
   if (skyElencoInVista()) {
     document.querySelectorAll('#skymap-oggetti .chip-astro').forEach(btn => {
+      if (btn.dataset.tipo === 'costellazione') return;
       const o = skyVoceDiId(btn.dataset.astro);
       const span = btn.querySelector('.sky-alt');
       if (span) span.textContent = o ? `${o.alt >= 0 ? '↑' : '↓'}${Math.abs(Math.round(o.alt))}°` : '';
@@ -27153,7 +27185,7 @@ function inizializzaSkymap() {
         const primo = document.querySelector('#skymap-oggetti .chip-astro[data-fuori="no"]');
         if (primo) {
           e.preventDefault();
-          skyScegliAstroDaElenco(primo.dataset.astro, { mantieni: true });
+          skyScegliRisultatoDaElenco(primo, { mantieni: true });
         }
         return;
       }
