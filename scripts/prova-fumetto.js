@@ -193,27 +193,33 @@ const AEREO = {
       });
       return {
         titolo: dati.titolo,
-        tipo: dati.righe[0] && dati.righe[0].valore,
-        nomeSempreIntero: dati.nomeSempreIntero
+        tipo: dati.righe[0] && dati.righe[0].valore
       };
     });
     ok('il fumetto scrive il nome completo della stella', stella.titolo === 'Stella di prova', stella.titolo);
-    ok('il nome della stella non viene troncato nel fumetto', stella.nomeSempreIntero === true);
     ok('la classe della stella non mostra codice HTML',
       stella.tipo === 'Stella bianca (classe F circa)' && !/[<>]/.test(stella.tipo), stella.tipo);
     const titoloStella = await pagina.evaluate(() => {
       const prova = document.createElement('div');
-      prova.className = 'fumetto-nome-intero';
+      prova.className = 'fumetto-cielo visibile';
       prova.innerHTML = '<h3 class="fumetto-titolo">Stella CAT 12345 di magnitudine 5,7 — Orsa Maggiore</h3>';
       document.body.appendChild(prova);
       const stile = getComputedStyle(prova.firstElementChild);
-      const risultato = { whiteSpace: stile.whiteSpace, overflow: stile.overflow, textOverflow: stile.textOverflow };
+      const risultato = {
+        whiteSpace: stile.whiteSpace,
+        overflow: stile.overflow,
+        textOverflow: stile.textOverflow,
+        overflowWrap: stile.overflowWrap,
+        wordBreak: stile.wordBreak,
+        righe: Math.round(prova.firstElementChild.getBoundingClientRect().height / parseFloat(stile.lineHeight))
+      };
       prova.remove();
       return risultato;
     });
-    ok('il titolo esteso può andare a capo senza ellissi',
+    ok('il titolo di ogni oggetto va a capo senza ellissi e senza spezzare parole',
       titoloStella.whiteSpace === 'normal' && titoloStella.overflow === 'visible' &&
-        titoloStella.textOverflow === 'clip',
+        titoloStella.textOverflow === 'clip' && titoloStella.overflowWrap === 'normal' &&
+        titoloStella.wordBreak === 'normal' && titoloStella.righe <= 2,
       JSON.stringify(titoloStella));
 
     // --- le stazioni spaziali e la loro fotografia ----------------------

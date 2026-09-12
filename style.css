@@ -5446,8 +5446,8 @@ body input.casella-data:hover { border: 0; }
    nemmeno così ci arriva, entra in scena il filo.
 
    Le misure sono pensate per un telefono in mano: il fumetto non supera mai
-   i 260 pixel né il 78% della larghezza dello schermo (sotto ai 560px scende
-   a 240 e all'84%: un fumetto che copre tutto il cielo non è più un fumetto,
+   i 310 pixel né l'88% della larghezza dello schermo (sotto ai 560px scende
+   a 300: un fumetto che copre tutto il cielo non è più un fumetto,
    è di nuovo il pannello di prima), il testo non scende sotto i 12,3px — la
    misura sotto la quale una riga di dati su un fondo scuro, in movimento, si
    smette di leggere — e i due tasti restano quadrati da 30px, che è il
@@ -5460,7 +5460,7 @@ body input.casella-data:hover { border: 0; }
   top: 0;
   z-index: 7;
   width: max-content;
-  max-width: min(260px, 78vw);
+  max-width: min(310px, 88vw);
   padding: 9px 10px 9px 11px;
   border: 1px solid var(--bordo-forte);
   /* Il filo di tinta sul bordo sinistro è la fascia di distanza dell'aereo,
@@ -5551,11 +5551,17 @@ body input.casella-data:hover { border: 0; }
   font-weight: 700;
   letter-spacing: .01em;
   color: var(--testo);
-  /* Un indicativo di volo non va a capo; un nome di cometa lungo si accorcia
-     invece di allargare il fumetto oltre il suo tetto. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Il nome identifica cio' che e' stato toccato e non deve mai diventare
+     ambiguo dietro a dei puntini. I nomi corti restano su una riga; quelli
+     lunghi hanno la larghezza necessaria per disporsi su due, mantenendo
+     sempre intere le parole. */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+  text-wrap: balance;
 }
 /* Il filetto che riempie la riga del titolo fino ai tasti: è quello che
    trasforma due parole e due bottoni in una testata. */
@@ -5605,22 +5611,6 @@ body input.casella-data:hover { border: 0; }
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.fumetto-aereo .fumetto-titolo {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  overflow-wrap: anywhere;
-}
-/* Il nome e' il dato che permette di capire quale stella sia stata toccata.
-   Quelle senza nome proprio portano anche codice di catalogo, magnitudine e
-   costellazione: lasciamo che occupino piu' righe invece di nasconderne la
-   parte finale dietro ai puntini. */
-.fumetto-nome-intero .fumetto-titolo {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  overflow-wrap: anywhere;
-}
 /* È la fotografia dell'oggetto, non necessariamente di un aereo: la usano
    anche ISS e Tiangong. Un nome comune evita che una futura regola dedicata
    agli aerei finisca per nascondere le stazioni. */
@@ -5652,7 +5642,7 @@ body input.casella-data:hover { border: 0; }
    il risultato è un fumetto che ci sta e non si legge. */
 @media (max-width: 560px) {
   .fumetto-cielo {
-    max-width: min(240px, 84vw);
+    max-width: min(300px, 88vw);
     padding: 8px 9px 8px 10px;
     font-size: 0.775rem;
   }
@@ -5661,7 +5651,7 @@ body input.casella-data:hover { border: 0; }
 /* Il telefono girato: di altezza ce n'è pochissima (il cielo è alto due
    dita), quindi il fumetto perde una riga invece di coprire il panorama. */
 @media (orientation: landscape) and (max-height: 520px) {
-  .fumetto-cielo { max-width: min(230px, 46vw); padding: 7px 9px; }
+  .fumetto-cielo { max-width: min(300px, 60vw); padding: 7px 9px; }
   .fumetto-riga { -webkit-line-clamp: 1; }
   .fumetto-tasto { width: 28px; height: 28px; }
   .fumetto-foto img { max-height: 58px; }
