@@ -7453,14 +7453,16 @@ if ('speechSynthesis' in window) {
 //    Quando scatta il promemoria di un evento parte anche la lettura vocale.
 // =====================================================================
 
-// Quanto prima dell'evento arriva il promemoria
-const ANTICIPO_NOTIFICA_MIN = 30;
+// Quanto prima dell'evento arriva il promemoria. E' il parametro unico usato
+// sia dalle notifiche dell'app sia dagli allarmi esportati nel calendario del
+// telefono, cosi' i due canali non possono promettere orari diversi.
+const ANTICIPO_NOTIFICA_MIN = 10;
 // Oltre questo ritardo (app riaperta molto dopo) il promemoria non ha più senso
 const RITARDO_MASSIMO_MIN = 120;
 // Ogni quanto controlliamo se c'è un evento in arrivo
 const INTERVALLO_CONTROLLO_MS = 60 * 1000;
 
-// Un'eclissi non si prepara in mezz'ora. Se bisogna mettersi in viaggio per
+// Un'eclissi non si prepara in dieci minuti. Se bisogna mettersi in viaggio per
 // entrare nella fascia di totalità, l'unico preavviso utile è di mesi: per
 // queste il promemoria arriva a scaglioni. Ogni scaglione ha una finestra
 // entro cui vale ancora la pena mandarlo — l'app avvisa solo quando è
@@ -7529,7 +7531,7 @@ function controllaNotifiche() {
     const istante = evento.dataObj.getTime();
 
     // Le eclissi hanno la loro scaletta di preavvisi, che parte da un anno
-    // prima. Le altre restano com'erano: mezz'ora e via.
+    // prima. Le altre usano il normale anticipo configurato sopra.
     if (evento.eclissi || evento.eclissiLunare) {
       SCAGLIONI_ECLISSI.forEach(s => {
         const quando = istante - s.min * 60000;
@@ -37877,7 +37879,7 @@ function icsPiega(riga) {
   return pezzi.join('\r\n');
 }
 
-function generaIcs(eventi) {
+function generaIcs(eventi, anticipoMinuti = ANTICIPO_NOTIFICA_MIN) {
   // Il luogo da cui si osserva vale per tutto il file: gli orari degli
   // eventi sono già calcolati da lì, e un promemoria che dice "alle 21:40"
   // senza dire da dove è un orario che non si può controllare.
@@ -37916,9 +37918,9 @@ function generaIcs(eventi) {
     // punto e virgola (RFC 5545): non è testo, quindi non passa da icsTesto
     if (punto) righe.push(`GEO:${punto.lat.toFixed(4)};${punto.lon.toFixed(4)}`);
     righe.push('BEGIN:VALARM');
-    righe.push('TRIGGER:-PT30M');
+    righe.push(`TRIGGER:-PT${anticipoMinuti}M`);
     righe.push('ACTION:DISPLAY');
-    righe.push(icsPiega(`DESCRIPTION:${icsTesto(ev.titolo)} fra 30 minuti`));
+    righe.push(icsPiega(`DESCRIPTION:${icsTesto(ev.titolo)} fra ${anticipoMinuti} minuti`));
     righe.push('END:VALARM');
     righe.push('END:VEVENT');
   });
