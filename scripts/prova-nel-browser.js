@@ -827,14 +827,14 @@ const server = http.createServer((req, res) => {
       sottotitolo: (document.getElementById('migliori-sottotitolo')||{}).textContent || '',
       grigliaMeteo: t('meteo-astro-griglia'),
       cieloScelta: document.querySelectorAll('#imp-cielo-scelta .tasto-cielo-casa').length,
-      orizzonte: document.querySelectorAll('#imp-orizzonte input').length,
+      profiloOstacoli: !!document.getElementById('imp-orizzonte'),
       notaCielo: (document.getElementById('imp-cielo-nota')||{}).textContent || ''
     };
   });
   ok('i migliori di stanotte sono a schermo', ui.migliori > 0, `${ui.migliori} righe`);
   ok('il sottotitolo racconta la notte', ui.sottotitolo.length > 10, ui.sottotitolo);
   ok('la scala di Bortle è nelle impostazioni', ui.cieloScelta === 6, `${ui.cieloScelta} tacche`);
-  ok('il profilo degli ostacoli ha sedici settori', ui.orizzonte === 16, `${ui.orizzonte}`);
+  ok('il profilo manuale degli ostacoli non è nelle impostazioni', !ui.profiloOstacoli);
   console.log('              ' + ui.notaCielo);
 
   // --- la scheda dell'oggetto: lune di Giove e curva della notte ---
