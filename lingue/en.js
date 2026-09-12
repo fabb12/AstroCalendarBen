@@ -2582,7 +2582,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.tolleranzaPixel': '{pixel} pixels',
     'missione.tolleranzaBreve': 'touch ±{pixel}px',
     'missione.tolleranzaSpiega': 'Increase it if your taps land near objects without selecting them. Constellations automatically receive 8 extra pixels.',
-    'missione.soloVoce': 'Hide, voice only',
+    'missione.soloVoce': 'Hide the guide, keep the voice',
     'missione.mostraGuida': 'Show guide',
     'missione.etichettaEnigma': 'Clue 1',
     'missione.numeroIndizio': 'Clue {n} of {tot}',
@@ -2593,6 +2593,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.indizioSuccessivo': 'Next clue',
     'missione.spostaRiquadro': 'Move the information panel; arrow keys also move it, Home resets it',
     'missione.seguiTelefono': 'Follow the phone',
+    'missione.termina': 'End mission',
     'missione.terminaPlanetario': 'End the mission and keep using the planetarium',
 
     'missione.titoloAnteprima': { uno: 'One wonder in {minuti} minutes', altri: '{n} wonders in {minuti} minutes' },
