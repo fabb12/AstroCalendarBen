@@ -2293,6 +2293,73 @@
   }
 
   const fotoCache = new Map();
+  const wikipediaCache = new Map();
+
+  // I nomi che arrivano dall'ADS-B non sono titoli di enciclopedia: per lo
+  // stesso aeroplano si incontrano, per esempio, "EMBRAER ERJ-190-200",
+  // "E190" ed "Embraer 195". Non si trasforma quindi alla cieca il testo in
+  // un URL. Questa tabella porta soltanto famiglie note al titolo italiano
+  // esatto; subito dopo `aereiWikipedia` chiede a Wikipedia se quel titolo
+  // esiste davvero. Se la verifica non riesce o la pagina manca, la foto
+  // resta una normale immagine e non compare alcun collegamento.
+  const WIKIPEDIA_MODELLI = [
+    { tipi: /^(A20N|A21N)$/, nomi: /AIRBUS A32[01].*NEO/, titolo: 'Airbus A320neo' },
+    { tipi: /^A318$/, nomi: /AIRBUS A318/, titolo: 'Airbus A318' },
+    { tipi: /^A319$/, nomi: /AIRBUS A319/, titolo: 'Airbus A319' },
+    { tipi: /^A320$/, nomi: /AIRBUS A320/, titolo: 'Airbus A320' },
+    { tipi: /^A321$/, nomi: /AIRBUS A321/, titolo: 'Airbus A321' },
+    { tipi: /^(A338|A339)$/, nomi: /AIRBUS A330.*NEO/, titolo: 'Airbus A330neo' },
+    { tipi: /^(A332|A333)$/, nomi: /AIRBUS A330/, titolo: 'Airbus A330' },
+    { tipi: /^A34[2-6]$/, nomi: /AIRBUS A340/, titolo: 'Airbus A340' },
+    { tipi: /^(A359|A35K)$/, nomi: /AIRBUS A350/, titolo: 'Airbus A350 XWB' },
+    { tipi: /^A388$/, nomi: /AIRBUS A380/, titolo: 'Airbus A380' },
+    { tipi: /^BCS[13]$/, nomi: /(?:AIRBUS )?A220|BOMBARDIER CSERIES/, titolo: 'Airbus A220' },
+    { tipi: /^B712$/, nomi: /BOEING 717/, titolo: 'Boeing 717' },
+    { tipi: /^B3[89]M$/, nomi: /BOEING 737.*MAX/, titolo: 'Boeing 737 MAX' },
+    { tipi: /^B7[3][2-9]$/, nomi: /BOEING 737/, titolo: 'Boeing 737' },
+    { tipi: /^B74[1-8]$/, nomi: /BOEING 747/, titolo: 'Boeing 747' },
+    { tipi: /^B75[23]$/, nomi: /BOEING 757/, titolo: 'Boeing 757' },
+    { tipi: /^B76[2-4]$/, nomi: /BOEING 767/, titolo: 'Boeing 767' },
+    { tipi: /^B77[2-9]$/, nomi: /BOEING 777/, titolo: 'Boeing 777' },
+    { tipi: /^(B788|B789|B78X)$/, nomi: /BOEING 787/, titolo: 'Boeing 787 Dreamliner' },
+    { tipi: /^(E170|E75L|E75S)$/, nomi: /EMBRAER (?:ERJ )?17[05]/, titolo: 'Embraer E-Jets' },
+    { tipi: /^(E290|E295)$/, nomi: /EMBRAER E19[05].*E2/, titolo: 'Embraer E-Jet E2' },
+    { tipi: /^(E190|E195)$/, nomi: /EMBRAER (?:ERJ )?19[05]/, titolo: 'Embraer 190' },
+    { tipi: /^AT4[3-6]$/, nomi: /ATR[ -]?42/, titolo: 'ATR 42' },
+    { tipi: /^AT7[2-6]$/, nomi: /ATR[ -]?72/, titolo: 'ATR 72' },
+    { tipi: /^SF34$/, nomi: /SAAB 340/, titolo: 'Saab 340' },
+    { tipi: /^F70$/, nomi: /FOKKER 70/, titolo: 'Fokker 70' },
+    { tipi: /^F100$/, nomi: /FOKKER 100/, titolo: 'Fokker 100' },
+    { tipi: /^C172$/, nomi: /CESSNA 172/, titolo: 'Cessna 172' },
+    { tipi: /^PC12$/, nomi: /PILATUS PC[ -]?12/, titolo: 'Pilatus PC-12' }
+  ];
+
+  function aereiTitoloWikipedia(a) {
+    const tipo = String(a && a.tipoIcao || '').trim().toUpperCase();
+    const nome = String(a && a.descrizione || '').trim().toUpperCase().replace(/[_/]+/g, ' ');
+    const voce = WIKIPEDIA_MODELLI.find(v => (tipo && v.tipi.test(tipo)) || (nome && v.nomi.test(nome)));
+    return voce ? voce.titolo : '';
+  }
+
+  function aereiWikipedia(a) {
+    const titolo = aereiTitoloWikipedia(a);
+    if (!titolo) return Promise.resolve(null);
+    if (!wikipediaCache.has(titolo)) {
+      const parametri = new URLSearchParams({
+        action: 'query', format: 'json', origin: '*', redirects: '1',
+        prop: 'info', inprop: 'url', titles: titolo
+      });
+      wikipediaCache.set(titolo, fetch(`https://it.wikipedia.org/w/api.php?${parametri}`, { cache: 'force-cache' })
+        .then(r => r.ok ? r.json() : null).then(d => {
+          const pagine = d && d.query && d.query.pages;
+          const pagina = pagine && Object.values(pagine).find(p => p && !('missing' in p));
+          const url = pagina && pagina.fullurl;
+          return typeof url === 'string' && /^https:\/\/it\.wikipedia\.org\/wiki\//.test(url) ? url : null;
+        }).catch(() => null));
+    }
+    return wikipediaCache.get(titolo);
+  }
+
   async function aereiCaricaFoto(a) {
     aereiCaricaRotta(a);
     const id = String(a.id || '').toLowerCase();
@@ -2302,13 +2369,15 @@
       fotoCache.set(id, fetch(`https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(id)}`, { cache: 'force-cache' })
         .then(r => r.ok ? r.json() : null).then(d => d && d.photos && d.photos[0]).catch(() => null));
     }
+    const verificaWikipedia = aereiWikipedia(a);
     const foto = await fotoCache.get(id);
     if (!foto || !box.isConnected) return;
     const img = foto.thumbnail_large || foto.thumbnail;
     if (!img || !img.src) return;
     const pannello = box.closest('.pannello-dettaglio');
     const scorrimento = pannello && pannello.scrollTop;
-    box.innerHTML = `<img class="aereo-foto" src="${sicuro(img.src)}" alt="Foto dell'aereo ${sicuro(a.callsign || id)}">` +
+    const immagineHtml = `<img class="aereo-foto" src="${sicuro(img.src)}" alt="Foto dell'aereo ${sicuro(a.callsign || id)}">`;
+    box.innerHTML = immagineHtml +
       (foto.photographer ? `<p class="aereo-foto-credito">Foto: ${sicuro(foto.photographer)}</p>` : '');
     if (pannello) {
       pannello.scrollTop = scorrimento;
@@ -2320,6 +2389,20 @@
         if (pannello.isConnected && pannello.scrollTop < scorrimento) pannello.scrollTop = scorrimento;
       }, { once: true });
     }
+    // La foto non deve aspettare Wikipedia per comparire. Soltanto quando
+    // l'API ha confermato una pagina esistente la si avvolge nel link; fino a
+    // quel momento (e per sempre in caso di esito negativo) non è cliccabile.
+    const wikipedia = await verificaWikipedia;
+    const immagine = box.querySelector(':scope > img.aereo-foto');
+    if (!wikipedia || !box.isConnected || !immagine) return;
+    const link = document.createElement('a');
+    link.className = 'aereo-foto-wikipedia';
+    link.href = wikipedia;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.setAttribute('aria-label', `Wikipedia: ${a.descrizione || a.tipoIcao}`);
+    box.insertBefore(link, immagine);
+    link.appendChild(immagine);
   }
 
   // Il raggio delle Impostazioni cambia sia il rettangolo chiesto al provider
@@ -2426,6 +2509,7 @@
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky,
     scaricaConRipiego, corsaProvider, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
     interpretaRotta, aeroportoTesto, aeroportoCoordinate, orarioRotta, puntiOrtodromia,
+    aereiTitoloWikipedia, aereiWikipedia,
     registraTracce, tracce, stato, providersDisponibili,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
     intervalloAggiornamento, pianificaProssimo, RIPROVE_MS, DATI_VECCHI_MS, DATI_SCADUTI_MS,
