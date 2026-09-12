@@ -10858,7 +10858,12 @@ body button.did-ponte:active { transform: translateY(1px); }
   cursor: grab;
   touch-action: none;
 }
-.missione-striscia .missione-visibilita {
+/* La riga in cima al riquadro: maniglia a sinistra, chiusura a destra e
+   in mezzo il comando che finisce la serata. Sono tutti e tre fuori dal
+   flusso, appoggiati agli angoli, e lo spazio che occupano lo riserva
+   l'imbottitura di `.missione-striscia-testo` qui sotto — i suoi 38px in
+   cima sono questa riga. */
+.missione-striscia .missione-termina {
   position: absolute;
   top: 5px;
   left: 43px;
@@ -10873,29 +10878,56 @@ body button.did-ponte:active { transform: translateY(1px); }
 .missione-striscia-chiudi:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
 .missione-striscia-testo { padding: 38px 30px 0; }
 .missione-striscia.visibile { pointer-events: auto; }
-.missione-striscia.solo-voce {
+
+/* Il riquadro raccolto: una pillola alta e larga quanto quello che tiene.
+ *
+ * Qui i suoi due comandi tornano **nel flusso** (`position: static`), e
+ * non è un gusto di impaginazione: aperto, il riquadro ha del testo che
+ * gli dà un'altezza e i comandi vivono appoggiati ai suoi angoli;
+ * raccolto, di testo non ne ha, quindi con i comandi fuori dal flusso
+ * restava alto quanto la sua sola imbottitura — **venti pixel**, misurati
+ * su 360×640 — con la maniglia, l'etichetta e la chiusura che gli
+ * spuntavano sotto, e la × spinta fuori dal bordo destro dello schermo.
+ * A tenerlo in piedi c'era un `min-height: 52px` che non arrivava mai:
+ * `.missione-striscia.visibile` dei ≤600px lo rimette a zero, ha la
+ * stessa specificità ed è scritto più in basso in questo foglio, quindi
+ * vinceva. Da lì le due classi del selettore — `.visibile.solo-voce`
+ * vince a prescindere dall'ordine, e le due stanno sempre insieme — e da
+ * lì il fatto che qui l'altezza non si dichiari più affatto: un'altezza
+ * che nasce dal contenuto non si può azzerare per sbaglio.
+ *
+ * La larghezza segue la stessa strada. Con `left: auto` e una sola delle
+ * due sponde fissata, `width: auto` vuol dire «larga quanto il contenuto»:
+ * la pillola misura i suoi due comandi e basta, invece dei 280px scritti a
+ * mano che su un telefono la facevano sporgere. «Piccolo» lo decide quello
+ * che c'è dentro. */
+.missione-striscia.visibile.solo-voce {
   left: auto;
-  /* Il riquadro raccolto non deve diventare una striscia illeggibile sui
-     display stretti. La larghezza fluida gli lascia spazio ai bordi, mentre
-     il pavimento di 196px conserva insieme maniglia, etichetta e chiusura. */
-  width: min(280px, calc(100% - 24px));
-  min-width: min(196px, calc(100% - 24px));
+  width: auto;
+  min-width: 0;
   max-width: calc(100% - 24px);
-  min-height: 52px;
   flex: 0 0 auto;
-  padding: 9px 40px 9px 4px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 5px 7px;
   overflow: visible;
   border-color: rgba(76, 141, 255, 0.28);
   background: rgba(9, 16, 34, 0.72);
 }
-.missione-striscia.solo-voce .missione-visibilita {
-  /* `max-width` da solo permetteva al flex/viewport di schiacciare il testo
-     fino quasi a farlo sparire. Il comando principale ora mantiene il suo
-     spazio e, solo su schermi eccezionalmente stretti, può andare a capo. */
-  min-width: min(116px, calc(100% - 90px));
-  max-width: calc(100% - 90px);
-  overflow-wrap: anywhere;
+.missione-striscia.visibile.solo-voce .missione-trascina,
+.missione-striscia.visibile.solo-voce .missione-visibilita { position: static; }
+.missione-striscia.visibile.solo-voce .missione-visibilita {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.73rem;
+  /* Su una riga sola finché ci sta — la pillola si misura sul testo — e
+     a capo invece che fuori dallo schermo quando la traduzione è lunga. */
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 .missione-striscia-testo { display: flex; flex: 1 1 240px; flex-direction: column; gap: 1px; min-width: 0; }
 .missione-striscia-titolo {
@@ -10955,6 +10987,16 @@ body button.did-ponte:active { transform: translateY(1px); }
   background: var(--blu-scuro);
   border-color: var(--blu);
   color: #fff;
+}
+/* «Termina missione»: l'unico comando della striscia da cui non si torna
+   indietro, ed è per questo che adesso è un tasto con su scritto cosa fa
+   invece della × dell'angolo. Resta lieve — non è un allarme, è una
+   scelta — e si accende di rosso solo sotto al dito, che è l'ultimo
+   istante in cui ci si può ancora ripensare. */
+.missione-termina:hover,
+.missione-termina:focus-visible {
+  border-color: rgba(248, 113, 113, .55);
+  color: #fca5a5;
 }
 
 /* Sul telefono girato il cielo è alto un terzo: la striscia si stringe e

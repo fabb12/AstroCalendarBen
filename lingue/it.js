@@ -2636,7 +2636,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.tolleranzaPixel': '{pixel} pixel',
     'missione.tolleranzaBreve': 'tocco ±{pixel}px',
     'missione.tolleranzaSpiega': 'Aumentala se tocchi vicino agli astri senza prenderli. Le costellazioni ricevono automaticamente 8 pixel in più.',
-    'missione.soloVoce': 'Nascondi, solo voce',
+    'missione.soloVoce': 'Nascondi la guida, resta la voce',
     'missione.mostraGuida': 'Mostra la guida',
     'missione.etichettaEnigma': 'Indizio 1',
     'missione.numeroIndizio': 'Indizio {n} di {tot}',
@@ -2647,6 +2647,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.indizioSuccessivo': 'Indizio successivo',
     'missione.spostaRiquadro': 'Sposta il riquadro informativo; usa anche le frecce, Home per ripristinare',
     'missione.seguiTelefono': 'Segui il telefono',
+    'missione.termina': 'Termina missione',
     'missione.terminaPlanetario': 'Termina la missione e continua a usare il planetario',
 
     // L'anteprima

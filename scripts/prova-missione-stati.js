@@ -177,7 +177,15 @@ assert.equal(narrazioni.at(-1).fase,'curiosita');
 assert.equal(narrazioni.at(-1).testo,run('missCuriositaTesto(miss.attiva.tappe[0])'));
 assert(!elements.get('missione-striscia').innerHTML.includes('missione-osservazione'));
 assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
-assert.equal(run('skyNomiVisibili()'),true);
+/* Le etichette restano spente **anche durante la scoperta**: la ricerca è
+ * appena finita ma la missione occupa ancora il planetario, e i nomi di
+ * tutto il cielo accesi mentre si legge l'aneddoto del bersaglio appena
+ * trovato sono la risposta data un attimo troppo tardi — vedi il commento
+ * sopra a `skyNomiVisibili` in `app.js`. Questa riga chiedeva `true` ed
+ * era rimasta indietro da quando quella regola si è estesa alla scoperta:
+ * essendo questo file uno **script lineare**, si portava via tutte le
+ * prove che le stanno sotto — la copertura dei due dizionari compresa. */
+assert.equal(run('skyNomiVisibili()'),false);
 // Reload retains discovery and must not silently advance it.
 run('missSalvaAttiva();miss.attiva=null;missCaricaAttiva()');assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');
 // All dynamic keys and children/adult variants resolve in both dictionaries.

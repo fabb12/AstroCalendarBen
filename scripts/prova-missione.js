@@ -2270,6 +2270,82 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(alPlanetario.pannelloChiuso, true);
     });
 
+    /* La × raccoglie il riquadro, e a finire la serata c'è un tasto.
+     *
+     * Due promesse che a occhio si giudicano male tutt'e due. La prima
+     * perché una × premuta per sbaglio non lascia traccia: la missione è
+     * finita, e chi la premeva credendo di togliersi il riquadro dagli
+     * occhi non ha modo di sapere che cosa ha perso. La seconda perché un
+     * riquadro raccolto è *bello comunque* — finché non lo si misura, una
+     * pillola vuota con i suoi comandi appesi fuori somiglia a un riquadro
+     * con dentro poco.
+     *
+     * E si misura solo qui sotto: il difetto viveva **sotto i 600px**, cioè
+     * esattamente dove questa pagina non guardava mai, visto che le prove
+     * girano a 900. La geometria della pillola è la prova che conta —
+     * raccolta, i suoi comandi devono starle dentro, e lei dentro allo
+     * schermo — perché l'altezza non è più dichiarata da nessuna parte:
+     * nasce dal contenuto, ed è quello che rende il difetto irripetibile. */
+    await pagina.setViewportSize({ width: 360, height: 640 });
+    await pagina.waitForTimeout(200);
+    const raccolta = await pagina.evaluate(async () => {
+      const attesa = () => new Promise(r => setTimeout(r, 120));
+      const el = document.getElementById('missione-striscia');
+      const riquadro = n => { const b = n && n.getBoundingClientRect(); return b
+        ? { alto: b.top, basso: b.bottom, sx: b.left, dx: b.right, w: b.width, h: b.height } : null; };
+      miss.strisciaNascosta = false; missMostraStrisciaCielo();
+      const chiudi = el.querySelector('.missione-striscia-chiudi');
+      const azioneX = chiudi && chiudi.dataset.missAzione;
+      const termina = el.querySelector('.missione-termina');
+      const rTermina = riquadro(termina);
+      const sopraTermina = rTermina && document.elementFromPoint(
+        rTermina.sx + rTermina.w / 2, rTermina.alto + rTermina.h / 2);
+      chiudi.click(); await attesa();
+      const dopo = { stato: miss.attiva && miss.attiva.stato, nascosta: miss.strisciaNascosta,
+        box: riquadro(el), maniglia: riquadro(el.querySelector('.missione-trascina')),
+        guida: riquadro(el.querySelector('.missione-visibilita')),
+        xNelRaccolto: !!el.querySelector('.missione-striscia-chiudi'), schermo: innerWidth };
+      el.querySelector('.missione-visibilita').click(); await attesa();
+      dopo.riaperta = !miss.strisciaNascosta && !!el.querySelector('.missione-striscia-indizio');
+      return Object.assign(dopo, { azioneX, azioneTermina: termina && termina.dataset.missAzione,
+        testoTermina: termina && termina.textContent.trim(), rTermina,
+        terminaRaggiungibile: !!(sopraTermina && termina && (sopraTermina === termina || termina.contains(sopraTermina))) });
+    });
+    await pagina.setViewportSize({ width: 900, height: 900 });
+    await pagina.waitForTimeout(200);
+    prova('la × raccoglie il riquadro e non finisce la serata', () => {
+      assert.strictEqual(raccolta.azioneX, 'solo-voce', 'la × deve raccogliere, non terminare');
+      assert.strictEqual(raccolta.nascosta, true);
+      assert.strictEqual(raccolta.stato, 'inCorso', 'la missione è sopravvissuta alla ×');
+    });
+    prova('raccolto, i suoi comandi gli stanno dentro', () => {
+      const { box, maniglia, guida } = raccolta;
+      for (const [nome, p] of [['la maniglia', maniglia], ['il tasto che riapre', guida]]) {
+        assert.ok(p, nome + ' non c’è');
+        assert.ok(p.basso <= box.basso + 0.5,
+          `${nome} esce sotto al riquadro: ${Math.round(p.basso)} contro ${Math.round(box.basso)} ` +
+          `(riquadro alto ${Math.round(box.h)}px, comando ${Math.round(p.h)}px)`);
+        assert.ok(p.dx <= box.dx + 0.5 && p.sx >= box.sx - 0.5, nome + ' esce di lato dal riquadro');
+      }
+      assert.ok(box.h >= maniglia.h, 'il riquadro è più basso di quello che contiene');
+    });
+    prova('e il riquadro raccolto sta nello schermo, piccolo davvero', () => {
+      assert.ok(raccolta.box.dx <= raccolta.schermo + 0.5,
+        `sborda a destra: ${Math.round(raccolta.box.dx)} su ${raccolta.schermo}`);
+      assert.ok(raccolta.box.w < raccolta.schermo - 24,
+        `raccolto dovrebbe essere più stretto di aperto: ${Math.round(raccolta.box.w)}px`);
+      assert.strictEqual(raccolta.xNelRaccolto, false, 'raccolto, la × non serve più a niente');
+      assert.strictEqual(raccolta.riaperta, true, '«Mostra la guida» lo riapre');
+    });
+    prova('a finire la serata c’è un tasto che lo dice a parole', () => {
+      assert.strictEqual(raccolta.azioneTermina, 'termina');
+      assert.ok(raccolta.testoTermina && raccolta.testoTermina.length > 3,
+        'il tasto deve portare un’etichetta, non un segno');
+      assert.ok(raccolta.terminaRaggiungibile, 'qualcosa gli sta sopra: non si potrebbe premere');
+      assert.ok(raccolta.rTermina.alto >= 0 && raccolta.rTermina.basso <= 640,
+        'il tasto è fuori dallo schermo');
+    });
+
     const ritorno = await pagina.evaluate(() => {
       const primaIndice = miss.attiva.corrente;
       const primaTappe = miss.attiva.tappe.length;

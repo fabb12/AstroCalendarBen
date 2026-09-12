@@ -2724,9 +2724,8 @@ function missHtmlScoperta(t) {
   const altre = missQuanteVarianti('curiosita.' + missBaseRacconto(t)) > 1;
   return `<div class="missione-scoperta">
     ${missManigliaStriscia()}
-    ${missTastoVisibilitaStriscia(false)}
-    <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
-      aria-label="${missT('terminaPlanetario')}">×</button>
+    ${missTastoTerminaStriscia()}
+    ${missTastoRaccogliStriscia()}
     <h3>${missT('gioco.scoperta', { nome: missTesto(missNomeTappa(t)) })}</h3>
     <p class="missione-specie">${missTesto(missSpecieTappa(t))}${
       cartellino ? ' · <span class="missione-cartellino">' + missTesto(cartellino) + '</span>' : ''}</p>
@@ -2744,14 +2743,42 @@ function missManigliaStriscia() {
     aria-label="${missT('spostaRiquadro')}" title="${missT('spostaRiquadro')}">⠿</button>`;
 }
 
-/* Il comando che libera il cielo resta accanto alla maniglia: non va
- * cercato in fondo agli indizi e, quando il riquadro e' raccolto, nello
- * stesso posto permette di richiamare le informazioni. */
-function missTastoVisibilitaStriscia(nascosta) {
-  const azione = nascosta ? 'mostra-guida' : 'solo-voce';
-  const etichetta = missT(nascosta ? 'mostraGuida' : 'soloVoce');
+/* La × non finisce più la serata: **raccoglie il riquadro**.
+ *
+ * È la lettura che di una × si dà dappertutto — «via questa cosa dallo
+ * schermo» — ed era l'unica che qui non valeva: chiudeva la missione, e
+ * di una missione chiusa per sbaglio non si torna indietro. Adesso fa
+ * quello che faceva il tasto «Nascondi, solo voce», che se ne va con lei:
+ * due comandi per la stessa cosa, in tre centimetri di schermo appoggiati
+ * sopra al cielo, sono uno di troppo — ed erano anche i due che si
+ * contendevano la riga in cima al riquadro.
+ *
+ * Raccolto, la × non c'è: il riquadro è già piccolo, e a riaprirlo pensa
+ * «Mostra la guida», che insieme alla maniglia è tutto quello che resta. */
+function missTastoRaccogliStriscia() {
+  return `<button type="button" class="missione-striscia-chiudi" data-miss-azione="solo-voce"
+    aria-label="${missT('soloVoce')}" title="${missT('soloVoce')}">×</button>`;
+}
+
+function missTastoMostraGuida() {
   return `<button type="button" class="missione-tasto missione-tasto-lieve missione-visibilita"
-    data-miss-azione="${azione}">${etichetta}</button>`;
+    data-miss-azione="mostra-guida">${missT('mostraGuida')}</button>`;
+}
+
+/* Finire la serata è l'unico gesto senza ritorno di questa striscia, e
+ * per questo lo dice a parole invece di affidarsi a un segno.
+ *
+ * Sta nella riga in cima, nel posto **lasciato libero** dal tasto che
+ * nascondeva il riquadro: quella riga c'era già, e il suo spazio lo
+ * riservava già l'imbottitura del testo: il riquadro non cresce di un
+ * pixel. In fondo, accanto a «Salta», sarebbe invece costato una riga
+ * intera — e su un telefono da 320 quella riga finisce sotto il bordo
+ * dello schermo, cioè il tasto ci sarebbe e non si potrebbe premere.
+ * Ed è anche la compagnia giusta: qui stanno i comandi del *riquadro*
+ * (spostalo, chiudi la serata, raccoglilo), là quelli della *caccia*. */
+function missTastoTerminaStriscia() {
+  return `<button type="button" class="missione-tasto missione-tasto-lieve missione-termina"
+    data-miss-azione="termina" title="${missT('terminaPlanetario')}">${missT('termina')}</button>`;
 }
 
 function missIndiceIndizio(t) {
@@ -2818,9 +2845,7 @@ function missMostraStrisciaCielo() {
     miss.posizioneStriscia.left, miss.posizioneStriscia.top);
   if (!visibile) { document.body.classList.remove('missione-senza-sensori'); return; }
   if (miss.strisciaNascosta) {
-    el.innerHTML = `${missManigliaStriscia()}<button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
-        aria-label="${missT('terminaPlanetario')}">×</button>
-      ${missTastoVisibilitaStriscia(true)}`;
+    el.innerHTML = `${missManigliaStriscia()}${missTastoMostraGuida()}`;
     el.querySelectorAll('[data-miss-azione]').forEach(b =>
       b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
     return;
@@ -2829,9 +2854,8 @@ function missMostraStrisciaCielo() {
     missAmmissibile(missTappaNelPlanetario(t), m.scelte) ? null : missProssimoIstanteCercabile(t);
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
     ${missManigliaStriscia()}
-    ${missTastoVisibilitaStriscia(false)}
-    <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
-      aria-label="${missT('terminaPlanetario')}">×</button>
+    ${missTastoTerminaStriscia()}
+    ${missTastoRaccogliStriscia()}
     <div class="missione-striscia-testo">
       <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
       <p class="missione-striscia-indizio">${missTesto(missTestoIndizio(t))}</p>
@@ -5143,8 +5167,9 @@ function missAzione(azione, corpo) {
       missSeguiTelefono();
       break;
     case 'termina':
-      // La X chiude definitivamente il percorso ma lascia aperto il
-      // planetario, che torna subito al suo uso normale.
+      // Il tasto «Termina» chiude definitivamente il percorso ma lascia
+      // aperto il planetario, che torna subito al suo uso normale. Non è
+      // più la × dell'angolo: quella raccoglie il riquadro e basta.
       missAbbandona();
       break;
     case 'genera':

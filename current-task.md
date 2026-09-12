@@ -6,123 +6,104 @@ Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
 `app.js`: 345 stringhe cablate contate da
 `node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
 dell'ombra, le eclissi di casa, quelle lunari), le simulazioni e gli avvisi del
-planetario. Il tetto resta a 362.
+planetario. Il tetto resta a 362 (totale di adesso: 354).
 
-`scripts/prova-i18n.js` e `scripts/prova-lingua.js` sono adesso **verdi tutt'e
-due** (la prima era rossa, vedi sotto). In `verifica.html` restano **cinque**
-prove rosse, tutte preesistenti e nessuna della realtà aumentata: le quattro
-del §20 sull'acqua e una del §28 (`la camera insegue cinquanta metri di strada
-con dolcezza`) che fino a ieri non si vedeva perché la sua sezione non girava
-affatto. Verificato sull'albero pulito: le stesse cinque, 1187 prove contro le
-1229 di adesso.
+## Lo stato delle prove
+
+Verdi: `prova-missione.js --solo-motore` (144), `prova-missione-stati.js`,
+`prova-missione-interattiva.js`, `prova-i18n.js`, `prova-lingua.js`,
+`controlla-i18n.js --patto`, `controlla-collisioni.js`.
+
+Rosse e **preesistenti**, verificate sull'albero pulito:
+
+- `prova-missione.js`, due prove che dipendono dal cielo di stanotte — «un
+  passaggio di stazione arriva fino alla tappa» e «le tappe rispettano davvero
+  altezza e strumento» (Urano vuole il telescopio). 192 passate, 2 fallite.
+- `verifica.html`, cinque prove: le quattro del §20 sull'acqua e una del §28
+  (`la camera insegue cinquanta metri di strada con dolcezza`).
 
 ## Ultimo intervento completato
 
-**La realtà aumentata guarda solo il cielo, e non più il terreno: sedici volte
-più leggera, e con tre difetti d'aggancio in meno.**
+**La × del riquadro di Missione Cielo non finisce più la serata, e il riquadro
+raccolto torna a essere un riquadro.**
 
-La segnalazione era in tre parole — «troppo pesante» — più una richiesta
-precisa: «elabora solo il cielo, non l'immagine sotto l'orizzonte». Aveva
-ragione su tutta la linea, e la causa non era il riconoscimento.
+Due cose in una segnalazione, ed erano due difetti di natura diversa.
 
-**Si guardava il terreno.** Il rivelatore girava su tutto il fotogramma e solo
-*dopo* chiedeva al cielo calcolato che cosa ci fosse da riconoscere. L'ordine
-è ragionevole letto da fuori — prima guardo, poi riconosco — ed è quello
-sbagliato, perché butta via l'informazione migliore che ci sia: il cielo
-calcolato sa già dove sono la Luna, i pianeti e gli aerei, a meno dell'errore
-che si sta misurando, e quell'errore ha un tetto dichiarato (il cancello
-dell'associazione). Fuori dai cancelli non c'è niente di associabile: una
-macchia trovata lì viene scartata comunque, dopo essere costata. E sotto la
-linea dell'orizzonte non c'è **nessun** candidato d'assetto per costruzione,
-mentre ci sono tetti, rami, finestre accese e fari — migliaia di picchi di
-contrasto, tutti da centroidare e tutti da buttare.
+### Il riquadro raccolto era una pillola vuota coi comandi appesi fuori
 
-Misurato in node, un giro del rivelatore (i rapporti valgono in un browser, i
-millisecondi di un telefono sono qualche volta tanto):
+Il difetto vive **solo sotto i 600px**, cioè esattamente dove le prove non
+guardavano mai: la metà nel browser di `prova-missione.js` gira a 900×900.
 
-|                                      | prima | dopo | dopo, agganciato |
-|---|---|---|---|
-| cielo e basta (mare, campagna al buio) | 18,5 | 6,2 | 3,0 ms |
-| collina con qualche luce                | 31,8 | 6,1 | 2,9 ms |
-| skyline di città                        | 53,5 | 6,0 | 2,9 ms |
+Raccolto, il riquadro non ha testo: tiene solo la maniglia, l'etichetta e la
+chiusura, e tutt'e tre erano `position: absolute`. Un contenitore senza niente
+nel flusso non ha un'altezza propria, quindi quella gliela doveva dare il
+`min-height: 52px` scritto nella sua regola — e quel numero non arrivava mai,
+perché `.missione-striscia.visibile` del blocco dei ≤600px lo rimette a zero,
+ha la **stessa specificità** ed è scritto più in basso nello stesso foglio.
 
-Le due cose da leggere sono la colonna di sinistra, che **triplica** col
-paesaggio, e le due di destra, che non si muovono. Adesso c'è una finestra per
-candidato, larga quanto il cancello e tosata alla riga dell'orizzonte
-(§4-bis): ad aggancio fatto sono ventinove pixel, l'uno per cento di quello
-che si guardava; col telefono puntato per terra sono **zero** e non si legge un
-pixel. Sopra o sotto l'orizzonte lo dice il segno della terza componente di
-`skyDirezione` e non una copia della geometria del cerchio di
-`skyCerchioOrizzonte`.
+Misurato su 360×640, prima: pillola alta **venti pixel** — la sola imbottitura
+— con dentro comandi alti trentotto, che le spuntavano sotto; e la ×, con la
+larghezza di 280px scritta a mano, finiva **fuori dal bordo destro dello
+schermo**, sopra alla colonna dei tasti della mappa.
 
-**Tre voci che non sembravano voci.** Lo scarto tipico si trovava *ordinando*
-quattromila numeri con un comparatore: 1,42 ms, più del residuo, dei massimi
-locali e della conversione della luminanza messi insieme, per un numero che
-serve solo come scala di una soglia — adesso è un istogramma a due passate,
-0,03 ms, a centesimi di per cento dalla mediana esatta. I dettagli del
-paesaggio si cercavano *a tentoni* in tredici per tredici (2,1 ms) mentre dove
-sono finiti lo dice il giroscopio: due pixel bastano, 0,28 ms. E si cercavano
-*sempre*, anche con due astri in mano, dove pesano 0,35 e non possono
-correggere più di quattro gradi.
+La cura non è un `min-height` più convinto, che sarebbe la stessa scommessa
+rifatta: i due comandi tornano **nel flusso** (`position: static`) e l'altezza
+non si dichiara più affatto. Un'altezza che nasce dal contenuto non si può
+azzerare per sbaglio. Stessa storia per la larghezza — `width: auto` con una
+sponda sola fissata vuol dire «larga quanto il contenuto» — e da lì la pillola
+misura 163×50 invece di 280×20, su tutti e tre gli schermi provati. Le due
+classi del selettore (`.visibile.solo-voce`, che stanno sempre insieme) servono
+a vincere a prescindere dall'ordine.
 
-**E tre difetti d'aggancio, tutti col sintomo «cerco riferimenti».**
+### La × finiva la missione
 
-- **Una Luna sfondata non si agganciava.** «La scatola del fondo deve essere
-  molto più grande delle macchie» era scritto da sempre, e quando quella
-  condizione cade non cade piano: misurato su un disco saturo con l'alone che
-  sfuma, a raggio 9 il centro sbaglia di 2,6 px e a raggio 11 escono **quattro**
-  macchie con la migliore sbagliata di 7,1 — e quattro copie della stessa
-  macchia sono, per la regola dell'ambiguità, quattro riferimenti ambigui,
-  cioè nessuno. Nove pixel sono tre gradi e mezzo: la Luna piena in una
-  fotocamera di telefono ci arriva sempre. Il raggio adesso si **misura**
-  (§4-ter) e tutti i dischi tornano una macchia sola col centro esatto a zero
-  pixel. Con la retroazione che serve perché il rimedio abbia dove applicarsi:
-  la taglia misurata dimensiona la finestra del giro dopo, se no a cancello
-  stretto la finestra è più piccola dell'alone e la cornice da cui si misura
-  il cielo *è* alone.
-- **Una sorgente forte alzava la soglia dove non c'era.** σ era uno per tutte
-  le finestre: con una Luna sfondata in quadro, una stellina a venti gradi da
-  lei si perdeva. Adesso ogni finestra ha il suo pezzo di cielo e la sua
-  soglia.
-- **Il cancello stretto chiudeva fuori l'astro che serviva.** L'aggancio si può
-  dichiarare sui soli riferimenti del paesaggio, che tengono la mira senza
-  sapere dov'è il Nord: da lì il cancello degli astri si stringeva a due gradi
-  comunque, e con la bussola sbagliata di quindici il motore si agganciava al
-  tetto del palazzo di fronte e non poteva più trovare l'unica cosa che gli
-  avrebbe raddrizzato il cielo. Adesso il cancello stretto vuole una misura
-  d'astro recente.
+Di una × si dà dappertutto la stessa lettura — «via questa cosa dallo schermo»
+— ed era l'unica che qui non valeva: chiudeva la serata, senza conferma, e una
+serata chiusa per sbaglio non torna indietro.
 
-**E adesso dice perché non aggancia**, distinguendo i due casi che dal di fuori
-si somigliano: «stai inquadrando sotto l'orizzonte, alza il telefono» e «qui
-non c'è niente da riconoscere, inquadra la Luna o un pianeta luminoso».
-«Cerco riferimenti» sopra un cielo in cui non c'è niente da cercare è la frase
-che fa aspettare invano.
+Adesso la × fa quello che faceva il tasto «Nascondi, solo voce», che se ne va
+con lei: due comandi per la stessa cosa, in tre centimetri appoggiati sopra al
+cielo, erano anche i due che si contendevano la riga in cima. A finire la
+missione c'è `missTastoTerminaStriscia`, un tasto con su scritto cosa fa.
 
-**Due cose trovate per strada, che non c'entrano con la richiesta.**
+Sta **nella riga in cima**, nel posto lasciato libero da quello sparito, e non
+è una questione di gusto: in fondo, accanto a «Salta», sarebbe costato una riga
+intera — trentotto pixel, misurati — e su un telefono da 320 quella riga
+finisce sotto il bordo dello schermo, cioè il tasto ci sarebbe e non si
+potrebbe premere. Con il posto riciclato il riquadro aperto è alto **esattamente
+quanto prima** (351px a 320×568). È anche la compagnia giusta: in cima stanno i
+comandi del *riquadro* (spostalo, chiudi la serata, raccoglilo), in fondo quelli
+della *caccia* (segui il telefono, indizi, soluzione, salta).
 
-`prova-i18n.js` era rossa da un pezzo per undici chiavi orfane, e la causa non
-era il dizionario: `visione.js` **non era nell'elenco dei file** che il
-controllore legge, quindi le sue otto chiavi risultavano orfane tutte insieme.
-Aggiunto il file sono cadute tutte e otto; le quattro che restavano erano
-invece dati morti veri (`ui.fotocamera`, `ui.oppure-un-intervallo`,
-`ui.sovrapponi-il-cielo-all-immagine-della`, `ui.vai-al-mese`, rimasti dal
-giorno in cui il tasto della fotocamera si è spostato sulla mappa e la barra
-del periodo ha preso il posto dei due selettori) e sono andate via.
+Raccolto, la × non c'è affatto: il riquadro è già piccolo, e a riaprirlo pensa
+«Mostra la guida». Vale anche per il riquadro della scoperta, che ha la stessa
+coppia di comandi in cima.
 
-In `verifica.html` **dal §26 in giù non girava niente**, e per due righe sole:
-il §25 usa `SKY_FOV_MAX`, che sta in `app.js` e che quella pagina non carica.
-Il `ReferenceError` in uno `<script>` unico portava via §26, §27, §28 e §32
-**interi**, in silenzio — la pagina passava da 1187 prove a poco più di
-seicento e il verdetto restava «In corso…» invece di diventare rosso, quindi
-nemmeno le prove della realtà aumentata che c'erano già giravano più. Le due
-costanti stanno adesso fra gli stub in cima, con lo stesso avvertimento degli
-altri: sono copie.
+Chiavi nuove: `missione.termina` nei due dizionari. `missione.soloVoce` resta,
+e adesso è l'etichetta parlata della ×.
 
-## Se ci si rimette mano
+### Le prove
 
-`node scripts/prova-i18n.js` (mezzo secondo) e la §32 di `verifica.html`
-aperta da un server (`python3 -m http.server 8000`). Il numero da guardare
-quando qualcuno dice che la realtà aumentata è pesante è `visStato()`:
-`pixelGuardati` su `pixelTotali`. Se la frazione è alta le finestre non stanno
-stringendo — cioè o non ci si è agganciati, o i candidati sono sparsi per tutto
-il cielo, o una sorgente sfondata ha allargato la sua finestra per retroazione.
+Quattro prove nuove nel §«il ponte col planetario» di `scripts/prova-missione.js`,
+e per questa famiglia la finestra si **stringe a 360** e poi si rimette a 900:
+il difetto sotto i 600px, a 900, non esiste. Si controlla che la × raccolga e
+non termini, che raccolto i comandi stiano dentro al riquadro e il riquadro
+dentro allo schermo, che «Mostra la guida» lo riapra e che il tasto che
+termina ci sia, si legga e sia raggiungibile col dito. Con il conto di prima
+sono rosse, col messaggio che descrive il difetto vero: «la maniglia esce sotto
+al riquadro: 223 contro 191 (riquadro alto 12px, comando 38px)».
+
+### Una prova rimasta indietro, e quello che nascondeva
+
+`prova-missione-stati.js` era **rosso sull'albero pulito**, e da un pezzo: a
+metà file chiedeva che durante la scoperta i nomi degli astri tornassero
+accesi (`skyNomiVisibili() === true`), mentre la regola dice il contrario da
+quando si è estesa alla scoperta — la ricerca è appena finita ma la missione
+occupa ancora il planetario, e i nomi di tutto il cielo accesi mentre si legge
+l'aneddoto del bersaglio appena trovato sono la risposta data un attimo troppo
+tardi (vedi il commento sopra a `skyNomiVisibili` in `app.js`).
+
+Quel file è uno **script lineare**, non una lista di prove: la prima `assert`
+che salta lo interrompe, e si portava via tutto quello che le stava sotto — la
+copertura dei due dizionari su tre gradini × cinque famiglie × tre varianti
+compresa. Corretta la riga, il file gira intero e passa.
