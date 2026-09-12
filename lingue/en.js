@@ -230,7 +230,16 @@ window.ASTRO_DIZIONARI['en'] = {
     'curva.momentoBuono': 'The best moment is around {ora}, at {gradi}° above the horizon. Usable {quanto}.',
 
     // --- Il tasto dei filtri -------------------------------------------
+    'ui.apri-la-guida': 'Open the guide',
+    'ui.come-si-usa-l-app': 'How to use the app',
     'ui.filtri': 'Filters',
+    'ui.glossario': 'Glossary',
+    'ui.guida': 'Guide',
+    'ui.guida-aiuto': 'Every feature explained one by one, the seven steps for a first evening, the shortcuts and a glossary. It opens in a new tab and works offline too.',
+    'ui.guida-lingua-nota': 'The guide is currently available in Italian only.',
+    'ui.i-primi-dieci-minuti': 'The first ten minutes',
+    'ui.le-sette-viste': 'The seven views',
+    'ui.missione-cielo': 'Sky Mission',
     'ui.mostraFiltri': 'Show the category and instrument filters',
     'ui.nascondiFiltri': 'Hide the filters',
 
@@ -3863,6 +3872,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.scorri-il-tempo-dentro-la-finestra-scelta': 'Scrub through time within the chosen window',
     'ui.scrivi-le-prime-lettere-l-elenco-si-stringe': 'Type the first few letters: the list narrows. Enter picks the first.',
     'ui.se-il-gps-non-risponde-nessun-permesso-ma': 'If the GPS does not answer: no permission needed, but it can be tens of kilometres out.',
+    'ui.se-qualcosa-non-torna': 'When something looks wrong',
     'ui.secondi': 'seconds',
     'ui.segna-sulla-mappa-gli-eventi-in-corso-all': 'Marks on the map the events under way at the hour shown: a shower’s radiant, the eclipsed body, the bodies in a conjunction',
     'ui.segna-visto-su-un-evento-dell-agenda-e': 'Mark “Seen!” on an event in the agenda and it ends up here, with your note.',
@@ -3930,6 +3940,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.tutto-il-sistema-fino-a-nettuno-e-alla': 'The whole system, out to Neptune and the Kuiper belt',
     'ui.usa-queste-coordinate': 'Use these coordinates',
     'ui.vai': 'Go',
+    'ui.vai-dritto-al-punto': 'Straight to the point',
     'ui.vale-solo-per-il-planetario-orari-meteo': 'This applies to the planetarium only: timings, weather, space-station passes and the telescope stay on your own position, the one in Settings.',
     'ui.vede-il-momento-del-massimo': 'Sees the moment of maximum',
     'ui.vede-l-eclissi-per-intero': 'Sees the eclipse in full',

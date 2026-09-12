@@ -98,7 +98,7 @@ jobs:
         # manca un pezzo, meglio fermarsi qui.
         run: |
           mancanti=0
-          for f in index.html manifest.json sw.js style.css tailwind.css app.js; do
+          for f in index.html guida.html manifest.json sw.js style.css tailwind.css app.js; do
             if [ ! -s "_sito/$f" ]; then
               echo "::error::manca (o è vuoto) _sito/$f"
               mancanti=1

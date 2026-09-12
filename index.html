@@ -2518,6 +2518,7 @@
         <button type="button" class="impostazioni-tab-tasto attiva" role="tab" aria-selected="true" aria-controls="imp-tab-osservazione" id="imp-tab-btn-osservazione" data-imp-tab="osservazione" data-i18n="ui.osservazione">Osservazione</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-planetario" id="imp-tab-btn-planetario" data-imp-tab="planetario" tabindex="-1" data-i18n="ui.planetario">Planetario</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-dati" id="imp-tab-btn-dati" data-imp-tab="dati" tabindex="-1" data-i18n="ui.dati">Dati</button>
+        <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-guida" id="imp-tab-btn-guida" data-imp-tab="guida" tabindex="-1" data-i18n="ui.guida">Guida</button>
       </nav>
 
       <div class="corpo-modale impostazioni-corpo">
@@ -2655,6 +2656,36 @@
             <input id="imp-file-importa" type="file" accept="application/json,.json" class="hidden">
           </div>
           <p id="imp-esito" class="text-xs text-slate-400"></p>
+        </section>
+
+       </div>
+
+       <!-- LA GUIDA — la porta per `guida.html`.
+            Sta nelle impostazioni perché è lì che si va a cercare quando non
+            si sa dove cercare. Il link apre una pagina vera dell'app, non un
+            servizio esterno: viaggia col sito, sta nella cache del service
+            worker, e quindi si legge anche dal rifugio senza campo. -->
+       <div id="imp-tab-guida" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-guida" data-imp-pannello="guida">
+
+        <section class="space-y-3">
+          <h3 class="font-bold text-white" data-i18n="ui.come-si-usa-l-app">Come si usa l'app</h3>
+          <p class="text-xs text-slate-500" data-i18n="ui.guida-aiuto">Tutte le funzioni spiegate una per una, i sette passi per chi comincia, le scorciatoie e un glossario. Si apre in una scheda nuova e funziona anche senza rete.</p>
+          <a id="imp-btn-guida" class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white" href="guida.html" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span data-i18n="ui.apri-la-guida">Apri la guida</span>
+          </a>
+        </section>
+
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white" data-i18n="ui.vai-dritto-al-punto">Vai dritto al punto</h3>
+          <div class="flex flex-wrap gap-2">
+            <a class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" href="guida.html#primi" target="_blank" rel="noopener" data-i18n="ui.i-primi-dieci-minuti">I primi dieci minuti</a>
+            <a class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" href="guida.html#viste" target="_blank" rel="noopener" data-i18n="ui.le-sette-viste">Le sette viste</a>
+            <a class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" href="guida.html#missione" target="_blank" rel="noopener" data-i18n="ui.missione-cielo">Missione Cielo</a>
+            <a class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" href="guida.html#guai" target="_blank" rel="noopener" data-i18n="ui.se-qualcosa-non-torna">Se qualcosa non torna</a>
+            <a class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white" href="guida.html#glossario" target="_blank" rel="noopener" data-i18n="ui.glossario">Glossario</a>
+          </div>
+          <p class="text-xs text-slate-500" data-i18n="ui.guida-lingua-nota">La guida è per ora soltanto in italiano.</p>
         </section>
 
        </div>
