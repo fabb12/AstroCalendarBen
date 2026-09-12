@@ -24,6 +24,22 @@ Rosse e **preesistenti**, verificate sull'albero pulito:
 
 ## Ultimo intervento completato
 
+**Galleria: autorizzazione della cartella ricordata e video orizzontali a
+schermo intero.**
+
+Il permesso ottenuto dal selettore ora resta memorizzato per la sessione: il
+timer di sincronizzazione non chiama più `queryPermission()` ogni due secondi
+e un handle recuperato da IndexedDB viene verificato una volta sola. Ogni
+lettore ha inoltre un comando «Schermo intero» che porta direttamente il video
+nel fullscreen nativo, usa `webkitEnterFullscreen()` su iPhone e dispone di un
+ripiego CSS chiudibile per i browser senza API.
+
+La prova mirata è `node scripts/prova-galleria.js`; controlla anche che il
+comando richieda il fullscreen al lettore e che le verifiche del permesso non
+si moltiplichino durante la sincronizzazione.
+
+## Intervento precedente
+
 **La guida all'uso, e la linguetta delle Impostazioni che la apre.**
 
 `guida.html`: una pagina sola, fuori dall'app, con tutte le funzioni spiegate
