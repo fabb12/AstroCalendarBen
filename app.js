@@ -28415,6 +28415,12 @@ let videoCartella = null;
 // rifiutata); questa variabile evita soltanto di richiedere due volte lo stesso
 // consenso dopo che l'utente ha scelto la cartella.
 let videoCartellaAutorizzata = false;
+// Dopo la scelta il picker ha gia' concesso l'accesso. Non interroghiamo piu'
+// il browser a ogni sincronizzazione: su alcuni telefoni perfino una
+// queryPermission ripetuta fa ricomparire il pannello delle autorizzazioni.
+// `null` significa soltanto che l'handle arriva da IndexedDB e va verificato
+// una volta; true/false sono invece il risultato memorizzato per la sessione.
+let videoPermessoCartella = null;
 let videoUrlGalleria = [];
 let videoTimerSincronizzazione = 0;
 let videoSincronizzazioneInCorso = false;
@@ -28479,6 +28485,7 @@ async function videoScegliCartella(creaCartellaApp = false) {
       : base;
     videoCartella = handle;
     videoCartellaAutorizzata = true;
+    videoPermessoCartella = true;
     videoMostraSceltaIniziale(false);
     try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
     videoAggiornaCartella();
@@ -28511,6 +28518,7 @@ async function videoScriviInCartella(esito) {
       if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
       if (permesso !== 'granted') return false;
       videoCartellaAutorizzata = true;
+      videoPermessoCartella = true;
     }
     const file = await videoCartella.getFileHandle(esito.nome, { create: true });
     const scrittura = await file.createWritable();
@@ -28522,6 +28530,7 @@ async function videoScriviInCartella(esito) {
     // in quel caso al prossimo gesto dell'utente la verificheremo di nuovo.
     if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
       videoCartellaAutorizzata = false;
+      videoPermessoCartella = false;
     }
     return false;
   }
@@ -28603,6 +28612,28 @@ async function videoCondividiSalvato(video) {
   videoMessaggio('Questo dispositivo non passa i file alle altre app: il video è stato scaricato, così puoi allegarlo a mano.');
 }
 
+async function videoSchermoIntero(lettore, scheda) {
+  // Su iPhone il solo ingresso affidabile e' quello proprietario del lettore;
+  // altrove chiediamo lo schermo intero direttamente al <video>, non alla
+  // scheda (che in orizzontale manterrebbe intestazione e pulsanti visibili).
+  if (typeof lettore.webkitEnterFullscreen === 'function') {
+    lettore.webkitEnterFullscreen();
+    return;
+  }
+  const chiedi = lettore.requestFullscreen || lettore.webkitRequestFullscreen;
+  if (chiedi) {
+    try { await chiedi.call(lettore); return; }
+    catch (e) { /* il ripiego CSS sotto funziona anche senza questa API */ }
+  }
+  scheda.classList.add('galleria-video-pieno');
+  document.body.classList.add('galleria-immersiva');
+}
+
+function videoEsciSchermoIntero(scheda) {
+  scheda?.classList.remove('galleria-video-pieno');
+  if (!document.querySelector('.galleria-video-pieno')) document.body.classList.remove('galleria-immersiva');
+}
+
 async function videoRenderGalleria() {
   const elenco = document.getElementById('galleria-elenco');
   if (!elenco || videoSincronizzazioneInCorso) return;
@@ -28612,7 +28643,13 @@ async function videoRenderGalleria() {
   catch (e) { videoMessaggio('Non riesco a leggere l’archivio video su questo dispositivo.'); }
   if (videoCartella) {
     try {
-      const permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      // L'accesso concesso dal picker resta valido per tutta la sessione. Una
+      // sola query e' necessaria soltanto quando recuperiamo l'handle salvato.
+      const permesso = videoPermessoCartella === null
+        ? await videoCartella.queryPermission({ mode: 'readwrite' })
+        : (videoPermessoCartella ? 'granted' : 'prompt');
+      videoPermessoCartella = permesso === 'granted';
+      videoCartellaAutorizzata = videoPermessoCartella;
       if (permesso === 'granted') {
         const dallaCartella = [];
         for await (const [nome, handle] of videoCartella.entries()) {
@@ -28660,6 +28697,10 @@ async function videoRenderGalleria() {
     scheda.className = 'galleria-video';
     const lettore = document.createElement('video');
     lettore.src = url; lettore.controls = true; lettore.preload = 'metadata'; lettore.playsInline = true;
+    const esciPieno = document.createElement('button');
+    esciPieno.type = 'button'; esciPieno.className = 'galleria-pieno-esci'; esciPieno.textContent = '✕';
+    esciPieno.setAttribute('aria-label', 'Esci dallo schermo intero');
+    esciPieno.addEventListener('click', () => videoEsciSchermoIntero(scheda));
     const corpo = document.createElement('div'); corpo.className = 'galleria-video-corpo';
     const nome = document.createElement('p'); nome.className = 'galleria-video-nome'; nome.textContent = elemento.nome;
     const meta = document.createElement('p'); meta.className = 'galleria-video-meta';
@@ -28668,13 +28709,15 @@ async function videoRenderGalleria() {
       : `${(Number(elemento.dimensione || elemento.blob.size) / 1048576).toFixed(1)} MB`;
     meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${dettaglio}`;
     const azioni = document.createElement('div'); azioni.className = 'galleria-video-azioni';
+    const pieno = document.createElement('button'); pieno.type = 'button'; pieno.className = 'tasto-cielo'; pieno.textContent = 'Schermo intero';
+    pieno.addEventListener('click', () => videoSchermoIntero(lettore, scheda));
     const condividi = document.createElement('button'); condividi.type = 'button'; condividi.className = 'tasto-cielo'; condividi.textContent = 'Condividi';
     condividi.addEventListener('click', () => videoCondividiSalvato(elemento));
     const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = 'Scarica';
     scarica.addEventListener('click', () => videoScaricaSalvato(elemento));
     const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = 'Elimina';
     elimina.addEventListener('click', () => videoElimina(elemento));
-    azioni.append(condividi, scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, corpo); elenco.appendChild(scheda);
+    azioni.append(pieno, condividi, scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, esciPieno, corpo); elenco.appendChild(scheda);
   });
   videoSincronizzazioneInCorso = false;
 }
@@ -28697,8 +28740,11 @@ async function videoApriGalleria() {
       // trasformarsi ogni volta in una nuova domanda del browser. L'handle e'
       // gia' conservato in IndexedDB; chiediamo nuovamente il consenso solo
       // quando l'utente salva davvero un video (videoScriviInCartella).
-      const permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
-      videoCartellaAutorizzata = permesso === 'granted';
+      const permesso = videoPermessoCartella === null
+        ? await videoCartella.queryPermission({ mode: 'readwrite' })
+        : (videoPermessoCartella ? 'granted' : 'prompt');
+      videoPermessoCartella = permesso === 'granted';
+      videoCartellaAutorizzata = videoPermessoCartella;
       if (!videoCartellaAutorizzata) {
         videoMessaggio(`La cartella “${videoCartella.name}” è ricordata. Il permesso verrà verificato al prossimo salvataggio.`);
       }
@@ -28714,6 +28760,7 @@ async function videoApriGalleria() {
 function videoChiudiGalleria() {
   document.getElementById('modale-galleria')?.classList.add('hidden');
   document.querySelectorAll('#galleria-elenco video').forEach(video => video.pause());
+  document.querySelectorAll('.galleria-video-pieno').forEach(videoEsciSchermoIntero);
   clearInterval(videoTimerSincronizzazione);
   videoTimerSincronizzazione = 0;
 }
@@ -28733,6 +28780,7 @@ async function videoInizializza() {
   try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')); }
   catch (e) { videoCartella = null; }
   videoCartellaAutorizzata = false;
+  videoPermessoCartella = null;
   videoAggiornaCartella();
 }
 

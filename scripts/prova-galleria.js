@@ -45,6 +45,12 @@ const server = http.createServer((req, res) => {
       const prima = document.querySelector('#galleria-elenco video');
       const condividi = [...document.querySelectorAll('#galleria-elenco button')]
         .find(b => b.textContent === 'Condividi');
+      const pieno = [...document.querySelectorAll('#galleria-elenco button')]
+        .find(b => b.textContent === 'Schermo intero');
+      let richiesteSchermoIntero = 0;
+      prima.requestFullscreen = async () => { richiesteSchermoIntero += 1; };
+      pieno?.click();
+      await new Promise(resolve => setTimeout(resolve, 0));
       window.__videoCondiviso = null;
       Object.defineProperty(navigator, 'canShare', { configurable: true, value: dati => dati.files?.length === 1 });
       Object.defineProperty(navigator, 'share', { configurable: true, value: async dati => {
@@ -68,10 +74,11 @@ const server = http.createServer((req, res) => {
       // gesto di salvataggio, e il Blob deve arrivare proprio nello scrivibile
       // della cartella scelta.
       let richiestePermesso = 0;
+      let verifichePermesso = 0;
       let blobScritto = null;
       videoCartella = {
         name: 'video-scelti',
-        queryPermission: async () => 'prompt',
+        queryPermission: async () => { verifichePermesso += 1; return 'prompt'; },
         requestPermission: async () => { richiestePermesso += 1; return 'granted'; },
         getFileHandle: async () => ({
           createWritable: async () => ({
@@ -90,9 +97,11 @@ const server = http.createServer((req, res) => {
         stessoNodo: prima === dopo,
         marcatore: dopo?.dataset.provaIdentita,
         stessoSrc: dopo?.src === src,
+        richiesteSchermoIntero,
         condiviso: window.__videoCondiviso,
         richiesteAprendo,
         richiesteSalvando: richiestePermesso,
+        verifichePermesso,
         scritto,
         dimensioneScritta: blobScritto?.size,
         durataPredefinita: sky.reg.durataSec,
@@ -103,11 +112,14 @@ const server = http.createServer((req, res) => {
     const ok = esito.stessoNodo && esito.marcatore === 'lettore-originale' && esito.stessoSrc;
     console.log(`${ok ? 'ok' : 'FALLITO'} — il controllo periodico conserva il lettore video`, esito);
     if (!ok) process.exitCode = 1;
+    const pienoOk = esito.richiesteSchermoIntero === 1;
+    console.log(`${pienoOk ? 'ok' : 'FALLITO'} — il video entra direttamente a schermo intero`, esito.richiesteSchermoIntero);
+    if (!pienoOk) process.exitCode = 1;
     const condivisioneOk = esito.condiviso?.nome === 'prova.webm' &&
       esito.condiviso?.tipo === 'video/webm' && esito.condiviso?.dimensione > 0;
     console.log(`${condivisioneOk ? 'ok' : 'FALLITO'} — ogni video della galleria si può condividere`, esito.condiviso);
     if (!condivisioneOk) process.exitCode = 1;
-    const cartellaOk = esito.richiesteAprendo === 0 && esito.richiesteSalvando === 1 &&
+    const cartellaOk = esito.richiesteAprendo === 0 && esito.richiesteSalvando === 1 && esito.verifichePermesso === 2 &&
       esito.scritto && esito.dimensioneScritta > 0;
     console.log(`${cartellaOk ? 'ok' : 'FALLITO'} — la cartella ricordata non richiede permesso all'apertura e riceve il video`, esito);
     if (!cartellaOk) process.exitCode = 1;
