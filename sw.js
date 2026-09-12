@@ -2,12 +2,13 @@
 // cambiare anche questa chiave lascerebbe ai dispositivi gia' installati la
 // vecchia copia, cioe' proprio il fumetto senza foto. Lo stesso vale per i
 // dizionari delle lingue, che sono due file nuovi.
-const CACHE_NAME = 'astrocal-v308';
+const CACHE_NAME = 'astrocal-v309';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
   './',
   './index.html',
+  './guida.html',
   './tailwind.css',
   './style.css',
   './app.js',

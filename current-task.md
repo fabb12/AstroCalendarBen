@@ -24,86 +24,42 @@ Rosse e **preesistenti**, verificate sull'albero pulito:
 
 ## Ultimo intervento completato
 
-**La × del riquadro di Missione Cielo non finisce più la serata, e il riquadro
-raccolto torna a essere un riquadro.**
+**La guida all'uso, e la linguetta delle Impostazioni che la apre.**
 
-Due cose in una segnalazione, ed erano due difetti di natura diversa.
+`guida.html`: una pagina sola, fuori dall'app, con tutte le funzioni spiegate
+una per una — cos'è l'app, i sette passi del primo accesso, le sette viste, il
+planetario a fondo, il paesaggio (terreno, rilievo, acque, aurore, Via Lattea,
+costellazioni), aerei e transiti, Missione Cielo, il telescopio, gli otto
+banchi della Didattica, impostazioni e backup, la tabella di cosa resta senza
+rete, gesti e scorciatoie, i guasti e un glossario.
 
-### Il riquadro raccolto era una pillola vuota coi comandi appesi fuori
+Tre decisioni che vale la pena avere scritte, perché sono tutte e tre scelte e
+non ripieghi.
 
-Il difetto vive **solo sotto i 600px**, cioè esattamente dove le prove non
-guardavano mai: la metà nel browser di `prova-missione.js` gira a 900×900.
+**Una pagina nostra e non un link a un servizio esterno.** Un indirizzo altrui
+invecchia, non entra nella cache del service worker e la sera in cui serve —
+al buio, senza campo, quando non ci si ricorda come si tara la bussola su un
+astro — non si apre. `guida.html` sta in `ASSETS` di `sw.js` (e `CACHE_NAME` è
+salito a `astrocal-v309`) e fra i file che il workflow pretende: un link dalle
+impostazioni che dà 404 non fallisce, porta a una schermata bianca.
 
-Raccolto, il riquadro non ha testo: tiene solo la maniglia, l'etichetta e la
-chiusura, e tutt'e tre erano `position: absolute`. Un contenitore senza niente
-nel flusso non ha un'altezza propria, quindi quella gliela doveva dare il
-`min-height: 52px` scritto nella sua regola — e quel numero non arrivava mai,
-perché `.missione-striscia.visibile` del blocco dei ≤600px lo rimette a zero,
-ha la **stessa specificità** ed è scritto più in basso nello stesso foglio.
+**Non carica `style.css`.** Là dentro ci sono novemila righe scritte per
+un'interfaccia — griglie, pannelli, mappe — che con un documento da leggere
+litigherebbero. Quello che serve è la tavolozza, e quella è **ricopiata** dal
+blocco `:root`, con l'avvertimento in chiaro: è una copia, e il giorno che
+diverge non lo dice nessuno. Il tema è solo scuro, come l'app.
 
-Misurato su 360×640, prima: pillola alta **venti pixel** — la sola imbottitura
-— con dentro comandi alti trentotto, che le spuntavano sotto; e la ×, con la
-larghezza di 280px scritta a mano, finiva **fuori dal bordo destro dello
-schermo**, sopra alla colonna dei tasti della mappa.
+**La linguetta non ha richiesto una riga di JavaScript.** `mostraTab` in
+`inizializzaImpostazioni` scorre `[data-imp-tab]` e `[data-imp-pannello]` letti
+dal documento: una linguetta nuova è markup più dizionari. Undici chiavi nuove
+in `lingue/it.js` e `lingue/en.js`, infilate in ordine alfabetico come le altre.
 
-La cura non è un `min-height` più convinto, che sarebbe la stessa scommessa
-rifatta: i due comandi tornano **nel flusso** (`position: static`) e l'altezza
-non si dichiara più affatto. Un'altezza che nasce dal contenuto non si può
-azzerare per sbaglio. Stessa storia per la larghezza — `width: auto` con una
-sponda sola fissata vuol dire «larga quanto il contenuto» — e da lì la pillola
-misura 163×50 invece di 280×20, su tutti e tre gli schermi provati. Le due
-classi del selettore (`.visibile.solo-voce`, che stanno sempre insieme) servono
-a vincere a prescindere dall'ordine.
+La prova è `scripts/prova-guida.js`, e guarda le due cose che a occhio non si
+giudicano: che ogni **ancoraggio** promesso dalle cinque scorciatoie esista
+davvero dentro alla guida (chi rinomina una sezione là dentro rompe qui, in
+silenzio), e la **geometria a 360 px** — le linguette sono diventate quattro e
+la finestra su un telefono è stretta, mentre gli altri banchi girano a 900,
+dove tutto ci sta comunque.
 
-### La × finiva la missione
-
-Di una × si dà dappertutto la stessa lettura — «via questa cosa dallo schermo»
-— ed era l'unica che qui non valeva: chiudeva la serata, senza conferma, e una
-serata chiusa per sbaglio non torna indietro.
-
-Adesso la × fa quello che faceva il tasto «Nascondi, solo voce», che se ne va
-con lei: due comandi per la stessa cosa, in tre centimetri appoggiati sopra al
-cielo, erano anche i due che si contendevano la riga in cima. A finire la
-missione c'è `missTastoTerminaStriscia`, un tasto con su scritto cosa fa.
-
-Sta **nella riga in cima**, nel posto lasciato libero da quello sparito, e non
-è una questione di gusto: in fondo, accanto a «Salta», sarebbe costato una riga
-intera — trentotto pixel, misurati — e su un telefono da 320 quella riga
-finisce sotto il bordo dello schermo, cioè il tasto ci sarebbe e non si
-potrebbe premere. Con il posto riciclato il riquadro aperto è alto **esattamente
-quanto prima** (351px a 320×568). È anche la compagnia giusta: in cima stanno i
-comandi del *riquadro* (spostalo, chiudi la serata, raccoglilo), in fondo quelli
-della *caccia* (segui il telefono, indizi, soluzione, salta).
-
-Raccolto, la × non c'è affatto: il riquadro è già piccolo, e a riaprirlo pensa
-«Mostra la guida». Vale anche per il riquadro della scoperta, che ha la stessa
-coppia di comandi in cima.
-
-Chiavi nuove: `missione.termina` nei due dizionari. `missione.soloVoce` resta,
-e adesso è l'etichetta parlata della ×.
-
-### Le prove
-
-Quattro prove nuove nel §«il ponte col planetario» di `scripts/prova-missione.js`,
-e per questa famiglia la finestra si **stringe a 360** e poi si rimette a 900:
-il difetto sotto i 600px, a 900, non esiste. Si controlla che la × raccolga e
-non termini, che raccolto i comandi stiano dentro al riquadro e il riquadro
-dentro allo schermo, che «Mostra la guida» lo riapra e che il tasto che
-termina ci sia, si legga e sia raggiungibile col dito. Con il conto di prima
-sono rosse, col messaggio che descrive il difetto vero: «la maniglia esce sotto
-al riquadro: 223 contro 191 (riquadro alto 12px, comando 38px)».
-
-### Una prova rimasta indietro, e quello che nascondeva
-
-`prova-missione-stati.js` era **rosso sull'albero pulito**, e da un pezzo: a
-metà file chiedeva che durante la scoperta i nomi degli astri tornassero
-accesi (`skyNomiVisibili() === true`), mentre la regola dice il contrario da
-quando si è estesa alla scoperta — la ricerca è appena finita ma la missione
-occupa ancora il planetario, e i nomi di tutto il cielo accesi mentre si legge
-l'aneddoto del bersaglio appena trovato sono la risposta data un attimo troppo
-tardi (vedi il commento sopra a `skyNomiVisibili` in `app.js`).
-
-Quel file è uno **script lineare**, non una lista di prove: la prima `assert`
-che salta lo interrompe, e si portava via tutto quello che le stava sotto — la
-copertura dei due dizionari su tre gradini × cinque famiglie × tre varianti
-compresa. Corretta la riga, il file gira intero e passa.
+Resta da fare: **la guida è in italiano soltanto**, e il pannello lo dichiara
+(`ui.guida-lingua-nota`). La versione inglese è lavoro a parte.

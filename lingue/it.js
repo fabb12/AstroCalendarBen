@@ -239,7 +239,16 @@ window.ASTRO_DIZIONARI['it'] = {
     'curva.momentoBuono': 'Il momento buono è verso le {ora}, a {gradi}° sull\'orizzonte. Utilizzabile {quanto}.',
 
     // --- Il tasto dei filtri -------------------------------------------
+    'ui.apri-la-guida': 'Apri la guida',
+    'ui.come-si-usa-l-app': 'Come si usa l\'app',
     'ui.filtri': 'Filtri',
+    'ui.glossario': 'Glossario',
+    'ui.guida': 'Guida',
+    'ui.guida-aiuto': 'Tutte le funzioni spiegate una per una, i sette passi per chi comincia, le scorciatoie e un glossario. Si apre in una scheda nuova e funziona anche senza rete.',
+    'ui.guida-lingua-nota': 'La guida è per ora soltanto in italiano.',
+    'ui.i-primi-dieci-minuti': 'I primi dieci minuti',
+    'ui.le-sette-viste': 'Le sette viste',
+    'ui.missione-cielo': 'Missione Cielo',
     'ui.mostraFiltri': 'Mostra i filtri per categoria e strumento',
     'ui.nascondiFiltri': 'Nascondi i filtri',
 
@@ -3950,6 +3959,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.scorri-il-tempo-dentro-la-finestra-scelta': 'Scorri il tempo dentro la finestra scelta',
     'ui.scrivi-le-prime-lettere-l-elenco-si-stringe': 'Scrivi le prime lettere: l\'elenco si stringe. Invio sceglie il primo.',
     'ui.se-il-gps-non-risponde-nessun-permesso-ma': 'Se il GPS non risponde: nessun permesso, ma può sbagliare di decine di chilometri.',
+    'ui.se-qualcosa-non-torna': 'Se qualcosa non torna',
     'ui.secondi': 'secondi',
     'ui.segna-sulla-mappa-gli-eventi-in-corso-all': 'Segna sulla mappa gli eventi in corso all\'ora mostrata: il radiante di uno sciame, l\'astro eclissato, i corpi di una congiunzione',
     'ui.segna-visto-su-un-evento-dell-agenda-e': 'Segna “Visto!” su un evento dell\'agenda e finisce qui, con la tua nota.',
@@ -4017,6 +4027,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.tutto-il-sistema-fino-a-nettuno-e-alla': 'Tutto il sistema, fino a Nettuno e alla fascia di Kuiper',
     'ui.usa-queste-coordinate': 'Usa queste coordinate',
     'ui.vai': 'Vai',
+    'ui.vai-dritto-al-punto': 'Vai dritto al punto',
     'ui.vale-solo-per-il-planetario-orari-meteo': 'Vale solo per il planetario: orari, meteo, passaggi delle stazioni spaziali e telescopio restano sulla tua posizione, quella delle Impostazioni.',
     'ui.vede-il-momento-del-massimo': 'Vede il momento del massimo',
     'ui.vede-l-eclissi-per-intero': 'Vede l\'eclissi per intero',
