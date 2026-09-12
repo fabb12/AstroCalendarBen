@@ -178,7 +178,7 @@ function aggiornaStaseraNuovo() {
 
 
 // =====================================================================
-// 2. IMPOSTAZIONI — il cielo di casa e gli ostacoli
+// 2. IMPOSTAZIONI — il cielo di casa
 // =====================================================================
 
 function costruisciSceltaCielo() {
@@ -214,39 +214,6 @@ function costruisciSceltaCielo() {
       : null;
     nota.textContent = astroI18n.t('cielo.scalaBortle', { b: attuale, mag: astroI18n.numero(c.magLimite, 1) }) +
       (quante ? astroI18n.t('cielo.cioeStelle', { n: astroI18n.numero(quante) }) : '.');
-  }
-}
-
-function costruisciOrizzonte() {
-  const box = document.getElementById('imp-orizzonte');
-  if (!box || typeof orizzonteCarica !== 'function') return;
-
-  const valori = orizzonteCarica();
-  box.innerHTML = ORIZZONTE_NOMI.map((nome, i) => `
-    <label class="casella-orizzonte">
-      <span class="dir-orizzonte">${nome}</span>
-      <input type="number" min="0" max="80" step="1" inputmode="numeric"
-             value="${Math.round(valori[i])}" data-settore="${i}"
-             aria-label="${astroI18n.t('orizzonte.altezzaOstacoli', { dove: nome })}">
-    </label>`).join('');
-
-  const salva = () => {
-    const nuovi = Array.from(box.querySelectorAll('[data-settore]'))
-      .sort((a, b) => a.dataset.settore - b.dataset.settore)
-      .map(i => Number(i.value) || 0);
-    orizzonteSalva(nuovi);
-    aggiornaStaseraNuovo();
-  };
-  box.querySelectorAll('[data-settore]').forEach(i => i.addEventListener('change', salva));
-
-  const azzera = document.getElementById('imp-orizzonte-azzera');
-  if (azzera && !azzera.dataset.collegato) {
-    azzera.dataset.collegato = 'si';
-    azzera.addEventListener('click', () => {
-      orizzonteSalva(new Array(ORIZZONTE_SETTORI).fill(0));
-      costruisciOrizzonte();
-      aggiornaStaseraNuovo();
-    });
   }
 }
 
@@ -1044,7 +1011,6 @@ function inizializzaNuoveFunzioni() {
   const apri = document.getElementById('btn-impostazioni');
   if (apri) apri.addEventListener('click', () => {
     costruisciSceltaCielo();
-    costruisciOrizzonte();
     costruisciRaggiOrizzonte();
     costruisciTolleranzaPlanetario();
   });

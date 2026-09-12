@@ -8426,49 +8426,6 @@ body.luogo-immersivo { overflow: hidden; }
   color: #fff;
 }
 
-/* ---------------------------------------- Il profilo degli ostacoli */
-/* Otto colonne su schermo largo, quattro su telefono: sedici caselle in
-   riga sola sarebbero illeggibili su qualunque cosa. */
-.griglia-orizzonte {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-  margin-top: 6px;
-}
-
-.casella-orizzonte {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--incassato);
-  border: 1px solid var(--bordo);
-  border-radius: 8px;
-  padding: 4px 6px;
-}
-
-.dir-orizzonte {
-  font-size: 0.68rem;
-  color: var(--testo-3);
-  font-weight: 600;
-  min-width: 26px;
-}
-
-.casella-orizzonte input {
-  width: 100%;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  color: var(--testo);
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-  padding: 3px 0;
-}
-.casella-orizzonte input:focus { outline: none; color: var(--blu-chiaro); }
-
-@media (min-width: 620px) {
-  .griglia-orizzonte { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-}
-
 /* ---------------------------------------- Fin dove guardare (montagne, paesi, acque) */
 /* Una mappa, tre voci di legenda e una slitta. La mappa è il comando vero —
    si trascina il bordo di un cerchio o si tocca fin dove si vuole arrivare —

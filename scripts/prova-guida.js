@@ -54,6 +54,8 @@ function ok(nome, condizione, extra) {
 
     const linguette = await pagina.locator('[data-imp-tab]').count();
     ok('le linguette sono quattro', linguette === 4, String(linguette));
+    ok('il profilo manuale degli ostacoli non compare più nelle impostazioni',
+      await pagina.locator('#imp-orizzonte').count() === 0);
 
     // La barra delle linguette ha `overflow-x: auto`: su un telefono la quarta
     // sta fuori dallo schermo e va raggiunta, non data per visibile.
@@ -95,6 +97,8 @@ function ok(nome, condizione, extra) {
     await pagina.goto('file://' + path.join(RADICE, 'guida.html'));
     await pagina.waitForTimeout(700);
     ok('la guida si apre', (await pagina.title()).includes('Guida'), await pagina.title());
+    ok('la guida non propone più di dichiarare gli ostacoli',
+      !(await pagina.locator('body').innerText()).includes('Dichiara cosa hai davanti'));
 
     const mancanti = await pagina.evaluate(
       ids => ids.filter(id => !document.getElementById(id)), promesse);
