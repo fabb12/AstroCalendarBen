@@ -29017,6 +29017,165 @@ const SOL_FASCE = [
 ];
 const SOL_FASCIA_PUNTO = 1.25;   // il lato del sassolino, in pixel
 
+// --- I mondi minori: pianeti nani, asteroidi, centauri -----------------------
+//   Gli otto pianeti sono il discorso di questa scena, ma non sono tutto quello
+//   che gira intorno al Sole, e la parte che manca è proprio quella che spiega
+//   com'è fatto il Sistema Solare: fra Marte e Giove ci sono i quattro
+//   asteroidi che nel primo Ottocento erano considerati pianeti (Cerere fu «il
+//   pianeta numero otto» per mezzo secolo), e oltre Nettuno c'è una famiglia di
+//   mondi ghiacciati grandi come la Luna, su orbite inclinate di quaranta gradi
+//   e allungate come quelle delle comete. La fascia di Kuiper, qui, era una
+//   nuvola di puntini anonimi: questi sono i suoi abitanti che hanno un nome.
+//
+//   Da dove vengono i numeri, e sono due strade diverse di proposito:
+//     - `ae` vuol dire che lo sa **Astronomy Engine** (solo Plutone), e allora
+//       la posizione è quella buona, non un'ellisse a due corpi;
+//     - `dal` vuol dire che gli elementi orbitali stanno già in
+//       `dati-corpi-minori.js`, cioè nello stesso file da cui il planetario
+//       disegna quell'asteroide. Si leggono da lì e **non** si ricopiano qui:
+//       due copie della stessa orbita divergono al primo aggiornamento, e il
+//       difetto sarebbe il peggiore di tutti — lo stesso corpo in due posti
+//       diversi a seconda di quale delle due viste lo sta disegnando;
+//     - `el` sono gli elementi scritti qui, e ci sono solo per i mondi che quel
+//       file non conosce (i transnettuniani e il centauro Chirone). Sono
+//       elementi osculatori a due corpi riferiti a un'epoca sola: per corpi che
+//       fanno un giro in tre o in cinquecento anni valgono decimi di unità
+//       astronomica per decenni — meno del pallino con cui sono disegnati — e
+//       si allontanano dal vero se si porta la macchina del tempo a secoli di
+//       distanza. È il compromesso di sempre di questo file: una posizione
+//       onesta con un dato piccolo, non un'effemeride.
+//
+//   `famiglia` non è un'etichetta di comodo: decide la riga di classe della
+//   scheda e il colore con cui il nome si scrive.
+const SOL_MONDI = conNomeDaId([
+  { id: 'Ceres',    nome: 'Cerere',   famiglia: 'nano',      colore: '#d6d9de', raggio: 3.1, km: 939,  dal: 'Cerere',   idCielo: 'min:Cerere' },
+  { id: 'Vesta',    nome: 'Vesta',    famiglia: 'asteroide', colore: '#cbd5e1', raggio: 2.6, km: 525,  dal: 'Vesta',    idCielo: 'min:Vesta' },
+  { id: 'Pallas',   nome: 'Pallade',  famiglia: 'asteroide', colore: '#c7cdd6', raggio: 2.6, km: 512,  dal: 'Pallade',  idCielo: 'min:Pallade' },
+  { id: 'Juno',     nome: 'Giunone',  famiglia: 'asteroide', colore: '#c7cdd6', raggio: 2.4, km: 247,  dal: 'Giunone',  idCielo: 'min:Giunone' },
+  { id: 'Hygiea',   nome: 'Igea',     famiglia: 'asteroide', colore: '#c7cdd6', raggio: 2.5, km: 434,  dal: 'Igea',     idCielo: 'min:Igea' },
+  { id: 'Chiron',   nome: 'Chirone',  famiglia: 'centauro',  colore: '#a7f3d0', raggio: 2.6, km: 218,
+    el: { e: 0.38230, i: 6.930, nodo: 209.280, peri: 339.630, a: 13.650, M0: 215.0, epoca: 2461000.5 } },
+  { id: 'Pluto',    nome: 'Plutone',  famiglia: 'nano',      colore: '#e3d3bd', raggio: 4.2, km: 2377, ae: 'Pluto' },
+  { id: 'Orcus',    nome: 'Orco',     famiglia: 'nano',      colore: '#bcc6d8', raggio: 3.0, km: 910,
+    el: { e: 0.22660, i: 20.587, nodo: 268.513, peri: 73.300, a: 39.420, M0: 185.7, epoca: 2461000.5 } },
+  { id: 'Haumea',   nome: 'Haumea',   famiglia: 'nano',      colore: '#dfe6f2', raggio: 3.4, km: 1560,
+    el: { e: 0.19120, i: 28.213, nodo: 122.163, peri: 239.183, a: 43.130, M0: 223.1, epoca: 2461000.5 } },
+  { id: 'Quaoar',   nome: 'Quaoar',   famiglia: 'nano',      colore: '#cdb8c8', raggio: 3.2, km: 1110,
+    el: { e: 0.03963, i: 7.988, nodo: 188.997, peri: 147.480, a: 43.690, M0: 298.8, epoca: 2461000.5 } },
+  { id: 'Makemake', nome: 'Makemake', famiglia: 'nano',      colore: '#e8cfc0', raggio: 3.4, km: 1430,
+    el: { e: 0.16126, i: 29.006, nodo: 79.362, peri: 295.154, a: 45.430, M0: 165.8, epoca: 2461000.5 } },
+  { id: 'Gonggong', nome: 'Gonggong', famiglia: 'nano',      colore: '#d8a8a8', raggio: 3.2, km: 1230,
+    el: { e: 0.50240, i: 30.628, nodo: 336.851, peri: 207.050, a: 67.380, M0: 110.0, epoca: 2461000.5 } },
+  { id: 'Eris',     nome: 'Eris',     famiglia: 'nano',      colore: '#eef2f8', raggio: 3.8, km: 2326,
+    el: { e: 0.43607, i: 44.040, nodo: 35.951, peri: 151.639, a: 67.864, M0: 208.0, epoca: 2461000.5 } },
+  { id: 'Sedna',    nome: 'Sedna',    famiglia: 'nano',      colore: '#e0a88f', raggio: 3.0, km: 995,
+    el: { e: 0.84960, i: 11.929, nodo: 144.248, peri: 311.290, a: 506.800, M0: 358.4, epoca: 2461000.5 } }
+], 'corpo.');
+
+// Il colore con cui si scrive il nome di un mondo minore, per famiglia: i
+// pianeti nani come i pianeti (sono mondi, e si guardano per quello), gli
+// asteroidi e il centauro più smorti, le comete col verde con cui il
+// planetario disegna la loro chioma.
+const SOL_MONDI_TINTE = {
+  nano: 'rgba(226, 232, 240, 0.9)',
+  asteroide: 'rgba(203, 213, 225, 0.72)',
+  centauro: 'rgba(167, 243, 208, 0.8)',
+  cometa: 'rgba(167, 243, 208, 0.85)'
+};
+
+// Quanti campioni per un'orbita di mondo minore. Meno dei pianeti (che ne
+// hanno da 84 a 128) perché sono ellissi lisce e quasi tutte molto più grandi
+// dello schermo: quello che se ne vede è un arco.
+const SOL_MONDI_ORBITA_PUNTI = 72;
+
+// Le comete **di stasera**, non tutte e quarantuno. L'elenco lo fa già
+// `corpiMinoriInteressanti` (magnitudine sotto la soglia utile ed elongazione
+// abbastanza larga), che è la stessa cernita con cui il planetario decide chi
+// mettere nell'elenco degli astri: una cometa che si può scegliere di là si
+// trova anche di qua, e una che non si vede da nessuna parte non compare in
+// mezzo ai pianeti a fare da coriandolo.
+//
+// Si rifà al massimo una volta per ora di scena: sessantuno orbite kepleriane
+// più la posizione della Terra sono un millisecondo, e con la marcia accesa
+// sarebbe un millisecondo per fotogramma per non muovere niente — una cometa
+// in un'ora si sposta di un primo d'arco.
+const SOL_COMETE_ORA_MS = 3600000;
+
+// --- Le due Voyager ---------------------------------------------------------
+//   Sono gli oggetti più lontani che abbiamo costruito, e la sola ragione per
+//   cui stanno in questa scena e non in un elenco è che a guardarli si capisce
+//   una cosa che scritta non si capisce: non se ne vanno «verso fuori» lungo
+//   il piano dei pianeti, se ne vanno una **sopra** e una **sotto**, e quella
+//   forma a V è il racconto di due fionde — Titano per la prima, Tritone per
+//   la seconda (vedi il banco del Grand Tour, §8 di `didattica.js`).
+//
+//   Il modello è una **retta**: posizione a un'epoca dichiarata, direzione
+//   dell'asintoto di fuga, velocità costante. Non è una semplificazione
+//   comoda, è quasi esattamente quello che fanno — a centocinquanta unità
+//   astronomiche la gravità del Sole le frena di 0,0018 UA all'anno per anno,
+//   cioè meno di un decimo di UA in dieci anni, che qui è un decimo di pixel.
+//   La direzione è quella pubblicata: la 1 verso l'Ofiuco, trentacinque gradi
+//   **sopra** il piano; la 2 verso il Pavone, quarantotto gradi **sotto** —
+//   sono gli stessi due numeri che il banco del Grand Tour usa per far
+//   staccare le due scie (`VOY_FUGA`).
+const SOL_SONDE = [
+  {
+    id: 'voyager1', nome: 'Voyager 1', colore: '#fcd34d',
+    lon: 255.9, lat: 34.9, ua: 169.3, uaPerAnno: 3.57, kms: 16.95, lancio: 1977.68
+  },
+  {
+    id: 'voyager2', nome: 'Voyager 2', colore: '#f9a8d4',
+    lon: 288.0, lat: -48.0, ua: 142.0, uaPerAnno: 3.23, kms: 15.34, lancio: 1977.63
+  }
+];
+// L'epoca a cui valgono le distanze scritte qui sopra, e l'anno in cui cade:
+// primo gennaio 2026. Chi aggiorna le distanze aggiorni anche questa riga, se
+// no le sonde tornano indietro di qualche unità astronomica.
+const SOL_SONDE_EPOCA_MS = Date.UTC(2026, 0, 1);
+const SOL_SONDE_ANNO_MS = 365.25 * 86400000;
+
+// --- I satelliti artificiali attorno alla Terra ------------------------------
+//   ISS, Tiangong e Hubble stanno a quattrocento chilometri da noi, cioè a un
+//   sedicesimo di raggio terrestre: alla scala di questa scena sono **dentro**
+//   al pallino azzurro, e il problema è lo stesso della Luna (che è
+//   trecentottantamila chilometri più in là e sta dentro al pallino comunque).
+//   La soluzione è la stessa: la **direzione** è vera, la distanza è
+//   esagerata. Quello che si tiene onesto è l'ordine delle quote — Tiangong
+//   più bassa, la ISS in mezzo, Hubble più alto — e soprattutto
+//   l'**inclinazione del piano**, che è la cosa che si vede: la ISS e Tiangong
+//   corrono su un anello inclinato di cinquantun gradi e mezzo (è per quello
+//   che passano sopra l'Italia), Hubble su uno di ventotto e mezzo (è per
+//   quello che dall'Italia non lo si vede quasi mai alto).
+//
+//   L'anello non è disegnato da una formula: sono posizioni SGP4 lungo un
+//   giro, le stesse con cui il planetario decide a che ora la stazione passa.
+//   Senza un TLE fresco non si disegna niente, ed è giusto: un TLE di un mese
+//   fa mette la ISS a mezzo giro di distanza da dove sta.
+const SOL_SAT_TLE_GIORNI = 10;
+const SOL_SAT_ANELLO_PUNTI = 60;
+// Sotto quanti pixel di raggio del pallino terrestre non si disegnano: un
+// anello attorno a un dischetto di dieci pixel è un alone, non un'orbita. È la
+// stessa soglia di natura di `SOL_TERRA_MIN_PX`, e vuol dire che i satelliti
+// compaiono quando si è arrivati abbastanza vicino da guardare la Terra.
+const SOL_SAT_MIN_PX = 16;
+// Lo stacco disegnato, in raggi del pallino terrestre, per una quota che va da
+// trecento a settecento chilometri. Tenuto sotto ai due raggi dello stacco
+// della Luna (`solStaccoLuna`), se no i satelliti finirebbero fuori dalla sua
+// orbita — che è l'unica cosa che questo disegno non deve dire.
+const SOL_SAT_STACCO_MIN = 1.34;
+const SOL_SAT_STACCO_MAX = 1.92;
+const SOL_TERRA_RAGGIO_KM = 6371;
+// Che cos'è ognuno dei tre, detto dal dizionario. `SATELLITI` ha già un campo
+// `classe`, ma è la frase italiana che il planetario si porta dietro da
+// sempre: qui serve una chiave, se no la scheda inglese avrebbe una riga sola
+// in italiano — che è esattamente il difetto che questa passata è venuta a
+// togliere.
+const SOL_SAT_CLASSI = {
+  iss: 'sol.famiglia.stazione',
+  css: 'sol.famiglia.stazione',
+  hubble: 'sol.famiglia.telescopio'
+};
+
 // A pallini in scala: quanti pixel vale un chilometro di diametro. Scelto
 // perché Mercurio, il più piccolo, resti un punto che si vede.
 const SOL_PX_PER_KM = 3.4e-4;
@@ -29169,6 +29328,19 @@ const sol = {
   orbitaLunaGrande: null, lunaSchermo: null, vicCorpi: null,
   pianeti: [], terra: null, luna: null,
   orbite: { chiave: null, tracce: [] },
+  // §7.7-bis. Le tre famiglie che non sono pianeti: i mondi minori (pianeti
+  // nani, asteroidi storici, il centauro Chirone e le comete di stasera), le
+  // due Voyager e i satelliti artificiali attorno alla Terra. I due
+  // interruttori nascono accesi — sono la ragione per cui questa scena è stata
+  // allargata — e stanno dietro al ⚙ come le distanze e le dimensioni.
+  mondi: [], sonde: [], satelliti: [],
+  mondiAccesi: true, sondeAccese: true,
+  orbiteMondi: { chiave: null, tracce: [] },
+  comete: { chiave: null, elenco: [] },
+  // Gli anelli delle orbite dei satelliti, e dove sono finiti sullo schermo:
+  // i primi sono una memoria con la sua chiave (un'ora di scena), il secondo
+  // lo scrive chi disegna e lo leggono il dito e i nomi
+  satAnelli: { chiave: null, punti: {} }, satSchermo: [],
   istante: 0,            // ms dell'ultimo calcolo delle posizioni
   scala: 1, cx: 0, cy: 0,
   stelle: [],
@@ -29441,10 +29613,295 @@ function solLeggiPosizioni(quando) {
     const m = Astronomy.Ecliptic(Astronomy.GeoMoon(t)).vec;
     const d = Math.hypot(m.x, m.y, m.z) || 1;
     sol.luna = { x: m.x / d, y: m.y / d, z: m.z / d };
+    // Le altre tre famiglie (§7.7-bis). Stanno dentro allo stesso `try` e
+    // dentro alla stessa memoria dei pianeti, di proposito: sono lo stesso
+    // istante, e calcolarle altrove vorrebbe dire poterle disegnare per un
+    // istante diverso da quello in cui i pianeti stanno.
+    solLeggiMondi(quando, t);
+    solLeggiSonde(quando);
+    solLeggiSatelliti(quando, t);
   } catch (e) {
     sol.pianeti = []; sol.terra = null; sol.luna = null;
+    sol.mondi = []; sol.sonde = []; sol.satelliti = [];
   }
   sol.istante = ms;
+}
+
+
+// =====================================================================
+// 7.7-bis. I MONDI MINORI, LE SONDE E I SATELLITI
+//     Tre famiglie che non sono pianeti e che stanno qui per tre ragioni
+//     diverse. I **mondi minori** perché il Sistema Solare non finisce agli
+//     otto pianeti, e la fascia di Kuiper senza i suoi abitanti con un nome è
+//     un pulviscolo anonimo. Le **sonde** perché la forma a V con cui se ne
+//     vanno — una sopra il piano, una sotto — è il racconto di due fionde, e
+//     scritta non si capisce. I **satelliti** perché ISS, Tiangong e Hubble
+//     sono gli unici oggetti lassù costruiti da noi, e guardarli da fuori
+//     invece che dal cortile è l'unica cosa che questa vista possa dire di
+//     loro che il planetario non dica meglio.
+//
+//     Tutte e tre parlano la lingua della scena: coordinate eclittiche
+//     eliocentriche in unità astronomiche per le prime due (le stesse di
+//     `solVettore`), la direzione geocentrica per i satelliti. Da lì in poi
+//     `solScena` e `solProietta` non sanno nemmeno che non sono pianeti.
+// =====================================================================
+
+// Gli elementi orbitali di un mondo minore: quelli del file dei corpi minori
+// se ce li ha lui, se no quelli scritti nella tabella. È l'ordine che conta:
+// per Cerere e i tre asteroidi storici la sorgente unica è il file, così il
+// planetario e questa vista non possono disegnarli in due posti diversi.
+function solElementiMondo(m) {
+  if (m.dal && typeof corpiMinoriTutti === 'function') {
+    const voce = corpiMinoriTutti().find(c => c.nome === m.dal);
+    if (voce) return voce;
+  }
+  return m.el || null;
+}
+
+// La posizione eliocentrica di un mondo minore, in unità astronomiche
+// eclittiche J2000: da Astronomy Engine per Plutone, da Keplero per tutti gli
+// altri (`posizioneCorpoMinore` sta in `corpi-minori.js` e restituisce
+// esattamente queste coordinate — è il motivo per cui qui non c'è un conto).
+function solPosizioneMondo(m, t, quando) {
+  if (m.ae) {
+    try { return solVettore(m.ae, t); } catch (e) { return null; }
+  }
+  if (typeof posizioneCorpoMinore !== 'function') return null;
+  const el = solElementiMondo(m);
+  if (!el) return null;
+  try {
+    const v = posizioneCorpoMinore(el, quando);
+    return v && isFinite(v.x) ? v : null;
+  } catch (e) { return null; }
+}
+
+// Le comete che stasera si vedono davvero, pronte per la scena. Il mucchio da
+// cui si pesca e la cernita sono quelli del planetario
+// (`corpiMinoriInteressanti`): quello che si può scegliere di là si trova
+// anche di qua. Si rifà una volta per ora di scena, vedi SOL_COMETE_ORA_MS.
+function solCometeDiStasera(quando) {
+  if (typeof corpiMinoriInteressanti !== 'function') return [];
+  const chiave = Math.floor(quando.getTime() / SOL_COMETE_ORA_MS);
+  if (sol.comete.chiave === chiave) return sol.comete.elenco;
+  let elenco = [];
+  try {
+    elenco = corpiMinoriInteressanti(quando)
+      .filter(c => c.tipo === 'cometa')
+      .slice(0, 8)
+      .map(c => ({
+        id: 'min:' + c.nome, nome: c.nome, famiglia: 'cometa',
+        colore: '#a7f3d0', raggio: 2.2, km: 10, mag: c.mag,
+        idCielo: 'min:' + c.nome, elementi: c.elementi
+      }));
+  } catch (e) { elenco = []; }
+  sol.comete = { chiave, elenco };
+  return elenco;
+}
+
+// Mondi minori e comete, messi al loro posto nella scena. Portano gli stessi
+// campi di un pianeta (`pos`, `r`, `asse`) perché da qui in avanti siano
+// trattati come tali: la fila della profondità, il piombo sul piano, la fase
+// vista da questa telecamera e il pallino li disegnano con le stesse funzioni.
+function solLeggiMondi(quando, t) {
+  const mondi = [];
+  const metti = (voce, v) => {
+    if (!v) return;
+    const r = Math.hypot(v.x, v.y, v.z);
+    if (!(r > 0) || !isFinite(r)) return;
+    mondi.push(Object.assign({}, voce, { pos: v, r, asse: [0, 0, 1], minore: true }));
+  };
+  SOL_MONDI.forEach(m => metti(m, solPosizioneMondo(m, t, quando)));
+  solCometeDiStasera(quando).forEach(c => {
+    if (typeof posizioneCorpoMinore !== 'function') return;
+    try { metti(c, posizioneCorpoMinore(c.elementi, quando)); } catch (e) { /* niente */ }
+  });
+  sol.mondi = mondi;
+}
+
+// Le orbite dei mondi minori, campionate come quelle dei pianeti: un periodo
+// intero, dalle posizioni vere. Il periodo lo dà la terza legge di Keplero
+// (`a^1,5` anni), quindi non c'è nessuna tabella da tenere d'accordo con gli
+// elementi. Si rifanno di rado — un'ellisse di Eris non cambia forma in un
+// decennio — e per Sedna l'anello esce dallo schermo di proposito: è il modo
+// più corto di dire che ci mette undicimila anni.
+function solCalcolaOrbiteMondi(quando) {
+  const chiave = Math.round(quando.getFullYear() / 5);
+  if (sol.orbiteMondi.chiave === chiave && sol.orbiteMondi.tracce.length) return;
+  const tracce = [];
+  SOL_MONDI.forEach(m => {
+    const el = m.ae ? null : solElementiMondo(m);
+    const anni = m.ae ? 247.9 : (el && el.a > 0 ? Math.pow(el.a, 1.5) : 0);
+    if (!(anni > 0)) return;
+    const durata = anni * 365.25 * 86400000;
+    const punti = [];
+    for (let i = 0; i <= SOL_MONDI_ORBITA_PUNTI; i++) {
+      const d = new Date(quando.getTime() + (i / SOL_MONDI_ORBITA_PUNTI - 0.5) * durata);
+      const v = m.ae
+        ? (typeof Astronomy !== 'undefined' ? solVettore(m.ae, Astronomy.MakeTime(d)) : null)
+        : solPosizioneMondo(m, null, d);
+      if (v) punti.push({ x: v.x, y: v.y, z: v.z });
+    }
+    if (punti.length > 8) tracce.push({ id: m.id, colore: m.colore, punti });
+  });
+  sol.orbiteMondi = { chiave, tracce };
+}
+
+// Dove sono adesso le due Voyager: retta dall'epoca dichiarata, nella
+// direzione dell'asintoto di fuga (vedi SOL_SONDE). `dietro` dice di quanti
+// anni si sta guardando prima del lancio — lì la sonda non c'era, e non si
+// disegna.
+function solLeggiSonde(quando) {
+  const anni = (quando.getTime() - SOL_SONDE_EPOCA_MS) / SOL_SONDE_ANNO_MS;
+  const annoScena = quando.getFullYear() + (quando.getMonth() * 30.4 + quando.getDate()) / 365.25;
+  sol.sonde = SOL_SONDE.map(s => {
+    const d = Math.max(0, s.ua + s.uaPerAnno * anni);
+    const lon = s.lon * SKY_D2R, lat = s.lat * SKY_D2R;
+    const pos = {
+      x: d * Math.cos(lat) * Math.cos(lon),
+      y: d * Math.cos(lat) * Math.sin(lon),
+      z: d * Math.sin(lat)
+    };
+    return Object.assign({}, s, {
+      pos, r: d, asse: [0, 0, 1], sonda: true,
+      partita: annoScena >= s.lancio,
+      anniDiVolo: annoScena - s.lancio
+    });
+  });
+}
+
+// --- I satelliti attorno alla Terra ----------------------------------------
+
+// Da coordinate equatoriali della data (quelle in cui SGP4 risponde) a
+// coordinate eclittiche: la rotazione la sa fare Astronomy Engine, e se la
+// versione caricata non ha quella funzione si ripiega sull'obliquità media —
+// la differenza fra l'equatore di oggi e quello di J2000 è un terzo di grado,
+// cioè una rotazione dell'anello che a questa scala non si vede.
+function solEclitticaDaEquatoriali(v, t) {
+  if (typeof Astronomy !== 'undefined' && typeof Astronomy.Rotation_EQD_ECL === 'function' &&
+      typeof Astronomy.Vector === 'function') {
+    try {
+      const r = Astronomy.RotateVector(Astronomy.Rotation_EQD_ECL(t),
+        new Astronomy.Vector(v.x, v.y, v.z, t));
+      return { x: r.x, y: r.y, z: r.z };
+    } catch (e) { /* si ripiega qui sotto */ }
+  }
+  const e0 = 23.4392911 * SKY_D2R;
+  const c = Math.cos(e0), s = Math.sin(e0);
+  return { x: v.x, y: v.y * c + v.z * s, z: -v.y * s + v.z * c };
+}
+
+// Il versore geocentrico eclittico di un satellite, e la sua quota: è tutto
+// quello che serve a disegnarlo, perché la distanza vera qui è esagerata.
+// Senza TLE, o con un TLE troppo vecchio per dire qualcosa, risponde `null` —
+// e allora il satellite non si disegna affatto, che è meglio di un pallino
+// appoggiato dove non è.
+function solVersoreSatellite(sat, quando, t) {
+  if (typeof satRecDi !== 'function' || typeof satellite === 'undefined') return null;
+  const rec = satRecDi(sat);
+  if (!rec) return null;
+  const tle = typeof satTle === 'object' ? satTle[sat.id] : null;
+  if (tle && tle.quando &&
+      Math.abs(quando.getTime() - tle.quando) > SOL_SAT_TLE_GIORNI * 86400000) return null;
+  let pv;
+  try { pv = satellite.propagate(rec, quando); } catch (e) { return null; }
+  if (!pv || !pv.position || !isFinite(pv.position.x)) return null;
+  const e = solEclitticaDaEquatoriali(pv.position, t);
+  const d = Math.hypot(e.x, e.y, e.z);
+  if (!(d > SOL_TERRA_RAGGIO_KM * 0.8)) return null;
+  return { u: { x: e.x / d, y: e.y / d, z: e.z / d }, raggioKm: d, quotaKm: d - SOL_TERRA_RAGGIO_KM };
+}
+
+// I tre satelliti, pronti per la scena. Sono geocentrici: la scena ce li
+// mette accanto alla Terra, e per questo qui non c'è nessuna posizione
+// assoluta — solo la direzione, la quota e l'anello.
+function solLeggiSatelliti(quando, t) {
+  if (typeof SATELLITI === 'undefined') { sol.satelliti = []; return; }
+  const elenco = [];
+  SATELLITI.forEach(sat => {
+    const p = solVersoreSatellite(sat, quando, t);
+    if (!p) return;
+    elenco.push({
+      id: sat.id, nome: sat.nome, colore: sat.colore, satellite: true,
+      u: p.u, quotaKm: p.quotaKm, raggioKm: p.raggioKm,
+      periodoMin: sat.periodoMin || 93, classe: sat.classe || '',
+      anello: solAnelloSatellite(sat, quando, t)
+    });
+  });
+  sol.satelliti = elenco;
+}
+
+// L'anello dell'orbita: un giro intero campionato con SGP4, normalizzato come
+// il satellite stesso. Si rifà una volta all'ora di scena — il piano
+// dell'orbita della ISS ruota di cinque gradi al giorno (è la regressione dei
+// nodi, e sessanta campioni al fotogramma per raccontarla sarebbero uno
+// spreco).
+function solAnelloSatellite(sat, quando, t) {
+  const chiave = sat.id + ':' + Math.floor(quando.getTime() / SOL_COMETE_ORA_MS);
+  if (sol.satAnelli.chiave === chiave && sol.satAnelli.punti[sat.id]) {
+    return sol.satAnelli.punti[sat.id];
+  }
+  if (sol.satAnelli.chiave !== chiave) sol.satAnelli = { chiave, punti: {} };
+  const punti = [];
+  const periodo = (sat.periodoMin || 93) * 60000;
+  for (let i = 0; i < SOL_SAT_ANELLO_PUNTI; i++) {
+    const d = new Date(quando.getTime() + (i / SOL_SAT_ANELLO_PUNTI) * periodo);
+    const p = solVersoreSatellite(sat, d, t);
+    if (p) punti.push(p.u);
+  }
+  sol.satAnelli.punti[sat.id] = punti.length > 12 ? punti : null;
+  return sol.satAnelli.punti[sat.id];
+}
+
+// Quanto lontano dal centro del pallino terrestre si disegna un satellite, in
+// raggi di quel pallino: la quota vera mappata sulla fascia fra
+// SOL_SAT_STACCO_MIN e SOL_SAT_STACCO_MAX. L'esagerazione è la stessa scelta
+// della Luna; quello che resta vero è l'ordine — chi sta più alto è disegnato
+// più fuori.
+function solSatStacco(quotaKm) {
+  const q = Math.max(0, Math.min(1, (quotaKm - 300) / 400));
+  return SOL_SAT_STACCO_MIN + q * (SOL_SAT_STACCO_MAX - SOL_SAT_STACCO_MIN);
+}
+
+// Il punto della scena in cui un satellite è **disegnato**. Come per la Luna
+// lo chiedono in tre — il pallino, l'anello e il perno della telecamera — e
+// devono chiederlo alla stessa funzione.
+function solScenaSatellite(s, terra) {
+  const t = terra && (terra.scena || solScena(terra.pos));
+  if (!t || !s || !s.u) return null;
+  const r = (terra.rDisegno || 8) * solSatStacco(s.quotaKm);
+  const passo = r / Math.max(1e-6, sol.scala);
+  return {
+    x: t.x + s.u.x * passo,
+    y: t.y + s.u.y * passo,
+    z: t.z + s.u.z * passo * sol.esagera
+  };
+}
+
+// Un corpo qualunque della scena, da chiunque sia stato messo lì: gli otto
+// pianeti, la Luna, un mondo minore, una sonda, un satellite. Serve a tutto
+// ciò che deve saper trattare un identificativo senza sapere di che famiglia
+// è — il perno della telecamera, il tocco, la ricerca, la scheda — e la
+// ragione per cui esiste è che ognuna di quelle quattro cose, scritta per i
+// soli pianeti, avrebbe risposto «non trovato» proprio a quello che si era
+// appena cercato.
+function solCorpoDiId(id) {
+  if (!id) return null;
+  return sol.pianeti.find(p => p.id === id) ||
+    sol.mondi.find(p => p.id === id) ||
+    sol.sonde.find(p => p.id === id) ||
+    sol.satelliti.find(p => p.id === id) || null;
+}
+
+// Il punto della scena di un corpo qualunque, per chi deve centrarci la
+// telecamera. La Luna e i satelliti non hanno una posizione eliocentrica: la
+// loro la sa solo chi li disegna, ed è quella che si chiede qui.
+function solPuntoDiCorpo(id) {
+  if (id === 'Sun') return { x: 0, y: 0, z: 0 };
+  if (id === 'Moon') return solScenaLuna();
+  const c = solCorpoDiId(id);
+  if (!c) return null;
+  if (c.satellite) return solScenaSatellite(c, sol.pianeti.find(p => p.id === 'Earth'));
+  return c.scena || solScena(c.pos);
 }
 
 // Le orbite si disegnano campionando la posizione vera lungo un periodo
@@ -29470,6 +29927,10 @@ function solCalcolaOrbite(quando) {
     });
   } catch (e) { return; }
   sol.orbite = { chiave, tracce };
+  // Le orbite dei mondi minori seguono le stesse regole e la stessa chiave:
+  // sono tredici ellissi in più, e a chiederle qui non c'è nessun secondo
+  // posto da cui possano restare indietro
+  try { solCalcolaOrbiteMondi(quando); } catch (e) { /* i pianeti ci sono comunque */ }
 }
 
 // I nodi di un'orbita e la sua inclinazione, ricavati dai punti campionati
@@ -30191,6 +30652,131 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   skyRilievoSfera(ctx, r, angLuce, { brillante: 0.06, bordo: 0.62 });
   ctx.restore();
   ctx.restore();
+}
+
+
+// --- Il disegno dei mondi minori, delle sonde e dei satelliti ---------------
+
+// Le orbite dei mondi minori: sottili e tratteggiate, per dire quello che
+// sono — ellissi a due corpi ricavate da un elemento osculatore, non le
+// posizioni vere campionate una per una come quelle dei pianeti. Vanno sotto
+// alle orbite planetarie perché sono quattordici e non otto, e una riga di
+// Nettuno coperta da un pulviscolo di tratteggi non si segue più.
+function solDisegnaOrbiteMondi(ctx) {
+  if (!sol.mondiAccesi || !sol.orbiteMondi.tracce.length) return;
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 4]);
+  sol.orbiteMondi.tracce.forEach(t => {
+    ctx.strokeStyle = t.colore;
+    ctx.globalAlpha = 0.2;
+    ctx.beginPath();
+    t.punti.forEach((v, i) => {
+      const p = solProietta(solScena(v));
+      if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+    });
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// Una sonda: il pallino, e il filo che la lega al Sole. Il filo non è un
+// ornamento — a centosettanta unità astronomiche la sonda è l'unica cosa in
+// quell'angolo di schermo, e senza una riga che arriva da dentro la scena
+// sembra un granello di polvere sul vetro invece di una cosa partita da qui.
+function solDisegnaSonda(ctx, s) {
+  if (!s.schermo) return;
+  const p = s.schermo;
+  ctx.save();
+  ctx.strokeStyle = s.colore;
+  ctx.globalAlpha = 0.22;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 6]);
+  const origine = solProietta({ x: 0, y: 0, z: 0 });
+  ctx.beginPath();
+  ctx.moveTo(origine.px, origine.py);
+  ctx.lineTo(p.px, p.py);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  // Una crocetta e non un disco: una sonda non è un mondo, e a questa scala
+  // un pallino in più fra i pallini si legge come un pianeta che non c'è.
+  ctx.strokeStyle = s.colore;
+  ctx.lineWidth = 1.4;
+  const b = 3.4;
+  ctx.beginPath();
+  ctx.moveTo(p.px - b, p.py); ctx.lineTo(p.px + b, p.py);
+  ctx.moveTo(p.px, p.py - b); ctx.lineTo(p.px, p.py + b);
+  ctx.stroke();
+  if (sol.scelto === s.id) {
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, b + 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// I satelliti attorno alla Terra, in due metà come la Luna: quelli che in
+// questo istante passano dietro al pianeta si disegnano prima del disco,
+// quelli davanti dopo. Senza, un anello attorno a un globo di cui si vedono le
+// coste sarebbe un cerchio incollato sopra, e la scena perderebbe l'unica
+// profondità che ha.
+function solDisegnaSatelliti(ctx, terra, assi, davanti) {
+  if (!sol.sondeAccese || !sol.satelliti.length || !terra || !terra.schermo) return;
+  // Sotto una certa misura del pallino terrestre non c'è posto per un anello:
+  // si tace, e la ricerca lo dice a chi li va a cercare.
+  if ((terra.rDisegno || 0) < SOL_SAT_MIN_PX) return;
+  const dietro = terra.schermo.vicinanza;
+  sol.satelliti.forEach(s => {
+    const centro = solScenaSatellite(s, terra);
+    if (!centro) return;
+    const p = solProietta(centro);
+    // L'anello: si disegna insieme alla metà a cui appartiene ogni suo tratto,
+    // tratto per tratto, che è la stessa prova dell'orbita lunare
+    const anello = s.anello;
+    if (anello && anello.length > 12) {
+      const r = (terra.rDisegno || 8) * solSatStacco(s.quotaKm);
+      const passo = r / Math.max(1e-6, sol.scala);
+      const t = terra.scena;
+      const schermo = anello.map(u => solProietta({
+        x: t.x + u.x * passo, y: t.y + u.y * passo, z: t.z + u.z * passo * sol.esagera
+      }));
+      ctx.save();
+      ctx.strokeStyle = s.colore;
+      ctx.globalAlpha = 0.34;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < schermo.length; i++) {
+        const a = schermo[i], b = schermo[(i + 1) % schermo.length];
+        if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
+        ctx.beginPath();
+        ctx.moveTo(a.px, a.py);
+        ctx.lineTo(b.px, b.py);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if ((p.vicinanza >= dietro) !== davanti) return;
+    // Dove è finito sullo schermo: lo chiede il dito (`solTocco`) e lo chiede
+    // il nome, che si scrive dopo tutti i pallini
+    sol.satSchermo.push({ id: s.id, nome: s.nome, colore: s.colore, px: p.px, py: p.py, r: 3 });
+    ctx.save();
+    ctx.fillStyle = s.colore;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    if (sol.scelto === s.id) {
+      ctx.strokeStyle = '#fff';
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, 7.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
 }
 
 // La riga che unisce il tuo occhio all'oggetto scelto, prolungata fino alle
@@ -32113,6 +32699,12 @@ function solDisegna() {
   // Sara' valorizzato di nuovo solo se in questo fotogramma la Terra e'
   // abbastanza grande da mostrare (e quindi scegliere) la sua superficie.
   sol.globoTerra = null;
+  // Dove sono finiti i satelliti: si azzera qui e non dentro a chi li disegna,
+  // perché chi li disegna può non essere chiamato affatto (la Terra troppo
+  // piccola, il banco delle eclissi) — e allora resterebbero i posti del
+  // fotogramma di prima, cioè nomi appoggiati sul vuoto e un dito che prende
+  // un satellite che non si vede.
+  sol.satSchermo = [];
   solMisura();
   solSfondo(ctx);
 
@@ -32132,20 +32724,28 @@ function solDisegna() {
   // nella scena, il raggio del pallino), poi il perno — che di quei punti ha
   // bisogno per sapere dove centrarsi — e solo alla fine la proiezione sullo
   // schermo, che dal perno dipende
-  sol.pianeti.forEach(p => {
+  // I corpi della scena grande: gli otto pianeti e, se li si vogliono, i mondi
+  // minori e le due sonde (§7.7-bis). Da qui in avanti sono trattati tutti allo
+  // stesso modo — la fila della profondità, il piombo, la fase, il nome — ed è
+  // il motivo per cui un pianeta nano non ha avuto bisogno di un disegno suo.
+  const corpi = sol.pianeti.slice();
+  if (sol.mondiAccesi) sol.mondi.forEach(m => corpi.push(m));
+  if (sol.sondeAccese) sol.sonde.forEach(s => { if (s.partita) corpi.push(s); });
+  corpi.forEach(p => {
     p.scena = solScena(p.pos);
-    p.rDisegno = solRaggioCorpo(p);
+    p.rDisegno = p.sonda ? 3.4 : solRaggioCorpo(p);
   });
   solAggiornaPivot();
-  sol.pianeti.forEach(p => { p.schermo = solProietta(p.scena); });
+  corpi.forEach(p => { p.schermo = solProietta(p.scena); });
   const terra = sol.pianeti.find(p => p.id === 'Earth');
-  const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
+  const scelto = corpi.find(p => p.id === sol.scelto) || null;
   const assi = solAssiVista();     // gli stessi per tutti: si calcolano una volta
 
   solDisegnaPiano(ctx);
   // Le fasce vanno sotto alle orbite: sono il fondo su cui i pianeti corrono,
   // e una riga d'orbita coperta da un pulviscolo non si segue più
   solDisegnaFasce(ctx);
+  solDisegnaOrbiteMondi(ctx);
   sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
   if (sol.nodi) sol.orbite.tracce.forEach(t => solDisegnaNodiOrbita(ctx, t));
   solDisegnaAloneSole(ctx);
@@ -32158,7 +32758,7 @@ function solDisegna() {
   const sole = solProietta({ x: 0, y: 0, z: 0 });
   const rSole = solRaggioSole();
   const prese = [{ x: sole.px - rSole, y: sole.py - rSole, w: rSole * 2, h: rSole * 2 }];
-  sol.pianeti.forEach(p => {
+  corpi.forEach(p => {
     // Gli anelli fanno parte del corpo: «Saturno» scritto sopra all'anello A
     // è scritto sopra a Saturno
     const raggio = p.rDisegno + solRaggioAnelli(p, p.rDisegno);
@@ -32181,16 +32781,25 @@ function solDisegna() {
   // indietro si nasconde solo ciò che sta davvero dietro alla palla, che è
   // poi il caso che conta: la congiunzione superiore, un'unità astronomica
   // più in là.
-  const ordinati = sol.pianeti.slice().sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
+  const ordinati = corpi.slice().sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
   const dietroAlSole = -solRaggioSole() / Math.max(1e-6, sol.scala);
   let soleFatto = false;
   const soleQui = () => { if (!soleFatto) { soleFatto = true; solDisegnaDiscoSole(ctx); } };
   ordinati.forEach(p => {
     if (p.schermo.vicinanza >= dietroAlSole) soleQui();
     solDisegnaPiombo(ctx, p);
-    if (p.id === 'Earth') { solDisegnaOrbitaLuna(ctx, p, false); solDisegnaLuna(ctx, p, false, assi); }
+    if (p.sonda) { solDisegnaSonda(ctx, p); return; }
+    if (p.id === 'Earth') {
+      solDisegnaOrbitaLuna(ctx, p, false);
+      solDisegnaLuna(ctx, p, false, assi);
+      solDisegnaSatelliti(ctx, p, assi, false);
+    }
     solDisegnaCorpo(ctx, p, assi);
-    if (p.id === 'Earth') { solDisegnaOrbitaLuna(ctx, p, true); solDisegnaLuna(ctx, p, true, assi); }
+    if (p.id === 'Earth') {
+      solDisegnaOrbitaLuna(ctx, p, true);
+      solDisegnaLuna(ctx, p, true, assi);
+      solDisegnaSatelliti(ctx, p, assi, true);
+    }
   });
   soleQui();   // tutti i pianeti sono dietro al Sole: tocca a lui chiudere
 
@@ -32203,14 +32812,25 @@ function solDisegna() {
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
   // scrive per primo e ha sempre il suo posto: è l'unico che si sta cercando.
   const stacco = (p) => p.rDisegno + solRaggioAnelli(p, p.rDisegno);
+  // Il colore e il corpo del nome dicono di che famiglia è: i pianeti in
+  // chiaro, i mondi minori e le sonde un gradino sotto. Non è gusto — con i
+  // mondi minori accesi i nomi sullo schermo passano da nove a venti, e se
+  // fossero tutti uguali si perderebbe la cosa che questa scena racconta,
+  // cioè che otto di quei puntini sono i pianeti.
+  const tinta = (p) => p.sonda ? p.colore : (SOL_MONDI_TINTE[p.famiglia] || 'rgba(233, 237, 247, 0.82)');
+  const corpoNome = (p) => (p.minore || p.sonda) ? 10.5 : 11.5;
   if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
     stacco(scelto), '#ffffff', 13, prese, true);
-  solEtichetta(ctx, 'Sole', sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
+  solEtichetta(ctx, nomeCorpo('Sun'), sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
   ordinati.forEach(p => {
     if (p === scelto) return;
     solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
-      'rgba(233, 237, 247, 0.82)', 11.5, prese);
+      tinta(p), corpoNome(p), prese);
   });
+  // I nomi dei satelliti: il loro posto sullo schermo lo sa solo chi li ha
+  // disegnati, e come per la Luna arriva scritto in `sol.satSchermo`
+  sol.satSchermo.forEach(s => solEtichetta(ctx, s.nome, s.px, s.py, s.r + 2,
+    s.colore, 10.5, prese, sol.scelto === s.id));
   if (sol.nodi) sol.orbite.tracce.forEach(t => solEtichettaNodi(ctx, t, prese));
   // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
   // manchi niente — la nuvola di punti si riconosce da sé
@@ -32269,9 +32889,9 @@ function solElongazione(corpo, terra) {
 // stessa cosa — erano due copie della stessa catena di ternari.
 function solQuandoBreve(el) {
   if (!el) return '';
-  if (el.gradi < 15) return 'nella luce del Sole';
-  if (el.gradi > 150) return 'tutta la notte';
-  return el.est ? 'la sera' : 'la mattina';
+  if (el.gradi < 15) return astroI18n.t('sol.quando.luce');
+  if (el.gradi > 150) return astroI18n.t('sol.quando.notte');
+  return astroI18n.t(el.est ? 'sol.quando.sera' : 'sol.quando.mattina');
 }
 
 // Che cosa vuol dire, per chi stanotte esce a guardare
@@ -32289,8 +32909,13 @@ function solQuandoSiVede(el, corpo) {
   return 'Lo vedi nella seconda metà della notte: sorge a notte fonda e resta fino all\'alba.';
 }
 
+// I numeri della scheda, nel formato della lingua di adesso: in italiano la
+// virgola, in inglese il punto. Era cablato a `it-IT`, e su una scheda inglese
+// «1,524 UA» si legge come millecinquecentoventiquattro.
 function solNumero(v, cifre) {
-  return v.toLocaleString('it-IT', { maximumFractionDigits: cifre });
+  const locale = (typeof astroI18n === 'object' && typeof astroI18n.locale === 'function')
+    ? astroI18n.locale() : 'it-IT';
+  return Number(v).toLocaleString(locale, { maximumFractionDigits: cifre });
 }
 
 // I due tasti che riguardano il perno della telecamera, uguali per ogni corpo.
@@ -32298,13 +32923,20 @@ function solNumero(v, cifre) {
 // guardare, non due gradi dello stesso: per questo sono due tasti e non uno
 // che si accende — chi ci sta sopra vuole poterne uscire senza indovinare
 // dove toccare.
-function solAzioniPerno(id, complemento) {
+function solAzioniPerno(id, nome, opzioni = {}) {
   const sopra = sol.perno === id;
-  const guarda = id === 'Earth' ? '' :
-    '<button type="button" class="tasto-cielo tasto-primario" onclick="solGuardaNelPlanetario()">Guardalo nel planetario</button>';
+  // «Guardalo nel planetario» promette che di là quell'oggetto c'è: per un
+  // pianeta e per una cometa di stasera è vero, per Eris e per le Voyager no —
+  // il planetario non li disegna affatto. Un tasto che non mantiene la sua
+  // promessa è peggio di un tasto che manca (`senzaPlanetario`).
+  const guarda = (id === 'Earth' || opzioni.senzaPlanetario) ? '' :
+    '<button type="button" class="tasto-cielo tasto-primario" onclick="solGuardaNelPlanetario()">' +
+    astroI18n.t('sol.azione.planetario') + '</button>';
   const perno = sopra
-    ? '<button type="button" class="tasto-cielo" onclick="solLasciaPerno()">Torna alla vista d’insieme</button>'
-    : `<button type="button" class="tasto-cielo" onclick="solAvvicinaA('${id}')">Gira intorno ${complemento}</button>`;
+    ? '<button type="button" class="tasto-cielo" onclick="solLasciaPerno()">' +
+      astroI18n.t('sol.azione.insieme') + '</button>'
+    : `<button type="button" class="tasto-cielo" onclick="solAvvicinaA('${id}')">` +
+      astroI18n.t('sol.azione.giraIntorno', { nome }) + '</button>';
   return `<div class="sol-azioni">${guarda}${perno}</div>`;
 }
 
@@ -32344,31 +32976,89 @@ function solSchedaHtml() {
   // adesso scritte sulla scena (`solRaccontoVicino`), e per uscire dal banco
   // ci sono i tre tondi delle viste.
   if (sol.vicino) return '';
-  const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
+  // Il corpo scelto può essere di quattro famiglie (§7.7-bis): cercarlo fra i
+  // soli pianeti voleva dire che toccare Plutone o la ISS non apriva niente.
+  const scelto = solCorpoDiId(sol.scelto);
   // Niente scelto, niente scheda: a riposo sulla scena non c'è nessun
   // pannello, ed è tutto il senso di questa vista.
   if (!scelto) return '';
-
-  if (scelto.id === 'Earth') {
-    return `${solTestaScheda('Terra', scelto.colore)}
-      <ul class="sol-dati">
-        <li><span>Dal Sole</span><strong>${solNumero(scelto.r, 3)} UA</strong></li>
-        <li><span>Sei qui</span><strong>${sol.perno === 'Earth' ? 'ci stai girando intorno' : 'il pallino azzurro'}</strong></li>
-      </ul>
-      ${solAzioniPerno('Earth', 'alla Terra')}`;
-  }
+  if (scelto.satellite) return solSchedaSatellite(scelto);
+  if (scelto.sonda) return solSchedaSonda(scelto);
 
   const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (scelto.id === 'Earth') {
+    return `${solTestaScheda(scelto.nome, scelto.colore)}
+      <ul class="sol-dati">
+        <li><span>${astroI18n.t('sol.dati.dalSole')}</span><strong>${solNumero(scelto.r, 3)} ${astroI18n.t('sol.ua')}</strong></li>
+        <li><span>${astroI18n.t('sol.seiQui')}</span><strong>${astroI18n.t(sol.perno === 'Earth' ? 'sol.terra.giriIntorno' : 'sol.terra.pallino')}</strong></li>
+      </ul>
+      ${solAzioniPerno('Earth', scelto.nome)}`;
+  }
+
   const el = solElongazione(scelto, terra);
   if (!el) return '';
+  // I mondi minori dicono una riga in più — che cosa sono — e una in meno: per
+  // un asteroide di dodicesima magnitudine «si vede la sera» non vuol dire
+  // niente, perché a occhio nudo non si vede affatto.
+  const classe = scelto.minore
+    ? `<li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t('sol.famiglia.' + scelto.famiglia)}</strong></li>`
+    : '';
+  const luminosita = scelto.minore && scelto.mag !== undefined
+    ? `<li><span>${astroI18n.t('sol.dati.luminosita')}</span><strong>${solNumero(scelto.mag, 1)}</strong></li>`
+    : '';
   return `${solTestaScheda(scelto.nome, scelto.colore)}
       <ul class="sol-dati">
-        <li><span>Dal Sole</span><strong>${solNumero(scelto.r, 3)} UA</strong></li>
-        <li><span>Da noi</span><strong>${solNumero(el.distanza, 3)} UA</strong></li>
-        <li><span>Angolo dal Sole</span><strong>${Math.round(el.gradi)}°</strong></li>
-        <li><span>Si vede</span><strong>${solQuandoBreve(el)}</strong></li>
+        ${classe}
+        <li><span>${astroI18n.t('sol.dati.dalSole')}</span><strong>${solNumero(scelto.r, 3)} ${astroI18n.t('sol.ua')}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.daNoi')}</span><strong>${solNumero(el.distanza, 3)} ${astroI18n.t('sol.ua')}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.angolo')}</span><strong>${Math.round(el.gradi)}°</strong></li>
+        ${luminosita}
+        ${scelto.minore ? '' : `<li><span>${astroI18n.t('sol.dati.siVede')}</span><strong>${solQuandoBreve(el)}</strong></li>`}
       </ul>
-      ${solAzioniPerno(scelto.id, 'a ' + scelto.nome)}`;
+      ${solAzioniPerno(scelto.id, scelto.nome, { senzaPlanetario: scelto.minore && !scelto.idCielo })}`;
+}
+
+// La scheda di una sonda. I tre numeri sono quelli che rendono la distanza
+// immaginabile: quante unità astronomiche, da quanti anni è in viaggio e a che
+// velocità — perché «diciassette chilometri al secondo» detto da fermo non
+// dice niente, e detto accanto a «centosettanta unità astronomiche in
+// quarantotto anni» dice tutto.
+function solSchedaSonda(s) {
+  const ore = s.r * SOL_UA_KM / 1079252848.8;   // la luce fa un'ora in un miliardo di km
+  return `${solTestaScheda(s.nome, s.colore)}
+      <ul class="sol-dati">
+        <li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t('sol.famiglia.sonda')}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.dalSole')}</span><strong>${solNumero(s.r, 1)} ${astroI18n.t('sol.ua')}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.laLuce')}</span><strong>${solNumero(ore, 1)} ${astroI18n.t('sol.oreLuce')}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.inViaggio')}</span><strong>${Math.floor(s.anniDiVolo)} ${astroI18n.t('sol.anni')}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.velocita')}</span><strong>${solNumero(s.kms, 2)} km/s</strong></li>
+      </ul>
+      ${solAzioniPerno(s.id, s.nome, { senzaPlanetario: true })}`;
+}
+
+// La scheda di un satellite artificiale. Qui i numeri veri sono quelli che il
+// disegno **non** può dire, perché la distanza dalla Terra è esagerata: la
+// quota e il periodo. Il tasto porta al planetario per la strada giusta — non
+// «puntalo», che per una stazione non vuol dire niente, ma «dov'è adesso»,
+// cioè `skyPuntaStazione` (§7.4-ter).
+function solSchedaSatellite(s) {
+  const giriAlGiorno = s.periodoMin > 0 ? 1440 / s.periodoMin : 0;
+  // La classe passa dal dizionario e non dal campo `classe` di `SATELLITI`,
+  // che è la frase italiana che il planetario si porta dietro da sempre: in
+  // una scheda inglese sarebbe l'unica riga in italiano.
+  const chiave = SOL_SAT_CLASSI[s.id];
+  const classe = chiave
+    ? `<li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t(chiave)}</strong></li>`
+    : (s.classe ? `<li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${s.classe}</strong></li>` : '');
+  return `${solTestaScheda(s.nome, s.colore)}
+      <ul class="sol-dati">
+        ${classe}
+        <li><span>${astroI18n.t('sol.dati.quota')}</span><strong>${solNumero(s.quotaKm, 0)} km</strong></li>
+        <li><span>${astroI18n.t('sol.dati.giro')}</span><strong>${Math.round(s.periodoMin)} ${astroI18n.t('sol.minuti')}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.giriAlGiorno')}</span><strong>${solNumero(giriAlGiorno, 1)}</strong></li>
+      </ul>
+      <p class="sol-nota-scheda">${astroI18n.t('sol.satellite.stacco')}</p>
+      ${solAzioniPerno(s.id, s.nome)}`;
 }
 
 // Mandare via la scheda senza cambiare quello che si sta guardando: la
@@ -32416,8 +33106,20 @@ function solScegli(id) {
 // sull'oggetto che si stava guardando da fuori
 window.solGuardaNelPlanetario = () => {
   const id = sol.scelto;
+  // Il corpo si legge **prima** di chiudere: chiudendo si spegne il ciclo di
+  // disegno, e con lui quello che le tre famiglie di §7.7-bis avevano lasciato
+  // scritto qui dentro.
+  const corpo = solCorpoDiId(id);
   chiudiSistemaSolare();
-  if (id && id !== 'Earth') skyImpostaTarget(id, { mantieni: true });
+  // Una stazione non si «punta» come un pianeta: l'identificativo che il
+  // planetario le dà è un altro (`sat-<id>`) e la porta giusta è quella che
+  // sposta anche l'orologio e accende l'inseguimento (§7.4-ter).
+  if (corpo && corpo.satellite) { skyPuntaStazione(corpo.id, null); return; }
+  // Un mondo minore nel planetario si chiama `min:<nome>`, che è lo stesso
+  // identificativo con cui lo conosce l'elenco degli astri: senza questa riga
+  // si chiudeva la finestra e non si puntava niente.
+  const bersaglio = (corpo && corpo.idCielo) ? corpo.idCielo : id;
+  if (bersaglio && bersaglio !== 'Earth') skyImpostaTarget(bersaglio, { mantieni: true });
 };
 
 // --- Il tempo: la stessa barra del planetario -------------------------------
@@ -32661,6 +33363,8 @@ function solAggiornaTasti() {
   segna('[data-sol-quadro]', b => b.dataset.solQuadro === solQuadroAttuale());
   segna('[data-sol-distanze]', b => (b.dataset.solDistanze === 'vere') === sol.distanzeVere);
   segna('[data-sol-misure]', b => (b.dataset.solMisure === 'vere') === sol.misureVere);
+  segna('[data-sol-mondi]', b => (b.dataset.solMondi === 'si') === sol.mondiAccesi);
+  segna('[data-sol-sonde]', b => (b.dataset.solSonde === 'si') === sol.sondeAccese);
   // Le distanze compresse parlano di una scena che nel banco Terra e Luna non
   // c'è: quel comando resta visibile ma spento, invece di sparire — un
   // pannellino che cambia lunghezza a ogni tocco fa perdere il segno di
@@ -32780,9 +33484,11 @@ function solPuntoPerno() {
     }
     return null;
   }
-  if (sol.perno === 'Moon') return solScenaLuna();
-  const p = sol.pianeti.find(x => x.id === sol.perno);
-  return p ? (p.scena || solScena(p.pos)) : null;
+  // Un corpo qualunque, di qualunque famiglia: la Luna, un pianeta, un
+  // pianeta nano, una sonda, un satellite (§7.7-bis, `solPuntoDiCorpo`).
+  // Cercandolo fra i soli pianeti, girare intorno a Plutone o alla ISS
+  // rispondeva `null` e la telecamera restava appesa al Sole.
+  return solPuntoDiCorpo(sol.perno);
 }
 
 // Il perno della telecamera, quando si è scelto di girare intorno a un corpo
@@ -32856,13 +33562,12 @@ function solCentroCamera() {
 // quanto serve a mostrare la distanza fra il centro e il risultato.
 function solInquadraRicerca(id) {
   const origine = solCentroCamera();
-  let arrivo = null;
-  if (id === 'Sun') arrivo = { x: 0, y: 0, z: 0 };
-  else if (id === 'Moon') arrivo = solScenaLuna();
-  else {
-    const p = sol.pianeti.find(v => v.id === id);
-    if (p) arrivo = p.scena || solScena(p.pos);
-  }
+  // I satelliti si vedono solo da vicino alla Terra (SOL_SAT_MIN_PX): cercarli
+  // vuol dire andarci, se no il risultato è un anello più piccolo di un pixel
+  // sopra un pallino azzurro. Il perno passa alla Terra e lo zoom con lui.
+  const cercato = solCorpoDiId(id);
+  if (cercato && cercato.satellite) return solInquadraSatellite(cercato);
+  const arrivo = solPuntoDiCorpo(id);
   if (!arrivo) return false;
 
   sol.scelto = id === 'Sun' ? null : (id === 'Moon' ? 'Earth' : id);
@@ -32900,11 +33605,103 @@ function solInquadraRicerca(id) {
   return true;
 }
 
+// Cercare un satellite artificiale vuol dire **andare dalla Terra**: a un
+// quarto di unità astronomica di campo la ISS è un anello di mezzo pixel
+// attorno a un pallino azzurro, e inquadrarla come si inquadra un pianeta
+// darebbe la risposta giusta in un posto in cui non si vede niente. Si
+// ripiega quindi sul tuffo che questa vista già conosce (la stessa
+// inquadratura dell'ingresso, §`solEntraSullaTerra`) e da lì l'anello e i tre
+// pallini ci sono per costruzione.
+function solInquadraSatellite(s) {
+  sol.scelto = s.id;
+  sol.perno = 'Earth';
+  sol.quadro = 'terra';
+  const zoom = solZoomSullaTerra();
+  if (zoom !== null) solImpostaZoom(Math.max(zoom, sol.zoomVoluto), { morbido: true });
+  solAggiornaScheda(true);
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+  return true;
+}
+
+// --- La ricerca, nella lingua di adesso ------------------------------------
+//   Prima era una tabella scritta a mano con dentro i nomi italiani, e
+//   l'elenco dei suggerimenti era scritto a mano nell'HTML: in inglese si
+//   leggeva «Mars» sulla scena, si scriveva «Mars» nel campo e la risposta era
+//   «elemento non trovato». Il nome di un corpo non si scrive più da nessuna
+//   parte — lo dà il dizionario (`nomeCorpo`, `corpo.<id>`), che è la stessa
+//   tabella da cui il nome arriva sulla tela — e l'indice si rifà al cambio
+//   lingua insieme a tutto il resto (§`ridisegnaTuttoPerLingua`).
+//
+//   Si accettano **tutte** le lingue, non solo quella scelta: chi ha imparato
+//   «Nettuno» e sta guardando l'app in inglese non deve indovinare come si
+//   chiama qui. Quello che cambia con la lingua è cosa si *legge* — i
+//   suggerimenti del campo — non cosa si può scrivere.
+function solVersioniNome(chiave, ripiego) {
+  const viste = new Set();
+  if (typeof astroI18n === 'object' && typeof astroI18n.tutteLeVersioni === 'function') {
+    astroI18n.tutteLeVersioni(chiave).forEach(v => viste.add(v));
+  }
+  if (ripiego) viste.add(ripiego);
+  return [...viste];
+}
+
+// L'indice della ricerca: per ogni corpo il nome da mostrare (nella lingua di
+// adesso) e tutte le parole con cui si può chiamare. Comprende le famiglie
+// spente: cercare la ISS con i satelliti spenti li accende — vedi
+// `solRicercaTrova` — perché «non trovato» sarebbe una bugia.
+function solIndiceRicerca() {
+  const voci = [];
+  const metti = (id, nome, alias) => {
+    if (!nome) return;
+    voci.push({ id, nome, parole: [...new Set([nome, ...(alias || []), id].map(normalizzaTesto))] });
+  };
+  metti('Sun', nomeCorpo('Sun'), solVersioniNome('corpo.Sun', 'Sole'));
+  SOL_PIANETI.forEach(p => metti(p.id, p.nome, solVersioniNome('corpo.' + p.id, p.id)));
+  metti('Moon', nomeCorpo('Moon'), solVersioniNome('corpo.Moon', 'Luna'));
+  SOL_MONDI.forEach(m => metti(m.id, m.nome, solVersioniNome('corpo.' + m.id, m.id)));
+  // Le comete di stasera: i loro nomi sono nomi propri di catalogo («1P/Halley»)
+  // e non passano dal dizionario, ma cercabili devono essere — sono la parte
+  // dell'elenco che cambia da una settimana all'altra.
+  sol.mondi.filter(m => m.famiglia === 'cometa').forEach(c => metti(c.id, c.nome, [c.nome]));
+  SOL_SONDE.forEach(s => metti(s.id, s.nome, [s.nome, s.id.replace('voyager', 'voyager ')]));
+  if (typeof SATELLITI !== 'undefined') {
+    SATELLITI.forEach(sat => metti(sat.id, sat.nome, [sat.nome, sat.nomeLungo || '']));
+  }
+  return voci;
+}
+
 function solIdDaRicerca(testo) {
-  const pulito = String(testo || '').trim().toLocaleLowerCase('it-IT');
-  const nomi = { sole: 'Sun', luna: 'Moon' };
-  SOL_PIANETI.forEach(p => { nomi[p.nome.toLocaleLowerCase('it-IT')] = p.id; });
-  return nomi[pulito] || null;
+  const cercato = normalizzaTesto(String(testo || '').trim());
+  if (!cercato) return null;
+  const indice = solIndiceRicerca();
+  const esatto = indice.find(v => v.parole.includes(cercato));
+  if (esatto) return esatto.id;
+  // Chi ha scritto mezzo nome ha scritto abbastanza: «nett» è Nettuno, e
+  // pretendere il nome intero da un campo con i suggerimenti accanto vuol dire
+  // rispondere «non trovato» a chi ha solo battuto meno tasti.
+  const parziale = indice.find(v => v.parole.some(w => w.startsWith(cercato)));
+  return parziale ? parziale.id : null;
+}
+
+// I suggerimenti del campo: si riscrivono da qui, non dall'HTML, perché
+// l'elenco dipende dalla lingua **e** da cosa c'è in cielo stasera (le comete
+// entrano e escono). Lo rifà chi apre la finestra e chi cambia lingua.
+function solAggiornaRicerca() {
+  const elenco = document.getElementById('sol-elementi');
+  if (!elenco) return;
+  const voci = solIndiceRicerca();
+  elenco.textContent = '';
+  voci.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.nome;
+    elenco.appendChild(o);
+  });
+  const campo = document.getElementById('sol-cerca');
+  if (campo) {
+    const esempio = nomeCorpo('Mars');
+    campo.placeholder = astroI18n.t('sol.ricerca.esempio', { nome: esempio });
+  }
 }
 
 // Torna alla vista d'insieme centrata sul Sole: stessa inquadratura con cui
@@ -32952,9 +33749,14 @@ function solInquadraDaTerra(opzioni = {}) {
   // ci va sommato lo spostamento del quadro: mettendo il punto di mezzo
   // Sole–Terra al centro tutto si alza di mezza orbita terrestre, e senza
   // tenerne conto il pianeta che si era venuti a vedere finiva mezzo fuori.
-  const scelto = sol.pianeti.find(p => p.id === sol.scelto);
+  // Il corpo scelto può essere un transnettuniano o una sonda (§7.7-bis): la
+  // sua distanza entra nella cornice come quella di un pianeta, ma tosata al
+  // bordo del disegno — con Sedna a cinquecento unità astronomiche il ⟲
+  // avrebbe riportato tutto il Sistema Solare dentro a un pugno di pixel.
+  const scelto = solCorpoDiId(sol.scelto);
   const ua = Math.max(SOL_ENTRATA_UA,
-    scelto && scelto.id !== 'Earth' ? scelto.r * SOL_ENTRATA_MARGINE : 0);
+    scelto && scelto.id !== 'Earth' && !scelto.satellite
+      ? Math.min(solBordoUa(), scelto.r * SOL_ENTRATA_MARGINE) : 0);
   const rScena = solRaggio(ua) + solRaggio(1) * 0.5;
   const zoom = rScena > 0 ? 0.9 / rScena : 1;
   solImpostaZoom(zoom, { morbido });
@@ -33247,6 +34049,19 @@ function solTocco(e) {
     if (!p.schermo) return;
     prova(p.id, p.schermo.px, p.schermo.py, p.rDisegno || p.raggio || 0);
   });
+  // I mondi minori, le sonde e i satelliti (§7.7-bis): si prendono col dito
+  // come i pianeti, se no un nome che si legge sullo schermo e non si può
+  // toccare è una promessa non mantenuta — ed è proprio il caso in cui uno
+  // vuole sapere che cos'è quel puntino là in fondo.
+  if (!sol.vicino) {
+    if (sol.mondiAccesi) sol.mondi.forEach(p => {
+      if (p.schermo) prova(p.id, p.schermo.px, p.schermo.py, p.rDisegno || p.raggio || 0);
+    });
+    if (sol.sondeAccese) sol.sonde.forEach(p => {
+      if (p.schermo && p.partita) prova(p.id, p.schermo.px, p.schermo.py, 4);
+    });
+    sol.satSchermo.forEach(s => prova(s.id, s.px, s.py, s.r));
+  }
   // La Luna della scena grande non è un pianeta e non sta in `sol.pianeti`:
   // il suo posto sullo schermo lo lascia scritto chi la disegna
   if (!sol.vicino && sol.lunaSchermo) {
@@ -33459,6 +34274,17 @@ window.apriSistemaSolare = (opzioni = {}) => {
   sol.istante = 0;
   solGeneraStelle(110);
   if (!sol.fasce.length) solGeneraFasce();
+  // Le due cose che i mondi minori e i satelliti vanno a chiedere fuori da qui
+  // (§7.7-bis), e che a caricarle era solo il planetario: gli elementi
+  // orbitali degli asteroidi storici e i TLE delle tre stazioni. Chi arriva
+  // qui da un link o da un evento non è mai passato da `apriSkymap`, e senza
+  // queste due righe Cerere e la ISS non c'erano affatto — con la ricerca che
+  // rispondeva «non trovato» a un nome che l'elenco dei suggerimenti offriva.
+  if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
+  if (typeof precaricaTle === 'function') precaricaTle();
+  // I suggerimenti del campo di ricerca: dipendono dalla lingua e da cosa c'è
+  // in cielo stasera, quindi si riscrivono all'apertura
+  solAggiornaRicerca();
   solInizializzaGesti();
   const campoRicerca = document.getElementById('sol-cerca');
   const esitoRicerca = document.getElementById('sol-ricerca-esito');
@@ -33573,11 +34399,24 @@ function inizializzaSistemaSolare() {
   if (ricerca && campoRicerca) ricerca.addEventListener('submit', e => {
     e.preventDefault();
     const id = solIdDaRicerca(campoRicerca.value);
+    // Una famiglia spenta non è una ragione per dire «non trovato»: chi cerca
+    // Plutone col pannellino dei mondi minori chiuso sta chiedendo di vederlo,
+    // e la risposta giusta è accenderlo. Vale anche per le sonde e i
+    // satelliti, che condividono l'altro interruttore.
+    const corpo = id ? solCorpoDiId(id) : null;
+    if (corpo && corpo.minore) sol.mondiAccesi = true;
+    if (corpo && (corpo.sonda || corpo.satellite)) sol.sondeAccese = true;
     if (!id || !solInquadraRicerca(id)) {
-      if (esitoRicerca) esitoRicerca.textContent = 'Elemento non trovato';
+      // Un satellite che non si trova quasi mai è un satellite senza TLE: i
+      // dati orbitali arrivano dalla rete, e dirlo è un'altra cosa da dire che
+      // quell'oggetto non esiste.
+      const senzaDati = id && typeof satelliteDaId === 'function' && satelliteDaId(id);
+      if (esitoRicerca) esitoRicerca.textContent =
+        astroI18n.t(senzaDati ? 'sol.ricerca.senzaOrbita' : 'sol.ricerca.nonTrovato');
       return;
     }
     if (esitoRicerca) esitoRicerca.textContent = '';
+    solAggiornaTasti();
     campoRicerca.blur();
   });
 
@@ -33678,6 +34517,30 @@ function inizializzaSistemaSolare() {
     b.addEventListener('click', () => {
       sol.misureVere = b.dataset.solMisure === 'vere';
       solAggiornaTasti();
+      solDisegna();
+    }));
+
+  // Le altre due famiglie di corpi (§7.7-bis). Non toccano né la telecamera né
+  // lo zoom: accendono e spengono chi c'è nella scena, e per questo bastano un
+  // ridisegno — la fila della profondità si rifà da sé al fotogramma dopo.
+  modale.querySelectorAll('[data-sol-mondi]').forEach(b =>
+    b.addEventListener('click', () => {
+      sol.mondiAccesi = b.dataset.solMondi === 'si';
+      // Spegnendo la famiglia del corpo scelto la sua scheda resterebbe
+      // aperta sopra a un pallino che non si disegna più
+      const c = solCorpoDiId(sol.scelto);
+      if (!sol.mondiAccesi && c && c.minore) { sol.scelto = null; solLasciaPerno(); }
+      solAggiornaTasti();
+      solAggiornaScheda(true);
+      solDisegna();
+    }));
+  modale.querySelectorAll('[data-sol-sonde]').forEach(b =>
+    b.addEventListener('click', () => {
+      sol.sondeAccese = b.dataset.solSonde === 'si';
+      const c = solCorpoDiId(sol.scelto);
+      if (!sol.sondeAccese && c && (c.sonda || c.satellite)) { sol.scelto = null; solLasciaPerno(); }
+      solAggiornaTasti();
+      solAggiornaScheda(true);
       solDisegna();
     }));
 

@@ -1221,6 +1221,12 @@ function ridisegnaTuttoPerLingua() {
       const finestra = document.getElementById('modale-sistema');
       if (finestra && !finestra.classList.contains('hidden') &&
           typeof solAggiornaScheda === 'function') solAggiornaScheda(true);
+      // I suggerimenti della ricerca: si rifanno **anche a finestra chiusa**,
+      // ed è voluto. Sono i nomi dei corpi nella lingua di adesso, e chi cambia
+      // lingua e poi apre la finestra troverebbe l'elenco di prima — cioè
+      // esattamente il difetto che quell'elenco, scritto a mano nell'HTML,
+      // aveva da sempre.
+      if (typeof solAggiornaRicerca === 'function') solAggiornaRicerca();
     }],
     ['atlante delle costellazioni', () => {
       const finestra = document.getElementById('modale-costellazioni');

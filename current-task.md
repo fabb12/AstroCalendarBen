@@ -3,10 +3,11 @@
 **Niente in corso.**
 
 Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
-`app.js`: 344 stringhe cablate contate da
+`app.js`: 343 stringhe cablate contate da
 `node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
-dell'ombra, le eclissi di casa, quelle lunari), le simulazioni e gli avvisi del
-planetario. Il tetto resta a 362 (totale di adesso: 353).
+dell'ombra, le eclissi di casa, quelle lunari), le simulazioni, gli avvisi del
+planetario e le due righe di stato in fondo alla scena della vista 3D. Il
+tetto è sceso a 352, che è il totale di adesso.
 
 Le **scritte sulla tela** invece sono a zero, e adesso c'è chi le guarda: vedi
 l'ultimo intervento qui sotto.
@@ -15,7 +16,8 @@ l'ultimo intervento qui sotto.
 
 Verdi: `prova-missione.js --solo-motore` (144), `prova-missione-stati.js`,
 `prova-missione-interattiva.js`, `prova-i18n.js`, `prova-lingua.js`,
-`controlla-i18n.js --patto`, `controlla-collisioni.js`.
+`prova-stazioni.js`, `prova-sistema3d.js` (52), `controlla-i18n.js --patto`,
+`controlla-collisioni.js`.
 
 Rosse e **preesistenti**, verificate sull'albero pulito:
 
@@ -26,6 +28,45 @@ Rosse e **preesistenti**, verificate sull'albero pulito:
   (`la camera insegue cinquanta metri di strada con dolcezza`).
 
 ## Ultimo intervento completato
+
+**La vista 3D allargata: i mondi minori, le sonde, i satelliti — e una
+ricerca che parla la lingua scelta.**
+
+La scena aveva otto pianeti e la Luna, e tre cose le mancavano. I **mondi
+minori**: la fascia di Kuiper era un pulviscolo anonimo, e i suoi abitanti con
+un nome — Plutone, Eris, Makemake, Haumea, Gonggong, Quaoar, Sedna, Orco — non
+c'erano, come non c'erano Cerere e i tre asteroidi che nell'Ottocento erano
+considerati pianeti, né le comete che si vedono stasera. Le **Voyager**, che a
+vederle si capisce una cosa che scritta non si capisce: non se ne vanno «verso
+fuori» lungo il piano, se ne vanno una trentacinque gradi sopra e una
+quarantotto sotto, ed è il racconto di due fionde. E **ISS, Tiangong e
+Hubble**, che sono gli unici oggetti lassù costruiti da noi.
+
+Tre scelte da conoscere prima di metterci mano. Gli asteroidi che
+`dati-corpi-minori.js` conosce leggono gli elementi **da lì** e non se ne
+portano una copia: due copie della stessa orbita divergono al primo
+aggiornamento, e lo stesso corpo finirebbe in due posti diversi a seconda della
+vista che lo disegna. La distanza dei satelliti dalla Terra è **esagerata**
+come quella della Luna (a quattrocento chilometri stanno dentro al pallino
+azzurro): quello che resta vero è la direzione, l'ordine delle quote e
+l'inclinazione del piano — 51,6° per la ISS, 28,5° per Hubble, che è la cosa
+che si vede. Le Voyager sono una **retta** da un'epoca dichiarata, e a
+centocinquanta unità astronomiche è quasi esattamente quello che fanno.
+
+La **ricerca** era l'altra metà, ed era rotta in inglese: i nomi venivano da
+una tabella italiana scritta a mano e i suggerimenti da un `<datalist>` scritto
+a mano nell'HTML, quindi si leggeva «Mars» sulla scena, si scriveva «Mars» nel
+campo e la risposta era «elemento non trovato». Adesso i nomi vengono da dove
+vengono per la tela (`nomeCorpo`, le chiavi `corpo.<id>`), i suggerimenti si
+rifanno al cambio lingua, si accettano tutte le lingue e mezzo nome basta.
+Con lei sono passate al dizionario la scheda del corpo scelto, i suoi tre
+tasti e il formato dei numeri, che era cablato a `it-IT`: l'audit scende da 358
+a 352.
+
+Prove nuove in `scripts/prova-sistema3d.js` (52, tutte verdi), col
+contro-esempio della conversione all'eclittica mancata: senza, l'anello della
+ISS risulta inclinato di settanta gradi e mezzo invece di cinquantuno, e sullo
+schermo è un anello perfettamente plausibile.
 
 **Le etichette dei grafici, e il punto cieco che le nascondeva.**
 
