@@ -2782,6 +2782,9 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.curiosita.tiangong.1': 'Tiangong means “Heavenly Palace”: its three modules form a T while orbiting Earth.',
     'missione.curiosita.tiangong.2': 'It is both a crewed station and a laboratory, where astronauts carry out experiments in weightlessness.',
     'missione.curiosita.tiangong.3': 'Tiangong circles Earth in about 92 minutes and sees sixteen sunrises and sunsets each day.',
+    'missione.curiosita.hubble.1': 'Hubble observes above the atmosphere, so its images do not shimmer and it can resolve details that air would blur from the ground.',
+    'missione.curiosita.hubble.2': 'It was carried into orbit in 1990, and astronauts reached it five times to repair and upgrade it. It is an observatory designed to be serviced in space.',
+    'missione.curiosita.hubble.3': 'Its mirror is 2.4 metres wide. As you watch it cross the sky, Hubble circles Earth in about 95 minutes and gathers light that may have travelled for billions of years.',
     'missione.curiosita.stazione.1': 'That light is a home in free fall, moving at about 28,000 kilometres per hour and continually missing Earth. Unlike an aircraft, reflected sunlight makes it shine steadily.',
     'missione.curiosita.stazione.2': 'Astronauts aboard see roughly sixteen sunrises and sunsets each day. The crossing dot carries people who may be looking back through a window right now.',
     'missione.curiosita.stazione.3': 'Space stations are assembled piece by piece while already in flight. Their shine comes from solar arrays and modules launched over many different years.',
@@ -3043,6 +3046,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.enigma.oggetto.centroGalattico': 'Look towards me and you are looking at the heart of our galaxy, twenty-seven thousand light years off — and you cannot see it, because dust covers it. What you see is the crowd of stars standing in front. Who am I?',
     'missione.gioco.enigma.oggetto.iss': 'I am the largest laboratory ever built in space: I circle Earth sixteen times a day and carry people from many nations. From the ground I look like a racing star. Who am I?',
     'missione.gioco.enigma.oggetto.tiangong': 'My name means “Heavenly Palace”: I am a home and laboratory built by China, younger and more compact than my large international companion. Who am I?',
+    'missione.gioco.enigma.oggetto.hubble': 'I carry no astronauts, but one great eye: since 1990 I have photographed galaxies above the air that makes stars shimmer. Meanwhile I race around Earth. Who am I?',
     'missione.gioco.enigma.oggetto.stazione': 'I am not a star and I am not an aeroplane: I do not blink, I cross the sky in a few minutes, and people live inside me. Who am I?',
 
     // --- Missione Cielo · what to look for, target by target ----------
@@ -3108,6 +3112,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.segno.centroGalattico': 'Look for the densest, grainiest part of the Milky Way, above the teapot: in binoculars it is not mist, it is stars.',
     'missione.gioco.segno.iss': 'Look for a very bright light crossing the sky without blinking: it can outshine almost every star.',
     'missione.gioco.segno.tiangong': 'Look for a steady point of light, dimmer than the ISS, crossing the sky in minutes without blinking.',
+    'missione.gioco.segno.hubble': 'Look for a modest, steady point crossing the sky without blinking: it is dimmer than the two stations and easiest to see on high passes.',
     'missione.gioco.segno.stazione': 'Look for a bright point gliding slowly and without blinking, always in the same direction.',
 
     // --- Missione Cielo · riddles for the youngest --------------------

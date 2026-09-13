@@ -53,6 +53,10 @@ const TLE = {
   astrocalendario_tle_css: {
     riga1: '1 48274U 21035A   26060.50000000  .00013000  00000-0  15000-3 0  9990',
     riga2: '2 48274  41.4700 100.0000 0005000  90.0000 270.0000 15.60000000123456'
+  },
+  astrocalendario_tle_hubble: {
+    riga1: '1 20580U 90037B   26060.50000000  .00008000  00000-0  30000-3 0  9990',
+    riga2: '2 20580  28.4700 100.0000 0002800  90.0000 270.0000 15.09000000123456'
   }
 };
 
@@ -139,7 +143,7 @@ const scartoAz = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
     `${eventiStazioni.length} eventi`);
   ok('negli eventi entrano solo passaggi illuminati e col cielo buio',
     eventiStazioni.every(e => e.visibile && e.illuminata && e.alBuio));
-  ok('ISS e Tiangong sono eventi a occhio nudo',
+  ok('ISS, Tiangong e Hubble sono eventi a occhio nudo',
     eventiStazioni.every(e => e.strumento === 'occhio'));
 
   const stato = () => pagina.evaluate(() => {

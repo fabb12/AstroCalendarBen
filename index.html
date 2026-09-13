@@ -56,7 +56,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- satellite.js: propagazione orbitale (SGP4) per ISS e Tiangong -->
+  <!-- satellite.js: propagazione orbitale (SGP4) per ISS, Tiangong e Hubble -->
   <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
 
   <link rel="stylesheet" href="style.css">
@@ -274,7 +274,7 @@
             <div id="stasera-migliori" class="elenco-migliori"></div>
           </section>
 
-          <!-- Passaggi delle stazioni spaziali: ISS e Tiangong -->
+          <!-- Passaggi dei grandi satelliti: ISS, Tiangong e Hubble -->
           <section class="parte-gruppo">
             <!-- Il tasto sta qui e non nel titolo del riquadro: ricarica i
                  dati orbitali, che riguardano queste due righe e nient'altro.
@@ -968,7 +968,7 @@
                   <button id="skymap-btn-costellazioni" type="button" class="tasto-cielo attiva" title="Le figure delle costellazioni" data-i18n-title="ui.le-figure-delle-costellazioni" data-i18n="ui.costellazioni">Costellazioni</button>
                   <button id="skymap-btn-arte" type="button" class="tasto-cielo" aria-pressed="false" title="Sopra le linee, la figura: il cacciatore, il leone, la nave. È un velo leggero, appoggiato sulle stelle vere — a campo largo si accenna appena, ingrandendo molto sparisce da sé. Tocca una figura sulla mappa per aprire la sua pagina" data-i18n-title="ui.sopra-le-linee-la-figura-il-cacciatore-il" data-i18n="ui.disegni">Disegni</button>
                   <button id="skymap-btn-deepsky" type="button" class="tasto-cielo" title="Galassie, nebulose e ammassi">Deep Sky</button>
-                  <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong" data-i18n="ui.satelliti">Satelliti</button>
+                  <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS, Tiangong e Hubble" data-i18n="ui.satelliti">Satelliti</button>
                   <button id="skymap-btn-corpiminori" type="button" class="tasto-cielo attiva" title="Comete e asteroidi abbastanza luminosi da vedersi stanotte: quasi sempre non ce n'è nessuno, e quando c'è è il motivo per uscire" data-i18n-title="ui.comete-e-asteroidi-abbastanza-luminosi-da" data-i18n="ui.comete-e-asteroidi">Comete e asteroidi</button>
                   <button id="skymap-btn-aerei" type="button" class="tasto-cielo attiva" aria-pressed="true"
                     title="Disegna in cielo gli aerei ADS-B entro il raggio scelto, colorati per distanza" data-i18n-title="ui.disegna-in-cielo-gli-aerei-ads-b-entro-il" data-i18n="ui.aerei">Aerei</button>

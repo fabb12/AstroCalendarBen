@@ -545,7 +545,7 @@
 
   function tranStazioni() {
     if (typeof SATELLITI === 'undefined' || typeof satellite === 'undefined') return [];
-    return SATELLITI.filter(s => s && (s.id === 'iss' || s.id === 'css'));
+    return SATELLITI.filter(Boolean);
   }
 
   function tranStazioneCampionatore(sat, luogo) {
@@ -742,7 +742,7 @@
   //
   // Una propagazione SGP4 costa una cinquantina di microsecondi: niente,
   // finché non se ne chiedono cinquemila. Spazzare quattro ore di cielo per
-  // due stazioni e poi seguirne i passaggi grado per grado è esattamente
+  // tre satelliti e poi seguirne i passaggi grado per grado è esattamente
   // questo, e **misurato** faceva trecentotredici millisecondi: venti
   // fotogrammi persi in un colpo, ogni due minuti. Un `requestIdleCallback`
   // non basta a curarlo — il turno che concede è di una cinquantina di

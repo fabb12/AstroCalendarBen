@@ -2840,6 +2840,9 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.curiosita.tiangong.1': 'Tiangong significa «Palazzo celeste»: i suoi tre moduli formano una T in orbita attorno alla Terra.',
     'missione.curiosita.tiangong.2': 'È una stazione abitata e un laboratorio: gli equipaggi vi svolgono esperimenti in assenza di peso.',
     'missione.curiosita.tiangong.3': 'Tiangong completa un giro della Terra in circa 92 minuti e vede sedici albe e tramonti al giorno.',
+    'missione.curiosita.hubble.1': 'Hubble osserva sopra l’atmosfera: per questo le sue immagini non tremano e può distinguere dettagli che da terra l’aria confonderebbe.',
+    'missione.curiosita.hubble.2': 'Fu portato in orbita nel 1990 e gli astronauti lo hanno raggiunto cinque volte per ripararlo e aggiornarlo. È un osservatorio costruito per essere curato nello spazio.',
+    'missione.curiosita.hubble.3': 'Il suo specchio misura 2,4 metri. Mentre lo guardi passare, Hubble gira attorno alla Terra in circa 95 minuti e raccoglie luce partita anche miliardi di anni fa.',
     'missione.curiosita.stazione.1': 'Quella luce è una casa in caduta libera: corre a circa 28.000 chilometri orari e continua a mancare la Terra. Non lampeggia come un aereo perché è illuminata dal Sole.',
     'missione.curiosita.stazione.2': 'A bordo, gli astronauti vedono circa sedici albe e sedici tramonti ogni giorno. Il puntino che attraversa il cielo porta con sé persone che in questo momento guardano la Terra dall’altra parte del vetro.',
     'missione.curiosita.stazione.3': 'Le stazioni sono costruite un pezzo alla volta, come navi assemblate mentre navigano. Ciò che vedi brillare è il riflesso di grandi pannelli solari e moduli lanciati in anni diversi.',
@@ -3118,6 +3121,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.enigma.oggetto.centroGalattico': 'Guardando verso di me guardi il cuore della nostra galassia, a ventisettemila anni luce — e non lo vedi, perché la polvere lo copre. Quello che si vede è la folla di stelle che gli sta davanti. Chi sono?',
     'missione.gioco.enigma.oggetto.iss': 'Sono il più grande laboratorio mai costruito nello spazio: giro attorno alla Terra sedici volte al giorno e porto persone di molte nazioni. Dal suolo sembro una stella in corsa. Chi sono?',
     'missione.gioco.enigma.oggetto.tiangong': 'Il mio nome significa «Palazzo celeste»: sono una casa-laboratorio costruita dalla Cina, più giovane e compatta della mia grande compagna internazionale. Chi sono?',
+    'missione.gioco.enigma.oggetto.hubble': 'Non porto astronauti, ma un grande occhio: dal 1990 fotografo galassie sopra l’aria che fa tremare le stelle. Intanto sfreccio attorno alla Terra. Chi sono?',
     'missione.gioco.enigma.oggetto.stazione': 'Non sono una stella e non sono un aereo: non lampeggio, attraverso il cielo in pochi minuti e ci abitano delle persone. Chi sono?',
 
     // --- Missione Cielo · il segno da cercare, bersaglio per bersaglio -
@@ -3185,6 +3189,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.segno.centroGalattico': 'Cerca la parte più densa e granulosa della Via Lattea, sopra la teiera: al binocolo non è nebbia, sono stelle.',
     'missione.gioco.segno.iss': 'Cerca una luce molto brillante che attraversa il cielo senza lampeggiare: può superare quasi tutte le stelle.',
     'missione.gioco.segno.tiangong': 'Cerca un punto luminoso continuo, meno abbagliante della ISS, che percorre il cielo in pochi minuti senza lampeggiare.',
+    'missione.gioco.segno.hubble': 'Cerca un punto continuo e discreto che attraversa il cielo senza lampeggiare: è meno luminoso delle due stazioni e si vede meglio nei passaggi alti.',
     'missione.gioco.segno.stazione': 'Cerca un punto luminoso che scivola lentamente e senza lampeggiare, sempre nella stessa direzione.',
 
     // --- Missione Cielo · gli enigmi per i più piccoli ----------------
