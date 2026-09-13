@@ -29393,6 +29393,87 @@ function solProietta(p) {
   };
 }
 
+// --- Quello che esce dallo schermo non si disegna --------------------------
+//
+//   Perché esiste, e vale la pena saperlo prima di toccare una qualunque
+//   riga che stende un tratto in questa scena. Avvicinandosi a un pianeta lo
+//   zoom arriva a venticinquemila (`SOL_ZOOM_MAX_CORPO`) e `sol.scala` sale
+//   con lui: una unità astronomica diventa un milione di pixel, e l'orbita
+//   di Sedna — cinquecento unità astronomiche — una polilinea lunga
+//   **dieci milioni di pixel** di cui sullo schermo non cade nemmeno un
+//   punto. Un tratto pieno il rasterizzatore lo scarta in fretta; un tratto
+//   **tratteggiato** no: deve generare i trattini uno per uno lungo tutta la
+//   corsa, e con un passo di sette pixel sono un milione e mezzo di trattini
+//   per orbita. Misurato in un Chromium su una tela da telefono, con la
+//   telecamera addosso alla Terra: il fotogramma passava da 63 a **1081
+//   millisecondi** — da sedici fotogrammi al secondo a uno — e a farlo erano
+//   quattordici ellissi di mondi minori che non si vedevano affatto.
+//
+//   Il sintomo è insidioso perché non somiglia a un disegno sbagliato: tutto
+//   è al suo posto, solo che la camera si muove a scatti, e chi guarda dà la
+//   colpa al telefono. La cura è la sola cosa onesta: si taglia ogni segmento
+//   al riquadro prima di metterlo nel tracciato, e quello che cade fuori non
+//   entra nel tracciato affatto. È lo stesso principio del cono della vista
+//   di `solDisegnaFasce` e della finestra di `visione.js` — non si guarda
+//   dove non ci può essere niente.
+//
+//   Il margine serve ai tratti spessi e alle punte: un segmento che passa
+//   appena fuori dal bordo deve comunque disegnare il suo pezzo di bordo.
+const SOL_MARGINE_TAGLIO = 48;
+
+// Liang–Barsky: il pezzo di segmento che casca dentro al riquadro, o `null`
+// se non ce n'è nemmeno un pixel. Si tengono anche i capi non finiti fuori
+// (una proiezione con `sol.scala` enorme può dare numeri che non sono più
+// numeri): un `NaN` dentro a un tracciato non solleva niente e non disegna
+// niente, quindi passerebbe inosservato per sempre.
+function solTagliaSegmento(ax, ay, bx, by) {
+  if (!isFinite(ax) || !isFinite(ay) || !isFinite(bx) || !isFinite(by)) return null;
+  const m = SOL_MARGINE_TAGLIO;
+  const xMin = -m, yMin = -m, xMax = sol.L + m, yMax = sol.H + m;
+  const dx = bx - ax, dy = by - ay;
+  let t0 = 0, t1 = 1;
+  const p = [-dx, dx, -dy, dy];
+  const q = [ax - xMin, xMax - ax, ay - yMin, yMax - ay];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) { if (q[i] < 0) return null; continue; }
+    const r = q[i] / p[i];
+    if (p[i] < 0) { if (r > t1) return null; if (r > t0) t0 = r; }
+    else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  return { ax: ax + t0 * dx, ay: ay + t0 * dy, bx: ax + t1 * dx, by: ay + t1 * dy };
+}
+
+// Un segmento solo, già tagliato: chi ha una riga sola da tirare (il filo a
+// piombo, il filo di una sonda, la riga dello sguardo) passa di qui.
+function solLineaInVista(ctx, ax, ay, bx, by) {
+  const t = solTagliaSegmento(ax, ay, bx, by);
+  if (!t) return false;
+  ctx.moveTo(t.ax, t.ay);
+  ctx.lineTo(t.bx, t.by);
+  return true;
+}
+
+// Una polilinea già proiettata, tagliata segmento per segmento. `tieni` è il
+// filtro di chi disegna la stessa curva in due passate (davanti al Sole e
+// dietro): riceve i due capi del segmento e dice se questa passata è la sua.
+// La penna si alza dove il tratto esce dal riquadro, e si riabbassa dove
+// rientra — così una curva spezzata dal bordo resta una curva e non diventa
+// una corda tirata da un capo all'altro dello schermo.
+function solPolilineaInVista(ctx, punti, tieni) {
+  let dove = null;
+  for (let i = 0; i + 1 < punti.length; i++) {
+    const a = punti[i], b = punti[i + 1];
+    if (tieni && !tieni(a, b)) { dove = null; continue; }
+    const t = solTagliaSegmento(a.px, a.py, b.px, b.py);
+    if (!t) { dove = null; continue; }
+    if (!dove || Math.abs(dove.x - t.ax) > 0.01 || Math.abs(dove.y - t.ay) > 0.01) {
+      ctx.moveTo(t.ax, t.ay);
+    }
+    ctx.lineTo(t.bx, t.by);
+    dove = { x: t.bx, y: t.by };
+  }
+}
+
 // I tre assi della vista, letti in coordinate eclittiche: dove va a finire
 // sullo schermo la destra, l'alto e la direzione verso chi guarda. Sono le
 // tre righe di `solProietta` scritte al contrario, e servono a tutto ciò che
@@ -29988,8 +30069,7 @@ function solDisegnaNodiOrbita(ctx, traccia) {
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
-  ctx.moveTo(p1.px, p1.py);
-  ctx.lineTo(p2.px, p2.py);
+  solLineaInVista(ctx, p1.px, p1.py, p2.px, p2.py);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.globalAlpha = 0.85;
@@ -30009,8 +30089,7 @@ function solDisegnaNodiOrbita(ctx, traccia) {
     const giu = solProietta({ x: s.x, y: s.y, z: 0 });
     if (Math.abs(su.py - giu.py) < 2) return;
     ctx.beginPath();
-    ctx.moveTo(su.px, su.py);
-    ctx.lineTo(giu.px, giu.py);
+    solLineaInVista(ctx, su.px, su.py, giu.px, giu.py);
     ctx.stroke();
   });
   ctx.setLineDash([]);
@@ -30118,23 +30197,23 @@ function solDisegnaPiano(ctx) {
   ctx.save();
   ctx.strokeStyle = 'rgba(148, 168, 214, 0.16)';
   ctx.lineWidth = 1;
+  const c = solProietta({ x: 0, y: 0, z: 0 });
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
   for (let g = 0; g < 360; g += 30) {
     const a = g * SKY_D2R;
     const p = solProietta({ x: Math.cos(a) * bordo, y: Math.sin(a) * bordo, z: 0 });
-    const c = solProietta({ x: 0, y: 0, z: 0 });
-    ctx.globalAlpha = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(c.px, c.py);
-    ctx.lineTo(p.px, p.py);
-    ctx.stroke();
+    solLineaInVista(ctx, c.px, c.py, p.px, p.py);
   }
+  ctx.stroke();
   ctx.globalAlpha = 0.75;
   ctx.beginPath();
+  const giro = [];
   for (let g = 0; g <= 360; g += 4) {
     const a = g * SKY_D2R;
-    const p = solProietta({ x: Math.cos(a) * bordo, y: Math.sin(a) * bordo, z: 0 });
-    if (g === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+    giro.push(solProietta({ x: Math.cos(a) * bordo, y: Math.sin(a) * bordo, z: 0 }));
   }
+  solPolilineaInVista(ctx, giro);
   ctx.stroke();
   ctx.restore();
 }
@@ -30266,19 +30345,19 @@ function solEtichettaFascia(ctx, f, prese) {
 // centoventotto, e basta a far sentire quale metà è più vicina.
 function solDisegnaOrbita(ctx, traccia) {
   const punti = traccia.punti.map(v => solProietta(solScena(v)));
+  if (punti.length) punti.push(punti[0]);
   ctx.save();
   ctx.lineWidth = 1.1;
   ctx.strokeStyle = traccia.colore;
   [false, true].forEach(davanti => {
     ctx.globalAlpha = davanti ? 0.5 : 0.16;
     ctx.beginPath();
-    let penna = false;
-    punti.forEach(p => {
-      const suo = (p.vicinanza >= 0) === davanti;
-      if (!suo) { penna = false; return; }
-      if (!penna) { ctx.moveTo(p.px, p.py); penna = true; }
-      else ctx.lineTo(p.px, p.py);
-    });
+    // Il segmento appartiene a questa passata se ci appartengono i suoi due
+    // capi: è la stessa regola di prima, scritta per segmenti invece che per
+    // punti perché adesso a spezzare il tratto ci pensa anche il bordo dello
+    // schermo (`solPolilineaInVista`).
+    solPolilineaInVista(ctx, punti,
+      (a, b) => (a.vicinanza >= 0) === davanti && (b.vicinanza >= 0) === davanti);
     ctx.stroke();
   });
   ctx.restore();
@@ -30341,8 +30420,7 @@ function solDisegnaPiombo(ctx, corpo) {
   ctx.lineWidth = 1;
   ctx.setLineDash([2, 3]);
   ctx.beginPath();
-  ctx.moveTo(alto.px, alto.py);
-  ctx.lineTo(suolo.px, suolo.py);
+  solLineaInVista(ctx, alto.px, alto.py, suolo.px, suolo.py);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.globalAlpha = 0.55;
@@ -30600,8 +30678,7 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(terra.schermo.px, terra.schermo.py);
-  ctx.lineTo(p.px, p.py);
+  solLineaInVista(ctx, terra.schermo.px, terra.schermo.py, p.px, p.py);
   ctx.stroke();
   // La Luna ha la fase della Terra: da qui fuori sono nello stesso punto
   // rispetto al Sole, e questa è la cosa che di solito non viene in mente —
@@ -30671,10 +30748,13 @@ function solDisegnaOrbiteMondi(ctx) {
     ctx.strokeStyle = t.colore;
     ctx.globalAlpha = 0.2;
     ctx.beginPath();
-    t.punti.forEach((v, i) => {
-      const p = solProietta(solScena(v));
-      if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
-    });
+    // Tagliata al riquadro: un'ellisse tratteggiata lunga milioni di pixel
+    // fuori dallo schermo costa un fotogramma intero (vedi
+    // `solTagliaSegmento`). Il giro si chiude su sé stesso, quindi l'ultimo
+    // punto è il primo.
+    const punti = t.punti.map(v => solProietta(solScena(v)));
+    if (punti.length) punti.push(punti[0]);
+    solPolilineaInVista(ctx, punti);
     ctx.stroke();
   });
   ctx.restore();
@@ -30694,8 +30774,7 @@ function solDisegnaSonda(ctx, s) {
   ctx.setLineDash([2, 6]);
   const origine = solProietta({ x: 0, y: 0, z: 0 });
   ctx.beginPath();
-  ctx.moveTo(origine.px, origine.py);
-  ctx.lineTo(p.px, p.py);
+  solLineaInVista(ctx, origine.px, origine.py, p.px, p.py);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.globalAlpha = 1;
@@ -30797,14 +30876,12 @@ function solDisegnaSguardo(ctx, terra, corpo) {
   ctx.lineWidth = 1.4;
   ctx.globalAlpha = 0.85;
   ctx.beginPath();
-  ctx.moveTo(terra.schermo.px, terra.schermo.py);
-  ctx.lineTo(corpo.schermo.px, corpo.schermo.py);
+  solLineaInVista(ctx, terra.schermo.px, terra.schermo.py, corpo.schermo.px, corpo.schermo.py);
   ctx.stroke();
   ctx.globalAlpha = 0.4;
   ctx.setLineDash([5, 5]);
   ctx.beginPath();
-  ctx.moveTo(corpo.schermo.px, corpo.schermo.py);
-  ctx.lineTo(fine.px, fine.py);
+  solLineaInVista(ctx, corpo.schermo.px, corpo.schermo.py, fine.px, fine.py);
   ctx.stroke();
   ctx.restore();
 }
@@ -31163,7 +31240,12 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
     brillo.addColorStop(0.45, `rgba(150, 205, 250, ${forza * 0.35})`);
     brillo.addColorStop(1, 'rgba(120, 180, 240, 0)');
     ctx.fillStyle = brillo;
-    ctx.fillRect(-r, -r, r * 2, r * 2);
+    // Il cerchio della sfumatura e non il quadrato del globo: oltre 0,62·r
+    // il riflesso è trasparente, e dipingere trasparente costa come
+    // dipingere. Sono sei volte la superficie, a ogni fotogramma.
+    ctx.beginPath();
+    ctx.arc(subSole.x, subSole.y, r * 0.62, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Le terre, nell'ordine in cui stanno scritte: continenti, poi i deserti
@@ -31309,8 +31391,12 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
     return g;
   };
   ctx.fillStyle = anello(0.86, 1.07, '#8cc8ff', 0.1);
+  // Anello e non disco: dentro a 0,86·r la sfumatura è trasparente, e quel
+  // buco è i tre quarti della superficie che si stava dipingendo per niente.
+  // I tre spicchi qui sotto un anello lo erano già.
   ctx.beginPath();
   ctx.arc(0, 0, r * 1.07, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 0.855, 0, Math.PI * 2, true);
   ctx.fill();
   const versoLuce = Math.atan2(subSole.y, subSole.x);
   [[Math.PI * 0.62, 0.14], [Math.PI * 0.46, 0.14], [Math.PI * 0.3, 0.13]].forEach(([mezzo, forza]) => {

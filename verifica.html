@@ -12406,6 +12406,200 @@ if (typeof Visione === 'undefined') {
   sky.altezza = altezzaPrima;
 }
 
+// =====================================================================
+// §33. LA VISTA 3D DA VICINO: quello che esce dallo schermo non si disegna
+// =====================================================================
+//
+// È la segnalazione «avvicinandomi a un pianeta rallenta tutto», ed è di
+// quelle che a occhio non si giudicano affatto: nessun fotogramma è
+// sbagliato, la scena è al suo posto, solo che ne arriva **uno al secondo**
+// invece di sessanta — e chi guarda dà la colpa al telefono.
+//
+// Il conto che spiega tutto sta in due righe. Girando attorno a un corpo lo
+// zoom arriva a venticinquemila (`SOL_ZOOM_MAX_CORPO`) e `sol.scala` sale con
+// lui: una unità astronomica diventa più di un milione di pixel, e l'orbita
+// di Sedna — cinquecento unità astronomiche — una polilinea lunga **dieci
+// milioni di pixel** di cui sullo schermo non cade nemmeno un punto. Un
+// tratto pieno il rasterizzatore lo scarta in fretta; un tratto
+// **tratteggiato** no: deve generare i trattini uno per uno lungo tutta la
+// corsa. Misurato in un Chromium su una tela da telefono, con la telecamera
+// addosso alla Terra: il fotogramma passava da 63 a **1081 millisecondi**, e
+// a farlo erano quattordici ellissi di mondi minori che non si vedevano.
+//
+// Qui non si misura il tempo — un banco di prova non è un cronometro, e la
+// stessa pagina su due macchine darebbe due numeri diversi. Si misura
+// l'aritmetica da cui quel tempo dipende: che quello che non si vede venga
+// tagliato via davvero, che quello che si vede resti **esattamente** dov'era,
+// e che una curva spezzata dal bordo non diventi una corda tirata da un capo
+// all'altro dello schermo.
+//
+// Come per il §19, il §21, il §25 e il §29, `app.js` qui non si carica: le
+// due funzioni sono una **copia**, e il giorno che divergono da quelle vere
+// non lo dice nessuno.
+titolo('§33. La vista 3D: il taglio al riquadro');
+{
+  const sol3d = { L: 900, H: 700 };
+  const SOL_MARGINE_TAGLIO = 48;
+
+  // --- copia da app.js §7.7 ------------------------------------------
+  function solTagliaSegmento(ax, ay, bx, by) {
+    if (!isFinite(ax) || !isFinite(ay) || !isFinite(bx) || !isFinite(by)) return null;
+    const m = SOL_MARGINE_TAGLIO;
+    const xMin = -m, yMin = -m, xMax = sol3d.L + m, yMax = sol3d.H + m;
+    const dx = bx - ax, dy = by - ay;
+    let t0 = 0, t1 = 1;
+    const p = [-dx, dx, -dy, dy];
+    const q = [ax - xMin, xMax - ax, ay - yMin, yMax - ay];
+    for (let i = 0; i < 4; i++) {
+      if (p[i] === 0) { if (q[i] < 0) return null; continue; }
+      const r = q[i] / p[i];
+      if (p[i] < 0) { if (r > t1) return null; if (r > t0) t0 = r; }
+      else { if (r < t0) return null; if (r < t1) t1 = r; }
+    }
+    return { ax: ax + t0 * dx, ay: ay + t0 * dy, bx: ax + t1 * dx, by: ay + t1 * dy };
+  }
+  // La polilinea, registrata invece che disegnata: al posto del contesto si
+  // passa un raccoglitore, e alla fine si guarda che tracciato è venuto — è
+  // lo stesso trucco delle curve ad anello del §25.
+  function solPolilineaInVista(ctx, punti, tieni) {
+    let dove = null;
+    for (let i = 0; i + 1 < punti.length; i++) {
+      const a = punti[i], b = punti[i + 1];
+      if (tieni && !tieni(a, b)) { dove = null; continue; }
+      const t = solTagliaSegmento(a.px, a.py, b.px, b.py);
+      if (!t) { dove = null; continue; }
+      if (!dove || Math.abs(dove.x - t.ax) > 0.01 || Math.abs(dove.y - t.ay) > 0.01) {
+        ctx.moveTo(t.ax, t.ay);
+      }
+      ctx.lineTo(t.bx, t.by);
+      dove = { x: t.bx, y: t.by };
+    }
+  }
+  // --- fine della copia ----------------------------------------------
+
+  const penna = () => {
+    const mosse = [];
+    return {
+      mosse,
+      moveTo: (x, y) => mosse.push(['m', x, y]),
+      lineTo: (x, y) => mosse.push(['l', x, y])
+    };
+  };
+  const dentro = (x, y) => x >= -SOL_MARGINE_TAGLIO - 0.01 && x <= sol3d.L + SOL_MARGINE_TAGLIO + 0.01 &&
+    y >= -SOL_MARGINE_TAGLIO - 0.01 && y <= sol3d.H + SOL_MARGINE_TAGLIO + 0.01;
+
+  // --- quello che non si vede non entra nel tracciato -----------------
+  {
+    prova('un segmento tutto fuori a sinistra non si disegna',
+      solTagliaSegmento(-9e6, 300, -1000, 400) === null);
+    prova('e nemmeno uno tutto sopra',
+      solTagliaSegmento(100, -5e6, 800, -2000) === null);
+    // Il caso vero: l'orbita di Sedna con la telecamera addosso alla Terra.
+    // Dieci milioni di pixel, zero sullo schermo — e con un tratteggio da
+    // sette pixel sarebbero un milione e mezzo di trattini da generare.
+    const lunga = solTagliaSegmento(-5.2e6, -3.1e6, 4.8e6, -2.9e6);
+    prova('l\'orbita di un mondo minore a zoom 25.000 non entra affatto',
+      lunga === null, 'dieci milioni di pixel, nessuno in vista');
+    prova('un segmento tutto dentro resta identico a sé stesso', (() => {
+      const t = solTagliaSegmento(120, 200, 640, 480);
+      return t && Math.abs(t.ax - 120) < 1e-9 && Math.abs(t.ay - 200) < 1e-9 &&
+        Math.abs(t.bx - 640) < 1e-9 && Math.abs(t.by - 480) < 1e-9;
+    })(), 'quello che si vede non si tocca');
+  }
+
+  // --- e quello che si vede resta esattamente dov'era -----------------
+  {
+    // Il pezzo tagliato deve stare **sulla stessa retta**: se il taglio
+    // spostasse anche di poco i capi, un'orbita disegnata mezza dentro e
+    // mezza fuori risulterebbe storta proprio dove la si guarda.
+    let peggio = 0, corti = 0;
+    let seme = 20260913;
+    const caso = () => { seme = (seme * 1664525 + 1013904223) >>> 0; return seme / 4294967296; };
+    for (let i = 0; i < 4000; i++) {
+      const s = Math.pow(10, caso() * 6);              // da pochi pixel a milioni
+      const ax = (caso() - 0.5) * 2 * s, ay = (caso() - 0.5) * 2 * s;
+      const bx = (caso() - 0.5) * 2 * s, by = (caso() - 0.5) * 2 * s;
+      const t = solTagliaSegmento(ax, ay, bx, by);
+      if (!t) continue;
+      corti++;
+      // distanza dei due capi tagliati dalla retta di partenza
+      const dx = bx - ax, dy = by - ay, n = Math.hypot(dx, dy) || 1;
+      [[t.ax, t.ay], [t.bx, t.by]].forEach(([x, y]) => {
+        const d = Math.abs((x - ax) * dy - (y - ay) * dx) / n;
+        if (d / Math.max(1, n) > peggio) peggio = d / Math.max(1, n);
+        if (!dentro(x, y)) peggio = 1;                 // fuori dal riquadro: bocciato
+      });
+    }
+    prova('il pezzo tagliato sta sulla retta di prima, e dentro al riquadro',
+      corti > 500 && peggio < 1e-9, `${corti} segmenti, scarto relativo ${peggio.toExponential(1)}`);
+  }
+
+  // --- una curva spezzata dal bordo resta una curva -------------------
+  {
+    // Tre punti: dentro, fuori a destra, dentro di nuovo. Senza alzare la
+    // penna il tracciato tornerebbe indietro con una corda che attraversa lo
+    // schermo — il difetto che si vedrebbe, e l'unico di questa famiglia.
+    const p = penna();
+    solPolilineaInVista(p, [
+      { px: 100, py: 100 }, { px: 9e6, py: 120 }, { px: 9e6, py: 400 }, { px: 200, py: 420 }
+    ]);
+    const salti = p.mosse.filter(m => m[0] === 'm').length;
+    prova('la penna si alza dove il tratto esce e si riabbassa dove rientra',
+      salti === 2, salti + ' tratti staccati');
+    prova('e nessun punto del tracciato casca fuori dal riquadro',
+      p.mosse.every(m => dentro(m[1], m[2])));
+    // Il contro-esempio, cioè il conto di prima: senza taglio quei quattro
+    // punti fanno un tracciato solo, largo diciotto milioni di pixel.
+    const largo = 9e6 * 2;
+    prova('col conto di prima lo stesso tracciato era largo milioni di pixel',
+      largo / sol3d.L > 10000, Math.round(largo / sol3d.L) + ' volte la tela');
+  }
+
+  // --- il filtro delle due passate (davanti al Sole e dietro) ---------
+  {
+    // `solDisegnaOrbita` disegna la stessa curva due volte, e il segmento è
+    // di questa passata solo se ci appartengono tutt'e due i capi: la regola
+    // di prima era per punti, e adesso a spezzare il tratto c'è anche il bordo.
+    const punti = [
+      { px: 100, py: 100, vicinanza: 1 }, { px: 200, py: 150, vicinanza: 1 },
+      { px: 300, py: 200, vicinanza: -1 }, { px: 400, py: 250, vicinanza: -1 }
+    ];
+    const davanti = penna(), dietro = penna();
+    const tieni = (v) => (a, b) => (a.vicinanza >= 0) === v && (b.vicinanza >= 0) === v;
+    solPolilineaInVista(davanti, punti, tieni(true));
+    solPolilineaInVista(dietro, punti, tieni(false));
+    prova('la metà davanti disegna solo i suoi segmenti',
+      davanti.mosse.length === 2 && davanti.mosse[1][1] === 200);
+    prova('la metà dietro solo i suoi',
+      dietro.mosse.length === 2 && dietro.mosse[1][1] === 400);
+    // Il segmento a cavallo non lo disegna nessuna delle due: la passata di
+    // dietro **comincia** al punto 300 con la penna alzata, non ci arriva
+    // tirando una riga da 200 — sono due tratti, non uno.
+    prova('e il segmento a cavallo non lo disegna nessuna delle due',
+      dietro.mosse[0][0] === 'm' && dietro.mosse[0][1] === 300 &&
+      davanti.mosse.concat(dietro.mosse).filter(m => m[0] === 'l').length === 2);
+  }
+
+  // --- i numeri che non sono numeri ----------------------------------
+  {
+    // Con `sol.scala` enorme una proiezione può dare un NaN, e un NaN dentro
+    // a un tracciato non solleva niente e non disegna niente: passerebbe
+    // inosservato per sempre. Meglio scartarlo dove lo si vede.
+    prova('un capo che non è un numero si scarta invece di sporcare il tracciato',
+      solTagliaSegmento(NaN, 100, 200, 300) === null &&
+      solTagliaSegmento(100, 100, Infinity, 300) === null);
+  }
+
+  // --- il margine, che serve ai tratti spessi -------------------------
+  {
+    prova('il margine tiene dentro chi passa appena fuori dal bordo',
+      solTagliaSegmento(sol3d.L + 10, 100, sol3d.L + 20, 400) !== null,
+      SOL_MARGINE_TAGLIO + ' px di franchigia');
+    prova('ma non chi è fuori per davvero',
+      solTagliaSegmento(sol3d.L + 60, 100, sol3d.L + 900, 400) === null);
+  }
+}
+
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
 // col mondo, e le prove che aspettano hanno già catturato quella finta.
 Promise.all(proveInVolo).then(() => { window.fetch = overVero; },
