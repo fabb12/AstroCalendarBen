@@ -7,27 +7,127 @@ Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
 `node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
 dell'ombra, le eclissi di casa, quelle lunari), le simulazioni, gli avvisi del
 planetario e le due righe di stato in fondo alla scena della vista 3D. Il
-tetto è sceso a 352, che è il totale di adesso.
-
-Le **scritte sulla tela** invece sono a zero, e adesso c'è chi le guarda: vedi
-l'ultimo intervento qui sotto.
+tetto è 352, che è il totale di adesso.
 
 ## Lo stato delle prove
 
-Verdi: `prova-missione.js --solo-motore` (144), `prova-missione-stati.js`,
-`prova-missione-interattiva.js`, `prova-i18n.js`, `prova-lingua.js`,
-`prova-stazioni.js`, `prova-sistema3d.js` (52), `controlla-i18n.js --patto`,
-`controlla-collisioni.js`.
+Verdi: `prova-missione.js` **intero** (223), `--solo-motore` (158),
+`prova-missione-stati.js`, `prova-missione-interattiva.js`, `prova-i18n.js`,
+`prova-lingua.js`, `prova-stazioni.js`, `prova-guida.js`,
+`prova-sistema3d.js`, `controlla-i18n.js --patto`, `controlla-collisioni.js`.
+
+Le due prove di `prova-missione.js` che erano rosse da tempo perché
+dipendevano dal cielo di stanotte adesso sono verdi, e non per fortuna: «un
+passaggio di stazione arriva fino alla tappa» accende il solo genere
+«stazioni», così l'unico modo di non trovarlo è che la catena sia rotta — che
+è la domanda; e «le tappe rispettano davvero altezza e strumento» pretende
+l'altezza da chi in cielo ci sta, invece che da tutti (un mondo lontano non
+ne ha una, e chiedergliela vorrebbe dire trasformare la prova dell'orizzonte
+in una prova che un genere non esista).
 
 Rosse e **preesistenti**, verificate sull'albero pulito:
 
-- `prova-missione.js`, due prove che dipendono dal cielo di stanotte — «un
-  passaggio di stazione arriva fino alla tappa» e «le tappe rispettano davvero
-  altezza e strumento» (Urano vuole il telescopio). 192 passate, 2 fallite.
 - `verifica.html`, cinque prove: le quattro del §20 sull'acqua e una del §28
-  (`la camera insegue cinquanta metri di strada con dolcezza`).
+  (`la camera insegue cinquanta metri di strada con dolcezza`). 1238 verdi.
+- `prova-missione-interattiva.js` ha un punto che può diventare rosso a caso:
+  il seme della missione è casuale, e quando la prima tappa capita essere un
+  oggetto del cielo profondo la riga `point.selection.id` legge `undefined`
+  (per un `profondo` la selezione è `{categoria, dati}` e un `id` non ce
+  l'ha). Non c'entra coi mondi lontani: visto una volta su cinque prima e
+  dopo.
 
 ## Ultimo intervento completato
+
+**Missione Cielo: i mondi lontani, e la tappa che si gioca nel Sistema
+Solare in 3D.**
+
+La richiesta era in due righe: «metti negli indovinelli anche gli oggetti
+mostrati nel sistema solare 3d; quando è un indovinello di questo genere
+mostra a tutto schermo il sistema solare 3d, e poi passa al planetario quando
+tocca ad esso».
+
+Sono **sedici bersagli** — i quattordici mondi minori di `SOL_MONDI` e le due
+Voyager — cioè quello che la vista 3D disegna oltre ai pianeti. Le comete e i
+tre satelliti artificiali che quella scena mostra restano fuori di proposito:
+ci sono già come corpi minori e come stazioni, cioè in due generi che li
+fanno cercare **in cielo**, dove si vedono davvero.
+
+Il genere nuovo si chiama `lontani` (tipo `mondo3d`) ed è l'unico la cui
+caccia non si fa col naso all'insù: Plutone è di quattordicesima magnitudine,
+Sedna di ventunesima, una Voyager non è nemmeno un oggetto astronomico — e
+tutti e sedici stanno lì, al loro posto vero, in un disegno. Da lì viene il
+resto: quando tocca a una di loro si apre il Sistema Solare in 3D a tutto
+schermo, e quando tocca a una tappa del cielo si torna al planetario. Il
+cambio di schermo non è un tasto: è una conseguenza di che natura ha la
+tappa, e a saperlo è un posto solo (`missPortaAllaTappa`).
+
+Le cose che valeva la pena scrivere, e che non si sarebbero viste guardando
+lo schermo:
+
+**Le domande del cielo non si fanno a chi in cielo non sta.** Niente altezza,
+niente ostacolo dichiarato, niente crepuscolo, niente settore di orizzonte:
+restano il genere e la difficoltà. È la stessa eccezione dei passaggi di
+stazione spinta fino in fondo, e ha lo stesso rischio noto — una famiglia che
+salta i filtri normali può passare da un filtro che non c'è — per cui il
+genere resta il primo controllo e non l'ultimo.
+
+**L'altezza che manca vale quattordici punti e non zero.** Zero sarebbe stato
+trenta punti di svantaggio fisso: con la temperatura dei curiosi un peso
+venti volte più piccolo, cioè un genere che si accende e non produce quasi
+mai una tappa. Trenta avrebbe voluto dire che i mondi lontani battono sempre
+tutto il resto. Quattordici è quanto vale un bersaglio a quaranta gradi: né
+privilegiato né penalizzato per una grandezza che lì non esiste.
+
+**Il salto fra i due schermi si dichiara** (`MISS_SALTO_SCHERMO`, più caro di
+mezzo giro di orizzonte). Da lì, senza che nessuna riga lo chieda, le tappe
+della vista 3D si raggruppano invece di alternarsi al cielo — se no una
+missione da quattro sarebbe stata cielo, disegno, cielo, disegno, cioè
+quattro cambi di vista in venti minuti.
+
+**Il bersaglio si inquadra senza nominarlo.** Con Sedna a ottantacinque unità
+astronomiche la vista d'ingresso lo lascerebbe fuori dallo schermo, cioè una
+tappa che non si può chiudere; ma allargare la cornice scegliendo il corpo
+(`sol.scelto`) aprirebbe la sua scheda, cioè stamperebbe la soluzione. Da lì
+l'opzione `ua` di `solInquadraDaTerra`, che è la stessa cornice chiesta senza
+scegliere niente. Per la stessa ragione il tocco sulla scena non apre più la
+scheda durante una caccia: scartare Eris avendone letto il nome è comunque
+mezzo enigma regalato.
+
+**La striscia della missione era disegnata appena fuori dallo schermo**, ed è
+il difetto che ha richiesto di misurare invece di guardare. Vive dentro a
+`#skymap-contenitore` e la finestra 3D a tutto schermo ci passa sopra, quindi
+va traslocata nel suo guscio; lì però `top` resta scritto come
+`calc(var(--zona-alta-cielo) + 4px)`, e quella variabile è dichiarata su
+`.vista-cielo`. Un `calc` con dentro una variabile che non risolve è
+**invalido**: `top` ripiega su `auto` e la striscia scivola al suo posto nel
+flusso — misurato, `top: 900px` su un riquadro alto 900. La classe `visibile`
+c'era, il testo c'era, la missione funzionava, e sullo schermo non compariva
+niente.
+
+**E chiudere la finestra a metà caccia non lascia più una caccia aperta nel
+cielo.** Sotto alla 3D c'è il planetario, e proseguire lì sarebbe stato il
+difetto peggiore del pezzo, muto: i nomi degli astri spariscono (è il modo
+caccia), la bussola si attacca al telefono, e ogni tocco conta come «no, non
+è questo» contro un bersaglio che in cielo non c'è e non ci sarà. Si torna al
+pannello, e il tasto che riapre la tappa dice dove porta — «cerca nel
+Sistema Solare» e non «cerca nel cielo».
+
+Il dizionario è cresciuto di centoventidue voci per lingua: un enigma, un
+segno osservabile e due aneddoti per ognuno dei sedici, più la famiglia
+intera (enigmi, seguiti, domande, specie, zone del disegno, il cartellino di
+una sonda). Le zone prendono il posto del punto cardinale — lassù non c'è un
+sud — e sono le quattro che la scena rende evidenti: la fascia fra Marte e
+Giove, il tratto fra i giganti, l'anello di Kuiper, il vuoto che viene dopo.
+
+Le prove: un §«i mondi lontani» nel motore (tredici prove, mezzo secondo) e
+uno nel browser che gira **su tre schermi** — 900×900, 360×640 e 640×360 —
+perché la colonna dei comandi della scena è alta duecentosettanta pixel e su
+un telefono girato non ci sta niente sotto di lei: lì qualcosa si deve
+sovrapporre, e quello che la prova pretende è che a vincere siano i tasti. Un
+indizio coperto a metà si scorre; uno zoom coperto a metà è una caccia che
+non si può più fare.
+
+## Interventi precedenti
 
 **La vista 3D si inchiodava avvicinandosi a un pianeta: quello che esce
 dallo schermo adesso non si disegna.**

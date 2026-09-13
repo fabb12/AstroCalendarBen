@@ -142,13 +142,24 @@ const MISS_DIREZIONI = [0, 45, 90, 135, 180, 225, 270, 315];
  * arbitrare: se uno dice «stasera niente pianeti», i pianeti non ci
  * vanno.
  *
- * I cinque generi sono le cinque cose che una persona nomina guardando
- * in su, e non le famiglie del catalogo: la Luna e le comete stanno coi
- * pianeti perché sono «roba del Sistema Solare», nebulose e ammassi
- * stanno con le galassie perché sono «le macchie deboli», e le stazioni
- * spaziali hanno un genere loro perché sono l'unica cosa lassù che
- * abbiamo costruito noi — ed è esattamente il motivo per cui a un
+ * I primi cinque generi sono le cinque cose che una persona nomina
+ * guardando in su, e non le famiglie del catalogo: la Luna e le comete
+ * stanno coi pianeti perché sono «roba del Sistema Solare», nebulose e
+ * ammassi stanno con le galassie perché sono «le macchie deboli», e le
+ * stazioni spaziali hanno un genere loro perché sono l'unica cosa lassù
+ * che abbiamo costruito noi — ed è esattamente il motivo per cui a un
  * bambino interessano più di una galassia.
+ *
+ * Il sesto, i **mondi lontani**, non si nomina guardando in su: non si
+ * vede affatto. Plutone è di quattordicesima magnitudine, Sedna di
+ * ventunesima, le Voyager non sono un oggetto astronomico — e tutti e
+ * sedici stanno lì, disegnati al loro posto vero, nella vista 3D del
+ * Sistema Solare (§7.7-bis di `app.js`). È l'unico genere la cui caccia
+ * non si fa col naso all'insù ma **da fuori**, guardando il piatto del
+ * Sistema Solare dall'alto, e per questo la tappa si gioca lì invece che
+ * nel planetario (§5-bis). Metterli con i pianeti sarebbe stato comodo e
+ * falso: il genere risponde a «cosa vado a cercare», e qui cambia anche
+ * *dove*.
  *
  * `tipi` è il ponte col resto del file: i tipi veri dei candidati, che
  * restano quelli di sempre. */
@@ -157,8 +168,20 @@ const MISS_GENERI = [
   { valore: 'stelle',        icona: 'stella',        tipi: ['stella'] },
   { valore: 'profondo',      icona: 'nebulosa',      tipi: ['profondo'] },
   { valore: 'costellazioni', icona: 'costellazione', tipi: ['costellazione'] },
-  { valore: 'artificiali',   icona: 'satellite',     tipi: ['stazione'] }
+  { valore: 'artificiali',   icona: 'satellite',     tipi: ['stazione'] },
+  { valore: 'lontani',       icona: 'asteroide',     tipi: ['mondo3d'] }
 ];
+
+/* I generi che esistevano prima dei mondi lontani.
+ *
+ * Serve a una riga sola di `missCaricaScelte`, e quella riga risponde a
+ * un difetto che un genere nuovo produce sempre: le scelte salvate
+ * contengono l'**elenco** dei generi accesi, non un «tutti», quindi chi
+ * apriva il pannello dopo l'aggiornamento si ritrovava una casella nuova
+ * spenta senza averla mai spenta — cioè una funzione che per lui non
+ * esiste. Chi non aveva deselezionato niente aveva detto «tutti», e
+ * «tutti» comprende anche quello che arriva dopo. */
+const MISS_GENERI_STORICI = ['pianeti', 'stelle', 'profondo', 'costellazioni', 'artificiali'];
 
 // Dal tipo di un candidato al genere che lo contiene, una volta sola.
 const MISS_GENERE_DI_TIPO = MISS_GENERI.reduce((m, g) => {
@@ -566,7 +589,38 @@ const MISS_REPERTORIO = [
   { slug: 'iss',       fascino: 1,    tipi: ['stazione'], prova: /\b(iss|international space station|stazione spaziale internazionale)\b/i },
   { slug: 'tiangong',  fascino: 0.92, tipi: ['stazione'], prova: /\b(tiangong|chinese space station|stazione spaziale cinese)\b/i },
   { slug: 'hubble',    fascino: 0.96, tipi: ['stazione'], prova: /\b(hubble|hubble space telescope|telescopio spaziale hubble)\b/i },
-  { slug: 'stazione',  fascino: 0.9,  tipi: ['stazione'], prova: /./ }
+  { slug: 'stazione',  fascino: 0.9,  tipi: ['stazione'], prova: /./ },
+
+  /* --- i mondi lontani, quelli che si cercano dalla vista 3D ---------
+   *
+   * Si riconoscono dall'**identificativo** della scena e non dal nome,
+   * per la stessa ragione per cui il cielo profondo si riconosce dalla
+   * sigla: «Giunone» in inglese è «Juno» e «Orco» è «Orcus», e una
+   * `prova` sul nome tradotto sarebbe una tabella da tenere d'accordo
+   * con due dizionari. `mondi` contiene gli id di `SOL_MONDI` e
+   * `SOL_SONDE`, che sono quelli veri e non cambiano mai.
+   *
+   * Il fascino qui non misura la luminosità — nessuno di questi si vede
+   * — ma quanto della loro storia resta addosso: Plutone e le due
+   * Voyager stanno in alto perché di loro si racconta ancora, Igea e
+   * Pallade in basso perché sono due sassi della fascia che nessuno
+   * saprebbe distinguere l'uno dall'altro. */
+  { slug: 'plutone',  fascino: 0.94, tipi: ['mondo3d'], mondi: ['Pluto'] },
+  { slug: 'eris',     fascino: 0.86, tipi: ['mondo3d'], mondi: ['Eris'] },
+  { slug: 'sedna',    fascino: 0.82, tipi: ['mondo3d'], mondi: ['Sedna'] },
+  { slug: 'cerere',   fascino: 0.74, tipi: ['mondo3d'], mondi: ['Ceres'] },
+  { slug: 'haumea',   fascino: 0.7,  tipi: ['mondo3d'], mondi: ['Haumea'] },
+  { slug: 'makemake', fascino: 0.6,  tipi: ['mondo3d'], mondi: ['Makemake'] },
+  { slug: 'chirone',  fascino: 0.6,  tipi: ['mondo3d'], mondi: ['Chiron'] },
+  { slug: 'vesta',    fascino: 0.6,  tipi: ['mondo3d'], mondi: ['Vesta'] },
+  { slug: 'quaoar',   fascino: 0.56, tipi: ['mondo3d'], mondi: ['Quaoar'] },
+  { slug: 'orco',     fascino: 0.52, tipi: ['mondo3d'], mondi: ['Orcus'] },
+  { slug: 'gonggong', fascino: 0.5,  tipi: ['mondo3d'], mondi: ['Gonggong'] },
+  { slug: 'pallade',  fascino: 0.5,  tipi: ['mondo3d'], mondi: ['Pallas'] },
+  { slug: 'giunone',  fascino: 0.46, tipi: ['mondo3d'], mondi: ['Juno'] },
+  { slug: 'igea',     fascino: 0.44, tipi: ['mondo3d'], mondi: ['Hygiea'] },
+  { slug: 'voyager1', fascino: 1,    tipi: ['mondo3d'], mondi: ['voyager1'] },
+  { slug: 'voyager2', fascino: 0.96, tipi: ['mondo3d'], mondi: ['voyager2'] }
 ];
 
 /* Le sigle, in una tabella sola. Il catalogo scrive «M 7» e «M7» nella
@@ -582,6 +636,18 @@ function missTabellaSigle() {
     }
   }
   return missPerSigla;
+}
+
+// Gli id della vista 3D, nella stessa tabella. Stessa idea delle sigle:
+// un identificativo non cambia con la lingua e un nome sì.
+let missPerMondo = null;
+function missTabellaMondi() {
+  if (missPerMondo) return missPerMondo;
+  missPerMondo = new Map();
+  for (const voce of MISS_REPERTORIO) {
+    for (const id of voce.mondi || []) missPerMondo.set(id, voce);
+  }
+  return missPerMondo;
 }
 
 // Il nome ridotto all'osso: niente accenti, niente maiuscole, niente
@@ -610,6 +676,7 @@ function missSiglaCatalogo(t) {
 function missVoceRepertorio(t) {
   if (!t) return null;
   if (t.tipo === 'profondo') return missTabellaSigle().get(missSiglaCatalogo(t)) || null;
+  if (t.tipo === 'mondo3d') return missTabellaMondi().get(t.idSistema) || null;
   const nudo = missNomeNudo((t.sigla ? t.sigla + ' ' : '') + (t.nome || ''));
   for (const voce of MISS_REPERTORIO) {
     if (voce.tipi && !voce.tipi.includes(t.tipo)) continue;
@@ -648,7 +715,7 @@ const MISS_FASCINO_CATEGORIA = {
 };
 const MISS_FASCINO_FAMIGLIA = {
   luna: 0.9, pianeta: 0.62, stella: 0.46, costellazione: 0.52,
-  profondo: 0.48, stazione: 0.88, evento: 0.8
+  profondo: 0.48, stazione: 0.88, evento: 0.8, mondo3d: 0.6
 };
 
 function missFascinoDi(t) {
@@ -783,6 +850,30 @@ const MISS_TEMPERATURA = { bambini: 5, curiosi: 9, sfida: 12 };
 const MISS_PENALE_RECENTE = 30;
 const MISS_PENALE_RIFIUTATO = 70;
 
+// Quanto vale l'altezza per chi un'altezza non ce l'ha: vedi
+// `missPunteggio`. Sono i punti di un bersaglio a quaranta gradi.
+const MISS_QUOTA_SISTEMA = 14;
+
+/* Il costo di passare dal cielo alla vista 3D, e viceversa.
+ *
+ * La continuità di `missOrdinaPerProgressione` misura quanto cielo c'è da
+ * attraversare fra una tappa e la successiva, e fra una tappa del cielo e
+ * una dei mondi lontani quel numero non esiste: non è un'altra direzione,
+ * è un altro schermo. Il costo però c'è, ed è più alto di qualunque
+ * giravolta — si esce dal buio, si guarda un disegno, si torna a
+ * riadattare gli occhi — quindi si dichiara. Da qui viene, senza che
+ * nessuna riga lo chieda, la cosa giusta: le tappe della vista 3D si
+ * raggruppano fra loro invece di alternarsi al cielo, perché fra due di
+ * loro il salto è zero. */
+const MISS_SALTO_SCHERMO = 200;
+
+function missSaltoFraTappe(a, b) {
+  const aFuori = a && a.tipo === 'mondo3d', bFuori = b && b.tipo === 'mondo3d';
+  if (aFuori && bFuori) return 0;
+  if (aFuori || bFuori) return MISS_SALTO_SCHERMO;
+  return missScartoAzimut(a.azimut, b.azimut);
+}
+
 /* Il sorteggio pesato: la roulette di sempre.
  *
  * Ogni candidato prende una fetta larga `exp((punti - migliore) / T)`, e
@@ -820,7 +911,17 @@ function missPunteggio(c, scelte, condizioni) {
   // --- quanto sale ---
   // Un oggetto alto si vede attraverso meno aria e non sta dietro a
   // niente: vale in tutte e quattro le esperienze.
-  punti += Math.min(30, Math.max(0, (c.altezza - 10)) * 0.45);
+  //
+  // Nella vista 3D non c'è aria e non c'è orizzonte, quindi non c'è
+  // niente da misurare — e le due risposte comode sono tutt'e due
+  // sbagliate. Zero vorrebbe dire trenta punti di svantaggio fisso, cioè
+  // un genere che si accende e non produce quasi mai una tappa; trenta
+  // vorrebbe dire che i mondi lontani battono sempre tutto il resto.
+  // `MISS_QUOTA_SISTEMA` è quanto vale un bersaglio a quaranta gradi, cioè
+  // una via di mezzo onesta: né privilegiato né penalizzato per una
+  // grandezza che lì non esiste.
+  punti += Number.isFinite(c.altezza)
+    ? Math.min(30, Math.max(0, (c.altezza - 10)) * 0.45) : MISS_QUOTA_SISTEMA;
 
   // --- la difficoltà, pesata dal gradino scelto ---
   const pesoDifficolta = { bambini: -14, curiosi: -7, sfida: +5 }[esperienza] || -8;
@@ -949,8 +1050,31 @@ function missVisibileNelCieloLocale(c, scelte) {
   return c.mag <= limite + guadagno && contrasto > contrastoMinimo;
 }
 
+/* Un bersaglio della vista 3D non si cerca nel cielo, e le domande che il
+ * cielo fa non gli si possono fare.
+ *
+ * È la stessa eccezione dei passaggi di stazione (§`missMisuraTappa`),
+ * spinta fino in fondo: lì l'altezza c'era ma era già misurata, qui non
+ * esiste proprio. Sedna non è sopra l'orizzonte, non è dietro al tetto
+ * del vicino, non ha bisogno di un telescopio e non aspetta il
+ * crepuscolo — sta in un disegno. Restano le due domande che hanno un
+ * senso lì dentro: l'ha chiesto chi guarda (il genere), ed è alla sua
+ * altezza (la difficoltà). Il **settore di cielo** non si applica per la
+ * stessa ragione: un quarto di orizzonte è una finestra sul cielo vero,
+ * e questa tappa non ci passa.
+ *
+ * Il rischio di questa scorciatoia è noto ed è quello della ISS: una
+ * famiglia che non passa dai filtri normali può passare da un filtro che
+ * non c'è. Per questo il genere resta il primo controllo e non l'ultimo. */
+function missAmmissibileNelSistema(c, scelte) {
+  if (!missGenereAmmesso(c, scelte)) return false;
+  const difficoltaMassima = MISS_DIFFICOLTA_MASSIMA[scelte.esperienza] ?? 3;
+  return (c.difficolta || 1) <= difficoltaMassima;
+}
+
 function missAmmissibile(c, scelte) {
   if (!c || !c.nome || c.idCielo === 'Sun') return false;
+  if (c.tipo === 'mondo3d') return missAmmissibileNelSistema(c, scelte);
   // Il genere prima di tutto: è una scelta di chi guarda, non una misura
   // del cielo, e non ha senso pesarla contro l'altezza o la magnitudine.
   if (!missGenereAmmesso(c, scelte)) return false;
@@ -1067,7 +1191,7 @@ function missOrdinaPerProgressione(scelti, scelte) {
     const ultimo = fila[fila.length - 1];
     let migliore = 0, costoMigliore = Infinity;
     liberi.forEach((c, i) => {
-      const salto = missScartoAzimut(c.azimut, ultimo.azimut);
+      const salto = missSaltoFraTappe(c, ultimo);
       const costo = (c.difficolta - ultimo.difficolta) * 12
                   + Math.max(0, salto - MISS_SALTO_COMODO_GRADI) * 0.22
                   - c.punti * 0.10;
@@ -1133,7 +1257,12 @@ function missMettiInOrario(fila, fissi, partenzaMs, durataMin, scelte) {
  * cardinale, che c'è sempre. */
 function missAttaccaRiferimenti(tappe, candidati) {
   return tappe.map((t, i) => {
-    const precedente = i > 0 ? tappe[i - 1] : null;
+    // «Parti da Vega e vai a destra di due pugni» non vuol dire niente
+    // per un bersaglio che non sta in cielo: la vista 3D si guarda da
+    // fuori, e lì il riferimento è il Sole al centro e le orbite dei
+    // pianeti, che ci sono sempre e non hanno bisogno di essere scelti.
+    if (t.tipo === 'mondo3d') return Object.assign({}, t, { riferimento: null });
+    const precedente = i > 0 && tappe[i - 1].tipo !== 'mondo3d' ? tappe[i - 1] : null;
     let rif = null;
 
     if (precedente && precedente.evidenza >= 0.5 &&
@@ -1143,7 +1272,7 @@ function missAttaccaRiferimenti(tappe, candidati) {
     } else {
       let migliore = null;
       for (const c of candidati) {
-        if (c.id === t.id || c.evidenza < 0.6) continue;
+        if (c.id === t.id || c.evidenza < 0.6 || c.tipo === 'mondo3d') continue;
         if (missDoppione(t, [c])) continue;
         const salto = missScartoAzimut(c.azimut, t.azimut);
         if (salto > 40) continue;
@@ -1493,6 +1622,15 @@ function missSiglaCostellazione(nomeItaliano) {
 // residuo dichiarato in `scripts/i18n-tetto.json`).
 function missNomeTappa(t) {
   if (!t) return '';
+  /* Il nome di un mondo lontano si rilegge dal dizionario e non si prende
+   * da quello salvato: `sol.mondi` nasce da un `Object.assign`, che di un
+   * nome tradotto copia il **valore** e non il getter, quindi la tappa si
+   * porterebbe dietro la lingua della sera in cui è stata generata. Le
+   * due Voyager una chiave non ce l'hanno — e non ne hanno bisogno. */
+  if (t.tipo === 'mondo3d' && t.idSistema && typeof astroI18n === 'object' &&
+      typeof astroI18n.esiste === 'function' && astroI18n.esiste('corpo.' + t.idSistema)) {
+    return nomeCorpo(t.idSistema);
+  }
   if (['luna', 'pianeta'].includes(t.tipo) && t.idCielo && typeof pianNomePianeta === 'function') return pianNomePianeta(t.idCielo);
   if (t.tipo === 'costellazione' && t.sigla && typeof costNomeFigura === 'function') {
     return costNomeFigura(t.sigla, t.nome);
@@ -1949,6 +2087,106 @@ function missCandidatiAOrarioPreciso(partenzaMs, durataMin) {
   return fuori;
 }
 
+/* 3-quater. I MONDI LONTANI — i candidati che non stanno in cielo
+ *
+ * Sedici bersagli: i quattordici mondi minori di `SOL_MONDI` e le due
+ * Voyager di `SOL_SONDE`, cioè esattamente quello che la vista 3D
+ * disegna oltre ai pianeti (§7.7-bis di `app.js`). Le comete e i tre
+ * satelliti artificiali che quella scena mostra **non** entrano: ci sono
+ * già, di là, come corpi minori e come stazioni — due generi che li
+ * sanno far cercare in cielo, dove si vedono davvero.
+ *
+ * Le posizioni non si calcolano qui, ed è la regola di sempre di questo
+ * file: `solLeggiPosizioni` le sa già fare, tiene in memoria l'istante
+ * che ha appena calcolato e le rifà a ogni fotogramma quando la finestra
+ * è aperta. Chiamarla è una lettura, non uno stato che si sporca — e una
+ * seconda effemeride kepleriana scritta qui sarebbe la solita copia che
+ * il giorno in cui diverge non lo dice nessuno.
+ *
+ * Quanto è difficile trovarli lì dentro non si può stimare da una
+ * magnitudine (nessuno di questi si vede a occhio, e la scena li disegna
+ * tutti uguali): si dichiara. Plutone e le Voyager sono nomi che
+ * chiunque sa dove andare a cercare — uno oltre Nettuno, le altre in
+ * fuga —, Igea e Pallade sono due sassi indistinguibili in mezzo alla
+ * fascia. */
+const MISS_LONTANI_DIFFICOLTA = {
+  Pluto: 2, Ceres: 2, voyager1: 2, voyager2: 2,
+  Vesta: 3, Eris: 3, Makemake: 3, Haumea: 3, Sedna: 3,
+  Pallas: 4, Juno: 4, Hygiea: 4, Chiron: 4, Orcus: 4, Quaoar: 4, Gonggong: 4
+};
+
+/* In che parte del disegno sta, detto come lo direbbe una persona.
+ *
+ * È la sola «direzione» che questo genere possa dare, e prende il posto
+ * del punto cardinale: nella vista 3D non si guarda verso sud-ovest, si
+ * guarda **più in là**. I quattro scalini sono quelli che la scena rende
+ * evidenti — la fascia fra Marte e Giove, il tratto fra i giganti,
+ * l'anello di Kuiper appena oltre Nettuno, e il vuoto che viene dopo. */
+function missZonaDelSistema(ua) {
+  if (!Number.isFinite(ua)) return 'kuiper';
+  if (ua < 4.2) return 'fascia';
+  if (ua < 30.1) return 'giganti';
+  if (ua < 55) return 'kuiper';
+  return 'fuori';
+}
+
+function missCandidatiDelSistema() {
+  if (typeof sol !== 'object' || typeof solLeggiPosizioni !== 'function') return [];
+  try { solLeggiPosizioni(new Date()); } catch (e) { return []; }
+
+  const noti = missTabellaMondi();
+  const dalla3D = []
+    .concat(Array.isArray(sol.mondi) ? sol.mondi : [])
+    .concat(Array.isArray(sol.sonde) ? sol.sonde : []);
+
+  const fuori = [];
+  for (const corpo of dalla3D) {
+    // Solo chi il repertorio conosce: le comete di stasera passano di qui
+    // insieme ai mondi minori (`solLeggiMondi` le mette nello stesso
+    // elenco) e non sono roba di questo genere.
+    if (!corpo || !noti.has(corpo.id)) continue;
+    // Una sonda prima del lancio non si disegna, quindi non si può
+    // toccare: con la macchina del tempo al 1970 sarebbe una tappa che
+    // non si chiude.
+    if (corpo.sonda && corpo.partita === false) continue;
+    const ua = Number.isFinite(corpo.r) ? corpo.r : null;
+    fuori.push(missDecoraCandidato({
+      id: 'mondo3d:' + corpo.id,
+      idSistema: corpo.id,
+      nome: corpo.nome,
+      tipo: 'mondo3d',
+      // La famiglia della scena — `nano`, `asteroide`, `centauro` — è la
+      // parola giusta per la riga della scoperta, e la sa già lei.
+      famiglia3d: corpo.sonda ? 'sonda' : (corpo.famiglia || 'nano'),
+      ua,
+      zona: missZonaDelSistema(ua),
+      anniDiVolo: Number.isFinite(corpo.anniDiVolo) ? corpo.anniDiVolo : null,
+      idCielo: null,
+      // Niente altezza e niente azimut, e non è una dimenticanza: è
+      // quello che `missAmmissibile` e `missPunteggio` riconoscono per
+      // non fare a questa tappa le domande del cielo.
+      altezza: null,
+      azimut: null,
+      quando: null,
+      minutiUtili: 999,
+      strumentoMinimo: 'occhio',
+      mag: null,
+      difficolta: MISS_LONTANI_DIFFICOLTA[corpo.id] || 4,
+      // Nel disegno sono tutti dischetti della stessa misura: quanto
+      // saltino all'occhio dipende da dove stanno, non da quanta luce
+      // mandano. Mezzo punto per tutti, e la differenza la fa la
+      // difficoltà dichiarata qui sopra.
+      evidenza: 0.5,
+      didattica: 1,
+      soffreLaLuna: false,
+      aOrarioPreciso: false,
+      puntiBase: 46
+    }));
+  }
+  return fuori;
+}
+
+
 /* Lo scenario completo: quello che il motore puro riceve in pasto.
  *
  * Qui si raccoglie tutto e si dichiara **cosa manca**. Le tre assenze
@@ -1990,8 +2228,12 @@ function missScenario(scelte, partenzaMs) {
    * è indistinguibile da un cielo che non offre niente. */
   const candidati = missCandidatiDelCielo(obs, campioni, scelte)
     .concat(missCandidatiAOrarioPreciso(partenza, scelte.durata))
+    .concat(missCandidatiDelSistema())
     .filter(t => t.idCielo || (t.tipo === 'costellazione' && t.sigla) ||
-      (t.tipo === 'stella' && t.mira));
+      (t.tipo === 'stella' && t.mira) ||
+      // La quarta strada del riconoscimento: l'identificativo della vista
+      // 3D, che è quello che il dito tocca lì dentro (`solTocco`).
+      (t.tipo === 'mondo3d' && t.idSistema));
 
   const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
   const recenti = (storia.missioniRecenti || [storia.recenti || []]).flat();
@@ -2099,7 +2341,11 @@ function missCaricaScelte() {
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
   if (typeof s.voce === 'boolean') miss.scelte.voce = s.voce;
   miss.scelte.tolleranzaTocco = missTolleranzaTocco(s);
-  miss.scelte.generi = missGeneriScelti(s);
+  // Un elenco che conteneva tutti i generi di allora voleva dire «tutti»,
+  // e quelli aggiunti dopo ci entrano: vedi `MISS_GENERI_STORICI`.
+  const generi = missGeneriScelti(s);
+  miss.scelte.generi = MISS_GENERI_STORICI.every(g => generi.includes(g))
+    ? MISS_GENERI_TUTTI.slice() : generi;
   if (['adesso', 'consigliato', 'personalizzato'].includes(s.momento)) miss.scelte.momento = s.momento;
   if (typeof s.momentoPersonalizzato === 'number' && Number.isFinite(s.momentoPersonalizzato)) {
     miss.scelte.momentoPersonalizzato = s.momentoPersonalizzato;
@@ -2186,10 +2432,31 @@ function missImpostaTempoPlanetario(m, t) {
   else skyImpostaOffsetTempo(0, { reale: true });
 }
 
+/* Dove si va a cercare questa tappa.
+ *
+ * È l'unico posto che deve sapere che le viste sono due: la vista 3D per
+ * i mondi lontani, il planetario per tutto il resto. Chi chiama —
+ * l'avvio, l'avanzamento, la sostituzione — chiede di portarsi sulla
+ * tappa e basta, e da lì in poi il cambio di schermo si fa da sé, che è
+ * la richiesta: «poi passa al planetario quando tocca a lui». */
+function missPortaAllaTappa(indice) {
+  const m = miss.attiva, t = m && m.tappe[indice];
+  if (!t) return false;
+  if (missTappaNelSistema(t)) { missGuidaNelSistema(indice); return true; }
+  if (missTappaPuntabile(t)) { missGuidami(indice); return true; }
+  return false;
+}
+
 // Aprire la mappa e chiedere un indizio sono azioni distinte.
 function missGuidami(indice) {
   const m = miss.attiva, t = m && m.tappe[indice];
-  if (!t || !missTappaPuntabile(t)) return;
+  if (!t) return;
+  if (missTappaNelSistema(t)) { missGuidaNelSistema(indice); return; }
+  if (!missTappaPuntabile(t)) return;
+  // Si arriva qui da una tappa giocata nella vista 3D: quella finestra va
+  // chiusa prima di puntare il cielo, se no il planetario resta dietro a
+  // un disegno a tutto schermo.
+  if (m.nelSistema) missLasciaIlSistema();
   m.corrente = indice;
   // Entrare nel cielo mostra l'indizio principale. Gli aiuti restano una
   // scelta esplicita e non si sommano ogni volta al testo della tappa.
@@ -2236,7 +2503,13 @@ function missBortlePlanetario() {
 
 function missRicercaAttiva() {
   const m = miss.attiva, t = m && m.tappe[m.corrente];
-  return !!(m && m.stato === 'inCorso' && m.nelPlanetario && t && !t.esito && t.fase !== 'scoperta');
+  // Una tappa dei mondi lontani non si cerca qui, e dichiararla in corso
+  // nel planetario non è una svista innocua: accende il modo caccia (i
+  // nomi del cielo spariscono), prova ad attaccare la bussola al telefono
+  // e conta come tentativo sbagliato ogni tocco sul terreno — contro un
+  // bersaglio che in cielo non c'è e non ci sarà.
+  return !!(m && m.stato === 'inCorso' && m.nelPlanetario && t &&
+    !missTappaNelSistema(t) && !t.esito && t.fase !== 'scoperta');
 }
 
 // La modalita' di gioco nel cielo dura anche durante la schermata di
@@ -2257,6 +2530,14 @@ function missTitoloTappa(t) {
 }
 
 function missMisuraTappa(t, data, obs) {
+  /* Un mondo lontano non si rimisura per la stessa ragione di una
+   * stazione, spinta fino in fondo: non si **può** (Sedna non è un corpo
+   * della libreria, e `altAzCorpo` solleva) e non **serve** (non è in
+   * cielo: dov'è lo dice il disegno della vista 3D, che lo rifà a ogni
+   * fotogramma). Quello che si restituisce è la sua non-posizione, che è
+   * proprio quello che `missAmmissibile` riconosce. */
+  if (t.tipo === 'mondo3d') return { altezza: null, azimut: null, sopraOstacoli: null };
+
   /* Un passaggio di stazione non si rimisura, e sono due ragioni diverse.
    *
    * La prima è che non si **può**: «sat-iss» non è un corpo della
@@ -2393,13 +2674,24 @@ function missFeedbackTocco(chiave, esito) {
   missFeedbackVideogioco(esito, testo);
 }
 
+// Il riquadro che si sta **guardando**, e su cui va appoggiato il lampo
+// del riscontro: nella vista 3D il planetario è dietro a un disegno a
+// tutto schermo, e un lampo lì dentro non lo vedrebbe nessuno.
+function missScenaDiGioco() {
+  if (miss.attiva && miss.attiva.nelSistema) {
+    const guscio = document.getElementById('sol-guscio');
+    if (guscio) return guscio;
+  }
+  return document.getElementById('skymap-contenitore');
+}
+
 /* Un tocco deve avere la stessa immediatezza di un videogioco, anche senza
  * aspettare di leggere l'avviso. Il suono e' sintetizzato con Web Audio: non
  * richiede file da scaricare e, nascendo dal gesto sul canvas, rispetta lo
  * sblocco audio dei browser mobili. */
 function missFeedbackVideogioco(esito, testo) {
   if (typeof document === 'undefined') return;
-  const cielo = document.getElementById('skymap-contenitore');
+  const cielo = missScenaDiGioco();
   if (!cielo) return;
   cielo.querySelector('.missione-feedback-gioco')?.remove();
   const segnale = document.createElement('div');
@@ -2836,7 +3128,11 @@ function missTastoSoluzione(t) {
 function missMostraStrisciaCielo() {
   const el = document.getElementById('missione-striscia');
   const m = miss.attiva, t = m && m.tappe[m.corrente];
-  const visibile = !!(m && m.nelPlanetario && m.stato === 'inCorso' && t);
+  // La guida è la stessa nelle due viste: cambia dove sta appesa, non
+  // cosa dice. `missione-ricerca` invece è del solo planetario — è lei a
+  // togliere di mezzo nomi e etichette dal cielo mentre si cerca, e nella
+  // vista 3D non c'è niente da spegnere.
+  const visibile = !!(m && (m.nelPlanetario || m.nelSistema) && m.stato === 'inCorso' && t);
   document.body.classList.toggle('missione-ricerca', visibile && missRicercaAttiva());
   if (!el) return;
   el.classList.toggle('hidden', !visibile);
@@ -2866,7 +3162,7 @@ function missMostraStrisciaCielo() {
     </div>
     <div class="missione-striscia-tasti">
       <button class="missione-tasto${sky.seguiTelefono ? ' attiva' : ''}" data-miss-azione="segui-telefono"
-        ${m.simulazione ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
+        ${m.simulazione || m.nelSistema ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
       ${missNavigazioneIndizi(t)}
       ${missTastoSoluzione(t)}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
@@ -2877,7 +3173,8 @@ function missMostraStrisciaCielo() {
 // Si torna alla missione senza perdere niente: la missione è nello stato,
 // non nel documento, e il pannello la ridisegna da lei.
 function missPausaCielo() {
-  if (!miss.attiva || !miss.attiva.nelPlanetario) return;
+  if (!miss.attiva || !(miss.attiva.nelPlanetario || miss.attiva.nelSistema)) return;
+  missLasciaIlSistema();
   miss.attiva.nelPlanetario = false;
   miss.posizioneStriscia = null;
   const striscia = document.getElementById('missione-striscia');
@@ -2888,10 +3185,220 @@ function missPausaCielo() {
 }
 
 function missTornaDalPlanetario() {
+  missLasciaIlSistema();
   if (miss.attiva) { miss.attiva.nelPlanetario = false; missSalvaAttiva(); }
   missMostraStrisciaCielo();
   if (typeof mostraVista === 'function') mostraVista('stasera');
   missApriPannello();
+}
+
+
+// =====================================================================
+// 5-bis. IL PONTE COLLA VISTA 3D — le tappe che non si cercano in cielo
+//
+//     Un mondo lontano non si punta col telefono: si guarda da fuori. La
+//     tappa si gioca allora nella finestra del Sistema Solare in 3D
+//     (§7.7 di `app.js`), che si apre già a tutto schermo, e la caccia è
+//     la stessa di sempre — un enigma, tre strofe, un dito che tocca il
+//     bersaglio e una scoperta.
+//
+//     Tre cose rendono questo ponte diverso da quello del planetario, e
+//     sono le tre che valeva la pena scrivere.
+//
+//     LA STRISCIA SI TRASLOCA. `#missione-striscia` vive dentro a
+//     `#skymap-contenitore`, e la finestra 3D a tutto schermo ci passa
+//     sopra: restando dov'è, la guida della tappa sarebbe sotto al
+//     disegno, cioè non ci sarebbe. Si porta dentro a `#sol-guscio` per
+//     il tempo della tappa e si rimette dov'era — la stessa cura del
+//     pannello del tempo prestato (§7.5-ter di `app.js`), fatta con gli
+//     stessi due aiutanti.
+//
+//     IL TOCCO NON APRE LA SCHEDA. Toccando un corpo, questa scena mette
+//     al centro la telecamera e scrive il nome in un pannello: durante
+//     una caccia quel nome è la soluzione, e lo sarebbe anche sbagliando
+//     — scartare Eris avendone letto il nome è comunque mezzo enigma
+//     regalato. Il tocco lo intercetta `missSelezionaSistema`, agganciata
+//     in cima a `solTocco`, esattamente come `missSelezionaCielo` è
+//     agganciata a `skyOggettoNelPunto`.
+//
+//     L'INQUADRATURA DEVE CONTENERE IL BERSAGLIO SENZA NOMINARLO. Con
+//     Sedna a ottantacinque unità astronomiche, la vista d'ingresso —
+//     che arriva a Saturno — lo lascerebbe fuori dallo schermo: una
+//     tappa che non si può chiudere. La cornice si allarga fin dove sta
+//     il bersaglio (`solInquadraDaTerra({ ua })`) senza sceglierlo,
+//     perché `sol.scelto` aprirebbe la sua scheda.
+// =====================================================================
+
+// Questa tappa si gioca nella vista 3D?
+function missTappaNelSistema(t) {
+  return !!(t && t.tipo === 'mondo3d' && t.idSistema);
+}
+
+// Dove sta la striscia mentre è in prestito alla finestra 3D. È una mappa
+// come `skyModaliOspitate`, e per la stessa ragione: si ricorda il padre
+// **e** il fratello che veniva dopo.
+const missStrisciaOspitata = new Map();
+
+function missStrisciaNelSistema() {
+  const el = document.getElementById('missione-striscia');
+  const guscio = document.getElementById('sol-guscio');
+  if (!el || !guscio || el.parentElement === guscio) return;
+  if (typeof skyRicordaPosto === 'function') skyRicordaPosto(missStrisciaOspitata, el);
+  guscio.appendChild(el);
+  // La posizione trascinata è quella dell'altro riquadro: qui dentro
+  // cadrebbe dove capita, spesso fuori dallo schermo.
+  el.removeAttribute('style');
+  miss.posizioneStriscia = null;
+}
+
+function missStrisciaAlSuoPosto() {
+  const el = document.getElementById('missione-striscia');
+  if (!el || !missStrisciaOspitata.has(el)) return;
+  if (typeof skyRimettiAlSuoPosto === 'function') skyRimettiAlSuoPosto(missStrisciaOspitata, el);
+  el.removeAttribute('style');
+  miss.posizioneStriscia = null;
+}
+
+/* Quanto largo deve essere il quadro perché il bersaglio ci stia dentro.
+ *
+ * Un margine e non la distanza esatta: un dischetto appoggiato sul bordo
+ * dello schermo è un dischetto che non si tocca. Il taglio al bordo del
+ * disegno lo fa `solInquadraDaTerra`, che è l'unico posto in cui quel
+ * numero è noto. */
+const MISS_SISTEMA_MARGINE = 1.35;
+
+function missGuidaNelSistema(indice) {
+  const m = miss.attiva, t = m && m.tappe[indice];
+  if (!t || !missTappaNelSistema(t)) return;
+  if (typeof apriSistemaSolare !== 'function' || typeof sol !== 'object') {
+    // Senza la vista 3D la tappa non si può giocare: si racconta e basta,
+    // invece di aprire una finestra che non c'è.
+    missRaccontaTappa(t);
+    return;
+  }
+  m.corrente = indice;
+  t.mostraAiuto = false;
+  m.nelPlanetario = false;
+  m.nelSistema = true;
+  missSalvaAttiva();
+  missChiudiPannello({ tieniMissione: true });
+  // Il planetario resta la vista sotto: chiudendo la finestra 3D ci si
+  // torna, ed è lì che la tappa dopo andrà a cercare il suo bersaglio.
+  if (typeof mostraVista === 'function') mostraVista('cielo');
+  if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
+  /* L'orologio prima della finestra, ed è la stessa riga di `missGuidami`.
+   * La vista 3D non ha un tempo suo: legge `skyAdesso()`, che è l'orologio
+   * del planetario (§7.7 di `app.js`). Una missione preparata per il
+   * crepuscolo mostrerebbe altrimenti il Sistema Solare di **adesso**
+   * mentre la tappa parla di fra un'ora e mezza — e a occhio non si
+   * vedrebbe, perché in novanta minuti Sedna non si sposta di un pixel:
+   * si vedrebbe soltanto tornando al cielo, che salterebbe indietro. */
+  skyFermaPlayback();
+  missImpostaTempoPlanetario(m, t);
+  apriSistemaSolare();
+  // Le due famiglie di §7.7-bis nascono spente per chi le ha spente: con
+  // loro spente il bersaglio non è disegnato, cioè non è toccabile.
+  sol.mondiAccesi = true;
+  sol.sondeAccese = true;
+  // Nessun corpo scelto: una scheda aperta col nome dentro è la soluzione
+  // stampata sopra al disegno.
+  sol.scelto = null;
+  sol.perno = null;
+  if (typeof solChiudiScheda === 'function') solChiudiScheda();
+  // L'inquadratura arriva dopo il fotogramma d'ingresso, che `apriSistemaSolare`
+  // si prende per misurare la tela e leggere le posizioni: chiedendola
+  // prima si calcolerebbe su un riquadro largo zero.
+  requestAnimationFrame(() => {
+    if (!sol.aperto) return;
+    if (typeof solInquadraDaTerra === 'function' && Number.isFinite(t.ua)) {
+      solInquadraDaTerra({ ua: t.ua * MISS_SISTEMA_MARGINE });
+    }
+    if (typeof solAggiornaTasti === 'function') solAggiornaTasti();
+    if (typeof solDisegna === 'function') solDisegna();
+  });
+  missStrisciaNelSistema();
+  missMostraStrisciaCielo();
+  missRaccontaTappa(t);
+}
+
+// La caccia è in corso qui dentro? È il gemello di `missRicercaAttiva`,
+// e vale per le stesse tre condizioni: missione in corso, siamo nella
+// vista giusta, la tappa non è ancora chiusa.
+function missRicercaSistema() {
+  const m = miss.attiva, t = m && m.tappe[m.corrente];
+  return !!(m && m.stato === 'inCorso' && m.nelSistema &&
+    typeof sol === 'object' && sol && sol.aperto &&
+    t && missTappaNelSistema(t) && !t.esito && t.fase !== 'scoperta');
+}
+
+/* Il tocco sulla scena, agganciato in cima a `solTocco`.
+ *
+ * Restituisce `true` quando la missione se l'è preso — e allora la scena
+ * non deve fare nient'altro. Un tocco a vuoto (`id` nullo) durante la
+ * caccia si prende lo stesso: serve a non lasciare che lo spazio vuoto
+ * chiuda la scheda di un corpo che comunque non è aperta, e soprattutto
+ * a non far sembrare che il tocco non sia arrivato. */
+function missSelezionaSistema(id) {
+  if (!missRicercaSistema()) return false;
+  const m = miss.attiva, t = m.tappe[m.corrente];
+  if (!id) return true;
+  if (id === t.idSistema) {
+    t.fase = 'scoperta';
+    t.esito = 'trovato';
+    t.quandoEsito = Date.now();
+    t.feedback = null;
+    missSegnaTrovato(t);
+    missFeedbackTocco('gioco.feedbackGiusto', 'vittoria');
+    missFermaVoce();
+    missRaccontaTappa(t);
+  } else {
+    t.tentativi = (t.tentativi || 0) + 1;
+    t.feedback = null;
+    // «Vicino» qui vuol dire vicino **nella scena**: due corpi alla stessa
+    // distanza dal Sole sono due dischetti quasi sullo stesso anello, e
+    // chi ha toccato Makemake cercando Haumea era sulla strada giusta.
+    const scelto = typeof solCorpoDiId === 'function' ? solCorpoDiId(id) : null;
+    const vicino = scelto && Number.isFinite(scelto.r) && Number.isFinite(t.ua) &&
+      Math.abs(scelto.r - t.ua) < Math.max(3, t.ua * 0.3);
+    missFeedbackTocco(vicino ? 'gioco.feedbackVicino' : 'gioco.feedbackSbagliato', 'errore');
+  }
+  missSalvaAttiva();
+  missMostraStrisciaCielo();
+  return true;
+}
+
+/* La finestra 3D si è chiusa mentre una tappa si giocava lì dentro.
+ *
+ * Ci si arriva in tre modi — la × della finestra, l'Escape, e la
+ * chiusura che facciamo noi passando a una tappa del cielo — e in tutti
+ * e tre la striscia va restituita **prima** che il modale sparisca, se no
+ * resta murata dentro a una finestra nascosta e la missione diventa
+ * invisibile senza essere finita. Chiamata da `chiudiSistemaSolare`. */
+function missSistemaChiuso() {
+  missStrisciaAlSuoPosto();
+  if (!miss.attiva || !miss.attiva.nelSistema) { missMostraStrisciaCielo(); return; }
+  miss.attiva.nelSistema = false;
+  /* Chiusa la finestra, sotto c'è il planetario — e la tappa di adesso è
+   * un mondo lontano, che lì non c'è. Lasciare la guida appesa al cielo
+   * sarebbe una caccia dichiarata aperta su un bersaglio che non ci
+   * sarà: i nomi del cielo spariscono, la bussola si accende, e ogni
+   * tocco conta come «no, non è questo». Si torna quindi al pannello,
+   * che è il posto da cui la tappa si riapre — chi ha chiuso la finestra
+   * ha chiesto di uscire, non di continuare altrove. */
+  miss.attiva.nelPlanetario = false;
+  missFermaVoce();
+  missSalvaAttiva();
+  missMostraStrisciaCielo();
+  if (miss.attiva.stato === 'inCorso' && !miss.aperto) missApriPannello();
+}
+
+// Uscire dalla vista 3D quando la missione va altrove. La striscia la
+// restituisce `missSistemaChiuso`, che `chiudiSistemaSolare` chiama da sé.
+function missLasciaIlSistema() {
+  if (miss.attiva) miss.attiva.nelSistema = false;
+  if (typeof sol === 'object' && sol.aperto && typeof chiudiSistemaSolare === 'function') {
+    chiudiSistemaSolare();
+  } else missStrisciaAlSuoPosto();
 }
 
 
@@ -2959,8 +3466,7 @@ function missAvvia(missione, quando) {
   missMostraVista('inCorso');
   // Appena comincia la tappa, il pannello lascia libero il cielo: cercare
   // il bersaglio nel planetario e muovere la vista e' il cuore del gioco.
-  if (missTappaPuntabile(miss.attiva.tappe[0])) missGuidami(0);
-  else missRaccontaTappa(miss.attiva.tappe[0]);
+  if (!missPortaAllaTappa(0)) missRaccontaTappa(miss.attiva.tappe[0]);
 }
 
 /* Gli orari rifatti sul cielo di adesso.
@@ -3002,7 +3508,10 @@ function missAvanza() {
   missFermaVoce();
   const m = miss.attiva;
   if (!m) return;
-  const eraNelPlanetario = !!m.nelPlanetario;
+  // «Si stava giocando» vale per tutt'e due gli schermi: chi ha appena
+  // trovato Plutone nella vista 3D e ha davanti una tappa del cielo deve
+  // trovarsi il planetario, non il pannello.
+  const eraInGioco = !!(m.nelPlanetario || m.nelSistema);
   const prossima = m.tappe.findIndex(t => !t.esito);
   if (prossima < 0) { missConcludi(); return; }
   m.corrente = prossima;
@@ -3010,9 +3519,10 @@ function missAvanza() {
   missSalvaAttiva();
   missMostraVista('inCorso');
   // Nel percorso interattivo anche la tappa successiva nasce direttamente
-  // nel planetario, senza il lampeggio della finestra fra una domanda e l'altra.
-  if (eraNelPlanetario && missTappaPuntabile(m.tappe[prossima])) missGuidami(prossima);
-  else if (eraNelPlanetario) missTornaDalPlanetario();
+  // nella sua vista, senza il lampeggio della finestra fra una domanda e
+  // l'altra — e cambiando vista quando la tappa cambia natura.
+  if (eraInGioco && missPortaAllaTappa(prossima)) return;
+  if (eraInGioco) missTornaDalPlanetario();
   else missRaccontaTappa(m.tappe[prossima]);
 }
 
@@ -3067,7 +3577,13 @@ function missMostraSoluzione() {
   t.aiuto = MISS_INDIZI;
   t.mostraAiuto = true;
   t.indizioMostrato = MISS_INDIZI;
-  if (m.nelPlanetario) {
+  // Nella vista 3D «portare il bersaglio al centro» è quello che fa il
+  // tocco su un corpo: si sceglie per lui, e la scheda che si apre col
+  // nome dentro qui è quello che si è appena chiesto.
+  if (m.nelSistema && missTappaNelSistema(t) && typeof solScegli === 'function' &&
+      typeof sol === 'object' && sol.aperto) {
+    if (sol.scelto !== t.idSistema) solScegli(t.idSistema);
+  } else if (m.nelPlanetario) {
     if (typeof skyUsaSensori === 'function' && skyUsaSensori() &&
         typeof skyAlternaSeguiTelefono === 'function') skyAlternaSeguiTelefono();
     const ora = missTappaNelPlanetario(t);
@@ -3125,7 +3641,7 @@ function missSostituisci(indice) {
   missSalvaAttiva();
   missAvvisa('gioco.sostituita', {}, 'bene');
   missMostraVista('inCorso');
-  if (m.nelPlanetario) missGuidami(indice);
+  if (m.nelPlanetario || m.nelSistema) missPortaAllaTappa(indice);
   return true;
 }
 
@@ -3133,7 +3649,11 @@ function missConcludi() {
   missFermaVoce();
   const m = miss.attiva;
   if (!m) return;
-  const eraNelPlanetario = !!m.nelPlanetario;
+  const eraNelPlanetario = !!(m.nelPlanetario || m.nelSistema);
+  // La finestra 3D si chiude qui: il risultato della serata si legge nel
+  // pannello, e lasciare aperto un disegno a tutto schermo sopra di lui
+  // vorrebbe dire concludere una missione senza vederla conclusa.
+  missLasciaIlSistema();
   m.stato = 'conclusa';
   m.conclusa = Date.now();
   m.durataRealeMin = Math.max(1, Math.round((m.conclusa - (m.avviata || m.conclusa)) / 60000));
@@ -3160,6 +3680,7 @@ function missConcludi() {
 
 function missAbbandona() {
   missFermaVoce();
+  missLasciaIlSistema();
   miss.attiva = null;
   miss.anteprima = null;
   missSalvaAttiva();
@@ -3598,7 +4119,7 @@ const MISS_CHIAVI_BAMBINI = new Set([
   // L'esclamazione della scoperta: coi bambini sale di un gradino, che è
   // l'unico posto di questo file in cui esagerare è la cosa giusta.
   'gioco.evviva.1', 'gioco.evviva.2', 'gioco.evviva.3',
-  'gioco.scoperta', 'gioco.continua', 'gioco.apriCielo', 'gioco.altraStoria',
+  'gioco.scoperta', 'gioco.continua', 'gioco.apriCielo', 'gioco.apriSistema', 'gioco.altraStoria',
   'gioco.quasi', 'gioco.mistero', 'gioco.soluzioneE',
   // la scheda in Stasera e la configurazione
   'invito', 'preparami', 'unaltra', 'cambiaScelte', 'riprendi', 'vediRisultato',
@@ -4067,7 +4588,8 @@ function missHtmlInCorso(m) {
     <h3>${missTesto(missTitoloTappa(t))}</h3>
     <p>${missTesto(missTestoIndizio(t))}</p>
     <div class="missione-azioni">
-      <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${missT('gioco.apriCielo')}</button>
+      <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${
+        missT(missTappaNelSistema(t) ? 'gioco.apriSistema' : 'gioco.apriCielo')}</button>
       ${missNavigazioneIndizi(t)}
       ${missTastoSoluzione(t)}
       <button class="missione-tasto" data-miss-azione="salta">${missT('salta')}</button>
@@ -4145,7 +4667,8 @@ function missQuanteVarianti(prefisso, massimo) {
 }
 
 function missFamigliaContenuto(t) {
-  return ['luna', 'pianeta', 'stella', 'costellazione', 'profondo'].includes(t.tipo) ? t.tipo : 'profondo';
+  return ['luna', 'pianeta', 'stella', 'costellazione', 'profondo', 'mondo3d'].includes(t.tipo)
+    ? t.tipo : 'profondo';
 }
 
 /* Di che genere è una tappa, per dirlo senza dirne il nome.
@@ -4172,7 +4695,7 @@ function missBaseRacconto(t) {
   if (slug) return slug;
   const categoria = missCategoriaTappa(t);
   if (categoria) return categoria;
-  return ['profondo', 'costellazione', 'stella', 'pianeta', 'luna', 'stazione'].includes(t.tipo)
+  return ['profondo', 'costellazione', 'stella', 'pianeta', 'luna', 'stazione', 'mondo3d'].includes(t.tipo)
     ? t.tipo : 'generica';
 }
 
@@ -4289,8 +4812,13 @@ function missIntroduzione(t) {
   pezzi.push(missEnigma(t));
   if (g.segno) pezzi.push(missSegnoTappa(t));
   if (g.aiutoSubito) {
-    const dove = missDoveOra(t);
-    if (dove) pezzi.push(missT('gioco.direzione.' + n, { dove }));
+    // La «direzione» di un mondo lontano è quanto in là sta, non da che
+    // parte: nella vista 3D il punto cardinale non esiste.
+    if (t.tipo === 'mondo3d') pezzi.push(missT('gioco.lontano.zona.' + (t.zona || 'kuiper') + '.' + n));
+    else {
+      const dove = missDoveOra(t);
+      if (dove) pezzi.push(missT('gioco.direzione.' + n, { dove }));
+    }
   }
   return pezzi.filter(Boolean).join(' ');
 }
@@ -4379,7 +4907,38 @@ function missEnigmaSeguito(t, stanza) {
  * l'ha già avuto con l'enigma, cioè agli esperti (§`MISS_GENEROSITA`);
  * ripeterlo agli altri vorrebbe dire spendere una strofa per non dire
  * niente di nuovo. */
+/* Le due strofe di un mondo lontano.
+ *
+ * La geometria c'è come per gli altri, ma è un'altra geometria: non
+ * «verso sud-ovest, a metà cielo» — lassù non c'è un sud — ma **quanto in
+ * là**, che è l'unica coordinata che quella scena mostri. La seconda
+ * strofa dà la zona (la fascia fra Marte e Giove, l'anello oltre
+ * Nettuno, il vuoto che viene dopo), la terza la distanza in unità
+ * astronomiche e in ore-luce: due numeri veri che si possono confrontare
+ * con quello che si sta guardando, perché le orbite dei pianeti sono
+ * disegnate lì accanto e fanno da righello.
+ *
+ * Nessuna delle due nomina il bersaglio, ed è la regola di tutte le
+ * strofe: dicono dove guardare, non chi si sta guardando. */
+function missIndizioSistema(t, stanza) {
+  const seguito = missEnigmaSeguito(t, stanza);
+  const n = missVarianteEnigma(t);
+  if (stanza === 2) {
+    return [seguito, missT('gioco.lontano.zona.' + (t.zona || 'kuiper') + '.' + n)]
+      .filter(Boolean).join(' ');
+  }
+  const ua = Number.isFinite(t.ua) ? t.ua : null;
+  // Un'unità astronomica sono 499 secondi luce: lo stesso conto del
+  // cartellino, e lo stesso motivo — un numero che si può immaginare.
+  const seconda = ua === null ? '' : missT('gioco.lontano.distanza.' + n, {
+    ua: Math.round(ua * 10) / 10,
+    ore: Math.round(ua * 499.005 / 360) / 10
+  });
+  return [seguito, seconda].filter(Boolean).join(' ');
+}
+
 function missIndizioDue(t) {
+  if (t.tipo === 'mondo3d') return missIndizioSistema(t, 2);
   const ora = missTappaNelPlanetario(t);
   // Se non e' cercabile non mostriamo piu' il vecchio invito ad
   // abbandonare la serata: la striscia offre direttamente «Vai alle…».
@@ -4404,6 +4963,7 @@ function missIndizioDue(t) {
  * argomento invece di inventarsi un vicino: parla della solitudine di quel
  * pezzo di cielo, che è vera e che è già un indizio. */
 function missIndizioTre(t) {
+  if (t.tipo === 'mondo3d') return missIndizioSistema(t, 3);
   const ora = missTappaNelPlanetario(t);
   if (!missAmmissibile(ora, miss.attiva.scelte)) return '';
   const n = missVarianteEnigma(t);
@@ -4432,12 +4992,19 @@ function missIndizio(t) {
   const livello = t.aiuto || 0;
   if (livello === 1) return missIndizioDue(t);
   if (livello >= 2) return missIndizioTre(t);
+  if (t.tipo === 'mondo3d') return missT('gioco.lontano.zona.' + (t.zona || 'kuiper') + '.' + missVarianteEnigma(t));
   const ora = missTappaNelPlanetario(t);
   if (!missAmmissibile(ora, miss.attiva.scelte)) return '';
   return missT('gioco.direzione.' + missVarianteEnigma(t), { dove: astroI18n.nomePunto(ora.azimut) });
 }
 
 function missVicino(t) {
+  // Un mondo lontano non ha vicini in cielo: senza questa riga le
+  // distanze si calcolano da un'altezza `null`, vengono tutte `NaN`, e
+  // i due confronti «troppo vicino» e «troppo lontano» falliscono
+  // entrambi — cioè si restituisce la prima stella luminosa dell'elenco
+  // come se fosse lì accanto.
+  if (!t || t.tipo === 'mondo3d') return null;
   const ora = missTappaAdesso(t);
   if (typeof SKY_STELLE === 'undefined') return null;
   const candidati = SKY_STELLE.map((s, i) => ({ nome: s.nome, tipo: 'stella',
@@ -4487,6 +5054,23 @@ function missDomanda(t) {
 function missCartellino(t) {
   if (!t) return '';
   try {
+    /* Un mondo lontano si misura in **ore di luce**, e non è un vezzo: è
+     * il numero che rende immaginabile una distanza che in chilometri non
+     * dice niente. Da Plutone la luce ci mette cinque ore e mezza, dalla
+     * Voyager 1 quasi un giorno intero — cioè un comando spedito adesso
+     * la raggiunge domani. La distanza è quella eliocentrica, che è la
+     * stessa che la scena disegna. */
+    if (t.tipo === 'mondo3d' && Number.isFinite(t.ua)) {
+      const ore = t.ua * 499.005 / 3600;
+      if (Number.isFinite(t.anniDiVolo) && t.anniDiVolo > 0) {
+        return missT('gioco.cartellino.sonda', {
+          anni: Math.round(t.anniDiVolo), ore: Math.round(ore * 10) / 10
+        });
+      }
+      return ore < 1
+        ? missT('gioco.cartellino.minutiLuce', { n: Math.round(ore * 60) })
+        : missT('gioco.cartellino.oreLuce', { n: Math.round(ore * 10) / 10 });
+    }
     if (t.tipo === 'stella' && Number.isFinite(t.anniLuce) && t.anniLuce > 0) {
       const anni = Math.round(t.anniLuce);
       const anno = new Date().getFullYear() - anni;
@@ -4536,6 +5120,9 @@ function missMeseDiCulmine(raOre) {
 // famiglia. È la riga che dà un nome alla cosa, prima che l'aneddoto
 // racconti la sua storia.
 function missSpecieTappa(t) {
+  // «Pianeta nano», «asteroide», «centauro», «sonda»: la parola giusta la
+  // sa già la scena, che con quella decide il colore del nome.
+  if (t && t.tipo === 'mondo3d') return missT('specie.mondo.' + (t.famiglia3d || 'nano'));
   if (t && t.tipo === 'profondo') {
     const categoria = missCategoriaTappa(t);
     if (categoria) return missT('specie.' + categoria);
@@ -5521,6 +6108,15 @@ const missProve = {
   alboConMissione: missAlboConMissione,
   ssmlRisalta: missSsmlRisalta,
   testoVoceTappa: missTestoVoceTappa,
+  // I mondi lontani: la cernita, il salto fra i due schermi e la zona
+  // che prende il posto del punto cardinale.
+  ammissibileNelSistema: missAmmissibileNelSistema,
+  tappaNelSistema: missTappaNelSistema,
+  saltoFraTappe: missSaltoFraTappe,
+  zonaDelSistema: missZonaDelSistema,
+  specieTappa: missSpecieTappa,
+  famigliaContenuto: missFamigliaContenuto,
+  genereTappa: missGenereTappa,
   costanti: {
     MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI, MISS_BORTLE,
     MISS_TOLLERANZA_PREDEFINITA, MISS_TOLLERANZA_MIN, MISS_TOLLERANZA_MAX,
@@ -5528,7 +6124,8 @@ const missProve = {
     MISS_DIFFICOLTA_GRADITA, MISS_GENEROSITA, MISS_REPERTORIO,
     MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
-    MISS_GENERI, MISS_GENERI_TUTTI, MISS_GENERE_DI_TIPO, MISS_TEMPERATURA,
+    MISS_GENERI, MISS_GENERI_TUTTI, MISS_GENERE_DI_TIPO, MISS_GENERI_STORICI,
+    MISS_LONTANI_DIFFICOLTA, MISS_QUOTA_SISTEMA, MISS_SALTO_SCHERMO, MISS_TEMPERATURA,
     MISS_PENALE_RECENTE, MISS_PENALE_RIFIUTATO, MISS_MISSIONI_DA_RICORDARE,
     MISS_INDIZI, MISS_VOCI_EDGE, MISS_TONI_VOCE, MISS_CHIAVI_BAMBINI,
     MISS_PREMI, MISS_PUNTI, MISS_COPPE, MISS_ALBO_VERSIONE,
