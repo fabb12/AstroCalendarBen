@@ -1187,7 +1187,13 @@ prova('nessuna voce del repertorio ha uno slug doppio o un fascino fuori scala',
     assert.ok(!visti.has(v.slug), 'slug ripetuto: ' + v.slug);
     visti.add(v.slug);
     assert.ok(v.fascino >= 0 && v.fascino <= 1, `${v.slug} ha fascino ${v.fascino}`);
-    assert.ok(v.prova || (v.sigle && v.sigle.length), v.slug + ' non si riconosce in nessun modo');
+    // Le strade del riconoscimento sono tre, e sono tre perché tre sono i
+    // dati che non cambiano con la lingua: il nome per chi ce l'ha uguale
+    // in italiano e in inglese (`prova`), la sigla di catalogo per il
+    // cielo profondo (`sigle`), l'identificativo della vista 3D per i
+    // mondi lontani (`mondi`) — «Giunone» in inglese è «Juno».
+    assert.ok(v.prova || (v.sigle && v.sigle.length) || (v.mondi && v.mondi.length),
+      v.slug + ' non si riconosce in nessun modo');
   }
 });
 
@@ -1360,6 +1366,221 @@ prova('nessun enigma svela il nome del bersaglio che sta chiedendo', () => {
   }
   assert.deepStrictEqual(colpevoli, [], colpevoli.join(', '));
 });
+
+// =====================================================================
+sezione('i mondi lontani: le tappe che non si cercano in cielo');
+
+/* La famiglia che a occhio non si giudica affatto, e per una ragione
+ * che vale la pena scrivere: **una tappa impossibile, qui, è identica a
+ * una tappa giusta**. Nel planetario un bersaglio sotto l'orizzonte
+ * almeno non si vede; nella vista 3D tutto quello che il disegno mostra
+ * si può toccare, sempre, quindi il difetto non è «non lo trovo» ma
+ * qualcosa che non lascia traccia — un mondo lontano buttato fuori da un
+ * filtro del cielo che non lo riguarda (un settore di orizzonte, il
+ * crepuscolo, il telescopio che non si ha), oppure il contrario: un
+ * bersaglio che passa perché *nessun* filtro lo tocca più.
+ *
+ * Sono esattamente i due errori della ISS (§`missMisuraTappa`), e si
+ * provano dai due lati. */
+function mondoLontano(id, extra) {
+  return candidato('mondo3d:' + id, Object.assign({
+    idSistema: id, nome: id, tipo: 'mondo3d', idCielo: null,
+    altezza: null, azimut: null, sopraOstacoli: null, quando: null,
+    ua: 39, zona: 'kuiper', famiglia3d: 'nano',
+    minutiUtili: 999, strumentoMinimo: 'occhio', mag: null,
+    difficolta: 2, evidenza: 0.5, didattica: 1, puntiBase: 46
+  }, extra || {}));
+}
+
+prova('un mondo lontano entra pur non avendo nessuna posizione in cielo', () => {
+  const c = mondoLontano('Pluto');
+  assert.ok(motore.ammissibile(c, { esperienza: 'curiosi', strumento: 'occhio' }),
+    'senza altezza e senza azimut resta ammissibile');
+});
+
+prova('i filtri del cielo non si applicano a chi in cielo non sta', () => {
+  const c = mondoLontano('Pluto');
+  // Un settore di orizzonte, un occhio nudo e un ostacolo dichiarato: tre
+  // domande che al planetario hanno senso e qui non ne hanno nessuno.
+  const scelte = { esperienza: 'curiosi', strumento: 'occhio',
+    cielo: 'settore', cieloDa: 135, cieloA: 180 };
+  assert.ok(motore.ammissibile(c, scelte), 'il settore di cielo non lo riguarda');
+  // …e il contro-esempio, cioè cosa succederebbe passando dalla strada
+  // del cielo: un'altezza nulla non supera nessun minimo.
+  const comeSeFosseInCielo = Object.assign({}, c, { tipo: 'pianeta' });
+  assert.ok(!motore.ammissibile(comeSeFosseInCielo, scelte),
+    'con il tipo di un pianeta lo stesso candidato cadrebbe');
+});
+
+prova('ma il genere e la difficoltà restano, e sono due filtri veri', () => {
+  const facile = mondoLontano('Pluto', { difficolta: 2 });
+  const duro = mondoLontano('Sedna', { difficolta: 4 });
+  assert.ok(!motore.ammissibile(facile,
+    { esperienza: 'curiosi', strumento: 'occhio', generi: ['pianeti'] }),
+    'con «lontani» spento non passa niente di questa famiglia');
+  assert.ok(motore.ammissibile(facile, { esperienza: 'bambini', strumento: 'occhio' }),
+    'ai bambini restano i quattro nomi che tutti conoscono');
+  assert.ok(!motore.ammissibile(duro, { esperienza: 'bambini', strumento: 'occhio' }),
+    'e non i sassi che nessuno saprebbe distinguere');
+  assert.ok(motore.ammissibile(duro, { esperienza: 'sfida', strumento: 'occhio' }),
+    'che invece sono la serata di chi ha chiesto una sfida');
+});
+
+prova('il genere «lontani» esiste, ed è nuovo rispetto a quelli salvati', () => {
+  assert.ok(K.MISS_GENERI_TUTTI.includes('lontani'));
+  assert.strictEqual(K.MISS_GENERE_DI_TIPO.mondo3d, 'lontani');
+  assert.ok(!K.MISS_GENERI_STORICI.includes('lontani'),
+    'sta fuori dai generi storici: è quello che lo fa entrare in un «tutti» salvato prima');
+});
+
+prova('senza altezza il punteggio non crolla, e non sfonda', () => {
+  /* Il difetto che un `null` produce senza dirlo: `Math.min(30, …)` su
+   * un'altezza nulla vale zero, cioè trenta punti di svantaggio fisso —
+   * con la temperatura dei curiosi un peso venti volte più piccolo, cioè
+   * un genere che si accende e non produce quasi mai una tappa. */
+  const scelte = { esperienza: 'curiosi', strumento: 'occhio' };
+  const lontano = motore.punteggio(mondoLontano('Pluto'), scelte, {});
+  const aZero = motore.punteggio(mondoLontano('Pluto', { altezza: 0 }), scelte, {});
+  const alloZenit = motore.punteggio(mondoLontano('Pluto', { altezza: 90 }), scelte, {});
+  assert.ok(lontano > aZero, `${lontano} contro ${aZero}: non parte da zero`);
+  assert.ok(lontano < alloZenit, `${lontano} contro ${alloZenit}: e non vale uno zenit`);
+  assert.ok(Number.isFinite(lontano), 'il punteggio è un numero');
+});
+
+prova('le tappe della vista 3D si raggruppano invece di alternarsi al cielo', () => {
+  /* Non c'è nessuna riga che lo chieda: viene da `missSaltoFraTappe`, che
+   * fra due mondi lontani dichiara salto zero e fra un mondo e il cielo
+   * il costo di cambiare schermo. Il difetto che toglie è quello che a
+   * occhio si leggerebbe come un'app impazzita: cielo, disegno, cielo,
+   * disegno, quattro cambi di vista in venti minuti. */
+  assert.strictEqual(motore.saltoFraTappe(mondoLontano('a'), mondoLontano('b')), 0);
+  assert.strictEqual(motore.saltoFraTappe(mondoLontano('a'), candidato('x')), K.MISS_SALTO_SCHERMO);
+  assert.ok(K.MISS_SALTO_SCHERMO > 180,
+    'più caro di qualunque giravolta: mezzo giro di orizzonte sono centottanta gradi');
+
+  const cielo = [
+    candidato('pianeta:Jupiter', { nome: 'Giove', azimut: 170, difficolta: 1, evidenza: 0.95 }),
+    candidato('pianeta:Saturn', { nome: 'Saturno', azimut: 200, difficolta: 2, evidenza: 0.7 }),
+    candidato('stella:Star2', { tipo: 'stella', nome: 'Sirio', azimut: 160, difficolta: 1, evidenza: 0.9 })
+  ];
+  const scelti = cielo.concat([
+    mondoLontano('Pluto', { nome: 'Plutone', difficolta: 2 }),
+    mondoLontano('Eris', { nome: 'Eris', difficolta: 3 })
+  ]);
+  const { fila } = motore.ordina(scelti, { esperienza: 'curiosi' });
+  const posizioni = fila.map((t, i) => (t.tipo === 'mondo3d' ? i : -1)).filter(i => i >= 0);
+  assert.strictEqual(posizioni.length, 2, 'ci sono tutte e due');
+  assert.strictEqual(posizioni[1] - posizioni[0], 1,
+    'e sono una accanto all\'altra: ' + fila.map(t => t.nome).join(' → '));
+});
+
+prova('a un mondo lontano non si appiccica una stella di riferimento', () => {
+  // «Parti da Sirio e vai a destra di due pugni» è un'istruzione per il
+  // cielo, e qui sarebbe una bugia detta con la faccia di un aiuto.
+  const cielo = candidato('stella:Star2', { tipo: 'stella', nome: 'Sirio', azimut: 180, evidenza: 0.9 });
+  const [tappa] = motore.riferimenti([mondoLontano('Pluto')], [cielo]);
+  assert.strictEqual(tappa.riferimento, null);
+  // …e nemmeno il contrario: un mondo lontano non fa da maniglia a
+  // nessuno, perché nessuno lo vede uscendo di casa.
+  const [dopo] = motore.riferimenti(
+    [candidato('profondo:M31', { tipo: 'profondo', nome: 'M31', azimut: 180, evidenza: 0.3 })],
+    [mondoLontano('Pluto', { evidenza: 0.95, azimut: 180 })]);
+  assert.strictEqual(dopo.riferimento, null);
+});
+
+prova('la zona prende il posto del punto cardinale, e cresce coi chilometri', () => {
+  assert.strictEqual(motore.zonaDelSistema(2.8), 'fascia');      // Cerere
+  assert.strictEqual(motore.zonaDelSistema(17), 'giganti');      // Chirone
+  assert.strictEqual(motore.zonaDelSistema(35), 'kuiper');       // Plutone
+  assert.strictEqual(motore.zonaDelSistema(85), 'fuori');        // Sedna oggi
+  // Neptune sta a trenta: il confine cade fuori dalla sua orbita, non
+  // dentro, se no il primo transnettuniano risulterebbe fra i giganti.
+  assert.strictEqual(motore.zonaDelSistema(30.05), 'giganti');
+  assert.strictEqual(motore.zonaDelSistema(31), 'kuiper');
+});
+
+prova('il racconto scende sulla famiglia giusta e dice la parola giusta', () => {
+  const plutone = mondoLontano('Pluto', { nome: 'Plutone' });
+  assert.strictEqual(motore.famigliaContenuto(plutone), 'mondo3d',
+    'non finisce nel cielo profondo come le stazioni');
+  assert.strictEqual(motore.genereTappa(plutone), 'mondo3d');
+  assert.strictEqual(motore.slugTappa(plutone), 'plutone',
+    'riconosciuto dall\'identificativo della scena, non dal nome tradotto');
+  assert.strictEqual(motore.baseRacconto(plutone), 'plutone');
+  // …e uno che il repertorio non conosce scende alla famiglia invece di
+  // finire nel generico.
+  assert.strictEqual(motore.baseRacconto(mondoLontano('Ignoto')), 'mondo3d');
+});
+
+prova('un mondo lontano non si riconosce dal nome, che cambia con la lingua', () => {
+  // «Giunone» in inglese è «Juno»: una `prova` sul nome avrebbe funzionato
+  // in italiano e taciuto in inglese, che è il guasto muto di sempre.
+  assert.strictEqual(motore.slugTappa(mondoLontano('Juno', { nome: 'Juno' })), 'giunone');
+  assert.strictEqual(motore.slugTappa(mondoLontano('Juno', { nome: 'Giunone' })), 'giunone');
+  assert.ok(motore.fascinoDi(mondoLontano('voyager1')) >
+    motore.fascinoDi(mondoLontano('Hygiea')),
+    'la Voyager 1 vale più di un sasso che nessuno saprebbe nominare');
+});
+
+prova('non si rimisura, e non si inventa un vicino in cielo', () => {
+  const misura = motore.misuraTappa(mondoLontano('Pluto'), new Date(T0), null);
+  assert.strictEqual(misura.altezza, null, 'niente altezza inventata');
+  assert.strictEqual(misura.azimut, null);
+  /* Il contro-esempio, ed è peggio di un errore: `Math.sin(null)` vale
+   * **zero**, non `NaN`. Una non-posizione passata alla distanza sferica
+   * non solleva e non si nota — risponde come se il bersaglio stesse
+   * esattamente sull'orizzonte a nord, cioè restituisce un numero
+   * plausibile calcolato dal niente. È da lì che verrebbe fuori «cercalo
+   * due pugni a destra di Sirio» per un mondo che sta oltre Nettuno, ed
+   * è la ragione per cui la guardia sta in `missVicino` e non si affida
+   * a un `NaN` che non arriva. */
+  const finta = motore.distanzaSferica({ altezza: null, azimut: null }, { altezza: 0, azimut: 0 });
+  assert.strictEqual(Math.round(finta), 0,
+    'una non-posizione viene letta come «sull\'orizzonte a nord» invece di fallire');
+});
+
+prova('la difficoltà dei sedici è dichiarata e sta in scala', () => {
+  const slugs = new Set(K.MISS_REPERTORIO
+    .filter(v => v.tipi && v.tipi.includes('mondo3d')).map(v => v.slug));
+  assert.strictEqual(slugs.size, 16, 'quattordici mondi minori e due sonde');
+  const senza = Object.keys(K.MISS_LONTANI_DIFFICOLTA)
+    .filter(id => !(K.MISS_LONTANI_DIFFICOLTA[id] >= 1 && K.MISS_LONTANI_DIFFICOLTA[id] <= 5));
+  assert.deepStrictEqual(senza, [], 'ogni difficoltà sta fra uno e cinque');
+  assert.strictEqual(Object.keys(K.MISS_LONTANI_DIFFICOLTA).length, 16,
+    'e ce n\'è una per ognuno: chi manca prende il quattro di ripiego e sparisce dai bambini');
+  const perBambini = Object.keys(K.MISS_LONTANI_DIFFICOLTA)
+    .filter(id => K.MISS_LONTANI_DIFFICOLTA[id] <= K.MISS_DIFFICOLTA_MASSIMA.bambini);
+  assert.ok(perBambini.length >= 3,
+    'ai bambini ne restano abbastanza da riempire una missione: ' + perBambini.join(', '));
+});
+
+for (const lingua of ['it', 'en']) {
+  prova('i mondi lontani hanno tutte le loro frasi (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    const mancanti = [];
+    const c = k => { if (!d['missione.' + k]) mancanti.push(k); };
+    // La famiglia: l'ultimo gradino, quello che non può mancare mai.
+    for (let n = 1; n <= 3; n++) {
+      c('gioco.enigma.mondo3d.' + n);
+      c('gioco.enigmaDue.mondo3d.' + n);
+      c('gioco.enigmaTre.mondo3d.' + n);
+      c('gioco.domanda.mondo3d.' + n);
+      c('gioco.domanda.bambini.mondo3d.' + n);
+      c('curiosita.mondo3d.' + n);
+      c('gioco.lontano.distanza.' + n);
+      for (const zona of ['fascia', 'giganti', 'kuiper', 'fuori']) c('gioco.lontano.zona.' + zona + '.' + n);
+    }
+    c('gioco.enigmaBimbi.mondo3d');
+    c('gioco.osserva.mondo3d');
+    c('anteprimaMistero.mondo3d');
+    c('gioco.cartellino.sonda');
+    c('genere.lontani');
+    c('genereNota.lontani');
+    // Le quattro specie che la scena distingue col colore del nome.
+    for (const specie of ['nano', 'asteroide', 'centauro', 'sonda']) c('specie.mondo.' + specie);
+    assert.deepStrictEqual(mancanti, [], mancanti.slice(0, 6).join(', '));
+  });
+}
 
 // =====================================================================
 sezione('il tempo: chi non aspetta, e chi è già passato');
@@ -1888,7 +2109,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     });
 
     prova('si possono scegliere tutte le famiglie di oggetti', () => {
-      assert.strictEqual(config.generiPresenti, 5);
+      // Sei: le cinque famiglie del cielo più i mondi lontani, che si
+      // cercano nella vista 3D. Il numero si legge dalla tabella invece
+      // di essere scritto a mano, se no la prossima famiglia lo rompe
+      // per il motivo sbagliato.
+      assert.strictEqual(config.generiPresenti, K.MISS_GENERI.length);
       assert.strictEqual(config.strumentiPresenti, 0, 'la domanda sullo strumento deve essere assente');
     });
 
@@ -1971,8 +2196,19 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       }]);
       window.satelliteDaId = () => ({ nome: 'ISS', magTipica: -3 });
       miss.anteprimeViste = [];
+      /* Solo le stazioni, e non è un indebolimento: la prova esiste per
+       * guardare la **catena** — raccoglitore, riallineamento degli
+       * orari, tappa a schermo — e con tutti i generi accesi il passaggio
+       * compare o non compare secondo quanti bersagli offre il cielo di
+       * stanotte, cioè la prova diventa rossa per un motivo che col
+       * codice non c'entra. (Lo era: si veda la nota nel `current-task`.)
+       * Restringendo il genere l'unico modo di non trovarlo è che la
+       * catena sia rotta, che è la domanda. */
+      const generiPrima = miss.scelte.generi;
+      miss.scelte.generi = ['artificiali'];
       const m = missPreparaAnteprima();
       const fuori = m ? m.tappe.map(t => ({ tipo: t.tipo, nome: t.nome, alt: t.altezza })) : [];
+      miss.scelte.generi = generiPrima;
       window.passaggiVisibiliOrdinati = veroPassaggi;
       window.satelliteDaId = veroSat;
       miss.anteprimeViste = [];
@@ -2006,7 +2242,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     });
     prova('e le tappe rispettano davvero altezza e strumento', () => {
       anteprima.tappe.forEach(t => {
-        assert.ok(t.alt > 0, `${t.nome} a ${t.alt}°`);
+        // L'altezza si pretende da chi in cielo ci sta: un mondo lontano
+        // non ne ha una, e chiedergliela vorrebbe dire trasformare la
+        // prova dell'orizzonte in una prova che un genere non esista.
+        if (t.tipo !== 'mondo3d') assert.ok(t.alt > 0, `${t.nome} a ${t.alt}°`);
+        else assert.strictEqual(t.alt, null, `${t.nome} non ha un'altezza e non se la inventa`);
         assert.notStrictEqual(t.strumento, 'telescopio', `${t.nome} vuole il telescopio`);
       });
     });
@@ -2366,6 +2606,286 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(ritorno.tappe, ritorno.primaTappe);
       assert.strictEqual(ritorno.striscia, true, 'la striscia è rimasta accesa fuori dal planetario');
     });
+
+    sezione('il ponte colla vista 3D: i mondi lontani');
+
+    /* La famiglia che a occhio si giudica peggio di tutte in questo
+     * pannello, e per una ragione che non ha niente a che vedere con la
+     * bellezza: **una guida che non si vede è identica a una guida che
+     * non c'è**. La striscia della tappa vive dentro a
+     * `#skymap-contenitore`, e la finestra 3D a tutto schermo ci passa
+     * sopra: traslocandola nel suo guscio, `top` resta scritto come
+     * `calc(var(--zona-alta-cielo) + 4px)` e quella variabile lì dentro
+     * non esiste — un `calc` con dentro una variabile che non risolve è
+     * invalido, `top` ripiega su `auto`, e la striscia scivola al suo
+     * posto nel flusso. Misurato prima della cura: `top: 900px` su un
+     * riquadro alto 900, cioè appena **fuori** dallo schermo. La classe
+     * `visibile` c'era, il testo c'era, la missione funzionava, e sullo
+     * schermo non compariva niente.
+     *
+     * Quindi non si guarda una classe: si misurano i pixel, e si guarda
+     * chi sta sopra a chi. E si misura **su tre schermi**, perché la
+     * colonna dei comandi della scena è alta duecentosettanta pixel e su
+     * un telefono girato non ci sta niente sotto di lei: lì qualcosa si
+     * deve sovrapporre, e la prova che conta è che a vincere siano i
+     * tasti — un indizio coperto a metà si scorre, uno zoom coperto a
+     * metà è una caccia che non si può più fare. */
+    /* La missione in corso si mette da parte e si rimette: le sezioni che
+     * vengono dopo — la conclusione, la coppa, l'albo, il Diario —
+     * parlano di *quella*, con gli esiti che le prove di sopra le hanno
+     * messo addosso. Abbandonarla e rigenerarne una pulita le farebbe
+     * fallire tutte per un motivo che col loro codice non c'entra. */
+    const missioneDaParte = await pagina.evaluate(() =>
+      JSON.stringify({ attiva: miss.attiva, anteprima: miss.anteprima }));
+
+    const tre = [[900, 900], [360, 640], [640, 360]];
+    for (const [w, h] of tre) {
+      await pagina.setViewportSize({ width: w, height: h });
+      await pagina.waitForTimeout(250);
+      const scena = await pagina.evaluate(async () => {
+        // Una missione di soli mondi lontani, costruita qui: il cielo di
+        // stanotte non deve poter decidere se questa prova gira.
+        missAbbandona();
+        /* Un fotogramma fra il chiudere e il riaprire, e non è pignoleria:
+         * `solEsciSchermoIntero` chiede `document.exitFullscreen()`, che
+         * risponde con un `fullscreenchange` **asincrono**; riaprendo
+         * nello stesso tick quell'evento arriva dopo, trova il guscio
+         * appena rientrato e lo fa uscire di nuovo (§`cambioSchermo` in
+         * `app.js`). Nell'app non capita — fra una chiusura e
+         * un'apertura c'è sempre un gesto — e qui sì, perché la prova le
+         * mette in fila. */
+        await new Promise(r => setTimeout(r, 250));
+        const generiPrima = miss.scelte.generi, espPrima = miss.scelte.esperienza;
+        miss.scelte.generi = ['lontani'];
+        miss.scelte.esperienza = 'sfida';
+        miss.anteprimeViste = [];
+        const m = missPreparaAnteprima();
+        miss.scelte.generi = generiPrima;
+        miss.scelte.esperienza = espPrima;
+        if (!m || !m.tappe.length) return { generata: false };
+        missAvvia(m);
+        await new Promise(r => setTimeout(r, 1400));
+        const st = document.getElementById('missione-striscia');
+        const g = document.getElementById('sol-guscio');
+        const r = n => { if (!n) return null; const b = n.getBoundingClientRect();
+          return { x: b.left, y: b.top, w: b.width, h: b.height, dx: b.right, basso: b.bottom }; };
+        const tocca = n => {
+          if (!n) return true;
+          const b = n.getBoundingClientRect();
+          const sopra = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+          return !!(sopra && (sopra === n || n.contains(sopra)));
+        };
+        const t = miss.attiva.tappe[miss.attiva.corrente];
+        const corpo = (sol.mondi || []).concat(sol.sonde || []).find(c => c.id === t.idSistema);
+        return {
+          generata: true,
+          tipo: t.tipo,
+          solAperto: !!sol.aperto,
+          pieno: g.classList.contains('sol-schermo-pieno') || document.body.classList.contains('sol-immersivo'),
+          nelGuscio: st.parentElement === g,
+          visibile: st.classList.contains('visibile'),
+          mondi: sol.mondiAccesi === true, sonde: sol.sondeAccese === true,
+          scelto: sol.scelto,
+          ricerca: missRicercaSistema(),
+          disegnato: !!(corpo && corpo.schermo),
+          striscia: r(st), guscio: r(g), barra: r(document.getElementById('sol-tempo')),
+          // Chi deve restare premibile comunque vada: i comandi della
+          // scena e le tre viste.
+          comandiPremibili: Array.from(document.querySelectorAll(
+            '.comandi-mappa-sistema .tasto-mappa-sistema, .sol-viste .tasto-vista-sistema')).every(tocca),
+          // E la striscia deve avere un pezzo di sé leggibile: si prova il
+          // suo centro, che è dove sta l'indizio.
+          strisciaLeggibile: (() => {
+            const b = st.getBoundingClientRect();
+            const sopra = document.elementFromPoint(b.left + b.width / 2, b.top + b.height * 0.7);
+            return !!(sopra && (sopra === st || st.contains(sopra)));
+          })()
+        };
+      });
+      const dove = ` (${w}×${h})`;
+      prova('una tappa dei mondi lontani apre la vista 3D a tutto schermo' + dove, () => {
+        assert.ok(scena.generata, 'nessuna missione generata: i candidati non arrivano');
+        assert.strictEqual(scena.tipo, 'mondo3d');
+        assert.ok(scena.solAperto, 'la finestra del Sistema Solare non si è aperta');
+        assert.ok(scena.pieno, 'non è a tutto schermo');
+        assert.ok(scena.mondi && scena.sonde,
+          'le due famiglie devono essere accese, o il bersaglio non è disegnato');
+        assert.ok(scena.disegnato, 'il bersaglio non è finito sullo schermo: non si può toccare');
+        assert.strictEqual(scena.scelto, null,
+          'nessun corpo scelto: la sua scheda porta il nome, cioè la soluzione');
+        assert.ok(scena.ricerca, 'la caccia non risulta attiva qui dentro');
+      });
+      prova('la guida si trasloca nel guscio della 3D e ci sta dentro' + dove, () => {
+        assert.ok(scena.nelGuscio, 'la striscia è rimasta appesa al planetario, sotto al disegno');
+        assert.ok(scena.visibile);
+        const s = scena.striscia, g = scena.guscio;
+        assert.ok(s.y >= g.y - 0.5 && s.basso <= g.basso + 0.5,
+          `fuori dal riquadro in verticale: ${Math.round(s.y)}..${Math.round(s.basso)} ` +
+          `su 0..${Math.round(g.h)} — è il difetto del top:900px`);
+        assert.ok(s.x >= g.x - 0.5 && s.dx <= g.dx + 0.5, 'fuori dal riquadro di lato');
+        assert.ok(s.h > 40 && s.w > 120, `ridotta a niente: ${Math.round(s.w)}×${Math.round(s.h)}`);
+      });
+      prova('non copre la barra del tempo, e i comandi restano premibili' + dove, () => {
+        const s = scena.striscia;
+        if (scena.barra) assert.ok(s.basso <= scena.barra.y + 0.5,
+          `si stampa sopra all'orologio: ${Math.round(s.basso)} contro ${Math.round(scena.barra.y)}`);
+        assert.ok(scena.comandiPremibili,
+          'qualcosa copre i comandi della scena: lo zoom è la mano con cui si cerca');
+        assert.ok(scena.strisciaLeggibile, 'la striscia è coperta proprio dove c\'è l\'indizio');
+      });
+    }
+    await pagina.setViewportSize({ width: 900, height: 900 });
+    await pagina.waitForTimeout(250);
+
+    /* Il tocco, che qui è tutto il gioco: quello giusto chiude la tappa,
+     * quello sbagliato conta come tentativo **e non apre la scheda** —
+     * scartare Eris avendone letto il nome è mezzo enigma regalato. */
+    const tocchi = await pagina.evaluate(async () => {
+      const attesa = () => new Promise(r => setTimeout(r, 250));
+      const tutti = () => (sol.mondi || []).concat(sol.sonde || []);
+      const t = miss.attiva.tappe[miss.attiva.corrente];
+      const r = sol.canvas.getBoundingClientRect();
+      const tocca = c => solTocco({ clientX: r.left + c.schermo.px, clientY: r.top + c.schermo.py });
+      const altro = tutti().find(c => c.id !== t.idSistema && c.schermo);
+      if (altro) tocca(altro);
+      await attesa();
+      const sbagliato = { scelto: sol.scelto, esito: t.esito, tentativi: t.tentativi || 0 };
+      const bersaglio = tutti().find(c => c.id === t.idSistema);
+      tocca(bersaglio);
+      await attesa();
+      const dopo = miss.attiva.tappe[miss.attiva.corrente];
+      return { sbagliato, esito: dopo.esito, fase: dopo.fase,
+        scoperta: document.getElementById('missione-striscia').textContent.includes(missNomeTappa(dopo)) };
+    });
+    prova('un tocco sbagliato non apre nessuna scheda e non chiude la tappa', () => {
+      assert.strictEqual(tocchi.sbagliato.scelto, null, 'ha aperto la scheda del corpo toccato');
+      assert.strictEqual(tocchi.sbagliato.esito, null);
+      assert.strictEqual(tocchi.sbagliato.tentativi, 1, 'il tentativo non è stato contato');
+    });
+    prova('il tocco sul corpo giusto chiude la tappa e mostra la scoperta', () => {
+      assert.strictEqual(tocchi.esito, 'trovato');
+      assert.strictEqual(tocchi.fase, 'scoperta');
+      assert.ok(tocchi.scoperta, 'la scoperta non nomina il bersaglio appena trovato');
+    });
+
+    /* Chiudere la finestra a metà caccia.
+     *
+     * Sotto alla 3D c'è il planetario, e la tentazione è di lasciare lì
+     * la guida e proseguire. Sarebbe il difetto peggiore di tutto il
+     * pezzo, ed è muto: una caccia dichiarata **aperta nel cielo** su un
+     * bersaglio che in cielo non c'è e non ci sarà — i nomi degli astri
+     * spariscono (è il modo caccia), la bussola si attacca al telefono, e
+     * ogni tocco sul cielo conta come «no, non è questo» contro Sedna.
+     * Nessuno, guardando lo schermo, direbbe che è rotto: direbbe che non
+     * lo trova. */
+    const chiusa = await pagina.evaluate(async () => {
+      const m = miss.attiva;
+      const lontana = { id: 'mondo3d:Pluto', idSistema: 'Pluto', nome: 'Plutone', tipo: 'mondo3d',
+        idCielo: null, indice: 0, esito: null, aiuto: 0, fase: 'ricerca', quando: Date.now(),
+        altezza: null, azimut: null, sopraOstacoli: null, ua: 35, zona: 'kuiper',
+        famiglia3d: 'nano', minutiUtili: 999, strumentoMinimo: 'occhio', mag: null,
+        difficolta: 2, evidenza: 0.5, didattica: 1, slug: 'plutone', fascino: 0.94,
+        raccontoVariante: 0, domandaVariante: 0, indizioVariante: 0 };
+      m.tappe = [lontana];
+      m.corrente = 0;
+      missGuidaNelSistema(0);
+      await new Promise(r => setTimeout(r, 1200));
+      const aperta = !!(sol && sol.aperto);
+      chiudiSistemaSolare();
+      await new Promise(r => setTimeout(r, 500));
+      const st = document.getElementById('missione-striscia');
+      return { aperta, sol: !!(sol && sol.aperto), sistema: !!m.nelSistema,
+        planetario: !!m.nelPlanetario, ricercaCielo: missRicercaAttiva(),
+        modoCaccia: document.body.classList.contains('missione-ricerca'),
+        padre: st.parentElement.id,
+        pannello: !document.getElementById('modale-missione').classList.contains('hidden'),
+        stato: m.stato,
+        // Il tasto che riapre deve dire dove porta: «cerca nel cielo» su
+        // un mondo che in cielo non c'è è l'istruzione sbagliata.
+        tasto: (document.querySelector('#missione-corpo [data-miss-azione="guidami"]') || {}).textContent
+      };
+    });
+    prova('chiudendo la 3D a metà caccia non si resta a cercare nel cielo', () => {
+      assert.ok(chiusa.aperta, 'la finestra non si era nemmeno aperta');
+      assert.strictEqual(chiusa.sol, false);
+      assert.strictEqual(chiusa.sistema, false);
+      assert.strictEqual(chiusa.planetario, false,
+        'la guida è rimasta appesa al cielo su un bersaglio che lì non c\'è');
+      assert.strictEqual(chiusa.ricercaCielo, false, 'il planetario si crede in caccia');
+      assert.strictEqual(chiusa.modoCaccia, false, 'il cielo è rimasto in modo caccia');
+      assert.strictEqual(chiusa.padre, 'skymap-contenitore',
+        'la striscia è rimasta murata dentro alla finestra chiusa');
+      assert.strictEqual(chiusa.stato, 'inCorso', 'la missione non si è persa: si riprende');
+    });
+    prova('e si torna al pannello, col tasto che dice dove porta', () => {
+      assert.ok(chiusa.pannello, 'nessun posto da cui riprendere la tappa');
+      assert.ok(chiusa.tasto && !/cielo|sky/i.test(chiusa.tasto),
+        'il tasto invita a cercare nel cielo: ' + chiusa.tasto);
+    });
+
+    // Si riprende dalla finestra, per le due prove che seguono.
+    await pagina.evaluate(async () => {
+      missChiudiPannello({ tieniMissione: true });
+      missGuidaNelSistema(0);
+      await new Promise(r => setTimeout(r, 1200));
+    });
+
+    /* «…e poi passa al planetario quando tocca a lui»: la richiesta, in
+     * una riga. Il cambio di schermo non è un tasto — è la conseguenza di
+     * che natura ha la tappa successiva, e la striscia deve tornare con
+     * lei invece di restare murata dentro a un modale nascosto. */
+    const passaggio = await pagina.evaluate(async () => {
+      const m = miss.attiva;
+      // La tappa dopo si fa diventare una del cielo: il cielo di stanotte
+      // non deve decidere se questa prova gira.
+      const cielo = { id: 'pianeta:Jupiter', nome: 'Giove', tipo: 'pianeta', idCielo: 'Jupiter',
+        indice: 1, esito: null, aiuto: 0, fase: 'ricerca', quando: Date.now(),
+        altezza: 40, azimut: 180, sopraOstacoli: 35, minutiUtili: 60,
+        strumentoMinimo: 'occhio', mag: -2, difficolta: 1, evidenza: 0.95,
+        didattica: 0.5, raccontoVariante: 0, domandaVariante: 0, indizioVariante: 0 };
+      // La tappa 3D si dà per trovata: che il tocco la chiuda lo hanno
+      // appena provato le due righe di sopra, e qui si guarda il passaggio.
+      const lontana = Object.assign({}, m.tappe[m.corrente],
+        { esito: 'trovato', fase: 'scoperta', quandoEsito: Date.now() });
+      m.tappe = [lontana, cielo].map((t, i) => Object.assign({}, t, { indice: i }));
+      m.corrente = 0;
+      missAzione('continua', document.getElementById('missione-striscia'));
+      await new Promise(r => setTimeout(r, 1500));
+      const st = document.getElementById('missione-striscia');
+      return { sol: !!(sol && sol.aperto), sistema: !!m.nelSistema, planetario: !!m.nelPlanetario,
+        vista: vistaAttuale, tipo: m.tappe[m.corrente].tipo,
+        padre: st.parentElement.id, visibile: st.classList.contains('visibile'),
+        alto: st.getBoundingClientRect().top };
+    });
+    prova('finita la tappa 3D, la successiva del cielo riporta al planetario', () => {
+      assert.strictEqual(passaggio.tipo, 'pianeta');
+      assert.strictEqual(passaggio.sol, false, 'la finestra 3D è rimasta aperta sopra al cielo');
+      assert.strictEqual(passaggio.sistema, false);
+      assert.strictEqual(passaggio.planetario, true);
+      assert.strictEqual(passaggio.vista, 'cielo');
+    });
+    prova('e la guida torna al suo posto nel planetario, ancora visibile', () => {
+      assert.strictEqual(passaggio.padre, 'skymap-contenitore',
+        'la striscia è rimasta murata dentro alla finestra 3D chiusa');
+      assert.ok(passaggio.visibile);
+      assert.ok(passaggio.alto >= 0 && passaggio.alto < 900,
+        'è tornata fuori dallo schermo: ' + Math.round(passaggio.alto));
+    });
+
+    // La missione messa da parte torna al suo posto, con i suoi esiti.
+    await pagina.evaluate(async (salvata) => {
+      const s = JSON.parse(salvata);
+      missAbbandona();
+      await new Promise(r => setTimeout(r, 250));
+      miss.attiva = s.attiva;
+      miss.anteprima = s.anteprima;
+      if (miss.attiva) { miss.attiva.nelSistema = false; miss.attiva.nelPlanetario = false; }
+      missSalvaAttiva();
+      missMostraStrisciaCielo();
+      mostraVista('stasera');
+      missApriPannello();
+    }, missioneDaParte);
+    await pagina.waitForTimeout(600);
 
     sezione('il cambio lingua a missione aperta');
 

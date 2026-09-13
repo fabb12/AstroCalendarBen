@@ -61,6 +61,13 @@ const server = http.createServer((req,res)=> {
   // simulato all'ora della tappa invece dell'orologio vero.
   await page.evaluate(()=> { mostraVista('stasera'); missApriPannello();
     miss.scelte.esperienza='sfida'; miss.scelte.momento='personalizzato';
+    // Questa prova parla del **planetario**: il tocco sul canvas del cielo,
+    // i nomi che spariscono mentre si cerca, l'orologio simulato. I mondi
+    // lontani hanno un ponte loro (la vista 3D, §5-bis) e le loro prove in
+    // `prova-missione.js`; lasciandoli accesi la prima tappa può essere
+    // una di loro, e allora quello che qui si misura non esiste — il
+    // canvas del cielo non è nemmeno a schermo.
+    miss.scelte.generi = missProve.costanti.MISS_GENERI_STORICI.slice();
     miss.scelte.momentoPersonalizzato=Date.now()+90*60000; missPreparaAnteprima(); });
   const preview=await page.evaluate(()=>({names:miss.anteprima.tappe.map(t=>t.nome), text:document.getElementById('missione-corpo').textContent}));
   assert(preview.names.length >= 2); preview.names.forEach(n=>assert(!preview.text.includes(n),'preview hides '+n));

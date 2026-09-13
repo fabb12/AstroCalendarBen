@@ -10816,6 +10816,65 @@ body button.did-ponte:active { transform: translateY(1px); }
   color: var(--testo);
   pointer-events: none;
 }
+/* La striscia in prestito alla vista 3D (§5-bis di `missione-cielo.js`).
+ *
+ * Una tappa dei mondi lontani si gioca nel Sistema Solare in 3D, e la
+ * guida si trasloca dentro al suo guscio: lì `top` non si può lasciare
+ * com'è, perché `--zona-alta-cielo` è dichiarata su `.vista-cielo` e qui
+ * dentro non esiste. Una variabile che non risolve rende invalido tutto
+ * il `calc`, `top` ripiega su `auto` e la striscia scivola al suo posto
+ * nel flusso — misurato: `top: 900px` su un riquadro alto 900, cioè
+ * appena **fuori** dallo schermo, con la guida della tappa che non si
+ * vede pur essendo accesa. Il guasto peggiore che potesse avere: la
+ * missione c'è, funziona, e sembra sparita.
+ *
+ * Va allora dove va tutto quello che in questa finestra ha qualcosa da
+ * dire: in basso a sinistra, sopra alla barra del tempo, alla stessa
+ * misura **misurata** che usano la scheda e l'orologio prestato
+ * (`--sol-fondo-scheda`, scritta da `solAssestaScheda`). In cima non può
+ * stare: lì ci sono le tre viste e la colonna dei comandi, e su un
+ * telefono fra le due non resta la larghezza di una riga di testo. La
+ * scheda di un corpo, che occuperebbe lo stesso angolo, durante una
+ * caccia è chiusa per costruzione — aprirla vorrebbe dire stampare la
+ * soluzione.
+ *
+ * Le due classi nel selettore sono la trappola già scritta più in basso in
+ * questo stesso foglio: `.missione-striscia.visibile` rimette
+ * `max-height: none` e `overflow: visible`, ha la stessa specificità di
+ * `.sol-guscio > .missione-striscia` ed è scritta dopo — quindi vincerebbe,
+ * e il taglio qui sotto non morderebbe affatto. Con `.visibile` dentro al
+ * selettore (le due stanno sempre insieme quando la striscia si vede) si
+ * vince a prescindere dall'ordine. */
+.sol-guscio > .missione-striscia,
+.sol-guscio > .missione-striscia.visibile {
+  top: auto;
+  bottom: var(--sol-fondo-scheda, 88px);
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  margin: 0;
+  /* **Sotto** ai comandi della scena, che stanno a 6, e non sopra: dove
+     lo schermo è troppo basso perché ci stiano tutti e due — un telefono
+     girato, con trecentosessanta pixel di altezza — qualcosa si deve pur
+     sovrapporre, e a vincere devono essere i tasti. Un indizio coperto a
+     metà si scorre; uno zoom coperto a metà è una caccia che non si può
+     più fare. */
+  z-index: 5;
+  /* E si ferma prima dei comandi in cima. Il numero è **tutta** la
+     colonna di destra e non la sua metà come nel pannello del tempo
+     (centocinquanta): quella si apre su una striscia larga da bordo a
+     bordo e i primi tondi se li può contendere, questa no — su un
+     telefono da 360 fra le tre viste (che finiscono a 139) e la colonna
+     dei comandi (che comincia a 308) restano centosessantanove pixel,
+     cioè meno di una riga di testo, quindi restringerla in larghezza non
+     è una strada. Misurato: i cinque tondi arrivano a 274 px dal bordo
+     di sopra, e senza questo taglio la striscia ci saliva sopra
+     coprendo lo zoom proprio mentre si cerca un dischetto. A scorrere è
+     il testo dell'indizio. */
+  max-height: max(160px, calc(100% - var(--sol-fondo-scheda, 88px) - 285px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .missione-striscia-chiudi {
   position: absolute;
   top: 5px;

@@ -33839,8 +33839,15 @@ function solInquadraDaTerra(opzioni = {}) {
   // sua distanza entra nella cornice come quella di un pianeta, ma tosata al
   // bordo del disegno — con Sedna a cinquecento unità astronomiche il ⟲
   // avrebbe riportato tutto il Sistema Solare dentro a un pugno di pixel.
+  //
+  // `opzioni.ua` è la stessa cornice chiesta **senza** scegliere un corpo, e
+  // serve a chi deve far entrare qualcosa nel quadro senza nominarlo: una
+  // tappa di Missione Cielo che si gioca qui dentro (§`missGuidaNelSistema`)
+  // deve inquadrare fin dove sta Sedna e non dire che il bersaglio è Sedna —
+  // `sol.scelto` aprirebbe la sua scheda, cioè la soluzione.
   const scelto = solCorpoDiId(sol.scelto);
   const ua = Math.max(SOL_ENTRATA_UA,
+    Number.isFinite(opzioni.ua) ? Math.min(solBordoUa(), opzioni.ua) : 0,
     scelto && scelto.id !== 'Earth' && !scelto.satellite
       ? Math.min(solBordoUa(), scelto.r * SOL_ENTRATA_MARGINE) : 0);
   const rScena = solRaggio(ua) + solRaggio(1) * 0.5;
@@ -34153,6 +34160,14 @@ function solTocco(e) {
   if (!sol.vicino && sol.lunaSchermo) {
     prova('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r);
   }
+  /* Durante una caccia questa scena è un tabellone da gioco, non una scheda.
+   *
+   * È la stessa regola del planetario (`missSelezionaCielo`, agganciata in
+   * `skyOggettoNelPunto`): toccare un corpo mentre si sta cercando vuol dire
+   * «è questo?», e la risposta la dà la missione. Aprire la scheda sarebbe
+   * stampare la soluzione sotto al dito — anche sbagliando, perché scartare
+   * Eris leggendone il nome è comunque un pezzo di risposta regalato. */
+  if (typeof missSelezionaSistema === 'function' && missSelezionaSistema(migliore)) return;
   if (migliore) {
     solScegli(migliore);
   } else if (sol.scelto) {
@@ -34467,6 +34482,20 @@ function chiudiSistemaSolare() {
 
   skyRestituisciIlCiclo(sol.skyDaRiprendere);
   sol.skyDaRiprendere = false;
+
+  /* Missione Cielo, se una sua tappa si stava giocando qui dentro.
+   *
+   * Va avvisata da qui e non dal tasto, perché da qui ci si passa in tutti
+   * i modi: la ×, l'Escape, il tocco sullo sfondo, e la chiusura che fa la
+   * missione stessa passando a una tappa del cielo. Due cose la aspettano:
+   * la sua striscia, che sta **dentro** al guscio di questa finestra e
+   * resterebbe murata in un modale nascosto (è la stessa cura del pannello
+   * del tempo, più in alto), e il fatto che il bersaglio di adesso in
+   * cielo non c'è — vedi `missSistemaChiuso`. Ultima riga della funzione:
+   * può riaprire il pannello della missione, e il resto della chiusura —
+   * il passo del tempo, l'orologio, il ciclo restituito al planetario —
+   * deve essere già finito. */
+  if (typeof missSistemaChiuso === 'function') missSistemaChiuso();
 }
 
 function inizializzaSistemaSolare() {
