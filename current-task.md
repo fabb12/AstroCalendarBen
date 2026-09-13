@@ -29,6 +29,58 @@ Rosse e **preesistenti**, verificate sull'albero pulito:
 
 ## Ultimo intervento completato
 
+**La vista 3D si inchiodava avvicinandosi a un pianeta: quello che esce
+dallo schermo adesso non si disegna.**
+
+La segnalazione era «avvicinandomi alla Terra rallenta tutto, la camera e i
+movimenti», ed è di quelle che a occhio non si giudicano: nessun fotogramma è
+sbagliato, la scena è al suo posto, solo che ne arriva uno al secondo invece
+di sessanta — e chi guarda dà la colpa al telefono.
+
+Il conto che spiega tutto sta in due righe. Girando attorno a un corpo lo zoom
+arriva a venticinquemila (`SOL_ZOOM_MAX_CORPO`) e `sol.scala` sale con lui:
+una unità astronomica diventa più di un milione di pixel, e l'orbita di Sedna
+— cinquecento unità astronomiche — una polilinea lunga **dieci milioni di
+pixel** di cui sullo schermo non cade nemmeno un punto. Un tratto pieno il
+rasterizzatore lo scarta in fretta; un tratto **tratteggiato** no: deve
+generare i trattini uno per uno lungo tutta la corsa, e sono milioni.
+
+Misurato in un Chromium su una tela da telefono, con la telecamera addosso
+alla Terra: il fotogramma passava da 63 a **1081 millisecondi**, e a farlo
+erano quattordici ellissi di mondi minori che non si vedevano affatto. La
+cura è `solTagliaSegmento` / `solPolilineaInVista` (§7.7 di `app.js`,
+Liang–Barsky): ogni segmento si taglia al riquadro prima di entrare nel
+tracciato, e quello che cade fuori non ci entra. Ci passano le orbite dei
+mondi minori e dei pianeti, il pavimento, i nodi, i fili a piombo, il filo
+delle sonde, la riga dello sguardo e il filo fra la Terra e la Luna.
+
+Due ritocchi in più sul globo terrestre, che è quello che restava: il
+riflesso del Sole sull'acqua e il velo d'aria si dipingevano su tutto il
+quadrato del globo mentre le loro sfumature finiscono molto prima — un
+cerchio e un anello al posto di due riempimenti pieni, sei volte e quattro
+volte meno superficie, e **gli stessi pixel** (provato).
+
+Numeri veri, fotogramma mediano su una tela da telefono (412×900 a 2,5×):
+
+| scena | prima | dopo |
+|---|---|---|
+| vista d'insieme | 16,7 ms | 16,6 ms |
+| Terra, zoom 1000 | 638 ms | 30 ms |
+| Terra, zoom 6000 | 1106 ms | 26 ms |
+| Terra, zoom 25000 | 166 ms | 22 ms |
+| Marte, zoom 25000 | 146 ms | 21 ms |
+
+Prove nel **§33** di `verifica.html` (quattordici, tutte verdi). Non misurano
+il tempo — un banco di prova non è un cronometro — ma l'aritmetica da cui
+quel tempo dipende: che quello che non si vede venga tagliato davvero, che il
+pezzo tagliato stia sulla stessa retta e dentro al riquadro, che una curva
+spezzata dal bordo non diventi una corda tirata da un capo all'altro dello
+schermo, e che il filtro delle due passate (davanti al Sole e dietro) resti
+quello di prima. `prova-sistema3d.js` resta verde, e il confronto pixel fra
+prima e dopo dà zero differenze sulle orbite.
+
+## Intervento precedente
+
 **La vista 3D allargata: i mondi minori, le sonde, i satelliti — e una
 ricerca che parla la lingua scelta.**
 
