@@ -97,13 +97,6 @@ const server = http.createServer((req, res) => {
       photographer: 'Prova'
     }] })
   }));
-  await pagina.route('https://it.wikipedia.org/w/api.php?**', r => {
-    const titolo = new URL(r.request().url()).searchParams.get('titles');
-    const pagina = titolo === 'Embraer 190'
-      ? { pageid: 190, title: titolo, fullurl: 'https://it.wikipedia.org/wiki/Embraer_190' }
-      : { ns: 0, title: titolo, missing: '' };
-    return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ query: { pages: { 190: pagina } } }) });
-  });
 
   console.log('\n— caricamento della pagina —');
   await pagina.goto('http://localhost:8099/index.html', { waitUntil: 'networkidle', timeout: 30000 });
@@ -608,29 +601,22 @@ const server = http.createServer((req, res) => {
   const extraAereo = await pagina.evaluate(() => schedaExtraHtml({ categoria: 'aereo', id: 'test' }));
   ok('la scheda degli aerei non mostra il grafico di stanotte', extraAereo === '');
 
-  const wikipediaAereo = await pagina.evaluate(async () => {
+  const fotoAereo = await pagina.evaluate(async () => {
     const modelloEsempio = { id: 'wiki190', callsign: 'TEST190', tipoIcao: 'E190',
       descrizione: 'EMBRAER ERJ-190-200' };
-    const sconosciuto = { tipoIcao: 'ZZZZ', descrizione: 'MODELLO SENZA PAGINA' };
     const box = document.createElement('div');
     box.id = 'aereo-foto-wiki190';
     document.body.appendChild(box);
     await aereiCaricaFoto(modelloEsempio);
-    const link = box.querySelector('.aereo-foto-wikipedia');
     const esito = {
-      titolo: AereiADS_B.aereiTitoloWikipedia(modelloEsempio),
-      href: link && link.href,
-      nuovaScheda: link && link.target,
-      sconosciuto: AereiADS_B.aereiTitoloWikipedia(sconosciuto)
+      foto: !!box.querySelector(':scope > img.aereo-foto'),
+      link: !!box.querySelector('a')
     };
     box.remove();
     return esito;
   });
-  ok('la foto dell’Embraer 190 apre la pagina Wikipedia verificata',
-    wikipediaAereo.titolo === 'Embraer 190' &&
-    wikipediaAereo.href === 'https://it.wikipedia.org/wiki/Embraer_190' &&
-    wikipediaAereo.nuovaScheda === '_blank', JSON.stringify(wikipediaAereo));
-  ok('un modello senza corrispondenza non riceve un link Wikipedia', wikipediaAereo.sconosciuto === '');
+  ok('la foto dell’aereo nel box informativo non è un link',
+    fotoAereo.foto && !fotoAereo.link, JSON.stringify(fotoAereo));
 
   // --- il ciclo di disegno regge? ---
   const fps = await pagina.evaluate(() => new Promise(risolvi => {
