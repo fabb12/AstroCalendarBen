@@ -565,6 +565,7 @@ const MISS_REPERTORIO = [
   // --- e chi non è un oggetto di catalogo ----------------------------
   { slug: 'iss',       fascino: 1,    tipi: ['stazione'], prova: /\b(iss|international space station|stazione spaziale internazionale)\b/i },
   { slug: 'tiangong',  fascino: 0.92, tipi: ['stazione'], prova: /\b(tiangong|chinese space station|stazione spaziale cinese)\b/i },
+  { slug: 'hubble',    fascino: 0.96, tipi: ['stazione'], prova: /\b(hubble|hubble space telescope|telescopio spaziale hubble)\b/i },
   { slug: 'stazione',  fascino: 0.9,  tipi: ['stazione'], prova: /./ }
 ];
 

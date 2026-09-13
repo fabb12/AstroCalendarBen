@@ -357,7 +357,7 @@ const server = http.createServer((req, res) => {
     motore.merita === true,
     motore.incertezza !== null ? `cono di mira ${motore.incertezza.toFixed(2)}°` : '');
 
-  console.log('\n— 5. i TLE delle due stazioni —');
+  console.log('\n— 5. i TLE dei satelliti seguiti —');
   const stazioni = await pagina.evaluate(() => {
     const T = window.Transiti;
     // Un TLE vero della ISS, messo in memoria come se fosse appena arrivato
@@ -392,8 +392,8 @@ const server = http.createServer((req, res) => {
       errore: T.tranErroreTle(sat)
     };
   });
-  ok('si gestiscono due stazioni, la ISS e Tiangong',
-    stazioni.quante === 2, stazioni.nomi.join(' e '));
+  ok('si gestiscono ISS, Tiangong e Hubble',
+    stazioni.quante === 3 && stazioni.nomi.includes('Hubble'), stazioni.nomi.join(', '));
   ok('il TLE si decodifica in parametri orbitali', stazioni.rec);
   ok('…e da lì esce una posizione in cielo',
     stazioni.posizione && Number.isFinite(stazioni.posizione.az) &&

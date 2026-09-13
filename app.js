@@ -7803,7 +7803,7 @@ const SKY_ASTRI = SKY_CORPI.concat(
   }))
 );
 
-// Alle stazioni spaziali (ISS e Tiangong) serve una voce come agli astri,
+// Ai grandi satelliti (ISS, Tiangong e Hubble) serve una voce come agli astri,
 // così si possono cercare e disegnare allo stesso modo. L'elenco si compone
 // al primo uso: SATELLITI è definito più avanti nel file.
 let skyElencoCache = null;
@@ -12098,7 +12098,7 @@ function skyAssettoDiSaturno(lista, t) {
   } catch (e) { /* si userà l'apertura media */ }
 }
 
-// Aggiunge ISS e Tiangong agli oggetti del cielo. A differenza dei pianeti
+// Aggiunge ISS, Tiangong e Hubble agli oggetti del cielo. A differenza dei pianeti
 // si spostano di un grado ogni pochi secondi: oltre al punto calcoliamo la
 // scia, cioè da dove arrivano e dove stanno andando nei minuti vicini.
 function skyAggiungiSatelliti(lista, quando) {
@@ -20351,7 +20351,7 @@ function skyRaggioVero(o, focale, scala) {
 
 // --- Il modellino delle stazioni spaziali ------------------------------
 //
-// Un rombo dice «non è una stella». Non dice quale delle due stazioni sia,
+// Un rombo dice «non è una stella». Non dice quale satellite sia,
 // non dice da che parte stia andando, e soprattutto non dice **che cosa
 // sia**: a un quarto di grado di campo la ISS è larga trentasette pixel —
 // il calcolo è quello di `skyRaggioVero`, centonove metri a quattrocento
@@ -20388,7 +20388,7 @@ function skyDirezioneStazione(o, base, focale) {
   return Math.atan2(dy, dx);
 }
 
-// I due modelli, disegnati nel riquadro unitario: +x è il verso della rotta,
+// I tre modelli, disegnati nel riquadro unitario: +x è il verso della rotta,
 // +y è di traverso. Chi chiama ha già ruotato e scalato.
 function skyFormaStazione(ctx, quale, r) {
   const barra = (x0, y0, x1, y1, spessore) => {
@@ -20413,6 +20413,17 @@ function skyFormaStazione(ctx, quale, r) {
     ctx.lineWidth = Math.max(0.5, 0.08 * r);
     pannello(0, -1.45, 1.15, 0.42);
     pannello(0, 1.45, 1.15, 0.42);
+    return;
+  }
+  if (quale === 'hubble') {
+    // Hubble: il tubo del telescopio lungo la rotta e le due ali solari.
+    barra(-0.9, 0, 0.9, 0, 0.5);
+    ctx.beginPath();
+    ctx.arc(0.82 * r, 0, 0.34 * r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(0.5, 0.08 * r);
+    pannello(-0.15, -1.12, 0.58, 1.22);
+    pannello(-0.15, 1.12, 0.58, 1.22);
     return;
   }
   // ISS: i moduli in fila lungo la rotta, il traliccio di traverso, e le due
@@ -36601,7 +36612,7 @@ function strumentoEvento(evento) {
 }
 
 // =====================================================================
-// 13. PASSAGGI DELLE STAZIONI SPAZIALI (ISS e Tiangong)
+// 13. PASSAGGI DEI GRANDI SATELLITI (ISS, Tiangong e Hubble)
 //     Sono gli oggetti costruiti dall'uomo più facili da vedere: passano
 //     alti, sembrano una stella luminosa che scivola in silenzio e non
 //     lampeggiano come gli aerei. I dati orbitali (TLE) arrivano da
@@ -36673,6 +36684,28 @@ const SATELLITI = [
     periodoMin: 92,
     creazione: 1619654400000,
     nota: 'Più piccola della ISS: brilla circa come una stella luminosa, e passa più bassa.'
+  },
+  {
+    id: 'hubble',
+    nome: 'Hubble',
+    nomeLungo: 'Telescopio spaziale Hubble',
+    catnr: 20580,
+    colore: '#c4b5fd',
+    foto: [
+      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Hubble_01.jpg/800px-Hubble_01.jpg' },
+      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Hubble_Space_Telescope_%2827905070911%29.jpg/800px-Hubble_Space_Telescope_%2827905070911%29.jpg' }
+    ],
+    fotoAlt: 'Il telescopio spaziale Hubble in orbita attorno alla Terra',
+    fotoCredito: 'NASA / Wikimedia Commons',
+    fotoVoce: 'Hubble_Space_Telescope',
+    chiaveTle: 'astrocalendario_tle_hubble',
+    classe: 'Telescopio spaziale',
+    dimensione: '13,2 × 4,2 m, pannelli solari esclusi',
+    diametroKm: 0.0132,
+    magTipica: 2,
+    periodoMin: 95,
+    creazione: 640915200000,
+    nota: 'Osserva l’universo sopra l’atmosfera dal 1990: nei passaggi migliori è visibile a occhio nudo.'
   }
 ];
 
@@ -37048,7 +37081,7 @@ function prossimoPassaggioVisibile(satId) {
   return elenco.find(p => p.visibile && p.fine > new Date()) || null;
 }
 
-// Tutti i passaggi visibili delle due stazioni, in ordine di orario
+// Tutti i passaggi visibili dei satelliti seguiti, in ordine di orario
 function passaggiVisibiliOrdinati() {
   const adesso = new Date();
   return SATELLITI

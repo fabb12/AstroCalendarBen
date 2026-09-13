@@ -11599,15 +11599,14 @@ titolo('31. I transiti: quando un aereo o la ISS passano davanti a un astro (tra
     Math.abs(erroreUnGiorno - 0.1305) < 0.001, `${erroreUnGiorno.toFixed(3)} s`);
   prova('…cioè cento volte il millisecondo a cui arriva il raffinamento',
     erroreUnGiorno * 1000 > 100);
-  // Le due stazioni, e nessun'altra: è quello che è stato chiesto, e un
-  // elenco che crescesse da sé sarebbe un'altra cosa.
+  // I tre grandi satelliti seguiti, e nessun altro: l'elenco è esplicito.
   if (typeof SATELLITI !== 'undefined') {
-    prova('si gestiscono la ISS e Tiangong, e nient\'altro',
-      T.tranStazioni().length === 2 &&
-      T.tranStazioni().every(s => s.id === 'iss' || s.id === 'css'),
-      T.tranStazioni().map(s => s.nome).join(' e '));
+    prova('si gestiscono ISS, Tiangong e Hubble, e nient\'altro',
+      T.tranStazioni().length === 3 &&
+      T.tranStazioni().every(s => ['iss', 'css', 'hubble'].includes(s.id)),
+      T.tranStazioni().map(s => s.nome).join(', '));
   } else {
-    nota('`SATELLITI` vive in app.js, che questa pagina non carica: la prova delle due stazioni salta.');
+    nota('`SATELLITI` vive in app.js, che questa pagina non carica: la prova dei satelliti salta.');
   }
 }
 

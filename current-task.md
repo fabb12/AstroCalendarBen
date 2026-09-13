@@ -24,6 +24,22 @@ Rosse e **preesistenti**, verificate sull'albero pulito:
 
 ## Ultimo intervento completato
 
+**Il telescopio spaziale Hubble nel cielo e negli appuntamenti.**
+
+Hubble è ora il terzo grande satellite seguito insieme a ISS e Tiangong: il
+suo TLE Celestrak alimenta posizione, traccia, passaggi visibili, eventi,
+ricerca del planetario, scheda fotografica, transiti davanti a Sole e Luna e
+tappe di Missione Cielo. Sul planetario ha un modellino riconoscibile col tubo
+e le due ali solari; il repertorio della missione gli dedica inoltre tre
+curiosità in italiano e inglese. La guida e le prove che prima fissavano
+l'elenco a due oggetti dichiarano adesso tutti e tre.
+
+Le prove mirate sono `scripts/prova-stazioni.js` e
+`scripts/prova-transiti.js`; richiedono Playwright, Astronomy Engine e
+satellite.js installati localmente.
+
+## Intervento precedente
+
 **Galleria: autorizzazione della cartella ricordata e video orizzontali a
 schermo intero.**
 
@@ -38,7 +54,7 @@ La prova mirata è `node scripts/prova-galleria.js`; controlla anche che il
 comando richieda il fullscreen al lettore e che le verifiche del permesso non
 si moltiplichino durante la sincronizzazione.
 
-## Intervento precedente
+## Intervento ancora precedente
 
 **La guida all'uso, e la linguetta delle Impostazioni che la apre.**
 
