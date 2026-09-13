@@ -34142,6 +34142,23 @@ function simCostruisciScena(ev) {
   const dati = (ev.simul && ev.simul.scena) ? ev.simul : { scena: 'cielo' };
   const tipo = dati.scena;
 
+  // I passaggi delle stazioni non sono eventi di cielo generici. Il vecchio
+  // ripiego mostrava soltanto Sole, Luna e pianeti: perciò, aprendo «Simula»
+  // dalla scheda della ISS, proprio la ISS non compariva. La finestra segue
+  // ora il passaggio locale già calcolato, dall'ingresso all'uscita, e la
+  // posizione viene nuovamente propagata dal TLE a ogni fotogramma.
+  if (ev.stazione) {
+    const p = ev.stazione;
+    const margine = 20 * 1000;
+    return {
+      tipo: 'stazione', dati, passaggio: p,
+      inizio: p.inizio.getTime() - margine,
+      fine: p.fine.getTime() + margine,
+      durata: Math.max(18, Math.min(34, (p.fine - p.inizio) / SIM_MIN * 3.5)),
+      nota: 'Traiettoria reale calcolata dai dati orbitali della stazione per la tua posizione. La linea tratteggiata è il tratto già percorso.'
+    };
+  }
+
   if (tipo === 'eclissiLunare') {
     const geo = simGeometriaEclissiLunare(dati);
     const semi = geo.sdPenum * 1.15 * SIM_MIN;
@@ -35187,6 +35204,98 @@ function simScenaCielo(ctx, tempo) {
   ];
 }
 
+// Posizione istantanea della stazione. Il TLE è la fonte principale; i tre
+// punti misurati durante la ricerca del passaggio sono anche un ripiego
+// robusto se satellite.js o la rete non sono disponibili quando si riapre
+// una vecchia scheda. In entrambi i casi l'oggetto resta sul *suo* passaggio,
+// non su una traiettoria decorativa inventata.
+function simPosizioneStazione(tempo) {
+  const p = sim.scena.passaggio;
+  const sat = satelliteDaId(p.satId);
+  const luogo = simOsservatore();
+  const rec = sat && satRecDi(sat);
+  if (rec && typeof satellite !== 'undefined') {
+    const vera = satAltAz(rec, tempo, satOsservatoreGd(luogo));
+    if (vera) return Object.assign({ reale: true }, vera);
+  }
+
+  const istanti = [p.inizio.getTime(), p.culmine.getTime(), p.fine.getTime()];
+  const punti = [
+    { az: p.azInizio, alt: SAT_ELEVAZIONE_MINIMA },
+    { az: p.azCulmine, alt: p.elevazioneMax },
+    { az: p.azFine, alt: SAT_ELEVAZIONE_MINIMA }
+  ];
+  const ms = tempo.getTime();
+  const i = ms <= istanti[1] ? 0 : 1;
+  const q = simClamp((ms - istanti[i]) / Math.max(1, istanti[i + 1] - istanti[i]), 0, 1);
+  let deltaAz = punti[i + 1].az - punti[i].az;
+  if (deltaAz > 180) deltaAz -= 360;
+  if (deltaAz < -180) deltaAz += 360;
+  return {
+    az: (punti[i].az + deltaAz * q + 360) % 360,
+    alt: punti[i].alt + (punti[i + 1].alt - punti[i].alt) * q,
+    distanza: p.distanzaMin,
+    reale: false
+  };
+}
+
+function simScenaStazione(ctx, tempo) {
+  const L = sim.L, H = sim.H, cx = L / 2, cy = H / 2;
+  const R = simRaggioCupola(L, H);
+  const p = sim.scena.passaggio;
+  const sat = satelliteDaId(p.satId);
+  const corpi = simCorpiCielo(tempo);
+  const sole = corpi.find(c => c.id === 'Sun');
+  simDisegnaCupola(ctx, cx, cy, R, corpi, sole ? sole.alt : -30);
+
+  // L'intera rotta è ricalcolata per la stessa scala temporale della scena.
+  // Così la curva, il punto e l'orologio concordano anche accelerando o
+  // trascinando la linea del tempo.
+  const campioni = [];
+  const n = 72;
+  for (let i = 0; i <= n; i++) {
+    const ms = sim.scena.inizio + (sim.scena.fine - sim.scena.inizio) * i / n;
+    const pos = simPosizioneStazione(new Date(ms));
+    if (pos && pos.alt >= 0) {
+      const q = simProiettaCupola(pos.az, pos.alt, cx, cy, R);
+      campioni.push({ x: q.x, y: q.y, passato: ms <= tempo.getTime() });
+    }
+  }
+  ctx.save();
+  ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  for (let i = 1; i < campioni.length; i++) {
+    const a = campioni[i - 1], b = campioni[i];
+    ctx.beginPath();
+    ctx.setLineDash(b.passato ? [4, 5] : []);
+    ctx.strokeStyle = sat ? sat.colore : '#93c5fd';
+    ctx.globalAlpha = b.passato ? 0.48 : 0.9;
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.restore();
+
+  const pos = simPosizioneStazione(tempo);
+  if (!pos || !sat) return ['<p>Dati orbitali della stazione non disponibili.</p>'];
+  const q = simProiettaCupola(pos.az, Math.max(0, pos.alt), cx, cy, R);
+  ctx.save();
+  ctx.translate(q.x, q.y);
+  ctx.fillStyle = sat.colore; ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 1;
+  // In questa vista didattica il modellino è volutamente leggibile: nel
+  // cielo reale la stazione resta un punto, come ricorda la didascalia.
+  skyFormaStazione(ctx, sat.id, Math.max(5, Math.min(8, R * 0.035)));
+  ctx.restore();
+  simEtichetta(ctx, sat.nome, q.x, q.y - 22, '#ffffff', 'center', true);
+
+  const dalCulmine = (tempo.getTime() - p.culmine.getTime()) / SIM_MIN;
+  const fase = dalCulmine < -0.15 ? `Mancano ${simDurataTesto(dalCulmine)} al culmine.`
+    : dalCulmine > 0.15 ? `Sono passati ${simDurataTesto(dalCulmine)} dal culmine.`
+    : 'La stazione è al culmine del passaggio.';
+  return [
+    `<p><strong>${sat.nome}</strong> è a <strong>${pos.alt.toFixed(1)}°</strong> verso <strong>${skyNomeDirezione(pos.az)}</strong>${pos.distanza ? `, a circa <strong>${Math.round(pos.distanza)} km</strong>` : ''}.</p>`,
+    `<p>${fase} Il passaggio va dalle <strong>${oraBreve(p.inizio)}</strong> alle <strong>${oraBreve(p.fine)}</strong>.</p>`,
+    `<p>Posizione ${pos.reale ? 'propagata istante per istante dal TLE' : 'ricostruita dai punti reali del passaggio'}. Il modellino è ingrandito per riconoscerlo: a occhio nudo appare come un punto luminoso che non lampeggia.</p>`
+  ];
+}
+
 // Campo ravvicinato dei due protagonisti di una congiunzione. Il cerchio e
 // la distanza fra i centri sono in scala; i dischi sono ingranditi, altrimenti
 // un pianeta occuperebbe meno di un pixel anche su uno schermo grande.
@@ -35294,7 +35403,7 @@ function simDisegna(dtReale) {
   ctx.clearRect(0, 0, sim.L, sim.H);
 
   let righe = [];
-  if (typeof Astronomy === 'undefined') {
+  if (typeof Astronomy === 'undefined' && sim.scena.tipo !== 'stazione') {
     ctx.fillStyle = '#020617';
     ctx.fillRect(0, 0, sim.L, sim.H);
     simEtichetta(ctx, 'Libreria astronomica non disponibile', sim.L / 2, sim.H / 2, '#f87171');
@@ -35309,6 +35418,7 @@ function simDisegna(dtReale) {
         case 'sciame':        righe = simScenaSciame(ctx, tempo, dtReale); break;
         case 'elongazione':   righe = simScenaElongazione(ctx, tempo); break;
         case 'congiunzione':  righe = simScenaCongiunzione(ctx, tempo); break;
+        case 'stazione':      righe = simScenaStazione(ctx, tempo); break;
         default:              righe = simScenaCielo(ctx, tempo); break;
       }
     } catch (err) {
