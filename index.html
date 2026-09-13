@@ -2056,18 +2056,13 @@
                 title="Conserva il centro e l'elevazione scelti; ruota la camera e adatta soltanto lo zoom" data-i18n-aria-label="ui.cerca-un-elemento-nel-sistema-solare" data-i18n-title="ui.conserva-il-centro-e-l-elevazione-scelti">
               <button type="submit" aria-label="Trova e inquadra l'elemento" title="Trova e inquadra">⌕</button>
             </div>
-            <datalist id="sol-elementi">
-              <option value="Sole"></option>
-              <option value="Mercurio"></option>
-              <option value="Venere"></option>
-              <option value="Terra"></option>
-              <option value="Luna"></option>
-              <option value="Marte"></option>
-              <option value="Giove"></option>
-              <option value="Saturno"></option>
-              <option value="Urano"></option>
-              <option value="Nettuno"></option>
-            </datalist>
+            <!-- I suggerimenti li scrive `solAggiornaRicerca` (app.js §7.7):
+                 scritti qui erano dieci nomi italiani, quindi in inglese il
+                 campo suggeriva «Nettuno» e poi non lo trovava. E adesso non
+                 sono nemmeno dieci fissi — ci sono i pianeti nani, le sonde,
+                 i satelliti e le comete che si vedono stasera, che cambiano
+                 da una settimana all'altra. -->
+            <datalist id="sol-elementi"></datalist>
             <span id="sol-ricerca-esito" class="sol-ricerca-esito" aria-live="polite"></span>
           </form>
 
@@ -2140,6 +2135,29 @@
                       title="Corpi ingranditi: pallini leggibili e comodi da toccare col dito. Nel banco Terra e Luna ingrandisce anche le ombre, così la geometria resta quella di due corpi tre volte più grandi." data-i18n-title="ui.corpi-ingranditi-pallini-leggibili-e-comodi" data-i18n="ui.ingrandite">Ingrandite</button>
                     <button type="button" class="tasto-segmento" data-sol-misure="vere"
                       title="Misure vere: i diametri seguono la scala astronomica dello zoom; con Distanze reali tutto usa lo stesso metro. Nel banco Terra e Luna anche le ombre sono esatte" data-i18n-title="ui.misure-vere-i-diametri-seguono-la-scala" data-i18n="ui.reali">Reali</button>
+                  </div>
+                </div>
+                <!-- Le altre due famiglie di corpi (§7.7-bis di app.js). Sono
+                     due interruttori e non uno perché rispondono a due
+                     domande diverse: «fammi vedere che il Sistema Solare non
+                     finisce agli otto pianeti» e «fammi vedere le cose che
+                     abbiamo costruito noi». Nascono accesi tutt'e due. -->
+                <div class="sol-opzione">
+                  <span class="sol-etichetta" data-i18n="ui.mondi-minori">Mondi minori</span>
+                  <div class="segmenti-cielo">
+                    <button type="button" class="tasto-segmento" data-sol-mondi="si" data-solo-pianeti
+                      title="Pianeti nani, asteroidi storici e le comete che si vedono stasera, ognuno con la sua orbita" data-i18n-title="ui.pianeti-nani-asteroidi-storici-e-le-comete" data-i18n="ui.mostra">Mostra</button>
+                    <button type="button" class="tasto-segmento" data-sol-mondi="no" data-solo-pianeti
+                      title="Solo gli otto pianeti: la scena più pulita" data-i18n-title="ui.solo-gli-otto-pianeti-la-scena-piu" data-i18n="ui.nascondi">Nascondi</button>
+                  </div>
+                </div>
+                <div class="sol-opzione">
+                  <span class="sol-etichetta" data-i18n="ui.cose-nostre">Cose nostre</span>
+                  <div class="segmenti-cielo">
+                    <button type="button" class="tasto-segmento" data-sol-sonde="si" data-solo-pianeti
+                      title="Le due Voyager là fuori, e ISS, Tiangong e Hubble attorno alla Terra (si vedono avvicinandosi a lei)" data-i18n-title="ui.le-due-voyager-la-fuori-e-iss" data-i18n="ui.mostra">Mostra</button>
+                    <button type="button" class="tasto-segmento" data-sol-sonde="no" data-solo-pianeti
+                      title="Niente sonde e niente satelliti artificiali" data-i18n-title="ui.niente-sonde-e-niente-satelliti-artificiali" data-i18n="ui.nascondi">Nascondi</button>
                   </div>
                 </div>
               </div>
