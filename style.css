@@ -6795,15 +6795,15 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   letter-spacing: 0.01em;
 }
 
-/* Ricerca dei corpi: al centro in alto, lontana dalle due colonne di tasti.
-   Il fondo è quello degli altri comandi sulla scena, così resta leggibile
-   anche quando sotto passa un'orbita chiara. */
+/* Ricerca dei corpi: compatta, nello spazio fra «Da qui» e la colonna dei
+   comandi a destra. Il fondo è quello degli altri comandi sulla scena, così
+   resta leggibile anche quando sotto passa un'orbita chiara. */
 .sol-ricerca {
   position: absolute;
   top: 10px;
   left: 50%;
   z-index: 7;
-  width: min(270px, calc(100% - 300px));
+  width: min(210px, calc(100% - 300px));
   transform: translateX(-50%);
 }
 .sol-ricerca > label {
@@ -6825,7 +6825,7 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 .sol-ricerca input {
   min-width: 0;
   flex: 1;
-  padding: 9px 4px 9px 13px;
+  padding: 7px 3px 7px 11px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -6834,7 +6834,7 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 }
 .sol-ricerca input::placeholder { color: var(--testo-3); }
 .sol-ricerca button {
-  width: 38px;
+  width: 32px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -6854,18 +6854,17 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 
 @media (max-width: 680px) {
   .sol-ricerca {
-    /* Sul telefono la ricerca diventa la quarta voce della colonna: partire
-       dal bordo sinistro, invece che dal centro della tela, la tiene
-       allineata alle viste e lascia libero il corridoio dei comandi a
-       destra. Il margine superiore evita che la pillola "Terra e Luna"
-       tocchi (o, con il testo ingrandito, copra) il campo. */
-    top: 148px;
-    left: max(10px, env(safe-area-inset-left));
+    /* Anche sul telefono resta nella prima riga, fra «Da qui» e il tasto a
+       destra: così non allunga la colonna delle viste e lascia più scena
+       libera. I due margini seguono gli ingombri reali dei comandi. */
+    top: 10px;
+    left: max(104px, calc(env(safe-area-inset-left) + 104px));
     right: max(64px, calc(env(safe-area-inset-right) + 54px));
+    max-width: 210px;
     width: auto;
     transform: none;
   }
-  .sol-suggerimento { top: 198px; }
+  .sol-suggerimento { top: 146px; }
 }
 
 /* --- Le due manopole di secondo piano ---
