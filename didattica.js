@@ -2105,7 +2105,7 @@
       ctx.setLineDash([]);
       // il secondo fuoco, quello dove non c'è niente
       didCerchio(ctx, X(-2 * e), Y(0), 4.5, 'rgba(148, 168, 214, 0.6)', 1.2, [3, 3]);
-      didScritta(ctx, 'l\'altro fuoco: vuoto', X(-2 * e), Y(0) + 18, { colore: C.testo3, misura: 9, allinea: 'center', peso: 500 });
+      didScritta(ctx, testoDi('did.kep.altroFuoco'), X(-2 * e), Y(0) + 18, { colore: C.testo3, misura: 9, allinea: 'center', peso: 500 });
       ctx.strokeStyle = 'rgba(245, 181, 68, 0.5)';
       ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(p.x), Y(p.y)); ctx.stroke();
@@ -2159,12 +2159,17 @@
       ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y0); ctx.stroke();
       // In alto: in fondo a sinistra c'è la targhetta della scena, e le
       // prime due tacche ci finivano sotto
-      didScritta(ctx, `${a} UA`, x, 14, { colore: C.testo3, misura: 9, allinea: 'center', peso: 500, mono: true });
+      // Anche la tacca passa da `num()`: le due sotto l'unità sono decimali,
+      // e scritte a mano dicono «0.3» pure in italiano — un asse col punto
+      // decimale accanto a una lettura con la virgola si legge come un
+      // refuso, non come un grafico.
+      didScritta(ctx, `${num(a, a < 1 ? 1 : 0)} ${testoDi('did.ua')}`, x, 14, { colore: C.testo3, misura: 9, allinea: 'center', peso: 500, mono: true });
     });
     [0.2, 1, 10, 100].forEach(T => {
       const y = Y(Math.log10(T));
       ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
-      didScritta(ctx, T < 1 ? `${T}` : `${T} a`, x0 - 6, y + 3, { colore: C.testo3, misura: 9, allinea: 'right', peso: 500, mono: true });
+      const tacca = num(T, T < 1 ? 1 : 0);
+      didScritta(ctx, T < 1 ? tacca : `${tacca} ${testoDi('did.annoCorto')}`, x0 - 6, y + 3, { colore: C.testo3, misura: 9, allinea: 'right', peso: 500, mono: true });
     });
 
     // La legge
@@ -2194,7 +2199,13 @@
     ctx.beginPath(); ctx.moveTo(px, y0); ctx.lineTo(px, py); ctx.lineTo(x0, py); ctx.stroke();
     ctx.setLineDash([]);
     didCerchio(ctx, px, py, 8, C.ambra, 2);
-    didScritta(ctx, `${num(a, 2)} UA → ${T < 1 ? num(T * 365.25, 0) + ' giorni' : num(T, 2) + ' anni'}`,
+    // Lo stesso conto del pannello qui accanto, e va detto con le stesse
+    // parole: il plurale lo sceglie `Intl.PluralRules` dal dizionario, se no
+    // in inglese l'asse del grafico direbbe «giorni» accanto a «days».
+    const tempoTerza = T < 1
+      ? testoDi('did.giorni', { n: num(T * 365.25, 0) })
+      : testoDi('did.anni', { n: num(T, 2) });
+    didScritta(ctx, `${num(a, 2)} ${testoDi('did.ua')} → ${tempoTerza}`,
       px, py - 14, { colore: C.ambra, misura: 11, allinea: 'center', peso: 700 });
   }
 
@@ -2938,9 +2949,11 @@
       didScritta(ctx, `${num(v, 2)} km/s`, px, pyS,
         { colore: C.verde, misura: 11, peso: 700, mono: true, dx: 9, dy: -12 });
     }
-    didScritta(ctx, `entra a ${num(tr.primaSole, 2)}  ·  esce a ${num(tr.dopoSole, 2)} km/s`, 12, 20,
+    didScritta(ctx, testoDi('did.fionda.entraEsceSole',
+      { entra: num(tr.primaSole, 2), esce: num(tr.dopoSole, 2) }), 12, 20,
       { colore: tr.guadagno >= 0 ? C.verde : C.rosso, misura: 10, peso: 700, mono: true, schermo: true });
-    didScritta(ctx, `${tr.guadagno >= 0 ? '+' : '−'}${num(Math.abs(tr.guadagno), 2)} km/s, e nessuno ha acceso niente`,
+    didScritta(ctx, testoDi('did.fionda.senzaAccendereNiente',
+      { v: `${tr.guadagno >= 0 ? '+' : '−'}${num(Math.abs(tr.guadagno), 2)}` }),
       12, 35, { colore: C.testo3, misura: 9, peso: 500, schermo: true });
   }
 
@@ -3890,7 +3903,7 @@
 
     didCorpo(ctx, cx, cy, Math.max(8, scala * 0.05), C.sole, { alone: 3.4 });
     didCorpo(ctx, tx, ty, 5.5, C.terra);
-    didScritta(ctx, 'Terra', tx + 9, ty + 4, { colore: C.bluChiaro, misura: 10 });
+    didScritta(ctx, CORPI.Earth.nome, tx + 9, ty + 4, { colore: C.bluChiaro, misura: 10 });
     didCorpo(ctx, mx, my, 6, CORPI[lancio.meta].colore, { anelli: lancio.meta === 'Saturn' });
     didScritta(ctx, CORPI[lancio.meta].nome, mx + 10, my + 4, { colore: CORPI[lancio.meta].colore, misura: 10 });
   }
@@ -5365,7 +5378,7 @@
     if (lontano) {
       const a = aurLPro([x0 + 26, 0, 62], w), b = aurLPro([x0 + 86, 0, 62], w);
       didFreccia(ctx, a.x, a.y, b.x, b.y, { colore: didVela(CA.vento, 0.8), spessore: 1.6, punta: 8 });
-      didScritta(ctx, `vento solare · ${Math.round(v.v)} km/s`, a.x, a.y - 8,
+      didScritta(ctx, testoDi('did.aurL.ventoSolare', { v: num(v.v, 0) }), a.x, a.y - 8,
         { colore: CA.vento, misura: 10, peso: 700 });
     }
   }
@@ -5573,7 +5586,7 @@
       (typeof aurBordo === 'function' ? aurBordo(kp, 21) : 60), 21,
       AURL_QUOTA_ALTA * esagera, boreale, tilt), w);
     if (eti.z >= 0) {
-      didScritta(ctx, boreale ? 'ovale boreale' : 'ovale australe', eti.x, eti.y - 7,
+      didScritta(ctx, testoDi(boreale ? 'did.aurL.ovaleBoreale' : 'did.aurL.ovaleAustrale'), eti.x, eti.y - 7,
         { colore: CA.verde, misura: 10, allinea: 'center', peso: 700 });
     }
   }
@@ -5598,8 +5611,8 @@
     if (p.z < 0) return;
     ctx.fillStyle = CA.casa;
     ctx.beginPath(); ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2); ctx.fill();
-    didScritta(ctx,
-      `qui · ${String(Math.floor(mlt)).padStart(2, '0')}:${String(Math.floor((mlt % 1) * 60)).padStart(2, '0')} magnetiche`,
+    const oraMagnetica = `${String(Math.floor(mlt)).padStart(2, '0')}:${String(Math.floor((mlt % 1) * 60)).padStart(2, '0')}`;
+    didScritta(ctx, testoDi('did.aurL.quiOreMagnetiche', { ora: oraMagnetica }),
       p.x + 7, p.y - 5, { colore: CA.casa, misura: 10, peso: 700 });
   }
 
@@ -5618,7 +5631,7 @@
     const naso = aurLPro([-s.r0, 0, 0], w);
     didFreccia(ctx, naso.x - 48, naso.y - 28, naso.x - 5, naso.y - 4,
       { colore: didVela(CA.scudo, 0.85), spessore: 1.4, punta: 7 });
-    didScritta(ctx, `naso · ${num(s.r0, 1)} R⊕`, naso.x - 52, naso.y - 32,
+    didScritta(ctx, testoDi('did.aurL.naso', { n: num(s.r0, 1) }), naso.x - 52, naso.y - 32,
       { colore: CA.scudo, misura: 10, peso: 700, allinea: 'right' });
 
     const coda = aurLPro([AURL_CODA_MAX * 0.62, 0, s.codaR * 1.25], w);
@@ -5732,7 +5745,7 @@
       if (!dentro) ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(obsX, obsY); ctx.lineTo(p.x, p.y); ctx.stroke();
       ctx.setLineDash([]);
-      didScritta(ctx, `${r.nome} → ${num(r.alt, 1)}°${dentro ? '' : ' · sotto l\'orizzonte'}`,
+      didScritta(ctx, `${r.nome} → ${num(r.alt, 1)}°${dentro ? '' : testoDi('did.aurL.sottoOrizzonte')}`,
         (obsX + p.x) / 2, (obsY + p.y) / 2 - 7,
         { colore: r.colore, misura: 10, allinea: 'center', peso: 700 });
     });
@@ -7650,7 +7663,7 @@
       ctx.fillStyle = '#f472b6';
       ctx.beginPath(); ctx.arc(pObs.x, pObs.y, 5, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; ctx.lineWidth = 1.6; ctx.stroke();
-      didScritta(ctx, `sei qui · ${tramOraTesto()}`, pObs.x + vx * R * 0.36, pObs.y + vy * R * 0.36,
+      didScritta(ctx, testoDi('did.tram.seiQui', { ora: tramOraTesto() }), pObs.x + vx * R * 0.36, pObs.y + vy * R * 0.36,
         { colore: '#f9a8d4', misura: 11.5, peso: 800,
           allinea: vx < -0.15 ? 'right' : (vx > 0.15 ? 'left' : 'center'), dy: vy < 0 ? -5 : 13 });
     }
@@ -7709,7 +7722,7 @@
     ctx.stroke();
     const b = vis[vis.length - 1], c = vis[vis.length - 3];
     didFreccia(ctx, c.x, c.y, b.x, b.y, { colore: 'rgba(138, 180, 255, 0.8)', spessore: 1.6, punta: 8 });
-    didScritta(ctx, 'gira così', vis[Math.floor(vis.length / 2)].x, vis[Math.floor(vis.length / 2)].y - 7,
+    didScritta(ctx, testoDi('did.tram.giraCosi'), vis[Math.floor(vis.length / 2)].x, vis[Math.floor(vis.length / 2)].y - 7,
       { colore: 'rgba(138, 180, 255, 0.85)', misura: 10, allinea: 'center', peso: 700 });
   }
 
@@ -7890,7 +7903,7 @@
       ctx.setLineDash([3, 4]);
       ctx.beginPath(); ctx.arc(px, py, 17, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
-      didScritta(ctx, 'trascinami', px, py - 24,
+      didScritta(ctx, testoDi('did.tram.trascinami'), px, py - 24,
         { colore: 'rgba(255, 226, 168, 0.9)', misura: 10, allinea: 'center', peso: 700 });
     }
 
@@ -7902,18 +7915,19 @@
     ctx.moveTo(mX - 4, quota(mX, 0)); ctx.lineTo(mX + 4, quota(mX, 0));
     ctx.moveTo(mX - 4, quota(mX, TRAM_ARIA_KM)); ctx.lineTo(mX + 4, quota(mX, TRAM_ARIA_KM));
     ctx.stroke();
-    didScritta(ctx, '8,4 km', mX + 6, quota(mX, TRAM_ARIA_KM) - 9,
+    didScritta(ctx, `${num(TRAM_ARIA_KM, 1)} km`, mX + 6, quota(mX, TRAM_ARIA_KM) - 9,
       { colore: '#a0c8ff', misura: 10, peso: 700 });
 
     // la riga graduata: 100 km, con lo stesso metro di tutto il resto
-    const barra = 100 * scala, bx = 16, by = Math.min(H - 16, obsY + 34);
+    const RIGHELLO_KM = 100;
+    const barra = RIGHELLO_KM * scala, bx = 16, by = Math.min(H - 16, obsY + 34);
     ctx.strokeStyle = 'rgba(233, 237, 247, 0.55)'; ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(bx, by); ctx.lineTo(bx + barra, by);
     ctx.moveTo(bx, by - 4); ctx.lineTo(bx, by + 4);
     ctx.moveTo(bx + barra, by - 4); ctx.lineTo(bx + barra, by + 4);
     ctx.stroke();
-    didScritta(ctx, '100 km', bx + barra / 2, by - 7,
+    didScritta(ctx, `${num(RIGHELLO_KM, 0)} km`, bx + barra / 2, by - 7,
       { colore: C.testo3, misura: 9.5, allinea: 'center', peso: 600, schermo: true });
 
     // --- Il titolo del quadro ------------------------------------------

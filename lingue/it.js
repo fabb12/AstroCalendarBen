@@ -324,6 +324,15 @@ window.ASTRO_DIZIONARI['it'] = {
     'posizione.sceltaDaTe': 'L\'app sta calcolando tutto da qui. L\'hai scelta tu, quindi resta: né il GPS né la rete la cambiano da soli, finché non premi “Rileva di nuovo”.',
     'posizione.calcoloDaQui': 'L\'app sta calcolando tutto da qui.',
     'sol.senzaLibreria': 'Senza la libreria di calcolo non si possono mettere i pianeti al loro posto.',
+    // Il puntino di casa sul globo della vista 3D.
+    'sol.seiQui': 'Sei qui',
+
+    // --- Le scritte disegnate sulla tela del planetario ----------------
+    // Non passano dal documento, quindi il cambio lingua non le riscrive:
+    // le rilegge il fotogramma dopo, che arriva comunque.
+    'cielo.servePosizioneTela': 'Serve la tua posizione: “Aggiorna posizione” qui sotto, o scegli la città.',
+    'cielo.etichettaEclittica': 'eclittica',
+    'cielo.etichettaAnalemma': 'analemma',
 
     // --- I sei quadri della lezione dell'eclittica ---------------------
     'lezione.alto.breve': 'Dall\'alto',
@@ -752,6 +761,9 @@ window.ASTRO_DIZIONARI['it'] = {
     'azione.condividiTitolo': 'Condividi l\'evento',
     'azione.cartolina': 'Cartolina',
     'azione.cartolinaTitolo': 'Crea una cartolina da mandare in chat',
+    // La firma del luogo impressa nella cartolina: un orario astronomico
+    // senza il suo posto chi lo riceve lo legge come se valesse a casa sua.
+    'condivisione.daLuogo': 'Da {luogo}',
     'azione.calendario': 'Al calendario',
     'azione.calendarioTitolo': 'Aggiungi al calendario del telefono',
 
@@ -1410,6 +1422,9 @@ window.ASTRO_DIZIONARI['it'] = {
     // Le otto voci comuni, poi un blocco per banco.
     'did.sole': 'Sole',
     'did.ua': 'UA',
+    // L'abbreviazione dell'anno sull'asse di un grafico, dove «anni» non ci
+    // sta: in inglese è «y» e non «a».
+    'did.annoCorto': 'a',
     'did.nd': 'N/D',
     'did.anni': { uno: '{n} anno', altri: '{n} anni' },
     'did.giorni': { uno: '{n} giorno', altri: '{n} giorni' },
@@ -1491,6 +1506,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'did.kep.targhettaAree': 'Seconda legge — in tempi uguali si spazzano aree uguali',
     'did.kep.targhettaArmonia': 'Terza legge — il quadrato dell\'anno è il cubo della distanza',
     'did.kep.uaDalSole': '{n} UA dal Sole',
+    'did.kep.altroFuoco': 'l\'altro fuoco: vuoto',
     'did.kep.ilSuoAnno': 'il suo anno: {anno}',
     'did.kep.spiegaArmonia': 'Un pianeta a <strong>{ua} UA</strong> impiegherebbe <strong>{anno}</strong> a fare un giro: è {ua} elevato a 1,5. Il doppio della distanza non fa il doppio dell\'anno, ne fa quasi il triplo — ed è questa sproporzione che rende il viaggio verso i pianeti esterni così lento, e le loro finestre di lancio così frequenti (perché li raggiungiamo quasi subito, tanto loro non scappano).',
     'did.kep.uaConSemiasse': '{n} UA (a = 1 UA)',
@@ -1573,6 +1589,10 @@ window.ASTRO_DIZIONARI['it'] = {
     'did.fionda.tettoPreso': 'adesso ne stai prendendo {perc}%',
     'did.fionda.tettoFreno': 'adesso invece stai frenando di {valore} km/s, ed è un limite che non c\'è — perdere si può perdere quanto si vuole, fino a fermarsi',
     'did.fionda.entraEsce': 'entra a {v}  ·  esce a {v} km/s  ·  piegata di {dev}°',
+    // Le due righe appoggiate sul quadro visto dal Sole: qui la velocità
+    // prima e dopo sono due numeri diversi, e vogliono due segnaposto.
+    'did.fionda.entraEsceSole': 'entra a {entra}  ·  esce a {esce} km/s',
+    'did.fionda.senzaAccendereNiente': '{v} km/s, e nessuno ha acceso niente',
     'did.fionda.inMezzoAccelera': 'in mezzo accelera cadendo fino a {v} km/s e rallenta risalendo: si riprende tutto',
     'did.fionda.maiUscita': 'La sonda non è mai uscita: nessun vettore da sommare.',
     'did.fionda.primaIncontro': 'prima dell\'incontro',
@@ -1739,6 +1759,13 @@ window.ASTRO_DIZIONARI['it'] = {
     'did.aurL.versoIlSole': 'verso il Sole',
     'did.aurL.laCoda': 'la coda — lunga centinaia di raggi',
     'did.aurL.orizzonte': 'orizzonte',
+    // Le etichette appoggiate sulla scena in 3D.
+    'did.aurL.ventoSolare': 'vento solare · {v} km/s',
+    'did.aurL.ovaleBoreale': 'ovale boreale',
+    'did.aurL.ovaleAustrale': 'ovale australe',
+    'did.aurL.quiOreMagnetiche': 'qui · {ora} magnetiche',
+    'did.aurL.naso': 'naso · {n} R⊕',
+    'did.aurL.sottoOrizzonte': ' · sotto l\'orizzonte',
     'did.aurL.ovaleDistante': 'l\'ovale · {km} km di distanza',
     'did.aurL.stessaScala': 'curvatura e quote alla stessa scala — nessuna esagerazione',
 
@@ -1837,6 +1864,10 @@ window.ASTRO_DIZIONARI['it'] = {
     'did.tram.campoInquadrato': 'Campo inquadrato: {gradi}° in altezza — il Sole è alla sua misura vera',
     'did.tram.tuttaLaLuce': 'tutta la luce (100%)',
     'did.tram.quantaLuce': 'Quanta luce arriva all\'occhio, dopo {n} masse d\'aria',
+    // Le tre etichette che si toccano col dito, appoggiate sul globo.
+    'did.tram.seiQui': 'sei qui · {ora}',
+    'did.tram.giraCosi': 'gira così',
+    'did.tram.trascinami': 'trascinami',
     'did.tram.coloreCheNeEsce': 'il colore che ne esce',
     'did.tram.cieloTinta': 'cielo {tinta}',
     'did.tram.sottoTerra': 'molecole ben più piccole della luce: Rayleigh, λ⁻⁴',
@@ -3572,6 +3603,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.aerei': 'Aerei',
     'ui.aerei-leggenda-rotte': '<span class="aereo-leggenda itinerario"></span> rotta ortodromica · <span class="aereo-leggenda osservata"></span> traccia reale ADS-B · <span class="aereo-leggenda prevista"></span> previsione 5 minuti',
     'ui.agenda': 'Agenda',
+    'ui.evento': 'Evento',
     'ui.aggiorna': 'Aggiorna',
     'ui.aggiorna-adesso': 'Aggiorna adesso',
     'ui.aggiornamento-automatico': 'Aggiornamento automatico',

@@ -131,6 +131,95 @@ function analizza(file) {
   return esiti;
 }
 
+/* Le scritte disegnate sulla tela — il punto cieco di questo strumento.
+ *
+ * Per un pezzo l'audit ha guardato solo il documento: `innerHTML`,
+ * `textContent`, `title`. Ma un planetario e otto banchi di prova scrivono
+ * mezza interfaccia con `fillText`, e quelle parole non passano da nessun
+ * nodo: l'asse di un grafico, il nome di un'orbita, «sei qui» appoggiato sul
+ * globo. Nessuna delle regole qui sopra le vede, e infatti ci sono rimaste
+ * per intero — «UA», «giorni», «anni», «ovale boreale» comparivano tali e
+ * quali a lingua inglese, in mezzo a un grafico per il resto tradotto.
+ *
+ * Qui la regola è **più severa** che nel resto del file, e di proposito: nel
+ * documento una stringa può legittimamente essere una classe o un id, mentre
+ * dentro a una chiamata di disegno una parola è quasi sempre una parola da
+ * leggere. Si parte quindi dal sospetto e si toglie solo ciò che parola non
+ * è: i colori, le parole chiave del canvas, le chiavi del dizionario, i nomi
+ * dei corpi che la libreria vuole in inglese, i simboli delle unità (che in
+ * inglese si scrivono uguali) e il nome dell'applicazione.
+ */
+const TELA_CHIAMATE = /\b(?:fillText|strokeText|didScritta|skyScrittaConAlone)\s*\(/g;
+const TELA_COLORE = /^(?:#[0-9a-f]{3,8}|rgba?\(|hsla?\()/i;
+const TELA_PAROLE = /^(?:left|right|center|middle|top|bottom|start|end|bold|normal|italic|butt|round|square|alphabetic|hanging|ideographic|sans-serif|system-ui|monospace|px|em|inherit)$/i;
+const TELA_CHIAVE = /^[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9_]+)+$/;
+const TELA_CORPI = /^(?:Sun|Moon|Mercury|Venus|Earth|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)$/;
+// I simboli delle unità e le sigle: si scrivono uguali nelle due lingue, e
+// tradurli sarebbe il difetto opposto.
+const TELA_UNITA = /^(?:km\/s|km|m|cm|mm|nm|UA|AU|R⊕|R⊙|mag|px|kg|°|%|h|min|s|a|y|g|Kp|N|S|E|O|W|hPa)$/;
+const TELA_MARCHIO = /^AstroCalendario di Ben$/;
+
+function tagliaChiamata(sorgente, da) {
+  // Le chiamate di disegno vanno a capo di continuo: leggere la sola riga
+  // perderebbe metà degli argomenti. Si bilanciano le parentesi saltando
+  // quelle che stanno dentro a una stringa.
+  let i = da, dep = 1, q = null, esc = false;
+  while (i < sorgente.length && dep > 0) {
+    const c = sorgente[i];
+    if (esc) { esc = false; i++; continue; }
+    if (c === '\\') { esc = true; i++; continue; }
+    if (q) { if (c === q) q = null; i++; continue; }
+    if (c === "'" || c === '"' || c === '`') { q = c; i++; continue; }
+    if (c === '(') dep++; else if (c === ')') dep--;
+    i++;
+  }
+  return sorgente.slice(da, i - 1);
+}
+
+function analizzaTela(file) {
+  const sorgente = fs.readFileSync(file, 'utf8');
+  const esiti = [];
+  let m;
+  TELA_CHIAMATE.lastIndex = 0;
+  while ((m = TELA_CHIAMATE.exec(sorgente))) {
+    const corpo = tagliaChiamata(sorgente, m.index + m[0].length);
+    const riga = sorgente.slice(0, m.index).split('\n').length;
+    const reLett = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
+    const visti = new Set();
+    let l;
+    while ((l = reLett.exec(corpo))) {
+      const lett = l[0];
+      // Un letterale che sta a destra di un confronto è un valore di stato,
+      // non una parola da leggere: `testoDi(stato === 'fallito' ? … : …)`
+      // sceglie fra due chiavi, e «fallito» sullo schermo non ci va mai.
+      if (/(?:===?|!==?)\s*$/.test(corpo.slice(0, l.index))) continue;
+      const grezza = lett.slice(1, -1);
+      // Da un template escono due famiglie di pezzi: il testo fra i `${…}` e
+      // i letterali annidati dentro alle espressioni — ed è lì che si erano
+      // nascosti « giorni» e « anni» dell'asse di Keplero.
+      const pezzi = [];
+      if (lett[0] === '`') {
+        pezzi.push(...grezza.split(/\$\{[^}]*\}/));
+        for (const espr of grezza.match(/\$\{[^}]*\}/g) || [])
+          for (const dentro of espr.match(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g) || [])
+            pezzi.push(dentro.slice(1, -1));
+      } else pezzi.push(grezza);
+
+      for (const pezzo of pezzi) {
+        const testo = pezzo.replace(/\\'/g, '\'').trim();
+        if (!testo || !/[A-Za-zÀ-ÿ]{2}/.test(testo)) continue;
+        if (TELA_COLORE.test(testo) || TELA_PAROLE.test(testo)) continue;
+        if (TELA_CHIAVE.test(testo) || TELA_CORPI.test(testo)) continue;
+        if (TELA_UNITA.test(testo) || TELA_MARCHIO.test(testo)) continue;
+        if (visti.has(testo)) continue;
+        visti.add(testo);
+        esiti.push({ file, riga, contesto: 'tela', testo });
+      }
+    }
+  }
+  return esiti;
+}
+
 /* L'HTML si legge **a tag**, con lo stack degli elementi aperti.
  *
  * Due tentativi buttati, e vale la pena scriverli perché sono lo stesso
@@ -215,7 +304,13 @@ let tutti = [];
 const bersagli = soloFile ? [soloFile] : [...FILE_UI, 'index.html'];
 for (const file of bersagli) {
   if (!fs.existsSync(file)) continue;
-  tutti = tutti.concat(file.endsWith('.html') ? analizzaHtml(file) : analizza(file));
+  if (file.endsWith('.html')) { tutti = tutti.concat(analizzaHtml(file)); continue; }
+  // Due passate sullo stesso file: il documento e la tela. Sono due mondi
+  // con due regole diverse, e messi insieme una delle due perde.
+  const daDoc = analizza(file);
+  const visti = new Set(daDoc.map(e => `${e.riga}|${e.testo}`));
+  tutti = tutti.concat(daDoc,
+    analizzaTela(file).filter(e => !visti.has(`${e.riga}|${e.testo}`)));
 }
 
 const perFile = new Map();

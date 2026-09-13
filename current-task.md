@@ -3,10 +3,13 @@
 **Niente in corso.**
 
 Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
-`app.js`: 345 stringhe cablate contate da
+`app.js`: 344 stringhe cablate contate da
 `node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
 dell'ombra, le eclissi di casa, quelle lunari), le simulazioni e gli avvisi del
-planetario. Il tetto resta a 362 (totale di adesso: 354).
+planetario. Il tetto resta a 362 (totale di adesso: 353).
+
+Le **scritte sulla tela** invece sono a zero, e adesso c'è chi le guarda: vedi
+l'ultimo intervento qui sotto.
 
 ## Lo stato delle prove
 
@@ -24,6 +27,47 @@ Rosse e **preesistenti**, verificate sull'albero pulito:
 
 ## Ultimo intervento completato
 
+**Le etichette dei grafici, e il punto cieco che le nascondeva.**
+
+I due dizionari erano già in parità (3.704 chiavi ciascuno, nessun segnaposto
+incoerente, nessun residuo italiano nel file inglese), ma `controlla-i18n.js`
+non ispezionava affatto `fillText`/`strokeText`: era nato per il **documento**
+— `innerHTML`, `textContent`, `title` — mentre il planetario e gli otto banchi
+della Didattica scrivono mezza interfaccia sulla tela, senza passare da nessun
+nodo. Quelle parole non le aveva mai lette nessuno.
+
+Diciannove etichette restavano quindi in italiano a lingua inglese, e il
+sintomo non è un errore ma un'**incoerenza**: l'asse del grafico di Keplero
+diceva «0.39 AU → 88 giorni», col numero già nel formato inglese e le parole
+ancora in italiano, dentro a un banco per il resto tradotto. Chi guarda non lo
+legge come un pezzo dimenticato — lo legge come una traduzione fatta male.
+
+Tradotte: l'asse e la terza legge di Keplero (UA/AU, giorni e anni col plurale
+di `Intl.PluralRules`, l'abbreviazione dell'anno), «l'altro fuoco: vuoto», le
+due righe della fionda vista dal Sole, la «Terra» della finestra di lancio
+(che adesso viene dal getter di `CORPI`), sei etichette del banco delle aurore
+(vento solare, i due ovali, le ore magnetiche, il naso della magnetopausa,
+«sotto l'orizzonte»), le tre del tramonto che si toccano col dito («sei qui»,
+«gira così», «trascinami»), l'«eclittica» e l'«analemma» del planetario, il
+«Sei qui» del globo in 3D, l'avviso della posizione disegnato sulla tela e la
+firma «Da {luogo}» della cartolina. In più i due numeri scritti a mano con la
+virgola italiana («8,4 km», «100 km») passano da `num()`, che è locale-aware.
+
+La parte che dura è `analizzaTela()`: una **seconda passata** sugli stessi
+file con una regola più severa — in un grafico una parola letterale è sospetta
+per definizione, e si toglie solo ciò che parola non è (colori, parole chiave
+del canvas, chiavi del dizionario, nomi dei corpi che la libreria vuole in
+inglese, simboli delle unità, il marchio). Tre cose non sono dettagli: le
+chiamate di disegno vanno a capo, quindi si bilanciano le parentesi invece di
+leggere la riga; dentro a un template si guardano anche i letterali annidati
+nelle `${…}`, ed è lì che stavano « giorni» e « anni»; e un letterale a destra
+di un confronto (`stato === 'fallito'`) è uno stato e non una parola.
+
+Il rilevatore è stato provato al contrario: rimettendo due etichette com'erano
+le ritrova entrambe, e col codice corretto risponde zero. Il totale dell'audit
+resta 353, cioè le tele non hanno alzato il conto di una riga.
+
+
 **Il telescopio spaziale Hubble nel cielo e negli appuntamenti.**
 
 Hubble è ora il terzo grande satellite seguito insieme a ISS e Tiangong: il
@@ -38,7 +82,7 @@ Le prove mirate sono `scripts/prova-stazioni.js` e
 `scripts/prova-transiti.js`; richiedono Playwright, Astronomy Engine e
 satellite.js installati localmente.
 
-## Intervento precedente
+## Intervento di due giri fa
 
 **Galleria: autorizzazione della cartella ricordata e video orizzontali a
 schermo intero.**
