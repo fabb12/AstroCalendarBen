@@ -21067,7 +21067,7 @@ function skyDisegna() {
     ctx.fillStyle = '#94a3b8';
     ctx.font = '13px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Serve la tua posizione: “Aggiorna posizione” qui sotto, o scegli la città.', L / 2, H / 2 + 40);
+    ctx.fillText(astroI18n.t('cielo.servePosizioneTela'), L / 2, H / 2 + 40);
     ctx.restore();
   }
 
@@ -21833,7 +21833,7 @@ function skyDisegnaEclittica(ctx, base, focale) {
     if (migliore) {
       ctx.globalAlpha = 0.8;
       ctx.fillStyle = colore;
-      ctx.fillText('eclittica', migliore.px + 8, migliore.py + 10);
+      ctx.fillText(astroI18n.t('cielo.etichettaEclittica'), migliore.px + 8, migliore.py + 10);
     }
   }
 
@@ -21978,7 +21978,7 @@ function skyDisegnaAnalemma(ctx, base, focale) {
     if (migliore) {
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = colore;
-      ctx.fillText('analemma', migliore.px + 9, migliore.py + 11);
+      ctx.fillText(astroI18n.t('cielo.etichettaAnalemma'), migliore.px + 9, migliore.py + 11);
     }
   }
   ctx.restore();
@@ -30781,9 +30781,10 @@ function solDisegnaCasaSullaTerra(ctx, telaio, assi, r) {
     ctx.font = `11px ${SOL_CARATTERE}`;
     ctx.textAlign = p.x >= 0 ? 'left' : 'right';
     ctx.textBaseline = 'middle';
-    ctx.strokeText('Sei qui', tx, ty);
+    const seiQui = astroI18n.t('sol.seiQui');
+    ctx.strokeText(seiQui, tx, ty);
     ctx.fillStyle = SKY_MIRINO_COLORE;
-    ctx.fillText('Sei qui', tx, ty);
+    ctx.fillText(seiQui, tx, ty);
     ctx.textAlign = 'left';
   }
   ctx.restore();
@@ -37826,7 +37827,7 @@ window.immagineEvento = async (id) => {
   const cat = CATEGORIE[ev.categoria];
   ctx.fillStyle = '#93c5fd';
   ctx.font = 'bold 34px system-ui, sans-serif';
-  ctx.fillText(cat ? cat.nome : 'Evento', 70, 130);
+  ctx.fillText(cat ? cat.nome : astroI18n.t('ui.evento'), 70, 130);
 
   // Titolo su più righe
   ctx.fillStyle = '#ffffff';
@@ -37852,7 +37853,7 @@ window.immagineEvento = async (id) => {
   if (dove) {
     ctx.fillStyle = '#a5b4fc';
     ctx.font = '30px system-ui, sans-serif';
-    ctx.fillText(`Da ${dove}`, 70, y + 138);
+    ctx.fillText(astroI18n.t('condivisione.daLuogo', { luogo: dove }), 70, y + 138);
     dopoData = y + 138;
   }
 
