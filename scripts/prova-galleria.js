@@ -69,17 +69,23 @@ const server = http.createServer((req, res) => {
       const dopo = document.querySelector('#galleria-elenco video');
       videoChiudiGalleria();
 
-      // Un handle gia' ricordato non deve far comparire una richiesta di
-      // permesso al solo ingresso in galleria. Il permesso serve invece al
-      // gesto di salvataggio, e il Blob deve arrivare proprio nello scrivibile
-      // della cartella scelta.
+      // Dopo un riavvio l'handle resta in IndexedDB ma il browser puo' averne
+      // riportato il permesso a "prompt". Il clic che apre la galleria deve
+      // ripristinarlo e leggere subito i video, senza un secondo passaggio dal
+      // selettore della cartella.
       let richiestePermesso = 0;
       let verifichePermesso = 0;
       let blobScritto = null;
+      const fileRicordato = new File(['video-ricordato'], 'ricordato.webm', {
+        type: 'video/webm', lastModified: 987654321
+      });
       videoCartella = {
         name: 'video-scelti',
         queryPermission: async () => { verifichePermesso += 1; return 'prompt'; },
         requestPermission: async () => { richiestePermesso += 1; return 'granted'; },
+        entries: async function* () {
+          yield ['ricordato.webm', { kind: 'file', getFile: async () => fileRicordato }];
+        },
         getFileHandle: async () => ({
           createWritable: async () => ({
             write: async blob => { blobScritto = blob; },
@@ -88,8 +94,12 @@ const server = http.createServer((req, res) => {
         })
       };
       videoCartellaAutorizzata = false;
+      videoPermessoCartella = null;
+      videoFirmaGalleria = null;
       await videoApriGalleria();
       const richiesteAprendo = richiestePermesso;
+      const videoRicordatoVisibile = [...document.querySelectorAll('.galleria-video-nome')]
+        .some(nome => nome.textContent === 'ricordato.webm');
       const filmato = new Blob(['salvato-nella-cartella'], { type: 'video/webm' });
       const scritto = await videoScriviInCartella({ nome: 'scelto.webm', blob: filmato });
       videoChiudiGalleria();
@@ -102,6 +112,7 @@ const server = http.createServer((req, res) => {
         richiesteAprendo,
         richiesteSalvando: richiestePermesso,
         verifichePermesso,
+        videoRicordatoVisibile,
         scritto,
         dimensioneScritta: blobScritto?.size,
         durataPredefinita: sky.reg.durataSec,
@@ -119,9 +130,9 @@ const server = http.createServer((req, res) => {
       esito.condiviso?.tipo === 'video/webm' && esito.condiviso?.dimensione > 0;
     console.log(`${condivisioneOk ? 'ok' : 'FALLITO'} — ogni video della galleria si può condividere`, esito.condiviso);
     if (!condivisioneOk) process.exitCode = 1;
-    const cartellaOk = esito.richiesteAprendo === 0 && esito.richiesteSalvando === 1 && esito.verifichePermesso === 2 &&
-      esito.scritto && esito.dimensioneScritta > 0;
-    console.log(`${cartellaOk ? 'ok' : 'FALLITO'} — la cartella ricordata non richiede permesso all'apertura e riceve il video`, esito);
+    const cartellaOk = esito.richiesteAprendo === 1 && esito.richiesteSalvando === 1 && esito.verifichePermesso === 1 &&
+      esito.videoRicordatoVisibile && esito.scritto && esito.dimensioneScritta > 0;
+    console.log(`${cartellaOk ? 'ok' : 'FALLITO'} — la cartella ricordata torna visibile dopo il riavvio e riceve il video`, esito);
     if (!cartellaOk) process.exitCode = 1;
     const durataOk = esito.durataPredefinita === 15 && esito.durataNelleImpostazioni;
     console.log(`${durataOk ? 'ok' : 'FALLITO'} — 15 secondi è la durata predefinita e compare nelle impostazioni`, esito);

@@ -28540,6 +28540,30 @@ function videoMostraSceltaIniziale(mostra) {
   document.getElementById('galleria-scelta-iniziale')?.classList.toggle('hidden', !mostra);
 }
 
+async function videoAutorizzaCartella(richiedi = false) {
+  if (!videoCartella) return false;
+  // Gli handle delle cartelle si possono conservare in IndexedDB, ma dopo la
+  // chiusura dell'app il browser puo' riportare il loro permesso a "prompt".
+  // L'apertura della galleria nasce da un clic: e' quindi il momento giusto
+  // per ripristinare l'accesso senza costringere l'utente a scegliere di
+  // nuovo la stessa cartella. Le sincronizzazioni automatiche passano invece
+  // `false` e non possono mai far comparire una richiesta fuori contesto.
+  if (videoPermessoCartella === true) return true;
+  try {
+    let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+    if (permesso !== 'granted' && richiedi && typeof videoCartella.requestPermission === 'function') {
+      permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
+    }
+    videoPermessoCartella = permesso === 'granted';
+    videoCartellaAutorizzata = videoPermessoCartella;
+    return videoPermessoCartella;
+  } catch (e) {
+    videoPermessoCartella = false;
+    videoCartellaAutorizzata = false;
+    return false;
+  }
+}
+
 async function videoScriviInCartella(esito) {
   if (!videoCartella) return false;
   try {
@@ -28673,14 +28697,10 @@ async function videoRenderGalleria() {
   catch (e) { videoMessaggio('Non riesco a leggere l’archivio video su questo dispositivo.'); }
   if (videoCartella) {
     try {
-      // L'accesso concesso dal picker resta valido per tutta la sessione. Una
-      // sola query e' necessaria soltanto quando recuperiamo l'handle salvato.
-      const permesso = videoPermessoCartella === null
-        ? await videoCartella.queryPermission({ mode: 'readwrite' })
-        : (videoPermessoCartella ? 'granted' : 'prompt');
-      videoPermessoCartella = permesso === 'granted';
-      videoCartellaAutorizzata = videoPermessoCartella;
-      if (permesso === 'granted') {
+      // Qui non chiediamo permessi: il timer passa da questa funzione ogni due
+      // secondi. L'eventuale consenso e' gia' stato ripristinato dal clic che
+      // ha aperto la galleria.
+      if (await videoAutorizzaCartella(false)) {
         const dallaCartella = [];
         for await (const [nome, handle] of videoCartella.entries()) {
           if (handle.kind !== 'file' || !/\.(?:mp4|webm)$/i.test(nome)) continue;
@@ -28765,20 +28785,14 @@ async function videoApriGalleria() {
     videoMessaggio('Scegli se collegare una cartella esistente o crearne una nuova.');
   } else if (videoCartella) {
     videoMostraSceltaIniziale(false);
-    try {
-      // Aprire la galleria e' un'operazione di sola consultazione e non deve
-      // trasformarsi ogni volta in una nuova domanda del browser. L'handle e'
-      // gia' conservato in IndexedDB; chiediamo nuovamente il consenso solo
-      // quando l'utente salva davvero un video (videoScriviInCartella).
-      const permesso = videoPermessoCartella === null
-        ? await videoCartella.queryPermission({ mode: 'readwrite' })
-        : (videoPermessoCartella ? 'granted' : 'prompt');
-      videoPermessoCartella = permesso === 'granted';
-      videoCartellaAutorizzata = videoPermessoCartella;
-      if (!videoCartellaAutorizzata) {
-        videoMessaggio(`La cartella “${videoCartella.name}” è ricordata. Il permesso verrà verificato al prossimo salvataggio.`);
-      }
-    } catch (e) { /* videoRenderGalleria mostrerà come riaprire la cartella */ }
+    // Dopo un riavvio il browser conserva l'handle ma puo' sospenderne il
+    // permesso. Il clic su «Galleria» fornisce l'attivazione utente necessaria
+    // per riabilitarlo: non serve riaprire il selettore e indicare la cartella
+    // una seconda volta.
+    const autorizzata = await videoAutorizzaCartella(true);
+    if (!autorizzata) {
+      videoMessaggio(`La cartella “${videoCartella.name}” è ricordata, ma serve il permesso per mostrarne i video.`);
+    }
   }
   await videoRenderGalleria();
   clearInterval(videoTimerSincronizzazione);
