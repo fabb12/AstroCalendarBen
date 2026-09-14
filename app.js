@@ -33190,7 +33190,15 @@ function solScegli(id) {
   // vista d'insieme. Valeva per la sola Terra, e per la Luna non valeva
   // affatto: si girava intorno al Sole guardando la Luna scappare fuori dal
   // riquadro a ogni giro di dito.
-  if (nuovo) solAvvicinaA(nuovo);
+  // Un satellite e' un caso diverso da un mondo: cio' che si vuole leggere
+  // scegliendolo non e' il puntino isolato, ma il suo giro attorno alla
+  // Terra. Portiamo quindi la Terra al centro e allarghiamo l'orbita fino a
+  // farle occupare quasi tutto il lato corto della tela. Rotella, pizzico e
+  // tasto + restano liberi di avvicinarsi ancora fino al normale limite dei
+  // corpi; questa e' soltanto una buona inquadratura di partenza.
+  const corpo = nuovo ? solCorpoDiId(nuovo) : null;
+  if (corpo && corpo.satellite) solInquadraSatellite(corpo, { ravvicina: true });
+  else if (nuovo) solAvvicinaA(nuovo);
   else if (sol.perno === id) solLasciaPerno();
   solAggiornaScheda(true);
   solDisegna();
@@ -33704,16 +33712,34 @@ function solInquadraRicerca(id) {
 // ripiega quindi sul tuffo che questa vista già conosce (la stessa
 // inquadratura dell'ingresso, §`solEntraSullaTerra`) e da lì l'anello e i tre
 // pallini ci sono per costruzione.
-function solInquadraSatellite(s) {
+function solInquadraSatellite(s, opzioni = {}) {
   sol.scelto = s.id;
   sol.perno = 'Earth';
   sol.quadro = 'terra';
-  const zoom = solZoomSullaTerra();
+  const zoom = opzioni.ravvicina ? solZoomOrbitaSatellite(s) : solZoomSullaTerra();
   if (zoom !== null) solImpostaZoom(Math.max(zoom, sol.zoomVoluto), { morbido: true });
   solAggiornaScheda(true);
   solAggiornaTasti();
   if (sol.aperto) solDisegna();
   return true;
+}
+
+// L'ingrandimento piu' vicino che conserva per intero l'orbita scelta. Il
+// margine serve alle etichette e al cerchio bianco della selezione; il tetto
+// in pixel evita che su uno schermo grande la Terra diventi inutilmente
+// enorme. Il conto segue entrambe le modalita' delle dimensioni, proprio come
+// `solZoomSullaTerra`, cosi' il comando non cambia significato passando da
+// pallini facilitati a diametri reali.
+function solZoomOrbitaSatellite(s) {
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!terra || !s || !sol.L || !sol.H) return solZoomSullaTerra();
+  const stacco = solSatStacco(s.quotaKm);
+  const raggioVoluto = Math.min(180, Math.min(sol.L, sol.H) / (2 * stacco * 1.18));
+  if (sol.misureVere) {
+    const base = (terra.km / 2) / SOL_UA_KM * Math.min(sol.L, sol.H) * 0.44;
+    return base > 0 ? Math.min(SOL_ZOOM_MAX_CORPO, raggioVoluto / base) : null;
+  }
+  return Math.min(SOL_ZOOM_MAX_CORPO, Math.pow(raggioVoluto / terra.raggio, 2));
 }
 
 // --- La ricerca, nella lingua di adesso ------------------------------------
