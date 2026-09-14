@@ -364,6 +364,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'sol.azione.insieme': 'Torna alla vista d’insieme',
     'sol.azione.giraIntorno': 'Gira intorno a {nome}',
     'sol.satellite.stacco': 'La distanza dalla Terra è esagerata, come quella della Luna: a quattrocento chilometri sarebbe dentro al pallino. Quello che è vero è la direzione e l’inclinazione dell’orbita.',
+    'sol.satellite.scalaReale': 'Quota, distanza dalla Terra e dimensione dell’oggetto usano lo stesso metro dei pianeti: a questa scala il satellite può essere troppo piccolo per diventare un pixel.',
     'sol.ricerca.esempio': 'Es. {nome}',
     'sol.ricerca.nonTrovato': 'Non l’ho trovato',
     'sol.ricerca.senzaOrbita': 'Sto scaricando i suoi dati orbitali: riprova fra poco.',

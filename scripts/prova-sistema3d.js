@@ -175,6 +175,38 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('il file dei corpi minori è stato caricato dalla finestra',
     censo.corpiMinori > 50, censo.corpiMinori + ' corpi nel file');
 
+  const scalaIniziale = await pagina.evaluate(() => {
+    solMisura();
+    sol.pianeti.forEach(p => { p.scena = solScena(p.pos); p.rDisegno = solRaggioCorpo(p); });
+    const terra = sol.pianeti.find(p => p.id === 'Earth');
+    const luna = solScenaLuna();
+    const iss = sol.satelliti.find(s => s.id === 'iss');
+    const puntoIss = solScenaSatellite(iss, terra);
+    const distanza = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    return {
+      distanzeVere: sol.distanzeVere,
+      misureVere: sol.misureVere,
+      luna: distanza(luna, terra.scena),
+      lunaAttesa: solRaggio(sol.luna.distanzaUa),
+      iss: distanza(puntoIss, terra.scena),
+      issAttesa: solRaggio(iss.raggioKm / SOL_UA_KM),
+      rapportoTerraLuna: solRaggioCorpo(terra) / solRaggioLuna(),
+      rapportoAtteso: terra.km / SOL_LUNA_KM,
+      raggioIss: iss.diametroKm / 2 / SOL_UA_KM * sol.scala
+    };
+  });
+  ok('la scena nasce con distanze e dimensioni reali',
+    scalaIniziale.distanzeVere && scalaIniziale.misureVere);
+  ok('anche la distanza Terra-Luna usa il metro astronomico',
+    Math.abs(scalaIniziale.luna - scalaIniziale.lunaAttesa) < 1e-12);
+  ok('anche la quota della ISS usa lo stesso metro',
+    Math.abs(scalaIniziale.iss - scalaIniziale.issAttesa) < 1e-12);
+  ok('Terra e Luna conservano il rapporto fra i diametri',
+    Math.abs(scalaIniziale.rapportoTerraLuna - scalaIniziale.rapportoAtteso) < 1e-9);
+  ok('la ISS ha il raggio fisico, non un pallino simbolico',
+    scalaIniziale.raggioIss > 0 && scalaIniziale.raggioIss < 0.01,
+    scalaIniziale.raggioIss.toExponential(2) + ' px');
+
   // =====================================================================
   console.log('\n— e stanno dove la geografia del Sistema Solare dice —');
 
@@ -436,6 +468,10 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     sensibilitaCamera.map(v => v.toFixed(2)).join(' / '));
 
   const tagliaSatelliti = await pagina.evaluate(() => {
+    // La modalità facilitata resta disponibile: è qui, e solo qui, che gli
+    // oggetti artificiali diventano simboli abbastanza grandi da toccare.
+    sol.distanzeVere = false;
+    sol.misureVere = false;
     solInquadraRicerca('iss');
     sol.zoom = sol.zoomVoluto;
     solDisegna();
