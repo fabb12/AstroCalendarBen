@@ -350,6 +350,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'sol.azione.insieme': 'Back to the wide view',
     'sol.azione.giraIntorno': 'Orbit {nome}',
     'sol.satellite.stacco': 'Its distance from the Earth is exaggerated, just like the Moon’s: at four hundred kilometres it would sit inside the dot. What is true here is the direction and the tilt of its orbit.',
+    'sol.satellite.scalaReale': 'Altitude, distance from Earth and object size use the same scale as the planets: at this scale the satellite may be too small to fill a pixel.',
     'sol.ricerca.esempio': 'e.g. {nome}',
     'sol.ricerca.nonTrovato': 'I could not find it',
     'sol.ricerca.senzaOrbita': 'I am still downloading its orbital data: try again in a moment.',

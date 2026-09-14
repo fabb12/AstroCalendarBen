@@ -28916,11 +28916,11 @@ window.cercaNelCielo = (idCorpo) => {
 //   pochi gradi: da lì l'eclittica smette di essere una riga da credere sulla
 //   parola e diventa il bordo di un pavimento visto di profilo.
 //
-//   Due imbrogli, entrambi dichiarati sotto al disegno e disattivabili:
-//   le distanze si possono comprimere (con quelle vere Mercurio finisce
-//   dentro al Sole, perché Nettuno è settantasette volte più lontano) e
-//   l'altezza fuori dal piano si può ingrandire (2° di inclinazione, a
-//   schermo, sono meno dello spessore della linea).
+//   La scena nasce senza imbrogli: distanze e diametri usano lo stesso metro,
+//   per pianeti, lune e oggetti artificiali. Dietro al pannello resta una
+//   modalità facilitata che comprime le distanze e ingrandisce i corpi quando
+//   si vuole riconoscerli; l'altezza fuori dal piano si può ingrandire perché
+//   2° di inclinazione, a schermo, sono meno dello spessore della linea.
 // =====================================================================
 
 const SOL_UA_KM = 149597870.7;
@@ -29116,11 +29116,13 @@ const SOL_COMETE_ORA_MS = 3600000;
 const SOL_SONDE = [
   {
     id: 'voyager1', nome: 'Voyager 1', colore: '#fcd34d',
-    lon: 255.9, lat: 34.9, ua: 169.3, uaPerAnno: 3.57, kms: 16.95, lancio: 1977.68
+    lon: 255.9, lat: 34.9, ua: 169.3, uaPerAnno: 3.57, kms: 16.95, lancio: 1977.68,
+    diametroKm: 0.0037
   },
   {
     id: 'voyager2', nome: 'Voyager 2', colore: '#f9a8d4',
-    lon: 288.0, lat: -48.0, ua: 142.0, uaPerAnno: 3.23, kms: 15.34, lancio: 1977.63
+    lon: 288.0, lat: -48.0, ua: 142.0, uaPerAnno: 3.23, kms: 15.34, lancio: 1977.63,
+    diametroKm: 0.0037
   }
 ];
 // L'epoca a cui valgono le distanze scritte qui sopra, e l'anno in cui cade:
@@ -29134,8 +29136,9 @@ const SOL_SONDE_ANNO_MS = 365.25 * 86400000;
 //   sedicesimo di raggio terrestre: alla scala di questa scena sono **dentro**
 //   al pallino azzurro, e il problema è lo stesso della Luna (che è
 //   trecentottantamila chilometri più in là e sta dentro al pallino comunque).
-//   La soluzione è la stessa: la **direzione** è vera, la distanza è
-//   esagerata. Quello che si tiene onesto è l'ordine delle quote — Tiangong
+//   In modalità facilitata la **direzione** è vera e la distanza viene
+//   esagerata. In modalità reale, che è quella iniziale, anche quota e misura
+//   fisica usano invece il metro comune. Resta onesto l'ordine delle quote — Tiangong
 //   più bassa, la ISS in mezzo, Hubble più alto — e soprattutto
 //   l'**inclinazione del piano**, che è la cosa che si vede: la ISS e Tiangong
 //   corrono su un anello inclinato di cinquantun gradi e mezzo (è per quello
@@ -29288,13 +29291,13 @@ const sol = {
   // l'inquadratura che si voleva. Si sposta con due dita (o col tasto destro,
   // o con Maiusc premuto), e il tasto ⌖ la rimette al centro.
   panX: 0, panY: 0,
-  distanzeVere: false,   // false = distanze compresse, per farceli stare tutti
+  distanzeVere: true,    // la scena nasce col metro astronomico reale
   // Si parte dall'altezza vera fuori dal piano, non da quella ingrandita: la
   // prima cosa che questa vista deve dire è che il Sistema Solare è piatto
   // davvero, non "quasi". L'ingrandimento è lì per chi poi vuole vedere le
   // inclinazioni, ma dev'essere una cosa che si chiede, non che si trova.
   esagera: 1,
-  misureVere: false,     // false = pallini ingranditi, true = in scala fra loro
+  misureVere: true,      // tutti i diametri, anche quelli artificiali, nascono in scala
   // Le due fasce di sassi: `fasce` sono le nuvole di punti sorteggiate una
   // volta sola, `fasceAccese` dice quali si vogliono vedere
   fasce: [], fasceAccese: { principale: true, kuiper: true },
@@ -29693,7 +29696,7 @@ function solLeggiPosizioni(quando) {
     // e allora la si disegna a distanza esagerata tenendo la direzione vera.
     const m = Astronomy.Ecliptic(Astronomy.GeoMoon(t)).vec;
     const d = Math.hypot(m.x, m.y, m.z) || 1;
-    sol.luna = { x: m.x / d, y: m.y / d, z: m.z / d };
+    sol.luna = { x: m.x / d, y: m.y / d, z: m.z / d, distanzaUa: d };
     // Le altre tre famiglie (§7.7-bis). Stanno dentro allo stesso `try` e
     // dentro alla stessa memoria dei pianeti, di proposito: sono lo stesso
     // istante, e calcolarle altrove vorrebbe dire poterle disegnare per un
@@ -29904,6 +29907,7 @@ function solLeggiSatelliti(quando, t) {
     elenco.push({
       id: sat.id, nome: sat.nome, colore: sat.colore, satellite: true,
       u: p.u, quotaKm: p.quotaKm, raggioKm: p.raggioKm,
+      diametroKm: sat.diametroKm || 0,
       periodoMin: sat.periodoMin || 93, classe: sat.classe || '',
       anello: solAnelloSatellite(sat, quando, t)
     });
@@ -29933,12 +29937,14 @@ function solAnelloSatellite(sat, quando, t) {
   return sol.satAnelli.punti[sat.id];
 }
 
-// Quanto lontano dal centro del pallino terrestre si disegna un satellite, in
-// raggi di quel pallino: la quota vera mappata sulla fascia fra
-// SOL_SAT_STACCO_MIN e SOL_SAT_STACCO_MAX. L'esagerazione è la stessa scelta
-// della Luna; quello che resta vero è l'ordine — chi sta più alto è disegnato
-// più fuori.
+// Quanto lontano dal centro terrestre si disegna un satellite. A distanze
+// reali il risultato è nello stesso metro della scena; nella modalità
+// facilitata è invece espresso in raggi del pallino terrestre.
 function solSatStacco(quotaKm) {
+  // Con le distanze reali non esiste un secondo metro locale: anche i pochi
+  // chilometri sopra la Terra passano dalla stessa scala in UA usata da
+  // Nettuno. La modalità facilitata conserva invece lo stacco leggibile.
+  if (sol.distanzeVere) return solRaggio((SOL_TERRA_RAGGIO_KM + quotaKm) / SOL_UA_KM);
   const q = Math.max(0, Math.min(1, (quotaKm - 300) / 400));
   return SOL_SAT_STACCO_MIN + q * (SOL_SAT_STACCO_MAX - SOL_SAT_STACCO_MIN);
 }
@@ -29949,8 +29955,9 @@ function solSatStacco(quotaKm) {
 function solScenaSatellite(s, terra) {
   const t = terra && (terra.scena || solScena(terra.pos));
   if (!t || !s || !s.u) return null;
-  const r = (terra.rDisegno || 8) * solSatStacco(s.quotaKm);
-  const passo = r / Math.max(1e-6, sol.scala);
+  const passo = sol.distanzeVere
+    ? solSatStacco(s.quotaKm)
+    : (terra.rDisegno || 8) * solSatStacco(s.quotaKm) / Math.max(1e-6, sol.scala);
   return {
     x: t.x + s.u.x * passo,
     y: t.y + s.u.y * passo,
@@ -30570,17 +30577,18 @@ function solColoreNotte(hex) {
   return `rgb(${q((n >> 16) & 255)}, ${q((n >> 8) & 255)}, ${q(n & 255)})`;
 }
 
-// La Luna attorno alla Terra, a distanza esagerata (vedi solLeggiPosizioni).
+// La Luna attorno alla Terra, alla distanza scelta (vedi solStaccoLuna).
 // Anche lei ha il suo posto nella fila: metà del mese sta davanti alla Terra
 // e metà dietro, e disegnarla sempre prima la faceva sparire a metà dentro
 // al pallino azzurro proprio nei giorni in cui invece dovrebbe coprirlo.
 // `davanti` dice quale delle due metà si sta disegnando adesso.
-// Quanto lontana dalla Terra si disegna la Luna, in unità di scena. Abbastanza
-// da non finirle dentro, adesso che i pallini sono più grossi — e la misura la
-// detta il pallino stesso, che con lo zoom cresce: uno stacco fisso di
-// ventitré pixel, a forte ingrandimento, lasciava la Luna sepolta dentro alla
-// Terra.
+// Quanto lontana dalla Terra si disegna la Luna, in unità di scena. Con le
+// distanze reali usa i 384.000 km calcolati per l'istante; nella modalità
+// facilitata resta abbastanza lontana da non finire nel pallino terrestre.
 function solStaccoLuna(terra) {
+  if (sol.distanzeVere && sol.luna && sol.luna.distanzaUa) {
+    return solRaggio(sol.luna.distanzaUa);
+  }
   const r = (terra && terra.rDisegno) || SOL_RAGGIO_LUNA;
   return (r * 2 + 8) / Math.max(1e-6, sol.scala);
 }
@@ -30778,8 +30786,20 @@ function solDisegnaSonda(ctx, s) {
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.globalAlpha = 1;
-  // Una crocetta e non un disco: una sonda non è un mondo, e a questa scala
-  // un pallino in più fra i pallini si legge come un pianeta che non c'è.
+  // A scala reale anche la sonda segue il metro comune: a questa distanza è
+  // necessariamente invisibile. La crocetta è soltanto la convenzione della
+  // modalità ingrandita, non una dimensione speciale riservata alle cose
+  // costruite dall'uomo.
+  if (sol.misureVere) {
+    const rVero = (s.diametroKm || 0) / 2 / SOL_UA_KM * sol.scala;
+    if (rVero > 0) {
+      ctx.fillStyle = s.colore;
+      ctx.beginPath(); ctx.arc(p.px, p.py, rVero, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+  // Una crocetta e non un disco: una sonda non è un mondo.
   ctx.strokeStyle = s.colore;
   ctx.lineWidth = 1.4;
   const b = 3.4;
@@ -30817,8 +30837,9 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
     // tratto per tratto, che è la stessa prova dell'orbita lunare
     const anello = s.anello;
     if (anello && anello.length > 12) {
-      const r = (terra.rDisegno || 8) * solSatStacco(s.quotaKm);
-      const passo = r / Math.max(1e-6, sol.scala);
+      const passo = sol.distanzeVere
+        ? solSatStacco(s.quotaKm)
+        : (terra.rDisegno || 8) * solSatStacco(s.quotaKm) / Math.max(1e-6, sol.scala);
       const t = terra.scena;
       const schermo = anello.map(u => solProietta({
         x: t.x + u.x * passo, y: t.y + u.y * passo, z: t.z + u.z * passo * sol.esagera
@@ -30840,21 +30861,24 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
     if ((p.vicinanza >= dietro) !== davanti) return;
     // Dove è finito sullo schermo: lo chiede il dito (`solTocco`) e lo chiede
     // il nome, che si scrive dopo tutti i pallini
+    const rSatellite = sol.misureVere
+      ? (s.diametroKm || 0) / 2 / SOL_UA_KM * sol.scala
+      : SOL_SAT_RAGGIO_PX;
     sol.satSchermo.push({
       id: s.id, nome: s.nome, colore: s.colore,
-      px: p.px, py: p.py, r: SOL_SAT_RAGGIO_PX
+      px: p.px, py: p.py, r: rSatellite
     });
     ctx.save();
     ctx.fillStyle = s.colore;
     ctx.beginPath();
-    ctx.arc(p.px, p.py, SOL_SAT_RAGGIO_PX, 0, Math.PI * 2);
+    ctx.arc(p.px, p.py, rSatellite, 0, Math.PI * 2);
     ctx.fill();
     if (sol.scelto === s.id) {
       ctx.strokeStyle = '#fff';
       ctx.globalAlpha = 0.85;
       ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.arc(p.px, p.py, SOL_SAT_RAGGIO_PX + 5, 0, Math.PI * 2);
+      ctx.arc(p.px, p.py, Math.max(rSatellite + 5, 5), 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
@@ -33146,7 +33170,8 @@ function solSchedaSatellite(s) {
         <li><span>${astroI18n.t('sol.dati.giro')}</span><strong>${Math.round(s.periodoMin)} ${astroI18n.t('sol.minuti')}</strong></li>
         <li><span>${astroI18n.t('sol.dati.giriAlGiorno')}</span><strong>${solNumero(giriAlGiorno, 1)}</strong></li>
       </ul>
-      <p class="sol-nota-scheda">${astroI18n.t('sol.satellite.stacco')}</p>
+      <p class="sol-nota-scheda">${astroI18n.t(sol.distanzeVere
+        ? 'sol.satellite.scalaReale' : 'sol.satellite.stacco')}</p>
       ${solAzioniPerno(s.id, s.nome)}`;
 }
 
@@ -33740,7 +33765,10 @@ function solZoomOrbitaSatellite(s) {
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   if (!terra || !s || !sol.L || !sol.H) return solZoomSullaTerra();
   const stacco = solSatStacco(s.quotaKm);
-  const raggioVoluto = Math.min(180, Math.min(sol.L, sol.H) / (2 * stacco * 1.18));
+  const staccoInRaggiTerra = sol.distanzeVere
+    ? (s.raggioKm || (SOL_TERRA_RAGGIO_KM + s.quotaKm)) / SOL_TERRA_RAGGIO_KM
+    : stacco;
+  const raggioVoluto = Math.min(180, Math.min(sol.L, sol.H) / (2 * staccoInRaggiTerra * 1.18));
   if (sol.misureVere) {
     const base = (terra.km / 2) / SOL_UA_KM * Math.min(sol.L, sol.H) * 0.44;
     return base > 0 ? Math.min(SOL_ZOOM_MAX_CORPO, raggioVoluto / base) : null;
