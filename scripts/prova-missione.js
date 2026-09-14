@@ -2646,14 +2646,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         // Una missione di soli mondi lontani, costruita qui: il cielo di
         // stanotte non deve poter decidere se questa prova gira.
         missAbbandona();
-        /* Un fotogramma fra il chiudere e il riaprire, e non è pignoleria:
-         * `solEsciSchermoIntero` chiede `document.exitFullscreen()`, che
-         * risponde con un `fullscreenchange` **asincrono**; riaprendo
-         * nello stesso tick quell'evento arriva dopo, trova il guscio
-         * appena rientrato e lo fa uscire di nuovo (§`cambioSchermo` in
-         * `app.js`). Nell'app non capita — fra una chiusura e
-         * un'apertura c'è sempre un gesto — e qui sì, perché la prova le
-         * mette in fila. */
+        // Nell'app fra una chiusura e un'apertura c'è sempre un gesto; qui la
+        // prova le mette in fila e lascia comunque assestare il modale.
         await new Promise(r => setTimeout(r, 250));
         const generiPrima = miss.scelte.generi, espPrima = miss.scelte.esperienza;
         miss.scelte.generi = ['lontani'];
@@ -2703,11 +2697,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         };
       });
       const dove = ` (${w}×${h})`;
-      prova('una tappa dei mondi lontani apre la vista 3D a tutto schermo' + dove, () => {
+      prova('una tappa dei mondi lontani apre la vista 3D senza imporre il tutto schermo' + dove, () => {
         assert.ok(scena.generata, 'nessuna missione generata: i candidati non arrivano');
         assert.strictEqual(scena.tipo, 'mondo3d');
         assert.ok(scena.solAperto, 'la finestra del Sistema Solare non si è aperta');
-        assert.ok(scena.pieno, 'non è a tutto schermo');
+        assert.ok(!scena.pieno, 'il grafico non deve entrare subito a tutto schermo');
         assert.ok(scena.mondi && scena.sonde,
           'le due famiglie devono essere accese, o il bersaglio non è disegnato');
         assert.ok(scena.disegnato, 'il bersaglio non è finito sullo schermo: non si può toccare');

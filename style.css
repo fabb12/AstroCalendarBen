@@ -6676,7 +6676,7 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
     linear-gradient(180deg, #07101f 0%, #102c4a 48%, #4e87a7 74%, #b8d4d7 100%);
   transform: translateZ(0);
 }
-.sol-transizione.in-decollo { animation: sol-ponte-finale 2.65s cubic-bezier(.55,.05,.25,1) both; }
+.sol-transizione.in-decollo { animation: sol-ponte-finale 4.9s cubic-bezier(.55,.05,.25,1) both; }
 .sol-transizione.transizione-finita { display: none; }
 .sol-transizione-stelle {
   position: absolute;
@@ -6688,7 +6688,7 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   background-position: 12px 18px, 67px 81px;
   background-size: 83px 83px, 127px 127px;
 }
-.in-decollo .sol-transizione-stelle { animation: sol-stelle-decollo 2.65s ease-out both; }
+.in-decollo .sol-transizione-stelle { animation: sol-stelle-decollo 4.9s ease-out both; }
 .sol-transizione-atmosfera {
   position: absolute;
   left: -12%;
@@ -6699,7 +6699,7 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   background: linear-gradient(180deg, transparent, rgba(100,205,255,.42) 19%, rgba(235,250,255,.82) 26%, transparent 32%);
   filter: blur(3px);
 }
-.in-decollo .sol-transizione-atmosfera { animation: sol-atmosfera-via 2.35s cubic-bezier(.4,0,.8,.3) both; }
+.in-decollo .sol-transizione-atmosfera { animation: sol-atmosfera-via 4.25s cubic-bezier(.4,0,.8,.3) both; }
 .sol-transizione-terra {
   position: absolute;
   left: -20%;
@@ -6714,30 +6714,35 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
     linear-gradient(160deg, #164f72, #082541 70%);
   box-shadow: 0 -8px 22px rgba(92,205,255,.82), 0 -2px 4px #e9fbff;
 }
-.in-decollo .sol-transizione-terra { animation: sol-terra-lontana 2.4s cubic-bezier(.45,.02,.75,.55) both; }
+.in-decollo .sol-transizione-terra { animation: sol-terra-lontana 4.35s cubic-bezier(.45,.02,.75,.55) both; }
 .sol-transizione-luci { position:absolute; inset:0; background:radial-gradient(circle at 46% 9%, #ffd77a 0 1px, transparent 2px); background-size:23px 19px; opacity:.45; }
 .sol-transizione-orbite { position:absolute; inset:50%; opacity:0; }
 .sol-transizione-orbite i { position:absolute; inset:-70px -125px; border:1px solid rgba(135,185,255,.45); border-radius:50%; transform:rotate(-17deg); }
 .sol-transizione-orbite i:nth-child(2) { inset:-43px -78px; }
 .sol-transizione-orbite i:nth-child(3) { inset:-20px -38px; }
 .sol-transizione-orbite b { position:absolute; width:10px; height:10px; margin:-5px; border-radius:50%; background:#ffe39a; box-shadow:0 0 20px #ffbd42; }
-.in-decollo .sol-transizione-orbite { animation: sol-orbite-arrivo 2.65s ease-out both; }
-.sol-transizione-testo { position:absolute; left:50%; bottom:14%; margin:0; transform:translateX(-50%); text-align:center; color:#fff; text-transform:uppercase; letter-spacing:.18em; font-size:.78rem; font-weight:700; text-shadow:0 2px 12px #000; white-space:nowrap; }
-.sol-transizione-testo small { display:block; margin-top:5px; color:#b9dcff; font-size:.62rem; letter-spacing:.12em; font-weight:500; }
-.in-decollo .sol-transizione-testo { animation: sol-testo-viaggio 2.4s ease both; }
+.in-decollo .sol-transizione-orbite { animation: sol-orbite-arrivo 4.9s ease-out both; }
+.sol-transizione-testo { position:absolute; left:50%; bottom:12%; width:min(90%, 520px); height:52px; transform:translateX(-50%); text-align:center; color:#fff; text-transform:uppercase; letter-spacing:.14em; font-size:.76rem; font-weight:700; text-shadow:0 2px 12px #000; }
+.sol-transizione-fase { position:absolute; inset:0; margin:0; opacity:0; }
+.sol-transizione-fase small { display:block; margin-top:6px; color:#b9dcff; font-size:.61rem; line-height:1.35; letter-spacing:.09em; font-weight:500; }
+.in-decollo .sol-fase-terra { animation: sol-testo-fase-uno 4.9s ease both; }
+.in-decollo .sol-fase-spazio { animation: sol-testo-fase-due 4.9s ease both; }
+.in-decollo .sol-fase-orbite { animation: sol-testo-fase-tre 4.9s ease both; }
 @keyframes sol-terra-lontana { 0%,18% { transform:scale(1.55) translateY(2%); } 100% { transform:scale(.42) translateY(120%); opacity:.15; } }
 @keyframes sol-atmosfera-via { 0%,15% { transform:scaleY(1); opacity:1; } 65%,100% { transform:translateY(80%) scaleY(.2); opacity:0; } }
 @keyframes sol-stelle-decollo { 0%,18% { opacity:.08; transform:scale(.8); } 62% { opacity:1; } 100% { opacity:1; transform:scale(1.32); } }
 @keyframes sol-orbite-arrivo { 0%,62% { opacity:0; transform:translate(-50%,-50%) scale(.45); } 88%,100% { opacity:.75; transform:translate(-50%,-50%) scale(1); } }
-@keyframes sol-testo-viaggio { 0% { opacity:0; transform:translate(-50%,12px); } 18%,62% { opacity:1; transform:translate(-50%,0); } 90%,100% { opacity:0; } }
-@keyframes sol-ponte-finale { 0%,78% { opacity:1; background-color:#07101f; } 100% { opacity:0; background-color:#02040a; } }
+@keyframes sol-testo-fase-uno { 0% { opacity:0; transform:translateY(8px); } 7%,25% { opacity:1; transform:none; } 32%,100% { opacity:0; transform:translateY(-6px); } }
+@keyframes sol-testo-fase-due { 0%,29% { opacity:0; transform:translateY(8px); } 37%,58% { opacity:1; transform:none; } 65%,100% { opacity:0; transform:translateY(-6px); } }
+@keyframes sol-testo-fase-tre { 0%,62% { opacity:0; transform:translateY(8px); } 70%,90% { opacity:1; transform:none; } 98%,100% { opacity:0; } }
+@keyframes sol-ponte-finale { 0%,88% { opacity:1; background-color:#07101f; } 100% { opacity:0; background-color:#02040a; } }
 @media (prefers-reduced-motion: reduce) {
   .sol-transizione.in-decollo { animation: sol-ponte-finale .35s ease both; }
   .in-decollo .sol-transizione-terra,
   .in-decollo .sol-transizione-atmosfera,
   .in-decollo .sol-transizione-stelle,
   .in-decollo .sol-transizione-orbite,
-  .in-decollo .sol-transizione-testo { animation: none; }
+  .in-decollo .sol-transizione-fase { animation: none; }
 }
 .tela-sistema {
   display: block;
