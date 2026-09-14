@@ -3130,10 +3130,15 @@ function missNavigazioneIndizi(t) {
 /* Il tasto della soluzione, che compare solo quando è il momento.
  *
  * Prima dei tre indizi non c'è: offrire la risposta a chi ha appena letto
- * l'enigma è togliergli la caccia di mano. Dopo che è stata data, sparisce
- * — un tasto che non fa più niente è un tasto rotto. */
+ * l'enigma è togliergli la caccia di mano. Dopo che è stata data resta invece
+ * disponibile mentre si rileggono gli indizi: è la scorciatoia esplicita per
+ * tornare alla risposta e ricentrare il bersaglio. Sulla risposta stessa non
+ * serve, perché è già davanti agli occhi. */
 function missTastoSoluzione(t) {
-  if (!t || t.fase === 'scoperta' || t.rivelata) return '';
+  if (!t || t.fase === 'scoperta') return '';
+  if (t.rivelata) {
+    if (missIndiceIndizio(t) >= MISS_INDIZI) return '';
+  }
   if ((t.aiuto || 0) < MISS_INDIZI) return '';
   return `<button type="button" class="missione-tasto missione-tasto-soluzione"
     data-miss-azione="soluzione">${missIcona('bersaglio', 16)} ${missT('mostraSoluzione')}</button>`;
@@ -3593,7 +3598,7 @@ function missMostraSoluzione() {
   const m = miss.attiva;
   if (!m) return false;
   const t = m.tappe[m.corrente];
-  if (!t || t.fase === 'scoperta' || t.rivelata) return false;
+  if (!t || t.fase === 'scoperta') return false;
   t.rivelata = true;
   t.aiuto = MISS_INDIZI;
   t.mostraAiuto = true;
