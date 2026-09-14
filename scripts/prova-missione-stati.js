@@ -92,7 +92,8 @@ assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
 // L'introduzione e' il primo dei tre indizi mostrati prima della soluzione.
 assert(elements.get('missione-striscia').innerHTML.includes('Indizio 1 di 3'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="indizio-successivo"'));
-assert(!elements.get('missione-striscia').innerHTML.includes('Rileggi l’indizio'));
+assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="ascolta"'));
+assert(elements.get('missione-striscia').innerHTML.includes('Riascolta'));
 assert(elements.get('missione-striscia').innerHTML.includes('Segui il telefono'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="termina"'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Missione Cielo</button>'));
@@ -137,6 +138,11 @@ assert.equal(run('miss.attiva.tappe[0].esito'),null);
 // Con la voce scelta, anche tornare a un indizio già sbloccato o avanzare di
 // nuovo deve leggere il testo che è effettivamente visibile nella striscia.
 // La scoperta deve poi far leggere automaticamente il messaggio finale.
+// «Riascolta» e' invece sempre esplicito: deve forzare la lettura anche se
+// nella preparazione la voce automatica era rimasta spenta.
+ctx.registraForza=forza=>{ctx.ultimaForza=forza;};
+run("miss.attiva.scelte.voce=false;missRaccontaTappa=(t,forza)=>{registraForza(forza);return true;};missAzione('ascolta',document.body)");
+assert.equal(ctx.ultimaForza,true);
 const narrazioni=[];
 ctx.registraNarrazione=(fase,testo)=>narrazioni.push({fase,testo});
 run("miss.attiva.scelte.voce=true;missRaccontaTappa=t=>{registraNarrazione(t.fase, t.fase==='scoperta' ? missNomeTappa(t) : missTestoIndizio(t));return true;}");
@@ -172,6 +178,7 @@ assert.equal(run('miss.strisciaNascosta'),true);
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
 assert.equal(run('miss.strisciaNascosta'),false);
 assert(elements.get('missione-striscia').innerHTML.includes('missione-scoperta'));
+assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="ascolta"'));
 assert.equal(narrazioni.length,3);assert.equal(narrazioni[2].fase,'scoperta');assert.equal(narrazioni[2].testo,'Vega');
 // «Un'altra storia» aggiorna soltanto l'aneddoto. La voce non deve
 // ripetere esultanza, nome e domanda dell'intero box informativo.

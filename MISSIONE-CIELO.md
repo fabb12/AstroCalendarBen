@@ -56,7 +56,9 @@ il bersaglio nel planetario senza completare la tappa.
 Se nella preparazione è stata scelta la voce, ogni indizio viene letto quando
 compare, anche navigando avanti e indietro fra quelli già ottenuti. Al tocco
 del bersaglio corretto viene letto automaticamente anche il messaggio finale
-di scoperta.
+di scoperta. Il tasto **Riascolta** nel box della guida ripete su richiesta il
+testo mostrato, sia durante la ricerca sia dopo la scoperta, anche quando la
+lettura automatica non è stata scelta.
 I riferimenti vicini vengono ricalcolati per l’istante attuale usando la
 distanza sferica; la destra e l’alto del mirino usano la base della camera.
 
