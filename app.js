@@ -29291,13 +29291,16 @@ const sol = {
   // l'inquadratura che si voleva. Si sposta con due dita (o col tasto destro,
   // o con Maiusc premuto), e il tasto ⌖ la rimette al centro.
   panX: 0, panY: 0,
-  distanzeVere: true,    // la scena nasce col metro astronomico reale
+  // La vista d'insieme nasce leggibile: le orbite lontane restano nel quadro
+  // e i corpi piccoli non scompaiono sotto il pixel. Il metro reale resta una
+  // scelta esplicita nel pannello «Come è disegnato».
+  distanzeVere: false,
   // Si parte dall'altezza vera fuori dal piano, non da quella ingrandita: la
   // prima cosa che questa vista deve dire è che il Sistema Solare è piatto
   // davvero, non "quasi". L'ingrandimento è lì per chi poi vuole vedere le
   // inclinazioni, ma dev'essere una cosa che si chiede, non che si trova.
   esagera: 1,
-  misureVere: true,      // tutti i diametri, anche quelli artificiali, nascono in scala
+  misureVere: false,
   // Le due fasce di sassi: `fasce` sono le nuvole di punti sorteggiate una
   // volta sola, `fasceAccese` dice quali si vogliono vedere
   fasce: [], fasceAccese: { principale: true, kuiper: true },
@@ -35465,6 +35468,17 @@ function inizializzaSistemaSolare() {
   modale.querySelectorAll('[data-sol-mondi]').forEach(b =>
     b.addEventListener('click', () => {
       sol.mondiAccesi = b.dataset.solMondi === 'si';
+      // «Mostra» deve mostrare davvero: col doppio metro reale gli astri
+      // minori sono sub-pixel e quelli lontani cadono fuori dal quadro.
+      // Riportarli nella rappresentazione leggibile evita un interruttore
+      // acceso che sembra non fare nulla.
+      if (sol.mondiAccesi && (sol.distanzeVere || sol.misureVere)) {
+        const bordo = solUaAlBordo(sol.zoomVoluto);
+        sol.distanzeVere = false;
+        sol.misureVere = false;
+        const r = solRaggio(bordo);
+        solImpostaZoom(r > 0 ? 0.5 / (0.44 * r) : 1, { morbido: true });
+      }
       // Spegnendo la famiglia del corpo scelto la sua scheda resterebbe
       // aperta sopra a un pallino che non si disegna più
       const c = solCorpoDiId(sol.scelto);
@@ -35476,6 +35490,17 @@ function inizializzaSistemaSolare() {
   modale.querySelectorAll('[data-sol-sonde]').forEach(b =>
     b.addEventListener('click', () => {
       sol.sondeAccese = b.dataset.solSonde === 'si';
+      // Satelliti e sonde, in scala astronomica, hanno diametri molto minori
+      // di un pixel e le orbite terrestri coincidono quasi col centro della
+      // Terra. Se si chiede di mostrarli si passa quindi alla convenzione
+      // grafica che dà loro un segno e uno stacco leggibili.
+      if (sol.sondeAccese && (sol.distanzeVere || sol.misureVere)) {
+        const bordo = solUaAlBordo(sol.zoomVoluto);
+        sol.distanzeVere = false;
+        sol.misureVere = false;
+        const r = solRaggio(bordo);
+        solImpostaZoom(r > 0 ? 0.5 / (0.44 * r) : 1, { morbido: true });
+      }
       const c = solCorpoDiId(sol.scelto);
       if (!sol.sondeAccese && c && (c.sonda || c.satellite)) { sol.scelto = null; solLasciaPerno(); }
       solAggiornaTasti();
