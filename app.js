@@ -34336,6 +34336,37 @@ function solVaiAllIstante(ev) {
   skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
 }
 
+// Il cambio di scala non deve sembrare l'apertura di una finestra: dal cielo
+// osservato da terra la camera sale, attraversa il sottile bordo azzurro
+// dell'atmosfera e soltanto allora lascia apparire le orbite. L'elemento vive
+// dentro `sol-guscio`, quindi continua a coprire la scena anche quando il
+// browser concede il vero schermo intero. Riavviare le classi in due frame
+// rende l'animazione ripetibile dopo ogni ritorno al planetario.
+function solAvviaTransizioneDecollo() {
+  const ponte = document.getElementById('sol-transizione');
+  if (!ponte) return;
+  if (ponte._solTimer) clearTimeout(ponte._solTimer);
+  ponte.classList.remove('in-decollo', 'transizione-finita');
+  ponte.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!sol.aperto) return;
+    ponte.classList.add('in-decollo');
+  }));
+  const finisci = () => {
+    if (ponte._solTimer) clearTimeout(ponte._solTimer);
+    ponte._solTimer = null;
+    ponte.classList.remove('in-decollo');
+    ponte.classList.add('transizione-finita');
+    ponte.setAttribute('aria-hidden', 'true');
+  };
+  ponte.onanimationend = e => {
+    if (e.target === ponte) finisci();
+  };
+  // Un cambio di visibilita' può impedire animationend: il paracadute evita
+  // che il planetario resti coperto al ritorno nella scheda.
+  ponte._solTimer = setTimeout(finisci, 2900);
+}
+
 window.apriSistemaSolare = (opzioni = {}) => {
   const modale = document.getElementById('modale-sistema');
   if (!modale) return;
@@ -34408,6 +34439,7 @@ window.apriSistemaSolare = (opzioni = {}) => {
 
   modale.classList.remove('hidden');
   sol.aperto = true;
+  solAvviaTransizioneDecollo();
 
   // Si entra già a tutto schermo, con la barra del tempo appoggiata sopra la
   // scena. Questa finestra è un'immagine, non un modulo: quello che ha da

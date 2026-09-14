@@ -3886,6 +3886,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.il-resto-dell-app-dice-cosa-c-e-stanotte-qui': 'The rest of the app tells you what is out tonight. Here is how to frame it: the figures are worked out for your own instrument, the instructions talk about real knobs, and the two hard parts — putting the axis on north and finding the object — you do guided, with the phone’s level, compass and push-to.',
     'ui.il-sistema-solare-a-tutto-schermo-con-la': 'The Solar System full screen, with the time bar overlaid',
     'ui.il-sistema-solare-adesso': 'The Solar System, right now',
+    'ui.lasciamo-la-terra': 'Leaving Earth',
+    'ui.verso-il-sistema-solare': 'towards the Solar System',
     'ui.il-sistema-solare-in-3d': 'The Solar System in 3D',
     'ui.il-sistema-solare-visto-da-fuori-nello': 'The Solar System seen from outside, at the same instant: it opens full screen, aimed at the Earth',
     'ui.il-tempo': 'Time',
