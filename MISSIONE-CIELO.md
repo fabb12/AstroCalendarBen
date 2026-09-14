@@ -52,7 +52,9 @@ presenta tre indizi in tutto, ciascuno più preciso del precedente, e può esser
 raccolta in una pillola mentre si cerca; quando si trova il bersaglio si riapre
 da sola, così il premio e il racconto non restano nascosti.
 Subito dopo il terzo compare “Mostra la soluzione”, che rivela il nome e centra
-il bersaglio nel planetario senza completare la tappa.
+il bersaglio nel planetario senza completare la tappa; un cerchio resta attorno
+all'oggetto per quindici secondi, così la soluzione è riconoscibile anche in un
+campo affollato.
 Se nella preparazione è stata scelta la voce, ogni indizio viene letto quando
 compare, anche navigando avanti e indietro fra quelli già ottenuti. Al tocco
 del bersaglio corretto viene letto automaticamente anche il messaggio finale
