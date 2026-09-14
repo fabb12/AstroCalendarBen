@@ -241,7 +241,7 @@ window.ASTRO_DIZIONARI['it'] = {
     // --- Il tasto dei filtri -------------------------------------------
     'ui.apri-la-guida': 'Apri la guida',
     'ui.come-si-usa-l-app': 'Come si usa l\'app',
-    'ui.cose-nostre': 'Cose nostre',
+    'ui.cose-nostre': 'Oggetti artificiali',
     'ui.filtri': 'Filtri',
     'ui.glossario': 'Glossario',
     'ui.guida': 'Guida',
@@ -4081,7 +4081,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.misure-vere-i-diametri-seguono-la-scala': 'Misure vere: i diametri seguono la scala astronomica dello zoom; con Distanze reali tutto usa lo stesso metro. Nel banco Terra e Luna anche le ombre sono esatte',
     'ui.modalita-hover': 'Modalità hover',
     'ui.modalita-notte': 'Modalità notte',
-    'ui.mondi-minori': 'Mondi minori',
+    'ui.mondi-minori': 'Astri minori',
     'ui.mostra': 'Mostra',
     'ui.mostra-anche-cio-che-in-questo-momento-e': 'Mostra anche ciò che in questo momento è sotto l\'orizzonte',
     'ui.mostra-gli-astri-anche-quando-si-trovano': 'Mostra gli astri anche quando si trovano dietro il profilo di colline e montagne. Spento, il terreno li nasconde come avviene nella realtà',

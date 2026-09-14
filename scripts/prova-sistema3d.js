@@ -192,20 +192,32 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
       issAttesa: solRaggio(iss.raggioKm / SOL_UA_KM),
       rapportoTerraLuna: solRaggioCorpo(terra) / solRaggioLuna(),
       rapportoAtteso: terra.km / SOL_LUNA_KM,
-      raggioIss: iss.diametroKm / 2 / SOL_UA_KM * sol.scala
+      raggioIss: sol.misureVere
+        ? iss.diametroKm / 2 / SOL_UA_KM * sol.scala
+        : SOL_SAT_RAGGIO_PX
     };
   });
-  ok('la scena nasce con distanze e dimensioni reali',
-    scalaIniziale.distanzeVere && scalaIniziale.misureVere);
-  ok('anche la distanza Terra-Luna usa il metro astronomico',
-    Math.abs(scalaIniziale.luna - scalaIniziale.lunaAttesa) < 1e-12);
-  ok('anche la quota della ISS usa lo stesso metro',
-    Math.abs(scalaIniziale.iss - scalaIniziale.issAttesa) < 1e-12);
-  ok('Terra e Luna conservano il rapporto fra i diametri',
-    Math.abs(scalaIniziale.rapportoTerraLuna - scalaIniziale.rapportoAtteso) < 1e-9);
-  ok('la ISS ha il raggio fisico, non un pallino simbolico',
-    scalaIniziale.raggioIss > 0 && scalaIniziale.raggioIss < 0.01,
-    scalaIniziale.raggioIss.toExponential(2) + ' px');
+  ok('la scena nasce con distanze compresse e corpi ingranditi',
+    !scalaIniziale.distanzeVere && !scalaIniziale.misureVere);
+  ok('la modalità iniziale rende leggibili anche gli oggetti artificiali',
+    scalaIniziale.raggioIss >= 5,
+    scalaIniziale.raggioIss.toFixed(1) + ' px');
+
+  const mostraLeggibile = await pagina.evaluate(() => {
+    sol.distanzeVere = true;
+    sol.misureVere = true;
+    document.querySelector('[data-sol-mondi="si"]').click();
+    const astri = !sol.distanzeVere && !sol.misureVere;
+    sol.distanzeVere = true;
+    sol.misureVere = true;
+    document.querySelector('[data-sol-sonde="si"]').click();
+    return {
+      astri,
+      artificiali: !sol.distanzeVere && !sol.misureVere
+    };
+  });
+  ok('Mostra non resta acceso su una scala che rende invisibili le famiglie',
+    mostraLeggibile.astri && mostraLeggibile.artificiali);
 
   // =====================================================================
   console.log('\n— e stanno dove la geografia del Sistema Solare dice —');

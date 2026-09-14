@@ -232,7 +232,7 @@ window.ASTRO_DIZIONARI['en'] = {
     // --- Il tasto dei filtri -------------------------------------------
     'ui.apri-la-guida': 'Open the guide',
     'ui.come-si-usa-l-app': 'How to use the app',
-    'ui.cose-nostre': 'Our own',
+    'ui.cose-nostre': 'Artificial objects',
     'ui.filtri': 'Filters',
     'ui.glossario': 'Glossary',
     'ui.guida': 'Guide',
@@ -3969,7 +3969,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.misure-vere-i-diametri-seguono-la-scala': 'True sizes: the diameters follow the astronomical scale of the zoom; with True distances everything uses the same yardstick. In the Earth and Moon bench the shadows are exact too',
     'ui.modalita-hover': 'Hover mode',
     'ui.modalita-notte': 'Night mode',
-    'ui.mondi-minori': 'Minor worlds',
+    'ui.mondi-minori': 'Minor bodies',
     'ui.mostra': 'Show',
     'ui.mostra-anche-cio-che-in-questo-momento-e': 'Also show what is below the horizon at this moment',
     'ui.mostra-gli-astri-anche-quando-si-trovano': 'Show objects even when they are behind the outline of hills and mountains. Switched off, the terrain hides them as it does in reality',
