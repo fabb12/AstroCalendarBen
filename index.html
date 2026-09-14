@@ -1988,33 +1988,16 @@
       <div class="corpo-modale spazio-verticale">
         <div id="sol-guscio" class="sol-guscio">
           <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
-          <!-- Il ponte visivo dal planetario alla vista da fuori. Non e' un
-               filmato: gli strati restano nitidi a ogni risoluzione e la
-               stessa partenza viene usata anche dalle tappe di Missione
-               Cielo, che entrano da apriSistemaSolare. -->
+          <!-- Il volo dal planetario alla vista da fuori (app.js, 7.7-quinquies).
+               Una tela sola: il disegno e' tutto in JavaScript perche' deve
+               partire dalla posa vera della camera del cielo e finire sulla
+               misura vera che la scena dara' alla Terra - due numeri che un
+               foglio di stile non puo' conoscere. Sta dentro `sol-guscio`,
+               quindi copre la scena anche a tutto schermo, e non porta
+               scritte: un'animazione che deve annunciare le sue fasi sta
+               ammettendo che dall'immagine non si capiscono. -->
           <div id="sol-transizione" class="sol-transizione" aria-hidden="true">
-            <div class="sol-transizione-stelle"></div>
-            <div class="sol-transizione-atmosfera"></div>
-            <div class="sol-transizione-terra">
-              <span class="sol-transizione-luci"></span>
-            </div>
-            <div class="sol-transizione-orbite">
-              <i></i><i></i><i></i><b></b>
-            </div>
-            <div class="sol-transizione-testo" role="status" aria-live="polite">
-              <p class="sol-transizione-fase sol-fase-terra">
-                <span data-i18n="ui.partiamo-dal-planetario">Partiamo dal cielo visto da Terra</span>
-                <small data-i18n="ui.la-camera-sale-sopra-l-atmosfera">la camera sale sopra l'atmosfera</small>
-              </p>
-              <p class="sol-transizione-fase sol-fase-spazio">
-                <span data-i18n="ui.la-terra-si-allontana">La Terra si allontana</span>
-                <small data-i18n="ui.ora-guardiamo-il-sistema-da-fuori">ora guardiamo il Sistema Solare da fuori</small>
-              </p>
-              <p class="sol-transizione-fase sol-fase-orbite">
-                <span data-i18n="ui.compaiono-le-orbite">Compaiono le orbite</span>
-                <small data-i18n="ui.ogni-pianeta-e-nella-posizione-di-adesso">ogni pianeta è nella posizione di adesso</small>
-              </p>
-            </div>
+            <canvas id="sol-transizione-tela" class="sol-transizione-tela"></canvas>
           </div>
           <p class="sol-suggerimento" data-i18n="ui.trascina-per-girare-tocca-un-pianeta-doppio">Trascina per girare · tocca un pianeta · doppio tocco sulla Terra per impostare il punto giallo</p>
 
