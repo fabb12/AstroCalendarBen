@@ -358,9 +358,9 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   });
   ok('toccando un pianeta nano lo si sceglie', tocco === 'Eris', String(tocco));
 
-  // Scegliere non e' uno zoom mascherato: conserva esattamente la scala che
-  // l'utente ha composto e cambia soltanto il perno attorno a cui ruota la
-  // camera. Vale per un mondo naturale e per ciascun oggetto artificiale.
+  // I mondi conservano la scala scelta. I satelliti invece aprono la loro
+  // orbita quasi fino ai bordi e tengono la Terra al centro: selezionare la
+  // ISS deve finalmente permettere di leggerne bene tutto il giro.
   const selezioneCamera = await pagina.evaluate(() => {
     const risultati = [];
     ['Mars', 'iss', 'css', 'hubble'].forEach((id, i) => {
@@ -371,14 +371,20 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
       risultati.push({
         id, perno: sol.perno,
         zoom: sol.zoom, zoomVoluto: sol.zoomVoluto,
-        invariato: sol.zoom === prima.zoom && sol.zoomVoluto === prima.zoomVoluto
+        invariato: sol.zoom === prima.zoom && sol.zoomVoluto === prima.zoomVoluto,
+        raggioTerraAtteso: id === 'Mars' ? 0 : Math.min(180,
+          Math.min(sol.L, sol.H) / (2 * solSatStacco(solCorpoDiId(id).quotaKm) * 1.18))
       });
     });
     return risultati;
   });
-  ok('selezionare un corpo cambia il centro ma non lo zoom',
-    selezioneCamera.every(v => v.perno === v.id && v.invariato),
+  ok('selezionare un mondo cambia il centro ma non lo zoom',
+    selezioneCamera[0].perno === 'Mars' && selezioneCamera[0].invariato,
     selezioneCamera.map(v => `${v.id}: ${v.zoom}/${v.zoomVoluto}`).join(', '));
+  ok('selezionare ISS, Tiangong o Hubble centra la Terra e avvicina la loro orbita',
+    selezioneCamera.slice(1).every(v => v.perno === 'Earth' &&
+      7.6 * Math.sqrt(v.zoomVoluto) >= v.raggioTerraAtteso - 1),
+    selezioneCamera.slice(1).map(v => `${v.id}: ${Math.round(7.6 * Math.sqrt(v.zoomVoluto))}px`).join(', '));
 
   const tagliaSatelliti = await pagina.evaluate(() => {
     solInquadraRicerca('iss');
