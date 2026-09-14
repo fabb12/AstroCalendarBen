@@ -236,6 +236,16 @@ const server = http.createServer((req,res)=> {
   assert.equal(await page.evaluate(()=>miss.attiva.tappe[1].esito),null);
   assert((await page.textContent('#missione-striscia')).includes(
     await page.evaluate(()=>missNomeTappa(miss.attiva.tappe[1]))));
+  // La soluzione resta raggiungibile dopo aver sfogliato di nuovo gli
+  // indizi: il tasto ricompare e riporta alla risposta, invece di lasciare
+  // l'utente fermo sul terzo indizio senza una via esplicita per rivederla.
+  await page.click('#missione-striscia [data-miss-azione="indizio-precedente"]');
+  assert(await page.$('#missione-striscia [data-miss-azione="soluzione"]'));
+  await page.click('#missione-striscia [data-miss-azione="soluzione"]');
+  assert((await page.textContent('#missione-striscia')).includes(
+    await page.evaluate(()=>missNomeTappa(miss.attiva.tappe[1]))));
+  assert.equal(await page.$('#missione-striscia [data-miss-azione="soluzione"]'),null);
+  await page.screenshot({path:path.join(root,'../missione-soluzione-ripristinata.png')});
   await page.evaluate(()=>astroI18n.impostaLingua('en'));
   assert((await page.textContent('#missione-striscia')).includes('Search') || (await page.textContent('#missione-striscia')).includes('Skip'));
   // Every dynamic content key resolves, in every mode and both languages.
