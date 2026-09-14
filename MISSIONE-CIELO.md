@@ -48,8 +48,10 @@ etichette del cielo e audio di ricerca. L'elenco degli astri è sospeso durante
 la ricerca. Anche i nomi delle montagne vengono nascosti per tutta la modalità
 di gioco nel planetario, scoperta compresa, senza cambiare la preferenza del
 planetario; ricompaiono quando si esce dal cielo della missione. La guida
-presenta tre indizi in tutto, ciascuno più preciso del precedente;
-subito dopo il terzo compare “Mostra la soluzione”, che rivela il nome e centra
+presenta tre indizi in tutto, ciascuno più preciso del precedente, e può essere
+raccolta in una pillola mentre si cerca; quando si trova il bersaglio si riapre
+da sola, così il premio e il racconto non restano nascosti.
+Subito dopo il terzo compare “Mostra la soluzione”, che rivela il nome e centra
 il bersaglio nel planetario senza completare la tappa.
 Se nella preparazione è stata scelta la voce, ogni indizio viene letto quando
 compare, anche navigando avanti e indietro fra quelli già ottenuti. Al tocco

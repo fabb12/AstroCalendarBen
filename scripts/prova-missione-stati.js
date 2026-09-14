@@ -165,7 +165,13 @@ offset=3600000;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.
 offset=3600000;run("miss.attiva.simulazione=true;miss.attiva.tappe[0].feedback=null;missSelezionaCielo({categoria:'astro',id:'Star2'})");
 assert.equal(run('miss.attiva.tappe[0].feedback'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),MISS_INDIZI);run('miss.attiva.simulazione=false');offset=0;
 ctx.sky.observer=new Astronomy.Observer(0,0,0);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);ctx.sky.observer=obs;
+// Se il bersaglio viene trovato mentre la guida e' raccolta, il premio non
+// deve restare nascosto dietro alla pillola «Mostra la guida».
+run("missAzione('solo-voce',document.body)");
+assert.equal(run('miss.strisciaNascosta'),true);
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
+assert.equal(run('miss.strisciaNascosta'),false);
+assert(elements.get('missione-striscia').innerHTML.includes('missione-scoperta'));
 assert.equal(narrazioni.length,3);assert.equal(narrazioni[2].fase,'scoperta');assert.equal(narrazioni[2].testo,'Vega');
 // «Un'altra storia» aggiorna soltanto l'aneddoto. La voce non deve
 // ripetere esultanza, nome e domanda dell'intero box informativo.
