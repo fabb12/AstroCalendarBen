@@ -2756,11 +2756,15 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       if (altro) tocca(altro);
       await attesa();
       const sbagliato = { scelto: sol.scelto, esito: t.esito, tentativi: t.tentativi || 0 };
+      // Il premio deve riaprire la stessa guida anche nella scena 3D.
+      miss.strisciaNascosta = true;
+      missMostraStrisciaCielo();
       const bersaglio = tutti().find(c => c.id === t.idSistema);
       tocca(bersaglio);
       await attesa();
       const dopo = miss.attiva.tappe[miss.attiva.corrente];
       return { sbagliato, esito: dopo.esito, fase: dopo.fase,
+        guidaRiaperta: !miss.strisciaNascosta,
         scoperta: document.getElementById('missione-striscia').textContent.includes(missNomeTappa(dopo)) };
     });
     prova('un tocco sbagliato non apre nessuna scheda e non chiude la tappa', () => {
@@ -2771,6 +2775,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     prova('il tocco sul corpo giusto chiude la tappa e mostra la scoperta', () => {
       assert.strictEqual(tocchi.esito, 'trovato');
       assert.strictEqual(tocchi.fase, 'scoperta');
+      assert.strictEqual(tocchi.guidaRiaperta, true, 'il premio è rimasto nella guida raccolta');
       assert.ok(tocchi.scoperta, 'la scoperta non nomina il bersaglio appena trovato');
     });
 

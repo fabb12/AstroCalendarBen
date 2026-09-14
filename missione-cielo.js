@@ -2747,6 +2747,15 @@ function missSegnaTrovato(t) {
   miss.evidenzaTrovata = { tappa: t, fino: ora + MISS_EVIDENZA_TROVATA_MS };
 }
 
+/* La pillola raccolta basta mentre si cerca, ma non quando arriva il premio:
+ * nome, specie e storia della scoperta sono visivi oltre che vocali. Se la
+ * guida era compressa, il tocco corretto la riapre prima di ridisegnarla;
+ * una guida gia' aperta non cambia invece posizione o stato. Vale per
+ * entrambe le scene, planetario e Sistema Solare. */
+function missMostraGuidaAllaScoperta() {
+  if (miss.strisciaNascosta) miss.strisciaNascosta = false;
+}
+
 function missDisegnaSelezioneTrovata(ctx, base, focale) {
   const evidenza = miss.evidenzaTrovata;
   if (!evidenza) return;
@@ -2835,6 +2844,7 @@ function missSelezionaCielo(sel) {
     t.esito = 'trovato';
     t.quandoEsito = Date.now();
     t.feedback = null;
+    missMostraGuidaAllaScoperta();
     missSegnaTrovato(t);
     missFeedbackTocco('gioco.feedbackGiusto', 'vittoria');
     missFuochiArtificio();
@@ -3353,6 +3363,7 @@ function missSelezionaSistema(id) {
     t.esito = 'trovato';
     t.quandoEsito = Date.now();
     t.feedback = null;
+    missMostraGuidaAllaScoperta();
     missSegnaTrovato(t);
     missFeedbackTocco('gioco.feedbackGiusto', 'vittoria');
     missFermaVoce();
