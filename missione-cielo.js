@@ -3040,6 +3040,7 @@ function missHtmlScoperta(t) {
     <div class="missione-scoperta-azioni">
       ${altre ? `<button type="button" class="missione-tasto missione-tasto-lieve"
         data-miss-azione="altraStoria">${missT('gioco.altraStoria')}</button>` : ''}
+      ${missTastoAscolta()}
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="continua">${missT('gioco.continua')}</button>
     </div>
   </div>`;
@@ -3139,6 +3140,16 @@ function missTastoSoluzione(t) {
     data-miss-azione="soluzione">${missIcona('bersaglio', 16)} ${missT('mostraSoluzione')}</button>`;
 }
 
+/* La voce automatica resta una scelta della preparazione; la rilettura e'
+ * invece un gesto esplicito e deve essere disponibile a tutti. Lo stesso
+ * comando vive nella ricerca e nella scoperta, e `forza` in `missAzione`
+ * permette quindi di ascoltare il testo visibile anche quando la narrazione
+ * automatica e' spenta. */
+function missTastoAscolta() {
+  return `<button type="button" class="missione-tasto missione-tasto-lieve missione-ascolta"
+    data-miss-azione="ascolta">${missT('ascolta')}</button>`;
+}
+
 function missMostraStrisciaCielo() {
   const el = document.getElementById('missione-striscia');
   const m = miss.attiva, t = m && m.tappe[m.corrente];
@@ -3177,6 +3188,7 @@ function missMostraStrisciaCielo() {
     <div class="missione-striscia-tasti">
       <button class="missione-tasto${sky.seguiTelefono ? ' attiva' : ''}" data-miss-azione="segui-telefono"
         ${m.simulazione || m.nelSistema ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
+      ${missTastoAscolta()}
       ${missNavigazioneIndizi(t)}
       ${missTastoSoluzione(t)}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
