@@ -11027,6 +11027,33 @@ body button.did-ponte:active { transform: translateY(1px); }
   overscroll-behavior: contain;
 }
 
+/* Durante la ricerca non deve scorrere l'intero riquadro. Con un indizio
+ * lungo il vecchio `overflow-y: auto` portava fuori vista anche i pulsanti:
+ * il bordo sembrava non seguire il testo e per passare all'indizio dopo
+ * bisognava prima scorrere tutta la guida. Il riquadro continua a crescere
+ * fino allo spazio disponibile; soltanto il testo cede e scorre quando lo
+ * spazio finisce, mentre le azioni restano nel bordo e sempre raggiungibili.
+ * `:has()` limita la regola alla ricerca: la scheda della scoperta ha una
+ * struttura diversa e continua correttamente a scorrere tutta insieme. */
+.sol-guscio > .missione-striscia.visibile:has(> .missione-striscia-testo) {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+.sol-guscio > .missione-striscia.visibile > .missione-striscia-testo {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sol-guscio > .missione-striscia.visibile > .missione-striscia-tasti {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
 .missione-striscia-chiudi {
   position: absolute;
   top: 5px;
