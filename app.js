@@ -34390,7 +34390,7 @@ function solAvviaTransizioneDecollo() {
   };
   // Un cambio di visibilita' può impedire animationend: il paracadute evita
   // che il planetario resti coperto al ritorno nella scheda.
-  ponte._solTimer = setTimeout(finisci, 5200);
+  ponte._solTimer = setTimeout(finisci, 7200);
 }
 
 window.apriSistemaSolare = (opzioni = {}) => {
