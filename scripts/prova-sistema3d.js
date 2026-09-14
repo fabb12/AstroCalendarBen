@@ -122,6 +122,38 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   await pagina.evaluate(() => { apriSistemaSolare(); });
   await pagina.waitForTimeout(1500);
 
+  // Aprire la vista occupa il viewport del browser, senza anticipare la
+  // scelta del tasto ⧆: solo quel tasto puo' chiedere il Fullscreen API.
+  const apertura = await pagina.evaluate(() => {
+    const modale = document.getElementById('modale-sistema').getBoundingClientRect();
+    const pannello = document.querySelector('#modale-sistema > .pannello-modale').getBoundingClientRect();
+    const tela = document.getElementById('sol-canvas').getBoundingClientRect();
+    return {
+      viewport: { larghezza: innerWidth, altezza: innerHeight },
+      modale: { larghezza: modale.width, altezza: modale.height },
+      pannello: { larghezza: pannello.width, altezza: pannello.height },
+      tela: { larghezza: tela.width, altezza: tela.height },
+      fullscreen: !!(document.fullscreenElement || document.webkitFullscreenElement),
+      ripiego: document.getElementById('sol-guscio').classList.contains('sol-schermo-pieno')
+    };
+  });
+  ok('all\'apertura la vista riempie la finestra del browser',
+    Math.abs(apertura.pannello.larghezza - apertura.viewport.larghezza) <= 1 &&
+    Math.abs(apertura.pannello.altezza - apertura.viewport.altezza) <= 1,
+    Math.round(apertura.pannello.larghezza) + '×' + Math.round(apertura.pannello.altezza));
+  ok('la scena usa lo spazio disponibile del browser',
+    apertura.tela.larghezza > apertura.viewport.larghezza * 0.9 &&
+    apertura.tela.altezza > apertura.viewport.altezza * 0.65,
+    Math.round(apertura.tela.larghezza) + '×' + Math.round(apertura.tela.altezza));
+  ok('l\'apertura non attiva lo schermo intero', !apertura.fullscreen && !apertura.ripiego);
+  const soloTasto = await pagina.evaluate(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true }));
+    return !solSchermoIntero &&
+      !(document.fullscreenElement || document.webkitFullscreenElement) &&
+      !document.getElementById('sol-guscio').classList.contains('sol-schermo-pieno');
+  });
+  ok('lo schermo intero resta una scelta del tasto dedicato', soloTasto);
+
   // =====================================================================
   console.log('\n— le tre famiglie ci sono —');
 
