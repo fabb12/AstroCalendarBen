@@ -33537,11 +33537,12 @@ const SOL_ELEV_PER_PIXEL = 0.32;     // gradi di elevazione per pixel di dito
 // adatta alla vista d'insieme diventa troppo brusca: pochi pixel di dito fanno
 // attraversare continenti e crateri. La riduciamo progressivamente oltre 8x,
 // senza creare uno scalino e senza cambiare il comportamento della panoramica.
-// Il limite inferiore lascia comunque possibile un giro completo anche allo
-// zoom massimo (25 000x), ma offre circa otto volte piu' precisione.
+// La curva resta pero' abbastanza pronta mentre ci si avvicina: al massimo
+// ingrandimento conserva circa un quinto del movimento dato al comando, così
+// un trascinamento non sembra frenato rispetto al dito o al mouse.
 function solPrecisioneCamera() {
   if (!sol.perno || sol.vicino || sol.zoomVoluto <= 8) return 1;
-  return Math.max(0.12, 1 / (1 + 0.55 * Math.log2(sol.zoomVoluto / 8)));
+  return Math.max(0.18, 1 / (1 + 0.4 * Math.log2(sol.zoomVoluto / 8)));
 }
 
 // Rimette la scena in mezzo alla tela: lo spostamento con due dita è comodo
