@@ -2683,6 +2683,14 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
           ricerca: missRicercaSistema(),
           disegnato: !!(corpo && corpo.schermo),
           striscia: r(st), guscio: r(g), barra: r(document.getElementById('sol-tempo')),
+          // Un testo lungo può scorrere, ma non deve trascinare fuori dal
+          // bordo anche i comandi: è il difetto per cui il riquadro non
+          // sembrava adattarsi al contenuto nella vista 3D.
+          strisciaTrabocca: st.scrollHeight > st.clientHeight + 1,
+          testoScorre: (() => {
+            const n = st.querySelector('.missione-striscia-testo');
+            return !!n && getComputedStyle(n).overflowY === 'auto';
+          })(),
           // Chi deve restare premibile comunque vada: i comandi della
           // scena e le tre viste.
           comandiPremibili: Array.from(document.querySelectorAll(
@@ -2718,6 +2726,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
           `su 0..${Math.round(g.h)} — è il difetto del top:900px`);
         assert.ok(s.x >= g.x - 0.5 && s.dx <= g.dx + 0.5, 'fuori dal riquadro di lato');
         assert.ok(s.h > 40 && s.w > 120, `ridotta a niente: ${Math.round(s.w)}×${Math.round(s.h)}`);
+        assert.ok(!scena.strisciaTrabocca,
+          'il contenuto esce dal bordo invece di adattarsi e far scorrere il solo testo');
+        assert.ok(scena.testoScorre,
+          'quando il testo è lungo deve scorrere la guida, non l’intero riquadro coi comandi');
       });
       prova('non copre la barra del tempo, e i comandi restano premibili' + dove, () => {
         const s = scena.striscia;
