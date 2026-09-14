@@ -29165,6 +29165,11 @@ const SOL_SAT_MIN_PX = 16;
 const SOL_SAT_STACCO_MIN = 1.34;
 const SOL_SAT_STACCO_MAX = 1.92;
 const SOL_TERRA_RAGGIO_KM = 6371;
+// I satelliti sono gli oggetti piu' piccoli dell'intera scena, ma sono anche
+// quelli che si cercano e si toccano piu' spesso. A grandezza fisica non
+// occuperebbero nemmeno un pixel: questo raggio volutamente simbolico li rende
+// riconoscibili senza confonderli con la Terra o con la loro orbita.
+const SOL_SAT_RAGGIO_PX = 5.4;
 // Che cos'è ognuno dei tre, detto dal dizionario. `SATELLITI` ha già un campo
 // `classe`, ma è la frase italiana che il planetario si porta dietro da
 // sempre: qui serve una chiave, se no la scheda inglese avrebbe una riga sola
@@ -30840,18 +30845,21 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
     if ((p.vicinanza >= dietro) !== davanti) return;
     // Dove è finito sullo schermo: lo chiede il dito (`solTocco`) e lo chiede
     // il nome, che si scrive dopo tutti i pallini
-    sol.satSchermo.push({ id: s.id, nome: s.nome, colore: s.colore, px: p.px, py: p.py, r: 3 });
+    sol.satSchermo.push({
+      id: s.id, nome: s.nome, colore: s.colore,
+      px: p.px, py: p.py, r: SOL_SAT_RAGGIO_PX
+    });
     ctx.save();
     ctx.fillStyle = s.colore;
     ctx.beginPath();
-    ctx.arc(p.px, p.py, 2.6, 0, Math.PI * 2);
+    ctx.arc(p.px, p.py, SOL_SAT_RAGGIO_PX, 0, Math.PI * 2);
     ctx.fill();
     if (sol.scelto === s.id) {
       ctx.strokeStyle = '#fff';
       ctx.globalAlpha = 0.85;
       ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.arc(p.px, p.py, 7.5, 0, Math.PI * 2);
+      ctx.arc(p.px, p.py, SOL_SAT_RAGGIO_PX + 5, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
@@ -33603,21 +33611,19 @@ function solAggiornaPivot() {
 }
 
 // Mette un corpo al centro della telecamera e comincia a girarci intorno: la
-// chiama `solScegli` al tocco, dalla scena o dalla riga della tabella.
+// chiama `solScegli` al tocco, dalla scena o dalla scheda.
 //
-// Lo zoom si muove solo per **avvicinare**, mai per allontanare. Chi tocca un
-// pianeta di solito vuole leggere la sua scheda, e ritrovarsi la scena
-// riportata indietro a una cornice decisa da noi sarebbe una risposta a una
-// domanda che non ha fatto; chi invece sta guardando tutto il sistema e tocca
-// Nettuno se lo ritrova al centro e più vicino, che è quello che voleva.
+// La selezione cambia **soltanto il centro orbitale della camera**. Lo zoom e'
+// una scelta distinta, fatta con rotella o pizzico, e non deve saltare quando
+// si passa da un corpo all'altro: oltre a essere piu' comodo, conserva il
+// contesto visivo che ha permesso di scegliere proprio quel corpo. Impostare
+// il perno basta a centrarlo, perche' `solAggiornaPivot` rifà la traslazione a
+// ogni fotogramma; il normale trascinamento diventa cosi' una rotazione
+// attorno all'oggetto scelto.
 function solAvvicinaA(id) {
   sol.perno = id;
-  // Nel banco delle eclissi lo zoom ha un metro tutto suo (i chilometri, non
-  // le unità astronomiche): lì toccare un corpo lo centra e basta — la
-  // cornice l'ha già scelta `solInquadraVicino` per far entrare l'orbita
-  const voluto = sol.vicino ? 0 : solZoomPer(SOL_VICINO_TERRA_UA);
-  if (voluto > sol.zoomVoluto) solImpostaZoom(voluto, { morbido: true });
-  else solAggiornaTasti();
+  solAggiornaPivot();
+  solAggiornaTasti();
   if (sol.aperto) solDisegna();
 }
 

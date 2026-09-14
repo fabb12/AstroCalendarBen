@@ -358,6 +358,38 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   });
   ok('toccando un pianeta nano lo si sceglie', tocco === 'Eris', String(tocco));
 
+  // Scegliere non e' uno zoom mascherato: conserva esattamente la scala che
+  // l'utente ha composto e cambia soltanto il perno attorno a cui ruota la
+  // camera. Vale per un mondo naturale e per ciascun oggetto artificiale.
+  const selezioneCamera = await pagina.evaluate(() => {
+    const risultati = [];
+    ['Mars', 'iss', 'css', 'hubble'].forEach((id, i) => {
+      sol.zoom = 3.25 + i;
+      sol.zoomVoluto = sol.zoom;
+      const prima = { zoom: sol.zoom, zoomVoluto: sol.zoomVoluto };
+      solScegli(id);
+      risultati.push({
+        id, perno: sol.perno,
+        zoom: sol.zoom, zoomVoluto: sol.zoomVoluto,
+        invariato: sol.zoom === prima.zoom && sol.zoomVoluto === prima.zoomVoluto
+      });
+    });
+    return risultati;
+  });
+  ok('selezionare un corpo cambia il centro ma non lo zoom',
+    selezioneCamera.every(v => v.perno === v.id && v.invariato),
+    selezioneCamera.map(v => `${v.id}: ${v.zoom}/${v.zoomVoluto}`).join(', '));
+
+  const tagliaSatelliti = await pagina.evaluate(() => {
+    solInquadraRicerca('iss');
+    sol.zoom = sol.zoomVoluto;
+    solDisegna();
+    return sol.satSchermo.map(s => ({ id: s.id, r: s.r }));
+  });
+  ok('ISS, Tiangong e Hubble hanno pallini artificiali piu grandi',
+    tagliaSatelliti.length === 3 && tagliaSatelliti.every(s => s.r >= 5),
+    tagliaSatelliti.map(s => `${s.id}: ${s.r}px`).join(', '));
+
   // =====================================================================
   console.log('\n— la ricerca parla la lingua scelta —');
 
