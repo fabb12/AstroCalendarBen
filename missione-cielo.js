@@ -3295,7 +3295,13 @@ function missGuidaNelSistema(indice) {
    * si vedrebbe soltanto tornando al cielo, che salterebbe indietro. */
   skyFermaPlayback();
   missImpostaTempoPlanetario(m, t);
-  apriSistemaSolare();
+  // Senza il volo d'ingresso (§7.7-quinquies di `app.js`): qui la finestra si
+  // riquadra da sé un fotogramma più in là, su un mondo che sta a decine di
+  // unità astronomiche, e quel volo finisce invece con la Terra al centro —
+  // cioè con un'immagine che la scena non disegnerà. E cinque secondi e
+  // mezzo di salita, in mezzo a una caccia, sono cinque secondi e mezzo in
+  // cui non si sta cercando niente.
+  apriSistemaSolare({ senzaVolo: true });
   // Le due famiglie di §7.7-bis nascono spente per chi le ha spente: con
   // loro spente il bersaglio non è disegnato, cioè non è toccabile.
   sol.mondiAccesi = true;

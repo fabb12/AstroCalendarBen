@@ -6709,108 +6709,36 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   --bordo-scena: rgba(148, 168, 214, 0.44);
 }
 
-/* Il viaggio fra le due scale: prima un cielo ancora legato all'orizzonte,
-   poi la curvatura terrestre che cade sotto la camera e infine le orbite che
-   si accordano con la scena 3D sottostante. Tutto e' CSS, per non aggiungere
-   un video pesante e per conservare dettaglio su telefoni ad alta densita'. */
+/* Il velo che copre la scena durante il volo dal planetario alla vista da
+   fuori (app.js, 7.7-quinquies). Qui non c'e' nessuna animazione, ed e'
+   voluto: il movimento deve partire dalla posa vera della camera del cielo e
+   finire esattamente sulla misura che la scena dara' alla Terra, e quei due
+   numeri un foglio di stile non li puo' sapere. Quello di prima ci provava
+   con sei keyframe, una palla di gradienti radiali al posto del pianeta e
+   tre didascalie che annunciavano le fasi: i due capi non combaciavano mai,
+   e le fasi si notavano proprio perche' c'era scritto quali erano. Qui il
+   foglio di stile fa la sola cosa che gli spetta, mettere la tela davanti a
+   tutto; il disegno e' tutto in JavaScript.
+
+   L'opacita' la scrive il volo a ogni fotogramma - e la dissolvenza corta di
+   chi ha chiesto meno movimento se la fa con una `transition` sua, messa e
+   tolta da li' - quindi qui non se ne dichiara nessuna: sarebbe una seconda
+   sopra a quella gia' disegnata. */
 .sol-transizione {
   position: absolute;
   inset: 0;
   z-index: 30;
   overflow: hidden;
   pointer-events: none;
-  opacity: 1;
-  background:
-    radial-gradient(circle at 50% 115%, rgba(36, 119, 190, .7), transparent 45%),
-    linear-gradient(180deg, #07101f 0%, #102c4a 48%, #4e87a7 74%, #b8d4d7 100%);
-  transform: translateZ(0);
+  display: none;
+  /* Il nero da cui si parte e' quello dello sfondo della scena (`solSfondo`):
+     nel fotogramma in cui il velo si accende e il volo non ha ancora
+     disegnato niente, sotto e sopra sono dello stesso colore. */
+  background: #04060f;
 }
-.sol-transizione.in-decollo { animation: sol-ponte-finale 6.8s cubic-bezier(.55,.05,.25,1) both; }
+.sol-transizione.in-volo { display: block; }
 .sol-transizione.transizione-finita { display: none; }
-.sol-transizione-stelle {
-  position: absolute;
-  inset: -25%;
-  opacity: .15;
-  background-image:
-    radial-gradient(circle, #fff 0 1px, transparent 1.5px),
-    radial-gradient(circle, #b9d9ff 0 1px, transparent 1.7px);
-  background-position: 12px 18px, 67px 81px;
-  background-size: 83px 83px, 127px 127px;
-}
-.in-decollo .sol-transizione-stelle { animation: sol-stelle-decollo 6.8s ease-out both; }
-.sol-transizione-atmosfera {
-  position: absolute;
-  left: -12%;
-  right: -12%;
-  bottom: 4%;
-  height: 43%;
-  border-radius: 50% 50% 0 0 / 25% 25% 0 0;
-  background: linear-gradient(180deg, transparent, rgba(100,205,255,.42) 19%, rgba(235,250,255,.82) 26%, transparent 32%);
-  filter: blur(3px);
-}
-.in-decollo .sol-transizione-atmosfera { animation: sol-atmosfera-via 6.8s cubic-bezier(.35,0,.25,1) both; }
-.sol-transizione-terra {
-  position: absolute;
-  left: 50%;
-  top: 56%;
-  width: min(72vw, 520px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(ellipse at 33% 28%, rgba(91,132,71,.95) 0 8%, transparent 9%),
-    radial-gradient(ellipse at 62% 37%, rgba(121,151,77,.78) 0 11%, transparent 12%),
-    radial-gradient(ellipse at 44% 19%, rgba(255,255,255,.48), transparent 17%),
-    radial-gradient(circle at 35% 30%, #247bac 0 43%, #0b355a 69%, #020713 100%);
-  box-shadow: 0 0 24px rgba(92,205,255,.9), -12px -4px 42px rgba(176,232,255,.42);
-  transform-origin: 50% 50%;
-}
-.sol-transizione-terra::after {
-  content:""; position:absolute; inset:-2%; border-radius:50%;
-  background:linear-gradient(105deg, transparent 35%, rgba(0,3,12,.18) 53%, rgba(0,2,9,.92) 79%);
-}
-.in-decollo .sol-transizione-terra { animation: sol-terra-lontana 6.8s linear both; }
-.sol-transizione-luci { position:absolute; inset:0; background:radial-gradient(circle at 46% 9%, #ffd77a 0 1px, transparent 2px); background-size:23px 19px; opacity:.45; }
-.sol-transizione-orbite { position:absolute; inset:50%; opacity:0; }
-.sol-transizione-orbite i { position:absolute; inset:-70px -125px; border:1px solid rgba(135,185,255,.45); border-radius:50%; transform:rotate(-17deg); }
-.sol-transizione-orbite i:nth-child(2) { inset:-43px -78px; }
-.sol-transizione-orbite i:nth-child(3) { inset:-20px -38px; }
-.sol-transizione-orbite b { position:absolute; width:10px; height:10px; margin:-5px; border-radius:50%; background:#ffe39a; box-shadow:0 0 20px #ffbd42; }
-.in-decollo .sol-transizione-orbite { animation: sol-orbite-arrivo 6.8s ease-out both; }
-.sol-transizione-testo { position:absolute; left:50%; bottom:12%; width:min(90%, 520px); height:52px; transform:translateX(-50%); text-align:center; color:#fff; text-transform:uppercase; letter-spacing:.14em; font-size:.76rem; font-weight:700; text-shadow:0 2px 12px #000; }
-.sol-transizione-fase { position:absolute; inset:0; margin:0; opacity:0; }
-.sol-transizione-fase small { display:block; margin-top:6px; color:#b9dcff; font-size:.61rem; line-height:1.35; letter-spacing:.09em; font-weight:500; }
-.in-decollo .sol-fase-terra { animation: sol-testo-fase-uno 6.8s ease both; }
-.in-decollo .sol-fase-spazio { animation: sol-testo-fase-due 6.8s ease both; }
-.in-decollo .sol-fase-orbite { animation: sol-testo-fase-tre 6.8s ease both; }
-/* Prima l'occhio si alza con calma: il suolo scivola sotto il bordo. Al 44%
-   arriva il solo scatto rapido del viaggio, fuori dall'atmosfera. Subito dopo
-   la camera compie mezzo giro e tiene la Terra intera davanti a sé, prima di
-   allargarci alle orbite. I fotogrammi ravvicinati 44–50% rendono intenzionale
-   lo scatto senza trasformare tutto il passaggio in uno zoom brusco. */
-@keyframes sol-terra-lontana {
-  0%   { transform:translate(-50%, 63%) scale(4.8) rotate(-2deg); opacity:1; }
-  34%  { transform:translate(-50%, 88%) scale(4.05) rotate(0deg); opacity:1; }
-  44%  { transform:translate(-50%, 102%) scale(3.7) rotate(1deg); opacity:1; }
-  50%  { transform:translate(-50%, -45%) scale(.62) rotate(13deg); opacity:1; }
-  66%  { transform:translate(-50%, -50%) scale(.72) rotate(188deg); opacity:1; }
-  82%  { transform:translate(-50%, -43%) scale(.55) rotate(200deg); opacity:.92; }
-  100% { transform:translate(-50%, 15%) scale(.28) rotate(205deg); opacity:.12; }
-}
-@keyframes sol-atmosfera-via { 0%,34% { transform:translateY(0) scaleY(1); opacity:1; } 44% { transform:translateY(35%) scaleY(.72); opacity:.8; } 50%,100% { transform:translateY(115%) scaleY(.12); opacity:0; } }
-@keyframes sol-stelle-decollo { 0%,12% { opacity:.05; transform:translateY(7%) scale(.86); } 38% { opacity:.82; transform:translateY(-5%) scale(1); } 50% { opacity:1; transform:scale(1.38); } 100% { opacity:1; transform:scale(1.18); } }
-@keyframes sol-orbite-arrivo { 0%,72% { opacity:0; transform:translate(-50%,-50%) scale(.45); } 92%,100% { opacity:.75; transform:translate(-50%,-50%) scale(1); } }
-@keyframes sol-testo-fase-uno { 0% { opacity:0; transform:translateY(8px); } 6%,35% { opacity:1; transform:none; } 43%,100% { opacity:0; transform:translateY(-6px); } }
-@keyframes sol-testo-fase-due { 0%,43% { opacity:0; transform:translateY(8px); } 50%,69% { opacity:1; transform:none; } 75%,100% { opacity:0; transform:translateY(-6px); } }
-@keyframes sol-testo-fase-tre { 0%,73% { opacity:0; transform:translateY(8px); } 80%,92% { opacity:1; transform:none; } 98%,100% { opacity:0; } }
-@keyframes sol-ponte-finale { 0%,91% { opacity:1; background-color:#07101f; } 100% { opacity:0; background-color:#02040a; } }
-@media (prefers-reduced-motion: reduce) {
-  .sol-transizione.in-decollo { animation: sol-ponte-finale .35s ease both; }
-  .in-decollo .sol-transizione-terra,
-  .in-decollo .sol-transizione-atmosfera,
-  .in-decollo .sol-transizione-stelle,
-  .in-decollo .sol-transizione-orbite,
-  .in-decollo .sol-transizione-fase { animation: none; }
-}
+.sol-transizione-tela { display: block; width: 100%; height: 100%; }
 .tela-sistema {
   display: block;
   width: 100%;

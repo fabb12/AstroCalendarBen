@@ -33414,7 +33414,17 @@ function solPassoCiclo(ts) {
   const quando = skyAdesso();
   solLeggiPosizioni(quando);
   solCalcolaOrbite(quando);
-  solDisegna();
+  // Finché il velo del volo è **pieno** la scena non si disegna: sotto a un
+  // fotogramma opaco è lavoro che nessuno vede, ed è lo stesso ragionamento
+  // per cui aprendo questa finestra il ciclo del cielo si mette in pausa —
+  // due tele che si ridisegnano insieme su un telefono si sentono, e qui
+  // sarebbero cinque secondi di seguito. Le posizioni invece si continuano a
+  // leggere: costano poco e servono al volo, che dalla Terra della scena
+  // prende il verso del Sole. Appena il velo comincia ad aprirsi (l'ultimo
+  // ottavo) la scena torna a disegnare, quindi quando si vede è viva da un
+  // secondo abbondante — e se il volo cade da sé, `solVoloCoprente` risponde
+  // subito di no.
+  if (!solVoloCoprente()) solDisegna();
   if (sky.reg.attiva && sky.reg.origine === 'solare') skyRegAcquisisci();
 
   // I numeri scritti sotto vanno più piano del disegno: rifare la tabella a
@@ -33925,7 +33935,12 @@ function solZoomSullaTerra() {
 //   che è il paracadute giusto — da addosso alla Terra il modo di rivedere il
 //   sistema dev'essere a portata di un tasto, e i tre tondi delle viste sono
 //   l'altro capo dello stesso patto.
-function solEntraSullaTerra() {
+//   `immediato` serve al volo d'ingresso (§7.7-quinquies): quando c'è lui, la
+//   scivolata dello zoom non è un di più ma un doppione — il tuffo lo fa già
+//   la camera del volo, e lasciarla anche qui vorrebbe dire che il velo si
+//   apre su una scena ancora in movimento, cioè un salto proprio nell'unico
+//   fotogramma in cui i due disegni dovevano essere la stessa immagine.
+function solEntraSullaTerra(opzioni = {}) {
   solInquadraDaTerra();
   const zoom = solZoomSullaTerra();
   if (zoom === null) return;
@@ -33933,7 +33948,7 @@ function solEntraSullaTerra() {
   // `solImpostaZoom` (SOL_ZOOM_MAX_CORPO invece di SOL_ZOOM_MAX), e senza
   // questa riga il tuffo si fermerebbe a un sessantesimo della strada.
   sol.perno = 'Earth';
-  solImpostaZoom(zoom, { morbido: true });
+  solImpostaZoom(zoom, { morbido: !opzioni.immediato });
   solAggiornaTasti();
   if (sol.aperto) solDisegna();
 }
@@ -34357,35 +34372,734 @@ function solVaiAllIstante(ev) {
   skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
 }
 
-// Il cambio di scala non deve sembrare l'apertura di una finestra: dal cielo
-// osservato da terra la camera sale, attraversa il sottile bordo azzurro
-// dell'atmosfera e soltanto allora lascia apparire le orbite. L'elemento vive
-// dentro `sol-guscio`, quindi continua a coprire la scena anche quando il
-// browser concede il vero schermo intero. Riavviare le classi in due frame
-// rende l'animazione ripetibile dopo ogni ritorno al planetario.
-function solAvviaTransizioneDecollo() {
+// --- 7.7-quinquies. Il volo dal planetario al Sistema Solare ---------------
+//
+// Il passaggio fra le due viste non è l'apertura di una finestra: è un
+// **cambio di scala** di cinque ordini di grandezza, e l'unico modo di non
+// perdercisi è vederlo accadere. La camera parte da dove stanno gli occhi di
+// chi guarda — la stessa posa, lo stesso campo, lo stesso cielo che era sulla
+// mappa un istante prima —, si alza verso lo zenit, attraversa l'aria finché
+// il blu si spegne, e da lassù si gira a guardare la Terra, che si allontana
+// fino a diventare il pallino azzurro al centro del diagramma.
+//
+// Quello di prima era una pila di `<div>` animati in CSS: una palla di
+// gradienti radiali al posto della Terra, un arco sfocato al posto
+// dell'atmosfera, tre didascalie maiuscole che annunciavano le fasi. E le fasi
+// si notavano proprio per questo — un'animazione che dichiara «adesso siamo
+// nello spazio» sta ammettendo che dall'immagine non si capisce. Qui non c'è
+// nessuna fase: ci sono **due sole grandezze**, tutt'e due continue e
+// derivabili, e tutto il resto è una conseguenza di quelle due.
+//
+//   `h(u)`    quanto si è saliti, in chilometri. Cresce in **progressione
+//             geometrica** (lineare nel logaritmo) con una rampa morbida agli
+//             estremi: si parte fermi, si accelera, si arriva fermi. Da lei
+//             vengono il colore del cielo, le stelle che si accendono e —
+//             per `asin(R/(R+h))` — quanto è larga la Terra vista da lì.
+//   `β(u)`    l'angolo fra l'asse della camera e il centro della Terra. Parte
+//             da `90° + alt`, cioè esattamente dove il planetario stava
+//             guardando; sale fino a `SOL_VOLO_BETA_PICCO` (la camera si alza
+//             verso il cielo, il suolo scivola giù dal bordo); e da lì scende
+//             a zero, che è la camera che si è girata verso il pianeta.
+//
+// Da β e da ρ = asin(R/(R+h)) il disco della Terra si ricava **esatto**, e
+// non per approssimazione: la proiezione è la stessa stereografica del
+// planetario (`r = 2F·tan(θ/2)`), che manda i cerchi in cerchi, quindi i due
+// bordi del disco lungo il meridiano — a `β−ρ` e a `β+ρ` dall'asse — bastano
+// a scrivere centro e raggio. Quando `β+ρ` supera il mezzo giro il disco
+// contiene l'antipodo dell'asse e diventa l'**esterno** di un cerchio: è il
+// caso normale a quota zero, dove «il disco della Terra» si chiama orizzonte,
+// e il conto lo dice da sé cambiando segno al raggio. È la stessa algebra di
+// `skyCerchioOrizzonte`, e non è un caso: è lo stesso oggetto.
+//
+// Le tre cose che rendono il taglio invisibile ai due capi:
+//
+//   **In partenza** si disegna la **fotografia** del planetario, presa dalla
+//   sua tela un istante prima di aprire. Il primo fotogramma del volo è
+//   quindi pixel per pixel l'ultimo del cielo — non una ricostruzione, non un
+//   cielo finto: il terreno vero, i nomi, gli astri dov'erano. Si allontana
+//   con la posa (trasla col beccheggio, scala col campo) e si spegne mentre
+//   sotto di lei comincia a farsi vedere il pianeta.
+//
+//   **In arrivo** il volo finisce dove la scena comincia, per costruzione:
+//   `β` vale zero, quindi la Terra è al centro della tela — che è dove la
+//   mette il perno —, e la focale d'arrivo si **ricava** da quanto grande la
+//   scena la disegnerà (`solRaggioCorpo`), quindi il raggio combacia. Gli
+//   ultimi fotogrammi mostrano la stessa Terra, disegnata dalla stessa
+//   funzione (`solDisegnaTerraVera`), sopra le stesse stelle (`sol.stelle`):
+//   il velo si apre su un'immagine che era già lì.
+//
+//   **In mezzo** non c'è niente da annunciare, quindi non c'è scritto niente.
+//
+// Il volo dura `SOL_VOLO_MS`; chi ha chiesto meno movimento (`prefers-reduced-
+// motion`) si prende una dissolvenza e basta.
+const SOL_VOLO_MS = 5600;
+const SOL_VOLO_R_KM = 6371;        // il raggio della Terra
+const SOL_VOLO_H0_KM = 0.35;       // da dove si parte: l'altezza degli occhi, arrotondata
+const SOL_VOLO_H1_KM = 90000;      // dove si arriva: orbita alta, la Terra un pallino
+// L'altezza di scala dell'atmosfera. Il cielo non si spegne a una quota
+// scritta a mano: si spegne come se ne va l'aria, e l'aria se ne va in
+// esponenziale. `1 − e^(−h/8,5)` è la frazione di atmosfera che ci si è
+// lasciati sotto — da un aereo a diecimila metri sono i due terzi, e infatti
+// da lì il cielo è già di un blu cupo; a trenta chilometri è il 97%, e
+// infatti da lì è nero. L'esponente addolcisce appena il primo tratto.
+const SOL_VOLO_SCALA_ARIA_KM = 8.5;
+const SOL_VOLO_ATMO_KM = 64;       // fin dove l'aria si vede ancora, sul lembo
+// Dove sta il **bordo vicino** della Terra sullo schermo, in mezze altezze di
+// tela contate dal centro (positivo = sotto). È la coreografia intera, ed è
+// scritta qui invece che come una storia di beccheggi perché il beccheggio,
+// da solo, non basta a dire dove finisce l'orizzonte: salendo la Terra si
+// abbassa da sé (la depressione cresce con la quota), quindi tenere l'angolo
+// fermo vuol dire vedere il pianeta scivolare fuori dal quadro e restare
+// qualche secondo davanti al nero. Si dice allora dove lo si vuole vedere e
+// l'angolo si **ricava**, che è anche il solo modo di garantire che l'ultimo
+// fotogramma cada sul bordo del disco che la scena disegnerà.
+//   partenza  l'orizzonte vero del planetario, calcolato dalla sua posa
+//   alto      la camera si è alzata verso il cielo: il lembo sfiora il fondo
+//             del quadro e ci resta, acceso dalla sua riga d'aria — uscire
+//             del tutto vorrebbe dire un secondo di schermo vuoto
+//   rientro   la camera si è girata: il pianeta risale dentro al quadro
+const SOL_VOLO_Q_ALTO = 1.12;
+const SOL_VOLO_Q_RIENTRO = 0.55;
+const SOL_VOLO_FOTO_DA = 0.24;     // quando la fotografia del planetario comincia a cedere
+const SOL_VOLO_FOTO_A = 0.46;      // e quando ha finito: il cielo è nero, l’aria è sotto
+const SOL_VOLO_APRI = 0.84;        // da qui in poi il velo si apre sulla scena viva
+// Oltre questo raggio il cerchio della Terra è indistinguibile da una retta, e
+// gli archi da qualche milione di pixel costano senza dire niente di più. È la
+// stessa soglia in spirito di `skyOrizzonteQuasiRetto`.
+const SOL_VOLO_ARCO_MAX = 60;
+
+// La rampa morbida di sempre (smootherstep): zero e uno con derivata **e**
+// curvatura nulle agli estremi. Serve che siano nulle tutt'e due: con la
+// smoothstep di primo grado l'inizio del volo ha un'accelerazione a gradino,
+// e su un movimento lento come questo si vede come uno strappo.
+function solVoloRampa(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
+const solVolo = {
+  attivo: false, ridotto: false, avvio: 0, raf: 0,
+  tela: null, ctx: null, L: 0, H: 0, dpr: 0,
+  foto: null, fotoL: 0, fotoH: 0, fotoFocale: 0,
+  alt0: 10, q0: 0.5, F0: 400, F1: 900, rhoFine: 0.06, rFine: 62, angoloLuce: NaN,
+  versoSole: null, quando: null
+};
+
+// La fotografia del planetario. Si prende **prima** di toccare qualunque
+// cosa: è l'ultimo fotogramma che chi guarda ha visto, ed è l'unico modo di
+// cominciare il volo senza un taglio. Una copia e non un riferimento, perché
+// la tela del cielo continua a vivere per conto suo (il ciclo si mette in
+// pausa, ma una ridimensionata la cancellerebbe).
+function solVoloFotografaIlCielo() {
+  const c = sky.canvas;
+  if (!c || !c.width || !c.height) return null;
+  // Solo se il planetario stava davvero disegnando: `ultimaBase` è la posa
+  // dell'ultimo fotogramma, e senza di lei la tela può contenere qualunque
+  // cosa (o niente) — meglio partire dal cielo ricostruito che da un rettangolo
+  // nero preso per buono.
+  if (!sky.ultimaBase) return null;
+  try {
+    const copia = document.createElement('canvas');
+    copia.width = c.width;
+    copia.height = c.height;
+    const g = copia.getContext('2d');
+    g.drawImage(c, 0, 0);
+    // Il bordo di sopra si **sfuma**, e non è una rifinitura. Alzandosi, la
+    // fotografia scivola in giù di qualche centinaio di pixel e in cima resta
+    // scoperto il cielo ricostruito: i due azzurri non sono mai identici — uno
+    // è il fotogramma del planetario con dentro aloni, reticolo e foschia,
+    // l'altro è un gradiente — e il confine fra loro si legge come il bordo
+    // di un rettangolo appoggiato sopra alla scena, cioè esattamente la cosa
+    // che tutto questo serve a non far vedere. Sfumata, la fotografia finisce
+    // dentro al cielo invece che contro di lui.
+    const sfuma = g.createLinearGradient(0, 0, 0, copia.height * 0.26);
+    sfuma.addColorStop(0, 'rgba(0,0,0,1)');
+    sfuma.addColorStop(1, 'rgba(0,0,0,0)');
+    g.globalCompositeOperation = 'destination-out';
+    g.fillStyle = sfuma;
+    g.fillRect(0, 0, copia.width, copia.height * 0.26);
+    return copia;
+  } catch (e) { return null; }
+}
+
+// Il velo esiste nel documento: qui si accende e si porta davanti, prima
+// ancora che il volo abbia i suoi numeri. È la riga che impedisce il
+// fotogramma di scena nuda fra l'apertura del modale e il primo passo del
+// volo — che sarebbe proprio il taglio che tutto questo serve a togliere.
+function solVoloPrepara(foto) {
   const ponte = document.getElementById('sol-transizione');
   if (!ponte) return;
-  if (ponte._solTimer) clearTimeout(ponte._solTimer);
-  ponte.classList.remove('in-decollo', 'transizione-finita');
-  ponte.setAttribute('aria-hidden', 'false');
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (!sol.aperto) return;
-    ponte.classList.add('in-decollo');
-  }));
-  const finisci = () => {
-    if (ponte._solTimer) clearTimeout(ponte._solTimer);
-    ponte._solTimer = null;
-    ponte.classList.remove('in-decollo');
-    ponte.classList.add('transizione-finita');
-    ponte.setAttribute('aria-hidden', 'true');
+  solVoloFerma();
+  solVolo.foto = foto;
+  ponte.classList.remove('transizione-finita');
+  ponte.classList.add('in-volo');
+  ponte.style.opacity = '1';
+}
+
+function solVoloFerma() {
+  if (solVolo.raf) cancelAnimationFrame(solVolo.raf);
+  solVolo.raf = 0;
+  solVolo.attivo = false;
+  if (solVolo.timer) { clearTimeout(solVolo.timer); solVolo.timer = 0; }
+}
+
+// Il velo sta coprendo tutto? Lo sa solo lui, e la risposta serve al ciclo
+// della scena per non disegnare a vuoto. È volutamente pessimista: qualunque
+// dubbio — velo spento, volo finito, dissolvenza cominciata — vale «no, la
+// scena si vede», perché l'errore in quella direzione costa due millisecondi
+// e l'errore nell'altra è una finestra che si apre su una tela vuota.
+function solVoloCoprente() {
+  if (!solVolo.attivo) return false;
+  const ponte = document.getElementById('sol-transizione');
+  if (!ponte || !ponte.classList.contains('in-volo')) return false;
+  return ponte.style.opacity === '1';
+}
+
+function solVoloChiudi() {
+  solVoloFerma();
+  solVolo.foto = null;
+  const ponte = document.getElementById('sol-transizione');
+  if (!ponte) return;
+  ponte.classList.remove('in-volo');
+  ponte.classList.add('transizione-finita');
+  ponte.style.opacity = '';
+  // La dissolvenza corta se la mette addosso da sé (vedi
+  // `solAvviaTransizioneDecollo`): va tolta, se no resta appiccicata al velo
+  // e il volo della volta dopo si ritrova un'animazione in più sopra a quella
+  // che sta già disegnando.
+  ponte.style.transition = '';
+}
+
+// La tela del velo, misurata sul guscio e non sulla scena: a tutto schermo le
+// due coincidono, nella finestra pure, ma è il velo a dover coprire tutto.
+function solVoloMisura() {
+  const t = solVolo.tela;
+  if (!t) return false;
+  const dpr = window.devicePixelRatio || 1;
+  const L = t.clientWidth || sol.L || 320;
+  const H = t.clientHeight || sol.H || 320;
+  if (solVolo.L !== L || solVolo.H !== H || solVolo.dpr !== dpr) {
+    solVolo.L = L; solVolo.H = H; solVolo.dpr = dpr;
+    t.width = Math.round(L * dpr);
+    t.height = Math.round(H * dpr);
+    solVolo.ctx = t.getContext('2d');
+  }
+  if (!solVolo.ctx) return false;
+  solVolo.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return true;
+}
+
+// Dove sta la camera al momento `u`, e con che obiettivo. Tre numeri e nessun
+// caso particolare: è qui che vive tutto il movimento.
+function solVoloPosa(u) {
+  // La quota in progressione geometrica: ordini di grandezza al secondo, che
+  // è il solo modo di attraversare cinque decadi senza che l'inizio sembri
+  // fermo o la fine un salto. La rampa morbida agli estremi fa il resto: si
+  // parte fermi e si arriva fermi, e la scena sotto non ha niente da
+  // raccogliere in movimento.
+  const h = SOL_VOLO_H0_KM * Math.pow(SOL_VOLO_H1_KM / SOL_VOLO_H0_KM, solVoloRampa(u));
+  const R = SOL_VOLO_R_KM;
+  const rho = Math.asin(Math.min(1, R / (R + h)));
+  // Il lembo dell'aria: la stessa domanda fatta a un pianeta più grande di
+  // quanto è alta l'atmosfera. Fra i due angoli c'è la riga azzurra, e viene
+  // giusta a ogni quota senza nessuna costante da tarare — spessa gradi
+  // interi appena usciti, un filo di pixel da ottantamila chilometri.
+  const rhoAria = Math.asin(Math.min(1, (R + SOL_VOLO_ATMO_KM) / (R + h)));
+  // Il campo si stringe solo dopo il primo terzo, quando la Terra è già un
+  // corpo: stringerlo prima vorrebbe dire perdere il lembo proprio mentre
+  // scorre sotto di noi, che è l'immagine per cui si sale.
+  const F = solVolo.F0 * Math.pow(solVolo.F1 / solVolo.F0, solVoloRampa((u - 0.30) / 0.70));
+  // La coreografia: dove si vuole il bordo vicino, in pixel dal centro.
+  const q0 = solVolo.q0;
+  const qFine = -solVolo.rFine / (solVolo.H / 2);
+  const su = SOL_VOLO_Q_ALTO - SOL_VOLO_Q_RIENTRO;
+  const q = q0 + (SOL_VOLO_Q_ALTO - q0) * solVoloRampa(u / 0.26)
+    - su * solVoloRampa((u - 0.26) / 0.34)
+    - (SOL_VOLO_Q_RIENTRO - qFine) * solVoloRampa((u - 0.58) / 0.42);
+  // E da lì l'angolo fra l'asse e il centro della Terra, invertendo la
+  // stereografica sul bordo vicino: `bordo = 2F·tan((β−ρ)/2)`.
+  const beta = Math.max(0, rho + 2 * Math.atan(q * (solVolo.H / 2) / (2 * F)));
+  return { u, h, rho, rhoAria, beta, F, buio: Math.pow(1 - Math.exp(-h / SOL_VOLO_SCALA_ARIA_KM), 1.3) };
+}
+
+// Il disco della Terra sullo schermo. I due bordi lungo il meridiano stanno a
+// `β−ρ` e `β+ρ` dall'asse; in stereografica ognuno è a `2F·tan(θ/2)`, e i due
+// raggi con segno danno centro e raggio del cerchio — che è esatto, perché la
+// stereografica i cerchi li manda in cerchi.
+//
+// Quando `β+ρ` passa il mezzo giro la tangente cambia segno da sola: il
+// secondo bordo finisce dall'altra parte dell'asse, il raggio viene negativo,
+// e quel segno **è** la risposta — la Terra è fuori dal cerchio, non dentro.
+// La tangente con il **segno** al posto giusto. Il clamp non va messo
+// sull'angolo: `e2` supera il quarto di giro tutte le volte che la Terra è
+// ancora il pavimento del mondo, e tosarlo a `π/2 − ε` restituisce una
+// tangente enorme **positiva** dove quella vera è enorme **negativa** — cioè
+// trasforma l'esterno di un cerchio in un disco grande come mezza galassia.
+// Si lascia passare l'angolo e si tosa il risultato, che il segno ce l'ha.
+function solVoloTan(e) {
+  const t = Math.tan(e);
+  if (!Number.isFinite(t)) return e > 0 ? 1e7 : -1e7;
+  return Math.max(-1e7, Math.min(1e7, t));
+}
+
+function solVoloCerchio(p, rho) {
+  const r1 = 2 * p.F * solVoloTan((p.beta - rho) / 2);
+  const r2 = 2 * p.F * solVoloTan((p.beta + rho) / 2);
+  const esterno = r2 < r1;
+  const rc = Math.abs(r2 - r1) / 2;
+  const dc = (r1 + r2) / 2;
+  const diag = Math.hypot(solVolo.L, solVolo.H) || 1;
+  // Il caso limite: il cerchio è passato per l'infinito e la sua freccia
+  // sullo schermo è meno di un pixel. Il bordo vicino resta dov'è, ed è la
+  // sola cosa che si vede.
+  if (!Number.isFinite(rc) || rc > SOL_VOLO_ARCO_MAX * diag) {
+    return { retta: true, y: r1, vicino: r1, esterno: true, rc: Infinity, dc: r1 };
+  }
+  return { retta: false, esterno, rc, dc, vicino: r1 };
+}
+
+// Il contorno della Terra come tracciato, con la regola di riempimento che gli
+// spetta. Fuori dal cerchio non si riempie «il resto»: si traccia il riquadro
+// **e** il cerchio e si lascia decidere al pari-dispari, che è la stessa cura
+// degli anelli di `rilTracciaSagoma`.
+function solVoloTracciaTerra(ctx, c) {
+  const L = solVolo.L, H = solVolo.H, cx = L / 2, cy = H / 2;
+  ctx.beginPath();
+  if (c.retta) {
+    ctx.rect(-2, cy + c.y, L + 4, H);
+    return 'nonzero';
+  }
+  if (c.esterno) {
+    ctx.rect(-2, -2, L + 4, H + 4);
+    ctx.arc(cx, cy + c.dc, c.rc, 0, Math.PI * 2);
+    return 'evenodd';
+  }
+  ctx.arc(cx, cy + c.dc, c.rc, 0, Math.PI * 2);
+  return 'nonzero';
+}
+
+// Il cielo di partenza, con i colori veri di quest'ora: `sky.ariaOra` è
+// l'aria dell'ultimo fotogramma del planetario, quindi si decolla di giorno
+// nell'azzurro, al tramonto nell'arancio e di notte nel buio — e non in un
+// azzurro scritto in un foglio di stile che al tramonto sarebbe una bugia.
+function solVoloCielo(ctx, p, c) {
+  const L = solVolo.L, H = solVolo.H;
+  const aria = sky.ariaOra;
+  const spazio = [3, 5, 12];
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  // L'altezza sull'orizzonte della riga di schermo, dal beccheggio: la camera
+  // guarda a `β−90` gradi, e mezzo campo sopra e sotto.
+  const centro = p.beta * SKY_R2D - 90;
+  const mezzo = 2 * Math.atan((H / 2) / (2 * p.F)) * SKY_R2D;
+  // Il cielo non si spegne tutto insieme, e qui sta la differenza fra un
+  // decollo e una dissolvenza al nero. Salendo, l'aria che si è lasciata
+  // sotto sparisce dallo **zenit** molto prima che dal **lembo**: guardando
+  // in su a trentacinque chilometri si vede il nero, guardando all'orizzonte
+  // si guarda *attraverso* tutta l'aria che sta più in basso, e quella è la
+  // riga chiara che in ogni fotografia dalla stratosfera separa il buio dalla
+  // Terra. Senza questa distinzione fra i venticinque e i sessanta chilometri
+  // non restava nessun bagliore — la riga analitica del lembo (§`solVoloAtmosfera`)
+  // lì non c'è ancora, perché l'atmosfera la si ha ancora addosso — e il
+  // passaggio si vedeva come una cucitura scura attorno al pianeta.
+  //
+  // Il residuo se ne va con la quota, se no da ottantamila chilometri
+  // resterebbe una riga chiara attorno al disco che l'aria non giustifica
+  // più: a quel punto il lembo lo disegna la corona, che è geometria.
+  const dip = 90 - p.rho * SKY_R2D;
+  const residuo = 0.72 * Math.exp(-p.h / 90);
+  // E vira al blu. Quello che resta sul lembo non è più la foschia di chi
+  // guarda dal basso — polvere, luci dei paesi, il bianco sporco dell'ultimo
+  // grado — ma aria pulita guardata di taglio da sopra, che è il blu saturo
+  // di tutte le fotografie dalla stratosfera. Si mescola solo dove il residuo
+  // vive, cioè sul lembo, e solo quando si è saliti abbastanza da averci
+  // sotto la parte densa.
+  const lembo = [104, 176, 240];
+  const vira = Math.min(1, p.h / 55);
+  // Le fermate si **infittiscono sul lembo**. Nove righe equidistanti su
+  // tutta la tela ne mettono una ogni ottanta pixel, e il bagliore è alto
+  // una trentina: con quel passo la rampa che lo disegna cade fra due
+  // fermate e sullo schermo resta un grigio slavato. Dove sta il bordo del
+  // mondo lo sappiamo già — è il conto appena fatto — quindi si aggiungono
+  // quattro fermate lì attorno e la riga si vede per quello che è.
+  const t0 = c ? (H / 2 + (c.retta ? c.y : c.vicino)) / H : 1;
+  const ferme = [];
+  for (let i = 0; i <= 8; i++) ferme.push(i / 8);
+  if (c) [0.14, 0.07, 0.03, 0].forEach(d => ferme.push(t0 - d));
+  ferme.sort((a, b) => a - b);
+  for (const t of ferme) {
+    if (!(t >= 0 && t <= 1)) continue;
+    const alt = centro + mezzo * (1 - 2 * t);
+    const sopra = Math.min(1, Math.max(0, alt + dip) / 14);   // 0 sul lembo, 1 a 14° sopra
+    const buio = p.buio * (1 - residuo * (1 - sopra));
+    const base = aria ? skyColoreCielo(aria, alt) : [8, 14, 30];
+    g.addColorStop(t, skyRgba(
+      skyMescolaColore(skyMescolaColore(base, lembo, 0.8 * vira * (1 - sopra)), spazio, buio), 1));
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, L, H);
+}
+
+// Le stelle **sono quelle della scena** (`sol.stelle`), alle loro coordinate
+// della scena: è l'altra metà dell'arrivo senza taglio, perché nell'ultimo
+// fotogramma il campo stellato del velo e quello di sotto sono lo stesso. In
+// mezzo scorrono col beccheggio — la camera si abbassa, il cielo sale — e lo
+// scorrimento si annulla da sé quando β arriva a zero.
+function solVoloStelle(ctx, p) {
+  if (p.buio <= 0.02 || !sol.stelle || !sol.stelle.length) return;
+  const L = solVolo.L, H = solVolo.H;
+  const scorri = p.beta * (0.30 * H) / (100 * SKY_D2R);
+  ctx.fillStyle = '#e2e8f0';
+  sol.stelle.forEach(s => {
+    const y = ((s.y * H + scorri) % H + H) % H;
+    ctx.globalAlpha = s.a * p.buio;
+    ctx.beginPath();
+    ctx.arc(s.x * L, y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// Il velo d'aria sul lembo. È il segno che dice «questa è una fotografia
+// dallo spazio» prima di qualunque continente, e non è dipinto a occhio: la
+// riga azzurra sta fra il bordo del pianeta e il bordo dell'atmosfera, cioè
+// fra **gli stessi due cerchi** che la geometria ha già calcolato per due
+// raggi diversi (`ρ` e `ρa`). Da lì viene gratis la cosa giusta a ogni quota
+// — gradi interi di spessore appena usciti dall'aria, un filo di pixel da
+// ottantamila chilometri — senza nessuna costante da tarare.
+//
+// Il gradiente va dal bordo del pianeta (acceso) verso il cielo (spento), e
+// si accende di più dalla parte da cui batte il Sole: un lembo uniforme
+// attorno al disco si legge come un anello disegnato, non come aria.
+function solVoloAtmosfera(ctx, p, cTerra, cAria, angoloLuce) {
+  // Finché si è **dentro** all'aria non c'è nessuna riga da disegnare: il
+  // lembo non esiste come oggetto separato, il bagliore è il cielo stesso —
+  // e quello lo dipinge già `solVoloCielo` con i colori veri di quest'ora.
+  // La geometria lo dice da sé: l'angolo del tetto dell'atmosfera arriva al
+  // quarto di giro e ci si ferma, cioè l'aria è dappertutto.
+  if (p.rhoAria > 89.4 * SKY_D2R) return;
+  // Lo spessore che si vede: la distanza fra i due bordi vicini, misurata in
+  // pixel là dove la fascia si guarda. Viene giusta a ogni quota senza
+  // nessuna costante da tarare — gradi interi appena usciti, un filo di
+  // pixel da ottantamila chilometri.
+  const banda = Math.abs(cTerra.vicino - cAria.vicino);
+  if (!(banda > 0.6)) return;
+
+  const L = solVolo.L, H = solVolo.H, cx = L / 2, cy = H / 2;
+  const forza = 0.26 + 0.56 * p.buio;
+  const acceso = `rgba(206, 236, 255, ${forza})`;
+  const mezzo = `rgba(126, 198, 255, ${forza * 0.55})`;
+  const spento = 'rgba(96, 176, 255, 0)';
+  ctx.save();
+
+  if (cTerra.retta || cAria.retta) {
+    // Le due curve sono così larghe da essere rette: la fascia è la striscia
+    // fra i due bordi, e il verso lo dà chi dei due sta più in alto.
+    const y2 = cy + cTerra.vicino, y1 = cy + cAria.vicino;
+    const g = ctx.createLinearGradient(0, y1, 0, y2);
+    g.addColorStop(0, spento);
+    g.addColorStop(0.45, mezzo);
+    g.addColorStop(1, acceso);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, Math.min(y1, y2), L, Math.abs(y2 - y1));
+    ctx.restore();
+    return;
+  }
+
+  // Il caso generale: due cerchi quasi concentrici, e la fascia è la corona
+  // fra loro. Il pari-dispari la ritaglia senza doverla costruire a mano, ed
+  // è la stessa cura degli anelli di `rilTracciaSagoma`.
+  //
+  // Il gradiente si costruisce sul **bordo del pianeta** e largo quanto la
+  // fascia si vede, non da un cerchio all'altro: i due centri non coincidono,
+  // e con la corona quasi tangente la rampa da centro a centro finirebbe
+  // tutta fuori dai pochi pixel in cui la fascia è visibile — cioè una
+  // corona disegnata di un colore solo, che a occhio si legge come un anello
+  // di vernice invece che come aria.
+  const yT = cy + cTerra.dc, yA = cy + cAria.dc, rT = cTerra.rc;
+  const verso = cTerra.esterno ? -1 : 1;     // l'aria sta dentro o fuori al bordo
+  const r0 = verso > 0 ? rT : Math.max(0, rT - banda);
+  const r1 = verso > 0 ? rT + banda : rT;
+  const g = ctx.createRadialGradient(cx, yT, r0, cx, yT, r1);
+  g.addColorStop(verso > 0 ? 0 : 1, acceso);
+  g.addColorStop(0.5, mezzo);
+  g.addColorStop(verso > 0 ? 1 : 0, spento);
+  const corona = () => {
+    ctx.beginPath();
+    ctx.arc(cx, yA, cAria.rc, 0, Math.PI * 2);
+    ctx.arc(cx, yT, rT, 0, Math.PI * 2);
+    ctx.fill('evenodd');
   };
-  ponte.onanimationend = e => {
-    if (e.target === ponte) finisci();
+  ctx.fillStyle = g;
+  corona();
+
+  // La metà illuminata. Senza, il velo è uniforme tutt'attorno e si legge
+  // come una decorazione incollata al disco invece che come l'aria che il
+  // Sole attraversa di taglio.
+  if (Number.isFinite(angoloLuce)) {
+    const lx = cx + Math.cos(angoloLuce) * rT, ly = yT + Math.sin(angoloLuce) * rT;
+    const gl = ctx.createRadialGradient(lx, ly, 0, lx, ly, Math.max(10, rT * 1.05));
+    gl.addColorStop(0, `rgba(196, 230, 255, ${0.42 * (0.3 + 0.7 * p.buio)})`);
+    gl.addColorStop(1, 'rgba(120, 190, 255, 0)');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = gl;
+    corona();
+  }
+  ctx.restore();
+}
+
+// Gli assi della telecamera del volo: quelli della scena, rigirati all'indietro
+// dell'angolo che resta da percorrere. A β = 0 sono **gli stessi** della scena,
+// cifra per cifra, ed è per questo che l'ultimo fotogramma del velo e il primo
+// che si vede sotto sono la stessa immagine.
+function solVoloAssi(beta) {
+  const a = solAssiVista();
+  const c = Math.cos(beta), s = Math.sin(beta);
+  return {
+    destra: a.destra,
+    verso: [a.verso[0] * c + a.alto[0] * s, a.verso[1] * c + a.alto[1] * s, a.verso[2] * c + a.alto[2] * s],
+    alto: [a.alto[0] * c - a.verso[0] * s, a.alto[1] * c - a.verso[1] * s, a.alto[2] * c - a.verso[2] * s]
   };
-  // Un cambio di visibilita' può impedire animationend: il paracadute evita
-  // che il planetario resti coperto al ritorno nella scheda.
-  ponte._solTimer = setTimeout(finisci, 7200);
+}
+
+// La Terra. Quando è un disco intero e sta in una misura ragionevole la
+// disegna **la funzione della scena** (§7.7-ter): le coste vere, il confine
+// del giorno, le luci delle città nella metà scura, il puntino di casa. Non
+// una copia somigliante — proprio lei, così l'arrivo non ha niente da far
+// combaciare. Negli altri casi (il pavimento del mondo a quota bassa, o un
+// disco più largo di qualche schermo) resta la campitura, che è tutto quello
+// che di un pianeta si vede quando ci si sta sopra.
+function solVoloTerra(ctx, p, c, assi) {
+  const L = solVolo.L, H = solVolo.H, cx = L / 2, cy = H / 2;
+  const diag = Math.hypot(L, H) || 1;
+  // Il globo vero appena la Terra è un **disco** che ci sta in qualche
+  // schermo: ventitré poligoni e trecento vertici, cioè niente, e sotto ai
+  // piedi dev'esserci il continente che c'è davvero — non un azzurro che
+  // vale per tutti.
+  //
+  // Il limite non è di costo, è di **proporzione**. Quella funzione disegna
+  // il fondale attorno a ogni costa spesso il 3,6% del raggio, che su un
+  // globo intero è la riga turchese delle fotografie vere e su un globo da
+  // cinquemila pixel — di cui sullo schermo se ne vedono centocinquanta —
+  // diventa una macchia chiara più alta di tutto quello che si vede: la
+  // costa non si legge più come una costa, si legge come un difetto. Sopra
+  // questa misura resta la campitura, che alla stessa quota è quello che si
+  // vede davvero guardando di sbieco un pianeta grande.
+  const fine = !c.retta && !c.esterno && c.rc <= diag * 1.4 && solVolo.versoSole;
+  if (fine) {
+    ctx.save();
+    ctx.translate(cx, cy + c.dc);
+    const globo = sol.globoTerra;
+    const fatto = solDisegnaTerraVera(ctx, solVolo.versoSole, c.rc, assi, solVolo.quando);
+    sol.globoTerra = globo;   // la scena tiene la sua: il velo non è un fotogramma suo
+    ctx.restore();
+    if (fatto) return;
+  }
+  // Il ripiego, per i pochi decimi in cui la Terra è ancora più grande di
+  // qualche schermo: non un mappamondo, ma il **fianco illuminato** di un
+  // pianeta grande guardato di sbieco — che alla fine è quello che si vede
+  // davvero da duecento chilometri, dove un continente non ci sta in un
+  // colpo d'occhio. Quello che conta è che la luce venga dalla parte giusta
+  // e che il giorno sia chiaro: un pianeta blu scuro sotto un Sole alto si
+  // legge come un errore, anche a chi non saprebbe dire quale.
+  ctx.save();
+  const regola = solVoloTracciaTerra(ctx, c);
+  ctx.clip(regola);
+  const k = solVolo.versoSole
+    ? Math.max(0, Math.min(1, (1 + skyDot(solVolo.versoSole, assi.verso)) / 2)) : 1;
+  const giorno = [58, 126, 188], notte = [5, 10, 21];
+  const passata = (t) => skyRgba(skyMescolaColore(notte, giorno, t), 1);
+  const centro = c.retta ? cy + c.y : cy + c.dc;
+  const ampio = Math.min(Math.max(c.retta ? diag : c.rc, diag * 0.6), diag * 1.4);
+  if (Number.isFinite(solVolo.angoloLuce)) {
+    // Il terminatore: una rampa lungo la direzione da cui batte il Sole, larga
+    // quanto il pezzo di pianeta che si vede. `k` la sposta — a mezzogiorno
+    // sta fuori dal quadro e la faccia è tutta chiara, di notte il contrario.
+    const dx = Math.cos(solVolo.angoloLuce), dy = Math.sin(solVolo.angoloLuce);
+    const spo = (0.5 - k) * 2.4 * ampio;
+    const g = ctx.createLinearGradient(cx + dx * (ampio - spo), centro + dy * (ampio - spo),
+                                       cx - dx * (ampio + spo), centro - dy * (ampio + spo));
+    g.addColorStop(0, passata(1));
+    g.addColorStop(0.46, passata(0.72));
+    g.addColorStop(0.62, passata(0.16));
+    g.addColorStop(1, passata(0.02));
+    ctx.fillStyle = g;
+  } else ctx.fillStyle = passata(k);
+  ctx.fillRect(0, 0, L, H);
+  // Lo schiarimento verso il lembo. Guardando un pianeta di sbieco la linea
+  // di vista attraversa sempre più aria man mano che si avvicina al bordo, e
+  // quella aria rimanda luce: è il motivo per cui in una fotografia
+  // dall'orbita la superficie non è mai una campitura piatta ma sbianca
+  // avvicinandosi all'orizzonte. Costa un gradiente e toglie l'unica cosa
+  // che in questi decimi di secondo si legge come finta.
+  const vicinoY = cy + (c.retta ? c.y : c.vicino);
+  const foschia = ctx.createLinearGradient(0, vicinoY, 0, vicinoY + Math.max(60, ampio * 0.55));
+  foschia.addColorStop(0, `rgba(206, 232, 255, ${0.34 * k})`);
+  foschia.addColorStop(1, 'rgba(206, 232, 255, 0)');
+  ctx.fillStyle = foschia;
+  ctx.fillRect(0, 0, L, H);
+  ctx.restore();
+}
+
+// La fotografia del planetario, che se ne va. Trasla col beccheggio e scala
+// col campo, cioè si muove come si muoverebbe il cielo che ritrae: finché
+// dura, quello che si vede è il planetario che si allontana, non una
+// dissolvenza appiccicata sopra a un'altra scena.
+function solVoloFotografia(ctx, p, c, opacita) {
+  const f = solVolo.foto;
+  if (!f || opacita <= 0.004) return;
+  const L = solVolo.L, H = solVolo.H;
+  // Si copre, non si contiene: la tela del cielo e quella della scena non
+  // hanno la stessa forma — quella del planetario è più stretta — e
+  // adattandola in altezza restavano due strisce di fondo ai lati, con il
+  // bordo netto della fotografia in mezzo allo schermo. Il ritaglio che
+  // costa è il quattro per cento, e non lo vede nessuno.
+  const base = Math.max(solVolo.fotoL ? L / solVolo.fotoL : 1,
+                        solVolo.fotoH ? H / solVolo.fotoH : 1);
+  const k = base * (p.F / solVolo.F0);
+  // Dove va appoggiata: **col suo orizzonte su quello del conto**. È la riga
+  // che fa sparire il passaggio, e vale la pena dire perché non basta
+  // traslarla col beccheggio. Salendo, l'orizzonte scende da sé — la
+  // depressione cresce con la quota — e quella parte la fotografia non ce
+  // l'ha: è stata scattata da terra. Muovendola col solo angolo, a
+  // quarantacinque chilometri i due orizzonti si trovano settanta pixel
+  // distanti, e la dissolvenza fra due righe di terra parallele si legge
+  // come un fantasma. Ancorandola invece al bordo che il conto ha appena
+  // calcolato, la sola cosa netta dell'immagine combacia sempre.
+  const dy = c.vicino - k * solVolo.fotoOrizzonte;
+  ctx.save();
+  ctx.globalAlpha = opacita;
+  ctx.translate(L / 2, H / 2 + dy);
+  ctx.scale(k, k);
+  ctx.drawImage(f, -solVolo.fotoL / 2, -solVolo.fotoH / 2, solVolo.fotoL, solVolo.fotoH);
+  ctx.restore();
+}
+
+function solVoloDisegna(u) {
+  if (!solVoloMisura()) return;
+  const ctx = solVolo.ctx;
+  const p = solVoloPosa(u);
+  const c = solVoloCerchio(p, p.rho);
+  const cAria = solVoloCerchio(p, p.rhoAria);
+  const assi = solVoloAssi(p.beta);
+  solVolo.angoloLuce = solVolo.versoSole ? solAngoloSchermo(solVolo.versoSole, assi) : NaN;
+
+  ctx.clearRect(0, 0, solVolo.L, solVolo.H);
+  solVoloCielo(ctx, p, c);
+  solVoloStelle(ctx, p);
+  // L'aria prima del pianeta: la sua corona finisce sotto al disco, che la
+  // copre per la metà che gli sta davanti. Disegnandola dopo, il velo
+  // azzurro si stenderebbe *sopra* ai continenti.
+  solVoloAtmosfera(ctx, p, c, cAria, solVolo.angoloLuce);
+  solVoloTerra(ctx, p, c, assi);
+
+  // La fotografia sopra a tutto finché regge, e poi più niente: da lì in avanti
+  // quello che si vede è già il mondo ricostruito, e il passaggio cade nel
+  // momento in cui il pianeta ha smesso di essere il pavimento ed è diventato
+  // un corpo — cioè quando il conto dice che c'è qualcos'altro da far vedere.
+  const via = solVoloRampa((u - SOL_VOLO_FOTO_DA) / (SOL_VOLO_FOTO_A - SOL_VOLO_FOTO_DA));
+  solVoloFotografia(ctx, p, c, 1 - via);
+}
+
+function solVoloPasso(ts) {
+  solVolo.raf = 0;
+  if (!solVolo.attivo || !sol.aperto) { solVoloChiudi(); return; }
+  if (!solVolo.avvio) solVolo.avvio = ts;
+  const u = Math.min(1, (ts - solVolo.avvio) / SOL_VOLO_MS);
+  try {
+    solVoloDisegna(u);
+  } catch (e) {
+    // Un velo che solleva non deve lasciare la scena coperta: si apre e basta,
+    // che è la peggiore delle cose buone — un taglio secco invece di un volo.
+    skyGuastoFotogramma(e);
+    solVoloChiudi();
+    return;
+  }
+  // L'ultimo tratto è una dissolvenza sola: sotto c'è già la stessa Terra, e
+  // quello che entra sono le orbite, la Luna e i nomi — cioè il diagramma che
+  // si sta aprendo, che è la cosa che si era venuti a vedere.
+  const ponte = document.getElementById('sol-transizione');
+  if (ponte) ponte.style.opacity = String(1 - solVoloRampa((u - SOL_VOLO_APRI) / (1 - SOL_VOLO_APRI)));
+  if (u >= 1) { solVoloChiudi(); return; }
+  solVolo.raf = requestAnimationFrame(solVoloPasso);
+}
+
+// L'avvio vero e proprio: si chiama a inquadratura già fatta, perché i numeri
+// d'arrivo — dov'è la Terra, quanto la scena la disegnerà grande, da che parte
+// le batte il Sole — si **leggono dalla scena** invece di essere indovinati.
+function solAvviaTransizioneDecollo(opzioni = {}) {
+  const ponte = document.getElementById('sol-transizione');
+  if (!ponte) return;
+  solVolo.tela = document.getElementById('sol-transizione-tela');
+  const ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!solVolo.tela || ridotto || !sol.pianeti.length || opzioni.volo === false) {
+    // Niente volo: il velo si apre e basta. Vale anche per chi ha chiesto meno
+    // movimento — a cui un cambio di scala di cinque ordini di grandezza,
+    // gratis e non chiesto, è esattamente la cosa da non fare.
+    solVolo.foto = null;
+    ponte.style.transition = 'opacity .32s ease';
+    ponte.style.opacity = '0';
+    solVolo.timer = setTimeout(() => { ponte.style.transition = ''; solVoloChiudi(); }, 360);
+    return;
+  }
+  ponte.style.transition = '';
+  if (!solVoloMisura()) { solVoloChiudi(); return; }
+
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!terra) { solVoloChiudi(); return; }
+  solVolo.versoSole = solVersoIlSole(terra);
+  solVolo.quando = new Date(sol.istante || skyAdesso().getTime());
+
+  // Da dove si parte: la posa vera dell'ultimo fotogramma del planetario. La
+  // terza componente dello sguardo è il seno dell'altezza — se il cielo non è
+  // mai stato aperto (si arriva da un evento, dalla dashboard, da una tappa di
+  // Missione Cielo) si parte dall'orizzonte, che è la posa in cui si guarda un
+  // panorama.
+  const f = sky.ultimaBase && sky.ultimaBase.f;
+  solVolo.alt0 = f ? Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D : 8;
+  solVolo.alt0 = Math.max(-5, Math.min(62, solVolo.alt0));
+
+  // La focale di partenza è **quella del planetario**, riportata all'altezza di
+  // questa tela: il primo fotogramma del volo è la fotografia disegnata alla
+  // sua scala, quindi il campo dev'essere lo stesso o si vedrebbe uno scatto
+  // di zoom appena il conto prende il posto dell'immagine.
+  const Fsky = (sky.ultimaFocale && sky.altezza) ? sky.ultimaFocale * (solVolo.H / sky.altezza) : 0;
+  solVolo.F0 = Fsky > 20 ? Fsky : (solVolo.H / 2) / (2 * Math.tan(80 / 4 * SKY_D2R));
+  if (solVolo.foto) {
+    solVolo.fotoL = sky.larghezza || solVolo.foto.width;
+    solVolo.fotoH = sky.altezza || solVolo.foto.height;
+    // Dov'era l'orizzonte **dentro** alla fotografia, nei suoi pixel: è
+    // l'unica cosa netta che quell'immagine abbia, ed è quella che va tenuta
+    // ferma sul bordo che il conto calcola (vedi `solVoloFotografia`).
+    solVolo.fotoOrizzonte = 2 * (sky.ultimaFocale || 0) * Math.tan(solVolo.alt0 / 2 * SKY_D2R);
+  }
+
+  // La focale d'arrivo si ricava all'indietro da quanto grande la scena
+  // disegnerà la Terra: `2F·tan(ρ/2) = r`, e da lì l'ultimo fotogramma del velo
+  // ha il pianeta esattamente della misura e nel posto in cui sta sotto.
+  solVolo.rhoFine = Math.asin(SOL_VOLO_R_KM / (SOL_VOLO_R_KM + SOL_VOLO_H1_KM));
+  solVolo.rFine = Math.max(4, solRaggioCorpo(terra));
+  solVolo.F1 = Math.max(60, Math.min(40000, solVolo.rFine / (2 * Math.tan(solVolo.rhoFine / 2))));
+
+  // Da dove parte il bordo del mondo, in mezze altezze di tela: a quota zero
+  // il pianeta è largo mezzo giro, quindi il suo bordo vicino **è**
+  // l'orizzonte, e l'orizzonte sta dove il planetario lo stava disegnando.
+  // Con questa riga il primo fotogramma del conto e la fotografia hanno la
+  // stessa riga di terra, ed è per questo che la dissolvenza fra i due non
+  // si vede.
+  solVolo.q0 = 2 * solVolo.F0 * Math.tan(solVolo.alt0 / 2 * SKY_D2R) / (solVolo.H / 2);
+
+  solVolo.attivo = true;
+  solVolo.avvio = 0;
+  ponte.classList.remove('transizione-finita');
+  ponte.classList.add('in-volo');
+  ponte.style.opacity = '1';
+  solVoloDisegna(0);
+  solVolo.raf = requestAnimationFrame(solVoloPasso);
+  // Il paracadute: un cambio di scheda strozza le `requestAnimationFrame`, e
+  // un velo che resta acceso è una scena che non si vede più. È la stessa rete
+  // della sentinella dei cicli (§7.4-quinquies), in piccolo.
+  if (solVolo.timer) clearTimeout(solVolo.timer);
+  solVolo.timer = setTimeout(solVoloChiudi, SOL_VOLO_MS + 1800);
 }
 
 window.apriSistemaSolare = (opzioni = {}) => {
@@ -34393,6 +35107,23 @@ window.apriSistemaSolare = (opzioni = {}) => {
   if (!modale) return;
   sol.canvas = document.getElementById('sol-canvas');
   if (!sol.canvas) return;
+
+  // Il volo (§7.7-quinquies) è **il passaggio fra il planetario e questa
+  // vista**, e da nessun'altra parte. Altrove sarebbe fuori posto due volte:
+  // racconta una salita dal cielo osservato da terra, e chi arriva da un
+  // evento del calendario o da un banco della Didattica da terra non ci
+  // stava a guardare; e soprattutto finisce con la Terra al centro alla
+  // misura che la scena le darà — una promessa che vale solo per
+  // l'inquadratura del tuffo. Con un pianeta scelto, col banco delle
+  // eclissi, o con una tappa di Missione Cielo che si riquadra da sé, la
+  // scena arriva altrove e l'ultimo fotogramma del velo sarebbe uno scarto
+  // invece di un incastro. Là resta la dissolvenza corta.
+  const daCielo = typeof vistaAttuale !== 'undefined' && vistaAttuale === 'cielo';
+  // La fotografia si prende **qui**, come prima riga utile: è l'ultimo
+  // fotogramma che chi guarda ha davanti agli occhi. Una riga più in basso il
+  // ciclo del cielo sarebbe già in pausa e la sua tela potrebbe essere stata
+  // rimisurata.
+  const fotoDelCielo = daCielo && !opzioni.senzaVolo ? solVoloFotografaIlCielo() : null;
 
   const evento = opzioni.evento
     ? eventiCalcolati.find(e => e.id === opzioni.evento) : null;
@@ -34460,7 +35191,11 @@ window.apriSistemaSolare = (opzioni = {}) => {
 
   modale.classList.remove('hidden');
   sol.aperto = true;
-  solAvviaTransizioneDecollo();
+  // Il velo si accende subito e il volo parte dopo, dentro al
+  // `requestAnimationFrame`: i suoi numeri d'arrivo si leggono
+  // dall'inquadratura, che lì non è ancora stata fatta. In mezzo ci sarebbe
+  // un fotogramma di scena nuda, ed è quello che questa riga copre.
+  solVoloPrepara(fotoDelCielo);
 
   // La prima apertura resta nella finestra: il passaggio dal planetario alla
   // vista da fuori deve mostrare con calma il cambio di scala, non sostituire
@@ -34483,15 +35218,19 @@ window.apriSistemaSolare = (opzioni = {}) => {
     // motivo per cui questa finestra esiste — si arriva dal planetario con una
     // domanda su come stanno le cose stasera, e la prima immagine deve già
     // essere la risposta, non un bersaglio da girare finché si capisce.
+    let tuffo = false;
     if (sol.vicino) solInquadraVicino();
     // Chi arriva con un protagonista — un evento, o il pianeta che era scelto
     // nel planetario — resta nel quadro d'insieme: si è venuti a vedere dove
     // sta *quello*, e tuffarsi sulla Terra vorrebbe dire lasciarlo fuori
     // dallo schermo proprio mentre lo si stava cercando.
     else if (sol.scelto && sol.scelto !== 'Earth') solInquadraDaTerra();
-    else solEntraSullaTerra();
+    else { tuffo = true; solEntraSullaTerra({ immediato: !!fotoDelCielo }); }
     solAggiornaBarra(quando);
     solAggiornaScheda(true);
+    // Adesso la scena sa dove sta la Terra e quanto la disegnerà grande: il
+    // volo ci si aggancia, e il suo ultimo fotogramma è già questo.
+    solAvviaTransizioneDecollo({ volo: tuffo && !!fotoDelCielo });
     if (!sol.raf) {
       sol.battito = performance.now();
       sol.raf = requestAnimationFrame(solCiclo);
@@ -34500,6 +35239,9 @@ window.apriSistemaSolare = (opzioni = {}) => {
 };
 
 function chiudiSistemaSolare() {
+  // Il volo d'ingresso non sopravvive alla finestra: chiudendo a metà
+  // resterebbe un velo acceso sopra a una scena che non c'è più.
+  solVoloChiudi();
   // Senza la scena davanti non si può continuare a comporre il filmato.
   // Come uscendo dal planetario, una ripresa in corso viene annullata.
   if (sky.reg.attiva && sky.reg.origine === 'solare') skyRegFerma({ annulla: true });
