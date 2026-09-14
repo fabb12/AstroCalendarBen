@@ -611,8 +611,10 @@ function sorvegliaIstruzioniCielo() {
 //     sola: «fammi vedere questo più grande». È il gesto con cui si guarda
 //     un video, ed è lo stesso con cui si guarda una carta del cielo.
 //     Quindi girando il telefono la scena che si sta guardando — il
-//     planetario, il Sistema Solare in 3D, il banco della Didattica — si
-//     prende tutto lo schermo, e rimettendolo dritto torna dov'era.
+//     planetario o il banco della Didattica — si prende tutto lo schermo, e
+//     rimettendolo dritto torna dov'era. Il Sistema Solare fa eccezione: la
+//     sua finestra occupa gia' tutto il viewport e il vero schermo intero
+//     resta una scelta del tasto dedicato.
 //
 //     Tre regole, e sono quelle che rendono il gesto reversibile:
 //
@@ -632,7 +634,7 @@ function sorvegliaIstruzioniCielo() {
 //     un gesto dell'utente, e una rotazione per il browser non lo è, quindi
 //     la richiesta può benissimo venire rifiutata. Non è un problema, ed è
 //     il motivo per cui qui non si chiama `requestFullscreen` a mano: le
-//     tre scene hanno già ognuna il suo ripiego in CSS — un riquadro
+//     due scene hanno già ognuna il suo ripiego in CSS — un riquadro
 //     incollato al viewport — e ci ripiegano da sé quando la promessa viene
 //     rifiutata. Da fuori non si vede la differenza.
 // =====================================================================
@@ -642,13 +644,6 @@ function sorvegliaIstruzioniCielo() {
 // sta guardando. `ce` dice se c'è, `pieno` se ci è già, `entra`/`esci`
 // sono i suoi comandi di sempre — quelli del suo tasto ⛶.
 const SCENE_DEL_GIRO = [
-  {
-    nome: 'sistema',
-    ce: () => typeof sol === 'object' && sol.aperto && typeof solEntraSchermoIntero === 'function',
-    pieno: () => typeof solSchermoIntero !== 'undefined' && solSchermoIntero,
-    entra: () => solEntraSchermoIntero(),
-    esci: () => solEsciSchermoIntero()
-  },
   {
     nome: 'cielo',
     ce: () => vistaAttuale === 'cielo' && typeof sky === 'object' && sky.aperto
@@ -34780,7 +34775,7 @@ function inizializzaSistemaSolare() {
     if (e.key === 'Escape' && solPannelloTempoAperto()) { solChiudiPannelloTempo(); return; }
     // E finché si scrive una data, le frecce e lo spazio sono del campo
     if (solPannelloTempoAperto() && e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
-    // Nel campo di ricerca R, F, C, spazio e frecce sono testo e navigazione,
+    // Nel campo di ricerca R, C, spazio e frecce sono testo e navigazione,
     // non scorciatoie della telecamera.
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     // Le frecce girano la scena nello stesso verso del dito; con Maiusc
@@ -34801,7 +34796,6 @@ function inizializzaSistemaSolare() {
       else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4 * precisione); solAggiornaTasti(); }
     } else if (e.key === 'c' || e.key === 'C') solCentra();
     else if (e.key === 'r' || e.key === 'R') solRipristinaVista();
-    else if (e.key === 'f' || e.key === 'F') solAlternaSchermoIntero();
     else if (e.key === ' ') { e.preventDefault(); solAlternaMarcia(); }
   });
 
