@@ -2739,6 +2739,39 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
           'qualcosa copre i comandi della scena: lo zoom è la mano con cui si cerca');
         assert.ok(scena.strisciaLeggibile, 'la striscia è coperta proprio dove c\'è l\'indizio');
       });
+
+      const trascinataRaccolta = await pagina.evaluate(() => {
+        const el = document.getElementById('missione-striscia');
+        miss.strisciaNascosta = true;
+        missMostraStrisciaCielo();
+        const prima = el.getBoundingClientRect();
+        missPosizionaStriscia(el, 24, 36);
+        const dopo = el.getBoundingClientRect();
+        return {
+          prima: { w: prima.width, h: prima.height, x: prima.left, y: prima.top },
+          dopo: { w: dopo.width, h: dopo.height, x: dopo.left, y: dopo.top },
+          bottom: el.style.bottom,
+          contenitore: el.parentElement.id
+        };
+      });
+      prova('la guida raccolta si sposta davvero nella 3D senza allargarsi' + dove, () => {
+        const p = trascinataRaccolta.prima, d = trascinataRaccolta.dopo;
+        assert.strictEqual(trascinataRaccolta.contenitore, 'sol-guscio');
+        assert.strictEqual(trascinataRaccolta.bottom, 'auto',
+          'l’ancoraggio in basso è rimasto attivo insieme a top');
+        assert.ok(Math.abs(d.x - 24) < 1 && Math.abs(d.y - 36) < 1,
+          `non si è spostata dove richiesto: ${Math.round(d.x)},${Math.round(d.y)}`);
+        assert.ok(Math.abs(d.w - p.w) < 1 && Math.abs(d.h - p.h) < 1,
+          `trascinandola ha cambiato misura: ${Math.round(p.w)}×${Math.round(p.h)} -> ` +
+          `${Math.round(d.w)}×${Math.round(d.h)}`);
+      });
+      await pagina.evaluate(() => {
+        miss.strisciaNascosta = false;
+        miss.posizioneStriscia = null;
+        const el = document.getElementById('missione-striscia');
+        el.removeAttribute('style');
+        missMostraStrisciaCielo();
+      });
     }
     await pagina.setViewportSize({ width: 900, height: 900 });
     await pagina.waitForTimeout(250);

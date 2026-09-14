@@ -6058,6 +6058,12 @@ function missPosizionaStriscia(el, left, top) {
   el.style.left = Math.max(0, Math.min(maxLeft, left)) + 'px';
   el.style.top = Math.max(0, Math.min(maxTop, top)) + 'px';
   el.style.right = 'auto';
+  /* Nel Sistema Solare la guida nasce ancorata in basso. Quando la si
+   * trascina, lasciare insieme `top` e `bottom` valorizzati non la sposta:
+   * il browser usa i due bordi per allungare il box fino alla barra del
+   * tempo. Da questo momento la posizione è invece espressa soltanto da
+   * sinistra e alto, come nel planetario. */
+  el.style.bottom = 'auto';
   el.style.margin = '0';
 }
 
