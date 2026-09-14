@@ -418,6 +418,23 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
       7.6 * Math.sqrt(v.zoomVoluto) >= v.raggioTerraAtteso - 1),
     selezioneCamera.slice(1).map(v => `${v.id}: ${Math.round(7.6 * Math.sqrt(v.zoomVoluto))}px`).join(', '));
 
+  const sensibilitaCamera = await pagina.evaluate(() => {
+    const pernoPrima = sol.perno;
+    const zoomPrima = sol.zoomVoluto;
+    sol.perno = 'Earth';
+    const valori = [8, 64, 25000].map(zoom => {
+      sol.zoomVoluto = zoom;
+      return solPrecisioneCamera();
+    });
+    sol.perno = pernoPrima;
+    sol.zoomVoluto = zoomPrima;
+    return valori;
+  });
+  ok('la camera resta pronta anche avvicinandosi molto a un astro',
+    sensibilitaCamera[0] === 1 && sensibilitaCamera[1] >= 0.45 &&
+      sensibilitaCamera[2] >= 0.18,
+    sensibilitaCamera.map(v => v.toFixed(2)).join(' / '));
+
   const tagliaSatelliti = await pagina.evaluate(() => {
     solInquadraRicerca('iss');
     sol.zoom = sol.zoomVoluto;
