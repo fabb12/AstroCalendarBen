@@ -2001,10 +2001,20 @@
             <div class="sol-transizione-orbite">
               <i></i><i></i><i></i><b></b>
             </div>
-            <p class="sol-transizione-testo" role="status" aria-live="polite">
-              <span data-i18n="ui.lasciamo-la-terra">Lasciamo la Terra</span>
-              <small data-i18n="ui.verso-il-sistema-solare">verso il Sistema Solare</small>
-            </p>
+            <div class="sol-transizione-testo" role="status" aria-live="polite">
+              <p class="sol-transizione-fase sol-fase-terra">
+                <span data-i18n="ui.partiamo-dal-planetario">Partiamo dal cielo visto da Terra</span>
+                <small data-i18n="ui.la-camera-sale-sopra-l-atmosfera">la camera sale sopra l'atmosfera</small>
+              </p>
+              <p class="sol-transizione-fase sol-fase-spazio">
+                <span data-i18n="ui.la-terra-si-allontana">La Terra si allontana</span>
+                <small data-i18n="ui.ora-guardiamo-il-sistema-da-fuori">ora guardiamo il Sistema Solare da fuori</small>
+              </p>
+              <p class="sol-transizione-fase sol-fase-orbite">
+                <span data-i18n="ui.compaiono-le-orbite">Compaiono le orbite</span>
+                <small data-i18n="ui.ogni-pianeta-e-nella-posizione-di-adesso">ogni pianeta è nella posizione di adesso</small>
+              </p>
+            </div>
           </div>
           <p class="sol-suggerimento" data-i18n="ui.trascina-per-girare-tocca-un-pianeta-doppio">Trascina per girare · tocca un pianeta · doppio tocco sulla Terra per impostare il punto giallo</p>
 
@@ -2086,8 +2096,8 @@
 
           <!-- La scheda del corpo scelto. Sta **dentro** al guscio, appoggiata
                sulla scena come la scheda dell'oggetto nel planetario, e non
-               più giù nella finestra: da quando si entra già a tutto schermo,
-               una scheda fuori dal guscio è una scheda che non si vede mai.
+               più giù nella finestra: così viene con la scena anche quando
+               chi guarda sceglie di allargarla a tutto schermo.
                Compare toccando un corpo e se ne va col suo ✕: a riposo sulla
                scena non c'è niente. -->
           <aside id="sol-scheda" class="sol-scheda hidden" aria-live="polite"></aside>

@@ -3198,7 +3198,7 @@ function missTornaDalPlanetario() {
 //
 //     Un mondo lontano non si punta col telefono: si guarda da fuori. La
 //     tappa si gioca allora nella finestra del Sistema Solare in 3D
-//     (§7.7 di `app.js`), che si apre già a tutto schermo, e la caccia è
+//     (§7.7 di `app.js`), che si apre nella sua finestra, e la caccia è
 //     la stessa di sempre — un enigma, tre strofe, un dito che tocca il
 //     bersaglio e una scoperta.
 //

@@ -34364,7 +34364,7 @@ function solAvviaTransizioneDecollo() {
   };
   // Un cambio di visibilita' può impedire animationend: il paracadute evita
   // che il planetario resti coperto al ritorno nella scheda.
-  ponte._solTimer = setTimeout(finisci, 2900);
+  ponte._solTimer = setTimeout(finisci, 5200);
 }
 
 window.apriSistemaSolare = (opzioni = {}) => {
@@ -34441,17 +34441,11 @@ window.apriSistemaSolare = (opzioni = {}) => {
   sol.aperto = true;
   solAvviaTransizioneDecollo();
 
-  // Si entra già a tutto schermo, con la barra del tempo appoggiata sopra la
-  // scena. Questa finestra è un'immagine, non un modulo: quello che ha da
-  // dire lo dice il disegno, e i comandi della fila di sotto — le distanze,
-  // le misure, le fasce — si scelgono una volta e poi si dimenticano.
-  //
-  // La richiesta va fatta **qui**, dentro allo stesso gesto che ha aperto la
-  // finestra: fuori da un gesto dell'utente il browser la rifiuta (e ci si
-  // arriva davvero, aprendo da un link `?evento=` o da una notifica). Quando
-  // succede non si perde niente: entra da sé il ripiego in CSS di
-  // `solRipiegoSchermo`, che fa la stessa cosa senza l'API Fullscreen.
-  if (!solSchermoIntero) solEntraSchermoIntero();
+  // La prima apertura resta nella finestra: il passaggio dal planetario alla
+  // vista da fuori deve mostrare con calma il cambio di scala, non sostituire
+  // all'improvviso tutta l'interfaccia. Chi vuole immergersi nel disegno ha
+  // il tasto ⬚ sulla scena (e la rotazione del telefono continua a usare il
+  // suo automatismo); soprattutto, la scelta non viene fatta al posto suo.
 
   // Due tele che si ridisegnano insieme su un telefono si sentono, e il
   // planetario dietro alla finestra non lo guarda nessuno: si mette in pausa
