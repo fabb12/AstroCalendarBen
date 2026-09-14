@@ -3031,6 +3031,7 @@ function missHtmlScoperta(t) {
   const altre = missQuanteVarianti('curiosita.' + missBaseRacconto(t)) > 1;
   return `<div class="missione-scoperta">
     ${missManigliaStriscia()}
+    ${missTastoAscolta()}
     ${missTastoTerminaStriscia()}
     ${missTastoRaccogliStriscia()}
     <h3>${missT('gioco.scoperta', { nome: missTesto(missNomeTappa(t)) })}</h3>
@@ -3040,7 +3041,6 @@ function missHtmlScoperta(t) {
     <div class="missione-scoperta-azioni">
       ${altre ? `<button type="button" class="missione-tasto missione-tasto-lieve"
         data-miss-azione="altraStoria">${missT('gioco.altraStoria')}</button>` : ''}
-      ${missTastoAscolta()}
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="continua">${missT('gioco.continua')}</button>
     </div>
   </div>`;
@@ -3146,13 +3146,13 @@ function missTastoSoluzione(t) {
 }
 
 /* La voce automatica resta una scelta della preparazione; la rilettura e'
- * invece un gesto esplicito e deve essere disponibile a tutti. Lo stesso
- * comando vive nella ricerca e nella scoperta, e `forza` in `missAzione`
- * permette quindi di ascoltare il testo visibile anche quando la narrazione
- * automatica e' spenta. */
+ * invece un gesto esplicito e deve essere disponibile a tutti. Nel riquadro
+ * e' un'icona accanto alla maniglia: resta subito raggiungibile senza rubare
+ * spazio alle azioni della caccia. Etichetta e titolo conservano la parola
+ * per lettori di schermo e puntatori. */
 function missTastoAscolta() {
   return `<button type="button" class="missione-tasto missione-tasto-lieve missione-ascolta"
-    data-miss-azione="ascolta">${missT('ascolta')}</button>`;
+    data-miss-azione="ascolta" aria-label="${missT('ascolta')}" title="${missT('ascolta')}">${missIcona('altoparlante', 18)}</button>`;
 }
 
 function missMostraStrisciaCielo() {
@@ -3181,6 +3181,7 @@ function missMostraStrisciaCielo() {
     missAmmissibile(missTappaNelPlanetario(t), m.scelte) ? null : missProssimoIstanteCercabile(t);
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
     ${missManigliaStriscia()}
+    ${missTastoAscolta()}
     ${missTastoTerminaStriscia()}
     ${missTastoRaccogliStriscia()}
     <div class="missione-striscia-testo">
@@ -3193,7 +3194,6 @@ function missMostraStrisciaCielo() {
     <div class="missione-striscia-tasti">
       <button class="missione-tasto${sky.seguiTelefono ? ' attiva' : ''}" data-miss-azione="segui-telefono"
         ${m.simulazione || m.nelSistema ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
-      ${missTastoAscolta()}
       ${missNavigazioneIndizi(t)}
       ${missTastoSoluzione(t)}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>

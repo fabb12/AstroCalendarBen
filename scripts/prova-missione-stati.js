@@ -94,6 +94,10 @@ assert(elements.get('missione-striscia').innerHTML.includes('Indizio 1 di 3'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="indizio-successivo"'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="ascolta"'));
 assert(elements.get('missione-striscia').innerHTML.includes('Riascolta'));
+assert(elements.get('missione-striscia').innerHTML.indexOf('missione-trascina') <
+  elements.get('missione-striscia').innerHTML.indexOf('missione-ascolta'));
+assert(elements.get('missione-striscia').innerHTML.indexOf('missione-ascolta') <
+  elements.get('missione-striscia').innerHTML.indexOf('missione-termina'));
 assert(elements.get('missione-striscia').innerHTML.includes('Segui il telefono'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="termina"'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Missione Cielo</button>'));

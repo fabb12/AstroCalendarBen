@@ -11011,17 +11011,30 @@ body button.did-ponte:active { transform: translateY(1px); }
   cursor: grab;
   touch-action: none;
 }
-/* La riga in cima al riquadro: maniglia a sinistra, chiusura a destra e
-   in mezzo il comando che finisce la serata. Sono tutti e tre fuori dal
+/* La riga in cima al riquadro: maniglia e riascolto a sinistra, chiusura a
+   destra e in mezzo il comando che finisce la serata. Sono tutti fuori dal
    flusso, appoggiati agli angoli, e lo spazio che occupano lo riserva
    l'imbottitura di `.missione-striscia-testo` qui sotto — i suoi 38px in
    cima sono questa riga. */
-.missione-striscia .missione-termina {
+.missione-striscia .missione-ascolta {
   position: absolute;
   top: 5px;
   left: 43px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
   min-height: 32px;
-  max-width: calc(100% - 90px);
+  padding: 0;
+  border-radius: 8px;
+}
+.missione-striscia .missione-termina {
+  position: absolute;
+  top: 5px;
+  left: 79px;
+  min-height: 32px;
+  max-width: calc(100% - 126px);
   padding: 0 9px;
   font-size: 0.73rem;
   white-space: nowrap;
