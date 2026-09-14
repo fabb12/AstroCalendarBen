@@ -445,6 +445,10 @@ const miss = {
 // sequenza impedisce a una risposta lenta della API di parlare sopra la tappa
 // successiva quando chi osserva preme rapidamente «Trovato».
 const missVoce = { audio: null, urlOggetto: '', sequenza: 0 };
+// Un ponte guasto non deve poter tenere in ostaggio anche il ripiego locale.
+// Quattro secondi e mezzo lasciano tempo a una sintesi remota normale, ma
+// restano abbastanza pochi da non far sembrare rotto il tasto «Ascolta».
+const MISS_TTS_SCADENZA_MS = 4500;
 
 
 // =====================================================================
@@ -5296,36 +5300,58 @@ async function missRaccontaConEdge(testo, lingua, sequenza, tono, opz) {
 
   const voci = MISS_VOCI_EDGE[lingua] || MISS_VOCI_EDGE.it;
   const conStile = !!(tono && voci.stili.includes(tono.stile));
-  const risposta = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'audio/mpeg, audio/*, application/json' },
-    body: JSON.stringify({
-      text: testo,
-      ssml: missSsml(testo, lingua, tono, opz),
-      voice: conStile ? voci.espressiva : voci.stabile,
-      style: conStile ? tono.stile : undefined,
-      styledegree: conStile ? tono.grado : undefined,
-      locale: lingua === 'en' ? 'en-US' : 'it-IT',
-      rate: tono.ritmo, pitch: tono.tono,
-      format: 'audio-24khz-48kbitrate-mono-mp3'
-    })
-  });
-  if (!risposta.ok) throw new Error(`Edge-TTS HTTP ${risposta.status}`);
-  if (sequenza !== missVoce.sequenza) return true;
+  const controllore = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  let timer = null;
+  const richiesta = (async () => {
+    const risposta = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'audio/mpeg, audio/*, application/json' },
+      signal: controllore ? controllore.signal : undefined,
+      body: JSON.stringify({
+        text: testo,
+        ssml: missSsml(testo, lingua, tono, opz),
+        voice: conStile ? voci.espressiva : voci.stabile,
+        style: conStile ? tono.stile : undefined,
+        styledegree: conStile ? tono.grado : undefined,
+        locale: lingua === 'en' ? 'en-US' : 'it-IT',
+        rate: tono.ritmo, pitch: tono.tono,
+        format: 'audio-24khz-48kbitrate-mono-mp3'
+      })
+    });
+    if (!risposta.ok) throw new Error(`Edge-TTS HTTP ${risposta.status}`);
+    if (sequenza !== missVoce.sequenza) return '';
 
-  const tipo = risposta.headers.get('content-type') || '';
-  let sorgente = '';
-  if (tipo.includes('application/json')) {
-    const dato = await risposta.json();
-    if (dato && dato.url) sorgente = String(dato.url);
-    else if (dato && dato.audio) sorgente = `data:${dato.mime || 'audio/mpeg'};base64,${dato.audio}`;
-  } else {
-    const blob = await risposta.blob();
-    if (blob.size) {
-      sorgente = URL.createObjectURL(blob);
-      missVoce.urlOggetto = sorgente;
+    const tipo = risposta.headers.get('content-type') || '';
+    if (tipo.includes('application/json')) {
+      const dato = await risposta.json();
+      if (dato && dato.url) return String(dato.url);
+      if (dato && dato.audio) return `data:${dato.mime || 'audio/mpeg'};base64,${dato.audio}`;
+      return '';
     }
+    const blob = await risposta.blob();
+    if (!blob.size) return '';
+    const url = URL.createObjectURL(blob);
+    missVoce.urlOggetto = url;
+    return url;
+  })();
+  // `fetch` non ha una scadenza propria. Se il ponte accetta la connessione e
+  // poi non manda più niente, senza questa corsa la Promise resta sospesa per
+  // minuti e `missRacconta` non arriva mai alla voce del dispositivo. Abortire
+  // libera anche radio e socket; il Promise.race serve comunque ai browser più
+  // vecchi che non espongono AbortController.
+  const scadenza = new Promise((_, rifiuta) => {
+    timer = setTimeout(() => {
+      if (controllore) controllore.abort();
+      rifiuta(new Error('Edge-TTS timeout'));
+    }, MISS_TTS_SCADENZA_MS);
+  });
+  let sorgente;
+  try {
+    sorgente = await Promise.race([richiesta, scadenza]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
   }
+  if (sequenza !== missVoce.sequenza) return true;
   if (!sorgente || sequenza !== missVoce.sequenza) return false;
 
   const audio = new Audio(sorgente);
@@ -6141,6 +6167,7 @@ const missProve = {
     MISS_DIFFICOLTA_GRADITA, MISS_GENEROSITA, MISS_REPERTORIO,
     MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
+    MISS_TTS_SCADENZA_MS,
     MISS_GENERI, MISS_GENERI_TUTTI, MISS_GENERE_DI_TIPO, MISS_GENERI_STORICI,
     MISS_LONTANI_DIFFICOLTA, MISS_QUOTA_SISTEMA, MISS_SALTO_SCHERMO, MISS_TEMPERATURA,
     MISS_PENALE_RECENTE, MISS_PENALE_RIFIUTATO, MISS_MISSIONI_DA_RICORDARE,

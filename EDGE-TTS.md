@@ -41,6 +41,8 @@ Non mettere segreti in `config.js`: tutto il JavaScript della PWA è pubblico.
 Il ponte deve custodire eventuali credenziali, imporre un limite alla lunghezza
 del testo e consentire soltanto le origini del progetto.
 
-Se l'endpoint non è configurato, non risponde o il browser blocca la
-riproduzione, Missione Cielo passa automaticamente alla Web Speech API del
-dispositivo. In questo modo la narrazione continua a funzionare anche offline.
+Se l'endpoint non è configurato, restituisce un errore, non completa la risposta
+entro 4,5 secondi o il browser blocca la riproduzione, Missione Cielo passa
+automaticamente alla Web Speech API del dispositivo. La richiesta lenta viene
+annullata, così un ponte raggiungibile ma bloccato non può lasciare muto anche il
+ripiego. In questo modo la narrazione continua a funzionare anche offline.

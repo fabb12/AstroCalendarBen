@@ -29,6 +29,16 @@ qualunque cosa (`git stash`, stesso conto: 222 passate, 1 fallita):
 
 ## Ultimo intervento completato
 
+**La voce di Missione Cielo non resta più appesa al ponte Edge-TTS.** La
+richiesta remota adesso scade dopo 4,5 secondi, viene abortita e lascia partire
+il ripiego Web Speech del dispositivo. Prima un endpoint raggiungibile ma
+bloccato lasciava la Promise sospesa senza limite: non arrivava un errore e
+quindi il ripiego, pur esistendo, non veniva mai chiamato. Cache **v325**.
+
+Toccati: `missione-cielo.js`, `EDGE-TTS.md`, `sw.js`, `CLAUDE.md`.
+
+## Intervento precedente
+
 **Il volo dal planetario al Sistema Solare** (§7.7-quinquies di `app.js`,
 prefisso `solVolo`, prove in `scripts/prova-volo.js`).
 
