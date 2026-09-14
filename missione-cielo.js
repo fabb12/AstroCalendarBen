@@ -3629,6 +3629,12 @@ function missMostraSoluzione() {
     if (typeof skyCentraSu === 'function') skyCentraSu(oggetto || {
       nome: missNomeTappa(t), az: ora.azimut, alt: ora.altezza
     });
+    // La centratura dice dove guardare, ma da sola non distingue il
+    // bersaglio dagli altri punti che finiscono al centro durante il
+    // movimento. La soluzione usa quindi lo stesso cerchio temporaneo della
+    // scoperta: resta agganciato alle coordinate vive dell'oggetto e rende
+    // esplicito quale astro e' stato appena rivelato.
+    missSegnaTrovato(t);
   }
   missSalvaAttiva();
   missMostraVista('inCorso');

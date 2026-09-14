@@ -2441,12 +2441,17 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       return {
         presente: true,
         rivelata: !!t.rivelata,
+        idCielo: t.idCielo,
         esito: t.esito,
         // Il nome del bersaglio deve comparire nel testo: è metà della
         // promessa del tasto, e l'altra metà è la centratura.
         nomeScritto: document.querySelector('.missione-striscia-indizio')
           .textContent.includes(missNomeTappa(t)),
         tastoAncoraLi: !!document.querySelector('#missione-striscia [data-miss-azione="soluzione"]'),
+        evidenza: miss.evidenzaTrovata && {
+          id: miss.evidenzaTrovata.tappa.idCielo,
+          restante: miss.evidenzaTrovata.fino - performance.now()
+        },
         centratura: sky.animazioneVista && {
           az: sky.animazioneVista.az0 + sky.animazioneVista.dAz,
           alt: sky.animazioneVista.alt0 + sky.animazioneVista.dAlt
@@ -2460,6 +2465,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.ok(soluzione.centratura, JSON.stringify(soluzione));
       assert.ok(Number.isFinite(soluzione.centratura.az));
       assert.ok(Number.isFinite(soluzione.centratura.alt));
+      assert.strictEqual(soluzione.evidenza.id, soluzione.idCielo);
+      assert.ok(soluzione.evidenza.restante > 14000 && soluzione.evidenza.restante <= 15000);
     });
     prova('e non segna la tappa come fallita, né lascia un tasto che non fa più niente', () => {
       assert.strictEqual(soluzione.esito, null);

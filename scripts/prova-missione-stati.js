@@ -130,6 +130,8 @@ assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="s
 // fare piu' niente.
 run("missAzione('soluzione',document.body)");
 assert.equal(run('!!miss.attiva.tappe[0].rivelata'),true);
+assert.equal(run('miss.evidenzaTrovata.tappa.idCielo'),'Star3');
+assert(run('miss.evidenzaTrovata.fino > Date.now()'));
 assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
 assert(elements.get('missione-striscia').innerHTML.includes('Soluzione'));
 assert(!elements.get('missione-striscia').innerHTML.includes('data-miss-azione="soluzione"'));
