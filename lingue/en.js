@@ -338,8 +338,6 @@ window.ASTRO_DIZIONARI['en'] = {
     'sol.dati.dalPianeta': 'From its planet',
     'sol.dati.giroPianeta': 'One trip round its planet',
     'sol.famiglia.luna': 'Moon of {pianeta}',
-    'sol.luna.posizioneVera': 'Jupiter’s four moons are exactly where they really are: the position is the same one the planetarium uses to draw them lined up in the eyepiece.',
-    'sol.luna.posizioneModello': 'Orbital radius, period and plane are the real ones; where along the ring it sits tonight is a model, not a measurement. The distance from the planet is exaggerated so the system can be seen at all.',
     'sol.descrizione.Mercury': 'Mercury is the closest planet to the Sun and the smallest: a cratered rocky world with extreme temperature swings.',
     'sol.descrizione.Venus': 'Venus is wrapped in sulphuric-acid clouds and an immensely dense atmosphere, making it the hottest planet.',
     'sol.descrizione.Earth': 'Earth is a rocky planet rich in liquid water; its atmosphere and magnetic field protect life at the surface.',
