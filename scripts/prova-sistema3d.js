@@ -553,8 +553,8 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
       pDopo.z - saturno.scena.z) * sol.scala;
     return { rPrima, rDopo, dPrima, dDopo };
   });
-  ok('ingrandendo Titano si avvicina la camera senza gonfiare la luna',
-    Math.abs(avvicinamentoTitano.rDopo - avvicinamentoTitano.rPrima) < 0.01 &&
+  ok('ingrandendo Titano cresce anche il piccolo bersaglio senza perdere il moto della camera',
+    avvicinamentoTitano.rDopo > avvicinamentoTitano.rPrima * 10 &&
       avvicinamentoTitano.dDopo > avvicinamentoTitano.dPrima * 100,
     `raggio ${avvicinamentoTitano.rPrima.toFixed(1)}px -> ${avvicinamentoTitano.rDopo.toFixed(1)}px, ` +
       `distanza ${avvicinamentoTitano.dPrima.toFixed(1)}px -> ${avvicinamentoTitano.dDopo.toFixed(1)}px`);

@@ -29691,10 +29691,12 @@ function solCrescitaCorpo() {
   return Math.min(SOL_CRESCITA_CORPO_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
 }
 
-// Chi cresce con la crescita «da vicino»: il pianeta su cui si sta girando e,
-// nel solo caso della Terra, anche la Luna che le sta accanto. Quando il perno
-// e' invece una luna, lo zoom deve avvicinare la camera (allargando la sua
-// distanza dal pianeta), non gonfiare il pallino scelto.
+// Chi cresce con la crescita «da vicino»: il corpo su cui si sta girando e,
+// nel solo caso della Terra, anche la Luna che le sta accanto. Il disco del
+// bersaglio deve seguire lo zoom anche quando e' una luna: altrimenti il suo
+// pianeta esce presto dal quadro, ma il piccolo pallino resta quasi identico
+// e bisogna arrivare all'ultimo tratto dello zoom prima di poterne leggere la
+// superficie.
 function solCorpoDelPerno(id) {
   if (!sol.perno) return false;
   if (sol.perno === id) return true;
@@ -29733,12 +29735,9 @@ function solRaggioSole() {
 // Terra** proprio nel modo che promette di essere in scala (è un quarto di
 // Terra, non una Terra e mezza).
 function solRaggioLuna() {
-  // Dalla Terra i due corpi crescono insieme. Se il perno e' la Luna, invece,
-  // il disco conserva la sua misura facilitata e a crescere e' la distanza
-  // sullo schermo: e' la camera che le si avvicina, non la Luna che si gonfia.
-  const crescita = sol.perno === 'Moon'
-    ? solCrescita()
-    : (solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita());
+  // Dalla Terra i due corpi crescono insieme; scegliendo direttamente la
+  // Luna, invece, cresce il solo bersaglio come accade per ogni altro mondo.
+  const crescita = solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita();
   return sol.misureVere
     ? Math.max(0.25, (SOL_LUNA_KM / 2) / SOL_UA_KM * sol.scala)
     : SOL_RAGGIO_LUNA * crescita;
@@ -30137,12 +30136,14 @@ function solLeggiLune(quando, t) {
 // Quanto grande si disegna. In scala vera passa dallo stesso metro dei
 // pianeti; a corpi ingranditi il rapporto fra le lune è quello vero
 // compresso dalla radice cubica, se no Deimos sparirebbe accanto a Ganimede.
-// Anche quando e' il perno, il disco conserva questa misura: lo zoom muove la
-// camera verso la luna attraverso `solScenaLunaPianeta`, non gonfia il corpo.
+// Quando una luna e' il perno usa la crescita ravvicinata: la separazione dal
+// pianeta continua a seguire lo zoom, ma anche il bersaglio diventa leggibile
+// senza costringere ad arrivare quasi al massimo ingrandimento.
 function solRaggioLunaPianeta(l) {
   if (sol.misureVere) return Math.max(0.25, (l.km / 2) / SOL_UA_KM * sol.scala);
   const q = Math.cbrt(Math.max(1, l.km) / SOL_LUNA_KM_RIF);
-  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * solCrescita());
+  const crescita = solCorpoDelPerno(l.id) ? solCrescitaCorpo() : solCrescita();
+  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * crescita);
 }
 
 // Lo `stacco` di una luna, rimappato perché stia **fuori** dagli anelli del
