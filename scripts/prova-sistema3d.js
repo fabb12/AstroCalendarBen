@@ -230,6 +230,38 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     scalaIniziale.raggioIss >= 5,
     scalaIniziale.raggioIss.toFixed(1) + ' px');
 
+  const scalaRealeLune = await pagina.evaluate(() => {
+    const stato = {
+      distanzeVere: sol.distanzeVere, misureVere: sol.misureVere,
+      zoom: sol.zoom, esagera: sol.esagera
+    };
+    sol.distanzeVere = true;
+    sol.misureVere = true;
+    sol.zoom = 25000;
+    sol.esagera = 1;
+    solMisura();
+    sol.pianeti.forEach(p => { p.scena = solScena(p.pos); p.rDisegno = solRaggioCorpo(p); });
+    const risultato = sol.lune.map(l => {
+      const pianeta = solCorpoDiId(l.idPianeta);
+      const centro = solScenaLunaPianeta(l, pianeta);
+      const distanzaPx = Math.hypot(centro.x - pianeta.scena.x,
+        centro.y - pianeta.scena.y, centro.z - pianeta.scena.z) * sol.scala;
+      const raggioPianetaPx = solRaggioCorpo(pianeta);
+      return {
+        id: l.id,
+        rapporto: distanzaPx / raggioPianetaPx,
+        atteso: l.raggioKm / (pianeta.km / 2)
+      };
+    });
+    Object.assign(sol, stato);
+    solMisura();
+    sol.pianeti.forEach(p => { p.scena = solScena(p.pos); p.rDisegno = solRaggioCorpo(p); });
+    return risultato;
+  });
+  ok('con distanze e dimensioni reali le lune restano fuori dai pianeti',
+    scalaRealeLune.every(l => l.rapporto > 1 && Math.abs(l.rapporto / l.atteso - 1) < 1e-9),
+    scalaRealeLune.map(l => `${l.id}:${l.rapporto.toFixed(2)} raggi`).join(', '));
+
   const mostraLeggibile = await pagina.evaluate(() => {
     sol.distanzeVere = true;
     sol.misureVere = true;

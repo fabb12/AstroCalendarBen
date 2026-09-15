@@ -29633,6 +29633,15 @@ function solMisura() {
   sol.scala = Math.min(sol.L, sol.H) * 0.44 * sol.zoom;
 }
 
+// Con le distanze vere una unità della scena non è una UA: è la distanza di
+// Nettuno (`SOL_RIF_UA` UA), perché il suo raggio orbitale vale 1. I diametri
+// fisici devono passare dalla stessa normalizzazione delle posizioni; senza
+// questo divisore i corpi risultano 30,07 volte troppo grandi e le lune, pur
+// avendo il centro sull'orbita giusta, finiscono dentro al disco del pianeta.
+function solPixelDaKm(km) {
+  return km / SOL_UA_KM / SOL_RIF_UA * sol.scala;
+}
+
 // Il raggio del Sole prima di qualunque limite, a crescita 1: diciassette
 // pixel coi pallini ingranditi, il diametro vero (tosato) con quelli in scala.
 function solSoleBase() {
@@ -29710,10 +29719,11 @@ function solCorpoDelPerno(id) {
 // che si tocca col dito, o il diametro vero in scala fra i corpi.
 function solRaggioCorpo(p) {
   // Con «Dimensioni reali» i diametri usano il metro astronomico della
-  // scena: `sol.scala` misura una UA. Lo zoom non gonfia quindi i mondi con
-  // una legge separata; scegliendo anche le distanze reali, il rapporto
+  // scena: `solPixelDaKm` applica anche la normalizzazione con cui Nettuno
+  // vale una unità di scena. Lo zoom non gonfia quindi i mondi con una legge
+  // separata; scegliendo anche le distanze reali, il rapporto
   // Sole–Terra–orbite resta fisicamente esatto.
-  if (sol.misureVere) return Math.max(0.25, (p.km / 2) / SOL_UA_KM * sol.scala);
+  if (sol.misureVere) return Math.max(0.25, solPixelDaKm(p.km / 2));
   // Sotto il pixel e mezzo un pianeta non è più un pianeta ma un granello di
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
@@ -29729,7 +29739,7 @@ function solRaggioCorpo(p) {
 // misura: la base per il fattore di crescita, con il minimo che lo tiene in
 // vita quando ci si allontana.
 function solRaggioSole() {
-  if (sol.misureVere) return Math.max(0.25, (SOL_SOLE_KM / 2) / SOL_UA_KM * sol.scala);
+  if (sol.misureVere) return Math.max(0.25, solPixelDaKm(SOL_SOLE_KM / 2));
   return Math.max(SOL_SOLE_MIN_PX, solSoleBase() * solCrescita());
 }
 
@@ -29742,7 +29752,7 @@ function solRaggioLuna() {
   // Luna, invece, cresce il solo bersaglio come accade per ogni altro mondo.
   const crescita = solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita();
   return sol.misureVere
-    ? Math.max(0.25, (SOL_LUNA_KM / 2) / SOL_UA_KM * sol.scala)
+    ? Math.max(0.25, solPixelDaKm(SOL_LUNA_KM / 2))
     : SOL_RAGGIO_LUNA * crescita;
 }
 
@@ -30143,7 +30153,7 @@ function solLeggiLune(quando, t) {
 // assegna la stessa crescita al pianeta, così lo zoom non altera il rapporto
 // apparente fra i due dischi.
 function solRaggioLunaPianeta(l) {
-  if (sol.misureVere) return Math.max(0.25, (l.km / 2) / SOL_UA_KM * sol.scala);
+  if (sol.misureVere) return Math.max(0.25, solPixelDaKm(l.km / 2));
   const q = Math.cbrt(Math.max(1, l.km) / SOL_LUNA_KM_RIF);
   const crescita = solCorpoDelPerno(l.id) ? solCrescitaCorpo() : solCrescita();
   return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * crescita);
@@ -31140,7 +31150,7 @@ function solDisegnaSonda(ctx, s) {
   // modalità ingrandita, non una dimensione speciale riservata alle cose
   // costruite dall'uomo.
   if (sol.misureVere) {
-    const rVero = (s.diametroKm || 0) / 2 / SOL_UA_KM * sol.scala;
+    const rVero = solPixelDaKm((s.diametroKm || 0) / 2);
     if (rVero > 0) {
       ctx.fillStyle = s.colore;
       ctx.beginPath(); ctx.arc(p.px, p.py, rVero, 0, Math.PI * 2); ctx.fill();
@@ -31211,7 +31221,7 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
     // Dove è finito sullo schermo: lo chiede il dito (`solTocco`) e lo chiede
     // il nome, che si scrive dopo tutti i pallini
     const rSatellite = sol.misureVere
-      ? (s.diametroKm || 0) / 2 / SOL_UA_KM * sol.scala
+      ? solPixelDaKm((s.diametroKm || 0) / 2)
       : SOL_SAT_RAGGIO_PX;
     sol.satSchermo.push({
       id: s.id, nome: s.nome, colore: s.colore,
