@@ -29182,6 +29182,87 @@ const SOL_SAT_CLASSI = {
   hubble: 'sol.famiglia.telescopio'
 };
 
+// --- Le lune principali dei pianeti -----------------------------------------
+//   La Luna c'era da sempre, e le altre no: il Sistema Solare disegnato senza
+//   di loro racconta otto palle che girano intorno al Sole, mentre la cosa che
+//   si vede meglio da fuori è che ognuno dei quattro giganti è **un sistema
+//   suo** — un piccolo Sole di sassi e ghiaccio, con le sue orbite dentro
+//   all'orbita grande. Ganimede è più grande di Mercurio, Titano ha
+//   un'atmosfera più densa della nostra, Tritone gira al contrario di tutto:
+//   sono mondi, e stavano fuori dal disegno.
+//
+//   DA DOVE VENGONO I NUMERI, ed è la riga da leggere prima di aggiungerne
+//   una. Per le **quattro di Giove** la posizione è vera: la dà Astronomy
+//   Engine (`JupiterMoons`), la stessa che il planetario usa per disegnare i
+//   quattro puntini in fila nell'oculare — la fila e il disegno non possono
+//   quindi divergere. Per tutte le altre non esiste un'effemeride in questa
+//   libreria, e qui non se ne scrive una: quello che si dichiara è ciò che si
+//   sa con certezza e che non cambia — il **raggio** dell'orbita, il
+//   **periodo**, e il **piano**, che è quello equatoriale del pianeta e lo
+//   dà `solAsse` (è per questo che gli anelli di Saturno e le sue lune
+//   risultano inclinati insieme, e che le lune di Urano rotolano sul fianco
+//   come lui). Quello che **non** è misurato è la fase lungo l'anello: la
+//   posizione di partenza è dichiarata, non osservata. Vuol dire che una luna
+//   di Saturno è sull'orbita giusta, alla distanza giusta, con il periodo
+//   giusto, e che dire in quale punto del suo giro si trovi stasera non è
+//   compito di questo file. È lo stesso compromesso degli elementi osculatori
+//   dei transnettuniani, dichiarato invece che nascosto.
+//
+//   `stacco` è dove si disegna nella modalità facilitata, in raggi del
+//   pallino del pianeta: a distanze vere Io starebbe **dentro** a Giove, e le
+//   quattro lune di Urano in mezzo pixel. È lo stesso trucco della Luna e dei
+//   satelliti artificiali, e conserva l'unica cosa che a quella scala si possa
+//   conservare: l'**ordine** — chi sta dentro e chi sta fuori — e il piano su
+//   cui girano.
+const SOL_LUNE = conNomeDaId([
+  { id: 'Phobos',    nome: 'Phobos',   pianeta: 'Mars',    colore: '#b8a99a', km: 22.5,  raggioKm: 9376,    giorni: 0.31891, fase0: 145, stacco: 1.75 },
+  { id: 'Deimos',    nome: 'Deimos',   pianeta: 'Mars',    colore: '#a89b8e', km: 12.4,  raggioKm: 23463,   giorni: 1.26244, fase0: 20,  stacco: 2.6 },
+  { id: 'Io',        nome: 'Io',       pianeta: 'Jupiter', colore: '#fde68a', km: 3643,  raggioKm: 421700,  giorni: 1.769,   fase0: 0,   stacco: 1.75, ae: 'io' },
+  { id: 'Europa',    nome: 'Europa',   pianeta: 'Jupiter', colore: '#e0f2fe', km: 3122,  raggioKm: 671034,  giorni: 3.551,   fase0: 0,   stacco: 2.2,  ae: 'europa' },
+  { id: 'Ganymede',  nome: 'Ganimede', pianeta: 'Jupiter', colore: '#d6d3d1', km: 5268,  raggioKm: 1070412, giorni: 7.155,   fase0: 0,   stacco: 2.8,  ae: 'ganymede' },
+  { id: 'Callisto',  nome: 'Callisto', pianeta: 'Jupiter', colore: '#a8a29e', km: 4821,  raggioKm: 1882709, giorni: 16.689,  fase0: 0,   stacco: 3.5,  ae: 'callisto' },
+  { id: 'Mimas',     nome: 'Mimante',  pianeta: 'Saturn',  colore: '#d7dadd', km: 396,   raggioKm: 185539,  giorni: 0.942,   fase0: 310, stacco: 1.75 },
+  { id: 'Enceladus', nome: 'Encelado', pianeta: 'Saturn',  colore: '#f1f5f9', km: 504,   raggioKm: 237948,  giorni: 1.370,   fase0: 75,  stacco: 2.05 },
+  { id: 'Rhea',      nome: 'Rea',      pianeta: 'Saturn',  colore: '#dcd7cf', km: 1527,  raggioKm: 527108,  giorni: 4.518,   fase0: 200, stacco: 2.45 },
+  { id: 'Titan',     nome: 'Titano',   pianeta: 'Saturn',  colore: '#e8b96a', km: 5150,  raggioKm: 1221870, giorni: 15.945,  fase0: 130, stacco: 2.95 },
+  // Giapeto è l'unica luna grande che non stia nel piano del suo pianeta:
+  // quindici gradi fuori, ed è la ragione per cui una faccia è nera come il
+  // carbone e l'altra bianca come la neve — passa la vita a raccogliere
+  // polvere da un lato solo.
+  { id: 'Iapetus',   nome: 'Giapeto',  pianeta: 'Saturn',  colore: '#c7bda9', km: 1469,  raggioKm: 3560820, giorni: 79.33,   fase0: 45,  stacco: 3.6, incl: 15.5 },
+  { id: 'Miranda',   nome: 'Miranda',  pianeta: 'Uranus',  colore: '#cfe2e6', km: 472,   raggioKm: 129390,  giorni: 1.413,   fase0: 260, stacco: 1.75 },
+  { id: 'Ariel',     nome: 'Ariel',    pianeta: 'Uranus',  colore: '#d9ecef', km: 1158,  raggioKm: 190900,  giorni: 2.520,   fase0: 15,  stacco: 2.15 },
+  { id: 'Titania',   nome: 'Titania',  pianeta: 'Uranus',  colore: '#e2eef0', km: 1578,  raggioKm: 436300,  giorni: 8.706,   fase0: 190, stacco: 2.75 },
+  { id: 'Oberon',    nome: 'Oberon',   pianeta: 'Uranus',  colore: '#cbdadd', km: 1523,  raggioKm: 583500,  giorni: 13.463,  fase0: 95,  stacco: 3.2 },
+  // Tritone gira **al contrario**, ed è la sola cosa che di lei si veda in un
+  // disegno: nessuna luna nata insieme al suo pianeta potrebbe farlo, quindi
+  // Nettuno l'ha catturata.
+  { id: 'Triton',    nome: 'Tritone',  pianeta: 'Neptune', colore: '#dbeafe', km: 2707,  raggioKm: 354759,  giorni: 5.877,   fase0: 60,  stacco: 2.4, incl: 23, retro: true },
+  { id: 'Charon',    nome: 'Caronte',  pianeta: 'Pluto',   colore: '#c8c3bb', km: 1212,  raggioKm: 19591,   giorni: 6.387,   fase0: 120, stacco: 2.3 }
+], 'corpo.');
+
+// Sotto quanti pixel di raggio del pallino del pianeta le lune non si
+// disegnano affatto. È la stessa soglia in spirito di `SOL_SAT_MIN_PX`: un
+// anello di puntini attorno a un dischetto di sei pixel non è un sistema di
+// satelliti, è sporco sul vetro — e con cinque pianeti che ne hanno, a vista
+// larga sarebbero sessanta pallini in mezzo alle orbite.
+const SOL_LUNE_MIN_PX = 11;
+// Quanto grandi si disegnano a corpi ingranditi. Non entrano in `SOL_PX_PER_KM`
+// come i pianeti: fra Deimos (12 km) e Ganimede (5.268) c'è un fattore
+// quattrocento, e in scala le piccole sparirebbero. Il rapporto fra loro resta
+// quello vero, compresso dalla radice cubica — come si fa con le magnitudini,
+// e per la stessa ragione.
+const SOL_LUNA_RAGGIO_PX = 2.9;
+const SOL_LUNA_KM_RIF = 3474;      // la nostra Luna, che fa da unità
+// I due capi della scala degli `stacco` scritti in `SOL_LUNE`. Servono a
+// rimappare quella scala quando il pianeta ha degli anelli disegnati: a
+// Saturno il sistema di anelli arriva a due raggi e un quarto, e le tre lune
+// interne — che nella scala di partenza stanno fra 1,75 e 2,45 — finivano
+// **dentro** al disegno degli anelli, cioè invisibili e senza posto per il
+// loro nome. Misurato: tre nomi su cinque non si scrivevano affatto.
+const SOL_LUNA_STACCO_A = 1.75;
+const SOL_LUNA_STACCO_B = 3.7;
+
 // A pallini in scala: quanti pixel vale un chilometro di diametro. Scelto
 // perché Mercurio, il più piccolo, resti un punto che si vede.
 const SOL_PX_PER_KM = 3.4e-4;
@@ -29342,6 +29423,11 @@ const sol = {
   // allargata — e stanno dietro al ⚙ come le distanze e le dimensioni.
   mondi: [], sonde: [], satelliti: [],
   mondiAccesi: true, sondeAccese: true,
+  // Le lune principali dei pianeti (`SOL_LUNE`). Stanno accanto ai satelliti
+  // artificiali e per la stessa ragione: non hanno una posizione eliocentrica
+  // propria, sono uno scostamento dal loro pianeta. `luneSchermo` lo scrive
+  // chi disegna e lo leggono il dito e i nomi, come `satSchermo`.
+  lune: [], luneSchermo: [], luneAccese: true,
   orbiteMondi: { chiave: null, tracce: [] },
   comete: { chiave: null, elenco: [] },
   // Gli anelli delle orbite dei satelliti, e dove sono finiti sullo schermo:
@@ -29706,9 +29792,12 @@ function solLeggiPosizioni(quando) {
     solLeggiMondi(quando, t);
     solLeggiSonde(quando);
     solLeggiSatelliti(quando, t);
+    // Le lune vengono **dopo** i mondi minori, e non è un dettaglio: Caronte
+    // si aggancia a Plutone, che è uno di loro.
+    solLeggiLune(quando, t);
   } catch (e) {
     sol.pianeti = []; sol.terra = null; sol.luna = null;
-    sol.mondi = []; sol.sonde = []; sol.satelliti = [];
+    sol.mondi = []; sol.sonde = []; sol.satelliti = []; sol.lune = [];
   }
   sol.istante = ms;
 }
@@ -29967,6 +30056,125 @@ function solScenaSatellite(s, terra) {
   };
 }
 
+// --- Le lune dei pianeti ----------------------------------------------------
+//   Due strade, e la differenza è dichiarata: le quattro di Giove hanno la
+//   posizione vera (`Astronomy.JupiterMoons`, la stessa del planetario), tutte
+//   le altre girano su un cerchio nel piano equatoriale del loro pianeta con
+//   il raggio e il periodo veri. Quello che esce di qui è in tutt'e due i casi
+//   la stessa cosa: uno **scostamento** dal pianeta, in coordinate eclittiche
+//   e in unità astronomiche. Da lì in poi il disegno non sa quale delle due
+//   strade l'abbia prodotto.
+
+// I due versori del piano su cui gira una luna, ricavati dall'asse del suo
+// pianeta. `incl` li inclina rispetto all'equatore (Giapeto, Tritone), e il
+// verso di percorrenza lo decide `retro`.
+function solPianoLuna(asse, inclGradi) {
+  const n = asse && asse.length === 3 ? asse : [0, 0, 1];
+  // Un versore qualunque perpendicolare all'asse: si prende il prodotto con
+  // il polo dell'eclittica, e dove i due sono quasi allineati (la Terra, o un
+  // asse che punta in su) si ripiega sull'asse x, che perpendicolare lo è per
+  // costruzione dopo la sottrazione della componente lungo `n`.
+  let a = [n[1] * 1 - n[2] * 0, n[2] * 0 - n[0] * 1, 0];
+  let la = Math.hypot(a[0], a[1], a[2]);
+  if (!(la > 1e-6)) {
+    a = [1 - n[0] * n[0], -n[0] * n[1], -n[0] * n[2]];
+    la = Math.hypot(a[0], a[1], a[2]) || 1;
+  }
+  const u1 = [a[0] / la, a[1] / la, a[2] / la];
+  let u2 = [n[1] * u1[2] - n[2] * u1[1], n[2] * u1[0] - n[0] * u1[2], n[0] * u1[1] - n[1] * u1[0]];
+  if (inclGradi) {
+    const c = Math.cos(inclGradi * SKY_D2R), s = Math.sin(inclGradi * SKY_D2R);
+    u2 = [u2[0] * c + n[0] * s, u2[1] * c + n[1] * s, u2[2] * c + n[2] * s];
+  }
+  return { u1, u2 };
+}
+
+// Lo scostamento in UA di una luna dal centro del suo pianeta, all'istante
+// dato. `stati` è la risposta di `JupiterMoons`, letta una volta per giro.
+function solScostamentoLuna(l, pianeta, quando, t, stati) {
+  if (l.ae && stati && stati[l.ae]) {
+    const v = stati[l.ae];
+    try {
+      const e = Astronomy.Ecliptic(new Astronomy.Vector(v.x, v.y, v.z, t)).vec;
+      return { x: e.x, y: e.y, z: e.z };
+    } catch (err) { /* si ripiega sul cerchio, qui sotto */ }
+  }
+  const { u1, u2 } = solPianoLuna(pianeta && pianeta.asse, l.incl || 0);
+  const giorni = (quando.getTime() - SOL_LUNE_EPOCA_MS) / 86400000;
+  const verso = l.retro ? -1 : 1;
+  const th = (l.fase0 + verso * 360 * giorni / l.giorni) * SKY_D2R;
+  const r = l.raggioKm / SOL_UA_KM;
+  const c = Math.cos(th) * r, s = Math.sin(th) * r;
+  return {
+    x: u1[0] * c + u2[0] * s,
+    y: u1[1] * c + u2[1] * s,
+    z: u1[2] * c + u2[2] * s
+  };
+}
+
+// L'epoca a cui valgono le fasi dichiarate in `SOL_LUNE`: J2000. Non è una
+// misura e non finge di esserlo (vedi il commento della tabella).
+const SOL_LUNE_EPOCA_MS = Date.UTC(2000, 0, 1, 12);
+
+function solLeggiLune(quando, t) {
+  const stati = (typeof Astronomy.JupiterMoons === 'function')
+    ? (() => { try { return Astronomy.JupiterMoons(t); } catch (e) { return null; } })() : null;
+  const elenco = [];
+  SOL_LUNE.forEach(l => {
+    const pianeta = l.pianeta === 'Pluto'
+      ? sol.mondi.find(m => m.id === 'Pluto')
+      : sol.pianeti.find(p => p.id === l.pianeta);
+    if (!pianeta) return;
+    const off = solScostamentoLuna(l, pianeta, quando, t, stati);
+    if (!off || !isFinite(off.x)) return;
+    elenco.push(Object.assign({}, l, { luna: true, off, idPianeta: l.pianeta }));
+  });
+  sol.lune = elenco;
+}
+
+// Quanto grande si disegna. In scala vera passa dallo stesso metro dei
+// pianeti; a corpi ingranditi il rapporto fra le lune è quello vero
+// compresso dalla radice cubica, se no Deimos sparirebbe accanto a Ganimede.
+function solRaggioLunaPianeta(l) {
+  if (sol.misureVere) return Math.max(0.25, (l.km / 2) / SOL_UA_KM * sol.scala);
+  const q = Math.cbrt(Math.max(1, l.km) / SOL_LUNA_KM_RIF);
+  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * solCrescita());
+}
+
+// Lo `stacco` di una luna, rimappato perché stia **fuori** dagli anelli del
+// suo pianeta. Senza anelli la scala resta quella scritta nella tabella; con
+// gli anelli il capo interno si alza fin dove il loro disegno finisce e tutto
+// il gruppo si ridistribuisce fra lì e il capo esterno, conservando l'ordine
+// e quindi l'unica cosa che questo disegno debba dire — chi sta dentro e chi
+// sta fuori.
+function solStaccoLunaDi(l, pianeta) {
+  const r = (pianeta && pianeta.rDisegno) || 8;
+  const anelli = typeof solRaggioAnelli === 'function' ? solRaggioAnelli(pianeta, r) : 0;
+  const dentro = 1 + (anelli / Math.max(1e-6, r)) + 0.3;
+  const a = Math.max(SOL_LUNA_STACCO_A, dentro);
+  if (a >= SOL_LUNA_STACCO_B) return l.stacco;
+  const q = (l.stacco - SOL_LUNA_STACCO_A) / (SOL_LUNA_STACCO_B - SOL_LUNA_STACCO_A);
+  return a + q * (SOL_LUNA_STACCO_B - a);
+}
+
+// Il punto della scena in cui una luna è **disegnata**. Come per la Luna e per
+// i satelliti lo chiedono in tre — il pallino, il suo anello e il perno della
+// telecamera — e devono chiederlo alla stessa funzione.
+function solScenaLunaPianeta(l, pianeta) {
+  const p = pianeta || solCorpoDiId(l.idPianeta);
+  const t = p && (p.scena || (p.pos && solScena(p.pos)));
+  if (!t || !l.off) return null;
+  const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
+  const passo = sol.distanzeVere
+    ? solRaggio(d)
+    : (p.rDisegno || 8) * solStaccoLunaDi(l, p) / Math.max(1e-6, sol.scala);
+  return {
+    x: t.x + l.off.x / d * passo,
+    y: t.y + l.off.y / d * passo,
+    z: t.z + l.off.z / d * passo * sol.esagera
+  };
+}
+
 // Un corpo qualunque della scena, da chiunque sia stato messo lì: gli otto
 // pianeti, la Luna, un mondo minore, una sonda, un satellite. Serve a tutto
 // ciò che deve saper trattare un identificativo senza sapere di che famiglia
@@ -29979,7 +30187,8 @@ function solCorpoDiId(id) {
   return sol.pianeti.find(p => p.id === id) ||
     sol.mondi.find(p => p.id === id) ||
     sol.sonde.find(p => p.id === id) ||
-    sol.satelliti.find(p => p.id === id) || null;
+    sol.satelliti.find(p => p.id === id) ||
+    sol.lune.find(p => p.id === id) || null;
 }
 
 // Il punto della scena di un corpo qualunque, per chi deve centrarci la
@@ -29991,6 +30200,7 @@ function solPuntoDiCorpo(id) {
   const c = solCorpoDiId(id);
   if (!c) return null;
   if (c.satellite) return solScenaSatellite(c, sol.pianeti.find(p => p.id === 'Earth'));
+  if (c.luna) return solScenaLunaPianeta(c, null);
   return c.scena || solScena(c.pos);
 }
 
@@ -30886,6 +31096,86 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
     ctx.restore();
   });
 }
+
+// Le lune di un pianeta, con il loro anello. Stessa struttura dei satelliti
+// artificiali e per le stesse ragioni: l'anello si disegna tratto per tratto
+// nella metà a cui appartiene, e il pallino si disegna prima o dopo il pianeta
+// secondo dove cade la sua profondità — se no una luna che gli passa dietro
+// resterebbe appiccicata sopra al disco.
+//
+// La soglia di `SOL_LUNE_MIN_PX` è quello che tiene questa famiglia utile:
+// finché il pianeta è un puntino, le sue lune non sono un sistema, sono
+// pulviscolo — e a vista larga sarebbero sessanta pallini sparsi sulle orbite.
+function solDisegnaLune(ctx, pianeta, assi, davanti) {
+  if (!sol.luneAccese || !pianeta || !pianeta.schermo || !sol.lune.length) return;
+  if ((pianeta.rDisegno || 0) < SOL_LUNE_MIN_PX) return;
+  // E il pianeta dev'essere in quadro. Senza questa riga, avvicinandosi a
+  // Giove crescono col suo anche i dischi di Marte, di Urano e di Nettuno —
+  // la crescita è una sola per tutti (`solCrescita`) — e si disegnano i
+  // sistemi di lune di tutti e cinque, quattro dei quali a chilometri fuori
+  // dallo schermo: una decina di anelli e di pallini pagati per niente, e
+  // altrettante voci in `sol.luneSchermo` che il dito potrebbe pescare.
+  const bordo = (pianeta.rDisegno || 0) * 4 + 80;
+  if (pianeta.schermo.px < -bordo || pianeta.schermo.px > sol.L + bordo ||
+      pianeta.schermo.py < -bordo || pianeta.schermo.py > sol.H + bordo) return;
+  const mie = sol.lune.filter(l => l.idPianeta === pianeta.id);
+  if (!mie.length) return;
+  const dietro = pianeta.schermo.vicinanza;
+  const t = pianeta.scena;
+  mie.forEach(l => {
+    const centro = solScenaLunaPianeta(l, pianeta);
+    if (!centro) return;
+    const p = solProietta(centro);
+    // L'anello: lo stesso cerchio su cui la luna gira, disegnato alla stessa
+    // distanza a cui la luna è disegnata — due metri diversi vorrebbero dire
+    // una luna che non corre sulla sua orbita.
+    const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
+    const passo = sol.distanzeVere
+      ? solRaggio(d)
+      : (pianeta.rDisegno || 8) * solStaccoLunaDi(l, pianeta) / Math.max(1e-6, sol.scala);
+    const { u1, u2 } = solPianoLuna(pianeta.asse, l.incl || 0);
+    const punti = [];
+    for (let i = 0; i < SOL_LUNA_ANELLO_PUNTI; i++) {
+      const th = (i / SOL_LUNA_ANELLO_PUNTI) * Math.PI * 2;
+      const c = Math.cos(th), s = Math.sin(th);
+      punti.push(solProietta({
+        x: t.x + (u1[0] * c + u2[0] * s) * passo,
+        y: t.y + (u1[1] * c + u2[1] * s) * passo,
+        z: t.z + (u1[2] * c + u2[2] * s) * passo * sol.esagera
+      }));
+    }
+    ctx.save();
+    ctx.strokeStyle = l.colore;
+    ctx.globalAlpha = 0.22;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < punti.length; i++) {
+      const a = punti[i], b = punti[(i + 1) % punti.length];
+      if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
+      ctx.beginPath();
+      solLineaInVista(ctx, a.px, a.py, b.px, b.py);
+      ctx.stroke();
+    }
+    ctx.restore();
+    if ((p.vicinanza >= dietro) !== davanti) return;
+    const r = solRaggioLunaPianeta(l);
+    sol.luneSchermo.push({ id: l.id, nome: l.nome, colore: l.colore, px: p.px, py: p.py, r });
+    ctx.save();
+    ctx.fillStyle = l.colore;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
+    ctx.fill();
+    if (sol.scelto === l.id) {
+      ctx.strokeStyle = '#fff';
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, Math.max(r + 5, 5), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+const SOL_LUNA_ANELLO_PUNTI = 48;
 
 // La riga che unisce il tuo occhio all'oggetto scelto, prolungata fino alle
 // stelle: è il ponte fra questa vista e il planetario. Da una parte c'è "in
@@ -32820,6 +33110,7 @@ function solDisegna() {
   // fotogramma di prima, cioè nomi appoggiati sul vuoto e un dito che prende
   // un satellite che non si vede.
   sol.satSchermo = [];
+  sol.luneSchermo = [];
   solMisura();
   solSfondo(ctx);
 
@@ -32909,12 +33200,16 @@ function solDisegna() {
       solDisegnaLuna(ctx, p, false, assi);
       solDisegnaSatelliti(ctx, p, assi, false);
     }
+    // Le lune degli altri pianeti: la metà che passa dietro prima del disco,
+    // la metà davanti dopo — è la stessa regola della nostra Luna
+    solDisegnaLune(ctx, p, assi, false);
     solDisegnaCorpo(ctx, p, assi);
     if (p.id === 'Earth') {
       solDisegnaOrbitaLuna(ctx, p, true);
       solDisegnaLuna(ctx, p, true, assi);
       solDisegnaSatelliti(ctx, p, assi, true);
     }
+    solDisegnaLune(ctx, p, assi, true);
   });
   soleQui();   // tutti i pianeti sono dietro al Sole: tocca a lui chiudere
 
@@ -32934,11 +33229,22 @@ function solDisegna() {
   // cioè che otto di quei puntini sono i pianeti.
   const tinta = (p) => p.sonda ? p.colore : (SOL_MONDI_TINTE[p.famiglia] || 'rgba(233, 237, 247, 0.82)');
   const corpoNome = (p) => (p.minore || p.sonda) ? 10.5 : 11.5;
+  /* Durante una caccia di Missione Cielo i nomi dei bersagli non si scrivono.
+   *
+   * Vale per le tre famiglie da cui una tappa può pescare — i mondi minori, le
+   * sonde e le lune — e non per i pianeti e il Sole, che non sono mai un
+   * bersaglio e sono i soli riferimenti di questo disegno: senza di loro non
+   * si saprebbe nemmeno dove si sta guardando. Scrivere «Sedna» accanto al
+   * dischetto che si sta cercando è la soluzione stampata sopra al quadro, ed
+   * è lo stesso motivo per cui nel planetario il modo caccia spegne i nomi
+   * degli astri. */
+  const caccia = typeof missRicercaSistema === 'function' && missRicercaSistema();
   if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
     stacco(scelto), '#ffffff', 13, prese, true);
   solEtichetta(ctx, nomeCorpo('Sun'), sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
   ordinati.forEach(p => {
     if (p === scelto) return;
+    if (caccia && (p.minore || p.sonda)) return;
     solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
       tinta(p), corpoNome(p), prese);
   });
@@ -32946,6 +33252,9 @@ function solDisegna() {
   // disegnati, e come per la Luna arriva scritto in `sol.satSchermo`
   sol.satSchermo.forEach(s => solEtichetta(ctx, s.nome, s.px, s.py, s.r + 2,
     s.colore, 10.5, prese, sol.scelto === s.id));
+  // E quelli delle lune, che arrivano dalla stessa strada
+  if (!caccia) sol.luneSchermo.forEach(l => solEtichetta(ctx, l.nome, l.px, l.py, l.r + 2,
+    l.colore, 10, prese, sol.scelto === l.id));
   if (sol.nodi) sol.orbite.tracce.forEach(t => solEtichettaNodi(ctx, t, prese));
   // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
   // manchi niente — la nuvola di punti si riconosce da sé
@@ -33099,6 +33408,7 @@ function solSchedaHtml() {
   if (!scelto) return '';
   if (scelto.satellite) return solSchedaSatellite(scelto);
   if (scelto.sonda) return solSchedaSonda(scelto);
+  if (scelto.luna) return solSchedaLuna(scelto);
 
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   if (scelto.id === 'Earth') {
@@ -33177,6 +33487,31 @@ function solSchedaSatellite(s) {
       ${solAzioniPerno(s.id, s.nome)}`;
 }
 
+/* La scheda di una luna. I numeri veri sono i tre che il disegno non può
+ * dire, perché a corpi ingranditi e a distanze compresse non li dice nessuno:
+ * di chi è, quanto è larga e quanto dura il suo giro. La distanza dal pianeta
+ * si scrive in chilometri — è il metro in cui si pensa a un sistema di lune —
+ * e in raggi del pianeta, che è il numero con cui si capisce se sta dentro o
+ * fuori (Io sta a sei raggi di Giove, Callisto a ventisei).
+ *
+ * La nota in fondo non è un ornamento: per tutte tranne le quattro di Giove
+ * la posizione lungo l'anello non è misurata (vedi il commento di `SOL_LUNE`),
+ * e una scheda che non lo dicesse farebbe passare per effemeride quello che è
+ * un modello. */
+function solSchedaLuna(l) {
+  const pianeta = solCorpoDiId(l.idPianeta);
+  const raggiPianeta = pianeta && pianeta.km ? l.raggioKm / (pianeta.km / 2) : 0;
+  return `${solTestaScheda(l.nome, l.colore)}
+      <ul class="sol-dati">
+        <li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t('sol.famiglia.luna', { pianeta: pianeta ? pianeta.nome : '' })}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.diametro')}</span><strong>${solNumero(l.km, 0)} km</strong></li>
+        <li><span>${astroI18n.t('sol.dati.dalPianeta')}</span><strong>${solNumero(l.raggioKm, 0)} km${raggiPianeta ? ` · ${solNumero(raggiPianeta, 1)} R` : ''}</strong></li>
+        <li><span>${astroI18n.t('sol.dati.giroPianeta')}</span><strong>${solNumero(l.giorni, l.giorni < 10 ? 2 : 1)} ${astroI18n.t('sol.giorni')}</strong></li>
+      </ul>
+      <p class="sol-nota-scheda">${astroI18n.t(l.ae ? 'sol.luna.posizioneVera' : 'sol.luna.posizioneModello')}</p>
+      ${solAzioniPerno(l.idPianeta, pianeta ? pianeta.nome : '', { senzaPlanetario: true })}`;
+}
+
 // Mandare via la scheda senza cambiare quello che si sta guardando: la
 // telecamera resta dov'è (perno compreso), va via solo la lettura.
 window.solChiudiScheda = () => {
@@ -33220,6 +33555,9 @@ function solScegli(id) {
   // corpi; questa e' soltanto una buona inquadratura di partenza.
   const corpo = nuovo ? solCorpoDiId(nuovo) : null;
   if (corpo && corpo.satellite) solInquadraSatellite(corpo, { ravvicina: true });
+  // Una luna non diventa il perno: girandole intorno si perde il pianeta, che
+  // è la cosa che la spiega. Il perno resta lui, e la luna resta scelta.
+  else if (corpo && corpo.luna) solInquadraLune(corpo.idPianeta);
   else if (nuovo) solAvvicinaA(nuovo);
   else if (sol.perno === id) solLasciaPerno();
   solAggiornaScheda(true);
@@ -33700,6 +34038,16 @@ function solInquadraRicerca(id) {
   // sopra un pallino azzurro. Il perno passa alla Terra e lo zoom con lui.
   const cercato = solCorpoDiId(id);
   if (cercato && cercato.satellite) return solInquadraSatellite(cercato);
+  // Una luna si vede solo da vicino al suo pianeta (`SOL_LUNE_MIN_PX`):
+  // cercarla vuol dire andarci, se no si risponde «trovata» a chi guarda un
+  // pallino in cui quella luna sta dentro.
+  if (cercato && cercato.luna) {
+    sol.scelto = id;
+    sol.luneAccese = true;
+    solInquadraLune(cercato.idPianeta);
+    solAggiornaScheda(true);
+    return true;
+  }
   const arrivo = solPuntoDiCorpo(id);
   if (!arrivo) return false;
 
@@ -33752,6 +34100,59 @@ function solInquadraSatellite(s, opzioni = {}) {
   const zoom = opzioni.ravvicina ? solZoomOrbitaSatellite(s) : solZoomSullaTerra();
   if (zoom !== null) solImpostaZoom(Math.max(zoom, sol.zoomVoluto), { morbido: true });
   solAggiornaScheda(true);
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+  return true;
+}
+
+/* L'inquadratura di una luna: il suo pianeta al centro, e lo zoom quel tanto
+ * che basta perché il sistema si veda.
+ *
+ * È la gemella di `solInquadraSatellite`, e per la stessa ragione: sotto a
+ * `SOL_LUNE_MIN_PX` le lune non sono disegnate affatto, quindi cercare
+ * Ganimede e restare nella vista d'insieme vorrebbe dire ricevere «trovato» e
+ * non vedere niente. Il perno va al **pianeta** e non alla luna: girando
+ * attorno a Titano si perde Saturno, e quello che si è venuti a vedere è il
+ * sistema, non la biglia.
+ *
+ * Il bersaglio in pixel è il raggio del pallino del pianeta, e non la luna
+ * più esterna: la misura dei corpi qui dipende solo dallo zoom, quindi un
+ * numero in pixel non va rifatto quando il riquadro cambia sotto ai piedi
+ * (è lo stesso argomento di `SOL_ENTRATA_TERRA_PX`).
+ */
+const SOL_LUNE_PIANETA_PX = 34;
+
+function solZoomSulPianeta(p, pixelVoluti) {
+  if (!p) return null;
+  const base = sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
+  if (!(base > 0)) return null;
+  if (sol.misureVere) {
+    const perUa = (p.km / 2) / SOL_UA_KM;
+    return perUa > 0 ? Math.min(SOL_ZOOM_MAX_CORPO, pixelVoluti / (perUa * Math.min(sol.L, sol.H) * 0.44)) : null;
+  }
+  return Math.min(SOL_ZOOM_MAX_CORPO, Math.pow(pixelVoluti / base, 2));
+}
+
+function solInquadraLune(idPianeta, opzioni = {}) {
+  const p = solCorpoDiId(idPianeta);
+  if (!p) return false;
+  sol.quadro = 'terra';
+  sol.perno = idPianeta;
+  /* Il bersaglio in pixel si tosa perché la luna **più esterna** stia nel
+   * quadro: `SOL_LUNA_STACCO_B` è quanto arriva in raggi del pianeta, e su
+   * una tela bassa — un telefono girato — trentaquattro pixel di pianeta
+   * vogliono dire centoventisei pixel di anello esterno per parte. Una tappa
+   * il cui bersaglio cade fuori dallo schermo non si può chiudere, ed è
+   * l'unico modo in cui questa famiglia può rompersi.
+   *
+   * E lo zoom si **impone** invece di prendere il massimo con quello di
+   * adesso: chi arriva qui era addosso alla Terra (il volo) o alla vista
+   * d'insieme, e in tutt'e due i casi il numero giusto è questo. */
+  const lato = Math.min(sol.L || 320, sol.H || 320);
+  const pixel = Math.min(opzioni.pixel || SOL_LUNE_PIANETA_PX,
+    (lato / 2) / (SOL_LUNA_STACCO_B * 1.2));
+  const zoom = solZoomSulPianeta(p, Math.max(9, pixel));
+  if (zoom !== null) solImpostaZoom(zoom, { morbido: opzioni.morbido !== false });
   solAggiornaTasti();
   if (sol.aperto) solDisegna();
   return true;
@@ -33818,6 +34219,7 @@ function solIndiceRicerca() {
   // e non passano dal dizionario, ma cercabili devono essere — sono la parte
   // dell'elenco che cambia da una settimana all'altra.
   sol.mondi.filter(m => m.famiglia === 'cometa').forEach(c => metti(c.id, c.nome, [c.nome]));
+  SOL_LUNE.forEach(l => metti(l.id, l.nome, solVersioniNome('corpo.' + l.id, l.id)));
   SOL_SONDE.forEach(s => metti(s.id, s.nome, [s.nome, s.id.replace('voyager', 'voyager ')]));
   if (typeof SATELLITI !== 'undefined') {
     SATELLITI.forEach(sat => metti(sat.id, sat.nome, [sat.nome, sat.nomeLungo || '']));
@@ -34227,6 +34629,10 @@ function solTocco(e) {
       if (p.schermo && p.partita) prova(p.id, p.schermo.px, p.schermo.py, 4);
     });
     sol.satSchermo.forEach(s => prova(s.id, s.px, s.py, s.r));
+    // Le lune dei pianeti: il loro posto lo lascia scritto chi le disegna,
+    // come per i satelliti. Sono le più piccole della scena, e senza questa
+    // riga sarebbero l'unica cosa che si legge sullo schermo e non si tocca.
+    sol.luneSchermo.forEach(l => prova(l.id, l.px, l.py, l.r));
   }
   // La Luna della scena grande non è un pianeta e non sta in `sol.pianeti`:
   // il suo posto sullo schermo lo lascia scritto chi la disegna
@@ -34511,7 +34917,7 @@ function solVoloRampa(t) {
 const solVolo = {
   attivo: false, ridotto: false, avvio: 0, raf: 0,
   tela: null, ctx: null, L: 0, H: 0, dpr: 0,
-  foto: null, fotoL: 0, fotoH: 0, fotoFocale: 0,
+  foto: null, fotoL: 0, fotoH: 0, fotoFocale: 0, dopo: null,
   alt0: 10, q0: 0.5, F0: 400, F1: 900, rhoFine: 0.06, rFine: 62, angoloLuce: NaN,
   versoSole: null, quando: null
 };
@@ -34599,6 +35005,10 @@ function solVoloChiudi() {
   // e il volo della volta dopo si ritrova un'animazione in più sopra a quella
   // che sta già disegnando.
   ponte.style.transition = '';
+  // E quello che doveva succedere all'arrivo succede adesso, una volta sola:
+  // `solVoloChiudi` è chiamata anche dal paracadute e dalla chiusura della
+  // finestra, e un'inquadratura rifatta due volte è uno scatto.
+  if (solVolo.dopo) { const f = solVolo.dopo; solVolo.dopo = null; if (sol.aperto) f(); }
 }
 
 // La tela del velo, misurata sul guscio e non sulla scena: a tutto schermo le
@@ -35062,11 +35472,22 @@ function solAvviaTransizioneDecollo(opzioni = {}) {
   if (!ponte) return;
   solVolo.tela = document.getElementById('sol-transizione-tela');
   const ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Cosa fare quando il velo si è aperto. Serve a chi arriva col volo **e**
+  // con un'inquadratura sua — una tappa di Missione Cielo che si gioca là
+  // fuori (§`missGuidaNelSistema`): il volo finisce addosso alla Terra, che è
+  // dove la scena lo aspetta, e da lì la cornice si allarga fin dove sta il
+  // bersaglio. Le due cose in fila raccontano lo stesso viaggio, una in
+  // partenza e una in arrivo; messe insieme sarebbero un incastro rotto.
+  solVolo.dopo = typeof opzioni.dopo === 'function' ? opzioni.dopo : null;
   if (!solVolo.tela || ridotto || !sol.pianeti.length || opzioni.volo === false) {
     // Niente volo: il velo si apre e basta. Vale anche per chi ha chiesto meno
     // movimento — a cui un cambio di scala di cinque ordini di grandezza,
     // gratis e non chiesto, è esattamente la cosa da non fare.
     solVolo.foto = null;
+    // Senza volo l'inquadratura d'arrivo non ha niente da aspettare: farla
+    // scivolare dietro a una dissolvenza di tre decimi vorrebbe dire aprire il
+    // velo su una scena che si sta ancora muovendo.
+    if (solVolo.dopo) { const f = solVolo.dopo; solVolo.dopo = null; f(); }
     ponte.style.transition = 'opacity .32s ease';
     ponte.style.opacity = '0';
     solVolo.timer = setTimeout(() => { ponte.style.transition = ''; solVoloChiudi(); }, 360);
@@ -35145,10 +35566,17 @@ window.apriSistemaSolare = (opzioni = {}) => {
   // evento del calendario o da un banco della Didattica da terra non ci
   // stava a guardare; e soprattutto finisce con la Terra al centro alla
   // misura che la scena le darà — una promessa che vale solo per
-  // l'inquadratura del tuffo. Con un pianeta scelto, col banco delle
-  // eclissi, o con una tappa di Missione Cielo che si riquadra da sé, la
-  // scena arriva altrove e l'ultimo fotogramma del velo sarebbe uno scarto
-  // invece di un incastro. Là resta la dissolvenza corta.
+  // l'inquadratura del tuffo. Con un pianeta scelto o col banco delle
+  // eclissi la scena arriva altrove e l'ultimo fotogramma del velo sarebbe uno
+  // scarto invece di un incastro: là resta la dissolvenza corta.
+  //
+  // Una **tappa di Missione Cielo** invece il volo ce l'ha, ed è arrivata
+  // dopo: la sua inquadratura non è più un'alternativa al tuffo ma il
+  // **seguito** del tuffo (`opzioni.inquadra`, qui sotto). Si atterra addosso
+  // alla Terra come chiunque altro — l'incastro resta esatto — e da lì la
+  // cornice si allarga fin dove sta il bersaglio, che è poi il racconto giusto
+  // per un mondo lontano: prima si esce dal cielo, e solo dopo si scopre
+  // quanto in là bisogna guardare.
   const daCielo = typeof vistaAttuale !== 'undefined' && vistaAttuale === 'cielo';
   // La fotografia si prende **qui**, come prima riga utile: è l'ultimo
   // fotogramma che chi guarda ha davanti agli occhi. Una riga più in basso il
@@ -35244,7 +35672,16 @@ window.apriSistemaSolare = (opzioni = {}) => {
     // domanda su come stanno le cose stasera, e la prima immagine deve già
     // essere la risposta, non un bersaglio da girare finché si capisce.
     let tuffo = false;
+    /* `opzioni.inquadra` è l'inquadratura di chi arriva con un bersaglio suo
+     * che la vista d'ingresso non contiene — oggi la sola tappa di Missione
+     * Cielo che si gioca qui dentro. Col volo si fa in due tempi: si atterra
+     * addosso alla Terra, che è l'unico posto in cui l'ultimo fotogramma del
+     * velo e il primo della scena sono la stessa immagine, e appena il velo si
+     * è aperto la cornice si allarga fin dove sta il bersaglio. Senza volo si
+     * fa subito, che è quello che si faceva prima. */
     if (sol.vicino) solInquadraVicino();
+    else if (opzioni.inquadra && fotoDelCielo) { tuffo = true; solEntraSullaTerra({ immediato: true }); }
+    else if (opzioni.inquadra) opzioni.inquadra();
     // Chi arriva con un protagonista — un evento, o il pianeta che era scelto
     // nel planetario — resta nel quadro d'insieme: si è venuti a vedere dove
     // sta *quello*, e tuffarsi sulla Terra vorrebbe dire lasciarlo fuori
@@ -35255,7 +35692,10 @@ window.apriSistemaSolare = (opzioni = {}) => {
     solAggiornaScheda(true);
     // Adesso la scena sa dove sta la Terra e quanto la disegnerà grande: il
     // volo ci si aggancia, e il suo ultimo fotogramma è già questo.
-    solAvviaTransizioneDecollo({ volo: tuffo && !!fotoDelCielo });
+    solAvviaTransizioneDecollo({
+      volo: tuffo && !!fotoDelCielo,
+      dopo: opzioni.inquadra && tuffo ? opzioni.inquadra : null
+    });
     if (!sol.raf) {
       sol.battito = performance.now();
       sol.raf = requestAnimationFrame(solCiclo);

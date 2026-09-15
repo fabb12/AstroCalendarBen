@@ -1540,14 +1540,25 @@ prova('non si rimisura, e non si inventa un vicino in cielo', () => {
 });
 
 prova('la difficoltà dei sedici è dichiarata e sta in scala', () => {
-  const slugs = new Set(K.MISS_REPERTORIO
-    .filter(v => v.tipi && v.tipi.includes('mondo3d')).map(v => v.slug));
-  assert.strictEqual(slugs.size, 16, 'quattordici mondi minori e due sonde');
+  /* Il conto non è più scritto a mano — i mondi lontani erano sedici e con
+   * le lune dei pianeti sono diventati il doppio — ma l'invariante che
+   * conta è la stessa, e anzi si vede meglio: **gli identificativi del
+   * repertorio e quelli della tabella delle difficoltà devono essere lo
+   * stesso insieme**. Chi manca da una delle due parti non fallisce, prende
+   * il quattro di ripiego e sparisce dalle missioni dei bambini senza che
+   * niente lo dica. */
+  const idRepertorio = new Set(K.MISS_REPERTORIO
+    .filter(v => v.tipi && v.tipi.includes('mondo3d'))
+    .flatMap(v => v.mondi || []));
+  assert.ok(idRepertorio.size >= 16, 'almeno i quattordici mondi minori e le due sonde');
   const senza = Object.keys(K.MISS_LONTANI_DIFFICOLTA)
     .filter(id => !(K.MISS_LONTANI_DIFFICOLTA[id] >= 1 && K.MISS_LONTANI_DIFFICOLTA[id] <= 5));
   assert.deepStrictEqual(senza, [], 'ogni difficoltà sta fra uno e cinque');
-  assert.strictEqual(Object.keys(K.MISS_LONTANI_DIFFICOLTA).length, 16,
-    'e ce n\'è una per ognuno: chi manca prende il quattro di ripiego e sparisce dai bambini');
+  const senzaDifficolta = [...idRepertorio].filter(id => !K.MISS_LONTANI_DIFFICOLTA[id]);
+  assert.deepStrictEqual(senzaDifficolta, [],
+    'ce n\'è una per ognuno: chi manca prende il quattro di ripiego e sparisce dai bambini');
+  const orfane = Object.keys(K.MISS_LONTANI_DIFFICOLTA).filter(id => !idRepertorio.has(id));
+  assert.deepStrictEqual(orfane, [], 'e nessuna difficoltà parla di un corpo che il repertorio non conosce');
   const perBambini = Object.keys(K.MISS_LONTANI_DIFFICOLTA)
     .filter(id => K.MISS_LONTANI_DIFFICOLTA[id] <= K.MISS_DIFFICOLTA_MASSIMA.bambini);
   assert.ok(perBambini.length >= 3,
@@ -2681,7 +2692,13 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         miss.scelte.esperienza = espPrima;
         if (!m || !m.tappe.length) return { generata: false };
         missAvvia(m);
-        await new Promise(r => setTimeout(r, 1400));
+        /* L'attesa copre il **volo** d'ingresso (§7.7-quinquies di
+         * `app.js`), che da quando una tappa dei mondi lontani lo usa dura
+         * cinque secondi e mezzo: la cornice del bersaglio arriva alla fine
+         * del volo, e misurare prima vuol dire misurare la scena addosso
+         * alla Terra — cioè con il bersaglio fuori dal quadro, che è
+         * esattamente quello che questa prova dichiarerebbe rotto. */
+        await new Promise(r => setTimeout(r, 7400));
         const st = document.getElementById('missione-striscia');
         const g = document.getElementById('sol-guscio');
         const r = n => { if (!n) return null; const b = n.getBoundingClientRect();
@@ -2693,7 +2710,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
           return !!(sopra && (sopra === n || n.contains(sopra)));
         };
         const t = miss.attiva.tappe[miss.attiva.corrente];
-        const corpo = (sol.mondi || []).concat(sol.sonde || []).find(c => c.id === t.idSistema);
+        // Come sopra: una luna è disegnata, ma il suo posto sullo schermo
+        // sta in `sol.luneSchermo` e non in un campo `schermo` suo.
+        const corpo = (sol.mondi || []).concat(sol.sonde || [])
+          .concat((sol.luneSchermo || []).map(l => ({ id: l.id, schermo: { px: l.px, py: l.py } })))
+          .find(c => c.id === t.idSistema);
         return {
           generata: true,
           tipo: t.tipo,
@@ -2804,7 +2825,15 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
      * scartare Eris avendone letto il nome è mezzo enigma regalato. */
     const tocchi = await pagina.evaluate(async () => {
       const attesa = () => new Promise(r => setTimeout(r, 250));
-      const tutti = () => (sol.mondi || []).concat(sol.sonde || []);
+      /* I corpi toccabili della scena. Le lune dei pianeti non stanno in
+       * `sol.mondi`: sono uno scostamento dal loro pianeta, e dove sono
+       * finite sullo schermo lo lascia scritto chi le disegna
+       * (`sol.luneSchermo`, come i satelliti artificiali). Cercando il
+       * bersaglio fra i soli mondi minori, una tappa che pesca una luna
+       * non lo trovava affatto — e la prova moriva su `.schermo` invece
+       * di fallire dicendo perché. */
+      const tutti = () => (sol.mondi || []).concat(sol.sonde || [])
+        .concat((sol.luneSchermo || []).map(l => ({ id: l.id, schermo: { px: l.px, py: l.py } })));
       const t = miss.attiva.tappe[miss.attiva.corrente];
       const r = sol.canvas.getBoundingClientRect();
       const tocca = c => solTocco({ clientX: r.left + c.schermo.px, clientY: r.top + c.schermo.py });

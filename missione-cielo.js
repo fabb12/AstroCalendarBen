@@ -624,7 +624,40 @@ const MISS_REPERTORIO = [
   { slug: 'giunone',  fascino: 0.46, tipi: ['mondo3d'], mondi: ['Juno'] },
   { slug: 'igea',     fascino: 0.44, tipi: ['mondo3d'], mondi: ['Hygiea'] },
   { slug: 'voyager1', fascino: 1,    tipi: ['mondo3d'], mondi: ['voyager1'] },
-  { slug: 'voyager2', fascino: 0.96, tipi: ['mondo3d'], mondi: ['voyager2'] }
+  { slug: 'voyager2', fascino: 0.96, tipi: ['mondo3d'], mondi: ['voyager2'] },
+
+  /* --- e le lune principali dei pianeti ------------------------------
+   *
+   * Sono mondi lontani come gli altri — non si vedono guardando in su, e
+   * la loro tappa si gioca nella vista 3D — ma la caccia è di un'altra
+   * natura, e vale la pena scriverlo. Un pianeta nano è un dischetto in
+   * mezzo a un anello vuoto: trovarlo vuol dire capire **quanto in là**
+   * guardare. Una luna sta invece dentro a un gruppetto di tre o quattro
+   * sorelle attorno allo stesso pianeta, tutte sullo stesso disegno:
+   * trovarla vuol dire capire **quale delle quattro**, e la risposta è
+   * l'ordine — chi sta dentro e chi sta fuori — o la misura. È il gioco
+   * che si fa da secoli col binocolo puntato su Giove, e qui si fa da
+   * fuori.
+   *
+   * Il `fascino` segue quella regola e non la grandezza: Io, Europa e
+   * Titano hanno una storia che si racconta, Oberon e Deimos no. */
+  { slug: 'io',        fascino: 0.92, tipi: ['mondo3d'], mondi: ['Io'] },
+  { slug: 'europa',    fascino: 0.96, tipi: ['mondo3d'], mondi: ['Europa'] },
+  { slug: 'ganimede',  fascino: 0.88, tipi: ['mondo3d'], mondi: ['Ganymede'] },
+  { slug: 'callisto',  fascino: 0.7,  tipi: ['mondo3d'], mondi: ['Callisto'] },
+  { slug: 'titano',    fascino: 0.94, tipi: ['mondo3d'], mondi: ['Titan'] },
+  { slug: 'encelado',  fascino: 0.9,  tipi: ['mondo3d'], mondi: ['Enceladus'] },
+  { slug: 'rea',       fascino: 0.56, tipi: ['mondo3d'], mondi: ['Rhea'] },
+  { slug: 'mimante',   fascino: 0.62, tipi: ['mondo3d'], mondi: ['Mimas'] },
+  { slug: 'giapeto',   fascino: 0.76, tipi: ['mondo3d'], mondi: ['Iapetus'] },
+  { slug: 'tritone',   fascino: 0.86, tipi: ['mondo3d'], mondi: ['Triton'] },
+  { slug: 'caronte',   fascino: 0.8,  tipi: ['mondo3d'], mondi: ['Charon'] },
+  { slug: 'titania',   fascino: 0.5,  tipi: ['mondo3d'], mondi: ['Titania'] },
+  { slug: 'oberon',    fascino: 0.44, tipi: ['mondo3d'], mondi: ['Oberon'] },
+  { slug: 'miranda',   fascino: 0.68, tipi: ['mondo3d'], mondi: ['Miranda'] },
+  { slug: 'ariel',     fascino: 0.44, tipi: ['mondo3d'], mondi: ['Ariel'] },
+  { slug: 'fobos',     fascino: 0.66, tipi: ['mondo3d'], mondi: ['Phobos'] },
+  { slug: 'deimos',    fascino: 0.42, tipi: ['mondo3d'], mondi: ['Deimos'] }
 ];
 
 /* Le sigle, in una tabella sola. Il catalogo scrive «M 7» e «M7» nella
@@ -1158,6 +1191,11 @@ function missDoppione(c, scelti) {
       const gradi = missSeparazioneCatalogo(c, g);
       if (gradi !== null && gradi < MISS_STESSO_CAMPO_GRADI) return true;
     }
+    // Due lune dello stesso pianeta sono lo stesso quadro: la seconda si
+    // gioca sul disegno che la prima ha appena lasciato in mezzo allo
+    // schermo, con le stesse tre sorelle accanto. È la parente della
+    // regola di M31 e M32, detta per un'altra famiglia.
+    if (c.idPianeta && g.idPianeta && c.idPianeta === g.idPianeta) return true;
     return false;
   });
 }
@@ -2116,7 +2154,16 @@ function missCandidatiAOrarioPreciso(partenzaMs, durataMin) {
 const MISS_LONTANI_DIFFICOLTA = {
   Pluto: 2, Ceres: 2, voyager1: 2, voyager2: 2,
   Vesta: 3, Eris: 3, Makemake: 3, Haumea: 3, Sedna: 3,
-  Pallas: 4, Juno: 4, Hygiea: 4, Chiron: 4, Orcus: 4, Quaoar: 4, Gonggong: 4
+  Pallas: 4, Juno: 4, Hygiea: 4, Chiron: 4, Orcus: 4, Quaoar: 4, Gonggong: 4,
+  /* Le lune. Qui la difficoltà non è «quanto in là», è «quale delle
+   * quattro»: la più interna e la più esterna di un gruppetto si
+   * riconoscono a colpo d'occhio, quelle in mezzo no. Titano e Tritone
+   * sono figlie uniche nel loro disegno — chi guarda Saturno da vicino
+   * trova una luna molto più grossa delle altre — e Ganimede è la più
+   * grande del Sistema Solare, cioè si riconosce dalla misura. */
+  Io: 2, Titan: 2, Triton: 2, Charon: 2, Ganymede: 3, Phobos: 3,
+  Europa: 3, Callisto: 3, Enceladus: 4, Iapetus: 4, Mimas: 4,
+  Rhea: 4, Miranda: 4, Titania: 4, Ariel: 5, Oberon: 5, Deimos: 5
 };
 
 /* In che parte del disegno sta, detto come lo direbbe una persona.
@@ -2126,12 +2173,32 @@ const MISS_LONTANI_DIFFICOLTA = {
  * guarda **più in là**. I quattro scalini sono quelli che la scena rende
  * evidenti — la fascia fra Marte e Giove, il tratto fra i giganti,
  * l'anello di Kuiper appena oltre Nettuno, e il vuoto che viene dopo. */
-function missZonaDelSistema(ua) {
+function missZonaDelSistema(ua, luna) {
+  // Una luna ha una zona sua, e non è una distanza: è «attorno a un
+  // pianeta». Dirle «nella fascia fra Marte e Giove» sarebbe vero della
+  // sua orbita grande e inutile per trovarla, perché lì dentro quello che
+  // si cerca è quale dei quattro puntini attorno al disco.
+  if (luna) return 'luna';
   if (!Number.isFinite(ua)) return 'kuiper';
   if (ua < 4.2) return 'fascia';
   if (ua < 30.1) return 'giganti';
   if (ua < 55) return 'kuiper';
   return 'fuori';
+}
+
+/* Il posto di una luna nella fila del suo pianeta, e quante sorelle ha.
+ *
+ * Si conta su quelle **disegnate** e non su quelle che esistono — Giove ne
+ * ha novantacinque e la scena ne mostra quattro — perché l'indizio deve
+ * parlare di quello che si sta guardando: «la terza delle quattro» è
+ * verificabile col dito, «la terza delle novantacinque» è una bugia utile
+ * a nessuno. */
+function missPostoDellaLuna(luna) {
+  if (typeof sol !== 'object' || !Array.isArray(sol.lune)) return null;
+  const sorelle = sol.lune.filter(l => l.idPianeta === luna.idPianeta)
+    .sort((a, b) => a.raggioKm - b.raggioKm);
+  const i = sorelle.findIndex(l => l.id === luna.id);
+  return i < 0 ? null : { posto: i + 1, quante: sorelle.length };
 }
 
 function missCandidatiDelSistema() {
@@ -2141,7 +2208,12 @@ function missCandidatiDelSistema() {
   const noti = missTabellaMondi();
   const dalla3D = []
     .concat(Array.isArray(sol.mondi) ? sol.mondi : [])
-    .concat(Array.isArray(sol.sonde) ? sol.sonde : []);
+    .concat(Array.isArray(sol.sonde) ? sol.sonde : [])
+    // Le lune principali dei pianeti (§7.7-bis di `app.js`): sono mondi
+    // lontani come gli altri — in cielo non si vedono, e la loro tappa si
+    // gioca nella vista 3D — solo che la caccia non chiede quanto in là
+    // guardare ma quale del gruppetto attorno a quel pianeta.
+    .concat(Array.isArray(sol.lune) ? sol.lune : []);
 
   const fuori = [];
   for (const corpo of dalla3D) {
@@ -2153,7 +2225,12 @@ function missCandidatiDelSistema() {
     // toccare: con la macchina del tempo al 1970 sarebbe una tappa che
     // non si chiude.
     if (corpo.sonda && corpo.partita === false) continue;
-    const ua = Number.isFinite(corpo.r) ? corpo.r : null;
+    // Una luna non ha una distanza dal Sole sua: ha quella del suo
+    // pianeta, ed è quella che serve alla cornice della vista 3D.
+    const pianeta = corpo.luna && typeof solCorpoDiId === 'function'
+      ? solCorpoDiId(corpo.idPianeta) : null;
+    const ua = Number.isFinite(corpo.r) ? corpo.r
+      : (pianeta && Number.isFinite(pianeta.r) ? pianeta.r : null);
     fuori.push(missDecoraCandidato({
       id: 'mondo3d:' + corpo.id,
       idSistema: corpo.id,
@@ -2161,9 +2238,24 @@ function missCandidatiDelSistema() {
       tipo: 'mondo3d',
       // La famiglia della scena — `nano`, `asteroide`, `centauro` — è la
       // parola giusta per la riga della scoperta, e la sa già lei.
-      famiglia3d: corpo.sonda ? 'sonda' : (corpo.famiglia || 'nano'),
+      famiglia3d: corpo.sonda ? 'sonda' : (corpo.luna ? 'luna' : (corpo.famiglia || 'nano')),
+      // Di chi è, se è una luna: lo legge il ponte con la vista 3D, che su
+      // di lei deve inquadrare il **pianeta** — sotto una certa misura del
+      // suo disco le lune non sono disegnate affatto.
+      idPianeta: corpo.luna ? corpo.idPianeta : null,
+      nomePianeta: pianeta ? pianeta.nome : null,
+      // I due numeri veri di una luna, quelli che prendono il posto della
+      // distanza dal Sole nella terza strofa: quanto sta lontana dal suo
+      // pianeta e quanto dura il suo giro.
+      raggioKm: corpo.luna ? corpo.raggioKm : null,
+      giorniGiro: corpo.luna ? corpo.giorni : null,
+      diametroKm: corpo.luna ? corpo.km : null,
+      // Il posto nella fila, che è l'indizio vero di questa famiglia: fra
+      // quattro puntini attorno allo stesso disco «la seconda partendo dal
+      // pianeta» è una risposta, mentre una distanza in chilometri non lo è.
+      ordine: corpo.luna ? missPostoDellaLuna(corpo) : null,
       ua,
-      zona: missZonaDelSistema(ua),
+      zona: missZonaDelSistema(ua, !!corpo.luna),
       anniDiVolo: Number.isFinite(corpo.anniDiVolo) ? corpo.anniDiVolo : null,
       idCielo: null,
       // Niente altezza e niente azimut, e non è una dimenticanza: è
@@ -3326,33 +3418,45 @@ function missGuidaNelSistema(indice) {
    * si vedrebbe soltanto tornando al cielo, che salterebbe indietro. */
   skyFermaPlayback();
   missImpostaTempoPlanetario(m, t);
-  // Senza il volo d'ingresso (§7.7-quinquies di `app.js`): qui la finestra si
-  // riquadra da sé un fotogramma più in là, su un mondo che sta a decine di
-  // unità astronomiche, e quel volo finisce invece con la Terra al centro —
-  // cioè con un'immagine che la scena non disegnerà. E cinque secondi e
-  // mezzo di salita, in mezzo a una caccia, sono cinque secondi e mezzo in
-  // cui non si sta cercando niente.
-  apriSistemaSolare({ senzaVolo: true });
-  // Le due famiglie di §7.7-bis nascono spente per chi le ha spente: con
-  // loro spente il bersaglio non è disegnato, cioè non è toccabile.
-  sol.mondiAccesi = true;
-  sol.sondeAccese = true;
-  // Nessun corpo scelto: una scheda aperta col nome dentro è la soluzione
-  // stampata sopra al disegno.
-  sol.scelto = null;
-  sol.perno = null;
-  if (typeof solChiudiScheda === 'function') solChiudiScheda();
-  // L'inquadratura arriva dopo il fotogramma d'ingresso, che `apriSistemaSolare`
-  // si prende per misurare la tela e leggere le posizioni: chiedendola
-  // prima si calcolerebbe su un riquadro largo zero.
-  requestAnimationFrame(() => {
+  /* Il volo d'ingresso (§7.7-quinquies di `app.js`) vale anche qui.
+   *
+   * Per un pezzo non l'aveva, e la ragione sembrava buona: quel volo finisce
+   * addosso alla Terra, mentre una tappa dei mondi lontani si riquadra da sé
+   * su qualcosa che sta a decine di unità astronomiche — cioè l'ultimo
+   * fotogramma del velo sarebbe stato uno scarto invece di un incastro. Ma le
+   * due inquadrature non sono alternative: sono **in fila**. Si atterra sulla
+   * Terra, che è dove l'incastro è esatto, e da lì la cornice si allarga fin
+   * dove sta il bersaglio — che per una caccia è il racconto giusto, non un
+   * di più: prima si esce dal cielo, e solo dopo si scopre quanto in là
+   * bisogna guardare. L'inquadratura si consegna ad `apriSistemaSolare`, che
+   * la chiama subito se il volo non c'è (schermo che arriva da un'altra
+   * vista, o chi ha chiesto meno movimento) e alla fine del volo se c'è.
+   *
+   * `solInquadraDaTerra` non tocca il bersaglio per nome — `sol.scelto`
+   * aprirebbe la sua scheda, cioè la soluzione — e per una **luna** non
+   * basterebbe comunque: sotto a `SOL_LUNE_MIN_PX` non è disegnata affatto, e
+   * allora la cornice va sul suo pianeta (`solInquadraLune`), che è anche il
+   * solo modo di rendere quella tappa giocabile. */
+  const inquadra = () => {
     if (!sol.aperto) return;
-    if (typeof solInquadraDaTerra === 'function' && Number.isFinite(t.ua)) {
-      solInquadraDaTerra({ ua: t.ua * MISS_SISTEMA_MARGINE });
+    if (t.idPianeta && typeof solInquadraLune === 'function') {
+      solInquadraLune(t.idPianeta, { morbido: true });
+    } else if (typeof solInquadraDaTerra === 'function' && Number.isFinite(t.ua)) {
+      solInquadraDaTerra({ ua: t.ua * MISS_SISTEMA_MARGINE, morbido: true });
     }
     if (typeof solAggiornaTasti === 'function') solAggiornaTasti();
     if (typeof solDisegna === 'function') solDisegna();
-  });
+  };
+  apriSistemaSolare({ inquadra });
+  // Le tre famiglie di §7.7-bis nascono spente per chi le ha spente: con
+  // loro spente il bersaglio non è disegnato, cioè non è toccabile.
+  sol.mondiAccesi = true;
+  sol.sondeAccese = true;
+  sol.luneAccese = true;
+  // Nessun corpo scelto: una scheda aperta col nome dentro è la soluzione
+  // stampata sopra al disegno.
+  sol.scelto = null;
+  if (typeof solChiudiScheda === 'function') solChiudiScheda();
   missStrisciaNelSistema();
   missMostraStrisciaCielo();
   missRaccontaTappa(t);
@@ -4937,6 +5041,11 @@ function missEnigmaSeguito(t, stanza) {
   if (slug) chiavi.push('gioco.' + gruppo + '.oggetto.' + slug + '.' + n);
   if (slug) chiavi.push('gioco.' + gruppo + '.oggetto.' + slug);
   if (categoria) chiavi.push('gioco.' + gruppo + '.specie.' + categoria);
+  // Le lune hanno un gradino di ripiego loro, prima della famiglia: quello
+  // dei mondi lontani dice «giro intorno al Sole come i pianeti», che di
+  // una luna è falso — ed è il genere di bugia che non fallisce, si legge
+  // e basta.
+  if (t.famiglia3d === 'luna') chiavi.push('gioco.' + gruppo + '.luna3d.' + n);
   chiavi.push('gioco.' + gruppo + '.' + famiglia + '.' + n);
   return missT(missPrimaChiaveNota(chiavi));
 }
@@ -4967,9 +5076,31 @@ function missEnigmaSeguito(t, stanza) {
 function missIndizioSistema(t, stanza) {
   const seguito = missEnigmaSeguito(t, stanza);
   const n = missVarianteEnigma(t);
+  // Stesso ordine delle strofe del cielo: prima dove guardare, poi la voce.
   if (stanza === 2) {
-    return [seguito, missT('gioco.lontano.zona.' + (t.zona || 'kuiper') + '.' + n)]
+    return [missT('gioco.lontano.zona.' + (t.zona || 'kuiper') + '.' + n), seguito]
       .filter(Boolean).join(' ');
+  }
+  /* La terza strofa di una luna non è la distanza dal Sole: quella è del
+   * suo pianeta, e dirla sarebbe rispondere a una domanda che nessuno ha
+   * fatto — davanti allo schermo il pianeta ce l'ha già sotto gli occhi.
+   * Quello che serve è **quale**: il posto nella fila (che si conta col
+   * dito) e la durata del giro, che è l'altro numero verificabile lì
+   * dentro — la più interna corre, la più esterna striscia. */
+  if (t.famiglia3d === 'luna') {
+    const pezzi = [];
+    if (t.ordine && t.ordine.quante > 1) {
+      pezzi.push(missT('gioco.lontano.fila.' + n, {
+        posto: missT('gioco.lontano.posto.' + Math.min(6, t.ordine.posto)),
+        quante: t.ordine.quante
+      }));
+    }
+    if (Number.isFinite(t.giorniGiro)) {
+      pezzi.push(t.giorniGiro < 1
+        ? missT('gioco.lontano.giroOre', { ore: Math.round(t.giorniGiro * 24 * 10) / 10 })
+        : missT('gioco.lontano.giroGiorni', { giorni: Math.round(t.giorniGiro * 10) / 10 }));
+    }
+    return pezzi.concat([seguito]).filter(Boolean).join(' ');
   }
   const ua = Number.isFinite(t.ua) ? t.ua : null;
   // Un'unità astronomica sono 499 secondi luce: lo stesso conto del
@@ -4978,7 +5109,7 @@ function missIndizioSistema(t, stanza) {
     ua: Math.round(ua * 10) / 10,
     ore: Math.round(ua * 499.005 / 360) / 10
   });
-  return [seguito, seconda].filter(Boolean).join(' ');
+  return [seconda, seguito].filter(Boolean).join(' ');
 }
 
 function missIndizioDue(t) {
@@ -4987,13 +5118,29 @@ function missIndizioDue(t) {
   // Se non e' cercabile non mostriamo piu' il vecchio invito ad
   // abbandonare la serata: la striscia offre direttamente «Vai alle…».
   if (!missAmmissibile(ora, miss.attiva.scelte)) return '';
-  const pezzi = [missEnigmaSeguito(t, 2), missT(
+  /* La geometria per prima, e la strofa in coda.
+   *
+   * Per un pezzo era il contrario, e la segnalazione è stata «il secondo e
+   * il terzo indizio non sono chiari». Non erano sbagliati: erano
+   * **sepolti**. Un indizio si legge una volta sola, al buio, con il
+   * telefono in mano, e se la prima frase è una posa poetica quella è la
+   * frase che resta — la direzione arrivava dopo, a lettura già finita. La
+   * voce non si perde, perché la strofa c'è ancora e chiude il discorso;
+   * quello che cambia è che la prima cosa che si legge è la prima cosa che
+   * serve.
+   *
+   * E la fascia di altezza adesso porta con sé i **gradi**: «a metà cielo»
+   * è un modo di dire che copre trentacinque gradi di cielo, cioè mezzo
+   * braccio teso, e da solo non ha mai fatto trovare niente. */
+  const pezzi = [missT(
     'gioco.dove.' + missFasciaAltezza(ora.altezza) + '.' + missVarianteEnigma(t), {
       dove: astroI18n.nomePunto(ora.azimut),
-      spalle: astroI18n.nomePunto((ora.azimut + 180) % 360)
+      spalle: astroI18n.nomePunto((ora.azimut + 180) % 360),
+      gradi: Math.max(1, Math.round(ora.altezza))
     })];
   const g = MISS_GENEROSITA[missModoAttuale()] || MISS_GENEROSITA.curiosi;
   if (!g.segno) pezzi.push(missSegnoTappa(t));
+  pezzi.push(missEnigmaSeguito(t, 2));
   return pezzi.filter(Boolean).join(' ');
 }
 
@@ -5025,7 +5172,9 @@ function missIndizioTre(t) {
       dove: astroI18n.nomePunto(ora.azimut),
       altezza: missT('altezza.' + missFasciaAltezza(ora.altezza))
     });
-  return [missEnigmaSeguito(t, 3), seconda].filter(Boolean).join(' ');
+  // Stesso ordine della seconda strofa, e per la stessa ragione: prima il
+  // percorso da fare, poi la voce che lo chiude.
+  return [seconda, missEnigmaSeguito(t, 3)].filter(Boolean).join(' ');
 }
 
 // Il ripartitore. Lo zero non passa di qui — l'enigma lo scrive
@@ -5104,6 +5253,23 @@ function missCartellino(t) {
      * Voyager 1 quasi un giorno intero — cioè un comando spedito adesso
      * la raggiunge domani. La distanza è quella eliocentrica, che è la
      * stessa che la scena disegna. */
+    /* Una luna si misura con due numeri suoi, e sono i due che il disegno
+     * non può dire: quanto è larga rispetto alla nostra Luna — che è
+     * l'unica con cui chi guarda abbia un rapporto — e quanto dura il suo
+     * giro. Fobos ne fa tre in un giorno marziano: sorge a ovest e
+     * tramonta a est, due volte al giorno. */
+    if (t.tipo === 'mondo3d' && t.famiglia3d === 'luna' && Number.isFinite(t.diametroKm)) {
+      const volte = t.diametroKm / 3474;
+      const misura = volte >= 0.6
+        ? missT('gioco.cartellino.lunaGrande', { volte: Math.round(volte * 100) / 100 })
+        : missT('gioco.cartellino.lunaPiccola', { frazione: Math.max(2, Math.round(1 / volte)) });
+      const giro = Number.isFinite(t.giorniGiro)
+        ? (t.giorniGiro < 1
+          ? missT('gioco.cartellino.lunaOre', { ore: Math.round(t.giorniGiro * 24 * 10) / 10 })
+          : missT('gioco.cartellino.lunaGiorni', { giorni: Math.round(t.giorniGiro * 10) / 10 }))
+        : '';
+      return [misura, giro].filter(Boolean).join(' · ');
+    }
     if (t.tipo === 'mondo3d' && Number.isFinite(t.ua)) {
       const ore = t.ua * 499.005 / 3600;
       if (Number.isFinite(t.anniDiVolo) && t.anniDiVolo > 0) {
