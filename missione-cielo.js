@@ -3251,9 +3251,9 @@ function missMostraStrisciaCielo() {
   const el = document.getElementById('missione-striscia');
   const m = miss.attiva, t = m && m.tappe[m.corrente];
   // La guida è la stessa nelle due viste: cambia dove sta appesa, non
-  // cosa dice. `missione-ricerca` invece è del solo planetario — è lei a
-  // togliere di mezzo nomi e etichette dal cielo mentre si cerca, e nella
-  // vista 3D non c'è niente da spegnere.
+  // cosa dice. `missione-ricerca` invece è del solo planetario: semplifica
+  // i comandi mentre si cerca, senza togliere le etichette degli oggetti;
+  // nella vista 3D non c'è lo stesso gruppo di controlli da ridurre.
   const visibile = !!(m && (m.nelPlanetario || m.nelSistema) && m.stato === 'inCorso' && t);
   document.body.classList.toggle('missione-ricerca', visibile && missRicercaAttiva());
   if (!el) return;

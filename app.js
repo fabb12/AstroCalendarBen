@@ -8375,11 +8375,14 @@ function skyLevigaBase(nuova) {
 // prima è la modalità naturale, ma si può sganciare: senza sganciarla non si
 // potrebbe portare al centro della mappa un oggetto scelto dall'elenco, che
 // è proprio quello che si vuole quando si cerca qualcosa.
-// Il gioco nel cielo nasconde le etichette senza cambiare la preferenza
-// salvata. Vale anche durante la scoperta, quando la ricerca e' appena finita
-// ma la missione occupa ancora il planetario.
+// Missione Cielo deve essere leggibile come una carta: durante tutta la
+// permanenza nel planetario i nomi degli oggetti restano accesi, anche se il
+// relativo interruttore era stato spento prima di iniziare. Non si modifica
+// la preferenza salvata: uscendo dalla missione il cielo torna esattamente
+// come l'utente lo aveva lasciato.
 function skyNomiVisibili() {
-  return sky.mostraNomi && !(typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo());
+  const missioneNelCielo = typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo();
+  return missioneNelCielo || sky.mostraNomi;
 }
 
 // Anche l'interruttore autonomo delle cime rispetta la caccia: durante una
