@@ -527,19 +527,31 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     schedeLune.every(v => v.zoomMassimo === SOL_ZOOM_MAX_CORPO),
     schedeLune.map(v => `${v.id}:${v.zoomMassimo}`).join(', '));
 
-  const crescitaTitano = await pagina.evaluate(() => {
+  const avvicinamentoTitano = await pagina.evaluate(() => {
     const titano = solCorpoDiId('Titan');
+    const saturno = solCorpoDiId('Saturn');
     sol.misureVere = false;
+    sol.distanzeVere = false;
     sol.perno = 'Titan';
     sol.zoom = 64;
-    const prima = solRaggioLunaPianeta(titano);
+    solMisura();
+    const rPrima = solRaggioLunaPianeta(titano);
+    const pPrima = solScenaLunaPianeta(titano, saturno);
+    const dPrima = Math.hypot(pPrima.x - saturno.scena.x, pPrima.y - saturno.scena.y,
+      pPrima.z - saturno.scena.z) * sol.scala;
     sol.zoom = SOL_ZOOM_MAX_CORPO;
-    const dopo = solRaggioLunaPianeta(titano);
-    return { prima, dopo };
+    solMisura();
+    const rDopo = solRaggioLunaPianeta(titano);
+    const pDopo = solScenaLunaPianeta(titano, saturno);
+    const dDopo = Math.hypot(pDopo.x - saturno.scena.x, pDopo.y - saturno.scena.y,
+      pDopo.z - saturno.scena.z) * sol.scala;
+    return { rPrima, rDopo, dPrima, dDopo };
   });
-  ok('avvicinandosi a Titano il disco cresce insieme allo zoom',
-    crescitaTitano.dopo > crescitaTitano.prima * 10 && crescitaTitano.dopo > 100,
-    `${crescitaTitano.prima.toFixed(1)}px -> ${crescitaTitano.dopo.toFixed(1)}px`);
+  ok('ingrandendo Titano si avvicina la camera senza gonfiare la luna',
+    Math.abs(avvicinamentoTitano.rDopo - avvicinamentoTitano.rPrima) < 0.01 &&
+      avvicinamentoTitano.dDopo > avvicinamentoTitano.dPrima * 100,
+    `raggio ${avvicinamentoTitano.rPrima.toFixed(1)}px -> ${avvicinamentoTitano.rDopo.toFixed(1)}px, ` +
+      `distanza ${avvicinamentoTitano.dPrima.toFixed(1)}px -> ${avvicinamentoTitano.dDopo.toFixed(1)}px`);
 
   const sensibilitaCamera = await pagina.evaluate(() => {
     const pernoPrima = sol.perno;
