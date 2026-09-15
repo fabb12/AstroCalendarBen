@@ -7712,6 +7712,7 @@ const CHIAVE_SKY_SOSTA = 'astrocalendario_sosta_mirino';
 const CHIAVE_SKY_DURATA_HOVER = 'astrocalendario_durata_hover';
 const CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO = 'astrocalendario_durata_mappa_spostamento';
 const CHIAVE_SKY_HOVER = 'astrocalendario_modalita_hover';
+const CHIAVE_MUSICA_SPAZIALE = 'astrocalendario_musica_spaziale';
 const SKY_SOSTA_PREDEFINITA_SEC = 1.2;
 const SKY_DURATA_HOVER_PREDEFINITA_SEC = 5;
 const SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC = 5;
@@ -40717,6 +40718,61 @@ function aggiornaSchedaImpostazioni() {
   box.className = qualitaPosizione() === 'approssimata' ? 'text-sm text-amber-400' : 'text-sm text-green-400';
 }
 
+// Un sottofondo senza file da scaricare: il Web Audio API costruisce un
+// accordo molto lento e leggero. Nasce soltanto dopo un gesto dell'utente,
+// come richiedono i browser, e viene distrutto quando l'opzione si spegne.
+let musicaSpaziale = null;
+
+function avviaMusicaSpaziale() {
+  if (musicaSpaziale) {
+    musicaSpaziale.contesto.resume().catch(() => {});
+    return;
+  }
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+
+  const contesto = new AudioContext();
+  const volume = contesto.createGain();
+  volume.gain.setValueAtTime(0.0001, contesto.currentTime);
+  volume.gain.exponentialRampToValueAtTime(0.045, contesto.currentTime + 3);
+  volume.connect(contesto.destination);
+
+  const voci = [55, 82.41, 110, 164.81].map((frequenza, indice) => {
+    const oscillatore = contesto.createOscillator();
+    const guadagno = contesto.createGain();
+    const filtro = contesto.createBiquadFilter();
+    oscillatore.type = indice % 2 ? 'sine' : 'triangle';
+    oscillatore.frequency.value = frequenza;
+    oscillatore.detune.value = indice * 3 - 4;
+    guadagno.gain.value = indice < 2 ? 0.22 : 0.1;
+    filtro.type = 'lowpass';
+    filtro.frequency.value = 420 + indice * 130;
+    oscillatore.connect(filtro).connect(guadagno).connect(volume);
+    oscillatore.start();
+    return oscillatore;
+  });
+
+  // Una lentissima deriva evita che l'accordo sembri un tono fermo.
+  const deriva = contesto.createOscillator();
+  const profondita = contesto.createGain();
+  deriva.frequency.value = 0.035;
+  profondita.gain.value = 5;
+  deriva.connect(profondita);
+  voci.forEach(voce => profondita.connect(voce.detune));
+  deriva.start();
+  musicaSpaziale = { contesto, volume, voci: [...voci, deriva] };
+  contesto.resume().catch(() => {});
+}
+
+function fermaMusicaSpaziale() {
+  if (!musicaSpaziale) return;
+  const musica = musicaSpaziale;
+  musicaSpaziale = null;
+  musica.volume.gain.cancelScheduledValues(musica.contesto.currentTime);
+  musica.volume.gain.setTargetAtTime(0.0001, musica.contesto.currentTime, 0.25);
+  setTimeout(() => musica.contesto.close().catch(() => {}), 1200);
+}
+
 function inizializzaImpostazioni() {
   const modale = document.getElementById('modale-impostazioni');
   const apri = document.getElementById('btn-impostazioni');
@@ -40729,6 +40785,23 @@ function inizializzaImpostazioni() {
   const btnChiudi = document.getElementById('btn-chiudi-impostazioni');
   if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
   if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudi(); });
+
+  const impMusica = document.getElementById('imp-musica-spaziale');
+  if (impMusica) {
+    // In assenza di una scelta salvata il valore è false: nessun suono parte
+    // per sorpresa. Se era acceso, il primo gesto sblocca l'audio del browser.
+    impMusica.checked = localStorage.getItem(CHIAVE_MUSICA_SPAZIALE) === '1';
+    impMusica.addEventListener('change', () => {
+      const attiva = impMusica.checked;
+      try { localStorage.setItem(CHIAVE_MUSICA_SPAZIALE, attiva ? '1' : '0'); } catch (e) { /* niente storage */ }
+      if (attiva) avviaMusicaSpaziale();
+      else fermaMusicaSpaziale();
+    });
+    if (impMusica.checked) {
+      document.addEventListener('pointerdown', avviaMusicaSpaziale, { once: true });
+      document.addEventListener('keydown', avviaMusicaSpaziale, { once: true });
+    }
+  }
 
   const impZoom = document.getElementById('imp-skymap-zoom');
   if (impZoom) {
