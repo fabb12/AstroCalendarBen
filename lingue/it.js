@@ -4196,7 +4196,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.impostazioni': 'Impostazioni',
     'ui.atmosfera': 'Atmosfera',
     'ui.musica-spaziale': 'Musica spaziale di sottofondo',
-    'ui.musica-spaziale-spiega': 'Scegli il paesaggio sonoro generato dall\'app oppure una traccia della cartella musica. È disattivata per impostazione predefinita.',
+    'ui.musica-spaziale-spiega': 'La musica parte con Europa al 12%; puoi scegliere il paesaggio sonoro generato o un\'altra traccia.',
     'ui.traccia-musicale': 'Traccia',
     'ui.volume-musica': 'Volume',
     'ui.musica-generata': 'Paesaggio spaziale (generato)',
