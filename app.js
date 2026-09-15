@@ -30135,10 +30135,15 @@ function solLeggiLune(quando, t) {
 // Quanto grande si disegna. In scala vera passa dallo stesso metro dei
 // pianeti; a corpi ingranditi il rapporto fra le lune è quello vero
 // compresso dalla radice cubica, se no Deimos sparirebbe accanto a Ganimede.
+// La luna scelta usa però la crescita ravvicinata del perno: applicarle la
+// crescita generale la lasciava ferma a pochi pixel perché quella è tosata
+// per non far invadere la scena dal Sole. La rotella avanzava fino a 25.000×,
+// Titano restava al centro, ma il suo disco non diventava più grande.
 function solRaggioLunaPianeta(l) {
   if (sol.misureVere) return Math.max(0.25, (l.km / 2) / SOL_UA_KM * sol.scala);
   const q = Math.cbrt(Math.max(1, l.km) / SOL_LUNA_KM_RIF);
-  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * solCrescita());
+  const crescita = sol.perno === l.id ? solCrescitaCorpo() : solCrescita();
+  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * crescita);
 }
 
 // Lo `stacco` di una luna, rimappato perché stia **fuori** dagli anelli del
