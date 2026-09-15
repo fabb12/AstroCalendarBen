@@ -2239,9 +2239,8 @@ function missCandidatiDelSistema() {
       // La famiglia della scena — `nano`, `asteroide`, `centauro` — è la
       // parola giusta per la riga della scoperta, e la sa già lei.
       famiglia3d: corpo.sonda ? 'sonda' : (corpo.luna ? 'luna' : (corpo.famiglia || 'nano')),
-      // Di chi è, se è una luna: lo legge il ponte con la vista 3D, che su
-      // di lei deve inquadrare il **pianeta** — sotto una certa misura del
-      // suo disco le lune non sono disegnate affatto.
+      // Di chi è, se è una luna: serve agli indizi e alla descrizione. Non
+      // decide il centro della camera, che all'ingresso resta sempre il Sole.
       idPianeta: corpo.luna ? corpo.idPianeta : null,
       nomePianeta: pianeta ? pianeta.nome : null,
       // I due numeri veri di una luna, quelli che prendono il posto della
@@ -3347,8 +3346,9 @@ function missTornaDalPlanetario() {
 //     Sedna a ottantacinque unità astronomiche, la vista d'ingresso —
 //     che arriva a Saturno — lo lascerebbe fuori dallo schermo: una
 //     tappa che non si può chiudere. La cornice si allarga fin dove sta
-//     il bersaglio (`solInquadraDaTerra({ ua })`) senza sceglierlo,
-//     perché `sol.scelto` aprirebbe la sua scheda.
+//     il bersaglio (`solInquadraDaTerra({ ua })`) senza sceglierlo e senza
+//     abbandonare il Sole come centro della camera, perché `sol.scelto`
+//     aprirebbe la sua scheda.
 // =====================================================================
 
 // Questa tappa si gioca nella vista 3D?
@@ -3452,15 +3452,13 @@ function missGuidaNelSistema(indice) {
    * vista, o chi ha chiesto meno movimento) e alla fine del volo se c'è.
    *
    * `solInquadraDaTerra` non tocca il bersaglio per nome — `sol.scelto`
-   * aprirebbe la sua scheda, cioè la soluzione — e per una **luna** non
-   * basterebbe comunque: sotto a `SOL_LUNE_MIN_PX` non è disegnata affatto, e
-   * allora la cornice va sul suo pianeta (`solInquadraLune`), che è anche il
-   * solo modo di rendere quella tappa giocabile. */
+   * aprirebbe la sua scheda, cioè la soluzione — e soprattutto conserva il
+   * centro predefinito sul Sole. Vale anche per una **luna**: sapere a quale
+   * pianeta appartiene resta un indizio della caccia, non un motivo per
+   * spostare automaticamente la camera su quel pianeta. */
   const inquadra = () => {
     if (!sol.aperto) return;
-    if (t.idPianeta && typeof solInquadraLune === 'function') {
-      solInquadraLune(t.idPianeta, { morbido: true });
-    } else if (typeof solInquadraDaTerra === 'function' && Number.isFinite(t.ua)) {
+    if (typeof solInquadraDaTerra === 'function' && Number.isFinite(t.ua)) {
       solInquadraDaTerra({ ua: t.ua * MISS_SISTEMA_MARGINE, morbido: true });
     }
     if (typeof solAggiornaTasti === 'function') solAggiornaTasti();
