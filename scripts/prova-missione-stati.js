@@ -78,6 +78,11 @@ ctx.cime={acceso:true};
 assert.equal(run('missRicercaAttiva()'),true);
 assert.equal(run('missModalitaGiocoCielo()'),true);
 assert.equal(run('skyNomiVisibili()'),false);
+ctx.sky.mostraNomi=false;
+run("miss.attiva.scelte.esperienza='curiosi'");
+assert.equal(run('skyNomiVisibili()'),true);
+run("miss.attiva.scelte.esperienza='sfida'");
+ctx.sky.mostraNomi=true;
 assert.equal(run('skyNomiCimeVisibili()'),false);
 // La scoperta non e' piu' una ricerca, ma e' ancora modalita' gioco nel
 // planetario: i nomi dei monti devono restare nascosti fino all'uscita.

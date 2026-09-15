@@ -2720,6 +2720,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
             c.schermo.py >= 0 && c.schermo.py <= sol.H)
           .map(c => c.id)
           .concat((sol.satSchermo || []).map(s => s.id), (sol.luneSchermo || []).map(l => l.id));
+        const etichetteEsperto = sol.etichetteSchermo.map(e => e.id);
+        // La stessa scena, senza cambiare bersaglio o inquadratura: soltanto
+        // il livello deve decidere se i nomi sono un aiuto oppure no.
+        miss.attiva.scelte.esperienza = 'curiosi';
+        solDisegna();
         return {
           generata: true,
           tipo: t.tipo,
@@ -2732,6 +2737,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
           ricerca: missRicercaSistema(),
           disegnato: !!(corpo && corpo.schermo),
           bersaglio: t.idSistema,
+          etichetteEsperto,
           etichette: sol.etichetteSchermo.map(e => e.id),
           oggettiVisibili,
           striscia: r(st), guscio: r(g), barra: r(document.getElementById('sol-tempo')),
@@ -2765,8 +2771,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         assert.ok(scena.mondi && scena.sonde,
           'le due famiglie devono essere accese, o il bersaglio non è disegnato');
         assert.ok(scena.disegnato, 'il bersaglio non è finito sullo schermo: non si può toccare');
+        assert.deepStrictEqual(scena.etichetteEsperto, [],
+          'in modalita esperto il grafico 3D mostra ancora etichette');
         assert.ok(scena.etichette.includes(scena.bersaglio),
-          'il bersaglio 3D è disegnato senza la sua etichetta');
+          'fuori dalla modalita esperto il bersaglio 3D è senza etichetta');
         assert.deepStrictEqual(scena.oggettiVisibili.filter(id => !scena.etichette.includes(id)), [],
           'alcuni oggetti visibili del grafico 3D sono senza etichetta');
         assert.strictEqual(scena.scelto, null,

@@ -3343,7 +3343,7 @@ function missTornaDalPlanetario() {
 //     in cima a `solTocco`, esattamente come `missSelezionaCielo` è
 //     agganciata a `skyOggettoNelPunto`.
 //
-//     L'INQUADRATURA DEVE CONTENERE IL BERSAGLIO SENZA NOMINARLO. Con
+//     L'INQUADRATURA DEVE CONTENERE IL BERSAGLIO SENZA SELEZIONARLO. Con
 //     Sedna a ottantacinque unità astronomiche, la vista d'ingresso —
 //     che arriva a Saturno — lo lascerebbe fuori dallo schermo: una
 //     tappa che non si può chiudere. La cornice si allarga fin dove sta
@@ -3354,6 +3354,22 @@ function missTornaDalPlanetario() {
 // Questa tappa si gioca nella vista 3D?
 function missTappaNelSistema(t) {
   return !!(t && t.tipo === 'mondo3d' && t.idSistema);
+}
+
+// Le etichette fanno parte dell'aiuto visivo dei due livelli introduttivi.
+// In «sfida» (la modalita' esperto) spariscono sia dal planetario sia dalla
+// scena 3D; negli altri livelli restano tutte visibili, anche se il normale
+// interruttore del planetario era spento prima di avviare la missione.
+function missEtichetteMissioneVisibili() {
+  const m = miss.attiva;
+  return !(m && m.stato === 'inCorso' && m.scelte && m.scelte.esperienza === 'sfida' &&
+    (m.nelPlanetario || m.nelSistema));
+}
+
+function missModalitaGiocoSistema() {
+  const m = miss.attiva;
+  return !!(m && m.stato === 'inCorso' && m.nelSistema &&
+    typeof sol === 'object' && sol && sol.aperto);
 }
 
 // Dove sta la striscia mentre è in prestito alla finestra 3D. È una mappa
