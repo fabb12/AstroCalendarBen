@@ -40798,7 +40798,9 @@ function aggiornaSchedaImpostazioni() {
 // dopo un gesto dell'utente, come richiedono i browser, e viene distrutto
 // quando l'opzione si spegne.
 let musicaSpaziale = null;
-let musicaVolume = 0.35;
+const MUSICA_TRACCIA_PREDEFINITA = 'Europa1';
+const MUSICA_VOLUME_PREDEFINITO = 0.12;
+let musicaVolume = MUSICA_VOLUME_PREDEFINITO;
 
 function musicaTracceDisponibili() {
   const viste = new Set();
@@ -40813,9 +40815,9 @@ function musicaTracceDisponibili() {
 }
 
 function musicaIdScelta() {
-  const salvata = localStorage.getItem(CHIAVE_MUSICA_TRACCIA) || 'generata';
+  const salvata = localStorage.getItem(CHIAVE_MUSICA_TRACCIA) || MUSICA_TRACCIA_PREDEFINITA;
   return salvata === 'generata' || musicaTracceDisponibili().some(t => t.id === salvata)
-    ? salvata : 'generata';
+    ? salvata : MUSICA_TRACCIA_PREDEFINITA;
 }
 
 function musicaImpostaStato(chiave, errore = false) {
@@ -40912,7 +40914,9 @@ function inizializzaImpostazioni() {
   const impVolume = document.getElementById('imp-musica-volume');
   const impVolumeValore = document.getElementById('imp-musica-volume-valore');
   const volumeSalvato = parseFloat(localStorage.getItem(CHIAVE_MUSICA_VOLUME));
-  musicaVolume = Number.isFinite(volumeSalvato) ? Math.max(0, Math.min(1, volumeSalvato)) : 0.35;
+  musicaVolume = Number.isFinite(volumeSalvato)
+    ? Math.max(0, Math.min(1, volumeSalvato))
+    : MUSICA_VOLUME_PREDEFINITO;
   if (impTraccia) {
     const opzioni = [{ id: 'generata', nome: astroI18n.t('ui.musica-generata') }, ...musicaTracceDisponibili()];
     impTraccia.innerHTML = '';
@@ -40950,9 +40954,10 @@ function inizializzaImpostazioni() {
     });
   }
   if (impMusica) {
-    // In assenza di una scelta salvata il valore è false: nessun suono parte
-    // per sorpresa. Se era acceso, il primo gesto sblocca l'audio del browser.
-    impMusica.checked = localStorage.getItem(CHIAVE_MUSICA_SPAZIALE) === '1';
+    // La musica nasce accesa; una scelta esplicita dell'utente, anche per
+    // spegnerla, continua ad avere la precedenza. Il primo gesto sblocca
+    // l'audio come richiesto dai browser.
+    impMusica.checked = localStorage.getItem(CHIAVE_MUSICA_SPAZIALE) !== '0';
     impMusica.addEventListener('change', () => {
       const attiva = impMusica.checked;
       try { localStorage.setItem(CHIAVE_MUSICA_SPAZIALE, attiva ? '1' : '0'); } catch (e) { /* niente storage */ }
