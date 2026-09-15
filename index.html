@@ -2559,7 +2559,18 @@
             <input id="imp-musica-spaziale" type="checkbox" class="accent-blue-500">
             <span data-i18n="ui.musica-spaziale">Musica spaziale di sottofondo</span>
           </label>
-          <p class="text-xs text-slate-500" data-i18n="ui.musica-spaziale-spiega">Un paesaggio sonoro ambient generato dall'app. È disattivato per impostazione predefinita.</p>
+          <div class="impostazione-musica-grid">
+            <label class="text-xs text-slate-400" for="imp-musica-traccia">
+              <span data-i18n="ui.traccia-musicale">Traccia</span>
+              <select id="imp-musica-traccia" class="campo-cielo mt-1"></select>
+            </label>
+            <label class="text-xs text-slate-400" for="imp-musica-volume">
+              <span data-i18n="ui.volume-musica">Volume</span>
+              <span id="imp-musica-volume-valore" class="impostazione-musica-valore">35%</span>
+              <input id="imp-musica-volume" type="range" min="0" max="100" step="5" value="35">
+            </label>
+          </div>
+          <p id="imp-musica-stato" class="text-xs text-slate-500" aria-live="polite" data-i18n="ui.musica-spaziale-spiega">Scegli il paesaggio sonoro generato dall'app oppure una traccia della cartella musica. È disattivata per impostazione predefinita.</p>
         </section>
 
         <!-- La posizione ha una finestra tutta sua: qui resta solo il
@@ -2845,6 +2856,8 @@
   <script src="lingue/it.js"></script>
   <script src="lingue/en.js"></script>
   <script src="i18n.js"></script>
+  <!-- Elenco modificabile delle tracce locali: viene prima del lettore in app.js. -->
+  <script src="musica/catalogo.js"></script>
   <script src="app.js"></script>
   <script src="telescopio.js"></script>
 

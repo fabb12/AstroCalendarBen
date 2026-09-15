@@ -7713,6 +7713,8 @@ const CHIAVE_SKY_DURATA_HOVER = 'astrocalendario_durata_hover';
 const CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO = 'astrocalendario_durata_mappa_spostamento';
 const CHIAVE_SKY_HOVER = 'astrocalendario_modalita_hover';
 const CHIAVE_MUSICA_SPAZIALE = 'astrocalendario_musica_spaziale';
+const CHIAVE_MUSICA_TRACCIA = 'astrocalendario_musica_traccia';
+const CHIAVE_MUSICA_VOLUME = 'astrocalendario_musica_volume';
 const SKY_SOSTA_PREDEFINITA_SEC = 1.2;
 const SKY_DURATA_HOVER_PREDEFINITA_SEC = 5;
 const SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC = 5;
@@ -40718,14 +40720,54 @@ function aggiornaSchedaImpostazioni() {
   box.className = qualitaPosizione() === 'approssimata' ? 'text-sm text-amber-400' : 'text-sm text-green-400';
 }
 
-// Un sottofondo senza file da scaricare: il Web Audio API costruisce un
-// accordo molto lento e leggero. Nasce soltanto dopo un gesto dell'utente,
-// come richiedono i browser, e viene distrutto quando l'opzione si spegne.
+// Il sottofondo può essere l'accordo leggero costruito con Web Audio oppure
+// una delle tracce locali dichiarate in musica/catalogo.js. Nasce soltanto
+// dopo un gesto dell'utente, come richiedono i browser, e viene distrutto
+// quando l'opzione si spegne.
 let musicaSpaziale = null;
+let musicaVolume = 0.35;
+
+function musicaTracceDisponibili() {
+  const viste = new Set();
+  return (Array.isArray(window.ASTRO_TRACCE_MUSICALI) ? window.ASTRO_TRACCE_MUSICALI : [])
+    .filter(traccia => {
+      if (!traccia || typeof traccia.id !== 'string' || !traccia.id.trim() ||
+          typeof traccia.nome !== 'string' || !traccia.nome.trim() ||
+          typeof traccia.file !== 'string' || !traccia.file.trim() || viste.has(traccia.id)) return false;
+      viste.add(traccia.id);
+      return true;
+    });
+}
+
+function musicaIdScelta() {
+  const salvata = localStorage.getItem(CHIAVE_MUSICA_TRACCIA) || 'generata';
+  return salvata === 'generata' || musicaTracceDisponibili().some(t => t.id === salvata)
+    ? salvata : 'generata';
+}
+
+function musicaImpostaStato(chiave, errore = false) {
+  const stato = document.getElementById('imp-musica-stato');
+  if (!stato) return;
+  stato.textContent = (window.astroI18n && astroI18n.t) ? astroI18n.t(chiave) : '';
+  stato.className = `text-xs ${errore ? 'text-red-400' : 'text-slate-500'}`;
+}
 
 function avviaMusicaSpaziale() {
   if (musicaSpaziale) {
-    musicaSpaziale.contesto.resume().catch(() => {});
+    if (musicaSpaziale.tipo === 'file') musicaSpaziale.audio.play().catch(() => musicaImpostaStato('ui.musica-errore', true));
+    else musicaSpaziale.contesto.resume().catch(() => {});
+    return;
+  }
+  const scelta = musicaIdScelta();
+  const traccia = musicaTracceDisponibili().find(t => t.id === scelta);
+  if (traccia) {
+    const audio = new Audio(`musica/${encodeURIComponent(traccia.file)}`);
+    audio.loop = true;
+    audio.preload = 'auto';
+    audio.volume = musicaVolume;
+    audio.addEventListener('error', () => musicaImpostaStato('ui.musica-errore', true));
+    musicaSpaziale = { tipo: 'file', audio };
+    audio.play().catch(() => musicaImpostaStato('ui.musica-errore', true));
     return;
   }
   const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -40734,7 +40776,8 @@ function avviaMusicaSpaziale() {
   const contesto = new AudioContext();
   const volume = contesto.createGain();
   volume.gain.setValueAtTime(0.0001, contesto.currentTime);
-  volume.gain.exponentialRampToValueAtTime(0.045, contesto.currentTime + 3);
+  volume.gain.exponentialRampToValueAtTime(
+    Math.max(0.0001, 0.045 * (musicaVolume / 0.35)), contesto.currentTime + 3);
   volume.connect(contesto.destination);
 
   const voci = [55, 82.41, 110, 164.81].map((frequenza, indice) => {
@@ -40760,7 +40803,7 @@ function avviaMusicaSpaziale() {
   deriva.connect(profondita);
   voci.forEach(voce => profondita.connect(voce.detune));
   deriva.start();
-  musicaSpaziale = { contesto, volume, voci: [...voci, deriva] };
+  musicaSpaziale = { tipo: 'generata', contesto, volume, voci: [...voci, deriva] };
   contesto.resume().catch(() => {});
 }
 
@@ -40768,6 +40811,11 @@ function fermaMusicaSpaziale() {
   if (!musicaSpaziale) return;
   const musica = musicaSpaziale;
   musicaSpaziale = null;
+  if (musica.tipo === 'file') {
+    musica.audio.pause();
+    musica.audio.currentTime = 0;
+    return;
+  }
   musica.volume.gain.cancelScheduledValues(musica.contesto.currentTime);
   musica.volume.gain.setTargetAtTime(0.0001, musica.contesto.currentTime, 0.25);
   setTimeout(() => musica.contesto.close().catch(() => {}), 1200);
@@ -40787,6 +40835,47 @@ function inizializzaImpostazioni() {
   if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudi(); });
 
   const impMusica = document.getElementById('imp-musica-spaziale');
+  const impTraccia = document.getElementById('imp-musica-traccia');
+  const impVolume = document.getElementById('imp-musica-volume');
+  const impVolumeValore = document.getElementById('imp-musica-volume-valore');
+  const volumeSalvato = parseFloat(localStorage.getItem(CHIAVE_MUSICA_VOLUME));
+  musicaVolume = Number.isFinite(volumeSalvato) ? Math.max(0, Math.min(1, volumeSalvato)) : 0.35;
+  if (impTraccia) {
+    const opzioni = [{ id: 'generata', nome: astroI18n.t('ui.musica-generata') }, ...musicaTracceDisponibili()];
+    impTraccia.innerHTML = '';
+    opzioni.forEach(traccia => {
+      const opzione = document.createElement('option');
+      opzione.value = traccia.id;
+      opzione.textContent = traccia.nome;
+      impTraccia.appendChild(opzione);
+    });
+    impTraccia.value = musicaIdScelta();
+    if (astroI18n && typeof astroI18n.alCambio === 'function') astroI18n.alCambio(() => {
+      const generata = impTraccia.querySelector('option[value="generata"]');
+      if (generata) generata.textContent = astroI18n.t('ui.musica-generata');
+      musicaImpostaStato('ui.musica-spaziale-spiega');
+    });
+    impTraccia.addEventListener('change', () => {
+      try { localStorage.setItem(CHIAVE_MUSICA_TRACCIA, impTraccia.value); } catch (e) { /* niente storage */ }
+      if (impMusica && impMusica.checked) { fermaMusicaSpaziale(); avviaMusicaSpaziale(); }
+      musicaImpostaStato('ui.musica-spaziale-spiega');
+    });
+  }
+  if (impVolume) {
+    const aggiornaVolume = () => {
+      musicaVolume = Number(impVolume.value) / 100;
+      if (impVolumeValore) impVolumeValore.textContent = `${impVolume.value}%`;
+      if (musicaSpaziale?.tipo === 'file') musicaSpaziale.audio.volume = musicaVolume;
+      if (musicaSpaziale?.tipo === 'generata') musicaSpaziale.volume.gain.setTargetAtTime(
+        Math.max(0.0001, 0.045 * (musicaVolume / 0.35)), musicaSpaziale.contesto.currentTime, 0.08);
+    };
+    impVolume.value = String(Math.round(musicaVolume * 100));
+    aggiornaVolume();
+    impVolume.addEventListener('input', aggiornaVolume);
+    impVolume.addEventListener('change', () => {
+      try { localStorage.setItem(CHIAVE_MUSICA_VOLUME, String(musicaVolume)); } catch (e) { /* niente storage */ }
+    });
+  }
   if (impMusica) {
     // In assenza di una scelta salvata il valore è false: nessun suono parte
     // per sorpresa. Se era acceso, il primo gesto sblocca l'audio del browser.
