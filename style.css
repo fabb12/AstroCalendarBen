@@ -586,6 +586,20 @@ body .focus\:border-blue-500:focus {
   box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.18);
   outline: none;
 }
+
+.impostazione-musica-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, .7fr);
+  gap: .75rem;
+  align-items: end;
+}
+.impostazione-musica-grid label { min-width: 0; }
+.impostazione-musica-grid select { width: 100%; }
+.impostazione-musica-grid input[type="range"] { width: 100%; margin-top: .65rem; }
+.impostazione-musica-valore { float: right; color: var(--testo); font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) {
+  .impostazione-musica-grid { grid-template-columns: 1fr; }
+}
 body input[type="color"] { padding: 4px; }
 label { color: var(--testo-2); }
 

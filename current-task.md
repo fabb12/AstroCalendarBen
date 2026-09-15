@@ -35,6 +35,19 @@ va passato `CHROMIUM=...` — il valore di serie degli script punta a
 
 ## Ultimo intervento completato
 
+**La musica di sottofondo ora ha un catalogo di tracce locali.** La cartella
+`musica/` contiene il registro `catalogo.js` e le istruzioni per aggiungere i
+file audio. Nelle Impostazioni si sceglie fra il paesaggio generato e le tracce
+registrate, si regola il volume e si ricordano entrambe le preferenze. Il
+lettore riproduce i file in loop e mostra un errore leggibile se un file manca.
+
+Cache **v335**.
+
+Toccati: `app.js`, `index.html`, `style.css`, `musica/catalogo.js`,
+`musica/LEGGIMI.md`, `lingue/it.js`, `lingue/en.js`, `sw.js`, `CLAUDE.md`.
+
+## Intervento precedente
+
 **Le lune dei pianeti nella vista 3D, e nella caccia di Missione Cielo.**
 Quattro cose in una passata, tutte legate fra loro:
 
@@ -69,7 +82,7 @@ Cache **v329**.
 Toccati: `app.js`, `missione-cielo.js`, `lingue/it.js`, `lingue/en.js`,
 `scripts/prova-missione.js`, `scripts/prova-volo.js`, `sw.js`, `CLAUDE.md`.
 
-## Intervento precedente
+## Intervento ancora precedente
 
 **Il tasto Riascolta del riquadro informativo di Missione Cielo è diventato
 un'icona.** Ora vive nella riga superiore accanto alla maniglia per spostare il
