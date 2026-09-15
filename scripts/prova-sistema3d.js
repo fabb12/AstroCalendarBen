@@ -117,10 +117,37 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   await pagina.waitForTimeout(2500);
 
   // La finestra si apre dal planetario, che è da dove ci si arriva davvero
-  await pagina.evaluate(() => { mostraVista('cielo'); });
+  await pagina.evaluate(() => {
+    mostraVista('cielo');
+    // Un istante e un passo riconoscibili: il passaggio alla vista 3D deve
+    // portarli con sé, non sostituire il passo con quello che piace alla scena.
+    skyImpostaOffsetTempo(123456);
+    skyImpostaPassoTempo(600);
+  });
   await pagina.waitForTimeout(1200);
   await pagina.evaluate(() => { apriSistemaSolare(); });
   await pagina.waitForTimeout(1500);
+
+  const tempoIngresso = await pagina.evaluate(() => ({
+    offset: sky.offsetTempoSec,
+    passo: sky.passoTempoSec,
+    passo3d: solPasso().sec
+  }));
+  ok('entrando nel Sistema Solare resta lo stesso istante', tempoIngresso.offset === 123456);
+  ok('entrando nel Sistema Solare resta lo stesso passo',
+    tempoIngresso.passo === 600 && tempoIngresso.passo3d === 600,
+    tempoIngresso.passo3d + ' secondi');
+
+  const tempoRitorno = await pagina.evaluate(() => {
+    chiudiSistemaSolare();
+    const stato = { offset: sky.offsetTempoSec, passo: sky.passoTempoSec };
+    apriSistemaSolare({ senzaVolo: true });
+    return stato;
+  });
+  await pagina.waitForTimeout(500);
+  ok('tornando al planetario resta lo stesso istante', tempoRitorno.offset === 123456);
+  ok('tornando al planetario resta lo stesso passo', tempoRitorno.passo === 600,
+    tempoRitorno.passo + ' secondi');
 
   // Aprire la vista occupa il viewport del browser, senza anticipare la
   // scelta del tasto ⧆: solo quel tasto puo' chiedere il Fullscreen API.
