@@ -11011,23 +11011,45 @@ body button.did-ponte:active { transform: translateY(1px); }
   cursor: grab;
   touch-action: none;
 }
-/* La riga in cima al riquadro: maniglia a sinistra, chiusura a destra e
-   in mezzo il comando che finisce la serata. Sono tutti e tre fuori dal
+/* Riascoltare e' un gesto sul riquadro, non un passo della caccia: il suo
+   simbolo vive accanto alla maniglia e lascia alle azioni in fondo soltanto
+   i comandi che fanno avanzare la missione. Etichetta e titolo restano nel
+   markup per chi usa un lettore di schermo o tiene fermo il puntatore. */
+.missione-ascolta {
+  position: absolute;
+  top: 5px;
+  left: 43px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--testo-2);
+  cursor: pointer;
+}
+/* La riga in cima al riquadro: maniglia e riascolto a sinistra, chiusura
+   a destra e in mezzo il comando che finisce la serata. Sono fuori dal
    flusso, appoggiati agli angoli, e lo spazio che occupano lo riserva
    l'imbottitura di `.missione-striscia-testo` qui sotto — i suoi 38px in
    cima sono questa riga. */
 .missione-striscia .missione-termina {
   position: absolute;
   top: 5px;
-  left: 43px;
+  left: 79px;
   min-height: 32px;
-  max-width: calc(100% - 90px);
+  max-width: calc(100% - 126px);
   padding: 0 9px;
   font-size: 0.73rem;
   white-space: nowrap;
 }
 .missione-trascina:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
 .missione-striscia.in-trascinamento .missione-trascina { cursor: grabbing; color: #fff; }
+.missione-ascolta:hover,
+.missione-ascolta:focus-visible { background: rgba(255, 255, 255, 0.09); color: #fff; }
 .missione-striscia-chiudi:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
 .missione-striscia-testo { padding: 38px 30px 0; }
 .missione-striscia.visibile { pointer-events: auto; }

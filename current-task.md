@@ -29,6 +29,17 @@ qualunque cosa (`git stash`, stesso conto: 222 passate, 1 fallita):
 
 ## Ultimo intervento completato
 
+**Il tasto Riascolta del riquadro informativo di Missione Cielo è diventato
+un'icona.** Ora vive nella riga superiore accanto alla maniglia per spostare il
+riquadro, invece di occupare spazio fra le azioni della caccia; conserva nome
+accessibile e suggerimento in italiano o inglese. Aggiunta una prova di markup e
+posizione. Cache **v328**.
+
+Toccati: `app.js`, `missione-cielo.js`, `style.css`,
+`scripts/prova-missione.js`, `sw.js`.
+
+## Intervento precedente
+
 **La voce di Missione Cielo non resta più appesa al ponte Edge-TTS.** La
 richiesta remota adesso scade dopo 4,5 secondi, viene abortita e lascia partire
 il ripiego Web Speech del dispositivo. Prima un endpoint raggiungibile ma
@@ -37,7 +48,7 @@ quindi il ripiego, pur esistendo, non veniva mai chiamato. Cache **v325**.
 
 Toccati: `missione-cielo.js`, `EDGE-TTS.md`, `sw.js`, `CLAUDE.md`.
 
-## Intervento precedente
+## Intervento precedente (2)
 
 **Il volo dal planetario al Sistema Solare** (§7.7-quinquies di `app.js`,
 prefisso `solVolo`, prove in `scripts/prova-volo.js`).

@@ -2543,6 +2543,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       miss.strisciaNascosta = false; missMostraStrisciaCielo();
       const chiudi = el.querySelector('.missione-striscia-chiudi');
       const azioneX = chiudi && chiudi.dataset.missAzione;
+      const ascolta = el.querySelector('.missione-ascolta');
+      const rAscolta = riquadro(ascolta);
+      const rManigliaAperta = riquadro(el.querySelector('.missione-trascina'));
       const termina = el.querySelector('.missione-termina');
       const rTermina = riquadro(termina);
       const sopraTermina = rTermina && document.elementFromPoint(
@@ -2555,7 +2558,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       el.querySelector('.missione-visibilita').click(); await attesa();
       dopo.riaperta = !miss.strisciaNascosta && !!el.querySelector('.missione-striscia-indizio');
       return Object.assign(dopo, { azioneX, azioneTermina: termina && termina.dataset.missAzione,
-        testoTermina: termina && termina.textContent.trim(), rTermina,
+        testoTermina: termina && termina.textContent.trim(), rTermina, rAscolta, rManigliaAperta,
+        ascoltaTesto: ascolta && ascolta.textContent.trim(),
+        ascoltaEtichetta: ascolta && ascolta.getAttribute('aria-label'),
+        ascoltaIcona: !!(ascolta && ascolta.querySelector('svg')),
         terminaRaggiungibile: !!(sopraTermina && termina && (sopraTermina === termina || termina.contains(sopraTermina))) });
     });
     await pagina.setViewportSize({ width: 900, height: 900 });
@@ -2564,6 +2570,16 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(raccolta.azioneX, 'solo-voce', 'la × deve raccogliere, non terminare');
       assert.strictEqual(raccolta.nascosta, true);
       assert.strictEqual(raccolta.stato, 'inCorso', 'la missione è sopravvissuta alla ×');
+    });
+    prova('riascolta è un’icona accessibile accanto alla maniglia', () => {
+      assert.strictEqual(raccolta.ascoltaTesto, '', 'il tasto non deve ripetere la parola nel riquadro');
+      assert.ok(raccolta.ascoltaEtichetta, 'all’icona manca il nome accessibile');
+      assert.strictEqual(raccolta.ascoltaIcona, true, 'al tasto manca il disegno del volume');
+      assert.ok(raccolta.rAscolta && raccolta.rManigliaAperta, 'manca uno dei due comandi');
+      assert.ok(Math.abs(raccolta.rAscolta.alto - raccolta.rManigliaAperta.alto) <= 1,
+        'riascolta e sposta non sono sulla stessa riga');
+      assert.ok(raccolta.rAscolta.sx >= raccolta.rManigliaAperta.dx,
+        'riascolta non è accanto a sposta');
     });
     prova('raccolto, i suoi comandi gli stanno dentro', () => {
       const { box, maniglia, guida } = raccolta;
