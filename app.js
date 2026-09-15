@@ -31580,13 +31580,47 @@ function solGloboProietta(u, assi, r) {
   };
 }
 
-// La sagoma di un poligono sferico sul disco del globo. I vertici che stanno
-// dall'altra parte si appoggiano sul bordo lungo la loro direzione — è
-// l'approssimazione di sempre per una sagoma tagliata dal limbo, e su un
-// continente non si vede perché il taglio è proprio lì — e a ogni
-// attraversamento si infila il punto esatto in cui la costa passa sul filo.
+// La sagoma di un poligono sferico sul disco del globo. Fra due coordinate
+// geografiche la costa segue la sfera, non la corda 3D che le unisce. Questo
+// conta soprattutto al limbo: proiettare direttamente due vertici lontani
+// produce una retta dentro al disco; quando il pianeta gira quella corda può
+// attraversare mezza Terra e il riempimento diventa per un fotogramma un
+// grande triangolo di colore. È l'artefatto poligonale che compariva solo con
+// alcuni orientamenti.
+//
+// Suddividiamo quindi ogni lato lungo l'arco sferico più corto. I campioni
+// posteriori continuano ad appoggiarsi al bordo (così chiudono correttamente
+// la terra che esce dal disco), ma essendo fitti descrivono il limbo invece di
+// tagliarlo con poche corde. Tre gradi valgono meno di 0,14 px di freccia
+// anche sul globo massimo da 180 px: abbastanza liscio senza pesare sul frame.
+const SOL_COSTA_PASSO_RAD = 3 * Math.PI / 180;
+
+function solArcoSferico(a, b) {
+  const angolo = Math.acos(Math.max(-1, Math.min(1, skyDot(a, b))));
+  const quanti = Math.max(1, Math.ceil(angolo / SOL_COSTA_PASSO_RAD));
+  if (quanti === 1 || angolo < 1e-9) return [a];
+  const seno = Math.sin(angolo);
+  const fuori = [];
+  for (let i = 0; i < quanti; i++) {
+    const t = i / quanti;
+    const ka = Math.sin((1 - t) * angolo) / seno;
+    const kb = Math.sin(t * angolo) / seno;
+    fuori.push(solVersore([
+      a[0] * ka + b[0] * kb,
+      a[1] * ka + b[1] * kb,
+      a[2] * ka + b[2] * kb
+    ]));
+  }
+  return fuori;
+}
+
 function solSagomaSuGlobo(punti, telaio, assi, r) {
-  const v = punti.map(p => solPuntoTerra(telaio, p[1], p[0]));
+  const vertici = punti.map(p => solPuntoTerra(telaio, p[1], p[0]));
+  const v = [];
+  vertici.forEach((a, i) => {
+    const b = vertici[(i + 1) % vertici.length];
+    v.push(...solArcoSferico(a, b));
+  });
   const z = v.map(u => skyDot(u, assi.verso));
   if (!z.some(q => q > -0.02)) return null;          // tutto dall'altra parte
   const alBordo = (p) => {
