@@ -537,6 +537,33 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('ogni luna naturale cliccata diventa il centro della camera',
     schedeLune.length === SOL_LUNE.length + 1 && schedeLune.every(v => v.perno === v.id),
     schedeLune.map(v => `${v.id}:${v.perno}`).join(', '));
+  const centroLune = await pagina.evaluate(() => sol.lune.map(luna => {
+    sol.scelto = null;
+    solScegli(luna.id);
+    sol.zoom = sol.zoomVoluto;
+    solMisura();
+    sol.pianeti.forEach(p => {
+      p.scena = solScena(p.pos);
+      p.rDisegno = solRaggioCorpo(p);
+    });
+    solAggiornaPivot();
+    const pianeta = solCorpoDiId(luna.idPianeta);
+    const scenaLuna = solScenaLunaPianeta(luna, pianeta);
+    const pLuna = solProietta(scenaLuna);
+    const pPianeta = solProietta(pianeta.scena);
+    return {
+      id: luna.id,
+      scartoCentro: Math.hypot(pLuna.px - sol.cx, pLuna.py - sol.cy),
+      separazione: Math.hypot(pLuna.px - pPianeta.px, pLuna.py - pPianeta.py),
+      separazioneScena: Math.hypot(scenaLuna.x - pianeta.scena.x,
+        scenaLuna.y - pianeta.scena.y, scenaLuna.z - pianeta.scena.z) * sol.scala,
+      raggioPianeta: pianeta.rDisegno
+    };
+  }));
+  ok('la camera centra la luna selezionata, non il centro del suo pianeta',
+    centroLune.every(v => v.scartoCentro < 1e-6 && v.separazioneScena > v.raggioPianeta),
+    centroLune.map(v => `${v.id}: centro ${v.scartoCentro.toFixed(3)}px, ` +
+      `pianeta ${v.separazione.toFixed(1)}px`).join(', '));
   ok('ogni scheda lunare contiene una descrizione specifica',
     schedeLune.every(v => /sol-nota-scheda/.test(v.html) &&
       !/sol\.luna\.descrizione/.test(v.html) && v.html.length > 500));
@@ -591,7 +618,9 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     avvicinamentoTitano.rDopo > avvicinamentoTitano.rPrima * 10 &&
       Math.abs(avvicinamentoTitano.rPrima / avvicinamentoTitano.rpPrima -
         avvicinamentoTitano.rDopo / avvicinamentoTitano.rpDopo) < 1e-9 &&
-      avvicinamentoTitano.dDopo > avvicinamentoTitano.dPrima * 100,
+      avvicinamentoTitano.dDopo > avvicinamentoTitano.dPrima * 10 &&
+      Math.abs(avvicinamentoTitano.dPrima / avvicinamentoTitano.rpPrima -
+        avvicinamentoTitano.dDopo / avvicinamentoTitano.rpDopo) < 1e-9,
     `raggio ${avvicinamentoTitano.rPrima.toFixed(1)}px -> ${avvicinamentoTitano.rDopo.toFixed(1)}px, ` +
       `rapporto col pianeta ${(avvicinamentoTitano.rPrima / avvicinamentoTitano.rpPrima).toFixed(3)} -> ` +
       `${(avvicinamentoTitano.rDopo / avvicinamentoTitano.rpDopo).toFixed(3)}, ` +

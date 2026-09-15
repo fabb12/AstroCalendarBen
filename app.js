@@ -30175,6 +30175,23 @@ function solStaccoLunaDi(l, pianeta) {
   return a + q * (SOL_LUNA_STACCO_B - a);
 }
 
+// La distanza da usare nel disegno fra una luna e il suo pianeta. Quando la
+// luna diventa il perno non possiamo passare di colpo alla sola distanza
+// fisica: con i dischi simbolici ingranditi quella distanza finisce spesso
+// dentro al disco del pianeta. La telecamera centrerebbe il punto giusto, ma
+// sullo schermo sembrerebbe (e, di fatto, sarebbe) centrato il pianeta.
+// Manteniamo perciò almeno lo stacco leggibile del sistema; avvicinandosi, la
+// distanza vera puo' comunque superarlo. Questa funzione e' condivisa dal
+// pallino e dall'anello, così il centro orbitale mostrato resta uno solo.
+function solPassoLunaDi(l, pianeta) {
+  const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
+  const vero = d / SOL_RIF_UA;
+  if (sol.distanzeVere) return vero;
+  const leggibile = (pianeta.rDisegno || 8) * solStaccoLunaDi(l, pianeta) /
+    Math.max(1e-6, sol.scala);
+  return sol.perno === l.id ? Math.max(vero, leggibile) : leggibile;
+}
+
 // Il punto della scena in cui una luna è **disegnata**. Come per la Luna e per
 // i satelliti lo chiedono in tre — il pallino, il suo anello e il perno della
 // telecamera — e devono chiederlo alla stessa funzione.
@@ -30183,11 +30200,7 @@ function solScenaLunaPianeta(l, pianeta) {
   const t = p && (p.scena || (p.pos && solScena(p.pos)));
   if (!t || !l.off) return null;
   const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
-  const passo = (sol.distanzeVere || sol.perno === l.id)
-    // Sul perno lunare la separazione resta lineare: e' lo zoom della camera
-    // a far uscire il pianeta dal quadro mentre la luna rimane al centro.
-    ? d / SOL_RIF_UA
-    : (p.rDisegno || 8) * solStaccoLunaDi(l, p) / Math.max(1e-6, sol.scala);
+  const passo = solPassoLunaDi(l, p);
   return {
     x: t.x + l.off.x / d * passo,
     y: t.y + l.off.y / d * passo,
@@ -31276,10 +31289,7 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
     // L'anello: lo stesso cerchio su cui la luna gira, disegnato alla stessa
     // distanza a cui la luna è disegnata — due metri diversi vorrebbero dire
     // una luna che non corre sulla sua orbita.
-    const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
-    const passo = sol.distanzeVere
-      ? solRaggio(d)
-      : (pianeta.rDisegno || 8) * solStaccoLunaDi(l, pianeta) / Math.max(1e-6, sol.scala);
+    const passo = solPassoLunaDi(l, pianeta);
     const { u1, u2 } = solPianoLuna(pianeta.asse, l.incl || 0);
     const punti = [];
     for (let i = 0; i < SOL_LUNA_ANELLO_PUNTI; i++) {
