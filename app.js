@@ -30175,6 +30175,120 @@ function solScenaLunaPianeta(l, pianeta) {
   };
 }
 
+// Le lune non sono pallini colorati in miniatura. Queste sono le loro
+// "impronte digitali" visibili: zolfo e vulcani su Io, linee nel ghiaccio
+// di Europa, terreno antichissimo su Callisto, foschia su Titano, i due
+// emisferi di Giapeto. Non sono fotografie incollate sulla tela: una piccola
+// pelle procedurale resta nitida a ogni densità di pixel, non richiede rete e
+// costa una volta sola grazie alla stessa cache usata dai pianeti.
+const SOL_PELLI_LUNE = {
+  Phobos:    { base: '#8b7767', chiaro: '#baa38d', scuro: '#55483f', crateri: 95, irregolare: 0.13, grande: [-28, 18, 0.28] },
+  Deimos:    { base: '#998a7c', chiaro: '#c5b5a2', scuro: '#685c52', crateri: 58, irregolare: 0.09 },
+  Io:        { base: '#e9cf62', chiaro: '#fff1a0', scuro: '#6d3a2b', macchie: 42, vulcani: 14 },
+  Europa:    { base: '#d8caaa', chiaro: '#f2ead7', scuro: '#8d604e', linee: 34, crateri: 8 },
+  Ganymede:  { base: '#8d8378', chiaro: '#c4b6a5', scuro: '#514c49', solchi: 38, crateri: 72 },
+  Callisto:  { base: '#514b45', chiaro: '#aaa092', scuro: '#282727', crateri: 150, grande: [32, 8, 0.31] },
+  Mimas:     { base: '#bbb9b3', chiaro: '#e1ded5', scuro: '#777570', crateri: 105, grande: [18, 12, 0.36] },
+  Enceladus: { base: '#e8eef0', chiaro: '#ffffff', scuro: '#7598ad', linee: 22, crateri: 28, tigre: true },
+  Rhea:      { base: '#aaa9a6', chiaro: '#d9d8d2', scuro: '#686a6a', crateri: 125, solchi: 14 },
+  Titan:     { base: '#c98235', chiaro: '#efbd65', scuro: '#75401f', foschia: true, macchie: 18 },
+  Iapetus:   { base: '#bdb7a9', chiaro: '#ded8c9', scuro: '#302d2b', crateri: 105, bicolore: true },
+  Miranda:   { base: '#aebcc0', chiaro: '#e0e7e7', scuro: '#65767c', solchi: 48, crateri: 38 },
+  Ariel:     { base: '#c5d2d4', chiaro: '#edf3f1', scuro: '#71898d', linee: 26, crateri: 48 },
+  Titania:   { base: '#aebfc1', chiaro: '#dce8e6', scuro: '#667b7d', solchi: 24, crateri: 70 },
+  Oberon:    { base: '#879496', chiaro: '#becac9', scuro: '#4c5b5d', crateri: 98 },
+  Triton:    { base: '#c8b5ae', chiaro: '#ead8cf', scuro: '#806d70', macchie: 34, linee: 14, calotta: true },
+  Charon:    { base: '#999795', chiaro: '#c9c6c1', scuro: '#555455', crateri: 85, poloRosso: true }
+};
+
+function solDipingiPelleLuna(ctx, id) {
+  const o = SOL_PELLI_LUNE[id];
+  if (!o) return;
+  const caso = skyCaso(skySeme('luna-sistema:' + id));
+  ctx.save();
+  ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = o.base; ctx.fillRect(-1, -1, 2, 2);
+  if (o.bicolore) {
+    const g = ctx.createLinearGradient(-1, 0, 1, 0);
+    g.addColorStop(0, o.scuro); g.addColorStop(0.42, o.scuro);
+    g.addColorStop(0.62, o.base); g.addColorStop(1, o.chiaro);
+    ctx.fillStyle = g; ctx.fillRect(-1, -1, 2, 2);
+  }
+  for (let i = 0; i < (o.macchie || 0); i++) {
+    const lon = caso() * 360 - 180, lat = Math.asin(caso() * 2 - 1) * SKY_R2D;
+    skyMacchiaSfera(ctx, lon, lat, 0.05 + caso() * 0.16, (c, r) => {
+      c.save(); c.scale(1, 0.55 + caso() * 0.35);
+      skyNuvola(c, r, caso() > 0.48 ? o.chiaro : o.scuro, 0.38, 0.2); c.restore();
+    });
+  }
+  // Faglie e solchi seguono archi curvi: Europa non sembra così una palla
+  // rigata, e le corone di Miranda/Ganimede restano riconoscibili.
+  const righe = (o.linee || 0) + (o.solchi || 0);
+  ctx.lineCap = 'round';
+  for (let i = 0; i < righe; i++) {
+    const y = caso() * 1.7 - 0.85, x = caso() * 1.2 - 0.6;
+    ctx.strokeStyle = i % 3 === 0 ? o.chiaro : o.scuro;
+    ctx.globalAlpha = o.solchi ? 0.28 : 0.42;
+    ctx.lineWidth = (o.solchi ? 0.018 : 0.012) + caso() * 0.018;
+    ctx.beginPath(); ctx.moveTo(-1.05, y);
+    ctx.bezierCurveTo(-0.35, y + x * 0.35, 0.35, y - x * 0.35, 1.05, y + x * 0.18);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  if (o.tigre) {
+    for (let i = -2; i <= 2; i++) {
+      ctx.strokeStyle = 'rgba(70, 139, 171, .72)'; ctx.lineWidth = 0.025;
+      ctx.beginPath(); ctx.moveTo(-0.58, 0.55 + i * 0.09); ctx.quadraticCurveTo(0, 0.36 + i * 0.08, 0.62, 0.58 + i * 0.07); ctx.stroke();
+    }
+  }
+  if (o.calotta || o.poloRosso) {
+    skyMacchiaSfera(ctx, 0, 72, 0.48, (c, r) => skyNuvola(c, r,
+      o.poloRosso ? '#713c3d' : '#efe4db', o.poloRosso ? 0.7 : 0.55, 0.55));
+  }
+  skyCrateriSfera(ctx, caso, o.crateri || 0, {
+    min: 0.009, max: 0.075, fondo: skyColoreConAlpha(o.scuro, 0.48),
+    orlo: skyColoreConAlpha(o.chiaro, 0.38)
+  });
+  if (o.grande) {
+    skyMacchiaSfera(ctx, o.grande[0], o.grande[1], o.grande[2], (c, r) => {
+      c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fillStyle = skyColoreConAlpha(o.scuro, 0.72); c.fill();
+      c.lineWidth = r * 0.16; c.strokeStyle = skyColoreConAlpha(o.chiaro, 0.76); c.stroke();
+      c.beginPath(); c.arc(0, 0, r * 0.55, 0, Math.PI * 2); c.strokeStyle = skyColoreConAlpha(o.scuro, 0.55); c.stroke();
+    });
+  }
+  for (let i = 0; i < (o.vulcani || 0); i++) {
+    skyMacchiaSfera(ctx, caso() * 320 - 160, caso() * 120 - 60, 0.025 + caso() * 0.05,
+      (c, r) => { c.fillStyle = '#431e24'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); });
+  }
+  const bordo = ctx.createRadialGradient(0, 0, 0.68, 0, 0, 1);
+  bordo.addColorStop(0, 'rgba(0,0,0,0)');
+  bordo.addColorStop(1, o.foschia ? 'rgba(116,55,16,.16)' : 'rgba(5,8,12,.3)');
+  ctx.fillStyle = bordo; ctx.fillRect(-1, -1, 2, 2);
+  ctx.restore();
+}
+
+function solFacciaLuna(l, r) {
+  if (!l || !SOL_PELLI_LUNE[l.id] || r < 1.35) return null;
+  return skyPelle('luna-sistema:' + l.id, skyLatoTela(Math.max(8, r)),
+    ctx => solDipingiPelleLuna(ctx, l.id));
+}
+
+// Phobos e Deimos hanno troppo poca gravità per essere sfere. Il bordo
+// deterministico evita l'effetto "patata che pulsa" fra due fotogrammi.
+function solPercorsoSagomaLuna(ctx, l, r) {
+  const irregolare = SOL_PELLI_LUNE[l.id] && SOL_PELLI_LUNE[l.id].irregolare;
+  if (!irregolare) { ctx.arc(0, 0, r, 0, Math.PI * 2); return; }
+  const caso = skyCaso(skySeme('sagoma-luna:' + l.id));
+  const punti = 18;
+  for (let i = 0; i < punti; i++) {
+    const a = i / punti * Math.PI * 2;
+    const rr = r * (1 + (caso() * 2 - 1) * irregolare);
+    const x = Math.cos(a) * rr, y = Math.sin(a) * rr * (1 - irregolare * 0.7);
+    if (!i) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
 // Un corpo qualunque della scena, da chiunque sia stato messo lì: gli otto
 // pianeti, la Luna, un mondo minore, una sonda, un satellite. Serve a tutto
 // ciò che deve saper trattare un identificativo senza sapere di che famiglia
@@ -31160,16 +31274,34 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
     const r = solRaggioLunaPianeta(l);
     sol.luneSchermo.push({ id: l.id, nome: l.nome, colore: l.colore, px: p.px, py: p.py, r });
     ctx.save();
-    ctx.fillStyle = l.colore;
-    ctx.beginPath();
-    ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.translate(p.px, p.py);
+    const k = solFrazione(pianeta, assi);
+    const versoSole = solVersoIlSole(pianeta);
+    const angLuce = versoSole ? solAngoloSchermo(versoSole, assi) : 0;
+    ctx.fillStyle = solColoreNotte(l.colore);
+    ctx.beginPath(); solPercorsoSagomaLuna(ctx, l, r); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); solPercorsoSagomaLuna(ctx, l, r); ctx.clip();
+    if (k < 0.985) {
+      ctx.rotate(angLuce); skyPercorsoIlluminato(ctx, r, k); ctx.clip(); ctx.rotate(-angLuce);
+    }
+    const faccia = solFacciaLuna(l, r);
+    if (faccia) ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
+    else {
+      ctx.fillStyle = l.colore; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    }
+    skyRilievoSfera(ctx, r, angLuce, { brillante: l.id === 'Enceladus' ? 0.18 : 0.08, bordo: 0.58 });
+    ctx.restore();
+    if (SOL_PELLI_LUNE[l.id] && SOL_PELLI_LUNE[l.id].foschia && r >= 2) {
+      ctx.strokeStyle = 'rgba(242, 174, 75, .6)'; ctx.lineWidth = Math.max(0.7, r * 0.12);
+      ctx.beginPath(); ctx.arc(0, 0, r - ctx.lineWidth / 2, 0, Math.PI * 2); ctx.stroke();
+    }
     if (sol.scelto === l.id) {
       ctx.strokeStyle = '#fff';
       ctx.globalAlpha = 0.85;
       ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.arc(p.px, p.py, Math.max(r + 5, 5), 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(r + 5, 5), 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
