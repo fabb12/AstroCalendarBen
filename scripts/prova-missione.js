@@ -2926,6 +2926,37 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       await new Promise(r => setTimeout(r, 1200));
     });
 
+    /* Due mondi lontani consecutivi appartengono alla stessa scena. Non si
+     * deve fingere di tornare al planetario e riaprire la 3D: oltre al volo
+     * inutile, l'apertura azzererebbe la camera che il giocatore ha appena
+     * usato. */
+    const stessaScena = await pagina.evaluate(async () => {
+      const m = miss.attiva;
+      const prima = Object.assign({}, m.tappe[0],
+        { indice: 0, esito: 'trovato', fase: 'scoperta', quandoEsito: Date.now() });
+      const seconda = Object.assign({}, prima, {
+        id: 'mondo3d:Eris', idSistema: 'Eris', nome: 'Eris', slug: 'eris', indice: 1,
+        esito: null, fase: 'ricerca', quandoEsito: null, ua: 68, zona: 'disco-diffuso'
+      });
+      m.tappe = [prima, seconda];
+      m.corrente = 0;
+      const apriOriginale = window.apriSistemaSolare;
+      let riaperture = 0;
+      window.apriSistemaSolare = (...args) => { riaperture++; return apriOriginale(...args); };
+      missAzione('continua', document.getElementById('missione-striscia'));
+      await new Promise(r => setTimeout(r, 500));
+      window.apriSistemaSolare = apriOriginale;
+      return { riaperture, aperto: sol.aperto, sistema: m.nelSistema,
+        corrente: m.corrente, padre: document.getElementById('missione-striscia').parentElement.id };
+    });
+    prova('due tappe 3D consecutive restano nella stessa scena senza un nuovo volo', () => {
+      assert.strictEqual(stessaScena.riaperture, 0, 'ha riaperto il Sistema Solare');
+      assert.strictEqual(stessaScena.aperto, true);
+      assert.strictEqual(stessaScena.sistema, true);
+      assert.strictEqual(stessaScena.corrente, 1);
+      assert.strictEqual(stessaScena.padre, 'sol-guscio');
+    });
+
     /* «…e poi passa al planetario quando tocca a lui»: la richiesta, in
      * una riga. Il cambio di schermo non è un tasto — è la conseguenza di
      * che natura ha la tappa successiva, e la striscia deve tornare con

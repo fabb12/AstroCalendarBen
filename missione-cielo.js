@@ -3399,6 +3399,10 @@ function missGuidaNelSistema(indice) {
     missRaccontaTappa(t);
     return;
   }
+  // Fra due tappe 3D la scena e' gia' quella giusta. Riaprirla farebbe
+  // ripartire il volo dal planetario, azzererebbe la camera e mostrerebbe un
+  // passaggio fra due viste che in realta' non abbiamo mai lasciato.
+  const sistemaGiaAperto = !!sol.aperto;
   m.corrente = indice;
   t.mostraAiuto = false;
   m.nelPlanetario = false;
@@ -3447,7 +3451,14 @@ function missGuidaNelSistema(indice) {
     if (typeof solAggiornaTasti === 'function') solAggiornaTasti();
     if (typeof solDisegna === 'function') solDisegna();
   };
-  apriSistemaSolare({ inquadra });
+  if (sistemaGiaAperto) {
+    // L'orologio della tappa puo' essere cambiato sopra: aggiorniamo la scena
+    // prima della nuova inquadratura, senza passare dal ciclo di apertura.
+    const quando = skyAdesso();
+    if (typeof solLeggiPosizioni === 'function') solLeggiPosizioni(quando);
+    if (typeof solCalcolaOrbite === 'function') solCalcolaOrbite(quando);
+    inquadra();
+  } else apriSistemaSolare({ inquadra });
   // Le tre famiglie di §7.7-bis nascono spente per chi le ha spente: con
   // loro spente il bersaglio non è disegnato, cioè non è toccabile.
   sol.mondiAccesi = true;
