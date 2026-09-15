@@ -29691,15 +29691,14 @@ function solCrescitaCorpo() {
   return Math.min(SOL_CRESCITA_CORPO_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
 }
 
-// Chi cresce con la crescita «da vicino»: il corpo su cui si sta girando, e
-// insieme a lui l'altro della coppia Terra–Luna. I due sono disegnati l'uno
-// accanto all'altro e a farne crescere uno solo si ottiene una Luna più
-// grossa della Terra proprio nel momento in cui le si sta guardando insieme —
-// che è l'unica cosa che quel disegno non deve mai dire.
+// Chi cresce con la crescita «da vicino»: il pianeta su cui si sta girando e,
+// nel solo caso della Terra, anche la Luna che le sta accanto. Quando il perno
+// e' invece una luna, lo zoom deve avvicinare la camera (allargando la sua
+// distanza dal pianeta), non gonfiare il pallino scelto.
 function solCorpoDelPerno(id) {
   if (!sol.perno) return false;
   if (sol.perno === id) return true;
-  return (sol.perno === 'Earth' && id === 'Moon') || (sol.perno === 'Moon' && id === 'Earth');
+  return sol.perno === 'Earth' && id === 'Moon';
 }
 
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
@@ -29734,9 +29733,12 @@ function solRaggioSole() {
 // Terra** proprio nel modo che promette di essere in scala (è un quarto di
 // Terra, non una Terra e mezza).
 function solRaggioLuna() {
-  // Girando intorno alla Luna — o alla Terra, che le sta accanto — cresce
-  // anche lei, come cresce qualunque corpo su cui ci si avvicini
-  const crescita = solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita();
+  // Dalla Terra i due corpi crescono insieme. Se il perno e' la Luna, invece,
+  // il disco conserva la sua misura facilitata e a crescere e' la distanza
+  // sullo schermo: e' la camera che le si avvicina, non la Luna che si gonfia.
+  const crescita = sol.perno === 'Moon'
+    ? solCrescita()
+    : (solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita());
   return sol.misureVere
     ? Math.max(0.25, (SOL_LUNA_KM / 2) / SOL_UA_KM * sol.scala)
     : SOL_RAGGIO_LUNA * crescita;
@@ -30135,15 +30137,12 @@ function solLeggiLune(quando, t) {
 // Quanto grande si disegna. In scala vera passa dallo stesso metro dei
 // pianeti; a corpi ingranditi il rapporto fra le lune è quello vero
 // compresso dalla radice cubica, se no Deimos sparirebbe accanto a Ganimede.
-// La luna scelta usa però la crescita ravvicinata del perno: applicarle la
-// crescita generale la lasciava ferma a pochi pixel perché quella è tosata
-// per non far invadere la scena dal Sole. La rotella avanzava fino a 25.000×,
-// Titano restava al centro, ma il suo disco non diventava più grande.
+// Anche quando e' il perno, il disco conserva questa misura: lo zoom muove la
+// camera verso la luna attraverso `solScenaLunaPianeta`, non gonfia il corpo.
 function solRaggioLunaPianeta(l) {
   if (sol.misureVere) return Math.max(0.25, (l.km / 2) / SOL_UA_KM * sol.scala);
   const q = Math.cbrt(Math.max(1, l.km) / SOL_LUNA_KM_RIF);
-  const crescita = sol.perno === l.id ? solCrescitaCorpo() : solCrescita();
-  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * crescita);
+  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * solCrescita());
 }
 
 // Lo `stacco` di una luna, rimappato perché stia **fuori** dagli anelli del
@@ -30170,8 +30169,10 @@ function solScenaLunaPianeta(l, pianeta) {
   const t = p && (p.scena || (p.pos && solScena(p.pos)));
   if (!t || !l.off) return null;
   const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
-  const passo = sol.distanzeVere
-    ? solRaggio(d)
+  const passo = (sol.distanzeVere || sol.perno === l.id)
+    // Sul perno lunare la separazione resta lineare: e' lo zoom della camera
+    // a far uscire il pianeta dal quadro mentre la luna rimane al centro.
+    ? d / SOL_RIF_UA
     : (p.rDisegno || 8) * solStaccoLunaDi(l, p) / Math.max(1e-6, sol.scala);
   return {
     x: t.x + l.off.x / d * passo,
@@ -30927,8 +30928,11 @@ function solColoreNotte(hex) {
 // distanze reali usa i 384.000 km calcolati per l'istante; nella modalità
 // facilitata resta abbastanza lontana da non finire nel pallino terrestre.
 function solStaccoLuna(terra) {
-  if (sol.distanzeVere && sol.luna && sol.luna.distanzaUa) {
-    return solRaggio(sol.luna.distanzaUa);
+  if ((sol.distanzeVere || sol.perno === 'Moon') && sol.luna && sol.luna.distanzaUa) {
+    // Col perno sulla Luna si usa la separazione lineare anche se la scena
+    // generale ha le distanze compresse: moltiplicata per `sol.scala` cresce
+    // con lo zoom e rende visibile l'avvicinamento della telecamera.
+    return sol.luna.distanzaUa / SOL_RIF_UA;
   }
   const r = (terra && terra.rDisegno) || SOL_RAGGIO_LUNA;
   return (r * 2 + 8) / Math.max(1e-6, sol.scala);
