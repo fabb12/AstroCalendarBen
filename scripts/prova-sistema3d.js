@@ -181,6 +181,43 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   });
   ok('lo schermo intero resta una scelta del tasto dedicato', soloTasto);
 
+  console.log('\n— inerzia della camera —');
+  const inerzia = await pagina.evaluate(() => {
+    // Il planetario e la scena 3D usano entrambi velocita' e attrito nel loro
+    // ciclo. Li facciamo avanzare di un fotogramma controllato, senza affidare
+    // la prova alla cadenza (variabile) del browser headless.
+    const cielo0 = { az: sky.manuale.az, alt: sky.manuale.alt };
+    sky.inerzia = { vAz: 30, vAlt: 12 };
+    skyScorriPerInerzia(0.1);
+    const cielo = {
+      mosso: sky.manuale.az !== cielo0.az && sky.manuale.alt !== cielo0.alt,
+      frenato: sky.inerzia && sky.inerzia.vAz < 30 && sky.inerzia.vAlt < 12
+    };
+    sky.inerzia = null;
+    sky.manuale.az = cielo0.az;
+    sky.manuale.alt = cielo0.alt;
+
+    const stato = { az: sol.az, elev: sol.elev, elevVoluta: sol.elevVoluta,
+      panX: sol.panX, panY: sol.panY };
+    sol.inerzia = { vx: 500, vy: 240, pan: false };
+    solScorriPerInerzia(0.1);
+    const rotazione = {
+      mossa: sol.az !== stato.az && sol.elev !== stato.elev,
+      frenata: sol.inerzia && sol.inerzia.vx < 500 && sol.inerzia.vy < 240
+    };
+    Object.assign(sol, stato);
+    sol.inerzia = { vx: 300, vy: -180, pan: true };
+    solScorriPerInerzia(0.1);
+    const panoramica = sol.panX !== stato.panX && sol.panY !== stato.panY;
+    Object.assign(sol, stato, { inerzia: null });
+    return { cielo, rotazione, panoramica };
+  });
+  ok('il planetario continua il drag e ne smorza la velocità',
+    inerzia.cielo.mosso && inerzia.cielo.frenato);
+  ok('la rotazione 3D continua il drag e ne smorza la velocità',
+    inerzia.rotazione.mossa && inerzia.rotazione.frenata);
+  ok('anche il trascinamento panoramico 3D conserva l\'inerzia', inerzia.panoramica);
+
   // =====================================================================
   console.log('\n— le tre famiglie ci sono —');
 
