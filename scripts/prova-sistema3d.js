@@ -508,6 +508,8 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('ogni scheda lunare contiene una descrizione specifica',
     schedeLune.every(v => /sol-nota-scheda/.test(v.html) &&
       !/sol\.luna\.descrizione/.test(v.html) && v.html.length > 500));
+  ok('le schede lunari non mostrano note generiche sulla scena',
+    schedeLune.every(v => !/posizioneVera|posizioneModello|quattro lune di Giove|four moons/.test(v.html)));
   const schedeUniformi = await pagina.evaluate(() => [
     ...sol.pianeti, ...sol.mondi, ...sol.sonde, ...sol.satelliti, ...sol.lune,
     solCorpoDiId('Moon')
@@ -521,6 +523,10 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     schedeUniformi.every(v => /class="sol-nota-scheda sol-descrizione"/.test(v.html) &&
       !/sol\.(?:luna\.)?descrizione\./.test(v.html)),
     schedeUniformi.filter(v => !/sol-descrizione/.test(v.html)).map(v => v.id).join(', '));
+  ok('tutte le schede 3D mantengono la stessa sequenza testata, descrizione e dati',
+    schedeUniformi.every(v => /sol-scheda-testa[\s\S]*sol-descrizione[\s\S]*sol-dati/.test(v.html)),
+    schedeUniformi.filter(v => !/sol-scheda-testa[\s\S]*sol-descrizione[\s\S]*sol-dati/.test(v.html))
+      .map(v => v.id).join(', '));
   ok('nessuna scheda mostra il tasto per tornare alla vista d’insieme',
     schedeUniformi.every(v => !/solLasciaPerno|sol\.azione\.insieme|Torna alla vista/.test(v.html)));
   ok('da ogni luna si può arrivare al massimo zoom ravvicinato',

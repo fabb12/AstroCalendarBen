@@ -33652,12 +33652,10 @@ function solSchedaSatellite(s) {
  * di chi è, quanto è larga e quanto dura il suo giro. La distanza dal pianeta
  * si scrive in chilometri — è il metro in cui si pensa a un sistema di lune —
  * e in raggi del pianeta, che è il numero con cui si capisce se sta dentro o
- * fuori (Io sta a sei raggi di Giove, Callisto a ventisei).
- *
- * La nota in fondo non è un ornamento: per tutte tranne le quattro di Giove
- * la posizione lungo l'anello non è misurata (vedi il commento di `SOL_LUNE`),
- * e una scheda che non lo dicesse farebbe passare per effemeride quello che è
- * un modello. */
+ * fuori (Io sta a sei raggi di Giove, Callisto a ventisei). Come nelle schede
+ * delle altre famiglie, il testo libero resta soltanto la descrizione specifica
+ * dell'oggetto: le note sul modello della scena non appartengono alla luna
+ * selezionata e rendevano le schede lunari diverse da tutte le altre. */
 function solSchedaLuna(l) {
   const pianeta = solCorpoDiId(l.idPianeta);
   const raggiPianeta = pianeta && pianeta.km ? l.raggioKm / (pianeta.km / 2) : 0;
@@ -33672,7 +33670,6 @@ function solSchedaLuna(l) {
         <li><span>${astroI18n.t('sol.dati.dalPianeta')}</span><strong>${solNumero(l.raggioKm, 0)} km${raggiPianeta ? ` · ${solNumero(raggiPianeta, 1)} R` : ''}</strong></li>
         <li><span>${astroI18n.t('sol.dati.giroPianeta')}</span><strong>${solNumero(l.giorni, l.giorni < 10 ? 2 : 1)} ${astroI18n.t('sol.giorni')}</strong></li>
       </ul>
-      <p class="sol-nota-scheda">${astroI18n.t(l.ae ? 'sol.luna.posizioneVera' : 'sol.luna.posizioneModello')}</p>
       ${solAzioniPerno(l.id, l.nome, { senzaPlanetario: true })}`;
 }
 

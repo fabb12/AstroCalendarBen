@@ -352,8 +352,6 @@ window.ASTRO_DIZIONARI['it'] = {
     'sol.dati.dalPianeta': 'Dal suo pianeta',
     'sol.dati.giroPianeta': 'Un giro attorno al suo pianeta',
     'sol.famiglia.luna': 'Luna di {pianeta}',
-    'sol.luna.posizioneVera': 'Le quattro lune di Giove sono dove sono davvero: la posizione è la stessa che il planetario usa per disegnarle in fila nell’oculare.',
-    'sol.luna.posizioneModello': 'Raggio dell’orbita, periodo e piano sono quelli veri; il punto del giro in cui si trova stasera è un modello, non una misura. La distanza dal pianeta è esagerata perché il sistema si veda.',
     'sol.descrizione.Mercury': 'Mercurio è il pianeta più vicino al Sole e il più piccolo: un mondo roccioso coperto di crateri, con escursioni termiche estreme.',
     'sol.descrizione.Venus': 'Venere è avvolto da nubi di acido solforico e da un’atmosfera densissima, che lo rende il pianeta più caldo.',
     'sol.descrizione.Earth': 'La Terra è un pianeta roccioso ricco di acqua liquida: la sua atmosfera e il campo magnetico proteggono la vita in superficie.',
