@@ -347,6 +347,13 @@ window.ASTRO_DIZIONARI['it'] = {
     'sol.dati.velocita': 'Velocità',
     'sol.dati.inViaggio': 'In viaggio da',
     'sol.dati.laLuce': 'La luce ci mette',
+    'sol.giorni': 'giorni',
+    'sol.dati.diametro': 'Diametro',
+    'sol.dati.dalPianeta': 'Dal suo pianeta',
+    'sol.dati.giroPianeta': 'Un giro attorno al suo pianeta',
+    'sol.famiglia.luna': 'Luna di {pianeta}',
+    'sol.luna.posizioneVera': 'Le quattro lune di Giove sono dove sono davvero: la posizione è la stessa che il planetario usa per disegnarle in fila nell’oculare.',
+    'sol.luna.posizioneModello': 'Raggio dell’orbita, periodo e piano sono quelli veri; il punto del giro in cui si trova stasera è un modello, non una misura. La distanza dal pianeta è esagerata perché il sistema si veda.',
     'sol.famiglia.nano': 'Pianeta nano',
     'sol.famiglia.asteroide': 'Asteroide della fascia principale',
     'sol.famiglia.centauro': 'Centauro, fra Saturno e Urano',
@@ -451,6 +458,27 @@ window.ASTRO_DIZIONARI['it'] = {
     'corpo.Gonggong': 'Gonggong',
     'corpo.Eris': 'Eris',
     'corpo.Sedna': 'Sedna',
+    // Le lune principali dei pianeti (`SOL_LUNE`). Valgono le stesse due
+    // regole dei mondi minori: il nome sta qui anche quando è uguale in
+    // tutte le lingue, perché è da qui che la ricerca legge come si può
+    // chiamare un corpo.
+    'corpo.Phobos': 'Fobos',
+    'corpo.Deimos': 'Deimos',
+    'corpo.Io': 'Io',
+    'corpo.Europa': 'Europa',
+    'corpo.Ganymede': 'Ganimede',
+    'corpo.Callisto': 'Callisto',
+    'corpo.Mimas': 'Mimante',
+    'corpo.Enceladus': 'Encelado',
+    'corpo.Rhea': 'Rea',
+    'corpo.Titan': 'Titano',
+    'corpo.Iapetus': 'Giapeto',
+    'corpo.Miranda': 'Miranda',
+    'corpo.Ariel': 'Ariel',
+    'corpo.Titania': 'Titania',
+    'corpo.Oberon': 'Oberon',
+    'corpo.Triton': 'Tritone',
+    'corpo.Charon': 'Caronte',
     'corpo.Sun.classe': 'Stella: la nostra',
     'corpo.Sun.nota': 'Contiene il 99,86% della massa di tutto il Sistema Solare.',
     'corpo.Moon.classe': 'Satellite naturale della Terra',
@@ -2518,27 +2546,40 @@ window.ASTRO_DIZIONARI['it'] = {
     "missione.gioco.enigmaTreBimbi.profondo.1": "Dentro di me ci stanno migliaia e migliaia di stelle, tutte insieme.",
     "missione.gioco.enigmaTreBimbi.profondo.2": "La mia luce è partita tantissimo tempo fa: la stai vedendo in ritardo.",
     "missione.gioco.enigmaTreBimbi.profondo.3": "Sembro piccola, ma sono più larga di tante Lune messe in fila.",
-    // Dove mi nascondo. La direzione c'era già; qui c'è anche quella
-    // opposta, perché al buio girarsi partendo da quello che si ha
-    // davanti è più facile che cercare un nord che non si vede.
-    "missione.gioco.dove.basso.1": "Sto in basso, dove il cielo si sporca di tetti e di lampioni: gira verso {dove} e non alzare il mento.",
-    "missione.gioco.dove.basso.2": "Dai le spalle a {spalle} e abbassa lo sguardo fin quasi agli alberi: sono lì, verso {dove}, in quel dito di cielo che quasi nessuno guarda.",
-    "missione.gioco.dove.basso.3": "Verso {dove}, poco sopra l'orizzonte. L'aria mi fa tremare più del dovuto, e non è colpa mia: è tutta quella che c'è in mezzo.",
-    "missione.gioco.dove.mezzo.1": "Non sto fra i tetti e non sto sopra la tua testa: a mezza strada fra i due, verso {dove}.",
-    "missione.gioco.dove.mezzo.2": "Metti {spalle} dietro la schiena e alza il braccio a metà: da qualche parte lungo quel braccio, verso {dove}, ci sono io.",
-    "missione.gioco.dove.mezzo.3": "Verso {dove}, a mezza altezza: la fascia più comoda del cielo, quella in cui non serve né chinarsi né sdraiarsi.",
-    "missione.gioco.dove.alto.1": "Sto in alto, verso {dove}, quasi sulla tua verticale: il collo se ne accorgerà.",
-    "missione.gioco.dove.alto.2": "Alza il mento finché non ti pesa e volta le spalle a {spalle}: sono lassù, verso {dove}, nel pezzo di cielo che nessun palazzo può rubarti.",
-    "missione.gioco.dove.alto.3": "Verso {dove}, molto in alto — che è il posto migliore in cui io possa stare: lassù, fra me e te, c'è la minor quantità d'aria possibile.",
-    // Chi mi fa compagnia. La distanza si dice in dita e pugni a braccio
-    // teso, che è il goniometro che tutti hanno addosso; i gradi restano
-    // in coda, per chi li vuole.
-    "missione.gioco.compagnia.1": "Non sono solo: {nome} mi fa da lanterna. Trovala, poi scivola verso {verso} di {misura}, {su}: l'ultima cosa che incontri sono io — sono circa {gradi} gradi in tutto.",
-    "missione.gioco.compagnia.2": "Chi cerca me trova prima {nome}, che è più facile e non si nasconde. Da lei: {misura} verso {verso}, {su}. Fra noi ci sono circa {gradi} gradi di cielo.",
-    "missione.gioco.compagnia.3": "Ti do un compagno di strada: {nome}. Mettila sulla punta del dito, poi vai verso {verso} per {misura}, {su}. Se ti ritrovi nel buio pesto sei andato troppo in là: da lei mi separano {gradi} gradi.",
-    "missione.gioco.solitudine.1": "Qui attorno non c'è nessuna lanterna a farmi da riferimento: devi fidarti degli occhi. Cerca {luce}, verso {dove}.",
-    "missione.gioco.solitudine.2": "Sono in un pezzo di cielo senza insegne, verso {dove}, {altezza}. Cerca {luce}, e passa lo sguardo lento invece di fissare un punto solo.",
-    "missione.gioco.solitudine.3": "Nessuna stella vicina mi tradisce: sto in mezzo al niente, verso {dove}. Cerca {luce}, e dai agli occhi il tempo di abituarsi al buio — è la parte che quasi nessuno fa.",
+    /* Dove mi nascondo: la seconda strofa, ed è la riga che la
+     * segnalazione «è poco chiara» ha rifatto. Prima diceva la direzione e
+     * una fascia — «a mezza altezza» — e si fermava lì: ma quella fascia
+     * copre trentacinque gradi di cielo, cioè mezzo braccio teso, e con
+     * quella sola informazione si guarda dalla parte giusta senza trovare
+     * niente. Adesso ogni frase porta tre cose, sempre nello stesso ordine:
+     * il **punto cardinale**, i **gradi** sopra l'orizzonte e la misura a
+     * braccio teso che li rende un gesto — un pugno vale dieci gradi, ed è
+     * il goniometro che tutti hanno addosso. Il punto cardinale opposto
+     * resta, perché al buio girarsi partendo da quello che si ha davanti è
+     * più facile che cercare un nord che non si vede. */
+    "missione.gioco.dove.basso.1": "Guarda verso {dove} e fermati basso: sto a {gradi} gradi sopra l'orizzonte, cioè poco più di un pugno a braccio teso sopra i tetti.",
+    "missione.gioco.dove.basso.2": "Dai le spalle a {spalle} e cerca verso {dove}, appena sopra la linea degli alberi: {gradi} gradi, un pugno scarso.",
+    "missione.gioco.dove.basso.3": "Verso {dove}, a {gradi} gradi di altezza — la fascia bassa, quella in cui l'aria mi fa tremare più del dovuto.",
+    "missione.gioco.dove.mezzo.1": "Verso {dove}, a {gradi} gradi sopra l'orizzonte: mettici sopra tre o quattro pugni a braccio teso, partendo dal basso, e sei alla mia altezza.",
+    "missione.gioco.dove.mezzo.2": "Metti {spalle} dietro la schiena, guarda verso {dove} e alza lo sguardo di {gradi} gradi: né fra i tetti né sopra la testa.",
+    "missione.gioco.dove.mezzo.3": "Verso {dove}, a metà cielo: {gradi} gradi, che sono circa metà della strada fra l'orizzonte e il punto sopra di te.",
+    "missione.gioco.dove.alto.1": "Verso {dove}, ma molto in alto: {gradi} gradi, cioè quasi sulla tua verticale. Il collo se ne accorgerà.",
+    "missione.gioco.dove.alto.2": "Volta le spalle a {spalle} e alza il mento fin quasi a novanta gradi: sto lassù verso {dove}, a {gradi} gradi, dove nessun palazzo può rubarmi.",
+    "missione.gioco.dove.alto.3": "Verso {dove}, a {gradi} gradi — il posto migliore in cui io possa stare, perché lassù fra me e te c'è la minor quantità d'aria possibile.",
+    /* Chi mi fa compagnia: la terza strofa, rifatta insieme alla seconda e
+     * per lo stesso motivo. Prima era una frase sola con dentro quattro
+     * pezzi messi in fila senza dire come si combinano — «scivola verso
+     * destra di due dita, un po' più in alto» — e al buio quella non è
+     * un'istruzione, è un elenco. Adesso sono **due passi numerati**: prima
+     * si trova la lanterna, poi ci si sposta, e i gradi chiudono la frase
+     * per chi vuole il numero. La distanza si dice in dita e pugni a
+     * braccio teso, che è il goniometro che tutti hanno addosso. */
+    "missione.gioco.compagnia.1": "Parti da {nome}, che lì attorno è la luce più facile da trovare. Poi spostati di {misura} verso {verso}, tenendoti {su}: sono {gradi} gradi in tutto.",
+    "missione.gioco.compagnia.2": "Prima cerca {nome}, che non si nasconde. Poi, da lei, {misura} verso {verso} e {su}: fra noi ci sono {gradi} gradi di cielo.",
+    "missione.gioco.compagnia.3": "Trova {nome} e tienila come punto di partenza. Da lì vai di {misura} verso {verso}, {su}, e ti fermi su di me: sono {gradi} gradi di distanza.",
+    "missione.gioco.solitudine.1": "Qui attorno non c'è nessuna lanterna da cui partire: guarda verso {dove} e cerca {luce}, passando lo sguardo lento invece di fissare un punto solo.",
+    "missione.gioco.solitudine.2": "Sono in un pezzo di cielo senza insegne, verso {dove}, {altezza}. Cerca {luce}: nessuna stella vicina può farti da guida, quindi conta solo la direzione.",
+    "missione.gioco.solitudine.3": "Nessuna stella vicina mi tradisce: sto in mezzo al niente, verso {dove}. Cerca {luce}, e dai agli occhi dieci minuti per abituarsi al buio — è la parte che quasi nessuno fa.",
     // L'esclamazione della scoperta: la sola riga del modulo scritta per
     // essere sentita e non letta.
     "missione.gioco.evviva.1": "Evviva! L'hai trovato!",
@@ -3664,6 +3705,107 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.segno.voyager2': 'Non è su nessuna orbita: è un puntino rosa su una retta che esce dal disegno, e scende sotto il piano dei pianeti invece di salirci sopra.',
     'missione.curiosita.voyager2.1': 'È l’unica sonda ad aver visitato Urano e Nettuno, e per ora l’unica in programma: quelle immagini del 1986 e del 1989 sono ancora oggi le uniche fotografie ravvicinate che abbiamo dei due giganti di ghiaccio.',
     'missione.curiosita.voyager2.2': 'Il passaggio radente su Tritone, la luna di Nettuno, l’ha spinta sotto il piano dei pianeti: da allora scende di quarantotto gradi rispetto all’orbita della Terra, ed è il motivo per cui le due Voyager, in un disegno in tre dimensioni, formano una V.',
+
+    // --- LE LUNE DEI PIANETI -----------------------------------------
+    //     Sono mondi lontani come gli altri e la tappa si gioca nello
+    //     stesso posto, ma la caccia è di un'altra natura: un pianeta
+    //     nano è un dischetto solo su un anello vuoto, e trovarlo vuol
+    //     dire capire quanto in là guardare; una luna sta in un gruppetto
+    //     di tre o quattro sorelle attorno allo stesso disco, e trovarla
+    //     vuol dire capire **quale**. Gli indizi seguono quella
+    //     differenza: il posto nella fila e la durata del giro al posto
+    //     delle unità astronomiche.
+    'missione.specie.mondo.luna': 'Luna di un pianeta',
+    'missione.gioco.lontano.zona.luna.1': 'Non giro attorno al Sole: giro attorno a qualcun altro, e da qui sono uno dei puntini che gli stanno addosso.',
+    'missione.gioco.lontano.zona.luna.2': 'Avvicinati a un pianeta finché il suo disco si apre: quando compaiono gli anellini attorno a lui, sono su uno di quelli.',
+    'missione.gioco.lontano.zona.luna.3': 'La mia orbita non sta nel disegno grande: sta tutta dentro a un pianeta solo, e bisogna entrarci per vederla.',
+    'missione.gioco.lontano.fila.1': 'Contando dal pianeta verso fuori sono la {posto} delle {quante}.',
+    'missione.gioco.lontano.fila.2': 'Delle {quante} che vedi girargli attorno, io sono la {posto} a partire da lui.',
+    'missione.gioco.lontano.fila.3': 'Metti in fila le mie sorelle, dal cerchio più stretto al più largo: io sono la {posto} di {quante}.',
+    'missione.gioco.lontano.posto.1': 'prima',
+    'missione.gioco.lontano.posto.2': 'seconda',
+    'missione.gioco.lontano.posto.3': 'terza',
+    'missione.gioco.lontano.posto.4': 'quarta',
+    'missione.gioco.lontano.posto.5': 'quinta',
+    'missione.gioco.lontano.posto.6': 'sesta',
+    'missione.gioco.lontano.giroOre': 'Un mio giro dura {ore} ore: chi mi guardasse da lì mi vedrebbe attraversare il cielo in mezza giornata.',
+    'missione.gioco.lontano.giroGiorni': 'Ci metto {giorni} giorni a fare un giro completo.',
+    'missione.gioco.cartellino.lunaGrande': 'È larga {volte} volte la nostra Luna',
+    'missione.gioco.cartellino.lunaPiccola': 'Ci starebbe {frazione} volte dentro alla nostra Luna',
+    'missione.gioco.cartellino.lunaOre': 'un giro attorno al suo pianeta in {ore} ore',
+    'missione.gioco.cartellino.lunaGiorni': 'un giro attorno al suo pianeta in {giorni} giorni',
+    // Il ripiego di famiglia, per il giorno in cui si aggiunge una luna
+    // senza scriverne le strofe: dice cose vere di tutte e sedici.
+    'missione.gioco.enigmaDue.luna3d.1': 'Non ho un’orbita mia attorno al Sole: la mia orbita gira insieme a quella di qualcun altro.',
+    'missione.gioco.enigmaDue.luna3d.2': 'Sto sempre alla stessa distanza da lui, e quella distanza è tutto il mio mondo.',
+    'missione.gioco.enigmaDue.luna3d.3': 'Se il mio pianeta si spostasse, mi troveresti spostato con lui: è l’unica cosa che ci lega.',
+    'missione.gioco.enigmaTre.luna3d.1': 'Chi mi cerca conti gli anelli, non i chilometri.',
+    'missione.gioco.enigmaTre.luna3d.2': 'Il mio giro ha una durata precisa, e fra le mie sorelle è quella a distinguermi.',
+    'missione.gioco.enigmaTre.luna3d.3': 'Guarda quanto sto stretto o quanto sto largo: è la sola cosa che mi dia un nome.',
+
+    'missione.gioco.enigma.oggetto.io': 'Sono il posto più vulcanico che si conosca: quattrocento bocche accese, e il mio pianeta mi impasta come una pallina di gomma a ogni giro. Sono il più vicino dei quattro che Galileo vide in fila. Chi sono?',
+    'missione.gioco.segno.io': 'È il primo dischetto giallastro subito fuori dal disco di Giove: l’anello più stretto dei quattro.',
+    'missione.curiosita.io.1': 'La marea che Giove gli fa alza e abbassa la sua superficie solida di cento metri a ogni giro. Tutta quell’energia diventa calore, e il calore diventa vulcani: ne ha più della Terra, e i pennacchi salgono per trecento chilometri.',
+    'missione.curiosita.io.2': 'I suoi colori — giallo, arancio, bianco — sono zolfo in forme diverse. Non ci sono crateri da impatto: la superficie si rifà da sola in qualche milione di anni, ed è la più giovane del Sistema Solare.',
+    'missione.gioco.enigma.oggetto.europa': 'Sotto una crosta di ghiaccio liscia come una pista di pattinaggio ho un oceano d’acqua salata più grande di tutti i vostri messi insieme. Se là sotto c’è qualcosa di vivo, è il posto migliore dove cercarlo. Chi sono?',
+    'missione.gioco.segno.europa': 'È il secondo dischetto uscendo da Giove, e il più piccolo dei quattro: bianchissimo.',
+    'missione.curiosita.europa.1': 'La sua superficie è percorsa da righe rossastre lunghe migliaia di chilometri: sono crepe nel guscio di ghiaccio, riempite da materiale risalito dal basso. Vuol dire che sotto qualcosa si muove, e che si muove adesso.',
+    'missione.curiosita.europa.2': 'Il ghiaccio è spesso forse venti chilometri, e sotto ce ne sono cento di acqua liquida: più del doppio di tutta l’acqua della Terra. A tenerla liquida non è il Sole — lì arriva venticinque volte più debole — ma la marea di Giove.',
+    'missione.gioco.enigma.oggetto.ganimede': 'Sono la luna più grande che esista, e batto in diametro perfino Mercurio. Ho una cosa che nessun’altra luna ha: un campo magnetico tutto mio, e quindi delle aurore. Chi sono?',
+    'missione.gioco.segno.ganimede': 'È il più grosso dei quattro dischetti attorno a Giove, il terzo uscendo dal pianeta.',
+    'missione.curiosita.ganimede.1': 'È l’unica luna del Sistema Solare ad avere un campo magnetico generato da sé, prodotto da un nucleo di ferro liquido. Le sue aurore si vedono con Hubble, e dal modo in cui oscillano si è dedotto che sotto la crosta c’è un oceano salato.',
+    'missione.curiosita.ganimede.2': 'Con cinquemiladuecentosessantotto chilometri di diametro è più largo di Mercurio, che è un pianeta. È meno massiccio, però: metà del suo volume è ghiaccio.',
+    'missione.gioco.enigma.oggetto.callisto': 'Sono la più esterna delle quattro, la più lenta, e la più butterata di tutto il Sistema Solare: la mia faccia non si rinnova da quattro miliardi di anni. Giove mi tiene, ma non mi impasta. Chi sono?',
+    'missione.gioco.segno.callisto': 'È il dischetto più lontano dei quattro attorno a Giove: quello che sta sull’anello più largo.',
+    'missione.curiosita.callisto.1': 'Sta abbastanza fuori dalla fascia di radiazioni di Giove da essere l’unica delle quattro su cui si potrebbe posare un equipaggio: è nell’elenco dei posti che la NASA ha studiato come base per un futuro molto lontano.',
+    'missione.curiosita.callisto.2': 'La sua superficie è satura di crateri: non c’è più posto per farne di nuovi senza cancellarne di vecchi. È il record del Sistema Solare, ed è il modo in cui si legge un mondo geologicamente morto.',
+    'missione.gioco.enigma.oggetto.titano': 'Ho un’atmosfera più densa della vostra, nuvole, pioggia, fiumi, laghi e mari — solo che la mia pioggia è metano e i miei mari sono liquidi a meno centottanta gradi. Una sonda si è posata su di me nel 2005. Chi sono?',
+    'missione.gioco.segno.titano': 'È di gran lunga il più grosso dei dischetti attorno a Saturno: nessuna delle altre gli arriva vicino.',
+    'missione.curiosita.titano.1': 'È l’unico posto del Sistema Solare, a parte la Terra, dove piove e scorre del liquido in superficie. Il ciclo però non è quello dell’acqua: è quello del metano, che lì fa quello che qui fa l’acqua — evapora, forma nuvole, cade, scava valli e riempie laghi.',
+    'missione.curiosita.titano.2': 'La sonda Huygens è scesa col paracadute nel gennaio del 2005 e ha continuato a trasmettere per settanta minuti dopo l’atterraggio. Le sue fotografie mostrano un fondovalle con dei ciottoli arrotondati: arrotondati da un liquido che ci è passato sopra.',
+    'missione.gioco.enigma.oggetto.encelado': 'Sono piccola — cinquecento chilometri appena — ma dal mio polo sud sparo in cielo dei geyser d’acqua salata che escono dal pianeta e vanno a rifornire un anello. Chi sono?',
+    'missione.gioco.segno.encelado': 'È uno dei dischetti bianchissimi vicini a Saturno, il secondo partendo da lui: piccolo e sull’anello stretto.',
+    'missione.curiosita.encelado.1': 'Cassini ha attraversato i suoi pennacchi e ci ha trovato acqua, sali, silice e molecole organiche: i segni di un oceano sotterraneo a contatto con la roccia calda. È la ricetta delle sorgenti idrotermali, che sulla Terra brulicano di vita.',
+    'missione.curiosita.encelado.2': 'Il materiale che perde non si disperde: forma l’anello E di Saturno, il più esterno e il più tenue. Un mondo di cinquecento chilometri che alimenta un anello largo come un milione di chilometri.',
+    'missione.gioco.enigma.oggetto.rea': 'Sono la seconda per grandezza fra le lune del mio pianeta e non ho niente di particolare: ghiaccio, crateri, e una fama tranquilla. Porto il nome della madre di Giove. Chi sono?',
+    'missione.gioco.segno.rea': 'È uno dei dischetti di media misura attorno a Saturno, fra i due più interni e Titano.',
+    'missione.curiosita.rea.1': 'Nel 2008 si pensò di averle trovato degli anelli — sarebbe stata la prima luna al mondo ad averne. Le fotografie successive non hanno confermato niente, e quella scoperta è rimasta uno dei pochi annunci ritirati dell’epoca di Cassini.',
+    'missione.gioco.enigma.oggetto.mimante': 'Ho un cratere così largo rispetto a me che chi mi ha fotografato per la prima volta ha pensato a una certa stazione da battaglia di un film. Poco più e l’urto mi avrebbe spaccato in due. Chi sono?',
+    'missione.gioco.segno.mimante': 'È il dischetto più vicino a Saturno, il primo della fila e uno dei più piccoli.',
+    'missione.curiosita.mimante.1': 'Il cratere Herschel è largo centotrenta chilometri su un corpo che ne misura quattrocento: un terzo del diametro. Le sue pareti sono alte cinque chilometri e al centro c’è un picco di sei: l’urto che lo ha scavato è arrivato a un soffio dal distruggerla.',
+    'missione.curiosita.mimante.2': 'Nel 2024 si è scoperto, dal modo in cui oscilla ruotando, che probabilmente ha un oceano liquido sotto la crosta — e giovane, forse di appena dieci milioni di anni. Era considerata un blocco di ghiaccio morto.',
+    'missione.gioco.enigma.oggetto.giapeto': 'Ho una faccia nera come il catrame e l’altra bianca come la neve, e una cresta di montagne alta tredici chilometri che mi corre tutto attorno all’equatore come una cucitura. Sono anche l’unica grande che non sta nel piano del suo pianeta. Chi sono?',
+    'missione.gioco.segno.giapeto': 'È il dischetto più lontano di tutti attorno a Saturno, e girando la scena col dito si vede che il suo anello è storto rispetto agli altri.',
+    'missione.curiosita.giapeto.1': 'Cassini — l’astronomo, nel 1671 — si accorse che spariva quando passava da un lato del pianeta e ricompariva dall’altro: aveva capito che una faccia era molto più scura dell’altra. Ci sono voluti tre secoli per sapere perché: raccoglie polvere scura sul lato che guarda avanti, e il ghiaccio esposto dall’altra parte resta bianco.',
+    'missione.curiosita.giapeto.2': 'La cresta equatoriale è alta tredici chilometri, larga venti e lunga almeno milletrecento: nessuno sa da dove venga. Un anello caduto, una crosta che si è raggrinzita, un rigonfiamento rimasto da quando girava molto più in fretta — sono ancora tutte ipotesi aperte.',
+    'missione.gioco.enigma.oggetto.tritone': 'Giro al contrario di tutto, e nessuna luna nata insieme al suo pianeta potrebbe farlo: vuol dire che sono stata catturata. Ho geyser di azoto e sono uno dei posti più freddi che si conoscano. Chi sono?',
+    'missione.gioco.segno.tritone': 'È l’unico dischetto attorno a Nettuno, e il suo anello è molto inclinato rispetto agli altri del disegno.',
+    'missione.curiosita.tritone.1': 'Il suo moto retrogrado è la prova che non è nata lì: era probabilmente un mondo della fascia di Kuiper, come Plutone, e Nettuno l’ha catturata. La cattura le ha deformato l’orbita e per un po’ l’ha scaldata dall’interno.',
+    'missione.curiosita.tritone.2': 'A meno duecentotrentacinque gradi è la superficie più fredda misurata nel Sistema Solare, eppure dai suoi geyser esce azoto che sale per otto chilometri. La sua orbita sta lentamente stringendosi: fra qualche miliardo di anni Nettuno la farà a pezzi e ne avrà un anello.',
+    'missione.gioco.enigma.oggetto.caronte': 'Sono grande la metà del mondo attorno a cui giro, così tanto che non gli giro davvero attorno: giriamo tutti e due attorno a un punto sospeso nel vuoto fra noi. Porto il nome del traghettatore dei morti. Chi sono?',
+    'missione.gioco.segno.caronte': 'È l’unico dischetto accanto a Plutone, e ci sta molto vicino: bisogna avvicinarsi parecchio per separarli.',
+    'missione.curiosita.caronte.1': 'Il punto attorno a cui girano sta fuori dalla superficie di Plutone: è l’unico caso nel Sistema Solare in cui questo succeda fra un mondo e la sua luna. Per questo si dice che siano un sistema doppio invece che un pianeta con un satellite.',
+    'missione.curiosita.caronte.2': 'I due si mostrano sempre la stessa faccia, tutti e due: chi stesse su Plutone la vedrebbe ferma in cielo, sempre nello stesso punto, per sempre. È l’unica coppia del Sistema Solare bloccata così in tutte e due i versi.',
+    'missione.gioco.enigma.oggetto.titania': 'Sono la più grande delle lune del gigante che rotola sul fianco, e come lui giro su un piano quasi perpendicolare a quello di tutti gli altri. Porto il nome di una regina delle fate. Chi sono?',
+    'missione.gioco.segno.titania': 'È il più grosso dei dischetti attorno a Urano, il terzo uscendo dal pianeta.',
+    'missione.curiosita.titania.1': 'I nomi delle lune di Urano non vengono dalla mitologia greca o romana come tutti gli altri del Sistema Solare: vengono da Shakespeare e da Pope. È una tradizione cominciata dal figlio di chi scoprì il pianeta, e non si è mai interrotta.',
+    'missione.gioco.enigma.oggetto.oberon': 'Sono la più esterna delle grandi lune di un gigante di ghiaccio, coperta di crateri e di macchie scure, e porto il nome di un re delle fate. Nessuna sonda mi è mai tornata a trovare dopo il 1986. Chi sono?',
+    'missione.gioco.segno.oberon': 'È il dischetto più lontano di quelli attorno a Urano: quello sull’anello più largo.',
+    'missione.curiosita.oberon.1': 'Tutto quello che sappiamo di lui viene da un unico passaggio della Voyager 2 nel gennaio 1986, che ne fotografò per giunta solo un emisfero: l’altra metà, a quarant’anni di distanza, non l’ha ancora vista nessuno.',
+    'missione.gioco.enigma.oggetto.miranda': 'Sono piccola e sono la più strana che si conosca: una parete alta venti chilometri, terrazze, solchi e pezzi di superficie che sembrano incollati a caso. Come se qualcuno mi avesse smontata e rimessa insieme male. Chi sono?',
+    'missione.gioco.segno.miranda': 'È il dischetto più vicino a Urano, il primo della fila e il più piccolo dei quattro.',
+    'missione.curiosita.miranda.1': 'La Verona Rupes è una parete alta venti chilometri: la più alta scarpata conosciuta nel Sistema Solare. Un sasso lasciato cadere dalla cima ci metterebbe dodici minuti ad arrivare in fondo.',
+    'missione.curiosita.miranda.2': 'Il suo aspetto rappezzato ha fatto pensare per anni che fosse stata frantumata da un urto e si fosse riassemblata. Oggi si pensa piuttosto a un rimescolamento dall’interno, scaldato da una risonanza con le sorelle che nel frattempo si è spenta.',
+    'missione.gioco.enigma.oggetto.ariel': 'Sono la più luminosa delle lune del pianeta che rotola, e la più liscia: valli profonde riempite da qualcosa che è risalito dal basso e si è congelato. Porto il nome di uno spirito dell’aria. Chi sono?',
+    'missione.gioco.segno.ariel': 'È il secondo dischetto uscendo da Urano, e il più chiaro dei quattro.',
+    'missione.curiosita.ariel.1': 'La sua superficie è la più giovane fra le lune di Urano: i canyon hanno il fondo piatto, riempito da colate di ghiaccio. Qualcosa lì dentro si è mosso molto dopo la nascita, e non si sa bene per quanto.',
+    'missione.gioco.enigma.oggetto.fobos': 'Giro attorno al mio pianeta tre volte al giorno, e da lì mi si vede sorgere a ovest e tramontare a est. Sto scendendo: fra qualche decina di milioni di anni verrò fatto a pezzi. Chi sono?',
+    'missione.gioco.segno.fobos': 'È il più vicino dei due piccoli dischetti attorno a Marte: quello sull’anello stretto, attaccato al pianeta.',
+    'missione.curiosita.fobos.1': 'Gira più in fretta di quanto Marte ruoti su sé stesso: è l’unica luna conosciuta a farlo, ed è per questo che da laggiù sorge a ovest. Si abbassa di due centimetri all’anno, e finirà per rompersi e diventare un anello.',
+    'missione.curiosita.fobos.2': 'È così vicino — seimila chilometri dalla superficie — che dalle regioni polari di Marte non lo si vedrebbe affatto: sta sotto l’orizzonte, nascosto dalla curvatura del pianeta.',
+    'missione.gioco.enigma.oggetto.deimos': 'Sono il più piccolo e il più esterno dei due sassi che girano attorno al pianeta rosso, largo dodici chilometri e liscio di polvere. Da laggiù sembro una stella un po’ grassa che ci mette due giorni e mezzo ad attraversare il cielo. Chi sono?',
+    'missione.gioco.segno.deimos': 'È il più lontano dei due piccoli dischetti attorno a Marte: quello sull’anello largo.',
+    'missione.curiosita.deimos.1': 'I due sassi di Marte si chiamano Timore e Terrore, i figli del dio della guerra che nell’Iliade gli conducono il carro. I nomi sono del 1878, l’anno dopo la scoperta.',
 
     // --- L'atlante delle costellazioni (costellazioni.js) -------------
     'cost.figuraDiBuio': 'una figura fatta di buio',

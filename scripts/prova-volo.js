@@ -457,9 +457,33 @@ async function corsa(pagina, passi) {
   await apriIlCielo(pagina);
   await pagina.evaluate(() => { apriSistemaSolare({ senzaVolo: true }); });
   await pagina.waitForTimeout(250);
-  ok('chi si riquadra da sé può dire di no (Missione Cielo)',
+  ok('chi lo rifiuta esplicitamente non vola',
     !(await pagina.evaluate(() => solVolo.attivo)));
   await pagina.evaluate(() => { chiudiSistemaSolare(); });
+  await pagina.waitForTimeout(200);
+
+  /* E chi arriva con un'inquadratura sua **vola lo stesso**, ed è la
+   * segnalazione che ha rifatto questo pezzo: per un periodo una tappa di
+   * Missione Cielo che si gioca nella vista 3D si prendeva la dissolvenza
+   * corta, perché la sua cornice non è quella su cui il volo atterra. Ma le
+   * due non sono alternative: sono in fila. Si atterra sulla Terra, che è
+   * dove l'incastro è esatto, e la cornice del bersaglio arriva **dopo**,
+   * quando il velo si è aperto. Si controllano tutte e due le metà: che il
+   * volo parta davvero, e che l'inquadratura non venga applicata prima
+   * (se lo fosse, il tuffo non arriverebbe mai addosso alla Terra e
+   * l'ultimo fotogramma del velo sarebbe uno scarto). */
+  await apriIlCielo(pagina);
+  await pagina.evaluate(() => {
+    window.__inquadraFatta = 0;
+    apriSistemaSolare({ inquadra: () => { window.__inquadraFatta++; } });
+  });
+  await pagina.waitForTimeout(250);
+  ok('una tappa di Missione Cielo vola, e la sua cornice aspetta la fine',
+    (await pagina.evaluate(() => solVolo.attivo && window.__inquadraFatta === 0)));
+  await pagina.waitForTimeout(6800);   // SOL_VOLO_MS più il paracadute
+  ok('…e appena il velo si apre la cornice arriva, una volta sola',
+    (await pagina.evaluate(() => window.__inquadraFatta)) === 1);
+  await pagina.evaluate(() => { chiudiSistemaSolare(); delete window.__inquadraFatta; });
   await pagina.waitForTimeout(200);
 
   // Col planetario puntato su un pianeta si entra nel quadro d'insieme: la
