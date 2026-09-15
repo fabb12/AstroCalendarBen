@@ -33907,7 +33907,7 @@ const SOL_ELEV_PER_PIXEL = 0.32;     // gradi di elevazione per pixel di dito
 // un trascinamento non sembra frenato rispetto al dito o al mouse.
 function solPrecisioneCamera() {
   if (!sol.perno || sol.vicino || sol.zoomVoluto <= 8) return 1;
-  return Math.max(0.18, 1 / (1 + 0.4 * Math.log2(sol.zoomVoluto / 8)));
+  return Math.max(0.35, 1 / (1 + 0.2 * Math.log2(sol.zoomVoluto / 8)));
 }
 
 // Rimette la scena in mezzo alla tela: lo spostamento con due dita è comodo
