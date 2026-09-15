@@ -29265,14 +29265,12 @@ const SOL_VICINO_TERRA_UA = 1.7;
 const SOL_ZOOM_MAX = 60;
 const SOL_ZOOM_MAX_CORPO = 25000;
 
-// Il passo del tempo **non è più roba di questa vista**: è quello del
-// planetario (`SKY_PASSI_TEMPO`), perché l'orologio è uno solo e due passi
-// diversi sullo stesso orologio sono due bugie. Qui restano solo i due passi
-// con cui questa scena si apre: l'ora per il banco delle eclissi (un'eclissi
-// dura un paio d'ore, e col passo di un giorno il primo tocco su + la salta
-// tutta) e il giorno per la vista d'insieme, dove un pianeta in un'ora non si
-// muove. Da lì in poi chi guarda sceglie, e la scelta vale anche sotto al
-// cielo.
+// Il passo del tempo **non è roba di questa vista**: è quello del planetario
+// (`SKY_PASSI_TEMPO`), perché l'orologio è uno solo e due passi diversi sullo
+// stesso orologio sono due bugie. I due valori sotto servono soltanto quando,
+// già dentro la scena, si entra o si esce dal banco ravvicinato delle eclissi:
+// il semplice passaggio fra planetario e Sistema Solare non deve cambiare la
+// scelta che si aveva nell'altra vista.
 const SOL_PASSO_ENTRATA = 86400;         // vista d'insieme: un giorno
 const SOL_PASSO_ENTRATA_VICINO = 3600;   // banco delle eclissi: un'ora
 
@@ -29354,11 +29352,9 @@ const sol = {
   puntatori: new Map(), pizzico: null, trascinamento: null, mosso: 0, giu: 0,
   modoPan: false,        // il dito sposta la scena invece di girarla (Maiusc o tasto destro)
   // Il tempo: il centro della finestra su cui scorre la slitta. Il passo e la
-  // marcia non sono più suoi — stanno in `sky`, e sono gli stessi del
-  // planetario (`sky.passoTempoSec`, `sky.playbackVerso`). `passoPrima` e
-  // `passoToccato` servono solo a sapere, chiudendo, se il passo dell'ingresso
-  // era un automatismo da disfare o una scelta da rispettare.
-  ancoraSec: 0, passoPrima: 0, passoToccato: false,
+  // marcia non sono suoi — stanno in `sky`, e sono gli stessi del planetario
+  // (`sky.passoTempoSec`, `sky.playbackVerso`).
+  ancoraSec: 0,
   prossimaScheda: 0, firmaScheda: '',
   skyDaRiprendere: false
 };
@@ -35170,15 +35166,9 @@ window.apriSistemaSolare = (opzioni = {}) => {
   // Il banco delle eclissi è una scelta di questo ingresso, non una
   // preferenza da ritrovare: chi riapre la finestra riparte dai pianeti
   sol.vicino = !!piano.vicino;
-  // Il passo è quello del planetario, e aprendo questa finestra si passa a
-  // una misura che qui ha senso: sotto al cielo si lavora a minuti, qui un
-  // pianeta in dieci minuti non si muove di un pixel. Ma è un automatismo, non
-  // una scelta di chi guarda: se ne segna il valore di prima e chiudendo lo si
-  // rimette, a meno che nel frattempo il passo non sia stato scelto a mano —
-  // quello è una scelta, e le scelte non si disfano (vedi `chiudiSistemaSolare`).
-  sol.passoPrima = sky.passoTempoSec || 1;
-  sol.passoToccato = false;
-  skyImpostaPassoTempo(sol.vicino ? SOL_PASSO_ENTRATA_VICINO : SOL_PASSO_ENTRATA);
+  // Il passo entra insieme all'istante: è la medesima scelta conservata in
+  // `sky`, non una regolazione automatica della vista 3D. In questo modo anche
+  // un playback già avviato continua, senza accelerare durante il passaggio.
   // Si riparte sempre dalla vista d'insieme: girare intorno a un corpo è una
   // scelta di questa sessione, non una preferenza da ritrovare
   sol.perno = null;
@@ -35296,11 +35286,6 @@ function chiudiSistemaSolare() {
   // tornava su un cielo che scappava a tre mesi al secondo.
   if (sol.raf) cancelAnimationFrame(sol.raf);
   sol.raf = null;
-
-  // Il passo: se qui dentro nessuno l'ha scelto a mano, quello dell'ingresso
-  // era un automatismo nostro e si disfa — sotto al cielo un passo da un
-  // giorno vuol dire che il tasto + salta la notte intera
-  if (!sol.passoToccato && sol.passoPrima) skyImpostaPassoTempo(sol.passoPrima);
 
   // Il tempo camminato qui dentro è quello del planetario: prima di tornarci
   // si arrotonda al secondo e si forza il ricalcolo, che durante la marcia
@@ -41126,10 +41111,6 @@ function skyScriviChipPasso(contenitore) {
   ).join('');
   contenitore.querySelectorAll('[data-passo-tempo]').forEach(b =>
     b.addEventListener('click', () => {
-      // Un passo scelto a mano mentre la finestra del Sistema Solare è aperta
-      // è una scelta, non l'automatismo dell'ingresso: chiudendo la finestra
-      // resta (vedi `chiudiSistemaSolare`)
-      if (typeof sol === 'object' && sol && sol.aperto) sol.passoToccato = true;
       skyImpostaPassoTempo(b.dataset.passoTempo);
     }));
   contenitore.dataset.passiPronti = 'si';
