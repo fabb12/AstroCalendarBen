@@ -2553,9 +2553,18 @@
       <div class="corpo-modale impostazioni-corpo">
        <div id="imp-tab-osservazione" class="impostazioni-pannello spazio-verticale-largo" role="tabpanel" aria-labelledby="imp-tab-btn-osservazione" data-imp-pannello="osservazione">
 
+        <section class="space-y-2">
+          <h3 class="font-bold text-white" data-i18n="ui.atmosfera">Atmosfera</h3>
+          <label class="flex items-center gap-3 text-sm text-slate-300" for="imp-musica-spaziale">
+            <input id="imp-musica-spaziale" type="checkbox" class="accent-blue-500">
+            <span data-i18n="ui.musica-spaziale">Musica spaziale di sottofondo</span>
+          </label>
+          <p class="text-xs text-slate-500" data-i18n="ui.musica-spaziale-spiega">Un paesaggio sonoro ambient generato dall'app. È disattivato per impostazione predefinita.</p>
+        </section>
+
         <!-- La posizione ha una finestra tutta sua: qui resta solo il
              riepilogo, così esiste un posto solo dove gestirla davvero. -->
-        <section class="space-y-2">
+        <section class="space-y-2 border-t border-slate-700 pt-4">
           <h3 class="font-bold text-white" data-i18n="ui.la-tua-posizione">La tua posizione</h3>
           <p id="imp-posizione" class="text-sm text-slate-400" data-i18n="ui.non-impostata">Non impostata.</p>
           <p class="text-xs text-slate-500" data-i18n="ui.serve-per-orari-di-sorgere-e-tramonto-buio">Serve per orari di sorgere e tramonto, buio astronomico, meteo e passaggi delle stazioni spaziali. Si può rilevare col GPS, dedurre dalla connessione oppure scegliere a mano.</p>
