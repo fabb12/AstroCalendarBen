@@ -508,6 +508,21 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('ogni scheda lunare contiene una descrizione specifica',
     schedeLune.every(v => /sol-nota-scheda/.test(v.html) &&
       !/sol\.luna\.descrizione/.test(v.html) && v.html.length > 500));
+  const schedeUniformi = await pagina.evaluate(() => [
+    ...sol.pianeti, ...sol.mondi, ...sol.sonde, ...sol.satelliti, ...sol.lune,
+    solCorpoDiId('Moon')
+  ].filter(Boolean).map(corpo => {
+    sol.scelto = corpo.id;
+    sol.perno = corpo.id;
+    const html = solSchedaHtml();
+    return { id: corpo.id, html };
+  }));
+  ok('ogni oggetto 3D ha una breve descrizione localizzata',
+    schedeUniformi.every(v => /class="sol-nota-scheda sol-descrizione"/.test(v.html) &&
+      !/sol\.(?:luna\.)?descrizione\./.test(v.html)),
+    schedeUniformi.filter(v => !/sol-descrizione/.test(v.html)).map(v => v.id).join(', '));
+  ok('nessuna scheda mostra il tasto per tornare alla vista d’insieme',
+    schedeUniformi.every(v => !/solLasciaPerno|sol\.azione\.insieme|Torna alla vista/.test(v.html)));
   ok('da ogni luna si può arrivare al massimo zoom ravvicinato',
     schedeLune.every(v => v.zoomMassimo === SOL_ZOOM_MAX_CORPO),
     schedeLune.map(v => `${v.id}:${v.zoomMassimo}`).join(', '));

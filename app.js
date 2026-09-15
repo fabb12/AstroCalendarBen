@@ -33489,13 +33489,12 @@ function solNumero(v, cifre) {
   return Number(v).toLocaleString(locale, { maximumFractionDigits: cifre });
 }
 
-// I due tasti che riguardano il perno della telecamera, uguali per ogni corpo.
-// Girare attorno a un pianeta e tornare alla vista d'insieme sono due modi di
-// guardare, non due gradi dello stesso: per questo sono due tasti e non uno
-// che si accende — chi ci sta sopra vuole poterne uscire senza indovinare
-// dove toccare.
+// Le azioni disponibili dalla scheda. Il corpo scelto viene gia' portato al
+// centro dalla scena: ripetere qui «Gira intorno» e poi sostituirlo con
+// «Vista d'insieme» rendeva il fondo della scheda diverso a ogni tocco. Per
+// tornare indietro restano il tasto di chiusura e i comandi di vista della
+// scena; qui compare soltanto il ponte verso il planetario, quando esiste.
 function solAzioniPerno(id, nome, opzioni = {}) {
-  const sopra = sol.perno === id;
   // «Guardalo nel planetario» promette che di là quell'oggetto c'è: per un
   // pianeta e per una cometa di stasera è vero, per Eris e per le Voyager no —
   // il planetario non li disegna affatto. Un tasto che non mantiene la sua
@@ -33503,12 +33502,18 @@ function solAzioniPerno(id, nome, opzioni = {}) {
   const guarda = (id === 'Earth' || opzioni.senzaPlanetario) ? '' :
     '<button type="button" class="tasto-cielo tasto-primario" onclick="solGuardaNelPlanetario()">' +
     astroI18n.t('sol.azione.planetario') + '</button>';
-  const perno = sopra
-    ? '<button type="button" class="tasto-cielo" onclick="solLasciaPerno()">' +
-      astroI18n.t('sol.azione.insieme') + '</button>'
-    : `<button type="button" class="tasto-cielo" onclick="solAvvicinaA('${id}')">` +
-      astroI18n.t('sol.azione.giraIntorno', { nome }) + '</button>';
-  return `<div class="sol-azioni">${guarda}${perno}</div>`;
+  return guarda ? `<div class="sol-azioni">${guarda}</div>` : '';
+}
+
+// Ogni scheda comincia con una breve identita' del corpo, sempre nello stesso
+// punto. Le comete arrivano dinamicamente dal catalogo e condividono quindi
+// una descrizione di famiglia; tutti gli oggetti stabili hanno una voce loro.
+function solDescrizioneCorpo(corpo) {
+  if (corpo.luna) {
+    return `<p class="sol-nota-scheda sol-descrizione">${astroI18n.t('sol.luna.descrizione.' + corpo.id)}</p>`;
+  }
+  const id = corpo.minore && corpo.famiglia === 'cometa' ? 'cometa' : corpo.id;
+  return `<p class="sol-nota-scheda sol-descrizione">${astroI18n.t('sol.descrizione.' + id)}</p>`;
 }
 
 // La testata della scheda: il nome del corpo e il ✕ per mandarla via. La
@@ -33560,6 +33565,7 @@ function solSchedaHtml() {
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   if (scelto.id === 'Earth') {
     return `${solTestaScheda(scelto.nome, scelto.colore)}
+      ${solDescrizioneCorpo(scelto)}
       <ul class="sol-dati">
         <li><span>${astroI18n.t('sol.dati.dalSole')}</span><strong>${solNumero(scelto.r, 3)} ${astroI18n.t('sol.ua')}</strong></li>
         <li><span>${astroI18n.t('sol.seiQui')}</span><strong>${astroI18n.t(sol.perno === 'Earth' ? 'sol.terra.giriIntorno' : 'sol.terra.pallino')}</strong></li>
@@ -33579,6 +33585,7 @@ function solSchedaHtml() {
     ? `<li><span>${astroI18n.t('sol.dati.luminosita')}</span><strong>${solNumero(scelto.mag, 1)}</strong></li>`
     : '';
   return `${solTestaScheda(scelto.nome, scelto.colore)}
+      ${solDescrizioneCorpo(scelto)}
       <ul class="sol-dati">
         ${classe}
         <li><span>${astroI18n.t('sol.dati.dalSole')}</span><strong>${solNumero(scelto.r, 3)} ${astroI18n.t('sol.ua')}</strong></li>
@@ -33598,6 +33605,7 @@ function solSchedaHtml() {
 function solSchedaSonda(s) {
   const ore = s.r * SOL_UA_KM / 1079252848.8;   // la luce fa un'ora in un miliardo di km
   return `${solTestaScheda(s.nome, s.colore)}
+      ${solDescrizioneCorpo(s)}
       <ul class="sol-dati">
         <li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t('sol.famiglia.sonda')}</strong></li>
         <li><span>${astroI18n.t('sol.dati.dalSole')}</span><strong>${solNumero(s.r, 1)} ${astroI18n.t('sol.ua')}</strong></li>
@@ -33623,6 +33631,7 @@ function solSchedaSatellite(s) {
     ? `<li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t(chiave)}</strong></li>`
     : (s.classe ? `<li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${s.classe}</strong></li>` : '');
   return `${solTestaScheda(s.nome, s.colore)}
+      ${solDescrizioneCorpo(s)}
       <ul class="sol-dati">
         ${classe}
         <li><span>${astroI18n.t('sol.dati.quota')}</span><strong>${solNumero(s.quotaKm, 0)} km</strong></li>
@@ -33651,9 +33660,8 @@ function solSchedaLuna(l) {
   // Ogni luna e' un mondo, non soltanto quattro misure. La breve descrizione
   // vive nel dizionario (una voce per corpo) così la scheda racconta subito
   // che cosa la rende speciale senza mescolare italiano e inglese.
-  const descrizione = astroI18n.t('sol.luna.descrizione.' + l.id);
   return `${solTestaScheda(l.nome, l.colore)}
-      <p class="sol-nota-scheda">${descrizione}</p>
+      ${solDescrizioneCorpo(l)}
       <ul class="sol-dati">
         <li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t('sol.famiglia.luna', { pianeta: pianeta ? pianeta.nome : '' })}</strong></li>
         <li><span>${astroI18n.t('sol.dati.diametro')}</span><strong>${solNumero(l.km, 0)} km</strong></li>
