@@ -29691,16 +29691,19 @@ function solCrescitaCorpo() {
   return Math.min(SOL_CRESCITA_CORPO_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
 }
 
-// Chi cresce con la crescita «da vicino»: il corpo su cui si sta girando e,
-// nel solo caso della Terra, anche la Luna che le sta accanto. Il disco del
-// bersaglio deve seguire lo zoom anche quando e' una luna: altrimenti il suo
-// pianeta esce presto dal quadro, ma il piccolo pallino resta quasi identico
-// e bisogna arrivare all'ultimo tratto dello zoom prima di poterne leggere la
-// superficie.
+// Chi cresce con la crescita «da vicino»: il corpo su cui si sta girando e
+// la sua eventuale coppia pianeta-luna. I due dischi devono seguire la stessa
+// legge: se selezionando una luna crescesse soltanto lei, lo zoom cambierebbe
+// la proporzione con il pianeta fino a farla sembrare grande quanto lui.
+// Restano simboli leggibili (non dimensioni fisiche), ma il loro rapporto non
+// cambia durante l'avvicinamento.
 function solCorpoDelPerno(id) {
   if (!sol.perno) return false;
   if (sol.perno === id) return true;
-  return sol.perno === 'Earth' && id === 'Moon';
+  if ((sol.perno === 'Earth' && id === 'Moon') ||
+      (sol.perno === 'Moon' && id === 'Earth')) return true;
+  const lunaPerno = sol.lune && sol.lune.find(l => l.id === sol.perno);
+  return !!(lunaPerno && lunaPerno.idPianeta === id);
 }
 
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
@@ -30136,9 +30139,9 @@ function solLeggiLune(quando, t) {
 // Quanto grande si disegna. In scala vera passa dallo stesso metro dei
 // pianeti; a corpi ingranditi il rapporto fra le lune è quello vero
 // compresso dalla radice cubica, se no Deimos sparirebbe accanto a Ganimede.
-// Quando una luna e' il perno usa la crescita ravvicinata: la separazione dal
-// pianeta continua a seguire lo zoom, ma anche il bersaglio diventa leggibile
-// senza costringere ad arrivare quasi al massimo ingrandimento.
+// Quando una luna e' il perno usa la crescita ravvicinata; `solCorpoDelPerno`
+// assegna la stessa crescita al pianeta, così lo zoom non altera il rapporto
+// apparente fra i due dischi.
 function solRaggioLunaPianeta(l) {
   if (sol.misureVere) return Math.max(0.25, (l.km / 2) / SOL_UA_KM * sol.scala);
   const q = Math.cbrt(Math.max(1, l.km) / SOL_LUNA_KM_RIF);

@@ -542,21 +542,27 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     sol.zoom = 64;
     solMisura();
     const rPrima = solRaggioLunaPianeta(titano);
+    const rpPrima = solRaggioCorpo(saturno);
     const pPrima = solScenaLunaPianeta(titano, saturno);
     const dPrima = Math.hypot(pPrima.x - saturno.scena.x, pPrima.y - saturno.scena.y,
       pPrima.z - saturno.scena.z) * sol.scala;
     sol.zoom = SOL_ZOOM_MAX_CORPO;
     solMisura();
     const rDopo = solRaggioLunaPianeta(titano);
+    const rpDopo = solRaggioCorpo(saturno);
     const pDopo = solScenaLunaPianeta(titano, saturno);
     const dDopo = Math.hypot(pDopo.x - saturno.scena.x, pDopo.y - saturno.scena.y,
       pDopo.z - saturno.scena.z) * sol.scala;
-    return { rPrima, rDopo, dPrima, dDopo };
+    return { rPrima, rDopo, rpPrima, rpDopo, dPrima, dDopo };
   });
-  ok('ingrandendo Titano cresce anche il piccolo bersaglio senza perdere il moto della camera',
+  ok('ingrandendo Titano crescono insieme luna e pianeta senza perdere il moto della camera',
     avvicinamentoTitano.rDopo > avvicinamentoTitano.rPrima * 10 &&
+      Math.abs(avvicinamentoTitano.rPrima / avvicinamentoTitano.rpPrima -
+        avvicinamentoTitano.rDopo / avvicinamentoTitano.rpDopo) < 1e-9 &&
       avvicinamentoTitano.dDopo > avvicinamentoTitano.dPrima * 100,
     `raggio ${avvicinamentoTitano.rPrima.toFixed(1)}px -> ${avvicinamentoTitano.rDopo.toFixed(1)}px, ` +
+      `rapporto col pianeta ${(avvicinamentoTitano.rPrima / avvicinamentoTitano.rpPrima).toFixed(3)} -> ` +
+      `${(avvicinamentoTitano.rDopo / avvicinamentoTitano.rpDopo).toFixed(3)}, ` +
       `distanza ${avvicinamentoTitano.dPrima.toFixed(1)}px -> ${avvicinamentoTitano.dDopo.toFixed(1)}px`);
 
   const sensibilitaCamera = await pagina.evaluate(() => {
