@@ -30298,6 +30298,16 @@ function solPercorsoSagomaLuna(ctx, l, r) {
 // appena cercato.
 function solCorpoDiId(id) {
   if (!id) return null;
+  // La Luna terrestre ha effemeridi e disegno propri, ma per selezione,
+  // scheda e camera deve presentarsi come tutte le altre lune naturali.
+  if (id === 'Moon' && sol.luna) {
+    return {
+      id: 'Moon', nome: nomeCorpo('Moon'), colore: '#e2e8f0', luna: true,
+      idPianeta: 'Earth', km: 3474.8,
+      raggioKm: sol.luna.distanzaUa * SOL_UA_KM,
+      giorni: SOL_MESE_SIDEREO_G, ae: true
+    };
+  }
   return sol.pianeti.find(p => p.id === id) ||
     sol.mondi.find(p => p.id === id) ||
     sol.sonde.find(p => p.id === id) ||
@@ -33633,7 +33643,12 @@ function solSchedaSatellite(s) {
 function solSchedaLuna(l) {
   const pianeta = solCorpoDiId(l.idPianeta);
   const raggiPianeta = pianeta && pianeta.km ? l.raggioKm / (pianeta.km / 2) : 0;
+  // Ogni luna e' un mondo, non soltanto quattro misure. La breve descrizione
+  // vive nel dizionario (una voce per corpo) così la scheda racconta subito
+  // che cosa la rende speciale senza mescolare italiano e inglese.
+  const descrizione = astroI18n.t('sol.luna.descrizione.' + l.id);
   return `${solTestaScheda(l.nome, l.colore)}
+      <p class="sol-nota-scheda">${descrizione}</p>
       <ul class="sol-dati">
         <li><span>${astroI18n.t('sol.dati.cosE')}</span><strong>${astroI18n.t('sol.famiglia.luna', { pianeta: pianeta ? pianeta.nome : '' })}</strong></li>
         <li><span>${astroI18n.t('sol.dati.diametro')}</span><strong>${solNumero(l.km, 0)} km</strong></li>
@@ -33641,7 +33656,7 @@ function solSchedaLuna(l) {
         <li><span>${astroI18n.t('sol.dati.giroPianeta')}</span><strong>${solNumero(l.giorni, l.giorni < 10 ? 2 : 1)} ${astroI18n.t('sol.giorni')}</strong></li>
       </ul>
       <p class="sol-nota-scheda">${astroI18n.t(l.ae ? 'sol.luna.posizioneVera' : 'sol.luna.posizioneModello')}</p>
-      ${solAzioniPerno(l.idPianeta, pianeta ? pianeta.nome : '', { senzaPlanetario: true })}`;
+      ${solAzioniPerno(l.id, l.nome, { senzaPlanetario: true })}`;
 }
 
 // Mandare via la scheda senza cambiare quello che si sta guardando: la
@@ -33679,17 +33694,18 @@ function solScegli(id) {
   // vista d'insieme. Valeva per la sola Terra, e per la Luna non valeva
   // affatto: si girava intorno al Sole guardando la Luna scappare fuori dal
   // riquadro a ogni giro di dito.
-  // Un satellite e' un caso diverso da un mondo: cio' che si vuole leggere
-  // scegliendolo non e' il puntino isolato, ma il suo giro attorno alla
-  // Terra. Portiamo quindi la Terra al centro e allarghiamo l'orbita fino a
-  // farle occupare quasi tutto il lato corto della tela. Rotella, pizzico e
-  // tasto + restano liberi di avvicinarsi ancora fino al normale limite dei
-  // corpi; questa e' soltanto una buona inquadratura di partenza.
+  // Satelliti e lune ricevono prima una scala leggibile del loro sistema e
+  // poi diventano essi stessi il perno. In questo modo il corpo toccato va
+  // davvero al centro, come pianeti, asteroidi, comete e sonde, e il limite
+  // di zoom ravvicinato resta disponibile attorno a qualunque oggetto.
   const corpo = nuovo ? solCorpoDiId(nuovo) : null;
-  if (corpo && corpo.satellite) solInquadraSatellite(corpo, { ravvicina: true });
-  // Una luna non diventa il perno: girandole intorno si perde il pianeta, che
-  // è la cosa che la spiega. Il perno resta lui, e la luna resta scelta.
-  else if (corpo && corpo.luna) solInquadraLune(corpo.idPianeta);
+  if (corpo && corpo.satellite) {
+    solInquadraSatellite(corpo, { ravvicina: true });
+    solAvvicinaA(corpo.id);
+  } else if (corpo && corpo.luna) {
+    solInquadraLune(corpo.idPianeta);
+    solAvvicinaA(corpo.id);
+  }
   else if (nuovo) solAvvicinaA(nuovo);
   else if (sol.perno === id) solLasciaPerno();
   solAggiornaScheda(true);
@@ -34227,6 +34243,9 @@ function solInquadraRicerca(id) {
 // pallini ci sono per costruzione.
 function solInquadraSatellite(s, opzioni = {}) {
   sol.scelto = s.id;
+  // La ricerca apre l'intera orbita; la selezione diretta sposta poi il perno
+  // sul satellite in `solScegli`, così entrambe le azioni conservano il loro
+  // significato e il clic centra sempre l'oggetto indicato.
   sol.perno = 'Earth';
   sol.quadro = 'terra';
   const zoom = opzioni.ravvicina ? solZoomOrbitaSatellite(s) : solZoomSullaTerra();
