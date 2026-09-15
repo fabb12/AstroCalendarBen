@@ -461,9 +461,9 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   });
   ok('toccando un pianeta nano lo si sceglie', tocco === 'Eris', String(tocco));
 
-  // I mondi conservano la scala scelta. I satelliti invece aprono la loro
-  // orbita quasi fino ai bordi e tengono la Terra al centro: selezionare la
-  // ISS deve finalmente permettere di leggerne bene tutto il giro.
+  // I mondi conservano la scala scelta. I satelliti aprono la loro orbita
+  // quasi fino ai bordi, ma il corpo scelto — non la Terra — diventa il
+  // centro: il clic deve avere lo stesso significato per ogni oggetto.
   const selezioneCamera = await pagina.evaluate(() => {
     const risultati = [];
     ['Mars', 'iss', 'css', 'hubble'].forEach((id, i) => {
@@ -484,10 +484,33 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('selezionare un mondo cambia il centro ma non lo zoom',
     selezioneCamera[0].perno === 'Mars' && selezioneCamera[0].invariato,
     selezioneCamera.map(v => `${v.id}: ${v.zoom}/${v.zoomVoluto}`).join(', '));
-  ok('selezionare ISS, Tiangong o Hubble centra la Terra e avvicina la loro orbita',
-    selezioneCamera.slice(1).every(v => v.perno === 'Earth' &&
+  ok('selezionare ISS, Tiangong o Hubble centra il satellite e avvicina la sua orbita',
+    selezioneCamera.slice(1).every(v => v.perno === v.id &&
       7.6 * Math.sqrt(v.zoomVoluto) >= v.raggioTerraAtteso - 1),
     selezioneCamera.slice(1).map(v => `${v.id}: ${Math.round(7.6 * Math.sqrt(v.zoomVoluto))}px`).join(', '));
+
+  const schedeLune = await pagina.evaluate(() => ['Moon', ...sol.lune.map(l => l.id)].map(id => {
+    sol.scelto = null;
+    solScegli(id);
+    return {
+      id,
+      perno: sol.perno,
+      html: document.getElementById('sol-scheda').innerHTML,
+      zoomMassimo: (() => {
+        solImpostaZoom(Number.MAX_SAFE_INTEGER);
+        return sol.zoomVoluto;
+      })()
+    };
+  }));
+  ok('ogni luna naturale cliccata diventa il centro della camera',
+    schedeLune.length === SOL_LUNE.length + 1 && schedeLune.every(v => v.perno === v.id),
+    schedeLune.map(v => `${v.id}:${v.perno}`).join(', '));
+  ok('ogni scheda lunare contiene una descrizione specifica',
+    schedeLune.every(v => /sol-nota-scheda/.test(v.html) &&
+      !/sol\.luna\.descrizione/.test(v.html) && v.html.length > 500));
+  ok('da ogni luna si può arrivare al massimo zoom ravvicinato',
+    schedeLune.every(v => v.zoomMassimo === SOL_ZOOM_MAX_CORPO),
+    schedeLune.map(v => `${v.id}:${v.zoomMassimo}`).join(', '));
 
   const sensibilitaCamera = await pagina.evaluate(() => {
     const pernoPrima = sol.perno;
