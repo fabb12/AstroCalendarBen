@@ -29446,8 +29446,11 @@ const sol = {
   istante: 0,            // ms dell'ultimo calcolo delle posizioni
   scala: 1, cx: 0, cy: 0,
   stelle: [],
-  // Dita appoggiate sulla tela: una gira la scena, due la avvicinano
+  // Dita appoggiate sulla tela: una gira la scena, due la avvicinano.
+  // `inerzia` conserva la velocita' del rilascio, per lasciare che la camera
+  // continui la corsa e si posi da sola.
   puntatori: new Map(), pizzico: null, trascinamento: null, mosso: 0, giu: 0,
+  inerzia: null,
   modoPan: false,        // il dito sposta la scena invece di girarla (Maiusc o tasto destro)
   // Il tempo: il centro della finestra su cui scorre la slitta. Il passo e la
   // marcia non sono suoi — stanno in `sky`, e sono gli stessi del planetario
@@ -33958,6 +33961,10 @@ function solPassoCiclo(ts) {
   const dt = sol.ultimoTs ? Math.min((ts - sol.ultimoTs) / 1000, 0.1) : 0;
   sol.ultimoTs = ts;
 
+  // Dopo il rilascio la camera conserva per un istante la velocita' del
+  // gesto e la perde gradualmente per attrito.
+  solScorriPerInerzia(dt);
+
   // Il tempo che cammina è **quello del planetario**, anche quando a premere
   // play è stata questa barra: il cielo dietro è in pausa, ma l'orologio è lo
   // stesso e a farlo camminare, adesso, è questo ciclo. Lo spostamento è
@@ -34098,6 +34105,57 @@ function solAlternaOpzioni() {
 // e ogni volta bisognava provare in che verso andasse.
 const SOL_GIRO_PER_PIXEL = 0.008;    // radianti di azimut per pixel di dito
 const SOL_ELEV_PER_PIXEL = 0.32;     // gradi di elevazione per pixel di dito
+
+// Inerzia della camera 3D. La velocita' si misura in pixel al secondo, cosi'
+// rotazione e panoramica condividono la stessa sensazione sotto il dito. La
+// media esponenziale scarta il rumore dell'ultimo pointermove; lo smorzamento
+// nel ciclo rende invece la frenata indipendente dalla frequenza dello schermo.
+const SOL_TAU_LANCIO = 0.06;
+const SOL_TAU_INERZIA = 0.48;
+const SOL_LANCIO_SCADUTO = 90;
+const SOL_INERZIA_MAX_PX_S = 3200;
+const SOL_INERZIA_MIN_PX_S = 7;
+
+function solRicordaTrascinamento(dx, dy) {
+  const ora = performance.now();
+  const t = sol.trascinamento;
+  if (!t) return;
+  const dt = t.quando ? Math.max(0.004, Math.min(0.1, (ora - t.quando) / 1000)) : 0;
+  if (dt) {
+    const k = 1 - Math.exp(-dt / SOL_TAU_LANCIO);
+    t.vx += (dx / dt - t.vx) * k;
+    t.vy += (dy / dt - t.vy) * k;
+  }
+  t.quando = ora;
+}
+
+function solLanciaCamera() {
+  const t = sol.trascinamento;
+  if (!t || !t.quando || performance.now() - t.quando > SOL_LANCIO_SCADUTO) return;
+  const velocita = Math.hypot(t.vx, t.vy);
+  if (velocita < SOL_INERZIA_MIN_PX_S) return;
+  const limite = Math.min(1, SOL_INERZIA_MAX_PX_S / velocita);
+  sol.inerzia = { vx: t.vx * limite, vy: t.vy * limite, pan: t.pan };
+}
+
+function solScorriPerInerzia(dt) {
+  const i = sol.inerzia;
+  if (!i || !dt || sol.puntatori.size) return;
+  const dx = i.vx * dt, dy = i.vy * dt;
+  if (i.pan) solSposta(dx, dy);
+  else {
+    const precisione = solPrecisioneCamera();
+    sol.az += dx * SOL_GIRO_PER_PIXEL * precisione;
+    const elev = Math.max(-89, Math.min(89,
+      sol.elevVoluta + dy * SOL_ELEV_PER_PIXEL * precisione));
+    sol.elevVoluta = elev;
+    sol.elev = elev;
+  }
+  const freno = Math.exp(-dt / SOL_TAU_INERZIA);
+  i.vx *= freno;
+  i.vy *= freno;
+  if (Math.hypot(i.vx, i.vy) < SOL_INERZIA_MIN_PX_S) sol.inerzia = null;
+}
 
 // Quando un corpo selezionato riempie buona parte della tela, la sensibilita'
 // adatta alla vista d'insieme diventa troppo brusca: pochi pixel di dito fanno
@@ -34665,7 +34723,9 @@ function solInizializzaGesti() {
   // appoggiato per sbaglio col palmo.
   const riancora = () => {
     const dita = [...sol.puntatori.values()];
-    sol.trascinamento = dita.length === 1 ? { x: dita[0].x, y: dita[0].y } : null;
+    sol.trascinamento = dita.length === 1
+      ? { x: dita[0].x, y: dita[0].y, vx: 0, vy: 0, quando: performance.now(), pan: sol.modoPan }
+      : null;
     if (dita.length < 2) { sol.pizzico = null; return; }
     // Con le dita sopra, lo zoom morbido si ferma: da qui in poi comanda il
     // pizzico, e deve partire esattamente da quello che si sta vedendo — non
@@ -34682,6 +34742,9 @@ function solInizializzaGesti() {
     annullaToccoInAttesa();
     c.setPointerCapture(e.pointerId);
     sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // Una nuova presa ferma immediatamente la corsa precedente: la camera
+    // deve tornare sotto il controllo diretto del dito o del mouse.
+    sol.inerzia = null;
     sol.mosso = 0;
     sol.giu = performance.now();
     // Col mouse un dito solo gira; per spostare la scena si tiene premuto
@@ -34720,7 +34783,9 @@ function solInizializzaGesti() {
     if (!sol.trascinamento) return;
     const dx = e.clientX - sol.trascinamento.x;
     const dy = e.clientY - sol.trascinamento.y;
-    sol.trascinamento = { x: e.clientX, y: e.clientY };
+    sol.trascinamento.x = e.clientX;
+    sol.trascinamento.y = e.clientY;
+    solRicordaTrascinamento(dx, dy);
     sol.mosso += Math.abs(dx) + Math.abs(dy);
     if (sol.modoPan) { solSposta(dx, dy); return; }
     // Il verso del modellino: il dito porta con sé la scena
@@ -34732,19 +34797,25 @@ function solInizializzaGesti() {
     solAggiornaTasti();
   });
 
-  const fine = (e) => {
+  const fine = (e, lancia) => {
     const era = sol.puntatori.size;
     if (!sol.puntatori.delete(e.pointerId)) return;
+    const ultimoTrascinamento = era === 1 ? sol.trascinamento : null;
     // Il dito che resta ricomincia da dove si trova adesso, e la rotazione
     // continua da lì senza doverlo staccare e riappoggiare
     riancora();
+    if (lancia && ultimoTrascinamento && sol.mosso >= 8) {
+      sol.trascinamento = ultimoTrascinamento;
+      solLanciaCamera();
+      sol.trascinamento = null;
+    }
     // Un tocco secco, senza trascinamento: sceglie il pianeta più vicino
     if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500 && !sol.modoPan) rimandaTocco(e);
     if (!sol.puntatori.size) sol.modoPan = false;
   };
-  c.addEventListener('pointerup', fine);
-  c.addEventListener('pointercancel', fine);
-  c.addEventListener('pointerleave', fine);
+  c.addEventListener('pointerup', (e) => fine(e, true));
+  c.addEventListener('pointercancel', (e) => fine(e, false));
+  c.addEventListener('pointerleave', (e) => fine(e, false));
 
   // Col tasto destro si sposta la scena: il menù contestuale, qui, sarebbe
   // solo il modo di interrompere il gesto a metà
@@ -35823,6 +35894,7 @@ window.apriSistemaSolare = (opzioni = {}) => {
   sol.panX = 0;
   sol.panY = 0;
   sol.modoPan = false;
+  sol.inerzia = null;
   // Si entra anche nello stesso istante, sempre: l'orologio è quello del
   // planetario, e la finestra della slitta si centra su dove siamo
   sol.ancoraSec = sky.offsetTempoSec || 0;
@@ -35937,6 +36009,7 @@ function chiudiSistemaSolare() {
   const modale = document.getElementById('modale-sistema');
   if (modale) modale.classList.add('hidden');
   sol.aperto = false;
+  sol.inerzia = null;
   // La marcia **non** finisce con la finestra: è il playback del planetario,
   // e chiudendo si torna sul cielo che sta camminando alla stessa velocità e
   // sullo stesso istante. Prima qui dentro c'era un secondo motore, con passi
