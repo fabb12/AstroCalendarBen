@@ -512,6 +512,20 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     schedeLune.every(v => v.zoomMassimo === SOL_ZOOM_MAX_CORPO),
     schedeLune.map(v => `${v.id}:${v.zoomMassimo}`).join(', '));
 
+  const crescitaTitano = await pagina.evaluate(() => {
+    const titano = solCorpoDiId('Titan');
+    sol.misureVere = false;
+    sol.perno = 'Titan';
+    sol.zoom = 64;
+    const prima = solRaggioLunaPianeta(titano);
+    sol.zoom = SOL_ZOOM_MAX_CORPO;
+    const dopo = solRaggioLunaPianeta(titano);
+    return { prima, dopo };
+  });
+  ok('avvicinandosi a Titano il disco cresce insieme allo zoom',
+    crescitaTitano.dopo > crescitaTitano.prima * 10 && crescitaTitano.dopo > 100,
+    `${crescitaTitano.prima.toFixed(1)}px -> ${crescitaTitano.dopo.toFixed(1)}px`);
+
   const sensibilitaCamera = await pagina.evaluate(() => {
     const pernoPrima = sol.perno;
     const zoomPrima = sol.zoomVoluto;
