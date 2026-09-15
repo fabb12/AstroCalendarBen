@@ -40836,6 +40836,13 @@ const MUSICA_TRACCIA_PREDEFINITA = 'Europa1';
 const MUSICA_VOLUME_PREDEFINITO = 0.12;
 let musicaVolume = MUSICA_VOLUME_PREDEFINITO;
 
+// Il cursore descrive quanto volume si desidera, non il guadagno elettrico:
+// una curva quadratica lascia molto più spazio alle regolazioni silenziose e
+// impedisce che i primi scatti risultino già troppo forti.
+function musicaGuadagno() {
+  return musicaVolume * musicaVolume;
+}
+
 function musicaTracceDisponibili() {
   const viste = new Set();
   return (Array.isArray(window.ASTRO_TRACCE_MUSICALI) ? window.ASTRO_TRACCE_MUSICALI : [])
@@ -40873,7 +40880,7 @@ function avviaMusicaSpaziale() {
     const audio = new Audio(`musica/${encodeURIComponent(traccia.file)}`);
     audio.loop = true;
     audio.preload = 'auto';
-    audio.volume = musicaVolume;
+    audio.volume = musicaGuadagno();
     audio.addEventListener('error', () => musicaImpostaStato('ui.musica-errore', true));
     musicaSpaziale = { tipo: 'file', audio };
     audio.play().catch(() => musicaImpostaStato('ui.musica-errore', true));
@@ -40886,7 +40893,7 @@ function avviaMusicaSpaziale() {
   const volume = contesto.createGain();
   volume.gain.setValueAtTime(0.0001, contesto.currentTime);
   volume.gain.exponentialRampToValueAtTime(
-    Math.max(0.0001, 0.045 * (musicaVolume / 0.35)), contesto.currentTime + 3);
+    Math.max(0.0001, 0.045 * (musicaGuadagno() / 0.35)), contesto.currentTime + 3);
   volume.connect(contesto.destination);
 
   const voci = [55, 82.41, 110, 164.81].map((frequenza, indice) => {
@@ -40976,9 +40983,9 @@ function inizializzaImpostazioni() {
     const aggiornaVolume = () => {
       musicaVolume = Number(impVolume.value) / 100;
       if (impVolumeValore) impVolumeValore.textContent = `${impVolume.value}%`;
-      if (musicaSpaziale?.tipo === 'file') musicaSpaziale.audio.volume = musicaVolume;
+      if (musicaSpaziale?.tipo === 'file') musicaSpaziale.audio.volume = musicaGuadagno();
       if (musicaSpaziale?.tipo === 'generata') musicaSpaziale.volume.gain.setTargetAtTime(
-        Math.max(0.0001, 0.045 * (musicaVolume / 0.35)), musicaSpaziale.contesto.currentTime, 0.08);
+        Math.max(0.0001, 0.045 * (musicaGuadagno() / 0.35)), musicaSpaziale.contesto.currentTime, 0.08);
     };
     impVolume.value = String(Math.round(musicaVolume * 100));
     aggiornaVolume();
