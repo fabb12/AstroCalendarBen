@@ -2715,6 +2715,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         const corpo = (sol.mondi || []).concat(sol.sonde || [])
           .concat((sol.luneSchermo || []).map(l => ({ id: l.id, schermo: { px: l.px, py: l.py } })))
           .find(c => c.id === t.idSistema);
+        const oggettiVisibili = (sol.pianeti || []).concat(sol.mondi || [], sol.sonde || [])
+          .filter(c => c.schermo && c.schermo.px >= 0 && c.schermo.px <= sol.L &&
+            c.schermo.py >= 0 && c.schermo.py <= sol.H)
+          .map(c => c.id)
+          .concat((sol.satSchermo || []).map(s => s.id), (sol.luneSchermo || []).map(l => l.id));
         return {
           generata: true,
           tipo: t.tipo,
@@ -2726,6 +2731,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
           scelto: sol.scelto,
           ricerca: missRicercaSistema(),
           disegnato: !!(corpo && corpo.schermo),
+          bersaglio: t.idSistema,
+          etichette: sol.etichetteSchermo.map(e => e.id),
+          oggettiVisibili,
           striscia: r(st), guscio: r(g), barra: r(document.getElementById('sol-tempo')),
           // Un testo lungo può scorrere, ma non deve trascinare fuori dal
           // bordo anche i comandi: è il difetto per cui il riquadro non
@@ -2757,6 +2765,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         assert.ok(scena.mondi && scena.sonde,
           'le due famiglie devono essere accese, o il bersaglio non è disegnato');
         assert.ok(scena.disegnato, 'il bersaglio non è finito sullo schermo: non si può toccare');
+        assert.ok(scena.etichette.includes(scena.bersaglio),
+          'il bersaglio 3D è disegnato senza la sua etichetta');
+        assert.deepStrictEqual(scena.oggettiVisibili.filter(id => !scena.etichette.includes(id)), [],
+          'alcuni oggetti visibili del grafico 3D sono senza etichetta');
         assert.strictEqual(scena.scelto, null,
           'nessun corpo scelto: la sua scheda porta il nome, cioè la soluzione');
         assert.ok(scena.ricerca, 'la caccia non risulta attiva qui dentro');

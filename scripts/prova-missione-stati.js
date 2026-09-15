@@ -77,10 +77,7 @@ ctx.sky.mostraNomi=true;
 ctx.cime={acceso:true};
 assert.equal(run('missRicercaAttiva()'),true);
 assert.equal(run('missModalitaGiocoCielo()'),true);
-assert.equal(run('skyNomiVisibili()'),true);
-ctx.sky.mostraNomi=false;
-assert.equal(run('skyNomiVisibili()'),true);
-ctx.sky.mostraNomi=true;
+assert.equal(run('skyNomiVisibili()'),false);
 assert.equal(run('skyNomiCimeVisibili()'),false);
 // La scoperta non e' piu' una ricerca, ma e' ancora modalita' gioco nel
 // planetario: i nomi dei monti devono restare nascosti fino all'uscita.
@@ -195,9 +192,15 @@ assert.equal(narrazioni.at(-1).fase,'curiosita');
 assert.equal(narrazioni.at(-1).testo,run('missCuriositaTesto(miss.attiva.tappe[0])'));
 assert(!elements.get('missione-striscia').innerHTML.includes('missione-osservazione'));
 assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
-// Le etichette restano accese anche durante la scoperta: finche' la missione
-// occupa il planetario, tutti gli oggetti devono continuare ad avere il nome.
-assert.equal(run('skyNomiVisibili()'),true);
+/* Le etichette restano spente **anche durante la scoperta**: la ricerca è
+ * appena finita ma la missione occupa ancora il planetario, e i nomi di
+ * tutto il cielo accesi mentre si legge l'aneddoto del bersaglio appena
+ * trovato sono la risposta data un attimo troppo tardi — vedi il commento
+ * sopra a `skyNomiVisibili` in `app.js`. Questa riga chiedeva `true` ed
+ * era rimasta indietro da quando quella regola si è estesa alla scoperta:
+ * essendo questo file uno **script lineare**, si portava via tutte le
+ * prove che le stanno sotto — la copertura dei due dizionari compresa. */
+assert.equal(run('skyNomiVisibili()'),false);
 // Reload retains discovery and must not silently advance it.
 run('missSalvaAttiva();miss.attiva=null;missCaricaAttiva()');assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');
 // All dynamic keys and children/adult variants resolve in both dictionaries.

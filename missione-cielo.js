@@ -3251,9 +3251,9 @@ function missMostraStrisciaCielo() {
   const el = document.getElementById('missione-striscia');
   const m = miss.attiva, t = m && m.tappe[m.corrente];
   // La guida è la stessa nelle due viste: cambia dove sta appesa, non
-  // cosa dice. `missione-ricerca` invece è del solo planetario: semplifica
-  // i comandi mentre si cerca, senza togliere le etichette degli oggetti;
-  // nella vista 3D non c'è lo stesso gruppo di controlli da ridurre.
+  // cosa dice. `missione-ricerca` invece è del solo planetario — è lei a
+  // togliere di mezzo nomi e etichette dal cielo mentre si cerca, e nella
+  // vista 3D non c'è niente da spegnere.
   const visibile = !!(m && (m.nelPlanetario || m.nelSistema) && m.stato === 'inCorso' && t);
   document.body.classList.toggle('missione-ricerca', visibile && missRicercaAttiva());
   if (!el) return;
@@ -3336,11 +3336,10 @@ function missTornaDalPlanetario() {
 //     pannello del tempo prestato (§7.5-ter di `app.js`), fatta con gli
 //     stessi due aiutanti.
 //
-//     IL TOCCO NON APRE LA SCHEDA. Toccando un corpo, questa scena mette
-//     al centro la telecamera e scrive il nome in un pannello: durante
-//     una caccia quel nome è la soluzione, e lo sarebbe anche sbagliando
-//     — scartare Eris avendone letto il nome è comunque mezzo enigma
-//     regalato. Il tocco lo intercetta `missSelezionaSistema`, agganciata
+//     IL TOCCO NON APRE LA SCHEDA. I nomi restano visibili direttamente nel
+//     grafico, ma il pannello dettagliato non deve sostituire il riscontro del
+//     gioco né spostare la telecamera dopo ogni tentativo. Il tocco lo
+//     intercetta `missSelezionaSistema`, agganciata
 //     in cima a `solTocco`, esattamente come `missSelezionaCielo` è
 //     agganciata a `skyOggettoNelPunto`.
 //

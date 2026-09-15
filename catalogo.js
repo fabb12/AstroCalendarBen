@@ -963,12 +963,7 @@ function catDisegnaStelle(ctx, base, focale) {
     // sapere come si chiama quella che si sta guardando è **il** motivo per
     // cui uno ci si è avvicinato.
     const nome = cat.nomiPerIndice.get(k);
-    // Nella vista normale il limite evita che una carta a grande campo si
-    // trasformi in un muro di testo. Missione Cielo e' l'eccezione: ogni
-    // stella nominata che il gioco puo' chiedere deve portare sempre la sua
-    // etichetta, non soltanto le piu' luminose.
-    const missioneNelCielo = typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo();
-    if (skyNomiVisibili() && nome && (missioneNelCielo || oculare || cat.magnitudini[k] <= 1.9)) {
+    if (skyNomiVisibili() && nome && (oculare || cat.magnitudini[k] <= 1.9)) {
       ctx.globalAlpha = opacita * 0.8;
       ctx.font = '11px system-ui, sans-serif';
       ctx.textAlign = 'left';

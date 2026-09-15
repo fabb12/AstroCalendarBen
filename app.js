@@ -8375,14 +8375,11 @@ function skyLevigaBase(nuova) {
 // prima è la modalità naturale, ma si può sganciare: senza sganciarla non si
 // potrebbe portare al centro della mappa un oggetto scelto dall'elenco, che
 // è proprio quello che si vuole quando si cerca qualcosa.
-// Missione Cielo deve essere leggibile come una carta: durante tutta la
-// permanenza nel planetario i nomi degli oggetti restano accesi, anche se il
-// relativo interruttore era stato spento prima di iniziare. Non si modifica
-// la preferenza salvata: uscendo dalla missione il cielo torna esattamente
-// come l'utente lo aveva lasciato.
+// Il gioco nel cielo nasconde le etichette senza cambiare la preferenza
+// salvata. Vale anche durante la scoperta, quando la ricerca e' appena finita
+// ma la missione occupa ancora il planetario.
 function skyNomiVisibili() {
-  const missioneNelCielo = typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo();
-  return missioneNelCielo || sky.mostraNomi;
+  return sky.mostraNomi && !(typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo());
 }
 
 // Anche l'interruttore autonomo delle cime rispetta la caccia: durante una
@@ -30557,9 +30554,18 @@ function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbliga
     !prese.some(q => b.x < q.x + q.w && b.x + b.w > q.x && b.y < q.y + q.h && b.y + b.h > q.y);
   const scatolaDi = (p) => ({ x: p.x - 2, y: p.y - alto, w: largo + 4, h: alto + 3 });
   let posto = posti.find(p => libero(scatolaDi(p)));
-  // Il nome del pianeta scelto non rinuncia mai: se tutti e quattro gli
-  // angoli sono occupati si mette comunque nel primo, e si legge sopra
-  if (!posto && obbligata) posto = posti[0];
+  // Un'etichetta obbligatoria non rinuncia mai. Se tutti i posti sono
+  // occupati, resta dentro alla tela e accetta al limite una sovrapposizione:
+  // in Missione Cielo un nome un po' affollato e' comunque meglio di un
+  // oggetto privo di etichetta.
+  if (!posto && obbligata) {
+    const primo = posti[0];
+    const fondo = Math.max(alto + 2, sol.H - 29 - (sol.altaBarra || 0));
+    posto = {
+      x: Math.max(4, Math.min(sol.L - largo - 4, primo.x)),
+      y: Math.max(alto + 2, Math.min(fondo, primo.y))
+    };
+  }
   if (!posto) return;
   const scatola = scatolaDi(posto);
   prese.push(scatola);
@@ -33414,32 +33420,28 @@ function solDisegna() {
   // cioè che otto di quei puntini sono i pianeti.
   const tinta = (p) => p.sonda ? p.colore : (SOL_MONDI_TINTE[p.famiglia] || 'rgba(233, 237, 247, 0.82)');
   const corpoNome = (p) => (p.minore || p.sonda) ? 10.5 : 11.5;
-  /* Durante una caccia di Missione Cielo i nomi dei bersagli non si scrivono.
-   *
-   * Vale per le tre famiglie da cui una tappa può pescare — i mondi minori, le
-   * sonde e le lune — e non per i pianeti e il Sole, che non sono mai un
-   * bersaglio e sono i soli riferimenti di questo disegno: senza di loro non
-   * si saprebbe nemmeno dove si sta guardando. Scrivere «Sedna» accanto al
-   * dischetto che si sta cercando è la soluzione stampata sopra al quadro, ed
-   * è lo stesso motivo per cui nel planetario il modo caccia spegne i nomi
-   * degli astri. */
+  /* Durante una caccia di Missione Cielo tutti i corpi devono conservare il
+   * proprio nome. La scena 3D e' anche una carta del Sistema Solare: mondi
+   * minori, sonde e lune senza etichetta diventano puntini indistinguibili.
+   * In questa modalita' le etichette sono quindi obbligatorie e, se i posti
+   * liberi finiscono, `solEtichetta` preferisce una sovrapposizione alla loro
+   * scomparsa. */
   const caccia = typeof missRicercaSistema === 'function' && missRicercaSistema();
   if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
     stacco(scelto), '#ffffff', 13, prese, true, scelto.id);
   solEtichetta(ctx, nomeCorpo('Sun'), sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
   ordinati.forEach(p => {
     if (p === scelto) return;
-    if (caccia && (p.minore || p.sonda)) return;
     solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
-      tinta(p), corpoNome(p), prese, false, p.id);
+      tinta(p), corpoNome(p), prese, caccia, p.id);
   });
   // I nomi dei satelliti: il loro posto sullo schermo lo sa solo chi li ha
   // disegnati, e come per la Luna arriva scritto in `sol.satSchermo`
   sol.satSchermo.forEach(s => solEtichetta(ctx, s.nome, s.px, s.py, s.r + 2,
-    s.colore, 10.5, prese, sol.scelto === s.id, s.id));
+    s.colore, 10.5, prese, caccia || sol.scelto === s.id, s.id));
   // E quelli delle lune, che arrivano dalla stessa strada
-  if (!caccia) sol.luneSchermo.forEach(l => solEtichetta(ctx, l.nome, l.px, l.py, l.r + 2,
-    l.colore, 10, prese, sol.scelto === l.id, l.id));
+  sol.luneSchermo.forEach(l => solEtichetta(ctx, l.nome, l.px, l.py, l.r + 2,
+    l.colore, 10, prese, caccia || sol.scelto === l.id, l.id));
   if (sol.nodi) sol.orbite.tracce.forEach(t => solEtichettaNodi(ctx, t, prese));
   // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
   // manchi niente — la nuvola di punti si riconosce da sé
