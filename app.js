@@ -282,6 +282,9 @@ const DISEGNI = {
   occhio: `<path d="M2.6 12S6.4 6.4 12 6.4 21.4 12 21.4 12 17.6 17.6 12 17.6 2.6 12 2.6 12z"/>
     <circle cx="12" cy="12" r="2.8"/>`,
 
+  volume: `<path d="M4 9.2h4l5-4v13.6l-5-4H4z"/>
+    <path d="M16.2 8.2a5.2 5.2 0 0 1 0 7.6M18.8 5.7a8.7 8.7 0 0 1 0 12.6"/>`,
+
   binocolo: `<rect x="4.4" y="5.6" width="4.8" height="7.6" rx="1.4"/>
     <rect x="14.8" y="5.6" width="4.8" height="7.6" rx="1.4"/>
     <circle cx="6.8" cy="16.6" r="3.4"/><circle cx="17.2" cy="16.6" r="3.4"/>
