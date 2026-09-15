@@ -735,6 +735,39 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('spegnendo le cose nostre i satelliti non si disegnano', spegni.senza.satelliti === 0);
   ok('e riaccendendole tornano', spegni.con.satelliti > 0);
 
+  // Il nome disegnato non è soltanto una didascalia: deve avere la stessa
+  // area d'azione del corpo. Si prova chiamando il vero hit test nel centro
+  // della scatola prodotta dal disegno, prima nella vista normale e poi col
+  // gancio della Missione Cielo attivo.
+  const toccoEtichetta = await pagina.evaluate(() => {
+    sol.scelto = null;
+    solDisegna();
+    const prima = sol.etichetteSchermo.find(b => b.id !== 'Earth');
+    if (!prima) return { normale: false, missione: false, quante: 0 };
+    const rett = sol.canvas.getBoundingClientRect();
+    solTocco({ clientX: rett.left + prima.x + prima.w / 2,
+      clientY: rett.top + prima.y + prima.h / 2 });
+    const normale = sol.scelto === prima.id;
+
+    sol.scelto = null;
+    solDisegna();
+    const seconda = sol.etichetteSchermo.find(b => b.id !== 'Earth');
+    let ricevuto = null;
+    const missioneOriginale = missSelezionaSistema;
+    missSelezionaSistema = id => { ricevuto = id; return true; };
+    solTocco({ clientX: rett.left + seconda.x + seconda.w / 2,
+      clientY: rett.top + seconda.y + seconda.h / 2 });
+    missSelezionaSistema = missioneOriginale;
+    return {
+      normale,
+      missione: ricevuto === seconda.id && sol.scelto === null,
+      quante: sol.etichetteSchermo.length
+    };
+  });
+  ok('toccare l\'etichetta seleziona lo stesso oggetto', toccoEtichetta.normale,
+    toccoEtichetta.quante + ' etichette sensibili');
+  ok('il tocco sull\'etichetta passa anche a Missione Cielo', toccoEtichetta.missione);
+
   // Nessuna eccezione nel fotogramma, con tutto acceso e a tre inquadrature
   // diverse: è la rete che tiene insieme tutto il resto — un'eccezione dentro
   // a `solDisegna` non salta un fotogramma, li salta tutti (§7.4-quinquies).

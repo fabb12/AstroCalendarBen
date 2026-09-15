@@ -29414,6 +29414,10 @@ const sol = {
   // sullo schermo la Luna e i due corpi del banco delle eclissi: li scrive chi
   // li disegna, li legge il dito (`solTocco`)
   orbitaLunaGrande: null, lunaSchermo: null, vicCorpi: null,
+  // Anche i nomi sono parte sensibile del corpo a cui appartengono. Le loro
+  // scatole cambiano a ogni fotogramma insieme alla camera, perciò vengono
+  // ricostruite dal disegno e lette dal medesimo hit test dei pallini.
+  etichetteSchermo: [],
   pianeti: [], terra: null, luna: null,
   orbite: { chiave: null, tracce: [] },
   // §7.7-bis. Le tre famiglie che non sono pianeti: i mondi minori (pianeti
@@ -30527,7 +30531,7 @@ function solTesto(ctx, testo, x, y, colore, misura, allinea) {
 // Allora ogni nome prova quattro angoli attorno al suo pallino, e se sono
 // tutti occupati rinuncia: meglio un nome in meno che cinque sovrapposti.
 // Chi resta senza si legge lo stesso, toccandolo o dalla tabella qui sotto.
-function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbligata) {
+function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbligata, idCorpo) {
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
   ctx.font = `${misura}px ${SOL_CARATTERE}`;
   const largo = ctx.measureText(testo).width;
@@ -30554,7 +30558,9 @@ function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbliga
   // angoli sono occupati si mette comunque nel primo, e si legge sopra
   if (!posto && obbligata) posto = posti[0];
   if (!posto) return;
-  prese.push(scatolaDi(posto));
+  const scatola = scatolaDi(posto);
+  prese.push(scatola);
+  if (idCorpo) sol.etichetteSchermo.push(Object.assign({ id: idCorpo }, scatola));
   solTesto(ctx, testo, posto.x, posto.y, colore, misura);
 }
 
@@ -32960,7 +32966,7 @@ function solDisegnaPiomboVicino(ctx, luna) {
 function solEtichetteVicino(ctx, corpi, orbita, g) {
   const prese = [];
   corpi.forEach(c => solEtichetta(ctx, c.nome, c.schermo.px, c.schermo.py,
-    c.rDisegno + 5, c.id === 'Earth' ? '#bfdbfe' : '#e2e8f0', 12, prese, true));
+    c.rDisegno + 5, c.id === 'Earth' ? '#bfdbfe' : '#e2e8f0', 12, prese, true, c.id));
   // «Verso il Sole» si appoggia al bordo della tela dalla parte giusta, non a
   // una distanza fissa dalla Terra: con la scena spostata di lato quella
   // distanza finiva fuori dal riquadro e la scritta spariva — cioè proprio
@@ -33286,6 +33292,7 @@ function solDisegna() {
   // un satellite che non si vede.
   sol.satSchermo = [];
   sol.luneSchermo = [];
+  sol.etichetteSchermo = [];
   solMisura();
   solSfondo(ctx);
 
@@ -33415,21 +33422,21 @@ function solDisegna() {
    * degli astri. */
   const caccia = typeof missRicercaSistema === 'function' && missRicercaSistema();
   if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
-    stacco(scelto), '#ffffff', 13, prese, true);
+    stacco(scelto), '#ffffff', 13, prese, true, scelto.id);
   solEtichetta(ctx, nomeCorpo('Sun'), sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
   ordinati.forEach(p => {
     if (p === scelto) return;
     if (caccia && (p.minore || p.sonda)) return;
     solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
-      tinta(p), corpoNome(p), prese);
+      tinta(p), corpoNome(p), prese, false, p.id);
   });
   // I nomi dei satelliti: il loro posto sullo schermo lo sa solo chi li ha
   // disegnati, e come per la Luna arriva scritto in `sol.satSchermo`
   sol.satSchermo.forEach(s => solEtichetta(ctx, s.nome, s.px, s.py, s.r + 2,
-    s.colore, 10.5, prese, sol.scelto === s.id));
+    s.colore, 10.5, prese, sol.scelto === s.id, s.id));
   // E quelli delle lune, che arrivano dalla stessa strada
   if (!caccia) sol.luneSchermo.forEach(l => solEtichetta(ctx, l.nome, l.px, l.py, l.r + 2,
-    l.colore, 10, prese, sol.scelto === l.id));
+    l.colore, 10, prese, sol.scelto === l.id, l.id));
   if (sol.nodi) sol.orbite.tracce.forEach(t => solEtichettaNodi(ctx, t, prese));
   // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
   // manchi niente — la nuvola di punti si riconosce da sé
@@ -34794,6 +34801,17 @@ function solTocco(e) {
   // il pallino è grosso — ma a vincere è sempre il più vicino al dito: la
   // soglia dice *se* si può prendere, non *chi* si prende.
   let migliore = null, miglioreD = Infinity;
+  // Il nome disegnato appartiene al corpo quanto il suo disco. Controllarlo
+  // per primo evita che una scritta, necessariamente staccata dal pallino,
+  // venga interpretata come spazio vuoto o come il corpo vicino. Questa via
+  // confluisce poi nella stessa selezione della scena, compreso il giudizio
+  // di Missione Cielo qui sotto.
+  const etichetta = sol.etichetteSchermo.slice().reverse().find(b =>
+    x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+  if (etichetta) {
+    migliore = etichetta.id;
+    miglioreD = 0;
+  }
   const prova = (id, px, py, raggio) => {
     const d = Math.hypot(px - x, py - y);
     if (d <= Math.max(22, raggio + 10) && d < miglioreD) { migliore = id; miglioreD = d; }
