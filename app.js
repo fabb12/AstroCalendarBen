@@ -21641,6 +21641,21 @@ function skyDisegna() {
   const ctx = sky.ctx;
   const L = sky.larghezza, H = sky.altezza;
 
+  // Ogni fotogramma nasce vuoto, anche quando subito dopo il cielo opaco lo
+  // ricopre per intero. Affidarsi al solo `fillRect` dello sfondo lasciava al
+  // browser il compito di sovrascrivere una tela gia' composta: sui canvas
+  // accelerati di alcuni telefoni, muovendo rapidamente la vista proprio
+  // mentre il mirino attraversava il bordo antialias del terreno, qualche
+  // pixel giallo del fotogramma precedente sopravviveva e sembrava un piccolo
+  // poligono trascinato dall'orizzonte. Non era geometria del terreno: era la
+  // storia del buffer che restava visibile per un fotogramma.
+  //
+  // `clearRect` non dipende da opacita' o compositing e costa soltanto la
+  // cancellazione che il riempimento successivo avrebbe comunque provocato.
+  // Va fatto prima di qualunque disegno; nel ramo fotocamera evita inoltre
+  // una seconda cancellazione identica.
+  ctx.clearRect(0, 0, L, H);
+
   // Con la fotocamera accesa il campo del disegno lo detta l'obiettivo, non
   // la preferenza dell'utente: si ricontrolla qui perché il video parte dopo
   // e il riquadro cambia con lo schermo intero e con la rotazione.
@@ -21674,9 +21689,7 @@ function skyDisegna() {
   // Con la fotocamera accesa il canvas resta trasparente: sotto si vede
   // il mondo vero e sopra ci finiscono solo gli astri calcolati.
   const conCamera = !!sky.camera;
-  if (conCamera) {
-    ctx.clearRect(0, 0, L, H);
-  } else {
+  if (!conCamera) {
     skyDisegnaSfondo(ctx, base, focale, aria);
     skyDisegnaAloneSole(ctx, base, focale, sole, aria);
     skyDisegnaAloneLuna(ctx, base, focale, luna);
