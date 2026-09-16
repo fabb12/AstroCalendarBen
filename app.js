@@ -31204,11 +31204,19 @@ function solEtichettaFascia(ctx, f, prese) {
 function solDisegnaOrbita(ctx, traccia) {
   const punti = traccia.punti.map(v => solProietta(solScena(v)));
   if (punti.length) punti.push(punti[0]);
+  const scelta = sol.scelto === traccia.id;
   ctx.save();
-  ctx.lineWidth = 1.1;
-  ctx.strokeStyle = traccia.colore;
+  ctx.lineWidth = scelta ? 3.2 : 1.1;
+  ctx.strokeStyle = scelta ? '#fff' : traccia.colore;
+  // Il solo anello spesso si perde ancora sul Sole, sulle fasce e sulle altre
+  // orbite. Il bagliore appartiene esclusivamente alla selezione e rende
+  // seguibile l'intero giro anche quando passa dietro alla scena.
+  if (scelta) {
+    ctx.shadowColor = traccia.colore;
+    ctx.shadowBlur = 12;
+  }
   [false, true].forEach(davanti => {
-    ctx.globalAlpha = davanti ? 0.5 : 0.16;
+    ctx.globalAlpha = scelta ? (davanti ? 0.98 : 0.68) : (davanti ? 0.5 : 0.16);
     ctx.beginPath();
     // Il segmento appartiene a questa passata se ci appartengono i suoi due
     // capi: è la stessa regola di prima, scritta per segmenti invece che per
@@ -31513,9 +31521,12 @@ function solDisegnaOrbitaLuna(ctx, terra, davanti) {
     x: t.x + u.x * passo, y: t.y + u.y * passo, z: t.z + u.z * passo * sol.esagera
   }));
   ctx.save();
-  ctx.strokeStyle = 'rgba(203, 213, 225, 0.34)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
+  const scelta = sol.scelto === 'Moon';
+  ctx.strokeStyle = scelta ? '#fff' : 'rgba(203, 213, 225, 0.34)';
+  ctx.globalAlpha = scelta ? (davanti ? 0.98 : 0.68) : 1;
+  ctx.lineWidth = scelta ? 3.2 : 1;
+  ctx.setLineDash(scelta ? [] : [3, 3]);
+  if (scelta) { ctx.shadowColor = '#cbd5e1'; ctx.shadowBlur = 12; }
   const dietro = terra.schermo.vicinanza;
   for (let i = 0; i < schermo.length; i++) {
     const a = schermo[i], b = schermo[(i + 1) % schermo.length];
@@ -31606,9 +31617,16 @@ function solDisegnaOrbiteMondi(ctx) {
   ctx.save();
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 4]);
-  sol.orbiteMondi.tracce.forEach(t => {
-    ctx.strokeStyle = t.colore;
-    ctx.globalAlpha = 0.2;
+  const tracce = sol.orbiteMondi.tracce.filter(t => t.id !== sol.scelto)
+    .concat(sol.orbiteMondi.tracce.filter(t => t.id === sol.scelto));
+  tracce.forEach(t => {
+    const scelta = sol.scelto === t.id;
+    ctx.strokeStyle = scelta ? '#fff' : t.colore;
+    ctx.globalAlpha = scelta ? 0.95 : 0.2;
+    ctx.lineWidth = scelta ? 3.2 : 1;
+    ctx.setLineDash(scelta ? [] : [3, 4]);
+    ctx.shadowColor = scelta ? t.colore : 'transparent';
+    ctx.shadowBlur = scelta ? 12 : 0;
     ctx.beginPath();
     // Tagliata al riquadro: un'ellisse tratteggiata lunga milioni di pixel
     // fuori dallo schermo costa un fotogramma intero (vedi
@@ -31699,9 +31717,11 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
         x: t.x + u.x * passo, y: t.y + u.y * passo, z: t.z + u.z * passo * sol.esagera
       }));
       ctx.save();
-      ctx.strokeStyle = s.colore;
-      ctx.globalAlpha = 0.34;
-      ctx.lineWidth = 1;
+      const scelta = sol.scelto === s.id;
+      ctx.strokeStyle = scelta ? '#fff' : s.colore;
+      ctx.globalAlpha = scelta ? (davanti ? 0.98 : 0.68) : 0.34;
+      ctx.lineWidth = scelta ? 3.2 : 1;
+      if (scelta) { ctx.shadowColor = s.colore; ctx.shadowBlur = 12; }
       for (let i = 0; i < schermo.length; i++) {
         const a = schermo[i], b = schermo[(i + 1) % schermo.length];
         if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
@@ -31784,9 +31804,11 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
       }));
     }
     ctx.save();
-    ctx.strokeStyle = l.colore;
-    ctx.globalAlpha = 0.22;
-    ctx.lineWidth = 1;
+    const scelta = sol.scelto === l.id;
+    ctx.strokeStyle = scelta ? '#fff' : l.colore;
+    ctx.globalAlpha = scelta ? (davanti ? 0.98 : 0.68) : 0.22;
+    ctx.lineWidth = scelta ? 3.2 : 1;
+    if (scelta) { ctx.shadowColor = l.colore; ctx.shadowBlur = 12; }
     for (let i = 0; i < punti.length; i++) {
       const a = punti[i], b = punti[(i + 1) % punti.length];
       if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
@@ -33844,7 +33866,10 @@ function solDisegna() {
   // e una riga d'orbita coperta da un pulviscolo non si segue più
   solDisegnaFasce(ctx);
   solDisegnaOrbiteMondi(ctx);
-  sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
+  // Quella scelta va per ultima: oltre a essere più spessa e luminosa non
+  // deve finire coperta da un'altra orbita nel punto in cui si incrociano.
+  sol.orbite.tracce.filter(t => t.id !== sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
+  sol.orbite.tracce.filter(t => t.id === sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
   if (sol.nodi) sol.orbite.tracce.forEach(t => solDisegnaNodiOrbita(ctx, t));
   solDisegnaAloneSole(ctx);
   solDisegnaSguardo(ctx, terra, scelto);
