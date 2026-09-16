@@ -14789,6 +14789,14 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
     skyDisegnaAcqueInterne(ctx, base, focale, aria, velo);
   }
 
+  // Le luci dei paesi, **dopo** il terreno e l'acqua: stanno sopra al suolo,
+  // come ci stanno davvero. A tosarle contro le creste ci pensa
+  // `skyDisegnaAbitati`, che legge la cresta **disegnata** — cioè quella che
+  // il rilievo ha appena finito di stendere in questa stessa passata.
+  if (typeof skyDisegnaAbitati === 'function') {
+    skyDisegnaAbitati(ctx, base, focale, aria, velo);
+  }
+
   // Il riferimento del viaggio va sopra al suolo e all'acqua, come un
   // piccolo picchetto piantato nel punto da cui la camera e' partita.
   ctx.save();
@@ -18727,6 +18735,229 @@ function skyDisegnaAloniCitta(ctx, base, focale) {
   ctx.restore();
 }
 
+// --- Le luci dei paesi, dove i paesi stanno davvero -------------------
+//
+// L'alone qui sopra è la luce **diffusa dall'aria** sopra a un abitato, e
+// per quello si disegna sulla linea dell'orizzonte: è una cosa del cielo.
+// Questo è l'abitato: le sue luci, sul terreno, alla loro quota e alla loro
+// distanza. Sono due cose diverse e si vedono tutte e due — la cupola sopra
+// il crinale e, se la cresta non lo copre, il tappeto di puntini nella
+// valle.
+//
+// La geometria non è qui: la fa `cittaAbitati()` in `terreno.js`, che a
+// ogni luce dà azimut, distanza e altezza con lo stesso `terrenoAngolo` con
+// cui misura una montagna. Qui si proietta, si taglia contro la cresta e si
+// dipinge. Da quella divisione viene la cosa che si vede: la prospettiva è
+// vera, quindi un paese lontano si schiaccia da sé in una riga sottile, uno
+// vicino si apre a ventaglio sotto i piedi, e uno su un fianco di collina
+// sale di sbieco — non perché ci sia una riga che lo dica, ma perché le sue
+// luci stanno su quel fianco.
+
+// La tosatura è contro la cresta **disegnata**, come per l'acqua e per la
+// stessa ragione: la cresta misurata e quella dipinta differiscono di mezzo
+// grado, e un paese tagliato sulla prima lascia una fila di luci sospese
+// sopra la collina.
+//
+// La cresta si campiona in azimut e si legge alla distanza del **centro**
+// dell'abitato, non di ogni luce. È un'approssimazione, e vale la pena
+// scrivere perché è lecita: un paese è profondo qualche centinaio di metri
+// su una distanza di chilometri, e la cresta parziale è non decrescente in
+// distanza — fra il bordo vicino e quello lontano non ci sta niente che in
+// mezzo compaia e scompaia.
+const SKY_ABITATO_CRESTA_PX = 6;      // un campione ogni tot pixel di larghezza
+const SKY_ABITATO_CRESTA_MIN = 3;
+const SKY_ABITATO_CRESTA_MAX = 24;
+
+// Quanto l'aria si mangia le luci di un paese lontano. È la stessa scala
+// dei nomi (`skyLontananzaCitta`), perché è la stessa aria: un abitato a
+// quaranta chilometri e il nome che gli sta sopra devono sbiadire insieme,
+// se no il nome galleggia su un paese che non c'è più.
+const SKY_ABITATO_FOSCHIA = 0.82;
+
+// Il tappeto non sbiadisce quanto il terreno quando si ingrandisce: il
+// terreno si fa trasparente per lasciar vedere gli astri, ma un paese sul
+// crinale è **il** motivo per cui uno ingrandisce sull'orizzonte.
+const SKY_ABITATO_VELO_MIN = 0.35;
+
+// Il corpo di una luce. Una lampada è una sorgente puntiforme e resta un
+// punto a qualunque ingrandimento — ma le luci disegnate sono qualche
+// centinaio al posto di qualche migliaio, e allargandosi il tappeto si
+// sgranerebbe in un pulviscolo di puntini staccati. Il corpo cresce quindi
+// con la **spaziatura** invece che con lo zoom: quanto più si aprono,
+// tanto più ognuna vale per quelle che non ci sono.
+const SKY_ABITATO_PUNTO_MIN = 0.55;
+const SKY_ABITATO_PUNTO_MAX = 2.2;
+
+// Quante luci del serbatoio si disegnano davvero. Non tutte, e non un
+// numero fisso: **quante se ne risolvono**. A grandangolo un paese a dieci
+// chilometri è una striscia di settanta pixel, e centoventi puntini lì
+// dentro sono una campitura arancione che costa centoventi cerchi; a
+// quattordici gradi di campo la stessa striscia è larga mille pixel, e otto
+// puntini sono otto lampioni in mezzo al nulla. Il metro è la radice
+// dell'area occupata — cioè il lato del tappeto — divisa per la spaziatura
+// a cui l'occhio smette di contare i punti e comincia a vedere un abitato.
+const SKY_ABITATO_PASSO_PX = 2.2;
+const SKY_ABITATO_LUCI_MIN = 8;
+
+// Le due tinte. Il sodio arancione delle strade vecchie e il bianco freddo
+// dei LED nuovi: un paese di una tinta sola si legge per una vernice, e in
+// una fotografia notturna vera quelle due ci sono sempre tutte e due.
+const SKY_ABITATO_TINTE = [
+  { r: 255, g: 176, b: 104 },
+  { r: 255, g: 214, b: 170 },
+  { r: 216, g: 230, b: 255 }
+];
+const SKY_ABITATO_TINTA_FREDDA = 0.88;   // sopra questo dado la luce è LED
+
+// Il letto di luce: sotto ai puntini, la luce che non si risolve — le
+// finestre, i fari, l'asfalto bagnato. Senza, un paese lontano è una
+// manciata di granelli su fondo nero e si legge come rumore; con lei è un
+// abitato che si accende.
+const SKY_ABITATO_LETTO_ALFA = 0.30;
+
+// Dove il tappeto di ogni paese è finito sullo schermo, per il fotogramma
+// appena disegnato: lo scrive `skyDisegnaAbitati` e lo legge `skyNomiCitta`
+// subito dopo, per appendere il nome **al paese** invece che alla cresta
+// che gli sta dietro. È la stessa staffetta di `skyCresteUltime` con
+// l'acqua, e per la stessa ragione — il conto è già stato fatto.
+let skyAbitatiVisti = null;
+
+// La chiave è il punto, non il nome: di «San Martino» ce n'è uno per valle,
+// e appendere il nome di uno alle luci dell'altro è il genere di errore che
+// sullo schermo resta perfettamente plausibile.
+function skyAbitatoChiave(lat, lon) {
+  return `${(+lat).toFixed(4)},${(+lon).toFixed(4)}`;
+}
+
+function skyAbitatoVisto(lat, lon) {
+  if (!skyAbitatiVisti) return null;
+  return skyAbitatiVisti.get(skyAbitatoChiave(lat, lon)) || null;
+}
+
+function skyDisegnaAbitati(ctx, base, focale, aria, velo) {
+  if (typeof cittaAbitati !== 'function') return;
+  skyAbitatiVisti = null;
+  const lista = cittaAbitati();
+  if (!lista.length) return;
+
+  // Di giorno le luci ci sono e non si vedono: il cielo è più luminoso di
+  // loro. È la stessa soglia della cupola — ma senza il taglio sul campo
+  // visivo, perché a differenza dell'alone un abitato ingrandito non
+  // diventa una vernice: diventa un abitato più grande.
+  const notte = 1 - Math.min(1, sky.luceCielo / SKY_CITTA_LUCE_MAX);
+  if (notte <= 0.03) return;
+
+  const opaco = SKY_ABITATO_VELO_MIN + (1 - SKY_ABITATO_VELO_MIN) * velo;
+  const visti = new Map();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  for (const ab of lista) {
+    const pc = skyProietta(skyVettore(ab.az, (ab.altAlto + ab.altBasso) / 2), base, focale);
+    if (!pc.davanti) continue;
+    const perGrado = focale * skyScalaLocale(pc.d) * SKY_D2R;
+    const largoPx = Math.max(1, 2 * ab.semiAz * perGrado);
+    const altoPx = Math.max(1, (ab.altAlto - ab.altBasso) * perGrado);
+    // Fuori dal riquadro di quanto è grande il tappeto: niente da dipingere.
+    if (pc.px < -largoPx || pc.px > sky.larghezza + largoPx ||
+        pc.py < -altoPx - 40 || pc.py > sky.altezza + altoPx + 40) continue;
+
+    // La cresta che sta davanti, campionata in azimut una volta per tutte.
+    const nC = Math.max(SKY_ABITATO_CRESTA_MIN, Math.min(SKY_ABITATO_CRESTA_MAX,
+      Math.round(largoPx / SKY_ABITATO_CRESTA_PX)));
+    const creste = new Array(nC);
+    for (let i = 0; i < nC; i++) {
+      const s = nC === 1 ? 0 : -ab.semiAz + (2 * ab.semiAz * i) / (nC - 1);
+      const v = skyCrestaDisegnataEntro(ab.az + s, ab.km);
+      creste[i] = (v === null || !isFinite(v)) ? -Infinity : v;
+    }
+    const crestaA = (scarto) => {
+      if (nC === 1) return creste[0];
+      const t = (scarto + ab.semiAz) / (2 * ab.semiAz) * (nC - 1);
+      const i = Math.max(0, Math.min(nC - 2, Math.floor(t)));
+      const u = Math.max(0, Math.min(1, t - i));
+      const a = creste[i], b = creste[i + 1];
+      if (a === -Infinity || b === -Infinity) return Math.max(a, b);
+      return a + (b - a) * u;
+    };
+
+    // La prospettiva aerea: la stessa dei nomi, cifra per cifra.
+    const lontananza = typeof skyLontananzaCitta === 'function'
+      ? skyLontananzaCitta(ab.km) : 0;
+    const aria2 = (1 - lontananza * SKY_ABITATO_FOSCHIA);
+    const forza = notte * opaco * aria2;
+    if (forza <= 0.02) continue;
+
+    // Quante se ne risolvono da qui, e quanto è grosso ognuna: tutt'e due
+    // dalla misura del tappeto sullo schermo, non dallo zoom. Vedi
+    // SKY_ABITATO_PASSO_PX e SKY_ABITATO_PUNTO_MIN.
+    const area = Math.max(1, largoPx) * Math.max(1, altoPx);
+    const quante = Math.max(SKY_ABITATO_LUCI_MIN, Math.min(ab.luci.length,
+      Math.round(Math.sqrt(area) / SKY_ABITATO_PASSO_PX)));
+    const passo = Math.sqrt(area / quante);
+    const raggio = Math.max(SKY_ABITATO_PUNTO_MIN,
+      Math.min(SKY_ABITATO_PUNTO_MAX, 0.55 + passo * 0.16));
+
+    // Il letto di luce, sotto ai puntini: è la luce che da qui **non** si
+    // risolve, quindi conta tanto più quante meno lampade si disegnano. A
+    // grandangolo è quasi tutto lui, ingrandendo cede il posto ai puntini.
+    const resta = 1 - quante / ab.luci.length;
+    const letto = forza * SKY_ABITATO_LETTO_ALFA * (0.35 + 0.65 * resta) *
+      Math.min(1, Math.pow(ab.luci.length / 60, 0.5));
+    if (letto > 0.006 && largoPx < sky.larghezza * 4) {
+      ctx.save();
+      ctx.translate(pc.px, pc.py);
+      ctx.scale(Math.max(6, largoPx * 0.62), Math.max(3, altoPx * 0.62 + raggio * 2.4));
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+      g.addColorStop(0, `rgba(255, 178, 110, ${letto.toFixed(3)})`);
+      g.addColorStop(0.55, `rgba(248, 158, 98, ${(letto * 0.38).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(230, 140, 92, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // I puntini. Uno per volta, perché ognuno ha il suo posto sul terreno:
+    // è quello il pezzo che nessuna texture può dare.
+    let scritte = 0;
+    let topAlt = -Infinity, topAz = ab.az, topPx = 0, topPy = 0;
+    for (let i = 0; i < quante; i++) {
+      const l = ab.luci[i];
+      if (l.alt < crestaA(l.scarto)) continue;      // la collina davanti la copre
+      const p = skyProietta(skyVettore(l.az, l.alt), base, focale);
+      if (!p.davanti) continue;
+      if (p.px < -4 || p.px > sky.larghezza + 4 || p.py < -4 || p.py > sky.altezza + 4) {
+        // Fuori dallo schermo non si disegna, ma può essere comunque la
+        // parte più alta del paese: il nome ci si appende lo stesso.
+        if (l.alt > topAlt) { topAlt = l.alt; topAz = l.az; topPx = p.px; topPy = p.py; }
+        continue;
+      }
+      const freddo = l.tinta > SKY_ABITATO_TINTA_FREDDA;
+      const t = freddo ? SKY_ABITATO_TINTE[2]
+        : (l.tinta > 0.45 ? SKY_ABITATO_TINTE[1] : SKY_ABITATO_TINTE[0]);
+      // Le lampade non sono tutte uguali, e un tappeto di punti identici si
+      // legge per una griglia anche quando griglia non è.
+      const a = forza * (0.32 + 0.42 * l.tinta);
+      ctx.fillStyle = `rgba(${t.r}, ${t.g}, ${t.b}, ${a.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, raggio, 0, Math.PI * 2);
+      ctx.fill();
+      scritte++;
+      if (l.alt > topAlt) { topAlt = l.alt; topAz = l.az; topPx = p.px; topPy = p.py; }
+    }
+
+    if (scritte) {
+      visti.set(skyAbitatoChiave(ab.lat, ab.lon), { alt: topAlt, az: topAz, px: topPx, py: topPy, quante: scritte });
+    }
+  }
+
+  ctx.restore();
+  if (visti.size) skyAbitatiVisti = visti;
+}
+
 // --- Le scritte appoggiate all'orizzonte ------------------------------
 //
 // Sono tre — i nomi dei paesi, quelli delle montagne e le lettere dei punti
@@ -19199,11 +19430,20 @@ function skyNomiCitta(ctx, base, focale, occupati) {
     // alla città c'è una montagna, la scritta deve stare sopra la montagna.
     // E sopra la cresta **disegnata**, se no il trattino che collega il nome
     // all'orizzonte si ferma per aria dove il rilievo ha morso una sella.
-    const alt = skyQuotaDisegnata(c.az, Infinity);
-    const p = skyProietta(skyVettore(c.az, alt), base, focale);
+    // …a meno che il paese non si veda per davvero. Da quando le sue luci
+    // sono disegnate dove stanno (`skyDisegnaAbitati`), la cresta è
+    // l'ancora sbagliata: un paese in fondovalle con le montagne dietro
+    // avrebbe il nome appeso alla montagna, a dieci gradi dalle sue luci.
+    // Ci si appende allora al **punto più alto del tappeto**, che è
+    // l'aggancio delle vette applicato a un abitato — e si torna alla
+    // cresta solo quando il paese è coperto e di lui resta la sola cupola.
+    const visto = skyAbitatoVisto(c.lat, c.lon);
+    const alt = visto ? visto.alt : skyQuotaDisegnata(c.az, Infinity);
+    const az = visto ? visto.az : c.az;
+    const p = skyProietta(skyVettore(az, alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
-    candidati.push({ c, p });
+    candidati.push({ c, p, az, alt });
   }
   if (!candidati.length) return;
 
@@ -19265,7 +19505,8 @@ function skyNomiCitta(ctx, base, focale, occupati) {
     // orizzontali, quindi il rettangolo non è girato.
     if (!skyPostoLibero(occupati, skyRettOrientato(
       p.px, p.py - stacco - pro.corpo * 0.35, largo + 12, riga, 0), 4)) continue;
-    poste.push({ c, p, pro, largoNome, kmTesto, corpoKm, stacco, largo });
+    poste.push({ c, p, pro, largoNome, kmTesto, corpoKm, stacco, largo,
+      az: v.az, alt: v.alt });
   }
 
   // Dal fondo verso di qui. Due etichette non si sovrappongono mai — il
@@ -19294,7 +19535,7 @@ function skyNomiCitta(ctx, base, focale, occupati) {
       rett: skyRettOrientato(p.px, y - pro.corpo * 0.42,
         e.largo + 18, pro.corpo + 14, 0),
       punto: { lat: e.c.lat, lon: e.c.lon, nome: e.c.nome,
-        az: e.c.az, alt: skyQuotaDisegnata(e.c.az, Infinity), km: e.c.km }
+        az: e.az, alt: e.alt, km: e.c.km }
     });
     ctx.font = `${SKY_NOMI_ORIZZONTE.citta.stile} ${pro.corpo.toFixed(1)}px ${SKY_FONT_ETICHETTE}`;
     skyScrittaConAlone(ctx, e.c.nome, x, y, pro.pieno, pro.alone, pro.corpo * 0.26);

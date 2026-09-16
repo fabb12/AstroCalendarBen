@@ -3782,6 +3782,9 @@ function cittaDalSalvato(v) {
 }
 
 function cittaDimentica() {
+  cittaAbitatiVista = null;
+  cittaAbitatiChiave = null;
+  cittaForme.clear();
   citta.stato = 'niente';
   citta.elenco = [];
   citta.grezze = [];
@@ -3941,6 +3944,266 @@ function cittaVicine() {
   // o fino al prossimo caricamento, resti visibile il nome appena riconosciuto
   // del luogo in cui ci si trova.
   return citta.elenco.filter(c => !cittaEPostoOsservatore(c, luogo && luogo.nome));
+}
+
+// --- 11-ter. GLI ABITATI: il paese dov'è davvero -----------------------
+//
+// La cupola di luce (`cittaPrepara`) dice che *da quella parte* c'è una
+// città, e per anni è stata tutto quello che il planetario sapeva dire di
+// un paese: un alone centrato sulla **linea dell'orizzonte**, cioè a zero
+// gradi di altezza, che è il posto in cui un paese non sta quasi mai. Un
+// paese sta sul terreno, alla sua quota, alla sua distanza — di solito
+// **sotto** la linea, perché ci si guarda giù — e occupa i gradi che la sua
+// larghezza gli dà: Milano da trenta chilometri è larga venti gradi, il
+// paese qui sotto a due chilometri ne è largo trenta e sta otto gradi sotto
+// i piedi. Guardando dal vero, di notte, quello che si vede non è una
+// gobba arancione appoggiata al crinale: è un tappeto di puntini distesi
+// nella valle, che la cresta davanti taglia a metà.
+//
+// Qui si costruisce quel tappeto. Non è una texture e non è una finzione:
+// ogni luce è un punto del suolo con la sua latitudine, la sua longitudine
+// e la sua quota, e il suo angolo è lo stesso `terrenoAngolo` con cui si
+// misura una montagna — curvatura e rifrazione comprese. Da lì viene
+// gratis tutta la prospettiva: un abitato lontano si schiaccia in una riga
+// sottile, uno vicino si apre a ventaglio sotto i piedi, uno su un fianco
+// di collina sale di sbieco perché le sue luci **stanno** su quel fianco.
+//
+// L'occlusione non si fa qui: la fa chi disegna, contro la cresta
+// **disegnata** (`skyCrestaDisegnataEntro`), come per l'acqua e per la
+// stessa ragione — la cresta misurata e quella dipinta non sono lo stesso
+// numero, e un paese tagliato sulla prima lascia una riga di luci sospese
+// sopra la collina.
+
+// Quanti abitati si disegnano. La lista arriva ordinata per forza, quindi
+// sono i più importanti che si vedono da qui. Oltre la dozzina si tratta
+// di paesini le cui luci, a quella distanza, sono meno di un pixel: a
+// raccontarli c'è già la cupola.
+const CITTA_ABITATI_MAX = 14;
+
+// Oltre questa distanza il tappeto non si disegna affatto. Non è un tetto
+// di costo: a settanta chilometri l'abitato è alto un decimo di grado e
+// sta comunque sotto la foschia, e quello che si vede davvero di una città
+// così lontana **è** la sua cupola — che resta.
+const CITTA_ABITATO_KM_MAX = 60;
+
+// Quante luci. Non sono le lampade vere (una città di centomila abitanti
+// ne ha decine di migliaia): sono quante ne servono perché il tappeto abbia
+// una grana invece di essere una campitura. Il numero cresce con la radice
+// degli abitanti, che è il modo in cui cresce la superficie costruita.
+// Il numero è quello del **serbatoio**, non quello che si vede: a deciderlo
+// è chi disegna, in base a quanto grande viene il tappeto sullo schermo —
+// a grandangolo un paese è una macchia e bastano otto puntini, ingrandendo
+// è un abitato e ce ne vogliono cento. Le luci disegnate sono sempre le
+// **prime** di questo elenco, che è sorteggiato: ingrandendo se ne
+// aggiungono in mezzo e quelle di prima non si spostano di un pixel, che è
+// la stessa proprietà di annidamento del passo delle colonne dell'acqua.
+const CITTA_LUCI_MIN = 14;
+const CITTA_LUCI_MAX = 320;
+
+// Un abitato non è un disco uniforme: è un centro denso con attorno delle
+// frazioni. `cittaQuartieri` dice quanti nuclei sorteggiare — uno per un
+// paese, sette per una città — e attorno a ognuno le luci si addensano.
+// Con un disco uniforme il risultato si legge per quello che è, cioè
+// rumore bianco dentro a un cerchio.
+const CITTA_QUARTIERE_OGNI = 1500;
+const CITTA_QUARTIERI_MAX = 7;
+
+function cittaQuartieri(abitanti) {
+  return Math.max(1, Math.min(CITTA_QUARTIERI_MAX,
+    Math.round(Math.sqrt(Math.max(200, abitanti) / CITTA_QUARTIERE_OGNI))));
+}
+
+function cittaQuanteLuci(abitanti) {
+  return Math.max(CITTA_LUCI_MIN, Math.min(CITTA_LUCI_MAX,
+    Math.round(8 * Math.sqrt(Math.max(200, abitanti) / 200))));
+}
+
+// Un generatore **seminato**, e non `Math.random`: il tappeto si ricostruisce
+// a ogni undici metri di strada (la chiave della vista), e con un sorteggio
+// diverso ogni volta le luci di un paese ballerebbero mentre si cammina.
+// Il seme viene dalle coordinate, quindi lo stesso paese ha sempre le
+// stesse luci — anche fra una sessione e l'altra.
+function cittaSeme(lat, lon) {
+  let h = 2166136261;
+  const s = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function cittaDado(seme) {
+  let s = seme || 1;
+  return () => {
+    s ^= s << 13; s >>>= 0;
+    s ^= s >> 17;
+    s ^= s << 5; s >>>= 0;
+    return s / 4294967296;
+  };
+}
+
+// La quota del suolo in un punto qualunque, con le stesse tre fonti e nello
+// stesso ordine di `rilOcchioMeta`: le tessere (ventisette metri di passo,
+// entro il disco del rilievo), la griglia grossa (centocinquanta) e infine
+// niente. Le due fonti sono già in memoria: qui non si chiede niente alla
+// rete, si legge.
+function cittaQuotaPunto(lat, lon) {
+  if (typeof rilQuotaSuolo === 'function') {
+    const q = rilQuotaSuolo(lat, lon);
+    if (q !== null && isFinite(q)) return q;
+  }
+  if (typeof rilQuotaGrigliaSotto === 'function') {
+    const q = rilQuotaGrigliaSotto(lat, lon);
+    if (q !== null && isFinite(q)) return q;
+  }
+  return null;
+}
+
+// Le luci di un abitato, in coordinate geografiche. Si sorteggiano nel piano
+// del terreno — metri a est e a nord del centro — e si convertono in
+// latitudine e longitudine: è lì che vivono, e da lì ognuna si rifà azimut,
+// distanza e altezza da qualunque punto si guardi.
+function cittaLuciDi(c) {
+  const dado = cittaDado(cittaSeme(c.lat, c.lon));
+  const raggioM = Math.max(120, cittaRaggioAbitatoKm(c.abitanti) * 1000);
+  // Un abitato è quasi sempre allungato — una valle, una costa, una strada —
+  // e un cerchio perfetto si riconosce subito per un disegno. Lo schiaccio
+  // sta fra il 55% e il 100%, con un'orientazione sua.
+  const schiaccia = 0.55 + dado() * 0.45;
+  const gira = dado() * Math.PI * 2;
+  const cg = Math.cos(gira), sg = Math.sin(gira);
+
+  const nq = cittaQuartieri(c.abitanti);
+  const quartieri = [];
+  for (let i = 0; i < nq; i++) {
+    // Il primo nucleo è il centro storico e sta in mezzo; gli altri sono
+    // frazioni, sparse e più piccole.
+    const r = i === 0 ? 0 : raggioM * (0.25 + 0.75 * Math.sqrt(dado()));
+    const a = dado() * Math.PI * 2;
+    quartieri.push({
+      x: Math.cos(a) * r, y: Math.sin(a) * r,
+      sigma: raggioM * (i === 0 ? 0.42 : 0.10 + dado() * 0.14),
+      peso: i === 0 ? 2.2 : 1
+    });
+  }
+  const pesoTot = quartieri.reduce((s, q) => s + q.peso, 0);
+
+  const quante = cittaQuanteLuci(c.abitanti);
+  const metriPerGrado = 111195;
+  const cosLat = Math.cos(c.lat * Math.PI / 180) || 1e-6;
+  const luci = [];
+  for (let i = 0; i < quante; i++) {
+    let t = dado() * pesoTot, q = quartieri[0];
+    for (const qq of quartieri) { t -= qq.peso; if (t <= 0) { q = qq; break; } }
+    // Una normale approssimata con la somma di tre dadi: il centro denso e
+    // la periferia che si dirada, che è come sono fatti i paesi.
+    const gx = (dado() + dado() + dado() - 1.5) * 1.2;
+    const gy = (dado() + dado() + dado() - 1.5) * 1.2;
+    let x = q.x + gx * q.sigma;
+    let y = q.y + gy * q.sigma;
+    // Lo schiacciamento, applicato nel riferimento girato dell'abitato.
+    const xr = x * cg + y * sg, yr = -x * sg + y * cg;
+    x = xr * cg - yr * schiaccia * sg;
+    y = xr * sg + yr * schiaccia * cg;
+    const lat = c.lat + y / metriPerGrado;
+    const lon = c.lon + x / (metriPerGrado * cosLat);
+    const quota = cittaQuotaPunto(lat, lon);
+    luci.push({ lat, lon, quota, tinta: dado() });
+  }
+  // La quota dell'abitato: la mediana di quelle delle sue luci, che è più
+  // robusta del punto centrale — il nodo di OpenStreetMap può cadere su un
+  // campanile, su un ponte o dentro a un fosso.
+  const quote = luci.map(l => l.quota).filter(q => q !== null).sort((a, b) => a - b);
+  const centro = quote.length ? quote[quote.length >> 1] : null;
+  for (const l of luci) if (l.quota === null) l.quota = centro;
+  return { luci, quota: centro, raggioM };
+}
+
+// Le forme già sorteggiate, una per paese. Il sorteggio delle luci e la
+// lettura delle loro quote **non dipendono da dove si guarda** — un paese
+// sta dov'è — mentre azimut, distanza e altezza sì, e si rifanno a ogni
+// undici metri di strada. Tenerle insieme voleva dire rileggere qualche
+// migliaio di quote dal modello del suolo a ogni passo del GPS, cioè un
+// singhiozzo in macchina per un risultato identico. La chiave porta il
+// modello dentro di sé: quando arrivano le tessere le quote cambiano, e la
+// forma va rifatta.
+const CITTA_FORME_TENUTE = 40;
+const cittaForme = new Map();
+
+function cittaFormaDi(c) {
+  const modello = (typeof terreno !== 'undefined' ? (terreno.quando || 0) : 0) + '|' +
+    (typeof rilievo !== 'undefined' ? (rilievo.chiave || '') : '');
+  const chiave = `${c.lat.toFixed(5)},${c.lon.toFixed(5)}|${c.abitanti}|${modello}`;
+  const avuta = cittaForme.get(chiave);
+  if (avuta) return avuta;
+  const forma = cittaLuciDi(c);
+  cittaForme.set(chiave, forma);
+  if (cittaForme.size > CITTA_FORME_TENUTE) {
+    cittaForme.delete(cittaForme.keys().next().value);
+  }
+  return forma;
+}
+
+// Il tappeto pronto per il disegno: per ogni luce l'azimut, la distanza e
+// l'altezza viste da **qui**. Si rifà quando ci si sposta di undici metri
+// (la chiave della vista), quando cambia la quota dell'occhio o quando
+// arriva un terreno nuovo — cioè per le stesse tre ragioni delle vette.
+let cittaAbitatiVista = null;
+let cittaAbitatiChiave = null;
+
+function cittaAbitati() {
+  if (!citta.acceso) return [];
+  const lista = cittaVicine();
+  if (!lista.length) return [];
+  const luogo = terrenoPuntoDaDisegnare();
+  if (!luogo) return [];
+  const occhio = cimeQuotaOcchio();
+  const chiave = `${cittaChiaveVista(luogo.lat, luogo.lon)}|${occhio.toFixed(0)}|` +
+    `${terrenoDisponibile() ? terreno.quando : 0}|${lista.length}`;
+  if (cittaAbitatiChiave === chiave) return cittaAbitatiVista;
+
+  const fuori = [];
+  for (const c of lista) {
+    if (fuori.length >= CITTA_ABITATI_MAX) break;
+    if (c.km > CITTA_ABITATO_KM_MAX) continue;
+    const forma = cittaFormaDi(c);
+    // Senza nessuna quota non si sa dove sta il paese, e appoggiarlo a zero
+    // vorrebbe dire rimetterlo sulla linea dell'orizzonte: meglio la sola
+    // cupola, che quella almeno non afferma niente.
+    if (forma.quota === null) continue;
+    const luci = [];
+    let altMin = Infinity, altMax = -Infinity;
+    let azMin = Infinity, azMax = -Infinity;
+    for (const l of forma.luci) {
+      const km = terrenoDistanzaKm(luogo.lat, luogo.lon, l.lat, l.lon);
+      const az = cittaAzimut(luogo.lat, luogo.lon, l.lat, l.lon);
+      const alt = terrenoAngolo(l.quota, occhio, km);
+      // Lo scarto rispetto alla direzione del centro, riportato dentro al
+      // mezzo giro: un abitato a cavallo del nord ha azimut che saltano da
+      // 359 a 1, e una media presa sui gradi crudi lo manderebbe a sud.
+      const scarto = ((az - c.az) % 360 + 540) % 360 - 180;
+      luci.push({ az, km, alt, scarto, tinta: l.tinta });
+      if (alt < altMin) altMin = alt;
+      if (alt > altMax) altMax = alt;
+      if (scarto < azMin) azMin = scarto;
+      if (scarto > azMax) azMax = scarto;
+    }
+    if (!luci.length) continue;
+    fuori.push({
+      nome: c.nome, lat: c.lat, lon: c.lon, abitanti: c.abitanti,
+      az: c.az, km: c.km, forza: c.forza, quota: forma.quota,
+      raggioM: forma.raggioM,
+      // I due estremi in azimut e in altezza: servono al disegno per sapere
+      // quanto grande viene il tappeto sullo schermo prima di disegnarlo.
+      semiAz: Math.max(Math.abs(azMin), Math.abs(azMax)),
+      altBasso: altMin, altAlto: altMax,
+      luci
+    });
+  }
+  cittaAbitatiVista = fuori;
+  cittaAbitatiChiave = chiave;
+  return fuori;
 }
 
 function cittaAlterna() {
