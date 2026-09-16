@@ -9,7 +9,7 @@ il totale di adesso.
 
 ## Lo stato delle prove
 
-Verdi: `prova-abitati.js` (32), `prova-missione.js --solo-motore` (158),
+Verdi: `prova-abitati.js` (56), `prova-missione.js --solo-motore` (158),
 `controlla-i18n.js --patto`, `controlla-collisioni.js`.
 
 Rosse e **preesistenti**, verificate sull'albero pulito (`git stash`, stesso
@@ -31,80 +31,47 @@ va passato `CHROMIUM=...`; e `playwright-core` va installato a mano
 
 ## Ultimo intervento completato
 
-**Di giorno il paese si vede lo stesso: la macchia del costruito e il suo
-perimetro.** Le luci erano la sola metà, quella notturna, e lasciavano
-l'abitato invisibile dall'alba al tramonto — cioè in metà delle ore in cui
-uno apre il planetario. Adesso di giorno si disegna quello che di un paese si
-vede davvero: la macchia di tetti e di asfalto, col **bordo** dove finisce il
-costruito e ricomincia la campagna.
+**Le città di giorno, e la gerarchia fra una città e i suoi quartieri.**
 
-- **`cittaBordoDelle`** (§11-ter di `terreno.js`): il perimetro non si
-  dichiara, si **misura** sulla nuvola di luci già sorteggiata — per ogni
-  spicchio, fin dove arriva la casa più lontana. È frastagliato dove
-  l'abitato è frastagliato e **contiene le luci per costruzione**; la
-  lisciata romperebbe quell'invariante (abbassa i picchi), quindi prima si
-  allarga ogni spicchio al massimo dei vicini.
-- **`skyDisegnaMacchiaAbitato`** in `app.js`: poligono, contorno e i singoli
-  edifici dove si risolvono. La prospettiva aerea mescola alla foschia **per
-  intero** — è una superficie, non un'etichetta.
-- **`skyClipSopraLaCresta`**: la collina davanti **ritaglia** la macchia (una
-  regione, non un confronto per punto) invece di portarla via. Senza terreno
-  non si ritaglia affatto.
-- Le due metà si danno il cambio sulla **stessa soglia** della cupola, quindi
-  al crepuscolo si vedono tutte e due; e il **nome** si appende al punto più
-  alto di quello che è stato disegnato, luci o tetti che siano.
+La metà diurna dell'abitato c'era già — la macchia del costruito col suo
+perimetro — e sopra di lei una grana di quadratini tutti uguali: piatti,
+della stessa misura, dello stesso grigio. Da lontano bastava; ingrandendo si
+leggeva per quello che era, una texture. Quello che mancava a quei
+quadratini non era il colore ma **l'altezza**.
 
-Nove prove nuove nel §6 di `scripts/prova-abitati.js` (32 in tutto).
-Cache **v340**. Toccati: `terreno.js`, `app.js`, `scripts/prova-abitati.js`,
-`sw.js`, `CLAUDE.md`.
+- **Gli edifici hanno metri** (`cittaLuciDi`, `cittaPianiTipici`,
+  `cittaFronteM` in §11-ter di `terreno.js`): altezza in piani dal logaritmo
+  degli abitanti, col centro più alto della periferia, e un fronte che cresce
+  coi piani. La cima è `terrenoAngolo(quota + h)` come la cima di una
+  montagna, quindi **la prospettiva viene gratis**. Più il **campanile**, che
+  è il doppio più alto delle case e ha la guglia a triangolo: è la prima cosa
+  che si riconosce di un paese.
+- **Il disegno** (`skyDisegnaCasePaese`, `skyAbitatoMuro` in `app.js`): tre
+  gradini decisi **per edificio** — chiazza col colore del suo tetto sotto
+  1,7 px, parete e tetto sopra. Quanto si vede del tetto è geometria
+  (`profondità · sen d`), e la parete è chiara col Sole alle spalle.
+- **La gerarchia**: la specie OSM si tiene invece di buttarla
+  (`CITTA_PARTI`, `CITTA_RANGHI`, `cittaPadreDi`), la query ha **tre `out`**
+  invece di uno, e un quartiere si nomina solo quando è largo abbastanza
+  sullo schermo (`SKY_CITTA_PARTE_QUOTA`) — quindi zummando indietro resta la
+  città e avvicinandosi si aprono i rioni. Due passate, nei nomi e fra gli
+  abitati disegnati, perché le parti non consumino i posti degli interi.
 
-## Intervento precedente
+Due difetti trovati dalle prove mentre le scrivevo, tutti e due muti:
+`skyDisegnaMacchiaAbitato` usciva quando il **perimetro** era coperto,
+cancellando un paese di cui si vedevano benissimo i tetti sopra il dosso
+(`skyAbitatoSporgeQualcosa`); e un rione, stando più vicino della sua città,
+**prenotava il posto** del nome prima di lei.
 
-**I paesi, i borghi e i villaggi disegnati dove stanno davvero.** Fino a ieri
-di un abitato il planetario sapeva dire una cosa sola: una cupola arancione
-centrata sulla **linea dell'orizzonte**, cioè a zero gradi — che è il posto in
-cui un paese non sta quasi mai. Adesso c'è anche l'abitato: le sue luci sono
-punti del suolo con la loro latitudine, la loro longitudine e la loro quota, e
-il loro angolo è lo stesso `terrenoAngolo` con cui si misura una montagna.
-Da lì viene gratis tutta la prospettiva — un paese lontano si schiaccia in una
-striscia sottile, uno vicino si apre a ventaglio sotto i piedi, uno su un
-fianco di collina sale di sbieco — e la collina davanti lo taglia dove lo
-taglia davvero, contro la cresta **disegnata** come fa l'acqua.
+Il costo: misurato su una scena vera (cinque abitati, 468 case)
+**1,03 → 1,11 ms** per fotogramma, l'otto per cento in più con dentro la
+terza dimensione. Ci sono volute tre cure, tutte a vista invariata: le
+vernici tre per paese invece di due per casa, le case fuori dal riquadro
+scartate prima della seconda proiezione, e l'altezza **ricavata** invece di
+riproiettata.
 
-Quattro cose, tutte legate:
-
-1. **§11-ter di `terreno.js`** (`cittaAbitati`, `cittaLuciDi`, `cittaFormaDi`,
-   `cittaQuotaPunto`): il serbatoio di luci di ogni paese, sorteggiato con un
-   generatore **seminato** dalle coordinate — se no le lampade si
-   rimescolerebbero a ogni undici metri di strada — in nuclei invece che in un
-   disco uniforme, e con le quote lette dalle tessere o dalla griglia grossa.
-   La forma si tiene per paese, con il **modello del suolo dentro alla
-   chiave**: un passo del GPS non deve rileggere qualche migliaio di quote.
-2. **`skyDisegnaAbitati` in `app.js`**, chiamata da `skyDisegnaTerreno` dopo il
-   terreno e l'acqua. Tosatura contro `skyCrestaDisegnataEntro`, prospettiva
-   aerea **identica cifra per cifra** a quella dei nomi (`skyLontananzaCitta`),
-   e il **letto di luce** sotto ai puntini, che è la luce che da lì non si
-   risolve e pesa tanto più quante meno lampade si disegnano.
-3. **Quante se ne vedono dipende da quanto si è ingrandito**, non da una
-   costante: le disegnate sono le **prime** del serbatoio sorteggiato, quindi
-   ingrandendo se ne aggiungono in mezzo e quelle di prima non si spostano di
-   un pixel.
-4. **Il nome si appende al paese** e non più alla cresta intera di quella
-   direzione, che per un paese in fondovalle sono le montagne dietro
-   (`skyAbitatoVisto`). Si torna alla cresta solo quando il paese è coperto e
-   di lui resta la sola cupola.
-
-Senza terreno vero non cambia niente: senza quota un abitato non si disegna
-affatto, perché appoggiarlo a zero vorrebbe dire affermare una cosa falsa con
-la faccia di un dato.
-
-Nuovo banco: `scripts/prova-abitati.js`. Cache **v339**.
-
-## Intervento ancora precedente
-
-**La musica di sottofondo ora ha un catalogo di tracce locali.** La cartella
-`musica/` contiene il registro `catalogo.js` e le istruzioni per aggiungere i
-file audio. Nelle Impostazioni si sceglie fra il paesaggio generato e le tracce
-registrate, si regola il volume e si ricordano entrambe le preferenze. Il
-lettore riproduce i file in loop e mostra un errore leggibile se un file manca.
-Cache **v335**.
+Ventiquattro prove nuove nei §7 e §8 di `scripts/prova-abitati.js` (56 in
+tutto), e al planetario finto del banco è stata aggiunta l'elevazione della
+vista: senza, un paese guardato da un monte cade fuori dal riquadro e la
+prova misura uno schermo vuoto. Cache **v341**. Toccati: `terreno.js`,
+`app.js`, `scripts/prova-abitati.js`, `sw.js`, `CLAUDE.md`.
