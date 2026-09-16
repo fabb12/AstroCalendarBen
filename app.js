@@ -18840,6 +18840,8 @@ const SKY_ABITATO_TETTI = [178, 166, 152];     // i singoli edifici, più chiari
 const SKY_ABITATO_ALFA = 0.58;
 const SKY_ABITATO_ORLO_ALFA = 0.62;
 const SKY_ABITATO_TETTI_ALFA = 0.34;
+// Quanto copre il fondo di un quartiere: vedi `skyDisegnaMacchiaAbitato`.
+const SKY_ABITATO_PARTE_ALFA = 0.20;
 
 // Quanto la macchia scivola verso la foschia in fondo alla scala. Qui la
 // mescola è piena e non pesata sulla luminosità come per i nomi (§`SKY_CITTA_FOSCHIA_TINTA`):
@@ -18850,6 +18852,72 @@ const SKY_ABITATO_FOSCHIA_TINTA = 0.88;
 // Sotto questa larghezza sullo schermo i singoli tetti non si disegnano: a
 // venti pixel sono pulviscolo che sporca la macchia invece di darle grana.
 const SKY_ABITATO_TETTI_PX = 26;
+
+// --- I volumi: pareti e tetti -----------------------------------------
+//
+// La macchia col contorno dice *dove* è il paese; i quadratini dicevano che
+// è fatto di case. Nessuno dei due dice che le case **stanno in piedi**, ed
+// è quella la cosa che manca a un abitato ingrandito per somigliare a un
+// abitato: di un edificio si vedono due facce che prendono la luce in due
+// modi diversi — la parete, verticale, che la prende di sbieco o non la
+// prende affatto, e il tetto, quasi orizzontale, che la prende da sopra.
+// Una chiazza piatta non può avere né l'una né l'altra, e per questo a
+// qualunque colore la si dipinga resta una cartina.
+//
+// Qui non si inventa niente: l'altezza in metri la portano gli edifici da
+// `terreno.js`, e la cima è `terrenoAngolo(quota + h)` come la cima di una
+// montagna. Da lì la prospettiva viene gratis — un palazzo a due
+// chilometri è alto dieci pixel e lo stesso palazzo a venti è mezzo pixel,
+// senza nessuna riga che lo dichiari.
+const SKY_ABITATO_MURO_LUCE = [206, 194, 174];  // intonaco al sole
+const SKY_ABITATO_MURO_OMBRA = [104, 100, 98];  // la stessa parete, controluce
+const SKY_ABITATO_TEGOLA = [156, 96, 74];       // il coppo
+const SKY_ABITATO_LAMIERA = [142, 138, 134];    // cemento e capannoni
+// Quanti tetti sono di coppi: in Italia quasi tutti, e un paese di sole
+// lamiere si legge per una zona industriale.
+const SKY_ABITATO_TEGOLA_QUOTA = 0.72;
+
+// Sotto questa altezza sullo schermo un edificio non è un volume: è un
+// punto, e disegnarne la parete e il tetto vuol dire disegnare due mezzi
+// pixel uno sopra l'altro — cioè spendere il doppio per una macchia più
+// sporca di un quadratino solo. Sotto la soglia si torna alla chiazza, col
+// **colore del suo tetto**: da lontano di un paese si vedono i tetti.
+const SKY_ABITATO_VOLUME_PX = 1.7;
+
+// Le pareti coprono più dei tetti perché di una casa la parete è la faccia
+// grande, e perché è lei a dover staccare dal prato: un muro trasparente
+// lascia vedere la macchia sotto e l'edificio torna a essere una chiazza.
+const SKY_ABITATO_MURO_ALFA = 0.66;
+const SKY_ABITATO_TETTO_ALFA = 0.58;
+
+// Il campanile, e il triangolo della sua guglia. Si disegna appena si
+// risolve — prima delle case, perché è il doppio più alto di loro — ed è
+// quello che fa riconoscere un paese prima di averne contato una casa.
+const SKY_ABITATO_TORRE_PX = 2.4;
+const SKY_ABITATO_GUGLIA = 0.26;   // quanta parte dell'altezza è la punta
+
+// Il colore di una parete, fra il sole e il controluce. La faccia che
+// guardiamo è quella rivolta **verso di noi**, quindi è illuminata quando
+// il Sole ci sta dietro le spalle: il coseno fra la direzione dell'astro e
+// quella dell'edificio è il numero che lo dice, e va preso col segno
+// meno — controluce (scarto piccolo) si vede il lato in ombra.
+//
+// Non c'è nessun modello a tre dimensioni sotto: c'è un coseno, ed è lo
+// stesso ragionamento con cui `skyDisegnaLucePaesaggio` decide da che parte
+// il panorama è caldo.
+function skyAbitatoMuro(az, luce) {
+  if (!luce || !(luce.forza > 0)) {
+    // Senza Sole e senza Luna non c'è nessuna faccia in luce, e dipingerne
+    // una vorrebbe dire inventarsi un'illuminazione: resta il grigio del
+    // controluce, che è quello che si vede in una giornata coperta.
+    return SKY_ABITATO_MURO_OMBRA;
+  }
+  const d = Math.cos((az - luce.az) * SKY_D2R);
+  // Da −1 (Sole alle spalle: parete piena luce) a +1 (controluce: ombra).
+  const t = Math.max(0, Math.min(1, (1 - d) / 2));
+  return skyMescolaColore(SKY_ABITATO_MURO_OMBRA, SKY_ABITATO_MURO_LUCE,
+    t * (0.35 + 0.65 * luce.forza));
+}
 
 // Quanto è alta la fascia entro cui la macchia può stare, sopra alla cresta
 // che le sta davanti. Serve a ritagliare il poligono contro la collina, ed è
@@ -18909,6 +18977,20 @@ function skyClipSopraLaCresta(ctx, ab, base, focale, creste, nC) {
   return true;
 }
 
+// Se di questo paese spunta **qualcosa** sopra la cresta che gli sta
+// davanti: una casa, o il campanile. Il suolo lo si guarda a parte (i punti
+// del perimetro), perché è quello a dire se il paese si vede *come* paese
+// o se ne sporgono soltanto i tetti.
+function skyAbitatoSporgeQualcosa(ab, crestaA) {
+  const t = ab.torre;
+  if (t && t.altCima !== undefined && t.altCima >= crestaA(t.scarto)) return true;
+  for (const l of ab.luci) {
+    if (l.altCima === undefined) continue;
+    if (l.altCima >= crestaA(l.scarto)) return true;
+  }
+  return false;
+}
+
 // La macchia del costruito e il suo perimetro. Torna quanti punti del bordo
 // si vedono davvero: zero vuol dire che la collina davanti copre il paese, e
 // allora il nome non ci si può appendere.
@@ -18928,7 +19010,12 @@ function skyDisegnaMacchiaAbitato(ctx, ab, base, focale, creste, nC, crestaA,
       segna(b.alt, b.az, p.px, p.py);
     }
   }
-  if (!visti) return 0;
+  // Del suolo di un paese si può non vedere niente e vederne benissimo i
+  // **tetti**: è così che un paese in una conca si affaccia sopra il dosso,
+  // ed è il caso normale guardando una valle. Uscire qui vorrebbe dire
+  // cancellarlo tutto per colpa di un metro di collina — e a cancellarlo
+  // per davvero, quando è davvero coperto, ci pensa comunque il ritaglio.
+  if (!visti && !skyAbitatoSporgeQualcosa(ab, crestaA)) return 0;
 
   // La prospettiva aerea: una superficie lontana diventa il colore dell'aria.
   const f = aria && aria.foschia ? aria.foschia : null;
@@ -18941,41 +19028,225 @@ function skyDisegnaMacchiaAbitato(ctx, ab, base, focale, creste, nC, crestaA,
   ctx.moveTo(punti[0].px, punti[0].py);
   for (let i = 1; i < punti.length; i++) ctx.lineTo(punti[i].px, punti[i].py);
   ctx.closePath();
-  ctx.fillStyle = skyRgba(verso(SKY_ABITATO_SUOLO), (forza * SKY_ABITATO_ALFA).toFixed(3));
+  // Il fondo di una **parte** copre molto meno, e non è una preferenza: la
+  // macchia della città che la contiene è già stata dipinta lì sotto, e due
+  // strati a opacità piena fanno una chiazza più scura al centro di ogni
+  // abitato grande — cioè un alone attorno a niente. Quello che un
+  // quartiere aggiunge davvero non è il fondo: sono le sue case.
+  ctx.fillStyle = skyRgba(verso(SKY_ABITATO_SUOLO),
+    (forza * (ab.parte ? SKY_ABITATO_PARTE_ALFA : SKY_ABITATO_ALFA)).toFixed(3));
   ctx.fill();
 
   // I singoli edifici, dove si risolvono: è quello che toglie alla macchia
   // l'aria di velatura. Si disegnano **dentro** al perimetro per costruzione
   // — sono le stesse posizioni che di notte fanno le luci.
+  let tetti = 0;
   if (largoPx >= SKY_ABITATO_TETTI_PX) {
-    const lato = Math.max(0.8, Math.min(2.4, largoPx / 90));
-    ctx.fillStyle = skyRgba(verso(SKY_ABITATO_TETTI),
-      (forza * SKY_ABITATO_TETTI_ALFA).toFixed(3));
-    const quanti = Math.min(ab.luci.length, Math.max(8, Math.round(largoPx / 5)));
-    for (let i = 0; i < quanti; i++) {
-      const l = ab.luci[i];
+    tetti = skyDisegnaCasePaese(ctx, ab, base, focale, crestaA, forza,
+      lontananza, verso, largoPx, segna);
+  }
+
+  // Il contorno, e **solo per un abitato intero**: un quartiere non ha un
+  // confine fra le case e la campagna — quel confine ce l'ha la città che
+  // lo contiene, e ridisegnarlo attorno a un rione vuol dire tirare una
+  // riga in mezzo al costruito dove non finisce niente.
+  if (!ab.parte) {
+    ctx.beginPath();
+    ctx.moveTo(punti[0].px, punti[0].py);
+    for (let i = 1; i < punti.length; i++) ctx.lineTo(punti[i].px, punti[i].py);
+    ctx.closePath();
+    ctx.lineJoin = 'round';
+    // Il tratto si assottiglia con la distanza come il filo di richiamo dei
+    // nomi: un paese in fondo non ha un bordo sottile, ha un bordo che
+    // l'aria ha quasi cancellato.
+    ctx.lineWidth = Math.max(0.6, 1.4 - lontananza * 0.7);
+    ctx.strokeStyle = skyRgba(verso(SKY_ABITATO_ORLO),
+      (forza * SKY_ABITATO_ORLO_ALFA).toFixed(3));
+    ctx.stroke();
+  }
+
+  ctx.restore();
+  // Quello che si è visto: il suolo, oppure i soli tetti. Il conto serve a
+  // `skyNomiCitta`, che da lì decide se il nome ha un paese a cui
+  // appendersi o se deve tornare alla cresta.
+  return visti + tetti;
+}
+
+// Le case, e il campanile in mezzo a loro. Tre gradini, e il gradino si
+// decide **per edificio** e non per paese: su un fianco di collina quelli
+// davanti sono volumi e quelli in fondo sono punti, che è quello che si
+// vede — deciderlo una volta per tutto l'abitato metterebbe un taglio netto
+// dove il terreno non ne ha nessuno.
+function skyDisegnaCasePaese(ctx, ab, base, focale, crestaA, forza, lontananza,
+                             verso, largoPx, segna) {
+  const luce = typeof skyLucePaesaggio === 'function' ? skyLucePaesaggio() : null;
+  const perGrado = focale * SKY_D2R;
+  const quanti = Math.min(ab.luci.length, Math.max(8, Math.round(largoPx / 5)));
+
+  // **Le tre vernici, una volta per paese e non una per casa.** Ogni
+  // `skyRgba(skyMescolaColore(...))` è una mescola e una stringa nuova, e
+  // farne due per edificio significa settecento stringhe per un paese
+  // ingrandito, a ogni fotogramma: da sola era metà del costo di questa
+  // funzione (misurato, 22,8 ms → 8,4 su ventidue abitati in quadro).
+  //
+  // Si può fare perché nessuna delle tre dipende dalla singola casa: il
+  // tetto è di coppi o di lamiera e basta, e la parete guarda verso di noi
+  // con l'azimut **del paese** — un abitato largo sette gradi ha le
+  // facciate orientate uguali, e pretendere di più vorrebbe dire dichiarare
+  // per ognuna un orientamento che non abbiamo misurato.
+  const veloMuro = skyRgba(verso(skyAbitatoMuro(ab.az, luce)),
+    (forza * SKY_ABITATO_MURO_ALFA).toFixed(3));
+  const veloTegola = skyRgba(verso(SKY_ABITATO_TEGOLA),
+    (forza * SKY_ABITATO_TETTO_ALFA).toFixed(3));
+  const veloLamiera = skyRgba(verso(SKY_ABITATO_LAMIERA),
+    (forza * SKY_ABITATO_TETTO_ALFA).toFixed(3));
+  // La chiazza sotto la risoluzione è più trasparente del tetto vero: lì
+  // quel quadratino vale per una casa intera vista da lontano.
+  const piattoTegola = skyRgba(verso(SKY_ABITATO_TEGOLA),
+    (forza * SKY_ABITATO_TETTI_ALFA).toFixed(3));
+  const piattoLamiera = skyRgba(verso(SKY_ABITATO_LAMIERA),
+    (forza * SKY_ABITATO_TETTI_ALFA).toFixed(3));
+  const piattoVecchio = skyRgba(verso(SKY_ABITATO_TETTI),
+    (forza * SKY_ABITATO_TETTI_ALFA).toFixed(3));
+
+  // Quanto si può sbordare dal riquadro prima di essere fuori per davvero:
+  // **mezza casa**, cioè mezzo fronte di quello più largo del paese — che è
+  // una misura che l'abitato porta già fatta. Il paese invece non c'entra:
+  // tarando il margine sulla sua larghezza, a forte zoom si tenevano
+  // centinaia di pixel di franchigia, cioè si rinunciava al risparmio
+  // proprio dove serviva.
+  const margine = 8 + (ab.frontePiuLargo || 0) * perGrado * 0.6;
+
+  // Dal fondo verso di qui: due case che si sovrappongono vanno disegnate
+  // in quest'ordine, se no quella dietro copre quella davanti — e con
+  // l'alfa parziale di queste vernici il risultato non è un errore
+  // evidente, è un paese che si legge appena più sporco.
+  //
+  // L'ordinamento però è già fatto (`ab.ordine`, una volta per posizione):
+  // qui si scorre quello e si saltano le case che a questo ingrandimento
+  // non si risolvono. Ordinare qui vorrebbe dire un `sort` di trecento
+  // elementi per paese **a ogni fotogramma**, dentro al ciclo di disegno.
+  const scelti = ab.ordine || ab.luci;
+
+  // La chiazza sotto la risoluzione prende il colore del **suo tetto**: da
+  // lontano di un paese si vedono i tetti, e un grigio unico per tutti era
+  // la ragione per cui quella grana si leggeva come una texture.
+  const latoPiatto = Math.max(0.8, Math.min(2.4, largoPx / 90));
+  let quanteViste = 0;
+
+  for (const l of scelti) {
+    // Quante se ne disegnano lo decide lo schermo, quali sono sempre «le
+    // prime del serbatoio»: `i` è il posto lì dentro.
+    if (l.i !== undefined && l.i >= quanti) continue;
+    if (l.altCima === undefined) {
+      // Un salvataggio di prima dei volumi: resta la chiazza di sempre.
       if (l.alt < crestaA(l.scarto)) continue;
       const p = skyProietta(skyVettore(l.az, l.alt), base, focale);
       if (!p.davanti) continue;
-      ctx.fillRect(p.px - lato / 2, p.py - lato / 2, lato, lato);
+      ctx.fillStyle = piattoVecchio;
+      ctx.fillRect(p.px - latoPiatto / 2, p.py - latoPiatto / 2,
+        latoPiatto, latoPiatto);
+      quanteViste++;
+      if (segna) segna(l.alt, l.az, p.px, p.py);
+      continue;
+    }
+    // La cresta taglia sulla **cima**: una casa la cui gronda spunta dietro
+    // al dosso si vede, ed è proprio così che si vede un paese in una
+    // conca. Tagliando sulla base sparirebbe tutto il primo filare.
+    if (l.altCima < crestaA(l.scarto)) continue;
+    const pb = skyProietta(skyVettore(l.az, l.alt), base, focale);
+    if (!pb.davanti) continue;
+    // **Fuori dal riquadro si esce prima della seconda proiezione.** A
+    // forte ingrandimento di un paese si vede un pezzo, non tutto: senza
+    // questo filtro si pagavano per intero anche le trecento case che
+    // stanno fuori dallo schermo — e non cambiano un pixel di quello che si
+    // vede, che è la ragione per cui il risparmio è gratis.
+    if (pb.px < -margine || pb.px > sky.larghezza + margine ||
+        pb.py < -margine || pb.py > sky.altezza + margine) continue;
+    // **L'altezza si ricava, non si riproietta.** La cima sta allo stesso
+    // azimut della base e un quinto di grado più su, e su un arco così
+    // corto la proiezione è la sua tangente: `gradi × scala locale`. È la
+    // stessa approssimazione che `catalogo.js` fa da sempre srotolando
+    // `skyProietta`, e qui vale il doppio, perché una seconda proiezione
+    // per casa era la metà del lavoro geometrico di tutta la funzione.
+    //
+    // L'errore è del secondo ordine su un quinto di grado, cioè centesimi
+    // di pixel su un edificio alto pochi pixel — meno dell'antialiasing che
+    // lo disegna. Il prezzo vero è un altro e vale dirlo: la colonna di
+    // azimut costante, in stereografica, è una curva, quindi la cima è
+    // anche spostata **di lato** di una frazione di pixel rispetto alla
+    // base. Per una casa non si vede, e per il nome che ci si appende
+    // nemmeno.
+    const scala = skyScalaLocale(pb.d);
+    const altoPx = (l.altCima - l.alt) * perGrado * scala;
+    const cimaY = pb.py - altoPx;
+    const largo = Math.max(latoPiatto, l.largoGradi * perGrado * scala);
+    const tegola = l.tetto < SKY_ABITATO_TEGOLA_QUOTA;
+
+    quanteViste++;
+    // Il nome si appende alla **cima** del tetto che si vede, non al suolo
+    // sotto di lui: è la stessa regola delle vette, e da qui viene che un
+    // paese in una conca porti il suo nome sui tetti che ne sporgono.
+    if (segna) segna(l.altCima, l.az, pb.px, cimaY);
+
+    if (altoPx < SKY_ABITATO_VOLUME_PX) {
+      ctx.fillStyle = tegola ? piattoTegola : piattoLamiera;
+      ctx.fillRect(pb.px - latoPiatto / 2, pb.py - latoPiatto / 2,
+        latoPiatto, latoPiatto);
+      continue;
+    }
+
+    // Quanto si vede del tetto è geometria e non una scelta: un tetto è
+    // orizzontale e profondo quanto la casa è larga, quindi guardandolo
+    // con una depressione `d` si proietta alto `profondità · sen d` —
+    // sopra alla linea di gronda, che è dove sta la cima. Da qui viene, da
+    // sé, che da una cima si vede un paese di tetti e dalla pianura un
+    // paese di facciate. Il seno lo porta la casa già fatto: dentro al
+    // ciclo di disegno sarebbe una trigonometrica per casa per fotogramma.
+    const tetto = l.senDep === undefined ? 0
+      : Math.min(altoPx * 2.2, largo * l.senDep);
+
+    // La parete. `altoPx` è già la sua altezza proiettata: non va corretta
+    // di niente, perché base e cima sono passate tutt'e due dalla
+    // proiezione vera.
+    ctx.fillStyle = veloMuro;
+    ctx.fillRect(pb.px - largo / 2, cimaY, largo, altoPx);
+
+    if (tetto >= 0.7) {
+      ctx.fillStyle = tegola ? veloTegola : veloLamiera;
+      ctx.fillRect(pb.px - largo / 2, cimaY - tetto, largo, tetto);
     }
   }
 
-  // Il contorno. Il tratto si assottiglia con la distanza come il filo di
-  // richiamo dei nomi: un paese in fondo non ha un bordo sottile, ha un
-  // bordo che l'aria ha quasi cancellato.
+  // Il campanile, per ultimo: è il più alto di tutti, quindi nessuna casa
+  // gli passa davanti.
+  const t = ab.torre;
+  if (!t || t.altCima === undefined) return quanteViste;
+  if (t.altCima < crestaA(t.scarto)) return quanteViste;
+  // Il campanile è uno per paese, quindi qui la seconda proiezione si può
+  // pagare: la sua altezza è dieci volte quella di una casa, e su mezzo
+  // grado la tangente comincia a mentire di un pixel.
+  const tb = skyProietta(skyVettore(t.az, t.alt), base, focale);
+  const tc = skyProietta(skyVettore(t.az, t.altCima), base, focale);
+  if (!tb.davanti || !tc.davanti) return quanteViste;
+  const tAlto = tb.py - tc.py;
+  if (tAlto < SKY_ABITATO_TORRE_PX) return quanteViste;
+  quanteViste++;
+  if (segna) segna(t.altCima, t.az, tc.px, tc.py);
+  const tLargo = Math.max(1, t.largoGradi * perGrado * skyScalaLocale(tc.d));
+  const guglia = tAlto * SKY_ABITATO_GUGLIA;
+  ctx.fillStyle = veloMuro;
+  ctx.fillRect(tb.px - tLargo / 2, tc.py + guglia, tLargo, tAlto - guglia);
+  // La punta. Un triangolo in cima a una stanghetta **è** la silhouette di
+  // un campanile: senza di lui resta un palazzo stretto, cioè niente.
   ctx.beginPath();
-  ctx.moveTo(punti[0].px, punti[0].py);
-  for (let i = 1; i < punti.length; i++) ctx.lineTo(punti[i].px, punti[i].py);
+  ctx.moveTo(tb.px, tc.py);
+  ctx.lineTo(tb.px + tLargo * 0.62, tc.py + guglia);
+  ctx.lineTo(tb.px - tLargo * 0.62, tc.py + guglia);
   ctx.closePath();
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = Math.max(0.6, 1.4 - lontananza * 0.7);
-  ctx.strokeStyle = skyRgba(verso(SKY_ABITATO_ORLO),
-    (forza * SKY_ABITATO_ORLO_ALFA).toFixed(3));
-  ctx.stroke();
-
-  ctx.restore();
-  return visti;
+  ctx.fillStyle = veloTegola;
+  ctx.fill();
+  return quanteViste;
 }
 
 function skyDisegnaAbitati(ctx, base, focale, aria, velo) {
@@ -19527,6 +19798,45 @@ const SKY_CITTA_KM_SEP = ' · ';
 // non riempie più niente.
 const SKY_CITTA_KM_FOV = 40;
 
+// --- La gerarchia: la città, e poi i suoi quartieri -------------------
+//
+// Un quartiere si nomina quando è **una cosa distinta**, e non quando è
+// importante: sono due domande diverse e per un pezzo se ne faceva una
+// sola. La forza (abitanti diviso distanza al quadrato) metteva «Città
+// Studi» a cinque chilometri davanti a «Milano» a trenta, quindi a
+// grandangolo si leggevano i nomi dei rioni e non quello della città — il
+// contrario di come si legge una carta, dove il nome grosso c'è a ogni
+// scala e i quartieri si aggiungono man mano che la scala cresce.
+//
+// La misura giusta non è la distanza e non è la popolazione: è **quanto
+// largo viene sullo schermo**. Un quartiere che occupa un ottavo del campo
+// visivo è un pezzo di orizzonte che si può indicare col dito; lo stesso
+// quartiere che ne occupa un centesimo è un punto dentro alla macchia
+// della sua città, e nominarlo vuol dire appoggiare un nome in più sopra a
+// un pezzo di cielo che ne ha già uno giusto. Scritto così, il gradino non
+// dipende soltanto dallo zoom: avvicinandosi in macchina i quartieri si
+// aprono da soli, che è quello che succede arrivando in una città.
+const SKY_CITTA_PARTE_QUOTA = 0.12;
+
+// Il corpo del nome per gradino di gerarchia (`cittaRango`): la città, il
+// comune, il quartiere, il rione. Su una carta geografica non si scrivono
+// dello stesso corpo, e se lo facessero la gerarchia bisognerebbe
+// indovinarla dai nomi.
+const SKY_CITTA_RANGO_CORPO = [1.16, 1, 0.87, 0.78];
+
+function skyCittaCorpoRango(c) {
+  const r = Math.max(0, Math.min(SKY_CITTA_RANGO_CORPO.length - 1,
+    c.rango === undefined ? 1 : c.rango));
+  return SKY_CITTA_RANGO_CORPO[r];
+}
+
+// Se questo quartiere, da qui e a questo ingrandimento, è ancora una cosa
+// distinta. Un abitato senza larghezza dichiarata (un salvataggio vecchio)
+// non è una parte e non passa da qui.
+function skyParteSiNomina(c) {
+  return c.largoVero > 0 && c.largoVero >= sky.fov * SKY_CITTA_PARTE_QUOTA;
+}
+
 // Quanto è «in fondo» un paese a `km` di distanza, da 0 (ai propri piedi) a
 // 1 (all'orizzonte). È la stessa riga di `skyPianiOrizzonte`, normalizzata
 // sulla stessa distanza: così un paese a quaranta chilometri e la fetta di
@@ -19598,26 +19908,39 @@ function skyNomiCitta(ctx, base, focale, occupati) {
   // raccolti abbastanza — che è quello che il ciclo faceva da sempre.
   const massimo = skyCittaMaxNomi();
   const candidati = [];
-  for (const c of lista) {
-    if (candidati.length >= massimo) break;
-    // Il nome sta appena sopra la cresta, non sopra la linea: se davanti
-    // alla città c'è una montagna, la scritta deve stare sopra la montagna.
-    // E sopra la cresta **disegnata**, se no il trattino che collega il nome
-    // all'orizzonte si ferma per aria dove il rilievo ha morso una sella.
-    // …a meno che il paese non si veda per davvero. Da quando le sue luci
-    // sono disegnate dove stanno (`skyDisegnaAbitati`), la cresta è
-    // l'ancora sbagliata: un paese in fondovalle con le montagne dietro
-    // avrebbe il nome appeso alla montagna, a dieci gradi dalle sue luci.
-    // Ci si appende allora al **punto più alto del tappeto**, che è
-    // l'aggancio delle vette applicato a un abitato — e si torna alla
-    // cresta solo quando il paese è coperto e di lui resta la sola cupola.
-    const visto = skyAbitatoVisto(c.lat, c.lon);
-    const alt = visto ? visto.alt : skyQuotaDisegnata(c.az, Infinity);
-    const az = visto ? visto.az : c.az;
-    const p = skyProietta(skyVettore(az, alt), base, focale);
-    if (!p.davanti) continue;
-    if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
-    candidati.push({ c, p, az, alt });
+  // **Due passate, e in questo ordine**: prima gli abitati interi, poi le
+  // loro parti con i posti che restano. È la riga che risponde a «zummo
+  // indietro e voglio leggere il nome della città»: con una passata sola i
+  // sette posti di un grandangolo se li prendevano i quartieri, che stanno
+  // più vicini e quindi vincono in forza, e la città restava senza nome pur
+  // essendo l'unica cosa che a quella scala si possa nominare.
+  for (const soloParti of [false, true]) {
+    for (const c of lista) {
+      if (candidati.length >= massimo) break;
+      if (!!c.parte !== soloParti) continue;
+      // Un quartiere troppo piccolo non consuma un posto: viene saltato e non
+      // conta, se no a grandangolo i primi sette nodi per importanza —
+      // rioni compresi — chiuderebbero la lista senza scrivere niente.
+      if (soloParti && !skyParteSiNomina(c)) continue;
+      // Il nome sta appena sopra la cresta, non sopra la linea: se davanti
+      // alla città c'è una montagna, la scritta deve stare sopra la montagna.
+      // E sopra la cresta **disegnata**, se no il trattino che collega il nome
+      // all'orizzonte si ferma per aria dove il rilievo ha morso una sella.
+      // …a meno che il paese non si veda per davvero. Da quando le sue luci
+      // sono disegnate dove stanno (`skyDisegnaAbitati`), la cresta è
+      // l'ancora sbagliata: un paese in fondovalle con le montagne dietro
+      // avrebbe il nome appeso alla montagna, a dieci gradi dalle sue luci.
+      // Ci si appende allora al **punto più alto del tappeto**, che è
+      // l'aggancio delle vette applicato a un abitato — e si torna alla
+      // cresta solo quando il paese è coperto e di lui resta la sola cupola.
+      const visto = skyAbitatoVisto(c.lat, c.lon);
+      const alt = visto ? visto.alt : skyQuotaDisegnata(c.az, Infinity);
+      const az = visto ? visto.az : c.az;
+      const p = skyProietta(skyVettore(az, alt), base, focale);
+      if (!p.davanti) continue;
+      if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
+      candidati.push({ c, p, az, alt });
+    }
   }
   if (!candidati.length) return;
 
@@ -19628,7 +19951,16 @@ function skyNomiCitta(ctx, base, focale, occupati) {
   // lontana si contendono la stessa fascia di cielo vince quella davanti, e
   // l'altra resta nascosta dietro — che è esattamente quello che fanno due
   // cose messe una dietro l'altra.
-  candidati.sort((a, b) => a.c.km - b.c.km);
+  // …con una precedenza sopra alla distanza: **gli abitati interi prima
+  // delle loro parti**. I rioni di una città le stanno addosso, quindi si
+  // contendono la stessa fascia di cielo, e stando per definizione più
+  // vicini prenotavano il posto per primi: il nome della città cadeva, e
+  // sull'orizzonte di Milano si leggeva «Rione» e nient'altro. È lo stesso
+  // difetto della classifica per forza, spostato dalla scelta alla
+  // prenotazione — e non si vede, perché quello che resta scritto è un nome
+  // vero in un posto vero.
+  candidati.sort((a, b) =>
+    (a.c.parte ? 1 : 0) - (b.c.parte ? 1 : 0) || a.c.km - b.c.km);
 
   // Quello indicato dal mirino, che sta sempre al centro dello schermo.
   const cx = sky.larghezza / 2, cy = sky.altezza / 2;
@@ -19653,7 +19985,8 @@ function skyNomiCitta(ctx, base, focale, occupati) {
   const poste = [];
   for (const v of candidati) {
     const { c, p } = v;
-    const pro = skyProspettivaCitta(c.km, corpoBase, tinta, aria, v === mirato);
+    const pro = skyProspettivaCitta(c.km, corpoBase * skyCittaCorpoRango(c),
+      tinta, aria, v === mirato);
 
     // Il semigrassetto non è un vezzo: sopra a un fondo che cambia, le aste
     // sottili del peso normale si mangiano proprio dove il fondo è chiaro.
@@ -19663,7 +19996,10 @@ function skyNomiCitta(ctx, base, focale, occupati) {
 
     // Intero e basta: un paese a 14,3 km è a quattordici chilometri, e il
     // decimo di chilometro non ha mai cambiato la decisione di nessuno.
-    const kmTesto = (tutti || v === mirato)
+    // Su un quartiere il numero non si scrive, se non è quello indicato: è
+    // la stessa distanza della sua città, scritta una seconda volta a tre
+    // centimetri di distanza.
+    const kmTesto = (v === mirato || (tutti && !c.parte))
       ? `${SKY_CITTA_KM_SEP}${Math.max(1, Math.round(c.km))} km` : '';
     const corpoKm = pro.corpo * SKY_CITTA_KM_CORPO;
     let largoKm = 0;

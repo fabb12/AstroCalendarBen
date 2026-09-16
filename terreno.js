@@ -3192,6 +3192,17 @@ const CITTA_RAGGIO_PAESI_KM = 20;
 // larga non passa. Trenta chilometri sono il raggio in cui un paese la sua
 // cupola di luce ce l'ha ancora, e una richiesta così corta la serve anche
 // un'istanza che sta annaspando.
+// I quartieri e i rioni solo da vicino, e non per risparmiare una
+// richiesta: a quaranta chilometri un quartiere non è una cosa che si
+// distingua dalla città che lo contiene — è un punto dentro alla sua
+// macchia, e nominarlo vuol dire appoggiare un nome in più su un pezzo di
+// orizzonte che già ne ha uno giusto.
+const CITTA_RAGGIO_PARTI_KM = 14;
+// Quanto un quartiere può sporgere dal raggio stimato del suo comune e
+// restare comunque suo. Il raggio di `cittaRaggioAbitatoKm` è una stima
+// dagli abitanti, non una misura: stretta com'è, i quartieri periferici
+// risulterebbero orfani proprio nelle città grandi.
+const CITTA_PADRE_MARGINE = 1.8;
 const CITTA_RAGGIO_RIPIEGO_KM = 30;
 const CITTA_MAX = 60;
 const CITTA_RAGGIO_VALIDO_KM = 5;
@@ -3221,7 +3232,46 @@ const CITTA_RIPROVA_DOPO_MS = 3 * 60 * 1000;
 // Quando OpenStreetMap non dice quanti abitanti ha, si va per categoria.
 // Sono numeri all'ingrosso, e vanno benissimo: la differenza fra una città
 // e un paese si vede, quella fra 40.000 e 55.000 abitanti no.
-const CITTA_ABITANTI = { city: 150000, town: 18000, village: 2200, suburb: 25000, borough: 60000 };
+const CITTA_ABITANTI = {
+  city: 150000, town: 18000, village: 2200, hamlet: 400,
+  suburb: 25000, borough: 60000, quarter: 8000, neighbourhood: 4000
+};
+
+// --- La gerarchia degli abitati ---------------------------------------
+//
+// OpenStreetMap distingue due cose che per anni qui sono finite nello stesso
+// mucchio: un abitato **autonomo** (una città, un paese, una frazione) e una
+// **parte** di un altro abitato (un quartiere, un rione, un municipio). Il
+// dato c'era — `place` arriva su ogni nodo — e si buttava via dopo averlo
+// usato per indovinare gli abitanti.
+//
+// Buttarlo via costava la cosa che si nota per prima guardando l'orizzonte
+// di una città: «Città Studi» e «Navigli» hanno 25.000 abitanti a testa e a
+// cinque chilometri battono in forza Milano che sta a trenta, quindi a
+// grandangolo si leggevano i nomi dei quartieri e **non** quello della
+// città. È il contrario di come si legge una carta geografica, dove il nome
+// grosso c'è sempre e i quartieri si aggiungono man mano che la scala
+// cresce.
+const CITTA_PARTI = new Set(['suburb', 'borough', 'quarter', 'neighbourhood', 'city_block']);
+
+// Il rango tipografico: quanto grande si scrive il nome. Non è l'importanza
+// (quella la dice già la forza, cioè abitanti diviso distanza al quadrato):
+// è il gradino della gerarchia, e serve perché su una carta il nome di una
+// città e quello di un suo rione non si scrivono dello stesso corpo — se lo
+// facessero, la gerarchia bisognerebbe indovinarla dai nomi.
+const CITTA_RANGHI = {
+  city: 0, borough: 1, town: 1, suburb: 2, quarter: 2, village: 2,
+  neighbourhood: 3, hamlet: 3, city_block: 3
+};
+
+function cittaEParte(specie) {
+  return CITTA_PARTI.has(String(specie || ''));
+}
+
+function cittaRango(specie) {
+  const r = CITTA_RANGHI[String(specie || '')];
+  return r === undefined ? 2 : r;
+}
 
 const citta = {
   stato: 'niente',        // niente | in-corso | pronto | fallito
@@ -3303,6 +3353,37 @@ function cittaEPostoOsservatore(c, nomeLuogo) {
   return !!luogo && cittaNomeConfrontabile(c && c.nome) === luogo;
 }
 
+// --- Chi contiene chi -------------------------------------------------
+//
+// OpenStreetMap, su un nodo `place=suburb`, **non dice di chi è il
+// quartiere**: la relazione amministrativa esiste ma sta altrove, costa
+// un'altra richiesta e in mezza Europa non è nemmeno mappata. Il genitore
+// si deduce quindi dalla geometria, che per questo mestiere basta e avanza:
+// il quartiere sta dentro all'abitato autonomo più grande che se lo
+// prende, cioè quello il cui raggio d'abitato lo contiene.
+//
+// A che serve saperlo: a scrivere «Navigli» sotto «Milano» invece che
+// accanto, e a non ridisegnare il perimetro del costruito attorno a un
+// rione — un quartiere non ha un confine fra case e campagna, quel confine
+// ce l'ha la città.
+function cittaPadreDi(parte, grezze) {
+  let padre = null, meglio = 0;
+  for (const c of grezze) {
+    if (c === parte || cittaEParte(c.specie)) continue;
+    if (c.abitanti <= parte.abitanti) continue;
+    const km = terrenoDistanzaKm(parte.lat, parte.lon, c.lat, c.lon);
+    // Il raggio con cui l'abitato si disegna, con un margine: un rione può
+    // stare appena fuori dal raggio stimato del suo comune e restare
+    // comunque suo.
+    const dentro = cittaRaggioAbitatoKm(c.abitanti) * CITTA_PADRE_MARGINE;
+    if (km > dentro) continue;
+    // A pari contenimento vince il più grosso: un rione di Milano sta
+    // dentro a Milano, non dentro al comune di ventimila anime accanto.
+    if (c.abitanti > meglio) { meglio = c.abitanti; padre = c.nome; }
+  }
+  return padre;
+}
+
 function cittaPrepara(grezze, lat, lon, nomeLuogo) {
   return grezze.map(c => {
     const km = terrenoDistanzaKm(lat, lon, c.lat, c.lon);
@@ -3320,6 +3401,16 @@ function cittaPrepara(grezze, lat, lon, nomeLuogo) {
       nome: c.nome,
       abitanti: c.abitanti,
       lat: c.lat, lon: c.lon,
+      // La gerarchia, decisa qui una volta per tutte: chi disegna non deve
+      // sapere niente delle etichette di OpenStreetMap.
+      specie: c.specie,
+      parte: cittaEParte(c.specie),
+      rango: cittaRango(c.specie),
+      padre: cittaEParte(c.specie) ? cittaPadreDi(c, grezze) : null,
+      // Quanto è larga in gradi, vista da qui: è la misura con cui chi
+      // scrive i nomi decide se un quartiere è ancora una cosa distinta o
+      // è un punto dentro alla sua città (§`SKY_CITTA_PARTE_QUOTA`).
+      largoVero,
       az, km, forza, alto,
       // L'alone è sempre più largo dell'abitato: la luce si sparge nell'aria
       mezzo: Math.max(4, Math.min(55, largoVero + 3.5 + alto * 0.6)),
@@ -3342,10 +3433,19 @@ function cittaQueryOverpass(lat, lon) {
   // stessa richiesta, e chiederli a venti quando il raggio è dieci vuol
   // dire prendersi paesi che non si è chiesto di vedere.
   const vicino = Math.min(CITTA_RAGGIO_PAESI_KM, largo);
-  return '[out:json][timeout:20];(' +
-    `node["place"~"^(city|town)$"](around:${Math.round(largo * 1000)},${la},${lo});` +
-    `node["place"~"^(village|suburb|borough)$"](around:${Math.round(vicino * 1000)},${la},${lo});` +
-    ');out body 400;';
+  const parti = Math.min(CITTA_RAGGIO_PARTI_KM, largo);
+  // **Tre `out` e non uno**, ed è la lezione che i laghi hanno già
+  // insegnato (§12, `acqueQueryOverpass`): un `out` con un tetto stampa
+  // nell'ordine del server, quindi in una provincia densa il tetto se lo
+  // prendono i nodi della prima famiglia e le altre non vengono stampate
+  // affatto. Con tre unioni e tre tetti, i duecento quartieri di una città
+  // non possono più mangiarsi il nome della città — e il sintomo, se
+  // succedesse, non sarebbe un errore ma un'assenza: un orizzonte senza il
+  // nome che ci si aspetta di leggere.
+  return '[out:json][timeout:20];' +
+    `node["place"~"^(city|town)$"](around:${Math.round(largo * 1000)},${la},${lo});out body 200;` +
+    `node["place"~"^(village|hamlet)$"](around:${Math.round(vicino * 1000)},${la},${lo});out body 250;` +
+    `node["place"~"^(suburb|borough|quarter|neighbourhood)$"](around:${Math.round(parti * 1000)},${la},${lo});out body 250;`;
 }
 
 // --- Chiedere a Overpass ----------------------------------------------
@@ -3706,6 +3806,11 @@ function cittaLeggiNodi(elementi) {
       return {
         nome: n.tags.name,
         lat: n.lat, lon: n.lon,
+        // La specie serve a due cose e nessuna delle due è la popolazione:
+        // dice se questo nodo è un abitato o **un pezzo** di un altro
+        // (`cittaEParte`), e con che corpo si scrive il suo nome
+        // (`cittaRango`). Prima si leggeva e si buttava via.
+        specie: n.tags.place,
         abitanti: isFinite(grezza) && grezza > 0 ? grezza : (CITTA_ABITANTI[n.tags.place] || 3000)
       };
     });
@@ -3742,7 +3847,8 @@ function cittaDaOverpass(lat, lon) {
 function cittaDaElencoInterno(lat, lon) {
   if (typeof ECL_CITTA === 'undefined') return [];
   return ECL_CITTA
-    .map(([nome, paese, cLat, cLon]) => ({ nome, lat: cLat, lon: cLon, abitanti: 250000 }))
+    .map(([nome, paese, cLat, cLon]) => ({ nome, lat: cLat, lon: cLon, abitanti: 250000,
+                                            specie: 'city' }))
     .filter(c => terrenoDistanzaKm(lat, lon, c.lat, c.lon) <= raggioCitta());
 }
 
@@ -3771,14 +3877,19 @@ function cittaSalva(lat, lon, grezze, fonte, raggio) {
       lat, lon, fonte, quando: Date.now(), raggio: isFinite(raggio) ? raggio : raggioCitta(),
       // Nomi corti e coordinate a quattro decimali: un centinaio di paesi
       // stanno in una decina di kilobyte
-      elenco: grezze.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), p: c.abitanti }))
+      // `s` è la specie, e per lei non serve un numero di formato: un
+      // salvataggio vecchio non ce l'ha, `cittaEParte(undefined)` risponde
+      // «no» e quei nodi tornano a essere abitati autonomi — che è
+      // esattamente com'erano trattati il giorno in cui sono stati salvati.
+      elenco: grezze.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4),
+                                 p: c.abitanti, s: c.specie }))
     });
     localStorage.setItem(CHIAVE_CITTA, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
 }
 
 function cittaDalSalvato(v) {
-  return v.elenco.map(c => ({ nome: c.n, lat: c.a, lon: c.o, abitanti: c.p }));
+  return v.elenco.map(c => ({ nome: c.n, lat: c.a, lon: c.o, abitanti: c.p, specie: c.s }));
 }
 
 function cittaDimentica() {
@@ -3980,6 +4091,14 @@ function cittaVicine() {
 // raccontarli c'è già la cupola.
 const CITTA_ABITATI_MAX = 14;
 
+// I quartieri hanno un tetto **loro**, in aggiunta e non in concorrenza.
+// La lista arriva ordinata per forza, e un quartiere sta per definizione
+// più vicino della città che lo contiene: con un tetto solo, arrivando a
+// Milano i quattordici posti se li prendevano i suoi rioni e i paesi
+// attorno sparivano tutti insieme — cioè si perdeva il paesaggio per
+// guadagnare il dettaglio di una città sola.
+const CITTA_PARTI_MAX = 8;
+
 // Oltre questa distanza il tappeto non si disegna affatto. Non è un tetto
 // di costo: a settanta chilometri l'abitato è alto un decimo di grado e
 // sta comunque sotto la foschia, e quello che si vede davvero di una città
@@ -4012,6 +4131,55 @@ function cittaQuartieri(abitanti) {
   return Math.max(1, Math.min(CITTA_QUARTIERI_MAX,
     Math.round(Math.sqrt(Math.max(200, abitanti) / CITTA_QUARTIERE_OGNI))));
 }
+
+// --- Quanto è alta una casa -------------------------------------------
+//
+// Di giorno il costruito era una macchia col contorno e, dove si
+// risolveva, una grana di quadratini tutti uguali: piatti, della stessa
+// misura, dello stesso grigio. Da lontano bastava; ingrandendo si leggeva
+// per quello che era, una texture. Quello che manca a quei quadratini non
+// è il colore ma **l'altezza**: una casa vista da fuori è un volume, e di
+// un volume si vedono due cose diverse — la parete, che sta in piedi e
+// prende la luce di sbieco, e il tetto, che è quasi orizzontale e la prende
+// da sopra. Sono quelle due facce a far sembrare un paese un paese, ed è
+// per questo che un paesaggio dipinto a chiazze piatte resta una cartina.
+//
+// L'altezza si scrive in **piani**, che è come sono fatte le case, e da lì
+// diventa metri: da lì in poi non c'è più niente di dichiarato, perché il
+// resto lo fa la geometria che gli abitati hanno già — la cima di un
+// edificio è `terrenoAngolo(quota + h)` come la cima di una montagna, e
+// quindi un palazzo vicino è alto sullo schermo e uno in fondo alla valle
+// non si vede, senza che nessuna riga lo dica.
+const CITTA_PIANO_M = 3.2;
+const CITTA_PIANI_MIN = 2;
+const CITTA_PIANI_MAX = 9;
+
+function cittaPianiTipici(abitanti) {
+  // Il logaritmo degli abitanti, e non la radice: fra una frazione di
+  // duecento anime e un paese di duemila di piani ce n'è **uno** in più,
+  // non dieci — e fra Milano e una città di centomila quasi nessuno, che è
+  // proprio quello che si vede guidando.
+  return Math.max(CITTA_PIANI_MIN, Math.min(CITTA_PIANI_MAX,
+    1.4 + Math.log10(Math.max(200, abitanti) / 200) * 1.7));
+}
+
+// Le tegole, l'intonaco, il cemento: quanto larga è una casa di fronte.
+// Cresce coi piani perché un palazzo ha una pianta più grande di una
+// villetta, e non perché la si sia misurata: serve a non avere tutti i
+// fronti della stessa larghezza, che è il modo in cui una fila di case
+// torna a leggersi come un codice a barre.
+function cittaFronteM(piani, dado) {
+  return 7 + piani * 2.2 + dado * 9;
+}
+
+// Il campanile. Ogni paese italiano ne ha uno e **spunta**: è alto il
+// doppio delle case che gli stanno attorno e largo un quarto, quindi è la
+// prima cosa che si riconosce di un abitato visto da lontano, prima ancora
+// di contarne le case. Senza di lui un paese ingrandito è un mucchio di
+// parallelepipedi tutti della stessa taglia — che è esattamente il difetto
+// che i volumi, da soli, non toglievano.
+const CITTA_TORRE_MIN_M = 21;
+const CITTA_TORRE_MAX_M = 46;
 
 function cittaQuanteLuci(abitanti) {
   return Math.max(CITTA_LUCI_MIN, Math.min(CITTA_LUCI_MAX,
@@ -4092,6 +4260,7 @@ function cittaLuciDi(c) {
   const quante = cittaQuanteLuci(c.abitanti);
   const metriPerGrado = 111195;
   const cosLat = Math.cos(c.lat * Math.PI / 180) || 1e-6;
+  const piani = cittaPianiTipici(c.abitanti);
   const luci = [];
   for (let i = 0; i < quante; i++) {
     let t = dado() * pesoTot, q = quartieri[0];
@@ -4109,15 +4278,52 @@ function cittaLuciDi(c) {
     const lat = c.lat + y / metriPerGrado;
     const lon = c.lon + x / (metriPerGrado * cosLat);
     const quota = cittaQuotaPunto(lat, lon);
-    luci.push({ lat, lon, quota, tinta: dado() });
+    // Quanto questo edificio sta al centro, da uno a zero. Non è la
+    // distanza dal nodo di OpenStreetMap ma quella dal **nucleo** in cui è
+    // cascato, e la differenza conta: una frazione staccata ha un suo
+    // piccolo centro con la chiesa e le case attaccate, non è una
+    // periferia della città.
+    const dc = Math.hypot(x - q.x, y - q.y);
+    const centro = Math.max(0, 1 - dc / Math.max(1, q.sigma * 2.2)) *
+      (q.peso > 1 ? 1 : 0.75);
+    // Da uno a un paio di volte i piani tipici, con la periferia più bassa
+    // del centro: un piano solo esiste (i capannoni, le case di campagna) e
+    // fa da pavimento, se no un paese viene fatto tutto di condomìni.
+    const pn = Math.max(1, piani * (0.45 + 0.75 * centro) * (0.7 + 0.6 * dado()));
+    luci.push({
+      lat, lon, quota, tinta: dado(),
+      h: pn * CITTA_PIANO_M,
+      largo: cittaFronteM(pn, dado()),
+      // Il dado del tetto: le tegole di un paese non sono tutte dello
+      // stesso rosso, e un capannone ha la lamiera grigia. Il colore lo
+      // scelgono i pennelli di `app.js`, qui si sorteggia il numero — e si
+      // sorteggia **qui** perché deve restare lo stesso mentre si cammina.
+      tetto: dado()
+    });
   }
+  // Il campanile: appena scostato dal nucleo principale, come sta in ogni
+  // paese, alto quanto basta a spuntare sopra i tetti.
+  const torreA = dado() * Math.PI * 2;
+  const torreR = quartieri[0].sigma * 0.22 * dado();
+  const tLat = c.lat + Math.sin(torreA) * torreR / metriPerGrado;
+  const tLon = c.lon + Math.cos(torreA) * torreR / (metriPerGrado * cosLat);
+  const tQuota = cittaQuotaPunto(tLat, tLon);
+  const torre = {
+    lat: tLat, lon: tLon, quota: tQuota,
+    h: CITTA_TORRE_MIN_M + (CITTA_TORRE_MAX_M - CITTA_TORRE_MIN_M) *
+      Math.min(1, Math.log10(Math.max(200, c.abitanti) / 200) / 3.5) *
+      (0.7 + 0.5 * dado()),
+    largo: 4.5 + dado() * 3
+  };
   // La quota dell'abitato: la mediana di quelle delle sue luci, che è più
   // robusta del punto centrale — il nodo di OpenStreetMap può cadere su un
   // campanile, su un ponte o dentro a un fosso.
   const quote = luci.map(l => l.quota).filter(q => q !== null).sort((a, b) => a - b);
   const centro = quote.length ? quote[quote.length >> 1] : null;
   for (const l of luci) if (l.quota === null) l.quota = centro;
-  return { luci, bordo: cittaBordoDelle(luci, c, raggioM, centro), quota: centro, raggioM };
+  if (torre.quota === null) torre.quota = centro;
+  return { luci, torre, bordo: cittaBordoDelle(luci, c, raggioM, centro),
+           quota: centro, raggioM };
 }
 
 // --- Il perimetro dell'abitato ----------------------------------------
@@ -4232,57 +4438,130 @@ function cittaAbitati() {
   if (cittaAbitatiChiave === chiave) return cittaAbitatiVista;
 
   const fuori = [];
-  for (const c of lista) {
-    if (fuori.length >= CITTA_ABITATI_MAX) break;
-    if (c.km > CITTA_ABITATO_KM_MAX) continue;
-    const forma = cittaFormaDi(c);
-    // Senza nessuna quota non si sa dove sta il paese, e appoggiarlo a zero
-    // vorrebbe dire rimetterlo sulla linea dell'orizzonte: meglio la sola
-    // cupola, che quella almeno non afferma niente.
-    if (forma.quota === null) continue;
-    const luci = [];
-    let altMin = Infinity, altMax = -Infinity;
-    let azMin = Infinity, azMax = -Infinity;
-    for (const l of forma.luci) {
-      const km = terrenoDistanzaKm(luogo.lat, luogo.lon, l.lat, l.lon);
-      const az = cittaAzimut(luogo.lat, luogo.lon, l.lat, l.lon);
-      const alt = terrenoAngolo(l.quota, occhio, km);
-      // Lo scarto rispetto alla direzione del centro, riportato dentro al
-      // mezzo giro: un abitato a cavallo del nord ha azimut che saltano da
-      // 359 a 1, e una media presa sui gradi crudi lo manderebbe a sud.
-      const scarto = ((az - c.az) % 360 + 540) % 360 - 180;
-      luci.push({ az, km, alt, scarto, tinta: l.tinta });
-      if (alt < altMin) altMin = alt;
-      if (alt > altMax) altMax = alt;
-      if (scarto < azMin) azMin = scarto;
-      if (scarto > azMax) azMax = scarto;
+  // Due passate, come per i nomi (§`skyNomiCitta`) e per la stessa ragione:
+  // prima gli abitati interi, poi le loro parti con i posti in più.
+  let parti = 0;
+  for (const soloParti of [false, true]) {
+    for (const c of lista) {
+      if (!!c.parte !== soloParti) continue;
+      if (soloParti) {
+        if (parti >= CITTA_PARTI_MAX) break;
+      } else if (fuori.length >= CITTA_ABITATI_MAX) break;
+      if (c.km > CITTA_ABITATO_KM_MAX) continue;
+      const forma = cittaFormaDi(c);
+      // Senza nessuna quota non si sa dove sta il paese, e appoggiarlo a zero
+      // vorrebbe dire rimetterlo sulla linea dell'orizzonte: meglio la sola
+      // cupola, che quella almeno non afferma niente.
+      if (forma.quota === null) continue;
+      const luci = [];
+      let altMin = Infinity, altMax = -Infinity;
+      let azMin = Infinity, azMax = -Infinity;
+      for (const l of forma.luci) {
+        const km = terrenoDistanzaKm(luogo.lat, luogo.lon, l.lat, l.lon);
+        const az = cittaAzimut(luogo.lat, luogo.lon, l.lat, l.lon);
+        const alt = terrenoAngolo(l.quota, occhio, km);
+        // Lo scarto rispetto alla direzione del centro, riportato dentro al
+        // mezzo giro: un abitato a cavallo del nord ha azimut che saltano da
+        // 359 a 1, e una media presa sui gradi crudi lo manderebbe a sud.
+        const scarto = ((az - c.az) % 360 + 540) % 360 - 180;
+        // La **cima** dell'edificio, con lo stesso `terrenoAngolo` della sua
+        // base: è quella riga a dare a un paese la sua terza dimensione, e
+        // non costa niente perché la geometria era già tutta qui.
+        const altCima = terrenoAngolo(l.quota + l.h, occhio, km);
+        // Il fronte in gradi. Un `atan2` e non una divisione, perché a
+        // duecento metri una casa di quindici ne occupa quattro e la
+        // tangente lì non è più l'angolo.
+        const largoGradi = Math.atan2(l.largo / 1000, Math.max(0.02, km)) * 180 / Math.PI;
+        // `i` è il posto nel serbatoio, e serve al disegno: quante case si
+        // vedono lo decide lo schermo, **quali** è sempre «le prime», che
+        // è la proprietà per cui ingrandendo se ne aggiungono senza che
+        // quelle di prima si spostino di un pixel.
+        luci.push({ i: luci.length, az, km, alt, altCima, largoGradi, scarto,
+                    tinta: l.tinta, tetto: l.tetto,
+                    // Quanto si vede del tetto: un tetto è orizzontale e
+                    // profondo quanto la casa è larga, quindi guardato con
+                    // una depressione `d` si proietta alto
+                    // `profondità · sen d`. Il seno si calcola **qui**, una
+                    // volta per posizione: dentro al ciclo di disegno
+                    // sarebbe una trigonometrica per casa per fotogramma,
+                    // e la depressione di una casa non cambia finché non
+                    // ci si sposta.
+                    senDep: Math.sin(Math.max(0, -(alt + altCima) / 2) *
+                                     Math.PI / 180) });
+        if (alt < altMin) altMin = alt;
+        if (altCima > altMax) altMax = altCima;
+        if (scarto < azMin) azMin = scarto;
+        if (scarto > azMax) azMax = scarto;
+      }
+      if (!luci.length) continue;
+
+      // Le stesse case, ordinate dalla più lontana alla più vicina. Due
+      // case che si sovrappongono vanno disegnate in quest'ordine, se no
+      // quella dietro copre quella davanti; ma **ordinarle costa**, e
+      // ordinarle a ogni fotogramma vorrebbe dire un `sort` di trecento
+      // elementi per ogni paese in quadro dentro al ciclo di disegno, che è
+      // il genere di spesa che il planetario non ha — deve restare sotto il
+      // millisecondo. Qui si paga una volta per posizione, cioè ogni undici
+      // metri di strada, e chi disegna scorre questo e salta chi non serve.
+      const ordine = luci.slice().sort((a, b) => b.km - a.km);
+
+      // Il campanile, dalla stessa catena: se andasse per un'altra strada
+      // finirebbe accanto al paese invece che dentro.
+      let torre = null;
+      if (forma.torre && forma.torre.quota !== null) {
+        const t = forma.torre;
+        const km = terrenoDistanzaKm(luogo.lat, luogo.lon, t.lat, t.lon);
+        const az = cittaAzimut(luogo.lat, luogo.lon, t.lat, t.lon);
+        torre = {
+          az, km,
+          alt: terrenoAngolo(t.quota, occhio, km),
+          altCima: terrenoAngolo(t.quota + t.h, occhio, km),
+          largoGradi: Math.atan2(t.largo / 1000, Math.max(0.02, km)) * 180 / Math.PI,
+          scarto: ((az - c.az) % 360 + 540) % 360 - 180
+        };
+        if (torre.altCima > altMax) altMax = torre.altCima;
+      }
+
+      // Il fronte più largo del paese, in gradi. Serve a chi disegna per
+      // sapere di quanto una casa può sporgere dal riquadro e continuare a
+      // vedersi: tarare quel margine sulla larghezza del **paese**, com'era,
+      // vuol dire tenersi centinaia di pixel di margine a forte zoom, cioè
+      // rinunciare al risparmio proprio dove serviva.
+      let frontePiuLargo = 0;
+      for (const l of luci) if (l.largoGradi > frontePiuLargo) frontePiuLargo = l.largoGradi;
+      if (torre && torre.largoGradi > frontePiuLargo) frontePiuLargo = torre.largoGradi;
+      // Il perimetro passa dalla stessa catena delle luci: azimut, distanza e
+      // angolo visti da qui. Se le due strade divergessero, di giorno il bordo
+      // starebbe in un posto e di notte le lampade in un altro.
+      const bordo = [];
+      for (const b of (forma.bordo || [])) {
+        const km = terrenoDistanzaKm(luogo.lat, luogo.lon, b.lat, b.lon);
+        const az = cittaAzimut(luogo.lat, luogo.lon, b.lat, b.lon);
+        const alt = terrenoAngolo(b.quota === null ? forma.quota : b.quota, occhio, km);
+        const scarto = ((az - c.az) % 360 + 540) % 360 - 180;
+        bordo.push({ az, km, alt, scarto });
+        if (alt < altMin) altMin = alt;
+        if (alt > altMax) altMax = alt;
+        if (scarto < azMin) azMin = scarto;
+        if (scarto > azMax) azMax = scarto;
+      }
+      fuori.push({
+        nome: c.nome, lat: c.lat, lon: c.lon, abitanti: c.abitanti,
+        az: c.az, km: c.km, forza: c.forza, quota: forma.quota,
+        raggioM: forma.raggioM,
+        // La gerarchia viaggia fino al disegno: una **parte** non ha un
+        // perimetro fra case e campagna (quello ce l'ha la città che la
+        // contiene) e non deve ridisegnarlo.
+        specie: c.specie, parte: !!c.parte, rango: c.rango, padre: c.padre,
+        torre, ordine, frontePiuLargo,
+        // I due estremi in azimut e in altezza: servono al disegno per sapere
+        // quanto grande viene il tappeto sullo schermo prima di disegnarlo.
+        semiAz: Math.max(Math.abs(azMin), Math.abs(azMax)),
+        altBasso: altMin, altAlto: altMax,
+        luci, bordo
+      });
+      if (soloParti) parti++;
     }
-    if (!luci.length) continue;
-    // Il perimetro passa dalla stessa catena delle luci: azimut, distanza e
-    // angolo visti da qui. Se le due strade divergessero, di giorno il bordo
-    // starebbe in un posto e di notte le lampade in un altro.
-    const bordo = [];
-    for (const b of (forma.bordo || [])) {
-      const km = terrenoDistanzaKm(luogo.lat, luogo.lon, b.lat, b.lon);
-      const az = cittaAzimut(luogo.lat, luogo.lon, b.lat, b.lon);
-      const alt = terrenoAngolo(b.quota === null ? forma.quota : b.quota, occhio, km);
-      const scarto = ((az - c.az) % 360 + 540) % 360 - 180;
-      bordo.push({ az, km, alt, scarto });
-      if (alt < altMin) altMin = alt;
-      if (alt > altMax) altMax = alt;
-      if (scarto < azMin) azMin = scarto;
-      if (scarto > azMax) azMax = scarto;
-    }
-    fuori.push({
-      nome: c.nome, lat: c.lat, lon: c.lon, abitanti: c.abitanti,
-      az: c.az, km: c.km, forza: c.forza, quota: forma.quota,
-      raggioM: forma.raggioM,
-      // I due estremi in azimut e in altezza: servono al disegno per sapere
-      // quanto grande viene il tappeto sullo schermo prima di disegnarlo.
-      semiAz: Math.max(Math.abs(azMin), Math.abs(azMax)),
-      altBasso: altMin, altAlto: altMax,
-      luci, bordo
-    });
   }
   cittaAbitatiVista = fuori;
   cittaAbitatiChiave = chiave;
