@@ -1542,20 +1542,50 @@ function localeData() {
     ? astroI18n.locale() : 'it-IT';
 }
 
+/* I FORMATTATORI SI TENGONO.
+ *
+ * `new Intl.DateTimeFormat(...)` non è una funzione di comodo: è la cosa più
+ * cara che si possa chiedere a un browser per scrivere un'ora. Costruirlo
+ * vuol dire aprire i dati di quel locale e di quel fuso e compilare il
+ * modello, e si misura in frazioni di millisecondo — una miseria una volta
+ * sola, un macigno se capita più volte per fotogramma.
+ *
+ * E capitava: la barra del tempo del planetario ne costruiva quattro a ogni
+ * giro (l'ora del luogo, quella del dispositivo, la data per esteso del
+ * `title`, e le sei caselle passano da `partiDataDelLuogo`), due volte al
+ * secondo, mentre il cielo sta scorrendo sotto al dito. L'agenda ne
+ * costruiva uno per riga. Misurato nel planetario: **1,7 ms** per giro, che
+ * è il singolo pezzo più caro di tutto `skyAggiornaOggetti`.
+ *
+ * Il rimedio non cambia di una virgola quello che viene scritto: lo stesso
+ * formattatore, chiesto due volte con le stesse opzioni, è lo stesso
+ * oggetto. La chiave porta dentro il **locale**, quindi un cambio lingua si
+ * prende da sé un formattatore nuovo e non c'è niente da svuotare a mano. */
+const FORMATTATORI_DATA = new Map();
+
+function formattatoreData(locale, opzioni) {
+  const chiave = locale + '|' + JSON.stringify(opzioni);
+  let f = FORMATTATORI_DATA.get(chiave);
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, opzioni);
+    FORMATTATORI_DATA.set(chiave, f);
+  }
+  return f;
+}
+
 function oraDelLuogo(data, luogo, opzioni = {}) {
   if (!data) return '—';
   const fuso = fusoDelLuogo(luogo);
-  const locale = new Intl.DateTimeFormat(localeData(), {
+  return formattatoreData(localeData(), {
     timeZone: fuso.nome, hour: '2-digit', minute: '2-digit',
     ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
   }).format(data);
-  return locale;
 }
 
 function dataOraDelLuogo(data, luogo, opzioni = {}) {
   if (!data) return '—';
   const fuso = fusoDelLuogo(luogo);
-  const locale = new Intl.DateTimeFormat(localeData(), {
+  return formattatoreData(localeData(), {
     timeZone: fuso.nome,
     ...(opzioni.weekday ? { weekday: opzioni.weekday } : {}),
     day: 'numeric', month: opzioni.month || 'short',
@@ -1563,7 +1593,6 @@ function dataOraDelLuogo(data, luogo, opzioni = {}) {
     hour: '2-digit', minute: '2-digit',
     ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
   }).format(data);
-  return locale;
 }
 
 // I pezzi civili di un istante nel fuso del luogo. Non usiamo i getDate() e
@@ -1571,7 +1600,7 @@ function dataOraDelLuogo(data, luogo, opzioni = {}) {
 // diverso da quello del cielo quando ci si sposta sulla mappa.
 function partiDataDelLuogo(data, luogo) {
   const fuso = fusoDelLuogo(luogo);
-  const parti = new Intl.DateTimeFormat('en-GB', {
+  const parti = formattatoreData('en-GB', {
     timeZone: fuso.nome, year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
   }).formatToParts(data);
@@ -8048,6 +8077,10 @@ const sky = {
   prossimoControlloSosta: 0,
   oggetti: [],           // posizioni calcolate (az/alt) degli astri
   prossimoCalcolo: 0,
+  // Il giro degli astri in corso, quando è a metà: vive fra un fotogramma e
+  // l'altro (vedi `SKY_SCAGLIONE_ASTRI_MS`). `null` vuol dire che l'elenco
+  // in scena è completo e nessuno ci sta lavorando.
+  lavoroAstri: null,
   prossimoAggiornoUI: 0, // i numeri attorno alla mappa vanno più piano del cielo
   cacheOrari: { chiave: null, valore: null },
   stelleDefinite: false,
@@ -11900,26 +11933,74 @@ function skyIntervalloCalcolo() {
   return Math.max(SKY_CALCOLO_MIN_MS, Math.min(SKY_CALCOLO_MAX_MS, secondi * 1000));
 }
 
+/* QUANTO SI LAVORA PER FOTOGRAMMA.
+ *
+ * Il giro degli astri non è caro in media — al massimo una volta al secondo
+ * — ma è tutto **dentro a un fotogramma solo**: diciassette corpi, quattro
+ * chiamate alla libreria per ognuno, più i satelliti con SGP4, l'ombra della
+ * Terra, l'assetto di Saturno e la matrice dei cinquemila. Sul computer di
+ * chi lo ha scritto sono tre millisecondi e non si vedono; su un telefono
+ * di quattro anni fa sono trenta, cioè due fotogrammi persi ogni secondo
+ * mentre il dito sta trascinando il cielo — ed è esattamente la forma che ha
+ * la segnalazione: non «è lento», ma «si muove a scatti».
+ *
+ * Non si calcola di meno: si calcola a scaglioni, come già fanno l'acqua di
+ * `terreno.js` e la scansione delle stazioni di `transiti.js`. Si lavora per
+ * qualche millisecondo, si cede il turno al disegno, si riprende col
+ * fotogramma dopo; intanto resta in scena l'elenco di prima, vecchio di due
+ * fotogrammi. L'istante è quello di quando il giro è cominciato e vale per
+ * tutti i corpi: un elenco in cui il primo astro è di mezzo secondo prima
+ * dell'ultimo non è un cielo, è un collage.
+ *
+ * Chi chiede `forza` non passa di qui: quello vuole l'elenco **adesso**
+ * (`skyPuntaStazione` lo legge nella riga dopo) e lo paga tutto insieme, che
+ * è quello che faceva sempre prima. */
+const SKY_SCAGLIONE_ASTRI_MS = 3;
+
 // Ricalcola azimut e altezza di tutti gli astri (al massimo una volta al secondo)
 function skyAggiornaOggetti(forza) {
   const adesso = Date.now();
-  if (!forza && adesso < sky.prossimoCalcolo) return;
-  sky.prossimoCalcolo = adesso + (sky.playbackVerso ? SKY_PLAYBACK_INTERVALLO : skyIntervalloCalcolo());
+  // Un giro cominciato va finito, e finito presto: finché il lavoro è in
+  // corso si entra a ogni fotogramma, se no resterebbe a metà fino alla
+  // scadenza successiva e l'elenco in scena invecchierebbe di un secondo.
+  if (!forza && !sky.lavoroAstri && adesso < sky.prossimoCalcolo) return;
 
   if (typeof Astronomy === 'undefined' || !sky.observer) {
     sky.oggetti = [];
+    sky.lavoroAstri = null;
+    sky.prossimoCalcolo = adesso + (sky.playbackVerso ? SKY_PLAYBACK_INTERVALLO : skyIntervalloCalcolo());
     // Senza posizione non si sa dove guardare, ma cosa succede stanotte sì:
     // l'elenco degli eventi vive lo stesso
     skyAggiornaEventi();
     return;
   }
-  skyDefinisciStelle();
 
-  // L'ora è quella scelta con il cursore del tempo (normalmente adesso)
-  const quando = skyAdesso();
-  const t = Astronomy.MakeTime(quando);
-  const lista = [];
-  SKY_ASTRI.forEach(astro => {
+  // Un giro cominciato da un altro posto si butta invece di finirlo: chi
+  // sposta il luogo del cielo cambia `sky.observer`, e metà elenco calcolato
+  // da Milano e metà da Tromsø non è un cielo di nessuno dei due.
+  if (!sky.lavoroAstri || forza || sky.lavoroAstri.oss !== sky.observer) {
+    sky.prossimoCalcolo = adesso + (sky.playbackVerso ? SKY_PLAYBACK_INTERVALLO : skyIntervalloCalcolo());
+    skyDefinisciStelle();
+    // L'ora è quella scelta con il cursore del tempo (normalmente adesso)
+    const quandoNuovo = skyAdesso();
+    sky.lavoroAstri = {
+      quando: quandoNuovo,
+      t: Astronomy.MakeTime(quandoNuovo),
+      oss: sky.observer,
+      i: 0,
+      lista: []
+    };
+  }
+
+  const lavoro = sky.lavoroAstri;
+  const quando = lavoro.quando;
+  const t = lavoro.t;
+  const lista = lavoro.lista;
+  const fineScaglione = forza ? Infinity : performance.now() + SKY_SCAGLIONE_ASTRI_MS;
+
+  while (lavoro.i < SKY_ASTRI.length) {
+    const astro = SKY_ASTRI[lavoro.i];
+    lavoro.i++;
     try {
       const equ = Astronomy.Equator(astro.id, t, sky.observer, true, true);
       const hor = Astronomy.Horizon(t, sky.observer, equ.ra, equ.dec, 'normal');
@@ -11951,12 +12032,36 @@ function skyAggiornaOggetti(forza) {
       }
       lista.push(voce);
     } catch (e) { /* corpo non calcolabile: lo saltiamo senza fermare gli altri */ }
-  });
-  skyAggiungiSatelliti(lista, quando);
-  skyOmbraDellaTerra(lista, t);
-  skyAssettoDiSaturno(lista, t);
-  sky.oggetti = lista;
-  skyAggiornaCatalogo(quando);
+    // Il turno torna al disegno. Quello che manca lo finisce il fotogramma
+    // dopo, con lo stesso istante: l'elenco in scena resta quello di prima
+    // finché il nuovo non è completo, mai mezzo vecchio e mezzo nuovo.
+    if (performance.now() >= fineScaglione) return;
+  }
+
+  // LA CODA DEL GIRO, che è un'altra fetta e va in un altro fotogramma.
+  //
+  // Finiti i diciassette corpi resta il lavoro che non sta nel ciclo: i
+  // satelliti (che è SGP4, cioè il pezzo più caro di tutti), l'ombra della
+  // Terra, l'assetto di Saturno e la matrice che porta cinquemila stelle
+  // dall'epoca J2000 a quella di stasera. Messa in fondo al ciclo, quella
+  // coda si riprendeva da sola tutto lo scaglione che si era appena
+  // guadagnato — misurato: il ciclo costava i suoi tre millisecondi e il
+  // fotogramma ne costava quindici lo stesso. È una fetta sola e indivisibile
+  // (l'elenco si consegna intero), quindi le si dà il fotogramma dopo.
+  if (!lavoro.coda) {
+    if (!forza && performance.now() >= fineScaglione) return;
+    skyAggiungiSatelliti(lista, quando);
+    skyOmbraDellaTerra(lista, t);
+    skyAssettoDiSaturno(lista, t);
+    sky.oggetti = lista;
+    skyAggiornaCatalogo(quando);
+    lavoro.coda = true;
+  }
+
+  // E il terzo fotogramma è dei pannelli, per la stessa ragione: sono
+  // scritture nella pagina, e la pagina le fa impaginare tutte insieme.
+  if (!forza && performance.now() >= fineScaglione) return;
+  sky.lavoroAstri = null;
 
   // Quello che sta INTORNO alla mappa — le altezze scritte nei chip, la
   // scheda dell'oggetto, l'elenco di cosa succede — non ha bisogno di
@@ -21921,13 +22026,42 @@ function skyModoBussola() {
  * due frasi del dizionario, e le riscrive solo il ciclo di disegno del
  * planetario — che a vista chiusa non gira. Restavano nella lingua di quando il
  * cielo era stato guardato l'ultima volta. */
+/* I nodi della bussola si cercano una volta sola. Questa funzione gira a
+ * ogni fotogramma e ne cercava sei per nome ogni volta: sei discese nel
+ * documento per sei elementi che non cambiano mai — nascono con la pagina e
+ * muoiono con lei. È lo stesso ragionamento già scritto qui sotto per le
+ * quattro sigle, applicato a tutto il quadrante. */
+function skyNodiBussola() {
+  if (sky.bussolaNodi && sky.bussolaNodi.guscio && sky.bussolaNodi.guscio.isConnected) {
+    return sky.bussolaNodi;
+  }
+  const guscio = document.getElementById('skymap-bussola');
+  if (!guscio) return null;
+  sky.bussolaNodi = {
+    guscio,
+    rosa: document.getElementById('skymap-bussola-rosa'),
+    gradi: document.getElementById('skymap-bussola-gradi'),
+    direzione: document.getElementById('skymap-bussola-direzione'),
+    campo: document.getElementById('skymap-bussola-campo'),
+    cono: document.getElementById('skymap-bussola-fov')
+  };
+  return sky.bussolaNodi;
+}
+
 function skyAggiornaBussola(az) {
-  const b = document.getElementById('skymap-bussola');
-  if (!b) return;
+  const nodi = skyNodiBussola();
+  if (!nodi) return;
+  const b = nodi.guscio;
   if (az === undefined) az = sky.bussolaAzimut || 0;
   sky.bussolaAzimut = az;
-  const rosa = document.getElementById('skymap-bussola-rosa');
-  if (rosa) rosa.setAttribute('transform', `rotate(${(-az).toFixed(1)})`);
+  const rosa = nodi.rosa;
+  if (rosa) {
+    const giroRosa = `rotate(${(-az).toFixed(1)})`;
+    if (sky.bussolaGiroRosa !== giroRosa) {
+      sky.bussolaGiroRosa = giroRosa;
+      rosa.setAttribute('transform', giroRosa);
+    }
+  }
 
   // LE LETTERE RESTANO DRITTE.
   // La rosa gira di −az e si porta dietro tutto, lettere comprese: su una
@@ -21962,10 +22096,10 @@ function skyAggiornaBussola(az) {
   // scrivere non è un vezzo: questa funzione gira a ogni fotogramma, e
   // riscrivere un `textContent` uguale a sé stesso invalida l'impaginazione
   // sessanta volte al secondo.
-  const gradi = document.getElementById('skymap-bussola-gradi');
+  const gradi = nodi.gradi;
   const testo = `${Math.round(az) % 360}°`;
   if (gradi && gradi.textContent !== testo) gradi.textContent = testo;
-  const direzione = document.getElementById('skymap-bussola-direzione');
+  const direzione = nodi.direzione;
   const nomeDirezione = skyNomeDirezione(az);
   if (direzione && direzione.textContent !== nomeDirezione) direzione.textContent = nomeDirezione;
 
@@ -21976,11 +22110,12 @@ function skyAggiornaBussola(az) {
   // inquadrature. Sotto i due gradi non si scrive «0°»: `skyCampoTesto`
   // passa ai primi e ai secondi d'arco, che a quell'ingrandimento sono
   // l'unità in cui la misura si legge.
-  const campo = document.getElementById('skymap-bussola-campo');
-  if (campo) {
-    const testoCampo = skyCampoTesto();
-    if (campo.textContent !== testoCampo) campo.textContent = testoCampo;
-  }
+  // Il campo si scrive una volta e si rilegge: `skyCampoTesto()` serviva
+  // qui e tre righe più in giù nella frase letta a voce, e lo si chiedeva
+  // due volte per fotogramma.
+  const testoCampo = skyCampoTesto();
+  const campo = nodi.campo;
+  if (campo && campo.textContent !== testoCampo) campo.textContent = testoCampo;
 
   // IL CONO DELL'INQUADRATURA
   // Quanto cielo sta entrando nella vista, disegnato **e** scritto: il campo
@@ -21998,9 +22133,18 @@ function skyAggiornaBussola(az) {
   // niente, e la bussola sembrerebbe rotta proprio quando si sta guardando
   // la cosa più interessante. Il massimo lascia un margine sul quadrante,
   // così a 180° continua a leggersi come un'apertura e non come un disco.
-  const cono = document.getElementById('skymap-bussola-fov');
-  if (cono) {
-    const apertura = Math.max(4, Math.min(168, sky.fov));
+  //
+  // E si ridisegna solo quando l'apertura cambia davvero. Trascinando il
+  // cielo il campo non si muove di un millesimo di grado, ma la `d` veniva
+  // riscritta lo stesso sessanta volte al secondo — e un `setAttribute` su
+  // un SVG invalida il disegno anche quando il valore è identico a quello
+  // di prima. È la stessa lezione già scritta qui sopra per le sigle, che a
+  // due centimetri di distanza non era stata applicata al cono.
+  const cono = nodi.cono;
+  const aperturaOra = Math.max(4, Math.min(168, sky.fov)).toFixed(3);
+  if (cono && sky.bussolaCono !== aperturaOra) {
+    sky.bussolaCono = aperturaOra;
+    const apertura = Number(aperturaOra);
     const mezzo = apertura * Math.PI / 360;
     const r = 43;
     const x = r * Math.sin(mezzo);
@@ -22022,9 +22166,20 @@ function skyAggiornaBussola(az) {
   // Chi legge con lo schermo non vede né il quadrante né l'indice né il cono:
   // a lui le stesse cose vanno dette a parole, ed è l'unico posto in cui vale
   // la pena — sul cielo l'apertura si guarda, non si legge.
-  const detto = astroI18n.t('bussola.dettoAVoce',
-    { dove: nomeDirezione, gradi: Math.round(az) % 360, campo: skyCampoTesto() });
-  if (b.getAttribute('aria-label') !== detto) b.setAttribute('aria-label', detto);
+  //
+  // La frase si **compone** solo quando è cambiato uno dei tre pezzi che ci
+  // finiscono dentro. Prima si componeva a ogni fotogramma per poi scoprire,
+  // nove volte su dieci, che era identica a quella di prima: una lettura dal
+  // dizionario, una interpolazione e una stringa nuova, sessanta volte al
+  // secondo, buttate via. Il confronto sui tre pezzi costa tre confronti.
+  const pezzi = nomeDirezione + '|' + (Math.round(az) % 360) + '|' + testoCampo +
+    '|' + astroI18n.lingua();
+  if (sky.bussolaDetto !== pezzi) {
+    sky.bussolaDetto = pezzi;
+    const detto = astroI18n.t('bussola.dettoAVoce',
+      { dove: nomeDirezione, gradi: Math.round(az) % 360, campo: testoCampo });
+    if (b.getAttribute('aria-label') !== detto) b.setAttribute('aria-label', detto);
+  }
 }
 
 // Avvisi sotto al cielo, uno per argomento (posizione, sensori):
@@ -27123,6 +27278,12 @@ function skyAccendiCiclo() {
   // zero, se no un'assenza di dieci minuti diventerebbe un balzo di anni.
   sky.ultimoFotogramma = 0;
   sky.playbackUltimo = 0;
+  // E nemmeno un giro degli astri lasciato a metà: quello porta dentro
+  // l'istante di quando era cominciato, che dopo dieci minuti in tasca è il
+  // cielo di dieci minuti fa. Buttarlo costa un fotogramma di ritardo; non
+  // buttarlo vuol dire consegnare un elenco vecchio proprio al ritorno, che
+  // è il momento in cui lo si guarda.
+  sky.lavoroAstri = null;
   sky.battito = performance.now();
   sky.raf = requestAnimationFrame(skyCiclo);
 }
@@ -42728,11 +42889,11 @@ function skyAggiornaTestoTempo() {
 function skyOrariBarraTempo(quando) {
   const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
   const fusoLuogo = fusoDelLuogo(luogo).nome;
-  const fusoDispositivo = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const fusoDispositivo = formattatoreData(localeData(), {}).resolvedOptions().timeZone || 'UTC';
   const adesso = new Date();
   const scartoOre = (quando.getTime() - adesso.getTime()) / 3600000;
   const spostato = Math.abs(scartoOre) >= (1 / 3600);
-  const dispositivo = new Intl.DateTimeFormat('it-IT', {
+  const dispositivo = formattatoreData('it-IT', {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).format(adesso);
   return {

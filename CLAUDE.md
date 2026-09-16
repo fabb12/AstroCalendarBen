@@ -69,7 +69,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `scripts/costruisci-tailwind.js` | ~70 | Genera `tailwind.css`. Si lancia a mano quando si aggiunge una classe Tailwind nuova, non serve all'app. |
 | `style.css` | ~11.260 | Tema "Deep Space" + impaginazione responsive. |
 | `tailwind.css` | ~600 | **Generato**, non si tocca a mano: le sole utility di Tailwind che l'app usa davvero, compilate una volta. Ha preso il posto di `cdn.tailwindcss.com`, che era il **compilatore** — mezzo megabyte di JavaScript che a ogni apertura rileggeva il DOM per riscrivere questo stesso CSS, e che nella console lo diceva a ogni apertura. Va caricato **prima** di `style.css`. |
-| `sw.js` | ~270 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v341`). |
+| `sw.js` | ~270 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v344`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -429,7 +429,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v341`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v344`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - **Se hai aggiunto del testo che si legge**, la frase va nei due dizionari e
   non nel codice: `node scripts/controlla-i18n.js --patto` lo controlla, e
@@ -467,6 +467,48 @@ nessun errore da nessuna parte: online resta l'ultima versione buona e le
 modifiche appena unite semplicemente non si vedono. **Se una modifica unita in
 `main` non compare sul sito, il primo posto da guardare è la scheda Actions**,
 non il codice.
+
+### Il cielo calcolato a scaglioni — `scripts/prova-scaglioni.js`
+
+```
+npm install playwright-core astronomy-engine
+node scripts/prova-scaglioni.js
+```
+
+Due pezzi del planetario hanno smesso di fare tutto il loro lavoro dentro a
+un fotogramma solo — il giro degli astri (`skyAggiornaOggetti`, §7.2) e le
+comete con gli asteroidi (`corpiMinoriVisibili`, §5 di `corpi-minori.js`) — e
+lavorano invece per qualche millisecondo per volta, cedendo il turno al
+disegno. È il rimedio alla segnalazione «la camera si muove a scatti», ed è
+la stessa cura che l'acqua di `terreno.js` e la scansione delle stazioni di
+`transiti.js` hanno già.
+
+Il guaio di un lavoro a scaglioni è che si giudica malissimo a occhio, e per
+una ragione che vale la pena scrivere: **un elenco di astri sbagliato è un
+cielo perfettamente plausibile**. Nessuno, guardando lo schermo, dice «questo
+Saturno è dov'era mezzo secondo fa»: dice «bello». E se lo scaglione cadesse
+nel punto sbagliato metà elenco racconterebbe un istante e metà un altro —
+che a guardarlo è ancora un cielo, solo che non è il cielo di nessun momento.
+Il giudice è quindi l'aritmetica: le due strade, a scaglioni e tutta in un
+colpo, devono dare **gli stessi numeri** cifra per cifra. In più si controlla
+che mentre il giro è a metà in scena resti l'elenco di **prima** (mai uno
+mezzo vecchio e mezzo nuovo), che un giro cominciato da un altro posto si
+butti invece di finirlo, e — la prova che risponde davvero alla segnalazione
+— che **nessun fotogramma si faccia tutto il catalogo da solo**: il totale
+conta poco, quello che si vede è il fotogramma peggiore.
+
+Due cose da sapere prima di metterci mano, e sono tutt'e due trappole
+misurate. **L'orologio del planetario non si sposta scrivendo
+`sky.offsetTempoSec`**: quello è una lettura derivata, e `skyAdesso()` lo
+riscrive da `sky.istanteSimulatoMs` a ogni chiamata — a muoverlo davvero è
+`skyImpostaOffsetTempo`, ed è la riga che il playback esegue a ogni
+fotogramma. Una prova che scrive il campo direttamente non muove niente e
+diventa verde senza provare niente. E **su un computer da scrivania lo
+scaglione non morde mai**: diciassette astri e sessantuno corpi minori ci
+stanno dentro tutti insieme, quindi la macchina non si mette alla prova e la
+prova misura il caso che non ha bisogno di cura. Si rallentano perciò
+`Astronomy.Equator` e `corpiPasso` di una frazione di millisecondo per
+chiamata, che è quello che costano su un telefono di quattro anni fa.
 
 ### Il fumetto in un browser vero — `scripts/prova-fumetto.js`
 
@@ -1560,6 +1602,10 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | **Girando il telefono la Didattica non fa niente** | non più, ma vale la pena sapere com'era: `didEntraSchermoIntero()` cercava il `<figure class="did-scena">` visibile e ne passava l'`id` a `didPienoEntra` — solo che le figure un `id` non ce l'hanno (ce l'ha la tela dentro di loro), e per giunta l'id veniva passato col cancelletto davanti a una funzione che fa una `getElementById`. Due errori che si annullavano in silenzio: la funzione usciva senza fare niente e senza lasciare traccia. Adesso a scegliere è `didScenaDaGirare()` (`didattica.js`, accanto al blocco `didPieno*`), che guarda **come le tele sono impaginate adesso** — una tela in un quadro nascosto non ha `offsetParent` — e fra quelle visibili prende la **principale**, cioè quella che aveva chiesto il ⛶ per nome (`pieno: true` → `l.principale`), e a pari merito la prima nell'ordine della pagina. Non la più grande: un grafico a strisce largo tutto il banco copre più superficie della scena quadrata che gli sta sopra, e girando il telefono si finiva a schermo intero col commento invece che col discorso |
 | Il ⛶ su una scena della Didattica che prima non ce l'aveva | è voluto: `didLenteComandi()` lo dà a **tutte** le tele con la lente (`pieno` va negato per nome, `pieno: false`). Da quando basta girare il telefono per prendersi lo schermo, una scena che si allarga girando ma non ha il tasto per farlo a mano è un comando nascosto — e un grafico largo tre volte più che alto, dentro a duecento pixel, è proprio quello che si vorrebbe vedere più grande. Chi resta «principale» per `didScenaDaGirare` lo dice `l.principale`, non più la presenza del tasto |
 | Il cielo si muove a scatti (trascinamento, zoom, centratura) | sezione **7.4-ter**: `sky.fov` è il campo disegnato adesso e `sky.fovVoluto` quello a cui si sta andando (`skyImpostaFov(g, { morbido: true })` chiede il viaggio, `skyMuoviZoom()` lo fa); l'inerzia è `skyLanciaVista()` + `skyScorriPerInerzia()`, e si spegne sempre con `skyFermaMovimenti()`. Le costanti da girare: `SKY_TAU_ZOOM`, `SKY_TAU_INERZIA`, `SKY_INERZIA_MAX_SCHERMI` |
+| **La camera si muove a scatti su un telefono lento** | Non è il disegno, ed è la prima cosa da sapere prima di andare a cercare nel posto sbagliato: il costo **medio** del fotogramma era già dentro al budget. Quello che si vede è la **coda** — un fotogramma ogni tanto che costa tre o quattro volte gli altri — e un fotogramma perso ogni secondo non si legge come «è lento», si legge come «scatta». Le raffiche erano tre, tutte della stessa famiglia: un lavoro periodico fatto tutto dentro a un fotogramma solo. **(1) Le comete e gli asteroidi** (`corpiMinoriVisibili`, §5 di `corpi-minori.js`): sessantuno corpi con Keplero dentro, rifatti tutti insieme allo scadere della cache — 88 ms misurati su una CPU rallentata sei volte, cioè cinque fotogrammi persi in un colpo. **(2) Il giro degli astri** (`skyAggiornaOggetti`, §7.2 di `app.js`): diciassette corpi per quattro chiamate alla libreria, più SGP4, più l'ombra della Terra, più la matrice dei cinquemila, più i pannelli — fino a 113 ms nello stesso fotogramma. **(3) I formattatori di data** (riga qui sotto). Le prime due adesso lavorano **a scaglioni** (`SKY_SCAGLIONE_ASTRI_MS`, `CORPI_SCAGLIONE_MS`): qualche millisecondo per volta, poi il turno torna al disegno, e l'elenco in scena resta quello di prima finché il nuovo non è completo — mai mezzo vecchio e mezzo nuovo. Misurato a CPU ×6 trascinando il cielo: `skyDisegna` p50 da 16 a 12,4 ms, p90 da 22,9 a 15,4, e il costo medio del fotogramma a 180° di campo da 26,9 a 21,5 ms. Prove in `scripts/prova-scaglioni.js`, che confronta le due strade cifra per cifra |
+| **Una cache che col playback non prende mai** | `corpiInCielo` in `corpi-minori.js` §5, ed è il difetto che a occhio non si vede affatto: la chiave era `sky.offsetTempoSec` e voleva che fosse **identico**. Col playback acceso quell'offset cambia a ogni fotogramma — è `skyAdesso()` a riscriverlo da `sky.istanteSimulatoMs`, come lettura derivata — quindi la cache non prendeva mai e i sessantuno corpi si rifacevano sessanta volte al secondo, con Keplero dentro. Misurato: 671 corpi calcolati in sessanta fotogrammi contro i 3.660 di prima. La chiave è adesso l'**istante mostrato** con una tolleranza (`CORPI_ISTANTE_MS`, cinque minuti di cielo: perfino una cometa svelta che fa un grado al giorno si sposta di tre secondi d'arco, cioè meno di un pixel a qualunque ingrandimento). La trappola da conoscere è nell'altro verso: un giro cominciato **non si butta** perché nel frattempo l'orologio è avanzato di un secondo, se no col playback non si finirebbe mai e l'elenco resterebbe congelato per sempre |
+| **Ogni ora scritta costruiva il suo formattatore** | `formattatoreData()` in `app.js` (§10, accanto a `localeData`), e i suoi tre clienti `oraDelLuogo`, `dataOraDelLuogo`, `partiDataDelLuogo`. `new Intl.DateTimeFormat(...)` non è una funzione di comodo: è la cosa più cara che si possa chiedere a un browser per scrivere un'ora — apre i dati di quel locale e di quel fuso e compila il modello. La barra del tempo del planetario ne costruiva quattro a ogni giro, due volte al secondo, mentre il cielo scorre sotto al dito; l'agenda uno per riga. Misurato: **1,7 ms** per giro, il singolo pezzo più caro di tutto `skyAggiornaOggetti`. Adesso si tengono in una `Map` con la chiave che porta dentro il **locale**, quindi un cambio lingua si prende da sé un formattatore nuovo e non c'è niente da svuotare a mano. È la stessa cosa che `i18n.js` faceva già per conto suo (`cacheNumeri`, `cacheDate`) e che `app.js` non faceva |
+| **La bussola riscriveva l'SVG anche a campo fermo** | `skyAggiornaBussola` e `skyNodiBussola` (§7.1-quinquies di `app.js`). Gira a ogni fotogramma, e a ogni fotogramma cercava sei nodi per nome, riscriveva la `d` del cono dell'inquadratura e **componeva** la frase letta a voce dal dizionario per poi scoprire, nove volte su dieci, che era identica a quella di prima. Trascinando il cielo il campo visivo non si muove di un millesimo di grado, ma un `setAttribute` su un SVG invalida il disegno anche quando il valore è identico — ed è la lezione che due centimetri più su era già scritta per le quattro sigle e non era stata applicata al cono. I nodi si cercano adesso una volta sola, il cono si ridisegna solo quando l'apertura cambia davvero e la frase si compone solo quando è cambiato uno dei tre pezzi che ci finiscono dentro. Misurato a CPU ×6: da 1,09 a 0,40 ms per fotogramma |
 | Le stelle saltellano di un pixel una volta al secondo | `skyIntervalloCalcolo()` (`app.js:7749`): ogni quanto `skyAggiornaOggetti()` rifà le posizioni. Si adatta al campo (mezzo pixel di movimento del cielo), fra `SKY_CALCOLO_MIN_MS` e `SKY_CALCOLO_MAX_MS`. I numeri scritti attorno alla mappa vanno invece a `SKY_UI_INTERVALLO`, più piano |
 | Il cielo resta indietro sotto il dito quando si guarda in alto | `skyGradiAzPerPixel()` (sezione 7.4-ter): un pixel vale più gradi di azimut quanto più si guarda in alto (fattore 1/cos, tosato a 4) |
 | La faccia di un astro (mari della Luna, bande di Giove, calotte di Marte) | il pennello `skyDipingi*` nella sezione 7.3.2, registrato in `SKY_FACCE` (`app.js:9066`). Si dipinge in un mondo dove il disco ha raggio 1; le macchie si mettono con `skyMacchiaSfera(lon, lat, …)` (`app.js:8492`), che le schiaccia da sé verso il bordo. Le stesse facce le usa anche il **Sistema Solare in 3D** (§7.7): un pennello nuovo compare in tutt'e due i posti |

@@ -662,43 +662,111 @@ function corpoMinoreDiId(id) {
 // corpi a ogni fotogramma sarebbe spendere un millisecondo per non
 // muovere niente. Mezzo minuto è precisione da avanzo.
 const CORPI_CACHE_MS = 30000;
-let corpiInCielo = { quando: 0, offset: null, elenco: [] };
+
+// Quanto può camminare **l'ora mostrata** prima che le posizioni di prima
+// non valgano più. La cache di prima si teneva l'`offsetTempoSec` e voleva
+// che fosse **identico**: col playback acceso quell'offset cambia a ogni
+// fotogramma, quindi la cache non prendeva mai e i sessanta corpi si
+// rifacevano sessanta volte al secondo. Un istante di tolleranza risponde
+// alla stessa domanda senza quel difetto — e cinque minuti di cielo sono,
+// perfino per una cometa svelta che fa un grado al giorno, tre secondi
+// d'arco: meno di un pixel a qualunque ingrandimento.
+const CORPI_ISTANTE_MS = 5 * 60000;
+
+// Quanto si lavora per fotogramma. Il conto intero — Keplero per sessanta
+// corpi più la conversione all'orizzonte dei superstiti — costa decine di
+// millisecondi, e fatto tutto dentro a un fotogramma è un fotogramma perso:
+// su un telefono lento sono due o tre. Non si calcola di meno, si calcola
+// **a scaglioni**, come già fanno l'acqua di `terreno.js` e i transiti: si
+// lavora per qualche millisecondo, si cede il turno al disegno, si riprende
+// col fotogramma dopo. Intanto resta a schermo l'elenco di prima, che è
+// vecchio di qualche decimo di secondo e non se ne accorge nessuno.
+const CORPI_SCAGLIONE_MS = 2;
+
+let corpiInCielo = { quando: 0, istante: null, elenco: [] };
+// Il giro in corso: per quale istante, a che punto è, e cosa ha trovato
+// finora. Vive fra un fotogramma e l'altro, e si butta se cambia la domanda.
+let corpiLavoro = null;
+
+// Un corpo solo, dal suo elemento orbitale al punto sull'orizzonte. È il
+// passo del lavoro a scaglioni, ed è anche tutto quello che quel lavoro sa
+// fare: chi lo chiama conta i millisecondi e decide quando fermarsi.
+function corpiPasso(el, t, quando) {
+  const p = corpoMinoreInCielo(el, quando);
+  if (!p || p.mag === null) return null;
+  if (p.mag > CORPI_MAG_UTILE || p.elongazione < 15) return null;
+  const c = Object.assign({ elementi: el, nome: el.nome, tipo: el.tipo }, p);
+  // corpoMinoreInCielo dà coordinate J2000; Horizon vuole quelle di
+  // oggi, come per tutti gli altri cataloghi.
+  const oggi = typeof skyJ2000AllaData === 'function'
+    ? skyJ2000AllaData(c.ra, c.dec, t)
+    : { ra: c.ra, dec: c.dec };
+  const hor = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
+  return Object.assign({}, c, {
+    az: hor.azimuth, alt: hor.altitude,
+    raOra: oggi.ra, decOra: oggi.dec,
+    sottotipo: c.tipo,
+    disegno: c.tipo === 'cometa' ? 'cometa' : 'asteroide'
+  });
+}
+
+// Avanza il giro di qualche millisecondo. L'istante è **quello di quando il
+// giro è cominciato** e non quello di adesso: tutti i corpi di un elenco
+// devono raccontare lo stesso cielo, se no fra il primo e l'ultimo ci
+// sarebbe mezzo secondo di differenza — invisibile, ma è il genere di
+// scivolone che poi non si ritrova più.
+function corpiAvanzaLavoro(ms) {
+  // Un giro cominciato **non si butta** perché nel frattempo l'orologio è
+  // avanzato di un secondo: col playback acceso l'istante cambia a ogni
+  // fotogramma, e ricominciare da capo a ogni fotogramma vuol dire non
+  // finire mai — l'elenco resterebbe congelato per sempre. Si riparte solo
+  // quando la domanda è davvero un'altra, cioè oltre la stessa tolleranza
+  // con cui si giudica vecchia la cache.
+  if (!corpiLavoro || Math.abs(corpiLavoro.ms - ms) >= CORPI_ISTANTE_MS) {
+    corpiLavoro = {
+      ms,
+      t: Astronomy.MakeTime(new Date(ms)),
+      quando: new Date(ms),
+      tutti: corpiMinoriTutti(),
+      i: 0,
+      trovati: []
+    };
+  }
+  const lav = corpiLavoro;
+  const fine = performance.now() + CORPI_SCAGLIONE_MS;
+  while (lav.i < lav.tutti.length) {
+    try {
+      const v = corpiPasso(lav.tutti[lav.i], lav.t, lav.quando);
+      if (v) lav.trovati.push(v);
+    } catch (e) { /* fuori scala: si salta */ }
+    lav.i++;
+    if (performance.now() >= fine) return;
+  }
+  // Finito: l'elenco nuovo prende il posto del vecchio tutto insieme, mai a
+  // metà — una lista che cresce sotto agli occhi di chi disegna farebbe
+  // comparire le comete una per una.
+  lav.trovati.sort((a, b) => a.mag - b.mag);
+  corpiInCielo = { quando: Date.now(), istante: ms, elenco: lav.trovati };
+  corpiLavoro = null;
+}
 
 function corpiMinoriVisibili() {
   if (typeof sky === 'undefined' || !sky.observer || typeof Astronomy === 'undefined') return [];
   if (!sky.mostraCorpiMinori) return [];
 
   const istante = typeof skyAdesso === 'function' ? skyAdesso() : new Date();
-  const offset = typeof sky.offsetTempoSec === 'number' ? sky.offsetTempoSec : 0;
+  const ms = istante.getTime();
 
   // La macchina del tempo invalida la cache: se si è saltati a un altro
   // giorno le posizioni di mezzo minuto fa non valgono più niente.
-  if (Date.now() - corpiInCielo.quando < CORPI_CACHE_MS && corpiInCielo.offset === offset) {
+  if (corpiInCielo.istante !== null &&
+      Date.now() - corpiInCielo.quando < CORPI_CACHE_MS &&
+      Math.abs(ms - corpiInCielo.istante) < CORPI_ISTANTE_MS) {
     return corpiInCielo.elenco;
   }
 
-  const t = Astronomy.MakeTime(istante);
-  const elenco = [];
-
-  corpiMinoriInteressanti(istante).forEach(c => {
-    try {
-      // corpoMinoreInCielo dà coordinate J2000; Horizon vuole quelle di
-      // oggi, come per tutti gli altri cataloghi.
-      const oggi = typeof skyJ2000AllaData === 'function'
-        ? skyJ2000AllaData(c.ra, c.dec, t)
-        : { ra: c.ra, dec: c.dec };
-      const hor = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
-      elenco.push(Object.assign({}, c, {
-        az: hor.azimuth, alt: hor.altitude,
-        raOra: oggi.ra, decOra: oggi.dec,
-        sottotipo: c.tipo,
-        disegno: c.tipo === 'cometa' ? 'cometa' : 'asteroide'
-      }));
-    } catch (e) { /* fuori scala: si salta */ }
-  });
-
-  corpiInCielo = { quando: Date.now(), offset, elenco };
-  return elenco;
+  corpiAvanzaLavoro(ms);
+  return corpiInCielo.elenco;
 }
 
 // Dove va la coda, sullo schermo.
