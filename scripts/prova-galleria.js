@@ -70,8 +70,9 @@ const server = http.createServer((req, res) => {
       videoChiudiGalleria();
 
       // Dopo un riavvio l'handle resta in IndexedDB ma il browser puo' averne
-      // riportato il permesso a "prompt". Il clic che apre la galleria deve
-      // ripristinarlo e leggere subito i video, senza un secondo passaggio dal
+      // riportato il permesso a "prompt". Aprire la galleria non deve far
+      // comparire nessun dialogo: si controlla soltanto (queryPermission) e si
+      // offre il tasto «Riconnetti», che e' un clic solo e non ricomincia dal
       // selettore della cartella.
       let richiestePermesso = 0;
       let verifichePermesso = 0;
@@ -96,12 +97,23 @@ const server = http.createServer((req, res) => {
       videoCartellaAutorizzata = false;
       videoPermessoCartella = null;
       videoFirmaGalleria = null;
+      videoSceltaCartella = { voluta: true, nome: 'video-scelti' };
       await videoApriGalleria();
       const richiesteAprendo = richiestePermesso;
+      const sceltaIniziale = !document.getElementById('galleria-scelta-iniziale').classList.contains('hidden');
+      const riconnetti = document.getElementById('galleria-riconnetti');
+      const riconnettiOfferto = !riconnetti.classList.contains('hidden');
+      await videoRiconnettiCartella();
+      const richiesteRiconnettendo = richiestePermesso;
       const videoRicordatoVisibile = [...document.querySelectorAll('.galleria-video-nome')]
         .some(nome => nome.textContent === 'ricordato.webm');
+      // Una seconda apertura, con il permesso gia' ottenuto, non deve chiedere
+      // piu' niente: e' il caso di chi entra e esce dalla galleria.
+      videoChiudiGalleria();
+      await videoApriGalleria();
+      const richiesteRiaprendo = richiestePermesso;
       const filmato = new Blob(['salvato-nella-cartella'], { type: 'video/webm' });
-      const scritto = await videoScriviInCartella({ nome: 'scelto.webm', blob: filmato });
+      const scritto = await videoScriviInCartella({ nome: 'scelto.webm', blob: filmato }, true);
       videoChiudiGalleria();
       return {
         stessoNodo: prima === dopo,
@@ -110,6 +122,10 @@ const server = http.createServer((req, res) => {
         richiesteSchermoIntero,
         condiviso: window.__videoCondiviso,
         richiesteAprendo,
+        richiesteRiconnettendo,
+        richiesteRiaprendo,
+        sceltaIniziale,
+        riconnettiOfferto,
         richiesteSalvando: richiestePermesso,
         verifichePermesso,
         videoRicordatoVisibile,
@@ -130,7 +146,16 @@ const server = http.createServer((req, res) => {
       esito.condiviso?.tipo === 'video/webm' && esito.condiviso?.dimensione > 0;
     console.log(`${condivisioneOk ? 'ok' : 'FALLITO'} — ogni video della galleria si può condividere`, esito.condiviso);
     if (!condivisioneOk) process.exitCode = 1;
-    const cartellaOk = esito.richiesteAprendo === 1 && esito.richiesteSalvando === 1 && esito.verifichePermesso === 1 &&
+    // Il difetto era qui: aprire la galleria faceva comparire il dialogo del
+    // permesso a ogni apertura, e con la cartella dimenticata anche la domanda
+    // «esistente o nuova?». Adesso l'apertura non chiede niente (zero
+    // richieste), la riconnessione e' un clic solo, e chi rientra non vede piu'
+    // nessun dialogo perche' il consenso resta ricordato.
+    const zeroDialoghi = esito.richiesteAprendo === 0 && esito.richiesteRiconnettendo === 1 &&
+      esito.richiesteRiaprendo === 1 && esito.richiesteSalvando === 1;
+    console.log(`${zeroDialoghi ? 'ok' : 'FALLITO'} — aprire la galleria non chiede nessun permesso, e la riconnessione e' un clic solo`, esito);
+    if (!zeroDialoghi) process.exitCode = 1;
+    const cartellaOk = !esito.sceltaIniziale && esito.riconnettiOfferto &&
       esito.videoRicordatoVisibile && esito.scritto && esito.dimensioneScritta > 0;
     console.log(`${cartellaOk ? 'ok' : 'FALLITO'} — la cartella ricordata torna visibile dopo il riavvio e riceve il video`, esito);
     if (!cartellaOk) process.exitCode = 1;

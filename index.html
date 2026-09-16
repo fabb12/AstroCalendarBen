@@ -2794,8 +2794,19 @@
       </div>
       <div class="corpo-modale galleria-corpo">
         <div class="galleria-comandi">
-          <p id="galleria-cartella" class="galleria-cartella" data-i18n="ui.scegli-la-cartella-che-contiene-i-video-da">Scegli la cartella che contiene i video da mostrare.</p>
+          <!-- Niente `data-i18n` qui: questa riga la compone
+               `videoAggiornaCartella()`, che deve dire quale dei quattro stati
+               della cartella è quello di adesso. Con una chiave statica il
+               cambio lingua riscriverebbe il nodo con la frase generica,
+               cancellando il nome della cartella collegata. E nasce vuoto:
+               una frase italiana scritta qui sarebbe testo cablato, e
+               `videoInizializza()` la riscrive comunque all'avvio. -->
+          <p id="galleria-cartella" class="galleria-cartella"></p>
           <button id="galleria-scegli-cartella" type="button" class="tasto-cielo" data-i18n="ui.scegli-cartella">Scegli cartella</button>
+          <!-- La cartella è ricordata ma il browser le ha sospeso il permesso:
+               si riprende con questo clic, non con un dialogo che salta fuori
+               da solo ogni volta che si apre la galleria. -->
+          <button id="galleria-riconnetti" type="button" class="tasto-cielo hidden" data-i18n="galleria.riconnetti">Riconnetti</button>
         </div>
         <div id="galleria-scelta-iniziale" class="galleria-scelta-iniziale hidden" role="group" aria-labelledby="galleria-scelta-titolo">
           <div>
@@ -2805,6 +2816,7 @@
           <div class="galleria-scelta-azioni">
             <button id="galleria-usa-esistente" type="button" class="tasto-cielo" data-i18n="ui.scegli-una-cartella-esistente">Scegli una cartella esistente</button>
             <button id="galleria-crea-cartella" type="button" class="tasto-cielo" data-i18n="ui.crea-astrocalben">Crea “astrocalben”</button>
+            <button id="galleria-niente-cartella" type="button" class="tasto-cielo" data-i18n="galleria.niente-cartella">Nessuna cartella</button>
           </div>
         </div>
         <p id="galleria-stato" class="galleria-stato" role="status" aria-live="polite"></p>
