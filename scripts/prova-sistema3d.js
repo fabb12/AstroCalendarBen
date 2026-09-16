@@ -772,6 +772,28 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('spegnendo le cose nostre i satelliti non si disegnano', spegni.senza.satelliti === 0);
   ok('e riaccendendole tornano', spegni.con.satelliti > 0);
 
+  // La pelle dei pianeti deve appartenere al corpo, non alla camera. Questo
+  // controllo usa un polo semplice per isolare la geometria: un quarto di
+  // giro dell'osservatore deve esporre un meridiano diverso di 90 gradi; lo
+  // spin fisico del pianeta deve spostarlo a sua volta senza dipendere dal
+  // gesto. Inoltre il pennello deve rimettere a zero la longitudine globale,
+  // altrimenti la faccia usata nel planetario successivo nascerebbe girata.
+  const pelleFerma = await pagina.evaluate(() => {
+    const asse = [0, 0, 1];
+    asse.rotazione = 37;
+    const corpo = { id: 'Jupiter', asse };
+    const a = solLongitudineVista(corpo, { verso: [0, -1, 0] });
+    const b = solLongitudineVista(corpo, { verso: [1, 0, 0] });
+    const prima = skyLongitudineCentrale;
+    skyFacciaDi(corpo, 20, b);
+    return { a, b, prima, dopo: skyLongitudineCentrale };
+  });
+  ok('girando la camera cambia il meridiano visto, non gira il cartellone',
+    Math.abs(Math.abs(pelleFerma.b - pelleFerma.a) - 90) < 0.001,
+    pelleFerma.a.toFixed(1) + '° → ' + pelleFerma.b.toFixed(1) + '°');
+  ok('la longitudine della pelle non contamina il planetario',
+    pelleFerma.prima === 0 && pelleFerma.dopo === 0);
+
   // Il nome disegnato non è soltanto una didascalia: deve avere la stessa
   // area d'azione del corpo. Si prova chiamando il vero hit test nel centro
   // della scatola prodotta dal disegno, prima nella vista normale e poi col
