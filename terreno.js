@@ -4117,7 +4117,75 @@ function cittaLuciDi(c) {
   const quote = luci.map(l => l.quota).filter(q => q !== null).sort((a, b) => a - b);
   const centro = quote.length ? quote[quote.length >> 1] : null;
   for (const l of luci) if (l.quota === null) l.quota = centro;
-  return { luci, quota: centro, raggioM };
+  return { luci, bordo: cittaBordoDelle(luci, c, raggioM, centro), quota: centro, raggioM };
+}
+
+// --- Il perimetro dell'abitato ----------------------------------------
+//
+// Di giorno le luci non si vedono, e quello che resta di un paese è la sua
+// **macchia**: i tetti, l'asfalto, il colore diverso dal prato attorno. Per
+// disegnarla ci vuole un bordo, e il bordo non si può dichiarare —
+// un'ellisse perfetta si legge subito per quello che è, un disegno.
+//
+// Si **misura** invece sulla nuvola di luci che è già stata sorteggiata:
+// per ogni spicchio di cerchio, fin dove arriva la casa più lontana. Da lì
+// vengono due cose che valgono più di qualunque forma inventata: il bordo è
+// frastagliato dove l'abitato è frastagliato (una frazione staccata tira
+// fuori un lobo), e soprattutto **contiene le luci per costruzione** — di
+// notte nessuna lampada casca fuori dal perimetro che di giorno la conteneva.
+const CITTA_BORDO_PUNTI = 44;
+// Quanto il costruito deborda dall'ultima lampada: un lampione sta sulla
+// strada, e la casa in fondo al giardino no.
+const CITTA_BORDO_MARGINE = 1.12;
+// Il pavimento, in frazioni del raggio dell'abitato: uno spicchio in cui non
+// è cascata nessuna luce non è un morso nel paese, è un buco del sorteggio.
+const CITTA_BORDO_MIN = 0.42;
+
+function cittaBordoDelle(luci, c, raggioM, quotaCentro) {
+  const n = CITTA_BORDO_PUNTI;
+  const metriPerGrado = 111195;
+  const cosLat = Math.cos(c.lat * Math.PI / 180) || 1e-6;
+  const raggi = new Array(n).fill(0);
+  // Le luci portano lat/lon: qui si torna ai metri attorno al centro, che è
+  // il riferimento in cui il bordo ha senso.
+  for (const l of luci) {
+    const x = (l.lon - c.lon) * metriPerGrado * cosLat;
+    const y = (l.lat - c.lat) * metriPerGrado;
+    const r = Math.hypot(x, y);
+    if (!(r > 0)) continue;
+    const k = Math.floor(((Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * n) % n;
+    if (r > raggi[k]) raggi[k] = r;
+  }
+  const minimo = raggioM * CITTA_BORDO_MIN;
+  for (let i = 0; i < n; i++) raggi[i] = Math.max(minimo, raggi[i] * CITTA_BORDO_MARGINE);
+  // Una lisciata circolare: il massimo per spicchio è una statistica di
+  // pochi campioni e da solo fa una stella a punte, non un paese. Tre
+  // campioni bastano — di più e il lobo della frazione si spiana via.
+  //
+  // Ma lisciare **abbassa i picchi**, e un picco abbassato è una casa
+  // rimasta fuori dal suo paese: al crepuscolo, quando si vedono insieme il
+  // bordo e le lampade, si legge subito. Prima di lisciare si allarga quindi
+  // ogni spicchio al massimo dei suoi vicini: da lì viene per aritmetica che
+  // la media pesata non può scendere sotto al raggio di partenza — i tre
+  // termini che la compongono sono tutti maggiori o uguali a lui — e la
+  // lisciata resta una lisciata.
+  const larghi = new Array(n);
+  for (let i = 0; i < n; i++) {
+    larghi[i] = Math.max(raggi[(i - 1 + n) % n], raggi[i], raggi[(i + 1) % n]);
+  }
+  const lisci = new Array(n);
+  for (let i = 0; i < n; i++) {
+    lisci[i] = (larghi[(i - 1 + n) % n] + 2 * larghi[i] + larghi[(i + 1) % n]) / 4;
+  }
+  const bordo = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const lat = c.lat + Math.sin(a) * lisci[i] / metriPerGrado;
+    const lon = c.lon + Math.cos(a) * lisci[i] / (metriPerGrado * cosLat);
+    const q = cittaQuotaPunto(lat, lon);
+    bordo.push({ lat, lon, quota: q === null ? quotaCentro : q });
+  }
+  return bordo;
 }
 
 // Le forme già sorteggiate, una per paese. Il sorteggio delle luci e la
@@ -4190,6 +4258,21 @@ function cittaAbitati() {
       if (scarto > azMax) azMax = scarto;
     }
     if (!luci.length) continue;
+    // Il perimetro passa dalla stessa catena delle luci: azimut, distanza e
+    // angolo visti da qui. Se le due strade divergessero, di giorno il bordo
+    // starebbe in un posto e di notte le lampade in un altro.
+    const bordo = [];
+    for (const b of (forma.bordo || [])) {
+      const km = terrenoDistanzaKm(luogo.lat, luogo.lon, b.lat, b.lon);
+      const az = cittaAzimut(luogo.lat, luogo.lon, b.lat, b.lon);
+      const alt = terrenoAngolo(b.quota === null ? forma.quota : b.quota, occhio, km);
+      const scarto = ((az - c.az) % 360 + 540) % 360 - 180;
+      bordo.push({ az, km, alt, scarto });
+      if (alt < altMin) altMin = alt;
+      if (alt > altMax) altMax = alt;
+      if (scarto < azMin) azMin = scarto;
+      if (scarto > azMax) azMax = scarto;
+    }
     fuori.push({
       nome: c.nome, lat: c.lat, lon: c.lon, abitanti: c.abitanti,
       az: c.az, km: c.km, forza: c.forza, quota: forma.quota,
@@ -4198,7 +4281,7 @@ function cittaAbitati() {
       // quanto grande viene il tappeto sullo schermo prima di disegnarlo.
       semiAz: Math.max(Math.abs(azMin), Math.abs(azMax)),
       altBasso: altMin, altAlto: altMax,
-      luci
+      luci, bordo
     });
   }
   cittaAbitatiVista = fuori;

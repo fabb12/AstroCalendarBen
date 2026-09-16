@@ -18815,6 +18815,48 @@ const SKY_ABITATO_TINTA_FREDDA = 0.88;   // sopra questo dado la luce è LED
 // abitato che si accende.
 const SKY_ABITATO_LETTO_ALFA = 0.30;
 
+// --- E di giorno? La macchia del costruito ----------------------------
+//
+// Le luci sono la metà notturna della stessa cosa, e da sole lasciavano il
+// paese **invisibile dall'alba al tramonto** — cioè in metà delle ore in cui
+// uno apre il planetario. Ma un paese di giorno si vede benissimo, e si vede
+// per quello che è: una macchia di tetti e di asfalto che ha un colore
+// diverso dal prato attorno, con un **bordo** dove finisce il costruito e
+// ricomincia la campagna.
+//
+// Il bordo non è decorazione: è la sola cosa che distingua un abitato da una
+// velatura. Una macchia sfumata su un pendio si legge come un'ombra di
+// nuvola; la stessa macchia con un contorno si legge come un paese. Il
+// perimetro lo misura `cittaBordoDelle` in `terreno.js` sulla stessa nuvola
+// di luci, quindi di notte nessuna lampada casca fuori da dove di giorno
+// c'era il paese.
+//
+// Le due metà si danno il cambio da sole, con la stessa soglia di luce del
+// cielo: al crepuscolo si vedono per un po' tutt'e due, che è quello che si
+// vede davvero.
+const SKY_ABITATO_SUOLO = [152, 144, 133];     // tetti e asfalto, da lontano
+const SKY_ABITATO_ORLO = [104, 96, 86];        // dove finisce il costruito
+const SKY_ABITATO_TETTI = [178, 166, 152];     // i singoli edifici, più chiari
+const SKY_ABITATO_ALFA = 0.58;
+const SKY_ABITATO_ORLO_ALFA = 0.62;
+const SKY_ABITATO_TETTI_ALFA = 0.34;
+
+// Quanto la macchia scivola verso la foschia in fondo alla scala. Qui la
+// mescola è piena e non pesata sulla luminosità come per i nomi (§`SKY_CITTA_FOSCHIA_TINTA`):
+// questa è una **superficie**, e una superficie lontana *deve* diventare il
+// colore dell'aria — è la prospettiva aerea, non un modo di smorzarla.
+const SKY_ABITATO_FOSCHIA_TINTA = 0.88;
+
+// Sotto questa larghezza sullo schermo i singoli tetti non si disegnano: a
+// venti pixel sono pulviscolo che sporca la macchia invece di darle grana.
+const SKY_ABITATO_TETTI_PX = 26;
+
+// Quanto è alta la fascia entro cui la macchia può stare, sopra alla cresta
+// che le sta davanti. Serve a ritagliare il poligono contro la collina, ed è
+// abbondante di proposito: un paese sotto casa può essere alto decine di
+// gradi, e una fascia troppo bassa gli taglierebbe la cima.
+const SKY_ABITATO_CLIP_ALTO = 70;
+
 // Dove il tappeto di ogni paese è finito sullo schermo, per il fotogramma
 // appena disegnato: lo scrive `skyDisegnaAbitati` e lo legge `skyNomiCitta`
 // subito dopo, per appendere il nome **al paese** invece che alla cresta
@@ -18834,24 +18876,124 @@ function skyAbitatoVisto(lat, lon) {
   return skyAbitatiVisti.get(skyAbitatoChiave(lat, lon)) || null;
 }
 
+// Il ritaglio contro la collina che sta davanti. Per i puntini basta un
+// confronto per punto; per una **superficie** ci vuole una regione, e la
+// regione è la fascia fra la cresta disegnata e settanta gradi più su. È lo
+// stesso numero che tosa le luci, letto su tutta la larghezza del paese
+// invece che su una lampada per volta.
+//
+// Restituisce `false` quando il terreno non sa dire niente: allora non c'è
+// niente che copra, e il poligono si disegna intero.
+function skyClipSopraLaCresta(ctx, ab, base, focale, creste, nC) {
+  let vera = false;
+  for (const c of creste) if (c !== -Infinity) { vera = true; break; }
+  if (!vera) return false;
+
+  const bassi = [], alti = [];
+  for (let i = 0; i < nC; i++) {
+    const s = nC === 1 ? 0 : -ab.semiAz + (2 * ab.semiAz * i) / (nC - 1);
+    // Una colonna senza cresta non copre niente: si manda al fondo, così la
+    // fascia lì dentro comincia da sotto al paese.
+    const c = creste[i] === -Infinity ? -89 : creste[i];
+    const b = skyProietta(skyVettore(ab.az + s, c), base, focale);
+    const a = skyProietta(skyVettore(ab.az + s, Math.min(85, c + SKY_ABITATO_CLIP_ALTO)), base, focale);
+    if (!b.davanti || !a.davanti) return false;
+    bassi.push(b); alti.push(a);
+  }
+  ctx.beginPath();
+  ctx.moveTo(bassi[0].px, bassi[0].py);
+  for (let i = 1; i < nC; i++) ctx.lineTo(bassi[i].px, bassi[i].py);
+  for (let i = nC - 1; i >= 0; i--) ctx.lineTo(alti[i].px, alti[i].py);
+  ctx.closePath();
+  ctx.clip();
+  return true;
+}
+
+// La macchia del costruito e il suo perimetro. Torna quanti punti del bordo
+// si vedono davvero: zero vuol dire che la collina davanti copre il paese, e
+// allora il nome non ci si può appendere.
+function skyDisegnaMacchiaAbitato(ctx, ab, base, focale, creste, nC, crestaA,
+                                  forza, lontananza, aria, largoPx, segna) {
+  const bordo = ab.bordo;
+  if (!bordo || bordo.length < 3) return 0;
+
+  const punti = [];
+  let visti = 0;
+  for (const b of bordo) {
+    const p = skyProietta(skyVettore(b.az, b.alt), base, focale);
+    if (!p.davanti) return 0;          // il paese è dietro di noi: niente poligono
+    punti.push(p);
+    if (b.alt >= crestaA(b.scarto)) {
+      visti++;
+      segna(b.alt, b.az, p.px, p.py);
+    }
+  }
+  if (!visti) return 0;
+
+  // La prospettiva aerea: una superficie lontana diventa il colore dell'aria.
+  const f = aria && aria.foschia ? aria.foschia : null;
+  const verso = (c) => f ? skyMescolaColore(c, f, SKY_ABITATO_FOSCHIA_TINTA * lontananza) : c;
+
+  ctx.save();
+  skyClipSopraLaCresta(ctx, ab, base, focale, creste, nC);
+
+  ctx.beginPath();
+  ctx.moveTo(punti[0].px, punti[0].py);
+  for (let i = 1; i < punti.length; i++) ctx.lineTo(punti[i].px, punti[i].py);
+  ctx.closePath();
+  ctx.fillStyle = skyRgba(verso(SKY_ABITATO_SUOLO), (forza * SKY_ABITATO_ALFA).toFixed(3));
+  ctx.fill();
+
+  // I singoli edifici, dove si risolvono: è quello che toglie alla macchia
+  // l'aria di velatura. Si disegnano **dentro** al perimetro per costruzione
+  // — sono le stesse posizioni che di notte fanno le luci.
+  if (largoPx >= SKY_ABITATO_TETTI_PX) {
+    const lato = Math.max(0.8, Math.min(2.4, largoPx / 90));
+    ctx.fillStyle = skyRgba(verso(SKY_ABITATO_TETTI),
+      (forza * SKY_ABITATO_TETTI_ALFA).toFixed(3));
+    const quanti = Math.min(ab.luci.length, Math.max(8, Math.round(largoPx / 5)));
+    for (let i = 0; i < quanti; i++) {
+      const l = ab.luci[i];
+      if (l.alt < crestaA(l.scarto)) continue;
+      const p = skyProietta(skyVettore(l.az, l.alt), base, focale);
+      if (!p.davanti) continue;
+      ctx.fillRect(p.px - lato / 2, p.py - lato / 2, lato, lato);
+    }
+  }
+
+  // Il contorno. Il tratto si assottiglia con la distanza come il filo di
+  // richiamo dei nomi: un paese in fondo non ha un bordo sottile, ha un
+  // bordo che l'aria ha quasi cancellato.
+  ctx.beginPath();
+  ctx.moveTo(punti[0].px, punti[0].py);
+  for (let i = 1; i < punti.length; i++) ctx.lineTo(punti[i].px, punti[i].py);
+  ctx.closePath();
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(0.6, 1.4 - lontananza * 0.7);
+  ctx.strokeStyle = skyRgba(verso(SKY_ABITATO_ORLO),
+    (forza * SKY_ABITATO_ORLO_ALFA).toFixed(3));
+  ctx.stroke();
+
+  ctx.restore();
+  return visti;
+}
+
 function skyDisegnaAbitati(ctx, base, focale, aria, velo) {
   if (typeof cittaAbitati !== 'function') return;
   skyAbitatiVisti = null;
   const lista = cittaAbitati();
   if (!lista.length) return;
 
-  // Di giorno le luci ci sono e non si vedono: il cielo è più luminoso di
-  // loro. È la stessa soglia della cupola — ma senza il taglio sul campo
-  // visivo, perché a differenza dell'alone un abitato ingrandito non
-  // diventa una vernice: diventa un abitato più grande.
+  // Le due metà della stessa cosa. Di notte si vedono le **luci**: il cielo
+  // è più scuro di loro. Di giorno si vede il **costruito**: il cielo è più
+  // luminoso delle lampade e le cancella, ma i tetti e l'asfalto restano.
+  // La soglia è la stessa della cupola, e al crepuscolo le due si
+  // sovrappongono per un po' — che è quello che si vede davvero.
   const notte = 1 - Math.min(1, sky.luceCielo / SKY_CITTA_LUCE_MAX);
-  if (notte <= 0.03) return;
+  const giorno = 1 - notte;
 
   const opaco = SKY_ABITATO_VELO_MIN + (1 - SKY_ABITATO_VELO_MIN) * velo;
   const visti = new Map();
-
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
 
   for (const ab of lista) {
     const pc = skyProietta(skyVettore(ab.az, (ab.altAlto + ab.altBasso) / 2), base, focale);
@@ -18859,7 +19001,7 @@ function skyDisegnaAbitati(ctx, base, focale, aria, velo) {
     const perGrado = focale * skyScalaLocale(pc.d) * SKY_D2R;
     const largoPx = Math.max(1, 2 * ab.semiAz * perGrado);
     const altoPx = Math.max(1, (ab.altAlto - ab.altBasso) * perGrado);
-    // Fuori dal riquadro di quanto è grande il tappeto: niente da dipingere.
+    // Fuori dal riquadro di quanto è grande l'abitato: niente da dipingere.
     if (pc.px < -largoPx || pc.px > sky.larghezza + largoPx ||
         pc.py < -altoPx - 40 || pc.py > sky.altezza + altoPx + 40) continue;
 
@@ -18886,76 +19028,108 @@ function skyDisegnaAbitati(ctx, base, focale, aria, velo) {
     const lontananza = typeof skyLontananzaCitta === 'function'
       ? skyLontananzaCitta(ab.km) : 0;
     const aria2 = (1 - lontananza * SKY_ABITATO_FOSCHIA);
-    const forza = notte * opaco * aria2;
-    if (forza <= 0.02) continue;
+    const forzaNotte = notte * opaco * aria2;
+    const forzaGiorno = giorno * opaco * aria2;
+    if (forzaNotte <= 0.02 && forzaGiorno <= 0.02) continue;
 
-    // Quante se ne risolvono da qui, e quanto è grosso ognuna: tutt'e due
-    // dalla misura del tappeto sullo schermo, non dallo zoom. Vedi
-    // SKY_ABITATO_PASSO_PX e SKY_ABITATO_PUNTO_MIN.
-    const area = Math.max(1, largoPx) * Math.max(1, altoPx);
-    const quante = Math.max(SKY_ABITATO_LUCI_MIN, Math.min(ab.luci.length,
-      Math.round(Math.sqrt(area) / SKY_ABITATO_PASSO_PX)));
-    const passo = Math.sqrt(area / quante);
-    const raggio = Math.max(SKY_ABITATO_PUNTO_MIN,
-      Math.min(SKY_ABITATO_PUNTO_MAX, 0.55 + passo * 0.16));
-
-    // Il letto di luce, sotto ai puntini: è la luce che da qui **non** si
-    // risolve, quindi conta tanto più quante meno lampade si disegnano. A
-    // grandangolo è quasi tutto lui, ingrandendo cede il posto ai puntini.
-    const resta = 1 - quante / ab.luci.length;
-    const letto = forza * SKY_ABITATO_LETTO_ALFA * (0.35 + 0.65 * resta) *
-      Math.min(1, Math.pow(ab.luci.length / 60, 0.5));
-    if (letto > 0.006 && largoPx < sky.larghezza * 4) {
-      ctx.save();
-      ctx.translate(pc.px, pc.py);
-      ctx.scale(Math.max(6, largoPx * 0.62), Math.max(3, altoPx * 0.62 + raggio * 2.4));
-      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-      g.addColorStop(0, `rgba(255, 178, 110, ${letto.toFixed(3)})`);
-      g.addColorStop(0.55, `rgba(248, 158, 98, ${(letto * 0.38).toFixed(3)})`);
-      g.addColorStop(1, 'rgba(230, 140, 92, 0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(0, 0, 1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // I puntini. Uno per volta, perché ognuno ha il suo posto sul terreno:
-    // è quello il pezzo che nessuna texture può dare.
-    let scritte = 0;
+    // Dove si appende il nome: il punto più alto di quello che si è visto
+    // davvero, luci o tetti che siano.
     let topAlt = -Infinity, topAz = ab.az, topPx = 0, topPy = 0;
-    for (let i = 0; i < quante; i++) {
-      const l = ab.luci[i];
-      if (l.alt < crestaA(l.scarto)) continue;      // la collina davanti la copre
-      const p = skyProietta(skyVettore(l.az, l.alt), base, focale);
-      if (!p.davanti) continue;
-      if (p.px < -4 || p.px > sky.larghezza + 4 || p.py < -4 || p.py > sky.altezza + 4) {
-        // Fuori dallo schermo non si disegna, ma può essere comunque la
-        // parte più alta del paese: il nome ci si appende lo stesso.
-        if (l.alt > topAlt) { topAlt = l.alt; topAz = l.az; topPx = p.px; topPy = p.py; }
-        continue;
-      }
-      const freddo = l.tinta > SKY_ABITATO_TINTA_FREDDA;
-      const t = freddo ? SKY_ABITATO_TINTE[2]
-        : (l.tinta > 0.45 ? SKY_ABITATO_TINTE[1] : SKY_ABITATO_TINTE[0]);
-      // Le lampade non sono tutte uguali, e un tappeto di punti identici si
-      // legge per una griglia anche quando griglia non è.
-      const a = forza * (0.32 + 0.42 * l.tinta);
-      ctx.fillStyle = `rgba(${t.r}, ${t.g}, ${t.b}, ${a.toFixed(3)})`;
-      ctx.beginPath();
-      ctx.arc(p.px, p.py, raggio, 0, Math.PI * 2);
-      ctx.fill();
-      scritte++;
-      if (l.alt > topAlt) { topAlt = l.alt; topAz = l.az; topPx = p.px; topPy = p.py; }
+    const segna = (alt, az, px, py) => {
+      if (alt > topAlt) { topAlt = alt; topAz = az; topPx = px; topPy = py; }
+    };
+    let disegnato = 0;
+
+    // --- Il costruito, di giorno ---
+    if (forzaGiorno > 0.02) {
+      disegnato += skyDisegnaMacchiaAbitato(ctx, ab, base, focale, creste, nC,
+        crestaA, forzaGiorno, lontananza, aria, largoPx, segna);
     }
 
-    if (scritte) {
-      visti.set(skyAbitatoChiave(ab.lat, ab.lon), { alt: topAlt, az: topAz, px: topPx, py: topPy, quante: scritte });
+    // --- Le luci, di notte ---
+    if (forzaNotte > 0.02) {
+      disegnato += skyDisegnaLuciAbitato(ctx, ab, base, focale, crestaA,
+        forzaNotte, largoPx, altoPx, pc, segna);
+    }
+
+    if (disegnato) {
+      visti.set(skyAbitatoChiave(ab.lat, ab.lon),
+        { alt: topAlt, az: topAz, px: topPx, py: topPy, quante: disegnato });
     }
   }
 
-  ctx.restore();
   if (visti.size) skyAbitatiVisti = visti;
+}
+
+// Le lampade. Vivono in `lighter` — sono luce che si somma al paesaggio, non
+// vernice che lo copre — e per questo stanno in una passata loro invece che
+// insieme alla macchia del costruito, che invece copre.
+function skyDisegnaLuciAbitato(ctx, ab, base, focale, crestaA, forza,
+                               largoPx, altoPx, pc, segna) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Quante se ne risolvono da qui, e quanto è grosso ognuna: tutt'e due
+  // dalla misura del tappeto sullo schermo, non dallo zoom. Vedi
+  // SKY_ABITATO_PASSO_PX e SKY_ABITATO_PUNTO_MIN.
+  const area = Math.max(1, largoPx) * Math.max(1, altoPx);
+  const quante = Math.max(SKY_ABITATO_LUCI_MIN, Math.min(ab.luci.length,
+    Math.round(Math.sqrt(area) / SKY_ABITATO_PASSO_PX)));
+  const passo = Math.sqrt(area / quante);
+  const raggio = Math.max(SKY_ABITATO_PUNTO_MIN,
+    Math.min(SKY_ABITATO_PUNTO_MAX, 0.55 + passo * 0.16));
+
+  // Il letto di luce, sotto ai puntini: è la luce che da qui **non** si
+  // risolve, quindi conta tanto più quante meno lampade si disegnano. A
+  // grandangolo è quasi tutto lui, ingrandendo cede il posto ai puntini.
+  const resta = 1 - quante / ab.luci.length;
+  const letto = forza * SKY_ABITATO_LETTO_ALFA * (0.35 + 0.65 * resta) *
+    Math.min(1, Math.pow(ab.luci.length / 60, 0.5));
+  if (letto > 0.006 && largoPx < sky.larghezza * 4) {
+    ctx.save();
+    ctx.translate(pc.px, pc.py);
+    ctx.scale(Math.max(6, largoPx * 0.62), Math.max(3, altoPx * 0.62 + raggio * 2.4));
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    g.addColorStop(0, `rgba(255, 178, 110, ${letto.toFixed(3)})`);
+    g.addColorStop(0.55, `rgba(248, 158, 98, ${(letto * 0.38).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(230, 140, 92, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // I puntini. Uno per volta, perché ognuno ha il suo posto sul terreno:
+  // è quello il pezzo che nessuna texture può dare.
+  let scritte = 0;
+  for (let i = 0; i < quante; i++) {
+    const l = ab.luci[i];
+    if (l.alt < crestaA(l.scarto)) continue;      // la collina davanti la copre
+    const p = skyProietta(skyVettore(l.az, l.alt), base, focale);
+    if (!p.davanti) continue;
+    if (p.px < -4 || p.px > sky.larghezza + 4 || p.py < -4 || p.py > sky.altezza + 4) {
+      // Fuori dallo schermo non si disegna, ma può essere comunque la
+      // parte più alta del paese: il nome ci si appende lo stesso.
+      segna(l.alt, l.az, p.px, p.py);
+      continue;
+    }
+    const freddo = l.tinta > SKY_ABITATO_TINTA_FREDDA;
+    const t = freddo ? SKY_ABITATO_TINTE[2]
+      : (l.tinta > 0.45 ? SKY_ABITATO_TINTE[1] : SKY_ABITATO_TINTE[0]);
+    // Le lampade non sono tutte uguali, e un tappeto di punti identici si
+    // legge per una griglia anche quando griglia non è.
+    const a = forza * (0.32 + 0.42 * l.tinta);
+    ctx.fillStyle = `rgba(${t.r}, ${t.g}, ${t.b}, ${a.toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, raggio, 0, Math.PI * 2);
+    ctx.fill();
+    scritte++;
+    segna(l.alt, l.az, p.px, p.py);
+  }
+
+  ctx.restore();
+  return scritte;
 }
 
 // --- Le scritte appoggiate all'orizzonte ------------------------------

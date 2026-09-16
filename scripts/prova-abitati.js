@@ -69,8 +69,10 @@ run(fs.readFileSync(path.join(root, 'terreno.js'), 'utf8'));
 // ogni cerchio invece di dipingerlo, e l'occlusione contro la cresta
 // diventa un numero.
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-for (const nome of ['skyDisegnaAbitati', 'skyAbitatoVisto', 'skyAbitatoChiave',
-                    'skyLontananzaCitta']) {
+for (const nome of ['skyDisegnaAbitati', 'skyDisegnaLuciAbitato',
+                    'skyDisegnaMacchiaAbitato', 'skyClipSopraLaCresta',
+                    'skyAbitatoVisto', 'skyAbitatoChiave', 'skyMescolaColore',
+                    'skyRgba', 'skyLontananzaCitta']) {
   const m = app.match(new RegExp('^function ' + nome + '\\([\\s\\S]*?^\\}', 'm'));
   assert.ok(m, 'non trovo ' + nome + ' in app.js');
   run(m[0]);
@@ -79,12 +81,18 @@ for (const cost of ['SKY_ABITATO_CRESTA_PX', 'SKY_ABITATO_CRESTA_MIN', 'SKY_ABIT
                     'SKY_ABITATO_FOSCHIA', 'SKY_ABITATO_VELO_MIN', 'SKY_ABITATO_PUNTO_MIN',
                     'SKY_ABITATO_PUNTO_MAX', 'SKY_ABITATO_TINTA_FREDDA',
                     'SKY_ABITATO_PASSO_PX', 'SKY_ABITATO_LUCI_MIN',
+                    'SKY_ABITATO_ALFA', 'SKY_ABITATO_ORLO_ALFA',
+                    'SKY_ABITATO_TETTI_ALFA', 'SKY_ABITATO_FOSCHIA_TINTA',
+                    'SKY_ABITATO_TETTI_PX', 'SKY_ABITATO_CLIP_ALTO',
                     'SKY_ABITATO_LETTO_ALFA', 'SKY_CITTA_LUCE_MAX', 'SKY_FOSCHIA_KM']) {
   const m = app.match(new RegExp('^const ' + cost + ' = [^;]+;', 'm'));
   assert.ok(m, 'non trovo ' + cost);
   run(m[0]);
 }
 run(app.match(/^const SKY_ABITATO_TINTE = \[[\s\S]*?^\];/m)[0]);
+for (const c of ['SKY_ABITATO_SUOLO', 'SKY_ABITATO_ORLO', 'SKY_ABITATO_TETTI']) {
+  run(app.match(new RegExp('^const ' + c + ' = \\[[^\\]]*\\];', 'm'))[0]);
+}
 run('let skyAbitatiVisti = null;');
 run('const SKY_D2R = Math.PI / 180;');
 
@@ -114,17 +122,33 @@ run(`
   function skyScalaLocale() { return 1; }
   function skyCrestaDisegnataEntro(az, km) { return skyCrestaFinta; }
   function telaFinta() {
-    const punti = [];
-    return { punti,
-      save() { this._liv++; }, restore() { this._liv--; },
-      translate() {}, scale() {}, beginPath() {},
-      fill() {}, set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; },
-      set globalCompositeOperation(v) {}, get globalCompositeOperation() { return ''; },
-      createRadialGradient: () => ({ addColorStop() {} }),
+    const punti = [], forme = [];
+    let corrente = null;
+    return { punti, forme,
       // Le luci si disegnano dentro al primo save() della funzione, il
       // letto di luce dentro a un secondo: contando solo il primo livello
       // si contano i puntini e non la macchia che ci sta sotto.
-      _liv: 0,
+      _liv: 0, _f: '', _s: '',
+      save() { this._liv++; }, restore() { this._liv--; },
+      translate() {}, scale() {},
+      set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; },
+      set strokeStyle(v) { this._s = v; }, get strokeStyle() { return this._s; },
+      set globalCompositeOperation(v) {}, get globalCompositeOperation() { return ''; },
+      set lineWidth(v) {}, get lineWidth() { return 1; },
+      set lineJoin(v) {}, get lineJoin() { return ''; },
+      createRadialGradient: () => ({ addColorStop() {} }),
+      // I tracciati si registrano per quello che ne viene fatto: un fill e
+      // uno stroke sono la macchia e il suo perimetro, un clip e' il
+      // ritaglio contro la collina. Contarli tutti insieme non direbbe
+      // niente.
+      beginPath() { corrente = []; },
+      moveTo(x, y) { if (corrente) corrente.push({ x, y }); },
+      lineTo(x, y) { if (corrente) corrente.push({ x, y }); },
+      closePath() {},
+      fill() { forme.push({ tipo: 'fill', punti: (corrente || []).slice(), stile: this._f }); },
+      stroke() { forme.push({ tipo: 'stroke', punti: (corrente || []).slice(), stile: this._s }); },
+      clip() { forme.push({ tipo: 'clip', punti: (corrente || []).slice() }); },
+      fillRect(x, y, w, h) { forme.push({ tipo: 'rect', x, y, w, h, stile: this._f }); },
       arc(x, y, r) { if (this._liv === 1) punti.push({ x, y, r }); } };
   }
 `);
@@ -302,6 +326,13 @@ function disegnaCon(ab, cresta, luce, focale) {
   return run('__tela.punti');
 }
 
+// Le stesse condizioni, ma restituendo i tracciati invece dei cerchi: e'
+// quello che serve alla macchia del costruito, che poligono e'.
+function forme(ab, cresta, luce, focale) {
+  disegnaCon(ab, cresta, luce, focale);
+  return run('__tela.forme');
+}
+
 prova('senza niente davanti si disegna quello che da qui si risolve', () => {
   const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
   const punti = disegnaCon(ab, -90);
@@ -400,6 +431,134 @@ prova('ingrandendo il tappeto non sparisce col terreno', () => {
   run('cittaAbitatiVista = __ab; skyCrestaFinta = -90; sky.luceCielo = 0;');
   run('__tela = telaFinta(); skyDisegnaAbitati(__tela, {}, 300, null, 0.12);');
   assert.ok(run('__tela.punti').length > 0, 'a terreno quasi trasparente spariscono tutte');
+});
+
+console.log('\n§6 — di giorno il paese si vede lo stesso');
+
+prova('il perimetro contiene tutte le luci', () => {
+  // È l'invariante che tiene insieme le due metà: di giorno si disegna il
+  // bordo, di notte le lampade, e al crepuscolo si vedono insieme — una
+  // lampada fuori dal bordo che di giorno la conteneva è una casa fuori dal
+  // suo paese. Il giudice è un punto-dentro-poligono vero, non un confronto
+  // di raggi: fra due vertici il bordo è una corda, e una corda passa più
+  // dentro dell'arco.
+  const M = 111195;
+  const dentro = (px, py, poly) => {
+    let d = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+      if ((yi > py) !== (yj > py) &&
+          px < (xj - xi) * (py - yi) / (yj - yi) + xi) d = !d;
+    }
+    return d;
+  };
+  for (const nome of ['Vicino', 'Lontano']) {
+    const forma = run(`cittaFormaDi(citta.elenco.find(c => c.nome === ${JSON.stringify(nome)}))`);
+    const c = ctx.__paesi.find(x => x.nome === nome);
+    const cos = Math.cos(c.lat * Math.PI / 180);
+    const metri = (o) => ({ x: (o.lon - c.lon) * M * cos, y: (o.lat - c.lat) * M });
+    const poly = forma.bordo.map(metri);
+    assert.ok(poly.length >= 3, nome + ' non ha perimetro');
+    let fuori = 0;
+    for (const l of forma.luci) {
+      const q = metri(l);
+      if (!dentro(q.x, q.y, poly)) fuori++;
+    }
+    assert.equal(fuori, 0, nome + ': ' + fuori + ' luci su ' + forma.luci.length + ' fuori dal perimetro');
+  }
+});
+
+prova('il perimetro non è un cerchio', () => {
+  // Un'ellisse perfetta si legge subito per quello che è, un disegno.
+  const a = posto(PAESI, 800, 300)[0];
+  const M = 111195, cos = Math.cos(a.lat * Math.PI / 180);
+  const forma = run(`cittaFormaDi(citta.elenco.find(c => c.nome === ${JSON.stringify(a.nome)}))`);
+  const r = forma.bordo.map(b =>
+    Math.hypot((b.lat - a.lat) * M, (b.lon - a.lon) * M * cos));
+  const medio = r.reduce((x, y) => x + y, 0) / r.length;
+  const scarto = Math.sqrt(r.reduce((x, y) => x + (y - medio) ** 2, 0) / r.length) / medio;
+  assert.ok(scarto > 0.04, 'bordo troppo regolare: scarto ' + (scarto * 100).toFixed(1) + '%');
+});
+
+prova('di giorno si disegnano la macchia e il suo bordo, e nessuna luce', () => {
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  const f = forme(ab, -90, 0.9);
+  assert.equal(run('__tela.punti').length, 0, 'di giorno si accendono le lampade');
+  const riempimenti = f.filter(x => x.tipo === 'fill');
+  const contorni = f.filter(x => x.tipo === 'stroke');
+  assert.equal(riempimenti.length, 1, 'macchie disegnate: ' + riempimenti.length);
+  assert.equal(contorni.length, 1, 'perimetri disegnati: ' + contorni.length);
+  assert.equal(riempimenti[0].punti.length, ab[0].bordo.length,
+    'il poligono non ha i punti del perimetro');
+});
+
+prova('di notte si accendono le luci e la macchia non si disegna', () => {
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  const f = forme(ab, -90, 0);
+  assert.ok(run('__tela.punti').length > 0, 'di notte non si accende niente');
+  assert.equal(f.filter(x => x.tipo === 'stroke').length, 0,
+    'di notte si disegna il contorno del costruito');
+});
+
+prova('al crepuscolo si vedono tutte e due', () => {
+  const meta = run('SKY_CITTA_LUCE_MAX') / 2;
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  const f = forme(ab, -90, meta);
+  assert.ok(run('__tela.punti').length > 0, 'nessuna luce a mezza luce');
+  assert.ok(f.some(x => x.tipo === 'stroke'), 'nessun perimetro a mezza luce');
+});
+
+prova('di giorno il nome si appende al paese', () => {
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  disegnaCon(ab, -90, 0.9);
+  const visto = run(`skyAbitatoVisto(${ab[0].lat}, ${ab[0].lon})`);
+  assert.ok(visto, 'nessun aggancio di giorno');
+  const cima = Math.max(...ab[0].bordo.map(b => b.alt));
+  assert.ok(Math.abs(visto.alt - cima) < 1e-9,
+    'aggancio a ' + visto.alt.toFixed(3) + ' invece che a ' + cima.toFixed(3));
+});
+
+prova('una cresta più alta del paese lo copre anche di giorno', () => {
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  const f = forme(ab, ab[0].altAlto + 0.5, 0.9);
+  assert.equal(f.filter(x => x.tipo === 'fill' || x.tipo === 'stroke').length, 0,
+    'la macchia si disegna sopra alla collina che la copre');
+  assert.equal(run(`skyAbitatoVisto(${ab[0].lat}, ${ab[0].lon})`), null);
+});
+
+prova('la collina davanti ritaglia la macchia invece di tosarla via', () => {
+  // Con una cresta a metà paese il poligono si disegna comunque — intero —
+  // e a togliergli la parte nascosta è il **ritaglio**: è la differenza fra
+  // un bordo frastagliato dove spunta il dosso e un paese che sparisce.
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  const meta = (ab[0].altAlto + ab[0].altBasso) / 2;
+  const f = forme(ab, meta, 0.9);
+  assert.equal(f.filter(x => x.tipo === 'fill').length, 1, 'la macchia non si disegna');
+  const clip = f.filter(x => x.tipo === 'clip');
+  assert.equal(clip.length, 1, 'ritagli: ' + clip.length);
+  assert.ok(clip[0].punti.length >= 6, 'il ritaglio non è una fascia');
+});
+
+prova('senza terreno non si ritaglia niente', () => {
+  // Quando la cresta non c'è non c'è nemmeno niente che copra: ritagliare
+  // vorrebbe dire inventarsi una collina.
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  run('skyCrestaFinta = null;');
+  ctx.__ab = ab;
+  run('cittaAbitatiVista = __ab; sky.luceCielo = 0.9; __tela = telaFinta();');
+  run('skyDisegnaAbitati(__tela, {}, 900, null, 1);');
+  const f = run('__tela.forme');
+  assert.equal(f.filter(x => x.tipo === 'clip').length, 0, 'ritaglia senza terreno');
+  assert.equal(f.filter(x => x.tipo === 'fill').length, 1, 'non disegna la macchia');
+  run('skyCrestaFinta = 0;');
+});
+
+prova('i tetti si disegnano solo quando si risolvono', () => {
+  const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
+  const stretto = forme(ab, -90, 0.9, 40).filter(x => x.tipo === 'rect').length;
+  const largo = forme(ab, -90, 0.9, 4000).filter(x => x.tipo === 'rect').length;
+  assert.equal(stretto, 0, 'a campo largo disegna ' + stretto + ' tetti');
+  assert.ok(largo > 10, 'ingrandendo i tetti restano ' + largo);
 });
 
 console.log('\n' + passate + ' passate, ' + fallite + ' fallite');
