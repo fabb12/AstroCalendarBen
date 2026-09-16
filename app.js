@@ -12655,8 +12655,15 @@ function skyNuvola(ctx, r, colore, alpha, nocciolo) {
 // date. È la proiezione ortografica, quella giusta per una palla lontana:
 // `z` dice se il punto è sulla faccia rivolta a noi e quanto è vicino al
 // bordo (più è vicino, più tutto ciò che ci sta sopra si schiaccia).
+// Longitudine che in questo momento guarda la camera. Di norma vale zero:
+// il planetario continua a usare la faccia geocentrica di sempre. La vista
+// del Sistema Solare invece la imposta mentre prepara la pelle di un pianeta,
+// cosi' le macchie appartengono al globo e non al cartellone rivolto alla
+// camera. E' uno stato solo del pennello, mai uno stato della scena.
+let skyLongitudineCentrale = 0;
+
 function skySuSfera(lon, lat) {
-  const a = lon * SKY_D2R, b = lat * SKY_D2R;
+  const a = (lon - skyLongitudineCentrale) * SKY_D2R, b = lat * SKY_D2R;
   const x = Math.cos(b) * Math.sin(a);
   const y = -Math.sin(b);
   const z = Math.cos(b) * Math.cos(a);
@@ -13633,9 +13640,21 @@ const SKY_FACCE = {
 // pixel di raggio resta il dischetto sfumato di prima, che non costa niente
 // — e che è anche più onesto, perché le bande di Giove disegnate su dieci
 // pixel non sembrano Giove, sembrano una caramella a righe.
-function skyFacciaDi(o, r) {
+function skyFacciaDi(o, r, longitudine) {
   if (r < 8 || !o || !SKY_FACCE[o.id]) return null;
-  return skyPelle('faccia:' + o.id, skyLatoTela(r), SKY_FACCE[o.id]);
+  const haLongitudine = isFinite(longitudine);
+  // Cinque gradi sono meno di due pixel su un disco di quaranta pixel, ma
+  // evitano di ridipingere una tela (anche da 1024 px) a ogni singolo evento
+  // del dito. La chiave include la faccia: tornando nello stesso punto della
+  // rotazione si ritrova la pelle gia' pronta nella cache LRU di skyPelle.
+  const lon = haLongitudine ? Math.round(longitudine / 5) * 5 : 0;
+  const chiave = 'faccia:' + o.id + (haLongitudine ? ':lon' + lon : '');
+  return skyPelle(chiave, skyLatoTela(r), (ctx, lato) => {
+    const prima = skyLongitudineCentrale;
+    skyLongitudineCentrale = lon;
+    try { SKY_FACCE[o.id](ctx, lato); }
+    finally { skyLongitudineCentrale = prima; }
+  });
 }
 
 // --- Il cielo profondo -------------------------------------------------
@@ -30023,6 +30042,28 @@ function solAngoloPolo(asse, assi) {
   return Math.atan2(skyDot(asse, assi.destra), skyDot(asse, assi.alto));
 }
 
+// La longitudine del meridiano che sta davanti alla telecamera. Le facce
+// dipinte nascono centrate sul meridiano zero; se le copiassimo tali e quali
+// sul disco, girando attorno a Giove continueremmo a vedere sempre la Grande
+// Macchia Rossa nello stesso posto: la texture sarebbe un cartellone che gira
+// insieme alla camera. Qui costruiamo invece due assi nell'equatore del corpo
+// e vi proiettiamo la direzione dell'osservatore. `rotazione` e' l'angolo di
+// rotazione fisico fornito da Astronomy Engine, quindi anche cambiando data il
+// pianeta gira, mentre muovere la camera mostra semplicemente un altro
+// meridiano della medesima superficie.
+function solLongitudineVista(corpo, assi) {
+  const polo = corpo && corpo.asse;
+  if (!polo || !assi) return 0;
+  const riferimento = Math.abs(polo[2]) < 0.92 ? [0, 0, 1] : [0, 1, 0];
+  let est = skyCross(riferimento, polo);
+  const de = Math.hypot(est[0], est[1], est[2]) || 1;
+  est = est.map(v => v / de);
+  const zero = skyCross(polo, est);
+  const vista = assi.verso;
+  const geometrica = Math.atan2(skyDot(vista, est), skyDot(vista, zero)) * SKY_R2D;
+  return geometrica - (Number.isFinite(polo.rotazione) ? polo.rotazione : 0);
+}
+
 // La frazione illuminata vista *da questa telecamera*, che non è la Terra:
 // è la cosa che rende onesta la scena, perché guardando il Sistema Solare
 // dall'alto un pianeta interno mostra la falce e uno esterno no.
@@ -30200,9 +30241,12 @@ function solVettore(id, t) {
 // per l'eclittica è lo stesso di `solVettore`.
 function solAsse(id, t) {
   try {
-    const n = Astronomy.Ecliptic(Astronomy.RotationAxis(id, t).north).vec;
+    const orientamento = Astronomy.RotationAxis(id, t);
+    const n = Astronomy.Ecliptic(orientamento.north).vec;
     const d = Math.hypot(n.x, n.y, n.z) || 1;
-    return [n.x / d, n.y / d, n.z / d];
+    const asse = [n.x / d, n.y / d, n.z / d];
+    asse.rotazione = orientamento.spin;
+    return asse;
   } catch (e) {
     return [0, 0, 1];               // dritto sul piano: meglio che niente
   }
@@ -31338,7 +31382,7 @@ function solDisegnaCorpo(ctx, corpo, assi) {
     ctx.clip();
     ctx.rotate(-angLuce);
   }
-  const faccia = skyFacciaDi(corpo, r);
+  const faccia = skyFacciaDi(corpo, r, solLongitudineVista(corpo, assi));
   if (faccia) {
     ctx.save();
     ctx.rotate(polo);
