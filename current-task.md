@@ -9,7 +9,7 @@ il totale di adesso.
 
 ## Lo stato delle prove
 
-Verdi: `prova-abitati.js` (22, nuovo), `prova-missione.js --solo-motore` (158),
+Verdi: `prova-abitati.js` (32), `prova-missione.js --solo-motore` (158),
 `controlla-i18n.js --patto`, `controlla-collisioni.js`.
 
 Rosse e **preesistenti**, verificate sull'albero pulito (`git stash`, stesso
@@ -30,6 +30,35 @@ va passato `CHROMIUM=...`; e `playwright-core` va installato a mano
 (`npm install playwright-core`), perché il repo non ha `node_modules`.
 
 ## Ultimo intervento completato
+
+**Di giorno il paese si vede lo stesso: la macchia del costruito e il suo
+perimetro.** Le luci erano la sola metà, quella notturna, e lasciavano
+l'abitato invisibile dall'alba al tramonto — cioè in metà delle ore in cui
+uno apre il planetario. Adesso di giorno si disegna quello che di un paese si
+vede davvero: la macchia di tetti e di asfalto, col **bordo** dove finisce il
+costruito e ricomincia la campagna.
+
+- **`cittaBordoDelle`** (§11-ter di `terreno.js`): il perimetro non si
+  dichiara, si **misura** sulla nuvola di luci già sorteggiata — per ogni
+  spicchio, fin dove arriva la casa più lontana. È frastagliato dove
+  l'abitato è frastagliato e **contiene le luci per costruzione**; la
+  lisciata romperebbe quell'invariante (abbassa i picchi), quindi prima si
+  allarga ogni spicchio al massimo dei vicini.
+- **`skyDisegnaMacchiaAbitato`** in `app.js`: poligono, contorno e i singoli
+  edifici dove si risolvono. La prospettiva aerea mescola alla foschia **per
+  intero** — è una superficie, non un'etichetta.
+- **`skyClipSopraLaCresta`**: la collina davanti **ritaglia** la macchia (una
+  regione, non un confronto per punto) invece di portarla via. Senza terreno
+  non si ritaglia affatto.
+- Le due metà si danno il cambio sulla **stessa soglia** della cupola, quindi
+  al crepuscolo si vedono tutte e due; e il **nome** si appende al punto più
+  alto di quello che è stato disegnato, luci o tetti che siano.
+
+Nove prove nuove nel §6 di `scripts/prova-abitati.js` (32 in tutto).
+Cache **v340**. Toccati: `terreno.js`, `app.js`, `scripts/prova-abitati.js`,
+`sw.js`, `CLAUDE.md`.
+
+## Intervento precedente
 
 **I paesi, i borghi e i villaggi disegnati dove stanno davvero.** Fino a ieri
 di un abitato il planetario sapeva dire una cosa sola: una cupola arancione
@@ -69,14 +98,9 @@ Senza terreno vero non cambia niente: senza quota un abitato non si disegna
 affatto, perché appoggiarlo a zero vorrebbe dire affermare una cosa falsa con
 la faccia di un dato.
 
-Nuovo banco: `scripts/prova-abitati.js` (22 prove, senza browser).
+Nuovo banco: `scripts/prova-abitati.js`. Cache **v339**.
 
-Cache **v339**.
-
-Toccati: `terreno.js`, `app.js`, `scripts/prova-abitati.js`, `sw.js`,
-`CLAUDE.md`.
-
-## Intervento precedente
+## Intervento ancora precedente
 
 **La musica di sottofondo ora ha un catalogo di tracce locali.** La cartella
 `musica/` contiene il registro `catalogo.js` e le istruzioni per aggiungere i
