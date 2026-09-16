@@ -21602,6 +21602,16 @@ function skyDisegnaMirino(ctx) {
   ctx.lineWidth = 1.3;
   tratti();
   ctx.restore();
+
+  // `save()`/`restore()` non comprendono il tracciato corrente del canvas.
+  // Senza questo azzeramento, il fotogramma successivo eredita i quattro
+  // bracci e il cerchio del mirino: basta allora un `fill()` di un disegno
+  // che presume un tracciato proprio per richiuderne un braccio a triangolo.
+  // Il difetto si nota proprio sull'orizzonte, dove quel triangolino resta
+  // attaccato per qualche pixel al poligono del terreno mentre si alza la
+  // camera. Il mirino e' un overlay concluso: non deve lasciare geometria al
+  // resto della scena.
+  ctx.beginPath();
 }
 
 // Cosa finisce davvero sulla mappa. I filtri lavorano per categoria, così
@@ -21641,19 +21651,11 @@ function skyDisegna() {
   const ctx = sky.ctx;
   const L = sky.larghezza, H = sky.altezza;
 
-  // Ogni fotogramma nasce vuoto, anche quando subito dopo il cielo opaco lo
-  // ricopre per intero. Affidarsi al solo `fillRect` dello sfondo lasciava al
-  // browser il compito di sovrascrivere una tela gia' composta: sui canvas
-  // accelerati di alcuni telefoni, muovendo rapidamente la vista proprio
-  // mentre il mirino attraversava il bordo antialias del terreno, qualche
-  // pixel giallo del fotogramma precedente sopravviveva e sembrava un piccolo
-  // poligono trascinato dall'orizzonte. Non era geometria del terreno: era la
-  // storia del buffer che restava visibile per un fotogramma.
-  //
-  // `clearRect` non dipende da opacita' o compositing e costa soltanto la
-  // cancellazione che il riempimento successivo avrebbe comunque provocato.
-  // Va fatto prima di qualunque disegno; nel ramo fotocamera evita inoltre
-  // una seconda cancellazione identica.
+  // Ogni fotogramma nasce vuoto. Questo elimina davvero i pixel del buffer
+  // precedente (ed e' indispensabile nel ramo trasparente della fotocamera),
+  // ma non azzera il *tracciato* corrente: per specifica `clearRect`, come
+  // `save`/`restore`, non tocca quella geometria. Gli overlay del mirino la
+  // chiudono quindi esplicitamente dopo averla disegnata.
   ctx.clearRect(0, 0, L, H);
 
   // Con la fotocamera accesa il campo del disegno lo detta l'obiettivo, non
@@ -26082,6 +26084,12 @@ function skyDisegnaAvanzamentoSosta(ctx) {
     -Math.PI / 2 + progresso * Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+
+  // Anche l'arco di avanzamento e' un tracciato globale del contesto, non
+  // parte dello stato salvato. Non consegnarlo al fotogramma seguente: un
+  // `fill()` successivo lo chiuderebbe con una corda, creando esattamente un
+  // piccolo settore poligonale accanto al mirino.
+  ctx.beginPath();
 }
 
 // Traduce un punto dello schermo in un punto del paesaggio. La proiezione

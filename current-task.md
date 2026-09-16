@@ -2,12 +2,11 @@
 
 **Niente in corso.**
 
-L'ultimo lavoro chiuso: la galleria non chiede più la cartella e il permesso a
-ogni apertura (§12 di `CLAUDE.md`, voce «La galleria chiede la cartella e il
-permesso a ogni apertura»). In una riga: l'apertura **controlla** il permesso
-invece di richiederlo, la risposta sulla cartella si ricorda in
-`CHIAVE_VIDEO_CARTELLA`, e lo spazio si chiede persistente perché l'handle non
-venga sfrattato insieme ai video.
+L'ultimo lavoro chiuso: eliminato il triangolino che il mirino giallo lasciava
+attaccato al poligono del terreno attraversando l'orizzonte. `clearRect()`
+cancella i pixel ma, come `save()`/`restore()`, non il tracciato corrente del
+canvas: ora sia il mirino sia il suo arco di sosta concludono esplicitamente il
+proprio tracciato, prima che il fotogramma successivo possa riempirlo.
 
 Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
 `app.js`: 347 stringhe cablate contate da
