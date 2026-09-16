@@ -29221,6 +29221,16 @@ function skyRegScarica(e) {
 const VIDEO_DB_NOME = 'astrocalendario-video';
 const VIDEO_DB_VERSIONE = 1;
 const VIDEO_CARTELLA_NOME = 'astrocalben';
+// Che cosa l'utente ha deciso una volta per tutte sulla cartella: se la vuole
+// e come si chiama. L'handle sta in IndexedDB (è l'unico posto in cui un
+// FileSystemDirectoryHandle si possa conservare), ma un handle non dice se
+// l'utente **voleva** quella cartella: senza questa memoria, ogni volta che
+// l'handle non c'è o non è ancora autorizzato la galleria ricominciava da capo
+// con la domanda «cartella esistente o nuova?», cioè chiedeva di nuovo una
+// cosa già decisa. Sta in `localStorage` e non in IndexedDB di proposito: è la
+// risposta a una domanda, non un dato, e va letta prima del primo disegno.
+const CHIAVE_VIDEO_CARTELLA = 'astrocalendario_video_cartella';
+let videoSceltaCartella = null;   // { voluta, nome } oppure null se mai deciso
 let videoCartella = null;
 // `queryPermission()` non è una lettura gratuita su tutti i browser: alcune
 // versioni mobili tornano a rispondere "prompt" anche nello stesso utilizzo
@@ -29244,6 +29254,36 @@ let videoSincronizzazioneInCorso = false;
 // riproduzione: il filmato torna continuamente a "caricare" e non parte mai.
 // Questa firma descrive ciò che si vede senza leggere il contenuto dei Blob.
 let videoFirmaGalleria = null;
+
+function videoLeggiScelta() {
+  try {
+    const grezzo = localStorage.getItem(CHIAVE_VIDEO_CARTELLA);
+    if (!grezzo) return null;
+    const scelta = JSON.parse(grezzo);
+    return scelta && typeof scelta === 'object' ? { voluta: !!scelta.voluta, nome: scelta.nome || '' } : null;
+  } catch (e) { return null; }
+}
+
+function videoRicordaScelta(voluta, nome) {
+  videoSceltaCartella = { voluta: !!voluta, nome: nome || '' };
+  try { localStorage.setItem(CHIAVE_VIDEO_CARTELLA, JSON.stringify(videoSceltaCartella)); }
+  catch (e) { /* in incognito si perde alla chiusura, e va bene così */ }
+}
+
+// Lo spazio di un'origine, di serie, è «best-effort»: quando il disco si
+// riempie il browser può buttarlo via — e qui dentro non ci sono solo i video,
+// c'è anche l'handle della cartella. Sfrattato quello, l'unico modo di
+// riaverlo è chiederlo di nuovo all'utente, che è esattamente il difetto che
+// si sta togliendo. `persist()` non apre nessun dialogo: dove il browser si
+// fida (app installata, sito usato spesso) risponde sì e basta, dove non si
+// fida risponde no e non cambia niente.
+async function videoChiediSpazioPersistente() {
+  try {
+    if (!navigator.storage || typeof navigator.storage.persist !== 'function') return false;
+    if (typeof navigator.storage.persisted === 'function' && await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch (e) { return false; }
+}
 
 function videoFirmaElenco(video) {
   return video.map(v => [
@@ -29286,7 +29326,7 @@ function videoMessaggio(testo) {
 
 async function videoScegliCartella(creaCartellaApp = false) {
   if (typeof window.showDirectoryPicker !== 'function') {
-    videoMessaggio('Questo browser non permette di scegliere una cartella: i video verranno scaricati normalmente.');
+    videoMessaggio(astroI18n.t('galleria.niente-selettore'));
     return null;
   }
   try {
@@ -29300,24 +29340,61 @@ async function videoScegliCartella(creaCartellaApp = false) {
     videoCartella = handle;
     videoCartellaAutorizzata = true;
     videoPermessoCartella = true;
+    videoRicordaScelta(true, handle.name);
     videoMostraSceltaIniziale(false);
     try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
-    videoAggiornaCartella();
-    videoMessaggio(`La galleria è sincronizzata con “${handle.name}”.`);
+    videoChiediSpazioPersistente();
+    videoAggiornaCartella(true);
+    videoMessaggio(astroI18n.t('galleria.sincronizzata', { nome: handle.name }));
+    videoFirmaGalleria = null;
     await videoRenderGalleria();
     return handle;
   } catch (e) {
-    if (!e || e.name !== 'AbortError') videoMessaggio('Non è stato possibile aprire la cartella scelta.');
+    if (!e || e.name !== 'AbortError') videoMessaggio(astroI18n.t('galleria.apertura-fallita'));
     return null;
   }
 }
 
-function videoAggiornaCartella() {
+// «Non voglio nessuna cartella»: è una risposta, e va ricordata come tale. Chi
+// la dà tiene i video nell'archivio interno e non si vede più chiedere niente,
+// né aprendo la galleria né salvando una registrazione.
+function videoRinunciaCartella() {
+  videoRicordaScelta(false, '');
+  videoMostraSceltaIniziale(false);
+  videoAggiornaCartella(false);
+  videoMessaggio(astroI18n.t('galleria.solo-archivio'));
+}
+
+// Il permesso di una cartella ricordata si riprende con **un** clic esplicito,
+// non con un dialogo che salta fuori da solo a ogni apertura.
+async function videoRiconnettiCartella() {
+  if (!videoCartella) { await videoScegliCartella(false); return; }
+  const ok = await videoAutorizzaCartella(true);
+  videoAggiornaCartella(ok);
+  videoMessaggio(ok
+    ? astroI18n.t('galleria.sincronizzata', { nome: videoCartella.name })
+    : astroI18n.t('galleria.senza-permesso'));
+  videoFirmaGalleria = null;
+  await videoRenderGalleria();
+}
+
+function videoAggiornaCartella(autorizzata = videoPermessoCartella === true) {
   const testo = document.getElementById('galleria-cartella');
-  if (!testo) return;
-  testo.textContent = videoCartella
-    ? `Cartella sincronizzata: “${videoCartella.name}”. Le modifiche ai video appariranno qui.`
-    : 'Scegli la cartella che contiene i video da mostrare.';
+  const riconnetti = document.getElementById('galleria-riconnetti');
+  const scegli = document.getElementById('galleria-scegli-cartella');
+  // Quattro stati, e sono quattro frasi diverse: nessuna cartella e mai
+  // deciso; nessuna cartella per scelta; una cartella collegata e leggibile;
+  // una cartella ricordata che aspetta solo il permesso. Il quarto è quello
+  // che prima non esisteva — si finiva nel primo, cioè a chiedere da capo.
+  let riga = '';
+  if (videoCartella && autorizzata) riga = astroI18n.t('galleria.cartella-collegata', { nome: videoCartella.name });
+  else if (videoCartella) riga = astroI18n.t('galleria.cartella-da-riconnettere', { nome: videoCartella.name });
+  else if (videoSceltaCartella && videoSceltaCartella.voluta) riga = astroI18n.t('galleria.cartella-persa', { nome: videoSceltaCartella.nome });
+  else if (videoSceltaCartella) riga = astroI18n.t('galleria.senza-cartella');
+  else riga = astroI18n.t('galleria.scegli-cartella-testo');
+  if (testo) testo.textContent = riga;
+  if (riconnetti) riconnetti.classList.toggle('hidden', !(videoCartella && !autorizzata));
+  if (scegli) scegli.classList.toggle('hidden', !!(videoCartella && !autorizzata));
 }
 
 function videoMostraSceltaIniziale(mostra) {
@@ -29327,11 +29404,17 @@ function videoMostraSceltaIniziale(mostra) {
 async function videoAutorizzaCartella(richiedi = false) {
   if (!videoCartella) return false;
   // Gli handle delle cartelle si possono conservare in IndexedDB, ma dopo la
-  // chiusura dell'app il browser puo' riportare il loro permesso a "prompt".
-  // L'apertura della galleria nasce da un clic: e' quindi il momento giusto
-  // per ripristinare l'accesso senza costringere l'utente a scegliere di
-  // nuovo la stessa cartella. Le sincronizzazioni automatiche passano invece
-  // `false` e non possono mai far comparire una richiesta fuori contesto.
+  // chiusura dell'app il browser puo' riportare il loro permesso a "prompt":
+  // e' la specifica, non un difetto, e l'unico modo di non riviverla e' che il
+  // browser renda permanente quel consenso (app installata, «consenti a ogni
+  // visita») — nel qual caso la sola `queryPermission` qui sotto risponde
+  // "granted" e nessuno vede piu' niente.
+  // `richiedi` e' percio' la riga che conta: `true` **solo** dietro a un gesto
+  // che quel permesso lo esige davvero (il tasto «Riconnetti», il salvataggio
+  // di un filmato nella cartella). L'apertura della galleria e le
+  // sincronizzazioni automatiche passano `false` e non possono far comparire
+  // nessun dialogo: chiedere il permesso a chi voleva soltanto rivedere i suoi
+  // video e' chiedere due volte una cosa gia' concessa.
   if (videoPermessoCartella === true) return true;
   try {
     let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
@@ -29348,16 +29431,14 @@ async function videoAutorizzaCartella(richiedi = false) {
   }
 }
 
-async function videoScriviInCartella(esito) {
+async function videoScriviInCartella(esito, richiedi = false) {
   if (!videoCartella) return false;
   try {
-    if (!videoCartellaAutorizzata) {
-      let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
-      if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
-      if (permesso !== 'granted') return false;
-      videoCartellaAutorizzata = true;
-      videoPermessoCartella = true;
-    }
+    // Scrivere in una cartella il permesso lo vuole per forza. Chiederlo però
+    // è lecito solo qui, dietro al tasto «Salva» che l'utente ha appena
+    // premuto (`richiedi`): la sincronizzazione periodica della galleria passa
+    // di qui con `false` e non può far comparire nessun dialogo.
+    if (!(await videoAutorizzaCartella(richiedi))) return false;
     const file = await videoCartella.getFileHandle(esito.nome, { create: true });
     const scrittura = await file.createWritable();
     await scrittura.write(esito.blob);
@@ -29391,10 +29472,17 @@ async function videoArchivia(esito, nellaCartella = false) {
 async function skyRegSalva() {
   const esito = sky.reg.esito;
   if (!esito) return;
-  // Il selettore va aperto subito dal gesto dell'utente: dopo una await alcuni
-  // browser considererebbero conclusa l'attivazione e lo bloccherebbero.
-  if (!videoCartella && typeof window.showDirectoryPicker === 'function') await videoScegliCartella();
-  const copiato = await videoScriviInCartella(esito);
+  // Il selettore si apre soltanto a chi una cartella l'aveva già chiesta e l'ha
+  // persa (storage sfrattato, profilo nuovo): a chi non ha mai deciso niente
+  // non si fa comparire un selettore di file a sorpresa dopo una
+  // registrazione — il video finisce comunque nell'archivio e nei download, e
+  // la cartella si collega dalla Galleria quando lo si vuole. Va aperto subito
+  // dal gesto dell'utente: dopo una await alcuni browser considererebbero
+  // conclusa l'attivazione e lo bloccherebbero.
+  if (!videoCartella && videoSceltaCartella && videoSceltaCartella.voluta &&
+      typeof window.showDirectoryPicker === 'function') await videoScegliCartella();
+  const copiato = await videoScriviInCartella(esito, true);
+  videoChiediSpazioPersistente();
   try { await videoArchivia(esito, copiato); }
   catch (e) {
     skyAvviso('registra', 'Non c’è spazio per aggiungere il video alla galleria.', 8000);
@@ -29478,7 +29566,7 @@ async function videoRenderGalleria() {
   videoSincronizzazioneInCorso = true;
   let video = [];
   try { video = await videoDB('video', 'readonly', store => store.getAll()); }
-  catch (e) { videoMessaggio('Non riesco a leggere l’archivio video su questo dispositivo.'); }
+  catch (e) { videoMessaggio(astroI18n.t('galleria.archivio-illeggibile')); }
   if (videoCartella) {
     try {
       // Qui non chiediamo permessi: il timer passa da questa funzione ogni due
@@ -29500,10 +29588,10 @@ async function videoRenderGalleria() {
         video = video.filter(v => !v.cartellaNome || nomiPresenti.has(v.cartellaNome));
         const nomiCartella = new Set(dallaCartella.map(v => v.nome));
         video = video.filter(v => !nomiCartella.has(v.nome)).concat(dallaCartella);
-        videoMessaggio(`${dallaCartella.length} video caricati da “${videoCartella.name}”.`);
+        videoMessaggio(astroI18n.t('galleria.caricati', { n: dallaCartella.length, nome: videoCartella.name }));
       }
     } catch (e) {
-      videoMessaggio('Non riesco a sincronizzare la cartella. Riaprila con “Scegli cartella”.');
+      videoMessaggio(astroI18n.t('galleria.sincronia-fallita'));
     }
   }
   video.sort((a, b) => b.creato - a.creato);
@@ -29560,24 +29648,22 @@ async function videoApriGalleria() {
   const modale = document.getElementById('modale-galleria');
   if (!modale) return;
   modale.classList.remove('hidden');
-  videoAggiornaCartella();
-  if (!videoCartella && typeof window.showDirectoryPicker === 'function') {
-    // Senza un handle salvato il browser non permette di cercare una cartella
-    // per nome senza coinvolgere l'utente. Mostriamo quindi le due alternative
-    // prima del selettore, evitando di creare cartelle per errore.
-    videoMostraSceltaIniziale(true);
-    videoMessaggio('Scegli se collegare una cartella esistente o crearne una nuova.');
-  } else if (videoCartella) {
-    videoMostraSceltaIniziale(false);
-    // Dopo un riavvio il browser conserva l'handle ma puo' sospenderne il
-    // permesso. Il clic su «Galleria» fornisce l'attivazione utente necessaria
-    // per riabilitarlo: non serve riaprire il selettore e indicare la cartella
-    // una seconda volta.
-    const autorizzata = await videoAutorizzaCartella(true);
-    if (!autorizzata) {
-      videoMessaggio(`La cartella “${videoCartella.name}” è ricordata, ma serve il permesso per mostrarne i video.`);
-    }
-  }
+  // Aprire la galleria non è chiedere niente a nessuno. L'archivio dei video
+  // sta in IndexedDB e si vede sempre; la cartella è un di più, e il suo
+  // permesso si **controlla** (`false`: nessun dialogo) invece di richiederlo.
+  // Dove il browser lo ha reso permanente — app installata, «consenti a ogni
+  // visita» — la risposta è già «granted» e non si vede mai più niente; dove
+  // non lo è, compare un tasto «Riconnetti» che si preme quando si vuole.
+  const autorizzata = videoCartella ? await videoAutorizzaCartella(false) : false;
+  // Il pannello con le due alternative è la **prima** domanda, e si fa una
+  // volta sola: chi ha già risposto — collegando una cartella o rinunciandoci
+  // — non deve rivederla mai più.
+  const maiDeciso = !videoCartella && !videoSceltaCartella && typeof window.showDirectoryPicker === 'function';
+  videoMostraSceltaIniziale(maiDeciso);
+  videoAggiornaCartella(autorizzata);
+  if (maiDeciso) videoMessaggio(astroI18n.t('galleria.scelta-iniziale'));
+  else if (videoCartella && !autorizzata) videoMessaggio(astroI18n.t('galleria.ricordata', { nome: videoCartella.name }));
+  else videoMessaggio('');
   await videoRenderGalleria();
   clearInterval(videoTimerSincronizzazione);
   videoTimerSincronizzazione = setInterval(() => {
@@ -29599,17 +29685,23 @@ async function videoInizializza() {
   document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(false));
   document.getElementById('galleria-usa-esistente')?.addEventListener('click', () => videoScegliCartella(false));
   document.getElementById('galleria-crea-cartella')?.addEventListener('click', () => videoScegliCartella(true));
+  document.getElementById('galleria-riconnetti')?.addEventListener('click', videoRiconnettiCartella);
+  document.getElementById('galleria-niente-cartella')?.addEventListener('click', videoRinunciaCartella);
   document.getElementById('modale-galleria')?.addEventListener('click', e => {
     if (e.target.id === 'modale-galleria') videoChiudiGalleria();
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !document.getElementById('modale-galleria')?.classList.contains('hidden')) videoChiudiGalleria();
   });
+  videoSceltaCartella = videoLeggiScelta();
   try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')); }
   catch (e) { videoCartella = null; }
+  // Chi aveva già una cartella prima che questa memoria esistesse non deve
+  // ritrovarsi la domanda iniziale: l'handle salvato **è** la sua risposta.
+  if (videoCartella && !videoSceltaCartella) videoRicordaScelta(true, videoCartella.name);
   videoCartellaAutorizzata = false;
   videoPermessoCartella = null;
-  videoAggiornaCartella();
+  videoAggiornaCartella(false);
 }
 
 // --- Comandi --------------------------------------------------------------

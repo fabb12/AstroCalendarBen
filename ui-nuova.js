@@ -1103,6 +1103,15 @@ function ridisegnaTuttoPerLingua() {
       if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
       if (typeof skyAggiornaStato === 'function') skyAggiornaStato();
     }],
+    ['stato della galleria', () => {
+      // La riga che racconta la cartella si compone in JavaScript: il cambio
+      // lingua non la riscrive da sé. Solo a finestra aperta, che è l'unico
+      // momento in cui qualcuno la sta leggendo.
+      const modale = document.getElementById('modale-galleria');
+      if (modale && !modale.classList.contains('hidden') && typeof videoAggiornaCartella === 'function') {
+        videoAggiornaCartella();
+      }
+    }],
     ['pannello degli aerei', () => {
       if (typeof aereiAggiornaUI === 'function') aereiAggiornaUI();
     }],

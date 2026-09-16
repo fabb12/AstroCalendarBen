@@ -8,7 +8,7 @@
     "node scripts/controlla-i18n.js --patto     # l'audit statico contro il tetto",
     "node scripts/prova-lingua.js               # la copertura vera, in un browser"
   ],
-  "totale": 352,
+  "totale": 347,
   "viste": {
     "stasera": 0,
     "calendario": 0,
