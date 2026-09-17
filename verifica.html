@@ -7226,6 +7226,71 @@ titolo('24. L\'orizzonte a cavallo della soglia (app.js, §7.3)');
   // un'eccezione lì dentro è il fotogramma intero che non finisce.
   prova('le fermate restano ordinate e dentro allo zero-uno',
     dallaRetta.every((t, i) => t >= 0 && t <= 1 && (i === 0 || t >= dallaRetta[i - 1])));
+
+  // --- Dove passa la retta -----------------------------------------------
+  //
+  // È l'altra metà dello stesso difetto, e si vedeva molto di più: il ramo
+  // della retta la faceva passare per il **centro del riquadro**, mentre il
+  // centro è l'orizzonte solo guardando esattamente a zero gradi. Chi legge
+  // quel punto per riempire il terreno (`skyTracciaSuolo`) disegnava allora
+  // una fascia di suolo incollata al mirino, che scendeva insieme a lui
+  // mentre si alzava la camera e spariva di colpo passata la soglia.
+  //
+  // Le formule sono una **copia** di `skyCerchioOrizzonte` e di
+  // `skyProietta`: questa pagina non carica `app.js`.
+  const baseDi = (az, alt) => {
+    const A = az * Math.PI / 180, L = alt * Math.PI / 180;
+    return {
+      f: [Math.sin(A) * Math.cos(L), Math.cos(A) * Math.cos(L), Math.sin(L)],
+      r: [Math.cos(A), -Math.sin(A), 0],
+      u: [-Math.sin(A) * Math.sin(L), -Math.cos(A) * Math.sin(L), Math.cos(L)]
+    };
+  };
+  const ALTA = 760, CX = LARGO / 2, CY = ALTA / 2;
+  const proietta = (v, b, F) => {
+    const den = (1 + (v[0] * b.f[0] + v[1] * b.f[1] + v[2] * b.f[2])) * 0.5;
+    return {
+      px: CX + F * (v[0] * b.r[0] + v[1] * b.r[1] + v[2] * b.r[2]) / den,
+      py: CY - F * (v[0] * b.u[0] + v[1] * b.u[1] + v[2] * b.u[2]) / den
+    };
+  };
+  const vett = (az, alt) => {
+    const A = az * Math.PI / 180, L = alt * Math.PI / 180;
+    return [Math.sin(A) * Math.cos(L), Math.cos(A) * Math.cos(L), Math.sin(L)];
+  };
+  // Quanto dista il punto d'orizzonte vero dalla riga che il ramo disegna.
+  const scartoRetta = (alt, F, ancorata) => {
+    const b = baseDi(90, alt);
+    const a = b.r[2], bb = b.u[2], c = b.f[2];
+    const n2 = a * a + bb * bb;
+    const k = ancorata ? F * c / n2 : 0;
+    const ax = CX - k * a, ay = CY + k * bb;
+    const p = proietta(vett(90, 0), b, F);
+    return Math.abs(a * (p.px - ax) + bb * (ay - p.py)) / Math.sqrt(n2);
+  };
+  const FSTRETTA = (ALTA / 2) / Math.tan(18 * Math.PI / 720);   // campo 18°, come nella segnalazione
+  prova('con la retta per il centro, un grado sopra l\'orizzonte il terreno sbandava di decine di pixel',
+    scartoRetta(1.0, FSTRETTA, false) > 60,
+    `${scartoRetta(1.0, FSTRETTA, false).toFixed(0)} px a 18° di campo, ` +
+    `${scartoRetta(1.0, FOCALE, false).toFixed(0)} px a 60°`);
+  prova('con la retta ancorata la riga sta sul punto d\'orizzonte vero, a qualunque campo',
+    [0, 0.2, 0.5, 0.8, 1.0, 1.14].every(alt =>
+      scartoRetta(alt, FSTRETTA, true) < 0.5 && scartoRetta(alt, FOCALE, true) < 0.5 &&
+      scartoRetta(-alt, FSTRETTA, true) < 0.5),
+    `peggio ${Math.max(...[0, 0.2, 0.5, 0.8, 1.0, 1.14].map(a => scartoRetta(a, FSTRETTA, true))).toFixed(2)} px`);
+  // E il passaggio alla soglia non deve fare scalini: il ramo del cerchio
+  // mette la curva a `dist − r → focale·|c|` dal centro, che è esattamente lo
+  // scostamento che la retta ancorata si porta dietro.
+  {
+    const c = 0.02;                                   // la soglia
+    const r = 2 * FSTRETTA / c;
+    const dalCentro = r * (Math.sqrt(1 - c * c) - 1) * -1;   // |dist − r| del ramo del cerchio
+    prova('i due rami mettono la riga nello stesso posto alla soglia',
+      Math.abs(dalCentro - FSTRETTA * c) < 0.1,
+      `${dalCentro.toFixed(2)} px contro ${(FSTRETTA * c).toFixed(2)}`);
+    prova('con la retta per il centro, alla soglia la riga saltava di quel tanto',
+      FSTRETTA * c > 50, `${(FSTRETTA * c).toFixed(0)} px di salto a 18° di campo`);
+  }
 }
 
 // =====================================================================

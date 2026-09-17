@@ -14391,9 +14391,32 @@ function skyCerchioOrizzonte(base, focale) {
   const a = base.r[2], b = base.u[2], c = base.f[2];
   const cx = sky.larghezza / 2, cy = sky.altezza / 2;
   if (skyOrizzonteQuasiRetto(c, focale)) {
-    // Retta per il centro dello schermo, perpendicolare a (a, b). Il
-    // verso "sotto" è quello in cui `a·X + b·Y` diventa negativo.
-    return { retta: true, nx: a, ny: b, cx, cy };
+    // Retta perpendicolare a (a, b). Il verso "sotto" è quello in cui
+    // `a·X + b·Y` diventa negativo.
+    //
+    // **Non passa per il centro dello schermo**, ed è il difetto che questa
+    // riga aveva: il centro è l'orizzonte solo guardando *esattamente* a zero
+    // gradi, e questo ramo si usa in tutta la fascia sotto la soglia. Il
+    // conto è il cerchio scritto al limite: l'equazione
+    // `X² + Y² − (4a/c)·X − (4b/c)·Y − 4 = 0`, moltiplicata per `c/4` e
+    // buttato via il termine quadratico (che lì vale `O(c³)`), è
+    // `a·X + b·Y + c = 0` — cioè una retta **scostata** dal centro di
+    // `focale·|c| / (a²+b²)` pixel, che è la stessa distanza a cui il ramo
+    // del cerchio mette la sua curva (`dist − r → focale·|c|`). Con lo zero
+    // al posto di quel termine i due rami si separavano proprio dove si
+    // danno il cambio.
+    //
+    // Cosa si vedeva, ed è la segnalazione: alzando la camera il terreno
+    // sotto l'orizzonte (`skyTracciaSuolo`, che prende `cx`/`cy` per un punto
+    // della riga) restava **incollato al mirino** invece di scendere insieme
+    // al paesaggio, e sopra al rilievo vero compariva una fascia di colore del
+    // suolo alta quanto lo scostamento buttato via — undici pixel a 60° di
+    // campo, una settantina a 18°, cioè mezzo dito. Passata la soglia il ramo
+    // del cerchio rimetteva la riga al suo posto e la fascia spariva di
+    // colpo.
+    const n2 = a * a + b * b;
+    const k = n2 > 1e-12 ? focale * c / n2 : 0;
+    return { retta: true, nx: a, ny: b, cx: cx - k * a, cy: cy + k * b };
   }
   const r = focale * 2 / Math.abs(c);
   // Guardando in su (c > 0) la terra è **fuori** dal cerchio; guardando
