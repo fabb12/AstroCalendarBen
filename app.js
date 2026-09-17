@@ -18958,14 +18958,28 @@ const SKY_ABITATO_LETTO_ALFA = 0.30;
 // Le due metà si danno il cambio da sole, con la stessa soglia di luce del
 // cielo: al crepuscolo si vedono per un po' tutt'e due, che è quello che si
 // vede davvero.
-const SKY_ABITATO_SUOLO = [152, 144, 133];     // tetti e asfalto, da lontano
-const SKY_ABITATO_ORLO = [104, 96, 86];        // dove finisce il costruito
-const SKY_ABITATO_TETTI = [178, 166, 152];     // i singoli edifici, più chiari
-const SKY_ABITATO_ALFA = 0.58;
-const SKY_ABITATO_ORLO_ALFA = 0.62;
-const SKY_ABITATO_TETTI_ALFA = 0.34;
+//
+// **Di giorno un paese è opaco.** Le opacità di questo blocco sono nate
+// timide, e a occhio la cosa non si legge per quello che è: una macchia al
+// 58% sopra a un prato non sembra un paese trasparente, sembra un paese
+// *sbiadito* — cioè lontano, o velato dalla foschia, che è esattamente il
+// segnale con cui questo modulo racconta la distanza. Due paesi, uno a due
+// chilometri e uno a trenta, finivano per somigliarsi, e la prospettiva
+// aerea (`SKY_ABITATO_FOSCHIA`, `verso()`) perdeva la sua scala perché
+// partiva già da mezza strada. Il costruito non è un velo: sotto ai tetti
+// il prato non si vede, e a dire «è lontano» ci pensa l'aria, non
+// l'opacità. Sono quindi salite tutte insieme — chi è vicino è pieno, e a
+// scavare la differenza resta `aria2`.
+const SKY_ABITATO_SUOLO = [138, 129, 117];     // tetti e asfalto, da lontano
+const SKY_ABITATO_ORLO = [84, 76, 66];         // dove finisce il costruito
+const SKY_ABITATO_TETTI = [170, 154, 136];     // i singoli edifici, più chiari
+const SKY_ABITATO_ALFA = 0.86;
+const SKY_ABITATO_ORLO_ALFA = 0.82;
+const SKY_ABITATO_TETTI_ALFA = 0.62;
 // Quanto copre il fondo di un quartiere: vedi `skyDisegnaMacchiaAbitato`.
-const SKY_ABITATO_PARTE_ALFA = 0.20;
+// Resta molto sotto a quella di un abitato intero — la città sotto è già
+// stata dipinta piena, e due strati opachi farebbero un alone al centro.
+const SKY_ABITATO_PARTE_ALFA = 0.30;
 
 // Quanto la macchia scivola verso la foschia in fondo alla scala. Qui la
 // mescola è piena e non pesata sulla luminosità come per i nomi (§`SKY_CITTA_FOSCHIA_TINTA`):
@@ -18993,10 +19007,10 @@ const SKY_ABITATO_TETTI_PX = 26;
 // montagna. Da lì la prospettiva viene gratis — un palazzo a due
 // chilometri è alto dieci pixel e lo stesso palazzo a venti è mezzo pixel,
 // senza nessuna riga che lo dichiari.
-const SKY_ABITATO_MURO_LUCE = [206, 194, 174];  // intonaco al sole
-const SKY_ABITATO_MURO_OMBRA = [104, 100, 98];  // la stessa parete, controluce
-const SKY_ABITATO_TEGOLA = [156, 96, 74];       // il coppo
-const SKY_ABITATO_LAMIERA = [142, 138, 134];    // cemento e capannoni
+const SKY_ABITATO_MURO_LUCE = [224, 212, 192];  // intonaco al sole
+const SKY_ABITATO_MURO_OMBRA = [92, 88, 86];    // la stessa parete, controluce
+const SKY_ABITATO_TEGOLA = [168, 94, 66];       // il coppo
+const SKY_ABITATO_LAMIERA = [146, 142, 137];    // cemento e capannoni
 // Quanti tetti sono di coppi: in Italia quasi tutti, e un paese di sole
 // lamiere si legge per una zona industriale.
 const SKY_ABITATO_TEGOLA_QUOTA = 0.72;
@@ -19011,8 +19025,11 @@ const SKY_ABITATO_VOLUME_PX = 1.7;
 // Le pareti coprono più dei tetti perché di una casa la parete è la faccia
 // grande, e perché è lei a dover staccare dal prato: un muro trasparente
 // lascia vedere la macchia sotto e l'edificio torna a essere una chiazza.
-const SKY_ABITATO_MURO_ALFA = 0.66;
-const SKY_ABITATO_TETTO_ALFA = 0.58;
+// Un muro al sole è la superficie più opaca di tutto il paesaggio — non
+// lascia passare niente — e disegnarlo semitrasparente è quello che faceva
+// leggere un paese ingrandito come una decalcomania appoggiata sul pendio.
+const SKY_ABITATO_MURO_ALFA = 0.94;
+const SKY_ABITATO_TETTO_ALFA = 0.88;
 
 // Il campanile, e il triangolo della sua guglia. Si disegna appena si
 // risolve — prima delle case, perché è il doppio più alto di loro — ed è
