@@ -295,7 +295,12 @@ function aggiungiTransitiSolari(inizio, fine) {
 
       const durataOre = Number(((t.finish.date - t.start.date) / 3600000).toFixed(1));
       const primi = Number(t.separation.toFixed(1));
-      const inizio = t.start.date, fine = t.finish.date;
+      // Non riutilizzare i nomi dei limiti ricevuti dalla funzione: una
+      // dichiarazione locale con `const` li metterebbe nella temporal dead
+      // zone per tutta l'iterazione, facendo fallire il controllo su `fine`
+      // eseguito poco sopra.
+      const inizioTransito = t.start.date;
+      const fineTransito = t.finish.date;
       const T = (k, v) => astroI18n.t('transitoSole.' + k, v);
       creaEvento({
         titolo: () => T('titolo', { corpo: nomeCorpo(p.id) }),
@@ -309,7 +314,7 @@ function aggiungiTransitiSolari(inizio, fine) {
         // resterebbe quella del momento in cui l'evento è nato.
         spiegazione: () => T('spiegazione', {
           corpo: nomeCorpo(p.id), ore: durataOre, primi,
-          da: oraBreve(inizio), a: oraBreve(fine)
+          da: oraBreve(inizioTransito), a: oraBreve(fineTransito)
         }),
         programma: () => T('avvisoFiltro') + ' ' + T('nota.' + p.id),
         simul: { scena: 'cielo', corpo: 'Sun' }
