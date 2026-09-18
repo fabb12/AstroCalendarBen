@@ -2568,6 +2568,7 @@ function costSchedaHtml(sigla) {
     <p class="cost-tela-nota">${costT(voce.disegno ? 'notaConDisegno' : 'notaSenzaDisegno')}</p>
     ${daQui}
     ${dati && dati.racconto ? `<p class="cost-racconto">${dati.racconto}</p>` : ''}
+    ${typeof curBloccoHtml === 'function' ? curBloccoHtml({ categoria: 'costellazione', sigla }) : ''}
     <div class="cost-origine">
       <h4>${gruppo.titolo}</h4>
       <p>${gruppo.testo}</p>
@@ -3008,6 +3009,9 @@ function costMostraScheda(chiave, buio) {
   if (!corpo || !guscio) return;
   cost.scelta = buio ? null : chiave;
   corpo.innerHTML = buio ? costSchedaBuioHtml(chiave) : costSchedaHtml(chiave);
+  // Il riquadro delle curiosità entra vuoto e si riempie di testo, non di
+  // marcatura: vedi §5 di `curiosita.js`.
+  if (typeof curRiempi === 'function') curRiempi(corpo);
   guscio.dataset.vista = 'scheda';
   corpo.scrollTop = 0;
   if (!buio) requestAnimationFrame(() => costDisegnaScheda(chiave));
