@@ -140,7 +140,7 @@ prova('i segnaposto sono gli stessi nelle due lingue', () => {
  * compone da sé.
  */
 const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.js',
-  'catalogo.js', 'costellazioni.js', 'corpi-minori.js', 'terreno.js', 'rilievo.js',
+  'catalogo.js', 'costellazioni.js', 'curiosita.js', 'corpi-minori.js', 'terreno.js', 'rilievo.js',
   'pianifica.js', 'meteo-astro.js', 'aurora-polare.js', 'telescopio.js',
   'didattica.js', 'eventi-extra.js', 'miglior-posto.js', 'via-lattea.js',
   'missione-cielo.js', 'visione.js'];

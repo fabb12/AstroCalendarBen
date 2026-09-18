@@ -24873,9 +24873,16 @@ function skySchedaHtml(o) {
     ? `<details class="dettagli-scheda"><summary>Altri dati</summary><ul>${righe.dettagli.join('')}</ul></details>`
     : '';
 
+  // La quarta domanda, quella per cui si è toccato lo schermo: «e
+  // allora?». I numeri stanno sopra, il racconto sta qui — e sta **dopo**
+  // la nota breve, che è la riga che ci porta dentro. Se di questo
+  // oggetto non c'è niente di vero da dire il riquadro non compare
+  // affatto: una curiosità generica è peggio di nessuna curiosità.
+  const curiosita = typeof curBloccoHtml === 'function' ? curBloccoHtml(o) : '';
+
   return `<div class="scheda-testata">${skySchedaImmagineHtml(o)}<h3 class="flex items-center gap-2">${icona(disegno, 20)} ${titolo}</h3></div>
     <ul>${righe.essenziali.join('')}</ul>${dettagliHtml}${coda}
-    ${consiglio ? `<p class="nota-dettaglio">${consiglio}</p>` : ''}${nota}${avviso}${azioni}`;
+    ${consiglio ? `<p class="nota-dettaglio">${consiglio}</p>` : ''}${nota}${curiosita}${avviso}${azioni}`;
 }
 
 // Il prossimo passaggio visibile di una stazione spaziale
@@ -25053,6 +25060,10 @@ function skyAggiornaScheda() {
   // quindi dopo un cambio lingua la forma combacia ancora e le etichette
   // resterebbero nella lingua di prima. Un cambio lingua è una forma nuova.
   corpo.dataset.lingua = astroI18n.getLanguage();
+  // Il testo delle curiosità si scrive come testo e non come marcatura
+  // (§5 di `curiosita.js`): il riquadro è appena entrato nel documento e
+  // adesso va riempito.
+  if (typeof curRiempi === 'function') curRiempi(corpo);
   if (dettagliAperti) {
     const dettagli = corpo.querySelector('.dettagli-scheda');
     if (dettagli) dettagli.open = true;

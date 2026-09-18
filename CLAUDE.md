@@ -38,6 +38,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `via-lattea.js` | ~1.090 | **La Via Lattea**: il piano della Galassia guardato da dentro. Non una banda sfumata ma quattro strati di fiocchi — il velo, le nubi stellari granulose, i grani (le stelle che l'occhio non separa) e gli oggetti (le **Nubi di Magellano**, i grumi di idrogeno acceso) — sorteggiati da un campo di densità **frattale** e stampati con sprite già granulose. Ci sono la **Grande Fenditura** come spina frastagliata, la ragnatela di polvere, il colore che passa dall'oro del rigonfiamento all'azzurro dei bracci esterni. Prefisso `skyVL`. |
 | `costellazioni.js` | ~2.700 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i **disegni fatti a mano** che si appoggiano da soli sulle stelle (basta il nome del file), i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88, il tasto che porta il planetario sotto il cielo giusto e le **distanze vere** che servono al banco in 3D. Prefisso `cost`. |
 | `arte-costellazioni/` | | **I disegni fatti a mano**, un file per figura, più il `LEGGIMI.md` che spiega come aggiungerne uno. Non è codice: si carica l'immagine e si scrive il suo nome in `COST_IMMAGINI` (§5-bis di `costellazioni.js`). |
+| `curiosita.js` | ~290 | **Le curiosità delle schede**: quello che di un oggetto non si legge nei numeri. Dato un oggetto qualunque del planetario — un pianeta, una stella del catalogo, una figura, un Messier, una cometa, una stazione — trova la sua voce nel dizionario, con la catena di ripiego, le varianti e il tasto «raccontamene un'altra». Il testo non sta qui: sta in `curiosita.*` nei due dizionari, cinquecentocinquanta voci per lingua. Prefisso `cur`. |
 | `musica/` | | **Le tracce di sottofondo locali**: si copia qui il file audio e lo si registra in `catalogo.js`, seguendo `LEGGIMI.md`. Il selettore e il volume sono nelle Impostazioni; il paesaggio sonoro generato resta sempre disponibile senza file. |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
 | `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
@@ -69,7 +70,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `scripts/costruisci-tailwind.js` | ~70 | Genera `tailwind.css`. Si lancia a mano quando si aggiunge una classe Tailwind nuova, non serve all'app. |
 | `style.css` | ~11.260 | Tema "Deep Space" + impaginazione responsive. |
 | `tailwind.css` | ~600 | **Generato**, non si tocca a mano: le sole utility di Tailwind che l'app usa davvero, compilate una volta. Ha preso il posto di `cdn.tailwindcss.com`, che era il **compilatore** — mezzo megabyte di JavaScript che a ogni apertura rileggeva il DOM per riscrivere questo stesso CSS, e che nella console lo diceva a ogni apertura. Va caricato **prima** di `style.css`. |
-| `sw.js` | ~270 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v346`). |
+| `sw.js` | ~270 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v347`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -78,7 +79,8 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 
 ```
 lingue/it.js → lingue/en.js → i18n.js          (i dizionari, poi il gestore)
-app.js → telescopio.js → catalogo.js → costellazioni.js → via-lattea.js
+app.js → telescopio.js → catalogo.js → costellazioni.js → curiosita.js
+       → via-lattea.js
        → corpi-minori.js
        → pianifica.js → terreno.js → rilievo.js → meteo-astro.js → aurora-polare.js
        → config.js → aerei.js → transiti.js → visione.js
@@ -315,6 +317,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `tel` | `telescopio.js:168` | Telescopio: profilo, pannello, allineamento, push-to. |
 | `cat` | `catalogo.js` | Il catalogo del cielo. `versoriJ2000` (fermi, calcolati una volta) e `versoriOra` (riscritti a ogni aggiornamento con una sola matrice), `magnitudini`, `famiglie` (il colore, già in bucket), `figure`, `profondo`. `stato` dice se i dati sono arrivati; `secondoLivello` se sono arrivate anche le stelle deboli. |
 | `cost` | `costellazioni.js` | I disegni delle figure. `arte` dice se lo strato è acceso, `telai` sono le due ancore di ogni disegno già portate nel cielo di adesso (rifatte quando `cat.quandoAggiornato` cambia), `centri` il baricentro di ognuna delle 88, `scelta`/`filtro`/`cerca` lo stato dell'atlante. |
+| `cur` | `curiosita.js` | Le curiosità delle schede, e c'è una cosa sola da ricordare: a che variante è arrivato ogni racconto (`varianti`, base della chiave → indice). Non si salva — sapere quale aneddoto si è già letto è una cosa di questa sessione, non una preferenza — e **non può stare nel documento**, perché la scheda del planetario si riscrive da capo una volta al secondo e qualunque stato appoggiato a un nodo verrebbe buttato via al battito successivo. |
 | `corpiMinori` | `corpi-minori.js` | `elenco` sono comete e asteroidi del file, `miei` quelli incollati a mano dall'utente. |
 | `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
 | `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
@@ -408,7 +411,9 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   `did*` = il laboratorio della vista Didattica (`aurL*` il suo banco delle
   aurore), `aur*` = le aurore polari nel planetario e la forma della
   magnetosfera, `cost*` = i disegni delle costellazioni, i loro nomi nelle
-  altre culture e l'atlante.
+  altre culture e l'atlante,
+  `cur*` = le curiosità delle schede (lo slug, la catena di ripiego, il
+  riquadro che si legge).
 - **Niente disegno pesante a ogni fotogramma**: tutto ciò che è complicato e
   non cambia (i mari della Luna, le bande di Giove, la corona, le nebulose)
   si dipinge una volta sola su una tela fuori schermo e poi si ricopia. Il
@@ -429,7 +434,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v346`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v347`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - **Se hai aggiunto del testo che si legge**, la frase va nei due dizionari e
   non nel codice: `node scripts/controlla-i18n.js --patto` lo controlla, e
@@ -655,6 +660,50 @@ cosa da sapere è che le prove dei **volumi** vanno fatte a una focale in cui i
 volumi esistono: una casa di quindici metri a dieci chilometri è alta cinque
 centesimi di grado, quindi finché un grado non vale trentacinque pixel quella
 casa **è** un punto — a grandangolo si prova la chiazza, non il volume.
+
+### Le curiosità delle schede — `scripts/prova-curiosita.js`
+
+```
+node scripts/prova-curiosita.js --solo-motore   # mezzo secondo, senza browser
+node scripts/prova-curiosita.js                 # e poi in un Chromium
+```
+
+La domanda che questo banco esiste per fare è una sola, ed è quella che
+guardando lo schermo non si può fare: **una curiosità che non compare non
+fallisce**. Se lo slug di una stella non corrisponde al nome con cui il
+catalogo la chiama, il riquadro semplicemente non c'è — e un riquadro che non
+c'è è identico a «di questo oggetto non c'è niente da dire», che qui è una
+risposta legittima e frequente (§`curiosita.js`: o si ha qualcosa di vero da
+dire di *quell'* oggetto, o non si scrive niente). Si può quindi scrivere una
+pagina di storia su Rasalhague, sbagliare una lettera, e non accorgersene mai.
+
+Il giudice non è l'occhio ma il confronto fra due elenchi che devono
+combaciare: gli slug scritti nel dizionario e i nomi veri dei cataloghi —
+`dati-stelle.js`, `dati-profondo.js`, `dati-costellazioni.js`,
+`dati-corpi-minori.js` — più le tabelle che stanno dentro ad `app.js` per i
+nove corpi del Sistema Solare (`SKY_CORPI`) e per le tre stazioni
+(`SATELLITI`). Le figure e il cielo profondo si controllano nei **due versi**:
+nessuna curiosità che parli di un oggetto inesistente, e nessun oggetto senza
+la sua.
+
+Poi la macchina: lo **slug**, che è derivato dai nomi e non scritto a mano
+(«M31» e «M 31» devono dare la stessa chiave, se no metà dei tocchi su
+Andromeda non trova niente; «ω Cen» e «χ Cen» devono darne due diverse, se no
+due oggetti raccontano la stessa storia), la **catena di ripiego** (il cielo
+profondo scende alla specie, una stella senza nome proprio non produce nessuna
+chiave invece di produrne una che non esiste) e le **varianti**, che devono
+essere contigue — con la `.1` e la `.3` ma senza la `.2` la terza storia non si
+legge mai, e chi l'ha scritta non lo scopre.
+
+E in coda la seconda metà, in un Chromium vero, perché tre cose un documento lo
+vogliono. Che il riquadro finisca davvero nella scheda del planetario e nella
+pagina dell'atlante; che il testo ci arrivi **come testo** e non come marcatura
+(§5 del modulo: queste frasi sono piene di apostrofi e di nomi arabi
+traslitterati, e una con dentro un `<` sarebbe un tag); e che «raccontamene
+un'altra» **sopravviva al battito**, che è la prova che tiene in piedi il §1 —
+la scheda del cielo si riscrive da capo una volta al secondo, e uno stato
+appoggiato a un nodo verrebbe buttato via: il tasto sembrerebbe funzionare, e
+un secondo dopo la storia tornerebbe quella di prima.
 
 ### Le lingue — `scripts/prova-lingua.js` e `scripts/prova-i18n.js`
 
@@ -1417,6 +1466,14 @@ Se tocchi **i mondi minori, le sonde o i satelliti della vista 3D** (§7.7-bis
 di `app.js`) o la sua **ricerca**, passa da `node scripts/prova-sistema3d.js`:
 è l'unico posto in cui quei conti si guardano contro qualcosa di noto.
 
+Se tocchi le **curiosità delle schede** — il motore di `curiosita.js`, gli
+agganci in `skySchedaHtml` e in `costSchedaHtml`, o anche solo una voce di
+`curiosita.*` nei dizionari — passa da `node scripts/prova-curiosita.js`. Per
+il solo testo `--solo-motore` basta e avanza, costa mezzo secondo, ed è lì che
+sta il confronto fra gli slug scritti e i nomi veri dei cataloghi: una lettera
+sbagliata in un nome di stella è una curiosità che non comparirà mai, e non lo
+dice nessuno.
+
 **§14** guarda le distanze: che ogni vertice delle figure abbia la sua (767 su 767), che i valori noti tornino (Alnilam a duemila anni luce, le altre due della cintura a settecento), che la conversione da direzione e distanza al punto nello spazio sia invertibile, e che da mille anni luce di lato le stelle di Orione si spostino davvero di decine di gradi — che è la promessa del banco, e vale la pena provarla invece che sperarla.
 
 **§9** guarda anche quello che arriva a metà: che con il solo giro grosso la griglia esca comunque piena, che le direzioni stimate siano vicine a quelle vere, che il buco a cavallo del nord si tappi **girando** invece di fermarsi al capolinea dell'array (chi interpola per indice crescente lì sbaglia sempre, e l'orizzonte a nord viene fuori piatto), che ogni richiesta porti un numero intero di direzioni — è quello che rende il buco tappabile — e che le direzioni di una richiesta si prendano **a salto** e non di fila, col contro-esempio dell'impacchettamento di prima: una richiesta persa lasciava un arco contiguo da 54° ricucito da una interpolazione sola (cioè una faccia piatta larga un settimo del giro) e adesso ne lascia uno da 18°, e che si riprovi su un 429 ma non su un 400. C'è anche l'**asintoto** di `terrenoAngolo`: che a distanza zero non risponda novanta gradi (una parete verticale nata da una divisione per zero è un numero perfettamente plausibile, ed è così che gli spilli entravano nel disegno senza lasciare traccia) e che il limite minimo non morda nessun campione della griglia, se no le quote vicine verrebbero lette a una distanza che non è la loro. In coda ci sono le quattro difese contro il **429**, che è il guasto che si vede più di tutti: che le tre fonti stiano su host diversi e che ognuna sappia leggere la propria risposta (una fonte di riserva che c'è ma non si sa interpretare fallisce solo quando serve), che un no **dimezzi** le richieste concesse insieme e allarghi solo di poco il passo (è la manopola che risponde alla domanda che il 429 ha fatto), che una **raffica** di no della stessa ondata freni una volta e non sei — sei richieste in volo si prendono sei no, che sono la stessa notizia detta sei volte, e frenando a ognuna il passo finiva al tetto in due ondate — che dopo qualche no **di fila** si cambi porta per tutta la coda ma che un sì in mezzo ai no non faccia abbandonare una fonte che funziona piano, che una fila di sì riapra il rubinetto senza superare il ritmo di crociera, che un `retry-after` di dieci minuti non blocchi tutto per dieci minuti (le porte sono tre: si cambia), che quello che si sa già non venga richiesto e che un salvataggio senza la lista delle direzioni vere venga rifiutato invece di far passare delle stime per misure, e che la quota di casa si ricavi dall'anello dei campioni vicini senza farsi spostare da un tetto o da un fosso. In coda c'è la **pagella delle porte**, che è la famiglia che toglie le righe
@@ -2010,6 +2067,10 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Il cielo di casa (scala di Bortle) | `cieloDiCasa()` / `impostaCieloDiCasa()` in `catalogo.js`, `CAT_CIELI`. È in sincrono col `profilo.cielo` del telescopio: cambiarlo di là o di qua è la stessa cosa |
 | Il palazzo di fronte (ostacoli sull'orizzonte) | `orizzonteCarica()` / `orizzonteAltezza(az)` in `pianifica.js`: sedici settori, interpolati. Entra nella curva della notte e nella scelta dei bersagli |
 | Toccare una stella qualsiasi e sapere cos'è | `catStellaNelPunto()` + `catSchedaStella()` in `catalogo.js`, agganciate in fondo a `skyOggettoNelPunto()` (`app.js`). Il fondo di stelle si cerca **per ultimo**, dopo pianeti, cielo profondo e corpi minori: cinquemila puntini vincerebbero su tutto |
+| **Le curiosità del ⓘ** (l’etimologia di un nome, la storia di un oggetto) | `curiosita.js`, prefisso `cur`, e il testo nei due dizionari sotto `curiosita.*` — cinquecentocinquantadue voci per lingua. Il riquadro lo scrive `curBloccoHtml(o)` e lo riempie `curRiempi(nodo)`, e ci passano due schede: quella completa del planetario (`skySchedaHtml`, §7.4 di `app.js`, dopo la nota breve e prima delle azioni) e la pagina dell’atlante (`costSchedaHtml`). Non ci passa il **fumetto**, che è quattro righe: la curiosità è per chi ha premuto ⓘ, cioè per chi ha chiesto di saperne di più. La domanda a cui risponde è la quarta, quella per cui uno ha toccato lo schermo: «e allora?». «Rasalhague, magnitudine 2,08, a 33° di altezza» è esatto e non dice niente; «il nome viene dall’arabo raʾs al-ḥawwāʾ, la testa dell’incantatore di serpenti, e quella stella sta proprio sulla testa dell’uomo che nella figura il serpente lo tiene in mano» è la stessa stella, e adesso la si riconosce per sempre. Prove in `scripts/prova-curiosita.js` |
+| **Di questo oggetto non compare nessuna curiosità** | quasi sempre non è un guasto: è la regola. Il difetto tipico di un pezzo così non è un conto sbagliato, è una frase **generica** — una curiosità che vale per tutte le stelle non vale per nessuna, e dopo tre oggetti si smette di leggere il riquadro, che è peggio di non averlo affatto. Per questo non c’è nessun ripiego per le stelle, per i pianeti e per le figure: o si ha qualcosa di vero da dire di *quell’* oggetto, o il riquadro non compare. Il ripiego esiste in due soli posti, e in tutt’e due la frase generica è l’informazione giusta: la **specie** del cielo profondo (`curiosita.specie.<tipo>`, cinque parole chiuse — di NGC 6633 non c’è niente da raccontare, di cosa sia un ammasso aperto sì) e la specie di un corpo minore (`curiosita.specieMinore.cometa`, per le periodiche che hanno solo una sigla). Una stella del catalogo senza nome proprio non produce nemmeno una chiave: `senzaNome` lo dice già, e si crede a lui |
+| **Una curiosità che ho scritto non compare mai** | è quasi sempre lo **slug**. Gli identificativi di `curiosita.js` sono **derivati dai nomi** e non scritti a mano (§2 del modulo): una curiosità scritta per una stella che nel catalogo si chiama in un altro modo non comparirà mai, e non lo dirà nessuno — il sintomo è identico a «di questo oggetto non c’è niente da dire». `node scripts/prova-curiosita.js --solo-motore` confronta gli slug del dizionario con i nomi veri dei cataloghi e dice quale non ha riscontro. Due trappole scritte in chiaro: un nome ambiguo (Alnair sta nella Gru **e** nel Centauro) dà una chiave sola e quindi una storia sola, che va scritta in modo da valere per tutt’e due; e le varianti devono essere contigue, perché `curQuante` si ferma alla prima che manca |
+| **Il tasto «raccontamene un’altra»** | `curAltra(base)` in §4 di `curiosita.js`, con lo stato in `cur.varianti`. Non ridisegna la scheda: riscrive il solo testo dei nodi che portano quella base — nel planetario ridisegnarla vorrebbe dire rifare duecento righe di HTML per cambiare una frase, e nell’atlante buttare via il disegno della figura e riportare lo scorrimento in cima, cioè far saltare via dagli occhi proprio la riga che si stava leggendo. Lo stato **non può stare nel documento**: la scheda del cielo si riscrive da capo una volta al secondo, e al battito successivo la storia tornerebbe quella di prima |
 | Il colore di una stella, e la sua temperatura | `catTemperaturaDaBV()` (formula di Ballesteros: col B−V del Sole restituisce 5.778 K) e `catClasseDaBV()`. La classe è **dedotta dal colore**, non di catalogo: per le giganti sbaglia di una lettera, e la scheda lo dice |
 | Un evento che ha per protagonista una cometa | `aggiungiComete()` in `eventi-extra.js` gli mette `corpoCielo: 'min:<nome>'`, e da lì funziona come un'eclissi con la Luna. I tasti restano i due di sempre — **Porta l'orologio qui** e **Mostra in cielo** — e il secondo (`skyEventoNelCielo`) la seleziona, accendendo da sé il filtro dei corpi minori: senza, si arrivava sul punto giusto del cielo e lì non c'era disegnato niente. `skyPosizioneEvento()` sa dire da che parte guardare, e gli identificativi che non sono corpi della libreria li risolve `altAzCorpoQualunque()` |
 | Comete e asteroidi sulla mappa | `corpiMinoriVisibili()` (posizioni, cache di mezzo minuto) e `corpiMinoriDisegna()` in `corpi-minori.js`; tasto `#skymap-btn-corpiminori` nella scheda Oggetti, stato `sky.mostraCorpiMinori`. La coda punta in direzione opposta al Sole (`corpiMinoriDirezioneCoda()`), non dietro alla cometa |
