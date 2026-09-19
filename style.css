@@ -5045,7 +5045,12 @@ body input.casella-data:hover { border: 0; }
   cursor: pointer;
 }
 .lettura-barra-tempo.fuso-diverso { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.lettura-barra-tempo.fuso-diverso.con-scarto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lettura-barra-tempo.fuso-diverso.con-scarto {
+  /* Lo scarto ("+41 m 58 s") e' piu' lungo dei due orari. Gli si lascia
+     quindi un po' piu' spazio senza togliere al dispositivo quello che serve
+     alla sua etichetta. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr) minmax(0, 1.24fr);
+}
 .lettura-barra-tempo:not(.fuso-diverso).con-scarto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .orologio-barra-tempo {
   min-width: 0;
@@ -5055,13 +5060,16 @@ body input.casella-data:hover { border: 0; }
   justify-content: center;
   gap: 1px;
   padding-inline: clamp(2px, 1.5cqi, 9px);
+  overflow: hidden;
 }
+.lettura-barra-tempo.fuso-diverso.con-scarto .orologio-barra-tempo { padding-inline: 2px; }
 .orologio-barra-tempo + .orologio-barra-tempo {
   border-left: 1px solid var(--bordo);
 }
 .orologio-scarto .etichetta-orologio-tempo,
 .orologio-scarto .valore-orologio-tempo { color: var(--ambra); }
 .etichetta-orologio-tempo {
+  width: 100%;
   max-width: 100%;
   color: var(--testo-3);
   font-size: clamp(0.48rem, 2.3cqi, 0.62rem);
@@ -5069,11 +5077,24 @@ body input.casella-data:hover { border: 0; }
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .valore-orologio-tempo {
+  width: 100%;
+  max-width: 100%;
   font-size: clamp(0.78rem, 4.2cqi, 1rem);
   font-weight: 800;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lettura-barra-tempo.fuso-diverso.con-scarto .valore-orologio-tempo {
+  /* Tre colonne nella pillola stretta dello screenshot: il corpo scende con
+     continuita' fino a 10.9px, quanto basta per mostrare anche due unita'
+     dello scarto senza invadere l'orario vicino. */
+  font-size: clamp(0.68rem, 3.2cqi, 0.9rem);
+  letter-spacing: -0.015em;
 }
 .lettura-barra-tempo:hover { border-color: var(--bordo-forte); color: var(--testo); }
 /* Fuori dal tempo reale la lettura si accende d'ambra: è lo stesso colore di
