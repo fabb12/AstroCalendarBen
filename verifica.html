@@ -8123,20 +8123,27 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
   // --- Quando le curve si chiudono attorno al cielo ---------------------
   {
     const fov = sky.fov;
-    const aperture = [120, 130, SKY_FOV_MAX];
-    // Il disegno usa ora sempre il ramo dettagliato: nessuna apertura deve
-    // piu' introdurre un cambio di modalita' durante lo zoom.
-    const dettaglioSempre = aperture.every(apertura => {
-      sky.fov = apertura;
-      return rilUsaDettaglioCompleto();
-    });
+    sky.fov = RIL_FOV_DETTAGLIO_PIENO;
+    const pieno = rilAlfaDettaglio();
+    sky.fov = (RIL_FOV_DETTAGLIO_PIENO + RIL_FOV_DETTAGLIO_NULLO) / 2;
+    const mezzo = rilAlfaDettaglio();
+    sky.fov = RIL_FOV_DETTAGLIO_NULLO;
+    const nullo = rilAlfaDettaglio();
     sky.fov = fov;
-    prova('il rilievo conserva fette e chiaroscuro 3D fino al FOV massimo',
-      dettaglioSempre,
-      aperture.map(n => `${n}°`).join(', '));
+    prova('le fette sfumano prima di potersi incrociare al FOV estremo',
+      pieno === 1 && mezzo > 0 && mezzo < 1 && nullo === 0,
+      `alfa ${pieno.toFixed(2)}, ${mezzo.toFixed(2)}, ${nullo.toFixed(2)}`);
+
+    // Il rumore di pochi metri del DEM non deve diventare una forma propria;
+    // un rilievo vero, invece, conserva per intero chiaroscuro e granatura.
+    const piano = rilForzaForma(100, 102, 99, 101);
+    const collina = rilForzaForma(100, 122, 96, 108);
+    prova('in pianura il rumore delle celle non diventa un mosaico',
+      piano === 0 && collina === 1,
+      `forza piano ${piano.toFixed(2)}, collina ${collina.toFixed(2)}`);
 
     // Il primo piano usa lo stesso tono minimo della fetta media: lo zoom non
-    // deve cambiare la luminosita' mentre mantiene tutta la geometria.
+    // deve cambiare la luminosita' durante la dissolvenza.
     const suolo = { vicino: [18, 32, 20], lontano: [112, 126, 132] };
     const vicino = rilColoreDiFetta(0, suolo);
     const medio = rilColoreDiFetta(RIL_LONTANANZA_MINIMA, suolo);
