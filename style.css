@@ -6468,6 +6468,23 @@ body.galleria-immersiva { overflow: hidden; }
   font-size: 1.25rem;
 }
 .galleria-video-corpo { display: grid; gap: 8px; padding: 12px; }
+/* Il nome si accorcia, l'etichetta no: «Nuovo» è la cosa che si legge da
+   lontano, e messa nello stesso flusso del nome sarebbe la prima a finire
+   sotto i puntini di sospensione. */
+.galleria-video-testa { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.galleria-video-testa .galleria-video-nome { flex: 1 1 auto; min-width: 0; }
+.galleria-nuovo {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border: 1px solid rgb(76 141 255 / .45);
+  border-radius: 999px;
+  color: var(--blu-chiaro);
+  background: var(--blu-velo);
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
 .galleria-video-nome { overflow: hidden; color: var(--testo); font-size: .88rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .galleria-video-meta { color: var(--testo-3); font-size: .75rem; }
 .galleria-video-azioni { display: flex; flex-wrap: wrap; gap: 7px; }
