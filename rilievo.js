@@ -1818,7 +1818,8 @@ function rilQuoteAttorno(az, daM, aM) {
 // per la tosatura a ottantacinque gradi che `rilAngolo` mette al nadir.
 let rilFrontiAcquaBuf = null;
 
-function rilFrontiAcqua(az, abbassaM, tettoGradi, finoA) {
+function rilFrontiAcqua(az, abbassaM, tettoGradi, finoA,
+                        rivaM, rivaFasciaM, rivaAbbassaM) {
   if (!rilPronto() || !rilievo.quota) return null;
   const nr = RIL_ANELLI;
   // Più in là dell'acqua più lontana di questa direzione non serve camminare:
@@ -1876,7 +1877,14 @@ function rilFrontiAcqua(az, abbassaM, tettoGradi, finoA) {
     // dove il modello ricomincia a parlare.
     if (d < RIL_VICINO_M) { fuori[k] = -Infinity; continue; }
     const q = rilievo.quota[a + k] * (1 - s) + rilievo.quota[b + k] * s;
-    const v = (q - occhio) / d - curva * d - Math.min(tetto, abbassaM / d);
+    // La tolleranza larga appartiene alla **riva**, non all'intero raggio.
+    // Applicarla anche a un dosso separato davanti al lago equivale a
+    // disattivare lo z-test per tutto ciò che è più basso di un edificio.
+    const sullaRiva = typeof rivaM === 'number' && typeof rivaFasciaM === 'number' &&
+      Math.abs(d - rivaM) <= rivaFasciaM;
+    const margineM = sullaRiva && typeof rivaAbbassaM === 'number'
+      ? rivaAbbassaM : abbassaM;
+    const v = (q - occhio) / d - curva * d - Math.min(tetto, margineM / d);
     if (v > massimo) massimo = v;
     fuori[k] = massimo;
   }

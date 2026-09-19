@@ -5498,7 +5498,8 @@ if (typeof acqueTaglia !== 'function') {
         // una copia — com'era, col confronto in gradi — vuol dire misurare la
         // bisezione contro un righello che non è più quello del disegno: la
         // prova continuerebbe a passare o a fallire per conto suo.
-        const fronti = acqueFrontiAcqua(b * ACQUE_PASSO_AZ);
+        const fronti = acqueFrontiAcqua(b * ACQUE_PASSO_AZ,
+          Math.min(grezza[1], raggioAcque() * 1000), grezza[0]);
         const coperta = m => {
           if (!fronti) return false;
           const dentro = m * TERRENO_FRONTE_MARGINE;
@@ -6032,6 +6033,31 @@ if (typeof acqueTaglia !== 'function') {
       const gradiAUnKm = Math.atan(fronti ? fronti.tan[kUnKm] : 0) * 180 / Math.PI;
       prova('la cresta dell\'acqua comincia invece dove il modello ricomincia a parlare',
         fronti && gradiAUnKm < 2, `a un chilometro ${gradiAUnKm.toFixed(2)}° invece di ${grezzo.toFixed(0)}°`);
+
+      // La franchigia grande serve soltanto sulla riva. Applicata a tutto il
+      // raggio rende trasparente un dosso vero ma basso: è esattamente il caso
+      // in cui il lago viene dipinto davanti alla montagna.
+      const kDueKm = (() => {
+        let k = -1;
+        for (let j = 0; j < RIL_DIST.length; j++) { if (RIL_DIST[j] <= 2000) k = j; else break; }
+        return k;
+      })();
+      const vistaAcqua = acqueTangenteVista(200, 220, 2000);
+      montaMaglia((az, d) => (d >= 900 && d <= 1100 ? 220 : 200), 220);
+      const conDosso = rilFrontiAcqua(0, ACQUE_OCCLUSIONE_ABBASSA_M,
+        ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI, 2000,
+        2000, ACQUE_OCCLUSIONE_RIVA_FASCIA_M, ACQUE_OCCLUSIONE_RIVA_M);
+      prova('un dosso separato resta davanti al lago nello z-test',
+        conDosso && conDosso.tan[kDueKm] > vistaAcqua,
+        'la profondità del terreno vince su quella dell’acqua');
+
+      montaMaglia((az, d) => (d >= 900 && d <= 1100 ? 218 : 200), 220);
+      const conRiva = rilFrontiAcqua(0, ACQUE_OCCLUSIONE_ABBASSA_M,
+        ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI, 2000,
+        1000, ACQUE_OCCLUSIONE_RIVA_FASCIA_M, ACQUE_OCCLUSIONE_RIVA_M);
+      prova('il rumore della cella di riva non diventa una diga',
+        conRiva && conRiva.tan[kDueKm] <= vistaAcqua,
+        'la tolleranza larga resta confinata alla riva');
 
       // E l'occhio è uno solo: quello con cui la maglia è stata costruita.
       const quotaVera = terreno.quota;

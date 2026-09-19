@@ -5332,18 +5332,20 @@ const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
 // alza sopra il piano del lago può coprirlo — e quanto deve alzarsi perché
 // gli si creda è, esattamente, l'incertezza del modello: qualche metro.
 //
-// Ventiquattro metri coprono anche il disaccordo normale fra Copernicus e
-// SRTM sulle rive urbanizzate e ripide (a Como dentro una cella finiscono
-// insieme tetti, lungolago e versante). Sei metri bastavano sul banco pulito,
-// ma nel dato vero lasciavano che una fila di edifici diventasse una diga e
-// cancellasse tutto il lago. A trecento metri la franchigia resta limitata
-// dal tetto qui sotto; a cinque chilometri vale meno di tre decimi di grado:
-// tanto dove il rumore fa danno, poco dove una collina vera deve coprire,
-// dove non ne fa. E il tetto in gradi tiene in piedi il primo piano — a tre
-// metri dai piedi ventiquattro metri di quota sarebbero quasi verticali, cioè
-// «niente qui davanti copre niente», mentre chi guarda l'acqua dall'orlo di
-// una scogliera ha proprio l'orlo a nasconderla.
-const ACQUE_OCCLUSIONE_ABBASSA_M = 24;
+// Sei metri sono la franchigia lungo tutto il raggio: assorbono il rumore del
+// modello senza trasformare un dosso vero in aria trasparente. La riva è un
+// caso più rumoroso: dentro una cella di Copernicus possono finire insieme
+// tetti, lungolago e versante, e lì servono i ventiquattro metri che prima
+// venivano applicati **a tutto** il primo piano. Quella regola faceva passare
+// il lago davanti a colline basse ma vere. Adesso la franchigia larga vale
+// soltanto nella cella che contiene la riva vicina; prima di quella cella il
+// confronto torna a essere uno z-test stretto.
+const ACQUE_OCCLUSIONE_ABBASSA_M = 6;
+const ACQUE_OCCLUSIONE_RIVA_M = 24;
+// Una cella e mezza della griglia grossa: abbastanza per coprire il campione
+// che cade a cavallo della costa, non abbastanza per inghiottire un rilievo
+// separato davanti al lago.
+const ACQUE_OCCLUSIONE_RIVA_FASCIA_M = 180;
 const ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI = 3;
 
 // Di quanto ci si scosta da una soglia per leggere la cresta di **prima**.
@@ -6782,10 +6784,12 @@ function acqueTangenteVista(quota, occhio, m) {
 // nessuno.
 let acqueFrontiTanBuf = null;
 
-function acqueFrontiAcqua(az, finoA) {
+function acqueFrontiAcqua(az, finoA, rivaM) {
   if (typeof rilFrontiAcqua === 'function') {
     const v = rilFrontiAcqua(az, ACQUE_OCCLUSIONE_ABBASSA_M,
-                             ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI, finoA);
+                             ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI, finoA,
+                             rivaM, ACQUE_OCCLUSIONE_RIVA_FASCIA_M,
+                             ACQUE_OCCLUSIONE_RIVA_M);
     if (v) return v;
   }
   if (!terrenoDisponibile() || !terreno.fronti) return null;
@@ -6797,7 +6801,10 @@ function acqueFrontiAcqua(az, finoA) {
   const tetto = Math.tan(ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI * Math.PI / 180);
   let massimo = -Infinity;
   for (let k = 0; k < n; k++) {
-    const giu = Math.min(tetto, ACQUE_OCCLUSIONE_ABBASSA_M / TERRENO_DISTANZE_M[k]);
+    const sullaRiva = typeof rivaM === 'number' &&
+      Math.abs(TERRENO_DISTANZE_M[k] - rivaM) <= ACQUE_OCCLUSIONE_RIVA_FASCIA_M;
+    const margineM = sullaRiva ? ACQUE_OCCLUSIONE_RIVA_M : ACQUE_OCCLUSIONE_ABBASSA_M;
+    const giu = Math.min(tetto, margineM / TERRENO_DISTANZE_M[k]);
     const v = Math.tan(riga[k] * Math.PI / 180) - giu;
     if (v > massimo) massimo = v;
     acqueFrontiTanBuf[k] = massimo;
@@ -6916,15 +6923,6 @@ function acqueVisibili() {
     const lista = acque.bande[b];
     if (!lista) continue;
     const az = b * ACQUE_PASSO_AZ;
-    // La cresta che copre, una volta per direzione e non una per banda: è una
-    // camminata sugli anelli del rilievo, e le bande di una stessa direzione
-    // la userebbero identica. Si cammina fino all'acqua più lontana e non oltre.
-    let piuLontano = 0;
-    for (let k = 0; k < lista.length; k++) {
-      const f = Math.min(lista[k][1], limite);
-      if (f > piuLontano) piuLontano = f;
-    }
-    const fronti = acqueFrontiAcqua(az, piuLontano);
     const tenute = [];
     for (let iBanda = 0; iBanda < lista.length; iBanda++) {
       const [vicino, lontano, tipo, nome] = lista[iBanda];
@@ -6941,6 +6939,10 @@ function acqueVisibili() {
       if (vicino > limite) { conto.fuoriRaggio++; continue; }
       const fine = Math.min(lontano, limite);
       if (!(fine > vicino)) { conto.fuoriRaggio++; continue; }
+      // La profondità dipende anche da **dove comincia questa banda**. Solo
+      // il campione a cavallo della riva riceve la franchigia larga; un dosso
+      // più vicino resta opaco e deve nascondere l'acqua che gli sta dietro.
+      const fronti = acqueFrontiAcqua(az, fine, vicino);
       // La quota della superficie. Una banda che comincia **ai piedi** non la
       // va a chiedere a nessuno: la si sa già. Se ci si sta dentro è la
       // superficie su cui si galleggia (`acqueAllineaOcchio` l'ha già messa
