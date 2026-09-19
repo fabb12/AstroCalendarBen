@@ -1,31 +1,51 @@
 # Niente in corso
 
-Ultimo lavoro chiuso: **la fotografia dentro al filmato, seconda passata**.
+Ultimo lavoro chiuso: **il terreno a campo largo, i gradoni e il budget del
+fotogramma** — quattro segnalazioni che si sono rivelate quattro difetti
+diversi, tutti nel disegno del rilievo.
 
-La prima cura aveva tolto il sintomo e lasciato il difetto. Le due strade che
-aveva messo — `fetch` e ricarico dell'immagine col CORS chiesto per nome —
-chiedono tutt'e due la stessa cosa al server, cioè l'intestazione CORS, quindi
-quando quella non c'è cadono insieme. E non c'è: le fotografie di Planespotters
-stanno su `t.plnspttrs.net`, e come quel CDN è configurato non lo cambia nessuna
-riprova. Nel filmato restava un vuoto in mezzo al riquadro, che è ancora un
-sintomo che non sembra un errore — chi guarda non può sapere se la fotografia
-manchi per la rete o perché quell'aereo una fotografia non ce l'ha.
+Il banco di prova usato è nello scratchpad della sessione e non nel
+repository: un Chromium vero con le tessere del rilievo e le quote generate
+da una funzione (una cima a 2.511 m con le catene attorno, e una pianura),
+così il paesaggio è noto e ripetibile. Tutti i numeri qui sotto vengono da
+lì, letti sui pixel della tela.
 
-Quello che è cambiato, in §7.6 di `app.js`:
+**(1) La banda scura all'orizzonte** (`app.js`, `skyAriaSottoOrizzonte`). Da
+una cima, fra la riga dell'orizzonte e il crinale restava un nastro verde
+scuro: cielo (190, 215, 238), banda (61, 69, 57). Non era un colore
+sbagliato: era che tutto ciò che sta sotto la riga veniva dipinto col
+gradiente del suolo, scritto sulla legge «un grado sotto l'orizzonte è a
+novanta metri» — falsa di tre ordini di grandezza da lassù. Sotto la riga,
+da una cima, ci sono l'aria oltre il bordo del pianeta e la terra a cento
+chilometri: tutt'e due sono il colore del cielo all'orizzonte.
 
-- **La terza strada** (`skyRegFotoDaPonte`): i ponti CORS che gli aerei usano
-  già per i loro dati, esportati da `aerei.js` invece di ricopiarne l'elenco.
-  Si provano per ultimi e solo mentre si registra.
-- **Il tipo dai byte** (`skyRegTipoImmagine`): un ponte il tipo non lo promette,
-  un server in difficoltà lo dichiara sbagliato.
-- **La grazia breve** (`SKY_REG_FOTO_SUBITO_MS`, `skyRegAppena`): il riquadro
-  non aspetta più il giro intero, e quando la fotografia arriva l'impronta si
-  sporca e il fotogramma dopo ne chiede uno nuovo.
-- **Il buco che restava** (`skyRegContenutoInAlto`): `.fumetto-righe` è una
-  griglia con l'altezza fissata, e una griglia così stira le sue righe.
-- **La memoria** (`skyRegScordaFotoMancate`): fra due registrazioni si tengono
-  le fotografie e si buttano i no.
+**(2) Il rilievo a campo largo** (`rilievo.js`, `tracciaFetta` e
+`rilTracciaSagoma`). Sopra i 125° il dettaglio era spento per non far
+incrociare i poligoni delle fette. Adesso ogni fetta è una striscia spezzata
+**dove il quadrilatero fra due colonne cambia verso**, quindi non si può
+incrociare, e lo spegnimento è sparito. Strada provata e scartata: un
+quadrilatero per colonna — corretta e quattro volte più cara, perché il
+costo di un `fill()` sta nei sottotracciati e non nei vertici.
 
-`node scripts/prova-registrazione.js` — ventidue prove, tutte verdi. Rosso
-preesistente e non toccato: `prova-lingua.js` conta «χ Per» come una frase
-italiana (è la sigla di Perseo, e dipende da cosa c'è in cielo stanotte).
+**(3) I gradoni** (`rilievo.js`, `rilRampaDelleQuote` e `rilLiscia`). Due
+cause: le fasce di quota campionate a passo costante **di quota** su una
+rampa che non è uniforme (il tratto roccia-neve vale metà della rampa in un
+tredicesimo dell'asse: cinquanta livelli per gradino), e la griglia grossa
+letta con una bilineare, che dentro a una cella ha pendenza costante e sul
+bordo salta — e il chiaroscuro è una derivata. Adesso passo costante **di
+colore** e curva a S. In più la scala delle larghezze, che cominciava
+dall'uno e raddoppiava l'opacità sul confine fra due classi: trenta livelli
+di filo chiaro verticale.
+
+**(4) Il budget del fotogramma** (`rilievo.js`, `rilAggiornaBudget`). Si
+misura quello che il disegno è costato e si diradano colonne, gradini della
+scala e fasce di quota. Il costo vero sono le **chiamate di disegno**, non la
+geometria. Con la CPU a un sesto: da trenta-quarantacinque millisecondi a
+quattro-sei.
+
+`node scripts/prova-verifica.js` — 1.262 verdi, 4 rosse, e sono le stesse
+quattro che erano rosse prima (tre sull'acqua rasente, una sulla camera che
+insegue). `node scripts/prova-abitati.js` — 56 su 56.
+`node scripts/prova-nel-browser.js` dà le stesse quattro rosse di prima (due
+sull'Esc, una sulla scheda dell'aereo, e i dodici fotogrammi al secondo che
+in questo contenitore si misurano senza acceleratore grafico).

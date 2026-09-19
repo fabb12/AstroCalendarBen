@@ -14606,6 +14606,54 @@ const SKY_SUOLO_TAU = 0.35;
 // di prato, e il prato sotto i piedi ne vede meno di quello a venti metri.
 const SKY_SUOLO_TAU_BUIO = 26;
 
+// --- La fascia d'aria appoggiata sotto la riga dell'orizzonte ---------
+//
+// È il difetto che si vede **solo dall'alto**, e dall'alto si vede subito:
+// fra la riga dell'orizzonte e il crinale delle montagne resta una banda
+// verde scura, netta, appoggiata al cielo come un nastro adesivo. Misurata
+// da una cima a duemilacinquecento metri: il cielo appena sopra vale
+// (190, 215, 238) e quella banda (61, 69, 57) — centotrenta livelli di
+// salto, su un pezzo di panorama che nella realtà è la cosa più chiara di
+// tutte.
+//
+// La causa non è un colore sbagliato, è una **domanda sbagliata**. Tutto
+// quello che sta sotto la riga viene dipinto col gradiente del suolo, che è
+// scritto sulla legge «un grado sotto l'orizzonte è a novanta metri» — vera
+// con l'occhio a un metro e sessanta da terra e falsa di tre ordini di
+// grandezza da una cima. Là sopra, sotto la riga dell'orizzonte, ci sono due
+// cose che di terreno vicino non hanno niente:
+//
+//   * fra zero e l'**abbassamento** (`skyMareDip`: un grado e sei da
+//     duemilacinquecento metri) non c'è terra affatto — si guarda oltre il
+//     bordo del pianeta, e quello che si vede è cielo;
+//   * subito sotto c'è terra vera, ma a sessanta, cento, centottanta
+//     chilometri: la maglia del rilievo si ferma a sessanta e il resto non lo
+//     disegna nessuno. Cento chilometri d'aria non lasciano passare niente —
+//     quella terra **è** il colore del cielo all'orizzonte.
+//
+// Le due cose vogliono la stessa vernice, ed è per questo che si curano
+// insieme: sotto la riga il suolo comincia dal colore del cielo di lì e
+// scende verso la terra nel giro di qualche abbassamento. A livello del mare
+// l'abbassamento vale quattro centesimi di grado, quindi la fascia è alta un
+// decimo di grado e non cambia un pixel: il difetto nasce con la quota e si
+// cura con lei.
+const SKY_ARIA_SOTTO_DIP = 3.2;
+// E un pavimento in gradi, che serve a chi sta in pianura: anche con l'occhio
+// a un metro e sessanta l'orizzonte di un panorama è a venticinque chilometri
+// di foschia, e la riga netta fra cielo e terra non è mai netta davvero.
+const SKY_ARIA_SOTTO_MIN = 0.12;
+
+// Quanto della fascia è ancora aria, a quella depressione. Uno sulla riga,
+// zero in fondo, e in mezzo una curva a S — una rampa lineare lascia una
+// piega che su un cielo quasi piatto si legge come una riga.
+function skyAriaSottoOrizzonte(dep) {
+  const h = typeof skyMareOcchioM === 'function' ? skyMareOcchioM() : 1.6;
+  const dip = typeof skyMareDip === 'function' ? skyMareDip(h) : 0.04;
+  const fondo = Math.max(SKY_ARIA_SOTTO_MIN, SKY_ARIA_SOTTO_DIP * dip);
+  const t = Math.max(0, Math.min(1, 1 - Math.max(0, dep) / fondo));
+  return t * t * (3 - 2 * t);
+}
+
 // Dove cade, lungo la rampa del gradiente, ognuna di quelle depressioni.
 //
 // Non si ricava con una formula: si **misura**, proiettando il punto e
@@ -14768,7 +14816,7 @@ function skyDisegnaOcclusioneSuolo(ctx, o, base, focale, azCentro) {
 // Il gradiente che va dalla linea dell'orizzonte verso i propri piedi.
 // Vale sia per il riempimento di tutto il suolo sia per le fette di un
 // paesaggio diverso: cambiano solo i due colori.
-function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro) {
+function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro, aria) {
   // Il fondo, ai piedi. Si scurisce col cielo chiaro e non col cielo scuro,
   // per la ragione scritta sopra: quello che si sta togliendo è luce
   // d'ambiente, e di notte non ce n'è.
@@ -14802,11 +14850,17 @@ function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro) {
   // perché la legge è continua: le fasce parallele che si vedevano prima
   // venivano da fermate messe a occhio, non dal fatto di averne più di due.
   const fermate = skyFermateSuolo(o, base, focale, azCentro);
+  // Il colore del cielo sulla riga dell'orizzonte: è lì che va a finire la
+  // fascia d'aria (vedi `skyAriaSottoOrizzonte`), e prenderlo da
+  // `skyColoreCielo` invece che dalla sola foschia è quello che la fa
+  // combaciare col fondo disegnato un pixel più su.
+  const cielo = aria ? skyColoreCielo(aria, 0) : null;
   for (let i = 0; i < SKY_SUOLO_FERMATE.length; i++) {
     const dep = SKY_SUOLO_FERMATE[i];
     const velo = Math.exp(-dep / SKY_SUOLO_TAU);
     const ombra = 1 - Math.exp(-dep / SKY_SUOLO_TAU_BUIO);
-    const c = skyMescolaColore(skyMescolaColore(vicino, lontano, velo), aiPiedi, ombra);
+    let c = skyMescolaColore(skyMescolaColore(vicino, lontano, velo), aiPiedi, ombra);
+    if (cielo) c = skyMescolaColore(c, cielo, skyAriaSottoOrizzonte(dep));
     gr.addColorStop(Math.max(0, Math.min(1, fermate[i])), skyRgba(c, i === 0 ? 0.98 : 1));
   }
   return gr;
@@ -14868,7 +14922,7 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // L'azimut al centro della vista: serve al gradiente per misurare dove
   // cadono le sue fermate, che sono scritte in gradi di depressione.
   const azCentro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
-  ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano, base, focale, azCentro);
+  ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano, base, focale, azCentro, aria);
   ctx.fill(regola);
 
   // Il rilievo (`rilievo.js`): la **forma** del terreno al posto della sua

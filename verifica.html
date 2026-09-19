@@ -6587,6 +6587,65 @@ titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2
     return mescola(mescola(a, b, vicinanza), [0, 0, 0], ombra);
   }
 
+  // --- La fascia d'aria sotto la riga dell'orizzonte --------------------
+  //
+  // Copia di `skyAriaSottoOrizzonte` e di `skyMareDip`. È il difetto che si
+  // vede **solo dall'alto**: fra la riga dell'orizzonte e il crinale delle
+  // montagne restava una banda verde scura appoggiata al cielo come un
+  // nastro adesivo. Misurata da una cima a duemilacinquecento metri: cielo
+  // (190, 215, 238), banda (61, 69, 57).
+  const RAGGIO_TERRA = 6371000 * 1.13;   // SKY_MARE_RAGGIO_M, con la rifrazione
+  const ARIA_SOTTO_DIP = 3.2;            // SKY_ARIA_SOTTO_DIP
+  const ARIA_SOTTO_MIN = 0.12;           // SKY_ARIA_SOTTO_MIN
+  const dipDi = h => Math.acos(Math.max(-1, Math.min(1, RAGGIO_TERRA / (RAGGIO_TERRA + h)))) * 180 / Math.PI;
+  function ariaSotto(dep, h) {
+    const fondo = Math.max(ARIA_SOTTO_MIN, ARIA_SOTTO_DIP * dipDi(h));
+    const t = Math.max(0, Math.min(1, 1 - Math.max(0, dep) / fondo));
+    return t * t * (3 - 2 * t);
+  }
+  // Il cielo appena sopra la riga, a mezzogiorno: `skyColoreCielo(aria, 0)`
+  // con l'aria del Sole alto.
+  const CIELO_ORIZZONTE = [185, 213, 238];
+  const suoloConAria = (dep, h) => mescola(suolo(dep, 1), CIELO_ORIZZONTE, ariaSotto(dep, h));
+
+  // Da una cima, sulla riga, il suolo **è** il cielo: quello che si vede lì
+  // è aria, non terra — si sta guardando oltre il bordo del pianeta.
+  prova("da una cima, sulla riga dell'orizzonte il suolo è il colore del cielo",
+    Math.hypot(...suoloConAria(0, 2500).map((v, i) => v - CIELO_ORIZZONTE[i])) < 1,
+    `${suoloConAria(0, 2500).map(Math.round).join(',')} contro ${CIELO_ORIZZONTE.join(',')}`);
+  // Il contro-esempio, cioè il conto di prima sulla stessa riga.
+  prova('col conto di prima lì c\'era una banda scura, e si vedeva',
+    luminanza(CIELO_ORIZZONTE) - luminanza(suolo(0, 1)) > 80,
+    `${luminanza(suolo(0, 1)).toFixed(0)} livelli contro ${luminanza(CIELO_ORIZZONTE).toFixed(0)} del cielo`);
+  // E più in giù la terra torna terra: la fascia è alta qualche abbassamento,
+  // non mezzo schermo.
+  prova('e qualche grado più in giù la terra torna terra',
+    Math.hypot(...suoloConAria(6, 2500).map((v, i) => v - suolo(6, 1)[i])) < 2,
+    `scarto ${Math.hypot(...suoloConAria(6, 2500).map((v, i) => v - suolo(6, 1)[i])).toFixed(1)} livelli a 6°`);
+  // A livello del mare non cambia un pixel: l'abbassamento vale quattro
+  // centesimi di grado, quindi la fascia è alta un decimo — il difetto nasce
+  // con la quota e si cura con lei.
+  let scartoMare = 0;
+  for (let d = 0.2; d <= 25; d += 0.2) {
+    scartoMare = Math.max(scartoMare,
+      Math.hypot(...suoloConAria(d, 1.6).map((v, i) => v - suolo(d, 1)[i])));
+  }
+  prova('dalla battigia invece non cambia niente',
+    scartoMare < 1,
+    `scarto massimo ${scartoMare.toFixed(2)} livelli da 0,2° a 25°`);
+  // E la fascia scende senza gradini: una rampa lineare lascia una piega, e
+  // su un cielo quasi piatto una piega si legge come una riga.
+  let ariaScende = true, ariaSalto = 0;
+  for (let d = 0, prima = ariaSotto(0, 2500); d <= 8; d += 0.02) {
+    const v = ariaSotto(d, 2500);
+    if (v > prima + 1e-9) ariaScende = false;
+    ariaSalto = Math.max(ariaSalto, prima - v);
+    prima = v;
+  }
+  prova('la fascia si spegne scendendo, e senza scalini',
+    ariaScende && ariaSalto < 0.01,
+    `passo massimo ${(ariaSalto * 100).toFixed(2)}% ogni due centesimi di grado`);
+
   // La prova che risponde alla segnalazione: sotto l'orizzonte non ci deve
   // essere un colore solo. Si misura sull'**altezza dello schermo**, cioè
   // sui gradi che una vista normale contiene davvero — non fino al nadir,
@@ -7472,6 +7531,76 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
     prova('in mezzo si interpola, e sale senza salti',
       rilQuotaGriglia(0, 40) > 300 && rilQuotaGriglia(0, 40) < rilQuotaGriglia(0, 90) &&
       rilQuotaGriglia(0, 90) < 355);
+    // --- La griglia si legge con una curva a S, non con una retta -------
+    //
+    // È la cura ai **gradoni sui pendii lontani**, e il difetto che toglie
+    // non sembra un difetto del colore: sembra una montagna fatta di facce
+    // piatte rettangolari. Oltre i sei chilometri la maglia legge questa
+    // griglia, che ha tre gradi di passo e diciotto anelli — una cella è
+    // larga cinquecento metri a dieci chilometri e due chilometri a quaranta,
+    // mentre i nodi della maglia stanno a mezzo grado l'uno dall'altro.
+    // Dentro a una cella la bilineare è un pezzo di piano: la **pendenza è
+    // costante**, e al bordo salta di netto. Il chiaroscuro è una derivata,
+    // quindi quei bordi si vedono.
+    {
+      // Una griglia con un dente, così la pendenza ha qualcosa da dire.
+      const quote2 = new Array(TERRENO_DIREZIONI * nd).fill(0);
+      for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+        for (let k = 0; k < nd; k++) {
+          quote2[i * nd + k] = 800 + 400 * Math.sin(i * 0.7) + 60 * k;
+        }
+      }
+      terreno.quote = quote2;
+      // Sui nodi il valore non cambia di un centimetro: è la stessa griglia,
+      // letta in un modo che non inventa spigoli che il terreno non ha.
+      let suiNodi = 0;
+      for (let i = 0; i < TERRENO_DIREZIONI; i += 7) {
+        const az = i * TERRENO_PASSO_AZ;
+        const m = TERRENO_DISTANZE[9] * 1000;
+        suiNodi = Math.max(suiNodi, Math.abs(rilQuotaGriglia(az, m) - quote2[i * nd + 9]));
+      }
+      prova('sui nodi la griglia dice esattamente quello che diceva prima',
+        suiNodi < 1e-6, `scarto massimo ${suiNodi.toExponential(1)} m`);
+
+      // E la **derivata** attraversa il bordo di una cella senza saltare.
+      // Si misura di quanto cambia la pendenza da un campione al successivo,
+      // e si guarda il salto peggiore: con la bilineare cade tutto sul
+      // bordo, con la curva a S si distribuisce.
+      // Il salto è **fra i due lati del bordo**, non la curvatura lì attorno:
+      // si prende la pendenza appena prima e appena dopo il nodo, con un
+      // passo piccolo rispetto alla cella.
+      const m = TERRENO_DISTANZE[9] * 1000;
+      const eps = TERRENO_PASSO_AZ / 2000;
+      const pendenzaA = (az) => (rilQuotaGriglia(az + eps, m) - rilQuotaGriglia(az - eps, m)) / (2 * eps);
+      let peggioSalto = 0;
+      for (let n = 1; n <= 6; n++) {
+        const bordo = n * TERRENO_PASSO_AZ;
+        peggioSalto = Math.max(peggioSalto,
+          Math.abs(pendenzaA(bordo + 3 * eps) - pendenzaA(bordo - 3 * eps)));
+      }
+      // Il contro-esempio, cioè la bilineare di prima sugli stessi numeri:
+      // la pendenza è costante dentro alla cella e cambia tutta insieme sul
+      // bordo.
+      const bilineare = (az) => {
+        const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
+        const i = Math.floor(dove) % TERRENO_DIREZIONI;
+        const j = (i + 1) % TERRENO_DIREZIONI;
+        const u = dove - Math.floor(dove);
+        return quote2[i * nd + 9] * (1 - u) + quote2[j * nd + 9] * u;
+      };
+      const pendPrima = (az) => (bilineare(az + eps) - bilineare(az - eps)) / (2 * eps);
+      let peggioPrima = 0;
+      for (let n = 1; n <= 6; n++) {
+        const bordo = n * TERRENO_PASSO_AZ;
+        peggioPrima = Math.max(peggioPrima,
+          Math.abs(pendPrima(bordo + 3 * eps) - pendPrima(bordo - 3 * eps)));
+      }
+      prova('la pendenza attraversa il bordo di una cella senza saltare',
+        peggioSalto < 1 && peggioPrima > 20,
+        `salto ${peggioSalto.toFixed(3)} m/° contro i ${peggioPrima.toFixed(1)} della bilineare`);
+      terreno.quote = quote;
+    }
+
     // Quanto costava sbagliarlo: a venticinque metri, la quota misurata a
     // centocinquanta vale cinquantacinque metri di dislivello, cioè una
     // parete dentro al giardino. Misurato a Como: orizzonte a sud-ovest
@@ -7709,6 +7838,61 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
       doveMorde <= RIL_VICINO_PIENO_M,
       `morde sotto i ${Math.round(doveMorde)} m, chiaroscuro pieno da ${RIL_VICINO_PIENO_M} m`);
 
+    // La base frazionaria, e il perché.
+    //
+    // Arrotondandola a un numero intero di nodi — com'era — la larghezza vera
+    // della base salta a ogni cambio, e salta lungo un **anello**: tutti i
+    // punti a quella distanza cambiano scala di misura insieme. La piega vale
+    // `largo · q''`, cioè è proporzionale alla base, quindi passando da due
+    // nodi a uno il suo termine si dimezza di colpo — una riga orizzontale
+    // netta attraverso il pendio.
+    //
+    // Con la base frazionaria la larghezza è **esattamente** quella
+    // dichiarata dovunque i due limiti non mordano, e il conto lo dice senza
+    // tolleranze: `largo = s · saltoF · Δaz` e `saltoF = RIL_PIEGA_M /
+    // (s · Δaz)`.
+    {
+      rilTabelleAnelli();
+      const unaColonna = s => RIL_PASSO_AZ * Math.PI / 180 * s;
+      let esatte = 0, peggio = 0, peggioPrima = 0;
+      for (let k = 0; k < RIL_ANELLI; k++) {
+        const s = RIL_DIST[k];
+        const voluto = RIL_PIEGA_M / unaColonna(s);
+        if (!(voluto > 1 && voluto < 47)) continue;
+        esatte++;
+        peggio = Math.max(peggio, Math.abs(rilAnLargo[k] - RIL_PIEGA_M) / RIL_PIEGA_M);
+        const arrotondato = Math.round(voluto) * unaColonna(s);
+        peggioPrima = Math.max(peggioPrima, Math.abs(arrotondato - RIL_PIEGA_M) / RIL_PIEGA_M);
+      }
+      prova('la base della derivata è esattamente quella dichiarata',
+        esatte > 10 && peggio < 1e-9,
+        `${esatte} anelli liberi, scarto massimo ${(peggio * 100).toFixed(6)}%`);
+      prova('e col salto intero di prima sbagliava di parecchio',
+        peggioPrima > 0.1,
+        `fino al ${(peggioPrima * 100).toFixed(0)}% di base in più o in meno`);
+
+      // E lo scostamento srotolato dà gli stessi numeri della trigonometria,
+      // che è la ragione per cui si può togliere dal ciclo: due funzioni
+      // trigonometriche per nodo, quarantamila per fotogramma a campo largo.
+      let scarto = 0;
+      for (const idx of [0, 37, 180, 511, 700]) {
+        for (const k of [5, 20, 60, 100]) {
+          const azRad = idx * RIL_PASSO_AZ * Math.PI / 180;
+          const sinAz = Math.sin(azRad), cosAz = Math.cos(azRad);
+          const s = RIL_DIST[k];
+          const saltoF = Math.max(1, Math.min(47, RIL_PIEGA_M / Math.max(0.01, unaColonna(s))));
+          const dAz = saltoF * RIL_PASSO_AZ * Math.PI / 180;
+          const exVero = s * (Math.sin(azRad + dAz) - sinAz);
+          const eyVero = s * (Math.cos(azRad + dAz) - cosAz);
+          const ex = sinAz * rilAnA[k] + cosAz * rilAnB[k];
+          const ey = cosAz * rilAnA[k] - sinAz * rilAnB[k];
+          scarto = Math.max(scarto, Math.abs(ex - exVero), Math.abs(ey - eyVero));
+        }
+      }
+      prova('lo scostamento srotolato è la stessa cosa della trigonometria',
+        scarto < 1e-6, `scarto massimo ${scarto.toExponential(1)} m`);
+    }
+
     // -----------------------------------------------------------------
     // Le righe verticali del panorama: erano copertura, non chiaroscuro
     //
@@ -7735,7 +7919,8 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
       // Che la striscia cominci e finisca **esattamente** sui due nodi, cioè
       // che due corse consecutive combacino invece di accavallarsi.
       rilMagazzino(4);
-      rilTratti[0].n = 0;
+      // I magazzini nascono vuoti e si creano alla bisogna: qui lo si fa
+      // nascere con una corsa, invece di darlo per esistente.
       rilChiudiRun(0, 10, 20, 10, 60);
       const v = rilTratti[0].v;
       prova('una corsa comincia e finisce sui suoi due nodi',
@@ -7838,8 +8023,13 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
         `${Math.round(rilNeveDa(-45, estate))} m ad agosto, ${Math.round(rilNeveDa(-45, inverno))} a febbraio`);
 
       // Le fasce: verde fino al limite del bosco, poi pascolo, roccia, neve.
-      const banda = f => Math.max(0, Math.min(RIL_TINTA_BANDE - 1,
-        Math.round(f / RIL_QUOTE[RIL_QUOTE.length - 1].f * (RIL_TINTA_BANDE - 1))));
+      // La fascia di una frazione si chiede alla stessa tabella che usa il
+      // disegno, non a una regola ricopiata: da quando i gradini sono
+      // equispaziati **nel colore** e non nella quota, una divisione
+      // uniforme non è più la risposta giusta.
+      const rampa = rilRampaDelleQuote();
+      const banda = f => rampa.tabella[Math.max(0, Math.min(RIL_TINTA_TABELLA - 1,
+        Math.floor((f - rampa.fMin) / (rampa.fMax - rampa.fMin) * RIL_TINTA_TABELLA)))];
       const col = f => rilColoreDiBanda(banda(f));
       const verde = c => c[1] > c[0] + 8 && c[1] > c[2] + 8;
       prova('il fondovalle è verde e lo resta fino al limite del bosco',
@@ -7850,30 +8040,60 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
       prova('e in cima c\'è la neve',
         col(1.06).every(v => v > 225),
         `${col(1.06).map(Math.round).join(',')}`);
+      // La tabella dev'essere monotona: una quota più alta non può cadere in
+      // una fascia più bassa, se no il panorama avrebbe la neve sotto la
+      // roccia.
+      let bandeCrescenti = true;
+      for (let t = 1; t < RIL_TINTA_TABELLA; t++) {
+        if (rampa.tabella[t] < rampa.tabella[t - 1]) bandeCrescenti = false;
+      }
+      prova('la tabella delle fasce è monotona', bandeCrescenti,
+        `${rampa.tabella[0]} → ${rampa.tabella[RIL_TINTA_TABELLA - 1]} su ${RIL_TINTA_BANDE} fasce`);
 
-      // Sotto la neve la rampa dev'essere liscia: dal bosco alla roccia si
-      // passa per gradazioni, e a fasce nette la montagna torna una carta
-      // geologica. Il velo non è opaco, quindi quello che si vede è il salto
-      // **moltiplicato per la sua opacità**.
-      const fDi = b => RIL_QUOTE[RIL_QUOTE.length - 1].f * b / (RIL_TINTA_BANDE - 1);
-      let saltoRoccia = 0, saltoNeve = 0;
+      // **Nessun** gradino, e il conto è il cuore del pezzo.
+      //
+      // Prima i gradini erano equispaziati nella quota, e la rampa non lo è:
+      // dalla roccia grigia alla neve ci sono otto centesimi di frazione e
+      // centonovanta livelli di colore, cioè metà della rampa in un
+      // tredicesimo dell'asse. Con dodici gradini uniformi quel tratto ne
+      // prendeva due — un salto da cinquanta livelli l'uno, trenta col velo
+      // — ed erano i gradoni che si vedevano sui pendii.
+      let salto = 0;
       for (let b = 1; b < RIL_TINTA_BANDE; b++) {
         const a = rilColoreDiBanda(b - 1), c = rilColoreDiBanda(b);
-        const d = Math.max(Math.abs(a[0] - c[0]), Math.abs(a[1] - c[1]), Math.abs(a[2] - c[2]));
-        if (fDi(b) < 0.95) saltoRoccia = Math.max(saltoRoccia, d);
-        else saltoNeve = Math.max(saltoNeve, d);
+        salto = Math.max(salto, Math.hypot(a[0] - c[0], a[1] - c[1], a[2] - c[2]));
       }
-      prova('sotto la neve, fra una fascia e la successiva non c\'è un gradino',
-        saltoRoccia * RIL_TINTA_ALFA < 12,
-        `${(saltoRoccia * RIL_TINTA_ALFA).toFixed(1)} livelli su 255`);
-      // Il limite della neve invece è un gradino, ed è giusto che lo sia:
-      // in montagna quella riga si vede. Quello che non deve essere è una
-      // **curva di livello**, cioè la stessa quota su tutto il panorama — e a
+      prova('fra una fascia e la successiva non c\'è mai un gradino',
+        salto * RIL_TINTA_ALFA < 8,
+        `${(salto * RIL_TINTA_ALFA).toFixed(1)} livelli su 255 nel punto peggiore`);
+
+      // Il contro-esempio, cioè il conto di prima sulla stessa rampa.
+      const colUniforme = b => {
+        const f = RIL_QUOTE[0].f +
+          (RIL_QUOTE[RIL_QUOTE.length - 1].f - RIL_QUOTE[0].f) * (b / 11);
+        return rilColoreDiQuota(f);
+      };
+      let saltoPrima = 0;
+      for (let b = 1; b < 12; b++) {
+        const a = colUniforme(b - 1), c = colUniforme(b);
+        saltoPrima = Math.max(saltoPrima, Math.hypot(a[0] - c[0], a[1] - c[1], a[2] - c[2]));
+      }
+      prova('col passo costante di quota invece il gradino c\'era, ed era grosso',
+        saltoPrima * RIL_TINTA_ALFA > 25,
+        `${(saltoPrima * RIL_TINTA_ALFA).toFixed(1)} livelli su 255 con dodici gradini uniformi`);
+
+      // Il limite della neve resta una **riga che si vede** — in montagna si
+      // vede davvero — solo che adesso la fa il colore che cambia in fretta e
+      // non un gradino di quantizzazione. Quello che non deve essere è una
+      // **curva di livello**, cioè la stessa quota su tutto il panorama: a
       // toglierla è la frangia, che dev'essere larga più di una fascia perché
       // il bordo si dissolva invece di spostarsi.
-      const fasciaM = RIL_QUOTE[RIL_QUOTE.length - 1].f / (RIL_TINTA_BANDE - 1) * alpi;
-      prova('il limite della neve è un gradino, e lo è di proposito',
-        saltoNeve * RIL_TINTA_ALFA > 25, `${(saltoNeve * RIL_TINTA_ALFA).toFixed(1)} livelli su 255`);
+      const bNeve = banda(1.0);
+      const fasciaM = Math.abs(rampa.fDi[Math.min(RIL_TINTA_BANDE - 1, bNeve + 1)] -
+        rampa.fDi[Math.max(0, bNeve - 1)]) / 2 * alpi;
+      prova('passando la linea della neve il colore cambia in fretta',
+        Math.hypot(...rilColoreDiQuota(1.06).map((v, i) => v - rilColoreDiQuota(0.98)[i])) > 150,
+        `${Math.round(Math.hypot(...rilColoreDiQuota(1.06).map((v, i) => v - rilColoreDiQuota(0.98)[i])))} livelli fra roccia e neve`);
       prova('ma la frangia è più larga di una fascia, quindi non è una curva di livello',
         RIL_QUOTA_FRANGIA_M * 2 > fasciaM,
         `frangia ±${(RIL_QUOTA_FRANGIA_M * 2).toFixed(0)} m, fascia ${fasciaM.toFixed(0)} m`);
@@ -8148,17 +8368,21 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
 
   // --- Quando le curve si chiudono attorno al cielo ---------------------
   {
+    // Il dettaglio **non si spegne più col campo visivo**, ed è la prova che
+    // tiene in piedi la cura: le fette non si incrociano più perché ognuna è
+    // una striscia spezzata dove la proiezione si ribalta, non perché a
+    // centoventicinque gradi non si disegnano. Spegnendole, a campo largo
+    // restava una campitura piatta — il terreno senza colore della quota,
+    // senza prospettiva aerea e senza forma.
     const fov = sky.fov;
-    sky.fov = RIL_FOV_DETTAGLIO_PIENO;
-    const pieno = rilAlfaDettaglio();
-    sky.fov = (RIL_FOV_DETTAGLIO_PIENO + RIL_FOV_DETTAGLIO_NULLO) / 2;
-    const mezzo = rilAlfaDettaglio();
-    sky.fov = RIL_FOV_DETTAGLIO_NULLO;
-    const nullo = rilAlfaDettaglio();
+    let sempreUno = true;
+    for (const f of [30, 60, 110, 125, 150, 180]) {
+      sky.fov = f;
+      if (rilAlfaDettaglio() !== 1) sempreUno = false;
+    }
     sky.fov = fov;
-    prova('le fette sfumano prima di potersi incrociare al FOV estremo',
-      pieno === 1 && mezzo > 0 && mezzo < 1 && nullo === 0,
-      `alfa ${pieno.toFixed(2)}, ${mezzo.toFixed(2)}, ${nullo.toFixed(2)}`);
+    prova('il dettaglio del rilievo non si spegne a campo largo',
+      sempreUno, 'da 30° a 180°');
 
     // Il rumore di pochi metri del DEM non deve diventare una forma propria;
     // un rilievo vero, invece, conserva per intero chiaroscuro e granatura.
@@ -8395,61 +8619,127 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
 
   // La larghezza vera di una colonna è quella di base moltiplicata per
   // `cos(alt) · 2/(1+d)` — i meridiani che convergono verso il nadir, e la
-  // stereografica che stira verso i bordi. La classe deve coprirla **sempre**.
+  // stereografica che stira verso i bordi. La classe deve coprirla
+  // **sempre**, e la scala non è più scritta a mano: si misura su questo
+  // riquadro (`rilScalaLarghezze`).
   {
-    let peggio = 0, sotto = 0, quante = 0;
-    for (let f = 0.2; f <= 2.6; f += 0.01) {
-      const c = rilClasseLarghezza(f);
-      const disegnata = RIL_LARGHEZZE[c];
-      quante++;
-      if (disegnata < f - 1e-9) sotto++;
-      // La sovrabbondanza si misura solo **sopra l'uno**: sotto, i meridiani
-      // convergono verso il nadir e la colonna disegnata è per forza più larga
-      // di quella vera — è quello che il disegno ha sempre fatto, e lì
-      // l'eccesso non si vede perché quel terreno è a due passi dalle scarpe
-      // (`RIL_VICINO_NIENTE_M`).
-      if (f >= 1) peggio = Math.max(peggio, disegnata / f);
+    const salvaL = sky.larghezza, salvaH = sky.altezza;
+    sky.larghezza = 1280; sky.altezza = 800;
+    const provaScala = (fov, alt) => {
+      const focale = (sky.altezza / 2) / (2 * Math.tan(fov * D2R / 4));
+      const b = skyBaseVerso(20, alt);
+      const larghezzaBase = RIL_PASSO_AZ * focale * D2R;
+      rilScalaLarghezze(b, focale, larghezzaBase, RIL_LARG_CLASSI);
+      // Gli estremi veri, con una griglia molto più fitta di quella delle
+      // sonde: è lei che il disegno deve coprire.
+      let min = Infinity, max = -Infinity;
+      for (let i = 0; i <= 40; i++) for (let j = 0; j <= 40; j++) {
+        const v = skyDirezione(sky.larghezza * i / 40, sky.altezza * j / 40, b, focale);
+        const d = v[0] * b.f[0] + v[1] * b.f[1] + v[2] * b.f[2];
+        const den = (1 + d) * 0.5;
+        if (!(den > 1e-4)) continue;
+        const f = Math.sqrt(Math.max(0, 1 - v[2] * v[2])) / den;
+        if (f < min) min = f;
+        if (f > max) max = f;
+      }
+      let sotto = 0, peggioPx = 0;
+      for (let t = 0; t <= 400; t++) {
+        const f = min + (max - min) * t / 400;
+        const disegnata = RIL_LARGHEZZE[rilClasseLarghezza(f)];
+        if (disegnata < f - 1e-9) sotto++;
+        peggioPx = Math.max(peggioPx, (disegnata - f) * larghezzaBase);
+      }
+      return { min, max, sotto, peggioPx, classi: rilClassiInUso, larghezzaBase };
+    };
+    const largo = provaScala(180, 10);
+    const primoGradinoLargo = RIL_LARGHEZZE[0];
+    const stretto = provaScala(35, 0);
+    prova('a campo largo nessuna colonna viene disegnata più stretta del vero',
+      largo.sotto === 0,
+      `fattore da ${largo.min.toFixed(2)} a ${largo.max.toFixed(2)}, ${largo.classi} classi`);
+    prova('e nemmeno a campo stretto',
+      stretto.sotto === 0,
+      `fattore da ${stretto.min.toFixed(2)} a ${stretto.max.toFixed(2)}, ${stretto.classi} classi`);
+    // Il tetto fisso di ×2,6 era il difetto: a centottanta gradi il fattore
+    // vero arriva quasi a cinque, quindi le colonne venivano tosate a poco
+    // più di metà e fra l'una e l'altra si apriva il fondo della fetta —
+    // sessantatré livelli su 255, misurati nel browser.
+    prova('il tetto di prima (×2,6) non bastava a campo larghissimo',
+      largo.max > 2.6,
+      `il fattore vero arriva a ×${largo.max.toFixed(2)}`);
+    // E la sovrabbondanza si misura **in pixel**, perché è in pixel che il
+    // raddoppio dell'opacità si vede: con i gradini equispaziati è la stessa
+    // dappertutto, con quelli geometrici era tre pixel in fondo alla scala.
+    prova('la sovrapposizione fra due colonne resta sotto il pixel',
+      largo.peggioPx < 1 && stretto.peggioPx < 1,
+      `${largo.peggioPx.toFixed(2)} px a 180°, ${stretto.peggioPx.toFixed(2)} px a 35°`);
+    // A campo stretto il fattore sta in un palmo, e sedici gradini là dentro
+    // sarebbero sedici magazzini — cioè sedici `stroke()` — per non
+    // guadagnare niente.
+    prova('a campo stretto la scala si accorcia da sé',
+      stretto.classi < largo.classi,
+      `${stretto.classi} classi a 35°, ${largo.classi} a 180°`);
+    // La scala di prima cominciava **dall'uno**, e da lì veniva il difetto:
+    // la classe zero se la prendeva solo chi stava esattamente al centro
+    // della vista, un pixel più in là si passava alla classe uno — il dodici
+    // per cento più larga — e sul pixel in comune l'opacità si applicava due
+    // volte. Trenta livelli su 255, misurati.
+    let cresce = true;
+    for (let i = 1; i < rilClassiInUso; i++) if (!(RIL_LARGHEZZE[i] > RIL_LARGHEZZE[i - 1])) cresce = false;
+    prova('i gradini crescono, e il primo non è più inchiodato all\'uno',
+      cresce && primoGradinoLargo < 0.9,
+      `×${primoGradinoLargo.toFixed(3)} il primo a 180°, ${rilClassiInUso} gradini a 35°`);
+    sky.larghezza = salvaL; sky.altezza = salvaH;
+  }
+
+  // --- Il budget del fotogramma -----------------------------------------
+  //
+  // Quanto fitto si disegna non può essere una costante: lo stesso panorama
+  // che su un computer costa due millisecondi ne costa dodici su un telefono
+  // di quattro anni fa. Si misura quello che il disegno è costato e si muove
+  // la sola manopola che cambia il costo in proporzione — il passo delle
+  // colonne — più le due che tolgono chiamate di disegno (i gradini della
+  // scala e le fasce di quota).
+  //
+  // Un termostato si giudica su due cose sole: che reagisca, e che **non
+  // oscilli**.
+  {
+    const salvaCosto = rilCosto, salvaFattore = rilBudgetFattore;
+    rilCosto = 0; rilBudgetFattore = 1;
+    // Un dispositivo lento: si sfora, e il passo si dirada.
+    for (let i = 0; i < 40; i++) rilAggiornaBudget(40 / rilBudgetFattore);
+    const suLento = rilBudgetFattore;
+    prova('su un dispositivo lento il passo si dirada da sé',
+      suLento > 1, `×${suLento} con quaranta millisecondi di disegno`);
+    prova('e non oltre il tetto', suLento <= RIL_BUDGET_FATTORE_MAX);
+    // Diradando si tolgono anche chiamate di disegno, che sono il costo vero.
+    prova('diradando si stringono anche le classi e le fasce',
+      rilTettoClassi() < RIL_LARG_CLASSI && rilPassoBande() >= 1,
+      `${rilTettoClassi()} classi, fasce una ogni ${rilPassoBande()}`);
+
+    // E quando il dispositivo torna a farcela, si rinfittisce: un budget che
+    // si incastra in basso è peggio di nessun budget, perché il terreno resta
+    // grossolano per sempre.
+    for (let i = 0; i < 200; i++) rilAggiornaBudget(0.6 / rilBudgetFattore);
+    prova('e quando il costo torna basso si rinfittisce',
+      rilBudgetFattore === 1, `×${rilBudgetFattore} con mezzo millisecondo`);
+
+    // La fascia morta: con un costo che sta **esattamente** a metà budget il
+    // fattore non deve ballare. Dimezzarlo raddoppierebbe il costo, che
+    // andrebbe sopra al budget, che lo ridimezzerebbe: senza margine sono due
+    // passi di disegno diversi a fotogrammi alterni.
+    rilCosto = 0; rilBudgetFattore = 2;
+    let cambi = 0;
+    for (let i = 0; i < 300; i++) {
+      const prima = rilBudgetFattore;
+      // Il costo che si misura è quello del fattore di adesso.
+      rilAggiornaBudget(RIL_BUDGET_MS * 0.5 * (2 / rilBudgetFattore));
+      if (rilBudgetFattore !== prima) cambi++;
     }
-    prova('nessuna corsa viene disegnata più stretta di quanto le serve',
-      sotto === 0, `${quante} fattori provati da 0,20 a 2,60`);
-    prova('e nemmeno troppo più larga: la sovrabbondanza resta sotto un quarto',
-      peggio < 1.25, `al peggio ×${peggio.toFixed(2)}`);
-    // E la scala arriva fin dove serve. Il numero è misurato: al campo più
-    // largo a cui la pettinatura si disegna ancora, l'angolo del riquadro
-    // vede il terreno con un fattore di 2,4 — se la scala si fermasse prima,
-    // i lampi tornerebbero proprio lì.
-    prova('la scala copre il fattore peggiore che si misuri col chiaroscuro acceso',
-      RIL_LARGHEZZE[RIL_LARGHEZZE.length - 1] >= 2.4,
-      `arriva a ×${RIL_LARGHEZZE[RIL_LARGHEZZE.length - 1]}, e a 125° di campo serve ×2,4`);
+    prova('a metà budget il passo non balla fra due valori',
+      cambi <= 1, `${cambi} cambi in trecento fotogrammi`);
+    rilCosto = salvaCosto; rilBudgetFattore = salvaFattore;
   }
-
-  // Il contro-esempio, cioè la regola di prima: **una** larghezza per tutto
-  // il fotogramma, più un pixel. In un riquadro da cento gradi il fattore
-  // arriva a 1,5 e la colonna di base è larga meno di tre pixel: il pixel in
-  // più non basta, e resta scoperto mezzo pixel per tutta la lunghezza della
-  // corsa.
-  {
-    const focale = 321.7;                       // cento gradi su un riquadro da 600
-    const base = RIL_PASSO_AZ * focale * D2R;   // passo 1
-    const primaLarga = base + 1;
-    const serve = base * 1.52;                  // il fattore misurato ai bordi
-    prova('col conto di prima, ai bordi di un riquadro largo restava un buco',
-      primaLarga < serve,
-      `disegnava ${primaLarga.toFixed(2)} px dove ne servivano ${serve.toFixed(2)}`);
-    const adesso = RIL_LARGHEZZE[rilClasseLarghezza(1.52)] * base + RIL_LARG_MARGINE;
-    prova('e adesso quel buco non c\'è', adesso >= serve,
-      `${adesso.toFixed(2)} px contro ${serve.toFixed(2)}`);
-  }
-
-  // A campo stretto il fattore sta appena sopra l'uno, e lì un gradino grosso
-  // costerebbe una sfocatura di traverso per non guadagnare niente: è la
-  // ragione per cui i gradini non sono equispaziati.
-  prova('a campo stretto il primo gradino è fine',
-    RIL_LARGHEZZE[rilClasseLarghezza(1.04)] < 1.13,
-    `fattore 1,04 → ×${RIL_LARGHEZZE[rilClasseLarghezza(1.04)]}`);
-  prova('le classi crescono e partono esattamente dall\'uno',
-    RIL_LARGHEZZE.every((v, i) => i === 0 ? v === 1 : v > RIL_LARGHEZZE[i - 1]),
-    RIL_LARGHEZZE.join(' · '));
 
   // La seconda metà dello stesso difetto: una corsa si disegna come un
   // **segmento dritto**, ma una colonna di azimut costante in stereografica è
