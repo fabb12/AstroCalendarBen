@@ -533,6 +533,23 @@ const RIL_PIEGA_M = 170;
 // senza che il fianco diventi un tessuto a righe.
 const RIL_PIEGA_LIVELLI = 6;
 
+// Quanto dislivello locale serve perche' chiaroscuro e granatura descrivano
+// una forma reale. Su una pianura il DEM oscilla di pochi metri fra celle:
+// quantizzarlo in ventiquattro livelli trasforma quel rumore in rettangoli.
+// Fra 3 e 18 metri su RIL_PIEGA_M la forma entra con una smoothstep; sopra
+// restano intatti colline, valloni e montagne.
+const RIL_FORMA_NIENTE_M = 3;
+const RIL_FORMA_PIENA_M = 18;
+
+function rilForzaForma(q, qPiu, qMeno, qIndietro) {
+  const minimo = Math.min(q, qPiu, qMeno, qIndietro);
+  const massimo = Math.max(q, qPiu, qMeno, qIndietro);
+  const t = Math.max(0, Math.min(1,
+    (massimo - minimo - RIL_FORMA_NIENTE_M) /
+    (RIL_FORMA_PIENA_M - RIL_FORMA_NIENTE_M)));
+  return t * t * (3 - 2 * t);
+}
+
 // Sotto quanti metri l'ombreggiatura si spegne.
 //
 // Non è una scelta di gusto, è quello che il dato sa dire. Una cella del
@@ -818,15 +835,25 @@ function rilTavolozzaQuote() {
 // due livelli su 255, sotto la soglia in cui una banda si legge come tale.
 const RIL_FONDI = 14;
 
-// Le fette restano separate a qualunque apertura. In passato, oltre 125°,
-// venivano sostituite da una sola sagoma per evitare possibili incroci ai
-// bordi della proiezione stereografica. Quel ripiego pero' spegneva insieme
-// anche pettinatura, chiaroscuro, foschia e contorni: durante lo zoom il
-// paesaggio diventava quindi piatto di colpo. `rilArcoInVista` esclude gia'
-// il meridiano opposto e limita a 174° l'arco proiettato; conserviamo percio'
-// il rilievo completo fino al FOV massimo, senza cambi di modalita'.
-function rilUsaDettaglioCompleto() {
-  return true;
+// A campo molto largo le creste parziali non restano figure annidate sul
+// piano dello schermo: la stereografica conserva gli angoli, non l'ordine
+// planare. I quattordici poligoni delle distanze allora si incrociano e,
+// soprattutto in pianura, diventano i grandi tasselli che sembrano rilievi
+// ma non esistono nei dati.
+//
+// La sagoma unica non puo' incrociarsi. Il passaggio comincia prima della
+// vecchia soglia netta di 125° e usa una smoothstep: durante lo zoom il
+// chiaroscuro si spegne senza il salto di luminosita' che aveva il primo
+// ripiego, mentre a 125° i poligoni pericolosi sono gia' spariti.
+const RIL_FOV_DETTAGLIO_PIENO = 110;
+const RIL_FOV_DETTAGLIO_NULLO = 125;
+
+function rilAlfaDettaglio() {
+  if (!Number.isFinite(sky.fov)) return 1;
+  const t = Math.max(0, Math.min(1,
+    (RIL_FOV_DETTAGLIO_NULLO - sky.fov) /
+    (RIL_FOV_DETTAGLIO_NULLO - RIL_FOV_DETTAGLIO_PIENO)));
+  return t * t * (3 - 2 * t);
 }
 
 // Quando le curve del terreno **si chiudono attorno al cielo**.
@@ -2916,9 +2943,11 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const scalaBanda = (RIL_TINTA_BANDE - 1) /
     Math.max(1e-6, (RIL_QUOTE[RIL_QUOTE.length - 1].f - RIL_QUOTE[0].f) * neve);
   const fondoK = rilFondoAnelli();
-  // Il rilievo non cambia modalita' con lo zoom: fondo, tinte, chiaroscuro,
-  // foschia e contorni restano attivi insieme fino al FOV massimo.
-  const dettaglio = rilUsaDettaglioCompleto();
+  // Le fette dettagliate sfumano nella sagoma sicura prima che la proiezione
+  // possa farle incrociare. La stessa alfa governa fondo, tinte, chiaroscuro,
+  // foschia e contorni, cosi' nessuno strato resta come un cuneo isolato.
+  const dettaglioAlfa = rilAlfaDettaglio();
+  const dettaglio = dettaglioAlfa > 0.004;
   // Di quanto la maglia è decentrata rispetto a dove si è adesso, e a che
   // quota è l'occhio in questo momento. Due numeri per fotogramma, non due
   // per nodo: sotto la soglia di traslazione il primo è `null` e la
@@ -3109,8 +3138,10 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           const saltoK = Math.min(k, Math.max(1,
             Math.round(RIL_PIEGA_M / Math.max(1, s - sPrec))));
           const sIndietro = RIL_DIST[Math.max(0, k - saltoK)];
+          const qIndietro = rilievo.quota[baseQ + k - saltoK];
           const tx = (s - sIndietro) * sinAz, ty = (s - sIndietro) * cosAz;
-          const tz = q - rilievo.quota[baseQ + k - saltoK];
+          const tz = q - qIndietro;
+          const forma = rilForzaForma(q, qPiu, qMeno, qIndietro);
           let ax = ey * tz - ez * ty;
           let ay = ez * tx - ex * tz;
           let az2 = ex * ty - ey * tx;
@@ -3120,10 +3151,17 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
 
           const ds = Math.max(0, ax * luce.servizio[0] + ay * luce.servizio[1] + az2 * luce.servizio[2]);
           let kk = ds;
+          let piano = Math.max(0, luce.servizio[2]);
           if (luce.vera && luce.forza > 0) {
             const dv = Math.max(0, ax * luce.vera[0] + ay * luce.vera[1] + az2 * luce.vera[2]);
             kk = dv * luce.forza + ds * (1 - luce.forza);
+            const pianoVero = Math.max(0, luce.vera[2]);
+            piano = pianoVero * luce.forza + piano * (1 - luce.forza);
           }
+          // In pianura la normale del DEM racconta soprattutto il salto fra
+          // celle. La si riporta gradualmente alla normale del piano; dove il
+          // dislivello e' vero, `forma` vale uno e il conto resta identico.
+          kk = piano + (kk - piano) * forma;
           let livF = (kk - RIL_COSENO_MIN) * scalaLiv;
           // La **piega** di traverso, cioè la derivata seconda in azimut sulla
           // stessa scala di metri: è quella che fa comparire i valloni. Il
@@ -3131,7 +3169,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // impluvio e sta in ombra.
           const largo = s * dAz;
           const piega = largo > 0.01 ? (qMeno - 2 * q + qPiu) / largo : 0;
-          const forza = Math.min(1, Math.abs(piega) / RIL_PIEGA_PIENA);
+          const forza = Math.min(1, Math.abs(piega) / RIL_PIEGA_PIENA) * forma;
           livF += piega > 0 ? -RIL_PIEGA_LIVELLI * forza : RIL_PIEGA_LIVELLI * forza;
           // La foschia toglie **dettaglio**, non colore: una faccia lontana si
           // avvicina al livello di mezzo invece di sparire, se no la catena in
@@ -3158,6 +3196,9 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           if (s < RIL_GRANA_FINE_MAX_M) {
             granaV += (rilRumore2D(gx / RIL_GRANA_FINE_M, gy / RIL_GRANA_FINE_M) - 0.5) * 0.6;
           }
+          // La granatura e' materia della montagna, non un rilievo da
+          // inventare sulla pianura: segue la stessa forza della forma.
+          granaV *= forma;
           livF += granaV * RIL_GRANA_LIVELLI * v;
           let liv = Math.round(livF + (rumore - 0.5) * 0.7);
           if (liv < 0) liv = 0; else if (liv >= RIL_LIVELLI) liv = RIL_LIVELLI - 1;
@@ -3328,29 +3369,30 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     return qualcosa ? 'piena' : null;
   };
   {
-    // Al FOV estremo un'unica campitura evita alla radice le intersezioni
-    // fra i poligoni delle distanze. La sagoma conosce gia' i casi difficili
-    // (terra dentro/fuori da un anello), quindi non puo' richiudersi nel
-    // cielo; a questa apertura la grana continua del suolo prende il posto
-    // dell'ombreggiatura a colonne.
-    if (!dettaglio) {
-      const kMedio = fondoK[Math.floor(RIL_FONDI * 0.45)];
-      const col = rilColoreDiFetta(rilLontananza(RIL_DIST[kMedio] / 1000), suolo);
-      ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
-      const regola = rilTracciaSagoma(ctx);
-      if (regola) {
-        ctx.fill(regola);
-        chiamate++;
-      }
-    } else {
+    // La sagoma unica e' sempre il fondo: non si incrocia mai e chiude anche
+    // eventuali mezzi pixel fra le fette. Sotto 110° viene coperta per intero
+    // dal rilievo dettagliato; fra 110° e 125° resta visibile via via che le
+    // fette sfumano, senza nessun cambio secco di luminosita'.
+    const kMedio = fondoK[Math.floor(RIL_FONDI * 0.45)];
+    const colMedio = rilColoreDiFetta(rilLontananza(RIL_DIST[kMedio] / 1000), suolo);
+    ctx.fillStyle = `rgb(${colMedio[0]},${colMedio[1]},${colMedio[2]})`;
+    const regola = rilTracciaSagoma(ctx);
+    if (regola) {
+      ctx.fill(regola);
+      chiamate++;
+    }
+
+    if (dettaglio) {
+      ctx.save();
+      ctx.globalAlpha = (Number.isFinite(ctx.globalAlpha) ? ctx.globalAlpha : 1) * dettaglioAlfa;
       for (let b = RIL_FONDI - 1; b >= 0; b--) {
         const col = rilColoreDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000), suolo);
         ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
         ctx.strokeStyle = ctx.fillStyle;
         ctx.lineWidth = 1;
-        const forma = tracciaFetta(b);
-        if (!forma) continue;
-        if (forma === 'anello-fuori') {
+        const formaFetta = tracciaFetta(b);
+        if (!formaFetta) continue;
+        if (formaFetta === 'anello-fuori') {
           // Il filo va sulla sola curva: aggiungendo il riquadro al tracciato
           // e stampandolo si disegnerebbe una cornice attorno allo schermo.
           ctx.stroke();
@@ -3365,6 +3407,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
         }
         chiamate += 2;
       }
+      ctx.restore();
     }
   }
 
@@ -3376,6 +3419,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // sporcare il cielo lungo il crinale.
   ctx.save();
   ctx.clip(rilTracciaSagoma(ctx) || 'nonzero');
+  ctx.globalAlpha = (Number.isFinite(ctx.globalAlpha) ? ctx.globalAlpha : 1) * dettaglioAlfa;
 
   // --- Il velo delle quote ----------------------------------------------
   //
@@ -3446,6 +3490,8 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // legherebbero creste che non hanno niente a che vedere fra loro.
   const biancoProfilo = [255, 255, 255];
   if (dettaglio) {
+    ctx.save();
+    ctx.globalAlpha = (Number.isFinite(ctx.globalAlpha) ? ctx.globalAlpha : 1) * dettaglioAlfa;
     ctx.beginPath();
     let segmenti = 0;
     for (let c = 0; c + 1 < nCol; c++) {
@@ -3471,6 +3517,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       ctx.stroke();
       chiamate++;
     }
+    ctx.restore();
   }
 
   // --- La riga del crinale contro il cielo ------------------------------
