@@ -4475,7 +4475,12 @@ body.vista-planetario-attiva .tela-cielo {
    senza, una riga che non manda a capo — la data, il playback — allarga la
    griglia oltre il pannello e il pannello oltre lo schermo, ed è così che
    "Vai" e "Mappa" finivano tagliati fuori dal bordo destro. */
-.blocco-tempo { display: grid; gap: 7px; min-width: 0; }
+.blocco-tempo {
+  container-type: inline-size;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
 .blocco-tempo > .riga-comandi { margin-top: 0; }
 
 /* La testata di un blocco: a sinistra di cosa parla, a destra la lettura
@@ -4518,6 +4523,27 @@ body.vista-planetario-attiva .tela-cielo {
 /* Dentro a una riga etichettata i segmenti non pretendono più tutta la
    larghezza per sé: si prendono quella che avanza dopo l'etichetta */
 .riga-etichettata .segmenti-cielo { flex: 1 1 auto; }
+
+/* Il pannello può essere stretto anche dentro una finestra larga (per esempio
+   quando è ospitato nella scena 3D). La disposizione del passo deve quindi
+   reagire alla larghezza del blocco, non soltanto a quella del viewport:
+   sotto questa soglia l'etichetta sale sopra e gli otto segmenti recuperano
+   tutta la riga. */
+@container (max-width: 460px) {
+  .riga-etichettata { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  #skymap-passi .segmenti-cielo { gap: 1px; padding: 2px; }
+  #skymap-passi .tasto-segmento {
+    min-height: 34px;
+    padding: 7px 2px;
+    font-size: 0.68rem;
+    letter-spacing: -0.01em;
+  }
+  #skymap-passi [data-passo-tempo="1"] {
+    white-space: normal;
+    line-height: 0.95;
+    overflow-wrap: anywhere;
+  }
+}
 
 .riga-comandi {
   display: flex;
