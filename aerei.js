@@ -2406,6 +2406,15 @@
     aggiornaUI();
   });
 
+  // I ponti CORS non servono soltanto a questo modulo. Li chiede anche la
+  // registrazione di un momento (§7.6 di `app.js`): la fotografia dell'aereo
+  // vive su un CDN che al browser non dà i pixel, e per finire dentro a un
+  // filmato deve passare da qualcuno che ci aggiunga l'intestazione. Si
+  // esportano invece di ricopiarli là, che è la copia peggiore possibile —
+  // il giorno che un ponte cade se ne toglie uno e l'altro elenco resta
+  // indietro senza che niente lo dica.
+  window.aereiPontiCors = PONTI_CORS;
+
   window.aereiAvvia = aereiAvvia;
   window.aereiFerma = aereiFerma;
   window.aereiDisegna = aereiDisegna;

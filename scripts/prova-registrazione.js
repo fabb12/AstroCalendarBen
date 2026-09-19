@@ -223,20 +223,81 @@ function prova(nome, condizione, dettaglio) {
       due.remove();
       window.fetch = fetchVero;
 
-      // 3. Non si può in nessun modo: la fotografia se ne va, e con lei la
-      //    firma del fotografo di una fotografia che non c'è.
+      // 3. Il CDN non manda il CORS: le prime due strade chiedono tutt'e due
+      //    quella, quindi cadono insieme, e a passare resta il ponte. È la
+      //    segnalazione «continua a non vedersi la foto».
+      const pontiVeri = window.aereiPontiCors;
       sky.reg.foto.clear(); sky.reg.riquadri.clear();
+      window.aereiPontiCors = [{
+        nome: 'finto',
+        avvolgi: u => `${location.origin}/icon-192.png?ponte=${encodeURIComponent(u)}`
+      }];
+      window.fetch = (...a) => (String(a[0]).indexOf('ponte=') === -1
+        ? Promise.reject(new Error('niente CORS')) : fetchVero.apply(window, a));
+      let ponte = facciaRiquadro();
+      ponte.querySelector('img').src = location.origin + '/non-esiste-proprio.jpg';
+      await skyRegFotografaRiquadro(ponte, 'p');
+      const svgPonte = svgDi(ponte);
+      esito.conPonte = {
+        incorporata: /src="data:image\/png/.test(svgPonte),
+        creditoResta: svgPonte.indexOf('Tristan Gruber') !== -1,
+        senzaIndirizzi: !/src="http/.test(svgPonte)
+      };
+      ponte.remove();
+      window.fetch = fetchVero;
+
+      // 3-bis. Un ponte il tipo non lo promette: `application/octet-stream` è
+      //    la sua risposta normale, e un data URL con quel tipo dentro a un
+      //    `<img>` non si disegna. A dire che byte sono è la loro firma.
+      sky.reg.foto.clear();
+      const pngVero = await (await fetchVero(location.origin + '/icon-192.png')).blob();
+      const senzaTipo = new Blob([await pngVero.arrayBuffer()], { type: 'application/octet-stream' });
+      window.aereiPontiCors = [{ nome: 'muto', avvolgi: () => location.origin + '/ponte-muto' }];
+      window.fetch = () => Promise.resolve(new Response(senzaTipo, { status: 200 }));
+      const daPonte = await skyRegFotoDaPonte('https://t.plnspttrs.net/foto.jpg');
+      window.fetch = () => Promise.resolve(new Response(
+        new Blob(['<html>ops</html>'], { type: 'image/jpeg' }), { status: 200 }));
+      const bugiardo = await skyRegFotoDaPonte('https://t.plnspttrs.net/foto.jpg');
+      window.fetch = fetchVero;
+      esito.tipoDaFirma = {
+        ricucito: String(daPonte || '').indexOf('data:image/png') === 0,
+        paginaRifiutata: bugiardo === null
+      };
+
+      // 4. Non si può in nessun modo — nemmeno col ponte: la fotografia se ne
+      //    va, e con lei la firma del fotografo di una fotografia che non c'è.
+      //    Quello che resta non deve però essere un buco: `.fumetto-righe` è
+      //    una griglia con l'altezza fissata dagli stili calcolati, e una
+      //    griglia così **stira le sue righe** per riempirla.
+      sky.reg.foto.clear(); sky.reg.riquadri.clear();
+      window.aereiPontiCors = [];
       let tre = facciaRiquadro();
       tre.querySelector('img').src = 'https://t.plnspttrs.net/non-esiste.jpg';
+      tre.querySelector('ul').style.display = 'grid';
       await skyRegFotografaRiquadro(tre, 'c');
       const svgTre = svgDi(tre);
       esito.senzaFoto = {
         nessunaImmagine: !/<img/.test(svgTre),
         nessunCredito: svgTre.indexOf('Tristan Gruber') === -1,
         nessunTestoAlternativo: svgTre.indexOf('UAE3Q') === -1,
-        restaIlResto: svgTre.indexOf('Dubai (DXB)') !== -1
+        restaIlResto: svgTre.indexOf('Dubai (DXB)') !== -1,
+        contenutoInAlto: svgTre.indexOf('align-content: flex-start') !== -1 ||
+          svgTre.indexOf('align-content:flex-start') !== -1
       };
       tre.remove();
+      window.aereiPontiCors = pontiVeri;
+
+      // 4-bis. Fra una registrazione e l'altra si tengono le fotografie e si
+      //    buttano i no: un ponte caduto un minuto fa può essere tornato.
+      sky.reg.foto.clear();
+      await skyRegFotoIncorporata(location.origin + '/icon-192.png');
+      window.aereiPontiCors = [];
+      await skyRegFotoIncorporata(location.origin + '/mai-esistita.jpg');
+      window.aereiPontiCors = pontiVeri;
+      const prima = sky.reg.foto.size;
+      skyRegScordaFotoMancate();
+      esito.memoria = { prima, dopo: sky.reg.foto.size,
+        tieneLaBuona: sky.reg.foto.has(location.origin + '/icon-192.png') };
 
       // 4. Una risposta che arriva e non è un'immagine — il `504` sintetico
       //    del service worker, una pagina d'errore HTML — non è una
@@ -281,9 +342,19 @@ function prova(nome, condizione, dettaglio) {
       foto.conFetch);
     prova('e ci finisce anche quando la fetch non arriva a destinazione',
       foto.conTela.incorporata && foto.conTela.creditoResta, foto.conTela);
+    prova('e ci finisce anche quando il CDN non manda affatto il CORS, passando dal ponte',
+      foto.conPonte.incorporata && foto.conPonte.creditoResta && foto.conPonte.senzaIndirizzi,
+      foto.conPonte);
+    prova('che byte siano lo dice la firma e non il tipo dichiarato dal ponte',
+      foto.tipoDaFirma.ricucito && foto.tipoDaFirma.paginaRifiutata, foto.tipoDaFirma);
     prova('una fotografia che non si può incorporare se ne va insieme al suo credito',
       foto.senzaFoto.nessunaImmagine && foto.senzaFoto.nessunCredito &&
       foto.senzaFoto.nessunTestoAlternativo && foto.senzaFoto.restaIlResto, foto.senzaFoto);
+    prova('e il posto che lascia non resta un buco in mezzo al testo',
+      foto.senzaFoto.contenutoInAlto, foto.senzaFoto);
+    prova('fra due registrazioni si tengono le fotografie e si buttano i no',
+      foto.memoria.prima === 2 && foto.memoria.dopo === 1 && foto.memoria.tieneLaBuona,
+      foto.memoria);
     prova('una pagina d’errore servita al posto della fotografia non è una fotografia',
       foto.paginaDErrore === null && foto.cinqueZeroQuattro === null,
       { html: foto.paginaDErrore, errore: foto.cinqueZeroQuattro });
@@ -291,11 +362,49 @@ function prova(nome, condizione, dettaglio) {
     prova('nel fumetto se ne va tutta la cornice, didascalia compresa',
       foto.fumetto.cornice && foto.fumetto.restaIlResto, foto.fumetto);
 
-    // E la registrazione parte comunque. Aspettare che la scheda sia pronta
-    // serve — se no nei filmati da cinque secondi la fotografia arrivava a
-    // registrazione già finita — ma è una promessa che con la rete in mezzo
-    // non si può fare senza limite: una richiesta che non torna terrebbe il
-    // dito premuto sul tasto per sempre, cioè un filmato che non comincia.
+    // La fotografia che arriva tardi non è persa: il riquadro si rifà, e in
+    // quello nuovo c'è. È la metà che rende sopportabile la grazia breve —
+    // senza, chi non ce la fa in un terzo di secondo non comparirebbe mai in
+    // un filmato, cioè proprio il caso del ponte, che due salti li fa.
+    const tardiva = await pagina.evaluate(async () => {
+      const fetchVero = window.fetch;
+      const pontiVeri = window.aereiPontiCors;
+      window.aereiPontiCors = [];
+      const indirizzo = location.origin + '/icon-192.png?tardi=1';
+      window.fetch = (...a) => (String(a[0]).indexOf('tardi=1') === -1
+        ? fetchVero.apply(window, a)
+        : new Promise(ok => setTimeout(() => ok(fetchVero.apply(window, a)), 900)));
+      sky.reg.foto.clear(); sky.reg.riquadri.clear();
+      const p = document.createElement('div');
+      p.style.cssText = 'position:fixed;left:0;top:0;width:280px;background:#0b1220';
+      p.innerHTML = `<div id="aereo-foto-tardi"><img src="${indirizzo}" alt="x"></div><p>Quota</p>`;
+      document.body.appendChild(p);
+      await skyRegFotografaRiquadro(p, 'z');
+      const svgDi = () => {
+        const voce = sky.reg.riquadri.get(p);
+        const src = voce && voce.immagine && voce.immagine.src;
+        return src ? decodeURIComponent(src.slice(src.indexOf(',') + 1)) : '';
+      };
+      const subito = { conFoto: /src="data:image/.test(svgDi()), impronta: sky.reg.riquadri.get(p).impronta };
+      await new Promise(ok => setTimeout(ok, 1200));
+      const sporcata = sky.reg.riquadri.get(p).impronta === '';
+      await skyRegFotografaRiquadro(p, 'z2');
+      const dopo = /src="data:image/.test(svgDi());
+      p.remove();
+      window.fetch = fetchVero;
+      window.aereiPontiCors = pontiVeri;
+      return { subito: subito.conFoto, sporcata, dopo };
+    });
+    prova('una fotografia lenta non ferma il riquadro…',
+      !tardiva.subito && tardiva.sporcata, tardiva);
+    prova('…e quando arriva il riquadro si rifà con lei dentro', tardiva.dopo, tardiva);
+
+    // E la registrazione parte comunque, molto prima della scadenza: quella
+    // resta il tetto per una rete che accetta e tace, non l'attesa normale.
+    // Aspettare che la scheda sia pronta serve — se no nei filmati da cinque
+    // secondi la fotografia arrivava a registrazione già finita — ma è una
+    // promessa che con la rete in mezzo non si può fare senza limite: una
+    // richiesta che non torna terrebbe il dito premuto sul tasto per sempre.
     const scadenza = await pagina.evaluate(async () => {
       const fetchVero = window.fetch;
       window.fetch = () => new Promise(() => {});   // accetta e tace
@@ -315,10 +424,11 @@ function prova(nome, condizione, dettaglio) {
       finto.remove();
       vero.id = 'skymap-dettaglio';
       window.fetch = fetchVero;
-      return { durata: Math.round(durata), tetto: SKY_REG_PREPARA_MAX_MS };
+      return { durata: Math.round(durata), tetto: SKY_REG_PREPARA_MAX_MS,
+        grazia: SKY_REG_FOTO_SUBITO_MS };
     });
     prova('con una rete che tace la registrazione parte comunque, entro la scadenza',
-      scadenza.durata >= scadenza.tetto - 50 && scadenza.durata < scadenza.tetto + 800, scadenza);
+      scadenza.durata >= scadenza.grazia - 50 && scadenza.durata < scadenza.tetto, scadenza);
 
     await contesto.close();
   } finally {

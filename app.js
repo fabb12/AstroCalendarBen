@@ -8232,7 +8232,7 @@ const sky = {
     durataReale: 0,        // quanto è durata davvero (si può fermare prima)
     ultimoConto: 0,        // per non riscrivere il conto alla rovescia a ogni fotogramma
     riquadri: new Map(),   // fotografie HTML di fumetto/scheda per il montaggio
-    foto: new Map(),       // indirizzo → data URL (o null): le fotografie già incorporate
+    foto: new Map(),       // indirizzo → promessa del data URL: le fotografie già incorporate
     esito: null,           // { blob, url, nome, tipo }
     origine: 'planetario'  // oppure `solare`: decide tela, comandi e risultato
   },
@@ -29016,6 +29016,8 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
       height: altezza + 'px', 'max-width': 'none', 'max-height': 'none'
     })) copia.style.setProperty(nome, valore, 'important');
     const fotoCopie = Array.from(copia.querySelectorAll('img'));
+    let tolte = 0;
+    const inViaggio = [];
     await Promise.all(fotoCopie.map(async img => {
       const haIndice = img.hasAttribute('data-reg-img');
       const indice = Number(img.getAttribute('data-reg-img'));
@@ -29024,10 +29026,19 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
       const originale = originali[indice];
       const sorgente = originale && (originale.currentSrc || originale.src);
       if (!sorgente || sorgente.startsWith('data:')) return;
-      const dati = await skyRegFotoIncorporata(sorgente);
-      if (dati) img.src = dati;
-      else skyRegNascondiFoto(img);
+      // La fotografia non si aspetta a oltranza: se non è già in mano entro
+      // una grazia breve si fa il riquadro senza di lei e si rifà quando
+      // arriva. Senza, il filmato cominciava col riquadro di ripiego — quello
+      // di solo testo disegnato a mano — per tutto il tempo del giro, che col
+      // ponte in mezzo sono un paio di secondi su una clip da cinque.
+      const promessa = skyRegFotoIncorporata(sorgente);
+      const dati = await skyRegAppena(promessa);
+      if (dati) { img.src = dati; return; }
+      skyRegNascondiFoto(img);
+      tolte += 1;
+      if (dati === undefined) inViaggio.push(promessa);
     }));
+    if (tolte) skyRegContenutoInAlto(copia);
     copia.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     const html = new XMLSerializer().serializeToString(copia);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${larghezza}" height="${altezza}">` +
@@ -29039,9 +29050,28 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
     });
     const attuale = sky.reg.riquadri.get(pannello);
     if (attuale === voce) { voce.immagine = immagine; voce.inCorso = false; }
+    // E quando la fotografia rimasta per strada arriva, il riquadro va
+    // rifatto: si sporca la sua impronta, così il fotogramma dopo la trova
+    // diversa e ne chiede uno nuovo — che stavolta la trova già in memoria.
+    // Solo per quelle **arrivate**: su un no si resterebbe a rifare il
+    // riquadro a ogni fotogramma per niente.
+    if (inViaggio.length) {
+      Promise.all(inViaggio).then(esiti => {
+        if (esiti.some(Boolean) && sky.reg.riquadri.get(pannello) === voce) voce.impronta = '';
+      });
+    }
   } catch (e) {
     voce.inCorso = false;
   }
+}
+
+// Quello che si sa di una promessa entro una grazia, e `undefined` quando
+// ancora non si sa niente — che è una risposta diversa da «no».
+function skyRegAppena(promessa) {
+  return Promise.race([
+    promessa,
+    new Promise(ok => setTimeout(() => ok(undefined), SKY_REG_FOTO_SUBITO_MS))
+  ]);
 }
 
 // Quanto si aspetta una fotografia prima di rinunciarci. È il tempo di una
@@ -29049,6 +29079,17 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
 // già a schermo — e non può diventare l'attesa di un fotogramma: finché non
 // arriva, il riquadro nel filmato è quello del fotogramma prima.
 const SKY_REG_FOTO_ATTESA_MS = 4000;
+
+// La grazia che il riquadro concede a una fotografia prima di farsi senza di
+// lei. Un terzo di secondo: è il tempo di una che arriva dalla cache del
+// browser (l'immagine è già a schermo), e non è il tempo di un ponte.
+const SKY_REG_FOTO_SUBITO_MS = 350;
+
+// Quanto si aspetta un ponte CORS. Sono due salti invece di uno — il ponte
+// deve prima andarsela a prendere lui, la fotografia — quindi il tempo è
+// quello che `aerei.js` concede ai suoi (dodici secondi), meno il fatto che
+// qui a valle c'è un filmato che sta aspettando di cominciare.
+const SKY_REG_PONTE_ATTESA_MS = 7000;
 
 // Quante righe può prendersi il nome del luogo nella firma del filmato.
 const SKY_REG_LUOGO_RIGHE = 2;
@@ -29062,18 +29103,24 @@ const SKY_REG_PREPARA_MAX_MS = 1200;
 // indirizzo esterno renderebbe insicura tutta la tela e il MediaRecorder
 // smetterebbe di produrre dati.
 //
-// Le strade sono due e vanno provate tutt'e due, perché falliscono per motivi
-// diversi. La `fetch` è la più diretta e si porta dietro tre modi di non
-// arrivare: il service worker in mezzo, che per una richiesta andata male
-// serve un `504` sintetico (e `risposta.ok` diventa falso); una voce di cache
-// **opaca** lasciata dall'`<img>` che la stessa fotografia ha già caricato in
-// modalità `no-cors`; e una risposta che arriva e non è un'immagine. La
-// seconda strada — ricaricare l'immagine chiedendo esplicitamente il CORS e
-// ricopiarla su una tela di servizio — passa in tutt'e tre i casi, e vale la
-// pena averla perché il sintomo di prima era il peggiore che ci fosse:
+// Le strade sono **tre** e vanno provate tutt'e tre, perché falliscono per
+// motivi diversi — ed è la seconda volta che questo pezzo viene rifatto, la
+// prima con due strade sole. La `fetch` è la più diretta e si porta dietro tre
+// modi di non arrivare: il service worker in mezzo, che per una richiesta
+// andata male serve un `504` sintetico (e `risposta.ok` diventa falso); una
+// voce di cache **opaca** lasciata dall'`<img>` che la stessa fotografia ha
+// già caricato in modalità `no-cors`; e una risposta che arriva e non è
+// un'immagine. La seconda — ricaricare l'immagine chiedendo esplicitamente il
+// CORS e ricopiarla su una tela di servizio — passa in tutt'e tre i casi.
+//
+// Ma tutt'e due chiedono la stessa cosa al server, cioè l'intestazione CORS, e
+// quando quella non c'è non c'è per nessuna delle due: è la configurazione di
+// quel CDN, non un guasto che passa. Da lì la terza (`skyRegFotoDaPonte`), che
+// è la sola a poter riuscire in quel caso. I sintomi delle due rese sono stati
+// due, e tutt'e due i peggiori possibili perché non sembravano errori:
 // l'icona dell'immagine rotta col suo testo alternativo («Foto dell'aereo
-// UAE3Q») stampata dentro al filmato, e sotto il nome del fotografo di una
-// fotografia che non c'è.
+// UAE3Q») col nome del fotografo di una fotografia che non c'è, e poi, tolta
+// quella, un vuoto in mezzo al riquadro.
 //
 // L'esito si tiene per indirizzo, e conta: l'impronta del riquadro cambia a
 // ogni battito (i numeri di un aereo si riscrivono una volta al secondo),
@@ -29083,28 +29130,76 @@ const SKY_REG_PREPARA_MAX_MS = 1200;
 function skyRegFotoIncorporata(sorgente) {
   const memoria = sky.reg.foto;
   if (!memoria.has(sorgente)) {
-    memoria.set(sorgente, (async () => {
+    const attesa = (async () => {
       const daRete = await skyRegFotoDaFetch(sorgente);
-      return daRete || await skyRegFotoDaTela(sorgente);
-    })());
+      if (daRete) return daRete;
+      const daTela = await skyRegFotoDaTela(sorgente);
+      if (daTela) return daTela;
+      return await skyRegFotoDaPonte(sorgente);
+    })();
+    // L'esito si appende alla promessa, e serve a una cosa sola: distinguere,
+    // alla registrazione dopo, una fotografia già in mano da un no da
+    // riprovare (vedi `skyRegScordaFotoMancate`).
+    attesa.then(esito => { attesa.esito = esito || null; }, () => { attesa.esito = null; });
+    memoria.set(sorgente, attesa);
   }
   return memoria.get(sorgente);
+}
+
+// Le fotografie già incorporate si tengono da una registrazione all'altra —
+// sono dati, e rifare il giro costerebbe l'attesa di prima —, i no invece si
+// buttano: un ponte caduto un minuto fa può essere tornato, e un no tenuto
+// diventa un no per sempre.
+function skyRegScordaFotoMancate() {
+  const memoria = sky.reg.foto;
+  Array.from(memoria.keys()).forEach(indirizzo => {
+    const attesa = memoria.get(indirizzo);
+    if (!attesa || attesa.esito === null) memoria.delete(indirizzo);
+  });
 }
 
 async function skyRegFotoDaFetch(sorgente) {
   try {
     const risposta = await fetch(sorgente, { cache: 'force-cache' });
     if (!risposta.ok) return null;
-    const blob = await risposta.blob();
-    // Una pagina d'errore HTML servita al posto della fotografia dentro a un
-    // `<img>` è un'immagine rotta: si scarta qui, dove si sa ancora cos'è.
-    if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) return null;
-    return await new Promise((ok, no) => {
-      const lettore = new FileReader();
-      lettore.onload = () => ok(lettore.result);
-      lettore.onerror = no;
-      lettore.readAsDataURL(blob);
-    });
+    return await skyRegBlobInDati(await risposta.blob());
+  } catch (e) { return null; }
+}
+
+// Una pagina d'errore HTML servita al posto della fotografia, dentro a un
+// `<img>`, è un'immagine rotta: si scarta qui, dove si sa ancora cos'è. A dire
+// che byte sono è la loro **firma** e non il tipo dichiarato, per due ragioni
+// che vanno in versi opposti: un ponte CORS il tipo non lo promette
+// (`application/octet-stream` è la risposta normale di `codetabs`, e un data
+// URL con quel tipo dentro a un `<img>` non si disegna), e un server in
+// difficoltà può invece dichiarare `image/jpeg` su una pagina d'errore.
+async function skyRegBlobInDati(blob) {
+  if (!blob || !blob.size) return null;
+  const tipo = await skyRegTipoImmagine(blob);
+  if (!tipo) return null;
+  const dati = blob.type === tipo ? blob : blob.slice(0, blob.size, tipo);
+  return await new Promise((ok, no) => {
+    const lettore = new FileReader();
+    lettore.onload = () => ok(lettore.result);
+    lettore.onerror = no;
+    lettore.readAsDataURL(dati);
+  });
+}
+
+// I primi dodici byte bastano a riconoscere le quattro immagini che il web
+// serve davvero. Dove `arrayBuffer` non c'è ci si fida di quello che il
+// server dichiara, che è il comportamento di prima.
+async function skyRegTipoImmagine(blob) {
+  if (typeof blob.arrayBuffer !== 'function') {
+    return blob.type && blob.type.indexOf('image/') === 0 ? blob.type : null;
+  }
+  try {
+    const b = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+    if (b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
+    if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+    if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';
+    if (b[0] === 0x52 && b[1] === 0x49 && b[8] === 0x57 && b[9] === 0x45) return 'image/webp';
+    return null;
   } catch (e) { return null; }
 }
 
@@ -29141,12 +29236,54 @@ function skyRegFotoDaTela(sorgente) {
   });
 }
 
+// La terza strada, ed è quella che risponde alla segnalazione «continua a non
+// vedersi la foto». Le prime due chiedono tutt'e due la stessa cosa — che il
+// CDN mandi l'intestazione CORS — e falliscono insieme quando non la manda:
+// non è un guasto che passa, è come quel server è configurato, e nessuna
+// riprova lo cambierà mai. Il sintomo è il peggiore che ci sia perché non è
+// un errore: nel filmato resta un riquadro con dentro un vuoto dove stava la
+// fotografia, e chi guarda non ha modo di sapere se manchi per la rete o
+// perché quell'aereo una fotografia non ce l'ha.
+//
+// Quello che un browser non può fare da solo lo può fare qualcuno per lui: i
+// **ponti CORS** che gli aerei usano già per i loro dati (`aereiPontiCors`,
+// esportati da `aerei.js`) riportano gli stessi byte con l'intestazione
+// aggiunta, e da lì la fotografia si legge come qualunque altra. È un
+// prestito e non una garanzia — sono servizi di terzi, gratuiti, che possono
+// sparire —, quindi si prova per ultima, si prova solo mentre si registra e
+// non entra mai nel cielo vivo: là la fotografia si vede già.
+//
+// Passa **senza** il service worker in mezzo (quei due host stanno in
+// `SERVIZI_ADSB` di `sw.js`), che è la ragione per cui una loro caduta si
+// racconta com'è invece di diventare un `504` che nessun server ha mandato.
+async function skyRegFotoDaPonte(sorgente) {
+  const ponti = typeof aereiPontiCors !== 'undefined' && Array.isArray(aereiPontiCors)
+    ? aereiPontiCors : [];
+  for (const ponte of ponti) {
+    let indirizzo = '';
+    try { indirizzo = ponte.avvolgi(sorgente); } catch (e) { indirizzo = ''; }
+    if (!indirizzo) continue;
+    const taglio = typeof AbortController === 'function' ? new AbortController() : null;
+    const sveglia = setTimeout(() => { if (taglio) taglio.abort(); }, SKY_REG_PONTE_ATTESA_MS);
+    try {
+      const risposta = await fetch(indirizzo, taglio ? { signal: taglio.signal } : undefined);
+      if (risposta.ok) {
+        const dati = await skyRegBlobInDati(await risposta.blob());
+        if (dati) return dati;
+      }
+    } catch (e) { /* il ponte dopo */ }
+    finally { clearTimeout(sveglia); }
+  }
+  return null;
+}
+
 // Una fotografia che non si può incorporare se ne va, e con lei la firma del
 // fotografo: è la stessa scelta di `satFotoTogli` nel fumetto, e per la stessa
 // ragione — la sola didascalia è la didascalia di una fotografia che non c'è.
-// Nella copia le altezze sono già scritte in pixel (vengono dagli stili
-// calcolati), quindi togliere un nodo non fa saltare niente di quello che gli
-// sta intorno: resta un riquadro un po' più vuoto invece di uno rotto.
+//
+// Quello che resta però non è «un riquadro un po' più vuoto», come diceva
+// questo commento fino a ieri: è un **buco in mezzo al testo**, e ci vuole
+// `skyRegContenutoInAlto` a chiuderlo (riga qui sotto).
 function skyRegNascondiFoto(img) {
   const cornice = img.closest ? img.closest('.fumetto-foto') : null;
   if (cornice) { cornice.remove(); return; }
@@ -29157,6 +29294,29 @@ function skyRegNascondiFoto(img) {
   if (!padre.textContent.trim() && !padre.querySelector('img, canvas, svg, video')) {
     padre.style.setProperty('display', 'none', 'important');
   }
+}
+
+// E il buco che resta dopo. Nella copia **ogni** altezza è scritta in pixel
+// (vengono dagli stili calcolati, e sono quelle misurate col riquadro vivo,
+// fotografia compresa), quindi togliendo un nodo il contenitore non si
+// stringe: si tiene i suoi centododici pixel in più. Per un blocco normale
+// quello spazio casca in fondo e non lo nota nessuno; `.fumetto-righe` però è
+// una griglia, e una griglia con l'altezza fissata **stira le sue righe** per
+// riempirla — di serie, senza che nessuno l'abbia chiesto. Da lì il difetto
+// che si vedeva nel filmato: non un vuoto in coda ma una spaziatura larga fra
+// una riga di dati e l'altra, cioè un riquadro che sembra sbagliato invece di
+// uno a cui manca una fotografia.
+//
+// Si rimette quindi il contenuto in alto su tutto quello che impagina in
+// colonna. Non si tocca la geometria del riquadro, e conta: il fumetto ha una
+// coda che indica l'oggetto, e stringerlo vorrebbe dire staccarla da lui.
+function skyRegContenutoInAlto(copia) {
+  [copia, ...copia.querySelectorAll('*')].forEach(el => {
+    const modo = el.style && el.style.display;
+    if (modo === 'grid' || modo === 'inline-grid' || modo === 'flex' || modo === 'inline-flex') {
+      el.style.setProperty('align-content', 'flex-start', 'important');
+    }
+  });
 }
 
 function skyRegSpezzaTesto(ctx, testo, larghezza) {
@@ -29305,7 +29465,7 @@ async function skyRegAvvia() {
   // fatto due registrazioni di fila non si ritrova la prima sparita a metà
   skyRegDimenticaEsito();
   r.riquadri.clear();
-  r.foto.clear();
+  skyRegScordaFotoMancate();
   skyRegChiudiPannello();
 
   if (!skyRegPreparaTela()) {
