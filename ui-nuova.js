@@ -1111,6 +1111,9 @@ function ridisegnaTuttoPerLingua() {
       if (modale && !modale.classList.contains('hidden') && typeof videoAggiornaCartella === 'function') {
         videoAggiornaCartella();
       }
+      // E le schede: l'etichetta «Nuovo» si compone in JavaScript come la
+      // riga della cartella, quindi va ridisegnata anche lei.
+      if (typeof videoRidisegnaPerLingua === 'function') videoRidisegnaPerLingua();
     }],
     ['pannello degli aerei', () => {
       if (typeof aereiAggiornaUI === 'function') aereiAggiornaUI();

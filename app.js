@@ -8232,6 +8232,7 @@ const sky = {
     durataReale: 0,        // quanto è durata davvero (si può fermare prima)
     ultimoConto: 0,        // per non riscrivere il conto alla rovescia a ogni fotogramma
     riquadri: new Map(),   // fotografie HTML di fumetto/scheda per il montaggio
+    foto: new Map(),       // indirizzo → data URL (o null): le fotografie già incorporate
     esito: null,           // { blob, url, nome, tipo }
     origine: 'planetario'  // oppure `solare`: decide tela, comandi e risultato
   },
@@ -29023,22 +29024,9 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
       const originale = originali[indice];
       const sorgente = originale && (originale.currentSrc || originale.src);
       if (!sorgente || sorgente.startsWith('data:')) return;
-      try {
-        const risposta = await fetch(sorgente, { cache: 'force-cache' });
-        if (!risposta.ok) { img.removeAttribute('src'); return; }
-        const blob = await risposta.blob();
-        img.src = await new Promise((ok, no) => {
-          const lettore = new FileReader();
-          lettore.onload = () => ok(lettore.result);
-          lettore.onerror = no;
-          lettore.readAsDataURL(blob);
-        });
-      } catch (e) {
-        // Un URL esterno dentro all'SVG renderebbe insicura tutta la tela e il
-        // MediaRecorder smetterebbe di produrre dati. Meglio il testo alternativo
-        // nel solo fotogramma di ripiego che perdere l'intero filmato.
-        img.removeAttribute('src');
-      }
+      const dati = await skyRegFotoIncorporata(sorgente);
+      if (dati) img.src = dati;
+      else skyRegNascondiFoto(img);
     }));
     copia.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     const html = new XMLSerializer().serializeToString(copia);
@@ -29053,6 +29041,121 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
     if (attuale === voce) { voce.immagine = immagine; voce.inCorso = false; }
   } catch (e) {
     voce.inCorso = false;
+  }
+}
+
+// Quanto si aspetta una fotografia prima di rinunciarci. È il tempo di una
+// richiesta che il browser serve quasi sempre dalla sua cache — l'immagine è
+// già a schermo — e non può diventare l'attesa di un fotogramma: finché non
+// arriva, il riquadro nel filmato è quello del fotogramma prima.
+const SKY_REG_FOTO_ATTESA_MS = 4000;
+
+// Quante righe può prendersi il nome del luogo nella firma del filmato.
+const SKY_REG_LUOGO_RIGHE = 2;
+
+// Quanto la registrazione aspetta che le schede siano pronte prima di
+// partire. Un secondo e due: è il tempo di una fotografia che arriva dalla
+// cache del browser, e non è il tempo di una che non arriva affatto.
+const SKY_REG_PREPARA_MAX_MS = 1200;
+
+// Una fotografia di rete dentro all'SVG deve diventare un data URL: un
+// indirizzo esterno renderebbe insicura tutta la tela e il MediaRecorder
+// smetterebbe di produrre dati.
+//
+// Le strade sono due e vanno provate tutt'e due, perché falliscono per motivi
+// diversi. La `fetch` è la più diretta e si porta dietro tre modi di non
+// arrivare: il service worker in mezzo, che per una richiesta andata male
+// serve un `504` sintetico (e `risposta.ok` diventa falso); una voce di cache
+// **opaca** lasciata dall'`<img>` che la stessa fotografia ha già caricato in
+// modalità `no-cors`; e una risposta che arriva e non è un'immagine. La
+// seconda strada — ricaricare l'immagine chiedendo esplicitamente il CORS e
+// ricopiarla su una tela di servizio — passa in tutt'e tre i casi, e vale la
+// pena averla perché il sintomo di prima era il peggiore che ci fosse:
+// l'icona dell'immagine rotta col suo testo alternativo («Foto dell'aereo
+// UAE3Q») stampata dentro al filmato, e sotto il nome del fotografo di una
+// fotografia che non c'è.
+//
+// L'esito si tiene per indirizzo, e conta: l'impronta del riquadro cambia a
+// ogni battito (i numeri di un aereo si riscrivono una volta al secondo),
+// quindi senza memoria la stessa fotografia si andava a richiedere per tutta
+// la durata della registrazione. La memoria si svuota all'avvio di ogni
+// registrazione, così un no di stasera non diventa un no per sempre.
+function skyRegFotoIncorporata(sorgente) {
+  const memoria = sky.reg.foto;
+  if (!memoria.has(sorgente)) {
+    memoria.set(sorgente, (async () => {
+      const daRete = await skyRegFotoDaFetch(sorgente);
+      return daRete || await skyRegFotoDaTela(sorgente);
+    })());
+  }
+  return memoria.get(sorgente);
+}
+
+async function skyRegFotoDaFetch(sorgente) {
+  try {
+    const risposta = await fetch(sorgente, { cache: 'force-cache' });
+    if (!risposta.ok) return null;
+    const blob = await risposta.blob();
+    // Una pagina d'errore HTML servita al posto della fotografia dentro a un
+    // `<img>` è un'immagine rotta: si scarta qui, dove si sa ancora cos'è.
+    if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) return null;
+    return await new Promise((ok, no) => {
+      const lettore = new FileReader();
+      lettore.onload = () => ok(lettore.result);
+      lettore.onerror = no;
+      lettore.readAsDataURL(blob);
+    });
+  } catch (e) { return null; }
+}
+
+// La seconda strada: la stessa fotografia caricata come immagine, col CORS
+// chiesto per nome, e ricopiata su una tela di servizio. Il `toDataURL`
+// solleva se l'immagine non è leggibile — è la tela di servizio a restare
+// contaminata, non quella del filmato, ed è l'unico modo di saperlo senza
+// rischiare la registrazione.
+function skyRegFotoDaTela(sorgente) {
+  return new Promise(ok => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.referrerPolicy = 'no-referrer';
+    let chiuso = false;
+    const finisci = esito => {
+      if (chiuso) return;
+      chiuso = true;
+      clearTimeout(sveglia);
+      ok(esito);
+    };
+    const sveglia = setTimeout(() => finisci(null), SKY_REG_FOTO_ATTESA_MS);
+    img.onload = () => {
+      try {
+        const l = img.naturalWidth, h = img.naturalHeight;
+        if (!l || !h) { finisci(null); return; }
+        const tela = document.createElement('canvas');
+        tela.width = l; tela.height = h;
+        tela.getContext('2d').drawImage(img, 0, 0);
+        finisci(tela.toDataURL('image/jpeg', 0.86));
+      } catch (e) { finisci(null); }
+    };
+    img.onerror = () => finisci(null);
+    try { img.src = sorgente; } catch (e) { finisci(null); }
+  });
+}
+
+// Una fotografia che non si può incorporare se ne va, e con lei la firma del
+// fotografo: è la stessa scelta di `satFotoTogli` nel fumetto, e per la stessa
+// ragione — la sola didascalia è la didascalia di una fotografia che non c'è.
+// Nella copia le altezze sono già scritte in pixel (vengono dagli stili
+// calcolati), quindi togliere un nodo non fa saltare niente di quello che gli
+// sta intorno: resta un riquadro un po' più vuoto invece di uno rotto.
+function skyRegNascondiFoto(img) {
+  const cornice = img.closest ? img.closest('.fumetto-foto') : null;
+  if (cornice) { cornice.remove(); return; }
+  const padre = img.parentElement;
+  img.remove();
+  if (!padre) return;
+  padre.querySelectorAll('[class*="credito"]').forEach(el => el.remove());
+  if (!padre.textContent.trim() && !padre.querySelector('img, canvas, svg, video')) {
+    padre.style.setProperty('display', 'none', 'important');
   }
 }
 
@@ -29097,12 +29200,10 @@ function skyRegTestoEntro(ctx, testo, larghezza) {
 function skyRegFirma(ctx, L, H) {
   const misura = Math.max(11, Math.round(H / 34));
   const margine = Math.round(misura * 1.1);
+  const passo = Math.round(misura * 1.25);
   const quando = skyAdesso();
-  // Su un fotogramma stretto (telefono in verticale) il mese per esteso si
-  // mangia la riga: lì basta l'abbreviazione
-  const data = quando.toLocaleString('it-IT', {
-    day: 'numeric', month: L < 520 ? 'short' : 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+  const dataConMese = mese => quando.toLocaleString('it-IT', {
+    day: 'numeric', month: mese, year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
   // Il luogo della firma è quello da cui si guarda: se il cielo è stato
   // spostato altrove, il filmato deve dire quello, non dove sei seduto.
@@ -29119,33 +29220,62 @@ function skyRegFirma(ctx, L, H) {
   ctx.shadowBlur = Math.round(misura / 2);
 
   const misuraNome = Math.round(misura * 0.82);
+  const marchio = 'AstroCalendario di Ben';
   ctx.font = `600 ${misura}px system-ui, sans-serif`;
   const larghezzaFirma = Math.max(0, L - margine * 2);
-  // La data identifica il momento e deve restare intera. Se il nome del luogo
-  // è troppo lungo, si accorcia invece di uscire dal fotogramma registrato.
-  const prefisso = dove ? `${data} · ` : '';
-  const riga = dove
-    ? prefisso + skyRegTestoEntro(ctx, dove, Math.max(0, larghezzaFirma - ctx.measureText(prefisso).width))
-    : skyRegTestoEntro(ctx, data, larghezzaFirma);
-  const largaRiga = ctx.measureText(riga).width;
+  // Il mese per esteso si mangia la riga di un fotogramma verticale: quando
+  // non ci sta si passa all'abbreviazione. Prima la scelta era **dichiarata**
+  // — un fotogramma più stretto di 520 pixel — e 520 non è la misura di
+  // niente: il corpo del carattere qui viene dall'altezza, quindi la stessa
+  // larghezza porta scritte diverse. Si misura.
+  const dataLunga = dataConMese('long');
+  const data = ctx.measureText(dataLunga).width <= larghezzaFirma ? dataLunga : dataConMese('short');
+  // Data e luogo in una riga sola quando ci stanno; se no il luogo va **a
+  // capo** invece di essere accorciato fino a non dire più niente. Col
+  // telefono in verticale la riga è larga la metà e la data si prende quasi
+  // tutto: «Sasso Marconi, Bologna» si riduceva a «…», cioè il filmato non
+  // diceva più da dove era stato ripreso — che è metà di quello che la firma
+  // esiste per dire. A capo, il luogo ha tutta la larghezza, e sta sopra
+  // perché la riga in fondo è quella che il marchio può accompagnare.
+  const insieme = dove ? `${data} · ${dove}` : data;
+  const righe = [];
+  if (!dove || ctx.measureText(insieme).width <= larghezzaFirma) {
+    righe.push(skyRegTestoEntro(ctx, insieme, larghezzaFirma));
+  } else {
+    // E il luogo può prendersi due righe, perché i nomi del geocodificatore
+    // mettono in fila comune, provincia e regione: «Sasso Marconi, Bologna,
+    // Emilia-Romagna» non sta in una riga di un fotogramma verticale nemmeno
+    // avendola tutta per sé. Quello che eccede la seconda riga si accorcia
+    // lì, con i puntini: due righe di firma sono una firma, quattro sono una
+    // didascalia appoggiata sopra al cielo.
+    const pezzi = skyRegSpezzaTesto(ctx, dove, larghezzaFirma);
+    pezzi.slice(0, SKY_REG_LUOGO_RIGHE - 1)
+      .forEach(r => righe.push(skyRegTestoEntro(ctx, r, larghezzaFirma)));
+    righe.push(skyRegTestoEntro(ctx, pezzi.slice(SKY_REG_LUOGO_RIGHE - 1).join(' '), larghezzaFirma));
+    righe.push(skyRegTestoEntro(ctx, data, larghezzaFirma));
+  }
+
+  const largaUltima = ctx.measureText(righe[righe.length - 1]).width;
   ctx.font = `${misuraNome}px system-ui, sans-serif`;
-  const largoNome = ctx.measureText('AstroCalendario di Ben').width;
-  // Il nome dell'app sta in fondo a destra se ci sta senza toccare la data;
-  // se no si accomoda sopra, che è meglio di due scritte sovrapposte
-  const inFila = largaRiga + largoNome + margine * 3 <= L;
+  const largoNome = ctx.measureText(marchio).width;
+  // Il nome dell'app sta in fondo a destra se ci sta senza toccare l'ultima
+  // riga; se no si accomoda sopra a tutto, che è meglio di due scritte
+  // sovrapposte
+  const inFila = largaUltima + largoNome + margine * 3 <= L;
+  const base = H - margine;
 
   ctx.fillStyle = 'rgba(148, 168, 214, 0.85)';
   if (inFila) {
     ctx.textAlign = 'right';
-    ctx.fillText('AstroCalendario di Ben', L - margine, H - margine);
+    ctx.fillText(marchio, L - margine, base);
     ctx.textAlign = 'left';
   } else {
-    ctx.fillText('AstroCalendario di Ben', margine, H - margine - Math.round(misura * 1.25));
+    ctx.fillText(marchio, margine, base - passo * righe.length);
   }
 
   ctx.font = `600 ${misura}px system-ui, sans-serif`;
   ctx.fillStyle = 'rgba(248, 250, 252, 0.92)';
-  ctx.fillText(riga, margine, H - margine);
+  righe.forEach((riga, i) => ctx.fillText(riga, margine, base - passo * (righe.length - 1 - i)));
   ctx.restore();
 }
 
@@ -29175,6 +29305,7 @@ async function skyRegAvvia() {
   // fatto due registrazioni di fila non si ritrova la prima sparita a metà
   skyRegDimenticaEsito();
   r.riquadri.clear();
+  r.foto.clear();
   skyRegChiudiPannello();
 
   if (!skyRegPreparaTela()) {
@@ -29211,10 +29342,17 @@ async function skyRegPreparaSchedeVisibili() {
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello && pannello.classList.contains('visibile')) visibili.push(pannello);
 
-  await Promise.all(visibili.map(pannello => {
+  const pronte = Promise.all(visibili.map(pannello => {
     const impronta = skyRegImprontaRiquadro(pannello);
     return skyRegFotografaRiquadro(pannello, impronta);
   }));
+  // Ma con una scadenza, perché aspettare la fotografia è una promessa che
+  // non si può fare senza limite: qui in mezzo c'è la rete, e una richiesta
+  // che non torna terrebbe il dito premuto sul tasto per sempre — cioè un
+  // filmato che non comincia, che è molto peggio di un filmato che comincia
+  // con una scheda di solo testo. La rasterizzazione continua da sé e il
+  // fotogramma che la trova pronta se la prende.
+  await Promise.race([pronte, new Promise(ok => setTimeout(ok, SKY_REG_PREPARA_MAX_MS))]);
 }
 
 function skyRegAvviaVideo() {
@@ -29487,6 +29625,191 @@ let videoSincronizzazioneInCorso = false;
 // riproduzione: il filmato torna continuamente a "caricare" e non parte mai.
 // Questa firma descrive ciò che si vede senza leggere il contenuto dei Blob.
 let videoFirmaGalleria = null;
+
+// --- Quali video sono già stati guardati ----------------------------------
+//
+// Serve a una cosa sola, ed è l'unica che l'elenco non sappia dire: quale sia
+// il filmato di stanotte. Dopo una serata con tre registrazioni, in una
+// galleria di venti schede tutte uguali, la data scritta in piccolo sotto al
+// nome è l'unico indizio — e si legge una scheda per volta. L'etichetta
+// «Nuovo» risponde a colpo d'occhio.
+//
+// La chiave è il **nome** del file e non l'`id`, perché lo stesso filmato
+// cambia identificativo secondo da dove lo si sta leggendo (`prova.webm`
+// dall'archivio, `cartella:prova.webm` dalla cartella): guardarlo una volta
+// deve valere per sempre, non per una delle due strade.
+const CHIAVE_VIDEO_VISTI = 'astrocalendario_video_visti';
+// Oltre questo numero i nomi più vecchi cadono. È una comodità, non un
+// archivio: un elenco che cresce senza fine prima o poi non sta più in
+// `localStorage`, e a quel punto si perderebbe tutto invece del più vecchio.
+const VIDEO_VISTI_MAX = 400;
+let videoVisti = null;   // { nomi: Set, dalla: ms } — null finché non si legge
+
+function videoLeggiVisti() {
+  if (videoVisti) return videoVisti;
+  let salvato = null;
+  try { salvato = JSON.parse(localStorage.getItem(CHIAVE_VIDEO_VISTI) || 'null'); }
+  catch (e) { salvato = null; }
+  videoVisti = {
+    nomi: new Set(Array.isArray(salvato && salvato.nomi) ? salvato.nomi : []),
+    // Da quando si tiene il conto, e non è un dettaglio: senza questa riga,
+    // il giorno in cui l'etichetta è nata una galleria di venti filmati
+    // avrebbe detto venti volte «Nuovo» — cioè non avrebbe detto niente. Chi
+    // è più vecchio di qui non è nuovo, e non c'è nessuna lista da seminare.
+    // Si legge all'avvio dell'app (`videoInizializza`) e non alla prima
+    // apertura della galleria: una registrazione fatta prima di aprirla
+    // resterebbe altrimenti dalla parte sbagliata di questo istante.
+    dalla: Number(salvato && salvato.dalla) || Date.now()
+  };
+  if (!salvato) videoScriviVisti();
+  return videoVisti;
+}
+
+function videoScriviVisti() {
+  if (!videoVisti) return;
+  const nomi = Array.from(videoVisti.nomi).slice(-VIDEO_VISTI_MAX);
+  videoVisti.nomi = new Set(nomi);
+  try { localStorage.setItem(CHIAVE_VIDEO_VISTI, JSON.stringify({ nomi, dalla: videoVisti.dalla })); }
+  catch (e) { /* in incognito si perde alla chiusura, e va bene così */ }
+}
+
+function videoNuovo(elemento) {
+  const visti = videoLeggiVisti();
+  return (Number(elemento.creato) || 0) >= visti.dalla && !visti.nomi.has(elemento.nome);
+}
+
+function videoSegnaVisto(elemento) {
+  const visti = videoLeggiVisti();
+  if (!elemento || !elemento.nome || visti.nomi.has(elemento.nome)) return;
+  visti.nomi.add(elemento.nome);
+  videoScriviVisti();
+}
+
+// --- L'anteprima di una scheda -------------------------------------------
+
+// Quanto larga si tiene: è il fotogramma di ripiego di una scheda da trecento
+// pixel, non una fotografia da conservare.
+const VIDEO_ANTEPRIMA_LATO = 480;
+// Dove si va a prenderlo. Il primo fotogramma di una registrazione del cielo
+// può essere ancora nero — la fotocamera che apre, il primo disegno — mentre
+// mezzo secondo dentro al filmato c'è già qualcosa da vedere.
+const VIDEO_ANTEPRIMA_SEC = 0.5;
+const VIDEO_ANTEPRIMA_ATTESA_MS = 6000;
+// Quante anteprime si tengono. Sono qualche decina di kilobyte l'una e non
+// c'è nessuno che le butti: una galleria di centinaia di filmati, aperta e
+// richiusa, se le porterebbe dietro tutte. È una memoria di comodo, non un
+// archivio, quindi oltre il tetto se ne va la più vecchia — e una `Map`
+// scorre nell'ordine in cui le chiavi sono state messe.
+const VIDEO_ANTEPRIME_MAX = 60;
+const videoAnteprime = new Map();
+let videoCodaAnteprime = Promise.resolve();
+
+// Un file letto dalla cartella può non portare nessun tipo MIME: il sistema
+// lo deduce dall'estensione, e quando quell'estensione non la conosce
+// risponde una stringa vuota. Un filmato appena registrato invece il tipo ce
+// l'ha sempre, dal registratore — quindi è una differenza fra le due metà
+// della galleria, ed è il primo posto in cui guardare quando una sola delle
+// due non si vede.
+//
+// Quanto valga, misurato: su Chromium **niente**, un object URL senza tipo si
+// carica uguale (`readyState` 4, il filmato indovinato dal contenuto). Non è
+// però una cosa su cui un lettore debba contare, e dichiarare il tipo non
+// costa niente: `slice` restituisce un Blob col tipo nuovo **senza leggere i
+// dati**, quindi non è la copia in memoria del filmato. Una causa possibile
+// in meno, gratis; la cura vera dell'anteprima è il poster qui sotto.
+function videoBlobLeggibile(elemento) {
+  const blob = elemento && elemento.blob;
+  if (!blob) return null;
+  if ((blob.type || '').indexOf('video/') === 0) return blob;
+  const tipo = /\.webm$/i.test(elemento.nome || '') ? 'video/webm' : 'video/mp4';
+  try { return blob.slice(0, blob.size, tipo); } catch (e) { return blob; }
+}
+
+function videoChiaveAnteprima(elemento) {
+  const peso = Number(elemento.dimensione || (elemento.blob && elemento.blob.size)) || 0;
+  return `${elemento.nome}:${Number(elemento.creato) || 0}:${peso}`;
+}
+
+// Un `<video preload="metadata">` **può** mostrare il primo fotogramma, e
+// sul computer lo fa: misurato in un Chromium, un filmato da object URL
+// arriva a `readyState` 4 da solo, cioè la scheda mostra il suo fotogramma
+// senza che nessuno faccia niente. Su un telefono no. Lì `preload` è un
+// suggerimento che il browser ignora per non consumare dati — su iOS in
+// particolare — e la scheda resta un rettangolo nero finché non si preme
+// play: cioè l'anteprima non esiste proprio dove serve, perché è lì che si
+// scorre una galleria per cercare il filmato di ieri.
+//
+// L'anteprima quindi si **fa**: si decodifica un fotogramma su una tela e
+// diventa il `poster` del lettore. Non copre niente — il `poster` è quello
+// che si vede *finché* il fotogramma vero non c'è, quindi sul computer non
+// si vedrà mai — ed è quello che resta dove il fotogramma vero non arriva.
+function videoAnteprimaDi(elemento) {
+  const chiave = videoChiaveAnteprima(elemento);
+  if (!videoAnteprime.has(chiave)) {
+    // Una per volta: aprire venti filmati insieme per guardarne il primo
+    // fotogramma vuol dire venti decodificatori accesi, e su un telefono è
+    // la galleria che si inchioda proprio mentre la si sta aprendo.
+    const attesa = videoCodaAnteprime.then(() => videoFaiAnteprima(elemento));
+    videoCodaAnteprime = attesa.catch(() => null);
+    videoAnteprime.set(chiave, attesa);
+    while (videoAnteprime.size > VIDEO_ANTEPRIME_MAX) {
+      videoAnteprime.delete(videoAnteprime.keys().next().value);
+    }
+  }
+  return videoAnteprime.get(chiave);
+}
+
+function videoFaiAnteprima(elemento) {
+  const contenuto = videoBlobLeggibile(elemento);
+  if (!contenuto) return Promise.resolve(null);
+  // L'indirizzo è **suo** e non quello della scheda: un ridisegno della
+  // galleria revoca i propri, e revocarlo a metà decodifica lascerebbe in
+  // memoria un no che non è un no.
+  const url = URL.createObjectURL(contenuto);
+  return new Promise(ok => {
+    const lettore = document.createElement('video');
+    lettore.muted = true;
+    lettore.defaultMuted = true;
+    lettore.playsInline = true;
+    lettore.preload = 'auto';
+    let chiuso = false;
+    const finisci = esito => {
+      if (chiuso) return;
+      chiuso = true;
+      clearTimeout(sveglia);
+      try { lettore.removeAttribute('src'); lettore.load(); } catch (e) { /* liberato comunque */ }
+      URL.revokeObjectURL(url);
+      ok(esito);
+    };
+    const sveglia = setTimeout(() => finisci(null), VIDEO_ANTEPRIMA_ATTESA_MS);
+    const disegna = () => {
+      try {
+        const l = lettore.videoWidth, h = lettore.videoHeight;
+        if (!l || !h) { finisci(null); return; }
+        const k = Math.min(1, VIDEO_ANTEPRIMA_LATO / Math.max(l, h));
+        const tela = document.createElement('canvas');
+        tela.width = Math.max(2, Math.round(l * k));
+        tela.height = Math.max(2, Math.round(h * k));
+        tela.getContext('2d').drawImage(lettore, 0, 0, tela.width, tela.height);
+        finisci(tela.toDataURL('image/jpeg', 0.72));
+      } catch (e) { finisci(null); }
+    };
+    lettore.addEventListener('error', () => finisci(null));
+    lettore.addEventListener('loadeddata', () => {
+      // Un webm che arriva dal MediaRecorder spesso non dichiara la durata
+      // (`Infinity`): lì non si cerca nessun istante, si disegna quello che
+      // c'è — che è il primo fotogramma, e non è un ripiego peggiore di un
+      // salto a un punto che il filmato non sa di avere.
+      const meta = Math.min(VIDEO_ANTEPRIMA_SEC, (lettore.duration || 0) / 2);
+      if (Number.isFinite(lettore.duration) && meta > 0.05) {
+        lettore.addEventListener('seeked', disegna, { once: true });
+        try { lettore.currentTime = meta; return; } catch (e) { /* si disegna quello che c'è */ }
+      }
+      disegna();
+    });
+    try { lettore.src = url; lettore.load(); } catch (e) { finisci(null); }
+  });
+}
 
 function videoLeggiScelta() {
   try {
@@ -29841,38 +30164,65 @@ async function videoRenderGalleria() {
   videoUrlGalleria = [];
   elenco.innerHTML = '';
   if (!video.length) {
-    elenco.innerHTML = '<p class="galleria-vuota">Non ci sono ancora video. Registrane uno dal Planetario o dal Sistema Solare 3D e premi “Salva”.</p>';
+    const vuota = document.createElement('p');
+    vuota.className = 'galleria-vuota';
+    vuota.textContent = astroI18n.t('galleria.vuota');
+    elenco.appendChild(vuota);
     videoSincronizzazioneInCorso = false;
     return;
   }
   video.forEach(elemento => {
-    const url = URL.createObjectURL(elemento.blob);
+    const url = URL.createObjectURL(videoBlobLeggibile(elemento) || elemento.blob);
     videoUrlGalleria.push(url);
     const scheda = document.createElement('article');
     scheda.className = 'galleria-video';
     const lettore = document.createElement('video');
     lettore.src = url; lettore.controls = true; lettore.preload = 'metadata'; lettore.playsInline = true;
+    // L'anteprima arriva quando è pronta e non fa aspettare la scheda. Se nel
+    // frattempo il browser ha già il fotogramma vero, questo poster non si
+    // vedrà mai — ed è esattamente quello che deve succedere.
+    videoAnteprimaDi(elemento).then(poster => {
+      if (poster && lettore.isConnected) lettore.poster = poster;
+    });
     const esciPieno = document.createElement('button');
     esciPieno.type = 'button'; esciPieno.className = 'galleria-pieno-esci'; esciPieno.textContent = '✕';
-    esciPieno.setAttribute('aria-label', 'Esci dallo schermo intero');
+    esciPieno.setAttribute('aria-label', astroI18n.t('schermo.esciTitolo'));
     esciPieno.addEventListener('click', () => videoEsciSchermoIntero(scheda));
     const corpo = document.createElement('div'); corpo.className = 'galleria-video-corpo';
     const nome = document.createElement('p'); nome.className = 'galleria-video-nome'; nome.textContent = elemento.nome;
+    const testa = document.createElement('div'); testa.className = 'galleria-video-testa';
+    testa.append(nome);
+    if (videoNuovo(elemento)) {
+      const nuovo = document.createElement('span');
+      nuovo.className = 'galleria-nuovo';
+      nuovo.textContent = astroI18n.t('galleria.nuovo');
+      nuovo.title = astroI18n.t('galleria.nuovo-spiega');
+      testa.append(nuovo);
+    }
+    // Guardato vuol dire premuto play. L'etichetta se ne va lì, togliendo il
+    // nodo: rifare l'elenco non servirebbe e non succederebbe nemmeno, perché
+    // il disegno si rifà solo quando la **firma** cambia — e guardare un
+    // filmato non cambia nessuno dei dati da cui la firma nasce.
+    lettore.addEventListener('play', () => {
+      videoSegnaVisto(elemento);
+      const etichetta = testa.querySelector('.galleria-nuovo');
+      if (etichetta) etichetta.remove();
+    }, { once: true });
     const meta = document.createElement('p'); meta.className = 'galleria-video-meta';
     const dettaglio = elemento.durata
       ? `${Number(elemento.durata).toFixed(1).replace('.0', '')} s`
       : `${(Number(elemento.dimensione || elemento.blob.size) / 1048576).toFixed(1)} MB`;
     meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${dettaglio}`;
     const azioni = document.createElement('div'); azioni.className = 'galleria-video-azioni';
-    const pieno = document.createElement('button'); pieno.type = 'button'; pieno.className = 'tasto-cielo'; pieno.textContent = 'Schermo intero';
+    const pieno = document.createElement('button'); pieno.type = 'button'; pieno.className = 'tasto-cielo'; pieno.textContent = astroI18n.t('ui.schermo-intero');
     pieno.addEventListener('click', () => videoSchermoIntero(lettore, scheda));
-    const condividi = document.createElement('button'); condividi.type = 'button'; condividi.className = 'tasto-cielo'; condividi.textContent = 'Condividi';
+    const condividi = document.createElement('button'); condividi.type = 'button'; condividi.className = 'tasto-cielo'; condividi.textContent = astroI18n.t('ui.condividi');
     condividi.addEventListener('click', () => videoCondividiSalvato(elemento));
-    const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = 'Scarica';
+    const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = astroI18n.t('galleria.scarica');
     scarica.addEventListener('click', () => videoScaricaSalvato(elemento));
-    const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = 'Elimina';
+    const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = astroI18n.t('galleria.elimina');
     elimina.addEventListener('click', () => videoElimina(elemento));
-    azioni.append(pieno, condividi, scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, esciPieno, corpo); elenco.appendChild(scheda);
+    azioni.append(pieno, condividi, scarica, elimina); corpo.append(testa, meta, azioni); scheda.append(lettore, esciPieno, corpo); elenco.appendChild(scheda);
   });
   videoSincronizzazioneInCorso = false;
 }
@@ -29904,6 +30254,19 @@ async function videoApriGalleria() {
   }, 2000);
 }
 
+// Il cambio lingua. Le schede si compongono in JavaScript — l'etichetta
+// «Nuovo» e il piede dei tasti — quindi non portano nessuna chiave nel
+// documento e il gestore delle lingue non le può riscrivere: vanno
+// ridisegnate. La firma si butta, se no il disegno si accorge che nessun dato
+// è cambiato e lascia intatto il DOM, che è quello che deve fare a ogni altro
+// giro. Solo a finestra aperta: è l'unico momento in cui qualcuno le legge.
+function videoRidisegnaPerLingua() {
+  const modale = document.getElementById('modale-galleria');
+  if (!modale || modale.classList.contains('hidden')) return;
+  videoFirmaGalleria = null;
+  videoRenderGalleria();
+}
+
 function videoChiudiGalleria() {
   document.getElementById('modale-galleria')?.classList.add('hidden');
   document.querySelectorAll('#galleria-elenco video').forEach(video => video.pause());
@@ -29927,6 +30290,10 @@ async function videoInizializza() {
     if (e.key === 'Escape' && !document.getElementById('modale-galleria')?.classList.contains('hidden')) videoChiudiGalleria();
   });
   videoSceltaCartella = videoLeggiScelta();
+  // Da qui in avanti si tiene il conto dei video guardati, e va letto adesso:
+  // l'istante da cui un filmato può dirsi «nuovo» deve stare **prima** della
+  // prima registrazione, non prima della prima apertura della galleria.
+  videoLeggiVisti();
   try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')); }
   catch (e) { videoCartella = null; }
   // Chi aveva già una cartella prima che questa memoria esistesse non deve

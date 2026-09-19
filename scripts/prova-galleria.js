@@ -28,6 +28,10 @@ const server = http.createServer((req, res) => {
   try {
     const contesto = await browser.newContext({ serviceWorkers: 'block' });
     const pagina = await contesto.newPage();
+    // Questa prova non parla di lingua, quindi la lingua la fissa: le sue
+    // attese sono in italiano, e da quando la scelta è immediata — prima
+    // aspettava la rete — su una macchina di CI arrivava l'inglese.
+    await pagina.addInitScript(() => { try { localStorage.astrocal_lingua = 'it'; } catch (e) {} });
     await pagina.route('**/*', rotta => {
       const url = rotta.request().url();
       if (url.startsWith('http://localhost:8097/')) return rotta.continue();
@@ -162,6 +166,181 @@ const server = http.createServer((req, res) => {
     const durataOk = esito.durataPredefinita === 15 && esito.durataNelleImpostazioni;
     console.log(`${durataOk ? 'ok' : 'FALLITO'} — 15 secondi è la durata predefinita e compare nelle impostazioni`, esito);
     if (!durataOk) process.exitCode = 1;
+
+    // Quale sia il filmato di stanotte, e perché una scheda resta nera.
+    //
+    // Sono due assenze, e le assenze non falliscono: una galleria di venti
+    // schede tutte uguali è una galleria plausibile — nessuno, guardandola,
+    // dice «manca l'etichetta di quello appena registrato» — e un rettangolo
+    // nero al posto dell'anteprima somiglia a un video che sta caricando, non
+    // a un video che il browser non ha nemmeno provato a decodificare perché
+    // il suo object URL non porta un tipo. Il giudice quindi non è l'occhio:
+    // si guarda cosa arriva alla scheda e con che tipo.
+    const nuovi = await pagina.evaluate(async () => {
+      videoCartella = null;
+      videoFirmaGalleria = null;
+      videoAnteprime.clear();
+      // Il conto dei visti riparte da un istante fa: quello di prima è più
+      // vecchio, quello registrato adesso è nuovo.
+      videoVisti = { nomi: new Set(), dalla: Date.now() - 1000 };
+
+      // Un file letto dalla cartella può non portare nessun tipo MIME.
+      const tipoDedotto = {
+        webm: videoBlobLeggibile({ nome: 'a.webm', blob: new Blob(['x'], { type: '' }) }).type,
+        mp4: videoBlobLeggibile({ nome: 'a.MP4', blob: new Blob(['x'], { type: '' }) }).type,
+        senzaEstensione: videoBlobLeggibile({ nome: 'a', blob: new Blob(['x'], { type: 'application/octet-stream' }) }).type,
+        // Un tipo che già va bene non si tocca: rifare il Blob per niente
+        // vuol dire una copia in memoria per ogni scheda.
+        giaBuono: (() => {
+          const b = new Blob(['x'], { type: 'video/webm' });
+          return videoBlobLeggibile({ nome: 'a.webm', blob: b }) === b;
+        })()
+      };
+
+      await videoDB('video', 'readwrite', store => store.put({
+        id: 'stanotte.webm', nome: 'stanotte.webm', tipo: 'video/webm',
+        blob: new Blob(['registrato-adesso'], { type: 'video/webm' }),
+        creato: Date.now(), origine: 'cielo', durata: 4, cartellaNome: ''
+      }));
+      await videoDB('video', 'readwrite', store => store.put({
+        id: 'senzatipo.mp4', nome: 'senzatipo.mp4', tipo: '',
+        blob: new Blob(['come-arriva-dalla-cartella'], { type: '' }),
+        creato: Date.now() - 5000, origine: 'cielo', durata: 0, cartellaNome: ''
+      }));
+
+      // L'anteprima si fa con un decodificatore vero, e in una prova non c'è
+      // nessun filmato da decodificare: quello che si controlla qui è che il
+      // poster arrivi alla scheda e che se ne faccia **una per volta** —
+      // venti decodificatori accesi insieme sono la galleria che si inchioda
+      // proprio mentre la si sta aprendo.
+      const veraAnteprima = videoFaiAnteprima;
+      let insieme = 0, massimoInsieme = 0;
+      videoFaiAnteprima = async elemento => {
+        insieme += 1;
+        massimoInsieme = Math.max(massimoInsieme, insieme);
+        await new Promise(r => setTimeout(r, 15));
+        insieme -= 1;
+        return `data:image/jpeg;base64,${elemento.nome.length}`;
+      };
+      // Con che tipo arriva al lettore il contenuto di ogni scheda.
+      const veroCrea = URL.createObjectURL.bind(URL);
+      const tipiAlLettore = [];
+      URL.createObjectURL = b => { tipiAlLettore.push(b.type); return veroCrea(b); };
+
+      await videoApriGalleria();
+      await new Promise(r => setTimeout(r, 300));
+      URL.createObjectURL = veroCrea;
+
+      const schedeDi = () => [...document.querySelectorAll('#galleria-elenco .galleria-video')].map(s => ({
+        nome: s.querySelector('.galleria-video-nome').textContent,
+        nuovo: !!s.querySelector('.galleria-nuovo'),
+        etichetta: (s.querySelector('.galleria-nuovo') || {}).textContent || '',
+        poster: s.querySelector('video').poster
+      }));
+      const schede = schedeDi();
+
+      // Guardato vuol dire premuto play.
+      const scheda = [...document.querySelectorAll('#galleria-elenco .galleria-video')]
+        .find(s => s.querySelector('.galleria-video-nome').textContent === 'stanotte.webm');
+      scheda.querySelector('video').dispatchEvent(new Event('play'));
+      const dopoIlPlay = !scheda.querySelector('.galleria-nuovo');
+      const ricordato = videoLeggiVisti().nomi.has('stanotte.webm');
+      // E un ridisegno non la fa tornare: la memoria è sul disco, non nel DOM.
+      videoFirmaGalleria = null;
+      await videoRenderGalleria();
+      const dopoIlRidisegno = schedeDi().filter(s => s.nuovo).map(s => s.nome);
+
+      videoChiudiGalleria();
+      videoFaiAnteprima = veraAnteprima;
+      return { tipoDedotto, schede, dopoIlPlay, ricordato, dopoIlRidisegno, massimoInsieme, tipiAlLettore };
+    });
+
+    const t = nuovi.tipoDedotto;
+    const tipiOk = t.webm === 'video/webm' && t.mp4 === 'video/mp4' &&
+      t.senzaEstensione === 'video/mp4' && t.giaBuono &&
+      nuovi.tipiAlLettore.indexOf('video/mp4') !== -1;
+    console.log(`${tipiOk ? 'ok' : 'FALLITO'} — un file senza tipo MIME arriva al lettore come filmato`, nuovi.tipoDedotto, nuovi.tipiAlLettore);
+    if (!tipiOk) process.exitCode = 1;
+
+    const posterOk = nuovi.schede.length >= 3 && nuovi.schede.every(s => /^data:image\/jpeg/.test(s.poster));
+    console.log(`${posterOk ? 'ok' : 'FALLITO'} — ogni scheda riceve la sua anteprima`, nuovi.schede.map(s => `${s.nome}: ${s.poster.slice(0, 26)}`));
+    if (!posterOk) process.exitCode = 1;
+
+    const unaPerVolta = nuovi.massimoInsieme === 1;
+    console.log(`${unaPerVolta ? 'ok' : 'FALLITO'} — le anteprime si fanno una per volta`, nuovi.massimoInsieme);
+    if (!unaPerVolta) process.exitCode = 1;
+
+    const perNome = Object.fromEntries(nuovi.schede.map(s => [s.nome, s]));
+    const etichettaOk = perNome['stanotte.webm'] && perNome['stanotte.webm'].nuovo &&
+      perNome['stanotte.webm'].etichetta === 'Nuovo' &&
+      perNome['prova.webm'] && !perNome['prova.webm'].nuovo;
+    console.log(`${etichettaOk ? 'ok' : 'FALLITO'} — il video di stanotte è l'unico marcato «Nuovo»`, nuovi.schede);
+    if (!etichettaOk) process.exitCode = 1;
+
+    const vistoOk = nuovi.dopoIlPlay && nuovi.ricordato &&
+      nuovi.dopoIlRidisegno.indexOf('stanotte.webm') === -1;
+    console.log(`${vistoOk ? 'ok' : 'FALLITO'} — guardarlo toglie l'etichetta, e un ridisegno non la riporta`, nuovi);
+    if (!vistoOk) process.exitCode = 1;
+
+    // E con un filmato vero. La prova qui sopra sostituisce il decodificatore
+    // per guardare la macchina — che il poster arrivi alla scheda, una
+    // decodifica per volta — e quella macchina resterebbe verde anche se il
+    // fotogramma venisse nero: una tela mai dipinta è un'immagine perfetta
+    // sotto ogni aspetto tranne quello che conta. Il filmato si registra
+    // allora qui, con la stessa tela e lo stesso MediaRecorder da cui nascono
+    // i video dell'app, e del poster si guardano i pixel.
+    const anteprimaVera = await pagina.evaluate(async () => {
+      const tela = document.createElement('canvas');
+      tela.width = 160; tela.height = 120;
+      const c = tela.getContext('2d');
+      if (!window.MediaRecorder || !tela.captureStream) return { assente: true };
+      const pezzi = [];
+      const reg = new MediaRecorder(tela.captureStream(10), { mimeType: 'video/webm' });
+      reg.ondataavailable = e => { if (e.data.size) pezzi.push(e.data); };
+      const fine = new Promise(ok => { reg.onstop = ok; });
+      reg.start();
+      for (let i = 0; i < 14; i += 1) {
+        c.fillStyle = i % 2 ? '#2266cc' : '#cc6622';
+        c.fillRect(0, 0, 160, 120);
+        await new Promise(ok => setTimeout(ok, 40));
+      }
+      reg.stop();
+      await fine;
+      const filmato = new Blob(pezzi, { type: 'video/webm' });
+      // Senza tipo, come arriva un file letto dalla cartella su un sistema
+      // che quell'estensione non la conosce.
+      const senzaTipo = filmato.slice(0, filmato.size, '');
+      videoAnteprime.clear();
+      const poster = await videoFaiAnteprima({ nome: 'vero.webm', blob: senzaTipo, creato: Date.now() });
+      const pixel = await new Promise(ok => {
+        if (!poster) { ok(null); return; }
+        const img = new Image();
+        img.onload = () => {
+          const t = document.createElement('canvas');
+          t.width = img.naturalWidth; t.height = img.naturalHeight;
+          const c2 = t.getContext('2d');
+          c2.drawImage(img, 0, 0);
+          const d = c2.getImageData(0, 0, t.width, t.height).data;
+          let somma = 0;
+          for (let i = 0; i < d.length; i += 4) somma += (d[i] + d[i + 1] + d[i + 2]) / 3;
+          ok({ l: t.width, h: t.height, medio: somma / (d.length / 4) });
+        };
+        img.onerror = () => ok(null);
+        img.src = poster;
+      });
+      return { inizio: (poster || '').slice(0, 15), lungo: (poster || '').length, pixel };
+    });
+
+    if (anteprimaVera.assente) {
+      console.log('ok — (senza MediaRecorder qui: l’anteprima di un filmato vero non si può provare)');
+    } else {
+      const veraOk = anteprimaVera.inizio === 'data:image/jpeg' && anteprimaVera.lungo > 800 &&
+        anteprimaVera.pixel && anteprimaVera.pixel.l === 160 && anteprimaVera.pixel.h === 120 &&
+        anteprimaVera.pixel.medio > 10;
+      console.log(`${veraOk ? 'ok' : 'FALLITO'} — l’anteprima di un filmato vero è un fotogramma dipinto`, anteprimaVera);
+      if (!veraOk) process.exitCode = 1;
+    }
+
     await contesto.close();
   } finally {
     await browser.close();
