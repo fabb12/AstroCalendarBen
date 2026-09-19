@@ -821,6 +821,58 @@
   // con un decimo di pixel di errore. È la stessa cosa che fa un astrometrista
   // con una lastra, ed è il motivo per cui duecento pixel di larghezza bastano.
 
+  // Componenti connesse prima dei centroidi: un bordo di tetto non deve
+  // diventare decine di piccoli picchi indipendenti. I limiti sono riferiti
+  // al frame ridotto intero, mai all'area variabile della ROI.
+  const VIS_AREA_MAX = 0.008;
+  const VIS_ASPETTO_MAX = 8;
+  const VIS_RIEMPIMENTO_MIN = 0.16;
+  const VIS_FRAME_PASSO = 6;
+  const VIS_ROI_VITA_MS = 1200;
+
+  function visComponenti(res, L, H, f, soglia) {
+    const labels = scorta('componenti', L * H, Int32Array);
+    labels.fill(0);
+    const coda = scorta('codaComponenti', L * H, Int32Array);
+    const valide = [false], piccole = [false];
+    const x0 = Math.max(0, f.x0), x1 = Math.min(L, f.x1);
+    const y0 = Math.max(0, f.y0), y1 = Math.min(H, f.y1);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const p = y * L + x;
+      if (labels[p] || Math.abs(res[p]) < soglia) continue;
+      const id = valide.length, segno = res[p] > 0 ? 1 : -1;
+      let testa = 0, fine = 1, xmin = x, xmax = x, ymin = y, ymax = y;
+      let bordo = false, troppoGrande = false;
+      coda[0] = p; labels[p] = id;
+      // Astri luminosi estesi (Luna/Sole) conservano il loro raggio misurato.
+      const areaMax = segno < 0 ? L * H * VIS_AREA_MAX
+        : Math.max(L * H * VIS_AREA_MAX, Math.PI * Math.pow(f.raggioCentroide || 4, 2) * 4);
+      while (testa < fine) {
+        const q = coda[testa++], qx = q % L, qy = Math.floor(q / L);
+        xmin = Math.min(xmin, qx); xmax = Math.max(xmax, qx);
+        ymin = Math.min(ymin, qy); ymax = Math.max(ymax, qy);
+        if (qx === x0 || qx === x1 - 1 || qy === y0 || qy === y1 - 1) bordo = true;
+        if (fine > areaMax || (xmax - xmin + 1) * (ymax - ymin + 1) > areaMax * 3) troppoGrande = true;
+        // Si completa soltanto la marcatura: nessun centroide o allineamento
+        // viene calcolato per componenti già scartate.
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const nx = qx + dx, ny = qy + dy;
+          if (nx < x0 || nx >= x1 || ny < y0 || ny >= y1) continue;
+          const n = ny * L + nx;
+          if (!labels[n] && res[n] * segno >= soglia) {
+            labels[n] = id; coda[fine++] = n;
+          }
+        }
+      }
+      const w = xmax - xmin + 1, h = ymax - ymin + 1;
+      piccole.push(fine <= L * H * VIS_AREA_MAX && w * h <= L * H * VIS_AREA_MAX * 3);
+      valide.push(!bordo && !troppoGrande && fine >= 2
+        && Math.max(w / h, h / w) <= VIS_ASPETTO_MAX
+        && fine / (w * h) >= VIS_RIEMPIMENTO_MIN);
+    }
+    return { labels, valide, piccole };
+  }
+
   function visRilevaMacchie(luma, L, H, opz) {
     const o = opz || {};
     const raggioFondo = o.raggioFondo || VIS_FONDO_RAGGIO;
@@ -852,6 +904,7 @@
       if (!rumore) { rumore = rumoreF; soglia = sogliaF; }
       f.rumore = rumoreF;
       f.soglia = sogliaF;
+      const componenti = visComponenti(res, L, H, f, sogliaF * 0.5);
       // Un pixel di margine dentro al rettangolo, perché il 3×3 del massimo
       // locale legge i vicini e appena fuori il residuo è quello del giro
       // prima. Il bordo di due pixel dal fotogramma resta: una macchia
@@ -864,7 +917,7 @@
         for (let x = xa; x < xb; x++) {
           const v = res[y * L + x];
           const a = Math.abs(v);
-          if (a < sogliaF) continue;
+          if (a < sogliaF || !componenti.valide[componenti.labels[y * L + x]]) continue;
           // Massimo locale nel suo 3×3, nel verso del proprio segno. Il
           // confronto è sul valore con segno e non sul modulo: due macchie di
           // segno opposto attaccate (il bordo scuro attorno a una luce) non si
@@ -882,7 +935,7 @@
           // di un disco bloomato il centroide vuole una finestra larga e
           // l'alone un raggio grande, dentro a quella di un pianeta no —
           // ed è una proprietà del posto, non del fotogramma.
-          grezze.push({ x, y, picco: a, segno: v > 0 ? 1 : -1, rc: rcF, alone: aloneF, soglia: sogliaF });
+          grezze.push({ piccola: componenti.piccole[componenti.labels[y * L + x]], x, y, picco: a, segno: v > 0 ? 1 : -1, rc: rcF, alone: aloneF, soglia: sogliaF });
         }
       }
     }
@@ -1002,6 +1055,7 @@
       if (doppione) continue;
 
       macchie.push({
+        piccola: g.piccola,
         xg: g.x, yg: g.y, x: cx, y: cy,
         picco: g.picco, segno: g.segno, flusso: sp, raggio: largo, pixel: n,
         rc, alone: raggioAlone
@@ -1458,6 +1512,16 @@
 
   const VIS_PIANETI = new Set(['Venus', 'Jupiter', 'Mars', 'Saturn', 'Mercury']);
 
+  function visCancelloAereo(id) {
+    const ancora = stato.ancore.get(String(id));
+    const eta = ancora ? performance.now() - ancora.quando : Infinity;
+    // La posizione candidata segue già rotta, ancora visiva e posa inerziale.
+    // Allargando con l'età si recupera automaticamente un aggancio perso.
+    return eta < VIS_ROI_VITA_MS
+      ? VIS_CANCELLO_STRETTO + (VIS_CANCELLO_AEREO - VIS_CANCELLO_STRETTO) * Math.max(0, eta) / VIS_ROI_VITA_MS
+      : VIS_CANCELLO_AEREO;
+  }
+
   function visCandidati(base, focale) {
     const fuori = [];
     const L = sky.larghezza, H = sky.altezza;
@@ -1537,7 +1601,7 @@
         // una sagoma scura contro il cielo, di notte una lucina che lampeggia.
         // Zero vuol dire «prendo tutt'e due i versi».
         polarita: 0,
-        cancello: VIS_CANCELLO_AEREO
+        cancello: visCancelloAereo(a.id)
       });
     });
 
@@ -1572,6 +1636,7 @@
       for (let i = 0; i < macchie.length; i++) {
         if (prese.has(i)) continue;
         const m = macchie[i];
+        if (c.genere === 'aereo' && m.piccola === false) continue;
         // La polarità, prima di tutto: una macchia più scura del cielo non è
         // un astro, qualunque distanza abbia.
         if (c.polarita && m.segno !== c.polarita) continue;
@@ -2247,7 +2312,9 @@
     ricordaPosa(base, focale);
     if (!stato.acceso) { stato.motivo = 'spento'; return; }
     const ora = performance.now();
-    if (ora < stato.prossimoGiro) return;
+    stato.frameDetection = (stato.frameDetection || 0) + 1;
+    if (stato.frameDetection < VIS_FRAME_PASSO || ora < stato.prossimoGiro) return;
+    stato.frameDetection = 0;
     stato.prossimoGiro = ora + stato.cadenza;
     try {
       giro(base, focale);
@@ -2335,6 +2402,7 @@
     stato.attivo = true;
     stato.pose.length = 0;
     stato.prossimoGiro = 0;
+    stato.frameDetection = VIS_FRAME_PASSO - 1;
     stato.cadenza = VIS_CADENZA_MS;
     stato.conferme = 0;
     stato.perdite = 0;
@@ -2423,6 +2491,7 @@
   // Le funzioni pure, per il banco di prova (§32 di `verifica.html`). Sono le
   // stesse che gira il motore: non una copia.
   window.Visione = {
+    visComponenti, visCancelloAereo, VIS_FRAME_PASSO,
     visRilevaMacchie, visResiduo, visRumore, visAssocia, visRisolviRotazione,
     visStimaScala, rodrigues, angoloDi, scalaRotazione, applica, moltiplica,
     identita, versore, azAltDi, vettoreDa, scartoAz, risolvi3, stato,
