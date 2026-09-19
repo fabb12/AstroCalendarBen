@@ -10212,6 +10212,31 @@ const luogoMappa = {
   tocco: null      // partenza dell'ultimo dito sulla mappa
 };
 
+// La carta non deve dire soltanto *da dove* si guarda: il planetario ha gia'
+// anche la direzione dello sguardo. La ricaviamo dall'ultima terna davvero
+// disegnata (importante quando comanda il telefono); in modalita' manuale la
+// direzione richiesta e' gia' nello stato. L'azimut geografico cresce da Nord
+// verso Est, proprio come la rotazione CSS dell'indicatore qui sotto.
+function luogoMappaAzimutSguardo() {
+  const base = sky.ultimaBase;
+  const f = base && base.f;
+  if (f && Number.isFinite(f[0]) && Number.isFinite(f[1])) {
+    return ((Math.atan2(f[0], f[1]) * SKY_R2D) % 360 + 360) % 360;
+  }
+  return ((sky.manuale.az % 360) + 360) % 360;
+}
+
+function luogoMappaAggiornaDirezione() {
+  if (!luogoMappa.segno) return;
+  const nodo = luogoMappa.segno.getElement();
+  const freccia = nodo && nodo.querySelector('.luogo-segno-direzione');
+  if (!freccia) return;
+  const azimut = luogoMappaAzimutSguardo();
+  freccia.style.transform = `translateX(-50%) rotate(${azimut.toFixed(2)}deg)`;
+  luogoMappa.segno.options.title = `Guardi verso ${skyNomeDirezione(azimut)} (${Math.round(azimut)}°)`;
+  nodo.setAttribute('title', luogoMappa.segno.options.title);
+}
+
 // Dopo avere indicato il terreno non si cambia osservatore per sbaglio: il
 // pallino giallo offre la conferma proprio nel punto appena scelto.
 function luogoMappaMostraVaiQua() {
@@ -10467,7 +10492,7 @@ function luogoMappaSfondo(quale, opz = {}) {
 function luogoMappaFaiSegno(punto) {
   const icona = L.divIcon({
     className: 'luogo-segno',
-    html: '<span class="luogo-segno-alone"></span><span class="luogo-segno-punto"></span>',
+    html: '<span class="luogo-segno-direzione" aria-hidden="true"></span><span class="luogo-segno-alone"></span><span class="luogo-segno-punto"></span>',
     iconSize: [30, 30], iconAnchor: [15, 15]
   });
   luogoMappa.segno = L.marker(punto, {
@@ -10475,6 +10500,7 @@ function luogoMappaFaiSegno(punto) {
     title: 'Il punto da cui guardare — si può trascinare',
     zIndexOffset: 1000
   }).addTo(luogoMappa.mappa);
+  luogoMappaAggiornaDirezione();
   // Mentre il dito lo porta in giro la lettura sotto cambia con lui: è quella
   // che dice se si è ancora dentro al paese o già in mezzo al bosco.
   luogoMappa.segno.on('drag', () => {
@@ -10966,6 +10992,9 @@ function apriMappaLuogoCielo() {
     zoom: l ? luogoMappa.zoomUltimo : Math.min(luogoMappa.zoomUltimo, LUOGO_ZOOM_APERTURA),
     nome: luogoNomeVero(l && l.nome)
   });
+  // Il segno puo' esistere da un'apertura precedente: riallinearlo ora fa
+  // vedere la direzione corrente, non quella con cui la finestra fu chiusa.
+  luogoMappaAggiornaDirezione();
 
   // La mappa è nata dentro a un modale nascosto, cioè alta zero: senza questa
   // passata resterebbe un rettangolo grigio finché non la si tocca. Il

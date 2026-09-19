@@ -7530,6 +7530,42 @@ body .luogo-tasto-mappa.attiva { background: var(--blu); border-color: transpare
    cerchio disegnato di prima era largo otto pixel e non si prendeva. */
 .luogo-segno { cursor: grab; }
 .luogo-segno:active { cursor: grabbing; }
+.luogo-segno-direzione {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 50%;
+  width: 22px;
+  height: 52px;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.8));
+}
+/* Freccia con punta piena: resta leggibile sia sulle strade chiare sia sulla
+   fotografia, e parte da sotto al pallino cosi' il luogo resta preciso. */
+.luogo-segno-direzione::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 5px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  background: #d97706;
+  transform: translateX(-50%);
+}
+.luogo-segno-direzione::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-top: 5px solid #d97706;
+  border-right: 5px solid #d97706;
+  transform: translateX(-50%) rotate(-45deg);
+}
 .luogo-segno-punto,
 .luogo-segno-alone {
   position: absolute;
