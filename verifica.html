@@ -9610,6 +9610,202 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
   else window.skyLuogoDelCielo = salva.vista;
 }
 
+// --- 10. Il ciclo che non deve morire ---------------------------------
+{
+  // La segnalazione: «al primo avvio gli aerei ci sono, dopo non si
+  // aggiornano più». È la peggiore di questo modulo perché non somiglia a un
+  // guasto: la spia resta verde, la riga di stato dice quanti aerei ci sono,
+  // e il cielo è quello di cinque minuti fa. Un feed fermo e un cielo sgombro
+  // sono la stessa immagine, e un feed fermo e un feed lento pure.
+  //
+  // Il primo scarico non prova niente sul ciclo, ed è il punto: parte da
+  // `aereiAvvia`, **fuori** dal battito. Tutti quelli dopo dipendono da due
+  // cose che nessuno guarda — che il battito arrivi in fondo alla sua
+  // funzione, e che `stato.richiesta` torni a essere nulla. Basta che una
+  // delle due si inceppi una volta perché il feed resti fermo per sempre.
+  const s = adsb.stato;
+  const salva = { dati: s.dati, auto: s.auto, avviato: s.avviato, timer: s.timer,
+    battito: s.ultimoBattito, richiesta: s.richiesta, richiestaDa: s.richiestaDa,
+    controller: s.controller, errore: s.errore, errNome: s.errNome,
+    falliti: s.tentativiFalliti, prossimo: s.prossimoAggiornamento,
+    tentativo: s.prossimoTentativo };
+  s.dati = false;   // il battito non deve andare a scaricare per davvero
+
+  // --- Quello che solleva non si porta via il resto -------------------
+  let arrivato = false;
+  // Il guasto lo provochiamo noi, quindi la sua riga rossa in console non e'
+  // una notizia: si zittisce per il tempo della prova, se no il banco
+  // riporterebbe come difetto proprio la cosa che sta verificando.
+  const parla = console.error;
+  console.error = () => {};
+  const fuori = adsb.guardato('prova', () => { throw new Error('il pannello è rotto'); });
+  adsb.guardato('prova', () => { arrivato = true; });
+  console.error = parla;
+  prova('un guasto nel battito non esce dalla sua rete', fuori === undefined);
+  prova('e non impedisce al passo successivo di girare', arrivato);
+  // Il contro-esempio è il codice di prima, e sta in una riga: `aggiornaUI()`
+  // nuda in cima al battito. Sollevando lì — un nodo che non c'è, una chiave
+  // di dizionario mancante — non si saltava un giro, si saltavano **tutti**,
+  // perché il `setInterval` continuava a battere e nessun battito arrivava
+  // più alla riga che riscarica.
+  const primaDelBattito = s.ultimoBattito;
+  adsb.battito();
+  prova('il battito lascia sempre la sua ora: è quella che dice che è vivo',
+    s.ultimoBattito >= primaDelBattito && s.ultimoBattito > 0);
+
+  // --- Il ciclo che non batte più ------------------------------------
+  s.avviato = true;
+  s.ultimoBattito = Date.now() - adsb.BATTITO_FERMO_MS - 1000;
+  adsb.sorvegliaBattito();
+  prova('un ciclo fermo da troppo tempo riparte da sé',
+    Date.now() - s.ultimoBattito < adsb.BATTITO_MS,
+    `soglia ${adsb.BATTITO_FERMO_MS / 1000} s`);
+  const appena = s.ultimoBattito = Date.now();
+  adsb.sorvegliaBattito();
+  prova('e uno che batte regolarmente non viene toccato', s.ultimoBattito === appena);
+  // La soglia non è a caso: un browser che strozza i timer in secondo piano
+  // non deve far scattare il guardiano a ogni giro.
+  prova('la soglia del guardiano è più larga di qualche battito',
+    adsb.BATTITO_FERMO_MS >= adsb.BATTITO_MS * 3);
+  clearInterval(s.timer); s.timer = null;
+
+  // --- La richiesta appesa --------------------------------------------
+  // `stato.richiesta` piena ferma tutto: `carica` esce subito e il battito
+  // pure. È l'unico stato di questo modulo che, restando, lo spegne del
+  // tutto — e restando non lascia traccia, perché dal di fuori si legge
+  // «sto scaricando».
+  s.richiesta = new Promise(() => {});      // una che non si chiuderà mai
+  s.richiestaDa = Date.now();
+  s.controller = null;
+  adsb.sorvegliaRichiesta();
+  prova('una richiesta appena partita non viene disturbata', s.richiesta !== null);
+  s.richiestaDa = Date.now() - adsb.RICHIESTA_APPESA_MS - 1000;
+  s.tentativiFalliti = 0;
+  adsb.sorvegliaRichiesta();
+  prova('una che non risponde più viene dichiarata persa, e il campo si sgombra',
+    s.richiesta === null && s.richiestaDa === 0);
+  prova('e conta come un guasto, cioè entra nella scala delle riprove',
+    s.tentativiFalliti === 1 && s.prossimoTentativo > Date.now());
+  prova('la soglia è più lunga della corsa: prima ci pensa la sveglia sua',
+    adsb.RICHIESTA_APPESA_MS > 22000);
+
+  s.dati = salva.dati; s.auto = salva.auto; s.avviato = salva.avviato;
+  clearInterval(s.timer); s.timer = salva.timer; s.ultimoBattito = salva.battito;
+  s.richiesta = salva.richiesta; s.richiestaDa = salva.richiestaDa;
+  s.controller = salva.controller; s.errore = salva.errore; s.errNome = salva.errNome;
+  s.tentativiFalliti = salva.falliti; s.prossimoAggiornamento = salva.prossimo;
+  s.prossimoTentativo = salva.tentativo;
+}
+
+// --- 11. Il ritmo davanti a un 429 ------------------------------------
+{
+  // Un 429 non è un guasto come gli altri e non si cura come gli altri.
+  // Tutti gli altri dicono «questa richiesta è andata storta», e lì la
+  // riprova corta è la cosa giusta; questo dice **stai bussando troppo**, e
+  // riprovare fra tre secondi è esattamente la mossa che l'ha causato.
+  const s = adsb.stato;
+  const salva = { falliti: s.tentativiFalliti, prossimo: s.prossimoAggiornamento,
+    tentativo: s.prossimoTentativo };
+
+  s.tentativiFalliti = 0; adsb.pianificaProssimo(false);
+  const generico = s.prossimoTentativo - Date.now();
+  s.tentativiFalliti = 0; adsb.pianificaProssimo(false, { rateLimit: true, stato: 429 });
+  const limite = s.prossimoTentativo - Date.now();
+  prova('a parità di tentativi un 429 aspetta molto più di un guasto qualunque',
+    limite > generico * 3,
+    `${(generico / 1000).toFixed(1)} s contro ${(limite / 1000).toFixed(1)} s`);
+  prova('e il 429 parte da un gradino della scala, non da un numero inventato',
+    adsb.RIPROVA_LIMITE_DA > 0 && adsb.RIPROVA_LIMITE_DA < adsb.RIPROVE_MS.length);
+  // Ma non deve **abbassare** l'attesa di chi ha già sbagliato molte volte:
+  // sarebbe un premio per aver peggiorato.
+  s.tentativiFalliti = adsb.RIPROVE_MS.length - 1;
+  adsb.pianificaProssimo(false, { rateLimit: true, stato: 429 });
+  prova('chi è già in fondo alla scala non scende di gradino per un 429',
+    s.prossimoTentativo - Date.now() > limite);
+
+  // `Retry-After`: l'unica attesa di tutto questo file che non stiamo
+  // indovinando.
+  s.tentativiFalliti = 0;
+  adsb.pianificaProssimo(false, { rateLimit: true, riprovaFraMs: 240000 });
+  prova('un `Retry-After` più lungo della scala comanda lui',
+    s.prossimoTentativo - Date.now() > 230000,
+    `${((s.prossimoTentativo - Date.now()) / 1000).toFixed(0)} s`);
+  s.tentativiFalliti = adsb.RIPROVE_MS.length - 1;
+  adsb.pianificaProssimo(false, { rateLimit: true, riprovaFraMs: 1000 });
+  prova('e uno più corto non accorcia un rinvio già guadagnato',
+    s.prossimoTentativo - Date.now() > 100000);
+
+  // La lettura dell'intestazione, nelle due forme che l'HTTP permette.
+  const finta = v => ({ headers: { get: n => (n === 'Retry-After' ? v : null) } });
+  prova('`Retry-After` in secondi si legge', adsb.attesaRichiesta(finta('120')) === 120000);
+  prova('e come data pure, che è la forma che `Number()` leggerebbe NaN',
+    Math.abs(adsb.attesaRichiesta(finta(new Date(Date.now() + 90000).toUTCString())) - 90000) < 2000);
+  prova('una data già passata non diventa un\'attesa negativa',
+    adsb.attesaRichiesta(finta(new Date(Date.now() - 90000).toUTCString())) === 0);
+  prova('senza intestazione non si inventa niente', adsb.attesaRichiesta(finta(null)) === null);
+  prova('e un numero assurdo si tosa invece di fermare il feed per un giorno',
+    adsb.attesaRichiesta(finta('999999')) === adsb.RETRY_AFTER_MAX_MS,
+    `tetto ${adsb.RETRY_AFTER_MAX_MS / 60000} min`);
+
+  // La pagella: un `Retry-After` esplicito può superare il tetto della scala
+  // che raddoppia, perché non è una nostra stima ma un'istruzione.
+  const porta = { nome: 'porta di prova per il 429' };
+  adsb.segnaEsito(porta, false, { message: 'troppo', rateLimit: true, riprovaFraMs: 1200000 });
+  prova('una porta che dice «torna fra venti minuti» viene creduta oltre il tetto',
+    adsb.salute.get(porta.nome).penaleFino - Date.now() > adsb.PENALE_MAX_MS,
+    `tetto della scala ${adsb.PENALE_MAX_MS / 60000} min`);
+  adsb.segnaEsito(porta, false, { message: 'troppo', rateLimit: true, riprovaFraMs: 1 });
+  prova('ma un `Retry-After` di un millisecondo non cancella la penale guadagnata',
+    adsb.salute.get(porta.nome).penaleFino - Date.now() > 20000);
+  adsb.salute.delete(porta.nome);
+
+  // La risposta arrivata e scartata perché il punto è cambiato sotto.
+  s.tentativiFalliti = 4;
+  adsb.pianificaDopoScarto();
+  const fra = s.prossimoAggiornamento - Date.now();
+  prova('una risposta scartata riprogramma comunque: mai una raffica ogni cinque secondi',
+    fra >= adsb.AEREI_MOTO_MIN_MS - 1000 && fra <= adsb.AEREI_MOTO_MIN_MS + 1000,
+    `fra ${(fra / 1000).toFixed(0)} s`);
+  prova('e non conta come guasto: la porta aveva risposto', s.tentativiFalliti === 0);
+  // Il contro-esempio, cioè il conto di prima: uscendo senza riprogrammare,
+  // `prossimoAggiornamento` restava scaduto e il battito rilanciava la corsa
+  // a ogni giro.
+  prova('CONTRO-ESEMPIO: senza riprogrammare si ripartirebbe al battito dopo',
+    adsb.AEREI_MOTO_MIN_MS > adsb.BATTITO_MS * 4,
+    `${adsb.AEREI_MOTO_MIN_MS / 1000} s contro un battito da ${adsb.BATTITO_MS / 1000} s`);
+
+  s.tentativiFalliti = salva.falliti; s.prossimoAggiornamento = salva.prossimo;
+  s.prossimoTentativo = salva.tentativo;
+}
+
+// --- 12. La fotografia che non deve arrivare da una cache -------------
+{
+  // `cache: 'no-store'` copre la cache del browser, e basta. Quello che non
+  // copre è il resto della catena: il Worker del sito dichiara la sua
+  // fotografia riusabile per venti secondi, i ponti CORS pubblici fanno di
+  // mestiere i grossisti di risposte altrui. Una fotografia servita da lì è
+  // un cielo che non si aggiorna più — e sullo schermo non si distingue da
+  // un traffico fermo.
+  const a = adsb.conAntiCache('https://esempio.test/v2/point/45/9/27', 111);
+  const b = adsb.conAntiCache('https://esempio.test/api?lat=45&lon=9', 222);
+  prova('un indirizzo senza query riceve il suo primo parametro',
+    a === 'https://esempio.test/v2/point/45/9/27?_=111', a);
+  prova('e uno che ne ha già lo riceve in coda, senza rompere i suoi',
+    b === 'https://esempio.test/api?lat=45&lon=9&_=222', b);
+  prova('il frammento resta in fondo: dopo il cancelletto non c\'è più query',
+    adsb.conAntiCache('https://esempio.test/x#qui', 9) === 'https://esempio.test/x?_=9#qui');
+  prova('due chiamate successive non danno lo stesso indirizzo',
+    adsb.conAntiCache('https://esempio.test/x', 1) !== adsb.conAntiCache('https://esempio.test/x', 2));
+  // E dentro al ponte, che è il posto in cui conta davvero: un ponte tiene
+  // la sua copia con la chiave dell'indirizzo che gli si chiede di leggere,
+  // quindi variare solo l'involucro lo lascerebbe servire quella di prima.
+  const ponti = adsb.providersDisponibili().filter(p => /ponte/.test(p.rete || ''));
+  prova('i ponti ci sono ancora', ponti.length >= 2, `${ponti.length} abbinamenti`);
+  const dentro = ponti.length ? decodeURIComponent(ponti[0].url(adsbDove, 50)) : '';
+  prova('e il feed che trasportano porta l\'anti-cache dentro, non solo fuori',
+    /[?&]_=\d+/.test(dentro.split('url=')[1] || ''), dentro.slice(0, 120));
+}
+
 // =====================================================================
 titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-bis)');
 // =====================================================================

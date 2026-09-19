@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v353';
+const CACHE_NAME = 'astrocal-v354';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -158,6 +158,23 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Il **proxy proprio** degli aerei (`ADSB_PROXY_URL`), che un service worker
+// non puo' conoscere per nome: l'indirizzo lo sceglie chi installa il sito, e
+// qui dentro `window` non esiste. Lo si riconosce dal percorso, che e' il
+// contratto scritto in `worker-adsb.js`, e solo se viene da un'altra origine
+// — un `/api/adsb` di casa nostra sarebbe un'altra cosa.
+//
+// Vale la stessa doppia ragione delle porte di `SERVIZI_ADSB`, e vale
+// **soprattutto per lui**, che e' la strada buona e quella che risponde
+// davvero: il ripiego generico trasformerebbe un suo guasto in un `504` che
+// nessun server ha mandato, e l'abort delle perdenti della corsa non
+// toccherebbe la fetch che gira qui dentro — cioe' ogni richiesta persa
+// continuerebbe a consumare fino in fondo la quota del Worker.
+function proxyAdsb(url) {
+  return url.origin !== self.location.origin &&
+    (url.pathname === '/api/adsb' || url.pathname === '/api/diagnostica');
+}
+
 function daConservare(url) {
   return HOST_DA_CONSERVARE.some(h => url.hostname === h || url.hostname.endsWith('.' + h));
 }
@@ -191,7 +208,8 @@ self.addEventListener('fetch', (e) => {
   if (url.hostname.indexOf('overpass') !== -1 ||
       url.hostname === 'nominatim.openstreetmap.org' ||
       url.hostname === 'api.bigdatacloud.net' ||
-      SERVIZI_ADSB.indexOf(url.hostname) !== -1) {
+      SERVIZI_ADSB.indexOf(url.hostname) !== -1 ||
+      proxyAdsb(url)) {
     return;
   }
 
