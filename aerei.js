@@ -42,6 +42,19 @@
 //      invece di sostituirla — se i dati arrivano di rado, quando arrivano
 //      vanno sfruttati fino in fondo.
 //
+//   5. **Il ciclo** (§6). Il primo scarico non prova niente: parte da
+//      `aereiAvvia`, cioè fuori dal battito. Tutti quelli dopo dipendono da
+//      due cose che nessuno guarda — che il battito arrivi in fondo alla sua
+//      funzione, e che `stato.richiesta` torni a essere nulla — e basta che
+//      una delle due si inceppi una volta perché il feed resti fermo per
+//      sempre, con la spia verde e un cielo di cinque minuti fa. Da qui la
+//      rete attorno a quello che tocca il documento (`guardato`), i due
+//      guardiani (`sorvegliaRichiesta`, `sorvegliaBattito`) e la regola che
+//      nessuna uscita da `carica` lascia il ritmo senza riprogrammare: la
+//      riprova mancata non è un ciclo morto, è una raffica a tutte le porte
+//      ogni cinque secondi — cioè il modo più rapido di prendersi un 429 da
+//      tutte insieme e restare davvero senza aerei.
+//
 // I dati si scaricano da soli all'apertura del planetario; il **disegno** è
 // un'altra cosa e nasce spento (§5). Sono due interruttori perché sono due
 // domande diverse: «voglio sapere cosa c'è in cielo» e «voglio vederlo
@@ -83,6 +96,44 @@
   // Aspettare un minuto pieno, come si faceva prima, trasformava un singolo
   // pacchetto perso in un minuto di cielo senza aerei.
   const RIPROVE_MS = [3000, 9000, 25000, 60000, 150000, 300000];
+  // Un 429 — e un 503, che è lo stesso discorso detto dal server invece che
+  // dal suo portiere — non è un guasto come gli altri, ed è la ragione per
+  // cui ha una riga sua. Tutti gli altri dicono «questa richiesta è andata
+  // storta», e lì la cura è riprovare presto; questi due dicono **stai
+  // bussando troppo**, e riprovare fra tre secondi è esattamente la mossa che
+  // li ha causati — con l'aggravante che ogni rifiuto in più conferma al
+  // servizio che il torto è nostro. Si parte quindi da un gradino più su
+  // della scala invece che dal primo, cioè si salta la riprova corta che per
+  // tutti gli altri guasti è la cosa giusta da fare.
+  const RIPROVA_LIMITE_DA = 3;
+  // E se il servizio dice **fra quanto** tornare (`Retry-After`, in secondi o
+  // come data HTTP), quella è l'unica risposta che non stiamo indovinando:
+  // vale più di qualunque scala scritta qui. Il tetto serve a non restare
+  // fermi mezza giornata per un'intestazione scritta male.
+  const RETRY_AFTER_MAX_MS = 1800000;
+  // Fin dove può arrivare la penale di una porta (§2). La scala che raddoppia
+  // si ferma a dieci minuti; un `Retry-After` esplicito può chiedere di più,
+  // perché non è una nostra stima ma un'istruzione di chi risponde.
+  const PENALE_MAX_MS = 600000;
+  // --- I due guardiani del ciclo --------------------------------------
+  // Non sono paranoia: sono la risposta al difetto per cui il primo scarico
+  // riusciva sempre e i successivi non arrivavano quasi mai. Il primo scarico
+  // parte da `aereiAvvia`, cioè **fuori** dal battito; tutti gli altri
+  // dipendono dal battito che arriva in fondo alla sua funzione e da
+  // `stato.richiesta` che torna a essere nulla. Basta che una di quelle due
+  // cose si inceppi una volta — un'eccezione mentre si ridisegna il pannello,
+  // una promessa che non si chiude — perché il feed resti fermo per sempre
+  // senza che niente lo dica: il `setInterval` continua a battere, la spia
+  // resta verde, e il cielo è quello di cinque minuti fa.
+  //
+  // `BATTITO_FERMO_MS` è da quanto un battito dev'essere vecchio perché il
+  // ciclo si consideri morto (quattro giri: un browser che strozza i timer in
+  // secondo piano non deve far scattare niente). `RICHIESTA_APPESA_MS` è da
+  // quanto una richiesta può restare in volo prima di essere dichiarata persa
+  // — il doppio della corsa intera, più un margine: oltre quel punto non sta
+  // arrivando nulla, sta solo tenendo chiusa la porta a tutte le altre.
+  const BATTITO_FERMO_MS = BATTITO_MS * 4;
+  const RICHIESTA_APPESA_MS = CORSA_ATTESA_MS * 2 + 10000;
   const PREVISIONE_MINUTI = 5;
   // --- L'arco di transito ---------------------------------------------
   // Cinque minuti erano la previsione **disegnata**, e sono diventati anche
@@ -385,7 +436,14 @@
     return ABBINAMENTI.map(a => ({
       nome: `${a.rete} via ${a.ponte.nome}`,
       rete: `${a.rete} (ponte ${a.ponte.nome})`,
-      url: (posizione, raggioKm) => a.ponte.avvolgi(a.feed(posizione, raggioKm)),
+      // L'anti-cache va messo **dentro**, sul feed, prima di avvolgerlo: un
+      // ponte tiene la sua copia con la chiave dell'indirizzo che gli si
+      // chiede di andare a leggere, quindi variare solo l'involucro lo
+      // lascerebbe servire la stessa fotografia di prima. Quello fuori ce lo
+      // mette `scarica`, e i due non si pestano i piedi: il primo finisce
+      // percent-codificato dentro al valore di `url=`, il secondo è un
+      // parametro dell'involucro.
+      url: (posizione, raggioKm) => a.ponte.avvolgi(conAntiCache(a.feed(posizione, raggioKm))),
       // L'interprete e' quello di sempre, e la sua severita' e' quello che
       // rende sicuri i ponti: un servizio in difficolta' risponde 200 con
       // dentro una pagina d'errore, e `interpretaAdsbExchange` **solleva**
@@ -509,7 +567,19 @@
       // La penale raddoppia a ogni no di fila e si ferma a dieci minuti: una
       // porta rotta smette in fretta di costare tempo, ma torna in gioco da
       // sola senza che nessuno debba ricordarsi di riabilitarla.
-      v.penaleFino = ora + Math.min(600000, 20000 * Math.pow(2, Math.min(5, v.noDiFila - 1)));
+      let penale = Math.min(PENALE_MAX_MS, 20000 * Math.pow(2, Math.min(5, v.noDiFila - 1)));
+      // Con una sola eccezione, ed è l'unica volta in cui questa pagella non
+      // sta stimando: quando la porta ha detto lei **fra quanto** tornare. Lì
+      // il tetto dei dieci minuti non si applica — non è una nostra
+      // precauzione da limitare, è un'istruzione di chi risponde, e bussare
+      // prima vuol dire prendersi lo stesso no e raddoppiare di nuovo. Il
+      // massimo fra i due, perché un `Retry-After` di due secondi non deve
+      // accorciare una penale che la porta si era già guadagnata sbagliando
+      // cinque volte di fila.
+      if (errore && Number.isFinite(errore.riprovaFraMs)) {
+        penale = Math.max(penale, Math.min(RETRY_AFTER_MAX_MS, errore.riprovaFraMs));
+      }
+      v.penaleFino = ora + penale;
     }
     saluteSalva();
   }
@@ -560,11 +630,80 @@
     return errori.slice().sort((a, b) => peso(b) - peso(a))[0];
   }
 
+  // Il parametro che tiene la fotografia fuori da tutte le cache — e perché
+  // è un parametro e **non** un'intestazione.
+  //
+  // `cache: 'no-store'` sulla fetch, qui sotto, copre la cache del browser ed
+  // è la strada giusta per quella. Quello che non copre è tutto il resto
+  // della catena: il Worker del sito, che la sua fotografia la dichiara
+  // riusabile per venti secondi (`Cache-Control: public, max-age=20` in
+  // `worker-adsb.js`), la rete di distribuzione che gli sta davanti, e
+  // soprattutto i **ponti CORS pubblici**, che di mestiere fanno proprio i
+  // grossisti di risposte altrui e tengono la loro copia con regole che non
+  // sono nostre. Una fotografia servita da lì è un cielo che non si aggiorna
+  // più — il primo scarico arriva, i successivi sono la sua fotocopia, e
+  // sullo schermo non si distingue da un traffico fermo.
+  //
+  // E si fa così, non con un `Cache-Control: no-cache` fra gli header della
+  // richiesta. Vale la pena scriverlo perché è la correzione «ovvia», quella
+  // che prima o poi qualcuno proverà a fare: quell'intestazione, su una
+  // richiesta cross-origin, non è fra le poche semplici che passano lisce —
+  // obbliga il browser al preflight, cioè a una `OPTIONS` che **nessuna** di
+  // queste porte risponde, né le quattro reti di comunità né i due ponti. Il
+  // risultato non sarebbe una cache aggirata: sarebbe ogni richiesta
+  // rifiutata prima ancora di partire, cioè il difetto di adesso peggiorato
+  // fino a diventare totale.
+  function conAntiCache(url, token = Date.now()) {
+    const u = String(url);
+    // Il frammento, se c'è, resta in coda: `?_=` infilato dopo il `#` non è
+    // una query, è testo dentro all'ancora, e non lo legge nessuno.
+    const taglio = u.indexOf('#');
+    const corpo = taglio === -1 ? u : u.slice(0, taglio);
+    const frammento = taglio === -1 ? '' : u.slice(taglio);
+    return corpo + (corpo.indexOf('?') === -1 ? '?' : '&') + '_=' + token + frammento;
+  }
+
+  // `Retry-After` arriva in due forme, e la seconda è una data HTTP: leggerla
+  // con `Number()` dà `NaN`, cioè «nessuna indicazione» proprio quando
+  // un'indicazione c'era. Da sapere, ed è un limite onesto e non un difetto:
+  // su una risposta cross-origin questa intestazione si legge solo se il
+  // server la dichiara in `Access-Control-Expose-Headers`. Il Worker del
+  // progetto lo fa; i ponti pubblici no, e lì si torna alla scala delle
+  // riprove — che è il motivo per cui la scala resta e il `Retry-After` la
+  // corregge invece di sostituirla.
+  function attesaRichiesta(risposta) {
+    let grezzo = '';
+    try { grezzo = (risposta.headers && risposta.headers.get('Retry-After')) || ''; }
+    catch (e) { return null; }
+    if (!grezzo) return null;
+    const secondi = Number(String(grezzo).trim());
+    const ms = Number.isFinite(secondi) ? secondi * 1000 : Date.parse(grezzo) - Date.now();
+    if (!Number.isFinite(ms)) return null;
+    // Un `Retry-After` già scaduto — o una data nel passato — non deve
+    // diventare un numero negativo che scavalca la scala delle riprove
+    // facendo ripartire *prima* del dovuto.
+    return Math.max(0, Math.min(RETRY_AFTER_MAX_MS, ms));
+  }
+
   async function scarica(provider, obs, raggio, signal) {
-    const risposta = await fetch(provider.url(obs, raggio), { signal, cache: 'no-store' });
-    if (risposta.status === 429) {
-      const errore = new Error('limite di richieste raggiunto');
-      errore.rateLimit = true; errore.stato = 429; throw errore;
+    const risposta = await fetch(conAntiCache(provider.url(obs, raggio)),
+      { signal, cache: 'no-store' });
+    // 429 e 503 sono la stessa notizia detta da due piani diversi del
+    // servizio, e chiedono la stessa cura: rallentare. Trattare il 503 come
+    // un guasto qualunque voleva dire rispondere a «sono sovraccarico» con
+    // una riprova fra tre secondi, cioè aggiungere carico a chi ne ha già
+    // troppo — e prendersi, di lì a poco, anche il 429.
+    if (risposta.status === 429 || risposta.status === 503) {
+      // Il codice resta dentro al messaggio, ed e' il motivo per cui il
+      // pannello serve a qualcosa: «429» e «503» dicono a chi guarda che il
+      // servizio ha **risposto** — la strada c'era, e fra un po' ci sara'
+      // ancora — mentre una sveglia scaduta dice solo che ci siamo arresi noi.
+      const errore = new Error(risposta.status === 429
+        ? 'limite di richieste raggiunto (429)' : 'servizio sovraccarico (503)');
+      errore.rateLimit = true; errore.stato = risposta.status;
+      const fra = attesaRichiesta(risposta);
+      if (fra !== null) errore.riprovaFraMs = fra;
+      throw errore;
     }
     if (!risposta.ok) {
       const errore = new Error(`risposta ${risposta.status}`);
@@ -681,6 +820,11 @@
 
   const stato = {
     aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
+    // `richiestaDa` e `ultimoBattito` sono i due orologi che i guardiani del
+    // ciclo leggono: da quando una richiesta è in volo, e quando il battito
+    // ha battuto l'ultima volta. Non si salvano e non si mostrano — servono
+    // solo a distinguere «sta lavorando» da «è morto e non lo sa».
+    richiestaDa: 0, ultimoBattito: 0,
     dati: true, visibile: true, auto: true,
     ultimoSuccesso: 0, ultimoTentativo: 0, prossimoAggiornamento: 0, prossimoTentativo: 0,
     tentativiFalliti: 0, errore: '', errNome: '', ultimaFonte: '', avviato: false,
@@ -1411,7 +1555,7 @@
     return inVista ? AGGIORNA_VISIBILE_MS : AGGIORNA_SFONDO_MS;
   }
 
-  function pianificaProssimo(riuscito) {
+  function pianificaProssimo(riuscito, guaio) {
     const ora = Date.now();
     if (riuscito) {
       stato.tentativiFalliti = 0;
@@ -1419,13 +1563,50 @@
       stato.prossimoAggiornamento = ora + intervalloAggiornamento();
       return;
     }
-    const i = Math.min(stato.tentativiFalliti, RIPROVE_MS.length - 1);
+    // Da che gradino della scala si riparte. Per un guasto qualunque dal
+    // primo, salendo di uno a ogni no; per un 429 o un 503 da
+    // `RIPROVA_LIMITE_DA`, perché lì la riprova corta non è una cura — è la
+    // causa, ripetuta. Il `max` e non un'assegnazione secca: chi ha già
+    // sbagliato sei volte non deve **scendere** di gradino solo perché
+    // l'ultimo no era un 429.
+    const daCapo = guaio && guaio.rateLimit ? RIPROVA_LIMITE_DA : 0;
+    const i = Math.min(Math.max(daCapo, stato.tentativiFalliti), RIPROVE_MS.length - 1);
     // Un pizzico di casualità: più schede aperte sullo stesso computer, o più
     // telefoni sulla stessa rete, non devono ripartire tutti nello stesso
     // istante dopo un guasto comune — sarebbe la raffica che ha causato il
     // 429 di prima, ripetuta.
-    stato.prossimoTentativo = ora + RIPROVE_MS[i] * (0.85 + Math.random() * 0.3);
+    let attesa = RIPROVE_MS[i] * (0.85 + Math.random() * 0.3);
+    // E se il servizio ha detto fra quanto tornare, quella parola vale più
+    // della nostra scala. È un massimo fra i due e non una sostituzione: non
+    // si riprova mai prima di quando ce l'hanno chiesto, ma un `Retry-After`
+    // di un secondo non può accorciare un rinvio che ci eravamo dati per
+    // altre ragioni.
+    if (guaio && Number.isFinite(guaio.riprovaFraMs)) {
+      attesa = Math.max(attesa, guaio.riprovaFraMs);
+    }
+    stato.prossimoTentativo = ora + attesa;
     stato.prossimoAggiornamento = stato.prossimoTentativo;
+  }
+
+  // La risposta è arrivata ma non parla più di questo cielo: il punto di
+  // vista è cambiato sotto mentre lei era per aria. Si butta lei, **non il
+  // ritmo** — ed è la riga che mancava, con un sintomo che è l'opposto di
+  // quello che sembra. Uscendo di lì senza riprogrammare,
+  // `prossimoAggiornamento` resta quello di prima, cioè nel passato: è
+  // proprio scaduto per far partire questa richiesta. Il battito allora
+  // rilancia la corsa fra cinque secondi, e fra altri cinque, finché il punto
+  // non si ferma. Non è un ciclo morto: è una **raffica a tutte le porte ogni
+  // cinque secondi**, che è il modo più rapido di prendersi un 429 da tutte
+  // insieme, mandarle tutte in penale e restare davvero senza aerei.
+  //
+  // La porta però ha risposto, e bene: il conto dei guasti si azzera come per
+  // un successo. Quello che manca sono i dati di **qui**, quindi si richiede
+  // presto, col pavimento di `AEREI_MOTO_MIN_MS` — la stessa regola con cui
+  // `ricentraPresto` rende sopportabile il viaggio in macchina.
+  function pianificaDopoScarto() {
+    stato.tentativiFalliti = 0;
+    stato.prossimoTentativo = 0;
+    stato.prossimoAggiornamento = Date.now() + AEREI_MOTO_MIN_MS;
   }
 
   async function carica(forza, mostraFeedback) {
@@ -1461,7 +1642,7 @@
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       stato.errore = 'senza rete'; stato.errNome = '';
       stato.tentativiFalliti++;
-      pianificaProssimo(false);
+      pianificaProssimo(false, errNome('OfflineError', 'senza rete'));
       concludiFeedback('Aggiornamento ADS-B non riuscito: manca la connessione.', true);
       aggiornaUI();
       return;
@@ -1471,6 +1652,11 @@
       : ordinaPerSalute(providersDisponibili());
     const controller = new AbortController();
     stato.controller = controller;
+    // Da quando è in volo. Non è un dato di comodo: `stato.richiesta` non
+    // nulla ferma sia `carica` sia il battito, quindi è l'unico stato di
+    // questo modulo che, restando, lo spegne del tutto. Senza un'ora accanto,
+    // una richiesta che non si chiude non si distingue da una appena partita.
+    stato.richiestaDa = Date.now();
     aggiornaUI();
     stato.richiesta = corsaProvider(providers, obs, raggioKm(), controller.signal)
       .then(risultato => {
@@ -1481,7 +1667,10 @@
         // dopo aver pagato per intero il tempo di scaricarla. Muovendosi la
         // risposta si tiene: le coordinate si rifanno dal punto di adesso.
         const adesso = osservatore();
-        if (!adesso || distanzaDirezione(obs, adesso).km > saltoCentroKm()) return;
+        if (!adesso || distanzaDirezione(obs, adesso).km > saltoCentroKm()) {
+          pianificaDopoScarto();
+          return;
+        }
         registraTracce(risultato.aerei);
         stato.aerei = arricchisci(unisciConLaMemoria(risultato.aerei), obs);
         stato.ultimoCentro = obs;
@@ -1499,43 +1688,145 @@
         concludiFeedback(`Dati ADS-B aggiornati: ${stato.aerei.length} ` +
           `${stato.aerei.length === 1 ? 'aereo trovato' : 'aerei trovati'}.`, false);
       }).catch(e => {
-        if (e.name === 'AbortError' && (!stato.dati || stato.ricaricaDopo)) return;
+        // Un abort voluto non è un guasto e non deve entrare nel conto delle
+        // riprove: il feed spento, il ricentraggio che ne farà partire
+        // un'altra subito, e — da quando `aereiFerma` chiude anche la
+        // richiesta in volo — la vista chiusa. Senza quest'ultima, uscire dal
+        // planetario mentre una corsa era per aria si scriveva in pagella
+        // come una porta che non risponde, e al rientro si ripartiva da un
+        // rinvio che nessuno si era guadagnato.
+        if (e.name === 'AbortError' &&
+            (!stato.dati || stato.ricaricaDopo || !stato.avviato)) return;
+        // E una richiesta che il guardiano ha gia' dichiarato persa ha gia'
+        // pagato il suo conto: segnarla di nuovo vorrebbe dire due gradini
+        // di penale per un guasto solo, cioe' un feed che si allontana dalla
+        // rete al doppio della velocita' prevista.
+        if (stato.controller !== controller) return;
         stato.errore = e.message || 'guasto';
         stato.errNome = e.name || '';
         stato.tentativiFalliti++;
-        pianificaProssimo(false);
+        pianificaProssimo(false, e);
         concludiFeedback(`Aggiornamento ADS-B non riuscito: ${guaioLeggibile()}.`, true);
       }).finally(() => {
-        stato.richiesta = null; stato.controller = null;
+        // Solo se la richiesta in corso siamo ancora **noi**. Il guardiano
+        // della richiesta appesa puo' averci dichiarati persi e averne fatta
+        // partire un'altra: azzerare qui alla cieca vorrebbe dire cancellare
+        // il segno di quella, e far credere al battito che il campo sia
+        // libero mentre una corsa e' per aria — cioe' due corse insieme, che
+        // e' esattamente la raffica che tutto questo file esiste per evitare.
+        if (stato.controller !== controller) return;
+        stato.richiesta = null; stato.controller = null; stato.richiestaDa = 0;
         if (stato.ricaricaDopo) { stato.ricaricaDopo = false; carica(true); }
         else aggiornaUI();
       });
     return stato.richiesta;
   }
 
+  // Un guasto dentro al battito si scrive **una volta sola per posto**. Il
+  // ciclo gira dodici volte al minuto: la stessa riga rossa ripetuta
+  // all'infinito seppellisce proprio quella che spiegava com'era cominciata.
+  // È la regola che `skyGuastoFotogramma` applica già al ciclo di disegno del
+  // planetario, per la stessa ragione.
+  const guastiDetti = new Set();
+  function dilloUnaVolta(dove, e) {
+    if (guastiDetti.has(dove)) return;
+    guastiDetti.add(dove);
+    console.error(`[aerei] guasto nel battito (${dove}) — il ciclo prosegue`, e);
+  }
+  function guardato(dove, fn) {
+    try { return fn(); } catch (e) { dilloUnaVolta(dove, e); return undefined; }
+  }
+
+  // La fotografia troppo vecchia non si propaga più: mezz'ora di rotta
+  // stimata non è un aereo, è un disegno.
+  function scartaFotografiaScaduta() {
+    if (!stato.ultimoSuccesso) return;
+    if (Date.now() - stato.ultimoSuccesso <= DATI_SCADUTI_MS || !stato.aerei.length) return;
+    stato.aerei = [];
+    render();
+  }
+
+  // Il primo guardiano: la **richiesta appesa**. La corsa ha una sveglia sua
+  // (`CORSA_ATTESA_MS`) e in condizioni normali basta e avanza. Ma un
+  // provider fornito da fuori (`window.AEREI_PROVIDER`) non è tenuto ad
+  // averla, e una promessa che per qualunque ragione non si chiude lascia
+  // `stato.richiesta` piena per sempre — e con lei piena `carica` esce
+  // subito, il battito esce subito, e il feed è fermo senza un errore da
+  // nessuna parte: la spia resta sull'azzurro di «sto scaricando» e il cielo
+  // su quello di cinque minuti fa. Qui non si crede alle promesse, si
+  // guarda l'orologio: oltre il doppio della corsa non sta arrivando niente,
+  // sta solo tenendo chiusa la porta a tutte le richieste successive.
+  function sorvegliaRichiesta() {
+    if (!stato.richiesta || !stato.richiestaDa) return;
+    if (Date.now() - stato.richiestaDa < RICHIESTA_APPESA_MS) return;
+    try { if (stato.controller) stato.controller.abort(); } catch (e) { /* già chiusa */ }
+    stato.richiesta = null; stato.controller = null; stato.richiestaDa = 0;
+    stato.errore = 'richiesta senza risposta'; stato.errNome = 'TimeoutError';
+    stato.tentativiFalliti++;
+    pianificaProssimo(false);
+  }
+
   // Il battito: un confronto fra due numeri ogni cinque secondi. Costa meno
   // di niente e sopravvive a quello che un `setInterval` da cinque minuti non
   // sopravvive — un telefono che manda l'app in secondo piano strozza o salta
   // i timer lunghi, e al ritorno il prossimo scarico sarebbe fra un'era.
+  //
+  // L'ordine delle righe qui dentro **non è un dettaglio di stile**, ed è la
+  // correzione che spiega la segnalazione «il primo caricamento va, i
+  // successivi no». Il primo scarico parte da `aereiAvvia`, fuori di qui;
+  // tutti gli altri dipendono dall'ultima riga di questa funzione. E le prime
+  // righe erano proprio le uniche che toccano il documento — il pannello, la
+  // riga di stato, il disegno —, cioè le uniche che possano sollevare per un
+  // nodo che non c'è, una chiave di dizionario mancante o una scheda a metà.
+  // Una di quelle eccezioni non saltava un giro: li saltava **tutti**, per
+  // sempre, perché il `setInterval` continuava a battere e nessun battito
+  // arrivava più in fondo. Nessun errore visibile, nessuna spia rossa: solo
+  // un cielo che non si aggiornava.
+  //
+  // La cura non è «non sollevare»: è che quello che solleva non possa
+  // portarsi via il resto. Le tre righe del documento stanno dentro a una
+  // rete, e la decisione di riscaricare — che è la ragione per cui questa
+  // funzione esiste — viene dopo e non dipende da loro.
   function battito() {
-    aggiornaUI();
-    // La fotografia troppo vecchia non si propaga più: mezz'ora di rotta
-    // stimata non è un aereo, è un disegno.
-    if (stato.ultimoSuccesso && Date.now() - stato.ultimoSuccesso > DATI_SCADUTI_MS && stato.aerei.length) {
-      stato.aerei = [];
-      render();
-    }
+    stato.ultimoBattito = Date.now();
+    guardato('pannello', aggiornaUI);
+    guardato('scadute', scartaFotografiaScaduta);
+    guardato('appesa', sorvegliaRichiesta);
     if (!stato.dati || !stato.auto) return;
     if (typeof document !== 'undefined' && document.hidden) return;
     if (stato.richiesta || !tempoReale()) return;
     if (Date.now() < stato.prossimoAggiornamento) return;
-    carica(false);
+    // `carica` si tiene i suoi guasti in un `catch` suo; ma se un giorno uno
+    // le sfuggisse diventerebbe una promessa rifiutata che non ascolta
+    // nessuno — rumore in console e, peggio, un guasto che non entra nel
+    // conto delle riprove. Il cerchio si chiude qui.
+    const avvio = guardato('scarico', () => carica(false));
+    if (avvio && typeof avvio.catch === 'function') {
+      avvio.catch(e => dilloUnaVolta('scarico rifiutato', e));
+    }
+  }
+
+  // Il secondo guardiano: il **ciclo che non batte più**. Un `setInterval`
+  // non è una promessa. Un browser da telefono che congela la pagina — o che
+  // la mette da parte per il tasto «indietro» — può non farlo ripartire al
+  // ritorno, e allora `stato.timer` tiene un numero che non chiama più
+  // nessuno: un ciclo morto che si dichiara vivo, che è il modo peggiore di
+  // fermarsi perché nessuno lo va a riaccendere. È la stessa lezione di
+  // `skyVigilaCicli` in `app.js` (§7.4-quinquies) e la cura è la stessa: non
+  // si aspettano avvisi — su iOS il `visibilitychange` del ritorno spesso non
+  // arriva affatto — si guardano i fatti, cioè l'ora dell'ultimo battito.
+  function sorvegliaBattito() {
+    if (!stato.avviato) return;
+    if (stato.ultimoBattito && Date.now() - stato.ultimoBattito < BATTITO_FERMO_MS) return;
+    clearInterval(stato.timer);
+    stato.timer = setInterval(battito, BATTITO_MS);
+    battito();
   }
 
   function aereiAvvia() {
-    if (stato.timer) return;
     stato.avviato = true;
-    stato.timer = setInterval(battito, BATTITO_MS);
+    stato.ultimoBattito = Date.now();
+    if (!stato.timer) stato.timer = setInterval(battito, BATTITO_MS);
     if (stato.dati) carica(false);
     render();
     aggiornaUI();
@@ -1545,6 +1836,14 @@
     clearInterval(stato.timer);
     stato.timer = null;
     stato.avviato = false;
+    // La richiesta in volo si abortisce invece di lasciarla correre: chiudere
+    // il planetario vuol dire che quella risposta non la guarderà nessuno, e
+    // lasciarla aperta significa tenere occupata una porta pubblica — e
+    // ritrovarsi, riaprendo, un `stato.richiesta` pieno di una corsa
+    // cominciata in un'altra vita della vista.
+    if (stato.controller) {
+      try { stato.controller.abort(); } catch (e) { /* già chiusa */ }
+    }
   }
 
   // --- I due interruttori ---------------------------------------------
@@ -2387,15 +2686,27 @@
     // sul telefono può essere stato congelato per un'ora.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden || !stato.avviato) return;
+      // Prima di tutto: il ciclo batte ancora? Tornare su una scheda e
+      // trovare il feed fermo non vuol dire che la fotografia sia vecchia,
+      // può voler dire che a battere non c'è rimasto nessuno.
+      sorvegliaBattito();
       aggiornaUI();
       if (stato.dati && stato.auto && tempoReale() &&
         Date.now() - stato.ultimoSuccesso > DATI_VECCHI_MS) carica(false);
     });
+    // `pageshow` è il ritorno dalla cache di navigazione (il tasto
+    // «indietro»), dove la pagina riprende esattamente com'era — timer
+    // congelati compresi — e `visibilitychange` non passa affatto; `focus` è
+    // la rete di sicurezza per tutti i casi che non abbiamo previsto. Tutt'e
+    // due costano due confronti fra numeri quando non c'è niente da fare.
+    window.addEventListener('pageshow', sorvegliaBattito);
+    window.addEventListener('focus', sorvegliaBattito);
     // La rete che torna è la notizia migliore che questo modulo possa
     // ricevere: il conto delle riprove riparte da zero, se no si resterebbe
     // fermi fino allo scadere dell'ultimo rinvio.
     window.addEventListener('online', () => {
       if (!stato.avviato || !stato.dati) return;
+      sorvegliaBattito();
       stato.tentativiFalliti = 0;
       stato.errore = '';
       stato.prossimoAggiornamento = 0;
@@ -2437,6 +2748,13 @@
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky,
     scaricaConRipiego, corsaProvider, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
     interpretaRotta, aeroportoTesto, aeroportoCoordinate, orarioRotta, puntiOrtodromia,
+    // Il ritmo e i suoi guardiani (§6): il banco di prova li interroga uno per
+    // uno, perché il difetto che curano non lascia traccia sullo schermo —
+    // un feed fermo e un cielo sgombro sono la stessa immagine.
+    conAntiCache, attesaRichiesta, battito, sorvegliaBattito, sorvegliaRichiesta,
+    guardato, pianificaDopoScarto,
+    RIPROVA_LIMITE_DA, RETRY_AFTER_MAX_MS, PENALE_MAX_MS,
+    BATTITO_MS, BATTITO_FERMO_MS, RICHIESTA_APPESA_MS,
     registraTracce, tracce, stato, providersDisponibili,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
     intervalloAggiornamento, pianificaProssimo, RIPROVE_MS, DATI_VECCHI_MS, DATI_SCADUTI_MS,

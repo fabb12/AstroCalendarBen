@@ -573,6 +573,13 @@ function cors(request, env) {
   const testa = {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    // Di una risposta cross-origin il browser consegna al codice solo un
+    // pugno di intestazioni, e `Retry-After` non e' fra quelle: senza questa
+    // riga `aerei.js` la legge come `null` anche quando l'abbiamo scritta, e
+    // torna a indovinare con la sua scala delle riprove un'attesa che qui
+    // sappiamo. Dichiararla costa niente e trasforma «riprovo fra un po'» in
+    // «riprovo quando mi e' stato detto».
+    'Access-Control-Expose-Headers': 'Retry-After',
     'Vary': 'Origin'
   };
   // L'intestazione si scrive solo per chi e' ammesso: negarla e' proprio il
