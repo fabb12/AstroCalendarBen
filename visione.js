@@ -2088,7 +2088,8 @@
       m.raggioPx = m.raggio * fot.perPixelX;
     });
     const inRiquadro = macchie.map(m => ({
-      x: m.px, y: m.py, raggio: m.raggioPx, segno: m.segno, flusso: m.flusso
+      x: m.px, y: m.py, raggio: m.raggioPx, segno: m.segno, flusso: m.flusso,
+      piccola: m.piccola
     }));
 
     const scena = serveScena ? visSeguiScena(fot, base, focale) : { coppie: [], segni: [] };
