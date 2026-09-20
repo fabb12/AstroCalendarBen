@@ -197,8 +197,7 @@ function aggiornaInformazioniBuild() {
     data.textContent = quando && !Number.isNaN(quando.getTime())
       ? new Intl.DateTimeFormat(document.documentElement.lang || 'it', {
           dateStyle: 'medium',
-          timeStyle: 'short',
-          timeZoneName: 'short'
+          timeStyle: 'short'
         }).format(quando)
       : '—';
   }
