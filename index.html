@@ -2941,6 +2941,17 @@
        aerei dovrebbero essere in quadro; se manca, la fotocamera resta lo
        sfondo che era. -->
   <script src="visione.js"></script>
+  <!-- L'inseguimento a rilevazioni degli aerei. Va **dopo** `visione.js`, e
+       non è un ordine di comodo: `visAncoraAereo` gli chiede la sua ancora
+       prima di rispondere con la propria, e questo file a sua volta chiede a
+       `visAncoraAereo` quale ancora è stata applicata (§8 di
+       `inseguimento.js`) — due `typeof`, nessuna dipendenza al caricamento.
+       È anche lo script del **worker**: caricato qui registra le sue
+       funzioni e apre un `new Worker('inseguimento.js')`, che è sé stesso, e
+       là dentro `window` non esiste e il file si limita al suo `onmessage`.
+       Da `file://` il worker non si può aprire e si lavora sul filo
+       principale, con le stesse funzioni. -->
+  <script src="inseguimento.js"></script>
   <script src="eventi-extra.js"></script>
   <!-- Missione Cielo: usa pianifica.js, catalogo.js, terreno.js e gli eventi,
        quindi viene dopo di loro; ui-nuova.js gli disegna la scheda dentro a
