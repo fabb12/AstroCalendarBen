@@ -19010,6 +19010,15 @@ const SKY_ABITATO_FOSCHIA = 0.82;
 // crinale è **il** motivo per cui uno ingrandisce sull'orizzonte.
 const SKY_ABITATO_VELO_MIN = 0.35;
 
+// A campo strettissimo il modello degli abitati non ha più dettaglio da
+// offrire: ogni edificio è soltanto un rettangolo, e a poche centinaia di
+// metri quei rettangoli diventano pareti alte uno schermo e tetti larghi
+// decine di pixel. Non sono nuovi particolari, sono il limite del modello.
+// Fra tre gradi e un grado e mezzo li si lascia quindi svanire; sotto, non si
+// disegnano affatto. La transizione evita uno scatto durante il pizzico.
+const SKY_ABITATO_FOV_PIENO = 3;
+const SKY_ABITATO_FOV_SPENTO = 1.5;
+
 // Il corpo di una luce. Una lampada è una sorgente puntiforme e resta un
 // punto a qualunque ingrandimento — ma le luci disegnate sono qualche
 // centinaio al posto di qualche migliaio, e allargandosi il tappeto si
@@ -19500,6 +19509,15 @@ function skyDisegnaCasePaese(ctx, ab, base, focale, crestaA, forza, lontananza,
 function skyDisegnaAbitati(ctx, base, focale, aria, velo) {
   if (typeof cittaAbitati !== 'function') return;
   skyAbitatiVisti = null;
+
+  // A zoom astronomico le sagome sintetiche delle case diventano blocchi e
+  // bande a tutto schermo. Si spengono dolcemente prima che la loro
+  // risoluzione finisca, lasciando il profilo reale del terreno intatto.
+  const zoomAbitati = Math.max(0, Math.min(1,
+    (sky.fov - SKY_ABITATO_FOV_SPENTO) /
+    (SKY_ABITATO_FOV_PIENO - SKY_ABITATO_FOV_SPENTO)));
+  if (!(zoomAbitati > 0)) return;
+
   const lista = cittaAbitati();
   if (!lista.length) return;
 
@@ -19547,8 +19565,8 @@ function skyDisegnaAbitati(ctx, base, focale, aria, velo) {
     const lontananza = typeof skyLontananzaCitta === 'function'
       ? skyLontananzaCitta(ab.km) : 0;
     const aria2 = (1 - lontananza * SKY_ABITATO_FOSCHIA);
-    const forzaNotte = notte * opaco * aria2;
-    const forzaGiorno = giorno * opaco * aria2;
+    const forzaNotte = notte * opaco * aria2 * zoomAbitati;
+    const forzaGiorno = giorno * opaco * aria2 * zoomAbitati;
     if (forzaNotte <= 0.02 && forzaGiorno <= 0.02) continue;
 
     // Dove si appende il nome: il punto più alto di quello che si è visto
