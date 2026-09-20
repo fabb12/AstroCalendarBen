@@ -86,7 +86,9 @@ for (const nome of ['skyDisegnaAbitati', 'skyDisegnaLuciAbitato',
   run(m[0]);
 }
 for (const cost of ['SKY_ABITATO_CRESTA_PX', 'SKY_ABITATO_CRESTA_MIN', 'SKY_ABITATO_CRESTA_MAX',
-                    'SKY_ABITATO_FOSCHIA', 'SKY_ABITATO_VELO_MIN', 'SKY_ABITATO_PUNTO_MIN',
+                    'SKY_ABITATO_FOSCHIA', 'SKY_ABITATO_VELO_MIN',
+                    'SKY_ABITATO_FOV_PIENO', 'SKY_ABITATO_FOV_SPENTO',
+                    'SKY_ABITATO_PUNTO_MIN',
                     'SKY_ABITATO_PUNTO_MAX', 'SKY_ABITATO_TINTA_FREDDA',
                     'SKY_ABITATO_PASSO_PX', 'SKY_ABITATO_LUCI_MIN',
                     'SKY_ABITATO_ALFA', 'SKY_ABITATO_ORLO_ALFA',
@@ -891,6 +893,26 @@ prova('le case fuori dal riquadro non si disegnano', () => {
   const fuori = mattoni(ab, -90, 0.9, 4000);
   run('skyAzVista = 90;');
   assert.equal(fuori.length, 0, 'disegna ' + fuori.length + ' case fuori dallo schermo');
+});
+
+prova('allo zoom estremo gli abitati non diventano blocchi a tutto schermo', () => {
+  const ab = posto(PAESI, 300, 300).filter(a => a.nome === 'Vicino');
+
+  // A tre gradi il paese e i suoi edifici sono ancora leggibili.
+  run('sky.fov = SKY_ABITATO_FOV_PIENO;');
+  assert.ok(forme(ab, -90, 0.9, 4000).length > 0,
+    'gli abitati spariscono prima dello zoom estremo');
+
+  // Sotto un grado e mezzo la geometria sintetica non contiene dettaglio
+  // aggiuntivo: proiettarla produceva i rettangoli e le bande della
+  // segnalazione. Il terreno reale resta disegnato da rilievo.js.
+  run('sky.fov = SKY_ABITATO_FOV_SPENTO;');
+  assert.equal(forme(ab, -90, 0.9, 4000).length, 0,
+    'restano sagome di edifici allo zoom estremo');
+  assert.equal(run('skyAbitatiVisti'), null,
+    'resta un aggancio invisibile per il nome del paese');
+
+  run('sky.fov = 60;');
 });
 
 // --- §8. La città, e poi i suoi quartieri -----------------------------
