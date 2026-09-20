@@ -1,51 +1,72 @@
 # Niente in corso
 
-Ultimo lavoro chiuso: **il terreno a campo largo, i gradoni e il budget del
-fotogramma** — quattro segnalazioni che si sono rivelate quattro difetti
-diversi, tutti nel disegno del rilievo.
+Ultimo lavoro chiuso: **il planetario che va a scatti, e l'INP da mezzo
+secondo** — una segnalazione sola, con dentro un difetto vero e una svista di
+progetto.
 
-Il banco di prova usato è nello scratchpad della sessione e non nel
-repository: un Chromium vero con le tessere del rilievo e le quote generate
-da una funzione (una cima a 2.511 m con le catene attorno, e una pianura),
-così il paesaggio è noto e ripetibile. Tutti i numeri qui sotto vengono da
-lì, letti sui pixel della tela.
+Il banco di prova sta nello scratchpad della sessione e non nel repository: un
+Chromium vero con un paesaggio sintetico (un lago fra i monti, tipo Lugano) e
+le quote generate da una funzione, così la scena è nota e ripetibile. Le
+tessere del rilievo sono PNG in formato terrarium generati in Node. Due
+trappole del banco, che valgono per chiunque ne scriva un altro: la rotta di
+`cdn.jsdelivr.net` va registrata **prima** di quella di Astronomy Engine (fra
+due rotte di Playwright che combaciano vince l'ultima registrata, ed è la
+stessa lezione di `prova-fumetto.js`), e il **service worker va bloccato**
+(`serviceWorkers: 'block'`), se no traveste ogni richiesta di quote in un 504
+sintetico e il terreno non arriva mai — cioè si misura una scena senza
+montagne credendo di misurarne una con le montagne.
 
-**(1) La banda scura all'orizzonte** (`app.js`, `skyAriaSottoOrizzonte`). Da
-una cima, fra la riga dell'orizzonte e il crinale restava un nastro verde
-scuro: cielo (190, 215, 238), banda (61, 69, 57). Non era un colore
-sbagliato: era che tutto ciò che sta sotto la riga veniva dipinto col
-gradiente del suolo, scritto sulla legge «un grado sotto l'orizzonte è a
-novanta metri» — falsa di tre ordini di grandezza da lassù. Sotto la riga,
-da una cima, ci sono l'aria oltre il bordo del pianeta e la terra a cento
-chilometri: tutt'e due sono il colore del cielo all'orizzonte.
+**(1) Il gestore del puntatore non c'entra.** Costa microsecondi. L'INP è il
+*fotogramma successivo*, ed è per questo che anche i tasti della tastiera —
+che con la mappa non hanno niente a che vedere — misuravano trecento
+millisecondi.
 
-**(2) Il rilievo a campo largo** (`rilievo.js`, `tracciaFetta` e
-`rilTracciaSagoma`). Sopra i 125° il dettaglio era spento per non far
-incrociare i poligoni delle fette. Adesso ogni fetta è una striscia spezzata
-**dove il quadrilatero fra due colonne cambia verso**, quindi non si può
-incrociare, e lo spegnimento è sparito. Strada provata e scartata: un
-quadrilatero per colonna — corretta e quattro volte più cara, perché il
-costo di un `fill()` sta nei sottotracciati e non nei vertici.
+**(2) Il costo non è JavaScript.** Tutto `skyDisegna` costa tre millisecondi
+di conto; il fotogramma ne durava settantatré. Il resto è rasterizzazione, e a
+dipingere è il terreno: **sette passate sopra alla stessa superficie**. A un
+milione di pixel di tela il terreno valeva 57 ms dei 73; a quattro milioni il
+fotogramma durava 218 ms, cioè cinque al secondo.
 
-**(3) I gradoni** (`rilievo.js`, `rilRampaDelleQuote` e `rilLiscia`). Due
-cause: le fasce di quota campionate a passo costante **di quota** su una
-rampa che non è uniforme (il tratto roccia-neve vale metà della rampa in un
-tredicesimo dell'asse: cinquanta livelli per gradino), e la griglia grossa
-letta con una bilineare, che dentro a una cella ha pendenza costante e sul
-bordo salta — e il chiaroscuro è una derivata. Adesso passo costante **di
-colore** e curva a S. In più la scala delle larghezze, che cominciava
-dall'uno e raddoppiava l'opacità sul confine fra due classi: trenta livelli
-di filo chiaro verticale.
+**(3) Il budget che doveva impedirlo guardava la cosa sbagliata**
+(`rilAggiornaBudget`). `performance.now()` attorno alle chiamate del canvas
+misura quanto ci mette il browser a *registrarle*, non a dipingerle:
+`rilievo.ultimo.ms` diceva 3,4 millisecondi su un fotogramma da cinquanta, e
+il termostato concludeva che andava tutto bene. Adesso legge `sky.fotogrammaMs`
+— ma solo mentre la montagna si ridipinge **di fila**, se no il fattore sale e
+scende da solo a camera ferma (diradare cambia il disegno, cioè *provoca* la
+ridipintura successiva).
 
-**(4) Il budget del fotogramma** (`rilievo.js`, `rilAggiornaBudget`). Si
-misura quello che il disegno è costato e si diradano colonne, gradini della
-scala e fasce di quota. Il costo vero sono le **chiamate di disegno**, non la
-geometria. Con la CPU a un sesto: da trenta-quarantacinque millisecondi a
-quattro-sei.
+**(4) E le sue manopole tiravano la corda sbagliata.** Portando le strisce del
+chiaroscuro da 4.310 a 380 il fotogramma passava da 51 a 33: sono meno, ma
+coprono gli stessi pixel. Quello che conta è la superficie, non le primitive.
 
-`node scripts/prova-verifica.js` — 1.262 verdi, 4 rosse, e sono le stesse
-quattro che erano rosse prima (tre sull'acqua rasente, una sulla camera che
-insegue). `node scripts/prova-abitati.js` — 56 su 56.
-`node scripts/prova-nel-browser.js` dà le stesse quattro rosse di prima (due
-sull'Esc, una sulla scheda dell'aereo, e i dodici fotogrammi al secondo che
-in questo contenitore si misurano senza acceleratore grafico).
+La cura è in `app.js`, §«La tela del terreno»: il fondo del suolo, il rilievo
+e l'occlusione d'ambiente si dipingono su una tela di servizio e da lì si
+ricopiano, finché la posa, l'ora e la maglia non cambiano; e mentre la camera
+si muove — l'unico momento in cui la copia non vale, e anche l'unico in cui il
+dettaglio fine non lo guarda nessuno — la tela si dipinge più piccola
+(`SKY_TERRENO_SCALE`). Fuori dalla copia restano l'acqua (le onde camminano
+con l'orologio da polso, e costano due millisecondi sui quaranta) e la grana,
+che si stende in `overlay` e guarda il colore che ha sotto.
+
+Misurato, stessa scena: **fermi 73,8 → 28,2 ms, trascinando 73,3 → 44,1** a un
+milione di pixel; **218 → 107 e 218 → 147** a quattro milioni. E la prova che
+conta, fatta nella stessa pagina sullo stesso fotogramma: ricopiare la tela
+contro dipingere di fila dà lo 0,148% dei pixel diversi con uno scarto medio
+di 1,1 livelli su 255 — è l'arrotondamento della composizione «sorgente
+sopra», che è associativa, ed è il motivo per cui l'opacità del terreno va
+messa **dentro** su ogni strato e la copia stesa piena.
+
+`node scripts/prova-verifica.js` — 1.291 verdi, 6 rosse, **le stesse sei prima
+e dopo** (tre sull'acqua rasente, una sulla camera che insegue, due sul raggio
+fisso della realtà aumentata). `node scripts/prova-abitati.js` — 56 su 56.
+`node scripts/prova-nel-browser.js` dà esattamente lo stesso esito di prima
+(si interrompe su `solDisegnaVicino`, che non c'entra con questo lavoro).
+
+**Quello che resta da fare**, con i numeri già in mano: tolto il terreno, il
+fotogramma torna al pavimento del refresh, quindi il prossimo guadagno non è
+più lì. Le due strade rimaste sono la **ricopiatura anche del cielo** (stelle
+e Via Lattea cambiano solo con la posa e con l'ora, esattamente come la
+montagna) e il **ritaglio della copia**: oggi si ricopia tutta la tela a ogni
+fotogramma, e a quattro milioni di pixel quella ricopiatura da sola vale una
+decina di millisecondi.

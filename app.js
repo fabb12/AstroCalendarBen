@@ -8056,6 +8056,12 @@ const sky = {
     durataSec: SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC, timer: null },
   inerzia: null,
   ultimoFotogramma: 0,   // performance.now() del fotogramma precedente, per il dt
+  // Quanto dura un fotogramma, smussato: lo legge il budget del rilievo, che
+  // dal suo disegno non può vedere né quando comincia né quando finisce.
+  fotogrammaMs: 0,
+  // E se la montagna si sta ridipingendo di fila o una volta ogni tanto: lo
+  // legge lo stesso budget, che al fotogramma crede solo nel primo caso.
+  terrenoInMovimento: false,
   // Il ciclo respira? `battito` è l'istante dell'ultimo fotogramma e
   // `cicloPrestato` dice che a disegnare è un'altra vista (il Sistema Solare,
   // la lezione): sono i due numeri che guarda la sentinella di 7.4-quinquies,
@@ -14898,6 +14904,263 @@ function skyTracciaSuolo(ctx, o) {
   return 'nonzero';
 }
 
+// --- La tela del terreno ------------------------------------------------
+//
+// Il terreno è la cosa più cara che questo planetario disegni, e il conto non
+// è il JavaScript: è la **superficie dipinta**.
+//
+// Misurato in un browser vero, su un panorama di lago e montagne, con un
+// milione di pixel di tela: tutto `skyDisegna` costa **tre** millisecondi di
+// JavaScript e il fotogramma ne dura **settantaquattro**. Cinquantasette di
+// quei settantaquattro sono il terreno, e non c'è una primitiva cara da
+// andare a cercare — sono **sette passate sopra alla stessa montagna** (il
+// fondo del suolo, la sagoma, il fondo a fette, il velo delle quote, il
+// chiaroscuro, il velo dell'aria, l'occlusione d'ambiente), e ognuna si paga
+// tutti i suoi pixel. A quattro milioni — uno schermo denso a tutta pagina —
+// lo stesso panorama costa duecentodiciotto millisecondi, cioè meno di cinque
+// fotogrammi al secondo. Tolto il terreno, quella stessa scena torna al
+// pavimento del refresh: non è «il planetario è pesante», è la montagna.
+//
+// Da lì viene il difetto che si vede: l'INP. Il gestore del tocco non c'entra
+// niente (costa microsecondi); quello che l'utente aspetta dopo aver toccato
+// è il **fotogramma successivo**, ed è quello a durare mezzo secondo.
+//
+// Ma quella superficie **non cambia**. Il cielo sì — le stelle sfarfallano, i
+// satelliti corrono, le onde del lago camminano — e per quello si continua a
+// disegnare a ogni fotogramma; la montagna no: finché non si muove la camera
+// e non passa l'ora, è identica a sé stessa. Si dipinge quindi una volta su
+// una tela di servizio e da lì in poi si ricopia, che è la regola che questo
+// file applica da sempre alle facce degli astri (§7.3.2) e non applicava alla
+// cosa più cara di tutte.
+//
+// **Il taglio fra quello che si tiene e quello che si rifà** non è dove
+// verrebbe comodo, è dove le cose cambiano davvero. Si tengono il fondo del
+// suolo, il rilievo e l'occlusione d'ambiente, che dipendono dalla posa,
+// dalla maglia e dall'ora. Restano vive la grana, l'acqua, i paesi e la riga
+// dell'orizzonte. L'acqua in particolare **deve** restare viva: le onde
+// camminano con l'orologio da polso e congelarle si vedrebbe subito — ed è
+// una fortuna che sia anche la parte che non costa niente, due millisecondi
+// sui cinquantasette.
+//
+// La **grana** resta fuori per un'altra ragione, e vale la pena scriverla
+// perché non si vede leggendo il codice: si stende in `overlay`, che guarda
+// il colore che ha sotto. Dentro alla tela di servizio sotto c'è il terreno e
+// fuori c'è il vuoto, mentre sulla tela vera sotto c'è il terreno **sopra il
+// cielo**: a terreno velato (forte zoom) le due cose non danno lo stesso
+// colore. Tutto il resto del gruppo si compone in «sorgente sopra», e lì
+// copiare la tela è identico a dipingere di fila — non per fortuna: quella
+// composizione è associativa, e il conto torna cifra per cifra. Per la stessa
+// ragione l'opacità del terreno si mette **dentro**, su ogni strato, e la
+// copia si stende piena: `velo` applicato una volta sola alla fine darebbe un
+// altro colore.
+//
+// La **chiave** dice per quale posa, quale maglia e quale ora vale la copia.
+// Chi ne dimenticasse un pezzo lascerebbe in scena una montagna vecchia, che
+// è il genere di guasto che non si vede: un panorama sbagliato è un bel
+// panorama. Per questo c'è anche la scadenza — passata `SKY_TERRENO_TELA_MS`
+// la copia si rifà comunque, e un ingrediente dimenticato costa mezzo secondo
+// di ritardo invece di restare lì finché l'app è aperta. Due secondi e non
+// mezzo: è una rete contro un difetto, non un modo di tenersi aggiornati, e
+// una rete che scatta due volte al secondo tornerebbe a essere lei il costo.
+const SKY_TERRENO_TELA_MS = 2000;
+
+// --- E quanto grande si dipinge, mentre la camera si muove --------------
+//
+// La copia non vale niente durante un trascinamento: la posa cambia a ogni
+// fotogramma, quindi la montagna si ridipinge a ogni fotogramma. Lì l'unica
+// manopola che tocchi il costo vero — i pixel — è quanto grande la si
+// dipinge, e c'è una ragione per cui si può tirare proprio in quel momento:
+// mentre il panorama scorre sotto il dito, il dettaglio fine non lo guarda
+// nessuno. Appena la camera si ferma la tela si rifà alla sua misura piena e
+// la montagna torna nitida, che è il momento in cui la si guarda davvero.
+//
+// Si scende di un gradino per volta e **solo mentre ci si muove**; a
+// rimettere la misura piena è la camera che si ferma, non il cronometro. È
+// una scelta obbligata: il tempo fra due fotogrammi non sa distinguere
+// «veloce» da «appena in tempo» — a sessanta hertz un fotogramma sano dura
+// sedici millisecondi e sette qualunque cosa ci si disegni dentro — quindi
+// da una misura ridotta non si potrebbe mai capire, guardando il fotogramma,
+// che si è tornati a poter permettere quella piena. La quiete invece si sa
+// per certo: lì il fotogramma è una ricopiatura, e costa quello che costa.
+const SKY_TERRENO_SCALE = [1, 0.7, 0.5];
+// Da quanto la scena non cambia perché si possa dire di essere fermi. Un
+// quarto di secondo: più corto e un trascinamento lento verrebbe letto come
+// una serie di soste, cioè una ridipintura piena a ogni pausa del dito.
+const SKY_TERRENO_FERMO_MS = 250;
+// E ogni quanto si può scendere di un gradino. La media del fotogramma è
+// lenta apposta (`SKY_FOTOGRAMMA_TAU`), quindi senza questa pausa i tre
+// gradini si scenderebbero tutti nello stesso decimo di secondo, sulla
+// stessa notizia letta tre volte.
+const SKY_TERRENO_GRADINO_MS = 150;
+// Quanto fine si guarda la posa. Un centomillesimo sulle componenti della
+// terna vale sei millesimi di grado, cioè meno di un centesimo di pixel a
+// qualunque ingrandimento: da fermo la chiave è identica, e muovendo il dito
+// cambia al primo pixel.
+const SKY_TERRENO_POSA = 1e5;
+// E quanto fine si guarda il Sole. La sua altezza entra nel colore del suolo
+// e nella direzione della luce sulla montagna; due centesimi di grado sono
+// cinque secondi di cielo, cioè una ridipintura ogni cinque secondi da ferma.
+const SKY_TERRENO_SOLE = 50;
+
+let skyTelaTerreno = null;      // { canvas, ctx, l, h }
+let skyTerrenoChiave = '';
+let skyTerrenoQuando = 0;
+let skyTerrenoRilievoFatto = false;
+let skyTerrenoScena = '';       // la chiave senza la misura: dice se ci si muove
+let skyTerrenoMossaDa = 0;      // quando la scena è cambiata l'ultima volta
+let skyTerrenoGradino = 0;      // indice in SKY_TERRENO_SCALE
+let skyTerrenoGradinoDa = 0;
+
+// La copia non vale più, e la tela di servizio nemmeno la si tiene: è grande
+// quanto quella vera — su uno schermo denso a tutta pagina sono decine di
+// megabyte — e finché il planetario è chiuso non serve a nessuno.
+function skyTerrenoScordaTela() {
+  skyTerrenoChiave = '';
+  skyTerrenoScena = '';
+  if (skyTelaTerreno) {
+    skyTelaTerreno.canvas.width = skyTelaTerreno.canvas.height = 1;
+    skyTelaTerreno = null;
+  }
+}
+
+// Di quanto si rimpicciolisce la tela del terreno, adesso. Ferma la camera,
+// piena; muovendosi, un gradino in meno ogni volta che il fotogramma arriva
+// tardi — e mai più di uno per `SKY_TERRENO_GRADINO_MS`.
+function skyTerrenoScala(inMovimento, ora) {
+  if (!inMovimento) { skyTerrenoGradino = 0; return SKY_TERRENO_SCALE[0]; }
+  // La soglia è quella del budget del rilievo, e non se ne tiene una copia:
+  // senza quel file non c'è nessuna montagna da disegnare, quindi non c'è
+  // niente da stringere e la tela resta piena.
+  const soglia = typeof RIL_FOTOGRAMMA_ALTO === 'number' ? RIL_FOTOGRAMMA_ALTO : Infinity;
+  const lento = sky.fotogrammaMs > soglia;
+  if (lento && skyTerrenoGradino < SKY_TERRENO_SCALE.length - 1 &&
+      ora - skyTerrenoGradinoDa > SKY_TERRENO_GRADINO_MS) {
+    skyTerrenoGradino++;
+    skyTerrenoGradinoDa = ora;
+  }
+  return SKY_TERRENO_SCALE[skyTerrenoGradino];
+}
+
+// Per quale **scena** vale la copia: la posa e il campo (da cui viene ogni
+// pixel della proiezione), l'aria e i due astri che illuminano, la maglia del
+// rilievo con la quota dell'occhio, il profilo del terreno e la misura della
+// tela.
+//
+// Quanto fine si disegna — il diradamento del budget, la misura della tela —
+// qui dentro **non** ci va, ed è una distinzione che costa cara a sbagliarla:
+// questa chiave è anche il modo in cui si capisce se la camera si sta
+// muovendo, e con il diradamento dentro un cambio di gradino si leggeva come
+// un movimento. Da lì il giro vizioso: il budget dirada, il diradamento
+// finge un movimento, il movimento autorizza il budget a diradare ancora — a
+// camera ferma, con la montagna che cambiava dettaglio da sola.
+function skyChiaveScenaTerreno(base, focale, velo) {
+  const n = (x, s) => Math.round((Number.isFinite(x) ? x : 0) * s);
+  const sole = sky.oggetti && sky.oggetti.find(o => o.id === 'Sun');
+  const luna = sky.oggetti && sky.oggetti.find(o => o.id === 'Moon');
+  const P = SKY_TERRENO_POSA;
+  const r = typeof rilievo !== 'undefined' ? rilievo : null;
+  const t = typeof terreno !== 'undefined' ? terreno : null;
+  return [
+    n(base.f[0], P), n(base.f[1], P), n(base.f[2], P),
+    n(base.r[0], P), n(base.r[1], P), n(base.r[2], P),
+    n(base.u[0], P), n(base.u[1], P), n(base.u[2], P),
+    n(focale, 1e3), n(velo, 1e4), n(sky.luceCielo, 1e3),
+    sole ? n(sole.alt, SKY_TERRENO_SOLE) : 'x',
+    sole ? n(sole.az, SKY_TERRENO_SOLE) : 'x',
+    luna ? n(luna.alt, 20) : 'x', luna ? n(luna.az, 20) : 'x',
+    r ? (r.chiave || '') : '', r ? (r.acceso ? 1 : 0) : 'x', r ? n(r.occhioOra, 20) : 'x',
+    r ? n(r.scarto, 10) : 'x', r ? (r.grigliaQuando || 0) : '',
+    t ? (t.quando || 0) : '', t ? (t.acceso ? 1 : 0) : 'x',
+    sky.canvas.width, sky.canvas.height
+  ].join('|');
+}
+
+// La tela di servizio. Ferma la camera è grande quanto quella vera — pixel
+// del dispositivo compresi, se no la montagna ricopiata verrebbe sgranata
+// mentre tutto il resto è nitido.
+function skyTerrenoTela(scala) {
+  const l = Math.max(1, Math.round(sky.canvas.width * scala));
+  const h = Math.max(1, Math.round(sky.canvas.height * scala));
+  if (!skyTelaTerreno) {
+    if (typeof document === 'undefined') return null;
+    const c = document.createElement('canvas');
+    skyTelaTerreno = { canvas: c, ctx: c.getContext('2d'), l: 0, h: 0 };
+  }
+  const t = skyTelaTerreno;
+  if (!t.ctx) return null;
+  if (t.l !== l || t.h !== h) {
+    t.canvas.width = l; t.canvas.height = h;
+    t.l = l; t.h = h;
+    skyTerrenoChiave = '';
+  }
+  return t;
+}
+
+// I tre strati che non cambiano, dipinti o ricopiati. Torna `true` se a
+// disegnare il terreno è stato il rilievo, che è la cosa che il resto della
+// funzione ha bisogno di sapere.
+function skyStendiTerrenoFermo(ctx, o, base, focale, aria, suolo, velo, azCentro) {
+  const dipingi = (g) => {
+    g.save();
+    g.globalAlpha = velo;
+    const regola = skyTracciaSuolo(g, o);
+    g.fillStyle = skyGradienteTerreno(g, o, suolo.vicino, suolo.lontano, base, focale, azCentro, aria);
+    g.fill(regola);
+    const fatto = typeof rilDisegna === 'function' &&
+      rilDisegna(g, base, focale, suolo, aria);
+    // L'occlusione d'ambiente, che il rilievo si è appena coperto col suo
+    // fondo a fette. Sta qui e non dentro a `rilievo.js`: è la legge del
+    // suolo di questo file, e deve restare una sola (vedi
+    // `skyVeloOcclusione`).
+    if (fatto) skyDisegnaOcclusioneSuolo(g, o, base, focale, azCentro);
+    g.restore();
+    return fatto;
+  };
+
+  const ora = performance.now();
+  // La scena è cambiata? Allora la camera si sta muovendo, e finché si muove
+  // la tela si può dipingere più piccola.
+  const scena = skyChiaveScenaTerreno(base, focale, velo);
+  if (scena !== skyTerrenoScena) { skyTerrenoScena = scena; skyTerrenoMossaDa = ora; }
+  const inMovimento = ora - skyTerrenoMossaDa < SKY_TERRENO_FERMO_MS;
+  const scala = skyTerrenoScala(inMovimento, ora);
+
+  // Da qui lo legge il budget del rilievo (§«Il budget del fotogramma» in
+  // `rilievo.js`): il tempo di un fotogramma dice qualcosa sul terreno solo
+  // mentre il terreno si ridipinge a ogni fotogramma.
+  sky.terrenoInMovimento = inMovimento;
+
+  const tela = skyTerrenoTela(scala);
+  // Senza tela di servizio si torna al disegno di prima, e allora ogni
+  // fotogramma ridipinge: il budget può credere al fotogramma sempre.
+  if (!tela) { sky.terrenoInMovimento = true; return dipingi(ctx); }
+
+  // La chiave della copia, invece, il dettaglio ce l'ha dentro: un
+  // diradamento diverso disegna una montagna diversa, e la copia va rifatta.
+  const dirad = (typeof rilievo !== 'undefined' && rilievo.ultimo) ? rilievo.ultimo.diradato : 1;
+  const chiave = scena + '|' + scala + '|' + dirad;
+  if (chiave !== skyTerrenoChiave || ora - skyTerrenoQuando > SKY_TERRENO_TELA_MS) {
+    const dpr = sky.canvas.width / Math.max(1, sky.larghezza);
+    tela.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    tela.ctx.clearRect(0, 0, tela.l, tela.h);
+    tela.ctx.setTransform(dpr * scala, 0, 0, dpr * scala, 0, 0);
+    skyTerrenoRilievoFatto = dipingi(tela.ctx);
+    skyTerrenoChiave = chiave;
+    skyTerrenoQuando = ora;
+  } else if (typeof rilControlla === 'function') {
+    // La copia salta il disegno, non la manutenzione: la maglia deve
+    // continuare a chiedere le tessere che le mancano e a rifarsi quando ci
+    // si sposta, se no stando fermi il rilievo non arriverebbe mai. E quando
+    // si rifà cambia `rilievo.chiave`, cioè la copia scade da sé.
+    rilControlla();
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(tela.canvas, 0, 0, sky.canvas.width, sky.canvas.height);
+  ctx.restore();
+  return skyTerrenoRilievoFatto;
+}
+
 // Riempie la parte di schermo sotto l'orizzonte, ci mette le fette di mare
 // e di montagna dove ci sono, ci appoggia sopra il profilo delle colline e
 // ne traccia la linea vera.
@@ -14915,15 +15178,9 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // cui l'occhio misura quanto è lontana una collina.
   const suolo = skyColoriPaesaggio('suolo', aria);
 
-  ctx.save();
-  ctx.globalAlpha = velo;
-
-  const regola = skyTracciaSuolo(ctx, o);
   // L'azimut al centro della vista: serve al gradiente per misurare dove
   // cadono le sue fermate, che sono scritte in gradi di depressione.
   const azCentro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
-  ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano, base, focale, azCentro, aria);
-  ctx.fill(regola);
 
   // Il rilievo (`rilievo.js`): la **forma** del terreno al posto della sua
   // sagoma, disegnata a tratti come una tavola panoramica. Quando c'è
@@ -14936,23 +15193,22 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // luce»). Con una pettinatura che segue la pendenza vera sono la stessa
   // cosa detta due volte, e la seconda spiana la prima.
   //
-  // Il fondo del suolo qui sopra resta **sotto**, come rete: da quando il
-  // rilievo si dipinge il suo fondo a fette di distanza (§ `RIL_FONDI` in
+  // Il fondo del suolo gli resta **sotto**, come rete: da quando il rilievo
+  // si dipinge il suo fondo a fette di distanza (§ `RIL_FONDI` in
   // `rilievo.js`) non lo si vede più dove il rilievo arriva, ma un buco nel
   // disegno lascerebbe vedere la terra e non il cielo — ed è la ragione per
-  // cui l'ordine è questo.
-  const rilievoFatto = typeof rilDisegna === 'function' &&
-    rilDisegna(ctx, base, focale, suolo, aria);
+  // cui l'ordine è questo. Fondo, rilievo e occlusione d'ambiente sono i tre
+  // strati che non cambiano finché non si muove la camera, e vanno insieme
+  // sulla tela di servizio (§«La tela del terreno» qui sopra).
+  const rilievoFatto = skyStendiTerrenoFermo(ctx, o, base, focale, aria, suolo, velo, azCentro);
   // Quello che era rimasto dal profilo a bande non vale più: chi legge
   // `skyCresteUltime` (i laghi) si prenderebbe la telecamera del fotogramma
   // prima. Con il rilievo la risposta la dà `rilCrestaDisegnata`, che viene
   // dalla stessa camminata che ha disegnato.
   if (rilievoFatto) skyCresteUltime = null;
 
-  // L'occlusione d'ambiente, che il rilievo si è appena coperto col suo
-  // fondo. Va qui e non dentro `rilievo.js`: è la legge del suolo di questo
-  // file, e deve restare una sola (vedi `skyVeloOcclusione`).
-  if (rilievoFatto) skyDisegnaOcclusioneSuolo(ctx, o, base, focale, azCentro);
+  ctx.save();
+  ctx.globalAlpha = velo;
 
   // La grana: quel tanto di irregolarità che distingue un prato da una
   // campitura. Solo di giorno — di notte la terra è nera e non c'è niente
@@ -26546,11 +26802,32 @@ function skyMostraVaiQua(punto, px, py) {
 // Quanto tempo è passato dal fotogramma precedente, in secondi. Tosato a un
 // decimo: dopo un fotogramma perso, o tornando da un'altra scheda, un dt
 // enorme farebbe fare all'inerzia un balzo di mezzo cielo.
+// Quanto pesa l'ultimo fotogramma nella media di `sky.fotogrammaMs`. Piccolo,
+// come quello del budget del rilievo che la legge: un fotogramma storto — una
+// raccolta della memoria, una scheda che si apre — non deve spostare il
+// disegno.
+const SKY_FOTOGRAMMA_TAU = 0.18;
+// Oltre questo non è un fotogramma lento, è un fotogramma che non c'è stato:
+// l'app è andata in secondo piano, una finestra si è aperta sopra, il ciclo è
+// stato prestato a un'altra vista. Nella media non ci deve entrare, se no al
+// ritorno il rilievo si troverebbe diradato al massimo per una pausa.
+const SKY_FOTOGRAMMA_PAUSA_MS = 500;
+
 function skyDeltaFotogramma() {
   const ora = performance.now();
   const prec = sky.ultimoFotogramma || ora;
+  const grezzo = ora - prec;
   sky.ultimoFotogramma = ora;
-  return Math.min(0.1, Math.max(0, (ora - prec) / 1000));
+  // Quanto dura davvero un fotogramma. È l'unico numero che dica se il
+  // planetario ce la sta facendo: il cronometro messo attorno alle chiamate
+  // del canvas misura quanto ci mette il browser a registrarle, non quanto ci
+  // mette a dipingerle (vedi «Il budget del fotogramma» in `rilievo.js`).
+  if (grezzo > 0 && grezzo < SKY_FOTOGRAMMA_PAUSA_MS) {
+    sky.fotogrammaMs = sky.fotogrammaMs > 0
+      ? sky.fotogrammaMs + (grezzo - sky.fotogrammaMs) * SKY_FOTOGRAMMA_TAU
+      : grezzo;
+  }
+  return Math.min(0.1, Math.max(0, grezzo / 1000));
 }
 
 // --- Lo zoom che ci scivola dentro ---
@@ -27678,6 +27955,7 @@ function chiudiSkymap() {
   sky.sostaMirino = null;
   if (typeof aereiFerma === 'function') aereiFerma();
   skySpegniCiclo();
+  skyTerrenoScordaTela();
   // Il playback non deve sopravvivere alla vista: tornando qui domani il
   // cielo ripartirebbe da un istante che nessuno ha più in mente
   skyFermaPlayback();
