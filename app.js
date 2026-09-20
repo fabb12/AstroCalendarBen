@@ -19214,11 +19214,11 @@ function skyDisegnaFiloCresta(ctx, corse, aria, banda, controIlCielo) {
 // il cielo è già più luminoso di qualunque città.
 const SKY_CITTA_LUCE_MAX = 0.34;
 
-// Sotto questo campo l'alone non si disegna: a dieci gradi di campo si sta
-// guardando dentro a un pianeta, la cupola di luce è più larga dello
-// schermo e quello che resta non è più un alone — è una vernice arancione
-// stesa dappertutto. Da lì in su si accende scivolando, come il terreno.
-const SKY_CITTA_FOV_MIN = 10;
+// Stringendo il campo la cupola diventa più larga dello schermo: non va
+// spenta di colpo, perché nello stesso momento sparirebbero il chiarore che
+// si sta osservando e il nome che lo identifica. La si attenua invece con
+// il campo visivo dentro `skyDisegnaAloniCitta`: resta un contesto sempre più
+// discreto, senza trasformarsi in una vernice arancione a tutto schermo.
 const SKY_CITTA_FOV_PIENO = 28;
 
 // Quante se ne disegnano al massimo. Sono ordinate dalla più luminosa, e
@@ -19250,7 +19250,7 @@ function skyCittaDaDisegnare() {
 }
 
 function skyDisegnaAloniCitta(ctx, base, focale) {
-  if (!sky.atmosfera || sky.fov < SKY_CITTA_FOV_MIN) return;
+  if (!sky.atmosfera) return;
   const lista = skyCittaDaDisegnare();
   if (!lista.length) return;
 
@@ -20306,12 +20306,11 @@ function skyDisegnaNomiOrizzonte(ctx, base, focale) {
   // tutto: si prenotano il loro posto adesso, se no il nome di un lago finisce
   // sotto a «SO».
   skyPrenotaCardinali(base, focale, occupati);
-  // I paesi si nominano solo a campo largo, come i loro aloni: sotto i
-  // dieci gradi la cupola è più larga dello schermo e nominarla vuol dire
-  // scrivere un nome in mezzo al nulla arancione. Le vette no: ingrandire
-  // sull'orizzonte è **il** momento in cui si vuole sapere che monte è
-  // quello, ed è quello che si fa con un binocolo in mano.
-  if (sky.mostraNomi && sky.fov >= SKY_CITTA_FOV_MIN) skyNomiCitta(ctx, base, focale, occupati);
+  // I paesi restano nominati anche a campo stretto: ingrandire un chiarore
+  // sull'orizzonte è proprio il momento in cui serve sapere quale abitato lo
+  // produce. La cupola viene già attenuata in modo progressivo dallo zoom,
+  // quindi non c'è più una soglia a cui luce e nome spariscono insieme.
+  if (sky.mostraNomi) skyNomiCitta(ctx, base, focale, occupati);
   if (mostraCime) skyNomiCime(ctx, base, focale, occupati);
   if (sky.mostraNomi) skyNomiAcque(ctx, base, focale, occupati);
 }

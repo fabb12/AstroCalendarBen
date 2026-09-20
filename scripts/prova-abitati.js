@@ -71,6 +71,7 @@ run(fs.readFileSync(path.join(root, 'terreno.js'), 'utf8'));
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 for (const nome of ['skyDisegnaAbitati', 'skyDisegnaLuciAbitato',
                     'skyDisegnaMacchiaAbitato', 'skyDisegnaCasePaese',
+                    'skyDisegnaAloniCitta', 'skyDisegnaNomiOrizzonte',
                     'skyAbitatoMuro', 'skyAbitatoSporgeQualcosa',
                     'skyClipSopraLaCresta',
                     'skyAbitatoVisto', 'skyAbitatoChiave', 'skyMescolaColore',
@@ -98,7 +99,8 @@ for (const cost of ['SKY_ABITATO_CRESTA_PX', 'SKY_ABITATO_CRESTA_MIN', 'SKY_ABIT
                     'SKY_ABITATO_VOLUME_PX', 'SKY_ABITATO_MURO_ALFA',
                     'SKY_ABITATO_TETTO_ALFA', 'SKY_ABITATO_TEGOLA_QUOTA',
                     'SKY_ABITATO_TORRE_PX', 'SKY_ABITATO_GUGLIA',
-                    'SKY_CITTA_LUCE_MAX', 'SKY_FOSCHIA_KM',
+                    'SKY_CITTA_LUCE_MAX', 'SKY_CITTA_FOV_PIENO',
+                    'SKY_CITTA_MAX_ALONI', 'SKY_FOSCHIA_KM',
                     'SKY_CITTA_MAX_NOMI', 'SKY_CITTA_MAX_NOMI_ZOOM',
                     'SKY_CITTA_FOSCHIA_TINTA', 'SKY_CITTA_INDICATO_VELO',
                     'SKY_CITTA_INDICATO_ALONE', 'SKY_CITTA_KM_CORPO',
@@ -168,6 +170,10 @@ run(`
   // La cresta disegnata a cui un nome si appende quando il paese è coperto.
   var skyQuotaFinta = -1;
   function skyQuotaDisegnata(az, km) { return skyQuotaFinta; }
+  function skyNomiCimeVisibili() { return false; }
+  function skyPrenotaCardinali() {}
+  function skyNomiCime() {}
+  function skyNomiAcque() {}
   // Le scritte si registrano invece di dipingerle: di un nome qui interessa
   // **che** sia stato scritto, con che corpo e dove — non come è antialiasato.
   var skyScritte = [];
@@ -977,6 +983,19 @@ function nomiA(fov, paesi) {
   return run('skyScritte');
 }
 
+function nomiDalDisegnoA(fov, paesi) {
+  ctx.__paesi = paesi || CITTA_PROVA;
+  run(`citta.acceso = true; citta.grezze = __paesi;
+       citta.stato = 'pronto'; citta.fonte = 'prova';
+       citta.elenco = cittaPrepara(citta.grezze, ${QUI.lat}, ${QUI.lon}, null);
+       citta.vistaChiave = cittaChiaveVista(${QUI.lat}, ${QUI.lon});`);
+  ctx.terrenoPuntoDaDisegnare = () => QUI;
+  run(`sky.fov = ${fov}; sky.luceCielo = 0; skyScritte = [];
+       skyAbitatiVisti = null; __tela = telaFinta();
+       skyDisegnaNomiOrizzonte(__tela, {}, 900);`);
+  return run('skyScritte');
+}
+
 const scritto = (nomi, chi) => nomi.some(s => s.testo === chi);
 const corpoDi = (nomi, chi) => {
   const v = nomi.find(s => s.testo === chi);
@@ -1047,6 +1066,16 @@ prova('ingrandendo i quartieri compaiono, e la città resta', () => {
   assert.ok(scritto(nomi, 'Rione Uno'), 'a otto gradi i rioni non compaiono');
   assert.ok(scritto(nomi, 'Cittagrande'),
     'ingrandendo la città perde il suo nome');
+});
+
+prova('sotto dieci gradi luce e nome del paese non spariscono', () => {
+  posto(CITTA_PROVA, 300, 300);
+  run(`sky.fov = 8; sky.luceCielo = 0; __tela = telaFinta();
+       skyDisegnaAloniCitta(__tela, {}, 900);`);
+  assert.ok(run('__tela.forme.length') > 0,
+    'la luce della città sparisce sotto dieci gradi');
+  assert.ok(scritto(nomiDalDisegnoA(8), 'Cittagrande'),
+    'il nome della città sparisce sotto dieci gradi');
 });
 
 prova('avvicinandosi un quartiere compare, a campo fermo', () => {
