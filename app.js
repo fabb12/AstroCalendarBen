@@ -10185,6 +10185,8 @@ const LUOGO_ZOOM_PUNTO = 13;
 // con le sue coordinate, e il paese più vicino resta scritto nella riga di
 // sotto, con la sua distanza, che è l'unico modo di dirlo senza mentire.
 const LUOGO_NOME_KM = 12;
+const LUOGO_SALVATI_CHIAVE = 'astrocal_luoghi_osservazione';
+const LUOGO_SALVATI_MASSIMO = 20;
 
 // I tre fondi. `maxNativeZoom` è il punto in cui il servizio smette di avere
 // tessere: oltre, Leaflet ingrandisce l'ultima invece di lasciare il grigio —
@@ -10214,9 +10216,96 @@ const luogoMappa = {
   zoomUltimo: LUOGO_ZOOM_APERTURA,  // com'era stretta l'ultima volta che si è chiusa
   sfondo: 'strade',// quale dei tre fondi è acceso
   strato: null,    // il tileLayer di adesso
+  salvatiSegni: [],// i piccoli segni persistenti dei posti di osservazione
   occhio: null,    // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
   tocco: null      // partenza dell'ultimo dito sulla mappa
 };
+
+function luogoTesto(chiave, ripiego, valori) {
+  return typeof astroI18n === 'object' && typeof astroI18n.t === 'function'
+    ? astroI18n.t(chiave, valori || {}) : ripiego;
+}
+
+function luogoSalvatiLeggi() {
+  try {
+    const dati = JSON.parse(localStorage.getItem(LUOGO_SALVATI_CHIAVE) || '[]');
+    if (!Array.isArray(dati)) return [];
+    return dati.filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lon))
+      .slice(0, LUOGO_SALVATI_MASSIMO)
+      .map(p => ({ nome: String(p.nome || formattaCoordinate(p.lat, p.lon)), lat: p.lat, lon: luogoNormalizzaLon(p.lon) }));
+  } catch (e) { return []; }
+}
+
+function luogoSalvatiScrivi(elenco) {
+  try {
+    localStorage.setItem(LUOGO_SALVATI_CHIAVE, JSON.stringify(elenco.slice(0, LUOGO_SALVATI_MASSIMO)));
+    return true;
+  } catch (e) {
+    luogoAvviso(luogoTesto('ui.impossibile-salvare-posizione', 'Non riesco a salvare la posizione su questo dispositivo.'));
+    return false;
+  }
+}
+
+function luogoSalvatiDisegna() {
+  const elenco = luogoSalvatiLeggi();
+  const box = document.getElementById('luogo-salvati-elenco');
+  if (box) {
+    box.replaceChildren();
+    if (!elenco.length) {
+      const vuoto = document.createElement('p');
+      vuoto.className = 'luogo-salvati-vuoto';
+      vuoto.textContent = luogoTesto('ui.nessun-punto-salvato', 'Nessun punto salvato.');
+      box.appendChild(vuoto);
+    }
+    elenco.forEach((p, indice) => {
+      const chip = document.createElement('div');
+      chip.className = 'luogo-salvato';
+      const scegli = document.createElement('button');
+      scegli.type = 'button';
+      scegli.className = 'luogo-salvato-scegli';
+      scegli.textContent = p.nome;
+      scegli.title = `${p.nome} — ${luogoCoordinateFini(p.lat, p.lon)}`;
+      scegli.addEventListener('click', () => luogoMappaScegli(p.lat, p.lon, { centra: true, zoom: Math.max(luogoMappa.zoomUltimo, LUOGO_ZOOM_PUNTO), nome: p.nome }));
+      const elimina = document.createElement('button');
+      elimina.type = 'button';
+      elimina.className = 'luogo-salvato-elimina';
+      elimina.textContent = '×';
+      elimina.setAttribute('aria-label', luogoTesto('ui.elimina-punto-salvato', 'Elimina {nome}', { nome: p.nome }));
+      elimina.addEventListener('click', () => {
+        const aggiornati = luogoSalvatiLeggi();
+        aggiornati.splice(indice, 1);
+        if (luogoSalvatiScrivi(aggiornati)) luogoSalvatiDisegna();
+      });
+      chip.append(scegli, elimina);
+      box.appendChild(chip);
+    });
+  }
+
+  if (!luogoMappa.mappa || typeof L === 'undefined') return;
+  luogoMappa.salvatiSegni.forEach(segno => luogoMappa.mappa.removeLayer(segno));
+  luogoMappa.salvatiSegni = elenco.map(p => {
+    const segno = L.circleMarker([p.lat, p.lon], {
+      radius: 5, color: '#fff', weight: 1.5, fillColor: '#2563eb', fillOpacity: 0.95
+    }).addTo(luogoMappa.mappa).bindTooltip(p.nome);
+    segno.on('click', () => luogoMappaScegli(p.lat, p.lon, {
+      centra: true, zoom: Math.max(luogoMappa.zoomUltimo, LUOGO_ZOOM_PUNTO), nome: p.nome
+    }));
+    return segno;
+  });
+}
+
+function luogoSalvaScelto() {
+  const s = luogoMappa.scelto;
+  if (!s) { luogoAvviso(luogoTesto('ui.scegli-prima-un-punto', 'Scegli prima un punto.')); return; }
+  const elenco = luogoSalvatiLeggi();
+  const uguale = elenco.findIndex(p => skyDistanzaMetri(p.lat, p.lon, s.lat, s.lon) < 10);
+  const punto = { nome: luogoNomeDelPunto(), lat: s.lat, lon: s.lon };
+  if (uguale >= 0) elenco.splice(uguale, 1);
+  elenco.unshift(punto);
+  if (!luogoSalvatiScrivi(elenco)) return;
+  luogoSalvatiDisegna();
+  luogoAvviso(luogoTesto('ui.posizione-salvata', 'Posizione salvata.'));
+}
 
 // La carta non deve dire soltanto *da dove* si guarda: il planetario ha gia'
 // anche la direzione dello sguardo. La ricaviamo dall'ultima terna davvero
@@ -10983,6 +11072,7 @@ function apriMappaLuogoCielo() {
   if (cerca) cerca.value = '';
   luogoMappaCostruisci();
   luogoMappaSegnaCasa();
+  luogoSalvatiDisegna();
 
   // Si riparte sempre da dove il cielo è adesso — casa o luogo di visita che
   // sia — e non dall'ultimo punto toccato: riaprendo la finestra la domanda è
@@ -11136,6 +11226,8 @@ function inizializzaMappaLuogo() {
 
   const casa = document.getElementById('luogo-btn-casa');
   if (casa) casa.addEventListener('click', luogoMappaUsaPosizioneAttuale);
+  const salva = document.getElementById('luogo-btn-salva');
+  if (salva) salva.addEventListener('click', luogoSalvaScelto);
 
   // I tre fondi della mappa
   modale.querySelectorAll('[data-luogo-sfondo]').forEach(b =>

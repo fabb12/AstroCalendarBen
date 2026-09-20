@@ -5049,5 +5049,13 @@ window.ASTRO_DIZIONARI['it'] = {
     'curiosita.minore.neat.1': 'Una delle comete scoperte da un programma automatico di sorveglianza del cielo: NEAT cercava asteroidi potenzialmente pericolosi e trovava comete per soprammercato. È il modo in cui oggi si scopre quasi tutto — le comete con un nome di persona sono sempre più rare.',
     'curiosita.minore.lemmon.1': 'Porta il nome dell’osservatorio del Monte Lemmon, in Arizona, che fa parte di un programma automatico di sorveglianza. Come per NEAT e PANSTARRS, il nome non è di chi l’ha vista per primo ma della macchina che l’ha trovata.',
 
+    'ui.punti-salvati': 'Punti salvati',
+    'ui.punti-salvati-aiuto': 'Ritrova rapidamente i tuoi posti di osservazione.',
+    'ui.salva-posizione': 'Salva posizione',
+    'ui.nessun-punto-salvato': 'Nessun punto salvato.',
+    'ui.elimina-punto-salvato': 'Elimina {nome}',
+    'ui.impossibile-salvare-posizione': 'Non riesco a salvare la posizione su questo dispositivo.',
+    'ui.scegli-prima-un-punto': 'Scegli prima un punto.',
+    'ui.posizione-salvata': 'Posizione salvata.',
   }
 };

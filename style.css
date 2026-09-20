@@ -7683,6 +7683,46 @@ body .luogo-tasto-mappa.attiva { background: var(--blu); border-color: transpare
 /* --- Il piede: la lettura e i due tasti --- */
 .luogo-piede { display: grid; gap: 9px; }
 
+/* I posti scelti per le osservazioni restano a portata di mano senza rubare
+   spazio alla carta: una riga di chip scorrevole, con il salvataggio accanto. */
+.luogo-salvati {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-l);
+  background: rgba(6, 10, 20, 0.45);
+}
+.luogo-salvati-testata { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.luogo-salvati h3 { margin: 0; color: var(--testo); font-size: 0.86rem; font-weight: 700; }
+.luogo-salvati p { margin: 2px 0 0; color: var(--testo-3); font-size: 0.7rem; }
+body .luogo-tasto-salva {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(59, 130, 246, 0.55);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.18);
+  color: #bfdbfe;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+body .luogo-tasto-salva:hover { background: rgba(37, 99, 235, 0.35); color: #fff; }
+.luogo-salvati-elenco { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: thin; }
+.luogo-salvati-vuoto { margin: 0 !important; padding: 2px 0; }
+.luogo-salvato { display: inline-flex; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--bordo-forte); border-radius: 999px; }
+body .luogo-salvato-scegli,
+body .luogo-salvato-elimina { border: 0; background: rgba(30, 41, 59, 0.85); color: var(--testo-2); cursor: pointer; }
+body .luogo-salvato-scegli { max-width: 220px; min-height: 38px; padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; font-weight: 600; }
+body .luogo-salvato-elimina { width: 38px; border-left: 1px solid var(--bordo-forte); color: var(--testo-3); font-size: 1rem; }
+body .luogo-salvato-scegli:hover,
+body .luogo-salvato-elimina:hover { background: rgba(51, 65, 85, 0.98); color: #fff; }
+@media (max-width: 480px) {
+  .luogo-salvati-testata { align-items: flex-start; }
+  .luogo-salvati-testata p { display: none; }
+}
+
 .luogo-mappa-assente {
   padding: 22px 18px;
   border: 1px dashed var(--bordo-forte);
@@ -7834,6 +7874,8 @@ body .luogo-tasto-azione.forte:hover { background: var(--blu-chiaro); }
   -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--ombra-3);
 }
+.luogo-guscio:fullscreen .luogo-salvati,
+.luogo-guscio.luogo-schermo-pieno .luogo-salvati { display: none; }
 /* Dentro al piede sovrapposto la lettura non ha più bisogno della sua
    cornice: il riquadro ce l'ha già lui. */
 .luogo-guscio:fullscreen .luogo-scelta,

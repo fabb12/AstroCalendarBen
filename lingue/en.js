@@ -4912,5 +4912,13 @@ window.ASTRO_DIZIONARI['en'] = {
     'curiosita.minore.neat.1': 'One of the comets found by an automated sky survey: NEAT was looking for potentially hazardous asteroids and turned up comets as a by-product. That is how almost everything is found nowadays — comets named after a person are getting rarer.',
     'curiosita.minore.lemmon.1': 'It carries the name of the Mount Lemmon observatory in Arizona, part of an automated survey. As with NEAT and PANSTARRS, the name belongs not to whoever saw it first but to the machine that found it.',
 
+    'ui.punti-salvati': 'Saved places',
+    'ui.punti-salvati-aiuto': 'Quickly return to your observing spots.',
+    'ui.salva-posizione': 'Save place',
+    'ui.nessun-punto-salvato': 'No saved places yet.',
+    'ui.elimina-punto-salvato': 'Delete {nome}',
+    'ui.impossibile-salvare-posizione': 'This place cannot be saved on this device.',
+    'ui.scegli-prima-un-punto': 'Choose a place first.',
+    'ui.posizione-salvata': 'Place saved.',
   }
 };
