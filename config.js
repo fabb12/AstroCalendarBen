@@ -29,3 +29,13 @@ window.INS_MODELLO_URL = window.INS_MODELLO_URL || '';
 // Il runtime con cui aprirlo. Si cambia solo per servirlo da sé invece che
 // dal CDN, che è quello che serve per farlo funzionare offline.
 window.INS_ORT_URL = window.INS_ORT_URL || '';
+
+
+// Informazioni della copia locale. Durante il deploy GitHub Actions le
+// sostituisce con versione della cache, numero della build, commit e data UTC.
+window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
+  version: 'v358',
+  build: '',
+  commit: '',
+  builtAt: ''
+});

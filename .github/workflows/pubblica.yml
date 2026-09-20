@@ -87,9 +87,21 @@ jobs:
           if [ -z "$EDGE_TTS_API_URL" ]; then
             echo "::warning::Manca EDGE_TTS_API_URL: Missione Cielo userà la voce del dispositivo"
           fi
+          CACHE_VERSION="$(grep -oE 'astrocal-v[0-9]+' _sito/sw.js | head -1 | sed 's/astrocal-//')"
+          if [ -z "$CACHE_VERSION" ]; then
+            echo "::error::Impossibile ricavare la versione da sw.js"
+            exit 1
+          fi
+          BUILD_COMMIT="${GITHUB_SHA::7}"
+          BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           {
             printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)"
             printf "window.EDGE_TTS_API_URL = %s;\n" "$(printf %s "$EDGE_TTS_API_URL" | jq -Rs .)"
+            printf "window.ASTROCAL_BUILD = Object.freeze({ version: %s, build: %s, commit: %s, builtAt: %s });\n" \
+              "$(printf %s "$CACHE_VERSION" | jq -Rs .)" \
+              "$(printf %s "$GITHUB_RUN_NUMBER" | jq -Rs .)" \
+              "$(printf %s "$BUILD_COMMIT" | jq -Rs .)" \
+              "$(printf %s "$BUILD_DATE" | jq -Rs .)"
           } > _sito/config.js
 
       - name: Controlla che ci sia tutto

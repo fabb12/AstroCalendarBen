@@ -33,6 +33,12 @@ window.ASTRO_DIZIONARI['it'] = {
     // --- Il nucleo, il tempo e i punti cardinali ---------------------
     'lingua.cambio': 'Passa a {lingua}',
     'app.titolo': 'AstroCalendario di Ben',
+    'ui.informazioni-sull-app': 'Informazioni sull\'app',
+    'ui.versione-app': 'Versione',
+    'ui.build-app': 'Build',
+    'ui.pubblicata-il': 'Pubblicata il',
+    'ui.build-locale': 'locale',
+    'ui.informazioni-build-aiuto': 'Versione, build e commit identificano con precisione l\'aggiornamento in esecuzione.',
     'tempo.adesso': 'adesso',
     'tempo.passato': 'passato',
     'tempo.istanti': 'fra pochi istanti',
