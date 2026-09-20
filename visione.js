@@ -2299,8 +2299,25 @@
     return correggi(base);
   }
 
-  // L'ancora di un aereo, in gradi. La legge `aereoAdesso` in `aerei.js`.
+  // L'ancora di un aereo, in gradi. La legge `aereoAdesso` in `aerei.js`, ed
+  // è **l'unica porta**: qualunque cosa esca di qui è quello che il
+  // planetario disegna.
+  //
+  // Da quando c'è `inseguimento.js` le sorgenti sono due, e la riga che
+  // conta è che **non si sommano mai**. Sono due misure della stessa cosa —
+  // di quanto quell'aereo è più in là di dove il feed lo mette — fatte in
+  // due modi diversi, e sommarle vorrebbe dire applicare due volte la stessa
+  // correzione, cioè portare l'etichetta dall'altra parte dell'aereo. Si
+  // sceglie, e si sceglie l'inseguitore quando ha qualcosa da dire, perché
+  // guarda l'aereo a risoluzione nativa e venti volte al secondo mentre
+  // questo modulo lo guarda ridotto e dodici (§«Perché esiste» di
+  // `inseguimento.js`). Quando tace — traccia nuova, aereo appena entrato in
+  // quadro, telefono che gira — risponde questo, che è la risposta di sempre.
   function visAncoraAereo(id) {
+    if (typeof insAncoraAereo === 'function') {
+      const inseguita = insAncoraAereo(id);
+      if (inseguita) return inseguita;
+    }
     if (!stato.attivo || !stato.acceso) return null;
     const a = stato.ancore.get(String(id));
     if (!a) return null;

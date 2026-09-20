@@ -27351,6 +27351,7 @@ function skyAlternaSeguiTelefono() {
     // Sganciata la vista non c'è più niente da agganciare: la posizione del
     // cielo la decide il dito, e l'immagine sotto non ne sa niente.
     if (typeof visAvvia === 'function') { if (nuovo) visAvvia(); else visFerma(); }
+    if (typeof insAvvia === 'function') { if (nuovo) insAvvia(); else insFerma(); }
   }
 
   if (!sky.sensori) {
@@ -27628,6 +27629,20 @@ function skyCiclo() {
       // e restava sfondo per sempre, senza che niente lo dicesse.
       if (sky.camera && skyUsaSensori() && !visAttivo()) visAvvia();
       visAggiorna(sky.ultimaBase, sky.ultimaFocale);
+    }
+    // L'inseguimento degli aerei (`inseguimento.js`), **dopo** il motore di
+    // vista e per una ragione di ordine e non di comodo: quello raddrizza il
+    // cielo, questo incolla la singola etichetta al suo aereo, e il secondo
+    // conto vuole il primo già fatto — se no ogni traccia si porterebbe
+    // dentro anche l'errore di bussola e quando la bussola si raddrizza
+    // salterebbero tutte insieme (è la stessa ragione per cui in `visione.js`
+    // le ancore si misurano dopo l'assetto, §9 di quel file).
+    //
+    // Da qui costa il confronto fra due numeri quando non c'è niente da
+    // fare, e un ritaglio quando c'è: il lavoro sui pixel sta in un worker.
+    if (typeof insAggiorna === 'function') {
+      if (sky.camera && skyUsaSensori() && !insAttivo()) insAvvia();
+      insAggiorna(sky.ultimaBase, sky.ultimaFocale);
     }
     skyUltimoGuasto = null;
   } catch (e) {
@@ -44320,6 +44335,11 @@ async function skyAttivaFotocamera() {
     video.srcObject = null;
     video.classList.add('hidden');
     if (typeof visFerma === 'function') visFerma();
+    // Le tracce degli aerei vanno via con l'immagine: senza fotocamera non
+    // c'è più niente da inseguire, e una traccia lasciata viva terrebbe la
+    // sua ancora addosso a un'etichetta che nessuno sta più confrontando con
+    // niente. Va via anche la memoria del worker, che è la parte grossa.
+    if (typeof insFerma === 'function') insFerma();
     // Spenta la fotocamera il campo torna a essere una preferenza: si riprende
     // quello che c'era prima, e il filtro riparte con lo smorzamento della
     // mappa disegnata.
@@ -44387,6 +44407,7 @@ async function skyAttivaFotocamera() {
       // raddrizzare (la vista la comanda il dito) e guardare l'immagine
       // sarebbe lavoro buttato.
       if (typeof visAvvia === 'function') visAvvia();
+      if (typeof insAvvia === 'function') insAvvia();
       if (!sky.assoluto) {
         skyAvviso('camera-taratura', astroI18n.t('ar.bussolaRelativa'), 8000);
       }
