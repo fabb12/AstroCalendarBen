@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v358';
+const CACHE_NAME = 'astrocal-v359';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -9,6 +9,8 @@ const ASSETS = [
   './guida.html',
   './tailwind.css',
   './style.css',
+  './fonts/Inter.ttf',
+  './fonts/SpaceGrotesk.ttf',
   './app.js',
   './i18n.js',
   './lingue/it.js',
@@ -128,16 +130,23 @@ const HOST_DA_CONSERVARE = [
   // qui: a forte ingrandimento una sola tessera pesa quanto tutta l'app, e
   // riempire la cache di immagini satellitari per una mappa che si apre due
   // volte l'anno è un pessimo affare.
-  'tile.opentopomap.org',
-  'fonts.googleapis.com',
-  'fonts.gstatic.com'
+  'tile.opentopomap.org'
 ];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME)
       .then(async (cache) => {
-        await cache.addAll(ASSETS);
+        // Cache.addAll rifiuta l'intero lotto se due URL finiscono sulla stessa
+        // risorsa (per esempio "./" e "index.html" dopo un redirect). Normalizziamo
+        // e installiamo una voce per volta: un duplicato diventa un aggiornamento
+        // innocuo, mentre un vero file mancante continua a bloccare l'installazione.
+        const assetUnici = [...new Set(
+          ASSETS.map(percorso => new URL(percorso, self.location.href).href)
+        )];
+        for (const url of assetUnici) {
+          await cache.add(url);
+        }
         // Le librerie esterne possono fallire (rete lenta, CDN giù):
         // le scarichiamo una per una senza far fallire tutta l'installazione.
         await Promise.all(LIBRERIE.map(url =>
