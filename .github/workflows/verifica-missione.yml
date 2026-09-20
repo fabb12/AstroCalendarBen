@@ -7,6 +7,7 @@ on:
       - 'style.css'
       - 'index.html'
       - 'scripts/prova-missione*.js'
+      - 'scripts/prova-rilievo-zoom.js'
       - '.github/workflows/verifica-missione.yml'
 permissions:
   contents: read
@@ -26,4 +27,9 @@ jobs:
       - run: node scripts/prova-missione-stati.js
       - run: node scripts/prova-missione.js
       - run: node scripts/prova-missione-interattiva.js
+        if: success() || failure()
+      # Il rilievo a campo stretto, nei pixel: è l'unico posto in cui i
+      # rettangoli verticali dello zoom si possono vedere, e una prova che
+      # gira solo a mano è una prova che fra un mese nessuno lancia più.
+      - run: node scripts/prova-rilievo-zoom.js
         if: success() || failure()

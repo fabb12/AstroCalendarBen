@@ -8701,6 +8701,220 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
     sky.larghezza = salvaL; sky.altezza = salvaH;
   }
 
+  // --- I rettangoli verticali dello zoom spinto -------------------------
+  //
+  // È la segnalazione «ingrandendo, sui pendii compaiono bande verticali, e
+  // più ingrandisco più si allargano», e non si giudica a occhio per una
+  // ragione che vale la pena scrivere: **nessun fotogramma è sbagliato**. Il
+  // terreno è disegnato dove va disegnato, il colore è quello giusto, la
+  // cresta è al suo posto; solo che la superficie è fatta di rettangoli alti
+  // mezzo schermo invece che di un pendio. Chi guarda non dice «la maglia è
+  // campionata solo sui suoi nodi»: dice «sembra sgranato», e la cosa resta
+  // in piedi.
+  //
+  // Il giudice è l'aritmetica, e il conto è tutto qui: la maglia ha
+  // settecentoventi direzioni, cioè mezzo grado l'una dall'altra, e una
+  // colonna si disegna larga `mezzo grado × pixel per grado`. A sessanta
+  // gradi di campo sono cinque pixel, a trenta dieci, a quattro
+  // **settantacinque**, a un quarto di grado milleduecento.
+  {
+    const salvaL = sky.larghezza, salvaH = sky.altezza, salvaFov = sky.fov;
+    const salvaPasso = rilievo.passo, salvaSotto = rilievo.sotto;
+    const salvaBudget = rilBudgetFattore;
+    sky.larghezza = 360; sky.altezza = 600;
+    const misura = (fov, alt) => {
+      sky.fov = fov;
+      const focale = skyFocale();
+      const b = skyBaseVerso(20, alt === undefined ? 0 : alt);
+      const arco = rilArcoInVista(b, focale);
+      if (!arco) return null;
+      const c = rilColonneDaDisegnare(b, focale, arco);
+      // La larghezza **vera** della colonna più stirata del riquadro: è
+      // quella che il tratto deve coprire, e il tetto in pixel non deve
+      // tosarla (se no fra una colonna e l'altra si riapre il fondo della
+      // fetta, che è il filo chiaro della segnalazione).
+      c.piuLarga = c.larghezza * rilFattoreMax;
+      c.arco = 2 * arco.mezzo;
+      return c;
+    };
+    // I campi stretti si percorrono dal largo verso lo stretto, come li
+    // percorre un dito che pizzica: l'isteresi ha una memoria, e misurarli in
+    // ordine sparso vorrebbe dire misurare un'altra cosa.
+    const campi = [180, 120, 60, 30, 15, 8, 4, 2, 1, 0.5, 0.25];
+    rilievo.passo = 1; rilievo.sotto = 1; rilBudgetFattore = 1;
+    const letture = campi.map(f => ({ fov: f, c: misura(f) })).filter(x => x.c);
+    let peggio = 0, peggioFov = 0, tosate = 0, colonneMax = 0;
+    for (const { fov, c } of letture) {
+      if (c.larghezza > peggio) { peggio = c.larghezza; peggioFov = fov; }
+      if (c.piuLarga > RIL_LARG_PX_MAX) tosate++;
+      if (c.nCol > colonneMax) colonneMax = c.nCol;
+    }
+    prova('una colonna non è mai più larga di quanto l\'occhio la tollera',
+      peggio <= RIL_COL_PX_TETTO + 1e-9,
+      `la peggiore è ${peggio.toFixed(1)} px, a ${peggioFov}° di campo`);
+    // Il contro-esempio, cioè il conto di prima: una colonna è una colonna
+    // della maglia e basta, mezzo grado comunque sia aperta la vista.
+    {
+      sky.fov = 4;
+      const prima = RIL_PASSO_AZ * skyFocale() * D2R;
+      sky.fov = 0.25;
+      const primaStretto = RIL_PASSO_AZ * skyFocale() * D2R;
+      prova('col conto di prima la stessa colonna era larga mezzo schermo',
+        prima > 70 && primaStretto > 1000,
+        `${prima.toFixed(0)} px a 4° e ${primaStretto.toFixed(0)} px a 0,25°, su 360 di riquadro`);
+    }
+    // E l'altra metà del difetto: sopra al tetto in pixel il tratto veniva
+    // tosato, quindi fra una colonna e l'altra restava scoperto il fondo
+    // della fetta — le bande chiare alternate a quelle scure.
+    prova('e non viene mai tosata dal tetto in pixel del tratto',
+      tosate === 0, `${tosate} campi su ${letture.length}`);
+    // Spezzare costa, e la domanda è quanto. La risposta, con l'arco tosato
+    // al cono, è **meno di una vista normale**: dove la maglia si spezza le
+    // colonne sono ottantatré, contro le centocinquanta di un campo da
+    // sessanta gradi — e restano ottantatré scendendo fino a un quarto di
+    // grado, perché quello che le detta è la larghezza del riquadro in pixel
+    // e non il campo visivo. Il massimo assoluto resta quello di sempre, ed è
+    // a centottanta gradi, dove non si spezza niente.
+    const a60 = letture.find(x => x.fov === 60).c.nCol;
+    const spezzate = letture.filter(x => x.c.sotto > 1);
+    const colonneSpezzate = Math.max(...spezzate.map(x => x.c.nCol));
+    prova('e spezzare costa meno di una vista normale',
+      spezzate.length >= 5 && colonneSpezzate <= a60 && colonneMax <= RIL_COL_MAX,
+      `al massimo ${colonneSpezzate} colonne spezzando, contro le ${a60} di una ` +
+      `vista da 60° (e ${colonneMax} a campo larghissimo, dove non si spezza)`);
+    // A campo largo non cambia niente: è la promessa che rende sicuro il
+    // rimedio. Le colonne sono quelle di prima, nodo per nodo.
+    const largo = letture.find(x => x.fov === 180).c;
+    const medio = letture.find(x => x.fov === 60).c;
+    prova('a campo largo non si spezza niente e le colonne restano quelle di prima',
+      largo.sotto === 1 && medio.sotto === 1 && Number.isInteger(largo.passoCol) &&
+      Number.isInteger(medio.passoCol),
+      `sotto ${largo.sotto} a 180°, ${medio.sotto} a 60°`);
+    // Le sotto-colonne sono **potenze di due**, e questa è la riga da cui
+    // viene l'annidamento: quelle del passo largo sono un sottoinsieme di
+    // quelle del passo stretto, quindi pizzicando il disegno si infittisce
+    // invece di scivolare.
+    let potenze = true, capofilaSuiNodi = true;
+    for (const { c } of letture) {
+      if (Math.log2(c.sotto) % 1 !== 0) potenze = false;
+      // Il capofila cade su un multiplo del passo di disegno: è l'ancora che
+      // tiene ferme le colonne mentre la camera gira.
+      const resto = Math.abs(c.i0 / c.passoCol - Math.round(c.i0 / c.passoCol));
+      if (resto > 1e-9) capofilaSuiNodi = false;
+    }
+    prova('le sotto-colonne sono potenze di due e si annidano',
+      potenze && capofilaSuiNodi);
+    // Il tetto dell'arco: a campo stretto il margine di sei gradi che i due
+    // archi si portano dietro è quaranta volte quello che si vede.
+    {
+      sky.fov = 0.25;
+      const f = skyFocale(), b = skyBaseVerso(20, 0);
+      const stretto = rilArcoInVista(b, f);
+      const cono = rilMezzoDelCono(b, f);
+      prova('a campo stretto l\'arco disegnato è il cono della vista, non sei gradi',
+        stretto.mezzo < cono * 1.2 && stretto.mezzo >= cono,
+        `${stretto.mezzo.toFixed(3)}° contro i ${(cono + 6).toFixed(2)}° di prima`);
+      prova('col margine di prima le colonne sarebbero state quaranta volte tante',
+        (cono + 6) / stretto.mezzo > 30,
+        `×${((cono + 6) / stretto.mezzo).toFixed(0)}`);
+    }
+    // E il cono resta un limite **esatto**: nessuna direzione che finisce
+    // sullo schermo può scostarsi in azimut più di così. Si prova dove si
+    // sbaglia — guardando in alto, dove i meridiani si stringono.
+    {
+      sky.fov = 60; sky.larghezza = 1280; sky.altezza = 800;
+      const f = skyFocale();
+      for (const altV of [0, 25, 55]) {
+        const b = skyBaseVerso(20, altV);
+        const mezzo = rilMezzoDelCono(b, f);
+        let peggioAz = 0;
+        for (let i = 0; i <= 24; i++) for (let j = 0; j <= 24; j++) {
+          const v = skyDirezione(sky.larghezza * i / 24, sky.altezza * j / 24, b, f);
+          if (!v) continue;
+          const az = Math.atan2(v[0], v[1]) * SKY_R2D;
+          let d = Math.abs(((az - 20 + 540) % 360) - 180);
+          if (d > peggioAz) peggioAz = d;
+        }
+        prova(`il cono contiene tutti gli azimut dello schermo (camera a ${altV}°)`,
+          peggioAz <= mezzo + 1e-6, `${peggioAz.toFixed(2)}° visti, ${mezzo.toFixed(2)}° concessi`);
+      }
+      sky.larghezza = 360; sky.altezza = 600;
+    }
+    // L'isteresi, che è la stessa di `rilPassoColonne` e per lo stesso
+    // motivo: una mano che trema attorno al punto di scambio non deve far
+    // spezzare e ricomporre la maglia a ogni fotogramma.
+    {
+      sky.fov = 4;
+      const f = skyFocale(), b = skyBaseVerso(20, 0);
+      rilMisuraFattori(b, f);
+      const larga = RIL_PASSO_AZ * f * D2R;
+      // Il punto di scambio fra «intera» e «in due», e una mano che trema
+      // del dieci per cento attorno a lui.
+      rilievo.sotto = 1;
+      const scambio = RIL_COL_PX;
+      rilSottoColonne(scambio, 256);
+      const partenza = rilievo.sotto;
+      let cambi = 0;
+      for (let g = 0; g < 240; g++) {
+        if (rilSottoColonne(scambio * (1 + 0.1 * Math.sin(g / 5)), 256) !== partenza) cambi++;
+      }
+      prova('una mano che trema non fa spezzare e ricomporre la maglia',
+        cambi === 0, `${cambi} cambi in duecentoquaranta fotogrammi`);
+      // Ma una pizzicata vera la deve spezzare, e in una direzione sola.
+      rilievo.sotto = 1;
+      let ultimo = rilSottoColonne(1, 256), sale = true, cambi2 = 0;
+      const primo = ultimo;
+      for (let i = 1; i <= 40; i++) {
+        const s = rilSottoColonne(i * larga / 40, 256);
+        if (s < ultimo) sale = false;
+        if (s !== ultimo) cambi2++;
+        ultimo = s;
+      }
+      prova('ingrandendo la maglia si spezza, e non torna mai indietro',
+        sale && cambi2 >= 3 && primo === 1 && ultimo > 4,
+        `da ${primo} a ${ultimo}`);
+    }
+    // Il budget può allargare la colonna su un dispositivo lento — diradare è
+    // la sua sola manopola — ma non oltre il tetto: se no il rimedio si
+    // spegne proprio dove serve, e costa poco lasciarglielo fare a metà
+    // (quello che pesa è la superficie dipinta, non quante colonne la
+    // dipingono).
+    {
+      sky.fov = 4;
+      const f = skyFocale(), b = skyBaseVerso(20, 0);
+      const arco = rilArcoInVista(b, f);
+      rilievo.sotto = 1; rilBudgetFattore = 1;
+      const svelto = rilColonneDaDisegnare(b, f, arco);
+      rilievo.sotto = 1; rilBudgetFattore = 8;
+      const lento = rilColonneDaDisegnare(b, f, arco);
+      prova('un dispositivo lento disegna meno colonne, ma non rettangoli',
+        lento.nCol < svelto.nCol && lento.larghezza <= RIL_COL_PX_TETTO + 1e-9,
+        `${lento.nCol} colonne larghe ${lento.larghezza.toFixed(1)} px contro ` +
+        `${svelto.nCol} larghe ${svelto.larghezza.toFixed(1)}`);
+      // E lo stesso a campo larghissimo, che è il caso in cui il budget
+      // arrivava a tosare le corse a metà della loro larghezza vera: lì il
+      // fattore di stiramento sfiora il cinque, quindi il tetto in pixel del
+      // tratto morde molto prima: diradare fino a colonne da quaranta pixel
+      // vorrebbe dire riaprire i fili radiali che `RIL_LARG_CLASSI` ha appena
+      // finito di chiudere.
+      sky.fov = 180;
+      const fL = skyFocale(), bL = skyBaseVerso(20, 0);
+      const arcoL = rilArcoInVista(bL, fL);
+      rilievo.passo = 1; rilievo.sotto = 1; rilBudgetFattore = 1;
+      const largoSvelto = rilColonneDaDisegnare(bL, fL, arcoL);
+      rilievo.sotto = 1; rilBudgetFattore = 16;
+      const largoLento = rilColonneDaDisegnare(bL, fL, arcoL);
+      prova('e a campo larghissimo il budget dirada senza riaprire i buchi',
+        largoLento.nCol < largoSvelto.nCol &&
+        largoLento.larghezza * rilFattoreMax <= RIL_LARG_PX_MAX,
+        `${largoLento.nCol} colonne contro ${largoSvelto.nCol}, la più stirata ` +
+        `${(largoLento.larghezza * rilFattoreMax).toFixed(0)} px sul tetto di ${RIL_LARG_PX_MAX}`);
+    }
+    sky.larghezza = salvaL; sky.altezza = salvaH; sky.fov = salvaFov;
+    rilievo.passo = salvaPasso; rilievo.sotto = salvaSotto;
+    rilBudgetFattore = salvaBudget;
+  }
+
   // --- Il budget del fotogramma -----------------------------------------
   //
   // Quanto fitto si disegna non può essere una costante: lo stesso panorama
