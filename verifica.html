@@ -6562,6 +6562,15 @@ titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2
 // Come per il §19 e il §21, questa pagina non carica `app.js`: le costanti e
 // le leggi qui sotto sono una **copia**.
 {
+  // Lo zoom non è un comando di visibilità: anche al campo minimo la
+  // montagna deve continuare a occultare il cielo con la stessa opacità.
+  // Copia di `skyOpacitaTerreno`, provata agli estremi e nel vecchio punto
+  // di inizio della dissolvenza per impedire che rientri accidentalmente.
+  const opacitaTerreno = () => 1;
+  prova('il terreno non scompare quando si aumenta lo zoom',
+    [180, 30, 5, 1.5, 0.25].every(fov => opacitaTerreno(fov) === 1),
+    'opacità piena dal campo massimo a quello minimo');
+
   // --- Il colore del suolo, depressione per depressione -----------------
   const SUOLO_TAU = 0.35;                // SKY_SUOLO_TAU
   const SUOLO_TAU_BUIO = 26;             // SKY_SUOLO_TAU_BUIO

@@ -14501,34 +14501,21 @@ const SKY_PAESAGGI = {
               lontanoNotte: [14, 13, 11], lontanoGiorno: [180, 168, 130] }
 };
 
-// Quanto è opaco il terreno adesso.
+// Il terreno resta opaco a ogni ingrandimento.
 //
-// Stellarium lo fa da sempre, ed è giusto: quando si stringe il campo su un
-// pianeta, il paesaggio smette di essere il contesto e diventa un muro. Si
-// ingrandisce la Luna fino a mezzo grado di campo, la si segue mentre
-// tramonta — e sul più bello sparisce dietro una collina che a
-// quell'ingrandimento non è più una collina: è una macchia scura che copre
-// mezzo schermo, e sotto cui non c'è niente da vedere.
+// In passato veniva dissolto fino al 12% stringendo il campo visivo. Quel
+// trattamento faceva però sparire proprio l'informazione per cui il rilievo
+// esiste: stabilire se un astro basso è davanti o dietro una montagna. Inoltre
+// una superficie quasi trasparente non assomiglia a un terreno meno invadente,
+// ma a quote che non sono state caricate. Lo zoom cambia la scala del
+// paesaggio, non la sua presenza né la sua capacità di occultare il cielo.
 //
-// Sopra i trenta gradi di campo il terreno resta pieno: lì serve, è
-// l'orizzonte di casa e il suo mestiere è proprio coprire. Sotto, sfuma; a
-// un grado e mezzo di campo resta un velo, quel tanto che basta a sapere da
-// che parte è giù. La linea dell'orizzonte invece non sfuma mai: è il
-// riferimento, e un riferimento che sparisce non serve a nessuno.
-const SKY_TERRENO_FOV_PIENO = 30;
-const SKY_TERRENO_FOV_VELO = 1.5;
-const SKY_TERRENO_VELO_MIN = 0.12;
-
+// La funzione resta come unico punto di passaggio per tutti gli strati
+// (rilievo, acqua, grana e abitati): così non possono divergere e un eventuale
+// controllo esplicito della visibilità potrà continuare ad agire su tutto il
+// terreno in un solo posto.
 function skyOpacitaTerreno() {
-  const fov = sky.fov;
-  if (!(fov < SKY_TERRENO_FOV_PIENO)) return 1;
-  if (fov <= SKY_TERRENO_FOV_VELO) return SKY_TERRENO_VELO_MIN;
-  // In scala logaritmica, non lineare: fra 30° e 1,5° ci sono poco più di
-  // quattro raddoppi dell'ingrandimento, e il terreno deve svanire di pari
-  // passo con quanto ci si è avvicinati — non con la differenza dei gradi,
-  // che è quasi tutta spesa nei primi gesti del pizzico.
-  const t = Math.log(fov / SKY_TERRENO_FOV_VELO) / Math.log(SKY_TERRENO_FOV_PIENO / SKY_TERRENO_FOV_VELO);
-  return SKY_TERRENO_VELO_MIN + (1 - SKY_TERRENO_VELO_MIN) * t;
+  return 1;
 }
 
 // I due colori (lontano e vicino) di un paesaggio, a quest'ora e con
@@ -14946,8 +14933,9 @@ function skyTracciaSuolo(ctx, o) {
 // perché non si vede leggendo il codice: si stende in `overlay`, che guarda
 // il colore che ha sotto. Dentro alla tela di servizio sotto c'è il terreno e
 // fuori c'è il vuoto, mentre sulla tela vera sotto c'è il terreno **sopra il
-// cielo**: a terreno velato (forte zoom) le due cose non danno lo stesso
-// colore. Tutto il resto del gruppo si compone in «sorgente sopra», e lì
+// cielo**: se il terreno viene velato da un controllo di visibilità, le due
+// cose non danno lo stesso colore. Tutto il resto del gruppo si compone in
+// «sorgente sopra», e lì
 // copiare la tela è identico a dipingere di fila — non per fortuna: quella
 // composizione è associativa, e il conto torna cifra per cifra. Per la stessa
 // ragione l'opacità del terreno si mette **dentro**, su ogni strato, e la
@@ -17669,8 +17657,7 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
     ctx.save();
     // Moltiplicato, non scritto: qui dentro `globalAlpha` è già il velo del
     // terreno (`skyOpacitaTerreno`), e riscriverlo vorrebbe dire disegnare
-    // l'acqua opaca sopra a un paesaggio che a forte ingrandimento è
-    // trasparente.
+    // l'acqua opaca sopra a un paesaggio eventualmente velato.
     ctx.globalAlpha *= 1 / SKY_ACQUA_RIVA_PASSATE;
     ctx.fillStyle = riva;
     for (let k = 0; k < SKY_ACQUA_RIVA_PASSATE; k++) {
@@ -18216,9 +18203,8 @@ function skyAncoraMotivo(motivo, o, lato, scala) {
 //
 // La misura, per la stessa ragione, non segue più l'ingrandimento: resta
 // quella. Quello che si perde è la profondità di campo della grana (da vicino
-// non diventa più grossa), ed è un prezzo piccolo — sotto i trenta gradi di
-// campo il terreno comincia comunque a farsi trasparente
-// (`skyOpacitaTerreno`) e la grana sbiadisce con lui.
+// non diventa più grossa), ed è un prezzo piccolo: allo zoom spinto conta la
+// sagoma del rilievo, non la misura apparente delle singole zolle.
 const SKY_GRANA_SCALA = 1;
 // Le chiazze stanno su una scala due volte e mezzo più larga, che è il passo
 // fra due scale in natura: le zolle e i campi, i cespugli e i boschi. Più
@@ -19261,9 +19247,9 @@ const SKY_ABITATO_CRESTA_MAX = 24;
 // se no il nome galleggia su un paese che non c'è più.
 const SKY_ABITATO_FOSCHIA = 0.82;
 
-// Il tappeto non sbiadisce quanto il terreno quando si ingrandisce: il
-// terreno si fa trasparente per lasciar vedere gli astri, ma un paese sul
-// crinale è **il** motivo per cui uno ingrandisce sull'orizzonte.
+// Il tappeto conserva comunque un minimo proprio quando la prospettiva aerea
+// e la luce del cielo lo smorzano: un paese sul crinale è **il** motivo per
+// cui uno ingrandisce sull'orizzonte.
 const SKY_ABITATO_VELO_MIN = 0.35;
 
 // A campo strettissimo il modello degli abitati non ha più dettaglio da

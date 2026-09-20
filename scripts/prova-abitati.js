@@ -74,7 +74,7 @@ for (const nome of ['skyDisegnaAbitati', 'skyDisegnaLuciAbitato',
                     'skyAbitatoMuro', 'skyAbitatoSporgeQualcosa',
                     'skyClipSopraLaCresta',
                     'skyAbitatoVisto', 'skyAbitatoChiave', 'skyMescolaColore',
-                    'skyRgba', 'skyLontananzaCitta',
+                    'skyRgba', 'skyLontananzaCitta', 'skyOpacitaTerreno',
                     // I nomi: la gerarchia del §8 si prova sulla funzione
                     // vera, se no si proverebbe una sua copia.
                     'skyNomiCitta', 'skyCittaDaDisegnare', 'skyProspettivaCitta',
@@ -498,15 +498,22 @@ prova('le luci sbiadiscono con la stessa legge del nome che ci sta sopra', () =>
   assert.ok(1 - lontano * foschia < 1 - vicino * foschia);
 });
 
-prova('ingrandendo il tappeto non sparisce col terreno', () => {
-  // Il terreno si fa trasparente per lasciar vedere gli astri, ma un paese
-  // sul crinale è **il** motivo per cui uno ingrandisce sull'orizzonte.
+prova('ingrandendo non spariscono né il terreno né il tappeto di luci', () => {
+  // Lo zoom cambia la scala, non la visibilità: il rilievo serve proprio a
+  // capire se un astro è dietro il crinale. Si prova la funzione vera agli
+  // estremi, poi si passa quel valore fino alla vernice degli abitati.
+  const fovPrima = run('sky.fov');
+  for (const fov of [180, 30, 5, 1.5, 0.25]) {
+    run(`sky.fov = ${fov}`);
+    assert.equal(run('skyOpacitaTerreno()'), 1, `opacità a ${fov}°`);
+  }
+  run(`sky.fov = ${fovPrima}`);
   assert.ok(run('SKY_ABITATO_VELO_MIN') >= 0.2);
   const ab = posto(PAESI, 800, 300).filter(a => a.nome === 'Vicino');
   ctx.__ab = ab;
   run('cittaAbitatiVista = __ab; skyCrestaFinta = -90; sky.luceCielo = 0;');
-  run('__tela = telaFinta(); skyDisegnaAbitati(__tela, {}, 300, null, 0.12);');
-  assert.ok(run('__tela.punti').length > 0, 'a terreno quasi trasparente spariscono tutte');
+  run('__tela = telaFinta(); skyDisegnaAbitati(__tela, {}, 300, null, skyOpacitaTerreno());');
+  assert.ok(run('__tela.punti').length > 0, 'col terreno scompaiono tutte');
 });
 
 console.log('\n§6 — di giorno il paese si vede lo stesso');
