@@ -990,11 +990,9 @@ function catDisegnaFigure(ctx, base, focale) {
   const velo = typeof skyVelo === 'function' ? skyVelo() : 1;
   if (velo < 0.06) return;                        // in pieno giorno, niente figure
 
-  // A campo largo si vede tutto il cielo e ottantotto figure diventano una
-  // ragnatela. Ingrandendo si entra nel dettaglio e allora ha senso
-  // mostrare anche le minori: il rango 1 sono le venti che tutti sanno
-  // additare, il 3 quelle che non addita nessuno.
-  const rangoMax = sky.fov > 90 ? 1 : sky.fov > 45 ? 2 : 3;
+  // Anche nel grandangolo si disegnano tutte le ottantotto figure. Il rango
+  // descrive quanto una costellazione è nota, non quanto meriti di sparire:
+  // proprio il campo largo serve a leggere i rapporti fra figure vicine.
 
   const L = sky.larghezza, A = sky.altezza;
   const cx = L / 2, cy = A / 2;
@@ -1012,8 +1010,6 @@ function catDisegnaFigure(ctx, base, focale) {
   const etichette = [];
 
   cat.figure.forEach(fig => {
-    if (fig.rango > rangoMax) return;
-
     fig.spezzate.forEach(s => {
       let precedente = null;
       for (let k = 0; k < s.quanti; k++) {

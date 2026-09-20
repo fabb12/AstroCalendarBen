@@ -2168,13 +2168,11 @@ function costNomeNelPunto(px, py, base, focale) {
   const velo = typeof skyVelo === 'function' ? skyVelo() : 1;
   if (velo < 0.06) return null;
 
-  const rangoMax = sky.fov > 90 ? 1 : sky.fov > 45 ? 2 : 3;
   const L = sky.larghezza, A = sky.altezza;
   const cx = L / 2, cy = A / 2;
   const fr = base.f, br = base.r, bu = base.u;
 
   for (const fig of cat.figure) {
-    if (fig.rango > rangoMax) continue;
     const x = fig.centroOra[0], y = fig.centroOra[1], z = fig.centroOra[2];
     const d = x * fr[0] + y * fr[1] + z * fr[2];
     if (d <= SKY_D_MIN || z < 0) continue;
