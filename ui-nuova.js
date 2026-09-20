@@ -181,6 +181,29 @@ function aggiornaStaseraNuovo() {
 // 2. IMPOSTAZIONI — il cielo di casa
 // =====================================================================
 
+function aggiornaInformazioniBuild() {
+  const info = window.ASTROCAL_BUILD || {};
+  const versione = document.getElementById('imp-versione-app');
+  const build = document.getElementById('imp-build-app');
+  const data = document.getElementById('imp-data-build');
+
+  if (versione) versione.textContent = info.version || '—';
+  if (build) {
+    const numero = info.build ? `#${info.build}` : astroI18n.t('ui.build-locale');
+    build.textContent = info.commit ? `${numero} · ${info.commit}` : numero;
+  }
+  if (data) {
+    const quando = info.builtAt ? new Date(info.builtAt) : null;
+    data.textContent = quando && !Number.isNaN(quando.getTime())
+      ? new Intl.DateTimeFormat(document.documentElement.lang || 'it', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+          timeZoneName: 'short'
+        }).format(quando)
+      : '—';
+  }
+}
+
 function costruisciSceltaCielo() {
   const box = document.getElementById('imp-cielo-scelta');
   const nota = document.getElementById('imp-cielo-nota');
@@ -1010,6 +1033,7 @@ function inizializzaNuoveFunzioni() {
   // scala di Bortle direbbe un numero in meno.
   const apri = document.getElementById('btn-impostazioni');
   if (apri) apri.addEventListener('click', () => {
+    aggiornaInformazioniBuild();
     costruisciSceltaCielo();
     costruisciRaggiOrizzonte();
     costruisciTolleranzaPlanetario();
@@ -1084,6 +1108,7 @@ function ridisegnaVistaSeVecchia(nome) {
 }
 
 function ridisegnaTuttoPerLingua() {
+  aggiornaInformazioniBuild();
   const passate = [
     // Il planetario: la scheda dell'oggetto, il fumetto, l'elenco, gli eventi
     ['scheda del planetario', () => {
