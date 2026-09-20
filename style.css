@@ -4909,7 +4909,8 @@ body input.casella-data:hover { border: 0; }
   overflow: hidden;
   text-align: right;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: pre-line;
+  line-height: 1.25;
   font-family: var(--mono);
   font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
