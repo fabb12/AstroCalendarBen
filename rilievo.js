@@ -3053,6 +3053,37 @@ function rilTracciaSagoma(ctx) {
 // diverse, ed è voluto: la promessa non è «tanti nodi», è «un fotogramma che
 // arriva in tempo».
 const RIL_BUDGET_MS = 7;
+
+// Ma quel cronometro **non misura il disegno**, ed è la riga da leggere prima
+// di toccare qualunque cosa qui sotto.
+//
+// `performance.now()` attorno alle chiamate del canvas misura quanto ci mette
+// il browser a *registrarle*, non quanto ci mette a dipingerle: la
+// rasterizzazione avviene dopo, fuori dal nostro codice, e il cronometro non
+// la vede affatto. Misurato in un browser vero su un panorama di lago e
+// montagne, a un milione di pixel di tela: `rilievo.ultimo.ms` diceva 3,4
+// millisecondi mentre il fotogramma ne durava settantaquattro. Il budget
+// leggeva quindi metà della sua soglia e concludeva che andava tutto bene, su
+// un planetario che faceva tredici fotogrammi al secondo — cioè il termostato
+// scritto apposta per questo non ha mai morso una volta.
+//
+// E nemmeno la manopola era quella giusta. Il costo del terreno non sta nel
+// numero delle primitive ma nella **superficie dipinta**: diradando i livelli
+// del chiaroscuro da 4.310 strisce a 380 il fotogramma passava da 51 a 33
+// millisecondi, perché le strisce sono meno ma coprono gli stessi pixel. A
+// costare sono le passate sopra alla stessa montagna, e il rimedio vero non è
+// qui — è non ridipingerla quando non è cambiata (§«La tela del terreno» in
+// `app.js`). Il diradamento resta quello che può essere: l'ultima difesa di
+// chi il fotogramma non ce la fa a chiuderlo comunque.
+//
+// Si guarda quindi il fotogramma vero, che è poi la cosa che l'utente vede.
+// Le due soglie sono diverse apposta: un fotogramma sano dura quanto il
+// refresh dello schermo — sedici millisecondi e sette a sessanta hertz — e
+// con una soglia sola il diradamento oscillerebbe a ogni giro fra il prima e
+// il dopo.
+const RIL_FOTOGRAMMA_ALTO = 28;    // sotto i trentasei al secondo: si dirada
+const RIL_FOTOGRAMMA_BASSO = 20;   // sopra i cinquanta: si ricuce
+
 // Di quanto si dirada, al massimo. Otto volte meno colonne è il terreno
 // ridotto a una sagoma con qualche piega: oltre non vale più la pena, e un
 // dispositivo che non ce la fa nemmeno così ha altri guai.
@@ -3093,16 +3124,50 @@ function rilPassoBande() {
   return rilBudgetFattore >= 8 ? 4 : (rilBudgetFattore >= 4 ? 2 : 1);
 }
 
+// Quanto è durato davvero l'ultimo fotogramma, smussato. Lo scrive
+// `skyDeltaFotogramma` in `app.js`, che è l'unico posto che lo sappia: da qui
+// dentro il disegno del rilievo non si vede né quando il fotogramma comincia
+// né quando finisce.
+function rilFotogrammaMs() {
+  return (typeof sky !== 'undefined' && sky.fotogrammaMs > 0) ? sky.fotogrammaMs : 0;
+}
+
 function rilAggiornaBudget(ms) {
   if (!Number.isFinite(ms)) return;
   rilCosto = rilCosto > 0 ? rilCosto + (ms - rilCosto) * RIL_BUDGET_TAU : ms;
-  if (rilBudgetFattore < RIL_BUDGET_FATTORE_MAX && rilCosto > RIL_BUDGET_MS) {
+  const fotogramma = rilFotogrammaMs();
+  // Quando il fotogramma si può misurare è lui a decidere, in tutt'e due i
+  // versi: è la cosa che l'utente vede, e se è arrivato in tempo vuol dire
+  // per definizione che il JavaScript ci stava dentro. Il cronometro del
+  // JavaScript resta come seconda ragione per diradare — una CPU lenta, che è
+  // il caso per cui questo termostato era nato — e come unico giudice sui
+  // fotogrammi che non si sono potuti misurare.
+  //
+  // Il fotogramma però vale come giudice solo mentre la montagna si ridipinge
+  // **di fila**, cioè mentre la camera si muove. Da ferma si ridipinge una
+  // volta ogni tanto — la rete della scadenza, il Sole che avanza — e quella
+  // ridipintura è cara per definizione: spalmata su due secondi di
+  // ricopiature è un fotogramma perso, e giudicarla col metro del fotogramma
+  // vorrebbe dire diradare a camera immobile. Peggio: diradare cambia il
+  // disegno, cioè **provoca** la ridipintura successiva, e il fattore finiva
+  // per salire e scendere da solo con la montagna che cambiava dettaglio
+  // sotto gli occhi di chi stava fermo a guardarla. Il costo del JavaScript
+  // invece è del singolo disegno e vale sempre: quaranta millisecondi di
+  // conto sono quaranta millisecondi comunque si arrivi a farli.
+  const inMovimento = !!(typeof sky !== 'undefined' && sky.terrenoInMovimento);
+  const conFotogramma = inMovimento && fotogramma > 0;
+  const troppo = rilCosto > RIL_BUDGET_MS ||
+    (conFotogramma && fotogramma > RIL_FOTOGRAMMA_ALTO);
+  const poco = conFotogramma
+    ? (fotogramma < RIL_FOTOGRAMMA_BASSO && rilCosto < RIL_BUDGET_MS)
+    : rilCosto < RIL_BUDGET_MS * RIL_BUDGET_SOTTO;
+  if (rilBudgetFattore < RIL_BUDGET_FATTORE_MAX && troppo) {
     rilBudgetFattore *= 2;
     // La media si riporta a quello che il fattore nuovo costerà, se no il
     // termostato continua a leggere il costo di prima e raddoppia ancora al
     // fotogramma successivo — cioè scende a otto in tre giri.
     rilCosto *= 0.5;
-  } else if (rilBudgetFattore > 1 && rilCosto < RIL_BUDGET_MS * RIL_BUDGET_SOTTO) {
+  } else if (rilBudgetFattore > 1 && poco) {
     rilBudgetFattore /= 2;
     rilCosto *= 2;
   }
