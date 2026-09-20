@@ -1076,6 +1076,10 @@ const rilievo = {
   // l'isteresi: senza memoria non c'è isteresi, e senza isteresi il passo
   // balla attorno al punto di scambio (§9).
   passo: 1,
+  // E in quante sotto-colonne si spezza una colonna della maglia
+  // (`rilSottoColonne`, §9). Si tiene per la stessa ragione del passo: è
+  // un'isteresi, e senza memoria non esiste.
+  sotto: 1,
 
   // Il conto dell'ultimo fotogramma: colonne, strisce, chiamate di disegno e
   // millisecondi. Non è una curiosità — è il bilancio di questa vista, e
@@ -2736,10 +2740,15 @@ const RIL_LARG_MARGINE_ALTO = 1.25;
 const RIL_LARG_CUCITURA_PX = 0.35;
 
 // Quante classi vale la pena usare in questo fotogramma. La riempie
-// `rilScalaLarghezze`; `rilClasseLarghezza` non guarda oltre.
+// `rilGradiniLarghezze`; `rilClasseLarghezza` non guarda oltre.
 let rilClassiInUso = RIL_LARG_CLASSI;
+// Gli estremi del fattore misurati sul riquadro di adesso. Stanno fuori
+// perché la misura serve **prima** di sapere quanto è larga una colonna: è
+// lei a dire fino a che larghezza di base si può arrivare senza che il tetto
+// in pixel tosi le corse più larghe e riapra i buchi (`rilSottoColonne`).
+let rilFattoreMin = 1, rilFattoreMax = 1;
 
-function rilScalaLarghezze(base, focale, larghezzaBase, tettoClassi) {
+function rilMisuraFattori(base, focale) {
   let min = Infinity, max = -Infinity;
   const W = sky.larghezza, H = sky.altezza;
   for (let i = 0; i < RIL_LARG_SONDE; i++) {
@@ -2757,6 +2766,12 @@ function rilScalaLarghezze(base, focale, larghezzaBase, tettoClassi) {
     }
   }
   if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > 0)) { min = 0.2; max = 5; }
+  rilFattoreMin = min;
+  rilFattoreMax = max;
+}
+
+function rilGradiniLarghezze(larghezzaBase, tettoClassi) {
+  let min = rilFattoreMin, max = rilFattoreMax;
   // Solo il **tetto** deve avere un margine, e la ragione è aritmetica: la
   // classe zero si prende tutto quello che sta sotto al primo gradino e lo
   // disegna largo quanto il gradino, quindi chi sta sotto è coperto per
@@ -2793,6 +2808,14 @@ function rilScalaLarghezze(base, focale, larghezzaBase, tettoClassi) {
   for (let i = 0; i < rilClassiInUso; i++) RIL_LARGHEZZE[i] = min + passoScala * i;
   for (let i = rilClassiInUso; i < RIL_LARG_CLASSI; i++) RIL_LARGHEZZE[i] = max;
 }
+
+// Le due cose insieme, che è come le chiede chi non ha bisogno di infilarsi
+// in mezzo (le prove, e chiunque voglia la scala e basta).
+function rilScalaLarghezze(base, focale, larghezzaBase, tettoClassi) {
+  rilMisuraFattori(base, focale);
+  rilGradiniLarghezze(larghezzaBase, tettoClassi);
+}
+
 // Un filo di margine, perché due tratti che si toccano esattamente lasciano
 // sul pixel in comune due mezze coperture che non ne fanno una piena. È un
 // terzo di pixel e non uno: la classe arrotonda già per eccesso, e un pixel
@@ -3207,6 +3230,80 @@ function rilPassoColonne(pxGrado) {
   return Math.min(32, p * rilBudgetFattore);
 }
 
+// --- In quante sotto-colonne si spezza una colonna della maglia ---------
+//
+// È la risposta ai **rettangoli verticali** che comparivano ingrandendo, e
+// nasce da un conto che vale la pena avere in mente prima di leggere il
+// disegno. La maglia ha settecentoventi direzioni, cioè mezzo grado l'una
+// dall'altra, e una colonna si disegna larga `mezzo grado × pixel per grado`:
+// a sessanta gradi di campo sono cinque pixel e non se ne accorge nessuno, a
+// trenta sono dieci, **a quattro gradi sono settantacinque** e a un grado
+// trecento. Il terreno smette allora di essere una superficie e diventa una
+// fila di rettangoli alti mezzo schermo, ognuno di un colore solo; e siccome
+// il tratto si tosa a `RIL_LARG_PX_MAX`, fra l'uno e l'altro si riapre il
+// fondo della fetta — le bande chiare e scure alternate della segnalazione.
+//
+// Il difetto non è dei dati e non è della camminata: è che il disegno
+// campionava la maglia **solo sui suoi nodi**. Diradare non c'entra e non
+// poteva: `rilPassoColonne` sa saltare colonne, e qui ne servono di più, non
+// di meno.
+//
+// La maglia però si sa leggere anche **fra** i suoi nodi, ed è la riga che
+// rende lecito tutto il resto: a un chilometro mezzo grado sono otto metri e
+// mezzo, cioè meno di una cella del modello del suolo (ventisette metri), e
+// fra due colonne vicine la quota è già interpolata dal raster. Leggerla a un
+// ottavo di colonna non inventa niente — disegna quello che il dato dice
+// davvero, invece di arrotondarlo al nodo più vicino. È la stessa lezione di
+// `rilQuotaTessere` e di `rilQuotaMaglia`, applicata al disegno.
+//
+// Il bersaglio è la larghezza in pixel, ed è il minimo di tre cose:
+//
+//   - `RIL_COL_PX`, la larghezza a cui una colonna smette di leggersi come un
+//     rettangolo. Dieci pixel non è un numero scelto a occhio: è quanto
+//     misura oggi una colonna a trenta gradi di campo, cioè in una vista di
+//     cui nessuno si è mai lamentato;
+//   - il budget, che su un dispositivo lento può allargarla — ma non oltre
+//     `RIL_COL_PX_TETTO`, se no il rimedio si spegne proprio dove serve. E
+//     costa poco lasciarglielo fare solo a metà: quello che pesa è la
+//     superficie dipinta, non quante colonne la dipingono (vedi «Il budget
+//     del fotogramma», e il conto delle strisce da 4.310 a 380);
+//   - la larghezza oltre la quale il tetto in pixel del tratto
+//     (`RIL_LARG_PX_MAX`) tosa le corse più larghe e riapre i buchi che
+//     `RIL_LARG_CLASSI` ha appena finito di chiudere. Da qui viene
+//     l'invariante che questo pezzo mantiene: **una colonna non è mai
+//     disegnata più stretta di quanto è**, a nessun campo visivo.
+const RIL_COL_PX = 10;
+const RIL_COL_PX_TETTO = 20;
+const RIL_SOTTO_MAX = 256;
+
+function rilSottoColonne(larghezzaBase, tetto) {
+  const bersaglio = Math.max(2, Math.min(
+    RIL_COL_PX * rilBudgetFattore,
+    RIL_COL_PX_TETTO,
+    RIL_LARG_PX_MAX / Math.max(1, rilFattoreMax * RIL_LARG_MARGINE_ALTO)));
+  const voluto = larghezzaBase / Math.max(1e-6, bersaglio);
+  let s = rilievo.sotto || 1;
+  // Le due soglie sono quelle di `rilPassoColonne` rovesciate, e per la
+  // stessa ragione: fra «spezza» e «rimetti insieme» ci vuole una fascia
+  // morta, se no pizzicando la maglia si spezza e si ricompone a ogni
+  // fotogramma e il disegno balla — che è esattamente lo sfarfallio che
+  // l'isteresi del passo esiste per togliere.
+  while (s < RIL_SOTTO_MAX && voluto > s * RIL_ISTERESI) s *= 2;
+  while (s > 1 && voluto < (s / 2) / RIL_ISTERESI) s /= 2;
+  rilievo.sotto = s;
+  // Il tetto arriva **dopo** l'isteresi, come il budget per il passo: dice
+  // quante colonne ci stanno nell'arco di questo fotogramma, che è un limite
+  // di adesso e non una memoria da portarsi dietro.
+  return Math.max(1, Math.min(s, tetto));
+}
+
+// Quante colonne al massimo, per quanto stretta sia la vista. Con l'arco
+// tosato al cono (`rilMezzoDelCono`) non si arriva mai vicino — sono
+// ottantatré su un telefono e centotrenta su un computer, a qualunque
+// ingrandimento — ma un tetto esplicito è quello che tiene il conto lontano
+// dalla memoria anche il giorno in cui una di quelle due misure cambia.
+const RIL_COL_MAX = 1024;
+
 // Da dove viene la luce, e di che colore. L'azimut è quello vero dell'astro,
 // l'altezza no (vedi `RIL_LUCE_ALT_MIN`).
 function rilLuce(base) {
@@ -3322,12 +3419,53 @@ function rilTavolozzaTratti(luce) {
 let rilArcoUltimo = null;
 let rilArcoChiave = '';
 
+// Il giro di azimut che il **cono** della vista può contenere, e nient'altro.
+//
+// È la stessa misura di `skyArcoAcquaInVista` senza il suo margine di sei
+// gradi, ed è un limite **esatto**: la tela è circoscritta da un cerchio di
+// semiapertura `σ` attorno all'asse della vista, quindi una direzione che
+// finisce sullo schermo non può scostarsi in azimut più di
+// `asin(sin σ / cos a)`. Vale a qualunque quota — una cima alta e il fosso
+// sotto di lei hanno lo stesso azimut della colonna che li disegna — ed è per
+// questo che può prendere il posto del margine invece di aggiungersi a lui.
+//
+// Serve perché quel margine, a campo stretto, non è un margine: è quasi tutto
+// il lavoro. Guardando quattro gradi di cielo il cono è largo due gradi e
+// mezzo e l'arco ne concede otto e mezzo; a un quarto di grado il cono è
+// quindici centesimi e l'arco sempre sei — **quaranta volte** le colonne che
+// si vedono. Finché una colonna era mezzo grado la cosa non si notava (di
+// colonne ce n'erano ventisette in tutto); dovendo spezzarle per non
+// disegnare rettangoli, quelle quaranta volte diventerebbero quaranta volte
+// il costo.
+function rilMezzoDelCono(base, focale) {
+  if (typeof skyAngoloDiRaggio !== 'function') return 180;
+  const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
+  if (!(semi < Math.PI / 2)) return 180;
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const seno = Math.sin(semi) / Math.max(1e-6, Math.cos(altF));
+  if (!(seno < 1)) return 180;
+  return Math.asin(seno) * SKY_R2D;
+}
+
+// Un filo di margine sopra al limite esatto, perché il terreno si chiude fra
+// due colonne: la prima fuori dallo schermo serve a disegnare l'ultima che ci
+// sta dentro. È **relativo** e non in gradi, perché tutto questo conto scala
+// col campo visivo — otto per cento del cono sono sempre due o tre colonne
+// disegnate, a centottanta gradi come a un quarto.
+const RIL_ARCO_MARGINE = 1.08;
+
 function rilArcoInVista(base, focale) {
+  const cono = rilMezzoDelCono(base, focale) * RIL_ARCO_MARGINE;
   const orizzonte = typeof skyArcoOrizzonteInVista === 'function'
     ? skyArcoOrizzonteInVista(base, focale)
     : null;
-  if (!orizzonte) return skyArcoAcquaInVista(base, focale);
-  if (orizzonte.mezzo < 175) return orizzonte;
+  if (!orizzonte) {
+    const acqua = skyArcoAcquaInVista(base, focale);
+    return acqua ? { centro: acqua.centro, mezzo: Math.min(acqua.mezzo, cono) } : null;
+  }
+  if (orizzonte.mezzo < 175) {
+    return { centro: orizzonte.centro, mezzo: Math.min(orizzonte.mezzo, cono) };
+  }
 
   // Un decimo di grado di camera e un pixel di riquadro: sotto, l'arco che
   // ne uscirebbe è lo stesso a meno del mezzo grado con cui lo si campiona.
@@ -3359,9 +3497,55 @@ function rilArcoInVista(base, focale) {
           p.py >= -margine && p.py <= sky.altezza + margine) ultimo = delta;
     }
   }
-  rilArcoUltimo = { centro, mezzo: Math.min(orizzonte.mezzo, ultimo + 6, 174) };
+  rilArcoUltimo = { centro, mezzo: Math.min(orizzonte.mezzo, ultimo + 6, 174, cono) };
   rilArcoChiave = chiave;
   return rilArcoUltimo;
+}
+
+// Quante colonne disegnare, quanto distanti e da dove cominciare.
+//
+// Sta fuori dal disegno perché è la riga su cui si gioca l'aspetto del
+// terreno a ogni campo visivo — i rettangoli verticali dello zoom spinto
+// nascono qui — e perché così il banco di prova può farle la domanda senza
+// dover ricopiare il conto: una copia che diverge dal disegno non lo dice
+// nessuno.
+function rilColonneDaDisegnare(base, focale, arco) {
+  const pxGrado = Math.max(1e-6, focale * SKY_D2R);
+  const passo = rilPassoColonne(pxGrado);
+  // Gli estremi del fattore di larghezza si misurano **prima** di scegliere
+  // quanto fitte disegnare le colonne: è la misura che dice fin dove una
+  // colonna si può allargare senza che il tetto in pixel la tosi (vedi
+  // `rilSottoColonne`).
+  rilMisuraFattori(base, focale);
+  // Quante sotto-colonne l'arco in vista si può permettere: a campo largo è
+  // tutto il giro e non se ne permette nessuna, a campo stretto è un dito di
+  // cielo e ce ne stanno tutte.
+  const tettoSotto = Math.pow(2, Math.max(0, Math.floor(Math.log2(Math.max(1,
+    RIL_COL_MAX * RIL_PASSO_AZ * passo / Math.max(1e-6, 2 * arco.mezzo))))));
+  const sotto = rilSottoColonne(RIL_PASSO_AZ * passo * pxGrado, tettoSotto);
+  // Il passo di disegno, **in colonne di maglia**: un intero quando si
+  // dirada, una frazione di potenza di due quando si spezza. Le due cose
+  // stanno sulla stessa scala e si compongono senza sapere l'una dell'altra.
+  const passoCol = passo / sotto;
+  const nCol = Math.min(RIL_COL_MAX, Math.ceil(RIL_AZIMUT / passoCol) + 1,
+    Math.floor(2 * arco.mezzo / (RIL_PASSO_AZ * passoCol)) + 3);
+  // Il capofila si aggancia alla **griglia dei campioni**, non all'arco.
+  //
+  // `arco.centro − arco.mezzo` scorre con continuità mentre si gira la
+  // camera, quindi con un passo maggiore di uno l'insieme delle colonne
+  // disegnate cambiava a ogni mezzo grado: gli stessi dati venivano
+  // ricampionati altrove e il tratteggio scivolava sul terreno invece di
+  // restarci attaccato. Ancorandolo a un multiplo di `passoCol`, le colonne
+  // del passo largo sono un sottoinsieme di quelle del passo stretto e
+  // girandosi il disegno trasla e basta — e vale anche spezzando, perché una
+  // potenza di due divisa per una potenza di due è ancora una potenza di
+  // due, cioè le sotto-colonne cascano esattamente sui nodi di prima più
+  // quelli in mezzo. È la stessa cura di `skyAcqueStrisce` in `app.js`, e per
+  // la stessa ragione. La colonna in più di `nCol` copre il mezzo passo che
+  // l'ancoraggio arretra.
+  const i0 = Math.floor((arco.centro - arco.mezzo) / (RIL_PASSO_AZ * passoCol)) * passoCol;
+  return { pxGrado, passo, sotto, passoCol, nCol, i0,
+           larghezza: RIL_PASSO_AZ * passoCol * pxGrado };
 }
 
 function rilDisegna(ctx, base, focale, suolo, aria) {
@@ -3374,23 +3558,8 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   if (!arco) return false;
 
   const na = RIL_AZIMUT, nr = RIL_ANELLI;
-  const pxGrado = Math.max(1e-6, focale * SKY_D2R);
-  const passo = rilPassoColonne(pxGrado);
-  const nCol = Math.min(Math.ceil(na / passo) + 1,
-    Math.floor(2 * arco.mezzo / (RIL_PASSO_AZ * passo)) + 3);
+  const { pxGrado, passoCol, sotto, nCol, i0 } = rilColonneDaDisegnare(base, focale, arco);
   if (nCol < 2) return false;
-  // Il capofila si aggancia alla **griglia dei campioni**, non all'arco.
-  //
-  // `arco.centro − arco.mezzo` scorre con continuità mentre si gira la
-  // camera, quindi con un passo maggiore di uno l'insieme delle colonne
-  // disegnate cambiava a ogni mezzo grado: gli stessi dati venivano
-  // ricampionati altrove e il tratteggio scivolava sul terreno invece di
-  // restarci attaccato. Ancorandolo a un multiplo di `passo`, le colonne del
-  // passo largo sono un sottoinsieme di quelle del passo stretto e girandosi
-  // il disegno trasla e basta. È la stessa cura di `skyAcqueStrisce` in
-  // `app.js`, e per la stessa ragione. La colonna in più di `nCol` copre il
-  // mezzo passo che l'ancoraggio arretra.
-  const i0 = Math.floor((arco.centro - arco.mezzo) / (RIL_PASSO_AZ * passo)) * passo;
 
   const cronometro = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   rilMagazzino(nCol);
@@ -3447,10 +3616,11 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // Quanto è larga una colonna sullo schermo **al centro della vista**: da lì
   // in fuori la stereografica la stira e i meridiani la stringono, e di
   // quanto lo dice la classe di ogni corsa (vedi `RIL_LARG_CLASSI`).
-  const larghezzaBase = RIL_PASSO_AZ * passo * pxGrado;
+  const larghezzaBase = RIL_PASSO_AZ * passoCol * pxGrado;
   // La scala dei gradini si misura su **questo** riquadro, non si dichiara:
-  // vedi `rilScalaLarghezze`.
-  rilScalaLarghezze(base, focale, larghezzaBase, rilTettoClassi());
+  // vedi `rilMisuraFattori`, che è già stata chiamata più su perché la
+  // larghezza di base dipende da lei.
+  rilGradiniLarghezze(larghezzaBase, rilTettoClassi());
   const larghezze = new Array(RIL_LARG_CLASSI);
   for (let i = 0; i < RIL_LARG_CLASSI; i++) {
     larghezze[i] = Math.min(RIL_LARG_PX_MAX,
@@ -3469,10 +3639,20 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       : (m - RIL_VICINO_NIENTE_M) / (RIL_VICINO_PIENO_M - RIL_VICINO_NIENTE_M));
 
   for (let c = 0; c < nCol; c++) {
-    const idx = (((i0 + c * passo) % na) + na) % na;
-    const azRad = idx * RIL_PASSO_AZ * D2R;
+    // Dove cade questa colonna nella maglia: un nodo quando non si spezza,
+    // un punto **fra** due nodi quando si spezza (`rilSottoColonne`). `idx` è
+    // la colonna a sinistra, `uB` quanto si è già oltre, e `fra` dice se c'è
+    // qualcosa da mescolare — a `sotto = 1` vale zero esatto e tutto quello
+    // che segue è identico, riga per riga, a com'era.
+    const dove = (((i0 + c * passoCol) % na) + na) % na;
+    const idx = Math.floor(dove) % na;
+    const uB = dove - Math.floor(dove), uA = 1 - uB;
+    const fra = uB > 0;
+    const idx2 = (idx + 1) % na;
+    const azRad = dove * RIL_PASSO_AZ * D2R;
     const sinAz = Math.sin(azRad), cosAz = Math.cos(azRad);
     const baseQ = idx * nr;
+    const baseQ2 = idx2 * nr;
 
     let massimo = -Infinity, kMax = 0;
     let px = 0, py = 0, ok = false;      // il nodo visibile precedente
@@ -3507,8 +3687,15 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       // vicine costerebbe tre bilineari per nodo, e da quando il centro si
       // rifà ogni sessanta metri lo scostamento è una correzione piccola —
       // sul chiaroscuro, che è una derivata locale, non si vede.
+      //
+      // E quando la colonna cade **fra** due nodi (§`rilSottoColonne`) i due
+      // rami si comportano da soli: in movimento l'angolo si rifà da capo e
+      // la maglia la si legge già fra i nodi (`rilQuotaMaglia`), quindi
+      // l'azimut frazionario ci passa senza toccare niente; da fermo si
+      // mescolano i due nodi che lo abbracciano.
       const a = rifaiAngoli ? rilCampioneInMovimento(sinAz, cosAz, k, scosto, occhio)
-                            : rilievo.alt[baseQ + k];
+                            : (fra ? rilievo.alt[baseQ + k] * uA + rilievo.alt[baseQ2 + k] * uB
+                                   : rilievo.alt[baseQ + k]);
       if (!(a > massimo)) {
         // Nascosto: se veniamo da un tratto visibile, qui il terreno
         // **sparisce dietro** a quello che abbiamo davanti — ed è un contorno.
@@ -3579,7 +3766,8 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // in colonne, il chiaroscuro **non cambia** quando cambia il passo
           // di disegno: è l'altra metà del rimedio allo sfarfallio.
           const s = RIL_DIST[k];
-          const q = rilievo.quota[baseQ + k];
+          const q = fra ? rilievo.quota[baseQ + k] * uA + rilievo.quota[baseQ2 + k] * uB
+                        : rilievo.quota[baseQ + k];
           // La base della derivata è `RIL_PIEGA_M` **metri di terreno**, e
           // centosettanta metri non sono un numero intero di nodi.
           //
@@ -3595,12 +3783,30 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // solo dalla distanza sta in `rilTabelleAnelli`: qui restano due
           // letture in più e due moltiplicazioni.
           const salto = rilAnSalto[k], dentroAz = rilAnDentro[k];
-          const iPiu = (idx + salto) % na, iPiu2 = (idx + salto + 1) % na;
+          const iPiu = (idx + salto) % na, iPiu2 = (iPiu + 1) % na;
           const iMeno = (idx - salto + na * 2) % na, iMeno2 = (idx - salto - 1 + na * 2) % na;
-          const qPiu = rilievo.quota[iPiu * nr + k] +
+          let qPiu = rilievo.quota[iPiu * nr + k] +
             (rilievo.quota[iPiu2 * nr + k] - rilievo.quota[iPiu * nr + k]) * dentroAz;
-          const qMeno = rilievo.quota[iMeno * nr + k] +
+          let qMeno = rilievo.quota[iMeno * nr + k] +
             (rilievo.quota[iMeno2 * nr + k] - rilievo.quota[iMeno * nr + k]) * dentroAz;
+          // Spezzando la colonna, anche i due campioni della derivata cadono
+          // fra due nodi: si mescolano quelli della colonna a sinistra con
+          // quelli della colonna a destra, con lo stesso peso del nodo. Non è
+          // identico a rileggere la maglia a `dove ± saltoF` — le pieghe
+          // della spezzata cadono altrove — ed è meglio così: le pieghe
+          // stanno sui nodi della maglia invece che a `dentroAz` di distanza
+          // da loro, quindi due sotto-colonne vicine non si portano dentro un
+          // gradino che al nodo non c'è.
+          if (fra) {
+            const iPiu3 = (iPiu + 2) % na;
+            const qPiuB = rilievo.quota[iPiu2 * nr + k] +
+              (rilievo.quota[iPiu3 * nr + k] - rilievo.quota[iPiu2 * nr + k]) * dentroAz;
+            qPiu = qPiu * uA + qPiuB * uB;
+            const iMenoB = (iMeno + 1) % na;
+            const qMenoB = rilievo.quota[iMenoB * nr + k] +
+              (rilievo.quota[iMeno * nr + k] - rilievo.quota[iMenoB * nr + k]) * dentroAz;
+            qMeno = qMeno * uA + qMenoB * uB;
+          }
           // Lo scostamento in Est e Nord del campione avanti, srotolando
           // l'addizione degli angoli: `sin(az+dAz) − sin(az)` diventa
           // `sinAz·(cos dAz − 1) + cosAz·sin dAz`, e i due fattori li ha già
@@ -3631,8 +3837,12 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           const saltoK = rilAnSaltoK[k], dentroK = rilAnDentroK[k];
           const kA = k - saltoK, kB = kA > 0 ? kA - 1 : 0;
           const sIndietro = rilAnSIndietro[k];
-          const qIndietro = rilievo.quota[baseQ + kA] +
+          let qIndietro = rilievo.quota[baseQ + kA] +
             (rilievo.quota[baseQ + kB] - rilievo.quota[baseQ + kA]) * dentroK;
+          if (fra) {
+            qIndietro = qIndietro * uA + (rilievo.quota[baseQ2 + kA] +
+              (rilievo.quota[baseQ2 + kB] - rilievo.quota[baseQ2 + kA]) * dentroK) * uB;
+          }
           const tx = (s - sIndietro) * sinAz, ty = (s - sIndietro) * cosAz;
           const tz = q - qIndietro;
           const forma = rilForzaForma(q, qPiu, qMeno, qIndietro);
@@ -3678,7 +3888,14 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // non tremola: serve solo a rompere i confini fra una banda e
           // l'altra, che è quello che si legge come mosaico. È la stessa idea
           // del dithering, e costa uno xor.
-          const rumore = rilRumore(idx, k);
+          // Il disturbo del dithering si mescola come tutto il resto: preso
+          // sul solo nodo di sinistra resterebbe costante per tutta la
+          // larghezza di una colonna della maglia, cioè sarebbe **lui** a
+          // disegnare la banda che si sta togliendo di mezzo — con la
+          // pettinatura ammorbidita dal resto, il gradino di un livello fra
+          // una colonna e l'altra sarebbe l'unico contorno netto rimasto.
+          const rumore = fra ? rilRumore(idx, k) * uA + rilRumore(idx2, k) * uB
+                             : rilRumore(idx, k);
           // E sopra di lui la **granatura**: le macchie larghe che un fianco
           // vero ha e una campitura no — il bosco che si dirada, la radura, il
           // ghiaione, il cambio di roccia. Sono due ottave, misurate in metri
@@ -4081,7 +4298,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const costato = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - cronometro;
   rilAggiornaBudget(costato);
   rilievo.ultimo = {
-    colonne: nCol, strisce, chiamate,
+    colonne: nCol, strisce, chiamate, sotto,
     diradato: rilBudgetFattore, classi: rilClassiInUso,
     costo: Math.round(rilCosto * 100) / 100,
     ms: Math.round(costato * 100) / 100

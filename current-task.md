@@ -1,72 +1,100 @@
 # Niente in corso
 
-Ultimo lavoro chiuso: **il planetario che va a scatti, e l'INP da mezzo
-secondo** — una segnalazione sola, con dentro un difetto vero e una svista di
-progetto.
+Ultimo lavoro chiuso: **i rettangoli verticali del rilievo allo zoom spinto** —
+«ingrandendo, sui pendii compaiono delle bande verticali, e più ingrandisco più
+si allargano».
 
-Il banco di prova sta nello scratchpad della sessione e non nel repository: un
-Chromium vero con un paesaggio sintetico (un lago fra i monti, tipo Lugano) e
-le quote generate da una funzione, così la scena è nota e ripetibile. Le
-tessere del rilievo sono PNG in formato terrarium generati in Node. Due
-trappole del banco, che valgono per chiunque ne scriva un altro: la rotta di
-`cdn.jsdelivr.net` va registrata **prima** di quella di Astronomy Engine (fra
-due rotte di Playwright che combaciano vince l'ultima registrata, ed è la
-stessa lezione di `prova-fumetto.js`), e il **service worker va bloccato**
-(`serviceWorkers: 'block'`), se no traveste ogni richiesta di quote in un 504
-sintetico e il terreno non arriva mai — cioè si misura una scena senza
-montagne credendo di misurarne una con le montagne.
+Il conto sta in una riga, e vale la pena averlo in mente prima di cercare
+altrove: la maglia di `rilievo.js` ha settecentoventi direzioni, cioè **mezzo
+grado** l'una dall'altra, e il disegno campionava la maglia **solo sui suoi
+nodi**. Una colonna si disegna perciò larga `mezzo grado × pixel per grado`: a
+sessanta gradi di campo sono cinque pixel e non se ne accorge nessuno, a trenta
+dieci, **a quattro gradi settantacinque**, a un quarto di grado milleduecento —
+su un riquadro largo trecentosessanta. Il terreno smette di essere una
+superficie e diventa una fila di rettangoli alti mezzo schermo, ognuno di un
+colore solo; e siccome il tratto si tosa a `RIL_LARG_PX_MAX` (48 px), oltre
+quella misura fra l'uno e l'altro si riapre il fondo della fetta — le bande
+chiare alternate a quelle scure della fotografia della segnalazione.
 
-**(1) Il gestore del puntatore non c'entra.** Costa microsecondi. L'INP è il
-*fotogramma successivo*, ed è per questo che anche i tasti della tastiera —
-che con la mappa non hanno niente a che vedere — misuravano trecento
-millisecondi.
+`rilPassoColonne` non poteva farci niente: sa **saltare** colonne, e qui ne
+servono di più, non di meno.
 
-**(2) Il costo non è JavaScript.** Tutto `skyDisegna` costa tre millisecondi
-di conto; il fotogramma ne durava settantatré. Il resto è rasterizzazione, e a
-dipingere è il terreno: **sette passate sopra alla stessa superficie**. A un
-milione di pixel di tela il terreno valeva 57 ms dei 73; a quattro milioni il
-fotogramma durava 218 ms, cioè cinque al secondo.
+La cura è in tre pezzi.
 
-**(3) Il budget che doveva impedirlo guardava la cosa sbagliata**
-(`rilAggiornaBudget`). `performance.now()` attorno alle chiamate del canvas
-misura quanto ci mette il browser a *registrarle*, non a dipingerle:
-`rilievo.ultimo.ms` diceva 3,4 millisecondi su un fotogramma da cinquanta, e
-il termostato concludeva che andava tutto bene. Adesso legge `sky.fotogrammaMs`
-— ma solo mentre la montagna si ridipinge **di fila**, se no il fattore sale e
-scende da solo a camera ferma (diradare cambia il disegno, cioè *provoca* la
-ridipintura successiva).
+**(1) La maglia si spezza** (`rilSottoColonne`, §9 di `rilievo.js`). Si
+disegnano sotto-colonne in potenze di due finché quella disegnata sta sotto
+`RIL_COL_PX` (dieci pixel — non un numero a occhio: è quanto misura oggi una
+colonna a trenta gradi di campo, cioè una vista di cui nessuno si è mai
+lamentato). L'isteresi è quella del passo e per lo stesso motivo: fra «spezza»
+e «rimetti insieme» ci vuole una fascia morta, se no pizzicando il disegno
+balla. Il budget può allargare la colonna su un dispositivo lento ma non oltre
+`RIL_COL_PX_TETTO`, se no il rimedio si spegne proprio dove serve — e costa
+poco lasciarglielo fare solo a metà, perché quello che pesa è la superficie
+dipinta e non quante colonne la dipingono (è la lezione del lavoro
+precedente: le strisce da 4.310 a 380 valevano 51 ms contro 33).
 
-**(4) E le sue manopole tiravano la corda sbagliata.** Portando le strisce del
-chiaroscuro da 4.310 a 380 il fotogramma passava da 51 a 33: sono meno, ma
-coprono gli stessi pixel. Quello che conta è la superficie, non le primitive.
+Quello che rende **lecito** spezzare: a un chilometro mezzo grado sono otto
+metri e mezzo, cioè meno di una cella del modello del suolo (ventisette metri).
+Fra due colonne vicine la quota è già interpolata dal raster, quindi leggerla a
+un ottavo di colonna non inventa niente — disegna quello che il dato dice,
+invece di arrotondarlo al nodo più vicino. Dentro alla camminata si mescolano i
+due nodi che abbracciano la colonna: l'angolo, la quota, i due campioni della
+derivata in azimut, quello all'indietro e **anche il disturbo del dithering** —
+preso sul solo nodo di sinistra resterebbe costante per tutta la larghezza di
+una colonna della maglia, cioè sarebbe lui a disegnare l'ultima banda rimasta.
+A `sotto = 1` ogni riga è identica a com'era.
 
-La cura è in `app.js`, §«La tela del terreno»: il fondo del suolo, il rilievo
-e l'occlusione d'ambiente si dipingono su una tela di servizio e da lì si
-ricopiano, finché la posa, l'ora e la maglia non cambiano; e mentre la camera
-si muove — l'unico momento in cui la copia non vale, e anche l'unico in cui il
-dettaglio fine non lo guarda nessuno — la tela si dipinge più piccola
-(`SKY_TERRENO_SCALE`). Fuori dalla copia restano l'acqua (le onde camminano
-con l'orologio da polso, e costano due millisecondi sui quaranta) e la grana,
-che si stende in `overlay` e guarda il colore che ha sotto.
+**(2) L'arco si tosa al cono** (`rilMezzoDelCono`, `RIL_ARCO_MARGINE`), e senza
+questo il punto (1) sarebbe stato insostenibile. I due archi di `app.js`
+aggiungono **sei gradi** di margine, che è la misura giusta per una vista da
+sessanta gradi e a campo stretto non è un margine: è quasi tutto il lavoro —
+guardando quattro gradi il cono è largo due e mezzo e l'arco ne concede otto e
+mezzo, a un quarto di grado il cono è quindici centesimi e l'arco sempre sei,
+cioè quaranta volte le colonne che si vedono. Il limite esatto c'è: la tela è
+circoscritta da un cerchio di semiapertura `σ`, quindi una direzione che
+finisce sullo schermo non si scosta in azimut più di `asin(sin σ / cos a)` — e
+vale a qualunque quota, perché una cima e il fosso sotto di lei hanno lo stesso
+azimut della colonna che li disegna.
 
-Misurato, stessa scena: **fermi 73,8 → 28,2 ms, trascinando 73,3 → 44,1** a un
-milione di pixel; **218 → 107 e 218 → 147** a quattro milioni. E la prova che
-conta, fatta nella stessa pagina sullo stesso fotogramma: ricopiare la tela
-contro dipingere di fila dà lo 0,148% dei pixel diversi con uno scarto medio
-di 1,1 livelli su 255 — è l'arrotondamento della composizione «sorgente
-sopra», che è associativa, ed è il motivo per cui l'opacità del terreno va
-messa **dentro** su ogni strato e la copia stesa piena.
+**(3) La scelta delle colonne è uscita dal disegno** (`rilColonneDaDisegnare`),
+così il banco può farle la domanda senza ricopiare il conto.
 
-`node scripts/prova-verifica.js` — 1.291 verdi, 6 rosse, **le stesse sei prima
-e dopo** (tre sull'acqua rasente, una sulla camera che insegue, due sul raggio
-fisso della realtà aumentata). `node scripts/prova-abitati.js` — 56 su 56.
-`node scripts/prova-nel-browser.js` dà esattamente lo stesso esito di prima
-(si interrompe su `solDisegnaVicino`, che non c'entra con questo lavoro).
+Misurato. Le colonne restano **ottantatré su un telefono e centotrenta su un
+computer a qualunque ingrandimento** — meno di una vista da sessanta gradi — e
+il costo per disegno a sessanta gradi scende appena (8,7 ms contro 9,8, per via
+dell'arco più stretto), mentre a quattro gradi è 1,3 ms e a uno 2,0, cioè
+ancora molto meno della vista larga. Nei pixel, su una scena sintetica a
+quattro gradi: **otto bordi netti e un salto di 37 livelli su 255 prima, zero
+bordi e 4,1 livelli adesso**; a un grado 34,6 → 6,5. A sessanta gradi il
+disegno è **identico pixel per pixel**.
 
-**Quello che resta da fare**, con i numeri già in mano: tolto il terreno, il
-fotogramma torna al pavimento del refresh, quindi il prossimo guadagno non è
-più lì. Le due strade rimaste sono la **ricopiatura anche del cielo** (stelle
-e Via Lattea cambiano solo con la posa e con l'ora, esattamente come la
-montagna) e il **ritaglio della copia**: oggi si ricopia tutta la tela a ogni
-fotogramma, e a quattro milioni di pixel quella ricopiatura da sola vale una
-decina di millisecondi.
+Prove. `node scripts/prova-verifica.js` — **1.307 verdi, 6 rosse, le stesse sei
+prima e dopo** (tre sull'acqua rasente, una sulla camera che insegue, due sul
+raggio fisso della realtà aumentata); le quindici nuove stanno nel §25,
+§«I rettangoli verticali dello zoom spinto». `node scripts/prova-abitati.js` —
+57 su 57. `node scripts/prova-rilievo-zoom.js` (nuovo, e in CI) — 18 su 18: è
+il banco che guarda i **pixel**, col contro-esempio servito da una rotta di
+Playwright, cioè lo stesso file con `RIL_SOTTO_MAX` portato a uno.
+`scripts/prova-nel-browser.js` dà lo stesso esito di prima (si interrompe su
+`solDisegnaVicino`, che non c'entra con questo lavoro).
+
+**Quello che resta da fare.** Due cose viste misurando e lasciate dove stanno,
+perché sono altre segnalazioni e non questa.
+
+La prima: **alzando la camera più del semi-campo, il rilievo non si disegna
+affatto**. `rilArcoInVista` chiede l'arco a `skyArcoOrizzonteInVista`, che
+risponde `null` quando la riga dell'orizzonte esce dal cono, e ripiega su
+`skyArcoAcquaInVista`, che risponde `null` quando il cono sta tutto sopra
+l'orizzonte. A campo stretto quel caso è vicino: con quattro gradi di campo
+basta alzare la vista di tre perché il terreno sparisca. Le montagne però
+stanno **sopra** la riga dell'orizzonte, ed è proprio quando le si ingrandisce
+che le si guarda dall'alto in basso.
+
+La seconda: a un grado di campo resta un gradino di sei livelli e mezzo su 255
+fra una corsa piatta e l'altra (a sessanta gradi ne vale dieci, quindi
+ingrandendo si sta **meglio** di prima — ma le corse lì sono larghe ottanta
+pixel invece di cinque, e un gradino largo si legge più di uno stretto). Non è
+più la maglia: è la quantizzazione di sempre — quaranta livelli di chiaroscuro
+e quarantotto bande di quota — su una superficie che a quell'ingrandimento è
+liscia, e su cui né la granatura (340 e 95 metri) né il dithering hanno più una
+scala che morda. Chi ci mette mano guardi lì, non nelle colonne.
