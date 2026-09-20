@@ -43855,7 +43855,9 @@ function skyAggiornaTestoTempo() {
     const scartoTesto = sky.modalitaTempo === 'reale'
       ? 'Tempo attuale'
       : `Tempo simulato · ${skyScartoTempoTesto(scarto)}`;
-    el.textContent = [scartoTesto, marcia].filter(Boolean).join(' · ');
+    // Stato dell'orologio e passo restano su righe distinte: sui pannelli
+    // stretti “Tempo reale” non deve sovrapporsi alla velocità in secondi.
+    el.textContent = [scartoTesto, marcia].filter(Boolean).join('\n');
     el.title = `${istante} · ${scartoTesto}`;
     el.classList.toggle('spostata', spostato);
   }
