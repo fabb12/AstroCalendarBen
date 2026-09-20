@@ -8,6 +8,7 @@ on:
       - 'index.html'
       - 'scripts/prova-missione*.js'
       - 'scripts/prova-rilievo-zoom.js'
+      - 'scripts/prova-inseguimento.js'
       - '.github/workflows/verifica-missione.yml'
 permissions:
   contents: read
@@ -32,4 +33,13 @@ jobs:
       # rettangoli verticali dello zoom si possono vedere, e una prova che
       # gira solo a mano è una prova che fra un mese nessuno lancia più.
       - run: node scripts/prova-rilievo-zoom.js
+        if: success() || failure()
+      # L'inseguimento degli aerei nella realtà aumentata. Mezzo secondo,
+      # senza browser: il flusso ottico, il rivelatore, il filtro e la
+      # pipeline intera si provano su scene sintetiche di cui si conosce la
+      # verità. È la famiglia in cui un difetto **non fallisce** — un
+      # riquadro che deriva è un riquadro, e sullo schermo si legge come
+      # giusto — quindi una prova che gira solo a mano è una prova che fra un
+      # mese nessuno lancia più.
+      - run: node scripts/prova-inseguimento.js
         if: success() || failure()
