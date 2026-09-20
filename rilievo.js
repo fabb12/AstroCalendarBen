@@ -1184,21 +1184,21 @@ function rilAnelloDi(metri) {
 // esattamente il tremolio che si vede dal finestrino. È la stessa lezione
 // di `rilQuotaTessere`, che per la stessa ragione non prende il pixel più
 // vicino.
+// Campionamento bilineare della maglia polare: indici frazionari in
+// entrambe le direzioni, azimut periodico e anelli bloccati ai bordi.
+function rilCampionaMaglia(indice, anello) {
+  const az = ((indice % RIL_AZIMUT) + RIL_AZIMUT) % RIL_AZIMUT;
+  const i = Math.floor(az), j = (i + 1) % RIL_AZIMUT, u = az - i;
+  const r = Math.max(0, Math.min(RIL_ANELLI - 1, anello));
+  const k = Math.floor(r), l = Math.min(k + 1, RIL_ANELLI - 1), v = r - k;
+  const q = rilievo.quota, nr = RIL_ANELLI;
+  const a = q[i * nr + k] * (1 - u) + q[j * nr + k] * u;
+  const b = q[i * nr + l] * (1 - u) + q[j * nr + l] * u;
+  return a * (1 - v) + b * v;
+}
+
 function rilQuotaMaglia(azGradi, metri) {
-  const nr = RIL_ANELLI;
-  const dove = (((azGradi % 360) + 360) % 360) / RIL_PASSO_AZ;
-  const i = Math.floor(dove) % RIL_AZIMUT;
-  const j = (i + 1) % RIL_AZIMUT;
-  const u = dove - Math.floor(dove);
-
-  const anello = Math.max(0, Math.min(nr - 1.0001, rilAnelloDi(metri)));
-  const k = Math.floor(anello);
-  const v = anello - k;
-
-  const q = rilievo.quota;
-  const a = q[i * nr + k],     b = q[j * nr + k];
-  const c = q[i * nr + k + 1], e = q[j * nr + k + 1];
-  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
+  return rilCampionaMaglia(azGradi / RIL_PASSO_AZ, rilAnelloDi(metri));
 }
 
 // Riporta un nodo della maglia centrata sul vecchio fix nel sistema polare
@@ -3129,7 +3129,7 @@ function rilPassoColonne(pxGrado) {
   // passo balla a ogni fotogramma. Misurato: ventisei cambi in
   // duecentoquaranta fotogrammi di pizzicata, cioè uno sfarfallio.
   while (p < 32 && voluto > p * RIL_ISTERESI) p *= 2;
-  while (p > 1 && voluto < (p / 2) / RIL_ISTERESI) p /= 2;
+  while (p > 1 / 16777216 && voluto < (p / 2) / RIL_ISTERESI) p /= 2;
   rilievo.passo = p;
   // Il budget si moltiplica **dopo**, e non dentro all'isteresi.
   //
@@ -3139,7 +3139,8 @@ function rilPassoColonne(pxGrado) {
   // perché per riscendere servirebbe un campo visivo che non si ha. Tenuti
   // separati, ognuno dei due risponde alla sua domanda: l'isteresi a «quanto
   // è aperta la vista», il budget a «quanto ce la fa questo dispositivo».
-  return Math.min(32, p * rilBudgetFattore);
+  // A forte zoom il budget non deve ricreare colonne larghe decine di pixel.
+  return Math.min(32, p * (p < 1 ? Math.min(2, rilBudgetFattore) : rilBudgetFattore));
 }
 
 // Da dove viene la luce, e di che colore. L'azimut è quello vero dell'astro,
@@ -3299,6 +3300,92 @@ function rilArcoInVista(base, focale) {
   return rilArcoUltimo;
 }
 
+// La griglia di disegno può essere più fitta dei dati: lo zoom aggiunge
+// campioni interpolati, non nuove quote DEM. Si raffina solo il cono visibile.
+const RIL_COLONNE_MAX = 4096;
+function rilGrigliaInVista(base, focale, arco) {
+  let passo = rilPassoColonne(Math.max(1e-6, focale * SKY_D2R));
+  let centro = arco.centro, mezzo = arco.mezzo;
+  if (passo < 1) {
+    // La stereografica proietta un cono di raggio r a 2*f*tan(r/2).
+    // Il cerchio circoscritto al riquadro comprende anche i quattro angoli.
+    const r = 2 * Math.atan2(Math.hypot(sky.larghezza, sky.altezza), 4 * focale);
+    const z = Math.max(-1, Math.min(1, base.f[2]));
+    const polo = Math.acos(Math.abs(z));
+    if (r < polo - 1e-8) {
+      centro = Math.atan2(base.f[0], base.f[1]) / SKY_D2R;
+      mezzo = Math.asin(Math.min(1, Math.sin(r) / Math.sqrt(1 - z * z))) / SKY_D2R;
+    }
+  }
+  const conta = () => Math.min(Math.ceil(RIL_AZIMUT / passo) + 1,
+    Math.floor(2 * mezzo / (RIL_PASSO_AZ * passo)) + 3);
+  // Vicino al nadir sono visibili tutti gli azimut. Non troncare l'arco:
+  // diradalo, altrimenti manca una parte del terreno.
+  while (conta() > RIL_COLONNE_MAX) passo *= 2;
+  return {
+    passo, nCol: conta(),
+    i0: Math.floor((centro - mezzo) / (RIL_PASSO_AZ * passo)) * passo
+  };
+}
+
+// Normali per nodo, condivise dalle colonne adiacenti. Il cache dipende
+// dall'identità delle quote, che cambia a ogni ricostruzione del rilievo.
+let rilNormaliQuote = null;
+let rilNormaliDati = null;
+let rilNormaliPronte = null;
+const rilNormaleTemporanea = new Float64Array(5);
+function rilNormaleNodo(i, k) {
+  if (rilNormaliQuote !== rilievo.quota) {
+    rilNormaliQuote = rilievo.quota;
+    if (!rilNormaliDati) {
+      rilNormaliDati = new Float64Array(RIL_AZIMUT * RIL_ANELLI * 5);
+      rilNormaliPronte = new Uint8Array(RIL_AZIMUT * RIL_ANELLI);
+    }
+    rilNormaliPronte.fill(0);
+  }
+  const nodo = i * RIL_ANELLI + k, o = nodo * 5;
+  if (rilNormaliPronte[nodo]) return o;
+  const s = RIL_DIST[k], rad = i * RIL_PASSO_AZ * Math.PI / 180;
+  const sinAz = Math.sin(rad), cosAz = Math.cos(rad);
+  const q = rilievo.quota[nodo];
+  const salto = rilAnSalto[k] + rilAnDentro[k];
+  const qPiu = rilCampionaMaglia(i + salto, k);
+  const qMeno = rilCampionaMaglia(i - salto, k);
+  const kA = k - rilAnSaltoK[k], kB = Math.max(0, kA - 1);
+  const qIndietro = rilievo.quota[i * RIL_ANELLI + kA] +
+    (rilievo.quota[i * RIL_ANELLI + kB] - rilievo.quota[i * RIL_ANELLI + kA]) * rilAnDentroK[k];
+  // La tangente azimutale è centrata, come la differenza delle quote.
+  const ex = cosAz * rilAnB[k], ey = -sinAz * rilAnB[k];
+  const ez = (qPiu - qMeno) / 2;
+  const ds = s - rilAnSIndietro[k];
+  const tx = ds * sinAz, ty = ds * cosAz, tz = q - qIndietro;
+  let nx = ey * tz - ez * ty, ny = ez * tx - ex * tz;
+  let nz = ex * ty - ey * tx;
+  const m = Math.hypot(nx, ny, nz);
+  if (m > 1e-12) {
+    const scala = (nz < 0 ? -1 : 1) / m;
+    nx *= scala; ny *= scala; nz *= scala;
+  } else { nx = 0; ny = 0; nz = 1; }
+  rilNormaliDati[o] = nx;
+  rilNormaliDati[o + 1] = ny;
+  rilNormaliDati[o + 2] = nz;
+  rilNormaliDati[o + 3] = rilForzaForma(q, qPiu, qMeno, qIndietro);
+  rilNormaliDati[o + 4] = rilAnLargo[k] > 0.01 ? (qMeno - 2 * q + qPiu) / rilAnLargo[k] : 0;
+  rilNormaliPronte[nodo] = 1;
+  return o;
+}
+
+function rilNormaleInterpolata(indice, k) {
+  const az = ((indice % RIL_AZIMUT) + RIL_AZIMUT) % RIL_AZIMUT;
+  const i = Math.floor(az), u = az - i;
+  const a = rilNormaleNodo(i, k), b = rilNormaleNodo((i + 1) % RIL_AZIMUT, k);
+  const n = rilNormaleTemporanea;
+  for (let j = 0; j < 5; j++) n[j] = rilNormaliDati[a + j] * (1 - u) + rilNormaliDati[b + j] * u;
+  const m = Math.hypot(n[0], n[1], n[2]) || 1;
+  n[0] /= m; n[1] /= m; n[2] /= m;
+  return n;
+}
+
 function rilDisegna(ctx, base, focale, suolo, aria) {
   rilievo.hoDisegnato = false;
   rilColonneUltime = 0;
@@ -3310,22 +3397,8 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
 
   const na = RIL_AZIMUT, nr = RIL_ANELLI;
   const pxGrado = Math.max(1e-6, focale * SKY_D2R);
-  const passo = rilPassoColonne(pxGrado);
-  const nCol = Math.min(Math.ceil(na / passo) + 1,
-    Math.floor(2 * arco.mezzo / (RIL_PASSO_AZ * passo)) + 3);
+  const { passo, nCol, i0 } = rilGrigliaInVista(base, focale, arco);
   if (nCol < 2) return false;
-  // Il capofila si aggancia alla **griglia dei campioni**, non all'arco.
-  //
-  // `arco.centro − arco.mezzo` scorre con continuità mentre si gira la
-  // camera, quindi con un passo maggiore di uno l'insieme delle colonne
-  // disegnate cambiava a ogni mezzo grado: gli stessi dati venivano
-  // ricampionati altrove e il tratteggio scivolava sul terreno invece di
-  // restarci attaccato. Ancorandolo a un multiplo di `passo`, le colonne del
-  // passo largo sono un sottoinsieme di quelle del passo stretto e girandosi
-  // il disegno trasla e basta. È la stessa cura di `skyAcqueStrisce` in
-  // `app.js`, e per la stessa ragione. La colonna in più di `nCol` copre il
-  // mezzo passo che l'ancoraggio arretra.
-  const i0 = Math.floor((arco.centro - arco.mezzo) / (RIL_PASSO_AZ * passo)) * passo;
 
   const cronometro = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   rilMagazzino(nCol);
@@ -3407,7 +3480,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     const idx = (((i0 + c * passo) % na) + na) % na;
     const azRad = idx * RIL_PASSO_AZ * D2R;
     const sinAz = Math.sin(azRad), cosAz = Math.cos(azRad);
-    const baseQ = idx * nr;
+    const indiceIntero = Number.isInteger(idx);
 
     let massimo = -Infinity, kMax = 0;
     let px = 0, py = 0, ok = false;      // il nodo visibile precedente
@@ -3438,12 +3511,13 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       // In movimento l'angolo si rifà dal punto in cui si è adesso e con
       // l'occhio di adesso; da fermo si legge quello che la maglia ha già
       // calcolato. La **pendenza** invece si prende sempre nel riferimento
-      // della maglia (`baseQ`), ed è una scelta: ricampionare anche le due
+      // della maglia, ed è una scelta: ricampionare anche le due
       // vicine costerebbe tre bilineari per nodo, e da quando il centro si
       // rifà ogni sessanta metri lo scostamento è una correzione piccola —
       // sul chiaroscuro, che è una derivata locale, non si vede.
       const a = rifaiAngoli ? rilCampioneInMovimento(sinAz, cosAz, k, scosto, occhio)
-                            : rilievo.alt[baseQ + k];
+                            : indiceIntero ? rilievo.alt[idx * nr + k]
+                              : rilAngolo(rilCampionaMaglia(idx, k), rilievo.occhio, RIL_DIST[k]);
       if (!(a > massimo)) {
         // Nascosto: se veniamo da un tratto visibile, qui il terreno
         // **sparisce dietro** a quello che abbiamo davanti — ed è un contorno.
@@ -3501,82 +3575,13 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           if (runN >= 0) { strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1); runN = -1; }
           if (tinN >= 0) { rilChiudiRun(tinKey, tinX0, tinY0, tinX1, tinY1, rilTinte); tinN = -1; }
         } else {
-          // La normale della faccia: la tangente lungo l'azimut per quella
-          // lungo la distanza.
-          //
-          // L'azimut non è quello della colonna accanto ma quello a
-          // `RIL_PIEGA_M` metri di distanza sul terreno. È la stessa cosa che
-          // ha fatto sparire il dettaglio al primo tentativo: mezzo grado a
-          // trecento metri sono due metri e sessanta, un decimo di cella del
-          // modello, e fra due punti così vicini la quota è interpolata
-          // linearmente — la normale viene identica per tutta la colonna e il
-          // fianco esce come una lastra. E siccome il passo è in metri e non
-          // in colonne, il chiaroscuro **non cambia** quando cambia il passo
-          // di disegno: è l'altra metà del rimedio allo sfarfallio.
           const s = RIL_DIST[k];
-          const q = rilievo.quota[baseQ + k];
-          // La base della derivata è `RIL_PIEGA_M` **metri di terreno**, e
-          // centosettanta metri non sono un numero intero di nodi.
-          //
-          // Arrotondandola a intero — com'era — la base salta di un nodo ogni
-          // tanto, e salta lungo un **anello**: tutti i punti a quella
-          // distanza cambiano scala di misura insieme. Non si vedrebbe se la
-          // scala non contasse, e conta: la piega vale `largo · q''`, cioè è
-          // proporzionale alla base, quindi passando da due nodi a uno il suo
-          // termine si dimezza di colpo, e sullo schermo è una riga
-          // orizzontale netta che attraversa il pendio.
-          //
-          // La base si tiene perciò frazionaria, e tutto quello che dipende
-          // solo dalla distanza sta in `rilTabelleAnelli`: qui restano due
-          // letture in più e due moltiplicazioni.
-          const salto = rilAnSalto[k], dentroAz = rilAnDentro[k];
-          const iPiu = (idx + salto) % na, iPiu2 = (idx + salto + 1) % na;
-          const iMeno = (idx - salto + na * 2) % na, iMeno2 = (idx - salto - 1 + na * 2) % na;
-          const qPiu = rilievo.quota[iPiu * nr + k] +
-            (rilievo.quota[iPiu2 * nr + k] - rilievo.quota[iPiu * nr + k]) * dentroAz;
-          const qMeno = rilievo.quota[iMeno * nr + k] +
-            (rilievo.quota[iMeno2 * nr + k] - rilievo.quota[iMeno * nr + k]) * dentroAz;
-          // Lo scostamento in Est e Nord del campione avanti, srotolando
-          // l'addizione degli angoli: `sin(az+dAz) − sin(az)` diventa
-          // `sinAz·(cos dAz − 1) + cosAz·sin dAz`, e i due fattori li ha già
-          // la tabella per anello. Due funzioni trigonometriche per nodo in
-          // meno, che a campo largo sono quarantamila per fotogramma.
-          const anA = rilAnA[k], anB = rilAnB[k];
-          const ex = sinAz * anA + cosAz * anB, ey = cosAz * anA - sinAz * anB;
-          // La pendenza in azimut è **centrata**: la media fra il campione
-          // avanti e quello indietro, non la differenza col solo campione
-          // avanti.
-          //
-          // È la differenza fra un fianco e una tenda a righe. Una differenza
-          // in avanti misura la pendenza mezzo passo più in là del nodo che
-          // sta illuminando, e ci porta dentro tutto il rumore di quel solo
-          // campione: due colonne contigue leggono due celle diverse del
-          // modello, prendono due livelli di chiaroscuro diversi, e siccome
-          // una corsa di livello uguale lungo il raggio è lunga, quella
-          // differenza esce come una **barra verticale** alta mezzo schermo.
-          // Centrata, il rumore dei due campioni si media invece di sommarsi
-          // e la stima cade dove sta il nodo.
-          const ez = (qPiu - qMeno) / 2;
-          // La tangente lungo la distanza si misura sugli stessi
-          // `RIL_PIEGA_M` metri della tangente in azimut, e non fra due
-          // anelli contigui: gli anelli stanno all'otto e mezzo per cento
-          // l'uno dall'altro, quindi a cinquecento metri due anelli vicini
-          // distano una cella e mezza del modello, e la normale verrebbe
-          // fuori dal rumore del dato invece che dalla forma del terreno.
-          const saltoK = rilAnSaltoK[k], dentroK = rilAnDentroK[k];
-          const kA = k - saltoK, kB = kA > 0 ? kA - 1 : 0;
-          const sIndietro = rilAnSIndietro[k];
-          const qIndietro = rilievo.quota[baseQ + kA] +
-            (rilievo.quota[baseQ + kB] - rilievo.quota[baseQ + kA]) * dentroK;
-          const tx = (s - sIndietro) * sinAz, ty = (s - sIndietro) * cosAz;
-          const tz = q - qIndietro;
-          const forma = rilForzaForma(q, qPiu, qMeno, qIndietro);
-          let ax = ey * tz - ez * ty;
-          let ay = ez * tx - ex * tz;
-          let az2 = ex * ty - ey * tx;
-          const m = Math.hypot(ax, ay, az2) || 1;
-          ax /= m; ay /= m; az2 /= m;
-          if (az2 < 0) { ax = -ax; ay = -ay; az2 = -az2; }
+          const q = rilCampionaMaglia(idx, k);
+          // Smooth shading: interpolare i vettori dei nodi, poi normalizzare.
+          // La base della stima resta in metri e non cambia col LOD.
+          const normale = rilNormaleInterpolata(idx, k);
+          const ax = normale[0], ay = normale[1], az2 = normale[2];
+          const forma = normale[3];
 
           const ds = Math.max(0, ax * luce.servizio[0] + ay * luce.servizio[1] + az2 * luce.servizio[2]);
           let kk = ds;
@@ -3596,8 +3601,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // stessa scala di metri: è quella che fa comparire i valloni. Il
           // segno conta — convessa è un costolone e prende luce, concava è un
           // impluvio e sta in ombra.
-          const largo = rilAnLargo[k];
-          const piega = largo > 0.01 ? (qMeno - 2 * q + qPiu) / largo : 0;
+          const piega = normale[4];
           const forza = Math.min(1, Math.abs(piega) / RIL_PIEGA_PIENA) * forma;
           livF += piega > 0 ? -RIL_PIEGA_LIVELLI * forza : RIL_PIEGA_LIVELLI * forza;
           // La foschia toglie **dettaglio**, non colore: una faccia lontana si
@@ -3613,7 +3617,9 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // non tremola: serve solo a rompere i confini fra una banda e
           // l'altra, che è quello che si legge come mosaico. È la stessa idea
           // del dithering, e costa uno xor.
-          const rumore = rilRumore(idx, k);
+          const iRumore = Math.floor(idx), uRumore = idx - iRumore;
+          const rumore = rilRumore(iRumore, k) * (1 - uRumore) +
+            rilRumore((iRumore + 1) % na, k) * uRumore;
           // E sopra di lui la **granatura**: le macchie larghe che un fianco
           // vero ha e una campitura no — il bosco che si dirada, la radura, il
           // ghiaione, il cambio di roccia. Sono due ottave, misurate in metri
@@ -4016,7 +4022,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const costato = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - cronometro;
   rilAggiornaBudget(costato);
   rilievo.ultimo = {
-    colonne: nCol, strisce, chiamate,
+    colonne: nCol, passo, strisce, chiamate,
     diradato: rilBudgetFattore, classi: rilClassiInUso,
     costo: Math.round(rilCosto * 100) / 100,
     ms: Math.round(costato * 100) / 100
