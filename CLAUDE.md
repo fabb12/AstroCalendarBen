@@ -11,6 +11,13 @@ punto è arrivato l'ultimo lavoro — evita di ricostruirlo rileggendo la chat o
 riesplorando il codice. Chi lascia un compito a metà lo aggiorna prima di
 finire la sessione; chi ne comincia uno nuovo lo riscrive da capo.
 
+**Versione obbligatoria a ogni modifica.** Prima di considerare concluso
+qualunque intervento, incrementa di uno `CACHE_NAME` in `sw.js` e porta
+`window.ASTROCAL_BUILD.version` in `config.js` alla stessa `vN`. Aggiorna anche
+`window.ASTROCAL_BUILD.builtAt` con la data UTC della modifica: il workflow di
+pubblicazione la sostituirà con l'istante effettivo del deploy. Se i due numeri
+non coincidono, la modifica non è completa.
+
 ---
 
 ## 1. Cos'è l'app

@@ -31,11 +31,13 @@ window.INS_MODELLO_URL = window.INS_MODELLO_URL || '';
 window.INS_ORT_URL = window.INS_ORT_URL || '';
 
 
-// Informazioni della copia locale. Durante il deploy GitHub Actions le
-// sostituisce con versione della cache, numero della build, commit e data UTC.
+// Informazioni della copia locale. `version` e `builtAt` vanno aggiornati
+// insieme a CACHE_NAME in sw.js a ogni modifica. Durante il deploy GitHub
+// Actions li sostituisce con versione della cache, numero della build, commit
+// e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v358',
+  version: 'v360',
   build: '',
   commit: '',
-  builtAt: ''
+  builtAt: '2026-09-21T00:00:00Z'
 });
