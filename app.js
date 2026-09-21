@@ -1633,6 +1633,66 @@ function dataDalTempoDelLuogo(valori, luogo) {
     ? data : null;
 }
 
+// Le viste meteo condividono la pausa del servizio, anche dopo una ricarica.
+// La coda evita che ogni pannello scopra lo stesso 429 con una nuova richiesta.
+const meteoReteCode = new Map();
+const meteoReteInVolo = new Map();
+const meteoRetePause = new Map();
+function meteoFetch(url, opzioni) {
+  const host = new URL(url).host;
+  const chiave = 'astrocal_meteo_pausa_' + host;
+  if (!opzioni && meteoReteInVolo.has(url)) return meteoReteInVolo.get(url).then(r => r.clone());
+  const corsa = (meteoReteCode.get(host) || Promise.resolve()).catch(() => {}).then(async () => {
+    let pausa = meteoRetePause.get(host) || { fino: 0, no: 0 };
+    try { pausa = JSON.parse(localStorage.getItem(chiave)) || pausa; } catch (_) { /* memoria locale */ }
+    if (Number(pausa.fino) > Date.now()) throw new Error('meteo temporaneamente in pausa');
+    const ctrl = new AbortController();
+    const esterno = opzioni && opzioni.signal;
+    const annulla = () => ctrl.abort();
+    if (esterno) {
+      if (esterno.aborted) annulla();
+      else esterno.addEventListener('abort', annulla, { once: true });
+    }
+    const timer = setTimeout(annulla, 12000);
+    function salva(fino, no) {
+      const v = { fino, no };
+      meteoRetePause.set(host, v);
+      try { localStorage.setItem(chiave, JSON.stringify(v)); } catch (_) { /* storage pieno */ }
+    }
+    try {
+      const r = await fetch(url, { ...opzioni, signal: ctrl.signal });
+      if (r.status === 429 || r.status === 503) {
+        const no = Math.min(6, (Number(pausa.no) || 0) + 1);
+        const h = r.headers.get('Retry-After');
+        const suggerita = h ? (/^\d+$/.test(h.trim()) ? Number(h) * 1000 : Date.parse(h) - Date.now()) : 0;
+        const attesa = Math.max(60000 * 2 ** (no - 1), Number.isFinite(suggerita) ? suggerita : 0);
+        salva(Date.now() + Math.min(86400000, attesa), no);
+        throw new Error('meteo sovraccarico (' + r.status + ')');
+      }
+      if (!r.ok) throw new Error('meteo non disponibile (' + r.status + ')');
+      // Leggere anche il corpo sotto timeout: una risposta a metà non blocca la coda.
+      const corpo = await r.text();
+      JSON.parse(corpo);
+      salva(0, 0);
+      return new Response(corpo, { status: r.status, headers: r.headers });
+    } catch (e) {
+      if (!(meteoRetePause.get(host)?.fino > Date.now()) && !(esterno && esterno.aborted)) {
+        salva(Date.now() + 60000, Number(pausa.no) || 0);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+      if (esterno) esterno.removeEventListener('abort', annulla);
+    }
+  });
+  meteoReteCode.set(host, corsa.then(() => {}, () => {}));
+  if (!opzioni) {
+    meteoReteInVolo.set(url, corsa);
+    corsa.then(() => meteoReteInVolo.delete(url), () => meteoReteInVolo.delete(url));
+  }
+  return corsa.then(r => r.clone());
+}
+
 let fusoRichieste = new Map();
 function caricaFusoOrario(lat, lon) {
   if (!isFinite(lat) || !isFinite(lon)) return Promise.resolve(null);
@@ -1643,7 +1703,7 @@ function caricaFusoOrario(lat, lon) {
   const url = 'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}` +
     '&current=temperature_2m&timezone=auto&forecast_days=1';
-  const richiesta = fetch(url).then(r => {
+  const richiesta = meteoFetch(url).then(r => {
     if (!r.ok) throw new Error('fuso non disponibile');
     return r.json();
   }).then(d => {
@@ -3682,7 +3742,7 @@ async function _metChiedi(url) {
   const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
   const stop = ctrl ? setTimeout(() => ctrl.abort(), MET_ATTESA_MS) : null;
   try {
-    const r = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+    const r = await meteoFetch(url, ctrl ? { signal: ctrl.signal } : undefined);
     if (!r.ok) return null;
     return await r.json();
   } catch (e) {
@@ -41247,7 +41307,7 @@ async function caricaMeteo(forza) {
     '&hourly=cloud_cover,temperature_2m,relative_humidity_2m,wind_speed_10m' +
     `&forecast_days=${METEO_GIORNI}&timezone=auto&timeformat=unixtime`;
 
-  meteoInCorso = fetch(url)
+  meteoInCorso = meteoFetch(url)
     .then(r => {
       if (!r.ok) throw new Error('risposta non valida');
       return r.json();
@@ -41272,7 +41332,8 @@ async function caricaMeteo(forza) {
     .catch(() => {
       // Senza rete teniamo l'ultima previsione scaricata, dicendo quanto è vecchia
       const salvato = meteoDaCache();
-      if (salvato) meteo = salvato;
+      const vicino = v => v && Math.abs(v.lat - luogo.lat) < 0.25 && Math.abs(v.lon - luogo.lon) < 0.25;
+      meteo = vicino(salvato) ? salvato : vicino(meteo) ? meteo : null;
       return meteo;
     })
     .finally(() => { meteoInCorso = null; });

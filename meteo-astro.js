@@ -101,8 +101,8 @@ function caricaMeteoAstro(forza) {
     '&hourly=aerosol_optical_depth,dust&forecast_days=' + METEO_ASTRO_GIORNI + '&timezone=auto';
 
   meteoAstroInCorso = Promise.all([
-    fetch(base).then(r => { if (!r.ok) throw new Error('meteo non valido'); return r.json(); }),
-    fetch(aria).then(r => r.ok ? r.json() : null).catch(() => null)
+    meteoFetch(base).then(r => { if (!r.ok) throw new Error('meteo non valido'); return r.json(); }),
+    meteoFetch(aria).then(r => r.ok ? r.json() : null).catch(() => null)
   ])
     .then(([m, a]) => {
       const h = m.hourly || {};
@@ -147,7 +147,8 @@ function caricaMeteoAstro(forza) {
     })
     .catch(() => {
       const salvato = meteoAstroDaCache();
-      if (salvato) meteoAstro = salvato;
+      const vicino = v => v && Math.abs(v.lat - luogo.lat) < 0.3 && Math.abs(v.lon - luogo.lon) < 0.3;
+      meteoAstro = vicino(salvato) ? salvato : vicino(meteoAstro) ? meteoAstro : null;
       return meteoAstro;
     })
     .finally(() => { meteoAstroInCorso = null; });
@@ -267,7 +268,20 @@ function meteoCaricaNuvoleCielo(forza) {
     (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
   if (!luogo) return Promise.resolve(null);
   const chiave = meteoNuvoleChiave(luogo);
-  const gia = meteoNuvoleCache.get(chiave);
+  let gia = meteoNuvoleCache.get(chiave);
+  if (!gia) {
+    try {
+      const v = JSON.parse(localStorage.getItem('astrocal_nuvole_ultima') || 'null');
+      if (v && meteoNuvoleChiave(v) === chiave && Array.isArray(v.ore)) gia = v;
+    } catch (_) { /* nessuna copia */ }
+  }
+  // Anche il meteo astronomico contiene questi campi: riusarlo evita un altro scarico.
+  const astro = meteoAstro || meteoAstroDaCache();
+  if (!gia && meteoAstroAncoraValido(astro, luogo)) {
+    gia = { lat: luogo.lat, lon: luogo.lon, quando: astro.quando,
+      ore: astro.ore.map(o => ({ ms: o.ms, totale: o.nuvole, basse: o.nuvoleBasse,
+        medie: o.nuvoleMedie, alte: o.nuvoleAlte, vento: o.vento, ventoDa: o.ventoDa, pioggia: o.pioggia })) };
+  }
   if (!forza && gia && Date.now() - gia.quando < METEO_NUVOLE_VALIDO_MS) return Promise.resolve(gia);
   if (meteoNuvoleInCorso.has(chiave)) return meteoNuvoleInCorso.get(chiave);
 
@@ -276,11 +290,11 @@ function meteoCaricaNuvoleCielo(forza) {
   const url = 'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${Number(luogo.lat).toFixed(4)}&longitude=${Number(luogo.lon).toFixed(4)}` +
     `&hourly=${campi}&forecast_days=${METEO_ASTRO_GIORNI}&timezone=UTC`;
-  const corsa = fetch(url)
+  const corsa = meteoFetch(url)
     .then(r => { if (!r.ok) throw new Error('nuvole non disponibili'); return r.json(); })
     .then(d => {
       const h = d.hourly || {};
-      const p = (nome, i) => h[nome] && h[nome][i] !== null ? Number(h[nome][i]) : null;
+      const p = (nome, i) => h[nome] && h[nome][i] != null ? Number(h[nome][i]) : null;
       const ore = (h.time || []).map((t, i) => ({
         // La richiesta è in UTC, ma Open-Meteo omette la Z: senza
         // aggiungerla il browser leggerebbe l'ora nel fuso del telefono.
@@ -290,7 +304,9 @@ function meteoCaricaNuvoleCielo(forza) {
         ventoDa: p('wind_direction_10m', i), pioggia: p('precipitation_probability', i)
       })).filter(o => isFinite(o.ms));
       const dati = { lat: luogo.lat, lon: luogo.lon, quando: Date.now(), ore };
+      if (!ore.length) throw new Error('previsione vuota');
       meteoNuvoleCache.set(chiave, dati);
+      try { localStorage.setItem('astrocal_nuvole_ultima', JSON.stringify(dati)); } catch (_) { /* pieno */ }
       return dati;
     })
     .catch(() => gia || null)

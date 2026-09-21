@@ -18,6 +18,30 @@ qualunque intervento, incrementa di uno `CACHE_NAME` in `sw.js` e porta
 pubblicazione la sostituirà con l'istante effettivo del deploy. Se i due numeri
 non coincidono, la modifica non è completa.
 
+**Riserve di rete (v361, 21 settembre 2026).** `meteoFetch` in `app.js`
+serializza le chiamate per host, deduplica gli URL in volo e conserva la pausa
+su 429/503 (`Retry-After`, oppure attesa crescente) anche dopo il reload.
+Fuso, meteo base, meteo astronomico e nuvole passano da questa porta.
+Le nuvole salvano l'ultima previsione; il ripiego conserva l'ora originale e
+non usa i dati di un'altra località. Non aggiungere fetch dirette per questi
+servizi: aggirerebbero la pausa condivisa.
+
+In `terreno.js`, `terrenoQuoteRaster` è la riserva quando le API a punti
+sono esaurite o hanno finito i tentativi: PNG Terrarium a zoom 9 (meno dettaglio
+rispetto al rilievo vicino), interpolazione bilineare, tre scarichi simultanei,
+richieste duplicate condivise e cinque minuti di pausa sulle tessere guaste.
+I profili risultanti passano dal salvataggio abituale. Anche questa riserva
+può essere irraggiungibile: in quel caso restano il profilo salvato e lo stato
+di indisponibilità già previsti, senza inventare quote.
+
+In `aerei.js`, i feed diretti senza CORS **non si tentano più di serie**:
+proxy proprio, poi ponti pubblici esistenti. Le porte in penale si saltano;
+`ADSB_PROVA_DIRETTI = true` le riabilita solo per diagnostica esplicita.
+I passaggi storici qui sotto che descrivono quattro errori CORS attesi sono
+superati. Non sostituire il proxy con `no-cors`: non rende leggibile il JSON.
+Il messaggio `beforeinstallprompt` è previsto finché non si preme Installa.
+Prove offline: `node scripts/prova-riserve-rete.js`.
+
 ---
 
 ## 1. Cos'è l'app
