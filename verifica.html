@@ -9434,10 +9434,11 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
   const ordine = adsb.ordinaPerSalute(porte);
   prova('davanti va chi ha risposto per ultimo, non il primo dell\'elenco',
     ordine[0].nome === porte[3].nome, ordine[0].nome);
-  prova('e in fondo chi è in penale', ordine[ordine.length - 1].nome === porte[0].nome,
-    ordine[ordine.length - 1].nome);
-  prova('nessuna porta viene esclusa: una in penale torna in gioco da sola',
-    ordine.length === porte.length, `${ordine.length} su ${porte.length}`);
+  prova('le porte in penale vengono saltate',
+    !ordine.some(p => p.nome === porte[0].nome));
+  prova('una porta rientra automaticamente alla scadenza',
+    adsb.ordinaPerSalute(porte, Date.now() + adsb.PENALE_MAX_MS + 1).length === porte.length);
+
 
   const v = adsb.salute.get(porte[0].nome);
   const penalePrima = v.penaleFino;

@@ -1036,6 +1036,83 @@ function terrenoRiprovabile(e) {
 // Un errore che **non** è riprovabile (un 400 perché la richiesta è troppo
 // lunga) esce subito: quello lo sa gestire chi chiama, spezzando la richiesta
 // in due.
+// Riserva indipendente dalle API a punti: le stesse tessere Terrarium del
+// rilievo, a zoom 9 per coprire anche l'orizzonte lontano con pochi PNG.
+// Risoluzione più grossa: il rilievo vicino continuerà ad affinarsi a zoom 12.
+const terrenoRasterCache = new Map();
+const terrenoRasterCode = [Promise.resolve(), Promise.resolve(), Promise.resolve()];
+let terrenoRasterTurno = 0;
+function terrenoRasterTessera(x, y) {
+  const chiave = x + '/' + y;
+  const vecchia = terrenoRasterCache.get(chiave);
+  if (vecchia && vecchia.fino > Date.now()) return vecchia.promessa;
+  const corsia = terrenoRasterTurno++ % terrenoRasterCode.length;
+  const voce = { fino: Infinity, promessa: null };
+  voce.promessa = terrenoRasterCode[corsia].then(() => new Promise((risolvi, rifiuta) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const fine = (errore, dati) => {
+      clearTimeout(timer);
+      img.onload = img.onerror = null;
+      if (errore) { img.src = ''; rifiuta(errore); } else risolvi(dati);
+    };
+    const timer = setTimeout(() => fine(new Error('tessera altimetrica lenta')), 10000);
+    img.onerror = () => fine(new Error('tessera altimetrica non disponibile'));
+    img.onload = () => {
+      try {
+        if (img.naturalWidth !== 256 || img.naturalHeight !== 256) throw new Error('formato altimetrico non valido');
+        const tela = document.createElement('canvas');
+        tela.width = tela.height = 256;
+        const ctx = tela.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        const pixel = ctx.getImageData(0, 0, 256, 256).data;
+        const quote = new Float32Array(256 * 256);
+        for (let i = 0; i < quote.length; i++) {
+          const j = i * 4;
+          quote[i] = pixel[j + 3] ? pixel[j] * 256 + pixel[j + 1] + pixel[j + 2] / 256 - 32768 : NaN;
+        }
+        fine(null, quote);
+      } catch (e) { fine(e); }
+    };
+    img.src = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/9/${x}/${y}.png`;
+  }));
+  terrenoRasterCache.set(chiave, voce);
+  terrenoRasterCode[corsia] = voce.promessa.then(() => {
+    voce.fino = Date.now() + 3600000;
+  }, () => { voce.fino = Date.now() + 300000; }).then(() => {
+    // Si eliminano solo le voci concluse: quelle in coda restano deduplicate.
+    for (const [k, v] of terrenoRasterCache) {
+      if (terrenoRasterCache.size <= 64) break;
+      if (v.fino !== Infinity) terrenoRasterCache.delete(k);
+    }
+  });
+  return voce.promessa;
+}
+
+async function terrenoQuoteRaster(punti) {
+  function pixel(x, y) {
+    const tx = Math.floor(x / 256), ty = Math.floor(y / 256);
+    if (ty < 0 || ty >= 512) return Promise.reject(new Error('punto fuori dal DEM'));
+    return terrenoRasterTessera((tx % 512 + 512) % 512, ty)
+      .then(q => q[(y - ty * 256) * 256 + x - tx * 256]);
+  }
+  return Promise.all(punti.map(async p => {
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon) || Math.abs(p.lat) >= 85.05) {
+      throw new Error('coordinate fuori dal DEM');
+    }
+    const la = p.lat * Math.PI / 180, n = 256 * 512;
+    const x = (p.lon + 180) / 360 * n - 0.5;
+    const y = (1 - Math.log(Math.tan(la) + 1 / Math.cos(la)) / Math.PI) / 2 * n - 0.5;
+    const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+    const [a, b, c, d] = await Promise.all([
+      pixel(x0, y0), pixel(x0 + 1, y0), pixel(x0, y0 + 1), pixel(x0 + 1, y0 + 1)
+    ]);
+    const q = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+    if (!Number.isFinite(q)) throw new Error('quota DEM assente');
+    return q;
+  }));
+}
+
 async function terrenoQuoteInsistendo(punti, pri) {
   let ultimo = null;
   for (let t = 0; t < TERRENO_TENTATIVI; t++) {
@@ -1051,13 +1128,15 @@ async function terrenoQuoteInsistendo(punti, pri) {
       // essere tenaci, vuol dire rimettersi in coda cinque volte per farsi
       // dire cinque volte la stessa cosa. Si esce, e la riga di stato lo
       // racconta; a riprovare ci pensa la cascata automatica.
-      if (e && e.porteChiuse) throw e;
+      if (e && e.porteChiuse) {
+        try { return await terrenoQuoteRaster(punti); } catch (_) { throw e; }
+      }
       // Niente sonno qui: la pausa l'ha già messa `terrenoFrena` sul
       // rubinetto, e sommarcene una seconda è il difetto che questa riga
       // conteneva.
     }
   }
-  throw ultimo;
+  try { return await terrenoQuoteRaster(punti); } catch (_) { throw ultimo; }
 }
 
 

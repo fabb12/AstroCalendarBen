@@ -463,11 +463,7 @@
   function avvisaSeManca() {
     if (dettoDelProxy || urlProxy()) return;
     dettoDelProxy = true;
-    console.info('[aerei] Nessun proxy proprio configurato (ADSB_PROXY_URL). ' +
-      'Le richieste dirette qui sotto falliranno tutte per CORS — quelle reti non ' +
-      'mandano Access-Control-Allow-Origin e da un browser non si leggono mai: ' +
-      'le righe rosse che seguono sono attese, non un difetto. Si passa poi ai ' +
-      'ponti CORS pubblici. Per la strada solida vedi ADSB-PROXY.md.');
+    console.info('[aerei] Uso i ponti CORS di riserva. Per configurare un proxy proprio: ADSB-PROXY.md.');
   }
 
   function providersDisponibili() {
@@ -488,30 +484,10 @@
       },
       interpreta: interpretaAdsbExchange
     }] : [];
-    // L'ordine: **il Worker davanti, le reti dirette dietro** — e stavolta
-    // il numero c'e'. Le quattro reti di comunita' non possono servire un
-    // browser, e non «a volte»: misurato dall'origine del sito pubblicato,
-    // tutte e quattro rispondono senza `Access-Control-Allow-Origin`, quindi
-    // il browser le rifiuta prima ancora di guardarne il contenuto. Aperte in
-    // una scheda i dati ci sono — ed e' quello che ha tenuto in piedi per
-    // mesi la convinzione che fossero «una via di emergenza»: una scheda non
-    // e' una richiesta cross-site, e non prova niente sul CORS.
-    //
-    // Dal Worker invece il CORS non c'entra, ma quelle stesse reti rispondono
-    // 403, 429, 403, 403: un Worker non ha un IP proprio e ne divide un pugno
-    // con migliaia di altri. La via d'uscita e' una fonte con **credenziali**
-    // (OpenSky), che il Worker puo' tenere e il browser no — vedi
-    // `worker-adsb.js`.
-    //
-    // Le quattro restano in coda, e non e' sentimentalismo: costano una
-    // trentina di millisecondi a testa (un rifiuto CORS e' immediato), e il
-    // giorno che una cambia politica la pagella (§2) la promuove da se' senza
-    // che nessuno debba accorgersene.
-    // L'ordine: il proxy proprio se c'e' (risponde sempre), poi le reti
-    // dirette (falliscono per CORS, ma costano trenta millisecondi e un
-    // giorno potrebbero cambiare politica), poi i ponti pubblici, che sono
-    // l'unica strada che funziona senza aver distribuito niente.
-    return propri.concat(providersPredefiniti, providersPonte());
+    // I feed senza CORS si possono interrogare dal proxy, non dal browser.
+    // Restano disponibili solo per prove esplicitamente abilitate.
+    const diretti = window.ADSB_PROVA_DIRETTI === true ? providersPredefiniti : [];
+    return propri.concat(providersPonte(), diretti);
   }
 
   // =====================================================================
@@ -521,9 +497,8 @@
   //    browser. Ricominciando ogni volta dal primo dell'elenco si ripaga ogni
   //    volta lo stesso scotto — la porta chiusa da ieri sta ancora in cima.
   //    Qui ogni esito lascia un segno, il segno sopravvive alla sessione, e
-  //    l'ordine del giro dopo esce da lì. Una porta che sbaglia non viene
-  //    esclusa: viene **rimandata in fondo** per un po', perché un guasto è
-  //    quasi sempre temporaneo e chi si esclude da solo non torna mai.
+  //    l'ordine del giro dopo esce da lì. Una porta che sbaglia viene
+  //    saltata fino alla scadenza della penale; poi torna disponibile da sola.
   // =====================================================================
 
   const salute = new Map();
@@ -584,23 +559,13 @@
     saluteSalva();
   }
 
-  // L'ordine di partenza: chi ha risposto più di recente per primo, chi è in
-  // penale per ultimo. `indice` tiene l'ordine scritto come spareggio, così
-  // alla prima apertura — quando nessuno ha ancora una storia — si parte
-  // esattamente dall'elenco di sopra.
+  // Prima chi ha risposto più di recente; nessuna richiesta alle porte
+  // ancora in pausa. Alla scadenza tornano automaticamente nell'elenco.
   function ordinaPerSalute(providers, ora = Date.now()) {
-    return providers.map((p, indice) => {
-      const v = salute.get(p.nome) || null;
-      return {
-        p, indice,
-        inPenale: !!(v && v.penaleFino > ora),
-        ultimoOk: v ? v.ultimoOk : 0
-      };
-    }).sort((a, b) =>
-      (a.inPenale ? 1 : 0) - (b.inPenale ? 1 : 0) ||
-      b.ultimoOk - a.ultimoOk ||
-      a.indice - b.indice
-    ).map(v => v.p);
+    return providers.filter(p => !(salute.get(p.nome)?.penaleFino > ora))
+      .map((p, indice) => ({ p, indice, ultimoOk: salute.get(p.nome)?.ultimoOk || 0 }))
+      .sort((a, b) => b.ultimoOk - a.ultimoOk || a.indice - b.indice)
+      .map(v => v.p);
   }
 
   // =====================================================================
@@ -719,6 +684,7 @@
   }
 
   function corsaProvider(providers, obs, raggio, signalEsterno, opz = {}) {
+    if (!providers.length) return Promise.reject(new Error('servizi ADS-B in pausa; riprovo più tardi'));
     const affiancaMs = Number.isFinite(opz.affiancaMs) ? opz.affiancaMs : AFFIANCA_MS;
     const attesaMs = Number.isFinite(opz.attesaMs) ? opz.attesaMs : PROVIDER_ATTESA_MS;
     const corsaMs = Number.isFinite(opz.corsaMs) ? opz.corsaMs : CORSA_ATTESA_MS;

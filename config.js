@@ -1,5 +1,5 @@
 // URL del Worker ADS-B di questa installazione, iniettato dal deploy oppure
-// impostato qui. Lasciandolo vuoto si provano direttamente i feed ADS-B.
+// impostato qui. Lasciandolo vuoto si usano i ponti CORS di riserva.
 window.ADSB_PROXY_URL = window.ADSB_PROXY_URL || '';
 
 // Endpoint HTTP del ponte Edge-TTS. Deve accettare POST JSON e restituire
@@ -36,8 +36,8 @@ window.INS_ORT_URL = window.INS_ORT_URL || '';
 // Actions li sostituisce con versione della cache, numero della build, commit
 // e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v360',
+  version: 'v361',
   build: '',
   commit: '',
-  builtAt: '2026-09-21T00:00:00Z'
+  builtAt: '2026-09-21T12:54:16Z'
 });
