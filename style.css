@@ -5785,7 +5785,10 @@ body input.casella-data:hover { border: 0; }
   left: max(12px, env(safe-area-inset-left));
   right: max(12px, env(safe-area-inset-right));
   margin: 0 auto;
-  max-width: 480px;
+  /* Il conto alla rovescia e i due comandi non devono togliere il nome
+     dell'astro al titolo. Sui display medi la striscia usa lo spazio
+     disponibile, restando comunque raccolta. */
+  max-width: 620px;
   z-index: 7;
   display: flex;
   align-items: center;
@@ -5834,20 +5837,24 @@ body input.casella-data:hover { border: 0; }
   font-size: 0.84rem;
   font-weight: 700;
   line-height: 1.15;
-  /* Un titolo che va a capo alza il riquadro e gli fa coprire il cielo che
-     sta annunciando: si accorcia coi puntini. */
-  white-space: nowrap;
+  /* Il nome dell'astro è l'informazione decisiva: due righe costano pochi
+     pixel e impediscono che sparisca dietro ai puntini. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .avviso-transito-nota {
   margin: 2px 0 0;
   font-size: 0.72rem;
   line-height: 1.2;
   color: var(--testo-2, #94a3b8);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .avviso-transito-quando {
   flex: 0 0 auto;
@@ -5889,9 +5896,25 @@ body input.casella-data:hover { border: 0; }
    prima a cedere il posto, perché il titolo e il tempo che manca da soli
    dicono già cosa fare. */
 @media (max-width: 560px) {
-  .avviso-transito { gap: 8px; padding: 7px 8px 7px 10px; }
+  /* Su uno schermo stretto titolo e dettagli hanno una riga tutta loro.
+     Il tempo e l'azione restano subito sotto, invece di comprimere il nome
+     dell'aereo e dell'astro fino a renderli irriconoscibili. */
+  .avviso-transito {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "segno testo chiudi"
+      ". quando tasto";
+    align-items: center;
+    gap: 6px 8px;
+    padding: 7px 8px 7px 10px;
+  }
+  .avviso-transito-segno { grid-area: segno; align-self: start; }
+  .avviso-transito-testo { grid-area: testo; }
+  .avviso-transito-quando { grid-area: quando; justify-self: start; }
+  .avviso-transito-tasto { grid-area: tasto; padding: 4px 8px; font-size: 0.7rem; }
+  .avviso-transito-chiudi { grid-area: chiudi; }
   .avviso-transito-titolo { font-size: 0.78rem; }
-  .avviso-transito-tasto { padding: 4px 8px; font-size: 0.7rem; }
 }
 @media (orientation: landscape) and (max-height: 460px) {
   .avviso-transito-nota { display: none; }
