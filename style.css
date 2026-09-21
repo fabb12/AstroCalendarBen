@@ -5900,6 +5900,7 @@ body input.casella-data:hover { border: 0; }
      Il tempo e l'azione restano subito sotto, invece di comprimere il nome
      dell'aereo e dell'astro fino a renderli irriconoscibili. */
   .avviso-transito {
+    display: grid;
     grid-template-columns: 20px minmax(0, 1fr) auto;
     grid-template-areas:
       "segno testo chiudi"
