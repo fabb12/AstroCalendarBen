@@ -7022,9 +7022,10 @@ function acqueVisibili() {
         ? Math.min(fronti.n, gradini.length) : gradini.length;
       const passiM = [vicino];
       for (let k = 0; k < quantiGradini; k++) {
-        // Da che distanza in poi l'anello `k` entra nel conto della cresta:
-        // il confronto è con `m · TERRENO_FRONTE_MARGINE`.
-        const soglia = gradini[k] / TERRENO_FRONTE_MARGINE;
+        // Ogni anello davanti all’acqua può coprirla, anche nell’ultimo
+        // 15% del raggio. La tolleranza del DEM è già applicata in
+        // quota da acqueFrontiAcqua: non va esclusa una fascia di terreno.
+        const soglia = gradini[k];
         if (soglia <= vicino + ACQUE_SOGLIA_SCARTO_M) continue;
         if (soglia >= fine) break;
         passiM.push(soglia - ACQUE_SOGLIA_SCARTO_M, soglia);
@@ -7043,7 +7044,7 @@ function acqueVisibili() {
       // massimo: qui resta un confronto e due indici.
       const coperta = m => {
         if (!fronti) return false;
-        const dentro = m * TERRENO_FRONTE_MARGINE;
+        const dentro = m;
         let k = -1;
         for (let j = 0; j < quantiGradini; j++) { if (gradini[j] <= dentro) k = j; else break; }
         if (k < 0) return false;
