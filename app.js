@@ -21538,6 +21538,17 @@ function skyDisegnaPianeta(ctx, x, y, r, o, ang, estinzione) {
   ctx.save();
   ctx.translate(x, y);
 
+  // Evidenza didattica: modifica solo il disegno, mai la magnitudine fisica.
+  const evidenzaDemo = window.AstroDemo ? window.AstroDemo.evidenza(o.id) : 1;
+  if (evidenzaDemo > 1) {
+    const aloneDemo = ctx.createRadialGradient(0, 0, r, 0, 0, r * evidenzaDemo * 3);
+    aloneDemo.addColorStop(0, 'rgba(255,245,190,0.85)');
+    aloneDemo.addColorStop(1, 'rgba(255,245,190,0)');
+    ctx.fillStyle = aloneDemo;
+    ctx.beginPath(); ctx.arc(0, 0, r * evidenzaDemo * 3, 0, Math.PI * 2); ctx.fill();
+    r *= Math.sqrt(evidenzaDemo);
+  }
+
   const anelli = o.id === 'Saturn' && r >= 3;
   const apertura = anelli ? skyAperturaAnelli(o) : 0;
   if (anelli) {
@@ -38088,6 +38099,9 @@ function solAvviaTransizioneDecollo(opzioni = {}) {
   ponte.classList.add('in-volo');
   ponte.style.opacity = '1';
   solVoloDisegna(0);
+  // Nelle demo il progresso arriva dall'unico orologio del copione:
+  // anche la pausa deve congelare il volo e non soltanto il cambio scena.
+  if (opzioni.manuale) return;
   solVolo.raf = requestAnimationFrame(solVoloPasso);
   // Il paracadute: un cambio di scheda strozza le `requestAnimationFrame`, e
   // un velo che resta acceso è una scena che non si vede più. È la stessa rete
@@ -38205,6 +38219,7 @@ window.apriSistemaSolare = (opzioni = {}) => {
   sol.skyDaRiprendere = skyPrestaIlCiclo();
 
   requestAnimationFrame(() => {
+    if (!sol.aperto || (opzioni.annullato && opzioni.annullato())) return;
     solRidimensiona();
     const quando = skyAdesso();
     solLeggiPosizioni(quando);
@@ -38237,6 +38252,7 @@ window.apriSistemaSolare = (opzioni = {}) => {
     // volo ci si aggancia, e il suo ultimo fotogramma è già questo.
     solAvviaTransizioneDecollo({
       volo: tuffo && !!fotoDelCielo,
+      manuale: !!opzioni.voloManuale,
       dopo: opzioni.inquadra && tuffo ? opzioni.inquadra : null
     });
     if (!sol.raf) {
