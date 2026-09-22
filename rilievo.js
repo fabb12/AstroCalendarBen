@@ -1942,7 +1942,7 @@ function rilQuoteAttorno(az, daM, aM) {
 let rilFrontiAcquaBuf = null;
 
 function rilFrontiAcqua(az, abbassaM, tettoGradi, finoA,
-                        rivaM, rivaFasciaM, rivaAbbassaM) {
+                        rivaM, rivaFasciaM, rivaAbbassaM, lago) {
   if (!rilPronto() || !rilievo.quota) return null;
   const nr = RIL_ANELLI;
   // Più in là dell'acqua più lontana di questa direzione non serve camminare:
@@ -1999,6 +1999,13 @@ function rilFrontiAcqua(az, abbassaM, tettoGradi, finoA,
     // Il suolo sotto le scarpe non nasconde niente. La camminata comincia
     // dove il modello ricomincia a parlare.
     if (d < RIL_VICINO_M) { fuori[k] = -Infinity; continue; }
+    // Dentro al poligono del lago il DEM non è un ostacolo: le sue
+    // oscillazioni creavano gradini e fasce d'acqua separate. Le isole
+    // interrompono già la banda; il terreno prima della riva resta opaco.
+    if (lago && d > rivaM && d < finoA) {
+      fuori[k] = massimo;
+      continue;
+    }
     const q = rilievo.quota[a + k] * (1 - s) + rilievo.quota[b + k] * s;
     // La tolleranza larga appartiene alla **riva**, non all'intero raggio.
     // Applicarla anche a un dosso separato davanti al lago equivale a
