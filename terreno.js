@@ -5697,24 +5697,22 @@ function acqueLeggiElementi(elementi) {
         Math.abs(p[0].lon - p[p.length - 1].lon) < 1e-7;
       aggiungi(p, tags, chiuso, tags.name);
     } else if (e.type === 'relation' && Array.isArray(e.members)) {
-      // I pezzi dell'anello esterno, ricuciti in anelli veri: un arco di riva
-      // non ha un dentro, e trattarlo da poligono è il guasto del Lago di
-      // Como (vedi `acqueCuciAnelli`). Le isole (`role: inner`) restano fuori
-      // come prima: disegnare l'acqua dove c'è un'isola è un'imprecisione da
-      // qualche grado d'orizzonte, mentre non disegnare il lago è il lago che
-      // manca.
-      const archi = [];
+      const esterni = [], interni = [];
       for (const mem of e.members) {
         if (!mem || !Array.isArray(mem.geometry)) continue;
-        if (mem.role && mem.role !== 'outer') continue;
+        if (mem.role && mem.role !== 'outer' && mem.role !== 'inner') continue;
         const p = mem.geometry.filter(g => g && typeof g.lat === 'number');
-        if (p.length > 1) archi.push(p);
+        if (p.length > 1) (mem.role === 'inner' ? interni : esterni).push(p);
       }
-      const cuciti = acqueCuciAnelli(archi);
-      cuciti.anelli.forEach(a => aggiungi(a, tags, true, tags.name));
-      // Un membro aperto non viene mai promosso a poligono: la corda di
-      // chiusura produrrebbe acqua su terra. Una successiva lettura dalla
-      // cache o da un altro endpoint potrà fornire l'anello completo.
+      const buchi = acqueCuciAnelli(interni).anelli;
+      for (const anello of acqueCuciAnelli(esterni).anelli) {
+        aggiungi(anello, tags, true, tags.name);
+        const tr = fuori[fuori.length - 1];
+        tr.buchi = buchi.filter(buco => {
+          const { p } = acquePuntiEriquadro(anello, buco[0].lat, buco[0].lon);
+          return acquePuntoDentro(p, anello.length);
+        });
+      }
     }
   }
   return fuori;
@@ -5924,11 +5922,16 @@ function acqueFiumeAddosso(p, n, largo, tagli, id) {
 // tutto in un colpo (le prove, e i posti normali) o **a scaglioni** senza
 // bloccare il disegno (`acqueTagliaAScaglioni`).
 function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
+  // I bordi interni partecipano alla stessa parità del contorno esterno.
+  for (const punti of tr.buchi || []) {
+    acqueTagliaUno({ punti, chiuso: true, corrente: false, buco: true,
+      nome: tr.nome, corpo: tr.corpo }, id, tagli, lat, lon, limiteM);
+  }
   const n = tr.punti.length;
   // Il tracciato in metri e il suo riquadro, in un giro solo.
   const { p, minX, maxX, minY, maxY } = acquePuntiEriquadro(tr.punti, lat, lon);
   // Uno specchio grande come una vasca non è uno specchio…
-  if (!tr.corrente && (maxX - minX) * (maxY - minY) < ACQUE_AREA_MIN) return;
+  if (!tr.corrente && !tr.buco && (maxX - minX) * (maxY - minY) < ACQUE_AREA_MIN) return;
   // …e il punto del riquadro più vicino all'origine: se è oltre il limite,
   // tutto lo specchio lo è, e non vale la pena provarne i lati.
   const vx = minX > 0 ? minX : (maxX < 0 ? maxX : 0);
@@ -5944,7 +5947,8 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
   // sta in mezzo come in un lago.
   if (!tr.corrente && tr.chiuso && minX <= 0 && maxX >= 0 && minY <= 0 && maxY >= 0 &&
       acquePuntoDentro(p, n)) {
-    tagli.sommersi.add(id);
+    if (tagli.sommersi.has(id)) tagli.sommersi.delete(id);
+    else tagli.sommersi.add(id);
   }
 
   // Il nome si segna qui, una volta per specchio d'acqua: da qui in poi un
@@ -6263,7 +6267,8 @@ function acqueNomiGrandi(tracciati, lat, lon) {
 // come lo stesso lago al momento di disegnarle. Senza, si legge benissimo e
 // ogni banda fa lago per conto suo: la superficie torna a terrazze e le
 // strisce a spicchi, che è esattamente la cosa che si sta togliendo.
-const ACQUE_VERSIONE = 5;
+// I salvataggi precedenti non contengono i ritagli delle isole.
+const ACQUE_VERSIONE = 6;
 
 function acqueArchivio() {
   try {
@@ -6863,12 +6868,12 @@ function acqueTangenteVista(quota, occhio, m) {
 // nessuno.
 let acqueFrontiTanBuf = null;
 
-function acqueFrontiAcqua(az, finoA, rivaM) {
+function acqueFrontiAcqua(az, finoA, rivaM, lago) {
   if (typeof rilFrontiAcqua === 'function') {
     const v = rilFrontiAcqua(az, ACQUE_OCCLUSIONE_ABBASSA_M,
                              ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI, finoA,
                              rivaM, ACQUE_OCCLUSIONE_RIVA_FASCIA_M,
-                             ACQUE_OCCLUSIONE_RIVA_M);
+                             ACQUE_OCCLUSIONE_RIVA_M, lago);
     if (v) return v;
   }
   if (!terrenoDisponibile() || !terreno.fronti) return null;
@@ -7021,7 +7026,7 @@ function acqueVisibili() {
       // La profondità dipende anche da **dove comincia questa banda**. Solo
       // il campione a cavallo della riva riceve la franchigia larga; un dosso
       // più vicino resta opaco e deve nascondere l'acqua che gli sta dietro.
-      const fronti = acqueFrontiAcqua(az, fine, vicino);
+      const fronti = acqueFrontiAcqua(az, fine, vicino, tipo === 0);
       // La quota della superficie. Una banda che comincia **ai piedi** non la
       // va a chiedere a nessuno: la si sa già. Se ci si sta dentro è la
       // superficie su cui si galleggia (`acqueAllineaOcchio` l'ha già messa
