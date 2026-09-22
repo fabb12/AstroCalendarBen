@@ -196,7 +196,8 @@ function aggiornaInformazioniBuild() {
     const quando = info.builtAt ? new Date(info.builtAt) : null;
     data.textContent = quando && !Number.isNaN(quando.getTime())
       ? new Intl.DateTimeFormat(document.documentElement.lang || 'it', {
-          dateStyle: 'medium'
+          dateStyle: 'medium',
+          timeStyle: 'short'
         }).format(quando)
       : '—';
   }
