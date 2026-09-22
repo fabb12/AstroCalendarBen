@@ -38334,10 +38334,14 @@ function inizializzaSistemaSolare() {
         return;
       }
       if (sol.vicino) solEsciVicino();
-      // «Da qui» è l'inquadratura d'ingresso, quella che risponde alla domanda
-      // con cui si arriva dal planetario: rifà anche il giro, non solo la
-      // larghezza, e per questo passa da una funzione sua
-      if (quale === 'terra') { solInquadraDaTerra({ morbido: true }); return; }
+      // «Dalla Terra» sceglie la Terra come perno della camera: da questo
+      // momento il trascinamento le gira attorno, senza cambiare lo zoom e
+      // l'orientamento che chi guarda ha già composto.
+      if (quale === 'terra') {
+        sol.quadro = 'terra';
+        solAvvicinaTerra();
+        return;
+      }
       // «Tutto» è un comando di sola inquadratura, centrato sul Sole: se si
       // stava girando intorno a un corpo il perno smette qui, e se la scena
       // era stata spostata di lato torna in mezzo
