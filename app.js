@@ -17532,6 +17532,10 @@ const SKY_ACQUA_SALTO = 1;
 //      là, sono due superfici;
 //   3. **nessun salto** dei bordi oltre `SKY_ACQUA_SALTO` (qui sopra).
 //
+// Per i laghi con un solo tratto su entrambi i raggi basta l'identità:
+// una riva obliqua non deve superare soglie di sovrapposizione radiale.
+// I tre controlli restano per le biforcazioni e i dati senza identità.
+//
 // Quando nessuno passa l'esame la striscia finisce lì, e il tratto rimasto ne
 // comincia una sua: due strisce disegnate ognuna con le sue rive, che è
 // esattamente quello che si vede guardando un lago tagliato da un
@@ -17574,7 +17578,19 @@ function skyAcqueStrisce(viste, arco) {
       let corrente = v;
       for (let j = i + 1; j < n; j++) {
         let meglio = null, quanto = 0;
-        for (const w of colonne[j]) {
+        // Un profilo obliquo può spostarsi più della profondità della banda.
+        // Se lo stesso lago ha un solo tratto su entrambi i raggi, le due
+        // rive sono continue anche senza sovrapposizione radiale. In caso
+        // di biforcazione manteniamo la selezione prudente qui sotto.
+        const noto = corrente.b.corpo != null && corrente.b.tipo === 0;
+        const stesso = v => v.b.corpo === corrente.b.corpo && v.b.tipo === 0;
+        const univoco = noto && colonne[j - 1].filter(stesso).length === 1 &&
+          colonne[j].filter(stesso).length === 1;
+        if (univoco) {
+          const w = colonne[j].find(stesso);
+          if (!w.usata) meglio = w;
+        }
+        for (const w of (meglio ? [] : colonne[j])) {
           if (w.usata) continue;
           // `null` vuol dire «non si sa di che specchio è» — bande salvate da
           // una versione precedente — e allora questa cernita non si applica:
@@ -17791,6 +17807,9 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
   skyAcquaTracciaStriscia(ctx, alto, basso);
   ctx.fillStyle = gradiente || skyRgba(colore, 1);
   ctx.fill();
+  // Onde, riflessi e pennellate restano dentro al profilo del lago.
+  // Senza clip la tessitura poteva disegnare rettangoli oltre le rive.
+  ctx.clip();
 
   // Il fianco della montagna che si specchia: scuro verso la riva lontana e
   // con la forma della cresta ribaltata, che è la faccia vera di ogni lago
