@@ -181,6 +181,29 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   });
   ok('lo schermo intero resta una scelta del tasto dedicato', soloTasto);
 
+  const dallaTerra = await pagina.evaluate(() => {
+    sol.perno = 'Mars';
+    sol.quadro = 'tutto';
+    const zoom = sol.zoomVoluto;
+    const az = sol.az;
+    document.querySelector('[data-sol-quadro="terra"]').click();
+    const tasto = document.querySelector('[data-sol-quadro="terra"]');
+    return {
+      perno: sol.perno,
+      quadro: sol.quadro,
+      zoomInvariato: sol.zoomVoluto === zoom,
+      azimutInvariato: sol.az === az,
+      testo: tasto.querySelector('.sol-vista-nome').textContent.trim(),
+      premuto: tasto.getAttribute('aria-pressed')
+    };
+  });
+  ok('«Dalla Terra» mette il perno della camera sulla Terra',
+    dallaTerra.perno === 'Earth' && dallaTerra.quadro === 'terra' &&
+    dallaTerra.zoomInvariato && dallaTerra.azimutInvariato,
+    `${dallaTerra.perno}, ${dallaTerra.testo}`);
+  ok('il pin della Terra ha il nuovo nome ed è indicato come attivo',
+    dallaTerra.testo === 'Dalla Terra' && dallaTerra.premuto === 'true');
+
   console.log('\n— inerzia della camera —');
   const inerzia = await pagina.evaluate(() => {
     // Il planetario e la scena 3D usano entrambi velocita' e attrito nel loro
