@@ -1,0 +1,30 @@
+name: Verifica Demo
+on:
+  pull_request:
+    paths:
+      - 'demo*.js'
+      - 'app.js'
+      - 'index.html'
+      - 'scripts/prova-demo*.js'
+      - '.github/workflows/verifica-demo.yml'
+permissions:
+  contents: read
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/prova-demo.js
+      - run: npm install --no-save --package-lock=false playwright@1.58.2 astronomy-engine@2.1.19
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/prova-demo-browser.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-eclisse
+          path: work/demo-eclisse.png
+          if-no-files-found: ignore
