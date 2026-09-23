@@ -45,6 +45,25 @@ const server = http.createServer((req, res) => {
     // Gestione reale attraverso la nuova scheda, anche con sola tastiera.
     await pagina.locator('#btn-impostazioni').click();
     await pagina.locator('#imp-tab-btn-demo').click();
+    const builtins = await pagina.evaluate(() => AstroDemo.libreria.elenco().filter(d => d.solaLettura).map(d => {
+      const demo = AstroDemo.valida(d.testo);
+      return { chiave: d.chiave, scene: demo.scene.length, durata: demo.scene.reduce((n, s) => n + s.durata, 0) };
+    }));
+    assert.deepEqual(builtins.map(d => d.chiave),
+      ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti']);
+    assert.deepEqual(builtins.map(d => d.durata), [30000, 24000, 20000, 22000]);
+    assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
+    for (const d of builtins) {
+      await pagina.locator('#demo-elenco').selectOption(d.chiave);
+      assert.equal(await pagina.locator('#demo-editor').getAttribute('readonly'), '');
+      assert.equal(await pagina.locator('#demo-elimina').isDisabled(), true);
+      assert.match(await pagina.locator('#demo-info').innerText(), new RegExp(d.scene + ' scene'));
+      assert.ok((await pagina.locator('#demo-info').innerText()).length > 85, 'Descrizione built-in: ' + d.chiave);
+    }
+    await pagina.evaluate(() => astroI18n.impostaLingua('en'));
+    assert.match(await pagina.locator('#demo-elenco option[value="eclisse_lunare"]').innerText(), /Total lunar eclipse/);
+    await pagina.evaluate(() => astroI18n.impostaLingua('it'));
+    await pagina.locator('#demo-elenco').selectOption('eclisse_tour');
     assert.equal(await pagina.locator('#cielo-comandi #demo-avvia').count(), 0);
     assert.equal(await pagina.locator('#demo-editor').getAttribute('readonly'), '');
     assert.equal(await pagina.locator('#demo-elimina').isDisabled(), true);
@@ -87,10 +106,10 @@ const server = http.createServer((req, res) => {
     await pagina.locator('#demo-importa').setInputFiles({ name: 'copia.astrodemo', mimeType: 'text/plain', buffer: Buffer.from(salvato) });
     await pagina.waitForFunction(() => document.getElementById('demo-elenco').value === '');
     await pagina.locator('#demo-salva').click();
-    assert.equal(await pagina.locator('#demo-elenco option').count(), 3);
+    assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length + 2);
     pagina.once('dialog', dialog => dialog.accept());
     await pagina.locator('#demo-elimina').click();
-    assert.equal(await pagina.locator('#demo-elenco option').count(), 2);
+    assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length + 1);
     // L'errore di quota è visibile e lascia intatta la bozza.
     await pagina.locator('#demo-elenco').selectOption(chiaveUtente);
     await pagina.locator('#demo-editor').fill(salvato.replace('mia_demo', 'modificata'));
@@ -213,6 +232,64 @@ const server = http.createServer((req, res) => {
       return errore;
     });
     assert.match(civile, /Ora civile inesistente/);
+    const nuovo = await pagina.evaluate(() => {
+      const prima = { tempo: +skyAdesso(), luogo: sky.luogoVista && { ...sky.luogoVista },
+        casa: [sky.posizione.lat, sky.posizione.lon],
+        lat: sky.observer.latitude, lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] };
+      for (const comando of [
+        "set_date { iso: '2028-02-30T12:00:00Z' }",
+        "set_location { lat: 91, lon: 18, name: 'X', timezone: 'Europe/Oslo' }",
+        "set_location { lat: 69, lon: 18, name: 'X', timezone: 'No/Such_Zone' }",
+        'simulate_aurora { kp: 10 }'
+      ]) {
+        try { AstroDemo.valida('define_demo nonvalida { scene planetarium_view { duration: 1s; action: ' + comando + '; }}');
+          throw new Error('Comando non valido accettato: ' + comando);
+        } catch (e) { if (e.message.startsWith('Comando non valido accettato')) throw e; }
+      }
+      return prima;
+    });
+    for (const [chiave, data, lat, lon] of [
+      ['eclisse_lunare', '2028-12-31T15:45:00', 43.0618, 141.3545],
+      ['aurora_boreale', '2027-01-15T20:00:00', 69.6492, 18.9553],
+      ['allineamento_pianeti', '2028-10-21T12:45:00', 32.2226, -110.9747]
+    ]) {
+      await pagina.locator('#btn-impostazioni').click();
+      await pagina.locator('#imp-tab-btn-demo').click();
+      await pagina.locator('#demo-elenco').selectOption(chiave);
+      await pagina.locator('#demo-avvia').click();
+      const durante = await pagina.evaluate(() => ({ stato: AstroDemo.stato, tempo: skyAdesso().toISOString(),
+        lat: sky.observer.latitude, lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] }));
+      assert.equal(durante.stato, 'attivo', chiave);
+      assert.ok(durante.tempo.startsWith(data), chiave + ': istante astronomico');
+      assert.ok(Math.abs(durante.lat - lat) < 0.0001 && Math.abs(durante.lon - lon) < 0.0001,
+        chiave + ': coordinate temporanee');
+      if (chiave === 'aurora_boreale') assert.deepEqual(durante.aurora, [true, 5]);
+      if (chiave === 'eclisse_lunare') {
+        const reale = await pagina.evaluate(() => {
+          const evento = Astronomy.SearchLunarEclipse(new Date('2028-12-01T00:00:00Z'));
+          const q = Astronomy.Equator('Moon', evento.peak.date, sky.observer, true, true);
+          return { kind: evento.kind, data: evento.peak.date.toISOString(),
+            alt: Astronomy.Horizon(evento.peak.date, sky.observer, q.ra, q.dec, 'normal').altitude };
+        });
+        assert.equal(reale.kind, 'total');
+        assert.ok(reale.data.startsWith('2028-12-31T16:51') && reale.alt > 0);
+      }
+      if (chiave === 'allineamento_pianeti') {
+        const altezze = await pagina.evaluate(() => Object.fromEntries(
+          ['Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter'].map(nome => {
+            const q = Astronomy.Equator(nome, skyAdesso(), sky.observer, true, true);
+            return [nome, Astronomy.Horizon(skyAdesso(), sky.observer, q.ra, q.dec, 'normal').altitude];
+          })));
+        assert.ok(altezze.Sun < -6 && ['Mercury', 'Venus', 'Mars', 'Jupiter'].every(n => altezze[n] > 5),
+          'Quattro pianeti realmente sopra l’orizzonte prima dell’alba');
+      }
+      await pagina.keyboard.press('Escape');
+      assert.deepEqual(await pagina.evaluate(() => ({ tempo: +skyAdesso(),
+        luogo: sky.luogoVista && { ...sky.luogoVista }, casa: [sky.posizione.lat, sky.posizione.lon],
+        lat: sky.observer.latitude,
+        lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] })), nuovo,
+      chiave + ': ripristino di data, luogo e aurora');
+    }
     await pagina.setViewportSize({ width: 390, height: 844 });
     await pagina.locator('#btn-impostazioni').click();
     await pagina.locator('#imp-tab-btn-demo').click();

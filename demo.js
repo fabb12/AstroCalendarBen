@@ -2,16 +2,8 @@
  * con verifica(parametri) e crea(parametri, contesto, scena): aggiorna/chiudi. */
 (function () {
   'use strict';
-  const script = "define_demo 'eclisse_tour' {\n" +
-    "  scene planetarium_view {\n    duration: 10s;\n" +
-    "    action: timelapse { start: 18:00, end: 22:00 };\n" +
-    "    action: highlight_object { name: 'Venus', scale: 5.0 };\n" +
-    "    action: center_target { target: 'Venus' };\n  }\n" +
-    "  scene transition {\n    duration: 5s;\n" +
-    "    action: zoom_view { type: geometric, final_target: solar_system_3d };\n  }\n" +
-    "  scene solar_system_3d {\n    duration: 15s;\n" +
-    "    action: orbit_object { object: 'Earth-Moon', angle: 360, speed: slow };\n" +
-    "    action: center { target: 'Eclipse Shadow' };\n  }\n}";
+  const predefiniti = AstroDemoPredefiniti;
+  const script = predefiniti[0].testo;
   const registro = Object.create(null), evidenze = new Map();
   const t = chiave => astroI18n.t('demo.' + chiave);
   const numero = (v, min, max) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
@@ -62,8 +54,9 @@
     solPanFraTerraELuna(sol.zoom, g);
   }
 
-  function tempiCivili(p) {
-    const luogo = skyLuogoDelCielo(), parti = partiDataDelLuogo(skyAdesso(), luogo);
+  function tempiCivili(p, quando = skyAdesso(), luogo = skyLuogoDelCielo()) {
+    richiedi(luogo && Number.isFinite(+quando), 'Luogo e data necessari per il timelapse');
+    const parti = partiDataDelLuogo(quando, luogo);
     const a = minuti(p.start), b = minuti(p.end);
     const giorno = new Date(Date.UTC(parti.year, parti.month - 1, parti.day + (b < a ? 1 : 0)));
     const inizio = dataDalTempoDelLuogo({ ...parti, hour: Math.floor(a / 60), minute: a % 60, second: 0 }, luogo);
@@ -78,6 +71,47 @@
     crea(p) {
       const { inizio, fine } = tempiCivili(p);
       return { aggiorna: u => istante(+inizio + (+fine - +inizio) * u) };
+    }
+  };
+  function dataISO(p) {
+    campi(p, ['iso']);
+    richiedi(typeof p.iso === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(p.iso) &&
+      Number.isFinite(Date.parse(p.iso)) && new Date(p.iso).toISOString() === p.iso.replace('Z', '.000Z'),
+    'Data UTC attesa YYYY-MM-DDTHH:MM:SSZ');
+    return new Date(p.iso);
+  }
+  function luogoDemo(p) {
+    campi(p, ['lat', 'lon', 'name', 'timezone']);
+    richiedi(numero(p.lat, -90, 90) && numero(p.lon, -180, 180), 'Coordinate non valide');
+    richiedi(typeof p.name === 'string' && p.name.length > 0 && p.name.length <= 80, 'Nome del luogo non valido');
+    richiedi(typeof p.timezone === 'string' && p.timezone.length <= 80, 'Fuso orario non valido');
+    try { new Intl.DateTimeFormat('en', { timeZone: p.timezone }); }
+    catch (_) { throw new Error('Fuso orario IANA non valido'); }
+    return { lat: p.lat, lon: p.lon, nome: p.name, fuso: p.timezone, abbreviazioneFuso: '' };
+  }
+  registro.set_date = {
+    verifica: dataISO,
+    crea(p) { istante(+dataISO(p)); }
+  };
+  registro.set_location = {
+    verifica: luogoDemo,
+    crea(p) { sky.luogoVista = luogoDemo(p); skyAggiornaOsservatore(); }
+  };
+  registro.simulate_aurora = {
+    verifica(p) { campi(p, ['kp']); richiedi(numero(p.kp, 0, 9), 'Kp deve essere fra 0 e 9'); },
+    crea(p) {
+      richiedi(typeof aurImpostaKpSimulato === 'function', 'Modulo aurore non disponibile');
+      aurImpostaKpSimulato(p.kp);
+    }
+  };
+  registro.point_view = {
+    verifica(p) {
+      campi(p, ['az', 'alt']);
+      richiedi(numero(p.az, 0, 360) && numero(p.alt, -90, 90), 'Direzione non valida');
+    },
+    crea(p) {
+      sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
+      sky.manuale.az = p.az; sky.manuale.alt = p.alt;
     }
   };
   registro.highlight_object = {
@@ -156,16 +190,19 @@
 
   const motore = new AstroDemoMotore.Motore(registro, { avvisa: aggiornaPannello });
   let contesto = null, ultimoScript = script;
-  const chiavi = ['modalitaTempo', 'istanteSimulatoMs', 'offsetTempoSec', 'target',
+  const chiavi = ['modalitaTempo', 'istanteSimulatoMs', 'offsetTempoSec', 'luogoVista', 'target',
     'inseguimento', 'eventoInseguito', 'seguiTelefono', 'fov', 'fovVoluto', 'modalitaHover',
     'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'passoTempoSec',
     'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec'];
   function valida(testo) {
     const demo = motore.prepara(testo);
+    let quando = skyAdesso(), luogo = skyLuogoDelCielo();
     for (const scena of demo.scene) {
       richiedi(['planetarium_view', 'transition', 'solar_system_3d'].includes(scena.vista), 'Scena non supportata: ' + scena.vista);
       for (const azione of scena.azioni) {
-        if (azione.comando === 'timelapse') tempiCivili(azione.parametri);
+        if (azione.comando === 'set_location') luogo = luogoDemo(azione.parametri);
+        if (azione.comando === 'set_date') quando = dataISO(azione.parametri);
+        if (azione.comando === 'timelapse') quando = tempiCivili(azione.parametri, quando, luogo).fine;
       }
     }
     return demo;
@@ -181,6 +218,7 @@
     const manuale = { ...sky.manuale }, vistaPrima = vistaAttuale;
     const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
       'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto'].map(k => [k, sol[k]]));
+    const auroraPrima = { acceso: aur.acceso, kpSimulato: aur.kpSimulato };
     const c = { chiuso: false, eclisse: null,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
@@ -196,8 +234,14 @@
         if (sol.aperto) chiudiSistemaSolare();
         Object.assign(sol, cameraSistema);
         if (vistaAttuale !== vistaPrima) mostraVista(vistaPrima);
+        const luogoCambiato = sky.luogoVista !== precedente.luogoVista;
         skyImpostaPassoTempo(precedente.passoTempoSec);
         Object.assign(sky, precedente); Object.assign(sky.manuale, manuale);
+        if (luogoCambiato) skyAggiornaOsservatore();
+        aur.acceso = auroraPrima.acceso;
+        aurImpostaKpSimulato(auroraPrima.kpSimulato);
+        aur.acceso = auroraPrima.acceso;
+        aurAggiornaPannello();
         skyFermaMovimenti(); sky.prossimoCalcolo = 0;
         skyAggiornaOggetti(true); skyAggiornaTestoTempo(); skyAggiornaSlittaTempo();
         sky.playbackUltimo = 0; skyAggiornaComandiPlayback();
@@ -269,7 +313,7 @@
   window.AstroDemo = {
     script, valida, libreria: AstroDemoLibreria.crea({
       getItem: k => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v)
-    }, [{ chiave: 'eclisse_tour', testo: script }], valida), avvia, pausa: () => motore.pausa(), riprendi: () => motore.riprendi(),
+    }, predefiniti, valida), avvia, pausa: () => motore.pausa(), riprendi: () => motore.riprendi(),
     ferma: () => motore.ferma(), evidenza: id => evidenze.get(id) || 1,
     get stato() { return motore.stato; },
     registra(nome, comando) {
