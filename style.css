@@ -11626,3 +11626,14 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
   cursor: pointer;
 }
 .tasto-curiosita:hover { border-color: var(--viola); background: var(--viola-velo); }
+
+/* Libreria demo nelle Impostazioni: editor leggibile anche su telefono. */
+#imp-tab-demo label { display:block; font-weight:600; margin-bottom:6px; }
+#imp-tab-demo select, #demo-editor { width:100%; max-width:100%; color:#e2e8f0; background:#101b30; border:1px solid #64748b; border-radius:8px; padding:8px; box-sizing:border-box; }
+#demo-editor { font-family:monospace; font-size:14px; line-height:1.5; resize:vertical; tab-size:2; }
+#demo-editor[readonly] { opacity:.8; }
+#demo-editor[aria-invalid="true"] { border-color:#fb7185; }
+.demo-azioni { display:flex; flex-wrap:wrap; gap:8px; }
+.demo-azioni select { flex:1 1 180px; }
+#imp-tab-demo button:disabled { opacity:.45; cursor:not-allowed; }
+#demo-info, #demo-aiuto, #demo-validazione, #demo-esito { font-size:13px; overflow-wrap:anywhere; }

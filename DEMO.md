@@ -1,10 +1,40 @@
 # Demo automatizzate
 
-Il pulsante **Demo · eclisse** nei comandi del planetario avvia il tour.
+Apri **Impostazioni → Demo automatizzate**, seleziona una demo e premi
+**Avvia demo selezionata**. La finestra si chiude per lasciare libero il cielo.
 Pausa, Riprendi, Ricomincia e Termina demo restano disponibili nelle due viste.
 Escape o un intervento fuori dai controlli interrompe la demo e restituisce
 vista, orologio, camera, filtri, inseguimento e playback precedenti.
 Cambiare scheda mette in pausa: la ripresa è esplicita.
+
+## Libreria ed editor
+
+Il tour `eclisse_tour` è di sola lettura. **Crea nuova** apre una bozza con
+una prima scena valida; **Duplica** copia lo script nell'editor. Modifica il
+nome dopo `define_demo`, le durate e i parametri, poi premi **Salva script**.
+Le demo utente si modificano direttamente e si eliminano con conferma.
+Le bozze rimangono disponibili chiudendo e riaprendo le Impostazioni.
+Il selettore chiede conferma prima di scartare modifiche non salvate.
+
+Gli snippet aggiungono una scena completa in fondo al tour, anche quando
+contiene commenti e stringhe con parentesi. Sono disponibili le tre viste e
+le cinque azioni principali con parametri validi. Il riepilogo mostra durata,
+numero di scene e bersagli. Il parser segnala riga e colonna per gli errori
+sintattici; la validazione dei comandi e degli orari blocca il salvataggio.
+Gli orari civili vengono verificati nella data e nel luogo attualmente scelti,
+compresi i buchi del cambio d'ora, e ricontrollati all'avvio e all'esecuzione.
+
+**Esporta .astrodemo** scarica esattamente il testo dell'editor, se valido.
+**Importa** accetta testo DSL (massimo 100 KB), lo valida subito e apre una
+bozza da salvare esplicitamente: non sovrascrive demo omonime. Gli identificativi
+di storage sono distinti dal nome DSL. Tutto resta su questo dispositivo nella
+chiave `astrocal_demo_utente_v1` di localStorage; per trasferirlo usa i file.
+Errori di quota, accesso o archivio corrotto vengono mostrati senza dichiarare
+un salvataggio riuscito o sostituire silenziosamente i dati precedenti.
+
+`demo-libreria.js` contiene la libreria con storage e validatore iniettati;
+`demo-impostazioni.js` collega editor e import/export a `AstroDemo.valida` e
+`AstroDemo.libreria`. Il parser e il motore puro non cambiano grammatica.
 
 ## Tour predefinito
 

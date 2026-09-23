@@ -1068,7 +1068,6 @@
                        proprio in quella direzione. È la stessa scena vista da
                        fuori, nello stesso istante, e sta qui — nel pannello in cui
                        si scelgono i pianeti — perché è lì che nasce la domanda. -->
-                  <button id="demo-avvia" type="button" class="tasto-cielo" data-i18n="demo.avvia">Demo · eclisse</button>
                   <button id="skymap-btn-sistema" type="button" class="tasto-cielo tasto-vista-esterna"
                     title="Esci dal Sistema Solare e guardalo da fuori: dove sta ogni pianeta sulla sua orbita in questo istante, e in che direzione lo stai guardando da qui. Si gira col dito." data-i18n-title="ui.esci-dal-sistema-solare-e-guardalo-da-fuori" data-i18n="ui.sistema-solare-3d">Sistema Solare 3D</button>
 
@@ -2556,6 +2555,7 @@
         <button type="button" class="impostazioni-tab-tasto attiva" role="tab" aria-selected="true" aria-controls="imp-tab-osservazione" id="imp-tab-btn-osservazione" data-imp-tab="osservazione" data-i18n="ui.osservazione">Osservazione</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-planetario" id="imp-tab-btn-planetario" data-imp-tab="planetario" tabindex="-1" data-i18n="ui.planetario">Planetario</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-dati" id="imp-tab-btn-dati" data-imp-tab="dati" tabindex="-1" data-i18n="ui.dati">Dati</button>
+        <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-demo" id="imp-tab-btn-demo" data-imp-tab="demo" tabindex="-1" data-i18n="demo.sezione">Demo automatizzate</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-guida" id="imp-tab-btn-guida" data-imp-tab="guida" tabindex="-1" data-i18n="ui.guida">Guida</button>
       </nav>
 
@@ -2732,6 +2732,32 @@
             si sa dove cercare. Il link apre una pagina vera dell'app, non un
             servizio esterno: viaggia col sito, sta nella cache del service
             worker, e quindi si legge anche dal rifugio senza campo. -->
+       <div id="imp-tab-demo" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-demo" data-imp-pannello="demo">
+         <label for="demo-elenco" data-i18n="demo.elenco">Demo disponibili</label>
+         <select id="demo-elenco"></select>
+         <p id="demo-info"></p>
+         <div class="demo-azioni">
+           <button id="demo-avvia" type="button" class="tasto-cielo" data-i18n="demo.esegui">Avvia demo selezionata</button>
+           <button id="demo-nuova" type="button" class="tasto-cielo" data-i18n="demo.nuova">Crea nuova</button>
+           <button id="demo-duplica" type="button" class="tasto-cielo" data-i18n="demo.duplica">Duplica</button>
+           <button id="demo-elimina" type="button" class="tasto-cielo" data-i18n="demo.elimina">Elimina</button>
+           <button id="demo-esporta" type="button" class="tasto-cielo" data-i18n="demo.esporta">Esporta .astrodemo</button>
+         </div>
+         <label for="demo-importa" data-i18n="demo.importa">Importa file .astrodemo o .txt (massimo 100 KB)</label>
+         <input id="demo-importa" type="file" accept=".astrodemo,.txt,text/plain">
+         <label for="demo-editor" data-i18n="demo.editor">Script DSL</label>
+         <p id="demo-aiuto" data-i18n="demo.aiuto">Le demo predefinite sono di sola lettura: duplicale per modificarle. Ogni snippet aggiunge una scena completa in fondo. Modifica nome, durata e parametri nel testo; i punti e virgola sono obbligatori.</p>
+         <textarea id="demo-editor" rows="16" spellcheck="false" aria-describedby="demo-aiuto demo-validazione"></textarea>
+         <label for="demo-snippet" data-i18n="demo.snippet">Scena o azione pronta</label>
+         <div class="demo-azioni">
+           <select id="demo-snippet"></select>
+           <button id="demo-inserisci" type="button" class="tasto-cielo" data-i18n="demo.inserisci">Aggiungi scena</button>
+           <button id="demo-salva" type="button" class="tasto-cielo" data-i18n="demo.salva">Salva script</button>
+           <button id="demo-annulla" type="button" class="tasto-cielo" data-i18n="demo.annulla">Annulla modifiche</button>
+         </div>
+         <p id="demo-validazione" role="status" aria-live="polite"></p>
+         <p id="demo-esito" role="status" aria-live="polite"></p>
+       </div>
        <div id="imp-tab-guida" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-guida" data-imp-pannello="guida">
 
         <section class="space-y-3">
@@ -2958,6 +2984,8 @@
   <script src="ui-nuova.js"></script>
   <script src="didattica.js"></script>
   <script src="demo-motore.js"></script>
+  <script src="demo-libreria.js"></script>
   <script src="demo.js"></script>
+  <script src="demo-impostazioni.js"></script>
 </body>
 </html>

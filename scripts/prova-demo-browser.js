@@ -42,14 +42,74 @@ const server = http.createServer((req, res) => {
     });
     await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
     await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof sky !== 'undefined' && sky.observer && sky.oggetti.length, null, { timeout: 30000 });
+    // Gestione reale attraverso la nuova scheda, anche con sola tastiera.
+    await pagina.locator('#btn-impostazioni').click();
+    await pagina.locator('#imp-tab-btn-demo').click();
+    assert.equal(await pagina.locator('#cielo-comandi #demo-avvia').count(), 0);
+    assert.equal(await pagina.locator('#demo-editor').getAttribute('readonly'), '');
+    assert.equal(await pagina.locator('#demo-elimina').isDisabled(), true);
+    assert.match(await pagina.locator('#demo-info').innerText(), /3 scene.*30 s/);
+    await pagina.locator('#demo-duplica').click();
+    const testoBase = await pagina.locator('#demo-editor').inputValue();
+    await pagina.locator('#demo-editor').fill(testoBase.replace('18:00', '25:00'));
+    assert.equal(await pagina.locator('#demo-salva').isDisabled(), true);
+    await pagina.locator('#demo-editor').fill(testoBase.replace('10s;', '10s'));
+    assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
+    await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
+    for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'orbit_object', 'zoom_view']) {
+      await pagina.locator('#demo-snippet').selectOption(snippet);
+      await pagina.locator('#demo-inserisci').click();
+      assert.equal(await pagina.locator('#demo-editor').getAttribute('aria-invalid'), 'false', snippet);
+    }
+    await pagina.locator('#demo-salva').click();
+    assert.match(await pagina.locator('#demo-esito').innerText(), /salvato/);
+    console.log('Demo browser: editor e snippet verificati');
+    const salvato = await pagina.locator('#demo-editor').inputValue();
+    const chiaveUtente = await pagina.locator('#demo-elenco').inputValue();
+    await pagina.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined');
+    await pagina.evaluate(() => mostraVista('cielo'));
+    await pagina.waitForFunction(() => sky.observer && sky.oggetti.length);
+    await pagina.locator('#btn-impostazioni').click();
+    await pagina.locator('#imp-tab-btn-demo').click();
+    await pagina.locator('#demo-elenco').selectOption(chiaveUtente);
+    assert.equal(await pagina.locator('#demo-editor').inputValue(), salvato);
+    // Export e import devono conservare il testo, senza eseguire nulla.
+    const downloadAtteso = pagina.waitForEvent('download');
+    await pagina.locator('#demo-esporta').click();
+    const download = await downloadAtteso;
+    assert.match(download.suggestedFilename(), /\.astrodemo$/);
+    assert.equal(fs.readFileSync(await download.path(), 'utf8'), salvato);
+    await pagina.locator('#demo-importa').setInputFiles({ name: 'errore.astrodemo', mimeType: 'text/plain', buffer: Buffer.from('evil()') });
+    assert.equal(await pagina.locator('#demo-editor').inputValue(), salvato);
+    assert.match(await pagina.locator('#demo-esito').innerText(), /riga/);
+    await pagina.locator('#demo-importa').setInputFiles({ name: 'copia.astrodemo', mimeType: 'text/plain', buffer: Buffer.from(salvato) });
+    await pagina.waitForFunction(() => document.getElementById('demo-elenco').value === '');
+    await pagina.locator('#demo-salva').click();
+    assert.equal(await pagina.locator('#demo-elenco option').count(), 3);
+    pagina.once('dialog', dialog => dialog.accept());
+    await pagina.locator('#demo-elimina').click();
+    assert.equal(await pagina.locator('#demo-elenco option').count(), 2);
+    // L'errore di quota è visibile e lascia intatta la bozza.
+    await pagina.locator('#demo-elenco').selectOption(chiaveUtente);
+    await pagina.locator('#demo-editor').fill(salvato.replace('mia_demo', 'modificata'));
+    await pagina.evaluate(() => { window.demoSetItem = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new Error('quota-demo'); }; });
+    await pagina.locator('#demo-salva').click();
+    assert.match(await pagina.locator('#demo-esito').innerText(), /quota-demo/);
+    await pagina.evaluate(() => { Storage.prototype.setItem = window.demoSetItem; });
+    await pagina.locator('#demo-salva').click();
+    assert.match(await pagina.locator('#demo-esito').innerText(), /salvato/);
+    await pagina.locator('#demo-elenco').selectOption('eclisse_tour');
+    console.log('Demo browser: persistenza, import/export, modifica ed eliminazione verificati');
     const originale = await pagina.evaluate(() => {
       skyFermaPlayback();
       skyImpostaOffsetTempo((Date.parse('2026-09-22T19:00:00Z') - Date.now()) / 1000, { fluido: true });
       const prima = { quando: +skyAdesso(), target: sky.target, fov: sky.fov, telefono: sky.seguiTelefono };
       skyMostraGruppo('astri');
-      document.getElementById('demo-avvia').click();
       return prima;
     });
+    await pagina.locator('#demo-avvia').click();
+    assert.equal(await pagina.locator('#modale-impostazioni').isVisible(), false);
     await pagina.waitForTimeout(700);
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo');
     assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), '');
@@ -115,6 +175,48 @@ const server = http.createServer((req, res) => {
     await pagina.waitForTimeout(300);
     assert.equal(await pagina.evaluate(() => sol.az), ridotta, 'Preferenza movimento ridotto rispettata');
     await pagina.evaluate(() => AstroDemo.ferma());
+    // Escape, click esterno e cambio scheda mantengono il contratto di ripristino.
+    const fotografia = () => pagina.evaluate(() => ({
+      manuale: { ...sky.manuale }, target: sky.target, inseguimento: sky.inseguimento,
+      pianeti: sky.mostraPianeti, soleLuna: sky.mostraSoleLuna, sotto: sky.mostraSottoOrizzonte,
+      fov: sky.fov, fovVoluto: sky.fovVoluto, tempo: sky.istanteSimulatoMs,
+      passo: sky.passoTempoSec, playback: sky.playbackVerso, modalita: sky.modalitaTempo,
+      sol: [sol.az, sol.elev, sol.zoom, sol.panX, sol.panY, sol.vicino]
+    }));
+    const primaStop = await fotografia();
+    await pagina.evaluate(() => AstroDemo.avvia());
+    await pagina.keyboard.press('Escape');
+    assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'fermo');
+    assert.deepEqual(await fotografia(), primaStop);
+    await pagina.evaluate(() => AstroDemo.avvia());
+    await pagina.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+    assert.deepEqual(await fotografia(), primaStop);
+    await pagina.evaluate(() => {
+      AstroDemo.avvia();
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.hidden;
+    });
+    assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'pausa');
+    await pagina.evaluate(() => AstroDemo.ferma());
+    // Un'ora che salta per il cambio d'ora deve bloccare già il salvataggio.
+    const civile = await pagina.evaluate(() => {
+      const luogo = sky.luogoVista, ms = +skyAdesso();
+      sky.luogoVista = { lat: 45.46, lon: 9.19, fuso: 'Europe/Rome' };
+      skyImpostaOffsetTempo((Date.parse('2026-03-29T00:00:00Z') - Date.now()) / 1000, { fluido: true });
+      let errore = '';
+      try { AstroDemo.libreria.salva("define_demo dst { scene planetarium_view { duration: 1s; action: timelapse { start: 02:30, end: 04:00 }; }}"); }
+      catch (e) { errore = e.message; }
+      sky.luogoVista = luogo;
+      skyImpostaOffsetTempo((ms - Date.now()) / 1000, { fluido: true });
+      return errore;
+    });
+    assert.match(civile, /Ora civile inesistente/);
+    await pagina.setViewportSize({ width: 390, height: 844 });
+    await pagina.locator('#btn-impostazioni').click();
+    await pagina.locator('#imp-tab-btn-demo').click();
+    assert.ok(await pagina.locator('#demo-editor').isVisible());
+    await pagina.screenshot({ path: path.join(radice, 'work/demo-impostazioni.png') });
     assert.deepEqual(errori, [], 'Nessuna eccezione browser');
     console.log('Demo browser: planetario, volo, ombra, orbita, pausa, stop e ripristino verificati');
   } finally {

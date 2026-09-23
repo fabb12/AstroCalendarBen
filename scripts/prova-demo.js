@@ -58,3 +58,29 @@ registro.timelapse.crea = () => ({ aggiorna() { throw new Error('guasto controll
 motore.avvia(testo, contesto());
 ok(motore.stato === 'errore' && ripristini === 4 && richieste.size === 0, 'Guasto ripristina e termina');
 console.log('Demo: ' + verifiche + ' verifiche superate');
+
+// Archivio indipendente dal DOM: protezioni, persistenza e scritture atomiche.
+const { crea, CHIAVE } = require('../demo-libreria.js');
+const memoria = new Map();
+const storage = { getItem: k => memoria.get(k) || null, setItem: (k, v) => memoria.set(k, v) };
+const libreria = crea(storage, [{ chiave: 'eclisse_tour', testo }], analizza);
+rifiuta(() => libreria.salva(testo, 'eclisse_tour'), 'Built-in non sovrascrivibile');
+rifiuta(() => libreria.elimina('eclisse_tour'), 'Built-in non eliminabile');
+const chiave = libreria.salva(testo);
+ok(libreria.elenco().length === 2, 'Duplicazione crea uno script utente');
+const riaperta = crea(storage, [{ chiave: 'eclisse_tour', testo }], analizza);
+ok(riaperta.elenco()[1].testo === testo, 'Persistenza dopo riapertura');
+const cambiato = testo.replace('10s;', '11s;');
+riaperta.salva(cambiato, chiave);
+ok(libreria.elenco()[1].testo === cambiato, 'Modifica persistente');
+rifiuta(() => libreria.salva('non valido', chiave), 'Validazione prima della scrittura');
+ok(libreria.elenco()[1].testo === cambiato, 'Errore non distrugge la versione precedente');
+const senzaSpazio = crea({ getItem: storage.getItem, setItem() { throw new Error('QuotaExceededError'); } }, [], analizza);
+rifiuta(() => senzaSpazio.salva(testo), 'Quota esaurita segnalata');
+ok(libreria.elenco().length === 2, 'Errore storage non crea script fantasma');
+riaperta.elimina(chiave);
+ok(libreria.elenco().length === 1, 'Eliminazione persistente');
+memoria.set(CHIAVE, '{corrotto');
+rifiuta(() => libreria.salva(testo), 'Archivio corrotto non sovrascritto');
+ok(memoria.get(CHIAVE) === '{corrotto', 'Archivio corrotto conservato');
+console.log('Demo e libreria: ' + verifiche + ' verifiche superate');
