@@ -156,6 +156,7 @@
     crea(p, c) {
       eclisse(c); const inizio = sol.az;
       return { aggiorna(u) {
+        if (c.cameraManuale) return;
         if (!c.ridotto) sol.az = inizio + p.angle * Math.PI / 180 * solVoloRampa(u);
         // Il punto medio segue la rotazione: il sistema non scappa dal quadro.
         centraSistema(c);
@@ -174,13 +175,13 @@
         // Con l'ombra al centro si allarga il campo per contenere anche la Luna.
         solImpostaZoom(sol.zoom * 0.5);
         return { aggiorna() {
-          centraSistema(c);
+          if (!c.cameraManuale) centraSistema(c);
         } };
       }
       sky.target = p.target; sky.inseguimento = true;
       sky.mostraPianeti = true; sky.mostraSoleLuna = true; sky.mostraSottoOrizzonte = true;
       skyAggiornaOggetti(true); skyInsegui();
-      return { aggiorna: () => skyInsegui(), chiudi: () => { sky.inseguimento = false; } };
+      return { aggiorna: () => { if (!c.cameraManuale) skyInsegui(); }, chiudi: () => { sky.inseguimento = false; } };
     }
   };
   registro.transition_to = {
@@ -219,14 +220,22 @@
     const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
       'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto'].map(k => [k, sol[k]]));
     const auroraPrima = { acceso: aur.acceso, kpSimulato: aur.kpSimulato };
-    const c = { chiuso: false, eclisse: null,
+    const c = { chiuso: false, eclisse: null, cameraManuale: false,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
+        // Ogni scena puo impostare la propria inquadratura iniziale. Dopo un
+        // intervento della persona, pero, le animazioni della scena corrente
+        // le cedono la camera mentre il racconto e il suo orologio proseguono.
+        c.cameraManuale = false;
         if (scena.vista === 'planetarium_view') vista('planetarium_view', c);
         if (scena.vista === 'solar_system_3d') {
           vista('solar_system_3d', c);
 
         }
+      },
+      cediCamera() {
+        c.cameraManuale = true;
+        sky.inseguimento = false;
       },
       ripristina() {
         c.chiuso = true; contesto = null; evidenze.clear();
@@ -295,9 +304,11 @@
   function avviaSicuro(testo) {
     try { avvia(testo); } catch (e) { skyAvviso('demo', t('errore') + ': ' + e.message, 10000); }
   }
-  // Qualunque intervento restituisce prima i comandi alla persona.
+  // I comandi restano utilizzabili durante il racconto. Un intervento cede
+  // la camera alla persona per la scena corrente, senza fermarne il tempo;
+  // filtri, menu e altri controlli continuano quindi a funzionare normalmente.
   document.addEventListener('pointerdown', e => {
-    if (contesto && !pannello.contains(e.target)) motore.ferma();
+    if (contesto && !pannello.contains(e.target)) contesto.cediCamera();
   }, true);
   document.addEventListener('keydown', e => {
     if (contesto && e.key === 'Escape') { motore.ferma(); e.preventDefault(); e.stopImmediatePropagation(); }

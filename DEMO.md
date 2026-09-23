@@ -3,8 +3,11 @@
 Apri **Impostazioni → Demo automatizzate**, seleziona una demo e premi
 **Avvia demo selezionata**. La finestra si chiude per lasciare libero il cielo.
 Pausa, Riprendi, Ricomincia e Termina demo restano disponibili nelle due viste.
-Escape o un intervento fuori dai controlli interrompe la demo e restituisce
-vista, orologio, camera, filtri, inseguimento e playback precedenti.
+Durante la riproduzione si possono muovere e ingrandire le camere e usare i
+controlli di visualizzazione: l'intervento manuale prende il controllo della
+camera per la scena corrente, ma la demo e il suo orologio non si fermano.
+Escape o **Termina demo** interrompono la demo e restituiscono vista, orologio,
+camera, filtri, inseguimento e playback precedenti.
 Cambiare scheda mette in pausa: la ripresa è esplicita.
 
 ## Libreria ed editor

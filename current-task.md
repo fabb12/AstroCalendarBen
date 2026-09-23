@@ -1,10 +1,9 @@
 # Niente in corso
 
-Ultimo lavoro: quattro demo built-in (v365).
+Ultimo lavoro: controlli interattivi durante le demo (v366).
 
-- Eclisse solare 2026, eclisse lunare totale 2028 a Sapporo, aurora simulata a Tromsø,
-  corteo di quattro pianeti sopra l'orizzonte a Tucson.
-- Azioni di data, luogo, Kp e puntamento, con validazione in ordine e ripristino
-  dell'orologio, luogo di visita e aurora, senza modificare la posizione di casa.
-- Titoli e descrizioni bilingui, cache aggiornata e documentazione in DEMO.md.
-- Prove: parser/motore/libreria, quattro script, interfaccia e stato nel browser.
+- Camera, zoom e controlli di visualizzazione restano utilizzabili senza
+  interrompere la riproduzione.
+- L'intervento manuale prende la camera per la scena corrente; la scena
+  successiva può ancora applicare la propria inquadratura iniziale.
+- Escape e Termina demo conservano il ripristino completo dello stato iniziale.
