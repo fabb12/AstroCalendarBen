@@ -195,7 +195,7 @@ const server = http.createServer((req, res) => {
     await pagina.waitForTimeout(300);
     assert.equal(await pagina.evaluate(() => sol.az), ridotta, 'Preferenza movimento ridotto rispettata');
     await pagina.evaluate(() => AstroDemo.ferma());
-    // Escape, click esterno e cambio scheda mantengono il contratto di ripristino.
+    // Escape ripristina; camera e filtri restano controllabili senza fermare la demo.
     const fotografia = () => pagina.evaluate(() => ({
       manuale: { ...sky.manuale }, target: sky.target, inseguimento: sky.inseguimento,
       pianeti: sky.mostraPianeti, soleLuna: sky.mostraSoleLuna, sotto: sky.mostraSottoOrizzonte,
@@ -208,8 +208,25 @@ const server = http.createServer((req, res) => {
     await pagina.keyboard.press('Escape');
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'fermo');
     assert.deepEqual(await fotografia(), primaStop);
-    await pagina.evaluate(() => AstroDemo.avvia());
-    await pagina.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+    await pagina.evaluate(() => AstroDemo.avvia("define_demo interattiva { scene planetarium_view { duration: 5s; action: point_view { az: 120, alt: 25 }; }}"));
+    await pagina.locator('[data-vai-gruppo="vista"]').click();
+    await pagina.locator('#scheda-vista-oggetti').click();
+    await pagina.locator('#skymap-btn-pianeti').click();
+    const controlloDurante = await pagina.evaluate(() => ({
+      stato: AstroDemo.stato, pianeti: sky.mostraPianeti, az: sky.manuale.az
+    }));
+    assert.equal(controlloDurante.stato, 'attivo', 'Il controllo di visualizzazione non ferma la demo');
+    assert.equal(controlloDurante.pianeti, false, 'Il filtro resta modificabile durante la demo');
+    await pagina.locator('[data-vai-gruppo="vista"]').click();
+    const tela = await pagina.locator('#skymap-canvas').boundingBox();
+    assert.ok(tela, 'Tela del planetario disponibile');
+    await pagina.mouse.move(tela.x + tela.width * 0.3, tela.y + tela.height * 0.35);
+    await pagina.mouse.down();
+    await pagina.mouse.move(tela.x + tela.width * 0.45, tela.y + tela.height * 0.35, { steps: 4 });
+    await pagina.mouse.up();
+    assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo', 'Il trascinamento della camera non ferma la demo');
+    assert.notEqual(await pagina.evaluate(() => sky.manuale.az), controlloDurante.az, 'La camera risponde durante la demo');
+    await pagina.evaluate(() => AstroDemo.ferma());
     assert.deepEqual(await fotografia(), primaStop);
     await pagina.evaluate(() => {
       AstroDemo.avvia();
