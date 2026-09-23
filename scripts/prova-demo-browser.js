@@ -46,11 +46,14 @@ const server = http.createServer((req, res) => {
       skyFermaPlayback();
       skyImpostaOffsetTempo((Date.parse('2026-09-22T19:00:00Z') - Date.now()) / 1000, { fluido: true });
       const prima = { quando: +skyAdesso(), target: sky.target, fov: sky.fov, telefono: sky.seguiTelefono };
+      skyMostraGruppo('astri');
       document.getElementById('demo-avvia').click();
       return prima;
     });
     await pagina.waitForTimeout(700);
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo');
+    assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), '');
+    assert.equal(await pagina.locator('.gruppo-comandi.gruppo-attivo').count(), 0, 'Il menu del planetario è chiuso durante la demo');
     assert.equal(await pagina.evaluate(() => sky.target), 'Venus');
     assert.equal(await pagina.evaluate(() => AstroDemo.evidenza('Venus')), 5);
     const oraCielo = await pagina.evaluate(() => partiDataDelLuogo(skyAdesso(), skyLuogoDelCielo()).hour);
