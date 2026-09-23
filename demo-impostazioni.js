@@ -5,6 +5,11 @@
   const t = k => astroI18n.t('demo.' + k);
   const libreria = AstroDemo.libreria, editor = $('editor'), elenco = $('elenco');
   let selezionata = null, originale = '', nuova = false;
+  function nomeDemo(d) {
+    if (d.solaLettura) return t('builtin.' + d.chiave + '.title');
+    try { return AstroDemoMotore.analizza(d.testo).id; } catch (_) { return d.chiave; }
+  }
+  const testoOpzione = d => nomeDemo(d) + ' · ' + t(d.solaLettura ? 'predefinita' : 'utente');
   const azioni = {
     timelapse: ['planetarium_view', 'timelapse { start: 18:00, end: 22:00 }'],
     highlight_object: ['planetarium_view', "highlight_object { name: 'Venus', scale: 5.0 }"],
@@ -49,7 +54,8 @@
       $('info').textContent = demo.id + ' · ' + demo.scene.length + ' ' + t('scene') +
         ' · ' + demo.scene.reduce((n, s) => n + s.durata, 0) / 1000 + ' s · ' +
         (solaLettura ? t('predefinita') : t('utente')) +
-        (bersagli.length ? ' · ' + t('bersagli') + ': ' + bersagli.join(', ') : '');
+        (bersagli.length ? ' · ' + t('bersagli') + ': ' + bersagli.join(', ') : '') +
+        (solaLettura ? '\n' + t('builtin.' + selezionata.chiave + '.description') : '');
     } else $('info').textContent = t('nonValido');
     return demo;
   }
@@ -57,11 +63,7 @@
     const dati = libreria.elenco();
     selezionata = dati.find(d => d.chiave === chiave) || dati[0];
     elenco.replaceChildren();
-    for (const d of dati) {
-      let nome;
-      try { nome = AstroDemoMotore.analizza(d.testo).id; } catch (_) { nome = d.chiave; }
-      elenco.add(new Option(nome + ' · ' + t(d.solaLettura ? 'predefinita' : 'utente'), d.chiave));
-    }
+    for (const d of dati) elenco.add(new Option(testoOpzione(d), d.chiave));
     elenco.value = selezionata.chiave;
     originale = editor.value = selezionata.testo; nuova = false; verifica();
   }
@@ -131,9 +133,7 @@
       for (const d of libreria.elenco()) {
         const opzione = Array.from(elenco.options).find(o => o.value === d.chiave);
         if (!opzione) continue;
-        let nome;
-        try { nome = AstroDemoMotore.analizza(d.testo).id; } catch (_) { nome = d.chiave; }
-        opzione.textContent = nome + ' · ' + t(d.solaLettura ? 'predefinita' : 'utente');
+        opzione.textContent = testoOpzione(d);
       }
     });
     verifica();

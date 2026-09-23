@@ -1,13 +1,10 @@
 # Niente in corso
 
-Ultimo lavoro: demo automatizzate nelle Impostazioni (v364).
+Ultimo lavoro: quattro demo built-in (v365).
 
-- Tab dedicata, libreria utente persistente, demo built-in di sola lettura.
-- Editor DSL con validazione live, snippet, import/export .astrodemo e .txt.
-- Parser e grammatica invariati; validazione civile anche prima del salvataggio.
-- Ripristino esteso alla camera 3D, arresto al cambio di prefers-reduced-motion.
-- Test estesi per CRUD, storage, editor, file, ciclo di vita e cambio d'ora.
-- Documentazione: DEMO.md; versione e cache allineate.
-
-Controlli i18n generali: restano due chiavi sol.azione inutilizzate e il
-conteggio delle stringhe cablate nei file preesistenti supera il tetto (348/346).
+- Eclisse solare 2026, eclisse lunare totale 2028 a Sapporo, aurora simulata a Tromsø,
+  corteo di quattro pianeti sopra l'orizzonte a Tucson.
+- Azioni di data, luogo, Kp e puntamento, con validazione in ordine e ripristino
+  dell'orologio, luogo di visita e aurora, senza modificare la posizione di casa.
+- Titoli e descrizioni bilingui, cache aggiornata e documentazione in DEMO.md.
+- Prove: parser/motore/libreria, quattro script, interfaccia e stato nel browser.

@@ -1,5 +1,6 @@
 'use strict';
 const { analizza, Motore } = require('../demo-motore.js');
+const predefiniti = require('../demo-predefiniti.js');
 let verifiche = 0;
 function ok(condizione, messaggio) { if (!condizione) throw new Error(messaggio); verifiche++; }
 function rifiuta(fn, messaggio) { let errore; try { fn(); } catch (e) { errore = e; } ok(!!errore, messaggio); return errore; }
@@ -8,6 +9,13 @@ const testo = "// Commento\n define_demo 'eclisse_tour' {\n" +
   "scene transition { duration: 5s; action: zoom_view { type: geometric, final_target: solar_system_3d }; }\n" +
   "scene solar_system_3d { duration: 15s; action: orbit_object { object: 'Earth-Moon', angle: 360, speed: slow }; action: center { target: 'Eclipse Shadow' }; }}";
 const ast = analizza(testo);
+ok(predefiniti.length >= 4, 'Almeno quattro tour predefiniti');
+ok(new Set(predefiniti.map(d => d.chiave)).size === predefiniti.length, 'Identificativi built-in univoci');
+for (const d of predefiniti) {
+  const demo = analizza(d.testo);
+  ok(demo.id === d.chiave && demo.scene.length >= 2 &&
+    demo.scene.every(s => s.durata > 0 && s.azioni.length), 'Script built-in valido: ' + d.chiave);
+}
 ok(ast.id === 'eclisse_tour' && ast.scene.length === 3, 'Tre scene e nome');
 ok(ast.scene.map(s => s.durata).join() === '10000,5000,15000', 'Durate esatte');
 ok(ast.scene[0].azioni[0].parametri.start === '18:00', 'Orario non confuso con numero');
@@ -63,23 +71,23 @@ console.log('Demo: ' + verifiche + ' verifiche superate');
 const { crea, CHIAVE } = require('../demo-libreria.js');
 const memoria = new Map();
 const storage = { getItem: k => memoria.get(k) || null, setItem: (k, v) => memoria.set(k, v) };
-const libreria = crea(storage, [{ chiave: 'eclisse_tour', testo }], analizza);
+const libreria = crea(storage, predefiniti, analizza);
 rifiuta(() => libreria.salva(testo, 'eclisse_tour'), 'Built-in non sovrascrivibile');
 rifiuta(() => libreria.elimina('eclisse_tour'), 'Built-in non eliminabile');
 const chiave = libreria.salva(testo);
-ok(libreria.elenco().length === 2, 'Duplicazione crea uno script utente');
-const riaperta = crea(storage, [{ chiave: 'eclisse_tour', testo }], analizza);
-ok(riaperta.elenco()[1].testo === testo, 'Persistenza dopo riapertura');
+ok(libreria.elenco().length === predefiniti.length + 1, 'Duplicazione crea uno script utente');
+const riaperta = crea(storage, predefiniti, analizza);
+ok(riaperta.elenco().find(d => d.chiave === chiave).testo === testo, 'Persistenza dopo riapertura');
 const cambiato = testo.replace('10s;', '11s;');
 riaperta.salva(cambiato, chiave);
-ok(libreria.elenco()[1].testo === cambiato, 'Modifica persistente');
+ok(libreria.elenco().find(d => d.chiave === chiave).testo === cambiato, 'Modifica persistente');
 rifiuta(() => libreria.salva('non valido', chiave), 'Validazione prima della scrittura');
-ok(libreria.elenco()[1].testo === cambiato, 'Errore non distrugge la versione precedente');
+ok(libreria.elenco().find(d => d.chiave === chiave).testo === cambiato, 'Errore non distrugge la versione precedente');
 const senzaSpazio = crea({ getItem: storage.getItem, setItem() { throw new Error('QuotaExceededError'); } }, [], analizza);
 rifiuta(() => senzaSpazio.salva(testo), 'Quota esaurita segnalata');
-ok(libreria.elenco().length === 2, 'Errore storage non crea script fantasma');
+ok(libreria.elenco().length === predefiniti.length + 1, 'Errore storage non crea script fantasma');
 riaperta.elimina(chiave);
-ok(libreria.elenco().length === 1, 'Eliminazione persistente');
+ok(libreria.elenco().length === predefiniti.length, 'Eliminazione persistente');
 memoria.set(CHIAVE, '{corrotto');
 rifiuta(() => libreria.salva(testo), 'Archivio corrotto non sovrascritto');
 ok(memoria.get(CHIAVE) === '{corrotto', 'Archivio corrotto conservato');

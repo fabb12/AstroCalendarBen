@@ -9,7 +9,7 @@ Cambiare scheda mette in pausa: la ripresa è esplicita.
 
 ## Libreria ed editor
 
-Il tour `eclisse_tour` è di sola lettura. **Crea nuova** apre una bozza con
+I quattro tour inclusi sono di sola lettura. **Crea nuova** apre una bozza con
 una prima scena valida; **Duplica** copia lo script nell'editor. Modifica il
 nome dopo `define_demo`, le durate e i parametri, poi premi **Salva script**.
 Le demo utente si modificano direttamente e si eliminano con conferma.
@@ -36,7 +36,21 @@ un salvataggio riuscito o sostituire silenziosamente i dati precedenti.
 `demo-impostazioni.js` collega editor e import/export a `AstroDemo.valida` e
 `AstroDemo.libreria`. Il parser e il motore puro non cambiano grammatica.
 
-## Tour predefinito
+## I quattro tour predefiniti
+
+| Tour | Scene · durata | Luogo, data ed effetti |
+| --- | --- | --- |
+| **Eclisse solare totale 2026** (`eclisse_tour`) | 3 · 30 s | Dal cielo del luogo scelto (Venere, 18:00–22:00) al banco Terra–Luna. Il massimo dell’eclisse del 12 agosto 2026 è cercato da Astronomy Engine; la camera ruota intorno alla coppia e centra l’impronta dell’ombra. |
+| **Eclisse lunare totale** (`eclisse_lunare`) | 2 · 24 s | Sapporo, notte tra il 31 dicembre 2028 e il 1° gennaio 2029: Luna centrata, scorrimento 00:45–03:00 JST attraverso il massimo reale delle 01:52. Il disco usa il disegno del planetario; il tour non aggiunge una tinta artificiale all’ombra. |
+| **Aurora boreale** (`aurora_boreale`) | 2 · 20 s | Tromsø, 15 gennaio 2027: cielo verso nord, simulazione dell’ovale aurorale con Kp 5, notte dalle 21:00 alle 23:30 CET. Kp è una simulazione didattica, non una previsione per quella data. |
+| **Corteo dei pianeti** (`allineamento_pianeti`) | 2 · 22 s | Tucson, alba del 21 ottobre 2028: Mercurio, Venere, Marte e Giove effettivamente sopra l’orizzonte a est, evidenziati lungo l’eclittica. L’orologio attraversa 05:45–06:10 MST; le posizioni dei pianeti non sono forzate. |
+
+Gli orari dei tour con luogo esplicito sono locali al luogo indicato.
+Data e luogo di visita sono temporanei: non modificano la posizione di casa,
+e alla fine o all’interruzione tornano orologio, osservatore, orientamento,
+filtri e simulazione aurorale precedenti.
+
+### Dettaglio del tour solare
 
 - **10 secondi:** cielo del giorno e del luogo attualmente selezionati,
   dalle 18:00 alle 22:00 nel fuso del luogo, con Venere centrata ed evidenza
@@ -93,6 +107,15 @@ Ore civili inesistenti per il cambio d'ora vengono rifiutate.
 `orbit_object` supporta Earth-Moon: angle stabilisce il giro, mentre la
 durata della scena ne stabilisce la velocità; slow indica la rampa morbida.
 `zoom_view` supporta la transizione geometric verso solar_system_3d.
+`set_date { iso: '2028-12-31T15:45:00Z' }` cambia l’istante UTC: la stringa
+deve essere una data reale nel formato esatto `YYYY-MM-DDTHH:MM:SSZ`.
+`set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' }`
+seleziona un luogo di visita, con coordinate numeriche e fuso IANA valido.
+`simulate_aurora { kp: 5 }` accende l’ovale aurorale con un Kp numerico da 0 a 9.
+`point_view { az: 0, alt: 25 }` punta la camera manuale in gradi, senza
+inseguire un astro. La validazione degli orari civili applica le azioni
+`set_date` e `set_location` nell’ordine dello script, senza mutare l’app;
+l’esecuzione usa le stesse date e lo stesso fuso.
 
 Gli errori di sintassi riportano riga e colonna. Comandi, parametri e scene
 sconosciuti vengono rifiutati prima di cambiare lo stato dell'app.
