@@ -191,6 +191,10 @@
       }
     };
     contesto = c;
+    // La demo parte dal pannello Astri (dove vive il suo tasto), ma il
+    // racconto deve lasciare libero il cielo: chiudi anche qualsiasi altro
+    // gruppo che fosse rimasto aperto prima dell'avvio.
+    skyMostraGruppo('');
     skyFermaPlayback(); skyFermaMovimenti(); sky.seguiTelefono = false; sky.modalitaHover = false;
     sky.eventoInseguito = null;
     motore.avvia(testo, c);
