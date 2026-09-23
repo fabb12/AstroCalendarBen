@@ -82,6 +82,7 @@ const server = http.createServer((req, res) => {
     assert.equal(fs.readFileSync(await download.path(), 'utf8'), salvato);
     await pagina.locator('#demo-importa').setInputFiles({ name: 'errore.astrodemo', mimeType: 'text/plain', buffer: Buffer.from('evil()') });
     assert.equal(await pagina.locator('#demo-editor').inputValue(), salvato);
+    await pagina.waitForFunction(() => /riga/.test(document.getElementById('demo-esito').textContent));
     assert.match(await pagina.locator('#demo-esito').innerText(), /riga/);
     await pagina.locator('#demo-importa').setInputFiles({ name: 'copia.astrodemo', mimeType: 'text/plain', buffer: Buffer.from(salvato) });
     await pagina.waitForFunction(() => document.getElementById('demo-elenco').value === '');
