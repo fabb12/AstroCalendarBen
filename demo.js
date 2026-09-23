@@ -220,6 +220,7 @@
     const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
       'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto'].map(k => [k, sol[k]]));
     const auroraPrima = { acceso: aur.acceso, kpSimulato: aur.kpSimulato };
+    const schermoInteroPrima = sky.schermoIntero;
     const c = { chiuso: false, eclisse: null, cameraManuale: false,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
@@ -255,6 +256,9 @@
         skyAggiornaOggetti(true); skyAggiornaTestoTempo(); skyAggiornaSlittaTempo();
         sky.playbackUltimo = 0; skyAggiornaComandiPlayback();
         skyAggiornaTastoInsegui(); skyAggiornaTastiFiltri();
+        // La demo entra da sola nel cielo immersivo, ma non deve chiudere uno
+        // schermo intero che la persona aveva gia aperto prima di avviarla.
+        if (!schermoInteroPrima && sky.schermoIntero) skyEsciSchermoIntero();
         pannello.hidden = true;
       }
     };
@@ -265,6 +269,10 @@
     skyFermaPlayback(); skyFermaMovimenti(); sky.seguiTelefono = false; sky.modalitaHover = false;
     sky.eventoInseguito = null;
     motore.avvia(testo, c);
+    // La richiesta resta nello stesso gesto del tasto «Avvia»: e' essenziale
+    // per i browser che autorizzano il vero schermo intero soltanto durante
+    // un'interazione. Su iPhone skyEntraSchermoIntero usa il ripiego CSS.
+    if (motore.stato === 'attivo' && !sky.schermoIntero) skyEntraSchermoIntero();
     aggiornaPannello();
   }
 

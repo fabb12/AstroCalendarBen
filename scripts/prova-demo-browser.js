@@ -132,6 +132,10 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.locator('#modale-impostazioni').isVisible(), false);
     await pagina.waitForTimeout(700);
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo');
+    assert.equal(await pagina.evaluate(() => sky.schermoIntero), true, 'La demo parte a schermo intero');
+    assert.equal(await pagina.evaluate(() =>
+      document.fullscreenElement === document.getElementById('skymap-contenitore') || sky.fintoSchermoIntero),
+    true, 'Schermo intero nativo o ripiego CSS attivo');
     assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), '');
     assert.equal(await pagina.locator('.gruppo-comandi.gruppo-attivo').count(), 0, 'Il menu del planetario è chiuso durante la demo');
     assert.equal(await pagina.evaluate(() => sky.target), 'Venus');
@@ -181,6 +185,7 @@ const server = http.createServer((req, res) => {
     }));
     assert.deepEqual({ quando: dopo.quando, target: dopo.target, fov: dopo.fov, telefono: dopo.telefono }, originale);
     assert.equal(dopo.aperto, false); assert.equal(dopo.evidenza, 1);
+    assert.equal(await pagina.evaluate(() => sky.schermoIntero), false, 'La demo ripristina lo schermo iniziale');
     // Una chiusura nello stesso turno dell'apertura annulla anche il callback differito.
     await pagina.evaluate(() => {
       AstroDemo.avvia("define_demo x { scene transition { duration: 5s; action: zoom_view { type: geometric, final_target: solar_system_3d }; }}");
