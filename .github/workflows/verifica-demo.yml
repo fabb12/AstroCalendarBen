@@ -5,6 +5,8 @@ on:
       - 'demo*.js'
       - 'app.js'
       - 'index.html'
+      - 'style.css'
+      - 'lingue/*.js'
       - 'scripts/prova-demo*.js'
       - '.github/workflows/verifica-demo.yml'
 permissions:
@@ -26,5 +28,5 @@ jobs:
         if: always()
         with:
           name: demo-eclisse
-          path: work/demo-eclisse.png
+          path: work/demo-*.png
           if-no-files-found: ignore

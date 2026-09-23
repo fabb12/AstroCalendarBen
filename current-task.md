@@ -1,15 +1,13 @@
 # Niente in corso
 
-Ultimo lavoro chiuso: riserve di rete per quote, meteo e traffico ADS-B (v361).
+Ultimo lavoro: demo automatizzate nelle Impostazioni (v364).
 
-- Quote: fallback Terrarium a zoom 9, tre richieste simultanee, cache e pausa sui guasti.
-- Meteo: pausa condivisa e persistente per host, Retry-After, deduplicazione,
-  timeout e recupero delle nuvole salvate della stessa località.
-- ADS-B: niente tentativi diretti senza CORS; proxy e ponti esistenti,
-  saltando i servizi ancora in penale.
-- Versione e data aggiornate in config.js e sw.js.
-- Prove: node scripts/prova-riserve-rete.js; controllo sintassi dei file modificati.
+- Tab dedicata, libreria utente persistente, demo built-in di sola lettura.
+- Editor DSL con validazione live, snippet, import/export .astrodemo e .txt.
+- Parser e grammatica invariati; validazione civile anche prima del salvataggio.
+- Ripristino esteso alla camera 3D, arresto al cambio di prefers-reduced-motion.
+- Test estesi per CRUD, storage, editor, file, ciclo di vita e cambio d'ora.
+- Documentazione: DEMO.md; versione e cache allineate.
 
-Limite: le riserve dipendono comunque dalla rete; senza dati salvati e con
-ogni fonte irraggiungibile si mostra indisponibilità. Non vengono inventate
-previsioni o posizioni. Il banner PWA è gestito dal pulsante Installa.
+Controlli i18n generali: restano due chiavi sol.azione inutilizzate e il
+conteggio delle stringhe cablate nei file preesistenti supera il tetto (348/346).

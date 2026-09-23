@@ -62,16 +62,21 @@
     solPanFraTerraELuna(sol.zoom, g);
   }
 
+  function tempiCivili(p) {
+    const luogo = skyLuogoDelCielo(), parti = partiDataDelLuogo(skyAdesso(), luogo);
+    const a = minuti(p.start), b = minuti(p.end);
+    const giorno = new Date(Date.UTC(parti.year, parti.month - 1, parti.day + (b < a ? 1 : 0)));
+    const inizio = dataDalTempoDelLuogo({ ...parti, hour: Math.floor(a / 60), minute: a % 60, second: 0 }, luogo);
+    const fine = dataDalTempoDelLuogo({ year: giorno.getUTCFullYear(), month: giorno.getUTCMonth() + 1,
+      day: giorno.getUTCDate(), hour: Math.floor(b / 60), minute: b % 60, second: 0 }, luogo);
+    richiedi(inizio && fine, 'Ora civile inesistente nel fuso del luogo');
+    return { inizio, fine };
+  }
+
   registro.timelapse = {
     verifica(p) { campi(p, ['start', 'end']); minuti(p.start); minuti(p.end); },
     crea(p) {
-      const luogo = skyLuogoDelCielo(), parti = partiDataDelLuogo(skyAdesso(), luogo);
-      const a = minuti(p.start), b = minuti(p.end);
-      const giorno = new Date(Date.UTC(parti.year, parti.month - 1, parti.day + (b < a ? 1 : 0)));
-      const inizio = dataDalTempoDelLuogo({ ...parti, hour: Math.floor(a / 60), minute: a % 60, second: 0 }, luogo);
-      const fine = dataDalTempoDelLuogo({ year: giorno.getUTCFullYear(), month: giorno.getUTCMonth() + 1,
-        day: giorno.getUTCDate(), hour: Math.floor(b / 60), minute: b % 60, second: 0 }, luogo);
-      richiedi(inizio && fine, 'Ora civile inesistente nel fuso del luogo');
+      const { inizio, fine } = tempiCivili(p);
       return { aggiorna: u => istante(+inizio + (+fine - +inizio) * u) };
     }
   };
@@ -155,11 +160,18 @@
     'inseguimento', 'eventoInseguito', 'seguiTelefono', 'fov', 'fovVoluto', 'modalitaHover',
     'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'passoTempoSec',
     'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec'];
-  function avvia(testo = script) {
-    motore.prepara(testo);
-    // Anche le viste si validano prima di cambiare una sola impostazione.
-    for (const scena of AstroDemoMotore.analizza(testo).scene)
+  function valida(testo) {
+    const demo = motore.prepara(testo);
+    for (const scena of demo.scene) {
       richiedi(['planetarium_view', 'transition', 'solar_system_3d'].includes(scena.vista), 'Scena non supportata: ' + scena.vista);
+      for (const azione of scena.azioni) {
+        if (azione.comando === 'timelapse') tempiCivili(azione.parametri);
+      }
+    }
+    return demo;
+  }
+  function avvia(testo = script) {
+    valida(testo);
     motore.ferma();
     richiedi(!sol.aperto && !sky.reg.attiva &&
       !(typeof missRicercaAttiva === 'function' && missRicercaAttiva()), t('occupato'));
@@ -167,6 +179,8 @@
     ultimoScript = testo;
     const precedente = Object.fromEntries(chiavi.map(k => [k, sky[k]]));
     const manuale = { ...sky.manuale }, vistaPrima = vistaAttuale;
+    const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
+      'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto'].map(k => [k, sol[k]]));
     const c = { chiuso: false, eclisse: null,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
@@ -180,6 +194,7 @@
         c.chiuso = true; contesto = null; evidenze.clear();
         solVolo.dopo = null; solVoloChiudi();
         if (sol.aperto) chiudiSistemaSolare();
+        Object.assign(sol, cameraSistema);
         if (vistaAttuale !== vistaPrima) mostraVista(vistaPrima);
         skyImpostaPassoTempo(precedente.passoTempoSec);
         Object.assign(sky, precedente); Object.assign(sky.manuale, manuale);
@@ -191,14 +206,13 @@
       }
     };
     contesto = c;
-    // La demo parte dal pannello Astri (dove vive il suo tasto), ma il
-    // racconto deve lasciare libero il cielo: chiudi anche qualsiasi altro
-    // gruppo che fosse rimasto aperto prima dell'avvio.
+    // Il racconto lascia libero il cielo e chiude i pannelli aperti.
+    document.getElementById('modale-impostazioni').classList.add('hidden');
     skyMostraGruppo('');
     skyFermaPlayback(); skyFermaMovimenti(); sky.seguiTelefono = false; sky.modalitaHover = false;
     sky.eventoInseguito = null;
     motore.avvia(testo, c);
-    pannello.hidden = false; aggiornaPannello();
+    aggiornaPannello();
   }
 
   const pannello = document.createElement('div');
@@ -223,7 +237,9 @@
       if (genitore && pannello.parentElement !== genitore) genitore.append(pannello);
       pannello.hidden = false;
       const scena = motore.demo.scene[motore.indice];
-      messaggio.textContent = t(scena.vista) + (motore.stato === 'pausa' ? ' — ' + t('inPausa') : '');
+      messaggio.textContent = (ultimoScript === script ? t(scena.vista) : motore.demo.id + ' · ' + (motore.indice + 1) + '/' + motore.demo.scene.length +
+        ' · ' + scena.vista + ' · ' + (scena.durata / 1000) + ' s') +
+        (motore.stato === 'pausa' ? ' — ' + t('inPausa') : '');
       pausa.textContent = t(motore.stato === 'pausa' ? 'riprendi' : 'pausa');
       riavvia.textContent = t('riavvia'); arresta.textContent = t('stop');
     } else {
@@ -235,11 +251,9 @@
   function avviaSicuro(testo) {
     try { avvia(testo); } catch (e) { skyAvviso('demo', t('errore') + ': ' + e.message, 10000); }
   }
-  const avvio = document.getElementById('demo-avvia');
-  if (avvio) avvio.addEventListener('click', () => avviaSicuro(script));
   // Qualunque intervento restituisce prima i comandi alla persona.
   document.addEventListener('pointerdown', e => {
-    if (contesto && !pannello.contains(e.target) && e.target !== avvio) motore.ferma();
+    if (contesto && !pannello.contains(e.target)) motore.ferma();
   }, true);
   document.addEventListener('keydown', e => {
     if (contesto && e.key === 'Escape') { motore.ferma(); e.preventDefault(); e.stopImmediatePropagation(); }
@@ -247,8 +261,15 @@
   // Il tempo non salta scene quando la scheda rimane nascosta.
   document.addEventListener('visibilitychange', () => { if (document.hidden) motore.pausa(); });
   document.addEventListener('fullscreenchange', aggiornaPannello);
+  // Se la preferenza cambia durante il tour, interrompi e ripristina subito.
+  const movimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (movimento && movimento.addEventListener) movimento.addEventListener('change', () => {
+    if (contesto) motore.ferma();
+  });
   window.AstroDemo = {
-    script, avvia, pausa: () => motore.pausa(), riprendi: () => motore.riprendi(),
+    script, valida, libreria: AstroDemoLibreria.crea({
+      getItem: k => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v)
+    }, [{ chiave: 'eclisse_tour', testo: script }], valida), avvia, pausa: () => motore.pausa(), riprendi: () => motore.riprendi(),
     ferma: () => motore.ferma(), evidenza: id => evidenze.get(id) || 1,
     get stato() { return motore.stato; },
     registra(nome, comando) {
