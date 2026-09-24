@@ -71,12 +71,12 @@ const server = http.createServer((req, res) => {
     assert.match(await pagina.locator('#demo-info').innerText(), /3 scene.*30 s/);
     await pagina.locator('#demo-duplica').click();
     const testoBase = await pagina.locator('#demo-editor').inputValue();
-    await pagina.locator('#demo-editor').fill(testoBase.replace('18:00', '25:00'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('17:47', '25:00'));
     assert.equal(await pagina.locator('#demo-salva').isDisabled(), true);
-    await pagina.locator('#demo-editor').fill(testoBase.replace('10s;', '10s'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('12s;', '12s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
-    for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'orbit_object', 'zoom_view']) {
+    for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'orbit_object', 'zoom_view']) {
       await pagina.locator('#demo-snippet').selectOption(snippet);
       await pagina.locator('#demo-inserisci').click();
       assert.equal(await pagina.locator('#demo-editor').getAttribute('aria-invalid'), 'false', snippet);
@@ -94,6 +94,8 @@ const server = http.createServer((req, res) => {
     await pagina.locator('#imp-tab-btn-demo').click();
     await pagina.locator('#demo-elenco').selectOption(chiaveUtente);
     assert.equal(await pagina.locator('#demo-editor').inputValue(), salvato);
+    assert.equal(await pagina.locator('#demo-editor').isVisible(), false, 'Editor personale chiuso finché non si chiede Modifica');
+    await pagina.locator('#demo-modifica').click();
     // Export e import devono conservare il testo, senza eseguire nulla.
     const downloadAtteso = pagina.waitForEvent('download');
     await pagina.locator('#demo-esporta').click();
@@ -113,6 +115,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length + 1);
     // L'errore di quota è visibile e lascia intatta la bozza.
     await pagina.locator('#demo-elenco').selectOption(chiaveUtente);
+    await pagina.locator('#demo-modifica').click();
     await pagina.locator('#demo-editor').fill(salvato.replace('mia_demo', 'modificata'));
     await pagina.evaluate(() => { window.demoSetItem = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new Error('quota-demo'); }; });
     await pagina.locator('#demo-salva').click();
