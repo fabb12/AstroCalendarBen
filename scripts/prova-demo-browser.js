@@ -54,7 +54,7 @@ const server = http.createServer((req, res) => {
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
       ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss']);
-    assert.deepEqual(builtins.map(d => d.durata), [58000, 57000, 53000, 45000, 36000]);
+    assert.deepEqual(builtins.map(d => d.durata), [114000, 57000, 53000, 45000, 36000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
@@ -71,7 +71,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.locator('#cielo-comandi #demo-avvia').count(), 0);
     assert.equal(await pagina.locator('#demo-editor').getAttribute('readonly'), '');
     assert.equal(await pagina.locator('#demo-elimina').isDisabled(), true);
-    assert.match(await pagina.locator('#demo-info').innerText(), /7 scene.*58 s/);
+    assert.match(await pagina.locator('#demo-info').innerText(), /7 scene.*114 s/);
     await pagina.locator('#demo-duplica').click();
     const testoBase = await pagina.locator('#demo-editor').inputValue();
     assert.match(testoBase, /define_demo 'eclisse_tour_copia'/, 'La copia prende un nome suo');
