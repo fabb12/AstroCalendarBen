@@ -466,10 +466,8 @@
     console.info('[aerei] Uso i ponti CORS di riserva. Per configurare un proxy proprio: ADSB-PROXY.md.');
   }
 
-  function providersDisponibili() {
-    avvisaSeManca();
-    const proxy = urlProxy();
-    const propri = proxy ? [{
+  function providerProxy(proxy) {
+    return {
       nome: 'proxy ADS-B del sito',
       rete: 'proxy del sito',
       // Piu' lunga della sveglia di una rete diretta, e piu' lunga di quella
@@ -483,11 +481,34 @@
         return `${proxy}/api/adsb?${q}`;
       },
       interpreta: interpretaAdsbExchange
-    }] : [];
+    };
+  }
+
+  function providersDisponibili(opzioni = {}) {
+    avvisaSeManca();
+    const proxy = urlProxy();
+    const propri = proxy ? [providerProxy(proxy)] : [];
+    const ponti = opzioni.senzaPonti ? [] : providersPonte();
     // I feed senza CORS si possono interrogare dal proxy, non dal browser.
     // Restano disponibili solo per prove esplicitamente abilitate.
     const diretti = window.ADSB_PROVA_DIRETTI === true ? providersPredefiniti : [];
-    return propri.concat(providersPonte(), diretti);
+    return propri.concat(ponti, diretti);
+  }
+
+  // Un aggiornamento chiesto esplicitamente non deve restare prigioniero
+  // della pagella: se tutte le porte sono in penale, il vecchio codice dava
+  // subito "servizi ADS-B in pausa" senza fare una sola richiesta. Il tap
+  // dell'utente e' invece un segnale forte: si prova il proxy configurato
+  // anche se era in cooldown, e solo in sua assenza si riapre la corsa
+  // completa come ultimo tentativo. Il ciclo automatico continua invece a
+  // rispettare le penali, cosi' non si trasforma un 429 in una raffica.
+  function providersPerRichiesta(forza) {
+    const tutti = providersDisponibili();
+    const sani = ordinaPerSalute(tutti);
+    if (!forza || sani.length) return sani;
+    const proxy = urlProxy();
+    if (proxy) return [providerProxy(proxy)];
+    return tutti;
   }
 
   // =====================================================================
@@ -1615,7 +1636,7 @@
     }
     stato.ultimoTentativo = ora;
     const providers = window.AEREI_PROVIDER ? [window.AEREI_PROVIDER]
-      : ordinaPerSalute(providersDisponibili());
+      : providersPerRichiesta(!!forza);
     const controller = new AbortController();
     stato.controller = controller;
     // Da quando è in volo. Non è un dato di comodo: `stato.richiesta` non
@@ -2721,7 +2742,7 @@
     guardato, pianificaDopoScarto,
     RIPROVA_LIMITE_DA, RETRY_AFTER_MAX_MS, PENALE_MAX_MS,
     BATTITO_MS, BATTITO_FERMO_MS, RICHIESTA_APPESA_MS,
-    registraTracce, tracce, stato, providersDisponibili,
+    registraTracce, tracce, stato, providersDisponibili, providersPerRichiesta,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
     intervalloAggiornamento, pianificaProssimo, RIPROVE_MS, DATI_VECCHI_MS, DATI_SCADUTI_MS,
     AGGIORNA_VISIBILE_MS, AGGIORNA_SFONDO_MS,
