@@ -93,7 +93,7 @@ ridice nella lingua nuova. Le frasi stanno nella durata della loro scena
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
-| **Eclisse solare totale 2026** (`eclisse_tour`) | 7 · 58 s | Reykjavík: il campo si stringe da 40° a 1,6° sul Sole e la Luna lo attraversa (16:40→17:48, poi la totalità); volo; banco Terra–Luna con Sole, Luna e Terra in fila e la camera che gira; avvicinamento alla Terra (×5,5) con l'ombra che corre da −20 a +45 min dal massimo; di nuovo in cielo fino alle 18:52, a eclisse finita. |
+| **Eclisse solare totale 2026** (`eclisse_tour`) | 7 · 114 s | Reykjavík: il campo si stringe da 40° a 1,6° sul Sole e la Luna lo attraversa (16:40→17:48, poi la totalità); volo; banco Terra–Luna con Sole, Luna e Terra in fila e la camera che gira; avvicinamento alla Terra (×5,5) con l'ombra che corre da −20 a +45 min dal massimo; di nuovo in cielo fino alle 18:52, a eclisse finita. |
 | **Eclisse lunare totale 2028** (`eclisse_lunare`) | 6 · 57 s | Sapporo: la Luna entra nell'ombra e si arrossa (−110→+5 min); volo; da fuori il cono d'ombra e la Luna che lo attraversa (−170→+130 min) con la camera che le gira attorno; in cielo la Luna ne esce (+5→+170). |
 | **Aurora boreale** (`aurora_boreale`) | 7 · 53 s | Il banco delle aurore della Didattica a schermo intero: vento e nube, la camera attorno alla Terra, lo scudo da vicino, la scarica, l'anello; poi il cielo di **Helsinki** verso nord con Kp 5 simulato. |
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 5 · 45 s | Tucson prima dell'alba: i quattro pianeti inquadrati; volo; da fuori la camera scende dall'alto (80°) al piano (12°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; di nuovo in cielo verso l'alba. |
