@@ -11627,13 +11627,68 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 }
 .tasto-curiosita:hover { border-color: var(--viola); background: var(--viola-velo); }
 
-/* Libreria demo nelle Impostazioni: editor leggibile anche su telefono. */
+/* Demo guidate: scelta e avvio davanti, DSL soltanto nei dettagli avanzati. */
+#imp-tab-demo { overflow-x:hidden; }
 #imp-tab-demo label { display:block; font-weight:600; margin-bottom:6px; }
-#imp-tab-demo select, #demo-editor { width:100%; max-width:100%; color:#e2e8f0; background:#101b30; border:1px solid #64748b; border-radius:8px; padding:8px; box-sizing:border-box; }
+#imp-tab-demo select, #demo-editor {
+  width:100%; max-width:100%; color:#e2e8f0; background:#101b30;
+  border:1px solid #64748b; border-radius:10px; padding:9px; box-sizing:border-box;
+}
+.demo-libreria { display:grid; gap:12px; }
+.demo-introduzione { margin:4px 0 0; color:var(--testo-2); font-size:.84rem; line-height:1.45; }
+.demo-scheda {
+  padding:16px; border:1px solid var(--bordo); border-radius:14px;
+  background:rgba(15,23,42,.58);
+}
+.demo-scheda-testata {
+  display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
+}
+.demo-titolo { margin:5px 0 0; color:var(--testo); font-size:1.05rem; font-weight:750; line-height:1.25; }
+.demo-badge {
+  display:inline-flex; min-height:23px; align-items:center; padding:2px 8px;
+  border:1px solid var(--bordo); border-radius:999px; color:var(--testo-2);
+  font-size:.7rem; font-weight:700;
+}
+.demo-durata { flex:0 0 auto; color:var(--testo-2); font-size:.78rem; white-space:nowrap; }
+.demo-descrizione { margin:10px 0 0; color:var(--testo-2); font-size:.86rem; line-height:1.5; }
+.demo-metadati {
+  display:grid; grid-template-columns:max-content minmax(0,1fr); gap:4px 12px;
+  margin:12px 0 0; font-size:.78rem;
+}
+.demo-metadati dt { color:var(--testo-2); }
+.demo-metadati dd { margin:0; color:var(--testo); overflow-wrap:anywhere; }
+.demo-info-tecnica { margin:0; color:var(--testo-3, var(--testo-2)); font-size:.72rem; overflow-wrap:anywhere; }
+.demo-azioni { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.demo-azioni select { flex:1 1 180px; }
+.demo-azioni-principali { align-items:stretch; }
+.demo-avvia-principale {
+  flex:1 1 220px; min-height:44px; padding:10px 18px; border-radius:999px;
+  background:var(--accento); color:white; font-weight:750; cursor:pointer;
+}
+.demo-avvia-principale:hover { filter:brightness(1.08); }
+.demo-azioni-secondarie { padding-top:4px; }
+.demo-importa-tasto { display:inline-flex !important; align-items:center; margin:0 !important; cursor:pointer; }
+.demo-file-nascosto { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+.demo-file-nome { color:var(--testo-2); font-size:.76rem; overflow-wrap:anywhere; }
+.demo-avanzate {
+  border-top:1px solid var(--bordo); padding-top:12px;
+}
+.demo-avanzate > summary {
+  cursor:pointer; color:var(--testo); font-weight:700; list-style-position:outside;
+}
+.demo-avanzate-corpo { display:grid; gap:10px; padding-top:12px; }
 #demo-editor { font-family:monospace; font-size:14px; line-height:1.5; resize:vertical; tab-size:2; }
 #demo-editor[readonly] { opacity:.8; }
 #demo-editor[aria-invalid="true"] { border-color:#fb7185; }
-.demo-azioni { display:flex; flex-wrap:wrap; gap:8px; }
-.demo-azioni select { flex:1 1 180px; }
 #imp-tab-demo button:disabled { opacity:.45; cursor:not-allowed; }
-#demo-info, #demo-aiuto, #demo-validazione, #demo-esito { font-size:13px; overflow-wrap:anywhere; }
+#demo-aiuto, #demo-validazione, #demo-esito { font-size:13px; overflow-wrap:anywhere; }
+
+@media (max-width: 520px) {
+  .demo-scheda-testata { display:block; }
+  .demo-durata { display:block; margin-top:8px; white-space:normal; }
+  .demo-metadati { grid-template-columns:1fr; gap:2px; }
+  .demo-metadati dd { margin-bottom:5px; }
+  .demo-azioni-principali > * { flex:1 1 100%; }
+  .demo-azioni-secondarie > * { flex:1 1 100%; justify-content:center; text-align:center; }
+  #demo-editor { min-height:260px; font-size:13px; }
+}
