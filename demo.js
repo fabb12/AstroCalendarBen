@@ -280,10 +280,9 @@
     'inseguimento', 'eventoInseguito', 'seguiTelefono', 'fov', 'fovVoluto', 'modalitaHover',
     'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'passoTempoSec',
     'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec',
-    // Il campo è definito sull'altezza del riquadro (`skyRidimensiona`): la
-    // demo entra a schermo intero, e rimettendo il campo di prima senza
-    // l'altezza a cui valeva, l'uscita dal pieno schermo lo riscalava da
-    // capo — a fine demo il FOV tornava 93° invece di 80°.
+    // Il campo è definito sull'altezza del riquadro (`skyRidimensiona`):
+    // conserviamo anche l'altezza a cui valeva, così eventuali resize durante
+    // la demo non riscalano di nuovo il FOV quando si ripristina lo stato.
     'altezzaMisurata'];
   function valida(testo) {
     const demo = motore.prepara(testo);
@@ -346,8 +345,8 @@
         skyAggiornaOggetti(true); skyAggiornaTestoTempo(); skyAggiornaSlittaTempo();
         sky.playbackUltimo = 0; skyAggiornaComandiPlayback();
         skyAggiornaTastoInsegui(); skyAggiornaTastiFiltri();
-        // La demo entra da sola nel cielo immersivo, ma non deve chiudere uno
-        // schermo intero che la persona aveva gia aperto prima di avviarla.
+        // Ripristina lo stato iniziale se durante la demo si e' entrati
+        // manualmente a schermo intero partendo dalla vista normale.
         if (!schermoInteroPrima && sky.schermoIntero) skyEsciSchermoIntero();
         pannello.hidden = true;
       }
@@ -359,10 +358,6 @@
     skyFermaPlayback(); skyFermaMovimenti(); sky.seguiTelefono = false; sky.modalitaHover = false;
     sky.eventoInseguito = null;
     motore.avvia(testo, c);
-    // La richiesta resta nello stesso gesto del tasto «Avvia»: e' essenziale
-    // per i browser che autorizzano il vero schermo intero soltanto durante
-    // un'interazione. Su iPhone skyEntraSchermoIntero usa il ripiego CSS.
-    if (motore.stato === 'attivo' && !sky.schermoIntero) skyEntraSchermoIntero();
     aggiornaPannello();
   }
 
