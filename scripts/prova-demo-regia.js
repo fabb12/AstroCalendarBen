@@ -431,7 +431,10 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     });
 
     // Con l'audio disattivato la registrazione Demo deve avere soltanto video.
-    const regPrima = await pagina.evaluate(() => sky.reg.durataSec);
+    const regPrima = await pagina.evaluate(() => {
+      skyMostraGruppo('vista');
+      return sky.reg.durataSec;
+    });
     const clipMuto = "define_demo clip_muto { scene planetarium_view { duration: 700ms; action: set_fov { degrees: 50 }; } }";
     await pagina.evaluate(() => AstroDemo.impostaOpzioni({ registra: true, registraAudio: false }));
     await pagina.evaluate(t => AstroDemo.avvia(t), clipMuto);
@@ -440,6 +443,8 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       'Registra anche l’audio spento: il MediaRecorder resta senza audio');
     await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 10000 });
     await pagina.waitForFunction(() => sky.reg.esito && sky.reg.esito.blob.size > 500, null, { timeout: 10000 });
+    ok(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo === 'vista'),
+      'La registrazione Demo non chiude il pannello che era aperto prima');
     await pagina.evaluate(() => skyRegChiudiPannello());
 
     // Con l'audio attivo il MediaRecorder riceve una sola traccia condivisa.
@@ -481,6 +486,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.evaluate(() => {
       AstroDemo.impostaOpzioni({ registra: false, registraAudio: true });
       skyRegChiudiPannello();
+      skyMostraGruppo('');
     });
 
     // Movimento ridotto: la camera 3D non gira, il tempo sì
