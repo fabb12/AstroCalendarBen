@@ -1309,6 +1309,23 @@
           <span class="ar-stato-testo"></span>
         </button>
 
+        <!-- L'allineamento a mano (`visione.js` §13). Il tasto sta sotto la
+             pillola perché ne è il seguito: la pillola dice quanto bene il
+             cielo è appoggiato all'immagine, il tasto serve quando non basta.
+             Il velo cattura i tocchi sul cielo solo mentre si sceglie un
+             oggetto o si indica dove lo si vede davvero; il pannello dice in
+             ogni momento quale dei due passi si sta facendo. -->
+        <button id="ar-allinea" type="button" class="ar-allinea hidden" aria-pressed="false"
+          title="Allinea a mano: indica dove vedi davvero un oggetto nell'immagine"
+          data-i18n-title="ar.allineaTitolo">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+          <span data-i18n="ar.allinea">Allinea</span>
+        </button>
+        <div id="ar-calibra-velo" class="ar-calibra-velo" hidden></div>
+        <div id="ar-calibra" class="ar-calibra" role="dialog" aria-live="polite"
+          aria-label="Allineamento a mano" data-i18n-aria-label="ar.calibra.titolo" hidden></div>
+
         <!-- Il fumetto dell'oggetto toccato: sta ATTACCATO all'oggetto,
              non nell'angolo, e dice le quattro righe che si leggono in un
              colpo d'occhio. La coda lo indica e lo segue mentre il cielo

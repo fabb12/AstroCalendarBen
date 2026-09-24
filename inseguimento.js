@@ -1643,6 +1643,21 @@
       return { dAz: t.filtro.x.x / cos, dAlt: t.filtro.y.x, da: 'inseguimento' };
     }
 
+    // Dimenticare una traccia a comando. Lo chiede l'allineamento a mano di
+    // `visione.js` (§13): quando qualcuno indica col dito dov'è davvero un
+    // aereo, quella è la misura migliore che ci sia, e il filtro di questa
+    // traccia — che fino a un istante prima inseguiva la posizione sbagliata
+    // — la riporterebbe via al fotogramma dopo, perché fra le due ancore vince
+    // sempre questa (§11 di `visione.js`). La traccia rinasce da sola attorno
+    // alla posizione corretta.
+    function insScordaTraccia(id) {
+      const k = String(id);
+      if (!stato.tracce.has(k)) return false;
+      stato.tracce.delete(k);
+      if (typeof insDimentica === 'function') insDimentica(k);
+      return true;
+    }
+
     function insTracce() {
       const fuori = [];
       stato.tracce.forEach(t => fuori.push({
@@ -1695,6 +1710,7 @@
     window.insAlterna = insAlterna;
     window.insAggiorna = insAggiorna;
     window.insAncoraAereo = insAncoraAereo;
+    window.insScordaTraccia = insScordaTraccia;
     window.insTracce = insTracce;
     window.insStato = insStato;
     window.insAttivo = () => stato.attivo && stato.acceso;

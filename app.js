@@ -22400,6 +22400,10 @@ function skyDisegnaEvidenza(ctx, base, focale) {
   ctx.restore();
 }
 
+// Gli astri che in realtà aumentata si nominano invece di disegnarli: sono
+// quelli che la fotocamera riprende da sé (§`visione.js` §12).
+const SKY_AR_SOLO_NOME = new Set(['sole', 'luna', 'pianeta', 'stella', 'satellite']);
+
 function skyDisegna() {
   if (!sky.ctx) return;
   const ctx = sky.ctx;
@@ -22445,6 +22449,13 @@ function skyDisegna() {
   // Con la fotocamera accesa il canvas resta trasparente: sotto si vede
   // il mondo vero e sopra ci finiscono solo gli astri calcolati.
   const conCamera = !!sky.camera;
+  // In realtà aumentata le cose vere ci sono già, nell'immagine: la Luna, i
+  // pianeti, le stelle luminose. Ridisegnarle vorrebbe dire mostrarne due
+  // ogni volta che la mira non è perfetta — e prima dell'aggancio non lo è
+  // mai — senza più sapere quale delle due sia quella vera. Al loro posto
+  // `visione.js` §12 appoggia un segno sottile e il **nome**: la sola cosa
+  // che la fotocamera non sa dire. Senza quel modulo resta il disegno di prima.
+  const etichetteAR = conCamera && typeof visDisegnaEtichette === 'function';
   if (!conCamera) {
     skyDisegnaSfondo(ctx, base, focale, aria);
     skyDisegnaAloneSole(ctx, base, focale, sole, aria);
@@ -22467,14 +22478,14 @@ function skyDisegna() {
   //
   // Quando catalogo.js non è caricato queste due non fanno nulla e resta
   // il cielo di prima, con le ventitré figure scritte a mano.
-  if (typeof catDisegnaStelle === 'function') catDisegnaStelle(ctx, base, focale);
+  if (!etichetteAR && typeof catDisegnaStelle === 'function') catDisegnaStelle(ctx, base, focale);
   if (typeof catDisegnaFigure === 'function') catDisegnaFigure(ctx, base, focale);
   // E sopra le linee, la figura vera: il cacciatore, il leone, la nave.
   // Sta qui e non altrove perché deve stare *sopra* alle linee (che sono
   // la sua ossatura) e *sotto* al terreno, come le stelle: un cigno
   // dipinto sulla collina sarebbe la stessa bruttura del cielo stellato
   // sotto i piedi.
-  if (typeof costDisegnaArte === 'function') costDisegnaArte(ctx, base, focale);
+  if (!etichetteAR && typeof costDisegnaArte === 'function') costDisegnaArte(ctx, base, focale);
 
   if (sky.mostraGriglia) skyDisegnaGriglia(ctx, base, focale);
   // L'aurora: **dopo** le stelle e **prima** del terreno. Dopo le stelle
@@ -22520,11 +22531,20 @@ function skyDisegna() {
     daDisegnare
       .slice()
       .sort((a, b) => (ordineAstri[a.tipo] || 0) - (ordineAstri[b.tipo] || 0))
-      .forEach(o => skyDisegnaAstro(ctx, base, focale, o));
+      // In realtà aumentata gli astri che la fotocamera riprende non si
+      // ridisegnano: li nomina `visDisegnaEtichette`, più sotto.
+      .forEach(o => {
+        if (etichetteAR && SKY_AR_SOLO_NOME.has(o.tipo)) return;
+        skyDisegnaAstro(ctx, base, focale, o);
+      });
     if (typeof aereiDisegna === 'function') aereiDisegna(ctx, base, focale);
   };
   const disegnaAstriSecondari = () => {
     skyDisegnaCostellazioni(ctx, base, focale);
+    // Nebulose dipinte e comete disegnate sopra l'immagine vera non sono
+    // cose che la fotocamera mostra: in realtà aumentata sarebbero figure
+    // appoggiate su un cielo che non le contiene.
+    if (etichetteAR) return;
     skyDisegnaProfondo(ctx, base, focale);
     if (typeof corpiMinoriDisegna === 'function') corpiMinoriDisegna(ctx, base, focale);
   };
@@ -22597,6 +22617,13 @@ function skyDisegna() {
   // senza di loro quel movimento si legge come un difetto.
   if (conCamera && typeof visDisegnaAgganci === 'function') {
     visDisegnaAgganci(ctx, base, focale);
+  }
+  // I nomi di quello che si vede davvero in questa direzione — astri, aerei,
+  // vette, paesi — e, sopra a tutto, i segni dell'allineamento a mano
+  // (`visione.js` §12 e §13).
+  if (etichetteAR) visDisegnaEtichette(ctx, base, focale);
+  if (conCamera && typeof visDisegnaCalibrazione === 'function') {
+    visDisegnaCalibrazione(ctx, base, focale);
   }
 
   skyControllaSostaMirino();
@@ -44849,6 +44876,13 @@ function inizializzaSkymapExtra() {
   collega('ar-stato', () => {
     if (typeof visAzzera === 'function') visAzzera();
     skyAvviso('camera-taratura', astroI18n.t('ar.aggancioAzzerato'), 3000);
+  });
+  // L'allineamento a mano: quando l'aggancio automatico non basta, si dice
+  // cosa si vede e si tocca dove lo si vede (`visione.js` §13).
+  collega('ar-allinea', () => {
+    if (typeof visCalibraApri !== 'function') return;
+    skyMostraGruppo('');
+    visCalibraApri();
   });
 
   // Uscendo dal planetario la fotocamera si spegne: batteria e privacy

@@ -2498,6 +2498,35 @@ window.ASTRO_DIZIONARI['it'] = {
       altri: '{n} aerei agganciati all’immagine'
     },
 
+    'visione.manuale': 'Allineato a mano su {nome}',
+    'visione.manualeAgganciato': 'Allineato a mano · agganciato a {nome}',
+    'ar.allinea': 'Allinea',
+    'ar.allineaTitolo': 'Allinea a mano: indica dove vedi davvero un oggetto nell’immagine',
+    'ar.calibra.titolo': 'Allineamento a mano',
+    'ar.calibra.scegli': 'Cosa vedi nell’immagine? Tocca il suo nome qui sotto, oppure il suo segno sul cielo.',
+    'ar.calibra.nessuno': 'In quadro non c’è niente da indicare: inquadra la Luna, un pianeta, una stella luminosa, un aereo o una vetta.',
+    'ar.calibra.tocca': 'Tocca dove vedi davvero {nome} nell’immagine. Il mirino compare sopra al dito: spostalo sull’oggetto e solleva il dito per confermare.',
+    'ar.calibra.cambia': 'Cambia oggetto',
+    'ar.calibra.altro': 'Un altro oggetto',
+    'ar.calibra.annulla': 'Annulla',
+    'ar.calibra.rifai': 'Rifai',
+    'ar.calibra.chiudi': 'Chiudi',
+    'ar.calibra.azzera': 'Rifai la mira da capo',
+    'ar.calibra.fatto': 'Allineato su {nome}: il cielo si è spostato di {gradi}°, insieme a tutte le altre etichette.',
+    'ar.calibra.fattoAereo': 'Posizione di {nome} corretta di {gradi}°: l’etichetta resta agganciata all’aereo.',
+    'ar.calibra.troppoLontano': 'Il punto indicato è a {gradi}° da dove dovrebbe stare {nome}: troppo lontano per essere lo stesso oggetto. Riprova, o scegli un altro oggetto.',
+    'ar.calibra.annullato': 'Allineamento a mano annullato.',
+    'ar.calibra.nienteDaAnnullare': 'Non c’è niente da annullare.',
+    'ar.calibra.senzaAR': 'L’allineamento a mano funziona con la realtà aumentata accesa e “Segui il telefono” attivo.',
+    'ar.calibra.punti': {
+      uno: '{n} punto indicato a mano',
+      altri: '{n} punti indicati a mano: insieme correggono anche la rotazione'
+    },
+    'ar.eti.aereo': '{km} km · {quota} m',
+    'ar.eti.aereoSenzaQuota': '{km} km',
+    'ar.eti.cima': '{quota} m · {km} km',
+    'ar.eti.citta': '{km} km',
+
     // --- Gli aerei (aerei.js) -----------------------------------------
     'aerei.aggiornamentoInCorso': 'Aggiornamento dei dati ADS-B in corso…',
     'aereo.rottaOrtodromica': 'Rotta ortodromica',

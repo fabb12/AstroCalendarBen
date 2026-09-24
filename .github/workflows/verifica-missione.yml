@@ -43,3 +43,12 @@ jobs:
       # mese nessuno lancia più.
       - run: node scripts/prova-inseguimento.js
         if: success() || failure()
+      # L'allineamento a mano della realtà aumentata e le sue etichette
+      # (`visione.js` §12 e §13): i conti senza browser — il dito porta
+      # l'oggetto sotto di sé e tutto il cielo con lui, e girando il telefono
+      # resta lì — e poi il percorso vero dell'interfaccia in un Chromium,
+      # su un telefono dritto, uno girato e un computer.
+      - run: node scripts/prova-ar-calibrazione.js
+        if: success() || failure()
+      - run: node scripts/prova-ar-browser.js
+        if: success() || failure()
