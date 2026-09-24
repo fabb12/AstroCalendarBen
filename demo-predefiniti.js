@@ -7,7 +7,7 @@
       testo: `define_demo 'eclisse_tour' {
   // Reykjavik è dentro la fascia di totalità del 12 agosto 2026.
   scene planetarium_view {
-    duration: 12s;
+    duration: 15s;
     action: narrate { id: 'demo.narr.eclisse_tour.1' };
     action: set_location { lat: 64.1466, lon: -21.9426, name: 'Reykjavik', timezone: 'Atlantic/Reykjavik' };
     action: set_date { iso: '2026-08-12T16:40:00Z' };
@@ -18,7 +18,7 @@
 
   scene planetarium_view {
     // La Luna entra progressivamente nel disco del Sole.
-    duration: 18s;
+    duration: 20s;
     action: narrate { id: 'demo.narr.eclisse_tour.2' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 16:47, end: 17:48 };
@@ -27,7 +27,7 @@
 
   scene planetarium_view {
     // Totalità: lascia il tempo alla voce e alla corona di essere osservata.
-    duration: 13s;
+    duration: 15s;
     action: narrate { id: 'demo.narr.eclisse_tour.3' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 17:48, end: 17:50 };
@@ -36,14 +36,14 @@
 
   scene transition {
     // Cambio di prospettiva verso il Sistema Solare 3D.
-    duration: 8s;
+    duration: 10s;
     action: narrate { id: 'demo.narr.eclisse_tour.4' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
 
   scene solar_system_3d {
     // Sole, Luna e Terra in fila.
-    duration: 14s;
+    duration: 16s;
     action: narrate { id: 'demo.narr.eclisse_tour.5' };
     action: event_window { event: solar_eclipse, from: -40, to: -20 };
     action: camera_3d {
@@ -59,7 +59,7 @@
 
   scene solar_system_3d {
     // Avvicinamento alla Terra e osservazione dell'ombra.
-    duration: 19s;
+    duration: 22s;
     action: narrate { id: 'demo.narr.eclisse_tour.6' };
     action: event_window { event: solar_eclipse, from: -20, to: 45 };
     action: camera_3d {
@@ -75,7 +75,7 @@
 
   scene planetarium_view {
     // Ritorno a Reykjavik e conclusione dell'eclissi.
-    duration: 14s;
+    duration: 18s;
     action: narrate { id: 'demo.narr.eclisse_tour.7' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 18:10, end: 18:52 };
