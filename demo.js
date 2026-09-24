@@ -5,16 +5,18 @@
   const predefiniti = AstroDemoPredefiniti;
   const script = predefiniti[0].testo;
   const registro = Object.create(null), evidenze = new Map();
-  const t = chiave => astroI18n.t('demo.' + chiave);
+  const t = (chiave, dati) => astroI18n.t('demo.' + chiave, dati);
+  // I messaggi di validazione finiscono nell'editor: vanno nella lingua dell'app.
+  const err = (chiave, dati) => t('err.' + chiave, dati);
   const numero = (v, min, max) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
   function richiedi(ok, messaggio) { if (!ok) throw new Error(messaggio); }
   function campi(p, ammessi) {
-    for (const k of Object.keys(p)) richiedi(ammessi.includes(k), 'Parametro sconosciuto: ' + k);
+    for (const k of Object.keys(p)) richiedi(ammessi.includes(k), err('parametroSconosciuto', { nome: k }));
   }
   function minuti(v) {
-    richiedi(typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v), 'Orario atteso HH:MM');
+    richiedi(typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v), err('orario'));
     const [h, m] = v.split(':').map(Number);
-    richiedi(h < 24 && m < 60, 'Orario fuori intervallo'); return h * 60 + m;
+    richiedi(h < 24 && m < 60, err('orarioIntervallo')); return h * 60 + m;
   }
   const corpi = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
   function istante(ms) {
@@ -28,13 +30,30 @@
     } else if (v === 'solar_system_3d') {
       if (!sol.aperto) window.apriSistemaSolare({ senzaVolo: true, inquadra: () => {}, annullato: () => c.chiuso });
       solRidimensiona();
-    } else throw new Error('Vista sconosciuta: ' + v);
+    } else throw new Error(err('vistaSconosciuta', { nome: v }));
+  }
+  // L'eclisse di Sole più vicina all'istante della demo, prima o dopo. Si
+  // cerca un evento reale — la demo non allinea artificialmente i corpi — e
+  // la si cerca **a partire dall'orologio del racconto**: con la data di
+  // partenza scritta nel codice (1 agosto 2026) ogni demo personale che
+  // chiedeva l'ombra finiva sull'eclisse del 2026, qualunque data avesse
+  // impostato prima. Le eclissi di Sole capitano ogni sei mesi circa, quindi
+  // partendo da sette mesi prima bastano due o tre passi per scavalcare.
+  function eclisseVicina(quando) {
+    const ora = +quando;
+    let evento = Astronomy.SearchGlobalSolarEclipse(new Date(ora - 210 * 86400000));
+    let prima = null;
+    for (let passi = 0; evento && passi < 6 && evento.peak.date.getTime() < ora; passi++) {
+      prima = evento; evento = Astronomy.NextGlobalSolarEclipse(evento.peak);
+    }
+    if (!prima) return evento;
+    if (!evento) return prima;
+    return ora - prima.peak.date.getTime() <= evento.peak.date.getTime() - ora ? prima : evento;
   }
   function eclisse(c) {
     if (c.eclisse) return;
-    // Si trova un evento reale: la demo non allinea artificialmente i corpi.
-    const evento = Astronomy.SearchGlobalSolarEclipse(new Date('2026-08-01T00:00:00Z'));
-    richiedi(evento && evento.peak && Number.isFinite(evento.peak.date.getTime()), 'Eclisse non disponibile');
+    const evento = eclisseVicina(skyAdesso());
+    richiedi(evento && evento.peak && Number.isFinite(evento.peak.date.getTime()), err('eclisseAssente'));
     c.eclisse = evento.peak.date.getTime(); istante(c.eclisse);
     solEntraVicino(); c.azIniziale = sol.az;
   }
@@ -55,14 +74,14 @@
   }
 
   function tempiCivili(p, quando = skyAdesso(), luogo = skyLuogoDelCielo()) {
-    richiedi(luogo && Number.isFinite(+quando), 'Luogo e data necessari per il timelapse');
+    richiedi(luogo && Number.isFinite(+quando), err('luogoData'));
     const parti = partiDataDelLuogo(quando, luogo);
     const a = minuti(p.start), b = minuti(p.end);
     const giorno = new Date(Date.UTC(parti.year, parti.month - 1, parti.day + (b < a ? 1 : 0)));
     const inizio = dataDalTempoDelLuogo({ ...parti, hour: Math.floor(a / 60), minute: a % 60, second: 0 }, luogo);
     const fine = dataDalTempoDelLuogo({ year: giorno.getUTCFullYear(), month: giorno.getUTCMonth() + 1,
       day: giorno.getUTCDate(), hour: Math.floor(b / 60), minute: b % 60, second: 0 }, luogo);
-    richiedi(inizio && fine, 'Ora civile inesistente nel fuso del luogo');
+    richiedi(inizio && fine, err('oraInesistente'));
     return { inizio, fine };
   }
 
@@ -77,16 +96,16 @@
     campi(p, ['iso']);
     richiedi(typeof p.iso === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(p.iso) &&
       Number.isFinite(Date.parse(p.iso)) && new Date(p.iso).toISOString() === p.iso.replace('Z', '.000Z'),
-    'Data UTC attesa YYYY-MM-DDTHH:MM:SSZ');
+    err('dataUtc'));
     return new Date(p.iso);
   }
   function luogoDemo(p) {
     campi(p, ['lat', 'lon', 'name', 'timezone']);
-    richiedi(numero(p.lat, -90, 90) && numero(p.lon, -180, 180), 'Coordinate non valide');
-    richiedi(typeof p.name === 'string' && p.name.length > 0 && p.name.length <= 80, 'Nome del luogo non valido');
-    richiedi(typeof p.timezone === 'string' && p.timezone.length <= 80, 'Fuso orario non valido');
+    richiedi(numero(p.lat, -90, 90) && numero(p.lon, -180, 180), err('coordinate'));
+    richiedi(typeof p.name === 'string' && p.name.length > 0 && p.name.length <= 80, err('nomeLuogo'));
+    richiedi(typeof p.timezone === 'string' && p.timezone.length <= 80, err('fuso'));
     try { new Intl.DateTimeFormat('en', { timeZone: p.timezone }); }
-    catch (_) { throw new Error('Fuso orario IANA non valido'); }
+    catch (_) { throw new Error(err('fusoIana')); }
     return { lat: p.lat, lon: p.lon, nome: p.name, fuso: p.timezone, abbreviazioneFuso: '' };
   }
   registro.set_date = {
@@ -98,16 +117,16 @@
     crea(p) { sky.luogoVista = luogoDemo(p); skyAggiornaOsservatore(); }
   };
   registro.simulate_aurora = {
-    verifica(p) { campi(p, ['kp']); richiedi(numero(p.kp, 0, 9), 'Kp deve essere fra 0 e 9'); },
+    verifica(p) { campi(p, ['kp']); richiedi(numero(p.kp, 0, 9), err('kp')); },
     crea(p) {
-      richiedi(typeof aurImpostaKpSimulato === 'function', 'Modulo aurore non disponibile');
+      richiedi(typeof aurImpostaKpSimulato === 'function', err('auroreAssenti'));
       aurImpostaKpSimulato(p.kp);
     }
   };
   registro.point_view = {
     verifica(p) {
       campi(p, ['az', 'alt']);
-      richiedi(numero(p.az, 0, 360) && numero(p.alt, -90, 90), 'Direzione non valida');
+      richiedi(numero(p.az, 0, 360) && numero(p.alt, -90, 90), err('direzione'));
     },
     crea(p) {
       sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
@@ -117,7 +136,7 @@
   registro.set_fov = {
     verifica(p) {
       campi(p, ['degrees']);
-      richiedi(numero(p.degrees, 0.5, 160), 'Campo visivo atteso fra 0.5 e 160 gradi');
+      richiedi(numero(p.degrees, 0.5, 160), err('fov'));
     },
     crea(p, c) {
       // Fullscreen e resize possono ricalcolare il campo subito dopo l'avvio.
@@ -136,15 +155,22 @@
     verifica(p) {
       campi(p, ['names']);
       richiedi(typeof p.names === 'string' && p.names.length > 0 && p.names.length <= 120,
-        'Elenco oggetti non valido');
+        err('elenco'));
       const nomi = p.names.split(',').map(x => x.trim()).filter(Boolean);
       richiedi(nomi.length >= 2 && nomi.length <= 8 && nomi.every(n => corpi.includes(n)),
-        'Servono da 2 a 8 corpi supportati');
+        err('corpiFrame'));
     },
     crea(p, c) {
       const nomi = p.names.split(',').map(x => x.trim()).filter(Boolean);
+      // Un corpo spento dai filtri non è in `sky.oggetti`, e l'inquadratura
+      // non partirebbe mai. I filtri tornano come erano a fine demo.
+      sky.mostraPianeti = true; sky.mostraSoleLuna = true; sky.mostraSottoOrizzonte = true;
+      // Il conto forzato si fa una volta sola: durante il timelapse il ciclo
+      // del planetario rifà già le posizioni (`istante` azzera
+      // `prossimoCalcolo`), e forzarlo di nuovo a ogni fotogramma voleva dire
+      // pagare il giro degli astri due volte, tutto in un fotogramma solo.
+      skyAggiornaOggetti(true);
       const applica = () => {
-        skyAggiornaOggetti(true);
         const oggetti = nomi.map(nome => sky.oggetti.find(o => o.id === nome)).filter(Boolean);
         if (oggetti.length !== nomi.length) return;
         const az = oggetti.map(o => ((o.az % 360) + 360) % 360).sort((a, b) => a - b);
@@ -173,8 +199,8 @@
   registro.highlight_object = {
     verifica(p) {
       campi(p, ['name', 'scale']);
-      richiedi(corpi.includes(p.name) && !['Sun', 'Moon'].includes(p.name), 'Pianeta non supportato: ' + p.name);
-      richiedi(numero(p.scale, 1, 10), 'La scala deve essere fra 1 e 10');
+      richiedi(corpi.includes(p.name) && !['Sun', 'Moon'].includes(p.name), err('pianeta', { nome: p.name }));
+      richiedi(numero(p.scale, 1, 10), err('scala'));
     },
     crea(p) {
       evidenze.set(p.name, p.scale);
@@ -184,7 +210,7 @@
   registro.zoom_view = {
     verifica(p) {
       campi(p, ['type', 'final_target']);
-      richiedi(p.type === 'geometric' && p.final_target === 'solar_system_3d', 'Transizione non supportata');
+      richiedi(p.type === 'geometric' && p.final_target === 'solar_system_3d', err('transizione'));
     },
     crea(p, c) {
       window.apriSistemaSolare({
@@ -205,9 +231,9 @@
   registro.orbit_object = {
     verifica(p) {
       campi(p, ['object', 'angle', 'speed']);
-      richiedi(p.object === 'Earth-Moon', 'Orbita supportata: Earth-Moon');
-      richiedi(numero(p.angle, -3600, 3600), 'Angolo non valido');
-      richiedi(p.speed === undefined || p.speed === 'slow', 'Velocita supportata: slow');
+      richiedi(p.object === 'Earth-Moon', err('orbita'));
+      richiedi(numero(p.angle, -3600, 3600), err('angolo'));
+      richiedi(p.speed === undefined || p.speed === 'slow', err('velocita'));
     },
     crea(p, c) {
       eclisse(c); const inizio = sol.az;
@@ -222,7 +248,7 @@
   registro.center_target = {
     verifica(p) {
       campi(p, ['target']);
-      richiedi(corpi.includes(p.target) || p.target === 'Eclipse Shadow', 'Bersaglio non supportato: ' + p.target);
+      richiedi(corpi.includes(p.target) || p.target === 'Eclipse Shadow', err('bersaglio', { nome: p.target }));
     },
     crea(p, c) {
       if (p.target === 'Eclipse Shadow') {
@@ -244,7 +270,7 @@
     }
   };
   registro.transition_to = {
-    verifica(p) { campi(p, ['target']); richiedi(['planetarium_view', 'solar_system_3d'].includes(p.target), 'Vista non supportata'); },
+    verifica(p) { campi(p, ['target']); richiedi(['planetarium_view', 'solar_system_3d'].includes(p.target), err('vistaSconosciuta', { nome: p.target })); },
     crea(p, c) { vista(p.target, c); }
   };
 
@@ -253,12 +279,17 @@
   const chiavi = ['modalitaTempo', 'istanteSimulatoMs', 'offsetTempoSec', 'luogoVista', 'target',
     'inseguimento', 'eventoInseguito', 'seguiTelefono', 'fov', 'fovVoluto', 'modalitaHover',
     'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'passoTempoSec',
-    'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec'];
+    'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec',
+    // Il campo è definito sull'altezza del riquadro (`skyRidimensiona`): la
+    // demo entra a schermo intero, e rimettendo il campo di prima senza
+    // l'altezza a cui valeva, l'uscita dal pieno schermo lo riscalava da
+    // capo — a fine demo il FOV tornava 93° invece di 80°.
+    'altezzaMisurata'];
   function valida(testo) {
     const demo = motore.prepara(testo);
     let quando = skyAdesso(), luogo = skyLuogoDelCielo();
     for (const scena of demo.scene) {
-      richiedi(['planetarium_view', 'transition', 'solar_system_3d'].includes(scena.vista), 'Scena non supportata: ' + scena.vista);
+      richiedi(['planetarium_view', 'transition', 'solar_system_3d'].includes(scena.vista), err('scena', { nome: scena.vista }));
       for (const azione of scena.azioni) {
         if (azione.comando === 'set_location') luogo = luogoDemo(azione.parametri);
         if (azione.comando === 'set_date') quando = dataISO(azione.parametri);
@@ -349,17 +380,23 @@
   const riavvia = bottone('riavvia', () => avviaSicuro(ultimoScript));
   const arresta = bottone('stop', () => motore.ferma());
   document.body.append(pannello);
+  function titoloDemo(id) {
+    return predefiniti.some(d => d.chiave === id) ? t('builtin.' + id + '.title') : id;
+  }
   function aggiornaPannello() {
-    if (typeof pannello === 'undefined') return;
     const attivo = motore.stato === 'attivo' || motore.stato === 'pausa';
     if (attivo) {
       const genitore = sol.aperto ? solGuscio() : (document.fullscreenElement || document.body);
       if (genitore && pannello.parentElement !== genitore) genitore.append(pannello);
       pannello.hidden = false;
+      // Una riga sola, uguale per tutte le demo: prima la frase descrittiva
+      // valeva solo per la prima predefinita (e parlava di Reykjavík), le
+      // altre tre mostravano i nomi tecnici delle scene.
       const scena = motore.demo.scene[motore.indice];
-      messaggio.textContent = (ultimoScript === script ? t(scena.vista) : motore.demo.id + ' · ' + (motore.indice + 1) + '/' + motore.demo.scene.length +
-        ' · ' + scena.vista + ' · ' + (scena.durata / 1000) + ' s') +
-        (motore.stato === 'pausa' ? ' — ' + t('inPausa') : '');
+      messaggio.textContent = titoloDemo(motore.demo.id) + ' — ' + t('scenaDi', {
+        n: motore.indice + 1, tot: motore.demo.scene.length,
+        vista: t('vista.' + scena.vista), secondi: scena.durata / 1000
+      }) + (motore.stato === 'pausa' ? ' — ' + t('inPausa') : '');
       pausa.textContent = t(motore.stato === 'pausa' ? 'riprendi' : 'pausa');
       riavvia.textContent = t('riavvia'); arresta.textContent = t('stop');
     } else {
@@ -376,6 +413,16 @@
   // filtri, menu e altri controlli continuano quindi a funzionare normalmente.
   document.addEventListener('pointerdown', e => {
     if (contesto && !pannello.contains(e.target)) contesto.cediCamera();
+  }, true);
+  // La rotellina e i tasti non passano da `pointerdown`: senza questi due
+  // ascoltatori `set_fov` e `frame_objects` rimettevano il loro campo a ogni
+  // fotogramma e lo zoom della persona veniva annullato subito.
+  document.addEventListener('wheel', () => { if (contesto) contesto.cediCamera(); },
+    { capture: true, passive: true });
+  document.addEventListener('keydown', e => {
+    if (!contesto || e.key === 'Escape' || pannello.contains(e.target)) return;
+    const campo = e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]');
+    if (!campo && /^(Arrow|Page|Home$|End$|[+\-=]$)/.test(e.key)) contesto.cediCamera();
   }, true);
   document.addEventListener('keydown', e => {
     if (contesto && e.key === 'Escape') { motore.ferma(); e.preventDefault(); e.stopImmediatePropagation(); }
@@ -395,8 +442,8 @@
     ferma: () => motore.ferma(), evidenza: id => evidenze.get(id) || 1,
     get stato() { return motore.stato; },
     registra(nome, comando) {
-      richiedi(/^[a-z_]+$/.test(nome) && nome !== 'center' && !registro[nome], 'Nome comando gia presente o non valido');
-      richiedi(comando && typeof comando.crea === 'function', 'Comando senza crea');
+      richiedi(/^[a-z_]+$/.test(nome) && nome !== 'center' && !registro[nome], err('registraNome'));
+      richiedi(comando && typeof comando.crea === 'function', err('registraCrea'));
       registro[nome] = comando;
     }
   };

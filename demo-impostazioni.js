@@ -120,14 +120,16 @@
     return demo;
   }
 
-  function carica(chiave) {
+  function carica(chiave, opzioni = {}) {
     const dati = libreria.elenco();
     selezionata = dati.find(d => d.chiave === chiave) || dati[0];
     elenco.replaceChildren();
     for (const d of dati) elenco.add(new Option(testoOpzione(d), d.chiave));
     elenco.value = selezionata.chiave;
     originale = editor.value = selezionata.testo; nuova = false;
-    avanzate.open = false;
+    // Dopo un salvataggio si resta nell'editor: richiuderlo voleva dire
+    // perdere di vista il testo appena scritto a ogni «Salva».
+    avanzate.open = !!opzioni.apri;
     verifica();
   }
   function bozza(testo) {
@@ -144,7 +146,22 @@
   $('nuova').addEventListener('click', () => {
     if (abbandona()) bozza("define_demo 'nuova_demo' {\n" + snippets.planetarium_view + '}');
   });
-  $('duplica').addEventListener('click', () => bozza(editor.value));
+  // La copia prende un nome suo: con lo stesso `define_demo` della
+  // predefinita la bozza salvata compariva in elenco col nome tecnico di
+  // quella, e le due non si distinguevano.
+  function nomeCopia(testo) {
+    let nomi;
+    try { nomi = new Set(libreria.elenco().map(d => AstroDemoMotore.analizza(d.testo).id)); }
+    catch (_) { nomi = new Set(); }
+    return testo.replace(/^(\s*(?:\/\/[^\n]*\n\s*)*define_demo\s+)(?:'([^'\\]*)'|"([^"\\]*)"|([A-Za-z_][A-Za-z_0-9-]*))/,
+      (tutto, prima, a, b, c) => {
+        const base = (a || b || c) + '_copia';
+        let nome = base;
+        for (let n = 2; nomi.has(nome); n++) nome = base + '_' + n;
+        return prima + "'" + nome + "'";
+      });
+  }
+  $('duplica').addEventListener('click', () => bozza(nomeCopia(editor.value)));
   $('modifica').addEventListener('click', () => {
     avanzate.open = true; editor.focus();
   });
@@ -153,7 +170,7 @@
   });
   $('salva').addEventListener('click', () => prova(() => {
     const chiave = libreria.salva(editor.value, selezionata && selezionata.chiave);
-    carica(chiave); esito(t('salvato'));
+    carica(chiave, { apri: true }); esito(t('salvato'));
   }));
   $('elimina').addEventListener('click', () => {
     if (selezionata && !selezionata.solaLettura && window.confirm(t('confermaElimina')))

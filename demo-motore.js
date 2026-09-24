@@ -2,31 +2,69 @@
  * Nessun eval dello script. Utilizzabile anche con require() nelle prove. */
 (function (radice) {
   'use strict';
+  // I messaggi d'errore si leggono nell'editor, quindi vanno nella lingua
+  // dell'app: con il gestore delle lingue caricato si chiedono a lui
+  // (`demo.err.*`), senza — nelle prove Node — resta la frase italiana.
+  // Il motore resta puro: non conosce il documento, solo un dizionario
+  // facoltativo trovato sull'oggetto globale.
+  const RIPIEGHI = {
+    scriptNonValido: 'Script non valido o troppo lungo',
+    carattere: 'Carattere inatteso',
+    atteso: 'Atteso {cosa}',
+    attesoValore: 'Atteso un valore',
+    nome: 'Nome non valido',
+    durataDuplicata: 'Durata duplicata',
+    durataFormato: 'Durata attesa in s o ms',
+    durataIntervallo: 'Durata fuori intervallo',
+    parametroDuplicato: 'Parametro duplicato: {nome}',
+    campoSconosciuto: 'Campo sconosciuto: {nome}',
+    scenaIncompleta: 'Ogni scena richiede durata e azioni',
+    testoDopo: 'Testo dopo la demo',
+    vuota: 'Demo vuota',
+    comandoSconosciuto: 'Comando sconosciuto: {nome}',
+    posizione: '{messaggio} (riga {riga}, colonna {colonna})'
+  };
+  function messaggio(chiave, dati = {}) {
+    const i18n = radice.astroI18n;
+    if (i18n && typeof i18n.esiste === 'function' && i18n.esiste('demo.err.' + chiave))
+      return i18n.t('demo.err.' + chiave, dati);
+    return (RIPIEGHI[chiave] || chiave).replace(/\{(\w+)\}/g, (m, k) => k in dati ? String(dati[k]) : m);
+  }
   function analizza(testo) {
-    if (typeof testo !== 'string' || testo.length > 100000) throw new Error('Script non valido o troppo lungo');
+    if (typeof testo !== 'string' || testo.length > 100000) throw new Error(messaggio('scriptNonValido'));
     const regola = /\s+|\/\/[^\n]*|'(?:\\['\\]|[^'\\])*'|"(?:\\["\\]|[^"\\])*"|\d{1,2}:\d{2}(?!\d)|-?\d+(?:\.\d+)?(?:ms|s)?|[A-Za-z_][A-Za-z_0-9-]*|[{}:;,]/gy;
-    const gettoni = []; let pos = 0;
-    function errore(messaggio, indice = pos) {
+    const gettoni = []; let pos = 0, i = 0, scansione = true;
+    // Senza indice esplicito l'errore cade sul gettone appena letto: durante
+    // l'analisi `pos` vale già la fine del testo, e tutti gli errori di
+    // struttura finivano sull'ultima riga invece che su quella sbagliata.
+    function errore(chiave, dati, indice) {
+      if (indice === undefined) {
+        const g = scansione ? null : gettoni[Math.max(0, Math.min(i, gettoni.length) - 1)];
+        indice = g ? g.pos : pos;
+      }
       const prima = testo.slice(0, indice), righe = prima.split('\n');
-      throw new SyntaxError(messaggio + ' (riga ' + righe.length + ', colonna ' + (righe[righe.length - 1].length + 1) + ')');
+      throw new SyntaxError(messaggio('posizione', {
+        messaggio: messaggio(chiave, dati), riga: righe.length, colonna: righe[righe.length - 1].length + 1
+      }));
     }
     while (pos < testo.length) {
       regola.lastIndex = pos; const m = regola.exec(testo);
-      if (!m) errore('Carattere inatteso');
+      if (!m) errore('carattere');
       if (!/^\s|^\/\//.test(m[0])) gettoni.push({ valore: m[0], pos });
       pos = regola.lastIndex;
     }
-    let i = 0;
+    scansione = false;
     const guarda = () => gettoni[i] && gettoni[i].valore;
     function prendi(atteso) {
       const g = gettoni[i];
-      if (!g || (atteso && g.valore !== atteso)) errore('Atteso ' + (atteso || 'valore'), g ? g.pos : testo.length);
+      if (!g || (atteso && g.valore !== atteso))
+        errore(atteso ? 'atteso' : 'attesoValore', { cosa: atteso }, g ? g.pos : testo.length);
       i++; return g.valore;
     }
     function nome() {
       const v = prendi();
       if (/^['"]/.test(v)) return v.slice(1, -1).replace(/\\(['"\\])/g, '$1');
-      if (!/^[A-Za-z_][A-Za-z_0-9-]*$/.test(v)) errore('Nome non valido', gettoni[i - 1].pos);
+      if (!/^[A-Za-z_][A-Za-z_0-9-]*$/.test(v)) errore('nome', {}, gettoni[i - 1].pos);
       return v;
     }
     function valore() {
@@ -40,33 +78,33 @@
       prendi('scene'); const vista = nome(); prendi('{');
       let durata = null; const azioni = [];
       while (guarda() && guarda() !== '}') {
-        const campo = prendi(); prendi(':');
+        const posCampo = gettoni[i] ? gettoni[i].pos : pos, campo = prendi(); prendi(':');
         if (campo === 'duration') {
-          if (durata !== null) errore('Durata duplicata');
+          if (durata !== null) errore('durataDuplicata');
           const v = prendi(), m = /^(\d+(?:\.\d+)?)(ms|s)$/.exec(v);
-          if (!m) errore('Durata attesa in s o ms');
+          if (!m) errore('durataFormato');
           durata = Number(m[1]) * (m[2] === 's' ? 1000 : 1);
-          if (!(durata > 0 && durata <= 3600000)) errore('Durata fuori intervallo');
+          if (!(durata > 0 && durata <= 3600000)) errore('durataIntervallo');
         } else if (campo === 'action') {
           let comando = nome(); if (comando === 'center') comando = 'center_target';
           prendi('{'); const parametri = Object.create(null);
           while (guarda() && guarda() !== '}') {
             const chiave = nome(); prendi(':');
-            if (Object.hasOwn(parametri, chiave)) errore('Parametro duplicato: ' + chiave);
+            if (Object.hasOwn(parametri, chiave)) errore('parametroDuplicato', { nome: chiave });
             parametri[chiave] = valore();
             if (guarda() !== '}') prendi(',');
           }
           prendi('}'); azioni.push({ comando, parametri });
-        } else errore('Campo sconosciuto: ' + campo);
+        } else errore('campoSconosciuto', { nome: campo }, posCampo);
         prendi(';');
       }
       prendi('}');
-      if (durata === null || !azioni.length) errore('Ogni scena richiede durata e azioni');
+      if (durata === null || !azioni.length) errore('scenaIncompleta');
       scene.push({ vista, durata, azioni });
     }
     prendi('}');
-    if (guarda()) errore('Testo dopo la demo', gettoni[i].pos);
-    if (!scene.length) errore('Demo vuota');
+    if (guarda()) errore('testoDopo', {}, gettoni[i].pos);
+    if (!scene.length) errore('vuota');
     return { id, scene };
   }
 
@@ -83,7 +121,7 @@
       const demo = analizza(testo);
       for (const scena of demo.scene) for (const azione of scena.azioni) {
         const comando = this.registro[azione.comando];
-        if (!comando || typeof comando.crea !== 'function') throw new Error('Comando sconosciuto: ' + azione.comando);
+        if (!comando || typeof comando.crea !== 'function') throw new Error(messaggio('comandoSconosciuto', { nome: azione.comando }));
         if (comando.verifica) comando.verifica(azione.parametri, scena);
       }
       return demo;
@@ -160,7 +198,7 @@
       try { this.ferma('errore'); } catch (_) { this.stato = 'errore'; this.avvisa(this); }
     }
   }
-  const api = { analizza, Motore };
+  const api = { analizza, Motore, messaggio };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else radice.AstroDemoMotore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

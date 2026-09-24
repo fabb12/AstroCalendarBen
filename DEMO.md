@@ -11,11 +11,17 @@ anche **Modifica**, esportazione ed eliminazione. **Crea nuova demo** e
 **Importa demo da file** restano azioni secondarie.
 
 Durante la riproduzione sono disponibili Pausa, Riprendi, Ricomincia e Termina
-demo. La persona può muovere la camera e cambiare i filtri: l'intervento manuale
+demo; la barra dice titolo, scena («scena 1/2 · Planetario · 8 s») e stato.
+La persona può muovere la camera e cambiare i filtri: l'intervento manuale —
+dito, mouse, **rotellina** o tasti di navigazione (frecce, Pagina, +/−) —
 prende la camera per la scena corrente senza fermare il racconto. Escape o
 **Termina demo** interrompono il tour e ripristinano vista, data/ora, luogo,
 camera, FOV, filtri, inseguimento, playback, Sistema Solare, aurora e fullscreen.
 Cambiare scheda mette in pausa la demo.
+
+La spiegazione per chi usa l'app sta nella guida, **capitolo 10** (`guida.html#demo`,
+e in inglese `guida-en.html#demo`): va tenuta allineata a questo file quando si
+aggiunge un'azione o si cambia una regola.
 
 ## I quattro tour predefiniti
 
@@ -104,10 +110,23 @@ cedono la camera appena la persona interviene. Il FOV faceva già parte dello
 snapshot di ripristino di AstroDemo, quindi viene annullato correttamente a
 fine tour o su Escape/Stop.
 
+`center_target { target: 'Eclipse Shadow' }` e `orbit_object` cercano
+l'eclisse di Sole **più vicina all'orologio della demo** (prima o dopo), non più
+sempre quella del 12 agosto 2026: una demo personale con `set_date` nel 2027
+arriva all'eclisse del 2 agosto 2027.
+
 `center` resta alias di `center_target`.
 `transition_to` cambia direttamente fra `planetarium_view` e
 `solar_system_3d`. Gli orari civili sono validati nel luogo e nella data
 raggiunti dallo script.
+
+## Messaggi di validazione
+
+Tutti i messaggi (motore, libreria, adattatore) stanno nei dizionari sotto
+`demo.err.*`: in inglese l'editor risponde in inglese. Il motore e la libreria
+restano puri — chiedono a `astroI18n` se c'è, e nelle prove Node ripiegano
+sulla frase italiana. Riga e colonna indicano il gettone sbagliato: prima quasi
+tutti gli errori di struttura cadevano sulla fine del testo.
 
 ## Movimento ridotto
 
@@ -122,6 +141,22 @@ astronomiche. `demo.js` è l'adattatore verso il planetario e registra le
 azioni. `demo-predefiniti.js` contiene soltanto i testi dei tour.
 `demo-libreria.js` gestisce storage e protezioni; `demo-impostazioni.js`
 gestisce la libreria semplice e l'editor avanzato.
+
+## Correzioni della v368
+
+- La rotellina e i tasti non passavano da `pointerdown`: `set_fov` e
+  `frame_objects` riscrivevano il campo a ogni fotogramma e lo zoom della
+  persona veniva annullato.
+- Il ripristino riscriveva il FOV ma non l'altezza a cui valeva
+  (`sky.altezzaMisurata`): uscendo dallo schermo intero il campo veniva
+  riscalato e la demo non tornava al FOV iniziale (80° → 93°).
+- `frame_objects` forzava il giro completo degli astri a ogni fotogramma, e
+  con pianeti spenti dai filtri non inquadrava niente: adesso accende i filtri
+  (ripristinati a fine demo) e forza il calcolo una volta sola.
+- La barra della demo mostrava una frase valida solo per il tour dell'eclisse
+  (e i nomi tecnici delle scene per gli altri): ora è titolo · scena · durata.
+- «Duplica e modifica» dà alla copia un nome suo (`…_copia`), e «Salva» non
+  richiude più l'editor.
 
 ## Verifica
 
