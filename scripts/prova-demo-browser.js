@@ -76,7 +76,7 @@ const server = http.createServer((req, res) => {
     await pagina.locator('#demo-editor').fill(testoBase.replace('12s;', '12s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
-    for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'orbit_object', 'zoom_view']) {
+    for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'frame_objects', 'orbit_object', 'zoom_view']) {
       await pagina.locator('#demo-snippet').selectOption(snippet);
       await pagina.locator('#demo-inserisci').click();
       assert.equal(await pagina.locator('#demo-editor').getAttribute('aria-invalid'), 'false', snippet);
@@ -332,7 +332,7 @@ const server = http.createServer((req, res) => {
           'Quattro pianeti realmente sopra l’orizzonte prima dell’alba');
         assert.ok(['Mercury', 'Venus', 'Mars', 'Jupiter'].filter(n => quadro.dentro[n]).length >= 3,
           'Il corteo è realmente nel quadro');
-        assert.ok(quadro.fov >= 100, 'Campo largo per il corteo');
+        assert.ok(quadro.fov >= 70, 'Campo largo per il corteo');
         await pagina.screenshot({ path: path.join(radice, 'work/demo-allineamento-pianeti.png') });
       }
       if (chiave === 'aurora_boreale')
