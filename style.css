@@ -11829,13 +11829,46 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
   gap:2px 12px; margin-top:4px;
 }
 .demo-livello { min-height:32px; font-size:.82rem; }
-/* Durante una demo gli avvisi di servizio non si vedono: parlano del luogo e
-   dell'ora dell'app, non di quelli del racconto (vedi anche `skyAvviso`). */
-body.demo-in-corso #skymap-avviso,
-body.demo-in-corso #transito-avviso,
-body.demo-in-corso #terreno-progress,
-body.demo-in-corso #skymap-caricamento,
-body.demo-in-corso .skymap-avviso { display:none !important; }
+/* La vista pulita è deliberatamente solo presentazione: non cambia pannelli
+   aperti o valori dei controlli. Il contenitore della scena viene marcato da
+   demo.js e il chrome sparisce; canvas/video, sottotitoli e controlli
+   essenziali della demo restano visibili. */
+body.demo-vista-pulita .testata-app { visibility:hidden !important; pointer-events:none !important; }
+body.demo-vista-pulita .demo-scena-pulita > * {
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+body.demo-vista-pulita .demo-scena-pulita > canvas,
+body.demo-vista-pulita .demo-scena-pulita > video,
+body.demo-vista-pulita .demo-scena-pulita > #sol-transizione,
+body.demo-vista-pulita .demo-scena-pulita > #demo-controlli,
+body.demo-vista-pulita .demo-scena-pulita > .narrazione-testo,
+body.demo-vista-pulita #sol-transizione,
+body.demo-vista-pulita #sol-transizione *,
+body.demo-vista-pulita #demo-controlli,
+body.demo-vista-pulita #demo-controlli *,
+body.demo-vista-pulita .narrazione-testo {
+  visibility:visible !important;
+}
+body.demo-vista-pulita #demo-controlli,
+body.demo-vista-pulita #demo-controlli * { pointer-events:auto !important; }
+body.demo-vista-pulita #modale-sistema .testata-modale,
+body.demo-vista-pulita #modale-sistema .corpo-modale > *:not(#sol-guscio),
+body.demo-vista-pulita main button,
+body.demo-vista-pulita main input,
+body.demo-vista-pulita main select,
+body.demo-vista-pulita main textarea,
+body.demo-vista-pulita main details {
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+/* Gli avvisi di servizio parlano del luogo e dell'ora dell'app, non di quelli
+   del racconto. Quando la vista pulita è spenta restano disponibili. */
+body.demo-vista-pulita #skymap-avviso,
+body.demo-vista-pulita #transito-avviso,
+body.demo-vista-pulita #terreno-progress,
+body.demo-vista-pulita #skymap-caricamento,
+body.demo-vista-pulita .skymap-avviso { display:none !important; }
 .demo-azioni-secondarie { padding-top:4px; }
 .demo-importa-tasto { display:inline-flex !important; align-items:center; margin:0 !important; cursor:pointer; }
 .demo-file-nascosto { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
