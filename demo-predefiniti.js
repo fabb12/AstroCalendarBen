@@ -20,7 +20,8 @@
   }
   scene solar_system_3d {
     duration: 14s;
-    action: orbit_object { object: 'Earth-Moon', angle: 220, speed: slow };
+    // Un arco contenuto mantiene il lato illuminato e l'ombra visibili mentre la camera gira attorno alla Terra.
+    action: orbit_object { object: 'Earth-Moon', angle: 100, speed: slow };
     action: center { target: 'Eclipse Shadow' };
   }
 }`

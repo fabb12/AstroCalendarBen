@@ -6592,6 +6592,10 @@ body.galleria-immersiva { overflow: hidden; }
 /* ------------------------------------------------------------- FINESTRE     */
 .velo-modale { padding: 16px; }
 .pannello-modale { margin-block: 24px; max-width: 560px; }
+/* Le Impostazioni hanno quattro sezioni dense: su desktop usano una finestra
+   dedicata, molto piu' ampia dei moduli semplici, senza cambiare il foglio
+   mobile (la larghezza resta comunque limitata dallo schermo). */
+.pannello-modale[data-misura="impostazioni"] { max-width: 1040px; }
 /* "grande" e "larga" sono le finestre di contenuto — atlante, Sistema
    Solare, mappa dell'ombra, lezione, simulazione — non i moduli. Più
    spazio dentro vuol dire una mappa o una scena più grandi, quindi
@@ -6610,6 +6614,7 @@ body.galleria-immersiva { overflow: hidden; }
   /* Sul monitor grande la mappa dell'eclissi merita tutta la larghezza */
   .pannello-modale[data-misura="grande"] { max-width: 1180px; }
   .pannello-modale[data-misura="larga"]  { max-width: 1560px; }
+  .pannello-modale[data-misura="impostazioni"] { max-width: 1280px; }
   .corpo-modale { padding: 24px; }
 }
 
@@ -6618,6 +6623,7 @@ body.galleria-immersiva { overflow: hidden; }
      2560 di schermo avrebbe lasciato mezzo desktop vuoto ai lati. */
   .pannello-modale[data-misura="grande"] { max-width: 1380px; }
   .pannello-modale[data-misura="larga"]  { max-width: 1880px; }
+  .pannello-modale[data-misura="impostazioni"] { max-width: 1560px; }
 }
 
 /* Sul telefono le finestre diventano fogli che salgono dal basso: il pollice

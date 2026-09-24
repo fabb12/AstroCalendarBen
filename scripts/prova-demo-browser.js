@@ -44,6 +44,9 @@ const server = http.createServer((req, res) => {
     await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof sky !== 'undefined' && sky.observer && sky.oggetti.length, null, { timeout: 30000 });
     // Gestione reale attraverso la nuova scheda, anche con sola tastiera.
     await pagina.locator('#btn-impostazioni').click();
+    const larghezzaImpostazioni = await pagina.locator('#modale-impostazioni > .pannello-modale')
+      .evaluate(el => el.getBoundingClientRect().width);
+    assert.ok(larghezzaImpostazioni >= 900, 'Le Impostazioni sfruttano la larghezza desktop');
     await pagina.locator('#imp-tab-btn-demo').click();
     const builtins = await pagina.evaluate(() => AstroDemo.libreria.elenco().filter(d => d.solaLettura).map(d => {
       const demo = AstroDemo.valida(d.testo);
@@ -354,6 +357,8 @@ const server = http.createServer((req, res) => {
     await pagina.locator('#demo-avanzate summary').click();
     assert.ok(await pagina.locator('#demo-editor').isVisible());
     await pagina.screenshot({ path: path.join(radice, 'work/demo-impostazioni.png') });
+    await pagina.keyboard.press('Escape');
+    assert.equal(await pagina.locator('#modale-impostazioni').isVisible(), false, 'Esc chiude le Impostazioni');
     assert.deepEqual(errori, [], 'Nessuna eccezione browser');
     console.log('Demo browser: planetario, volo, ombra, orbita, pausa, stop e ripristino verificati');
   } finally {
