@@ -335,7 +335,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.locator('#demo-opz-vista-pulita').check();
     await pagina.locator('#demo-opz-registra-audio').check();
     await pagina.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
-    await pagina.locator('#btn-impostazioni').click();
+    await pagina.locator('#btn-chiudi-impostazioni').click();
 
     // La vista pulita nasconde il chrome senza alterarne lo stato. Lasciamo
     // apposta aperta la scheda Visualizzazione e un avviso già presente.
