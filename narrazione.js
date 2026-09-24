@@ -82,7 +82,12 @@ const narr = {
   vocePronta: false,
   ttsMuto: false,     // la voce del dispositivo non è partita: fino al prossimo gesto
   sbloccato: false,
-  elTesto: null
+  elTesto: null,
+  // Un solo grafo Web Audio per l'elemento condiviso. La destinazione di
+  // cattura invece nasce e muore con la registrazione della demo.
+  audioContesto: null,
+  audioSorgente: null,
+  cattura: null
 };
 
 function narrLeggiPreferenze() {
@@ -368,6 +373,58 @@ function narrLiberaAudio() {
   }
   if (narr.urlOggetto && typeof URL !== 'undefined') URL.revokeObjectURL(narr.urlOggetto);
   narr.urlOggetto = '';
+}
+
+// Apre una sola uscita registrabile dell'elemento audio condiviso. I file
+// registrati e l'Edge-TTS passano tutti da questo elemento, quindi arrivano
+// alla stessa traccia senza doppioni né sovrapposizioni. La SpeechSynthesis
+// nativa, invece, non espone il proprio segnale alle Web API: resta udibile
+// alla persona ma non è catturabile in modo portabile.
+function narrFermaCatturaAudio(canale) {
+  const c = narr.cattura;
+  if (!c || (canale && c.canale && c.canale !== canale)) return;
+  if (c.destinazione && narr.audioSorgente) {
+    try { narr.audioSorgente.disconnect(c.destinazione); } catch (_) { /* già scollegata */ }
+  }
+  if (c.stream && typeof c.stream.getTracks === 'function')
+    c.stream.getTracks().forEach(t => { try { t.stop(); } catch (_) { /* già ferma */ } });
+  narr.cattura = null;
+}
+function narrCatturaAudio(canale = '') {
+  narrFermaCatturaAudio();
+  const a = narrElementoAudio();
+  if (!a) return null;
+  const AudioCtx = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+  if (AudioCtx) {
+    try {
+      if (!narr.audioContesto) narr.audioContesto = new AudioCtx();
+      if (!narr.audioSorgente) {
+        narr.audioSorgente = narr.audioContesto.createMediaElementSource(a);
+        narr.audioSorgente.connect(narr.audioContesto.destination);
+      }
+      const destinazione = narr.audioContesto.createMediaStreamDestination();
+      narr.audioSorgente.connect(destinazione);
+      const stream = destinazione.stream;
+      narr.cattura = { canale, destinazione, stream, tipo: 'webaudio' };
+      if (narr.audioContesto.state === 'suspended' && narr.audioContesto.resume)
+        Promise.resolve(narr.audioContesto.resume()).catch(() => {});
+      return stream;
+    } catch (e) {
+      console.warn('[narrazione] Cattura Web Audio non disponibile:', e.message);
+    }
+  }
+  // Ripiego per browser che espongono direttamente la cattura del media
+  // element. Se al momento non c'è ancora una traccia, il chiamante tratta
+  // correttamente la registrazione come video senza audio.
+  const cattura = a.captureStream || a.mozCaptureStream;
+  if (typeof cattura === 'function') {
+    try {
+      const stream = cattura.call(a);
+      narr.cattura = { canale, destinazione: null, stream, tipo: 'media-element' };
+      return stream;
+    } catch (_) { /* non supportata in questa configurazione */ }
+  }
+  return null;
 }
 
 /* Suona una sorgente sull'elemento condiviso. Risponde 'audio' a fine brano,
@@ -828,6 +885,14 @@ const narrazione = {
   sblocca: narrSblocca,
   preferenze: () => ({ ...narrPreferenze() }),
   impostaPreferenze: narrImpostaPreferenze,
+  catturaAudio: narrCatturaAudio,
+  fermaCatturaAudio: narrFermaCatturaAudio,
+  catturaStato: () => ({
+    attiva: !!narr.cattura,
+    tipo: narr.cattura ? narr.cattura.tipo : '',
+    tracce: narr.cattura && narr.cattura.stream && narr.cattura.stream.getAudioTracks
+      ? narr.cattura.stream.getAudioTracks().length : 0
+  }),
   // Per le prove e per chi scrive il manifest.
   componi: (id, testo, lingua) => narrComponi(id, testo, lingua || narrLingua(), narrPreferenze().soloTts),
   impronta: narrImpronta,
