@@ -2733,29 +2733,58 @@
             servizio esterno: viaggia col sito, sta nella cache del service
             worker, e quindi si legge anche dal rifugio senza campo. -->
        <div id="imp-tab-demo" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-demo" data-imp-pannello="demo">
-         <label for="demo-elenco" data-i18n="demo.elenco">Demo disponibili</label>
-         <select id="demo-elenco"></select>
-         <p id="demo-info"></p>
-         <div class="demo-azioni">
-           <button id="demo-avvia" type="button" class="tasto-cielo" data-i18n="demo.esegui">Avvia demo selezionata</button>
-           <button id="demo-nuova" type="button" class="tasto-cielo" data-i18n="demo.nuova">Crea nuova</button>
-           <button id="demo-duplica" type="button" class="tasto-cielo" data-i18n="demo.duplica">Duplica</button>
-           <button id="demo-elimina" type="button" class="tasto-cielo" data-i18n="demo.elimina">Elimina</button>
-           <button id="demo-esporta" type="button" class="tasto-cielo" data-i18n="demo.esporta">Esporta .astrodemo</button>
-         </div>
-         <label for="demo-importa" data-i18n="demo.importa">Importa file .astrodemo o .txt (massimo 100 KB)</label>
-         <input id="demo-importa" type="file" accept=".astrodemo,.txt,text/plain">
-         <label for="demo-editor" data-i18n="demo.editor">Script DSL</label>
-         <p id="demo-aiuto" data-i18n="demo.aiuto">Le demo predefinite sono di sola lettura: duplicale per modificarle. Ogni snippet aggiunge una scena completa in fondo. Modifica nome, durata e parametri nel testo; i punti e virgola sono obbligatori.</p>
-         <textarea id="demo-editor" rows="16" spellcheck="false" aria-describedby="demo-aiuto demo-validazione"></textarea>
-         <label for="demo-snippet" data-i18n="demo.snippet">Scena o azione pronta</label>
-         <div class="demo-azioni">
-           <select id="demo-snippet"></select>
-           <button id="demo-inserisci" type="button" class="tasto-cielo" data-i18n="demo.inserisci">Aggiungi scena</button>
-           <button id="demo-salva" type="button" class="tasto-cielo" data-i18n="demo.salva">Salva script</button>
-           <button id="demo-annulla" type="button" class="tasto-cielo" data-i18n="demo.annulla">Annulla modifiche</button>
-         </div>
-         <p id="demo-validazione" role="status" aria-live="polite"></p>
+         <section class="demo-libreria" aria-labelledby="demo-libreria-titolo">
+           <div>
+             <h3 id="demo-libreria-titolo" class="font-bold text-white" data-i18n="demo.libreriaTitolo">Scegli una demo</h3>
+             <p class="demo-introduzione" data-i18n="demo.libreriaAiuto">Seleziona un fenomeno e avvialo: data, luogo e inquadratura vengono preparati automaticamente e poi ripristinati.</p>
+           </div>
+           <label for="demo-elenco" data-i18n="demo.elenco">Demo disponibili</label>
+           <select id="demo-elenco"></select>
+           <article class="demo-scheda" aria-live="polite">
+             <div class="demo-scheda-testata">
+               <div>
+                 <span id="demo-badge" class="demo-badge"></span>
+                 <h4 id="demo-titolo" class="demo-titolo"></h4>
+               </div>
+               <span id="demo-durata" class="demo-durata"></span>
+             </div>
+             <p id="demo-descrizione" class="demo-descrizione"></p>
+             <dl id="demo-metadati" class="demo-metadati"></dl>
+           </article>
+           <p id="demo-info" class="demo-info-tecnica"></p>
+           <div class="demo-azioni demo-azioni-principali">
+             <button id="demo-avvia" type="button" class="demo-avvia-principale" data-i18n="demo.esegui">Avvia demo</button>
+             <button id="demo-duplica" type="button" class="tasto-cielo" data-i18n="demo.duplicaModifica">Duplica e modifica</button>
+             <button id="demo-modifica" type="button" class="tasto-cielo" data-i18n="demo.modifica" hidden>Modifica</button>
+           </div>
+           <div class="demo-azioni demo-azioni-secondarie">
+             <button id="demo-nuova" type="button" class="tasto-cielo" data-i18n="demo.nuova">Crea nuova demo</button>
+             <label class="tasto-cielo demo-importa-tasto" for="demo-importa" data-i18n="demo.importaPulsante">Importa demo da file</label>
+             <input id="demo-importa" class="demo-file-nascosto" type="file" accept=".astrodemo,.txt,text/plain">
+             <span id="demo-file-nome" class="demo-file-nome"></span>
+           </div>
+         </section>
+
+         <details id="demo-avanzate" class="demo-avanzate">
+           <summary data-i18n="demo.dettagliAvanzati">Dettagli avanzati</summary>
+           <div class="demo-avanzate-corpo">
+             <div class="demo-azioni">
+               <button id="demo-esporta" type="button" class="tasto-cielo" data-i18n="demo.esporta">Esporta .astrodemo</button>
+               <button id="demo-elimina" type="button" class="tasto-cielo" data-i18n="demo.elimina">Elimina</button>
+             </div>
+             <label for="demo-editor" data-i18n="demo.editor">Script DSL</label>
+             <p id="demo-aiuto" data-i18n="demo.aiuto">Le demo predefinite sono di sola lettura: duplicale per modificarle. Ogni snippet aggiunge una scena completa in fondo. Modifica nome, durata e parametri nel testo; i punti e virgola sono obbligatori.</p>
+             <textarea id="demo-editor" rows="16" spellcheck="false" aria-describedby="demo-aiuto demo-validazione"></textarea>
+             <label for="demo-snippet" data-i18n="demo.snippet">Scena o azione pronta</label>
+             <div class="demo-azioni">
+               <select id="demo-snippet"></select>
+               <button id="demo-inserisci" type="button" class="tasto-cielo" data-i18n="demo.inserisci">Aggiungi scena</button>
+               <button id="demo-salva" type="button" class="tasto-cielo" data-i18n="demo.salva">Salva script</button>
+               <button id="demo-annulla" type="button" class="tasto-cielo" data-i18n="demo.annulla">Annulla modifiche</button>
+             </div>
+             <p id="demo-validazione" role="status" aria-live="polite"></p>
+           </div>
+         </details>
          <p id="demo-esito" role="status" aria-live="polite"></p>
        </div>
        <div id="imp-tab-guida" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-guida" data-imp-pannello="guida">

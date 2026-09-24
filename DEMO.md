@@ -1,156 +1,138 @@
 # Demo automatizzate
 
-Apri **Impostazioni → Demo automatizzate**, seleziona una demo e premi
-**Avvia demo selezionata**. La finestra si chiude per lasciare libero il cielo.
-Pausa, Riprendi, Ricomincia e Termina demo restano disponibili nelle due viste.
-Durante la riproduzione si possono muovere e ingrandire le camere e usare i
-controlli di visualizzazione: l'intervento manuale prende il controllo della
-camera per la scena corrente, ma la demo e il suo orologio non si fermano.
-Escape o **Termina demo** interrompono la demo e restituiscono vista, orologio,
-camera, filtri, inseguimento e playback precedenti.
-Cambiare scheda mette in pausa: la ripresa è esplicita.
+Apri **Impostazioni → Demo automatizzate**. La schermata principale è pensata
+per avviare un tour senza conoscere il DSL: scegli una demo, leggi durata,
+data/luogo ed effetto previsto e premi **Avvia demo**. L'editor non occupa più
+la pagina principale: si trova in **Dettagli avanzati**.
 
-## Libreria ed editor
+Le demo incluse sono di sola lettura. **Duplica e modifica** crea una bozza
+personale e apre direttamente l'editor; per le demo personali sono disponibili
+anche **Modifica**, esportazione ed eliminazione. **Crea nuova demo** e
+**Importa demo da file** restano azioni secondarie.
 
-I quattro tour inclusi sono di sola lettura. **Crea nuova** apre una bozza con
-una prima scena valida; **Duplica** copia lo script nell'editor. Modifica il
-nome dopo `define_demo`, le durate e i parametri, poi premi **Salva script**.
-Le demo utente si modificano direttamente e si eliminano con conferma.
-Le bozze rimangono disponibili chiudendo e riaprendo le Impostazioni.
-Il selettore chiede conferma prima di scartare modifiche non salvate.
-
-Gli snippet aggiungono una scena completa in fondo al tour, anche quando
-contiene commenti e stringhe con parentesi. Sono disponibili le tre viste e
-le cinque azioni principali con parametri validi. Il riepilogo mostra durata,
-numero di scene e bersagli. Il parser segnala riga e colonna per gli errori
-sintattici; la validazione dei comandi e degli orari blocca il salvataggio.
-Gli orari civili vengono verificati nella data e nel luogo attualmente scelti,
-compresi i buchi del cambio d'ora, e ricontrollati all'avvio e all'esecuzione.
-
-**Esporta .astrodemo** scarica esattamente il testo dell'editor, se valido.
-**Importa** accetta testo DSL (massimo 100 KB), lo valida subito e apre una
-bozza da salvare esplicitamente: non sovrascrive demo omonime. Gli identificativi
-di storage sono distinti dal nome DSL. Tutto resta su questo dispositivo nella
-chiave `astrocal_demo_utente_v1` di localStorage; per trasferirlo usa i file.
-Errori di quota, accesso o archivio corrotto vengono mostrati senza dichiarare
-un salvataggio riuscito o sostituire silenziosamente i dati precedenti.
-
-`demo-libreria.js` contiene la libreria con storage e validatore iniettati;
-`demo-impostazioni.js` collega editor e import/export a `AstroDemo.valida` e
-`AstroDemo.libreria`. Il parser e il motore puro non cambiano grammatica.
+Durante la riproduzione sono disponibili Pausa, Riprendi, Ricomincia e Termina
+demo. La persona può muovere la camera e cambiare i filtri: l'intervento manuale
+prende la camera per la scena corrente senza fermare il racconto. Escape o
+**Termina demo** interrompono il tour e ripristinano vista, data/ora, luogo,
+camera, FOV, filtri, inseguimento, playback, Sistema Solare, aurora e fullscreen.
+Cambiare scheda mette in pausa la demo.
 
 ## I quattro tour predefiniti
 
-| Tour | Scene · durata | Luogo, data ed effetti |
+| Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
-| **Eclisse solare totale 2026** (`eclisse_tour`) | 3 · 30 s | Dal cielo del luogo scelto (Venere, 18:00–22:00) al banco Terra–Luna. Il massimo dell’eclisse del 12 agosto 2026 è cercato da Astronomy Engine; la camera ruota intorno alla coppia e centra l’impronta dell’ombra. |
-| **Eclisse lunare totale** (`eclisse_lunare`) | 2 · 24 s | Sapporo, notte tra il 31 dicembre 2028 e il 1° gennaio 2029: Luna centrata, scorrimento 00:45–03:00 JST attraverso il massimo reale delle 01:52. Il disco usa il disegno del planetario; il tour non aggiunge una tinta artificiale all’ombra. |
-| **Aurora boreale** (`aurora_boreale`) | 2 · 20 s | Tromsø, 15 gennaio 2027: cielo verso nord, simulazione dell’ovale aurorale con Kp 5, notte dalle 21:00 alle 23:30 CET. Kp è una simulazione didattica, non una previsione per quella data. |
-| **Corteo dei pianeti** (`allineamento_pianeti`) | 2 · 22 s | Tucson, alba del 21 ottobre 2028: Mercurio, Venere, Marte e Giove effettivamente sopra l’orizzonte a est, evidenziati lungo l’eclittica. L’orologio attraversa 05:45–06:10 MST; le posizioni dei pianeti non sono forzate. |
+| **Eclisse solare totale 2026** (`eclisse_tour`) | 3 · 30 s | Reykjavík, 12 agosto 2026. Il planetario parte con un campo di 4° centrato sul Sole e attraversa i minuti della totalità; poi vola al banco Terra–Luna e centra l'impronta reale dell'ombra sulla Terra. |
+| **Eclisse lunare totale** (`eclisse_lunare`) | 2 · 24 s | Sapporo, notte fra 31 dicembre 2028 e 1 gennaio 2029. La Luna è centrata con campo 4°/2,5° e il timelapse 00:45–03:00 JST comprende il massimo reale delle 01:52. |
+| **Aurora boreale** (`aurora_boreale`) | 2 · 20 s | Tromsø, 15 gennaio 2027. Campo largo 90° verso nord, ovale aurorale acceso con **Kp 5 simulato**, poi timelapse 21:00–23:30. È una simulazione didattica, non una previsione. |
+| **Corteo dei pianeti** (`allineamento_pianeti`) | 2 · 22 s | Tucson, alba del 21 ottobre 2028. La camera calcola automaticamente il minimo arco di cielo che contiene Mercurio, Venere, Marte e Giove, li evidenzia e li mantiene nel quadro durante il timelapse 05:45–06:10 MST. |
 
-Gli orari dei tour con luogo esplicito sono locali al luogo indicato.
-Data e luogo di visita sono temporanei: non modificano la posizione di casa,
-e alla fine o all’interruzione tornano orologio, osservatore, orientamento,
-filtri e simulazione aurorale precedenti.
+Le posizioni astronomiche sono sempre quelle calcolate dall'app/Astronomy
+Engine. Data e luogo usati dal tour sono temporanei e non cambiano la posizione
+principale dell'utente.
 
-### Dettaglio del tour solare
+### Eclisse solare
 
-- **10 secondi:** cielo del giorno e del luogo attualmente selezionati,
-  dalle 18:00 alle 22:00 nel fuso del luogo, con Venere centrata ed evidenza
-  visiva ×5. Il filtro sotto l'orizzonte è temporaneamente abilitato:
-  non viene promessa la visibilità reale di Venere da ogni località.
-- **5 secondi:** volo geometrico esistente dal planetario al Sistema Solare,
-  controllato dal medesimo orologio della demo, anche in pausa.
-- **15 secondi:** salto esplicitato all'eclisse del 12 agosto 2026.
-  Astronomy Engine ne calcola il massimo a partire dal 1 agosto; le posizioni
-  non vengono forzate. Il banco Terra–Luna mostra i coni d'ombra; la camera
-  compie 360° con accelerazione e rallentamento graduali, centrando l'impronta
-  dell'ombra lunare sulla Terra e mantenendo la coppia nel campo.
+La prima scena imposta Reykjavík e il 12 agosto 2026, stringe il campo a 4° e
+centra il Sole mentre il tempo attraversa 17:47–17:50 UTC. La seconda scena usa
+il volo geometrico già esistente verso il Sistema Solare. La terza scena cerca
+il massimo reale con `Astronomy.SearchGlobalSolarEclipse`, entra nel banco
+Terra–Luna, ruota lentamente la camera (se il movimento ridotto non è attivo) e
+mantiene al centro `solOmbraLunareSuTerra(...).centro`.
 
-La preferenza di movimento ridotto conserva i tempi, sostituisce il volo
-con la dissolvenza già presente e disattiva la rotazione automatica.
-Le dimensioni del banco e la sua legenda restano quelle dell'app.
-L'evidenza cambia il disegno, non la magnitudine astronomica.
+### Eclisse lunare
+
+Il tour usa una vera eclisse totale del 31 dicembre 2028. Il renderer del
+planetario possiede già il disegno dell'ombra lunare; il tour non applica una
+tinta rossa fissa o un effetto scollegato dall'astronomia. La modifica importante
+è l'inquadratura: la Luna non resta un punto in un campo largo, ma viene centrata
+e ingrandita fino a 2,5° durante il timelapse.
+
+### Aurora
+
+`simulate_aurora` usa il renderer reale di `aurora-polare.js`, ma il Kp è
+dichiaratamente simulato. La demo sceglie una località boreale, punta la camera
+verso nord e mantiene un campo largo affinché l'ovale sia leggibile.
+
+### Corteo dei pianeti
+
+I quattro pianeti non vengono riallineati dal tour. Data, luogo e campo largo
+sono scelti perché siano realmente sopra l'orizzonte e leggibili nella stessa
+zona del cielo; `highlight_object` aumenta soltanto l'evidenza grafica.
+
+## Libreria ed editor avanzato
+
+Le demo utente sono persistite in `astrocal_demo_utente_v1` di localStorage.
+L'editor mantiene:
+
+- validazione live con riga e colonna;
+- blocco del salvataggio per DSL o orari civili non validi;
+- snippet di scene e azioni;
+- duplicazione;
+- importazione `.astrodemo`/`.txt` fino a 100 KB;
+- esportazione del testo DSL;
+- protezione delle demo built-in;
+- conferma prima di scartare modifiche non salvate.
+
+L'importazione valida il file prima di aprire la bozza e non sovrascrive
+silenziosamente demo esistenti.
 
 ## Sintassi
 
-Non è YAML né JavaScript eseguibile: è un linguaggio di dati.
-Il parser supporta commenti `//`, stringhe fra apici o doppi apici,
-identificatori, numeri decimali anche negativi, orari HH:MM e durate in s/ms.
-Una demo contiene scene sequenziali; tutte le azioni di una scena sono
-simultanee e condividono la sua durata. I punti e virgola sono obbligatori.
+Il DSL è un linguaggio di dati, non JavaScript eseguibile. Non usa `eval`.
+Supporta commenti `//`, stringhe fra apici o doppi apici, identificatori,
+numeri, orari HH:MM e durate in s/ms. Le azioni della stessa scena sono
+simultanee; i punti e virgola sono obbligatori.
 
-```text
-define_demo 'eclisse_tour' {
-  scene planetarium_view {
-    duration: 10s;
-    action: timelapse { start: 18:00, end: 22:00 };
-    action: highlight_object { name: 'Venus', scale: 5.0 };
-    action: center_target { target: 'Venus' };
-  }
-  scene transition {
-    duration: 5s;
-    action: zoom_view { type: geometric, final_target: solar_system_3d };
-  }
-  scene solar_system_3d {
-    duration: 15s;
-    action: orbit_object { object: 'Earth-Moon', angle: 360, speed: slow };
-    action: center { target: 'Eclipse Shadow' };
-  }
-}
-```
+Azioni principali:
 
-`center` è alias di `center_target`.
-`transition_to { target: solar_system_3d }` o
-`transition_to { target: planetarium_view }` cambia vista direttamente.
-`timelapse` attraversa la mezzanotte se l'orario finale precede quello iniziale.
-Ore civili inesistenti per il cambio d'ora vengono rifiutate.
-`highlight_object` accetta i sette pianeti visibili dalla Terra e scale 1–10.
-`center_target` accetta anche Sun/Moon e il bersaglio speciale Eclipse Shadow.
-`orbit_object` supporta Earth-Moon: angle stabilisce il giro, mentre la
-durata della scena ne stabilisce la velocità; slow indica la rampa morbida.
-`zoom_view` supporta la transizione geometric verso solar_system_3d.
-`set_date { iso: '2028-12-31T15:45:00Z' }` cambia l’istante UTC: la stringa
-deve essere una data reale nel formato esatto `YYYY-MM-DDTHH:MM:SSZ`.
-`set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' }`
-seleziona un luogo di visita, con coordinate numeriche e fuso IANA valido.
-`simulate_aurora { kp: 5 }` accende l’ovale aurorale con un Kp numerico da 0 a 9.
-`point_view { az: 0, alt: 25 }` punta la camera manuale in gradi, senza
-inseguire un astro. La validazione degli orari civili applica le azioni
-`set_date` e `set_location` nell’ordine dello script, senza mutare l’app;
-l’esecuzione usa le stesse date e lo stesso fuso.
+- `timelapse { start: 18:00, end: 22:00 }`
+- `highlight_object { name: 'Venus', scale: 5 }`
+- `center_target { target: 'Moon' }`
+- `point_view { az: 0, alt: 25 }`
+- `set_fov { degrees: 20 }`
+- `frame_objects { names: 'Mercury,Venus,Mars,Jupiter' }`
+- `set_date { iso: '2028-12-31T15:45:00Z' }`
+- `set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' }`
+- `simulate_aurora { kp: 5 }`
+- `zoom_view { type: geometric, final_target: solar_system_3d }`
+- `orbit_object { object: 'Earth-Moon', angle: 220, speed: slow }`
 
-Gli errori di sintassi riportano riga e colonna. Comandi, parametri e scene
-sconosciuti vengono rifiutati prima di cambiare lo stato dell'app.
-Gli errori durante l'esecuzione interrompono e ripristinano la sessione.
+`set_fov` accetta un campo fra 0,5° e 160°. `frame_objects` calcola il
+minimo arco azimutale contenente da 2 a 8 corpi supportati e sceglie
+automaticamente centro e campo, aggiornandoli durante il timelapse. Entrambe
+cedono la camera appena la persona interviene. Il FOV faceva già parte dello
+snapshot di ripristino di AstroDemo, quindi viene annullato correttamente a
+fine tour o su Escape/Stop.
 
-## Estensioni
+`center` resta alias di `center_target`.
+`transition_to` cambia direttamente fra `planetarium_view` e
+`solar_system_3d`. Gli orari civili sono validati nel luogo e nella data
+raggiunti dallo script.
 
-`AstroDemo.avvia(testo)`, `pausa()`, `riprendi()`, `ferma()` sono le porte
-pubbliche. `AstroDemo.script` contiene il tour predefinito.
+## Movimento ridotto
 
-```js
-AstroDemo.registra('mia_azione', {
-  verifica(parametri, scena) { /* rifiutare parametri non validi */ },
-  crea(parametri, contesto, scena) {
-    return {
-      aggiorna(progresso) { /* 0..1, incluso l'ultimo fotogramma */ },
-      chiudi() { /* liberare effetti temporanei anche su stop/errore */ }
-    };
-  }
-});
-```
+Con `prefers-reduced-motion: reduce` il racconto conserva fenomeno, data,
+luogo e inquadratura, ma evita la rotazione decorativa del banco Terra–Luna e
+usa il comportamento ridotto già previsto dalle transizioni.
 
-Il nucleo `AstroDemoMotore` è indipendente da DOM e astronomia; il registro
-può quindi collegare altre applicazioni. L'adattatore attuale conosce i nomi
-di scena planetarium_view, transition e solar_system_3d.
-Non esegue codice contenuto nello script e non carica risorse esterne.
+## Architettura
+
+`demo-motore.js` resta puro, indipendente dal DOM e senza conoscenze
+astronomiche. `demo.js` è l'adattatore verso il planetario e registra le
+azioni. `demo-predefiniti.js` contiene soltanto i testi dei tour.
+`demo-libreria.js` gestisce storage e protezioni; `demo-impostazioni.js`
+gestisce la libreria semplice e l'editor avanzato.
 
 ## Verifica
 
-`node scripts/prova-demo.js`: parser, azioni simultanee, tempi esatti,
-pausa, recupero di fotogrammi tardivi, stop, errori e ripristino.
-`node scripts/prova-demo-browser.js`: viste reali con Playwright e Astronomy
-Engine locali, centraggio dell'ombra, pause nelle tre scene, chiusura durante
-l'apertura differita, movimento ridotto e ripristino.
-Il workflow Verifica Demo esegue entrambe le prove e conserva una schermata.
+Eseguire:
+
+```bash
+node scripts/prova-demo.js
+node scripts/prova-demo-browser.js
+node scripts/prova-i18n.js
+```
+
+La prova browser avvia le demo dall'interfaccia, controlla astronomia,
+inquadratura e ripristino e salva schermate in `work/demo-*.png`.
+Il workflow **Verifica Demo** esegue le prove principali in pull request.
