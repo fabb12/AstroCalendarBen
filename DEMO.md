@@ -58,6 +58,21 @@ di servizio (tranne il canale `demo`, che dice se il tour si è rotto) e
 caricamento. Fine, Stop, Esc ed errore ripristinano tutto: livelli, schermo
 intero, registratore, banco didattico, camera 3D (anche mondi minori e sonde).
 
+## La narrazione
+
+Ogni scena dei tour predefiniti ha una frase detta a voce e scritta nel
+pannello della demo: `action: narrate { id: 'demo.narr.<demo>.<scena>' };`,
+con il testo nei due dizionari. La voce è quella di tutta l'app
+(`narrazione.js`, vedi `NARRAZIONE.md`): audio registrato se c'è
+(`audio/narrazione/demo/<lingua>/`), poi la sintesi, poi il solo testo. Segue
+avvio, pausa (anche quella della scheda nascosta), ripresa, cambio scena,
+Ricomincia, Termina demo, Esc, errore e fine senza mai accavallarsi: la voce
+vive quanto la scena, e pausa e ripresa gliele passa il motore
+(`contesto.pausa`/`riprendi`). Cambiando lingua a metà scena la frase si
+ridice nella lingua nuova. Le frasi stanno nella durata della loro scena
+(`node scripts/controlla-narrazione.js` lo controlla). Voce, volume, testo e
+«solo sintesi» si scelgono in Impostazioni → Osservazione → Narrazione.
+
 ## I cinque tour predefiniti
 
 | Tour | Scene · durata | Cosa mostra |
@@ -122,6 +137,9 @@ Azioni principali:
   (`scene: system` con `focus: 'Sun'` e `frame`, oppure `focus: 'Earth'`/`'ISS'`)
 - `aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150 }` (solo in `didactic_view`)
 - `satellite_pass { satellite: iss, before: 1, after: 1 }`
+- `narrate { id: 'demo.narr.eclisse_tour.1' }` oppure, in una demo personale,
+  `narrate { text: 'Qui la Luna tocca il Sole.' }` (al massimo 400 caratteri;
+  un `id` senza testo deve esistere nel dizionario)
 
 Le scene sono `planetarium_view`, `transition`, `solar_system_3d` e
 `didactic_view`. `AstroDemo.vaiAScena(i, frazione)` salta a una scena (lo usano
@@ -194,12 +212,22 @@ gestisce la libreria semplice e l'editor avanzato.
   e il centro del gradiente stava a decine di migliaia di pixel, che le GPU
   dei telefoni perdono.
 
+## Correzioni della v370
+
+- Le demo hanno una voce: la narrazione centrale (`narrazione.js`), condivisa
+  con Missione Cielo, con una frase per ogni scena dei cinque tour.
+- Il motore passa pausa e ripresa al contesto (`segnala`), così chi
+  accompagna il racconto senza essere un fotogramma si ferma con lui.
+
 ## Verifica
 
 Eseguire:
 
 ```bash
 node scripts/prova-demo.js
+node scripts/prova-narrazione.js
+node scripts/controlla-narrazione.js
+node scripts/prova-narrazione-browser.js
 node scripts/prova-demo-browser.js
 node scripts/prova-demo-regia.js
 node scripts/prova-i18n.js

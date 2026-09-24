@@ -1,4 +1,4 @@
-# Edge-TTS per Missione Cielo
+# Edge-TTS per la narrazione (Missione Cielo e demo)
 
 Missione Cielo usa una voce **Neural Edge-TTS** quando in `config.js` è
 configurato `window.EDGE_TTS_API_URL`. La PWA è statica: l'endpoint deve quindi
@@ -46,3 +46,15 @@ entro 4,5 secondi o il browser blocca la riproduzione, Missione Cielo passa
 automaticamente alla Web Speech API del dispositivo. La richiesta lenta viene
 annullata, così un ponte raggiungibile ma bloccato non può lasciare muto anche il
 ripiego. In questo modo la narrazione continua a funzionare anche offline.
+
+## Dove si inserisce
+
+Il ponte è il secondo gradino della narrazione dell'app (`narrazione.js`,
+vedi `NARRAZIONE.md`): prima si prova l'audio registrato del manifest
+`audio/narrazione/manifest.js`, poi questo ponte, poi la voce del
+dispositivo, e infine il solo testo. Vale per Missione Cielo e per le demo
+automatizzate. Missione Cielo aggiunge al corpo della richiesta la sua voce
+espressiva, lo SSML e lo stile (`missCampiEdge`); le demo usano la voce di
+serie (`NARR_VOCI_EDGE`). Il volume e lo spegnimento si scelgono nelle
+Impostazioni → Osservazione → Narrazione.
+
