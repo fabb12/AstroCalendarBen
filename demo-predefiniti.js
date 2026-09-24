@@ -72,8 +72,7 @@
     duration: 8s;
     action: set_location { lat: 32.2226, lon: -110.9747, name: 'Tucson', timezone: 'America/Phoenix' };
     action: set_date { iso: '2028-10-21T12:45:00Z' };
-    action: set_fov { degrees: 120 };
-    action: point_view { az: 102, alt: 29 };
+    action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
     action: highlight_object { name: 'Mercury', scale: 3 };
     action: highlight_object { name: 'Venus', scale: 3 };
     action: highlight_object { name: 'Mars', scale: 3 };
@@ -81,9 +80,8 @@
   }
   scene planetarium_view {
     duration: 14s;
-    action: set_fov { degrees: 120 };
     action: timelapse { start: 05:45, end: 06:10 };
-    action: point_view { az: 102, alt: 29 };
+    action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
     action: highlight_object { name: 'Mercury', scale: 3 };
     action: highlight_object { name: 'Venus', scale: 3 };
     action: highlight_object { name: 'Mars', scale: 3 };
