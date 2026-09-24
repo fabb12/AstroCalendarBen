@@ -18,7 +18,7 @@
 
   scene planetarium_view {
     // La Luna entra progressivamente nel disco del Sole.
-    duration: 20s;
+    duration: 18s;
     action: narrate { id: 'demo.narr.eclisse_tour.2' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 16:47, end: 17:48 };
