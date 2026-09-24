@@ -228,8 +228,11 @@
       if (p.target === 'Eclipse Shadow') {
         eclisse(c);
         c.centroOmbra = true;
-        // Con l'ombra al centro si allarga il campo per contenere anche la Luna.
-        solImpostaZoom(sol.zoom * 0.5);
+        // Nel Sistema Solare 3D il "FOV" percepito e' governato da sol.zoom:
+        // stringiamo l'inquadratura sulla Terra invece di allargarla fino alla
+        // Luna, cosi' il disco terrestre e l'ombra restano leggibili mentre la
+        // camera compie l'arco orbitale della scena.
+        solImpostaZoom(sol.zoom * 2.4);
         return { aggiorna() {
           if (!c.cameraManuale) centraSistema(c);
         } };
