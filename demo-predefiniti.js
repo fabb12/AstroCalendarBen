@@ -5,10 +5,9 @@
     {
       chiave: 'eclisse_tour',
       testo: `define_demo 'eclisse_tour' {
-  // Reykjavik è dentro la fascia di totalità del 12 agosto 2026: primo
-  // contatto 16:47, totalità 17:48, ultimo contatto 18:47 (UTC = ora locale).
+  // Reykjavik è dentro la fascia di totalità del 12 agosto 2026.
   scene planetarium_view {
-    duration: 5s;
+    duration: 10s;
     action: narrate { id: 'demo.narr.eclisse_tour.1' };
     action: set_location { lat: 64.1466, lon: -21.9426, name: 'Reykjavik', timezone: 'Atlantic/Reykjavik' };
     action: set_date { iso: '2026-08-12T16:40:00Z' };
@@ -16,48 +15,73 @@
     action: timelapse { start: 16:40, end: 16:47 };
     action: center_target { target: 'Sun' };
   }
+
   scene planetarium_view {
-    // La Luna entra nel disco del Sole e lo copre: un'ora in dodici secondi.
-    duration: 12s;
+    // La Luna entra progressivamente nel disco del Sole.
+    duration: 16s;
     action: narrate { id: 'demo.narr.eclisse_tour.2' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 16:47, end: 17:48 };
     action: center_target { target: 'Sun' };
   }
+
   scene planetarium_view {
-    duration: 5s;
+    // Totalità: lascia il tempo alla voce e alla corona di essere osservata.
+    duration: 13s;
     action: narrate { id: 'demo.narr.eclisse_tour.3' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 17:48, end: 17:50 };
     action: center_target { target: 'Sun' };
   }
+
   scene transition {
-    duration: 4s;
+    // Cambio di prospettiva verso il Sistema Solare 3D.
+    duration: 8s;
     action: narrate { id: 'demo.narr.eclisse_tour.4' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
+
   scene solar_system_3d {
-    // Sole, Luna e Terra in fila: la camera gira per far vedere il cono.
-    duration: 8s;
+    // Sole, Luna e Terra in fila.
+    duration: 14s;
     action: narrate { id: 'demo.narr.eclisse_tour.5' };
     action: event_window { event: solar_eclipse, from: -40, to: -20 };
-    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: -35, elev_from: 4, elev_to: 16, zoom_from: 1, zoom_to: 1.2 };
+    action: camera_3d {
+      scene: earth_moon,
+      focus: 'Earth-Moon',
+      orbit: -35,
+      elev_from: 4,
+      elev_to: 16,
+      zoom_from: 1,
+      zoom_to: 1.2
+    };
   }
+
   scene solar_system_3d {
-    // Avvicinamento alla Terra: l'ombra della Luna corre sulla superficie.
-    duration: 14s;
+    // Avvicinamento alla Terra e osservazione dell'ombra.
+    duration: 19s;
     action: narrate { id: 'demo.narr.eclisse_tour.6' };
     action: event_window { event: solar_eclipse, from: -20, to: 45 };
-    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 70, elev_from: 16, elev_to: 38, zoom_from: 1.2, zoom_to: 5.5 };
+    action: camera_3d {
+      scene: earth_moon,
+      focus: 'Earth',
+      orbit: 70,
+      elev_from: 16,
+      elev_to: 38,
+      zoom_from: 1.2,
+      zoom_to: 5.5
+    };
   }
+
   scene planetarium_view {
-    // Di nuovo da Reykjavik: la Luna esce dal disco, e il Sole torna intero.
-    duration: 10s;
+    // Ritorno a Reykjavik e conclusione dell'eclissi.
+    duration: 14s;
     action: narrate { id: 'demo.narr.eclisse_tour.7' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 18:10, end: 18:52 };
     action: center_target { target: 'Sun' };
   }
+
 }`
     },
     {

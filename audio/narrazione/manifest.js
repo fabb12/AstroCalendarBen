@@ -25,7 +25,55 @@
 (typeof globalThis !== 'undefined' ? globalThis : self).ASTRO_NARRAZIONE_MANIFEST = {
   versione: 1,
   radice: 'audio/narrazione/',
+
   voci: {
-    // Nessun audio registrato, per ora: tutte le frasi vanno in sintesi.
+    'demo.narr.eclisse_tour.1': {
+      it: {
+        file: 'demo/it/eclisse_tour-1.mp3',
+        impronta: 'adf70808'
+      }
+    },
+
+    'demo.narr.eclisse_tour.2': {
+      it: {
+        file: 'demo/it/eclisse_tour-2.mp3',
+        impronta: 'ae619c16'
+      }
+    },
+
+    'demo.narr.eclisse_tour.3': {
+      it: {
+        file: 'demo/it/eclisse_tour-3.mp3',
+        impronta: 'de80ca48'
+      }
+    },
+
+    'demo.narr.eclisse_tour.4': {
+      it: {
+        file: 'demo/it/eclisse_tour-4.mp3',
+        impronta: 'd24013d9'
+      }
+    },
+
+    'demo.narr.eclisse_tour.5': {
+      it: {
+        file: 'demo/it/eclisse_tour-5.mp3',
+        impronta: '8f4fa193'
+      }
+    },
+
+    'demo.narr.eclisse_tour.6': {
+      it: {
+        file: 'demo/it/eclisse_tour-6.mp3',
+        impronta: '59cb2e0a'
+      }
+    },
+
+    'demo.narr.eclisse_tour.7': {
+      it: {
+        file: 'demo/it/eclisse_tour-7.mp3',
+        impronta: '36f94c0f'
+      }
+    }
   }
 };
