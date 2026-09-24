@@ -601,6 +601,40 @@
     }
   };
 
+  // ------------------------------------------------------------------
+  // La voce del racconto. Non è codice della demo: è la narrazione di
+  // tutta l'app (`narrazione.js`), a cui la scena passa un ID stabile — la
+  // chiave del dizionario — oppure, in una demo personale, un testo scritto
+  // a mano. La voce vive quanto la scena: il cambio di scena, Stop, Esc e la
+  // fine chiudono l'esecutore, e l'esecutore chiude la voce; pausa e ripresa
+  // le passa il motore (`contesto.pausa`/`riprendi`). Così due frasi non si
+  // accavallano mai, qualunque sia la strada da cui si esce.
+  // ------------------------------------------------------------------
+  registro.narrate = {
+    verifica(p) {
+      campi(p, ['id', 'text']);
+      richiedi(typeof p.id === 'string' || typeof p.text === 'string', err('narraVuota'));
+      if (typeof p.text === 'string') richiedi(p.text.trim() && p.text.length <= 400, err('narraLunga'));
+      // Un ID senza testo deve esistere nel dizionario: se no la scena
+      // resterebbe muta senza che niente lo dica.
+      else richiedi(/^[\w.-]+$/.test(p.id) && astroI18n.esiste(p.id), err('narraId', { id: p.id }));
+    },
+    crea(p) {
+      if (typeof narrazione !== 'object') return {};
+      narrazione.parla({
+        canale: 'demo', id: p.id || '',
+        // Il testo dell'ID si rilegge dal dizionario (e si ridice nella
+        // lingua nuova se la si cambia a metà); quello scritto a mano resta.
+        testo: typeof p.text === 'string' ? p.text : undefined,
+        ospite: () => pannello
+      });
+      // Un salto di scena a racconto fermo (`vaiAScena` in pausa) apre la
+      // scena nuova senza far ripartire l'orologio: la voce resta ferma con lui.
+      if (motore.stato === 'pausa') narrazione.pausa('demo');
+      return { chiudi() { narrazione.ferma('demo'); } };
+    }
+  };
+
   const motore = new AstroDemoMotore.Motore(registro, { avvisa: aggiornaPannello });
   let contesto = null, ultimoScript = script;
   const chiavi = ['modalitaTempo', 'istanteSimulatoMs', 'offsetTempoSec', 'luogoVista', 'target',
@@ -753,8 +787,14 @@
         c.cameraManuale = true;
         sky.inseguimento = false;
       },
+      // La voce segue l'orologio del racconto: ferma con la pausa (anche
+      // quella che arriva nascondendo la scheda), di nuovo in marcia con la
+      // ripresa.
+      pausa() { if (typeof narrazione === 'object') narrazione.pausa('demo'); },
+      riprendi() { if (typeof narrazione === 'object') narrazione.riprendi('demo'); },
       ripristina() {
         c.chiuso = true; contesto = null; evidenze.clear();
+        if (typeof narrazione === 'object') narrazione.ferma('demo');
         document.body.classList.remove('demo-in-corso');
         const registrava = sky.reg.attiva && sky.reg.sorgente;
         if (registrava) skyRegFerma();

@@ -2582,6 +2582,36 @@
           <p id="imp-musica-stato" class="text-xs text-slate-500" aria-live="polite" data-i18n="ui.musica-spaziale-spiega">La musica parte con Europa al 12%; puoi scegliere il paesaggio sonoro generato o un'altra traccia.</p>
         </section>
 
+        <!-- La voce che racconta le demo e Missione Cielo: la governa
+             `narrazione.js`, che collega da sé questi comandi. -->
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white" data-i18n="narrazione.titolo">Narrazione</h3>
+          <label class="flex items-center gap-3 text-sm text-slate-300" for="imp-narrazione-attiva">
+            <input id="imp-narrazione-attiva" type="checkbox" class="accent-blue-500" checked>
+            <span data-i18n="narrazione.attiva">Racconta a voce le demo e Missione Cielo</span>
+          </label>
+          <div class="impostazione-musica-grid">
+            <label class="text-xs text-slate-400" for="imp-narrazione-volume">
+              <span data-i18n="narrazione.volume">Volume della voce</span>
+              <span id="imp-narrazione-volume-valore" class="impostazione-musica-valore">90%</span>
+              <input id="imp-narrazione-volume" type="range" min="0" max="100" step="1" value="90">
+            </label>
+          </div>
+          <label class="flex items-center gap-3 text-sm text-slate-300" for="imp-narrazione-testo">
+            <input id="imp-narrazione-testo" type="checkbox" class="accent-blue-500" checked>
+            <span data-i18n="narrazione.mostraTesto">Mostra il testo della narrazione</span>
+          </label>
+          <label class="flex items-center gap-3 text-sm text-slate-300" for="imp-narrazione-solo-tts">
+            <input id="imp-narrazione-solo-tts" type="checkbox" class="accent-blue-500">
+            <span data-i18n="narrazione.soloTts">Usa solo la sintesi vocale, anche dove c'è un audio registrato</span>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button id="imp-narrazione-prova" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white" data-i18n="narrazione.prova">Ascolta una prova</button>
+          </div>
+          <p id="imp-narrazione-stato" class="text-xs text-slate-500" aria-live="polite"></p>
+          <p class="text-xs text-slate-500" data-i18n="narrazione.spiega">Prima si usa l'audio registrato, se c'è; poi la sintesi vocale; e se il dispositivo non può parlare il racconto continua col solo testo.</p>
+        </section>
+
         <!-- La posizione ha una finestra tutta sua: qui resta solo il
              riepilogo, così esiste un posto solo dove gestirla davvero. -->
         <section class="space-y-2 border-t border-slate-700 pt-4">
@@ -2976,6 +3006,10 @@
   <script src="lingue/it.js"></script>
   <script src="lingue/en.js"></script>
   <script src="i18n.js"></script>
+  <!-- La narrazione: una voce sola per le demo e per Missione Cielo. Il
+       manifest degli audio registrati va prima del motore che lo legge. -->
+  <script src="audio/narrazione/manifest.js"></script>
+  <script src="narrazione.js"></script>
   <!-- Elenco modificabile delle tracce locali: viene prima del lettore in app.js. -->
   <script src="musica/catalogo.js"></script>
   <script src="app.js"></script>

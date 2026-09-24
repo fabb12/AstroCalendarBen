@@ -25,7 +25,9 @@
     event_window: ['solar_system_3d', 'event_window { event: lunar_eclipse, from: -120, to: 120 }'],
     camera_3d: ['solar_system_3d', "camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 60, elev_from: 4, elev_to: 20, zoom_from: 1, zoom_to: 1.5 }"],
     aurora_lesson: ['didactic_view', 'aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 120 }'],
-    satellite_pass: ['planetarium_view', 'satellite_pass { satellite: iss, before: 1, after: 1 }']
+    satellite_pass: ['planetarium_view', 'satellite_pass { satellite: iss, before: 1, after: 1 }'],
+    // La voce della scena: un ID del dizionario, oppure `text: '…'` scritto a mano.
+    narrate: ['planetarium_view', "narrate { id: 'demo.narr.eclisse_tour.1' }"]
   };
   const scena = (vista, azione) => '  scene ' + vista + ' {\n    duration: 10s;\n    action: ' + azione + ';\n  }\n';
   const snippets = {

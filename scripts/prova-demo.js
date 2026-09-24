@@ -76,6 +76,29 @@ passo(15000); ok(motore.stato === 'completato' && ripristini === 4, 'Il salto co
 registro.timelapse.crea = () => ({ aggiorna() { throw new Error('guasto controllato'); } });
 motore.avvia(testo, contesto());
 ok(motore.stato === 'errore' && ripristini === 5 && richieste.size === 0, 'Guasto ripristina e termina');
+// La voce segue l'orologio: il motore passa pausa e ripresa al contesto, e un
+// contesto che si rompe lì non ferma il racconto.
+registro.timelapse.crea = () => ({ aggiorna: u => eventi.push(['timelapse', u]) });
+const voce = [];
+motore.avvia(testo, { ripristina: () => ripristini++, pausa: () => voce.push('pausa'), riprendi: () => voce.push('riprendi') });
+passo(1000); motore.pausa(); motore.pausa(); motore.riprendi(); motore.riprendi();
+ok(voce.join() === 'pausa,riprendi', 'Pausa e ripresa arrivano al contesto una volta sola');
+motore.ferma();
+motore.avvia(testo, { ripristina: () => ripristini++, pausa() { throw new Error('voce rotta'); } });
+motore.pausa();
+ok(motore.stato === 'pausa', 'Una voce che si rompe non ferma la demo');
+motore.riprendi(); passo(1000); ok(motore.stato === 'attivo', 'E la demo riparte');
+motore.ferma();
+// Ogni scena dei tour predefiniti ha la sua narrazione, con un ID stabile che
+// dice di quale demo e di quale scena è: il dizionario la trova da lì.
+for (const d of predefiniti) {
+  const demo = analizza(d.testo);
+  demo.scene.forEach((s, i) => {
+    const narra = s.azioni.filter(a => a.comando === 'narrate');
+    ok(narra.length === 1 && narra[0].parametri.id === 'demo.narr.' + d.chiave + '.' + (i + 1),
+      'Narrazione della scena ' + (i + 1) + ' di ' + d.chiave);
+  });
+}
 console.log('Demo: ' + verifiche + ' verifiche superate');
 
 // Archivio indipendente dal DOM: protezioni, persistenza e scritture atomiche.
