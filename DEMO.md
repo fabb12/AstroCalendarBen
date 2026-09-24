@@ -24,7 +24,7 @@ Cambiare scheda mette in pausa la demo.
 | **Eclisse solare totale 2026** (`eclisse_tour`) | 3 · 30 s | Reykjavík, 12 agosto 2026. Il planetario parte con un campo di 4° centrato sul Sole e attraversa i minuti della totalità; poi vola al banco Terra–Luna e centra l'impronta reale dell'ombra sulla Terra. |
 | **Eclisse lunare totale** (`eclisse_lunare`) | 2 · 24 s | Sapporo, notte fra 31 dicembre 2028 e 1 gennaio 2029. La Luna è centrata con campo 4°/2,5° e il timelapse 00:45–03:00 JST comprende il massimo reale delle 01:52. |
 | **Aurora boreale** (`aurora_boreale`) | 2 · 20 s | Tromsø, 15 gennaio 2027. Campo largo 90° verso nord, ovale aurorale acceso con **Kp 5 simulato**, poi timelapse 21:00–23:30. È una simulazione didattica, non una previsione. |
-| **Corteo dei pianeti** (`allineamento_pianeti`) | 2 · 22 s | Tucson, alba del 21 ottobre 2028. Campo 120° verso est con Mercurio, Venere, Marte e Giove evidenziati; il timelapse attraversa 05:45–06:10 MST senza spostare artificialmente i pianeti. |
+| **Corteo dei pianeti** (`allineamento_pianeti`) | 2 · 22 s | Tucson, alba del 21 ottobre 2028. La camera calcola automaticamente il minimo arco di cielo che contiene Mercurio, Venere, Marte e Giove, li evidenzia e li mantiene nel quadro durante il timelapse 05:45–06:10 MST. |
 
 Le posizioni astronomiche sono sempre quelle calcolate dall'app/Astronomy
 Engine. Data e luogo usati dal tour sono temporanei e non cambiano la posizione
@@ -90,15 +90,19 @@ Azioni principali:
 - `center_target { target: 'Moon' }`
 - `point_view { az: 0, alt: 25 }`
 - `set_fov { degrees: 20 }`
+- `frame_objects { names: 'Mercury,Venus,Mars,Jupiter' }`
 - `set_date { iso: '2028-12-31T15:45:00Z' }`
 - `set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' }`
 - `simulate_aurora { kp: 5 }`
 - `zoom_view { type: geometric, final_target: solar_system_3d }`
 - `orbit_object { object: 'Earth-Moon', angle: 220, speed: slow }`
 
-`set_fov` accetta un campo fra 0,5° e 160°. Il FOV faceva già parte dello
-snapshot di ripristino di AstroDemo, quindi anche questa azione viene annullata
-correttamente a fine tour o su Escape/Stop.
+`set_fov` accetta un campo fra 0,5° e 160°. `frame_objects` calcola il
+minimo arco azimutale contenente da 2 a 8 corpi supportati e sceglie
+automaticamente centro e campo, aggiornandoli durante il timelapse. Entrambe
+cedono la camera appena la persona interviene. Il FOV faceva già parte dello
+snapshot di ripristino di AstroDemo, quindi viene annullato correttamente a
+fine tour o su Escape/Stop.
 
 `center` resta alias di `center_target`.
 `transition_to` cambia direttamente fra `planetarium_view` e
