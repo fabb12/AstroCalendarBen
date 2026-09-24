@@ -9,6 +9,7 @@
   // contatto 16:47, totalità 17:48, ultimo contatto 18:47 (UTC = ora locale).
   scene planetarium_view {
     duration: 5s;
+    action: narrate { id: 'demo.narr.eclisse_tour.1' };
     action: set_location { lat: 64.1466, lon: -21.9426, name: 'Reykjavik', timezone: 'Atlantic/Reykjavik' };
     action: set_date { iso: '2026-08-12T16:40:00Z' };
     action: zoom_fov { from: 40, to: 1.6 };
@@ -18,35 +19,41 @@
   scene planetarium_view {
     // La Luna entra nel disco del Sole e lo copre: un'ora in dodici secondi.
     duration: 12s;
+    action: narrate { id: 'demo.narr.eclisse_tour.2' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 16:47, end: 17:48 };
     action: center_target { target: 'Sun' };
   }
   scene planetarium_view {
     duration: 5s;
+    action: narrate { id: 'demo.narr.eclisse_tour.3' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 17:48, end: 17:50 };
     action: center_target { target: 'Sun' };
   }
   scene transition {
     duration: 4s;
+    action: narrate { id: 'demo.narr.eclisse_tour.4' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
     // Sole, Luna e Terra in fila: la camera gira per far vedere il cono.
     duration: 8s;
+    action: narrate { id: 'demo.narr.eclisse_tour.5' };
     action: event_window { event: solar_eclipse, from: -40, to: -20 };
     action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: -35, elev_from: 4, elev_to: 16, zoom_from: 1, zoom_to: 1.2 };
   }
   scene solar_system_3d {
     // Avvicinamento alla Terra: l'ombra della Luna corre sulla superficie.
     duration: 14s;
+    action: narrate { id: 'demo.narr.eclisse_tour.6' };
     action: event_window { event: solar_eclipse, from: -20, to: 45 };
     action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 70, elev_from: 16, elev_to: 38, zoom_from: 1.2, zoom_to: 5.5 };
   }
   scene planetarium_view {
     // Di nuovo da Reykjavik: la Luna esce dal disco, e il Sole torna intero.
     duration: 10s;
+    action: narrate { id: 'demo.narr.eclisse_tour.7' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 18:10, end: 18:52 };
     action: center_target { target: 'Sun' };
@@ -60,6 +67,7 @@
   // nella notte del 1 gennaio.
   scene planetarium_view {
     duration: 5s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.1' };
     action: set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' };
     action: set_date { iso: '2028-12-31T14:40:00Z' };
     action: event_window { event: lunar_eclipse, from: -130, to: -110 };
@@ -69,29 +77,34 @@
   scene planetarium_view {
     // La Luna entra nell'ombra della Terra e si fa rossa.
     duration: 14s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.2' };
     action: set_fov { degrees: 3 };
     action: event_window { event: lunar_eclipse, from: -110, to: 5 };
     action: center_target { target: 'Moon' };
   }
   scene transition {
     duration: 4s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.3' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
     // Da fuori: Sole, Terra e Luna in fila, e il cono d'ombra della Terra.
     duration: 8s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.4' };
     action: event_window { event: lunar_eclipse, from: -170, to: -110 };
     action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 40, elev_from: 3, elev_to: 18, zoom_from: 0.9, zoom_to: 1 };
   }
   scene solar_system_3d {
     // La Luna attraversa davvero il cono, e la camera le gira attorno.
     duration: 14s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.5' };
     action: event_window { event: lunar_eclipse, from: -110, to: 130 };
     action: camera_3d { scene: earth_moon, focus: 'Moon', orbit: 50, elev_from: 18, elev_to: 8, zoom_from: 1.6, zoom_to: 3.2 };
   }
   scene planetarium_view {
     // Di nuovo da Sapporo: la Luna esce dall'ombra.
     duration: 12s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.6' };
     action: set_fov { degrees: 3 };
     action: event_window { event: lunar_eclipse, from: 5, to: 170 };
     action: center_target { target: 'Moon' };
@@ -109,30 +122,36 @@
   scene didactic_view {
     // Il Sole soffia, e parte una nube: due giorni di viaggio in sette secondi.
     duration: 7s;
+    action: narrate { id: 'demo.narr.aurora_boreale.1' };
     action: aurora_lesson { chapter: vento, from: 0, to: 44, orbit: 20, zoom_from: 1, zoom_to: 1.15 };
   }
   scene didactic_view {
     // La camera gira attorno alla Terra: il vento arriva da un lato solo.
     duration: 7s;
+    action: narrate { id: 'demo.narr.aurora_boreale.2' };
     action: aurora_lesson { chapter: scudo, from: 40, to: 46, orbit: 120, elev_from: 14, elev_to: 32 };
   }
   scene didactic_view {
     // Più vicino: lo scudo magnetico si schiaccia sotto la nube.
     duration: 6s;
+    action: narrate { id: 'demo.narr.aurora_boreale.3' };
     action: aurora_lesson { chapter: scudo, from: 46, to: 50, orbit: 20, zoom_from: 1.2, zoom_to: 2.3 };
   }
   scene didactic_view {
     // La coda si carica e si rompe: la scarica verso i poli.
     duration: 7s;
+    action: narrate { id: 'demo.narr.aurora_boreale.4' };
     action: aurora_lesson { chapter: scarica, from: 45.2, to: 52, orbit: 25, zoom_from: 1, zoom_to: 1.4 };
   }
   scene didactic_view {
     // L'anello attorno al polo, e la Terra che ci gira sotto.
     duration: 7s;
+    action: narrate { id: 'demo.narr.aurora_boreale.5' };
     action: aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150, elev_from: 40, elev_to: 64, zoom_from: 1, zoom_to: 1.25 };
   }
   scene planetarium_view {
     duration: 7s;
+    action: narrate { id: 'demo.narr.aurora_boreale.6' };
     action: set_location { lat: 60.1699, lon: 24.9384, name: 'Helsinki', timezone: 'Europe/Helsinki' };
     action: set_date { iso: '2027-01-15T19:00:00Z' };
     action: simulate_aurora { kp: 5 };
@@ -141,6 +160,7 @@
   }
   scene planetarium_view {
     duration: 12s;
+    action: narrate { id: 'demo.narr.aurora_boreale.7' };
     action: set_fov { degrees: 100 };
     action: timelapse { start: 21:00, end: 23:30 };
     action: point_view { az: 0, alt: 22 };
@@ -153,6 +173,7 @@
   // Tucson, alba del 21 ottobre 2028: quattro pianeti nel cielo orientale.
   scene planetarium_view {
     duration: 8s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.1' };
     action: set_location { lat: 32.2226, lon: -110.9747, name: 'Tucson', timezone: 'America/Phoenix' };
     action: set_date { iso: '2028-10-21T12:45:00Z' };
     action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
@@ -163,6 +184,7 @@
   }
   scene planetarium_view {
     duration: 10s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.2' };
     action: timelapse { start: 05:45, end: 06:05 };
     action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
     action: highlight_object { name: 'Mercury', scale: 3 };
@@ -172,16 +194,19 @@
   }
   scene transition {
     duration: 4s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.3' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
     // Da sopra il piano, poi di taglio: i pianeti sono su orbite diverse,
     // e la fila in cielo è solo la direzione in cui li vediamo dalla Terra.
     duration: 16s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.4' };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Mercury,Venus,Earth,Mars,Jupiter', orbit: 70, elev_from: 80, elev_to: 12, zoom_from: 0.9, zoom_to: 1.15 };
   }
   scene planetarium_view {
     duration: 7s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.5' };
     action: timelapse { start: 06:05, end: 06:15 };
     action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
     action: highlight_object { name: 'Mercury', scale: 3 };
@@ -199,14 +224,17 @@
   // nello stesso intervallo di tempo.
   scene planetarium_view {
     duration: 16s;
+    action: narrate { id: 'demo.narr.passaggio_iss.1' };
     action: satellite_pass { satellite: iss, before: 1, after: 1 };
   }
   scene transition {
     duration: 4s;
+    action: narrate { id: 'demo.narr.passaggio_iss.2' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
     duration: 16s;
+    action: narrate { id: 'demo.narr.passaggio_iss.3' };
     action: satellite_pass { satellite: iss, before: 1, after: 1 };
     action: camera_3d { scene: system, focus: 'ISS', orbit: 80, elev_from: 15, elev_to: 45, zoom_from: 0.8, zoom_to: 1.3 };
   }

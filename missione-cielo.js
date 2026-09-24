@@ -441,14 +441,11 @@ const miss = {
   staccare: []
 };
 
-// Audio remoto e sintesi locale condividono un solo comando di arresto. La
-// sequenza impedisce a una risposta lenta della API di parlare sopra la tappa
-// successiva quando chi osserva preme rapidamente «Trovato».
-const missVoce = { audio: null, urlOggetto: '', sequenza: 0 };
-// Un ponte guasto non deve poter tenere in ostaggio anche il ripiego locale.
-// Quattro secondi e mezzo lasciano tempo a una sintesi remota normale, ma
-// restano abbastanza pochi da non far sembrare rotto il tasto «Ascolta».
-const MISS_TTS_SCADENZA_MS = 4500;
+// La voce non è più di questo modulo: è la narrazione di tutta l'app
+// (`narrazione.js`), la stessa delle demo. Qui restano le cose che sono
+// davvero della caccia — che cosa dire, in che tono, con che voce espressiva
+// del ponte Edge-TTS (§ toni) — e il canale su cui dirle, `missione`, che è
+// quello che si ferma premendo «Trovato» o chiudendo il pannello.
 
 
 // =====================================================================
@@ -5391,16 +5388,7 @@ function missCuriositaTesto(tappa) {
 }
 
 function missFermaVoce() {
-  missVoce.sequenza += 1;
-  if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
-  if (missVoce.audio) {
-    missVoce.audio.pause();
-    missVoce.audio.removeAttribute('src');
-    missVoce.audio = null;
-  }
-  if (missVoce.urlOggetto && typeof URL !== 'undefined') URL.revokeObjectURL(missVoce.urlOggetto);
-  missVoce.urlOggetto = '';
-  return missVoce.sequenza;
+  if (typeof narrazione === 'object') narrazione.ferma('missione');
 }
 
 /* In che momento della caccia siamo, per la voce.
@@ -5496,125 +5484,24 @@ function missSsml(testo, lingua, tono, opz) {
     `</voice></speak>`;
 }
 
-/* Il ponte Edge-TTS è deliberatamente configurabile: la PWA resta statica e
- * non può custodire credenziali. Il contratto è piccolo e compatibile sia con
- * un Worker proprio sia con i comuni gateway Edge-TTS: POST JSON in ingresso,
- * audio binario oppure `{ url }` / `{ audio }` in uscita.
+/* Quello che il ponte Edge-TTS riceve in più dalla caccia: la voce
+ * espressiva, lo SSML con le pause e il nome accentuato, lo stile. Il resto
+ * del contratto — la richiesta, la scadenza, il ripiego sulla voce del
+ * dispositivo e sul solo testo — è della narrazione (`narrEdge`).
  *
- * Si manda **sia** lo SSML sia il testo nudo, ed è la riga che tiene in
- * piedi tutto il pezzo: i gateway Edge-TTS in giro non sono uno solo e
- * non concordano sul nome del campo — chi legge `ssml` lo usa, chi legge
- * solo `text` legge il testo e ottiene quello che otteneva prima. Nessuno
- * dei due riceve una richiesta che non sa interpretare, e chi non fa lo
- * SSML degrada in una lettura buona invece che in un errore. */
-async function missRaccontaConEdge(testo, lingua, sequenza, tono, opz) {
-  const endpoint = typeof window !== 'undefined' ? String(window.EDGE_TTS_API_URL || '').trim() : '';
-  if (!endpoint || typeof fetch !== 'function' || typeof Audio === 'undefined') return false;
-
+ * Si manda **sia** lo SSML sia il testo nudo: i gateway Edge-TTS in giro
+ * non concordano sul nome del campo, e chi non fa lo SSML degrada in una
+ * lettura buona invece che in un errore. */
+function missCampiEdge(testo, lingua, tono, opz) {
   const voci = MISS_VOCI_EDGE[lingua] || MISS_VOCI_EDGE.it;
   const conStile = !!(tono && voci.stili.includes(tono.stile));
-  const controllore = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  let timer = null;
-  const richiesta = (async () => {
-    const risposta = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'audio/mpeg, audio/*, application/json' },
-      signal: controllore ? controllore.signal : undefined,
-      body: JSON.stringify({
-        text: testo,
-        ssml: missSsml(testo, lingua, tono, opz),
-        voice: conStile ? voci.espressiva : voci.stabile,
-        style: conStile ? tono.stile : undefined,
-        styledegree: conStile ? tono.grado : undefined,
-        locale: lingua === 'en' ? 'en-US' : 'it-IT',
-        rate: tono.ritmo, pitch: tono.tono,
-        format: 'audio-24khz-48kbitrate-mono-mp3'
-      })
-    });
-    if (!risposta.ok) throw new Error(`Edge-TTS HTTP ${risposta.status}`);
-    if (sequenza !== missVoce.sequenza) return '';
-
-    const tipo = risposta.headers.get('content-type') || '';
-    if (tipo.includes('application/json')) {
-      const dato = await risposta.json();
-      if (dato && dato.url) return String(dato.url);
-      if (dato && dato.audio) return `data:${dato.mime || 'audio/mpeg'};base64,${dato.audio}`;
-      return '';
-    }
-    const blob = await risposta.blob();
-    if (!blob.size) return '';
-    const url = URL.createObjectURL(blob);
-    missVoce.urlOggetto = url;
-    return url;
-  })();
-  // `fetch` non ha una scadenza propria. Se il ponte accetta la connessione e
-  // poi non manda più niente, senza questa corsa la Promise resta sospesa per
-  // minuti e `missRacconta` non arriva mai alla voce del dispositivo. Abortire
-  // libera anche radio e socket; il Promise.race serve comunque ai browser più
-  // vecchi che non espongono AbortController.
-  const scadenza = new Promise((_, rifiuta) => {
-    timer = setTimeout(() => {
-      if (controllore) controllore.abort();
-      rifiuta(new Error('Edge-TTS timeout'));
-    }, MISS_TTS_SCADENZA_MS);
-  });
-  let sorgente;
-  try {
-    sorgente = await Promise.race([richiesta, scadenza]);
-  } finally {
-    if (timer !== null) clearTimeout(timer);
-  }
-  if (sequenza !== missVoce.sequenza) return true;
-  if (!sorgente || sequenza !== missVoce.sequenza) return false;
-
-  const audio = new Audio(sorgente);
-  missVoce.audio = audio;
-  audio.onended = () => { if (missVoce.audio === audio) missVoce.audio = null; };
-  await audio.play();
-  return true;
-}
-
-/* La voce del dispositivo, che è il ripiego e non il ripiego cattivo.
- *
- * Su un telefono di oggi le voci di sistema migliori sono ottime, e la
- * scelta di prima le scartava tutte: preferiva `localService`, che vuol
- * dire «installata sul dispositivo» — cioè, quasi sempre, la vecchia voce
- * concatenativa del sistema — mentre le voci Neural moderne arrivano dalla
- * rete e hanno `localService: false`. Cercando il locale si sceglieva
- * sistematicamente la peggiore delle due.
- *
- * L'ordine giusto lo dà il **nome**, che è l'unica cosa che le API
- * espongano: i produttori marchiano le voci buone («Natural», «Neural»,
- * «Enhanced», «Premium», e su iOS «Siri»), e chi non ha niente di tutto
- * questo si prende quella di sistema come prima. */
-const MISS_VOCI_BUONE = /natural|neural|enhanced|premium|siri|wavenet|studio/i;
-
-function missScegliVoceLocale(lingua) {
-  const voci = speechSynthesis.getVoices().filter(v =>
-    String(v.lang || '').toLowerCase().startsWith(lingua));
-  if (!voci.length) return null;
-  const punti = v => (MISS_VOCI_BUONE.test(v.name || '') ? 4 : 0) +
-    (v.default ? 1 : 0) + (v.localService ? 0 : 1);
-  return voci.slice().sort((a, b) => punti(b) - punti(a))[0];
-}
-
-/* La sintesi locale non ha gli stili, ma ha ritmo e tono — e su quei due
- * si può ancora dire una cosa in tre modi diversi. Le percentuali del
- * ponte si convertono nelle sue unità: il ritmo è un moltiplicatore
- * attorno a uno, il tono un moltiplicatore attorno a uno dove ottanta
- * hertz sono, all'incirca, tutta la scala di una voce parlata. */
-function missRaccontaLocale(testo, lingua, tono) {
-  if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') return false;
-  speechSynthesis.cancel();
-  const frase = new SpeechSynthesisUtterance(testo);
-  frase.lang = lingua === 'en' ? 'en-US' : 'it-IT';
-  frase.voice = missScegliVoceLocale(lingua);
-  const perc = parseFloat(tono && tono.ritmo) || 0;
-  const hz = parseFloat(tono && tono.tono) || 0;
-  frase.rate = Math.max(0.5, Math.min(1.6, 1 + perc / 100));
-  frase.pitch = Math.max(0.4, Math.min(1.8, 1 + hz / 80));
-  speechSynthesis.speak(frase);
-  return true;
+  return {
+    ssml: missSsml(testo, lingua, tono, opz),
+    voice: conStile ? voci.espressiva : voci.stabile,
+    style: conStile ? tono.stile : undefined,
+    styledegree: conStile ? tono.grado : undefined,
+    locale: lingua === 'en' ? 'en-US' : 'it-IT'
+  };
 }
 
 /* La lingua della voce deve essere il valore dell'i18n, non il metodo che lo
@@ -5667,17 +5554,28 @@ function missTestoVoceTappa(tappa) {
  * tappa, e adesso anche il premio di fine serata. Erano due strade
  * separate per un giorno solo, e già in quel giorno avevano due modi
  * diversi di fermare la voce di prima — che è il difetto per cui due
- * frasi si accavallano. */
-async function missRacconta(testo, tono, opz) {
-  if (!testo) return false;
-  const lingua = missLinguaVoce();
-  const sequenza = missFermaVoce();
-  try {
-    if (await missRaccontaConEdge(testo, lingua, sequenza, tono, opz)) return true;
-  } catch (errore) {
-    console.warn('Missione Cielo: Edge-TTS non disponibile, uso la voce del dispositivo.', errore);
-  }
-  return sequenza === missVoce.sequenza && missRaccontaLocale(testo, lingua, tono);
+ * frasi si accavallano. E adesso la strada è una sola anche fuori da qui:
+ * questa funzione consegna la frase alla narrazione dell'app, che sceglie
+ * fra audio registrato, sintesi e solo testo con le stesse regole delle
+ * demo. `forza` è il tasto «Ascolta»: un gesto esplicito, che parla anche
+ * a narrazione spenta. */
+function missRacconta(testo, tono, opz) {
+  if (!testo || typeof narrazione !== 'object') return Promise.resolve(false);
+  const o = opz || {};
+  return narrazione.parla({
+    canale: 'missione',
+    id: o.id || 'missione.voce',
+    // Una funzione e non una stringa: se la lingua cambia a metà frase, la
+    // narrazione ricompone il testo nella lingua nuova invece di finire la
+    // frase in quella vecchia.
+    testo,
+    // Il testo è già a schermo, nella striscia o nel pannello: un
+    // sottotitolo in più coprirebbe proprio il cielo in cui si cerca.
+    sottotitolo: false,
+    forza: !!o.forza,
+    tono,
+    edge: (frase, lingua) => missCampiEdge(frase, lingua, tono, o)
+  }).then(esito => esito === 'audio' || esito === 'tts');
 }
 
 function missRaccontaTappa(tappa, forza) {
@@ -5685,15 +5583,26 @@ function missRaccontaTappa(tappa, forza) {
   // La voce deve seguire esattamente l'indizio selezionato con le frecce,
   // non l'ultimo aiuto sbloccato. `indizioMostrato` può infatti essere
   // precedente ad `aiuto` quando si torna indietro nella sequenza.
-  const testo = missTestoVoceTappa(tappa);
+  const testo = () => missTestoVoceTappa(tappa);
   // Il tono si sceglie **dal momento della caccia** e non dal testo: la
   // stessa frase, letta dopo un enigma o dopo una scoperta, sono due cose
   // diverse da dire.
-  const tono = missTonoVoce(missMomentoVoce(tappa));
+  const momento = missMomentoVoce(tappa);
+  const tono = missTonoVoce(momento);
   // Il nome si accentua solo quando è la notizia: dentro a un indizio
   // sarebbe la soluzione detta a voce alta.
   const enfasi = tappa.fase === 'scoperta' ? missNomeTappa(tappa) : '';
-  return missRacconta(testo, tono, { enfasi });
+  return missRacconta(testo, tono, { enfasi, forza: !!forza, id: missIdVoce(tappa, momento) });
+}
+
+/* L'ID stabile di quello che si dice di una tappa: chi, in che momento, a
+ * che indizio. Serve alla narrazione per riconoscere un audio registrato
+ * apposta (`audio/narrazione/manifest.js`); i pezzi fissi dentro al testo —
+ * un enigma, un'esultanza, un aneddoto — li riconosce invece da soli, dalle
+ * chiavi del dizionario, senza che qui si scriva niente frase per frase. */
+function missIdVoce(tappa, momento) {
+  const chi = String((tappa && (tappa.slug || tappa.id)) || 'tappa').replace(/[^\w-]+/g, '_');
+  return 'missione.tappa.' + chi + '.' + momento + '.' + missIndiceIndizio(tappa);
 }
 
 /* Una storia nuova non e' una scoperta nuova.
@@ -5705,7 +5614,8 @@ function missRaccontaTappa(tappa, forza) {
  * soltanto il testo appena comparso. */
 function missRaccontaCuriosita(tappa) {
   if (!tappa || !(miss.attiva && miss.attiva.scelte.voce)) return Promise.resolve(false);
-  return missRacconta(missCuriositaTesto(tappa), missTonoVoce('scoperta'));
+  return missRacconta(() => missCuriositaTesto(tappa), missTonoVoce('scoperta'),
+    { id: missIdVoce(tappa, 'curiosita') });
 }
 
 /* La coppa, detta a voce.
@@ -5718,12 +5628,16 @@ function missRaccontaCuriosita(tappa) {
 function missRaccontaPremio(verbale) {
   if (!verbale || !verbale.coppa) return Promise.resolve(false);
   if (!(miss.attiva && miss.attiva.scelte && miss.attiva.scelte.voce)) return Promise.resolve(false);
-  const coppa = missT('albo.coppa.' + verbale.coppa);
-  const pezzi = [missT('albo.voceCoppa', { coppa, n: verbale.trovate, tot: verbale.tappe })];
-  for (const id of verbale.nuovi || []) {
-    pezzi.push(missT('albo.vocePremio', { premio: missT('albo.premio.' + id + '.nome') }));
-  }
-  return missRacconta(pezzi.join(' '), missTonoVoce('premio'), { enfasi: coppa });
+  const testo = () => {
+    const coppa = missT('albo.coppa.' + verbale.coppa);
+    const pezzi = [missT('albo.voceCoppa', { coppa, n: verbale.trovate, tot: verbale.tappe })];
+    for (const id of verbale.nuovi || []) {
+      pezzi.push(missT('albo.vocePremio', { premio: missT('albo.premio.' + id + '.nome') }));
+    }
+    return pezzi.join(' ');
+  };
+  return missRacconta(testo, missTonoVoce('premio'),
+    { enfasi: missT('albo.coppa.' + verbale.coppa), id: 'missione.premio.' + verbale.coppa });
 }
 
 /* Il richiamo della bacheca, in fondo alla configurazione.
@@ -6386,7 +6300,6 @@ const missProve = {
     MISS_DIFFICOLTA_GRADITA, MISS_GENEROSITA, MISS_REPERTORIO,
     MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
-    MISS_TTS_SCADENZA_MS,
     MISS_GENERI, MISS_GENERI_TUTTI, MISS_GENERE_DI_TIPO, MISS_GENERI_STORICI,
     MISS_LONTANI_DIFFICOLTA, MISS_QUOTA_SISTEMA, MISS_SALTO_SCHERMO, MISS_TEMPERATURA,
     MISS_PENALE_RECENTE, MISS_PENALE_RIFIUTATO, MISS_MISSIONI_DA_RICORDARE,

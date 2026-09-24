@@ -193,11 +193,18 @@
       if (this.raf !== null) this.annulla(this.raf);
       this.raf = null;
       this.trascorso += Math.max(0, this.ora() - this.ultimo);
-      this.stato = 'pausa'; this.avvisa(this);
+      this.stato = 'pausa'; this.segnala('pausa'); this.avvisa(this);
     }
     riprendi() {
       if (this.stato !== 'pausa') return;
-      this.ultimo = this.ora(); this.stato = 'attivo'; this.avvisa(this); this.programma();
+      this.ultimo = this.ora(); this.stato = 'attivo'; this.segnala('riprendi'); this.avvisa(this); this.programma();
+    }
+    // Chi accompagna il racconto senza essere un fotogramma — la voce — deve
+    // sapere quando l'orologio si ferma e quando riparte. Il contesto lo
+    // riceve se vuole (`pausa`/`riprendi`); un suo guasto non ferma la demo.
+    segnala(evento) {
+      const f = this.contesto && this.contesto[evento];
+      if (typeof f === 'function') { try { f.call(this.contesto); } catch (_) { /* la voce non ferma il racconto */ } }
     }
     ferma(stato = 'fermo') {
       if (this.raf !== null) this.annulla(this.raf);

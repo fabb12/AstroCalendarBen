@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v369';
+const CACHE_NAME = 'astrocal-v370';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -19,6 +19,8 @@ const ASSETS = [
   './demo-libreria.js',
   './demo-impostazioni.js',
   './i18n.js',
+  './narrazione.js',
+  './audio/narrazione/manifest.js',
   './lingue/it.js',
   './lingue/en.js',
   './musica/catalogo.js',
@@ -83,6 +85,29 @@ const LIBRERIE = [
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
   'https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js'
 ];
+
+// Gli audio registrati della narrazione (`audio/narrazione/`). Non stanno in
+// ASSETS uno per uno: l'elenco vero è il manifest, che è lo stesso file che
+// legge la pagina, e il service worker lo legge qui con `importScripts` — un
+// elenco ricopiato divergerebbe al primo audio aggiunto. All'installazione si
+// scaricano tutti, uno per volta e senza far fallire niente: un file che
+// manca vale come un file che non c'è, e la narrazione ripiega sulla sintesi.
+// Da lì in poi si servono dalla cache come il resto dell'app, cioè offline.
+try { importScripts('./audio/narrazione/manifest.js'); } catch (e) { /* senza manifest, niente audio */ }
+function audioNarrazione() {
+  const m = self.ASTRO_NARRAZIONE_MANIFEST;
+  if (!m || !m.voci) return [];
+  const radice = String(m.radice || 'audio/narrazione/').replace(/\/?$/, '/');
+  const file = new Set();
+  for (const voce of Object.values(m.voci)) {
+    for (const x of Object.values(voce || {})) {
+      const f = typeof x === 'string' ? x : x && x.file;
+      if (typeof f === 'string' && /\.(mp3|ogg|oga|opus|m4a|aac|wav|webm)$/i.test(f) &&
+          !/^[a-z]+:|^\/|\\|(^|\/)\.\.(\/|$)/i.test(f)) file.add('./' + radice + f);
+    }
+  }
+  return [...file];
+}
 
 // Servizi che deducono la posizione dall'indirizzo IP: sono lo strato di
 // ripiego quando il GPS non risponde, e una risposta vecchia di cache
@@ -158,6 +183,7 @@ self.addEventListener('install', (e) => {
         await Promise.all(LIBRERIE.map(url =>
           cache.add(new Request(url, { mode: 'cors' })).catch(() => {})
         ));
+        for (const url of audioNarrazione()) await cache.add(url).catch(() => {});
       })
       .then(() => self.skipWaiting())
   );

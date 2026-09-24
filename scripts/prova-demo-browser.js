@@ -91,7 +91,7 @@ const server = http.createServer((req, res) => {
     await pagina.evaluate(() => astroI18n.impostaLingua('it'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
     for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'frame_objects', 'orbit_object', 'zoom_view', 'didactic_view', 'zoom_fov', 'event_window',
-      'camera_3d', 'aurora_lesson', 'satellite_pass']) {
+      'camera_3d', 'aurora_lesson', 'satellite_pass', 'narrate']) {
       await pagina.locator('#demo-snippet').selectOption(snippet);
       await pagina.locator('#demo-inserisci').click();
       assert.equal(await pagina.locator('#demo-editor').getAttribute('aria-invalid'), 'false', snippet);

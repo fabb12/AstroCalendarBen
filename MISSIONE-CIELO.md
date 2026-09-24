@@ -61,6 +61,16 @@ del bersaglio corretto viene letto automaticamente anche il messaggio finale
 di scoperta. Il tasto **Riascolta** nel box della guida ripete su richiesta il
 testo mostrato, sia durante la ricerca sia dopo la scoperta, anche quando la
 lettura automatica non è stata scelta.
+La voce non è più del modulo: è la narrazione dell'app (`narrazione.js`, vedi
+`NARRAZIONE.md`), la stessa delle demo automatizzate, sul canale `missione`.
+Missione Cielo decide cosa dire e in che tono (`MISS_TONI_VOCE`, `missSsml`,
+le voci espressive di `MISS_VOCI_EDGE` passate al ponte con `missCampiEdge`);
+la narrazione sceglie come dirlo — audio registrato se c'è, poi sintesi, poi
+solo testo — e rispetta le Impostazioni (narrazione spenta, volume, solo
+sintesi). Il tasto Riascolta è un gesto esplicito e parla anche a narrazione
+spenta. I pezzi fissi del dizionario (enigmi, esultanze, aneddoti) si possono
+registrare in `audio/narrazione/missione/<lingua>/`: la narrazione li
+riconosce da sola dentro all'indizio composto.
 I riferimenti vicini vengono ricalcolati per l’istante attuale usando la
 distanza sferica; la destra e l’alto del mirino usano la base della camera.
 
