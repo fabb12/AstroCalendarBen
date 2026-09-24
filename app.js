@@ -43190,7 +43190,7 @@ function aggiornaSchedaImpostazioni() {
 // dopo un gesto dell'utente, come richiedono i browser, e viene distrutto
 // quando l'opzione si spegne.
 let musicaSpaziale = null;
-const MUSICA_TRACCIA_PREDEFINITA = 'Europa1';
+const MUSICA_TRACCIA_PREDEFINITA = 'Grilli';
 const MUSICA_VOLUME_PREDEFINITO = 0.12;
 let musicaVolume = MUSICA_VOLUME_PREDEFINITO;
 
