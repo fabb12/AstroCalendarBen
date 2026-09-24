@@ -846,6 +846,8 @@
     const regPrima = { durataSec: sky.reg.durataSec, origine: sky.reg.origine };
     const modaleImpostazioni = document.getElementById('modale-impostazioni');
     const impostazioniNascostePrima = !!(modaleImpostazioni && modaleImpostazioni.classList.contains('hidden'));
+    const comandiCielo = document.getElementById('cielo-comandi');
+    const gruppoPrima = comandiCielo ? (comandiCielo.dataset.gruppoAttivo || '') : '';
     const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero,
       vistaPulita: opzioni.vistaPulita !== false,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
@@ -895,6 +897,9 @@
         skyAggiornaOggetti(true); skyAggiornaTestoTempo(); skyAggiornaSlittaTempo();
         sky.playbackUltimo = 0; skyAggiornaComandiPlayback();
         skyAggiornaTastoInsegui(); skyAggiornaTastiFiltri();
+        // Anche il registratore normale chiude il gruppo comandi per lasciare
+        // libero il cielo: nella Demo quel gesto non deve diventare stato.
+        if (comandiCielo) skyMostraGruppo(gruppoPrima);
         // Ripristina lo stato iniziale se durante la demo si e' entrati
         // manualmente a schermo intero partendo dalla vista normale.
         if (!schermoInteroPrima && sky.schermoIntero) skyEsciSchermoIntero();
@@ -958,6 +963,19 @@
     let iniettata = null;
     const tracciaAudio = flussoAudio && typeof flussoAudio.getAudioTracks === 'function'
       ? flussoAudio.getAudioTracks().find(t => t.readyState !== 'ended') : null;
+    // Con una traccia audio è preferibile lasciare che MediaRecorder scelga
+    // entrambi i codec del contenitore, invece di forzare il solo codec video
+    // usato dalle registrazioni mute del planetario.
+    const MR = typeof MediaRecorder !== 'undefined' ? MediaRecorder : null;
+    const supportaTipo = MR && typeof MR.isTypeSupported === 'function' ? MR.isTypeSupported : null;
+    let supportaTipoDemo = null;
+    if (tracciaAudio && supportaTipo) {
+      supportaTipoDemo = function (mime) {
+        if (/;\s*codecs=/i.test(mime || '')) return false;
+        return supportaTipo.call(MR, mime);
+      };
+      try { MR.isTypeSupported = supportaTipoDemo; } catch (_) { supportaTipoDemo = null; }
+    }
     if (proto && typeof originale === 'function' && tracciaAudio) {
       iniettata = function (...args) {
         const stream = originale.apply(this, args);
@@ -969,8 +987,9 @@
       };
       proto.captureStream = iniettata;
     }
-    const ripristinaCaptureStream = () => {
+    const ripristinaAgganci = () => {
       if (proto && iniettata && proto.captureStream === iniettata) proto.captureStream = originale;
+      if (MR && supportaTipoDemo && MR.isTypeSupported === supportaTipoDemo) MR.isTypeSupported = supportaTipo;
     };
     const chiudiAudioSeInutile = () => {
       if (typeof narrazione === 'object' && typeof narrazione.fermaCatturaAudio === 'function')
@@ -979,15 +998,21 @@
     };
 
     let partenza;
-    try { partenza = skyRegAvvia(); }
-    catch (e) {
-      ripristinaCaptureStream(); chiudiAudioSeInutile();
+    try {
+      partenza = skyRegAvvia();
+      // skyRegAvvia è sincrono e chiude il pannello del cielo come fa una
+      // registrazione manuale. La Demo conserva invece lo stato preesistente;
+      // la vista pulita lo nasconde già senza mutarlo.
+      if (comandiCielo) skyMostraGruppo(gruppoPrima);
+    } catch (e) {
+      chiudiAudioSeInutile();
       sky.reg.sorgente = null;
       skyAvviso('demo', t('errore') + ': ' + e.message, 10000);
       return;
+    } finally {
+      ripristinaAgganci();
     }
     Promise.resolve(partenza).then(() => {
-      ripristinaCaptureStream();
       if (c.chiuso) {
         if (sky.reg.attiva) skyRegFerma();
         chiudiAudioSeInutile();
@@ -1002,7 +1027,7 @@
       };
       c.registrazione = requestAnimationFrame(giro);
     }, e => {
-      ripristinaCaptureStream(); chiudiAudioSeInutile();
+      chiudiAudioSeInutile();
       sky.reg.sorgente = null;
       if (!c.chiuso) skyAvviso('demo', t('errore') + ': ' + (e && e.message ? e.message : e), 10000);
     });
