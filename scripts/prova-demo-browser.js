@@ -110,6 +110,7 @@ const server = http.createServer((req, res) => {
     await pagina.waitForFunction(() => document.getElementById('demo-elenco').value === '');
     await pagina.locator('#demo-salva').click();
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length + 2);
+    await pagina.locator('#demo-modifica').click();
     pagina.once('dialog', dialog => dialog.accept());
     await pagina.locator('#demo-elimina').click();
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length + 1);
