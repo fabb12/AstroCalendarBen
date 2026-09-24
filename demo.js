@@ -988,8 +988,12 @@
       proto.captureStream = iniettata;
     }
     const ripristinaAgganci = () => {
-      if (proto && iniettata && proto.captureStream === iniettata) proto.captureStream = originale;
-      if (MR && supportaTipoDemo && MR.isTypeSupported === supportaTipoDemo) MR.isTypeSupported = supportaTipo;
+      try {
+        if (proto && iniettata && proto.captureStream === iniettata) proto.captureStream = originale;
+      } catch (_) { /* il browser non espone un prototipo scrivibile */ }
+      try {
+        if (MR && supportaTipoDemo && MR.isTypeSupported === supportaTipoDemo) MR.isTypeSupported = supportaTipo;
+      } catch (_) { /* idem per il metodo statico del registratore */ }
     };
     const chiudiAudioSeInutile = () => {
       if (typeof narrazione === 'object' && typeof narrazione.fermaCatturaAudio === 'function')
