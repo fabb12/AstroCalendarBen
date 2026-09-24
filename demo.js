@@ -114,6 +114,21 @@
       sky.manuale.az = p.az; sky.manuale.alt = p.alt;
     }
   };
+  registro.set_fov = {
+    verifica(p) {
+      campi(p, ['degrees']);
+      richiedi(numero(p.degrees, 0.5, 160), 'Campo visivo atteso fra 0.5 e 160 gradi');
+    },
+    crea(p) {
+      // Il FOV è stato incluso da sempre nello snapshot della demo: questa
+      // azione espone soltanto la stessa regolazione al DSL e quindi viene
+      // ripristinata automaticamente su Stop/Escape/errore.
+      if (typeof skyImpostaFov === 'function') skyImpostaFov(p.degrees, { morbido: false });
+      sky.fov = p.degrees;
+      sky.fovVoluto = p.degrees;
+      if ('animazioneVista' in sky) sky.animazioneVista = null;
+    }
+  };
   registro.highlight_object = {
     verifica(p) {
       campi(p, ['name', 'scale']);
