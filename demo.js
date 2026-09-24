@@ -613,25 +613,69 @@
   registro.narrate = {
     verifica(p) {
       campi(p, ['id', 'text']);
-      richiedi(typeof p.id === 'string' || typeof p.text === 'string', err('narraVuota'));
-      if (typeof p.text === 'string') richiedi(p.text.trim() && p.text.length <= 400, err('narraLunga'));
-      // Un ID senza testo deve esistere nel dizionario: se no la scena
-      // resterebbe muta senza che niente lo dica.
-      else richiedi(/^[\w.-]+$/.test(p.id) && astroI18n.esiste(p.id), err('narraId', { id: p.id }));
+
+      // La narrazione deve avere almeno un ID del dizionario oppure un testo diretto.
+      richiedi(
+          typeof p.id === 'string' || typeof p.text === 'string',
+          err('narraVuota')
+      );
+
+      // Se la demo usa un testo scritto direttamente nel DSL, controlla che sia valido
+      // e non eccessivamente lungo.
+      if (typeof p.text === 'string') {
+        richiedi(
+            p.text.trim() && p.text.length <= 400,
+            err('narraLunga')
+        );
+      } else {
+        // Se invece usa un ID, quell'ID deve esistere nel dizionario i18n.
+        richiedi(
+            /^[\w.-]+$/.test(p.id) && astroI18n.esiste(p.id),
+            err('narraId', { id: p.id })
+        );
+      }
     },
+
     crea(p) {
+      // Se il sistema di narrazione non è disponibile, la scena continua comunque.
       if (typeof narrazione !== 'object') return {};
-      narrazione.parla({
-        canale: 'demo', id: p.id || '',
-        // Il testo dell'ID si rilegge dal dizionario (e si ridice nella
-        // lingua nuova se la si cambia a metà); quello scritto a mano resta.
+
+      // Avvia la narrazione e conserva la Promise restituita.
+      // Questa Promise si risolve solo quando l'audio registrato, il TTS
+      // oppure il fallback testuale hanno terminato.
+      //
+      // Il motore demo potrà quindi usare `fineNarrazione` per evitare
+      // di chiudere la scena mentre la voce sta ancora parlando.
+      const fineNarrazione = narrazione.parla({
+        canale: 'demo',
+        id: p.id || '',
+
+        // Se `text` non è presente, narrazione.js recupera il testo
+        // automaticamente dal dizionario tramite l'ID.
         testo: typeof p.text === 'string' ? p.text : undefined,
+
+        // Mostra il testo della narrazione dentro al pannello della demo.
         ospite: () => pannello
       });
-      // Un salto di scena a racconto fermo (`vaiAScena` in pausa) apre la
-      // scena nuova senza far ripartire l'orologio: la voce resta ferma con lui.
-      if (motore.stato === 'pausa') narrazione.pausa('demo');
-      return { chiudi() { narrazione.ferma('demo'); } };
+
+      // Se si entra in questa scena mentre la demo è già in pausa,
+      // anche la nuova narrazione deve partire nello stesso stato.
+      if (motore.stato === 'pausa') {
+        narrazione.pausa('demo');
+      }
+
+      return {
+        // Espone al motore la Promise della voce.
+        // Il motore dovrà attendere sia la durata minima della scena
+        // sia questa Promise prima di passare alla scena successiva.
+        fineNarrazione,
+
+        // Quando la scena viene chiusa manualmente, saltata o interrotta,
+        // ferma subito anche l'audio/TTS relativo a questa demo.
+        chiudi() {
+          narrazione.ferma('demo');
+        }
+      };
     }
   };
 

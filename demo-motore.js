@@ -115,7 +115,19 @@
       this.richiedi = ambiente.richiedi || (f => requestAnimationFrame(f));
       this.annulla = ambiente.annulla || (id => cancelAnimationFrame(id));
       this.avvisa = ambiente.avvisa || (() => {});
-      this.stato = 'fermo'; this.raf = null; this.esecutori = [];
+      this.stato = 'fermo';
+      this.raf = null;
+      this.esecutori = [];
+
+// Ogni scena ha un token diverso: serve a ignorare la conclusione tardiva
+// di una narrazione appartenente a una scena che nel frattempo è stata
+// saltata, fermata o sostituita.
+      this.tokenScena = 0;
+
+// `duration` è la durata minima della scena. Quando esiste una narrazione,
+// la scena può restare aperta oltre quel tempo finché la voce non termina.
+      this.narrazioneFinita = true;
+      this.attesaFineNarrazione = false;
     }
     prepara(testo) {
       const demo = analizza(testo);
@@ -134,23 +146,78 @@
       try { this.entra(); this.programma(); } catch (e) { this.fallisci(e); }
     }
     entra() {
-      const scena = this.demo.scene[this.indice]; this.esecutori = [];
-      if (this.contesto.scena) this.contesto.scena(scena, this.indice);
+      const scena = this.demo.scene[this.indice];
+      this.esecutori = [];
+
+      // Token univoco della scena corrente. Le Promise delle scene precedenti
+      // non devono poter far ripartire l'orologio dopo uno Stop o un salto.
+      const token = ++this.tokenScena;
+
+      this.narrazioneFinita = true;
+      this.attesaFineNarrazione = false;
+
+      if (this.contesto.scena)
+        this.contesto.scena(scena, this.indice);
+
       for (const a of scena.azioni) {
-        const esecutore = this.registro[a.comando].crea(a.parametri, this.contesto, scena) || {};
+        const esecutore =
+            this.registro[a.comando].crea(a.parametri, this.contesto, scena) || {};
+
         this.esecutori.push(esecutore);
       }
-      this.aggiorna(0); this.avvisa(this);
+
+      // Gli esecutori possono esporre una Promise `fineNarrazione`.
+      // `duration` resta la durata minima: se la voce dura più della scena,
+      // il motore aspetta la conclusione della voce prima di proseguire.
+      const atteseNarrazione = this.esecutori
+          .map(e => e.fineNarrazione)
+          .filter(p => p && typeof p.then === 'function');
+
+      if (atteseNarrazione.length) {
+        this.narrazioneFinita = false;
+
+        Promise.allSettled(atteseNarrazione).then(() => {
+          // La scena potrebbe essere stata fermata o sostituita nel frattempo.
+          if (this.tokenScena !== token) return;
+
+          this.narrazioneFinita = true;
+
+          // Se la durata minima era già terminata, non c'è più un RAF attivo:
+          // riavvia l'orologio adesso, senza conteggiare come tempo di scena
+          // i secondi trascorsi mentre aspettavamo soltanto la voce.
+          if (this.attesaFineNarrazione && this.stato === 'attivo') {
+            this.attesaFineNarrazione = false;
+            this.ultimo = this.ora();
+            this.programma();
+          }
+        });
+      }
+
+      this.aggiorna(0);
+      this.avvisa(this);
     }
     aggiorna(progresso) {
       for (const e of this.esecutori) if (e.aggiorna) e.aggiorna(progresso);
     }
     esci() {
-      const esecutori = this.esecutori; this.esecutori = [];
+      // Invalida subito eventuali Promise ancora appartenenti alla scena
+      // che stiamo chiudendo.
+      this.tokenScena++;
+      this.attesaFineNarrazione = false;
+
+      const esecutori = this.esecutori;
+      this.esecutori = [];
+
       let errore;
+
       for (const e of esecutori.reverse()) {
-        try { if (e.chiudi) e.chiudi(); } catch (err) { errore = errore || err; }
+        try {
+          if (e.chiudi) e.chiudi();
+        } catch (err) {
+          errore = errore || err;
+        }
       }
+
       if (errore) throw errore;
     }
     programma() {
@@ -158,19 +225,58 @@
     }
     passo() {
       this.raf = null;
+
       if (this.stato !== 'attivo') return;
+
       try {
         const adesso = this.ora();
-        this.trascorso += Math.max(0, adesso - this.ultimo); this.ultimo = adesso;
+
+        this.trascorso += Math.max(0, adesso - this.ultimo);
+        this.ultimo = adesso;
+
         while (this.trascorso >= this.demo.scene[this.indice].durata) {
           const durata = this.demo.scene[this.indice].durata;
-          this.aggiorna(1); this.esci(); this.trascorso -= durata; this.indice++;
-          if (this.indice === this.demo.scene.length) { this.ferma('completato'); return; }
+
+          // La parte visiva della scena raggiunge comunque il suo stato finale.
+          this.aggiorna(1);
+
+          // `duration` è una durata minima.
+          // Se l'audio/TTS della scena sta ancora parlando, non chiudere
+          // gli esecutori e quindi non troncare la narrazione.
+          if (!this.narrazioneFinita) {
+            this.trascorso = durata;
+            this.attesaFineNarrazione = true;
+
+            // Non programmiamo altri fotogrammi inutili mentre aspettiamo
+            // soltanto la fine della voce. La Promise della narrazione
+            // richiamerà `programma()` quando avrà terminato.
+            return;
+          }
+
+          // Durata minima terminata e narrazione conclusa:
+          // ora la scena può essere chiusa normalmente.
+          this.esci();
+
+          this.trascorso -= durata;
+          this.indice++;
+
+          if (this.indice === this.demo.scene.length) {
+            this.ferma('completato');
+            return;
+          }
+
           this.entra();
         }
-        this.aggiorna(this.trascorso / this.demo.scene[this.indice].durata);
+
+        this.aggiorna(
+            this.trascorso / this.demo.scene[this.indice].durata
+        );
+
         this.programma();
-      } catch (e) { this.fallisci(e); }
+
+      } catch (e) {
+        this.fallisci(e);
+      }
     }
     // Salta all'inizio di una scena: chiude quella in corso e apre l'altra
     // col suo orologio a zero. Le scene saltate non si eseguono — chi salta
@@ -197,7 +303,18 @@
     }
     riprendi() {
       if (this.stato !== 'pausa') return;
-      this.ultimo = this.ora(); this.stato = 'attivo'; this.segnala('riprendi'); this.avvisa(this); this.programma();
+
+      this.ultimo = this.ora();
+      this.stato = 'attivo';
+      this.segnala('riprendi');
+      this.avvisa(this);
+
+      // Se la durata minima della scena è già terminata e stiamo aspettando
+      // soltanto la fine della narrazione, non serve riavviare il RAF.
+      // Sarà la Promise della voce a richiamare `programma()` quando terminerà.
+      if (!this.attesaFineNarrazione) {
+        this.programma();
+      }
     }
     // Chi accompagna il racconto senza essere un fotogramma — la voce — deve
     // sapere quando l'orologio si ferma e quando riparte. Il contesto lo

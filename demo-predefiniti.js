@@ -7,7 +7,7 @@
       testo: `define_demo 'eclisse_tour' {
   // Reykjavik è dentro la fascia di totalità del 12 agosto 2026.
   scene planetarium_view {
-    duration: 10s;
+    duration: 12s;
     action: narrate { id: 'demo.narr.eclisse_tour.1' };
     action: set_location { lat: 64.1466, lon: -21.9426, name: 'Reykjavik', timezone: 'Atlantic/Reykjavik' };
     action: set_date { iso: '2026-08-12T16:40:00Z' };
@@ -18,7 +18,7 @@
 
   scene planetarium_view {
     // La Luna entra progressivamente nel disco del Sole.
-    duration: 16s;
+    duration: 18s;
     action: narrate { id: 'demo.narr.eclisse_tour.2' };
     action: set_fov { degrees: 1.6 };
     action: timelapse { start: 16:47, end: 17:48 };
@@ -81,7 +81,6 @@
     action: timelapse { start: 18:10, end: 18:52 };
     action: center_target { target: 'Sun' };
   }
-
 }`
     },
     {
