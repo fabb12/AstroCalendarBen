@@ -132,6 +132,44 @@
       return { aggiorna() { if (!c || !c.cameraManuale) applica(); } };
     }
   };
+  registro.frame_objects = {
+    verifica(p) {
+      campi(p, ['names']);
+      richiedi(typeof p.names === 'string' && p.names.length > 0 && p.names.length <= 120,
+        'Elenco oggetti non valido');
+      const nomi = p.names.split(',').map(x => x.trim()).filter(Boolean);
+      richiedi(nomi.length >= 2 && nomi.length <= 8 && nomi.every(n => corpi.includes(n)),
+        'Servono da 2 a 8 corpi supportati');
+    },
+    crea(p, c) {
+      const nomi = p.names.split(',').map(x => x.trim()).filter(Boolean);
+      const applica = () => {
+        skyAggiornaOggetti(true);
+        const oggetti = nomi.map(nome => sky.oggetti.find(o => o.id === nome)).filter(Boolean);
+        if (oggetti.length !== nomi.length) return;
+        const az = oggetti.map(o => ((o.az % 360) + 360) % 360).sort((a, b) => a - b);
+        let gapMax = -1, dopoGap = 0;
+        for (let i = 0; i < az.length; i++) {
+          const prossimo = i === az.length - 1 ? az[0] + 360 : az[i + 1];
+          const gap = prossimo - az[i];
+          if (gap > gapMax) { gapMax = gap; dopoGap = (i + 1) % az.length; }
+        }
+        const inizio = az[dopoGap], arco = 360 - gapMax;
+        const centroAz = (inizio + arco / 2) % 360;
+        const minAlt = Math.min(...oggetti.map(o => o.alt));
+        const maxAlt = Math.max(...oggetti.map(o => o.alt));
+        const centroAlt = Math.max(-65, Math.min(65, (minAlt + maxAlt) / 2));
+        const campo = Math.max(70, Math.min(160, Math.max(arco * 1.25, (maxAlt - minAlt) * 1.5 + 18)));
+        sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
+        sky.manuale.az = centroAz; sky.manuale.alt = centroAlt;
+        if (typeof skyImpostaFov === 'function') skyImpostaFov(campo, { morbido: false });
+        else { sky.fov = campo; sky.fovVoluto = campo; }
+        if ('animazioneVista' in sky) sky.animazioneVista = null;
+      };
+      applica();
+      return { aggiorna() { if (!c || !c.cameraManuale) applica(); } };
+    }
+  };
   registro.highlight_object = {
     verifica(p) {
       campi(p, ['name', 'scale']);
