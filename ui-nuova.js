@@ -977,7 +977,8 @@ function inizializzaChiusuraSchedeConEsc() {
       'modale-luogo-cielo', 'modale-costellazioni'
     ]);
     if (conGestionePropria.has(modale.id)) return;
-    const chiudi = modale.querySelector('.testata-modale .tasto-chiudi');
+    const chiudi = modale.querySelector('.testata-modale .tasto-chiudi') ||
+      (modale.id === 'modale-impostazioni' ? document.getElementById('btn-chiudi-impostazioni') : null);
     if (!chiudi) return;
     e.preventDefault();
     e.stopImmediatePropagation();
