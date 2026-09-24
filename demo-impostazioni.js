@@ -18,6 +18,7 @@
     highlight_object: ['planetarium_view', "highlight_object { name: 'Venus', scale: 5.0 }"],
     center_target: ['planetarium_view', "center_target { target: 'Venus' }"],
     set_fov: ['planetarium_view', 'set_fov { degrees: 20 }'],
+    frame_objects: ['planetarium_view', "frame_objects { names: 'Mercury,Venus,Mars,Jupiter' }"],
     orbit_object: ['solar_system_3d', "orbit_object { object: 'Earth-Moon', angle: 360, speed: slow }"],
     zoom_view: ['transition', 'zoom_view { type: geometric, final_target: solar_system_3d }']
   };
