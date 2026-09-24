@@ -5,19 +5,22 @@
     {
       chiave: 'eclisse_tour',
       testo: `define_demo 'eclisse_tour' {
+  // Reykjavik è dentro la fascia di totalità del 12 agosto 2026.
   scene planetarium_view {
-    duration: 10s;
-    action: timelapse { start: 18:00, end: 22:00 };
-    action: highlight_object { name: 'Venus', scale: 5.0 };
-    action: center_target { target: 'Venus' };
+    duration: 12s;
+    action: set_location { lat: 64.1466, lon: -21.9426, name: 'Reykjavik', timezone: 'Atlantic/Reykjavik' };
+    action: set_date { iso: '2026-08-12T17:47:00Z' };
+    action: set_fov { degrees: 4 };
+    action: timelapse { start: 17:47, end: 17:50 };
+    action: center_target { target: 'Sun' };
   }
   scene transition {
-    duration: 5s;
+    duration: 4s;
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
-    duration: 15s;
-    action: orbit_object { object: 'Earth-Moon', angle: 360, speed: slow };
+    duration: 14s;
+    action: orbit_object { object: 'Earth-Moon', angle: 220, speed: slow };
     action: center { target: 'Eclipse Shadow' };
   }
 }`
@@ -25,15 +28,17 @@
     {
       chiave: 'eclisse_lunare',
       testo: `define_demo 'eclisse_lunare' {
-  // Eclisse totale del 31 dicembre 2028, vista da Sapporo all'alba del 1 gennaio.
+  // Eclisse totale del 31 dicembre 2028, vista da Sapporo nella notte del 1 gennaio.
   scene planetarium_view {
-    duration: 8s;
+    duration: 6s;
     action: set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' };
     action: set_date { iso: '2028-12-31T15:45:00Z' };
+    action: set_fov { degrees: 4 };
     action: center_target { target: 'Moon' };
   }
   scene planetarium_view {
-    duration: 16s;
+    duration: 18s;
+    action: set_fov { degrees: 2.5 };
     action: timelapse { start: 00:45, end: 03:00 };
     action: center_target { target: 'Moon' };
   }
@@ -42,16 +47,18 @@
     {
       chiave: 'aurora_boreale',
       testo: `define_demo 'aurora_boreale' {
-  // Notte polare a Tromsø: Kp 5 è una simulazione, non una previsione.
+  // Notte polare a Tromsø: Kp 5 è una simulazione didattica, non una previsione.
   scene planetarium_view {
     duration: 8s;
     action: set_location { lat: 69.6492, lon: 18.9553, name: 'Tromsø', timezone: 'Europe/Oslo' };
     action: set_date { iso: '2027-01-15T20:00:00Z' };
+    action: set_fov { degrees: 90 };
     action: simulate_aurora { kp: 5 };
     action: point_view { az: 0, alt: 25 };
   }
   scene planetarium_view {
     duration: 12s;
+    action: set_fov { degrees: 90 };
     action: timelapse { start: 21:00, end: 23:30 };
     action: point_view { az: 0, alt: 25 };
   }
@@ -60,11 +67,12 @@
     {
       chiave: 'allineamento_pianeti',
       testo: `define_demo 'allineamento_pianeti' {
-  // Tucson, alba del 21 ottobre 2028: quattro pianeti nel cielo a est.
+  // Tucson, alba del 21 ottobre 2028: quattro pianeti nel cielo orientale.
   scene planetarium_view {
     duration: 8s;
     action: set_location { lat: 32.2226, lon: -110.9747, name: 'Tucson', timezone: 'America/Phoenix' };
     action: set_date { iso: '2028-10-21T12:45:00Z' };
+    action: set_fov { degrees: 120 };
     action: point_view { az: 102, alt: 29 };
     action: highlight_object { name: 'Mercury', scale: 3 };
     action: highlight_object { name: 'Venus', scale: 3 };
@@ -73,6 +81,7 @@
   }
   scene planetarium_view {
     duration: 14s;
+    action: set_fov { degrees: 120 };
     action: timelapse { start: 05:45, end: 06:10 };
     action: point_view { az: 102, alt: 29 };
     action: highlight_object { name: 'Mercury', scale: 3 };
