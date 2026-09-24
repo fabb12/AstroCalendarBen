@@ -1244,6 +1244,20 @@
       posizioneFeed: origine, stimato: !tempoReale(oraMs), istanteMostrato: oraMs };
   }
 
+  // Dov'è un aereo in cielo **adesso**, senza la traiettoria. È la metà
+  // leggera di `aereoAdesso`: la realtà aumentata (§12 e §13 di `visione.js`)
+  // deve nominare e far calibrare gli aerei anche quando lo strato dei
+  // triangoli è spento, e in quel caso le coordinate salvate in `stato.aerei`
+  // sono quelle dell'ultimo disegno — cioè ferme. Rifare l'arco di transito
+  // per ogni aereo e ogni fotogramma solo per sapere dove sta sarebbe il
+  // conto sbagliato: la traiettoria cerca l'orizzonte vero per bisezione.
+  function aereoCieloOra(a, obs = osservatoreDisegno(), oraMs = istanteMostratoMs()) {
+    if (!a || !obs) return null;
+    const origine = a.posizioneFeed || a;
+    const secondi = oraMs / 1000 - (origine.ultimaLettura || Date.now() / 1000);
+    return ancoraVista(a.id, coordinateCielo(posizioneFutura(origine, secondi), obs));
+  }
+
   function aggiornaPosizioni() {
     const obs = osservatoreDisegno();
     if (!obs) return [];
@@ -2733,7 +2747,7 @@
   window.aereiTrova = aereiTrova;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky,
-    scaricaConRipiego, corsaProvider, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
+    scaricaConRipiego, corsaProvider, providersPredefiniti, aereoAdesso, aereoCieloOra, istanteMostratoMs, tempoReale,
     interpretaRotta, aeroportoTesto, aeroportoCoordinate, orarioRotta, puntiOrtodromia,
     // Il ritmo e i suoi guardiani (§6): il banco di prova li interroga uno per
     // uno, perché il difetto che curano non lascia traccia sullo schermo —

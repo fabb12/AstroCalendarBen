@@ -2422,6 +2422,35 @@ window.ASTRO_DIZIONARI['en'] = {
       altri: '{n} aircraft locked to the image'
     },
 
+    'visione.manuale': 'Aligned by hand on {nome}',
+    'visione.manualeAgganciato': 'Aligned by hand · locked on {nome}',
+    'ar.allinea': 'Align',
+    'ar.allineaTitolo': 'Align by hand: show where you really see an object in the image',
+    'ar.calibra.titolo': 'Manual alignment',
+    'ar.calibra.scegli': 'What do you see in the image? Tap its name below, or its marker in the sky.',
+    'ar.calibra.nessuno': 'Nothing to point at in view: frame the Moon, a planet, a bright star, an aircraft or a peak.',
+    'ar.calibra.tocca': 'Tap where you really see {nome} in the image. The crosshair appears above your finger: move it onto the object and lift your finger to confirm.',
+    'ar.calibra.cambia': 'Change object',
+    'ar.calibra.altro': 'Another object',
+    'ar.calibra.annulla': 'Undo',
+    'ar.calibra.rifai': 'Redo',
+    'ar.calibra.chiudi': 'Close',
+    'ar.calibra.azzera': 'Restart the alignment',
+    'ar.calibra.fatto': 'Aligned on {nome}: the sky moved by {gradi}°, together with all the other labels.',
+    'ar.calibra.fattoAereo': 'Position of {nome} corrected by {gradi}°: the label stays locked to the aircraft.',
+    'ar.calibra.troppoLontano': 'The point you tapped is {gradi}° away from where {nome} should be: too far to be the same object. Try again, or pick another object.',
+    'ar.calibra.annullato': 'Manual alignment undone.',
+    'ar.calibra.nienteDaAnnullare': 'Nothing to undo.',
+    'ar.calibra.senzaAR': 'Manual alignment works with augmented reality on and “Follow the phone” active.',
+    'ar.calibra.punti': {
+      uno: '{n} point set by hand',
+      altri: '{n} points set by hand: together they also correct the rotation'
+    },
+    'ar.eti.aereo': '{km} km · {quota} m',
+    'ar.eti.aereoSenzaQuota': '{km} km',
+    'ar.eti.cima': '{quota} m · {km} km',
+    'ar.eti.citta': '{km} km',
+
     // --- Gli aerei (aerei.js) -----------------------------------------
     'aerei.aggiornamentoInCorso': 'Refreshing the ADS-B data…',
     'aereo.rottaOrtodromica': 'Great-circle route',

@@ -72,6 +72,10 @@
  *          chiedere all'utente di pizzicare finché non torna.
  *   §9     Quello che resta, oggetto per oggetto, è l'errore di quell'oggetto:
  *          diventa la sua ancora, e la sua etichetta ci si incolla sopra.
+ *   §12    Con la fotocamera accesa gli oggetti veri non si ridisegnano: si
+ *          **nominano**, con un segno sottile dove il cielo calcolato li mette.
+ *   §13    Quando l'automatico non basta, si indica a mano: si sceglie cosa
+ *          si vede e si tocca dove lo si vede, e il mondo intero si raddrizza.
  *
  * ────────────────────────────────────────────────────────────────────────
  * QUANTO COSTA, E DOVE STAVA IL COSTO
@@ -411,7 +415,14 @@
     taglie: new Map(),      // id del candidato → quanto larga si è misurata la sua macchia
     finestre: 0,            // quante finestre ha guardato l'ultimo giro
     pixelGuardati: 0,       // e quanti pixel, su quanti ne ha il fotogramma
-    pixelTotali: 0
+    pixelTotali: 0,
+    // §12 e §13: le etichette e l'allineamento a mano
+    postiEtichette: new Map(), // id → da che parte della sua cosa si è scritto il nome l'ultima volta
+    etichette: [],          // l'ultima impaginazione, per il banco di prova e per il tocco
+    puntiManuali: [],       // { id, genere, nome, a, g, peso, quando }: le verità indicate col dito
+    manuale: null,          // l'ultimo allineamento a mano: su chi, di quanto, e se lo si sta ancora vedendo
+    storiaManuale: [],      // le fotografie per «Annulla»
+    calibra: { fase: 'spento', scelto: null, puntatore: null, esito: null, esitoQuando: 0 }
   };
 
   // --- Algebra: le rotazioni, scritte in tre righe per tre ---------------
@@ -1899,7 +1910,10 @@
     stato.ancore.set(id, {
       dAz: taglia(vecchia.dAz + dAz * k),
       dAlt: taglia(vecchia.dAlt + dAlt * k),
-      quando: performance.now()
+      quando: performance.now(),
+      // Un'ancora nata da un dito (§13) ha una vita più lunga di una nata
+      // da una macchia, e l'inseguimento che la raffina non gliela accorcia.
+      vita: vecchia.vita
     });
   }
 
@@ -1907,11 +1921,12 @@
     const ora = performance.now();
     stato.ancore.forEach((a, id) => {
       const eta = ora - a.quando;
-      if (eta < VIS_ANCORA_VITA_MS) return;
+      const vita = a.vita || VIS_ANCORA_VITA_MS;
+      if (eta < vita) return;
       // Scioglimento: due secondi per tornare a zero.
-      const k = Math.max(0, 1 - (eta - VIS_ANCORA_VITA_MS) / 2000);
+      const k = Math.max(0, 1 - (eta - vita) / 2000);
       if (k <= 0) { stato.ancore.delete(id); return; }
-      stato.ancore.set(id, { dAz: a.dAz * k, dAlt: a.dAlt * k, quando: a.quando });
+      stato.ancore.set(id, { dAz: a.dAz * k, dAlt: a.dAlt * k, quando: a.quando, vita: a.vita });
     });
   }
 
@@ -2004,6 +2019,11 @@
     // L'ordine rovesciato rispetto a prima è tutto il risparmio di questo
     // modulo: vedi il cappello del §4-bis.
     const candidati = visCandidati(base, focale);
+    // L'oggetto indicato a mano entra fra i candidati anche quando le regole
+    // di sempre lo lascerebbero fuori (una stella di seconda grandezza, un
+    // pianeta al crepuscolo): chi l'ha scelto lo sta guardando, e seguirlo
+    // nell'immagine è il modo di tenere l'allineamento che ha dato (§13).
+    visCandidatoBloccato(candidati, base, focale);
     // Il cancello stretto solo con una misura d'astro recente addosso: un
     // aggancio sul solo paesaggio non ha misurato niente della bussola, e
     // stringere lì vorrebbe dire chiudere fuori proprio l'astro che la
@@ -2137,7 +2157,19 @@
       // Un paesaggio non conosce il Nord e quindi corregge soltanto piccoli
       // scivolamenti; un astro può invece recuperare l'intero errore bussola.
       const limite = soloScena ? 4 : VIS_CORREZIONE_MAX;
-      if (sol.usate >= (soloScena ? 3 : 1) && gradi < limite && isFinite(gradi)) {
+      // Il rispetto di quello che è stato indicato col dito (§13): se
+      // l'oggetto scelto a mano è fra le coppie, è l'immagine a confermare o
+      // raffinare, e si accetta; se non c'è, una misura che porterebbe via i
+      // punti dati a mano non passa. Senza questa riga un lampione scambiato
+      // per Giove si riprenderebbe in un secondo l'allineamento che qualcuno
+      // ha appena fatto a mano.
+      const bloccatoVisto = visBloccatoFraLeCoppie(perAssetto);
+      if (bloccatoVisto && stato.manuale) stato.manuale.ultimoAggancio = performance.now();
+      const rispettaMano = bloccatoVisto ||
+        !visViolaPuntiManuali(moltiplica(sol.R, correzioneViva() || identita()));
+      if (!rispettaMano) {
+        stato.motivo = 'manuale';
+      } else if (sol.usate >= (soloScena ? 3 : 1) && gradi < limite && isFinite(gradi)) {
         R = sol.R;
         stato.scarto = sol.residuo;
         stato.riferimenti = sol.usate;
@@ -2171,8 +2203,13 @@
       // un errore noto e pretende di vederlo sparire.
       const passo = scalaRotazione(R, 1 - Math.exp(-dt / VIS_TAU_CORREZIONE_S));
       let nuova = moltiplica(passo, stato.correzione || identita());
-      if (angoloDi(nuova) > VIS_CORREZIONE_MAX) {
-        nuova = scalaRotazione(nuova, VIS_CORREZIONE_MAX / angoloDi(nuova));
+      // Il tetto è più largo quando la correzione l'ha data una mano: una
+      // bussola sbagliata di quaranta gradi accanto a un'auto esiste, e
+      // tosare a venticinque vorrebbe dire rimangiarsi metà dell'allineamento
+      // al primo giro.
+      const tetto = visPuntiManualiVivi().length ? VIS_CORREZIONE_MAX_MANUALE : VIS_CORREZIONE_MAX;
+      if (angoloDi(nuova) > tetto) {
+        nuova = scalaRotazione(nuova, tetto / angoloDi(nuova));
       }
       stato.correzione = nuova;
       stato.correzioneQuando = t;
@@ -2290,6 +2327,11 @@
 
   function correzioneViva() {
     if (!stato.correzione) return null;
+    // Una correzione indicata col dito non scade coi tre minuti di quelle
+    // misurate: chi l'ha data non ha modo di sapere che è scaduta, e il cielo
+    // che torna storto da solo, a mano ferma, si legge come un guasto. Scade
+    // coi suoi punti (§13, `VIS_MANUALE_VITA_MS`).
+    if (visPuntiManualiVivi().length) return stato.correzione;
     if (performance.now() - stato.correzioneQuando > VIS_CORREZIONE_VITA_MS) return null;
     return stato.correzione;
   }
@@ -2321,7 +2363,7 @@
     if (!stato.attivo || !stato.acceso) return null;
     const a = stato.ancore.get(String(id));
     if (!a) return null;
-    if (performance.now() - a.quando > VIS_ANCORA_VITA_MS + 2000) return null;
+    if (performance.now() - a.quando > (a.vita || VIS_ANCORA_VITA_MS) + 2000) return null;
     return { dAz: a.dAz, dAlt: a.dAlt };
   }
 
@@ -2380,6 +2422,14 @@
     const T = (k, v) => (typeof astroI18n === 'object' && astroI18n.t)
       ? astroI18n.t('visione.' + k, v) : k;
     if (!stato.acceso) return { classe: 'spento', testo: T('spento') };
+    if (stato.manuale && visPuntiManualiVivi().length) {
+      const visto = stato.manuale.ultimoAggancio &&
+        performance.now() - stato.manuale.ultimoAggancio < VIS_MIRA_ASTRI_VITA_MS;
+      return {
+        classe: 'agganciato',
+        testo: T(visto ? 'manualeAgganciato' : 'manuale', { nome: stato.manuale.nome })
+      };
+    }
     if (stato.agganciato) {
       return {
         classe: 'agganciato',
@@ -2403,11 +2453,18 @@
   }
 
   function visAggiornaHud() {
+    if (typeof document === 'undefined') return;
     const el = document.getElementById('ar-stato');
     if (!el) return;
     const acceso = stato.attivo && !!sky.camera;
     el.classList.toggle('hidden', !acceso);
-    if (!acceso) return;
+    const tasto = document.getElementById('ar-allinea');
+    if (tasto) {
+      tasto.classList.toggle('hidden', !acceso);
+      tasto.setAttribute('aria-pressed', stato.calibra.fase !== 'spento' ? 'true' : 'false');
+      tasto.dataset.manuale = visPuntiManualiVivi().length ? 'si' : 'no';
+    }
+    if (!acceso) { if (stato.calibra.fase !== 'spento') visCalibraChiudi(); return; }
     const t = testo();
     el.dataset.stato = t.classe;
     const riga = el.querySelector('.ar-stato-testo');
@@ -2444,6 +2501,7 @@
     stato.scena = null;
     stato.riferimentiScena = 0;
     stato.astriUltimo = 0;
+    if (stato.calibra.fase !== 'spento') visCalibraChiudi();
     // La correzione **non** si butta: è una misura vera dell'errore di
     // bussola in questo posto, e se la fotocamera si riaccende fra dieci
     // secondi è ancora quella. La fa scadere il tempo (§`correzioneViva`).
@@ -2479,6 +2537,11 @@
   // ricominciare senza spegnere la fotocamera.
   function visAzzera() {
     stato.correzione = null;
+    // Da capo vuol dire da capo anche per quello che è stato indicato a
+    // mano: tenerlo vorrebbe dire rifare la mira sopra un vincolo vecchio.
+    stato.puntiManuali = [];
+    stato.manuale = null;
+    stato.storiaManuale = [];
     stato.ancore.clear();
     stato.agganciato = false;
     stato.conferme = 0;
@@ -2490,6 +2553,1089 @@
     stato.taglie.clear();
     stato.scala = 1;
     visAggiornaHud();
+  }
+
+  // ===================================================================
+  // §12. Le etichette: nominare quello che la fotocamera fa già vedere
+  // ===================================================================
+  //
+  // Con la fotocamera accesa la Luna c'è già: è nell'immagine, grande
+  // quanto è, del colore che ha stasera, con la fase vera e la foschia vera
+  // davanti. Disegnarle sopra una seconda Luna calcolata non aggiunge
+  // niente e toglie una cosa sola, ma è quella che conta: quando le due non
+  // coincidono — e prima dell'aggancio non coincidono mai — si vedono **due
+  // Lune**, e nessuno sa più quale delle due sia quella vera. Quello che la
+  // fotocamera non sa dire è il **nome**. Quindi qui non si ridisegna
+  // niente di ciò che è reale: si appoggia accanto a ogni cosa un segno
+  // sottile (un anello, due parentesi, un triangolino) e il suo nome, e il
+  // segno sta dove il cielo calcolato dice che la cosa è. Quando è allineato
+  // l'anello abbraccia la Luna vera; quando non lo è, lo scarto fra i due si
+  // vede a colpo d'occhio — ed è esattamente la cosa che serve per
+  // calibrare a mano (§13).
+  //
+  // Chi si nomina, e chi no. La regola è «quello che da qui, adesso, si vede
+  // davvero in quella direzione»: il Sole e la Luna sopra la cresta, i
+  // pianeti e le stelle solo quanto il cielo è scuro abbastanza da mostrarli
+  // (la stessa `sky.luceCielo` con cui §5 decide i riferimenti), le stazioni
+  // solo quando sono illuminate su un cielo buio, gli aerei entro ottanta
+  // chilometri, le vette che spuntano sopra il terreno che hanno davanti
+  // (`cimeVisibili` lo sa già) e i paesi che non sono coperti da una
+  // collina. Un nome di qualcosa che sta dietro al monte è un'informazione
+  // sbagliata messa nel posto giusto.
+  //
+  // Le fonti sono quelle del planetario e nessun'altra: `sky.oggetti` per gli
+  // astri, il catalogo per le stelle con un nome, `AereiADS_B` per gli aerei,
+  // `cimeVisibili` e `cittaVicine` per il paesaggio. Questa sezione non
+  // calcola una sola posizione: le proietta e le impagina.
+
+  const VIS_ETI_MAG_NOTTE = 2.2;      // stelle nominate di notte
+  const VIS_ETI_MAG_CREPUSCOLO = 0.3; // e al crepuscolo, solo le più luminose
+  const VIS_ETI_MAG_CALIBRA = 3.2;    // fra cui scegliere per allineare a mano
+  const VIS_ETI_STELLE_MAX = 14;
+  const VIS_ETI_CITTA_MAX = 8;
+  const VIS_ETI_CIME_MAX = 12;
+  const VIS_ETI_AEREI_KM = 80;
+  const VIS_ETI_CORPO_PX = 12;
+  const VIS_ETI_RIGA_PX = 18;
+  const VIS_ETI_STACCO_PX = 5;
+  const VIS_ETI_ZONA_ALTA_MS = 1000;  // ogni quanto si rimisurano i comandi sopra al cielo
+  // L'ordine in cui si prende il posto sullo schermo: prima quello che uno
+  // riconosce per primo guardando in su, per ultime le stelle — che sono
+  // tante, e che cedono il posto senza che nessuno se ne accorga.
+  const VIS_ETI_PRIORITA = { luna: 10, sole: 10, pianeta: 8, satellite: 7, aereo: 7, cima: 5, citta: 4, stella: 3 };
+  const VIS_ETI_COLORI = {
+    luna: '#f1f5f9', sole: '#fde68a', pianeta: '#fcd34d', stella: '#cbd5e1',
+    satellite: '#a5f3fc', aereo: '#7dd3fc', cima: '#e7e5e4', citta: '#fdba74'
+  };
+
+  function visT(k, v) {
+    return (typeof astroI18n === 'object' && astroI18n && astroI18n.t) ? astroI18n.t(k, v) : k;
+  }
+
+  function visNormaNome(n) { return String(n || '').trim().toLowerCase(); }
+
+  // Sopra la cresta. Per un astro la cresta che conta è quella intera di
+  // quella direzione — sta infinitamente lontano, tutto il terreno gli sta
+  // davanti. Senza terreno vero si chiede solo di stare sopra l'orizzonte.
+  function visSopraTerreno(az, alt) {
+    if (!(alt > -0.3)) return false;
+    if (typeof terrenoDisponibile === 'function' && terrenoDisponibile() &&
+        typeof terrenoAltezza === 'function') {
+      const cresta = terrenoAltezza(az);
+      if (typeof cresta === 'number' && isFinite(cresta) && alt < cresta - 0.4) return false;
+    }
+    return true;
+  }
+
+  // La quota di un paese si legge una volta: un paese sta dov'è, e le due
+  // fonti (tessere e griglia) sono già in memoria. Si tengono solo le
+  // risposte vere — la griglia può arrivare dopo, e un «non so» salvato
+  // resterebbe un «non so» per sempre.
+  const visQuoteCitta = new Map();
+  function visQuotaCitta(c) {
+    const k = c.lat.toFixed(4) + ',' + c.lon.toFixed(4);
+    if (visQuoteCitta.has(k)) return visQuoteCitta.get(k);
+    const q = typeof cittaQuotaPunto === 'function' ? cittaQuotaPunto(c.lat, c.lon) : null;
+    if (q !== null && isFinite(q)) {
+      if (visQuoteCitta.size > 400) visQuoteCitta.clear();
+      visQuoteCitta.set(k, q);
+    }
+    return q;
+  }
+
+  function visQuotaOcchio() {
+    return typeof cimeQuotaOcchio === 'function' ? cimeQuotaOcchio() : 0;
+  }
+
+  function visLimitePianeta(luce) {
+    return luce < 0.12 ? 2.6 : luce < 0.45 ? 0.5 : -4.2;
+  }
+
+  // Tutto quello che si può nominare in questa inquadratura. `opz.aerei`
+  // vuole gli aerei anche quando li disegna già `aerei.js` (serve a §13, che
+  // deve poterli scegliere); `opz.calibra` allarga le stelle a quelle che
+  // una fotocamera di telefono riprende ancora; `opz.fuoriQuadro` non taglia
+  // al riquadro (serve a ritrovare un oggetto per nome).
+  function visVociRealta(base, focale, opz) {
+    const o = opz || {};
+    const L = sky.larghezza, H = sky.altezza;
+    const margine = typeof o.margine === 'number' ? o.margine : 4;
+    const luce = typeof sky.luceCielo === 'number' ? sky.luceCielo : 0;
+    const perGrado = focale * D2R;
+    const limiteStella = o.calibra
+      ? (luce < 0.12 ? VIS_ETI_MAG_CALIBRA : luce < 0.3 ? 1.2 : -9)
+      : (luce < 0.12 ? VIS_ETI_MAG_NOTTE : luce < 0.3 ? VIS_ETI_MAG_CREPUSCOLO : -9);
+    const limitePianeta = visLimitePianeta(luce) + (o.calibra ? 0.8 : 0);
+    const voci = [];
+    const nomi = new Set();
+
+    const metti = (v) => {
+      const p = skyProietta(v.vettore, base, focale);
+      if (!p.davanti) return false;
+      if (!o.fuoriQuadro &&
+          (p.px < -margine || p.px > L + margine || p.py < -margine || p.py > H + margine)) return false;
+      v.px = p.px; v.py = p.py;
+      if (!(v.priorita >= 0)) v.priorita = VIS_ETI_PRIORITA[v.genere] || 1;
+      if (!v.colore) v.colore = VIS_ETI_COLORI[v.genere] || '#e2e8f0';
+      voci.push(v);
+      return true;
+    };
+
+    // --- Gli astri del planetario: Sole, Luna, pianeti, le stelle di
+    // riferimento e le stazioni spaziali.
+    (sky.oggetti || []).forEach(ob => {
+      if (!ob || typeof ob.az !== 'number' || typeof ob.alt !== 'number') return;
+      const genere = ob.tipo;
+      if (genere === 'pianeta') {
+        if (typeof ob.mag === 'number' && ob.mag > limitePianeta) return;
+      } else if (genere === 'stella') {
+        if (typeof ob.mag !== 'number' || ob.mag > limiteStella) return;
+      } else if (genere === 'satellite') {
+        if (luce >= 0.45) return;
+      } else if (genere !== 'sole' && genere !== 'luna') {
+        return;
+      }
+      if (!visSopraTerreno(ob.az, ob.alt)) return;
+      const semi = typeof skySemidiametro === 'function' ? skySemidiametro(ob) : 0;
+      const nome = ob.nome || String(ob.id);
+      metti({
+        id: String(ob.id), genere, nome, az: ob.az, alt: ob.alt,
+        vettore: vettoreDa(ob.az, ob.alt),
+        rPx: (semi || 0) * perGrado, mag: ob.mag
+      });
+      nomi.add(visNormaNome(nome));
+    });
+
+    // --- Le stelle con un nome proprio, dal catalogo grande. Stesso dato che
+    // il planetario disegna e interroga, quindi lo stesso indice.
+    if (luce < 0.3 && typeof cat === 'object' && cat && cat.nomiPerIndice && cat.versoriOra &&
+        cat.magnitudini && (typeof catPronto !== 'function' || catPronto())) {
+      const lista = [];
+      const sinMin = Math.sin(2 * D2R);
+      cat.nomiPerIndice.forEach((nome, i) => {
+        const m = cat.magnitudini[i];
+        if (!(m <= limiteStella)) return;
+        if (!(cat.versoriOra[i * 3 + 2] > sinMin)) return;
+        lista.push({ i, nome, m });
+      });
+      lista.sort((a, b) => a.m - b.m);
+      const tetto = o.calibra ? VIS_ETI_STELLE_MAX * 2 : VIS_ETI_STELLE_MAX;
+      let messe = 0;
+      for (const s of lista) {
+        if (messe >= tetto) break;
+        if (nomi.has(visNormaNome(s.nome))) continue;
+        const v = [cat.versoriOra[s.i * 3], cat.versoriOra[s.i * 3 + 1], cat.versoriOra[s.i * 3 + 2]];
+        const aa = azAltDi(v);
+        if (!visSopraTerreno(aa.az, aa.alt)) continue;
+        if (metti({ id: 'cat:' + s.i, genere: 'stella', nome: s.nome, az: aa.az, alt: aa.alt,
+          vettore: v, rPx: 0, mag: s.m })) messe++;
+        nomi.add(visNormaNome(s.nome));
+      }
+    }
+
+    // --- Gli aerei. Se lo strato dei triangoli è acceso li nomina già lui,
+    // con la traiettoria e la fascia di distanza: due etichette per lo
+    // stesso aereo sarebbero peggio di una.
+    const A = (typeof AereiADS_B === 'object' && AereiADS_B) ? AereiADS_B : null;
+    if (A && A.stato && Array.isArray(A.stato.aerei) && (o.aerei || !A.stato.visibile)) {
+      A.stato.aerei.forEach(a => {
+        if (!a) return;
+        const c = typeof A.aereoCieloOra === 'function' ? (A.aereoCieloOra(a) || a) : a;
+        if (typeof c.az !== 'number' || typeof c.alt !== 'number') return;
+        if (c.alt < 0.5 || !(c.distanzaKm <= VIS_ETI_AEREI_KM)) return;
+        if (!visSopraTerreno(c.az, c.alt)) return;
+        const quota = Number.isFinite(a.quotaM) ? Math.round(a.quotaM / 10) * 10 : null;
+        metti({
+          id: 'aereo:' + a.id, idAereo: String(a.id), genere: 'aereo',
+          nome: a.callsign || String(a.id).toUpperCase(),
+          dettaglio: quota === null
+            ? visT('ar.eti.aereoSenzaQuota', { km: Math.round(c.distanzaKm) })
+            : visT('ar.eti.aereo', { km: Math.round(c.distanzaKm), quota }),
+          az: c.az, alt: c.alt, vettore: vettoreDa(c.az, c.alt), rPx: 0,
+          distanzaKm: c.distanzaKm
+        });
+      });
+    }
+
+    // --- Le vette: `cimeVisibili` ha già fatto le due cernite che contano
+    // (spunta sopra al terreno che ha davanti, non è un doppione).
+    if (typeof cimeVisibili === 'function') {
+      let messe = 0;
+      (cimeVisibili() || []).forEach(c => {
+        if (messe >= VIS_ETI_CIME_MAX) return;
+        if (typeof c.az !== 'number' || typeof c.alt !== 'number') return;
+        if (metti({
+          id: 'cima:' + c.nome + '@' + Math.round(c.quota || 0), genere: 'cima', nome: c.nome,
+          dettaglio: visT('ar.eti.cima', { quota: Math.round(c.quota || 0), km: Math.round(c.km || 0) }),
+          az: c.az, alt: c.alt, vettore: vettoreDa(c.az, c.alt), rPx: 0, km: c.km
+        })) messe++;
+      });
+    }
+
+    // --- I paesi, alla loro quota e alla loro distanza: di solito **sotto**
+    // la linea dell'orizzonte, perché ci si guarda giù (§11-ter di
+    // `terreno.js`). Un quartiere si nomina solo se da qui è largo abbastanza
+    // da essere una cosa distinta dalla sua città.
+    if (!o.calibra && typeof cittaVicine === 'function') {
+      const occhio = visQuotaOcchio();
+      let messe = 0;
+      (cittaVicine() || []).forEach(c => {
+        if (messe >= VIS_ETI_CITTA_MAX) return;
+        if (!c || typeof c.az !== 'number' || !(c.km > 0)) return;
+        if (c.parte && !(c.largoVero > 3)) return;
+        const q = Number.isFinite(c.lat) && Number.isFinite(c.lon) ? visQuotaCitta(c) : null;
+        const alt = (q !== null && typeof terrenoAngolo === 'function') ? terrenoAngolo(q, occhio, c.km) : 0;
+        // Coperto da una collina davanti: il nome non si scrive.
+        if (typeof terrenoCrestaDavanti === 'function') {
+          const davanti = terrenoCrestaDavanti(c.az, c.km);
+          if (typeof davanti === 'number' && isFinite(davanti) && alt < davanti - 0.3) return;
+        }
+        if (metti({
+          id: 'citta:' + c.nome + '@' + c.km.toFixed(1), genere: 'citta', nome: c.nome,
+          dettaglio: visT('ar.eti.citta', { km: Math.max(1, Math.round(c.km)) }),
+          az: c.az, alt, vettore: vettoreDa(c.az, alt), rPx: 0, km: c.km
+        })) messe++;
+      });
+    }
+
+    return voci;
+  }
+
+  // Quanto è largo il segno di una cosa: abbastanza da abbracciare il suo
+  // disco (la Luna a forte zoom è grande), mai così piccolo da sparire.
+  function visRaggioSegno(v) {
+    if (v.genere === 'luna' || v.genere === 'sole') return Math.max(9, Math.min(240, (v.rPx || 0) + 6));
+    if (v.genere === 'pianeta') return Math.max(7, (v.rPx || 0) + 5);
+    if (v.genere === 'aereo' || v.genere === 'satellite') return 9;
+    if (v.genere === 'stella') return 6;
+    return 5;
+  }
+
+  function visTestoEtichetta(v) {
+    return v.dettaglio ? v.nome + ' · ' + v.dettaglio : v.nome;
+  }
+
+  // Da che parte provare a scrivere il nome, in ordine. Le cose del
+  // paesaggio vogliono il nome **sopra** (sotto c'è il terreno, e il nome di
+  // un paese scritto sotto il paese sembra il nome del prato); gli astri a
+  // destra, che è il verso in cui si legge.
+  function visPostiPreferiti(v) {
+    if (v.genere === 'cima' || v.genere === 'citta') return ['sopra', 'destra', 'sinistra'];
+    return ['destra', 'sinistra', 'sotto', 'sopra'];
+  }
+
+  function visRettEtichetta(posto, v, r, w, h) {
+    const g = VIS_ETI_STACCO_PX;
+    let x0, y0;
+    if (posto === 'destra') { x0 = v.px + r + g; y0 = v.py - h / 2; }
+    else if (posto === 'sinistra') { x0 = v.px - r - g - w; y0 = v.py - h / 2; }
+    else if (posto === 'sopra') { x0 = v.px - w / 2; y0 = v.py - r - g - h; }
+    else { x0 = v.px - w / 2; y0 = v.py + r + g; }
+    return { x0, y0, x1: x0 + w, y1: y0 + h };
+  }
+
+  // L'impaginazione, ed è una funzione pura: date le cose da nominare, dove
+  // stanno sullo schermo e quanto è largo ogni testo, dice dove scrivere
+  // ogni nome — o che per quel nome, stavolta, posto non ce n'è. Tre regole:
+  // un nome non esce dal riquadro né entra nella fascia in cima (lì stanno
+  // la bussola e la barra, che sono HTML e ci passerebbero sopra); non
+  // copre un altro nome **né il segno di un'altra cosa** — un'etichetta
+  // stampata sopra a Giove lo nasconde proprio mentre lo si cerca; e dove
+  // un nome è stato scritto l'ultima volta si prova per primo, perché un
+  // nome che salta da destra a sinistra a ogni fotogramma è peggio di uno
+  // che non c'è.
+  function visImpaginaEtichette(voci, L, H, misura, opz) {
+    const o = opz || {};
+    const alto = o.alto || 0;
+    const h = o.altezzaRiga || VIS_ETI_RIGA_PX;
+    // I comandi HTML appoggiati sul cielo (bussola, linguette, barra del
+    // tempo, colonna dei tasti): ci passerebbero sopra, quindi sono posti già
+    // presi. Sono riquadri veri e non una fascia intera: col telefono girato
+    // la fascia alta è un terzo dello schermo, e buttarla tutta voleva dire
+    // lasciare anonimi proprio gli astri alti, che sono quelli che si guardano.
+    const ostacoli = Array.isArray(o.ostacoli) ? o.ostacoli : [];
+    const memoria = o.memoria || null;
+    const ordinate = voci.slice().sort((a, b) =>
+      (b.priorita - a.priorita) ||
+      ((typeof a.mag === 'number' ? a.mag : 99) - (typeof b.mag === 'number' ? b.mag : 99)));
+    const segni = ordinate.map(v => {
+      const r = visRaggioSegno(v);
+      return { v, x0: v.px - r, y0: v.py - r, x1: v.px + r, y1: v.py + r };
+    });
+    const tocca = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+    const occupati = [];
+    const fuori = [];
+    for (const v of ordinate) {
+      const r = visRaggioSegno(v);
+      const testo = visTestoEtichetta(v);
+      const w = misura(testo) + 12;
+      let scelte = visPostiPreferiti(v);
+      const prima = memoria && memoria.get(v.id);
+      if (prima && scelte.indexOf(prima) > 0) scelte = [prima].concat(scelte.filter(p => p !== prima));
+      // Due passate: prima si cerca un posto che non copra il segno di
+      // nessuno; se non c'è, si accetta di coprire il segno di chi conta
+      // meno. La Luna in mezzo a un ammasso di stelle ha diritto al suo
+      // nome — senza la seconda passata, più il cielo è ricco e più la cosa
+      // più importante resta anonima.
+      let messo = null;
+      for (let passata = 0; passata < 2 && !messo; passata++) {
+        for (const posto of scelte) {
+          const q = visRettEtichetta(posto, v, r, w, h);
+          if (q.x0 < 2 || q.x1 > L - 2 || q.y0 < alto + 2 || q.y1 > H - 2) continue;
+          if (occupati.some(p => tocca(p, q))) continue;
+          if (ostacoli.some(p => tocca(p, q))) continue;
+          if (segni.some(s => s.v !== v && (passata === 0 || s.v.priorita >= v.priorita) && tocca(s, q))) continue;
+          messo = Object.assign(q, { posto });
+          break;
+        }
+      }
+      if (messo) {
+        occupati.push(messo);
+        if (memoria) memoria.set(v.id, messo.posto);
+      }
+      fuori.push({ voce: v, rett: messo, testo, raggio: r });
+    }
+    if (memoria && memoria.size > 300) memoria.clear();
+    return fuori;
+  }
+
+  // I riquadri dei comandi appoggiati sul cielo, in coordinate della tela.
+  // Si misurano una volta ogni tanto e non a fotogramma: `getBoundingClientRect`
+  // forza l'impaginazione, e leggerlo dentro al ciclo di disegno è il
+  // botta-e-risposta che il fumetto ha già imparato a evitare (§7.4 di app.js).
+  const VIS_ETI_OSTACOLI = [
+    '.cielo-barra > .linguette-gruppi', '.cielo-barra > .azioni-dirette-cielo',
+    '.cielo-letture > *', '.comandi-mappa-cielo > *', '#cielo-tempo',
+    '#ar-stato', '#ar-allinea', '#ar-calibra', '#skymap-fumetto', '#transito-avviso'
+  ].join(',');
+  let visOstacoliCache = { quando: -Infinity, rett: [] };
+  function visOstacoliSchermo() {
+    const ora = performance.now();
+    if (ora - visOstacoliCache.quando < VIS_ETI_ZONA_ALTA_MS) return visOstacoliCache.rett;
+    const rett = [];
+    try {
+      const cont = typeof document !== 'undefined' && document.getElementById('skymap-contenitore');
+      const tela = cont && document.getElementById('skymap-canvas');
+      if (cont && tela) {
+        const t = tela.getBoundingClientRect();
+        const sx = t.width ? (sky.larghezza || t.width) / t.width : 1;
+        const sy = t.height ? (sky.altezza || t.height) / t.height : 1;
+        cont.querySelectorAll(VIS_ETI_OSTACOLI).forEach(el => {
+          if (el.hidden || el.classList.contains('hidden')) return;
+          const r = el.getBoundingClientRect();
+          if (r.width < 2 || r.height < 2) return;
+          rett.push({ x0: (r.left - t.left) * sx - 3, y0: (r.top - t.top) * sy - 3,
+            x1: (r.right - t.left) * sx + 3, y1: (r.bottom - t.top) * sy + 3 });
+        });
+      }
+    } catch (e) { /* niente documento: niente ostacoli */ }
+    visOstacoliCache = { quando: ora, rett };
+    return rett;
+  }
+  // Il pannello dell'allineamento cambia misura quando cambia fase: chi lo
+  // riscrive chiede una misura nuova al fotogramma dopo.
+  function visOstacoliScaduti() { visOstacoliCache.quando = -Infinity; }
+
+  const visLarghezzeTesto = new Map();
+  function visFontEtichette() {
+    const famiglia = typeof SKY_FONT_ETICHETTE === 'string' ? SKY_FONT_ETICHETTE : 'system-ui, sans-serif';
+    return `600 ${VIS_ETI_CORPO_PX}px ${famiglia}`;
+  }
+
+  function visDisegnaSegno(ctx, v, r, colore, spesso) {
+    const x = v.px, y = v.py;
+    ctx.strokeStyle = 'rgba(2, 6, 14, 0.55)';
+    ctx.lineWidth = (spesso || 1.4) + 2;
+    const traccia = () => {
+      ctx.beginPath();
+      if (v.genere === 'aereo' || v.genere === 'satellite') {
+        const l = r * 0.45;
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
+          ctx.moveTo(x + sx * r, y + sy * r - sy * l);
+          ctx.lineTo(x + sx * r, y + sy * r);
+          ctx.lineTo(x + sx * r - sx * l, y + sy * r);
+        });
+      } else if (v.genere === 'cima') {
+        // Il triangolino con la punta sulla vetta, come sulle tavole
+        // panoramiche: non copre la montagna, la indica.
+        ctx.moveTo(x, y - 1);
+        ctx.lineTo(x - r, y - 1 - r * 1.5);
+        ctx.lineTo(x + r, y - 1 - r * 1.5);
+        ctx.closePath();
+      } else {
+        ctx.moveTo(x + r, y);
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+      }
+    };
+    traccia();
+    ctx.stroke();
+    ctx.strokeStyle = colore;
+    ctx.lineWidth = spesso || 1.4;
+    traccia();
+    ctx.stroke();
+  }
+
+  function visDisegnaEtichette(ctx, base, focale) {
+    if (!ctx || !base || !focale || typeof sky === 'undefined' || !sky.camera) return;
+    const L = sky.larghezza, H = sky.altezza;
+    const voci = visVociRealta(base, focale, {});
+    ctx.save();
+    ctx.font = visFontEtichette();
+    const misura = (t) => {
+      let w = visLarghezzeTesto.get(t);
+      if (w === undefined) {
+        w = ctx.measureText(t).width;
+        if (visLarghezzeTesto.size > 600) visLarghezzeTesto.clear();
+        visLarghezzeTesto.set(t, w);
+      }
+      return w;
+    };
+    const posti = visImpaginaEtichette(voci, L, H, misura, {
+      ostacoli: visOstacoliSchermo(), memoria: stato.postiEtichette
+    });
+    stato.etichette = posti;
+    const bloccato = stato.manuale && visPuntiManualiVivi().length ? stato.manuale.id : null;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    posti.forEach(p => {
+      const v = p.voce;
+      const scelto = bloccato && v.id === bloccato;
+      visDisegnaSegno(ctx, v, p.raggio, scelto ? '#6ee7b7' : v.colore, scelto ? 2 : 1.4);
+      if (!p.rett) return;
+      const q = p.rett;
+      ctx.fillStyle = 'rgba(6, 10, 20, 0.62)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(q.x0, q.y0, q.x1 - q.x0, q.y1 - q.y0, 7);
+      else ctx.rect(q.x0, q.y0, q.x1 - q.x0, q.y1 - q.y0);
+      ctx.fill();
+      ctx.fillStyle = scelto ? '#6ee7b7' : v.colore;
+      ctx.fillText(p.testo, q.x0 + 6, (q.y0 + q.y1) / 2 + 0.5);
+    });
+    ctx.restore();
+  }
+
+  // ===================================================================
+  // §13. L'allineamento a mano: la verità indicata col dito
+  // ===================================================================
+  //
+  // Il riconoscimento automatico ha due limiti che nessuna soglia toglie. Il
+  // primo è che deve **trovare** qualcosa: di giorno senza Luna, con la
+  // foschia, con una stella di seconda grandezza, o con la bussola sbagliata
+  // di quaranta gradi accanto a un'auto — cioè fuori da ogni cancello — non
+  // trova niente e il cielo resta storto. Il secondo è che con una sola cosa
+  // in quadro sceglie sempre per prudenza, e a volte la prudenza è dire di
+  // no a un riferimento giusto. In tutti e due i casi c'è qualcuno che
+  // l'oggetto vero lo vede benissimo: basta chiederglielo.
+  //
+  // Il gesto è in due tempi, e l'ordine è quello che rende il dato buono:
+  // prima si dice **cosa** si sta indicando (un nome, scelto fra le cose che
+  // il cielo calcolato mette in quadro), poi **dove** lo si vede. Al
+  // contrario — tocca e ti dico cos'è — il sistema dovrebbe indovinare, e
+  // indovinerebbe la cosa calcolata più vicina al dito: esattamente quella
+  // sbagliata, quando l'errore è grande.
+  //
+  // Quello che se ne ricava non è la posizione di un'etichetta ma la stessa
+  // cosa che ricava §7 da una macchia: una **rotazione del mondo**. Da qui
+  // vengono le due proprietà che contano. Tutto il resto del cielo — le altre
+  // stelle, i pianeti, le vette, i paesi — si sposta insieme e si raddrizza
+  // con lui. E muovendo il telefono l'allineamento resta: lo porta avanti il
+  // giroscopio, come ogni altra correzione di questo modulo.
+  //
+  // Ogni punto si tiene nella forma che resta vera nel tempo: `a`, la
+  // direzione vera dell'oggetto **in quell'istante**, e `g`, la direzione
+  // del dito nel riferimento dei **sensori** — cioè tolta la correzione che
+  // c'era. L'errore della bussola è quello che si cerca, e sta fermo; la Luna
+  // invece si muove di mezzo grado l'ora, e un punto scritto come «la Luna è
+  // qui sullo schermo» fra un'ora direbbe una cosa falsa. Scritto così, due
+  // punti presi a distanza di minuti su due oggetti diversi entrano nello
+  // stesso Wahba del §7 e danno insieme anche il **rollio**, che un punto
+  // solo non può dire.
+  //
+  // Un aereo è l'eccezione, per la ragione di sempre (§9): il suo errore è
+  // suo. Se l'assetto è già stato misurato su un astro, il dito corregge
+  // **quell'aereo** (la sua ancora); se non lo è — di giorno, il caso della
+  // segnalazione — corregge l'assetto, perché lì l'errore della bussola è di
+  // gran lunga il più grosso dei due, ed entra fra i punti con un peso basso.
+  //
+  // E dopo, il riconoscimento automatico continua a girare: non viene
+  // spento, viene **tenuto a bada**. Se l'oggetto scelto è fra quelli che
+  // l'immagine riconosce, conferma e raffina (e la pillola lo dice: «agganciato
+  // alla Luna»); se non c'è, una misura che porterebbe via i punti dati a mano
+  // non passa (`visViolaPuntiManuali`).
+
+  const VIS_MANUALE_VITA_MS = 30 * 60 * 1000; // poi il ferro attorno è un altro
+  const VIS_MANUALE_PUNTI_MAX = 3;
+  const VIS_MANUALE_MAX_GRADI = 60;           // oltre non è lo stesso oggetto
+  const VIS_CORREZIONE_MAX_MANUALE = 60;
+  const VIS_MANUALE_DERIVA_MAX = 0.8;         // gradi di tolleranza sui punti dati a mano
+  const VIS_MANUALE_COERENZA = 3;             // gradi: due punti che non si accordano
+  const VIS_ANCORA_MANUALE_VITA_MS = 30000;
+  const VIS_MANUALE_STORIA = 8;
+  const VIS_PESO_AEREO_MANUALE = 0.35;
+  const VIS_CALIBRA_TOCCO_PX = 44;            // quanto vicino al segno si sceglie un oggetto
+  const VIS_CALIBRA_SOLLEVA_PX = 64;          // il mirino sta sopra al dito, non sotto
+  const VIS_CALIBRA_TOCCO_SVELTO_MS = 280;    // sotto, un tocco fermo conta dov'è il dito
+  const VIS_CALIBRA_ESITO_MS = 9000;
+
+  function visPuntiManualiVivi() {
+    const ora = performance.now();
+    return stato.puntiManuali.filter(p => ora - p.quando < VIS_MANUALE_VITA_MS);
+  }
+
+  // Trasposta per vettore: la rotazione inversa, senza scriverla.
+  function applicaT(R, v) {
+    return [
+      R[0][0] * v[0] + R[1][0] * v[1] + R[2][0] * v[2],
+      R[0][1] * v[0] + R[1][1] * v[1] + R[2][1] * v[2],
+      R[0][2] * v[0] + R[1][2] * v[1] + R[2][2] * v[2]
+    ];
+  }
+
+  // La rotazione più piccola che porta `b` su `a`. È la risposta giusta con
+  // un punto solo, per la stessa ragione del λ del §7: una stella non dice
+  // come sei girato attorno a lei, quindi il rollio non si inventa.
+  function rotazioneMinima(b, a) {
+    const w = cross(b, a);
+    const s = Math.hypot(w[0], w[1], w[2]);
+    const ang = Math.atan2(s, dot(b, a));
+    if (s < 1e-12) return identita();
+    return rodrigues([w[0] / s * ang, w[1] / s * ang, w[2] / s * ang]);
+  }
+
+  // Quanto una correzione tradisce i punti dati a mano: lo scarto peggiore,
+  // in gradi. Un punto è rispettato quando la correzione porta la direzione
+  // del dito (nel riferimento dei sensori) sulla direzione vera.
+  function visScartoPuntiManuali(C, punti) {
+    let peggio = 0;
+    (punti || visPuntiManualiVivi()).forEach(p => {
+      peggio = Math.max(peggio, angoloFra(applica(C, p.g), p.a));
+    });
+    return peggio;
+  }
+
+  function visViolaPuntiManuali(Cnuova) {
+    const punti = visPuntiManualiVivi().filter(p => p.genere !== 'aereo');
+    if (!punti.length) return false;
+    const ora = visScartoPuntiManuali(correzioneViva() || identita(), punti);
+    const dopo = visScartoPuntiManuali(Cnuova, punti);
+    // Si tollera quello che c'era già più un poco: i punti sono tocchi di
+    // dito, non misure al primo d'arco, e una misura automatica che li
+    // raffina di qualche decimo va lasciata passare.
+    return dopo > Math.max(VIS_MANUALE_DERIVA_MAX, ora + 0.3);
+  }
+
+  function visBloccatoFraLeCoppie(coppie) {
+    if (!stato.manuale || !visPuntiManualiVivi().length) return false;
+    const id = stato.manuale.id;
+    return coppie.some(c => c.candidato && c.candidato.id === id);
+  }
+
+  // La direzione di adesso di un oggetto per identificativo. Serve al giro
+  // (§10) per candidare l'oggetto bloccato, e costa poco: non rifà la lista
+  // intera di §12.
+  function visVettoreDiId(id) {
+    if (!id) return null;
+    if (id.slice(0, 4) === 'cat:') {
+      const i = Number(id.slice(4));
+      if (typeof cat !== 'object' || !cat || !cat.versoriOra || !(i >= 0)) return null;
+      const v = [cat.versoriOra[i * 3], cat.versoriOra[i * 3 + 1], cat.versoriOra[i * 3 + 2]];
+      return (v[0] || v[1] || v[2]) ? { vettore: v, mag: cat.magnitudini ? cat.magnitudini[i] : null, genere: 'stella' } : null;
+    }
+    const o = (sky.oggetti || []).find(x => x && String(x.id) === id);
+    if (o && typeof o.az === 'number') return { vettore: vettoreDa(o.az, o.alt), mag: o.mag, genere: o.tipo, oggetto: o };
+    return null;
+  }
+
+  function visCandidatoBloccato(candidati, base, focale) {
+    if (!stato.manuale || !visPuntiManualiVivi().length) return;
+    const id = stato.manuale.id;
+    const gia = candidati.find(c => c.id === id);
+    if (gia) { gia.peso = Math.max(gia.peso, 1.8); return; }
+    if (stato.manuale.genere === 'aereo' || stato.manuale.genere === 'cima') return;
+    const x = visVettoreDiId(id);
+    if (!x) return;
+    const aa = azAltDi(x.vettore);
+    if (aa.alt < 1) return;
+    const p = skyProietta(x.vettore, base, focale);
+    if (!p.davanti) return;
+    const L = sky.larghezza, H = sky.altezza;
+    if (p.px < 0 || p.px > L || p.py < 0 || p.py > H) return;
+    const disco = x.genere === 'luna' || x.genere === 'sole';
+    candidati.push({
+      id, genere: 'astro', nome: stato.manuale.nome, vettore: x.vettore,
+      raggioAtteso: disco ? 0.27 : 0.05, peso: 1.8, chiaro: true, polarita: 1, cancello: 0,
+      px: p.px, py: p.py
+    });
+  }
+
+  // Le cose fra cui scegliere: quelle di §12 in quadro, aerei compresi e
+  // stelle un po' più deboli, meno i paesi — un paese è largo chilometri e
+  // il suo centro non è un punto che si possa indicare col dito. Dalla più
+  // vicina al centro dello schermo, che è quella che si sta guardando.
+  // Quanto una cosa è facile da riconoscere nell'immagine, cioè quanto è un
+  // buon punto da indicare: divide la distanza dal centro nell'ordine delle
+  // scelte, così Giove a metà schermo viene prima di una stella di terza
+  // grandezza nel mirino — in un cielo ricco, se no, le prime dieci scelte
+  // erano tutte stelle che a occhio non si distinguono l'una dall'altra.
+  const VIS_CALIBRA_RICONOSCIBILE = { luna: 4, sole: 4, pianeta: 3, aereo: 2.5, satellite: 2.5, cima: 2 };
+
+  function visOggettiCalibrabili(base, focale) {
+    if (!base || !focale) return [];
+    const L = sky.larghezza, H = sky.altezza;
+    const peso = (v) => VIS_CALIBRA_RICONOSCIBILE[v.genere] ||
+      (typeof v.mag === 'number' && v.mag < 1 ? 1.6 : 1);
+    const costo = (v) => (Math.hypot(v.px - L / 2, v.py - H / 2) + 20) / peso(v);
+    return visVociRealta(base, focale, { aerei: true, calibra: true, margine: -4 })
+      .filter(v => v.genere !== 'citta')
+      .sort((a, b) => costo(a) - costo(b));
+  }
+
+  function visCopiaRotazione(R) { return R ? R.map(r => r.slice()) : null; }
+
+  function visFotografaPerAnnullare() {
+    stato.storiaManuale.push({
+      correzione: visCopiaRotazione(stato.correzione),
+      correzioneQuando: stato.correzioneQuando,
+      punti: stato.puntiManuali.slice(),
+      manuale: stato.manuale ? Object.assign({}, stato.manuale) : null,
+      ancore: new Map(Array.from(stato.ancore.entries()).map(([k, v]) => [k, Object.assign({}, v)])),
+      miraAstri: stato.miraAstri,
+      agganciato: stato.agganciato
+    });
+    if (stato.storiaManuale.length > VIS_MANUALE_STORIA) stato.storiaManuale.shift();
+  }
+
+  // Il cuore: il dito ha indicato (px, py) come la posizione vera di `id`.
+  // Torna l'esito, che l'interfaccia racconta: `ok`, di quanti gradi si è
+  // spostato il cielo, e se si è corretto l'assetto o la sola ancora di un
+  // aereo. `opz.voce`, `opz.base` e `opz.focale` servono al banco di prova.
+  function visCalibraManuale(id, px, py, opz) {
+    const o = opz || {};
+    const base = o.base || sky.ultimaBase, focale = o.focale || sky.ultimaFocale;
+    if (!base || !focale) return { ok: false, motivo: 'posa' };
+    const voce = o.voce || visVociRealta(base, focale, { aerei: true, calibra: true, fuoriQuadro: true })
+      .find(v => v.id === id);
+    if (!voce) return { ok: false, motivo: 'oggetto' };
+    const d = versore(skyDirezione(px, py, base, focale));
+    const a = versore(voce.vettore);
+    const gradi = angoloFra(a, d);
+    if (!isFinite(gradi)) return { ok: false, motivo: 'posa' };
+    if (gradi > VIS_MANUALE_MAX_GRADI) return { ok: false, motivo: 'lontano', gradi, nome: voce.nome };
+
+    const ora = performance.now();
+    const C = correzioneViva() || identita();
+    visFotografaPerAnnullare();
+
+    const astriNoti = (stato.miraAstri && ora - stato.miraAstri < VIS_MIRA_ASTRI_VITA_MS * 10) ||
+      visPuntiManualiVivi().some(p => p.genere !== 'aereo');
+    const modo = voce.genere === 'aereo' && astriNoti ? 'ancora' : 'assetto';
+
+    if (modo === 'ancora') {
+      // L'errore è dell'aereo: la sua ancora nuova è quella applicata adesso
+      // (che il disegno ha già usato) più lo scarto indicato dal dito.
+      const idAereo = voce.idAereo || id.replace(/^aereo:/, '');
+      const prima = (typeof visAncoraAereo === 'function' && visAncoraAereo(idAereo)) || { dAz: 0, dAlt: 0 };
+      const v = azAltDi(d), p = azAltDi(a);
+      const taglia = (x) => Math.max(-VIS_ANCORA_MAX * 2, Math.min(VIS_ANCORA_MAX * 2, x));
+      stato.ancore.set(idAereo, {
+        dAz: taglia(prima.dAz + scartoAz(v.az, p.az)),
+        dAlt: taglia(prima.dAlt + (v.alt - p.alt)),
+        quando: ora, vita: VIS_ANCORA_MANUALE_VITA_MS, manuale: true
+      });
+      // L'inseguitore ha una traccia che inseguiva la posizione sbagliata, e
+      // fra le due ancore vince la sua: la si lascia rinascere da qui.
+      if (typeof insScordaTraccia === 'function') insScordaTraccia(idAereo);
+    } else {
+      const g = applicaT(C, d);
+      const peso = voce.genere === 'aereo' ? VIS_PESO_AEREO_MANUALE : 1;
+      let punti = visPuntiManualiVivi().filter(p => p.id !== voce.id);
+      punti.push({ id: voce.id, genere: voce.genere, nome: voce.nome, a, g, peso, quando: ora });
+      punti = punti.slice(-VIS_MANUALE_PUNTI_MAX);
+
+      // Col punto nuovo la mira deve tornare esatta lì: è quello che l'utente
+      // guarda. Prima la rotazione minima per il punto nuovo; poi, se ci sono
+      // altri punti, il Wahba di tutti, che ci aggiunge il rollio — ma solo
+      // se non tradisce il punto appena dato: un punto vecchio che non si
+      // accorda (ci si è spostati, il ferro è un altro) si butta.
+      let nuova = moltiplica(rotazioneMinima(d, a), C);
+      if (punti.length >= 2) {
+        const coppie = punti.map(p => ({ a: p.a, b: applica(nuova, p.g), peso: p.peso }));
+        const sol = visRisolviRotazione(coppie, { giri: 6, senzaRipescaggio: true, huber: 30 });
+        const prova = moltiplica(sol.R, nuova);
+        const ultimo = punti[punti.length - 1];
+        const scartoUltimo = angoloFra(applica(prova, ultimo.g), ultimo.a);
+        const coerenti = visScartoPuntiManuali(prova, punti) <= VIS_MANUALE_COERENZA;
+        if (coerenti && scartoUltimo <= VIS_MANUALE_DERIVA_MAX) nuova = prova;
+        else punti = [ultimo];
+      }
+      if (angoloDi(nuova) > VIS_CORREZIONE_MAX_MANUALE) {
+        // Non si scala in silenzio: un allineamento che non arriva dove si è
+        // indicato è peggio di nessuno. Si torna indietro.
+        visAnnullaCalibrazione({ silenzioso: true });
+        return { ok: false, motivo: 'lontano', gradi, nome: voce.nome };
+      }
+      stato.puntiManuali = punti;
+      stato.correzione = nuova;
+      stato.correzioneQuando = ora;
+      stato.agganciato = true;
+      stato.perdite = 0;
+      if (voce.genere !== 'aereo') stato.miraAstri = ora;
+    }
+
+    stato.manuale = {
+      id: voce.id, genere: voce.genere, nome: voce.nome, modo,
+      gradi, quando: ora, ultimoAggancio: 0
+    };
+    stato.motivo = 'manuale';
+    visAggiornaHud();
+    return { ok: true, modo, gradi, nome: voce.nome, id: voce.id };
+  }
+
+  function visAnnullaCalibrazione(opz) {
+    const f = stato.storiaManuale.pop();
+    if (!f) return false;
+    stato.correzione = f.correzione;
+    stato.correzioneQuando = f.correzioneQuando;
+    stato.puntiManuali = f.punti;
+    stato.manuale = f.manuale;
+    stato.ancore = f.ancore;
+    stato.miraAstri = f.miraAstri;
+    stato.agganciato = f.agganciato;
+    if (!(opz && opz.silenzioso)) visAggiornaHud();
+    return true;
+  }
+
+  // --- L'interfaccia -------------------------------------------------
+  //
+  // Tre stati, ed è evidente in ognuno cosa si sta facendo. **Scegli**: il
+  // pannello elenca le cose in quadro e sul cielo ogni cosa sceglibile ha un
+  // anello tratteggiato — si tocca il nome o il segno. **Tocca**: il pannello
+  // dice «tocca dove vedi davvero la Luna», il segno della Luna calcolata
+  // pulsa, e sotto il dito compare un mirino **sollevato** di un pollice:
+  // il dito copre proprio la cosa che si sta indicando, e un mirino sotto il
+  // polpastrello è un mirino che non si vede. Sollevando il dito si conferma.
+  // **Fatto**: di quanto si è spostato il cielo, e i tre tasti — annulla,
+  // rifai, chiudi.
+
+  function visCalibraEl(id) { return typeof document !== 'undefined' ? document.getElementById(id) : null; }
+
+  function visCalibraApri() {
+    if (!stato.attivo || typeof sky === 'undefined' || !sky.camera) {
+      if (typeof skyAvviso === 'function') skyAvviso('ar-calibra', visT('ar.calibra.senzaAR'), 4500);
+      return false;
+    }
+    visCalibraCollega();
+    stato.calibra.fase = 'scegli';
+    stato.calibra.scelto = null;
+    stato.calibra.puntatore = null;
+    stato.calibra.esito = null;
+    visCalibraMostra();
+    return true;
+  }
+
+  function visCalibraChiudi() {
+    stato.calibra.fase = 'spento';
+    stato.calibra.scelto = null;
+    stato.calibra.puntatore = null;
+    visCalibraMostra();
+  }
+
+  function visCalibraScegli(id) {
+    const base = sky.ultimaBase, focale = sky.ultimaFocale;
+    const v = visOggettiCalibrabili(base, focale).find(x => x.id === id);
+    if (!v) return false;
+    stato.calibra.fase = 'tocca';
+    stato.calibra.scelto = { id: v.id, nome: v.nome, genere: v.genere };
+    stato.calibra.puntatore = null;
+    stato.calibra.esito = null;
+    visCalibraMostra();
+    return true;
+  }
+
+  function visCalibraConferma(px, py) {
+    const s = stato.calibra.scelto;
+    if (!s) return null;
+    const esito = visCalibraManuale(s.id, px, py);
+    stato.calibra.esito = esito;
+    stato.calibra.esitoQuando = performance.now();
+    stato.calibra.puntatore = null;
+    stato.calibra.fase = esito.ok ? 'fatto' : 'tocca';
+    visCalibraMostra();
+    return esito;
+  }
+
+  function visCalibraAnnulla() {
+    const fatto = visAnnullaCalibrazione();
+    if (typeof skyAvviso === 'function') {
+      skyAvviso('ar-calibra', visT(fatto ? 'ar.calibra.annullato' : 'ar.calibra.nienteDaAnnullare'), 3000);
+    }
+    stato.calibra.fase = 'scegli';
+    stato.calibra.esito = null;
+    visCalibraMostra();
+  }
+
+  function visCalibraRifai() {
+    const s = stato.calibra.scelto;
+    visAnnullaCalibrazione({ silenzioso: true });
+    visAggiornaHud();
+    stato.calibra.esito = null;
+    stato.calibra.puntatore = null;
+    stato.calibra.fase = s ? 'tocca' : 'scegli';
+    visCalibraMostra();
+  }
+
+  // Dal punto del dito al punto del cielo: le coordinate della tela, non
+  // della pagina. La tela può essere stirata dal CSS, quindi si scala.
+  function visCalibraPuntoTela(ev) {
+    const tela = visCalibraEl('skymap-canvas');
+    if (!tela) return null;
+    const r = tela.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const sx = (sky.larghezza || r.width) / r.width, sy = (sky.altezza || r.height) / r.height;
+    const solleva = ev.pointerType === 'mouse' || ev.pointerType === 'pen' ? 0 : VIS_CALIBRA_SOLLEVA_PX;
+    return {
+      px: (ev.clientX - r.left) * sx,
+      py: (ev.clientY - r.top - solleva) * sy,
+      ditoX: (ev.clientX - r.left) * sx,
+      ditoY: (ev.clientY - r.top) * sy
+    };
+  }
+
+  function visCalibraCollega() {
+    if (stato.calibra.collegato) return;
+    const velo = visCalibraEl('ar-calibra-velo');
+    const pannello = visCalibraEl('ar-calibra');
+    if (!velo || !pannello) return;
+    stato.calibra.collegato = true;
+    let giu = false, giuQuando = 0, giuX = 0, giuY = 0;
+    velo.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      giu = true;
+      giuQuando = performance.now(); giuX = ev.clientX; giuY = ev.clientY;
+      try { velo.setPointerCapture(ev.pointerId); } catch (e) { /* vecchi browser */ }
+      if (stato.calibra.fase === 'tocca') stato.calibra.puntatore = visCalibraPuntoTela(ev);
+    });
+    velo.addEventListener('pointermove', (ev) => {
+      if (!giu || stato.calibra.fase !== 'tocca') return;
+      stato.calibra.puntatore = visCalibraPuntoTela(ev);
+    });
+    const fine = (ev, annullato) => {
+      if (!giu) return;
+      giu = false;
+      const p = visCalibraPuntoTela(ev);
+      if (annullato || !p) { stato.calibra.puntatore = null; return; }
+      if (stato.calibra.fase === 'scegli') {
+        // Toccare il segno di una cosa è sceglierla: la più vicina al dito
+        // (non al mirino — qui si indica un segno disegnato, e il dito lo
+        // copre sì, ma è abbastanza grande da non doverlo centrare).
+        const cand = visOggettiCalibrabili(sky.ultimaBase, sky.ultimaFocale);
+        let meglio = null;
+        cand.forEach(v => {
+          const dd = Math.hypot(v.px - p.ditoX, v.py - p.ditoY);
+          if (dd <= Math.max(VIS_CALIBRA_TOCCO_PX, visRaggioSegno(v) + 12) && (!meglio || dd < meglio.dd)) meglio = { v, dd };
+        });
+        if (meglio) visCalibraScegli(meglio.v.id);
+      } else if (stato.calibra.fase === 'tocca') {
+        // Un tocco svelto e fermo vuol dire «è qui, sotto al dito»: chi
+        // tocca la Luna non si aspetta che conti un punto un pollice più su.
+        // Il mirino sollevato vale solo per chi ha tenuto giù il dito o l'ha
+        // trascinato — cioè per chi lo stava guardando mentre mirava.
+        const svelto = performance.now() - giuQuando < VIS_CALIBRA_TOCCO_SVELTO_MS &&
+          Math.hypot(ev.clientX - giuX, ev.clientY - giuY) < 10;
+        if (svelto) visCalibraConferma(p.ditoX, p.ditoY);
+        else visCalibraConferma(p.px, p.py);
+      }
+    };
+    velo.addEventListener('pointerup', (ev) => fine(ev, false));
+    velo.addEventListener('pointercancel', (ev) => fine(ev, true));
+    pannello.addEventListener('click', (ev) => {
+      const t = ev.target.closest && ev.target.closest('[data-ar-calibra]');
+      if (!t) return;
+      const azione = t.dataset.arCalibra;
+      if (azione === 'scegli') visCalibraScegli(t.dataset.id);
+      else if (azione === 'cambia') { stato.calibra.fase = 'scegli'; stato.calibra.esito = null; visCalibraMostra(); }
+      else if (azione === 'annulla') visCalibraAnnulla();
+      else if (azione === 'rifai') visCalibraRifai();
+      else if (azione === 'chiudi') visCalibraChiudi();
+      else if (azione === 'azzera') {
+        visAzzera();
+        if (typeof skyAvviso === 'function') skyAvviso('camera-taratura', visT('ar.aggancioAzzerato'), 3000);
+        stato.calibra.fase = 'scegli';
+        visCalibraMostra();
+      }
+    });
+  }
+
+  function visTasto(azione, chiave, extra) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ar-calibra-tasto' + (extra && extra.classe ? ' ' + extra.classe : '');
+    b.dataset.arCalibra = azione;
+    if (extra && extra.id) b.dataset.id = extra.id;
+    b.textContent = extra && extra.testo ? extra.testo : visT(chiave);
+    return b;
+  }
+
+  // Il pannello si riscrive solo quando cambia fase o scelta, non a ogni
+  // fotogramma: i nomi in quadro li aggiorna `visCalibraAggiornaScelte`, che
+  // gira al battito del motore.
+  function visCalibraMostra() {
+    const pannello = visCalibraEl('ar-calibra');
+    const velo = visCalibraEl('ar-calibra-velo');
+    if (!pannello || !velo) return;
+    const c = stato.calibra;
+    const aperto = c.fase !== 'spento';
+    pannello.hidden = !aperto;
+    velo.hidden = !(c.fase === 'scegli' || c.fase === 'tocca');
+    velo.dataset.fase = c.fase;
+    pannello.dataset.fase = c.fase;
+    const tasto = visCalibraEl('ar-allinea');
+    if (tasto) tasto.setAttribute('aria-pressed', aperto ? 'true' : 'false');
+    visOstacoliScaduti();
+    if (!aperto) { pannello.textContent = ''; return; }
+
+    pannello.textContent = '';
+    const testa = document.createElement('div');
+    testa.className = 'ar-calibra-testa';
+    const titolo = document.createElement('strong');
+    titolo.textContent = visT('ar.calibra.titolo');
+    testa.appendChild(titolo);
+    testa.appendChild(visTasto('chiudi', 'ar.calibra.chiudi', { classe: 'ar-calibra-chiudi' }));
+    pannello.appendChild(testa);
+
+    const riga = document.createElement('p');
+    riga.className = 'ar-calibra-riga';
+    pannello.appendChild(riga);
+    const tasti = document.createElement('div');
+    tasti.className = 'ar-calibra-tasti';
+
+    if (c.fase === 'scegli') {
+      const scelte = document.createElement('div');
+      scelte.className = 'ar-calibra-scelte';
+      scelte.id = 'ar-calibra-scelte';
+      pannello.appendChild(scelte);
+      visCalibraAggiornaScelte(true);
+      if (stato.storiaManuale.length) tasti.appendChild(visTasto('annulla', 'ar.calibra.annulla'));
+      tasti.appendChild(visTasto('azzera', 'ar.calibra.azzera'));
+    } else if (c.fase === 'tocca') {
+      riga.textContent = visT('ar.calibra.tocca', { nome: c.scelto ? c.scelto.nome : '' });
+      if (c.esito && !c.esito.ok) {
+        const avviso = document.createElement('p');
+        avviso.className = 'ar-calibra-avviso';
+        avviso.textContent = visT('ar.calibra.troppoLontano', {
+          nome: c.esito.nome || (c.scelto && c.scelto.nome) || '',
+          gradi: Math.round(c.esito.gradi || 0)
+        });
+        pannello.appendChild(avviso);
+      }
+      tasti.appendChild(visTasto('cambia', 'ar.calibra.cambia'));
+    } else if (c.fase === 'fatto') {
+      const e = c.esito || {};
+      riga.classList.add('ar-calibra-fatto');
+      riga.textContent = visT(e.modo === 'ancora' ? 'ar.calibra.fattoAereo' : 'ar.calibra.fatto', {
+        nome: e.nome || '', gradi: Math.round((e.gradi || 0) * 10) / 10
+      });
+      const n = visPuntiManualiVivi().length;
+      if (n > 1) {
+        const nota = document.createElement('p');
+        nota.className = 'ar-calibra-nota';
+        nota.textContent = visT('ar.calibra.punti', { n });
+        pannello.appendChild(nota);
+      }
+      tasti.appendChild(visTasto('annulla', 'ar.calibra.annulla'));
+      tasti.appendChild(visTasto('rifai', 'ar.calibra.rifai'));
+      tasti.appendChild(visTasto('cambia', 'ar.calibra.altro'));
+    }
+    pannello.appendChild(tasti);
+  }
+
+  function visCalibraAggiornaScelte(forza) {
+    if (stato.calibra.fase !== 'scegli') return;
+    const box = visCalibraEl('ar-calibra-scelte');
+    const pannello = visCalibraEl('ar-calibra');
+    if (!box || !pannello) return;
+    const cand = visOggettiCalibrabili(sky.ultimaBase, sky.ultimaFocale).slice(0, 10);
+    const firma = cand.map(v => v.id).join('|');
+    if (!forza && box.dataset.firma === firma) return;
+    box.dataset.firma = firma;
+    box.textContent = '';
+    const riga = pannello.querySelector('.ar-calibra-riga');
+    if (riga) riga.textContent = visT(cand.length ? 'ar.calibra.scegli' : 'ar.calibra.nessuno');
+    cand.forEach(v => {
+      const b = visTasto('scegli', null, { id: v.id, testo: v.nome, classe: 'ar-calibra-scelta' });
+      b.dataset.genere = v.genere;
+      box.appendChild(b);
+    });
+  }
+
+  // Sul cielo: gli anelli delle cose sceglibili, il segno pulsante di quella
+  // scelta, il mirino col filo che la lega al punto indicato, e dopo la
+  // conferma un anello verde che dice «è qui adesso».
+  function visDisegnaCalibrazione(ctx, base, focale) {
+    const c = stato.calibra;
+    if (!ctx || !base || !focale) return;
+    const ora = performance.now();
+    if (c.fase === 'fatto' && ora - c.esitoQuando > VIS_CALIBRA_ESITO_MS) {
+      visCalibraChiudi();
+      return;
+    }
+    if (c.fase === 'spento') return;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    if (c.fase === 'scegli') {
+      visCalibraAggiornaScelte(false);
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(252, 211, 77, 0.9)';
+      visOggettiCalibrabili(base, focale).slice(0, 10).forEach(v => {
+        ctx.beginPath();
+        ctx.arc(v.px, v.py, visRaggioSegno(v) + 7, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    } else if (c.scelto) {
+      const v = visOggettiCalibrabili(base, focale).find(x => x.id === c.scelto.id) ||
+        visVociRealta(base, focale, { aerei: true, calibra: true, fuoriQuadro: true }).find(x => x.id === c.scelto.id);
+      if (v) {
+        const r = visRaggioSegno(v) + 6;
+        const battito = 0.55 + 0.45 * Math.sin(ora / 180);
+        ctx.strokeStyle = c.fase === 'fatto' ? '#6ee7b7' : `rgba(252, 211, 77, ${battito})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(v.px, v.py, r, 0, Math.PI * 2);
+        ctx.stroke();
+        if (c.fase === 'tocca' && c.puntatore) {
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = 'rgba(252, 211, 77, 0.8)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(v.px, v.py);
+          ctx.lineTo(c.puntatore.px, c.puntatore.py);
+          ctx.stroke();
+        }
+      }
+      if (c.fase === 'tocca' && c.puntatore) {
+        const { px, py, ditoX, ditoY } = c.puntatore;
+        ctx.setLineDash([]);
+        // Il filo verso il dito: dice che il mirino è suo, anche se sta un
+        // pollice più su.
+        if (Math.hypot(ditoX - px, ditoY - py) > 4) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(px, py + 14); ctx.lineTo(ditoX, ditoY - 18); ctx.stroke();
+        }
+        [['rgba(2, 6, 14, 0.7)', 3.2], ['#fcd34d', 1.4]].forEach(([colore, spessore]) => {
+          ctx.strokeStyle = colore;
+          ctx.lineWidth = spessore;
+          ctx.beginPath();
+          ctx.arc(px, py, 11, 0, Math.PI * 2);
+          ctx.moveTo(px - 22, py); ctx.lineTo(px - 5, py);
+          ctx.moveTo(px + 5, py); ctx.lineTo(px + 22, py);
+          ctx.moveTo(px, py - 22); ctx.lineTo(px, py - 5);
+          ctx.moveTo(px, py + 5); ctx.lineTo(px, py + 22);
+          ctx.stroke();
+        });
+      }
+    }
+    ctx.restore();
   }
 
   window.visAvvia = visAvvia;
@@ -2505,6 +3651,14 @@
   window.visAttivo = () => stato.attivo;
   window.visAcceso = () => stato.acceso;
   window.visAgganciato = () => stato.attivo && stato.acceso && stato.agganciato;
+  window.visDisegnaEtichette = visDisegnaEtichette;
+  window.visDisegnaCalibrazione = visDisegnaCalibrazione;
+  window.visCalibraApri = visCalibraApri;
+  window.visCalibraChiudi = visCalibraChiudi;
+  window.visCalibraManuale = visCalibraManuale;
+  window.visAnnullaCalibrazione = visAnnullaCalibrazione;
+  window.visOggettiCalibrabili = visOggettiCalibrabili;
+  window.visManuale = () => (stato.manuale && visPuntiManualiVivi().length ? Object.assign({}, stato.manuale) : null);
 
   // Le funzioni pure, per il banco di prova (§32 di `verifica.html`). Sono le
   // stesse che gira il motore: non una copia.
@@ -2520,6 +3674,11 @@
     VIS_AMBIGUITA, VIS_CORREZIONE_MAX, VIS_ANCORA_MAX, VIS_PIXEL, visLatoRidotto,
     VIS_FONDO_RAGGIO, VIS_FONDO_MAX, VIS_FONDO_PER_MACCHIA, VIS_FONDO_STACCO_MIN,
     VIS_SCENA_MAX, VIS_SCENA_DISTANZA, VIS_SCENA_RICERCA, VIS_SCENA_ASTRI_BASTANO,
-    VIS_MIRA_ASTRI_VITA_MS, VIS_CENTROIDE_RAGGIO, VIS_SOGLIA_SIGMA, VIS_SOGLIA_MIN
+    VIS_MIRA_ASTRI_VITA_MS, VIS_CENTROIDE_RAGGIO, VIS_SOGLIA_SIGMA, VIS_SOGLIA_MIN,
+    // §12 e §13
+    giro, correggi, correzioneViva, visVociRealta, visImpaginaEtichette, visRaggioSegno,
+    visTestoEtichetta, visOggettiCalibrabili, visCalibraManuale, visAnnullaCalibrazione,
+    visPuntiManualiVivi, visScartoPuntiManuali, visViolaPuntiManuali, rotazioneMinima, applicaT,
+    visCandidatoBloccato, VIS_MANUALE_DERIVA_MAX, VIS_MANUALE_MAX_GRADI, VIS_CORREZIONE_MAX_MANUALE
   };
 })();
