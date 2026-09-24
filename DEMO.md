@@ -28,7 +28,8 @@ aggiunge un'azione o si cambia una regola.
 Sotto il tasto **Avvia demo** (pieno, largo, col segno del play: è l'azione
 principale della scheda) c'è il riquadro **Durante la demo**. Le scelte si
 ricordano in `astrocal_demo_opzioni_v1` (localStorage) e valgono solo per il
-racconto:
+racconto. `vistaPulita` e `registraAudio` valgono `true` anche quando si
+leggono preferenze salvate prima che queste due chiavi esistessero:
 
 - **Avvia a schermo intero.** Il pieno schermo vero si chiede *una volta*,
   dentro al gesto del clic, sull'intero documento; le tre viste (planetario,
@@ -38,12 +39,25 @@ racconto:
   questo `skyEsciSchermoIntero` e `didPienoEsci` chiudono il pieno schermo
   nativo **solo se è il loro**. Esc nel pieno schermo vero lo consuma il
   browser: l'uscita dal pieno schermo della demo ferma la demo e ripristina.
+- **Vista pulita durante la demo.** È attiva di serie. Non chiude né modifica
+  pannelli, controlli o avvisi già presenti: marca temporaneamente il
+  contenitore della scena e il CSS nasconde il chrome, lasciando visibili
+  canvas/video, sottotitoli e il pannello essenziale
+  Pausa/Riprendi/Ricomincia/Termina. Togliere le classi a fine demo ripristina
+  quindi lo stato esatto anche dopo Stop, Esc o errore.
 - **Registra un filmato della demo.** È la registrazione del planetario (§7.6
   di `app.js`) con una sorgente sostituibile, `sky.reg.sorgente`: la demo le
   passa la tela della scena in corso (cielo, volo, 3D o banco delle aurore) e
   guida l'acquisizione con un suo `requestAnimationFrame`. La durata la tiene
   la demo (la pausa non tronca il filmato); a fine racconto il filmato compare
   nel pannello del planetario, che per questo resta aperto.
+- **Registra anche l'audio.** È attiva di serie e vale solo insieme al filmato.
+  Il MediaRecorder esistente riceve una sola traccia dalla voce condivisa di
+  `narrazione.js`: entrano gli MP3 registrati e l'Edge-TTS, perché passano
+  entrambi dall'elemento audio condiviso. La `speechSynthesis` locale non
+  espone il proprio segnale alle Web API: resta udibile alla persona ma non è
+  registrabile in modo portabile. Stop, Esc, errore e fine scollegano la
+  destinazione e fermano le tracce MediaStream.
 - **Elementi del planetario da mostrare.** L'elenco non è inventato: sono gli
   interruttori della scheda Visualizzazione (stelle, nomi, costellazioni e
   loro disegni, pianeti, Sole e Luna, cielo profondo, Via Lattea, corpi minori,
@@ -52,11 +66,13 @@ racconto:
   laghi e fiumi), col nome letto dal tasto stesso. Spenta la casella
   «Scegli per la demo» restano quelli attuali.
 
-Durante la demo `AstroDemo.silenzioso` è vero: `skyAvviso` scarta gli avvisi
-di servizio (tranne il canale `demo`, che dice se il tour si è rotto) e
-`body.demo-in-corso` nasconde avviso di transito, barra del terreno e
-caricamento. Fine, Stop, Esc ed errore ripristinano tutto: livelli, schermo
-intero, registratore, banco didattico, camera 3D (anche mondi minori e sonde).
+Con **Vista pulita** attiva `AstroDemo.silenzioso` è vero: `skyAvviso`
+scarta gli avvisi di servizio (tranne il canale `demo`, che dice se il tour
+si è rotto) e `body.demo-vista-pulita` nasconde avviso di transito, barra del
+terreno, caricamento e chrome. Spegnendo l'opzione, invece, quei controlli
+restano disponibili. Fine, Stop, Esc ed errore ripristinano tutto: livelli,
+stato dell'interfaccia, schermo intero, registratore, stream audio, banco
+didattico e camera 3D (anche mondi minori e sonde).
 
 ## La narrazione
 
