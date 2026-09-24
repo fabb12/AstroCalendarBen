@@ -1,12 +1,13 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v367';
+const CACHE_NAME = 'astrocal-v368';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
   './',
   './index.html',
   './guida.html',
+  './guida-en.html',
   './tailwind.css',
   './style.css',
   './fonts/Inter.ttf',

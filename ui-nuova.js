@@ -181,6 +181,17 @@ function aggiornaStaseraNuovo() {
 // 2. IMPOSTAZIONI — il cielo di casa
 // =====================================================================
 
+// La guida esiste in due lingue: i link delle Impostazioni aprono quella
+// dell'app, conservando l'ancoraggio del capitolo (`guida.html#demo` →
+// `guida-en.html#demo`). Le due pagine hanno gli stessi `id`, di proposito.
+function aggiornaLinkGuida() {
+  const pagina = astroI18n.lingua() === 'en' ? 'guida-en.html' : 'guida.html';
+  for (const a of document.querySelectorAll('#imp-tab-guida a[href^="guida"]')) {
+    const ancora = (a.getAttribute('href').split('#')[1] || '');
+    a.setAttribute('href', pagina + (ancora ? '#' + ancora : ''));
+  }
+}
+
 function aggiornaInformazioniBuild() {
   const info = window.ASTROCAL_BUILD || {};
   const versione = document.getElementById('imp-versione-app');
@@ -1034,6 +1045,7 @@ function inizializzaNuoveFunzioni() {
   const apri = document.getElementById('btn-impostazioni');
   if (apri) apri.addEventListener('click', () => {
     aggiornaInformazioniBuild();
+    aggiornaLinkGuida();
     costruisciSceltaCielo();
     costruisciRaggiOrizzonte();
     costruisciTolleranzaPlanetario();
@@ -1109,6 +1121,7 @@ function ridisegnaVistaSeVecchia(nome) {
 
 function ridisegnaTuttoPerLingua() {
   aggiornaInformazioniBuild();
+  aggiornaLinkGuida();
   const passate = [
     // Il planetario: la scheda dell'oggetto, il fumetto, l'elenco, gli eventi
     ['scheda del planetario', () => {

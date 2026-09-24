@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Guida | AstroCalendario di Ben</title>
 <meta name="description" content="Tutte le funzioni di AstroCalendario, i primi passi per chi comincia e un glossario.">
+<link rel="alternate" hreflang="en" href="guida-en.html">
 <meta name="theme-color" content="#04060d">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -225,6 +226,9 @@ tbody tr:last-child td { border-bottom: 0; }
 .kv dd { margin: 0; font-size: .93rem; color: var(--testo-2); }
 @media (max-width: 560px) { .kv > div { grid-template-columns: minmax(0, 1fr); gap: 3px; } }
 
+pre.codice { background: var(--incassato); border: 1px solid var(--bordo); border-radius: var(--raggio-m);
+  padding: 14px 16px; overflow-x: auto; max-width: 100%; margin: 12px 0 16px; contain: paint; }
+pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 1.55; white-space: pre; }
 .mini { font-size: .84rem; color: var(--testo-3); }
 .chiusura { border-top: 1px solid var(--bordo); padding-block: 30px 60px;
   color: var(--testo-3); font-size: .88rem; }
@@ -249,7 +253,7 @@ tbody tr:last-child td { border-bottom: 0; }
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       Torna all'app
     </a>
-    <span class="marchio-barra">Guida all'uso</span>
+    <span class="marchio-barra">Guida all'uso · <a href="guida-en.html" hreflang="en" lang="en">English</a></span>
   </div>
 </div>
 
@@ -307,10 +311,11 @@ tbody tr:last-child td { border-bottom: 0; }
       <li><a href="#didattica"><span class="num">08</span>Il laboratorio</a></li>
       <li class="sep" role="presentation"></li>
       <li><a href="#impostazioni"><span class="num">09</span>Impostazioni e dati</a></li>
-      <li><a href="#offline"><span class="num">10</span>Rete e offline</a></li>
-      <li><a href="#scorciatoie"><span class="num">11</span>Gesti e scorciatoie</a></li>
-      <li><a href="#guai"><span class="num">12</span>Se qualcosa non torna</a></li>
-      <li><a href="#glossario"><span class="num">13</span>Glossario</a></li>
+      <li><a href="#demo"><span class="num">10</span>Le demo automatizzate</a></li>
+      <li><a href="#offline"><span class="num">11</span>Rete e offline</a></li>
+      <li><a href="#scorciatoie"><span class="num">12</span>Gesti e scorciatoie</a></li>
+      <li><a href="#guai"><span class="num">13</span>Se qualcosa non torna</a></li>
+      <li><a href="#glossario"><span class="num">14</span>Glossario</a></li>
     </ol>
   </nav>
 
@@ -842,10 +847,10 @@ tbody tr:last-child td { border-bottom: 0; }
     <p>Il traffico aereo vero entro il raggio scelto, disegnato in cielo e colorato
     <strong>per fascia di distanza</strong>:</p>
     <p style="margin-bottom:18px">
-      <span class="pillola" style="color:#D4553F;border-color:#D4553F">entro 10 km</span>
-      <span class="pillola att">entro 20 km</span>
-      <span class="pillola" style="color:var(--mirino);border-color:var(--mirino)">entro 50 km</span>
-      <span class="pillola blu">oltre</span>
+      <span class="pillola" style="color:#f87171;border-color:#f87171">entro 10 km</span>
+      <span class="pillola" style="color:#fb923c;border-color:#fb923c">entro 20 km</span>
+      <span class="pillola" style="color:#facc15;border-color:#facc15">entro 50 km</span>
+      <span class="pillola" style="color:#7dd3fc;border-color:#7dd3fc">oltre</span>
     </p>
     <p>Il colore non è decorazione: prima erano tutti dello stesso colore e per sapere quale fosse
     vicino bisognava leggere i chilometri di ogni etichetta una per una. Toccandone uno si apre il suo
@@ -1114,8 +1119,9 @@ tbody tr:last-child td { border-bottom: 0; }
   <section id="impostazioni">
     <h2><span class="capitolo">Capitolo 09</span>Impostazioni e dati</h2>
     <p class="guida">
-      Il tasto <strong>Impostazioni</strong> nella testata apre tre linguette. È anche il posto da cui i tuoi
-      dati escono e rientrano.
+      Il tasto <strong>Impostazioni</strong> nella testata apre cinque linguette: le tre qui sotto, poi
+      <b>Demo automatizzate</b> (il <a href="#demo">capitolo 10</a>) e <b>Guida</b>, che apre questa pagina.
+      È anche il posto da cui i tuoi dati escono e rientrano.
     </p>
 
     <div class="griglia g3">
@@ -1147,7 +1153,7 @@ tbody tr:last-child td { border-bottom: 0; }
       <div><dt>Galleria</dt><dd>I filmati registrati dal planetario, rivedibili anche senza rete. La prima volta chiede di collegare una cartella sul dispositivo.</dd></div>
       <div><dt>Installa l'app</dt><dd>La mette nella schermata principale come app vera.</dd></div>
       <div><dt>Avvisami</dt><dd>I promemoria per gli eventi che stanno arrivando.</dd></div>
-      <div><dt>Impostazioni</dt><dd>Le tre linguette qui sopra.</dd></div>
+      <div><dt>Impostazioni</dt><dd>Le linguette qui sopra, più le demo automatizzate e la guida.</dd></div>
       <div><dt>Lingua</dt><dd>Italiano o inglese. Immediato, non ricarica niente.</dd></div>
     </dl>
 
@@ -1159,8 +1165,175 @@ tbody tr:last-child td { border-bottom: 0; }
   </section>
 
   <!-- 10 -->
+  <section id="demo">
+    <h2><span class="capitolo">Capitolo 10</span>Le demo automatizzate</h2>
+    <p class="guida">
+      Una demo è un <strong>piccolo racconto che l'app recita da sola</strong>: sposta il luogo e l'orologio,
+      punta la camera, ingrandisce, fa scorrere il tempo e passa dal planetario al Sistema Solare in 3D.
+      Serve a mostrare un fenomeno a qualcuno — in classe, al club, a una serata pubblica — senza dover
+      toccare niente. Alla fine tutto torna esattamente com'era.
+    </p>
+
+    <h3>Avviare una demo</h3>
+    <ol class="passi" style="margin-top:12px">
+      <li class="passo">
+        <div>
+          <h3>Apri Impostazioni → Demo automatizzate</h3>
+          <p>La linguetta mostra un elenco e una scheda: titolo, descrizione, durata, numero di scene,
+          data, luogo, campo visivo ed eventuale Kp simulato della demo scelta.</p>
+        </div>
+      </li>
+      <li class="passo">
+        <div>
+          <h3>Scegli e premi «Avvia demo»</h3>
+          <p>Le impostazioni si chiudono, il planetario va a schermo intero e il racconto parte.
+          In basso compare la barra della demo col titolo, la scena in corso («scena 1/2 · Planetario · 8 s»)
+          e i tasti <b>Pausa</b>/<b>Riprendi</b>, <b>Ricomincia</b> e <b>Termina demo</b>.</p>
+        </div>
+      </li>
+      <li class="passo">
+        <div>
+          <h3>Guarda, oppure intervieni</h3>
+          <p>Puoi trascinare il cielo, ingrandire con due dita o con la rotellina, usare le frecce e cambiare i filtri
+          <strong>senza fermare la demo</strong>: appena intervieni, la camera passa a te fino alla fine della
+          scena in corso, mentre l'orologio del racconto continua. La scena successiva riprende la sua inquadratura.</p>
+        </div>
+      </li>
+      <li class="passo">
+        <div>
+          <h3>Esci quando vuoi</h3>
+          <p><kbd>Esc</kbd> o <b>Termina demo</b> interrompono subito. Se passi a un'altra scheda o a un'altra
+          app, la demo si mette in pausa da sola: al ritorno la riprendi dalla barra.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="nota blu" style="margin-top:18px">
+      <p><strong>Cosa viene ripristinato.</strong> A fine demo, o quando la interrompi, tornano come prima:
+      la vista dell'app, data e ora, il luogo da cui si guarda il cielo, la direzione della camera, il campo
+      visivo, i filtri di pianeti, Sole e Luna, l'inseguimento, il passo del tempo e la riproduzione, la vista
+      3D, l'aurora simulata e lo schermo intero. La <strong>posizione salvata</strong> dell'app non viene mai
+      toccata: il luogo della demo è solo di passaggio.</p>
+    </div>
+
+    <h3 style="margin-top:28px">Le quattro demo incluse</h3>
+    <div class="tabella-guscio" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Demo</th><th>Durata</th><th>Cosa mostra</th></tr></thead>
+        <tbody>
+          <tr><td><b>Eclisse solare totale · 12 agosto 2026</b></td><td>3 scene · 30 s</td><td>Da Reykjavík, campo di 4° sul Sole durante la totalità; poi il volo verso il Sistema Solare e il banco Terra–Luna, con la camera che gira attorno alla Terra tenendo al centro l'impronta vera dell'ombra.</td></tr>
+          <tr><td><b>Eclisse lunare totale · 31 dicembre 2028</b></td><td>2 scene · 24 s</td><td>Da Sapporo, Luna centrata e ingrandita fino a 2,5° mentre il tempo attraversa l'eclisse, massimo alle 01:52 locali del 1° gennaio compreso.</td></tr>
+          <tr><td><b>Aurora boreale · notte polare</b></td><td>2 scene · 20 s</td><td>Da Tromsø, campo di 90° verso nord e ovale aurorale con <b>Kp 5 simulato</b>, dalle 21:00 alle 23:30. È una simulazione didattica, non una previsione.</td></tr>
+          <tr><td><b>Corteo dei pianeti · 21 ottobre 2028</b></td><td>2 scene · 22 s</td><td>Da Tucson prima dell'alba: Mercurio, Venere, Marte e Giove evidenziati, con un'inquadratura calcolata perché ci stiano tutti e quattro.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mini" style="margin-top:10px">Le posizioni sono sempre quelle calcolate dall'app: una demo non sposta mai
+    un pianeta per farlo tornare, sceglie la data e il luogo in cui il fenomeno avviene davvero.</p>
+
+    <h3 style="margin-top:28px">Creare una demo tua</h3>
+    <p>Le demo incluse sono di sola lettura. Hai tre strade per averne una tua:</p>
+    <dl class="kv">
+      <div><dt>Duplica e modifica</dt><dd>Parte da una demo esistente. La copia prende un nome nuovo
+      (per esempio <code>eclisse_tour_copia</code>) e si apre subito nell'editor.</dd></div>
+      <div><dt>Crea nuova</dt><dd>Apre una bozza con una scena di esempio del planetario.</dd></div>
+      <div><dt>Importa demo da file</dt><dd>Un file <code>.astrodemo</code> o <code>.txt</code> fino a 100 KB, per
+      esempio ricevuto da un collega. Viene controllato prima di aprirlo e non sovrascrive niente: diventa una bozza.</dd></div>
+    </dl>
+    <p style="margin-top:14px">L'editor sta in <b>Dettagli avanzati</b>. Mentre scrivi, la riga sotto il testo dice
+    se lo script è valido oppure qual è il problema, con <strong>riga e colonna</strong>. Finché c'è un errore
+    non si può salvare né avviare. Il menu <b>Scena o azione pronta</b> con <b>Aggiungi scena</b> inserisce in
+    fondo una scena completa da ritoccare. <b>Salva script</b> la aggiunge alla libreria di questo dispositivo;
+    <b>Esporta .astrodemo</b> ne scarica una copia da condividere; <b>Annulla modifiche</b> e <b>Elimina</b> fanno
+    quello che dicono, e chiedono conferma prima di buttare lavoro non salvato.</p>
+    <div class="nota" style="margin-top:6px">
+      <p><strong>Tieni una copia.</strong> Le demo personali restano solo su questo browser e non entrano nel
+      backup dei dati: se ci tieni, esportale in un file.</p>
+    </div>
+
+    <h3 style="margin-top:28px">Com'è fatto uno script</h3>
+    <p>Uno script è testo, non un programma: si descrive cosa deve succedere e l'app lo esegue. Ha tre livelli —
+    la <strong>demo</strong>, le sue <strong>scene</strong> in fila, e dentro ogni scena le <strong>azioni</strong>.</p>
+<pre class="codice"><code>define_demo 'luna_da_roma' {
+  // Il commento è tutto ciò che segue due barre.
+  scene planetarium_view {
+    duration: 6s;
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2028-12-31T16:30:00Z' };
+    action: set_fov { degrees: 6 };
+    action: center_target { target: 'Moon' };
+  }
+  scene planetarium_view {
+    duration: 12s;
+    action: timelapse { start: 17:30, end: 19:30 };
+    action: center_target { target: 'Moon' };
+  }
+}</code></pre>
+    <ul>
+      <li><b>define_demo</b> dà il nome della demo, fra apici o come parola senza spazi. È il nome che vedi nell'elenco.</li>
+      <li><b>scene</b> è seguita dal tipo di scena: <code>planetarium_view</code> (il planetario),
+      <code>transition</code> (il volo verso il Sistema Solare) o <code>solar_system_3d</code> (la vista 3D).
+      L'app apre da sola la vista giusta all'inizio di ogni scena.</li>
+      <li><b>duration</b> è obbligatoria in ogni scena, in secondi (<code>12s</code>, anche <code>2.5s</code>) o millisecondi
+      (<code>800ms</code>), fino a un'ora.</li>
+      <li><b>action</b> è un comando con i suoi parametri fra graffe. Ogni scena ne vuole almeno una.
+      <strong>Le azioni di una scena partono tutte insieme</strong> e durano quanto la scena.</li>
+      <li>Ogni riga finisce con il <b>punto e virgola</b>, i parametri sono separati da virgole, i testi stanno fra apici.</li>
+    </ul>
+
+    <h3 style="margin-top:28px">Le azioni</h3>
+    <div class="tabella-guscio" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Azione</th><th>Parametri</th><th>Che cosa fa</th></tr></thead>
+        <tbody>
+          <tr><td><code>set_location</code></td><td><code>lat</code> (−90…90), <code>lon</code> (−180…180), <code>name</code> (1–80 caratteri), <code>timezone</code> (fuso IANA, es. <code>Europe/Rome</code>)</td><td>Guarda il cielo da quel luogo per la durata della demo. Tutti e quattro i parametri sono obbligatori.</td></tr>
+          <tr><td><code>set_date</code></td><td><code>iso</code>: data e ora <strong>UTC</strong> nella forma <code>2028-12-31T16:30:00Z</code></td><td>Porta l'orologio a quell'istante. Date inesistenti (il 30 febbraio) vengono rifiutate.</td></tr>
+          <tr><td><code>timelapse</code></td><td><code>start</code>, <code>end</code>: orari <strong>locali</strong> <code>HH:MM</code></td><td>Fa scorrere il tempo dall'uno all'altro nella durata della scena. Se la fine è prima dell'inizio, si attraversa la mezzanotte.</td></tr>
+          <tr><td><code>set_fov</code></td><td><code>degrees</code>: 0,5…160</td><td>Fissa il campo visivo.</td></tr>
+          <tr><td><code>point_view</code></td><td><code>az</code> (0…360, 0 = nord), <code>alt</code> (−90…90)</td><td>Punta la camera in una direzione fissa.</td></tr>
+          <tr><td><code>center_target</code> (o <code>center</code>)</td><td><code>target</code>: <code>Sun</code>, <code>Moon</code>, <code>Mercury</code>, <code>Venus</code>, <code>Mars</code>, <code>Jupiter</code>, <code>Saturn</code>, <code>Uranus</code>, <code>Neptune</code>, oppure <code>Eclipse Shadow</code></td><td>Tiene al centro l'astro e lo insegue mentre il tempo scorre. <code>Eclipse Shadow</code> vale nella vista 3D: trova l'eclisse di Sole più vicina alla data della demo e centra l'impronta dell'ombra sulla Terra.</td></tr>
+          <tr><td><code>frame_objects</code></td><td><code>names</code>: da 2 a 8 corpi separati da virgole, es. <code>'Mercury,Venus,Mars,Jupiter'</code></td><td>Calcola da sola centro e campo perché ci stiano tutti, e li aggiorna mentre si muovono.</td></tr>
+          <tr><td><code>highlight_object</code></td><td><code>name</code>: un pianeta (non Sole né Luna), <code>scale</code>: 1…10</td><td>Disegna il pianeta più grande per farlo notare. Non ne cambia la posizione.</td></tr>
+          <tr><td><code>simulate_aurora</code></td><td><code>kp</code>: 0…9</td><td>Accende l'ovale aurorale con quel Kp simulato.</td></tr>
+          <tr><td><code>zoom_view</code></td><td><code>type: geometric</code>, <code>final_target: solar_system_3d</code></td><td>Il volo dal planetario al Sistema Solare. Va in una scena <code>transition</code>; il volo dura quanto la scena.</td></tr>
+          <tr><td><code>orbit_object</code></td><td><code>object: 'Earth-Moon'</code>, <code>angle</code> in gradi, <code>speed: slow</code></td><td>Nel banco Terra–Luna fa girare la camera di quell'angolo attorno alla Terra, portando l'orologio all'eclisse di Sole più vicina.</td></tr>
+          <tr><td><code>transition_to</code></td><td><code>target</code>: <code>planetarium_view</code> o <code>solar_system_3d</code></td><td>Cambia vista di colpo, senza volo.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">Le regole che contano</h3>
+    <dl class="kv">
+      <div><dt>L'ordine dentro la scena</dt><dd>Le azioni partono insieme, ma vengono preparate nell'ordine scritto.
+      Metti <code>set_location</code> e <code>set_date</code> <strong>prima</strong> di <code>timelapse</code>: gli
+      orari del timelapse si leggono nel luogo e nel giorno già impostati.</dd></div>
+      <div><dt>UTC e ora locale</dt><dd><code>set_date</code> è in UTC (la <code>Z</code> finale); <code>timelapse</code>
+      usa l'ora civile del luogo, cambio d'ora compreso. Un orario che non esiste — le 02:30 della notte in cui
+      si mettono avanti gli orologi — viene segnalato prima di salvare.</dd></div>
+      <div><dt>Le scene si concatenano</dt><dd>Luogo, data e campo restano quelli lasciati dalla scena prima,
+      finché una scena nuova non li cambia. Ripeti invece <code>center_target</code>, <code>frame_objects</code>,
+      <code>point_view</code> e <code>highlight_object</code> in ogni scena in cui ti servono: valgono solo per la loro.</dd></div>
+      <div><dt>La camera</dt><dd>Chi guarda può sempre prendere la camera. Da quel momento le azioni di inquadratura
+      della scena in corso si fermano; la scena dopo riparte con la sua.</dd></div>
+      <div><dt>Prima di partire</dt><dd>La demo non parte con il Sistema Solare aperto, durante una registrazione
+      o una Missione Cielo in corso, o finché il planetario non ha ancora luogo e cataloghi pronti: l'app lo dice.</dd></div>
+      <div><dt>Movimento ridotto</dt><dd>Se nel sistema è attiva la preferenza «riduci movimento», la rotazione
+      decorativa del banco Terra–Luna non si fa. Se la preferenza cambia a demo in corso, la demo si ferma e ripristina.</dd></div>
+    </dl>
+
+    <h3 style="margin-top:28px">Quando qualcosa non va</h3>
+    <ul>
+      <li><b>«Campo sconosciuto», «Atteso ;», «Carattere inatteso»</b>: errore di battitura. Guarda la riga e la colonna indicate; spesso manca un punto e virgola o una graffa.</li>
+      <li><b>«Parametro sconosciuto»</b>: il nome del parametro è sbagliato, per esempio <code>fov</code> al posto di <code>degrees</code>.</li>
+      <li><b>«Fuso orario IANA non valido»</b>: il fuso va scritto per esteso, come <code>Europe/Rome</code> o <code>America/New_York</code>.</li>
+      <li><b>«Ora civile inesistente»</b>: sposta il timelapse fuori dall'ora saltata dal cambio d'ora.</li>
+      <li><b>La demo si ferma a metà con un avviso</b>: un'azione non ha potuto proseguire (per esempio nessuna eclisse trovata). La demo ripristina tutto e l'avviso dice il motivo.</li>
+    </ul>
+  </section>
+
+  <!-- 11 -->
   <section id="offline">
-    <h2><span class="capitolo">Capitolo 10</span>Rete e offline</h2>
+    <h2><span class="capitolo">Capitolo 11</span>Rete e offline</h2>
     <p class="guida">
       Tutti i servizi usati sono pubblici e senza chiave, e <strong>nessuno di loro è necessario</strong>:
       ognuno ha il suo ripiego e nessuno può bloccare l'app. Questa tabella dice cosa perdi
@@ -1192,9 +1365,9 @@ tbody tr:last-child td { border-bottom: 0; }
     </p>
   </section>
 
-  <!-- 11 -->
+  <!-- 12 -->
   <section id="scorciatoie">
-    <h2><span class="capitolo">Capitolo 11</span>Gesti e scorciatoie</h2>
+    <h2><span class="capitolo">Capitolo 12</span>Gesti e scorciatoie</h2>
 
     <h3>Col dito</h3>
     <div class="tabella-guscio" style="margin-top:12px">
@@ -1215,7 +1388,7 @@ tbody tr:last-child td { border-bottom: 0; }
       <table>
         <thead><tr><th>Tasto</th><th>Dove</th><th>Cosa fa</th></tr></thead>
         <tbody>
-          <tr><td><kbd>Esc</kbd></td><td>Ovunque</td><td>Chiude il foglio in primo piano. Sul planetario: prima la scheda completa, poi il fumetto.</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Ovunque</td><td>Chiude il foglio in primo piano. Sul planetario: prima la scheda completa, poi il fumetto. Durante una demo la termina e rimette tutto com'era.</td></tr>
           <tr><td><kbd>F</kbd></td><td>Planetario, 3D, mappe</td><td>Pieno schermo</td></tr>
           <tr><td><kbd>Spazio</kbd></td><td>Vista 3D</td><td>Avvia e ferma la marcia del tempo</td></tr>
           <tr><td><kbd>C</kbd></td><td>Vista 3D</td><td>Rimette la scena al centro</td></tr>
@@ -1238,9 +1411,9 @@ tbody tr:last-child td { border-bottom: 0; }
     </ul>
   </section>
 
-  <!-- 12 -->
+  <!-- 13 -->
   <section id="guai">
-    <h2><span class="capitolo">Capitolo 12</span>Se qualcosa non torna</h2>
+    <h2><span class="capitolo">Capitolo 13</span>Se qualcosa non torna</h2>
     <p class="guida">
       Quasi tutto quello che «non funziona» ha una spiegazione scritta da qualche parte nell'app.
       Questa è la mappa di dove guardare.
@@ -1295,6 +1468,13 @@ tbody tr:last-child td { border-bottom: 0; }
             oppure chiudi e riapri l'app.</td>
           </tr>
           <tr>
+            <td><b>Una demo non parte</b></td>
+            <td>L'avviso dice il motivo. Di solito c'è il <b>Sistema Solare aperto</b>, una <b>registrazione</b>
+            o una <b>Missione Cielo</b> in corso, oppure il planetario non ha ancora luogo e cataloghi pronti:
+            chiudi, aspetta un istante e riprova. Per una demo tua, la riga sotto l'editor indica riga e colonna
+            dell'errore (vedi il <a href="#demo">capitolo 10</a>).</td>
+          </tr>
+          <tr>
             <td><b>La posizione è quella sbagliata</b></td>
             <td>Una posizione <b>scelta a mano</b> non viene scavalcata dal GPS né dalla rete, di proposito:
             per farla ricalcolare serve <b>Rileva di nuovo</b> nella finestra della posizione.</td>
@@ -1310,9 +1490,9 @@ tbody tr:last-child td { border-bottom: 0; }
     </div>
   </section>
 
-  <!-- 13 -->
+  <!-- 14 -->
   <section id="glossario">
-    <h2><span class="capitolo">Capitolo 13</span>Glossario</h2>
+    <h2><span class="capitolo">Capitolo 14</span>Glossario</h2>
     <p class="guida">Le parole che l'app usa senza spiegarle ogni volta.</p>
 
     <dl class="kv">
@@ -1328,6 +1508,7 @@ tbody tr:last-child td { border-bottom: 0; }
       <div><dt>Oggetto profondo</dt><dd>Tutto quello che non è una stella né un corpo del Sistema Solare: nebulose, ammassi, galassie. Il catalogo dell'app ne ha 142, Messier completo più gli NGC luminosi.</dd></div>
       <div><dt>Pupilla d'uscita</dt><dd>Il fascio di luce che esce dall'oculare, in millimetri. Più larga della pupilla del tuo occhio (6–7 mm da giovani, meno dopo) vuol dire luce buttata via.</dd></div>
       <div><dt>ADS-B</dt><dd>Il sistema con cui gli aerei trasmettono posizione, quota e rotta. Le reti di comunità lo raccolgono con ricevitori di volontari, per questo la copertura ha dei buchi.</dd></div>
+      <div><dt>Timelapse</dt><dd>Il tempo che scorre accelerato: minuti o ore di cielo in pochi secondi. Nelle demo si scrive con l'ora di inizio e quella di fine, nell'ora locale del luogo.</dd></div>
       <div><dt>TLE</dt><dd>Le due righe di numeri che descrivono l'orbita di un satellite. Invecchiano: freschi danno un passaggio preciso al decimo di secondo, vecchi di una settimana non più.</dd></div>
     </dl>
   </section>

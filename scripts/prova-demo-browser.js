@@ -74,10 +74,21 @@ const server = http.createServer((req, res) => {
     assert.match(await pagina.locator('#demo-info').innerText(), /3 scene.*30 s/);
     await pagina.locator('#demo-duplica').click();
     const testoBase = await pagina.locator('#demo-editor').inputValue();
+    assert.match(testoBase, /define_demo 'eclisse_tour_copia'/, 'La copia prende un nome suo');
     await pagina.locator('#demo-editor').fill(testoBase.replace('17:47', '25:00'));
     assert.equal(await pagina.locator('#demo-salva').isDisabled(), true);
     await pagina.locator('#demo-editor').fill(testoBase.replace('12s;', '12s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
+    // La posizione è quella dell'errore, non la fine del file.
+    await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 12s;', 'duration: 12s; duration: 3s;'));
+    assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 4,/);
+    // In inglese anche i messaggi di validazione sono in inglese.
+    await pagina.evaluate(() => astroI18n.impostaLingua('en'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('degrees: 4', 'degrees: 400'));
+    assert.match(await pagina.locator('#demo-validazione').innerText(), /^Field of view expected/);
+    await pagina.locator('#demo-editor').fill(testoBase.replace('12s;', '12s'));
+    assert.match(await pagina.locator('#demo-validazione').innerText(), /line \d+, column \d+/);
+    await pagina.evaluate(() => astroI18n.impostaLingua('it'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
     for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'frame_objects', 'orbit_object', 'zoom_view']) {
       await pagina.locator('#demo-snippet').selectOption(snippet);
@@ -86,6 +97,7 @@ const server = http.createServer((req, res) => {
     }
     await pagina.locator('#demo-salva').click();
     assert.match(await pagina.locator('#demo-esito').innerText(), /salvato/);
+    assert.equal(await pagina.locator('#demo-editor').isVisible(), true, 'Dopo il salvataggio l’editor resta aperto');
     console.log('Demo browser: editor e snippet verificati');
     const salvato = await pagina.locator('#demo-editor').inputValue();
     const chiaveUtente = await pagina.locator('#demo-elenco').inputValue();
@@ -245,6 +257,28 @@ const server = http.createServer((req, res) => {
     assert.notEqual(await pagina.evaluate(() => sky.manuale.az), controlloDurante.az, 'La camera risponde durante la demo');
     await pagina.evaluate(() => AstroDemo.ferma());
     assert.deepEqual(await fotografia(), primaStop);
+    // La rotellina non passa da pointerdown: deve cedere la camera lo stesso,
+    // se no set_fov rimette il suo campo a ogni fotogramma.
+    await pagina.evaluate(() => AstroDemo.avvia("define_demo zoom { scene planetarium_view { duration: 5s; action: set_fov { degrees: 20 }; }}"));
+    await pagina.waitForTimeout(200);
+    await pagina.mouse.move(tela.x + tela.width / 2, tela.y + tela.height / 2);
+    await pagina.mouse.wheel(0, 400);
+    await pagina.waitForTimeout(600);
+    assert.ok(await pagina.evaluate(() => sky.fovVoluto > 21), 'La rotellina cambia lo zoom durante la demo');
+    assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo', 'La rotellina non ferma la demo');
+    await pagina.evaluate(() => AstroDemo.ferma());
+    assert.deepEqual(await fotografia(), primaStop, 'Dopo lo zoom manuale il ripristino è completo');
+    // L'ombra si cerca vicino alla data della demo, non sempre nel 2026.
+    const ombra2027 = await pagina.evaluate(() => {
+      AstroDemo.avvia("define_demo ombra { scene planetarium_view { duration: 1s; action: set_date { iso: '2027-07-20T00:00:00Z' }; action: set_fov { degrees: 20 }; }" +
+        " scene solar_system_3d { duration: 5s; action: center { target: 'Eclipse Shadow' }; }}");
+      return new Promise(r => setTimeout(() => {
+        const esito = { data: skyAdesso().toISOString(), ombra: !!solOmbraLunareSuTerra(skyAdesso()) };
+        AstroDemo.ferma(); r(esito);
+      }, 1600));
+    });
+    assert.ok(ombra2027.data.startsWith('2027-08-02') && ombra2027.ombra, 'Eclisse del 2 agosto 2027: ' + ombra2027.data);
+    assert.deepEqual(await fotografia(), primaStop);
     await pagina.evaluate(() => {
       AstroDemo.avvia();
       Object.defineProperty(document, 'hidden', { configurable: true, value: true });
@@ -295,6 +329,10 @@ const server = http.createServer((req, res) => {
       const durante = await pagina.evaluate(() => ({ stato: AstroDemo.stato, tempo: skyAdesso().toISOString(),
         lat: sky.observer.latitude, lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] }));
       assert.equal(durante.stato, 'attivo', chiave);
+      assert.match(await pagina.locator('#demo-controlli p').innerText(),
+        new RegExp('^' + { eclisse_lunare: 'Eclisse lunare', aurora_boreale: 'Aurora boreale',
+          allineamento_pianeti: 'Corteo dei pianeti' }[chiave] + '.* — scena 1/2 · Planetario'),
+        chiave + ': pannello con titolo e scena');
       assert.ok(durante.tempo.startsWith(data), chiave + ': istante astronomico');
       assert.ok(Math.abs(durante.lat - lat) < 0.0001 && Math.abs(durante.lon - lon) < 0.0001,
         chiave + ': coordinate temporanee');

@@ -29,6 +29,11 @@ for (const errato of [
   testo.slice(0, -1), "define_demo x {}", testo.replace('scale: 5.0', 'scale: alert(1)')
 ]) rifiuta(() => analizza(errato), 'Rifiuta script malformato');
 ok(/riga \d+, colonna \d+/.test(rifiuta(() => analizza('!'), 'Posizione errore').message), 'Diagnostica posizionale');
+// L'errore cade sulla riga sbagliata, non sulla fine del testo.
+ok(/\(riga 3,/.test(rifiuta(() => analizza("define_demo x {\n scene y {\n  foo: 1;\n  duration: 1s;\n }\n}"),
+  'Campo sconosciuto').message), 'Campo sconosciuto sulla sua riga');
+ok(/\(riga 4,/.test(rifiuta(() => analizza("define_demo x {\n scene y {\n  duration: 1s;\n  duration: 2s;\n }\n}"),
+  'Durata duplicata').message), 'Durata duplicata sulla sua riga');
 
 let tempo = 0, prossimoId = 0, richieste = new Map(), eventi = [], ripristini = 0;
 const registro = Object.create(null);

@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>User guide | AstroCalendario di Ben</title>
+<meta name="description" content="Every feature of AstroCalendario, the first steps for beginners and a glossary.">
+<link rel="alternate" hreflang="it" href="guida.html">
+<meta name="theme-color" content="#04060d">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<style>
+@font-face {
+  font-family: "Inter";
+  src: url("./fonts/Inter.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+/* LA GUIDA: una pagina sola, fuori dall'app.
+ *
+ * Non carica `style.css` di proposito: là dentro ci sono novemila righe
+ * scritte per l'interfaccia dell'app (griglie, pannelli, mappe) che con un
+ * documento da leggere litigherebbero. Quello che serve è la **tavolozza**, e
+ * quella è ricopiata qui sotto dal blocco `:root` di `style.css`.
+ *
+ * È una copia, e il giorno che diverge non lo dice nessuno: se cambi i colori
+ * dell'app, passa di qui. Sono dodici righe, e il prezzo dell'alternativa:
+ * la guida che si tinge di un tema che non è quello dell'app, è peggiore.
+ *
+ * Il tema è **solo scuro**, come l'app: questa pagina si apre da dentro il
+ * planetario, spesso di notte e con gli occhi adattati al buio. Una pagina
+ * bianca a quel punto è una torcia in faccia. */
+:root {
+  color-scheme: dark;
+  --spazio:        #04060d;
+  --superficie:    #131a2b;
+  --superficie-2:  #1a2237;
+  --incassato:     rgba(8, 11, 20, 0.72);
+  --bordo:         rgba(148, 168, 214, 0.14);
+  --bordo-forte:   rgba(148, 168, 214, 0.26);
+  --testo:         #e9edf7;
+  --testo-2:       #a9b4cc;
+  --testo-3:       #74809a;
+  --blu:           #4c8dff;
+  --blu-chiaro:    #8ab4ff;
+  --verde:         #34d399;
+  --ambra:         #f5b544;
+  --rosso:         #f87171;
+  --ambra-velo:    rgba(245, 181, 68, 0.12);
+  --blu-velo:      rgba(76, 141, 255, 0.14);
+  --ombra-2: 0 12px 28px -18px rgba(0, 0, 0, 0.9);
+  --raggio-m: 14px;
+  --raggio-l: 20px;
+  --sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          "Segoe UI", system-ui, sans-serif;
+  --titolo: "Space Grotesk", "Inter", -apple-system, system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--spazio);
+  color: var(--testo);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.65;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+}
+img, svg { max-width: 100%; }
+a { color: var(--blu-chiaro); text-decoration: none; border-bottom: 1px solid rgba(138, 180, 255, 0.32); }
+a:hover { border-bottom-color: var(--blu-chiaro); }
+:focus-visible { outline: 2px solid var(--ambra); outline-offset: 3px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+
+.guscio { max-width: 1180px; margin: 0 auto; padding-inline: 20px; }
+@media (max-width: 520px) { .guscio { padding-inline: 16px; } }
+
+/* --- la barra del ritorno: sempre in vista, è l'unico modo di uscire --- */
+.barra-ritorno {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(4, 6, 13, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--bordo);
+}
+.barra-ritorno .guscio {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding-block: 11px; flex-wrap: wrap;
+}
+.tasto-ritorno {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: .9rem; font-weight: 500; color: var(--testo);
+  border: 1px solid var(--bordo-forte); border-radius: 999px;
+  padding: 7px 15px 7px 12px; background: var(--superficie);
+}
+.tasto-ritorno:hover { background: var(--superficie-2); border-color: var(--blu); }
+.marchio-barra { font-family: var(--titolo); font-weight: 600; font-size: .9rem; color: var(--testo-3); }
+
+/* --- testata --- */
+.testata { position: relative; overflow: hidden; border-bottom: 1px solid var(--bordo); }
+.testata-fondo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.testata-corpo { position: relative; padding-block: 56px 48px; }
+.occhiello {
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ambra); margin: 0 0 18px;
+}
+.titolone {
+  font-family: var(--titolo); font-weight: 700;
+  font-size: clamp(2.3rem, 6.5vw, 4rem); line-height: 1.04;
+  letter-spacing: -.03em; margin: 0 0 20px; text-wrap: balance; max-width: 16ch;
+}
+.titolone span { color: var(--ambra); }
+.sommario { font-size: clamp(1rem, 2.3vw, 1.15rem); color: var(--testo-2); max-width: 60ch; margin: 0 0 26px; }
+.fatti { display: flex; flex-wrap: wrap; gap: 10px 26px; font-family: var(--mono);
+  font-size: .78rem; color: var(--testo-3); margin: 0; padding: 0; list-style: none; }
+.fatti b { color: var(--testo); font-weight: 600; }
+
+/* --- impianto --- */
+.impianto { display: grid; grid-template-columns: 238px minmax(0, 1fr); gap: 52px;
+  align-items: start; padding-block: 44px 90px; }
+@media (max-width: 940px) { .impianto { grid-template-columns: minmax(0, 1fr); gap: 30px; padding-block: 26px 64px; } }
+
+.indice { position: sticky; top: 74px; font-size: .9rem; }
+@media (max-width: 940px) {
+  .indice { position: static; background: var(--superficie); border: 1px solid var(--bordo);
+    border-radius: var(--raggio-m); padding: 18px 20px; }
+}
+.indice-titolo { font-family: var(--mono); font-size: .7rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--testo-3); margin: 0 0 14px; }
+.indice ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.indice a { display: block; padding: 5px 10px; margin-left: -10px; border-radius: 8px;
+  color: var(--testo-2); border: 0; line-height: 1.35; }
+.indice a:hover { background: var(--superficie-2); color: var(--testo); }
+.indice .num { font-family: var(--mono); font-size: .74rem; color: var(--testo-3); margin-right: 8px; }
+.indice .sep { height: 1px; background: var(--bordo); margin: 10px 0; }
+
+.corpo { min-width: 0; display: flex; flex-direction: column; gap: 62px; }
+section { scroll-margin-top: 74px; }
+h2 { font-family: var(--titolo); font-weight: 600; font-size: clamp(1.65rem, 3.4vw, 2.15rem);
+  line-height: 1.15; letter-spacing: -.025em; margin: 0 0 8px; text-wrap: balance; }
+h2 .capitolo { display: block; font-family: var(--mono); font-size: .7rem; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--ambra); font-weight: 500; margin-bottom: 10px; }
+h3 { font-family: var(--titolo); font-weight: 600; font-size: 1.2rem; line-height: 1.28;
+  letter-spacing: -.015em; margin: 0 0 6px; text-wrap: balance; }
+p { margin: 0 0 14px; max-width: 68ch; }
+.guida { color: var(--testo-2); max-width: 66ch; margin-bottom: 26px; }
+.corpo ul, .corpo ol { max-width: 68ch; }
+li { margin-bottom: 7px; }
+strong { font-weight: 600; color: var(--testo); }
+code { font-family: var(--mono); font-size: .86em; background: var(--incassato);
+  padding: .1em .38em; border-radius: 5px; color: var(--testo); }
+kbd { font-family: var(--mono); font-size: .78em; background: var(--superficie-2);
+  border: 1px solid var(--bordo-forte); border-bottom-width: 2px; border-radius: 6px;
+  padding: .15em .45em; color: var(--testo); white-space: nowrap; }
+
+.griglia { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); }
+.scheda { background: var(--superficie); border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m); padding: 18px 20px; box-shadow: var(--ombra-2); }
+.scheda p:last-child { margin-bottom: 0; }
+.scheda .etichetta { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--testo-3); margin: 0 0 9px; display: block; }
+.scheda .desc { font-size: .92rem; color: var(--testo-2); margin: 0; }
+
+.vista { border: 1px solid var(--bordo); border-radius: var(--raggio-m);
+  background: var(--superficie); overflow: hidden; box-shadow: var(--ombra-2); }
+.vista-testa { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px;
+  padding: 15px 20px; border-bottom: 1px solid var(--bordo); background: var(--superficie-2); }
+.vista-nome { font-family: var(--titolo); font-size: 1.18rem; font-weight: 600; margin: 0; letter-spacing: -.02em; }
+.vista-ruolo { font-size: .85rem; color: var(--testo-3); margin: 0; }
+.vista-corpo { padding: 18px 20px 20px; }
+.vista-corpo > :last-child { margin-bottom: 0; }
+
+.passi { list-style: none; counter-reset: passo; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 14px; }
+.passo { counter-increment: passo; display: grid; grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px; background: var(--superficie); border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m); padding: 18px 20px; box-shadow: var(--ombra-2); }
+.passo::before { content: counter(passo, decimal-leading-zero); font-family: var(--mono);
+  font-size: .82rem; font-weight: 600; color: var(--ambra); padding-top: 3px; }
+.passo h3 { margin-bottom: 5px; }
+.passo p { margin-bottom: 0; font-size: .95rem; color: var(--testo-2); }
+.passo p + p { margin-top: 9px; }
+@media (max-width: 420px) { .passo { gap: 10px; padding: 16px; } }
+
+.nota { border-left: 3px solid var(--ambra); background: var(--ambra-velo);
+  padding: 14px 18px; border-radius: 0 10px 10px 0; font-size: .93rem; color: var(--testo-2); }
+.nota strong { color: var(--testo); }
+.nota p:last-child { margin-bottom: 0; }
+.nota.blu { border-left-color: var(--blu); background: var(--blu-velo); }
+
+.tabella-guscio { overflow-x: auto; border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m); background: var(--superficie); contain: paint; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 480px; }
+th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--bordo); vertical-align: top; }
+th { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--testo-3); font-weight: 500; background: var(--superficie-2); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+
+.pillola { display: inline-block; font-family: var(--mono); font-size: .7rem; letter-spacing: .06em;
+  padding: .2em .6em; border-radius: 999px; border: 1px solid var(--bordo-forte);
+  color: var(--testo-2); background: var(--superficie-2); white-space: nowrap; }
+.pillola.ok { color: var(--verde); border-color: rgba(52, 211, 153, .4); }
+.pillola.att { color: var(--ambra); border-color: rgba(245, 181, 68, .4); }
+.pillola.blu { color: var(--blu-chiaro); border-color: rgba(76, 141, 255, .4); }
+.pillola.no { color: var(--rosso); border-color: rgba(248, 113, 113, .4); }
+
+.kv { display: flex; flex-direction: column; margin: 0; max-width: none; }
+.kv > div { display: grid; grid-template-columns: minmax(130px, 190px) minmax(0, 1fr);
+  gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--bordo); }
+.kv > div:last-child { border-bottom: 0; }
+.kv dt { font-weight: 600; font-size: .93rem; }
+.kv dd { margin: 0; font-size: .93rem; color: var(--testo-2); }
+@media (max-width: 560px) { .kv > div { grid-template-columns: minmax(0, 1fr); gap: 3px; } }
+
+pre.codice { background: var(--incassato); border: 1px solid var(--bordo); border-radius: var(--raggio-m);
+  padding: 14px 16px; overflow-x: auto; max-width: 100%; margin: 12px 0 16px; contain: paint; }
+pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 1.55; white-space: pre; }
+.mini { font-size: .84rem; color: var(--testo-3); }
+.chiusura { border-top: 1px solid var(--bordo); padding-block: 30px 60px;
+  color: var(--testo-3); font-size: .88rem; }
+
+/* Chi la stampa per portarsela dietro: fondo bianco, niente barra, niente indice. */
+@media print {
+  :root { --spazio: #fff; --superficie: #fff; --superficie-2: #f4f5f8;
+    --testo: #111; --testo-2: #333; --testo-3: #666; --bordo: #ccc; --bordo-forte: #999;
+    --ambra: #8a5a00; --blu-chiaro: #14509a; --blu: #14509a; }
+  .barra-ritorno, .indice, .testata-fondo { display: none; }
+  .impianto { grid-template-columns: 1fr; padding-block: 0; }
+  .scheda, .passo, .vista, .tabella-guscio { box-shadow: none; break-inside: avoid; }
+  section { break-before: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="barra-ritorno">
+  <div class="guscio">
+    <a class="tasto-ritorno" href="index.html">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back to the app
+    </a>
+    <span class="marchio-barra">User guide · <a href="guida.html" hreflang="it" lang="it">Italiano</a></span>
+  </div>
+</div>
+
+<header class="testata">
+  <svg class="testata-fondo" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <g fill="#74809a" opacity=".45">
+      <circle cx="120" cy="58" r="1.6"/><circle cx="248" cy="120" r="1.1"/><circle cx="372" cy="44" r="2.1"/>
+      <circle cx="515" cy="96" r="1.3"/><circle cx="640" cy="38" r="1.7"/><circle cx="742" cy="128" r="1"/>
+      <circle cx="868" cy="66" r="2"/><circle cx="980" cy="112" r="1.2"/><circle cx="1092" cy="50" r="1.5"/>
+      <circle cx="60" cy="164" r="1.2"/><circle cx="440" cy="176" r="1"/><circle cx="1150" cy="150" r="1.3"/>
+      <circle cx="300" cy="210" r="1"/><circle cx="820" cy="196" r="1.1"/>
+    </g>
+    <path d="M0 420 L0 352 L72 336 L128 358 L196 318 L244 342 L318 300 L372 330 L438 288 L492 322 L556 340 L612 308 L668 334 L730 296 L790 326 L848 348 L906 318 L968 340 L1030 306 L1092 332 L1150 352 L1200 338 L1200 420 Z"
+          fill="#131a2b" opacity=".85"/>
+    <path d="M0 420 L0 388 L88 376 L164 392 L238 366 L322 386 L404 362 L486 384 L568 396 L652 374 L738 392 L820 370 L900 390 L986 372 L1072 392 L1160 380 L1200 390 L1200 420 Z"
+          fill="#1a2237"/>
+  </svg>
+  <div class="guscio testata-corpo">
+    <p class="occhiello">User guide</p>
+    <h1 class="titolone">AstroCalendario <span>di Ben</span></h1>
+    <p class="sommario">
+      Everything you need to prepare your first night under the stars. This guide walks you through
+      the app, which is built to answer in an instant the three basic questions every observer asks:
+      what is happening in the sky tonight? Will I be able to see it, or will the mountains hide it?
+      And which way should I look? It all happens right on your device, without depending on the
+      internet or on remote servers: the calculations come to life in real time, while you enjoy
+      the show.
+    </p>
+    <ul class="fatti">
+      <li><b>7</b> views</li>
+      <li><b>15,500</b> stars</li>
+      <li><b>88</b> constellations</li>
+      <li><b>142</b> deep-sky objects</li>
+      <li><b>8</b> teaching benches</li>
+      <li><b>1600–3000</b> navigable years</li>
+      <li><b>0</b> accounts required</li>
+    </ul>
+  </div>
+</header>
+
+<div class="guscio impianto">
+
+  <nav class="indice" aria-label="Guide contents">
+    <p class="indice-titolo">Contents</p>
+    <ol>
+      <li><a href="#inbreve"><span class="num">00</span>In a nutshell</a></li>
+      <li><a href="#primi"><span class="num">01</span>The first ten minutes</a></li>
+      <li class="sep" role="presentation"></li>
+      <li><a href="#viste"><span class="num">02</span>The seven views</a></li>
+      <li><a href="#planetario"><span class="num">03</span>The planetarium in depth</a></li>
+      <li><a href="#paesaggio"><span class="num">04</span>The world beneath the sky</a></li>
+      <li><a href="#volano"><span class="num">05</span>Things that fly</a></li>
+      <li><a href="#missione"><span class="num">06</span>Sky Mission</a></li>
+      <li><a href="#telescopio"><span class="num">07</span>The Telescope view</a></li>
+      <li><a href="#didattica"><span class="num">08</span>The laboratory</a></li>
+      <li class="sep" role="presentation"></li>
+      <li><a href="#impostazioni"><span class="num">09</span>Settings and data</a></li>
+      <li><a href="#demo"><span class="num">10</span>Automated demos</a></li>
+      <li><a href="#offline"><span class="num">11</span>Network and offline</a></li>
+      <li><a href="#scorciatoie"><span class="num">12</span>Gestures and shortcuts</a></li>
+      <li><a href="#guai"><span class="num">13</span>If something doesn't add up</a></li>
+      <li><a href="#glossario"><span class="num">14</span>Glossary</a></li>
+    </ol>
+  </nav>
+
+  <main class="corpo">
+  <!-- 00 -->
+  <section id="inbreve">
+    <h2><span class="capitolo">Chapter 00</span>In a nutshell</h2>
+    <p class="guida">
+      AstroCalendario is a <strong>web application</strong> for amateur stargazing.
+      It opens in a browser, can be installed on your phone like a real app, and from then on
+      it works even without a network connection.
+    </p>
+
+    <div class="griglia g2">
+      <div class="scheda">
+        <span class="etichetta">No server</span>
+        <h3>The maths happens here</h3>
+        <p class="desc">Moon phases, eclipses, rising and setting, conjunctions, Space Station passes:
+        the app computes everything directly on your device, even when there is no network.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">No account</span>
+        <h3>Your data stays on the device</h3>
+        <p class="desc">Location, journal, telescope profile, the shape of the terrain around your home:
+        everything stays on the device. You can take it elsewhere with a backup file, without creating an account.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Offline</span>
+        <h3>It works in the mountains</h3>
+        <p class="desc">The app keeps what it needs to go on working. Without a network you only lose
+        the updated weather, air traffic and new terrain downloads; the sky, on the other hand,
+        stays available.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Two languages</span>
+        <h3>Italian and English</h3>
+        <p class="desc">Switching is instant and reloads nothing. Compass points, number formats
+        and countdowns follow the language: in English west is <code>W</code>, not <code>O</code>.
+        This guide exists in both languages too.</p>
+      </div>
+    </div>
+
+    <div class="nota blu" style="margin-top:22px">
+      <p><strong>Where it works best.</strong> On a <strong>phone</strong> it gives its best, because it uses
+      the compass, gyroscope, GPS and camera: point it at the sky and the map follows your gaze.
+      On a <strong>computer</strong> it remains excellent for planning, the calendar, the agenda, simulations
+      and the teaching lab, and the planetarium is driven with the mouse.</p>
+    </div>
+  </section>
+
+  <!-- 01 -->
+  <section id="primi">
+    <h2><span class="capitolo">Chapter 01 · For beginners</span>The first ten minutes</h2>
+    <p class="guida">
+      This is the only sequence in the manual: six steps, in order, and after the last one the app
+      knows enough about you and your sky to stop giving generic answers.
+      Ten minutes are enough, and you only do it once.
+    </p>
+
+    <ol class="passi">
+      <li class="passo">
+        <div>
+          <h3>Open the app and install it</h3>
+          <p>In the header at the top there is <strong>Install the app</strong>: on a phone it puts the app on the
+          home screen with its icon, and from there it opens full screen without the browser bar.
+          It is not mandatory, but it is what makes it usable in the dark in the garden.</p>
+          <p>With <strong>Notify me</strong>, next to it, you turn on reminders for important events.</p>
+        </div>
+      </li>
+
+      <li class="passo">
+        <div>
+          <h3>Give your location</h3>
+          <p>It is the piece of data everything else depends on. The app looks for it by itself at start-up with three
+          strategies in cascade, <strong>GPS</strong>, then <strong>network address</strong>, then <strong>manual choice</strong>,
+          and if none of them works it asks you.</p>
+          <p>You manage it from <strong>Settings → Observation → Manage your position</strong>: search for
+          a city by name, accept the GPS, or pick any point on a map
+          (even a mountain pass or a nameless beach, by pasting a Google Maps link).</p>
+        </div>
+      </li>
+
+      <li class="passo">
+        <div>
+          <h3>Say what sky you have</h3>
+          <p><strong>Settings → Observation → The sky you have</strong>: this is the Bortle scale, from 1
+          (a high-mountain sky) to 9 (a city centre). It is not a cosmetic detail: it decides
+          how many stars are drawn, how visible the Milky Way is, and whether a deep-sky object
+          is suggested as a target or discarded because it would not be visible from there.</p>
+        </div>
+      </li>
+
+      <li class="passo">
+        <div>
+          <h3>Look at the Tonight view</h3>
+          <p>It is the opening screen and it answers the real question: <em>what do I do tonight?</em>
+          When it gets dark, how much Moon there is, what the sky will be like hour by hour, which objects are worth
+          looking for and when the Space Station passes over. Every row has the
+          <strong>Planetarium</strong> button, which opens the map already pointed at that object.</p>
+        </div>
+      </li>
+
+      <li class="passo">
+        <div>
+          <h3>Open the Planetarium and point your phone</h3>
+          <p>From the menu at the bottom. The first time, the phone asks for permission to use its sensors: accept,
+          and from then on the sky follows your movement. If the compass is off (it happens, and it is not the app's fault),
+          there is <strong>Calibrate on an object</strong>: put the crosshair on the Moon and press the button, and the
+          correction becomes exact by construction.</p>
+          <p>Tap an object to open its <strong>bubble</strong>: four lines attached to the object,
+          with the ⓘ that opens the full card.</p>
+        </div>
+      </li>
+
+      <li class="passo">
+        <div>
+          <h3>Do your first Sky Mission</h3>
+          <p>In the Tonight view there is the <strong>Sky Mission</strong> card. Answer five questions
+          (how much time you have, what you observe with, how hard you want it, what you want to look for, which part of the sky
+          you can see) and it prepares two to six stages for you, each introduced by a riddle instead of a name.
+          It is the fastest way to understand what the app can do, and it works wonderfully with children.</p>
+          <p>At the end of the evening, mark <strong>Seen!</strong>: it goes into the Logbook, with its achievements.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="nota" style="margin-top:22px">
+      <p><strong>A tip on the order.</strong> If you are short of time, the steps that really matter are
+      <strong>2</strong> (location) and <strong>3</strong> (your sky). With those two the app is already tuned to you;
+      the others improve precision but can wait for another evening.</p>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section id="viste">
+    <h2><span class="capitolo">Chapter 02</span>The seven views</h2>
+    <p class="guida">
+      The bar at the bottom of the screen (at the top on a computer) switches between seven screens.
+      They are not seven menus of the same tool: they are seven different ways of looking at the same
+      evening, from a quick glance to precise pointing.
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <article class="vista">
+        <div class="vista-testa">
+          <h3 class="vista-nome">Tonight</h3>
+          <p class="vista-ruolo">The opening screen · what can be seen tonight from here</p>
+        </div>
+        <div class="vista-corpo">
+          <p>Four panels, and everything said only once.</p>
+          <dl class="kv">
+            <div><dt>Tonight</dt><dd>When it gets dark (astronomical twilight), how much Moon there is and when it rises or sets.</dd></div>
+            <div><dt>What sky you will have</dt><dd>All the weather in one place: the verdict for the night, the best window, and the hourly grid in Clear Sky Chart style with <strong>seeing</strong> and <strong>transparency</strong>, not just clouds.</dd></div>
+            <div><dt>What to look at</dt><dd>Planets, the Moon, deep-sky objects and comets in a single ranking, each with the button that opens the planetarium pointed there. Below, the passes of the ISS, Tiangong and Hubble.</dd></div>
+            <div><dt>Upcoming events</dt><dd>The events on their way. The row opens the planetarium on the evening of the event; the “Card” tab opens the agenda.</dd></div>
+          </dl>
+          <p class="mini" style="margin-top:14px">The <strong>Sky Mission</strong> card lives here too (chapter 06).</p>
+        </div>
+      </article>
+
+      <article class="vista">
+        <div class="vista-testa">
+          <h3 class="vista-nome">Month</h3>
+          <p class="vista-ruolo">The grid calendar</p>
+        </div>
+        <div class="vista-corpo">
+          <p>Each day carries its events with the category icon and the title. Above the grid
+          there is <strong>a single row of controls</strong>: the name of the period, two arrows, and the round today button.
+          Tapping the name opens a sheet with the fields.</p>
+          <p>There, month and <strong>date range</strong> are two tabs of the same question: the two weeks
+          of holiday, the three months left before the trip, with ready-made durations (7 days, 30, 3 months).
+          There is no limit: ten years of events are computed in batches, with a status line that
+          says how far along it is, and the events appear as they are ready.</p>
+          <p class="mini">Categories: Moon phases, eclipses, seasons, meteor showers, planets,
+          conjunctions, auroras, space stations, and your own personal events.</p>
+        </div>
+      </article>
+
+      <article class="vista">
+        <div class="vista-testa">
+          <h3 class="vista-nome">Agenda</h3>
+          <p class="vista-ruolo">Rich cards for the same events</p>
+        </div>
+        <div class="vista-corpo">
+          <p>It follows the month or range chosen in the calendar, but instead of the grid it gives one card
+          per event, answering three questions: <strong>can I see it from here?</strong> (with the observability
+          traffic light), <strong>under what sky?</strong> (that evening's weather), <strong>with what instrument?</strong>
+          (naked eye, binoculars, telescope).</p>
+          <p>Each card has its buttons: <em>See in the planetarium</em>, <em>Why it happens</em> (which opens
+          the 3D view or the animated lesson), <em>Where to see it</em> (the search for the best spot),
+          <em>Seen!</em> (which sends it to the logbook), plus sharing and export.</p>
+        </div>
+      </article>
+
+      <article class="vista">
+        <div class="vista-testa">
+          <h3 class="vista-nome">Planetarium</h3>
+          <p class="vista-ruolo">The sky in real time · the heart of the app</p>
+        </div>
+        <div class="vista-corpo">
+          <p>So big it has a chapter of its own: <a href="#planetario">chapter 03</a>. In one line:
+          the real sky above you, from a 180° wide angle down to a quarter of a degree, with the landscape
+          below and the time machine from 1600 to 3000.</p>
+        </div>
+      </article>
+
+      <article class="vista">
+        <div class="vista-testa">
+          <h3 class="vista-nome">Telescope</h3>
+          <p class="vista-ruolo">Align, point, plan, maintain</p>
+        </div>
+        <div class="vista-corpo">
+          <p>Five panels for those who own an instrument: see <a href="#telescopio">chapter 07</a>.</p>
+        </div>
+      </article>
+
+      <article class="vista">
+        <div class="vista-testa">
+          <h3 class="vista-nome">Logbook</h3>
+          <p class="vista-ruolo">What you have seen, and your achievements</p>
+        </div>
+        <div class="vista-corpo">
+          <p>Every “Seen!” pressed in the agenda ends up here, with the date, the note, the star rating
+          and the instrument used. A completed Sky Mission goes in as <strong>a single entry</strong> containing
+          its stages: five separate entries would say you saw five things in one night
+          without saying they were a route.</p>
+          <p>Above the list there are the statistics and the <strong>ten achievements</strong>:</p>
+          <div class="tabella-guscio" style="margin-top:12px">
+            <table>
+              <thead><tr><th>Achievement</th><th>How you earn it</th></tr></thead>
+              <tbody>
+                <tr><td><b>First light</b></td><td>Your first recorded observation</td></tr>
+                <tr><td><b>Regular observer</b></td><td>Five observations</td></tr>
+                <tr><td><b>Sky veteran</b></td><td>Twenty observations</td></tr>
+                <tr><td><b>Eclipse hunter</b></td><td>You saw an eclipse</td></tr>
+                <tr><td><b>Wish made</b></td><td>You saw a meteor shower</td></tr>
+                <tr><td><b>Full cycle</b></td><td>All four Moon phases</td></tr>
+                <tr><td><b>Planet tour</b></td><td>Three observations of planets or conjunctions</td></tr>
+                <tr><td><b>Collector</b></td><td>At least one event in four different categories</td></tr>
+                <tr><td><b>Enhanced eye</b></td><td>An observation made with the telescope</td></tr>
+                <tr><td><b>Night owl</b></td><td>An observation recorded between 1 and 5 a.m.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="mini" style="margin-top:12px">Sky Mission also has its own roll of honour, with cups and awards: see chapter 06.</p>
+        </div>
+      </article>
+
+      <article class="vista">
+        <div class="vista-testa">
+          <h3 class="vista-nome">Learning lab</h3>
+          <p class="vista-ruolo">Eight test benches driven by the real positions of the planets</p>
+        </div>
+        <div class="vista-corpo">
+          <p>The laboratory: <a href="#didattica">chapter 08</a>.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section id="planetario">
+    <h2><span class="capitolo">Chapter 03</span>The planetarium in depth</h2>
+    <p class="guida">
+      The Planetarium is the view that brings almost everything together: point your phone and the sky follows,
+      or drag with your finger. Below, the real landscape of the place where you are.
+      Above, the time machine.
+    </p>
+
+    <h3>The four panels</h3>
+    <p>Above the map there are four tabs, recognisable by their symbol (clock, calendar,
+    sliders, star). The third is split into five cards, and the card you used last is remembered.</p>
+
+    <div class="tabella-guscio">
+      <table>
+        <thead><tr><th>Panel</th><th>What you find there</th></tr></thead>
+        <tbody>
+          <tr><td><b>Time</b></td><td>The date typed by hand (day, month, year, hours, minutes, seconds), the time <b>step</b> from 10 seconds to 1 year, the <b>run</b> (playback) with its speed, and the place you are looking from.</td></tr>
+          <tr><td><b>Events</b></td><td>Calendar events inside the sky: those in progress, those in the coming hours and the next seven days. Tap one and the map points at it; for a meteor shower the radiant appears, for an eclipse the ring around the eclipsed body.</td></tr>
+          <tr><td><b>Display</b></td><td>Five cards: <b>Direction</b> (where I look), <b>Screen</b> (how I look), <b>Objects</b> (what I draw), <b>Sky</b> (the air above me), <b>Landscape</b> (the ground below).</td></tr>
+          <tr><td><b>Objects</b></td><td>The list of everything you can point at, divided into five families (Sun and Moon, planets, stars, deep sky, stations), with the search by name pinned at the top and the “Up now” filter.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:30px">The five cards of “Display”</h3>
+    <div class="griglia g2" style="margin-top:14px">
+      <div class="scheda">
+        <span class="etichetta">Card 1</span>
+        <h3>Direction</h3>
+        <p class="desc">The four compass points, <b>Follow the phone</b> (the compass drives the view),
+        <b>Centre</b>, <b>Track</b> (the map keeps the object in the middle while the sky moves),
+        <b>Field 55°</b>, and at the bottom the compass with its calibration.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Card 2</span>
+        <h3>Screen</h3>
+        <p class="desc">Full screen, <b>clean view</b> (removes everything that sits on top of the sky),
+        <b>night mode</b> (the red filter that does not ruin your dark adaptation), hover,
+        <b>camera</b>, grid and names. The first four close the panel as soon as you tap them,
+        because they change exactly what the panel was covering.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Card 3</span>
+        <h3>Objects</h3>
+        <p class="desc">What gets drawn: stars, planets, Sun and Moon, deep sky, constellations
+        and their <b>artwork</b>, comets and asteroids, satellites, aircraft; plus the marks that go with them:
+        the object's <b>track</b> over the surrounding hours, and the <b>ecliptic</b> with its plumb line.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Card 4</span>
+        <h3>Sky</h3>
+        <p class="desc">The air above you: the <b>atmosphere</b> (which reddens and dims low objects,
+        as it really does), the forecast <b>clouds</b>, and the <b>aurora</b>, which when switched on also opens
+        its Kp slider.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Card 5</span>
+        <h3>Landscape</h3>
+        <p class="desc">The ground below: <b>terrain</b>, <b>relief</b>, town <b>lights</b>,
+        named <b>peaks</b>, <b>water</b>. Each switch has its own status line,
+        which says how far the download has got and, if something is missing, why.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">On the map</span>
+        <h3>The column on the right</h3>
+        <p class="desc">The controls that must stay available even in full screen, where the panels do not open:
+        <b>camera</b>, <b>full screen</b>, <b>track</b>, <b>record</b>, <b>3D Solar System</b>,
+        and the two zoom buttons. The compass is at the top right, the time bar at the bottom.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:34px">Augmented reality</h3>
+    <p>The camera button (the first one in the column on the map) lays the computed sky
+    over the real image. It is not a rough overlay: a vision engine recognises the
+    <strong>Moon</strong>, the <strong>planets</strong> and the <strong>silhouettes of aircraft</strong> in the frame, matches them
+    with what the computed sky says should be there, and uses that to <strong>correct the aim</strong>.</p>
+    <p>What gets corrected is not the position of a label but the frame of reference:
+    that is why an aircraft's label stays on the aircraft even while you turn the phone.
+    A pill at the top left says how many references it is locked on to and with what error; tapping it
+    redoes the aim from scratch, which is useful when you move somewhere else (the metal around you is different).</p>
+    <div class="nota">
+      <p><strong>It works in daylight.</strong> In daytime an aircraft is a <em>dark</em> silhouette against the bright
+      sky, not a little light: the detector looks for blobs with their sign, so it finds them anyway.</p>
+    </div>
+
+    <h3 style="margin-top:30px">The time machine</h3>
+    <p>The bar at the bottom of the map is always visible: the round button that brings you back to now, the readout
+    (which opens the Time panel), the two step buttons, the slider and <strong>play</strong>.
+    With playback the sky moves, one hour per second, one day, one month, and everything moves
+    together: the Moon changes phase, the planets go backwards, the shadow of an eclipse crosses the Earth.</p>
+    <p>The limits are the year <strong>1600</strong> and the year <strong>3000</strong>. It is the same clock used by
+    the 3D view, the eclipse shadow map and the simulations: moving it in one place moves it
+    everywhere.</p>
+
+    <h3 style="margin-top:30px">How far you can zoom</h3>
+    <p>From <strong>180°</strong> (the whole sky at once, wide angle) down to <strong>a quarter of a degree</strong>:
+    at that point the Moon and the planets are true to size, <em>with their faces</em>: the maria,
+    Jupiter's belts, Saturn's rings open as wide as they really are, the polar caps of Mars.</p>
+    <p class="mini">As you zoom in, the sky empties: that is correct, and the app tells you so once.
+    The catalogue goes down to seventh magnitude, and at a quarter of a degree such a small patch
+    of sky does not, on average, contain even one of those stars.</p>
+
+    <h3 style="margin-top:30px">Tapping an object</h3>
+    <p>A tap opens the <strong>bubble</strong>: attached to the object, with a tail that points at it and follows it
+    while the sky moves. Inside, four lines you can read at a glance.</p>
+    <div class="griglia g2" style="margin-top:12px">
+      <div class="scheda">
+        <span class="etichetta">For a celestial object</span>
+        <p class="desc">What it is, which direction it is in, how high above the horizon, how bright.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">For an aircraft</span>
+        <p class="desc">Where it comes from and where it is going, how high and how fast, what aircraft it is.</p>
+      </div>
+    </div>
+    <p style="margin-top:14px">The <strong>ⓘ</strong> opens the full card with all the data; the arrow takes you back to the
+    bubble. Tapping a <strong>constellation figure</strong> opens its page in the atlas instead:
+    who named it, what it is called elsewhere, and whether it can be seen from your home.</p>
+
+    <h3 style="margin-top:30px">The 3D Solar System</h3>
+    <p>The orbit button, on the map, opens the same moment seen <strong>from outside</strong>. You arrive
+    <em>right on top of the Earth</em> (real coastlines, the boundary between day and night, city lights
+    on the dark side, the dot where you are), passing through an overview frame in which the Earth
+    sits below the Sun and the planets are arranged as you have just seen them in the sky: on the left those
+    of the evening, on the right those of the morning.</p>
+    <p>From there you zoom out and find everything: each planet with its true face and the phase seen
+    <em>from there</em>, the orbits with their nodes and inclinations, and the two belts of rocks: the asteroids
+    between Mars and Jupiter with the Kirkwood gaps, and the Kuiper belt beyond Neptune, with its cliff
+    at 48 astronomical units.</p>
+    <p>The interface is three items in a column on the left:</p>
+    <dl class="kv">
+      <div><dt>From here</dt><dd>Tonight's arrangement seen from above the Earth.</dd></div>
+      <div><dt>Everything</dt><dd>The whole Solar System, with the belts.</dd></div>
+      <div><dt>Earth and Moon</dt><dd>The same view at another scale: the two bodies at their true distance, with the two shadow cones, drawn three times wider than reality so they can be recognised. It is the scene that answers <em>“why doesn't an eclipse happen at every full Moon?”</em>, and you can read it with a ruler.</dd></div>
+    </dl>
+    <p>The eight planets are not everything. There are the <strong>minor worlds</strong>: Ceres and the three
+    asteroids that in the nineteenth century were considered planets, Pluto, and the icy worlds beyond
+    Neptune that have a name (Eris, Makemake, Haumea, Quaoar, Sedna, Orcus, Gonggong), each with its
+    orbit, almost all tilted and stretched in a way the planets' orbits never are.
+    Together with them the <strong>comets visible tonight</strong>, the same ones you find in the planetarium's
+    object list.</p>
+    <p>And the <strong>things we built</strong>. The two <strong>Voyagers</strong>, where they are now:
+    at one hundred and seventy and one hundred and forty astronomical units, one thirty-five degrees above the plane of the
+    planets and the other forty-eight below: turn the scene with your finger and you see the V. And, as you approach the
+    Earth, the <strong>ISS</strong>, <strong>Tiangong</strong> and <strong>Hubble</strong>, each with
+    the ring of its orbit: the distance is exaggerated like the Moon's (at four hundred
+    kilometres they would sit inside the Earth's dot), but the direction and the inclination of the plane are real;
+    that is why the ISS passes over Italy and Hubble almost never does.</p>
+    <p>The <strong>search</strong> field at the top finds everything in the scene by name
+    (“Saturn”, “Pluto”, “Ceres”, “Voyager 1”, “ISS”), and typing half of it is enough. If what you are looking for
+    belongs to a family that is switched off, it switches it on instead of telling you it is not there.</p>
+    <p class="mini" style="margin-top:12px">Behind the ⚙ in the right-hand column: compressed or real distances,
+    enlarged or to-scale sizes, and whether to show or hide the minor worlds and our own spacecraft.
+    Turn it with your finger, pinch to get closer, tap a body
+    to put it in the centre, and from that moment the camera orbits around it.</p>
+
+    <h3 style="margin-top:30px">Recording a moment</h3>
+    <p>The record button, on the map, saves a few seconds of sky in a video
+    (mp4 where available, otherwise webm) to share or keep, with the place and time signature stamped
+    on it. The length is chosen in the Settings: 5, 15 or 20 seconds. Saved videos can be watched again
+    from the <strong>Video gallery</strong>, in the app header, which also works offline.</p>
+  </section>
+
+  <!-- 04 -->
+  <section id="paesaggio">
+    <h2><span class="capitolo">Chapter 04</span>The world beneath the sky</h2>
+    <p class="guida">
+      This is what sets this app apart from any other planetarium: below the horizon line
+      there is not a black band, there is <strong>the place where you are</strong>. And it is not there for looks:
+      it tells you whether what you want to see is hidden behind a mountain.
+    </p>
+
+    <div class="griglia g2">
+      <div class="scheda">
+        <span class="etichetta">Terrain</span>
+        <h3>The true shape of the horizon</h3>
+        <p class="desc">Ground elevations along 120 directions × 18 distances up to 60 km, with the Earth's
+        curvature and refraction (at 60 km they are worth two and a half degrees). From that comes the real ridge in every
+        direction, that is, the answer to “has that object really risen?”.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Relief</span>
+        <h3>Not the outline: the surface</h3>
+        <p class="desc">A mesh of 720 directions × 106 rings, with elevations taken from a PNG raster
+        in which every pixel is an elevation, <b>27 metres apart</b> within 5 km. You see the valley going
+        down, the slope, the groove of the river: things an accumulated ridge cannot tell you.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Colour</span>
+        <h3>Forest, pasture, rock, snow</h3>
+        <p class="desc">The bands are not in metres but tied to the <b>snow line</b> of this
+        latitude and this season: in the Alps 2600 m in summer and 1100 m in February. On the plain the
+        line is at three thousand metres and everything stays green, as it should.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Air</span>
+        <h3>Aerial perspective</h3>
+        <p class="desc">It is what makes a ridge recognisable as distant. A veil whose opacity is
+        the column of air between you and that piece of mountain: Beer's law written as it is.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Water</span>
+        <h3>Sea, lakes and rivers</h3>
+        <p class="desc">The sea with its true perspective (from the shoreline the horizon is 5 km away, and
+        98% of that distance lies in the first degree below the line), waves <b>as long as tonight's wind
+        makes them</b>, whitecaps above 7 m/s, and the path of light from the Sun or the Moon.
+        Then lakes and rivers, each at its own elevation, with the name written on it as on a map.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Names</span>
+        <h3>Towns and peaks</h3>
+        <p class="desc">Towns are named <b>on the horizon</b>, horizontally, in amber, with the distance
+        in kilometres; mountains are attached <b>to their summit</b>, slanted, in the grey-blue of
+        distant rock, with the elevation at the end. Both are veiled by the same air that veils the ridges
+        behind them.</p>
+      </div>
+    </div>
+
+    <div class="nota blu" style="margin-top:22px">
+      <p><strong>How far to search.</strong> In <strong>Settings → Planetarium → The horizon around you</strong>
+      the three radii (peaks, towns, water) are chosen <em>on a map</em>, not with three numbers in the dark:
+      in the centre is the point the planetarium is looking from, and the three circles are the three radii. Under each
+      name a line tells you how much was found <em>and how much of it the planetarium is drawing right now</em>.</p>
+    </div>
+
+    <div class="nota ambra" style="margin-top:14px">
+      <p><strong>With GPS on, in the car.</strong> The landscape does not reload at every traffic light: the validity
+      radius grows with speed (2 km when stationary, 9 in a car, 30 in a plane), the profile is discarded
+      only after a real jump, and the eye height follows the ground under your feet: crossing a pass
+      you really start to see beyond the ridge.</p>
+    </div>
+
+    <h3 style="margin-top:30px">Polar auroras</h3>
+    <p>The auroral oval drawn where it really is, around the geomagnetic pole, squashed towards the
+    night side. Every point is atmosphere between 90 and 420 km (green low down, red high up),
+    and how far away you are decides which of the two peeks over the horizon: <strong>that is why the aurora is red from Italy</strong>,
+    while the green stays below the horizon.</p>
+    <p>There is also the <strong>Kp slider</strong>, to see what storm it would take for something to be visible
+    from here. It is how this view is used almost all the time: a real aurora, from these latitudes,
+    happens once every ten years.</p>
+
+    <h3 style="margin-top:26px">The Milky Way</h3>
+    <p>Not a blurred band: four layers of flakes (the veil, the grainy star clouds, the
+    <em>grains</em>, that is the stars the eye cannot separate, and the objects), drawn from a fractal density
+    field. There is the <strong>Great Rift</strong> as a ragged spine, the web of dust,
+    the <strong>Magellanic Clouds</strong>, the knots of glowing hydrogen (Lagoon, North America, Orion), and the colour
+    that shifts from the gold of the bulge to the blue of the outer arms.</p>
+    <p class="mini">It fades with your home Bortle value, and the full Moon almost wipes it out: that is what
+    it really does.</p>
+
+    <h3 style="margin-top:26px">The constellations</h3>
+    <p>All <strong>88</strong>, and over the stars you can switch on the <strong>drawings</strong> of the figures:
+    29 anchored to the real stars. Tapping one opens the <strong>atlas</strong>: the story of the figure,
+    the <strong>Arabic, Chinese, Māori, Aboriginal and Andean</strong> names with what they tell, and the button
+    <em>“take me under its sky”</em>, which moves the planetarium's point of view to the latitude and the
+    night that show it high in the sky.</p>
+  </section>
+
+  <!-- 05 -->
+  <section id="volano">
+    <h2><span class="capitolo">Chapter 05</span>Things that fly</h2>
+    <p class="guida">
+      Real aircraft, space stations, and the moment one of them passes in front of the Sun or the Moon.
+    </p>
+
+    <h3>ADS-B aircraft</h3>
+    <p>Real air traffic within the chosen radius, drawn in the sky and coloured
+    <strong>by distance band</strong>:</p>
+    <p style="margin-bottom:18px">
+      <span class="pillola" style="color:#f87171;border-color:#f87171">within 10 km</span>
+      <span class="pillola" style="color:#fb923c;border-color:#fb923c">within 20 km</span>
+      <span class="pillola" style="color:#facc15;border-color:#facc15">within 50 km</span>
+      <span class="pillola" style="color:#7dd3fc;border-color:#7dd3fc">beyond</span>
+    </p>
+    <p>The colour is not decoration: they used to be all the same colour, and to know which one was
+    close you had to read the kilometres on every label one by one. Tapping one opens its
+    bubble with the route; the dashed line in front of the nose is where it will be <strong>in five minutes</strong>,
+    with the minute ticks, from which you can also read its speed without any numbers.</p>
+    <div class="nota">
+      <p><strong>Data and drawing are two switches.</strong> The data starts <em>on</em> (when you decide
+      to look, the aircraft are already there) and the drawing <em>off</em> (a starry sky with ten orange
+      labels on top is not what you open at eleven at night). A light next to the button always tells you
+      how the data is doing: <span class="pillola ok">fresh</span>
+      <span class="pillola blu">arriving</span> <span class="pillola att">old</span>.</p>
+    </div>
+
+    <h3 style="margin-top:28px">ISS, Tiangong and Hubble</h3>
+    <p>The passes of the two space stations and of the Hubble telescope are computed with SGP4 from Celestrak's TLEs, and appear
+    in the Tonight view with time, direction and maximum altitude. The <em>“Go to the planetarium”</em> button opens
+    the map with the clock already set to the moment of the pass, pointed where the station will be, with
+    tracking on: a station crosses the sky in five minutes, and centred only once it would
+    slide out of the frame while you watch it.</p>
+    <p class="mini">At high zoom they are not a diamond: the ISS is 37 pixels wide at a quarter of a degree
+    of field, and you can see the truss with its panels, turned in the direction of travel.</p>
+
+    <h3 style="margin-top:28px">Transits</h3>
+    <p>When an aircraft or a station crosses the disc of the Sun or the Moon, a box
+    placed on the sky tells you <strong>who passes in front of what</strong> and <strong>in how long</strong>, with the button that
+    turns the view there.</p>
+    <p>The calculation that makes everything else necessary: the Sun's disc is half a degree wide, a nearby
+    aircraft crosses the sky at almost three degrees per second, <strong>the transit lasts between a tenth of a
+    second and a second and a half</strong>. There is no point telling you about it afterwards: you need to get there in time.</p>
+    <div class="nota ambra">
+      <p><strong>Why an aircraft is announced one minute ahead and not ten.</strong> A single degree of heading error,
+      over five minutes, moves the aircraft by 1.3 km, which at ten kilometres is more than eight degrees,
+      that is sixteen times the target. Beyond one minute the alert would only say “maybe, somewhere,
+      in that direction”. For a station it is another world: SGP4 with a fresh TLE is off by a
+      tenth of a second, and there the alert gives a time.</p>
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section id="missione">
+    <h2><span class="capitolo">Chapter 06</span>Sky Mission</h2>
+    <p class="guida">
+      The evening as a <strong>treasure hunt</strong> instead of a list. It is the feature to try first with
+      people who have never looked at the sky, and with children it is the reason they stay outside.
+    </p>
+
+    <h3>How it works</h3>
+    <p>Five questions, and from there two to six stages, one at a time. Each stage is introduced by a
+    <strong>riddle</strong> instead of a name: you are not told what to look for, it is told to you as a story.</p>
+
+    <div class="tabella-guscio" style="margin-top:14px">
+      <table>
+        <thead><tr><th>The question</th><th>What it changes</th></tr></thead>
+        <tbody>
+          <tr><td><b>How much time you have</b></td><td>How many stages: ten minutes give few, two hours quite a lot.</td></tr>
+          <tr><td><b>What you observe with</b></td><td>Eyes, binoculars or telescope. It is a <b>constraint</b>, not a preference: nothing out of reach gets into the evening.</td></tr>
+          <tr><td><b>How hard</b></td><td>Three levels, which change <em>what</em> you look for and <em>how much</em> you are told before you look.</td></tr>
+          <tr><td><b>What you want to look for</b></td><td>Planets, stars, galaxies, constellations, stations and <b>distant worlds</b>. A strict filter: if you ask for galaxies, you hunt galaxies.</td></tr>
+          <tr><td><b>Which part of the sky you can see</b></td><td>The sector that is clear from your balcony or garden.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">The three levels</h3>
+    <div class="griglia g3" style="margin-top:12px">
+      <div class="scheda">
+        <span class="etichetta">Level 1</span>
+        <h3>Children</h3>
+        <p class="desc">Easy targets, and before searching you get the <b>riddle, the sign to look for and
+        the direction</b>. The riddles have a tone of their own, which also covers the hints, the
+        discovery and the final title, not just the frame.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Level 2</span>
+        <h3>Curious</h3>
+        <p class="desc">Medium-difficulty targets, and before searching the <b>riddle and the sign</b>.
+        The direction comes with the first hint.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Level 3</span>
+        <h3>Experts</h3>
+        <p class="desc">Targets up to the highest difficulty, and <b>only the riddle</b>. Whoever guesses
+        at once has earned a stage with no help.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:28px">Distant worlds, which are not searched for in the sky</h3>
+    <p>Pluto, Eris, Sedna, Ceres, the two <strong>Voyagers</strong>: sixteen targets that cannot be seen
+    in the sky at all (Pluto is fourteenth magnitude, Sedna twenty-first, and a probe
+    is not even an astronomical object). They all sit in their true place in the
+    <strong>3D Solar System</strong>, though, and that is where you look for them: when it is the turn of a stage of this
+    kind that view opens full screen, with the riddle on top, and you tap the right
+    little disc instead of pointing your phone. When the stage is over, if the next one is in the sky you
+    go back to the planetarium by yourself: the change of view is not a button to press.</p>
+    <p class="mini">Here the hints speak another geometry, because up there there is no south: they tell you
+    which part of the drawing to be in (the band between Mars and Jupiter, the stretch between the giants, the ring beyond
+    Neptune, the emptiness that comes after) and how far out, in Earth orbits and in light-hours. Zoom the
+    drawing out with − until their band fits in the frame.</p>
+
+    <h3 style="margin-top:28px">Hints, and the solution</h3>
+    <p>If you can't find it, there are <strong>three hints</strong>, and they are three verses of the same riddle,
+    not a satnav taking over at the second line. Each one still contains the
+    geometry: the direction (including the <em>opposite</em> compass point, “turn your back to the south-east”,
+    which you really use in the dark), the altitude band, and a bright reference to start from with
+    the distance measured in <strong>fingers and fists at arm's length</strong>, the only protractor everyone
+    carries.</p>
+    <p>After the third hint the <strong>Solution</strong> button appears, separate and in another colour.
+    Giving up is not getting it wrong: the stage does not close, and the score takes it into account.</p>
+    <p class="mini">The third hint once revealed the target and centred it, so the hunt ended without anyone
+    having decided so, taking away the only thing a hunt has to give: getting there by yourself.</p>
+
+    <h3 style="margin-top:28px">When you find it</h3>
+    <p>You tap the target on the planetarium map. If it is the right one (the tap tolerance
+    is adjustable in the settings, because a fingertip is not a mouse) the discovery arrives, in
+    four beats:</p>
+    <ol>
+      <li><strong>The cheer</strong>, because that is what a person does: first they cheer, then they tell you what you found.</li>
+      <li><strong>The name</strong>, with its kind said with the right word.</li>
+      <li><strong>A real, imaginable number</strong>: in what year that light set off, how many full Moons would fit inside that nebula, how many minutes of light separate us from that planet.</li>
+      <li><strong>An anecdote</strong>: a myth, a discovery or an oddity, and if there is more than one you can ask for another.</li>
+    </ol>
+    <p>And then the question that turns the conversation around: not “here is what it is” but <em>“now you look at it, and tell me what you see”</em>.
+    That last line is what turns a notification into an observation.</p>
+
+    <h3 style="margin-top:28px">Cups and awards</h3>
+    <p>They are two different things. The <strong>cup</strong> belongs to the evening: gold, silver or bronze depending on
+    how much you found and how many hints it cost you. The <strong>awards</strong> are forever: they are not won
+    and not lost, they are unlocked and they stay, and they speak of what you saw (five different planets,
+    ten deep-sky objects, three evenings) and not of how good you were. You can look at them in the trophy case.</p>
+    <p class="mini">There is no tin cup: whoever finds nothing has not lost a race,
+    they just had a bad evening, and the voice stays quiet.</p>
+
+    <div class="nota blu" style="margin-top:20px">
+      <p><strong>The voice.</strong> Sky Mission can be listened to, and it has a style for every moment of the hunt:
+      the riddle said softly, the discovery said with excitement, giving up said under the breath, the cup being handed over.
+      With children it goes up a notch. If a speech synthesis service is configured it uses that one,
+      otherwise the device's voice.</p>
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section id="telescopio">
+    <h2><span class="capitolo">Chapter 07</span>The Telescope view</h2>
+    <p class="guida">
+      Five panels for those who own an instrument. You declare the profile once (aperture, focal length,
+      eyepieces, Barlow) or choose a preset telescope, and from there everything else is computed.
+    </p>
+
+    <div class="tabella-guscio">
+      <table>
+        <thead><tr><th>Panel</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Instrument</b></td>
+            <td>Magnification, true field, exit pupil and limiting magnitude for every eyepiece
+            + Barlow combination. And <em>what will I really see</em>: the object's contrast against the sky background
+            of your Bortle value, which is the question that matters and one no catalogue answers.</td>
+          </tr>
+          <tr>
+            <td><b>Alignment</b></td>
+            <td>The axis to the pole, one step at a time. The phone becomes a <b>spirit level</b>, a <b>protractor</b> and a
+            <b>compass</b>; there is the Polaris clock (where it sits relative to the true pole at this instant)
+            and drift alignment for those who want photographic precision.</td>
+          </tr>
+          <tr>
+            <td><b>Point</b></td>
+            <td>Three ways. <b>Digital setting circles</b>, <b>star hopping</b> (from the known star to the
+            target, with the chart drawn at the field of your eyepiece), and <b>push-to</b>: rest the
+            phone on the tube and a radar tells you how far to move, in which direction, until you are there.</td>
+          </tr>
+          <tr>
+            <td><b>Session</b></td>
+            <td>Tonight's plan, ordered the way it is best carried out. And the <b>dew point</b>
+            computed with the Magnus formula: when the optics are about to fog up, and how long is left.</td>
+          </tr>
+          <tr>
+            <td><b>Care</b></td>
+            <td>Guided collimation and star test, with a drawing of what the diffraction
+            pattern should look like inside and outside focus.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:18px" class="mini">The celestial pole computed in this view is also drawn
+    inside the planetarium, and the local magnetic declination, which matters to an
+    equatorial mount rather than to a planetarium, can be read here.</p>
+  </section>
+
+  <!-- 08 -->
+  <section id="didattica">
+    <h2><span class="capitolo">Chapter 08</span>The laboratory</h2>
+    <p class="guida">
+      Eight test benches, one on screen at a time, driven by the real positions of the planets, not
+      hand-drawn animations. Every three-dimensional scene can be turned with your finger and can take over the whole
+      screen with ⛶ (or by turning the phone sideways).
+    </p>
+
+    <div class="griglia g2">
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>Why the planets go backwards</h3>
+        <p class="desc">Retrograde motion. Above, the plan of the orbits; below, the loop the planet
+        draws in the sky, and the two things moving together.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>Kepler's three laws</h3>
+        <p class="desc">The ellipse, equal areas swept in equal times, and the harmony between period and distance,
+        the latter as a graph, because it is a relationship and not a scene.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>The gravitational slingshot</h3>
+        <p class="desc">Three cards: the test bench (move the flyby point with your finger and
+        watch how much is gained), <b>the step-by-step maths</b> with the current numbers, and the
+        Voyagers' <b>Grand Tour</b> in 3D, with the two probes really leaving the plane of the planets.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>Launch windows</h3>
+        <p class="desc">Why to go to Mars you leave in certain months and not in others, and what happens
+        if you leave outside the window.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>Alignments</h3>
+        <p class="desc">When the planets line up, and how well in line they really get.
+        The search looks at every pair, not just the whole group: five planets within a few degrees
+        almost never happens.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>How an aurora lights up</h3>
+        <p class="desc">Five frames: the solar wind, the magnetosphere in 3D, the tail that snaps,
+        the oval around the pole, and <b>why it is red from here</b>, the last one drawn to true scale,
+        curvature included, so that the angles can be measured with a protractor on the screen.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>Why constellations do not exist</h3>
+        <p class="desc">The stars of a figure placed in real space, each at its measured
+        distance. You fly around the cloud, move away up to two thousand light-years until the figure
+        falls apart, and <b>go and stand on one of its stars</b> (on a planet of Betelgeuse or Rigel),
+        with the sky redrawn from there. In Orion's belt, Alnilam is 1977 light-years away and the other two
+        seven hundred: seen from the side they are no longer in line.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Bench</span>
+        <h3>The setting Sun</h3>
+        <p class="desc">Four frames, a single knob (how far the Earth has turned). The <b>Earth turning</b>
+        under your finger, <b>how much air</b> the light crosses (8.5 km of atmosphere against the more than 300 that
+        light travels when the Sun is on the horizon), <b>what colour comes out</b> of the maths, and
+        <b>the same sky on Mars</b>, where everything is reversed: straw-coloured by day and blue around
+        the Sun at sunset, because there it is not molecules that scatter the light but dust.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:18px">Each bench ends with the buttons that bring the same thing
+    <strong>into the planetarium</strong> and <strong>into the 3D view</strong>. The aurora bench also takes you to another
+    place and another night (Tromsø, Fairbanks, the Po Valley on 10 May 2024) where the aurora
+    really happened.</p>
+  </section>
+
+  <!-- 09 -->
+  <section id="impostazioni">
+    <h2><span class="capitolo">Chapter 09</span>Settings and data</h2>
+    <p class="guida">
+      The <strong>Settings</strong> button in the header opens five tabs: the three below, then
+      <b>Automated demos</b> (<a href="#demo">chapter 10</a>) and <b>Guide</b>, which opens this page.
+      It is also the place where your data goes out and comes back in.
+    </p>
+
+    <div class="griglia g3">
+      <div class="scheda">
+        <span class="etichetta">Tab 1</span>
+        <h3>Observation</h3>
+        <p class="desc"><b>Your position</b> (management, search by name, map) and <b>the sky you have</b>,
+        the Bortle scale, in sync with the telescope profile: changing it here or there is the same thing.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Tab 2</span>
+        <h3>Planetarium</h3>
+        <p class="desc"><b>The horizon around you</b> (the three radii on a map), the map controls,
+        the Sky Mission tap tolerance, how long bubbles stay
+        on screen, and the recording length.</p>
+      </div>
+      <div class="scheda">
+        <span class="etichetta">Tab 3</span>
+        <h3>Data</h3>
+        <p class="desc"><b>Export backup</b> and <b>Restore backup</b> to save or recover your logbook,
+        position, telescope, terrain and Sky Mission roll of honour; <b>Download the next 12 months</b>
+        instead creates a file to add to your calendar.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:28px">The header buttons</h3>
+    <dl class="kv">
+      <div><dt>Add event</dt><dd>An event of your own in the calendar, with its category: a planned outing, an evening at the club, a birthday under the stars.</dd></div>
+      <div><dt>Gallery</dt><dd>The videos recorded in the planetarium, which you can watch again even offline. The first time it asks you to link a folder on the device.</dd></div>
+      <div><dt>Install the app</dt><dd>Puts it on the home screen as a real app.</dd></div>
+      <div><dt>Notify me</dt><dd>Reminders for the events that are coming up.</dd></div>
+      <div><dt>Settings</dt><dd>The tabs above, plus automated demos and the guide.</dd></div>
+      <div><dt>Language</dt><dd>Italian or English. Instant, reloads nothing.</dd></div>
+    </dl>
+
+    <h3 style="margin-top:26px">Sharing</h3>
+    <p>Everything that leaves the app <strong>carries the place with it</strong>: sharing an event
+    writes the place next to the date, the calendar file includes location and coordinates,
+    and the signature stamped on videos says where and when. An astronomical time without its place is a
+    time the recipient reads as if it applied to their own home.</p>
+  </section>
+
+  <!-- 10 -->
+  <section id="demo">
+    <h2><span class="capitolo">Chapter 10</span>Automated demos</h2>
+    <p class="guida">
+      A demo is a <strong>short story the app performs by itself</strong>: it moves the place and the clock,
+      points the camera, zooms, runs time forward and flies from the planetarium to the 3D Solar System.
+      It is meant for showing a phenomenon to someone (in class, at the club, at a public evening) without
+      touching anything. At the end everything goes back exactly as it was.
+    </p>
+
+    <h3>Starting a demo</h3>
+    <ol class="passi" style="margin-top:12px">
+      <li class="passo">
+        <div>
+          <h3>Open Settings → Automated demos</h3>
+          <p>The tab shows a list and a card: title, description, duration, number of scenes,
+          date, place, field of view and any simulated Kp of the chosen demo.</p>
+        </div>
+      </li>
+      <li class="passo">
+        <div>
+          <h3>Choose one and press “Start demo”</h3>
+          <p>The settings close, the planetarium goes full screen and the story begins.
+          At the bottom the demo bar appears, with the title, the current scene (“scene 1/2 · Planetarium · 8 s”)
+          and the <b>Pause</b>/<b>Resume</b>, <b>Restart</b> and <b>End demo</b> buttons.</p>
+        </div>
+      </li>
+      <li class="passo">
+        <div>
+          <h3>Watch, or step in</h3>
+          <p>You can drag the sky, zoom with two fingers or the mouse wheel, use the arrow keys and change the filters
+          <strong>without stopping the demo</strong>: as soon as you step in, the camera is yours until the end of the
+          current scene, while the story's clock keeps running. The next scene takes back its own framing.</p>
+        </div>
+      </li>
+      <li class="passo">
+        <div>
+          <h3>Leave whenever you like</h3>
+          <p><kbd>Esc</kbd> or <b>End demo</b> stop it immediately. If you switch to another tab or another
+          app, the demo pauses by itself: when you come back, resume it from the bar.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="nota blu" style="margin-top:18px">
+      <p><strong>What is restored.</strong> At the end of the demo, or when you stop it, these go back to how they were:
+      the app view, date and time, the place the sky is seen from, the camera direction, the field
+      of view, the planet, Sun and Moon filters, tracking, the time step and playback, the 3D
+      view, the simulated aurora and full screen. The app's <strong>saved position</strong> is never
+      touched: the demo's place is only temporary.</p>
+    </div>
+
+    <h3 style="margin-top:28px">The four built-in demos</h3>
+    <div class="tabella-guscio" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Demo</th><th>Length</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td><b>Total solar eclipse · August 12, 2026</b></td><td>3 scenes · 30 s</td><td>From Reykjavík, a 4° field on the Sun during totality; then the flight to the Solar System and the Earth–Moon bench, with the camera circling the Earth while keeping the real shadow footprint in the centre.</td></tr>
+          <tr><td><b>Total lunar eclipse · December 31, 2028</b></td><td>2 scenes · 24 s</td><td>From Sapporo, the Moon centred and magnified down to 2.5° while time crosses the eclipse, including the maximum at 01:52 local time on January 1.</td></tr>
+          <tr><td><b>Northern lights · polar night</b></td><td>2 scenes · 20 s</td><td>From Tromsø, a 90° field facing north and the auroral oval with <b>simulated Kp 5</b>, from 21:00 to 23:30. It is a teaching simulation, not a forecast.</td></tr>
+          <tr><td><b>Planet parade · October 21, 2028</b></td><td>2 scenes · 22 s</td><td>From Tucson before dawn: Mercury, Venus, Mars and Jupiter highlighted, with a framing computed so that all four fit.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mini" style="margin-top:10px">The positions are always those computed by the app: a demo never moves
+    a planet to make things work, it chooses the date and place where the phenomenon really happens.</p>
+
+    <h3 style="margin-top:28px">Creating your own demo</h3>
+    <p>The built-in demos are read-only. There are three ways to get one of your own:</p>
+    <dl class="kv">
+      <div><dt>Duplicate and edit</dt><dd>Starts from an existing demo. The copy gets a new name
+      (for example <code>eclisse_tour_copia</code>) and opens straight away in the editor.</dd></div>
+      <div><dt>Create new</dt><dd>Opens a draft with an example planetarium scene.</dd></div>
+      <div><dt>Import demo from file</dt><dd>An <code>.astrodemo</code> or <code>.txt</code> file of up to 100 KB, for
+      example one a colleague sent you. It is checked before opening and overwrites nothing: it becomes a draft.</dd></div>
+    </dl>
+    <p style="margin-top:14px">The editor is in <b>Advanced details</b>. As you type, the line under the text says
+    whether the script is valid or what the problem is, with <strong>line and column</strong>. While there is an error
+    you can neither save nor start it. The <b>Scene or action template</b> menu with <b>Add scene</b> appends
+    a complete scene at the end, ready to adjust. <b>Save script</b> adds it to this device's library;
+    <b>Export .astrodemo</b> downloads a copy to share; <b>Discard changes</b> and <b>Delete</b> do
+    what they say, and ask for confirmation before throwing away unsaved work.</p>
+    <div class="nota" style="margin-top:6px">
+      <p><strong>Keep a copy.</strong> Personal demos live only in this browser and are not part of the
+      data backup: if you care about them, export them to a file.</p>
+    </div>
+
+    <h3 style="margin-top:28px">What a script looks like</h3>
+    <p>A script is text, not a program: you describe what should happen and the app performs it. It has three levels:
+    the <strong>demo</strong>, its <strong>scenes</strong> one after another, and inside each scene the <strong>actions</strong>.</p>
+<pre class="codice"><code>define_demo 'moon_from_rome' {
+  // A comment is everything after two slashes.
+  scene planetarium_view {
+    duration: 6s;
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Rome', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2028-12-31T16:30:00Z' };
+    action: set_fov { degrees: 6 };
+    action: center_target { target: 'Moon' };
+  }
+  scene planetarium_view {
+    duration: 12s;
+    action: timelapse { start: 17:30, end: 19:30 };
+    action: center_target { target: 'Moon' };
+  }
+}</code></pre>
+    <ul>
+      <li><b>define_demo</b> gives the name of the demo, in quotes or as a single word without spaces. It is the name you see in the list.</li>
+      <li><b>scene</b> is followed by the scene type: <code>planetarium_view</code> (the planetarium),
+      <code>transition</code> (the flight to the Solar System) or <code>solar_system_3d</code> (the 3D view).
+      The app opens the right view by itself at the start of each scene.</li>
+      <li><b>duration</b> is required in every scene, in seconds (<code>12s</code>, also <code>2.5s</code>) or milliseconds
+      (<code>800ms</code>), up to one hour.</li>
+      <li><b>action</b> is a command with its parameters in braces. Every scene needs at least one.
+      <strong>The actions of a scene all start together</strong> and last as long as the scene.</li>
+      <li>Every line ends with a <b>semicolon</b>, parameters are separated by commas, text goes in quotes.</li>
+    </ul>
+
+    <h3 style="margin-top:28px">The actions</h3>
+    <div class="tabella-guscio" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Action</th><th>Parameters</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>set_location</code></td><td><code>lat</code> (−90…90), <code>lon</code> (−180…180), <code>name</code> (1–80 characters), <code>timezone</code> (IANA zone, e.g. <code>Europe/Rome</code>)</td><td>Looks at the sky from that place for the length of the demo. All four parameters are required.</td></tr>
+          <tr><td><code>set_date</code></td><td><code>iso</code>: <strong>UTC</strong> date and time in the form <code>2028-12-31T16:30:00Z</code></td><td>Sets the clock to that instant. Non-existent dates (February 30) are rejected.</td></tr>
+          <tr><td><code>timelapse</code></td><td><code>start</code>, <code>end</code>: <strong>local</strong> times <code>HH:MM</code></td><td>Runs time from one to the other over the length of the scene. If the end is before the start, it crosses midnight.</td></tr>
+          <tr><td><code>set_fov</code></td><td><code>degrees</code>: 0.5…160</td><td>Sets the field of view.</td></tr>
+          <tr><td><code>point_view</code></td><td><code>az</code> (0…360, 0 = north), <code>alt</code> (−90…90)</td><td>Points the camera in a fixed direction.</td></tr>
+          <tr><td><code>center_target</code> (or <code>center</code>)</td><td><code>target</code>: <code>Sun</code>, <code>Moon</code>, <code>Mercury</code>, <code>Venus</code>, <code>Mars</code>, <code>Jupiter</code>, <code>Saturn</code>, <code>Uranus</code>, <code>Neptune</code>, or <code>Eclipse Shadow</code></td><td>Keeps the object in the centre and follows it as time runs. <code>Eclipse Shadow</code> applies to the 3D view: it finds the solar eclipse closest to the demo's date and centres the shadow's footprint on the Earth.</td></tr>
+          <tr><td><code>frame_objects</code></td><td><code>names</code>: 2 to 8 bodies separated by commas, e.g. <code>'Mercury,Venus,Mars,Jupiter'</code></td><td>Works out the centre and field by itself so that they all fit, and updates them as they move.</td></tr>
+          <tr><td><code>highlight_object</code></td><td><code>name</code>: a planet (not the Sun or Moon), <code>scale</code>: 1…10</td><td>Draws the planet larger so it stands out. It does not change its position.</td></tr>
+          <tr><td><code>simulate_aurora</code></td><td><code>kp</code>: 0…9</td><td>Switches on the auroral oval with that simulated Kp.</td></tr>
+          <tr><td><code>zoom_view</code></td><td><code>type: geometric</code>, <code>final_target: solar_system_3d</code></td><td>The flight from the planetarium to the Solar System. It goes in a <code>transition</code> scene; the flight lasts as long as the scene.</td></tr>
+          <tr><td><code>orbit_object</code></td><td><code>object: 'Earth-Moon'</code>, <code>angle</code> in degrees, <code>speed: slow</code></td><td>On the Earth–Moon bench it turns the camera by that angle around the Earth, setting the clock to the nearest solar eclipse.</td></tr>
+          <tr><td><code>transition_to</code></td><td><code>target</code>: <code>planetarium_view</code> or <code>solar_system_3d</code></td><td>Switches view at once, without the flight.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">The rules that matter</h3>
+    <dl class="kv">
+      <div><dt>Order within a scene</dt><dd>Actions start together, but they are prepared in the order written.
+      Put <code>set_location</code> and <code>set_date</code> <strong>before</strong> <code>timelapse</code>: the
+      timelapse times are read in the place and on the day already set.</dd></div>
+      <div><dt>UTC and local time</dt><dd><code>set_date</code> is in UTC (the final <code>Z</code>); <code>timelapse</code>
+      uses the place's civil time, daylight saving included. A time that does not exist (02:30 on the night
+      the clocks go forward) is reported before saving.</dd></div>
+      <div><dt>Scenes chain together</dt><dd>Place, date and field stay as the previous scene left them,
+      until a new scene changes them. Repeat <code>center_target</code>, <code>frame_objects</code>,
+      <code>point_view</code> and <code>highlight_object</code> in every scene where you need them: they only apply to their own.</dd></div>
+      <div><dt>The camera</dt><dd>The viewer can always take the camera. From that moment the framing actions
+      of the current scene stop; the next scene starts again with its own.</dd></div>
+      <div><dt>Before starting</dt><dd>A demo does not start with the Solar System open, during a recording
+      or a Sky Mission in progress, or while the planetarium does not yet have a place and catalogues ready: the app says so.</dd></div>
+      <div><dt>Reduced motion</dt><dd>If the system's “reduce motion” preference is on, the decorative rotation
+      of the Earth–Moon bench is skipped. If the preference changes during a demo, the demo stops and restores.</dd></div>
+    </dl>
+
+    <h3 style="margin-top:28px">When something goes wrong</h3>
+    <ul>
+      <li><b>“Unknown field”, “Expected ;”, “Unexpected character”</b>: a typing mistake. Look at the line and column shown; often a semicolon or a brace is missing.</li>
+      <li><b>“Unknown parameter”</b>: the parameter name is wrong, for example <code>fov</code> instead of <code>degrees</code>.</li>
+      <li><b>“Invalid IANA time zone”</b>: the time zone must be written in full, like <code>Europe/Rome</code> or <code>America/New_York</code>.</li>
+      <li><b>“This civil time does not exist”</b>: move the timelapse outside the hour skipped by the daylight-saving change.</li>
+      <li><b>The demo stops halfway with a warning</b>: an action could not continue (for example, no eclipse found). The demo restores everything and the warning says why.</li>
+    </ul>
+  </section>
+
+  <!-- 11 -->
+  <section id="offline">
+    <h2><span class="capitolo">Chapter 11</span>Network and offline</h2>
+    <p class="guida">
+      All the services used are public and need no key, and <strong>none of them is required</strong>:
+      each one has its fallback and none can block the app. This table says what you lose
+      when there is no network.
+    </p>
+
+    <div class="tabella-guscio">
+      <table>
+        <thead><tr><th>What</th><th>Without a network</th></tr></thead>
+        <tbody>
+          <tr><td><b>The whole computed sky</b><br><span class="mini">ephemerides, phases, eclipses, rising and setting, conjunctions</span></td><td><span class="pillola ok">works</span> It is computed in the browser: there is nothing to download.</td></tr>
+          <tr><td><b>Stars, constellations, deep sky</b></td><td><span class="pillola ok">works</span> The catalogues are already included in the app.</td></tr>
+          <tr><td><b>Terrain and landscape already downloaded</b></td><td><span class="pillola ok">works</span> They stay saved: a hill is where it was. The app keeps the last four places.</td></tr>
+          <tr><td><b>Logbook, telescope, settings</b></td><td><span class="pillola ok">works</span> They are all on the device.</td></tr>
+          <tr><td><b>Weather, seeing, transparency</b></td><td><span class="pillola att">last value</span> The last forecast downloaded stays, with its date.</td></tr>
+          <tr><td><b>Kp index and forecast auroras</b></td><td><span class="pillola att">last value</span> The simulated Kp slider works anyway.</td></tr>
+          <tr><td><b>Terrain for a new place</b></td><td><span class="pillola">does not arrive</span> The invented horizon remains, with the reason written and automatic retries.</td></tr>
+          <tr><td><b>ADS-B aircraft</b></td><td><span class="pillola">does not arrive</span> The last snapshot remains, projected along the route, with how old it is.</td></tr>
+          <tr><td><b>ISS, Tiangong and Hubble passes</b></td><td><span class="pillola">does not arrive</span> Updated TLEs from Celestrak are needed.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:18px" class="mini">
+      The services consulted, all without an account: <strong>Open-Meteo</strong> (weather and ground elevations),
+      <strong>OpenStreetMap / Overpass</strong> (towns, peaks, lakes and rivers), <strong>AWS Terrain Tiles</strong>
+      (the relief tiles), <strong>Celestrak</strong> (TLEs), <strong>NOAA</strong> (Kp index),
+      four community <strong>ADS-B</strong> networks, and the base maps from OSM, OpenTopoMap and Esri.
+    </p>
+  </section>
+
+  <!-- 12 -->
+  <section id="scorciatoie">
+    <h2><span class="capitolo">Chapter 12</span>Gestures and shortcuts</h2>
+
+    <h3>With your finger</h3>
+    <div class="tabella-guscio" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Gesture</th><th>In the planetarium</th><th>In 3D scenes</th></tr></thead>
+        <tbody>
+          <tr><td><b>One finger</b></td><td>Drags the sky, with inertia: let go and it stops by itself</td><td>Turns the scene with inertia: the finger lets it go and friction stops it</td></tr>
+          <tr><td><b>Two fingers</b></td><td>Pinch to zoom</td><td>Zooms <em>and</em> moves</td></tr>
+          <tr><td><b>One tap</b></td><td>Opens the object's bubble</td><td>Selects the body and puts the camera on it</td></tr>
+          <tr><td><b>Two taps</b></td><td>Full screen</td><td>Zooms in, and the next two put it back</td></tr>
+          <tr><td><b>Turning the phone</b></td><td colspan="2">Putting the screen sideways means “show me this bigger”: the scene on screen takes over everything, and turning it upright again puts it back where it was.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:26px">From the keyboard</h3>
+    <div class="tabella-guscio" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Key</th><th>Where</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>Esc</kbd></td><td>Everywhere</td><td>Closes the sheet in front. In the planetarium: first the full card, then the bubble. During a demo it ends it and puts everything back as it was.</td></tr>
+          <tr><td><kbd>F</kbd></td><td>Planetarium, 3D, maps</td><td>Full screen</td></tr>
+          <tr><td><kbd>Space</kbd></td><td>3D view</td><td>Starts and stops the passage of time</td></tr>
+          <tr><td><kbd>C</kbd></td><td>3D view</td><td>Puts the scene back in the centre</td></tr>
+          <tr><td><kbd>R</kbd></td><td>3D view</td><td>Restores the opening framing</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>3D view, lesson</td><td>Turns the scene / changes frame</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>Object search, date fields</td><td>Picks the first result / goes to the date typed</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:26px">Three things you won't find by yourself</h3>
+    <ul>
+      <li>The <strong>time bar readout</strong>, at the bottom of the map, is a button: tap it and
+      the Time panel opens. It works inside the 3D view too, where it is the same panel, on loan.</li>
+      <li>The <strong>globe</strong> next to the planetarium tabs moves the point of view to another
+      place in the world <em>without touching the app's position</em>: you go and see the sky
+      from Australia and then come home with one button.</li>
+      <li>The <strong>augmented reality pill</strong>, at the top left when the camera is on,
+      can be tapped to redo the aim from scratch.</li>
+    </ul>
+  </section>
+
+  <!-- 13 -->
+  <section id="guai">
+    <h2><span class="capitolo">Chapter 13</span>If something doesn't add up</h2>
+    <p class="guida">
+      Almost everything that “doesn't work” has an explanation written somewhere in the app.
+      This is the map of where to look.
+    </p>
+
+    <div class="tabella-guscio">
+      <table>
+        <thead><tr><th>The symptom</th><th>What to check, and what it usually is</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>The sky is off by several degrees</b></td>
+            <td>It is the <b>compass</b>, and almost never the software: nearby metal, a magnetic case,
+            the car dashboard, a reinforced roof shift the field by degrees, and no phone can guess it.
+            Put the crosshair on the Moon or a planet and press <b>Calibrate on an object</b>: the correction
+            becomes exact. The app notices by itself and dims the dial when the compass is disturbed.</td>
+          </tr>
+          <tr>
+            <td><b>The terrain does not appear</b></td>
+            <td>The <b>pill at the bottom left</b> shows how far the download has got, over four stages.
+            The status line in the Landscape card says the rest: if a source answered “too many requests”
+            the app switches door by itself and retries after 20 s, 90 s, 5 min, 15 min and half an hour. The
+            panel button retries immediately and clears the penalties.</td>
+          </tr>
+          <tr>
+            <td><b>No names on the horizon</b></td>
+            <td><b>Mountain names start switched off</b>: turn them on with their button. If they are on and
+            nothing appears, the status line says which case it is: still waiting for the terrain,
+            the service is not answering, there are no named peaks here, or there are but they all stay
+            behind the first ridge.</td>
+          </tr>
+          <tr>
+            <td><b>A nearby lake is not visible</b></td>
+            <td>The water count says <em>where</em> it lost the stretches: out of range, above eye level,
+            hidden by the terrain. “There is water around here, but the terrain in front hides all of it” is a
+            different answer from “no lake within twenty-five kilometres”.</td>
+          </tr>
+          <tr>
+            <td><b>No aircraft in the sky</b></td>
+            <td>Look at the <b>light</b> next to the Aircraft button: grey means paused, red a fault
+            (with what it is and when it will retry), green means the data is there, and then
+            check that the <b>drawing</b> is on: data and drawing are two switches.</td>
+          </tr>
+          <tr>
+            <td><b>The stars disappear when zooming in</b></td>
+            <td>That is correct, and the app tells you once per session: the catalogue goes down to seventh
+            magnitude, and below two degrees of field a patch of sky contains on average half a star.
+            Below 6° the few that remain are drawn one by one, with a halo and a name.</td>
+          </tr>
+          <tr>
+            <td><b>I can't see a change that was just published</b></td>
+            <td>The installed app may still be showing the previous version. Reload the page
+            or close and reopen the app.</td>
+          </tr>
+          <tr>
+            <td><b>A demo won't start</b></td>
+            <td>The warning says why. Usually the <b>Solar System is open</b>, a <b>recording</b>
+            or a <b>Sky Mission</b> is in progress, or the planetarium does not yet have its place and catalogues ready:
+            close them, wait a moment and try again. For your own demo, the line under the editor shows the line and column
+            of the error (see <a href="#demo">chapter 10</a>).</td>
+          </tr>
+          <tr>
+            <td><b>The position is wrong</b></td>
+            <td>A position <b>chosen by hand</b> is not overridden by GPS or the network, on purpose:
+            to have it recomputed, use <b>Detect again</b> in the position window.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="nota" style="margin-top:20px">
+      <p><strong>The general rule.</strong> In this app an absence is never silent: if something is missing,
+      somewhere it says why. Before blaming the software, look for the status line
+      of the piece that has gone quiet: it is always next to its switch.</p>
+    </div>
+  </section>
+
+  <!-- 14 -->
+  <section id="glossario">
+    <h2><span class="capitolo">Chapter 14</span>Glossary</h2>
+    <p class="guida">The words the app uses without explaining them every time.</p>
+
+    <dl class="kv">
+      <div><dt>Altitude and azimuth</dt><dd>The two coordinates of someone looking up: <b>altitude</b> is how many degrees above the horizon (0 = horizon, 90 = zenith), <b>azimuth</b> is the direction counted from north towards east. They are the right coordinates for a pair of eyes; right ascension and declination are the right ones for a mount.</dd></div>
+      <div><dt>Magnitude</dt><dd>How bright an object is. The lower the number, the brighter it shines: Sirius is −1.5, the naked eye under a good sky reaches 6. Each magnitude is a factor of 2.5 in light.</dd></div>
+      <div><dt>Bortle scale</dt><dd>How dark your sky is, from 1 (high mountains, the Milky Way casts shadows) to 9 (city centre). It is the setting that changes what the app suggests more than any other.</dd></div>
+      <div><dt>Seeing</dt><dd>How steady the atmosphere is. A clear but turbulent sky gives dancing stars and a telescope that cannot hold high magnifications. It comes from the jet stream, that is, the wind at altitude.</dd></div>
+      <div><dt>Transparency</dt><dd>How clean the air is. It is different from seeing and from clouds: a night can be clear, steady and hazy.</dd></div>
+      <div><dt>Astronomical twilight</dt><dd>When the Sun is 18° below the horizon: from then on it is truly dark, and it is the time from which the app counts the night.</dd></div>
+      <div><dt>Elongation</dt><dd>How far a planet is from the Sun as seen from here. It decides whether it can be seen in the evening, in the morning, or not at all.</dd></div>
+      <div><dt>Opposition</dt><dd>The planet on the opposite side from the Sun: it rises at sunset, culminates at midnight, and it is the time of year when it is closest and largest.</dd></div>
+      <div><dt>Kp index</dt><dd>How disturbed the Earth's magnetic field is, from 0 to 9. To see an aurora from northern Italy you need at least 7, and that is rare.</dd></div>
+      <div><dt>Deep-sky object</dt><dd>Everything that is neither a star nor a Solar System body: nebulae, clusters, galaxies. The app's catalogue has 142 of them, the full Messier list plus the bright NGCs.</dd></div>
+      <div><dt>Exit pupil</dt><dd>The beam of light leaving the eyepiece, in millimetres. Wider than the pupil of your eye (6–7 mm when young, less later) means wasted light.</dd></div>
+      <div><dt>ADS-B</dt><dd>The system aircraft use to broadcast position, altitude and heading. Community networks collect it with volunteers' receivers, which is why coverage has gaps.</dd></div>
+      <div><dt>Timelapse</dt><dd>Time running faster: minutes or hours of sky in a few seconds. In demos it is written with a start and an end time, in the place's local time.</dd></div>
+      <div><dt>TLE</dt><dd>The two lines of numbers that describe a satellite's orbit. They age: fresh ones give a pass accurate to a tenth of a second, week-old ones no longer do.</dd></div>
+    </dl>
+  </section>
+
+  </main>
+</div>
+
+<footer class="guscio chiusura">
+  <p style="max-width:66ch;margin:0">
+    <strong>AstroCalendario di Ben</strong>, a web application for amateur stargazing.
+    No account, no server, no tracking: the calculations happen on the device and your data
+    stays there. Astronomical information comes from the Hipparcos, Yale BSC, Messier and HYG catalogues;
+    the orbits of planets and minor bodies from the MPC and JPL catalogues distributed by Stellarium.
+  </p>
+  <p style="margin:16px 0 0">
+    <a href="index.html">← Back to the app</a> &nbsp;·&nbsp; <a href="#inbreve">Back to the top ↑</a>
+  </p>
+</footer>
+
+</body>
+</html>

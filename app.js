@@ -3258,7 +3258,7 @@ function _eclissiAggiornaDatiLocali(quadro) {
   }
 
   if (typeof Astronomy === 'undefined') {
-    datiLocaliEl.innerHTML = '<p class="text-red-400">Astronomy Engine non disponibile</p>';
+    datiLocaliEl.innerHTML = '<p class="text-red-400">' + astroI18n.t('eclissi.motoreAssente') + '</p>';
     return;
   }
 
@@ -3308,7 +3308,7 @@ function _eclissiAggiornaDatiLocali(quadro) {
     _eclAggiornaDossier(lat, lon);
   } catch (e) {
     console.error(e);
-    datiLocaliEl.innerHTML = '<p class="text-red-400">Errore nel calcolo dei dati locali.</p>';
+    datiLocaliEl.innerHTML = '<p class="text-red-400">' + astroI18n.t('eclissi.erroreDatiLocali') + '</p>';
   }
 }
 
@@ -40697,7 +40697,7 @@ window.apriPosizione = function apriPosizione(avviaSubito) {
   if (lat) lat.value = l ? l.lat.toFixed(4) : '';
   if (lon) lon.value = l ? l.lon.toFixed(4) : '';
   const testoBtn = document.getElementById('pos-btn-cerca-testo');
-  if (testoBtn) testoBtn.textContent = l ? 'Rileva di nuovo' : 'Trova la mia posizione';
+  if (testoBtn) testoBtn.textContent = astroI18n.t(l ? 'ui.rileva-di-nuovo' : 'ui.trova-la-mia-posizione');
   const manuale = document.getElementById('pos-manuale');
   if (manuale) manuale.classList.toggle('in-evidenza', false);
   // Se non c'è ancora niente, cercare è l'unica cosa sensata da fare:
