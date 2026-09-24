@@ -80,7 +80,8 @@ jobs:
           # pubblichiamo comunque: l'app proverà direttamente le reti ADS-B
           # che in quel momento espongono CORS, invece di disattivare il feed.
           if [ -z "$ADSB_PROXY_URL" ]; then
-            echo "::warning::Manca ADSB_PROXY_URL: uso i feed ADS-B diretti di emergenza"
+            echo "::error::Manca ADSB_PROXY_URL: i feed ADS-B pubblici non sono affidabili dal browser. Configura il proxy Deno prima di pubblicare."
+            exit 1
           fi
           case "$ADSB_PROXY_URL" in ''|https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
           case "$EDGE_TTS_API_URL" in ''|https://*) ;; *) echo "::error::EDGE_TTS_API_URL deve iniziare con https://"; exit 1;; esac
