@@ -19,26 +19,66 @@
     richiedi(h < 24 && m < 60, err('orarioIntervallo')); return h * 60 + m;
   }
   const corpi = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+  const corpiSistema = [...corpi.filter(c => c !== 'Sun' && c !== 'Moon'), 'Earth'];
+  const GRADI = Math.PI / 180;
   function istante(ms) {
     skyImpostaOffsetTempo((ms - Date.now()) / 1000, { fluido: true });
     sky.prossimoCalcolo = 0;
   }
+  // La curva di tutte le camere della regia: parte e arriva ferma. Col
+  // movimento ridotto la camera non viaggia affatto — sta già dove il
+  // racconto la vuole — mentre il tempo astronomico continua a scorrere:
+  // quello non è decorazione, è il fenomeno.
+  const rampa = (c, u) => (c && c.ridotto) ? 1 : solVoloRampa(Math.max(0, Math.min(1, u)));
+  const mescola = (a, b, k) => a + (b - a) * k;
+  const mescolaZoom = (a, b, k) => a * Math.pow(b / a, k);
+
+  // ------------------------------------------------------------------
+  // Le viste. Ogni scena dichiara dove si svolge, e qui si apre quella
+  // vista — con la sua presentazione a schermo intero quando la demo è
+  // stata avviata così (`c.schermo`).
+  // ------------------------------------------------------------------
+  function presentaCielo(c) {
+    if (c && c.schermo && !sky.schermoIntero) {
+      skyEntraSchermoIntero({ soloRipiego: true });
+      c.cieloImmersivo = true;
+    }
+  }
+  function lasciaCielo(c) {
+    if (c && c.cieloImmersivo && sky.schermoIntero) skyEsciSchermoIntero();
+    if (c) c.cieloImmersivo = false;
+  }
   function vista(v, c) {
     if (v === 'planetarium_view') {
+      if (typeof didDemo !== 'undefined') didDemo.pieno(false);
       if (sol.aperto) chiudiSistemaSolare();
-      mostraVista('cielo');
+      if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
+      presentaCielo(c);
     } else if (v === 'solar_system_3d') {
+      if (typeof didDemo !== 'undefined') didDemo.pieno(false);
+      if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
+      presentaCielo(c);
       if (!sol.aperto) window.apriSistemaSolare({ senzaVolo: true, inquadra: () => {}, annullato: () => c.chiuso });
+      if (c && c.schermo && typeof solEntraSchermoIntero === 'function' && !solSchermoIntero) solEntraSchermoIntero();
       solRidimensiona();
+    } else if (v === 'didactic_view') {
+      richiedi(typeof didDemo !== 'undefined', err('didatticaAssente'));
+      if (sol.aperto) chiudiSistemaSolare();
+      lasciaCielo(c);
+      if (vistaAttuale !== 'didattica') mostraVista('didattica');
     } else throw new Error(err('vistaSconosciuta', { nome: v }));
   }
-  // L'eclisse di Sole più vicina all'istante della demo, prima o dopo. Si
-  // cerca un evento reale — la demo non allinea artificialmente i corpi — e
-  // la si cerca **a partire dall'orologio del racconto**: con la data di
-  // partenza scritta nel codice (1 agosto 2026) ogni demo personale che
-  // chiedeva l'ombra finiva sull'eclisse del 2026, qualunque data avesse
-  // impostato prima. Le eclissi di Sole capitano ogni sei mesi circa, quindi
-  // partendo da sette mesi prima bastano due o tre passi per scavalcare.
+
+  // ------------------------------------------------------------------
+  // Gli eventi veri. Si cercano **a partire dall'orologio del racconto**,
+  // prima o dopo: la demo non allinea artificialmente i corpi, trova il
+  // momento in cui sono allineati davvero.
+  // ------------------------------------------------------------------
+  // L'eclisse di Sole più vicina. Con la data di partenza scritta nel
+  // codice (1 agosto 2026) ogni demo personale che chiedeva l'ombra finiva
+  // sull'eclisse del 2026, qualunque data avesse impostato prima. Le eclissi
+  // di Sole capitano ogni sei mesi circa, quindi partendo da sette mesi
+  // prima bastano due o tre passi per scavalcare.
   function eclisseVicina(quando) {
     const ora = +quando;
     let evento = Astronomy.SearchGlobalSolarEclipse(new Date(ora - 210 * 86400000));
@@ -50,11 +90,33 @@
     if (!evento) return prima;
     return ora - prima.peak.date.getTime() <= evento.peak.date.getTime() - ora ? prima : evento;
   }
+  // La stessa domanda per la Luna, con la stessa regola.
+  function lunareVicina(quando) {
+    const ora = +quando;
+    let evento = Astronomy.SearchLunarEclipse(new Date(ora - 210 * 86400000));
+    let prima = null;
+    for (let passi = 0; evento && passi < 8 && evento.peak.date.getTime() < ora; passi++) {
+      prima = evento; evento = Astronomy.NextLunarEclipse(evento.peak);
+    }
+    if (!prima) return evento;
+    if (!evento) return prima;
+    return ora - prima.peak.date.getTime() <= evento.peak.date.getTime() - ora ? prima : evento;
+  }
+  // Il massimo di un evento, cercato una volta sola per racconto: le scene
+  // successive (il planetario, poi la 3D, poi di nuovo il planetario)
+  // parlano dello **stesso** evento, non ognuna del suo.
+  function piccoEvento(c, tipo) {
+    c.eventi = c.eventi || {};
+    if (c.eventi[tipo]) return c.eventi[tipo];
+    const evento = tipo === 'lunar_eclipse' ? lunareVicina(skyAdesso()) : eclisseVicina(skyAdesso());
+    richiedi(evento && evento.peak && Number.isFinite(evento.peak.date.getTime()),
+      err(tipo === 'lunar_eclipse' ? 'lunareAssente' : 'eclisseAssente'));
+    c.eventi[tipo] = evento.peak.date.getTime();
+    return c.eventi[tipo];
+  }
   function eclisse(c) {
     if (c.eclisse) return;
-    const evento = eclisseVicina(skyAdesso());
-    richiedi(evento && evento.peak && Number.isFinite(evento.peak.date.getTime()), err('eclisseAssente'));
-    c.eclisse = evento.peak.date.getTime(); istante(c.eclisse);
+    c.eclisse = piccoEvento(c, 'solar_eclipse'); istante(c.eclisse);
     solEntraVicino(); c.azIniziale = sol.az;
   }
 
@@ -83,6 +145,35 @@
       day: giorno.getUTCDate(), hour: Math.floor(b / 60), minute: b % 60, second: 0 }, luogo);
     richiedi(inizio && fine, err('oraInesistente'));
     return { inizio, fine };
+  }
+
+  // L'inquadratura più stretta che contiene un insieme di direzioni: il
+  // minimo arco di azimut (il buco più largo fra due punti è quello che
+  // resta fuori) e la fascia di altezze. Serve al corteo dei pianeti e
+  // all'arco di un passaggio della ISS.
+  function inquadraDirezioni(punti, minimo) {
+    const az = punti.map(o => ((o.az % 360) + 360) % 360).sort((a, b) => a - b);
+    let gapMax = -1, dopoGap = 0;
+    for (let i = 0; i < az.length; i++) {
+      const prossimo = i === az.length - 1 ? az[0] + 360 : az[i + 1];
+      const gap = prossimo - az[i];
+      if (gap > gapMax) { gapMax = gap; dopoGap = (i + 1) % az.length; }
+    }
+    const inizio = az[dopoGap], arco = 360 - gapMax;
+    const centroAz = (inizio + arco / 2) % 360;
+    const minAlt = Math.min(...punti.map(o => o.alt));
+    const maxAlt = Math.max(...punti.map(o => o.alt));
+    const centroAlt = Math.max(-65, Math.min(65, (minAlt + maxAlt) / 2));
+    const campo = Math.max(minimo, Math.min(160, Math.max(arco * 1.25, (maxAlt - minAlt) * 1.5 + 18)));
+    return { az: centroAz, alt: centroAlt, campo };
+  }
+  function puntaCamera(az, alt, campo, tieniBersaglio) {
+    sky.inseguimento = false; sky.seguiTelefono = false;
+    if (!tieniBersaglio) sky.target = null;
+    sky.manuale.az = az; sky.manuale.alt = alt;
+    if (typeof skyImpostaFov === 'function') skyImpostaFov(campo, { morbido: false });
+    else { sky.fov = campo; sky.fovVoluto = campo; }
+    if ('animazioneVista' in sky) sky.animazioneVista = null;
   }
 
   registro.timelapse = {
@@ -128,9 +219,15 @@
       campi(p, ['az', 'alt']);
       richiedi(numero(p.az, 0, 360) && numero(p.alt, -90, 90), err('direzione'));
     },
-    crea(p) {
+    crea(p, c) {
       sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
       sky.manuale.az = p.az; sky.manuale.alt = p.alt;
+      // Come il campo: finché la demo tiene la camera, la direzione resta
+      // quella del racconto anche se un ridimensionamento la sposta.
+      return { aggiorna() {
+        if (c && c.cameraManuale) return;
+        sky.manuale.az = p.az; sky.manuale.alt = p.alt;
+      } };
     }
   };
   registro.set_fov = {
@@ -149,6 +246,24 @@
       };
       applica();
       return { aggiorna() { if (!c || !c.cameraManuale) applica(); } };
+    }
+  };
+  // Uno zoom che si stringe durante la scena: è il modo in cui il planetario
+  // fa vedere «adesso guardiamo da vicino» senza dirlo.
+  registro.zoom_fov = {
+    verifica(p) {
+      campi(p, ['from', 'to']);
+      richiedi(numero(p.from, 0.5, 160) && numero(p.to, 0.5, 160), err('fov'));
+    },
+    crea(p, c) {
+      const applica = u => {
+        const campo = mescolaZoom(p.from, p.to, rampa(c, u));
+        if (typeof skyImpostaFov === 'function') skyImpostaFov(campo, { morbido: false });
+        else { sky.fov = campo; sky.fovVoluto = campo; }
+        if ('animazioneVista' in sky) sky.animazioneVista = null;
+      };
+      applica(0);
+      return { aggiorna(u) { if (!c || !c.cameraManuale) applica(u); } };
     }
   };
   registro.frame_objects = {
@@ -173,24 +288,8 @@
       const applica = () => {
         const oggetti = nomi.map(nome => sky.oggetti.find(o => o.id === nome)).filter(Boolean);
         if (oggetti.length !== nomi.length) return;
-        const az = oggetti.map(o => ((o.az % 360) + 360) % 360).sort((a, b) => a - b);
-        let gapMax = -1, dopoGap = 0;
-        for (let i = 0; i < az.length; i++) {
-          const prossimo = i === az.length - 1 ? az[0] + 360 : az[i + 1];
-          const gap = prossimo - az[i];
-          if (gap > gapMax) { gapMax = gap; dopoGap = (i + 1) % az.length; }
-        }
-        const inizio = az[dopoGap], arco = 360 - gapMax;
-        const centroAz = (inizio + arco / 2) % 360;
-        const minAlt = Math.min(...oggetti.map(o => o.alt));
-        const maxAlt = Math.max(...oggetti.map(o => o.alt));
-        const centroAlt = Math.max(-65, Math.min(65, (minAlt + maxAlt) / 2));
-        const campo = Math.max(70, Math.min(160, Math.max(arco * 1.25, (maxAlt - minAlt) * 1.5 + 18)));
-        sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
-        sky.manuale.az = centroAz; sky.manuale.alt = centroAlt;
-        if (typeof skyImpostaFov === 'function') skyImpostaFov(campo, { morbido: false });
-        else { sky.fov = campo; sky.fovVoluto = campo; }
-        if ('animazioneVista' in sky) sky.animazioneVista = null;
+        const q = inquadraDirezioni(oggetti, 70);
+        puntaCamera(q.az, q.alt, q.campo);
       };
       applica();
       return { aggiorna() { if (!c || !c.cameraManuale) applica(); } };
@@ -213,6 +312,7 @@
       richiedi(p.type === 'geometric' && p.final_target === 'solar_system_3d', err('transizione'));
     },
     crea(p, c) {
+      if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
       window.apriSistemaSolare({
         voloManuale: true, annullato: () => c.chiuso,
         inquadra: () => {} // Il quadro successivo viene deciso dalla scena.
@@ -239,7 +339,7 @@
       eclisse(c); const inizio = sol.az;
       return { aggiorna(u) {
         if (c.cameraManuale) return;
-        if (!c.ridotto) sol.az = inizio + p.angle * Math.PI / 180 * solVoloRampa(u);
+        if (!c.ridotto) sol.az = inizio + p.angle * GRADI * solVoloRampa(u);
         // Il punto medio segue la rotazione: il sistema non scappa dal quadro.
         centraSistema(c);
       } };
@@ -274,54 +374,380 @@
     crea(p, c) { vista(p.target, c); }
   };
 
+  // ------------------------------------------------------------------
+  // La finestra di tempo attorno a un evento vero: da `from` a `to` minuti
+  // dal suo massimo, per tutta la durata della scena. È quello che fa
+  // muovere l'ombra della Luna sulla Terra nella vista 3D e la Luna dentro
+  // al cono della Terra: il movimento che si vede è il cielo che cammina,
+  // non una animazione disegnata sopra.
+  // ------------------------------------------------------------------
+  const EVENTI = ['solar_eclipse', 'lunar_eclipse'];
+  registro.event_window = {
+    verifica(p) {
+      campi(p, ['event', 'from', 'to']);
+      richiedi(EVENTI.includes(p.event), err('evento', { nome: p.event }));
+      richiedi(numero(p.from, -720, 720) && numero(p.to, -720, 720) && p.to > p.from, err('finestra'));
+    },
+    crea(p, c) {
+      const picco = piccoEvento(c, p.event);
+      const aggiorna = u => istante(picco + (p.from + (p.to - p.from) * u) * 60000);
+      aggiorna(0);
+      return { aggiorna };
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // La camera della vista 3D. Due scene, e sono quelle che l'app ha già:
+  // `earth_moon` è il banco Terra e Luna (chilometri, coni d'ombra), e
+  // `system` è il Sistema Solare d'insieme. Si dice su chi tenere il
+  // centro, di quanto girarci attorno, da che altezza a che altezza e di
+  // quanto avvicinarsi: le posizioni restano quelle calcolate, la regia
+  // muove soltanto l'occhio.
+  // ------------------------------------------------------------------
+  const FUOCHI_VICINO = ['Earth', 'Moon', 'Earth-Moon', 'Eclipse Shadow'];
+  const FUOCHI_SISTEMA = ['Sun', 'Earth', 'ISS'];
+  function elencoCorpiSistema(v) {
+    if (v === undefined) return [];
+    richiedi(typeof v === 'string' && v.length <= 120, err('elenco'));
+    const nomi = v.split(',').map(x => x.trim()).filter(Boolean);
+    richiedi(nomi.length >= 1 && nomi.length <= 9 && nomi.every(n => corpiSistema.includes(n)), err('corpiSistema'));
+    return nomi;
+  }
+  registro.camera_3d = {
+    verifica(p) {
+      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to']);
+      richiedi(p.scene === 'earth_moon' || p.scene === 'system', err('scena3d'));
+      richiedi((p.scene === 'earth_moon' ? FUOCHI_VICINO : FUOCHI_SISTEMA).includes(p.focus),
+        err('fuoco', { nome: p.focus }));
+      richiedi(p.orbit === undefined || numero(p.orbit, -720, 720), err('angolo'));
+      for (const k of ['elev_from', 'elev_to'])
+        richiedi(p[k] === undefined || numero(p[k], -85, 85), err('elevazione'));
+      for (const k of ['zoom_from', 'zoom_to'])
+        richiedi(p[k] === undefined || numero(p[k], 0.1, 60), err('zoom3d'));
+      elencoCorpiSistema(p.frame);
+    },
+    crea(p, c) {
+      richiedi(sol.aperto, err('serve3d'));
+      const vicino = p.scene === 'earth_moon';
+      let base;
+      if (vicino) {
+        if (!sol.vicino) solEntraVicino(); else solInquadraVicino();
+        base = sol.zoomVoluto;
+      } else {
+        if (sol.vicino) { sol.vicino = false; sol.quadro = 'terra'; }
+        solLeggiPosizioni(skyAdesso());
+        if (p.focus === 'Sun') {
+          const nomi = elencoCorpiSistema(p.frame);
+          const ua = Math.max(1.05, ...nomi.map(n => {
+            const q = sol.pianeti.find(x => x.id === n);
+            return q ? q.r : 1;
+          }));
+          solInquadraDaTerra({ ua: ua * 1.08 });
+          sol.perno = null;
+          // Il racconto è la disposizione dei pianeti: pianeti nani, comete
+          // e sonde, coi loro nomi, qui sarebbero rumore. Tornano a fine demo.
+          sol.mondiAccesi = false; sol.sondeAccese = false;
+          base = sol.zoomVoluto;
+        } else {
+          sol.perno = 'Earth'; sol.quadro = 'terra';
+          const iss = (sol.satelliti || []).find(s => s.id === 'iss');
+          if (p.focus === 'ISS') richiedi(iss, err('tle'));
+          const z = p.focus === 'ISS' ? solZoomOrbitaSatellite(iss) : solZoomSullaTerra();
+          base = z || sol.zoomVoluto;
+        }
+      }
+      const az0 = sol.az;
+      const elev0 = sol.elevVoluta; // la vista 3D tiene l'elevazione in gradi
+      const ea = p.elev_from !== undefined ? p.elev_from : elev0;
+      const eb = p.elev_to !== undefined ? p.elev_to : ea;
+      const za = p.zoom_from !== undefined ? p.zoom_from : 1;
+      const zb = p.zoom_to !== undefined ? p.zoom_to : za;
+      const giro = (p.orbit || 0) * GRADI;
+      function centra() {
+        if (!vicino) {
+          if (p.focus === 'Sun') { sol.panX = 0; sol.panY = 0; }
+          return; // Terra e ISS: il perno ricentra da sé a ogni fotogramma
+        }
+        const quando = skyAdesso();
+        const g = solGeocentriche(quando);
+        if (!g) return;
+        if (p.focus === 'Earth-Moon') { solPanFraTerraELuna(sol.zoom, g); return; }
+        let punto = [0, 0, 0];
+        if (p.focus === 'Moon') punto = g.luna;
+        if (p.focus === 'Eclipse Shadow') {
+          const ombra = solOmbraLunareSuTerra(quando);
+          if (ombra) punto = ombra.centro;
+        }
+        sol.panX = 0; sol.panY = 0; solMisura();
+        const q = solVicPunto(punto);
+        sol.panX = -(q.px - sol.cx); sol.panY = -(q.py - sol.cy);
+      }
+      function applica(u) {
+        const k = rampa(c, u);
+        sol.az = az0 + (c.ridotto ? 0 : giro * k);
+        sol.elev = sol.elevVoluta = mescola(ea, eb, k);
+        solImpostaZoom(base * mescolaZoom(za, zb, k));
+        centra();
+      }
+      applica(0);
+      return { aggiorna(u) { if (!c.cameraManuale) applica(u); } };
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Il banco delle aurore della Didattica, guidato dalla demo: il quadro
+  // (vento, scudo, scarica, anello), il pezzo di storia da far scorrere
+  // (in ore dall'eruzione) e la camera che gira attorno alla Terra. Sono
+  // gli stessi disegni del banco: la regia sceglie solo cosa guardare, da
+  // dove e quando.
+  // ------------------------------------------------------------------
+  const CAPITOLI = ['vento', 'scudo', 'scarica', 'anello'];
+  registro.aurora_lesson = {
+    verifica(p) {
+      campi(p, ['chapter', 'from', 'to', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to']);
+      richiedi(CAPITOLI.includes(p.chapter), err('capitolo', { nome: p.chapter }));
+      for (const k of ['from', 'to']) richiedi(p[k] === undefined || numero(p[k], 0, 60), err('oreStoria'));
+      richiedi(p.orbit === undefined || numero(p.orbit, -720, 720), err('angolo'));
+      for (const k of ['elev_from', 'elev_to'])
+        richiedi(p[k] === undefined || numero(p[k], -84, 84), err('elevazione'));
+      for (const k of ['zoom_from', 'zoom_to'])
+        richiedi(p[k] === undefined || numero(p[k], 0.3, 6), err('zoom3d'));
+    },
+    crea(p, c) {
+      richiedi(typeof didDemo !== 'undefined' && vistaAttuale === 'didattica', err('didatticaAssente'));
+      richiedi(didDemo.apri('aurora'), err('didatticaAssente'));
+      didDemo.quadro(p.chapter);
+      didDemo.pieno(true);
+      const posa = didDemo.posa(p.chapter);
+      const da = p.from !== undefined ? p.from : posa.finestra[0];
+      const a = p.to !== undefined ? p.to : posa.finestra[1];
+      const ea = p.elev_from !== undefined ? p.elev_from : posa.elev;
+      const eb = p.elev_to !== undefined ? p.elev_to : ea;
+      const za = p.zoom_from !== undefined ? p.zoom_from : 1;
+      const zb = p.zoom_to !== undefined ? p.zoom_to : za;
+      const aggiorna = u => {
+        const k = rampa(c, u);
+        const passo = { quadro: p.chapter, t: mescola(da, a, u) };
+        if (!c.cameraManuale) Object.assign(passo, {
+          az: posa.az + (c.ridotto ? 0 : (p.orbit || 0) * k),
+          elev: mescola(ea, eb, k), zoom: mescolaZoom(za, zb, k)
+        });
+        didDemo.aurora(passo);
+      };
+      aggiorna(0);
+      return { aggiorna };
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Un passaggio vero di una stazione spaziale, calcolato dall'app coi
+  // suoi dati orbitali e dal luogo che il planetario sta guardando. Il
+  // passaggio si cerca una volta sola: il planetario e la vista 3D
+  // raccontano lo **stesso** passaggio nello stesso intervallo di tempo.
+  // ------------------------------------------------------------------
+  function passaggio(c, id) {
+    c.passaggi = c.passaggi || {};
+    if (c.passaggi[id]) return c.passaggi[id];
+    const sat = typeof satelliteDaId === 'function' && satelliteDaId(id);
+    richiedi(sat && typeof satellite !== 'undefined' && satRecDi(sat), err('tle'));
+    const luogo = skyLuogoDelCielo();
+    const elenco = calcolaPassaggiSatellite(sat, luogo).filter(x => x.fine > new Date(+skyAdesso()));
+    richiedi(elenco.length, err('passaggioAssente'));
+    // Il primo passaggio visibile a occhio nudo; se nei prossimi giorni non
+    // ce n'è, il più alto — che si vede comunque meglio nel disegno.
+    const scelto = elenco.find(x => x.visibile) ||
+      elenco.slice().sort((a, b) => b.elevazioneMax - a.elevazioneMax)[0];
+    c.passaggi[id] = { sat, luogo, inizio: +scelto.inizio, fine: +scelto.fine, dati: scelto };
+    return c.passaggi[id];
+  }
+  registro.satellite_pass = {
+    verifica(p) {
+      campi(p, ['satellite', 'before', 'after']);
+      richiedi(p.satellite === 'iss' || p.satellite === 'tiangong', err('satellite', { nome: p.satellite }));
+      for (const k of ['before', 'after']) richiedi(p[k] === undefined || numero(p[k], 0, 15), err('margine'));
+    },
+    crea(p, c, scena) {
+      const pas = passaggio(c, p.satellite);
+      const inizio = pas.inizio - (p.before || 0) * 60000;
+      const fine = pas.fine + (p.after || 0) * 60000;
+      const aggiorna = u => istante(inizio + (fine - inizio) * u);
+      aggiorna(0);
+      if (scena.vista === 'planetarium_view') {
+        // Il cielo resta fermo e la stazione ci passa attraverso: una camera
+        // che la insegue la farebbe sembrare immobile, con le stelle che
+        // scorrono. L'arco si inquadra tutto, e la traccia dice da dove
+        // arriva e dove va.
+        sky.mostraSatelliti = true; sky.mostraTraccia = true; sky.mostraSottoOrizzonte = true;
+        skyAggiornaTastiFiltri();
+        const rec = satRecDi(pas.sat), gd = satOsservatoreGd(pas.luogo);
+        const punti = [];
+        for (let i = 0; i <= 16; i++) {
+          const q = satAltAz(rec, new Date(pas.inizio + (pas.fine - pas.inizio) * i / 16), gd);
+          if (q && q.alt > -1) punti.push({ az: q.az, alt: q.alt });
+        }
+        const q = punti.length >= 2 ? inquadraDirezioni(punti, 60) : { az: pas.dati.azCulmine, alt: 35, campo: 110 };
+        puntaCamera(q.az, Math.max(8, q.alt), q.campo);
+        skyAggiornaOggetti(true);
+        // Il bersaglio serve alla traccia e al cerchio che lo segna, non alla
+        // camera: niente `skyImpostaTarget`, che lo porterebbe al centro.
+        sky.target = 'sat-' + p.satellite; sky.inseguimento = false; sky.centraQuandoPronto = null;
+        const fermo = { az: q.az, alt: Math.max(8, q.alt), campo: q.campo };
+        return { aggiorna(u) {
+          aggiorna(u);
+          if (!c.cameraManuale) puntaCamera(fermo.az, fermo.alt, fermo.campo, true);
+        } };
+      }
+      return { aggiorna };
+    }
+  };
+
   const motore = new AstroDemoMotore.Motore(registro, { avvisa: aggiornaPannello });
   let contesto = null, ultimoScript = script;
   const chiavi = ['modalitaTempo', 'istanteSimulatoMs', 'offsetTempoSec', 'luogoVista', 'target',
     'inseguimento', 'eventoInseguito', 'seguiTelefono', 'fov', 'fovVoluto', 'modalitaHover',
-    'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'passoTempoSec',
-    'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec',
+    'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'mostraSatelliti', 'mostraTraccia',
+    'passoTempoSec', 'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec',
     // Il campo è definito sull'altezza del riquadro (`skyRidimensiona`):
     // conserviamo anche l'altezza a cui valeva, così eventuali resize durante
     // la demo non riscalano di nuovo il FOV quando si ripristina lo stato.
     'altezzaMisurata'];
+  const VISTE_SCENA = ['planetarium_view', 'transition', 'solar_system_3d', 'didactic_view'];
   function valida(testo) {
     const demo = motore.prepara(testo);
     let quando = skyAdesso(), luogo = skyLuogoDelCielo();
     for (const scena of demo.scene) {
-      richiedi(['planetarium_view', 'transition', 'solar_system_3d'].includes(scena.vista), err('scena', { nome: scena.vista }));
+      richiedi(VISTE_SCENA.includes(scena.vista), err('scena', { nome: scena.vista }));
       for (const azione of scena.azioni) {
         if (azione.comando === 'set_location') luogo = luogoDemo(azione.parametri);
         if (azione.comando === 'set_date') quando = dataISO(azione.parametri);
         if (azione.comando === 'timelapse') quando = tempiCivili(azione.parametri, quando, luogo).fine;
+        if (azione.comando === 'aurora_lesson') richiedi(scena.vista === 'didactic_view', err('soloDidattica'));
+        if (azione.comando === 'camera_3d') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
       }
     }
     return demo;
   }
+
+  // ------------------------------------------------------------------
+  // Le opzioni della demo: schermo intero, registrazione e gli elementi
+  // del planetario da mostrare. Si ricordano fra una sessione e l'altra.
+  // ------------------------------------------------------------------
+  const CHIAVE_OPZIONI = 'astrocal_demo_opzioni_v1';
+  function leggiOpzioni() {
+    try {
+      const o = JSON.parse(localStorage.getItem(CHIAVE_OPZIONI) || 'null');
+      if (o && typeof o === 'object') return {
+        schermoIntero: !!o.schermoIntero, registra: !!o.registra,
+        livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null
+      };
+    } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
+    return { schermoIntero: false, registra: false, livelli: null };
+  }
+  let opzioni = leggiOpzioni();
+  function impostaOpzioni(nuove) {
+    opzioni = Object.assign({}, opzioni, nuove);
+    try { localStorage.setItem(CHIAVE_OPZIONI, JSON.stringify(opzioni)); } catch (_) { /* niente storage */ }
+    return opzioni;
+  }
+
+  // Gli strati del planetario. L'elenco **non è inventato**: sono gli
+  // interruttori che la scheda Visualizzazione ha già, con il loro stato e la
+  // loro funzione di accensione — il nome si legge dal tasto stesso, quindi
+  // segue la lingua. Solo la Via Lattea non ha un tasto, e ha una voce sua.
+  const campoSky = (id, tasto, campo, extra) => ({
+    id, tasto, leggi: () => !!sky[campo],
+    scrivi(v) {
+      sky[campo] = v;
+      if (campo === 'atmosfera' && !v) sky.nuvole = false;
+      if (campo === 'nuvole' && v) sky.atmosfera = true;
+      if (extra) extra(v);
+    }
+  });
+  const modulo = (id, tasto, leggi, alterna) => ({
+    id, tasto,
+    leggi() { try { return !!leggi(); } catch (_) { return false; } },
+    disponibile() { try { leggi(); return typeof alterna() === 'function'; } catch (_) { return false; } },
+    scrivi(v) { if (this.leggi() !== v) alterna()(); }
+  });
+  const LIVELLI = [
+    campoSky('stelle', 'skymap-btn-stelle', 'mostraStelle'),
+    campoSky('nomi', 'skymap-btn-etichette', 'mostraNomi'),
+    campoSky('costellazioni', 'skymap-btn-costellazioni', 'mostraCostellazioni'),
+    modulo('arte', 'skymap-btn-arte', () => cost.arte, () => window.costAlternaArte),
+    campoSky('pianeti', 'skymap-btn-pianeti', 'mostraPianeti'),
+    campoSky('soleLuna', 'skymap-btn-solelun', 'mostraSoleLuna'),
+    campoSky('profondo', 'skymap-btn-deepsky', 'mostraProfondo'),
+    campoSky('viaLattea', null, 'mostraViaLattea'),
+    campoSky('corpiMinori', 'skymap-btn-corpiminori', 'mostraCorpiMinori'),
+    campoSky('satelliti', 'skymap-btn-satelliti', 'mostraSatelliti'),
+    modulo('aerei', 'skymap-btn-aerei', () => AereiADS_B.stato.visibile,
+      () => v => aereiImpostaAccesi(!AereiADS_B.stato.visibile)),
+    campoSky('griglia', 'skymap-btn-griglia', 'mostraGriglia'),
+    campoSky('eclittica', 'skymap-btn-eclittica', 'mostraEclittica', () => { sky.eclittica.chiave = null; }),
+    campoSky('traccia', 'skymap-btn-traccia', 'mostraTraccia', () => { sky.traccia.chiave = null; }),
+    campoSky('eventi', 'skymap-btn-eventi', 'mostraEventi'),
+    campoSky('sotto', 'skymap-btn-sotto', 'mostraSottoOrizzonte'),
+    campoSky('atmosfera', 'skymap-btn-atmosfera', 'atmosfera'),
+    campoSky('nuvole', 'skymap-btn-nuvole', 'nuvole'),
+    modulo('aurora', 'skymap-btn-aurora', () => aur.acceso, () => aurAlterna),
+    modulo('terreno', 'skymap-btn-terreno', () => terreno.acceso, () => terrenoAlterna),
+    modulo('rilievo', 'skymap-btn-rilievo', () => rilievo.acceso, () => rilAlterna),
+    modulo('citta', 'skymap-btn-citta', () => citta.acceso, () => cittaAlterna),
+    modulo('cime', 'skymap-btn-cime', () => cime.acceso, () => cimeAlterna),
+    modulo('acque', 'skymap-btn-acque', () => acque.acceso, () => acqueAlterna)
+  ].filter(l => !l.disponibile || l.disponibile());
+  function nomeLivello(l) {
+    const b = l.tasto && document.getElementById(l.tasto);
+    const testo = b && b.textContent.replace(/\s+/g, ' ').trim();
+    return testo || t('livello.' + l.id);
+  }
+  function fotografaLivelli() { return Object.fromEntries(LIVELLI.map(l => [l.id, l.leggi()])); }
+  function applicaLivelli(scelta) {
+    if (!scelta) return;
+    for (const l of LIVELLI) {
+      if (typeof scelta[l.id] !== 'boolean' || l.leggi() === scelta[l.id]) continue;
+      try { l.scrivi(scelta[l.id]); } catch (_) { /* un modulo assente non ferma gli altri */ }
+    }
+    skyAggiornaTastiFiltri();
+    if (typeof aurAggiornaPannello === 'function') aurAggiornaPannello();
+    skyAggiornaOggetti(true);
+  }
+
+  // La tela da riprendere quando la demo si registra: segue la scena.
+  function telaInScena() {
+    if (typeof solVolo !== 'undefined' && solVolo.attivo) {
+      const volo = document.getElementById('sol-transizione-tela');
+      if (volo && volo.width) return volo;
+    }
+    if (vistaAttuale === 'didattica' && typeof didDemo !== 'undefined') return didDemo.tela();
+    if (sol.aperto && sol.canvas) return sol.canvas;
+    return sky.canvas;
+  }
+
   function avvia(testo = script) {
-    valida(testo);
+    const demo = valida(testo);
     motore.ferma();
-    richiedi(!sol.aperto && !sky.reg.attiva &&
+    richiedi(!sol.aperto && !sky.reg.attiva && !sky.reg.preparazione &&
       !(typeof missRicercaAttiva === 'function' && missRicercaAttiva()), t('occupato'));
     richiedi(typeof Astronomy !== 'undefined' && sky.observer, t('attendi'));
     ultimoScript = testo;
     const precedente = Object.fromEntries(chiavi.map(k => [k, sky[k]]));
     const manuale = { ...sky.manuale }, vistaPrima = vistaAttuale;
     const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
-      'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto'].map(k => [k, sol[k]]));
+      'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto', 'mondiAccesi', 'sondeAccese'].map(k => [k, sol[k]]));
     const auroraPrima = { acceso: aur.acceso, kpSimulato: aur.kpSimulato };
+    const didatticaPrima = typeof didDemo !== 'undefined' ? didDemo.fotografa() : null;
+    const livelliPrima = fotografaLivelli();
     const schermoInteroPrima = sky.schermoIntero;
-    const c = { chiuso: false, eclisse: null, cameraManuale: false,
+    const regPrima = { durataSec: sky.reg.durataSec, origine: sky.reg.origine };
+    const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
         // Ogni scena puo impostare la propria inquadratura iniziale. Dopo un
         // intervento della persona, pero, le animazioni della scena corrente
         // le cedono la camera mentre il racconto e il suo orologio proseguono.
         c.cameraManuale = false;
-        if (scena.vista === 'planetarium_view') vista('planetarium_view', c);
-        if (scena.vista === 'solar_system_3d') {
-          vista('solar_system_3d', c);
-
-        }
+        if (scena.vista !== 'transition') vista(scena.vista, c);
       },
       cediCamera() {
         c.cameraManuale = true;
@@ -329,12 +755,19 @@
       },
       ripristina() {
         c.chiuso = true; contesto = null; evidenze.clear();
+        document.body.classList.remove('demo-in-corso');
+        const registrava = sky.reg.attiva && sky.reg.sorgente;
+        if (registrava) skyRegFerma();
+        if (c.registrazione) cancelAnimationFrame(c.registrazione);
         solVolo.dopo = null; solVoloChiudi();
         if (sol.aperto) chiudiSistemaSolare();
+        if (typeof didDemo !== 'undefined') didDemo.ripristina(didatticaPrima);
         Object.assign(sol, cameraSistema);
-        if (vistaAttuale !== vistaPrima) mostraVista(vistaPrima);
+        lasciaCielo(c);
+        if (vistaAttuale !== vistaPrima) mostraVista(vistaPrima, { conservaTempo: true });
         const luogoCambiato = sky.luogoVista !== precedente.luogoVista;
         skyImpostaPassoTempo(precedente.passoTempoSec);
+        applicaLivelli(livelliPrima);
         Object.assign(sky, precedente); Object.assign(sky.manuale, manuale);
         if (luogoCambiato) skyAggiornaOsservatore();
         aur.acceso = auroraPrima.acceso;
@@ -348,17 +781,60 @@
         // Ripristina lo stato iniziale se durante la demo si e' entrati
         // manualmente a schermo intero partendo dalla vista normale.
         if (!schermoInteroPrima && sky.schermoIntero) skyEsciSchermoIntero();
+        // Il pieno schermo dell'intero documento l'ha chiesto la demo: lo
+        // chiude lei, e solo se è ancora il suo.
+        if (c.schermoNativo && document.fullscreenElement === document.documentElement && document.exitFullscreen)
+          document.exitFullscreen().catch(() => {});
+        sky.reg.sorgente = null;
+        sky.reg.durataSec = regPrima.durataSec; sky.reg.origine = regPrima.origine;
+        // Il filmato si mostra nel pannello del planetario: chi ha chiesto di
+        // registrare trova lì il risultato, anche se era partito da un'altra vista.
+        if (registrava && vistaAttuale !== 'cielo') mostraVista('cielo');
         pannello.hidden = true;
       }
     };
     contesto = c;
+    document.body.classList.add('demo-in-corso');
     // Il racconto lascia libero il cielo e chiude i pannelli aperti.
     document.getElementById('modale-impostazioni').classList.add('hidden');
     skyMostraGruppo('');
+    skyChiudiAvvisi();
     skyFermaPlayback(); skyFermaMovimenti(); sky.seguiTelefono = false; sky.modalitaHover = false;
     sky.eventoInseguito = null;
+    applicaLivelli(opzioni.livelli);
+    // Il pieno schermo vero si chiede qui, dentro al gesto che ha avviato la
+    // demo, sull'intero documento: le tre viste del racconto se lo passano
+    // col solo CSS, e il browser non ne esce a ogni cambio di scena.
+    if (c.schermo && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+      c.schermoNativo = true;
+      try { document.documentElement.requestFullscreen().catch(() => { c.schermoNativo = false; }); }
+      catch (_) { c.schermoNativo = false; }
+    }
     motore.avvia(testo, c);
+    if (motore.stato === 'attivo' && opzioni.registra) avviaRegistrazione(c, demo);
     aggiornaPannello();
+  }
+
+  // La registrazione è quella del planetario (§7.6 di app.js), con una sola
+  // differenza: la tela da riprendere la sceglie la demo, fotogramma per
+  // fotogramma, perché il racconto passa dal cielo alla vista 3D e al banco
+  // delle aurore. La durata la tiene la demo: la si ferma quando finisce,
+  // e la pausa non la tronca.
+  function avviaRegistrazione(c, demo) {
+    const totale = demo.scene.reduce((n, s) => n + s.durata, 0) / 1000;
+    sky.reg.origine = 'planetario';
+    sky.reg.sorgente = telaInScena;
+    sky.reg.durataSec = totale + 3600;
+    Promise.resolve(skyRegAvvia()).then(() => {
+      if (c.chiuso) { if (sky.reg.attiva) skyRegFerma(); return; }
+      aggiornaPannello();
+      const giro = () => {
+        if (c.chiuso || !sky.reg.attiva) return;
+        skyRegAcquisisci();
+        c.registrazione = requestAnimationFrame(giro);
+      };
+      c.registrazione = requestAnimationFrame(giro);
+    });
   }
 
   const pannello = document.createElement('div');
@@ -381,7 +857,12 @@
   function aggiornaPannello() {
     const attivo = motore.stato === 'attivo' || motore.stato === 'pausa';
     if (attivo) {
-      const genitore = sol.aperto ? solGuscio() : (document.fullscreenElement || document.body);
+      const pieno = document.querySelector('.did-pieno-ripiego');
+      const genitore = sol.aperto ? solGuscio()
+        : (pieno && vistaAttuale === 'didattica') ? pieno
+          : (sky.schermoIntero ? document.getElementById('skymap-contenitore') : null) ||
+            (document.fullscreenElement && document.fullscreenElement !== document.documentElement
+              ? document.fullscreenElement : document.body);
       if (genitore && pannello.parentElement !== genitore) genitore.append(pannello);
       pannello.hidden = false;
       // Una riga sola, uguale per tutte le demo: prima la frase descrittiva
@@ -391,10 +872,12 @@
       messaggio.textContent = titoloDemo(motore.demo.id) + ' — ' + t('scenaDi', {
         n: motore.indice + 1, tot: motore.demo.scene.length,
         vista: t('vista.' + scena.vista), secondi: scena.durata / 1000
-      }) + (motore.stato === 'pausa' ? ' — ' + t('inPausa') : '');
+      }) + (motore.stato === 'pausa' ? ' — ' + t('inPausa') : '') +
+        (sky.reg.attiva && sky.reg.sorgente ? ' — ' + t('registrando') : '');
       pausa.textContent = t(motore.stato === 'pausa' ? 'riprendi' : 'pausa');
       riavvia.textContent = t('riavvia'); arresta.textContent = t('stop');
     } else {
+      if (pannello.parentElement !== document.body) document.body.append(pannello);
       pannello.hidden = true;
       if (motore.stato === 'errore') skyAvviso('demo', t('errore') + ': ' + motore.errore.message, 10000);
       if (motore.stato === 'completato') skyAvviso('demo', t('completato'), 7000);
@@ -424,7 +907,16 @@
   }, true);
   // Il tempo non salta scene quando la scheda rimane nascosta.
   document.addEventListener('visibilitychange', () => { if (document.hidden) motore.pausa(); });
-  document.addEventListener('fullscreenchange', aggiornaPannello);
+  // Nel pieno schermo vero Esc non arriva alla pagina: lo consuma il
+  // browser, che esce dal pieno schermo. Se a uscire è quello della demo,
+  // la persona ha chiesto di smettere — e la demo si ferma e ripristina.
+  document.addEventListener('fullscreenchange', () => {
+    if (contesto && contesto.schermoNativo) {
+      if (document.fullscreenElement === document.documentElement) contesto.nativoAttivo = true;
+      else if (!document.fullscreenElement && contesto.nativoAttivo) { contesto.schermoNativo = false; motore.ferma(); }
+    }
+    aggiornaPannello();
+  });
   // Se la preferenza cambia durante il tour, interrompi e ripristina subito.
   const movimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
   if (movimento && movimento.addEventListener) movimento.addEventListener('change', () => {
@@ -434,8 +926,15 @@
     script, valida, libreria: AstroDemoLibreria.crea({
       getItem: k => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v)
     }, predefiniti, valida), avvia, pausa: () => motore.pausa(), riprendi: () => motore.riprendi(),
-    ferma: () => motore.ferma(), evidenza: id => evidenze.get(id) || 1,
+    ferma: () => motore.ferma(), vaiAScena: (i, u) => motore.vaiAScena(i, u), evidenza: id => evidenze.get(id) || 1,
     get stato() { return motore.stato; },
+    get scena() { return motore.indice; },
+    // Finché un racconto è in scena gli avvisi di servizio tacciono (vedi
+    // `skyAvviso`): non parlano del luogo e dell'ora del racconto.
+    get silenzioso() { return !!contesto; },
+    get opzioni() { return { ...opzioni, livelli: opzioni.livelli && { ...opzioni.livelli } }; },
+    impostaOpzioni,
+    livelli: () => LIVELLI.map(l => ({ id: l.id, nome: nomeLivello(l), acceso: l.leggi() })),
     registra(nome, comando) {
       richiedi(/^[a-z_]+$/.test(nome) && nome !== 'center' && !registro[nome], err('registraNome'));
       richiedi(comando && typeof comando.crea === 'function', err('registraCrea'));

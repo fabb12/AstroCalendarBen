@@ -2751,13 +2751,37 @@
              <p id="demo-descrizione" class="demo-descrizione"></p>
              <dl id="demo-metadati" class="demo-metadati"></dl>
            </article>
-           <p id="demo-info" class="demo-info-tecnica"></p>
            <div class="demo-azioni demo-azioni-principali">
-             <button id="demo-avvia" type="button" class="demo-avvia-principale" data-i18n="demo.esegui">Avvia demo</button>
+             <button id="demo-avvia" type="button" class="demo-avvia-principale">
+               <svg class="demo-avvia-icona" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>
+               <span data-i18n="demo.esegui">Avvia demo</span>
+             </button>
+           </div>
+           <p id="demo-info" class="demo-info-tecnica"></p>
+           <fieldset class="demo-opzioni" aria-describedby="demo-opzioni-aiuto">
+             <legend class="demo-opzioni-titolo" data-i18n="demo.opzioniTitolo">Durante la demo</legend>
+             <p id="demo-opzioni-aiuto" class="demo-opzioni-aiuto" data-i18n="demo.opzioniAiuto">Queste scelte valgono solo per la demo: alla fine, con Termina o con Esc tutto torna com'era.</p>
+             <label class="demo-spunta">
+               <input id="demo-opz-schermo" type="checkbox">
+               <span data-i18n="demo.opzioneSchermo">Avvia a schermo intero</span>
+             </label>
+             <label class="demo-spunta">
+               <input id="demo-opz-registra" type="checkbox">
+               <span data-i18n="demo.opzioneRegistra">Registra un filmato della demo</span>
+             </label>
+             <p class="demo-opzioni-nota" data-i18n="demo.opzioneRegistraAiuto">Usa la registrazione del planetario: il filmato compare nel planetario alla fine della demo.</p>
+             <details id="demo-livelli-dettagli" class="demo-livelli-dettagli">
+               <summary id="demo-livelli-titolo" data-i18n="demo.livelliTitolo">Elementi del planetario da mostrare</summary>
+               <label class="demo-spunta">
+                 <input id="demo-livelli-personali" type="checkbox">
+                 <span data-i18n="demo.livelliPersonalizza">Scegli per la demo (altrimenti restano quelli attuali)</span>
+               </label>
+               <div id="demo-livelli" class="demo-livelli" role="group" aria-labelledby="demo-livelli-titolo"></div>
+             </details>
+           </fieldset>
+           <div class="demo-azioni demo-azioni-secondarie">
              <button id="demo-duplica" type="button" class="tasto-cielo" data-i18n="demo.duplicaModifica">Duplica e modifica</button>
              <button id="demo-modifica" type="button" class="tasto-cielo" data-i18n="demo.modifica" hidden>Modifica</button>
-           </div>
-           <div class="demo-azioni demo-azioni-secondarie">
              <button id="demo-nuova" type="button" class="tasto-cielo" data-i18n="demo.nuova">Crea nuova demo</button>
              <label class="tasto-cielo demo-importa-tasto" for="demo-importa" data-i18n="demo.importaPulsante">Importa demo da file</label>
              <input id="demo-importa" class="demo-file-nascosto" type="file" accept=".astrodemo,.txt,text/plain">

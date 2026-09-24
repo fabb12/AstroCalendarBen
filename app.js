@@ -344,8 +344,11 @@ const DISEGNI = {
   campana: `<path d="M18 10.4a6 6 0 1 0-12 0c0 4.2-1.6 5.6-1.6 5.6h15.2S18 14.6 18 10.4z"/>
     <path d="M10.2 19.2a2.1 2.1 0 0 0 3.6 0"/>`,
 
-  ingranaggio: `<circle cx="12" cy="12" r="3.1"/>
-    <path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5"/>`,
+  // La rotellina classica, quella che ogni sistema usa per «Impostazioni»: il
+  // disegno di prima — un cerchio con otto raggi — si leggeva come un Sole, e
+  // accanto ai tasti del cielo era proprio l'equivoco da non avere.
+  ingranaggio: `<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+    <circle cx="12" cy="12" r="3"/>`,
 
   scarica: `<path d="M12 3.6v11.2M7.8 10.6L12 14.8l4.2-4.2"/>
     <path d="M4.6 17.4v1.6a1.4 1.4 0 0 0 1.4 1.4h12a1.4 1.4 0 0 0 1.4-1.4v-1.6"/>`,
@@ -8300,7 +8303,8 @@ const sky = {
     riquadri: new Map(),   // fotografie HTML di fumetto/scheda per il montaggio
     foto: new Map(),       // indirizzo → promessa del data URL: le fotografie già incorporate
     esito: null,           // { blob, url, nome, tipo }
-    origine: 'planetario'  // oppure `solare`: decide tela, comandi e risultato
+    origine: 'planetario', // oppure `solare`: decide tela, comandi e risultato
+    sorgente: null         // funzione → tela da riprendere (la demo che cambia vista)
   },
   ultimoPuntatore: 'mouse'  // com'è arrivato l'ultimo tocco: dito o mouse
 };
@@ -21519,16 +21523,96 @@ function skyDisegnaOmbraLunare(ctx, r, o, ang) {
   const cy = Math.sin(angolo) * s.gamma * perGrado;
   const rp = s.penombra * perGrado;
 
+  // Quello che si vede davvero: il disco della Luna tosato al riquadro.
+  // A campo largo coincidono e non cambia niente; con la Luna ingrandita
+  // più dello schermo — su un telefono, a un quarto di grado, la Luna è
+  // larga duemila pixel e la penombra dieci volte tanto — la parte in vista
+  // è una fetta sottile di un gradiente enorme.
+  const vista = skyOmbraRiquadroLocale(ctx, r);
   ctx.save();
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.clip();
   ctx.globalCompositeOperation = 'multiply';
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rp);
-  skyEclisseFermate(s).forEach(p => g.addColorStop(p.t, p.colore));
+  const g = skyOmbraGradiente(ctx, s, cx, cy, rp, perGrado, vista);
   ctx.fillStyle = g;
-  ctx.fillRect(-r, -r, r * 2, r * 2);
+  if (vista) ctx.fillRect(vista.x0, vista.y0, vista.x1 - vista.x0, vista.y1 - vista.y0);
+  else ctx.fillRect(-r, -r, r * 2, r * 2);
   ctx.restore();
+}
+
+// Il riquadro dello schermo portato nelle coordinate locali della Luna (il
+// contesto è già traslato sul suo centro), tosato al quadrato del disco.
+// `null` quando la trasformazione non si lascia invertire.
+function skyOmbraRiquadroLocale(ctx, r) {
+  if (typeof ctx.getTransform !== 'function' || !ctx.canvas) return null;
+  let inv;
+  try { inv = ctx.getTransform().inverse(); } catch (e) { return null; }
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  if (!(W > 0 && H > 0) || !inv || !Number.isFinite(inv.a)) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [px, py] of [[0, 0], [W, 0], [0, H], [W, H]]) {
+    const x = inv.a * px + inv.c * py + inv.e, y = inv.b * px + inv.d * py + inv.f;
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  x0 = Math.max(x0, -r); y0 = Math.max(y0, -r); x1 = Math.min(x1, r); y1 = Math.min(y1, r);
+  if (!(x1 > x0 && y1 > y0)) return null;
+  return { x0, y0, x1, y1 };
+}
+
+// Quanti colori stendere sulla parte in vista, e dove. Il difetto che
+// cura: su un telefono con la Luna ingrandita la fetta in vista cadeva fra
+// due o tre fermate delle quarantanove della tavolozza, quindi tutto il
+// rilievo dell'ombra — l'orlo turchese, il rame, il cuore scuro — diventava
+// una rampa lineare fra due colori, cioè una campitura. In più il centro del
+// gradiente stava a decine di migliaia di pixel fuori dallo schermo, e le
+// GPU dei telefoni, che quei conti li fanno a mezza precisione, perdevano
+// le fermate del tutto. Adesso le fermate si **ricampionano sulla fetta in
+// vista**, a distanze vere dall'asse; e quando la fetta è così sottile
+// rispetto alla distanza che i cerchi dell'ombra sono rette a meno di un
+// terzo di pixel, il gradiente diventa lineare — nessun centro lontano, e
+// lo stesso disegno a qualunque campo.
+const SKY_OMBRA_CAMPIONI = 36;
+function skyOmbraGradiente(ctx, s, cx, cy, rp, perGrado, vista) {
+  if (!vista) {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rp);
+    skyEclisseFermate(s).forEach(p => g.addColorStop(p.t, p.colore));
+    return g;
+  }
+  // Distanze minima e massima dall'asse dell'ombra dentro alla fetta
+  const qx = Math.max(vista.x0, Math.min(cx, vista.x1)), qy = Math.max(vista.y0, Math.min(cy, vista.y1));
+  const dMin = Math.hypot(qx - cx, qy - cy);
+  let dMax = 0;
+  for (const [x, y] of [[vista.x0, vista.y0], [vista.x1, vista.y0], [vista.x0, vista.y1], [vista.x1, vista.y1]])
+    dMax = Math.max(dMax, Math.hypot(x - cx, y - cy));
+  // Tutta la fetta fuori dalla penombra, o una fetta grande come il disco
+  // intero: la tavolozza di sempre va benissimo.
+  if (dMin >= rp || (dMin === 0 && dMax >= rp * 0.9)) {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rp);
+    skyEclisseFermate(s).forEach(p => g.addColorStop(p.t, p.colore));
+    return g;
+  }
+  const a = dMin, b = Math.min(dMax, rp);
+  const diag = Math.hypot(vista.x1 - vista.x0, vista.y1 - vista.y0);
+  let g;
+  // La freccia di un arco di raggio a lungo la diagonale in vista
+  const quasiRetta = a > 0 && diag * diag / (8 * a) < 0.35;
+  if (quasiRetta) {
+    const mx = (vista.x0 + vista.x1) / 2, my = (vista.y0 + vista.y1) / 2;
+    const dx = mx - cx, dy = my - cy, n = Math.hypot(dx, dy) || 1;
+    const ux = dx / n, uy = dy / n;
+    g = ctx.createLinearGradient(cx + ux * a, cy + uy * a, cx + ux * b, cy + uy * b);
+  } else {
+    g = ctx.createRadialGradient(cx, cy, a, cx, cy, b);
+  }
+  const larghezza = Math.max(1e-6, b - a);
+  for (let i = 0; i <= SKY_OMBRA_CAMPIONI; i++) {
+    const d = a + larghezza * i / SKY_OMBRA_CAMPIONI;
+    const c = skyEclisseColore(s, d / perGrado);
+    g.addColorStop(i / SKY_OMBRA_CAMPIONI,
+      `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`);
+  }
+  return g;
 }
 
 // Un pianeta: la faccia vera se è abbastanza grande, la fase (Venere fa la
@@ -22765,6 +22849,13 @@ function skyNascondiNuvoleDaAvviso() {
 }
 
 function skyAvviso(chiave, testo, durataMs = SKY_AVVISO_DURATA_MS) {
+  // Durante una demo il cielo è una presentazione: gli avvisi di servizio
+  // (la posizione approssimata, le nuvole previste, il terreno che arriva)
+  // parlano di un luogo e di un'ora che non sono quelli del racconto, e
+  // comparendo sopra alla Luna che entra nel Sole la coprirebbero. Si
+  // scartano all'arrivo — cancellare resta sempre possibile — e passa solo il
+  // canale della demo stessa, che è quello che dice se il tour si è rotto.
+  if (testo && chiave !== 'demo' && window.AstroDemo && window.AstroDemo.silenzioso) return;
   sky.avvisi[chiave] = testo || '';
   clearTimeout(sky.scadenzaAvvisi[chiave]);
   delete sky.scadenzaAvvisi[chiave];
@@ -28166,8 +28257,10 @@ function chiudiSkymap() {
   skySorveglianzaARiposo();
   skyRilasciaSchermo();
   // Una registrazione in corso muore qui: senza il cielo davanti non ci sono
-  // più fotogrammi da prendere, e il risultato non avrebbe dove farsi vedere
-  skyRegFerma({ annulla: true });
+  // più fotogrammi da prendere, e il risultato non avrebbe dove farsi vedere.
+  // Quella di una demo no: ha una sorgente sua (`sky.reg.sorgente`) che
+  // segue la scena — il banco delle aurore, la vista 3D — e la chiude lei.
+  if (!sky.reg.sorgente) skyRegFerma({ annulla: true });
   skyRegChiudiPannello();
   skyRegDimenticaEsito();
   // Uscendo dalla vista non si può restare a schermo intero: resterebbe una
@@ -28967,11 +29060,21 @@ function skyAlternaSchermoIntero() {
   else skyEntraSchermoIntero();
 }
 
-function skyEntraSchermoIntero() {
+// `soloRipiego`: il riquadro prende lo schermo col solo CSS, senza chiedere
+// l'API Fullscreen e senza la tappa nella cronologia. Lo usa la demo a
+// schermo intero, che il pieno schermo vero lo tiene sull'intero documento:
+// così passando dal cielo alla vista 3D o a un banco della Didattica il
+// browser resta a schermo intero invece di uscirne a ogni cambio di scena.
+function skyEntraSchermoIntero(opzioni = {}) {
   const cont = document.getElementById('skymap-contenitore');
   if (!cont || sky.schermoIntero) return;
   sky.schermoIntero = true;
   document.body.classList.add('cielo-immersivo');
+  if (opzioni.soloRipiego) {
+    skyRipiegoSchermoIntero(cont);
+    skyAggiornaTastiSchermo();
+    return;
+  }
 
   // La tappa nella cronologia serve al gesto Indietro di Android
   if (!sky.tappaStoria) {
@@ -29022,9 +29125,12 @@ function skyEsciSchermoIntero(opzioni = {}) {
   // ritroverebbero appese al riquadro del cielo in mezzo alla pagina
   skyRiportaModaliDalCielo();
 
+  // Si esce dal pieno schermo vero **solo se è il nostro**: con la demo a
+  // schermo intero a tenerlo è l'intero documento, e un'uscita cieca qui
+  // butterebbe fuori la presentazione a ogni cambio di scena.
   const esci = document.exitFullscreen || document.webkitExitFullscreen;
   const attivo = document.fullscreenElement || document.webkitFullscreenElement;
-  if (attivo && esci) {
+  if (attivo && esci && (attivo === cont || (cont && cont.contains(attivo)))) {
     try {
       const esito = esci.call(document);
       if (esito && typeof esito.catch === 'function') esito.catch(() => {});
@@ -29394,9 +29500,17 @@ function skyRegTipoVideo() {
 // Misura fissa per tutta la registrazione: se cambiasse a metà (rotazione,
 // schermo intero) il filmato si spezzerebbe. Larghezza e altezza pari, che
 // certi codificatori video non digeriscono i numeri dispari.
+// `sky.reg.sorgente`, quando c'è, è una funzione che dice quale tela
+// riprendere adesso: la usa la demo registrata, che passa dal cielo alla
+// vista 3D e al banco delle aurore dentro allo stesso filmato. Il formato
+// del video allora è quello della finestra, che è il riquadro che le tre
+// scene si danno il cambio a riempire.
 function skyRegPreparaTela() {
-  const l = sky.reg.origine === 'solare' ? (sol.L || 320) : (sky.larghezza || 320);
-  const h = sky.reg.origine === 'solare' ? (sol.H || 320) : (sky.altezza || 320);
+  const finestra = !!sky.reg.sorgente;
+  const l = finestra ? (window.innerWidth || 320)
+    : sky.reg.origine === 'solare' ? (sol.L || 320) : (sky.larghezza || 320);
+  const h = finestra ? (window.innerHeight || 320)
+    : sky.reg.origine === 'solare' ? (sol.H || 320) : (sky.altezza || 320);
   const dpr = window.devicePixelRatio || 1;
   const k = Math.min(dpr, SKY_REG_LATO_VIDEO / Math.max(l, h));
   const tela = document.createElement('canvas');
@@ -29426,11 +29540,12 @@ function skyRegComponi() {
   ctx.fillRect(0, 0, L, H);
 
   ctx.filter = filtro;
+  const scelta = r.sorgente ? r.sorgente() : null;
   const video = document.getElementById('skymap-video');
-  if (r.origine !== 'solare' && sky.camera && video && video.videoWidth) {
+  if (!scelta && r.origine !== 'solare' && sky.camera && video && video.videoWidth) {
     skyRegDisegnaCoprendo(ctx, video, video.videoWidth, video.videoHeight, L, H);
   }
-  const sorgente = r.origine === 'solare' ? sol.canvas : sky.canvas;
+  const sorgente = scelta || (r.origine === 'solare' ? sol.canvas : sky.canvas);
   if (sorgente && sorgente.width) {
     skyRegDisegnaCoprendo(ctx, sorgente, sorgente.width, sorgente.height, L, H);
   }
@@ -29438,7 +29553,7 @@ function skyRegComponi() {
   // La scheda è un elemento HTML sovrapposto al canvas, perciò drawImage non
   // può prenderla insieme al cielo. Se l'utente l'ha lasciata aperta la
   // ridisegniamo sulla tela del filmato, nella stessa posizione e misura.
-  if (r.origine !== 'solare') skyRegDisegnaScheda(ctx, L, H);
+  if ((scelta ? scelta === sky.canvas : r.origine !== 'solare')) skyRegDisegnaScheda(ctx, L, H);
 
   // La firma passa sotto lo stesso filtro di tutto il resto: una scritta
   // bianca su un filmato rosso si vedrebbe subito che è stata appiccicata dopo
@@ -30017,7 +30132,7 @@ function skyRegAlternaDa(origine) {
 
 async function skyRegAvvia() {
   const r = sky.reg;
-  const sorgente = r.origine === 'solare' ? sol.canvas : sky.canvas;
+  const sorgente = (r.sorgente && r.sorgente()) || (r.origine === 'solare' ? sol.canvas : sky.canvas);
   if (r.attiva || r.preparazione || !sorgente) return;
 
   r.preparazione = true;

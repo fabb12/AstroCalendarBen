@@ -172,6 +172,22 @@
         this.programma();
       } catch (e) { this.fallisci(e); }
     }
+    // Salta all'inizio di una scena: chiude quella in corso e apre l'altra
+    // col suo orologio a zero. Le scene saltate non si eseguono — chi salta
+    // in avanti deve essere già passato da quelle che preparano il luogo e
+    // la data (le prove lo usano per non aspettare un minuto a tour).
+    // `frazione` (0–1) porta anche l'orologio della scena a quel punto.
+    vaiAScena(indice, frazione = 0) {
+      if (!this.demo || (this.stato !== 'attivo' && this.stato !== 'pausa')) return;
+      const i = Math.max(0, Math.min(this.demo.scene.length - 1, Math.floor(indice)));
+      const u = Math.max(0, Math.min(0.999, Number(frazione) || 0));
+      try {
+        this.esci();
+        this.indice = i; this.trascorso = 0; this.ultimo = this.ora();
+        this.entra();
+        if (u > 0) { this.trascorso = u * this.demo.scene[i].durata; this.aggiorna(u); }
+      } catch (e) { this.fallisci(e); }
+    }
     pausa() {
       if (this.stato !== 'attivo') return;
       if (this.raf !== null) this.annulla(this.raf);

@@ -67,9 +67,15 @@ motore.avvia(testo, contesto()); passo(3000); motore.ferma();
 ok(richieste.size === 0 && ripristini === 3, 'Stop cancella il fotogramma');
 rifiuta(() => motore.avvia(testo.replace('timelapse', 'ignoto'), contesto()), 'Comando ignoto respinto prima degli effetti');
 ok(ripristini === 3, 'Nessun effetto per script invalido');
+// Il salto di scena chiude quella in corso e apre l'altra dall'inizio.
+motore.avvia(testo, contesto()); passo(2000); eventi.length = 0;
+motore.vaiAScena(2);
+ok(motore.indice === 2 && eventi.some(e => e[0] === 'timelapse' && e[1] === 'chiudi') &&
+  eventi.some(e => e[0] === 'orbit_object' && e[1] === 0), 'Salto di scena');
+passo(15000); ok(motore.stato === 'completato' && ripristini === 4, 'Il salto conserva la fine');
 registro.timelapse.crea = () => ({ aggiorna() { throw new Error('guasto controllato'); } });
 motore.avvia(testo, contesto());
-ok(motore.stato === 'errore' && ripristini === 4 && richieste.size === 0, 'Guasto ripristina e termina');
+ok(motore.stato === 'errore' && ripristini === 5 && richieste.size === 0, 'Guasto ripristina e termina');
 console.log('Demo: ' + verifiche + ' verifiche superate');
 
 // Archivio indipendente dal DOM: protezioni, persistenza e scritture atomiche.

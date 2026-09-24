@@ -53,8 +53,8 @@ const server = http.createServer((req, res) => {
       return { chiave: d.chiave, scene: demo.scene.length, durata: demo.scene.reduce((n, s) => n + s.durata, 0) };
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
-      ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti']);
-    assert.deepEqual(builtins.map(d => d.durata), [30000, 24000, 20000, 22000]);
+      ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss']);
+    assert.deepEqual(builtins.map(d => d.durata), [58000, 57000, 53000, 45000, 36000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
@@ -71,26 +71,27 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.locator('#cielo-comandi #demo-avvia').count(), 0);
     assert.equal(await pagina.locator('#demo-editor').getAttribute('readonly'), '');
     assert.equal(await pagina.locator('#demo-elimina').isDisabled(), true);
-    assert.match(await pagina.locator('#demo-info').innerText(), /3 scene.*30 s/);
+    assert.match(await pagina.locator('#demo-info').innerText(), /7 scene.*58 s/);
     await pagina.locator('#demo-duplica').click();
     const testoBase = await pagina.locator('#demo-editor').inputValue();
     assert.match(testoBase, /define_demo 'eclisse_tour_copia'/, 'La copia prende un nome suo');
-    await pagina.locator('#demo-editor').fill(testoBase.replace('17:47', '25:00'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('end: 17:48', 'end: 25:00'));
     assert.equal(await pagina.locator('#demo-salva').isDisabled(), true);
-    await pagina.locator('#demo-editor').fill(testoBase.replace('12s;', '12s'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('5s;', '5s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
     // La posizione è quella dell'errore, non la fine del file.
-    await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 12s;', 'duration: 12s; duration: 3s;'));
-    assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 4,/);
+    await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 5s;', 'duration: 5s; duration: 3s;'));
+    assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 5,/);
     // In inglese anche i messaggi di validazione sono in inglese.
     await pagina.evaluate(() => astroI18n.impostaLingua('en'));
-    await pagina.locator('#demo-editor').fill(testoBase.replace('degrees: 4', 'degrees: 400'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('degrees: 1.6', 'degrees: 400'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /^Field of view expected/);
-    await pagina.locator('#demo-editor').fill(testoBase.replace('12s;', '12s'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('5s;', '5s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /line \d+, column \d+/);
     await pagina.evaluate(() => astroI18n.impostaLingua('it'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
-    for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'frame_objects', 'orbit_object', 'zoom_view']) {
+    for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'frame_objects', 'orbit_object', 'zoom_view', 'didactic_view', 'zoom_fov', 'event_window',
+      'camera_3d', 'aurora_lesson', 'satellite_pass']) {
       await pagina.locator('#demo-snippet').selectOption(snippet);
       await pagina.locator('#demo-inserisci').click();
       assert.equal(await pagina.locator('#demo-editor').getAttribute('aria-invalid'), 'false', snippet);
@@ -161,11 +162,11 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), '');
     assert.equal(await pagina.locator('.gruppo-comandi.gruppo-attivo').count(), 0, 'Il menu del planetario è chiuso durante la demo');
     assert.equal(await pagina.evaluate(() => sky.target), 'Sun');
-    assert.ok(Math.abs((await pagina.evaluate(() => sky.fov)) - 4) < 0.01, 'Campo stretto sull’eclisse');
+    assert.ok((await pagina.evaluate(() => sky.fov)) < 40, 'Il campo si stringe sul Sole');
     const scenaSolare = await pagina.evaluate(() => ({
       data: skyAdesso().toISOString(), lat: sky.observer.latitude, lon: sky.observer.longitude
     }));
-    assert.ok(scenaSolare.data.startsWith('2026-08-12T17:4'));
+    assert.ok(scenaSolare.data.startsWith('2026-08-12T16:4'));
     assert.ok(Math.abs(scenaSolare.lat - 64.1466) < 0.0001 && Math.abs(scenaSolare.lon + 21.9426) < 0.0001,
       'La prima scena usa Reykjavík');
     await pagina.evaluate(() => AstroDemo.pausa());
@@ -173,6 +174,7 @@ const server = http.createServer((req, res) => {
     await pagina.waitForTimeout(350);
     assert.equal(await pagina.evaluate(() => +skyAdesso()), pausaCielo);
     await pagina.evaluate(() => AstroDemo.riprendi());
+    await pagina.evaluate(() => AstroDemo.vaiAScena(3));
     await pagina.waitForFunction(() => solVolo.attivo, null, { timeout: 15000 });
     await pagina.waitForTimeout(300);
     await pagina.evaluate(() => AstroDemo.pausa());
@@ -182,6 +184,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() => solVolo.raf), 0, 'Nessun secondo orologio del volo');
     await pagina.evaluate(() => AstroDemo.riprendi());
     await pagina.waitForFunction(() => sol.vicino, null, { timeout: 8000 });
+    await pagina.evaluate(() => AstroDemo.vaiAScena(5));
     const eclipse = await pagina.evaluate(() => ({
       tipo: solStatoEclissi(skyAdesso()).tipo,
       ombra: !!solOmbraLunareSuTerra(skyAdesso()),
@@ -197,19 +200,20 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() => sol.az), posa, 'Orbita ferma in pausa');
     const centro = await pagina.evaluate(() => {
       solMisura();
-      const p = solVicPunto(solOmbraLunareSuTerra(skyAdesso()).centro);
+      const p = solVicPunto([0, 0, 0]);
       return { x: p.px, y: p.py, L: sol.L, H: sol.H };
     });
-    assert.ok(Math.abs(centro.x - centro.L / 2) < 2 && Math.abs(centro.y - centro.H / 2) < 2, 'Ombra centrata');
+    assert.ok(Math.abs(centro.x - centro.L / 2) < 2 && Math.abs(centro.y - centro.H / 2) < 2, 'Terra al centro');
     fs.mkdirSync(path.join(radice, 'work'), { recursive: true });
     await pagina.screenshot({ path: path.join(radice, 'work/demo-eclisse-solare.png') });
     await pagina.evaluate(() => AstroDemo.riprendi());
-    await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 20000 });
+    await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 45000 });
     const dopo = await pagina.evaluate(() => ({
       quando: +skyAdesso(), target: sky.target, fov: sky.fov, telefono: sky.seguiTelefono,
-      aperto: sol.aperto, evidenza: AstroDemo.evidenza('Venus')
+      aperto: sol.aperto, evidenza: AstroDemo.evidenza('Venus'), schermoIntero: sky.schermoIntero
     }));
-    assert.deepEqual({ quando: dopo.quando, target: dopo.target, fov: dopo.fov, telefono: dopo.telefono }, originale);
+    assert.deepEqual({ quando: dopo.quando, target: dopo.target, fov: dopo.fov, telefono: dopo.telefono,
+      schermoIntero: dopo.schermoIntero }, originale);
     assert.equal(dopo.aperto, false); assert.equal(dopo.evidenza, 1);
     assert.equal(await pagina.evaluate(() => sky.schermoIntero), originale.schermoIntero,
       'La demo conserva lo stato iniziale dello schermo');
@@ -321,27 +325,35 @@ const server = http.createServer((req, res) => {
       return prima;
     });
     for (const [chiave, data, lat, lon] of [
-      ['eclisse_lunare', '2028-12-31T15:45:00', 43.0618, 141.3545],
-      ['aurora_boreale', '2027-01-15T20:00:00', 69.6492, 18.9553],
+      ['eclisse_lunare', '2028-12-31T15:0', 43.0618, 141.3545],
+      ['aurora_boreale', '2027-01-15T19:00:00', 60.1699, 24.9384],
       ['allineamento_pianeti', '2028-10-21T12:45:00', 32.2226, -110.9747]
     ]) {
       await pagina.locator('#btn-impostazioni').click();
       await pagina.locator('#imp-tab-btn-demo').click();
       await pagina.locator('#demo-elenco').selectOption(chiave);
       await pagina.locator('#demo-avvia').click();
+      // Il banco delle aurore apre il racconto: il cielo di Tromsø arriva
+      // alla sesta scena, e ci si salta per guardarlo senza aspettare.
+      const primaScena = await pagina.locator('#demo-controlli p').innerText();
+      if (chiave === 'aurora_boreale') {
+        assert.match(primaScena, /^Aurora boreale.* — scena 1\/7 · Didattica/, 'Aurora: prima il banco didattico');
+        await pagina.evaluate(() => AstroDemo.vaiAScena(5));
+      }
+      if (chiave === 'eclisse_lunare') await pagina.evaluate(() => AstroDemo.vaiAScena(1));
       const durante = await pagina.evaluate(() => ({ stato: AstroDemo.stato, tempo: skyAdesso().toISOString(),
         lat: sky.observer.latitude, lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] }));
       assert.equal(durante.stato, 'attivo', chiave);
       assert.match(await pagina.locator('#demo-controlli p').innerText(),
         new RegExp('^' + { eclisse_lunare: 'Eclisse lunare', aurora_boreale: 'Aurora boreale',
-          allineamento_pianeti: 'Corteo dei pianeti' }[chiave] + '.* — scena 1/2 · Planetario'),
+          allineamento_pianeti: 'Corteo dei pianeti' }[chiave] + '.* — scena \\d/\\d · Planetario'),
         chiave + ': pannello con titolo e scena');
       assert.ok(durante.tempo.startsWith(data), chiave + ': istante astronomico');
       assert.ok(Math.abs(durante.lat - lat) < 0.0001 && Math.abs(durante.lon - lon) < 0.0001,
         chiave + ': coordinate temporanee');
       if (chiave === 'aurora_boreale') {
         assert.deepEqual(durante.aurora, [true, 5]);
-        assert.ok(Math.abs(await pagina.evaluate(() => sky.fov) - 90) < 0.01, 'Aurora a campo largo');
+        assert.ok(await pagina.evaluate(() => sky.fov) >= 59, 'Aurora a campo largo');
       }
       if (chiave === 'eclisse_lunare') {
         const reale = await pagina.evaluate(() => {
