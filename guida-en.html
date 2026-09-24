@@ -1181,13 +1181,21 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
         <div>
           <h3>Open Settings → Automated demos</h3>
           <p>The tab shows a list and a card: title, description, duration, number of scenes,
-          date, place, field of view and any simulated Kp of the chosen demo.</p>
+          date, place, field of view and any simulated Kp of the chosen demo. Below the large
+          <b>Start demo</b> button is the <b>During the demo</b> box: <b>Start in full screen</b>,
+          <b>Record a video of the demo</b> (with the planetarium recorder: the video appears in the
+          planetarium at the end) and <b>Planetarium elements to show</b>, the same switches as the
+          Display tab — stars, names, constellations and their artwork, planets, Sun and Moon, deep sky,
+          Milky Way, grid, ecliptic, atmosphere, clouds, terrain, relief, town lights, mountain names,
+          lakes and rivers and the others. The choices are remembered and apply only to the demo.</p>
         </div>
       </li>
       <li class="passo">
         <div>
           <h3>Choose one and press “Start demo”</h3>
-          <p>The settings close, the planetarium goes full screen and the story begins.
+          <p>The settings close (and, if you chose it, the app goes full screen) and the story begins.
+          While the demo is running the app's service notices stay quiet, so they don't cover the phenomenon;
+          a real demo error is always shown.
           At the bottom the demo bar appears, with the title, the current scene (“scene 1/2 · Planetarium · 8 s”)
           and the <b>Pause</b>/<b>Resume</b>, <b>Restart</b> and <b>End demo</b> buttons.</p>
         </div>
@@ -1213,19 +1221,21 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <p><strong>What is restored.</strong> At the end of the demo, or when you stop it, these go back to how they were:
       the app view, date and time, the place the sky is seen from, the camera direction, the field
       of view, the planet, Sun and Moon filters, tracking, the time step and playback, the 3D
-      view, the simulated aurora and full screen. The app's <strong>saved position</strong> is never
+      view, the learning-lab bench, the simulated aurora, the planetarium elements chosen for the demo, the
+      recording and full screen. The app's <strong>saved position</strong> is never
       touched: the demo's place is only temporary.</p>
     </div>
 
-    <h3 style="margin-top:28px">The four built-in demos</h3>
+    <h3 style="margin-top:28px">The five built-in demos</h3>
     <div class="tabella-guscio" style="margin-top:12px">
       <table>
         <thead><tr><th>Demo</th><th>Length</th><th>What it shows</th></tr></thead>
         <tbody>
-          <tr><td><b>Total solar eclipse · August 12, 2026</b></td><td>3 scenes · 30 s</td><td>From Reykjavík, a 4° field on the Sun during totality; then the flight to the Solar System and the Earth–Moon bench, with the camera circling the Earth while keeping the real shadow footprint in the centre.</td></tr>
-          <tr><td><b>Total lunar eclipse · December 31, 2028</b></td><td>2 scenes · 24 s</td><td>From Sapporo, the Moon centred and magnified down to 2.5° while time crosses the eclipse, including the maximum at 01:52 local time on January 1.</td></tr>
-          <tr><td><b>Northern lights · polar night</b></td><td>2 scenes · 20 s</td><td>From Tromsø, a 90° field facing north and the auroral oval with <b>simulated Kp 5</b>, from 21:00 to 23:30. It is a teaching simulation, not a forecast.</td></tr>
-          <tr><td><b>Planet parade · October 21, 2028</b></td><td>2 scenes · 22 s</td><td>From Tucson before dawn: Mercury, Venus, Mars and Jupiter highlighted, with a framing computed so that all four fit.</td></tr>
+          <tr><td><b>Total solar eclipse · August 12, 2026</b></td><td>7 scenes · 58 s</td><td>From Reykjavík the field narrows on the Sun and the Moon crosses it into totality; the flight leads to the Earth–Moon bench, where the camera circles Sun, Moon and Earth in line and then closes in on the Earth while the Moon's shadow races across it; finally back to the sky, where the Sun is whole again.</td></tr>
+          <tr><td><b>Total lunar eclipse · December 31, 2028</b></td><td>6 scenes · 57 s</td><td>From Sapporo the Moon slides into Earth's shadow and turns red; from outside you watch it cross the shadow cone as the camera circles it; back in the sky, the Moon leaves it.</td></tr>
+          <tr><td><b>Northern lights · the northern sky</b></td><td>7 scenes · 53 s</td><td>First the learning-lab aurora bench in full screen — the solar wind, the camera circling the Earth, the shield up close, the discharge, the ring around the pole — then Helsinki's sky facing north with <b>simulated Kp 5</b>. It is a teaching simulation, not a forecast.</td></tr>
+          <tr><td><b>Planet parade · October 21, 2028</b></td><td>5 scenes · 45 s</td><td>From Tucson before dawn: Mercury, Venus, Mars and Jupiter highlighted; then from outside, with the camera coming down from above to the plane of the orbits, where they really are; and back to the sky as dawn breaks.</td></tr>
+          <tr><td><b>ISS pass · from your sky</b></td><td>3 scenes · 36 s</td><td>The next Space Station pass over the planetarium location, computed from the app's orbital data: first its track across the sky, then the same orbit from outside, over the same time span. It needs the orbital data, so the network at least once.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1273,7 +1283,8 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
     <ul>
       <li><b>define_demo</b> gives the name of the demo, in quotes or as a single word without spaces. It is the name you see in the list.</li>
       <li><b>scene</b> is followed by the scene type: <code>planetarium_view</code> (the planetarium),
-      <code>transition</code> (the flight to the Solar System) or <code>solar_system_3d</code> (the 3D view).
+      <code>transition</code> (the flight to the Solar System), <code>solar_system_3d</code> (the 3D view) or
+      <code>didactic_view</code> (the learning-lab aurora bench, in full screen).
       The app opens the right view by itself at the start of each scene.</li>
       <li><b>duration</b> is required in every scene, in seconds (<code>12s</code>, also <code>2.5s</code>) or milliseconds
       (<code>800ms</code>), up to one hour.</li>
@@ -1298,6 +1309,11 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
           <tr><td><code>simulate_aurora</code></td><td><code>kp</code>: 0…9</td><td>Switches on the auroral oval with that simulated Kp.</td></tr>
           <tr><td><code>zoom_view</code></td><td><code>type: geometric</code>, <code>final_target: solar_system_3d</code></td><td>The flight from the planetarium to the Solar System. It goes in a <code>transition</code> scene; the flight lasts as long as the scene.</td></tr>
           <tr><td><code>orbit_object</code></td><td><code>object: 'Earth-Moon'</code>, <code>angle</code> in degrees, <code>speed: slow</code></td><td>On the Earth–Moon bench it turns the camera by that angle around the Earth, setting the clock to the nearest solar eclipse.</td></tr>
+          <tr><td><code>zoom_fov</code></td><td><code>from</code>, <code>to</code>: 0.5…160</td><td>Narrows (or widens) the field of view during the scene.</td></tr>
+          <tr><td><code>event_window</code></td><td><code>event</code>: <code>solar_eclipse</code> or <code>lunar_eclipse</code>; <code>from</code>, <code>to</code>: minutes from maximum (−720…720)</td><td>Finds the real eclipse nearest to the demo date and runs time around its maximum. Every scene of the story talks about the same eclipse.</td></tr>
+          <tr><td><code>camera_3d</code></td><td><code>scene</code>: <code>earth_moon</code> or <code>system</code>; <code>focus</code>: <code>Earth</code>, <code>Moon</code>, <code>Earth-Moon</code>, <code>Eclipse Shadow</code> (Earth–Moon bench) or <code>Sun</code>, <code>Earth</code>, <code>ISS</code> (Solar System); optional <code>frame</code> (planets to keep in view), <code>orbit</code> (degrees), <code>elev_from</code>/<code>elev_to</code>, <code>zoom_from</code>/<code>zoom_to</code></td><td>Moves the 3D camera during the scene: it circles the chosen centre, rises or lowers and closes in. Positions stay the real ones. It goes in a <code>solar_system_3d</code> scene.</td></tr>
+          <tr><td><code>aurora_lesson</code></td><td><code>chapter</code>: <code>vento</code>, <code>scudo</code>, <code>scarica</code>, <code>anello</code>; optional <code>from</code>/<code>to</code> (story hours, 0…60), <code>orbit</code>, <code>elev_from</code>/<code>elev_to</code>, <code>zoom_from</code>/<code>zoom_to</code></td><td>Drives the learning-lab aurora bench: panel, story time and camera. It goes in a <code>didactic_view</code> scene.</td></tr>
+          <tr><td><code>satellite_pass</code></td><td><code>satellite</code>: <code>iss</code> or <code>tiangong</code>; <code>before</code>, <code>after</code>: minutes of margin (0…15)</td><td>Finds the next pass computed by the app over the planetarium location and runs time through it; in the planetarium it frames the whole arc. Used in several scenes, it always tells the same pass.</td></tr>
           <tr><td><code>transition_to</code></td><td><code>target</code>: <code>planetarium_view</code> or <code>solar_system_3d</code></td><td>Switches view at once, without the flight.</td></tr>
         </tbody>
       </table>
@@ -1317,9 +1333,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <div><dt>The camera</dt><dd>The viewer can always take the camera. From that moment the framing actions
       of the current scene stop; the next scene starts again with its own.</dd></div>
       <div><dt>Before starting</dt><dd>A demo does not start with the Solar System open, during a recording
-      or a Sky Mission in progress, or while the planetarium does not yet have a place and catalogues ready: the app says so.</dd></div>
+      or a Sky Mission in progress, or while the planetarium does not yet have a place and catalogues ready: the app says so.
+      The ISS demo also needs the station's orbital data, which the app downloads when you open the demos tab.</dd></div>
       <div><dt>Reduced motion</dt><dd>If the system's “reduce motion” preference is on, the decorative rotation
-      of the Earth–Moon bench is skipped. If the preference changes during a demo, the demo stops and restores.</dd></div>
+      of the cameras (3D view and aurora bench) is skipped: the camera is already where the story wants it, while astronomical time keeps running. If the preference changes during a demo, the demo stops and restores.</dd></div>
     </dl>
 
     <h3 style="margin-top:28px">When something goes wrong</h3>

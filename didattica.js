@@ -378,7 +378,10 @@
     else didPienoEntra(id);
   }
 
-  function didPienoEntra(id) {
+  // `opzioni.soloRipiego`: niente API Fullscreen, solo il riquadro fisso in
+  // CSS. Lo chiede la demo, che quando è a schermo intero lo tiene
+  // sull'intero documento e non deve perderlo passando di scena in scena.
+  function didPienoEntra(id, opzioni = {}) {
     const c = $(id);
     const scena = c && c.closest('.did-scena');
     if (!scena) return;
@@ -405,7 +408,7 @@
     // schermo intero è la cosa più triste che ci sia
     if (c.style.height) c.style.height = '';
 
-    const chiedi = scena.requestFullscreen || scena.webkitRequestFullscreen;
+    const chiedi = !opzioni.soloRipiego && (scena.requestFullscreen || scena.webkitRequestFullscreen);
     if (chiedi) {
       try {
         const esito = chiedi.call(scena);
@@ -448,9 +451,11 @@
     pieno.ripiego = false;
     pieno.scena = null;
 
+    // Solo il pieno schermo nostro: quello dell'intero documento (la demo a
+    // schermo intero) non è di questa scena, e non va chiuso da qui.
     const attivo = document.fullscreenElement || document.webkitFullscreenElement;
     const esci = document.exitFullscreen || document.webkitExitFullscreen;
-    if (attivo && esci) {
+    if (attivo && esci && scena && (attivo === scena || scena.contains(attivo))) {
       try {
         const esito = esci.call(document);
         if (esito && typeof esito.catch === 'function') esito.catch(() => {});
@@ -4474,6 +4479,10 @@
     // esattamente il caso che il quadro racconta — il verde ancora sotto
     // la curvatura, il rosso già sopra l'orizzonte.
     kpTaglio: 6,
+    // Quanto la regia di una demo stringe l'inquadratura del quadro: uno è
+    // l'inquadratura del banco, due vuol dire metà campo. A mano non si
+    // tocca mai (per avvicinarsi c'è la lente), e la demo lo rimette a uno.
+    zoomDemo: 1,
     // le due memorie: le linee di campo e la risposta «da qui cosa si
     // vedrebbe» costano troppo per rifarle sessanta volte al secondo, e
     // cambiano molto più piano di così
@@ -5291,7 +5300,7 @@
     didSfondo(ctx, L, H);
 
     const q = AURL_QUADRI[aurL.quadro];
-    const w = aurLVista(L, H, q.centro, q.campo);
+    const w = aurLVista(L, H, q.centro, q.campo / (aurL.zoomDemo > 0 ? aurL.zoomDemo : 1));
     const s = aurLScudo(aurL.t);
     const kp = aurLKp(aurL.t);
     const tilt = AURL_TILT * Math.PI / 180;
@@ -8921,6 +8930,72 @@
   };
 
   window.didEsciSchermoIntero = function () { didPienoEsci(); };
+
+  // --- La regia delle demo -------------------------------------------
+  // Il banco delle aurore visto da fuori: la demo sceglie il quadro, porta
+  // il tempo della storia e muove la camera, e alla fine rimette tutto
+  // com'era. Nessuna scena nuova: sono gli stessi quadri che si aprono a
+  // mano, con le stesse funzioni di disegno, e la differenza è solo chi
+  // tiene la barra del tempo.
+  window.didDemo = {
+    apri(id) {
+      if (!stato.costruito) return false;
+      if (stato.lab !== id) didApri(id);
+      return stato.lab === id;
+    },
+    fotografa() {
+      return {
+        lab: stato.lab, quadro: aurL.quadro, t: aurL.t, marcia: aurL.marcia, velocita: aurL.velocita,
+        cam: { ...aurL.cam }, camV: { ...aurL.camV }, zoomDemo: aurL.zoomDemo, pieno: pieno.id
+      };
+    },
+    ripristina(f) {
+      if (!f) return;
+      if (pieno.id && pieno.id !== f.pieno) didPienoEsci();
+      aurL.zoomDemo = f.zoomDemo;
+      aurL.marcia = f.marcia; aurL.velocita = f.velocita;
+      if (stato.costruito && aurL.quadro !== f.quadro) window.didDemo.quadro(f.quadro);
+      aurL.t = f.t;
+      Object.assign(aurL.cam, f.cam); Object.assign(aurL.camV, f.camV);
+      if (stato.costruito) {
+        try { alterna('did-aur', aurL.marcia); } catch (e) { /* banco non costruito */ }
+        const sl = $('did-aur-slitta');
+        if (sl) sl.value = String(Math.round(aurL.t * 10));
+        if (f.lab && stato.lab !== f.lab) didApri(f.lab);
+      }
+    },
+    quadro(id) {
+      if (!AURL_QUADRI[id]) throw new Error(id);
+      const quadri = $('did-aur-quadri');
+      if (quadri) quadri.querySelectorAll('[data-quadro]').forEach(x =>
+        x.classList.toggle('attiva', x.dataset.quadro === id));
+      if (aurL.quadro !== id) aurLApriQuadro(id);
+    },
+    aurora(p) {
+      if (p.quadro && aurL.quadro !== p.quadro) window.didDemo.quadro(p.quadro);
+      if (aurL.marcia) { aurL.marcia = false; try { alterna('did-aur', false); } catch (e) { /* niente */ } }
+      if (Number.isFinite(p.t)) {
+        aurL.t = p.t;
+        const sl = $('did-aur-slitta');
+        if (sl && document.activeElement !== sl) sl.value = String(Math.round(aurL.t * 10));
+        if (aurL.quadro !== 'taglio') aurLNumeri();
+      }
+      if (Number.isFinite(p.az)) { aurL.cam.az = aurL.camV.az = p.az; }
+      if (Number.isFinite(p.elev)) { aurL.cam.elev = aurL.camV.elev = p.elev; }
+      if (Number.isFinite(p.zoom)) aurL.zoomDemo = p.zoom;
+    },
+    // L'inquadratura di partenza di un quadro, per la camera della demo
+    posa(id) {
+      const q = AURL_QUADRI[id];
+      return q ? { az: q.az, elev: q.elev, finestra: aurLFinestra(id).slice() } : null;
+    },
+    pieno(entra) {
+      const id = 'did-aur-tela';
+      if (entra) { if (pieno.id !== id) didPienoEntra(id, { soloRipiego: true }); }
+      else if (pieno.id) didPienoEsci();
+    },
+    tela() { return pieno.id ? $(pieno.id) : $('did-aur-tela'); }
+  };
 
   window.didatticaRidimensiona = function () { cacheStelle.chiave = ''; };
   window.didProve = {

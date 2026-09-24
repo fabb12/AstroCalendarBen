@@ -23,47 +23,62 @@ La spiegazione per chi usa l'app sta nella guida, **capitolo 10** (`guida.html#d
 e in inglese `guida-en.html#demo`): va tenuta allineata a questo file quando si
 aggiunge un'azione o si cambia una regola.
 
-## I quattro tour predefiniti
+## Le opzioni della demo
+
+Sotto il tasto **Avvia demo** (pieno, largo, col segno del play: è l'azione
+principale della scheda) c'è il riquadro **Durante la demo**. Le scelte si
+ricordano in `astrocal_demo_opzioni_v1` (localStorage) e valgono solo per il
+racconto:
+
+- **Avvia a schermo intero.** Il pieno schermo vero si chiede *una volta*,
+  dentro al gesto del clic, sull'intero documento; le tre viste (planetario,
+  3D, banco delle aurore) se lo passano col solo CSS
+  (`skyEntraSchermoIntero({ soloRipiego: true })`, `didPienoEntra(id,
+  { soloRipiego: true })`, e la 3D che col cielo immersivo ripiega da sé). Per
+  questo `skyEsciSchermoIntero` e `didPienoEsci` chiudono il pieno schermo
+  nativo **solo se è il loro**. Esc nel pieno schermo vero lo consuma il
+  browser: l'uscita dal pieno schermo della demo ferma la demo e ripristina.
+- **Registra un filmato della demo.** È la registrazione del planetario (§7.6
+  di `app.js`) con una sorgente sostituibile, `sky.reg.sorgente`: la demo le
+  passa la tela della scena in corso (cielo, volo, 3D o banco delle aurore) e
+  guida l'acquisizione con un suo `requestAnimationFrame`. La durata la tiene
+  la demo (la pausa non tronca il filmato); a fine racconto il filmato compare
+  nel pannello del planetario, che per questo resta aperto.
+- **Elementi del planetario da mostrare.** L'elenco non è inventato: sono gli
+  interruttori della scheda Visualizzazione (stelle, nomi, costellazioni e
+  loro disegni, pianeti, Sole e Luna, cielo profondo, Via Lattea, corpi minori,
+  satelliti, aerei, reticolo, eclittica, traccia, eventi, sotto l'orizzonte,
+  atmosfera, nuvole, aurora, terreno, rilievo, luci dei paesi, nomi dei monti,
+  laghi e fiumi), col nome letto dal tasto stesso. Spenta la casella
+  «Scegli per la demo» restano quelli attuali.
+
+Durante la demo `AstroDemo.silenzioso` è vero: `skyAvviso` scarta gli avvisi
+di servizio (tranne il canale `demo`, che dice se il tour si è rotto) e
+`body.demo-in-corso` nasconde avviso di transito, barra del terreno e
+caricamento. Fine, Stop, Esc ed errore ripristinano tutto: livelli, schermo
+intero, registratore, banco didattico, camera 3D (anche mondi minori e sonde).
+
+## I cinque tour predefiniti
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
-| **Eclisse solare totale 2026** (`eclisse_tour`) | 3 · 30 s | Reykjavík, 12 agosto 2026. Il planetario parte con un campo di 4° centrato sul Sole e attraversa i minuti della totalità; poi vola al banco Terra–Luna e centra l'impronta reale dell'ombra sulla Terra. |
-| **Eclisse lunare totale** (`eclisse_lunare`) | 2 · 24 s | Sapporo, notte fra 31 dicembre 2028 e 1 gennaio 2029. La Luna è centrata con campo 4°/2,5° e il timelapse 00:45–03:00 JST comprende il massimo reale delle 01:52. |
-| **Aurora boreale** (`aurora_boreale`) | 2 · 20 s | Tromsø, 15 gennaio 2027. Campo largo 90° verso nord, ovale aurorale acceso con **Kp 5 simulato**, poi timelapse 21:00–23:30. È una simulazione didattica, non una previsione. |
-| **Corteo dei pianeti** (`allineamento_pianeti`) | 2 · 22 s | Tucson, alba del 21 ottobre 2028. La camera calcola automaticamente il minimo arco di cielo che contiene Mercurio, Venere, Marte e Giove, li evidenzia e li mantiene nel quadro durante il timelapse 05:45–06:10 MST. |
+| **Eclisse solare totale 2026** (`eclisse_tour`) | 7 · 58 s | Reykjavík: il campo si stringe da 40° a 1,6° sul Sole e la Luna lo attraversa (16:40→17:48, poi la totalità); volo; banco Terra–Luna con Sole, Luna e Terra in fila e la camera che gira; avvicinamento alla Terra (×5,5) con l'ombra che corre da −20 a +45 min dal massimo; di nuovo in cielo fino alle 18:52, a eclisse finita. |
+| **Eclisse lunare totale 2028** (`eclisse_lunare`) | 6 · 57 s | Sapporo: la Luna entra nell'ombra e si arrossa (−110→+5 min); volo; da fuori il cono d'ombra e la Luna che lo attraversa (−170→+130 min) con la camera che le gira attorno; in cielo la Luna ne esce (+5→+170). |
+| **Aurora boreale** (`aurora_boreale`) | 7 · 53 s | Il banco delle aurore della Didattica a schermo intero: vento e nube, la camera attorno alla Terra, lo scudo da vicino, la scarica, l'anello; poi il cielo di **Helsinki** verso nord con Kp 5 simulato. |
+| **Corteo dei pianeti** (`allineamento_pianeti`) | 5 · 45 s | Tucson prima dell'alba: i quattro pianeti inquadrati; volo; da fuori la camera scende dall'alto (80°) al piano (12°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; di nuovo in cielo verso l'alba. |
+| **Passaggio della ISS** (`passaggio_iss`) | 3 · 36 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario: tutto l'arco inquadrato con la traccia, poi la stessa orbita da fuori nello **stesso** intervallo di tempo. |
 
-Le posizioni astronomiche sono sempre quelle calcolate dall'app/Astronomy
-Engine. Data e luogo usati dal tour sono temporanei e non cambiano la posizione
-principale dell'utente.
+Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
+legano all'**evento vero** (`event_window`, `satellite_pass`), cercato una
+volta per racconto, e la regia muove solo camera, zoom e tempo.
 
-### Eclisse solare
+### Perché Helsinki e non Tromsø
 
-La prima scena imposta Reykjavík e il 12 agosto 2026, stringe il campo a 4° e
-centra il Sole mentre il tempo attraversa 17:47–17:50 UTC. La seconda scena usa
-il volo geometrico già esistente verso il Sistema Solare. La terza scena cerca
-il massimo reale con `Astronomy.SearchGlobalSolarEclipse`, entra nel banco
-Terra–Luna, ruota lentamente la camera (se il movimento ridotto non è attivo) e
-mantiene al centro `solOmbraLunareSuTerra(...).centro`.
-
-### Eclisse lunare
-
-Il tour usa una vera eclisse totale del 31 dicembre 2028. Il renderer del
-planetario possiede già il disegno dell'ombra lunare; il tour non applica una
-tinta rossa fissa o un effetto scollegato dall'astronomia. La modifica importante
-è l'inquadratura: la Luna non resta un punto in un campo largo, ma viene centrata
-e ingrandita fino a 2,5° durante il timelapse.
-
-### Aurora
-
-`simulate_aurora` usa il renderer reale di `aurora-polare.js`, ma il Kp è
-dichiaratamente simulato. La demo sceglie una località boreale, punta la camera
-verso nord e mantiene un campo largo affinché l'ovale sia leggibile.
-
-### Corteo dei pianeti
-
-I quattro pianeti non vengono riallineati dal tour. Data, luogo e campo largo
-sono scelti perché siano realmente sopra l'orizzonte e leggibili nella stessa
-zona del cielo; `highlight_object` aumenta soltanto l'evidenza grafica.
+Con Kp 5 alla mezzanotte magnetica Tromsø sta *sotto* l'ovale: l'aurora le
+passa sopra la testa e a sud, e guardando a nord non si vede niente (era il
+difetto della versione precedente, e la prova contava punti «nel quadro»
+senza guardare i pixel). Da sessanta gradi l'ovale è davvero a nord. La prova
+adesso misura il verde del cielo con l'aurora accesa e spenta.
 
 ## Libreria ed editor avanzato
 
@@ -95,13 +110,22 @@ Azioni principali:
 - `highlight_object { name: 'Venus', scale: 5 }`
 - `center_target { target: 'Moon' }`
 - `point_view { az: 0, alt: 25 }`
-- `set_fov { degrees: 20 }`
+- `set_fov { degrees: 20 }` e `zoom_fov { from: 40, to: 2 }`
 - `frame_objects { names: 'Mercury,Venus,Mars,Jupiter' }`
 - `set_date { iso: '2028-12-31T15:45:00Z' }`
 - `set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' }`
 - `simulate_aurora { kp: 5 }`
 - `zoom_view { type: geometric, final_target: solar_system_3d }`
 - `orbit_object { object: 'Earth-Moon', angle: 220, speed: slow }`
+- `event_window { event: lunar_eclipse, from: -120, to: 120 }` (minuti dal massimo; anche `solar_eclipse`)
+- `camera_3d { scene: earth_moon, focus: 'Earth', orbit: 70, elev_from: 16, elev_to: 38, zoom_from: 1.2, zoom_to: 5.5 }`
+  (`scene: system` con `focus: 'Sun'` e `frame`, oppure `focus: 'Earth'`/`'ISS'`)
+- `aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150 }` (solo in `didactic_view`)
+- `satellite_pass { satellite: iss, before: 1, after: 1 }`
+
+Le scene sono `planetarium_view`, `transition`, `solar_system_3d` e
+`didactic_view`. `AstroDemo.vaiAScena(i, frazione)` salta a una scena (lo usano
+le prove per non aspettare un minuto a tour).
 
 `set_fov` accetta un campo fra 0,5° e 160°. `frame_objects` calcola il
 minimo arco azimutale contenente da 2 a 8 corpi supportati e sceglie
@@ -131,8 +155,8 @@ tutti gli errori di struttura cadevano sulla fine del testo.
 ## Movimento ridotto
 
 Con `prefers-reduced-motion: reduce` il racconto conserva fenomeno, data,
-luogo e inquadratura, ma evita la rotazione decorativa del banco Terra–Luna e
-usa il comportamento ridotto già previsto dalle transizioni.
+luogo e tempo astronomico, ma le camere (`camera_3d`, `aurora_lesson`,
+`zoom_fov`) non viaggiano: stanno già nella posa finale.
 
 ## Architettura
 
@@ -158,6 +182,18 @@ gestisce la libreria semplice e l'editor avanzato.
 - «Duplica e modifica» dà alla copia un nome suo (`…_copia`), e «Salva» non
   richiude più l'editor.
 
+## Correzioni della v369
+
+- `--accento` era usato e mai dichiarato: la linguetta attiva delle
+  Impostazioni e il tasto «Avvia demo» erano senza colore.
+- L'icona delle Impostazioni è la rotellina classica.
+- L'ombra dell'eclisse lunare ingrandita su un telefono: le fermate del
+  gradiente si ricampionano sulla fetta di disco in vista
+  (`skyOmbraGradiente`), lineare quando i cerchi dell'ombra sono rette a meno
+  di un terzo di pixel. Prima la fetta cadeva fra due fermate su quarantanove
+  e il centro del gradiente stava a decine di migliaia di pixel, che le GPU
+  dei telefoni perdono.
+
 ## Verifica
 
 Eseguire:
@@ -165,9 +201,16 @@ Eseguire:
 ```bash
 node scripts/prova-demo.js
 node scripts/prova-demo-browser.js
+node scripts/prova-demo-regia.js
 node scripts/prova-i18n.js
 ```
 
 La prova browser avvia le demo dall'interfaccia, controlla astronomia,
-inquadratura e ripristino e salva schermate in `work/demo-*.png`.
+inquadratura e ripristino e salva schermate in `work/demo-*.png`. `prova-demo-regia.js`
+guarda ciò che la regia fa vedere — la Luna che scivola sul Sole e se ne va,
+l'ombra che si sposta sulla Terra, la Luna dentro e fuori dal cono, il verde
+dell'aurora a nord, i cinque pianeti nel quadro mentre la camera scende, la
+ISS nello stesso intervallo nelle due viste — più opzioni, avvisi zitti,
+schermo intero, registrazione, movimento ridotto e l'ombra ingrandita; le
+schermate vanno in `work/regia-*.png`.
 Il workflow **Verifica Demo** esegue le prove principali in pull request.
