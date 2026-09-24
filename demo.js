@@ -119,14 +119,17 @@
       campi(p, ['degrees']);
       richiedi(numero(p.degrees, 0.5, 160), 'Campo visivo atteso fra 0.5 e 160 gradi');
     },
-    crea(p) {
-      // Il FOV è stato incluso da sempre nello snapshot della demo: questa
-      // azione espone soltanto la stessa regolazione al DSL e quindi viene
-      // ripristinata automaticamente su Stop/Escape/errore.
-      if (typeof skyImpostaFov === 'function') skyImpostaFov(p.degrees, { morbido: false });
-      sky.fov = p.degrees;
-      sky.fovVoluto = p.degrees;
-      if ('animazioneVista' in sky) sky.animazioneVista = null;
+    crea(p, c) {
+      // Fullscreen e resize possono ricalcolare il campo subito dopo l'avvio.
+      // Finché la demo possiede la camera, ribadiamo il FOV ad ogni fotogramma;
+      // appena la persona interviene, cediCamera() lascia invece libero lo zoom.
+      const applica = () => {
+        if (typeof skyImpostaFov === 'function') skyImpostaFov(p.degrees, { morbido: false });
+        else { sky.fov = p.degrees; sky.fovVoluto = p.degrees; }
+        if ('animazioneVista' in sky) sky.animazioneVista = null;
+      };
+      applica();
+      return { aggiorna() { if (!c || !c.cameraManuale) applica(); } };
     }
   };
   registro.highlight_object = {
