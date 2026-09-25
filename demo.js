@@ -67,6 +67,7 @@
       lasciaCielo(c);
       if (vistaAttuale !== 'didattica') mostraVista('didattica');
     } else throw new Error(err('vistaSconosciuta', { nome: v }));
+    if (c && c.vistaPulita) applicaVistaPulita(c);
   }
 
   // ------------------------------------------------------------------
@@ -707,19 +708,23 @@
   }
 
   // ------------------------------------------------------------------
-  // Le opzioni della demo: schermo intero, registrazione e gli elementi
-  // del planetario da mostrare. Si ricordano fra una sessione e l'altra.
+  // Le opzioni della demo: schermo intero, vista pulita, registrazione (con
+  // audio opzionale) e gli elementi del planetario. Le due opzioni nuove
+  // nascono accese anche leggendo preferenze salvate prima che esistessero.
   // ------------------------------------------------------------------
   const CHIAVE_OPZIONI = 'astrocal_demo_opzioni_v1';
   function leggiOpzioni() {
     try {
       const o = JSON.parse(localStorage.getItem(CHIAVE_OPZIONI) || 'null');
       if (o && typeof o === 'object') return {
-        schermoIntero: !!o.schermoIntero, registra: !!o.registra,
+        schermoIntero: !!o.schermoIntero,
+        registra: !!o.registra,
+        vistaPulita: o.vistaPulita !== false,
+        registraAudio: o.registraAudio !== false,
         livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
-    return { schermoIntero: false, registra: false, livelli: null };
+    return { schermoIntero: false, registra: false, vistaPulita: true, registraAudio: true, livelli: null };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
@@ -802,6 +807,27 @@
     return sky.canvas;
   }
 
+  // La vista pulita non cambia lo stato dei comandi: marca soltanto il
+  // contenitore della scena e lascia al CSS il compito di nascondere il
+  // chrome. Togliendo le classi, pannelli e controlli ricompaiono esattamente
+  // come erano prima anche dopo Stop, Esc o un errore.
+  function radiceVistaPulita() {
+    if (sol.aperto && typeof solGuscio === 'function') return solGuscio();
+    if (vistaAttuale === 'didattica' && typeof didDemo !== 'undefined') {
+      const tela = didDemo.tela();
+      if (tela) return tela.closest('.did-pieno-ripiego') || tela.parentElement;
+    }
+    return document.getElementById('skymap-contenitore');
+  }
+  function applicaVistaPulita(c) {
+    if (!c || !c.vistaPulita) return;
+    const radice = radiceVistaPulita();
+    if (radice) radice.classList.add('demo-scena-pulita');
+  }
+  function togliVistaPulita() {
+    document.querySelectorAll('.demo-scena-pulita').forEach(el => el.classList.remove('demo-scena-pulita'));
+  }
+
   function avvia(testo = script) {
     const demo = valida(testo);
     motore.ferma();
@@ -818,7 +844,12 @@
     const livelliPrima = fotografaLivelli();
     const schermoInteroPrima = sky.schermoIntero;
     const regPrima = { durataSec: sky.reg.durataSec, origine: sky.reg.origine };
+    const modaleImpostazioni = document.getElementById('modale-impostazioni');
+    const impostazioniNascostePrima = !!(modaleImpostazioni && modaleImpostazioni.classList.contains('hidden'));
+    const comandiCielo = document.getElementById('cielo-comandi');
+    const gruppoPrima = comandiCielo ? (comandiCielo.dataset.gruppoAttivo || '') : '';
     const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero,
+      vistaPulita: opzioni.vistaPulita !== false,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
         // Ogni scena puo impostare la propria inquadratura iniziale. Dopo un
@@ -839,9 +870,13 @@
       ripristina() {
         c.chiuso = true; contesto = null; evidenze.clear();
         if (typeof narrazione === 'object') narrazione.ferma('demo');
-        document.body.classList.remove('demo-in-corso');
+        document.body.classList.remove('demo-in-corso', 'demo-vista-pulita');
+        togliVistaPulita();
         const registrava = sky.reg.attiva && sky.reg.sorgente;
         if (registrava) skyRegFerma();
+        if (typeof narrazione === 'object' && typeof narrazione.fermaCatturaAudio === 'function')
+          narrazione.fermaCatturaAudio('demo');
+        c.flussoAudio = null;
         if (c.registrazione) cancelAnimationFrame(c.registrazione);
         solVolo.dopo = null; solVoloChiudi();
         if (sol.aperto) chiudiSistemaSolare();
@@ -862,6 +897,9 @@
         skyAggiornaOggetti(true); skyAggiornaTestoTempo(); skyAggiornaSlittaTempo();
         sky.playbackUltimo = 0; skyAggiornaComandiPlayback();
         skyAggiornaTastoInsegui(); skyAggiornaTastiFiltri();
+        // Anche il registratore normale chiude il gruppo comandi per lasciare
+        // libero il cielo: nella Demo quel gesto non deve diventare stato.
+        if (comandiCielo) skyMostraGruppo(gruppoPrima);
         // Ripristina lo stato iniziale se durante la demo si e' entrati
         // manualmente a schermo intero partendo dalla vista normale.
         if (!schermoInteroPrima && sky.schermoIntero) skyEsciSchermoIntero();
@@ -874,15 +912,17 @@
         // Il filmato si mostra nel pannello del planetario: chi ha chiesto di
         // registrare trova lì il risultato, anche se era partito da un'altra vista.
         if (registrava && vistaAttuale !== 'cielo') mostraVista('cielo');
+        if (modaleImpostazioni) modaleImpostazioni.classList.toggle('hidden', impostazioniNascostePrima);
         pannello.hidden = true;
       }
     };
     contesto = c;
     document.body.classList.add('demo-in-corso');
-    // Il racconto lascia libero il cielo e chiude i pannelli aperti.
-    document.getElementById('modale-impostazioni').classList.add('hidden');
-    skyMostraGruppo('');
-    skyChiudiAvvisi();
+    document.body.classList.toggle('demo-vista-pulita', c.vistaPulita);
+    // La finestra Impostazioni deve lasciare vedere il racconto, ma il suo
+    // stato viene ricordato e ripristinato: la vista pulita non chiude né
+    // pannelli né avvisi, li nasconde soltanto.
+    if (modaleImpostazioni) modaleImpostazioni.classList.add('hidden');
     skyFermaPlayback(); skyFermaMovimenti(); sky.seguiTelefono = false; sky.modalitaHover = false;
     sky.eventoInseguito = null;
     applicaLivelli(opzioni.livelli);
@@ -899,18 +939,90 @@
     aggiornaPannello();
   }
 
-  // La registrazione è quella del planetario (§7.6 di app.js), con una sola
-  // differenza: la tela da riprendere la sceglie la demo, fotogramma per
-  // fotogramma, perché il racconto passa dal cielo alla vista 3D e al banco
-  // delle aurore. La durata la tiene la demo: la si ferma quando finisce,
-  // e la pausa non la tronca.
+  // La registrazione resta quella del planetario; la Demo cambia soltanto
+  // la tela sorgente e, quando richiesto, aggiunge l'unica traccia della
+  // narrazione condivisa al MediaStream creato dal registratore esistente.
   function avviaRegistrazione(c, demo) {
     const totale = demo.scene.reduce((n, s) => n + s.durata, 0) / 1000;
     sky.reg.origine = 'planetario';
     sky.reg.sorgente = telaInScena;
     sky.reg.durataSec = totale + 3600;
-    Promise.resolve(skyRegAvvia()).then(() => {
-      if (c.chiuso) { if (sky.reg.attiva) skyRegFerma(); return; }
+
+    let flussoAudio = null;
+    if (opzioni.registraAudio !== false && typeof narrazione === 'object' &&
+        typeof narrazione.catturaAudio === 'function') {
+      try { flussoAudio = narrazione.catturaAudio('demo'); } catch (_) { flussoAudio = null; }
+    }
+    c.flussoAudio = flussoAudio;
+
+    // skyRegAvviaVideo crea il MediaStream internamente. Per non duplicare
+    // quel registratore, durante il solo avvio intercettiamo captureStream
+    // della sua tela e vi innestiamo la traccia audio.
+    const proto = typeof HTMLCanvasElement !== 'undefined' ? HTMLCanvasElement.prototype : null;
+    const originale = proto && proto.captureStream;
+    let iniettata = null;
+    const tracciaAudio = flussoAudio && typeof flussoAudio.getAudioTracks === 'function'
+      ? flussoAudio.getAudioTracks().find(t => t.readyState !== 'ended') : null;
+    // Con una traccia audio è preferibile lasciare che MediaRecorder scelga
+    // entrambi i codec del contenitore, invece di forzare il solo codec video
+    // usato dalle registrazioni mute del planetario.
+    const MR = typeof MediaRecorder !== 'undefined' ? MediaRecorder : null;
+    const supportaTipo = MR && typeof MR.isTypeSupported === 'function' ? MR.isTypeSupported : null;
+    let supportaTipoDemo = null;
+    if (tracciaAudio && supportaTipo) {
+      supportaTipoDemo = function (mime) {
+        if (/;\s*codecs=/i.test(mime || '')) return false;
+        return supportaTipo.call(MR, mime);
+      };
+      try { MR.isTypeSupported = supportaTipoDemo; } catch (_) { supportaTipoDemo = null; }
+    }
+    if (proto && typeof originale === 'function' && tracciaAudio) {
+      iniettata = function (...args) {
+        const stream = originale.apply(this, args);
+        if (this === sky.reg.tela && stream && typeof stream.addTrack === 'function') {
+          const presenti = typeof stream.getAudioTracks === 'function' ? stream.getAudioTracks() : [];
+          if (!presenti.includes(tracciaAudio)) stream.addTrack(tracciaAudio);
+        }
+        return stream;
+      };
+      proto.captureStream = iniettata;
+    }
+    const ripristinaAgganci = () => {
+      try {
+        if (proto && iniettata && proto.captureStream === iniettata) proto.captureStream = originale;
+      } catch (_) { /* il browser non espone un prototipo scrivibile */ }
+      try {
+        if (MR && supportaTipoDemo && MR.isTypeSupported === supportaTipoDemo) MR.isTypeSupported = supportaTipo;
+      } catch (_) { /* idem per il metodo statico del registratore */ }
+    };
+    const chiudiAudioSeInutile = () => {
+      if (typeof narrazione === 'object' && typeof narrazione.fermaCatturaAudio === 'function')
+        narrazione.fermaCatturaAudio('demo');
+      c.flussoAudio = null;
+    };
+
+    let partenza;
+    try {
+      partenza = skyRegAvvia();
+      // skyRegAvvia è sincrono e chiude il pannello del cielo come fa una
+      // registrazione manuale. La Demo conserva invece lo stato preesistente;
+      // la vista pulita lo nasconde già senza mutarlo.
+      if (comandiCielo) skyMostraGruppo(gruppoPrima);
+    } catch (e) {
+      chiudiAudioSeInutile();
+      sky.reg.sorgente = null;
+      skyAvviso('demo', t('errore') + ': ' + e.message, 10000);
+      return;
+    } finally {
+      ripristinaAgganci();
+    }
+    Promise.resolve(partenza).then(() => {
+      if (c.chiuso) {
+        if (sky.reg.attiva) skyRegFerma();
+        chiudiAudioSeInutile();
+        return;
+      }
+      if (!sky.reg.attiva) { chiudiAudioSeInutile(); return; }
       aggiornaPannello();
       const giro = () => {
         if (c.chiuso || !sky.reg.attiva) return;
@@ -918,6 +1030,10 @@
         c.registrazione = requestAnimationFrame(giro);
       };
       c.registrazione = requestAnimationFrame(giro);
+    }, e => {
+      chiudiAudioSeInutile();
+      sky.reg.sorgente = null;
+      if (!c.chiuso) skyAvviso('demo', t('errore') + ': ' + (e && e.message ? e.message : e), 10000);
     });
   }
 
@@ -1013,9 +1129,9 @@
     ferma: () => motore.ferma(), vaiAScena: (i, u) => motore.vaiAScena(i, u), evidenza: id => evidenze.get(id) || 1,
     get stato() { return motore.stato; },
     get scena() { return motore.indice; },
-    // Finché un racconto è in scena gli avvisi di servizio tacciono (vedi
-    // `skyAvviso`): non parlano del luogo e dell'ora del racconto.
-    get silenzioso() { return !!contesto; },
+    // Gli avvisi di servizio tacciono soltanto nella vista pulita: spegnendo
+    // l'opzione l'interfaccia resta deliberatamente utilizzabile e visibile.
+    get silenzioso() { return !!(contesto && contesto.vistaPulita); },
     get opzioni() { return { ...opzioni, livelli: opzioni.livelli && { ...opzioni.livelli } }; },
     impostaOpzioni,
     livelli: () => LIVELLI.map(l => ({ id: l.id, nome: nomeLivello(l), acceso: l.leggi() })),

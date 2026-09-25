@@ -1183,9 +1183,13 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
           <p>The tab shows a list and a card: title, description, duration, number of scenes,
           date, place, field of view and any simulated Kp of the chosen demo. Below the large
           <b>Start demo</b> button is the <b>During the demo</b> box: <b>Start in full screen</b>,
-          <b>Record a video of the demo</b> (with the planetarium recorder: the video appears in the
-          planetarium at the end) and <b>Planetarium elements to show</b>, the same switches as the
-          Display tab — stars, names, constellations and their artwork, planets, Sun and Moon, deep sky,
+          <b>Clean view during the demo</b> (on by default: it hides panels, buttons, notifications and other
+          distracting UI while keeping the story and Pause/Resume/End controls), <b>Record a video of the demo</b>
+          and <b>Also record audio</b>. Those choices are remembered. With audio enabled, the video includes
+          recorded narration files and speech synthesis when the browser exposes capturable audio; with it off,
+          narration still plays for you but the recorded video stays silent. Then come the
+          <b>Planetarium elements to show</b>, the same switches as the Display tab — stars, names,
+          constellations and their artwork, planets, Sun and Moon, deep sky,
           Milky Way, grid, ecliptic, atmosphere, clouds, terrain, relief, town lights, mountain names,
           lakes and rivers and the others. The choices are remembered and apply only to the demo.</p>
         </div>
@@ -1194,8 +1198,8 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
         <div>
           <h3>Choose one and press “Start demo”</h3>
           <p>The settings close (and, if you chose it, the app goes full screen) and the story begins.
-          While the demo is running the app's service notices stay quiet, so they don't cover the phenomenon;
-          a real demo error is always shown.
+          With <b>Clean view</b> enabled, service notices and the rest of the nonessential interface disappear
+          without being closed; a real demo error is always shown.
           At the bottom the demo bar appears, with the title, the current scene (“scene 1/2 · Planetarium · 8 s”)
           and the <b>Pause</b>/<b>Resume</b>, <b>Restart</b> and <b>End demo</b> buttons.</p>
         </div>
@@ -1203,9 +1207,11 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <li class="passo">
         <div>
           <h3>Watch, or step in</h3>
-          <p>You can drag the sky, zoom with two fingers or the mouse wheel, use the arrow keys and change the filters
-          <strong>without stopping the demo</strong>: as soon as you step in, the camera is yours until the end of the
-          current scene, while the story's clock keeps running. The next scene takes back its own framing.</p>
+          <p>With <b>Clean view</b> enabled only the story and essential demo controls remain. If you want to
+          interact with the presentation, turn Clean view off before starting it: you can then drag the sky,
+          zoom with two fingers or the mouse wheel, use the arrow keys and change the filters
+          <strong>without stopping the demo</strong>. As soon as you step in, the camera is yours until the end
+          of the current scene, while the story's clock keeps running. The next scene takes back its own framing.</p>
         </div>
       </li>
       <li class="passo">
@@ -1222,7 +1228,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       the app view, date and time, the place the sky is seen from, the camera direction, the field
       of view, the planet, Sun and Moon filters, tracking, the time step and playback, the 3D
       view, the learning-lab bench, the simulated aurora, the planetarium elements chosen for the demo, the
-      recording and full screen. The app's <strong>saved position</strong> is never
+      recording, audio stream, panel state and full screen. The app's <strong>saved position</strong> is never
       touched: the demo's place is only temporary.</p>
     </div>
 
@@ -1240,7 +1246,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <table>
         <thead><tr><th>Demo</th><th>Length</th><th>What it shows</th></tr></thead>
         <tbody>
-          <tr><td><b>Total solar eclipse · August 12, 2026</b></td><td>7 scenes · 58 s</td><td>From Reykjavík the field narrows on the Sun and the Moon crosses it into totality; the flight leads to the Earth–Moon bench, where the camera circles Sun, Moon and Earth in line and then closes in on the Earth while the Moon's shadow races across it; finally back to the sky, where the Sun is whole again.</td></tr>
+          <tr><td><b>Total solar eclipse · August 12, 2026</b></td><td>7 scenes · 114 s</td><td>From Reykjavík the field narrows on the Sun and the Moon crosses it into totality; the flight leads to the Earth–Moon bench, where the camera circles Sun, Moon and Earth in line and then closes in on the Earth while the Moon's shadow races across it; finally back to the sky, where the Sun is whole again.</td></tr>
           <tr><td><b>Total lunar eclipse · December 31, 2028</b></td><td>6 scenes · 57 s</td><td>From Sapporo the Moon slides into Earth's shadow and turns red; from outside you watch it cross the shadow cone as the camera circles it; back in the sky, the Moon leaves it.</td></tr>
           <tr><td><b>Northern lights · the northern sky</b></td><td>7 scenes · 53 s</td><td>First the learning-lab aurora bench in full screen — the solar wind, the camera circling the Earth, the shield up close, the discharge, the ring around the pole — then Helsinki's sky facing north with <b>simulated Kp 5</b>. It is a teaching simulation, not a forecast.</td></tr>
           <tr><td><b>Planet parade · October 21, 2028</b></td><td>5 scenes · 45 s</td><td>From Tucson before dawn: Mercury, Venus, Mars and Jupiter highlighted; then from outside, with the camera coming down from above to the plane of the orbits, where they really are; and back to the sky as dawn breaks.</td></tr>

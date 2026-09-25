@@ -54,7 +54,7 @@ const server = http.createServer((req, res) => {
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
       ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss']);
-    assert.deepEqual(builtins.map(d => d.durata), [58000, 57000, 53000, 45000, 36000]);
+    assert.deepEqual(builtins.map(d => d.durata), [114000, 57000, 53000, 45000, 36000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
@@ -71,22 +71,22 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.locator('#cielo-comandi #demo-avvia').count(), 0);
     assert.equal(await pagina.locator('#demo-editor').getAttribute('readonly'), '');
     assert.equal(await pagina.locator('#demo-elimina').isDisabled(), true);
-    assert.match(await pagina.locator('#demo-info').innerText(), /7 scene.*58 s/);
+    assert.match(await pagina.locator('#demo-info').innerText(), /7 scene.*114 s/);
     await pagina.locator('#demo-duplica').click();
     const testoBase = await pagina.locator('#demo-editor').inputValue();
     assert.match(testoBase, /define_demo 'eclisse_tour_copia'/, 'La copia prende un nome suo');
     await pagina.locator('#demo-editor').fill(testoBase.replace('end: 17:48', 'end: 25:00'));
     assert.equal(await pagina.locator('#demo-salva').isDisabled(), true);
-    await pagina.locator('#demo-editor').fill(testoBase.replace('5s;', '5s'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('15s;', '15s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
     // La posizione è quella dell'errore, non la fine del file.
-    await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 5s;', 'duration: 5s; duration: 3s;'));
-    assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 5,/);
+    await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 15s;', 'duration: 15s; duration: 3s;'));
+    assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 4,/);
     // In inglese anche i messaggi di validazione sono in inglese.
     await pagina.evaluate(() => astroI18n.impostaLingua('en'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('degrees: 1.6', 'degrees: 400'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /^Field of view expected/);
-    await pagina.locator('#demo-editor').fill(testoBase.replace('5s;', '5s'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('15s;', '15s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /line \d+, column \d+/);
     await pagina.evaluate(() => astroI18n.impostaLingua('it'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
@@ -159,8 +159,10 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() =>
       document.fullscreenElement === document.getElementById('skymap-contenitore') || sky.fintoSchermoIntero),
     false, 'La demo non attiva schermo intero nativo o ripiego CSS');
-    assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), '');
-    assert.equal(await pagina.locator('.gruppo-comandi.gruppo-attivo').count(), 0, 'Il menu del planetario è chiuso durante la demo');
+    assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), 'astri',
+      'La vista pulita conserva il pannello aperto senza cambiarne lo stato');
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('cielo-comandi')).visibility), 'hidden',
+      'La vista pulita nasconde il menu del planetario durante la demo');
     assert.equal(await pagina.evaluate(() => sky.target), 'Sun');
     assert.ok((await pagina.evaluate(() => sky.fov)) < 40, 'Il campo si stringe sul Sole');
     const scenaSolare = await pagina.evaluate(() => ({
@@ -183,7 +185,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() => document.getElementById('sol-transizione-tela').toDataURL()), posaVolo, 'Volo fermo in pausa');
     assert.equal(await pagina.evaluate(() => solVolo.raf), 0, 'Nessun secondo orologio del volo');
     await pagina.evaluate(() => AstroDemo.riprendi());
-    await pagina.waitForFunction(() => sol.vicino, null, { timeout: 8000 });
+    await pagina.waitForFunction(() => sol.vicino, null, { timeout: 15000 });
     await pagina.evaluate(() => AstroDemo.vaiAScena(5));
     const eclipse = await pagina.evaluate(() => ({
       tipo: solStatoEclissi(skyAdesso()).tipo,

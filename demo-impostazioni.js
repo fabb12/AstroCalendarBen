@@ -217,17 +217,18 @@
   });
 
   // --- Le opzioni della demo ---------------------------------------------
-  // Schermo intero, registrazione e gli elementi del planetario. Le scrive
-  // `AstroDemo.impostaOpzioni`, che le ricorda; qui si leggono e si
-  // disegnano. Gli elementi si chiedono ad `AstroDemo.livelli()`, che li
-  // ricava dagli interruttori veri del pannello Visualizzazione — nome
-  // compreso, quindi nella lingua dell'app.
-  const schermo = $('opz-schermo'), registra = $('opz-registra');
+  // Schermo intero, vista pulita, registrazione (con audio) e gli elementi
+  // del planetario. Le scrive AstroDemo.impostaOpzioni, che le ricorda; qui
+  // si leggono e si disegnano.
+  const schermo = $('opz-schermo'), pulita = $('opz-vista-pulita');
+  const registra = $('opz-registra'), audio = $('opz-registra-audio');
   const personali = $('livelli-personali'), griglia = $('livelli');
   function disegnaOpzioni() {
     const o = AstroDemo.opzioni;
     schermo.checked = o.schermoIntero;
+    pulita.checked = o.vistaPulita !== false;
     registra.checked = o.registra;
+    audio.checked = o.registraAudio !== false;
     personali.checked = !!o.livelli;
     const livelli = AstroDemo.livelli();
     griglia.replaceChildren(...livelli.map(l => {
@@ -249,7 +250,9 @@
       .map(c => [c.dataset.livello, c.checked]));
   }
   schermo.addEventListener('change', () => AstroDemo.impostaOpzioni({ schermoIntero: schermo.checked }));
+  pulita.addEventListener('change', () => AstroDemo.impostaOpzioni({ vistaPulita: pulita.checked }));
   registra.addEventListener('change', () => AstroDemo.impostaOpzioni({ registra: registra.checked }));
+  audio.addEventListener('change', () => AstroDemo.impostaOpzioni({ registraAudio: audio.checked }));
   personali.addEventListener('change', () => {
     AstroDemo.impostaOpzioni({ livelli: personali.checked ? sceltaLivelli() : null });
     disegnaOpzioni();

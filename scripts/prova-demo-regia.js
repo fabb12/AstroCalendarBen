@@ -71,6 +71,11 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.addInitScript(() => {
       localStorage.setItem('astrocalendario_posizione', JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' }));
       localStorage.setItem('astrocal_lingua', 'it');
+      // Simula preferenze salvate prima dell'aggiunta delle due nuove opzioni:
+      // le chiavi mancanti devono migrare ai valori predefiniti attivi.
+      localStorage.setItem('astrocal_demo_opzioni_v1', JSON.stringify({
+        schermoIntero: false, registra: false, livelli: null
+      }));
     });
     await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
     await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof sky !== 'undefined' &&
@@ -306,29 +311,102 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     ok(i3.sol && i3.satelliti.includes('iss') && await pagina.evaluate(() => sol.perno === 'Earth'), '3D: la ISS attorno alla Terra');
     await pagina.evaluate(() => AstroDemo.ferma());
 
-    // --- 7. Le opzioni: elementi, avvisi zitti, schermo intero, registrazione
+    // --- 7. Le opzioni: vista pulita, elementi, schermo intero e registrazione
     const brevi = "define_demo breve { scene planetarium_view { duration: 1500ms; action: set_fov { degrees: 50 }; }" +
       " scene solar_system_3d { duration: 1500ms; action: camera_3d { scene: system, focus: 'Earth', orbit: 30 }; } }";
-    const primaOpz = await pagina.evaluate(() => ({ griglia: sky.mostraGriglia, nomi: sky.mostraNomi,
-      vl: sky.mostraViaLattea, profondo: sky.mostraProfondo }));
-    await pagina.evaluate(() => AstroDemo.impostaOpzioni({ livelli: { griglia: false, nomi: false, viaLattea: false, profondo: true } }));
+
+    // Le preferenze salvate dalla versione precedente non contenevano le due
+    // nuove chiavi: entrambe devono comunque partire attive, anche nel pannello.
+    await pagina.locator('#btn-impostazioni').click();
+    await pagina.locator('#imp-tab-btn-demo').click();
+    const nuoveDefault = await pagina.evaluate(() => ({
+      pulita: AstroDemo.opzioni.vistaPulita,
+      audio: AstroDemo.opzioni.registraAudio,
+      pulitaUi: document.getElementById('demo-opz-vista-pulita').checked,
+      audioUi: document.getElementById('demo-opz-registra-audio').checked
+    }));
+    ok(nuoveDefault.pulita && nuoveDefault.audio && nuoveDefault.pulitaUi && nuoveDefault.audioUi,
+      'Le nuove opzioni sono attive di default anche con preferenze vecchie');
+    await pagina.locator('#demo-opz-vista-pulita').uncheck();
+    await pagina.locator('#demo-opz-registra-audio').uncheck();
+    const nuoveSalvate = await pagina.evaluate(() => JSON.parse(localStorage.getItem('astrocal_demo_opzioni_v1')));
+    ok(nuoveSalvate.vistaPulita === false && nuoveSalvate.registraAudio === false,
+      'Le nuove opzioni si salvano insieme alle preferenze Demo');
+    await pagina.locator('#demo-opz-vista-pulita').check();
+    await pagina.locator('#demo-opz-registra-audio').check();
+    await pagina.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+    await pagina.locator('#btn-chiudi-impostazioni').click();
+
+    // La vista pulita nasconde il chrome senza alterarne lo stato. Lasciamo
+    // apposta aperta la scheda Visualizzazione e un avviso già presente.
+    const primaOpz = await pagina.evaluate(() => {
+      skyMostraGruppo('vista');
+      skyAvviso('prova', 'Prima della demo');
+      return {
+        griglia: sky.mostraGriglia, nomi: sky.mostraNomi,
+        vl: sky.mostraViaLattea, profondo: sky.mostraProfondo,
+        gruppo: document.getElementById('cielo-comandi').dataset.gruppoAttivo,
+        avviso: sky.avvisi.prova || ''
+      };
+    });
+    await pagina.evaluate(() => AstroDemo.impostaOpzioni({
+      livelli: { griglia: false, nomi: false, viaLattea: false, profondo: true }
+    }));
     await pagina.evaluate(t => AstroDemo.avvia(t), brevi);
     const durante = await pagina.evaluate(() => {
-      skyAvviso('prova', 'Non dovrei vedermi');
-      return { griglia: sky.mostraGriglia, nomi: sky.mostraNomi, vl: sky.mostraViaLattea, profondo: sky.mostraProfondo,
-        avviso: sky.avvisi.prova || '', nascosto: getComputedStyle(document.getElementById('skymap-avviso')).display === 'none' };
+      skyAvviso('nuovo', 'Non dovrei vedermi');
+      return {
+        griglia: sky.mostraGriglia, nomi: sky.mostraNomi,
+        vl: sky.mostraViaLattea, profondo: sky.mostraProfondo,
+        gruppo: document.getElementById('cielo-comandi').dataset.gruppoAttivo,
+        avviso: sky.avvisi.prova || '', nuovo: sky.avvisi.nuovo || '',
+        pulita: document.body.classList.contains('demo-vista-pulita'),
+        header: getComputedStyle(document.querySelector('.testata-app')).visibility,
+        chrome: getComputedStyle(document.getElementById('cielo-comandi')).visibility,
+        controlli: getComputedStyle(document.getElementById('demo-controlli')).visibility
+      };
     });
-    ok(!durante.griglia && !durante.nomi && !durante.vl && durante.profondo, 'Gli elementi scelti valgono durante la demo');
-    ok(durante.avviso === '' && durante.nascosto, 'Durante la demo gli avvisi tacciono');
+    ok(!durante.griglia && !durante.nomi && !durante.vl && durante.profondo,
+      'Gli elementi scelti valgono durante la demo');
+    ok(durante.pulita && durante.header === 'hidden' && durante.chrome === 'hidden' &&
+      durante.controlli === 'visible', 'Vista pulita: chrome nascosto, controlli essenziali visibili');
+    ok(durante.gruppo === primaOpz.gruppo && durante.avviso === primaOpz.avviso && durante.nuovo === '',
+      'Vista pulita non distrugge pannelli/avvisi e sopprime quelli nuovi');
     await pagina.evaluate(() => AstroDemo.ferma());
-    const dopoOpz = await pagina.evaluate(() => ({ griglia: sky.mostraGriglia, nomi: sky.mostraNomi,
-      vl: sky.mostraViaLattea, profondo: sky.mostraProfondo }));
-    assert.deepEqual(dopoOpz, primaOpz); verifiche++;
-    await pagina.evaluate(() => { skyAvviso('prova', 'Adesso sì'); });
-    ok(await pagina.evaluate(() => sky.avvisi.prova === 'Adesso sì'), 'Finita la demo gli avvisi tornano');
-    await pagina.evaluate(() => { skyAvviso('prova', ''); AstroDemo.impostaOpzioni({ livelli: null }); });
+    const dopoOpz = await pagina.evaluate(() => ({
+      griglia: sky.mostraGriglia, nomi: sky.mostraNomi,
+      vl: sky.mostraViaLattea, profondo: sky.mostraProfondo,
+      gruppo: document.getElementById('cielo-comandi').dataset.gruppoAttivo,
+      avviso: sky.avvisi.prova || '',
+      pulita: document.body.classList.contains('demo-vista-pulita'),
+      header: getComputedStyle(document.querySelector('.testata-app')).visibility
+    }));
+    assert.deepEqual(
+      { griglia: dopoOpz.griglia, nomi: dopoOpz.nomi, vl: dopoOpz.vl, profondo: dopoOpz.profondo },
+      { griglia: primaOpz.griglia, nomi: primaOpz.nomi, vl: primaOpz.vl, profondo: primaOpz.profondo }
+    ); verifiche++;
+    ok(dopoOpz.gruppo === primaOpz.gruppo && dopoOpz.avviso === primaOpz.avviso &&
+      !dopoOpz.pulita && dopoOpz.header !== 'hidden',
+      'Stop ripristina esattamente lo stato UI precedente');
+    await pagina.evaluate(() => {
+      skyAvviso('prova', '');
+      skyMostraGruppo('');
+      AstroDemo.impostaOpzioni({ livelli: null });
+    });
 
-    // Schermo intero: si sceglie nelle Impostazioni e si avvia col tasto vero
+    // Anche un errore in ingresso scena deve rimuovere sempre la vista pulita.
+    await pagina.evaluate(() => {
+      AstroDemo.registra('prova_errore', { crea() { throw new Error('guasto controllato'); } });
+      AstroDemo.avvia("define_demo guasto { scene planetarium_view { duration: 1s; action: prova_errore { text: 'x' }; } }");
+    });
+    ok(await pagina.evaluate(() => AstroDemo.stato === 'errore' &&
+      !document.body.classList.contains('demo-vista-pulita') &&
+      getComputedStyle(document.querySelector('.testata-app')).visibility !== 'hidden'),
+      'Errore: vista pulita e interfaccia ripristinate');
+    await pagina.evaluate(() => skyAvviso('demo', ''));
+
+    // Schermo intero: si avvia dalla finestra Impostazioni e, dopo Esc, deve
+    // ricomparire anche la stessa finestra che c'era prima della demo.
     await pagina.locator('#btn-impostazioni').click();
     await pagina.locator('#imp-tab-btn-demo').click();
     await pagina.locator('#demo-opz-schermo').check();
@@ -343,22 +421,73 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       'Il passaggio alla 3D non esce dallo schermo intero');
     await pagina.keyboard.press('Escape');
     await pagina.waitForFunction(() => AstroDemo.stato === 'fermo' && !document.fullscreenElement, null, { timeout: 5000 });
-    ok(await pagina.evaluate(() => !sky.schermoIntero && !sky.fintoSchermoIntero && !solSchermoIntero), 'Esc: schermo intero ripristinato');
-    await pagina.evaluate(() => AstroDemo.impostaOpzioni({ schermoIntero: false }));
+    ok(await pagina.evaluate(() => !sky.schermoIntero && !sky.fintoSchermoIntero && !solSchermoIntero),
+      'Esc: schermo intero ripristinato');
+    ok(await pagina.evaluate(() => !document.getElementById('modale-impostazioni').classList.contains('hidden')),
+      'Esc ripristina anche la finestra Impostazioni aperta prima della demo');
+    await pagina.evaluate(() => {
+      document.getElementById('modale-impostazioni').classList.add('hidden');
+      AstroDemo.impostaOpzioni({ schermoIntero: false });
+    });
 
-    // Registrazione: la demo produce un filmato con la registrazione del planetario
-    const regPrima = await pagina.evaluate(() => sky.reg.durataSec);
-    await pagina.evaluate(() => AstroDemo.impostaOpzioni({ registra: true }));
-    await pagina.evaluate(t => AstroDemo.avvia(t), brevi);
-    await pagina.waitForFunction(() => sky.reg.attiva, null, { timeout: 5000 });
-    ok(/registrazione/.test(await pagina.locator('#demo-controlli p').innerText()), 'Il pannello dice che si registra');
-    await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 15000 });
-    await pagina.waitForFunction(() => sky.reg.esito && sky.reg.esito.blob.size > 1000, null, { timeout: 10000 });
-    const reg = await pagina.evaluate(() => ({ sorgente: sky.reg.sorgente, durata: sky.reg.durataSec,
-      reale: sky.reg.durataReale, vista: vistaAttuale }));
-    ok(reg.sorgente === null && reg.durata === regPrima && reg.vista === 'cielo' && reg.reale > 2.5,
-      'Filmato di ' + reg.reale.toFixed(1) + ' s, registratore rimesso com’era');
-    await pagina.evaluate(() => { AstroDemo.impostaOpzioni({ registra: false }); skyRegChiudiPannello(); });
+    // Con l'audio disattivato la registrazione Demo deve avere soltanto video.
+    const regPrima = await pagina.evaluate(() => {
+      skyMostraGruppo('vista');
+      return sky.reg.durataSec;
+    });
+    const clipMuto = "define_demo clip_muto { scene planetarium_view { duration: 700ms; action: set_fov { degrees: 50 }; } }";
+    await pagina.evaluate(() => AstroDemo.impostaOpzioni({ registra: true, registraAudio: false }));
+    await pagina.evaluate(t => AstroDemo.avvia(t), clipMuto);
+    await pagina.waitForFunction(() => sky.reg.attiva && sky.reg.flusso, null, { timeout: 5000 });
+    ok(await pagina.evaluate(() => sky.reg.flusso.getAudioTracks().length === 0),
+      'Registra anche l’audio spento: il MediaRecorder resta senza audio');
+    await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 10000 });
+    await pagina.waitForFunction(() => sky.reg.esito && sky.reg.esito.blob.size > 500, null, { timeout: 10000 });
+    ok(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo === 'vista'),
+      'La registrazione Demo non chiude il pannello che era aperto prima');
+    await pagina.evaluate(() => skyRegChiudiPannello());
+
+    // Con l'audio attivo il MediaRecorder riceve una sola traccia condivisa.
+    // Una fineNarrazione più lunga della duration verifica anche che il video
+    // rimanga in corso fino alla voce; pausa/ripresa non deve duplicarla.
+    await pagina.evaluate(() => {
+      AstroDemo.registra('attesa_narrazione', {
+        crea() { return { fineNarrazione: new Promise(r => setTimeout(r, 1100)) }; }
+      });
+      AstroDemo.impostaOpzioni({ registra: true, registraAudio: true });
+    });
+    const clipVoce = "define_demo clip_voce { scene planetarium_view { duration: 200ms; action: attesa_narrazione { text: 'x' }; } }";
+    await pagina.evaluate(t => AstroDemo.avvia(t), clipVoce);
+    await pagina.waitForFunction(() => sky.reg.attiva && sky.reg.flusso, null, { timeout: 5000 });
+    const conAudio = await pagina.evaluate(() => {
+      const tracce = sky.reg.flusso.getAudioTracks();
+      window.__tracciaDemoAudio = tracce[0] || null;
+      return { n: tracce.length, cattura: narrazione.catturaStato() };
+    });
+    ok(conAudio.n === 1 && conAudio.cattura.attiva && conAudio.cattura.tracce === 1,
+      'Audio acceso: una sola traccia della narrazione nel MediaRecorder');
+    await pagina.evaluate(() => AstroDemo.pausa());
+    await pagina.waitForTimeout(180);
+    ok(await pagina.evaluate(() => sky.reg.flusso.getAudioTracks().length === 1 &&
+      window.__tracciaDemoAudio && window.__tracciaDemoAudio.readyState === 'live'),
+      'Pausa: la traccia audio resta unica e viva');
+    await pagina.evaluate(() => AstroDemo.riprendi());
+    await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 10000 });
+    await pagina.waitForFunction(() => sky.reg.esito && sky.reg.esito.blob.size > 500, null, { timeout: 10000 });
+    const reg = await pagina.evaluate(() => ({
+      sorgente: sky.reg.sorgente, durata: sky.reg.durataSec,
+      reale: sky.reg.durataReale, vista: vistaAttuale,
+      cattura: narrazione.catturaStato(),
+      traccia: window.__tracciaDemoAudio && window.__tracciaDemoAudio.readyState
+    }));
+    ok(reg.sorgente === null && reg.durata === regPrima && reg.vista === 'cielo' &&
+      reg.reale > 1 && !reg.cattura.attiva && reg.traccia === 'ended',
+      'Filmato sincronizzato con narrazione lunga (' + reg.reale.toFixed(1) + ' s) e stream audio chiuso');
+    await pagina.evaluate(() => {
+      AstroDemo.impostaOpzioni({ registra: false, registraAudio: true });
+      skyRegChiudiPannello();
+      skyMostraGruppo('');
+    });
 
     // Movimento ridotto: la camera 3D non gira, il tempo sì
     await pagina.emulateMedia({ reducedMotion: 'reduce' });
