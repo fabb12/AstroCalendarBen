@@ -159,8 +159,10 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() =>
       document.fullscreenElement === document.getElementById('skymap-contenitore') || sky.fintoSchermoIntero),
     false, 'La demo non attiva schermo intero nativo o ripiego CSS');
-    assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), '');
-    assert.equal(await pagina.locator('.gruppo-comandi.gruppo-attivo').count(), 0, 'Il menu del planetario è chiuso durante la demo');
+    assert.equal(await pagina.evaluate(() => document.getElementById('cielo-comandi').dataset.gruppoAttivo), 'astri',
+      'La vista pulita conserva il pannello aperto senza cambiarne lo stato');
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('cielo-comandi')).visibility), 'hidden',
+      'La vista pulita nasconde il menu del planetario durante la demo');
     assert.equal(await pagina.evaluate(() => sky.target), 'Sun');
     assert.ok((await pagina.evaluate(() => sky.fov)) < 40, 'Il campo si stringe sul Sole');
     const scenaSolare = await pagina.evaluate(() => ({
