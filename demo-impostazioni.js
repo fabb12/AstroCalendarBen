@@ -272,6 +272,7 @@
       etichetta.className = 'demo-spunta demo-livello';
       const casella = document.createElement('input');
       casella.type = 'checkbox';
+      casella.setAttribute('role', 'switch');
       casella.dataset.livello = l.id;
       casella.checked = o.livelli && typeof o.livelli[l.id] === 'boolean' ? o.livelli[l.id] : l.acceso;
       casella.disabled = !o.livelli;
