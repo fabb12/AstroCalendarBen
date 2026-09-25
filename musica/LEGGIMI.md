@@ -6,8 +6,9 @@ ogni scelta del selettore è un file di questa cartella (una preferenza salvata
 col vecchio valore `generata` torna alla traccia predefinita).
 
 Le stesse tracce compaiono nel selettore della pagina **Demo → Narrazione e
-audio** per scegliere la colonna sonora delle demo delle eclissi, riprodotta al
-30%. `Encelado1` («Encelado») resta il valore iniziale e di ripiego per le
+audio** per scegliere la colonna sonora di tutte le demo, sia predefinite sia
+create dall'utente, riprodotta al 30%. `Encelado1` («Encelado») resta il valore
+iniziale e di ripiego per le
 preferenze più vecchie: non rinominarne l'`id`.
 
 ## Aggiungere una traccia
