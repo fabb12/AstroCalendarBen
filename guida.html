@@ -454,7 +454,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
     <p class="guida">
       La barra in fondo allo schermo (in alto su computer) commuta fra sette schermate.
       Non sono sette menu dello stesso strumento: sono sette modi diversi di guardare la stessa
-      serata, dal colpo d'occhio al puntamento fine.
+      serata, dal colpo d'occhio al puntamento fine. <b>Mese</b>, <b>Agenda</b> e <b>Diario</b> stanno sotto
+      una voce sola, <b>Calendario</b>: toccandola compare in cima la fila delle tre sottosezioni, con quella
+      attiva evidenziata, e la voce riapre l'ultima usata. L'ultima voce del menu, <b>Demo</b>, è la pagina
+      delle demo automatizzate (capitolo 10).
     </p>
 
     <div style="display:flex;flex-direction:column;gap:18px">
@@ -1153,7 +1156,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <div><dt>Galleria</dt><dd>I filmati registrati dal planetario, rivedibili anche senza rete. La prima volta chiede di collegare una cartella sul dispositivo.</dd></div>
       <div><dt>Installa l'app</dt><dd>La mette nella schermata principale come app vera.</dd></div>
       <div><dt>Avvisami</dt><dd>I promemoria per gli eventi che stanno arrivando.</dd></div>
-      <div><dt>Impostazioni</dt><dd>Le linguette qui sopra, più le demo automatizzate e la guida.</dd></div>
+      <div><dt>Impostazioni</dt><dd>Le linguette qui sopra e la guida. Le demo automatizzate hanno una voce loro nel menu, <b>Demo</b>.</dd></div>
       <div><dt>Lingua</dt><dd>Italiano o inglese. Immediato, non ricarica niente.</dd></div>
     </dl>
 
@@ -1178,16 +1181,20 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
     <ol class="passi" style="margin-top:12px">
       <li class="passo">
         <div>
-          <h3>Apri Impostazioni → Demo automatizzate</h3>
-          <p>La linguetta mostra un elenco e una scheda: titolo, descrizione, durata, numero di scene,
-          data, luogo, campo visivo ed eventuale Kp simulato della demo scelta. Sotto il grande tasto
-          <b>Avvia demo</b> c'è il riquadro <b>Durante la demo</b>: <b>Avvia a schermo intero</b>,
+          <h3>Apri la voce Demo del menu</h3>
+          <p>La pagina è divisa in cinque gruppi numerati. <b>1 · Demo da eseguire</b>: un elenco e una scheda —
+          titolo, descrizione, durata, numero di scene, data, luogo, campo visivo ed eventuale Kp simulato — e il
+          grande tasto <b>Avvia demo</b>. <b>2 · Presentazione</b>: <b>Avvia a schermo intero</b> (resta a schermo
+          intero anche passando dal planetario al Sistema Solare in 3D),
           <b>Vista pulita durante la demo</b> (attiva di serie: nasconde pannelli, pulsanti, notifiche e altri
           elementi che distraggono, lasciando il racconto e i comandi Pausa/Riprendi/Termina),
-          <b>Registra un filmato della demo</b> e <b>Registra anche l'audio</b>, entrambe ricordate fra una sessione
-          e l'altra. Con l'audio attivo il filmato include gli MP3 della narrazione e la sintesi che il browser
-          rende catturabile; se lo spegni, la voce continua a sentirsi ma il video resta muto. Seguono gli
-          <b>Elementi del planetario da mostrare</b>, cioè gli stessi interruttori della scheda Visualizzazione —
+          poi <b>3 · Registrazione</b>: <b>Registra un filmato della demo</b> e, rientrata sotto, <b>Registra anche
+          l'audio</b>, che si può scegliere solo col filmato acceso (non esiste la registrazione del solo audio).
+          Con l'audio attivo il filmato include gli MP3 della narrazione e la sintesi che il browser
+          rende catturabile; se lo spegni, la voce continua a sentirsi ma il video resta muto.
+          <b>4 · Narrazione e audio</b> raccoglie la voce (qui sotto) e la <b>musica «Encelado»</b> delle demo delle
+          eclissi, al 30%: la musica di sottofondo che stava suonando si ferma e alla fine torna esattamente com'era.
+          <b>5 · Elementi del Planetario</b> sono gli stessi interruttori della scheda Visualizzazione —
           stelle, nomi, costellazioni e loro disegni, pianeti, Sole e Luna, cielo profondo,
           Via Lattea, reticolo, eclittica, atmosfera, nuvole, terreno, rilievo, luci dei paesi, nomi dei monti,
           laghi e fiumi e gli altri. Le scelte si ricordano e valgono solo per la demo.</p>
@@ -1234,10 +1241,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
 
     <div class="nota" style="margin-top:12px">
       <p><strong>La voce che racconta.</strong> Ogni scena delle demo incluse ha una frase breve, detta a voce e
-      scritta nella barra della demo. Se l'app ha un audio registrato per quella frase usa quello; se no la legge
+      scritta in basso come un sottotitolo, che resta per tutta la frase anche quando i comandi della demo si ritirano. Se l'app ha un audio registrato per quella frase usa quello; se no la legge
       con la sintesi vocale; se il dispositivo non può parlare, la frase resta scritta e la demo va avanti lo
       stesso. La voce si ferma e riprende con la demo, non si sovrappone mai alla scena dopo e, se cambi lingua,
-      ripete la frase nella lingua nuova. In <b>Impostazioni → Osservazione → Narrazione</b> puoi spegnerla,
+      ripete la frase nella lingua nuova. Nel gruppo <b>Narrazione e audio</b> della pagina Demo puoi spegnerla,
       regolarne il volume, nascondere il testo o usare solo la sintesi vocale. È la stessa voce di Missione Cielo.</p>
     </div>
 

@@ -1,8 +1,12 @@
 # Musica dell'app
 
 Questa cartella contiene le tracce di sottofondo selezionabili nelle
-**Impostazioni → Atmosfera**. L'app continua a offrire anche il paesaggio
-sonoro generato, che non richiede un file audio.
+**Impostazioni → Atmosfera**. Il paesaggio sonoro generato non esiste più:
+ogni scelta del selettore è un file di questa cartella (una preferenza salvata
+col vecchio valore `generata` torna alla traccia predefinita).
+
+La traccia `Encelado1` («Encelado») è anche la colonna sonora delle demo delle
+eclissi (`demo.js`, al 30% sulla scala del cursore): non rinominarne l'`id`.
 
 ## Aggiungere una traccia
 

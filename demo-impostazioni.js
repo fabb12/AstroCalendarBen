@@ -1,4 +1,6 @@
-/* Libreria e editor assistito: il percorso normale resta semplice, il DSL è avanzato. */
+/* La pagina Demo: libreria, opzioni ed editor assistito. Il percorso normale
+ * resta semplice, il DSL è avanzato. Prima stava in una linguetta delle
+ * Impostazioni; adesso è una voce del menu principale (`vista-demo`). */
 (function () {
   'use strict';
   const $ = id => document.getElementById('demo-' + id);
@@ -222,13 +224,29 @@
   // si leggono e si disegnano.
   const schermo = $('opz-schermo'), pulita = $('opz-vista-pulita');
   const registra = $('opz-registra'), audio = $('opz-registra-audio');
+  const musica = $('opz-musica-eclissi');
   const personali = $('livelli-personali'), griglia = $('livelli');
+  // «Registra anche l'audio» è figlia del filmato: senza video è spenta e
+  // non si può toccare, perché una registrazione del solo audio non esiste.
+  // La preferenza salvata però non si perde: riaccendendo il filmato la
+  // casella torna com'era.
+  function disegnaDipendenze() {
+    const o = AstroDemo.opzioni;
+    audio.disabled = !registra.checked;
+    audio.checked = registra.checked && o.registraAudio !== false;
+    const gruppo = document.getElementById('demo-opz-registra-audio-gruppo');
+    if (gruppo) gruppo.classList.toggle('spenta', audio.disabled);
+    griglia.classList.toggle('spenta', !personali.checked);
+    const narr = document.getElementById('imp-narrazione-attiva');
+    const figli = document.getElementById('demo-narrazione-figli');
+    if (narr && figli) figli.classList.toggle('spenta', !narr.checked);
+  }
   function disegnaOpzioni() {
     const o = AstroDemo.opzioni;
     schermo.checked = o.schermoIntero;
     pulita.checked = o.vistaPulita !== false;
     registra.checked = o.registra;
-    audio.checked = o.registraAudio !== false;
+    if (musica) musica.checked = o.musicaEclissi !== false;
     personali.checked = !!o.livelli;
     const livelli = AstroDemo.livelli();
     griglia.replaceChildren(...livelli.map(l => {
@@ -244,6 +262,7 @@
       etichetta.append(casella, nome);
       return etichetta;
     }));
+    disegnaDipendenze();
   }
   function sceltaLivelli() {
     return Object.fromEntries(Array.from(griglia.querySelectorAll('input[data-livello]'))
@@ -251,8 +270,16 @@
   }
   schermo.addEventListener('change', () => AstroDemo.impostaOpzioni({ schermoIntero: schermo.checked }));
   pulita.addEventListener('change', () => AstroDemo.impostaOpzioni({ vistaPulita: pulita.checked }));
-  registra.addEventListener('change', () => AstroDemo.impostaOpzioni({ registra: registra.checked }));
-  audio.addEventListener('change', () => AstroDemo.impostaOpzioni({ registraAudio: audio.checked }));
+  registra.addEventListener('change', () => {
+    AstroDemo.impostaOpzioni({ registra: registra.checked });
+    disegnaDipendenze();
+  });
+  audio.addEventListener('change', () => {
+    if (!audio.disabled) AstroDemo.impostaOpzioni({ registraAudio: audio.checked });
+  });
+  if (musica) musica.addEventListener('change', () => AstroDemo.impostaOpzioni({ musicaEclissi: musica.checked }));
+  const narrAttiva = document.getElementById('imp-narrazione-attiva');
+  if (narrAttiva) narrAttiva.addEventListener('change', disegnaDipendenze);
   personali.addEventListener('change', () => {
     AstroDemo.impostaOpzioni({ livelli: personali.checked ? sceltaLivelli() : null });
     disegnaOpzioni();
@@ -268,10 +295,8 @@
   }
 
   window.addEventListener('beforeunload', e => { if (sporco()) { e.preventDefault(); e.returnValue = ''; } });
-  const tabDemo = document.getElementById('imp-tab-btn-demo');
-  tabDemo.addEventListener('click', () => { verifica(); preparaDemo(); });
-  tabDemo.addEventListener('focus', verifica);
-  document.getElementById('btn-impostazioni').addEventListener('click', () => { verifica(); preparaDemo(); });
+  // La chiama `mostraVista('demo')` ogni volta che la pagina torna davanti.
+  window.demoPaginaPrepara = () => { verifica(); preparaDemo(); };
   astroI18n.alCambio(() => {
     prova(disegnaOpzioni);
     prova(() => {

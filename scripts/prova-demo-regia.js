@@ -86,22 +86,20 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     const attendiFotogrammi = () => pagina.evaluate(() => new Promise(r =>
       requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
 
-    // --- 1. Le Impostazioni: linguetta attiva, rotellina, azione principale
-    await pagina.locator('#btn-impostazioni').click();
-    await pagina.locator('#imp-tab-btn-demo').click();
-    await pagina.waitForTimeout(400); // le linguette hanno una transizione di colore
+    // --- 1. La pagina Demo: voce del menu attiva, rotellina, azione principale
+    await pagina.locator('#btn-vista-demo').click();
+    await pagina.waitForTimeout(400); // le voci hanno una transizione di colore
     const ui = await pagina.evaluate(() => {
-      const attiva = getComputedStyle(document.getElementById('imp-tab-btn-demo'));
-      const altra = getComputedStyle(document.getElementById('imp-tab-btn-dati'));
-      const barra = getComputedStyle(document.getElementById('imp-tab-btn-demo'), '::after');
+      const attiva = getComputedStyle(document.getElementById('btn-vista-demo'));
+      const altra = getComputedStyle(document.getElementById('btn-vista-stasera'));
       const avvia = document.getElementById('demo-avvia');
       const sa = getComputedStyle(avvia);
       const secondario = getComputedStyle(document.getElementById('demo-duplica'));
       const ingranaggio = document.querySelector('#btn-impostazioni svg path');
       return {
         fondoAttiva: attiva.backgroundColor, fondoAltra: altra.backgroundColor,
-        coloreAttiva: attiva.color, coloreAltra: altra.color, barra: barra.backgroundColor,
-        barraAlta: parseFloat(barra.height),
+        coloreAttiva: attiva.color, coloreAltra: altra.color,
+        corrente: document.getElementById('btn-vista-demo').getAttribute('aria-current'),
         avviaFondo: sa.backgroundImage, avviaAlto: avvia.getBoundingClientRect().height,
         avviaLargo: avvia.getBoundingClientRect().width,
         secondarioLargo: document.getElementById('demo-duplica').getBoundingClientRect().width,
@@ -113,8 +111,8 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
         registra: !!document.getElementById('demo-opz-registra')
       };
     });
-    ok(ui.fondoAttiva !== ui.fondoAltra && ui.coloreAttiva !== ui.coloreAltra, 'La linguetta attiva ha fondo e colore propri');
-    ok(ui.barra !== 'rgba(0, 0, 0, 0)' && ui.barraAlta >= 3, 'Barra dell’accento sotto la linguetta attiva');
+    ok(ui.fondoAttiva !== ui.fondoAltra && ui.coloreAttiva !== ui.coloreAltra, 'La voce Demo attiva ha fondo e colore propri');
+    ok(ui.corrente === 'page', 'La voce Demo dichiara aria-current');
     ok(/gradient/.test(ui.avviaFondo) && ui.avviaAlto >= 50, 'Avvia demo è un tasto pieno e alto');
     ok(ui.avviaLargo > ui.secondarioLargo * 1.5 && !/gradient/.test(ui.secondarioFondo), 'Avvia domina sui tasti secondari');
     ok(ui.ingranaggio && ui.ingranaggio.startsWith('M12.22 2h-.44'), 'Icona a rotellina');
@@ -123,8 +121,9 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     // I nomi degli elementi vengono dai tasti veri, e seguono la lingua
     const nomi = await pagina.evaluate(() => AstroDemo.livelli().map(l => l.nome));
     ok(nomi.includes('Pianeti') && nomi.includes('Via Lattea') && nomi.includes('Reticolo'), 'Nomi dagli interruttori');
-    await foto('impostazioni');
-    await pagina.keyboard.press('Escape');
+    await foto('pagina-demo');
+    // Le demo che seguono partono dal planetario: a fine demo si torna lì.
+    await pagina.locator('#btn-vista-skymap').click();
 
     // --- 2. Eclisse di Sole: la Luna attraversa davvero il disco
     const separazione = () => pagina.evaluate(() => {
@@ -317,16 +316,20 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
 
     // Le preferenze salvate dalla versione precedente non contenevano le due
     // nuove chiavi: entrambe devono comunque partire attive, anche nel pannello.
-    await pagina.locator('#btn-impostazioni').click();
-    await pagina.locator('#imp-tab-btn-demo').click();
+    await pagina.locator('#btn-vista-demo').click();
     const nuoveDefault = await pagina.evaluate(() => ({
       pulita: AstroDemo.opzioni.vistaPulita,
       audio: AstroDemo.opzioni.registraAudio,
       pulitaUi: document.getElementById('demo-opz-vista-pulita').checked,
-      audioUi: document.getElementById('demo-opz-registra-audio').checked
+      audioUi: document.getElementById('demo-opz-registra-audio').checked,
+      audioSpento: document.getElementById('demo-opz-registra-audio').disabled
     }));
-    ok(nuoveDefault.pulita && nuoveDefault.audio && nuoveDefault.pulitaUi && nuoveDefault.audioUi,
-      'Le nuove opzioni sono attive di default anche con preferenze vecchie');
+    // Senza filmato l'audio è spento e non si tocca; la preferenza resta.
+    ok(nuoveDefault.pulita && nuoveDefault.audio && nuoveDefault.pulitaUi && !nuoveDefault.audioUi && nuoveDefault.audioSpento,
+      'Le nuove opzioni sono attive di default anche con preferenze vecchie (audio subordinato al filmato)');
+    await pagina.locator('#demo-opz-registra').check();
+    ok(await pagina.evaluate(() => !document.getElementById('demo-opz-registra-audio').disabled &&
+      document.getElementById('demo-opz-registra-audio').checked), 'Col filmato l’audio torna disponibile e acceso');
     await pagina.locator('#demo-opz-vista-pulita').uncheck();
     await pagina.locator('#demo-opz-registra-audio').uncheck();
     const nuoveSalvate = await pagina.evaluate(() => JSON.parse(localStorage.getItem('astrocal_demo_opzioni_v1')));
@@ -334,8 +337,9 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       'Le nuove opzioni si salvano insieme alle preferenze Demo');
     await pagina.locator('#demo-opz-vista-pulita').check();
     await pagina.locator('#demo-opz-registra-audio').check();
+    await pagina.locator('#demo-opz-registra').uncheck();
     await pagina.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
-    await pagina.locator('#btn-chiudi-impostazioni').click();
+    await pagina.locator('#btn-vista-skymap').click();
 
     // La vista pulita nasconde il chrome senza alterarne lo stato. Lasciamo
     // apposta aperta la scheda Visualizzazione e un avviso già presente.
@@ -363,13 +367,14 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
         pulita: document.body.classList.contains('demo-vista-pulita'),
         header: getComputedStyle(document.querySelector('.testata-app')).visibility,
         chrome: getComputedStyle(document.getElementById('cielo-comandi')).visibility,
-        controlli: getComputedStyle(document.getElementById('demo-controlli')).visibility
+        controlli: !document.getElementById('demo-controlli').hidden &&
+          getComputedStyle(document.getElementById('demo-controlli')).display !== 'none'
       };
     });
     ok(!durante.griglia && !durante.nomi && !durante.vl && durante.profondo,
       'Gli elementi scelti valgono durante la demo');
     ok(durante.pulita && durante.header === 'hidden' && durante.chrome === 'hidden' &&
-      durante.controlli === 'visible', 'Vista pulita: chrome nascosto, controlli essenziali visibili');
+      durante.controlli, 'Vista pulita: chrome nascosto, controlli essenziali visibili');
     ok(durante.gruppo === primaOpz.gruppo && durante.avviso === primaOpz.avviso && durante.nuovo === '',
       'Vista pulita non distrugge pannelli/avvisi e sopprime quelli nuovi');
     await pagina.evaluate(() => AstroDemo.ferma());
@@ -405,10 +410,8 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       'Errore: vista pulita e interfaccia ripristinate');
     await pagina.evaluate(() => skyAvviso('demo', ''));
 
-    // Schermo intero: si avvia dalla finestra Impostazioni e, dopo Esc, deve
-    // ricomparire anche la stessa finestra che c'era prima della demo.
-    await pagina.locator('#btn-impostazioni').click();
-    await pagina.locator('#imp-tab-btn-demo').click();
+    // Schermo intero: si avvia dalla pagina Demo e, dopo Esc, si torna lì.
+    await pagina.locator('#btn-vista-demo').click();
     await pagina.locator('#demo-opz-schermo').check();
     await pagina.locator('#demo-elenco').selectOption('allineamento_pianeti');
     await pagina.locator('#demo-avvia').click();
@@ -423,11 +426,12 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.waitForFunction(() => AstroDemo.stato === 'fermo' && !document.fullscreenElement, null, { timeout: 5000 });
     ok(await pagina.evaluate(() => !sky.schermoIntero && !sky.fintoSchermoIntero && !solSchermoIntero),
       'Esc: schermo intero ripristinato');
-    ok(await pagina.evaluate(() => !document.getElementById('modale-impostazioni').classList.contains('hidden')),
-      'Esc ripristina anche la finestra Impostazioni aperta prima della demo');
+    ok(await pagina.evaluate(() => vistaAttuale === 'demo' &&
+      document.getElementById('btn-vista-demo').classList.contains('attiva')),
+      'Esc riporta alla pagina Demo da cui si era partiti');
     await pagina.evaluate(() => {
-      document.getElementById('modale-impostazioni').classList.add('hidden');
       AstroDemo.impostaOpzioni({ schermoIntero: false });
+      mostraVista('cielo');
     });
 
     // Con l'audio disattivato la registrazione Demo deve avere soltanto video.
@@ -465,7 +469,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       return { n: tracce.length, cattura: narrazione.catturaStato() };
     });
     ok(conAudio.n === 1 && conAudio.cattura.attiva && conAudio.cattura.tracce === 1,
-      'Audio acceso: una sola traccia della narrazione nel MediaRecorder');
+      'Audio acceso: una sola traccia della narrazione nel MediaRecorder ');
     await pagina.evaluate(() => AstroDemo.pausa());
     await pagina.waitForTimeout(180);
     ok(await pagina.evaluate(() => sky.reg.flusso.getAudioTracks().length === 1 &&
@@ -500,15 +504,14 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
 
     // Su un telefono la scheda delle demo non sborda, e Avvia resta in vista
     await pagina.setViewportSize({ width: 360, height: 740 });
-    await pagina.locator('#btn-impostazioni').click();
-    await pagina.locator('#imp-tab-btn-demo').click();
+    await pagina.locator('#btn-vista-demo').click();
     const mobile = await pagina.evaluate(() => {
-      const p = document.getElementById('imp-tab-demo');
+      const p = document.getElementById('vista-demo');
       const a = document.getElementById('demo-avvia').getBoundingClientRect();
       return { sborda: p.scrollWidth > p.clientWidth + 1, largo: a.width };
     });
     ok(!mobile.sborda && mobile.largo > 250, 'Mobile: nessuno sbordo, Avvia largo ' + Math.round(mobile.largo) + ' px');
-    await foto('impostazioni-mobile');
+    await foto('pagina-demo-mobile');
 
     assert.deepEqual(errori, [], 'Nessuna eccezione browser'); verifiche++;
     console.log('Regia delle demo: ' + verifiche + ' verifiche superate');

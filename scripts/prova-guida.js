@@ -53,7 +53,10 @@ function ok(nome, condizione, extra) {
       !(await pagina.locator('#modale-impostazioni').getAttribute('class')).includes('hidden'));
 
     const linguette = await pagina.locator('[data-imp-tab]').count();
-    ok('le linguette sono cinque (con Demo e Guida)', linguette === 5, String(linguette));
+    // La Demo ha lasciato le Impostazioni per una voce sua del menu.
+    ok('le linguette sono quattro (con Guida, senza Demo)', linguette === 4, String(linguette));
+    ok('la Demo è una voce del menu e non una linguetta',
+      await pagina.locator('#imp-tab-btn-demo').count() === 0 && await pagina.locator('#btn-vista-demo').count() === 1);
     ok('il profilo manuale degli ostacoli non compare più nelle impostazioni',
       await pagina.locator('#imp-orizzonte').count() === 0);
 

@@ -1,20 +1,24 @@
 # Niente in corso
 
-Ultimo lavoro: la realtà aumentata nomina invece di ridisegnare, e si può
-allineare a mano (v371).
+Ultimo lavoro: Demo riorganizzata e menu raggruppato (v373).
 
-- `visione.js` §12: con la fotocamera accesa Sole, Luna, pianeti, stelle e
-  stazioni non si ridisegnano; segno sottile + nome per astri, stelle del
-  catalogo, aerei (se lo strato di `aerei.js` è spento), vette e paesi, solo
-  se davvero visibili da qui; impaginazione pura `visImpaginaEtichette`.
-- `visione.js` §13: allineamento a mano (tasto `#ar-allinea`, pannello
-  `#ar-calibra`): scegli l'oggetto, tocca dove lo vedi; rotazione del mondo
-  (1 punto = rotazione minima, 2+ = Wahba col rollio), aerei su ancora o
-  assetto, riconoscimento automatico tenuto a bada, annulla/rifai.
-- Ganci: `aereoCieloOra` in `aerei.js`, `insScordaTraccia` in
-  `inseguimento.js`, `etichetteAR`/`SKY_AR_SOLO_NOME` in `app.js`.
-- Prove nuove: `prova-ar-calibrazione.js` (27) e `prova-ar-browser.js`
-  (tre schermi), verdi e in CI. `prova-inseguimento.js`, `prova-i18n.js`,
-  `controlla-i18n.js --patto`, `controlla-collisioni.js` verdi;
-  `prova-verifica.js` ha 6 rosse **preesistenti**, identiche senza modifiche.
-- Non provato su un telefono vero (sensori e fotocamera reali).
+- Menu a sei voci: Stasera, **Calendario** (Mese/Agenda/Diario in
+  `#sottonav-calendario`, `GRUPPI_VISTE` in `app.js`), Planetario,
+  Telescopio, Didattica, **Demo** (`#vista-demo`).
+- La pagina Demo raccoglie tutto quello che stava in Impostazioni → Demo e
+  la Narrazione di Impostazioni → Osservazione, in cinque gruppi.
+- `demo.js`: comandi solo a demo in corso (`hidden` vince), icona
+  Pausa/Riprendi, sottotitoli in `#demo-sottotitoli`, tocco ≠ presa della
+  camera (trascina/pizzico/rotellina sì), pieno schermo senza lampeggi fra
+  planetario e 3D, musica «Encelado» 30% nelle eclissi con ripristino
+  (`musicaDemoAvvia`/`musicaDemoFerma` in `app.js`).
+- Tolto il paesaggio sonoro generato.
+- Corretti tre difetti preesistenti: la vista pulita toglieva i
+  `pointer-events` alla tela (camera immobile), `skyMostraGruppo` usato
+  come «apri» mentre è un interruttore (pannello chiuso a fine demo),
+  e l'audio della registrazione mai iniettato (aggancio tolto prima del
+  `captureStream` asincrono; in più una ReferenceError su `comandiCielo`).
+- Prove: nuova `scripts/prova-demo-pagina.js` (19), aggiornate
+  `prova-demo-browser`, `prova-demo-regia`, `prova-narrazione-browser`,
+  `prova-guida`, `prova-musica`.
+- Non provato su un telefono vero (pieno schermo nativo e gesti reali).

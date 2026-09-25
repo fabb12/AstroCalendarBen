@@ -42,12 +42,13 @@ const server = http.createServer((req, res) => {
     });
     await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
     await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof sky !== 'undefined' && sky.observer && sky.oggetti.length, null, { timeout: 30000 });
-    // Gestione reale attraverso la nuova scheda, anche con sola tastiera.
-    await pagina.locator('#btn-impostazioni').click();
-    const larghezzaImpostazioni = await pagina.locator('#modale-impostazioni > .pannello-modale')
-      .evaluate(el => el.getBoundingClientRect().width);
-    assert.ok(larghezzaImpostazioni >= 900, 'Le Impostazioni sfruttano la larghezza desktop');
-    await pagina.locator('#imp-tab-btn-demo').click();
+    // Fuori da una demo i comandi della demo non esistono a schermo.
+    assert.equal(await pagina.locator('#demo-controlli').isVisible(), false, 'Nessun comando demo a riposo');
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).display), 'none');
+    // La Demo è una voce del menu: nelle Impostazioni non ne resta traccia.
+    assert.equal(await pagina.locator('#imp-tab-btn-demo').count(), 0, 'Niente più linguetta Demo nelle Impostazioni');
+    assert.equal(await pagina.locator('#modale-impostazioni #demo-avvia, #modale-impostazioni [id^="demo-opz"]').count(), 0);
+    await pagina.locator('#btn-vista-demo').click();
     const builtins = await pagina.evaluate(() => AstroDemo.libreria.elenco().filter(d => d.solaLettura).map(d => {
       const demo = AstroDemo.valida(d.testo);
       return { chiave: d.chiave, scene: demo.scene.length, durata: demo.scene.reduce((n, s) => n + s.durata, 0) };
@@ -106,8 +107,7 @@ const server = http.createServer((req, res) => {
     await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined');
     await pagina.evaluate(() => mostraVista('cielo'));
     await pagina.waitForFunction(() => sky.observer && sky.oggetti.length);
-    await pagina.locator('#btn-impostazioni').click();
-    await pagina.locator('#imp-tab-btn-demo').click();
+    await pagina.locator('#btn-vista-demo').click();
     await pagina.locator('#demo-elenco').selectOption(chiaveUtente);
     assert.equal(await pagina.locator('#demo-editor').inputValue(), salvato);
     assert.equal(await pagina.locator('#demo-editor').isVisible(), false, 'Editor personale chiuso finché non si chiede Modifica');
@@ -151,7 +151,6 @@ const server = http.createServer((req, res) => {
       return prima;
     });
     await pagina.locator('#demo-avvia').click();
-    assert.equal(await pagina.locator('#modale-impostazioni').isVisible(), false);
     await pagina.waitForTimeout(700);
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo');
     const controlliIniziali = await pagina.evaluate(() => {
@@ -163,9 +162,34 @@ const server = http.createServer((req, res) => {
     assert.equal(controlliIniziali.vis, 'hidden', 'I comandi partono nascosti');
     assert.ok(controlliIniziali.testi.every(x => !x), 'I comandi mostrano solo icone');
     assert.equal(controlliIniziali.etichette.length, 3, 'Tre comandi accessibili');
+    const fovPrimaDelTocco = await pagina.evaluate(() => sky.fovVoluto);
     await pagina.locator('#skymap-canvas').click({ position: { x: 20, y: 20 } });
     assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'visible',
       'Un tap mostra i comandi');
+    // Un tocco semplice non prende la camera: la regia continua a guidarla.
+    await pagina.waitForTimeout(400);
+    assert.ok(await pagina.evaluate(p => sky.fovVoluto < p, fovPrimaDelTocco), 'Dopo un tocco lo zoom programmato prosegue');
+    // L'icona di Pausa c'è ed è disegnata alla sua misura.
+    const iconaPausa = await pagina.evaluate(() => {
+      const b = document.querySelector('#demo-controlli [data-azione="pausa"]');
+      const r = b.querySelector('svg').getBoundingClientRect();
+      return { w: r.width, h: r.height, fill: getComputedStyle(b.querySelector('svg')).fill, forme: b.querySelectorAll('svg rect').length };
+    });
+    assert.ok(iconaPausa.w >= 20 && iconaPausa.w <= 24 && iconaPausa.forme === 2 && iconaPausa.fill !== 'rgb(0, 0, 0)', 'Icona Pausa: due barre');
+    await pagina.locator('#demo-controlli [data-azione="pausa"]').click();
+    const inPausa = await pagina.evaluate(() => {
+      const b = document.querySelector('#demo-controlli [data-azione="riprendi"]');
+      const r = b && b.querySelector('svg').getBoundingClientRect();
+      return { stato: AstroDemo.stato, w: r && r.width, forma: b && !!b.querySelector('svg path'),
+        premuto: b && b.getAttribute('aria-pressed'), etichetta: b && b.getAttribute('aria-label'),
+        visibile: getComputedStyle(document.getElementById('demo-controlli')).visibility };
+    });
+    assert.deepEqual([inPausa.stato, inPausa.forma, inPausa.premuto, inPausa.etichetta], ['pausa', true, 'true', 'Riprendi'],
+      'Pausa: icona e nome diventano Riprendi');
+    assert.ok(inPausa.w >= 20 && inPausa.visibile === 'visible', 'In pausa i comandi restano in vista');
+    await pagina.locator('#demo-controlli [data-azione="riprendi"]').click();
+    assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo', 'Riprendi');
+    await pagina.locator('#skymap-canvas').click({ position: { x: 20, y: 20 } });
     await pagina.waitForTimeout(6200);
     assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'hidden',
       'Dopo sei secondi i comandi scompaiono');
@@ -256,6 +280,12 @@ const server = http.createServer((req, res) => {
       passo: sky.passoTempoSec, playback: sky.playbackVerso, modalita: sky.modalitaTempo,
       sol: [sol.az, sol.elev, sol.zoom, sol.panX, sol.panY, sol.vicino]
     }));
+    // Le demo di prima sono partite dalla pagina Demo e ci sono tornate: le
+    // prove sul planetario partono dal planetario.
+    // Il pannello «Astri» aperto prima della prima demo è tornato com'era
+    // (il ripristino ora lo riapre davvero): qui serve la tela libera.
+    await pagina.evaluate(() => { mostraVista('cielo'); if (document.getElementById('cielo-comandi').dataset.gruppoAttivo) skyMostraGruppo(''); });
+    await pagina.waitForTimeout(300);
     const primaStop = await fotografia();
     await pagina.evaluate(() => AstroDemo.avvia());
     await pagina.keyboard.press('Escape');
@@ -264,10 +294,7 @@ const server = http.createServer((req, res) => {
     // Questo blocco prova apposta l'interazione coi controlli normali: la
     // vista pulita va quindi spenta, e la finestra Impostazioni ripristinata
     // dalla demo precedente va chiusa prima dei clic sul planetario.
-    await pagina.evaluate(() => {
-      AstroDemo.impostaOpzioni({ vistaPulita: false });
-      document.getElementById('modale-impostazioni').classList.add('hidden');
-    });
+    await pagina.evaluate(() => AstroDemo.impostaOpzioni({ vistaPulita: false }));
     await pagina.evaluate(() => AstroDemo.avvia("define_demo interattiva { scene planetarium_view { duration: 5s; action: point_view { az: 120, alt: 25 }; }}"));
     await pagina.locator('[data-vai-gruppo="vista"]').click();
     await pagina.locator('#scheda-vista-oggetti').click();
@@ -354,15 +381,13 @@ const server = http.createServer((req, res) => {
       ['aurora_boreale', '2027-01-15T19:00:00', 60.1699, 24.9384],
       ['allineamento_pianeti', '2028-10-21T12:45:00', 32.2226, -110.9747]
     ]) {
-      await pagina.locator('#btn-impostazioni').click();
-      await pagina.locator('#imp-tab-btn-demo').click();
+      await pagina.locator('#btn-vista-demo').click();
       await pagina.locator('#demo-elenco').selectOption(chiave);
       await pagina.locator('#demo-avvia').click();
       // Il banco delle aurore apre il racconto: il cielo di Tromsø arriva
       // alla sesta scena, e ci si salta per guardarlo senza aspettare.
-      const primaScena = await pagina.locator('#demo-controlli p').innerText();
       if (chiave === 'aurora_boreale') {
-        assert.match(primaScena, /^Aurora boreale.* — scena 1\/7 · Didattica/, 'Aurora: prima il banco didattico');
+        assert.equal(await pagina.evaluate(() => vistaAttuale), 'didattica', 'Aurora: prima il banco didattico');
         await pagina.evaluate(() => AstroDemo.vaiAScena(5));
       }
       if (chiave === 'eclisse_lunare') await pagina.evaluate(() => AstroDemo.vaiAScena(1));
@@ -423,17 +448,14 @@ const server = http.createServer((req, res) => {
       chiave + ': ripristino di data, luogo e aurora');
     }
     await pagina.setViewportSize({ width: 390, height: 844 });
-    await pagina.locator('#btn-impostazioni').click();
-    await pagina.locator('#imp-tab-btn-demo').click();
+    await pagina.locator('#btn-vista-demo').click();
     assert.equal(await pagina.locator('#demo-editor').isVisible(), false, 'Editor avanzato chiuso su mobile');
-    const overflow = await pagina.evaluate(() => document.getElementById('imp-tab-demo').scrollWidth <=
-      document.getElementById('imp-tab-demo').clientWidth + 1);
+    const overflow = await pagina.evaluate(() => document.getElementById('vista-demo').scrollWidth <=
+      document.getElementById('vista-demo').clientWidth + 1 && window.innerWidth <= 390);
     assert.equal(overflow, true, 'Nessun overflow orizzontale nella scheda demo');
     await pagina.locator('#demo-avanzate summary').click();
     assert.ok(await pagina.locator('#demo-editor').isVisible());
-    await pagina.screenshot({ path: path.join(radice, 'work/demo-impostazioni.png') });
-    await pagina.keyboard.press('Escape');
-    assert.equal(await pagina.locator('#modale-impostazioni').isVisible(), false, 'Esc chiude le Impostazioni');
+    await pagina.screenshot({ path: path.join(radice, 'work/demo-pagina.png') });
     assert.deepEqual(errori, [], 'Nessuna eccezione browser');
     console.log('Demo browser: planetario, volo, ombra, orbita, pausa, stop e ripristino verificati');
   } finally {
