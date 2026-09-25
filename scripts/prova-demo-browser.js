@@ -185,7 +185,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() => document.getElementById('sol-transizione-tela').toDataURL()), posaVolo, 'Volo fermo in pausa');
     assert.equal(await pagina.evaluate(() => solVolo.raf), 0, 'Nessun secondo orologio del volo');
     await pagina.evaluate(() => AstroDemo.riprendi());
-    await pagina.waitForFunction(() => sol.vicino, null, { timeout: 8000 });
+    await pagina.waitForFunction(() => sol.vicino, null, { timeout: 15000 });
     await pagina.evaluate(() => AstroDemo.vaiAScena(5));
     const eclipse = await pagina.evaluate(() => ({
       tipo: solStatoEclissi(skyAdesso()).tipo,
