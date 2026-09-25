@@ -6639,47 +6639,207 @@ body input.casella-data:hover { border: 0; }
   border-radius: var(--raggio-m);
   background: var(--superficie-bassa);
 }
-.galleria-video video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #000; }
-.galleria-video video:fullscreen,
-.galleria-video video:-webkit-full-screen {
-  width: 100vw;
-  height: 100vh;
-  aspect-ratio: auto;
+/* La miniatura è un tasto: aprirla porta al visualizzatore. Il riquadro ha la
+   sua proporzione fissa e la miniatura ci sta dentro «contain», così un
+   video verticale e uno orizzontale si vedono interi tutti e due. Finché la
+   miniatura non c'è — o se non si è potuta fare — si vede il segno del
+   genere, mai un rettangolo nero che sembra un caricamento eterno. */
+.galleria-miniatura {
+  position: relative;
+  display: grid;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  place-items: center;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  color: var(--testo-3);
+  background: radial-gradient(circle at 50% 40%, rgb(76 141 255 / .12), #05070c 70%);
+  cursor: pointer;
+}
+.galleria-miniatura:focus-visible { outline: 2px solid var(--accento); outline-offset: -2px; }
+.galleria-miniatura-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   background: #000;
 }
-body.galleria-immersiva { overflow: hidden; }
-.galleria-video.galleria-video-pieno {
-  position: fixed;
-  z-index: 100;
-  inset: 0;
+.galleria-miniatura-img[hidden], .galleria-miniatura-segno[hidden] { display: none; }
+.galleria-miniatura-gioca {
+  position: absolute;
   display: grid;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border: 0;
-  border-radius: 0;
+  border: 1px solid rgb(255 255 255 / .35);
+  border-radius: 999px;
+  color: #fff;
+  background: rgb(0 0 0 / .55);
+  padding-left: 3px;
+}
+.galleria-miniatura-nota {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--testo);
+  background: rgb(0 0 0 / .7);
+  font-size: .72rem;
+  text-align: center;
+}
+.galleria-non-supportato .galleria-miniatura-gioca { display: none; }
+/* Il lettore con cui si dipinge una miniatura: sta nel documento perché su
+   iOS un <video> staccato non decodifica niente, ma non si vede e non si
+   tocca. Se ne va appena la miniatura è fatta. */
+.galleria-lettore-servizio {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 2px;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+}
+body.galleria-immersiva { overflow: hidden; }
+
+/* Il visualizzatore. Tutta la geometria è CSS: il contenitore è fisso e
+   copre lo schermo, il palco è un riquadro assoluto che lascia posto alla
+   barra e alle zone sicure del notch, e il media riempie il palco
+   «contain». Nessuna misura calcolata in JavaScript, quindi nessuna che possa
+   restare vecchia dopo una rotazione, un resize o l'ingresso nello schermo
+   intero: un video orizzontale su un telefono in verticale resta intero e
+   centrato, e uno verticale su uno schermo orizzontale pure. */
+.galleria-visore {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  overflow: hidden;
+  color: #fff;
+  background: #000;
+  --visore-barra: 56px;
+}
+.galleria-visore.hidden { display: none; }
+.galleria-visore:focus { outline: none; }
+.galleria-visore:fullscreen, .galleria-visore:-webkit-full-screen { width: 100%; height: 100%; background: #000; }
+.visore-palco {
+  position: absolute;
+  top: calc(var(--visore-barra) + env(safe-area-inset-top));
+  right: env(safe-area-inset-right);
+  bottom: env(safe-area-inset-bottom);
+  left: env(safe-area-inset-left);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+}
+.visore-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
   background: #000;
 }
-.galleria-video.galleria-video-pieno video {
-  width: 100vw;
-  height: 100vh;
-  aspect-ratio: auto;
+/* Se il browser manda a schermo intero il solo lettore (Firefox, i comandi
+   nativi), il media deve restare «contain» anche lì. */
+.visore-media:fullscreen, .visore-media:-webkit-full-screen { width: 100%; height: 100%; object-fit: contain; }
+.visore-palco[data-stato="caricamento"]::after {
+  content: '';
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgb(255 255 255 / .2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: visore-gira 0.9s linear infinite;
+  pointer-events: none;
 }
-.galleria-video.galleria-video-pieno .galleria-video-corpo { display: none; }
-.galleria-pieno-esci { display: none; }
-.galleria-video.galleria-video-pieno .galleria-pieno-esci {
-  position: fixed;
-  z-index: 1;
-  top: max(12px, env(safe-area-inset-top));
-  right: max(12px, env(safe-area-inset-right));
+.visore-palco[data-stato="guasto"] .visore-media { display: none; }
+@keyframes visore-gira { to { transform: rotate(360deg); } }
+.visore-guasto {
   display: grid;
+  max-width: 420px;
+  gap: 12px;
+  justify-items: center;
+  padding: 20px;
+  text-align: center;
+  color: var(--testo-2);
+}
+.visore-barra {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  min-height: var(--visore-barra);
+  align-items: center;
+  gap: 6px;
+  padding: calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) 6px calc(8px + env(safe-area-inset-left));
+  background: linear-gradient(rgb(0 0 0 / .85), rgb(0 0 0 / .55));
+  transition: opacity .25s, transform .25s;
+}
+.visore-titolo { flex: 1 1 auto; min-width: 0; }
+.visore-nome { overflow: hidden; font-size: .9rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.visore-posizione { color: rgb(255 255 255 / .65); font-size: .72rem; }
+.visore-tasto, .visore-freccia {
+  display: grid;
+  flex: 0 0 auto;
   width: 44px;
   height: 44px;
   place-items: center;
-  border: 1px solid rgb(255 255 255 / .38);
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / .25);
   border-radius: 999px;
   color: #fff;
-  background: rgb(0 0 0 / .68);
-  font-size: 1.25rem;
+  background: rgb(0 0 0 / .45);
+  cursor: pointer;
+}
+.visore-tasto[hidden], .visore-freccia[hidden] { display: none; }
+.visore-tasto:focus-visible, .visore-freccia:focus-visible { outline: 2px solid var(--accento); outline-offset: 2px; }
+.visore-freccia {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  transform: translateY(-50%);
+  transition: opacity .25s;
+}
+.visore-freccia:disabled { opacity: .25; cursor: default; }
+.visore-prec { left: calc(8px + env(safe-area-inset-left)); }
+.visore-succ { right: calc(8px + env(safe-area-inset-right)); }
+.visore-stato {
+  position: absolute;
+  right: 12px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  left: 12px;
+  text-align: center;
+  font-size: .8rem;
+  pointer-events: none;
+}
+.visore-stato:empty { display: none; }
+.visore-stato:not(:empty) {
+  justify-self: center;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / .75);
+}
+/* A schermo intero il palco prende tutto (meno le zone sicure) e la barra
+   gli si appoggia sopra; ferma per qualche secondo, si fa da parte. */
+.galleria-visore.visore-pieno .visore-palco { top: env(safe-area-inset-top); }
+.galleria-visore.visore-barra-nascosta .visore-barra { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+.galleria-visore.visore-barra-nascosta .visore-freccia { opacity: 0; pointer-events: none; }
+@media (hover: none) {
+  .visore-freccia { width: 44px; height: 44px; }
 }
 .galleria-video-corpo { display: grid; gap: 8px; padding: 12px; }
 /* Il nome si accorcia, l'etichetta no: «Nuovo» è la cosa che si legge da
