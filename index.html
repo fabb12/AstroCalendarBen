@@ -3087,7 +3087,9 @@
                una frase italiana scritta qui sarebbe testo cablato, e
                `videoInizializza()` la riscrive comunque all'avvio. -->
           <p id="galleria-cartella" class="galleria-cartella"></p>
-          <button id="galleria-scegli-cartella" type="button" class="tasto-cielo" data-i18n="ui.scegli-cartella">Scegli cartella</button>
+          <!-- Anche l'etichetta di questo tasto la scrive `videoImpostaStato()`:
+               «Scegli», «Cambia» o «Scegli di nuovo» secondo lo stato. -->
+          <button id="galleria-scegli-cartella" type="button" class="tasto-cielo hidden"></button>
           <!-- La cartella è ricordata ma il browser le ha sospeso il permesso:
                si riprende con questo clic, non con un dialogo che salta fuori
                da solo ogni volta che si apre la galleria. -->
@@ -3108,6 +3110,36 @@
         <div id="galleria-elenco" class="galleria-elenco"></div>
       </div>
     </div>
+  </div>
+
+  <!-- IL VISUALIZZATORE DELLA GALLERIA
+       Uno solo per tutta la galleria, fuori dalla sua finestra: lo schermo
+       intero si chiede a questo contenitore, e con lui ci vanno i comandi. Il
+       media sta nel palco, che è un riquadro assoluto: la sua misura la dà il
+       CSS, quindi dopo una rotazione o l'ingresso nello schermo intero non
+       c'è nessuna misura vecchia che possa farlo sparire. I segni dei tasti li
+       mette `videoInizializza()`. -->
+  <div id="galleria-visore" class="galleria-visore hidden" role="dialog" aria-modal="true"
+       aria-labelledby="galleria-visore-nome" tabindex="-1">
+    <div id="galleria-visore-palco" class="visore-palco"></div>
+    <div class="visore-barra">
+      <button id="galleria-visore-chiudi" type="button" class="visore-tasto" aria-label="Chiudi" title="Chiudi (Esc)"
+              data-i18n-aria-label="galleria.visore-chiudi" data-i18n-title="galleria.visore-chiudi"></button>
+      <div class="visore-titolo">
+        <p id="galleria-visore-nome" class="visore-nome"></p>
+        <p id="galleria-visore-posizione" class="visore-posizione"></p>
+      </div>
+      <button id="galleria-visore-condividi" type="button" class="visore-tasto" aria-label="Condividi" title="Condividi"
+              data-i18n-aria-label="ui.condividi" data-i18n-title="ui.condividi"></button>
+      <button id="galleria-visore-scarica" type="button" class="visore-tasto" aria-label="Scarica" title="Scarica"
+              data-i18n-aria-label="galleria.scarica" data-i18n-title="galleria.scarica"></button>
+      <button id="galleria-visore-pieno" type="button" class="visore-tasto" aria-pressed="false"></button>
+    </div>
+    <button id="galleria-visore-prec" type="button" class="visore-freccia visore-prec" aria-label="Precedente" title="Precedente (←)"
+            data-i18n-aria-label="galleria.visore-precedente" data-i18n-title="galleria.visore-precedente"></button>
+    <button id="galleria-visore-succ" type="button" class="visore-freccia visore-succ" aria-label="Successivo" title="Successivo (→)"
+            data-i18n-aria-label="galleria.visore-successivo" data-i18n-title="galleria.visore-successivo"></button>
+    <p id="galleria-visore-stato" class="visore-stato" role="status" aria-live="polite"></p>
   </div>
 
   <!-- L'ATLANTE DELLE COSTELLAZIONI

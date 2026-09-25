@@ -357,6 +357,20 @@ const DISEGNI = {
   scarica: `<path d="M12 3.6v11.2M7.8 10.6L12 14.8l4.2-4.2"/>
     <path d="M4.6 17.4v1.6a1.4 1.4 0 0 0 1.4 1.4h12a1.4 1.4 0 0 0 1.4-1.4v-1.6"/>`,
 
+  // I segni del visualizzatore della Galleria: tasti che si leggono senza
+  // testo (chiudi, frecce, schermo intero, condividi) e il ripiego di una
+  // miniatura che non si è potuta fare.
+  filmato: `<rect x="3.5" y="5.5" width="17" height="13" rx="2"/>
+    <path d="M3.5 9h17M3.5 15h17M7.5 5.5V9M12 5.5V9M16.5 5.5V9M7.5 15v3.5M12 15v3.5M16.5 15v3.5"/>`,
+  gioca: `<path d="M8 5.4v13.2L18.6 12z" fill="currentColor"/>`,
+  chiudi: `<path d="M6 6l12 12M18 6L6 18"/>`,
+  precedente: `<path d="M14.8 5.6L8.4 12l6.4 6.4"/>`,
+  successivo: `<path d="M9.2 5.6l6.4 6.4-6.4 6.4"/>`,
+  schermoPieno: `<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>`,
+  schermoEsci: `<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>`,
+  condividi: `<circle cx="18" cy="5.5" r="2.3"/><circle cx="6" cy="12" r="2.3"/><circle cx="18" cy="18.5" r="2.3"/>
+    <path d="M8.1 10.9l7.8-4.3M8.1 13.1l7.8 4.3"/>`,
+
   // Un aereo visto da sotto, il muso in alto: ali a freccia, coda e due
   // scie. Serve al fumetto degli ADS-B, che fino a ieri usava un carattere
   // Unicode — e un glifo di sistema, in mezzo alle icone a contorno di
@@ -30594,60 +30608,114 @@ function skyRegScarica(e) {
 }
 
 // --- Archivio e cartella dei video ---------------------------------------
+//
+// La Galleria ha tre metà, e il modo in cui sono state rotte insieme è la
+// cosa da avere in mente prima di metterci mano.
+//
+// **La cartella.** Un `FileSystemDirectoryHandle` si conserva in IndexedDB,
+// ma il suo permesso no: dopo una chiusura dell'app il browser lo può
+// riportare a «prompt» (è la specifica). Il difetto era che quello stato
+// veniva trattato come «cartella da ricollegare»: l'apertura non provava
+// nemmeno a leggere, e mostrava un tasto che somigliava in tutto alla scelta
+// della cartella. Adesso l'apertura **prova a leggere** (su alcuni browser
+// `queryPermission` non c'è o solleva, e la lettura funziona lo stesso); se il
+// browser vuole davvero un consenso lo chiede **dentro al tocco che ha aperto
+// la galleria**, una volta per sessione — è anche l'unica strada per cui
+// Chrome offre «consenti a ogni visita», cioè il permesso che non scade più.
+// La cartella si fa riscegliere solo quando non esiste più.
+//
+// **Le schede.** Erano un `<video>` per scheda con un object URL ciascuno:
+// venti decodificatori tenuti in vita anche a finestra chiusa, e sul telefono
+// un rettangolo nero perché `preload` lì è un suggerimento che si ignora.
+// Adesso una scheda è una **miniatura** (un fotogramma dipinto una volta,
+// tenuto anche in IndexedDB) e un tasto; il filmato si apre nel visualizzatore.
+//
+// **Il visualizzatore.** Uno solo, con un solo media e un solo object URL
+// alla volta. Il riquadro del media è `position: absolute` dentro a un
+// contenitore `position: fixed; inset: 0`, e il media è `width/height: 100%`
+// con `object-fit: contain`: nessuna misura si calcola in JavaScript, quindi
+// non ce n'è nessuna che possa restare vecchia dopo una rotazione o l'ingresso
+// nello schermo intero — che era il difetto del video orizzontale sparito su
+// un telefono in verticale. Lo schermo intero si chiede al **contenitore**, e
+// così con lui ci vanno anche i comandi.
 
 const VIDEO_DB_NOME = 'astrocalendario-video';
-const VIDEO_DB_VERSIONE = 1;
+// La versione 2 aggiunge il negozio delle miniature. L'handle della cartella
+// resta dov'era (`preferenze`): un aggiornamento dello schema non tocca i
+// negozi che esistono già.
+const VIDEO_DB_VERSIONE = 2;
 const VIDEO_CARTELLA_NOME = 'astrocalben';
 // Che cosa l'utente ha deciso una volta per tutte sulla cartella: se la vuole
 // e come si chiama. L'handle sta in IndexedDB (è l'unico posto in cui un
 // FileSystemDirectoryHandle si possa conservare), ma un handle non dice se
-// l'utente **voleva** quella cartella: senza questa memoria, ogni volta che
-// l'handle non c'è o non è ancora autorizzato la galleria ricominciava da capo
-// con la domanda «cartella esistente o nuova?», cioè chiedeva di nuovo una
-// cosa già decisa. Sta in `localStorage` e non in IndexedDB di proposito: è la
-// risposta a una domanda, non un dato, e va letta prima del primo disegno.
+// l'utente **voleva** quella cartella. Sta in `localStorage` e non in
+// IndexedDB di proposito: è la risposta a una domanda, e va letta subito.
 const CHIAVE_VIDEO_CARTELLA = 'astrocalendario_video_cartella';
 let videoSceltaCartella = null;   // { voluta, nome } oppure null se mai deciso
 let videoCartella = null;
-// `queryPermission()` non è una lettura gratuita su tutti i browser: alcune
-// versioni mobili tornano a rispondere "prompt" anche nello stesso utilizzo
-// della pagina. Ricordiamo quindi il consenso già ottenuto per questo handle.
-// Il browser continua comunque a fare da autorità (ogni scrittura può essere
-// rifiutata); questa variabile evita soltanto di richiedere due volte lo stesso
-// consenso dopo che l'utente ha scelto la cartella.
+// Il permesso ottenuto in questa sessione, per la lettura e per la scrittura.
+// Non è una fotografia del browser — ogni lettura può comunque essere
+// rifiutata, e allora si torna a verificare — ma evita di chiedere due volte
+// la stessa cosa: su alcuni telefoni anche un `queryPermission` ripetuto fa
+// ricomparire il pannello. Chi imposta `videoCartellaAutorizzata = false`
+// invalida tutt'e due.
 let videoCartellaAutorizzata = false;
-// Dopo la scelta il picker ha gia' concesso l'accesso. Non interroghiamo piu'
-// il browser a ogni sincronizzazione: su alcuni telefoni perfino una
-// queryPermission ripetuta fa ricomparire il pannello delle autorizzazioni.
-// `null` significa soltanto che l'handle arriva da IndexedDB e va verificato
-// una volta; true/false sono invece il risultato memorizzato per la sessione.
-let videoPermessoCartella = null;
-let videoUrlGalleria = [];
-let videoTimerSincronizzazione = 0;
-let videoSincronizzazioneInCorso = false;
-// La cartella viene ricontrollata mentre la galleria resta aperta, ma un
-// controllo non deve diventare un nuovo montaggio dei lettori. Ricreare i
-// <video> ogni due secondi azzera infatti il buffer e la posizione di
-// riproduzione: il filmato torna continuamente a "caricare" e non parte mai.
-// Questa firma descrive ciò che si vede senza leggere il contenuto dei Blob.
+let videoScritturaAutorizzata = false;
+// L'utente ha detto di no (o ha chiuso il pannello) in questa sessione: non
+// glielo si richiede da solo a ogni apertura, resta il tasto «Consenti».
+let videoPermessoRifiutato = false;
+// In che stato è la cartella, ed è quello che decide la riga e i tasti:
+// 'non-supportata' | 'nessuna' | 'rinunciata' | 'verifica' | 'collegata' |
+// 'permesso' | 'negata' | 'persa'.
+let videoStatoCartella = 'nessuna';
+// L'avvio legge l'handle da IndexedDB, ed è asincrono: chi apre la galleria
+// prima che abbia finito lo aspetta, invece di vedere per un istante «nessuna
+// cartella» e di sentirsela richiedere.
+let videoPronto = Promise.resolve();
+
+// Estensioni che la galleria mostra, e con che tipo le dichiara quando il
+// sistema non ne dice nessuno.
+const VIDEO_ESTENSIONI = {
+  mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+  gif: 'image/gif', avif: 'image/avif'
+};
+// Ogni quanto si ricontrolla la cartella a galleria aperta: basta a vedere
+// comparire un file copiato da fuori senza far girare il disco di continuo.
+const VIDEO_SINCRONIA_MS = 4000;
+// Quanto tenere in vita l'indirizzo di uno scaricamento. Revocarlo subito
+// dopo il `click` rompe il download su Safari, che lo legge più tardi.
+const VIDEO_SCARICA_VITA_MS = 60000;
+
+// Lo stato della finestra aperta. `sessione` cresce a ogni apertura e
+// chiusura: un lavoro asincrono partito in una sessione vecchia (una
+// miniatura, una scansione) guarda il numero e si butta.
+const galleria = {
+  aperta: false,
+  sessione: 0,
+  elementi: [],
+  firma: null,
+  timer: 0,
+  corsa: null,
+  ripeti: false,
+  primaSincronia: true,
+  erroriLettura: 0,
+  scaricamenti: new Set()
+};
+// Per compatibilità con chi la azzera per forzare un ridisegno.
 let videoFirmaGalleria = null;
 
 // --- Quali video sono già stati guardati ----------------------------------
 //
 // Serve a una cosa sola, ed è l'unica che l'elenco non sappia dire: quale sia
-// il filmato di stanotte. Dopo una serata con tre registrazioni, in una
-// galleria di venti schede tutte uguali, la data scritta in piccolo sotto al
-// nome è l'unico indizio — e si legge una scheda per volta. L'etichetta
-// «Nuovo» risponde a colpo d'occhio.
-//
-// La chiave è il **nome** del file e non l'`id`, perché lo stesso filmato
-// cambia identificativo secondo da dove lo si sta leggendo (`prova.webm`
-// dall'archivio, `cartella:prova.webm` dalla cartella): guardarlo una volta
-// deve valere per sempre, non per una delle due strade.
+// il filmato di stanotte. La chiave è il **nome** del file e non l'`id`,
+// perché lo stesso filmato cambia identificativo secondo da dove lo si sta
+// leggendo (`prova.webm` dall'archivio, `cartella:prova.webm` dalla
+// cartella): guardarlo una volta deve valere per sempre.
 const CHIAVE_VIDEO_VISTI = 'astrocalendario_video_visti';
-// Oltre questo numero i nomi più vecchi cadono. È una comodità, non un
-// archivio: un elenco che cresce senza fine prima o poi non sta più in
-// `localStorage`, e a quel punto si perderebbe tutto invece del più vecchio.
+// Oltre questo numero i nomi più vecchi cadono: è una comodità, non un
+// archivio, e un elenco che cresce senza fine prima o poi non sta più in
+// `localStorage`.
 const VIDEO_VISTI_MAX = 400;
 let videoVisti = null;   // { nomi: Set, dalla: ms } — null finché non si legge
 
@@ -30658,13 +30726,9 @@ function videoLeggiVisti() {
   catch (e) { salvato = null; }
   videoVisti = {
     nomi: new Set(Array.isArray(salvato && salvato.nomi) ? salvato.nomi : []),
-    // Da quando si tiene il conto, e non è un dettaglio: senza questa riga,
-    // il giorno in cui l'etichetta è nata una galleria di venti filmati
-    // avrebbe detto venti volte «Nuovo» — cioè non avrebbe detto niente. Chi
-    // è più vecchio di qui non è nuovo, e non c'è nessuna lista da seminare.
-    // Si legge all'avvio dell'app (`videoInizializza`) e non alla prima
-    // apertura della galleria: una registrazione fatta prima di aprirla
-    // resterebbe altrimenti dalla parte sbagliata di questo istante.
+    // Da quando si tiene il conto: senza, il giorno in cui l'etichetta è nata
+    // una galleria di venti filmati avrebbe detto venti volte «Nuovo». Si
+    // legge all'avvio dell'app e non alla prima apertura della galleria.
     dalla: Number(salvato && salvato.dalla) || Date.now()
   };
   if (!salvato) videoScriviVisti();
@@ -30689,74 +30753,107 @@ function videoSegnaVisto(elemento) {
   if (!elemento || !elemento.nome || visti.nomi.has(elemento.nome)) return;
   visti.nomi.add(elemento.nome);
   videoScriviVisti();
+  // L'etichetta se ne va togliendo il nodo: guardare un filmato non cambia
+  // nessuno dei dati da cui la firma dell'elenco nasce, quindi un ridisegno
+  // non ci sarebbe.
+  document.querySelectorAll('#galleria-elenco .galleria-video').forEach(scheda => {
+    if (scheda.dataset.nome === elemento.nome) scheda.querySelector('.galleria-nuovo')?.remove();
+  });
+}
+
+// --- Tipi e contenuti --------------------------------------------------------
+
+function videoEstensione(nome) {
+  const m = /\.([a-z0-9]+)$/i.exec(nome || '');
+  return m ? m[1].toLowerCase() : '';
+}
+
+// Il tipo MIME di un elemento. Un file letto dalla cartella può non portarne
+// nessuno — il sistema lo deduce dall'estensione, e se non la conosce
+// risponde una stringa vuota — e un `application/octet-stream` non si
+// condivide né si riproduce.
+function videoTipoDi(elemento) {
+  const dichiarato = (elemento && (elemento.tipo || (elemento.blob && elemento.blob.type))) || '';
+  if (/^(video|image)\//.test(dichiarato)) return dichiarato;
+  const ext = videoEstensione(elemento && elemento.nome);
+  if (VIDEO_ESTENSIONI[ext]) return VIDEO_ESTENSIONI[ext];
+  return 'video/mp4';
+}
+
+function videoGenereDi(elemento) {
+  return videoTipoDi(elemento).indexOf('image/') === 0 ? 'immagine' : 'video';
+}
+
+// Dichiarare il tipo non costa niente: `slice` restituisce un Blob col tipo
+// nuovo **senza leggere i dati**, quindi non è una copia del filmato.
+function videoBlobLeggibile(elemento) {
+  const blob = elemento && elemento.blob;
+  if (!blob) return null;
+  const tipo = videoTipoDi(elemento);
+  if (blob.type === tipo) return blob;
+  try { return blob.slice(0, blob.size, tipo); } catch (e) { return blob; }
+}
+
+// Un video che questo browser dichiara di non saper riprodurre (un `.mov` su
+// Chrome, per dire) è «non supportato», che è un'altra cosa da «rotto»: il
+// file sta bene, e lo si può scaricare e aprire altrove.
+function videoSupportato(elemento) {
+  if (videoGenereDi(elemento) === 'immagine') return true;
+  try {
+    const prova = document.createElement('video');
+    return typeof prova.canPlayType !== 'function' || prova.canPlayType(videoTipoDi(elemento)) !== '';
+  } catch (e) { return true; }
 }
 
 // --- L'anteprima di una scheda -------------------------------------------
 
-// Quanto larga si tiene: è il fotogramma di ripiego di una scheda da trecento
-// pixel, non una fotografia da conservare.
+// Quanto larga si tiene: è la miniatura di una scheda da trecento pixel.
 const VIDEO_ANTEPRIMA_LATO = 480;
-// Dove si va a prenderlo. Il primo fotogramma di una registrazione del cielo
-// può essere ancora nero — la fotocamera che apre, il primo disegno — mentre
-// mezzo secondo dentro al filmato c'è già qualcosa da vedere.
+// Dove si va a prenderla. Il primo fotogramma di una registrazione del cielo
+// può essere ancora nero — la fotocamera che apre, il primo disegno.
 const VIDEO_ANTEPRIMA_SEC = 0.5;
-const VIDEO_ANTEPRIMA_ATTESA_MS = 6000;
-// Quante anteprime si tengono. Sono qualche decina di kilobyte l'una e non
-// c'è nessuno che le butti: una galleria di centinaia di filmati, aperta e
-// richiusa, se le porterebbe dietro tutte. È una memoria di comodo, non un
-// archivio, quindi oltre il tetto se ne va la più vecchia — e una `Map`
-// scorre nell'ordine in cui le chiavi sono state messe.
-const VIDEO_ANTEPRIME_MAX = 60;
+const VIDEO_ANTEPRIMA_ATTESA_MS = 8000;
+// Sotto questa luminosità media (su 255) il fotogramma è «nero»: si prova un
+// altro istante prima di arrendersi.
+const VIDEO_ANTEPRIMA_BUIO = 6;
+// Quante anteprime si tengono in memoria; quelle su disco le pota la
+// sincronizzazione, che sa quali file esistono ancora.
+const VIDEO_ANTEPRIME_MAX = 120;
 const videoAnteprime = new Map();
 let videoCodaAnteprime = Promise.resolve();
-
-// Un file letto dalla cartella può non portare nessun tipo MIME: il sistema
-// lo deduce dall'estensione, e quando quell'estensione non la conosce
-// risponde una stringa vuota. Un filmato appena registrato invece il tipo ce
-// l'ha sempre, dal registratore — quindi è una differenza fra le due metà
-// della galleria, ed è il primo posto in cui guardare quando una sola delle
-// due non si vede.
-//
-// Quanto valga, misurato: su Chromium **niente**, un object URL senza tipo si
-// carica uguale (`readyState` 4, il filmato indovinato dal contenuto). Non è
-// però una cosa su cui un lettore debba contare, e dichiarare il tipo non
-// costa niente: `slice` restituisce un Blob col tipo nuovo **senza leggere i
-// dati**, quindi non è la copia in memoria del filmato. Una causa possibile
-// in meno, gratis; la cura vera dell'anteprima è il poster qui sotto.
-function videoBlobLeggibile(elemento) {
-  const blob = elemento && elemento.blob;
-  if (!blob) return null;
-  if ((blob.type || '').indexOf('video/') === 0) return blob;
-  const tipo = /\.webm$/i.test(elemento.nome || '') ? 'video/webm' : 'video/mp4';
-  try { return blob.slice(0, blob.size, tipo); } catch (e) { return blob; }
-}
 
 function videoChiaveAnteprima(elemento) {
   const peso = Number(elemento.dimensione || (elemento.blob && elemento.blob.size)) || 0;
   return `${elemento.nome}:${Number(elemento.creato) || 0}:${peso}`;
 }
 
-// Un `<video preload="metadata">` **può** mostrare il primo fotogramma, e
-// sul computer lo fa: misurato in un Chromium, un filmato da object URL
-// arriva a `readyState` 4 da solo, cioè la scheda mostra il suo fotogramma
-// senza che nessuno faccia niente. Su un telefono no. Lì `preload` è un
-// suggerimento che il browser ignora per non consumare dati — su iOS in
-// particolare — e la scheda resta un rettangolo nero finché non si preme
-// play: cioè l'anteprima non esiste proprio dove serve, perché è lì che si
-// scorre una galleria per cercare il filmato di ieri.
-//
-// L'anteprima quindi si **fa**: si decodifica un fotogramma su una tela e
-// diventa il `poster` del lettore. Non copre niente — il `poster` è quello
-// che si vede *finché* il fotogramma vero non c'è, quindi sul computer non
-// si vedrà mai — ed è quello che resta dove il fotogramma vero non arriva.
+// La miniatura di un elemento: una promessa che si risolve con un data URL, o
+// con `null` se non la si può fare (e allora la scheda mostra il suo segno).
+// Dentro ci sono due «no» diversi: la stringa vuota vuol dire «questo file
+// non si decodifica» e si ricorda su disco — un file corrotto non si
+// riprova a ogni apertura —, `null` vuol dire «non ci sono arrivato in
+// tempo» e non si ricorda affatto.
+// Prima si guarda la memoria, poi il disco, e solo in fondo si decodifica —
+// una per volta, perché venti decodificatori accesi insieme sono la galleria
+// che si inchioda proprio mentre la si sta aprendo.
 function videoAnteprimaDi(elemento) {
   const chiave = videoChiaveAnteprima(elemento);
   if (!videoAnteprime.has(chiave)) {
-    // Una per volta: aprire venti filmati insieme per guardarne il primo
-    // fotogramma vuol dire venti decodificatori accesi, e su un telefono è
-    // la galleria che si inchioda proprio mentre la si sta aprendo.
-    const attesa = videoCodaAnteprime.then(() => videoFaiAnteprima(elemento));
-    videoCodaAnteprime = attesa.catch(() => null);
+    const attesa = videoAnteprimaSalvata(chiave).then(salvata => {
+      if (typeof salvata === 'string') return salvata || null;
+      const turno = videoCodaAnteprime.then(() => {
+        // Una miniatura chiesta da una galleria che nel frattempo si è chiusa
+        // non si fa: la si toglie dalla memoria, così la prossima apertura la
+        // richiede invece di trovarci un «no» che non era un no.
+        if (!galleria.aperta) { videoAnteprime.delete(chiave); return null; }
+        return videoFaiAnteprima(elemento);
+      });
+      videoCodaAnteprime = turno.catch(() => null);
+      return turno.then(fatta => {
+        if (typeof fatta === 'string') videoRicordaAnteprima(chiave, fatta);
+        return fatta || null;
+      });
+    }).catch(() => null);
     videoAnteprime.set(chiave, attesa);
     while (videoAnteprime.size > VIDEO_ANTEPRIME_MAX) {
       videoAnteprime.delete(videoAnteprime.keys().next().value);
@@ -30765,57 +30862,167 @@ function videoAnteprimaDi(elemento) {
   return videoAnteprime.get(chiave);
 }
 
+async function videoAnteprimaSalvata(chiave) {
+  try {
+    const voce = await videoDB('anteprime', 'readonly', store => store.get(chiave));
+    return voce && typeof voce.dati === 'string' ? voce.dati : undefined;
+  } catch (e) { return undefined; }
+}
+
+function videoRicordaAnteprima(chiave, dati) {
+  videoDB('anteprime', 'readwrite', store => store.put({ dati, creato: Date.now() }, chiave)).catch(() => {});
+}
+
 function videoFaiAnteprima(elemento) {
+  return videoGenereDi(elemento) === 'immagine'
+    ? videoAnteprimaImmagine(elemento)
+    : videoAnteprimaVideo(elemento);
+}
+
+function videoTelaAnteprima(l, h) {
+  const k = Math.min(1, VIDEO_ANTEPRIMA_LATO / Math.max(l, h));
+  const tela = document.createElement('canvas');
+  tela.width = Math.max(2, Math.round(l * k));
+  tela.height = Math.max(2, Math.round(h * k));
+  return tela;
+}
+
+// Luminosità media di una tela, su un campione piccolo: serve solo a dire se
+// quel fotogramma è nero.
+function videoLuminositaMedia(tela) {
+  try {
+    const campione = document.createElement('canvas');
+    campione.width = 16; campione.height = 16;
+    const c = campione.getContext('2d');
+    c.drawImage(tela, 0, 0, 16, 16);
+    const d = c.getImageData(0, 0, 16, 16).data;
+    let somma = 0;
+    for (let i = 0; i < d.length; i += 4) somma += (d[i] + d[i + 1] + d[i + 2]) / 3;
+    return somma / 256;
+  } catch (e) { return 255; }
+}
+
+async function videoAnteprimaImmagine(elemento) {
   const contenuto = videoBlobLeggibile(elemento);
-  if (!contenuto) return Promise.resolve(null);
-  // L'indirizzo è **suo** e non quello della scheda: un ridisegno della
-  // galleria revoca i propri, e revocarlo a metà decodifica lascerebbe in
-  // memoria un no che non è un no.
+  if (!contenuto) return null;
+  let sorgente = null, url = null;
+  try {
+    if (typeof createImageBitmap === 'function') {
+      sorgente = await createImageBitmap(contenuto);
+    } else {
+      url = URL.createObjectURL(contenuto);
+      sorgente = await new Promise((ok, no) => {
+        const img = new Image();
+        img.onload = () => ok(img);
+        img.onerror = () => no(new Error('immagine illeggibile'));
+        img.src = url;
+      });
+    }
+    const l = sorgente.width || sorgente.naturalWidth, h = sorgente.height || sorgente.naturalHeight;
+    if (!l || !h) return '';
+    const tela = videoTelaAnteprima(l, h);
+    tela.getContext('2d').drawImage(sorgente, 0, 0, tela.width, tela.height);
+    return tela.toDataURL('image/jpeg', 0.78);
+  } catch (e) {
+    return '';
+  } finally {
+    if (sorgente && typeof sorgente.close === 'function') sorgente.close();
+    if (url) URL.revokeObjectURL(url);
+  }
+}
+
+// Il fotogramma di un filmato. Tre cose che sembrano dettagli e non lo sono.
+// (1) Un webm che arriva dal MediaRecorder non dichiara la durata
+// (`Infinity`): si scopre chiedendo di andare molto in là, e solo dopo si sa
+// dove sta «mezzo secondo dentro». (2) `seeked` può arrivare prima che il
+// fotogramma sia davvero pronto da disegnare: dove c'è si aspetta
+// `requestVideoFrameCallback`. (3) Un fotogramma nero si riconosce e si
+// riprova più avanti, invece di diventare la miniatura per sempre.
+// Il lettore sta **nel documento**, fuori dallo schermo e trasparente — su
+// iOS un `<video>` staccato non decodifica niente — e se ne va sempre alla
+// fine insieme al suo indirizzo.
+function videoAnteprimaVideo(elemento) {
+  const contenuto = videoBlobLeggibile(elemento);
+  if (!contenuto || !videoSupportato(elemento)) return Promise.resolve(null);
   const url = URL.createObjectURL(contenuto);
   return new Promise(ok => {
     const lettore = document.createElement('video');
+    lettore.className = 'galleria-lettore-servizio';
     lettore.muted = true;
     lettore.defaultMuted = true;
     lettore.playsInline = true;
+    lettore.setAttribute('playsinline', '');
     lettore.preload = 'auto';
     let chiuso = false;
     const finisci = esito => {
       if (chiuso) return;
       chiuso = true;
       clearTimeout(sveglia);
-      try { lettore.removeAttribute('src'); lettore.load(); } catch (e) { /* liberato comunque */ }
+      try { lettore.pause(); lettore.removeAttribute('src'); lettore.load(); } catch (e) { /* liberato comunque */ }
+      lettore.remove();
       URL.revokeObjectURL(url);
       ok(esito);
     };
     const sveglia = setTimeout(() => finisci(null), VIDEO_ANTEPRIMA_ATTESA_MS);
-    const disegna = () => {
-      try {
-        const l = lettore.videoWidth, h = lettore.videoHeight;
-        if (!l || !h) { finisci(null); return; }
-        const k = Math.min(1, VIDEO_ANTEPRIMA_LATO / Math.max(l, h));
-        const tela = document.createElement('canvas');
-        tela.width = Math.max(2, Math.round(l * k));
-        tela.height = Math.max(2, Math.round(h * k));
-        tela.getContext('2d').drawImage(lettore, 0, 0, tela.width, tela.height);
-        finisci(tela.toDataURL('image/jpeg', 0.72));
-      } catch (e) { finisci(null); }
-    };
-    lettore.addEventListener('error', () => finisci(null));
-    lettore.addEventListener('loadeddata', () => {
-      // Un webm che arriva dal MediaRecorder spesso non dichiara la durata
-      // (`Infinity`): lì non si cerca nessun istante, si disegna quello che
-      // c'è — che è il primo fotogramma, e non è un ripiego peggiore di un
-      // salto a un punto che il filmato non sa di avere.
-      const meta = Math.min(VIDEO_ANTEPRIMA_SEC, (lettore.duration || 0) / 2);
-      if (Number.isFinite(lettore.duration) && meta > 0.05) {
-        lettore.addEventListener('seeked', disegna, { once: true });
-        try { lettore.currentTime = meta; return; } catch (e) { /* si disegna quello che c'è */ }
-      }
-      disegna();
+    const aspettaEvento = (nome, ms) => new Promise(r => {
+      const t = setTimeout(r, ms);
+      lettore.addEventListener(nome, () => { clearTimeout(t); r(); }, { once: true });
     });
-    try { lettore.src = url; lettore.load(); } catch (e) { finisci(null); }
+    const aspettaFotogramma = () => new Promise(r => {
+      if (typeof lettore.requestVideoFrameCallback !== 'function') { r(); return; }
+      const t = setTimeout(r, 300);
+      lettore.requestVideoFrameCallback(() => { clearTimeout(t); r(); });
+    });
+    const vai = async secondi => {
+      if (!(secondi > 0)) return;
+      const arrivato = aspettaEvento('seeked', 2500);
+      try { lettore.currentTime = secondi; } catch (e) { return; }
+      await arrivato;
+    };
+    const disegna = () => {
+      const l = lettore.videoWidth, h = lettore.videoHeight;
+      if (!l || !h) return null;
+      const tela = videoTelaAnteprima(l, h);
+      tela.getContext('2d').drawImage(lettore, 0, 0, tela.width, tela.height);
+      return tela;
+    };
+    lettore.addEventListener('error', () => finisci(''));
+    lettore.addEventListener('loadeddata', async () => {
+      try {
+        let durata = lettore.duration;
+        if (!Number.isFinite(durata)) {
+          const cambiata = aspettaEvento('durationchange', 1500);
+          try { lettore.currentTime = 1e7; } catch (e) { /* resta Infinity */ }
+          await cambiata;
+          durata = lettore.duration;
+        }
+        const nota = Number.isFinite(durata) && durata > 0;
+        const istanti = nota
+          ? [Math.min(VIDEO_ANTEPRIMA_SEC, durata / 4), durata / 2, 0]
+          : [0];
+        let migliore = null, luceMigliore = -1;
+        for (const t of istanti) {
+          if (chiuso) return;
+          if (t > 0.02 || lettore.currentTime > 0.02) await vai(Math.max(0.001, t));
+          await aspettaFotogramma();
+          const tela = disegna();
+          if (!tela) continue;
+          const luce = videoLuminositaMedia(tela);
+          if (luce > luceMigliore) { migliore = tela; luceMigliore = luce; }
+          if (luce >= VIDEO_ANTEPRIMA_BUIO) break;
+        }
+        finisci(migliore ? migliore.toDataURL('image/jpeg', 0.74) : '');
+      } catch (e) { finisci(null); }
+    }, { once: true });
+    try {
+      document.body.appendChild(lettore);
+      lettore.src = url;
+      lettore.load();
+    } catch (e) { finisci(null); }
   });
 }
+
+// --- La scelta della cartella -----------------------------------------------
 
 function videoLeggiScelta() {
   try {
@@ -30833,12 +31040,8 @@ function videoRicordaScelta(voluta, nome) {
 }
 
 // Lo spazio di un'origine, di serie, è «best-effort»: quando il disco si
-// riempie il browser può buttarlo via — e qui dentro non ci sono solo i video,
-// c'è anche l'handle della cartella. Sfrattato quello, l'unico modo di
-// riaverlo è chiederlo di nuovo all'utente, che è esattamente il difetto che
-// si sta togliendo. `persist()` non apre nessun dialogo: dove il browser si
-// fida (app installata, sito usato spesso) risponde sì e basta, dove non si
-// fida risponde no e non cambia niente.
+// riempie il browser può buttarlo via — e lì dentro c'è anche l'handle della
+// cartella. `persist()` non apre nessun dialogo.
 async function videoChiediSpazioPersistente() {
   try {
     if (!navigator.storage || typeof navigator.storage.persist !== 'function') return false;
@@ -30864,142 +31067,244 @@ function videoApriDB() {
       const db = richiesta.result;
       if (!db.objectStoreNames.contains('video')) db.createObjectStore('video', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('preferenze')) db.createObjectStore('preferenze');
+      if (!db.objectStoreNames.contains('anteprime')) db.createObjectStore('anteprime');
     };
     richiesta.onsuccess = () => resolve(richiesta.result);
     richiesta.onerror = () => reject(richiesta.error);
+    // Un'altra scheda dell'app aperta con la versione vecchia tiene il
+    // database: si aspetta, e se non molla si rinuncia invece di restare appesi.
+    richiesta.onblocked = () => setTimeout(() => reject(new Error('IndexedDB bloccato')), 3000);
   });
 }
 
 async function videoDB(negozio, modo, azione) {
   const db = await videoApriDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(negozio, modo);
+    let tx;
+    try { tx = db.transaction(negozio, modo); }
+    catch (e) { db.close(); reject(e); return; }
     const richiesta = azione(tx.objectStore(negozio));
     richiesta.onsuccess = () => resolve(richiesta.result);
     richiesta.onerror = () => reject(richiesta.error);
     tx.oncomplete = () => db.close();
+    tx.onabort = () => { db.close(); reject(tx.error); };
   });
 }
 
-function videoMessaggio(testo) {
+function videoMessaggio(testo, tono = '') {
   const stato = document.getElementById('galleria-stato');
-  if (stato) stato.textContent = testo || '';
+  if (!stato) return;
+  stato.textContent = testo || '';
+  if (tono) stato.dataset.tono = tono; else delete stato.dataset.tono;
+}
+
+function videoSelettoreDisponibile() {
+  return typeof window.showDirectoryPicker === 'function';
 }
 
 async function videoScegliCartella(creaCartellaApp = false) {
-  if (typeof window.showDirectoryPicker !== 'function') {
-    videoMessaggio(astroI18n.t('galleria.niente-selettore'));
+  if (!videoSelettoreDisponibile()) {
+    videoMessaggio(astroI18n.t('galleria.niente-selettore'), 'avviso');
     return null;
   }
   try {
     const base = await window.showDirectoryPicker({ id: 'astrocalendario-video', mode: 'readwrite', startIn: 'videos' });
-    // Quando si apre una cartella esistente, quella scelta E' la cartella da
+    // Quando si apre una cartella esistente, quella scelta È la cartella da
     // leggere: non va mai nascosta dentro una nuova sottocartella. Soltanto il
     // comando esplicito «Crea» chiede una posizione e crea quella dell'app.
     const handle = creaCartellaApp && base.name.toLocaleLowerCase() !== VIDEO_CARTELLA_NOME
       ? await base.getDirectoryHandle(VIDEO_CARTELLA_NOME, { create: true })
       : base;
     videoCartella = handle;
+    // Il selettore ha appena concesso lettura e scrittura.
     videoCartellaAutorizzata = true;
-    videoPermessoCartella = true;
+    videoScritturaAutorizzata = true;
+    videoPermessoRifiutato = false;
     videoRicordaScelta(true, handle.name);
     videoMostraSceltaIniziale(false);
     try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
     videoChiediSpazioPersistente();
-    videoAggiornaCartella(true);
+    videoImpostaStato('collegata');
     videoMessaggio(astroI18n.t('galleria.sincronizzata', { nome: handle.name }));
     videoFirmaGalleria = null;
+    galleria.firma = null;
     await videoRenderGalleria();
     return handle;
   } catch (e) {
-    if (!e || e.name !== 'AbortError') videoMessaggio(astroI18n.t('galleria.apertura-fallita'));
+    if (!e || e.name !== 'AbortError') videoMessaggio(astroI18n.t('galleria.apertura-fallita'), 'errore');
     return null;
   }
 }
 
-// «Non voglio nessuna cartella»: è una risposta, e va ricordata come tale. Chi
-// la dà tiene i video nell'archivio interno e non si vede più chiedere niente,
-// né aprendo la galleria né salvando una registrazione.
+// «Non voglio nessuna cartella»: è una risposta, e va ricordata come tale.
 function videoRinunciaCartella() {
   videoRicordaScelta(false, '');
   videoMostraSceltaIniziale(false);
-  videoAggiornaCartella(false);
+  videoImpostaStato('rinunciata');
   videoMessaggio(astroI18n.t('galleria.solo-archivio'));
 }
 
-// Il permesso di una cartella ricordata si riprende con **un** clic esplicito,
-// non con un dialogo che salta fuori da solo a ogni apertura.
+// Il tasto «Consenti l'accesso»: il permesso si chiede di nuovo anche se in
+// questa sessione era stato negato, perché adesso lo si sta chiedendo apposta.
 async function videoRiconnettiCartella() {
   if (!videoCartella) { await videoScegliCartella(false); return; }
-  const ok = await videoAutorizzaCartella(true);
-  videoAggiornaCartella(ok);
-  videoMessaggio(ok
+  videoPermessoRifiutato = false;
+  const stato = await videoVerificaCartella({ gesto: true, forza: true });
+  videoMessaggio(stato === 'collegata'
     ? astroI18n.t('galleria.sincronizzata', { nome: videoCartella.name })
-    : astroI18n.t('galleria.senza-permesso'));
+    : stato === 'persa'
+      ? astroI18n.t('galleria.cartella-sparita', { nome: videoCartella.name })
+      : astroI18n.t('galleria.senza-permesso'), stato === 'collegata' ? '' : 'avviso');
   videoFirmaGalleria = null;
+  galleria.firma = null;
   await videoRenderGalleria();
 }
 
-function videoAggiornaCartella(autorizzata = videoPermessoCartella === true) {
+// La riga della cartella e i suoi tasti. Uno stato, una frase e al più due
+// tasti: «Scegli» compare solo dove scegliere serve davvero (mai decisa,
+// rinunciata, sparita), «Cambia» dove una cartella c'è e funziona.
+function videoImpostaStato(stato) {
+  videoStatoCartella = stato;
   const testo = document.getElementById('galleria-cartella');
   const riconnetti = document.getElementById('galleria-riconnetti');
   const scegli = document.getElementById('galleria-scegli-cartella');
-  // Quattro stati, e sono quattro frasi diverse: nessuna cartella e mai
-  // deciso; nessuna cartella per scelta; una cartella collegata e leggibile;
-  // una cartella ricordata che aspetta solo il permesso. Il quarto è quello
-  // che prima non esisteva — si finiva nel primo, cioè a chiedere da capo.
-  let riga = '';
-  if (videoCartella && autorizzata) riga = astroI18n.t('galleria.cartella-collegata', { nome: videoCartella.name });
-  else if (videoCartella) riga = astroI18n.t('galleria.cartella-da-riconnettere', { nome: videoCartella.name });
-  else if (videoSceltaCartella && videoSceltaCartella.voluta) riga = astroI18n.t('galleria.cartella-persa', { nome: videoSceltaCartella.nome });
-  else if (videoSceltaCartella) riga = astroI18n.t('galleria.senza-cartella');
-  else riga = astroI18n.t('galleria.scegli-cartella-testo');
-  if (testo) testo.textContent = riga;
-  if (riconnetti) riconnetti.classList.toggle('hidden', !(videoCartella && !autorizzata));
-  if (scegli) scegli.classList.toggle('hidden', !!(videoCartella && !autorizzata));
+  const comandi = document.querySelector('#modale-galleria .galleria-comandi');
+  const nome = (videoCartella && videoCartella.name) || (videoSceltaCartella && videoSceltaCartella.nome) || '';
+  const frasi = {
+    'non-supportata': astroI18n.t('galleria.cartella-non-supportata'),
+    nessuna: astroI18n.t('galleria.scegli-cartella-testo'),
+    rinunciata: astroI18n.t('galleria.senza-cartella'),
+    verifica: astroI18n.t('galleria.cartella-verifica', { nome }),
+    collegata: astroI18n.t('galleria.cartella-collegata', { nome }),
+    permesso: astroI18n.t('galleria.cartella-da-riconnettere', { nome }),
+    negata: astroI18n.t('galleria.cartella-negata', { nome }),
+    persa: astroI18n.t('galleria.cartella-persa', { nome })
+  };
+  if (testo) testo.textContent = frasi[stato] || '';
+  if (comandi) comandi.dataset.stato = stato;
+  const serveConsenso = stato === 'permesso' || stato === 'negata';
+  if (riconnetti) riconnetti.classList.toggle('hidden', !serveConsenso);
+  if (scegli) {
+    const mostra = videoSelettoreDisponibile() && ['rinunciata', 'collegata', 'persa', 'negata'].includes(stato);
+    scegli.classList.toggle('hidden', !mostra);
+    const chiave = stato === 'collegata' || stato === 'negata' ? 'galleria.cambia-cartella'
+      : stato === 'persa' ? 'galleria.scegli-di-nuovo' : 'ui.scegli-cartella';
+    scegli.textContent = astroI18n.t(chiave);
+  }
 }
+
+// Compatibilità: chi la chiamava voleva la riga aggiornata.
+function videoAggiornaCartella() { videoImpostaStato(videoStatoCartella); }
 
 function videoMostraSceltaIniziale(mostra) {
   document.getElementById('galleria-scelta-iniziale')?.classList.toggle('hidden', !mostra);
 }
 
-async function videoAutorizzaCartella(richiedi = false) {
-  if (!videoCartella) return false;
-  // Gli handle delle cartelle si possono conservare in IndexedDB, ma dopo la
-  // chiusura dell'app il browser puo' riportare il loro permesso a "prompt":
-  // e' la specifica, non un difetto, e l'unico modo di non riviverla e' che il
-  // browser renda permanente quel consenso (app installata, «consenti a ogni
-  // visita») — nel qual caso la sola `queryPermission` qui sotto risponde
-  // "granted" e nessuno vede piu' niente.
-  // `richiedi` e' percio' la riga che conta: `true` **solo** dietro a un gesto
-  // che quel permesso lo esige davvero (il tasto «Riconnetti», il salvataggio
-  // di un filmato nella cartella). L'apertura della galleria e le
-  // sincronizzazioni automatiche passano `false` e non possono far comparire
-  // nessun dialogo: chiedere il permesso a chi voleva soltanto rivedere i suoi
-  // video e' chiedere due volte una cosa gia' concessa.
-  if (videoPermessoCartella === true) return true;
+// Che cosa risponde il browser, senza farsi sollevare addosso niente: su
+// alcuni browser `queryPermission` non esiste, su altri solleva per un handle
+// ripescato da IndexedDB. `null` vuol dire «non lo so», non «no».
+async function videoChiediPermesso(handle, metodo, modo) {
+  if (!handle || typeof handle[metodo] !== 'function') return null;
+  try { return await handle[metodo]({ mode: modo }); }
+  catch (e) { return null; }
+}
+
+// Leggere davvero è la sola prova che valga: dice insieme se il permesso c'è
+// e se la cartella esiste ancora. Non apre nessun dialogo.
+async function videoProvaLettura(handle) {
   try {
-    let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
-    if (permesso !== 'granted' && richiedi && typeof videoCartella.requestPermission === 'function') {
-      permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
-    }
-    videoPermessoCartella = permesso === 'granted';
-    videoCartellaAutorizzata = videoPermessoCartella;
-    return videoPermessoCartella;
+    const giro = handle.entries();
+    await giro.next();
+    if (typeof giro.return === 'function') { try { await giro.return(); } catch (e) { /* chiuso */ } }
+    return 'ok';
   } catch (e) {
-    videoPermessoCartella = false;
-    videoCartellaAutorizzata = false;
-    return false;
+    const nome = e && e.name;
+    if (nome === 'NotAllowedError' || nome === 'SecurityError') return 'permesso';
+    if (nome === 'NotFoundError' || nome === 'InvalidStateError' || nome === 'TypeMismatchError') return 'persa';
+    return 'permesso';
   }
+}
+
+// Il cuore della prima metà. `gesto` dice che siamo dentro a un tocco
+// dell'utente, cioè che un `requestPermission` è lecito; `scrittura` che
+// serve anche scrivere; `forza` che il consenso va chiesto anche se in questa
+// sessione era stato negato (il tasto «Consenti l'accesso»).
+async function videoVerificaCartella({ gesto = false, scrittura = false, forza = false } = {}) {
+  if (!videoCartella) {
+    const stato = videoSceltaCartella && videoSceltaCartella.voluta ? 'persa'
+      : videoSceltaCartella ? 'rinunciata'
+        : videoSelettoreDisponibile() ? 'nessuna' : 'non-supportata';
+    videoImpostaStato(stato);
+    return stato;
+  }
+  if (videoCartellaAutorizzata && (!scrittura || videoScritturaAutorizzata)) {
+    videoImpostaStato('collegata');
+    return 'collegata';
+  }
+  const modo = scrittura ? 'readwrite' : 'read';
+  let risposta = await videoChiediPermesso(videoCartella, 'queryPermission', modo);
+  // Per scrivere basta la risposta del browser: la scrittura stessa dirà se
+  // la cartella non c'è più.
+  if (risposta === 'granted' && scrittura) {
+    videoCartellaAutorizzata = true;
+    videoScritturaAutorizzata = true;
+    videoImpostaStato('collegata');
+    return 'collegata';
+  }
+  if (!scrittura) {
+    const prova = await videoProvaLettura(videoCartella);
+    if (prova === 'ok') {
+      videoCartellaAutorizzata = true;
+      if (risposta === 'granted') videoScritturaAutorizzata = true;
+      videoImpostaStato('collegata');
+      return 'collegata';
+    }
+    if (prova === 'persa') { videoCartellaAutorizzata = false; videoImpostaStato('persa'); return 'persa'; }
+  }
+  const puoChiedere = gesto && (forza || !videoPermessoRifiutato) && risposta !== 'granted';
+  if (puoChiedere) {
+    // Si chiede sempre lettura e scrittura insieme: la cartella è stata scelta
+    // così, e un consenso solo per leggere vorrebbe dire un secondo dialogo al
+    // primo salvataggio.
+    risposta = await videoChiediPermesso(videoCartella, 'requestPermission', 'readwrite');
+    // Solo se il browser non ha saputo rispondere per «lettura e scrittura»
+    // si prova la sola lettura: dopo un «no» non si chiede una seconda volta.
+    if (risposta === null && !scrittura) {
+      risposta = await videoChiediPermesso(videoCartella, 'requestPermission', 'read');
+    }
+    if (risposta === 'granted') {
+      const prova = scrittura ? 'ok' : await videoProvaLettura(videoCartella);
+      if (prova === 'ok') {
+        videoCartellaAutorizzata = true;
+        videoScritturaAutorizzata = true;
+        videoPermessoRifiutato = false;
+        videoImpostaStato('collegata');
+        return 'collegata';
+      }
+      if (prova === 'persa') { videoImpostaStato('persa'); return 'persa'; }
+    }
+    // Un «no», o un pannello chiuso senza rispondere: non lo si richiede
+    // da solo. Una risposta che manca (API assente, gesto scaduto) invece
+    // non è un rifiuto di nessuno.
+    if (risposta === 'denied' || risposta === 'prompt') videoPermessoRifiutato = true;
+  }
+  videoCartellaAutorizzata = false;
+  videoScritturaAutorizzata = false;
+  const stato = risposta === 'denied' || (puoChiedere && risposta === 'prompt') ? 'negata' : 'permesso';
+  videoImpostaStato(stato);
+  return stato;
+}
+
+// Compatibilità col nome di prima (lo usano il salvataggio e le prove).
+async function videoAutorizzaCartella(richiedi = false) {
+  return (await videoVerificaCartella({ gesto: richiedi, scrittura: true, forza: richiedi })) === 'collegata';
 }
 
 async function videoScriviInCartella(esito, richiedi = false) {
   if (!videoCartella) return false;
   try {
     // Scrivere in una cartella il permesso lo vuole per forza. Chiederlo però
-    // è lecito solo qui, dietro al tasto «Salva» che l'utente ha appena
-    // premuto (`richiedi`): la sincronizzazione periodica della galleria passa
-    // di qui con `false` e non può far comparire nessun dialogo.
+    // è lecito solo dietro al tasto «Salva» che l'utente ha appena premuto.
     if (!(await videoAutorizzaCartella(richiedi))) return false;
     const file = await videoCartella.getFileHandle(esito.nome, { create: true });
     const scrittura = await file.createWritable();
@@ -31007,11 +31312,12 @@ async function videoScriviInCartella(esito, richiedi = false) {
     await scrittura.close();
     return true;
   } catch (e) {
-    // Un'autorizzazione puo essere revocata dalle impostazioni del browser:
-    // in quel caso al prossimo gesto dell'utente la verificheremo di nuovo.
     if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
       videoCartellaAutorizzata = false;
-      videoPermessoCartella = false;
+      videoScritturaAutorizzata = false;
+    } else if (e && (e.name === 'NotFoundError' || e.name === 'InvalidStateError')) {
+      videoCartellaAutorizzata = false;
+      videoImpostaStato('persa');
     }
     return false;
   }
@@ -31035,167 +31341,312 @@ async function skyRegSalva() {
   const esito = sky.reg.esito;
   if (!esito) return;
   // Il selettore si apre soltanto a chi una cartella l'aveva già chiesta e l'ha
-  // persa (storage sfrattato, profilo nuovo): a chi non ha mai deciso niente
-  // non si fa comparire un selettore di file a sorpresa dopo una
-  // registrazione — il video finisce comunque nell'archivio e nei download, e
-  // la cartella si collega dalla Galleria quando lo si vuole. Va aperto subito
-  // dal gesto dell'utente: dopo una await alcuni browser considererebbero
-  // conclusa l'attivazione e lo bloccherebbero.
+  // persa: a chi non ha mai deciso niente non si fa comparire un selettore a
+  // sorpresa dopo una registrazione. Va aperto subito dal gesto dell'utente.
   if (!videoCartella && videoSceltaCartella && videoSceltaCartella.voluta &&
-      typeof window.showDirectoryPicker === 'function') await videoScegliCartella();
+      videoSelettoreDisponibile()) await videoScegliCartella();
   const copiato = await videoScriviInCartella(esito, true);
   videoChiediSpazioPersistente();
   try { await videoArchivia(esito, copiato); }
   catch (e) {
-    skyAvviso('registra', 'Non c’è spazio per aggiungere il video alla galleria.', 8000);
+    skyAvviso('registra', astroI18n.t('galleria.archivio-pieno'), 8000);
     return;
   }
   if (!copiato) skyRegScarica(esito);
   skyAvviso('registra', copiato
-    ? `Video salvato nella galleria e nella cartella “${videoCartella.name}”.`
-    : 'Video salvato nella galleria e scaricato sul dispositivo.', 7000);
+    ? astroI18n.t('galleria.salvato-cartella', { nome: videoCartella.name })
+    : astroI18n.t('galleria.salvato-scaricato'), 7000);
+  if (galleria.aperta) { galleria.firma = null; videoRenderGalleria(); }
 }
 
 async function videoElimina(elemento) {
   if (elemento.dallaCartella && videoCartella) {
-    try { await videoCartella.removeEntry(elemento.nome); }
-    catch (e) { videoMessaggio('Non è stato possibile eliminare il file dalla cartella.'); return; }
+    try {
+      // Cancellare un file vuole il permesso di scrittura, e il tasto
+      // «Elimina» appena premuto è il gesto che lo può chiedere.
+      if (!(await videoAutorizzaCartella(true))) throw new Error('senza permesso');
+      await videoCartella.removeEntry(elemento.nome);
+    } catch (e) {
+      videoMessaggio(astroI18n.t('galleria.elimina-fallita'), 'errore');
+      return;
+    }
   }
-  const archiviati = await videoDB('video', 'readonly', store => store.getAll());
-  const corrispondenti = archiviati.filter(v => v.id === elemento.id || v.nome === elemento.nome);
-  await Promise.all(corrispondenti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id))));
+  try {
+    const archiviati = await videoDB('video', 'readonly', store => store.getAll());
+    const corrispondenti = archiviati.filter(v => v.id === elemento.id || v.nome === elemento.nome);
+    await Promise.all(corrispondenti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id))));
+  } catch (e) { /* l'archivio non si legge: resta solo la cartella */ }
+  videoDB('anteprime', 'readwrite', store => store.delete(videoChiaveAnteprima(elemento))).catch(() => {});
+  galleria.firma = null;
   await videoRenderGalleria();
 }
 
-function videoScaricaSalvato(video) {
-  const url = URL.createObjectURL(video.blob);
+// --- Scaricare e condividere ------------------------------------------------
+
+function videoScaricaSalvato(elemento) {
+  const contenuto = videoBlobLeggibile(elemento) || elemento.blob;
+  const url = URL.createObjectURL(contenuto);
+  galleria.scaricamenti.add(url);
   const a = document.createElement('a');
-  a.href = url; a.download = video.nome;
+  a.href = url; a.download = elemento.nome;
   document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => { URL.revokeObjectURL(url); galleria.scaricamenti.delete(url); }, VIDEO_SCARICA_VITA_MS);
+  return url;
 }
 
-async function videoCondividiSalvato(video) {
-  const tipo = video.tipo || video.blob.type || 'video/mp4';
-  const file = new File([video.blob], video.nome, { type: tipo });
-  const dati = {
-    files: [file],
-    title: 'Un video da AstroCalendario di Ben',
-    text: 'Guarda questo video creato con AstroCalendario di Ben.'
-  };
+// Il `File` da passare al pannello di condivisione: quello originale quando
+// ha già il nome e il tipo giusti (un file letto dalla cartella), se no un
+// `File` nuovo sugli stessi byte — il costruttore non li copia.
+function videoFileDaCondividere(elemento) {
+  const blob = elemento.blob;
+  const tipo = videoTipoDi(elemento);
+  if (typeof File === 'function' && blob instanceof File && blob.name === elemento.nome && blob.type === tipo) return blob;
+  return new File([blob], elemento.nome, { type: tipo, lastModified: Number(elemento.creato) || Date.now() });
+}
+
+// Si può condividere **questo** file? Il pannello di sistema non accetta ogni
+// tipo (Chrome ha un elenco), e `canShare` è la sola domanda che lo sappia.
+function videoCondivisibile(elemento) {
+  if (typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') return false;
+  try { return !!navigator.canShare({ files: [videoFileDaCondividere(elemento)] }); }
+  catch (e) { return false; }
+}
+
+// Tre esiti diversi e tre risposte diverse. Annullare il pannello non è un
+// errore e non si commenta; un errore vero si dice, col suo nome; e dove il
+// browser non passa file alle altre app si scarica il file — di un filmato
+// locale non esiste nessun link da condividere al suo posto.
+// La condivisione parte **senza await prima**: `navigator.share` vuole il
+// gesto dell'utente ancora caldo.
+async function videoCondividiSalvato(elemento) {
+  if (!videoCondivisibile(elemento)) {
+    videoScaricaSalvato(elemento);
+    videoMessaggio(astroI18n.t('galleria.condivisione-non-supportata'), 'avviso');
+    videoVisoreAvviso(astroI18n.t('galleria.condivisione-non-supportata'));
+    return 'non-supportata';
+  }
+  const file = videoFileDaCondividere(elemento);
   try {
-    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-      await navigator.share(dati);
-      videoMessaggio(`Video “${video.nome}” condiviso.`);
-      return;
-    }
+    await navigator.share({ files: [file], title: astroI18n.t('galleria.condividi-titolo') });
+    videoMessaggio(astroI18n.t('galleria.condiviso', { nome: elemento.nome }));
+    return 'condiviso';
   } catch (e) {
-    // Chiudere il pannello di condivisione non deve avviare uno scaricamento
-    // che l'utente non ha chiesto.
-    if (e && e.name === 'AbortError') return;
+    if (e && e.name === 'AbortError') return 'annullata';
+    const motivo = (e && (e.message || e.name)) || '';
+    videoMessaggio(astroI18n.t('galleria.condivisione-fallita', { motivo }), 'errore');
+    videoVisoreAvviso(astroI18n.t('galleria.condivisione-fallita', { motivo }));
+    return 'errore';
   }
-  // Sui computer e sui browser che non possono passare file alle altre app,
-  // lo scaricamento lascia comunque il filmato pronto per essere allegato.
-  videoScaricaSalvato(video);
-  videoMessaggio('Questo dispositivo non passa i file alle altre app: il video è stato scaricato, così puoi allegarlo a mano.');
 }
 
-async function videoSchermoIntero(lettore, scheda) {
-  // Su iPhone il solo ingresso affidabile e' quello proprietario del lettore;
-  // altrove chiediamo lo schermo intero direttamente al <video>, non alla
-  // scheda (che in orizzontale manterrebbe intestazione e pulsanti visibili).
-  if (typeof lettore.webkitEnterFullscreen === 'function') {
-    lettore.webkitEnterFullscreen();
-    return;
-  }
-  const chiedi = lettore.requestFullscreen || lettore.webkitRequestFullscreen;
-  if (chiedi) {
-    try { await chiedi.call(lettore); return; }
-    catch (e) { /* il ripiego CSS sotto funziona anche senza questa API */ }
-  }
-  scheda.classList.add('galleria-video-pieno');
-  document.body.classList.add('galleria-immersiva');
-}
+// --- La sincronizzazione ------------------------------------------------------
 
-function videoEsciSchermoIntero(scheda) {
-  scheda?.classList.remove('galleria-video-pieno');
-  if (!document.querySelector('.galleria-video-pieno')) document.body.classList.remove('galleria-immersiva');
-}
-
-async function videoRenderGalleria() {
-  const elenco = document.getElementById('galleria-elenco');
-  if (!elenco || videoSincronizzazioneInCorso) return;
-  videoSincronizzazioneInCorso = true;
-  let video = [];
-  try { video = await videoDB('video', 'readonly', store => store.getAll()); }
-  catch (e) { videoMessaggio(astroI18n.t('galleria.archivio-illeggibile')); }
-  if (videoCartella) {
+// Una sola corsa alla volta, e nessuna richiesta persa: chi arriva mentre
+// un'altra gira ne prenota una seconda e aspetta la fine di tutt'e due. Prima
+// chi arrivava durante una scansione veniva semplicemente scartato — e il
+// tasto che aveva appena cambiato cartella non vedeva nessun cambiamento.
+function videoRenderGalleria() {
+  if (galleria.corsa) { galleria.ripeti = true; return galleria.corsa; }
+  galleria.corsa = (async () => {
     try {
-      // Qui non chiediamo permessi: il timer passa da questa funzione ogni due
-      // secondi. L'eventuale consenso e' gia' stato ripristinato dal clic che
-      // ha aperto la galleria.
-      if (await videoAutorizzaCartella(false)) {
-        const dallaCartella = [];
-        for await (const [nome, handle] of videoCartella.entries()) {
-          if (handle.kind !== 'file' || !/\.(?:mp4|webm)$/i.test(nome)) continue;
-          const file = await handle.getFile();
-          dallaCartella.push({
-            id: `cartella:${nome}`, nome, tipo: file.type || 'video/mp4', blob: file,
-            creato: file.lastModified, durata: 0, dimensione: file.size, dallaCartella: true
-          });
-        }
-        const nomiPresenti = new Set(dallaCartella.map(v => v.nome));
-        const obsoleti = video.filter(v => v.cartellaNome && !nomiPresenti.has(v.cartellaNome));
-        await Promise.all(obsoleti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id))));
-        video = video.filter(v => !v.cartellaNome || nomiPresenti.has(v.cartellaNome));
-        const nomiCartella = new Set(dallaCartella.map(v => v.nome));
-        video = video.filter(v => !nomiCartella.has(v.nome)).concat(dallaCartella);
-        videoMessaggio(astroI18n.t('galleria.caricati', { n: dallaCartella.length, nome: videoCartella.name }));
-      }
+      do {
+        galleria.ripeti = false;
+        await videoSincronizzaUnaVolta();
+      } while (galleria.ripeti);
+    } finally {
+      galleria.corsa = null;
+    }
+  })();
+  return galleria.corsa;
+}
+
+async function videoLeggiCartella(cartella) {
+  const trovati = [];
+  let errori = 0;
+  for await (const [nome, handle] of cartella.entries()) {
+    if (!handle || handle.kind !== 'file' || !VIDEO_ESTENSIONI[videoEstensione(nome)]) continue;
+    try {
+      // `getFile` non legge il contenuto: dà un riferimento con nome, peso e
+      // data. I byte si leggono solo quando servono (miniatura, visione).
+      const file = await handle.getFile();
+      trovati.push({
+        id: `cartella:${nome}`, nome, tipo: file.type || VIDEO_ESTENSIONI[videoEstensione(nome)],
+        blob: file, creato: file.lastModified, durata: 0, dimensione: file.size, dallaCartella: true
+      });
     } catch (e) {
-      videoMessaggio(astroI18n.t('galleria.sincronia-fallita'));
+      // Un file che sparisce a metà scansione, o che il sistema non lascia
+      // leggere, non deve portarsi via gli altri.
+      errori += 1;
     }
   }
-  video.sort((a, b) => b.creato - a.creato);
+  return { trovati, errori };
+}
+
+async function videoSincronizzaUnaVolta() {
+  const elenco = document.getElementById('galleria-elenco');
+  if (!elenco) return;
+  const cartella = videoCartella;
+  const sessione = galleria.sessione;
+  let video = [];
+  let archivioLetto = true;
+  try { video = await videoDB('video', 'readonly', store => store.getAll()); }
+  catch (e) { archivioLetto = false; }
+  let dallaCartella = null;
+  let errori = 0;
+  let guastoCartella = false;
+  if (cartella && videoCartellaAutorizzata) {
+    try {
+      const letti = await videoLeggiCartella(cartella);
+      dallaCartella = letti.trovati;
+      errori = letti.errori;
+    } catch (e) {
+      guastoCartella = true;
+      const nome = e && e.name;
+      if (nome === 'NotFoundError' || nome === 'InvalidStateError') {
+        videoCartellaAutorizzata = false;
+        videoImpostaStato('persa');
+      } else if (nome === 'NotAllowedError' || nome === 'SecurityError') {
+        videoCartellaAutorizzata = false;
+        videoScritturaAutorizzata = false;
+        videoImpostaStato('permesso');
+      }
+    }
+  }
+  // La cartella è cambiata mentre la leggevamo: questi risultati parlano di
+  // un'altra cartella, e si rifà il giro con quella nuova.
+  if (cartella !== videoCartella) { galleria.ripeti = true; return; }
+  if (dallaCartella) {
+    const nomiPresenti = new Set(dallaCartella.map(v => v.nome));
+    const obsoleti = video.filter(v => v.cartellaNome && !nomiPresenti.has(v.cartellaNome));
+    await Promise.all(obsoleti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id)).catch(() => {})));
+    video = video.filter(v => !v.cartellaNome || nomiPresenti.has(v.cartellaNome));
+    video = video.filter(v => !nomiPresenti.has(v.nome)).concat(dallaCartella);
+  }
+  video.sort((a, b) => (Number(b.creato) || 0) - (Number(a.creato) || 0));
+  galleria.erroriLettura = errori;
+
+  // I messaggi: uno solo alla volta, il più importante.
+  if (!archivioLetto) videoMessaggio(astroI18n.t('galleria.archivio-illeggibile'), 'errore');
+  else if (guastoCartella && videoStatoCartella === 'persa') videoMessaggio(astroI18n.t('galleria.cartella-sparita', { nome: cartella.name }), 'errore');
+  else if (guastoCartella) videoMessaggio(astroI18n.t('galleria.sincronia-fallita'), 'errore');
+  else if (errori) videoMessaggio(astroI18n.t('galleria.file-illeggibili', { n: errori }), 'avviso');
+  else if (galleria.primaSincronia && dallaCartella) {
+    videoMessaggio(astroI18n.t('galleria.caricati', { n: dallaCartella.length, nome: cartella.name }));
+  }
+  galleria.primaSincronia = false;
+
   const firma = videoFirmaElenco(video);
   // Il timer serve a scoprire file aggiunti o tolti fuori dall'app. Se nulla
-  // è cambiato lasciamo però intatto il DOM: oltre a costare meno, conserva
-  // buffer, currentTime, pausa e schermo intero del lettore in uso.
-  if (firma === videoFirmaGalleria && elenco.childElementCount) {
-    videoSincronizzazioneInCorso = false;
-    return;
-  }
+  // è cambiato il DOM resta com'è: le miniature già caricate non lampeggiano.
+  if (firma === galleria.firma && firma === videoFirmaGalleria && elenco.childElementCount) return;
+  galleria.firma = firma;
   videoFirmaGalleria = firma;
-  videoUrlGalleria.forEach(url => URL.revokeObjectURL(url));
-  videoUrlGalleria = [];
-  elenco.innerHTML = '';
+  galleria.elementi = video;
+  // Una galleria chiusa nel frattempo non ha più bisogno di schede.
+  if (sessione !== galleria.sessione && !galleria.aperta) return;
+  videoDisegnaSchede(elenco, video);
+  videoVisoreRiallinea();
+  if (galleria.aperta) videoPotaAnteprime(video);
+}
+
+// Le miniature su disco di file che non esistono più se ne vanno. Una volta
+// per apertura: è pulizia, non urgenza.
+let videoPotaturaFatta = -1;
+function videoPotaAnteprime(video) {
+  if (videoPotaturaFatta === galleria.sessione) return;
+  videoPotaturaFatta = galleria.sessione;
+  const vive = new Set(video.map(videoChiaveAnteprima));
+  videoDB('anteprime', 'readonly', store => store.getAllKeys()).then(chiavi => {
+    const morte = (chiavi || []).filter(k => !vive.has(k));
+    return Promise.all(morte.map(k => videoDB('anteprime', 'readwrite', store => store.delete(k))));
+  }).catch(() => {});
+}
+
+function videoTestoDurata(elemento) {
+  if (videoGenereDi(elemento) === 'immagine') {
+    return `${(Number(elemento.dimensione || (elemento.blob && elemento.blob.size)) / 1048576).toFixed(1)} MB`;
+  }
+  return elemento.durata
+    ? `${Number(elemento.durata).toFixed(1).replace('.0', '')} s`
+    : `${(Number(elemento.dimensione || (elemento.blob && elemento.blob.size)) / 1048576).toFixed(1)} MB`;
+}
+
+function videoTastoAzione(chiave, azione) {
+  const tasto = document.createElement('button');
+  tasto.type = 'button';
+  tasto.className = 'tasto-cielo';
+  tasto.textContent = astroI18n.t(chiave);
+  tasto.addEventListener('click', azione);
+  return tasto;
+}
+
+function videoDisegnaSchede(elenco, video) {
+  elenco.textContent = '';
   if (!video.length) {
     const vuota = document.createElement('p');
     vuota.className = 'galleria-vuota';
-    vuota.textContent = astroI18n.t('galleria.vuota');
+    vuota.textContent = videoStatoCartella === 'collegata' && videoCartella
+      ? astroI18n.t('galleria.cartella-vuota', { nome: videoCartella.name })
+      : astroI18n.t('galleria.vuota');
     elenco.appendChild(vuota);
-    videoSincronizzazioneInCorso = false;
     return;
   }
-  video.forEach(elemento => {
-    const url = URL.createObjectURL(videoBlobLeggibile(elemento) || elemento.blob);
-    videoUrlGalleria.push(url);
+  const locale = (typeof astroI18n === 'object' && astroI18n.locale) || 'it-IT';
+  const condivisione = typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
+  video.forEach((elemento, indice) => {
+    const genere = videoGenereDi(elemento);
+    const supportato = videoSupportato(elemento);
     const scheda = document.createElement('article');
     scheda.className = 'galleria-video';
-    const lettore = document.createElement('video');
-    lettore.src = url; lettore.controls = true; lettore.preload = 'metadata'; lettore.playsInline = true;
-    // L'anteprima arriva quando è pronta e non fa aspettare la scheda. Se nel
-    // frattempo il browser ha già il fotogramma vero, questo poster non si
-    // vedrà mai — ed è esattamente quello che deve succedere.
-    videoAnteprimaDi(elemento).then(poster => {
-      if (poster && lettore.isConnected) lettore.poster = poster;
-    });
-    const esciPieno = document.createElement('button');
-    esciPieno.type = 'button'; esciPieno.className = 'galleria-pieno-esci'; esciPieno.textContent = '✕';
-    esciPieno.setAttribute('aria-label', astroI18n.t('schermo.esciTitolo'));
-    esciPieno.addEventListener('click', () => videoEsciSchermoIntero(scheda));
+    scheda.dataset.id = elemento.id;
+    scheda.dataset.nome = elemento.nome;
+    scheda.dataset.genere = genere;
+
+    const miniatura = document.createElement('button');
+    miniatura.type = 'button';
+    miniatura.className = 'galleria-miniatura';
+    miniatura.setAttribute('aria-label', astroI18n.t(genere === 'immagine' ? 'galleria.apri-immagine' : 'galleria.apri-video', { nome: elemento.nome }));
+    const segno = document.createElement('span');
+    segno.className = 'galleria-miniatura-segno';
+    segno.innerHTML = icona(genere === 'immagine' ? 'galleria' : 'filmato', 42);
+    const img = document.createElement('img');
+    img.className = 'galleria-miniatura-img';
+    img.alt = '';
+    img.decoding = 'async';
+    img.hidden = true;
+    miniatura.append(segno, img);
+    if (genere === 'video') {
+      const gioca = document.createElement('span');
+      gioca.className = 'galleria-miniatura-gioca';
+      gioca.innerHTML = icona('gioca', 26);
+      miniatura.append(gioca);
+    }
+    if (!supportato) {
+      scheda.classList.add('galleria-non-supportato');
+      const nota = document.createElement('span');
+      nota.className = 'galleria-miniatura-nota';
+      nota.textContent = astroI18n.t('galleria.formato-non-supportato');
+      miniatura.append(nota);
+    } else if (galleria.aperta) {
+      // Le miniature si chiedono solo a finestra aperta: una scheda disegnata
+      // a galleria chiusa (una cartella scelta dal salvataggio) non la
+      // guarda nessuno, e la prossima apertura la ridisegna comunque.
+      videoAnteprimaDi(elemento).then(dati => {
+        if (!miniatura.isConnected) return;
+        if (dati) {
+          img.onload = () => { img.hidden = false; segno.hidden = true; };
+          img.onerror = () => { img.hidden = true; segno.hidden = false; };
+          img.src = dati;
+        } else {
+          scheda.classList.add('galleria-senza-anteprima');
+        }
+      });
+    }
+    miniatura.addEventListener('click', () => videoVisoreApri(indice, miniatura));
+
     const corpo = document.createElement('div'); corpo.className = 'galleria-video-corpo';
     const nome = document.createElement('p'); nome.className = 'galleria-video-nome'; nome.textContent = elemento.nome;
+    nome.title = elemento.nome;
     const testa = document.createElement('div'); testa.className = 'galleria-video-testa';
     testa.append(nome);
     if (videoNuovo(elemento)) {
@@ -31205,109 +31656,455 @@ async function videoRenderGalleria() {
       nuovo.title = astroI18n.t('galleria.nuovo-spiega');
       testa.append(nuovo);
     }
-    // Guardato vuol dire premuto play. L'etichetta se ne va lì, togliendo il
-    // nodo: rifare l'elenco non servirebbe e non succederebbe nemmeno, perché
-    // il disegno si rifà solo quando la **firma** cambia — e guardare un
-    // filmato non cambia nessuno dei dati da cui la firma nasce.
-    lettore.addEventListener('play', () => {
-      videoSegnaVisto(elemento);
-      const etichetta = testa.querySelector('.galleria-nuovo');
-      if (etichetta) etichetta.remove();
-    }, { once: true });
     const meta = document.createElement('p'); meta.className = 'galleria-video-meta';
-    const dettaglio = elemento.durata
-      ? `${Number(elemento.durata).toFixed(1).replace('.0', '')} s`
-      : `${(Number(elemento.dimensione || elemento.blob.size) / 1048576).toFixed(1)} MB`;
-    meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${dettaglio}`;
+    let quando = '';
+    try { quando = new Date(Number(elemento.creato) || 0).toLocaleString(locale); } catch (e) { quando = ''; }
+    meta.textContent = `${quando} · ${videoTestoDurata(elemento)}`;
     const azioni = document.createElement('div'); azioni.className = 'galleria-video-azioni';
-    const pieno = document.createElement('button'); pieno.type = 'button'; pieno.className = 'tasto-cielo'; pieno.textContent = astroI18n.t('ui.schermo-intero');
-    pieno.addEventListener('click', () => videoSchermoIntero(lettore, scheda));
-    const condividi = document.createElement('button'); condividi.type = 'button'; condividi.className = 'tasto-cielo'; condividi.textContent = astroI18n.t('ui.condividi');
-    condividi.addEventListener('click', () => videoCondividiSalvato(elemento));
-    const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = astroI18n.t('galleria.scarica');
-    scarica.addEventListener('click', () => videoScaricaSalvato(elemento));
-    const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = astroI18n.t('galleria.elimina');
-    elimina.addEventListener('click', () => videoElimina(elemento));
-    azioni.append(pieno, condividi, scarica, elimina); corpo.append(testa, meta, azioni); scheda.append(lettore, esciPieno, corpo); elenco.appendChild(scheda);
+    if (condivisione && videoCondivisibile(elemento)) {
+      azioni.append(videoTastoAzione('ui.condividi', () => videoCondividiSalvato(elemento)));
+    }
+    azioni.append(
+      videoTastoAzione('galleria.scarica', () => videoScaricaSalvato(elemento)),
+      videoTastoAzione('galleria.elimina', () => videoElimina(elemento))
+    );
+    corpo.append(testa, meta, azioni);
+    scheda.append(miniatura, corpo);
+    elenco.appendChild(scheda);
   });
-  videoSincronizzazioneInCorso = false;
 }
+
+// --- Il visualizzatore -----------------------------------------------------
+
+const visore = {
+  indice: -1,
+  elemento: null,
+  url: null,
+  media: null,
+  gettone: 0,
+  immersivo: false,
+  tornaA: null,
+  timerBarra: 0,
+  tocco: null
+};
+
+function videoVisoreNodo(id) { return document.getElementById(id); }
+
+function videoVisoreAperto() {
+  const v = videoVisoreNodo('galleria-visore');
+  return !!v && !v.classList.contains('hidden');
+}
+
+function videoVisoreAvviso(testo) {
+  const stato = videoVisoreNodo('galleria-visore-stato');
+  if (!stato || !videoVisoreAperto()) return;
+  stato.textContent = testo || '';
+}
+
+// Toglie il media di adesso e **poi** revoca il suo indirizzo: revocarlo
+// prima vuol dire un lettore che sta ancora leggendo da un indirizzo morto.
+function videoVisoreLibera() {
+  const vecchio = visore.media;
+  const url = visore.url;
+  visore.media = null;
+  visore.url = null;
+  if (vecchio) {
+    try {
+      if (vecchio.tagName === 'VIDEO') { vecchio.pause(); vecchio.removeAttribute('src'); vecchio.load(); }
+      else vecchio.removeAttribute('src');
+    } catch (e) { /* liberato comunque */ }
+    vecchio.remove();
+  }
+  if (url) URL.revokeObjectURL(url);
+  const palco = videoVisoreNodo('galleria-visore-palco');
+  if (palco) palco.querySelectorAll('.visore-guasto').forEach(n => n.remove());
+}
+
+function videoVisoreGuasto(chiave, elemento) {
+  const palco = videoVisoreNodo('galleria-visore-palco');
+  if (!palco) return;
+  const guasto = document.createElement('div');
+  guasto.className = 'visore-guasto';
+  guasto.setAttribute('role', 'alert');
+  const testo = document.createElement('p');
+  testo.textContent = astroI18n.t(chiave, { nome: elemento.nome });
+  guasto.append(testo, videoTastoAzione('galleria.scarica', () => videoScaricaSalvato(elemento)));
+  palco.append(guasto);
+  palco.dataset.stato = 'guasto';
+}
+
+function videoVisoreMostra(indice) {
+  const elementi = galleria.elementi;
+  if (!elementi.length) { videoVisoreChiudi(); return; }
+  indice = Math.max(0, Math.min(elementi.length - 1, indice));
+  const elemento = elementi[indice];
+  const gettone = ++visore.gettone;
+  visore.indice = indice;
+  visore.elemento = elemento;
+  videoVisoreLibera();
+
+  const palco = videoVisoreNodo('galleria-visore-palco');
+  const genere = videoGenereDi(elemento);
+  palco.dataset.stato = 'caricamento';
+  palco.dataset.genere = genere;
+  videoVisoreAvviso('');
+
+  videoVisoreNodo('galleria-visore-nome').textContent = elemento.nome;
+  videoVisoreNodo('galleria-visore-posizione').textContent = astroI18n.t('galleria.posizione', { n: indice + 1, di: elementi.length });
+  const prec = videoVisoreNodo('galleria-visore-prec');
+  const succ = videoVisoreNodo('galleria-visore-succ');
+  const soloUno = elementi.length < 2;
+  prec.hidden = soloUno; succ.hidden = soloUno;
+  prec.disabled = indice === 0;
+  succ.disabled = indice === elementi.length - 1;
+  videoVisoreNodo('galleria-visore-condividi').hidden = !videoCondivisibile(elemento);
+
+  if (!videoSupportato(elemento)) { videoVisoreGuasto('galleria.formato-non-supportato-lungo', elemento); return; }
+  const contenuto = videoBlobLeggibile(elemento);
+  if (!contenuto) { videoVisoreGuasto('galleria.file-illeggibile', elemento); return; }
+  const url = URL.createObjectURL(contenuto);
+  visore.url = url;
+  let media;
+  if (genere === 'immagine') {
+    media = document.createElement('img');
+    media.alt = elemento.nome;
+    media.decoding = 'async';
+    media.addEventListener('load', () => { if (gettone === visore.gettone) palco.dataset.stato = 'pronto'; });
+  } else {
+    media = document.createElement('video');
+    media.controls = true;
+    media.playsInline = true;
+    media.setAttribute('playsinline', '');
+    media.preload = 'metadata';
+    // Lo schermo intero lo decide il tasto del visualizzatore, che ci porta
+    // anche i comandi; dove il browser lo capisce, il lettore non ne offre un
+    // secondo tutto suo.
+    try { media.setAttribute('controlslist', 'nofullscreen nodownload'); } catch (e) { /* facoltativo */ }
+    media.addEventListener('loadeddata', () => { if (gettone === visore.gettone) palco.dataset.stato = 'pronto'; });
+    media.addEventListener('play', () => videoSegnaVisto(elemento));
+    const poster = videoAnteprime.get(videoChiaveAnteprima(elemento));
+    if (poster) poster.then(dati => { if (dati && gettone === visore.gettone && media.isConnected) media.poster = dati; });
+  }
+  media.className = 'visore-media';
+  media.addEventListener('error', () => {
+    if (gettone !== visore.gettone) return;
+    videoVisoreGuasto(genere === 'immagine' ? 'galleria.immagine-illeggibile' : 'galleria.video-illeggibile', elemento);
+  });
+  visore.media = media;
+  palco.prepend(media);
+  media.src = url;
+  if (genere === 'immagine') videoSegnaVisto(elemento);
+}
+
+function videoVisoreApri(indice, daDove) {
+  const nodo = videoVisoreNodo('galleria-visore');
+  if (!nodo || !galleria.elementi.length) return;
+  visore.tornaA = daDove || document.activeElement;
+  nodo.classList.remove('hidden');
+  document.body.classList.add('galleria-immersiva');
+  videoVisoreMostra(indice);
+  videoVisoreMostraBarra();
+  try { nodo.focus({ preventScroll: true }); } catch (e) { nodo.focus(); }
+}
+
+function videoVisoreChiudi() {
+  const nodo = videoVisoreNodo('galleria-visore');
+  if (!nodo) return;
+  if (videoVisorePieno()) videoVisoreEsciPieno();
+  videoVisoreLibera();
+  visore.gettone += 1;
+  visore.indice = -1;
+  visore.elemento = null;
+  visore.immersivo = false;
+  nodo.classList.remove('visore-pieno', 'visore-barra-nascosta');
+  clearTimeout(visore.timerBarra);
+  const stato = videoVisoreNodo('galleria-visore-stato');
+  if (stato) stato.textContent = '';
+  if (nodo.classList.contains('hidden')) return;
+  nodo.classList.add('hidden');
+  document.body.classList.remove('galleria-immersiva');
+  const torna = visore.tornaA;
+  visore.tornaA = null;
+  if (torna && torna.isConnected && typeof torna.focus === 'function') {
+    try { torna.focus({ preventScroll: true }); } catch (e) { /* niente */ }
+  }
+}
+
+function videoVisoreScorri(passo) {
+  if (!videoVisoreAperto()) return;
+  const prossimo = visore.indice + passo;
+  if (prossimo < 0 || prossimo >= galleria.elementi.length) return;
+  videoVisoreMostra(prossimo);
+}
+
+// Dopo una sincronizzazione l'elenco può essere cambiato sotto al
+// visualizzatore: si ritrova l'elemento guardato per identità, e se non c'è
+// più (cancellato da fuori) si passa a quello che ne ha preso il posto.
+function videoVisoreRiallinea() {
+  if (!videoVisoreAperto() || !visore.elemento) return;
+  const i = galleria.elementi.findIndex(v => v.id === visore.elemento.id);
+  if (i === -1) { videoVisoreMostra(Math.min(visore.indice, galleria.elementi.length - 1)); return; }
+  visore.indice = i;
+  visore.elemento = galleria.elementi[i];
+  videoVisoreNodo('galleria-visore-posizione').textContent = astroI18n.t('galleria.posizione', { n: i + 1, di: galleria.elementi.length });
+  const prec = videoVisoreNodo('galleria-visore-prec');
+  const succ = videoVisoreNodo('galleria-visore-succ');
+  prec.hidden = succ.hidden = galleria.elementi.length < 2;
+  prec.disabled = i === 0;
+  succ.disabled = i === galleria.elementi.length - 1;
+}
+
+// Lo schermo intero. Si chiede al **contenitore** e non al media: così con
+// lui ci vanno i comandi, e il media resta dentro a un riquadro la cui misura
+// la dà il CSS e non un conto fatto prima del cambio. Dove l'API non c'è
+// (iPhone) un video usa il pieno schermo nativo del lettore, un'immagine il
+// ripiego in CSS — che qui vuol dire soltanto togliere di mezzo la barra.
+function videoVisorePieno() {
+  const nodo = videoVisoreNodo('galleria-visore');
+  const pieno = document.fullscreenElement || document.webkitFullscreenElement;
+  return !!(nodo && pieno && (pieno === nodo || nodo.contains(pieno))) || visore.immersivo;
+}
+
+async function videoVisoreEntraPieno() {
+  const nodo = videoVisoreNodo('galleria-visore');
+  if (!nodo) return;
+  const chiedi = nodo.requestFullscreen || nodo.webkitRequestFullscreen;
+  if (chiedi) {
+    try { await chiedi.call(nodo, { navigationUI: 'hide' }); videoVisoreAggiornaPieno(); return; }
+    catch (e) { /* si scende ai ripieghi */ }
+  }
+  const media = visore.media;
+  if (media && media.tagName === 'VIDEO' && typeof media.webkitEnterFullscreen === 'function') {
+    try { media.webkitEnterFullscreen(); return; } catch (e) { /* ripiego CSS */ }
+  }
+  visore.immersivo = true;
+  videoVisoreAggiornaPieno();
+}
+
+function videoVisoreEsciPieno() {
+  if (visore.immersivo) { visore.immersivo = false; videoVisoreAggiornaPieno(); return; }
+  const esci = document.exitFullscreen || document.webkitExitFullscreen;
+  if ((document.fullscreenElement || document.webkitFullscreenElement) && esci) {
+    try { const p = esci.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) { /* già fuori */ }
+  }
+}
+
+function videoVisoreAlternaPieno() {
+  if (videoVisorePieno()) videoVisoreEsciPieno(); else videoVisoreEntraPieno();
+}
+
+function videoVisoreAggiornaPieno() {
+  const nodo = videoVisoreNodo('galleria-visore');
+  if (!nodo) return;
+  const pieno = videoVisorePieno();
+  nodo.classList.toggle('visore-pieno', pieno);
+  const tasto = videoVisoreNodo('galleria-visore-pieno');
+  if (tasto) {
+    tasto.innerHTML = icona(pieno ? 'schermoEsci' : 'schermoPieno', 22);
+    const etichetta = astroI18n.t(pieno ? 'schermo.esciTitolo' : 'ui.schermo-intero');
+    tasto.setAttribute('aria-label', etichetta);
+    tasto.title = etichetta;
+    tasto.setAttribute('aria-pressed', pieno ? 'true' : 'false');
+  }
+  videoVisoreMostraBarra();
+}
+
+// A schermo intero la barra si fa da parte dopo qualche secondo fermo, e
+// torna al primo movimento: i comandi non devono stare sopra al filmato, ma
+// neanche sparire senza strada per ritrovarli.
+function videoVisoreMostraBarra() {
+  const nodo = videoVisoreNodo('galleria-visore');
+  if (!nodo) return;
+  nodo.classList.remove('visore-barra-nascosta');
+  clearTimeout(visore.timerBarra);
+  if (!nodo.classList.contains('visore-pieno')) return;
+  visore.timerBarra = setTimeout(() => {
+    if (nodo.classList.contains('visore-pieno')) nodo.classList.add('visore-barra-nascosta');
+  }, 2800);
+}
+
+function videoVisoreTasti(e) {
+  if (!videoVisoreAperto() || e.isComposing) return;
+  const bersaglio = e.target;
+  const dentroLettore = bersaglio && bersaglio.tagName === 'VIDEO';
+  const suTasto = bersaglio && (bersaglio.tagName === 'BUTTON' || bersaglio.tagName === 'INPUT');
+  let fatto = true;
+  if (e.key === 'Escape') {
+    if (visore.immersivo) videoVisoreEsciPieno();
+    else if (document.fullscreenElement || document.webkitFullscreenElement) videoVisoreEsciPieno();
+    else videoVisoreChiudi();
+  } else if (e.key === 'ArrowLeft' && !dentroLettore) videoVisoreScorri(-1);
+  else if (e.key === 'ArrowRight' && !dentroLettore) videoVisoreScorri(1);
+  else if ((e.key === ' ' || e.key === 'k') && !dentroLettore && !suTasto && visore.media && visore.media.tagName === 'VIDEO') {
+    if (visore.media.paused) visore.media.play().catch(() => {}); else visore.media.pause();
+  } else if (e.key === 'f' && !suTasto) videoVisoreAlternaPieno();
+  else fatto = false;
+  if (fatto) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    videoVisoreMostraBarra();
+  }
+}
+
+// Il dito: una strisciata orizzontale netta cambia elemento. Su un video
+// vale solo sopra ai comandi del lettore, cioè fuori dalla fascia in basso in
+// cui il dito sta scorrendo il tempo.
+function videoVisoreCollegaTocco(palco) {
+  palco.addEventListener('pointerdown', e => {
+    videoVisoreMostraBarra();
+    if (e.pointerType !== 'touch') { visore.tocco = null; return; }
+    const r = palco.getBoundingClientRect();
+    const suiComandi = visore.media && visore.media.tagName === 'VIDEO' && e.clientY > r.bottom - Math.max(64, r.height * 0.22);
+    visore.tocco = suiComandi ? null : { x: e.clientX, y: e.clientY, t: performance.now() };
+  });
+  palco.addEventListener('pointerup', e => {
+    const t = visore.tocco;
+    visore.tocco = null;
+    if (!t || e.pointerType !== 'touch') return;
+    const dx = e.clientX - t.x, dy = e.clientY - t.y;
+    if (performance.now() - t.t < 700 && Math.abs(dx) > 60 && Math.abs(dy) < 50) videoVisoreScorri(dx < 0 ? 1 : -1);
+  });
+  palco.addEventListener('pointercancel', () => { visore.tocco = null; });
+}
+
+// --- Aprire e chiudere ------------------------------------------------------
 
 async function videoApriGalleria() {
   const modale = document.getElementById('modale-galleria');
   if (!modale) return;
+  // Riaprire una galleria già aperta non rifà niente.
+  if (galleria.aperta && !modale.classList.contains('hidden')) return;
+  galleria.aperta = true;
+  galleria.sessione += 1;
+  galleria.primaSincronia = true;
   modale.classList.remove('hidden');
-  // Aprire la galleria non è chiedere niente a nessuno. L'archivio dei video
-  // sta in IndexedDB e si vede sempre; la cartella è un di più, e il suo
-  // permesso si **controlla** (`false`: nessun dialogo) invece di richiederlo.
-  // Dove il browser lo ha reso permanente — app installata, «consenti a ogni
-  // visita» — la risposta è già «granted» e non si vede mai più niente; dove
-  // non lo è, compare un tasto «Riconnetti» che si preme quando si vuole.
-  const autorizzata = videoCartella ? await videoAutorizzaCartella(false) : false;
-  // Il pannello con le due alternative è la **prima** domanda, e si fa una
-  // volta sola: chi ha già risposto — collegando una cartella o rinunciandoci
-  // — non deve rivederla mai più.
-  const maiDeciso = !videoCartella && !videoSceltaCartella && typeof window.showDirectoryPicker === 'function';
+  videoMessaggio(astroI18n.t('galleria.caricamento'));
+  // Il tocco che ha aperto la galleria è un gesto dell'utente: se il browser
+  // vuole un consenso per la cartella, questo è il momento in cui lo si può
+  // chiedere — una volta, e senza far riscegliere niente.
+  if (!videoCartella) await videoPronto;
+  const stato = await videoVerificaCartella({ gesto: true });
+  if (!galleria.aperta) return;
+  const maiDeciso = stato === 'nessuna';
   videoMostraSceltaIniziale(maiDeciso);
-  videoAggiornaCartella(autorizzata);
   if (maiDeciso) videoMessaggio(astroI18n.t('galleria.scelta-iniziale'));
-  else if (videoCartella && !autorizzata) videoMessaggio(astroI18n.t('galleria.ricordata', { nome: videoCartella.name }));
+  else if (stato === 'permesso' || stato === 'negata') videoMessaggio(astroI18n.t('galleria.ricordata', { nome: videoCartella.name }), 'avviso');
+  else if (stato === 'persa') videoMessaggio(astroI18n.t('galleria.cartella-sparita', { nome: (videoSceltaCartella && videoSceltaCartella.nome) || '' }), 'errore');
   else videoMessaggio('');
+  galleria.firma = null;
   await videoRenderGalleria();
-  clearInterval(videoTimerSincronizzazione);
-  videoTimerSincronizzazione = setInterval(() => {
-    if (!modale.classList.contains('hidden')) videoRenderGalleria();
-  }, 2000);
+  clearInterval(galleria.timer);
+  galleria.timer = setInterval(() => {
+    if (galleria.aperta && !document.hidden) videoRenderGalleria();
+  }, VIDEO_SINCRONIA_MS);
 }
 
-// Il cambio lingua. Le schede si compongono in JavaScript — l'etichetta
-// «Nuovo» e il piede dei tasti — quindi non portano nessuna chiave nel
-// documento e il gestore delle lingue non le può riscrivere: vanno
-// ridisegnate. La firma si butta, se no il disegno si accorge che nessun dato
-// è cambiato e lascia intatto il DOM, che è quello che deve fare a ogni altro
-// giro. Solo a finestra aperta: è l'unico momento in cui qualcuno le legge.
+// Il cambio lingua: le schede si compongono in JavaScript, quindi vanno
+// ridisegnate — e con loro la riga della cartella e il visualizzatore.
 function videoRidisegnaPerLingua() {
-  const modale = document.getElementById('modale-galleria');
-  if (!modale || modale.classList.contains('hidden')) return;
+  if (!galleria.aperta) return;
+  galleria.firma = null;
   videoFirmaGalleria = null;
+  videoImpostaStato(videoStatoCartella);
   videoRenderGalleria();
+  if (videoVisoreAperto()) {
+    videoVisoreRiallinea();
+    videoVisoreAggiornaPieno();
+  }
 }
 
+// Chiudere vuol dire rilasciare: il visualizzatore col suo indirizzo, le
+// schede (le miniature sono data URL e se ne vanno col DOM), il timer. La
+// sessione cresce, e le miniature in coda di una galleria chiusa non si fanno.
 function videoChiudiGalleria() {
+  videoVisoreChiudi();
   document.getElementById('modale-galleria')?.classList.add('hidden');
-  document.querySelectorAll('#galleria-elenco video').forEach(video => video.pause());
-  document.querySelectorAll('.galleria-video-pieno').forEach(videoEsciSchermoIntero);
-  clearInterval(videoTimerSincronizzazione);
-  videoTimerSincronizzazione = 0;
+  clearInterval(galleria.timer);
+  galleria.timer = 0;
+  galleria.aperta = false;
+  galleria.sessione += 1;
+  galleria.firma = null;
+  videoFirmaGalleria = null;
+  const elenco = document.getElementById('galleria-elenco');
+  if (elenco) elenco.textContent = '';
+  document.body.classList.remove('galleria-immersiva');
 }
 
+// Uscendo dalla pagina non resta niente in volo: il browser butta comunque
+// tutto, ma una pagina tenuta da parte per il tasto «indietro» no.
+function videoLiberaTutto() {
+  videoChiudiGalleria();
+  galleria.scaricamenti.forEach(url => URL.revokeObjectURL(url));
+  galleria.scaricamenti.clear();
+}
+
+let videoAscoltiMessi = false;
 async function videoInizializza() {
-  document.getElementById('btn-galleria')?.addEventListener('click', videoApriGalleria);
-  document.getElementById('btn-chiudi-galleria')?.addEventListener('click', videoChiudiGalleria);
-  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(false));
-  document.getElementById('galleria-usa-esistente')?.addEventListener('click', () => videoScegliCartella(false));
-  document.getElementById('galleria-crea-cartella')?.addEventListener('click', () => videoScegliCartella(true));
-  document.getElementById('galleria-riconnetti')?.addEventListener('click', videoRiconnettiCartella);
-  document.getElementById('galleria-niente-cartella')?.addEventListener('click', videoRinunciaCartella);
-  document.getElementById('modale-galleria')?.addEventListener('click', e => {
-    if (e.target.id === 'modale-galleria') videoChiudiGalleria();
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !document.getElementById('modale-galleria')?.classList.contains('hidden')) videoChiudiGalleria();
-  });
+  // Una volta sola: chiamarla due volte non deve raddoppiare nessun ascolto.
+  if (!videoAscoltiMessi) {
+    videoAscoltiMessi = true;
+    document.getElementById('btn-galleria')?.addEventListener('click', videoApriGalleria);
+    document.getElementById('btn-chiudi-galleria')?.addEventListener('click', videoChiudiGalleria);
+    document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(false));
+    document.getElementById('galleria-usa-esistente')?.addEventListener('click', () => videoScegliCartella(false));
+    document.getElementById('galleria-crea-cartella')?.addEventListener('click', () => videoScegliCartella(true));
+    document.getElementById('galleria-riconnetti')?.addEventListener('click', videoRiconnettiCartella);
+    document.getElementById('galleria-niente-cartella')?.addEventListener('click', videoRinunciaCartella);
+    document.getElementById('modale-galleria')?.addEventListener('click', e => {
+      if (e.target.id === 'modale-galleria') videoChiudiGalleria();
+    });
+    // L'Escape della galleria: prima il visualizzatore (e il suo schermo
+    // intero), poi la finestra. Sta sulla finestra in fase di cattura, così
+    // arriva prima del gestore generico delle schede.
+    window.addEventListener('keydown', videoVisoreTasti, true);
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape' || e.defaultPrevented || videoVisoreAperto()) return;
+      if (!document.getElementById('modale-galleria')?.classList.contains('hidden')) videoChiudiGalleria();
+    });
+    const tastiVisore = [
+      ['galleria-visore-chiudi', 'chiudi', videoVisoreChiudi],
+      ['galleria-visore-prec', 'precedente', () => videoVisoreScorri(-1)],
+      ['galleria-visore-succ', 'successivo', () => videoVisoreScorri(1)],
+      ['galleria-visore-pieno', 'schermoPieno', videoVisoreAlternaPieno],
+      ['galleria-visore-condividi', 'condividi', () => visore.elemento && videoCondividiSalvato(visore.elemento)],
+      ['galleria-visore-scarica', 'scarica', () => visore.elemento && videoScaricaSalvato(visore.elemento)]
+    ];
+    tastiVisore.forEach(([id, disegno, azione]) => {
+      const tasto = document.getElementById(id);
+      if (!tasto) return;
+      tasto.innerHTML = icona(disegno, 22);
+      tasto.addEventListener('click', azione);
+    });
+    const nodoVisore = document.getElementById('galleria-visore');
+    if (nodoVisore) {
+      nodoVisore.addEventListener('pointermove', videoVisoreMostraBarra);
+      const palco = document.getElementById('galleria-visore-palco');
+      if (palco) videoVisoreCollegaTocco(palco);
+    }
+    videoVisoreAggiornaPieno();
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(ev =>
+      document.addEventListener(ev, videoVisoreAggiornaPieno));
+    window.addEventListener('pagehide', videoLiberaTutto);
+  }
   videoSceltaCartella = videoLeggiScelta();
   // Da qui in avanti si tiene il conto dei video guardati, e va letto adesso:
   // l'istante da cui un filmato può dirsi «nuovo» deve stare **prima** della
   // prima registrazione, non prima della prima apertura della galleria.
   videoLeggiVisti();
-  try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')); }
-  catch (e) { videoCartella = null; }
-  // Chi aveva già una cartella prima che questa memoria esistesse non deve
-  // ritrovarsi la domanda iniziale: l'handle salvato **è** la sua risposta.
-  if (videoCartella && !videoSceltaCartella) videoRicordaScelta(true, videoCartella.name);
-  videoCartellaAutorizzata = false;
-  videoPermessoCartella = null;
-  videoAggiornaCartella(false);
+  videoPronto = (async () => {
+    try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')) || null; }
+    catch (e) { videoCartella = null; }
+    // Chi aveva già una cartella prima che questa memoria esistesse non deve
+    // ritrovarsi la domanda iniziale: l'handle salvato **è** la sua risposta.
+    if (videoCartella && !videoSceltaCartella) videoRicordaScelta(true, videoCartella.name);
+    videoCartellaAutorizzata = false;
+    videoScritturaAutorizzata = false;
+    videoImpostaStato(videoCartella ? 'verifica'
+      : videoSceltaCartella && videoSceltaCartella.voluta ? 'persa'
+        : videoSceltaCartella ? 'rinunciata'
+          : videoSelettoreDisponibile() ? 'nessuna' : 'non-supportata');
+  })();
+  await videoPronto;
 }
 
 // --- Comandi --------------------------------------------------------------
