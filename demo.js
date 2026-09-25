@@ -1039,21 +1039,35 @@
 
   const pannello = document.createElement('div');
   pannello.id = 'demo-controlli'; pannello.hidden = true;
-  pannello.style.cssText = 'position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:10000;background:#101b30;color:#f1f5f9;padding:12px;border:1px solid #64748b;border-radius:14px;width:min(92vw,560px);box-sizing:border-box;box-shadow:0 8px 30px #0008';
-  const messaggio = document.createElement('p'); messaggio.setAttribute('role', 'status');
-  messaggio.style.cssText = 'margin:0 0 8px;font-size:14px';
-  pannello.append(messaggio);
+  pannello.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:10000;display:flex;gap:8px;align-items:center;padding:7px;background:rgba(8,15,28,.38);border:1px solid rgba(255,255,255,.16);border-radius:999px;box-sizing:border-box;box-shadow:0 8px 28px rgba(0,0,0,.2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:opacity .18s ease,visibility .18s ease';
+  let timerComandi = null;
+  const icone = {
+    pausa: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg>',
+    riprendi: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
+    riavvia: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.2 3.75L3 11V4h7L7.6 6.4A9 9 0 1 0 12 3z"/></svg>',
+    stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7z"/></svg>'
+  };
+  function nascondiComandi() {
+    if (timerComandi) { clearTimeout(timerComandi); timerComandi = null; }
+    pannello.style.opacity = '0'; pannello.style.visibility = 'hidden'; pannello.style.pointerEvents = 'none';
+  }
+  function mostraComandi() {
+    if (!(motore.stato === 'attivo' || motore.stato === 'pausa')) return;
+    pannello.style.opacity = '1'; pannello.style.visibility = 'visible'; pannello.style.pointerEvents = 'auto';
+    if (timerComandi) clearTimeout(timerComandi);
+    timerComandi = setTimeout(nascondiComandi, 6000);
+  }
   function bottone(chiave, azione) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'tasto-cielo';
-    b.textContent = t(chiave); b.addEventListener('click', azione); pannello.append(b); return b;
+    b.style.cssText = 'width:44px;height:44px;min-width:44px;padding:0;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:none';
+    b.innerHTML = icone[chiave]; b.setAttribute('aria-label', t(chiave)); b.setAttribute('title', t(chiave));
+    b.querySelector('svg').style.cssText = 'width:22px;height:22px;fill:currentColor';
+    b.addEventListener('click', e => { e.stopPropagation(); azione(); mostraComandi(); }); pannello.append(b); return b;
   }
   const pausa = bottone('pausa', () => motore.stato === 'pausa' ? motore.riprendi() : motore.pausa());
   const riavvia = bottone('riavvia', () => avviaSicuro(ultimoScript));
   const arresta = bottone('stop', () => motore.ferma());
   document.body.append(pannello);
-  function titoloDemo(id) {
-    return predefiniti.some(d => d.chiave === id) ? t('builtin.' + id + '.title') : id;
-  }
   function aggiornaPannello() {
     const attivo = motore.stato === 'attivo' || motore.stato === 'pausa';
     if (attivo) {
@@ -1065,20 +1079,15 @@
               ? document.fullscreenElement : document.body);
       if (genitore && pannello.parentElement !== genitore) genitore.append(pannello);
       pannello.hidden = false;
-      // Una riga sola, uguale per tutte le demo: prima la frase descrittiva
-      // valeva solo per la prima predefinita (e parlava di Reykjavík), le
-      // altre tre mostravano i nomi tecnici delle scene.
-      const scena = motore.demo.scene[motore.indice];
-      messaggio.textContent = titoloDemo(motore.demo.id) + ' — ' + t('scenaDi', {
-        n: motore.indice + 1, tot: motore.demo.scene.length,
-        vista: t('vista.' + scena.vista), secondi: scena.durata / 1000
-      }) + (motore.stato === 'pausa' ? ' — ' + t('inPausa') : '') +
-        (sky.reg.attiva && sky.reg.sorgente ? ' — ' + t('registrando') : '');
-      pausa.textContent = t(motore.stato === 'pausa' ? 'riprendi' : 'pausa');
-      riavvia.textContent = t('riavvia'); arresta.textContent = t('stop');
+      pausa.innerHTML = icone[motore.stato === 'pausa' ? 'riprendi' : 'pausa'];
+      pausa.setAttribute('aria-label', t(motore.stato === 'pausa' ? 'riprendi' : 'pausa'));
+      pausa.setAttribute('title', pausa.getAttribute('aria-label'));
+      riavvia.setAttribute('aria-label', t('riavvia')); riavvia.setAttribute('title', t('riavvia'));
+      arresta.setAttribute('aria-label', t('stop')); arresta.setAttribute('title', t('stop'));
+      if (pannello.style.visibility !== 'visible') nascondiComandi();
     } else {
       if (pannello.parentElement !== document.body) document.body.append(pannello);
-      pannello.hidden = true;
+      pannello.hidden = true; nascondiComandi();
       if (motore.stato === 'errore') skyAvviso('demo', t('errore') + ': ' + motore.errore.message, 10000);
       if (motore.stato === 'completato') skyAvviso('demo', t('completato'), 7000);
     }
@@ -1090,7 +1099,11 @@
   // la camera alla persona per la scena corrente, senza fermarne il tempo;
   // filtri, menu e altri controlli continuano quindi a funzionare normalmente.
   document.addEventListener('pointerdown', e => {
-    if (contesto && !pannello.contains(e.target)) contesto.cediCamera();
+    if (!contesto) return;
+    if (!pannello.contains(e.target)) {
+      contesto.cediCamera();
+      mostraComandi();
+    }
   }, true);
   // La rotellina e i tasti non passano da `pointerdown`: senza questi due
   // ascoltatori `set_fov` e `frame_objects` rimettevano il loro campo a ogni

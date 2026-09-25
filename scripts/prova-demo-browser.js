@@ -154,6 +154,21 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.locator('#modale-impostazioni').isVisible(), false);
     await pagina.waitForTimeout(700);
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo');
+    const controlliIniziali = await pagina.evaluate(() => {
+      const p = document.getElementById('demo-controlli');
+      return { vis: getComputedStyle(p).visibility, op: getComputedStyle(p).opacity,
+        testi: [...p.querySelectorAll('button')].map(b => b.textContent.trim()),
+        etichette: [...p.querySelectorAll('button')].map(b => b.getAttribute('aria-label')) };
+    });
+    assert.equal(controlliIniziali.vis, 'hidden', 'I comandi partono nascosti');
+    assert.ok(controlliIniziali.testi.every(x => !x), 'I comandi mostrano solo icone');
+    assert.equal(controlliIniziali.etichette.length, 3, 'Tre comandi accessibili');
+    await pagina.locator('#skymap-canvas').click({ position: { x: 20, y: 20 } });
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'visible',
+      'Un tap mostra i comandi');
+    await pagina.waitForTimeout(6200);
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'hidden',
+      'Dopo sei secondi i comandi scompaiono');
     assert.equal(await pagina.evaluate(() => sky.schermoIntero), originale.schermoIntero,
       'La demo lascia invariato lo stato dello schermo intero');
     assert.equal(await pagina.evaluate(() =>
@@ -354,10 +369,7 @@ const server = http.createServer((req, res) => {
       const durante = await pagina.evaluate(() => ({ stato: AstroDemo.stato, tempo: skyAdesso().toISOString(),
         lat: sky.observer.latitude, lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] }));
       assert.equal(durante.stato, 'attivo', chiave);
-      assert.match(await pagina.locator('#demo-controlli p').innerText(),
-        new RegExp('^' + { eclisse_lunare: 'Eclisse lunare', aurora_boreale: 'Aurora boreale',
-          allineamento_pianeti: 'Corteo dei pianeti' }[chiave] + '.* — scena \\d/\\d · Planetario'),
-        chiave + ': pannello con titolo e scena');
+      assert.equal(await pagina.locator('#demo-controlli p').count(), 0, chiave + ': nessun testo di luogo/data/scena nei controlli');
       assert.ok(durante.tempo.startsWith(data), chiave + ': istante astronomico');
       assert.ok(Math.abs(durante.lat - lat) < 0.0001 && Math.abs(durante.lon - lon) < 0.0001,
         chiave + ': coordinate temporanee');
