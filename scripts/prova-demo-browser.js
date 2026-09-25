@@ -154,6 +154,21 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.locator('#modale-impostazioni').isVisible(), false);
     await pagina.waitForTimeout(700);
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo');
+    const controlliIniziali = await pagina.evaluate(() => {
+      const p = document.getElementById('demo-controlli');
+      return { vis: getComputedStyle(p).visibility, op: getComputedStyle(p).opacity,
+        testi: [...p.querySelectorAll('button')].map(b => b.textContent.trim()),
+        etichette: [...p.querySelectorAll('button')].map(b => b.getAttribute('aria-label')) };
+    });
+    assert.equal(controlliIniziali.vis, 'hidden', 'I comandi partono nascosti');
+    assert.ok(controlliIniziali.testi.every(x => !x), 'I comandi mostrano solo icone');
+    assert.equal(controlliIniziali.etichette.length, 3, 'Tre comandi accessibili');
+    await pagina.locator('#skymap-canvas').click({ position: { x: 20, y: 20 } });
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'visible',
+      'Un tap mostra i comandi');
+    await pagina.waitForTimeout(6200);
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'hidden',
+      'Dopo sei secondi i comandi scompaiono');
     assert.equal(await pagina.evaluate(() => sky.schermoIntero), originale.schermoIntero,
       'La demo lascia invariato lo stato dello schermo intero');
     assert.equal(await pagina.evaluate(() =>
