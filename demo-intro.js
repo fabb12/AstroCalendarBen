@@ -7,7 +7,7 @@
  * Tre cose vivono qui.
  *  1. Le **preferenze** (mostrarla, quanto dura, il titolo e se mostrarlo),
  *     in `localStorage`, con un valore di ripiego per ognuna.
- *  2. Il **logo**. Quello predefinito è l'icona dell'app; quello personale
+ *  2. Il **logo**. Quello predefinito è il logo dedicato delle demo; quello personale
  *     si salva così com'è arrivato — il file, non una copia ricompressa —
  *     in IndexedDB, che è il solo posto in cui un'immagine di qualche
  *     megabyte stia senza passare per un data URL. Proporzioni, trasparenza
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
   const CHIAVE = 'astrocal_demo_intro_v1';
-  const LOGO_PREDEFINITO = 'icon-512.png';
+  const LOGO_PREDEFINITO = 'demo-logo-256.jpg';
   const DURATA = { predefinita: 3, min: 1, max: 10, passo: 0.5 };
   const TITOLO_MAX = 120;
   // Un logo non ha bisogno di otto megabyte; ma rifiutare un PNG pesante
