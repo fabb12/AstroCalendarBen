@@ -723,8 +723,9 @@
 
   // ------------------------------------------------------------------
   // Le opzioni della demo: schermo intero, vista pulita, registrazione (con
-  // audio opzionale) e gli elementi del planetario. Le due opzioni nuove
-  // nascono accese anche leggendo preferenze salvate prima che esistessero.
+  // audio opzionale), musica delle eclissi e gli elementi del planetario.
+  // Le preferenze aggiunte nel tempo hanno sempre un valore di ripiego per
+  // restare compatibili con i salvataggi delle versioni precedenti.
   // ------------------------------------------------------------------
   const CHIAVE_OPZIONI = 'astrocal_demo_opzioni_v1';
   function leggiOpzioni() {
@@ -736,11 +737,13 @@
         vistaPulita: o.vistaPulita !== false,
         registraAudio: o.registraAudio !== false,
         musicaEclissi: o.musicaEclissi !== false,
+        musicaEclissiTraccia: typeof o.musicaEclissiTraccia === 'string' && o.musicaEclissiTraccia
+          ? o.musicaEclissiTraccia : 'Encelado1',
         livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: false, registra: false, vistaPulita: true, registraAudio: true,
-      musicaEclissi: true, livelli: null };
+      musicaEclissi: true, musicaEclissiTraccia: 'Encelado1', livelli: null };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
@@ -844,11 +847,18 @@
     document.querySelectorAll('.demo-scena-pulita').forEach(el => el.classList.remove('demo-scena-pulita'));
   }
 
-  // Le demo delle eclissi hanno una colonna sonora: «Encelado» al 30%. Si
-  // riconoscono da quello che raccontano — un evento di eclisse, l'ombra
-  // della Luna, l'orbita Terra–Luna — o dal nome, così vale anche per una
-  // copia personale di una delle due predefinite.
-  const MUSICA_ECLISSI = { traccia: 'Encelado1', volume: 0.3 };
+  // Le demo delle eclissi hanno una colonna sonora scelta nelle impostazioni,
+  // riprodotta al 30%. Si riconoscono da quello che raccontano — un evento di
+  // eclisse, l'ombra della Luna, l'orbita Terra–Luna — o dal nome, così vale
+  // anche per una copia personale di una delle due predefinite.
+  const MUSICA_ECLISSI = { tracciaPredefinita: 'Encelado1', volume: 0.3 };
+  function tracciaMusicaEclissi() {
+    const preferita = opzioni.musicaEclissiTraccia || MUSICA_ECLISSI.tracciaPredefinita;
+    const tracce = Array.isArray(window.ASTRO_TRACCE_MUSICALI) ? window.ASTRO_TRACCE_MUSICALI : [];
+    if (!tracce.length || tracce.some(t => t && t.id === preferita)) return preferita;
+    const prima = tracce.find(t => t && typeof t.id === 'string' && t.id);
+    return prima ? prima.id : MUSICA_ECLISSI.tracciaPredefinita;
+  }
   function demoDiEclissi(demo) {
     if (/eclis|eclip/i.test(demo.id || '')) return true;
     return demo.scene.some(sc => sc.azioni.some(a =>
@@ -971,7 +981,7 @@
       catch (_) { c.schermoNativo = false; }
     }
     if (opzioni.musicaEclissi !== false && demoDiEclissi(demo) && typeof musicaDemoAvvia === 'function')
-      c.musica = musicaDemoAvvia(MUSICA_ECLISSI.traccia, MUSICA_ECLISSI.volume);
+      c.musica = musicaDemoAvvia(tracciaMusicaEclissi(), MUSICA_ECLISSI.volume);
     motore.avvia(testo, c);
     // Un errore nella prima scena chiude la demo dentro a `motore.avvia`, e
     // il ripristino ha già spento la musica; se il motore non è partito per
