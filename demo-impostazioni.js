@@ -224,8 +224,22 @@
   // si leggono e si disegnano.
   const schermo = $('opz-schermo'), pulita = $('opz-vista-pulita');
   const registra = $('opz-registra'), audio = $('opz-registra-audio');
-  const musica = $('opz-musica-eclissi');
+  const musica = $('opz-musica-eclissi'), musicaTraccia = $('opz-musica-traccia');
   const personali = $('livelli-personali'), griglia = $('livelli');
+  const TRACCIA_MUSICA_PREDEFINITA = 'Encelado1';
+
+  function tracceMusicaDemo() {
+    const elenco = Array.isArray(window.ASTRO_TRACCE_MUSICALI) ? window.ASTRO_TRACCE_MUSICALI : [];
+    const valide = elenco.filter(t => t && typeof t.id === 'string' && t.id && typeof t.nome === 'string' && t.nome);
+    return valide.length ? valide : [{ id: TRACCIA_MUSICA_PREDEFINITA, nome: 'Encelado' }];
+  }
+  function popolaTracceMusica() {
+    if (!musicaTraccia) return;
+    const tracce = tracceMusicaDemo();
+    const scelta = AstroDemo.opzioni.musicaEclissiTraccia || TRACCIA_MUSICA_PREDEFINITA;
+    musicaTraccia.replaceChildren(...tracce.map(t => new Option(t.nome, t.id)));
+    musicaTraccia.value = tracce.some(t => t.id === scelta) ? scelta : tracce[0].id;
+  }
   // «Registra anche l'audio» è figlia del filmato: senza video è spenta e
   // non si può toccare, perché una registrazione del solo audio non esiste.
   // La preferenza salvata però non si perde: riaccendendo il filmato la
@@ -240,6 +254,9 @@
     const narr = document.getElementById('imp-narrazione-attiva');
     const figli = document.getElementById('demo-narrazione-figli');
     if (narr && figli) figli.classList.toggle('spenta', !narr.checked);
+    const sceltaMusica = document.getElementById('demo-opz-musica-eclissi-scelta');
+    if (musicaTraccia && musica) musicaTraccia.disabled = !musica.checked;
+    if (sceltaMusica && musica) sceltaMusica.classList.toggle('spenta', !musica.checked);
   }
   function disegnaOpzioni() {
     const o = AstroDemo.opzioni;
@@ -247,6 +264,7 @@
     pulita.checked = o.vistaPulita !== false;
     registra.checked = o.registra;
     if (musica) musica.checked = o.musicaEclissi !== false;
+    popolaTracceMusica();
     personali.checked = !!o.livelli;
     const livelli = AstroDemo.livelli();
     griglia.replaceChildren(...livelli.map(l => {
@@ -254,6 +272,7 @@
       etichetta.className = 'demo-spunta demo-livello';
       const casella = document.createElement('input');
       casella.type = 'checkbox';
+      casella.setAttribute('role', 'switch');
       casella.dataset.livello = l.id;
       casella.checked = o.livelli && typeof o.livelli[l.id] === 'boolean' ? o.livelli[l.id] : l.acceso;
       casella.disabled = !o.livelli;
@@ -277,7 +296,13 @@
   audio.addEventListener('change', () => {
     if (!audio.disabled) AstroDemo.impostaOpzioni({ registraAudio: audio.checked });
   });
-  if (musica) musica.addEventListener('change', () => AstroDemo.impostaOpzioni({ musicaEclissi: musica.checked }));
+  if (musica) musica.addEventListener('change', () => {
+    AstroDemo.impostaOpzioni({ musicaEclissi: musica.checked });
+    disegnaDipendenze();
+  });
+  if (musicaTraccia) musicaTraccia.addEventListener('change', () => {
+    AstroDemo.impostaOpzioni({ musicaEclissiTraccia: musicaTraccia.value });
+  });
   const narrAttiva = document.getElementById('imp-narrazione-attiva');
   if (narrAttiva) narrAttiva.addEventListener('change', disegnaDipendenze);
   personali.addEventListener('change', () => {

@@ -5,8 +5,10 @@ Questa cartella contiene le tracce di sottofondo selezionabili nelle
 ogni scelta del selettore è un file di questa cartella (una preferenza salvata
 col vecchio valore `generata` torna alla traccia predefinita).
 
-La traccia `Encelado1` («Encelado») è anche la colonna sonora delle demo delle
-eclissi (`demo.js`, al 30% sulla scala del cursore): non rinominarne l'`id`.
+Le stesse tracce compaiono nel selettore della pagina **Demo → Narrazione e
+audio** per scegliere la colonna sonora delle demo delle eclissi, riprodotta al
+30%. `Encelado1` («Encelado») resta il valore iniziale e di ripiego per le
+preferenze più vecchie: non rinominarne l'`id`.
 
 ## Aggiungere una traccia
 

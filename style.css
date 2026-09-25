@@ -11860,16 +11860,42 @@ fieldset.demo-gruppo > legend.demo-gruppo-titolo + * { clear:both; }
 }
 .demo-opzioni-titolo { padding:0 4px; color:var(--testo); font-size:.88rem; font-weight:700; }
 .demo-opzioni-aiuto, .demo-opzioni-nota { margin:0; color:var(--testo-2); font-size:.78rem; line-height:1.45; }
-.demo-opzioni-nota { margin:-4px 0 0 30px; }
-.demo-figlia .demo-opzioni-nota { margin-left:30px; }
+.demo-opzioni-nota { margin:-4px 0 0 54px; }
+.demo-figlia .demo-opzioni-nota { margin-left:54px; }
+.demo-musica-scelta .demo-opzioni-nota { margin-left:0; }
 .demo-spunta:focus-within { outline:none; }
 .demo-spunta input:focus-visible { outline:2px solid #fff; outline-offset:2px; }
 .demo-spunta {
   display:flex; align-items:center; gap:10px; min-height:36px;
   color:var(--testo); font-size:.86rem; cursor:pointer;
 }
-.demo-spunta input { width:20px; height:20px; flex:0 0 auto; accent-color:var(--accento); cursor:pointer; }
+/* Nelle impostazioni Demo i booleani restano checkbox nativi a livello
+   semantico, ma si presentano come interruttori on/off. */
+#vista-demo .demo-spunta input[type="checkbox"] {
+  -webkit-appearance:none; appearance:none; position:relative;
+  width:44px; height:24px; flex:0 0 44px; margin:0;
+  border:1px solid #64748b; border-radius:999px;
+  background:#1e293b; cursor:pointer;
+  transition:background-color var(--transizione), border-color var(--transizione);
+}
+#vista-demo .demo-spunta input[type="checkbox"]::after {
+  content:""; position:absolute; top:3px; left:3px;
+  width:16px; height:16px; border-radius:50%; background:#cbd5e1;
+  box-shadow:0 1px 3px rgba(0,0,0,.35);
+  transition:transform var(--transizione), background-color var(--transizione);
+}
+#vista-demo .demo-spunta input[type="checkbox"]:checked {
+  border-color:#7aa7ff; background:var(--accento);
+}
+#vista-demo .demo-spunta input[type="checkbox"]:checked::after {
+  transform:translateX(20px); background:#fff;
+}
+#vista-demo .demo-spunta input[type="checkbox"]:disabled { opacity:.45; cursor:not-allowed; }
 .demo-spunta input:disabled + span { color:var(--testo-3); }
+.demo-selettore {
+  display:grid; gap:6px; color:var(--testo); font-size:.82rem; font-weight:600;
+}
+.demo-musica-scelta { margin-top:2px; }
 .demo-livelli-dettagli > summary { cursor:pointer; color:var(--testo); font-weight:650; font-size:.86rem; min-height:32px; }
 .demo-livelli {
   display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 170px), 1fr));

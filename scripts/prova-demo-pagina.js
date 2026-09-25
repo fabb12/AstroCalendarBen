@@ -119,7 +119,7 @@ async function prova(nome, fn) {
       const dentro = await pagina.evaluate(() => {
         const m = document.getElementById('modale-impostazioni');
         return ['demo-avvia', 'demo-elenco', 'demo-opz-schermo', 'demo-opz-vista-pulita', 'demo-opz-registra',
-          'demo-opz-registra-audio', 'demo-livelli', 'imp-narrazione-attiva', 'imp-narrazione-volume',
+          'demo-opz-registra-audio', 'demo-opz-musica-traccia', 'demo-livelli', 'imp-narrazione-attiva', 'imp-narrazione-volume',
           'imp-narrazione-testo', 'imp-narrazione-solo-tts'].filter(id => m.querySelector('#' + id));
       });
       assert.deepEqual(dentro, []);
@@ -176,6 +176,27 @@ async function prova(nome, fn) {
       assert.equal(await audio.isChecked(), false, 'ricorda anche il no');
       await pagina.locator('#demo-opz-registra').uncheck();
       await pagina.evaluate(() => AstroDemo.impostaOpzioni({ registraAudio: true }));
+    });
+    await prova('la musica della demo offre le tracce del catalogo e usa un toggle', async () => {
+      const musica = pagina.locator('#demo-opz-musica-eclissi');
+      const selettore = pagina.locator('#demo-opz-musica-traccia');
+      await musica.check();
+      const dati = await pagina.evaluate(() => ({
+        opzioni: [...document.querySelectorAll('#demo-opz-musica-traccia option')].map(o => o.value + '|' + o.textContent),
+        catalogo: (window.ASTRO_TRACCE_MUSICALI || []).map(t => t.id + '|' + t.nome),
+        misura: (() => {
+          const el = document.getElementById('demo-opz-musica-eclissi').getBoundingClientRect();
+          return { w: el.width, h: el.height };
+        })()
+      }));
+      assert.deepEqual(dati.opzioni, dati.catalogo);
+      assert.ok(dati.misura.w >= 40 && dati.misura.h >= 22, 'il checkbox è presentato come toggle');
+      await selettore.selectOption('Europa1');
+      assert.equal(await pagina.evaluate(() => AstroDemo.opzioni.musicaEclissiTraccia), 'Europa1');
+      await musica.uncheck();
+      assert.equal(await selettore.isDisabled(), true);
+      await musica.check();
+      assert.equal(await selettore.isDisabled(), false);
     });
     await prova('il paesaggio spaziale generato non c\'è più', async () => {
       const opzioni = await pagina.evaluate(() => [...document.querySelectorAll('#imp-musica-traccia option')].map(o => o.value + '|' + o.textContent));
@@ -331,10 +352,12 @@ async function prova(nome, fn) {
     });
 
     console.log('\n— la musica delle eclissi —');
-    await prova('Encelado al 30% durante la demo, il sottofondo di prima messo in pausa', async () => {
+    await prova('la traccia scelta suona al 30% durante la demo, il sottofondo di prima viene messo in pausa', async () => {
       // Il sottofondo della persona suona una traccia diversa, a volume suo.
       await pagina.evaluate(() => {
-        AstroDemo.ferma(); AstroDemo.impostaOpzioni({ schermoIntero: false, musicaEclissi: true });
+        AstroDemo.ferma(); AstroDemo.impostaOpzioni({
+          schermoIntero: false, musicaEclissi: true, musicaEclissiTraccia: 'Europa1'
+        });
         localStorage.setItem('astrocalendario_musica_traccia', 'Giapeto1');
         fermaMusicaSpaziale(); musicaVolume = 0.4; avviaMusicaSpaziale();
       });
@@ -344,7 +367,7 @@ async function prova(nome, fn) {
       await pagina.evaluate(() => AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'eclisse_lunare').testo));
       await pagina.waitForFunction(() => musicaDemoStato().demo && musicaDemoStato().demo.suona, null, { timeout: 5000 });
       const durante = await pagina.evaluate(() => musicaDemoStato());
-      assert.equal(durante.demo.id, 'Encelado1');
+      assert.equal(durante.demo.id, 'Europa1');
       assert.ok(Math.abs(durante.demo.volume - 0.09) < 1e-9, '30% sulla scala del cursore');
       assert.equal(durante.sottofondo.suonava, false, 'nessuna sovrapposizione');
       await pagina.keyboard.press('Escape');

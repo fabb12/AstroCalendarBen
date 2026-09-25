@@ -139,14 +139,15 @@ browser poteva disegnare un fotogramma con la finestra fuori posto.
 ## La musica delle eclissi
 
 Le demo di eclissi (riconosciute da nome o azioni: `event_window` di
-un'eclisse, `Eclipse Shadow`, `orbit_object`) suonano «Encelado»
-(`Encelado1`) al 30% sulla scala del cursore delle Impostazioni
-(`musicaDemoAvvia` in `app.js`). Il sottofondo della persona viene messo in
-pausa (stesso elemento, traccia, volume e punto) e `musicaDemoFerma` lo
-rimette com'era a fine demo, Stop, Esc o errore; se non suonava resta
-fermo. Si spegne con la casella del gruppo Narrazione e audio (`musicaEclissi`
-nelle opzioni). Il «Paesaggio spaziale (generato)» non esiste più: una
-preferenza salvata `generata` torna alla traccia predefinita.
+un'eclisse, `Eclipse Shadow`, `orbit_object`) suonano al 30% la traccia
+scelta nel gruppo **Narrazione e audio** della pagina Demo
+(`musicaEclissiTraccia`, con `Encelado1` come valore iniziale e fallback).
+Il toggle `musicaEclissi` permette di spegnere del tutto la colonna sonora.
+`musicaDemoAvvia` in `app.js` mette in pausa il sottofondo della persona
+(stesso elemento, traccia, volume e punto) e `musicaDemoFerma` lo rimette
+com'era a fine demo, Stop, Esc o errore; se non suonava resta fermo. Il
+«Paesaggio spaziale (generato)» non esiste più: una preferenza salvata
+`generata` torna alla traccia predefinita.
 
 ## I cinque tour predefiniti
 

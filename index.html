@@ -1607,12 +1607,12 @@
           </legend>
           <p id="demo-opzioni-aiuto" class="demo-opzioni-aiuto" data-i18n="demo.opzioniAiuto">Queste scelte valgono solo per la demo: alla fine, con Termina o con Esc tutto torna com'era.</p>
           <label class="demo-spunta" for="demo-opz-schermo">
-            <input id="demo-opz-schermo" type="checkbox" aria-describedby="demo-opz-schermo-aiuto">
+            <input id="demo-opz-schermo" type="checkbox" role="switch" aria-describedby="demo-opz-schermo-aiuto">
             <span data-i18n="demo.opzioneSchermo">Avvia a schermo intero</span>
           </label>
           <p id="demo-opz-schermo-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneSchermoAiuto">Il pieno schermo resta attivo anche nei passaggi fra planetario e Sistema Solare 3D.</p>
           <label class="demo-spunta" for="demo-opz-vista-pulita">
-            <input id="demo-opz-vista-pulita" type="checkbox" aria-describedby="demo-opz-vista-pulita-aiuto">
+            <input id="demo-opz-vista-pulita" type="checkbox" role="switch" aria-describedby="demo-opz-vista-pulita-aiuto">
             <span data-i18n="demo.opzioneVistaPulita">Vista pulita durante la demo</span>
           </label>
           <p id="demo-opz-vista-pulita-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneVistaPulitaAiuto">Nasconde menu e pannelli: restano la scena, i sottotitoli e i comandi della demo.</p>
@@ -1624,13 +1624,13 @@
             <span data-i18n="demo.gruppoRegistrazione">Registrazione</span>
           </legend>
           <label class="demo-spunta" for="demo-opz-registra">
-            <input id="demo-opz-registra" type="checkbox" aria-controls="demo-opz-registra-audio" aria-describedby="demo-opz-registra-aiuto">
+            <input id="demo-opz-registra" type="checkbox" role="switch" aria-controls="demo-opz-registra-audio" aria-describedby="demo-opz-registra-aiuto">
             <span data-i18n="demo.opzioneRegistra">Registra un filmato della demo</span>
           </label>
           <p id="demo-opz-registra-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneRegistraAiuto">Usa la registrazione del planetario: il filmato compare nel planetario alla fine della demo.</p>
           <div class="demo-figlia" id="demo-opz-registra-audio-gruppo">
             <label class="demo-spunta" for="demo-opz-registra-audio">
-              <input id="demo-opz-registra-audio" type="checkbox" aria-describedby="demo-opz-registra-audio-aiuto">
+              <input id="demo-opz-registra-audio" type="checkbox" role="switch" aria-describedby="demo-opz-registra-audio-aiuto">
               <span data-i18n="demo.opzioneRegistraAudio">Registra anche l’audio</span>
             </label>
             <p id="demo-opz-registra-audio-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneRegistraAudioAiuto">Disponibile solo insieme al filmato: non esiste una registrazione del solo audio.</p>
@@ -1647,7 +1647,7 @@
              `narrazione.js`, che collega da sé questi comandi. -->
         <div class="demo-narrazione">
           <label class="demo-spunta" for="imp-narrazione-attiva">
-            <input id="imp-narrazione-attiva" type="checkbox" checked aria-controls="demo-narrazione-figli">
+            <input id="imp-narrazione-attiva" type="checkbox" role="switch" checked aria-controls="demo-narrazione-figli">
             <span data-i18n="narrazione.attiva">Racconta a voce le demo e Missione Cielo</span>
           </label>
           <div id="demo-narrazione-figli" class="demo-figlia">
@@ -1657,11 +1657,11 @@
               <input id="imp-narrazione-volume" type="range" min="0" max="100" step="1" value="90">
             </label>
             <label class="demo-spunta" for="imp-narrazione-testo">
-              <input id="imp-narrazione-testo" type="checkbox" checked>
+              <input id="imp-narrazione-testo" type="checkbox" role="switch" checked>
               <span data-i18n="narrazione.mostraTesto">Mostra il testo della narrazione</span>
             </label>
             <label class="demo-spunta" for="imp-narrazione-solo-tts">
-              <input id="imp-narrazione-solo-tts" type="checkbox">
+              <input id="imp-narrazione-solo-tts" type="checkbox" role="switch">
               <span data-i18n="narrazione.soloTts">Usa solo la sintesi vocale, anche dove c'è un audio registrato</span>
             </label>
             <div class="demo-azioni">
@@ -1674,10 +1674,16 @@
         </div>
         <div class="demo-separatore" role="presentation"></div>
         <label class="demo-spunta" for="demo-opz-musica-eclissi">
-          <input id="demo-opz-musica-eclissi" type="checkbox" aria-describedby="demo-opz-musica-eclissi-aiuto">
-          <span data-i18n="demo.opzioneMusicaEclissi">Musica «Encelado» nelle demo delle eclissi (volume 30%)</span>
+          <input id="demo-opz-musica-eclissi" type="checkbox" role="switch" aria-controls="demo-opz-musica-eclissi-scelta" aria-describedby="demo-opz-musica-eclissi-aiuto">
+          <span data-i18n="demo.opzioneMusicaEclissi">Musica di sottofondo nelle demo delle eclissi</span>
         </label>
-        <p id="demo-opz-musica-eclissi-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneMusicaEclissiAiuto">La musica di sottofondo in corso si ferma durante la demo e alla fine torna esattamente com'era.</p>
+        <div id="demo-opz-musica-eclissi-scelta" class="demo-figlia demo-musica-scelta">
+          <label class="demo-selettore" for="demo-opz-musica-traccia">
+            <span data-i18n="demo.opzioneMusicaEclissiTraccia">Traccia per le demo delle eclissi</span>
+            <select id="demo-opz-musica-traccia" aria-describedby="demo-opz-musica-eclissi-aiuto"></select>
+          </label>
+          <p id="demo-opz-musica-eclissi-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneMusicaEclissiAiuto">Scegli la traccia qui sotto. Durante la demo viene riprodotta al 30%; la musica di sottofondo in corso si ferma e alla fine torna esattamente com'era.</p>
+        </div>
       </section>
 
       <section class="scheda-piena demo-gruppo" aria-labelledby="demo-livelli-titolo">
@@ -1686,7 +1692,7 @@
           <span id="demo-livelli-titolo" data-i18n="demo.gruppoLivelli">Elementi del Planetario</span>
         </h3>
         <label class="demo-spunta" for="demo-livelli-personali">
-          <input id="demo-livelli-personali" type="checkbox" aria-controls="demo-livelli">
+          <input id="demo-livelli-personali" type="checkbox" role="switch" aria-controls="demo-livelli">
           <span data-i18n="demo.livelliPersonalizza">Scegli per la demo (altrimenti restano quelli attuali)</span>
         </label>
         <div id="demo-livelli" class="demo-livelli demo-figlia" role="group" aria-labelledby="demo-livelli-titolo"></div>
