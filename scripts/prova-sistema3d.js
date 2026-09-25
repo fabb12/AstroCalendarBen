@@ -866,6 +866,62 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   });
   ok('il fotogramma non cade a nessun ingrandimento', fotogrammi === 0);
 
+  // =====================================================================
+  console.log('\n— pan inerziale dei grafici didattici —');
+
+  await pagina.evaluate(() => {
+    chiudiSistemaSolare();
+    mostraVista('didattica');
+  });
+  await pagina.waitForTimeout(450);
+
+  const graficoDid = pagina.locator('#did-retro-cielo');
+  const boxDid = await graficoDid.boundingBox();
+  ok('il grafico didattico di prova è visibile', !!boxDid);
+
+  if (boxDid) {
+    const cx = boxDid.x + boxDid.width * 0.55;
+    const cy = boxDid.y + boxDid.height * 0.52;
+
+    // Il pan esiste solo quando c'è qualcosa fuori dal riquadro: un doppio
+    // clic porta la lente a 2,4×, poi un drag veloce la lascia andare.
+    await pagina.mouse.dblclick(cx, cy, { delay: 25 });
+    await pagina.waitForTimeout(80);
+    await pagina.mouse.move(cx, cy);
+    await pagina.mouse.down();
+    await pagina.mouse.move(cx - 35, cy + 3);
+    await pagina.mouse.move(cx - 85, cy + 6);
+    await pagina.mouse.move(cx - 145, cy + 9);
+    await pagina.mouse.up();
+
+    const lancioDid = await pagina.evaluate(() => didProve.lente.stato('did-retro-cielo'));
+    await pagina.waitForTimeout(140);
+    const corsaDid = await pagina.evaluate(() => didProve.lente.stato('did-retro-cielo'));
+
+    ok('il rilascio del grafico lascia una velocità inerziale',
+      lancioDid && lancioDid.zoom > 1 && lancioDid.inerzia &&
+      Math.hypot(lancioDid.inerzia.vx, lancioDid.inerzia.vy) > 0,
+      lancioDid && lancioDid.inerzia
+        ? Math.round(Math.hypot(lancioDid.inerzia.vx, lancioDid.inerzia.vy)) + ' px/s'
+        : 'nessuna inerzia');
+
+    ok('dopo il rilascio il grafico continua il pan e rallenta',
+      lancioDid && corsaDid && corsaDid.x < lancioDid.x - 1 &&
+      (!corsaDid.inerzia ||
+       Math.hypot(corsaDid.inerzia.vx, corsaDid.inerzia.vy) <
+       Math.hypot(lancioDid.inerzia.vx, lancioDid.inerzia.vy)),
+      lancioDid && corsaDid ? lancioDid.x.toFixed(1) + ' → ' + corsaDid.x.toFixed(1) : '');
+
+    // Come nel planetario, chi appoggia di nuovo il dito riprende subito il
+    // controllo: nessuna corsa deve continuare sotto al nuovo gesto.
+    await pagina.mouse.move(cx, cy);
+    await pagina.mouse.down();
+    const fermataDid = await pagina.evaluate(() => didProve.lente.stato('did-retro-cielo'));
+    await pagina.mouse.up();
+    ok('un nuovo gesto ferma subito il pan inerziale',
+      fermataDid && fermataDid.inerzia === null);
+  }
+
   console.log(ko ? `\n✗ ${ko} prove fallite` : '\n✓ tutte le prove passate');
   await browser.close();
   server.close();
