@@ -122,6 +122,9 @@ async function apri(browser, origine, opz = {}) {
   await pagina.addInitScript(p => {
     localStorage.setItem('astrocalendario_posizione', JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' }));
     localStorage.setItem('astrocal_lingua', 'it');
+    // L'intro comune ha un banco suo (prova-demo-intro.js): qui si misurano
+    // le scene subito dopo l'avvio, e i tre secondi di nero si saltano.
+    localStorage.setItem('astrocal_demo_intro_v1', JSON.stringify({ attiva: false }));
     if (p) localStorage.setItem('astrocalendario_narrazione', JSON.stringify(p));
   }, opz.preferenze || null);
   await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
@@ -273,7 +276,7 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
       });
       await prova('Ricomincia: di nuovo la prima scena, una voce sola', async () => {
         await pagina.evaluate(() => AstroDemo.avvia(AstroDemoPredefiniti[2].testo));
-        await aspetta(pagina, () => window.__voce.detti.some(d => /Tutto comincia dal Sole/.test(d.testo)));
+        await aspetta(pagina, () => window.__voce.detti.some(d => /Centocinquanta milioni di chilometri/.test(d.testo)));
         await pagina.evaluate(() => AstroDemo.vaiAScena(3));
         await pagina.mouse.click(12, 12);
         await pagina.locator('#demo-controlli [data-azione="riavvia"]').click();

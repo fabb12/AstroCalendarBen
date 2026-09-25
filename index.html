@@ -1638,9 +1638,68 @@
         </fieldset>
       </div>
 
+      <!-- L'intro comune a tutte le demo: logo e titolo su fondo nero prima
+           della prima scena. La collega demo-impostazioni.js; il disegno e il
+           logo salvato stanno in demo-intro.js. -->
+      <section class="scheda-piena demo-gruppo demo-gruppo-intro" aria-labelledby="demo-gruppo-intro-titolo">
+        <h3 id="demo-gruppo-intro-titolo" class="demo-gruppo-titolo">
+          <span class="demo-gruppo-numero" aria-hidden="true">4</span>
+          <span data-i18n="demo.intro.gruppo">Intro delle Demo</span>
+        </h3>
+        <p class="demo-opzioni-aiuto" data-i18n="demo.intro.aiuto">Prima di ogni demo, qualche secondo di schermo nero col logo e un titolo. Vale per tutte le demo, anche per quelle create o importate da te.</p>
+        <div class="demo-intro-impostazioni">
+          <div class="demo-intro-comandi">
+            <label class="demo-spunta" for="demo-intro-attiva">
+              <input id="demo-intro-attiva" type="checkbox" role="switch" checked aria-controls="demo-intro-figli">
+              <span data-i18n="demo.intro.mostra">Mostra intro</span>
+            </label>
+            <div id="demo-intro-figli" class="demo-figlia">
+              <label class="demo-cursore" for="demo-intro-durata">
+                <span data-i18n="demo.intro.durata">Durata dell'intro</span>
+                <span id="demo-intro-durata-valore" class="impostazione-musica-valore">3 s</span>
+                <input id="demo-intro-durata" type="range" min="1" max="10" step="0.5" value="3">
+              </label>
+
+              <p class="demo-intro-blocco-titolo" data-i18n="demo.intro.logo">Logo</p>
+              <div class="demo-intro-logo-riga">
+                <img id="demo-intro-logo-miniatura" class="demo-intro-miniatura" src="icon-512.png" alt="Logo attuale dell'intro" data-i18n-alt="demo.intro.logoAttuale">
+                <div class="demo-intro-logo-testo">
+                  <p id="demo-intro-logo-stato" class="demo-opzioni-nota" role="status" aria-live="polite"></p>
+                  <div class="demo-azioni">
+                    <label class="tasto-cielo demo-importa-tasto" for="demo-intro-logo-file" data-i18n="demo.intro.sostituisciLogo">Sostituisci logo</label>
+                    <input id="demo-intro-logo-file" class="demo-file-nascosto" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/avif">
+                    <button id="demo-intro-logo-ripristina" type="button" class="tasto-cielo" data-i18n="demo.intro.ripristinaLogo">Ripristina logo predefinito</button>
+                  </div>
+                </div>
+              </div>
+
+              <p class="demo-intro-blocco-titolo" data-i18n="demo.intro.titoloBlocco">Titolo</p>
+              <label class="demo-intro-blocco" for="demo-intro-titolo">
+                <span data-i18n="demo.intro.titoloIniziale">Titolo iniziale</span>
+                <input id="demo-intro-titolo" class="demo-intro-campo" type="text" maxlength="120" autocomplete="off" spellcheck="true">
+              </label>
+              <label class="demo-spunta" for="demo-intro-mostra-titolo">
+                <input id="demo-intro-mostra-titolo" type="checkbox" role="switch" checked>
+                <span data-i18n="demo.intro.mostraTitolo">Mostra titolo</span>
+              </label>
+              <div class="demo-azioni">
+                <button id="demo-intro-titolo-ripristina" type="button" class="tasto-cielo" data-i18n="demo.intro.ripristinaTitolo">Ripristina titolo predefinito</button>
+              </div>
+            </div>
+          </div>
+          <figure class="demo-intro-anteprima-guscio">
+            <div id="demo-intro-anteprima"></div>
+            <figcaption data-i18n="demo.intro.anteprimaDidascalia">Anteprima: logo, titolo e disposizione come compariranno a tutto schermo.</figcaption>
+            <div class="demo-azioni">
+              <button id="demo-intro-prova" type="button" class="tasto-cielo" data-i18n="demo.intro.anteprima">Guarda l'anteprima completa</button>
+            </div>
+          </figure>
+        </div>
+      </section>
+
       <section class="scheda-piena demo-gruppo" aria-labelledby="demo-gruppo-audio-titolo">
         <h3 id="demo-gruppo-audio-titolo" class="demo-gruppo-titolo">
-          <span class="demo-gruppo-numero" aria-hidden="true">4</span>
+          <span class="demo-gruppo-numero" aria-hidden="true">5</span>
           <span data-i18n="demo.gruppoAudio">Narrazione e audio</span>
         </h3>
         <!-- La voce che racconta le demo e Missione Cielo: la governa
@@ -1688,7 +1747,7 @@
 
       <section class="scheda-piena demo-gruppo" aria-labelledby="demo-livelli-titolo">
         <h3 class="demo-gruppo-titolo">
-          <span class="demo-gruppo-numero" aria-hidden="true">5</span>
+          <span class="demo-gruppo-numero" aria-hidden="true">6</span>
           <span id="demo-livelli-titolo" data-i18n="demo.gruppoLivelli">Elementi del Planetario</span>
         </h3>
         <label class="demo-spunta" for="demo-livelli-personali">
@@ -3192,6 +3251,7 @@
   <script src="ui-nuova.js"></script>
   <script src="didattica.js"></script>
   <script src="demo-motore.js"></script>
+  <script src="demo-intro.js"></script>
   <script src="demo-libreria.js"></script>
   <script src="demo-predefiniti.js"></script>
   <script src="demo.js"></script>

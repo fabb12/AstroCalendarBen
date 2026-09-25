@@ -8946,7 +8946,8 @@
     fotografa() {
       return {
         lab: stato.lab, quadro: aurL.quadro, t: aurL.t, marcia: aurL.marcia, velocita: aurL.velocita,
-        cam: { ...aurL.cam }, camV: { ...aurL.camV }, zoomDemo: aurL.zoomDemo, pieno: pieno.id
+        cam: { ...aurL.cam }, camV: { ...aurL.camV }, zoomDemo: aurL.zoomDemo, pieno: pieno.id,
+        luogo: aurL.luogo, kpTaglio: aurL.kpTaglio
       };
     },
     ripristina(f) {
@@ -8957,6 +8958,7 @@
       if (stato.costruito && aurL.quadro !== f.quadro) window.didDemo.quadro(f.quadro);
       aurL.t = f.t;
       Object.assign(aurL.cam, f.cam); Object.assign(aurL.camV, f.camV);
+      if (f.luogo !== undefined) window.didDemo.taglio(f.luogo, f.kpTaglio);
       if (stato.costruito) {
         try { alterna('did-aur', aurL.marcia); } catch (e) { /* banco non costruito */ }
         const sl = $('did-aur-slitta');
@@ -8983,18 +8985,40 @@
       if (Number.isFinite(p.az)) { aurL.cam.az = aurL.camV.az = p.az; }
       if (Number.isFinite(p.elev)) { aurL.cam.elev = aurL.camV.elev = p.elev; }
       if (Number.isFinite(p.zoom)) aurL.zoomDemo = p.zoom;
+      if (p.luogo !== undefined || Number.isFinite(p.kp)) window.didDemo.taglio(p.luogo, p.kp);
+    },
+    // Il luogo e il Kp del taglio visto di lato: gli stessi due comandi del
+    // quadro, tenuti d'accordo coi loro tasti e con la slitta.
+    luoghi: () => AURL_LUOGHI.map(l => l.id),
+    taglio(luogo, kp) {
+      if (luogo !== undefined && AURL_LUOGHI.some(l => l.id === luogo)) {
+        aurL.luogo = luogo;
+        const luoghi = $('did-aur-luoghi');
+        if (luoghi) luoghi.querySelectorAll('[data-luogo]').forEach(x =>
+          x.classList.toggle('attiva', x.dataset.luogo === luogo));
+      }
+      if (Number.isFinite(kp)) {
+        aurL.kpTaglio = Math.max(0, Math.min(9, kp));
+        const sl = $('did-aur-kp-slitta');
+        if (sl) sl.value = String(aurL.kpTaglio);
+      }
+      if (stato.costruito && aurL.quadro === 'taglio') { try { aurLNumeriTaglio(); } catch (e) { /* banco non pronto */ } }
     },
     // L'inquadratura di partenza di un quadro, per la camera della demo
     posa(id) {
       const q = AURL_QUADRI[id];
       return q ? { az: q.az, elev: q.elev, finestra: aurLFinestra(id).slice() } : null;
     },
+    // A schermo intero va la tela del quadro che si sta raccontando: la
+    // scena in 3D per quattro quadri, il taglio visto di lato per il quinto.
+    // Passando dall'una all'altra, uscita ed entrata stanno nello stesso
+    // turno (è il solo ripiego in CSS): il browser non disegna in mezzo.
     pieno(entra) {
-      const id = 'did-aur-tela';
+      const id = aurL.quadro === 'taglio' ? 'did-aur-taglio' : 'did-aur-tela';
       if (entra) { if (pieno.id !== id) didPienoEntra(id, { soloRipiego: true }); }
       else if (pieno.id) didPienoEsci();
     },
-    tela() { return pieno.id ? $(pieno.id) : $('did-aur-tela'); }
+    tela() { return pieno.id ? $(pieno.id) : $(aurL.quadro === 'taglio' ? 'did-aur-taglio' : 'did-aur-tela'); }
   };
 
   window.didatticaRidimensiona = function () { cacheStelle.chiave = ''; };

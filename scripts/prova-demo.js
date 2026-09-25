@@ -89,6 +89,80 @@ motore.pausa();
 ok(motore.stato === 'pausa', 'Una voce che si rompe non ferma la demo');
 motore.riprendi(); passo(1000); ok(motore.stato === 'attivo', 'E la demo riparte');
 motore.ferma();
+// L'intro comune: è del motore, gira sul suo orologio e sta prima della
+// prima scena. Le domande sono quelle che a occhio non si giudicano: la
+// prima scena parte davvero dopo, col suo orologio a zero; la pausa la
+// ferma; Stop, un errore e un salto la chiudono una volta sola.
+function introFinta(durata) {
+  const i = { durata, passi: [], fine: 0, chiudi: 0 };
+  i.aggiorna = u => i.passi.push(u);
+  i.fine = () => { i.finita = (i.finita || 0) + 1; i.scenaAllaFine = motore.indice; i.eventiAllaFine = eventi.length; };
+  i.chiudi = () => { i.chiusa = (i.chiusa || 0) + 1; };
+  return i;
+}
+registro.timelapse.crea = () => ({ aggiorna: u => eventi.push(['timelapse', u]), chiudi: () => eventi.push(['timelapse', 'chiudi']) });
+{
+  eventi.length = 0;
+  const intro = introFinta(3000);
+  motore.avvia(testo, { ripristina: () => ripristini++, intro });
+  ok(motore.inIntro && intro.passi[0] === 0 && !eventi.length, 'Intro: nessuna scena prima della fine dell’intro');
+  passo(1500);
+  ok(motore.inIntro && Math.abs(intro.passi[intro.passi.length - 1] - 0.5) < 1e-9 && !eventi.length, 'Intro a metà');
+  motore.pausa(); passo(60000);
+  ok(motore.inIntro && !eventi.length && richieste.size === 0, 'Intro in pausa: il tempo non passa');
+  motore.riprendi(); passo(1499);
+  ok(motore.inIntro && !eventi.length, 'Intro: tre secondi, non uno di meno');
+  passo(1);
+  ok(!motore.inIntro && intro.finita === 1 && intro.scenaAllaFine === 0 && intro.eventiAllaFine > 0 && !intro.chiusa,
+    'Intro finita: la prima scena è già aperta quando il nero se ne va');
+  ok(eventi.some(e => e[0] === 'timelapse' && e[1] === 0) && motore.trascorso === 0, 'La prima scena parte da zero');
+  passo(5000);
+  ok(eventi.some(e => e[0] === 'timelapse' && e[1] === 0.5), 'Prima scena scandita dal suo orologio');
+  passo(25000);
+  ok(motore.stato === 'completato' && intro.finita === 1 && !intro.chiusa, 'Intro: una fine sola');
+}
+{
+  // Un fotogramma tardivo che scavalca l'intro non porta avanzi dentro alla scena.
+  eventi.length = 0;
+  const intro = introFinta(3000);
+  motore.avvia(testo, { ripristina: () => ripristini++, intro });
+  passo(8000);
+  ok(intro.finita === 1 && motore.indice === 0 && motore.trascorso === 0, 'Fotogramma lungo: la scena riparte da zero');
+  motore.ferma();
+  ok(!intro.chiusa, 'Stop dopo l’intro: niente da chiudere');
+}
+{
+  const intro = introFinta(3000);
+  const primi = ripristini;
+  motore.avvia(testo, { ripristina: () => ripristini++, intro }); passo(1000); motore.ferma();
+  ok(intro.chiusa === 1 && !intro.finita && ripristini === primi + 1 && richieste.size === 0, 'Stop durante l’intro la chiude');
+  motore.ferma(); ok(intro.chiusa === 1, 'E la chiude una volta sola');
+}
+{
+  eventi.length = 0;
+  const intro = introFinta(3000);
+  motore.avvia(testo, { ripristina: () => ripristini++, intro }); passo(500);
+  motore.vaiAScena(1);
+  ok(intro.chiusa === 1 && !motore.inIntro && motore.indice === 1, 'Un salto durante l’intro la chiude');
+  motore.ferma();
+}
+{
+  const intro = introFinta(0);
+  eventi.length = 0;
+  motore.avvia(testo, { ripristina: () => ripristini++, intro });
+  ok(!motore.inIntro && eventi.some(e => e[0] === 'timelapse' && e[1] === 0) && !intro.passi.length,
+    'Intro di durata zero: si parte dalla prima scena');
+  motore.ferma();
+}
+{
+  // Un guasto della prima scena, all'uscita dall'intro, chiude tutto.
+  const intro = introFinta(1000);
+  registro.timelapse.crea = () => ({ aggiorna() { throw new Error('guasto controllato'); } });
+  motore.avvia(testo, { ripristina: () => ripristini++, intro }); passo(1000);
+  ok(motore.stato === 'errore' && intro.chiusa === 1 && !intro.finita && richieste.size === 0,
+    'Errore alla prima scena dopo l’intro: intro chiusa, demo ferma');
+  registro.timelapse.crea = () => ({ aggiorna: u => eventi.push(['timelapse', u]) });
+}
 // Ogni scena dei tour predefiniti ha la sua narrazione, con un ID stabile che
 // dice di quale demo e di quale scena è: il dizionario la trova da lì.
 for (const d of predefiniti) {

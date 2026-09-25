@@ -1,15 +1,23 @@
 # Niente in corso
 
-Ultimo lavoro: revisione completa della Galleria (v375).
+Ultimo lavoro: intro comune delle demo e demo delle aurore lunga (v375).
 
-- Cartella: `videoVerificaCartella` prova a leggere, chiede il solo permesso
-  dentro al tocco che apre (una volta per sessione), fa riscegliere solo una
-  cartella sparita. Otto stati in `videoStatoCartella`.
-- Schede con miniatura (niente più un `<video>` per scheda), miniature
-  ricordate in IndexedDB (negozio `anteprime`, DB versione 2).
-- Visualizzatore unico `#galleria-visore`: geometria tutta CSS, schermo intero
-  sul contenitore, un solo object URL alla volta, tastiera e strisciata.
-- Condivisione del `File` vero, con annullamento / errore / non supportata.
-- Prove: `scripts/prova-galleria.js` riscritta (44 controlli, file veri).
-- Non provato su un telefono vero (permessi persistenti di Chrome Android,
-  `webkitEnterFullscreen` su iPhone).
+- **Intro comune**: fase del motore prima della prima scena
+  (`demo-motore.js`: `contesto.intro`, `inIntro`, `chiudiIntro`), disegno,
+  preferenze e logo in `demo-intro.js` (`window.AstroDemoIntro`). Preferenze in
+  `astrocal_demo_intro_v1`, logo personale in IndexedDB (`astrocal_demo_intro`).
+  Gruppo 4 «Intro delle Demo» nella pagina Demo (i gruppi sono sei).
+- **Aurora boreale**: 11 scene, 173 s minimi, dal Sole (planetario) al banco
+  delle aurore (vento, nube, scudo, coda, anello, **taglio** coi colori) al
+  cielo di Helsinki. `aurora_lesson` accetta `chapter: taglio` con `place` e
+  `kp`; `didDemo.taglio()` / `didDemo.luoghi()` in `didattica.js`.
+- Prove: nuova `scripts/prova-demo-intro.js` (20); aggiornate
+  `prova-demo.js`, `prova-demo-browser.js`, `prova-demo-regia.js`,
+  `prova-demo-pagina.js`, `prova-narrazione-browser.js`, `prova-i18n.js`.
+  Nelle prove vecchie l'intro è spenta dal localStorage.
+- Preesistente, non toccato: in `prova-demo-pagina.js` le due prove della
+  «camera a mano» falliscono anche sul codice di partenza in questo ambiente
+  (il tocco al centro del cielo apre l'atlante delle costellazioni, che poi
+  copre il tasto Avvia della prova del pieno schermo).
+- Non provato su un telefono vero (pieno schermo nativo, IndexedDB in
+  navigazione privata).

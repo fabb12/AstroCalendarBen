@@ -39,6 +39,9 @@ const server = http.createServer((req, res) => {
         lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale'
       }));
       localStorage.setItem('astrocal_lingua', 'it');
+      // L'intro comune ha un banco suo (prova-demo-intro.js): qui si misurano
+      // le scene subito dopo l'avvio, e i tre secondi di nero si saltano.
+      localStorage.setItem('astrocal_demo_intro_v1', JSON.stringify({ attiva: false }));
     });
     await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
     await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof sky !== 'undefined' && sky.observer && sky.oggetti.length, null, { timeout: 30000 });
@@ -55,7 +58,7 @@ const server = http.createServer((req, res) => {
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
       ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss']);
-    assert.deepEqual(builtins.map(d => d.durata), [114000, 57000, 53000, 45000, 36000]);
+    assert.deepEqual(builtins.map(d => d.durata), [114000, 57000, 173000, 45000, 36000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
@@ -384,11 +387,14 @@ const server = http.createServer((req, res) => {
       await pagina.locator('#btn-vista-demo').click();
       await pagina.locator('#demo-elenco').selectOption(chiave);
       await pagina.locator('#demo-avvia').click();
-      // Il banco delle aurore apre il racconto: il cielo di Tromsø arriva
-      // alla sesta scena, e ci si salta per guardarlo senza aspettare.
+      // Il racconto delle aurore comincia dal Sole, visto dal planetario;
+      // poi il banco delle aurore; il cielo di Helsinki arriva alla nona
+      // scena, e ci si salta per guardarlo senza aspettare.
       if (chiave === 'aurora_boreale') {
-        assert.equal(await pagina.evaluate(() => vistaAttuale), 'didattica', 'Aurora: prima il banco didattico');
-        await pagina.evaluate(() => AstroDemo.vaiAScena(5));
+        assert.equal(await pagina.evaluate(() => vistaAttuale), 'cielo', 'Aurora: prima il Sole, dal planetario');
+        await pagina.evaluate(() => AstroDemo.vaiAScena(1));
+        assert.equal(await pagina.evaluate(() => vistaAttuale), 'didattica', 'Aurora: poi il banco didattico');
+        await pagina.evaluate(() => AstroDemo.vaiAScena(8));
       }
       if (chiave === 'eclisse_lunare') await pagina.evaluate(() => AstroDemo.vaiAScena(1));
       const durante = await pagina.evaluate(() => ({ stato: AstroDemo.stato, tempo: skyAdesso().toISOString(),
