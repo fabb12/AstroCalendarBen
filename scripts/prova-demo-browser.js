@@ -77,16 +77,16 @@ const server = http.createServer((req, res) => {
     assert.match(testoBase, /define_demo 'eclisse_tour_copia'/, 'La copia prende un nome suo');
     await pagina.locator('#demo-editor').fill(testoBase.replace('end: 17:48', 'end: 25:00'));
     assert.equal(await pagina.locator('#demo-salva').isDisabled(), true);
-    await pagina.locator('#demo-editor').fill(testoBase.replace('5s;', '5s'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('15s;', '15s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
     // La posizione è quella dell'errore, non la fine del file.
-    await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 5s;', 'duration: 5s; duration: 3s;'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 15s;', 'duration: 15s; duration: 3s;'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 5,/);
     // In inglese anche i messaggi di validazione sono in inglese.
     await pagina.evaluate(() => astroI18n.impostaLingua('en'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('degrees: 1.6', 'degrees: 400'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /^Field of view expected/);
-    await pagina.locator('#demo-editor').fill(testoBase.replace('5s;', '5s'));
+    await pagina.locator('#demo-editor').fill(testoBase.replace('15s;', '15s'));
     assert.match(await pagina.locator('#demo-validazione').innerText(), /line \d+, column \d+/);
     await pagina.evaluate(() => astroI18n.impostaLingua('it'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
