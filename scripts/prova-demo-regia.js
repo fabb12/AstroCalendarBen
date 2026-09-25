@@ -177,24 +177,33 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
 
     // --- 3. Eclisse di Luna: la Luna entra nell'ombra, e da fuori attraversa il cono
     await pagina.evaluate(() => AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'eclisse_lunare').testo));
-    const luceLuna = u => pagina.evaluate(u => {
-      AstroDemo.vaiAScena(1, u); AstroDemo.pausa(); skyAggiornaOggetti(true);
+    const luceLuna = (i, u) => pagina.evaluate(([i, u]) => {
+      AstroDemo.vaiAScena(i, u); AstroDemo.pausa(); skyAggiornaOggetti(true);
       const l = sky.oggetti.find(o => o.id === 'Moon');
       return l && l.ombraTerra ? l.ombraTerra.luce : 1;
-    }, u);
-    const l0 = await luceLuna(0), l1 = await luceLuna(1);
+    }, [i, u]);
+    const lAttesa = await luceLuna(0, 0.5);
+    ok(lAttesa > 0.6, `L'attesa: la Luna è ancora piena (${lAttesa.toFixed(2)})`);
+    const l0 = await luceLuna(1, 0), l1 = await luceLuna(2, 1);
     await attendiFotogrammi(); await foto('eclisse-luna-cielo');
     ok(l0 > 0.65 && l1 < 0.35 && l1 < l0 / 3, `La Luna si spegne entrando nell'ombra: ${l0.toFixed(2)} → ${l1.toFixed(2)}`);
+    // Dentro la totalità il campo si riapre sulle stelle, e la Luna resta rossa.
+    const stelle = await pagina.evaluate(() => { AstroDemo.vaiAScena(3, 1); AstroDemo.pausa(); skyAggiornaOggetti(true);
+      const l = sky.oggetti.find(o => o.id === 'Moon'); return { fov: sky.fov, luce: l.ombraTerra ? l.ombraTerra.luce : 1 }; });
+    ok(stelle.fov > 30 && stelle.luce < 0.35, `Totalità a campo largo: ${stelle.fov.toFixed(0)}°, luce ${stelle.luce.toFixed(2)}`);
     const tipi3d = [];
     for (const u of [0, 0.3, 0.55, 0.8, 1]) {
-      tipi3d.push(await pagina.evaluate(u => { AstroDemo.vaiAScena(4, u); AstroDemo.pausa();
+      tipi3d.push(await pagina.evaluate(u => { AstroDemo.vaiAScena(6, u); AstroDemo.pausa();
         return solStatoEclissi(skyAdesso()).tipo; }, u));
       if (u === 0.55) { await attendiFotogrammi(); await foto('eclisse-luna-cono'); }
     }
     ok(tipi3d.includes('lunare-totale'), '3D: la Luna è dentro al cono: ' + tipi3d.join(','));
     ok(new Set(tipi3d).size >= 2 && tipi3d[0] !== 'lunare-totale' && tipi3d[4] !== 'lunare-totale',
       '3D: la Luna entra ed esce dal cono');
-    await salta(5, 1);
+    const massimo = await pagina.evaluate(() => { AstroDemo.vaiAScena(7, 0.5); AstroDemo.pausa();
+      return { tipo: solStatoEclissi(skyAdesso()).tipo, vicino: sol.vicino }; });
+    ok(massimo.vicino && massimo.tipo === 'lunare-totale', '3D: attorno al massimo, la Terra davanti al Sole');
+    await salta(8, 1);
     const l2 = await pagina.evaluate(() => { skyAggiornaOggetti(true); const l = sky.oggetti.find(o => o.id === 'Moon'); return l.ombraTerra ? l.ombraTerra.luce : 1; });
     ok(l2 > 0.9, 'Di nuovo in cielo: la Luna è uscita dall’ombra');
     await pagina.evaluate(() => AstroDemo.ferma());
@@ -279,7 +288,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
 
     // --- 5. Corteo dei pianeti: da fuori, tutti nel quadro mentre la camera scende
     await pagina.evaluate(() => AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'allineamento_pianeti').testo));
-    const pianeti3d = async u => { await salta(3, u); return pagina.evaluate(async () => {
+    const pianeti3d = async u => { await salta(7, u); return pagina.evaluate(async () => {
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       solMisura();
       const dentro = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter'].filter(id => {
@@ -293,6 +302,16 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     const p1 = await pianeti3d(1); await foto('pianeti-taglio');
     ok(p0.elev > 70 && p1.elev < 20 && Math.abs(p1.az - p0.az) > 1, 'Dall’alto al piano, girando');
     ok(p0.dentro.length === 5 && p1.dentro.length === 5, 'Tutti e cinque nel quadro: ' + p0.dentro + ' / ' + p1.dentro);
+    await salta(8, 1); const p2 = await pagina.evaluate(() => sol.elev);
+    ok(p2 < 5, 'Di taglio: il disco sottile (' + p2.toFixed(1) + '°)');
+    // I tre pianeti da vicino: il bersaglio al centro, a campo da telescopio.
+    for (const [i, id] of [[2, 'Jupiter'], [3, 'Venus'], [4, 'Saturn']]) {
+      const v = await pagina.evaluate(([i, id]) => { AstroDemo.vaiAScena(i, 1); AstroDemo.pausa(); skyAggiornaOggetti(true);
+        const o = sky.oggetti.find(x => x.id === id);
+        return { fov: sky.fov, target: sky.target, alt: o && o.alt }; }, [i, id]);
+      ok(v.target === id && v.fov < 1 && v.alt > 5, id + ' da vicino, sopra l’orizzonte (' + (v.alt || 0).toFixed(0) + '°)');
+      if (id === 'Saturn') { await attendiFotogrammi(); await foto('pianeti-saturno'); }
+    }
     await pagina.evaluate(() => AstroDemo.ferma());
 
     // --- 6. ISS: lo stesso passaggio in cielo e da fuori
@@ -314,13 +333,26 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     const i2 = await iss(0, 0.8);
     ok(i1.alt > 10 && i1.dentro, 'La ISS è alta e nel quadro a metà passaggio');
     ok(Math.hypot(i2.px - i0.px, i2.py - i0.py) > 100, 'La ISS attraversa il cielo di ' + Math.round(Math.hypot(i2.px - i0.px, i2.py - i0.py)) + ' px');
+    // Il culmine inseguito da vicino: la stazione resta al centro del quadro,
+    // e a quel campo si disegna il modellino e non il rombo.
+    for (const u of [0, 0.5, 1]) {
+      const t = await iss(1, u);
+      const centro = Math.hypot(t.px - await pagina.evaluate(() => sky.larghezza / 2), t.py - await pagina.evaluate(() => sky.altezza / 2));
+      ok(t.dentro && centro < 40 && await pagina.evaluate(() => sky.fov) < 1, 'ISS inseguita al centro (' + centro.toFixed(0) + ' px)');
+      if (u === 0.5) { await attendiFotogrammi(); await foto('iss-vicina'); }
+    }
     const a0 = await pagina.evaluate(() => { AstroDemo.vaiAScena(0, 0); AstroDemo.pausa(); return +skyAdesso(); });
-    const b0 = await pagina.evaluate(() => { AstroDemo.vaiAScena(2, 0); AstroDemo.pausa(); return +skyAdesso(); });
-    const b1 = await pagina.evaluate(() => { AstroDemo.vaiAScena(2, 1); AstroDemo.pausa(); return +skyAdesso(); });
+    const b0 = await pagina.evaluate(() => { AstroDemo.vaiAScena(3, 0); AstroDemo.pausa(); return +skyAdesso(); });
+    const b1 = await pagina.evaluate(() => { AstroDemo.vaiAScena(3, 1); AstroDemo.pausa(); return +skyAdesso(); });
     const a1 = await pagina.evaluate(() => { AstroDemo.vaiAScena(0, 1); AstroDemo.pausa(); return +skyAdesso(); });
     ok(Math.abs(a0 - b0) < 1000 && Math.abs(a1 - b1) < 1000, 'Planetario e 3D: lo stesso intervallo di tempo');
-    const i3 = await iss(2, 0.5); await attendiFotogrammi(); await foto('iss-3d');
+    const i3 = await iss(3, 0.5); await attendiFotogrammi(); await foto('iss-3d');
     ok(i3.sol && i3.satelliti.includes('iss') && await pagina.evaluate(() => sol.perno === 'Earth'), '3D: la ISS attorno alla Terra');
+    const orbita0 = await pagina.evaluate(() => { AstroDemo.vaiAScena(4, 0); AstroDemo.pausa(); return +skyAdesso(); });
+    const orbita1 = await pagina.evaluate(() => { AstroDemo.vaiAScena(4, 1); AstroDemo.pausa(); return +skyAdesso(); });
+    ok(orbita1 - orbita0 > 30 * 60000, "Mezz'ora di orbita da fuori: " + Math.round((orbita1 - orbita0) / 60000) + " min");
+    const congedo = await iss(5, 1);
+    ok(!congedo.sol && congedo.t > a1 - 60000 && congedo.t <= a1 + 1000, 'Il congedo torna in cielo, a fine passaggio');
     await pagina.evaluate(() => AstroDemo.ferma());
 
     // --- 7. Le opzioni: vista pulita, elementi, schermo intero e registrazione
@@ -431,7 +463,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.waitForFunction(() => document.fullscreenElement === document.documentElement, null, { timeout: 5000 });
     const pieno = await pagina.evaluate(() => ({ finto: sky.fintoSchermoIntero, cielo: sky.schermoIntero }));
     ok(pieno.finto && pieno.cielo, 'Demo a schermo intero: documento e cielo');
-    await pagina.evaluate(() => AstroDemo.vaiAScena(3));
+    await pagina.evaluate(() => AstroDemo.vaiAScena(7));
     await pagina.waitForTimeout(300);
     ok(await pagina.evaluate(() => document.fullscreenElement === document.documentElement && solSchermoIntero),
       'Il passaggio alla 3D non esce dallo schermo intero');

@@ -22780,7 +22780,10 @@ function skyDisegna() {
   }
 
   skyControllaSostaMirino();
-  skyDisegnaMirino(ctx);
+  // Durante una demo con la vista pulita il mirino non serve a nessuno — la
+  // camera la tiene la regia — e nei primi piani sta esattamente sopra al
+  // pianeta o alla stazione che si è andati a guardare.
+  if (!(window.AstroDemo && window.AstroDemo.silenzioso)) skyDisegnaMirino(ctx);
   skyDisegnaAvanzamentoSosta(ctx);
 
   // Se manca la posizione non c'è nulla da calcolare: spieghiamo il perché

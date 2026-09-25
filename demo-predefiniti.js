@@ -87,49 +87,88 @@
       chiave: 'eclisse_lunare',
       testo: `define_demo 'eclisse_lunare' {
   // Eclisse totale del 31 dicembre 2028 (massimo 16:52 UTC), vista da Sapporo
-  // nella notte del 1 gennaio.
+  // nella notte del 1 gennaio. Contatti (minuti dal massimo): penombra ±168,
+  // parziale ±105, totalità ±36. La Luna sta fra 55° e 70° per tutto il
+  // racconto: il cielo non ha niente davanti.
+  // Dieci tempi: l'attesa, il morso, la totalità, le stelle che tornano;
+  // poi da fuori il cono, il bersaglio centrato, la Terra vista dalla Luna;
+  // e di nuovo a terra l'uscita e il congedo.
   scene planetarium_view {
-    duration: 5s;
+    // L'attesa: il campo si stringe dalla notte di festa alla Luna piena.
+    duration: 16s;
     action: narrate { id: 'demo.narr.eclisse_lunare.1' };
     action: set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' };
-    action: set_date { iso: '2028-12-31T14:40:00Z' };
-    action: event_window { event: lunar_eclipse, from: -130, to: -110 };
-    action: zoom_fov { from: 40, to: 3 };
+    action: set_date { iso: '2028-12-31T14:07:00Z' };
+    action: event_window { event: lunar_eclipse, from: -165, to: -125 };
+    action: zoom_fov { from: 55, to: 8 };
     action: center_target { target: 'Moon' };
   }
   scene planetarium_view {
-    // La Luna entra nell'ombra della Terra e si fa rossa.
-    duration: 14s;
+    // Il primo morso dell'ombra (contatto parziale a −105 min).
+    duration: 20s;
     action: narrate { id: 'demo.narr.eclisse_lunare.2' };
-    action: set_fov { degrees: 3 };
-    action: event_window { event: lunar_eclipse, from: -110, to: 5 };
+    action: event_window { event: lunar_eclipse, from: -125, to: -40 };
+    action: zoom_fov { from: 8, to: 3 };
+    action: center_target { target: 'Moon' };
+  }
+  scene planetarium_view {
+    // L'ultimo spicchio si spegne: totalità a −36 min, e la Luna si fa rame.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.3' };
+    action: event_window { event: lunar_eclipse, from: -40, to: 5 };
+    action: zoom_fov { from: 3, to: 1.2 };
+    action: center_target { target: 'Moon' };
+  }
+  scene planetarium_view {
+    // Dentro la totalità il campo si riapre: senza la Luna piena
+    // abbagliante, attorno tornano le stelle.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.4' };
+    action: event_window { event: lunar_eclipse, from: 5, to: 30 };
+    action: zoom_fov { from: 1.2, to: 40 };
     action: center_target { target: 'Moon' };
   }
   scene transition {
-    duration: 4s;
-    action: narrate { id: 'demo.narr.eclisse_lunare.3' };
+    duration: 6s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.5' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
     // Da fuori: Sole, Terra e Luna in fila, e il cono d'ombra della Terra.
-    duration: 8s;
-    action: narrate { id: 'demo.narr.eclisse_lunare.4' };
+    duration: 16s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.6' };
     action: event_window { event: lunar_eclipse, from: -170, to: -110 };
     action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 40, elev_from: 3, elev_to: 18, zoom_from: 0.9, zoom_to: 1 };
   }
   scene solar_system_3d {
     // La Luna attraversa davvero il cono, e la camera le gira attorno.
-    duration: 14s;
-    action: narrate { id: 'demo.narr.eclisse_lunare.5' };
+    duration: 22s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.7' };
     action: event_window { event: lunar_eclipse, from: -110, to: 130 };
     action: camera_3d { scene: earth_moon, focus: 'Moon', orbit: 50, elev_from: 18, elev_to: 8, zoom_from: 1.6, zoom_to: 3.2 };
   }
+  scene solar_system_3d {
+    // Attorno al massimo, con la Terra al centro: il disco nero davanti al
+    // Sole che si vedrebbe dalla Luna, e l'anello dei tramonti.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.8' };
+    action: event_window { event: lunar_eclipse, from: -12, to: 12 };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: -45, elev_from: 8, elev_to: 3, zoom_from: 1.2, zoom_to: 4 };
+  }
   scene planetarium_view {
-    // Di nuovo da Sapporo: la Luna esce dall'ombra.
-    duration: 12s;
-    action: narrate { id: 'demo.narr.eclisse_lunare.6' };
+    // Di nuovo da Sapporo: il primo filo d'argento, e l'ombra che si ritira.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.9' };
     action: set_fov { degrees: 3 };
-    action: event_window { event: lunar_eclipse, from: 5, to: 170 };
+    action: event_window { event: lunar_eclipse, from: 30, to: 170 };
+    action: center_target { target: 'Moon' };
+  }
+  scene planetarium_view {
+    // Il congedo: la Luna intera, e il campo che si riapre sulla notte.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.eclisse_lunare.10' };
+    action: event_window { event: lunar_eclipse, from: 170, to: 200 };
+    action: zoom_fov { from: 3, to: 60 };
     action: center_target { target: 'Moon' };
   }
 }`
@@ -229,12 +268,28 @@
     {
       chiave: 'allineamento_pianeti',
       testo: `define_demo 'allineamento_pianeti' {
-  // Tucson, alba del 21 ottobre 2028: quattro pianeti nel cielo orientale.
+  // Tucson, alba del 21 ottobre 2028: quattro pianeti nel cielo orientale,
+  // e Saturno che tramonta a ovest. Alle 05:45 locali (12:45 UTC) Marte è a
+  // 49°, Venere a 25°, Mercurio a 7°, Giove a 6°, Saturno a 20° dall'altra
+  // parte del cielo; il Sole sorge verso le 06:30.
+  // Dieci tempi: il buio, la fila, tre pianeti da vicino (Giove, Venere,
+  // Saturno), la strada dell'eclittica; poi da fuori la pianta e il taglio
+  // del Sistema Solare; e l'alba che li spegne.
   scene planetarium_view {
-    duration: 8s;
+    // Il deserto al buio, guardando a est: la fila sta salendo.
+    duration: 16s;
     action: narrate { id: 'demo.narr.allineamento_pianeti.1' };
     action: set_location { lat: 32.2226, lon: -110.9747, name: 'Tucson', timezone: 'America/Phoenix' };
-    action: set_date { iso: '2028-10-21T12:45:00Z' };
+    action: set_date { iso: '2028-10-21T12:30:00Z' };
+    action: timelapse { start: 05:30, end: 05:45 };
+    action: zoom_fov { from: 130, to: 90 };
+    action: point_view { az: 100, alt: 18 };
+  }
+  scene planetarium_view {
+    // La fila, pianeta per pianeta.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.2' };
+    action: timelapse { start: 05:45, end: 05:52 };
     action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
     action: highlight_object { name: 'Mercury', scale: 3 };
     action: highlight_object { name: 'Venus', scale: 3 };
@@ -242,9 +297,34 @@
     action: highlight_object { name: 'Jupiter', scale: 3 };
   }
   scene planetarium_view {
-    duration: 10s;
-    action: narrate { id: 'demo.narr.allineamento_pianeti.2' };
-    action: timelapse { start: 05:45, end: 06:05 };
+    // Giove da vicino: le bande di nubi.
+    duration: 17s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.3' };
+    action: timelapse { start: 05:52, end: 05:54 };
+    action: zoom_fov { from: 40, to: 0.25 };
+    action: center_target { target: 'Jupiter' };
+  }
+  scene planetarium_view {
+    // Venere da vicino: non è tonda, è gibbosa.
+    duration: 16s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.4' };
+    action: timelapse { start: 05:54, end: 05:56 };
+    action: zoom_fov { from: 40, to: 0.25 };
+    action: center_target { target: 'Venus' };
+  }
+  scene planetarium_view {
+    // Mezzo giro: Saturno e i suoi anelli, bassi a ovest.
+    duration: 17s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.5' };
+    action: timelapse { start: 05:56, end: 05:58 };
+    action: zoom_fov { from: 60, to: 0.25 };
+    action: center_target { target: 'Saturn' };
+  }
+  scene planetarium_view {
+    // Di nuovo la fila: la strada dell'eclittica, e il Sole che arriva.
+    duration: 21s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.6' };
+    action: timelapse { start: 05:58, end: 06:05 };
     action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
     action: highlight_object { name: 'Mercury', scale: 3 };
     action: highlight_object { name: 'Venus', scale: 3 };
@@ -252,21 +332,28 @@
     action: highlight_object { name: 'Jupiter', scale: 3 };
   }
   scene transition {
-    duration: 4s;
-    action: narrate { id: 'demo.narr.allineamento_pianeti.3' };
+    duration: 6s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.7' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
-    // Da sopra il piano, poi di taglio: i pianeti sono su orbite diverse,
-    // e la fila in cielo è solo la direzione in cui li vediamo dalla Terra.
-    duration: 16s;
-    action: narrate { id: 'demo.narr.allineamento_pianeti.4' };
+    // Da sopra il piano: i pianeti sono su orbite diverse, e la fila in
+    // cielo è solo la direzione in cui li vediamo dalla Terra.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.8' };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Mercury,Venus,Earth,Mars,Jupiter', orbit: 70, elev_from: 80, elev_to: 12, zoom_from: 0.9, zoom_to: 1.15 };
   }
+  scene solar_system_3d {
+    // Di taglio: il Sistema Solare è un disco sottile.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.9' };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Mercury,Venus,Earth,Mars,Jupiter', orbit: 50, elev_from: 12, elev_to: 3, zoom_from: 1.15, zoom_to: 1.2 };
+  }
   scene planetarium_view {
-    duration: 7s;
-    action: narrate { id: 'demo.narr.allineamento_pianeti.5' };
-    action: timelapse { start: 06:05, end: 06:15 };
+    // L'alba: i pianeti si spengono uno a uno, Venere per ultima.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.allineamento_pianeti.10' };
+    action: timelapse { start: 06:05, end: 06:30 };
     action: frame_objects { names: 'Mercury,Venus,Mars,Jupiter' };
     action: highlight_object { name: 'Mercury', scale: 3 };
     action: highlight_object { name: 'Venus', scale: 3 };
@@ -279,23 +366,44 @@
       chiave: 'passaggio_iss',
       testo: `define_demo 'passaggio_iss' {
   // Il prossimo passaggio della ISS sopra il luogo del planetario, calcolato
-  // dall'app coi dati orbitali aggiornati: prima in cielo, poi da fuori,
-  // nello stesso intervallo di tempo.
+  // dall'app coi dati orbitali aggiornati, raccontato a capitoli: l'arco
+  // intero, il culmine inseguito da vicino (il modellino), lo stesso
+  // intervallo da fuori, mezz'ora di orbita, e il congedo in cielo.
   scene planetarium_view {
-    duration: 16s;
+    duration: 22s;
     action: narrate { id: 'demo.narr.passaggio_iss.1' };
     action: satellite_pass { satellite: iss, before: 1, after: 1 };
   }
-  scene transition {
-    duration: 4s;
+  scene planetarium_view {
+    // Il culmine, inseguito con un campo da telescopio.
+    duration: 18s;
     action: narrate { id: 'demo.narr.passaggio_iss.2' };
+    action: satellite_pass { satellite: iss, before: 1, after: 1, from: 0.4, to: 0.6, track: 0.25 };
+  }
+  scene transition {
+    duration: 6s;
+    action: narrate { id: 'demo.narr.passaggio_iss.3' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
   scene solar_system_3d {
-    duration: 16s;
-    action: narrate { id: 'demo.narr.passaggio_iss.3' };
+    // Lo stesso intervallo della prima scena, visto da fuori.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.passaggio_iss.4' };
     action: satellite_pass { satellite: iss, before: 1, after: 1 };
     action: camera_3d { scene: system, focus: 'ISS', orbit: 80, elev_from: 15, elev_to: 45, zoom_from: 0.8, zoom_to: 1.3 };
+  }
+  scene solar_system_3d {
+    // Più largo e più lungo: più di mezz'ora di orbita attorno al pianeta.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.passaggio_iss.5' };
+    action: satellite_pass { satellite: iss, before: 15, after: 15 };
+    action: camera_3d { scene: system, focus: 'ISS', orbit: 140, elev_from: 45, elev_to: 25, zoom_from: 1.3, zoom_to: 0.5 };
+  }
+  scene planetarium_view {
+    // Il congedo: l'ultimo tratto dell'arco, a campo largo.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.passaggio_iss.6' };
+    action: satellite_pass { satellite: iss, before: 1, after: 1, from: 0.6, to: 1 };
   }
 }`
     }
