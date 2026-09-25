@@ -1,24 +1,23 @@
 # Niente in corso
 
-Ultimo lavoro: Demo riorganizzata e menu raggruppato (v373).
+Ultimo lavoro: intro comune delle demo e demo delle aurore lunga (v375).
 
-- Menu a sei voci: Stasera, **Calendario** (Mese/Agenda/Diario in
-  `#sottonav-calendario`, `GRUPPI_VISTE` in `app.js`), Planetario,
-  Telescopio, Didattica, **Demo** (`#vista-demo`).
-- La pagina Demo raccoglie tutto quello che stava in Impostazioni → Demo e
-  la Narrazione di Impostazioni → Osservazione, in cinque gruppi.
-- `demo.js`: comandi solo a demo in corso (`hidden` vince), icona
-  Pausa/Riprendi, sottotitoli in `#demo-sottotitoli`, tocco ≠ presa della
-  camera (trascina/pizzico/rotellina sì), pieno schermo senza lampeggi fra
-  planetario e 3D, musica «Encelado» 30% nelle eclissi con ripristino
-  (`musicaDemoAvvia`/`musicaDemoFerma` in `app.js`).
-- Tolto il paesaggio sonoro generato.
-- Corretti tre difetti preesistenti: la vista pulita toglieva i
-  `pointer-events` alla tela (camera immobile), `skyMostraGruppo` usato
-  come «apri» mentre è un interruttore (pannello chiuso a fine demo),
-  e l'audio della registrazione mai iniettato (aggancio tolto prima del
-  `captureStream` asincrono; in più una ReferenceError su `comandiCielo`).
-- Prove: nuova `scripts/prova-demo-pagina.js` (19), aggiornate
-  `prova-demo-browser`, `prova-demo-regia`, `prova-narrazione-browser`,
-  `prova-guida`, `prova-musica`.
-- Non provato su un telefono vero (pieno schermo nativo e gesti reali).
+- **Intro comune**: fase del motore prima della prima scena
+  (`demo-motore.js`: `contesto.intro`, `inIntro`, `chiudiIntro`), disegno,
+  preferenze e logo in `demo-intro.js` (`window.AstroDemoIntro`). Preferenze in
+  `astrocal_demo_intro_v1`, logo personale in IndexedDB (`astrocal_demo_intro`).
+  Gruppo 4 «Intro delle Demo» nella pagina Demo (i gruppi sono sei).
+- **Aurora boreale**: 11 scene, 173 s minimi, dal Sole (planetario) al banco
+  delle aurore (vento, nube, scudo, coda, anello, **taglio** coi colori) al
+  cielo di Helsinki. `aurora_lesson` accetta `chapter: taglio` con `place` e
+  `kp`; `didDemo.taglio()` / `didDemo.luoghi()` in `didattica.js`.
+- Prove: nuova `scripts/prova-demo-intro.js` (20); aggiornate
+  `prova-demo.js`, `prova-demo-browser.js`, `prova-demo-regia.js`,
+  `prova-demo-pagina.js`, `prova-narrazione-browser.js`, `prova-i18n.js`.
+  Nelle prove vecchie l'intro è spenta dal localStorage.
+- Preesistente, non toccato: in `prova-demo-pagina.js` le due prove della
+  «camera a mano» falliscono anche sul codice di partenza in questo ambiente
+  (il tocco al centro del cielo apre l'atlante delle costellazioni, che poi
+  copre il tasto Avvia della prova del pieno schermo).
+- Non provato su un telefono vero (pieno schermo nativo, IndexedDB in
+  navigazione privata).

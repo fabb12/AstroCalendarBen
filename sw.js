@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v374';
+const CACHE_NAME = 'astrocal-v375';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -14,6 +14,7 @@ const ASSETS = [
   './fonts/SpaceGrotesk.ttf',
   './app.js',
   './demo-motore.js',
+  './demo-intro.js',
   './demo.js',
   './demo-predefiniti.js',
   './demo-libreria.js',

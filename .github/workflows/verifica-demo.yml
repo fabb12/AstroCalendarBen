@@ -39,6 +39,8 @@ jobs:
       - run: node scripts/prova-demo-regia.js
       - run: node scripts/prova-demo-pagina.js
         if: success() || failure()
+      - run: node scripts/prova-demo-intro.js
+        if: success() || failure()
       - run: node scripts/prova-narrazione-browser.js
         if: success() || failure()
       - uses: actions/upload-artifact@v4
@@ -48,4 +50,6 @@ jobs:
           path: |
             work/demo-*.png
             work/regia-*.png
+            work/intro-*.png
+            work/aurora-*.png
           if-no-files-found: ignore

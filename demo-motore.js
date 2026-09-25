@@ -128,6 +128,16 @@
 // la scena può restare aperta oltre quel tempo finché la voce non termina.
       this.narrazioneFinita = true;
       this.attesaFineNarrazione = false;
+
+// L'intro comune (logo e titolo su fondo nero) sta **prima** della prima
+// scena ed è del motore, non di una demo: gira sullo stesso orologio, quindi
+// la pausa la ferma, Stop ed Escape la chiudono e un salto di scena la
+// scavalca. Il contesto la offre come `intro: { durata, aggiorna(u),
+// fine(), chiudi() }`: `fine` arriva quando la prima scena è già aperta
+// sotto al nero (così togliendolo non si vede la pagina di prima), `chiudi`
+// quando l'intro viene interrotta.
+      this.intro = null;
+      this.inIntro = false;
     }
     prepara(testo) {
       const demo = analizza(testo);
@@ -143,7 +153,29 @@
       this.ferma();
       this.demo = demo; this.contesto = contesto; this.indice = 0;
       this.trascorso = 0; this.ultimo = this.ora(); this.stato = 'attivo';
-      try { this.entra(); this.programma(); } catch (e) { this.fallisci(e); }
+      const intro = contesto.intro;
+      this.intro = intro && Number(intro.durata) > 0 ? intro : null;
+      this.inIntro = !!this.intro;
+      try {
+        if (this.inIntro) {
+          if (this.intro.aggiorna) this.intro.aggiorna(0);
+          this.avvisa(this);
+        } else this.entra();
+        this.programma();
+      } catch (e) { this.fallisci(e); }
+    }
+    // Chiude l'intro. Finita da sé, apre la prima scena (col suo orologio a
+    // zero: nessun avanzo dell'intro finisce dentro al racconto) e solo dopo
+    // le dice `fine`; interrotta, le dice `chiudi`. Una volta sola.
+    chiudiIntro(finita) {
+      const intro = this.intro;
+      if (!intro) return;
+      this.intro = null; this.inIntro = false;
+      if (finita) {
+        this.trascorso = 0; this.ultimo = this.ora();
+        try { this.entra(); } catch (e) { try { if (intro.chiudi) intro.chiudi(); } catch (_) { /* niente */ } throw e; }
+        if (intro.fine) intro.fine();
+      } else if (intro.chiudi) intro.chiudi();
     }
     entra() {
       const scena = this.demo.scene[this.indice];
@@ -234,6 +266,20 @@
         this.trascorso += Math.max(0, adesso - this.ultimo);
         this.ultimo = adesso;
 
+        if (this.inIntro) {
+          const intro = this.intro;
+          if (this.trascorso < intro.durata) {
+            if (intro.aggiorna) intro.aggiorna(this.trascorso / intro.durata);
+            this.programma();
+            return;
+          }
+          if (intro.aggiorna) intro.aggiorna(1);
+          this.chiudiIntro(true);
+          if (this.stato !== 'attivo') return;
+          this.programma();
+          return;
+        }
+
         while (this.trascorso >= this.demo.scene[this.indice].durata) {
           const durata = this.demo.scene[this.indice].durata;
 
@@ -288,6 +334,9 @@
       const i = Math.max(0, Math.min(this.demo.scene.length - 1, Math.floor(indice)));
       const u = Math.max(0, Math.min(0.999, Number(frazione) || 0));
       try {
+        // Un salto durante l'intro la chiude subito: niente nero rimasto
+        // sopra alla scena in cui si è saltati.
+        if (this.inIntro) this.chiudiIntro(false);
         this.esci();
         this.indice = i; this.trascorso = 0; this.ultimo = this.ora();
         this.entra();
@@ -327,7 +376,8 @@
       if (this.raf !== null) this.annulla(this.raf);
       this.raf = null; this.stato = stato;
       let errore;
-      try { this.esci(); } catch (e) { errore = e; }
+      try { this.chiudiIntro(false); } catch (e) { errore = e; }
+      try { this.esci(); } catch (e) { errore = errore || e; }
       const contesto = this.contesto; this.contesto = null;
       try { if (contesto && contesto.ripristina) contesto.ripristina(); } catch (e) { errore = errore || e; }
       this.avvisa(this);

@@ -53,6 +53,9 @@ async function prova(nome, fn) {
     await pagina.addInitScript(() => {
       localStorage.setItem('astrocalendario_posizione', JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' }));
       localStorage.setItem('astrocal_lingua', 'it');
+      // L'intro comune ha un banco suo (prova-demo-intro.js): qui si misurano
+      // le scene subito dopo l'avvio, e i tre secondi di nero si saltano.
+      localStorage.setItem('astrocal_demo_intro_v1', JSON.stringify({ attiva: false }));
       // La sintesi del dispositivo, finta: un Chromium senza testa non ha voci.
       const detti = [];
       window.__detti = detti;
@@ -131,7 +134,7 @@ async function prova(nome, fn) {
       });
       assert.deepEqual(doppi, []);
     });
-    await prova('la pagina ha i cinque gruppi, nell\'ordine, e un\'azione principale', async () => {
+    await prova('la pagina ha i sei gruppi, nell\'ordine, e un\'azione principale', async () => {
       await pagina.locator('#btn-vista-demo').click();
       const p = await pagina.evaluate(() => {
         const v = document.getElementById('vista-demo');
@@ -144,17 +147,20 @@ async function prova(nome, fn) {
           avvia: gruppoDi('demo-avvia'), schermo: gruppoDi('demo-opz-schermo'), pulita: gruppoDi('demo-opz-vista-pulita'),
           narr: gruppoDi('imp-narrazione-attiva'), musica: gruppoDi('demo-opz-musica-eclissi'),
           registra: gruppoDi('demo-opz-registra'), audio: gruppoDi('demo-opz-registra-audio'), livelli: gruppoDi('demo-livelli'),
+          intro: gruppoDi('demo-intro-attiva'), logo: gruppoDi('demo-intro-logo-file'), titolo: gruppoDi('demo-intro-titolo'),
           avviaPiu: avvia.height > secondario.height && avvia.width > secondario.width * 2,
           etichette: [...v.querySelectorAll('input[type="checkbox"]')].every(c => c.labels && c.labels.length === 1),
           attiva: document.getElementById('btn-vista-demo').getAttribute('aria-current') };
       });
       assert.equal(p.h2, 'Demo automatizzate');
-      assert.deepEqual(p.titoli, ['1 Demo da eseguire', '2 Presentazione', '3 Registrazione', '4 Narrazione e audio', '5 Elementi del Planetario']);
+      assert.deepEqual(p.titoli, ['1 Demo da eseguire', '2 Presentazione', '3 Registrazione', '4 Intro delle Demo',
+        '5 Narrazione e audio', '6 Elementi del Planetario']);
       assert.equal(p.avvia, '1 Demo da eseguire');
       assert.equal(p.schermo, '2 Presentazione'); assert.equal(p.pulita, '2 Presentazione');
       assert.equal(p.registra, '3 Registrazione'); assert.equal(p.audio, '3 Registrazione');
-      assert.equal(p.narr, '4 Narrazione e audio'); assert.equal(p.musica, '4 Narrazione e audio');
-      assert.equal(p.livelli, '5 Elementi del Planetario');
+      assert.equal(p.intro, '4 Intro delle Demo'); assert.equal(p.logo, '4 Intro delle Demo'); assert.equal(p.titolo, '4 Intro delle Demo');
+      assert.equal(p.narr, '5 Narrazione e audio'); assert.equal(p.musica, '5 Narrazione e audio');
+      assert.equal(p.livelli, '6 Elementi del Planetario');
       assert.ok(p.avviaPiu, 'Avvia demo più evidente dei tasti secondari');
       assert.ok(p.etichette, 'ogni casella ha la sua etichetta');
       assert.equal(p.attiva, 'page');

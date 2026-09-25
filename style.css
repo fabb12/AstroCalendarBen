@@ -12100,6 +12100,101 @@ body .demo-controlli .demo-tasto[aria-pressed="true"] { background:rgba(76,141,2
 }
 
 /* =====================================================================
+   L'INTRO DELLE DEMO (demo-intro.js). Un velo nero col logo e il titolo,
+   prima della prima scena di ogni demo. Lo stesso nodo fa tre mestieri: la
+   vera intro (`.demo-intro-schermo`, fissata al viewport sopra a tutto ma
+   **sotto** ai comandi della demo, così Stop resta raggiungibile), la sua
+   anteprima completa e il riquadro fermo della pagina Demo
+   (`.demo-intro-riquadro`). Il velo è un contenitore (`container-type:
+   size`) e le misure dentro sono in `cqw`/`cqh`/`cqmin`: il riquadro da
+   trecento pixel è la stessa impaginazione dello schermo intero in scala,
+   non una sua imitazione. Le righe in `vw`/`vh` prima di quelle in unità
+   del contenitore sono il ripiego per i browser che quelle non le hanno.
+   Il logo si stringe dentro a un riquadro massimo e non si deforma mai
+   (`object-fit: contain`, larghezza e altezza automatiche): proporzioni e
+   trasparenza sono quelle del file. Il titolo va a capo equilibrato, non
+   si taglia e non esce: il corpo lo sceglie la sua lunghezza
+   (`data-misura`), la misura del riquadro fa il resto.
+   ===================================================================== */
+.demo-intro {
+  container-type:size; box-sizing:border-box; background:#000; color:#f5f7fb;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  font-family:'Inter', system-ui, sans-serif;
+}
+.demo-intro-schermo {
+  position:fixed; inset:0; z-index:9990; width:100vw; height:100vh; height:100dvh;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  transition:opacity .45s ease;
+}
+.demo-intro-schermo[data-fase="esce"] { opacity:0; pointer-events:none; }
+.demo-intro-anteprima-completa { cursor:pointer; outline:none; }
+.demo-intro-contenuto {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3.2vmin; gap:3.2cqmin; max-width:90%; max-height:90%; text-align:center;
+}
+.demo-intro-logo {
+  display:block; width:auto; height:auto; object-fit:contain; flex:0 1 auto; min-height:0;
+  max-width:min(52vw, 22rem); max-height:34vh;
+  max-width:min(52cqw, 58cqh); max-height:40cqh;
+  will-change:opacity, transform; user-select:none;
+}
+.demo-intro.senza-titolo .demo-intro-logo { max-height:52vh; max-height:56cqh; max-width:min(60cqw, 70cqh); }
+.demo-intro-logo[hidden] { display:none; }
+.demo-intro-titolo {
+  margin:0; max-width:min(90vw, 40rem); max-width:min(88cqw, 44rem);
+  font-weight:600; letter-spacing:.01em; line-height:1.2;
+  overflow-wrap:anywhere; hyphens:auto; text-wrap:balance; white-space:normal;
+  text-shadow:0 1px 18px rgba(120, 170, 255, .18);
+  font-size:clamp(1.25rem, min(6vw, 8vh), 3.2rem);
+  font-size:clamp(.8rem, min(7cqw, 8.5cqh), 3.2rem);
+}
+.demo-intro-titolo[data-misura="medio"] {
+  font-size:clamp(1.1rem, min(4.4vw, 6vh), 2.4rem);
+  font-size:clamp(.72rem, min(5.6cqw, 6.4cqh), 2.4rem);
+}
+.demo-intro-titolo[data-misura="lungo"] {
+  font-size:clamp(1rem, min(3.4vw, 4.6vh), 1.8rem); font-weight:500;
+  font-size:clamp(.66rem, min(4.6cqw, 4.9cqh), 1.8rem);
+}
+.demo-intro-titolo[hidden] { display:none; }
+/* Col telefono girato l'altezza è poca: il logo cede per primo. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .demo-intro-schermo .demo-intro-logo { max-height:36vh; }
+}
+@container (max-aspect-ratio: 3/4) {
+  .demo-intro-logo { max-width:62cqw; max-height:32cqh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-intro-schermo { transition:none; }
+  .demo-intro-logo, .demo-intro-titolo { transform:none !important; }
+}
+
+/* Il gruppo «Intro delle Demo» della pagina Demo: i comandi a sinistra, il
+   riquadro dell'anteprima a destra (sotto, su un telefono). */
+.demo-intro-impostazioni { display:grid; gap:var(--passo); grid-template-columns:minmax(0, 1fr); align-items:start; }
+@media (min-width: 900px) { .demo-intro-impostazioni { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); } }
+.demo-intro-comandi { display:grid; gap:8px; min-width:0; }
+.demo-intro-blocco { display:grid; gap:6px; }
+.demo-intro-blocco-titolo { margin:6px 0 0; font-size:.82rem; font-weight:600; color:var(--testo-2); }
+.demo-intro-logo-riga { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.demo-intro-miniatura {
+  width:64px; height:64px; object-fit:contain; flex:0 0 auto; border-radius:10px; background:#000;
+  border:1px solid rgba(255,255,255,.14); padding:4px; box-sizing:border-box;
+}
+.demo-intro-logo-testo { display:grid; gap:6px; min-width:0; flex:1 1 12rem; }
+/* La nota dello stato del logo non è la didascalia di un interruttore: niente
+   rientro sotto alla levetta, sta accanto alla miniatura. */
+.demo-figlia .demo-intro-logo-testo .demo-opzioni-nota { margin-left:0; margin-top:0; }
+.demo-intro-campo { width:100%; box-sizing:border-box; }
+.demo-intro-anteprima-guscio { margin:0; display:grid; gap:8px; min-width:0; }
+.demo-intro-riquadro {
+  width:100%; aspect-ratio:16 / 9; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6);
+}
+.demo-intro-anteprima-guscio figcaption { font-size:.78rem; color:var(--testo-3); }
+.demo-intro-stato-errore { color:#fca5a5; }
+
+/* =====================================================================
    LE SOTTOSEZIONI DEL CALENDARIO (Mese, Agenda, Diario): linguette sotto
    la testata, visibili solo dentro al gruppo. La voce del menu principale
    resta accesa, e qui si dice quale delle tre è davanti.
