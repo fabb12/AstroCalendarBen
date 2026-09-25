@@ -237,6 +237,24 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     ok(ombraZoom.errMax < 10 && ombraZoom.saltoVero > 20 && Math.abs(ombraZoom.salto - ombraZoom.saltoVero) < 10,
       `Ombra ingrandita fedele: errore ${ombraZoom.errMax.toFixed(1)} livelli, salto ${ombraZoom.salto} su ${ombraZoom.saltoVero.toFixed(0)}`);
 
+    // Regressione: quasi sulla tangenza fra i due dischi l'aritmetica IEEE
+    // puo' portare il coseno appena oltre 1. Prima Math.acos restituiva NaN
+    // e skyOmbraGradiente costruiva letteralmente rgb(NaN, NaN, NaN).
+    const bordoNumerico = await pagina.evaluate(() => {
+      const s = {
+        umbra: 0.7669051541440234,
+        penombra: 2.71248895601743
+      };
+      const rho = 0.7669051541440235;
+      const sole = (s.penombra - s.umbra) / 2;
+      const terra = (s.penombra + s.umbra) / 2;
+      const copertura = skyCoperturaDischi(rho, sole, terra);
+      const colore = skyEclisseColore(s, rho);
+      return { copertura, colore };
+    });
+    ok(Number.isFinite(bordoNumerico.copertura) && bordoNumerico.colore.every(Number.isFinite),
+      'Tangenza numerica: copertura e colore restano finiti');
+
     // --- 4. Aurora: il banco a schermo intero, poi il cielo verso nord
     await pagina.evaluate(() => AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'aurora_boreale').testo));
     await salta(0, 0.9);
