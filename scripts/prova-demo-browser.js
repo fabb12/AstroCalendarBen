@@ -354,10 +354,7 @@ const server = http.createServer((req, res) => {
       const durante = await pagina.evaluate(() => ({ stato: AstroDemo.stato, tempo: skyAdesso().toISOString(),
         lat: sky.observer.latitude, lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] }));
       assert.equal(durante.stato, 'attivo', chiave);
-      assert.match(await pagina.locator('#demo-controlli p').innerText(),
-        new RegExp('^' + { eclisse_lunare: 'Eclisse lunare', aurora_boreale: 'Aurora boreale',
-          allineamento_pianeti: 'Corteo dei pianeti' }[chiave] + '.* — scena \\d/\\d · Planetario'),
-        chiave + ': pannello con titolo e scena');
+      assert.equal(await pagina.locator('#demo-controlli p').count(), 0, chiave + ': nessun testo di luogo/data/scena nei controlli');
       assert.ok(durante.tempo.startsWith(data), chiave + ': istante astronomico');
       assert.ok(Math.abs(durante.lat - lat) < 0.0001 && Math.abs(durante.lon - lon) < 0.0001,
         chiave + ': coordinate temporanee');
