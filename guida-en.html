@@ -1183,7 +1183,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <li class="passo">
         <div>
           <h3>Open the Demo menu entry</h3>
-          <p>The page is divided into five numbered groups. <b>1 · Demo to run</b>: a list and a card — title,
+          <p>The page is divided into six numbered groups. <b>1 · Demo to run</b>: a list and a card — title,
           description, duration, number of scenes, date, place, field of view and any simulated Kp — and the large
           <b>Start demo</b> button. <b>2 · Presentation</b>: <b>Start in full screen</b> (it stays full screen even
           while moving from the planetarium to the 3D Solar System),
@@ -1192,10 +1192,15 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
           <b>Record a video of the demo</b> and, indented below it, <b>Also record audio</b>, which can only be chosen
           with the video on (there is no audio-only recording). Those choices are remembered. With audio enabled, the video includes
           recorded narration files and speech synthesis when the browser exposes capturable audio; with it off,
-          narration still plays for you but the recorded video stays silent. <b>4 · Narration and audio</b> holds the
+          narration still plays for you but the recorded video stays silent. <b>4 · Demo intro</b>: before every demo,
+          a few seconds of black screen with the logo and a title (three seconds by default). You can turn it off,
+          change its length, <b>replace the logo</b> with your own image (it stays saved on the device, with its
+          proportions and transparency; <b>Restore default logo</b> brings back the app icon), write the
+          <b>opening title</b> you like or hide it, and check the result in the preview box or with <b>Watch the full
+          preview</b>. <b>5 · Narration and audio</b> holds the
           voice (below) and the <b>background music</b> for every demo, both built-in and ones you create: a switch
           enables it and a selector lets you choose any track from the catalogue. During the demo it plays at 30%; any background music that was
-          already playing stops and afterwards comes back exactly as it was. <b>5 · Planetarium elements</b> are the same switches as the Display tab — stars, names,
+          already playing stops and afterwards comes back exactly as it was. <b>6 · Planetarium elements</b> are the same switches as the Display tab — stars, names,
           constellations and their artwork, planets, Sun and Moon, deep sky,
           Milky Way, grid, ecliptic, atmosphere, clouds, terrain, relief, town lights, mountain names,
           lakes and rivers and the others. The choices are remembered and apply only to the demo.</p>
@@ -1204,7 +1209,9 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <li class="passo">
         <div>
           <h3>Choose one and press “Start demo”</h3>
-          <p>The settings close (and, if you chose it, the app goes full screen) and the story begins.
+          <p>The settings close (and, if you chose it, the app goes full screen), the intro with the logo and the
+          title appears, and when it ends the story starts from the first scene. <kbd>Esc</kbd> and <b>End demo</b>
+          work during the intro too.
           With <b>Clean view</b> enabled, service notices and the rest of the nonessential interface disappear
           without being closed; a real demo error is always shown.
           At the bottom the demo bar appears, with the title, the current scene (“scene 1/2 · Planetarium · 8 s”)
@@ -1255,7 +1262,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
         <tbody>
           <tr><td><b>Total solar eclipse · August 12, 2026</b></td><td>7 scenes · 114 s</td><td>From Reykjavík the field narrows on the Sun and the Moon crosses it into totality; the flight leads to the Earth–Moon bench, where the camera circles Sun, Moon and Earth in line and then closes in on the Earth while the Moon's shadow races across it; finally back to the sky, where the Sun is whole again.</td></tr>
           <tr><td><b>Total lunar eclipse · December 31, 2028</b></td><td>6 scenes · 57 s</td><td>From Sapporo the Moon slides into Earth's shadow and turns red; from outside you watch it cross the shadow cone as the camera circles it; back in the sky, the Moon leaves it.</td></tr>
-          <tr><td><b>Northern lights · the northern sky</b></td><td>7 scenes · 53 s</td><td>First the learning-lab aurora bench in full screen — the solar wind, the camera circling the Earth, the shield up close, the discharge, the ring around the pole — then Helsinki's sky facing north with <b>simulated Kp 5</b>. It is a teaching simulation, not a forecast.</td></tr>
+          <tr><td><b>Northern lights · the northern sky</b></td><td>11 scenes · 173 s</td><td>A story from the Sun to the night: first the real Sun, magnified in the planetarium; then the learning-lab aurora bench in full screen — the corona blowing the solar wind, the cloud crossing space, the magnetic shield being squeezed, the tail that snaps, the ring around the pole and the side cut, with the colours of oxygen and nitrogen at their heights — and finally Helsinki's sky facing north with <b>simulated Kp 5</b>, which lights up and then widens for the farewell. It is a teaching simulation, not a forecast.</td></tr>
           <tr><td><b>Planet parade · October 21, 2028</b></td><td>5 scenes · 45 s</td><td>From Tucson before dawn: Mercury, Venus, Mars and Jupiter highlighted; then from outside, with the camera coming down from above to the plane of the orbits, where they really are; and back to the sky as dawn breaks.</td></tr>
           <tr><td><b>ISS pass · from your sky</b></td><td>3 scenes · 36 s</td><td>The next Space Station pass over the planetarium location, computed from the app's orbital data: first its track across the sky, then the same orbit from outside, over the same time span. It needs the orbital data, so the network at least once.</td></tr>
         </tbody>

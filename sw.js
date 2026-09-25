@@ -14,6 +14,7 @@ const ASSETS = [
   './fonts/SpaceGrotesk.ttf',
   './app.js',
   './demo-motore.js',
+  './demo-intro.js',
   './demo.js',
   './demo-predefiniti.js',
   './demo-libreria.js',

@@ -3,9 +3,10 @@
 Apri la voce **Demo** del menu principale (`#btn-vista-demo`, vista `demo`,
 `#vista-demo` in `index.html`). Prima era una linguetta delle Impostazioni, e
 la Narrazione stava in Impostazioni → Osservazione: adesso tutto quello che
-vale per le demo sta in quella pagina, in cinque gruppi numerati — **Demo da
+vale per le demo sta in quella pagina, in sei gruppi numerati — **Demo da
 eseguire** (elenco, scheda, «Avvia demo», editor), **Presentazione** (schermo
 intero, vista pulita), **Registrazione** (filmato e, subordinato, audio),
+**Intro delle Demo** (logo e titolo prima della prima scena, qui sotto),
 **Narrazione e audio** (la voce di `narrazione.js`, che vale anche per
 Missione Cielo, e la musica delle eclissi) ed **Elementi del Planetario**. La
 pagina è pensata
@@ -30,6 +31,57 @@ Cambiare scheda mette in pausa la demo.
 La spiegazione per chi usa l'app sta nella guida, **capitolo 10** (`guida.html#demo`,
 e in inglese `guida-en.html#demo`): va tenuta allineata a questo file quando si
 aggiunge un'azione o si cambia una regola.
+
+## L'intro comune
+
+Prima della prima scena di **ogni** demo — predefinita, personale o importata —
+c'è un'intro: sfondo nero, il logo al centro e un titolo sotto, per tre secondi
+di serie. Non sta dentro ai tour: è una **fase del motore**
+(`demo-motore.js`, `contesto.intro` → `Motore.inIntro`/`chiudiIntro`) che gira
+sullo stesso orologio delle scene, quindi la pausa la ferma, Stop, Esc, un
+errore o un salto (`vaiAScena`) la chiudono, Ricomincia la rifà. La prima scena
+(e con lei la sua voce) si apre **solo quando l'intro è finita**, col suo
+orologio a zero; il nero se ne va con una dissolvenza di 450 ms *dopo* che la
+scena è già aperta sotto, così non si vede mai la pagina di prima. Il filmato
+della demo comincia con la prima scena, non con l'intro. Se durante l'intro la
+vista dell'app cambia sotto ai piedi, la persona se n'è andata e la demo si
+ferma.
+
+Disegno, preferenze e logo stanno in `demo-intro.js` (`window.AstroDemoIntro`):
+
+- **Preferenze** in `astrocal_demo_intro_v1` (localStorage): `attiva`
+  (di serie sì), `durataSec` (1–10 s a mezzi secondi, di serie 3), `titolo`
+  (`null` = il titolo predefinito, che segue la lingua) e `mostraTitolo`.
+  Come le altre opzioni delle demo **non** vanno nel backup: sono una scelta di
+  presentazione di questo dispositivo.
+- **Logo** in IndexedDB (`astrocal_demo_intro` → archivio `file` → chiave
+  `logo`): si salva il **file così com'è**, senza ricompressione né
+  ridimensionamento, quindi proporzioni, trasparenza e qualità restano quelle.
+  Un file che non è un'immagine, supera 8 MB o non si decodifica viene
+  rifiutato **prima** di toccare il logo in uso. Un logo salvato che all'avvio
+  non si legge più torna da sé all'icona dell'app (e si butta); se il nodo
+  dell'immagine fallisce durante l'intro, ripiega sullo stesso predefinito.
+  Senza IndexedDB il logo scelto vale fino alla chiusura dell'app, e la pagina
+  lo dice.
+- **Disegno**: un velo solo (`.demo-intro-schermo`, `z-index` 9990: sopra a
+  tutto ma **sotto** ai comandi della demo, così Stop resta raggiungibile),
+  appeso all'elemento a schermo intero se ce n'è uno e al body altrimenti — il
+  pieno schermo della demo è quello del documento, quindi l'intro ci sta
+  dentro e non ne esce. Nasce nero pieno nello stesso turno del clic, prima
+  della richiesta di pieno schermo. Le misure sono in unità del contenitore
+  (`cqw`, `cqh`): il riquadro 16:9 della pagina Demo è la stessa impaginazione
+  in scala. Il logo non si deforma (`object-fit: contain`), il titolo va a capo
+  equilibrato con un corpo scelto dalla lunghezza (`data-misura`: corto, medio,
+  lungo) e non esce mai dallo schermo.
+- **Movimento ridotto**: logo e titolo compaiono fermi, senza scala né
+  scorrimento, e il nero se ne va senza dissolvenza; la durata resta quella.
+
+Nel gruppo **Intro delle Demo** della pagina ci sono «Mostra intro», la durata,
+la miniatura del logo con **Sostituisci logo** e **Ripristina logo
+predefinito**, il campo **Titolo iniziale** con **Mostra titolo** e
+**Ripristina titolo predefinito**, il riquadro dell'anteprima (si rifà a ogni
+cambio) e **Guarda l'anteprima completa**, che recita l'intro a tutto schermo
+senza avviare nessuna demo (si chiude da sola, con un clic o con Esc).
 
 ## Le opzioni della demo
 
@@ -158,7 +210,7 @@ automaticamente anche per le demo.
 | --- | --- | --- |
 | **Eclisse solare totale 2026** (`eclisse_tour`) | 7 · 114 s | Reykjavík: il campo si stringe da 40° a 1,6° sul Sole e la Luna lo attraversa (16:40→17:48, poi la totalità); volo; banco Terra–Luna con Sole, Luna e Terra in fila e la camera che gira; avvicinamento alla Terra (×5,5) con l'ombra che corre da −20 a +45 min dal massimo; di nuovo in cielo fino alle 18:52, a eclisse finita. |
 | **Eclisse lunare totale 2028** (`eclisse_lunare`) | 6 · 57 s | Sapporo: la Luna entra nell'ombra e si arrossa (−110→+5 min); volo; da fuori il cono d'ombra e la Luna che lo attraversa (−170→+130 min) con la camera che le gira attorno; in cielo la Luna ne esce (+5→+170). |
-| **Aurora boreale** (`aurora_boreale`) | 7 · 53 s | Il banco delle aurore della Didattica a schermo intero: vento e nube, la camera attorno alla Terra, lo scudo da vicino, la scarica, l'anello; poi il cielo di **Helsinki** verso nord con Kp 5 simulato. |
+| **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 5 · 45 s | Tucson prima dell'alba: i quattro pianeti inquadrati; volo; da fuori la camera scende dall'alto (80°) al piano (12°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; di nuovo in cielo verso l'alba. |
 | **Passaggio della ISS** (`passaggio_iss`) | 3 · 36 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario: tutto l'arco inquadrato con la traccia, poi la stessa orbita da fuori nello **stesso** intervallo di tempo. |
 
@@ -173,6 +225,20 @@ passa sopra la testa e a sud, e guardando a nord non si vede niente (era il
 difetto della versione precedente, e la prova contava punti «nel quadro»
 senza guardare i pixel). Da sessanta gradi l'ovale è davvero a nord. La prova
 adesso misura il verde del cielo con l'aurora accesa e spenta.
+
+### La demo delle aurore, come racconto
+
+La versione lunga (v375) ha una struttura narrativa: il Sole come origine, il
+vento solare, il viaggio della nube, lo scudo magnetico, la coda che si
+spezza, l'anello attorno al polo, gli atomi che si accendono (il quadro
+«taglio»), l'osservazione da terra e un congedo che lega la Terra al Sole. Ogni
+frase dice quello che la scena mostra in quel momento. Le durate sono minime:
+se la voce dura di più, il motore tiene la scena finché la frase non è finita
+(`fineNarrazione`), senza tagliare né la voce né il testo. La data del Sole è
+due giorni prima della notte dell'aurora, cioè il tempo di viaggio della nube.
+Questa demo non ha MP3 registrati: la voce è la sintesi (Edge-TTS o quella
+del dispositivo) finché qualcuno non li registra seguendo
+`audio/narrazione/LEGGIMI.md`.
 
 ## Libreria ed editor avanzato
 
@@ -214,7 +280,10 @@ Azioni principali:
 - `event_window { event: lunar_eclipse, from: -120, to: 120 }` (minuti dal massimo; anche `solar_eclipse`)
 - `camera_3d { scene: earth_moon, focus: 'Earth', orbit: 70, elev_from: 16, elev_to: 38, zoom_from: 1.2, zoom_to: 5.5 }`
   (`scene: system` con `focus: 'Sun'` e `frame`, oppure `focus: 'Earth'`/`'ISS'`)
-- `aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150 }` (solo in `didactic_view`)
+- `aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150 }` (solo in `didactic_view`;
+  i capitoli sono `vento`, `scudo`, `scarica`, `anello` e `taglio` — il quinto è il
+  disegno visto di lato, senza camera, con `place` fra i luoghi del banco,
+  per esempio `reykjavik`, e `kp` fra 0 e 9)
 - `satellite_pass { satellite: iss, before: 1, after: 1 }`
 - `narrate { id: 'demo.narr.eclisse_tour.1' }` oppure, in una demo personale,
   `narrate { text: 'Qui la Luna tocca il Sole.' }` (al massimo 400 caratteri;
@@ -310,6 +379,7 @@ node scripts/prova-narrazione-browser.js
 node scripts/prova-demo-browser.js
 node scripts/prova-demo-regia.js
 node scripts/prova-demo-pagina.js   # menu, pagina Demo, comandi, camera, schermo intero, musica
+node scripts/prova-demo-intro.js    # intro comune (logo, titolo, durata, Stop/Esc/errore, telefono) e aurora lunga
 node scripts/prova-i18n.js
 ```
 

@@ -516,11 +516,18 @@
   // gli stessi disegni del banco: la regia sceglie solo cosa guardare, da
   // dove e quando.
   // ------------------------------------------------------------------
-  const CAPITOLI = ['vento', 'scudo', 'scarica', 'anello'];
+  // `taglio` è il quinto quadro del banco: la sezione della Terra vista di
+  // lato, coi colori dell'aurora alle loro quote. Non ha una camera (è un
+  // disegno piano); ha invece un luogo (`place`, uno di quelli del banco) e
+  // un Kp (`kp`), e sono quelli che decidono cosa se ne vede da lì.
+  const CAPITOLI = ['vento', 'scudo', 'scarica', 'anello', 'taglio'];
   registro.aurora_lesson = {
     verifica(p) {
-      campi(p, ['chapter', 'from', 'to', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to']);
+      campi(p, ['chapter', 'from', 'to', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'place', 'kp']);
       richiedi(CAPITOLI.includes(p.chapter), err('capitolo', { nome: p.chapter }));
+      richiedi(p.kp === undefined || numero(p.kp, 0, 9), err('kp'));
+      richiedi(p.place === undefined || (typeof didDemo !== 'undefined' && typeof didDemo.luoghi === 'function'
+        ? didDemo.luoghi().includes(p.place) : typeof p.place === 'string'), err('luogoBanco', { nome: p.place }));
       for (const k of ['from', 'to']) richiedi(p[k] === undefined || numero(p[k], 0, 60), err('oreStoria'));
       richiedi(p.orbit === undefined || numero(p.orbit, -720, 720), err('angolo'));
       for (const k of ['elev_from', 'elev_to'])
@@ -533,7 +540,9 @@
       richiedi(didDemo.apri('aurora'), err('didatticaAssente'));
       didDemo.quadro(p.chapter);
       didDemo.pieno(true);
+      if (p.place !== undefined || p.kp !== undefined) didDemo.taglio(p.place, p.kp);
       const posa = didDemo.posa(p.chapter);
+      const conCamera = Number.isFinite(posa.az) && Number.isFinite(posa.elev);
       const da = p.from !== undefined ? p.from : posa.finestra[0];
       const a = p.to !== undefined ? p.to : posa.finestra[1];
       const ea = p.elev_from !== undefined ? p.elev_from : posa.elev;
@@ -543,7 +552,7 @@
       const aggiorna = u => {
         const k = rampa(c, u);
         const passo = { quadro: p.chapter, t: mescola(da, a, u) };
-        if (!c.cameraManuale) Object.assign(passo, {
+        if (conCamera && !c.cameraManuale) Object.assign(passo, {
           az: posa.az + (c.ridotto ? 0 : (p.orbit || 0) * k),
           elev: mescola(ea, eb, k), zoom: mescolaZoom(za, zb, k)
         });
@@ -915,7 +924,10 @@
       pausa() { if (typeof narrazione === 'object') narrazione.pausa('demo'); },
       riprendi() { if (typeof narrazione === 'object') narrazione.riprendi('demo'); },
       ripristina() {
-        c.chiuso = true; contesto = null; evidenze.clear();
+        c.chiuso = true; contesto = null; evidenze.clear(); c.dopoIntro = null;
+        // Nessun velo dell'intro può sopravvivere alla demo: Stop, Esc, un
+        // errore o la fine lo tolgono subito, anche a metà dissolvenza.
+        if (typeof AstroDemoIntro === 'object') AstroDemoIntro.rimuovi();
         if (typeof narrazione === 'object') narrazione.ferma('demo');
         // La colonna sonora se ne va per prima, e il sottofondo di prima
         // torna com'era: stessa traccia, stesso volume, suona se suonava.
@@ -970,6 +982,25 @@
       }
     };
     contesto = c;
+    // L'intro comune, se è accesa: il velo nero nasce qui, nello stesso turno
+    // del clic e prima di chiedere il pieno schermo, così fra la pagina di
+    // prima e il racconto non passa neanche un fotogramma dell'interfaccia.
+    // La gira il motore (è una fase del suo orologio, prima della prima
+    // scena); qui si aggiunge solo quello che sa la demo: se durante l'intro
+    // la vista cambia sotto ai piedi, la persona se n'è andata, e la demo si
+    // ferma invece di ripartire altrove.
+    c.vistaIntro = vistaAttuale;
+    if (typeof AstroDemoIntro === 'object') {
+      const intro = AstroDemoIntro.crea({ controlla() {
+        if (contesto === c && vistaAttuale !== c.vistaIntro)
+          Promise.resolve().then(() => { if (contesto === c) motore.ferma(); });
+      } });
+      if (intro) {
+        const fine = intro.fine;
+        intro.fine = () => { fine(); if (c.dopoIntro) { const f = c.dopoIntro; c.dopoIntro = null; f(); } };
+        c.intro = intro;
+      }
+    }
     document.body.classList.add('demo-in-corso');
     document.body.classList.toggle('demo-vista-pulita', c.vistaPulita);
     // La finestra Impostazioni deve lasciare vedere il racconto, ma il suo
@@ -997,7 +1028,12 @@
       musicaDemoFerma(); c.musica = null;
     }
     // Senza filmato non esiste la registrazione del solo audio.
-    if (motore.stato === 'attivo' && opzioni.registra) avviaRegistrazione(c, demo);
+    // Il filmato è il racconto: comincia con la prima scena, quando il nero
+    // dell'intro se ne va, e non riprende tre secondi di pagina coperta.
+    if (motore.stato === 'attivo' && opzioni.registra) {
+      if (motore.inIntro) c.dopoIntro = () => { if (contesto === c) avviaRegistrazione(c, demo); };
+      else avviaRegistrazione(c, demo);
+    }
     aggiornaPannello();
   }
 
@@ -1298,6 +1334,8 @@
     get stato() { return motore.stato; },
     get inCorso() { return inCorso(); },
     get scena() { return motore.indice; },
+    // Vero mentre gira l'intro comune, prima della prima scena.
+    get intro() { return !!motore.inIntro; },
     // Gli avvisi di servizio tacciono soltanto nella vista pulita: spegnendo
     // l'opzione l'interfaccia resta deliberatamente utilizzabile e visibile.
     get silenzioso() { return !!(contesto && contesto.vistaPulita); },

@@ -319,6 +319,75 @@
     if (typeof satPrecaricaTle === 'function') satPrecaricaTle();
   }
 
+  // --- L'intro comune -----------------------------------------------------
+  // Mostrarla, per quanto, con quale logo e quale titolo. Le preferenze le
+  // tiene `AstroDemoIntro` (demo-intro.js), che ridisegna chi si è messo in
+  // ascolto: qui ci sono solo i comandi e il riquadro dell'anteprima, che si
+  // rifà a ogni cambio — logo, titolo, sua visibilità, lingua.
+  const Intro = window.AstroDemoIntro;
+  if (Intro) prova(() => {
+    const attiva = $('intro-attiva'), figli = $('intro-figli');
+    const durata = $('intro-durata'), durataValore = $('intro-durata-valore');
+    const titolo = $('intro-titolo'), mostraTitolo = $('intro-mostra-titolo');
+    const file = $('intro-logo-file'), miniatura = $('intro-logo-miniatura'), statoLogo = $('intro-logo-stato');
+    const riquadro = $('intro-anteprima');
+    const ti = (k, d) => astroI18n.t('demo.intro.' + k, d);
+    let messaggioLogo = null;
+    const secondi = v => astroI18n.numero(v, Number.isInteger(v) ? 0 : 1);
+    function disegnaStatoLogo() {
+      const l = Intro.statoLogo();
+      miniatura.onerror = () => { if (miniatura.getAttribute('src') !== Intro.LOGO_PREDEFINITO) miniatura.src = Intro.LOGO_PREDEFINITO; };
+      if (miniatura.getAttribute('src') !== l.url) miniatura.src = l.url;
+      statoLogo.classList.toggle('demo-intro-stato-errore', !!(messaggioLogo && messaggioLogo.errore) || l.stato === 'guasto');
+      if (messaggioLogo) { statoLogo.textContent = messaggioLogo.testo; return; }
+      statoLogo.textContent = l.stato === 'caricamento' ? ti('logoCaricamento')
+        : l.stato === 'guasto' ? ti('logoGuasto')
+          : l.stato === 'nonSalvato' ? ti('logoNonSalvato', { nome: l.nome || '—' })
+            : l.personale ? ti('logoPersonale', { nome: l.nome || '—' }) : ti('logoPredefinito');
+      $('intro-logo-ripristina').disabled = !l.personale;
+    }
+    function disegnaIntro() {
+      const o = Intro.impostazioni();
+      attiva.checked = o.attiva;
+      figli.classList.toggle('spenta', !o.attiva);
+      durata.value = String(o.durataSec);
+      durataValore.textContent = ti('secondi', { n: secondi(o.durataSec) });
+      // Il campo non si riscrive sotto alle dita di chi sta scrivendo.
+      if (document.activeElement !== titolo) titolo.value = Intro.titoloCorrente();
+      titolo.placeholder = Intro.titoloPredefinito();
+      mostraTitolo.checked = o.mostraTitolo;
+      titolo.disabled = !o.mostraTitolo;
+      $('intro-titolo-ripristina').disabled = o.titolo === null;
+      disegnaStatoLogo();
+      Intro.disegnaRiquadro(riquadro);
+    }
+    attiva.addEventListener('change', () => Intro.imposta({ attiva: attiva.checked }));
+    durata.addEventListener('input', () => Intro.imposta({ durataSec: Number(durata.value) }));
+    titolo.addEventListener('input', () => Intro.imposta({ titolo: titolo.value }));
+    mostraTitolo.addEventListener('change', () => Intro.imposta({ mostraTitolo: mostraTitolo.checked }));
+    $('intro-titolo-ripristina').addEventListener('click', () => {
+      titolo.blur(); Intro.ripristinaTitolo();
+    });
+    file.addEventListener('change', async () => {
+      const scelto = file.files && file.files[0];
+      file.value = '';
+      if (!scelto) return;
+      messaggioLogo = { testo: ti('logoCaricamento') }; disegnaStatoLogo();
+      try { await Intro.sostituisciLogo(scelto); messaggioLogo = null; }
+      catch (e) { messaggioLogo = { testo: e.message, errore: true }; }
+      disegnaIntro();
+    });
+    $('intro-logo-ripristina').addEventListener('click', async () => {
+      messaggioLogo = null;
+      await Intro.ripristinaLogo();
+      disegnaIntro();
+    });
+    $('intro-prova').addEventListener('click', () => Intro.anteprima());
+    Intro.alCambio(() => prova(disegnaIntro));
+    disegnaIntro();
+    Intro.pronto.then(() => prova(disegnaIntro));
+  });
+
   window.addEventListener('beforeunload', e => { if (sporco()) { e.preventDefault(); e.returnValue = ''; } });
   // La chiama `mostraVista('demo')` ogni volta che la pagina torna davanti.
   window.demoPaginaPrepara = () => { verifica(); preparaDemo(); };

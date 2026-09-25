@@ -71,6 +71,9 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.addInitScript(() => {
       localStorage.setItem('astrocalendario_posizione', JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' }));
       localStorage.setItem('astrocal_lingua', 'it');
+      // L'intro comune ha un banco suo (prova-demo-intro.js): qui si misurano
+      // le scene subito dopo l'avvio, e i tre secondi di nero si saltano.
+      localStorage.setItem('astrocal_demo_intro_v1', JSON.stringify({ attiva: false }));
       // Simula preferenze salvate prima dell'aggiunta delle due nuove opzioni:
       // le chiavi mancanti devono migrare ai valori predefiniti attivi.
       localStorage.setItem('astrocal_demo_opzioni_v1', JSON.stringify({
@@ -227,20 +230,30 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
 
     // --- 4. Aurora: il banco a schermo intero, poi il cielo verso nord
     await pagina.evaluate(() => AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'aurora_boreale').testo));
-    await salta(0, 0.5);
+    await salta(0, 0.9);
+    const sole = await pagina.evaluate(() => ({ vista: vistaAttuale, fov: sky.fov, target: sky.target }));
+    ok(sole.vista === 'cielo' && sole.fov < 3 && sole.target === 'Sun', 'Aurora: si comincia dal Sole, ingrandito');
+    await attendiFotogrammi(); await foto('aurora-sole');
+    await salta(1, 0.5);
     const aur0 = await pagina.evaluate(() => ({ vista: vistaAttuale, pieno: !!document.querySelector('.did-pieno-ripiego'),
       quadro: didDemo.fotografa().quadro, t: didDemo.fotografa().t }));
-    ok(aur0.vista === 'didattica' && aur0.pieno && aur0.quadro === 'vento', 'Aurora: banco didattico a schermo intero');
+    ok(aur0.vista === 'didattica' && aur0.pieno && aur0.quadro === 'vento' && aur0.t < 3, 'Aurora: il vento di tutti i giorni, a schermo intero');
     await attendiFotogrammi(); await foto('aurora-vento');
     const camera = async (i, u) => { await salta(i, u); return pagina.evaluate(() => didDemo.fotografa()); };
-    const c0 = await camera(1, 0), c1 = await camera(1, 1);
+    const n0 = await camera(2, 0), n1 = await camera(2, 1);
+    ok(n0.quadro === 'vento' && n1.t - n0.t > 30, 'La nube attraversa lo spazio');
+    const c0 = await camera(3, 0), c1 = await camera(3, 1);
     ok(c0.quadro === 'scudo' && Math.abs(c1.cam.az - c0.cam.az) > 100, 'La camera gira attorno alla Terra');
-    const z0 = await camera(2, 0), z1 = await camera(2, 1);
+    const z0 = await camera(4, 0), z1 = await camera(4, 1);
     await attendiFotogrammi(); await foto('aurora-scudo');
     ok(z1.zoomDemo > z0.zoomDemo * 1.5, 'Lo scudo da vicino');
-    ok((await camera(3, 0.5)).quadro === 'scarica' && (await camera(4, 0.5)).quadro === 'anello', 'Scarica, poi anello');
+    ok((await camera(5, 0.5)).quadro === 'scarica' && (await camera(6, 0.5)).quadro === 'anello', 'Scarica, poi anello');
     await attendiFotogrammi(); await foto('aurora-anello');
-    await salta(5, 0.9); await salta(6, 0.5); await attendiFotogrammi();
+    const colori = await camera(7, 0.5);
+    ok(colori.quadro === 'taglio' && colori.luogo === 'reykjavik' && colori.kpTaglio === 5 &&
+      await pagina.evaluate(() => !!document.querySelector('.did-pieno-ripiego #did-aur-taglio')), 'I colori alle loro quote, a schermo intero');
+    await attendiFotogrammi(); await foto('aurora-colori');
+    await salta(8, 0.9); await salta(9, 0.5); await attendiFotogrammi();
     const cielo = await pagina.evaluate(() => {
       // Si guarda la luce: il verde del cielo con l'aurora accesa e spenta,
       // sulla stessa tela e nello stesso istante. Contare punti proiettati

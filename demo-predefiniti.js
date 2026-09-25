@@ -137,44 +137,71 @@
     {
       chiave: 'aurora_boreale',
       testo: `define_demo 'aurora_boreale' {
-  // Prima il perché, col banco delle aurore della Didattica; poi il cielo di
-  // Helsinki con Kp 5 simulato: una simulazione didattica, non una previsione.
+  // Un racconto in quattro tempi: il Sole, il viaggio, lo scudo e la luce.
+  // Prima il Sole vero, dal planetario; poi il perché, col banco delle
+  // aurore della Didattica (vento, scudo, coda, anello, e il taglio coi
+  // colori alle loro quote); infine il cielo di Helsinki con Kp 5 simulato:
+  // una simulazione didattica, non una previsione.
   // Helsinki e non Tromsø, di proposito: con Kp 5 a mezzanotte magnetica
   // Tromsø sta sotto l'ovale e l'aurora le passa sopra la testa e a sud; da
   // sessanta gradi di latitudine l'ovale è davvero a nord, alto sull'orizzonte.
-  scene didactic_view {
-    // Il Sole soffia, e parte una nube: due giorni di viaggio in sette secondi.
-    duration: 7s;
+  // La data del Sole è due giorni prima della notte dell'aurora: è il tempo
+  // di viaggio della nube che il banco racconta.
+  scene planetarium_view {
+    // Il Sole com'è: il campo si stringe fino al disco, granuli e corona.
+    duration: 13s;
     action: narrate { id: 'demo.narr.aurora_boreale.1' };
-    action: aurora_lesson { chapter: vento, from: 0, to: 44, orbit: 20, zoom_from: 1, zoom_to: 1.15 };
+    action: set_location { lat: 60.1699, lon: 24.9384, name: 'Helsinki', timezone: 'Europe/Helsinki' };
+    action: set_date { iso: '2027-01-13T10:20:00Z' };
+    action: zoom_fov { from: 50, to: 1.3 };
+    action: center_target { target: 'Sun' };
   }
   scene didactic_view {
-    // La camera gira attorno alla Terra: il vento arriva da un lato solo.
-    duration: 7s;
+    // Il vento di tutti i giorni: prima che la nube parta davvero.
+    duration: 17s;
     action: narrate { id: 'demo.narr.aurora_boreale.2' };
-    action: aurora_lesson { chapter: scudo, from: 40, to: 46, orbit: 120, elev_from: 14, elev_to: 32 };
+    action: aurora_lesson { chapter: vento, from: 0, to: 3, orbit: 10, zoom_from: 1, zoom_to: 1.08 };
   }
   scene didactic_view {
-    // Più vicino: lo scudo magnetico si schiaccia sotto la nube.
-    duration: 6s;
+    // La nube attraversa lo spazio: quarantaquattro ore in sedici secondi.
+    duration: 16s;
     action: narrate { id: 'demo.narr.aurora_boreale.3' };
-    action: aurora_lesson { chapter: scudo, from: 46, to: 50, orbit: 20, zoom_from: 1.2, zoom_to: 2.3 };
+    action: aurora_lesson { chapter: vento, from: 3, to: 44, orbit: 20, zoom_from: 1.08, zoom_to: 1.18 };
   }
   scene didactic_view {
-    // La coda si carica e si rompe: la scarica verso i poli.
-    duration: 7s;
+    // La camera gira attorno alla Terra: la bolla magnetica prima dell'urto.
+    duration: 15s;
     action: narrate { id: 'demo.narr.aurora_boreale.4' };
+    action: aurora_lesson { chapter: scudo, from: 38, to: 44.5, orbit: 120, elev_from: 14, elev_to: 32 };
+  }
+  scene didactic_view {
+    // Più vicino: lo scudo si schiaccia sotto la nube.
+    duration: 14s;
+    action: narrate { id: 'demo.narr.aurora_boreale.5' };
+    action: aurora_lesson { chapter: scudo, from: 44.5, to: 50, orbit: 20, zoom_from: 1.2, zoom_to: 2.3 };
+  }
+  scene didactic_view {
+    // Il lato della notte: la coda si carica e si rompe.
+    duration: 15s;
+    action: narrate { id: 'demo.narr.aurora_boreale.6' };
     action: aurora_lesson { chapter: scarica, from: 45.2, to: 52, orbit: 25, zoom_from: 1, zoom_to: 1.4 };
   }
   scene didactic_view {
     // L'anello attorno al polo, e la Terra che ci gira sotto.
-    duration: 7s;
-    action: narrate { id: 'demo.narr.aurora_boreale.5' };
+    duration: 15s;
+    action: narrate { id: 'demo.narr.aurora_boreale.7' };
     action: aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150, elev_from: 40, elev_to: 64, zoom_from: 1, zoom_to: 1.25 };
   }
+  scene didactic_view {
+    // Il taglio visto di lato, a scala vera: le quote e i loro colori.
+    duration: 19s;
+    action: narrate { id: 'demo.narr.aurora_boreale.8' };
+    action: aurora_lesson { chapter: taglio, from: 50, to: 50, place: reykjavik, kp: 5 };
+  }
   scene planetarium_view {
-    duration: 7s;
-    action: narrate { id: 'demo.narr.aurora_boreale.6' };
+    // Di nuovo a terra: la notte dell'aurora, e lo sguardo verso nord.
+    duration: 12s;
+    action: narrate { id: 'demo.narr.aurora_boreale.9' };
     action: set_location { lat: 60.1699, lon: 24.9384, name: 'Helsinki', timezone: 'Europe/Helsinki' };
     action: set_date { iso: '2027-01-15T19:00:00Z' };
     action: simulate_aurora { kp: 5 };
@@ -182,11 +209,20 @@
     action: point_view { az: 0, alt: 22 };
   }
   scene planetarium_view {
-    duration: 12s;
-    action: narrate { id: 'demo.narr.aurora_boreale.7' };
+    // Le ore migliori, attorno alla mezzanotte magnetica.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.aurora_boreale.10' };
     action: set_fov { degrees: 100 };
-    action: timelapse { start: 21:00, end: 23:30 };
+    action: timelapse { start: 21:00, end: 23:00 };
     action: point_view { az: 0, alt: 22 };
+  }
+  scene planetarium_view {
+    // Il congedo: il campo si allarga, e l'aurora resta in scena.
+    duration: 19s;
+    action: narrate { id: 'demo.narr.aurora_boreale.11' };
+    action: zoom_fov { from: 100, to: 125 };
+    action: timelapse { start: 23:00, end: 00:30 };
+    action: point_view { az: 0, alt: 26 };
   }
 }`
     },

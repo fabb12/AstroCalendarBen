@@ -39,5 +39,5 @@ window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
   version: 'v375',
   build: '',
   commit: '',
-  builtAt: '2026-09-25T17:04:00.000Z'
+  builtAt: '2026-09-25T17:19:28.000Z'
 });
