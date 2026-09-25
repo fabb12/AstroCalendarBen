@@ -151,7 +151,7 @@
     // Il Sole com'è: il campo si stringe fino al disco, granuli e corona.
     duration: 13s;
     action: narrate { id: 'demo.narr.aurora_boreale.1' };
-    action: set_location { lat: 60.1699, lon: 24.9384, name: 'Helsinki', timezone: 'Europe/Helsinki' };
+    action: set_location { lat: 60.194, lon: 24.916, name: 'Helsinki', timezone: 'Europe/Helsinki' };
     action: set_date { iso: '2027-01-13T10:20:00Z' };
     action: zoom_fov { from: 50, to: 1.3 };
     action: center_target { target: 'Sun' };

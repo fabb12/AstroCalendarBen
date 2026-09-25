@@ -13,7 +13,9 @@
  * Le due forme valgono uguale. L'`impronta` è facoltativa ma conviene: è
  * l'impronta del testo da cui l'audio è stato registrato, e se il testo del
  * dizionario cambia l'audio vecchio smette di suonare invece di dire una
- * frase diversa da quella scritta. La stampa
+ * frase diversa da quella scritta.
+ *
+ * La stampa:
  * `node scripts/controlla-narrazione.js --impronte`.
  *
  * I percorsi sono relativi a `radice`, senza `..` e senza indirizzi esterni.
@@ -21,12 +23,19 @@
  * cache tutti gli audio elencati all'installazione: da lì valgono offline.
  *
  * È un file `.js` e non `.json` per la stessa ragione dei dizionari: da
- * `file://` una `fetch` di JSON è vietata. Tutto in `LEGGIMI.md`. */
+ * `file://` una `fetch` di JSON è vietata. Tutto in `LEGGIMI.md`.
+ */
+
 (typeof globalThis !== 'undefined' ? globalThis : self).ASTRO_NARRAZIONE_MANIFEST = {
   versione: 1,
   radice: 'audio/narrazione/',
 
   voci: {
+
+    // ─────────────────────────────────────────────
+    // Eclisse solare
+    // ─────────────────────────────────────────────
+
     'demo.narr.eclisse_tour.1': {
       it: {
         file: 'demo/it/eclisse_tour-1.mp3',
@@ -74,6 +83,88 @@
         file: 'demo/it/eclisse_tour-7.mp3',
         impronta: '36f94c0f'
       }
+    },
+
+    // ─────────────────────────────────────────────
+    // Aurora boreale
+    // ─────────────────────────────────────────────
+
+    'demo.narr.aurora_boreale.1': {
+      it: {
+        file: 'demo/it/aurora_boreale-1.mp3',
+        impronta: '266fb35a'
+      }
+    },
+
+    'demo.narr.aurora_boreale.2': {
+      it: {
+        file: 'demo/it/aurora_boreale-2.mp3',
+        impronta: 'cb3bdea7'
+      }
+    },
+
+    'demo.narr.aurora_boreale.3': {
+      it: {
+        file: 'demo/it/aurora_boreale-3.mp3',
+        impronta: '6ada09b0'
+      }
+    },
+
+    'demo.narr.aurora_boreale.4': {
+      it: {
+        file: 'demo/it/aurora_boreale-4.mp3',
+        impronta: 'b73cb9eb'
+      }
+    },
+
+    'demo.narr.aurora_boreale.5': {
+      it: {
+        file: 'demo/it/aurora_boreale-5.mp3',
+        impronta: '65b949f1'
+      }
+    },
+
+    'demo.narr.aurora_boreale.6': {
+      it: {
+        file: 'demo/it/aurora_boreale-6.mp3',
+        impronta: 'ee428562'
+      }
+    },
+
+    'demo.narr.aurora_boreale.7': {
+      it: {
+        file: 'demo/it/aurora_boreale-7.mp3',
+        impronta: '33875215'
+      }
+    },
+
+    'demo.narr.aurora_boreale.8': {
+      it: {
+        file: 'demo/it/aurora_boreale-8.mp3',
+        impronta: '81cf0542'
+      }
+    },
+
+    'demo.narr.aurora_boreale.9': {
+      it: {
+        file: 'demo/it/aurora_boreale-9.mp3',
+        impronta: 'f0ea0177'
+      }
+    },
+
+    'demo.narr.aurora_boreale.10': {
+      it: {
+        file: 'demo/it/aurora_boreale-10.mp3',
+        impronta: 'f59c0158'
+      }
+    },
+
+    'demo.narr.aurora_boreale.11': {
+      it: {
+        file: 'demo/it/aurora_boreale-11.mp3',
+        impronta: '952e92e3'
+      }
     }
+
   }
 };
