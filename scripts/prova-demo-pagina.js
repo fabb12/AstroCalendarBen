@@ -192,7 +192,7 @@ async function prova(nome, fn) {
       assert.deepEqual(dati.opzioni, dati.catalogo);
       assert.ok(dati.misura.w >= 40 && dati.misura.h >= 22, 'il checkbox è presentato come toggle');
       await selettore.selectOption('Europa1');
-      assert.equal(await pagina.evaluate(() => AstroDemo.opzioni.musicaEclissiTraccia), 'Europa1');
+      assert.equal(await pagina.evaluate(() => AstroDemo.opzioni.musicaDemoTraccia), 'Europa1');
       await musica.uncheck();
       assert.equal(await selettore.isDisabled(), true);
       await musica.check();
@@ -351,12 +351,12 @@ async function prova(nome, fn) {
       assert.ok(s.nativo && s.cielo && s.stato === 'attivo', JSON.stringify(s));
     });
 
-    console.log('\n— la musica delle eclissi —');
+    console.log('\n— la musica delle demo —');
     await prova('la traccia scelta suona al 30% durante la demo, il sottofondo di prima viene messo in pausa', async () => {
       // Il sottofondo della persona suona una traccia diversa, a volume suo.
       await pagina.evaluate(() => {
         AstroDemo.ferma(); AstroDemo.impostaOpzioni({
-          schermoIntero: false, musicaEclissi: true, musicaEclissiTraccia: 'Europa1'
+          schermoIntero: false, musicaDemo: true, musicaDemoTraccia: 'Europa1'
         });
         localStorage.setItem('astrocalendario_musica_traccia', 'Giapeto1');
         fermaMusicaSpaziale(); musicaVolume = 0.4; avviaMusicaSpaziale();
@@ -386,10 +386,19 @@ async function prova(nome, fn) {
       const s = await pagina.evaluate(() => musicaDemoStato());
       assert.equal(s.demo, null); assert.equal(s.sottofondo.suonava, false); assert.equal(s.sottofondo.traccia, 'Giapeto1');
     });
-    await prova('una demo che non è un\'eclisse non cambia la musica, e un errore la ripristina', async () => {
+    await prova('la musica vale per una demo predefinita non-eclissi e per una demo utente, e un errore la ripristina', async () => {
       await pagina.evaluate(() => AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'allineamento_pianeti').testo));
-      assert.equal(await pagina.evaluate(() => musicaDemoStato().demo), null);
+      await pagina.waitForFunction(() => musicaDemoStato().demo && musicaDemoStato().demo.suona, null, { timeout: 5000 });
+      assert.equal(await pagina.evaluate(() => musicaDemoStato().demo.id), 'Europa1');
       await pagina.evaluate(() => AstroDemo.ferma());
+
+      await pagina.evaluate(() => AstroDemo.avvia(
+        "define_demo musica_personale { scene planetarium_view { duration: 1s; action: set_fov { degrees: 35 }; } }"
+      ));
+      await pagina.waitForFunction(() => musicaDemoStato().demo && musicaDemoStato().demo.suona, null, { timeout: 5000 });
+      assert.equal(await pagina.evaluate(() => musicaDemoStato().demo.id), 'Europa1');
+      await pagina.evaluate(() => AstroDemo.ferma());
+
       await pagina.evaluate(() => musicaSpaziale.audio.play());
       await pagina.evaluate(() => {
         AstroDemo.registra('guasto_musica', { crea() { throw new Error('guasto controllato'); } });

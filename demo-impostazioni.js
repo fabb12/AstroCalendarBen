@@ -236,7 +236,7 @@
   function popolaTracceMusica() {
     if (!musicaTraccia) return;
     const tracce = tracceMusicaDemo();
-    const scelta = AstroDemo.opzioni.musicaEclissiTraccia || TRACCIA_MUSICA_PREDEFINITA;
+    const scelta = AstroDemo.opzioni.musicaDemoTraccia || TRACCIA_MUSICA_PREDEFINITA;
     musicaTraccia.replaceChildren(...tracce.map(t => new Option(t.nome, t.id)));
     musicaTraccia.value = tracce.some(t => t.id === scelta) ? scelta : tracce[0].id;
   }
@@ -263,7 +263,7 @@
     schermo.checked = o.schermoIntero;
     pulita.checked = o.vistaPulita !== false;
     registra.checked = o.registra;
-    if (musica) musica.checked = o.musicaEclissi !== false;
+    if (musica) musica.checked = o.musicaDemo !== false;
     popolaTracceMusica();
     personali.checked = !!o.livelli;
     const livelli = AstroDemo.livelli();
@@ -297,11 +297,11 @@
     if (!audio.disabled) AstroDemo.impostaOpzioni({ registraAudio: audio.checked });
   });
   if (musica) musica.addEventListener('change', () => {
-    AstroDemo.impostaOpzioni({ musicaEclissi: musica.checked });
+    AstroDemo.impostaOpzioni({ musicaDemo: musica.checked });
     disegnaDipendenze();
   });
   if (musicaTraccia) musicaTraccia.addEventListener('change', () => {
-    AstroDemo.impostaOpzioni({ musicaEclissiTraccia: musicaTraccia.value });
+    AstroDemo.impostaOpzioni({ musicaDemoTraccia: musicaTraccia.value });
   });
   const narrAttiva = document.getElementById('imp-narrazione-attiva');
   if (narrAttiva) narrAttiva.addEventListener('change', disegnaDipendenze);
