@@ -246,6 +246,13 @@ const server = http.createServer((req, res) => {
     await pagina.keyboard.press('Escape');
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'fermo');
     assert.deepEqual(await fotografia(), primaStop);
+    // Questo blocco prova apposta l'interazione coi controlli normali: la
+    // vista pulita va quindi spenta, e la finestra Impostazioni ripristinata
+    // dalla demo precedente va chiusa prima dei clic sul planetario.
+    await pagina.evaluate(() => {
+      AstroDemo.impostaOpzioni({ vistaPulita: false });
+      document.getElementById('modale-impostazioni').classList.add('hidden');
+    });
     await pagina.evaluate(() => AstroDemo.avvia("define_demo interattiva { scene planetarium_view { duration: 5s; action: point_view { az: 120, alt: 25 }; }}"));
     await pagina.locator('[data-vai-gruppo="vista"]').click();
     await pagina.locator('#scheda-vista-oggetti').click();
@@ -277,6 +284,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo', 'La rotellina non ferma la demo');
     await pagina.evaluate(() => AstroDemo.ferma());
     assert.deepEqual(await fotografia(), primaStop, 'Dopo lo zoom manuale il ripristino è completo');
+    await pagina.evaluate(() => AstroDemo.impostaOpzioni({ vistaPulita: true }));
     // L'ombra si cerca vicino alla data della demo, non sempre nel 2026.
     const ombra2027 = await pagina.evaluate(() => {
       AstroDemo.avvia("define_demo ombra { scene planetarium_view { duration: 1s; action: set_date { iso: '2027-07-20T00:00:00Z' }; action: set_fov { degrees: 20 }; }" +
