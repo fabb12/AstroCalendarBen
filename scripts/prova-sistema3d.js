@@ -906,7 +906,7 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
         : 'nessuna inerzia');
 
     ok('dopo il rilascio il grafico continua il pan e rallenta',
-      lancioDid && corsaDid && corsaDid.x < lancioDid.x - 1 &&
+      lancioDid && lancioDid.inerzia && corsaDid && corsaDid.x < lancioDid.x - 1 &&
       (!corsaDid.inerzia ||
        Math.hypot(corsaDid.inerzia.vx, corsaDid.inerzia.vy) <
        Math.hypot(lancioDid.inerzia.vx, lancioDid.inerzia.vy)),
