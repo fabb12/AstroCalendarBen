@@ -270,13 +270,13 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
         await pagina.evaluate(() => AstroDemo.avvia(AstroDemoPredefiniti[2].testo));
         await aspetta(pagina, () => window.__voce.detti.some(d => /Tutto comincia dal Sole/.test(d.testo)));
         await pagina.evaluate(() => AstroDemo.vaiAScena(3));
-        await pagina.locator('#demo-controlli button', { hasText: /Ricomincia|Riavvia/ }).click();
+        await pagina.locator('#demo-controlli button[aria-label="Riavvia"]').click();
         const s = await stato(pagina);
         assert.equal(s.id, 'demo.narr.aurora_boreale.1');
         assert.equal(await pagina.evaluate(() => window.__voce.sovrapposte), 0);
       });
       await prova('Stop: tace', async () => {
-        await pagina.locator('#demo-controlli button', { hasText: /Termina|Stop/ }).click();
+        await pagina.locator('#demo-controlli button[aria-label="Termina"]').click();
         assert.equal(await stato(pagina), null);
       });
       await prova('fine della demo: l’ultima frase si chiude con lei', async () => {
