@@ -4694,6 +4694,12 @@ body .risultato-luogo-cielo {
 
 .nota-lunga { margin: 6px 0 0; font-size: 0.76rem; color: var(--testo-3); }
 
+/* La sintesi dinamica del paesaggio ripete informazioni già rese dai
+   controlli e finiva per occupare gran parte del pannello su mobile. La
+   teniamo nel DOM perché i moduli possono continuare ad aggiornarla senza
+   cambiare logica, ma non la mostriamo nell'interfaccia. */
+#skymap-terreno-nota { display: none; }
+
 /* Quando si sta cercando per nome, su telefoni piccoli l'azione principale
    non sono più categorie e viste esterne: è toccare il risultato trovato.
    Il pannello diventa quindi più "lista": meno comandi appiccicati sopra,
@@ -5279,10 +5285,14 @@ body input.casella-data:hover { border: 0; }
      segmento acceso, più largo del testo che contiene, diventa un pallino */
   .segmenti-cielo { gap: 1px; padding: 2px; }
   .tasto-segmento { min-height: 34px; padding: 7px 2px; font-size: 0.68rem; letter-spacing: -0.01em; }
-  /* Il primo gradino ha due parole: su una sola riga invadeva il vicino
-     "10 s". Le impiliamo dentro al suo segmento, senza abbreviare proprio
-     l'impostazione predefinita che deve dire chiaramente "Tempo reale". */
-  #skymap-passi [data-passo-tempo="1"] { white-space: normal; line-height: 0.95; }
+  /* "Tempo reale" è più lungo degli altri sette gradini. Su pannelli da
+     telefono gli riserviamo un po' più di larghezza: così non invade "10 s"
+     e resta leggibile senza cambiare etichetta. */
+  #skymap-passi [data-passo-tempo="1"] {
+    flex-grow: 1.35;
+    white-space: normal;
+    line-height: 0.95;
+  }
   .riga-comandi { gap: 6px; }
 
   /* Sotto i trecentottanta pixel (i telefoni piccoli, e ogni telefono
