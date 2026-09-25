@@ -723,7 +723,7 @@
 
   // ------------------------------------------------------------------
   // Le opzioni della demo: schermo intero, vista pulita, registrazione (con
-  // audio opzionale), musica delle eclissi e gli elementi del planetario.
+  // audio opzionale), musica di sottofondo e gli elementi del planetario.
   // Le preferenze aggiunte nel tempo hanno sempre un valore di ripiego per
   // restare compatibili con i salvataggi delle versioni precedenti.
   // ------------------------------------------------------------------
@@ -736,18 +736,34 @@
         registra: !!o.registra,
         vistaPulita: o.vistaPulita !== false,
         registraAudio: o.registraAudio !== false,
-        musicaEclissi: o.musicaEclissi !== false,
-        musicaEclissiTraccia: typeof o.musicaEclissiTraccia === 'string' && o.musicaEclissiTraccia
-          ? o.musicaEclissiTraccia : 'Encelado1',
+        // Da settembre 2026 la colonna sonora vale per tutte le demo.
+        // Le vecchie chiavi "musicaEclissi*" restano lette come migrazione:
+        // chi aveva gia scelto toggle o traccia non perde la preferenza.
+        musicaDemo: typeof o.musicaDemo === 'boolean' ? o.musicaDemo : o.musicaEclissi !== false,
+        musicaDemoTraccia: typeof o.musicaDemoTraccia === 'string' && o.musicaDemoTraccia
+          ? o.musicaDemoTraccia
+          : (typeof o.musicaEclissiTraccia === 'string' && o.musicaEclissiTraccia
+            ? o.musicaEclissiTraccia : 'Encelado1'),
         livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: false, registra: false, vistaPulita: true, registraAudio: true,
-      musicaEclissi: true, musicaEclissiTraccia: 'Encelado1', livelli: null };
+      musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
-    opzioni = Object.assign({}, opzioni, nuove);
+    const aggiornate = { ...nuove };
+    // Compatibilita con integrazioni o salvataggi che usano ancora i nomi
+    // precedenti: internamente da ora si usano solo le chiavi generali.
+    if (!Object.prototype.hasOwnProperty.call(aggiornate, 'musicaDemo') &&
+        Object.prototype.hasOwnProperty.call(aggiornate, 'musicaEclissi'))
+      aggiornate.musicaDemo = aggiornate.musicaEclissi;
+    if (!Object.prototype.hasOwnProperty.call(aggiornate, 'musicaDemoTraccia') &&
+        Object.prototype.hasOwnProperty.call(aggiornate, 'musicaEclissiTraccia'))
+      aggiornate.musicaDemoTraccia = aggiornate.musicaEclissiTraccia;
+    delete aggiornate.musicaEclissi;
+    delete aggiornate.musicaEclissiTraccia;
+    opzioni = Object.assign({}, opzioni, aggiornate);
     try { localStorage.setItem(CHIAVE_OPZIONI, JSON.stringify(opzioni)); } catch (_) { /* niente storage */ }
     return opzioni;
   }
@@ -847,25 +863,16 @@
     document.querySelectorAll('.demo-scena-pulita').forEach(el => el.classList.remove('demo-scena-pulita'));
   }
 
-  // Le demo delle eclissi hanno una colonna sonora scelta nelle impostazioni,
-  // riprodotta al 30%. Si riconoscono da quello che raccontano — un evento di
-  // eclisse, l'ombra della Luna, l'orbita Terra–Luna — o dal nome, così vale
-  // anche per una copia personale di una delle due predefinite.
-  const MUSICA_ECLISSI = { tracciaPredefinita: 'Encelado1', volume: 0.3 };
-  function tracciaMusicaEclissi() {
-    const preferita = opzioni.musicaEclissiTraccia || MUSICA_ECLISSI.tracciaPredefinita;
+  // Ogni demo, predefinita o personale, usa la colonna sonora scelta nelle
+  // impostazioni. La selezione e globale apposta: anche una demo creata in
+  // futuro dall'editor passa da questo stesso punto di avvio.
+  const MUSICA_DEMO = { tracciaPredefinita: 'Encelado1', volume: 0.3 };
+  function tracciaMusicaDemo() {
+    const preferita = opzioni.musicaDemoTraccia || MUSICA_DEMO.tracciaPredefinita;
     const tracce = Array.isArray(window.ASTRO_TRACCE_MUSICALI) ? window.ASTRO_TRACCE_MUSICALI : [];
     if (!tracce.length || tracce.some(t => t && t.id === preferita)) return preferita;
     const prima = tracce.find(t => t && typeof t.id === 'string' && t.id);
-    return prima ? prima.id : MUSICA_ECLISSI.tracciaPredefinita;
-  }
-  function demoDiEclissi(demo) {
-    if (/eclis|eclip/i.test(demo.id || '')) return true;
-    return demo.scene.some(sc => sc.azioni.some(a =>
-      (a.comando === 'event_window' && /eclipse/.test(a.parametri.event)) ||
-      (a.comando === 'center_target' && a.parametri.target === 'Eclipse Shadow') ||
-      a.comando === 'orbit_object' ||
-      (a.comando === 'camera_3d' && a.parametri.focus === 'Eclipse Shadow')));
+    return prima ? prima.id : MUSICA_DEMO.tracciaPredefinita;
   }
 
   function avvia(testo = script) {
@@ -980,8 +987,8 @@
       try { document.documentElement.requestFullscreen().catch(() => { c.schermoNativo = false; }); }
       catch (_) { c.schermoNativo = false; }
     }
-    if (opzioni.musicaEclissi !== false && demoDiEclissi(demo) && typeof musicaDemoAvvia === 'function')
-      c.musica = musicaDemoAvvia(tracciaMusicaEclissi(), MUSICA_ECLISSI.volume);
+    if (opzioni.musicaDemo !== false && typeof musicaDemoAvvia === 'function')
+      c.musica = musicaDemoAvvia(tracciaMusicaDemo(), MUSICA_DEMO.volume);
     motore.avvia(testo, c);
     // Un errore nella prima scena chiude la demo dentro a `motore.avvia`, e
     // il ripristino ha già spento la musica; se il motore non è partito per
@@ -1294,7 +1301,15 @@
     // Gli avvisi di servizio tacciono soltanto nella vista pulita: spegnendo
     // l'opzione l'interfaccia resta deliberatamente utilizzabile e visibile.
     get silenzioso() { return !!(contesto && contesto.vistaPulita); },
-    get opzioni() { return { ...opzioni, livelli: opzioni.livelli && { ...opzioni.livelli } }; },
+    get opzioni() {
+      return {
+        ...opzioni,
+        // Alias in sola lettura per chi usa ancora l'API precedente.
+        musicaEclissi: opzioni.musicaDemo,
+        musicaEclissiTraccia: opzioni.musicaDemoTraccia,
+        livelli: opzioni.livelli && { ...opzioni.livelli }
+      };
+    },
     impostaOpzioni,
     livelli: () => LIVELLI.map(l => ({ id: l.id, nome: nomeLivello(l), acceso: l.leggi() })),
     registra(nome, comando) {
