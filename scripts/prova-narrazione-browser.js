@@ -291,7 +291,7 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
       });
       await prova('fine della demo: l’ultima frase si chiude con lei', async () => {
         await pagina.evaluate(() => AstroDemo.avvia(AstroDemoPredefiniti[3].testo));
-        await pagina.evaluate(() => AstroDemo.vaiAScena(4, 0.98));
+        await pagina.evaluate(() => AstroDemo.vaiAScena(9, 0.98));
         await aspetta(pagina, () => AstroDemo.stato === 'completato');
         assert.equal(await stato(pagina), null);
         assert.equal(await pagina.evaluate(() => window.__voce.attiva), null);

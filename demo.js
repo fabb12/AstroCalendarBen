@@ -246,7 +246,7 @@
   registro.set_fov = {
     verifica(p) {
       campi(p, ['degrees']);
-      richiedi(numero(p.degrees, 0.5, 160), err('fov'));
+      richiedi(numero(p.degrees, 0.25, 160), err('fov'));
     },
     crea(p, c) {
       // Fullscreen e resize possono ricalcolare il campo subito dopo l'avvio.
@@ -266,7 +266,7 @@
   registro.zoom_fov = {
     verifica(p) {
       campi(p, ['from', 'to']);
-      richiedi(numero(p.from, 0.5, 160) && numero(p.to, 0.5, 160), err('fov'));
+      richiedi(numero(p.from, 0.25, 160) && numero(p.to, 0.25, 160), err('fov'));
     },
     crea(p, c) {
       const applica = u => {
@@ -584,18 +584,50 @@
     c.passaggi[id] = { sat, luogo, inizio: +scelto.inizio, fine: +scelto.fine, dati: scelto };
     return c.passaggi[id];
   }
+  // `from` e `to` (frazioni fra 0 e 1 della finestra, margini compresi)
+  // scelgono un pezzo del passaggio: così più scene raccontano lo stesso
+  // passaggio a capitoli — l'arco intero, il culmine da vicino, il congedo —
+  // senza che nessuna debba sapere a che ora cade. `track` insegue la
+  // stazione con quel campo in gradi: è il solo modo di vederne il modellino
+  // (a un grado scarso di campo la ISS è larga una decina di pixel), e lì le
+  // stelle che scorrono dietro sono la cosa giusta da vedere, perché è
+  // quello che si vede in un telescopio che la insegue.
   registro.satellite_pass = {
     verifica(p) {
-      campi(p, ['satellite', 'before', 'after']);
+      campi(p, ['satellite', 'before', 'after', 'from', 'to', 'track']);
       richiedi(p.satellite === 'iss' || p.satellite === 'tiangong', err('satellite', { nome: p.satellite }));
       for (const k of ['before', 'after']) richiedi(p[k] === undefined || numero(p[k], 0, 15), err('margine'));
+      for (const k of ['from', 'to']) richiedi(p[k] === undefined || numero(p[k], 0, 1), err('frazionePassaggio'));
+      richiedi((p.from === undefined ? 0 : p.from) < (p.to === undefined ? 1 : p.to), err('frazionePassaggio'));
+      richiedi(p.track === undefined || numero(p.track, 0.25, 160), err('fov'));
     },
     crea(p, c, scena) {
       const pas = passaggio(c, p.satellite);
-      const inizio = pas.inizio - (p.before || 0) * 60000;
-      const fine = pas.fine + (p.after || 0) * 60000;
+      const w0 = pas.inizio - (p.before || 0) * 60000;
+      const w1 = pas.fine + (p.after || 0) * 60000;
+      const inizio = w0 + (w1 - w0) * (p.from === undefined ? 0 : p.from);
+      const fine = w0 + (w1 - w0) * (p.to === undefined ? 1 : p.to);
       const aggiorna = u => istante(inizio + (fine - inizio) * u);
       aggiorna(0);
+      if (scena.vista === 'planetarium_view' && p.track !== undefined) {
+        sky.mostraSatelliti = true; sky.mostraTraccia = true; sky.mostraSottoOrizzonte = true;
+        skyAggiornaTastiFiltri();
+        const rec = satRecDi(pas.sat), gd = satOsservatoreGd(pas.luogo);
+        // La direzione si chiede a SGP4 per l'istante di adesso, non a
+        // `sky.oggetti`: a un grado di campo anche un fotogramma di ritardo
+        // porterebbe la stazione fuori dal quadro.
+        const insegui = () => {
+          const q = satAltAz(rec, skyAdesso(), gd);
+          if (q) puntaCamera(q.az, q.alt, p.track, true);
+        };
+        insegui();
+        skyAggiornaOggetti(true);
+        sky.target = 'sat-' + p.satellite; sky.inseguimento = false; sky.centraQuandoPronto = null;
+        return { aggiorna(u) {
+          aggiorna(u);
+          if (!c.cameraManuale) insegui();
+        } };
+      }
       if (scena.vista === 'planetarium_view') {
         // Il cielo resta fermo e la stazione ci passa attraverso: una camera
         // che la insegue la farebbe sembrare immobile, con le stelle che

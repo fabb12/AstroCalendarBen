@@ -209,14 +209,24 @@ automaticamente anche per le demo.
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
 | **Eclisse solare totale 2026** (`eclisse_tour`) | 7 · 114 s | Reykjavík: il campo si stringe da 40° a 1,6° sul Sole e la Luna lo attraversa (16:40→17:48, poi la totalità); volo; banco Terra–Luna con Sole, Luna e Terra in fila e la camera che gira; avvicinamento alla Terra (×5,5) con l'ombra che corre da −20 a +45 min dal massimo; di nuovo in cielo fino alle 18:52, a eclisse finita. |
-| **Eclisse lunare totale 2028** (`eclisse_lunare`) | 6 · 57 s | Sapporo: la Luna entra nell'ombra e si arrossa (−110→+5 min); volo; da fuori il cono d'ombra e la Luna che lo attraversa (−170→+130 min) con la camera che le gira attorno; in cielo la Luna ne esce (+5→+170). |
+| **Eclisse lunare totale 2028** (`eclisse_lunare`) | 10 · 178 s | Sapporo nella notte di Capodanno: l'attesa (il campo si stringe da 55° a 8°), il primo morso (−125→−40 min), l'ultimo spicchio che si spegne e la Luna color rame (fino a +5), poi **dentro la totalità il campo si riapre a 40°** e tornano le stelle; volo; da fuori il cono d'ombra, la Luna che lo attraversa (−110→+130) e la Terra davanti al Sole attorno al massimo (la Terra vista dalla Luna, l'anello dei tramonti); di nuovo in cielo l'uscita dall'ombra (+30→+170) e un congedo a campo largo che dà appuntamento alla totale del 26 giugno 2029. |
 | **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
-| **Corteo dei pianeti** (`allineamento_pianeti`) | 5 · 45 s | Tucson prima dell'alba: i quattro pianeti inquadrati; volo; da fuori la camera scende dall'alto (80°) al piano (12°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; di nuovo in cielo verso l'alba. |
-| **Passaggio della ISS** (`passaggio_iss`) | 3 · 36 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario: tutto l'arco inquadrato con la traccia, poi la stessa orbita da fuori nello **stesso** intervallo di tempo. |
+| **Corteo dei pianeti** (`allineamento_pianeti`) | 10 · 173 s | Tucson al buio guardando a est (05:30); la fila inquadrata pianeta per pianeta; tre **primi piani a campo da telescopio** (0,25°): Giove con le bande, Venere gibbosa e Saturno con gli anelli, basso a ovest — cinque pianeti nello stesso cielo; di nuovo la fila e l'eclittica; volo; da fuori la camera scende dall'alto (80°) al piano (12°) e poi di taglio (3°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; in cielo l'alba che li spegne (fino alle 06:30). |
+| **Passaggio della ISS** (`passaggio_iss`) | 6 · 104 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario, a capitoli: tutto l'arco inquadrato con la traccia; il culmine **inseguito a 0,25° di campo**, col modellino della stazione e le stelle che scorrono dietro; volo; la stessa orbita da fuori nello **stesso** intervallo di tempo; più di mezz'ora di orbita a campo largo (±15 min); il congedo, l'ultimo tratto dell'arco in cielo. |
 
 Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
 legano all'**evento vero** (`event_window`, `satellite_pass`), cercato una
 volta per racconto, e la regia muove solo camera, zoom e tempo.
+
+### Le tre demo lunghe della v376
+
+Eclisse di Luna, corteo dei pianeti e ISS hanno preso la stessa forma della
+demo delle aurore: un racconto a capitoli, con la voce che dice quello che la
+scena mostra in quel momento e un congedo che lascia un appuntamento. Le date
+dei capitoli sono i contatti veri (Astronomy Engine per l'eclissi: parziale
+±105 min, totalità ±36; per il corteo Mercurio e Giove passano i 5° alle
+05:45 locali e il Sole sorge verso le 06:30). Nessuna delle tre ha MP3
+registrati: la voce è la sintesi.
 
 ### Perché Helsinki e non Tromsø
 
@@ -284,7 +294,10 @@ Azioni principali:
   i capitoli sono `vento`, `scudo`, `scarica`, `anello` e `taglio` — il quinto è il
   disegno visto di lato, senza camera, con `place` fra i luoghi del banco,
   per esempio `reykjavik`, e `kp` fra 0 e 9)
-- `satellite_pass { satellite: iss, before: 1, after: 1 }`
+- `satellite_pass { satellite: iss, before: 1, after: 1 }`; con `from`/`to` (frazioni fra 0 e 1
+  della finestra, margini compresi) racconta un pezzo solo del passaggio, e con
+  `track: 0.25` (gradi) nel planetario insegue la stazione a quel campo, chiedendo la
+  direzione a SGP4 per l'istante di adesso
 - `narrate { id: 'demo.narr.eclisse_tour.1' }` oppure, in una demo personale,
   `narrate { text: 'Qui la Luna tocca il Sole.' }` (al massimo 400 caratteri;
   un `id` senza testo deve esistere nel dizionario)
@@ -293,7 +306,7 @@ Le scene sono `planetarium_view`, `transition`, `solar_system_3d` e
 `didactic_view`. `AstroDemo.vaiAScena(i, frazione)` salta a una scena (lo usano
 le prove per non aspettare un minuto a tour).
 
-`set_fov` accetta un campo fra 0,5° e 160°. `frame_objects` calcola il
+`set_fov` e `zoom_fov` accettano un campo fra 0,25° (il minimo del planetario, quello dei primi piani sui pianeti) e 160°. Con la vista pulita il mirino giallo non si disegna: la camera la tiene la regia, e nei primi piani starebbe proprio sopra al bersaglio. `frame_objects` calcola il
 minimo arco azimutale contenente da 2 a 8 corpi supportati e sceglie
 automaticamente centro e campo, aggiornandoli durante il timelapse. Entrambe
 cedono la camera appena la persona interviene. Il FOV faceva già parte dello

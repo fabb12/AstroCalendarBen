@@ -58,7 +58,7 @@ const server = http.createServer((req, res) => {
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
       ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss']);
-    assert.deepEqual(builtins.map(d => d.durata), [114000, 57000, 173000, 45000, 36000]);
+    assert.deepEqual(builtins.map(d => d.durata), [114000, 178000, 173000, 173000, 104000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
@@ -380,7 +380,7 @@ const server = http.createServer((req, res) => {
       return prima;
     });
     for (const [chiave, data, lat, lon] of [
-      ['eclisse_lunare', '2028-12-31T15:0', 43.0618, 141.3545],
+      ['eclisse_lunare', '2028-12-31T16:1', 43.0618, 141.3545],
       ['aurora_boreale', '2027-01-15T19:00:00', 60.1699, 24.9384],
       ['allineamento_pianeti', '2028-10-21T12:45:00', 32.2226, -110.9747]
     ]) {
@@ -396,7 +396,12 @@ const server = http.createServer((req, res) => {
         assert.equal(await pagina.evaluate(() => vistaAttuale), 'didattica', 'Aurora: poi il banco didattico');
         await pagina.evaluate(() => AstroDemo.vaiAScena(8));
       }
-      if (chiave === 'eclisse_lunare') await pagina.evaluate(() => AstroDemo.vaiAScena(1));
+      // L'eclissi comincia dall'attesa a campo largo: si salta alla terza
+      // scena, quella in cui l'ultimo spicchio si spegne, con la Luna vicina.
+      if (chiave === 'eclisse_lunare') await pagina.evaluate(() => AstroDemo.vaiAScena(2));
+      // Il corteo comincia al buio guardando a est: la fila inquadrata è la
+      // seconda scena, alle 05:45 locali.
+      if (chiave === 'allineamento_pianeti') await pagina.evaluate(() => AstroDemo.vaiAScena(1));
       const durante = await pagina.evaluate(() => ({ stato: AstroDemo.stato, tempo: skyAdesso().toISOString(),
         lat: sky.observer.latitude, lon: sky.observer.longitude, aurora: [aur.acceso, aur.kpSimulato] }));
       assert.equal(durante.stato, 'attivo', chiave);
