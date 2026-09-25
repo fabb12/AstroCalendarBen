@@ -16050,7 +16050,14 @@ function skyDisegnaSpiagge(ctx, base, focale, aria) {
   const bordo = az => {
     const orlo = skyProietta(skyVettore(az, 0), base, focale);
     const giu = skyProietta(skyVettore(az, -SKY_SPIAGGIA_PROFONDITA), base, focale);
-    return (orlo.davanti && giu.davanti) ? { orlo, giu } : null;
+    // A campo largo l'arco arriva alle spalle, e un trapezio che contiene il
+    // punto opposto al centro della vista (quello che la stereografica manda
+    // all'infinito) ha per immagine l'**esterno** del suo contorno: dipinto,
+    // stenderebbe la sabbia su tutto lo schermo. Un trapezio largo così poco
+    // lo contiene solo con gli spigoli a più di centosessanta gradi dal
+    // centro, cioè fuori da qualunque schermo: lì si salta e basta.
+    const lontani = orlo.d < -0.95 || giu.d < -0.95;
+    return (orlo.davanti && giu.davanti && !lontani) ? { orlo, giu } : null;
   };
 
   ctx.save();
@@ -16693,13 +16700,18 @@ function skyMareCorpo(ctx, base, focale, aria, m) {
 
   const passo = m.arco.mezzo > 60 ? 1.5 : 1;
   const n = Math.max(2, Math.min(400, Math.round(2 * m.arco.mezzo / passo) + 1));
+  const azDi = i => m.arco.centro - m.arco.mezzo + (2 * m.arco.mezzo) * i / (n - 1);
+  // La frazione d'acqua di una colonna si tiene **sempre**, anche quando la
+  // sua proiezione non c'è: dietro alle spalle, guardando quasi dritti, il
+  // punto d'orizzonte cade oltre il limite della stereografica, ma quanta
+  // acqua ci sia da quella parte serve lo stesso a decidere come riempire.
   const col = [];
   for (let i = 0; i < n; i++) {
-    const az = m.arco.centro - m.arco.mezzo + (2 * m.arco.mezzo) * i / (n - 1);
+    const az = azDi(i);
     const orlo = skyProietta(skyVettore(az, 0), base, focale);
     const giu = skyProietta(skyVettore(az, -m.depMax), base, focale);
-    col.push((orlo.davanti && giu.davanti)
-      ? { orlo, giu, liv: Math.round(skyMareForza(az) * SKY_MARE_GRADINI) } : null);
+    col.push({ orlo, giu, ok: orlo.davanti && giu.davanti,
+               liv: Math.round(skyMareForza(az) * SKY_MARE_GRADINI) });
   }
 
   ctx.save();
@@ -16717,26 +16729,90 @@ function skyMareCorpo(ctx, base, focale, aria, m) {
   // e' quella che porta esattamente da (q-1)/N a q/N con source-over. Cosi'
   // due colonne vicine condividono sempre la stessa vernice e il passaggio
   // terra-acqua resta morbido senza triangoli sovrapposti.
+  //
+  // --- Il campo largo -------------------------------------------------
+  //
+  // Oltre gli ottanta gradi di campo (su uno schermo di traverso il cono
+  // della vista, misurato sulla diagonale, supera allora i novanta gradi di
+  // semiapertura) l'arco diventa il giro intero e `depMax` arriva al nadir.
+  // Lì il poligono di prima sbagliava in tre modi, ed era la segnalazione
+  // «oltre gli 80° il mare diventa terreno, e il cielo diventa piatto».
+  //
+  // **(1) Il mare aperto.** Il pezzo era tutto il cerchio dell'orizzonte più
+  // uno spillo verso il nadir, e con `nonzero` si riempiva il **dentro** del
+  // cerchio. Guardando appena in su quel dentro è il cielo: il cielo veniva
+  // dipinto col colore del mare (piatto, senza nuvole) e il mare vero — che
+  // sta *fuori* dal cerchio — restava al rilievo, che sull'acqua non ha
+  // niente di sensato da dire. Quando un velo copre il giro intero la
+  // regione giusta è il suolo stesso, con la sua regola (`skyTracciaSuolo`).
+  //
+  // **(2) I fianchi.** Erano due corde dritte dall'orizzonte al fondo; in
+  // stereografica un meridiano è un arco di cerchio, e col fondo al nadir
+  // la corda taglia mezzo schermo. Si campionano lungo il meridiano vero.
+  //
+  // **(3) Il mare alle spalle.** Guardando in su, il punto opposto al centro
+  // della vista (l'antipodo, che la stereografica manda all'infinito) sta
+  // sotto l'orizzonte, cioè sul suolo. Un pezzo d'acqua che passa dietro
+  // alle spalle lo contiene, e allora la sua immagine sullo schermo è
+  // l'**esterno** del suo contorno, non l'interno: riempirlo dipinge il
+  // cielo. In quel caso si disegna il suolo meno i pezzi di terra — che
+  // l'antipodo non lo contengono — con la regola pari-dispari.
+  const giro = m.arco.mezzo >= 180 - 1e-6;
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2]))) * SKY_R2D;
+  const antipodoSulSuolo = giro && altF > 0 && m.depMax > altF;
+  const FIANCO = 16;
+  const verso = (p, primo) => {
+    if (!p.davanti) return primo;
+    if (primo) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+    return false;
+  };
+  const fianco = (i, scendendo, primo) => {
+    const az = azDi(i);
+    for (let j = 1; j < FIANCO; j++) {
+      const t = scendendo ? j / FIANCO : 1 - j / FIANCO;
+      primo = verso(skyProietta(skyVettore(az, -m.depMax * t), base, focale), primo);
+    }
+    return primo;
+  };
+  const pezzo = (inizio, fine) => {
+    if (fine <= inizio) return;
+    let primo = true;
+    for (let k = inizio; k <= fine; k++) primo = verso(col[k].orlo, primo);
+    primo = fianco(fine, true, primo);
+    for (let k = fine; k >= inizio; k--) primo = verso(col[k].giu, primo);
+    primo = fianco(inizio, false, primo);
+    if (!primo) ctx.closePath();
+  };
+  // I pezzi contigui che rispondono di sì a `dentro`. Il pezzo che attraversa
+  // il capo dell'arco (dietro alle spalle, col giro intero) non si spezza lì:
+  // le due colonne estreme sono lo stesso azimut, e spezzarlo vorrebbe dire
+  // tirare un fianco proprio lungo il meridiano che passa per l'antipodo.
+  const pezzi = dentro => {
+    let inizio = -1;
+    for (let i = 0; i < n; i++) {
+      if (dentro(col[i])) { if (inizio < 0) inizio = i; }
+      else if (inizio >= 0) { pezzo(inizio, i - 1); inizio = -1; }
+    }
+    if (inizio >= 0) pezzo(inizio, n - 1);
+  };
   for (let q = 1; q <= SKY_MARE_GRADINI; q++) {
     ctx.globalAlpha = velo / (SKY_MARE_GRADINI - q + 1);
-    ctx.beginPath();
-    let inizio = -1;
-    const chiudi = fine => {
-      if (inizio < 0 || fine <= inizio) { inizio = -1; return; }
-      ctx.moveTo(col[inizio].orlo.px, col[inizio].orlo.py);
-      for (let k = inizio + 1; k <= fine; k++) ctx.lineTo(col[k].orlo.px, col[k].orlo.py);
-      for (let k = fine; k >= inizio; k--) ctx.lineTo(col[k].giu.px, col[k].giu.py);
-      ctx.closePath();
-      inizio = -1;
-    };
-    for (let i = 0; i < n; i++) {
-      if (col[i] && col[i].liv >= q) {
-        if (inizio < 0) inizio = i;
-      } else if (inizio >= 0) {
-        chiudi(i - 1);
-      }
+    const acqua = c => c.liv >= q;
+    let tutto = giro;
+    for (let i = 0; i < n && tutto; i++) if (!acqua(col[i])) tutto = false;
+    if (tutto) {
+      ctx.fill(skyTracciaSuolo(ctx, o));
+      continue;
     }
-    if (inizio >= 0) chiudi(n - 1);
+    if (antipodoSulSuolo && acqua(col[0])) {
+      // Il suolo, e dentro di lui i pezzi di terra come buchi.
+      skyTracciaSuolo(ctx, o);
+      pezzi(c => !acqua(c));
+      ctx.fill('evenodd');
+      continue;
+    }
+    ctx.beginPath();
+    pezzi(c => acqua(c) && c.ok);
     ctx.fill();
   }
   ctx.restore();
