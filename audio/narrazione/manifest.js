@@ -164,6 +164,80 @@
         file: 'demo/it/aurora_boreale-11.mp3',
         impronta: '952e92e3'
       }
+    },
+
+    // ─────────────────────────────────────────────
+    // Allineamento pianeti
+    // ─────────────────────────────────────────────
+
+    'demo.narr.allineamento_pianeti.1': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-1.mp3',
+        impronta: '9bd328fc'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.2': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-2.mp3',
+        impronta: 'b7e91b75'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.3': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-3.mp3',
+        impronta: 'b48144ab'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.4': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-4.mp3',
+        impronta: '420a7add'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.5': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-5.mp3',
+        impronta: '112713f3'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.6': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-6.mp3',
+        impronta: 'd48eb3db'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.7': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-7.mp3',
+        impronta: '18785cce'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.8': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-8.mp3',
+        impronta: '94d1b0b7'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.9': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-9.mp3',
+        impronta: '0d780056'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.10': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-10.mp3',
+        impronta: '85abc4a0'
+      }
     }
 
   }
