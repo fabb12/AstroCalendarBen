@@ -20,7 +20,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 
 const radice = path.resolve(__dirname, '..');
-const tipi = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png',
+const tipi = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
@@ -120,7 +120,7 @@ const DEMO_BREVE = "define_demo breve { scene planetarium_view { duration: 2s; a
       assert.equal(o.imp.durataSec, 3);
       assert.equal(o.imp.mostraTitolo, true);
       assert.equal(o.logo.personale, false);
-      assert.equal(o.logo.url, 'icon-512.png');
+      assert.equal(o.logo.url, 'demo-logo-256.jpg');
       assert.equal(o.titolo, 'AstroCalendario di Ben');
     });
 
@@ -136,7 +136,7 @@ const DEMO_BREVE = "define_demo breve { scene planetarium_view { duration: 2s; a
       assert.ok(v.z < s.zComandi, 'Stop resta raggiungibile sopra all’intro');
       assert.equal(s.intro, true); assert.equal(s.stato, 'attivo');
       assert.equal(s.voce, 0, 'nessuna voce durante l’intro');
-      assert.equal(v.logo.src, 'icon-512.png');
+      assert.equal(v.logo.src, 'demo-logo-256.jpg');
       assert.equal(v.titolo.testo, 'AstroCalendario di Ben');
       await pagina.waitForTimeout(1500);
       await pagina.screenshot({ path: path.join(radice, 'work/intro-desktop.png') });
@@ -310,7 +310,7 @@ const DEMO_BREVE = "define_demo breve { scene planetarium_view { duration: 2s; a
       await pagina.evaluate(() => mostraVista('demo'));
       await pagina.locator('#demo-intro-logo-ripristina').click();
       await pagina.waitForFunction(() => !AstroDemoIntro.statoLogo().personale, null, { timeout: 5000 });
-      assert.equal(await pagina.evaluate(() => document.getElementById('demo-intro-logo-miniatura').getAttribute('src')), 'icon-512.png');
+      assert.equal(await pagina.evaluate(() => document.getElementById('demo-intro-logo-miniatura').getAttribute('src')), 'demo-logo-256.jpg');
       await pagina.reload({ waitUntil: 'domcontentloaded' });
       await pagina.waitForFunction(() => typeof AstroDemoIntro !== 'undefined', null, { timeout: 30000 });
       await pagina.evaluate(() => AstroDemoIntro.pronto);
@@ -347,9 +347,9 @@ const DEMO_BREVE = "define_demo breve { scene planetarium_view { duration: 2s; a
       await pagina.waitForFunction(() => typeof AstroDemoIntro !== 'undefined' && sky.observer && sky.oggetti.length, null, { timeout: 30000 });
       await pagina.evaluate(() => AstroDemoIntro.pronto);
       const l = await pagina.evaluate(() => AstroDemoIntro.statoLogo());
-      assert.equal(l.personale, false); assert.equal(l.url, 'icon-512.png'); assert.equal(l.stato, 'guasto');
+      assert.equal(l.personale, false); assert.equal(l.url, 'demo-logo-256.jpg'); assert.equal(l.stato, 'guasto');
       await pagina.evaluate(t => AstroDemo.avvia(t), DEMO_BREVE);
-      assert.equal((await velo(pagina)).logo.src, 'icon-512.png', 'l’intro usa il predefinito');
+      assert.equal((await velo(pagina)).logo.src, 'demo-logo-256.jpg', 'l’intro usa il predefinito');
       await pagina.evaluate(() => AstroDemo.ferma());
     });
 

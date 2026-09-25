@@ -59,7 +59,7 @@ Disegno, preferenze e logo stanno in `demo-intro.js` (`window.AstroDemoIntro`):
   ridimensionamento, quindi proporzioni, trasparenza e qualità restano quelle.
   Un file che non è un'immagine, supera 8 MB o non si decodifica viene
   rifiutato **prima** di toccare il logo in uso. Un logo salvato che all'avvio
-  non si legge più torna da sé all'icona dell'app (e si butta); se il nodo
+  non si legge più torna da sé al logo predefinito delle demo (e si butta); se il nodo
   dell'immagine fallisce durante l'intro, ripiega sullo stesso predefinito.
   Senza IndexedDB il logo scelto vale fino alla chiusura dell'app, e la pagina
   lo dice.
