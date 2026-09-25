@@ -1,6 +1,14 @@
 # Demo automatizzate
 
-Apri **Impostazioni → Demo automatizzate**. La schermata principale è pensata
+Apri la voce **Demo** del menu principale (`#btn-vista-demo`, vista `demo`,
+`#vista-demo` in `index.html`). Prima era una linguetta delle Impostazioni, e
+la Narrazione stava in Impostazioni → Osservazione: adesso tutto quello che
+vale per le demo sta in quella pagina, in cinque gruppi numerati — **Demo da
+eseguire** (elenco, scheda, «Avvia demo», editor), **Presentazione** (schermo
+intero, vista pulita), **Registrazione** (filmato e, subordinato, audio),
+**Narrazione e audio** (la voce di `narrazione.js`, che vale anche per
+Missione Cielo, e la musica delle eclissi) ed **Elementi del Planetario**. La
+pagina è pensata
 per avviare un tour senza conoscere il DSL: scegli una demo, leggi durata,
 data/luogo ed effetto previsto e premi **Avvia demo**. L'editor non occupa più
 la pagina principale: si trova in **Dettagli avanzati**.
@@ -51,7 +59,9 @@ leggono preferenze salvate prima che queste due chiavi esistessero:
   guida l'acquisizione con un suo `requestAnimationFrame`. La durata la tiene
   la demo (la pausa non tronca il filmato); a fine racconto il filmato compare
   nel pannello del planetario, che per questo resta aperto.
-- **Registra anche l'audio.** È attiva di serie e vale solo insieme al filmato.
+- **Registra anche l'audio.** È attiva di serie e vale solo insieme al filmato:
+  senza filmato la casella è disabilitata e mostrata spenta, e la preferenza
+  salvata torna quando il filmato si riaccende.
   Il MediaRecorder esistente riceve una sola traccia dalla voce condivisa di
   `narrazione.js`: entrano gli MP3 registrati e l'Edge-TTS, perché passano
   entrambi dall'elemento audio condiviso. La `speechSynthesis` locale non
@@ -87,7 +97,56 @@ vive quanto la scena, e pausa e ripresa gliele passa il motore
 (`contesto.pausa`/`riprendi`). Cambiando lingua a metà scena la frase si
 ridice nella lingua nuova. Le frasi stanno nella durata della loro scena
 (`node scripts/controlla-narrazione.js` lo controlla). Voce, volume, testo e
-«solo sintesi» si scelgono in Impostazioni → Osservazione → Narrazione.
+«solo sintesi» si scelgono nella pagina Demo, gruppo Narrazione e audio.
+
+Il testo sta in una fascia di sottotitoli sua, `#demo-sottotitoli`, sorella
+del pannello dei comandi e non dentro di lui: prima si ritirava insieme ai
+comandi (sei secondi dopo il tocco) e sparivano a metà frase. La frase resta
+finché la voce la dice e la sostituisce solo quella della scena dopo, nello
+stesso nodo; la fascia è larga al massimo una sessantina di caratteri, in
+basso sopra ai comandi, con un velo sfumato e l'ombra del testo invece di un
+riquadro pieno.
+
+## I comandi durante la demo
+
+Il pannello `#demo-controlli` (Pausa/Riprendi, Ricomincia, Termina) esiste
+solo mentre una demo è in corso: fuori è `hidden` e il CSS lo toglie dal
+disegno (prima uno `display:flex` in linea batteva l'attributo e i tondi
+restavano sulla pagina). Compare col tocco, col fuoco da tastiera o col
+puntatore sopra, si ritira dopo sei secondi, e in pausa resta in vista. Il
+tasto Pausa ha le due barre, diventa il triangolo di Riprendi con
+`aria-pressed="true"`: prima l'icona sostituita perdeva la sua misura e non
+si vedeva. Usare i comandi non ferma niente — solo Pausa ferma.
+
+## La camera a mano
+
+Trascinare (oltre sei pixel), pizzicare con due dita, la rotellina, il doppio
+clic sulla scena, i tasti di zoom e direzione e i tasti della tastiera
+prendono la camera per il resto della scena (`contesto.cediCamera()`, che
+accende `c.cameraManuale`): le azioni della scena smettono di riscriverla,
+mentre narrazione, orologio e animazioni continuano. Un tocco semplice invece
+no: serve a mostrare i comandi. La scena successiva riprende la regia.
+
+## Schermo intero fra le viste
+
+Il pieno schermo nativo si chiede una volta sull'intero documento. Aprendo il
+Sistema Solare (scene `transition` e `solar_system_3d`) `presentaSistema`
+porta **subito**, nello stesso turno, la finestra dentro al riquadro del cielo
+(`skySistemaModaliSchermoIntero`) e il guscio della 3D a schermo pieno col
+ripiego CSS: prima questo lo faceva un MutationObserver un momento dopo, e il
+browser poteva disegnare un fotogramma con la finestra fuori posto.
+
+## La musica delle eclissi
+
+Le demo di eclissi (riconosciute da nome o azioni: `event_window` di
+un'eclisse, `Eclipse Shadow`, `orbit_object`) suonano «Encelado»
+(`Encelado1`) al 30% sulla scala del cursore delle Impostazioni
+(`musicaDemoAvvia` in `app.js`). Il sottofondo della persona viene messo in
+pausa (stesso elemento, traccia, volume e punto) e `musicaDemoFerma` lo
+rimette com'era a fine demo, Stop, Esc o errore; se non suonava resta
+fermo. Si spegne con la casella del gruppo Narrazione e audio (`musicaEclissi`
+nelle opzioni). Il «Paesaggio spaziale (generato)» non esiste più: una
+preferenza salvata `generata` torna alla traccia predefinita.
 
 ## I cinque tour predefiniti
 
@@ -246,6 +305,7 @@ node scripts/controlla-narrazione.js
 node scripts/prova-narrazione-browser.js
 node scripts/prova-demo-browser.js
 node scripts/prova-demo-regia.js
+node scripts/prova-demo-pagina.js   # menu, pagina Demo, comandi, camera, schermo intero, musica
 node scripts/prova-i18n.js
 ```
 

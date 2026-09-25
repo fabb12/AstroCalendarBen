@@ -455,7 +455,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
     <p class="guida">
       The bar at the bottom of the screen (at the top on a computer) switches between seven screens.
       They are not seven menus of the same tool: they are seven different ways of looking at the same
-      evening, from a quick glance to precise pointing.
+      evening, from a quick glance to precise pointing. <b>Month</b>, <b>Agenda</b> and <b>Logbook</b> sit under a
+      single entry, <b>Calendar</b>: tapping it shows the row of the three sub-sections at the top, with the active
+      one highlighted, and the entry reopens the last one used. The last menu entry, <b>Demo</b>, is the page of the
+      automated demos (chapter 10).
     </p>
 
     <div style="display:flex;flex-direction:column;gap:18px">
@@ -1154,7 +1157,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <div><dt>Gallery</dt><dd>The videos recorded in the planetarium, which you can watch again even offline. The first time it asks you to link a folder on the device.</dd></div>
       <div><dt>Install the app</dt><dd>Puts it on the home screen as a real app.</dd></div>
       <div><dt>Notify me</dt><dd>Reminders for the events that are coming up.</dd></div>
-      <div><dt>Settings</dt><dd>The tabs above, plus automated demos and the guide.</dd></div>
+      <div><dt>Settings</dt><dd>The tabs above and the guide. Automated demos have their own menu entry, <b>Demo</b>.</dd></div>
       <div><dt>Language</dt><dd>Italian or English. Instant, reloads nothing.</dd></div>
     </dl>
 
@@ -1179,16 +1182,19 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
     <ol class="passi" style="margin-top:12px">
       <li class="passo">
         <div>
-          <h3>Open Settings → Automated demos</h3>
-          <p>The tab shows a list and a card: title, description, duration, number of scenes,
-          date, place, field of view and any simulated Kp of the chosen demo. Below the large
-          <b>Start demo</b> button is the <b>During the demo</b> box: <b>Start in full screen</b>,
+          <h3>Open the Demo menu entry</h3>
+          <p>The page is divided into five numbered groups. <b>1 · Demo to run</b>: a list and a card — title,
+          description, duration, number of scenes, date, place, field of view and any simulated Kp — and the large
+          <b>Start demo</b> button. <b>2 · Presentation</b>: <b>Start in full screen</b> (it stays full screen even
+          while moving from the planetarium to the 3D Solar System),
           <b>Clean view during the demo</b> (on by default: it hides panels, buttons, notifications and other
-          distracting UI while keeping the story and Pause/Resume/End controls), <b>Record a video of the demo</b>
-          and <b>Also record audio</b>. Those choices are remembered. With audio enabled, the video includes
+          distracting UI while keeping the story and Pause/Resume/End controls); then <b>3 · Recording</b>:
+          <b>Record a video of the demo</b> and, indented below it, <b>Also record audio</b>, which can only be chosen
+          with the video on (there is no audio-only recording). Those choices are remembered. With audio enabled, the video includes
           recorded narration files and speech synthesis when the browser exposes capturable audio; with it off,
-          narration still plays for you but the recorded video stays silent. Then come the
-          <b>Planetarium elements to show</b>, the same switches as the Display tab — stars, names,
+          narration still plays for you but the recorded video stays silent. <b>4 · Narration and audio</b> holds the
+          voice (below) and the <b>“Enceladus” music</b> of the eclipse demos, at 30%: any background music that was
+          playing stops and afterwards comes back exactly as it was. <b>5 · Planetarium elements</b> are the same switches as the Display tab — stars, names,
           constellations and their artwork, planets, Sun and Moon, deep sky,
           Milky Way, grid, ecliptic, atmosphere, clouds, terrain, relief, town lights, mountain names,
           lakes and rivers and the others. The choices are remembered and apply only to the demo.</p>
@@ -1234,10 +1240,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
 
     <div class="nota" style="margin-top:12px">
       <p><strong>The narrating voice.</strong> Every scene of the built-in demos has a short sentence, spoken aloud
-      and written in the demo bar. If the app has a recording of that sentence it plays it; otherwise it reads it
+      and written at the bottom like a subtitle, which stays for the whole sentence even when the demo controls fade away. If the app has a recording of that sentence it plays it; otherwise it reads it
       with speech synthesis; if the device cannot speak, the sentence stays on screen and the demo carries on.
       The voice pauses and resumes with the demo, never overlaps the next scene and, if you switch language,
-      repeats the sentence in the new one. In <b>Settings → Observing → Narration</b> you can turn it off, set its
+      repeats the sentence in the new one. In the <b>Narration and audio</b> group of the Demo page you can turn it off, set its
       volume, hide the text or use speech synthesis only. It is the same voice as Sky Mission.</p>
     </div>
 

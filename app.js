@@ -338,6 +338,10 @@ const DISEGNI = {
 
   piu: `<path d="M12 5.4v13.2M5.4 12h13.2"/>`,
 
+  // La voce Demo: il segno del «play» dentro a un cerchio, lo stesso gesto
+  // del tasto «Avvia demo» che la pagina tiene in primo piano.
+  demo: `<circle cx="12" cy="12" r="8.6"/><path d="M10.2 8.6v6.8l5.4-3.4z"/>`,
+
   galleria: `<rect x="3.5" y="5" width="17" height="14" rx="2"/>
     <path d="m5.8 16 4.1-4.2 3.1 3 2.2-2.2 3 3.4"/><circle cx="15.8" cy="9" r="1.4"/>`,
 
@@ -429,7 +433,18 @@ const ICONE_VISTE = {
   cielo:      'stella',
   telescopio: 'telescopio',
   diario:     'quaderno',
-  didattica:  'bersaglio'
+  didattica:  'bersaglio',
+  demo:       'demo'
+};
+
+// Mese, Agenda e Diario non sono tre voci del menu principale ma tre
+// sottosezioni di una voce sola, «Calendario»: rispondono tutte e tre a
+// «quando» — cosa succede, in che ordine, cosa ho visto — e tenerle
+// separate voleva dire sette voci in una barra da telefono larga 320 pixel.
+// La voce del gruppo apre l'ultima sottosezione usata; la barra delle
+// sottosezioni (`#sottonav-calendario`) dice sempre quale è davanti.
+const GRUPPI_VISTE = {
+  calendario: { btn: 'btn-vista-gruppo-calendario', barra: 'sottonav-calendario', ultima: 'calendario' }
 };
 
 // La sezione mostrata in questo momento, per ridisegnarla se cambia lo schermo
@@ -861,7 +876,9 @@ function inizializzaDispositivo() {
 // Barra di navigazione: sul telefono diventa la fila di icone in fondo allo
 // schermo, quindi ogni voce si porta dietro il suo disegno e la sua etichetta
 function inizializzaNavigazione() {
-  VISTE.forEach(v => {
+  const voci = [...VISTE.filter(v => !v.gruppo),
+    ...Object.entries(GRUPPI_VISTE).map(([nome, g]) => ({ nome, btn: g.btn }))];
+  voci.forEach(v => {
     const btn = document.getElementById(v.btn);
     if (!btn) return;
     const testo = btn.textContent.trim();
@@ -7391,14 +7408,17 @@ function inizializzaCalendario() {
 // Il nome logico di una vista non è la sua etichetta: `cielo` si legge
 // "Planetario" sullo schermo, ma resta `cielo` nei link condivisi
 // (`?vista=cielo`) e nel codice, perché quelli sono già in giro.
+// Le viste con un `gruppo` hanno il loro tasto nella barra delle
+// sottosezioni, non nel menu principale (vedi `GRUPPI_VISTE`).
 const VISTE = [
   { nome: 'stasera',    btn: 'btn-vista-stasera',    vista: 'vista-stasera' },
-  { nome: 'calendario', btn: 'btn-vista-calendario', vista: 'vista-calendario' },
-  { nome: 'agenda',     btn: 'btn-vista-agenda',     vista: 'vista-agenda' },
+  { nome: 'calendario', btn: 'btn-vista-calendario', vista: 'vista-calendario', gruppo: 'calendario' },
+  { nome: 'agenda',     btn: 'btn-vista-agenda',     vista: 'vista-agenda',     gruppo: 'calendario' },
+  { nome: 'diario',     btn: 'btn-vista-diario',     vista: 'vista-diario',     gruppo: 'calendario' },
   { nome: 'cielo',      btn: 'btn-vista-skymap',     vista: 'vista-skymap' },
   { nome: 'telescopio', btn: 'btn-vista-telescopio', vista: 'vista-telescopio' },
-  { nome: 'diario',     btn: 'btn-vista-diario',     vista: 'vista-diario' },
-  { nome: 'didattica',  btn: 'btn-vista-didattica',  vista: 'vista-didattica' }
+  { nome: 'didattica',  btn: 'btn-vista-didattica',  vista: 'vista-didattica' },
+  { nome: 'demo',       btn: 'btn-vista-demo',       vista: 'vista-demo' }
 ];
 
 // Mostra una sola vista alla volta e aggiorna lo stile dei pulsanti
@@ -7415,12 +7435,34 @@ function mostraVista(nome, opzioni = {}) {
   // torna davanti agli occhi (§«Il ridisegno al cambio lingua» in ui-nuova.js).
   if (typeof ridisegnaVistaSeVecchia === 'function') ridisegnaVistaSeVecchia(nome);
 
+  const gruppo = (VISTE.find(v => v.nome === nome) || {}).gruppo || null;
+  if (gruppo && GRUPPI_VISTE[gruppo]) GRUPPI_VISTE[gruppo].ultima = nome;
   VISTE.forEach(v => {
     const btn = document.getElementById(v.btn);
     const vista = document.getElementById(v.vista);
     const selezionata = v.nome === nome;
     if (vista) vista.classList.toggle('hidden', !selezionata);
-    if (btn) btn.className = selezionata ? attivo : inattivo;
+    if (!btn) return;
+    // Le sottosezioni sono linguette: lo stato lo dicono `aria-selected` e
+    // la classe, non il `className` intero del menu principale.
+    if (v.gruppo) {
+      btn.classList.toggle('attiva', selezionata);
+      btn.setAttribute('aria-selected', selezionata ? 'true' : 'false');
+      btn.tabIndex = selezionata ? 0 : -1;
+    } else {
+      btn.className = selezionata ? attivo : inattivo;
+      if (selezionata) btn.setAttribute('aria-current', 'page'); else btn.removeAttribute('aria-current');
+    }
+  });
+  Object.entries(GRUPPI_VISTE).forEach(([chiave, g]) => {
+    const dentro = gruppo === chiave;
+    const btn = document.getElementById(g.btn);
+    if (btn) {
+      btn.className = dentro ? attivo : inattivo;
+      if (dentro) btn.setAttribute('aria-current', 'page'); else btn.removeAttribute('aria-current');
+    }
+    const barra = document.getElementById(g.barra);
+    if (barra) barra.classList.toggle('hidden', !dentro);
   });
 
   // La ricerca filtra calendario e agenda: altrove non serve
@@ -7474,6 +7516,10 @@ function mostraVista(nome, opzioni = {}) {
     costruisciAgenda();
   }
 
+  // La pagina Demo rilegge le opzioni (possono cambiare da un'altra scheda)
+  // e prepara i dati orbitali che la demo della ISS vorrà senza aspettare.
+  if (nome === 'demo' && typeof demoPaginaPrepara === 'function') demoPaginaPrepara();
+
   // Didattica: avvio/spegnimento del loop e dei canvas
   if (nome === 'didattica') {
     if (typeof didatticaAvvia === 'function') didatticaAvvia();
@@ -7486,6 +7532,23 @@ function gestisciTab() {
   VISTE.forEach(v => {
     const btn = document.getElementById(v.btn);
     if (btn) btn.addEventListener('click', () => mostraVista(v.nome));
+  });
+  Object.values(GRUPPI_VISTE).forEach(g => {
+    const btn = document.getElementById(g.btn);
+    if (btn) btn.addEventListener('click', () => mostraVista(g.ultima));
+    // Le frecce scorrono fra le sottosezioni, come in ogni gruppo di linguette.
+    const barra = document.getElementById(g.barra);
+    if (barra) barra.addEventListener('keydown', e => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      const tasti = Array.from(barra.querySelectorAll('[role="tab"]'));
+      const qui = tasti.indexOf(document.activeElement);
+      if (qui < 0) return;
+      e.preventDefault();
+      const dopo = e.key === 'Home' ? 0 : e.key === 'End' ? tasti.length - 1
+        : (qui + (e.key === 'ArrowRight' ? 1 : -1) + tasti.length) % tasti.length;
+      tasti[dopo].click();
+      tasti[dopo].focus();
+    });
   });
 }
 
@@ -28469,6 +28532,10 @@ function skyInizializzaGesti() {
       return;
     }
     if (typeof missSelezionaCielo === 'function' && missSelezionaCielo(sel)) return;
+    // Durante una demo un tocco nel vuoto serve a far comparire i comandi
+    // della demo (demo.js), non a spegnere il bersaglio che la regia sta
+    // seguendo: fuori da lei è il gesto che chiude la selezione.
+    if (!sel && typeof AstroDemo === 'object' && AstroDemo && AstroDemo.inCorso) return;
     if (!sel) {
       const luogo = skyLuogoNelPunto(px, py);
       if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
@@ -43212,8 +43279,8 @@ function aggiornaSchedaImpostazioni() {
   box.className = qualitaPosizione() === 'approssimata' ? 'text-sm text-amber-400' : 'text-sm text-green-400';
 }
 
-// Il sottofondo può essere l'accordo leggero costruito con Web Audio oppure
-// una delle tracce locali dichiarate in musica/catalogo.js. Nasce soltanto
+// Il sottofondo è una delle tracce locali dichiarate in musica/catalogo.js
+// (il paesaggio sonoro generato con Web Audio non c'è più). Nasce soltanto
 // dopo un gesto dell'utente, come richiedono i browser, e viene distrutto
 // quando l'opzione si spegne.
 let musicaSpaziale = null;
@@ -43242,8 +43309,9 @@ function musicaTracceDisponibili() {
 
 function musicaIdScelta() {
   const salvata = localStorage.getItem(CHIAVE_MUSICA_TRACCIA) || MUSICA_TRACCIA_PREDEFINITA;
-  return salvata === 'generata' || musicaTracceDisponibili().some(t => t.id === salvata)
-    ? salvata : MUSICA_TRACCIA_PREDEFINITA;
+  // Una scelta che non esiste più — il vecchio `generata`, o una traccia
+  // tolta dal catalogo — torna alla traccia predefinita.
+  return musicaTracceDisponibili().some(t => t.id === salvata) ? salvata : MUSICA_TRACCIA_PREDEFINITA;
 }
 
 function musicaImpostaStato(chiave, errore = false) {
@@ -43254,72 +43322,91 @@ function musicaImpostaStato(chiave, errore = false) {
 }
 
 function avviaMusicaSpaziale() {
+  // Mentre una demo suona la sua colonna sonora il sottofondo non parte: la
+  // demo se lo segna e lo avvia lei alla fine, se era stato chiesto.
+  if (musicaDemo) { musicaDemo.avviaDopo = true; return; }
   if (musicaSpaziale) {
-    if (musicaSpaziale.tipo === 'file') musicaSpaziale.audio.play().catch(() => musicaImpostaStato('ui.musica-errore', true));
-    else musicaSpaziale.contesto.resume().catch(() => {});
+    musicaSpaziale.audio.play().catch(() => musicaImpostaStato('ui.musica-errore', true));
     return;
   }
   const scelta = musicaIdScelta();
   const traccia = musicaTracceDisponibili().find(t => t.id === scelta);
-  if (traccia) {
-    const audio = new Audio(`musica/${encodeURIComponent(traccia.file)}`);
-    audio.loop = true;
-    audio.preload = 'auto';
-    audio.volume = musicaGuadagno();
-    audio.addEventListener('error', () => musicaImpostaStato('ui.musica-errore', true));
-    musicaSpaziale = { tipo: 'file', audio };
-    audio.play().catch(() => musicaImpostaStato('ui.musica-errore', true));
-    return;
-  }
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
-
-  const contesto = new AudioContext();
-  const volume = contesto.createGain();
-  volume.gain.setValueAtTime(0.0001, contesto.currentTime);
-  volume.gain.exponentialRampToValueAtTime(
-    Math.max(0.0001, 0.045 * (musicaGuadagno() / 0.35)), contesto.currentTime + 3);
-  volume.connect(contesto.destination);
-
-  const voci = [55, 82.41, 110, 164.81].map((frequenza, indice) => {
-    const oscillatore = contesto.createOscillator();
-    const guadagno = contesto.createGain();
-    const filtro = contesto.createBiquadFilter();
-    oscillatore.type = indice % 2 ? 'sine' : 'triangle';
-    oscillatore.frequency.value = frequenza;
-    oscillatore.detune.value = indice * 3 - 4;
-    guadagno.gain.value = indice < 2 ? 0.22 : 0.1;
-    filtro.type = 'lowpass';
-    filtro.frequency.value = 420 + indice * 130;
-    oscillatore.connect(filtro).connect(guadagno).connect(volume);
-    oscillatore.start();
-    return oscillatore;
-  });
-
-  // Una lentissima deriva evita che l'accordo sembri un tono fermo.
-  const deriva = contesto.createOscillator();
-  const profondita = contesto.createGain();
-  deriva.frequency.value = 0.035;
-  profondita.gain.value = 5;
-  deriva.connect(profondita);
-  voci.forEach(voce => profondita.connect(voce.detune));
-  deriva.start();
-  musicaSpaziale = { tipo: 'generata', contesto, volume, voci: [...voci, deriva] };
-  contesto.resume().catch(() => {});
+  if (!traccia) return;
+  const audio = new Audio(`musica/${encodeURIComponent(traccia.file)}`);
+  audio.loop = true;
+  audio.preload = 'auto';
+  audio.volume = musicaGuadagno();
+  audio.addEventListener('error', () => musicaImpostaStato('ui.musica-errore', true));
+  musicaSpaziale = { tipo: 'file', id: traccia.id, audio };
+  audio.play().catch(() => musicaImpostaStato('ui.musica-errore', true));
 }
 
 function fermaMusicaSpaziale() {
   if (!musicaSpaziale) return;
   const musica = musicaSpaziale;
   musicaSpaziale = null;
-  if (musica.tipo === 'file') {
-    musica.audio.pause();
-    musica.audio.currentTime = 0;
-    return;
+  musica.audio.pause();
+  musica.audio.currentTime = 0;
+}
+
+// --- La colonna sonora di una demo ------------------------------------
+// Una demo può chiedere una traccia sua (le eclissi: «Encelado» al 30%).
+// Il sottofondo della persona non si tocca: si **mette in pausa** — stesso
+// elemento, stessa traccia, stesso volume, stesso punto — e alla fine della
+// demo riparte solo se stava suonando. Le preferenze salvate non cambiano,
+// quindi il ripristino è esatto per costruzione. Il volume è sulla stessa
+// scala del cursore delle Impostazioni (curva quadratica).
+let musicaDemo = null;
+
+function musicaDemoFotografa() {
+  const m = musicaSpaziale;
+  return {
+    traccia: m ? m.id : null,
+    volume: m ? m.audio.volume : null,
+    suonava: !!(m && !m.audio.paused),
+    tempo: m ? m.audio.currentTime : 0,
+    musicaVolume
+  };
+}
+
+function musicaDemoAvvia(id, volumeCursore) {
+  musicaDemoFerma();
+  const traccia = musicaTracceDisponibili().find(t => t.id === id);
+  if (!traccia) return null;
+  const prima = musicaDemoFotografa();
+  if (prima.suonava) musicaSpaziale.audio.pause();
+  const audio = new Audio(`musica/${encodeURIComponent(traccia.file)}`);
+  audio.loop = true;
+  audio.preload = 'auto';
+  audio.volume = Math.max(0, Math.min(1, volumeCursore)) ** 2;
+  musicaDemo = { id, audio, prima, originale: musicaSpaziale, avviaDopo: false };
+  audio.play().catch(() => {});
+  return musicaDemo;
+}
+
+// Ferma la colonna sonora della demo e rimette il sottofondo com'era.
+function musicaDemoFerma() {
+  const d = musicaDemo;
+  if (!d) return;
+  musicaDemo = null;
+  try { d.audio.pause(); d.audio.removeAttribute('src'); d.audio.load(); } catch (e) { /* già chiuso */ }
+  const m = d.originale;
+  if (m && m === musicaSpaziale) {
+    m.audio.volume = d.prima.volume;
+    if (d.prima.suonava) m.audio.play().catch(() => {});
+  } else if (d.avviaDopo) {
+    // Il primo gesto era arrivato durante la demo: il sottofondo parte adesso
+    // come sarebbe partito allora, se è ancora acceso.
+    const acceso = document.getElementById('imp-musica-spaziale');
+    if (!acceso || acceso.checked) avviaMusicaSpaziale();
   }
-  musica.volume.gain.cancelScheduledValues(musica.contesto.currentTime);
-  musica.volume.gain.setTargetAtTime(0.0001, musica.contesto.currentTime, 0.25);
-  setTimeout(() => musica.contesto.close().catch(() => {}), 1200);
+}
+
+function musicaDemoStato() {
+  return {
+    demo: musicaDemo ? { id: musicaDemo.id, volume: musicaDemo.audio.volume, suona: !musicaDemo.audio.paused } : null,
+    sottofondo: musicaDemoFotografa()
+  };
 }
 
 function inizializzaImpostazioni() {
@@ -43344,7 +43431,7 @@ function inizializzaImpostazioni() {
     ? Math.max(0, Math.min(1, volumeSalvato))
     : MUSICA_VOLUME_PREDEFINITO;
   if (impTraccia) {
-    const opzioni = [{ id: 'generata', nome: astroI18n.t('ui.musica-generata') }, ...musicaTracceDisponibili()];
+    const opzioni = musicaTracceDisponibili();
     impTraccia.innerHTML = '';
     opzioni.forEach(traccia => {
       const opzione = document.createElement('option');
@@ -43354,8 +43441,6 @@ function inizializzaImpostazioni() {
     });
     impTraccia.value = musicaIdScelta();
     if (astroI18n && typeof astroI18n.alCambio === 'function') astroI18n.alCambio(() => {
-      const generata = impTraccia.querySelector('option[value="generata"]');
-      if (generata) generata.textContent = astroI18n.t('ui.musica-generata');
       musicaImpostaStato('ui.musica-spaziale-spiega');
     });
     impTraccia.addEventListener('change', () => {
@@ -43368,9 +43453,7 @@ function inizializzaImpostazioni() {
     const aggiornaVolume = () => {
       musicaVolume = Number(impVolume.value) / 100;
       if (impVolumeValore) impVolumeValore.textContent = `${impVolume.value}%`;
-      if (musicaSpaziale?.tipo === 'file') musicaSpaziale.audio.volume = musicaGuadagno();
-      if (musicaSpaziale?.tipo === 'generata') musicaSpaziale.volume.gain.setTargetAtTime(
-        Math.max(0.0001, 0.045 * (musicaGuadagno() / 0.35)), musicaSpaziale.contesto.currentTime, 0.08);
+      if (musicaSpaziale) musicaSpaziale.audio.volume = musicaGuadagno();
     };
     impVolume.value = String(Math.round(musicaVolume * 100));
     aggiornaVolume();

@@ -121,12 +121,13 @@
          sillaba a caso ("Telescopi-o") si legge peggio del nome intero. -->
     <nav class="nav-principale" aria-label="Sezioni">
       <button id="btn-vista-stasera" class="voce-menu attiva" title="Cosa si vede stanotte da casa tua" data-i18n-title="ui.cosa-si-vede-stanotte-da-casa-tua" data-i18n="ui.stasera">Stasera</button>
-      <button id="btn-vista-calendario" class="voce-menu" data-i18n="ui.mese">Mese</button>
-      <button id="btn-vista-agenda" class="voce-menu" data-i18n="ui.agenda">Agenda</button>
+      <!-- Mese, Agenda e Diario sono una voce sola: le tre sottosezioni
+           stanno nella barra `#sottonav-calendario`, in cima al contenuto. -->
+      <button id="btn-vista-gruppo-calendario" class="voce-menu" title="Mese, Agenda e Diario" data-i18n-title="ui.calendario-gruppo-titolo" data-i18n="ui.calendario-gruppo">Calendario</button>
       <button id="btn-vista-skymap" class="voce-menu" title="Il planetario: punta il telefono verso il cielo e vedi cosa c'è" data-i18n-title="ui.il-planetario-punta-il-telefono-verso-il" data-i18n="ui.plane-tario">Plane&shy;tario</button>
       <button id="btn-vista-telescopio" class="voce-menu" title="Allineamento, puntamento e scaletta per il tuo telescopio" data-i18n-title="ui.allineamento-puntamento-e-scaletta-per-il" data-i18n="ui.tele-scopio">Tele&shy;scopio</button>
-      <button id="btn-vista-diario" class="voce-menu" title="Le tue osservazioni e i traguardi raggiunti" data-i18n-title="ui.le-tue-osservazioni-e-i-traguardi-raggiunti" data-i18n="ui.diario">Diario</button>
       <button id="btn-vista-didattica" class="voce-menu" title="Laboratorio didattico e simulazioni interattive della meccanica celeste" data-i18n-title="ui.laboratorio-didattico-e-simulazioni" data-i18n="ui.didat-tica">Didat&shy;tica</button>
+      <button id="btn-vista-demo" class="voce-menu" title="Demo automatizzate: scegli, prepara e avvia un racconto del cielo" data-i18n-title="ui.demo-titolo" data-i18n="ui.demo">Demo</button>
     </nav>
 
     <div class="azioni-testata">
@@ -139,6 +140,15 @@
   </header>
 
   <main class="contenitore">
+
+    <!-- Le tre sottosezioni della voce «Calendario». Sono linguette: la
+         selezionata porta `aria-selected` e la classe `attiva`, e la voce del
+         menu principale resta accesa finché si è dentro al gruppo. -->
+    <div id="sottonav-calendario" class="sottonav hidden" role="tablist" aria-label="Sezioni del calendario" data-i18n-aria-label="ui.sezioni-calendario">
+      <button id="btn-vista-calendario" type="button" class="sottovoce" role="tab" aria-selected="false" aria-controls="vista-calendario" data-i18n="ui.mese">Mese</button>
+      <button id="btn-vista-agenda" type="button" class="sottovoce" role="tab" aria-selected="false" aria-controls="vista-agenda" tabindex="-1" data-i18n="ui.agenda">Agenda</button>
+      <button id="btn-vista-diario" type="button" class="sottovoce" role="tab" aria-selected="false" aria-controls="vista-diario" tabindex="-1" title="Le tue osservazioni e i traguardi raggiunti" data-i18n-title="ui.le-tue-osservazioni-e-i-traguardi-raggiunti" data-i18n="ui.diario">Diario</button>
+    </div>
 
     <!-- BARRA DI RICERCA INTELLIGENTE E FILTRI PER CATEGORIA -->
     <div id="barra-ricerca" class="mb-6 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
@@ -1518,6 +1528,171 @@
 
     </div>
 
+    <!-- VISTA DEMO: tutto quello che riguarda le demo automatizzate, che
+         prima stava diviso fra la linguetta «Demo» delle Impostazioni e la
+         Narrazione della scheda Osservazione. Cinque gruppi, ognuno con una
+         domanda sola: quale demo, come si presenta, cosa si sente, se si
+         registra, cosa mostra il planetario. Il tasto «Avvia demo» è l'unica
+         azione piena della pagina. Gli `id` dei comandi sono quelli di
+         sempre: li collegano demo-impostazioni.js e narrazione.js. -->
+    <div id="vista-demo" class="hidden griglia-vista vista-demo">
+      <header class="scheda-piena demo-pagina-testata">
+        <h2 class="demo-pagina-titolo" data-i18n="demo.sezione">Demo automatizzate</h2>
+        <p class="demo-pagina-aiuto" data-i18n="demo.paginaAiuto">Un racconto guidato del cielo: scegli la demo, decidi come presentarla e avviala. Alla fine, con Termina o con Esc, tutto torna com'era.</p>
+      </header>
+
+      <section class="scheda-piena demo-gruppo demo-gruppo-esegui" aria-labelledby="demo-gruppo-esegui-titolo">
+        <h3 id="demo-gruppo-esegui-titolo" class="demo-gruppo-titolo">
+          <span class="demo-gruppo-numero" aria-hidden="true">1</span>
+          <span data-i18n="demo.gruppoEsegui">Demo da eseguire</span>
+        </h3>
+        <div class="demo-libreria">
+          <label for="demo-elenco" data-i18n="demo.elenco">Demo disponibili</label>
+          <select id="demo-elenco"></select>
+          <article class="demo-scheda" aria-live="polite">
+            <div class="demo-scheda-testata">
+              <div>
+                <span id="demo-badge" class="demo-badge"></span>
+                <h4 id="demo-titolo" class="demo-titolo"></h4>
+              </div>
+              <span id="demo-durata" class="demo-durata"></span>
+            </div>
+            <p id="demo-descrizione" class="demo-descrizione"></p>
+            <dl id="demo-metadati" class="demo-metadati"></dl>
+          </article>
+          <div class="demo-azioni demo-azioni-principali">
+            <button id="demo-avvia" type="button" class="demo-avvia-principale">
+              <svg class="demo-avvia-icona" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>
+              <span data-i18n="demo.esegui">Avvia demo</span>
+            </button>
+          </div>
+          <p id="demo-info" class="demo-info-tecnica"></p>
+          <p id="demo-esito" role="status" aria-live="polite"></p>
+          <div class="demo-azioni demo-azioni-secondarie">
+            <button id="demo-duplica" type="button" class="tasto-cielo" data-i18n="demo.duplicaModifica">Duplica e modifica</button>
+            <button id="demo-modifica" type="button" class="tasto-cielo" data-i18n="demo.modifica" hidden>Modifica</button>
+            <button id="demo-nuova" type="button" class="tasto-cielo" data-i18n="demo.nuova">Crea nuova demo</button>
+            <label class="tasto-cielo demo-importa-tasto" for="demo-importa" data-i18n="demo.importaPulsante">Importa demo da file</label>
+            <input id="demo-importa" class="demo-file-nascosto" type="file" accept=".astrodemo,.txt,text/plain">
+            <span id="demo-file-nome" class="demo-file-nome"></span>
+          </div>
+          <details id="demo-avanzate" class="demo-avanzate">
+            <summary data-i18n="demo.dettagliAvanzati">Dettagli avanzati</summary>
+            <div class="demo-avanzate-corpo">
+              <div class="demo-azioni">
+                <button id="demo-esporta" type="button" class="tasto-cielo" data-i18n="demo.esporta">Esporta .astrodemo</button>
+                <button id="demo-elimina" type="button" class="tasto-cielo" data-i18n="demo.elimina">Elimina</button>
+              </div>
+              <label for="demo-editor" data-i18n="demo.editor">Script DSL</label>
+              <p id="demo-aiuto" data-i18n="demo.aiuto">Le demo predefinite sono di sola lettura: duplicale per modificarle. Ogni snippet aggiunge una scena completa in fondo. Modifica nome, durata e parametri nel testo; i punti e virgola sono obbligatori.</p>
+              <textarea id="demo-editor" rows="16" spellcheck="false" aria-describedby="demo-aiuto demo-validazione"></textarea>
+              <label for="demo-snippet" data-i18n="demo.snippet">Scena o azione pronta</label>
+              <div class="demo-azioni">
+                <select id="demo-snippet"></select>
+                <button id="demo-inserisci" type="button" class="tasto-cielo" data-i18n="demo.inserisci">Aggiungi scena</button>
+                <button id="demo-salva" type="button" class="tasto-cielo" data-i18n="demo.salva">Salva script</button>
+                <button id="demo-annulla" type="button" class="tasto-cielo" data-i18n="demo.annulla">Annulla modifiche</button>
+              </div>
+              <p id="demo-validazione" role="status" aria-live="polite"></p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <div class="demo-colonne">
+        <fieldset class="scheda-piena demo-gruppo" aria-describedby="demo-opzioni-aiuto">
+          <legend class="demo-gruppo-titolo">
+            <span class="demo-gruppo-numero" aria-hidden="true">2</span>
+            <span data-i18n="demo.gruppoPresentazione">Presentazione</span>
+          </legend>
+          <p id="demo-opzioni-aiuto" class="demo-opzioni-aiuto" data-i18n="demo.opzioniAiuto">Queste scelte valgono solo per la demo: alla fine, con Termina o con Esc tutto torna com'era.</p>
+          <label class="demo-spunta" for="demo-opz-schermo">
+            <input id="demo-opz-schermo" type="checkbox" aria-describedby="demo-opz-schermo-aiuto">
+            <span data-i18n="demo.opzioneSchermo">Avvia a schermo intero</span>
+          </label>
+          <p id="demo-opz-schermo-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneSchermoAiuto">Il pieno schermo resta attivo anche nei passaggi fra planetario e Sistema Solare 3D.</p>
+          <label class="demo-spunta" for="demo-opz-vista-pulita">
+            <input id="demo-opz-vista-pulita" type="checkbox" aria-describedby="demo-opz-vista-pulita-aiuto">
+            <span data-i18n="demo.opzioneVistaPulita">Vista pulita durante la demo</span>
+          </label>
+          <p id="demo-opz-vista-pulita-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneVistaPulitaAiuto">Nasconde menu e pannelli: restano la scena, i sottotitoli e i comandi della demo.</p>
+        </fieldset>
+
+        <fieldset class="scheda-piena demo-gruppo">
+          <legend class="demo-gruppo-titolo">
+            <span class="demo-gruppo-numero" aria-hidden="true">3</span>
+            <span data-i18n="demo.gruppoRegistrazione">Registrazione</span>
+          </legend>
+          <label class="demo-spunta" for="demo-opz-registra">
+            <input id="demo-opz-registra" type="checkbox" aria-controls="demo-opz-registra-audio" aria-describedby="demo-opz-registra-aiuto">
+            <span data-i18n="demo.opzioneRegistra">Registra un filmato della demo</span>
+          </label>
+          <p id="demo-opz-registra-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneRegistraAiuto">Usa la registrazione del planetario: il filmato compare nel planetario alla fine della demo.</p>
+          <div class="demo-figlia" id="demo-opz-registra-audio-gruppo">
+            <label class="demo-spunta" for="demo-opz-registra-audio">
+              <input id="demo-opz-registra-audio" type="checkbox" aria-describedby="demo-opz-registra-audio-aiuto">
+              <span data-i18n="demo.opzioneRegistraAudio">Registra anche l’audio</span>
+            </label>
+            <p id="demo-opz-registra-audio-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneRegistraAudioAiuto">Disponibile solo insieme al filmato: non esiste una registrazione del solo audio.</p>
+          </div>
+        </fieldset>
+      </div>
+
+      <section class="scheda-piena demo-gruppo" aria-labelledby="demo-gruppo-audio-titolo">
+        <h3 id="demo-gruppo-audio-titolo" class="demo-gruppo-titolo">
+          <span class="demo-gruppo-numero" aria-hidden="true">4</span>
+          <span data-i18n="demo.gruppoAudio">Narrazione e audio</span>
+        </h3>
+        <!-- La voce che racconta le demo e Missione Cielo: la governa
+             `narrazione.js`, che collega da sé questi comandi. -->
+        <div class="demo-narrazione">
+          <label class="demo-spunta" for="imp-narrazione-attiva">
+            <input id="imp-narrazione-attiva" type="checkbox" checked aria-controls="demo-narrazione-figli">
+            <span data-i18n="narrazione.attiva">Racconta a voce le demo e Missione Cielo</span>
+          </label>
+          <div id="demo-narrazione-figli" class="demo-figlia">
+            <label class="demo-cursore" for="imp-narrazione-volume">
+              <span data-i18n="narrazione.volume">Volume della voce</span>
+              <span id="imp-narrazione-volume-valore" class="impostazione-musica-valore">90%</span>
+              <input id="imp-narrazione-volume" type="range" min="0" max="100" step="1" value="90">
+            </label>
+            <label class="demo-spunta" for="imp-narrazione-testo">
+              <input id="imp-narrazione-testo" type="checkbox" checked>
+              <span data-i18n="narrazione.mostraTesto">Mostra il testo della narrazione</span>
+            </label>
+            <label class="demo-spunta" for="imp-narrazione-solo-tts">
+              <input id="imp-narrazione-solo-tts" type="checkbox">
+              <span data-i18n="narrazione.soloTts">Usa solo la sintesi vocale, anche dove c'è un audio registrato</span>
+            </label>
+            <div class="demo-azioni">
+              <button id="imp-narrazione-prova" type="button" class="tasto-cielo" data-i18n="narrazione.prova">Ascolta una prova</button>
+            </div>
+            <p id="imp-narrazione-stato" class="demo-opzioni-nota" aria-live="polite"></p>
+            <p class="demo-opzioni-nota" data-i18n="narrazione.spiega">Prima si usa l'audio registrato, se c'è; poi la sintesi vocale; e se il dispositivo non può parlare il racconto continua col solo testo.</p>
+            <p class="demo-opzioni-nota" data-i18n="demo.narrazioneNota">Voce e testo valgono anche per Missione Cielo.</p>
+          </div>
+        </div>
+        <div class="demo-separatore" role="presentation"></div>
+        <label class="demo-spunta" for="demo-opz-musica-eclissi">
+          <input id="demo-opz-musica-eclissi" type="checkbox" aria-describedby="demo-opz-musica-eclissi-aiuto">
+          <span data-i18n="demo.opzioneMusicaEclissi">Musica «Encelado» nelle demo delle eclissi (volume 30%)</span>
+        </label>
+        <p id="demo-opz-musica-eclissi-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneMusicaEclissiAiuto">La musica di sottofondo in corso si ferma durante la demo e alla fine torna esattamente com'era.</p>
+      </section>
+
+      <section class="scheda-piena demo-gruppo" aria-labelledby="demo-livelli-titolo">
+        <h3 class="demo-gruppo-titolo">
+          <span class="demo-gruppo-numero" aria-hidden="true">5</span>
+          <span id="demo-livelli-titolo" data-i18n="demo.gruppoLivelli">Elementi del Planetario</span>
+        </h3>
+        <label class="demo-spunta" for="demo-livelli-personali">
+          <input id="demo-livelli-personali" type="checkbox" aria-controls="demo-livelli">
+          <span data-i18n="demo.livelliPersonalizza">Scegli per la demo (altrimenti restano quelli attuali)</span>
+        </label>
+        <div id="demo-livelli" class="demo-livelli demo-figlia" role="group" aria-labelledby="demo-livelli-titolo"></div>
+      </section>
+    </div>
+
   </main>
 
   <!-- MODALE: FORM AGGIUNGI EVENTO MANUALE -->
@@ -2572,7 +2747,6 @@
         <button type="button" class="impostazioni-tab-tasto attiva" role="tab" aria-selected="true" aria-controls="imp-tab-osservazione" id="imp-tab-btn-osservazione" data-imp-tab="osservazione" data-i18n="ui.osservazione">Osservazione</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-planetario" id="imp-tab-btn-planetario" data-imp-tab="planetario" tabindex="-1" data-i18n="ui.planetario">Planetario</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-dati" id="imp-tab-btn-dati" data-imp-tab="dati" tabindex="-1" data-i18n="ui.dati">Dati</button>
-        <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-demo" id="imp-tab-btn-demo" data-imp-tab="demo" tabindex="-1" data-i18n="demo.sezione">Demo automatizzate</button>
         <button type="button" class="impostazioni-tab-tasto" role="tab" aria-selected="false" aria-controls="imp-tab-guida" id="imp-tab-btn-guida" data-imp-tab="guida" tabindex="-1" data-i18n="ui.guida">Guida</button>
       </nav>
 
@@ -2596,37 +2770,7 @@
               <input id="imp-musica-volume" type="range" min="0" max="100" step="1" value="12">
             </label>
           </div>
-          <p id="imp-musica-stato" class="text-xs text-slate-500" aria-live="polite" data-i18n="ui.musica-spaziale-spiega">La musica parte con Europa al 12%; puoi scegliere il paesaggio sonoro generato o un'altra traccia.</p>
-        </section>
-
-        <!-- La voce che racconta le demo e Missione Cielo: la governa
-             `narrazione.js`, che collega da sé questi comandi. -->
-        <section class="space-y-2 border-t border-slate-700 pt-4">
-          <h3 class="font-bold text-white" data-i18n="narrazione.titolo">Narrazione</h3>
-          <label class="flex items-center gap-3 text-sm text-slate-300" for="imp-narrazione-attiva">
-            <input id="imp-narrazione-attiva" type="checkbox" class="accent-blue-500" checked>
-            <span data-i18n="narrazione.attiva">Racconta a voce le demo e Missione Cielo</span>
-          </label>
-          <div class="impostazione-musica-grid">
-            <label class="text-xs text-slate-400" for="imp-narrazione-volume">
-              <span data-i18n="narrazione.volume">Volume della voce</span>
-              <span id="imp-narrazione-volume-valore" class="impostazione-musica-valore">90%</span>
-              <input id="imp-narrazione-volume" type="range" min="0" max="100" step="1" value="90">
-            </label>
-          </div>
-          <label class="flex items-center gap-3 text-sm text-slate-300" for="imp-narrazione-testo">
-            <input id="imp-narrazione-testo" type="checkbox" class="accent-blue-500" checked>
-            <span data-i18n="narrazione.mostraTesto">Mostra il testo della narrazione</span>
-          </label>
-          <label class="flex items-center gap-3 text-sm text-slate-300" for="imp-narrazione-solo-tts">
-            <input id="imp-narrazione-solo-tts" type="checkbox" class="accent-blue-500">
-            <span data-i18n="narrazione.soloTts">Usa solo la sintesi vocale, anche dove c'è un audio registrato</span>
-          </label>
-          <div class="flex flex-wrap gap-2">
-            <button id="imp-narrazione-prova" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white" data-i18n="narrazione.prova">Ascolta una prova</button>
-          </div>
-          <p id="imp-narrazione-stato" class="text-xs text-slate-500" aria-live="polite"></p>
-          <p class="text-xs text-slate-500" data-i18n="narrazione.spiega">Prima si usa l'audio registrato, se c'è; poi la sintesi vocale; e se il dispositivo non può parlare il racconto continua col solo testo.</p>
+          <p id="imp-musica-stato" class="text-xs text-slate-500" aria-live="polite" data-i18n="ui.musica-spaziale-spiega">La musica parte con Europa al 12%; puoi scegliere un'altra traccia dall'elenco.</p>
         </section>
 
         <!-- La posizione ha una finestra tutta sua: qui resta solo il
@@ -2779,93 +2923,6 @@
             si sa dove cercare. Il link apre una pagina vera dell'app, non un
             servizio esterno: viaggia col sito, sta nella cache del service
             worker, e quindi si legge anche dal rifugio senza campo. -->
-       <div id="imp-tab-demo" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-demo" data-imp-pannello="demo">
-         <section class="demo-libreria" aria-labelledby="demo-libreria-titolo">
-           <div>
-             <h3 id="demo-libreria-titolo" class="font-bold text-white" data-i18n="demo.libreriaTitolo">Scegli una demo</h3>
-             <p class="demo-introduzione" data-i18n="demo.libreriaAiuto">Seleziona un fenomeno e avvialo: data, luogo e inquadratura vengono preparati automaticamente e poi ripristinati.</p>
-           </div>
-           <label for="demo-elenco" data-i18n="demo.elenco">Demo disponibili</label>
-           <select id="demo-elenco"></select>
-           <article class="demo-scheda" aria-live="polite">
-             <div class="demo-scheda-testata">
-               <div>
-                 <span id="demo-badge" class="demo-badge"></span>
-                 <h4 id="demo-titolo" class="demo-titolo"></h4>
-               </div>
-               <span id="demo-durata" class="demo-durata"></span>
-             </div>
-             <p id="demo-descrizione" class="demo-descrizione"></p>
-             <dl id="demo-metadati" class="demo-metadati"></dl>
-           </article>
-           <div class="demo-azioni demo-azioni-principali">
-             <button id="demo-avvia" type="button" class="demo-avvia-principale">
-               <svg class="demo-avvia-icona" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>
-               <span data-i18n="demo.esegui">Avvia demo</span>
-             </button>
-           </div>
-           <p id="demo-info" class="demo-info-tecnica"></p>
-           <fieldset class="demo-opzioni" aria-describedby="demo-opzioni-aiuto">
-             <legend class="demo-opzioni-titolo" data-i18n="demo.opzioniTitolo">Durante la demo</legend>
-             <p id="demo-opzioni-aiuto" class="demo-opzioni-aiuto" data-i18n="demo.opzioniAiuto">Queste scelte valgono solo per la demo: alla fine, con Termina o con Esc tutto torna com'era.</p>
-             <label class="demo-spunta">
-               <input id="demo-opz-schermo" type="checkbox">
-               <span data-i18n="demo.opzioneSchermo">Avvia a schermo intero</span>
-             </label>
-             <label class="demo-spunta">
-               <input id="demo-opz-vista-pulita" type="checkbox">
-               <span data-i18n="demo.opzioneVistaPulita">Vista pulita durante la demo</span>
-             </label>
-             <label class="demo-spunta">
-               <input id="demo-opz-registra" type="checkbox">
-               <span data-i18n="demo.opzioneRegistra">Registra un filmato della demo</span>
-             </label>
-             <label class="demo-spunta">
-               <input id="demo-opz-registra-audio" type="checkbox">
-               <span data-i18n="demo.opzioneRegistraAudio">Registra anche l’audio</span>
-             </label>
-             <p class="demo-opzioni-nota" data-i18n="demo.opzioneRegistraAiuto">Usa la registrazione del planetario: il filmato compare nel planetario alla fine della demo.</p>
-             <details id="demo-livelli-dettagli" class="demo-livelli-dettagli">
-               <summary id="demo-livelli-titolo" data-i18n="demo.livelliTitolo">Elementi del planetario da mostrare</summary>
-               <label class="demo-spunta">
-                 <input id="demo-livelli-personali" type="checkbox">
-                 <span data-i18n="demo.livelliPersonalizza">Scegli per la demo (altrimenti restano quelli attuali)</span>
-               </label>
-               <div id="demo-livelli" class="demo-livelli" role="group" aria-labelledby="demo-livelli-titolo"></div>
-             </details>
-           </fieldset>
-           <div class="demo-azioni demo-azioni-secondarie">
-             <button id="demo-duplica" type="button" class="tasto-cielo" data-i18n="demo.duplicaModifica">Duplica e modifica</button>
-             <button id="demo-modifica" type="button" class="tasto-cielo" data-i18n="demo.modifica" hidden>Modifica</button>
-             <button id="demo-nuova" type="button" class="tasto-cielo" data-i18n="demo.nuova">Crea nuova demo</button>
-             <label class="tasto-cielo demo-importa-tasto" for="demo-importa" data-i18n="demo.importaPulsante">Importa demo da file</label>
-             <input id="demo-importa" class="demo-file-nascosto" type="file" accept=".astrodemo,.txt,text/plain">
-             <span id="demo-file-nome" class="demo-file-nome"></span>
-           </div>
-         </section>
-
-         <details id="demo-avanzate" class="demo-avanzate">
-           <summary data-i18n="demo.dettagliAvanzati">Dettagli avanzati</summary>
-           <div class="demo-avanzate-corpo">
-             <div class="demo-azioni">
-               <button id="demo-esporta" type="button" class="tasto-cielo" data-i18n="demo.esporta">Esporta .astrodemo</button>
-               <button id="demo-elimina" type="button" class="tasto-cielo" data-i18n="demo.elimina">Elimina</button>
-             </div>
-             <label for="demo-editor" data-i18n="demo.editor">Script DSL</label>
-             <p id="demo-aiuto" data-i18n="demo.aiuto">Le demo predefinite sono di sola lettura: duplicale per modificarle. Ogni snippet aggiunge una scena completa in fondo. Modifica nome, durata e parametri nel testo; i punti e virgola sono obbligatori.</p>
-             <textarea id="demo-editor" rows="16" spellcheck="false" aria-describedby="demo-aiuto demo-validazione"></textarea>
-             <label for="demo-snippet" data-i18n="demo.snippet">Scena o azione pronta</label>
-             <div class="demo-azioni">
-               <select id="demo-snippet"></select>
-               <button id="demo-inserisci" type="button" class="tasto-cielo" data-i18n="demo.inserisci">Aggiungi scena</button>
-               <button id="demo-salva" type="button" class="tasto-cielo" data-i18n="demo.salva">Salva script</button>
-               <button id="demo-annulla" type="button" class="tasto-cielo" data-i18n="demo.annulla">Annulla modifiche</button>
-             </div>
-             <p id="demo-validazione" role="status" aria-live="polite"></p>
-           </div>
-         </details>
-         <p id="demo-esito" role="status" aria-live="polite"></p>
-       </div>
        <div id="imp-tab-guida" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-guida" data-imp-pannello="guida">
 
         <section class="space-y-3">

@@ -14,6 +14,8 @@ on:
       - 'style.css'
       - 'lingue/*.js'
       - 'scripts/prova-demo*.js'
+      - 'scripts/prova-musica.js'
+      - 'musica/**'
       - '.github/workflows/verifica-demo.yml'
 permissions:
   contents: read
@@ -27,6 +29,7 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/prova-demo.js
+      - run: node scripts/prova-musica.js
       - run: node scripts/prova-narrazione.js
       - run: node scripts/controlla-narrazione.js
       - run: node scripts/prova-i18n.js
@@ -34,6 +37,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node scripts/prova-demo-browser.js
       - run: node scripts/prova-demo-regia.js
+      - run: node scripts/prova-demo-pagina.js
+        if: success() || failure()
       - run: node scripts/prova-narrazione-browser.js
         if: success() || failure()
       - uses: actions/upload-artifact@v4

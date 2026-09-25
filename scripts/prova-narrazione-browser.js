@@ -141,11 +141,14 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
     browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
 
     // -----------------------------------------------------------------
-    console.log('\n— le Impostazioni —');
+    console.log('\n— la pagina Demo (Narrazione e audio) —');
     {
       const { contesto, pagina, errori } = await apri(browser, origine);
       await prova('i quattro comandi ci sono e dicono lo stato di serie', async () => {
-        await pagina.locator('#btn-impostazioni').click();
+        // La Narrazione si è spostata dalle Impostazioni alla pagina Demo.
+        assert.equal(await pagina.locator('#modale-impostazioni #imp-narrazione-attiva').count(), 0);
+        await pagina.locator('#btn-vista-demo').click();
+        assert.equal(await pagina.locator('#vista-demo #imp-narrazione-attiva').count(), 1);
         assert.equal(await pagina.locator('#imp-narrazione-attiva').isChecked(), true);
         assert.equal(await pagina.locator('#imp-narrazione-volume').inputValue(), '90');
         assert.equal(await pagina.locator('#imp-narrazione-testo').isChecked(), true);
@@ -185,11 +188,13 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
       const { contesto, pagina, errori } = await apri(browser, origine);
       await pagina.evaluate(() => AstroDemo.avvia(AstroDemoPredefiniti[0].testo));
 
-      await prova('scena 1: l’audio registrato, col testo nel pannello della demo', async () => {
+      await prova('scena 1: l’audio registrato, col testo nella fascia dei sottotitoli', async () => {
         const s = await stato(pagina);
         assert.equal(s.canale, 'demo'); assert.equal(s.id, 'demo.narr.eclisse_tour.1');
         await aspetta(pagina, () => narrazione.stato() && narrazione.stato().fase === 'audio');
-        const testo = await pagina.locator('#demo-controlli #narrazione-testo');
+        const testo = await pagina.locator('#demo-sottotitoli #narrazione-testo');
+        assert.equal(await pagina.locator('#demo-controlli #narrazione-testo').count(), 0,
+          'il testo non sta più dentro ai comandi, che si ritirano');
         assert.equal(await testo.isVisible(), true);
         assert.match(await testo.innerText(), /Reykjavík, 12 agosto 2026/);
         assert.equal(await pagina.evaluate(() => window.__voce.detti.length), 0, 'con l’audio buono la sintesi tace');
@@ -270,13 +275,15 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
         await pagina.evaluate(() => AstroDemo.avvia(AstroDemoPredefiniti[2].testo));
         await aspetta(pagina, () => window.__voce.detti.some(d => /Tutto comincia dal Sole/.test(d.testo)));
         await pagina.evaluate(() => AstroDemo.vaiAScena(3));
-        await pagina.locator('#demo-controlli button[aria-label="Riavvia"]').click();
+        await pagina.mouse.click(12, 12);
+        await pagina.locator('#demo-controlli [data-azione="riavvia"]').click();
         const s = await stato(pagina);
         assert.equal(s.id, 'demo.narr.aurora_boreale.1');
         assert.equal(await pagina.evaluate(() => window.__voce.sovrapposte), 0);
       });
       await prova('Stop: tace', async () => {
-        await pagina.locator('#demo-controlli button[aria-label="Termina"]').click();
+        await pagina.mouse.click(12, 12);
+        await pagina.locator('#demo-controlli [data-azione="stop"]').click();
         assert.equal(await stato(pagina), null);
       });
       await prova('fine della demo: l’ultima frase si chiude con lei', async () => {

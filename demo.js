@@ -44,6 +44,18 @@
       c.cieloImmersivo = true;
     }
   }
+  // Il Sistema Solare si apre in una finestra che, col cielo a schermo
+  // intero, va a stare **dentro** al riquadro del cielo — ma ci va con un
+  // MutationObserver, cioè un momento dopo, e il guscio della 3D prende lo
+  // schermo col suo ripiego solo quando glielo si chiede. In mezzo il browser
+  // può disegnare un fotogramma con la finestra fuori posto: era il
+  // lampeggio del passaggio fra planetario e 3D. Qui si fa tutto nello
+  // stesso turno, prima del disegno, e il pieno schermo nativo dell'intero
+  // documento non viene mai toccato.
+  function presentaSistema(c) {
+    if (typeof skySistemaModaliSchermoIntero === 'function') skySistemaModaliSchermoIntero();
+    if (c && c.schermo && typeof solEntraSchermoIntero === 'function' && !solSchermoIntero) solEntraSchermoIntero();
+  }
   function lasciaCielo(c) {
     if (c && c.cieloImmersivo && sky.schermoIntero) skyEsciSchermoIntero();
     if (c) c.cieloImmersivo = false;
@@ -59,7 +71,7 @@
       if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
       presentaCielo(c);
       if (!sol.aperto) window.apriSistemaSolare({ senzaVolo: true, inquadra: () => {}, annullato: () => c.chiuso });
-      if (c && c.schermo && typeof solEntraSchermoIntero === 'function' && !solSchermoIntero) solEntraSchermoIntero();
+      presentaSistema(c);
       solRidimensiona();
     } else if (v === 'didactic_view') {
       richiedi(typeof didDemo !== 'undefined', err('didatticaAssente'));
@@ -314,10 +326,12 @@
     },
     crea(p, c) {
       if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
+      presentaCielo(c);
       window.apriSistemaSolare({
         voloManuale: true, annullato: () => c.chiuso,
         inquadra: () => {} // Il quadro successivo viene deciso dalla scena.
       });
+      presentaSistema(c);
       return {
         aggiorna(u) {
           if (!solVolo.attivo) return;
@@ -655,8 +669,8 @@
         // automaticamente dal dizionario tramite l'ID.
         testo: typeof p.text === 'string' ? p.text : undefined,
 
-        // Mostra il testo della narrazione dentro al pannello della demo.
-        ospite: () => pannello
+        // Il testo della frase va nella fascia dei sottotitoli della demo.
+        ospite: () => sottotitoli
       });
 
       // Se si entra in questa scena mentre la demo è già in pausa,
@@ -721,10 +735,12 @@
         registra: !!o.registra,
         vistaPulita: o.vistaPulita !== false,
         registraAudio: o.registraAudio !== false,
+        musicaEclissi: o.musicaEclissi !== false,
         livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
-    return { schermoIntero: false, registra: false, vistaPulita: true, registraAudio: true, livelli: null };
+    return { schermoIntero: false, registra: false, vistaPulita: true, registraAudio: true,
+      musicaEclissi: true, livelli: null };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
@@ -828,6 +844,20 @@
     document.querySelectorAll('.demo-scena-pulita').forEach(el => el.classList.remove('demo-scena-pulita'));
   }
 
+  // Le demo delle eclissi hanno una colonna sonora: «Encelado» al 30%. Si
+  // riconoscono da quello che raccontano — un evento di eclisse, l'ombra
+  // della Luna, l'orbita Terra–Luna — o dal nome, così vale anche per una
+  // copia personale di una delle due predefinite.
+  const MUSICA_ECLISSI = { traccia: 'Encelado1', volume: 0.3 };
+  function demoDiEclissi(demo) {
+    if (/eclis|eclip/i.test(demo.id || '')) return true;
+    return demo.scene.some(sc => sc.azioni.some(a =>
+      (a.comando === 'event_window' && /eclipse/.test(a.parametri.event)) ||
+      (a.comando === 'center_target' && a.parametri.target === 'Eclipse Shadow') ||
+      a.comando === 'orbit_object' ||
+      (a.comando === 'camera_3d' && a.parametri.focus === 'Eclipse Shadow')));
+  }
+
   function avvia(testo = script) {
     const demo = valida(testo);
     motore.ferma();
@@ -848,7 +878,7 @@
     const impostazioniNascostePrima = !!(modaleImpostazioni && modaleImpostazioni.classList.contains('hidden'));
     const comandiCielo = document.getElementById('cielo-comandi');
     const gruppoPrima = comandiCielo ? (comandiCielo.dataset.gruppoAttivo || '') : '';
-    const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero,
+    const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero, gruppoPrima,
       vistaPulita: opzioni.vistaPulita !== false,
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
@@ -870,6 +900,10 @@
       ripristina() {
         c.chiuso = true; contesto = null; evidenze.clear();
         if (typeof narrazione === 'object') narrazione.ferma('demo');
+        // La colonna sonora se ne va per prima, e il sottofondo di prima
+        // torna com'era: stessa traccia, stesso volume, suona se suonava.
+        if (c.musica && typeof musicaDemoFerma === 'function') musicaDemoFerma();
+        c.musica = null;
         document.body.classList.remove('demo-in-corso', 'demo-vista-pulita');
         togliVistaPulita();
         const registrava = sky.reg.attiva && sky.reg.sorgente;
@@ -899,7 +933,9 @@
         skyAggiornaTastoInsegui(); skyAggiornaTastiFiltri();
         // Anche il registratore normale chiude il gruppo comandi per lasciare
         // libero il cielo: nella Demo quel gesto non deve diventare stato.
-        if (comandiCielo) skyMostraGruppo(gruppoPrima);
+        // `skyMostraGruppo` è un interruttore: richiamarlo col gruppo già
+        // aperto lo chiuderebbe. Si tocca solo se lo stato è diverso.
+        if (comandiCielo && (comandiCielo.dataset.gruppoAttivo || '') !== gruppoPrima) skyMostraGruppo(gruppoPrima);
         // Ripristina lo stato iniziale se durante la demo si e' entrati
         // manualmente a schermo intero partendo dalla vista normale.
         if (!schermoInteroPrima && sky.schermoIntero) skyEsciSchermoIntero();
@@ -934,7 +970,16 @@
       try { document.documentElement.requestFullscreen().catch(() => { c.schermoNativo = false; }); }
       catch (_) { c.schermoNativo = false; }
     }
+    if (opzioni.musicaEclissi !== false && demoDiEclissi(demo) && typeof musicaDemoAvvia === 'function')
+      c.musica = musicaDemoAvvia(MUSICA_ECLISSI.traccia, MUSICA_ECLISSI.volume);
     motore.avvia(testo, c);
+    // Un errore nella prima scena chiude la demo dentro a `motore.avvia`, e
+    // il ripristino ha già spento la musica; se il motore non è partito per
+    // un'altra via, la si spegne comunque qui.
+    if (motore.stato !== 'attivo' && c.musica && typeof musicaDemoFerma === 'function') {
+      musicaDemoFerma(); c.musica = null;
+    }
+    // Senza filmato non esiste la registrazione del solo audio.
     if (motore.stato === 'attivo' && opzioni.registra) avviaRegistrazione(c, demo);
     aggiornaPannello();
   }
@@ -1001,22 +1046,29 @@
       c.flussoAudio = null;
     };
 
+    // `skyRegAvvia` è asincrona: prima di prendere il flusso della tela
+    // aspetta che le schede aperte siano rasterizzate. Gli agganci vanno
+    // quindi tolti **dopo** che è partita, non all'uscita da questa riga —
+    // prima si toglievano subito, e la traccia della voce non entrava mai.
+    // Per la stessa ragione il pannello si rimette a posto solo allora: è lì
+    // che il registratore lo chiude.
+    const rimettiGruppo = () => {
+      const comandi = document.getElementById('cielo-comandi');
+      if (comandi && (comandi.dataset.gruppoAttivo || '') !== (c.gruppoPrima || '')) skyMostraGruppo(c.gruppoPrima || '');
+    };
     let partenza;
     try {
       partenza = skyRegAvvia();
-      // skyRegAvvia è sincrono e chiude il pannello del cielo come fa una
-      // registrazione manuale. La Demo conserva invece lo stato preesistente;
-      // la vista pulita lo nasconde già senza mutarlo.
-      if (comandiCielo) skyMostraGruppo(gruppoPrima);
     } catch (e) {
+      ripristinaAgganci();
       chiudiAudioSeInutile();
       sky.reg.sorgente = null;
       skyAvviso('demo', t('errore') + ': ' + e.message, 10000);
       return;
-    } finally {
-      ripristinaAgganci();
     }
     Promise.resolve(partenza).then(() => {
+      ripristinaAgganci();
+      rimettiGruppo();
       if (c.chiuso) {
         if (sky.reg.attiva) skyRegFerma();
         chiudiAudioSeInutile();
@@ -1031,46 +1083,91 @@
       };
       c.registrazione = requestAnimationFrame(giro);
     }, e => {
+      ripristinaAgganci();
       chiudiAudioSeInutile();
       sky.reg.sorgente = null;
       if (!c.chiuso) skyAvviso('demo', t('errore') + ': ' + (e && e.message ? e.message : e), 10000);
     });
   }
 
+  // ------------------------------------------------------------------
+  // I comandi della demo e il testo della narrazione.
+  //
+  // Il pannello esiste **solo mentre una demo è in corso**: fuori resta
+  // `hidden`, e il CSS (`.demo-controlli[hidden]`) lo toglie dal disegno —
+  // prima uno `display:flex` scritto in linea batteva l'attributo, e i tre
+  // tondi restavano a galleggiare sulla pagina anche senza demo.
+  // Durante la demo si mostrano toccando lo schermo e si ritirano da soli
+  // dopo sei secondi, ma **non** mentre il fuoco o il puntatore ci sono
+  // sopra, e non in pausa (il tasto per riprendere deve restare lì).
+  //
+  // Il testo della narrazione sta in una fascia sua (`#demo-sottotitoli`),
+  // sorella del pannello e non dentro di lui: quando i comandi si ritiravano
+  // si portavano via anche la frase a metà, e dentro a una fila di tondi il
+  // testo veniva stretto e tagliato. La frase resta a schermo finché la
+  // voce la dice (la chiude solo `narrazione.ferma`, cioè la scena dopo, lo
+  // Stop o la fine) e ogni frase nuova **sostituisce** quella di prima nello
+  // stesso nodo: due scene non si sovrappongono mai.
+  // ------------------------------------------------------------------
   const pannello = document.createElement('div');
-  pannello.id = 'demo-controlli'; pannello.hidden = true;
-  pannello.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:10000;display:flex;gap:8px;align-items:center;padding:7px;background:rgba(8,15,28,.38);border:1px solid rgba(255,255,255,.16);border-radius:999px;box-sizing:border-box;box-shadow:0 8px 28px rgba(0,0,0,.2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:opacity .18s ease,visibility .18s ease';
+  pannello.id = 'demo-controlli'; pannello.className = 'demo-controlli'; pannello.hidden = true;
+  pannello.setAttribute('role', 'toolbar');
+  const sottotitoli = document.createElement('div');
+  sottotitoli.id = 'demo-sottotitoli'; sottotitoli.className = 'demo-sottotitoli'; sottotitoli.hidden = true;
   let timerComandi = null;
   const icone = {
-    pausa: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg>',
-    riprendi: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
-    riavvia: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.2 3.75L3 11V4h7L7.6 6.4A9 9 0 1 0 12 3z"/></svg>',
-    stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7z"/></svg>'
+    pausa: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg>',
+    riprendi: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>',
+    riavvia: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5a7 7 0 1 1-6.2 3.75L3 11V4h7L7.6 6.4A9 9 0 1 0 12 3z"/></svg>',
+    stop: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>'
   };
+  const inCorso = () => motore.stato === 'attivo' || motore.stato === 'pausa';
+  const trattenuti = () => motore.stato === 'pausa' || pannello.matches(':hover') ||
+    pannello.contains(document.activeElement);
   function nascondiComandi() {
     if (timerComandi) { clearTimeout(timerComandi); timerComandi = null; }
-    pannello.style.opacity = '0'; pannello.style.visibility = 'hidden'; pannello.style.pointerEvents = 'none';
+    pannello.classList.remove('visibile');
+  }
+  function programmaRitiro() {
+    if (timerComandi) clearTimeout(timerComandi);
+    timerComandi = setTimeout(() => {
+      timerComandi = null;
+      if (trattenuti()) programmaRitiro(); else nascondiComandi();
+    }, 6000);
   }
   function mostraComandi() {
-    if (!(motore.stato === 'attivo' || motore.stato === 'pausa')) return;
-    pannello.style.opacity = '1'; pannello.style.visibility = 'visible'; pannello.style.pointerEvents = 'auto';
-    if (timerComandi) clearTimeout(timerComandi);
-    timerComandi = setTimeout(nascondiComandi, 6000);
+    if (!inCorso()) return;
+    pannello.classList.add('visibile');
+    programmaRitiro();
   }
   function bottone(chiave, azione) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'tasto-cielo';
-    b.style.cssText = 'width:44px;height:44px;min-width:44px;padding:0;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:none';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'demo-tasto';
+    b.dataset.azione = chiave;
     b.innerHTML = icone[chiave]; b.setAttribute('aria-label', t(chiave)); b.setAttribute('title', t(chiave));
-    b.querySelector('svg').style.cssText = 'width:22px;height:22px;fill:currentColor';
     b.addEventListener('click', e => { e.stopPropagation(); azione(); mostraComandi(); }); pannello.append(b); return b;
   }
   const pausa = bottone('pausa', () => motore.stato === 'pausa' ? motore.riprendi() : motore.pausa());
   const riavvia = bottone('riavvia', () => avviaSicuro(ultimoScript));
   const arresta = bottone('stop', () => motore.ferma());
-  document.body.append(pannello);
+  // Il fuoco da tastiera li tiene in vista: Tab arriva ai tondi anche quando
+  // sono ritirati, e si vedono appena ci si arriva.
+  pannello.addEventListener('focusin', mostraComandi);
+  pannello.addEventListener('pointerenter', mostraComandi);
+  document.body.append(pannello, sottotitoli);
+  function aggiornaEtichette() {
+    const inPausa = motore.stato === 'pausa';
+    pausa.innerHTML = icone[inPausa ? 'riprendi' : 'pausa'];
+    pausa.dataset.azione = inPausa ? 'riprendi' : 'pausa';
+    pausa.setAttribute('aria-label', t(inPausa ? 'riprendi' : 'pausa'));
+    pausa.setAttribute('title', pausa.getAttribute('aria-label'));
+    pausa.setAttribute('aria-pressed', inPausa ? 'true' : 'false');
+    riavvia.setAttribute('aria-label', t('riavvia')); riavvia.setAttribute('title', t('riavvia'));
+    arresta.setAttribute('aria-label', t('stop')); arresta.setAttribute('title', t('stop'));
+    pannello.setAttribute('aria-label', t('comandi'));
+    sottotitoli.setAttribute('aria-label', t('sottotitoli'));
+  }
   function aggiornaPannello() {
-    const attivo = motore.stato === 'attivo' || motore.stato === 'pausa';
-    if (attivo) {
+    if (inCorso()) {
       const pieno = document.querySelector('.did-pieno-ripiego');
       const genitore = sol.aperto ? solGuscio()
         : (pieno && vistaAttuale === 'didattica') ? pieno
@@ -1078,40 +1175,81 @@
             (document.fullscreenElement && document.fullscreenElement !== document.documentElement
               ? document.fullscreenElement : document.body);
       if (genitore && pannello.parentElement !== genitore) genitore.append(pannello);
+      if (genitore && sottotitoli.parentElement !== genitore) genitore.append(sottotitoli);
       pannello.hidden = false;
-      pausa.innerHTML = icone[motore.stato === 'pausa' ? 'riprendi' : 'pausa'];
-      pausa.setAttribute('aria-label', t(motore.stato === 'pausa' ? 'riprendi' : 'pausa'));
-      pausa.setAttribute('title', pausa.getAttribute('aria-label'));
-      riavvia.setAttribute('aria-label', t('riavvia')); riavvia.setAttribute('title', t('riavvia'));
-      arresta.setAttribute('aria-label', t('stop')); arresta.setAttribute('title', t('stop'));
-      if (pannello.style.visibility !== 'visible') nascondiComandi();
+      aggiornaEtichette();
+      // In pausa i comandi restano in vista: il tasto per riprendere non
+      // deve sparire proprio mentre serve.
+      if (motore.stato === 'pausa') mostraComandi();
     } else {
       if (pannello.parentElement !== document.body) document.body.append(pannello);
+      if (sottotitoli.parentElement !== document.body) document.body.append(sottotitoli);
       pannello.hidden = true; nascondiComandi();
+      if (!sottotitoli.hidden) sottotitoli.hidden = true;
       if (motore.stato === 'errore') skyAvviso('demo', t('errore') + ': ' + motore.errore.message, 10000);
       if (motore.stato === 'completato') skyAvviso('demo', t('completato'), 7000);
     }
   }
+  // La fascia dei sottotitoli c'è solo quando dentro c'è una frase: la
+  // narrazione ci appende il suo nodo e lo nasconde a frase finita.
+  if (typeof MutationObserver === 'function') new MutationObserver(() => {
+    const frase = sottotitoli.querySelector('.narrazione-testo');
+    const nascosta = !(inCorso() && frase && !frase.hidden && frase.textContent.trim());
+    // Scrivere `hidden` anche con lo stesso valore è una mutazione, e questo
+    // osservatore guarda proprio quell'attributo: senza il confronto si
+    // risveglierebbe da sé all'infinito, a pagina bloccata.
+    if (sottotitoli.hidden !== nascosta) sottotitoli.hidden = nascosta;
+  }).observe(sottotitoli, { childList: true, subtree: true, attributes: true, characterData: true,
+    attributeFilter: ['hidden'] });
   function avviaSicuro(testo) {
     try { avvia(testo); } catch (e) { skyAvviso('demo', t('errore') + ': ' + e.message, 10000); }
   }
-  // I comandi restano utilizzabili durante il racconto. Un intervento cede
-  // la camera alla persona per la scena corrente, senza fermarne il tempo;
-  // filtri, menu e altri controlli continuano quindi a funzionare normalmente.
+
+  // ------------------------------------------------------------------
+  // La camera a mano durante la demo. Un intervento della persona —
+  // trascinare, pizzicare, girare la rotellina, un tasto di zoom o di
+  // direzione — prende la camera per il resto della scena: le azioni
+  // automatiche di quella scena smettono di riscriverla (`c.cameraManuale`),
+  // mentre il racconto, la sua voce e il suo orologio continuano. Un
+  // **tocco** semplice invece non la prende: serve a far comparire i
+  // comandi, e prima bastava quello a fermare il carrello della regia.
+  // Toccare i comandi della demo non cede niente e non ferma niente.
+  // ------------------------------------------------------------------
+  const SOGLIA_TRASCINA_PX = 6;
+  const COMANDI_CAMERA = '.tasto-zoom-cielo, .comandi-mappa-cielo button, .comandi-mappa-sistema button, ' +
+    '.sol-viste button, [data-sol-quadro], [data-verso], ' +
+    '#skymap-btn-centra, #skymap-btn-campo, #skymap-btn-insegui, #sol-centra, #sol-reset';
+  const scena = el => !!(el && el.closest && el.closest('canvas, #skymap-contenitore, #sol-guscio, .did-scena'));
+  const puntatori = new Map();
+  function dellaDemo(el) {
+    return pannello.contains(el) || sottotitoli.contains(el);
+  }
   document.addEventListener('pointerdown', e => {
-    if (!contesto) return;
-    if (!pannello.contains(e.target)) {
-      contesto.cediCamera();
-      mostraComandi();
-    }
+    if (!contesto || dellaDemo(e.target)) return;
+    mostraComandi();
+    if (e.target && e.target.closest && e.target.closest(COMANDI_CAMERA)) { contesto.cediCamera(); return; }
+    if (!scena(e.target)) return;
+    puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // Due dita insieme sono sempre un pizzico, anche prima di muoversi.
+    if (puntatori.size >= 2) contesto.cediCamera();
   }, true);
+  document.addEventListener('pointermove', e => {
+    const p = puntatori.get(e.pointerId);
+    if (!contesto || !p) return;
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) >= SOGLIA_TRASCINA_PX) contesto.cediCamera();
+  }, true);
+  const lascia = e => puntatori.delete(e.pointerId);
+  document.addEventListener('pointerup', lascia, true);
+  document.addEventListener('pointercancel', lascia, true);
+  document.addEventListener('dblclick', e => { if (contesto && scena(e.target)) contesto.cediCamera(); }, true);
   // La rotellina e i tasti non passano da `pointerdown`: senza questi due
   // ascoltatori `set_fov` e `frame_objects` rimettevano il loro campo a ogni
   // fotogramma e lo zoom della persona veniva annullato subito.
-  document.addEventListener('wheel', () => { if (contesto) contesto.cediCamera(); },
-    { capture: true, passive: true });
+  document.addEventListener('wheel', e => {
+    if (contesto && !dellaDemo(e.target)) contesto.cediCamera();
+  }, { capture: true, passive: true });
   document.addEventListener('keydown', e => {
-    if (!contesto || e.key === 'Escape' || pannello.contains(e.target)) return;
+    if (!contesto || e.key === 'Escape' || dellaDemo(e.target)) return;
     const campo = e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]');
     if (!campo && /^(Arrow|Page|Home$|End$|[+\-=]$)/.test(e.key)) contesto.cediCamera();
   }, true);
@@ -1141,6 +1279,7 @@
     }, predefiniti, valida), avvia, pausa: () => motore.pausa(), riprendi: () => motore.riprendi(),
     ferma: () => motore.ferma(), vaiAScena: (i, u) => motore.vaiAScena(i, u), evidenza: id => evidenze.get(id) || 1,
     get stato() { return motore.stato; },
+    get inCorso() { return inCorso(); },
     get scena() { return motore.indice; },
     // Gli avvisi di servizio tacciono soltanto nella vista pulita: spegnendo
     // l'opzione l'interfaccia resta deliberatamente utilizzabile e visibile.

@@ -111,9 +111,10 @@ accentuato, stile). Il sottotitolo è spento: il testo è già nella striscia e
 nel pannello. Il tasto Riascolta passa `forza: true` e parla anche a
 narrazione spenta.
 
-## Le Impostazioni
+## Le preferenze
 
-**Osservazione → Narrazione**: accesa/spenta, volume, mostra il testo, usa
+**Pagina Demo → Narrazione e audio** (prima stava in Impostazioni →
+Osservazione; vale anche per Missione Cielo): accesa/spenta, volume, mostra il testo, usa
 solo la sintesi (ignora gli audio registrati), «Ascolta una prova» e una
 riga di stato (quanti audio registrati ha la lingua corrente, che sintesi
 c'è). Le scelte stanno in `astrocalendario_narrazione` (localStorage) e,

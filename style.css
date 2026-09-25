@@ -11760,10 +11760,54 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 }
 .tasto-curiosita:hover { border-color: var(--viola); background: var(--viola-velo); }
 
-/* Demo guidate: scelta e avvio davanti, DSL soltanto nei dettagli avanzati. */
-#imp-tab-demo { overflow-x:hidden; }
-#imp-tab-demo label { display:block; font-weight:600; margin-bottom:6px; }
-#imp-tab-demo select, #demo-editor {
+/* =====================================================================
+   LA PAGINA DEMO (`#vista-demo`): una voce del menu principale. Cinque
+   gruppi numerati — quale demo, presentazione, registrazione, narrazione e
+   audio, elementi del planetario — e un'azione piena sola, «Avvia demo».
+   Le opzioni figlie stanno rientrate sotto la madre (`.demo-figlia`) e,
+   quando la madre è spenta, si spengono anche a vista (`.spenta`).
+   ===================================================================== */
+#vista-demo { overflow-x:clip; }
+#vista-demo [hidden] { display:none !important; }
+.demo-pagina-testata {
+  padding:22px 24px 18px; border:1px solid var(--bordo); border-radius:var(--raggio-l);
+  background:
+    radial-gradient(900px 320px at 8% -30%, rgba(76, 141, 255, 0.18), transparent 62%),
+    var(--superficie);
+  box-shadow:var(--ombra-2), var(--luce-interna);
+}
+.demo-pagina-titolo { margin:0; color:#fff; font-size:1.5rem; font-weight:800; letter-spacing:-.01em; }
+.demo-pagina-aiuto { margin:6px 0 0; color:var(--testo-2); font-size:.9rem; line-height:1.5; max-width:62ch; }
+.demo-gruppo {
+  min-width:0; margin:0; padding:16px 18px 18px; display:grid; gap:8px; align-content:start;
+  border:1px solid var(--bordo); border-radius:var(--raggio-l);
+  background:var(--superficie); box-shadow:var(--ombra-2), var(--luce-interna);
+}
+.demo-gruppo-esegui { border-color:rgba(76, 141, 255, 0.34); }
+.demo-gruppo-titolo {
+  display:flex; align-items:center; gap:10px; margin:0 0 4px; padding:0;
+  color:#fff; font-size:1.02rem; font-weight:750;
+}
+/* Una `legend` dentro a una griglia va rimessa nel flusso a mano. */
+fieldset.demo-gruppo > legend.demo-gruppo-titolo { float:left; width:100%; margin-bottom:8px; }
+fieldset.demo-gruppo > legend.demo-gruppo-titolo + * { clear:both; }
+.demo-gruppo-numero {
+  display:inline-grid; place-items:center; width:24px; height:24px; flex:0 0 auto;
+  border-radius:50%; background:rgba(76, 141, 255, 0.18); color:#bcd3ff;
+  font-size:.78rem; font-weight:800;
+}
+.demo-colonne { display:grid; gap:var(--passo); grid-template-columns:minmax(0, 1fr); }
+@media (min-width: 900px) { .demo-colonne { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+.demo-figlia { display:grid; gap:6px; margin-left:14px; padding-left:16px; border-left:2px solid rgba(148, 168, 214, 0.22); }
+.demo-figlia.spenta { opacity:.55; }
+.demo-figlia.spenta .demo-opzioni-nota { color:var(--testo-3); }
+.demo-separatore { height:1px; margin:6px 0; background:var(--bordo); }
+.demo-cursore { display:grid; grid-template-columns:1fr auto; gap:4px 10px; align-items:center;
+  color:var(--testo); font-size:.86rem; }
+.demo-cursore input[type="range"] { grid-column:1 / -1; width:100%; accent-color:var(--accento); }
+#vista-demo .demo-libreria > label { display:block; font-weight:600; margin-bottom:-6px; color:var(--testo); font-size:.86rem; }
+#vista-demo .demo-avanzate-corpo > label { display:block; font-weight:600; }
+#vista-demo select, #demo-editor {
   width:100%; max-width:100%; color:#e2e8f0; background:#101b30;
   border:1px solid #64748b; border-radius:10px; padding:9px; box-sizing:border-box;
 }
@@ -11796,7 +11840,7 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .demo-azioni-principali { align-items:stretch; }
 /* L'azione principale della scheda: piena, larga, con il segno del play. Gli
    altri tasti restano contorni, quindi a colpo d'occhio si sa cosa premere. */
-#imp-tab-demo .demo-avvia-principale {
+#vista-demo .demo-avvia-principale {
   display:inline-flex; align-items:center; justify-content:center; gap:10px;
   flex:1 1 100%; min-height:52px; padding:12px 22px; border-radius:999px;
   border:1px solid rgba(138, 180, 255, 0.55);
@@ -11806,9 +11850,9 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
   box-shadow:var(--alone-blu), var(--luce-interna);
   transition:filter var(--transizione), transform var(--transizione);
 }
-#imp-tab-demo .demo-avvia-principale:hover:not(:disabled) { filter:brightness(1.1); }
-#imp-tab-demo .demo-avvia-principale:active:not(:disabled) { transform:translateY(1px); }
-#imp-tab-demo .demo-avvia-principale:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+#vista-demo .demo-avvia-principale:hover:not(:disabled) { filter:brightness(1.1); }
+#vista-demo .demo-avvia-principale:active:not(:disabled) { transform:translateY(1px); }
+#vista-demo .demo-avvia-principale:focus-visible { outline:3px solid #fff; outline-offset:2px; }
 .demo-avvia-icona { flex:0 0 auto; }
 .demo-opzioni {
   display:grid; gap:8px; margin:0; padding:12px 14px;
@@ -11817,6 +11861,9 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .demo-opzioni-titolo { padding:0 4px; color:var(--testo); font-size:.88rem; font-weight:700; }
 .demo-opzioni-aiuto, .demo-opzioni-nota { margin:0; color:var(--testo-2); font-size:.78rem; line-height:1.45; }
 .demo-opzioni-nota { margin:-4px 0 0 30px; }
+.demo-figlia .demo-opzioni-nota { margin-left:30px; }
+.demo-spunta:focus-within { outline:none; }
+.demo-spunta input:focus-visible { outline:2px solid #fff; outline-offset:2px; }
 .demo-spunta {
   display:flex; align-items:center; gap:10px; min-height:36px;
   color:var(--testo); font-size:.86rem; cursor:pointer;
@@ -11841,17 +11888,31 @@ body.demo-vista-pulita .demo-scena-pulita > * {
 body.demo-vista-pulita .demo-scena-pulita > canvas,
 body.demo-vista-pulita .demo-scena-pulita > video,
 body.demo-vista-pulita .demo-scena-pulita > #sol-transizione,
-body.demo-vista-pulita .demo-scena-pulita > #demo-controlli,
 body.demo-vista-pulita .demo-scena-pulita > .narrazione-testo,
+body.demo-vista-pulita .demo-scena-pulita > #demo-sottotitoli,
+body.demo-vista-pulita #demo-sottotitoli,
+body.demo-vista-pulita #demo-sottotitoli *,
 body.demo-vista-pulita #sol-transizione,
 body.demo-vista-pulita #sol-transizione *,
-body.demo-vista-pulita #demo-controlli,
-body.demo-vista-pulita #demo-controlli *,
 body.demo-vista-pulita .narrazione-testo {
   visibility:visible !important;
 }
-body.demo-vista-pulita #demo-controlli,
-body.demo-vista-pulita #demo-controlli * { pointer-events:auto !important; }
+/* La scena resta toccabile: durante la demo si può trascinare, pizzicare e
+   zoomare la camera. Prima la tela ereditava il `pointer-events:none` del
+   chrome, e il dito sul cielo non arrivava a nessuno. */
+body.demo-vista-pulita .demo-scena-pulita > canvas,
+body.demo-vista-pulita .demo-scena-pulita > video { pointer-events:auto !important; }
+/* I comandi della demo seguono il loro stato (compaiono al tocco o col
+   fuoco), non la vista pulita: forzarli visibili qui li teneva a schermo per
+   tutta la demo, sopra al racconto. */
+body.demo-vista-pulita .demo-scena-pulita > #demo-controlli.visibile,
+body.demo-vista-pulita .demo-scena-pulita > #demo-controlli:focus-within,
+body.demo-vista-pulita #demo-controlli.visibile,
+body.demo-vista-pulita #demo-controlli:focus-within {
+  visibility:visible !important; pointer-events:auto !important;
+}
+body.demo-vista-pulita #demo-controlli.visibile *,
+body.demo-vista-pulita #demo-controlli:focus-within * { visibility:visible !important; pointer-events:auto !important; }
 body.demo-vista-pulita #modale-sistema .testata-modale,
 body.demo-vista-pulita #modale-sistema .corpo-modale > *:not(#sol-guscio),
 body.demo-vista-pulita main button,
@@ -11883,7 +11944,9 @@ body.demo-vista-pulita .skymap-avviso { display:none !important; }
 #demo-editor { font-family:monospace; font-size:14px; line-height:1.5; resize:vertical; tab-size:2; }
 #demo-editor[readonly] { opacity:.8; }
 #demo-editor[aria-invalid="true"] { border-color:#fb7185; }
-#imp-tab-demo button:disabled { opacity:.45; cursor:not-allowed; }
+#vista-demo button:disabled { opacity:.45; cursor:not-allowed; }
+#vista-demo input:disabled { cursor:not-allowed; }
+#vista-demo .demo-spunta:has(input:disabled) { cursor:not-allowed; }
 #demo-aiuto, #demo-validazione, #demo-esito { font-size:13px; overflow-wrap:anywhere; }
 
 @media (max-width: 520px) {
@@ -11938,4 +12001,104 @@ body.demo-vista-pulita .skymap-avviso { display:none !important; }
 .narrazione-testo.in-pausa { opacity: 0.7; }
 @media (max-width: 480px) {
   .narrazione-testo { font-size: 14px; bottom: calc(var(--barra-inferiore, 0px) + 170px); }
+}
+
+/* =====================================================================
+   I COMANDI DELLA DEMO (demo.js). Esistono solo mentre una demo è in
+   corso: fuori il pannello è `hidden`, e qui `hidden` vince su tutto.
+   Dentro si mostrano col tocco (`.visibile`) e si ritirano da soli.
+   ===================================================================== */
+.demo-controlli {
+  position:fixed; left:50%; bottom:calc(var(--barra-inferiore, 0px) + 24px); transform:translateX(-50%);
+  z-index:10000; display:flex; gap:8px; align-items:center; padding:7px; box-sizing:border-box;
+  background:rgba(8,15,28,.46); border:1px solid rgba(255,255,255,.16); border-radius:999px;
+  box-shadow:0 8px 28px rgba(0,0,0,.2); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .18s ease, visibility .18s ease;
+}
+.demo-controlli[hidden] { display:none !important; }
+.demo-controlli.visibile { opacity:1; visibility:visible; pointer-events:auto; }
+.demo-controlli:focus-within { opacity:1; visibility:visible; pointer-events:auto; }
+body .demo-controlli .demo-tasto {
+  width:44px; height:44px; min-width:44px; padding:0; display:grid; place-items:center;
+  border-radius:50%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+  color:#fff; box-shadow:none; cursor:pointer;
+}
+body .demo-controlli .demo-tasto:hover { background:rgba(255,255,255,.16); }
+body .demo-controlli .demo-tasto:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+body .demo-controlli .demo-tasto[aria-pressed="true"] { background:rgba(76,141,255,.42); border-color:rgba(138,180,255,.7); }
+.demo-controlli .demo-tasto svg { width:22px; height:22px; fill:currentColor; display:block; pointer-events:none; }
+
+/* Il testo della narrazione durante la demo: una fascia di sottotitoli in
+   basso, larga al massimo una sessantina di caratteri, appoggiata sulla
+   scena con un velo sfumato invece che dentro a un riquadro pieno. Sta sopra
+   ai comandi (che quando compaiono le passano sotto senza coprirla), va a
+   capo quanto serve e scorre solo se una frase lunghissima non ci sta. */
+.demo-sottotitoli {
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(var(--barra-inferiore, 0px) + 86px);
+  z-index:10001; width:min(94vw, 46rem); max-height:min(34vh, 11.5em);
+  overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none;
+  pointer-events:none; text-align:center;
+}
+.demo-sottotitoli::-webkit-scrollbar { display:none; }
+.demo-sottotitoli[hidden] { display:none !important; }
+.demo-sottotitoli .narrazione-testo,
+.demo-sottotitoli .narrazione-testo.in-ospite {
+  position:static; transform:none; display:inline; width:auto; margin:0; padding:.18em .55em;
+  border:0; border-radius:8px; box-shadow:none; pointer-events:none;
+  background:rgba(4, 9, 20, 0.62);
+  -webkit-box-decoration-break:clone; box-decoration-break:clone;
+  color:#f8fafc; font-size:clamp(15px, 1.05rem + .25vw, 21px); font-weight:500; line-height:1.62;
+  text-align:center; text-shadow:0 1px 2px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55);
+  overflow-wrap:anywhere;
+}
+.demo-sottotitoli .narrazione-testo[hidden] { display:none; }
+.demo-sottotitoli .narrazione-testo.in-pausa { opacity:.72; }
+@media (max-width: 520px) {
+  .demo-sottotitoli { width:calc(100vw - 24px); bottom:calc(var(--barra-inferiore, 0px) + 80px); }
+  .demo-sottotitoli .narrazione-testo { font-size:15px; line-height:1.55; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .demo-sottotitoli { bottom:70px; max-height:28vh; width:min(80vw, 46rem); }
+  .demo-controlli { bottom:12px; }
+  .demo-sottotitoli .narrazione-testo { font-size:14px; line-height:1.5; }
+}
+/* Dentro a una scena a schermo intero la barra del menu non c'è. */
+.finto-schermo-intero .demo-controlli, .sol-schermo-pieno .demo-controlli,
+.did-pieno-ripiego .demo-controlli, :fullscreen .demo-controlli { bottom:24px; }
+.finto-schermo-intero .demo-sottotitoli, .sol-schermo-pieno .demo-sottotitoli,
+.did-pieno-ripiego .demo-sottotitoli, :fullscreen .demo-sottotitoli { bottom:86px; }
+@media (prefers-reduced-motion: reduce) {
+  .demo-controlli { transition:none; }
+}
+
+/* =====================================================================
+   LE SOTTOSEZIONI DEL CALENDARIO (Mese, Agenda, Diario): linguette sotto
+   la testata, visibili solo dentro al gruppo. La voce del menu principale
+   resta accesa, e qui si dice quale delle tre è davanti.
+   ===================================================================== */
+.sottonav {
+  display:flex; gap:4px; width:max-content; max-width:100%; margin:0 auto var(--passo); padding:4px;
+  border-radius:999px; background:rgba(12, 17, 30, 0.66); border:1px solid var(--bordo);
+  box-shadow:var(--ombra-2), var(--luce-interna); overflow-x:auto; scrollbar-width:none;
+}
+.sottonav.hidden { display:none; }
+.sottonav::-webkit-scrollbar { display:none; }
+body .sottonav .sottovoce {
+  flex:0 0 auto; min-height:38px; padding:7px 18px; border-radius:999px; border:none; box-shadow:none;
+  background:none; color:var(--testo-2); font-size:.9rem; font-weight:600; cursor:pointer;
+  transition:color var(--transizione), background-color var(--transizione);
+}
+body .sottonav .sottovoce:hover { color:var(--testo); background:rgba(148, 168, 214, 0.08); }
+body .sottonav .sottovoce.attiva {
+  color:#fff; background:rgba(76, 141, 255, 0.28); box-shadow:inset 0 0 0 1px rgba(138, 180, 255, 0.55);
+}
+body .sottonav .sottovoce:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+@media (max-width: 480px) {
+  .sottonav { width:100%; }
+  body .sottonav .sottovoce { flex:1 1 0; padding:7px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body .sottonav .sottovoce { transition:none; }
 }
