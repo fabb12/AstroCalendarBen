@@ -205,6 +205,16 @@
   const DID_VISTE = [90, 34, 8];      // a picco, obliqua, di taglio
   const DID_TAU_VISTA = 0.24;         // tempo di dimezzamento dello scivolo, in secondi
 
+  // Il pan dei grafici usa la stessa dinamica inerziale del planetario:
+  // velocità mediata sugli ultimi centesimi di secondo, limite espresso in
+  // schermate al secondo e attrito esponenziale indipendente dalla cadenza.
+  const DID_TAU_LANCIO = 0.06;
+  const DID_TAU_INERZIA = 0.45;
+  const DID_LANCIO_SCADUTO = 90;       // ms: dito fermo più di così, nessun lancio
+  const DID_INERZIA_MAX_SCHERMI = 4;
+  const DID_INERZIA_MINIMA = 0.02;
+
+
   const lenti = new Map();           // id della tela → stato della sua vista
 
   function didLente(id) {
@@ -213,6 +223,7 @@
       l = {
         id, zoom: 1, x: 0, y: 0, L: 0, H: 0,
         az: 0, elev: 90, elevVoluta: 90, puoGirare: false, ultimoTs: 0,
+        trascinamento: null, inerzia: null,
         tela: null, box: null, lettura: null, tastoGiro: null, tastoPieno: null
       };
       lenti.set(id, l);
@@ -262,9 +273,16 @@
     l.y = Math.max(l.H - l.zoom * l.H, Math.min(0, l.y));
   }
 
+  function didLenteFermaPan(l) {
+    l.inerzia = null;
+    l.trascinamento = null;
+  }
+
   // Ingrandisce tenendo fermo il punto sotto il dito: è l'unico modo perché
-  // la rotella non porti via quello che si stava guardando
+  // la rotella non porti via quello che si stava guardando. Un nuovo comando
+  // di zoom prende subito il controllo e ferma l'eventuale corsa del pan.
   function didLenteIngrandisci(l, fattore, sx, sy) {
+    didLenteFermaPan(l);
     const prima = l.zoom;
     const dopo = Math.max(1, Math.min(DID_LENTE_MAX, prima * fattore));
     if (Math.abs(dopo - prima) < 1e-4) return false;
@@ -278,11 +296,60 @@
   }
 
   function didLenteSposta(l, dx, dy) {
+    const x0 = l.x, y0 = l.y;
     l.x += dx; l.y += dy;
     didLenteAssesta(l);
+    return { dx: l.x - x0, dy: l.y - y0 };
+  }
+
+  function didLenteSchermateAlSecondo(l, vx, vy) {
+    return Math.hypot(vx / Math.max(1, l.L), vy / Math.max(1, l.H));
+  }
+
+  // Come nel planetario, la velocità del lancio non viene dall'ultimo evento
+  // ma da una media pronta: un singolo pointermove è troppo rumoroso.
+  function didLenteRicordaPan(l, dx, dy) {
+    const ora = performance.now();
+    const prec = l.trascinamento;
+    const dt = prec ? Math.max(0.004, Math.min(0.1, (ora - prec.quando) / 1000)) : 0;
+    if (!dt) {
+      l.trascinamento = { vx: 0, vy: 0, quando: ora };
+      return;
+    }
+    const k = 1 - Math.exp(-dt / DID_TAU_LANCIO);
+    l.trascinamento = {
+      vx: prec.vx + (dx / dt - prec.vx) * k,
+      vy: prec.vy + (dy / dt - prec.vy) * k,
+      quando: ora
+    };
+  }
+
+  function didLenteLanciaPan(l) {
+    const t = l.trascinamento;
+    l.trascinamento = null;
+    if (!t || l.zoom <= 1.001 || performance.now() - t.quando > DID_LANCIO_SCADUTO) return;
+    const vSchermi = didLenteSchermateAlSecondo(l, t.vx, t.vy);
+    if (vSchermi < DID_INERZIA_MINIMA) return;
+    const freno = vSchermi > DID_INERZIA_MAX_SCHERMI ? DID_INERZIA_MAX_SCHERMI / vSchermi : 1;
+    l.inerzia = { vx: t.vx * freno, vy: t.vy * freno };
+  }
+
+  function didLenteScorriPerInerzia(l, dt) {
+    const i = l.inerzia;
+    if (!i || !dt || l.zoom <= 1.001) { l.inerzia = null; return; }
+    const mosso = didLenteSposta(l, i.vx * dt, i.vy * dt);
+    // Se il bordo ha fermato un asse, non si conserva una velocità invisibile
+    // che potrebbe riapparire dopo un cambio di misura.
+    if (Math.abs(mosso.dx) < 1e-6) i.vx = 0;
+    if (Math.abs(mosso.dy) < 1e-6) i.vy = 0;
+    const smorza = Math.exp(-dt / DID_TAU_INERZIA);
+    i.vx *= smorza;
+    i.vy *= smorza;
+    if (didLenteSchermateAlSecondo(l, i.vx, i.vy) < DID_INERZIA_MINIMA) l.inerzia = null;
   }
 
   function didLenteAzzera(l) {
+    didLenteFermaPan(l);
     l.zoom = 1; l.x = 0; l.y = 0;
     l.az = 0; l.elev = 90; l.elevVoluta = 90;
     didLenteAssesta(l);
@@ -664,6 +731,7 @@
         haRipetuto = false;
         return;
       }
+      didLenteFermaPan(l);
       if (b.dataset.lente === 'pieno') didPienoAlterna(l.id);
       else if (b.dataset.lente === 'azzera') didLenteAzzera(l);
       else if (b.dataset.lente === 'gira') l.elevVoluta = didGiroProssima(l);
@@ -752,6 +820,7 @@
     };
 
     c.addEventListener('pointerdown', (e) => {
+      didLenteFermaPan(l);
       dita.set(e.pointerId, dove(e));
       if (dita.size === 1) modoPan = !!e.shiftKey || e.button === 1 || e.button === 2;
       riancora();
@@ -769,6 +838,7 @@
       dita.set(e.pointerId, dove(e));
       const p = insieme();
       if (p.length >= 2 && pizzico) {
+        l.trascinamento = null;       // il pizzico è diretto: non lascia una corsa
         const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
         const mx = (p[0].x + p[1].x) / 2, my = (p[0].y + p[1].y) / 2;
         if (pizzico.d > 6) didLenteIngrandisci(l, d / pizzico.d, mx, my);
@@ -785,11 +855,13 @@
       // sempre così, e serve solo quando c'è qualcosa fuori dal riquadro.
       if (modoPan || !l.puoGirare) {
         if (!trascina || l.zoom <= 1.001) return;
-        didLenteSposta(l, dx, dy);
+        const mosso = didLenteSposta(l, dx, dy);
+        didLenteRicordaPan(l, mosso.dx, mosso.dy);
         didLenteMostra(l);
         return;
       }
       if (!trascina) return;
+      l.trascinamento = null;
       l.az += dx * DID_GIRO_PER_PIXEL;
       l.elevVoluta = Math.max(2, Math.min(90, l.elevVoluta + dy * DID_ELEV_PER_PIXEL));
       l.elev = l.elevVoluta;
@@ -801,14 +873,20 @@
     const partenze = new Map();
     c.addEventListener('pointerdown', (e) => partenze.set(e.pointerId, { ...dove(e), t: performance.now() }));
 
-    const stacca = (e) => {
+    const stacca = (e, lancia = false) => {
       partenze.delete(e.pointerId);
       if (!dita.delete(e.pointerId)) return;
       riancora();
-      if (!dita.size) modoPan = false;
+      if (dita.size) {
+        l.trascinamento = null;
+        return;
+      }
+      if (lancia) didLenteLanciaPan(l);
+      else l.trascinamento = null;
+      modoPan = false;
     };
-    c.addEventListener('pointercancel', stacca);
-    c.addEventListener('pointerleave', stacca);
+    c.addEventListener('pointercancel', (e) => stacca(e));
+    c.addEventListener('pointerleave', (e) => stacca(e));
 
     // Doppio clic e doppio tocco: avvicinano dov'è il dito, e la seconda
     // volta rimettono tutto com'era — misura intera e scena a picco. È la
@@ -844,7 +922,7 @@
     c.addEventListener('pointerup', (e) => {
       const giu = partenze.get(e.pointerId);
       const dita2 = dita.size;
-      stacca(e);
+      stacca(e, true);
       // Il doppio tocco vale solo per il dito, solo da solo, e non dove il
       // dito ha già un mestiere suo (il punto di passaggio della fionda, la
       // telecamera del banco delle aurore): lì due colpetti capitano di
@@ -926,17 +1004,29 @@
     return { c, ctx, L: largo, H: alto };
   }
 
-  // L'inclinazione ci scivola invece di saltarci: vedere il piano che si
-  // chiude è metà della spiegazione, e saltarci sopra la butterebbe via. È
-  // lo stesso smorzamento esponenziale col `dt` del fotogramma che usa la
-  // vista 3D, quindi si comporta uguale a qualunque cadenza.
+  // Inclinazione e pan inerziale avanzano col tempo vero del fotogramma:
+  // lo stesso smorzamento esponenziale del planetario evita che 30 e 120 Hz
+  // producano due sensazioni diverse.
   function didGiroScivola(l) {
     const ora = performance.now();
     const dt = l.ultimoTs ? Math.min(0.1, (ora - l.ultimoTs) / 1000) : 0;
     l.ultimoTs = ora;
-    if (!dt || Math.abs(l.elevVoluta - l.elev) < 0.05) { l.elev = l.elevVoluta; return; }
-    l.elev += (l.elevVoluta - l.elev) * (1 - Math.pow(0.5, dt / DID_TAU_VISTA));
-    didLenteMostra(l);
+    let cambiata = false;
+    if (!dt) {
+      if (Math.abs(l.elevVoluta - l.elev) < 0.05) l.elev = l.elevVoluta;
+      return;
+    }
+    if (Math.abs(l.elevVoluta - l.elev) < 0.05) {
+      l.elev = l.elevVoluta;
+    } else {
+      l.elev += (l.elevVoluta - l.elev) * (1 - Math.pow(0.5, dt / DID_TAU_VISTA));
+      cambiata = true;
+    }
+    if (l.inerzia) {
+      didLenteScorriPerInerzia(l, dt);
+      cambiata = true;
+    }
+    if (cambiata) didLenteMostra(l);
   }
 
   // Lo sfondo stellato: un pulviscolo fermo, sempre lo stesso, dipinto su
@@ -9023,6 +9113,22 @@
 
   window.didatticaRidimensiona = function () { cacheStelle.chiave = ''; };
   window.didProve = {
+    lente: {
+      stato(id) {
+        const l = lenti.get(id);
+        if (!l) return null;
+        return {
+          zoom: l.zoom, x: l.x, y: l.y, L: l.L, H: l.H,
+          inerzia: l.inerzia ? { ...l.inerzia } : null
+        };
+      },
+      passoInerzia(id, dt) {
+        const l = lenti.get(id);
+        if (!l) return null;
+        didLenteScorriPerInerzia(l, dt);
+        return this.stato(id);
+      }
+    },
     fiondaIperbole, FIONDA_PIANETI,
     // Il banco del tramonto: la fisica è tutta in queste cinque funzioni, e
     // sono numeri che a occhio non si controllano — mezzo grado di
