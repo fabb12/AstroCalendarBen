@@ -238,7 +238,79 @@
         file: 'demo/it/allineamento_pianeti-10.mp3',
         impronta: '85abc4a0'
       }
-    }
+    },
+    // ─────────────────────────────────────────────
+    // Eclisse lunare
+    // ─────────────────────────────────────────────
 
+    'demo.narr.eclisse_lunare.1': {
+      it: {
+        file: 'demo/it/eclisse_lunare-1.mp3',
+        impronta: 'fefb7db6'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.2': {
+      it: {
+        file: 'demo/it/eclisse_lunare-2.mp3',
+        impronta: '7dc41ed0'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.3': {
+      it: {
+        file: 'demo/it/eclisse_lunare-3.mp3',
+        impronta: 'f053a9b9'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.4': {
+      it: {
+        file: 'demo/it/eclisse_lunare-4.mp3',
+        impronta: 'dea93d13'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.5': {
+      it: {
+        file: 'demo/it/eclisse_lunare-5.mp3',
+        impronta: '2f354ad7'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.6': {
+      it: {
+        file: 'demo/it/eclisse_lunare-6.mp3',
+        impronta: '99a71851'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.7': {
+      it: {
+        file: 'demo/it/eclisse_lunare-7.mp3',
+        impronta: '8cf92090'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.8': {
+      it: {
+        file: 'demo/it/eclisse_lunare-8.mp3',
+        impronta: 'bd68ccca'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.9': {
+      it: {
+        file: 'demo/it/eclisse_lunare-9.mp3',
+        impronta: 'e638911c'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.10': {
+      it: {
+        file: 'demo/it/eclisse_lunare-10.mp3',
+        impronta: '77ae456e'
+      }
+    }
   }
 };
