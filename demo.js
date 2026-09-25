@@ -937,6 +937,7 @@
     motore.avvia(testo, c);
     if (motore.stato === 'attivo' && opzioni.registra) avviaRegistrazione(c, demo);
     aggiornaPannello();
+    mostraComandi();
   }
 
   // La registrazione resta quella del planetario; la Demo cambia soltanto
