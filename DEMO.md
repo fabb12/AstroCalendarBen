@@ -136,18 +136,21 @@ porta **subito**, nello stesso turno, la finestra dentro al riquadro del cielo
 ripiego CSS: prima questo lo faceva un MutationObserver un momento dopo, e il
 browser poteva disegnare un fotogramma con la finestra fuori posto.
 
-## La musica delle eclissi
+## La musica delle demo
 
-Le demo di eclissi (riconosciute da nome o azioni: `event_window` di
-un'eclisse, `Eclipse Shadow`, `orbit_object`) suonano al 30% la traccia
-scelta nel gruppo **Narrazione e audio** della pagina Demo
-(`musicaEclissiTraccia`, con `Encelado1` come valore iniziale e fallback).
-Il toggle `musicaEclissi` permette di spegnere del tutto la colonna sonora.
+Tutte le demo, sia quelle predefinite sia quelle personali create o importate
+dall'utente, suonano al 30% la traccia scelta nel gruppo **Narrazione e audio**
+della pagina Demo (`musicaDemoTraccia`, con `Encelado1` come valore iniziale
+e fallback). Il toggle `musicaDemo` permette di spegnere del tutto la colonna
+sonora. Le vecchie preferenze `musicaEclissi` e `musicaEclissiTraccia`
+vengono migrate automaticamente.
+
 `musicaDemoAvvia` in `app.js` mette in pausa il sottofondo della persona
 (stesso elemento, traccia, volume e punto) e `musicaDemoFerma` lo rimette
 com'era a fine demo, Stop, Esc o errore; se non suonava resta fermo. Il
-«Paesaggio spaziale (generato)» non esiste più: una preferenza salvata
-`generata` torna alla traccia predefinita.
+selettore usa lo stesso catalogo `ASTRO_TRACCE_MUSICALI` della musica
+dell'app, quindi una nuova traccia aggiunta al catalogo diventa disponibile
+automaticamente anche per le demo.
 
 ## I cinque tour predefiniti
 
