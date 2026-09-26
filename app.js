@@ -4754,6 +4754,7 @@ function _eclissiAggiornaTutto() {
 
   const quadro = _eclDisegnaOmbra();
   if (!quadro) return;
+  _eclUltimoQuadro = quadro;
   _eclSegnalaFaseCentrale();
   _eclAggiornaHud(quadro);
   _eclAggiornaPannelloCitta(quadro);
@@ -4868,7 +4869,8 @@ let _eclCieloFuoriFinestra = false;
 // disegna alleggerita e la mappa accompagna il cono — mentre scorre nessuno
 // legge la costa metro per metro, e a fermarsi si ridisegna tutto per bene.
 function _eclInMarcia() {
-  return _eclFilmato.attivo || !!(typeof sky === 'object' && sky && sky.playbackVerso);
+  return _eclFilmato.attivo || _eclRegia.attiva ||
+    !!(typeof sky === 'object' && sky && sky.playbackVerso);
 }
 
 // Di quanti minuti dal culmine è lontano l'istante mostrato dal planetario.
@@ -5591,6 +5593,9 @@ function apriMappaEclissi(id) {
   // Inquadra il percorso e ricalcola le dimensioni (il div era nascosto)
   setTimeout(() => {
     _mappaEclissi.invalidateSize();
+    // La regia delle demo che ha già scelto dove guardare non va scavalcata:
+    // un fotogramma d'inquadratura d'insieme in mezzo sarebbe uno strattone.
+    if (_eclRegia.inquadrata) { _eclissiAggiornaTutto(); return; }
     // Si inquadra la fascia centrale, che è ciò che si va a cercare; se non
     // c'è (eclissi parziale) si allarga a tutta la zona di visibilità.
     // Oltre gli 80° la proiezione di Mercatore si stira all'infinito: se il
@@ -5615,6 +5620,7 @@ function apriMappaEclissi(id) {
 
 function chiudiMappaEclissi() {
   if (_eclFilmato.attivo) _eclFilmatoFerma();
+  _eclRegiaLascia();
   if (_eclSchermoIntero) _eclEsciSchermoIntero();
   const modale = document.getElementById('modale-mappa');
   if (modale) modale.classList.add('hidden');
@@ -5684,7 +5690,12 @@ function _eclRipiegoSchermo(guscio) {
   if (!_eclSchermoIntero || _eclSegnaposto) return;
   _eclSegnaposto = document.createComment('guscio-mappa-eclissi');
   guscio.parentNode.insertBefore(_eclSegnaposto, guscio);
-  document.body.appendChild(guscio);
+  // Col cielo a schermo intero il `position: fixed` del ripiego finirebbe
+  // fuori dal riquadro che il browser sta disegnando, sotto al planetario:
+  // là dentro si appende al guscio del cielo, come fa la 3D
+  // (`solRipiegoSchermo`). È la strada della regia delle demo, qui sotto.
+  const ospite = (typeof skyGuscioSchermoIntero === 'function' && skyGuscioSchermoIntero()) || document.body;
+  ospite.appendChild(guscio);
   guscio.classList.add('ecl-schermo-pieno');
   _eclAggiornaTastoSchermo();
   _eclRimisuraMappa();
@@ -5702,9 +5713,12 @@ function _eclEsciSchermoIntero() {
   }
   _eclSegnaposto = null;
 
+  // Si esce dal pieno schermo nativo solo se è il nostro: quello del
+  // documento intero (una demo avviata a schermo intero) o del planetario
+  // non si tocca, se no chiudendo la mappa si butterebbe fuori tutto.
   const esci = document.exitFullscreen || document.webkitExitFullscreen;
   const attivo = document.fullscreenElement || document.webkitFullscreenElement;
-  if (attivo && esci) {
+  if (attivo && attivo === guscio && esci) {
     try {
       const esito = esci.call(document);
       if (esito && typeof esito.catch === 'function') esito.catch(() => {});
@@ -5729,6 +5743,100 @@ function _eclRimisuraMappa() {
     }
     if (_mappaEclissi) _mappaEclissi.invalidateSize();
   }, ms));
+}
+
+// --- La regia delle demo ------------------------------------------------
+//   La demo dell'eclissi di Sole (`demo.js`, scena `eclipse_map`) racconta la
+//   stessa ombra anche da qui, dall'alto: è l'unico punto di vista da cui si
+//   capisce che quella macchia nera corre sul pianeta a migliaia di
+//   chilometri all'ora e che la totalità è una striscia, non un paese. La
+//   regia non ridisegna niente di suo: apre la mappa vera, la porta a tutto
+//   schermo col ripiego (il pieno schermo nativo, se c'è, è della demo, e
+//   chiederlo per il guscio lo toglierebbe al documento), e poi a ogni passo
+//   dice soltanto *che minuto è* e *quanto da vicino guardare*. L'orologio
+//   resta uno solo: spostando la mappa si sposta anche il planetario, e la
+//   scena dopo lo ritrova dove l'ombra l'ha lasciato.
+//
+//   Mentre la regia tiene la mappa, il disegno è quello alleggerito del
+//   filmato (`_eclInMarcia`) e lo zoom è continuo (`zoomSnap: 0`): uno zoom a
+//   scatti interi, dentro a un avvicinamento lento, si vede come uno
+//   strattone ogni tre secondi.
+const _eclRegia = { attiva: false, zoomSnap: null, inquadrata: false };
+let _eclUltimoQuadro = null;
+
+// L'eclissi il cui massimo cade a `piccoMs`, cercata fra gli eventi del
+// calendario (e calcolando quel mese se non c'è ancora): la mappa si apre
+// solo su un evento, perché è da lì che prende percorso, fasce e città.
+function eclRegiaApri(piccoMs, luogo) {
+  if (typeof L === 'undefined' || !document.getElementById('modale-mappa') ||
+      !Number.isFinite(piccoMs)) return false;
+  const giorno = new Date(piccoMs);
+  if (typeof assicuraMese === 'function') assicuraMese(giorno.getFullYear(), giorno.getMonth());
+  const evento = eventiCalcolati.find(e => e.eclissi && e.dataObj &&
+    Math.abs(e.dataObj.getTime() - piccoMs) < 6 * 3600000);
+  if (!evento) return false;
+  const modale = document.getElementById('modale-mappa');
+  if (_eclissiEventoInCorso !== evento || modale.classList.contains('hidden')) {
+    _eclRegia.inquadrata = false;
+    apriMappaEclissi(evento.id);
+  }
+  if (!_mappaEclissi || _eclissiEventoInCorso !== evento) return false;
+  if (!_eclRegia.attiva) {
+    _eclRegia.zoomSnap = _mappaEclissi.options.zoomSnap;
+    _mappaEclissi.options.zoomSnap = 0;
+  }
+  _eclRegia.attiva = true;
+  // «Da qui» è il posto del racconto, non quello dell'app: i dati locali
+  // e la fase scritta in alto parlano di chi sta guardando nel planetario.
+  _eclissiPosizioneTemporanea = luogo && Number.isFinite(luogo.lat) && Number.isFinite(luogo.lon)
+    ? { lat: luogo.lat, lon: luogo.lon } : null;
+  // La camera la muove la regia: "segui l'ombra" la strattonerebbe altrove.
+  const casella = document.getElementById('eclissi-segui');
+  _eclFilmato.segui = false;
+  if (casella) casella.checked = false;
+  const guscio = _eclGuscioMappa();
+  if (guscio) guscio.classList.add('ecl-regia');
+  if (guscio && !_eclSchermoIntero) {
+    _eclSchermoIntero = true;
+    document.body.classList.add('ecl-mappa-immersiva');
+    _eclRipiegoSchermo(guscio);
+  }
+  return true;
+}
+
+// Il minuto dell'eclissi (dal massimo) e, se c'è, lo zoom della mappa: con
+// lo zoom la mappa si tiene centrata sull'ombra, come una telecamera su un
+// elicottero — o sul `centro` dato, `[lat, lon]`, quando la cosa da
+// raccontare è la regione e non il punto; senza zoom resta sull'inquadratura
+// d'insieme dell'apertura.
+function eclRegiaPosa(minuti, zoom, centroFisso) {
+  if (!_eclRegia.attiva || !_eclissiEventoInCorso || !_mappaEclissi || !Number.isFinite(minuti)) return;
+  _eclissiOffsetTempoMin = Math.max(_eclFinestra.inizio, Math.min(_eclFinestra.fine, minuti));
+  _eclissiAggiornaTutto();
+  if (!Number.isFinite(zoom)) return;
+  const q = _eclUltimoQuadro;
+  const centro = centroFisso || (q && (q.asse || q.massimo));
+  if (centro) _mappaEclissi.setView(centro, zoom, { animate: false });
+  else _mappaEclissi.setZoom(zoom, { animate: false });
+  _eclRegia.inquadrata = true;
+}
+
+function eclRegiaAttiva() { return _eclRegia.attiva; }
+
+// La chiude `chiudiMappaEclissi`, che è anche la strada del tasto Chiudi:
+// chi chiude la finestra a metà racconto non deve lasciarsi dietro una mappa
+// con lo zoom sciolto e la regia ancora accesa.
+function eclRegiaChiudi() {
+  if (_eclRegia.attiva) chiudiMappaEclissi();
+}
+
+function _eclRegiaLascia() {
+  if (!_eclRegia.attiva) return;
+  _eclRegia.attiva = false; _eclRegia.inquadrata = false;
+  const guscio = _eclGuscioMappa();
+  if (guscio) guscio.classList.remove('ecl-regia');
+  if (_mappaEclissi) _mappaEclissi.options.zoomSnap = _eclRegia.zoomSnap == null ? 1 : _eclRegia.zoomSnap;
+  _eclissiPosizioneTemporanea = null;
 }
 
 function _eclAggiornaTastoSchermo() {

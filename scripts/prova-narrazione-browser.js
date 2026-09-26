@@ -204,13 +204,13 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
       });
       await prova('scena 2: il file manca, parla la sintesi — e il file non si richiede più', async () => {
         await pagina.evaluate(() => AstroDemo.vaiAScena(1));
-        await aspetta(pagina, () => window.__voce.detti.some(d => /Un'ora in dodici secondi/.test(d.testo)));
+        await aspetta(pagina, () => window.__voce.detti.some(d => /Saliamo nello spazio/.test(d.testo)));
         const g = await pagina.evaluate(() => narrazione.guasti());
         assert.equal(g['audio/narrazione/demo/it/prova-che-manca.wav'], 'mancante');
       });
       await prova('scena 3: il file è rotto, parla la sintesi', async () => {
         await pagina.evaluate(() => AstroDemo.vaiAScena(2));
-        await aspetta(pagina, () => window.__voce.detti.some(d => /Totalità/.test(d.testo)));
+        await aspetta(pagina, () => window.__voce.detti.some(d => /Primo contatto/.test(d.testo)));
         const g = await pagina.evaluate(() => narrazione.guasti());
         assert.equal(g['audio/narrazione/demo/it/prova-rotta.wav'], 'corrotto');
       });
@@ -226,7 +226,7 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
         assert.equal(await pagina.evaluate(() => window.__voce.detti.length), prima, 'in pausa non parla nessuno');
         await pagina.evaluate(() => AstroDemo.riprendi());
         await aspetta(pagina, n => window.__voce.detti.length > n, prima);
-        assert.match(await pagina.evaluate(() => window.__voce.detti.at(-1).testo), /l'ombra della Luna corre sulla Terra/);
+        assert.match(await pagina.evaluate(() => window.__voce.detti.at(-1).testo), /l'ombra non si ferma/);
       });
       await prova('scheda nascosta: la demo va in pausa e la voce con lei', async () => {
         await pagina.evaluate(() => {
@@ -246,26 +246,26 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
       await prova('cambio lingua a metà scena: la frase si ridice in inglese', async () => {
         await pagina.evaluate(() => astroI18n.impostaLingua('en'));
         await aspetta(pagina, () => window.__voce.detti.at(-1).lang === 'en-US');
-        assert.match(await pagina.locator('#narrazione-testo').innerText(), /Moon's shadow races/);
+        assert.match(await pagina.locator('#narrazione-testo').innerText(), /the shadow doesn't stop/);
         await pagina.evaluate(() => astroI18n.impostaLingua('it'));
       });
       await prova('cambio scena: la frase di prima si ferma, nessuna sovrapposizione', async () => {
-        await pagina.evaluate(() => AstroDemo.vaiAScena(6));
-        await aspetta(pagina, () => window.__voce.detti.some(d => /Di nuovo a Reykjavík/.test(d.testo)));
-        assert.equal((await stato(pagina)).id, 'demo.narr.eclisse_tour.7');
+        await pagina.evaluate(() => AstroDemo.vaiAScena(9));
+        await aspetta(pagina, () => window.__voce.detti.some(d => /Torniamo a Reykjavík/.test(d.testo)));
+        assert.equal((await stato(pagina)).id, 'demo.narr.eclisse_tour.10');
         assert.equal(await pagina.evaluate(() => window.__voce.sovrapposte), 0);
       });
       await prova('un salto di scena a demo in pausa non fa ripartire la voce', async () => {
         await pagina.evaluate(() => AstroDemo.pausa());
         const prima = await pagina.evaluate(() => window.__voce.detti.length);
-        await pagina.evaluate(() => AstroDemo.vaiAScena(4));
+        await pagina.evaluate(() => AstroDemo.vaiAScena(7));
         await pagina.waitForTimeout(400);
         const s = await stato(pagina);
-        assert.equal(s.id, 'demo.narr.eclisse_tour.5'); assert.equal(s.pausa, true);
+        assert.equal(s.id, 'demo.narr.eclisse_tour.8'); assert.equal(s.pausa, true);
         assert.equal(await pagina.evaluate(() => window.__voce.detti.length), prima);
-        assert.match(await pagina.locator('#narrazione-testo').innerText(), /Sole, Luna e Terra sono in fila/);
+        assert.match(await pagina.locator('#narrazione-testo').innerText(), /allineati come perle/);
         await pagina.evaluate(() => AstroDemo.riprendi());
-        await aspetta(pagina, () => window.__voce.detti.some(d => /Sole, Luna e Terra sono in fila/.test(d.testo)));
+        await aspetta(pagina, () => window.__voce.detti.some(d => /allineati come perle/.test(d.testo)));
       });
       await prova('Esc: la demo si ferma, la voce tace e il testo sparisce', async () => {
         await pagina.keyboard.press('Escape');

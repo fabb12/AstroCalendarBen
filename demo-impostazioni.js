@@ -28,6 +28,9 @@
     camera_3d: ['solar_system_3d', "camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 60, elev_from: 4, elev_to: 20, zoom_from: 1, zoom_to: 1.5 }"],
     aurora_lesson: ['didactic_view', 'aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 120 }'],
     satellite_pass: ['planetarium_view', 'satellite_pass { satellite: iss, before: 1, after: 1 }'],
+    // La mappa del cono d'ombra: minuti dal massimo dell'eclisse di Sole, e
+    // (facoltativi) lo zoom della carta con cui seguire l'ombra.
+    shadow_map: ['eclipse_map', 'shadow_map { from: -30, to: 30, zoom_from: 3, zoom_to: 4 }'],
     // La voce della scena: un ID del dizionario, oppure `text: '…'` scritto a mano.
     narrate: ['planetarium_view', "narrate { id: 'demo.narr.eclisse_tour.1' }"]
   };
@@ -37,6 +40,7 @@
     transition: scena(...azioni.zoom_view),
     solar_system_3d: scena(...azioni.orbit_object),
     didactic_view: scena(...azioni.aurora_lesson),
+    eclipse_map: scena(...azioni.shadow_map),
     ...Object.fromEntries(Object.entries(azioni).map(([nome, dati]) => [nome, scena(...dati)]))
   };
   for (const nome of Object.keys(snippets)) $('snippet').add(new Option(nome, nome));

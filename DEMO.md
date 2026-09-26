@@ -208,7 +208,7 @@ automaticamente anche per le demo.
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
-| **Eclisse solare totale 2026** (`eclisse_tour`) | 7 · 114 s | Reykjavík: il campo si stringe da 40° a 1,6° sul Sole e la Luna lo attraversa (16:40→17:48, poi la totalità); volo; banco Terra–Luna con Sole, Luna e Terra in fila e la camera che gira; avvicinamento alla Terra (×5,5) con l'ombra che corre da −20 a +45 min dal massimo; di nuovo in cielo fino alle 18:52, a eclisse finita. |
+| **Eclisse solare totale 2026** (`eclisse_tour`) | 11 · 180 s | Reykjavík, dentro la fascia di totalità: l'attesa (il campo si stringe da 60° a 1,6° sul Sole); la **mappa del cono d'ombra** a tutto schermo, centrata sull'Islanda, con la penombra che si posa sul pianeta e arriva fino a Reykjavík (−134→−58,5 min dal massimo); il primo contatto e un'ora di falce (fino a +1,8); i grani di Baily e l'anello di diamanti, stringendo a 0,9°; la totalità, col campo che si riapre a 70° su Venere, Giove, Mercurio e Marte; di nuovo la mappa, stavolta **addosso all'ombra piena** che corre dall'Islanda alla costa nord della Spagna (+3,5→+42); volo; Sole, Luna e Terra in fila; la Terra da vicino con l'ombra che scivola oltre il bordo al tramonto (+44→+50); il ritorno a Reykjavík fino all'ultimo contatto (+62) e un congedo a campo largo che dà appuntamento al 2 agosto 2027. |
 | **Eclisse lunare totale 2028** (`eclisse_lunare`) | 10 · 178 s | Sapporo nella notte di Capodanno: l'attesa (il campo si stringe da 55° a 8°), il primo morso (−125→−40 min), l'ultimo spicchio che si spegne e la Luna color rame (fino a +5), poi **dentro la totalità il campo si riapre a 40°** e tornano le stelle; volo; da fuori il cono d'ombra, la Luna che lo attraversa (−110→+130) e la Terra davanti al Sole attorno al massimo (la Terra vista dalla Luna, l'anello dei tramonti); di nuovo in cielo l'uscita dall'ombra (+30→+170) e un congedo a campo largo che dà appuntamento alla totale del 26 giugno 2029. |
 | **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 10 · 173 s | Tucson al buio guardando a est (05:30); la fila inquadrata pianeta per pianeta; tre **primi piani a campo da telescopio** (0,25°): Giove con le bande, Venere gibbosa e Saturno con gli anelli, basso a ovest — cinque pianeti nello stesso cielo; di nuovo la fila e l'eclittica; volo; da fuori la camera scende dall'alto (80°) al piano (12°) e poi di taglio (3°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; in cielo l'alba che li spegne (fino alle 06:30). |
@@ -227,6 +227,39 @@ dei capitoli sono i contatti veri (Astronomy Engine per l'eclissi: parziale
 ±105 min, totalità ±36; per il corteo Mercurio e Giove passano i 5° alle
 05:45 locali e il Sole sorge verso le 06:30). Nessuna delle tre ha MP3
 registrati: la voce è la sintesi.
+
+### L'eclisse di Sole della v377, e la mappa del cono d'ombra
+
+La demo solare ha preso la forma delle altre tre, e in più **racconta la
+stessa ombra da due parti**: da sotto nel planetario, dall'alto sulla mappa
+del cono d'ombra (la finestra `modale-mappa` dell'eclissi, la stessa che si
+apre dall'agenda). I contatti sono quelli veri visti da Reykjavík (primo
+16:47:05, secondo 17:48:05, terzo 17:49:10, ultimo 18:47:28 UTC: 65 secondi di
+totalità) e il racconto va sempre avanti nel tempo. Gli audio registrati della
+versione di prima non tornano più col testo e sono usciti dal manifest: i file
+restano in `audio/narrazione/demo/it/`, e finché non si registrano le undici
+frasi nuove la voce è la sintesi.
+
+La mappa è una **scena**, `eclipse_map`, con la sua azione, `shadow_map`
+(sotto, «Sintassi»). A tenerla è `eclRegiaApri`/`eclRegiaPosa`/`eclRegiaChiudi`
+in `app.js`, accanto al pieno schermo della mappa: la regia apre l'evento vero
+(calcolando il mese se il calendario non ce l'ha), porta il guscio a tutto
+schermo **col ripiego CSS** — il pieno schermo nativo, se c'è, è della demo, e
+chiederlo per il guscio lo toglierebbe al documento — e a ogni passo dice
+soltanto che minuto è e quanto da vicino guardare. Il resto lo fa la mappa di
+sempre, e l'orologio resta uno solo: spostando la mappa si sposta il
+planetario, e la scena dopo lo ritrova dove l'ombra l'ha lasciato. Tre cose
+non sono dettagli. Col cielo a schermo intero il guscio si appende **dentro**
+al riquadro del cielo (`_eclRipiegoSchermo`, come la 3D), se no il suo
+`position: fixed` finirebbe sotto al planetario. Chiudendo la mappa si esce dal
+pieno schermo nativo **solo se è del guscio** (`_eclEsciSchermoIntero`): prima
+se ne usciva comunque, cioè chiudere la mappa a metà demo buttava fuori la demo.
+E senza Leaflet (offline, o il CDN che non risponde) la scena non si ferma: la
+stessa ombra si guarda dalla 3D, addosso alla Terra. Con la vista pulita della
+mappa restano la carta, l'ombra e l'orologio in alto (`.ecl-regia` in
+`style.css`); il lettore e i tasti se ne vanno. La **registrazione** delle
+demo riprende una tela, e la mappa è Leaflet, cioè HTML: durante le scene di
+mappa il filmato continua a riprendere il planetario che le sta dietro.
 
 ### Perché Helsinki e non Tromsø
 
@@ -298,12 +331,18 @@ Azioni principali:
   della finestra, margini compresi) racconta un pezzo solo del passaggio, e con
   `track: 0.25` (gradi) nel planetario insegue la stazione a quel campo, chiedendo la
   direzione a SGP4 per l'istante di adesso
+- `shadow_map { from: -134, to: -58.5, zoom_from: 2.4, zoom_to: 3, lat: 64, lon: -22 }` (solo in
+  `eclipse_map`): i minuti dal massimo dell'eclisse di Sole, come `event_window`, ma a
+  tenere il tempo è la mappa del cono d'ombra; con `zoom_from`/`zoom_to` (i livelli della
+  carta, da 1 a 8) la mappa si tiene centrata sull'ombra, con `lat`/`lon` in più su quel
+  punto; senza zoom resta sull'inquadratura d'insieme della fascia di totalità
 - `narrate { id: 'demo.narr.eclisse_tour.1' }` oppure, in una demo personale,
   `narrate { text: 'Qui la Luna tocca il Sole.' }` (al massimo 400 caratteri;
   un `id` senza testo deve esistere nel dizionario)
 
-Le scene sono `planetarium_view`, `transition`, `solar_system_3d` e
-`didactic_view`. `AstroDemo.vaiAScena(i, frazione)` salta a una scena (lo usano
+Le scene sono `planetarium_view`, `transition`, `solar_system_3d`,
+`didactic_view` ed `eclipse_map` (la mappa del cono d'ombra dell'eclisse di Sole
+più vicina all'orologio del racconto). `AstroDemo.vaiAScena(i, frazione)` salta a una scena (lo usano
 le prove per non aspettare un minuto a tour).
 
 `set_fov` e `zoom_fov` accettano un campo fra 0,25° (il minimo del planetario, quello dei primi piani sui pianeti) e 160°. Con la vista pulita il mirino giallo non si disegna: la camera la tiene la regia, e nei primi piani starebbe proprio sopra al bersaglio. `frame_objects` calcola il

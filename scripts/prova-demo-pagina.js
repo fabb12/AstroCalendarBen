@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* La pagina Demo, il menu raggruppato e il comportamento della demo in corso.
  *
- *   npm install --no-save playwright astronomy-engine
+ *   npm install --no-save playwright astronomy-engine leaflet@1.9.4
  *   node scripts/prova-demo-pagina.js
  *
  * Le domande sono quelle che a occhio non si giudicano: un comando che
@@ -48,6 +48,11 @@ async function prova(nome, fn) {
       if (url.startsWith(origine)) return route.continue();
       if (url.includes('astronomy.browser.min.js'))
         return route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(require.resolve('astronomy-engine').replace(/astronomy\.js$/, 'astronomy.browser.min.js')) });
+      if (/leaflet@1\.9\.4\/dist\/leaflet\.(js|css)$/.test(url)) {
+        const js = url.endsWith('.js');
+        return route.fulfill({ contentType: js ? 'text/javascript' : 'text/css',
+          body: fs.readFileSync(require.resolve('leaflet/dist/leaflet.' + (js ? 'js' : 'css'))) });
+      }
       return route.abort();
     });
     await pagina.addInitScript(() => {
@@ -331,7 +336,7 @@ async function prova(nome, fn) {
       // Il salto a una scena 3D: nello stesso turno la finestra dev'essere
       // già dentro al riquadro del cielo e il guscio a schermo pieno.
       const salto = await pagina.evaluate(() => {
-        AstroDemo.vaiAScena(3);
+        AstroDemo.vaiAScena(6);
         const guscio = document.getElementById('sol-guscio');
         const cont = document.getElementById('skymap-contenitore');
         return { dentro: cont.contains(document.getElementById('modale-sistema')) || cont.contains(guscio),
@@ -340,7 +345,7 @@ async function prova(nome, fn) {
       assert.deepEqual(salto, { dentro: true, pieno: true, nativo: true });
       await pagina.waitForTimeout(500);
       // Dal volo alla scena 3D vera, poi di nuovo il cielo, poi ancora la 3D.
-      for (const [scena, attesa] of [[4, 'sol.aperto'], [6, '!sol.aperto'], [4, 'sol.aperto'], [0, '!sol.aperto']]) {
+      for (const [scena, attesa] of [[7, 'sol.aperto'], [9, '!sol.aperto'], [7, 'sol.aperto'], [0, '!sol.aperto']]) {
         const subito = await pagina.evaluate(i => {
           AstroDemo.vaiAScena(i);
           const cont = document.getElementById('skymap-contenitore');
@@ -351,6 +356,21 @@ async function prova(nome, fn) {
         await pagina.waitForFunction(attesa, null, { timeout: 5000 });
         await pagina.waitForTimeout(250);
       }
+      // La mappa del cono d'ombra: anche lei dentro al riquadro del cielo,
+      // davanti al planetario, senza toccare il pieno schermo del documento.
+      const mappa = await pagina.evaluate(async () => {
+        AstroDemo.vaiAScena(1);
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const g = document.querySelector('.ecl-guscio-filmato'), r = g.getBoundingClientRect();
+        const cima = document.elementFromPoint(innerWidth / 2, innerHeight / 3);
+        return { regia: eclRegiaAttiva(), dentro: document.getElementById('skymap-contenitore').contains(g),
+          davanti: g.contains(cima), largo: r.width >= innerWidth - 1 && r.height >= innerHeight - 1,
+          nativo: document.fullscreenElement === document.documentElement };
+      });
+      assert.deepEqual(mappa, { regia: true, dentro: true, davanti: true, largo: true, nativo: true });
+      await pagina.evaluate(() => AstroDemo.vaiAScena(2));
+      assert.equal(await pagina.evaluate(() => eclRegiaAttiva() || !document.querySelector('.ecl-guscio-filmato').closest('#modale-mappa')), false,
+        'Tornando al cielo la mappa rientra nella sua finestra');
       const s = await pagina.evaluate(() => ({ eventi: window.__schermo, nativo: document.fullscreenElement === document.documentElement,
         cielo: sky.schermoIntero, stato: AstroDemo.stato }));
       assert.deepEqual(s.eventi, ['dentro'], 'un solo ingresso, nessuna uscita: ' + s.eventi.join(','));

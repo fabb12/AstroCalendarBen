@@ -5,47 +5,78 @@
     {
       chiave: 'eclisse_tour',
       testo: `define_demo 'eclisse_tour' {
-  // Reykjavik è dentro la fascia di totalità del 12 agosto 2026.
+  // Eclisse totale del 12 agosto 2026 (massimo 17:45:47 UTC), vista da
+  // Reykjavík, dentro la fascia di totalità. Contatti a Reykjavík (minuti dal
+  // massimo): primo -58,7, secondo +2,3, terzo +3,4, ultimo +61,7 — la
+  // totalità dura 65 secondi. Il racconto va sempre avanti nel tempo: prima
+  // l'attesa, poi l'ombra vista dall'alto sulla mappa del cono d'ombra, la
+  // falce, la totalità, di nuovo la mappa con l'ombra che corre verso la
+  // Spagna, lo spazio, e il ritorno a Reykjavík.
   scene planetarium_view {
-    duration: 15s;
+    // L'attesa: il cielo di un pomeriggio d'estate, poi dritti sul Sole.
+    duration: 16s;
     action: narrate { id: 'demo.narr.eclisse_tour.1' };
     action: set_location { lat: 64.1466, lon: -21.9426, name: 'Reykjavik', timezone: 'Atlantic/Reykjavik' };
-    action: set_date { iso: '2026-08-12T16:40:00Z' };
-    action: zoom_fov { from: 40, to: 1.6 };
-    action: timelapse { start: 16:40, end: 16:47 };
+    action: set_date { iso: '2026-08-12T15:20:00Z' };
+    action: zoom_fov { from: 60, to: 1.6 };
+    action: timelapse { start: 15:20, end: 15:30 };
     action: center_target { target: 'Sun' };
   }
 
-  scene planetarium_view {
-    // La Luna entra progressivamente nel disco del Sole.
-    duration: 18s;
+  scene eclipse_map {
+    // Dall'alto: la penombra si posa sul pianeta e scivola fino a Reykjavík.
+    duration: 20s;
     action: narrate { id: 'demo.narr.eclisse_tour.2' };
-    action: set_fov { degrees: 1.6 };
-    action: timelapse { start: 16:47, end: 17:48 };
-    action: center_target { target: 'Sun' };
+    action: shadow_map { from: -134, to: -58.5, zoom_from: 2.4, zoom_to: 3, lat: 64, lon: -22 };
   }
 
   scene planetarium_view {
-    // Totalità: lascia il tempo alla voce e alla corona di essere osservata.
-    duration: 15s;
+    // Il primo contatto e un'ora di falce che si stringe.
+    duration: 18s;
     action: narrate { id: 'demo.narr.eclisse_tour.3' };
     action: set_fov { degrees: 1.6 };
-    action: timelapse { start: 17:48, end: 17:50 };
+    action: event_window { event: solar_eclipse, from: -58.5, to: 1.8 };
     action: center_target { target: 'Sun' };
+  }
+
+  scene planetarium_view {
+    // I grani di Baily, l'anello di diamanti e il secondo contatto.
+    duration: 14s;
+    action: narrate { id: 'demo.narr.eclisse_tour.4' };
+    action: zoom_fov { from: 1.6, to: 0.9 };
+    action: event_window { event: solar_eclipse, from: 1.8, to: 2.9 };
+    action: center_target { target: 'Sun' };
+  }
+
+  scene planetarium_view {
+    // Totalità: la corona, poi lo sguardo si allarga su Venere, Giove e il
+    // tramonto tutto attorno all'orizzonte.
+    duration: 16s;
+    action: narrate { id: 'demo.narr.eclisse_tour.5' };
+    action: zoom_fov { from: 0.9, to: 70 };
+    action: event_window { event: solar_eclipse, from: 2.9, to: 3.3 };
+    action: center_target { target: 'Sun' };
+  }
+
+  scene eclipse_map {
+    // L'ombra piena lascia l'Islanda e corre sull'Atlantico verso la Spagna.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.eclisse_tour.6' };
+    action: shadow_map { from: 3.5, to: 42, zoom_from: 4.6, zoom_to: 4 };
   }
 
   scene transition {
-    // Cambio di prospettiva verso il Sistema Solare 3D.
-    duration: 10s;
-    action: narrate { id: 'demo.narr.eclisse_tour.4' };
+    // Fuori, nello spazio.
+    duration: 8s;
+    action: narrate { id: 'demo.narr.eclisse_tour.7' };
     action: zoom_view { type: geometric, final_target: solar_system_3d };
   }
 
   scene solar_system_3d {
-    // Sole, Luna e Terra in fila.
+    // Sole, Luna e Terra in fila, con il cono d'ombra della Luna.
     duration: 16s;
-    action: narrate { id: 'demo.narr.eclisse_tour.5' };
-    action: event_window { event: solar_eclipse, from: -40, to: -20 };
+    action: narrate { id: 'demo.narr.eclisse_tour.8' };
+    action: event_window { event: solar_eclipse, from: 42, to: 44 };
     action: camera_3d {
       scene: earth_moon,
       focus: 'Earth-Moon',
@@ -58,10 +89,10 @@
   }
 
   scene solar_system_3d {
-    // Avvicinamento alla Terra e osservazione dell'ombra.
-    duration: 22s;
-    action: narrate { id: 'demo.narr.eclisse_tour.6' };
-    action: event_window { event: solar_eclipse, from: -20, to: 45 };
+    // Addosso alla Terra: sopra la Spagna, al tramonto, l'ombra scivola oltre il bordo del pianeta.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.eclisse_tour.9' };
+    action: event_window { event: solar_eclipse, from: 44, to: 50 };
     action: camera_3d {
       scene: earth_moon,
       focus: 'Earth',
@@ -74,11 +105,20 @@
   }
 
   scene planetarium_view {
-    // Ritorno a Reykjavik e conclusione dell'eclissi.
+    // Di nuovo a Reykjavík: la falce si allarga fino all'ultimo contatto.
     duration: 18s;
-    action: narrate { id: 'demo.narr.eclisse_tour.7' };
+    action: narrate { id: 'demo.narr.eclisse_tour.10' };
     action: set_fov { degrees: 1.6 };
-    action: timelapse { start: 18:10, end: 18:52 };
+    action: event_window { event: solar_eclipse, from: 50, to: 62 };
+    action: center_target { target: 'Sun' };
+  }
+
+  scene planetarium_view {
+    // Il congedo: il Sole intero sopra l'orizzonte islandese.
+    duration: 14s;
+    action: narrate { id: 'demo.narr.eclisse_tour.11' };
+    action: zoom_fov { from: 1.6, to: 70 };
+    action: event_window { event: solar_eclipse, from: 62, to: 68 };
     action: center_target { target: 'Sun' };
   }
 }`
