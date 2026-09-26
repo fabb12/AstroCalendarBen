@@ -8,10 +8,14 @@
   // Eclisse totale del 12 agosto 2026 (massimo 17:45:47 UTC), vista da
   // Reykjavík, dentro la fascia di totalità. Contatti a Reykjavík (minuti dal
   // massimo): primo -58,7, secondo +2,3, terzo +3,4, ultimo +61,7 — la
-  // totalità dura 65 secondi. Il racconto va sempre avanti nel tempo: prima
+  // totalità dura 65 secondi. Il racconto va avanti nel tempo: prima
   // l'attesa, poi l'ombra vista dall'alto sulla mappa del cono d'ombra, la
   // falce, la totalità, di nuovo la mappa con l'ombra che corre verso la
-  // Spagna, lo spazio, e il ritorno a Reykjavík.
+  // Spagna; poi lo spazio, dove il nastro si riavvolge una volta sola: il
+  // cono arriva (-62 → -46) e l'ombra piena attraversa il globo intero, dal
+  // primo tocco all'alba in Siberia all'ultimo al tramonto sulla Spagna
+  // (-46 → +47), con la sua strada disegnata sotto. Poi il ritorno a
+  // Reykjavík, dove il tempo riprende da +50.
   scene planetarium_view {
     // L'attesa: il cielo di un pomeriggio d'estate, poi dritti sul Sole.
     duration: 16s;
@@ -73,34 +77,37 @@
   }
 
   scene solar_system_3d {
-    // Sole, Luna e Terra in fila, con il cono d'ombra della Luna.
-    duration: 16s;
+    // Il nastro si riavvolge: Sole, Luna e Terra in fila, e il cono d'ombra
+    // della Luna che arriva sul pianeta — la punta tocca terra a -46 minuti.
+    duration: 12s;
     action: narrate { id: 'demo.narr.eclisse_tour.8' };
-    action: event_window { event: solar_eclipse, from: 42, to: 44 };
+    action: event_window { event: solar_eclipse, from: -62, to: -46.2 };
     action: camera_3d {
       scene: earth_moon,
       focus: 'Earth-Moon',
-      orbit: -35,
-      elev_from: 4,
-      elev_to: 16,
+      orbit: 20,
+      elev_from: 6,
+      elev_to: 14,
       zoom_from: 1,
-      zoom_to: 1.2
+      zoom_to: 1.6
     };
   }
 
   scene solar_system_3d {
-    // Addosso alla Terra: sopra la Spagna, al tramonto, l'ombra scivola oltre il bordo del pianeta.
-    duration: 18s;
+    // Addosso alla Terra, molto vicino: la macchia scura dell'ombra piena
+    // dall'alba in Siberia al tramonto sulla Spagna, tutta, dall'inizio alla
+    // fine (tocca terra a -46 minuti e la lascia a +47,5).
+    duration: 22s;
     action: narrate { id: 'demo.narr.eclisse_tour.9' };
-    action: event_window { event: solar_eclipse, from: 44, to: 50 };
+    action: event_window { event: solar_eclipse, from: -46, to: 47.3 };
     action: camera_3d {
       scene: earth_moon,
       focus: 'Earth',
       orbit: 70,
-      elev_from: 16,
-      elev_to: 38,
-      zoom_from: 1.2,
-      zoom_to: 5.5
+      elev_from: 72,
+      elev_to: 62,
+      zoom_from: 9,
+      zoom_to: 14
     };
   }
 

@@ -262,6 +262,41 @@ mappa restano la carta, l'ombra e l'orologio in alto (`.ecl-regia` in
 demo riprende una tela, e la mappa è Leaflet, cioè HTML: durante le scene di
 mappa il filmato continua a riprendere il planetario che le sta dietro.
 
+### L'eclisse di Sole della v383: i continenti, l'ombra dall'inizio, la voce
+
+Tre ritocchi alla stessa demo, ognuno per una cosa che si vedeva.
+
+**I continenti sulla mappa.** Durante le due scene `eclipse_map` la carta
+restava grigia: si vedevano l'ombra e i tracciati, e sotto niente. La regia
+rifaceva la vista a ogni passo con `setView(…, { animate: false })`, e in
+Leaflet 1.9.4 un `setView` che cambia lo zoom passa da `_resetView`, cioè da
+`viewprereset`, che fa **buttare tutte le tessere** (`GridLayer._invalidateAll`)
+e chiederle da capo. Con la rete vera — qualche centinaio di millisecondi per
+tessera — nessuna faceva in tempo ad arrivare prima del passo dopo: misurato
+con quattrocento millisecondi di ritardo, 293 richieste e zero tessere a
+schermo. Adesso la regia sposta la carta come fa un pizzico
+(`_eclRegiaSposta` in `app.js`: `_move` + `_moveEnd`), che le tessere già
+arrivate le tiene. Le prove di prima non lo prendevano perché servivano le
+tessere istantanee: `prova-demo-regia.js` adesso le serve **lente** e conta
+quelle caricate mentre la scena corre (0/35 col codice di prima).
+
+**L'ombra dallo spazio, tutta.** Le due scene della 3D riavvolgono il tempo
+una volta sola: la prima (12 s, -62 → -46,2) mostra il cono che arriva, la
+seconda (22 s, -46 → +47,3) sta addosso alla Terra — zoom ×9 → ×14, camera alta
+sopra il polo — e segue l'ombra piena dal primo tocco all'alba in Siberia
+all'ultimo al tramonto sulla Spagna. Sul globo la macchia della totalità vera
+è larga quattro pixel, quindi `solDisegnaOmbraDellaLuna` le mette un segno di
+misura minima con un alone ambra, e sotto disegna la **strada della
+totalità** (`solStradaTotalita`/`solDisegnaStradaTotalita`: piena dove è già
+passata, tratteggiata dove deve arrivare), campionata in coordinate
+geografiche perché la Terra gira sotto l'ombra. Il totale resta 180 s.
+
+**La voce.** Le undici frasi raccontano quello che si sente, non solo quello
+che si vede: la luce che diventa metallica, il vento dell'eclissi, il freddo,
+gli uccelli che tacciono, le bande d'ombra, il grido e il silenzio della
+totalità, l'alba accelerata del ritorno. Nessun audio registrato: parla la
+sintesi.
+
 ### La demo delle stagioni della v382
 
 È la sola demo che non racconta un evento raro ma una cosa che capita ogni

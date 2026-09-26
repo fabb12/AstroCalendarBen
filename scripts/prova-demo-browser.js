@@ -85,7 +85,7 @@ const server = http.createServer((req, res) => {
     assert.match(await pagina.locator('#demo-validazione').innerText(), /riga \d+, colonna \d+/);
     // La posizione è quella dell'errore, non la fine del file.
     await pagina.locator('#demo-editor').fill(testoBase.replace('duration: 16s;', 'duration: 16s; duration: 3s;'));
-    assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 11,/);
+    assert.match(await pagina.locator('#demo-validazione').innerText(), /Durata duplicata \(riga 15,/);
     // In inglese anche i messaggi di validazione sono in inglese.
     await pagina.evaluate(() => astroI18n.impostaLingua('en'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('degrees: 1.6', 'degrees: 400'));

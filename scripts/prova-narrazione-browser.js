@@ -204,7 +204,7 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
       });
       await prova('scena 2: il file manca, parla la sintesi — e il file non si richiede più', async () => {
         await pagina.evaluate(() => AstroDemo.vaiAScena(1));
-        await aspetta(pagina, () => window.__voce.detti.some(d => /Saliamo nello spazio/.test(d.testo)));
+        await aspetta(pagina, () => window.__voce.detti.some(d => /Saliamo in alto/.test(d.testo)));
         const g = await pagina.evaluate(() => narrazione.guasti());
         assert.equal(g['audio/narrazione/demo/it/prova-che-manca.wav'], 'mancante');
       });
@@ -263,9 +263,9 @@ const aspetta = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000, poll
         const s = await stato(pagina);
         assert.equal(s.id, 'demo.narr.eclisse_tour.8'); assert.equal(s.pausa, true);
         assert.equal(await pagina.evaluate(() => window.__voce.detti.length), prima);
-        assert.match(await pagina.locator('#narrazione-testo').innerText(), /allineati come perle/);
+        assert.match(await pagina.locator('#narrazione-testo').innerText(), /come perle su un filo/);
         await pagina.evaluate(() => AstroDemo.riprendi());
-        await aspetta(pagina, () => window.__voce.detti.some(d => /allineati come perle/.test(d.testo)));
+        await aspetta(pagina, () => window.__voce.detti.some(d => /come perle su un filo/.test(d.testo)));
       });
       await prova('Esc: la demo si ferma, la voce tace e il testo sparisce', async () => {
         await pagina.keyboard.press('Escape');

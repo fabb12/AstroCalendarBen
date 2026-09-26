@@ -20,6 +20,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const radice = path.resolve(__dirname, '..');
+// Una tessera vera, anche se minuscola: un PNG 1×1 azzurro
+const TESSERA = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkaPhfDwAEhQHwVZ7nWQAAAABJRU5ErkJggg==', 'base64');
 const tipi = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
   const file = path.resolve(radice, '.' + decodeURIComponent(req.url.split('?')[0] === '/' ? '/index.html' : req.url.split('?')[0]));
@@ -71,6 +73,15 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
         return route.fulfill({ contentType: js ? 'text/javascript' : 'text/css',
           body: fs.readFileSync(require.resolve('leaflet/dist/leaflet.' + (js ? 'js' : 'css'))) });
       }
+      // Le tessere della mappa arrivano **lente**, come dalla rete vera: il
+      // difetto dei continenti spariti c'era solo così — la regia rifaceva la
+      // vista a ogni passo, Leaflet buttava le tessere in volo e ne chiedeva
+      // altre, e con quattrocento millisecondi di attesa non ne arrivava mai
+      // nessuna. Con le tessere istantanee la prova era verde lo stesso.
+      if (url.includes('tile.openstreetmap.org'))
+        return new Promise(r => setTimeout(r, 400))
+          .then(() => route.fulfill({ contentType: 'image/png', body: TESSERA, headers: { 'access-control-allow-origin': '*' } }))
+          .catch(() => {});
       if (url.includes('satellite.min.js'))
         return route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(path.join(path.dirname(require.resolve('satellite.js/package.json')), 'dist/satellite.min.js')) });
       return route.abort();
@@ -170,6 +181,17 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await attendiFotogrammi(); await foto('eclisse-sole-mappa-penombra');
     ok(m0.regia && m0.pieno && m0.largo && !m0.sol, 'La mappa del cono d’ombra è la scena, a tutto schermo');
     ok(m0.lettore === 'none', 'Vista pulita: il lettore della mappa non c’è');
+    // La mappa mentre gira davvero: le tessere (i continenti) devono arrivare
+    // e restare, anche se ogni passo sposta la vista e ne cambia lo zoom
+    const tessere = await pagina.evaluate(async () => {
+      AstroDemo.vaiAScena(1, 0.2); AstroDemo.riprendi();
+      await new Promise(r => setTimeout(r, 2500));
+      AstroDemo.pausa();
+      const imgs = [...document.querySelectorAll('#mappa-eclissi .leaflet-tile-pane img')];
+      return { tutte: imgs.length, caricate: imgs.filter(i => i.classList.contains('leaflet-tile-loaded')).length };
+    });
+    ok(tessere.caricate >= 6,
+      `Con la regia in corsa i continenti si vedono: ${tessere.caricate}/${tessere.tutte} tessere caricate`);
     ok(Math.abs(m0.minuti - (-96.25)) < 0.5 && Math.abs(m0.cielo - m0.minuti) < 1,
       `Un orologio solo: mappa ${m0.minuti.toFixed(1)} min, cielo ${m0.cielo.toFixed(1)} min`);
     // La Luna scivola sul Sole
@@ -208,25 +230,34 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await salta(7, 1); const g1 = await pagina.evaluate(() => ({ az: sol.az, elev: sol.elev }));
     await attendiFotogrammi(); await foto('eclisse-sole-geometria');
     ok(g0.vicino && Math.abs(g1.az - g0.az) > 0.3, 'La camera gira attorno a Terra e Luna');
-    // L'ombra sulla Terra: zoom che si stringe, ombra che corre
+    // L'ombra sulla Terra, tutta: la scena comincia quando la punta del cono
+    // tocca terra e finisce quando sta per lasciarla, molto da vicino, con la
+    // strada della totalità disegnata sotto la macchia
     const ombra = u => pagina.evaluate(async u => {
       AstroDemo.vaiAScena(8, u); AstroDemo.pausa();
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const o = solOmbraLunareSuTerra(skyAdesso());
+      const adesso = skyAdesso();
+      const o = solOmbraLunareSuTerra(adesso);
       solMisura();
       const terra = solVicPunto([0, 0, 0]);
-      return { zoom: sol.zoom, centro: o && o.centro, px: terra.px - sol.L / 2, py: terra.py - sol.H / 2 };
+      const strada = (sol.stradaTotalita && sol.stradaTotalita.punti) || [];
+      return { zoom: sol.zoomVoluto, centro: o && o.centro, px: terra.px - sol.L / 2, py: terra.py - sol.H / 2,
+        ms: +adesso, strada: strada.length, primo: strada.length ? strada[0].t : NaN,
+        ultimo: strada.length ? strada[strada.length - 1].t : NaN };
     }, u);
     const o0 = await ombra(0.02), o1 = await ombra(0.4);
     await foto('eclisse-sole-ombra');
-    const o2 = await ombra(0.95);
-    ok(o2.zoom > o0.zoom * 4, 'Ci si avvicina alla Terra: zoom ×' + (o2.zoom / o0.zoom).toFixed(1));
+    const o2 = await ombra(0.97);
+    await attendiFotogrammi(); await foto('eclisse-sole-ombra-fine');
+    ok(o2.zoom > g0.zoom * 8, 'Ci si avvicina molto alla Terra: zoom ×' + (o2.zoom / g0.zoom).toFixed(1));
     ok(Math.abs(o1.px) < 2 && Math.abs(o1.py) < 2, 'La Terra resta al centro');
+    ok(o0.centro && o0.primo <= o0.ms && o0.ms - o0.primo < 5 * 60000,
+      'L’ombra si vede dall’inizio: la scena comincia quando tocca terra');
+    ok(o2.centro && o2.ultimo >= o2.ms && o2.ultimo - o2.ms < 6 * 60000,
+      'E si segue fino in fondo: la scena finisce quando sta per lasciare il pianeta');
+    ok(o1.strada > 30, 'La strada della totalità è disegnata sul globo (' + o1.strada + ' punti)');
     const corsa = o0.centro && o1.centro ? Math.hypot(o1.centro[0] - o0.centro[0], o1.centro[1] - o0.centro[1], o1.centro[2] - o0.centro[2]) : 0;
-    // Due minuti e mezzo di eclissi, con l'ombra che accelera verso il
-    // tramonto: sono quasi cinquecento chilometri.
-    ok(corsa > 300, `L’ombra corre sulla Terra: ${corsa.toFixed(0)} km in due minuti e mezzo`);
-    ok(!o2.centro, 'Poi l’ombra scivola oltre il bordo del pianeta');
+    ok(corsa > 2000, `L’ombra corre sulla Terra: ${corsa.toFixed(0)} km`);
     // Di nuovo in cielo: la Luna se ne va, e il Sole torna intero
     await salta(10, 1); const sFine = await separazione();
     await attendiFotogrammi(); await foto('eclisse-sole-fine');
