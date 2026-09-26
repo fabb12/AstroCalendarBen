@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v377';
+const CACHE_NAME = 'astrocal-v381';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -50,6 +50,7 @@ const ASSETS = [
   './manifest-en.json',
   './icon-192.png',
   './icon-512.png',
+  './demo-logo-256.jpg',
   './icon-maskable-512.png',
   './apple-touch-icon.png'
 ];

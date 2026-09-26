@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const $ = id => document.getElementById('demo-' + id);
-  const t = k => astroI18n.t('demo.' + k);
+  const t = (k, dati) => astroI18n.t('demo.' + k, dati);
   const libreria = AstroDemo.libreria, editor = $('editor'), elenco = $('elenco');
   const avanzate = $('avanzate');
   let selezionata = null, originale = '', nuova = false;
@@ -116,6 +116,7 @@
     $('inserisci').disabled = solaLettura || !demo;
     $('elimina').disabled = !selezionata || solaLettura;
     $('avvia').disabled = !selezionata || sporco() || !demo;
+    $('condividi').disabled = !selezionata || sporco() || !demo;
     $('esporta').disabled = !demo;
     $('duplica').disabled = !demo;
     $('annulla').disabled = !sporco();
@@ -193,6 +194,122 @@
   $('avvia').addEventListener('click', () => prova(() => {
     if (selezionata && !sporco()) { AstroDemo.avvia(selezionata.testo); esito(''); }
   }));
+
+  // --- Link condivisibili -------------------------------------------------
+  // Le predefinite hanno una chiave stabile e producono link corti. Una demo
+  // personale invece vive solo nel localStorage di questo dispositivo: per
+  // renderla davvero condivisibile il suo DSL validato viaggia nel frammento
+  // dell'URL. Il frammento non viene inviato al server e non cambia la
+  // richiesta di index.html, quindi continua a funzionare anche come PWA.
+  function codificaTestoLink(testo) {
+    const byte = new TextEncoder().encode(testo);
+    let binario = '';
+    for (let i = 0; i < byte.length; i += 0x8000)
+      binario += String.fromCharCode(...byte.subarray(i, i + 0x8000));
+    return btoa(binario).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+  function decodificaTestoLink(valore) {
+    if (!valore || valore.length > 500000 || !/^[A-Za-z0-9_-]+$/.test(valore))
+      throw new Error(t('linkNonValido'));
+    const base64 = valore.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - valore.length % 4) % 4);
+    let binario;
+    try { binario = atob(base64); } catch (_) { throw new Error(t('linkNonValido')); }
+    const byte = Uint8Array.from(binario, c => c.charCodeAt(0));
+    const testo = new TextDecoder().decode(byte);
+    if (!testo || testo.length > 100000) throw new Error(t('linkNonValido'));
+    return testo;
+  }
+  function creaLinkCondivisione() {
+    if (!selezionata || sporco()) throw new Error(t('nonValido'));
+    AstroDemo.valida(selezionata.testo);
+    const url = new URL(window.location.href);
+    url.hash = '';
+    const parametri = new URLSearchParams();
+    if (selezionata.solaLettura) parametri.set('demo', selezionata.chiave);
+    else parametri.set('demo-script', codificaTestoLink(selezionata.testo));
+    url.hash = parametri.toString();
+    return url.toString();
+  }
+  async function condividiDemo() {
+    if (!selezionata || sporco()) return;
+    const url = creaLinkCondivisione();
+    const nome = nomeDemo(selezionata);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t('linkTitolo', { nome }), text: t('linkTesto', { nome }), url });
+        esito(t('linkCondiviso'));
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      try {
+        await navigator.clipboard.writeText(url);
+        esito(t('linkCopiato'));
+        return;
+      } catch (_) { /* il prompt qui sotto è il ripiego anche su file:// */ }
+    }
+    window.prompt(t('copiaLink'), url);
+  }
+  $('condividi').addEventListener('click', () => condividiDemo().catch(e => esito(e.message)));
+
+  function richiestaDaLink() {
+    const frammento = window.location.hash.replace(/^#/, '');
+    if (!frammento) return null;
+    const parametri = new URLSearchParams(frammento);
+    const chiave = parametri.get('demo');
+    const codificato = parametri.get('demo-script');
+    if (!chiave && !codificato) return null;
+    if (chiave && codificato) throw new Error(t('linkNonValido'));
+
+    if (chiave) {
+      if (!/^[A-Za-z0-9_-]{1,100}$/.test(chiave)) throw new Error(t('linkNonValido'));
+      const d = libreria.elenco().find(x => x.solaLettura && x.chiave === chiave);
+      if (!d) throw new Error(t('linkNonValido'));
+      return { testo: d.testo, chiave: d.chiave };
+    }
+
+    const testo = decodificaTestoLink(codificato);
+    AstroDemo.valida(testo);
+    return { testo };
+  }
+  function mostraErroreLink(errore) {
+    try { if (typeof mostraVista === 'function') mostraVista('demo'); } catch (_) {}
+    esito((errore && errore.message) || t('linkNonValido'));
+  }
+  function avviaDaLink() {
+    let richiesta;
+    try { richiesta = richiestaDaLink(); } catch (e) { mostraErroreLink(e); return; }
+    if (!richiesta) return;
+
+    // La pagina normale precarica la ISS quando si apre. Un deep link salta
+    // quella pagina, perciò avvia lo stesso precaricamento prima del racconto.
+    if (typeof satPrecaricaTle === 'function') satPrecaricaTle();
+    if (richiesta.chiave) prova(() => carica(richiesta.chiave));
+
+    let tentativi = 0;
+    const tenta = () => {
+      const pronto = typeof Astronomy !== 'undefined' && typeof sky !== 'undefined' &&
+        sky.observer && Array.isArray(sky.oggetti) && sky.oggetti.length;
+      if (!pronto) {
+        if (++tentativi <= 300) { setTimeout(tenta, 100); return; }
+        mostraErroreLink(new Error(t('attendi')));
+        return;
+      }
+      try { AstroDemo.avvia(richiesta.testo); }
+      catch (e) {
+        // Il caricamento dell'osservatore può completarsi nello stesso turno:
+        // l'unico errore transitorio si ritenta, gli altri si mostrano.
+        if (e && e.message === t('attendi') && ++tentativi <= 300) {
+          setTimeout(tenta, 100);
+          return;
+        }
+        mostraErroreLink(e);
+      }
+    };
+    tenta();
+  }
   $('inserisci').addEventListener('click', () => prova(() => {
     AstroDemo.valida(editor.value);
     const token = /\/\/[^\n]*|'(?:\\['\\]|[^'\\])*'|"(?:\\["\\]|[^"\\])*"|[{}]/g;
@@ -407,4 +524,5 @@
   });
   prova(() => carica());
   prova(disegnaOpzioni);
+  avviaDaLink();
 })();

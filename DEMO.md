@@ -59,7 +59,7 @@ Disegno, preferenze e logo stanno in `demo-intro.js` (`window.AstroDemoIntro`):
   ridimensionamento, quindi proporzioni, trasparenza e qualità restano quelle.
   Un file che non è un'immagine, supera 8 MB o non si decodifica viene
   rifiutato **prima** di toccare il logo in uso. Un logo salvato che all'avvio
-  non si legge più torna da sé all'icona dell'app (e si butta); se il nodo
+  non si legge più torna da sé al logo predefinito delle demo (e si butta); se il nodo
   dell'immagine fallisce durante l'intro, ripiega sullo stesso predefinito.
   Senza IndexedDB il logo scelto vale fino alla chiusura dell'app, e la pagina
   lo dice.
@@ -444,3 +444,22 @@ ISS nello stesso intervallo nelle due viste — più opzioni, avvisi zitti,
 schermo intero, registrazione, movimento ridotto e l'ombra ingrandita; le
 schermate vanno in `work/regia-*.png`.
 Il workflow **Verifica Demo** esegue le prove principali in pull request.
+
+
+## Link condivisibili
+
+Nella pagina **Demo** il comando **Condividi link** crea un deep link che avvia
+direttamente la demo quando il planetario è pronto.
+
+- Le demo predefinite usano un frammento corto, per esempio
+  `#demo=eclisse_tour`.
+- Le demo personali includono nel frammento `#demo-script=...` il DSL già
+  validato, codificato in Base64 URL-safe. In questo modo il destinatario non
+  deve avere lo stesso `localStorage`; il frammento inoltre non viene inviato
+  al server.
+- All'apertura il contenuto viene validato di nuovo prima di essere eseguito.
+  Se il browser non offre la condivisione nativa, il comando copia il link
+  negli appunti e infine usa un prompt come ripiego.
+
+Il deep link non cambia il formato `.astrodemo`: l'esportazione su file resta
+utile per archiviare o modificare demo molto grandi.

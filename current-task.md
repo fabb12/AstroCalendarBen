@@ -1,7 +1,7 @@
 # Niente in corso
 
 Ultimo lavoro: la demo dell'eclisse di Sole riscritta, con la mappa del cono
-d'ombra (v377).
+d'ombra (v377, pubblicata come v381 dopo l'unione con main).
 
 - **Eclisse solare** (11 scene, 180 s): scene in `demo-predefiniti.js`, testi
   `demo.narr.eclisse_tour.1–11` nei due dizionari; tabella e note in `DEMO.md`

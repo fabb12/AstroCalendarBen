@@ -116,7 +116,153 @@
         file: 'demo/it/aurora_boreale-11.mp3',
         impronta: '952e92e3'
       }
-    }
+    },
 
+    // ─────────────────────────────────────────────
+    // Allineamento pianeti
+    // ─────────────────────────────────────────────
+
+    'demo.narr.allineamento_pianeti.1': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-1.mp3',
+        impronta: '9bd328fc'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.2': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-2.mp3',
+        impronta: 'b7e91b75'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.3': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-3.mp3',
+        impronta: 'b48144ab'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.4': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-4.mp3',
+        impronta: '420a7add'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.5': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-5.mp3',
+        impronta: '112713f3'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.6': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-6.mp3',
+        impronta: 'd48eb3db'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.7': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-7.mp3',
+        impronta: '18785cce'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.8': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-8.mp3',
+        impronta: '94d1b0b7'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.9': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-9.mp3',
+        impronta: '0d780056'
+      }
+    },
+
+    'demo.narr.allineamento_pianeti.10': {
+      it: {
+        file: 'demo/it/allineamento_pianeti-10.mp3',
+        impronta: '85abc4a0'
+      }
+    },
+    // ─────────────────────────────────────────────
+    // Eclisse lunare
+    // ─────────────────────────────────────────────
+
+    'demo.narr.eclisse_lunare.1': {
+      it: {
+        file: 'demo/it/eclisse_lunare-1.mp3',
+        impronta: 'fefb7db6'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.2': {
+      it: {
+        file: 'demo/it/eclisse_lunare-2.mp3',
+        impronta: '7dc41ed0'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.3': {
+      it: {
+        file: 'demo/it/eclisse_lunare-3.mp3',
+        impronta: 'f053a9b9'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.4': {
+      it: {
+        file: 'demo/it/eclisse_lunare-4.mp3',
+        impronta: 'dea93d13'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.5': {
+      it: {
+        file: 'demo/it/eclisse_lunare-5.mp3',
+        impronta: '2f354ad7'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.6': {
+      it: {
+        file: 'demo/it/eclisse_lunare-6.mp3',
+        impronta: '99a71851'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.7': {
+      it: {
+        file: 'demo/it/eclisse_lunare-7.mp3',
+        impronta: '8cf92090'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.8': {
+      it: {
+        file: 'demo/it/eclisse_lunare-8.mp3',
+        impronta: 'bd68ccca'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.9': {
+      it: {
+        file: 'demo/it/eclisse_lunare-9.mp3',
+        impronta: 'e638911c'
+      }
+    },
+
+    'demo.narr.eclisse_lunare.10': {
+      it: {
+        file: 'demo/it/eclisse_lunare-10.mp3',
+        impronta: '77ae456e'
+      }
+    }
   }
 };

@@ -21994,12 +21994,23 @@ function skySemidiametro(o) {
 
 // Quanta parte del disco del Sole è coperta: è l'area comune a due cerchi
 function skyCoperturaDischi(sep, rS, rL) {
+  if (!(Number.isFinite(sep) && Number.isFinite(rS) && Number.isFinite(rL)) ||
+      sep < 0 || !(rS > 0) || !(rL > 0)) return 0;
   if (sep >= rS + rL) return 0;
   if (sep <= Math.abs(rL - rS)) return rL >= rS ? 1 : (rL * rL) / (rS * rS);
-  const a1 = Math.acos((sep * sep + rS * rS - rL * rL) / (2 * sep * rS));
-  const a2 = Math.acos((sep * sep + rL * rL - rS * rS) / (2 * sep * rL));
+
+  // Vicino alle due tangenze la formula e' esatta, ma l'aritmetica IEEE
+  // puo' produrre 1.0000000000000002 (o -1.0000000000000002). Math.acos
+  // allora restituisce NaN: nell'eclissi lunare quel NaN arriva fino a
+  // addColorStop come rgb(NaN, NaN, NaN) e interrompe tutto il fotogramma.
+  // La geometria dei cerchi impone per definizione un coseno in [-1, 1]:
+  // tosarlo qui corregge solo l'errore di arrotondamento, non la geometria.
+  const acosSicuro = x => Math.acos(Math.max(-1, Math.min(1, x)));
+  const a1 = acosSicuro((sep * sep + rS * rS - rL * rL) / (2 * sep * rS));
+  const a2 = acosSicuro((sep * sep + rL * rL - rS * rS) / (2 * sep * rL));
   const area = rS * rS * (a1 - Math.sin(2 * a1) / 2) + rL * rL * (a2 - Math.sin(2 * a2) / 2);
-  return Math.max(0, Math.min(1, area / (Math.PI * rS * rS)));
+  const copertura = area / (Math.PI * rS * rS);
+  return Number.isFinite(copertura) ? Math.max(0, Math.min(1, copertura)) : 0;
 }
 
 function skyEclisseDiSole(sole, luna) {

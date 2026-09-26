@@ -170,6 +170,37 @@ async function prova(nome, fn) {
       assert.ok(p.etichette, 'ogni casella ha la sua etichetta');
       assert.equal(p.attiva, 'page');
     });
+    await prova('Condividi link crea un deep link e aprendolo la demo parte da sola', async () => {
+      await pagina.locator('#demo-elenco').selectOption('eclisse_lunare');
+      await pagina.evaluate(() => {
+        AstroDemo.impostaOpzioni({ schermoIntero: false, registra: false, musicaDemo: false });
+        Object.defineProperty(navigator, 'share', {
+          configurable: true,
+          value: async dati => { window.__demoCondivisa = dati; }
+        });
+      });
+      await pagina.locator('#demo-condividi').click();
+      const condivisa = await pagina.evaluate(() => window.__demoCondivisa);
+      assert.ok(condivisa && condivisa.url, 'la Web Share API riceve il link');
+      const url = new URL(condivisa.url);
+      assert.equal(url.origin, origine);
+      assert.equal(url.pathname, '/');
+      assert.equal(url.hash, '#demo=eclisse_lunare');
+      assert.match(condivisa.text, /Eclisse lunare|demo/i);
+
+      // Il frammento non arriva al server: al reload viene rilevato dalla
+      // pagina e il racconto parte appena osservatore e catalogo sono pronti.
+      await pagina.evaluate(() => { location.hash = 'demo=eclisse_lunare'; });
+      await pagina.reload({ waitUntil: 'domcontentloaded' });
+      await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && AstroDemo.stato === 'attivo',
+        null, { timeout: 30000 });
+      assert.equal(await pagina.locator('#demo-elenco').inputValue(), 'eclisse_lunare');
+      await pagina.evaluate(() => {
+        AstroDemo.ferma();
+        history.replaceState(null, '', location.pathname + location.search);
+      });
+      assert.equal(await pagina.evaluate(() => location.hash), '');
+    });
     await prova('«Registra anche l\'audio» dipende da «Registra un filmato», e la preferenza resta', async () => {
       await pagina.evaluate(() => AstroDemo.impostaOpzioni({ registra: false, registraAudio: true }));
       await pagina.evaluate(() => mostraVista('demo'));
