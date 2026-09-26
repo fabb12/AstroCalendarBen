@@ -143,9 +143,30 @@
   // Il massimo di un evento, cercato una volta sola per racconto: le scene
   // successive (il planetario, poi la 3D, poi di nuovo il planetario)
   // parlano dello **stesso** evento, non ognuna del suo.
+  // I solstizi e gli equinozi: l'istante vero (`Astronomy.Seasons`) più
+  // vicino all'orologio del racconto, prima o dopo, cercato nell'anno di
+  // adesso e nei due accanto. Sono gli «eventi» della demo delle stagioni.
+  const STAGIONI = { march_equinox: 'mar_equinox', june_solstice: 'jun_solstice',
+    september_equinox: 'sep_equinox', december_solstice: 'dec_solstice' };
+  function stagioneVicina(quando, tipo) {
+    const ora = +quando, anno = new Date(ora).getUTCFullYear();
+    let migliore = null;
+    for (const a of [anno - 1, anno, anno + 1]) {
+      let ms = NaN;
+      try { ms = Astronomy.Seasons(a)[STAGIONI[tipo]].date.getTime(); } catch (_) { ms = NaN; }
+      if (Number.isFinite(ms) && (migliore === null || Math.abs(ms - ora) < Math.abs(migliore - ora))) migliore = ms;
+    }
+    return migliore;
+  }
   function piccoEvento(c, tipo) {
     c.eventi = c.eventi || {};
     if (c.eventi[tipo]) return c.eventi[tipo];
+    if (STAGIONI[tipo]) {
+      const ms = stagioneVicina(skyAdesso(), tipo);
+      richiedi(Number.isFinite(ms), err('stagioneAssente'));
+      c.eventi[tipo] = ms;
+      return ms;
+    }
     const evento = tipo === 'lunar_eclipse' ? lunareVicina(skyAdesso()) : eclisseVicina(skyAdesso());
     richiedi(evento && evento.peak && Number.isFinite(evento.peak.date.getTime()),
       err(tipo === 'lunar_eclipse' ? 'lunareAssente' : 'eclisseAssente'));
@@ -241,6 +262,26 @@
     verifica: dataISO,
     crea(p) { istante(+dataISO(p)); }
   };
+  // Un tratto di calendario, da una data all'altra, per tutta la durata della
+  // scena: è il modo di far girare la Terra attorno al Sole in venti secondi.
+  // `timelapse` sta dentro a un giorno civile e `event_window` dentro a
+  // dodici ore da un evento; qui si va fino a tre anni.
+  const DATE_RANGE_MAX_MS = 3 * 366 * 86400000;
+  function intervalloDate(p) {
+    campi(p, ['from', 'to']);
+    const a = dataISO({ iso: p.from }), b = dataISO({ iso: p.to });
+    richiedi(+b > +a && +b - +a <= DATE_RANGE_MAX_MS, err('intervalloDate'));
+    return { a: +a, b: +b };
+  }
+  registro.date_range = {
+    verifica: intervalloDate,
+    crea(p) {
+      const { a, b } = intervalloDate(p);
+      const aggiorna = u => istante(a + (b - a) * u);
+      aggiorna(0);
+      return { aggiorna };
+    }
+  };
   registro.set_location = {
     verifica: luogoDemo,
     crea(p) { sky.luogoVista = luogoDemo(p); skyAggiornaOsservatore(); }
@@ -266,6 +307,33 @@
         if (c && c.cameraManuale) return;
         sky.manuale.az = p.az; sky.manuale.alt = p.alt;
       } };
+    }
+  };
+  // La camera che accompagna un astro **solo in azimut**, tenendo ferma
+  // l'altezza dello sguardo. `center_target` lo metterebbe al centro, e con
+  // lui correrebbe via l'orizzonte: per far vedere quanto sale il Sole nelle
+  // diverse stagioni serve l'opposto — il suolo fermo in basso e il Sole che
+  // si alza e si abbassa sopra di lui, mentre la vista lo segue dall'alba al
+  // tramonto. La direzione si chiede per l'istante di adesso, non a
+  // `sky.oggetti`, che durante un timelapse resta indietro di un fotogramma.
+  registro.track_azimuth = {
+    verifica(p) {
+      campi(p, ['target', 'alt']);
+      richiedi(corpi.includes(p.target), err('bersaglio', { nome: p.target }));
+      richiedi(numero(p.alt, -30, 85), err('direzione'));
+    },
+    crea(p, c) {
+      sky.mostraSoleLuna = true; sky.mostraPianeti = true;
+      const applica = () => {
+        let q = null;
+        try { q = altAzCorpo(p.target, skyAdesso(), sky.observer); } catch (_) { q = null; }
+        if (!q) return;
+        sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
+        sky.manuale.az = q.az; sky.manuale.alt = p.alt;
+        if ('animazioneVista' in sky) sky.animazioneVista = null;
+      };
+      applica();
+      return { aggiorna() { if (!c || !c.cameraManuale) applica(); } };
     }
   };
   registro.set_fov = {
@@ -422,7 +490,8 @@
   // al cono della Terra: il movimento che si vede è il cielo che cammina,
   // non una animazione disegnata sopra.
   // ------------------------------------------------------------------
-  const EVENTI = ['solar_eclipse', 'lunar_eclipse'];
+  const EVENTI = ['solar_eclipse', 'lunar_eclipse', 'march_equinox', 'june_solstice',
+    'september_equinox', 'december_solstice'];
   registro.event_window = {
     verifica(p) {
       campi(p, ['event', 'from', 'to']);
@@ -456,7 +525,7 @@
   }
   registro.camera_3d = {
     verifica(p) {
-      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to']);
+      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az']);
       richiedi(p.scene === 'earth_moon' || p.scene === 'system', err('scena3d'));
       richiedi((p.scene === 'earth_moon' ? FUOCHI_VICINO : FUOCHI_SISTEMA).includes(p.focus),
         err('fuoco', { nome: p.focus }));
@@ -466,6 +535,8 @@
       for (const k of ['zoom_from', 'zoom_to'])
         richiedi(p[k] === undefined || numero(p[k], 0.1, 60), err('zoom3d'));
       elencoCorpiSistema(p.frame);
+      richiedi(p.sun_az === undefined || (p.scene === 'system' && p.focus === 'Earth' && numero(p.sun_az, -360, 360)),
+        err('soleAz'));
     },
     crea(p, c) {
       richiedi(sol.aperto, err('serve3d'));
@@ -523,9 +594,21 @@
         const q = solVicPunto(punto);
         sol.panX = -(q.px - sol.cx); sol.panY = -(q.py - sol.cy);
       }
+      // `sun_az` lega la camera al Sole invece che allo spazio: 0 vuol dire
+      // «il Sole a sinistra della Terra, di fianco», 90 guardare la Terra
+      // dalla parte del Sole (la faccia del giorno), −90 da quella della
+      // notte. Si rifà a ogni fotogramma dalla posizione della Terra, così
+      // mentre il tempo scorre la luce arriva sempre dallo stesso lato dello
+      // schermo — ed è quello che rende confrontabili due solstizi.
+      function azDiBase() {
+        if (p.sun_az === undefined) return az0;
+        solLeggiPosizioni(skyAdesso());
+        const t = sol.terra;
+        return t ? -Math.atan2(t.pos.y, t.pos.x) + p.sun_az * GRADI : az0;
+      }
       function applica(u) {
         const k = rampa(c, u);
-        sol.az = az0 + (c.ridotto ? 0 : giro * k);
+        sol.az = azDiBase() + (c.ridotto ? 0 : giro * k);
         sol.elev = sol.elevVoluta = mescola(ea, eb, k);
         solImpostaZoom(base * mescolaZoom(za, zb, k));
         centra();
@@ -684,6 +767,88 @@
   };
 
   // ------------------------------------------------------------------
+  // L'asse della Terra messo in evidenza nella vista 3D (solo nelle scene
+  // `solar_system_3d`): l'asse vero coi due poli, la perpendicolare al piano
+  // dell'orbita con l'angolo fra le due, l'equatore e — con `parallel` — il
+  // parallelo di un luogo, caldo dove è giorno e freddo dove è notte. La
+  // parte calda di quel cerchio è la durata del giorno a quella latitudine.
+  // Il disegno è `solDisegnaAsseTerra` in app.js; qui si accende e si spegne.
+  // ------------------------------------------------------------------
+  registro.earth_axis = {
+    verifica(p) {
+      campi(p, ['parallel']);
+      richiedi(p.parallel === undefined || numero(p.parallel, -89, 89), err('parallelo'));
+    },
+    crea(p) {
+      sol.evidenziaAsse = { parallelo: p.parallel !== undefined ? p.parallel : null };
+      return { chiudi() { sol.evidenziaAsse = null; } };
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Gli archi interi del Sole in uno o più giorni, nello stesso cielo (solo
+  // nel planetario). `dates` sono giorni civili del luogo del cielo,
+  // 'AAAA-MM-GG' separati da virgole, da uno a quattro. Il disegno è
+  // `skyDisegnaArchiSole` in app.js.
+  // ------------------------------------------------------------------
+  function giorniDemo(v) {
+    richiedi(typeof v === 'string' && v.length <= 60, err('giorni'));
+    const giorni = v.split(',').map(x => x.trim()).filter(Boolean);
+    richiedi(giorni.length >= 1 && giorni.length <= 4 && giorni.every(g => /^\d{4}-\d{2}-\d{2}$/.test(g) &&
+      Number.isFinite(Date.parse(g + 'T00:00:00Z')) && new Date(g + 'T00:00:00Z').toISOString().slice(0, 10) === g),
+    err('giorni'));
+    return giorni;
+  }
+  registro.sun_paths = {
+    verifica(p) { campi(p, ['dates']); giorniDemo(p.dates); },
+    crea(p) {
+      sky.mostraSoleLuna = true;
+      sky.archiSole = { date: giorniDemo(p.dates) };
+      return { chiudi() { sky.archiSole = null; } };
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Il cartello della data: che giorno è, scritto grande in cima allo
+  // schermo per tutta la scena, e che segue l'orologio del racconto mentre
+  // scorre. In una demo che salta fra giugno, dicembre e marzo la data non
+  // può restare un parametro interno: è la prima cosa che chi guarda deve
+  // sapere. Sopra c'è un'etichetta (`label`, una chiave del dizionario, o
+  // `text` scritto a mano), sotto l'ora e il luogo (`time: hide` per
+  // toglierli), e a richiesta due righe che il cielo non scrive da sé:
+  // `sun: show` — alba, tramonto, durata del giorno e altezza del Sole a
+  // mezzogiorno in quel luogo, in quel giorno — e `distance: show`, quanto
+  // dista la Terra dal Sole in quell'istante.
+  // ------------------------------------------------------------------
+  const MOSTRA = ['show', 'hide'];
+  registro.date_card = {
+    verifica(p) {
+      campi(p, ['label', 'text', 'time', 'sun', 'distance']);
+      if (p.label !== undefined)
+        richiedi(typeof p.label === 'string' && /^[\w.-]+$/.test(p.label) && astroI18n.esiste(p.label),
+          err('etichetta', { id: p.label }));
+      if (p.text !== undefined)
+        richiedi(typeof p.text === 'string' && p.text.trim() && p.text.length <= 80, err('cartelloTesto'));
+      for (const k of ['time', 'sun', 'distance'])
+        richiedi(p[k] === undefined || MOSTRA.includes(p[k]), err('mostra', { nome: k }));
+    },
+    crea(p) {
+      cartello.dataset.chiave = '';
+      cartello.dataset.etichetta = p.label || '';
+      cartello.dataset.testo = typeof p.text === 'string' ? p.text : '';
+      cartello.dataset.ora = p.time === 'hide' ? '' : '1';
+      cartello.dataset.sole = p.sun === 'show' ? '1' : '';
+      cartello.dataset.distanza = p.distance === 'show' ? '1' : '';
+      aggiornaCartello();
+      cartello.hidden = false;
+      return {
+        aggiorna() { aggiornaCartello(); },
+        chiudi() { cartello.hidden = true; }
+      };
+    }
+  };
+
+  // ------------------------------------------------------------------
   // L'ombra sulla mappa. Solo nelle scene `eclipse_map`: `from` e `to` sono
   // i minuti dal massimo, come in `event_window`, ma qui a tenere il tempo è
   // la mappa (e il planetario la segue: l'orologio è uno solo). Con
@@ -817,7 +982,7 @@
   const chiavi = ['modalitaTempo', 'istanteSimulatoMs', 'offsetTempoSec', 'luogoVista', 'target',
     'inseguimento', 'eventoInseguito', 'seguiTelefono', 'fov', 'fovVoluto', 'modalitaHover',
     'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'mostraSatelliti', 'mostraTraccia',
-    'passoTempoSec', 'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec',
+    'passoTempoSec', 'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec', 'archiSole',
     // Il campo è definito sull'altezza del riquadro (`skyRidimensiona`):
     // conserviamo anche l'altezza a cui valeva, così eventuali resize durante
     // la demo non riscalano di nuovo il FOV quando si ripristina lo stato.
@@ -835,6 +1000,9 @@
         if (azione.comando === 'aurora_lesson') richiedi(scena.vista === 'didactic_view', err('soloDidattica'));
         if (azione.comando === 'camera_3d') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'shadow_map') richiedi(scena.vista === 'eclipse_map', err('serveMappa'));
+        if (azione.comando === 'earth_axis') richiedi(scena.vista === 'solar_system_3d', err('serve3dAsse'));
+        if (azione.comando === 'sun_paths') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
+        if (azione.comando === 'date_range') quando = new Date(azione.parametri.to);
       }
     }
     return demo;
@@ -1007,7 +1175,8 @@
     const precedente = Object.fromEntries(chiavi.map(k => [k, sky[k]]));
     const manuale = { ...sky.manuale }, vistaPrima = vistaAttuale;
     const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
-      'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto', 'mondiAccesi', 'sondeAccese'].map(k => [k, sol[k]]));
+      'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto', 'mondiAccesi', 'sondeAccese',
+      'evidenziaAsse'].map(k => [k, sol[k]]));
     const auroraPrima = { acceso: aur.acceso, kpSimulato: aur.kpSimulato };
     const didatticaPrima = typeof didDemo !== 'undefined' ? didDemo.fotografa() : null;
     const livelliPrima = fotografaLivelli();
@@ -1093,6 +1262,7 @@
         if (registrava && vistaAttuale !== 'cielo') mostraVista('cielo');
         if (modaleImpostazioni) modaleImpostazioni.classList.toggle('hidden', impostazioniNascostePrima);
         pannello.hidden = true;
+        cartello.hidden = true;
       }
     };
     contesto = c;
@@ -1281,6 +1451,90 @@
   pannello.setAttribute('role', 'toolbar');
   const sottotitoli = document.createElement('div');
   sottotitoli.id = 'demo-sottotitoli'; sottotitoli.className = 'demo-sottotitoli'; sottotitoli.hidden = true;
+  // Il cartello della data (`date_card`): quattro righe fisse, riscritte solo
+  // quando il loro testo cambia davvero — durante un anno fatto scorrere in
+  // venti secondi la data cambia a ogni fotogramma, l'etichetta mai.
+  const cartello = document.createElement('div');
+  cartello.id = 'demo-cartello'; cartello.className = 'demo-cartello'; cartello.hidden = true;
+  cartello.setAttribute('role', 'note');
+  const righeCartello = {};
+  for (const nome of ['etichetta', 'data', 'ora', 'sole', 'giorno', 'distanza']) {
+    const riga = document.createElement('div');
+    riga.className = 'demo-cartello-' + nome;
+    righeCartello[nome] = riga;
+    cartello.append(riga);
+  }
+  function scriviRiga(nome, testo) {
+    const riga = righeCartello[nome];
+    if (riga.textContent !== testo) riga.textContent = testo;
+    const vuota = !testo;
+    if (riga.hidden !== vuota) riga.hidden = vuota;
+  }
+  // Alba, tramonto, durata del giorno e altezza del Sole a mezzogiorno per un
+  // giorno civile del luogo: si calcolano una volta per giorno e per luogo,
+  // non a ogni fotogramma (sono tre ricerche della libreria).
+  let fattiSole = { chiave: null };
+  function fattiDelSole(quando, luogo) {
+    const parti = partiDataDelLuogo(quando, luogo);
+    const obs = sky.observer;
+    if (!obs) return null;
+    const chiave = [parti.year, parti.month, parti.day, obs.latitude.toFixed(3), obs.longitude.toFixed(3)].join('|');
+    if (fattiSole.chiave === chiave) return fattiSole;
+    const giorno = { year: parti.year, month: parti.month, day: parti.day, minute: 0, second: 0 };
+    const inizio = dataDalTempoDelLuogo({ ...giorno, hour: 0 }, luogo) || dataDalTempoDelLuogo({ ...giorno, hour: 1 }, luogo);
+    const f = { chiave, alba: null, tramonto: null, altezza: null, sempre: null };
+    try {
+      const alba = Astronomy.SearchRiseSet('Sun', obs, +1, inizio, 1);
+      const tramonto = Astronomy.SearchRiseSet('Sun', obs, -1, alba ? alba.date : inizio, 1);
+      const culmine = Astronomy.SearchHourAngle('Sun', obs, 0, inizio);
+      f.altezza = culmine && culmine.hor ? culmine.hor.altitude : null;
+      if (alba && tramonto) { f.alba = alba.date; f.tramonto = tramonto.date; }
+      else if (f.altezza !== null) {
+        // Né alba né tramonto nel giorno: sole di mezzanotte o notte polare.
+        // Lo dice l'altezza al culmine inferiore, dodici ore dopo quello
+        // superiore.
+        const sotto = Astronomy.SearchHourAngle('Sun', obs, 12, inizio);
+        f.sempre = sotto && sotto.hor && sotto.hor.altitude > -0.833 ? 'giorno' : (f.altezza < -0.833 ? 'notte' : null);
+      }
+    } catch (_) { /* senza la libreria il cartello dice solo la data */ }
+    fattiSole = f;
+    return f;
+  }
+  function aggiornaCartello() {
+    const quando = skyAdesso(), luogo = skyLuogoDelCielo();
+    const d = cartello.dataset;
+    const fuso = fusoDelLuogo(luogo).nome;
+    const locale = localeData();
+    scriviRiga('etichetta', d.testo || (d.etichetta ? astroI18n.t(d.etichetta) : ''));
+    scriviRiga('data', formattatoreData(locale, { timeZone: fuso, weekday: 'long', day: 'numeric',
+      month: 'long', year: 'numeric' }).format(quando));
+    scriviRiga('ora', d.ora ? oraDelLuogo(quando, luogo) + (luogo && luogo.nome ? ' · ' + luogo.nome : '') : '');
+    let sole = '', giorno = '';
+    if (d.sole) {
+      const f = fattiDelSole(quando, luogo);
+      if (f && f.alba && f.tramonto) {
+        const minuti = Math.round((+f.tramonto - +f.alba) / 60000);
+        sole = t('cartello.alba', { ora: oraDelLuogo(f.alba, luogo) }) + ' · ' +
+          t('cartello.tramonto', { ora: oraDelLuogo(f.tramonto, luogo) });
+        giorno = t('cartello.giorno', { ore: Math.floor(minuti / 60), min: minuti % 60 });
+      } else if (f && f.sempre) sole = t(f.sempre === 'giorno' ? 'cartello.sempreGiorno' : 'cartello.sempreNotte');
+      if (f && f.altezza !== null)
+        giorno = (giorno ? giorno + ' · ' : '') + t('cartello.mezzogiorno', { gradi: solNumero(f.altezza, 0) });
+    }
+    scriviRiga('sole', sole);
+    scriviRiga('giorno', giorno);
+    let distanza = '';
+    if (d.distanza) {
+      try {
+        const km = Astronomy.HelioDistance('Earth', quando) * 149597870.7 / 1e6;
+        distanza = t('cartello.distanza', { km: solNumero(km, 1) });
+      } catch (_) { distanza = ''; }
+    }
+    scriviRiga('distanza', distanza);
+    cartello.setAttribute('aria-label', t('cartello.nome'));
+    const genitore = genitoreDemo();
+    if (genitore && cartello.parentElement !== genitore) genitore.append(cartello);
+  }
   let timerComandi = null;
   const icone = {
     pausa: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg>',
@@ -1320,7 +1574,7 @@
   // sono ritirati, e si vedono appena ci si arriva.
   pannello.addEventListener('focusin', mostraComandi);
   pannello.addEventListener('pointerenter', mostraComandi);
-  document.body.append(pannello, sottotitoli);
+  document.body.append(pannello, sottotitoli, cartello);
   function aggiornaEtichette() {
     const inPausa = motore.stato === 'pausa';
     pausa.innerHTML = icone[inPausa ? 'riprendi' : 'pausa'];
@@ -1333,16 +1587,23 @@
     pannello.setAttribute('aria-label', t('comandi'));
     sottotitoli.setAttribute('aria-label', t('sottotitoli'));
   }
+  // Dove stanno i pezzi della demo appoggiati sulla scena (comandi,
+  // sottotitoli, cartello): dentro a chi è a schermo intero, se no il suo
+  // pieno schermo li lascerebbe fuori.
+  function genitoreDemo() {
+    const pieno = document.querySelector('.did-pieno-ripiego');
+    return sol.aperto ? solGuscio()
+      : (pieno && vistaAttuale === 'didattica') ? pieno
+        : (sky.schermoIntero ? document.getElementById('skymap-contenitore') : null) ||
+          (document.fullscreenElement && document.fullscreenElement !== document.documentElement
+            ? document.fullscreenElement : document.body);
+  }
   function aggiornaPannello() {
     if (inCorso()) {
-      const pieno = document.querySelector('.did-pieno-ripiego');
-      const genitore = sol.aperto ? solGuscio()
-        : (pieno && vistaAttuale === 'didattica') ? pieno
-          : (sky.schermoIntero ? document.getElementById('skymap-contenitore') : null) ||
-            (document.fullscreenElement && document.fullscreenElement !== document.documentElement
-              ? document.fullscreenElement : document.body);
+      const genitore = genitoreDemo();
       if (genitore && pannello.parentElement !== genitore) genitore.append(pannello);
       if (genitore && sottotitoli.parentElement !== genitore) genitore.append(sottotitoli);
+      if (genitore && cartello.parentElement !== genitore) genitore.append(cartello);
       pannello.hidden = false;
       aggiornaEtichette();
       // In pausa i comandi restano in vista: il tasto per riprendere non
@@ -1351,6 +1612,8 @@
     } else {
       if (pannello.parentElement !== document.body) document.body.append(pannello);
       if (sottotitoli.parentElement !== document.body) document.body.append(sottotitoli);
+      if (cartello.parentElement !== document.body) document.body.append(cartello);
+      cartello.hidden = true;
       pannello.hidden = true; nascondiComandi();
       if (!sottotitoli.hidden) sottotitoli.hidden = true;
       if (motore.stato === 'errore') skyAvviso('demo', t('errore') + ': ' + motore.errore.message, 10000);

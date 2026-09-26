@@ -8393,6 +8393,11 @@ const sky = {
   // da dove è salito, dove sarà fra un'ora, quando tramonta (vedi 7.3-bis)
   mostraTraccia: true,
   traccia: { chiave: null, punti: [], nome: '', colore: '#93c5fd', prossimo: 0 },
+  // Gli archi diurni del Sole di qualche giorno scelto (7.3-bis, «Gli archi
+  // del Sole»): li accende la demo delle stagioni per mettere nello stesso
+  // cielo il giorno di giugno, quello di marzo e quello di dicembre.
+  // `null` a riposo; l'elenco delle date e la memoria stanno qui dentro.
+  archiSole: null,
   // L'eclittica: la strada che il Sole percorre in un anno fra le stelle, e
   // il binario attorno a cui stanno tutti i pianeti (vedi 7.3-ter). Resta
   // accesa finché non la si spegne, qualunque oggetto si stia guardando.
@@ -22852,6 +22857,9 @@ function skyDisegna() {
   // sotto agli astri, perché è una guida e non deve coprirli
   skyCalcolaTraccia();
   skyDisegnaTraccia(ctx, base, focale);
+  // Gli archi interi del Sole di più giorni (la demo delle stagioni): sono
+  // guide come la traccia, e come lei stanno sotto agli astri
+  if (sky.archiSole) skyDisegnaArchiSole(ctx, base, focale);
 
   // Prima le stelle, poi i pianeti, poi il Sole, poi la Luna, infine le
   // stazioni spaziali (che si muovono e devono restare sempre riconoscibili
@@ -23506,6 +23514,123 @@ function skyDisegnaTraccia(ctx, base, focale) {
     }
   });
 
+  ctx.restore();
+}
+
+// --- Gli archi del Sole ------------------------------------------------------
+//   La traccia qui sopra racconta otto ore attorno all'istante mostrato, ed è
+//   la guida giusta mentre si guarda un oggetto. Per spiegare le stagioni
+//   serve un'altra cosa: l'arco **intero** che il Sole fa in un giorno, e
+//   quello di giorni diversi nello stesso cielo, uno accanto all'altro. È il
+//   disegno che si trova in ogni libro di scuola — l'arco alto e lungo di
+//   giugno, quello basso e corto di dicembre, e in mezzo quello degli
+//   equinozi che sorge esattamente a est — e a occhio non lo si ricava mai,
+//   perché la stessa ora in due stagioni diverse non si guarda mai insieme.
+//
+//   Li accende la demo dei solstizi (`sun_paths`, in `demo.js`) scrivendo in
+//   `sky.archiSole` le date — giorni civili del luogo del cielo — e li spegne
+//   il ripristino della demo. Ogni arco è un giro completo di ventiquattro
+//   ore dalla mezzanotte del luogo, un campione ogni sei minuti: a quel passo
+//   la corda fra due campioni si scosta dall'arco vero di meno di un pixel
+//   anche a grandangolo, e il mezzogiorno (il campione più alto) sbaglia
+//   l'altezza di meno di un centesimo di grado.
+//
+//   Il colore non è scelto per posizione nell'elenco ma dalla **declinazione**
+//   del Sole di quel giorno: caldo quando il Sole sta a nord dell'equatore
+//   celeste, freddo quando sta a sud, chiaro agli equinozi. Così lo stesso
+//   giorno ha lo stesso colore in qualunque ordine lo si scriva, e il colore
+//   dice già la cosa che conta — da che parte dell'equatore sta il Sole.
+const SKY_ARCHI_PASSO_MIN = 6;
+const SKY_ARCHI_COLORI = { nord: '#fbbf24', equinozio: '#bbf7d0', sud: '#7dd3fc' };
+
+function skyCalcolaArchiSole() {
+  const a = sky.archiSole;
+  if (!a || !Array.isArray(a.date) || !sky.observer || typeof Astronomy === 'undefined') return null;
+  const luogo = skyLuogoDelCielo();
+  const chiave = a.date.join(',') + '|' + Math.round(sky.observer.latitude * 1000) + '|' +
+    Math.round(sky.observer.longitude * 1000) + '|' + localeData();
+  if (a.chiave === chiave) return a.archi;
+  const fuso = fusoDelLuogo(luogo).nome;
+  const etichettaData = formattatoreData(localeData(), { timeZone: fuso, day: 'numeric', month: 'short' });
+  a.archi = a.date.map(testo => {
+    const [year, month, day] = testo.split('-').map(Number);
+    const inizio = dataDalTempoDelLuogo({ year, month, day, hour: 0, minute: 0, second: 0 }, luogo) ||
+      dataDalTempoDelLuogo({ year, month, day, hour: 1, minute: 0, second: 0 }, luogo);
+    if (!inizio) return null;
+    const punti = [];
+    let culmine = null;
+    for (let m = 0; m <= 24 * 60; m += SKY_ARCHI_PASSO_MIN) {
+      const t = new Date(+inizio + m * 60000);
+      let p = null;
+      try { p = altAzCorpo('Sun', t, sky.observer); } catch (e) { p = null; }
+      if (!p) continue;
+      const punto = { az: p.az, alt: p.alt, t: +t };
+      punti.push(punto);
+      if (!culmine || punto.alt > culmine.alt) culmine = punto;
+    }
+    if (punti.length < 2 || !culmine) return null;
+    let dec = 0;
+    try { dec = Astronomy.Equator('Sun', new Date(culmine.t), sky.observer, true, true).dec; } catch (e) { dec = 0; }
+    const colore = dec > 8 ? SKY_ARCHI_COLORI.nord : (dec < -8 ? SKY_ARCHI_COLORI.sud : SKY_ARCHI_COLORI.equinozio);
+    return { punti, culmine, colore, etichetta: `${etichettaData.format(new Date(culmine.t))} · ${solNumero(culmine.alt, 0)}°` };
+  }).filter(Boolean);
+  a.chiave = chiave;
+  return a.archi;
+}
+
+function skyDisegnaArchiSole(ctx, base, focale) {
+  const archi = skyCalcolaArchiSole();
+  if (!archi || !archi.length) return;
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  archi.forEach(arco => {
+    const proiettati = arco.punti.map(t => {
+      const p = skyProietta(skyVettore(t.az, t.alt), base, focale);
+      return { px: p.px, py: p.py, davanti: p.davanti, alt: t.alt };
+    });
+    ctx.strokeStyle = arco.colore;
+    for (let i = 1; i < proiettati.length; i++) {
+      const a = proiettati[i - 1], b = proiettati[i];
+      if (!a.davanti || !b.davanti) continue;
+      if (Math.abs(a.px - b.px) > sky.larghezza || Math.abs(a.py - b.py) > sky.altezza) continue;
+      const sotto = a.alt < 0 && b.alt < 0;
+      ctx.setLineDash(sotto ? [3, 6] : []);
+      ctx.globalAlpha = sotto ? 0.22 : 0.92;
+      ctx.lineWidth = sotto ? 1.2 : 2.6;
+      ctx.beginPath();
+      ctx.moveTo(a.px, a.py);
+      ctx.lineTo(b.px, b.py);
+      ctx.stroke();
+      // Dove l'arco attraversa l'orizzonte: l'alba e il tramonto di quel
+      // giorno, che è metà di quello che il disegno deve far vedere — più a
+      // nord d'estate, più a sud d'inverno, esattamente a est agli equinozi
+      if ((a.alt < 0) !== (b.alt < 0)) {
+        const k = a.alt / (a.alt - b.alt);
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = arco.colore;
+        ctx.beginPath();
+        ctx.arc(a.px + (b.px - a.px) * k, a.py + (b.py - a.py) * k, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // Il mezzogiorno: il punto più alto, con la data e l'altezza scritte
+    // accanto. È il numero che le stagioni cambiano di più.
+    const c = arco.culmine;
+    const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
+    if (!p.davanti || p.px < -40 || p.px > sky.larghezza + 40 || p.py < -40 || p.py > sky.altezza + 40) return;
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = arco.colore;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = `600 ${quanto(12, 13, 14)}px ${SKY_FONT_ETICHETTE}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    skyScrittaConAlone(ctx, arco.etichetta, p.px, p.py - 9, arco.colore, 'rgba(2, 6, 16, 0.85)', 3.5);
+  });
   ctx.restore();
 }
 
@@ -32797,6 +32922,9 @@ const sol = {
   // I nodi e le inclinazioni delle orbite planetarie: dove ogni pianeta
   // attraversa il piano dell'eclittica, e di quanto se ne allontana
   nodi: false,
+  // L'asse della Terra messo in evidenza (`solDisegnaAsseTerra`): `null` a
+  // riposo, `{ parallelo }` quando la demo delle stagioni lo accende
+  evidenziaAsse: null,
   // Memorie di comodo, tutte con la loro chiave: il telaio geografico della
   // Terra (§7.7-ter), le posizioni geocentriche di Luna e Sole e l'orbita
   // lunare campionata (§7.7-quater). Sono conti che non cambiano dentro allo
@@ -36764,6 +36892,183 @@ function solAlternaVicino() {
   else solEntraVicino({ morbido: true });
 }
 
+// --- L'asse della Terra, messo in evidenza ----------------------------------
+//   Le stagioni si spiegano con una riga sola, e in questa scena quella riga
+//   non c'era: l'asse di rotazione della Terra. La faccia vera del pianeta
+//   (§7.7-ter) lo porta già dentro di sé — le coste girano attorno a lui e il
+//   confine del giorno lo sa — ma un asse che non si vede non spiega niente.
+//   Lo accende la demo dei solstizi (`earth_axis`, in `demo.js`) scrivendo
+//   `sol.evidenziaAsse`, e il ripristino della demo lo rimette a `null`.
+//
+//   Cosa si disegna, e perché proprio questo:
+//   - l'**asse** vero (`solAsse('Earth')`, cioè `RotationAxis` — lo stesso
+//     con cui il globo fa girare le coste), prolungato oltre i poli con la N
+//     e la S, e lungo almeno trentaquattro pixel: quando la Terra è un
+//     puntino sull'orbita è proprio la direzione dell'asse la cosa da
+//     guardare, ed è lei a dover restare leggibile;
+//   - la **perpendicolare al piano dell'orbita**, tratteggiata, con l'angolo
+//     fra le due scritto accanto: è il riferimento senza cui «inclinato» non
+//     vuol dire niente. Il numero è l'angolo vero nello spazio, non quello
+//     che la proiezione mostra sullo schermo;
+//   - quando il globo è abbastanza grande, l'**equatore** e il **parallelo**
+//     del luogo scelto (`parallelo`, in gradi), colorato in due tinte: caldo
+//     il pezzo che sta al Sole, freddo quello al buio. La frazione calda di
+//     quel cerchio **è** la durata del giorno a quella latitudine, ed è il
+//     disegno che fa vedere perché a giugno il giorno è lungo;
+//   - il **punto subsolare** e tre raggi che arrivano dal Sole: dove la luce
+//     cade a picco, e da che parte arriva.
+//   La metà del parallelo che sta dietro al globo si disegna tratteggiata e
+//   tenue invece di sparire: è un globo di vetro, e il cerchio si deve poter
+//   leggere per intero.
+function solDisegnaAsseTerra(ctx, terra, assi) {
+  const ev = sol.evidenziaAsse;
+  if (!ev || !terra || !terra.schermo || !terra.asse) return;
+  const cx = terra.schermo.px, cy = terra.schermo.py;
+  const r = Math.max(0.5, terra.rDisegno || 0.5);
+  const asse = [terra.asse[0], terra.asse[1], terra.asse[2]];
+  // Dallo spazio allo schermo: la destra, il basso (la y della tela cresce in
+  // giù) e quanto una direzione guarda verso chi guarda
+  const schermo = d => [skyDot(d, assi.destra), -skyDot(d, assi.alto), skyDot(d, assi.verso)];
+  const sulGlobo = d => { const q = schermo(d); return { x: cx + q[0] * r, y: cy + q[1] * r, davanti: q[2] >= 0 }; };
+  const L = Math.max(r * 1.75, 34);
+  const s = solVersoIlSole(terra);
+  ctx.save();
+  ctx.lineCap = 'round';
+
+  // I raggi del Sole: tre frecce parallele che arrivano dalla sua parte. Si
+  // disegnano solo se il Sole non sta dritto dietro o davanti al pianeta,
+  // quando sullo schermo la sua direzione si ridurrebbe a un punto.
+  if (s && r >= 10) {
+    const q = schermo(s);
+    const lung = Math.hypot(q[0], q[1]);
+    if (lung > 0.35) {
+      const ux = q[0] / lung, uy = q[1] / lung;
+      const nx = -uy, ny = ux;
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.75)';
+      ctx.fillStyle = 'rgba(253, 224, 71, 0.75)';
+      ctx.lineWidth = 2;
+      for (const k of [-0.55, 0, 0.55]) {
+        const ox = cx + nx * r * k, oy = cy + ny * r * k;
+        const x0 = ox + ux * (r * 2.6), y0 = oy + uy * (r * 2.6);
+        const x1 = ox + ux * (r * 1.45), y1 = oy + uy * (r * 1.45);
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x1 - ux * 0.02 * r, y1 - uy * 0.02 * r);
+        ctx.lineTo(x1 + ux * 9 + nx * 5, y1 + uy * 9 + ny * 5);
+        ctx.lineTo(x1 + ux * 9 - nx * 5, y1 + uy * 9 - ny * 5);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+
+  // Il parallelo del luogo e l'equatore: si vedono solo su un globo vero
+  if (s && r >= 14) {
+    const e1r = [s[0] - asse[0] * skyDot(asse, s), s[1] - asse[1] * skyDot(asse, s), s[2] - asse[2] * skyDot(asse, s)];
+    const n1 = Math.hypot(e1r[0], e1r[1], e1r[2]) || 1;
+    const e1 = e1r.map(v => v / n1);
+    const e2 = skyCross(asse, e1);
+    const cerchio = (lat, giornoColore, notteColore, spessore) => {
+      const f = lat * SKY_D2R, sf = Math.sin(f), cf = Math.cos(f);
+      const passi = 144;
+      let prima = null;
+      for (let i = 0; i <= passi; i++) {
+        const l = i / passi * Math.PI * 2;
+        const d = [0, 1, 2].map(k => asse[k] * sf + cf * (e1[k] * Math.cos(l) + e2[k] * Math.sin(l)));
+        const p = sulGlobo(d);
+        p.giorno = skyDot(d, s) > 0;
+        if (prima) {
+          ctx.globalAlpha = prima.davanti && p.davanti ? 1 : 0.28;
+          ctx.setLineDash(prima.davanti && p.davanti ? [] : [3, 4]);
+          ctx.strokeStyle = (prima.giorno && p.giorno) ? giornoColore : notteColore;
+          ctx.lineWidth = prima.davanti && p.davanti ? spessore : spessore * 0.6;
+          ctx.beginPath(); ctx.moveTo(prima.x, prima.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        }
+        prima = p;
+      }
+      ctx.globalAlpha = 1; ctx.setLineDash([]);
+    };
+    cerchio(0, 'rgba(226, 232, 240, 0.7)', 'rgba(148, 163, 184, 0.55)', 1.3);
+    if (Number.isFinite(ev.parallelo)) cerchio(ev.parallelo, '#fbbf24', '#60a5fa', 2.8);
+    // Il punto subsolare: dove la luce arriva a picco
+    const ps = sulGlobo(s);
+    if (ps.davanti) {
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(ps.x, ps.y, Math.max(3, r * 0.045), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // La perpendicolare al piano dell'orbita, tratteggiata, e l'arco
+  // dell'angolo fra lei e l'asse
+  const normale = schermo([0, 0, 1]);
+  const [ax, ay, av] = schermo(asse);
+  const lungA = Math.hypot(ax, ay), lungN = Math.hypot(normale[0], normale[1]);
+  ctx.strokeStyle = 'rgba(203, 213, 225, 0.7)';
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([5, 5]);
+  if (lungN > 0.05) {
+    ctx.beginPath();
+    ctx.moveTo(cx - normale[0] / lungN * L, cy - normale[1] / lungN * L);
+    ctx.lineTo(cx + normale[0] / lungN * L, cy + normale[1] / lungN * L);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  const gradi = Math.acos(Math.max(-1, Math.min(1, asse[2]))) * SKY_R2D;
+  if (lungA > 0.05 && lungN > 0.05) {
+    const a0 = Math.atan2(normale[1], normale[0]), a1 = Math.atan2(ay, ax);
+    let da = a1 - a0;
+    while (da > Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    const ra = L * 0.72;
+    ctx.strokeStyle = 'rgba(253, 230, 138, 0.9)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(cx, cy, ra, a0, a0 + da, da < 0); ctx.stroke();
+    const am = a0 + da / 2;
+    ctx.font = `700 ${r >= 14 ? 14 : 12}px ${SKY_FONT_ETICHETTE}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const rt = ra + 16;
+    skyScrittaConAlone(ctx, `${solNumero(gradi, 1)}°`, cx + Math.cos(am) * rt, cy + Math.sin(am) * rt,
+      '#fde68a', 'rgba(2, 6, 16, 0.9)', 3.5);
+  }
+
+  // L'asse vero, oltre i due poli. Il pezzo che esce dal polo girato verso
+  // chi guarda si vede tutto; quello che esce dal polo nascosto passa dietro
+  // al globo, e lì dentro non si disegna.
+  if (lungA > 0.02) {
+    const ux = ax / lungA, uy = ay / lungA;
+    for (const verso of [1, -1]) {
+      const davanti = verso * av >= 0;
+      const x0 = cx + verso * ax * r, y0 = cy + verso * ay * r;
+      const x1 = cx + verso * ux * L, y1 = cy + verso * uy * L;
+      ctx.save();
+      if (!davanti) {
+        ctx.beginPath();
+        ctx.rect(cx - L * 3, cy - L * 3, L * 6, L * 6);
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.clip('evenodd');
+      }
+      ctx.strokeStyle = verso > 0 ? '#e0f2fe' : 'rgba(224, 242, 254, 0.8)';
+      ctx.lineWidth = r >= 14 ? 3 : 2.2;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.restore();
+      if (verso > 0) {
+        // La punta a freccia sul nord: l'asse ha un verso, ed è quello che
+        // punta sempre verso la Stella Polare
+        ctx.fillStyle = '#e0f2fe';
+        ctx.beginPath();
+        ctx.moveTo(x1 + ux * 8, y1 + uy * 8);
+        ctx.lineTo(x1 - uy * 5, y1 + ux * 5);
+        ctx.lineTo(x1 + uy * 5, y1 - ux * 5);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.font = `700 ${r >= 14 ? 13 : 11}px ${SKY_FONT_ETICHETTE}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      skyScrittaConAlone(ctx, astroI18n.t(verso > 0 ? 'punto.sigla.n' : 'punto.sigla.s'),
+        x1 + verso * ux * 18, y1 + verso * uy * 18, '#e0f2fe', 'rgba(2, 6, 16, 0.9)', 3.5);
+    }
+  }
+  ctx.restore();
+}
+
 function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
@@ -36868,7 +37173,10 @@ function solDisegna() {
     if (p.id === 'Earth') {
       solDisegnaOrbitaLuna(ctx, p, false);
       solDisegnaLuna(ctx, p, false, assi);
-      solDisegnaSatelliti(ctx, p, assi, false);
+      // Con l'asse in evidenza gli anelli delle stazioni si tacciono: attorno
+      // al globo ci sono già l'asse, l'equatore e il parallelo, e tre orbite
+      // inclinate in più si leggerebbero come altri assi
+      if (!sol.evidenziaAsse) solDisegnaSatelliti(ctx, p, assi, false);
     }
     // Le lune degli altri pianeti: la metà che passa dietro prima del disco,
     // la metà davanti dopo — è la stessa regola della nostra Luna
@@ -36877,16 +37185,23 @@ function solDisegna() {
     if (p.id === 'Earth') {
       solDisegnaOrbitaLuna(ctx, p, true);
       solDisegnaLuna(ctx, p, true, assi);
-      solDisegnaSatelliti(ctx, p, assi, true);
+      if (!sol.evidenziaAsse) solDisegnaSatelliti(ctx, p, assi, true);
     }
     solDisegnaLune(ctx, p, assi, true);
   });
   soleQui();   // tutti i pianeti sono dietro al Sole: tocca a lui chiudere
 
+  // L'asse della Terra messo in evidenza (la demo delle stagioni): sopra a
+  // tutti i corpi, perché è la riga che il racconto chiede di guardare
+  if (sol.evidenziaAsse) solDisegnaAsseTerra(ctx, terra, assi);
+
   // La bussola sera/mattina, sopra ai pallini (se no il disco della Terra le
   // coprirebbe l'attacco) ma sotto ai nomi: registra qui il suo ingombro,
   // così un nome di pianeta non le finisce sopra
-  solDisegnaBussolaOrari(ctx, terra, prese);
+  // Con l'asse in evidenza (la demo delle stagioni) le due frecce si tacciono:
+  // sera e mattina sono un'altra lezione, e accanto all'asse si
+  // leggerebbero come altre due direzioni da guardare
+  if (!sol.evidenziaAsse) solDisegnaBussolaOrari(ctx, terra, prese);
 
   // I nomi vengono dopo tutti i pallini, altrimenti un pianeta disegnato più
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto

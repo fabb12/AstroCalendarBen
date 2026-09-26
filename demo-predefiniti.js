@@ -446,6 +446,185 @@
     action: satellite_pass { satellite: iss, before: 1, after: 1, from: 0.6, to: 1 };
   }
 }`
+    },
+    {
+      chiave: 'solstizi_equinozi',
+      testo: `define_demo 'solstizi_equinozi' {
+  // Perché esistono le stagioni: non la distanza dal Sole, ma l'asse della
+  // Terra inclinato di 23,4° che resta parallelo a sé stesso lungo l'orbita.
+  // Un anno di riferimento solo, in ordine: solstizio di giugno 2027
+  // (21 giugno, 14:11 UTC), solstizio di dicembre 2027 (22 dicembre, 02:42),
+  // equinozio di marzo 2028 (20 marzo) ed equinozio di settembre 2028
+  // (22 settembre). Gli istanti non sono scritti a mano: li cerca
+  // event_window con Astronomy.Seasons, a partire dalla data della scena.
+  // Il luogo è Roma (41,9° N): a mezzogiorno il Sole sta a 71,5° a giugno,
+  // 48° agli equinozi e 24,7° a dicembre; il giorno dura 15 h 14 min,
+  // circa 12 h e 9 h 09 min. Ogni scena apre il cartello con la sua data.
+  scene planetarium_view {
+    // La domanda: Roma a mezzogiorno del giorno più lungo.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.1' };
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2027-06-21T09:40:00Z' };
+    action: timelapse { start: 11:40, end: 12:20 };
+    action: zoom_fov { from: 110, to: 70 };
+    action: center_target { target: 'Sun' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.roma' };
+  }
+  scene transition {
+    duration: 7s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.2' };
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+  }
+  scene solar_system_3d {
+    // L'asse: la camera gira attorno alla Terra e finisce di fianco, dove
+    // l'inclinazione rispetto alla perpendicolare all'orbita si legge intera.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.3' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.asse', time: hide };
+    action: earth_axis { parallel: 41.9 };
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: -70, elev_from: 30, elev_to: 2, zoom_from: 0.8, zoom_to: 1.8 };
+  }
+  scene solar_system_3d {
+    // Un anno intero con la camera ferma nello spazio: l'asse non cambia
+    // direzione, e la distanza cambia appena (più vicini a gennaio). La
+    // cornice di serie arriva fino a Saturno (SOL_ENTRATA_UA): lo zoom 2,3
+    // la stringe sulla sola orbita della Terra.
+    duration: 26s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.4' };
+    action: date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.anno', time: hide, distance: show };
+    action: earth_axis {};
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 0, elev_from: 38, elev_to: 50, zoom_from: 2.3, zoom_to: 2.3 };
+  }
+  scene solar_system_3d {
+    // Solstizio di giugno: Sole a sinistra, polo nord verso di lui; il
+    // parallelo di Roma è quasi tutto al giorno.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.5' };
+    action: set_date { iso: '2027-06-21T00:00:00Z' };
+    action: event_window { event: june_solstice, from: -240, to: 240 };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.estate' };
+    action: earth_axis { parallel: 41.9 };
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 0, orbit: 35, elev_from: 10, elev_to: 18, zoom_from: 1.6, zoom_to: 2.2 };
+  }
+  scene solar_system_3d {
+    // Sei mesi di orbita: l'asse resta parallelo a sé stesso.
+    duration: 12s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.6' };
+    action: date_range { from: '2027-06-22T00:00:00Z', to: '2027-12-21T00:00:00Z' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.viaggio', time: hide, distance: show };
+    action: earth_axis {};
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 0, elev_from: 50, elev_to: 36, zoom_from: 2.3, zoom_to: 2.3 };
+  }
+  scene solar_system_3d {
+    // Solstizio di dicembre: la stessa camera, il Sole sempre a sinistra, e
+    // il polo nord che adesso guarda dall'altra parte.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.7' };
+    action: set_date { iso: '2027-12-21T00:00:00Z' };
+    action: event_window { event: december_solstice, from: -240, to: 240 };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.inverno' };
+    action: earth_axis { parallel: 41.9 };
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 0, orbit: 35, elev_from: 10, elev_to: 18, zoom_from: 1.6, zoom_to: 2.2 };
+  }
+  scene solar_system_3d {
+    // Equinozio di marzo: la camera parte di fianco (l'asse pende verso di
+    // noi) e gira fino a guardare dalla parte del Sole (l'asse pende di lato).
+    duration: 20s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.8' };
+    action: set_date { iso: '2028-03-20T00:00:00Z' };
+    action: event_window { event: march_equinox, from: -240, to: 240 };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.primavera' };
+    action: earth_axis { parallel: 41.9 };
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 0, orbit: 70, elev_from: 8, elev_to: 12, zoom_from: 1.8, zoom_to: 2 };
+  }
+  scene solar_system_3d {
+    // Equinozio di settembre, dall'altra parte dell'orbita: il giro inverso.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.9' };
+    action: set_date { iso: '2028-09-22T00:00:00Z' };
+    action: event_window { event: september_equinox, from: -240, to: 240 };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.autunno' };
+    action: earth_axis { parallel: 41.9 };
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: -70, elev_from: 12, elev_to: 8, zoom_from: 2, zoom_to: 1.8 };
+  }
+  scene planetarium_view {
+    // Di nuovo a Roma, il 21 giugno: il Sole dall'alba al tramonto, con la
+    // vista che lo segue in azimut e il suolo fermo in basso. Lo sguardo sta
+    // a 18° e il campo a 125°: così l'orizzonte resta sopra ai sottotitoli e
+    // il Sole di mezzogiorno (71,5°) resta dentro al riquadro.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.10' };
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2027-06-21T02:30:00Z' };
+    action: timelapse { start: 05:00, end: 21:30 };
+    action: set_fov { degrees: 125 };
+    action: track_azimuth { target: 'Sun', alt: 18 };
+    action: sun_paths { dates: '2027-06-21' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloEstate', sun: show };
+  }
+  scene planetarium_view {
+    // Il 22 dicembre, stesso posto e stessa camera: l'arco basso e corto,
+    // con quello di giugno ancora disegnato sopra.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.11' };
+    action: set_date { iso: '2027-12-22T05:00:00Z' };
+    action: timelapse { start: 07:00, end: 17:30 };
+    action: set_fov { degrees: 125 };
+    action: track_azimuth { target: 'Sun', alt: 18 };
+    action: sun_paths { dates: '2027-06-21,2027-12-22' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloInverno', sun: show };
+  }
+  scene planetarium_view {
+    // L'equinozio di marzo: est esatto, ovest esatto, e l'arco nel mezzo.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.12' };
+    action: set_date { iso: '2028-03-20T04:00:00Z' };
+    action: timelapse { start: 06:00, end: 18:45 };
+    action: set_fov { degrees: 125 };
+    action: track_azimuth { target: 'Sun', alt: 18 };
+    action: sun_paths { dates: '2027-06-21,2028-03-20,2027-12-22' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloEquinozio', sun: show };
+  }
+  scene planetarium_view {
+    // I tre archi insieme, a campo largo verso sud, attorno a mezzogiorno.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.13' };
+    action: set_date { iso: '2028-03-20T11:10:00Z' };
+    action: zoom_fov { from: 115, to: 150 };
+    action: point_view { az: 180, alt: 34 };
+    action: sun_paths { dates: '2027-06-21,2028-03-20,2027-12-22' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.confronto', time: hide };
+  }
+  scene planetarium_view {
+    // Tromsø (69,6° N) al solstizio di giugno: a mezzanotte il Sole passa a
+    // nord, circa tre gradi sopra l'orizzonte, e non tramonta.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.14' };
+    action: set_location { lat: 69.6492, lon: 18.9553, name: 'Tromsø', timezone: 'Europe/Oslo' };
+    action: set_date { iso: '2027-06-21T17:00:00Z' };
+    action: timelapse { start: 20:00, end: 04:00 };
+    action: set_fov { degrees: 115 };
+    action: track_azimuth { target: 'Sun', alt: 14 };
+    action: sun_paths { dates: '2027-06-21' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.tromso', sun: show };
+  }
+  scene transition {
+    duration: 7s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.15' };
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+  }
+  scene solar_system_3d {
+    // Il riepilogo: un anno intero, con la camera che gira attorno al Sole.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.solstizi_equinozi.16' };
+    action: date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.riepilogo', time: hide };
+    action: earth_axis {};
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 120, elev_from: 24, elev_to: 44, zoom_from: 2, zoom_to: 2.4 };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

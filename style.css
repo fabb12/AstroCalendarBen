@@ -12103,6 +12103,8 @@ body.demo-vista-pulita .demo-scena-pulita > .narrazione-testo,
 body.demo-vista-pulita .demo-scena-pulita > #demo-sottotitoli,
 body.demo-vista-pulita #demo-sottotitoli,
 body.demo-vista-pulita #demo-sottotitoli *,
+body.demo-vista-pulita #demo-cartello,
+body.demo-vista-pulita #demo-cartello *,
 body.demo-vista-pulita #sol-transizione,
 body.demo-vista-pulita #sol-transizione *,
 body.demo-vista-pulita .narrazione-testo {
@@ -12274,6 +12276,61 @@ body .demo-controlli .demo-tasto[aria-pressed="true"] { background:rgba(76,141,2
   .demo-sottotitoli { bottom:70px; max-height:28vh; width:min(80vw, 46rem); }
   .demo-controlli { bottom:12px; }
   .demo-sottotitoli .narrazione-testo { font-size:14px; line-height:1.5; }
+}
+/* Il cartello della data (`date_card`, demo.js): che giorno è, scritto
+   grande in cima alla scena. Sta in alto **a sinistra** e non al centro, ed è
+   una misura presa: al centro copriva proprio il Sole di mezzogiorno, che
+   nella demo delle stagioni è la cosa da guardare (la camera lo segue in
+   azimut, quindi a mezzogiorno sta sopra al centro dello schermo). In basso
+   ci sono i sottotitoli, a destra la bussola; a sinistra, con la vista
+   pulita, non c'è niente. Non prende il tocco: sotto c'è il cielo, che
+   durante la demo si può ancora trascinare. */
+.demo-cartello {
+  position:fixed; left:calc(env(safe-area-inset-left, 0px) + 14px);
+  top:calc(env(safe-area-inset-top, 0px) + 76px);
+  z-index:10000; width:max-content; max-width:min(calc(100vw - 28px), 26rem);
+  padding:.55rem 1.1rem .6rem; border-radius:14px;
+  background:rgba(4, 9, 20, 0.66); border:1px solid rgba(148, 163, 184, 0.28);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  box-shadow:0 6px 24px rgba(0, 0, 0, 0.35);
+  color:#f8fafc; text-align:left; pointer-events:none;
+  text-shadow:0 1px 2px rgba(0, 0, 0, 0.7);
+}
+/* Senza la vista pulita la fascia in cima al cielo è dei suoi comandi (le
+   linguette dei gruppi, il nome del luogo): il cartello scende sotto. */
+body:not(.demo-vista-pulita) .demo-cartello { top:calc(env(safe-area-inset-top, 0px) + 132px); }
+.demo-cartello[hidden] { display:none !important; }
+.demo-cartello > [hidden] { display:none; }
+.demo-cartello-etichetta {
+  color:#fcd34d; font-size:.74rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+}
+.demo-cartello-data {
+  font-size:clamp(18px, 1.05rem + .7vw, 26px); font-weight:700; line-height:1.25;
+  font-variant-numeric:tabular-nums;
+}
+.demo-cartello-data::first-letter { text-transform:uppercase; }
+.demo-cartello-ora { color:#cbd5e1; font-size:.84rem; font-variant-numeric:tabular-nums; }
+.demo-cartello-sole, .demo-cartello-giorno {
+  color:#fde68a; font-size:.84rem; font-variant-numeric:tabular-nums; margin-top:.1rem;
+}
+.demo-cartello-distanza { color:#bae6fd; font-size:.84rem; font-variant-numeric:tabular-nums; margin-top:.1rem; }
+body.demo-vista-pulita .finto-schermo-intero .demo-cartello, body.demo-vista-pulita .sol-schermo-pieno .demo-cartello,
+body.demo-vista-pulita .did-pieno-ripiego .demo-cartello, body.demo-vista-pulita :fullscreen .demo-cartello {
+  top:calc(env(safe-area-inset-top, 0px) + 14px);
+}
+/* Su un telefono in verticale lo schermo è stretto e il cartello, largo
+   quanto lui, si mangiava la parte alta del cielo — dove a mezzogiorno sta il
+   Sole. Si stringe fino a metà schermo meno un margine: va a capo di più,
+   ma la colonna centrale — dove la camera tiene il Sole — resta libera. */
+@media (max-width: 520px) {
+  .demo-cartello { padding:.32rem .6rem .38rem; max-width:calc(50vw - 30px); border-radius:11px; }
+  .demo-cartello-etichetta { font-size:.6rem; letter-spacing:.04em; }
+  .demo-cartello-data { font-size:14px; }
+  .demo-cartello-ora, .demo-cartello-sole, .demo-cartello-giorno, .demo-cartello-distanza { font-size:.7rem; line-height:1.3; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .demo-cartello { top:8px; padding:.3rem .8rem .35rem; }
+  .demo-cartello-data { font-size:17px; }
 }
 /* Dentro a una scena a schermo intero la barra del menu non c'è. */
 .finto-schermo-intero .demo-controlli, .sol-schermo-pieno .demo-controlli,

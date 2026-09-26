@@ -57,8 +57,8 @@ const server = http.createServer((req, res) => {
       return { chiave: d.chiave, scene: demo.scene.length, durata: demo.scene.reduce((n, s) => n + s.durata, 0) };
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
-      ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss']);
-    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000]);
+      ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss', 'solstizi_equinozi']);
+    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
@@ -95,7 +95,8 @@ const server = http.createServer((req, res) => {
     await pagina.evaluate(() => astroI18n.impostaLingua('it'));
     await pagina.locator('#demo-editor').fill(testoBase.replace('eclisse_tour', 'mia_demo'));
     for (const snippet of ['planetarium_view', 'transition', 'solar_system_3d', 'timelapse', 'highlight_object', 'center_target', 'set_fov', 'frame_objects', 'orbit_object', 'zoom_view', 'didactic_view', 'zoom_fov', 'event_window',
-      'camera_3d', 'aurora_lesson', 'satellite_pass', 'narrate']) {
+      'camera_3d', 'aurora_lesson', 'satellite_pass', 'narrate', 'date_card', 'date_range', 'earth_axis',
+      'sun_paths', 'track_azimuth']) {
       await pagina.locator('#demo-snippet').selectOption(snippet);
       await pagina.locator('#demo-inserisci').click();
       assert.equal(await pagina.locator('#demo-editor').getAttribute('aria-invalid'), 'false', snippet);

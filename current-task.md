@@ -1,19 +1,15 @@
 # Niente in corso
 
-Ultimo lavoro: la demo dell'eclisse di Sole riscritta, con la mappa del cono
-d'ombra (v377, pubblicata come v381 dopo l'unione con main).
+Ultimo lavoro: la demo **Solstizi ed equinozi** (`solstizi_equinozi`, v382).
 
-- **Eclisse solare** (11 scene, 180 s): scene in `demo-predefiniti.js`, testi
-  `demo.narr.eclisse_tour.1–11` nei due dizionari; tabella e note in `DEMO.md`
-  (§«L'eclisse di Sole della v377»).
-- Scena nuova `eclipse_map` e azione `shadow_map` (`demo.js`), regia della mappa
-  in `app.js` (`eclRegiaApri`/`eclRegiaPosa`/`eclRegiaChiudi`), stili
-  `.ecl-regia` in `style.css`, frammento nell'editor (`demo-impostazioni.js`).
-- I sette MP3 della versione di prima sono usciti dal manifest (il testo è
-  cambiato); i file restano in `audio/narrazione/demo/it/`. Parla la sintesi
-  finché non si registrano le undici frasi nuove.
-- Il workflow `verifica-demo.yml` installa anche `leaflet@1.9.4`, che le prove
-  della regia e della pagina servono da `node_modules`.
-- Preesistente, non toccato: in `prova-demo-intro.js` fallisce «aurore: la
-  narrazione non si taglia» anche sul codice di partenza; la registrazione in
-  `prova-demo-regia.js` è a volte instabile.
+- 16 scene, 292 s, in `demo-predefiniti.js`; testi `demo.narr.solstizi_equinozi.1–16`
+  e cartelli `demo.cartello.*` nei due dizionari; tabella e note in `DEMO.md`
+  (§«La demo delle stagioni della v382»), righe nella guida (cap. 10, IT e EN).
+- Azioni nuove in `demo.js`: `date_card`, `date_range`, `earth_axis`, `sun_paths`,
+  `track_azimuth`, `sun_az` di `camera_3d`, e i quattro eventi delle stagioni in
+  `event_window`. Disegni in `app.js`: `solDisegnaAsseTerra` e `skyDisegnaArchiSole`.
+- Prova nuova: `scripts/prova-demo-stagioni.js` (anche `STAGIONI_TELEFONO=1`), aggiunta
+  al workflow `verifica-demo.yml`.
+- Nessun MP3 registrato per le sedici frasi: parla la sintesi.
+- Preesistente, non toccato: in `prova-demo-intro.js` fallisce «aurore: la narrazione
+  non si taglia» anche sul codice di partenza.

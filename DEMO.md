@@ -204,7 +204,7 @@ selettore usa lo stesso catalogo `ASTRO_TRACCE_MUSICALI` della musica
 dell'app, quindi una nuova traccia aggiunta al catalogo diventa disponibile
 automaticamente anche per le demo.
 
-## I cinque tour predefiniti
+## I sei tour predefiniti
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
@@ -212,6 +212,7 @@ automaticamente anche per le demo.
 | **Eclisse lunare totale 2028** (`eclisse_lunare`) | 10 · 178 s | Sapporo nella notte di Capodanno: l'attesa (il campo si stringe da 55° a 8°), il primo morso (−125→−40 min), l'ultimo spicchio che si spegne e la Luna color rame (fino a +5), poi **dentro la totalità il campo si riapre a 40°** e tornano le stelle; volo; da fuori il cono d'ombra, la Luna che lo attraversa (−110→+130) e la Terra davanti al Sole attorno al massimo (la Terra vista dalla Luna, l'anello dei tramonti); di nuovo in cielo l'uscita dall'ombra (+30→+170) e un congedo a campo largo che dà appuntamento alla totale del 26 giugno 2029. |
 | **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 10 · 173 s | Tucson al buio guardando a est (05:30); la fila inquadrata pianeta per pianeta; tre **primi piani a campo da telescopio** (0,25°): Giove con le bande, Venere gibbosa e Saturno con gli anelli, basso a ovest — cinque pianeti nello stesso cielo; di nuovo la fila e l'eclittica; volo; da fuori la camera scende dall'alto (80°) al piano (12°) e poi di taglio (3°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; in cielo l'alba che li spegne (fino alle 06:30). |
+| **Solstizi ed equinozi** (`solstizi_equinozi`) | 16 · 292 s | Perché esistono le stagioni, detto con la geometria. Roma a mezzogiorno del 21 giugno 2027 e la domanda (non è la distanza); volo; la Terra da vicino con l'**asse in evidenza** (`earth_axis`) e la camera che finisce di fianco, dove i 23,4° sulla perpendicolare all'orbita si leggono interi; un anno intero con la camera ferma (`date_range`): l'asse non cambia direzione e il cartello dice la distanza, minima a gennaio; il solstizio di giugno col Sole a sinistra (`sun_az: 0`), il polo nord verso di lui e il parallelo di Roma quasi tutto al giorno; sei mesi di orbita; il solstizio di dicembre con la **stessa** camera e il polo dall'altra parte; i due equinozi (marzo e settembre 2028), con la camera che gira fino a mostrare l'asse che pende di lato; di nuovo a Roma, il Sole seguito in azimut dall'alba al tramonto (`track_azimuth`) a giugno, dicembre e marzo, con gli archi interi dei giorni già visti (`sun_paths`) e i tre a confronto; il sole di mezzanotte a Tromsø; il riepilogo in 3D. Ogni scena apre il **cartello della data** (`date_card`), con alba, tramonto, durata del giorno e Sole a mezzogiorno nelle scene del planetario. |
 | **Passaggio della ISS** (`passaggio_iss`) | 6 · 104 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario, a capitoli: tutto l'arco inquadrato con la traccia; il culmine **inseguito a 0,25° di campo**, col modellino della stazione e le stelle che scorrono dietro; volo; la stessa orbita da fuori nello **stesso** intervallo di tempo; più di mezz'ora di orbita a campo largo (±15 min); il congedo, l'ultimo tratto dell'arco in cielo. |
 
 Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
@@ -260,6 +261,62 @@ mappa restano la carta, l'ombra e l'orologio in alto (`.ecl-regia` in
 `style.css`); il lettore e i tasti se ne vanno. La **registrazione** delle
 demo riprende una tela, e la mappa è Leaflet, cioè HTML: durante le scene di
 mappa il filmato continua a riprendere il planetario che le sta dietro.
+
+### La demo delle stagioni della v382
+
+È la sola demo che non racconta un evento raro ma una cosa che capita ogni
+anno, e il suo difetto tipico sarebbe stato invisibile: un asse inclinato
+dalla parte sbagliata al solstizio di giugno è un disegno perfettamente
+convincente, solo che racconta l'inverno. Per questo gli istanti non sono
+scritti a mano ma trovati da `event_window` con `Astronomy.Seasons`
+(`june_solstice`, `december_solstice`, `march_equinox`, `september_equinox`:
+l'istante vero più vicino all'orologio del racconto, e ogni scena che ne usa
+uno si porta avanti la sua `set_date` perché la ricerca parta dall'anno
+giusto), e la prova `scripts/prova-demo-stagioni.js` guarda la geometria
+invece dei pixel: asse·Sole ≈ +sen 23,4° a giugno, −sen 23,4° a dicembre,
+≈ 0 agli equinozi; la direzione dell'asse identica lungo un anno; la
+distanza minore a gennaio che a luglio; a Roma 15 h 14 min di giorno a
+giugno, 9 h a dicembre, 12 h all'equinozio, con il Sole a 72°, 25° e 48°; a
+Tromsø il Sole di giugno che non tramonta; e che Stop rimetta tutto com'era.
+
+Cinque pezzi nuovi, tutti piccoli e tutti ripristinati dallo stesso
+fotografo di sempre (`avvia` in `demo.js`):
+
+- **`date_card`** — il cartello della data, `#demo-cartello`, sorella dei
+  comandi e dei sottotitoli e appesa allo stesso genitore
+  (`genitoreDemo()`), così vale anche a schermo intero. Sta **in alto a
+  sinistra**: al centro copriva il Sole di mezzogiorno, che la camera tiene
+  sopra al centro dello schermo; su un telefono in verticale si stringe a
+  metà schermo meno un margine per lo stesso motivo. Righe riscritte solo
+  quando il testo cambia; alba, tramonto e culmine si cercano una volta per
+  giorno civile e per luogo (`fattiDelSole`), col sole di mezzanotte e la
+  notte polare dichiarati. Con la vista pulita resta visibile (regola in
+  `style.css`). La chiudono la fine della scena, Stop, Esc e l'errore.
+- **`date_range`** — il calendario da una data UTC all'altra (fino a tre
+  anni) per tutta la scena.
+- **`earth_axis`** — `sol.evidenziaAsse`, disegnato da
+  `solDisegnaAsseTerra` in `app.js` (§7.7): l'asse vero (`RotationAxis`,
+  lo stesso con cui girano le coste) coi poli, la perpendicolare all'orbita
+  con l'angolo **vero** scritto accanto, l'equatore, il parallelo del luogo
+  giallo al giorno e blu alla notte (la frazione gialla è la durata del
+  giorno), il punto subsolare e tre raggi dal Sole. Con l'asse acceso si
+  tacciono le orbite delle stazioni e le frecce sera/mattina, che accanto
+  all'asse si leggerebbero come altre direzioni. Fa parte della fotografia
+  della camera 3D.
+- **`sun_paths`** — `sky.archiSole`, disegnato da `skyDisegnaArchiSole`
+  (§7.3-bis): l'arco intero del Sole di uno o più giorni civili del luogo,
+  alba e tramonto segnati sull'orizzonte, data e altezza al culmine; il
+  colore viene dalla declinazione del Sole, non dall'ordine. Fa parte
+  della fotografia del planetario (`chiavi`).
+- **`track_azimuth`** — la camera segue un astro solo in azimut e tiene
+  ferma l'altezza, così il suolo resta in basso e si vede quanto il Sole
+  sale. Con 18° di sguardo e 125° di campo l'orizzonte resta sopra ai
+  sottotitoli e il Sole di giugno (71,5°) dentro al riquadro.
+- e un parametro: **`sun_az`** di `camera_3d` (solo `scene: system`,
+  `focus: 'Earth'`) lega la camera al Sole invece che allo spazio e si
+  rifà a ogni fotogramma — è quello che rende confrontabili i due solstizi.
+
+Nessuna frase ha un MP3 registrato: parla la sintesi.
 
 ### Perché Helsinki e non Tromsø
 
@@ -320,9 +377,22 @@ Azioni principali:
 - `simulate_aurora { kp: 5 }`
 - `zoom_view { type: geometric, final_target: solar_system_3d }`
 - `orbit_object { object: 'Earth-Moon', angle: 220, speed: slow }`
-- `event_window { event: lunar_eclipse, from: -120, to: 120 }` (minuti dal massimo; anche `solar_eclipse`)
+- `event_window { event: lunar_eclipse, from: -120, to: 120 }` (minuti dal massimo; anche `solar_eclipse`,
+  e i quattro istanti delle stagioni `march_equinox`, `june_solstice`, `september_equinox`,
+  `december_solstice`, cercati con `Astronomy.Seasons` vicino all'orologio del racconto)
+- `date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' }` (il calendario da una data
+  UTC all'altra, fino a tre anni)
+- `date_card { label: 'demo.cartello.solstizi_equinozi.estate', time: show, sun: show, distance: hide }`
+  (il cartello della data; al posto di `label` si può scrivere `text: '…'`, al massimo 80 caratteri)
+- `earth_axis { parallel: 41.9 }` (solo in `solar_system_3d`: l'asse della Terra e, facoltativo, il
+  parallelo di un luogo)
+- `sun_paths { dates: '2027-06-21,2027-12-22' }` (solo in `planetarium_view`: da uno a quattro archi
+  diurni del Sole)
+- `track_azimuth { target: 'Sun', alt: 18 }` (la camera segue l'astro in azimut a un'altezza fissa)
 - `camera_3d { scene: earth_moon, focus: 'Earth', orbit: 70, elev_from: 16, elev_to: 38, zoom_from: 1.2, zoom_to: 5.5 }`
-  (`scene: system` con `focus: 'Sun'` e `frame`, oppure `focus: 'Earth'`/`'ISS'`)
+  (`scene: system` con `focus: 'Sun'` e `frame`, oppure `focus: 'Earth'`/`'ISS'`; con `focus: 'Earth'`
+  anche `sun_az`, l'angolo della camera attorno alla Terra misurato dalla direzione del Sole: 0 = Sole
+  a sinistra, 90 = dalla parte del giorno, −90 dalla parte della notte)
 - `aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150 }` (solo in `didactic_view`;
   i capitoli sono `vento`, `scudo`, `scarica`, `anello` e `taglio` — il quinto è il
   disegno visto di lato, senza camera, con `place` fra i luoghi del banco,
@@ -432,6 +502,8 @@ node scripts/prova-demo-browser.js
 node scripts/prova-demo-regia.js
 node scripts/prova-demo-pagina.js   # menu, pagina Demo, comandi, camera, schermo intero, musica
 node scripts/prova-demo-intro.js    # intro comune (logo, titolo, durata, Stop/Esc/errore, telefono) e aurora lunga
+node scripts/prova-demo-stagioni.js # solstizi ed equinozi: asse, date, archi, durate del giorno, ripristino
+                                    # (STAGIONI_TELEFONO=1 per rifarla su 360×640)
 node scripts/prova-i18n.js
 ```
 

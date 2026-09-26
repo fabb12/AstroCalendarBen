@@ -31,6 +31,13 @@
     // La mappa del cono d'ombra: minuti dal massimo dell'eclisse di Sole, e
     // (facoltativi) lo zoom della carta con cui seguire l'ombra.
     shadow_map: ['eclipse_map', 'shadow_map { from: -30, to: 30, zoom_from: 3, zoom_to: 4 }'],
+    // Il cartello della data, un tratto di calendario, l'asse della Terra
+    // nella 3D e gli archi del Sole nel planetario (la demo delle stagioni).
+    date_card: ['planetarium_view', "date_card { text: 'Il giorno più lungo', sun: show }"],
+    date_range: ['solar_system_3d', "date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' }"],
+    earth_axis: ['solar_system_3d', 'earth_axis { parallel: 45 }'],
+    sun_paths: ['planetarium_view', "sun_paths { dates: '2027-06-21,2027-12-22' }"],
+    track_azimuth: ['planetarium_view', "track_azimuth { target: 'Sun', alt: 25 }"],
     // La voce della scena: un ID del dizionario, oppure `text: '…'` scritto a mano.
     narrate: ['planetarium_view', "narrate { id: 'demo.narr.eclisse_tour.1' }"]
   };
@@ -62,8 +69,10 @@
     let data = '', luogo = '', kp = null, fov = null;
     for (const scena of demo.scene) {
       for (const a of scena.azioni) {
-        if (a.comando === 'set_date') data = a.parametri.iso;
-        if (a.comando === 'set_location') luogo = a.parametri.name;
+        // La data e il luogo di **partenza**: una demo che salta fra le
+        // stagioni ne ha più d'una, e la scheda dice da dove comincia.
+        if (a.comando === 'set_date' && !data) data = a.parametri.iso;
+        if (a.comando === 'set_location' && !luogo) luogo = a.parametri.name;
         if (a.comando === 'simulate_aurora') kp = a.parametri.kp;
         if (a.comando === 'set_fov') fov = a.parametri.degrees;
       }
