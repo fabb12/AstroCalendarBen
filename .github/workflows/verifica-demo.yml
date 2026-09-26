@@ -33,7 +33,7 @@ jobs:
       - run: node scripts/prova-narrazione.js
       - run: node scripts/controlla-narrazione.js
       - run: node scripts/prova-i18n.js
-      - run: npm install --no-save --package-lock=false playwright@1.58.2 astronomy-engine@2.1.19 satellite.js@5.0.0
+      - run: npm install --no-save --package-lock=false playwright@1.58.2 astronomy-engine@2.1.19 satellite.js@5.0.0 leaflet@1.9.4
       - run: npx playwright install --with-deps chromium
       - run: node scripts/prova-demo-browser.js
       - run: node scripts/prova-demo-regia.js

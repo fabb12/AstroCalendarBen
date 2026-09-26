@@ -60,7 +60,15 @@
     if (c && c.cieloImmersivo && sky.schermoIntero) skyEsciSchermoIntero();
     if (c) c.cieloImmersivo = false;
   }
+  // La mappa del cono d'ombra (`eclipse_map`) non è una vista del menu: è
+  // la finestra dell'eclissi, che la regia apre a tutto schermo sopra al
+  // planetario. Ogni altra scena la chiude per prima.
+  function lasciaMappa() {
+    if (typeof eclRegiaAttiva === 'function' && eclRegiaAttiva()) eclRegiaChiudi();
+  }
   function vista(v, c) {
+    if (c) c.mappaRipiego = false;
+    if (v !== 'eclipse_map') lasciaMappa();
     if (v === 'planetarium_view') {
       if (typeof didDemo !== 'undefined') didDemo.pieno(false);
       if (sol.aperto) chiudiSistemaSolare();
@@ -73,6 +81,23 @@
       if (!sol.aperto) window.apriSistemaSolare({ senzaVolo: true, inquadra: () => {}, annullato: () => c.chiuso });
       presentaSistema(c);
       solRidimensiona();
+    } else if (v === 'eclipse_map') {
+      if (typeof didDemo !== 'undefined') didDemo.pieno(false);
+      if (sol.aperto) chiudiSistemaSolare();
+      if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
+      presentaCielo(c);
+      // L'eclisse è la stessa delle altre scene del racconto: il suo
+      // massimo si cerca una volta sola (`piccoEvento`).
+      // Senza Leaflet (offline, o il CDN che non risponde) la mappa non
+      // c'è: il racconto non si interrompe per questo, e la stessa ombra la
+      // si guarda dalla 3D, addosso alla Terra (`shadow_map` sa fare tutt'e
+      // due le cose).
+      const picco = piccoEvento(c, 'solar_eclipse');
+      if (!(typeof eclRegiaApri === 'function' && eclRegiaApri(picco, skyLuogoDelCielo()))) {
+        vista('solar_system_3d', c);
+        c.mappaRipiego = true;
+        return;
+      }
     } else if (v === 'didactic_view') {
       richiedi(typeof didDemo !== 'undefined', err('didatticaAssente'));
       if (sol.aperto) chiudiSistemaSolare();
@@ -325,6 +350,7 @@
       richiedi(p.type === 'geometric' && p.final_target === 'solar_system_3d', err('transizione'));
     },
     crea(p, c) {
+      lasciaMappa();
       if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
       presentaCielo(c);
       window.apriSistemaSolare({
@@ -658,6 +684,57 @@
   };
 
   // ------------------------------------------------------------------
+  // L'ombra sulla mappa. Solo nelle scene `eclipse_map`: `from` e `to` sono
+  // i minuti dal massimo, come in `event_window`, ma qui a tenere il tempo è
+  // la mappa (e il planetario la segue: l'orologio è uno solo). Con
+  // `zoom_from`/`zoom_to` — i livelli di zoom della carta, da 1 (il mondo)
+  // a 8 — la mappa si tiene centrata sull'ombra e ci si avvicina o se ne
+  // allontana; con `lat`/`lon` in più resta invece centrata lì (serve quando
+  // da raccontare è una regione: la penombra che scende dal polo verso
+  // l'Islanda); senza zoom resta sull'inquadratura d'insieme della fascia di
+  // totalità. Il disegno dell'ombra costa qualche centinaio di posizioni di
+  // Sole e Luna: si rifà a una dozzina di passi al secondo, non a sessanta,
+  // che è anche il ritmo del filmato della mappa.
+  // ------------------------------------------------------------------
+  const PASSO_MAPPA_MS = 80;
+  registro.shadow_map = {
+    verifica(p) {
+      campi(p, ['from', 'to', 'zoom_from', 'zoom_to', 'lat', 'lon']);
+      richiedi(numero(p.from, -720, 720) && numero(p.to, -720, 720) && p.to > p.from, err('finestra'));
+      const zoom = [p.zoom_from, p.zoom_to];
+      richiedi(zoom.every(z => z === undefined) || zoom.every(z => numero(z, 1, 8)), err('zoomMappa'));
+      const centro = [p.lat, p.lon];
+      richiedi(centro.every(x => x === undefined) ||
+        (numero(p.lat, -85, 85) && numero(p.lon, -180, 180) && p.zoom_from !== undefined), err('centroMappa'));
+    },
+    crea(p, c) {
+      if (c.mappaRipiego) {
+        const picco = piccoEvento(c, 'solar_eclipse');
+        const tempo = u => istante(picco + (p.from + (p.to - p.from) * u) * 60000);
+        tempo(0);
+        const camera = registro.camera_3d.crea({ scene: 'earth_moon', focus: 'Eclipse Shadow', orbit: 25,
+          elev_from: 22, elev_to: 30, zoom_from: 3, zoom_to: 4 }, c);
+        return { aggiorna(u) { tempo(u); camera.aggiorna(u); } };
+      }
+      const conZoom = p.zoom_from !== undefined;
+      const centro = p.lat !== undefined ? [p.lat, p.lon] : undefined;
+      let ultimo = -Infinity, uUltimo = -1;
+      // Un salto nel racconto (`vaiAScena`, o la scena che riparte) non
+      // aspetta il passo: si posa subito, se no l'ultima posa andrebbe persa.
+      const posa = (u, subito) => {
+        const ora = performance.now();
+        if (!subito && ora - ultimo < PASSO_MAPPA_MS && Math.abs(u - uUltimo) < 0.02) return;
+        ultimo = ora; uUltimo = u;
+        const minuti = p.from + (p.to - p.from) * u;
+        const zoom = conZoom && !c.cameraManuale ? mescola(p.zoom_from, p.zoom_to, rampa(c, u)) : undefined;
+        if (typeof eclRegiaPosa === 'function') eclRegiaPosa(minuti, zoom, centro);
+      };
+      posa(0, true);
+      return { aggiorna: u => posa(u, u >= 0.999) };
+    }
+  };
+
+  // ------------------------------------------------------------------
   // La voce del racconto. Non è codice della demo: è la narrazione di
   // tutta l'app (`narrazione.js`), a cui la scena passa un ID stabile — la
   // chiave del dizionario — oppure, in una demo personale, un testo scritto
@@ -745,7 +822,7 @@
     // conserviamo anche l'altezza a cui valeva, così eventuali resize durante
     // la demo non riscalano di nuovo il FOV quando si ripristina lo stato.
     'altezzaMisurata'];
-  const VISTE_SCENA = ['planetarium_view', 'transition', 'solar_system_3d', 'didactic_view'];
+  const VISTE_SCENA = ['planetarium_view', 'transition', 'solar_system_3d', 'didactic_view', 'eclipse_map'];
   function valida(testo) {
     const demo = motore.prepara(testo);
     let quando = skyAdesso(), luogo = skyLuogoDelCielo();
@@ -757,6 +834,7 @@
         if (azione.comando === 'timelapse') quando = tempiCivili(azione.parametri, quando, luogo).fine;
         if (azione.comando === 'aurora_lesson') richiedi(scena.vista === 'didactic_view', err('soloDidattica'));
         if (azione.comando === 'camera_3d') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
+        if (azione.comando === 'shadow_map') richiedi(scena.vista === 'eclipse_map', err('serveMappa'));
       }
     }
     return demo;
@@ -888,6 +966,9 @@
   // chrome. Togliendo le classi, pannelli e controlli ricompaiono esattamente
   // come erano prima anche dopo Stop, Esc o un errore.
   function radiceVistaPulita() {
+    // La mappa ha la sua pulizia (`.ecl-regia` in style.css); il riquadro
+    // del cielo, che la ospita a schermo intero, resta marcato com'era.
+    if (typeof eclRegiaAttiva === 'function' && eclRegiaAttiva()) return document.getElementById('skymap-contenitore');
     if (sol.aperto && typeof solGuscio === 'function') return solGuscio();
     if (vistaAttuale === 'didattica' && typeof didDemo !== 'undefined') {
       const tela = didDemo.tela();
@@ -974,6 +1055,7 @@
         c.flussoAudio = null;
         if (c.registrazione) cancelAnimationFrame(c.registrazione);
         solVolo.dopo = null; solVoloChiudi();
+        lasciaMappa();
         if (sol.aperto) chiudiSistemaSolare();
         if (typeof didDemo !== 'undefined') didDemo.ripristina(didatticaPrima);
         Object.assign(sol, cameraSistema);
@@ -1304,7 +1386,7 @@
   const COMANDI_CAMERA = '.tasto-zoom-cielo, .comandi-mappa-cielo button, .comandi-mappa-sistema button, ' +
     '.sol-viste button, [data-sol-quadro], [data-verso], ' +
     '#skymap-btn-centra, #skymap-btn-campo, #skymap-btn-insegui, #sol-centra, #sol-reset';
-  const scena = el => !!(el && el.closest && el.closest('canvas, #skymap-contenitore, #sol-guscio, .did-scena'));
+  const scena = el => !!(el && el.closest && el.closest('canvas, #skymap-contenitore, #sol-guscio, .did-scena, .ecl-guscio-filmato'));
   const puntatori = new Map();
   function dellaDemo(el) {
     return pannello.contains(el) || sottotitoli.contains(el);

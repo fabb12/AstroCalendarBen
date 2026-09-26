@@ -1,6 +1,6 @@
 /* La regia delle demo, guardata per quello che fa vedere.
  *
- *   npm install --no-save playwright@1.56.1 astronomy-engine satellite.js@5.0.0
+ *   npm install --no-save playwright@1.56.1 astronomy-engine satellite.js@5.0.0 leaflet@1.9.4
  *   node scripts/prova-demo-regia.js
  *
  * Una demo sbagliata è quasi sempre una demo *bella*: un Sole con sopra una
@@ -64,6 +64,13 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       if (url.startsWith(origine)) return route.continue();
       if (url.includes('astronomy.browser.min.js'))
         return route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(require.resolve('astronomy-engine').replace(/astronomy\.js$/, 'astronomy.browser.min.js')) });
+      // La mappa del cono d'ombra vuole Leaflet: senza rete lo si serve da
+      // node_modules (le tessere restano grigie, l'ombra si disegna lo stesso).
+      if (/leaflet@1\.9\.4\/dist\/leaflet\.(js|css)$/.test(url)) {
+        const js = url.endsWith('.js');
+        return route.fulfill({ contentType: js ? 'text/javascript' : 'text/css',
+          body: fs.readFileSync(require.resolve('leaflet/dist/leaflet.' + (js ? 'js' : 'css'))) });
+      }
       if (url.includes('satellite.min.js'))
         return route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(path.join(path.dirname(require.resolve('satellite.js/package.json')), 'dist/satellite.min.js')) });
       return route.abort();
@@ -139,34 +146,89 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     const prima = await pagina.evaluate(() => ({ offset: Math.round(skyAdesso() - Date.now()), fov: sky.fov, luogo: sky.luogoVista,
       griglia: sky.mostraGriglia, nomi: sky.mostraNomi, vista: vistaAttuale }));
     await pagina.evaluate(() => AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'eclisse_tour').testo));
-    await salta(1, 0); const s0 = await separazione();
-    await salta(1, 0.5); const s1 = await separazione(); await attendiFotogrammi(); await foto('eclisse-sole-avvicina');
-    await salta(1, 1); const s2 = await separazione();
+    // La mappa del cono d'ombra, dall'alto: la penombra scende su Reykjavík.
+    // L'orologio è uno solo — quello che dice la mappa lo dice anche il cielo.
+    const mappa = (i, u) => pagina.evaluate(async ([i, u]) => {
+      AstroDemo.vaiAScena(i, u); AstroDemo.pausa();
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const g = document.querySelector('.ecl-guscio-filmato');
+      const r = g.getBoundingClientRect();
+      const q = _eclUltimoQuadro, asse = q && q.asse;
+      const centro = _mappaEclissi.getSize();
+      const punto = asse ? _mappaEclissi.latLngToContainerPoint(asse) : null;
+      return {
+        regia: eclRegiaAttiva(), pieno: g.classList.contains('ecl-schermo-pieno'),
+        largo: r.width >= innerWidth - 1 && r.height >= innerHeight - 1,
+        lettore: getComputedStyle(g.querySelector('.ecl-lettore')).display,
+        minuti: _eclissiOffsetTempoMin,
+        cielo: (skyAdesso() - _eclissiEventoInCorso.dataObj) / 60000,
+        asse, scarto: punto ? Math.hypot(punto.x - centro.x / 2, punto.y - centro.y / 2) : null,
+        sol: sol.aperto
+      };
+    }, [i, u]);
+    const m0 = await mappa(1, 0.5);
+    await attendiFotogrammi(); await foto('eclisse-sole-mappa-penombra');
+    ok(m0.regia && m0.pieno && m0.largo && !m0.sol, 'La mappa del cono d’ombra è la scena, a tutto schermo');
+    ok(m0.lettore === 'none', 'Vista pulita: il lettore della mappa non c’è');
+    ok(Math.abs(m0.minuti - (-96.25)) < 0.5 && Math.abs(m0.cielo - m0.minuti) < 1,
+      `Un orologio solo: mappa ${m0.minuti.toFixed(1)} min, cielo ${m0.cielo.toFixed(1)} min`);
+    // La Luna scivola sul Sole
+    await salta(2, 0); const s0 = await separazione();
+    ok(await pagina.evaluate(() => !eclRegiaAttiva() && document.getElementById('modale-mappa').classList.contains('hidden')),
+      'Tornando al cielo la mappa si chiude');
+    await salta(2, 0.5); const s1 = await separazione(); await attendiFotogrammi(); await foto('eclisse-sole-avvicina');
+    await salta(3, 0.9); const s2 = await separazione();
     ok(s0 > 0.5 && s1 < s0 && s2 < 0.02, `La Luna scivola sul Sole: ${s0.toFixed(3)}° → ${s1.toFixed(3)}° → ${s2.toFixed(3)}°`);
     ok(await pagina.evaluate(() => sky.fov) < 2, 'Campo stretto: il disco si vede');
+    // Totalità a campo largo: il Sole resta coperto e compaiono i pianeti
+    await salta(4, 0.95);
+    const tot = await pagina.evaluate(() => ({ fov: sky.fov }));
+    const sTot = await separazione(); await attendiFotogrammi(); await foto('eclisse-sole-totalita');
+    ok(tot.fov > 30 && sTot < 0.02, `Totalità a campo largo: ${tot.fov.toFixed(0)}°, separazione ${sTot.toFixed(3)}°`);
+    // Di nuovo sulla mappa: l'ombra piena corre dall'Islanda alla Spagna, e
+    // la mappa la tiene al centro.
+    const u0 = await mappa(5, 0.05), u1 = await mappa(5, 0.95);
+    await attendiFotogrammi(); await foto('eclisse-sole-mappa-ombra');
+    ok(u0.asse && u1.asse && u0.asse[0] > 60 && u1.asse[0] < 47,
+      `L’ombra piena scende dall’Islanda (${u0.asse && u0.asse[0].toFixed(1)}°N) alla Spagna (${u1.asse && u1.asse[0].toFixed(1)}°N)`);
+    ok(u0.scarto < 40 && u1.scarto < 40, 'La mappa insegue l’ombra: resta al centro');
+    // Senza Leaflet la scena non si ferma: la stessa ombra dalla 3D.
+    const ripiego = await pagina.evaluate(async () => {
+      const leaflet = window.L; window.L = undefined;
+      try {
+        AstroDemo.vaiAScena(5, 0.5); AstroDemo.pausa();
+        await new Promise(r => requestAnimationFrame(r));
+        return { stato: AstroDemo.stato, sol: sol.aperto, vicino: sol.vicino, regia: eclRegiaAttiva() };
+      } finally { window.L = leaflet; }
+    });
+    ok(ripiego.stato === 'pausa' && ripiego.sol && ripiego.vicino && !ripiego.regia,
+      'Senza Leaflet la mappa lascia il posto alla 3D, e il racconto continua');
     // La geometria da fuori: Terra e Luna in fila, camera che gira
-    await salta(4, 0); const g0 = await pagina.evaluate(() => ({ az: sol.az, vicino: sol.vicino, zoom: sol.zoom }));
-    await salta(4, 1); const g1 = await pagina.evaluate(() => ({ az: sol.az, elev: sol.elev }));
+    await salta(7, 0); const g0 = await pagina.evaluate(() => ({ az: sol.az, vicino: sol.vicino, zoom: sol.zoom }));
+    await salta(7, 1); const g1 = await pagina.evaluate(() => ({ az: sol.az, elev: sol.elev }));
     await attendiFotogrammi(); await foto('eclisse-sole-geometria');
     ok(g0.vicino && Math.abs(g1.az - g0.az) > 0.3, 'La camera gira attorno a Terra e Luna');
     // L'ombra sulla Terra: zoom che si stringe, ombra che corre
     const ombra = u => pagina.evaluate(async u => {
-      AstroDemo.vaiAScena(5, u); AstroDemo.pausa();
+      AstroDemo.vaiAScena(8, u); AstroDemo.pausa();
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       const o = solOmbraLunareSuTerra(skyAdesso());
       solMisura();
       const terra = solVicPunto([0, 0, 0]);
       return { zoom: sol.zoom, centro: o && o.centro, px: terra.px - sol.L / 2, py: terra.py - sol.H / 2 };
     }, u);
-    const o0 = await ombra(0.05), o1 = await ombra(0.5);
+    const o0 = await ombra(0.02), o1 = await ombra(0.4);
     await foto('eclisse-sole-ombra');
     const o2 = await ombra(0.95);
     ok(o2.zoom > o0.zoom * 4, 'Ci si avvicina alla Terra: zoom ×' + (o2.zoom / o0.zoom).toFixed(1));
     ok(Math.abs(o1.px) < 2 && Math.abs(o1.py) < 2, 'La Terra resta al centro');
-    ok(o0.centro && o1.centro && Math.hypot(o1.centro[0] - o0.centro[0], o1.centro[1] - o0.centro[1], o1.centro[2] - o0.centro[2]) > 1000,
-      'L’ombra si sposta di migliaia di km sulla Terra');
+    const corsa = o0.centro && o1.centro ? Math.hypot(o1.centro[0] - o0.centro[0], o1.centro[1] - o0.centro[1], o1.centro[2] - o0.centro[2]) : 0;
+    // Due minuti e mezzo di eclissi, con l'ombra che accelera verso il
+    // tramonto: sono quasi cinquecento chilometri.
+    ok(corsa > 300, `L’ombra corre sulla Terra: ${corsa.toFixed(0)} km in due minuti e mezzo`);
+    ok(!o2.centro, 'Poi l’ombra scivola oltre il bordo del pianeta');
     // Di nuovo in cielo: la Luna se ne va, e il Sole torna intero
-    await salta(6, 1); const sFine = await separazione();
+    await salta(10, 1); const sFine = await separazione();
     await attendiFotogrammi(); await foto('eclisse-sole-fine');
     ok(sFine > 0.54, 'Fine: il passaggio è concluso (' + sFine.toFixed(3) + '°)');
     ok(await pagina.evaluate(() => !sol.aperto && vistaAttuale === 'cielo'), 'Si torna al planetario');
@@ -540,7 +602,8 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       'Pausa: la traccia audio resta unica e viva');
     await pagina.evaluate(() => AstroDemo.riprendi());
     await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 10000 });
-    await pagina.waitForFunction(() => sky.reg.esito && sky.reg.esito.blob.size > 500, null, { timeout: 10000 });
+    try { await pagina.waitForFunction(() => sky.reg.esito && sky.reg.esito.blob.size > 500, null, { timeout: 10000 }); }
+    catch (e) { console.log('DEBUG', errori, await pagina.evaluate(() => JSON.stringify({ attiva: sky.reg.attiva, prep: sky.reg.preparazione, esito: sky.reg.esito && sky.reg.esito.blob.size, stato: AstroDemo.stato, err: String(sky.reg.errore) }))); throw e; }
     const reg = await pagina.evaluate(() => ({
       sorgente: sky.reg.sorgente, durata: sky.reg.durataSec,
       reale: sky.reg.durataReale, vista: vistaAttuale,

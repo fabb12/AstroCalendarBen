@@ -1,17 +1,19 @@
 # Niente in corso
 
-Ultimo lavoro: tre demo più lunghe e più raccontate (v376).
+Ultimo lavoro: la demo dell'eclisse di Sole riscritta, con la mappa del cono
+d'ombra (v377, pubblicata come v381 dopo l'unione con main).
 
-- **Eclisse lunare** (10 scene, 178 s), **Corteo dei pianeti** (10, 173 s),
-  **Passaggio della ISS** (6, 104 s): scene e testi in `demo-predefiniti.js` e
-  `demo.narr.*` dei due dizionari; tabella e note in `DEMO.md`.
-- `satellite_pass` accetta `from`/`to` (frazioni della finestra) e `track`
-  (inseguimento a campo stretto); `set_fov`/`zoom_fov` scendono a 0,25°; con la
-  vista pulita il mirino non si disegna (`skyDisegna` in `app.js`).
-- Prove aggiornate agli indici nuovi: `prova-demo-regia.js` (72, con verifiche
-  nuove su totalità a campo largo, primi piani, ISS inseguita, mezz'ora di
-  orbita), `prova-demo-browser.js`, `prova-narrazione-browser.js`.
+- **Eclisse solare** (11 scene, 180 s): scene in `demo-predefiniti.js`, testi
+  `demo.narr.eclisse_tour.1–11` nei due dizionari; tabella e note in `DEMO.md`
+  (§«L'eclisse di Sole della v377»).
+- Scena nuova `eclipse_map` e azione `shadow_map` (`demo.js`), regia della mappa
+  in `app.js` (`eclRegiaApri`/`eclRegiaPosa`/`eclRegiaChiudi`), stili
+  `.ecl-regia` in `style.css`, frammento nell'editor (`demo-impostazioni.js`).
+- I sette MP3 della versione di prima sono usciti dal manifest (il testo è
+  cambiato); i file restano in `audio/narrazione/demo/it/`. Parla la sintesi
+  finché non si registrano le undici frasi nuove.
+- Il workflow `verifica-demo.yml` installa anche `leaflet@1.9.4`, che le prove
+  della regia e della pagina servono da `node_modules`.
 - Preesistente, non toccato: in `prova-demo-intro.js` fallisce «aurore: la
-  narrazione non si taglia» anche sul codice di partenza; `prova-demo-pagina.js`
-  e la registrazione in `prova-demo-regia.js` sono a volte instabili.
-- Nessun MP3 registrato per le tre demo: parla la sintesi.
+  narrazione non si taglia» anche sul codice di partenza; la registrazione in
+  `prova-demo-regia.js` è a volte instabile.

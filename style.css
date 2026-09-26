@@ -1367,6 +1367,21 @@ body .ecl-tasto-mappa.attiva { background: var(--blu); border-color: transparent
 }
 /* Sotto, la pagina non deve scorrere dietro alla mappa */
 body.ecl-mappa-immersiva { overflow: hidden; }
+/* Col cielo a schermo intero il guscio va a stare dentro al suo riquadro
+   (`_eclRipiegoSchermo`), e lì deve passare davanti al planetario come la 3D. */
+#skymap-contenitore > .ecl-guscio-filmato.ecl-schermo-pieno { z-index: 1500; }
+/* La regia delle demo (`eclRegiaApri`): la mappa è una scena del racconto.
+   La vista pulita marca il riquadro del cielo e nasconde tutti i suoi figli,
+   e il guscio adesso è uno di loro — va rimesso in vista. Del guscio resta la
+   carta con l'ombra e l'orologio in alto; il lettore e i tasti, che nessuno
+   deve toccare mentre il racconto tiene il tempo, se ne vanno. */
+body.demo-vista-pulita .demo-scena-pulita > .ecl-guscio-filmato.ecl-regia {
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+body.demo-vista-pulita .ecl-guscio-filmato.ecl-regia .ecl-lettore,
+body.demo-vista-pulita .ecl-guscio-filmato.ecl-regia .ecl-mappa-tasti,
+body.demo-vista-pulita .ecl-guscio-filmato.ecl-regia .leaflet-control-zoom { display: none !important; }
 .ecl-hud {
   position: absolute;
   top: 12px;
