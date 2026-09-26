@@ -5816,9 +5816,35 @@ function eclRegiaPosa(minuti, zoom, centroFisso) {
   if (!Number.isFinite(zoom)) return;
   const q = _eclUltimoQuadro;
   const centro = centroFisso || (q && (q.asse || q.massimo));
-  if (centro) _mappaEclissi.setView(centro, zoom, { animate: false });
-  else _mappaEclissi.setZoom(zoom, { animate: false });
+  _eclRegiaSposta(centro ? L.latLng(centro) : _mappaEclissi.getCenter(), zoom);
   _eclRegia.inquadrata = true;
+}
+
+// Lo spostamento della camera, fatto come lo fa un pizzico e non come un
+// salto. È il difetto dei continenti che non comparivano mai: `setView` con
+// lo zoom cambiato e `animate: false` passa da `_resetView`, che annuncia
+// `viewprereset` — e a quell'annuncio ogni strato di tessere **butta via
+// tutte le sue tessere** e ricomincia a chiederle. La regia chiama qui dodici
+// volte al secondo con uno zoom che cambia di un soffio, quindi con la rete
+// vera (qualche centinaio di millisecondi a tessera) nessuna faceva in tempo
+// ad arrivare: restava il fondo grigio con sopra l'ombra, cioè un'ombra che
+// corre sul niente. In prova non si vedeva, perché le tessere finte
+// arrivavano all'istante — misurato con un ritardo di 400 ms: 293 richieste
+// in cinque secondi e zero tessere a schermo. `_move` + `_moveEnd` è la
+// strada del pizzico (Leaflet 1.9.4, versione fissata in index.html): le
+// tessere già arrivate restano e si scalano, quelle nuove si chiedono una
+// volta sola.
+function _eclRegiaSposta(centro, zoom) {
+  const m = _mappaEclissi;
+  if (typeof m._move !== 'function' || typeof m._moveEnd !== 'function' || !m._loaded) {
+    m.setView(centro, zoom, { animate: false });
+    return;
+  }
+  const z = m._limitZoom(zoom);
+  const cambiato = m.getZoom() !== z;
+  m._stop();
+  m._move(centro, z);
+  m._moveEnd(cambiato);
 }
 
 function eclRegiaAttiva() { return _eclRegia.attiva; }
@@ -35737,8 +35763,8 @@ function solDisegnaOmbraDellaLuna(ctx, telaio, assi, r, quando) {
   if (pc.z > 0) {
     const largo = r * 0.5;
     const velo = ctx.createRadialGradient(pc.x, pc.y, 0, pc.x, pc.y, largo);
-    velo.addColorStop(0, 'rgba(4, 8, 20, 0.5)');
-    velo.addColorStop(0.55, 'rgba(4, 8, 20, 0.22)');
+    velo.addColorStop(0, 'rgba(4, 8, 20, 0.62)');
+    velo.addColorStop(0.55, 'rgba(4, 8, 20, 0.28)');
     velo.addColorStop(1, 'rgba(4, 8, 20, 0)');
     ctx.save();
     ctx.fillStyle = velo;
@@ -35754,6 +35780,13 @@ function solDisegnaOmbraDellaLuna(ctx, telaio, assi, r, quando) {
   const umb = solSagomaDaVersori(
     solImprontaSuTerra(g.luna, asse, RAGGIO_LUNA_KM, -(RAGGIO_SOLE_KM - RAGGIO_LUNA_KM) / dSoleLuna),
     assi, r);
+  // La strada della totalità, prima della macchia: è la cosa che fa capire
+  // che l'ombra **passa**. Da sola la macchia è un punto fermo in ogni
+  // fotogramma, e a guardarla si vede un neo sul pianeta, non una corsa; con
+  // la sua strada sotto — piena dove è già passata, tratteggiata dove deve
+  // ancora arrivare — si legge da dove viene e dove va.
+  solDisegnaStradaTotalita(ctx, assi, r, quando);
+
   if (umb) {
     ctx.save();
     ctx.fillStyle = (o && o.umbra < 0) ? 'rgba(251, 191, 36, 0.75)' : 'rgba(2, 4, 10, 0.92)';
@@ -35766,6 +35799,113 @@ function solDisegnaOmbraDellaLuna(ctx, telaio, assi, r, quando) {
     ctx.stroke();
     ctx.restore();
   }
+
+  // Il segno della totalità, quando la macchia vera è più piccola di quanto
+  // l'occhio sappia trovare: centoventi chilometri su un globo largo mezzo
+  // schermo sono quattro pixel, e in mezzo alle coste e alle nuvole si
+  // perdono. Un disco scuro di misura minima con un alone ambra attorno, al
+  // centro vero dell'ombra: la misura è dichiarata, il posto no.
+  if (o && o.umbra >= 0) {
+    const pu = solGloboProietta(solVersore(o.centro), assi, r);
+    if (pu.z > 0.02) {
+      const rr = Math.max(3.5, r * 0.028) * Math.sqrt(Math.max(0.2, pu.z));
+      ctx.save();
+      const alone = ctx.createRadialGradient(pu.x, pu.y, rr * 0.6, pu.x, pu.y, rr * 3.2);
+      alone.addColorStop(0, 'rgba(251, 191, 36, 0.45)');
+      alone.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = alone;
+      ctx.beginPath();
+      ctx.arc(pu.x, pu.y, rr * 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(2, 4, 10, 0.95)';
+      ctx.strokeStyle = 'rgba(255, 214, 120, 0.95)';
+      ctx.lineWidth = Math.max(1, rr * 0.25);
+      ctx.beginPath();
+      ctx.arc(pu.x, pu.y, rr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+// La strada della totalità sul globo: dove è passato e passerà il centro
+// dell'ombra piena, in coordinate **geografiche** — la Terra gira sotto
+// l'ombra, e la strada va disegnata attaccata al suolo, non allo spazio. Si
+// campiona una volta sola per eclissi (ogni due minuti, fino a quattro ore
+// per parte: nessuna totalità dura di più sul pianeta) e si tiene finché
+// l'istante mostrato ci sta dentro con un'ora e mezza di margine, che è il
+// tempo in cui la penombra c'è ancora e la macchia no.
+const SOL_STRADA_PASSO_MIN = 2;
+const SOL_STRADA_ORE = 4;
+function solStradaTotalita(quando) {
+  const ms = quando instanceof Date ? quando.getTime() : Number(quando);
+  const c = sol.stradaTotalita;
+  if (c && ms >= c.da && ms <= c.a) return c.punti;
+  const punti = [];
+  const passo = SOL_STRADA_PASSO_MIN * 60000;
+  const giro = SOL_STRADA_ORE * 3600000;
+  const base = Math.round(ms / passo) * passo;
+  for (let t = base - giro; t <= base + giro; t += passo) {
+    const o = solOmbraLunareSuTerra(new Date(t));
+    if (!o) continue;
+    const tel = solTelaioTerra(new Date(t));
+    if (!tel) continue;
+    const u = solVersore(o.centro);
+    const lat = Math.asin(Math.max(-1, Math.min(1, skyDot(u, tel.nord)))) / SKY_D2R;
+    const lon = Math.atan2(skyDot(u, tel.est), skyDot(u, tel.pm)) / SKY_D2R;
+    punti.push({ t, lat, lon });
+  }
+  // `solTelaioTerra` e `solGeocentriche` tengono una memoria di un solo
+  // istante: la si rimette a posto, se no il fotogramma dopo le rifà per niente
+  solTelaioTerra(quando);
+  solGeocentriche(quando);
+  const margine = 90 * 60000;
+  sol.stradaTotalita = punti.length
+    ? { da: punti[0].t - margine, a: punti[punti.length - 1].t + margine, punti }
+    : { da: base - margine, a: base + margine, punti };
+  return punti;
+}
+
+function solDisegnaStradaTotalita(ctx, assi, r, quando) {
+  const punti = solStradaTotalita(quando);
+  if (punti.length < 2) return;
+  const tel = solTelaioTerra(quando);
+  if (!tel) return;
+  const ms = quando instanceof Date ? quando.getTime() : Number(quando);
+  const larga = Math.max(1.5, r * 0.012);
+  const traccia = (passato) => {
+    ctx.beginPath();
+    let penna = false;
+    for (let i = 0; i < punti.length; i++) {
+      const q = punti[i];
+      const giaPassato = q.t <= ms;
+      // Il tratto a cavallo dell'istante appartiene a tutt'e due, così fra
+      // pieno e tratteggiato non resta un buco
+      const prossimo = punti[i + 1];
+      const dentro = passato ? giaPassato : (!giaPassato || (prossimo && prossimo.t > ms));
+      const p = solGloboProietta(solPuntoTerra(tel, q.lat, q.lon), assi, r);
+      if (!dentro || p.z <= 0.02) { penna = false; continue; }
+      if (!penna) { ctx.moveTo(p.x, p.y); penna = true; } else ctx.lineTo(p.x, p.y);
+    }
+  };
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  traccia(false);
+  ctx.setLineDash([larga * 2.5, larga * 2.2]);
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+  ctx.lineWidth = larga;
+  ctx.stroke();
+  traccia(true);
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(2, 4, 10, 0.55)';
+  ctx.lineWidth = larga * 2.2;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+  ctx.lineWidth = larga;
+  ctx.stroke();
+  ctx.restore();
 }
 
 // =====================================================================
