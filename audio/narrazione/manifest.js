@@ -263,6 +263,86 @@
         file: 'demo/it/eclisse_lunare-10.mp3',
         impronta: '77ae456e'
       }
+    },
+    // ─────────────────────────────────────────────
+    // Eclisse solare
+    // ─────────────────────────────────────────────
+
+    'demo.narr.eclisse_tour.1': {
+      it: {
+        file: 'demo/it/eclisse_tour-1.mp3',
+        impronta: 'd42f16a9'
+      }
+    },
+
+    'demo.narr.eclisse_tour.2': {
+      it: {
+        file: 'demo/it/eclisse_tour-2.mp3',
+        impronta: '3a8fe512'
+      }
+    },
+
+    'demo.narr.eclisse_tour.3': {
+      it: {
+        file: 'demo/it/eclisse_tour-3.mp3',
+        impronta: '975394e9'
+      }
+    },
+
+    'demo.narr.eclisse_tour.4': {
+      it: {
+        file: 'demo/it/eclisse_tour-4.mp3',
+        impronta: '67aa285f'
+      }
+    },
+
+    'demo.narr.eclisse_tour.5': {
+      it: {
+        file: 'demo/it/eclisse_tour-5.mp3',
+        impronta: '232bb222'
+      }
+    },
+
+    'demo.narr.eclisse_tour.6': {
+      it: {
+        file: 'demo/it/eclisse_tour-6.mp3',
+        impronta: '60a67ae1'
+      }
+    },
+
+    'demo.narr.eclisse_tour.7': {
+      it: {
+        file: 'demo/it/eclisse_tour-7.mp3',
+        impronta: 'f569dedc'
+      }
+    },
+
+    'demo.narr.eclisse_tour.8': {
+      it: {
+        file: 'demo/it/eclisse_tour-8.mp3',
+        impronta: '342659c5'
+      }
+    },
+
+    'demo.narr.eclisse_tour.9': {
+      it: {
+        file: 'demo/it/eclisse_tour-9.mp3',
+        impronta: '8bf63ecb'
+      }
+    },
+
+    'demo.narr.eclisse_tour.10': {
+      it: {
+        file: 'demo/it/eclisse_tour-10.mp3',
+        impronta: 'fa277e08'
+      }
+    },
+
+    'demo.narr.eclisse_tour.11': {
+      it: {
+        file: 'demo/it/eclisse_tour-11.mp3',
+        impronta: '994e6fd3'
+      }
     }
   }
 };
