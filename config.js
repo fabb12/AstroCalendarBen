@@ -1,6 +1,13 @@
 // URL del Worker ADS-B di questa installazione, iniettato dal deploy oppure
 // impostato qui. Lasciandolo vuoto si usano i ponti CORS di riserva.
 window.ADSB_PROXY_URL = window.ADSB_PROXY_URL || '';
+// OpenSky anonimo, dal browser e in coda a tutte le altre porte (§1 di
+// `aerei.js`): una riserva con quattrocento richieste al giorno. Chi lo
+// interroga già dal proprio proxy con le credenziali lo spenga qui (`false`),
+// per non spendere due volte la stessa quota. Le chiavi dei servizi in
+// abbonamento (ADS-B Exchange) **non** vanno qui: questo file lo legge
+// chiunque apra il sito. Stanno nei secret del Worker (`worker-adsb.js`).
+window.ADSB_OPENSKY_DIRETTO = window.ADSB_OPENSKY_DIRETTO !== false;
 
 // Endpoint HTTP del ponte Edge-TTS. Deve accettare POST JSON e restituire
 // direttamente audio (MP3/OGG/WAV), oppure JSON con `url` o `audio` base64.
@@ -36,8 +43,8 @@ window.INS_ORT_URL = window.INS_ORT_URL || '';
 // Actions li sostituisce con versione della cache, numero della build, commit
 // e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v383',
+  version: 'v384',
   build: '',
   commit: '',
-  builtAt: '2026-09-26T18:09:05.000Z'
+  builtAt: '2026-09-27T14:22:07.000Z'
 });

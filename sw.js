@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v383';
+const CACHE_NAME = 'astrocal-v384';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -216,7 +216,7 @@ self.addEventListener('activate', (e) => {
 // continuerebbe a consumare fino in fondo la quota del Worker.
 function proxyAdsb(url) {
   return url.origin !== self.location.origin &&
-    (url.pathname === '/api/adsb' || url.pathname === '/api/diagnostica');
+    (url.pathname === '/api/adsb' || url.pathname === '/api/fonti' || url.pathname === '/api/diagnostica');
 }
 
 function daConservare(url) {

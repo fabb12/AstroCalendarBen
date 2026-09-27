@@ -55,6 +55,19 @@
 //      ogni cinque secondi — cioè il modo più rapido di prendersi un 429 da
 //      tutte insieme e restare davvero senza aerei.
 //
+//   6. **L'aggregatore** (§3-bis … §3-quinquies). Il motore non conosce le
+//      porte: chiede alla facciata `FontiAerei.acquisisci` e riceve record
+//      normalizzati (una forma, un'unità di misura, un identificativo) e già
+//      **fusi** — lo stesso aereo visto da due fonti è un'icona sola, con la
+//      lettura più recente. Ogni porta ha il suo circuito (chiuso, aperto,
+//      semiaperto), la sua memoria delle risposte e le sue richieste gemelle
+//      condivise; uno zero dove poco prima c'era traffico non chiude la
+//      corsa, lascia parlare la porta dopo. E ogni aereo ha un'**età**: vivo,
+//      interpolato, stantio, e oltre `etaMassimaMs()` non c'è più — perché
+//      propagare la rotta serve a far scorrere il disegno, non a inventare.
+//      Le fonti con credenziali (OpenSky con un account, ADS-B Exchange in
+//      abbonamento) stanno solo nel Worker: vedi `worker-adsb.js`.
+//
 // I dati si scaricano da soli all'apertura del planetario; il **disegno** è
 // un'altra cosa e nasce spento (§5). Sono due interruttori perché sono due
 // domande diverse: «voglio sapere cosa c'è in cielo» e «voglio vederlo
@@ -70,8 +83,20 @@
   // — basta tenerli tiepidi. Fra le due c'è un fattore quattro, ed è quello
   // che permette di tenere il feed sempre acceso senza consumare la quota dei
   // servizi pubblici.
-  const AGGIORNA_VISIBILE_MS = 45000;
+  // Venticinque e non più quarantacinque: da quando ogni aereo porta la sua
+  // età (§3-quinquies) e oltre un minuto si dichiara stantio, un ritmo da
+  // quarantacinque secondi faceva passare metà del traffico per «dato
+  // vecchio» fra un giro e l'altro. Un aereo di linea in venticinque secondi
+  // fa sei chilometri: meno di una tacca della previsione.
+  const AGGIORNA_VISIBILE_MS = 25000;
   const AGGIORNA_SFONDO_MS = 180000;
+  // Dopo un 429 (o un 503) il ritmo si raddoppia per dieci minuti anche
+  // quando le richieste tornano a riuscire. La scala delle riprove frena il
+  // guasto; questo frena la **causa**, che è bussare troppo spesso.
+  const FRENO_LIMITE_MS = 600000;
+  // Tornando su una scheda rimasta in secondo piano si riscarica subito se la
+  // fotografia ha più di dieci secondi: è il momento in cui uno guarda.
+  const RIENTRO_MS = 10000;
   // Oltre questa età la fotografia si dichiara vecchia: le posizioni restano
   // disegnate (sono propagate, non congelate) ma la spia passa all'ambra e la
   // riga di stato lo dice, invece di lasciar credere che siano di adesso.
@@ -196,6 +221,38 @@
   // meno dei trenta che questo modulo già propaga quando una richiesta
   // fallisce del tutto.
   const AEREI_MEMORIA_MS = 120000;
+  // --- L'età di ogni aereo (§3-quinquies) ------------------------------
+  // Tre gradini, misurati dall'istante della **lettura** e non da quello
+  // della richiesta: una rete può consegnare adesso una posizione di venti
+  // secondi fa. Fino a `AEREI_VIVO_MS` è un dato vivo; fino a
+  // `AEREI_INTERPOLATO_MS` è ancora buono, portato avanti dalla rotta; oltre
+  // è stantio e si disegna velato, finché `etaMassimaMs()` non lo toglie.
+  // L'interpolazione serve a far scorrere il disegno, non a inventare: un
+  // aereo che nessuna fonte riconferma da due minuti non si propaga più.
+  const AEREI_VIVO_MS = 20000;
+  const AEREI_INTERPOLATO_MS = 60000;
+  // --- La fusione e il sospetto (§3-ter e §3-quater) -------------------
+  // Quanto aspettare, dopo la prima porta che ha risposto, le altre già in
+  // volo: le loro letture si **fondono** con la prima invece di buttarle. Non
+  // se ne lancia nessuna in più per questo — si raccoglie solo quello che era
+  // già stato chiesto.
+  const FUSIONE_ATTESA_MS = 1500;
+  // Uno zero è sospetto quando poco prima, nello stesso posto, di aerei ce
+  // n'erano almeno tanti: in quel caso non chiude la corsa, e la porta dopo
+  // ha la sua occasione di smentirlo.
+  const VUOTO_SOSPETTO_MIN = 3;
+  const VUOTO_SOSPETTO_FINESTRA_MS = 300000;
+  // La memoria delle risposte, per porta e per riquadro: due domande uguali a
+  // pochi secondi di distanza — un raggio ritoccato, un tasto premuto due
+  // volte — ricevono la stessa fotografia senza bussare di nuovo.
+  const CACHE_RISPOSTA_MS = 6000;
+  // Una porta **diretta** (senza ponte) che il browser rifiuta non è in
+  // difficoltà: è senza CORS, e lo sarà anche fra dieci minuti. La si prova
+  // di rado, e la riga rossa in console compare al più due volte al giorno.
+  const PENALE_BLOCCATA_MS = 12 * 3600000;
+  // OpenSky anonimo concede quattrocento richieste al giorno per indirizzo:
+  // è una riserva, non un feed da interrogare a ogni giro.
+  const OPENSKY_INTERVALLO_MIN_MS = 90000;
   // Fin dove il punto vivo di `terreno.js` può scostarsi dalla posizione
   // dell'app prima di non parlare più dello stesso posto.
   const AEREI_VIVO_MAX_KM = 3;
@@ -278,7 +335,10 @@
     if (!elenco) throw schemaSconosciuto('ADS-B');
     return elenco.map(a => {
       const quotaPiedi = numero(a.alt_baro) ?? numero(a.alt_geom);
-      const vistoSecondiFa = numero(a.seen);
+      // `seen_pos` è l'età della **posizione**, `seen` quella dell'ultimo
+      // messaggio qualunque (può essere uno squawk arrivato un attimo fa su
+      // una posizione di trenta secondi prima). Per disegnare conta la prima.
+      const vistoSecondiFa = numero(a.seen_pos) ?? numero(a.seen);
       return {
         id: a.hex, callsign: (a.flight || '').trim() || String(a.hex || '').toUpperCase(),
         registrazione: a.r || '', tipoIcao: a.t || '', descrizione: a.desc || '',
@@ -310,6 +370,51 @@
       aTerra: !!a[8], velocitaMs: numero(a[9]), direzione: numero(a[10]),
       salitaMs: numero(a[11]), ultimaLettura: numero(a[4]) ?? numero(a[3])
     })).filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lon));
+  }
+
+  // --- Il record normalizzato -------------------------------------------
+  // Qualunque sia la porta, al resto dell'app arriva **una forma sola**, in
+  // unità sole: metri, metri al secondo, gradi, secondi Unix. È il contratto
+  // che rende invisibile il cambio di fonte — il planetario non sa, e non
+  // deve sapere, se un aereo viene da OpenSky o da un ponte. I nomi sono
+  // quelli che il resto dell'app legge da sempre (e in italiano, come tutto
+  // il codice); la corrispondenza col record «da manuale» è questa:
+  //
+  //   icao24 → id            callsign → callsign     registration → registrazione
+  //   lat/lon → lat/lon      altitude → quotaM        groundSpeed  → velocitaMs
+  //   verticalRate → salitaMs track → direzione      squawk → squawk
+  //   onGround → aTerra      timestamp → ultimaLettura (s)
+  //   source → fonte         sources → fonti          quality → qualita/etaMs
+  //
+  // Qui si fa anche la pulizia che un interprete da solo non può fare:
+  // coordinate fuori scala, istanti nel futuro (un orologio di server avanti
+  // di un minuto farebbe «tornare indietro» l'aereo a ogni propagazione) e
+  // identificativi scritti in maiuscolo da una porta e in minuscolo
+  // dall'altra, che senza questa riga diventerebbero due icone per un aereo.
+  function normalizzaLettura(r, fonte, oraMs = Date.now()) {
+    if (!r || !Number.isFinite(r.lat) || !Number.isFinite(r.lon)) return null;
+    if (Math.abs(r.lat) > 90 || Math.abs(r.lon) > 180) return null;
+    const id = String(r.id || '').trim().toLowerCase();
+    const callsign = String(r.callsign || '').trim();
+    const registrazione = String(r.registrazione || '').trim().toUpperCase();
+    // Senza nessun identificativo un punto non si può né seguire né fondere:
+    // due letture dello stesso aereo diventerebbero due aerei.
+    if (!id && !registrazione && !callsign) return null;
+    const oraS = oraMs / 1000;
+    let letto = Number.isFinite(r.ultimaLettura) ? r.ultimaLettura : oraS;
+    if (letto > oraS) letto = oraS;
+    const finito = v => Number.isFinite(v) ? v : null;
+    return {
+      ...r,
+      id: id || (registrazione ? 'reg:' + registrazione.toLowerCase() : 'vol:' + callsign.toLowerCase()),
+      callsign: callsign || (id ? id.toUpperCase() : registrazione),
+      registrazione,
+      quotaM: finito(r.quotaM), velocitaMs: finito(r.velocitaMs),
+      direzione: Number.isFinite(r.direzione) ? ((r.direzione % 360) + 360) % 360 : null,
+      salitaMs: finito(r.salitaMs) ?? 0,
+      aTerra: !!r.aTerra, squawk: String(r.squawk || ''),
+      ultimaLettura: letto, fonte, fonti: [fonte]
+    };
   }
 
   function radianti(g) { return g * Math.PI / 180; }
@@ -366,6 +471,30 @@
     providerDiretto('Airplanes.live', feedAirplanesLive),
     providerDiretto('adsb.one', feedAdsbOne)
   ];
+
+  // OpenSky Network, **dal browser e senza credenziali**. È l'unica rete con
+  // un'API ufficiale pensata per essere chiamata da fuori, e per questo può
+  // stare qui senza ponte. Tre regole ne fanno una riserva e non un feed:
+  //
+  //   - è **in coda** (`riserva`): entra nella corsa dopo il proxy e i ponti,
+  //     cioè quando hanno già taciuto o detto di no;
+  //   - ha un **passo minimo** (`intervalloMinMs`): l'accesso anonimo vale
+  //     quattrocento richieste al giorno per indirizzo, e chiamarla a ogni
+  //     giro le consumerebbe in tre ore;
+  //   - è **diretta**: se il browser la rifiuta (niente CORS da questa
+  //     origine, un filtro anti-tracciamento) il rifiuto non passa col tempo,
+  //     e la pagella la mette da parte per mezza giornata invece di
+  //     riprovarla a ogni penale (`PENALE_BLOCCATA_MS`).
+  //
+  // Con le credenziali, OpenSky sta invece dentro al Worker del sito
+  // (`worker-adsb.js`): una credenziale non va mai nel browser di chi apre il
+  // sito.
+  function providerOpenSky() {
+    return {
+      nome: 'OpenSky', rete: 'OpenSky Network', url: urlOpenSky, interpreta: interpretaOpenSky,
+      riserva: true, diretto: true, intervalloMinMs: OPENSKY_INTERVALLO_MIN_MS, attesaMs: 10000
+    };
+  }
 
   function urlProxy() {
     return String((typeof window !== 'undefined' && window.ADSB_PROXY_URL) || '').trim().replace(/\/$/, '');
@@ -436,6 +565,7 @@
     return ABBINAMENTI.map(a => ({
       nome: `${a.rete} via ${a.ponte.nome}`,
       rete: `${a.rete} (ponte ${a.ponte.nome})`,
+      fonte: a.rete,
       // L'anti-cache va messo **dentro**, sul feed, prima di avvolgerlo: un
       // ponte tiene la sua copia con la chiave dell'indirizzo che gli si
       // chiede di andare a leggere, quindi variare solo l'involucro lo
@@ -492,7 +622,12 @@
     // I feed senza CORS si possono interrogare dal proxy, non dal browser.
     // Restano disponibili solo per prove esplicitamente abilitate.
     const diretti = window.ADSB_PROVA_DIRETTI === true ? providersPredefiniti : [];
-    return propri.concat(ponti, diretti);
+    // OpenSky diretto si può spegnere (`ADSB_OPENSKY_DIRETTO = false`, per
+    // esempio su un sito che lo interroga già dal proprio proxy con le
+    // credenziali: due strade verso la stessa rete sono una quota spesa due
+    // volte).
+    const riserve = opzioni.senzaRiserve || window.ADSB_OPENSKY_DIRETTO === false ? [] : [providerOpenSky()];
+    return propri.concat(ponti, diretti, riserve);
   }
 
   // Un aggiornamento chiesto esplicitamente non deve restare prigioniero
@@ -502,10 +637,22 @@
   // anche se era in cooldown, e solo in sua assenza si riapre la corsa
   // completa come ultimo tentativo. Il ciclo automatico continua invece a
   // rispettare le penali, cosi' non si trasforma un 429 in una raffica.
-  function providersPerRichiesta(forza) {
+  //
+  // Due regole in più rispetto alla pagella. Le **riserve** stanno sempre in
+  // coda, anche quando hanno risposto per ultime: una porta con una quota
+  // stretta che diventa la prima della corsa si consuma in un pomeriggio. E
+  // una porta col suo **passo minimo** non ancora trascorso resta fuori dal
+  // giro automatico — ma non da quello chiesto a mano, se non c'è altro.
+  function providersPerRichiesta(forza, ora = Date.now()) {
     const tutti = providersDisponibili();
-    const sani = ordinaPerSalute(tutti);
-    if (!forza || sani.length) return sani;
+    const presto = p => Number.isFinite(p.intervalloMinMs) &&
+      ora - (salute.get(p.nome)?.ultimaProva || 0) < p.intervalloMinMs;
+    const ordinati = ordinaPerSalute(tutti, ora);
+    const sani = ordinati.filter(p => !p.riserva && !presto(p))
+      .concat(ordinati.filter(p => p.riserva && !presto(p)));
+    if (sani.length) return sani;
+    if (!forza) return ordinati.filter(p => !presto(p));
+    if (ordinati.length) return ordinati;
     const proxy = urlProxy();
     if (proxy) return [providerProxy(proxy)];
     return tutti;
@@ -526,8 +673,26 @@
 
   function saluteDi(nome) {
     let v = salute.get(nome);
-    if (!v) { v = { ok: 0, no: 0, noDiFila: 0, ultimoOk: 0, penaleFino: 0, ultimoGuaio: '' }; salute.set(nome, v); }
+    if (!v) {
+      v = { ok: 0, no: 0, noDiFila: 0, ultimoOk: 0, penaleFino: 0, ultimoGuaio: '',
+        vuotiDiFila: 0, ultimaProva: 0, bloccata: false, ultimoMs: 0 };
+      salute.set(nome, v);
+    }
     return v;
+  }
+
+  // Il **circuito** di una porta, in tre stati — la forma classica del
+  // circuit breaker, scritta con i numeri che la pagella tiene già:
+  //   · `chiuso`: risponde, la si usa;
+  //   · `aperto`: è in penale, non la si chiama affatto;
+  //   · `semiaperto`: la penale è scaduta ma l'ultimo esito era un no — la si
+  //     riprova, **in coda** alle sane, e il primo esito decide: un sì la
+  //     richiude, un no la riapre con la penale raddoppiata.
+  function statoCircuito(nome, ora = Date.now()) {
+    const v = salute.get(nome);
+    if (!v) return 'nuovo';
+    if (v.penaleFino > ora) return v.bloccata ? 'bloccato' : 'aperto';
+    return v.noDiFila > 0 || v.vuotiDiFila > 1 ? 'semiaperto' : 'chiuso';
   }
 
   function saluteCarica() {
@@ -539,7 +704,9 @@
         salute.set(nome, {
           ok: Number(v.ok) || 0, no: Number(v.no) || 0, noDiFila: Number(v.noDiFila) || 0,
           ultimoOk: Number(v.ultimoOk) || 0, penaleFino: Number(v.penaleFino) || 0,
-          ultimoGuaio: String(v.ultimoGuaio || '')
+          ultimoGuaio: String(v.ultimoGuaio || ''),
+          vuotiDiFila: Number(v.vuotiDiFila) || 0, ultimaProva: Number(v.ultimaProva) || 0,
+          bloccata: v.bloccata === true, ultimoMs: Number(v.ultimoMs) || 0
         });
       });
     } catch (e) { /* senza memoria si riparte dall'ordine scritto */ }
@@ -553,13 +720,28 @@
     } catch (e) { /* niente storage: la pagella vale per questa sessione */ }
   }
 
-  function segnaEsito(provider, riuscito, errore) {
+  // `riuscito` con `durataMs` accanto: quanto ci ha messo è la sola misura di
+  // «lenta» che si possa mostrare senza inventarla.
+  function segnaEsito(provider, riuscito, errore, durataMs) {
     const v = saluteDi(provider.nome);
     const ora = Date.now();
     if (riuscito) {
       v.ok++; v.noDiFila = 0; v.ultimoOk = ora; v.penaleFino = 0; v.ultimoGuaio = '';
+      v.bloccata = false; v.vuotiDiFila = 0;
+      if (Number.isFinite(durataMs)) v.ultimoMs = Math.round(durataMs);
     } else {
       v.no++; v.noDiFila++; v.ultimoGuaio = (errore && errore.message) || 'guasto';
+      // Una porta diretta che il browser rifiuta senza nemmeno una risposta
+      // (il `TypeError: Failed to fetch` di un CORS mancante) non migliora
+      // aspettando dieci minuti: la si rimette in gioco fra mezza giornata.
+      // Con la rete giù il guasto non arriva qui (`carica` non bussa affatto
+      // quando il browser dice di essere offline).
+      if (provider.diretto && errore && errore.name === 'TypeError') {
+        v.bloccata = true;
+        v.penaleFino = ora + PENALE_BLOCCATA_MS;
+        saluteSalva();
+        return;
+      }
       // La penale raddoppia a ogni no di fila e si ferma a dieci minuti: una
       // porta rotta smette in fretta di costare tempo, ma torna in gioco da
       // sola senza che nessuno debba ricordarsi di riabilitarla.
@@ -580,24 +762,43 @@
     saluteSalva();
   }
 
+  // Uno zero sospetto (§3-ter). Non è un guasto, e il primo non costa
+  // niente: può essere un cielo davvero sgombro, o un buco della rete di
+  // riceventi. Il secondo **di fila**, mentre un'altra porta nello stesso
+  // posto vedeva aerei, è la firma di una porta che risponde senza guardare
+  // — e allora le si dà una penale corta, che raddoppia come le altre.
+  function segnaVuoto(provider) {
+    const v = saluteDi(provider.nome);
+    v.vuotiDiFila++;
+    if (v.vuotiDiFila >= 2) {
+      v.penaleFino = Date.now() + Math.min(PENALE_MAX_MS, 60000 * Math.pow(2, Math.min(4, v.vuotiDiFila - 2)));
+      v.ultimoGuaio = 'risposte vuote ripetute';
+    }
+    saluteSalva();
+  }
+
   // Prima chi ha risposto più di recente; nessuna richiesta alle porte
-  // ancora in pausa. Alla scadenza tornano automaticamente nell'elenco.
+  // ancora in pausa. Alla scadenza tornano automaticamente nell'elenco, ma
+  // **in coda** a quelle sane finché non hanno risposto di nuovo: è la metà
+  // «semiaperta» del circuito, che la riprova senza rimetterle davanti.
   function ordinaPerSalute(providers, ora = Date.now()) {
     return providers.filter(p => !(salute.get(p.nome)?.penaleFino > ora))
-      .map((p, indice) => ({ p, indice, ultimoOk: salute.get(p.nome)?.ultimoOk || 0 }))
-      .sort((a, b) => b.ultimoOk - a.ultimoOk || a.indice - b.indice)
+      .map((p, indice) => {
+        const v = salute.get(p.nome);
+        return { p, indice, ultimoOk: v?.ultimoOk || 0,
+          dubbia: v ? (v.noDiFila > 0 || v.vuotiDiFila > 1) : false };
+      })
+      .sort((a, b) => (a.dubbia - b.dubbia) || b.ultimoOk - a.ultimoOk || a.indice - b.indice)
       .map(v => v.p);
   }
 
   // =====================================================================
-  // 3. LA CORSA
-  //    Non una fila indiana: si lancia la prima porta e, dopo AFFIANCA_MS,
-  //    anche la seconda. Vince chi risponde per prima; le perdenti si
-  //    abortiscono. Una porta caduta lascia subito il posto alla prossima —
-  //    l'affiancamento serve a chi tace, non a chi ha già detto di no — e la
-  //    sveglia grossa è di **tutta la corsa**: è quello che rende gratis le
-  //    porte in più, perché con una sveglia per tentativo passare da tre a
-  //    molte porte vorrebbe dire passare da mezzo minuto a due di silenzio.
+  // 3. IL TRASPORTO
+  //    Una richiesta a una porta: l'indirizzo senza cache, il codice HTTP
+  //    letto per quello che dice (429 e 503 sono «rallenta», non «guasto»),
+  //    il JSON letto a mano, l'interprete severo e — per ultima — la
+  //    normalizzazione. Sopra a lei stanno la memoria delle risposte
+  //    (§3-bis), la fusione (§3-ter) e la corsa (§3-quater).
   // =====================================================================
 
   function errNome(nome, messaggio) {
@@ -659,7 +860,11 @@
   // corregge invece di sostituirla.
   function attesaRichiesta(risposta) {
     let grezzo = '';
-    try { grezzo = (risposta.headers && risposta.headers.get('Retry-After')) || ''; }
+    // OpenSky dice la stessa cosa con un nome suo, sempre in secondi.
+    try {
+      grezzo = (risposta.headers && (risposta.headers.get('Retry-After') ||
+        risposta.headers.get('X-Rate-Limit-Retry-After-Seconds'))) || '';
+    }
     catch (e) { return null; }
     if (!grezzo) return null;
     const secondi = Number(String(grezzo).trim());
@@ -671,7 +876,86 @@
     return Math.max(0, Math.min(RETRY_AFTER_MAX_MS, ms));
   }
 
-  async function scarica(provider, obs, raggio, signal) {
+  // =====================================================================
+  // 3-bis. LA MEMORIA DELLE RISPOSTE E LE RICHIESTE GEMELLE
+  //    Due domande uguali — stessa porta, stesso riquadro — a pochi secondi
+  //    di distanza non bussano due volte: la seconda riceve la fotografia
+  //    della prima (`CACHE_RISPOSTA_MS`). E due domande uguali **nello stesso
+  //    istante** diventano una richiesta sola con due attese sopra: chi
+  //    rinuncia (il suo segnale si abortisce) se ne va, e la richiesta vera
+  //    si interrompe solo quando non l'aspetta più nessuno. È quello che
+  //    tiene lontane le raffiche quando più parti dell'app — il battito, il
+  //    raggio ritoccato, il tasto «Aggiorna adesso», il ritorno da un'altra
+  //    app — chiedono la stessa cosa nello stesso giro.
+  // =====================================================================
+
+  const cacheRisposte = new Map();
+  const inVoloRisposte = new Map();
+  // Cosa ha detto il proxy del sito su **quale** fonte gli ha risposto
+  // (`X-ADSB-Fonte`): è il solo modo, da qui, di sapere se dietro a
+  // quell'indirizzo ha parlato OpenSky o una rete di comunità.
+  const dettagliFonte = new Map();
+
+  function chiaveRichiesta(provider, obs, raggio) {
+    return `${provider.nome}|${obs.lat.toFixed(3)}|${obs.lon.toFixed(3)}|${Math.round(raggio)}`;
+  }
+
+  function potaCacheRisposte(ora = Date.now()) {
+    cacheRisposte.forEach((v, k) => { if (ora - v.quando > CACHE_RISPOSTA_MS * 4) cacheRisposte.delete(k); });
+    while (cacheRisposte.size > 40) cacheRisposte.delete(cacheRisposte.keys().next().value);
+  }
+
+  function scarica(provider, obs, raggio, signal, opz = {}) {
+    const chiave = chiaveRichiesta(provider, obs, raggio);
+    const ora = Date.now();
+    // La memoria la chiede chi la vuole (il ciclo di `carica`): una prova, o
+    // un gesto esplicito dell'utente, deve bussare per davvero.
+    if (opz.cache) {
+      const c = cacheRisposte.get(chiave);
+      if (c && ora - c.quando <= CACHE_RISPOSTA_MS) {
+        if (signal && signal.aborted) return Promise.reject(annullata());
+        return Promise.resolve(c.aerei.slice());
+      }
+    }
+    let volo = inVoloRisposte.get(chiave);
+    if (!volo) {
+      const controller = new AbortController();
+      volo = { controller, attesi: 0, promessa: null };
+      volo.promessa = scaricaDavvero(provider, obs, raggio, controller.signal).then(aerei => {
+        cacheRisposte.set(chiave, { quando: Date.now(), aerei });
+        potaCacheRisposte();
+        return aerei;
+      });
+      const questo = volo;
+      volo.promessa.catch(() => {}).then(() => {
+        if (inVoloRisposte.get(chiave) === questo) inVoloRisposte.delete(chiave);
+      });
+      inVoloRisposte.set(chiave, volo);
+    }
+    const suo = volo;
+    suo.attesi++;
+    return new Promise((risolvi, rifiuta) => {
+      let fatto = false;
+      const esci = () => {
+        if (fatto) return false;
+        fatto = true; suo.attesi--;
+        if (signal) signal.removeEventListener('abort', lascia);
+        return true;
+      };
+      function lascia() {
+        if (!esci()) return;
+        if (suo.attesi <= 0) suo.controller.abort();
+        rifiuta(annullata());
+      }
+      if (signal) {
+        if (signal.aborted) { lascia(); return; }
+        signal.addEventListener('abort', lascia, { once: true });
+      }
+      suo.promessa.then(v => { if (esci()) risolvi(v.slice()); }, e => { if (esci()) rifiuta(e); });
+    });
+  }
+
+  async function scaricaDavvero(provider, obs, raggio, signal) {
     const risposta = await fetch(conAntiCache(provider.url(obs, raggio)),
       { signal, cache: 'no-store' });
     // 429 e 503 sono la stessa notizia detta da due piani diversi del
@@ -701,48 +985,177 @@
     const testo = await risposta.text();
     let dati;
     try { dati = JSON.parse(testo); } catch (e) { throw schemaSconosciuto(provider.rete || provider.nome); }
-    return provider.interpreta(dati);
+    let dettaglio = '';
+    try { dettaglio = (risposta.headers && risposta.headers.get('X-ADSB-Fonte')) || ''; } catch (e) { /* niente */ }
+    if (dettaglio) dettagliFonte.set(provider.nome, dettaglio);
+    const fonte = dettaglio || provider.fonte || provider.rete || provider.nome;
+    const ora = Date.now();
+    return provider.interpreta(dati).map(r => normalizzaLettura(r, fonte, ora)).filter(Boolean);
   }
+
+  // =====================================================================
+  // 3-ter. LA FUSIONE — un aereo, un'icona, qualunque sia la porta
+  //    Lo stesso aereo arriva da più strade: due ponti sulla stessa rete, il
+  //    proxy e OpenSky, la lettura di adesso e quella di venti secondi fa.
+  //    Qui diventano **un record solo**, riconosciuto in quest'ordine:
+  //      1. il codice ICAO a 24 bit (il transponder), che è l'unico
+  //         identificativo che non cambia mai;
+  //      2. la registrazione, quando una lettura non porta il codice;
+  //      3. l'indicativo di volo, solo per le letture che non hanno né
+  //         l'uno né l'altra.
+  //    Fra due letture dello stesso aereo vince la **più recente**; a pari
+  //    istante (entro mezzo secondo) quella della porta che viene prima
+  //    nell'elenco, cioè quella che ha vinto la corsa. I campi descrittivi
+  //    (modello, operatore, registrazione) si prendono da chi li ha, perché
+  //    una porta che non li manda non vuol dire che non esistano.
+  // =====================================================================
+
+  function eIcao(id) { return !!id && !/^(reg|vol):/.test(id); }
+  function voloNorm(cs) { return String(cs || '').trim().replace(/\s+/g, '').toUpperCase(); }
+
+  function fondiDue(prima, poi) {
+    const dt = (poi.ultimaLettura || 0) - (prima.ultimaLettura || 0);
+    const nuovo = dt > 0.5 ? poi : prima;
+    const altro = nuovo === prima ? poi : prima;
+    const riempi = k => nuovo[k] || altro[k] || '';
+    const fonti = Array.from(new Set([].concat(prima.fonti || [prima.fonte], poi.fonti || [poi.fonte]).filter(Boolean)));
+    return {
+      ...nuovo,
+      id: eIcao(prima.id) ? prima.id : poi.id,
+      registrazione: riempi('registrazione'), tipoIcao: riempi('tipoIcao'),
+      descrizione: riempi('descrizione'), operatore: riempi('operatore'), squawk: riempi('squawk'),
+      fonti
+    };
+  }
+
+  // `liste` è un elenco di elenchi, dal più autorevole al meno: la prima è
+  // la porta che ha vinto la corsa, l'ultima di solito la memoria.
+  function fondiLetture(liste) {
+    const tutti = [];
+    liste.forEach((lista, rango) => (lista || []).forEach(r => {
+      if (!r || !Number.isFinite(r.lat) || !Number.isFinite(r.lon)) return;
+      const id = String(r.id || '').trim().toLowerCase();
+      tutti.push({ r: { ...r, id, fonti: r.fonti || (r.fonte ? [r.fonte] : []) }, rango });
+    }));
+    // Prima chi porta il codice ICAO: sono loro a fissare le chiavi a cui si
+    // appendono le letture che ce l'hanno solo per registrazione o volo.
+    tutti.sort((a, b) => (eIcao(b.r.id) - eIcao(a.r.id)) || a.rango - b.rango);
+    const perChiave = new Map(), perReg = new Map(), perVolo = new Map();
+    tutti.forEach(({ r }) => {
+      let chiave = r.id;
+      if (!eIcao(chiave)) {
+        chiave = (r.registrazione && perReg.get(r.registrazione.toUpperCase())) ||
+          (voloNorm(r.callsign) && perVolo.get(voloNorm(r.callsign))) || chiave;
+      }
+      if (!chiave) return;
+      const c = perChiave.get(chiave);
+      const fuso = c ? fondiDue(c, r) : r;
+      fuso.id = chiave;
+      perChiave.set(chiave, fuso);
+      if (fuso.registrazione) perReg.set(fuso.registrazione.toUpperCase(), chiave);
+      // L'indicativo si usa come ponte solo verso un codice ICAO, e solo se
+      // è un nome e non il codice stesso ripetuto (le reti scrivono l'ICAO
+      // al posto del volo quando il volo manca).
+      const volo = voloNorm(fuso.callsign);
+      if (volo && volo.toLowerCase() !== chiave) perVolo.set(volo, chiave);
+    });
+    return Array.from(perChiave.values());
+  }
+
+  // =====================================================================
+  // 3-quater. LA CORSA
+  //    Non una fila indiana: si lancia la prima porta e, dopo AFFIANCA_MS,
+  //    anche la seconda. Vince chi risponde per prima; le perdenti si
+  //    abortiscono. Una porta caduta lascia subito il posto alla prossima —
+  //    l'affiancamento serve a chi tace, non a chi ha già detto di no — e la
+  //    sveglia grossa è di **tutta la corsa**.
+  //
+  //    Con due cose in più, che sono quelle che fanno di una corsa un
+  //    aggregatore. La **raccolta**: vinta la corsa, le porte già in volo
+  //    hanno ancora `fondiMs` per rispondere, e quello che portano si fonde
+  //    (§3-ter) invece di buttarlo — non se ne lancia nessuna nuova per
+  //    questo. E il **sospetto sugli zeri**: se poco prima qui c'erano
+  //    aerei (`opz.attesi`), una risposta vuota non chiude la corsa, lascia
+  //    parlare la porta dopo. Se nessuna la smentisce, lo zero si accetta —
+  //    ma si dice quante porte l'hanno confermato, perché «nessun aereo» e
+  //    «una sola rete dice nessun aereo» non sono la stessa frase.
+  // =====================================================================
 
   function corsaProvider(providers, obs, raggio, signalEsterno, opz = {}) {
     if (!providers.length) return Promise.reject(new Error('servizi ADS-B in pausa; riprovo più tardi'));
     const affiancaMs = Number.isFinite(opz.affiancaMs) ? opz.affiancaMs : AFFIANCA_MS;
     const attesaMs = Number.isFinite(opz.attesaMs) ? opz.attesaMs : PROVIDER_ATTESA_MS;
     const corsaMs = Number.isFinite(opz.corsaMs) ? opz.corsaMs : CORSA_ATTESA_MS;
+    const fondiMs = Number.isFinite(opz.fondiMs) ? opz.fondiMs : 0;
+    const sospettaZeri = Number.isFinite(opz.attesi) && opz.attesi >= VUOTO_SOSPETTO_MIN;
     return new Promise((risolvi, rifiuta) => {
-      if (!providers.length) { rifiuta(new Error('nessun servizio disponibile')); return; }
       if (signalEsterno && signalEsterno.aborted) { rifiuta(annullata()); return; }
       const errori = [];
       const provate = [];
+      const letture = [];   // { provider, aerei } delle porte che hanno risposto con dati
+      const vuoti = [];     // le porte che hanno risposto zero
       const regia = new AbortController();
-      let prossimo = 0, inVolo = 0, chiuso = false, timerAffianco = null;
+      let prossimo = 0, inVolo = 0, chiuso = false, timerAffianco = null, raccolta = null;
 
-      const sveglia = setTimeout(() =>
-        concludi(null, errNome('TimeoutError', 'nessuna rete ADS-B ha risposto in tempo')), corsaMs);
+      const sveglia = setTimeout(() => {
+        if (letture.length || vuoti.length) chiudiConLetture();
+        else concludi(null, errNome('TimeoutError', 'nessuna rete ADS-B ha risposto in tempo'));
+      }, corsaMs);
       const annullaEsterno = () => concludi(null, annullata());
       if (signalEsterno) signalEsterno.addEventListener('abort', annullaEsterno, { once: true });
 
       function concludi(vincitore, errore) {
         if (chiuso) return;
         chiuso = true;
-        clearTimeout(sveglia); clearTimeout(timerAffianco);
+        clearTimeout(sveglia); clearTimeout(timerAffianco); clearTimeout(raccolta);
         if (signalEsterno) signalEsterno.removeEventListener('abort', annullaEsterno);
         regia.abort();
         if (vincitore) risolvi(vincitore);
         else rifiuta(errore || peggiore(errori));
       }
 
+      function chiudiConLetture() {
+        if (chiuso) return;
+        if (letture.length) {
+          // Qualcuno ha visto aerei: chi aveva risposto zero è smentito.
+          vuoti.forEach(v => segnaVuoto(v.provider));
+          concludi({ provider: letture[0].provider, aerei: fondiLetture(letture.map(l => l.aerei)),
+            provate: provate.slice(), fonti: letture.map(l => l.provider.nome),
+            vuoto: false, vuotoConfermatoDa: 0 });
+          return;
+        }
+        // Solo zeri. Non smentiti da nessuno, quindi si accettano — e le
+        // porte che li hanno detti non hanno sbagliato niente.
+        vuoti.forEach(v => segnaEsito(v.provider, true, null, v.durata));
+        concludi({ provider: vuoti[0].provider, aerei: [], provate: provate.slice(),
+          fonti: vuoti.map(v => v.provider.nome), vuoto: true, vuotoConfermatoDa: vuoti.length,
+          // Incerto: c'era traffico poco fa, e a dire «zero» è stata una
+          // porta sola. Il pannello lo dice invece di mostrare un cielo
+          // sgombro come se fosse un fatto.
+          vuotoIncerto: sospettaZeri && vuoti.length < 2 });
+      }
+
       function pianifica(ritardo) {
-        if (chiuso || prossimo >= providers.length) return;
+        if (chiuso || raccolta || prossimo >= providers.length) return;
         clearTimeout(timerAffianco);
         timerAffianco = setTimeout(lancia, ritardo);
       }
 
+      function forseFinito() {
+        if (chiuso || inVolo > 0) return;
+        if (raccolta || prossimo >= providers.length) {
+          if (letture.length || vuoti.length) chiudiConLetture();
+          else concludi(null, peggiore(errori));
+        }
+      }
+
       function lancia() {
-        if (chiuso || prossimo >= providers.length) return;
+        if (chiuso || raccolta || prossimo >= providers.length) return;
         const provider = providers[prossimo++];
         provate.push(provider.nome);
+        saluteDi(provider.nome).ultimaProva = Date.now();
         inVolo++;
+        const partito = Date.now();
         const suo = new AbortController();
         const propaga = () => suo.abort();
         regia.signal.addEventListener('abort', propaga, { once: true });
@@ -754,10 +1167,35 @@
         // non spiega niente.
         const scadenzaSua = setTimeout(propaga,
           Number.isFinite(provider.attesaMs) ? provider.attesaMs : attesaMs);
-        scarica(provider, obs, raggio, suo.signal).then(aerei => {
+        scarica(provider, obs, raggio, suo.signal, { cache: !!opz.cache }).then(aerei => {
           if (chiuso) return;
-          segnaEsito(provider, true);
-          concludi({ provider, aerei, provate: provate.slice() });
+          const durata = Date.now() - partito;
+          if (!aerei.length && sospettaZeri && !raccolta) {
+            // Uno zero dove poco fa c'era traffico: non chiude niente, e la
+            // porta dopo parte **subito** invece di aspettare l'affiancamento.
+            vuoti.push({ provider, durata });
+            pianifica(0);
+            return;
+          }
+          if (!aerei.length) {
+            // Uno zero non sospetto è una risposta legittima e chiude la
+            // corsa come qualunque altra; arrivato durante la raccolta non
+            // aggiunge niente, ma la porta ha risposto e conta come tale.
+            if (!letture.length && !raccolta) { vuoti.push({ provider, durata }); chiudiConLetture(); }
+            else segnaEsito(provider, true, null, durata);
+            return;
+          }
+          segnaEsito(provider, true, null, durata);
+          letture.push({ provider, aerei });
+          if (raccolta) return;
+          // Vinta la corsa. Se altre porte sono ancora per aria le si
+          // aspetta un poco, e intanto non se ne lancia nessuna.
+          if (fondiMs > 0 && inVolo > 1) {
+            clearTimeout(timerAffianco);
+            raccolta = setTimeout(chiudiConLetture, fondiMs);
+          } else {
+            chiudiConLetture();
+          }
         }).catch(e => {
           if (chiuso) return;
           // Una porta abortita perché ha vinto un'altra non ha sbagliato
@@ -776,7 +1214,7 @@
           clearTimeout(scadenzaSua);
           regia.signal.removeEventListener('abort', propaga);
           inVolo--;
-          if (!chiuso && inVolo === 0 && prossimo >= providers.length) concludi(null, peggiore(errori));
+          forseFinito();
         });
         if (prossimo < providers.length) pianifica(affiancaMs);
       }
@@ -792,6 +1230,134 @@
     return corsaProvider(providers, obs, raggio, signal,
       Number.isFinite(attesaMs) ? { attesaMs } : {});
   }
+
+  // =====================================================================
+  // 3-quinquies. LA FACCIATA — `FontiAerei`, l'unica porta verso le fonti
+  //    È il livello che il resto del modulo vede, e il solo: il motore (§6)
+  //    chiede «gli aerei attorno a questo punto, entro questo raggio» e
+  //    riceve un elenco di record normalizzati e già fusi, senza sapere
+  //    quali porte sono state provate, in che ordine, quali erano in penale
+  //    e quali hanno risposto. Da qui passano **tutte** le richieste ADS-B
+  //    dell'app — il battito, il tasto, il raggio che cambia, il ritorno da
+  //    un'altra scheda — ed è per questo che la memoria delle risposte e le
+  //    richieste gemelle (§3-bis) servono a qualcosa.
+  //
+  //    Accanto, l'**età** di ogni aereo: tre gradini misurati dall'istante
+  //    della lettura, che il disegno usa per velare e il ciclo per potare.
+  // =====================================================================
+
+  function qualitaDi(etaMs) {
+    if (!(etaMs > AEREI_VIVO_MS)) return 'vivo';
+    return etaMs <= AEREI_INTERPOLATO_MS ? 'interpolato' : 'stantio';
+  }
+
+  // Oltre quest'età un aereo esce dal cielo. Mai sotto i due minuti, e mai
+  // sotto il ritmo di adesso più un minuto: a disegno spento si scarica ogni
+  // tre minuti, e togliere gli aerei a metà del giro vorrebbe dire lasciare
+  // la realtà aumentata e i transiti senza niente da guardare fra un
+  // aggiornamento e l'altro.
+  function etaMassimaMs() {
+    return Math.max(AEREI_MEMORIA_MS, intervalloAggiornamento() + 60000);
+  }
+
+  function etaLettura(a, oraMs = Date.now()) {
+    const origine = (a && a.posizioneFeed) || a;
+    // Senza istante vale «adesso», come in `aereoAdesso`: un record scritto a
+    // mano (un provider proprio, una prova) non va potato per una data che
+    // non ha.
+    return origine && Number.isFinite(origine.ultimaLettura)
+      ? Math.max(0, oraMs - origine.ultimaLettura * 1000) : 0;
+  }
+
+  // Quanti aerei c'erano qui poco fa: è il metro con cui una risposta vuota
+  // diventa sospetta. «Qui» vuol dire dentro alla tolleranza del centro, e
+  // «poco fa» dentro a `VUOTO_SOSPETTO_FINESTRA_MS`: uno zero dopo un cambio
+  // di città non ha niente da smentire.
+  function attesiQui(obs, ora = Date.now()) {
+    if (!obs || !stato.ultimoCentro || !stato.ultimoPieno) return 0;
+    if (ora - stato.ultimoPieno.quando > VUOTO_SOSPETTO_FINESTRA_MS) return 0;
+    if (distanzaDirezione(stato.ultimoCentro, obs).km > tolleranzaCentroKm()) return 0;
+    return stato.ultimoPieno.quanti;
+  }
+
+  function providersCorrenti(forza) {
+    if (Array.isArray(window.AEREI_PROVIDERS) && window.AEREI_PROVIDERS.length) return window.AEREI_PROVIDERS;
+    if (window.AEREI_PROVIDER) return [window.AEREI_PROVIDER];
+    return providersPerRichiesta(!!forza);
+  }
+
+  function acquisisci(obs, raggio, signal, opz = {}) {
+    return corsaProvider(providersCorrenti(opz.forza), obs, raggio, signal, {
+      fondiMs: FUSIONE_ATTESA_MS,
+      attesi: attesiQui(obs),
+      // Un gesto esplicito bussa per davvero; il ciclo si accontenta di una
+      // fotografia di pochi secondi fa, se c'è.
+      cache: !opz.forza
+    });
+  }
+
+  // --- Lo stato delle fonti, per il pannello ----------------------------
+  // Parole e non codici: «disponibile», «in pausa», «non raggiungibile dal
+  // browser». I dettagli tecnici (l'ultimo guasto, quanto ci ha messo) vanno
+  // nel `title` della riga, per chi li cerca.
+  //
+  // Accanto alle porte vere ci sono le **fonti che richiedono il proxy**:
+  // ADS-B Exchange (un servizio in abbonamento) e le credenziali di OpenSky
+  // non possono stare nel codice di una pagina che chiunque legge, quindi da
+  // qui si può solo dire se il proxy del sito le ha — lo dice lui, da
+  // `/api/fonti` — oppure che mancano.
+  const fontiProxy = { stato: 'ignoto', elenco: [], quando: 0, promessa: null };
+
+  function caricaFontiProxy() {
+    const proxy = urlProxy();
+    if (!proxy || fontiProxy.promessa || Date.now() - fontiProxy.quando < 600000) return;
+    const controller = new AbortController();
+    const sveglia = setTimeout(() => controller.abort(), 8000);
+    fontiProxy.promessa = fetch(`${proxy}/api/fonti`, { signal: controller.signal, cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        fontiProxy.elenco = d && Array.isArray(d.fonti) ? d.fonti : [];
+        fontiProxy.stato = d ? 'noto' : 'ignoto';
+      })
+      .catch(() => { fontiProxy.stato = 'ignoto'; })
+      .finally(() => {
+        clearTimeout(sveglia);
+        fontiProxy.quando = Date.now(); fontiProxy.promessa = null;
+        guardato('fonti', aggiornaUI);
+      });
+  }
+
+  function diagnosticaFonti(ora = Date.now()) {
+    const righe = providersDisponibili().map(p => {
+      const v = salute.get(p.nome);
+      const circuito = statoCircuito(p.nome, ora);
+      let stato;
+      if (circuito === 'bloccato') stato = 'bloccata';
+      else if (circuito === 'aperto') stato = 'pausa';
+      else if (circuito === 'semiaperto') stato = 'incerta';
+      else if (circuito === 'nuovo' || !v || !v.ok) stato = 'daProvare';
+      else stato = v.ultimoMs > 6000 ? 'lenta' : 'disponibile';
+      return { nome: p.nome, stato, riserva: !!p.riserva, guaio: v ? v.ultimoGuaio : '',
+        ms: v ? v.ultimoMs : 0, fino: v ? v.penaleFino : 0, dettaglio: dettagliFonte.get(p.nome) || '' };
+    });
+    const conProxy = !!urlProxy();
+    const haDalProxy = nome => fontiProxy.elenco.some(f => String(f.nome || f).toLowerCase().includes(nome));
+    const premium = [
+      { nome: 'ADS-B Exchange', stato: !conProxy ? 'serveProxy' : haDalProxy('exchange') ? 'viaProxy'
+        : fontiProxy.stato === 'noto' ? 'nonConfigurata' : 'sconosciuta' },
+      { nome: 'OpenSky (account)', stato: !conProxy ? 'serveProxy' : haDalProxy('opensky') ? 'viaProxy'
+        : fontiProxy.stato === 'noto' ? 'nonConfigurata' : 'sconosciuta' },
+      { nome: 'Airplanes.live', stato: !conProxy ? 'serveProxy' : haDalProxy('airplanes') ? 'viaProxy'
+        : fontiProxy.stato === 'noto' ? 'nonConfigurata' : 'sconosciuta' }
+    ];
+    const memoria = stato.aerei.filter(a => stato.ultimiVisti && !stato.ultimiVisti.has(String(a.id))).length;
+    return { righe, premium, memoria };
+  }
+
+  const FontiAerei = {
+    acquisisci, fondiLetture, normalizzaLettura, statoCircuito, diagnostica: diagnosticaFonti,
+    fonti: () => providersDisponibili(), qualitaDi, etaMassimaMs
+  };
 
   // =====================================================================
   // 4. LO STATO
@@ -816,7 +1382,17 @@
     ultimoSuccesso: 0, ultimoTentativo: 0, prossimoAggiornamento: 0, prossimoTentativo: 0,
     tentativiFalliti: 0, errore: '', errNome: '', ultimaFonte: '', avviato: false,
     ricaricaDopo: false, ultimoRenderSecondo: null, feedbackRichiesto: false, feedbackTimer: null,
-    ultimaFase: ''
+    ultimaFase: '',
+    // L'ultima fotografia **con dentro qualcosa** (quanti, quando): è il
+    // termine di paragone del sospetto sugli zeri (§3-ter). `vuotoIncerto`
+    // dice che l'ultima risposta è stata uno zero detto da una porta sola
+    // dove poco prima c'era traffico; `ultimiVisti` sono gli aerei che
+    // l'ultima lettura ha confermato, e per differenza quelli che il cielo
+    // mostra solo perché la memoria li tiene ancora. `ultimoLimite` è
+    // quando una porta ci ha chiesto di rallentare, e da lì il freno del
+    // ritmo (`FRENO_LIMITE_MS`); `ultimeFonti` chi ha contribuito alla
+    // fotografia di adesso.
+    ultimoPieno: null, vuotoIncerto: false, ultimiVisti: null, ultimoLimite: 0, ultimeFonti: []
   };
 
   function preferenzeCarica() {
@@ -1090,6 +1666,10 @@
     stato.tentativiFalliti = 0;
     stato.errore = '';
     stato.ultimoRenderSecondo = null;
+    // Il termine di paragone degli zeri era di un altro cielo.
+    stato.ultimoPieno = null;
+    stato.vuotoIncerto = false;
+    stato.ultimiVisti = null;
   }
 
   function aereiPosizioneCambiata() {
@@ -1151,21 +1731,25 @@
   // toglierlo è solo il tempo. È la stessa idea del terreno, che i tentativi
   // li somma invece di ripeterli — e vale doppio qui, dove i dati arrivano
   // di rado e quando arrivano vanno sfruttati fino in fondo.
+  //
+  // La somma passa dalla fusione (§3-ter), e non è un dettaglio: la memoria
+  // può avere dello stesso aereo una lettura **più recente** di quella appena
+  // arrivata — una porta in ritardo di venti secondi, dopo che un'altra ne
+  // aveva dato uno di adesso — e sostituirla in blocco voleva dire farlo
+  // tornare indietro di un chilometro e mezzo sullo schermo.
   function unisciConLaMemoria(nuovi, ora = Date.now()) {
-    const elenco = Array.isArray(nuovi) ? nuovi.slice() : [];
-    const visti = new Set(elenco.map(a => String(a && a.id || '').toLowerCase()));
+    const elenco = Array.isArray(nuovi) ? nuovi.filter(Boolean) : [];
+    const memoria = [];
     stato.aerei.forEach(a => {
-      const id = String(a.id || '').toLowerCase();
-      if (!id || visti.has(id)) return;
       // La lettura grezza, non quella propagata: propagare una propagazione
       // vorrebbe dire ricalcolare l'errore sopra all'errore, e in mezz'ora
       // farebbe un aereo inventato.
       const origine = a.posizioneFeed || a;
       const letto = Number.isFinite(origine.ultimaLettura) ? origine.ultimaLettura * 1000 : 0;
       if (!letto || ora - letto > AEREI_MEMORIA_MS) return;
-      elenco.push(origine);
+      memoria.push(origine);
     });
-    return elenco;
+    return memoria.length ? fondiLetture([elenco, memoria]) : elenco;
   }
 
   function registraTracce(aerei, ora = Date.now()) {
@@ -1239,9 +1823,14 @@
     // difetto del disegno — l'occhio la usa proprio per capire quale sagoma
     // sia quale.
     const traiettoria = arcoDiTransito(corrente, obs).map(p => ancoraVista(a.id, p));
+    // L'età si misura sull'orologio vero, non su quello del planetario: dice
+    // quanto è vecchio il **dato**, e nella macchina del tempo il dato è
+    // quello che è, qualunque istante si stia guardando.
+    const etaMs = etaLettura(origine);
     return { ...a, ...corrente, ...cielo, traiettoria, arco: arcoRiassunto(traiettoria),
       allineamenti: a.allineamenti || [],
-      posizioneFeed: origine, stimato: !tempoReale(oraMs), istanteMostrato: oraMs };
+      posizioneFeed: origine, stimato: !tempoReale(oraMs), istanteMostrato: oraMs,
+      etaMs, qualita: qualitaDi(etaMs) };
   }
 
   // Dov'è un aereo in cielo **adesso**, senza la traiettoria. È la metà
@@ -1258,10 +1847,22 @@
     return ancoraVista(a.id, coordinateCielo(posizioneFutura(origine, secondi), obs));
   }
 
+  // Ogni fotogramma rifà le coordinate e, in tempo reale, **pota**: un aereo
+  // che nessuna fonte riconferma da più di `etaMassimaMs()` esce dal cielo
+  // da solo, senza aspettare la prossima risposta — che potrebbe non
+  // arrivare mai, ed è proprio il caso in cui tenerlo vorrebbe dire
+  // inventarlo. Nella macchina del tempo la potatura non si fa: lì le
+  // posizioni sono stime dichiarate, e le regola `DATI_SCADUTI_MS`.
+  function potaStantii(elenco, ora = Date.now()) {
+    const limite = etaMassimaMs();
+    return elenco.filter(a => etaLettura(a, ora) <= limite);
+  }
+
   function aggiornaPosizioni() {
     const obs = osservatoreDisegno();
     if (!obs) return [];
-    stato.aerei = stato.aerei.map(a => aereoAdesso(a, obs));
+    const base = tempoReale() ? potaStantii(stato.aerei) : stato.aerei;
+    stato.aerei = base.map(a => aereoAdesso(a, obs));
     return stato.aerei;
   }
 
@@ -1403,7 +2004,44 @@
     }
     if (f === 'vecchio') return T('vecchio', { quanti, eta, prossimo });
     if (!stato.ultimoSuccesso) return T('primoScarico');
+    // Uno zero non è sempre un cielo sgombro, e le due frasi devono essere
+    // diverse: «nessun aereo» detto da due fonti è un fatto, detto da una
+    // sola dove un minuto fa ce n'erano venti è un dubbio.
+    if (!stato.aerei.length) {
+      return T(stato.vuotoIncerto ? 'vuotoIncerto' : 'cieloSgombro',
+        { fonte: stato.ultimaFonte || 'ADS-B', eta, prossimo });
+    }
     return T('normale', { quanti, fonte: stato.ultimaFonte || 'ADS-B', eta, prossimo });
+  }
+
+  // La sezione «Fonti dei dati» del pannello: una riga per porta, in parole.
+  // Si riscrive solo se è aperta e solo se è cambiata — sta nel battito, e un
+  // `innerHTML` identico ogni cinque secondi farebbe perdere il fuoco a chi
+  // ci sta navigando con la tastiera.
+  let fontiScritte = '';
+  function aereiScriviFonti() {
+    const box = document.getElementById('aerei-fonti');
+    const lista = document.getElementById('aerei-fonti-elenco');
+    if (!box || !lista || !box.open) return;
+    caricaFontiProxy();
+    const T = (k, v) => astroI18n.t('aereiFonti.' + k, v);
+    const d = diagnosticaFonti();
+    const riga = (nome, chiave, titolo) =>
+      `<li class="aerei-fonte" data-stato="${chiave}"${titolo ? ` title="${sicuro(titolo)}"` : ''}>` +
+      `<span class="aerei-fonte-nome">${sicuro(nome)}</span>` +
+      `<span class="aerei-fonte-stato">${sicuro(T('stato.' + chiave))}</span></li>`;
+    const html = d.righe.map(r => {
+      const dettagli = [r.riserva ? T('riserva') : '', r.dettaglio,
+        r.ms ? T('tempo', { ms: r.ms }) : '', r.guaio].filter(Boolean).join(' · ');
+      return riga(r.nome, r.stato, dettagli);
+    }).join('') +
+      `<li class="aerei-fonte-titolo">${sicuro(T('premium'))}</li>` +
+      d.premium.map(r => riga(r.nome, r.stato, '')).join('') +
+      `<li class="aerei-fonte" data-stato="memoria"><span class="aerei-fonte-nome">${sicuro(T('memoria'))}</span>` +
+      `<span class="aerei-fonte-stato">${sicuro(T('memoriaQuanti', { n: d.memoria }))}</span></li>`;
+    if (html === fontiScritte && lista.innerHTML) return;
+    fontiScritte = html;
+    lista.innerHTML = html;
   }
 
 
@@ -1446,6 +2084,7 @@
       }
     }
     scriviTesto('aerei-conteggio', stato.aerei.length ? String(stato.aerei.length) : '—');
+    guardato('fonti', aereiScriviFonti);
     accendiTasto('aerei-btn-mostra', stato.visibile);
     accendiTasto('aerei-btn-dati', stato.dati);
     accendiTasto('aerei-btn-auto', stato.auto);
@@ -1505,16 +2144,23 @@
     const box = document.getElementById('aerei-elenco');
     if (!box) return;
     if (!stato.aerei.length) {
-      box.innerHTML = '<p class="etichetta-comando">' + (stato.ultimoSuccesso
-        ? 'Nessun aereo ADS-B nel raggio scelto in questo momento.'
-        : 'Ancora nessuna lettura: appena arriva, gli aerei compaiono qui.') + '</p>';
+      // Quattro assenze diverse, quattro frasi diverse: un cielo sgombro,
+      // uno zero di cui non ci si fida, fonti che non rispondono, e il primo
+      // scarico che non è ancora arrivato. Scriverle tutte uguali era il
+      // difetto che rendeva questo pannello inutile proprio quando serviva.
+      const f = fase();
+      const chiave = !stato.ultimoSuccesso
+        ? ((f === 'errore' || f === 'proxyMancante' || f === 'senzaRete') ? 'nonDisponibili' : 'attesa')
+        : (f === 'errore' || f === 'senzaRete') ? 'nonAggiornati'
+        : stato.vuotoIncerto ? 'vuotoIncerto' : 'nessuno';
+      box.innerHTML = '<p class="etichetta-comando">' + sicuro(astroI18n.t('aereiElenco.' + chiave)) + '</p>';
       return;
     }
     const ricerca = String((document.getElementById('aerei-cerca-input') || {}).value || '')
       .trim().toLocaleLowerCase('it');
     const mostrati = ricerca ? stato.aerei.filter(a => testoRicercaAereo(a).includes(ricerca)) : stato.aerei;
     if (!mostrati.length) {
-      box.innerHTML = '<p class="etichetta-comando">Nessun aereo corrisponde alla ricerca.</p>';
+      box.innerHTML = '<p class="etichetta-comando">' + sicuro(astroI18n.t('aereiElenco.ricerca')) + '</p>';
       return;
     }
     const inDiretta = tempoReale();
@@ -1551,9 +2197,18 @@
   // 6. IL MOTORE: scaricare, riprovare, tenere il ritmo
   // =====================================================================
 
+  // Il ritmo si adatta a chi guarda, e a chi risponde:
+  //   · triangoli accesi e planetario aperto → `AGGIORNA_VISIBILE_MS`;
+  //   · dati in memoria senza disegno → `AGGIORNA_SFONDO_MS`;
+  //   · scheda in secondo piano → niente (il battito esce, §6);
+  //   · dati spenti → niente;
+  //   · una porta ci ha chiesto di rallentare da poco → il doppio, finché
+  //     `FRENO_LIMITE_MS` non è passato.
   function intervalloAggiornamento() {
     const inVista = stato.visibile && typeof sky !== 'undefined' && sky.aperto;
-    return inVista ? AGGIORNA_VISIBILE_MS : AGGIORNA_SFONDO_MS;
+    const base = inVista ? AGGIORNA_VISIBILE_MS : AGGIORNA_SFONDO_MS;
+    const frenato = stato.ultimoLimite && Date.now() - stato.ultimoLimite < FRENO_LIMITE_MS;
+    return frenato ? base * 2 : base;
   }
 
   function pianificaProssimo(riuscito, guaio) {
@@ -1649,8 +2304,6 @@
       return;
     }
     stato.ultimoTentativo = ora;
-    const providers = window.AEREI_PROVIDER ? [window.AEREI_PROVIDER]
-      : providersPerRichiesta(!!forza);
     const controller = new AbortController();
     stato.controller = controller;
     // Da quando è in volo. Non è un dato di comodo: `stato.richiesta` non
@@ -1659,7 +2312,9 @@
     // una richiesta che non si chiude non si distingue da una appena partita.
     stato.richiestaDa = Date.now();
     aggiornaUI();
-    stato.richiesta = corsaProvider(providers, obs, raggioKm(), controller.signal)
+    // Da qui in giù il motore non sa quali porte esistono: chiede alla
+    // facciata (§3-quinquies) e riceve record già normalizzati e fusi.
+    stato.richiesta = acquisisci(obs, raggioKm(), controller.signal, { forza: !!forza })
       .then(risultato => {
         // Nel frattempo il planetario potrebbe essersi spostato. Solo un
         // **salto** però rende inutile la risposta: prima bastava un cambio
@@ -1674,9 +2329,14 @@
         }
         registraTracce(risultato.aerei);
         stato.aerei = arricchisci(unisciConLaMemoria(risultato.aerei), obs);
+        stato.ultimiVisti = new Set(risultato.aerei.map(a => String(a.id)));
         stato.ultimoCentro = obs;
         stato.ultimoSuccesso = Date.now();
-        stato.ultimaFonte = risultato.provider.nome;
+        stato.ultimaFonte = dettagliFonte.get(risultato.provider.nome)
+          ? `${risultato.provider.nome} · ${dettagliFonte.get(risultato.provider.nome)}` : risultato.provider.nome;
+        stato.ultimeFonti = risultato.fonti || [risultato.provider.nome];
+        stato.vuotoIncerto = !!risultato.vuotoIncerto;
+        if (risultato.aerei.length) stato.ultimoPieno = { quanti: risultato.aerei.length, quando: Date.now() };
         stato.errore = ''; stato.errNome = '';
         pianificaProssimo(true);
         render();
@@ -1706,6 +2366,7 @@
         stato.errore = e.message || 'guasto';
         stato.errNome = e.name || '';
         stato.tentativiFalliti++;
+        if (e.rateLimit) stato.ultimoLimite = Date.now();
         pianificaProssimo(false, e);
         concludiFeedback(`Aggiornamento ADS-B non riuscito: ${guaioLeggibile()}.`, true);
       }).finally(() => {
@@ -1822,6 +2483,20 @@
     clearInterval(stato.timer);
     stato.timer = setInterval(battito, BATTITO_MS);
     battito();
+  }
+
+  // Il ritorno in primo piano. È il momento in cui uno guarda, quindi non si
+  // aspetta il giro del battito: una fotografia più vecchia di `RIENTRO_MS`
+  // si rifà subito. Subito ma non a forza — il freno degli errori resta: se
+  // una porta ci ha chiesto di aspettare, tornare su una scheda non è una
+  // ragione per bussare prima del tempo.
+  function aereiRientro() {
+    guardato('rientro', aggiornaUI);
+    if (!stato.avviato || !stato.dati || !stato.auto || !tempoReale()) return;
+    if (stato.richiesta) return;
+    if (Date.now() - stato.ultimoSuccesso <= RIENTRO_MS) return;
+    stato.prossimoAggiornamento = Math.max(Date.now(), stato.prossimoTentativo || 0);
+    if (Date.now() >= stato.prossimoAggiornamento) carica(false);
   }
 
   function aereiAvvia() {
@@ -2029,6 +2704,12 @@
       })).filter(p => p.davanti);
       if (!punti.length) return;
       const fascia = fasciaDi(a.distanzaKm);
+      // Il velo della sua età (§3-quinquies): un dato vivo pieno, uno
+      // interpolato appena smorzato, uno stantio a metà — lo stesso
+      // linguaggio con cui lo strato intero dice «fotografia vecchia», ma
+      // aereo per aereo: dopo una fusione, nella stessa fotografia convivono
+      // letture di adesso e letture di un minuto fa.
+      const velo = a.qualita === 'stantio' ? 0.5 : a.qualita === 'interpolato' ? 0.85 : 1;
 
       // La riga della previsione, segmento per segmento. Due cose la
       // distinguono da quella di prima, e sono le due cose che l'arco lungo
@@ -2052,7 +2733,7 @@
         const q0 = punti[i - 1], q1 = punti[i];
         const sopraDisco = discoSotto((q0.px + q1.px) / 2, (q0.py + q1.py) / 2);
         const f = fiduciaArco(q1.minuti);
-        ctx.globalAlpha = (fresco ? 0.85 : 0.55) * f;
+        ctx.globalAlpha = (fresco ? 0.85 : 0.55) * f * velo;
         ctx.strokeStyle = sopraDisco ? COLORE_SILHOUETTE : fascia.colore;
         ctx.lineWidth = 1.4 * (0.55 + 0.45 * f);
         ctx.beginPath(); ctx.moveTo(q0.px, q0.py); ctx.lineTo(q1.px, q1.py); ctx.stroke();
@@ -2078,7 +2759,7 @@
           ctx.beginPath();
           ctx.arc(p.px, p.py, capolinea ? 2.6 : 1.6, 0, Math.PI * 2);
           ctx.fillStyle = discoSotto(p.px, p.py) ? COLORE_SILHOUETTE : fascia.colore;
-          ctx.globalAlpha = (fresco ? 0.9 : 0.5) * (capolinea ? 1 : 0.75) * fiduciaArco(p.minuti);
+          ctx.globalAlpha = (fresco ? 0.9 : 0.5) * (capolinea ? 1 : 0.75) * fiduciaArco(p.minuti) * velo;
           ctx.fill();
         });
         // I numeri: il capolinea della previsione corta, che è il riferimento
@@ -2093,7 +2774,7 @@
           ctx.strokeStyle = 'rgba(2,6,23,.85)';
           const cinque = punti.find(p => p.minuti === PREVISIONE_MINUTI);
           if (cinque) {
-            ctx.globalAlpha = fresco ? 0.85 : 0.5;
+            ctx.globalAlpha = (fresco ? 0.85 : 0.5) * velo;
             ctx.fillStyle = '#fff7ed';
             ctx.strokeText(`+${PREVISIONE_MINUTI}′`, cinque.px, cinque.py - 8);
             ctx.fillText(`+${PREVISIONE_MINUTI}′`, cinque.px, cinque.py - 8);
@@ -2103,7 +2784,7 @@
                          coda.py - (cinque ? cinque.py : testa.py)) >= AEREI_ETICHETTA_PX_MIN) {
             const testo = coda.tramonto ? `tramonta +${Math.round(coda.minuti)}′`
                                         : `+${Math.round(coda.minuti)}′`;
-            ctx.globalAlpha = (fresco ? 0.8 : 0.5) * fiduciaArco(coda.minuti);
+            ctx.globalAlpha = (fresco ? 0.8 : 0.5) * fiduciaArco(coda.minuti) * velo;
             ctx.fillStyle = '#fff7ed';
             ctx.strokeText(testo, coda.px, coda.py - 8);
             ctx.fillText(testo, coda.px, coda.py - 8);
@@ -2111,7 +2792,7 @@
           ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
         }
       }
-      ctx.globalAlpha = fresco ? 1 : 0.62;
+      ctx.globalAlpha = (fresco ? 1 : 0.62) * velo;
       const p = punti[0]; ctx.setLineDash([]);
       // Il muso segue la rotta proiettata sullo schermo. Il triangolo di base
       // guarda verso l'alto, quindi l'angolo della prima porzione visibile
@@ -2670,6 +3351,8 @@
     collega('aerei-btn-auto', () => aereiAlternaAuto());
     const cerca = document.getElementById('aerei-cerca-input');
     if (cerca) cerca.addEventListener('input', render);
+    const fonti = document.getElementById('aerei-fonti');
+    if (fonti) fonti.addEventListener('toggle', () => { fontiScritte = ''; guardato('fonti', aereiScriviFonti); });
     collega('aerei-pannello-chiudi', () => {
       if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
     });
@@ -2691,9 +3374,7 @@
       // trovare il feed fermo non vuol dire che la fotografia sia vecchia,
       // può voler dire che a battere non c'è rimasto nessuno.
       sorvegliaBattito();
-      aggiornaUI();
-      if (stato.dati && stato.auto && tempoReale() &&
-        Date.now() - stato.ultimoSuccesso > DATI_VECCHI_MS) carica(false);
+      aereiRientro();
     });
     // `pageshow` è il ritorno dalla cache di navigazione (il tasto
     // «indietro»), dove la pagina riprende esattamente com'era — timer
@@ -2768,5 +3449,14 @@
     AEREI_ARCO_MAX_MIN, AEREI_ARCO_PASSO_FINE_S, AEREI_ARCO_FINE_S,
     AEREI_APERTURA_M, PREVISIONE_MINUTI, COLORE_SILHOUETTE,
     AEREI_CENTRO_QUOTA, AEREI_CENTRO_MIN_KM, AEREI_CENTRO_MAX_KM, AEREI_SALTO_MIN_KM,
-    AEREI_MOTO_MIN_MS, AEREI_MEMORIA_MS, AEREI_VIVO_MAX_KM };
+    AEREI_MOTO_MIN_MS, AEREI_MEMORIA_MS, AEREI_VIVO_MAX_KM,
+    // L'aggregatore (§3-bis … §3-quinquies)
+    FontiAerei, fondiLetture, normalizzaLettura, statoCircuito, segnaVuoto, scarica, acquisisci,
+    qualitaDi, etaMassimaMs, etaLettura, potaStantii, attesiQui, diagnosticaFonti, aereiRientro,
+    providerOpenSky, cacheRisposte, inVoloRisposte, aggiornaPosizioni, carica,
+    AEREI_VIVO_MS, AEREI_INTERPOLATO_MS, FUSIONE_ATTESA_MS, VUOTO_SOSPETTO_MIN,
+    CACHE_RISPOSTA_MS, PENALE_BLOCCATA_MS, OPENSKY_INTERVALLO_MIN_MS, FRENO_LIMITE_MS, RIENTRO_MS };
+  // La facciata, col suo nome: chi vuole gli aerei senza passare dal
+  // planetario (una prova, un modulo futuro) chiede a lei e non alle porte.
+  window.FontiAerei = FontiAerei;
 }());

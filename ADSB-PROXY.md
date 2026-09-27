@@ -272,10 +272,39 @@ sono state viste, e `funzionanti` deve contenere `OpenSky`.
 
 OpenSky concede agli utenti registrati un budget giornaliero di richieste, e
 una richiesta con un riquadro piccolo è la più economica che ci sia. Con
-l'aggiornamento ogni 45 secondi a planetario aperto e ogni 3 minuti a disegno
-spento si resta largamente dentro, perché l'app interroga solo mentre è
+l'aggiornamento ogni 25 secondi a planetario aperto (il doppio per dieci minuti
+dopo un 429) e ogni 3 minuti a disegno spento si resta largamente dentro, perché l'app interroga solo mentre è
 aperta. Il token OAuth2 dura mezz'ora e il Worker se lo tiene: non si paga una
 richiesta di autenticazione per ogni fotografia.
+
+---
+
+## ADS-B Exchange, cioè la fonte che si paga (facoltativa)
+
+ADS-B Exchange vende l'accesso alle sue API: copertura mondiale e
+aggiornamenti al secondo, in abbonamento (RapidAPI o contratto diretto). Non è
+una dipendenza dell'app: il Worker ha un **posto pronto** e lo usa solo se
+trova la chiave nei suoi secret.
+
+| Nome | Valore |
+|---|---|
+| `ADSBX_API_KEY` | la chiave |
+| `ADSBX_API_HOST` | facoltativo, di serie `adsbexchange-com1.p.rapidapi.com` |
+
+Con la chiave la fonte entra **in testa** alla corsa del Worker, davanti a
+OpenSky e alle reti di comunità. La chiave va nei secret del Worker e mai in
+`config.js`, che chiunque apra il sito può leggere.
+
+Per sapere quali fonti ha il proxy, senza interrogarle:
+
+```
+https://<il-tuo-proxy>/api/fonti
+```
+
+È la stessa domanda che l'app fa per riempire la sezione «Fonti dei dati»
+del pannello Aerei. E ogni fotografia di `/api/adsb` porta l'intestazione
+`X-ADSB-Fonte` col nome della fonte che ha risposto: il pannello la mostra
+accanto al proxy.
 
 ---
 
