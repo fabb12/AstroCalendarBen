@@ -343,6 +343,121 @@
         file: 'demo/it/eclisse_tour-11.mp3',
         impronta: '994e6fd3'
       }
+    },
+    // ─────────────────────────────────────────────
+    // Solstizi ed equinozi
+    // ─────────────────────────────────────────────
+
+    'demo.narr.solstizi_equinozi.1': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-1.mp3',
+        impronta: 'a5f6d8dd'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.2': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-2.mp3',
+        impronta: 'd0386bb1'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.3': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-3.mp3',
+        impronta: 'f022bde6'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.4': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-4.mp3',
+        impronta: '4d78f3a4'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.5': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-5.mp3',
+        impronta: 'baa20c13'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.6': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-6.mp3',
+        impronta: 'a2d3912f'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.7': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-7.mp3',
+        impronta: '72d967b9'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.8': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-8.mp3',
+        impronta: 'b2d79f37'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.9': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-9.mp3',
+        impronta: '1c924174'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.10': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-10.mp3',
+        impronta: 'c902f95b'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.11': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-11.mp3',
+        impronta: 'a45d548d'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.12': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-12.mp3',
+        impronta: 'dbeedc9f'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.13': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-13.mp3',
+        impronta: 'd480bbd2'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.14': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-14.mp3',
+        impronta: '0b03195f'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.15': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-15.mp3',
+        impronta: '480934c4'
+      }
+    },
+
+    'demo.narr.solstizi_equinozi.16': {
+      it: {
+        file: 'demo/it/solstizi_equinozi-16.mp3',
+        impronta: '3a7878b7'
+      }
     }
   }
 };
