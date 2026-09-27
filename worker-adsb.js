@@ -42,7 +42,8 @@
 // riscrivere niente.
 const CHIAVI_AMBIENTE = [
   'OPENSKY_CLIENT_ID', 'OPENSKY_CLIENT_SECRET',
-  'OPENSKY_USER', 'OPENSKY_PASS', 'ORIGINI_AMMESSE'
+  'OPENSKY_USER', 'OPENSKY_PASS', 'ORIGINI_AMMESSE',
+  'ADSBX_API_KEY', 'ADSBX_API_HOST'
 ];
 
 function nomePiattaforma() {
@@ -288,11 +289,53 @@ function feedOpenSky(env) {
   };
 }
 
-// L'ordine: OpenSky davanti quando c'e' una credenziale, perche' e' l'unica
-// che risponde davvero; le reti di comunita' dietro, perche' costano poco e
-// un giorno potrebbero tornare.
+// =====================================================================
+// ADS-B EXCHANGE — la fonte in abbonamento, facoltativa
+//   ADS-B Exchange vende l'accesso alle sue API (su RapidAPI, o con un
+//   contratto diretto): copertura mondiale, aggiornamenti al secondo, e un
+//   prezzo. Per questo non e' una dipendenza dell'app ma un **posto pronto**:
+//   chi ha una chiave la mette come secret del Worker
+//       ADSBX_API_KEY    la chiave
+//       ADSBX_API_HOST   facoltativo; di serie adsbexchange-com1.p.rapidapi.com
+//   e la fonte entra in testa alla corsa. Senza chiave non esiste, e non
+//   costa niente. La chiave non va mai in `config.js`: quello lo legge
+//   chiunque apra il sito.
+//   Lo schema della risposta e' readsb (`ac`), lo stesso delle reti di
+//   comunita': nessuna traduzione, come per loro.
+// =====================================================================
+
+function adsbxConfigurato(env) {
+  return !!(env && pieno(env.ADSBX_API_KEY));
+}
+
+function feedAdsbExchange(env) {
+  const host = pieno(env.ADSBX_API_HOST) ? env.ADSBX_API_HOST.trim() : 'adsbexchange-com1.p.rapidapi.com';
+  return {
+    nome: 'ADS-B Exchange',
+    url: (lat, lon, dist) => `https://${host}/v2/lat/${lat}/lon/${lon}/dist/${dist}/`,
+    intestazioni: { 'X-RapidAPI-Key': env.ADSBX_API_KEY.trim(), 'X-RapidAPI-Host': host }
+  };
+}
+
+// L'ordine: le fonti con una credenziale davanti — ADS-B Exchange, che si
+// paga, e OpenSky, che e' l'unica gratuita che risponde davvero da qui — e
+// le reti di comunita' dietro, perche' costano poco e un giorno potrebbero
+// tornare.
 function fontiDi(env) {
-  return (openSkyConfigurato(env) ? [feedOpenSky(env)] : []).concat(RETI_COMUNITA);
+  return (adsbxConfigurato(env) ? [feedAdsbExchange(env)] : [])
+    .concat(openSkyConfigurato(env) ? [feedOpenSky(env)] : [], RETI_COMUNITA);
+}
+
+// Quali fonti ha questo proxy, **senza interrogarle**: e' quello che il
+// pannello dell'app mostra sotto «Fonti dei dati». Solo nomi e un si'/no —
+// mai una chiave, mai quanto e' lunga.
+function elencoFonti(env) {
+  return {
+    fonti: [
+      { nome: 'ADS-B Exchange', configurata: adsbxConfigurato(env) },
+      { nome: 'OpenSky Network', configurata: openSkyConfigurato(env) }
+    ].filter(f => f.configurata).concat(RETI_COMUNITA.map(f => ({ nome: f.nome, configurata: true })))
+  };
 }
 
 // «signal is aborted without reason» e' il messaggio del browser per una
@@ -314,7 +357,7 @@ async function leggiFonte(fonte, lat, lon, dist, signal) {
     if (fonte.chiedi) return await fonte.chiedi(lat, lon, dist, controller.signal);
     const risposta = await fetch(fonte.url(lat, lon, dist), {
       signal: controller.signal,
-      headers: { 'Accept': 'application/json', 'User-Agent': 'AstroCalendarBen/1.0' },
+      headers: { 'Accept': 'application/json', 'User-Agent': 'AstroCalendarBen/1.0', ...(fonte.intestazioni || {}) },
       cf: { cacheEverything: true, cacheTtl: 20 }
     });
     if (!risposta.ok) throw new Error(`HTTP ${risposta.status}`);
@@ -355,7 +398,9 @@ function primaFotografia(fonti, lat, lon, dist) {
       if (finito || prossimo >= fonti.length) return;
       const fonte = fonti[prossimo++];
       inVolo++;
-      leggiFonte(fonte, lat, lon, dist, regia.signal).then(testo => chiudi(testo)).catch(errore => {
+      // Si restituisce anche **chi** ha risposto: l'app lo mostra nel suo
+      // pannello, e senza quel nome il proxy e' una scatola nera.
+      leggiFonte(fonte, lat, lon, dist, regia.signal).then(testo => chiudi({ testo, fonte: fonte.nome })).catch(errore => {
         if (finito) return;
         errori.push({ feed: fonte.nome, guasto: motivo(errore) });
         lancia();
@@ -482,7 +527,7 @@ async function diagnostica(url, env) {
       }
       const risposta = await fetch(fonte.url(la, lo, di), {
         signal: controller.signal,
-        headers: { 'Accept': 'application/json', 'User-Agent': 'AstroCalendarBen/1.0' }
+        headers: { 'Accept': 'application/json', 'User-Agent': 'AstroCalendarBen/1.0', ...(fonte.intestazioni || {}) }
       });
       const testo = await risposta.text();
       const esito = { feed: fonte.nome, http: risposta.status, ms: Date.now() - inizio };
@@ -579,7 +624,7 @@ function cors(request, env) {
     // torna a indovinare con la sua scala delle riprove un'attesa che qui
     // sappiamo. Dichiararla costa niente e trasforma «riprovo fra un po'» in
     // «riprovo quando mi e' stato detto».
-    'Access-Control-Expose-Headers': 'Retry-After',
+    'Access-Control-Expose-Headers': 'Retry-After, X-ADSB-Fonte',
     'Vary': 'Origin'
   };
   // L'intestazione si scrive solo per chi e' ammesso: negarla e' proprio il
@@ -598,6 +643,10 @@ const proxy = {
     }
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
     const url = new URL(request.url);
+    if (url.pathname === '/api/fonti') {
+      return Response.json(elencoFonti(env), { status: 200,
+        headers: { ...headers, 'Cache-Control': 'no-store' } });
+    }
     if (url.pathname === '/api/diagnostica') {
       return Response.json(await diagnostica(url, env), { status: 200,
         headers: { ...headers, 'Cache-Control': 'no-store' } });
@@ -614,6 +663,7 @@ const proxy = {
         piattaforma: nomePiattaforma(),
         percorsi: {
           '/api/adsb': 'la fotografia degli aerei — parametri lat, lon, dist (miglia nautiche)',
+          '/api/fonti': 'quali fonti ha questo proxy (senza interrogarle)',
           '/api/diagnostica': 'cosa ha risposto ogni fonte, e perche'
         },
         esempio: `${url.origin}/api/diagnostica?lat=45.4642&lon=9.1900&dist=50`
@@ -621,7 +671,7 @@ const proxy = {
     }
     if (url.pathname !== '/api/adsb') {
       return Response.json({ error: 'percorso sconosciuto',
-        percorsiValidi: ['/api/adsb', '/api/diagnostica'] }, { status: 404, headers });
+        percorsiValidi: ['/api/adsb', '/api/fonti', '/api/diagnostica'] }, { status: 404, headers });
     }
     const lat = Number(url.searchParams.get('lat'));
     const lon = Number(url.searchParams.get('lon'));
@@ -630,9 +680,10 @@ const proxy = {
       return Response.json({ error: 'coordinate non valide' }, { status: 400, headers });
     }
     try {
-      const testo = await primaFotografia(fontiDi(env), lat.toFixed(4), lon.toFixed(4), dist);
+      const { testo, fonte } = await primaFotografia(fontiDi(env), lat.toFixed(4), lon.toFixed(4), dist);
       return new Response(testo, { status: 200,
-        headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=20' } });
+        headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=20',
+          'X-ADSB-Fonte': fonte } });
     } catch (guaio) {
       // I dettagli per fonte non sono rumore da sviluppatore: sono l'unica
       // differenza fra «riprova fra un minuto» e «quel servizio e' cambiato e

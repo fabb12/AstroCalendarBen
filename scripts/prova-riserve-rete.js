@@ -78,11 +78,17 @@ function funzione(s, nome) {
 
   const adsb = contesto({ window: {}, avvisaSeManca() {}, urlProxy: () => '',
     providersPredefiniti: [{ nome: 'diretta' }], providersPonte: () => [{ nome: 'ponte' }],
+    providerOpenSky: () => ({ nome: 'opensky', riserva: true, diretto: true }),
     interpretaAdsbExchange() {}, salute: new Map([['ponte', { penaleFino: Date.now() + 60000 }]]) });
   vm.runInContext(funzione(aerei, 'providersDisponibili') + '\n' + funzione(aerei, 'ordinaPerSalute'), adsb);
-  assert.equal(adsb.providersDisponibili().length, 1);
-  assert.equal(adsb.providersDisponibili()[0].nome, 'ponte', 'Niente chiamate dirette senza CORS');
-  assert.equal(adsb.ordinaPerSalute(adsb.providersDisponibili()).length, 0, 'Porte in pausa saltate');
+  // Le reti di comunità senza CORS non si chiamano mai dirette; l'unica
+  // diretta è OpenSky, che è un'API pensata per essere chiamata da fuori, ed
+  // entra solo come riserva in coda.
+  const porte = adsb.providersDisponibili();
+  assert.equal(porte.map(p => p.nome).join(), 'ponte,opensky');
+  assert.ok(!porte.some(p => p.nome === 'diretta'), 'Niente chiamate dirette senza CORS');
+  assert.ok(porte[porte.length - 1].riserva, 'OpenSky diretto solo in coda');
+  assert.equal(adsb.ordinaPerSalute(porte).map(p => p.nome).join(), 'opensky', 'Porte in pausa saltate');
 
   memoria.clear();
   const nuvole = contesto({ luogoCorrente: () => ({ lat: 47.36, lon: 8.55 }), meteoFetch: async () => { throw new Error('429'); } });

@@ -10685,8 +10685,55 @@ body button.did-ponte:active { transform: translateY(1px); }
 .aerei-stato[data-fase="passato"] { border-left-color:#f59e0b; color:#fef3c7; }
 .aerei-stato[data-fase="errore"],
 .aerei-stato[data-fase="senzaRete"],
-.aerei-stato[data-fase="senzaPosizione"] { border-left-color:#ef4444; color:#fecaca; }
+.aerei-stato[data-fase="senzaPosizione"],
+.aerei-stato[data-fase="proxyMancante"] { border-left-color:#ef4444; color:#fecaca; }
 .aerei-stato[data-fase="spento"] { border-left-color:var(--bordo-forte); color:var(--testo-3); }
+
+/* Le fonti dei dati: una riga per porta, il nome a sinistra e lo stato a
+   destra, col pallino dello stesso colore della spia. Chiusa di serie: è la
+   parte che si apre quando qualcosa non torna, non quella che si guarda. */
+.aerei-fonti {
+  margin-top: 8px;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--incassato);
+  font-size: .72rem;
+}
+.aerei-fonti > summary {
+  cursor: pointer;
+  padding: 6px 10px;
+  color: var(--testo-2);
+}
+.aerei-fonti-elenco { list-style: none; margin: 0; padding: 0 10px 4px; }
+.aerei-fonte {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  border-top: 1px solid var(--bordo);
+  color: var(--testo-2);
+}
+.aerei-fonte-nome { min-width: 0; overflow-wrap: anywhere; }
+.aerei-fonte-stato { flex: none; display: flex; align-items: center; gap: 5px; color: var(--testo-3); }
+.aerei-fonte-stato::before {
+  content: '';
+  width: 7px; height: 7px; border-radius: 999px;
+  background: var(--testo-3);
+}
+.aerei-fonte[data-stato="disponibile"] .aerei-fonte-stato::before,
+.aerei-fonte[data-stato="viaProxy"] .aerei-fonte-stato::before { background:#22c55e; }
+.aerei-fonte[data-stato="lenta"] .aerei-fonte-stato::before,
+.aerei-fonte[data-stato="incerta"] .aerei-fonte-stato::before,
+.aerei-fonte[data-stato="pausa"] .aerei-fonte-stato::before { background:#f59e0b; }
+.aerei-fonte[data-stato="bloccata"] .aerei-fonte-stato::before { background:#ef4444; }
+.aerei-fonte[data-stato="memoria"] .aerei-fonte-stato::before { background:#38bdf8; }
+.aerei-fonte-titolo {
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--bordo);
+  color: var(--testo-3);
+  font-size: .68rem;
+}
+.aerei-fonti > .nota-lunga { padding: 0 10px 8px; margin: 0; }
 
 .aerei-interruttori { margin-top: 10px; }
 #aerei-aggiorna[data-esito="successo"] { color:#86efac; border-color:#22c55e; }

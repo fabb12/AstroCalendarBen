@@ -1126,10 +1126,20 @@
                 <button id="aerei-btn-dati" type="button" class="tasto-cielo attiva" aria-pressed="true"
                   title="Tiene vivo il feed ADS-B. Spegnendolo si fermano le richieste e la fotografia viene buttata" data-i18n-title="ui.tiene-vivo-il-feed-ads-b-spegnendolo-si">Dati ADS-B</button>
                 <button id="aerei-btn-auto" type="button" class="tasto-cielo attiva" aria-pressed="true"
-                  title="Rinfresca la fotografia da solo quando invecchia: ogni 45 secondi col disegno acceso, ogni tre minuti quando i dati stanno solo in memoria" data-i18n-title="ui.rinfresca-la-fotografia-da-solo-quando" data-i18n="ui.aggiornamento-automatico">Aggiornamento automatico</button>
+                  title="Rinfresca la fotografia da solo quando invecchia: ogni 25 secondi col disegno acceso, ogni tre minuti quando i dati stanno solo in memoria" data-i18n-title="ui.rinfresca-la-fotografia-da-solo-quando" data-i18n="ui.aggiornamento-automatico">Aggiornamento automatico</button>
                 <button id="aerei-aggiorna" type="button" class="tasto-cielo"
                   title="Chiedi adesso una nuova fotografia, senza aspettare il prossimo giro" data-i18n-title="ui.chiedi-adesso-una-nuova-fotografia-senza" data-i18n="ui.aggiorna-adesso">Aggiorna adesso</button>
               </div>
+              <!-- Le fonti dei dati: chiuso di serie, perché è la parte avanzata.
+                   La riga di stato qui sopra basta a chi vuole sapere se gli
+                   aerei ci sono; qui si legge **chi** li sta portando, chi è
+                   in pausa e perché, e quali fonti servirebbero il proxy.
+                   Le righe le scrive aerei.js (§5, aereiScriviFonti). -->
+              <details id="aerei-fonti" class="aerei-fonti">
+                <summary data-i18n="ui.fonti-dei-dati">Fonti dei dati</summary>
+                <ul id="aerei-fonti-elenco" class="aerei-fonti-elenco"></ul>
+                <p class="etichetta-comando nota-lunga" data-i18n="ui.le-fonti-si-danno-il-cambio-da-sole">Le fonti si danno il cambio da sole: quando una tace o rifiuta si passa alla successiva, e le letture di più fonti si fondono in un aereo solo. Le fonti in abbonamento o con credenziali stanno solo nel proxy del sito, mai nel browser.</p>
+              </details>
               <!-- La leggenda la scrive aerei.js da FASCE_DISTANZA: una copia
                    qui divergerebbe al primo ritocco delle soglie senza che
                    niente lo dica. -->
