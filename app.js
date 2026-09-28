@@ -28872,6 +28872,11 @@ function skyInizializzaGesti() {
     if (t.mosso || sky.puntatori.size > 1) return;
     if (performance.now() - t.quando > 600) return;
 
+    // Appena si torna a toccare il planetario, il pannello lascia spazio al
+    // cielo. Il resto del gesto continua normalmente: se sotto il dito c'è
+    // un astro, lo stesso tocco apre comunque la sua scheda.
+    if (document.getElementById('cielo-comandi')?.dataset.gruppoAttivo) skyMostraGruppo('');
+
     // Dopo aver mostrato quanto ci si e' spostati, il tocco successivo sul
     // planetario libera il cielo dalla carta (senza rubare il normale tocco
     // che apre una scheda o sceglie un luogo).
@@ -29226,6 +29231,16 @@ function inizializzaSkymap() {
   // Le linguette dei gruppi di comandi (telefono e tablet)
   document.querySelectorAll('#cielo-comandi [data-vai-gruppo]').forEach(b => {
     b.addEventListener('click', () => skyMostraGruppo(b.dataset.vaiGruppo));
+  });
+  // Esc libera il cielo dal pannello aperto. Non si registra sulla singola
+  // linguetta: funziona anche se il fuoco è rimasto dentro ai comandi del
+  // pannello. Il campo di ricerca degli astri intercetta prima Esc quando ha
+  // del testo, così il primo colpo pulisce la ricerca e il successivo chiude.
+  document.addEventListener('keydown', (e) => {
+    const barra = document.getElementById('cielo-comandi');
+    if (e.key !== 'Escape' || !sky.aperto || !barra?.dataset.gruppoAttivo) return;
+    e.preventDefault();
+    skyMostraGruppo('');
   });
   // Gli aerei: il tasto disegna o non disegna i triangoli, esattamente come
   // Pianeti o Satelliti. Il feed è un'altra cosa e vive nel suo pannello —
@@ -29672,7 +29687,7 @@ function skyInizializzaSchermoIntero() {
   // suo: chiude quella, e il pieno schermo resta com'era. Altrimenti un tasto
   // solo farebbe due cose insieme, e chi lo preme ne voleva una.
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || !sky.schermoIntero) return;
+    if (e.key !== 'Escape' || e.defaultPrevented || !sky.schermoIntero) return;
     if (lez.aperto || sol.aperto) return;
     skyEsciSchermoIntero();
   });
