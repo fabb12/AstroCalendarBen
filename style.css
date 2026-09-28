@@ -4784,6 +4784,15 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
   cursor: pointer;
   transition: background-color var(--transizione), color var(--transizione);
 }
+/* Il primo passo ha l'unica etichetta composta della scala. Anche quando il
+   viewport e' largo, il pannello resta limitato a 560px: tenendola su una
+   riga "Tempo reale" invadeva quindi il vicino "10 s". La seconda parola
+   puo' scendere dentro la propria pillola, senza dipendere dalla larghezza
+   dell'intera finestra. */
+#skymap-passi [data-passo-tempo="1"] {
+  white-space: normal;
+  line-height: 0.95;
+}
 .tasto-segmento:hover { color: var(--testo); background: rgba(148, 168, 214, 0.12); }
 .tasto-segmento.attiva {
   background: var(--blu);
