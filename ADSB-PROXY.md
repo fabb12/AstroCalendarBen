@@ -238,7 +238,10 @@ browser di chiunque apra il sito.
 
 Per gli account che usano ancora l'autenticazione di base valgono in
 alternativa `OPENSKY_USER` e `OPENSKY_PASS`. Senza nessuna delle due coppie
-OpenSky non entra nella corsa e il Worker si comporta come prima.
+OpenSky entra comunque nella corsa in modalità anonima: la quota è più
+stretta, ma resta una via funzionante quando le reti di comunità rifiutano
+l'indirizzo del proxy. Le credenziali aumentano l'affidabilità e la quota,
+non sono più un interruttore che decide se la fonte esiste.
 
 ### Secret, non Variable — e non e' un dettaglio
 
@@ -257,16 +260,19 @@ associazioni del Worker a quelle dichiarate in `wrangler.toml` — dove di
 pannello rischiano quindi di sparire alla distribuzione successiva; i
 **Secret**, che sono cifrati e vivono fuori dalla configurazione, restano.
 
-Il sintomo e' insidioso perche' non somiglia a un guasto: la diagnostica torna
-a dire `"openSky": "nessuna credenziale configurata"` e OpenSky sparisce
-dall'elenco delle fonti — come se non lo si fosse mai configurato. Se capita
-dopo un merge, e' quasi certamente questo.
+Prima della versione v385 il sintomo era insidioso perché non somigliava a un
+guasto: la diagnostica tornava a dire `"openSky": "nessuna credenziale
+configurata"` e OpenSky spariva dall'elenco delle fonti. Era il motivo per cui,
+persi i secret dopo una distribuzione, i dati potevano non essere più trovati:
+restavano soltanto reti che spesso rifiutano gli IP serverless. Da v385 la
+diagnostica dice `"accesso anonimo"` e OpenSky resta nella corsa; se i secret
+spariscono si perde quota, non l'intera fonte.
 
 Non metterle mai in `wrangler.toml`: quel file sta nel repository, ed e'
 pubblico.
 
-Verifica con `/api/diagnostica`: il campo `openSky` dice se le credenziali
-sono state viste, e `funzionanti` deve contenere `OpenSky`.
+Verifica con `/api/diagnostica`: il campo `openSky` distingue «credenziali
+presenti» da «accesso anonimo», e `funzionanti` deve contenere `OpenSky`.
 
 ### I conti
 
