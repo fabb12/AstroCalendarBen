@@ -575,15 +575,6 @@ const RIL_VICINO_NIENTE_M = 110;
 const RIL_FILO_CIELO = 0.68;
 const RIL_FILO_DENTRO = 0.30;
 
-// La superficie resta continua. Il vecchio stile da carta panoramica
-// sovrapponeva alla campitura una pettinatura per ogni meridiano, le fasce di
-// quota e i contorni dei piani. Su un monitor grande quei segni non venivano
-// piu' letti come chiaroscuro: diventavano barre verticali e gradini, in
-// particolare sui pendii quasi uniformi. La geometria 3D e l'occlusione non
-// dipendono da quei segni; si puo' quindi conservare la maglia vera e
-// dipingerla con una sola sfumatura continua, senza cuciture fra colonne.
-const RIL_SUPERFICIE_MORBIDA = true;
-
 // Di quanti anelli possono differire due punti di rottura di colonne vicine
 // perché si considerino lo stesso crinale. Tre: più stretto e i contorni si
 // spezzettano su ogni dente, più largo e si cuciono creste che non hanno
@@ -3604,7 +3595,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // Le fette dettagliate sfumano nella sagoma sicura prima che la proiezione
   // possa farle incrociare. La stessa alfa governa fondo, tinte, chiaroscuro,
   // foschia e contorni, cosi' nessuno strato resta come un cuneo isolato.
-  const dettaglioAlfa = RIL_SUPERFICIE_MORBIDA ? 0 : rilAlfaDettaglio();
+  const dettaglioAlfa = rilAlfaDettaglio();
   const dettaglio = dettaglioAlfa > 0.004;
   // Di quanto la maglia è decentrata rispetto a dove si è adesso, e a che
   // quota è l'occhio in questo momento. Due numeri per fotogramma, non due
@@ -4146,25 +4137,6 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     if (regola) {
       ctx.fill(regola);
       chiamate++;
-
-      // Una sola velatura continua dà profondità al terreno morbido senza
-      // reintrodurre le colonne della maglia. Il colore cambia soltanto con
-      // l'altezza sullo schermo: nessun bordo può quindi seguire un azimut o
-      // un anello del DEM. Il ritaglio usa la stessa sagoma che chiude il
-      // terreno, perciò la sfumatura non invade mai il cielo.
-      if (RIL_SUPERFICIE_MORBIDA) {
-        const vicino = rilColoreDiFetta(0, suolo);
-        const lontano = rilColoreDiFetta(0.72, suolo);
-        const sfumatura = ctx.createLinearGradient(0, 0, 0, H);
-        sfumatura.addColorStop(0, `rgb(${lontano[0]},${lontano[1]},${lontano[2]})`);
-        sfumatura.addColorStop(1, `rgb(${vicino[0]},${vicino[1]},${vicino[2]})`);
-        ctx.save();
-        ctx.clip(rilTracciaSagoma(ctx) || 'nonzero');
-        ctx.fillStyle = sfumatura;
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-        chiamate++;
-      }
     }
 
     if (dettaglio) {
