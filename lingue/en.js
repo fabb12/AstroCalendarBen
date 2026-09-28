@@ -437,7 +437,6 @@ window.ASTRO_DIZIONARI['en'] = {
     'aereiFonti.stato.sconosciuta': 'proxy status unknown',
     'aereiFonti.stato.proxyVecchio': 'proxy needs updating',
     'ui.fonti-dei-dati': 'Data sources',
-    'ui.le-fonti-si-danno-il-cambio-da-sole': 'Sources take over from each other on their own: when one goes silent or refuses, the next one steps in, and readings from several sources are merged into a single aircraft. Subscription or credentialed sources live only in the site proxy, never in the browser.',
 
     // --- Il fumetto dell'aereo e i suoi comandi ------------------------
     'aereo.nonComunicata': 'not reported',
@@ -4528,7 +4527,6 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.porta-il-punto-qui': 'Bring the point here',
     'ui.posizione': 'Location',
     'ui.posizione-attuale': 'Current location',
-    'ui.posizioni-ads-b-entro-il-raggio-scelto-50-km': 'ADS-B positions within the chosen radius (50 km by default; change it in Settings). The colour says how close it is; the dashed line is the route for the next 5 minutes. Move the clock and the aircraft and its route become estimates consistent with the moment shown.',
     'ui.precisa-al-metro': 'accurate to the metre',
     'ui.prendi-quello-che-hai-copiato': 'Take what you copied',
     'ui.prepariamo-il-planetario': 'Preparing the planetarium',

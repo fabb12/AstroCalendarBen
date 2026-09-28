@@ -446,7 +446,6 @@ window.ASTRO_DIZIONARI['it'] = {
     'aereiFonti.stato.sconosciuta': 'stato del proxy sconosciuto',
     'aereiFonti.stato.proxyVecchio': 'proxy da aggiornare',
     'ui.fonti-dei-dati': 'Fonti dei dati',
-    'ui.le-fonti-si-danno-il-cambio-da-sole': 'Le fonti si danno il cambio da sole: quando una tace o rifiuta si passa alla successiva, e le letture di più fonti si fondono in un aereo solo. Le fonti in abbonamento o con credenziali stanno solo nel proxy del sito, mai nel browser.',
 
     // --- Il fumetto dell'aereo e i suoi comandi ------------------------
     'aereo.nonComunicata': 'non comunicata',
@@ -4665,7 +4664,6 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.porta-il-punto-qui': 'Porta il punto qui',
     'ui.posizione': 'Posizione',
     'ui.posizione-attuale': 'Posizione attuale',
-    'ui.posizioni-ads-b-entro-il-raggio-scelto-50-km': 'Posizioni ADS-B entro il raggio scelto (50 km di serie; si cambia nelle Impostazioni). Il colore dice quanto è vicino; la linea tratteggiata è la rotta dei 5 minuti successivi. Spostando l\'orologio, aereo e rotta diventano stime coerenti con l\'istante mostrato.',
     'ui.precisa-al-metro': 'precisa al metro',
     'ui.prendi-quello-che-hai-copiato': 'Prendi quello che hai copiato',
     'ui.prepariamo-il-planetario': 'Prepariamo il planetario',
