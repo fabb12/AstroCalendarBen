@@ -94,8 +94,9 @@ const DIAGNOSTICA_ATTESA_MS = 60000;
 //   In alternativa, per gli account che usano ancora l'autenticazione di
 //   base:
 //       OPENSKY_USER / OPENSKY_PASS
-//   Senza nessuna delle due, OpenSky semplicemente non entra nella corsa e
-//   il Worker si comporta come prima.
+//   Senza nessuna delle due OpenSky resta nella corsa in modalita' anonima:
+//   ha una quota piu' stretta, ma e' comunque una riserva essenziale quando
+//   le reti di comunita' rifiutano l'IP del provider serverless.
 // =====================================================================
 
 // Due indirizzi e non uno: Keycloak ha tolto il prefisso `/auth` dalla
@@ -205,7 +206,10 @@ async function autorizzazioneOpenSky(env) {
     }
     throw ultimo || new Error('token: nessun indirizzo ha risposto');
   }
-  return 'Basic ' + btoa(`${env.OPENSKY_USER}:${env.OPENSKY_PASS}`);
+  if (env.OPENSKY_USER && env.OPENSKY_PASS) {
+    return 'Basic ' + btoa(`${env.OPENSKY_USER}:${env.OPENSKY_PASS}`);
+  }
+  return '';
 }
 
 // OpenSky vuole un riquadro, non un cerchio. La correzione del coseno tiene
@@ -269,9 +273,14 @@ function feedOpenSky(env) {
     async chiedi(lat, lon, dist) {
       const autorizzazione = await autorizzazioneOpenSky(env);
       return conSveglia('dati', OPENSKY_PASSO_MS, async signal => {
+        const headers = { 'Accept': 'application/json' };
+        // Mandare `Authorization: ""` non equivale a non autenticarsi:
+        // alcuni gateway lo trattano come una credenziale malformata e
+        // rispondono 401. In modalita' anonima l'intestazione deve mancare.
+        if (autorizzazione) headers.Authorization = autorizzazione;
         const risposta = await fetch(
           `${OPENSKY_DATI_URL}?${riquadroOpenSky(Number(lat), Number(lon), dist)}`,
-          { signal, headers: { 'Accept': 'application/json', 'Authorization': autorizzazione } }
+          { signal, headers }
         );
         if (risposta.status === 401 || risposta.status === 403) {
           // Un token rifiutato non si riusa: buttarlo qui vuol dire che la
@@ -317,13 +326,14 @@ function feedAdsbExchange(env) {
   };
 }
 
-// L'ordine: le fonti con una credenziale davanti — ADS-B Exchange, che si
-// paga, e OpenSky, che e' l'unica gratuita che risponde davvero da qui — e
-// le reti di comunita' dietro, perche' costano poco e un giorno potrebbero
-// tornare.
+// L'ordine: ADS-B Exchange davanti quando e' configurato, poi OpenSky sempre
+// (autenticato se ci sono i segreti, anonimo altrimenti), infine le reti di
+// comunita'. Prima OpenSky veniva escluso del tutto senza credenziali: era
+// proprio il caso in cui il proxy smetteva di trovare dati quando le quattro
+// reti pubbliche rifiutavano insieme l'IP serverless.
 function fontiDi(env) {
   return (adsbxConfigurato(env) ? [feedAdsbExchange(env)] : [])
-    .concat(openSkyConfigurato(env) ? [feedOpenSky(env)] : [], RETI_COMUNITA);
+    .concat([feedOpenSky(env)], RETI_COMUNITA);
 }
 
 // Quali fonti ha questo proxy, **senza interrogarle**: e' quello che il
@@ -333,7 +343,7 @@ function elencoFonti(env) {
   return {
     fonti: [
       { nome: 'ADS-B Exchange', configurata: adsbxConfigurato(env) },
-      { nome: 'OpenSky Network', configurata: openSkyConfigurato(env) }
+      { nome: openSkyConfigurato(env) ? 'OpenSky Network' : 'OpenSky Network (anonimo)', configurata: true }
     ].filter(f => f.configurata).concat(RETI_COMUNITA.map(f => ({ nome: f.nome, configurata: true })))
   };
 }
@@ -690,7 +700,7 @@ const proxy = {
       // va sostituito», e senza di loro il 503 e' indistinguibile fra i due.
       return Response.json({
         error: 'feed ADS-B temporaneamente non disponibili',
-        openSky: openSkyConfigurato(env) ? 'credenziali presenti' : 'nessuna credenziale configurata',
+        openSky: openSkyConfigurato(env) ? 'credenziali presenti' : 'accesso anonimo',
         dettagli: (guaio && guaio.dettagli) || [{ feed: '?', guasto: motivo(guaio) }]
       }, { status: 503, headers });
     }
