@@ -500,9 +500,18 @@ async function diagnosticaOpenSky(env) {
 }
 
 async function diagnostica(url, env) {
-  const lat = Number(url.searchParams.get('lat'));
-  const lon = Number(url.searchParams.get('lon'));
-  const dist = Number(url.searchParams.get('dist'));
+  // `get` restituisce `null` per un parametro assente, e `Number(null)` non
+  // e' NaN: e' **zero**. Senza questa lettura la diagnostica aperta
+  // dall'indirizzo nudo interrogava il Golfo di Guinea con un miglio di
+  // raggio, e rispondeva «zero aerei» da tutte le fonti — cioe' sembrava
+  // che le reti funzionanti non vedessero niente.
+  const leggi = nome => {
+    const v = url.searchParams.get(nome);
+    return v === null || v.trim() === '' ? NaN : Number(v);
+  };
+  const lat = leggi('lat');
+  const lon = leggi('lon');
+  const dist = leggi('dist');
   const la = (Number.isFinite(lat) ? lat : 45.4642).toFixed(4);
   const lo = (Number.isFinite(lon) ? lon : 9.19).toFixed(4);
   const di = Math.max(1, Math.min(250, Math.ceil(Number.isFinite(dist) ? dist : 50)));
