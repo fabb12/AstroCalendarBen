@@ -444,6 +444,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'aereiFonti.stato.viaProxy': 'tramite proxy',
     'aereiFonti.stato.nonConfigurata': 'non configurato nel proxy',
     'aereiFonti.stato.sconosciuta': 'stato del proxy sconosciuto',
+    'aereiFonti.stato.proxyVecchio': 'proxy da aggiornare',
     'ui.fonti-dei-dati': 'Fonti dei dati',
     'ui.le-fonti-si-danno-il-cambio-da-sole': 'Le fonti si danno il cambio da sole: quando una tace o rifiuta si passa alla successiva, e le letture di più fonti si fondono in un aereo solo. Le fonti in abbonamento o con credenziali stanno solo nel proxy del sito, mai nel browser.',
 

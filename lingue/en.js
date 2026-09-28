@@ -435,6 +435,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'aereiFonti.stato.viaProxy': 'via proxy',
     'aereiFonti.stato.nonConfigurata': 'not configured in the proxy',
     'aereiFonti.stato.sconosciuta': 'proxy status unknown',
+    'aereiFonti.stato.proxyVecchio': 'proxy needs updating',
     'ui.fonti-dei-dati': 'Data sources',
     'ui.le-fonti-si-danno-il-cambio-da-sole': 'Sources take over from each other on their own: when one goes silent or refuses, the next one steps in, and readings from several sources are merged into a single aircraft. Subscription or credentialed sources live only in the site proxy, never in the browser.',
 

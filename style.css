@@ -10724,7 +10724,8 @@ body button.did-ponte:active { transform: translateY(1px); }
 .aerei-fonte[data-stato="viaProxy"] .aerei-fonte-stato::before { background:#22c55e; }
 .aerei-fonte[data-stato="lenta"] .aerei-fonte-stato::before,
 .aerei-fonte[data-stato="incerta"] .aerei-fonte-stato::before,
-.aerei-fonte[data-stato="pausa"] .aerei-fonte-stato::before { background:#f59e0b; }
+.aerei-fonte[data-stato="pausa"] .aerei-fonte-stato::before,
+.aerei-fonte[data-stato="proxyVecchio"] .aerei-fonte-stato::before { background:#f59e0b; }
 .aerei-fonte[data-stato="bloccata"] .aerei-fonte-stato::before { background:#ef4444; }
 .aerei-fonte[data-stato="memoria"] .aerei-fonte-stato::before { background:#38bdf8; }
 .aerei-fonte-titolo {

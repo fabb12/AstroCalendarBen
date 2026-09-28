@@ -1310,12 +1310,25 @@
 
   function caricaFontiProxy() {
     const proxy = urlProxy();
-    if (!proxy || fontiProxy.promessa || Date.now() - fontiProxy.quando < 600000) return;
+    // Una risposta buona vale dieci minuti; un guasto solo uno. Col tetto
+    // unico di prima un solo tentativo andato storto — il proxy appena
+    // ripubblicato, la rete che cambia — lasciava «stato sconosciuto» nel
+    // pannello per dieci minuti anche a proxy già a posto.
+    const validita = fontiProxy.stato === 'noto' ? 600000 : 60000;
+    if (!proxy || fontiProxy.promessa || Date.now() - fontiProxy.quando < validita) return;
     const controller = new AbortController();
     const sveglia = setTimeout(() => controller.abort(), 8000);
     fontiProxy.promessa = fetch(`${proxy}/api/fonti`, { signal: controller.signal, cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        // Un 404 qui non è un guasto: è un proxy che risponde ma è fermo a
+        // prima di `/api/fonti`, cioè una copia vecchia di `worker-adsb.js`
+        // (tipicamente un Playground di Deno incollato a mano). Va detto con
+        // quel nome, perché si ripara ripubblicando e non aspettando.
+        if (r.status === 404) return 'vecchio';
+        return r.ok ? r.json() : null;
+      })
       .then(d => {
+        if (d === 'vecchio') { fontiProxy.elenco = []; fontiProxy.stato = 'vecchio'; return; }
         fontiProxy.elenco = d && Array.isArray(d.fonti) ? d.fonti : [];
         fontiProxy.stato = d ? 'noto' : 'ignoto';
       })
@@ -1342,13 +1355,15 @@
     });
     const conProxy = !!urlProxy();
     const haDalProxy = nome => fontiProxy.elenco.some(f => String(f.nome || f).toLowerCase().includes(nome));
+    const statoSenzaFonte = fontiProxy.stato === 'noto' ? 'nonConfigurata'
+      : fontiProxy.stato === 'vecchio' ? 'proxyVecchio' : 'sconosciuta';
     const premium = [
       { nome: 'ADS-B Exchange', stato: !conProxy ? 'serveProxy' : haDalProxy('exchange') ? 'viaProxy'
-        : fontiProxy.stato === 'noto' ? 'nonConfigurata' : 'sconosciuta' },
+        : statoSenzaFonte },
       { nome: 'OpenSky (account)', stato: !conProxy ? 'serveProxy' : haDalProxy('opensky') ? 'viaProxy'
-        : fontiProxy.stato === 'noto' ? 'nonConfigurata' : 'sconosciuta' },
+        : statoSenzaFonte },
       { nome: 'Airplanes.live', stato: !conProxy ? 'serveProxy' : haDalProxy('airplanes') ? 'viaProxy'
-        : fontiProxy.stato === 'noto' ? 'nonConfigurata' : 'sconosciuta' }
+        : statoSenzaFonte }
     ];
     const memoria = stato.aerei.filter(a => stato.ultimiVisti && !stato.ultimiVisti.has(String(a.id))).length;
     return { righe, premium, memoria };
