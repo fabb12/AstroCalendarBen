@@ -397,6 +397,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'aereo.tracciaSullaMappa': 'Real track on the map',
     'aereiStato.quanti': { uno: '1 aircraft', altri: '{n} aircraft' },
     'aereiStato.nuovoScarico': ' · next fetch {quando}',
+    'aereiStato.aggiornaAMano': ' · press «Refresh now» for a new reading',
     'aereiStato.senzaPosizione': 'A location is needed to look for aircraft.',
     'aereiStato.proxyMancante': 'No data: the ADS-B networks do not allow requests from browsers, and right now not one public CORS bridge is answering either. For a route that does not depend on third-party services, configure your own proxy (ADSB_PROXY_URL, see ADSB-PROXY.md).',
     'aereiStato.spento': 'Data paused: switch on “ADS-B data” to fetch nearby traffic.',

@@ -83,7 +83,7 @@ const ATTESA_FEED_MS = 6500;
 const ATTESA_TOTALE_MS = 11000;
 // La diagnostica puo' aspettare piu' a lungo: non c'e' nessuno schermo fermo
 // dall'altra parte, e una porta lenta e' un'informazione da avere.
-const DIAGNOSTICA_ATTESA_MS = 60000;
+const DIAGNOSTICA_ATTESA_MS = 20000;
 
 // =====================================================================
 // OPENSKY — la fonte con le credenziali
@@ -424,6 +424,70 @@ function primaFotografia(fonti, lat, lon, dist) {
   });
 }
 
+// --- La cella condivisa ------------------------------------------------
+// Senza questa memoria ogni utente costava una richiesta alle fonti per ogni
+// aggiornamento, e con OpenSky davanti una richiesta e' un credito: i 4.000
+// crediti al giorno di un account gratuito finivano in una serata con poche
+// persone collegate. Ma due persone a tre chilometri di distanza guardano lo
+// stesso cielo, e la fotografia che serve all'una serve all'altra.
+//
+// Si arrotonda quindi il centro a una griglia di `CELLA_GRADI` e il raggio a
+// gradini di `CELLA_PASSO_NM`, allargandolo di mezza diagonale della cella:
+// cosi' la fotografia chiesta dal centro della cella contiene per intero il
+// cerchio di chiunque ci caschi dentro. Il ritaglio esatto al suo raggio lo
+// fa poi l'app (`arricchisci`), come ha sempre fatto con le fonti che
+// rispondono con un riquadro. Il consumo cresce col numero di **zone**
+// guardate, non di persone.
+//
+// La memoria e' dell'isolato, quindi di comodo: su Deno un isolato serve
+// molte richieste di fila, e quando ne nasce uno nuovo si ripaga una
+// fotografia. Le richieste gemelle — due utenti della stessa cella nello
+// stesso secondo — aspettano la stessa corsa invece di lanciarne due.
+const CELLA_GRADI = 0.1;
+const CELLA_PASSO_NM = 10;
+const CELLA_VITA_MS = 20000;
+const CELLE_MAX = 200;
+const celle = new Map();
+
+function cellaDi(lat, lon, dist) {
+  const cLat = Math.round(lat / CELLA_GRADI) * CELLA_GRADI;
+  const cLon = Math.round(lon / CELLA_GRADI) * CELLA_GRADI;
+  // Mezza diagonale della cella in miglia nautiche: un grado di latitudine
+  // sono sessanta miglia, e la longitudine si stringe col coseno.
+  const mezzaNm = 0.5 * CELLA_GRADI * 60 *
+    Math.hypot(1, Math.max(0.1, Math.cos(cLat * Math.PI / 180)));
+  const raggio = Math.min(250, Math.ceil((dist + mezzaNm) / CELLA_PASSO_NM) * CELLA_PASSO_NM);
+  return { lat: cLat.toFixed(4), lon: cLon.toFixed(4), dist: raggio,
+    chiave: `${cLat.toFixed(1)},${cLon.toFixed(1)},${raggio}` };
+}
+
+function fotografiaDellaCella(env, lat, lon, dist) {
+  const cella = cellaDi(lat, lon, dist);
+  const ora = Date.now();
+  const voce = celle.get(cella.chiave);
+  if (voce && (voce.promessa || ora - voce.quando < CELLA_VITA_MS)) {
+    return voce.promessa || Promise.resolve(voce.risultato);
+  }
+  const promessa = primaFotografia(fontiDi(env), cella.lat, cella.lon, cella.dist)
+    .then(risultato => {
+      celle.set(cella.chiave, { quando: Date.now(), risultato, promessa: null });
+      // Un tetto e non una scadenza a orologio: niente timer da tenere vivi
+      // (che terrebbero sveglio l'isolato), si butta la cella piu' vecchia.
+      if (celle.size > CELLE_MAX) {
+        let vecchia = null, quando = Infinity;
+        for (const [k, v] of celle) if (!v.promessa && v.quando < quando) { vecchia = k; quando = v.quando; }
+        if (vecchia) celle.delete(vecchia);
+      }
+      return risultato;
+    }, errore => {
+      // Un no non si tiene: il prossimo che chiede riprova da capo.
+      celle.delete(cella.chiave);
+      throw errore;
+    });
+  celle.set(cella.chiave, { quando: ora, risultato: null, promessa });
+  return promessa;
+}
+
 // --- La diagnostica ---------------------------------------------------
 // `/api/diagnostica` interroga **tutte** le fonti invece di correre, e
 // racconta com'e' andata a ognuna. Serve nel momento in cui il proxy risponde
@@ -699,7 +763,7 @@ const proxy = {
       return Response.json({ error: 'coordinate non valide' }, { status: 400, headers });
     }
     try {
-      const { testo, fonte } = await primaFotografia(fontiDi(env), lat.toFixed(4), lon.toFixed(4), dist);
+      const { testo, fonte } = await fotografiaDellaCella(env, lat, lon, dist);
       return new Response(testo, { status: 200,
         headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=20',
           'X-ADSB-Fonte': fonte } });

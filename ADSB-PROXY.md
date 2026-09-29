@@ -276,12 +276,22 @@ presenti» da «accesso anonimo», e `funzionanti` deve contenere `OpenSky`.
 
 ### I conti
 
-OpenSky concede agli utenti registrati un budget giornaliero di richieste, e
-una richiesta con un riquadro piccolo è la più economica che ci sia. Con
-l'aggiornamento ogni 25 secondi a planetario aperto (il doppio per dieci minuti
-dopo un 429) e ogni 3 minuti a disegno spento si resta largamente dentro, perché l'app interroga solo mentre è
-aperta. Il token OAuth2 dura mezz'ora e il Worker se lo tiene: non si paga una
-richiesta di autenticazione per ogni fotografia.
+Un account OpenSky gratuito ha **4.000 crediti al giorno** (8.000 per chi
+contribuisce con un ricevitore), e una richiesta con un riquadro piccolo costa
+un credito. Due cose tengono basso il consumo:
+
+- **L'aggiornamento automatico nasce spento.** Ogni apertura del planetario fa
+  una lettura, poi si rinfresca col tasto «Aggiorna adesso» (o rientrando
+  nell'app con una fotografia più vecchia di due minuti e mezzo). Chi accende
+  il battito paga una lettura ogni 25 secondi, cioè circa 144 crediti l'ora.
+- **Il Worker condivide la fotografia per zona** (`fotografiaDellaCella`):
+  arrotonda il centro a una griglia di 0,1° e tiene la risposta 20 secondi,
+  quindi chi guarda dalla stessa zona non spende crediti in più. Il consumo
+  cresce col numero di zone, non di persone.
+
+Il token OAuth2 dura mezz'ora e il Worker se lo tiene: non si paga una
+richiesta di autenticazione per ogni fotografia. Esauriti i crediti, OpenSky
+risponde 429 e il Worker passa da solo alle reti di comunità.
 
 ---
 

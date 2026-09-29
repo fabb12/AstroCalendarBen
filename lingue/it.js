@@ -406,6 +406,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'aereo.tracciaSullaMappa': 'Traccia reale sulla mappa',
     'aereiStato.quanti': { uno: '1 aereo', altri: '{n} aerei' },
     'aereiStato.nuovoScarico': ' · nuovo scarico {quando}',
+    'aereiStato.aggiornaAMano': ' · premi «Aggiorna adesso» per una lettura nuova',
     'aereiStato.senzaPosizione': 'Serve una posizione per cercare gli aerei.',
     'aereiStato.proxyMancante': 'Nessun dato: le reti ADS-B non autorizzano le richieste dei browser e in questo momento non risponde nemmeno un ponte CORS pubblico. Per una strada che non dipende da servizi di terzi si configura un proxy proprio (ADSB_PROXY_URL, vedi ADSB-PROXY.md).',
     'aereiStato.spento': 'Dati in pausa: accendi «Dati ADS-B» per scaricare il traffico vicino.',

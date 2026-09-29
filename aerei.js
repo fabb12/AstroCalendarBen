@@ -1257,6 +1257,12 @@
   // la realtà aumentata e i transiti senza niente da guardare fra un
   // aggiornamento e l'altro.
   function etaMassimaMs() {
+    // Col battito spento la prossima fotografia la chiede chi guarda, e
+    // potare dopo due minuti vorrebbe dire svuotare il cielo sotto gli occhi
+    // di chi non ha ancora premuto «Aggiorna». Si tiene fino a quando la
+    // fotografia si dichiara vecchia: da lì in poi resta velata (stantia) e la
+    // riga di stato dice di aggiornarla.
+    if (!stato.auto) return Math.max(AEREI_MEMORIA_MS, DATI_VECCHI_MS * 2);
     return Math.max(AEREI_MEMORIA_MS, intervalloAggiornamento() + 60000);
   }
 
@@ -1393,7 +1399,12 @@
     // ha battuto l'ultima volta. Non si salvano e non si mostrano — servono
     // solo a distinguere «sta lavorando» da «è morto e non lo sa».
     richiestaDa: 0, ultimoBattito: 0,
-    dati: true, visibile: true, auto: true,
+    // L'aggiornamento automatico nasce **spento**: ogni apertura del
+    // planetario fa comunque la sua fotografia (`aereiAvvia`), e da lì la
+    // si rinfresca a mano o accendendo il battito. Acceso di serie, un
+    // planetario lasciato aperto chiedeva una fotografia ogni venticinque
+    // secondi — cioè un credito OpenSky — anche a chi guardava le stelle.
+    dati: true, visibile: true, auto: false,
     ultimoSuccesso: 0, ultimoTentativo: 0, prossimoAggiornamento: 0, prossimoTentativo: 0,
     tentativiFalliti: 0, errore: '', errNome: '', ultimaFonte: '', avviato: false,
     ricaricaDopo: false, ultimoRenderSecondo: null, feedbackRichiesto: false, feedbackTimer: null,
@@ -1415,14 +1426,22 @@
       const v = JSON.parse(localStorage.getItem(CHIAVE_AEREI) || '{}');
       if (typeof v.dati === 'boolean') stato.dati = v.dati;
       if (typeof v.visibile === 'boolean') stato.visibile = v.visibile;
-      if (typeof v.auto === 'boolean') stato.auto = v.auto;
+      // Si rilegge solo una scelta **fatta a mano** (`autoScelto`): prima il
+      // valore si salvava insieme agli altri due interruttori, quindi quasi
+      // tutti avevano in memoria un `auto: true` che nessuno aveva deciso, e
+      // il nuovo valore di serie non sarebbe arrivato mai.
+      if (v.autoScelto === true && typeof v.auto === 'boolean') {
+        stato.auto = v.auto;
+        stato.autoScelto = true;
+      }
     } catch (e) { /* senza memoria valgono i valori di serie */ }
   }
 
   function preferenzeSalva() {
     try {
       localStorage.setItem(CHIAVE_AEREI,
-        JSON.stringify({ dati: stato.dati, visibile: stato.visibile, auto: stato.auto }));
+        JSON.stringify({ dati: stato.dati, visibile: stato.visibile, auto: stato.auto,
+          autoScelto: !!stato.autoScelto }));
     } catch (e) { /* niente storage: la scelta vale per questa sessione */ }
   }
 
@@ -1996,8 +2015,13 @@
     const f = fase();
     const quanti = T('quanti', { n: stato.aerei.length });
     const eta = stato.ultimoSuccesso ? quantoFa(Date.now() - stato.ultimoSuccesso) : '';
+    // Col battito spento non c'è un «prossimo scarico» da annunciare: c'è un
+    // tasto da premere, e lo si dice solo quando la fotografia è vecchia —
+    // ripeterlo accanto a una lettura di dieci secondi fa sarebbe rumore.
     const prossimo = stato.dati && stato.auto && stato.prossimoAggiornamento
-      ? T('nuovoScarico', { quando: fraQuanto(stato.prossimoAggiornamento - Date.now()) }) : '';
+      ? T('nuovoScarico', { quando: fraQuanto(stato.prossimoAggiornamento - Date.now()) })
+      : stato.dati && !stato.auto && stato.ultimoSuccesso &&
+        Date.now() - stato.ultimoSuccesso > DATI_VECCHI_MS ? T('aggiornaAMano') : '';
     if (f === 'senzaPosizione') return T('senzaPosizione');
     if (f === 'proxyMancante') return T('proxyMancante');
     if (f === 'spento') {
@@ -2507,9 +2531,13 @@
   // ragione per bussare prima del tempo.
   function aereiRientro() {
     guardato('rientro', aggiornaUI);
-    if (!stato.avviato || !stato.dati || !stato.auto || !tempoReale()) return;
+    if (!stato.avviato || !stato.dati || !tempoReale()) return;
     if (stato.richiesta) return;
-    if (Date.now() - stato.ultimoSuccesso <= RIENTRO_MS) return;
+    // Col battito spento il rientro vale come un'apertura, ma solo se la
+    // fotografia è già vecchia: passare a un'altra app per dieci secondi non
+    // è una ragione per spendere una richiesta.
+    const soglia = stato.auto ? RIENTRO_MS : DATI_VECCHI_MS;
+    if (Date.now() - stato.ultimoSuccesso <= soglia) return;
     stato.prossimoAggiornamento = Math.max(Date.now(), stato.prossimoTentativo || 0);
     if (Date.now() >= stato.prossimoAggiornamento) carica(false);
   }
@@ -2591,6 +2619,7 @@
 
   function aereiImpostaAuto(attivo) {
     stato.auto = !!attivo;
+    stato.autoScelto = true;
     preferenzeSalva();
     if (stato.auto && stato.dati) stato.prossimoAggiornamento = Math.min(
       stato.prossimoAggiornamento, stato.ultimoSuccesso + intervalloAggiornamento());
