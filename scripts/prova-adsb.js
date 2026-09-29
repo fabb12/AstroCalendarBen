@@ -364,6 +364,7 @@ prova('ritorno in primo piano: aggiornamento immediato, ma senza scavalcare il f
   m.AEREI_PROVIDERS = porte;
   m.__emettiDoc('DOMContentLoaded');
   A.stato.avviato = true;
+  A.stato.auto = true;          // questa prova parla del battito acceso
   A.stato.ultimoSuccesso = Date.now() - 60000;
   A.stato.prossimoAggiornamento = Date.now() + 100000;   // il battito aspetterebbe
   m.document.hidden = false;
@@ -377,6 +378,28 @@ prova('ritorno in primo piano: aggiornamento immediato, ma senza scavalcare il f
   m.__emettiDoc('visibilitychange');
   await new Promise(r => setTimeout(r, 30));
   assert.equal(porte[0].chiamate, 1);
+});
+
+prova('aggiornamento automatico spento di serie: una lettura all\'apertura e poi a mano', async () => {
+  const m = nuovoMondo();
+  const A = m.AereiADS_B;
+  assert.equal(A.stato.auto, false, 'di serie il battito non riscarica');
+  const porte = colleghi(m, [portaFinta('A', () => cielo(aereo('aaa001')))]);
+  m.AEREI_PROVIDERS = porte;
+  m.__emettiDoc('DOMContentLoaded');
+  A.stato.avviato = true;
+  // Tornando dopo un minuto non si spende niente: la fotografia è ancora buona.
+  A.stato.ultimoSuccesso = Date.now() - 60000;
+  m.document.hidden = false;
+  m.__emettiDoc('visibilitychange');
+  await new Promise(r => setTimeout(r, 30));
+  assert.equal(porte[0].chiamate, 0, 'un minuto non basta a riscaricare');
+  // Dopo cinque minuti il rientro vale come un'apertura.
+  A.stato.ultimoSuccesso = Date.now() - 300000;
+  A.stato.prossimoTentativo = 0;
+  m.__emettiDoc('visibilitychange');
+  await new Promise(r => setTimeout(r, 30));
+  assert.equal(porte[0].chiamate, 1, 'una fotografia vecchia si rifà rientrando');
 });
 
 prova('annullamento delle richieste pendenti chiudendo il planetario', async () => {
