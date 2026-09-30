@@ -21822,11 +21822,127 @@ function skyDisegnaOmbraLunare(ctx, r, o, ang) {
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.clip();
   ctx.globalCompositeOperation = 'multiply';
+  // Con la Luna ingrandita più dello schermo l'ombra non si affida al
+  // gradiente del canvas ma a una tela dipinta pixel per pixel (vedi
+  // skyOmbraTessitura): è la sola strada che su un telefono non si spegne.
+  const tela = vista ? skyOmbraTessitura(s, cx, cy, rp, perGrado, vista) : null;
+  if (tela) {
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(tela, vista.x0, vista.y0, vista.x1 - vista.x0, vista.y1 - vista.y0);
+    ctx.restore();
+    return;
+  }
   const g = skyOmbraGradiente(ctx, s, cx, cy, rp, perGrado, vista);
   ctx.fillStyle = g;
   if (vista) ctx.fillRect(vista.x0, vista.y0, vista.x1 - vista.x0, vista.y1 - vista.y0);
   else ctx.fillRect(-r, -r, r * 2, r * 2);
   ctx.restore();
+}
+
+// --- L'ombra ingrandita su un telefono: pixel per pixel ---------------
+//
+// La segnalazione: sul computer, ingrandendo sulla Luna eclissata, l'ombra
+// della Terra resta; sul telefono, oltre un certo campo, sparisce tutta —
+// niente rame, niente turchese, una Luna piena qualunque — e torna appena
+// si allarga. Non è la geometria (è la stessa a qualunque ingrandimento,
+// §21 di verifica.html) e non è la tavolozza: è la **precisione della GPU**.
+//
+// Con la Luna più larga dello schermo la parte in vista è una fetta
+// sottile di un gradiente enorme: il centro dell'ombra sta a migliaia di
+// pixel fuori dal riquadro, e il gradiente radiale va da `a` a `b` con
+// `(b − a) / b` di qualche millesimo. Il rasterizzatore del canvas, sulla
+// GPU, calcola la posizione lungo il gradiente normalizzata sul raggio —
+// cioè un numero vicinissimo a uno, da cui va tolto un altro numero
+// vicinissimo a uno. Le GPU dei computer lo fanno a precisione piena; quelle
+// dei telefoni a **mezza precisione** (fp16, undici bit di mantissa: vicino
+// a uno il passo è mezzo millesimo), e la differenza fra i due numeri si
+// perde tutta. Il colore che esce è quello di un capo della rampa — di
+// solito il bianco dell'ultima fermata, cioè «niente ombra» — e in
+// `multiply` il bianco non lascia traccia. Più si ingrandisce, più la fetta
+// si assottiglia: ecco perché c'è una soglia di campo, e perché cambia col
+// telefono. Il ramo lineare di skyOmbraGradiente non bastava a salvarlo:
+// chiede che i cerchi siano rette a un terzo di pixel, e su un telefono
+// quella condizione non si verifica quasi mai.
+//
+// La cura non chiede niente di delicato alla GPU: la distanza dall'asse
+// dell'ombra la calcola JavaScript in doppia precisione, per ogni pixel di
+// una tela piccola che copre la sola fetta in vista, e la GPU deve solo
+// ingrandirla — un'operazione con coordinate fra zero e uno, che nessuna
+// mezza precisione può rovinare. L'ombra è liscia per natura (a questi
+// ingrandimenti l'orlo turchese è largo decine di pixel), quindi una tela
+// di qualche centinaio di pixel stirata con l'interpolazione bilineare non
+// si distingue dal gradiente vero. Costa meno di un millisecondo, e si rifà
+// solo quando la fetta si sposta.
+const SKY_OMBRA_TESSITURA_LATO = 256;
+const SKY_OMBRA_TESSITURA_LUT = 384;
+let skyOmbraTes = null;
+function skyOmbraTessitura(s, cx, cy, rp, perGrado, vista) {
+  if (typeof document === 'undefined') return null;
+  const w = vista.x1 - vista.x0, h = vista.y1 - vista.y0;
+  if (!(w > 0 && h > 0)) return null;
+  // Le distanze dall'asse dentro alla fetta, come in skyOmbraGradiente
+  const qx = Math.max(vista.x0, Math.min(cx, vista.x1)), qy = Math.max(vista.y0, Math.min(cy, vista.y1));
+  const dMin = Math.hypot(qx - cx, qy - cy);
+  let dMax = 0;
+  for (const [x, y] of [[vista.x0, vista.y0], [vista.x1, vista.y0], [vista.x0, vista.y1], [vista.x1, vista.y1]])
+    dMax = Math.max(dMax, Math.hypot(x - cx, y - cy));
+  // Tutta la fetta fuori dalla penombra: non c'è niente da disegnare
+  if (dMin >= rp) return null;
+  // La fetta abbraccia quasi tutta l'ombra: il gradiente di sempre è ben
+  // condizionato (centro vicino, rampa larga) e va benissimo anche a mezza
+  // precisione
+  if (dMin === 0 && dMax >= rp * 0.9) return null;
+
+  const lato = SKY_OMBRA_TESSITURA_LATO;
+  const scala = Math.max(w, h) / lato;
+  const tw = Math.max(2, Math.min(lato, Math.ceil(w / scala)));
+  const th = Math.max(2, Math.min(lato, Math.ceil(h / scala)));
+  const tondo = (v) => Math.round(v * 2) / 2;
+  const chiave = [s.umbra.toFixed(5), s.penombra.toFixed(5), tondo(cx), tondo(cy), tondo(rp),
+    tondo(vista.x0), tondo(vista.y0), tondo(vista.x1), tondo(vista.y1), tw, th].join('|');
+  if (skyOmbraTes && skyOmbraTes.chiave === chiave) return skyOmbraTes.tela;
+
+  let tela = skyOmbraTes && skyOmbraTes.tela;
+  if (!tela) tela = document.createElement('canvas');
+  if (tela.width !== tw) tela.width = tw;
+  if (tela.height !== th) tela.height = th;
+  const c2 = tela.getContext('2d');
+  if (!c2 || typeof c2.createImageData !== 'function') return null;
+
+  // La tavolozza, campionata fitta sulla sola rampa che cade nella fetta:
+  // fuori dalla penombra il colore è bianco, cioè niente in `multiply`
+  const a = dMin, b = Math.min(dMax, rp);
+  const N = SKY_OMBRA_TESSITURA_LUT;
+  const lut = new Float32Array((N + 1) * 3);
+  const passo = Math.max(1e-9, b - a) / N;
+  for (let i = 0; i <= N; i++) {
+    const col = skyEclisseColore(s, (a + passo * i) / perGrado);
+    lut[i * 3] = col[0] * 255; lut[i * 3 + 1] = col[1] * 255; lut[i * 3 + 2] = col[2] * 255;
+  }
+  let img = skyOmbraTes && skyOmbraTes.img;
+  if (!img || img.width !== tw || img.height !== th) img = c2.createImageData(tw, th);
+  const px = img.data;
+  const sx = w / tw, sy = h / th;
+  let k = 0;
+  for (let j = 0; j < th; j++) {
+    const dy = vista.y0 + (j + 0.5) * sy - cy;
+    for (let i = 0; i < tw; i++, k += 4) {
+      const dx = vista.x0 + (i + 0.5) * sx - cx;
+      // Oltre `b` la tosatura dà l'ultimo campione, che fuori dalla
+      // penombra è il bianco pieno
+      let u = (Math.sqrt(dx * dx + dy * dy) - a) / passo;
+      if (u < 0) u = 0; else if (u > N) u = N;
+      const i0 = Math.min(N - 1, Math.floor(u)), f = u - i0, i1 = i0 + 1;
+      px[k] = lut[i0 * 3] + (lut[i1 * 3] - lut[i0 * 3]) * f;
+      px[k + 1] = lut[i0 * 3 + 1] + (lut[i1 * 3 + 1] - lut[i0 * 3 + 1]) * f;
+      px[k + 2] = lut[i0 * 3 + 2] + (lut[i1 * 3 + 2] - lut[i0 * 3 + 2]) * f;
+      px[k + 3] = 255;
+    }
+  }
+  c2.putImageData(img, 0, 0);
+  skyOmbraTes = { chiave, tela, img };
+  return tela;
 }
 
 // Il riquadro dello schermo portato nelle coordinate locali della Luna (il
