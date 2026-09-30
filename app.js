@@ -14421,7 +14421,7 @@ function skyDisegnaGlobo(ctx, r, o, ang, opzioni) {
     ctx.clip();
     ctx.rotate(-ang.luce);
   }
-  const faccia = skyFacciaDi(o, r);
+  const faccia = (opzioni && opzioni.faccia) || skyFacciaDi(o, r);
   if (faccia) {
     ctx.save();
     ctx.rotate(ang.polo);
@@ -21606,6 +21606,10 @@ function skyDisegnaLuna(ctx, x, y, r, o, ang, estinzione, morso) {
     ctx.restore();
   }
 
+  // Durante un'eclissi la faccia arriva già con l'ombra della Terra dentro
+  // (vedi skyLunaEclissata): è la sola strada che su un telefono non si spegne
+  const eclissata = o.ombraTerra ? skyLunaEclissata(o, r, ang) : null;
+
   // La faccia vera, orientata sul nord del cielo e non sul Sole: i mari
   // stanno fermi mentre la fase cambia, com'è giusto che sia
   skyDisegnaGlobo(ctx, r, o, ang, {
@@ -21613,6 +21617,7 @@ function skyDisegnaLuna(ctx, x, y, r, o, ang, estinzione, morso) {
     bordo: 0.4,
     morso,
     estinzione,
+    faccia: eclissata,
     ripiego: (c, raggio) => {
       c.beginPath();
       c.arc(0, 0, raggio, 0, Math.PI * 2);
@@ -21621,8 +21626,12 @@ function skyDisegnaLuna(ctx, x, y, r, o, ang, estinzione, morso) {
     }
   });
 
-  // L'ombra della Terra, se ci siamo dentro (vedi skyOmbraDellaTerra)
-  if (o.ombraTerra) skyDisegnaOmbraLunare(ctx, r, o, ang);
+  // L'ombra della Terra, se ci siamo dentro (vedi skyOmbraDellaTerra). Col
+  // disco già eclissato è dipinta nella faccia; il multiply resta per la Luna
+  // troppo piccola per avere una faccia, dove funziona anche sui telefoni
+  if (o.ombraTerra && !eclissata) {
+    try { skyDisegnaOmbraLunare(ctx, r, o, ang); } catch (e) { /* resta la Luna piena */ }
+  }
   ctx.restore();
 }
 
@@ -21850,6 +21859,106 @@ function skyDisegnaOmbraLunare(ctx, r, o, ang) {
   if (vista) ctx.fillRect(vista.x0, vista.y0, vista.x1 - vista.x0, vista.y1 - vista.y0);
   else ctx.fillRect(-r, -r, r * 2, r * 2);
   ctx.restore();
+}
+
+// --- La Luna eclissata, dipinta in memoria --------------------------
+//
+// La segnalazione, ripetuta dopo due cure: sul telefono, stringendo il campo
+// sotto i dieci gradi, l'ombra della Terra sparisce dalla Luna e resta una
+// Luna piena qualunque; allargando torna. Sul computer non succede, e nessun
+// banco headless lo riproduce. Le due cure di prima ritoccavano il modo in
+// cui l'ombra si stende **sopra** la faccia — un gradiente, poi una tela
+// dipinta in JavaScript — ma tutt'e due passavano dal `multiply` del canvas
+// sulla GPU del telefono, ed è quello il passaggio che su quei telefoni,
+// col disco oltre una certa misura, non lascia traccia. Quello che invece
+// si vede sempre è la faccia: la sua ricopiatura normale funziona a
+// qualunque ingrandimento.
+//
+// Quindi l'ombra non si stende più sopra: si mette **dentro** alla faccia.
+// Si leggono i pixel della faccia, si moltiplicano in JavaScript per il
+// colore dell'ombra in quel punto (skyEclisseColore, lo stesso conto del
+// gradiente) e se ne fa una tela nuova, che si disegna al posto della faccia
+// con la stessa identica chiamata. Niente composizione, niente gradiente,
+// niente GPU in mezzo: se sullo schermo c'è la Luna, c'è anche la sua ombra.
+//
+// Il lato si ferma a SKY_ECLISSATA_LATO: con la Luna larga quanto lo
+// schermo la faccia vera è a 1024, ma un'ombra non ha dettaglio fine e il
+// conto si rifà ogni volta che l'ombra si sposta di un pixel di tela.
+const SKY_ECLISSATA_LATO = 512;
+const SKY_ECLISSATA_LUT = 512;
+let skyEclissataFonte = null;   // { faccia, lato, dati }: i pixel letti una volta
+let skyEclissataTela = null;    // { chiave, tela, img }
+function skyLunaEclissata(o, r, ang) {
+  const s = o.ombraTerra;
+  if (!s || !s.rL || !(s.umbra > 0) || !(s.penombra > s.umbra)) return null;
+  if (typeof document === 'undefined') return null;
+  const faccia = skyFacciaDi(o, r);
+  if (!faccia || !faccia.width) return null;
+  try {
+    const lato = Math.min(SKY_ECLISSATA_LATO, faccia.width);
+    // I pixel della faccia, letti una volta sola per tela
+    if (!skyEclissataFonte || skyEclissataFonte.faccia !== faccia || skyEclissataFonte.lato !== lato) {
+      const t = document.createElement('canvas');
+      t.width = lato; t.height = lato;
+      const c = t.getContext('2d', { willReadFrequently: true });
+      c.drawImage(faccia, 0, 0, lato, lato);
+      skyEclissataFonte = { faccia, lato, dati: c.getImageData(0, 0, lato, lato).data };
+    }
+    // Dove sta l'asse dell'ombra, nel riferimento della faccia (che si
+    // disegna ruotata di ang.polo): stesso conto di skyDisegnaOmbraLunare
+    const cp = Math.cos(s.pa), qp = Math.sin(s.pa);
+    const d = [
+      ang.nord[0] * cp + ang.est[0] * qp,
+      ang.nord[1] * cp + ang.est[1] * qp,
+      ang.nord[2] * cp + ang.est[2] * qp
+    ];
+    const verso = ang.schermo(d) - ang.polo;
+    const g = s.gamma / s.rL;                    // in raggi lunari
+    const cx = Math.cos(verso) * g, cy = Math.sin(verso) * g;
+    const pen = s.penombra / s.rL;
+    const passoK = 2 / lato;                     // un pixel di tela, in raggi
+    const tondo = v => Math.round(v / passoK);
+    const chiave = [lato, s.umbra.toFixed(5), s.penombra.toFixed(5), tondo(cx), tondo(cy)].join('|');
+    if (skyEclissataTela && skyEclissataTela.chiave === chiave &&
+        skyEclissataTela.faccia === faccia) return skyEclissataTela.tela;
+
+    // La tavolozza dall'asse fino all'orlo della penombra; oltre, il bianco
+    const N = SKY_ECLISSATA_LUT;
+    const lut = new Float32Array((N + 1) * 3);
+    for (let i = 0; i <= N; i++) {
+      const col = skyEclisseColore(s, (pen * i / N) * s.rL);
+      lut[i * 3] = col[0]; lut[i * 3 + 1] = col[1]; lut[i * 3 + 2] = col[2];
+    }
+    let tela = skyEclissataTela && skyEclissataTela.tela;
+    if (!tela) tela = document.createElement('canvas');
+    if (tela.width !== lato) { tela.width = lato; tela.height = lato; }
+    const c2 = tela.getContext('2d', { willReadFrequently: true });
+    let img = skyEclissataTela && skyEclissataTela.img;
+    if (!img || img.width !== lato) img = c2.createImageData(lato, lato);
+    const fonte = skyEclissataFonte.dati, px = img.data;
+    const scala = N / pen;
+    let k = 0;
+    for (let j = 0; j < lato; j++) {
+      const v = (j + 0.5) * passoK - 1 - cy;
+      for (let i = 0; i < lato; i++, k += 4) {
+        const a = fonte[k + 3];
+        px[k + 3] = a;
+        if (!a) continue;
+        const u = (i + 0.5) * passoK - 1 - cx;
+        let t = Math.sqrt(u * u + v * v) * scala;
+        if (t >= N) { px[k] = fonte[k]; px[k + 1] = fonte[k + 1]; px[k + 2] = fonte[k + 2]; continue; }
+        const i0 = t | 0, f = t - i0, b0 = i0 * 3, b1 = b0 + 3;
+        px[k] = fonte[k] * (lut[b0] + (lut[b1] - lut[b0]) * f);
+        px[k + 1] = fonte[k + 1] * (lut[b0 + 1] + (lut[b1 + 1] - lut[b0 + 1]) * f);
+        px[k + 2] = fonte[k + 2] * (lut[b0 + 2] + (lut[b1 + 2] - lut[b0 + 2]) * f);
+      }
+    }
+    c2.putImageData(img, 0, 0);
+    skyEclissataTela = { chiave, tela, img, faccia };
+    return tela;
+  } catch (e) {
+    return null;                 // si torna al multiply di prima
+  }
 }
 
 // --- L'ombra ingrandita su un telefono: pixel per pixel ---------------
