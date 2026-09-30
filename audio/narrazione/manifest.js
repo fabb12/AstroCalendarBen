@@ -458,6 +458,114 @@
         file: 'demo/it/solstizi_equinozi-16.mp3',
         impronta: '3a7878b7'
       }
+    },
+    // ─────────────────────────────────────────────
+    // Voyager
+    // ─────────────────────────────────────────────
+
+    'demo.narr.voyager.1': {
+      it: {
+        file: 'demo/it/voyager-1.mp3',
+        impronta: '3e952e1b'
+      }
+    },
+
+    'demo.narr.voyager.2': {
+      it: {
+        file: 'demo/it/voyager-2.mp3',
+        impronta: 'dbc9638f'
+      }
+    },
+
+    'demo.narr.voyager.3': {
+      it: {
+        file: 'demo/it/voyager-3.mp3',
+        impronta: '791775b0'
+      }
+    },
+
+    'demo.narr.voyager.4': {
+      it: {
+        file: 'demo/it/voyager-4.mp3',
+        impronta: 'fde086e7'
+      }
+    },
+
+    'demo.narr.voyager.5': {
+      it: {
+        file: 'demo/it/voyager-5.mp3',
+        impronta: 'a2df3650'
+      }
+    },
+
+    'demo.narr.voyager.6': {
+      it: {
+        file: 'demo/it/voyager-6.mp3',
+        impronta: 'db566e6d'
+      }
+    },
+
+    'demo.narr.voyager.7': {
+      it: {
+        file: 'demo/it/voyager-7.mp3',
+        impronta: 'a0767ead'
+      }
+    },
+
+    'demo.narr.voyager.8': {
+      it: {
+        file: 'demo/it/voyager-8.mp3',
+        impronta: '32e5ff23'
+      }
+    },
+
+    'demo.narr.voyager.9': {
+      it: {
+        file: 'demo/it/voyager-9.mp3',
+        impronta: 'f1ad9cf3'
+      }
+    },
+
+    'demo.narr.voyager.10': {
+      it: {
+        file: 'demo/it/voyager-10.mp3',
+        impronta: 'faaa7d92'
+      }
+    },
+
+    'demo.narr.voyager.11': {
+      it: {
+        file: 'demo/it/voyager-11.mp3',
+        impronta: '355715bb'
+      }
+    },
+
+    'demo.narr.voyager.12': {
+      it: {
+        file: 'demo/it/voyager-12.mp3',
+        impronta: '72f153d6'
+      }
+    },
+
+    'demo.narr.voyager.13': {
+      it: {
+        file: 'demo/it/voyager-13.mp3',
+        impronta: '25f92a9a'
+      }
+    },
+
+    'demo.narr.voyager.14': {
+      it: {
+        file: 'demo/it/voyager-14.mp3',
+        impronta: '64191e28'
+      }
+    },
+
+    'demo.narr.voyager.15': {
+      it: {
+        file: 'demo/it/voyager-15.mp3',
+        impronta: 'e3a4cea9'
+      }
     }
   }
 };
