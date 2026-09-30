@@ -144,6 +144,18 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.evaluate(() => { AstroDemo.vaiAScena(13, 0.95); AstroDemo.pausa(); });
     await attendiFotogrammi();
     ok(await pagina.evaluate(() => sky.sondeInCielo === true), 'I mirini delle Voyager sono accesi nel planetario');
+    // «Stasera» è il giorno in cui si guarda la demo, non una data scritta a
+    // mano: il giorno civile a Roma dell'orologio del cielo è quello di oggi,
+    // e la camera guarda dove sta la sonda.
+    const stasera = await pagina.evaluate(() => {
+      const luogo = skyLuogoDelCielo();
+      const a = partiDataDelLuogo(skyAdesso(), luogo), b = partiDataDelLuogo(new Date(), luogo);
+      const s = skySondaInCielo('voyager1');
+      return { stessoGiorno: a.year === b.year && a.month === b.month && a.day === b.day, ora: a.hour,
+        scartoAz: Math.abs(((sky.manuale.az - s.az + 540) % 360) - 180), sondaAlta: s.alt };
+    });
+    ok(stasera.stessoGiorno && stasera.ora === 21, `«Stasera» è oggi alle 21 (ora ${stasera.ora})`);
+    ok(stasera.scartoAz < 0.5, `La camera guarda verso Voyager 1 (scarto ${stasera.scartoAz.toFixed(2)}°)`);
 
     // --- 4. Stop: tutto torna com'era ---------------------------------------
     await pagina.evaluate(() => AstroDemo.ferma());

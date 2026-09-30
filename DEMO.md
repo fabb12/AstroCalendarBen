@@ -392,7 +392,8 @@ Tre azioni nuove, tutte ripristinate dalla fotografia di `avvia`:
   (`milestones`), la Terra cerchiata (`home: show`), la misura del modellino
   (`model_from`/`model_to`, frazione del lato corto) e il metro
   (`scale: real` = distanze e dimensioni vere, per i flyby). Va **prima** di
-  `camera_3d`.
+  `camera_3d`. Le date accettano anche `now`, `now+365d`, `now-280d` (v396):
+  le scene «oggi» partono dal giorno in cui si guarda la demo.
 - **`camera_3d`** accetta i fuochi `'Voyager 1'`, `'Voyager 2'`, `'Jupiter'`,
   `'Saturn'`, `'Uranus'`, `'Neptune'` (perno sul corpo, zoom fino a 30000) e,
   con le sonde, **`probe_az`**: la camera si mette nella direzione
@@ -401,6 +402,14 @@ Tre azioni nuove, tutte ripristinate dalla fotografia di `avvia`:
 - **`probe_markers`** (planetario): i mirini delle due sonde nel cielo, con la
   distanza e le ore di luce (`skyDisegnaSondeInCielo`); sotto l'orizzonte non
   si disegnano.
+
+**Stasera vuol dire stasera (v396).** Le ultime scene avevano la data scritta
+a mano (15 ottobre 2026): guardando la demo un altro giorno, «stasera»
+mostrava il cielo e il cartello di quel giorno lì. Adesso la scena del
+planetario usa `set_date { tonight: '21:00' }` (le 21 di oggi, ora civile del
+luogo del cielo), e `point_view { probe: 'voyager1' }` punta la camera sulla
+sonda (`skySondaInCielo` in app.js), perché la sua direzione cambia di sera
+in sera. Dalla frase è sparito «verso ovest», che vale solo in autunno.
 
 Nessuna frase ha un MP3 registrato: parla la sintesi.
 
@@ -465,10 +474,10 @@ Azioni principali:
 - `timelapse { start: 18:00, end: 22:00 }`
 - `highlight_object { name: 'Venus', scale: 5 }`
 - `center_target { target: 'Moon' }`
-- `point_view { az: 0, alt: 25 }`
+- `point_view { az: 0, alt: 25 }` oppure `point_view { probe: 'voyager1', alt: -3 }` (verso la sonda, `alt` in più)
 - `set_fov { degrees: 20 }` e `zoom_fov { from: 40, to: 2 }`
 - `frame_objects { names: 'Mercury,Venus,Mars,Jupiter' }`
-- `set_date { iso: '2028-12-31T15:45:00Z' }`
+- `set_date { iso: '2028-12-31T15:45:00Z' }` oppure `set_date { tonight: '21:00' }` (oggi, ora civile del luogo)
 - `set_location { lat: 43.0618, lon: 141.3545, name: 'Sapporo', timezone: 'Asia/Tokyo' }`
 - `simulate_aurora { kp: 5 }`
 - `zoom_view { type: geometric, final_target: solar_system_3d }`

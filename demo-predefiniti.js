@@ -742,7 +742,7 @@
     // Il Disco d'Oro: la camera gira attorno alla sonda.
     duration: 22s;
     action: narrate { id: 'demo.narr.voyager.12' };
-    action: voyager_journey { from: '2026-01-01T00:00:00Z', to: '2026-10-15T00:00:00Z', probes: 'voyager1', model_from: 0.48, model_to: 0.68, milestones: hide };
+    action: voyager_journey { from: 'now-280d', to: 'now', probes: 'voyager1', model_from: 0.48, model_to: 0.68, milestones: hide };
     action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: 5, orbit: -36, elev_from: 2, elev_to: -12, zoom_from: 40, zoom_to: 60 };
     action: date_card { label: 'demo.cartello.voyager.disco', time: hide };
   }
@@ -750,19 +750,20 @@
     // Oggi: tutto il viaggio in un colpo d'occhio.
     duration: 20s;
     action: narrate { id: 'demo.narr.voyager.13' };
-    action: voyager_journey { from: '2026-10-15T00:00:00Z', to: '2027-10-15T00:00:00Z', model_from: 0.035 };
+    action: voyager_journey { from: 'now', to: 'now+365d', model_from: 0.035 };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Neptune', orbit: 60, elev_from: 14, elev_to: 32, zoom_from: 0.52, zoom_to: 0.6 };
     action: date_card { label: 'demo.cartello.voyager.oggi', time: hide };
   }
   scene planetarium_view {
-    // Roma, stasera: dove guardare. Voyager 1 fra Ercole e l'Ofiuco.
+    // Roma, stasera (il giorno in cui si guarda la demo): dove guardare.
+    // Voyager 1 fra Ercole e l'Ofiuco, con la camera puntata su di lei.
     duration: 20s;
     action: narrate { id: 'demo.narr.voyager.14' };
     action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
-    action: set_date { iso: '2026-10-15T18:30:00Z' };
+    action: set_date { tonight: '21:00' };
     action: probe_markers {};
     action: zoom_fov { from: 110, to: 30 };
-    action: point_view { az: 255, alt: 33 };
+    action: point_view { probe: 'voyager1' };
     action: date_card { label: 'demo.cartello.voyager.stasera', time: hide };
   }
   scene planetarium_view {
@@ -770,9 +771,9 @@
     duration: 20s;
     action: narrate { id: 'demo.narr.voyager.15' };
     action: probe_markers {};
-    action: timelapse { start: 20:30, end: 21:15 };
+    action: timelapse { start: 21:00, end: 21:45 };
     action: zoom_fov { from: 30, to: 125 };
-    action: point_view { az: 235, alt: 30 };
+    action: point_view { probe: 'voyager1', alt: -3 };
   }
 }`
     }

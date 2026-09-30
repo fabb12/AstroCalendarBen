@@ -1,6 +1,6 @@
 # Niente in corso
 
-Ultimo lavoro: la **demo delle Voyager** (v393, con le citazioni sfoltite nella v395, vedi `DEMO.md`). Prima ancora: l'**aggregatore ADS-B multi-fonte** (`aerei.js`, v384).
+Ultimo lavoro: la **demo delle Voyager** (v393, con le citazioni sfoltite nella v395 e «stasera» agganciato al giorno vero nella v396, vedi `DEMO.md`). Prima ancora: l'**aggregatore ADS-B multi-fonte** (`aerei.js`, v384).
 
 - Facciata `FontiAerei.acquisisci` (§3-quinquies): il motore non conosce le porte.
 - Record normalizzati (`normalizzaLettura`) e fusi (`fondiLetture`: ICAO →

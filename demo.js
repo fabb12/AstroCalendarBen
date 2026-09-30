@@ -258,9 +258,25 @@
     catch (_) { throw new Error(err('fusoIana')); }
     return { lat: p.lat, lon: p.lon, nome: p.name, fuso: p.timezone, abbreviazioneFuso: '' };
   }
+  // `set_date` vuole un istante UTC scritto per intero (`iso`), oppure
+  // `tonight: 'HH:MM'`: stasera a quell'ora civile nel luogo del cielo.
+  // «Stasera» vuol dire il giorno in cui la demo si guarda, non quello in
+  // cui è stata scritta: con una data fissa, una scena che dice «stasera»
+  // mostrava il cielo e il cartello di un altro giorno.
+  function dataDemo(p, luogo = skyLuogoDelCielo()) {
+    if (p.tonight === undefined) return dataISO(p);
+    campi(p, ['tonight']);
+    const m = minuti(p.tonight);
+    richiedi(luogo, err('luogoData'));
+    const parti = partiDataDelLuogo(new Date(), luogo);
+    const d = dataDalTempoDelLuogo({ year: parti.year, month: parti.month, day: parti.day,
+      hour: Math.floor(m / 60), minute: m % 60, second: 0 }, luogo);
+    richiedi(d, err('oraInesistente'));
+    return d;
+  }
   registro.set_date = {
-    verifica: dataISO,
-    crea(p) { istante(+dataISO(p)); }
+    verifica(p) { if (p.tonight === undefined) dataISO(p); else { campi(p, ['tonight']); minuti(p.tonight); } },
+    crea(p) { istante(+dataDemo(p)); }
   };
   // Un tratto di calendario, da una data all'altra, per tutta la durata della
   // scena: è il modo di far girare la Terra attorno al Sole in venti secondi.
@@ -294,18 +310,34 @@
     }
   };
   registro.point_view = {
+    // Con `probe` la direzione è quella della sonda nell'istante in cui la
+    // scena comincia (più `alt` gradi, se c'è): una direzione scritta a mano
+    // vale per una sera sola, e «dove sta stasera» cambia di sera in sera.
+    // Se la sonda è bassa, lo sguardo resta almeno a 15° perché si veda
+    // anche l'orizzonte.
     verifica(p) {
-      campi(p, ['az', 'alt']);
+      campi(p, ['az', 'alt', 'probe']);
+      if (p.probe !== undefined) {
+        richiedi(SONDE_VOYAGER.includes(p.probe), err('sonde'));
+        richiedi(p.az === undefined && (p.alt === undefined || numero(p.alt, -45, 45)), err('direzione'));
+        return;
+      }
       richiedi(numero(p.az, 0, 360) && numero(p.alt, -90, 90), err('direzione'));
     },
     crea(p, c) {
+      let az = p.az, alt = p.alt;
+      if (p.probe !== undefined) {
+        const s = typeof skySondaInCielo === 'function' ? skySondaInCielo(p.probe) : null;
+        richiedi(s, err('sonde'));
+        az = s.az; alt = Math.max(15, s.alt + (p.alt || 0));
+      }
       sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
-      sky.manuale.az = p.az; sky.manuale.alt = p.alt;
+      sky.manuale.az = az; sky.manuale.alt = alt;
       // Come il campo: finché la demo tiene la camera, la direzione resta
       // quella del racconto anche se un ridimensionamento la sposta.
       return { aggiorna() {
         if (c && c.cameraManuale) return;
-        sky.manuale.az = p.az; sky.manuale.alt = p.alt;
+        sky.manuale.az = az; sky.manuale.alt = alt;
       } };
     }
   };
@@ -836,9 +868,19 @@
   // ------------------------------------------------------------------
   const SONDE_VOYAGER = ['voyager1', 'voyager2'];
   const VIAGGIO_MAX_MS = 80 * 366 * 86400000;
+  // Le date del viaggio accettano anche `now`, `now+365d`, `now-280d`: le
+  // scene che raccontano dove sono le sonde «oggi» partono dal giorno in cui
+  // la demo si guarda, arrotondato alla mezzanotte UTC.
+  function dataViaggio(v) {
+    const m = typeof v === 'string' && /^now(?:([+-])(\d{1,5})d)?$/.exec(v);
+    if (!m) return dataISO({ iso: v });
+    const oggi = new Date();
+    const giorni = m[1] ? (m[1] === '-' ? -1 : 1) * Number(m[2]) : 0;
+    return new Date(Date.UTC(oggi.getUTCFullYear(), oggi.getUTCMonth(), oggi.getUTCDate() + giorni));
+  }
   function viaggioVoyager(p) {
     campi(p, ['from', 'to', 'probes', 'model_from', 'model_to', 'future', 'scale', 'milestones', 'ease', 'home']);
-    const a = dataISO({ iso: p.from }), b = dataISO({ iso: p.to });
+    const a = dataViaggio(p.from), b = dataViaggio(p.to);
     richiedi(+b > +a && +b - +a <= VIAGGIO_MAX_MS && a.getUTCFullYear() >= 1977 && b.getUTCFullYear() <= 2100,
       err('viaggio'));
     const sonde = p.probes === undefined ? SONDE_VOYAGER.slice()
@@ -1096,7 +1138,7 @@
       richiedi(VISTE_SCENA.includes(scena.vista), err('scena', { nome: scena.vista }));
       for (const azione of scena.azioni) {
         if (azione.comando === 'set_location') luogo = luogoDemo(azione.parametri);
-        if (azione.comando === 'set_date') quando = dataISO(azione.parametri);
+        if (azione.comando === 'set_date') quando = dataDemo(azione.parametri, luogo);
         if (azione.comando === 'timelapse') quando = tempiCivili(azione.parametri, quando, luogo).fine;
         if (azione.comando === 'aurora_lesson') richiedi(scena.vista === 'didactic_view', err('soloDidattica'));
         if (azione.comando === 'camera_3d') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
