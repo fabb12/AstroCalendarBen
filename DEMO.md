@@ -404,14 +404,15 @@ Tre azioni nuove, tutte ripristinate dalla fotografia di `avvia`:
 
 Nessuna frase ha un MP3 registrato: parla la sintesi.
 
-**Le citazioni (v394).** Il racconto porta dentro poche frasi famose, brevi e
-sempre attribuite: Sagan sulla cosa incredibile che aspetta di essere scoperta
-(scena 1), «il cielo ci chiama» (8), il cuore del *Pallido puntino blu* — «è
-qui, è casa, siamo noi» e il dovere di custodire l'unica casa che abbiamo (11)
-—, il messaggio di Jimmy Carter inciso nel Disco d'Oro (12) e i «vagabondi» di
-*Cosmos* col «siamo fatti di materia di stelle» del congedo (15). La scena del
-puntino è salita a 34 secondi e il congedo a 20: le citazioni vogliono silenzio
-attorno, e `controlla-narrazione.js` misura le parole contro la durata.
+**Le citazioni (v394, sfoltite nella v395).** Il racconto porta dentro tre
+frasi famose, brevi e sempre attribuite, e solo tre di proposito: il cuore del
+*Pallido puntino blu* — «è qui, è casa, siamo noi» e il dovere di custodire
+l'unica casa che abbiamo (11) —, il messaggio di Jimmy Carter inciso nel Disco
+d'Oro (12) e i «vagabondi» di *Cosmos* nel congedo (15). Una citazione per
+scena, in apertura e in mezzo, diventa un'antologia e toglie peso a quelle che
+contano. La scena del puntino dura 34 secondi e il congedo 20: le citazioni
+vogliono silenzio attorno, e `controlla-narrazione.js` misura le parole contro
+la durata.
 
 ### Perché Helsinki e non Tromsø
 
