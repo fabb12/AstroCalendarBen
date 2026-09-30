@@ -1019,7 +1019,11 @@
     try {
       const o = JSON.parse(localStorage.getItem(CHIAVE_OPZIONI) || 'null');
       if (o && typeof o === 'object') return {
-        schermoIntero: !!o.schermoIntero,
+        // La prima visione deve sembrare una presentazione, non una pagina
+        // dell'app: anche i salvataggi piu vecchi, privi di questa chiave,
+        // ereditano quindi il pieno schermo. Un `false` esplicito continua a
+        // rispettare la scelta di chi lo ha disattivato.
+        schermoIntero: o.schermoIntero !== false,
         registra: !!o.registra,
         vistaPulita: o.vistaPulita !== false,
         registraAudio: o.registraAudio !== false,
@@ -1034,7 +1038,7 @@
         livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
-    return { schermoIntero: false, registra: false, vistaPulita: true, registraAudio: true,
+    return { schermoIntero: true, registra: false, vistaPulita: true, registraAudio: true,
       musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null };
   }
   let opzioni = leggiOpzioni();

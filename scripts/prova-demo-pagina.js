@@ -77,6 +77,19 @@ async function prova(nome, fn) {
     await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof sky !== 'undefined' &&
       sky.observer && sky.oggetti.length, null, { timeout: 30000 });
 
+    await prova('la prima visione parte pulita, a schermo intero e senza testo sovrapposto', async () => {
+      const predefinite = await pagina.evaluate(() => ({
+        schermoIntero: AstroDemo.opzioni.schermoIntero,
+        vistaPulita: AstroDemo.opzioni.vistaPulita,
+        registra: AstroDemo.opzioni.registra,
+        testo: narrazione.preferenze().testo
+      }));
+      assert.deepEqual(predefinite, { schermoIntero: true, vistaPulita: true, registra: false, testo: false });
+      // Le prove successive verificano esplicitamente la fascia dei
+      // sottotitoli, quindi per loro la si accende senza cambiare il default.
+      await pagina.evaluate(() => narrazione.impostaPreferenze({ testo: true }));
+    });
+
     console.log('\n— il menu —');
     await prova('Mese, Agenda e Diario stanno sotto una voce sola; Demo è una voce principale', async () => {
       const voci = await pagina.evaluate(() => [...document.querySelectorAll('.nav-principale .voce-menu')].map(b => b.id));

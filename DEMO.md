@@ -88,10 +88,12 @@ senza avviare nessuna demo (si chiude da sola, con un clic o con Esc).
 Sotto il tasto **Avvia demo** (pieno, largo, col segno del play: è l'azione
 principale della scheda) c'è il riquadro **Durante la demo**. Le scelte si
 ricordano in `astrocal_demo_opzioni_v1` (localStorage) e valgono solo per il
-racconto. `vistaPulita` e `registraAudio` valgono `true` anche quando si
-leggono preferenze salvate prima che queste due chiavi esistessero:
+racconto. `schermoIntero`, `vistaPulita` e `registraAudio` valgono `true` anche
+quando si leggono preferenze salvate prima che queste chiavi esistessero. Per
+una prima visione pulita, la narrazione parte a voce ma col testo a schermo
+spento (si può riaccendere nel gruppo **Narrazione e audio**):
 
-- **Avvia a schermo intero.** Il pieno schermo vero si chiede *una volta*,
+- **Avvia a schermo intero.** È attivo di serie. Il pieno schermo vero si chiede *una volta*,
   dentro al gesto del clic, sull'intero documento; le tre viste (planetario,
   3D, banco delle aurore) se lo passano col solo CSS
   (`skyEntraSchermoIntero({ soloRipiego: true })`, `didPienoEntra(id,

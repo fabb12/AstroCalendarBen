@@ -42,7 +42,10 @@
 // =====================================================================
 
 const CHIAVE_NARRAZIONE = 'astrocalendario_narrazione';
-const NARR_PREDEFINITE = Object.freeze({ attiva: true, volume: 0.9, testo: true, soloTts: false });
+// La voce accompagna il racconto, ma alla prima apertura non copre il cielo
+// con una fascia di testo. Chi preferisce leggere puo riaccenderla dalla
+// pagina Demo; un valore `true` gia salvato resta naturalmente rispettato.
+const NARR_PREDEFINITE = Object.freeze({ attiva: true, volume: 0.9, testo: false, soloTts: false });
 
 // Un ponte Edge-TTS guasto non deve tenere in ostaggio il ripiego: quattro
 // secondi e mezzo sono quelli che Missione Cielo usava già.
@@ -98,7 +101,7 @@ function narrLeggiPreferenze() {
       return {
         attiva: p.attiva !== false,
         volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : NARR_PREDEFINITE.volume,
-        testo: p.testo !== false,
+        testo: p.testo === true,
         soloTts: p.soloTts === true
       };
     }
