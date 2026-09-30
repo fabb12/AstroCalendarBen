@@ -8424,6 +8424,8 @@ const sky = {
   // cielo il giorno di giugno, quello di marzo e quello di dicembre.
   // `null` a riposo; l'elenco delle date e la memoria stanno qui dentro.
   archiSole: null,
+  // Le due Voyager nel cielo (la demo delle Voyager, `skyDisegnaSondeInCielo`)
+  sondeInCielo: false,
   // L'eclittica: la strada che il Sole percorre in un anno fra le stelle, e
   // il binario attorno a cui stanno tutti i pianeti (vedi 7.3-ter). Resta
   // accesa finché non la si spegne, qualunque oggetto si stia guardando.
@@ -23124,6 +23126,8 @@ function skyDisegna() {
   // Gli archi interi del Sole di più giorni (la demo delle stagioni): sono
   // guide come la traccia, e come lei stanno sotto agli astri
   if (sky.archiSole) skyDisegnaArchiSole(ctx, base, focale);
+  // Dove stanno le due Voyager in questo cielo (la demo delle Voyager)
+  if (sky.sondeInCielo) skyDisegnaSondeInCielo(ctx, base, focale);
 
   // Prima le stelle, poi i pianeti, poi il Sole, poi la Luna, infine le
   // stazioni spaziali (che si muovono e devono restare sempre riconoscibili
@@ -23894,6 +23898,53 @@ function skyDisegnaArchiSole(ctx, base, focale) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     skyScrittaConAlone(ctx, arco.etichetta, p.px, p.py - 9, arco.colore, 'rgba(2, 6, 16, 0.85)', 3.5);
+  });
+  ctx.restore();
+}
+
+// Le due Voyager nel cielo di stasera. Non si vedono — nessun telescopio
+// del mondo le mostra — ma una direzione ce l'hanno, e la sanno le stesse
+// posizioni della vista 3D (`solPuntoVoyager`): dalla Terra alla sonda, da
+// eclittiche a equatoriali della data, e da lì all'orizzonte di chi guarda.
+// Un mirino sottile col nome, la distanza e quanto ci mette la luce: è
+// l'unica cosa onesta da disegnare per un oggetto che c'è e non si vede.
+function skyDisegnaSondeInCielo(ctx, base, focale) {
+  if (typeof Astronomy === 'undefined' || !sky.observer || typeof solPuntoVoyager !== 'function') return;
+  const quando = skyAdesso();
+  const t = Astronomy.MakeTime(quando);
+  let terra;
+  try { terra = solVettore('Earth', t); } catch (e) { return; }
+  const eps = 23.4393 * SKY_D2R;
+  ctx.save();
+  ctx.font = `600 ${quanto(12, 13, 14)}px ${SKY_FONT_ETICHETTE}`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  SOL_SONDE.forEach(s => {
+    const q = solPuntoVoyager(s.id, quando.getTime());
+    if (!q) return;
+    const x = q.x - terra.x, y0 = q.y - terra.y, z0 = q.z - terra.z;
+    const y = y0 * Math.cos(eps) - z0 * Math.sin(eps), z = y0 * Math.sin(eps) + z0 * Math.cos(eps);
+    const r = Math.hypot(x, y, z);
+    const ra = ((Math.atan2(y, x) * SKY_R2D + 360) % 360) / 15, dec = Math.asin(z / r) * SKY_R2D;
+    const h = Astronomy.Horizon(t, sky.observer, ra, dec, 'normal');
+    if (h.altitude < -1 && !sky.mostraSottoOrizzonte) return;    // sotto i piedi: stasera non è da cercare
+    const p = skyProietta(skyVettore(h.azimuth, h.altitude), base, focale);
+    if (!p.davanti || p.px < -60 || p.px > sky.larghezza + 60 || p.py < -60 || p.py > sky.altezza + 60) return;
+    const rs = Math.hypot(q.x, q.y, q.z);
+    const ore = rs * SOL_UA_KM / 1079252848.8;
+    ctx.strokeStyle = s.colore;
+    ctx.globalAlpha = 0.95;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(p.px, p.py, 9, 0, Math.PI * 2); ctx.stroke();
+    [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([dx, dy]) => {
+      ctx.beginPath(); ctx.moveTo(p.px + dx * 13, p.py + dy * 13); ctx.lineTo(p.px + dx * 20, p.py + dy * 20); ctx.stroke();
+    });
+    skyScrittaConAlone(ctx, s.nome, p.px + 25, p.py - 8, s.colore, 'rgba(2, 6, 16, 0.85)', 3.5);
+    ctx.font = `${quanto(11, 12, 12)}px ${SKY_FONT_ETICHETTE}`;
+    skyScrittaConAlone(ctx, astroI18n.t('sol.sondaInCielo', {
+      ua: solNumero(rs, 0), ore: solNumero(ore, 1)
+    }), p.px + 25, p.py + 9, 'rgba(226, 232, 240, 0.9)', 'rgba(2, 6, 16, 0.85)', 3);
+    ctx.font = `600 ${quanto(12, 13, 14)}px ${SKY_FONT_ETICHETTE}`;
   });
   ctx.restore();
 }
@@ -33204,6 +33255,9 @@ const sol = {
   // L'asse della Terra messo in evidenza (`solDisegnaAsseTerra`): `null` a
   // riposo, `{ parallelo }` quando la demo delle stagioni lo accende
   evidenziaAsse: null,
+  // Il Grand Tour disegnato (`solDisegnaGrandTour`): `null` a riposo, e
+  // `{ sonde, futuro, misura, incontri }` quando la demo delle Voyager lo accende
+  grandTour: null,
   // Memorie di comodo, tutte con la loro chiave: il telaio geografico della
   // Terra (§7.7-ter), le posizioni geocentriche di Luna e Sole e l'orbita
   // lunare campionata (§7.7-quater). Sono conti che non cambiano dentro allo
@@ -33771,22 +33825,271 @@ function solCalcolaOrbiteMondi(quando) {
 // anni si sta guardando prima del lancio — lì la sonda non c'era, e non si
 // disegna.
 function solLeggiSonde(quando) {
-  const anni = (quando.getTime() - SOL_SONDE_EPOCA_MS) / SOL_SONDE_ANNO_MS;
+  const ms = quando.getTime();
+  const anni = (ms - SOL_SONDE_EPOCA_MS) / SOL_SONDE_ANNO_MS;
   const annoScena = quando.getFullYear() + (quando.getMonth() * 30.4 + quando.getDate()) / 365.25;
   sol.sonde = SOL_SONDE.map(s => {
-    const d = Math.max(0, s.ua + s.uaPerAnno * anni);
-    const lon = s.lon * SKY_D2R, lat = s.lat * SKY_D2R;
-    const pos = {
-      x: d * Math.cos(lat) * Math.cos(lon),
-      y: d * Math.cos(lat) * Math.sin(lon),
-      z: d * Math.sin(lat)
-    };
+    // Prima dell'epoca della tabella la sonda sta sul suo viaggio vero
+    // (il Grand Tour, qui sopra); dopo, sulla retta. Le due strade si
+    // toccano all'epoca per costruzione: l'ultimo arco di Lambert finisce lì.
+    const viaggio = ms < SOL_SONDE_EPOCA_MS ? solPosizioneVoyager(s.id, ms) : null;
+    let pos;
+    if (viaggio) pos = { x: viaggio[0], y: viaggio[1], z: viaggio[2] };
+    else {
+      const d = Math.max(0, s.ua + s.uaPerAnno * anni);
+      const lon = s.lon * SKY_D2R, lat = s.lat * SKY_D2R;
+      pos = { x: d * Math.cos(lat) * Math.cos(lon), y: d * Math.cos(lat) * Math.sin(lon), z: d * Math.sin(lat) };
+    }
+    const piano = SOL_VIAGGI_VOYAGER[s.id];
     return Object.assign({}, s, {
-      pos, r: d, asse: [0, 0, 1], sonda: true,
-      partita: annoScena >= s.lancio,
+      pos, r: Math.hypot(pos.x, pos.y, pos.z), asse: [0, 0, 1], sonda: true,
+      partita: piano ? ms >= piano.lancio : annoScena >= s.lancio,
       anniDiVolo: annoScena - s.lancio
     });
   });
+}
+
+// --- Il Grand Tour: dove stavano le Voyager, anno per anno -----------------
+//   La retta di `SOL_SONDE` è giusta da quando le sonde hanno lasciato
+//   l'ultimo pianeta, e sbagliata prima: tirata all'indietro fino al 1979
+//   metteva la Voyager 1 a un'unità astronomica e mezza dal Sole, trentacinque
+//   gradi sopra il piano, cioè da nessuna parte vicino a Giove — proprio
+//   nell'anno in cui ci passava accanto. Per raccontare il viaggio serve il
+//   viaggio.
+//
+//   Il modello è quello con cui il viaggio è stato progettato, le **coniche
+//   raccordate**. Fra un incontro e l'altro la sonda sente solo il Sole, e
+//   la sua strada è un arco di Keplero: uno solo passa per il punto di
+//   partenza e per quello d'arrivo nel tempo che è davvero trascorso, ed è il
+//   problema di Lambert (`solLambert`). I capi non sono inventati: sono la
+//   Terra il giorno del lancio, Giove, Saturno, Urano e Nettuno nei giorni
+//   degli incontri — le stesse effemeridi di tutta la scena — e in fondo la
+//   posizione di `SOL_SONDE` all'epoca in cui quella tabella vale, così il
+//   viaggio sbocca esattamente sulla retta di oggi. Vicino a ogni pianeta,
+//   dove comanda lui e non il Sole, l'arco cede il posto all'**iperbole del
+//   flyby** (`solFlyby`), costruita dai due asintoti che i due archi
+//   portano con sé: è la curva della fionda, e senza la sonda passerebbe per
+//   il centro di Giove.
+//
+//   Le date sono quelle pubblicate dei massimi avvicinamenti, in UTC.
+const SOL_MU_SOLE = 2.9591220828559115e-4;      // UA³/giorno²: k² di Gauss
+const SOL_GIORNO_MS = 86400000;
+const SOL_VIAGGI_VOYAGER = {
+  voyager1: {
+    lancio: Date.UTC(1977, 8, 5, 12, 56),
+    incontri: [
+      { id: 'Jupiter', ms: Date.UTC(1979, 2, 5, 12, 5), mu: 1.26686534e8, raggioKm: 71492, sfera: 0.322 },
+      { id: 'Saturn', ms: Date.UTC(1980, 10, 12, 23, 46), mu: 3.7931187e7, raggioKm: 60268, sfera: 0.365 }
+    ]
+  },
+  voyager2: {
+    lancio: Date.UTC(1977, 7, 20, 14, 29),
+    incontri: [
+      { id: 'Jupiter', ms: Date.UTC(1979, 6, 9, 22, 29), mu: 1.26686534e8, raggioKm: 71492, sfera: 0.322 },
+      { id: 'Saturn', ms: Date.UTC(1981, 7, 26, 3, 24), mu: 3.7931187e7, raggioKm: 60268, sfera: 0.365 },
+      { id: 'Uranus', ms: Date.UTC(1986, 0, 24, 17, 59), mu: 5.793939e6, raggioKm: 25559, sfera: 0.346 },
+      { id: 'Neptune', ms: Date.UTC(1989, 7, 25, 3, 56), mu: 6.836529e6, raggioKm: 24764, sfera: 0.578 }
+    ]
+  }
+};
+
+const solV = {
+  piu: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  meno: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  per: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+  punto: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  croce: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  lung: a => Math.hypot(a[0], a[1], a[2]),
+  versore: a => { const n = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / n, a[1] / n, a[2] / n]; }
+};
+
+// Le funzioni di Stumpff, che permettono di scrivere un'orbita qualunque —
+// ellisse, parabola o iperbole — con una formula sola. Sotto il millesimo si
+// usa la serie: le forme chiuse lì perdono tutte le cifre.
+function solStumpff(z) {
+  if (z > 1e-3) {
+    const s = Math.sqrt(z);
+    return { C: (1 - Math.cos(s)) / z, S: (s - Math.sin(s)) / (s * s * s) };
+  }
+  if (z < -1e-3) {
+    const s = Math.sqrt(-z);
+    return { C: (Math.cosh(s) - 1) / -z, S: (Math.sinh(s) - s) / (s * s * s) };
+  }
+  return { C: 1 / 2 - z / 24 + z * z / 720, S: 1 / 6 - z / 120 + z * z / 5040 };
+}
+
+// Il problema di Lambert, con la variabile universale (Bate, Mueller e White;
+// Curtis, alg. 5.2): la velocità con cui partire da `r1` per essere in `r2`
+// dopo `giorni`. Il tempo di volo cresce con `z` su tutta la corsa di un giro
+// solo, quindi la bisezione non può sbagliare strada — è più lenta di Newton,
+// e si fa una volta per tratto. `diretto` sceglie il verso del giro dei
+// pianeti; senza, si prende l'arco corto (è quello della fuga, che esce dal
+// piano e non ha un «verso dei pianeti» da rispettare).
+function solLambert(r1, r2, giorni, diretto) {
+  const n1 = solV.lung(r1), n2 = solV.lung(r2);
+  const cosD = Math.max(-1, Math.min(1, solV.punto(r1, r2) / (n1 * n2)));
+  let dTheta = Math.acos(cosD);
+  if (diretto && solV.croce(r1, r2)[2] < 0) dTheta = 2 * Math.PI - dTheta;
+  const A = Math.sin(dTheta) * Math.sqrt(n1 * n2 / (1 - cosD));
+  if (!Number.isFinite(A) || Math.abs(A) < 1e-12) return null;
+  const rq = Math.sqrt(SOL_MU_SOLE);
+  const y = z => { const { C, S } = solStumpff(z); return n1 + n2 + A * (z * S - 1) / Math.sqrt(C); };
+  const tempo = z => {
+    const yz = y(z);
+    if (!(yz > 0)) return -Infinity;
+    const { C, S } = solStumpff(z);
+    return (Math.pow(yz / C, 1.5) * S + A * Math.sqrt(yz)) / rq;
+  };
+  let lo = -400, hi = 4 * Math.PI * Math.PI * (1 - 1e-9);
+  if (tempo(lo) > giorni) return null;
+  for (let i = 0; i < 200; i++) {
+    const m = (lo + hi) / 2;
+    if (tempo(m) < giorni) lo = m; else hi = m;
+  }
+  const z = (lo + hi) / 2, yz = y(z);
+  const f = 1 - yz / n1, g = A * Math.sqrt(yz / SOL_MU_SOLE);
+  if (!Number.isFinite(g) || !g) return null;
+  return solV.per(solV.meno(r2, solV.per(r1, f)), 1 / g);
+}
+
+// Dove arriva, dopo `giorni`, chi parte da `r0` con velocità `v0` sentendo
+// solo il Sole (Curtis, alg. 3.4). L'anomalia universale si trova con Newton
+// dentro a una forbice: la funzione cresce sempre (la sua derivata è il
+// raggio), e un passo che ne esce si rimpiazza col punto di mezzo.
+function solKeplero(r0, v0, giorni) {
+  const mu = SOL_MU_SOLE, rq = Math.sqrt(mu);
+  const n0 = solV.lung(r0), vr0 = solV.punto(r0, v0) / n0;
+  const alfa = 2 / n0 - solV.punto(v0, v0) / mu;
+  const F = x => {
+    const { C, S } = solStumpff(alfa * x * x);
+    return n0 * vr0 / rq * x * x * C + (1 - alfa * n0) * x * x * x * S + n0 * x - rq * giorni;
+  };
+  const dF = x => {
+    const { C, S } = solStumpff(alfa * x * x);
+    return n0 * vr0 / rq * x * (1 - alfa * x * x * S) + (1 - alfa * n0) * x * x * C + n0;
+  };
+  let lo = 0, hi = Math.max(1e-6, rq * giorni / n0);
+  for (let i = 0; i < 80 && F(hi) < 0; i++) hi *= 2;
+  let x = Math.min(hi, Math.max(lo, rq * Math.abs(alfa) * giorni || hi / 2));
+  for (let i = 0; i < 100; i++) {
+    const fx = F(x);
+    if (Math.abs(fx) < 1e-12) break;
+    if (fx < 0) lo = x; else hi = x;
+    let nx = x - fx / dF(x);
+    if (!(nx > lo && nx < hi)) nx = (lo + hi) / 2;
+    if (Math.abs(nx - x) < 1e-14 * (1 + x)) { x = nx; break; }
+    x = nx;
+  }
+  const { C, S } = solStumpff(alfa * x * x);
+  const f = 1 - x * x / n0 * C, g = giorni - x * x * x / rq * S;
+  const r = solV.piu(solV.per(r0, f), solV.per(v0, g));
+  const n = solV.lung(r);
+  const fp = rq / (n * n0) * (alfa * x * x * x * S - x), gp = 1 - x * x / n * C;
+  return { r, v: solV.piu(solV.per(r0, fp), solV.per(v0, gp)) };
+}
+
+// La posizione eliocentrica di un pianeta, come vettore
+function solPosizionePianeta(id, ms) {
+  const v = solVettore(id, Astronomy.MakeTime(new Date(ms)));
+  return [v.x, v.y, v.z];
+}
+
+// L'iperbole di un flyby, nel riferimento del pianeta. Dai due archi di
+// Lambert escono le due velocità relative, cioè i due asintoti: l'angolo fra
+// loro è la deviazione δ, e da lei l'eccentricità (1/sin δ/2) e quindi il
+// perielio. Se il perielio cascasse sotto le nubi (i due archi raccordati
+// non sono la traiettoria vera al chilometro) si alza a un raggio e un
+// decimo, rinunciando a un pelo di deviazione: la miscela con gli archi, ai
+// bordi della finestra, se lo mangia. Il periasse sta dalla parte opposta a
+// quella verso cui la traiettoria si piega (û_in − û_out), la velocità al
+// perielio lungo la bisettrice dei due asintoti.
+function solFlyby(inc, vIn, vOut) {
+  const vp = solV.per(solV.meno(solPosizionePianeta(inc.id, inc.ms + SOL_GIORNO_MS / 2),
+    solPosizionePianeta(inc.id, inc.ms - SOL_GIORNO_MS / 2)), 1);
+  const a1 = solV.meno(vIn, vp), a2 = solV.meno(vOut, vp);
+  const vInf = (solV.lung(a1) + solV.lung(a2)) / 2;
+  const u1 = solV.versore(a1), u2 = solV.versore(a2);
+  const delta = Math.acos(Math.max(-1, Math.min(1, solV.punto(u1, u2))));
+  const mu = inc.mu * SOL_GIORNO_MS * SOL_GIORNO_MS / 1e6 / Math.pow(SOL_UA_KM, 3);
+  const a = mu / (vInf * vInf);
+  let e = 1 / Math.max(1e-6, Math.sin(delta / 2));
+  const rpMin = 1.1 * inc.raggioKm / SOL_UA_KM;
+  if (a * (e - 1) < rpMin) e = 1 + rpMin / a;
+  const pHat = solV.versore(solV.meno(u1, u2));
+  const nHat = solV.versore(solV.croce(u1, u2));
+  const qHat = solV.croce(nHat, pHat);
+  // Mezza finestra in giorni: il tempo per attraversare metà della sfera
+  // d'influenza, fra cinque giorni e due mesi
+  const finestra = Math.max(5, Math.min(60, 0.6 * inc.sfera / vInf));
+  return {
+    id: inc.id, ms: inc.ms, a, e, pHat, qHat, mu, finestra,
+    perielioKm: a * (e - 1) * SOL_UA_KM, deviazione: delta * SKY_R2D, vInfKms: vInf * SOL_UA_KM / 86400
+  };
+}
+
+// La posizione relativa al pianeta sull'iperbole, `giorni` dopo il perielio:
+// equazione di Keplero iperbolica, Newton da asinh.
+function solFlybyRelativa(fb, giorni) {
+  const M = Math.sqrt(fb.mu / (fb.a * fb.a * fb.a)) * giorni;
+  let F = Math.asinh(M / fb.e);
+  for (let i = 0; i < 50; i++) {
+    const d = (fb.e * Math.sinh(F) - F - M) / (fb.e * Math.cosh(F) - 1);
+    F -= d;
+    if (Math.abs(d) < 1e-13) break;
+  }
+  const x = fb.a * (fb.e - Math.cosh(F)), y = fb.a * Math.sqrt(fb.e * fb.e - 1) * Math.sinh(F);
+  return solV.piu(solV.per(fb.pHat, x), solV.per(fb.qHat, y));
+}
+
+// Il viaggio intero di una sonda, calcolato una volta sola: i tratti di
+// Lambert (partenza, velocità iniziale) e le iperboli dei flyby. Senza
+// Astronomy Engine non c'è niente da calcolare, e chi chiede ripiega sulla
+// retta di sempre.
+const solViaggiCalcolati = {};
+function solViaggioVoyager(id) {
+  if (id in solViaggiCalcolati) return solViaggiCalcolati[id];
+  const piano = SOL_VIAGGI_VOYAGER[id], sonda = SOL_SONDE.find(s => s.id === id);
+  if (!piano || !sonda || typeof Astronomy === 'undefined') return null;
+  let viaggio = null;
+  try {
+    const lon = sonda.lon * SKY_D2R, lat = sonda.lat * SKY_D2R;
+    const oggi = [sonda.ua * Math.cos(lat) * Math.cos(lon), sonda.ua * Math.cos(lat) * Math.sin(lon), sonda.ua * Math.sin(lat)];
+    const nodi = [{ ms: piano.lancio, r: solPosizionePianeta('Earth', piano.lancio) }]
+      .concat(piano.incontri.map(inc => ({ ms: inc.ms, r: solPosizionePianeta(inc.id, inc.ms), inc })))
+      .concat([{ ms: SOL_SONDE_EPOCA_MS, r: oggi }]);
+    const tratti = [];
+    for (let i = 0; i + 1 < nodi.length; i++) {
+      const a = nodi[i], b = nodi[i + 1];
+      const giorni = (b.ms - a.ms) / SOL_GIORNO_MS;
+      const v0 = solLambert(a.r, b.r, giorni, i + 2 < nodi.length);
+      if (!v0) throw new Error('lambert');
+      tratti.push({ ms0: a.ms, ms1: b.ms, r0: a.r, v0, v1: solKeplero(a.r, v0, giorni).v });
+    }
+    const flyby = piano.incontri.map((inc, k) => solFlyby(inc, tratti[k].v1, tratti[k + 1].v0));
+    viaggio = { id, lancio: piano.lancio, fine: SOL_SONDE_EPOCA_MS, tratti, flyby };
+  } catch (e) { viaggio = null; }
+  solViaggiCalcolati[id] = viaggio;
+  return viaggio;
+}
+
+// Dove stava la sonda all'istante `ms`, in UA eclittiche eliocentriche; `null`
+// prima del lancio e dopo l'epoca di `SOL_SONDE` (lì vale la retta).
+function solPosizioneVoyager(id, ms) {
+  const v = solViaggioVoyager(id);
+  if (!v || ms < v.lancio || ms > v.fine) return null;
+  const tratto = v.tratti.find(t => ms <= t.ms1) || v.tratti[v.tratti.length - 1];
+  let pos = solKeplero(tratto.r0, tratto.v0, (ms - tratto.ms0) / SOL_GIORNO_MS).r;
+  for (const fb of v.flyby) {
+    const giorni = (ms - fb.ms) / SOL_GIORNO_MS;
+    const u = Math.abs(giorni) / fb.finestra;
+    if (u >= 1) continue;
+    // Pura iperbole fino a metà finestra, poi una S che torna all'arco
+    const s = Math.max(0, Math.min(1, (u - 0.5) / 0.5));
+    const k = 1 - s * s * (3 - 2 * s);
+    const vicino = solV.piu(solPosizionePianeta(fb.id, ms), solFlybyRelativa(fb, giorni));
+    pos = solV.piu(solV.per(vicino, k), solV.per(pos, 1 - k));
+  }
+  return pos;
 }
 
 // --- I satelliti attorno alla Terra ----------------------------------------
@@ -35007,6 +35310,12 @@ function solDisegnaOrbiteMondi(ctx) {
 function solDisegnaSonda(ctx, s) {
   if (!s.schermo) return;
   const p = s.schermo;
+  // Nel racconto delle Voyager il filo verso il Sole lo sostituisce la scia
+  // del viaggio, e la crocetta il modellino (vedi `solDisegnaGrandTour`)
+  if (sol.grandTour && sol.grandTour.sonde.includes(s.id)) {
+    const misura = solMisuraModelloVoyager();
+    if (misura >= 7) { solDisegnaModelloVoyager(ctx, s, solAssiVista(), misura); return; }
+  }
   ctx.save();
   ctx.strokeStyle = s.colore;
   ctx.globalAlpha = 0.22;
@@ -35047,6 +35356,374 @@ function solDisegnaSonda(ctx, s) {
     ctx.arc(p.px, p.py, b + 5, 0, Math.PI * 2);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+// --- Il Grand Tour disegnato: le scie e il modellino ----------------------
+//   Acceso solo dalla demo delle Voyager (`sol.grandTour`, azione
+//   `voyager_journey` di `demo.js`): fuori dal racconto la sonda resta la
+//   crocetta di sempre col suo filo verso il Sole. Dentro, la sonda si porta
+//   dietro la **strada fatta** — piena fino all'istante mostrato, tratteggiata
+//   e fioca quella che le resta, se la si chiede — con le date degli incontri
+//   segnate dove sono avvenuti, e al posto della crocetta c'è un modellino.
+//
+//   Le scie si campionano una volta (le posizioni non cambiano, cambia solo
+//   quale parte è già stata percorsa): ogni venti giorni lungo il viaggio, e
+//   fitto dentro alle finestre dei flyby, dove la curva si piega in poche ore.
+//   Attorno all'istante mostrato si aggiunge un campionamento fine rifatto a
+//   ogni fotogramma, perché nelle riprese da vicino venti giorni di corda
+//   sono uno spigolo.
+const SOL_TOUR_PASSO_GIORNI = 20;
+const solScieVoyager = {};
+function solScieDi(id) {
+  if (solScieVoyager[id]) return solScieVoyager[id];
+  const v = solViaggioVoyager(id);
+  if (!v) return null;
+  const tempi = [];
+  for (let ms = v.lancio; ms < v.fine; ms += SOL_TOUR_PASSO_GIORNI * SOL_GIORNO_MS) tempi.push(ms);
+  tempi.push(v.fine);
+  // Dentro alla finestra di un flyby il passo segue l'iperbole: fitto al
+  // perielio, dove la curva si piega in un'ora, e largo verso i bordi, dove
+  // la sonda torna a correre dritta. È un passo uniforme nell'anomalia
+  // (τ = T·sinh s), con T il tempo che serve a percorrere il raggio del
+  // perielio: così ogni corda sottende lo stesso angolo della curva.
+  v.flyby.forEach(fb => {
+    const T = Math.max(0.01, (fb.perielioKm / Math.max(1, fb.vInfKms * 1.6)) / 86400);
+    const smax = Math.asinh(fb.finestra / T);
+    for (let i = -120; i <= 120; i++) tempi.push(fb.ms + T * Math.sinh(smax * i / 120) * SOL_GIORNO_MS);
+  });
+  tempi.sort((a, b) => a - b);
+  const punti = [];
+  tempi.forEach(ms => {
+    const p = solPosizioneVoyager(id, ms);
+    if (p) punti.push({ ms, x: p[0], y: p[1], z: p[2] });
+  });
+  solScieVoyager[id] = punti;
+  return punti;
+}
+
+// Una posizione della sonda a un istante qualunque, dentro o fuori dal viaggio
+function solPuntoVoyager(id, ms) {
+  const p = solPosizioneVoyager(id, ms);
+  if (p) return { x: p[0], y: p[1], z: p[2] };
+  const s = SOL_SONDE.find(x => x.id === id);
+  if (!s || ms < SOL_SONDE_EPOCA_MS) return null;
+  const d = s.ua + s.uaPerAnno * (ms - SOL_SONDE_EPOCA_MS) / SOL_SONDE_ANNO_MS;
+  const lon = s.lon * SKY_D2R, lat = s.lat * SKY_D2R;
+  return { x: d * Math.cos(lat) * Math.cos(lon), y: d * Math.cos(lat) * Math.sin(lon), z: d * Math.sin(lat) };
+}
+
+function solDisegnaGrandTour(ctx) {
+  const gt = sol.grandTour;
+  if (!gt) return;
+  const ora = sol.istante || skyAdesso().getTime();
+  gt.sonde.forEach(id => {
+    const sonda = SOL_SONDE.find(s => s.id === id);
+    const scia = solScieDi(id);
+    if (!sonda || !scia || !scia.length) return;
+    // La strada fatta: i campioni fissi fino ad adesso, poi un campionamento
+    // che si infittisce in progressione geometrica verso l'istante mostrato
+    // (dodici giorni prima, poi via via più vicino, fino a un paio di
+    // minuti): è quello che tiene la scia attaccata alla sonda anche nelle
+    // riprese da vicino, dove un'ora di viaggio è mezzo schermo.
+    const fatti = [];
+    const vicino = 12 * SOL_GIORNO_MS;
+    scia.forEach(p => { if (p.ms < ora) fatti.push(p); });
+    if (ora >= scia[0].ms) for (let i = 0; i <= 44; i++) {
+      const ms = ora - vicino * Math.pow(0.8, i);
+      if (ms < scia[0].ms) continue;
+      const p = solPuntoVoyager(id, ms);
+      if (p) fatti.push(Object.assign({ ms }, p));
+    }
+    const qui = solPuntoVoyager(id, ora);
+    if (qui) fatti.push(Object.assign({ ms: ora }, qui));
+    if (ora > SOL_SONDE_EPOCA_MS) {
+      const oggi = solPuntoVoyager(id, SOL_SONDE_EPOCA_MS);
+      if (oggi) fatti.push(Object.assign({ ms: SOL_SONDE_EPOCA_MS }, oggi));
+    }
+    fatti.sort((a, b) => a.ms - b.ms);
+    const proietta = p => solProietta(solScena(p));
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    if (gt.futuro) {
+      const resto = scia.filter(p => p.ms > ora);
+      if (resto.length) {
+        const q = (fatti.length ? [proietta(fatti[fatti.length - 1])] : []).concat(resto.map(proietta));
+        ctx.strokeStyle = sonda.colore; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.2;
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath(); solPolilineaInVista(ctx, q); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    const q = fatti.map(proietta);
+    // Un alone largo e fioco sotto, il filo netto sopra: la scia si legge
+    // anche sopra alle orbite dei pianeti, che hanno lo stesso spessore
+    ctx.strokeStyle = sonda.colore;
+    ctx.globalAlpha = 0.16; ctx.lineWidth = 5;
+    ctx.beginPath(); solPolilineaInVista(ctx, q); ctx.stroke();
+    ctx.globalAlpha = 0.92; ctx.lineWidth = 1.6;
+    ctx.beginPath(); solPolilineaInVista(ctx, q); ctx.stroke();
+    // Gli incontri: un anello dove è successo, e l'anno. Si accendono quando
+    // la sonda ci è passata; prima restano un'ombra, un appuntamento.
+    const v = solViaggioVoyager(id);
+    if (v && gt.incontri !== false) v.flyby.forEach(fb => {
+      const p = solPuntoVoyager(id, fb.ms);
+      if (!p) return;
+      const s = proietta(p);
+      if (s.px < -20 || s.py < -20 || s.px > sol.L + 20 || s.py > sol.H + 20) return;
+      const fatto = ora >= fb.ms;
+      ctx.globalAlpha = fatto ? 0.9 : 0.3;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(s.px, s.py, 6, 0, Math.PI * 2); ctx.stroke();
+      solTesto(ctx, String(new Date(fb.ms).getUTCFullYear()), s.px + 9, s.py - 7, sonda.colore, 10.5);
+    });
+    ctx.restore();
+  });
+}
+
+// La Terra vista da lontano: un anello che respira piano e il suo nome in
+// azzurro. Registra il suo ingombro, così gli altri nomi le stanno lontano.
+function solDisegnaCasaLontana(ctx, terra, prese) {
+  if (!terra || !terra.schermo) return;
+  const p = terra.schermo;
+  const battito = 0.5 + 0.5 * Math.sin(performance.now() / 700);
+  const r = Math.max(9, terra.rDisegno + 6) + 3 * battito;
+  ctx.save();
+  ctx.strokeStyle = '#93c5fd';
+  ctx.globalAlpha = 0.55 + 0.35 * battito;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(p.px, p.py, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 0.25;
+  ctx.beginPath(); ctx.arc(p.px, p.py, r + 7, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+  solTesto(ctx, nomeCorpo('Earth'), p.px + r * 0.7 + 4, p.py + r + 14, '#bfdbfe', 12.5);
+  prese.push({ x: p.px - r, y: p.py - r, w: r * 2 + 80, h: r * 2 + 18 });
+}
+
+// Quanto è grande il modellino, in pixel: una frazione del lato corto della
+// tela, scelta dalla regia (`gt.misura`). Non è una scala: a scala vera una
+// sonda di quattro metri, a centosettanta unità astronomiche, è un
+// miliardesimo di pixel. È un'illustrazione appoggiata dove la sonda sta,
+// girata come la sonda è girata.
+function solMisuraModelloVoyager() {
+  const gt = sol.grandTour;
+  if (!gt || !(gt.misura > 0)) return 0;
+  return gt.misura * Math.min(sol.L, sol.H);
+}
+
+//   Il modellino, in metri e nel riferimento della sonda. Le misure sono
+//   quelle pubblicate dal JPL, arrotondate: l'antenna ad alto guadagno di
+//   3,66 m, il corpo a dieci facce largo 1,78 m e alto 0,47, i tre generatori
+//   a radioisotopi in fila su un braccio da una parte, il braccio della
+//   scienza dall'altra con la piattaforma delle telecamere in fondo, il
+//   magnetometro su un'asta di tredici metri, le due antenne delle onde di
+//   plasma lunghe dieci, e il Disco d'Oro sul fianco. L'asse z è quello
+//   dell'antenna, ed è il pezzo più vero di tutto il disegno: la sonda tiene
+//   la parabola **puntata sulla Terra**, sempre, da quarantotto anni.
+let SOL_VOYAGER_MODELLO = null;
+function solModelloVoyager() {
+  if (SOL_VOYAGER_MODELLO) return SOL_VOYAGER_MODELLO;
+  const facce = [], linee = [];
+  const faccia = (pts, colore, opz = {}) => facce.push(Object.assign({ pts, colore }, opz));
+  const linea = (a, b, colore, spessore, opz = {}) => linee.push(Object.assign({ a, b, colore, spessore }, opz));
+  const BIANCO = [236, 236, 230], SCURO = [44, 42, 40], ALLUMINIO = [150, 152, 160];
+  const GRAFITE = [60, 60, 66], ORO = [214, 168, 72], MANTO = [176, 142, 78], ASTA = [205, 208, 214];
+  // L'antenna: un paraboloide, concavo verso la Terra (+z). La faccia che
+  // si vede si decide al disegno (`dueLati`), come per un piatto vero.
+  const R = 1.83, fuoco = 1.25, z0 = 0.06, spicchi = 28, anelli = 5;
+  const punto = (rho, fi) => [rho * Math.cos(fi), rho * Math.sin(fi), z0 + rho * rho / (4 * fuoco)];
+  for (let k = 0; k < anelli; k++) {
+    const r1 = R * k / anelli, r2 = R * (k + 1) / anelli;
+    for (let j = 0; j < spicchi; j++) {
+      const f1 = 2 * Math.PI * j / spicchi, f2 = 2 * Math.PI * (j + 1) / spicchi;
+      const pts = k === 0 ? [punto(0, 0), punto(r2, f1), punto(r2, f2)]
+        : [punto(r1, f1), punto(r2, f1), punto(r2, f2), punto(r1, f2)];
+      const rm = (r1 + r2) / 2, fm = (f1 + f2) / 2;
+      const n = solV.versore([-rm / (2 * fuoco) * Math.cos(fm), -rm / (2 * fuoco) * Math.sin(fm), 1]);
+      faccia(pts, BIANCO, { n, dueLati: true, lucido: 0.25 });
+    }
+  }
+  // Il bordo dell'antenna, che da di taglio è l'unica cosa che se ne vede
+  for (let j = 0; j < spicchi; j++) {
+    linea(punto(R, 2 * Math.PI * j / spicchi), punto(R, 2 * Math.PI * (j + 1) / spicchi), [210, 210, 204], 0.035);
+  }
+  // Il subriflettore sul treppiede, davanti alla parabola
+  const zSub = z0 + fuoco;
+  [0, 2, 4].forEach(j => linea(punto(R * 0.62, j * Math.PI / 3 + 0.4), [0, 0, zSub], ASTA, 0.03));
+  const sub = [];
+  for (let j = 0; j < 12; j++) sub.push([0.27 * Math.cos(j * Math.PI / 6), 0.27 * Math.sin(j * Math.PI / 6), zSub]);
+  faccia(sub, [225, 225, 220], { n: [0, 0, -1], dueLati: true });
+  // Il corpo: dieci facce, a strisce di coperta termica scura e alluminio
+  const lati = 10, rc = 0.95, zAlto = 0, zBasso = -0.47;
+  const angolo = j => 2 * Math.PI * (j + 0.5) / lati;
+  for (let j = 0; j < lati; j++) {
+    const a1 = angolo(j), a2 = angolo(j + 1), am = (a1 + a2) / 2;
+    faccia([[rc * Math.cos(a1), rc * Math.sin(a1), zAlto], [rc * Math.cos(a2), rc * Math.sin(a2), zAlto],
+      [rc * Math.cos(a2), rc * Math.sin(a2), zBasso], [rc * Math.cos(a1), rc * Math.sin(a1), zBasso]],
+    j % 2 ? SCURO : ALLUMINIO, { n: [Math.cos(am), Math.sin(am), 0], lucido: j % 2 ? 0 : 0.35 });
+  }
+  const tappo = z => Array.from({ length: lati }, (_, j) => [rc * Math.cos(angolo(j)), rc * Math.sin(angolo(j)), z]);
+  faccia(tappo(zBasso).reverse(), SCURO, { n: [0, 0, -1] });
+  faccia(tappo(zAlto), SCURO, { n: [0, 0, 1] });
+  // Sotto il corpo, l'anello dell'adattatore e i serbatoi coperti d'oro
+  const cilindro = (c, asse, raggio, lung, colore, spigoli = 10, opz = {}) => {
+    const u = solV.versore(asse);
+    const t1 = solV.versore(Math.abs(u[2]) < 0.9 ? solV.croce(u, [0, 0, 1]) : solV.croce(u, [1, 0, 0]));
+    const t2 = solV.croce(u, t1);
+    const a = solV.piu(c, solV.per(u, -lung / 2)), b = solV.piu(c, solV.per(u, lung / 2));
+    const giro = (base, j) => solV.piu(base, solV.piu(solV.per(t1, raggio * Math.cos(2 * Math.PI * j / spigoli)),
+      solV.per(t2, raggio * Math.sin(2 * Math.PI * j / spigoli))));
+    for (let j = 0; j < spigoli; j++) {
+      const n = solV.piu(solV.per(t1, Math.cos(2 * Math.PI * (j + 0.5) / spigoli)), solV.per(t2, Math.sin(2 * Math.PI * (j + 0.5) / spigoli)));
+      faccia([giro(a, j), giro(a, j + 1), giro(b, j + 1), giro(b, j)], colore, Object.assign({ n }, opz));
+    }
+    faccia(Array.from({ length: spigoli }, (_, j) => giro(a, spigoli - j)), colore, Object.assign({ n: solV.per(u, -1) }, opz));
+    faccia(Array.from({ length: spigoli }, (_, j) => giro(b, j)), colore, Object.assign({ n: u }, opz));
+    return { u, t1, t2 };
+  };
+  cilindro([0, 0, -0.62], [0, 0, 1], 0.42, 0.3, MANTO, 10, { lucido: 0.3 });
+  // I tre generatori a radioisotopi, in fila verso −x, con le alette
+  linea([-0.9, 0, -0.25], [-3.05, 0, -0.32], ASTA, 0.07);
+  [-1.55, -2.1, -2.65].forEach(x => {
+    const { t1, t2 } = cilindro([x, 0, -0.3], [1, 0, 0], 0.2, 0.5, GRAFITE, 8, { lucido: 0.15 });
+    for (let j = 0; j < 6; j++) {
+      const d = solV.piu(solV.per(t1, Math.cos(j * Math.PI / 3)), solV.per(t2, Math.sin(j * Math.PI / 3)));
+      const c = [x, 0, -0.3];
+      const a = solV.piu(c, solV.per(d, 0.2)), b = solV.piu(c, solV.per(d, 0.4));
+      faccia([solV.piu(a, [-0.24, 0, 0]), solV.piu(b, [-0.24, 0, 0]), solV.piu(b, [0.24, 0, 0]), solV.piu(a, [0.24, 0, 0])],
+        GRAFITE, { dueLati: true, n: solV.croce(d, [1, 0, 0]) });
+    }
+  });
+  // Il braccio della scienza, verso +x: i rivelatori a metà e, in fondo,
+  // la piattaforma orientabile con le due telecamere
+  linea([0.9, 0, -0.2], [3.25, 0, -0.2], ASTA, 0.08);
+  const scatola = (c, dx, dy, dz, colore, opz = {}) => {
+    const [x, y, z] = c;
+    const v = (i, j, k) => [x + (i ? dx : -dx) / 2, y + (j ? dy : -dy) / 2, z + (k ? dz : -dz) / 2];
+    faccia([v(1, 0, 0), v(1, 1, 0), v(1, 1, 1), v(1, 0, 1)], colore, Object.assign({ n: [1, 0, 0] }, opz));
+    faccia([v(0, 0, 0), v(0, 0, 1), v(0, 1, 1), v(0, 1, 0)], colore, Object.assign({ n: [-1, 0, 0] }, opz));
+    faccia([v(0, 1, 0), v(0, 1, 1), v(1, 1, 1), v(1, 1, 0)], colore, Object.assign({ n: [0, 1, 0] }, opz));
+    faccia([v(0, 0, 0), v(1, 0, 0), v(1, 0, 1), v(0, 0, 1)], colore, Object.assign({ n: [0, -1, 0] }, opz));
+    faccia([v(0, 0, 1), v(1, 0, 1), v(1, 1, 1), v(0, 1, 1)], colore, Object.assign({ n: [0, 0, 1] }, opz));
+    faccia([v(0, 0, 0), v(0, 1, 0), v(1, 1, 0), v(1, 0, 0)], colore, Object.assign({ n: [0, 0, -1] }, opz));
+  };
+  scatola([1.75, 0, -0.1], 0.36, 0.3, 0.3, MANTO, { lucido: 0.4 });
+  cilindro([2.35, 0.18, -0.2], [0, 1, 0.3], 0.1, 0.34, ALLUMINIO, 8, { lucido: 0.3 });
+  scatola([3.3, 0, -0.25], 0.52, 0.46, 0.42, SCURO);
+  cilindro([3.3, -0.42, -0.08], [0, 1, 0], 0.13, 0.62, [210, 210, 212], 10, { lucido: 0.4 });  // teleobiettivo
+  cilindro([3.52, -0.32, -0.36], [0, 1, 0], 0.09, 0.4, [210, 210, 212], 10, { lucido: 0.4 });   // grandangolo
+  // Il magnetometro, lontano dal corpo: un'asta a traliccio di tredici metri
+  const radice = [0.15, 0.9, -0.3], cima = [0.9, 13, -1.4];
+  linea(radice, cima, ASTA, 0.05, { traliccio: true });
+  scatola(solV.piu(radice, solV.per(solV.meno(cima, radice), 0.55)), 0.14, 0.14, 0.14, ALLUMINIO);
+  scatola(cima, 0.18, 0.18, 0.18, ALLUMINIO);
+  // Le due antenne delle onde di plasma: dieci metri di filo a V
+  linea([0.2, -0.6, -0.47], solV.piu([0.2, -0.6, -0.47], solV.per(solV.versore([0.8, -0.35, -0.5]), 10)), ASTA, 0.02, { sottile: true });
+  linea([-0.2, -0.6, -0.47], solV.piu([-0.2, -0.6, -0.47], solV.per(solV.versore([-0.35, -0.8, -0.5]), 10)), ASTA, 0.02, { sottile: true });
+  // Il Disco d'Oro, sul fianco del corpo che guarda verso +y
+  const fianco = 2 * Math.PI * 2.5 / lati;         // il centro della faccia fra i vertici 2 e 3
+  const nD = [Math.cos(fianco), Math.sin(fianco), 0];
+  const centro = solV.per(nD, rc * Math.cos(Math.PI / lati) + 0.02);
+  const disco = [], tt = [-Math.sin(fianco), Math.cos(fianco), 0];
+  for (let j = 0; j < 20; j++) {
+    const a = 2 * Math.PI * j / 20;
+    disco.push(solV.piu(solV.piu(centro, solV.per(tt, 0.19 * Math.cos(a))), [0, 0, -0.235 + 0.19 * Math.sin(a)]));
+  }
+  // Il disco sta appoggiato sul fianco: il pittore per medie lo farebbe
+  // coprire dall'adattatore che sporge sotto al corpo, che sta più indietro
+  // ma ha il baricentro più avanti. Una spinta verso chi guarda lo tiene sopra.
+  faccia(disco, ORO, { n: nD, lucido: 0.9, disco: true, spinta: 0.5 });
+  SOL_VOYAGER_MODELLO = { facce, linee };
+  return SOL_VOYAGER_MODELLO;
+}
+
+// Il modellino al suo posto: la terna della sonda (l'antenna verso la
+// Terra, i bracci nel piano dell'eclittica per quanto si può), la terna
+// della telecamera, e un pittore che dipinge dal fondo verso chi guarda.
+// La luce viene dal Sole, e a centosettanta unità astronomiche è la stessa
+// luce: fioca per noi, ma il disegno non la attenua — l'occhio si adatta.
+// La terna della sonda in coordinate eclittiche: z verso la Terra (dove
+// punta l'antenna), x orizzontale, y a chiudere — il Disco d'Oro guarda
+// verso +y. La usa anche la regia, per mettere la camera davanti al disco.
+function solTernaVoyager(s) {
+  const terra = sol.terra ? [sol.terra.pos.x, sol.terra.pos.y, sol.terra.pos.z] : [1, 0, 0];
+  const qui = [s.pos.x, s.pos.y, s.pos.z];
+  let Z = solV.meno(terra, qui);
+  if (solV.lung(Z) < 1e-9) Z = [0, 1, 0];
+  Z = solV.versore(Z);
+  let X = solV.croce([0, 0, 1], Z);
+  X = solV.lung(X) < 1e-3 ? [1, 0, 0] : solV.versore(X);
+  return { X, Y: solV.croce(Z, X), Z };
+}
+
+function solDisegnaModelloVoyager(ctx, s, assi, px) {
+  const p = s.schermo;
+  if (!p) return;
+  const qui = [s.pos.x, s.pos.y, s.pos.z];
+  const { X, Y, Z } = solTernaVoyager(s);
+  const mondo = m => [X[0] * m[0] + Y[0] * m[1] + Z[0] * m[2], X[1] * m[0] + Y[1] * m[1] + Z[1] * m[2], X[2] * m[0] + Y[2] * m[1] + Z[2] * m[2]];
+  const k = px / 6.5;                                   // metri → pixel: 6,5 m da un braccio all'altro
+  const sole = solV.lung(qui) > 1e-6 ? solV.per(solV.versore(qui), -1) : [1, 0, 0];
+  const schermo = m => {
+    const w = mondo(m);
+    return { x: p.px + k * skyDot(w, assi.destra), y: p.py - k * skyDot(w, assi.alto), d: skyDot(w, assi.verso) };
+  };
+  const { facce, linee } = solModelloVoyager();
+  const piccolo = px < 40;
+  const voci = [];
+  facce.forEach(f => {
+    const pts = f.pts.map(schermo);
+    let n = mondo(f.n);
+    let verso = skyDot(n, assi.verso);
+    if (verso < 0) { if (!f.dueLati) return; n = solV.per(n, -1); verso = -verso; }
+    const luce = Math.max(0, skyDot(n, sole));
+    // Un riflesso quando la faccia rimanda il Sole verso chi guarda: è la
+    // cosa che fa sembrare di metallo l'alluminio e d'oro il disco
+    const meta = solV.versore(solV.piu(sole, assi.verso));
+    const lucido = f.lucido ? f.lucido * Math.max(Math.pow(Math.max(0, skyDot(n, meta)), 24),
+      0.5 * Math.pow(verso, 6)) : 0;
+    // Più una luce di riempimento dalla parte di chi guarda, come in uno
+    // studio fotografico: senza, il Disco d'Oro — che guarda di lato rispetto
+    // al Sole — resterebbe un cerchio marrone, e il lato in ombra un buco
+    const t = 0.16 + 0.62 * luce + 0.3 * verso;
+    const c = f.colore.map(v => Math.min(255, Math.round(v * t + 255 * lucido)));
+    voci.push({ d: pts.reduce((a, q) => a + q.d, 0) / pts.length + (f.spinta || 0), pts,
+      fill: `rgb(${c[0]},${c[1]},${c[2]})`, disco: f.disco });
+  });
+  linee.forEach(l => {
+    if (piccolo && l.sottile) return;
+    const a = schermo(l.a), b = schermo(l.b);
+    voci.push({ d: (a.d + b.d) / 2, a, b, colore: l.colore, spessore: Math.max(l.sottile ? 0.5 : 0.8, l.spessore * k), traliccio: l.traliccio });
+  });
+  voci.sort((u, v) => u.d - v.d);
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  voci.forEach(v => {
+    if (v.pts) {
+      ctx.fillStyle = v.fill;
+      ctx.strokeStyle = v.fill;
+      ctx.lineWidth = 0.6;          // chiude le fessure fra una faccia e l'altra
+      ctx.beginPath();
+      v.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (v.disco && !piccolo) {    // i solchi del disco: due anelli più scuri
+        const cx = v.pts.reduce((a, q) => a + q.x, 0) / v.pts.length, cy = v.pts.reduce((a, q) => a + q.y, 0) / v.pts.length;
+        ctx.strokeStyle = 'rgba(90, 60, 10, 0.45)'; ctx.lineWidth = 0.7;
+        [0.35, 0.7].forEach(f => {
+          ctx.beginPath();
+          v.pts.forEach((q, i) => { const x = cx + (q.x - cx) * f, y = cy + (q.y - cy) * f; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+          ctx.closePath(); ctx.stroke();
+        });
+      }
+    } else {
+      const c = v.colore;
+      ctx.strokeStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+      ctx.lineWidth = v.spessore;
+      ctx.globalAlpha = v.traliccio && !piccolo ? 0.8 : 1;
+      ctx.beginPath(); ctx.moveTo(v.a.x, v.a.y); ctx.lineTo(v.b.x, v.b.y); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  });
   ctx.restore();
 }
 
@@ -37504,7 +38181,7 @@ function solDisegna() {
   if (sol.sondeAccese) sol.sonde.forEach(s => { if (s.partita) corpi.push(s); });
   corpi.forEach(p => {
     p.scena = solScena(p.pos);
-    p.rDisegno = p.sonda ? 3.4 : solRaggioCorpo(p);
+    p.rDisegno = p.sonda ? Math.max(3.4, solMisuraModelloVoyager() * 0.55) : solRaggioCorpo(p);
   });
   solAggiornaPivot();
   corpi.forEach(p => { p.schermo = solProietta(p.scena); });
@@ -37522,6 +38199,9 @@ function solDisegna() {
   sol.orbite.tracce.filter(t => t.id !== sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
   sol.orbite.tracce.filter(t => t.id === sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
   if (sol.nodi) sol.orbite.tracce.forEach(t => solDisegnaNodiOrbita(ctx, t));
+  // Le scie del Grand Tour (la demo delle Voyager): sopra alle orbite, sotto
+  // ai corpi — la sonda passa davanti alla sua strada, non dietro
+  if (sol.grandTour) solDisegnaGrandTour(ctx);
   solDisegnaAloneSole(ctx);
   solDisegnaSguardo(ctx, terra, scelto);
 
@@ -37587,6 +38267,9 @@ function solDisegna() {
   // L'asse della Terra messo in evidenza (la demo delle stagioni): sopra a
   // tutti i corpi, perché è la riga che il racconto chiede di guardare
   if (sol.evidenziaAsse) solDisegnaAsseTerra(ctx, terra, assi);
+  // Il pallido puntino blu (la demo delle Voyager): un anello attorno alla
+  // Terra, perché da quaranta unità astronomiche il pallino si perde
+  if (sol.grandTour && sol.grandTour.casa) solDisegnaCasaLontana(ctx, terra, prese);
 
   // La bussola sera/mattina, sopra ai pallini (se no il disco della Terra le
   // coprirebbe l'attacco) ma sotto ai nomi: registra qui il suo ingombro,
@@ -37594,7 +38277,9 @@ function solDisegna() {
   // Con l'asse in evidenza (la demo delle stagioni) le due frecce si tacciono:
   // sera e mattina sono un'altra lezione, e accanto all'asse si
   // leggerebbero come altre due direzioni da guardare
-  if (!sol.evidenziaAsse) solDisegnaBussolaOrari(ctx, terra, prese);
+  // E si tacciono anche nel racconto delle Voyager: lì la Terra è il punto
+  // di partenza di un viaggio, non un posto da cui guardare la sera
+  if (!sol.evidenziaAsse && !sol.grandTour) solDisegnaBussolaOrari(ctx, terra, prese);
 
   // I nomi vengono dopo tutti i pallini, altrimenti un pianeta disegnato più
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
@@ -37619,6 +38304,7 @@ function solDisegna() {
     solEtichetta(ctx, nomeCorpo('Sun'), sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
     ordinati.forEach(p => {
       if (p === scelto) return;
+      if (p.id === 'Earth' && sol.grandTour && sol.grandTour.casa) return;   // l'ha già scritto lei
       solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
         tinta(p), corpoNome(p), prese, missioneSistema, p.id);
     });
