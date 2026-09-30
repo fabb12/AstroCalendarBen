@@ -13115,7 +13115,19 @@ function skyPelle(chiave, lato, pennello) {
     tela = document.createElement('canvas');
     tela.width = lato;
     tela.height = lato;
-    const c = tela.getContext('2d');
+    // Una tela che si dipinge una volta e si ricopia a ogni fotogramma: la si
+    // vuole in memoria, non sulla GPU. È la cura della segnalazione «sul
+    // telefono, oltre un certo zoom, l'ombra della Terra sparisce dalla Luna
+    // eclissata» — e la soglia la dice tutta: Chrome porta sulla GPU le tele
+    // più grandi di 128×129 pixel, e la faccia della Luna passa da 128 a 256
+    // di lato proprio al campo in cui l'ombra spariva (fra 10° e 5° su un
+    // telefono da due pixel per punto; sul computer, con un pixel per punto,
+    // ci arriva molto più tardi e con un'altra GPU). Con la faccia sulla GPU
+    // il `multiply` dell'ombra, disegnato subito dopo, su quei telefoni non
+    // lascia traccia: resta la Luna piena. Con la tela in memoria la faccia
+    // si ricopia come a 128 pixel, cioè come nel caso che ha sempre
+    // funzionato, e costa lo stesso — si carica una volta e poi si riusa.
+    const c = tela.getContext('2d', { willReadFrequently: true });
     // Il pennello lavora in un mondo comodo: il disco dell'astro è il
     // cerchio di raggio 1 attorno all'origine, qualunque sia la taglia della
     // tela. Così le coordinate delle macchie si scrivono una volta sola.
@@ -21846,7 +21858,10 @@ function skyDisegnaOmbraLunare(ctx, r, o, ang) {
 // della Terra resta; sul telefono, oltre un certo campo, sparisce tutta —
 // niente rame, niente turchese, una Luna piena qualunque — e torna appena
 // si allarga. Non è la geometria (è la stessa a qualunque ingrandimento,
-// §21 di verifica.html) e non è la tavolozza: è la **precisione della GPU**.
+// §21 di verifica.html) e non è la tavolozza. La causa trovata è la tela
+// della faccia che passa sulla GPU (vedi skyPelle); questa tela resta come
+// seconda difesa per il caso della Luna più larga dello schermo, dove il
+// gradiente del canvas chiede alla GPU una precisione che non è detto abbia.
 //
 // Con la Luna più larga dello schermo la parte in vista è una fetta
 // sottile di un gradiente enorme: il centro dell'ombra sta a migliaia di
@@ -21907,7 +21922,9 @@ function skyOmbraTessitura(s, cx, cy, rp, perGrado, vista) {
   if (!tela) tela = document.createElement('canvas');
   if (tela.width !== tw) tela.width = tw;
   if (tela.height !== th) tela.height = th;
-  const c2 = tela.getContext('2d');
+  // In memoria e non sulla GPU, come le facce (vedi skyPelle): è una tela
+  // scritta con putImageData e ricopiata in `multiply`
+  const c2 = tela.getContext('2d', { willReadFrequently: true });
   if (!c2 || typeof c2.createImageData !== 'function') return null;
 
   // La tavolozza, campionata fitta sulla sola rampa che cade nella fetta:
