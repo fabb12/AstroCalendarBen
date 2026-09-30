@@ -23908,29 +23908,40 @@ function skyDisegnaArchiSole(ctx, base, focale) {
 // eclittiche a equatoriali della data, e da lì all'orizzonte di chi guarda.
 // Un mirino sottile col nome, la distanza e quanto ci mette la luce: è
 // l'unica cosa onesta da disegnare per un oggetto che c'è e non si vede.
+// Dove sta una Voyager nel cielo di chi guarda, in quell'istante: azimut,
+// altezza e distanza dal Sole in UA. La usano i mirini qui sotto e la regia
+// delle demo, che punta la camera sulla sonda invece che su una direzione
+// scritta a mano (quella vale per una sera sola).
+function skySondaInCielo(id, quando = skyAdesso()) {
+  if (typeof Astronomy === 'undefined' || !sky.observer || typeof solPuntoVoyager !== 'function') return null;
+  const t = Astronomy.MakeTime(quando);
+  let terra;
+  try { terra = solVettore('Earth', t); } catch (e) { return null; }
+  const q = solPuntoVoyager(id, quando.getTime());
+  if (!q) return null;
+  const eps = 23.4393 * SKY_D2R;
+  const x = q.x - terra.x, y0 = q.y - terra.y, z0 = q.z - terra.z;
+  const y = y0 * Math.cos(eps) - z0 * Math.sin(eps), z = y0 * Math.sin(eps) + z0 * Math.cos(eps);
+  const r = Math.hypot(x, y, z);
+  const ra = ((Math.atan2(y, x) * SKY_R2D + 360) % 360) / 15, dec = Math.asin(z / r) * SKY_R2D;
+  const h = Astronomy.Horizon(t, sky.observer, ra, dec, 'normal');
+  return { az: h.azimuth, alt: h.altitude, ua: Math.hypot(q.x, q.y, q.z) };
+}
+
 function skyDisegnaSondeInCielo(ctx, base, focale) {
   if (typeof Astronomy === 'undefined' || !sky.observer || typeof solPuntoVoyager !== 'function') return;
   const quando = skyAdesso();
-  const t = Astronomy.MakeTime(quando);
-  let terra;
-  try { terra = solVettore('Earth', t); } catch (e) { return; }
-  const eps = 23.4393 * SKY_D2R;
   ctx.save();
   ctx.font = `600 ${quanto(12, 13, 14)}px ${SKY_FONT_ETICHETTE}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   SOL_SONDE.forEach(s => {
-    const q = solPuntoVoyager(s.id, quando.getTime());
-    if (!q) return;
-    const x = q.x - terra.x, y0 = q.y - terra.y, z0 = q.z - terra.z;
-    const y = y0 * Math.cos(eps) - z0 * Math.sin(eps), z = y0 * Math.sin(eps) + z0 * Math.cos(eps);
-    const r = Math.hypot(x, y, z);
-    const ra = ((Math.atan2(y, x) * SKY_R2D + 360) % 360) / 15, dec = Math.asin(z / r) * SKY_R2D;
-    const h = Astronomy.Horizon(t, sky.observer, ra, dec, 'normal');
-    if (h.altitude < -1 && !sky.mostraSottoOrizzonte) return;    // sotto i piedi: stasera non è da cercare
-    const p = skyProietta(skyVettore(h.azimuth, h.altitude), base, focale);
+    const h = skySondaInCielo(s.id, quando);
+    if (!h) return;
+    if (h.alt < -1 && !sky.mostraSottoOrizzonte) return;    // sotto i piedi: stasera non è da cercare
+    const p = skyProietta(skyVettore(h.az, h.alt), base, focale);
     if (!p.davanti || p.px < -60 || p.px > sky.larghezza + 60 || p.py < -60 || p.py > sky.altezza + 60) return;
-    const rs = Math.hypot(q.x, q.y, q.z);
+    const rs = h.ua;
     const ore = rs * SOL_UA_KM / 1079252848.8;
     ctx.strokeStyle = s.colore;
     ctx.globalAlpha = 0.95;
