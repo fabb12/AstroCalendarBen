@@ -729,7 +729,10 @@
   }
   scene solar_system_3d {
     // Il pallido puntino blu: da quaranta unità astronomiche, verso casa.
-    duration: 24s;
+    // È la scena più lunga di proposito: le parole di Sagan su quella
+    // fotografia hanno bisogno di silenzio attorno, e tagliarle a metà
+    // vorrebbe dire perdere proprio quelle.
+    duration: 34s;
     action: narrate { id: 'demo.narr.voyager.11' };
     action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show };
     action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -105, orbit: 25, elev_from: -4, elev_to: 4, zoom_from: 1.05, zoom_to: 0.95 };
@@ -764,7 +767,7 @@
   }
   scene planetarium_view {
     // Il congedo: il campo si riapre sulla notte.
-    duration: 17s;
+    duration: 20s;
     action: narrate { id: 'demo.narr.voyager.15' };
     action: probe_markers {};
     action: timelapse { start: 20:30, end: 21:15 };
