@@ -632,6 +632,146 @@
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 120, elev_from: 24, elev_to: 44, zoom_from: 2, zoom_to: 2.4 };
   }
 }`
+    },
+    {
+      chiave: 'voyager',
+      testo: `define_demo 'voyager' {
+  // Il viaggio delle due Voyager, raccontato come lo avrebbe raccontato Carl
+  // Sagan: la fila dei giganti del 1977, i due lanci, Giove, Saturno e
+  // Titano, i dodici anni di Voyager 2 fino a Nettuno, la forma a V della
+  // fuga, il pallido puntino blu, il Disco d'Oro, e dove stanno stasera.
+  // Le posizioni non sono disegnate a mano: sono le coniche raccordate di
+  // app.js (\`solPosizioneVoyager\`), archi di Lambert fra le posizioni vere
+  // dei pianeti nei giorni veri degli incontri, e iperboli di flyby vicino a
+  // ogni pianeta. Il modellino tiene l'antenna puntata sulla Terra.
+  // In ogni scena 3D \`voyager_journey\` viene prima di \`camera_3d\`: lo zoom
+  // di base della camera si misura col metro delle distanze che lei sceglie.
+  scene planetarium_view {
+    // Cape Canaveral prima dell'alba: Venere, Marte e Giove a est.
+    duration: 18s;
+    action: narrate { id: 'demo.narr.voyager.1' };
+    action: set_location { lat: 28.5236, lon: -80.6508, name: 'Cape Canaveral', timezone: 'America/New_York' };
+    action: set_date { iso: '1977-08-20T08:30:00Z' };
+    action: timelapse { start: 04:30, end: 05:40 };
+    action: zoom_fov { from: 120, to: 75 };
+    action: frame_objects { names: 'Venus,Mars,Jupiter' };
+    action: date_card { label: 'demo.cartello.voyager.capo', time: hide };
+  }
+  scene transition {
+    duration: 7s;
+    action: narrate { id: 'demo.narr.voyager.2' };
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+  }
+  scene solar_system_3d {
+    // Il piano: le strade future tratteggiate, da un gigante all'altro.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.voyager.3' };
+    action: voyager_journey { from: '1977-08-20T15:00:00Z', to: '1977-09-06T12:00:00Z', future: show, model_from: 0 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn,Uranus,Neptune', orbit: 50, elev_from: 75, elev_to: 32, zoom_from: 0.95, zoom_to: 1.05 };
+    action: date_card { label: 'demo.cartello.voyager.piano', time: hide };
+  }
+  scene solar_system_3d {
+    // I due lanci da vicino: la sonda si stacca dalla Terra, la parabola
+    // resta girata verso casa.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.voyager.4' };
+    action: voyager_journey { from: '1977-09-06T00:00:00Z', to: '1977-11-20T00:00:00Z', probes: 'voyager1', model_from: 0.2, model_to: 0.13 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: 10, orbit: 60, elev_from: -48, elev_to: -64, zoom_from: 9, zoom_to: 3.5 };
+    action: date_card { label: 'demo.cartello.voyager.lancio', time: hide };
+  }
+  scene solar_system_3d {
+    // Diciotto mesi di salita verso Giove.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.voyager.5' };
+    action: voyager_journey { from: '1977-11-20T00:00:00Z', to: '1979-03-01T00:00:00Z', future: show, model_from: 0.035, ease: smooth };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 40, elev_from: 60, elev_to: 38, zoom_from: 1.05, zoom_to: 0.95 };
+    action: date_card { label: 'demo.cartello.voyager.salita', time: hide };
+  }
+  scene solar_system_3d {
+    // Giove, a distanze e dimensioni vere: la curva della fionda.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.voyager.6' };
+    action: voyager_journey { from: '1979-03-05T01:00:00Z', to: '1979-03-05T23:00:00Z', probes: 'voyager1', scale: real, model_from: 0.05, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Jupiter', orbit: 35, elev_from: 38, elev_to: 20, zoom_from: 800, zoom_to: 1250 };
+    action: date_card { label: 'demo.cartello.voyager.giove', time: hide };
+  }
+  scene solar_system_3d {
+    // Saturno e Titano: la fionda che la porta fuori dal piano.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.voyager.7' };
+    action: voyager_journey { from: '1980-11-12T14:00:00Z', to: '1980-11-13T09:00:00Z', probes: 'voyager1', scale: real, model_from: 0.05, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Saturn', orbit: -40, elev_from: 30, elev_to: 12, zoom_from: 1700, zoom_to: 2600 };
+    action: date_card { label: 'demo.cartello.voyager.saturno', time: hide };
+  }
+  scene solar_system_3d {
+    // Voyager 2 da sola: Saturno, Urano, Nettuno.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.voyager.8' };
+    action: voyager_journey { from: '1980-11-14T00:00:00Z', to: '1989-08-20T00:00:00Z', future: show, model_from: 0.035, ease: smooth };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn,Uranus,Neptune', orbit: 80, elev_from: 55, elev_to: 24, zoom_from: 0.95, zoom_to: 1.02 };
+    action: date_card { label: 'demo.cartello.voyager.giganti', time: hide };
+  }
+  scene solar_system_3d {
+    // Nettuno e Tritone: il sorvolo più stretto del viaggio.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.voyager.9' };
+    action: voyager_journey { from: '1989-08-24T22:00:00Z', to: '1989-08-25T09:00:00Z', probes: 'voyager2', scale: real, model_from: 0.05, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Neptune', orbit: 45, elev_from: 34, elev_to: 16, zoom_from: 9000, zoom_to: 16000 };
+    action: date_card { label: 'demo.cartello.voyager.nettuno', time: hide };
+  }
+  scene solar_system_3d {
+    // La V: una sopra il piano, una sotto; l'eliopausa nel 2012.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.voyager.10' };
+    action: voyager_journey { from: '1989-09-01T00:00:00Z', to: '2012-08-25T00:00:00Z', model_from: 0.035 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Neptune', orbit: 70, elev_from: 30, elev_to: 6, zoom_from: 0.95, zoom_to: 0.55 };
+    action: date_card { label: 'demo.cartello.voyager.fuga', time: hide };
+  }
+  scene solar_system_3d {
+    // Il pallido puntino blu: da quaranta unità astronomiche, verso casa.
+    duration: 24s;
+    action: narrate { id: 'demo.narr.voyager.11' };
+    action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -105, orbit: 25, elev_from: -4, elev_to: 4, zoom_from: 1.05, zoom_to: 0.95 };
+    action: date_card { label: 'demo.cartello.voyager.puntino', time: hide };
+  }
+  scene solar_system_3d {
+    // Il Disco d'Oro: la camera gira attorno alla sonda.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.voyager.12' };
+    action: voyager_journey { from: '2026-01-01T00:00:00Z', to: '2026-10-15T00:00:00Z', probes: 'voyager1', model_from: 0.48, model_to: 0.68, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: 5, orbit: -36, elev_from: 2, elev_to: -12, zoom_from: 40, zoom_to: 60 };
+    action: date_card { label: 'demo.cartello.voyager.disco', time: hide };
+  }
+  scene solar_system_3d {
+    // Oggi: tutto il viaggio in un colpo d'occhio.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.voyager.13' };
+    action: voyager_journey { from: '2026-10-15T00:00:00Z', to: '2027-10-15T00:00:00Z', model_from: 0.035 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Neptune', orbit: 60, elev_from: 14, elev_to: 32, zoom_from: 0.52, zoom_to: 0.6 };
+    action: date_card { label: 'demo.cartello.voyager.oggi', time: hide };
+  }
+  scene planetarium_view {
+    // Roma, stasera: dove guardare. Voyager 1 fra Ercole e l'Ofiuco.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.voyager.14' };
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2026-10-15T18:30:00Z' };
+    action: probe_markers {};
+    action: zoom_fov { from: 110, to: 30 };
+    action: point_view { az: 255, alt: 33 };
+    action: date_card { label: 'demo.cartello.voyager.stasera', time: hide };
+  }
+  scene planetarium_view {
+    // Il congedo: il campo si riapre sulla notte.
+    duration: 17s;
+    action: narrate { id: 'demo.narr.voyager.15' };
+    action: probe_markers {};
+    action: timelapse { start: 20:30, end: 21:15 };
+    action: zoom_fov { from: 30, to: 125 };
+    action: point_view { az: 235, alt: 30 };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

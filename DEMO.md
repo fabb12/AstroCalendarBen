@@ -206,7 +206,7 @@ selettore usa lo stesso catalogo `ASTRO_TRACCE_MUSICALI` della musica
 dell'app, quindi una nuova traccia aggiunta al catalogo diventa disponibile
 automaticamente anche per le demo.
 
-## I sei tour predefiniti
+## I sette tour predefiniti
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
@@ -215,6 +215,7 @@ automaticamente anche per le demo.
 | **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 10 · 173 s | Tucson al buio guardando a est (05:30); la fila inquadrata pianeta per pianeta; tre **primi piani a campo da telescopio** (0,25°): Giove con le bande, Venere gibbosa e Saturno con gli anelli, basso a ovest — cinque pianeti nello stesso cielo; di nuovo la fila e l'eclittica; volo; da fuori la camera scende dall'alto (80°) al piano (12°) e poi di taglio (3°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; in cielo l'alba che li spegne (fino alle 06:30). |
 | **Solstizi ed equinozi** (`solstizi_equinozi`) | 16 · 292 s | Perché esistono le stagioni, detto con la geometria. Roma a mezzogiorno del 21 giugno 2027 e la domanda (non è la distanza); volo; la Terra da vicino con l'**asse in evidenza** (`earth_axis`) e la camera che finisce di fianco, dove i 23,4° sulla perpendicolare all'orbita si leggono interi; un anno intero con la camera ferma (`date_range`): l'asse non cambia direzione e il cartello dice la distanza, minima a gennaio; il solstizio di giugno col Sole a sinistra (`sun_az: 0`), il polo nord verso di lui e il parallelo di Roma quasi tutto al giorno; sei mesi di orbita; il solstizio di dicembre con la **stessa** camera e il polo dall'altra parte; i due equinozi (marzo e settembre 2028), con la camera che gira fino a mostrare l'asse che pende di lato; di nuovo a Roma, il Sole seguito in azimut dall'alba al tramonto (`track_azimuth`) a giugno, dicembre e marzo, con gli archi interi dei giorni già visti (`sun_paths`) e i tre a confronto; il sole di mezzanotte a Tromsø; il riepilogo in 3D. Ogni scena apre il **cartello della data** (`date_card`), con alba, tramonto, durata del giorno e Sole a mezzogiorno nelle scene del planetario. |
+| **Voyager · il viaggio verso le stelle** (`voyager`) | 15 · 298 s | Il viaggio delle due Voyager raccontato alla maniera di Carl Sagan. Cape Canaveral prima dell'alba del 20 agosto 1977 (Venere, Marte e Giove a est); volo; il progetto del Grand Tour con le strade future tratteggiate; il lancio da vicino, col **modellino** della Voyager 1 che si stacca dalla Terra con l'antenna rivolta verso casa; diciotto mesi di salita verso Giove; i flyby di **Giove** (5 marzo 1979) e **Saturno** (12 novembre 1980) a **distanze e dimensioni vere**, con la curva della fionda attorno al pianeta; i dodici anni di Voyager 2 fino a Nettuno; il flyby di **Nettuno** (25 agosto 1989); la forma a V della fuga fino all'eliopausa del 2012; il **pallido puntino blu** (14 febbraio 1990) con la Terra cerchiata; il **Disco d'Oro** con la camera che gira attorno alla sonda; il viaggio intero oggi; e il cielo di Roma del 15 ottobre 2026 coi **mirini** che dicono dove sono le due sonde (`probe_markers`). |
 | **Passaggio della ISS** (`passaggio_iss`) | 6 · 104 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario, a capitoli: tutto l'arco inquadrato con la traccia; il culmine **inseguito a 0,25° di campo**, col modellino della stazione e le stelle che scorrono dietro; volo; la stessa orbita da fuori nello **stesso** intervallo di tempo; più di mezz'ora di orbita a campo largo (±15 min); il congedo, l'ultimo tratto dell'arco in cielo. |
 
 Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
@@ -355,7 +356,55 @@ fotografo di sempre (`avvia` in `demo.js`):
 
 Nessuna frase ha un MP3 registrato: parla la sintesi.
 
-### Perché Helsinki e non Tromsø
+### La demo delle Voyager della v393
+
+Il difetto tipico qui sarebbe stato invisibile: una scia colorata che parte
+dalla Terra e si allontana è bella comunque, anche se passa a dieci unità
+astronomiche da Giove il giorno in cui doveva sfiorarlo. Per questo le
+traiettorie non sono disegnate: sono **coniche raccordate** calcolate in
+`app.js` (§7.7-bis, blocco «Il Grand Tour»). Fra un incontro e l'altro un arco
+di Keplero risolto col problema di Lambert (`solLambert`, variabile
+universale) fra le posizioni vere dei pianeti nei giorni pubblicati degli
+incontri; vicino a ogni pianeta l'iperbole del flyby (`solFlyby`), costruita
+dai due asintoti che gli archi portano con sé; in fondo l'arco che sbocca
+sulla retta di `SOL_SONDE` all'epoca in cui quella tabella vale. I perielii che
+ne escono tornano coi pubblicati entro il 10% (Voyager 1 a Giove 338.000 km
+contro 348.900, Voyager 2 a Nettuno 27.000 contro 29.200), e nel 2012 la
+Voyager 1 risulta a 119 UA: è il controllo aritmetico di
+`scripts/prova-demo-voyager.js`. Lo stesso modello vale anche fuori dalla demo:
+guardando la vista 3D a una data prima del 2026 le sonde adesso stanno sul
+loro viaggio vero invece che sulla retta tirata all'indietro.
+
+Il **modellino** (`solModelloVoyager`, `solDisegnaModelloVoyager`) è fatto
+di facce e aste in metri — antenna parabolica da 3,66 m, corpo decagonale, i
+tre RTG con le alette, il braccio della scienza con la piattaforma delle
+telecamere, il magnetometro da 13 m, le antenne a V da 10 m e il Disco d'Oro
+sul fianco — dipinto col pittore e illuminato dal Sole più una luce di
+riempimento. Non è in scala (una sonda di quattro metri è invisibile) ma è
+**orientato come la sonda vera**: l'antenna punta sempre la Terra
+(`solTernaVoyager`).
+
+Tre azioni nuove, tutte ripristinate dalla fotografia di `avvia`:
+
+- **`voyager_journey`** (solo `solar_system_3d`): il tempo da `from` a `to`
+  (fino a ottant'anni, `ease: smooth` per partire e arrivare fermi), le scie
+  (`future: show` per le strade che restano), gli anni degli incontri
+  (`milestones`), la Terra cerchiata (`home: show`), la misura del modellino
+  (`model_from`/`model_to`, frazione del lato corto) e il metro
+  (`scale: real` = distanze e dimensioni vere, per i flyby). Va **prima** di
+  `camera_3d`.
+- **`camera_3d`** accetta i fuochi `'Voyager 1'`, `'Voyager 2'`, `'Jupiter'`,
+  `'Saturn'`, `'Uranus'`, `'Neptune'` (perno sul corpo, zoom fino a 30000) e,
+  con le sonde, **`probe_az`**: la camera si mette nella direzione
+  cos(a)·y + sin(a)·z della terna della sonda (0 davanti al Disco d'Oro, 90
+  davanti all'antenna) e `elev_from`/`elev_to` si sommano alla sua altezza.
+- **`probe_markers`** (planetario): i mirini delle due sonde nel cielo, con la
+  distanza e le ore di luce (`skyDisegnaSondeInCielo`); sotto l'orizzonte non
+  si disegnano.
+
+Nessuna frase ha un MP3 registrato: parla la sintesi.
+
+### Perché Helsinki e non Tromsø### Perché Helsinki e non Tromsø
 
 Con Kp 5 alla mezzanotte magnetica Tromsø sta *sotto* l'ovale: l'aurora le
 passa sopra la testa e a sud, e guardando a nord non si vede niente (era il
@@ -539,6 +588,8 @@ node scripts/prova-demo-browser.js
 node scripts/prova-demo-regia.js
 node scripts/prova-demo-pagina.js   # menu, pagina Demo, comandi, camera, schermo intero, musica
 node scripts/prova-demo-intro.js    # intro comune (logo, titolo, durata, Stop/Esc/errore, telefono) e aurora lunga
+node scripts/prova-demo-voyager.js  # le Voyager: coniche raccordate, scene, modellino, ripristino
+                                    # (VOYAGER_TUTTE=1 per tre schermate a scena; VOYAGER_L/VOYAGER_H per la finestra)
 node scripts/prova-demo-stagioni.js # solstizi ed equinozi: asse, date, archi, durate del giorno, ripristino
                                     # (STAGIONI_TELEFONO=1 per rifarla su 360×640)
 node scripts/prova-i18n.js

@@ -515,7 +515,12 @@
   // muove soltanto l'occhio.
   // ------------------------------------------------------------------
   const FUOCHI_VICINO = ['Earth', 'Moon', 'Earth-Moon', 'Eclipse Shadow'];
-  const FUOCHI_SISTEMA = ['Sun', 'Earth', 'ISS'];
+  const FUOCHI_SISTEMA = ['Sun', 'Earth', 'ISS', 'Voyager 1', 'Voyager 2', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+  // Le sonde e i giganti sono i fuochi del racconto delle Voyager: la camera
+  // ci gira attorno col perno (`sol.perno`), e da vicino — un flyby, il
+  // modellino — lo zoom va molto oltre quello di una vista d'insieme.
+  const FUOCHI_LONTANI = { 'Voyager 1': 'voyager1', 'Voyager 2': 'voyager2',
+    Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune' };
   function elencoCorpiSistema(v) {
     if (v === undefined) return [];
     richiedi(typeof v === 'string' && v.length <= 120, err('elenco'));
@@ -525,18 +530,21 @@
   }
   registro.camera_3d = {
     verifica(p) {
-      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az']);
+      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az', 'probe_az']);
       richiedi(p.scene === 'earth_moon' || p.scene === 'system', err('scena3d'));
       richiedi((p.scene === 'earth_moon' ? FUOCHI_VICINO : FUOCHI_SISTEMA).includes(p.focus),
         err('fuoco', { nome: p.focus }));
       richiedi(p.orbit === undefined || numero(p.orbit, -720, 720), err('angolo'));
       for (const k of ['elev_from', 'elev_to'])
         richiedi(p[k] === undefined || numero(p[k], -85, 85), err('elevazione'));
+      const zoomMax = FUOCHI_LONTANI[p.focus] ? 30000 : 60;
       for (const k of ['zoom_from', 'zoom_to'])
-        richiedi(p[k] === undefined || numero(p[k], 0.1, 60), err('zoom3d'));
+        richiedi(p[k] === undefined || numero(p[k], 0.1, zoomMax), err('zoom3d'));
       elencoCorpiSistema(p.frame);
       richiedi(p.sun_az === undefined || (p.scene === 'system' && p.focus === 'Earth' && numero(p.sun_az, -360, 360)),
         err('soleAz'));
+      richiedi(p.probe_az === undefined || (/^Voyager/.test(p.focus || '') && numero(p.probe_az, -360, 360)),
+        err('sondaAz'));
     },
     crea(p, c) {
       richiedi(sol.aperto, err('serve3d'));
@@ -560,6 +568,14 @@
           // e sonde, coi loro nomi, qui sarebbero rumore. Tornano a fine demo.
           sol.mondiAccesi = false; sol.sondeAccese = false;
           base = sol.zoomVoluto;
+        } else if (FUOCHI_LONTANI[p.focus]) {
+          // Lo zoom di base mette il Sole sul bordo del quadro, visto dal
+          // corpo: i moltiplicatori della scena partono da lì
+          const id = FUOCHI_LONTANI[p.focus];
+          const corpo = solCorpoDiId(id);
+          richiedi(corpo, err('fuoco', { nome: p.focus }));
+          sol.perno = id; sol.quadro = 'tutto'; sol.scelto = null;
+          base = solZoomPer(Math.max(0.3, corpo.r || 1));
         } else {
           sol.perno = 'Earth'; sol.quadro = 'terra';
           const iss = (sol.satelliti || []).find(s => s.id === 'iss');
@@ -606,10 +622,30 @@
         const t = sol.terra;
         return t ? -Math.atan2(t.pos.y, t.pos.x) + p.sun_az * GRADI : az0;
       }
+      // `probe_az` lega invece la camera alla sonda (solo coi fuochi Voyager):
+      // la camera sta nella direzione cos(a)·y + sin(a)·z della terna della
+      // sonda (`solTernaVoyager`) — 0 davanti al Disco d'Oro, 90 davanti
+      // all'antenna, cioè dalla parte della Terra, −90 alle sue spalle — e da
+      // lì `orbit` la fa girare e `elev_from`/`elev_to` si **sommano** alla
+      // sua altezza sul piano. Serve perché la sonda è girata come la Terra
+      // vuole, non come la camera vuole: la Voyager 1 sta trentacinque gradi
+      // sopra il piano, e il fianco col disco guarda quasi in su.
+      function posaSonda() {
+        if (p.probe_az === undefined || typeof solTernaVoyager !== 'function') return null;
+        solLeggiPosizioni(skyAdesso());
+        const s = (sol.sonde || []).find(x => x.id === FUOCHI_LONTANI[p.focus]);
+        if (!s) return null;
+        const { Y, Z } = solTernaVoyager(s);
+        const a = p.probe_az * GRADI;
+        const d = [0, 1, 2].map(i => Y[i] * Math.cos(a) + Z[i] * Math.sin(a));
+        // `verso` è (−sin az·cos e, −cos az·cos e, sin e): lo si allinea a d
+        return { az: Math.atan2(-d[0], -d[1]), elev: Math.asin(Math.max(-1, Math.min(1, d[2]))) / GRADI };
+      }
       function applica(u) {
         const k = rampa(c, u);
-        sol.az = azDiBase() + (c.ridotto ? 0 : giro * k);
-        sol.elev = sol.elevVoluta = mescola(ea, eb, k);
+        const posa = posaSonda();
+        sol.az = (posa ? posa.az : azDiBase()) + (c.ridotto ? 0 : giro * k);
+        sol.elev = sol.elevVoluta = Math.max(-85, Math.min(85, (posa ? posa.elev : 0) + mescola(ea, eb, k)));
         solImpostaZoom(base * mescolaZoom(za, zb, k));
         centra();
       }
@@ -782,6 +818,71 @@
     crea(p) {
       sol.evidenziaAsse = { parallelo: p.parallel !== undefined ? p.parallel : null };
       return { chiudi() { sol.evidenziaAsse = null; } };
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Il viaggio delle Voyager (solo in `solar_system_3d`). Tiene il tempo da
+  // una data all'altra — anche decenni: il Grand Tour dura dodici anni e la
+  // fuga ne dura altri trentacinque — e accende nella vista 3D le scie del
+  // viaggio vero, le date degli incontri e il modellino delle sonde, grande
+  // quanto la regia vuole (`model_from`/`model_to`, frazioni del lato corto
+  // dello schermo: non è una scala, a scala vera una sonda è invisibile).
+  // `scale: real` passa a distanze e dimensioni reali, ed è quello che serve
+  // da vicino a un pianeta: la curva del flyby attorno a un Giove della sua
+  // misura vera. Va scritta **prima** di `camera_3d`, perché lo zoom di base
+  // della camera si misura col metro delle distanze. Il disegno è
+  // `solDisegnaGrandTour` in app.js; le posizioni sono `solPosizioneVoyager`.
+  // ------------------------------------------------------------------
+  const SONDE_VOYAGER = ['voyager1', 'voyager2'];
+  const VIAGGIO_MAX_MS = 80 * 366 * 86400000;
+  function viaggioVoyager(p) {
+    campi(p, ['from', 'to', 'probes', 'model_from', 'model_to', 'future', 'scale', 'milestones', 'ease', 'home']);
+    const a = dataISO({ iso: p.from }), b = dataISO({ iso: p.to });
+    richiedi(+b > +a && +b - +a <= VIAGGIO_MAX_MS && a.getUTCFullYear() >= 1977 && b.getUTCFullYear() <= 2100,
+      err('viaggio'));
+    const sonde = p.probes === undefined ? SONDE_VOYAGER.slice()
+      : String(p.probes).split(',').map(x => x.trim()).filter(Boolean);
+    richiedi(sonde.length >= 1 && sonde.every(s => SONDE_VOYAGER.includes(s)), err('sonde'));
+    for (const k of ['model_from', 'model_to'])
+      richiedi(p[k] === undefined || numero(p[k], 0, 0.7), err('modello'));
+    for (const k of ['future', 'milestones', 'home']) richiedi(p[k] === undefined || MOSTRA.includes(p[k]), err('mostra', { nome: k }));
+    richiedi(p.scale === undefined || p.scale === 'real' || p.scale === 'compressed', err('scala3d'));
+    richiedi(p.ease === undefined || p.ease === 'linear' || p.ease === 'smooth', err('andatura'));
+    return { a: +a, b: +b, sonde };
+  }
+  registro.voyager_journey = {
+    verifica: viaggioVoyager,
+    crea(p, c) {
+      richiedi(sol.aperto, err('serve3d'));
+      const { a, b, sonde } = viaggioVoyager(p);
+      const reale = p.scale === 'real';
+      sol.distanzeVere = reale; sol.misureVere = reale;
+      sol.mondiAccesi = false; sol.sondeAccese = true;
+      const ma = p.model_from !== undefined ? p.model_from : 0.03;
+      const mb = p.model_to !== undefined ? p.model_to : ma;
+      sol.grandTour = { sonde, futuro: p.future === 'show', incontri: p.milestones !== 'hide', misura: ma,
+        casa: p.home === 'show' };
+      const dolce = p.ease === 'smooth';
+      const aggiorna = u => {
+        const k = dolce ? rampa(null, u) : u;
+        istante(a + (b - a) * k);
+        if (!sol.grandTour) return;
+        sol.sondeAccese = true;
+        sol.grandTour.misura = mescola(ma, mb, rampa(c, u));
+      };
+      aggiorna(0);
+      return { aggiorna, chiudi() { sol.grandTour = null; } };
+    }
+  };
+
+  // Dove stanno le Voyager stasera, nel planetario: due mirini col nome,
+  // la distanza e le ore di luce (`skyDisegnaSondeInCielo` in app.js).
+  registro.probe_markers = {
+    verifica(p) { campi(p, []); },
+    crea() {
+      sky.sondeInCielo = true;
+      return { chiudi() { sky.sondeInCielo = false; } };
     }
   };
 
@@ -982,7 +1083,7 @@
   const chiavi = ['modalitaTempo', 'istanteSimulatoMs', 'offsetTempoSec', 'luogoVista', 'target',
     'inseguimento', 'eventoInseguito', 'seguiTelefono', 'fov', 'fovVoluto', 'modalitaHover',
     'mostraPianeti', 'mostraSoleLuna', 'mostraSottoOrizzonte', 'mostraSatelliti', 'mostraTraccia',
-    'passoTempoSec', 'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec', 'archiSole',
+    'passoTempoSec', 'playbackVerso', 'ancoraTempoSec', 'finestraTempoSec', 'archiSole', 'sondeInCielo',
     // Il campo è definito sull'altezza del riquadro (`skyRidimensiona`):
     // conserviamo anche l'altezza a cui valeva, così eventuali resize durante
     // la demo non riscalano di nuovo il FOV quando si ripristina lo stato.
@@ -999,6 +1100,7 @@
         if (azione.comando === 'timelapse') quando = tempiCivili(azione.parametri, quando, luogo).fine;
         if (azione.comando === 'aurora_lesson') richiedi(scena.vista === 'didactic_view', err('soloDidattica'));
         if (azione.comando === 'camera_3d') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
+        if (azione.comando === 'voyager_journey') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'shadow_map') richiedi(scena.vista === 'eclipse_map', err('serveMappa'));
         if (azione.comando === 'earth_axis') richiedi(scena.vista === 'solar_system_3d', err('serve3dAsse'));
         if (azione.comando === 'sun_paths') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
@@ -1180,7 +1282,7 @@
     const manuale = { ...sky.manuale }, vistaPrima = vistaAttuale;
     const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
       'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto', 'mondiAccesi', 'sondeAccese',
-      'evidenziaAsse'].map(k => [k, sol[k]]));
+      'evidenziaAsse', 'grandTour', 'distanzeVere', 'misureVere'].map(k => [k, sol[k]]));
     const auroraPrima = { acceso: aur.acceso, kpSimulato: aur.kpSimulato };
     const didatticaPrima = typeof didDemo !== 'undefined' ? didDemo.fotografa() : null;
     const livelliPrima = fotografaLivelli();
