@@ -179,12 +179,18 @@ const server = http.createServer((req, res) => {
     };
     let richiesteSensori = 0;
     let richiesteCamera = 0;
+    let richiesteTorcia = 0;
+    const traccia = {
+      stop() {},
+      getCapabilities: () => ({ torch: true }),
+      applyConstraints: async () => { richiesteTorcia += 1; }
+    };
     skyRichiediSensori = async () => { richiesteSensori += 1; return true; };
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: { getUserMedia: async () => {
         richiesteCamera += 1;
-        return { getTracks: () => [{ stop() {} }] };
+        return { getTracks: () => [traccia], getVideoTracks: () => [traccia] };
       } }
     });
     sky.seguiTelefono = false;
@@ -193,7 +199,7 @@ const server = http.createServer((req, res) => {
     sky.sensoriNegati = false;
     sky.camera = null;
     await skyAttivaFotocamera();
-    const risultato = { richiesteSensori, richiesteCamera, segue: sky.seguiTelefono };
+    const risultato = { richiesteSensori, richiesteCamera, richiesteTorcia, segue: sky.seguiTelefono };
     if (sky.camera) await skyAttivaFotocamera();
     skyRichiediSensori = richiediOriginale;
     Object.defineProperty(navigator, 'mediaDevices', {
@@ -209,6 +215,9 @@ const server = http.createServer((req, res) => {
       aggancioAutomaticoAr.richiesteCamera === 1 && aggancioAutomaticoAr.segue,
     `${aggancioAutomaticoAr.richiesteSensori} richiesta sensori, ` +
       `${aggancioAutomaticoAr.richiesteCamera} fotocamera, segue: ${aggancioAutomaticoAr.segue}`);
+  ok('«Realtà aumentata» non attiva la torcia',
+    aggancioAutomaticoAr.richiesteTorcia === 0,
+    `${aggancioAutomaticoAr.richiesteTorcia} richieste alla torcia`);
 
   // Su un computer privo di sensori i due ingressi dell'AR non devono essere
   // proposti. Se arriva una lettura reale, invece, anche un dispositivo che
