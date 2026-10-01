@@ -671,12 +671,15 @@
     action: date_card { label: 'demo.cartello.voyager.piano', time: hide };
   }
   scene solar_system_3d {
-    // I due lanci da vicino: la sonda si stacca dalla Terra, la parabola
-    // resta girata verso casa.
-    duration: 22s;
+    // Il lancio da vicino, a distanze e dimensioni vere: la Terra grande, la
+    // sonda un puntino che se ne stacca (il tempo corre in progressione
+    // geometrica, dalle prime ore ai primi milioni di chilometri), la Luna che
+    // passa di lato. Poi la camera raggiunge la sonda, la Terra esce dal
+    // quadro e il modellino compare con l'antenna girata verso casa.
+    duration: 24s;
     action: narrate { id: 'demo.narr.voyager.4' };
-    action: voyager_journey { from: '1977-09-06T00:00:00Z', to: '1977-11-20T00:00:00Z', probes: 'voyager1', model_from: 0.2, model_to: 0.13 };
-    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: 10, orbit: 60, elev_from: -48, elev_to: -64, zoom_from: 9, zoom_to: 3.5 };
+    action: voyager_journey { from: '1977-09-05T13:45:00Z', to: '1977-09-18T00:00:00Z', probes: 'voyager1', scale: real, ease: log, model_from: 0.17, gaze: show, trail: earth, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Earth', orbit: 40, elev_from: 28, elev_to: 14, zoom_from: 1, zoom_to: 60, zoom_start: 0.6 };
     action: date_card { label: 'demo.cartello.voyager.lancio', time: hide };
   }
   scene solar_system_3d {
@@ -688,35 +691,40 @@
     action: date_card { label: 'demo.cartello.voyager.salita', time: hide };
   }
   scene solar_system_3d {
-    // Giove, a distanze e dimensioni vere: la curva della fionda.
-    duration: 22s;
+    // Giove, a distanze e dimensioni vere: la curva della fionda. La camera
+    // tiene insieme la sonda e il pianeta e si stringe con loro, guardando il
+    // piano dell'iperbole quasi di fronte; il tempo rallenta al perielio.
+    duration: 26s;
     action: narrate { id: 'demo.narr.voyager.6' };
-    action: voyager_journey { from: '1979-03-05T01:00:00Z', to: '1979-03-05T23:00:00Z', probes: 'voyager1', scale: real, model_from: 0.05, milestones: hide };
-    action: camera_3d { scene: system, focus: 'Jupiter', orbit: 35, elev_from: 38, elev_to: 20, zoom_from: 800, zoom_to: 1250 };
+    action: voyager_journey { from: '1979-03-04T12:00:00Z', to: '1979-03-06T12:00:00Z', probes: 'voyager1', scale: real, ease: flyby, future: show, model_from: 0.05, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Jupiter', flyby_tilt: 28, orbit: 30, elev_from: 4, elev_to: -6 };
     action: date_card { label: 'demo.cartello.voyager.giove', time: hide };
   }
   scene solar_system_3d {
     // Saturno e Titano: la fionda che la porta fuori dal piano.
-    duration: 20s;
+    duration: 24s;
     action: narrate { id: 'demo.narr.voyager.7' };
-    action: voyager_journey { from: '1980-11-12T14:00:00Z', to: '1980-11-13T09:00:00Z', probes: 'voyager1', scale: real, model_from: 0.05, milestones: hide };
-    action: camera_3d { scene: system, focus: 'Saturn', orbit: -40, elev_from: 30, elev_to: 12, zoom_from: 1700, zoom_to: 2600 };
+    action: voyager_journey { from: '1980-11-12T06:00:00Z', to: '1980-11-13T18:00:00Z', probes: 'voyager1', scale: real, ease: flyby, future: show, model_from: 0.05, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Saturn', flyby_tilt: 32, orbit: -30, elev_from: 6, elev_to: -4 };
     action: date_card { label: 'demo.cartello.voyager.saturno', time: hide };
   }
   scene solar_system_3d {
-    // Voyager 2 da sola: Saturno, Urano, Nettuno.
-    duration: 22s;
+    // Voyager 2 da sola: Saturno, Urano, Nettuno. La camera la segue e si
+    // stringe su ogni gigante che sfiora — il tempo rallenta a ogni sorvolo
+    // e torna a correre negli anni di mezzo — fino all'arrivo da Nettuno.
+    duration: 28s;
     action: narrate { id: 'demo.narr.voyager.8' };
-    action: voyager_journey { from: '1980-11-14T00:00:00Z', to: '1989-08-20T00:00:00Z', future: show, model_from: 0.035, ease: smooth };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn,Uranus,Neptune', orbit: 80, elev_from: 55, elev_to: 24, zoom_from: 0.95, zoom_to: 1.02 };
+    action: voyager_journey { from: '1980-11-14T00:00:00Z', to: '1989-08-24T16:00:00Z', probes: 'voyager2', scale: real, future: show, model_from: 0.035, ease: flyby };
+    action: camera_3d { scene: system, focus: 'Voyager 2', frame_with: 'auto', orbit: 50, elev_from: 30, elev_to: 18 };
     action: date_card { label: 'demo.cartello.voyager.giganti', time: hide };
   }
   scene solar_system_3d {
-    // Nettuno e Tritone: il sorvolo più stretto del viaggio.
-    duration: 22s;
+    // Nettuno e Tritone: il sorvolo più stretto del viaggio, cinquemila
+    // chilometri sopra le nubi. A grandezza vera la sonda rasenta il disco.
+    duration: 26s;
     action: narrate { id: 'demo.narr.voyager.9' };
-    action: voyager_journey { from: '1989-08-24T22:00:00Z', to: '1989-08-25T09:00:00Z', probes: 'voyager2', scale: real, model_from: 0.05, milestones: hide };
-    action: camera_3d { scene: system, focus: 'Neptune', orbit: 45, elev_from: 34, elev_to: 16, zoom_from: 9000, zoom_to: 16000 };
+    action: voyager_journey { from: '1989-08-24T16:00:00Z', to: '1989-08-25T16:00:00Z', probes: 'voyager2', scale: real, ease: flyby, future: show, model_from: 0.05, milestones: hide };
+    action: camera_3d { scene: system, focus: 'Voyager 2', frame_with: 'Neptune', flyby_tilt: 24, orbit: 36, elev_from: 4, elev_to: -6 };
     action: date_card { label: 'demo.cartello.voyager.nettuno', time: hide };
   }
   scene solar_system_3d {
@@ -734,16 +742,19 @@
     // vorrebbe dire perdere proprio quelle.
     duration: 34s;
     action: narrate { id: 'demo.narr.voyager.11' };
-    action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show };
+    action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show, gaze: show, proportion: free };
     action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -105, orbit: 25, elev_from: -4, elev_to: 4, zoom_from: 1.05, zoom_to: 0.95 };
     action: date_card { label: 'demo.cartello.voyager.puntino', time: hide };
   }
   scene solar_system_3d {
-    // Il Disco d'Oro: la camera gira attorno alla sonda.
-    duration: 22s;
+    // Il Disco d'Oro: la camera parte dalla sonda intera e si avvicina al
+    // fianco dove il disco è montato, che resta al centro del quadro e si
+    // accende; accanto compare la copertina vera, legata al disco da un filo.
+    duration: 26s;
     action: narrate { id: 'demo.narr.voyager.12' };
-    action: voyager_journey { from: 'now-280d', to: 'now', probes: 'voyager1', model_from: 0.48, model_to: 0.68, milestones: hide };
-    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: 5, orbit: -36, elev_from: 2, elev_to: -12, zoom_from: 40, zoom_to: 60 };
+    action: voyager_journey { from: 'now-280d', to: 'now', probes: 'voyager1', model_from: 0.42, model_to: 3.4, model_end: 0.5, milestones: hide, proportion: free, record: show };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: 22, orbit: -16, elev_from: 10, elev_to: 2, zoom_from: 40, zoom_to: 50 };
+    action: golden_record { at: 0.3 };
     action: date_card { label: 'demo.cartello.voyager.disco', time: hide };
   }
   scene solar_system_3d {
