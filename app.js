@@ -38542,6 +38542,9 @@ function solDisegnaAsseTerra(ctx, terra, assi) {
 function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
+  // La scala cosmica (scala-cosmica.js) è il quarto quadro di questa
+  // finestra: stessa tela, stesso orologio, un'altra carta. Disegna lei.
+  if (typeof cosmAttivo === 'function' && cosmAttivo()) { cosmDisegna(ctx); return; }
   // Sara' valorizzato di nuovo solo se in questo fotogramma la Terra e'
   // abbastanza grande da mostrare (e quindi scegliere) la sua superficie.
   sol.globoTerra = null;
@@ -39308,6 +39311,7 @@ function solImpostaZoom(z, opzioni = {}) {
 // (`sol.vicino`); fra le altre due la differenza è solo l'inquadratura da cui
 // si è partiti, e quella se la ricorda `sol.quadro`.
 function solQuadroAttuale() {
+  if (typeof cosmAttivo === 'function' && cosmAttivo()) return 'cosmo';
   return sol.vicino ? 'eclissi' : (sol.quadro || 'terra');
 }
 
@@ -41292,6 +41296,7 @@ function chiudiSistemaSolare() {
   // Il volo d'ingresso non sopravvive alla finestra: chiudendo a metà
   // resterebbe un velo acceso sopra a una scena che non c'è più.
   solVoloChiudi();
+  if (typeof cosmEsci === 'function') cosmEsci();
   // Senza la scena davanti non si può continuare a comporre il filmato.
   // Come uscendo dal planetario, una ripresa in corso viene annullata.
   if (sky.reg.attiva && sky.reg.origine === 'solare') skyRegFerma({ annulla: true });
@@ -41355,6 +41360,13 @@ function inizializzaSistemaSolare() {
   if (ricerca && campoRicerca) ricerca.addEventListener('submit', e => {
     e.preventDefault();
     const id = solIdDaRicerca(campoRicerca.value);
+    // Le strutture oltre i pianeti — l'eliopausa, la nube di Oort, Laniakea —
+    // non sono corpi della scena: le trova la scala cosmica, e ci porta lì
+    if (!id && typeof cosmCercaTesto === 'function' && cosmCercaTesto(campoRicerca.value)) {
+      if (esitoRicerca) esitoRicerca.textContent = '';
+      campoRicerca.blur();
+      return;
+    }
     // Una famiglia spenta non è una ragione per dire «non trovato»: chi cerca
     // Plutone col pannellino dei mondi minori chiuso sta chiedendo di vederlo,
     // e la risposta giusta è accenderlo. Vale anche per le sonde e i
@@ -41387,6 +41399,15 @@ function inizializzaSistemaSolare() {
   modale.querySelectorAll('[data-sol-quadro]').forEach(b =>
     b.addEventListener('click', () => {
       const quale = b.dataset.solQuadro;
+      // La scala cosmica: oltre i pianeti, fino all'universo osservabile
+      // (scala-cosmica.js). Ritoccarla la rimette sulle Voyager di oggi.
+      if (quale === 'cosmo') {
+        if (typeof cosmEntra === 'function') {
+          if (cosmAttivo()) cosmReimposta(); else cosmEntra();
+        }
+        return;
+      }
+      if (typeof cosmAttivo === 'function' && cosmAttivo()) cosmEsci();
       // Il banco delle eclissi è una scena a parte: qui ci si entra, e per
       // uscirne si tocca una delle altre due
       if (quale === 'eclissi') {
@@ -41446,17 +41467,24 @@ function inizializzaSistemaSolare() {
     }));
 
   const reset = document.getElementById('sol-reset');
-  if (reset) reset.addEventListener('click', solRipristinaVista);
+  if (reset) reset.addEventListener('click', () => {
+    if (typeof cosmAttivo === 'function' && cosmAttivo()) cosmReimposta();
+    else solRipristinaVista();
+  });
 
   // I comandi appoggiati sulla scena: schermo intero e zoom
   const schermo = document.getElementById('sol-schermo');
   if (schermo) schermo.addEventListener('click', solAlternaSchermoIntero);
   const zoomMenoMappa = document.getElementById('sol-zoom-meno');
-  if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () =>
-    solImpostaZoom(sol.zoomVoluto / Math.pow(1.4, solPrecisioneCamera()), { morbido: true }));
+  if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () => {
+    if (typeof cosmAttivo === 'function' && cosmAttivo()) { cosmZoomPasso(1); return; }
+    solImpostaZoom(sol.zoomVoluto / Math.pow(1.4, solPrecisioneCamera()), { morbido: true });
+  });
   const zoomPiuMappa = document.getElementById('sol-zoom-piu');
-  if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () =>
-    solImpostaZoom(sol.zoomVoluto * Math.pow(1.4, solPrecisioneCamera()), { morbido: true }));
+  if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () => {
+    if (typeof cosmAttivo === 'function' && cosmAttivo()) { cosmZoomPasso(-1); return; }
+    solImpostaZoom(sol.zoomVoluto * Math.pow(1.4, solPrecisioneCamera()), { morbido: true });
+  });
 
   // Il pieno schermo può finire anche senza passare dal tasto (Esc, o il
   // gesto del sistema): quando succede, la tela va rimisurata comunque
@@ -41609,6 +41637,7 @@ function inizializzaSistemaSolare() {
       if (e.shiftKey) solSposta(0, passoPan);
       else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4 * precisione); solAggiornaTasti(); }
     } else if (e.key === 'c' || e.key === 'C') solCentra();
+    else if ((e.key === 'r' || e.key === 'R') && typeof cosmAttivo === 'function' && cosmAttivo()) cosmReimposta();
     else if (e.key === 'r' || e.key === 'R') solRipristinaVista();
     else if (e.key === ' ') { e.preventDefault(); solAlternaMarcia(); }
   });

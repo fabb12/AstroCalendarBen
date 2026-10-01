@@ -113,7 +113,10 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       AstroDemo.avvia(AstroDemo.libreria.elenco().find(d => d.chiave === 'voyager').testo);
     });
     const scene = await pagina.evaluate(() => AstroDemo.valida(AstroDemo.libreria.elenco().find(d => d.chiave === 'voyager').testo).scene.map(s => s.vista));
-    ok(scene.length === 15, 'Quindici scene');
+    ok(scene.length === 18, 'Diciotto scene');
+    // Le tre scene della scala cosmica (v400): stessa vista 3D, ma il quadro
+    // è quello di scala-cosmica.js e il Grand Tour è spento
+    const COSMICHE = [13, 14, 15];
     for (let i = 0; i < scene.length; i++) {
       for (const u of (process.env.VOYAGER_TUTTE ? [0.05, 0.5, 0.95] : [0.6])) {
         await pagina.evaluate(([i, u]) => { AstroDemo.vaiAScena(i, u); AstroDemo.pausa(); }, [i, u]);
@@ -121,7 +124,8 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
         await pagina.waitForTimeout(250);
         await attendiFotogrammi();
         const stato = await pagina.evaluate(() => {
-          const fuori = { aperto: sol.aperto, tour: !!sol.grandTour, sonde: [] };
+          const fuori = { aperto: sol.aperto, tour: !!sol.grandTour, sonde: [],
+            cosmo: typeof cosmAttivo === 'function' && cosmAttivo() };
           if (sol.aperto && sol.grandTour) {
             sol.sonde.forEach(s => { if (sol.grandTour.sonde.includes(s.id) && s.partita && s.schermo)
               fuori.sonde.push({ id: s.id, px: s.schermo.px, py: s.schermo.py, L: sol.L, H: sol.H }); });
@@ -130,7 +134,10 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
           }
           return fuori;
         });
-        if (scene[i] === 'solar_system_3d') {
+        if (COSMICHE.includes(i)) {
+          ok(stato.aperto && stato.cosmo, `Scena ${i + 1}: la vista 3D mostra la scala cosmica`);
+        } else if (scene[i] === 'solar_system_3d') {
+          ok(!stato.cosmo, `Scena ${i + 1}: niente scala cosmica`);
           ok(stato.aperto && stato.tour, `Scena ${i + 1}: la vista 3D ha il Grand Tour acceso`);
           ok(stato.sonde.length >= 1 || i === 2, `Scena ${i + 1}: almeno una sonda in scena`);
           stato.sonde.forEach(s => ok(s.px > -40 && s.py > -40 && s.px < s.L + 40 && s.py < s.H + 40,
@@ -271,7 +278,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       return { visibile: p.classList.contains('visibile'), pezzi: p.querySelectorAll('.demo-cronologia-pezzo').length,
         testo: p.querySelector('.demo-cronologia-testa').textContent };
     });
-    ok(cronologia.visibile && cronologia.pezzi === 15 && /5 di 15/.test(cronologia.testo),
+    ok(cronologia.visibile && cronologia.pezzi === 18 && /5 di 18/.test(cronologia.testo),
       `Il tocco mostra i comandi con la cronologia (${cronologia.testo})`);
     await foto('cronologia');
     const salto = await pagina.evaluate(() => {
@@ -279,7 +286,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       pista.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + r.width * 0.5, clientY: r.top + r.height / 2 }));
       return AstroDemo.scena;
     });
-    ok(salto >= 6 && salto <= 8, `Toccando la pista a metà si salta a metà del racconto (scena ${salto + 1})`);
+    ok(salto >= 6 && salto <= 11, `Toccando la pista a metà si salta a metà del racconto (scena ${salto + 1})`);
     await pagina.waitForTimeout(2600);
     ok(await pagina.evaluate(() => !document.getElementById('demo-controlli').classList.contains('visibile')),
       'Dopo la durata scelta i comandi si ritirano');
@@ -297,8 +304,42 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     ok(disco.filo && disco.centro > 0.99, 'Il Disco d\'Oro: il filo lega il disco del modellino alla scheda, e il disco è al centro');
     await foto('disco');
 
+    // --- 2-quater. La scala cosmica (v400) -----------------------------------
+    // Tre domande, e sono quelle che a occhio si sbagliano: le sonde di oggi
+    // sono nel quadro con la loro distanza scritta accanto; gli anni corrono
+    // davvero (e non oltre quanto la scena dichiara); e in fondo alla scena
+    // della scala il loro viaggio intero è più piccolo di un pixel.
+    const cosmo = async (i, u) => {
+      await pagina.evaluate(([i, u]) => { AstroDemo.vaiAScena(i, u); AstroDemo.pausa(); }, [i, u]);
+      await attendiFotogrammi(); await pagina.waitForTimeout(150); await attendiFotogrammi();
+      return pagina.evaluate(() => {
+        const cam = cosm.cam, m = cosmMisuraSonda('voyager1', cosmIstante());
+        return { L: cosm.L, anni: cosm.anni, sonde: cosm.schermo.sonde.map(s => ({ id: s.id, x: s.x, y: s.y })),
+          W: sol.L, H: sol.H, pxViaggio: m.dalSole * cam.s, dalSole: m.dalSole, dallaTerra: m.dallaTerra,
+          terra: m.terraNota, evidenza: cosm.evidenza, riga: !!cosm.schermo.riga };
+      });
+    };
+    let c = await cosmo(13, 0.9);
+    ok(c.sonde.length === 2 && c.sonde.every(s => s.x > 0 && s.y > 0 && s.x < c.W && s.y < c.H),
+      'Scala cosmica, oggi: le due sonde sono nel quadro');
+    ok(c.terra && c.dalSole > 165 && c.dalSole < 200 && Math.abs(c.dallaTerra - c.dalSole) < 1.1,
+      `Scala cosmica, oggi: Voyager 1 a ${c.dalSole.toFixed(1)} UA dal Sole e ${c.dallaTerra.toFixed(1)} dalla Terra`);
+    ok(c.riga, 'Scala cosmica: la riga delle distanze è disegnata');
+    await foto('cosmo-oggi');
+    c = await cosmo(14, 0.999);
+    ok(c.anni > 41000 && c.anni <= 42000, `Scala cosmica, il futuro: gli anni arrivano a ${Math.round(c.anni)}`);
+    ok(c.dalSole > 140000 && c.dalSole < 160000, `Fra 42.000 anni Voyager 1 è a ${Math.round(c.dalSole)} UA (oltre la nube di Oort)`);
+    ok(c.sonde.length === 2 && c.sonde.every(s => s.x > 0 && s.y > 0 && s.x < c.W && s.y < c.H), 'Il futuro: le sonde restano nel quadro');
+    await foto('cosmo-futuro');
+    c = await cosmo(15, 0.5);
+    ok(c.evidenza, `Scala cosmica: a metà della salita c'è una struttura accesa (${c.evidenza})`);
+    c = await cosmo(15, 0.999);
+    ok(c.L > 15.3, `Scala cosmica: la scena finisce sull'universo osservabile (L = ${c.L.toFixed(2)})`);
+    ok(c.pxViaggio < 1e-6, `Su quella scala il viaggio delle Voyager è meno di un pixel (${c.pxViaggio.toExponential(1)} px)`);
+    await foto('cosmo-universo');
+
     // --- 3. Le Voyager nel cielo di stasera ---------------------------------
-    await pagina.evaluate(() => { AstroDemo.vaiAScena(13, 0.95); AstroDemo.pausa(); });
+    await pagina.evaluate(() => { AstroDemo.vaiAScena(16, 0.95); AstroDemo.pausa(); });
     await attendiFotogrammi();
     ok(await pagina.evaluate(() => sky.sondeInCielo === true), 'I mirini delle Voyager sono accesi nel planetario');
     // «Stasera» è il giorno in cui si guarda la demo, non una data scritta a
@@ -321,6 +362,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       misureVere: sol.misureVere, grandTour: sol.grandTour, sondeAccese: sol.sondeAccese, sondeInCielo: sky.sondeInCielo,
       prima: window.__prima, aperto: sol.aperto }));
     ok(!dopo.aperto, 'La vista 3D si chiude');
+    ok(await pagina.evaluate(() => !cosmAttivo() && !cosm.regia), 'La scala cosmica si spegne con la demo');
     ok(await pagina.evaluate(() => !document.getElementById('demo-immagine')), 'La scheda del Disco d\'Oro se ne va');
     for (const k of ['distanzeVere', 'misureVere', 'grandTour', 'sondeAccese', 'sondeInCielo'])
       ok(dopo[k] === dopo.prima[k], `Ripristino di ${k}`);

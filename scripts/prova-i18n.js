@@ -142,7 +142,7 @@ prova('i segnaposto sono gli stessi nelle due lingue', () => {
 const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.js',
   'catalogo.js', 'costellazioni.js', 'curiosita.js', 'corpi-minori.js', 'terreno.js', 'rilievo.js',
   'pianifica.js', 'meteo-astro.js', 'aurora-polare.js', 'telescopio.js',
-  'didattica.js', 'eventi-extra.js', 'miglior-posto.js', 'via-lattea.js',
+  'didattica.js', 'eventi-extra.js', 'miglior-posto.js', 'via-lattea.js', 'scala-cosmica.js',
   'missione-cielo.js', 'visione.js', 'demo.js', 'demo-impostazioni.js', 'demo-intro.js',
   // La narrazione: le sue voci delle Impostazioni, e gli ID delle scene delle
   // demo, che stanno scritti dentro ai tour e non in un file di codice.

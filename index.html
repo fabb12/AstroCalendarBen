@@ -1080,6 +1080,12 @@
                   <button id="skymap-btn-sistema" type="button" class="tasto-cielo tasto-vista-esterna"
                     title="Esci dal Sistema Solare e guardalo da fuori: dove sta ogni pianeta sulla sua orbita in questo istante, e in che direzione lo stai guardando da qui. Si gira col dito." data-i18n-title="ui.esci-dal-sistema-solare-e-guardalo-da-fuori" data-i18n="ui.sistema-solare-3d">Sistema Solare 3D</button>
 
+                  <!-- Ancora più in là: dove sono le Voyager, e quanto è
+                       piccolo il loro viaggio davanti alla Galassia. Apre la
+                       stessa finestra sul quadro della scala cosmica. -->
+                  <button id="skymap-btn-cosmo" type="button" class="tasto-cielo tasto-vista-esterna"
+                    title="Oltre i pianeti: dall'eliopausa all'universo osservabile, con le Voyager al loro posto vero" data-i18n-title="ui.oltre-i-pianeti-dall-eliopausa-all-universo" data-i18n="ui.scala-cosmica">Scala cosmica</button>
+
                   <!-- Tutte e ottantotto, comprese le sessanta che da qui non si
                        vedranno mai: con il disegno, chi gli ha dato il nome nelle
                        altre culture, e il tasto che porta il planetario sotto il
@@ -2321,6 +2327,21 @@
               </svg>
               <span class="sol-vista-nome" data-i18n="ui.terra-e-luna">Terra e Luna</span>
             </button>
+            <!-- Il quarto: oltre i pianeti. L'eliopausa, la nube di Oort, la
+                 Galassia, Laniakea, l'universo osservabile — e le due Voyager
+                 al loro posto vero su quella scala (scala-cosmica.js). Il
+                 segno sono tre anelli che si allargano: è una scala, non un
+                 oggetto. -->
+            <button type="button" class="tasto-vista-sistema" data-sol-quadro="cosmo"
+              title="Oltre i pianeti: dall'eliopausa all'universo osservabile, con le Voyager al loro posto vero" data-i18n-title="ui.oltre-i-pianeti-dall-eliopausa-all-universo">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/>
+                <circle cx="12" cy="12" r="5"/>
+                <circle cx="12" cy="12" r="9.6" stroke-dasharray="2.4 2.6"/>
+              </svg>
+              <span class="sol-vista-nome" data-i18n="ui.scala-cosmica">Scala cosmica</span>
+            </button>
           </div>
 
           <!-- La ricerca resta appoggiata alla scena: scegliere un corpo non
@@ -3229,6 +3250,9 @@
        fa portare i fiocchi nel cielo di adesso, con la stessa matrice
        delle stelle. -->
   <script src="via-lattea.js"></script>
+  <!-- Oltre i pianeti: la scala cosmica, quarto quadro della vista 3D. Usa
+       le posizioni delle Voyager di app.js, e la usano le demo -->
+  <script src="scala-cosmica.js"></script>
   <script src="corpi-minori.js"></script>
   <script src="pianifica.js"></script>
   <script src="terreno.js"></script>

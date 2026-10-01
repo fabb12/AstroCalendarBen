@@ -7586,6 +7586,107 @@ body.sol-immersivo { overflow: hidden; }
   box-shadow: var(--ombra-3);
 }
 .sol-scheda.hidden { display: none; }
+
+/* --- La scala cosmica (scala-cosmica.js) ---
+   Il quarto quadro della vista 3D. La tela è la stessa; sopra ci stanno solo
+   due cose: la fila delle scale, appoggiata in fondo sopra la barra del
+   tempo, e una scheda sola (la struttura toccata, o le Voyager con la
+   manopola del futuro). La ricerca e la scheda dei corpi lasciano il posto:
+   qui di corpi da cercare non ce ne sono, e due schede appoggiate nello
+   stesso angolo si coprirebbero. */
+.sol-guscio.cosmo-attivo .sol-ricerca,
+.sol-guscio.cosmo-attivo .sol-scheda,
+.sol-guscio.cosmo-attivo .sol-suggerimento { display: none !important; }
+.cosm-interfaccia[hidden] { display: none; }
+.cosm-fila {
+  position: absolute;
+  z-index: 5;
+  left: max(10px, env(safe-area-inset-left));
+  right: 62px;                       /* la colonna dei comandi resta libera */
+  bottom: var(--sol-fondo-scheda, 88px);
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+  padding: 2px 2px 4px;
+  mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+.cosm-fila::-webkit-scrollbar { display: none; }
+.cosm-tasto {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--bordo-scena, rgba(148, 163, 184, 0.5));
+  border-radius: 999px;
+  background: var(--fondo-scena, rgba(10, 14, 28, 0.86));
+  color: var(--testo);
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.cosm-tasto:first-child { border-color: rgba(252, 211, 77, 0.6); color: #fde68a; }
+.cosm-tasto.attiva {
+  border-color: var(--blu);
+  color: var(--blu-chiaro);
+  background: rgba(30, 58, 110, 0.92);
+}
+.cosm-scheda {
+  position: absolute;
+  z-index: 6;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: calc(var(--sol-fondo-scheda, 88px) + 92px);   /* sopra alla fila e alla riga della scala */
+  width: min(320px, calc(100% - 110px));
+  max-height: max(170px, calc(100% - var(--sol-fondo-scheda, 88px) - 280px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 11px 13px 12px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: var(--raggio-m);
+  background: rgba(6, 10, 20, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--ombra-3);
+  font-size: 0.8rem;
+}
+.cosm-scheda[hidden] { display: none; }
+.cosm-scheda-testa { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.cosm-scheda h3 { margin: 0; font-size: 0.98rem; font-weight: 700; color: #fde68a; }
+.cosm-scheda h4 { margin: 10px 0 4px; font-size: 0.78rem; font-weight: 700; color: var(--testo-2); }
+.cosm-dati { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0 0 8px; }
+.cosm-dati dt { color: var(--testo-3); }
+.cosm-dati dd { margin: 0; color: var(--testo); font-variant-numeric: tabular-nums; }
+.cosm-testo { margin: 0 0 8px; color: var(--testo-2); line-height: 1.45; }
+.cosm-vai { min-height: 32px; }
+.cosm-sonde { display: grid; gap: 7px; }
+.cosm-sonda { display: grid; gap: 1px; padding-left: 8px; border-left: 3px solid var(--colore-sonda); }
+.cosm-sonda strong { color: var(--colore-sonda); }
+.cosm-sonda span { color: var(--testo-2); font-variant-numeric: tabular-nums; }
+.cosm-futuro { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; color: var(--testo-2); }
+.cosm-futuro output { color: #fde68a; font-weight: 650; text-align: right; }
+.cosm-futuro-riga { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.cosm-futuro-riga input { flex: 1; min-width: 0; accent-color: #fcd34d; }
+.cosm-futuro-riga .tasto-cielo { min-height: 30px; padding: 0 10px; }
+.cosm-nota { margin: 6px 0 0; color: var(--testo-3); font-size: 0.72rem; line-height: 1.4; }
+.cosm-tappe { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.cosm-tappe button {
+  width: 100%; display: grid; grid-template-columns: 6.4em 1fr; gap: 8px; text-align: left;
+  padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--testo-2); cursor: pointer;
+  font-size: 0.74rem; line-height: 1.3;
+}
+.cosm-tappe button:hover { background: rgba(148, 163, 184, 0.12); }
+.cosm-tappe .passata button { color: var(--testo-3); }
+.cosm-tappa-quando { color: #fde68a; font-variant-numeric: tabular-nums; }
+.cosm-tappe .passata .cosm-tappa-quando { color: var(--testo-3); }
+@media (max-width: 520px) {
+  /* Su un telefono la scheda è una nota appoggiata in basso, non una
+     pagina: si legge scorrendola, e il cielo sopra resta in vista */
+  .cosm-scheda { width: calc(100% - 78px); max-height: min(36%, 230px); font-size: 0.76rem; }
+}
 .sol-scheda-testa {
   display: flex;
   align-items: center;
