@@ -702,12 +702,62 @@ function corpiPasso(el, t, quando) {
     ? skyJ2000AllaData(c.ra, c.dec, t)
     : { ra: c.ra, dec: c.dec };
   const hor = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
+  // La direzione J2000 si tiene accanto: è quella che `corpiOrienta` porta
+  // sull'orizzonte a ogni giro del cielo, con la stessa matrice delle stelle.
+  const ra = c.ra * Math.PI / 12, dec = c.dec * Math.PI / 180;
   return Object.assign({}, c, {
     az: hor.azimuth, alt: hor.altitude,
     raOra: oggi.ra, decOra: oggi.dec,
+    v2000: [Math.cos(dec) * Math.cos(ra), Math.cos(dec) * Math.sin(ra), Math.sin(dec)],
     sottotipo: c.tipo,
     disegno: c.tipo === 'cometa' ? 'cometa' : 'asteroide'
   });
+}
+
+// --- Due velocità diverse, due conti diversi --------------------------------
+//   La cache qui sopra tiene **dove sta il corpo fra le stelle** (Keplero,
+//   ascensione retta e declinazione), che in cinque minuti di cielo non si
+//   muove di un pixel. Ma per un pezzo teneva anche l'**azimut e l'altezza**,
+//   e quelli no: li muove la rotazione della Terra, un quarto di grado al
+//   minuto. Col tempo che scorre veloce — la partenza delle Voyager da Cape
+//   Canaveral, qualunque playback — le stelle giravano a ogni aggiornamento
+//   del cielo e Eunomia e Iride restavano ferme fino allo scadere della
+//   cache, poi saltavano di un grado e più in un colpo: «si muovono a scatti».
+//   Adesso la parte lenta resta in cache e la parte veloce si rifà ogni
+//   volta che il cielo si rifà, con **la stessa matrice delle stelle**
+//   (`cat.matrice`): asteroidi e stelle camminano insieme per costruzione.
+//   Senza catalogo si ripiega su Horizon, una volta per istante.
+let corpiOrientati = { chiave: null, elenco: null };
+
+function corpiOrienta(elenco, istante) {
+  if (!elenco.length) return;
+  const M = (typeof cat !== 'undefined' && cat.matrice) ? cat.matrice : null;
+  const chiave = M || istante.getTime();
+  if (corpiOrientati.chiave === chiave && corpiOrientati.elenco === elenco) return;
+  corpiOrientati = { chiave, elenco };
+  const R2D = 180 / Math.PI;
+  if (M) {
+    const nx = M[0][0], ny = M[1][0], nz = M[2][0];
+    const ox = M[0][1], oy = M[1][1], oz = M[2][1];
+    const zx = M[0][2], zy = M[1][2], zz = M[2][2];
+    for (const c of elenco) {
+      if (!c.v2000) continue;
+      const [x, y, z] = c.v2000;
+      const est = -(ox * x + oy * y + oz * z);
+      const nord = nx * x + ny * y + nz * z;
+      const alto = zx * x + zy * y + zz * z;
+      c.alt = Math.asin(Math.max(-1, Math.min(1, alto))) * R2D;
+      c.az = (Math.atan2(est, nord) * R2D + 360) % 360;
+    }
+    return;
+  }
+  const t = Astronomy.MakeTime(istante);
+  for (const c of elenco) {
+    try {
+      const hor = Astronomy.Horizon(t, sky.observer, c.raOra, c.decOra, 'normal');
+      c.az = hor.azimuth; c.alt = hor.altitude;
+    } catch (e) { /* resta l'ultima */ }
+  }
 }
 
 // Avanza il giro di qualche millisecondo. L'istante è **quello di quando il
@@ -762,10 +812,12 @@ function corpiMinoriVisibili() {
   if (corpiInCielo.istante !== null &&
       Date.now() - corpiInCielo.quando < CORPI_CACHE_MS &&
       Math.abs(ms - corpiInCielo.istante) < CORPI_ISTANTE_MS) {
+    corpiOrienta(corpiInCielo.elenco, istante);
     return corpiInCielo.elenco;
   }
 
   corpiAvanzaLavoro(ms);
+  corpiOrienta(corpiInCielo.elenco, istante);
   return corpiInCielo.elenco;
 }
 
