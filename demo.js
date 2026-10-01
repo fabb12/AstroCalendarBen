@@ -560,9 +560,94 @@
     richiedi(nomi.length >= 1 && nomi.length <= 9 && nomi.every(n => corpiSistema.includes(n)), err('corpiSistema'));
     return nomi;
   }
+  // ------------------------------------------------------------------
+  // La camera dei sorvoli (`frame_with`). Un flyby si capisce solo se nel
+  // quadro ci sono insieme la sonda e il pianeta, ed è la sola cosa che una
+  // camera fissa non può garantire: la distanza fra i due passa da milioni
+  // di chilometri a qualche raggio del pianeta in poche ore. Allora la camera
+  // si rifà a ogni fotogramma: il centro sta a metà fra la sonda e il bordo
+  // lontano del pianeta, e lo zoom è quello che fa stare quel segmento in
+  // poco più di un terzo del lato corto. Avvicinandosi, il pianeta cresce
+  // sotto gli occhi e la curva della fionda gli gira attorno a grandezza
+  // vera; allontanandosi, la camera arretra con lui. Con `auto` il corpo è
+  // il più vicino, e fra due candidati il peso passa dall'uno all'altro con
+  // continuità (l'inverso della sesta potenza della distanza): al cambio non
+  // c'è nessun salto. Il moltiplicatore di `zoom_from`/`zoom_to` avvicina o
+  // allontana da questa inquadratura, e avvicinando il centro scivola verso
+  // la sonda, che così resta nel quadro anche quando il pianeta ne esce.
+  // ------------------------------------------------------------------
+  const SORVOLO_QUOTA = 0.32;   // dal centro al bordo dell'inquadratura, in lati corti
+  const SORVOLO_ALZA = 0.04;    // il centro un po' più su: in basso ci sono i sottotitoli
+  function inquadraSorvolo(p, idSonda, m) {
+    solLeggiPosizioni(skyAdesso());
+    const s = (sol.sonde || []).find(x => x.id === idSonda);
+    if (!s || !s.pos) return;
+    const P = s.pos;
+    const candidati = (sol.pianeti || []).filter(b => p.frame_with === 'auto' || b.id === p.frame_with);
+    const vicini = candidati.map(b => ({ b, d: Math.hypot(P.x - b.pos.x, P.y - b.pos.y, P.z - b.pos.z) }))
+      .sort((x, y) => x.d - y.d).slice(0, p.frame_with === 'auto' ? 2 : 1);
+    if (!vicini.length) return;
+    sol.panX = 0; sol.panY = 0; solMisura();
+    const ps = solProietta(solScena(P));
+    const scala = Math.max(1e-12, sol.scala);
+    let pesoTot = 0, logZ = 0, ox = 0, oy = 0;
+    vicini.forEach(({ b, d }) => {
+      const peso = 1 / Math.pow(Math.max(1e-12, d), 6);
+      const pb = solProietta(solScena(b.pos));
+      const dx = (pb.px - ps.px) / scala, dy = (pb.py - ps.py) / scala;
+      const sep = Math.hypot(dx, dy);
+      const rs = sol.misureVere ? (b.km || 0) / 2 / SOL_UA_KM / SOL_RIF_UA : (b.rDisegno || 4) / scala;
+      const mezzo = Math.max((sep + rs) / 2 * 1.06, rs * 1.2, 1e-9);
+      const ux = sep > 1e-15 ? dx / sep : 0, uy = sep > 1e-15 ? dy / sep : 0;
+      logZ += peso * Math.log(SORVOLO_QUOTA / (0.44 * mezzo));
+      ox += peso * ux * (sep + rs) / 2;
+      oy += peso * uy * (sep + rs) / 2;
+      pesoTot += peso;
+    });
+    logZ /= pesoTot; ox /= pesoTot; oy /= pesoTot;
+    const verso = Math.min(1, 1 / Math.max(1e-6, m));
+    solImpostaZoom(Math.exp(logZ) * m);
+    sol.panX = 0; sol.panY = 0; solMisura();
+    const q = solProietta(solScena(P));
+    sol.panX = sol.cx - (q.px + ox * verso * sol.scala);
+    sol.panY = sol.cy - SORVOLO_ALZA * Math.min(sol.L, sol.H) - (q.py + oy * verso * sol.scala);
+  }
+  // Da dove si guarda un sorvolo. Con `flyby_tilt` la camera sta quasi sulla
+  // normale al piano dell'iperbole — la curva della fionda si vede intera, non
+  // di taglio — inclinata di tanti gradi verso il periasse; senza, guarda da
+  // dietro la sonda, col Sole in alto: è la vista giusta per un viaggio lungo
+  // fra più pianeti, dove nessun piano d'iperbole vale per tutta la scena.
+  function vistaDelSorvolo(p, idSonda) {
+    solLeggiPosizioni(skyAdesso());
+    const s = (sol.sonde || []).find(x => x.id === idSonda);
+    const ora = +skyAdesso();
+    const v = typeof solViaggioVoyager === 'function' ? solViaggioVoyager(idSonda) : null;
+    if (p.flyby_tilt !== undefined && v) {
+      const scelti = v.flyby.filter(f => p.frame_with === 'auto' || f.id === p.frame_with);
+      const fb = scelti.sort((a, b) => Math.abs(a.ms - ora) - Math.abs(b.ms - ora))[0];
+      if (fb) {
+        // La normale dalla parte del Sole, e l'inclinazione verso di lui: così
+        // il pianeta mostra la faccia del giorno invece del suo lato notte
+        const pianeta = (sol.pianeti || []).find(q => q.id === fb.id);
+        const sole = pianeta ? solV.versore([-pianeta.pos.x, -pianeta.pos.y, -pianeta.pos.z]) : [0, 0, 1];
+        let n = solV.croce(fb.pHat, fb.qHat);
+        if (solV.punto(n, sole) < 0) n = solV.per(n, -1);
+        let verso = solV.meno(sole, solV.per(n, solV.punto(sole, n)));
+        verso = solV.lung(verso) > 1e-6 ? solV.versore(verso) : fb.pHat;
+        const a = p.flyby_tilt * GRADI;
+        const d = solV.versore(solV.piu(solV.per(n, Math.cos(a)), solV.per(verso, Math.sin(a))));
+        return { az: Math.atan2(-d[0], -d[1]), elev: Math.asin(Math.max(-1, Math.min(1, d[2]))) / GRADI };
+      }
+    }
+    // Senza piano: dalla parte del Sole, così il pianeta che si avvicina
+    // mostra la faccia illuminata e non il suo lato notte
+    const pos = s && s.pos ? s.pos : { x: 1, y: 0 };
+    return { az: Math.atan2(pos.x, pos.y), elev: 0 };
+  }
   registro.camera_3d = {
     verifica(p) {
-      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az', 'probe_az']);
+      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az', 'probe_az',
+        'frame_with', 'flyby_tilt', 'zoom_start']);
       richiedi(p.scene === 'earth_moon' || p.scene === 'system', err('scena3d'));
       richiedi((p.scene === 'earth_moon' ? FUOCHI_VICINO : FUOCHI_SISTEMA).includes(p.focus),
         err('fuoco', { nome: p.focus }));
@@ -577,6 +662,11 @@
         err('soleAz'));
       richiedi(p.probe_az === undefined || (/^Voyager/.test(p.focus || '') && numero(p.probe_az, -360, 360)),
         err('sondaAz'));
+      richiedi(p.frame_with === undefined || (/^Voyager/.test(p.focus || '') && p.probe_az === undefined &&
+        (p.frame_with === 'auto' || corpiSistema.includes(p.frame_with))), err('inquadraSonda'));
+      richiedi(p.flyby_tilt === undefined || (p.frame_with !== undefined && p.frame_with !== 'Earth' &&
+        numero(p.flyby_tilt, -85, 85)), err('inquadraSonda'));
+      richiedi(p.zoom_start === undefined || numero(p.zoom_start, 0, 0.95), err('frazioneScena'));
     },
     crea(p, c) {
       richiedi(sol.aperto, err('serve3d'));
@@ -616,9 +706,18 @@
           base = z || sol.zoomVoluto;
         }
       }
-      const az0 = sol.az;
-      const elev0 = sol.elevVoluta; // la vista 3D tiene l'elevazione in gradi
-      const ea = p.elev_from !== undefined ? p.elev_from : elev0;
+      // `frame_with` è la camera dei sorvoli (vedi `inquadraSorvolo`): il
+      // centro non è un corpo, lo calcola lei a ogni fotogramma
+      const inquadra = p.frame_with !== undefined && !vicino;
+      const idSonda = FUOCHI_LONTANI[p.focus];
+      if (inquadra) {
+        sol.perno = null;
+        if (sol.grandTour) sol.grandTour.zoomLibero = true;
+      }
+      const posaSorvolo = inquadra ? vistaDelSorvolo(p, idSonda) : null;
+      const az0 = posaSorvolo ? posaSorvolo.az : sol.az;
+      const elev0 = posaSorvolo ? posaSorvolo.elev : sol.elevVoluta; // la vista 3D tiene l'elevazione in gradi
+      const ea = p.elev_from !== undefined ? p.elev_from : (inquadra ? 0 : elev0);
       const eb = p.elev_to !== undefined ? p.elev_to : ea;
       const za = p.zoom_from !== undefined ? p.zoom_from : 1;
       const zb = p.zoom_to !== undefined ? p.zoom_to : za;
@@ -673,16 +772,30 @@
         // `verso` è (−sin az·cos e, −cos az·cos e, sin e): lo si allinea a d
         return { az: Math.atan2(-d[0], -d[1]), elev: Math.asin(Math.max(-1, Math.min(1, d[2]))) / GRADI };
       }
+      const zs = p.zoom_start || 0;
       function applica(u) {
         const k = rampa(c, u);
+        const kz = zs > 0 ? rampa(c, (u - zs) / (1 - zs)) : k;
         const posa = posaSonda();
         sol.az = (posa ? posa.az : azDiBase()) + (c.ridotto ? 0 : giro * k);
+        if (inquadra) {
+          sol.elev = sol.elevVoluta = Math.max(-85, Math.min(85, elev0 + mescola(ea, eb, k)));
+          inquadraSorvolo(p, idSonda, mescolaZoom(za, zb, kz));
+          return;
+        }
         sol.elev = sol.elevVoluta = Math.max(-85, Math.min(85, (posa ? posa.elev : 0) + mescola(ea, eb, k)));
-        solImpostaZoom(base * mescolaZoom(za, zb, k));
+        solImpostaZoom(base * mescolaZoom(za, zb, kz));
         centra();
       }
       applica(0);
-      return { aggiorna(u) { if (!c.cameraManuale) applica(u); } };
+      return {
+        aggiorna(u) {
+          if (!c.cameraManuale) { applica(u); return; }
+          // Presa a mano, la camera dei sorvoli torna a girare attorno alla
+          // sonda: senza un perno il dito la farebbe ruotare attorno al Sole
+          if (inquadra && sol.perno !== idSonda) sol.perno = idSonda;
+        }
+      };
     }
   };
 
@@ -879,7 +992,8 @@
     return new Date(Date.UTC(oggi.getUTCFullYear(), oggi.getUTCMonth(), oggi.getUTCDate() + giorni));
   }
   function viaggioVoyager(p) {
-    campi(p, ['from', 'to', 'probes', 'model_from', 'model_to', 'future', 'scale', 'milestones', 'ease', 'home']);
+    campi(p, ['from', 'to', 'probes', 'model_from', 'model_to', 'model_end', 'future', 'scale', 'milestones', 'ease',
+      'home', 'gaze', 'record', 'proportion', 'trail']);
     const a = dataViaggio(p.from), b = dataViaggio(p.to);
     richiedi(+b > +a && +b - +a <= VIAGGIO_MAX_MS && a.getUTCFullYear() >= 1977 && b.getUTCFullYear() <= 2100,
       err('viaggio'));
@@ -887,11 +1001,89 @@
       : String(p.probes).split(',').map(x => x.trim()).filter(Boolean);
     richiedi(sonde.length >= 1 && sonde.every(s => SONDE_VOYAGER.includes(s)), err('sonde'));
     for (const k of ['model_from', 'model_to'])
-      richiedi(p[k] === undefined || numero(p[k], 0, 0.7), err('modello'));
-    for (const k of ['future', 'milestones', 'home']) richiedi(p[k] === undefined || MOSTRA.includes(p[k]), err('mostra', { nome: k }));
+      richiedi(p[k] === undefined || numero(p[k], 0, 6), err('modello'));
+    richiedi(p.model_end === undefined || numero(p.model_end, 0.05, 1), err('frazioneScena'));
+    for (const k of ['future', 'milestones', 'home', 'gaze', 'record'])
+      richiedi(p[k] === undefined || MOSTRA.includes(p[k]), err('mostra', { nome: k }));
     richiedi(p.scale === undefined || p.scale === 'real' || p.scale === 'compressed', err('scala3d'));
-    richiedi(p.ease === undefined || p.ease === 'linear' || p.ease === 'smooth', err('andatura'));
+    richiedi(p.ease === undefined || ['linear', 'smooth', 'flyby', 'log'].includes(p.ease), err('andatura'));
+    richiedi(p.proportion === undefined || p.proportion === 'bodies' || p.proportion === 'free', err('proporzione'));
+    richiedi(p.trail === undefined || p.trail === 'sun' || p.trail === 'earth', err('scia'));
     return { a: +a, b: +b, sonde };
+  }
+  // L'orologio del viaggio. `linear` e `smooth` sono quelli di sempre; gli
+  // altri due servono a vedere quello che in un tempo uniforme non si vede.
+  // `log` parte dall'istante iniziale e accelera in progressione geometrica:
+  // è il lancio, dove nelle prime ore la sonda si stacca dalla Terra e nei
+  // giorni dopo si allontana di milioni di chilometri. `flyby` rallenta
+  // attorno al massimo avvicinamento di ogni sorvolo della scena: un
+  // passaggio ravvicinato dura un'ora su un viaggio di anni, e a passo
+  // uniforme sarebbe un fotogramma. Attorno a ogni perielio il tempo scorre
+  // con densità (|Δt| + T)^−1,3, con T il tempo che la sonda impiega a
+  // percorrere un perielio: lontano dal pianeta i giorni volano, vicino i
+  // minuti si allungano, e il passaggio dalla prima andatura alla seconda è
+  // continuo. Il resto della scena va a passo costante.
+  function orologioDelViaggio(ease, a, b, sonde) {
+    if (ease === 'smooth') return u => a + (b - a) * rampa(null, u);
+    if (ease === 'log') {
+      const r = 600;
+      return u => a + (b - a) * (Math.pow(r, Math.max(0, Math.min(1, u))) - 1) / (r - 1);
+    }
+    if (ease !== 'flyby') return u => a + (b - a) * u;
+    const giorno = 86400000, span = b - a;
+    const nuclei = [];
+    sonde.forEach(id => {
+      const v = typeof solViaggioVoyager === 'function' ? solViaggioVoyager(id) : null;
+      if (!v) return;
+      v.flyby.forEach((fb, i) => {
+        const inc = SOL_VIAGGI_VOYAGER[id].incontri[i];
+        const rp = fb.perielioKm, vp = Math.sqrt(fb.vInfKms * fb.vInfKms + 2 * inc.mu / rp);
+        const T = Math.max(600000, rp / vp * 1000);
+        const W = span < 10 * giorno ? span * 0.6 : 40 * giorno;
+        if (fb.ms < a - W || fb.ms > b + W) return;
+        nuclei.push({ ms: fb.ms, T, W });
+      });
+    });
+    if (!nuclei.length) return u => a + (b - a) * u;
+    const nucleo = (n, t) => {
+      const x = Math.abs(t - n.ms) / n.W;
+      if (x >= 1) return 0;
+      const q = 1 - x * x;
+      return Math.pow(Math.abs(t - n.ms) + n.T, -1.3) * q * q;
+    };
+    // I campioni: uniformi sulla scena più una scala geometrica attorno a
+    // ogni perielio, che è dove la densità cambia in fretta
+    const tempi = [];
+    for (let i = 0; i <= 800; i++) tempi.push(a + span * i / 800);
+    nuclei.forEach(n => {
+      for (let i = 0; i <= 260; i++) {
+        const d = n.T * (Math.pow(n.W / n.T + 1, i / 260) - 1);
+        tempi.push(n.ms - d, n.ms + d);
+      }
+    });
+    const t = tempi.filter(x => x >= a && x <= b).sort((x, y) => x - y);
+    // Il peso di ogni nucleo è normalizzato sul suo supporto intero: un
+    // sorvolo che cade appena fuori dalla scena ne prende solo la sua parte
+    const massa = n => { let m = 0; const passi = 2000; let prima = nucleo(n, n.ms);
+      for (let i = 1; i <= passi; i++) {
+        const d = n.T * (Math.pow(n.W / n.T + 1, i / passi) - 1), dPrima = n.T * (Math.pow(n.W / n.T + 1, (i - 1) / passi) - 1);
+        const ora = nucleo(n, n.ms + d); m += (ora + prima) / 2 * (d - dPrima); prima = ora;
+      }
+      return 2 * m; };
+    const quota = (span < 10 * giorno ? 0.88 : 0.62) / nuclei.length;
+    nuclei.forEach(n => { n.peso = quota / Math.max(1e-30, massa(n)); });
+    const base = (span < 10 * giorno ? 0.12 : 0.38) / span;
+    const densita = x => nuclei.reduce((acc, n) => acc + n.peso * nucleo(n, x), base);
+    const somma = [0];
+    for (let i = 1; i < t.length; i++) somma.push(somma[i - 1] + (densita(t[i]) + densita(t[i - 1])) / 2 * (t[i] - t[i - 1]));
+    const tot = somma[somma.length - 1] || 1;
+    return u => {
+      const y = Math.max(0, Math.min(1, u)) * tot;
+      let lo = 0, hi = somma.length - 1;
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (somma[m] < y) lo = m; else hi = m; }
+      const f = somma[hi] > somma[lo] ? (y - somma[lo]) / (somma[hi] - somma[lo]) : 0;
+      return t[lo] + (t[hi] - t[lo]) * f;
+    };
   }
   registro.voyager_journey = {
     verifica: viaggioVoyager,
@@ -904,17 +1096,129 @@
       const ma = p.model_from !== undefined ? p.model_from : 0.03;
       const mb = p.model_to !== undefined ? p.model_to : ma;
       sol.grandTour = { sonde, futuro: p.future === 'show', incontri: p.milestones !== 'hide', misura: ma,
-        casa: p.home === 'show' };
-      const dolce = p.ease === 'smooth';
+        casa: p.home === 'show', sguardo: p.gaze === 'show', disco: p.record === 'show', discoCentro: 0,
+        proporzioni: p.proportion !== 'free', sciaTerra: p.trail === 'earth' };
+      const tempo = orologioDelViaggio(p.ease, a, b, sonde);
+      const fineModello = p.model_end || 1;
       const aggiorna = u => {
-        const k = dolce ? rampa(null, u) : u;
-        istante(a + (b - a) * k);
+        istante(tempo(u));
         if (!sol.grandTour) return;
         sol.sondeAccese = true;
-        sol.grandTour.misura = mescola(ma, mb, rampa(c, u));
+        const km = rampa(c, u / fineModello);
+        // Grande in proporzione geometrica: la camera che si avvicina alla
+        // sonda la vede crescere così, non a passo costante
+        sol.grandTour.misura = ma > 0 && mb > 0 ? mescolaZoom(ma, mb, km) : mescola(ma, mb, km);
+        if (sol.grandTour.disco) sol.grandTour.discoCentro = mb > ma ? km : 0;
       };
       aggiorna(0);
       return { aggiorna, chiudi() { sol.grandTour = null; } };
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Il Disco d'Oro com'è davvero (solo in `solar_system_3d`, con
+  // `voyager_journey { record: show }`): la fotografia della copertina,
+  // appoggiata accanto alla sonda, e un filo dorato dal disco del modellino
+  // alla fotografia — è quello che lega l'oggetto vero al punto della sonda
+  // in cui sta. Le candidate sono le immagini della NASA su Wikimedia
+  // Commons (pubblico dominio), poi l'immagine di apertura della voce di
+  // Wikipedia; se la rete non risponde, un'illustrazione delle stesse
+  // incisioni disegnata qui, con scritto che è un'illustrazione. `at` è la
+  // frazione della scena in cui la scheda compare.
+  // ------------------------------------------------------------------
+  const DISCO_FOTO = [
+    'https://commons.wikimedia.org/wiki/Special:FilePath/The_Sounds_of_Earth_Record_Cover_-_GPN-2000-001978.jpg?width=480',
+    'https://commons.wikimedia.org/wiki/Special:FilePath/The_Sounds_of_Earth_-_GPN-2000-001976.jpg?width=480'
+  ];
+  const DISCO_VOCE = 'https://en.wikipedia.org/api/rest_v1/page/summary/Voyager_Golden_Record';
+  // Le incisioni della copertina, come nel modellino (`solDisegnaFacciaDisco`)
+  const DISCO_SVG = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-110 -110 220 220">' +
+    '<defs><radialGradient id="o" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#fbe7a1"/>' +
+    '<stop offset=".55" stop-color="#d6a648"/><stop offset="1" stop-color="#8a6420"/></radialGradient></defs>' +
+    '<rect x="-110" y="-110" width="220" height="220" fill="#0b1020"/>' +
+    '<circle r="100" fill="url(#o)" stroke="#6b4a12" stroke-width="2"/>' +
+    '<g fill="none" stroke="#5a3d0c" stroke-width="1.6" opacity=".8">' +
+    '<circle cx="-42" cy="-38" r="26"/><circle cx="-42" cy="-38" r="18"/><circle cx="-42" cy="-38" r="10"/>' +
+    '<path d="M-12 -66 L-50 -30"/><path d="M18 -48 l4.5 -7 4.5 14 4.5 -14 4.5 14 4.5 -14 4.5 14 4.5 -14 4.5 14 4.5 -14 4.5 14 4.5 -7"/>' +
+    '<rect x="24" y="-34" width="36" height="26"/>' +
+    Array.from({ length: 14 }, (_, i) => {
+      const a = i * 2 * Math.PI / 14 + 0.3, l = 12 + 20 * ((i * 7) % 5) / 4;
+      return `<path d="M-38 40 L${(-38 + l * Math.cos(a)).toFixed(1)} ${(40 + l * Math.sin(a)).toFixed(1)}"/>`;
+    }).join('') +
+    '<circle cx="32" cy="42" r="8"/><circle cx="58" cy="42" r="8"/><path d="M40 42 H50"/>' +
+    '</g><circle r="4.5" fill="#3d2a08"/></svg>');
+  let discoFotoTrovata = null;   // la prima candidata che ha risposto, per le scene dopo
+  registro.golden_record = {
+    verifica(p) {
+      campi(p, ['at']);
+      richiedi(p.at === undefined || numero(p.at, 0, 0.95), err('frazioneScena'));
+    },
+    crea(p) {
+      richiedi(sol.aperto, err('serve3d'));
+      const quando = p.at || 0;
+      const scheda = document.createElement('figure');
+      scheda.id = 'demo-immagine'; scheda.className = 'demo-immagine';
+      scheda.setAttribute('role', 'note');
+      const cornice = document.createElement('div'); cornice.className = 'demo-immagine-cornice';
+      const img = document.createElement('img');
+      img.alt = astroI18n.t('demo.disco.alt'); img.decoding = 'async'; img.referrerPolicy = 'no-referrer';
+      const didascalia = document.createElement('figcaption');
+      const titolo = document.createElement('span'); titolo.className = 'demo-immagine-titolo';
+      const credito = document.createElement('span'); credito.className = 'demo-immagine-credito';
+      titolo.textContent = astroI18n.t('demo.disco.didascalia');
+      didascalia.append(titolo, credito);
+      cornice.append(img); scheda.append(cornice, didascalia);
+      const candidate = discoFotoTrovata ? [discoFotoTrovata] : DISCO_FOTO.slice();
+      let chiusa = false, voceChiesta = false;
+      const metti = (src, illustrazione) => {
+        img.dataset.illustrazione = illustrazione ? '1' : '';
+        credito.textContent = astroI18n.t(illustrazione ? 'demo.disco.illustrazione' : 'demo.disco.credito');
+        img.src = src;
+      };
+      const prossima = () => {
+        if (chiusa) return;
+        if (candidate.length) { metti(candidate.shift(), false); return; }
+        if (!voceChiesta) {
+          voceChiesta = true;
+          fetch(DISCO_VOCE).then(r => (r.ok ? r.json() : null)).then(d => {
+            const src = d && ((d.thumbnail && d.thumbnail.source) || (d.originalimage && d.originalimage.source));
+            if (src) candidate.push(src);
+            prossima();
+          }).catch(() => prossima());
+          return;
+        }
+        metti(DISCO_SVG, true);
+      };
+      img.addEventListener('error', () => { if (img.dataset.illustrazione !== '1') prossima(); });
+      img.addEventListener('load', () => {
+        if (img.dataset.illustrazione !== '1' && !img.src.startsWith('data:')) discoFotoTrovata = img.src;
+      });
+      prossima();
+      const genitore = genitoreDemo();
+      if (genitore) genitore.append(scheda);
+      const aggiorna = u => {
+        const visibile = u >= quando;
+        scheda.classList.toggle('visibile', visibile);
+        const gt = sol.grandTour;
+        if (!gt) return;
+        gt.discoForza = Math.max(0, Math.min(1, (u - quando * 0.6) / 0.12));
+        // Il capo del filo: il bordo sinistro della fotografia, in pixel
+        // della tela della vista 3D
+        if (visibile && sol.canvas) {
+          const t = sol.canvas.getBoundingClientRect(), r = cornice.getBoundingClientRect();
+          gt.discoFilo = r.width ? { x0: r.left - t.left, y0: r.top - t.top, x1: r.right - t.left, y1: r.bottom - t.top } : null;
+        } else gt.discoFilo = null;
+      };
+      aggiorna(0);
+      return {
+        aggiorna,
+        chiudi() {
+          chiusa = true;
+          scheda.remove();
+          if (sol.grandTour) { sol.grandTour.discoFilo = null; }
+        }
+      };
     }
   };
 
@@ -1143,6 +1447,7 @@
         if (azione.comando === 'aurora_lesson') richiedi(scena.vista === 'didactic_view', err('soloDidattica'));
         if (azione.comando === 'camera_3d') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'voyager_journey') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
+        if (azione.comando === 'golden_record') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'shadow_map') richiedi(scena.vista === 'eclipse_map', err('serveMappa'));
         if (azione.comando === 'earth_axis') richiedi(scena.vista === 'solar_system_3d', err('serve3dAsse'));
         if (azione.comando === 'sun_paths') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));

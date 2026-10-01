@@ -140,6 +140,62 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       }
     }
 
+    // --- 2-bis. I sorvoli da vicino, le proporzioni, il Disco d'Oro ---------
+    // Un sorvolo si capisce solo se nel quadro ci sono insieme la sonda e il
+    // pianeta, e il pianeta è grande: al massimo avvicinamento di ogni flyby
+    // mostrato (Giove e Saturno per la 1; Saturno, Urano e Nettuno per la 2)
+    // il disco vero deve prendere un pezzo serio del lato corto, e la sonda
+    // restare dentro allo schermo. E accanto a un pianeta così il modellino
+    // non può essere grande: è un segno, più piccolo del disco.
+    const SORVOLI = [[5, 'voyager1', 'Jupiter'], [6, 'voyager1', 'Saturn'], [7, 'voyager2', 'Saturn'],
+      [7, 'voyager2', 'Uranus'], [8, 'voyager2', 'Neptune']];
+    for (const [scena, sonda, pianeta] of SORVOLI) {
+      // L'istante del perielio dentro alla scena: lo si cerca sull'orologio
+      // della scena stessa, a passi, prendendo il punto più vicino
+      const u = await pagina.evaluate(([i, id, nome]) => {
+        const fb = solViaggioVoyager(id).flyby.find(f => f.id === nome);
+        let migliore = 0, scarto = Infinity;
+        for (let k = 0; k <= 200; k++) {
+          AstroDemo.vaiAScena(i, k / 200); AstroDemo.pausa();
+          const d = Math.abs(+skyAdesso() - fb.ms);
+          if (d < scarto) { scarto = d; migliore = k / 200; }
+        }
+        return migliore;
+      }, [scena, sonda, pianeta]);
+      await pagina.evaluate(([i, u]) => { AstroDemo.vaiAScena(i, u); AstroDemo.pausa(); }, [scena, u]);
+      await attendiFotogrammi(); await pagina.waitForTimeout(200); await attendiFotogrammi();
+      const m = await pagina.evaluate(([id, nome]) => {
+        const s = sol.sonde.find(x => x.id === id), p = sol.pianeti.find(x => x.id === nome);
+        return { corto: Math.min(sol.L, sol.H), L: sol.L, H: sol.H, r: p.rDisegno, sx: s.schermo.px, sy: s.schermo.py,
+          px: p.schermo.px, py: p.schermo.py, modello: solMisuraModelloVoyager(s) };
+      }, [sonda, pianeta]);
+      ok(m.r / m.corto > 0.06, `${sonda} a ${pianeta}: il pianeta è grande nel quadro (raggio ${Math.round(m.r)} px)`);
+      ok(m.sx > 0 && m.sy > 0 && m.sx < m.L && m.sy < m.H, `${sonda} a ${pianeta}: la sonda è nel quadro`);
+      ok(m.px > -m.r && m.py > -m.r && m.px < m.L + m.r && m.py < m.H + m.r, `${sonda} a ${pianeta}: il pianeta è nel quadro`);
+      ok(m.modello < m.r * 0.3, `${sonda} a ${pianeta}: la sonda è molto più piccola del pianeta (${m.modello.toFixed(1)} px)`);
+      await foto('sorvolo-' + sonda + '-' + pianeta);
+    }
+    // Il lancio: la Terra grande, la sonda un segno accanto
+    await pagina.evaluate(() => { AstroDemo.vaiAScena(3, 0.05); AstroDemo.pausa(); });
+    await attendiFotogrammi(); await pagina.waitForTimeout(200); await attendiFotogrammi();
+    const lancio = await pagina.evaluate(() => {
+      const s = sol.sonde.find(x => x.id === 'voyager1'), t = sol.pianeti.find(x => x.id === 'Earth');
+      return { r: t.rDisegno, modello: solMisuraModelloVoyager(s), corto: Math.min(sol.L, sol.H) };
+    });
+    ok(lancio.r > 20 && lancio.modello < lancio.r * 0.3, `Al lancio la sonda è piccola accanto alla Terra (${lancio.modello.toFixed(1)} px contro ${Math.round(lancio.r)})`);
+    // Il Disco d'Oro: la scheda con l'immagine compare, il filo la lega al disco
+    await pagina.evaluate(() => { AstroDemo.vaiAScena(11, 0.7); AstroDemo.pausa(); });
+    await attendiFotogrammi(); await pagina.waitForTimeout(400); await attendiFotogrammi();
+    const disco = await pagina.evaluate(() => {
+      const f = document.getElementById('demo-immagine');
+      const img = f && f.querySelector('img');
+      return { c: !!f, visibile: !!f && f.classList.contains('visibile'), src: img ? img.src : '',
+        filo: !!(sol.grandTour && sol.grandTour.discoFilo), centro: sol.grandTour && sol.grandTour.discoCentro };
+    });
+    ok(disco.c && disco.visibile && disco.src, 'Il Disco d\'Oro: la scheda con l\'immagine è a schermo');
+    ok(disco.filo && disco.centro > 0.99, 'Il Disco d\'Oro: il filo lega il disco del modellino alla scheda, e il disco è al centro');
+    await foto('disco');
+
     // --- 3. Le Voyager nel cielo di stasera ---------------------------------
     await pagina.evaluate(() => { AstroDemo.vaiAScena(13, 0.95); AstroDemo.pausa(); });
     await attendiFotogrammi();
@@ -164,6 +220,7 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
       misureVere: sol.misureVere, grandTour: sol.grandTour, sondeAccese: sol.sondeAccese, sondeInCielo: sky.sondeInCielo,
       prima: window.__prima, aperto: sol.aperto }));
     ok(!dopo.aperto, 'La vista 3D si chiude');
+    ok(await pagina.evaluate(() => !document.getElementById('demo-immagine')), 'La scheda del Disco d\'Oro se ne va');
     for (const k of ['distanzeVere', 'misureVere', 'grandTour', 'sondeAccese', 'sondeInCielo'])
       ok(dopo[k] === dopo.prima[k], `Ripristino di ${k}`);
     ok(!errori.length, 'Nessun errore di pagina: ' + errori.join(' | '));

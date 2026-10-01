@@ -215,7 +215,7 @@ automaticamente anche per le demo.
 | **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 10 · 173 s | Tucson al buio guardando a est (05:30); la fila inquadrata pianeta per pianeta; tre **primi piani a campo da telescopio** (0,25°): Giove con le bande, Venere gibbosa e Saturno con gli anelli, basso a ovest — cinque pianeti nello stesso cielo; di nuovo la fila e l'eclittica; volo; da fuori la camera scende dall'alto (80°) al piano (12°) e poi di taglio (3°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; in cielo l'alba che li spegne (fino alle 06:30). |
 | **Solstizi ed equinozi** (`solstizi_equinozi`) | 16 · 292 s | Perché esistono le stagioni, detto con la geometria. Roma a mezzogiorno del 21 giugno 2027 e la domanda (non è la distanza); volo; la Terra da vicino con l'**asse in evidenza** (`earth_axis`) e la camera che finisce di fianco, dove i 23,4° sulla perpendicolare all'orbita si leggono interi; un anno intero con la camera ferma (`date_range`): l'asse non cambia direzione e il cartello dice la distanza, minima a gennaio; il solstizio di giugno col Sole a sinistra (`sun_az: 0`), il polo nord verso di lui e il parallelo di Roma quasi tutto al giorno; sei mesi di orbita; il solstizio di dicembre con la **stessa** camera e il polo dall'altra parte; i due equinozi (marzo e settembre 2028), con la camera che gira fino a mostrare l'asse che pende di lato; di nuovo a Roma, il Sole seguito in azimut dall'alba al tramonto (`track_azimuth`) a giugno, dicembre e marzo, con gli archi interi dei giorni già visti (`sun_paths`) e i tre a confronto; il sole di mezzanotte a Tromsø; il riepilogo in 3D. Ogni scena apre il **cartello della data** (`date_card`), con alba, tramonto, durata del giorno e Sole a mezzogiorno nelle scene del planetario. |
-| **Voyager · il viaggio verso le stelle** (`voyager`) | 15 · 311 s | Il viaggio delle due Voyager raccontato alla maniera di Carl Sagan. Cape Canaveral prima dell'alba del 20 agosto 1977 (Venere, Marte e Giove a est); volo; il progetto del Grand Tour con le strade future tratteggiate; il lancio da vicino, col **modellino** della Voyager 1 che si stacca dalla Terra con l'antenna rivolta verso casa; diciotto mesi di salita verso Giove; i flyby di **Giove** (5 marzo 1979) e **Saturno** (12 novembre 1980) a **distanze e dimensioni vere**, con la curva della fionda attorno al pianeta; i dodici anni di Voyager 2 fino a Nettuno; il flyby di **Nettuno** (25 agosto 1989); la forma a V della fuga fino all'eliopausa del 2012; il **pallido puntino blu** (14 febbraio 1990) con la Terra cerchiata; il **Disco d'Oro** con la camera che gira attorno alla sonda; il viaggio intero oggi; e il cielo di Roma del 15 ottobre 2026 coi **mirini** che dicono dove sono le due sonde (`probe_markers`). |
+| **Voyager · il viaggio verso le stelle** (`voyager`) | 15 · 335 s | Il viaggio delle due Voyager raccontato alla maniera di Carl Sagan. Cape Canaveral prima dell'alba del 20 agosto 1977 (Venere, Marte e Giove a est); volo; il progetto del Grand Tour con le strade future tratteggiate; il lancio da vicino a **dimensioni vere** (la Terra grande, la sonda un segno che se ne stacca, poi la camera la raggiunge e compare il **modellino** con l'antenna rivolta verso casa); diciotto mesi di salita verso Giove; i flyby di **Giove** (5 marzo 1979) e **Saturno** (12 novembre 1980) a **distanze e dimensioni vere**, con la camera che tiene insieme sonda e pianeta e il tempo che rallenta al perielio; i dodici anni di Voyager 2 fino a Nettuno, con la camera che la segue e si stringe sui sorvoli di **Saturno** (1981) e **Urano** (1986); il flyby di **Nettuno** (25 agosto 1989); la forma a V della fuga fino all'eliopausa del 2012; il **pallido puntino blu** (14 febbraio 1990) con la Terra cerchiata; il **Disco d'Oro**, con la camera che arriva sul fianco della sonda e la **fotografia vera** della copertina accanto (`golden_record`); il viaggio intero oggi; e il cielo di Roma del 15 ottobre 2026 coi **mirini** che dicono dove sono le due sonde (`probe_markers`). |
 | **Passaggio della ISS** (`passaggio_iss`) | 6 · 104 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario, a capitoli: tutto l'arco inquadrato con la traccia; il culmine **inseguito a 0,25° di campo**, col modellino della stazione e le stelle che scorrono dietro; volo; la stessa orbita da fuori nello **stesso** intervallo di tempo; più di mezz'ora di orbita a campo largo (±15 min); il congedo, l'ultimo tratto dell'arco in cielo. |
 
 Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
@@ -399,9 +399,69 @@ Tre azioni nuove, tutte ripristinate dalla fotografia di `avvia`:
   con le sonde, **`probe_az`**: la camera si mette nella direzione
   cos(a)·y + sin(a)·z della terna della sonda (0 davanti al Disco d'Oro, 90
   davanti all'antenna) e `elev_from`/`elev_to` si sommano alla sua altezza.
+- **`golden_record`** (solo `solar_system_3d`, con `voyager_journey { record: show }`,
+  v397): la scheda con la fotografia vera della copertina del Disco d'Oro,
+  appoggiata a destra della scena da `at` (frazione della scena), e un filo
+  dorato che la lega al disco del modellino. Vedi «I sorvoli e il Disco d'Oro».
 - **`probe_markers`** (planetario): i mirini delle due sonde nel cielo, con la
   distanza e le ore di luce (`skyDisegnaSondeInCielo`); sotto l'orizzonte non
   si disegnano.
+
+### I sorvoli e il Disco d'Oro (v397)
+
+La segnalazione era in tre righe: nei flyby la camera restava lontana e il
+pianeta era una pallina (a Nettuno ventidue pixel di raggio: lo zoom era
+tosato a 25.000, e a distanze vere ne servono più di centomila); il Disco
+d'Oro era un cerchietto di trenta pixel su un fianco; e al lancio il
+modellino era largo quanto mezza Terra. **Nessun testo è cambiato**: le
+frasi hanno l'audio registrato, e si è rifatta solo la regia.
+
+- **La camera dei sorvoli** — `camera_3d { focus: 'Voyager N', frame_with: … }`
+  (`inquadraSorvolo` in `demo.js`). A ogni fotogramma il centro sta a metà
+  fra la sonda e il bordo lontano del pianeta, e lo zoom fa stare quel
+  segmento nel 32% del lato corto: avvicinandosi il pianeta cresce sotto gli
+  occhi, a grandezza vera, e la curva della fionda gli gira attorno. Con
+  `frame_with: 'auto'` il corpo è il più vicino, con un peso continuo fra i
+  due candidati (al cambio non c'è salto): è la scena di Voyager 2 fra
+  Saturno, Urano e Nettuno. `flyby_tilt` mette la camera quasi sulla normale
+  al piano dell'iperbole, dalla parte del Sole (la faccia del giorno), e
+  inclinata di tanti gradi verso di lui. `zoom_from`/`zoom_to` diventano
+  moltiplicatori di questa inquadratura; `zoom_start` rimanda la spinta a una
+  frazione della scena, e spingendo il centro scivola sulla sonda. Il tetto
+  dello zoom nel racconto è `SOL_ZOOM_MAX_TOUR` (`sol.grandTour.zoomLibero`).
+- **Il tempo dei sorvoli** — `voyager_journey { ease: flyby }`
+  (`orologioDelViaggio`): attorno a ogni perielio il tempo scorre con densità
+  (|Δt| + T)^−1,3, con T il tempo che la sonda impiega a percorrere un
+  perielio. Lontano i giorni volano, vicino i minuti si allungano. `ease:
+  log` è il lancio: il tempo cresce in progressione geometrica dall'istante
+  iniziale. `trail: earth` disegna la scia vista dalla Terra (nel riferimento
+  del Sole la sonda partirebbe da dove la Terra era un'ora fa).
+- **Le proporzioni** (`solTettoModelloVoyager` in `app.js`). Il modellino
+  non è in scala, ma accanto a un corpo con un disco vero non può sembrare
+  più grande di lui: con un pianeta (o la Terra, o il Sole) nel quadro scende
+  al 5% del suo raggio, e sotto i dieci pixel diventa un **segno** — un punto
+  con un anello che pulsa (`solDisegnaSegnoSonda`). I pesi sono continui:
+  quando la Terra esce dal quadro la sonda cresce piano, come se la camera le
+  si avvicinasse. `proportion: free` lo spegne (il puntino blu, il Disco
+  d'Oro: lì il corpo sullo sfondo è lontano). `gaze: show` tira il filo
+  tratteggiato dalla sonda alla Terra, che è dove punta l'antenna.
+- **Il Disco d'Oro** — `voyager_journey { record: show, model_end: 0.5 }` e
+  `golden_record { at: 0.3 }`. Il modellino cresce (fino a 3,4 volte il lato
+  corto) e il centro del quadro scivola dalla sonda al disco
+  (`gt.discoCentro`, letto da `solAggiornaPivot`); il disco si dipinge per
+  ultimo, in luce piena, con le incisioni vere della copertina ridotte
+  all'osso (`solDisegnaFacciaDisco`: il disco con la puntina, la forma
+  d'onda, la mappa delle pulsar, l'idrogeno) e un alone che pulsa
+  (`solDisegnaEvidenzaDisco`). La fotografia viene da Wikimedia Commons
+  (immagini NASA, pubblico dominio; `Special:FilePath`, così non serve
+  l'impronta md5 del nome), poi dall'immagine di apertura della voce di
+  Wikipedia; senza rete resta un'illustrazione delle stesse incisioni, e la
+  didascalia lo dice.
+
+Prove in `scripts/prova-demo-voyager.js`, §2-bis: al perielio di ognuno dei
+cinque sorvoli mostrati il pianeta è grande nel quadro, la sonda ci sta dentro
+ed è molto più piccola del disco; al lancio la sonda è piccola accanto alla
+Terra; la scheda del disco compare col suo filo e se ne va con la demo.
 
 **Stasera vuol dire stasera (v396).** Le ultime scene avevano la data scritta
 a mano (15 ottobre 2026): guardando la demo un altro giorno, «stasera»

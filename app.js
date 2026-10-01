@@ -33206,6 +33206,7 @@ const SOL_VICINO_TERRA_UA = 1.7;
 // zoom della vista d'insieme.
 const SOL_ZOOM_MAX = 60;
 const SOL_ZOOM_MAX_CORPO = 25000;
+const SOL_ZOOM_MAX_TOUR = 2000000;
 
 // Il passo del tempo **non è roba di questa vista**: è quello del planetario
 // (`SKY_PASSI_TEMPO`), perché l'orologio è uno solo e due passi diversi sullo
@@ -35324,8 +35325,10 @@ function solDisegnaSonda(ctx, s) {
   // Nel racconto delle Voyager il filo verso il Sole lo sostituisce la scia
   // del viaggio, e la crocetta il modellino (vedi `solDisegnaGrandTour`)
   if (sol.grandTour && sol.grandTour.sonde.includes(s.id)) {
-    const misura = solMisuraModelloVoyager();
-    if (misura >= 7) { solDisegnaModelloVoyager(ctx, s, solAssiVista(), misura); return; }
+    const misura = solMisuraModelloVoyager(s);
+    if (sol.grandTour.sguardo) solDisegnaSguardoSonda(ctx, s, sol.pianeti.find(q => q.id === 'Earth'));
+    if (misura >= SOL_MODELLO_SEGNO_PX) { solDisegnaModelloVoyager(ctx, s, solAssiVista(), misura); return; }
+    if (misura > 0) { solDisegnaSegnoSonda(ctx, s, misura); return; }
   }
   ctx.save();
   ctx.strokeStyle = s.colore;
@@ -35453,6 +35456,18 @@ function solDisegnaGrandTour(ctx) {
       if (oggi) fatti.push(Object.assign({ ms: SOL_SONDE_EPOCA_MS }, oggi));
     }
     fatti.sort((a, b) => a.ms - b.ms);
+    // Il lancio (`trail: earth`): la strada vista dalla Terra. Nel riferimento
+    // del Sole la sonda parte da dove la Terra era un'ora fa — trentamila
+    // chilometri al secondo dietro — e la scia sembrerebbe attraversare il
+    // pianeta arrivando da lontano. Riportata alla Terra di adesso, esce da lei.
+    if (gt.sciaTerra) {
+      const qui = solPosizionePianeta('Earth', ora);
+      // copie: i campioni fissi stanno nella memoria delle scie
+      fatti.forEach((p, i) => {
+        const la = solPosizionePianeta('Earth', p.ms);
+        fatti[i] = { ms: p.ms, x: p.x + qui[0] - la[0], y: p.y + qui[1] - la[1], z: p.z + qui[2] - la[2] };
+      });
+    }
     const proietta = p => solProietta(solScena(p));
     ctx.save();
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -35516,10 +35531,91 @@ function solDisegnaCasaLontana(ctx, terra, prese) {
 // sonda di quattro metri, a centosettanta unità astronomiche, è un
 // miliardesimo di pixel. È un'illustrazione appoggiata dove la sonda sta,
 // girata come la sonda è girata.
-function solMisuraModelloVoyager() {
+function solMisuraModelloVoyager(s) {
   const gt = sol.grandTour;
   if (!gt || !(gt.misura > 0)) return 0;
-  return gt.misura * Math.min(sol.L, sol.H);
+  const voluta = gt.misura * Math.min(sol.L, sol.H);
+  return s && gt.proporzioni !== false ? Math.min(voluta, solTettoModelloVoyager(s, voluta)) : voluta;
+}
+
+//   Le proporzioni. Il modellino non è in scala, e non può esserlo — ma
+//   accanto a un corpo che si vede non deve sembrare più grande di lui: una
+//   sonda larga come mezza Terra, appena staccata dalla Terra, racconta
+//   un'astronave, non una cosa che pesa quanto un'automobile. Quindi quando
+//   un corpo con un disco vero è nel quadro (o appena fuori), il modellino si
+//   riduce a una frazione del suo raggio, e sotto una misura minima diventa un
+//   segno (un punto con un anello: «qui c'è la sonda») invece di un oggetto.
+//   I pesi sono continui — quanto il corpo è grande e quanto è dentro al
+//   quadro — così che la sonda cresca piano mentre il pianeta esce di scena,
+//   come quando la camera le si avvicina davvero. Le scene che guardano la
+//   sonda da vicino (il Disco d'Oro, il puntino blu) lo spengono con
+//   `proportion: free`: lì il corpo sullo sfondo è lontano, e lo si legge.
+const SOL_MODELLO_QUOTA = 0.05;      // del raggio del corpo vicino
+const SOL_MODELLO_MIN_PX = 6;
+const SOL_MODELLO_SEGNO_PX = 10;    // sotto, la sonda è un segno e non un modellino
+function solTettoModelloVoyager(s, voluta) {
+  const corto = Math.min(sol.L, sol.H);
+  const passo = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  let tetto = voluta;
+  const corpi = (sol.pianeti || []).map(p => ({ q: p.schermo, r: p.rDisegno }));
+  corpi.push({ q: solProietta({ x: 0, y: 0, z: 0 }), r: solRaggioSole() });
+  corpi.forEach(c => {
+    if (!c.q || !(c.r > 1.5)) return;
+    const fuoriX = Math.max(0, -c.q.px, c.q.px - sol.L), fuoriY = Math.max(0, -c.q.py, c.q.py - sol.H);
+    const fuori = Math.max(0, Math.hypot(fuoriX, fuoriY) - c.r);
+    const w = passo(1.5, 6, c.r) * (1 - passo(0, 0.25 * corto, fuori));
+    if (w <= 0) return;
+    const limite = Math.min(voluta, Math.max(SOL_MODELLO_MIN_PX, SOL_MODELLO_QUOTA * c.r));
+    tetto = Math.min(tetto, voluta * (1 - w) + limite * w);
+  });
+  return tetto;
+}
+
+// Il segno della sonda quando il modellino sarebbe una macchia: un punto
+// chiaro e un anello del suo colore. È più piccolo di qualunque pianeta che
+// gli stia accanto, ed è quello che deve dire.
+function solDisegnaSegnoSonda(ctx, s, misura) {
+  const p = s.schermo;
+  const r = Math.max(4, misura * 0.6);
+  const battito = 0.5 + 0.5 * Math.sin(performance.now() / 420);
+  ctx.save();
+  ctx.strokeStyle = s.colore; ctx.lineWidth = 1.3;
+  ctx.globalAlpha = 0.55 + 0.35 * battito;
+  ctx.beginPath(); ctx.arc(p.px, p.py, r + 2 * battito, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#f8fafc';
+  ctx.shadowColor = s.colore; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.arc(p.px, p.py, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// Lo sguardo verso casa (`gt.sguardo`): un filo tratteggiato dalla sonda alla
+// Terra, che si ferma sul bordo del disco. È la direzione in cui punta
+// l'antenna, e la sola cosa che la sonda guarda da quarantotto anni.
+function solDisegnaSguardoSonda(ctx, s, terra) {
+  if (!terra || !terra.schermo || !s.schermo) return;
+  const a = s.schermo, b = terra.schermo;
+  const d = Math.hypot(b.px - a.px, b.py - a.py);
+  if (d < 6) return;
+  const fine = Math.max(0, d - (terra.rDisegno || 0) - 2) / d;
+  ctx.save();
+  ctx.strokeStyle = '#93c5fd'; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.1;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath();
+  solLineaInVista(ctx, a.px, a.py, a.px + (b.px - a.px) * fine, a.py + (b.py - a.py) * fine);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Dove cade il Disco d'Oro sullo schermo, rispetto al centro della sonda,
+// per un modellino largo `px` pixel: lo chiede il perno della camera quando
+// la regia vuole il disco al centro del quadro (`gt.discoCentro`).
+function solScostamentoDiscoVoyager(s, assi, px) {
+  const { X, Y, Z } = solTernaVoyager(s);
+  const m = SOL_DISCO_CENTRO;
+  const w = [X[0] * m[0] + Y[0] * m[1] + Z[0] * m[2], X[1] * m[0] + Y[1] * m[1] + Z[1] * m[2], X[2] * m[0] + Y[2] * m[1] + Z[2] * m[2]];
+  const k = px / 6.5;
+  return { dx: k * skyDot(w, assi.destra), dy: -k * skyDot(w, assi.alto) };
 }
 
 //   Il modellino, in metri e nel riferimento della sonda. Le misure sono
@@ -35532,6 +35628,9 @@ function solMisuraModelloVoyager() {
 //   dell'antenna, ed è il pezzo più vero di tutto il disegno: la sonda tiene
 //   la parabola **puntata sulla Terra**, sempre, da quarantotto anni.
 let SOL_VOYAGER_MODELLO = null;
+// Il centro del Disco d'Oro nel riferimento della sonda: sul fianco +y del
+// corpo, a metà altezza (lo stesso conto di `solModelloVoyager`)
+const SOL_DISCO_CENTRO = [0, 0.95 * Math.cos(Math.PI / 10) + 0.02, -0.235];
 function solModelloVoyager() {
   if (SOL_VOYAGER_MODELLO) return SOL_VOYAGER_MODELLO;
   const facce = [], linee = [];
@@ -35636,14 +35735,16 @@ function solModelloVoyager() {
   const nD = [Math.cos(fianco), Math.sin(fianco), 0];
   const centro = solV.per(nD, rc * Math.cos(Math.PI / lati) + 0.02);
   const disco = [], tt = [-Math.sin(fianco), Math.cos(fianco), 0];
-  for (let j = 0; j < 20; j++) {
-    const a = 2 * Math.PI * j / 20;
-    disco.push(solV.piu(solV.piu(centro, solV.per(tt, 0.19 * Math.cos(a))), [0, 0, -0.235 + 0.19 * Math.sin(a)]));
+  const cDisco = solV.piu(centro, [0, 0, -0.235]);
+  for (let j = 0; j < 32; j++) {
+    const a = 2 * Math.PI * j / 32;
+    disco.push(solV.piu(solV.piu(cDisco, solV.per(tt, 0.19 * Math.cos(a))), [0, 0, 0.19 * Math.sin(a)]));
   }
   // Il disco sta appoggiato sul fianco: il pittore per medie lo farebbe
   // coprire dall'adattatore che sporge sotto al corpo, che sta più indietro
   // ma ha il baricentro più avanti. Una spinta verso chi guarda lo tiene sopra.
-  faccia(disco, ORO, { n: nD, lucido: 0.9, disco: true, spinta: 0.5 });
+  faccia(disco, ORO, { n: nD, lucido: 0.9, disco: true, spinta: 0.5,
+    discoCentro: cDisco, discoT: tt, discoR: 0.19 });
   SOL_VOYAGER_MODELLO = { facce, linee };
   return SOL_VOYAGER_MODELLO;
 }
@@ -35665,6 +35766,118 @@ function solTernaVoyager(s) {
   let X = solV.croce([0, 0, 1], Z);
   X = solV.lung(X) < 1e-3 ? [1, 0, 0] : solV.versore(X);
   return { X, Y: solV.croce(Z, X), Z };
+}
+
+// Il Disco d'Oro visto da vicino. Sulla sonda c'è la sua copertina di
+// alluminio dorato, e le incisioni sono quelle vere, ridotte all'osso: in
+// alto a sinistra il disco con la puntina (come si suona), in alto a destra
+// la forma d'onda dell'immagine, in basso a sinistra la mappa delle
+// quattordici pulsar che dice da dove è partito, in basso a destra i due
+// stati dell'atomo di idrogeno, che è l'unità di misura di tutto il resto.
+// Si disegna nel telaio dell'ellisse: un cerchio di raggio 1 trasformato,
+// così le incisioni si inclinano col disco.
+function solDisegnaFacciaDisco(ctx, v) {
+  const e = v.ellisse;
+  if (!e) return;
+  const r = Math.max(Math.hypot(e.ux, e.uy), Math.hypot(e.vx, e.vy));
+  const c = v.rgb;
+  const tono = (k, a = 1) => `rgba(${Math.min(255, Math.round(c[0] * k))},${Math.min(255, Math.round(c[1] * k))},${Math.min(255, Math.round(c[2] * k))},${a})`;
+  ctx.save();
+  ctx.transform(e.ux, e.uy, e.vx, e.vy, e.x, e.y);
+  const g = ctx.createRadialGradient(-0.3, -0.35, 0.05, 0, 0, 1.02);
+  g.addColorStop(0, tono(1.35)); g.addColorStop(0.55, tono(1.05)); g.addColorStop(1, tono(0.7));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, 1.02, 0, Math.PI * 2); ctx.fill();
+  const linea = 1 / Math.max(1, r);
+  ctx.lineWidth = 1.2 * linea;
+  ctx.strokeStyle = tono(0.55, 0.9);
+  ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.stroke();
+  if (r > 14) {
+    ctx.strokeStyle = tono(0.5, 0.75);
+    ctx.lineWidth = Math.max(0.6, r / 90) * linea;
+    // In alto a sinistra: il disco con la puntina
+    ctx.beginPath(); ctx.arc(-0.42, -0.38, 0.26, 0, Math.PI * 2); ctx.stroke();
+    if (r > 30) [0.18, 0.1].forEach(q => { ctx.beginPath(); ctx.arc(-0.42, -0.38, q, 0, Math.PI * 2); ctx.stroke(); });
+    ctx.beginPath(); ctx.moveTo(-0.12, -0.66); ctx.lineTo(-0.5, -0.3); ctx.stroke();
+    // In alto a destra: la forma d'onda e il riquadro dell'immagine
+    ctx.beginPath(); ctx.moveTo(0.18, -0.48);
+    for (let i = 0; i <= 12; i++) ctx.lineTo(0.18 + i * 0.045, -0.48 + (i % 2 ? -0.07 : 0.07));
+    ctx.stroke();
+    ctx.strokeRect(0.24, -0.34, 0.36, 0.26);
+    // In basso a sinistra: la mappa delle pulsar
+    for (let i = 0; i < 14; i++) {
+      const a = i * 2 * Math.PI / 14 + 0.3, l = 0.12 + 0.2 * ((i * 7) % 5) / 4;
+      ctx.beginPath(); ctx.moveTo(-0.38, 0.4); ctx.lineTo(-0.38 + l * Math.cos(a), 0.4 + l * Math.sin(a)); ctx.stroke();
+    }
+    // In basso a destra: l'idrogeno nei suoi due stati
+    [[0.32, 0.42], [0.58, 0.42]].forEach(([x, y]) => {
+      ctx.beginPath(); ctx.arc(x, y, 0.08, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 0.02, 0, Math.PI * 2); ctx.stroke();
+    });
+    ctx.beginPath(); ctx.moveTo(0.4, 0.42); ctx.lineTo(0.5, 0.42); ctx.stroke();
+  } else {
+    ctx.strokeStyle = tono(0.5, 0.5);
+    [0.35, 0.7].forEach(q => { ctx.beginPath(); ctx.arc(0, 0, q, 0, Math.PI * 2); ctx.stroke(); });
+  }
+  // Il foro al centro e un riflesso: è metallo, e quando il Sole ci batte
+  // di sbieco si accende
+  ctx.fillStyle = tono(0.35, 0.9);
+  ctx.beginPath(); ctx.arc(0, 0, 0.045, 0, Math.PI * 2); ctx.fill();
+  if (v.lucido > 0.02) {
+    const l = ctx.createLinearGradient(-1, -1, 1, 1);
+    l.addColorStop(0.3, 'rgba(255,250,230,0)');
+    l.addColorStop(0.5, `rgba(255,250,230,${Math.min(0.55, v.lucido)})`);
+    l.addColorStop(0.7, 'rgba(255,250,230,0)');
+    ctx.fillStyle = l;
+    ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// L'alone che dice «è questo»: due anelli che pulsano attorno all'ellisse,
+// e il filo verso la fotografia vera se la regia ne ha messo una
+// (`gt.discoFilo`, in pixel della tela).
+function solDisegnaEvidenzaDisco(ctx, v, gt) {
+  const e = v.ellisse;
+  const forza = Math.max(0, Math.min(1, gt.discoForza == null ? 1 : gt.discoForza));
+  if (!e || forza <= 0) return;
+  const battito = 0.5 + 0.5 * Math.sin(performance.now() / 380);
+  const r = Math.max(Math.hypot(e.ux, e.uy), Math.hypot(e.vx, e.vy));
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.strokeStyle = '#fcd34d';
+  ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 14;
+  [1.18 + 0.08 * battito, 1.45 + 0.14 * battito].forEach((q, i) => {
+    ctx.globalAlpha = forza * (i ? 0.35 : 0.85) * (0.7 + 0.3 * battito);
+    ctx.lineWidth = i ? 1.2 : 2;
+    ctx.beginPath();
+    for (let j = 0; j <= 48; j++) {
+      const a = j * Math.PI / 24;
+      const x = q * (e.ux * Math.cos(a) + e.vx * Math.sin(a)), y = q * (e.uy * Math.cos(a) + e.vy * Math.sin(a));
+      j ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath(); ctx.stroke();
+  });
+  // Il capo del filo è il punto del riquadro della fotografia più vicino al
+  // disco: a destra della scena è il suo bordo sinistro, su un telefono in
+  // verticale (la scheda sta sopra) il bordo di sotto
+  const f = gt.discoFilo;
+  if (f && [f.x0, f.y0, f.x1, f.y1].every(Number.isFinite)) {
+    const fx = Math.max(f.x0, Math.min(f.x1, e.x)), fy = Math.max(f.y0, Math.min(f.y1, e.y));
+    const dx = fx - e.x, dy = fy - e.y, d = Math.hypot(dx, dy);
+    if (d > r * 1.6) {
+      const a = (r * 1.5 + 4) / d;
+      ctx.shadowBlur = 6;
+      ctx.globalAlpha = forza * 0.85;
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(dx * a, dy * a); ctx.lineTo(dx, dy); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#fcd34d';
+      ctx.beginPath(); ctx.arc(dx, dy, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 function solDisegnaModelloVoyager(ctx, s, assi, px) {
@@ -35696,10 +35909,28 @@ function solDisegnaModelloVoyager(ctx, s, assi, px) {
     // Più una luce di riempimento dalla parte di chi guarda, come in uno
     // studio fotografico: senza, il Disco d'Oro — che guarda di lato rispetto
     // al Sole — resterebbe un cerchio marrone, e il lato in ombra un buco
-    const t = 0.16 + 0.62 * luce + 0.3 * verso;
-    const c = f.colore.map(v => Math.min(255, Math.round(v * t + 255 * lucido)));
-    voci.push({ d: pts.reduce((a, q) => a + q.d, 0) / pts.length + (f.spinta || 0), pts,
-      fill: `rgb(${c[0]},${c[1]},${c[2]})`, disco: f.disco });
+    let t = 0.16 + 0.62 * luce + 0.3 * verso;
+    // Il disco in evidenza prende la luce dello studio per intero: è la cosa
+    // che la scena chiede di guardare, e lì l'oro deve sembrare oro
+    const inLuce = f.disco && sol.grandTour && sol.grandTour.disco;
+    if (inLuce) t = Math.max(t, 0.98);
+    const c = f.colore.map(v => Math.min(255, Math.round(v * t + 255 * (inLuce ? Math.min(lucido, 0.08) : lucido))));
+    // In evidenza il disco si dipinge per ultimo: davanti al fianco non c'è
+    // niente che lo copra davvero, ma le aste disegnate grosse lo farebbero
+    const sopra = f.disco && sol.grandTour && sol.grandTour.disco ? 1e6 : 0;
+    const voce = { d: pts.reduce((a, q) => a + q.d, 0) / pts.length + (f.spinta || 0) + sopra, pts,
+      fill: `rgb(${c[0]},${c[1]},${c[2]})`, disco: f.disco, rgb: c };
+    if (f.disco) {
+      // Il telaio dell'ellisse su cui il disco è proiettato: centro e due
+      // semiassi (lungo il fianco e lungo l'asse della sonda). Serve a
+      // disegnarci sopra i solchi e le incisioni come su un cerchio piatto.
+      const o = schermo(f.discoCentro);
+      const u = schermo(solV.piu(f.discoCentro, solV.per(f.discoT, f.discoR)));
+      const w = schermo(solV.piu(f.discoCentro, [0, 0, f.discoR]));
+      voce.ellisse = { x: o.x, y: o.y, ux: u.x - o.x, uy: u.y - o.y, vx: w.x - o.x, vy: w.y - o.y };
+      voce.lucido = lucido;
+    }
+    voci.push(voce);
   });
   linee.forEach(l => {
     if (piccolo && l.sottile) return;
@@ -35707,6 +35938,7 @@ function solDisegnaModelloVoyager(ctx, s, assi, px) {
     voci.push({ d: (a.d + b.d) / 2, a, b, colore: l.colore, spessore: Math.max(l.sottile ? 0.5 : 0.8, l.spessore * k), traliccio: l.traliccio });
   });
   voci.sort((u, v) => u.d - v.d);
+  let discoVisto = null;
   ctx.save();
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   voci.forEach(v => {
@@ -35717,15 +35949,7 @@ function solDisegnaModelloVoyager(ctx, s, assi, px) {
       ctx.beginPath();
       v.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      if (v.disco && !piccolo) {    // i solchi del disco: due anelli più scuri
-        const cx = v.pts.reduce((a, q) => a + q.x, 0) / v.pts.length, cy = v.pts.reduce((a, q) => a + q.y, 0) / v.pts.length;
-        ctx.strokeStyle = 'rgba(90, 60, 10, 0.45)'; ctx.lineWidth = 0.7;
-        [0.35, 0.7].forEach(f => {
-          ctx.beginPath();
-          v.pts.forEach((q, i) => { const x = cx + (q.x - cx) * f, y = cy + (q.y - cy) * f; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-          ctx.closePath(); ctx.stroke();
-        });
-      }
+      if (v.disco && !piccolo) { solDisegnaFacciaDisco(ctx, v); discoVisto = v; }
     } else {
       const c = v.colore;
       ctx.strokeStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
@@ -35736,6 +35960,10 @@ function solDisegnaModelloVoyager(ctx, s, assi, px) {
     }
   });
   ctx.restore();
+  // Il Disco d'Oro in evidenza (la scena del disco): un alone che respira e,
+  // se c'è la fotografia vera accanto, il filo che li lega
+  const gt = sol.grandTour;
+  if (gt && gt.disco && discoVisto) solDisegnaEvidenzaDisco(ctx, discoVisto, gt);
 }
 
 // I satelliti attorno alla Terra, in due metà come la Luna: quelli che in
@@ -38196,6 +38424,9 @@ function solDisegna() {
   });
   solAggiornaPivot();
   corpi.forEach(p => { p.schermo = solProietta(p.scena); });
+  // Il modellino si misura contro i corpi che gli stanno accanto sullo
+  // schermo (`solTettoModelloVoyager`): si può fare solo adesso
+  if (sol.grandTour) corpi.forEach(p => { if (p.sonda) p.rDisegno = Math.max(3.4, solMisuraModelloVoyager(p) * 0.55); });
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   const scelto = corpi.find(p => p.id === sol.scelto) || null;
   const assi = solAssiVista();     // gli stessi per tutti: si calcolano una volta
@@ -38890,7 +39121,13 @@ function solImpostaZoom(z, opzioni = {}) {
   // fare tutt'e due le cose: allontanarsi finché il cono d'ombra della Terra
   // ci sta per intero (un milione e mezzo di chilometri) e avvicinarsi alla
   // Terra finché si riconoscono i continenti.
-  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.perno ? SOL_ZOOM_MAX_CORPO : SOL_ZOOM_MAX);
+  // Il racconto delle Voyager (`sol.grandTour.zoomLibero`) va oltre: per
+  // vedere Voyager 2 sfiorare Nettuno a cinquemila chilometri dalle nubi,
+  // a distanze vere, serve uno zoom di centomila — il pianeta riempie mezzo
+  // schermo e la scena intera starebbe in un milione di pixel.
+  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX
+    : (sol.grandTour && sol.grandTour.zoomLibero ? SOL_ZOOM_MAX_TOUR
+      : (sol.perno ? SOL_ZOOM_MAX_CORPO : SOL_ZOOM_MAX));
   const pavimento = sol.vicino ? SOL_VIC_ZOOM_MIN : 0.35;
   const valore = Math.max(pavimento, Math.min(tetto, z));
   sol.zoomVoluto = valore;
@@ -39122,6 +39359,17 @@ function solAggiornaPivot() {
   const q = solProietta(p);
   sol.panX = sol.cx - q.px;
   sol.panY = sol.cy - q.py;
+  // Nella scena del Disco d'Oro il centro del quadro scivola dalla sonda al
+  // disco man mano che la camera le si avvicina (`gt.discoCentro`, da 0 a 1)
+  const gt = sol.grandTour;
+  if (gt && gt.disco && gt.discoCentro > 0 && gt.sonde.includes(sol.perno)) {
+    const s = (sol.sonde || []).find(x => x.id === sol.perno);
+    if (s) {
+      const o = solScostamentoDiscoVoyager(s, solAssiVista(), solMisuraModelloVoyager());
+      sol.panX -= o.dx * gt.discoCentro;
+      sol.panY -= o.dy * gt.discoCentro;
+    }
+  }
 }
 
 // Mette un corpo al centro della telecamera e comincia a girarci intorno: la
