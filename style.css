@@ -12300,6 +12300,33 @@ body .demo-controlli .demo-tasto:hover { background:rgba(255,255,255,.16); }
 body .demo-controlli .demo-tasto:focus-visible { outline:2px solid #fff; outline-offset:2px; }
 body .demo-controlli .demo-tasto[aria-pressed="true"] { background:rgba(76,141,255,.42); border-color:rgba(138,180,255,.7); }
 .demo-controlli .demo-tasto svg { width:22px; height:22px; fill:currentColor; display:block; pointer-events:none; }
+/* La cronologia sta sopra ai tre tondi: il pannello diventa una colonna,
+   largo quanto serve alla pista e mai più dello schermo. */
+.demo-controlli { flex-direction:column; border-radius:20px; padding:8px 10px; gap:6px; }
+.demo-controlli-tasti { display:flex; gap:8px; align-items:center; justify-content:center; }
+.demo-cronologia { width:min(86vw, 34rem); display:flex; flex-direction:column; gap:4px; }
+.demo-cronologia-testa {
+  display:flex; justify-content:space-between; gap:12px; color:#e2e8f0;
+  font-size:12px; line-height:1.2; font-variant-numeric:tabular-nums; padding:0 2px;
+}
+.demo-cronologia-pista {
+  display:flex; gap:2px; height:14px; align-items:center; cursor:pointer; touch-action:manipulation;
+  border-radius:7px; outline:none;
+}
+.demo-cronologia-pista:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+.demo-cronologia-pezzo {
+  flex:1 1 0; min-width:2px; height:6px; border-radius:3px; overflow:hidden;
+  background:rgba(255,255,255,.2); transition:height .15s ease;
+}
+.demo-cronologia-pezzo.attuale { height:9px; background:rgba(255,255,255,.3); }
+.demo-cronologia-pista:hover .demo-cronologia-pezzo { height:9px; }
+.demo-cronologia-pieno {
+  display:block; width:100%; height:100%; background:#fbbf24; transform-origin:left center; transform:scaleX(0);
+}
+/* Coi comandi a schermo la fascia dei sottotitoli sale sopra al pannello,
+   che con la cronologia è più alto di prima */
+.demo-sottotitoli { transition:bottom .18s ease; }
+.demo-controlli.visibile ~ .demo-sottotitoli { bottom:calc(var(--barra-inferiore, 0px) + 140px); }
 
 /* Il testo della narrazione durante la demo: una fascia di sottotitoli in
    basso, larga al massimo una sessantina di caratteri, appoggiata sulla

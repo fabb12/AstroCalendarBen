@@ -35516,7 +35516,8 @@ function solDisegnaGrandTour(ctx) {
 // La Terra vista da lontano: un anello che respira piano e il suo nome in
 // azzurro. Registra il suo ingombro, così gli altri nomi le stanno lontano.
 function solDisegnaCasaLontana(ctx, terra, prese) {
-  if (!terra || !terra.schermo) return;
+  // Solo quando la Terra è un pallino: da vicino il disco si vede da sé
+  if (!terra || !terra.schermo || terra.rDisegno > 18) return;
   const p = terra.schermo;
   const battito = 0.5 + 0.5 * Math.sin(performance.now() / 700);
   const r = Math.max(9, terra.rDisegno + 6) + 3 * battito;
@@ -35530,6 +35531,160 @@ function solDisegnaCasaLontana(ctx, terra, prese) {
   ctx.restore();
   solTesto(ctx, nomeCorpo('Earth'), p.px + r * 0.7 + 4, p.py + r + 14, '#bfdbfe', 12.5);
   prese.push({ x: p.px - r, y: p.py - r, w: r * 2 + 80, h: r * 2 + 18 });
+}
+
+// --- Il lancio: l'aria che la sonda attraversa (`gt.atmosfera`) -----------
+//   La segnalazione era «quando le sonde escono dall'atmosfera non si
+//   capisce»: a grandezza vera l'aria è un centesimo e mezzo del raggio della
+//   Terra, cioè un filo che sul bordo del disco non si distingue dal bordo.
+//   Qui si disegna come un alone azzurro un po' più spesso del vero (almeno
+//   tre pixel), col suo nome, e quando una sonda ne passa il confine — cento
+//   chilometri sopra la superficie, la linea di Kármán — un anello si allarga
+//   attorno a lei e una scritta dice chi è uscita. Il passaggio si riconosce
+//   confrontando la distanza dalla Terra di questo fotogramma con quella del
+//   fotogramma prima: col tempo che corre in progressione geometrica può
+//   durare un fotogramma solo, e una soglia sulla distanza lo mancherebbe.
+const SOL_ATMOSFERA_KM = 100;
+const SOL_USCITA_MS = 3200;
+function solDisegnaUscitaAtmosfera(ctx, terra) {
+  const gt = sol.grandTour;
+  if (!gt || !terra || !terra.schermo) return;
+  const R = terra.rDisegno || 0, p = terra.schermo;
+  const adesso = performance.now();
+  const kmTerra = (terra.km || 12742) / 2;
+  if (R > 24) {
+    const spessore = Math.max(3, R * SOL_ATMOSFERA_KM / kmTerra);
+    ctx.save();
+    const g = ctx.createRadialGradient(p.px, p.py, R * 0.995, p.px, p.py, R + spessore * 3.2);
+    g.addColorStop(0, 'rgba(147, 197, 253, 0.55)');
+    g.addColorStop(0.35, 'rgba(96, 165, 250, 0.32)');
+    g.addColorStop(1, 'rgba(59, 130, 246, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(p.px, p.py, R + spessore * 3.2, 0, Math.PI * 2);
+    ctx.arc(p.px, p.py, R * 0.995, 0, Math.PI * 2, true); ctx.fill();
+    ctx.strokeStyle = '#bfdbfe'; ctx.globalAlpha = 0.7; ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.arc(p.px, p.py, R + spessore, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    // Il nome dell'aria, in alto a sinistra sull'anello: lontano dalla sonda
+    const a = -Math.PI * 0.72;
+    const x = p.px + Math.cos(a) * (R + spessore * 3.6), y = p.py + Math.sin(a) * (R + spessore * 3.6);
+    if (x > 8 && y > 18 && x < sol.L - 8 && y < sol.H - 8)
+      solTesto(ctx, astroI18n.t('sol.voyager.atmosfera'), x, y, '#bfdbfe', 11.5, 'right');
+  }
+  gt.uscite = gt.uscite || {};
+  (sol.sonde || []).forEach(s => {
+    if (!gt.sonde.includes(s.id) || !s.pos || !s.schermo) return;
+    const km = Math.hypot(s.pos.x - terra.pos.x, s.pos.y - terra.pos.y, s.pos.z - terra.pos.z) * SOL_UA_KM;
+    const stato = gt.uscite[s.id] || (gt.uscite[s.id] = { km, t0: null });
+    const soglia = kmTerra + SOL_ATMOSFERA_KM;
+    if (stato.km < soglia && km >= soglia) stato.t0 = adesso;
+    stato.km = km;
+    if (stato.t0 === null) return;
+    const f = (adesso - stato.t0) / SOL_USCITA_MS;
+    if (f >= 1) return;
+    const q = s.schermo;
+    ctx.save();
+    ctx.strokeStyle = s.colore; ctx.lineWidth = 2;
+    for (const ritardo of [0, 0.22]) {
+      const g = Math.max(0, Math.min(1, (f - ritardo) / (1 - ritardo)));
+      if (g <= 0) continue;
+      ctx.globalAlpha = (1 - g) * 0.9;
+      ctx.beginPath(); ctx.arc(q.px, q.py, 8 + 46 * g, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (1 - f) * 2.2);
+    solTesto(ctx, astroI18n.t('sol.voyager.fuoriAtmosfera', { nome: s.nome }), q.px + 16, q.py - 16, '#f8fafc', 13);
+    ctx.restore();
+  });
+}
+
+// --- Il sorpasso (`gt.gara`) ----------------------------------------------
+//   «Voyager 1, più svelta, sorpassa la gemella nella fascia degli
+//   asteroidi.» Le due sonde in quel momento sono a quindici milioni di
+//   chilometri l'una dall'altra: il sorpasso non è una sonda che passa
+//   accanto all'altra, è una **distanza dal Sole** che diventa più grande
+//   dell'altra. Allora si disegna quella: per ognuna un tratto del cerchio
+//   che ha il Sole al centro e passa per lei, del suo colore, con la sua
+//   distanza scritta accanto. Finché la gemella è davanti il suo arco sta
+//   fuori; il giorno in cui i due archi si scambiano è il sorpasso, ed è
+//   segnato. Il giorno lo cerca `solSorpassoVoyager` sulle posizioni del
+//   viaggio, ed è il 15 dicembre 1977 — lo stesso dei libri.
+let solSorpassoMs;
+function solSorpassoVoyager() {
+  if (solSorpassoMs !== undefined) return solSorpassoMs;
+  solSorpassoMs = null;
+  const v1 = solViaggioVoyager('voyager1');
+  if (!v1) return null;
+  const diff = ms => {
+    const a = solPosizioneVoyager('voyager1', ms), b = solPosizioneVoyager('voyager2', ms);
+    return a && b ? Math.hypot(a[0], a[1], a[2]) - Math.hypot(b[0], b[1], b[2]) : null;
+  };
+  let prima = null, tPrima = 0;
+  for (let ms = v1.lancio + 30 * SOL_GIORNO_MS; ms < v1.lancio + 420 * SOL_GIORNO_MS; ms += SOL_GIORNO_MS) {
+    const d = diff(ms);
+    if (d === null) continue;
+    if (prima !== null && prima < 0 && d >= 0) {
+      let a = tPrima, b = ms;
+      for (let i = 0; i < 30; i++) { const m = (a + b) / 2; if (diff(m) < 0) a = m; else b = m; }
+      solSorpassoMs = (a + b) / 2;
+      break;
+    }
+    prima = d; tPrima = ms;
+  }
+  return solSorpassoMs;
+}
+const SOL_SORPASSO_ALONE_MS = 4 * SOL_GIORNO_MS;
+function solDisegnaGaraVoyager(ctx) {
+  const gt = sol.grandTour;
+  if (!gt || !gt.gara) return;
+  const sonde = (sol.sonde || []).filter(s => gt.sonde.includes(s.id) && s.pos && s.schermo);
+  if (sonde.length < 2) return;
+  const ora = sol.istante || skyAdesso().getTime();
+  // Quanto aprire gli archi: abbastanza da passare accanto alla gemella
+  const [a, b] = sonde;
+  const ang = Math.acos(Math.max(-1, Math.min(1,
+    (a.pos.x * b.pos.x + a.pos.y * b.pos.y + a.pos.z * b.pos.z) /
+    (Math.hypot(a.pos.x, a.pos.y, a.pos.z) * Math.hypot(b.pos.x, b.pos.y, b.pos.z)))));
+  const apertura = Math.max(5 * SKY_D2R, ang * 1.7);
+  const origine = solProietta({ x: 0, y: 0, z: 0 });
+  const tSorpasso = solSorpassoVoyager();
+  const scarto = tSorpasso ? ora - tSorpasso : null;
+  ctx.save();
+  sonde.forEach((s, i) => {
+    // L'arco sta nel piano dei pianeti, col raggio della distanza vera:
+    // due cerchi concentrici sullo stesso piano non si incrociano mai, e il
+    // sorpasso è il momento in cui uno passa fuori dall'altro
+    const r = Math.hypot(s.pos.x, s.pos.y, s.pos.z);
+    const lon = Math.atan2(s.pos.y, s.pos.x);
+    const punti = [];
+    for (let k = -24; k <= 24; k++) {
+      const t = lon + apertura * k / 24;
+      punti.push(solProietta(solScena({ x: r * Math.cos(t), y: r * Math.sin(t), z: 0 })));
+    }
+    ctx.strokeStyle = s.colore; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.75;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath(); solPolilineaInVista(ctx, punti); ctx.stroke();
+    ctx.globalAlpha = 0.28; ctx.setLineDash([2, 6]); ctx.lineWidth = 1;
+    ctx.beginPath(); solLineaInVista(ctx, origine.px, origine.py, s.schermo.px, s.schermo.py); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    solTesto(ctx, astroI18n.t('sol.voyager.dalSole', { ua: solNumero(r, 3) }),
+      s.schermo.px + 14, s.schermo.py + (i ? 26 : 30), s.colore, 12);
+  });
+  if (scarto !== null && Math.abs(scarto) < SOL_SORPASSO_ALONE_MS) {
+    const v1 = sonde.find(s => s.id === 'voyager1');
+    if (v1) {
+      const f = 1 - Math.abs(scarto) / SOL_SORPASSO_ALONE_MS;
+      const battito = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+      ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2.2;
+      ctx.globalAlpha = f * (0.55 + 0.45 * battito);
+      ctx.beginPath(); ctx.arc(v1.schermo.px, v1.schermo.py, 18 + 6 * battito, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = Math.min(1, f * 1.6);
+      solTesto(ctx, astroI18n.t('sol.voyager.sorpasso'), v1.schermo.px - 14, v1.schermo.py - 30, '#fde68a', 15, 'right');
+    }
+  }
+  ctx.restore();
 }
 
 // Quanto è grande il modellino, in pixel: una frazione del lato corto della
@@ -38518,6 +38673,10 @@ function solDisegna() {
   // Il pallido puntino blu (la demo delle Voyager): un anello attorno alla
   // Terra, perché da quaranta unità astronomiche il pallino si perde
   if (sol.grandTour && sol.grandTour.casa) solDisegnaCasaLontana(ctx, terra, prese);
+  // Il lancio (l'aria attraversata) e il sorpasso: sopra ai corpi, perché
+  // sono le cose che il racconto chiede di guardare in quel momento
+  if (sol.grandTour && sol.grandTour.atmosfera) solDisegnaUscitaAtmosfera(ctx, terra);
+  if (sol.grandTour && sol.grandTour.gara) solDisegnaGaraVoyager(ctx);
 
   // La bussola sera/mattina, sopra ai pallini (se no il disco della Terra le
   // coprirebbe l'attacco) ma sotto ai nomi: registra qui il suo ingombro,
@@ -38553,8 +38712,12 @@ function solDisegna() {
     ordinati.forEach(p => {
       if (p === scelto) return;
       if (p.id === 'Earth' && sol.grandTour && sol.grandTour.casa) return;   // l'ha già scritto lei
+      // Al lancio le sonde del racconto il nome lo scrivono sempre: accanto
+      // alla Terra appena lasciata il posto se lo prenderebbe lei
+      const sondaDelRacconto = p.sonda && sol.grandTour && sol.grandTour.atmosfera &&
+        sol.grandTour.sonde.includes(p.id);
       solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
-        tinta(p), corpoNome(p), prese, missioneSistema, p.id);
+        tinta(p), corpoNome(p), prese, missioneSistema || sondaDelRacconto, p.id);
     });
     sol.satSchermo.forEach(s => solEtichetta(ctx, s.nome, s.px, s.py, s.r + 2,
       s.colore, 10.5, prese, missioneSistema || sol.scelto === s.id, s.id));

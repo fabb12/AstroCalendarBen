@@ -167,7 +167,17 @@ Il pannello `#demo-controlli` (Pausa/Riprendi, Ricomincia, Termina) esiste
 solo mentre una demo è in corso: fuori è `hidden` e il CSS lo toglie dal
 disegno (prima uno `display:flex` in linea batteva l'attributo e i tondi
 restavano sulla pagina). Compare col tocco, col fuoco da tastiera o col
-puntatore sopra, si ritira dopo sei secondi, e in pausa resta in vista. Il
+puntatore sopra, si ritira dopo **`durataComandiSec`** secondi (cinque di
+serie, da due a trenta: il cursore «Comandi a schermo dopo un tocco» del
+gruppo Presentazione della pagina Demo, salvato in `astrocal_demo_opzioni_v1`),
+e in pausa resta in vista.
+
+Sopra ai tondi c'è la **cronologia** (v399): una pista divisa in scene, ognuna
+larga quanto dura, che si riempie col racconto, con «Scena n di N» e il tempo
+fatto sul totale. Toccandola si salta in quel punto (`motore.vaiAScena` con la
+frazione di scena; in pausa si riparte); da tastiera le frecce passano alla
+scena prima o dopo. Si ridisegna solo mentre i comandi sono a schermo, e coi
+comandi visibili la fascia dei sottotitoli sale sopra al pannello. Il
 tasto Pausa ha le due barre, diventa il triangolo di Riprendi con
 `aria-pressed="true"`: prima l'icona sostituita perdeva la sua misura e non
 si vedeva. Usare i comandi non ferma niente — solo Pausa ferma.
@@ -482,6 +492,44 @@ scena, in apertura e in mezzo, diventa un'antologia e toglie peso a quelle che
 contano. La scena del puntino dura 34 secondi e il congedo 20: le citazioni
 vogliono silenzio attorno, e `controlla-narrazione.js` misura le parole contro
 la durata.
+
+### Le riprese del lancio e del sorpasso (v399)
+
+Due segnalazioni, e nessun testo né audio cambiato: **le durate delle scene
+sono quelle di prima**, e dentro alle due scene toccate le riprese sono
+tarate sulla frase registrata.
+
+- **Le riprese dentro a una scena** — `shot_from`/`shot_to` su qualunque
+  azione (`demo-motore.js`): l'azione vive solo in quella frazione della
+  scena, riceve il progresso **della ripresa**, nasce quando la scena ci
+  arriva (così una camera parte da dove la precedente l'ha lasciata) e si
+  chiude con la scena. Il parser le toglie dai parametri: nessun comando le
+  deve conoscere.
+- **La camera** — `camera_3d` ha tre parametri nuovi: `keep` (un elenco di
+  corpi e sonde da tenere nel quadro a ogni fotogramma, `inquadraGruppo`),
+  `blend` (la frazione della ripresa in cui la camera scivola dalla posa
+  della ripresa di prima: zoom geometrico, azimut per la via corta, e il
+  centro che si muove in modo che il bersaglio non esca mai dal quadro) e
+  `profile: show` (con `frame_with`: si guarda di traverso alla strada della
+  sonda rispetto al corpo, dalla parte del Sole).
+- **Il lancio** (scena 4, 24 s): Voyager 2 il 20 agosto, poi lo stacco al 5
+  settembre per Voyager 1 (quando la voce lo dice), poi la camera si allarga
+  sulle due sonde e infine si stringe sul modellino con l'antenna verso casa.
+  `voyager_journey { launch: show }` disegna l'aria come un alone col suo
+  nome e, quando la sonda passa i cento chilometri, un anello e la scritta
+  «… fuori dall'atmosfera» (`solDisegnaUscitaAtmosfera`). `ease_rate` regola
+  la progressione di `ease: log`; `model_start` tiene il modellino un segno
+  fino a quella frazione del viaggio.
+- **Il sorpasso** (scena 5, 20 s): la salita dall'alto, poi la camera che
+  scende sulle due sonde e, con `race: show` (`solDisegnaGaraVoyager`), gli
+  archi della distanza dal Sole e il cartello «Sorpasso!» il 15 dicembre 1977
+  — il giorno lo trova `solSorpassoVoyager` sulle posizioni del viaggio, ed è
+  quello dei libri; nella scena cade a 8,7 s, sulla parola «sorpassa». Poi la
+  camera si riapre fino a Giove. Il sorpasso avviene davvero nella fascia
+  degli asteroidi, come dice la voce, non vicino a Giove.
+
+Prove nel §2-ter di `scripts/prova-demo-voyager.js` e nelle riprese di
+`scripts/prova-demo.js`.
 
 ### Perché Helsinki e non Tromsø
 

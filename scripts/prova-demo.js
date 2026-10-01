@@ -173,6 +173,40 @@ for (const d of predefiniti) {
       'Narrazione della scena ' + (i + 1) + ' di ' + d.chiave);
   });
 }
+// Le riprese (`shot_from`/`shot_to`): tolte dai parametri dal parser,
+// create solo quando la scena ci arriva, col progresso della ripresa, un
+// ultimo 1 alla fine e niente dopo; chiuse con la scena e non prima.
+{
+  const r = analizza("define_demo r { scene a { duration: 10s; action: shot { n: 1, shot_to: 0.4 }; action: shot { n: 2, shot_from: 0.4 }; }}");
+  const [p1, p2] = r.scene[0].azioni;
+  ok(!('shot_to' in p1.parametri) && p1.ripresa.da === 0 && p1.ripresa.a === 0.4 &&
+    p2.ripresa.da === 0.4 && p2.ripresa.a === 1, 'Le riprese escono dai parametri');
+  rifiuta(() => analizza("define_demo r { scene a { duration: 1s; action: x { shot_from: 0.5, shot_to: 0.5 }; }}"), 'Ripresa vuota rifiutata');
+  rifiuta(() => analizza("define_demo r { scene a { duration: 1s; action: x { shot_to: 1.5 }; }}"), 'Ripresa oltre la scena rifiutata');
+  const fatti = [];
+  const reg = Object.create(null);
+  reg.shot = { crea: p => { fatti.push(['crea', p.n]); return { aggiorna: u => fatti.push([p.n, +u.toFixed(3)]), chiudi: () => fatti.push(['chiudi', p.n]) }; } };
+  let t = 0; const coda = new Map(); let id = 0;
+  const m = new Motore(reg, { ora: () => t, richiedi: f => { coda.set(++id, f); return id; }, annulla: k => coda.delete(k) });
+  const avanti = ms => { t += ms; const l = [...coda.values()]; coda.clear(); l.forEach(f => f()); };
+  m.avvia("define_demo r { scene a { duration: 10s; action: shot { n: 1, shot_to: 0.4 }; action: shot { n: 2, shot_from: 0.4 }; } scene b { duration: 1s; action: shot { n: 3 }; }}", {});
+  ok(fatti.filter(f => f[0] === 'crea').length === 1, 'La seconda ripresa non nasce prima del suo turno');
+  avanti(2000);
+  ok(fatti.some(f => f[0] === 1 && f[1] === 0.5), 'Progresso locale della prima ripresa');
+  avanti(3000);
+  ok(fatti.some(f => f[0] === 1 && f[1] === 1) && fatti.some(f => f[0] === 'crea' && f[1] === 2) &&
+    fatti.some(f => f[0] === 2 && Math.abs(f[1] - 1 / 6) < 0.01), 'Al cambio di ripresa: la prima finisce, la seconda nasce');
+  const dopo = fatti.length;
+  avanti(1000);
+  ok(!fatti.slice(dopo).some(f => f[0] === 1), 'Finita la ripresa l’azione tace');
+  ok(!fatti.some(f => f[0] === 'chiudi'), 'E non si chiude prima della scena');
+  avanti(4000);
+  ok(fatti.some(f => f[0] === 'chiudi' && f[1] === 1) && fatti.some(f => f[0] === 'chiudi' && f[1] === 2),
+    'A fine scena si chiudono tutte e due');
+  m.vaiAScena(0, 0.7);
+  ok(fatti.filter(f => f[0] === 'crea' && f[1] === 2).length === 2, 'Un salto a metà crea la ripresa giusta');
+  m.ferma();
+}
 console.log('Demo: ' + verifiche + ' verifiche superate');
 
 // Archivio indipendente dal DOM: protezioni, persistenza e scritture atomiche.

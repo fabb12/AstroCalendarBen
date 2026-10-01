@@ -179,10 +179,111 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     await pagina.evaluate(() => { AstroDemo.vaiAScena(3, 0.05); AstroDemo.pausa(); });
     await attendiFotogrammi(); await pagina.waitForTimeout(200); await attendiFotogrammi();
     const lancio = await pagina.evaluate(() => {
-      const s = sol.sonde.find(x => x.id === 'voyager1'), t = sol.pianeti.find(x => x.id === 'Earth');
+      const s = sol.sonde.find(x => x.id === 'voyager2'), t = sol.pianeti.find(x => x.id === 'Earth');
       return { r: t.rDisegno, modello: solMisuraModelloVoyager(s), corto: Math.min(sol.L, sol.H) };
     });
     ok(lancio.r > 20 && lancio.modello < lancio.r * 0.3, `Al lancio la sonda è piccola accanto alla Terra (${lancio.modello.toFixed(1)} px contro ${Math.round(lancio.r)})`);
+    // --- 2-ter. Le riprese del lancio e del sorpasso (v399) ------------------
+    // Il lancio si gioca in quattro riprese dentro alla stessa frase: prima
+    // Voyager 2 il 20 agosto, poi Voyager 1 il 5 settembre, poi tutte e due
+    // nel quadro. La sonda esce dall'aria nella ripresa sua: si scorre la
+    // scena in avanti, a passi, e si guarda quando la distanza dalla Terra
+    // passa i 6471 km — e che in quel momento la sonda e il bordo della Terra
+    // siano nel quadro.
+    const riprese = await pagina.evaluate(() => {
+      const fuori = {};
+      const misura = id => {
+        const s = sol.sonde.find(x => x.id === id), t = sol.pianeti.find(x => x.id === 'Earth');
+        solLeggiPosizioni(skyAdesso());
+        return { km: Math.hypot(s.pos.x - t.pos.x, s.pos.y - t.pos.y, s.pos.z - t.pos.z) * SOL_UA_KM };
+      };
+      AstroDemo.vaiAScena(3, 0.07); AstroDemo.pausa();
+      fuori.primaRipresa = { sonde: sol.grandTour.sonde.slice(), mese: skyAdesso().getUTCMonth(), giorno: skyAdesso().getUTCDate(),
+        aria: !!sol.grandTour.atmosfera };
+      for (const [id, da, a] of [['voyager2', 0, 0.15], ['voyager1', 0.15, 0.4]]) {
+        let prima = null;
+        for (let k = 0; k <= 80; k++) {
+          const u = da + (a - da) * k / 80;
+          AstroDemo.vaiAScena(3, u); AstroDemo.pausa();
+          const m = misura(id);
+          if (prima !== null && prima < 6471 && m.km >= 6471) { fuori[id] = { u, rel: (u - da) / (a - da) }; break; }
+          prima = m.km;
+        }
+      }
+      AstroDemo.vaiAScena(3, 0.58); AstroDemo.pausa();
+      fuori.tutte = sol.grandTour.sonde.slice();
+      return fuori;
+    });
+    ok(riprese.primaRipresa.sonde.join() === 'voyager2' && riprese.primaRipresa.mese === 7 && riprese.primaRipresa.giorno === 20 &&
+      riprese.primaRipresa.aria, 'Prima ripresa: parte Voyager 2, il 20 agosto, con l\'aria disegnata');
+    for (const id of ['voyager2', 'voyager1'])
+      ok(riprese[id] && riprese[id].rel > 0.02 && riprese[id].rel < 0.6,
+        `${id} esce dall'atmosfera dentro alla sua ripresa (${riprese[id] ? Math.round(riprese[id].rel * 100) : '—'}%)`);
+    await pagina.evaluate(u => { AstroDemo.vaiAScena(3, u); AstroDemo.pausa(); }, riprese.voyager1 ? riprese.voyager1.u : 0.25);
+    await attendiFotogrammi(); await pagina.waitForTimeout(150); await attendiFotogrammi();
+    const uscita = await pagina.evaluate(() => {
+      const s = sol.sonde.find(x => x.id === 'voyager1'), t = sol.pianeti.find(x => x.id === 'Earth');
+      return { L: sol.L, H: sol.H, sx: s.schermo.px, sy: s.schermo.py, tx: t.schermo.px, ty: t.schermo.py, r: t.rDisegno,
+        lampo: !!(sol.grandTour.uscite && sol.grandTour.uscite.voyager1 && sol.grandTour.uscite.voyager1.t0 !== null) };
+    });
+    ok(uscita.sx > 0 && uscita.sy > 0 && uscita.sx < uscita.L && uscita.sy < uscita.H && uscita.r > 0.15 * Math.min(uscita.L, uscita.H),
+      'All\'uscita dall\'aria la Voyager 1 è nel quadro, e la Terra è grande');
+    ok(Math.abs(Math.hypot(uscita.sx - uscita.tx, uscita.sy - uscita.ty) - uscita.r) < 0.25 * uscita.r,
+      'La sonda esce dal bordo del disco (la camera guarda di traverso alla sua strada)');
+    await foto('lancio-uscita');
+    await pagina.evaluate(() => { AstroDemo.vaiAScena(3, 0.6); AstroDemo.pausa(); });
+    await attendiFotogrammi(); await pagina.waitForTimeout(150); await attendiFotogrammi();
+    const coppia = await pagina.evaluate(() => sol.sonde.filter(s => ['voyager1', 'voyager2'].includes(s.id))
+      .map(s => ({ id: s.id, px: s.schermo.px, py: s.schermo.py, L: sol.L, H: sol.H })));
+    ok(riprese.tutte.length === 2 && coppia.length === 2 && coppia.every(s => s.px > 0 && s.py > 0 && s.px < s.L && s.py < s.H) &&
+      Math.hypot(coppia[0].px - coppia[1].px, coppia[0].py - coppia[1].py) > 0.25 * coppia[0].L,
+      'Dopo i due lanci tutte e due le sonde sono nel quadro, ben separate');
+    await foto('lancio-coppia');
+    // Il sorpasso: il giorno lo cercano le posizioni del viaggio, ed è quello
+    // dei libri (15 dicembre 1977); nella scena cade quando la voce lo dice,
+    // con la camera stretta sulle due sonde.
+    const sorpasso = await pagina.evaluate(() => {
+      const ms = solSorpassoVoyager();
+      let u = null;
+      for (let k = 0; k <= 300; k++) {
+        AstroDemo.vaiAScena(4, k / 300); AstroDemo.pausa();
+        if (+skyAdesso() >= ms) { u = k / 300; break; }
+      }
+      return { data: new Date(ms).toISOString().slice(0, 10), u };
+    });
+    ok(sorpasso.data === '1977-12-15', `Il sorpasso cade il 15 dicembre 1977 (${sorpasso.data})`);
+    ok(sorpasso.u > 0.4 && sorpasso.u < 0.62, `Nella scena il sorpasso arriva a metà frase (${sorpasso.u})`);
+    await pagina.evaluate(u => { AstroDemo.vaiAScena(4, u); AstroDemo.pausa(); }, sorpasso.u + 0.02);
+    await attendiFotogrammi(); await pagina.waitForTimeout(150); await attendiFotogrammi();
+    const gara = await pagina.evaluate(() => ({ gara: !!sol.grandTour.gara, L: sol.L, H: sol.H,
+      sonde: sol.sonde.map(s => ({ px: s.schermo.px, py: s.schermo.py })) }));
+    const dSonde = Math.hypot(gara.sonde[0].px - gara.sonde[1].px, gara.sonde[0].py - gara.sonde[1].py);
+    ok(gara.gara && gara.sonde.every(s => s.px > 0 && s.py > 0 && s.px < gara.L && s.py < gara.H) && dSonde > 40,
+      `Al sorpasso le due sonde sono nel quadro, da vicino (${Math.round(dSonde)} px fra loro)`);
+    await foto('sorpasso');
+    // La cronologia: un tocco mostra i comandi con la pista (una tacca per
+    // scena), e la durata è un'opzione (qui due secondi). Toccando la pista
+    // a metà si salta lì.
+    await pagina.evaluate(() => { AstroDemo.impostaOpzioni({ durataComandiSec: 2 }); AstroDemo.riprendi(); });
+    await pagina.mouse.click(Math.round(larghezza / 2), Math.round(altezza / 3));
+    const cronologia = await pagina.evaluate(() => {
+      const p = document.getElementById('demo-controlli');
+      return { visibile: p.classList.contains('visibile'), pezzi: p.querySelectorAll('.demo-cronologia-pezzo').length,
+        testo: p.querySelector('.demo-cronologia-testa').textContent };
+    });
+    ok(cronologia.visibile && cronologia.pezzi === 15 && /5 di 15/.test(cronologia.testo),
+      `Il tocco mostra i comandi con la cronologia (${cronologia.testo})`);
+    await foto('cronologia');
+    const salto = await pagina.evaluate(() => {
+      const pista = document.querySelector('.demo-cronologia-pista'), r = pista.getBoundingClientRect();
+      pista.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + r.width * 0.5, clientY: r.top + r.height / 2 }));
+      return AstroDemo.scena;
+    });
+    ok(salto >= 6 && salto <= 8, `Toccando la pista a metà si salta a metà del racconto (scena ${salto + 1})`);
+    await pagina.waitForTimeout(2600);
+    ok(await pagina.evaluate(() => !document.getElementById('demo-controlli').classList.contains('visibile')),
+      'Dopo la durata scelta i comandi si ritirano');
+    await pagina.evaluate(() => { AstroDemo.impostaOpzioni({ durataComandiSec: 5 }); AstroDemo.pausa(); });
     // Il Disco d'Oro: la scheda con l'immagine compare, il filo la lega al disco
     await pagina.evaluate(() => { AstroDemo.vaiAScena(11, 0.7); AstroDemo.pausa(); });
     await attendiFotogrammi(); await pagina.waitForTimeout(400); await attendiFotogrammi();
