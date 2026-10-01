@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v399';
+const CACHE_NAME = 'astrocal-v400';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -30,6 +30,7 @@ const ASSETS = [
   './costellazioni.js',
   './curiosita.js',
   './via-lattea.js',
+  './scala-cosmica.js',
   './corpi-minori.js',
   './pianifica.js',
   './terreno.js',

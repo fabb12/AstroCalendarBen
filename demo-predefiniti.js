@@ -639,7 +639,9 @@
   // Il viaggio delle due Voyager, raccontato come lo avrebbe raccontato Carl
   // Sagan: la fila dei giganti del 1977, i due lanci, Giove, Saturno e
   // Titano, i dodici anni di Voyager 2 fino a Nettuno, la forma a V della
-  // fuga, il pallido puntino blu, il Disco d'Oro, e dove stanno stasera.
+  // fuga, il pallido puntino blu, il Disco d'Oro, la bolla del Sole che
+  // hanno lasciato, il loro futuro e la scala vera del cosmo (le tre scene
+  // \`cosmic_scale\`), e dove stanno stasera.
   // Le posizioni non sono disegnate a mano: sono le coniche raccordate di
   // app.js (\`solPosizioneVoyager\`), archi di Lambert fra le posizioni vere
   // dei pianeti nei giorni veri degli incontri, e iperboli di flyby vicino a
@@ -784,11 +786,42 @@
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Neptune', orbit: 60, elev_from: 14, elev_to: 32, zoom_from: 0.52, zoom_to: 0.6 };
     action: date_card { label: 'demo.cartello.voyager.oggi', time: hide };
   }
+  scene solar_system_3d {
+    // Oltre i pianeti: la scala cosmica (scala-cosmica.js). L'eliosfera vista
+    // dall'alto, con lo shock di terminazione e l'eliopausa, e le due sonde
+    // al loro posto di oggi: accanto, quanto sono lontane dal Sole e dalla
+    // Terra e quante ore ci mette la loro luce. Le tacche lungo le scie sono
+    // le date vere degli attraversamenti.
+    duration: 26s;
+    action: narrate { id: 'demo.narr.voyager.14' };
+    action: cosmic_scale { from: 'kuiper', to: 'voyager', zoom_end: 0.6, focus: 'heliopause' };
+    action: date_card { label: 'demo.cartello.voyager.eliosfera', time: show };
+  }
+  scene solar_system_3d {
+    // Il futuro: gli anni corrono in progressione geometrica — decine, poi
+    // migliaia — e la scala si allarga con loro fino alla nube di Oort e
+    // alle stelle vicine. Le sonde vanno dritte alla velocità di oggi; in
+    // cima, l'anno.
+    duration: 30s;
+    action: narrate { id: 'demo.narr.voyager.15' };
+    action: cosmic_scale { from: 'voyager', to: 420000, years_from: 0, years_to: 42000, years_ease: log, focus: 'oort', center: 'sun' };
+    action: date_card { label: 'demo.cartello.voyager.futuro', time: hide };
+  }
+  scene solar_system_3d {
+    // La scala vera: dalla nube locale all'universo osservabile, con una
+    // sosta su ogni struttura. La riga in cima dice dove sta Voyager 1 su
+    // sedici decade di distanze; da un certo punto il loro viaggio intero è
+    // più piccolo di un pixel, e lo si dice.
+    duration: 42s;
+    action: narrate { id: 'demo.narr.voyager.16' };
+    action: cosmic_scale { from: 'local_cloud', to: 'universe', ease: stops, zoom_start: 0.04, zoom_end: 0.96 };
+    action: date_card { label: 'demo.cartello.voyager.scala', time: hide };
+  }
   scene planetarium_view {
     // Roma, stasera (il giorno in cui si guarda la demo): dove guardare.
     // Voyager 1 fra Ercole e l'Ofiuco, con la camera puntata su di lei.
     duration: 20s;
-    action: narrate { id: 'demo.narr.voyager.14' };
+    action: narrate { id: 'demo.narr.voyager.17' };
     action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
     action: set_date { tonight: '21:00' };
     action: probe_markers {};
@@ -799,7 +832,7 @@
   scene planetarium_view {
     // Il congedo: il campo si riapre sulla notte.
     duration: 20s;
-    action: narrate { id: 'demo.narr.voyager.15' };
+    action: narrate { id: 'demo.narr.voyager.18' };
     action: probe_markers {};
     action: timelapse { start: 21:00, end: 21:45 };
     action: zoom_fov { from: 30, to: 125 };

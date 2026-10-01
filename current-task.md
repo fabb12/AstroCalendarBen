@@ -1,6 +1,11 @@
 # Niente in corso
 
-Ultimo lavoro: la **demo delle Voyager** (v393, con le citazioni sfoltite nella v395 e «stasera» agganciato al giorno vero nella v396, vedi `DEMO.md`). Prima ancora: l'**aggregatore ADS-B multi-fonte** (`aerei.js`, v384).
+Ultimo lavoro: la **scala cosmica** (v400, `scala-cosmica.js`): il quarto quadro della vista 3D, dall'eliopausa all'universo osservabile con le Voyager al loro posto, e tre scene nuove nella demo delle Voyager (`cosmic_scale`, vedi `DEMO.md`). Prima: la **demo delle Voyager** (v393–v399). Prima ancora: l'**aggregatore ADS-B multi-fonte** (`aerei.js`, v384).
+
+- Prove: `node scripts/prova-scala-cosmica.js` (29 conti + 86 nel browser, telefono e computer) e `node scripts/prova-demo-voyager.js` (§2-quater).
+- Preesistenti e identiche sulla base: `prova-sistema3d.js` (ReferenceError `SOL_LUNE` e la prova delle lune a distanze vere), `prova-demo-browser.js` (schermo intero), `prova-demo-pagina.js` (la regia riporta la camera), `prova-narrazione.js`, `prova-narrazione-browser.js`, `prova-volo.js` (non parte).
+
+Le note qui sotto sono del lavoro sugli aerei, e restano valide.
 
 - Facciata `FontiAerei.acquisisci` (§3-quinquies): il motore non conosce le porte.
 - Record normalizzati (`normalizzaLettura`) e fusi (`fondiLetture`: ICAO →
