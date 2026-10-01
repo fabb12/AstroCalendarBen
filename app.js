@@ -8206,6 +8206,12 @@ function skyPosizioneProfondo(dato) {
   // le ha appena calcolate skyAggiornaCatalogo, e sono quelle disegnate
   const vivo = (sky.profondo || []).find(p => p.nome === dato.nome);
   if (vivo) return { az: vivo.az, alt: vivo.alt };
+  // Una voce del catalogo grande ha già azimut e altezza di questo giro del
+  // cielo: `catAggiornaPosizioni` li riscrive per tutti e centoquarantadue,
+  // filtro acceso o no, con la stessa matrice delle stelle. Coprirli con la
+  // cache qui sotto, vecchia fino a mezzo minuto di cielo, faceva andare a
+  // scatti la centratura e l'inseguimento col tempo che scorre.
+  if (dato.vOra && typeof dato.az === 'number') return { az: dato.az, alt: dato.alt };
   if (!sky.observer || typeof Astronomy === 'undefined') return null;
 
   const chiave = Math.floor(skyAdesso().getTime() / 30000) + '|' +

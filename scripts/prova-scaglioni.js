@@ -297,6 +297,46 @@ const server = http.createServer((req, res) => {
   });
   ok('tre mesi più in là le posizioni sono altre', salto.cambiato && salto.mosso);
 
+  // La segnalazione della demo delle Voyager: col tempo che scorre, Eunomia e
+  // Iride andavano a scatti. Dentro alla tolleranza della cache le posizioni
+  // **fra le stelle** possono restare quelle — ma azimut e altezza li muove
+  // la rotazione della Terra, un quarto di grado al minuto, e vanno rifatti
+  // a ogni giro del cielo come per le stelle. Il giudice è Horizon all'istante
+  // nuovo; il contro-esempio è la posizione ferma, cioè la regola di prima.
+  const segue = await pagina.evaluate(async () => {
+    sky.mostraCorpiMinori = true;
+    const partenza = sky.offsetTempoSec || 0;
+    let giri = 0;
+    while (giri++ < 600) { corpiMinoriVisibili(); if (!corpiLavoro) break; }
+    const inizio = new Map(corpiMinoriVisibili().map(c => [c.nome, { az: c.az, alt: c.alt }]));
+    let errore = 0, fermo = 0, confrontati = 0;
+    for (let i = 1; i <= 8; i++) {
+      skyImpostaOffsetTempo(partenza + i * 30);        // quattro minuti in tutto
+      if (typeof skyAggiornaCatalogo === 'function') skyAggiornaCatalogo(skyAdesso());
+      const t = Astronomy.MakeTime(skyAdesso());
+      corpiMinoriVisibili().forEach(c => {
+        const h = Astronomy.Horizon(t, sky.observer, c.raOra, c.decOra, 'normal');
+        if (h.altitude < 15 || h.altitude > 75) return;   // rifrazione e polo dell'azimut
+        const dAz = ((c.az - h.azimuth + 540) % 360) - 180;
+        errore = Math.max(errore, Math.hypot(dAz * Math.cos(h.altitude * Math.PI / 180), c.alt - h.altitude));
+        const p = inizio.get(c.nome);
+        if (p) {
+          const fAz = ((p.az - h.azimuth + 540) % 360) - 180;
+          fermo = Math.max(fermo, Math.hypot(fAz * Math.cos(h.altitude * Math.PI / 180), p.alt - h.altitude));
+        }
+        confrontati++;
+      });
+    }
+    skyImpostaOffsetTempo(partenza);
+    return { errore, fermo, confrontati };
+  });
+  ok('col tempo che scorre gli asteroidi seguono la rotazione del cielo',
+    segue.confrontati > 0 && segue.errore < 0.1,
+    `scarto massimo ${segue.errore.toFixed(3)}° su ${segue.confrontati} letture`);
+  ok('…mentre tenendoli fermi, come prima, restavano indietro',
+    segue.fermo > 0.5,
+    `fermi fino a ${segue.fermo.toFixed(2)}° dal posto vero dopo quattro minuti di cielo`);
+
   ok('nessuna eccezione dalla pagina', eccezioni.length === 0, eccezioni.join(' | '));
 
   console.log(ko ? `\n${ko} prove fallite\n` : '\nTutte le prove sono verdi\n');
