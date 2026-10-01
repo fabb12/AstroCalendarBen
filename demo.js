@@ -612,6 +612,67 @@
     sol.panX = sol.cx - (q.px + ox * verso * sol.scala);
     sol.panY = sol.cy - SORVOLO_ALZA * Math.min(sol.L, sol.H) - (q.py + oy * verso * sol.scala);
   }
+  // ------------------------------------------------------------------
+  // La camera di gruppo (`keep`). Tiene nel quadro un elenco di corpi e di
+  // sonde — la Terra e le due Voyager appena partite, le due sonde nella
+  // corsa del sorpasso, le sonde con Giove davanti — e si rifà a ogni
+  // fotogramma: il centro è il centro del rettangolo che li contiene, visto
+  // dalla camera, e lo zoom quello che lo fa stare in `KEEP_QUOTA` del
+  // riquadro. Le distanze cambiano mentre il tempo corre, e la camera le
+  // insegue da sola: è la ripresa che segue l'azione invece di aspettarla.
+  // `zoom_from`/`zoom_to` sono moltiplicatori di questa inquadratura.
+  // ------------------------------------------------------------------
+  const KEEP_QUOTA = 0.7;
+  const KEEP_MARGINE_PX = 26;
+  const FUOCHI_KEEP = ['Sun', 'Voyager 1', 'Voyager 2', ...corpiSistema];
+  function elencoKeep(v) {
+    richiedi(typeof v === 'string' && v.length <= 160, err('elenco'));
+    const nomi = v.split(',').map(x => x.trim()).filter(Boolean);
+    richiedi(nomi.length >= 1 && nomi.length <= 10 && nomi.every(n => FUOCHI_KEEP.includes(n)), err('corpiSistema'));
+    return nomi;
+  }
+  function posizioneKeep(nome) {
+    if (nome === 'Sun') return { x: 0, y: 0, z: 0 };
+    if (FUOCHI_LONTANI[nome] && /^Voyager/.test(nome)) {
+      const s = (sol.sonde || []).find(x => x.id === FUOCHI_LONTANI[nome]);
+      return s && s.pos ? s.pos : null;
+    }
+    const b = (sol.pianeti || []).find(x => x.id === nome);
+    return b ? b.pos : null;
+  }
+  function inquadraGruppo(nomi, m) {
+    solLeggiPosizioni(skyAdesso());
+    const assi = solAssiVista();
+    const punti = nomi.map(posizioneKeep).filter(Boolean).map(p => solScena(p));
+    if (!punti.length) return;
+    const xs = punti.map(s => s.x * assi.destra[0] + s.y * assi.destra[1] + s.z * assi.destra[2]);
+    const ys = punti.map(s => s.x * assi.alto[0] + s.y * assi.alto[1] + s.z * assi.alto[2]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const hx = Math.max(1e-12, (x1 - x0) / 2), hy = Math.max(1e-12, (y1 - y0) / 2);
+    const scala = Math.min(Math.max(1, sol.L / 2 * KEEP_QUOTA - KEEP_MARGINE_PX) / hx,
+      Math.max(1, sol.H / 2 * KEEP_QUOTA - KEEP_MARGINE_PX) / hy);
+    solImpostaZoom(scala / (Math.min(sol.L, sol.H) * 0.44) * m);
+    solMisura();
+    const xc = (x0 + x1) / 2, yc = (y0 + y1) / 2;
+    sol.panX = -xc * sol.scala;
+    sol.panY = yc * sol.scala - SORVOLO_ALZA * Math.min(sol.L, sol.H);
+  }
+  // Il punto della scena che sta al centro del quadro, ricavato dallo
+  // spostamento: serve alle transizioni (`blend`) per partire da dove la
+  // ripresa di prima aveva lasciato la camera.
+  function centroDelQuadro() {
+    solMisura();
+    const assi = solAssiVista(), k = Math.max(1e-12, sol.scala);
+    const a = -sol.panX / k, b = (sol.panY + SORVOLO_ALZA * Math.min(sol.L, sol.H)) / k;
+    return [0, 1, 2].map(i => assi.destra[i] * a + assi.alto[i] * b);
+  }
+  function portaCentro(C) {
+    solMisura();
+    const assi = solAssiVista(), k = sol.scala;
+    const dot = v => C[0] * v[0] + C[1] * v[1] + C[2] * v[2];
+    sol.panX = -dot(assi.destra) * k;
+    sol.panY = dot(assi.alto) * k - SORVOLO_ALZA * Math.min(sol.L, sol.H);
+  }
   // Da dove si guarda un sorvolo. Con `flyby_tilt` la camera sta quasi sulla
   // normale al piano dell'iperbole — la curva della fionda si vede intera, non
   // di taglio — inclinata di tanti gradi verso il periasse; senza, guarda da
@@ -622,6 +683,22 @@
     const s = (sol.sonde || []).find(x => x.id === idSonda);
     const ora = +skyAdesso();
     const v = typeof solViaggioVoyager === 'function' ? solViaggioVoyager(idSonda) : null;
+    // `profile: show`: la camera guarda di traverso alla strada della sonda
+    // rispetto al corpo, dalla parte del Sole. È la ripresa del lancio: la
+    // sonda si stacca dal bordo del disco e sale dritta attraverso l'aria,
+    // invece di venire verso chi guarda o allontanarsene — che è il modo in
+    // cui l'uscita dall'atmosfera, vista di fronte, non si vedeva affatto.
+    if (p.profile === 'show' && s && s.pos) {
+      const corpo = (sol.pianeti || []).find(q => q.id === p.frame_with);
+      if (corpo) {
+        const d = solV.versore([s.pos.x - corpo.pos.x, s.pos.y - corpo.pos.y, s.pos.z - corpo.pos.z]);
+        const sole = solV.versore([-corpo.pos.x, -corpo.pos.y, -corpo.pos.z]);
+        let n = solV.meno(sole, solV.per(d, solV.punto(sole, d)));
+        if (solV.lung(n) < 1e-6) n = solV.meno([0, 0, 1], solV.per(d, d[2]));
+        n = solV.versore(n);
+        return { az: Math.atan2(-n[0], -n[1]), elev: Math.asin(Math.max(-1, Math.min(1, n[2]))) / GRADI };
+      }
+    }
     if (p.flyby_tilt !== undefined && v) {
       const scelti = v.flyby.filter(f => p.frame_with === 'auto' || f.id === p.frame_with);
       const fb = scelti.sort((a, b) => Math.abs(a.ms - ora) - Math.abs(b.ms - ora))[0];
@@ -647,7 +724,7 @@
   registro.camera_3d = {
     verifica(p) {
       campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az', 'probe_az',
-        'frame_with', 'flyby_tilt', 'zoom_start']);
+        'frame_with', 'flyby_tilt', 'zoom_start', 'keep', 'blend', 'profile']);
       richiedi(p.scene === 'earth_moon' || p.scene === 'system', err('scena3d'));
       richiedi((p.scene === 'earth_moon' ? FUOCHI_VICINO : FUOCHI_SISTEMA).includes(p.focus),
         err('fuoco', { nome: p.focus }));
@@ -667,9 +744,19 @@
       richiedi(p.flyby_tilt === undefined || (p.frame_with !== undefined && p.frame_with !== 'Earth' &&
         numero(p.flyby_tilt, -85, 85)), err('inquadraSonda'));
       richiedi(p.zoom_start === undefined || numero(p.zoom_start, 0, 0.95), err('frazioneScena'));
+      if (p.keep !== undefined) {
+        richiedi(p.scene === 'system' && p.frame_with === undefined && p.probe_az === undefined, err('inquadraSonda'));
+        elencoKeep(p.keep);
+      }
+      richiedi(p.blend === undefined || numero(p.blend, 0, 1), err('frazioneScena'));
+      richiedi(p.profile === undefined || (MOSTRA.includes(p.profile) && p.frame_with !== undefined &&
+        p.frame_with !== 'auto' && p.flyby_tilt === undefined), err('inquadraSonda'));
     },
     crea(p, c) {
       richiedi(sol.aperto, err('serve3d'));
+      // La posa della ripresa di prima, per la transizione (`blend`)
+      const prima = p.blend > 0 && !sol.vicino && p.scene === 'system'
+        ? { zoom: sol.zoom, az: sol.az, elev: sol.elev, centro: centroDelQuadro() } : null;
       const vicino = p.scene === 'earth_moon';
       let base;
       if (vicino) {
@@ -711,6 +798,11 @@
       const inquadra = p.frame_with !== undefined && !vicino;
       const idSonda = FUOCHI_LONTANI[p.focus];
       if (inquadra) {
+        sol.perno = null;
+        if (sol.grandTour) sol.grandTour.zoomLibero = true;
+      }
+      const gruppo = p.keep !== undefined && !vicino ? elencoKeep(p.keep) : null;
+      if (gruppo) {
         sol.perno = null;
         if (sol.grandTour) sol.grandTour.zoomLibero = true;
       }
@@ -773,11 +865,48 @@
         return { az: Math.atan2(-d[0], -d[1]), elev: Math.asin(Math.max(-1, Math.min(1, d[2]))) / GRADI };
       }
       const zs = p.zoom_start || 0;
+      const pernoVoluto = sol.perno;
+      // La transizione (`blend`): per la prima frazione della ripresa la
+      // camera scivola dalla posa che la ripresa di prima le ha lasciato a
+      // quella che questa vorrebbe — zoom in proporzione geometrica, azimut
+      // per la via corta, il centro del quadro in linea retta nella scena.
+      // Senza, fra due riprese della stessa scena ci sarebbe uno stacco.
       function applica(u) {
+        applicaBersaglio(u);
+        if (!prima) return;
+        const w = rampa(c, u / p.blend);
+        sol.perno = pernoVoluto;
+        if (w >= 1) return;
+        if (sol.perno) { solMisura(); solAggiornaPivot(); }
+        const dopo = { zoom: sol.zoom, az: sol.az, elev: sol.elev, centro: centroDelQuadro() };
+        sol.perno = null;
+        const giroCorto = Math.atan2(Math.sin(dopo.az - prima.az), Math.cos(dopo.az - prima.az));
+        sol.az = prima.az + giroCorto * w;
+        sol.elev = sol.elevVoluta = mescola(prima.elev, dopo.elev, w);
+        // Senza perno il tetto dello zoom sarebbe quello della vista d'insieme
+        if (sol.grandTour) sol.grandTour.zoomLibero = true;
+        solImpostaZoom(mescolaZoom(prima.zoom, dopo.zoom, w));
+        // Il centro non va in linea retta: con lo zoom che cresce in
+        // proporzione geometrica, a metà strada il bersaglio sarebbe fuori
+        // dal quadro. Avvicinandosi è il **bersaglio** a scivolare verso il
+        // centro a passo costante sullo schermo; allontanandosi è il punto di
+        // partenza a lasciarlo a passo costante. Così la cosa che conta non
+        // esce mai di scena.
+        const s0 = prima.zoom, s1 = dopo.zoom, sw = sol.zoom;
+        portaCentro([0, 1, 2].map(i => s1 >= s0
+          ? dopo.centro[i] - (1 - w) * (dopo.centro[i] - prima.centro[i]) * s0 / sw
+          : prima.centro[i] + w * (dopo.centro[i] - prima.centro[i]) * s1 / sw));
+      }
+      function applicaBersaglio(u) {
         const k = rampa(c, u);
         const kz = zs > 0 ? rampa(c, (u - zs) / (1 - zs)) : k;
         const posa = posaSonda();
         sol.az = (posa ? posa.az : azDiBase()) + (c.ridotto ? 0 : giro * k);
+        if (gruppo) {
+          sol.elev = sol.elevVoluta = Math.max(-85, Math.min(85, mescola(ea, eb, k)));
+          inquadraGruppo(gruppo, mescolaZoom(za, zb, kz));
+          return;
+        }
         if (inquadra) {
           sol.elev = sol.elevVoluta = Math.max(-85, Math.min(85, elev0 + mescola(ea, eb, k)));
           inquadraSorvolo(p, idSonda, mescolaZoom(za, zb, kz));
@@ -993,7 +1122,7 @@
   }
   function viaggioVoyager(p) {
     campi(p, ['from', 'to', 'probes', 'model_from', 'model_to', 'model_end', 'future', 'scale', 'milestones', 'ease',
-      'home', 'gaze', 'record', 'proportion', 'trail']);
+      'home', 'gaze', 'record', 'proportion', 'trail', 'ease_rate', 'launch', 'race', 'model_start']);
     const a = dataViaggio(p.from), b = dataViaggio(p.to);
     richiedi(+b > +a && +b - +a <= VIAGGIO_MAX_MS && a.getUTCFullYear() >= 1977 && b.getUTCFullYear() <= 2100,
       err('viaggio'));
@@ -1003,10 +1132,13 @@
     for (const k of ['model_from', 'model_to'])
       richiedi(p[k] === undefined || numero(p[k], 0, 6), err('modello'));
     richiedi(p.model_end === undefined || numero(p.model_end, 0.05, 1), err('frazioneScena'));
-    for (const k of ['future', 'milestones', 'home', 'gaze', 'record'])
+    richiedi(p.model_start === undefined || (numero(p.model_start, 0, 0.95) && p.model_start < (p.model_end || 1)),
+      err('frazioneScena'));
+    for (const k of ['future', 'milestones', 'home', 'gaze', 'record', 'launch', 'race'])
       richiedi(p[k] === undefined || MOSTRA.includes(p[k]), err('mostra', { nome: k }));
     richiedi(p.scale === undefined || p.scale === 'real' || p.scale === 'compressed', err('scala3d'));
     richiedi(p.ease === undefined || ['linear', 'smooth', 'flyby', 'log'].includes(p.ease), err('andatura'));
+    richiedi(p.ease_rate === undefined || (p.ease === 'log' && numero(p.ease_rate, 2, 1e9)), err('andatura'));
     richiedi(p.proportion === undefined || p.proportion === 'bodies' || p.proportion === 'free', err('proporzione'));
     richiedi(p.trail === undefined || p.trail === 'sun' || p.trail === 'earth', err('scia'));
     return { a: +a, b: +b, sonde };
@@ -1023,10 +1155,14 @@
   // percorrere un perielio: lontano dal pianeta i giorni volano, vicino i
   // minuti si allungano, e il passaggio dalla prima andatura alla seconda è
   // continuo. Il resto della scena va a passo costante.
-  function orologioDelViaggio(ease, a, b, sonde) {
+  // `ease_rate` dice quanto è ripida la progressione di `log` (di serie
+  // seicento): più è alto, più a lungo si resta sui primi minuti — il lancio
+  // vuole vedere la sonda attraversare l'aria, che in questo modello dura
+  // pochi secondi su un viaggio di giorni.
+  function orologioDelViaggio(ease, a, b, sonde, rate) {
     if (ease === 'smooth') return u => a + (b - a) * rampa(null, u);
     if (ease === 'log') {
-      const r = 600;
+      const r = rate || 600;
       return u => a + (b - a) * (Math.pow(r, Math.max(0, Math.min(1, u))) - 1) / (r - 1);
     }
     if (ease !== 'flyby') return u => a + (b - a) * u;
@@ -1097,14 +1233,19 @@
       const mb = p.model_to !== undefined ? p.model_to : ma;
       sol.grandTour = { sonde, futuro: p.future === 'show', incontri: p.milestones !== 'hide', misura: ma,
         casa: p.home === 'show', sguardo: p.gaze === 'show', disco: p.record === 'show', discoCentro: 0,
-        proporzioni: p.proportion !== 'free', sciaTerra: p.trail === 'earth' };
-      const tempo = orologioDelViaggio(p.ease, a, b, sonde);
-      const fineModello = p.model_end || 1;
+        proporzioni: p.proportion !== 'free', sciaTerra: p.trail === 'earth',
+        atmosfera: p.launch === 'show', gara: p.race === 'show' };
+      const tempo = orologioDelViaggio(p.ease, a, b, sonde, p.ease_rate);
+      // `model_start`/`model_end`: in che tratto del viaggio il modellino
+      // passa da `model_from` a `model_to` (prima e dopo resta fermo). Il
+      // lancio lo tiene un segno finché la camera inquadra le due sonde
+      // lontane, e lo fa crescere solo quando la camera va da lei.
+      const fineModello = p.model_end || 1, inizioModello = p.model_start || 0;
       const aggiorna = u => {
         istante(tempo(u));
         if (!sol.grandTour) return;
         sol.sondeAccese = true;
-        const km = rampa(c, u / fineModello);
+        const km = rampa(c, (u - inizioModello) / (fineModello - inizioModello));
         // Grande in proporzione geometrica: la camera che si avvicina alla
         // sonda la vede crescere così, non a passo costante
         sol.grandTour.misura = ma > 0 && mb > 0 ? mescolaZoom(ma, mb, km) : mescola(ma, mb, km);
@@ -1464,6 +1605,13 @@
   // restare compatibili con i salvataggi delle versioni precedenti.
   // ------------------------------------------------------------------
   const CHIAVE_OPZIONI = 'astrocal_demo_opzioni_v1';
+  // Quanto restano a schermo i comandi (con la cronologia) dopo un tocco:
+  // cinque secondi di serie, da due a trenta nella pagina Demo.
+  const DURATA_COMANDI_SEC = 5, DURATA_COMANDI_MIN = 2, DURATA_COMANDI_MAX = 30;
+  function durataComandiValida(v) {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= DURATA_COMANDI_MIN && n <= DURATA_COMANDI_MAX ? n : DURATA_COMANDI_SEC;
+  }
   function leggiOpzioni() {
     try {
       const o = JSON.parse(localStorage.getItem(CHIAVE_OPZIONI) || 'null');
@@ -1484,11 +1632,12 @@
           ? o.musicaDemoTraccia
           : (typeof o.musicaEclissiTraccia === 'string' && o.musicaEclissiTraccia
             ? o.musicaEclissiTraccia : 'Encelado1'),
-        livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null
+        livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null,
+        durataComandiSec: durataComandiValida(o.durataComandiSec)
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: true, registra: false, vistaPulita: true, registraAudio: true,
-      musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null };
+      musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null, durataComandiSec: DURATA_COMANDI_SEC };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
@@ -1503,6 +1652,8 @@
       aggiornate.musicaDemoTraccia = aggiornate.musicaEclissiTraccia;
     delete aggiornate.musicaEclissi;
     delete aggiornate.musicaEclissiTraccia;
+    if (Object.prototype.hasOwnProperty.call(aggiornate, 'durataComandiSec'))
+      aggiornate.durataComandiSec = durataComandiValida(aggiornate.durataComandiSec);
     opzioni = Object.assign({}, opzioni, aggiornate);
     try { localStorage.setItem(CHIAVE_OPZIONI, JSON.stringify(opzioni)); } catch (_) { /* niente storage */ }
     return opzioni;
@@ -2002,24 +2153,124 @@
     if (timerComandi) { clearTimeout(timerComandi); timerComandi = null; }
     pannello.classList.remove('visibile');
   }
+  // Quanto restano a schermo: è un'opzione della pagina Demo
+  // (`durataComandiSec`, cinque secondi di serie).
   function programmaRitiro() {
     if (timerComandi) clearTimeout(timerComandi);
     timerComandi = setTimeout(() => {
       timerComandi = null;
       if (trattenuti()) programmaRitiro(); else nascondiComandi();
-    }, 6000);
+    }, durataComandiValida(opzioni.durataComandiSec) * 1000);
   }
   function mostraComandi() {
     if (!inCorso()) return;
     pannello.classList.add('visibile');
+    aggiornaCronologia();
+    if (!cronoRaf) cronoRaf = requestAnimationFrame(giroCronologia);
     programmaRitiro();
   }
   function bottone(chiave, azione) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'demo-tasto';
     b.dataset.azione = chiave;
     b.innerHTML = icone[chiave]; b.setAttribute('aria-label', t(chiave)); b.setAttribute('title', t(chiave));
-    b.addEventListener('click', e => { e.stopPropagation(); azione(); mostraComandi(); }); pannello.append(b); return b;
+    b.addEventListener('click', e => { e.stopPropagation(); azione(); mostraComandi(); }); tastiDemo.append(b); return b;
   }
+  // ------------------------------------------------------------------
+  // La cronologia della demo, in cima ai comandi: una pista divisa in
+  // scene, lunghe quanto durano, che si riempie col racconto; accanto la
+  // scena e il tempo. Toccandola si salta lì (`motore.vaiAScena`, con la
+  // frazione della scena): è il modo di rivedere un passaggio senza
+  // ricominciare tutto. Si ridisegna solo mentre i comandi sono a schermo.
+  // ------------------------------------------------------------------
+  const cronologia = document.createElement('div');
+  cronologia.className = 'demo-cronologia';
+  const cronoTesta = document.createElement('div');
+  cronoTesta.className = 'demo-cronologia-testa';
+  const cronoScena = document.createElement('span'), cronoTempo = document.createElement('span');
+  cronoScena.className = 'demo-cronologia-scena'; cronoTempo.className = 'demo-cronologia-tempo';
+  cronoTesta.append(cronoScena, cronoTempo);
+  const pista = document.createElement('div');
+  pista.className = 'demo-cronologia-pista';
+  pista.setAttribute('role', 'slider');
+  pista.tabIndex = 0;
+  cronologia.append(cronoTesta, pista);
+  pannello.append(cronologia);
+  let cronoChiave = '', cronoRaf = null;
+  const minSec = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  function durateScene() { return motore.demo ? motore.demo.scene.map(x => x.durata) : []; }
+  function costruisciPista() {
+    const durate = durateScene();
+    const chiave = (motore.demo ? motore.demo.id : '') + '|' + durate.join(',');
+    if (chiave === cronoChiave) return;
+    cronoChiave = chiave;
+    const tot = durate.reduce((a, b) => a + b, 0) || 1;
+    pista.replaceChildren(...durate.map((d, i) => {
+      const pezzo = document.createElement('span');
+      pezzo.className = 'demo-cronologia-pezzo';
+      pezzo.style.flexGrow = String(d / tot);
+      pezzo.title = t('cronologiaVai', { n: i + 1 });
+      const pieno = document.createElement('span');
+      pieno.className = 'demo-cronologia-pieno';
+      pezzo.append(pieno);
+      return pezzo;
+    }));
+  }
+  function aggiornaCronologia() {
+    if (!inCorso() || !motore.demo) return;
+    costruisciPista();
+    const durate = durateScene(), tot = durate.reduce((a, b) => a + b, 0);
+    const i = motore.inIntro ? 0 : Math.min(motore.indice || 0, durate.length - 1);
+    const qui = motore.inIntro ? 0 : Math.min(durate[i], Math.max(0, motore.trascorso || 0));
+    const fatto = durate.slice(0, i).reduce((a, b) => a + b, 0) + qui;
+    Array.from(pista.children).forEach((pezzo, k) => {
+      const f = k < i ? 1 : k > i ? 0 : qui / durate[i];
+      pezzo.firstChild.style.transform = 'scaleX(' + f.toFixed(4) + ')';
+      pezzo.classList.toggle('attuale', k === i);
+    });
+    cronoScena.textContent = t('cronologiaScena', { n: i + 1, totale: durate.length });
+    cronoTempo.textContent = minSec(fatto) + ' / ' + minSec(tot);
+    pista.setAttribute('aria-label', t('cronologia'));
+    pista.setAttribute('aria-valuemin', '0');
+    pista.setAttribute('aria-valuemax', String(Math.round(tot / 1000)));
+    pista.setAttribute('aria-valuenow', String(Math.round(fatto / 1000)));
+    pista.setAttribute('aria-valuetext', cronoScena.textContent + ', ' + cronoTempo.textContent);
+  }
+  function giroCronologia() {
+    cronoRaf = null;
+    if (!pannello.classList.contains('visibile') || !inCorso()) return;
+    aggiornaCronologia();
+    cronoRaf = requestAnimationFrame(giroCronologia);
+  }
+  // Salta al punto della pista: la frazione del tempo totale diventa una
+  // scena e una frazione di scena. In pausa si riparte: chi sceglie un punto
+  // vuole vederlo.
+  function saltaA(frazione) {
+    const durate = durateScene(), tot = durate.reduce((a, b) => a + b, 0);
+    if (!tot) return;
+    let resto = Math.max(0, Math.min(0.999, frazione)) * tot, i = 0;
+    while (i < durate.length - 1 && resto >= durate[i]) { resto -= durate[i]; i++; }
+    motore.vaiAScena(i, resto / durate[i]);
+    if (motore.stato === 'pausa') motore.riprendi();
+    aggiornaCronologia();
+  }
+  pista.addEventListener('click', e => {
+    e.stopPropagation();
+    const r = pista.getBoundingClientRect();
+    if (r.width > 0) saltaA((e.clientX - r.left) / r.width);
+    mostraComandi();
+  });
+  pista.addEventListener('keydown', e => {
+    const durate = durateScene();
+    if (!durate.length || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault(); e.stopPropagation();
+    const i = motore.indice || 0;
+    const j = e.key === 'Home' ? 0 : e.key === 'End' ? durate.length - 1 : i + (e.key === 'ArrowRight' ? 1 : -1);
+    if (j >= 0 && j < durate.length) motore.vaiAScena(j, 0);
+    aggiornaCronologia(); mostraComandi();
+  });
+  const tastiDemo = document.createElement('div');
+  tastiDemo.className = 'demo-controlli-tasti';
+  pannello.append(tastiDemo);
   const pausa = bottone('pausa', () => motore.stato === 'pausa' ? motore.riprendi() : motore.pausa());
   const riavvia = bottone('riavvia', () => avviaSicuro(ultimoScript));
   const arresta = bottone('stop', () => motore.ferma());

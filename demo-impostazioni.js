@@ -353,6 +353,13 @@
   // del planetario. Le scrive AstroDemo.impostaOpzioni, che le ricorda; qui
   // si leggono e si disegnano.
   const schermo = $('opz-schermo'), pulita = $('opz-vista-pulita');
+  const comandi = $('opz-comandi'), comandiValore = $('opz-comandi-valore');
+  function disegnaComandi() {
+    if (!comandi) return;
+    const n = AstroDemo.opzioni.durataComandiSec || 5;
+    comandi.value = String(n);
+    if (comandiValore) comandiValore.textContent = astroI18n.t('demo.intro.secondi', { n });
+  }
   const registra = $('opz-registra'), audio = $('opz-registra-audio');
   const musica = $('opz-musica-eclissi'), musicaTraccia = $('opz-musica-traccia');
   const personali = $('livelli-personali'), griglia = $('livelli');
@@ -392,6 +399,7 @@
     const o = AstroDemo.opzioni;
     schermo.checked = o.schermoIntero;
     pulita.checked = o.vistaPulita !== false;
+    disegnaComandi();
     registra.checked = o.registra;
     if (musica) musica.checked = o.musicaDemo !== false;
     popolaTracceMusica();
@@ -419,6 +427,10 @@
   }
   schermo.addEventListener('change', () => AstroDemo.impostaOpzioni({ schermoIntero: schermo.checked }));
   pulita.addEventListener('change', () => AstroDemo.impostaOpzioni({ vistaPulita: pulita.checked }));
+  if (comandi) comandi.addEventListener('input', () => {
+    AstroDemo.impostaOpzioni({ durataComandiSec: Number(comandi.value) });
+    disegnaComandi();
+  });
   registra.addEventListener('change', () => {
     AstroDemo.impostaOpzioni({ registra: registra.checked });
     disegnaDipendenze();

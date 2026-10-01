@@ -671,23 +671,42 @@
     action: date_card { label: 'demo.cartello.voyager.piano', time: hide };
   }
   scene solar_system_3d {
-    // Il lancio da vicino, a distanze e dimensioni vere: la Terra grande, la
-    // sonda un puntino che se ne stacca (il tempo corre in progressione
-    // geometrica, dalle prime ore ai primi milioni di chilometri), la Luna che
-    // passa di lato. Poi la camera raggiunge la sonda, la Terra esce dal
-    // quadro e il modellino compare con l'antenna girata verso casa.
+    // I due lanci, a distanze e dimensioni vere, in quattro riprese dentro
+    // alla stessa frase (\`shot_from\`/\`shot_to\`). Prima Voyager 2, il 20
+    // agosto: la camera guarda di traverso alla sua strada (\`profile\`), e
+    // la sonda si stacca dal bordo della Terra e attraversa l'aria, che è
+    // disegnata col suo nome (\`launch: show\`): quando ne esce, un anello
+    // lo segna. Poi lo stacco al 5 settembre e la stessa ripresa per Voyager
+    // 1. Poi la camera si allarga finché ci stanno tutte e due (\`keep\`):
+    // la gemella è già a quattordici milioni di chilometri. Infine si stringe
+    // sulla Voyager 1, finché il modellino mostra l'antenna rivolta a casa.
+    // Le date cominciano dodici secondi prima che la sonda bucasse la
+    // superficie nel modello (che la fa partire dal centro della Terra).
     duration: 24s;
     action: narrate { id: 'demo.narr.voyager.4' };
-    action: voyager_journey { from: '1977-09-05T13:45:00Z', to: '1977-09-18T00:00:00Z', probes: 'voyager1', scale: real, ease: log, model_from: 0.17, gaze: show, trail: earth, milestones: hide };
-    action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Earth', orbit: 40, elev_from: 28, elev_to: 14, zoom_from: 1, zoom_to: 60, zoom_start: 0.6 };
-    action: date_card { label: 'demo.cartello.voyager.lancio', time: hide };
+    action: voyager_journey { from: '1977-08-20T14:39:15Z', to: '1977-08-20T15:15:00Z', probes: 'voyager2', scale: real, ease: log, model_from: 0.12, trail: earth, milestones: hide, launch: show, shot_to: 0.15 };
+    action: camera_3d { scene: system, focus: 'Voyager 2', frame_with: 'Earth', profile: show, orbit: 12, elev_from: 4, elev_to: 10, zoom_from: 1.15, zoom_to: 0.95, shot_to: 0.15 };
+    action: voyager_journey { from: '1977-09-05T13:06:05Z', to: '1977-09-18T00:00:00Z', probes: 'voyager1,voyager2', scale: real, ease: log, ease_rate: 30000, model_from: 0.012, model_to: 0.17, model_start: 0.55, gaze: show, home: show, trail: earth, milestones: hide, launch: show, shot_from: 0.15 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Earth', profile: show, orbit: 12, elev_from: 4, elev_to: 10, zoom_from: 1.15, zoom_to: 0.95, shot_from: 0.15, shot_to: 0.4 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', keep: 'Earth,Voyager 1,Voyager 2', orbit: 26, elev_from: 34, elev_to: 24, blend: 0.45, shot_from: 0.4, shot_to: 0.62 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Earth', orbit: 24, elev_from: 22, elev_to: 12, zoom_from: 1, zoom_to: 60, zoom_start: 0.2, blend: 0.3, shot_from: 0.62 };
+    action: date_card { label: 'demo.cartello.voyager.lancio2', time: hide, shot_to: 0.15 };
+    action: date_card { label: 'demo.cartello.voyager.lancio', time: hide, shot_from: 0.15 };
   }
   scene solar_system_3d {
-    // Diciotto mesi di salita verso Giove.
+    // Diciotto mesi di salita verso Giove, in tre riprese legate fra loro
+    // (\`blend\`): la salita vista dall'alto; la camera che scende sulle due
+    // sonde per il sorpasso (\`race: show\`: i due archi della distanza dal
+    // Sole, che si scambiano il 15 dicembre 1977, quando la voce lo dice);
+    // e la camera che si riapre fino a tenere Giove davanti alle sonde.
     duration: 20s;
     action: narrate { id: 'demo.narr.voyager.5' };
-    action: voyager_journey { from: '1977-11-20T00:00:00Z', to: '1979-03-01T00:00:00Z', future: show, model_from: 0.035, ease: smooth };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 40, elev_from: 60, elev_to: 38, zoom_from: 1.05, zoom_to: 0.95 };
+    action: voyager_journey { from: '1977-09-18T00:00:00Z', to: '1977-12-04T00:00:00Z', future: show, model_from: 0.035, shot_to: 0.3 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 20, elev_from: 62, elev_to: 52, zoom_from: 1.05, zoom_to: 1.3, shot_to: 0.3 };
+    action: voyager_journey { from: '1977-12-04T00:00:00Z', to: '1978-01-05T00:00:00Z', future: show, model_from: 0.05, model_to: 0.07, race: show, milestones: hide, shot_from: 0.3, shot_to: 0.68 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', keep: 'Voyager 1,Voyager 2', orbit: 18, elev_from: 78, elev_to: 66, zoom_from: 0.3, zoom_to: 0.4, blend: 0.4, shot_from: 0.3, shot_to: 0.68 };
+    action: voyager_journey { from: '1978-01-05T00:00:00Z', to: '1979-03-01T00:00:00Z', future: show, model_from: 0.035, ease: smooth, shot_from: 0.68 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', keep: 'Voyager 1,Voyager 2,Jupiter', orbit: 16, elev_from: 40, elev_to: 34, blend: 0.5, shot_from: 0.68 };
     action: date_card { label: 'demo.cartello.voyager.salita', time: hide };
   }
   scene solar_system_3d {

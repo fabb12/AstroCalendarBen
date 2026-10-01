@@ -1624,6 +1624,12 @@
             <span data-i18n="demo.opzioneVistaPulita">Vista pulita durante la demo</span>
           </label>
           <p id="demo-opz-vista-pulita-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneVistaPulitaAiuto">Nasconde menu e pannelli: restano la scena, i sottotitoli e i comandi della demo.</p>
+          <label class="demo-cursore" for="demo-opz-comandi">
+            <span data-i18n="demo.opzioneComandi">Comandi a schermo dopo un tocco</span>
+            <span id="demo-opz-comandi-valore" class="impostazione-musica-valore">5 s</span>
+            <input id="demo-opz-comandi" type="range" min="2" max="30" step="1" value="5" aria-describedby="demo-opz-comandi-aiuto">
+          </label>
+          <p id="demo-opz-comandi-aiuto" class="demo-opzioni-nota" data-i18n="demo.opzioneComandiAiuto">Toccando lo schermo compaiono i comandi e la cronologia della demo, e dopo questi secondi si ritirano da soli.</p>
         </fieldset>
 
         <fieldset class="scheda-piena demo-gruppo">

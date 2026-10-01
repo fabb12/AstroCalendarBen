@@ -22,6 +22,7 @@
     testoDopo: 'Testo dopo la demo',
     vuota: 'Demo vuota',
     comandoSconosciuto: 'Comando sconosciuto: {nome}',
+    ripresa: 'shot_from e shot_to vanno fra 0 e 1, con shot_from minore di shot_to',
     posizione: '{messaggio} (riga {riga}, colonna {colonna})'
   };
   function messaggio(chiave, dati = {}) {
@@ -94,7 +95,19 @@
             parametri[chiave] = valore();
             if (guarda() !== '}') prendi(',');
           }
-          prendi('}'); azioni.push({ comando, parametri });
+          prendi('}');
+          // Le riprese (`shot_from`/`shot_to`): l'azione vive solo in quella
+          // frazione della scena. Si tolgono dai parametri qui, così nessun
+          // comando le deve conoscere — sono del motore, non dell'azione.
+          const azione = { comando, parametri };
+          if (Object.hasOwn(parametri, 'shot_from') || Object.hasOwn(parametri, 'shot_to')) {
+            const da = Object.hasOwn(parametri, 'shot_from') ? parametri.shot_from : 0;
+            const a = Object.hasOwn(parametri, 'shot_to') ? parametri.shot_to : 1;
+            if (typeof da !== 'number' || typeof a !== 'number' || !(da >= 0 && a <= 1 && da < a)) errore('ripresa');
+            delete parametri.shot_from; delete parametri.shot_to;
+            azione.ripresa = { da, a };
+          }
+          azioni.push(azione);
         } else errore('campoSconosciuto', { nome: campo }, posCampo);
         prendi(';');
       }
@@ -191,11 +204,20 @@
       if (this.contesto.scena)
         this.contesto.scena(scena, this.indice);
 
+      // Le azioni con una ripresa che comincia più avanti si creano solo
+      // quando la scena ci arriva (`aggiorna`): una camera o un viaggio
+      // creati subito riscriverebbero la scena prima del loro turno, e la
+      // ripresa seguente deve partire da come la precedente l'ha lasciata.
+      this.riprese = [];
       for (const a of scena.azioni) {
+        if (a.ripresa && a.ripresa.da > 0) {
+          this.riprese.push({ azione: a, scena, esecutore: null, finita: false });
+          continue;
+        }
         const esecutore =
             this.registro[a.comando].crea(a.parametri, this.contesto, scena) || {};
 
-        this.esecutori.push(esecutore);
+        this.esecutori.push(a.ripresa ? this.inRipresa(esecutore, a.ripresa) : esecutore);
       }
 
       // Gli esecutori possono esporre una Promise `fineNarrazione`.
@@ -230,6 +252,31 @@
     }
     aggiorna(progresso) {
       for (const e of this.esecutori) if (e.aggiorna) e.aggiorna(progresso);
+      for (const r of this.riprese || []) {
+        if (r.esecutore || progresso < r.azione.ripresa.da) continue;
+        const grezzo = this.registro[r.azione.comando].crea(r.azione.parametri, this.contesto, r.scena) || {};
+        r.esecutore = this.inRipresa(grezzo, r.azione.ripresa);
+        this.esecutori.push(r.esecutore);
+        r.esecutore.aggiorna(progresso);
+      }
+    }
+    // Un esecutore dentro alla sua ripresa: riceve il progresso **della
+    // ripresa** (0–1 fra `da` e `a`), prima tace e dopo riceve un ultimo 1 e
+    // poi tace di nuovo. Non si chiude a fine ripresa ma a fine scena, con
+    // gli altri: chiudere un viaggio a metà scena spegnerebbe le scie anche
+    // per la ripresa che gli succede.
+    inRipresa(esecutore, r) {
+      let finita = false;
+      return {
+        aggiorna(u) {
+          if (finita || u < r.da || !esecutore.aggiorna) return;
+          const locale = (u - r.da) / (r.a - r.da);
+          if (locale >= 1) { finita = true; esecutore.aggiorna(1); return; }
+          esecutore.aggiorna(locale);
+        },
+        chiudi() { if (esecutore.chiudi) esecutore.chiudi(); },
+        fineNarrazione: esecutore.fineNarrazione
+      };
     }
     esci() {
       // Invalida subito eventuali Promise ancora appartenenti alla scena
@@ -239,6 +286,7 @@
 
       const esecutori = this.esecutori;
       this.esecutori = [];
+      this.riprese = [];
 
       let errore;
 
