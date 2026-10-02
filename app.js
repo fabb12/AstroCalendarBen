@@ -33687,7 +33687,10 @@ function solAsse(id, t) {
 function solLeggiPosizioni(quando) {
   if (typeof Astronomy === 'undefined') { sol.pianeti = []; sol.terra = null; return; }
   const ms = quando.getTime();
-  if (sol.istante === ms && sol.pianeti.length) return;
+  // Fuori dal racconto le Voyager stanno dove sono oggi (riga sotto), dentro
+  // seguono l'orologio della scena: cambiando l'uno o l'altro va rifatto
+  if (sol.istante === ms && sol.pianeti.length && sol.istanteTour === !!sol.grandTour) return;
+  sol.istanteTour = !!sol.grandTour;
   try {
     const t = Astronomy.MakeTime(quando);
     sol.pianeti = SOL_PIANETI.map(p => {
@@ -33843,6 +33846,12 @@ function solCalcolaOrbiteMondi(quando) {
 // anni si sta guardando prima del lancio — lì la sonda non c'era, e non si
 // disegna.
 function solLeggiSonde(quando) {
+  // Fuori dalla demo delle Voyager le sonde si disegnano **solo al loro posto
+  // di oggi**, qualunque sia l'istante della scena: un pallino a metà strada
+  // per Giove nel 1979, o a trecento unità astronomiche fra un secolo, era
+  // una posizione inventata che sembrava vera. Il viaggio lo racconta la
+  // demo (`sol.grandTour`), che porta le sonde con l'orologio.
+  if (!sol.grandTour) quando = new Date();
   const ms = quando.getTime();
   const anni = (ms - SOL_SONDE_EPOCA_MS) / SOL_SONDE_ANNO_MS;
   const annoScena = quando.getFullYear() + (quando.getMonth() * 30.4 + quando.getDate()) / 365.25;
@@ -35321,7 +35330,23 @@ function solDisegnaOrbiteMondi(ctx) {
   ctx.restore();
 }
 
-// Una sonda: il pallino, e il filo che la lega al Sole. Il filo non è un
+// Il nome di una sonda non si scrive a ogni scala (v401). Stando avvicinati
+// alla Terra o a un pianeta la sonda è un segno schiacciato contro il bordo
+// del disegno, e il suo nome lì è rumore; lo stesso quando la scena è così
+// larga che sonda e Sole sono un punto solo. Si nomina quando è scelta, o
+// quando la vista inquadra davvero il sistema esterno.
+function solSondaDaNominare(p) {
+  if (!p.schermo) return false;
+  if (sol.scelto === p.id || (sol.grandTour && sol.grandTour.sonde.includes(p.id))) return true;
+  if (sol.perno && sol.perno !== 'Sun') return false;
+  const W = sol.L || 0, H = sol.H || 0, m = 24;
+  if (p.schermo.px < m || p.schermo.py < m || p.schermo.px > W - m || p.schermo.py > H - m) return false;
+  const sole = solProietta({ x: 0, y: 0, z: 0 });
+  const d = Math.hypot(p.schermo.px - sole.px, p.schermo.py - sole.py);
+  return d > 40 && d < 0.5 * Math.hypot(W, H);
+}
+
+// Una sonda: il pallino, al suo posto di oggi. Il filo non è un
 // ornamento — a centosettanta unità astronomiche la sonda è l'unica cosa in
 // quell'angolo di schermo, e senza una riga che arriva da dentro la scena
 // sembra un granello di polvere sul vetro invece di una cosa partita da qui.
@@ -35336,17 +35361,9 @@ function solDisegnaSonda(ctx, s) {
     if (misura >= SOL_MODELLO_SEGNO_PX) { solDisegnaModelloVoyager(ctx, s, solAssiVista(), misura); return; }
     if (misura > 0) { solDisegnaSegnoSonda(ctx, s, misura); return; }
   }
+  // Solo il segno, al posto di oggi: niente filo verso il Sole (v401), che
+  // si leggeva come una traiettoria — e la traiettoria vera non è quella
   ctx.save();
-  ctx.strokeStyle = s.colore;
-  ctx.globalAlpha = 0.22;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([2, 6]);
-  const origine = solProietta({ x: 0, y: 0, z: 0 });
-  ctx.beginPath();
-  solLineaInVista(ctx, origine.px, origine.py, p.px, p.py);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
   // A scala reale anche la sonda segue il metro comune: a questa distanza è
   // necessariamente invisibile. La crocetta è soltanto la convenzione della
   // modalità ingrandita, non una dimensione speciale riservata alle cose
@@ -38719,6 +38736,7 @@ function solDisegna() {
       // alla Terra appena lasciata il posto se lo prenderebbe lei
       const sondaDelRacconto = p.sonda && sol.grandTour && sol.grandTour.atmosfera &&
         sol.grandTour.sonde.includes(p.id);
+      if (p.sonda && !sondaDelRacconto && !solSondaDaNominare(p)) return;
       solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
         tinta(p), corpoNome(p), prese, missioneSistema || sondaDelRacconto, p.id);
     });
@@ -39288,7 +39306,42 @@ function solPassoCiclo(ts) {
   }
 }
 
+// Allontanarsi oltre il Sistema Solare porta alla scala cosmica (v401): con
+// la rotella, col pizzico o col −, superata di poco l'inquadratura di
+// «Tutto», la scena prosegue verso l'eliopausa, la nube di Oort e così via
+// (`scala-cosmica.js`). Non vale nel banco Terra e Luna, nel racconto delle
+// Voyager e durante una caccia di Missione Cielo, che hanno le loro scale.
+function solZoomVersoIlCosmo(z) {
+  if (sol.vicino || sol.grandTour || typeof cosmEntra !== 'function') return false;
+  if (typeof missModalitaGiocoSistema === 'function' && missModalitaGiocoSistema()) return false;
+  if (!(z < sol.zoomVoluto)) return false;
+  const soglia = Math.max(0.36, solZoomPer(solBordoUa()) * 0.55);
+  if (!(z < soglia)) return false;
+  sol.scelto = null;
+  sol.perno = null;
+  cosmEntra(null, { L: typeof COSM_L_INGRESSO === 'number' ? COSM_L_INGRESSO : Math.log10(70) });
+  return true;
+}
+
+// E all'indietro: avvicinandosi nella scala cosmica oltre Kuiper si torna
+// qui, su «Tutto», un poco più larghi, scivolando dentro
+function solRientraDalCosmo() {
+  sol.quadro = 'tutto';
+  sol.perno = null;
+  solCentra();
+  const z = solZoomPer(solBordoUa());
+  sol.zoom = Math.max(0.36, z * 0.6);
+  sol.zoomVoluto = z;
+  solAggiornaTasti();
+}
+
 function solImpostaZoom(z, opzioni = {}) {
+  if (opzioni.gesto) {
+    // Mentre la scala cosmica è a schermo un pizzico cominciato fra i pianeti
+    // non tocca più questa camera
+    if (typeof cosmAttivo === 'function' && cosmAttivo()) return;
+    if (solZoomVersoIlCosmo(z)) return;
+  }
   // Tre scene, tre corse dello zoom. Nel banco delle eclissi si deve poter
   // fare tutt'e due le cose: allontanarsi finché il cono d'ombra della Terra
   // ci sta per intero (un milione e mezzo di chilometri) e avvicinarsi alla
@@ -40068,7 +40121,7 @@ function solInizializzaGesti() {
       const d = distanzaDita();
       if (sol.pizzico.d > 4) {
         const rapporto = d / sol.pizzico.d;
-        solImpostaZoom(sol.pizzico.zoom * Math.pow(rapporto, solPrecisioneCamera()));
+        solImpostaZoom(sol.pizzico.zoom * Math.pow(rapporto, solPrecisioneCamera()), { gesto: true });
       }
       const m = centroDita();
       solSposta(m.x - sol.pizzico.cx, m.y - sol.pizzico.cy);
@@ -40126,7 +40179,7 @@ function solInizializzaGesti() {
     e.preventDefault();
     const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
     const scatti = Math.max(-4, Math.min(4, pixel / 100));
-    if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12 * solPrecisioneCamera()), { morbido: true });
+    if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12 * solPrecisioneCamera()), { morbido: true, gesto: true });
   }, { passive: false });
 
   // Sul globo terrestre il doppio clic/doppio tocco imposta direttamente il
@@ -41478,7 +41531,7 @@ function inizializzaSistemaSolare() {
   const zoomMenoMappa = document.getElementById('sol-zoom-meno');
   if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () => {
     if (typeof cosmAttivo === 'function' && cosmAttivo()) { cosmZoomPasso(1); return; }
-    solImpostaZoom(sol.zoomVoluto / Math.pow(1.4, solPrecisioneCamera()), { morbido: true });
+    solImpostaZoom(sol.zoomVoluto / Math.pow(1.4, solPrecisioneCamera()), { morbido: true, gesto: true });
   });
   const zoomPiuMappa = document.getElementById('sol-zoom-piu');
   if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () => {
@@ -41628,6 +41681,9 @@ function inizializzaSistemaSolare() {
     // si chiude tutto. È lo stesso patto della mappa dell'ombra
     if (e.key === 'Escape' && solSchermoIntero) { solEsciSchermoIntero(); return; }
     if (e.key === 'Escape') chiudiSistemaSolare();
+    // Nella scala cosmica le frecce girano la sua camera (v401)
+    else if (e.key.startsWith('Arrow') && !e.shiftKey && typeof cosmGiraConTasti === 'function' &&
+      typeof cosmAttivo === 'function' && cosmAttivo()) { e.preventDefault(); cosmGiraConTasti(e.key); }
     else if (e.key === 'ArrowLeft') { e.shiftKey ? solSposta(-passoPan, 0) : (sol.az -= 0.12 * precisione); }
     else if (e.key === 'ArrowRight') { e.shiftKey ? solSposta(passoPan, 0) : (sol.az += 0.12 * precisione); }
     else if (e.key === 'ArrowUp') {

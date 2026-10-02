@@ -193,7 +193,7 @@ async function pagina(browser, origine, L, H) {
         dentro: cosm.schermo.sonde.every(s => s.x > 0 && s.y > 0 && s.x < sol.L && s.y < sol.H)
       }));
       ok(ingresso.attivo && ingresso.premuto === 'true', 'Il tondo «Scala cosmica» accende il quarto quadro');
-      ok(ingresso.tasti === 12, 'La fila: le Voyager e le undici strutture');
+      ok(ingresso.tasti === 11, 'La fila: le undici strutture, e niente «Voyager oggi»');
       ok(ingresso.ricerca === 'none', 'La ricerca dei corpi lascia il posto');
       ok(ingresso.sonde === 2 && ingresso.dentro, 'Si entra sulle Voyager di oggi, tutte e due nel quadro');
       await foto('00-voyager');
@@ -221,33 +221,33 @@ async function pagina(browser, origine, L, H) {
       const lattea = await p.evaluate(() => document.getElementById('cosm-scheda').textContent);
       ok(/miliardi di anni/.test(lattea), 'Via Lattea: Voyager 1 ci metterebbe miliardi di anni ad attraversarla');
 
-      // Le Voyager: la scheda, la manopola del futuro, una tappa
-      await p.evaluate(() => document.querySelector('#cosm-fila [data-cosm-vai="voyager"]').click());
-      await finito();
+      // Le Voyager (v401): solo il posto di oggi. La scheda si apre toccandole,
+      // dice dove sono, e le tappe sono un elenco da leggere — niente manopola
+      await p.evaluate(() => cosmVolaA(cosmLDi('voyager'), { immediato: true }));
+      await fotogrammi();
+      await p.evaluate(() => cosmApriSchedaSonde());
       const sonde = await p.evaluate(() => ({
         righe: document.querySelectorAll('#cosm-scheda .cosm-sonda').length,
-        tappe: document.querySelectorAll('#cosm-scheda .cosm-tappe button').length,
+        tappe: document.querySelectorAll('#cosm-scheda .cosm-tappe li').length,
+        manopola: !!document.getElementById('cosm-futuro'),
         testo: document.getElementById('cosm-scheda').textContent
       }));
       ok(sonde.righe === 2 && sonde.tappe >= 10, 'Le Voyager: due righe e le tappe del viaggio');
+      ok(!sonde.manopola, 'Le Voyager: nessuna manopola del futuro, si vedono solo oggi');
       ok(/dalla Terra/.test(sonde.testo) && /h \d+ min/.test(sonde.testo), 'Le Voyager: la distanza dalla Terra e il tempo della luce');
-      await p.evaluate(() => {
-        const m = document.getElementById('cosm-futuro');
-        m.value = '1000'; m.dispatchEvent(new Event('input', { bubbles: true }));
+      // Il nome delle sonde si scrive alla scala dell'eliosfera e non a ogni
+      // scala: a quella della Via Lattea la riga e la carta tacciono
+      const nomi = await p.evaluate(() => {
+        const scritte = L => {
+          cosm.regia = true; cosm.L = cosm.Lvoluto = L;
+          const ctx = sol.ctx, f = ctx.fillText, testi = [];
+          ctx.fillText = function (t, ...r) { testi.push(String(t)); return f.call(this, t, ...r); };
+          try { cosmDisegna(ctx); } finally { ctx.fillText = f; cosm.regia = false; }
+          return testi.filter(t => /Voyager/.test(t)).length;
+        };
+        return { elio: scritte(cosmLDi('voyager')), galassia: scritte(Math.log10(62000 * 63241)) };
       });
-      const futuro = await p.evaluate(() => ({ anni: cosm.anni, testo: document.querySelector('[data-cosm-futuro-testo]').textContent }));
-      ok(futuro.anni > 299000 && futuro.anni <= 300000 && /Anno/.test(futuro.testo), `La manopola del futuro arriva a ${Math.round(futuro.anni)} anni (${futuro.testo})`);
-      await p.evaluate(() => {
-        const b = [...document.querySelectorAll('#cosm-scheda .cosm-tappe button')].find(x => /esce dalla nube/.test(x.textContent));
-        b.click();
-      });
-      await finito(); await fotogrammi();
-      const tappa = await p.evaluate(() => ({ anni: cosm.anni, sonde: cosm.schermo.sonde.map(s => ({ x: s.x, y: s.y })), W: sol.L, H: sol.H }));
-      ok(tappa.anni > 25000 && tappa.anni < 32000, `La tappa «esce dalla nube di Oort» porta a ${Math.round(tappa.anni)} anni da oggi`);
-      ok(tappa.sonde.length === 2 && tappa.sonde.every(s => s.x > 0 && s.y > 0 && s.x < tappa.W && s.y < tappa.H), 'E la camera le inquadra');
-      await foto('20-futuro');
-      await p.evaluate(() => document.querySelector('[data-cosm-azione="oggi"]').click());
-      ok(await p.evaluate(() => cosm.anni === 0), '«Oggi» rimette le sonde a oggi');
+      ok(nomi.elio >= 2 && nomi.galassia === 0, `I nomi delle Voyager solo alla scala dell'eliosfera (${nomi.elio} → ${nomi.galassia})`);
 
       // Il ✕ chiude la scheda
       await p.evaluate(() => document.querySelector('#cosm-scheda [data-cosm-azione="chiudi"]').click());
@@ -259,6 +259,32 @@ async function pagina(browser, origine, L, H) {
       await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
       await p.mouse.wheel(0, 300);
       ok(await p.evaluate(v => cosm.Lvoluto > v, prima), 'La rotella allontana');
+
+      // La camera si gira col dito, come nella vista 3D (v401)
+      await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
+      await p.mouse.down();
+      await p.mouse.move(Math.round(punto.x + 60), Math.round(punto.y - 80), { steps: 8 });
+      await p.mouse.up();
+      const giro = await p.evaluate(() => ({ az: cosm.az, elev: cosm.elev }));
+      ok(Math.abs(giro.az) > 0.2 && giro.elev < 70, `Un dito gira la scena (az ${giro.az.toFixed(2)}, elev ${giro.elev.toFixed(0)}°)`);
+      await fotogrammi();
+      await foto('21-girata');
+      await p.click('#sol-reset');
+      await p.waitForFunction(() => Math.abs(cosm.elev - 90) < 0.5 && Math.abs(cosm.az) < 0.01, null, { timeout: 5000 });
+      ok(true, 'Il ⟲ rimette la scena vista dall\'alto');
+
+      // Avvicinandosi oltre Kuiper si torna fra i pianeti, e allontanandosi
+      // dai pianeti si torna qui (v401)
+      await p.evaluate(() => cosmVolaA(1.45, { immediato: true }));
+      await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
+      for (let i = 0; i < 6 && await p.evaluate(() => cosmAttivo()); i++) { await p.mouse.wheel(0, -300); await p.waitForTimeout(60); }
+      ok(await p.evaluate(() => !cosmAttivo() && sol.quadro === 'tutto'), 'Avvicinandosi oltre Kuiper si torna alla vista 3D dei pianeti');
+      await p.waitForTimeout(400);
+      for (let i = 0; i < 40 && !(await p.evaluate(() => cosmAttivo())); i++) { await p.mouse.wheel(0, 300); await p.waitForTimeout(40); }
+      ok(await p.evaluate(() => cosmAttivo()), 'Allontanandosi dal Sistema Solare si entra nella scala cosmica');
+      for (let i = 0; i < 6; i++) { await p.mouse.wheel(0, 300); await p.waitForTimeout(40); }
+      await p.waitForTimeout(400);
+      ok(await p.evaluate(() => cosm.L > Math.log10(150)), 'E continuando si va verso l\'eliopausa');
 
       // Uscire: «Tutto» torna alla vista 3D di prima
       await p.click('[data-sol-quadro="tutto"]');

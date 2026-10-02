@@ -554,14 +554,14 @@
       }
     },
 
-    'demo.narr.voyager.17': {
+    'demo.narr.voyager.14': {
       it: {
         file: 'demo/it/voyager-14.mp3',
         impronta: '64191e28'
       }
     },
 
-    'demo.narr.voyager.18': {
+    'demo.narr.voyager.15': {
       it: {
         file: 'demo/it/voyager-15.mp3',
         impronta: 'e3a4cea9'

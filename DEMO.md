@@ -225,7 +225,7 @@ automaticamente anche per le demo.
 | **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 10 · 173 s | Tucson al buio guardando a est (05:30); la fila inquadrata pianeta per pianeta; tre **primi piani a campo da telescopio** (0,25°): Giove con le bande, Venere gibbosa e Saturno con gli anelli, basso a ovest — cinque pianeti nello stesso cielo; di nuovo la fila e l'eclittica; volo; da fuori la camera scende dall'alto (80°) al piano (12°) e poi di taglio (3°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; in cielo l'alba che li spegne (fino alle 06:30). |
 | **Solstizi ed equinozi** (`solstizi_equinozi`) | 16 · 292 s | Perché esistono le stagioni, detto con la geometria. Roma a mezzogiorno del 21 giugno 2027 e la domanda (non è la distanza); volo; la Terra da vicino con l'**asse in evidenza** (`earth_axis`) e la camera che finisce di fianco, dove i 23,4° sulla perpendicolare all'orbita si leggono interi; un anno intero con la camera ferma (`date_range`): l'asse non cambia direzione e il cartello dice la distanza, minima a gennaio; il solstizio di giugno col Sole a sinistra (`sun_az: 0`), il polo nord verso di lui e il parallelo di Roma quasi tutto al giorno; sei mesi di orbita; il solstizio di dicembre con la **stessa** camera e il polo dall'altra parte; i due equinozi (marzo e settembre 2028), con la camera che gira fino a mostrare l'asse che pende di lato; di nuovo a Roma, il Sole seguito in azimut dall'alba al tramonto (`track_azimuth`) a giugno, dicembre e marzo, con gli archi interi dei giorni già visti (`sun_paths`) e i tre a confronto; il sole di mezzanotte a Tromsø; il riepilogo in 3D. Ogni scena apre il **cartello della data** (`date_card`), con alba, tramonto, durata del giorno e Sole a mezzogiorno nelle scene del planetario. |
-| **Voyager · il viaggio verso le stelle** (`voyager`) | 18 · 433 s | Il viaggio delle due Voyager raccontato alla maniera di Carl Sagan. Cape Canaveral prima dell'alba del 20 agosto 1977 (Venere, Marte e Giove a est); volo; il progetto del Grand Tour con le strade future tratteggiate; il lancio da vicino a **dimensioni vere** (la Terra grande, la sonda un segno che se ne stacca, poi la camera la raggiunge e compare il **modellino** con l'antenna rivolta verso casa); diciotto mesi di salita verso Giove; i flyby di **Giove** (5 marzo 1979) e **Saturno** (12 novembre 1980) a **distanze e dimensioni vere**, con la camera che tiene insieme sonda e pianeta e il tempo che rallenta al perielio; i dodici anni di Voyager 2 fino a Nettuno, con la camera che la segue e si stringe sui sorvoli di **Saturno** (1981) e **Urano** (1986); il flyby di **Nettuno** (25 agosto 1989); la forma a V della fuga fino all'eliopausa del 2012; il **pallido puntino blu** (14 febbraio 1990) con la Terra cerchiata; il **Disco d'Oro**, con la camera che arriva sul fianco della sonda e la **fotografia vera** della copertina accanto (`golden_record`); il viaggio intero oggi; la **scala cosmica** (v400, `cosmic_scale`): l'eliosfera vista sul piano delle due sonde con le distanze di oggi dal Sole e dalla Terra, il futuro fino a 42.000 anni (la nube di Oort, Gliese 445) e la salita a soste fino all'universo osservabile; e il cielo di Roma del 15 ottobre 2026 coi **mirini** che dicono dove sono le due sonde (`probe_markers`). |
+| **Voyager · il viaggio verso le stelle** (`voyager`) | 15 · 335 s | Il viaggio delle due Voyager raccontato alla maniera di Carl Sagan. Cape Canaveral prima dell'alba del 20 agosto 1977 (Venere, Marte e Giove a est); volo; il progetto del Grand Tour con le strade future tratteggiate; il lancio da vicino a **dimensioni vere** (la Terra grande, la sonda un segno che se ne stacca, poi la camera la raggiunge e compare il **modellino** con l'antenna rivolta verso casa); diciotto mesi di salita verso Giove; i flyby di **Giove** (5 marzo 1979) e **Saturno** (12 novembre 1980) a **distanze e dimensioni vere**, con la camera che tiene insieme sonda e pianeta e il tempo che rallenta al perielio; i dodici anni di Voyager 2 fino a Nettuno, con la camera che la segue e si stringe sui sorvoli di **Saturno** (1981) e **Urano** (1986); il flyby di **Nettuno** (25 agosto 1989); la forma a V della fuga fino all'eliopausa del 2012; il **pallido puntino blu** (14 febbraio 1990) con la Terra cerchiata; il **Disco d'Oro**, con la camera che arriva sul fianco della sonda e la **fotografia vera** della copertina accanto (`golden_record`); il viaggio intero oggi; e il cielo di Roma del 15 ottobre 2026 coi **mirini** che dicono dove sono le due sonde (`probe_markers`). |
 | **Passaggio della ISS** (`passaggio_iss`) | 6 · 104 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario, a capitoli: tutto l'arco inquadrato con la traccia; il culmine **inseguito a 0,25° di campo**, col modellino della stazione e le stelle che scorrono dietro; volo; la stessa orbita da fuori nello **stesso** intervallo di tempo; più di mezz'ora di orbita a campo largo (±15 min); il congedo, l'ultimo tratto dell'arco in cielo. |
 
 Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
@@ -530,44 +530,6 @@ tarate sulla frase registrata.
 
 Prove nel §2-ter di `scripts/prova-demo-voyager.js` e nelle riprese di
 `scripts/prova-demo.js`.
-
-### La scala cosmica nella demo delle Voyager (v400)
-
-La demo raccontava bene il viaggio fino a Nettuno e poi diceva «fra le
-stelle» senza far vedere che cosa vuol dire. Tre scene nuove, dopo «Oggi», lo
-fanno con la **scala cosmica** di `scala-cosmica.js` (il quarto quadro della
-vista 3D, che esiste anche fuori dalla demo: vedi CLAUDE.md):
-
-- **L'eliosfera di oggi** (scena 14, 26 s): dalla fascia di Kuiper alle
-  sonde. La carta è sul **piano delle due Voyager**, che è l'unico su cui le
-  loro distanze sono vere; lo shock di terminazione e l'eliopausa sono tarati
-  perché passino per i quattro attraversamenti misurati (2004, 2007, 2012,
-  2018), e accanto a ogni sonda c'è la distanza di adesso dal Sole e dalla
-  Terra, con le ore della luce.
-- **Il futuro** (scena 15, 30 s): gli anni corrono in progressione geometrica
-  fino a 42.000 (`years_ease: log`) e la scala si allarga con loro fino a sei
-  anni luce (`center: sun`); le tacche dicono quando escono dalla nube di
-  Oort e quando arrivano a un anno luce. In cima, l'anno.
-- **La scala vera** (scena 16, 42 s): dalla nube locale all'universo
-  osservabile con una sosta su ogni struttura (`ease: stops`), che si accende
-  mentre la voce la nomina. La riga in cima è un asse di sedici decade con
-  sopra Voyager 1; da un certo punto il loro viaggio è più piccolo di un
-  pixel, e la carta lo scrive.
-
-L'azione è **`cosmic_scale`** (solo `solar_system_3d`): `from`/`to` (una
-struttura — `kuiper`, `heliopause`, `oort`, `local_cloud`, `local_bubble`,
-`orion_arm`, `milky_way`, `local_group`, `virgo`, `laniakea`, `universe`,
-`voyager` — o un numero di UA, metà del lato corto), `ease`
-(`smooth`/`linear`/`stops`), `years_from`/`years_to` (0…300000) con
-`years_ease`, `focus`, `center: sun`, `zoom_start`/`zoom_end`. L'orologio va
-a oggi; chi tocca la scena prende la scala, gli anni continuano col racconto.
-Durante la demo la riga della scala sta in cima (sotto al cartello, misurato)
-e la didascalia a destra: in fondo ci sono i sottotitoli.
-
-Le narrazioni 14–16 non hanno MP3: parla la sintesi. Le due di Roma sono
-diventate 17 e 18 e tengono i loro audio (il manifest punta agli stessi
-file). Prove nel §2-quater di `scripts/prova-demo-voyager.js` e in
-`scripts/prova-scala-cosmica.js`.
 
 ### Perché Helsinki e non Tromsø
 
