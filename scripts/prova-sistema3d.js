@@ -32,7 +32,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const CHROMIUM = process.env.CHROMIUM || '/opt/pw-browsers/chromium/chrome-linux/chrome';
+const CHROMIUM = process.env.CHROMIUM || (require('fs').existsSync('/opt/pw-browsers/chromium/chrome-linux/chrome') ? '/opt/pw-browsers/chromium/chrome-linux/chrome' : '/opt/pw-browsers/chromium');
 const RADICE = path.join(__dirname, '..');
 const TIPI = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
                '.json': 'application/json', '.png': 'image/png' };
@@ -181,28 +181,9 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   });
   ok('lo schermo intero resta una scelta del tasto dedicato', soloTasto);
 
-  const dallaTerra = await pagina.evaluate(() => {
-    sol.perno = 'Mars';
-    sol.quadro = 'tutto';
-    const zoom = sol.zoomVoluto;
-    const az = sol.az;
-    document.querySelector('[data-sol-quadro="terra"]').click();
-    const tasto = document.querySelector('[data-sol-quadro="terra"]');
-    return {
-      perno: sol.perno,
-      quadro: sol.quadro,
-      zoomInvariato: sol.zoomVoluto === zoom,
-      azimutInvariato: sol.az === az,
-      testo: tasto.querySelector('.sol-vista-nome').textContent.trim(),
-      premuto: tasto.getAttribute('aria-pressed')
-    };
-  });
-  ok('«Dalla Terra» mette il perno della camera sulla Terra',
-    dallaTerra.perno === 'Earth' && dallaTerra.quadro === 'terra' &&
-    dallaTerra.zoomInvariato && dallaTerra.azimutInvariato,
-    `${dallaTerra.perno}, ${dallaTerra.testo}`);
-  ok('il pin della Terra ha il nuovo nome ed è indicato come attivo',
-    dallaTerra.testo === 'Dalla Terra' && dallaTerra.premuto === 'true');
+  // «Dalla Terra» non c'è più fra le viste della 3D (v401)
+  ok('il tondo «Dalla Terra» è stato tolto',
+    await pagina.evaluate(() => !document.querySelector('[data-sol-quadro="terra"]')));
 
   console.log('\n— inerzia della camera —');
   const inerzia = await pagina.evaluate(() => {
@@ -419,9 +400,8 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
   ok('sono in viaggio da quasi cinquant\'anni', v1 && fra(v1.anni, 45, 60),
     v1 && Math.floor(v1.anni) + ' anni');
 
-  // La retta: un anno di macchina del tempo deve spostarle di tre unità
-  // astronomiche e mezzo, che è la loro velocità vera — non di zero (posizione
-  // congelata) e non di trenta (un fattore sbagliato).
+  // Fuori dal racconto (v401) le sonde stanno al loro posto di oggi: un
+  // anno di macchina del tempo non le sposta
   const passo = await pagina.evaluate(() => {
     const prima = sol.sonde.find(s => s.id === 'voyager1').r;
     skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + 365.25 * 86400);
@@ -431,8 +411,8 @@ const fra = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= 
     solLeggiPosizioni(skyAdesso());
     return dopo - prima;
   });
-  ok('in un anno la Voyager 1 fa tre unità astronomiche e mezzo',
-    fra(passo, 3.3, 3.8), passo.toFixed(3) + ' UA/anno');
+  ok('con la macchina del tempo la Voyager 1 resta al suo posto di oggi', Math.abs(passo) < 0.01,
+    passo.toFixed(3) + ' UA');
 
   // =====================================================================
   console.log('\n— i satelliti attorno alla Terra —');
