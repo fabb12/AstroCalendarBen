@@ -146,7 +146,10 @@ const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.j
   'missione-cielo.js', 'visione.js', 'demo.js', 'demo-impostazioni.js', 'demo-intro.js',
   // La narrazione: le sue voci delle Impostazioni, e gli ID delle scene delle
   // demo, che stanno scritti dentro ai tour e non in un file di codice.
-  'narrazione.js', 'demo-predefiniti.js'];
+  'narrazione.js', 'demo-predefiniti.js',
+  // Le Storie cosmiche: la sezione della pagina Demo, le personalità e i
+  // messaggi d'errore dei comandi dei personaggi.
+  'storie-cosmiche.js'];
 
 function leggiFile(elenco) {
   const perFile = new Map();

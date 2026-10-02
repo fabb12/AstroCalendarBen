@@ -216,7 +216,7 @@ selettore usa lo stesso catalogo `ASTRO_TRACCE_MUSICALI` della musica
 dell'app, quindi una nuova traccia aggiunta al catalogo diventa disponibile
 automaticamente anche per le demo.
 
-## Gli otto tour predefiniti
+## Gli otto tour predefiniti, e le Storie cosmiche
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
@@ -228,6 +228,8 @@ automaticamente anche per le demo.
 | **Voyager · il viaggio verso le stelle** (`voyager`) | 15 · 335 s | Il viaggio delle due Voyager raccontato alla maniera di Carl Sagan. Cape Canaveral prima dell'alba del 20 agosto 1977 (Venere, Marte e Giove a est); volo; il progetto del Grand Tour con le strade future tratteggiate; il lancio da vicino a **dimensioni vere** (la Terra grande, la sonda un segno che se ne stacca, poi la camera la raggiunge e compare il **modellino** con l'antenna rivolta verso casa); diciotto mesi di salita verso Giove; i flyby di **Giove** (5 marzo 1979) e **Saturno** (12 novembre 1980) a **distanze e dimensioni vere**, con la camera che tiene insieme sonda e pianeta e il tempo che rallenta al perielio; i dodici anni di Voyager 2 fino a Nettuno, con la camera che la segue e si stringe sui sorvoli di **Saturno** (1981) e **Urano** (1986); il flyby di **Nettuno** (25 agosto 1989); la forma a V della fuga fino all'eliopausa del 2012; il **pallido puntino blu** (14 febbraio 1990) con la Terra cerchiata; il **Disco d'Oro**, con la camera che arriva sul fianco della sonda e la **fotografia vera** della copertina accanto (`golden_record`); il viaggio intero oggi; e il cielo di Roma del 15 ottobre 2026 coi **mirini** che dicono dove sono le due sonde (`probe_markers`). |
 | **Dalla Terra all'universo** (`universo`) | 17 · 386 s | Quanto è grande l'universo, a passi. Il cielo di stasera sopra casa (il luogo dell'app, guardando in su); il volo oltre l'aria fino addosso alla Terra; poi la **scala cosmica** (`cosmic_scale`) in tredici scene di fila che sono un volo solo, alla misura vera: la Terra da vicino; la camera che si allontana finché entra la Luna; il Sole coi pianeti di roccia; i giganti fino a Nettuno; Kuiper e l'eliopausa con le Voyager di oggi, la nube di Oort, le stelle vicine, la Bolla Locale e il braccio di Orione (con le soste), la Via Lattea che si inclina, Andromeda e il Gruppo Locale, la Vergine e Laniakea (con le soste), l'universo osservabile; il ritorno in venti secondi fino alla Terra; l'atterraggio (`zoom_view` verso `planetarium_view`); e il congedo sotto il cielo di casa. Ogni scena apre il cartello con la misura e il tempo della luce. |
 | **Passaggio della ISS** (`passaggio_iss`) | 6 · 104 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario, a capitoli: tutto l'arco inquadrato con la traccia; il culmine **inseguito a 0,25° di campo**, col modellino della stazione e le stelle che scorrono dietro; volo; la stessa orbita da fuori nello **stesso** intervallo di tempo; più di mezz'ora di orbita a campo largo (±15 min); il congedo, l'ultimo tratto dell'arco in cielo. |
+| **Storie cosmiche · La Luna ha perso un pezzo?** (`storia_luna`) | 8 · 85 s | L'episodio pilota delle **Storie cosmiche** (`STORIE.md`): la Luna a falce del 13 dicembre 2026 da Roma, con un volto e una voce, crede di aver perso un pezzo; la Terra la porta a guardarsi da fuori (banco Terra e Luna), il Sole spiega che illumina sempre metà di lei, undici giorni d'orbita vera fino alla Luna piena, e il ritorno sotto il cielo di quella sera. |
+| **Storie cosmiche · Giove e Saturno** (`storia_giganti`) | 4 · 47 s | La storia d'esempio che usa tutte le azioni dei personaggi (`character_*`), da duplicare e modificare. |
 
 Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
 legano all'**evento vero** (`event_window`, `satellite_pass`), cercato una
@@ -628,6 +630,11 @@ numeri, orari HH:MM e durate in s/ms. Le azioni della stessa scena sono
 simultanee; i punti e virgola sono obbligatori.
 
 Azioni principali:
+
+- `character_show { target: 'Moon', expression: 'worried', look: 'Earth', size: auto }`,
+  `character_expression`, `character_look_at { object: … }`, `character_blink`,
+  `character_speak { id: … }` (o `text: …`) e `character_hide`: i **personaggi**
+  delle Storie cosmiche, validi nella scena in cui compaiono. Tutto in `STORIE.md`.
 
 - `timelapse { start: 18:00, end: 22:00 }`
 - `highlight_object { name: 'Venus', scale: 5 }`

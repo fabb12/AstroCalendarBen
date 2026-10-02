@@ -39,7 +39,15 @@
     sun_paths: ['planetarium_view', "sun_paths { dates: '2027-06-21,2027-12-22' }"],
     track_azimuth: ['planetarium_view', "track_azimuth { target: 'Sun', alt: 25 }"],
     // La voce della scena: un ID del dizionario, oppure `text: '…'` scritto a mano.
-    narrate: ['planetarium_view', "narrate { id: 'demo.narr.eclisse_tour.1' }"]
+    narrate: ['planetarium_view', "narrate { id: 'demo.narr.eclisse_tour.1' }"],
+    // Le Storie cosmiche (storie-cosmiche.js): un personaggio compare con
+    // `character_show` nella stessa scena in cui parla, cambia faccia o guarda.
+    character_show: ['solar_system_3d', "character_show { target: 'Saturn', expression: 'happy' }"],
+    character_expression: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_expression { target: 'Saturn', expression: 'surprised', shot_from: 0.5 }"],
+    character_look_at: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_show { target: 'Jupiter' };\n    action: character_look_at { target: 'Saturn', object: 'Jupiter' }"],
+    character_blink: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_blink { target: 'Saturn', shot_from: 0.4 }"],
+    character_speak: ['solar_system_3d', "character_show { target: 'Saturn', expression: 'happy' };\n    action: character_speak { target: 'Saturn', id: 'demo.narr.storia_giganti.1' }"],
+    character_hide: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_hide { target: 'Saturn', shot_from: 0.8 }"]
   };
   const scena = (vista, azione) => '  scene ' + vista + ' {\n    duration: 10s;\n    action: ' + azione + ';\n  }\n';
   const snippets = {

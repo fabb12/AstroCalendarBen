@@ -22719,6 +22719,10 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   // nessuno, e registrarlo lo stesso vorrebbe dire annerire un aereo davanti
   // a una Luna che in quel fotogramma non è disegnata.
   if (!sottoOrizzonte) skyRegistraDisco(o, p, r);
+  // La stessa ricevuta, per i volti delle Storie cosmiche (storie-cosmiche.js):
+  // dove l'astro è finito e quanto è grande, misurato da chi l'ha disegnato.
+  // Senza personaggi in scena esce alla prima riga.
+  if (typeof storRicevuta === 'function') storRicevuta(o.id, p.px, p.py, r, o);
 
   // La scia della stazione spaziale: tratteggiata dove è già passata,
   // continua dove sta andando nei prossimi minuti.
@@ -23252,6 +23256,10 @@ function skyDisegna() {
   // punto del cielo, quindi segue la proiezione fotogramma per fotogramma
   // come le etichette dei paesi e delle vette.
   skyPosizionaFumetto(base, focale);
+
+  // I volti delle Storie cosmiche: un livello a parte, sopra a tutto il cielo
+  // e prima della registrazione, così finiscono anche nel filmato.
+  if (typeof storDisegnaCielo === 'function') storDisegnaCielo(ctx);
 
   // Se si sta registrando, questo fotogramma finisce anche nel filmato: il
   // montaggio si fa qui, appena il cielo è finito (vedi 7.6)
@@ -33331,7 +33339,7 @@ const sol = {
   // L'anello dell'orbita lunare nella scena grande (§7.7), e dove sono finiti
   // sullo schermo la Luna e i due corpi del banco delle eclissi: li scrive chi
   // li disegna, li legge il dito (`solTocco`)
-  orbitaLunaGrande: null, lunaSchermo: null, vicCorpi: null,
+  orbitaLunaGrande: null, lunaSchermo: null, vicCorpi: null, soleVicinoSchermo: null,
   // Anche i nomi sono parte sensibile del corpo a cui appartengono. Le loro
   // scatole cambiano a ogni fotogramma insieme alla camera, perciò vengono
   // ricostruite dal disegno e lette dal medesimo hit test dei pallini.
@@ -35297,7 +35305,7 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   const r = solRaggioLuna();
   // Dove è finita sullo schermo: lo chiede il dito (`solTocco`), che deve
   // poterla scegliere come sceglie un pianeta
-  sol.lunaSchermo = { px: p.px, py: p.py, r };
+  sol.lunaSchermo = { px: p.px, py: p.py, r, vicinanza: p.vicinanza };
   const k = assi ? solFrazione(terra, assi) : 1;
   const versoSole = solVersoIlSole(terra);
   const angLuce = assi && versoSole ? solAngoloSchermo(versoSole, assi) : 0;
@@ -36241,7 +36249,7 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
       : SOL_SAT_RAGGIO_PX;
     sol.satSchermo.push({
       id: s.id, nome: s.nome, colore: s.colore,
-      px: p.px, py: p.py, r: rSatellite
+      px: p.px, py: p.py, r: rSatellite, vicinanza: p.vicinanza
     });
     ctx.save();
     ctx.fillStyle = s.colore;
@@ -36320,7 +36328,7 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
     ctx.restore();
     if ((p.vicinanza >= dietro) !== davanti) return;
     const r = solRaggioLunaPianeta(l);
-    sol.luneSchermo.push({ id: l.id, nome: l.nome, colore: l.colore, px: p.px, py: p.py, r });
+    sol.luneSchermo.push({ id: l.id, nome: l.nome, colore: l.colore, px: p.px, py: p.py, r, vicinanza: p.vicinanza });
     ctx.save();
     ctx.translate(p.px, p.py);
     const k = solFrazione(pianeta, assi);
@@ -37772,6 +37780,8 @@ function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   if (!(r > 0)) return;
   const centro = solVicPunto(solPuntoSoleVicino(versoSole, distanzaLuna));
   const x = centro.px, y = centro.py;
+  // Dove è finito: lo legge il livello dei volti (storie-cosmiche.js)
+  sol.soleVicinoSchermo = { px: x, py: y, r, vicinanza: centro.vicinanza };
 
   ctx.save();
   const alone = ctx.createRadialGradient(x, y, r * 0.18, x, y, r * 2.7);
@@ -38029,6 +38039,7 @@ function solDisegnaVicino() {
     id: c.id, schermo: c.schermo, disegna: () => solDisegnaCorpo(ctx, c, assi)
   }));
   dischi.push(soleVicino);
+  sol.soleVicinoSchermo = null;
   dischi.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
   dischi.forEach(c => c.disegna());
   // Il globo non deve nascondere proprio l'arrivo del cono che questa scena
@@ -38047,6 +38058,8 @@ function solDisegnaVicino() {
   solEtichetteVicino(ctx, finti, orbita, g);
   solRighelloVicino(ctx);
   solRaccontoVicino(ctx, g, sLuna);
+  // I volti delle Storie cosmiche, sopra a tutto (storie-cosmiche.js)
+  if (typeof storDisegnaSistema === 'function') storDisegnaSistema(ctx, { corpi: finti, sole: sol.soleVicinoSchermo });
 }
 
 // Il righello. In un disegno che promette di essere a scala vera è il pezzo
@@ -38796,6 +38809,11 @@ function solDisegna() {
   // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
   // manchi niente — la nuvola di punti si riconosce da sé
   sol.fasce.forEach(f => { if (sol.fasceAccese[f.id]) solEtichettaFascia(ctx, f, prese); });
+
+  // I volti delle Storie cosmiche: dopo i corpi e i loro nomi, con la stessa
+  // proiezione e la stessa fila della profondità (storie-cosmiche.js).
+  if (typeof storDisegnaSistema === 'function')
+    storDisegnaSistema(ctx, { corpi: ordinati, sole: { px: sole.px, py: sole.py, r: rSole, vicinanza: dietroAlSole } });
 
   // In basso: da che altezza si sta guardando, e quanto è largo il disegno.
   // Su una tela stretta le due scritte si tamponerebbero a metà strada:

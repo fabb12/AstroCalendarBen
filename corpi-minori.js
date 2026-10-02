@@ -868,6 +868,8 @@ function corpiMinoriDisegna(ctx, base, focale) {
     // scala sul limite dell'elenco: una di dodicesima resta un puntino,
     // una di sesta si vede da lontano.
     const r = Math.max(2.2, 6.4 - c.mag * 0.42);
+    // La ricevuta per i volti delle Storie cosmiche (storie-cosmiche.js)
+    if (typeof storRicevuta === 'function') storRicevuta('min:' + c.nome, p.px, p.py, r, c);
 
     if (cometa) {
       // La coda, prima di tutto: sta dietro alla chioma, non davanti.

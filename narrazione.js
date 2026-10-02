@@ -90,7 +90,15 @@ const narr = {
   // cattura invece nasce e muore con la registrazione della demo.
   audioContesto: null,
   audioSorgente: null,
-  cattura: null
+  cattura: null,
+  // L'ascolto dell'ampiezza, per chi deve muovere una bocca (le Storie
+  // cosmiche). Nasce solo quando qualcuno lo chiede dentro a un gesto
+  // (`narrPreparaAnalisi`) e si collega solo a contesto già in marcia:
+  // `createMediaElementSource` porta l'elemento dentro al grafo **per
+  // sempre**, e un grafo sospeso vuol dire una voce muta.
+  analisiVoluta: false,
+  analizzatore: null,
+  campioni: null
 };
 
 function narrLeggiPreferenze() {
@@ -127,7 +135,7 @@ function narrImpostaPreferenze(nuove) {
   narr.preferenze = p;
   try { localStorage.setItem(CHIAVE_NARRAZIONE, JSON.stringify(p)); } catch (_) { /* niente storage */ }
   // Le preferenze valgono subito, anche a metà di una frase.
-  if (!p.attiva && narr.corrente && !narr.corrente.r.forza) narrFerma();
+  if (!p.attiva && narr.corrente && !narr.corrente.r.forza && !narr.corrente.r.testoSeSpenta) narrFerma();
   if (narr.audio) narr.audio.volume = p.volume;
   if (narr.corrente) narrMostraTesto(narr.corrente);
   narrAggiornaImpostazioni();
@@ -301,7 +309,11 @@ function narrOspiteDiSerie() {
 
 function narrMostraTesto(c) {
   if (typeof document === 'undefined') return;
-  const vuole = !!(c && c.testo && narrPreferenze().testo && c.r.sottotitolo !== false);
+  // `sottotitolo: 'sempre'` è delle Storie cosmiche: lì la fascia porta il
+  // nome di chi parla, ed è la sola cosa che dica ai bambini (e a chi non
+  // distingue i colori) quale personaggio sta parlando.
+  const vuole = !!(c && c.testo && c.r.sottotitolo !== false &&
+    (narrPreferenze().testo || c.r.sottotitolo === 'sempre'));
   if (!vuole) { if (narr.elTesto) narr.elTesto.hidden = true; return; }
   let el = narr.elTesto;
   if (!el) {
@@ -320,13 +332,37 @@ function narrMostraTesto(c) {
   }
   el.classList.toggle('in-ospite', dentro);
   el.classList.toggle('in-pausa', !!c.pausa);
-  el.textContent = c.testo;
+  narrScriviTesto(el, c);
   el.lang = c.lingua;
   el.hidden = false;
 }
 
+// Il testo, e davanti — se la frase ha un parlante — il suo nome. Sempre
+// con `textContent`: i nomi e le frasi delle demo personali li scrive chi
+// le scrive, e non devono mai diventare marcatura.
+function narrScriviTesto(el, c) {
+  const chi = c.r.chi;
+  const nome = chi && typeof chi.nome === 'string' ? chi.nome.trim() : '';
+  el.classList.toggle('con-parlante', !!nome);
+  if (!nome) { el.textContent = c.testo; el.style.removeProperty('--colore-parlante'); return; }
+  el.textContent = '';
+  const etichetta = document.createElement('span');
+  etichetta.className = 'narrazione-chi';
+  etichetta.textContent = nome;
+  const frase = document.createElement('span');
+  frase.className = 'narrazione-frase';
+  frase.textContent = c.testo;
+  if (chi.colore) el.style.setProperty('--colore-parlante', chi.colore);
+  // lo spazio vero fra nome e frase: chi legge con la sintesi dello schermo
+  // non deve sentire «LunaOh no»
+  el.append(etichetta, document.createTextNode(' '), frase);
+}
+
 function narrNascondiTesto() {
-  if (narr.elTesto) narr.elTesto.hidden = true;
+  if (narr.elTesto) {
+    narr.elTesto.hidden = true;
+    narr.elTesto.classList.remove('con-parlante');
+  }
 }
 
 // =====================================================================
@@ -430,6 +466,65 @@ function narrCatturaAudio(canale = '') {
   return null;
 }
 
+// L'ampiezza della voce. Si prepara dentro a un gesto (chi avvia una Storia
+// ha appena premuto un tasto), e solo a contesto **in marcia** si porta
+// l'elemento dentro al grafo: fatto a contesto sospeso, la voce sarebbe muta
+// finché il browser non lo sblocca. Se non si può, niente analisi — la bocca
+// ripiega sui confini delle parole o sul ritmo del testo (Storie cosmiche).
+function narrPreparaAnalisi() {
+  narr.analisiVoluta = true;
+  const AudioCtx = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+  if (!AudioCtx) return false;
+  try {
+    if (!narr.audioContesto) narr.audioContesto = new AudioCtx();
+    if (narr.audioContesto.state === 'suspended' && narr.audioContesto.resume)
+      Promise.resolve(narr.audioContesto.resume()).then(() => narrCollegaAnalisi(), () => {});
+  } catch (_) { return false; }
+  return narrCollegaAnalisi();
+}
+function narrCollegaAnalisi() {
+  const ctx = narr.audioContesto;
+  if (!narr.analisiVoluta || !ctx || ctx.state !== 'running') return false;
+  if (narr.analizzatore) return true;
+  const a = narrElementoAudio();
+  if (!a) return false;
+  try {
+    if (!narr.audioSorgente) {
+      narr.audioSorgente = ctx.createMediaElementSource(a);
+      narr.audioSorgente.connect(ctx.destination);
+    }
+    const an = ctx.createAnalyser();
+    an.fftSize = 512;
+    an.smoothingTimeConstant = 0.2;
+    narr.audioSorgente.connect(an);
+    narr.analizzatore = an;
+    narr.campioni = new Float32Array(an.fftSize);
+    return true;
+  } catch (e) {
+    console.warn('[narrazione] Analisi della voce non disponibile:', e.message);
+    return false;
+  }
+}
+// Il valore efficace dell'ultimo ventesimo di secondo, o `null` se non lo
+// si può misurare (nessun grafo, contesto sospeso, browser senza Web Audio).
+function narrLivello() {
+  const an = narr.analizzatore, ctx = narr.audioContesto;
+  if (!an || !ctx || ctx.state !== 'running') return null;
+  try {
+    an.getFloatTimeDomainData(narr.campioni);
+    let somma = 0;
+    for (let i = 0; i < narr.campioni.length; i++) somma += narr.campioni[i] * narr.campioni[i];
+    return Math.sqrt(somma / narr.campioni.length);
+  } catch (_) { return null; }
+}
+// Un indirizzo d'un'altra origine dentro al grafo suona muto se il server
+// non manda il CORS: chiedendolo per nome, invece, o suona o fallisce — e
+// un fallimento la scala dei ripieghi lo sa gestire.
+function narrAltraOrigine(sorgente) {
+  if (!/^https?:/i.test(sorgente) || typeof location === 'undefined') return false;
+  try { return new URL(sorgente).origin !== location.origin; } catch (_) { return false; }
+}
+
 /* Suona una sorgente sull'elemento condiviso. Risponde 'audio' a fine brano,
  * 'bloccato' se il browser non lascia suonare senza un gesto, 'corrotto' se
  * non si decodifica, 'interrotta' se nel frattempo qualcuno ha fermato. */
@@ -440,10 +535,17 @@ function narrSuona(c, sorgente) {
     let partito = false;
     const scadenza = setTimeout(() => { if (!partito && !c.pausa) fine('corrotto'); }, NARR_AUDIO_CARICA_MS);
     const chiudi = v => { clearTimeout(scadenza); fine(v); };
-    a.onended = () => chiudi('audio');
-    a.onerror = () => chiudi('corrotto');
-    a.onplaying = () => { partito = true; };
+    a.onended = () => { c.suonoDa = 0; chiudi('audio'); };
+    a.onerror = () => { c.suonoDa = 0; chiudi('corrotto'); };
+    a.onplaying = () => { partito = true; c.suonoDa = narrOra(); };
     a.volume = narrPreferenze().volume;
+    if (narr.audioSorgente && narrAltraOrigine(sorgente)) a.crossOrigin = 'anonymous';
+    else a.removeAttribute('crossorigin');
+    if (narr.analisiVoluta) {
+      narrCollegaAnalisi();
+      const ac = narr.audioContesto;
+      if (ac && ac.state === 'suspended' && ac.resume) Promise.resolve(ac.resume()).catch(() => {});
+    }
     a.src = sorgente;
     c.audioInCorso = true;
     const avvia = () => {
@@ -456,7 +558,11 @@ function narrSuona(c, sorgente) {
       });
     };
     if (c.pausa) c.allaRipresaAudio = avvia; else avvia();
-  }).then(v => { c.audioInCorso = false; return v; });
+  }).then(v => { c.audioInCorso = false; c.suonoDa = 0; return v; });
+}
+
+function narrOra() {
+  return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
 }
 
 async function narrCaricaFile(url) {
@@ -599,10 +705,17 @@ function narrVoceLocale(c, testo) {
       try { speechSynthesis.cancel(); } catch (_) { /* niente */ }
       fine('');
     }, NARR_AVVIO_VOCE_MS);
-    frase.onstart = () => { partita = true; };
-    frase.onend = () => { clearTimeout(scadenza); fine(c.fermataPerPausa ? 'pausa' : 'tts'); };
+    frase.onstart = () => { partita = true; c.suonoDa = narrOra(); c.confine = null; };
+    // I confini delle parole, dove il motore li manda: dicono a che punto
+    // della frase è la voce, ed è il secondo segnale della bocca.
+    frase.onboundary = e => {
+      if (!e || typeof e.charIndex !== 'number') return;
+      c.confine = { t: narrOra(), carattere: e.charIndex, lunghezza: e.charLength || 0 };
+    };
+    frase.onend = () => { clearTimeout(scadenza); c.suonoDa = 0; fine(c.fermataPerPausa ? 'pausa' : 'tts'); };
     frase.onerror = e => {
       clearTimeout(scadenza);
+      c.suonoDa = 0;
       if (c.fermataPerPausa) fine('pausa');
       else if (e && /interrupted|canceled/.test(e.error || '')) fine(narrVecchia(c) ? 'interrotta' : 'pausa');
       else {
@@ -610,31 +723,44 @@ function narrVoceLocale(c, testo) {
         fine('');
       }
     };
-    c.fermaVoce = () => { clearTimeout(scadenza); c.fermataPerPausa = true; try { speechSynthesis.cancel(); } catch (_) { /* niente */ } };
+    c.fermaVoce = () => { clearTimeout(scadenza); c.suonoDa = 0; c.fermataPerPausa = true; try { speechSynthesis.cancel(); } catch (_) { /* niente */ } };
     c.fermataPerPausa = false;
     speechSynthesis.speak(frase);
-  }).then(v => { c.fermaVoce = null; c.fermataPerPausa = false; return v; });
+  }).then(v => { c.fermaVoce = null; c.fermataPerPausa = false; c.suonoDa = 0; c.confine = null; return v; });
 }
 
 // Senza voce: il testo resta a schermo il tempo di leggerlo, e la pausa ferma
 // anche quest'orologio.
 function narrSoloTesto(c, testo) {
   const parole = String(testo).split(/\s+/).filter(Boolean).length;
-  let resta = Math.max(NARR_TESTO_MIN_MS, parole / NARR_PAROLE_AL_SECONDO * 1000);
+  const totale = Math.max(NARR_TESTO_MIN_MS, parole / NARR_PAROLE_AL_SECONDO * 1000);
+  let resta = totale;
+  // A che punto è la lettura: serve a chi muove una bocca al ritmo del testo
+  // quando di voce non ce n'è (il terzo segnale delle Storie cosmiche).
+  // (L'orologio del mondo finto delle prove parte da zero: per questo «sta
+  // leggendo» è un booleano a parte e non la sola ora di partenza.)
+  c.lettura = { totale, fatto: () => totale - resta + (c.letturaInCorso ? Date.now() - c.letturaDa : 0) };
   return narrAttesa(c, fine => {
-    let timer = null, dal = 0;
+    let timer = null;
     const avvia = () => {
-      dal = Date.now();
-      timer = setTimeout(() => fine('testo'), resta);
+      c.letturaDa = Date.now(); c.letturaInCorso = true;
+      timer = setTimeout(() => { c.letturaInCorso = false; fine('testo'); }, resta);
     };
-    c.fermaTesto = () => { clearTimeout(timer); resta = Math.max(0, resta - (Date.now() - dal)); };
+    c.fermaTesto = () => {
+      clearTimeout(timer);
+      if (c.letturaInCorso) resta = Math.max(0, resta - (Date.now() - c.letturaDa));
+      c.letturaInCorso = false;
+    };
     c.riprendiTesto = avvia;
     if (!c.pausa) avvia();
-  }).then(v => { c.fermaTesto = c.riprendiTesto = null; return v; });
+  }).then(v => { c.fermaTesto = c.riprendiTesto = null; c.letturaInCorso = false; c.lettura = null; return v; });
 }
 
 async function narrDiciPezzo(c, pezzo) {
   const p = narrPreferenze();
+  c.pezzoTesto = pezzo.testo;
+  c.confine = null;
+  if (c.muta) { c.fase = 'testo'; return narrSoloTesto(c, pezzo.testo); }
   if (pezzo.audio && !p.soloTts && !narr.guasti.has(pezzo.audio)) {
     c.fase = 'audio';
     const e = await narrSuonaFile(c, pezzo.audio);
@@ -703,14 +829,18 @@ function narrParla(r) {
   r = r || {};
   narrFerma();
   const p = narrPreferenze();
-  if (!p.attiva && !r.forza) return Promise.resolve('spenta');
+  // Una Storia cosmica a narrazione spenta non tace del tutto: resta il
+  // sottotitolo col nome, il tempo di leggerlo (`testoSeSpenta`). Nessuna
+  // voce parte contro la scelta di chi l'ha spenta.
+  const muta = !p.attiva && !r.forza;
+  if (muta && !r.testoSeSpenta) return Promise.resolve('spenta');
   const lingua = narrLingua();
   const testo = narrNormalizza(narrTestoDi(r));
   if (!testo) return Promise.resolve('vuota');
   const c = {
     r, seq: narr.sequenza, lingua, testo, indice: 0, fase: 'inizio',
     pezzi: narrComponi(r.id, testo, lingua, p.soloTts),
-    pausa: false, pausaAuto: false, attese: new Set()
+    pausa: false, pausaAuto: false, attese: new Set(), muta
   };
   narr.corrente = c;
   narrMostraTesto(c);
@@ -809,6 +939,52 @@ function narrStato() {
   } : null;
 }
 
+/* Quello che serve a una bocca per muoversi con la voce, e solo con lei
+ * (Storie cosmiche, `storBoccaDaSegnale`). Tre segnali, dal migliore:
+ *
+ *   - `livello`: l'ampiezza vera dell'audio (Web Audio), quando la voce
+ *     passa dall'elemento audio condiviso e il grafo c'è;
+ *   - `confine`: l'ultimo confine di parola mandato dalla sintesi del
+ *     dispositivo, con il carattere a cui è arrivata;
+ *   - `progresso` / `tempo`: a che punto è la frase (la posizione nel file,
+ *     il tempo dall'inizio della sintesi, la lettura del solo testo).
+ *
+ * `parla` è vero solo mentre un suono (o una lettura) è davvero in corso: in
+ * pausa, nell'attesa del ponte Edge-TTS, fra un pezzo e l'altro e a frase
+ * finita è falso, e la bocca si chiude. */
+function narrVoce() {
+  const c = narr.corrente;
+  if (!c) return { parla: false };
+  const base = { canale: c.r.canale || '', id: c.r.id || '', personaggio: c.r.personaggio || '',
+    fase: c.fase, pausa: !!c.pausa, testo: c.pezzoTesto || c.testo, tono: c.r.tono || null,
+    livello: null, confine: null, progresso: null, tempo: null };
+  if (c.pausa) return Object.assign(base, { parla: false });
+  const ora = narrOra();
+  if (c.fase === 'audio' || (c.fase === 'tts' && c.audioInCorso)) {
+    const a = narr.audio;
+    const suona = !!(c.audioInCorso && a && !a.paused && !a.ended && c.suonoDa);
+    if (!suona) return Object.assign(base, { parla: false });
+    const durata = Number(a.duration);
+    return Object.assign(base, {
+      parla: true, livello: narrLivello(),
+      progresso: Number.isFinite(durata) && durata > 0 ? Math.min(1, a.currentTime / durata) : null,
+      tempo: ora - c.suonoDa
+    });
+  }
+  if (c.fase === 'tts') {
+    if (!c.suonoDa) return Object.assign(base, { parla: false });
+    return Object.assign(base, {
+      parla: true, tempo: ora - c.suonoDa,
+      confine: c.confine ? { carattere: c.confine.carattere, lunghezza: c.confine.lunghezza, da: ora - c.confine.t } : null
+    });
+  }
+  if (c.fase === 'testo' && c.lettura && c.letturaInCorso) {
+    return Object.assign(base, { parla: true, progresso: Math.min(1, c.lettura.fatto() / c.lettura.totale),
+      tempo: c.lettura.fatto() });
+  }
+  return Object.assign(base, { parla: false });
+}
+
 // =====================================================================
 // 5. Le Impostazioni
 // =====================================================================
@@ -885,6 +1061,8 @@ const narrazione = {
   pausa: canale => narrPausa(canale, false),
   riprendi: narrRiprendi,
   stato: narrStato,
+  voce: narrVoce,
+  preparaAnalisi: narrPreparaAnalisi,
   sblocca: narrSblocca,
   preferenze: () => ({ ...narrPreferenze() }),
   impostaPreferenze: narrImpostaPreferenze,

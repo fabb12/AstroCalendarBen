@@ -12371,6 +12371,20 @@ body.demo-vista-pulita .skymap-avviso { display:none !important; }
   pointer-events: auto;
 }
 .narrazione-testo.in-pausa { opacity: 0.7; }
+/* Le Storie cosmiche: davanti alla frase il nome di chi parla. Il colore è
+   quello del personaggio, ma il nome è scritto — il colore da solo non
+   basta a chi non lo distingue. */
+.narrazione-testo .narrazione-chi {
+  display: inline-block;
+  margin-right: 0.45em;
+  padding: 0 0.45em;
+  border-radius: 6px;
+  background: rgba(2, 6, 23, 0.72);
+  color: var(--colore-parlante, #e2e8f0);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+.narrazione-testo .narrazione-chi::after { content: ':'; color: #cbd5e1; }
 @media (max-width: 480px) {
   .narrazione-testo { font-size: 14px; bottom: calc(var(--barra-inferiore, 0px) + 170px); }
 }
@@ -12681,3 +12695,45 @@ body .sottonav .sottovoce:focus-visible { outline:2px solid #fff; outline-offset
   body .sottonav .sottovoce { transition:none; }
 }
 body.demo-in-corso .cosm-aiuto { display: none; }
+
+
+/* =====================================================================
+   LE STORIE COSMICHE (storie-cosmiche.js): la sezione della pagina Demo.
+   I volti si disegnano sulle tele del planetario e della 3D, non qui:
+   qui stanno l'elenco delle storie, l'anteprima di un personaggio e
+   l'esempio del DSL.
+   ===================================================================== */
+.demo-gruppo-storie { border-color: rgba(250, 204, 21, 0.32); }
+.storie-elenco { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.storia-scheda {
+  display: grid; gap: 8px; align-content: start; min-width: 0;
+  padding: 12px 14px; border-radius: var(--raggio-m, 12px);
+  border: 1px solid var(--bordo); background: rgba(255, 255, 255, 0.03);
+}
+.storia-testa { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+.storia-titolo { margin: 0; color: #fff; font-size: 1rem; font-weight: 750; }
+.storia-durata { color: #94a3b8; font-size: 0.8rem; white-space: nowrap; }
+.storia-descrizione { margin: 0; color: #cbd5e1; font-size: 0.88rem; line-height: 1.45; }
+.storia-cast { margin: 0; padding-left: 1.1em; color: #cbd5e1; font-size: 0.85rem; line-height: 1.5; }
+.storia-cast strong { font-weight: 750; }
+.storia-avvia { width: auto; }
+.storie-anteprima { display: grid; gap: 8px; }
+.storie-sottotitolo { margin: 6px 0 0; color: #fff; font-size: 0.95rem; font-weight: 700; }
+.storie-anteprima-comandi { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.storie-campo { display: grid; gap: 4px; color: #cbd5e1; font-size: 0.82rem; min-width: 0; }
+.storie-campo select { min-width: 9rem; }
+.storie-tela {
+  display: block; width: 100%; max-width: 420px; height: 220px;
+  border-radius: 14px; background: radial-gradient(circle at 50% 40%, #13213f, #050914 75%);
+  border: 1px solid var(--bordo);
+  /* Il volto è decorativo: non prende né tocchi né fuoco */
+  pointer-events: none;
+}
+.storie-codice {
+  margin: 0; max-height: 18rem; overflow: auto; contain: paint;
+  padding: 10px 12px; border-radius: 10px; background: rgba(2, 6, 23, 0.7);
+  color: #e2e8f0; font-size: 0.78rem; line-height: 1.45; white-space: pre;
+}
+@media (prefers-reduced-motion: reduce) {
+  .storia-scheda { transition: none; }
+}

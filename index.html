@@ -1759,6 +1759,40 @@
         </label>
         <div id="demo-livelli" class="demo-livelli demo-figlia" role="group" aria-labelledby="demo-livelli-titolo"></div>
       </section>
+
+      <!-- Le Storie cosmiche (storie-cosmiche.js, STORIE.md): l'elenco delle
+           storie, l'anteprima di un personaggio e l'esempio del DSL. -->
+      <section id="storie-sezione" class="scheda-piena demo-gruppo demo-gruppo-storie" aria-labelledby="storie-titolo">
+        <h3 class="demo-gruppo-titolo">
+          <span class="demo-gruppo-numero" aria-hidden="true">7</span>
+          <span id="storie-titolo" data-i18n="storie.gruppo">Storie cosmiche</span>
+        </h3>
+        <p class="demo-opzioni-aiuto" data-i18n="storie.aiuto">Racconti per bambini in cui gli astri hanno un volto e una voce.</p>
+        <div id="storie-elenco" class="storie-elenco"></div>
+        <div class="storie-anteprima">
+          <h4 class="storie-sottotitolo" data-i18n="storie.anteprima">Prova un personaggio</h4>
+          <p class="demo-opzioni-nota" data-i18n="storie.anteprimaAiuto">Il volto da vicino, anche offline.</p>
+          <div class="storie-anteprima-comandi">
+            <label class="storie-campo">
+              <span data-i18n="storie.personaggio">Personaggio</span>
+              <select id="storie-personaggio"></select>
+            </label>
+            <label class="storie-campo">
+              <span data-i18n="storie.espressioneEtichetta">Espressione</span>
+              <select id="storie-espressione"></select>
+            </label>
+            <button id="storie-parla" type="button" class="tasto-cielo" data-storia-prova data-i18n="storie.parla">Fallo parlare</button>
+          </div>
+          <canvas id="storie-tela" class="storie-tela" role="img" aria-label="Anteprima del volto del personaggio scelto" data-i18n-aria-label="storie.anteprimaTela"></canvas>
+        </div>
+        <details class="demo-avanzate storie-esempio">
+          <summary data-i18n="storie.esempio">Come si scrive una storia</summary>
+          <div class="demo-avanzate-corpo">
+            <p class="demo-opzioni-nota" data-i18n="storie.esempioAiuto">Ogni scena mostra i suoi personaggi con character_show.</p>
+            <pre id="storie-codice" class="storie-codice" tabindex="0"></pre>
+          </div>
+        </details>
+      </section>
     </div>
 
   </main>
@@ -3267,6 +3301,7 @@
   <script src="demo-libreria.js"></script>
   <script src="demo-predefiniti.js"></script>
   <script src="demo.js"></script>
+  <script src="storie-cosmiche.js"></script>
   <script src="demo-impostazioni.js"></script>
 </body>
 </html>

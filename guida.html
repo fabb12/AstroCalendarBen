@@ -1385,6 +1385,25 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       decorativa delle camere (vista 3D e banco delle aurore) non si fa: la camera sta già dove il racconto la vuole, mentre il tempo astronomico continua a scorrere. Se la preferenza cambia a demo in corso, la demo si ferma e ripristina.</dd></div>
     </dl>
 
+    <h3 style="margin-top:28px">Le Storie cosmiche</h3>
+    <p>Nella pagina Demo, gruppo <b>Storie cosmiche</b>, ci sono racconti per bambini in cui gli astri hanno
+    un volto e una voce: due occhi grandi, sopracciglia che seguono le emozioni e una bocca che si muove
+    soltanto quando quel personaggio parla, mentre gli altri lo guardano. Il sottotitolo dice sempre il
+    nome di chi parla. Gli astri restano dove sono davvero: la storia sceglie la sera e la camera, e un
+    oggetto troppo piccolo ha il volto in un dischetto accanto, collegato da un filo. Il primo episodio è
+    <b>«La Luna ha perso un pezzo?»</b>. Sotto all'elenco puoi provare un personaggio da vicino e
+    leggere l'esempio per scriverne una.</p>
+    <dl class="kv">
+      <div><dt>I comandi</dt><dd><code>character_show { target: 'Moon', expression: 'worried' }</code> fa comparire
+      un personaggio nella scena; <code>character_speak { target: 'Moon', id: '…' }</code> (o <code>text: '…'</code>)
+      gli fa dire la battuta della scena; <code>character_expression</code>, <code>character_look_at</code>,
+      <code>character_blink</code> e <code>character_hide</code> cambiano faccia, sguardo e palpebre.
+      Le espressioni sono <code>neutral</code>, <code>happy</code>, <code>surprised</code>, <code>worried</code>,
+      <code>sad</code> e <code>thinking</code>.</dd></div>
+      <div><dt>Una battuta per scena</dt><dd>Ogni personaggio vive nella scena in cui compare: per farlo
+      parlare, guardare o cambiare faccia va mostrato in quella stessa scena.</dd></div>
+    </dl>
+
     <h3 style="margin-top:28px">Quando qualcosa non va</h3>
     <ul>
       <li><b>«Campo sconosciuto», «Atteso ;», «Carattere inatteso»</b>: errore di battitura. Guarda la riga e la colonna indicate; spesso manca un punto e virgola o una graffa.</li>
