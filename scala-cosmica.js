@@ -2057,6 +2057,10 @@ function cosmRegia(stato) {
   if (stato.baseMs !== undefined) cosm.baseMs = stato.baseMs;
   if (stato.evidenza !== undefined) cosm.evidenza = stato.evidenza;
   if (stato.pan) cosm.pan = stato.pan;
+  // La camera della carta (v402): la scrive la regia, perché a regia accesa
+  // `cosmPassoCamera` non la fa scivolare
+  if (Number.isFinite(stato.az)) cosm.az = cosm.azVoluto = stato.az;
+  if (Number.isFinite(stato.elev)) cosm.elev = cosm.elevVoluta = Math.max(-89, Math.min(90, stato.elev));
   // Il Sole al centro (`center: 'sun'` delle demo): lo spostamento annulla
   // l'ancora di questa scala
   if (stato.centraSole) {

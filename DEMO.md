@@ -216,7 +216,7 @@ selettore usa lo stesso catalogo `ASTRO_TRACCE_MUSICALI` della musica
 dell'app, quindi una nuova traccia aggiunta al catalogo diventa disponibile
 automaticamente anche per le demo.
 
-## I sette tour predefiniti
+## Gli otto tour predefiniti
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
@@ -226,11 +226,38 @@ automaticamente anche per le demo.
 | **Corteo dei pianeti** (`allineamento_pianeti`) | 10 · 173 s | Tucson al buio guardando a est (05:30); la fila inquadrata pianeta per pianeta; tre **primi piani a campo da telescopio** (0,25°): Giove con le bande, Venere gibbosa e Saturno con gli anelli, basso a ovest — cinque pianeti nello stesso cielo; di nuovo la fila e l'eclittica; volo; da fuori la camera scende dall'alto (80°) al piano (12°) e poi di taglio (3°) tenendo nel quadro Mercurio, Venere, Terra, Marte e Giove; in cielo l'alba che li spegne (fino alle 06:30). |
 | **Solstizi ed equinozi** (`solstizi_equinozi`) | 16 · 292 s | Perché esistono le stagioni, detto con la geometria. Roma a mezzogiorno del 21 giugno 2027 e la domanda (non è la distanza); volo; la Terra da vicino con l'**asse in evidenza** (`earth_axis`) e la camera che finisce di fianco, dove i 23,4° sulla perpendicolare all'orbita si leggono interi; un anno intero con la camera ferma (`date_range`): l'asse non cambia direzione e il cartello dice la distanza, minima a gennaio; il solstizio di giugno col Sole a sinistra (`sun_az: 0`), il polo nord verso di lui e il parallelo di Roma quasi tutto al giorno; sei mesi di orbita; il solstizio di dicembre con la **stessa** camera e il polo dall'altra parte; i due equinozi (marzo e settembre 2028), con la camera che gira fino a mostrare l'asse che pende di lato; di nuovo a Roma, il Sole seguito in azimut dall'alba al tramonto (`track_azimuth`) a giugno, dicembre e marzo, con gli archi interi dei giorni già visti (`sun_paths`) e i tre a confronto; il sole di mezzanotte a Tromsø; il riepilogo in 3D. Ogni scena apre il **cartello della data** (`date_card`), con alba, tramonto, durata del giorno e Sole a mezzogiorno nelle scene del planetario. |
 | **Voyager · il viaggio verso le stelle** (`voyager`) | 15 · 335 s | Il viaggio delle due Voyager raccontato alla maniera di Carl Sagan. Cape Canaveral prima dell'alba del 20 agosto 1977 (Venere, Marte e Giove a est); volo; il progetto del Grand Tour con le strade future tratteggiate; il lancio da vicino a **dimensioni vere** (la Terra grande, la sonda un segno che se ne stacca, poi la camera la raggiunge e compare il **modellino** con l'antenna rivolta verso casa); diciotto mesi di salita verso Giove; i flyby di **Giove** (5 marzo 1979) e **Saturno** (12 novembre 1980) a **distanze e dimensioni vere**, con la camera che tiene insieme sonda e pianeta e il tempo che rallenta al perielio; i dodici anni di Voyager 2 fino a Nettuno, con la camera che la segue e si stringe sui sorvoli di **Saturno** (1981) e **Urano** (1986); il flyby di **Nettuno** (25 agosto 1989); la forma a V della fuga fino all'eliopausa del 2012; il **pallido puntino blu** (14 febbraio 1990) con la Terra cerchiata; il **Disco d'Oro**, con la camera che arriva sul fianco della sonda e la **fotografia vera** della copertina accanto (`golden_record`); il viaggio intero oggi; e il cielo di Roma del 15 ottobre 2026 coi **mirini** che dicono dove sono le due sonde (`probe_markers`). |
+| **Dalla Terra all'universo** (`universo`) | 16 · 380 s | Quanto è grande l'universo, a passi. Il cielo di stasera sopra casa (il luogo dell'app, guardando in su); il volo oltre l'aria; la Terra da vicino; la camera che si allontana finché entra la Luna; il Sole coi pianeti di roccia; i giganti fino a Nettuno; poi la **scala cosmica** (`cosmic_scale`) in nove scene di fila che sono un volo solo: Kuiper e l'eliopausa con le Voyager di oggi, la nube di Oort, le stelle vicine, la Bolla Locale e il braccio di Orione (con le soste), la Via Lattea che si inclina, Andromeda e il Gruppo Locale, la Vergine e Laniakea (con le soste), l'universo osservabile; il ritorno in venti secondi fino ai pianeti; e il congedo sotto il cielo di casa. Ogni scena apre il cartello con la misura e il tempo della luce. |
 | **Passaggio della ISS** (`passaggio_iss`) | 6 · 104 s | Il prossimo passaggio calcolato dall'app (`calcolaPassaggiSatellite`) sopra il luogo del planetario, a capitoli: tutto l'arco inquadrato con la traccia; il culmine **inseguito a 0,25° di campo**, col modellino della stazione e le stelle che scorrono dietro; volo; la stessa orbita da fuori nello **stesso** intervallo di tempo; più di mezz'ora di orbita a campo largo (±15 min); il congedo, l'ultimo tratto dell'arco in cielo. |
 
 Le posizioni sono sempre quelle di Astronomy Engine e SGP4: le scene si
 legano all'**evento vero** (`event_window`, `satellite_pass`), cercato una
 volta per racconto, e la regia muove solo camera, zoom e tempo.
+
+### Dalla Terra all'universo (v402)
+
+La domanda è una sola — quanto è grande — e la risposta non si può dare con
+un numero: quindici ordini di grandezza non si immaginano. Si danno quindi
+**tre metri insieme**, e la demo li tiene in tutte le scene. La carta che si
+allarga a passi di logaritmo (ogni pochi secondi tutto dieci volte più
+lontano: è il ritmo a far sentire quante sono le decade); il **cartello**, che
+dice la misura e quanto impiega la luce ad attraversarla (1,3 secondi, 8
+minuti, 4 ore, 17 ore, 4,4 anni, 100.000 anni, 93 miliardi); e la voce, che
+traduce ogni scala in una cosa umana (la buccia della mela, il granello di
+sabbia con Nettuno a trecentocinquanta metri, i settantamila anni dall'uscita
+dall'Africa, Carlo Magno, i primi dinosauri, le prime pietre scheggiate).
+
+Le scene cosmiche sono nove **di fila**, e devono essere un volo solo: la
+chiusura di `cosmic_scale` non esce dalla carta ma lascia passare un giro del
+browser (`setTimeout` 0), e se nel frattempo la scena dopo non l'ha ripresa
+torna ai pianeti. La camera della carta riparte dall'azimut a cui la scena di
+prima l'ha lasciata. La prova è `scripts/prova-demo-universo.js`: che ogni
+scena cominci dalla misura a cui finiva la precedente, che la scala non torni
+mai indietro durante l'andata, che la struttura accesa sia quella nominata, e
+che terminando la 3D e la carta se ne vadano. Schermate in `work/universo-*.png`.
+
+Nelle scene addosso alla Terra (`camera_3d` con `focus: 'Earth'`) i mondi
+minori si spengono, come già attorno al Sole: i nomi di Vesta e di due comete
+accanto al pianeta erano rumore. Tornano a fine demo con la fotografia.
 
 ### Le tre demo lunghe della v376
 
@@ -619,6 +646,13 @@ Azioni principali:
   tenere il tempo è la mappa del cono d'ombra; con `zoom_from`/`zoom_to` (i livelli della
   carta, da 1 a 8) la mappa si tiene centrata sull'ombra, con `lat`/`lon` in più su quel
   punto; senza zoom resta sull'inquadratura d'insieme della fascia di totalità
+- `cosmic_scale { from: 'planets', to: 'oort', ease: stops, focus: 'oort', center: sun, orbit: 20, elev_from: 70, elev_to: 90 }`
+  (solo in `solar_system_3d`: la scala cosmica da una misura all'altra — un numero di UA o un nome fra
+  `planets`, `kuiper`, `heliopause`, `voyager`, `oort`, `local_cloud`, `local_bubble`, `orion_arm`,
+  `milky_way`, `local_group`, `virgo`, `laniakea`, `universe` —; `stops` si ferma su ogni struttura
+  che incontra, `zoom_start`/`zoom_end` dicono in che tratto della scena si muove, `orbit` e
+  `elev_from`/`elev_to` (5…90, 90 = a picco) muovono la camera della carta. Tolta nella v401, tornata
+  nella v402 senza il futuro delle sonde)
 - `narrate { id: 'demo.narr.eclisse_tour.1' }` oppure, in una demo personale,
   `narrate { text: 'Qui la Luna tocca il Sole.' }` (al massimo 400 caratteri;
   un `id` senza testo deve esistere nel dizionario)
