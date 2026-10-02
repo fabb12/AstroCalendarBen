@@ -207,6 +207,25 @@ for (const d of predefiniti) {
   ok(fatti.filter(f => f[0] === 'crea' && f[1] === 2).length === 2, 'Un salto a metà crea la ripresa giusta');
   m.ferma();
 }
+// Il salto mentre la scena aspetta soltanto la voce. In quel momento nessun
+// fotogramma è in coda, e il salto deve rimetterne uno: prima la scena nuova
+// si apriva, la sua voce partiva e il disegno restava fermo per sempre.
+{
+  const reg = Object.create(null);
+  let progresso = -1;
+  reg.voce = { crea: () => ({ fineNarrazione: new Promise(() => {}) }) };
+  reg.segno = { crea: () => ({ aggiorna: u => { progresso = u; } }) };
+  let t = 0; const coda = new Map(); let id = 0;
+  const m = new Motore(reg, { ora: () => t, richiedi: f => { coda.set(++id, f); return id; }, annulla: k => coda.delete(k) });
+  const avanti = ms => { t += ms; const l = [...coda.values()]; coda.clear(); l.forEach(f => f()); };
+  m.avvia("define_demo v { scene a { duration: 1s; action: voce {}; } scene b { duration: 2s; action: segno {}; }}", {});
+  for (let i = 0; i < 20; i++) avanti(100);
+  ok(m.indice === 0 && coda.size === 0, 'La scena aspetta la voce senza fotogrammi in coda');
+  m.vaiAScena(1, 0);
+  for (let i = 0; i < 10; i++) avanti(100);
+  ok(m.indice === 1 && Math.abs(progresso - 0.5) < 0.01, 'Dopo il salto il disegno riparte (' + progresso.toFixed(2) + ')');
+  m.ferma();
+}
 console.log('Demo: ' + verifiche + ' verifiche superate');
 
 // Archivio indipendente dal DOM: protezioni, persistenza e scritture atomiche.

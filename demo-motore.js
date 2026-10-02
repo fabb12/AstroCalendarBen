@@ -389,6 +389,13 @@
         this.indice = i; this.trascorso = 0; this.ultimo = this.ora();
         this.entra();
         if (u > 0) { this.trascorso = u * this.demo.scene[i].durata; this.aggiorna(u); }
+        // Il salto può arrivare mentre la scena di prima aspettava soltanto
+        // la fine della voce: in quel momento nessun fotogramma è in coda
+        // (`passo` esce senza riprogrammarsi), e `esci` ha appena azzerato
+        // l'attesa, quindi nemmeno la Promise della voce lo rimetterà in
+        // coda. Senza questa riga la scena nuova si apriva, la sua voce
+        // partiva, e il disegno restava fermo per sempre.
+        if (this.stato === 'attivo' && this.raf === null) this.programma();
       } catch (e) { this.fallisci(e); }
     }
     pausa() {

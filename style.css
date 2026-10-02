@@ -12264,6 +12264,11 @@ body.demo-vista-pulita #sol-transizione *,
 body.demo-vista-pulita .narrazione-testo {
   visibility:visible !important;
 }
+/* Il guscio della 3D, quando è lui la scena, resta visibile come scatola (i
+   figli restano nascosti dalla regola qui sopra): il suo fondo è opaco, e una
+   tela 3D che per un fotogramma è vuota mostra il nero dello spazio invece
+   del planetario fermo che le sta dietro. */
+body.demo-vista-pulita #sol-guscio.demo-scena-pulita { visibility:visible !important; }
 /* La scena resta toccabile: durante la demo si può trascinare, pizzicare e
    zoomare la camera. Prima la tela ereditava il `pointer-events:none` del
    chrome, e il dito sul cielo non arrivava a nessuno. */
