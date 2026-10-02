@@ -28,6 +28,9 @@ const epoca = app.match(/const SOL_SONDE_EPOCA_MS = Date\.UTC\((\d+), (\d+), (\d
 assert.ok(tabella && epoca, 'SOL_SONDE in app.js');
 global.SOL_SONDE = eval(tabella[1]);
 global.SOL_SONDE_EPOCA_MS = Date.UTC(+epoca[1], +epoca[2], +epoca[3]);
+// Le effemeridi vere: da quando la scala comincia dalla Terra (v404) il
+// centro della carta, sotto i pianeti di roccia, è la Terra di adesso
+try { global.Astronomy = require('astronomy-engine'); } catch (_) { /* senza, il centro resta il Sole */ }
 const C = require(path.join(radice, 'scala-cosmica.js'));
 
 const gradi = v => {
@@ -102,19 +105,38 @@ console.log('4. Le Voyager e le tappe');
 console.log('5. Le misure e la camera');
 {
   const ss = C.cosmStrutture();
-  ok(ss.length === 11, 'Undici strutture');
-  ok(ss.every((s, i) => i === 0 || s.L > ss[i - 1].L), 'Le scale crescono dalla fascia di Kuiper all\'universo');
+  ok(ss.length === 15, 'Quindici tappe: le quattro del Sistema Solare vicino e le undici strutture');
+  ok(ss.every((s, i) => i === 0 || s.L > ss[i - 1].L), 'Le scale crescono dalla Terra all\'universo');
+  ok(ss[0].id === 'terra' && ss[1].id === 'terraLuna' && ss[3].id === 'pianeti' && ss[4].id === 'kuiper',
+    'La scala comincia dalla Terra e arriva a Kuiper passando per la Luna e i pianeti');
   ok(ss.every(s => Math.pow(10, s.L) >= s.r), 'Ogni inquadratura contiene la sua struttura');
   const universo = ss.find(s => s.id === 'universo');
   ok(Math.abs(universo.r / C.COSM_UA_AL / 1e9 - 46.5) < 0.01, 'L\'universo osservabile: 46,5 miliardi di anni luce di raggio');
   // La camera non salta mai: fra due scale vicine il centro si sposta di una
   // frazione piccola della vista
   let peggio = 0;
-  for (let L = 0.3; L < 15.8; L += 0.005) {
+  for (let L = C.COSM_L_MIN; L < 15.8; L += 0.005) {
     const a = C.cosmCentro(L), b = C.cosmCentro(L + 0.005);
     peggio = Math.max(peggio, Math.hypot(a.x - b.x, a.y - b.y) / Math.pow(10, L));
   }
   ok(peggio < 0.03, `Il centro scivola senza salti (al peggio ${(peggio * 100).toFixed(2)}% della vista per passo)`);
+  // In fondo alla scala la Terra al 42% del lato corto: è la misura da cui
+  // parte l'atterraggio nel planetario (`solAtterraNelPlanetario`)
+  const rTerra = 6371 / 149597870.7;
+  ok(Math.abs(rTerra / Math.pow(10, C.COSM_L_ATTERRA) - 0.84) < 1e-9 && C.COSM_L_MIN < C.COSM_L_ATTERRA,
+    'In fondo alla scala la Terra è grande quanto il primo fotogramma dell\'atterraggio');
+  ok(C.cosmLDi('earth') < C.cosmLDi('earth_moon') && C.cosmLDi('earth_moon') < C.cosmLDi('inner_planets') &&
+    C.cosmLDi('inner_planets') < C.cosmLDi('planets') && C.cosmLDi('planets') < C.cosmLDi('kuiper'),
+  'I nomi delle demo per le tappe vicine sono in ordine di scala');
+  if (global.Astronomy) {
+    // Uscendo dal planetario il centro è la Terra; ai pianeti di roccia il Sole
+    const terra = C.cosmRuota(C.cosmSullaCarta(C.cosmEclAGal(C.cosmCorpi(Date.now()).terra), C.cosmPesiPiano(-4)));
+    const c = C.cosmCentro(C.cosmLDi('earth')), sole = C.cosmCentro(C.cosmLDi('inner_planets'));
+    ok(Math.hypot(c.x - terra.x, c.y - terra.y) < 1e-6, 'Alla scala della Terra il centro della carta è la Terra');
+    ok(Math.hypot(sole.x, sole.y) < 1e-9, 'Alla scala dei pianeti di roccia il centro della carta è il Sole');
+    ok(/km/.test(C.cosmTestoDistanza(rTerra * 2)) && /secondi/.test(C.cosmTestoLuce(384400 / 149597870.7)) &&
+      /minuti/.test(C.cosmTestoLuce(1)), 'La Terra in chilometri, la luce della Luna in secondi, quella del Sole in minuti');
+  }
   ok(C.cosmVisibilita(0.5, 400) === 0 && C.cosmVisibilita(200, 400) === 1 && C.cosmVisibilita(1e7, 400) === 0,
     'Una struttura si vede alla sua scala, e né troppo piccola né troppo grande');
   // Il conto che toglie ogni illusione: Voyager 1 attraverserebbe la Via
@@ -193,7 +215,7 @@ async function pagina(browser, origine, L, H) {
         dentro: cosm.schermo.sonde.every(s => s.x > 0 && s.y > 0 && s.x < sol.L && s.y < sol.H)
       }));
       ok(ingresso.attivo && ingresso.premuto === 'true', 'Il tondo «Scala cosmica» accende il quarto quadro');
-      ok(ingresso.tasti === 11, 'La fila: le undici strutture, e niente «Voyager oggi»');
+      ok(ingresso.tasti === 15, 'La fila: le quindici tappe dalla Terra all\'universo, e niente «Voyager oggi»');
       ok(ingresso.ricerca === 'none', 'La ricerca dei corpi lascia il posto');
       ok(ingresso.sonde === 2 && ingresso.dentro, 'Si entra sulle Voyager di oggi, tutte e due nel quadro');
       await foto('00-voyager');
@@ -260,28 +282,75 @@ async function pagina(browser, origine, L, H) {
       await p.mouse.wheel(0, 300);
       ok(await p.evaluate(v => cosm.Lvoluto > v, prima), 'La rotella allontana');
 
-      // La camera si gira col dito, come nella vista 3D (v401)
+      // Un dito sposta la carta, e lasciandola andare in corsa continua da
+      // sola e si ferma (v404); con Maiusc la gira, come nella vista 3D
+      await p.evaluate(() => { cosm.ancoraZoom = null; cosm.pan = { x: 0, y: 0 }; });
+      await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
+      await p.mouse.down();
+      await p.mouse.move(Math.round(punto.x + 40), Math.round(punto.y + 10), { steps: 4 });
+      await p.mouse.move(Math.round(punto.x + 140), Math.round(punto.y + 30), { steps: 4 });
+      await p.mouse.up();
+      const lancio = await p.evaluate(() => ({ pan: { ...cosm.pan }, inerzia: !!cosm.inerzia, az: cosm.az, elev: cosm.elev }));
+      await p.waitForTimeout(350);
+      const corsa = await p.evaluate(() => ({ ...cosm.pan }));
+      await p.waitForFunction(() => !cosm.inerzia, null, { timeout: 5000 });
+      ok(lancio.pan.x < 0 && lancio.az === 0 && lancio.elev === 90, 'Un dito sposta la carta senza girarla');
+      ok(lancio.inerzia && corsa.x < lancio.pan.x, 'Lasciata andare in corsa, la carta continua da sola e poi si ferma');
+      await p.keyboard.down('Shift');
       await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
       await p.mouse.down();
       await p.mouse.move(Math.round(punto.x + 60), Math.round(punto.y - 80), { steps: 8 });
       await p.mouse.up();
+      await p.keyboard.up('Shift');
       const giro = await p.evaluate(() => ({ az: cosm.az, elev: cosm.elev }));
-      ok(Math.abs(giro.az) > 0.2 && giro.elev < 70, `Un dito gira la scena (az ${giro.az.toFixed(2)}, elev ${giro.elev.toFixed(0)}°)`);
+      ok(Math.abs(giro.az) > 0.2 && giro.elev < 70, `Con Maiusc il dito gira la scena (az ${giro.az.toFixed(2)}, elev ${giro.elev.toFixed(0)}°)`);
       await fotogrammi();
       await foto('21-girata');
       await p.click('#sol-reset');
-      await p.waitForFunction(() => Math.abs(cosm.elev - 90) < 0.5 && Math.abs(cosm.az) < 0.01, null, { timeout: 5000 });
+      await p.waitForFunction(() => Math.abs(cosm.elev - 90) < 0.5 && Math.abs(cosm.az) < 0.01 && !cosm.volo, null, { timeout: 8000 });
       ok(true, 'Il ⟲ rimette la scena vista dall\'alto');
 
-      // Avvicinandosi oltre Kuiper si torna fra i pianeti, e allontanandosi
-      // dai pianeti si torna qui (v401)
-      await p.evaluate(() => cosmVolaA(1.45, { immediato: true }));
+      // Lo zoom sopra a un pianeta lo aggancia: la Terra resta sotto al dito
+      // e scivola al centro mentre ci si avvicina (v404)
+      await p.evaluate(() => cosmVolaA(cosmLDi('pianetiInterni'), { immediato: true }));
+      await fotogrammi();
+      const terra = await p.evaluate(() => { const q = cosm.cam.p(cosmTerraGal()); const r = sol.canvas.getBoundingClientRect(); return { x: r.left + q.x, y: r.top + q.y }; });
+      await p.mouse.move(Math.round(terra.x), Math.round(terra.y));
+      for (let i = 0; i < 8; i++) { await p.mouse.wheel(0, -300); await p.waitForTimeout(60); }
+      await p.waitForFunction(() => Math.abs(cosm.L - cosm.Lvoluto) < 0.01, null, { timeout: 8000 });
+      const presa = await p.evaluate(() => {
+        const q = cosm.cam.p(cosmTerraGal());
+        return { corpo: cosm.ancoraZoom && cosm.ancoraZoom.corpo, L: cosm.L, d: Math.hypot(q.x - cosm.cam.W / 2, q.y - cosm.cam.H / 2) };
+      });
+      ok(presa.corpo === 'Earth' && presa.L < -1.4 && presa.d < 60,
+        `Zoomando sulla Terra la si aggancia e la si porta al centro (L ${presa.L.toFixed(2)}, a ${presa.d.toFixed(0)} px dal centro)`);
+      await foto('22-agganciata');
+
+      // In fondo alla scala si atterra nel planetario (v404): avvicinandosi
+      // non si torna più alla vista 3D dei pianeti, si scende fino alla Terra
+      await p.evaluate(() => { mostraVista('cielo'); });
+      await p.evaluate(() => { if (!sol.aperto) apriSistemaSolare({ senzaVolo: true }); });
+      await p.waitForFunction(() => sol.aperto, null, { timeout: 8000 });
+      await p.evaluate(() => { if (!cosmAttivo()) cosmEntra('terra', { immediato: true, senzaScheda: true }); else cosmVolaA(cosmLDi('terra'), { immediato: true }); });
+      await fotogrammi();
+      await p.mouse.move(Math.round(punto.x), Math.round(punto.y + 0.1 * (await p.evaluate(() => sol.H))));
+      for (let i = 0; i < 8 && await p.evaluate(() => cosmAttivo()); i++) { await p.mouse.wheel(0, -300); await p.waitForTimeout(120); }
+      const atterra = await p.evaluate(() => ({ cosmo: cosmAttivo(), volo: solVolo.attivo, perno: sol.perno }));
+      ok(!atterra.cosmo && atterra.volo && atterra.perno === 'Earth', 'Avvicinandosi alla Terra fino a riempire lo schermo comincia l\'atterraggio');
+      await p.waitForFunction(() => !sol.aperto && vistaAttuale === 'cielo', null, { timeout: 9000 });
+      ok(true, 'E si arriva nel planetario');
+
+      // Dal planetario si riapre la 3D, e allontanandosi dai pianeti si torna qui
+      await p.evaluate(() => apriSistemaSolare({ senzaVolo: true }));
+      await p.waitForFunction(() => sol.aperto && sol.ctx, null, { timeout: 15000 });
+      await p.click('[data-sol-quadro="tutto"]');
+      await p.waitForTimeout(600);
       await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
-      for (let i = 0; i < 6 && await p.evaluate(() => cosmAttivo()); i++) { await p.mouse.wheel(0, -300); await p.waitForTimeout(60); }
-      ok(await p.evaluate(() => !cosmAttivo() && sol.quadro === 'tutto'), 'Avvicinandosi oltre Kuiper si torna alla vista 3D dei pianeti');
-      await p.waitForTimeout(400);
       for (let i = 0; i < 40 && !(await p.evaluate(() => cosmAttivo())); i++) { await p.mouse.wheel(0, 300); await p.waitForTimeout(40); }
-      ok(await p.evaluate(() => cosmAttivo()), 'Allontanandosi dal Sistema Solare si entra nella scala cosmica');
+      const ingresso3d = await p.evaluate(() => ({ attivo: cosmAttivo(), az: cosm.az, solAz: sol.az, elev: cosm.elev, solElev: sol.elev }));
+      ok(ingresso3d.attivo, 'Allontanandosi dal Sistema Solare si entra nella scala cosmica');
+      ok(Math.abs(ingresso3d.az - ingresso3d.solAz) < 1e-9 && Math.abs(ingresso3d.elev - ingresso3d.solElev) < 1e-6,
+        'Entrando dalla 3D la carta tiene la sua camera: il passaggio non gira niente');
       for (let i = 0; i < 6; i++) { await p.mouse.wheel(0, 300); await p.waitForTimeout(40); }
       await p.waitForTimeout(400);
       ok(await p.evaluate(() => cosm.L > Math.log10(150)), 'E continuando si va verso l\'eliopausa');

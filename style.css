@@ -7577,6 +7577,21 @@ body.sol-immersivo { overflow: hidden; }
 .sol-guscio.cosmo-attivo .sol-scheda,
 .sol-guscio.cosmo-attivo .sol-suggerimento { display: none !important; }
 .cosm-interfaccia[hidden] { display: none; }
+/* Come si muove la carta (v404): da quando un dito sposta invece di girare,
+   la riga lo dice — e se ne va al primo dito appoggiato, come quella della 3D */
+.cosm-aiuto {
+  position: absolute;
+  z-index: 4;
+  top: 146px;
+  left: max(12px, env(safe-area-inset-left));
+  right: 60px;
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--testo-3);
+  pointer-events: none;
+  transition: opacity var(--transizione-lenta);
+}
+.cosm-aiuto.svanito { opacity: 0; }
 .cosm-fila {
   position: absolute;
   z-index: 5;
@@ -12660,3 +12675,4 @@ body .sottonav .sottovoce:focus-visible { outline:2px solid #fff; outline-offset
 @media (prefers-reduced-motion: reduce) {
   body .sottonav .sottovoce { transition:none; }
 }
+body.demo-in-corso .cosm-aiuto { display: none; }

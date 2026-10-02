@@ -74,9 +74,13 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     const testo = await pagina.evaluate(() => AstroDemo.libreria.elenco().find(d => d.chiave === 'universo').testo);
     const scene = await pagina.evaluate(t => AstroDemo.valida(t).scene.map(s => ({ vista: s.vista, durata: s.durata,
       cosmo: (s.azioni.find(a => a.comando === 'cosmic_scale') || {}).parametri || null })), testo);
-    ok(scene.length === 16, 'Sedici scene');
-    ok(scene.reduce((n, s) => n + s.durata, 0) === 380000, 'Sei minuti e venti secondi');
-    ok(scene[0].vista === 'planetarium_view' && scene[15].vista === 'planetarium_view', 'Comincia e finisce sotto il cielo di casa');
+    ok(scene.length === 17, 'Diciassette scene');
+    ok(scene.reduce((n, s) => n + s.durata, 0) === 386000, 'Sei minuti e ventisei secondi');
+    ok(scene[0].vista === 'planetarium_view' && scene[16].vista === 'planetarium_view', 'Comincia e finisce sotto il cielo di casa');
+    ok(scene[15].vista === 'transition', 'Prima del congedo, l\'atterraggio');
+    // Dopo il decollo il viaggio è una carta sola (v404): nessuna scena 3D
+    // senza scala cosmica fra il decollo e l'atterraggio
+    ok(scene.slice(2, 15).every(s => s.cosmo), 'Dal decollo all\'atterraggio, una scala sola');
     await pagina.evaluate(t => { window.__prima = { aperto: sol.aperto }; AstroDemo.avvia(t); }, testo);
 
     const misura = () => pagina.evaluate(() => ({ aperto: sol.aperto, cosmo: typeof cosm !== 'undefined' && cosm.attivo,
@@ -122,11 +126,18 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
         ultimo = null;
       }
       if (s.vista === 'planetarium_view') ok(!m.aperto && m.vista === 'cielo', `Scena ${i + 1}: è il planetario`);
+      // L'atterraggio: a metà scena il velo copre la scala, e la carta non c'è più
+      if (s.vista === 'transition' && i > 2) {
+        const volo = await pagina.evaluate(() => ({ attivo: solVolo.attivo, manuale: !!solVolo.atterraggioManuale,
+          velo: Number(getComputedStyle(document.getElementById('sol-transizione')).opacity) }));
+        ok(volo.attivo && volo.manuale && !m.cosmo, `Scena ${i + 1}: l'atterraggio è il volo all'indietro`);
+      }
       await foto(String(i + 1).padStart(2, '0'));
     }
-    // Dalla Terra all'universo e ritorno: quindici decade
-    const Lt = await Ldi('universe'), Lp = await Ldi('planets');
+    // Dalla Terra all'universo e ritorno: venti decade
+    const Lt = await Ldi('universe'), Lp = await Ldi('planets'), Le = await Ldi('earth');
     ok(Lt - Lp > 13.5, `Il viaggio attraversa ${(Lt - Lp).toFixed(1)} decade oltre i pianeti`);
+    ok(Lt - Le > 19, `E ${(Lt - Le).toFixed(1)} decade dalla Terra`);
 
     // Stop: la 3D e la carta se ne vanno
     await pagina.evaluate(() => AstroDemo.vaiAScena(12, 0.5));

@@ -58,7 +58,7 @@ const server = http.createServer((req, res) => {
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
       ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss', 'solstizi_equinozi', 'voyager', 'universo']);
-    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000, 335000, 380000]);
+    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);

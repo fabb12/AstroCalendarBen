@@ -39358,27 +39358,60 @@ function solPassoCiclo(ts) {
 // «Tutto», la scena prosegue verso l'eliopausa, la nube di Oort e così via
 // (`scala-cosmica.js`). Non vale nel banco Terra e Luna, nel racconto delle
 // Voyager e durante una caccia di Missione Cielo, che hanno le loro scale.
+//
+// Il passaggio è raccordato (v404): la carta comincia alla scala a cui
+// l'orbita di Nettuno è grande quanto la disegna adesso questa scena, e con
+// la stessa camera — la terna di `cosmRuota` è la stessa di `solProietta`,
+// quindi il giro e l'inclinazione si passano tali e quali. Prima la carta
+// ripartiva sempre dall'alto e a una scala fissa: a metà di un gesto la scena
+// si raddrizzava di colpo e saltava di misura.
 function solZoomVersoIlCosmo(z) {
   if (sol.vicino || sol.grandTour || typeof cosmEntra !== 'function') return false;
   if (typeof missModalitaGiocoSistema === 'function' && missModalitaGiocoSistema()) return false;
   if (!(z < sol.zoomVoluto)) return false;
   const soglia = Math.max(0.36, solZoomPer(solBordoUa()) * 0.55);
   if (!(z < soglia)) return false;
+  let L = typeof COSM_L_INGRESSO === 'number' ? COSM_L_INGRESSO : Math.log10(70);
+  const lato = Math.max(60, Math.min(sol.L || 0, sol.H || 0) / 2);
+  const nettuno = solRaggio(30.07) * Math.min(sol.L || 0, sol.H || 0) * 0.44 * sol.zoom;
+  if (nettuno > 4) L = Math.max(1.35, Math.min(2.3, Math.log10(30.07 * lato / nettuno)));
+  const sullaTerra = sol.perno === 'Earth';
   sol.scelto = null;
   sol.perno = null;
-  cosmEntra(null, { L: typeof COSM_L_INGRESSO === 'number' ? COSM_L_INGRESSO : Math.log10(70) });
+  cosmEntra(null, { L, immediato: true, camera: { az: sol.az, elev: sol.elev }, centraTerra: sullaTerra });
   return true;
 }
 
-// E all'indietro: avvicinandosi nella scala cosmica oltre Kuiper si torna
-// qui, su «Tutto», un poco più larghi, scivolando dentro
-function solRientraDalCosmo() {
-  sol.quadro = 'tutto';
-  sol.perno = null;
-  solCentra();
-  const z = solZoomPer(solBordoUa());
-  sol.zoom = Math.max(0.36, z * 0.6);
-  sol.zoomVoluto = z;
+// Dalla scala cosmica al planetario (v404): in fondo alla carta la Terra
+// riempie lo schermo, e la discesa è quella di `solAtterraNelPlanetario`.
+// Qui si mette la scena com'era la carta un istante prima — la Terra al
+// centro, la stessa camera, e grande quanto il volo la vuole al suo primo
+// fotogramma (il 42% del lato corto, `solAtterraNelPlanetario`) — così sotto
+// al velo che si chiude c'è la stessa Terra. Lo zoom si cerca per bisezione:
+// `solRaggioCorpo` ha due misure e un tetto, ed è più onesto chiedere a lei
+// che riscriverne la legge qui.
+function solPreparaAtterraggio(camera = {}) {
+  sol.vicino = false;
+  sol.scelto = null;
+  sol.perno = 'Earth';
+  sol.panX = 0; sol.panY = 0;
+  sol.inerzia = null;
+  if (Number.isFinite(camera.az)) sol.az = camera.az;
+  if (Number.isFinite(camera.elev)) sol.elev = sol.elevVoluta = Math.max(-89, Math.min(89, camera.elev));
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  const voluto = 0.42 * Math.min(sol.L || 0, sol.H || 0);
+  if (terra && voluto > 0) {
+    let a = 0.35, b = SOL_ZOOM_MAX_CORPO;
+    for (let i = 0; i < 40; i++) {
+      const m = Math.sqrt(a * b);
+      sol.zoom = m;
+      if (solRaggioCorpo(terra) < voluto) a = m; else b = m;
+    }
+    sol.zoom = sol.zoomVoluto = b;
+  }
+  sol.quadro = 'terra';
+  solMisura();
+  solAggiornaPivot();
   solAggiornaTasti();
 }
 
@@ -40693,6 +40726,7 @@ function solVoloFerma() {
   if (solVolo.raf) cancelAnimationFrame(solVolo.raf);
   solVolo.raf = 0;
   solVolo.attivo = false;
+  solVolo.atterraggioManuale = false;
   if (solVolo.timer) { clearTimeout(solVolo.timer); solVolo.timer = 0; }
 }
 
@@ -41295,7 +41329,11 @@ function solAvviaTransizioneDecollo(opzioni = {}) {
 // con un tetto: il volo la vuole al centro e più piccola dello schermo, e
 // la dissolvenza d'apertura copre i pochi pixel di differenza.
 const SOL_ATTERRA_MS = 4200;
-function solAtterraNelPlanetario() {
+// `opzioni.manuale` (le demo, v404): si prepara tutto ma il tempo lo dà chi
+// chiama, con `solAtterraPasso(u)` da 1 a 0 — com'è `voloManuale` per il
+// decollo. Alla fine non si chiude niente: è la scena dopo a mettere il
+// planetario a schermo, ed è lei che sa come.
+function solAtterraNelPlanetario(opzioni = {}) {
   if (!sol.aperto || solVolo.attivo) return false;
   const ponte = document.getElementById('sol-transizione');
   solVolo.tela = document.getElementById('sol-transizione-tela');
@@ -41328,6 +41366,11 @@ function solAtterraNelPlanetario() {
   if (!solVoloImpostaNumeri(rTerra)) { solVoloChiudi(); atterra(); return true; }
   solVolo.attivo = true;
   solVolo.avvio = 0;
+  if (opzioni.manuale) {
+    solVolo.atterraggioManuale = true;
+    solVoloDisegna(1);
+    return true;
+  }
   const passo = ts => {
     solVolo.raf = 0;
     if (!solVolo.attivo || !sol.aperto) return;
@@ -41353,6 +41396,16 @@ function solAtterraNelPlanetario() {
   if (solVolo.timer) clearTimeout(solVolo.timer);
   solVolo.timer = setTimeout(() => { if (sol.aperto) atterra(); }, SOL_ATTERRA_MS + 1800);
   return true;
+}
+
+// Un passo dell'atterraggio guidato da fuori (`u` da 1, addosso alla Terra,
+// a 0, il planetario): lo stesso disegno e lo stesso velo del ciclo di sopra
+function solAtterraPasso(u) {
+  if (!solVolo.attivo || !solVolo.atterraggioManuale) return;
+  const ponte = document.getElementById('sol-transizione');
+  const v = Math.max(0, Math.min(1, u));
+  try { solVoloDisegna(v); } catch (e) { skyGuastoFotogramma(e); return; }
+  if (ponte) ponte.style.opacity = String(solVoloRampa((1 - v) / (1 - SOL_VOLO_APRI)));
 }
 
 window.apriSistemaSolare = (opzioni = {}) => {
