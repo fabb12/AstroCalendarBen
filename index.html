@@ -1283,29 +1283,12 @@
               <circle cx="12" cy="12" r="1.8"/>
             </svg>
           </button>
-          <!-- La stessa scena, guardata da fuori. Il tasto c'era già, ma in
-               fondo al pannello Astri — cioè dietro a un elenco che su un
-               telefono corre per due schermate, e dentro a un pannello che a
-               schermo intero non si apre nemmeno. Qui sta sulla mappa, in
-               colonna con gli altri comandi del guardare, e da un tocco solo
-               si è già dentro alla scena a tutto schermo puntata sulla Terra.
-               Il segno è l'orbita di Lucide — il Sole in mezzo, due corpi che
-               gli girano intorno e l'anello aperto — e non un'ellisse con un
-               puntino dentro, che alla misura di questi tasti si legge come
-               un occhio (provato: accanto al bersaglio dell'inseguimento
-               sembravano due comandi della stessa famiglia). -->
-          <button id="skymap-btn-sistema-mappa" type="button" class="tasto-sistema-cielo"
-            title="Il Sistema Solare visto da fuori, nello stesso istante: si apre a tutto schermo, puntato sulla Terra"
-            aria-label="Il Sistema Solare in 3D" data-i18n-title="ui.il-sistema-solare-visto-da-fuori-nello" data-i18n-aria-label="ui.il-sistema-solare-in-3d">
-            <svg class="icona-disegnata" width="22" height="22" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>
-              <circle cx="19" cy="5" r="2"/>
-              <circle cx="5" cy="19" r="2"/>
-              <path d="M10.4 21.9a10 10 0 0 0 9.941-15.416"/>
-              <path d="M13.5 2.1a10 10 0 0 0-9.841 15.416"/>
-            </svg>
-          </button>
+          <!-- Il tasto del Sistema Solare in 3D non sta più qui: dal
+               planetario si esce nello spazio **allontanandosi**, cioè
+               continuando a zoomare indietro oltre i 180° di campo
+               (`skySpintaOltreIlCampo`), e dallo spazio si rientra zoomando
+               sulla Terra (`solAtterraNelPlanetario`). Resta il tasto in cima
+               al pannello Astri. -->
           <div class="riga-registra-cielo">
             <!-- Compare solo mentre si registra: quanto manca alla fine -->
             <span id="skymap-reg-tempo" class="tempo-reg" aria-live="polite"></span>

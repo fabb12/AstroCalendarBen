@@ -6339,27 +6339,6 @@ body input.casella-data:hover { border: 0; }
 .tasto-insegui-cielo.attiva { background: var(--blu); border-color: transparent; color: #fff; }
 .tasto-insegui-cielo .icona-disegnata { display: block; }
 
-/* Il Sistema Solare da fuori: stessa famiglia degli altri comandi appoggiati
-   sulla mappa, perché è un comando del guardare — «e questo pianeta, perché
-   sta proprio lì?» è una domanda che nasce guardando il cielo, non aprendo un
-   pannello. Non ha stato acceso: apre una finestra e basta. */
-.tasto-sistema-cielo {
-  width: 48px;
-  height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--bordo-forte);
-  border-radius: 999px;
-  background: rgba(6, 10, 20, 0.82);
-  color: var(--testo);
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color var(--transizione), color var(--transizione);
-}
-.tasto-sistema-cielo:hover { background: rgba(28, 36, 60, 0.92); color: #fff; }
-.tasto-sistema-cielo .icona-disegnata { display: block; }
-
 /* Il tasto della registrazione: stessa taglia e stessa pelle dei tasti dello
    zoom, perché è della stessa famiglia — comandi della mappa, non di un
    pannello. Dentro c'è solo un tondo rosso, che tutti sanno già cosa vuol

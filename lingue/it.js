@@ -4532,8 +4532,6 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.il-resto-dell-app-dice-cosa-c-e-stanotte-qui': 'Il resto dell\'app dice cosa c\'è stanotte. Qui c\'è come inquadrarlo:\n          i conti sono fatti sul tuo strumento, le istruzioni parlano di manopole vere, e le due fasi difficili —\n          mettere l\'asse a Nord e trovare l\'oggetto — le fai guidato, con livella, bussola e push-to del telefono.',
     'ui.il-sistema-solare-a-tutto-schermo-con-la': 'Il Sistema Solare a tutto schermo, con la barra del tempo in sovrimpressione',
     'ui.il-sistema-solare-adesso': 'Il Sistema Solare, adesso',
-    'ui.il-sistema-solare-in-3d': 'Il Sistema Solare in 3D',
-    'ui.il-sistema-solare-visto-da-fuori-nello': 'Il Sistema Solare visto da fuori, nello stesso istante: si apre puntato sulla Terra',
     'ui.il-tempo': 'Il tempo',
     'ui.il-tuo-momento': 'Il tuo momento',
     'ui.il-tuo-sistema-solare': 'Il tuo Sistema Solare',
