@@ -39252,8 +39252,13 @@ function solRidimensiona() {
   const dpr = window.devicePixelRatio || 1;
   sol.L = sol.canvas.clientWidth || 320;
   sol.H = sol.canvas.clientHeight || 320;
-  sol.canvas.width = Math.round(sol.L * dpr);
-  sol.canvas.height = Math.round(sol.H * dpr);
+  // Scrivere `width` cancella la tela anche quando il numero è lo stesso: si
+  // tocca solo se la misura è cambiata davvero. Le demo la richiamano a ogni
+  // scena, e la tela svuotata fra un fotogramma e l'altro lasciava vedere per
+  // un istante quello che c'è sotto — il planetario fermo.
+  const larga = Math.round(sol.L * dpr), alta = Math.round(sol.H * dpr);
+  if (sol.canvas.width !== larga) sol.canvas.width = larga;
+  if (sol.canvas.height !== alta) sol.canvas.height = alta;
   sol.ctx = sol.canvas.getContext('2d');
   sol.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   // Quanto della tela si prende la barra del tempo, che le sta appoggiata

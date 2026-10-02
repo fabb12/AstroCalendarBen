@@ -479,6 +479,14 @@
         inquadra: () => {} // Il quadro successivo viene deciso dalla scena.
       });
       presentaSistema(c);
+      // La vista pulita va spostata sul guscio della 3D **adesso**, non alla
+      // scena dopo. Col cielo a schermo intero il guscio diventa figlio
+      // diretto del riquadro del cielo, che è ancora marcato dalla scena di
+      // prima: `.demo-scena-pulita > *` lo nascondeva, e restava visibile il
+      // solo velo del volo. Mentre il velo sfumava, sotto non c'era la Terra
+      // della scena ma la tela ferma del planetario — per un secondo e mezzo
+      // ricompariva il cielo da cui si era appena decollati.
+      applicaVistaPulita(c);
       return {
         aggiorna(u) {
           if (!solVolo.attivo) return;
