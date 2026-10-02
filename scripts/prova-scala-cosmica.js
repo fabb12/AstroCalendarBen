@@ -282,28 +282,30 @@ async function pagina(browser, origine, L, H) {
       await p.mouse.wheel(0, 300);
       ok(await p.evaluate(v => cosm.Lvoluto > v, prima), 'La rotella allontana');
 
-      // Un dito sposta la carta, e lasciandola andare in corsa continua da
-      // sola e si ferma (v404); con Maiusc la gira, come nella vista 3D
+      // Gli stessi comandi della vista 3D: il tasto sinistro (o un dito)
+      // gira la scena, il tasto centrale (o il destro, o Maiusc) sposta la
+      // carta, e lasciandola andare in corsa continua da sola e si ferma
       await p.evaluate(() => { cosm.ancoraZoom = null; cosm.pan = { x: 0, y: 0 }; });
       await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
-      await p.mouse.down();
+      await p.mouse.down({ button: 'middle' });
       await p.mouse.move(Math.round(punto.x + 40), Math.round(punto.y + 10), { steps: 4 });
       await p.mouse.move(Math.round(punto.x + 140), Math.round(punto.y + 30), { steps: 4 });
-      await p.mouse.up();
+      await p.mouse.up({ button: 'middle' });
       const lancio = await p.evaluate(() => ({ pan: { ...cosm.pan }, inerzia: !!cosm.inerzia, az: cosm.az, elev: cosm.elev }));
       await p.waitForTimeout(350);
       const corsa = await p.evaluate(() => ({ ...cosm.pan }));
       await p.waitForFunction(() => !cosm.inerzia, null, { timeout: 5000 });
-      ok(lancio.pan.x < 0 && lancio.az === 0 && lancio.elev === 90, 'Un dito sposta la carta senza girarla');
+      ok(lancio.pan.x < 0 && lancio.az === 0 && lancio.elev === 90, 'Il tasto centrale sposta la carta senza girarla');
       ok(lancio.inerzia && corsa.x < lancio.pan.x, 'Lasciata andare in corsa, la carta continua da sola e poi si ferma');
-      await p.keyboard.down('Shift');
+      const panPrima = await p.evaluate(() => ({ ...cosm.pan }));
       await p.mouse.move(Math.round(punto.x), Math.round(punto.y));
       await p.mouse.down();
       await p.mouse.move(Math.round(punto.x + 60), Math.round(punto.y - 80), { steps: 8 });
       await p.mouse.up();
-      await p.keyboard.up('Shift');
-      const giro = await p.evaluate(() => ({ az: cosm.az, elev: cosm.elev }));
-      ok(Math.abs(giro.az) > 0.2 && giro.elev < 70, `Con Maiusc il dito gira la scena (az ${giro.az.toFixed(2)}, elev ${giro.elev.toFixed(0)}°)`);
+      await p.waitForFunction(() => !cosm.inerzia, null, { timeout: 5000 });
+      const giro = await p.evaluate(() => ({ az: cosm.az, elev: cosm.elev, pan: { ...cosm.pan } }));
+      ok(Math.abs(giro.az) > 0.2 && giro.elev < 70, `Il tasto sinistro gira la scena (az ${giro.az.toFixed(2)}, elev ${giro.elev.toFixed(0)}°)`);
+      ok(giro.pan.x === panPrima.x && giro.pan.y === panPrima.y, 'Girando non si sposta la carta');
       await fotogrammi();
       await foto('21-girata');
       await p.click('#sol-reset');

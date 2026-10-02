@@ -40283,6 +40283,9 @@ function solInizializzaGesti() {
   // Col tasto destro si sposta la scena: il menù contestuale, qui, sarebbe
   // solo il modo di interrompere il gesto a metà
   c.addEventListener('contextmenu', (e) => e.preventDefault());
+  // Il tasto centrale sposta la scena: senza questo il browser lo prende per
+  // l'autoscorrimento della pagina e il gesto finisce prima di cominciare
+  c.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
 
   // La rotella non salta: chiede un campo e ci si scivola dentro, com'è nel
   // planetario (sezione 7.4-ter). Il conto parte da dove la vista *sta

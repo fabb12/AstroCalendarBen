@@ -5615,7 +5615,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "cosmo.scheda.vai": "Inquadra",
     "cosmo.scheda.luceDalSole": "La luce del Sole arriva in",
     "cosmo.scheda.lunaOra": "La Luna, adesso, è a",
-    "cosmo.aiuto": "Trascina per spostare · rotella o due dita per la scala · Maiusc o tasto destro per girare · trascina la riga in fondo per scorrere le scale",
+    "cosmo.aiuto": "Trascina per girare · tasto centrale, destro o Maiusc per spostare · rotella o due dita per la scala · trascina la riga in fondo per scorrere le scale",
     "cosmo.scheda.chiudi": "Chiudi la scheda",
     "cosmo.sonde.titolo": "Le Voyager",
     "cosmo.sonde.etichettaSole": "{d} dal Sole",
