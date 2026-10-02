@@ -1383,6 +1383,25 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       of the cameras (3D view and aurora bench) is skipped: the camera is already where the story wants it, while astronomical time keeps running. If the preference changes during a demo, the demo stops and restores.</dd></div>
     </dl>
 
+    <h3 style="margin-top:28px">Cosmic stories</h3>
+    <p>In the Demo page, <b>Cosmic stories</b> group, there are stories for children in which sky objects have
+    a face and a voice: two big eyes, eyebrows that follow the emotions and a mouth that moves only when that
+    character is speaking, while the others look at it. The subtitle always says the name of whoever is
+    speaking. The objects stay where they really are: the story chooses the evening and the camera, and an
+    object that is too small gets its face in a small disc next to it, joined by a thread. The first episode
+    is <b>“Has the Moon lost a piece?”</b>. Below the list you can try a character up close and read the
+    example to write your own.</p>
+    <dl class="kv">
+      <div><dt>The commands</dt><dd><code>character_show { target: 'Moon', expression: 'worried' }</code> makes a
+      character appear in the scene; <code>character_speak { target: 'Moon', id: '…' }</code> (or <code>text: '…'</code>)
+      makes it say the scene's line; <code>character_expression</code>, <code>character_look_at</code>,
+      <code>character_blink</code> and <code>character_hide</code> change face, gaze and eyelids.
+      The expressions are <code>neutral</code>, <code>happy</code>, <code>surprised</code>, <code>worried</code>,
+      <code>sad</code> and <code>thinking</code>.</dd></div>
+      <div><dt>One line per scene</dt><dd>Each character lives in the scene where it appears: to make it
+      speak, look or change face, show it in that same scene.</dd></div>
+    </dl>
+
     <h3 style="margin-top:28px">When something goes wrong</h3>
     <ul>
       <li><b>“Unknown field”, “Expected ;”, “Unexpected character”</b>: a typing mistake. Look at the line and column shown; often a semicolon or a brace is missing.</li>

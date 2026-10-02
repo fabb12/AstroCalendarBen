@@ -168,7 +168,9 @@ registro.timelapse.crea = () => ({ aggiorna: u => eventi.push(['timelapse', u]),
 for (const d of predefiniti) {
   const demo = analizza(d.testo);
   demo.scene.forEach((s, i) => {
-    const narra = s.azioni.filter(a => a.comando === 'narrate');
+    // Nelle Storie cosmiche la narrazione della scena è la battuta di un
+    // personaggio (`character_speak`), con lo stesso ID stabile.
+    const narra = s.azioni.filter(a => a.comando === 'narrate' || a.comando === 'character_speak');
     ok(narra.length === 1 && narra[0].parametri.id === 'demo.narr.' + d.chiave + '.' + (i + 1),
       'Narrazione della scena ' + (i + 1) + ' di ' + d.chiave);
   });

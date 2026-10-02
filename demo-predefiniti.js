@@ -957,6 +957,134 @@
     action: date_card { label: 'demo.cartello.universo.ritornoCasa', time: show };
   }
 }`
+    },
+    // ------------------------------------------------------------------
+    // Le Storie cosmiche (storie-cosmiche.js, STORIE.md): gli astri hanno un
+    // volto e una voce, e raccontano ai bambini un fenomeno vero. Le
+    // posizioni, le fasi e le distanze sono quelle dell'app, cioè vere: la
+    // storia sceglie la sera e la camera, non sposta niente.
+    // ------------------------------------------------------------------
+    {
+      chiave: 'storia_luna',
+      storia: true,
+      cast: 'Moon,Earth,Sun',
+      testo: `define_demo 'storia_luna' {
+  // «La Luna ha perso un pezzo?» — l'episodio pilota. La sera vera è il 13
+  // dicembre 2026 da Roma, alle 18:30: Luna crescente al 18%, alta 18° a
+  // sud-ovest, il Sole già 19° sotto l'orizzonte. Poi la vista da fuori
+  // (il banco Terra e Luna, a distanze vere) e undici giorni di orbita fino
+  // alla Luna piena del 24 dicembre: le fasi che si vedono sono quelle vere.
+  scene planetarium_view {
+    duration: 9s;
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2026-12-13T17:30:00Z' };
+    action: center_target { target: 'Moon' };
+    action: zoom_fov { from: 12, to: 2.6 };
+    action: character_show { target: 'Moon', expression: 'worried' };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_luna.1' };
+  }
+  scene planetarium_view {
+    duration: 9s;
+    action: set_fov { degrees: 2.6 };
+    action: center_target { target: 'Moon' };
+    action: character_show { target: 'Moon', expression: 'sad' };
+    action: character_blink { target: 'Moon', shot_from: 0.35 };
+    action: character_expression { target: 'Moon', expression: 'worried', shot_from: 0.6 };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_luna.2' };
+  }
+  scene transition {
+    duration: 6s;
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: character_speak { target: 'Earth', id: 'demo.narr.storia_luna.3' };
+  }
+  scene solar_system_3d {
+    duration: 11s;
+    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 18, elev_from: 22, elev_to: 30 };
+    action: character_show { target: 'Earth', expression: 'happy', look: 'Moon' };
+    action: character_show { target: 'Moon', expression: 'worried', look: 'Earth' };
+    action: character_speak { target: 'Earth', id: 'demo.narr.storia_luna.4' };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 14, elev_from: 30, elev_to: 34 };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: character_show { target: 'Moon', expression: 'surprised' };
+    action: character_look_at { target: 'Moon', object: 'viewer' };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_luna.5' };
+  }
+  scene solar_system_3d {
+    duration: 13s;
+    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 16, elev_from: 34, elev_to: 40 };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'Earth', expression: 'neutral', look: 'Sun' };
+    action: character_show { target: 'Moon', expression: 'thinking' };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_luna.6' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    // Undici giorni d'orbita vera: dalla falce alla Luna piena
+    action: date_range { from: '2026-12-13T17:30:00Z', to: '2026-12-24T01:30:00Z' };
+    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 10, elev_from: 40, elev_to: 46 };
+    action: character_show { target: 'Earth', expression: 'happy', look: 'Moon' };
+    action: character_show { target: 'Moon', expression: 'surprised', look: 'Earth' };
+    action: character_expression { target: 'Moon', expression: 'happy', shot_from: 0.7 };
+    action: character_speak { target: 'Earth', id: 'demo.narr.storia_luna.7' };
+  }
+  scene planetarium_view {
+    duration: 11s;
+    action: set_date { iso: '2026-12-13T17:30:00Z' };
+    action: set_fov { degrees: 2.6 };
+    action: center_target { target: 'Moon' };
+    action: character_show { target: 'Moon', expression: 'happy' };
+    action: character_blink { target: 'Moon', shot_from: 0.5 };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_luna.8' };
+  }
+}`
+    },
+    {
+      chiave: 'storia_giganti',
+      storia: true,
+      cast: 'Saturn,Jupiter,Sun',
+      testo: `define_demo 'storia_giganti' {
+  // Una storia d'esempio, corta, per chi vuole scriverne una: tutte le
+  // azioni dei personaggi in quattro scene. Giove e Saturno sono nella vista
+  // 3D alla loro posizione vera di oggi; nell'ultima scena passano tre anni
+  // d'orbita vera, e Giove fa un quarto di giro mentre Saturno un decimo.
+  scene solar_system_3d {
+    duration: 11s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 12, elev_from: 52, elev_to: 58 };
+    action: character_show { target: 'Saturn', expression: 'happy' };
+    action: character_show { target: 'Jupiter', expression: 'neutral', look: 'Saturn' };
+    action: character_speak { target: 'Saturn', id: 'demo.narr.storia_giganti.1' };
+  }
+  scene solar_system_3d {
+    duration: 11s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 10, elev_from: 58, elev_to: 62 };
+    action: character_show { target: 'Saturn', expression: 'happy' };
+    action: character_show { target: 'Jupiter', expression: 'happy' };
+    action: character_expression { target: 'Saturn', expression: 'surprised', shot_from: 0.45 };
+    action: character_speak { target: 'Jupiter', id: 'demo.narr.storia_giganti.2' };
+  }
+  scene solar_system_3d {
+    duration: 13s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 10, elev_from: 62, elev_to: 66 };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'Saturn', expression: 'neutral' };
+    action: character_show { target: 'Jupiter', expression: 'thinking' };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_giganti.3' };
+  }
+  scene solar_system_3d {
+    duration: 12s;
+    action: date_range { from: '2026-10-01T00:00:00Z', to: '2029-10-01T00:00:00Z' };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 8, elev_from: 66, elev_to: 70 };
+    action: character_show { target: 'Saturn', expression: 'surprised', look: 'Jupiter' };
+    action: character_show { target: 'Jupiter', expression: 'happy', look: 'Saturn' };
+    action: character_blink { target: 'Jupiter', shot_from: 0.3 };
+    action: character_expression { target: 'Saturn', expression: 'happy', shot_from: 0.55 };
+    action: character_speak { target: 'Saturn', id: 'demo.narr.storia_giganti.4' };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

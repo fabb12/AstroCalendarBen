@@ -1,9 +1,9 @@
 # Niente in corso
 
-Ultimo lavoro (v404): la scala cosmica dalla Terra all'universo.
+Ultimo lavoro (v407): le Storie cosmiche (`storie-cosmiche.js`, `STORIE.md`).
 
-- Quattro tappe nuove sotto Kuiper (Terra, Terra e Luna, pianeti di roccia, Sistema Solare) alla misura vera, con la Terra vera della 3D; centro sulla Terra fino ai pianeti di roccia.
-- Gesti: un dito sposta con inerzia, zoom che tiene il punto sotto al dito e aggancia i pianeti, riga in fondo trascinabile; in fondo alla scala si atterra nel planetario.
-- Ingresso dalla 3D con la stessa camera e la stessa misura; tasto del pannello Astri che esce col volo e parte dalla Terra.
-- Demo «Dalla Terra all'universo»: 17 scene, una carta sola dal decollo all'atterraggio (`from: arrival`, `to: landing`, `zoom_view` verso `planetarium_view`).
-- Prove: `node scripts/prova-scala-cosmica.js`, `node scripts/prova-demo-universo.js`.
+- Volti per gli astri come livello separato, agganciato ai renderer esistenti (planetario e 3D), mai sugli astri spostati.
+- Comandi `character_show/expression/look_at/blink/speak/hide`, registrati con `AstroDemo.registra`.
+- Bocca da `narrazione.voce()`: ampiezza Web Audio, confini TTS, ritmo del testo; sottotitolo col nome.
+- Episodio pilota `storia_luna` e storia d'esempio `storia_giganti`; sezione 7 della pagina Demo con anteprima.
+- Prove: `node scripts/prova-storie.js`, `node scripts/prova-storie-browser.js`.

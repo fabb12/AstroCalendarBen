@@ -90,7 +90,9 @@ for (const d of predefiniti) {
   const demo = analizza(d.testo);
   demo.scene.forEach((s, i) => {
     scene++;
-    const narra = s.azioni.filter(a => a.comando === 'narrate');
+    // Nelle Storie cosmiche la voce della scena è la battuta di un
+    // personaggio (`character_speak`): vale come la sua narrazione.
+    const narra = s.azioni.filter(a => a.comando === 'narrate' || a.comando === 'character_speak');
     if (narra.length !== 1) { errori.push(`${d.chiave} scena ${i + 1}: ${narra.length} narrazioni invece di una`); return; }
     const id = narra[0].parametri.id;
     for (const lingua of Object.keys(dizionari)) {

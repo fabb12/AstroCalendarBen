@@ -100,6 +100,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `inseguimento.js` | ~1.700 | **L'inseguimento a rilevazioni degli aerei**: ritaglio, rilevazione, flusso ottico, filtro. `visione.js` raddrizza il **cielo** e lo fa bene; quello che resta fra l'etichetta di un aereo e il suo aereo vero è l'errore della propagazione ADS-B, ed è **suo** — e la cura delle ancore (§9 di quel file) è giusta ma non regge il **ritmo**. Due conti, e sono il motivo per cui questo file esiste. La **cadenza**: quel motore guarda l'immagine dodici volte al secondo nel caso migliore, e fra una misura e l'altra l'ancora è ferma — un aereo vicino attraversa il cielo a quasi tre gradi al secondo, quindi a ogni misura l'etichetta fa un saltino (il sintomo non è «è spostata», è «balla»). La **risoluzione**: quel motore lavora su un fotogramma ridotto a trentamila pixel, ed è la scelta giusta per gli astri, mentre un aeroplano di quaranta metri a dieci chilometri è largo **due decimi di grado** — sei centesimi di pixel. Non è una macchia debole: non c'è. Nel fotogramma **nativo** lo stesso aereo è largo sei pixel. La cura è guardare in piccolo, ma da vicino e spesso: si ritaglia dal fotogramma nativo una patch di 192×192 attorno a dove il cielo calcolato dice che l'aereo sta (§5), la si rileva a risoluzione piena (§3) e fra una rilevazione e l'altra si insegue la sagoma col **flusso ottico** (§2, Lucas-Kanade piramidale scritto a mano, col controllo avanti-indietro). Il conto che rende sostenibile tutto: una patch sono l'**uno e mezzo per cento** dei pixel di un fotogramma, e a parità di pixel letti si guarda l'aereo a dieci volte la risoluzione angolare di prima. In fondo un **Kalman** a velocità costante (§4), che non leviga ma **continua**: fra due misure la previsione si muove con la velocità appena misurata, ed è quella riga a togliere il saltino. Il rivelatore è **scambiabile** e il posto di YOLO c'è (§7, si accende con `INS_MODELLO_URL`), ma di serie non c'è — e la ragione è scritta nel cappello: a questa scala il bersaglio è una sagoma di sei pixel, cioè esattamente quello che un filtro adattato prende e un convoluzionale addestrato su COCO non vede. Il file è **insieme lo script della pagina e quello del worker** (§6): l'elaborazione delle immagini sta fuori dal filo principale, e da `file://` ripiega su di lui con le stesse funzioni. Prefisso `ins`. |
 | `narrazione.js` | ~840 | **La narrazione**: una voce sola per le demo automatizzate e per Missione Cielo. Ogni contenuto ha un ID stabile (la chiave del dizionario), un testo, una lingua e un eventuale audio registrato scritto nel manifest; la scala dei ripieghi è audio registrato → sintesi (ponte Edge-TTS, poi voce del dispositivo) → solo testo. Una richiesta nuova ferma sempre quella di prima (mai due voci insieme), pausa e ripresa seguono chi parla, il cambio lingua ricompone la frase. I brani registrati si riconoscono anche **dentro** a una frase composta (`narrComponi`), ed è così che Missione Cielo usa lo stesso sistema senza una riga per frase. Collega da sé il riquadro «Narrazione» delle Impostazioni. Prefisso `narr`, oggetto `window.narrazione`. Tutto in `NARRAZIONE.md`. |
 | `audio/narrazione/` | | **Gli audio registrati** della narrazione, uno per funzionalità e lingua (`demo/it`, `demo/en`, `missione/it`, `missione/en`), e il **manifest** `manifest.js` (ID → file per lingua, con l'impronta del testo registrato). Il service worker lo legge con `importScripts` e mette in cache i file all'installazione. Come si aggiunge un audio: `LEGGIMI.md`. |
+| `storie-cosmiche.js` | ~1.500 | **Le Storie cosmiche**: gli astri con un volto e una voce, per raccontare ai bambini un fenomeno vero. Un livello grafico **separato**, disegnato alla fine del fotogramma dove i renderer hanno appena messo l'astro (le ricevute di `skyDisegnaAstro`/`corpiMinoriDisegna`, i corpi già proiettati di `solDisegna`/`solDisegnaVicino`): niente seconda proiezione, niente astri spostati, e fuori dalle storie nessun volto. Personaggi, famiglie, espressioni e forme della bocca sono **tabelle** (`STOR_PERSONAGGI`, `STOR_FAMIGLIE`, `STOR_ESPRESSIONI`, `STOR_BOCCHE`); la bocca segue `narrazione.voce()` — ampiezza Web Audio, poi confini di parola del TTS, poi il ritmo del testo. Registra i comandi `character_*` con `AstroDemo.registra`, e porta la sezione «Storie cosmiche» della pagina Demo. Prefisso `stor`. Tutto in `STORIE.md`. |
 | `demo-intro.js` | ~380 | **L'intro comune delle demo**: logo e titolo su fondo nero prima della prima scena di ogni demo. Preferenze in `astrocal_demo_intro_v1`, logo personale **così com'è** in IndexedDB (`astrocal_demo_intro`), un velo solo impaginato in unità del contenitore (lo stesso nodo fa l'intro, l'anteprima completa e il riquadro della pagina Demo). La fa girare il motore (`contesto.intro`, fase prima della prima scena). Oggetto `window.AstroDemoIntro`. Tutto in `DEMO.md`, §«L'intro comune». |
 | `config.js` | ~8 | Gli URL dei ponti ADS-B ed Edge-TTS, iniettati dal deploy. Se Edge-TTS è vuoto, Missione Cielo usa la voce del dispositivo. |
 | `worker-adsb.js` | ~430 | Il proxy ADS-B del progetto, e **la sola strada per cui gli aerei arrivino**: le quattro reti non mandano il CORS, quindi da un browser non si leggono mai. Interroga OpenSky (credenziali facoltative nei secret `OPENSKY_*`) e le quattro reti di comunità, traduce lo schema OpenSky in quello readsb, aggiunge il CORS **solo alle origini ammesse** (`ORIGINI_AMMESSE`) e tiene la fotografia 20 secondi. `/` si presenta, `/api/diagnostica` dice cosa ha risposto ogni fonte e se da qui si arriva a OpenSky. **Va distribuito su Deno Deploy, non su Cloudflare**: gira su tutt'e due (Web standard, `export default { fetch }`), ma da un Worker tutte e cinque le fonti rifiutano l'IP condiviso — misurato, e dalla stessa ora da Deno ne rispondono tre. Non fa parte della PWA: vedi `ADSB-PROXY.md`. |
@@ -123,7 +124,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `scripts/costruisci-tailwind.js` | ~70 | Genera `tailwind.css`. Si lancia a mano quando si aggiunge una classe Tailwind nuova, non serve all'app. |
 | `style.css` | ~11.260 | Tema "Deep Space" + impaginazione responsive. |
 | `tailwind.css` | ~600 | **Generato**, non si tocca a mano: le sole utility di Tailwind che l'app usa davvero, compilate una volta. Ha preso il posto di `cdn.tailwindcss.com`, che era il **compilatore** — mezzo megabyte di JavaScript che a ogni apertura rileggeva il DOM per riscrivere questo stesso CSS, e che nella console lo diceva a ogni apertura. Va caricato **prima** di `style.css`. |
-| `sw.js` | ~270 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v406`). |
+| `sw.js` | ~270 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v407`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -140,6 +141,8 @@ app.js → telescopio.js → catalogo.js → costellazioni.js → curiosita.js
        → config.js → aerei.js → transiti.js → visione.js → inseguimento.js
        → eventi-extra.js → missione-cielo.js → ui-nuova.js
        → didattica.js
+       → demo-motore.js → demo-intro.js → demo-libreria.js → demo-predefiniti.js
+       → demo.js → storie-cosmiche.js → demo-impostazioni.js
 ```
 
 Ogni file può usare quelli prima di lui; il contrario va sempre protetto con
@@ -173,6 +176,9 @@ carica `catalogo.js` da sé alla prima apertura del planetario (`apriSkymap()`).
 | `skyDisegnaTerreno()` | prova `rilDisegna()` prima del profilo a bande; se disegna lui, saltano anche `skyDisegnaVeloPaesaggio()` e `skyDisegnaLucePaesaggio()` |
 | `solDisegna()` | se `cosmAttivo()` risponde, disegna `cosmDisegna(ctx)` e esce: la scala cosmica è un altro quadro della stessa tela. `solQuadroAttuale()` risponde `cosmo`, il tondo `[data-sol-quadro="cosmo"]` chiama `cosmEntra()`, gli altri tre `cosmEsci()`, e così `chiudiSistemaSolare()`; −, + e ⟲ girano a `cosmZoomPasso`/`cosmReimposta`; la ricerca della 3D prova `cosmCercaTesto()` prima di dire «non trovato» |
 | `skyCrestaDisegnataEntro()` / `skyQuotaDisegnata()` | col rilievo la risposta la dà `rilCrestaEntroM()`, che viene dalla stessa camminata che ha disegnato |
+| `skyDisegnaAstro()` / `corpiMinoriDisegna()` | lasciano la ricevuta di ogni astro disegnato a `storRicevuta()` (Storie cosmiche): esce alla prima riga senza personaggi in scena |
+| `skyDisegna()` | in fondo, **prima** di `skyRegAcquisisci`, chiama `storDisegnaCielo(ctx)`: i volti finiscono anche nel filmato |
+| `solDisegna()` / `solDisegnaVicino()` | in fondo chiamano `storDisegnaSistema(ctx, { corpi, sole })` coi corpi appena proiettati e la loro `vicinanza`; per questo `sol.lunaSchermo`, `sol.luneSchermo` e `sol.satSchermo` portano la `vicinanza` e `solDisegnaSoleVicino` lascia `sol.soleVicinoSchermo` |
 
 Se i moduli nuovi non ci sono, l'app resta esattamente quella di prima.
 
@@ -489,7 +495,9 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   `cur*` = le curiosità delle schede (lo slug, la catena di ripiego, il
   riquadro che si legge),
   `narr*` = la narrazione (la voce delle demo e di Missione Cielo, il
-  manifest degli audio registrati, i ripieghi).
+  manifest degli audio registrati, i ripieghi),
+  `stor*` = le Storie cosmiche (i personaggi, i loro volti, la bocca che
+  segue la voce, i comandi `character_*`).
 - **Niente disegno pesante a ogni fotogramma**: tutto ciò che è complicato e
   non cambia (i mari della Luna, le bande di Giove, la corona, le nebulose)
   si dipinge una volta sola su una tela fuori schermo e poi si ricopia. Il
@@ -510,7 +518,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v406`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v407`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - **Se hai aggiunto del testo che si legge**, la frase va nei due dizionari e
   non nel codice: `node scripts/controlla-i18n.js --patto` lo controlla, e
@@ -590,6 +598,24 @@ stanno dentro tutti insieme, quindi la macchina non si mette alla prova e la
 prova misura il caso che non ha bisogno di cura. Si rallentano perciò
 `Astronomy.Equator` e `corpiPasso` di una frazione di millisecondo per
 chiamata, che è quello che costano su un telefono di quattro anni fa.
+
+### Le Storie cosmiche — `scripts/prova-storie.js`, `scripts/prova-storie-browser.js`
+
+```
+node scripts/prova-storie.js            # il motore, senza browser: mezzo secondo
+node scripts/prova-storie-browser.js    # planetario, 3D, voce, filmato, telefono, inglese, offline
+```
+
+Un volto disegnato male è un volto disegnato comunque: una pupilla che esce
+dall'occhio, una bocca che si muove per il personaggio sbagliato, un
+personaggio della scena di prima rimasto sul cielo dopo un salto. Il primo
+banco controlla la geometria (pupille dentro agli occhi per ogni espressione
+e sguardo), le tre strade della bocca, la voce sola con la promessa tardiva,
+l'occultamento e il motore delle demo vero con cambio scena, salto, riavvio,
+stop ed errore; il secondo il volto sulla Luna disegnata con la stessa
+proiezione, l'ampiezza di un WAV vero nel grafo Web Audio, i confini di una
+sintesi finta, i pixel che arrivano al registratore e il dialogo nella 3D.
+Tutto in `STORIE.md`.
 
 ### La narrazione — `scripts/prova-narrazione.js`, `controlla-narrazione.js`, `prova-narrazione-browser.js`
 
@@ -1957,6 +1983,7 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Richiesta | Punto di partenza |
 |---|---|
 | **La voce delle demo e di Missione Cielo** (narrazione, audio registrati, sottotitolo, preferenze) | `NARRAZIONE.md` prima di tutto, poi `narrazione.js`. Le scene dei tour hanno `action: narrate { id: 'demo.narr.<demo>.<scena>' }` (i testi nei dizionari), Missione Cielo passa da `missRacconta` → `narrazione.parla` sul canale `missione`. Gli audio registrati stanno in `audio/narrazione/<funzione>/<lingua>/` e si elencano nel manifest (`audio/narrazione/LEGGIMI.md`). Una frase che non si sente: prima `narrazione.guasti()` (file mancanti o rotti) e `narrazione.stato()` (a che `fase` è), poi le Impostazioni (spenta, volume a zero, solo sintesi). |
+| **Le Storie cosmiche** (gli astri che parlano ai bambini: volti, bocca, comandi `character_*`) | `STORIE.md` prima di tutto, poi `storie-cosmiche.js`. Un personaggio nuovo è una riga di `STOR_PERSONAGGI`, un'espressione nuova una voce di `STOR_ESPRESSIONI` (più `storie.espressione.<nome>` nei dizionari). Le storie sono demo predefinite con `storia: true` in `demo-predefiniti.js`; le battute sono `character_speak`, una per scena, e contano come la narrazione della scena per `controlla-narrazione.js` e `prova-demo.js`. Un volto che non compare: prima `StorieCosmiche.disegnati` (cosa si è disegnato l'ultima volta e dove), poi l'elenco dei casi in cui il volto non c'è (`STORIE.md`, §Gli agganci). Una bocca ferma: `narrazione.voce()` — `parla` è vero solo mentre la voce suona |
 | **L'intro delle demo** (logo e titolo prima della prima scena) | `DEMO.md`, §«L'intro comune», poi `demo-intro.js` (disegno, preferenze, logo in IndexedDB) e le righe `intro`/`chiudiIntro` di `demo-motore.js` (la fase che precede la prima scena). Non va duplicata dentro a un tour: vale per tutte. Prove in `scripts/prova-demo-intro.js`, che nelle altre prove delle demo è spenta (`astrocal_demo_intro_v1` = `{attiva:false}`) perché quelle misurano le scene subito dopo l'avvio |
 | **Le demo automatizzate** (regia, opzioni, schermo intero, registrazione) | `DEMO.md` prima di tutto. La configurazione è la voce **Demo** del menu (`#vista-demo`, sei gruppi; `demoPaginaPrepara` la rilegge a ogni apertura), non più le Impostazioni. I comandi (`#demo-controlli`) esistono solo a demo in corso; il testo della voce sta in `#demo-sottotitoli`; un tocco mostra i comandi, un trascinamento/pizzico/rotellina prende la camera senza fermare niente; la musica «Encelado» delle eclissi è `musicaDemoAvvia`/`musicaDemoFerma` in `app.js`. Prove: `scripts/prova-demo-pagina.js`. Motore puro in `demo-motore.js`, azioni in `demo.js`, tour in `demo-predefiniti.js`, scheda delle Impostazioni in `demo-impostazioni.js`. La regia muove **solo** camera, zoom e tempo: le scene si legano all'evento vero (`event_window`, `satellite_pass`, cercati una volta per racconto) e la camera la guidano `camera_3d` (vista 3D, elevazione in **gradi** come `sol.elev`) e `aurora_lesson` (il banco delle aurore via `window.didDemo` in `didattica.js`). Le opzioni: il pieno schermo si chiede una volta sull'intero documento e le viste se lo passano col CSS (`skyEntraSchermoIntero({ soloRipiego })`, `didPienoEntra(id, { soloRipiego })`), per cui `skyEsciSchermoIntero` e `didPienoEsci` chiudono il nativo solo se è il loro; la registrazione è quella del §7.6 con `sky.reg.sorgente`; gli elementi del planetario sono gli interruttori veri (`LIVELLI` in `demo.js`, nomi letti dai tasti). Durante la demo `AstroDemo.silenzioso` fa tacere `skyAvviso` (tranne il canale `demo`). Prove: `scripts/prova-demo.js`, `prova-demo-browser.js`, `prova-demo-regia.js` (che guarda i pixel: l'aurora del vecchio tour da Tromsø era «nel quadro» nei conti e invisibile sullo schermo) |
 | **La mappa del cono d'ombra dentro a una demo** (scena `eclipse_map`, azione `shadow_map`) | `DEMO.md`, §«L'eclisse di Sole della v377». In `app.js`, accanto al pieno schermo della mappa, il blocco `// --- La regia delle demo` (`eclRegiaApri`, `eclRegiaPosa`, `eclRegiaChiudi`, stato `_eclRegia`): apre l'evento vero, porta il guscio a tutto schermo **col solo ripiego CSS** (il nativo è della demo) e a ogni passo dice il minuto e lo zoom; l'orologio resta uno solo con il planetario. `_eclEsciSchermoIntero` esce dal pieno schermo nativo solo se è del guscio, e `_eclRipiegoSchermo` si appende al riquadro del cielo quando quello è a schermo intero. Senza Leaflet la scena ripiega sulla 3D addosso all'ombra (`c.mappaRipiego` in `demo.js`). Prove in `prova-demo-regia.js` e `prova-demo-pagina.js`, che servono Leaflet da `node_modules` |
