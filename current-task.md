@@ -1,10 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v401): vista 3D e scala cosmica.
+Ultimo lavoro (v402): la demo «Dalla Terra all'universo» (`universo`, 16 scene, 380 s).
 
-- Le Voyager nella 3D e nella scala cosmica stanno solo al posto di oggi (niente filo, scie, futuro, tacche); nome solo a certe scale (`solSondaDaNominare`, `COSM_SONDE_NOMI_L`).
-- Tolti «Voyager oggi» dalla fila, Voyager 1 dalla riga, il tondo «Dalla Terra».
-- Zoom indietro dalla 3D → scala cosmica (`solZoomVersoIlCosmo`), zoom avanti sotto `COSM_L_RIENTRO` → si torna a «Tutto».
-- Scala cosmica girabile in 3D (`cosm.az`/`cosm.elev`, `cosmRuota`).
-- Demo delle Voyager riportata alla v399 (15 scene); azione `cosmic_scale` tolta.
-- Prove: `node scripts/prova-scala-cosmica.js` (verde), `prova-demo-voyager.js` (verde). In `prova-sistema3d.js` restano rosse le stesse di prima (stesso istante entrando/uscendo, lune a distanze vere, ReferenceError `SOL_LUNE`).
+- Torna l'azione `cosmic_scale` in `demo.js` (senza il futuro delle sonde), con in più la camera della carta (`orbit`, `elev_from`/`elev_to`) scritta da `cosmRegia`.
+- Due scene cosmiche di fila sono un volo solo: la chiusura lascia la carta aperta per un giro del browser.
+- `camera_3d` con `focus: 'Earth'` spegne i mondi minori (come già col Sole).
+- Prove: `node scripts/prova-demo-universo.js` (verde), `prova-demo-voyager`, `prova-demo-stagioni`, `prova-demo-regia`, `prova-scala-cosmica` verdi. In `prova-demo-browser.js` resta rossa, come prima, la prova «La demo lascia invariato lo stato dello schermo intero».

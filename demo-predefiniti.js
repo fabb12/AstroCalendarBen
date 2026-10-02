@@ -806,6 +806,139 @@
     action: point_view { probe: 'voyager1', alt: -3 };
   }
 }`
+    },
+    {
+      chiave: 'universo',
+      testo: `define_demo 'universo' {
+  // Dalla Terra all'universo osservabile: quanto è grande, detto a passi.
+  // Si parte dal cielo di stasera sopra casa (il luogo dell'app, nessun
+  // set_location), si sale col volo del planetario, si guarda la Terra, la
+  // Luna, il Sole, i giganti, e da lì la scala cosmica (\`cosmic_scale\`,
+  // scala-cosmica.js) si allarga di decade in decade fino all'universo
+  // osservabile, poi torna indietro in un fiato e riconsegna il cielo di
+  // casa. Ogni scena apre il cartello con la misura e il tempo della luce:
+  // è il metro che rende confrontabili scale lontane quindici ordini di
+  // grandezza. Le scene cosmiche di fila sono un volo solo: la carta resta
+  // aperta fra l'una e l'altra e la camera riparte da dove era.
+  scene planetarium_view {
+    // Il cielo di stasera, guardando in su: la cupola che sembra vicina.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.universo.1' };
+    action: set_date { tonight: '21:30' };
+    action: timelapse { start: 21:30, end: 22:10 };
+    action: zoom_fov { from: 70, to: 125 };
+    action: point_view { az: 180, alt: 55 };
+    action: date_card { label: 'demo.cartello.universo.casa', time: show };
+  }
+  scene transition {
+    // Cento chilometri: l'aria finisce e il blu diventa nero.
+    duration: 8s;
+    action: narrate { id: 'demo.narr.universo.2' };
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+  }
+  scene solar_system_3d {
+    // La Terra da vicino: coste, notte e luci delle città, l'aria di taglio.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.universo.3' };
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 60, orbit: -50, elev_from: 22, elev_to: 10, zoom_from: 1.2, zoom_to: 1.7 };
+    action: date_card { label: 'demo.cartello.universo.terra', time: hide };
+  }
+  scene solar_system_3d {
+    // La camera si allontana dalla Terra finché nel quadro entra la Luna.
+    duration: 22s;
+    action: narrate { id: 'demo.narr.universo.4' };
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 40, orbit: 40, elev_from: 14, elev_to: 30, zoom_from: 1, zoom_to: 0.12 };
+    action: date_card { label: 'demo.cartello.universo.luna', time: hide };
+  }
+  scene solar_system_3d {
+    // Il Sole e i pianeti di roccia.
+    duration: 24s;
+    action: narrate { id: 'demo.narr.universo.5' };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Mercury,Venus,Earth,Mars', orbit: 40, elev_from: 30, elev_to: 50, zoom_from: 1.6, zoom_to: 1.05 };
+    action: date_card { label: 'demo.cartello.universo.sole', time: hide };
+  }
+  scene solar_system_3d {
+    // I giganti, fino a Nettuno: il Sistema Solare che tutti conoscono.
+    duration: 24s;
+    action: narrate { id: 'demo.narr.universo.6' };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn,Uranus,Neptune', orbit: 50, elev_from: 50, elev_to: 68, zoom_from: 2.6, zoom_to: 1 };
+    action: date_card { label: 'demo.cartello.universo.nettuno', time: hide };
+  }
+  scene solar_system_3d {
+    // Oltre i pianeti: Kuiper e la bolla del Sole, con le Voyager di oggi.
+    duration: 26s;
+    action: narrate { id: 'demo.narr.universo.7' };
+    action: cosmic_scale { from: 'planets', to: 'voyager', focus: 'heliopause', orbit: 20, elev_from: 70, elev_to: 58 };
+    action: date_card { label: 'demo.cartello.universo.eliopausa', time: hide };
+  }
+  scene solar_system_3d {
+    // La scala comincia a correre: la nube di Oort.
+    duration: 26s;
+    action: narrate { id: 'demo.narr.universo.8' };
+    action: cosmic_scale { from: 'voyager', to: 'oort', focus: 'oort', center: 'sun', orbit: 25, elev_from: 58, elev_to: 70 };
+    action: date_card { label: 'demo.cartello.universo.oort', time: hide };
+  }
+  scene solar_system_3d {
+    // Le stelle vicine: Alfa Centauri, Sirio, la nube interstellare locale.
+    duration: 24s;
+    action: narrate { id: 'demo.narr.universo.9' };
+    action: cosmic_scale { from: 'oort', to: 'local_cloud', focus: 'local_cloud', orbit: 20, elev_from: 70, elev_to: 80 };
+    action: date_card { label: 'demo.cartello.universo.stelle', time: hide };
+  }
+  scene solar_system_3d {
+    // La Bolla Locale e il braccio di Orione, con una sosta su ognuno.
+    duration: 26s;
+    action: narrate { id: 'demo.narr.universo.10' };
+    action: cosmic_scale { from: 'local_cloud', to: 'orion_arm', ease: stops, orbit: 15, elev_from: 80, elev_to: 90 };
+    action: date_card { label: 'demo.cartello.universo.orione', time: hide };
+  }
+  scene solar_system_3d {
+    // La Via Lattea intera, prima a picco e poi un poco di sbieco.
+    duration: 28s;
+    action: narrate { id: 'demo.narr.universo.11' };
+    action: cosmic_scale { from: 'orion_arm', to: 'milky_way', focus: 'milky_way', zoom_end: 0.6, orbit: 30, elev_from: 90, elev_to: 55 };
+    action: date_card { label: 'demo.cartello.universo.galassia', time: hide };
+  }
+  scene solar_system_3d {
+    // Fuori dalla galassia: Magellano, Andromeda, il Gruppo Locale.
+    duration: 26s;
+    action: narrate { id: 'demo.narr.universo.12' };
+    action: cosmic_scale { from: 'milky_way', to: 'local_group', focus: 'local_group', orbit: 25, elev_from: 55, elev_to: 75 };
+    action: date_card { label: 'demo.cartello.universo.andromeda', time: hide };
+  }
+  scene solar_system_3d {
+    // La Vergine e Laniakea, con una sosta su ognuna.
+    duration: 28s;
+    action: narrate { id: 'demo.narr.universo.13' };
+    action: cosmic_scale { from: 'local_group', to: 'laniakea', ease: stops, orbit: 20, elev_from: 75, elev_to: 85 };
+    action: date_card { label: 'demo.cartello.universo.laniakea', time: hide };
+  }
+  scene solar_system_3d {
+    // L'universo osservabile: la ragnatela, e il bordo oltre il quale la
+    // luce non ha ancora avuto il tempo di arrivare.
+    duration: 32s;
+    action: narrate { id: 'demo.narr.universo.14' };
+    action: cosmic_scale { from: 'laniakea', to: 'universe', focus: 'universe', zoom_end: 0.75, orbit: 25, elev_from: 85, elev_to: 70 };
+    action: date_card { label: 'demo.cartello.universo.tutto', time: hide };
+  }
+  scene solar_system_3d {
+    // Il ritorno in un fiato: quindici decade in venti secondi.
+    duration: 20s;
+    action: narrate { id: 'demo.narr.universo.15' };
+    action: cosmic_scale { from: 'universe', to: 'planets', ease: smooth, orbit: -40, elev_from: 70, elev_to: 90 };
+    action: date_card { label: 'demo.cartello.universo.ritorno', time: hide };
+  }
+  scene planetarium_view {
+    // Il congedo: di nuovo sotto il cielo di casa, e il campo si riapre.
+    duration: 24s;
+    action: narrate { id: 'demo.narr.universo.16' };
+    action: set_date { tonight: '21:30' };
+    action: timelapse { start: 21:30, end: 22:15 };
+    action: zoom_fov { from: 40, to: 130 };
+    action: point_view { az: 180, alt: 60 };
+    action: date_card { label: 'demo.cartello.universo.ritornoCasa', time: show };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

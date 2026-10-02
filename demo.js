@@ -787,6 +787,9 @@
           base = solZoomPer(Math.max(0.3, corpo.r || 1));
         } else {
           sol.perno = 'Earth'; sol.quadro = 'terra';
+          // Come attorno al Sole: addosso alla Terra si racconta lei, e i
+          // nomi di asteroidi e comete che passano dietro sarebbero rumore
+          sol.mondiAccesi = false;
           const iss = (sol.satelliti || []).find(s => s.id === 'iss');
           if (p.focus === 'ISS') richiedi(iss, err('tle'));
           const z = p.focus === 'ISS' ? solZoomOrbitaSatellite(iss) : solZoomSullaTerra();
@@ -1374,6 +1377,110 @@
   };
 
   // ------------------------------------------------------------------
+  // La scala cosmica (solo in `solar_system_3d`): il quarto quadro della
+  // vista 3D, oltre i pianeti, guidato dal racconto (`scala-cosmica.js`).
+  // Tolta nella v401 insieme alle scene cosmiche della demo delle Voyager,
+  // è tornata nella v402 per la demo «Dalla Terra all'universo», senza il
+  // futuro delle sonde (che stanno sempre al posto di oggi).
+  // `from`/`to` sono la scala d'inizio e di fine — un numero (metà del lato
+  // corto dello schermo, in UA) o un nome: planets, kuiper, heliopause, oort,
+  // local_cloud, local_bubble, orion_arm, milky_way, local_group, virgo,
+  // laniakea, universe, o voyager (le sonde di oggi). La scala scorre in
+  // progressione geometrica — ogni secondo moltiplica le distanze per lo
+  // stesso fattore, ed è quello che fa sentire quante sono le decade —; con
+  // `ease: stops` si ferma un istante su ogni struttura che incontra, e
+  // quella che sta guardando si accende. `focus` accende una struttura per
+  // tutta la scena; `zoom_start`/`zoom_end` dicono in che tratto della scena
+  // si muove la scala; `center: sun` tiene il Sole in mezzo. La camera della
+  // carta: `elev_from`/`elev_to` (90 = a picco, gradi) e `orbit` (quanti
+  // gradi gira attorno alla normale in tutta la scena). L'orologio va a oggi.
+  // ------------------------------------------------------------------
+  const COSMO_FACILITA = ['smooth', 'linear', 'stops'];
+  function scalaCosmica(v) {
+    if (typeof v === 'number') { richiedi(numero(v, 1, 1e16), err('scalaCosmica')); return Math.log10(v); }
+    richiedi(typeof v === 'string' && typeof cosmLDi === 'function', err('scalaCosmica'));
+    const L = cosmLDi(v);
+    richiedi(Number.isFinite(L), err('scalaCosmica'));
+    return L;
+  }
+  function strutturaCosmica(v) {
+    richiedi(typeof v === 'string' && typeof cosmStrutture === 'function', err('scalaCosmica'));
+    const s = cosmStrutture().find(x => x.demo === v || x.id === v);
+    richiedi(!!s, err('scalaCosmica'));
+    return s;
+  }
+  registro.cosmic_scale = {
+    verifica(p) {
+      campi(p, ['from', 'to', 'ease', 'focus', 'zoom_start', 'zoom_end', 'center', 'orbit', 'elev_from', 'elev_to']);
+      if (p.center !== undefined) richiedi(p.center === 'sun', err('scalaCosmica'));
+      scalaCosmica(p.from === undefined ? 'voyager' : p.from);
+      scalaCosmica(p.to === undefined ? (p.from === undefined ? 'voyager' : p.from) : p.to);
+      if (p.ease !== undefined) richiedi(COSMO_FACILITA.includes(p.ease), err('andaturaCosmica'));
+      if (p.focus !== undefined) strutturaCosmica(p.focus);
+      for (const k of ['zoom_start', 'zoom_end']) if (p[k] !== undefined) richiedi(numero(p[k], 0, 1), err('frazioneScena'));
+      richiedi((p.zoom_start || 0) < (p.zoom_end === undefined ? 1 : p.zoom_end), err('frazioneScena'));
+      richiedi(p.orbit === undefined || numero(p.orbit, -720, 720), err('angolo'));
+      for (const k of ['elev_from', 'elev_to'])
+        richiedi(p[k] === undefined || numero(p[k], 5, 90), err('elevazioneCosmica'));
+    },
+    crea(p, c) {
+      richiedi(sol.aperto && typeof cosmRegia === 'function', err('serve3d'));
+      const da = p.from === undefined ? 'voyager' : p.from;
+      const La = scalaCosmica(da), Lb = scalaCosmica(p.to === undefined ? da : p.to);
+      const zs = p.zoom_start || 0, ze = p.zoom_end === undefined ? 1 : p.zoom_end;
+      const fuoco = p.focus !== undefined ? strutturaCosmica(p.focus).id : null;
+      const ea = p.elev_from === undefined ? (p.elev_to === undefined ? 90 : p.elev_to) : p.elev_from;
+      const eb = p.elev_to === undefined ? ea : p.elev_to;
+      const giro = (p.orbit || 0) * GRADI;
+      // La camera parte da dove l'ha lasciata la scena di prima, se la scala
+      // cosmica era già aperta: due scene di fila sono un volo solo
+      const azBase = typeof cosm !== 'undefined' && cosm.attivo ? cosm.az : 0;
+      const oggi = Date.now();
+      istante(oggi);
+      // Le soste (`ease: stops`): le strutture che cadono fra le due scale,
+      // in ordine di percorrenza; ogni tratto prende lo stesso tempo e parte
+      // e arriva fermo
+      const tappe = [La];
+      if (p.ease === 'stops') {
+        const dentro = cosmStrutture().map(x => x.L)
+          .filter(L => (L - La) * (Lb - La) > 0 && Math.abs(L - La) < Math.abs(Lb - La) - 0.05 && Math.abs(L - La) > 0.05)
+          .sort((x, y) => (Lb > La ? x - y : y - x));
+        tappe.push(...dentro);
+      }
+      tappe.push(Lb);
+      const scala = k => {
+        if (p.ease === 'linear') return La + (Lb - La) * k;
+        if (p.ease !== 'stops') return La + (Lb - La) * solVoloRampa(k);
+        const n = tappe.length - 1, x = Math.min(n - 1e-9, k * n), i = Math.floor(x), f = x - i;
+        return tappe[i] + (tappe[i + 1] - tappe[i]) * f * f * (3 - 2 * f);
+      };
+      const aggiorna = u => {
+        const ridotto = !!(c && c.ridotto);
+        const k = ridotto ? 1 : Math.max(0, Math.min(1, (u - zs) / (ze - zs)));
+        const L = scala(k);
+        let evidenza = fuoco;
+        if (!evidenza && p.ease === 'stops' && typeof cosmStrutturaDellaScala === 'function') {
+          const s = cosmStrutturaDellaScala(L);
+          evidenza = s ? s.id : null;
+        }
+        const manuale = !!(c && c.cameraManuale);
+        const r = ridotto ? 1 : solVoloRampa(Math.max(0, Math.min(1, u)));
+        cosmRegia({ L, anni: 0, baseMs: oggi, evidenza, manuale,
+          pan: manuale ? undefined : { x: 0, y: 0 }, centraSole: !manuale && p.center === 'sun',
+          az: manuale ? undefined : azBase + giro * r, elev: manuale ? undefined : ea + (eb - ea) * r });
+      };
+      aggiorna(0);
+      // Chiudendo si lascia la carta aperta per un istante: se la scena dopo
+      // è ancora la scala cosmica, la riprende da qui (un volo solo); se no
+      // si torna ai pianeti
+      return { aggiorna, chiudi() {
+        cosmRegia(null);
+        setTimeout(() => { if (cosm.attivo && !cosm.regia && typeof cosmEsci === 'function') cosmEsci(); }, 0);
+      } };
+    }
+  };
+
+  // ------------------------------------------------------------------
   // Gli archi interi del Sole in uno o più giorni, nello stesso cielo (solo
   // nel planetario). `dates` sono giorni civili del luogo del cielo,
   // 'AAAA-MM-GG' separati da virgole, da uno a quattro. Il disegno è
@@ -1589,6 +1696,7 @@
         if (azione.comando === 'camera_3d') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'voyager_journey') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'golden_record') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
+        if (azione.comando === 'cosmic_scale') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'shadow_map') richiedi(scena.vista === 'eclipse_map', err('serveMappa'));
         if (azione.comando === 'earth_axis') richiedi(scena.vista === 'solar_system_3d', err('serve3dAsse'));
         if (azione.comando === 'sun_paths') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
