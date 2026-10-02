@@ -812,14 +812,16 @@
       testo: `define_demo 'universo' {
   // Dalla Terra all'universo osservabile: quanto è grande, detto a passi.
   // Si parte dal cielo di stasera sopra casa (il luogo dell'app, nessun
-  // set_location), si sale col volo del planetario, si guarda la Terra, la
-  // Luna, il Sole, i giganti, e da lì la scala cosmica (\`cosmic_scale\`,
-  // scala-cosmica.js) si allarga di decade in decade fino all'universo
-  // osservabile, poi torna indietro in un fiato e riconsegna il cielo di
-  // casa. Ogni scena apre il cartello con la misura e il tempo della luce:
-  // è il metro che rende confrontabili scale lontane quindici ordini di
-  // grandezza. Le scene cosmiche di fila sono un volo solo: la carta resta
-  // aperta fra l'una e l'altra e la camera riparte da dove era.
+  // set_location), si sale col volo del planetario fino addosso alla Terra,
+  // e da lì la scala cosmica (\`cosmic_scale\`, scala-cosmica.js) — una
+  // carta sola, alla misura vera, dalla Terra all'universo (v404) — si
+  // allarga di decade in decade: la Luna, il Sole, i giganti, la bolla del
+  // Sole e via fino all'universo osservabile; poi torna indietro in un fiato
+  // fino alla Terra e atterra nel cielo di casa col volo all'indietro. Ogni
+  // scena apre il cartello con la misura e il tempo della luce: è il metro
+  // che rende confrontabili scale lontane venti ordini di grandezza. Le
+  // scene cosmiche di fila sono un volo solo: la carta resta aperta fra
+  // l'una e l'altra e la camera riparte da dove era.
   scene planetarium_view {
     // Il cielo di stasera, guardando in su: la cupola che sembra vicina.
     duration: 20s;
@@ -838,30 +840,34 @@
   }
   scene solar_system_3d {
     // La Terra da vicino: coste, notte e luci delle città, l'aria di taglio.
+    // Da qui (v404) il viaggio è una carta sola, alla misura vera: la scala
+    // cosmica prende la Terra della vista 3D alla stessa misura e con la
+    // stessa camera (\`from: arrival\`), e non la lascia più fino al ritorno.
     duration: 22s;
     action: narrate { id: 'demo.narr.universo.3' };
-    action: camera_3d { scene: system, focus: 'Earth', sun_az: 60, orbit: -50, elev_from: 22, elev_to: 10, zoom_from: 1.2, zoom_to: 1.7 };
+    action: cosmic_scale { from: 'arrival', to: 'earth', orbit: -40, elev_to: 24 };
     action: date_card { label: 'demo.cartello.universo.terra', time: hide };
   }
   scene solar_system_3d {
-    // La camera si allontana dalla Terra finché nel quadro entra la Luna.
+    // La camera si allontana dalla Terra finché nel quadro entra la Luna:
+    // alla misura vera sono due granelli.
     duration: 22s;
     action: narrate { id: 'demo.narr.universo.4' };
-    action: camera_3d { scene: system, focus: 'Earth', sun_az: 40, orbit: 40, elev_from: 14, elev_to: 30, zoom_from: 1, zoom_to: 0.12 };
+    action: cosmic_scale { from: 'earth', to: 'earth_moon', orbit: 30, elev_from: 24, elev_to: 62 };
     action: date_card { label: 'demo.cartello.universo.luna', time: hide };
   }
   scene solar_system_3d {
-    // Il Sole e i pianeti di roccia.
+    // Il Sole e i pianeti di roccia: la Terra lascia il centro al Sole.
     duration: 24s;
     action: narrate { id: 'demo.narr.universo.5' };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Mercury,Venus,Earth,Mars', orbit: 40, elev_from: 30, elev_to: 50, zoom_from: 1.6, zoom_to: 1.05 };
+    action: cosmic_scale { from: 'earth_moon', to: 'inner_planets', orbit: 30, elev_from: 62, elev_to: 74 };
     action: date_card { label: 'demo.cartello.universo.sole', time: hide };
   }
   scene solar_system_3d {
     // I giganti, fino a Nettuno: il Sistema Solare che tutti conoscono.
     duration: 24s;
     action: narrate { id: 'demo.narr.universo.6' };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn,Uranus,Neptune', orbit: 50, elev_from: 50, elev_to: 68, zoom_from: 2.6, zoom_to: 1 };
+    action: cosmic_scale { from: 'inner_planets', to: 'planets', orbit: 30, elev_from: 74, elev_to: 70 };
     action: date_card { label: 'demo.cartello.universo.nettuno', time: hide };
   }
   scene solar_system_3d {
@@ -922,20 +928,32 @@
     action: date_card { label: 'demo.cartello.universo.tutto', time: hide };
   }
   scene solar_system_3d {
-    // Il ritorno in un fiato: quindici decade in venti secondi.
+    // Il ritorno in un fiato: venti decade in venti secondi, fino alla Terra
+    // che riempie lo schermo (\`to: landing\`, la misura da cui parte
+    // l'atterraggio).
     duration: 20s;
     action: narrate { id: 'demo.narr.universo.15' };
-    action: cosmic_scale { from: 'universe', to: 'planets', ease: smooth, orbit: -40, elev_from: 70, elev_to: 90 };
+    action: cosmic_scale { from: 'universe', to: 'landing', ease: smooth, orbit: -40, elev_from: 70, elev_to: 90 };
     action: date_card { label: 'demo.cartello.universo.ritorno', time: hide };
   }
-  scene planetarium_view {
-    // Il congedo: di nuovo sotto il cielo di casa, e il campo si riapre.
-    duration: 24s;
+  scene transition {
+    // L'atterraggio: il volo del decollo percorso all'indietro, attraverso
+    // l'aria, fino al cielo di casa dov'era rimasto.
+    duration: 6s;
     action: narrate { id: 'demo.narr.universo.16' };
-    action: set_date { tonight: '21:30' };
-    action: timelapse { start: 21:30, end: 22:15 };
-    action: zoom_fov { from: 40, to: 130 };
-    action: point_view { az: 180, alt: 60 };
+    action: zoom_view { type: geometric, final_target: planetarium_view };
+    action: date_card { label: 'demo.cartello.universo.ritornoCasa', time: hide };
+  }
+  scene planetarium_view {
+    // Il congedo: di nuovo sotto il cielo di casa, nella stessa posa in cui
+    // lo si era lasciato (è la fotografia su cui è atterrato il volo), e il
+    // tempo riprende a scorrere.
+    duration: 24s;
+    action: narrate { id: 'demo.narr.universo.17' };
+    action: set_date { tonight: '22:10' };
+    action: timelapse { start: 22:10, end: 22:55 };
+    action: zoom_fov { from: 125, to: 95 };
+    action: point_view { az: 180, alt: 55 };
     action: date_card { label: 'demo.cartello.universo.ritornoCasa', time: show };
   }
 }`

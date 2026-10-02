@@ -10,7 +10,10 @@
  * posto di oggi. Si apre vista dall'alto e si gira col dito come la vista
  * 3D (v401: `cosm.az`, `cosm.elev`), e ci si arriva anche solo
  * allontanandosi dal Sistema Solare con lo zoom (`solZoomVersoIlCosmo` in
- * app.js); avvicinandosi oltre Kuiper si torna fra i pianeti.
+ * app.js). Dalla v404 la scala comincia **dalla Terra** — la Terra, la Luna,
+ * i pianeti di roccia, il Sistema Solare, alla loro misura vera — e in fondo,
+ * avvicinandosi alla Terra finché riempie lo schermo, si atterra nel
+ * planetario: dal cielo di casa all'universo osservabile è una carta sola.
  *
  * La domanda a cui risponde è una sola, e si sbaglia facilmente: *quanto
  * sono lontane le Voyager?* Lontanissime, per noi — più di un giorno luce
@@ -130,9 +133,12 @@ const cosmScalare = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
  * I passaggi avvengono dove la struttura che sta cambiando piano è o una
  * sfera (la nube di Oort) o più piccola di qualche pixel (la Via Lattea
  * vista dal Superammasso): il giro non si vede quasi. */
-const COSM_PIANO_SONDE = [1.95, 2.22];
-const COSM_PIANO_GAL = [4.45, 5.25];
-const COSM_PIANO_SG = [12.0, 12.7];
+// I passaggi sono larghi quasi mezza decade (v404): con un passaggio stretto
+// lo zoom di una rotellina girava la carta di scatto, e un giro della carta
+// che si vede accadere sotto le dita si legge come un errore
+const COSM_PIANO_SONDE = [1.9, 2.32];
+const COSM_PIANO_GAL = [4.35, 5.35];
+const COSM_PIANO_SG = [11.9, 12.8];
 
 function cosmLiscia(a, b, x) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -225,13 +231,33 @@ const COSM_NASO = cosmDaEcl(255.7, 5.1, 1);
 const COSM_CENTRO_LIC = cosmDaGal(135, 6, 11 * COSM_AL);
 const COSM_CENTRO_BOLLA = cosmDaGal(200, 10, 80 * COSM_AL);
 
-/* Le undici strutture. Per ognuna: `r` il raggio (in UA) a cui si
+// Le misure del Sistema Solare vicino, in UA: la scala comincia dalla Terra
+// (v404) e i corpi lì si disegnano alla loro misura vera
+const COSM_TERRA_R_UA = 6371.0 / COSM_KM_UA;
+const COSM_LUNA_R_UA = 1737.4 / COSM_KM_UA;
+const COSM_LUNA_ORBITA_UA = 384400 / COSM_KM_UA;
+const COSM_SOLE_R_UA = 695700 / COSM_KM_UA;
+
+/* Le quindici tappe. Per ognuna: `r` il raggio (in UA) a cui si
  * inquadra e da cui si giudica se è in vista, `centro` (vettore galattico,
  * o null per il Sole), `inquadra` quanta vista attorno a lei serve, e `id`
  * esterno per le demo (`cosmic_scale { to: 'oort' }`). Le misure scritte
  * nelle schede vengono dal dizionario: qui ci sono solo i numeri da cui si
- * disegna. */
+ * disegna.
+ *
+ * Le prime quattro (v404) sono la scala **sotto** Kuiper: la Terra, la Terra
+ * con la Luna, i pianeti di roccia, il Sistema Solare fino a Nettuno. Prima la
+ * carta cominciava a Kuiper e sotto si tornava alla vista 3D, che ha un altro
+ * metro (distanze compresse, corpi ingranditi): il passaggio era un cambio di
+ * disegno nel mezzo di uno zoom. Adesso la scala è una sola, dalla Terra
+ * all'universo, e in fondo — avvicinandosi alla Terra finché riempie lo
+ * schermo — si atterra nel planetario. La Terra non sta ferma: il suo centro
+ * è `terra` (`cosmCentroDi`), riletto all'istante della carta. */
 const COSM_STRUTTURE = [
+  { id: 'terra', demo: 'earth', r: COSM_TERRA_R_UA, vista: COSM_TERRA_R_UA * 2.3, centroDi: 'terra', vicino: true },
+  { id: 'terraLuna', demo: 'earth_moon', r: COSM_LUNA_ORBITA_UA, vista: COSM_LUNA_ORBITA_UA * 1.32, centroDi: 'terra', vicino: true },
+  { id: 'pianetiInterni', demo: 'inner_planets', r: 1.524, centro: null, vista: 1.95, raggio: true },
+  { id: 'pianeti', demo: 'planets', r: 30.07, centro: null, vista: 37, raggio: true },
   { id: 'kuiper', demo: 'kuiper', r: 50, interno: 30, centro: null, vista: 64, raggio: true },
   { id: 'eliopausa', demo: 'heliopause', r: 121.6, centro: null, vista: 230, raggio: true },
   { id: 'oort', demo: 'oort', r: 100000, interno: 1000, centro: null, vista: 128000, raggio: true },
@@ -284,9 +310,17 @@ const COSM_TAPPE = [
   { id: 'sirio', sonda: 'voyager2', anni: 296000 }
 ];
 
-// La scala: logaritmo in base dieci di metà del lato corto, in UA
-const COSM_L_MIN = 0.25;
+// La scala: logaritmo in base dieci di metà del lato corto, in UA. In fondo
+// c'è la Terra che riempie lo schermo: lì, con lo zoom, si atterra nel
+// planetario (`COSM_L_ATTERRA`, la stessa misura da cui parte il volo
+// d'atterraggio di app.js: il raggio della Terra al 42% del lato corto).
+const COSM_L_ATTERRA = Math.log10(COSM_TERRA_R_UA / 0.84);
+const COSM_L_MIN = COSM_L_ATTERRA - 0.06;
 const COSM_L_MAX = 15.85;
+// Fino a qui la carta tiene la Terra al centro, da qui ai pianeti di roccia
+// scivola sul Sole: allontanandosi dalla Terra la si deve vedere finché il
+// Sole non entra nel quadro
+const COSM_L_TERRA_FINO = -0.55;
 
 // =====================================================================
 // 3. Lo stato
@@ -305,6 +339,13 @@ const cosm = {
   evidenza: null,         // una struttura da far risaltare (le demo)
   regia: false,           // una demo sta guidando la scala
   ultimoTs: 0,
+  // Lo zoom attorno a un punto (v404): il punto della carta che sta sotto al
+  // dito e il pixel dove deve restare mentre la scala scivola. Prima lo
+  // spostamento si applicava tutto subito e la scala arrivava dopo, quindi
+  // per un quarto di secondo il punto scappava via e poi tornava.
+  ancoraZoom: null,
+  // La corsa lasciata dal dito (px/s), che si spegne da sé come nella vista 3D
+  inerzia: null,
   sprite: {}, nuvole: {}, sagome: {},
   schermo: { sonde: [], segni: [], traccia: null },
   ui: null
@@ -358,6 +399,55 @@ function cosmTerra(ms) {
   } catch (e) { v = null; }
   cosmTerraCache = { ms: ora, v };
   return v;
+}
+
+// La Terra, la Luna e i pianeti all'istante della carta, per disegnarli alla
+// loro misura vera (v404). A differenza di `cosmTerra` qui non c'è memoria
+// all'ora: alla scala della Terra in un'ora il pianeta fa sette schermi di
+// strada, e il centro della carta lo deve seguire istante per istante. La
+// memoria è dell'istante esatto, e l'istante è uno per fotogramma
+// (`cosm.msFotogramma`): così tutto il disegno parla dello stesso momento.
+const COSM_PIANETI = [
+  { id: 'Mercury', km: 4879, colore: '#cbd5e1' }, { id: 'Venus', km: 12104, colore: '#fde68a' },
+  { id: 'Earth', km: 12742, colore: '#60a5fa' }, { id: 'Mars', km: 6779, colore: '#f87171' },
+  { id: 'Jupiter', km: 139820, colore: '#fbbf24' }, { id: 'Saturn', km: 116460, colore: '#fcd34d' },
+  { id: 'Uranus', km: 50724, colore: '#67e8f9' }, { id: 'Neptune', km: 49244, colore: '#93c5fd' }
+];
+function cosmTabellaPianeti() {
+  return typeof SOL_PIANETI !== 'undefined' && SOL_PIANETI.length ? SOL_PIANETI : COSM_PIANETI;
+}
+let cosmCorpiMemo = { ms: NaN, v: null };
+function cosmCorpi(ms) {
+  if (cosmCorpiMemo.ms === ms) return cosmCorpiMemo.v;
+  let v = null;
+  if (typeof Astronomy !== 'undefined' && Number.isFinite(ms) && Math.abs(ms - Date.now()) < 3000 * COSM_ANNO_MS) {
+    try {
+      const t = Astronomy.MakeTime(new Date(ms));
+      const ecl = h => { const e = Astronomy.Ecliptic(h).vec; return { x: e.x, y: e.y, z: e.z }; };
+      const asse = id => (typeof solAsse === 'function' ? solAsse(id, t) : [0, 0, 1]);
+      const pianeti = cosmTabellaPianeti().map(p => Object.assign({}, p, { pos: ecl(Astronomy.HelioVector(p.id, t)), asse: asse(p.id) }));
+      const terra = pianeti.find(p => p.id === 'Earth');
+      v = { ms, pianeti, terra: terra ? terra.pos : null, luna: ecl(Astronomy.GeoMoon(t)), asseLuna: asse('Moon') };
+    } catch (e) { v = null; }
+  }
+  cosmCorpiMemo = { ms, v };
+  return v;
+}
+function cosmCorpiOra() {
+  return cosmCorpi(Number.isFinite(cosm.msFotogramma) ? cosm.msFotogramma : cosmIstante());
+}
+// La Terra in coordinate galattiche, cioè quelle di ogni altra cosa della
+// carta. Senza effemeridi (le prove senza browser) è il Sole: a ogni scala
+// in cui la differenza conta, le effemeridi ci sono.
+function cosmTerraGal() {
+  const c = cosmCorpiOra();
+  return c && c.terra ? cosmEclAGal(c.terra) : cosmVettore(0, 0, 0);
+}
+// Il centro di una tappa: quello scritto, o quello che si muove
+function cosmCentroDi(s) {
+  if (!s) return null;
+  if (s.centroDi === 'terra') return cosmTerraGal();
+  return s.centro;
 }
 
 // Tutto quello che una scheda o un'etichetta vuole sapere di una sonda
@@ -438,6 +528,9 @@ function cosmU(chiave, valore) {
 function cosmTestoDistanza(ua) {
   if (!Number.isFinite(ua)) return '—';
   const al = ua / COSM_UA_AL;
+  // Sotto i dieci milioni di chilometri l'unità astronomica è un numero con
+  // troppi zeri: la Terra e la Luna si misurano in chilometri (v404)
+  if (ua < 0.067) return cosmU('cosmo.unita.km', ua * COSM_KM_UA);
   if (al < 0.05) return cosmU('cosmo.unita.ua', ua);
   if (al < 1e6) return cosmU('cosmo.unita.al', al);
   if (al < 1e9) return cosmU('cosmo.unita.mal', al / 1e6);
@@ -447,6 +540,10 @@ function cosmTestoDistanza(ua) {
 // Una durata in anni, dalla frazione di giorno ai miliardi
 function cosmTestoAnni(anni) {
   if (!Number.isFinite(anni)) return '—';
+  const secondi = anni * 365.25 * 86400;
+  // La luce attraverso la Terra o fino alla Luna: secondi e minuti, non «0 h 0 min»
+  if (secondi < 60) return cosmU('cosmo.unita.secondi', secondi);
+  if (secondi < 3600) { const m = Math.round(secondi / 60); return cosmT('cosmo.unita.minuti', { n: cosmNum(m), count: m }); }
   if (anni < 2 / 365.25) {
     const ore = anni * 365.25 * 24;
     const h = Math.floor(ore), m = Math.round((ore - h) * 60);
@@ -463,6 +560,7 @@ function cosmTestoAnni(anni) {
 // Il tempo che la luce impiega a fare quei chilometri: ore e minuti
 function cosmTestoLuce(ua) {
   const s = ua * COSM_LUCE_S_UA;
+  if (s < 3600) return cosmTestoAnni(s / (365.25 * 86400));
   const h = Math.floor(s / 3600), m = Math.round((s - h * 3600) / 60);
   return cosmT('cosmo.unita.ore', { h, m });
 }
@@ -480,32 +578,54 @@ function cosmTestoAnno(ms) {
 // 6. La camera della carta
 // =====================================================================
 
-// A che scala si inquadra una struttura (o le sonde di oggi)
+// A che scala si inquadra una struttura (o le sonde di oggi). Due nomi non
+// sono tappe ma punti di raccordo con la vista 3D (v404): `arrival` è la
+// scala a cui la Terra ha la misura che le dà adesso la vista 3D — è da lì
+// che una demo prende la carta senza scatti dopo il volo dal planetario — e
+// `landing` è quella da cui parte l'atterraggio nel planetario.
 function cosmLDi(id) {
   if (id === 'voyager' || id === 'probes') {
     const m = cosmMisuraSonda('voyager1', Date.now());
     return Math.log10(Math.max(60, (m ? m.dalSole : 170) * 1.55));
   }
-  if (id === 'planets' || id === 'pianeti') return Math.log10(34);
+  if (id === 'landing' || id === 'atterraggio') return COSM_L_ATTERRA;
+  if (id === 'arrival' || id === 'arrivo') {
+    const L = cosmLDallaVista3D();
+    return Number.isFinite(L) ? L : Math.log10(COSM_TERRA_R_UA * 2.3);
+  }
   const s = COSM_PER_ID.get(id) || COSM_STRUTTURE.find(x => x.demo === id);
   return s ? Math.log10(s.vista) : null;
 }
 
+// La scala a cui la Terra della carta è grande quanto quella della vista 3D
+function cosmLDallaVista3D() {
+  if (typeof sol === 'undefined' || !sol.pianeti || typeof solRaggioCorpo !== 'function') return NaN;
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!terra || !(sol.L > 0) || !(sol.H > 0)) return NaN;
+  const r = solRaggioCorpo(terra);
+  const lato = Math.max(60, Math.min(sol.L, sol.H) / 2);
+  return r > 0 ? Math.log10(COSM_TERRA_R_UA * lato / r) : NaN;
+}
+
 // Il centro della carta per una scala: fra un'inquadratura e la successiva
 // si scivola con una curva morbida, così lo spostamento è sempre una
-// frazione della vista e non salta mai.
+// frazione della vista e non salta mai. Sotto i pianeti di roccia il centro
+// è la Terra (v404): uscendo dal planetario è da lei che si parte, e il
+// Sole prende il suo posto solo quando entra nel quadro.
 function cosmAncore(pesi) {
-  const punti = [{ L: COSM_L_MIN, c: { x: 0, y: 0, z: 0 } }];
+  const terra = cosmSullaCarta(cosmTerraGal(), pesi);
+  const punti = [{ L: COSM_L_MIN, c: terra }, { L: COSM_L_TERRA_FINO, c: terra }];
   COSM_STRUTTURE.forEach(s => {
     // L'ancora è il centro della struttura, o — per quelle che hanno noi sul
     // bordo (la nube locale, la Vergine, Laniakea) — un punto fra lei e il
     // Sole, così nel quadro ci stanno tutt'e due
-    const a = s.ancora || s.centro;
+    const a = s.ancora || cosmCentroDi(s);
     punti.push({ L: Math.log10(s.vista), c: a ? cosmSullaCarta(a, pesi) : { x: 0, y: 0, z: 0 } });
   });
-  return punti;
+  return punti.sort((x, y) => x.L - y.L);
 }
-function cosmCentro(L) {
+// L'ancora della scala vista dalla camera, senza lo spostamento a mano
+function cosmAncoraRuotata(L) {
   const pesi = cosmPesiPiano(L);
   const a = cosmAncore(pesi);
   let c = a[a.length - 1].c;
@@ -518,15 +638,21 @@ function cosmCentro(L) {
       break;
     }
   }
+  return cosmRuota(c);
+}
+function cosmCentro(L) {
   // Il centro è l'ancora vista dalla camera, più lo spostamento a mano (che
   // è nel piano dello schermo)
-  const r = cosmRuota(c);
+  const r = cosmAncoraRuotata(L);
   return { x: r.x + cosm.pan.x, y: r.y + cosm.pan.y };
 }
 
+// Quanti pixel vale metà del lato corto
+function cosmLato(W, H) { return Math.max(60, Math.min(W, H) / 2); }
+
 // Quello che serve per proiettare in questo fotogramma
 function cosmCamera(L, W, H) {
-  const lato = Math.max(60, Math.min(W, H) / 2);
+  const lato = cosmLato(W, H);
   const s = lato / Math.pow(10, L);
   const pesi = cosmPesiPiano(L);
   const c = cosmCentro(L);
@@ -558,38 +684,176 @@ function cosmVisibilita(rpx, lato, dentro = 4, fuori = 9) {
 }
 
 // Il volo fra due scale. La durata cresce con le decade da attraversare,
-// ma meno che in proporzione: dieci decade non devono durare un minuto.
+// ma meno che in proporzione: dieci decade non devono durare un minuto. Il
+// profilo è quintico (parte e arriva con accelerazione nulla, v404): con la
+// curva cubica di prima l'arrivo su una tappa si sentiva come una frenata.
 function cosmVolaA(L, opzioni = {}) {
   if (!Number.isFinite(L)) return;
-  const a = Math.max(COSM_L_MIN, Math.min(COSM_L_MAX, L));
-  const durata = opzioni.immediato ? 0 : 0.7 + 0.42 * Math.sqrt(Math.abs(a - cosm.L)) * 1.6;
+  const a = Math.max(COSM_L_MIN + 0.02, Math.min(COSM_L_MAX, L));
+  const salto = Math.abs(a - cosm.L);
+  const durata = opzioni.immediato ? 0 : 0.85 + 0.55 * Math.sqrt(salto);
+  cosm.ancoraZoom = null;
+  cosm.inerzia = null;
   cosm.volo = durata ? { da: cosm.L, a, t0: performance.now(), durata: durata * 1000, panDa: { ...cosm.pan } } : null;
   if (!durata) { cosm.L = a; cosm.pan = { x: 0, y: 0 }; }
   cosm.Lvoluto = a;
+}
+function cosmQuintica(u) { return u * u * u * (u * (u * 6 - 15) + 10); }
+
+// Lo zoom attorno a un punto dello schermo (v404). Si ricorda il punto della
+// carta sotto al dito e, a ogni fotogramma, si rifà lo spostamento perché
+// resti sotto al dito alla scala di adesso — anche mentre la scala scivola e
+// anche mentre l'ancora delle tappe si sposta. Allontanandosi lo spostamento
+// a mano si riassorbe un poco per decade (`COSM_RIASSORBE`), così chi si
+// allontana dalla Terra col dito di lato ritrova comunque, a quella scala,
+// la Galassia in mezzo allo schermo.
+const COSM_RIASSORBE = 1.15;
+function cosmAncoraAlPunto(sx, sy) {
+  const cam = cosm.cam;
+  if (!cam) return null;
+  const c = cosmCentro(cosm.L);
+  const s = cosmLato(cam.W, cam.H) / Math.pow(10, cosm.L);
+  // Zoomando su un corpo (un pianeta, la Luna, il Sole) si aggancia lui e
+  // non il punto: alla scala dei pianeti un pixel vale decimi di unità
+  // astronomica, e un punto «quasi sulla Terra» dopo cinque decade di zoom è
+  // a trenta schermi da lei. Agganciato, il corpo resta sotto al dito e
+  // scivola verso il centro man mano che ci si avvicina — è quello che si
+  // voleva guardare.
+  const corpo = cosmCorpoNelPunto(sx, sy);
+  return { sx, sy, sx0: sx, sy0: sy, L0: cosm.L, corpo,
+    q: { x: c.x + (sx - cam.W / 2) / s, y: c.y - (sy - cam.H / 2) / s } };
+}
+// Dove sta un corpo, in coordinate galattiche, all'istante della carta
+function cosmPosizioneCorpo(id) {
+  if (id === 'Sun') return cosmVettore(0, 0, 0);
+  const c = cosmCorpiOra();
+  if (!c) return null;
+  if (id === 'Moon') return cosmEclAGal({ x: c.terra.x + c.luna.x, y: c.terra.y + c.luna.y, z: c.terra.z + c.luna.z });
+  const p = c.pianeti.find(x => x.id === id);
+  return p ? cosmEclAGal(p.pos) : null;
+}
+function cosmCorpoNelPunto(sx, sy) {
+  const cam = cosm.cam, c = cosmCorpiOra();
+  if (!cam || !c || cam.L > 2.6) return null;
+  const ids = ['Sun', 'Moon'].concat(c.pianeti.map(p => p.id));
+  let scelto = null, migliore = Infinity;
+  ids.forEach(id => {
+    const v = cosmPosizioneCorpo(id);
+    if (!v) return;
+    const q = cam.p(v);
+    const km = id === 'Sun' ? 1391400 : id === 'Moon' ? 3474.8 : (c.pianeti.find(p => p.id === id) || {}).km || 0;
+    const r = km / 2 / COSM_KM_UA * cam.s;
+    const d = Math.hypot(q.x - sx, q.y - sy);
+    // La Luna si aggancia solo quando è staccata dalla Terra sullo schermo
+    if (id === 'Moon' && Math.hypot(c.luna.x, c.luna.y, c.luna.z) * cam.s < 12) return;
+    if (d < Math.max(24, r + 10) && d < migliore) { migliore = d; scelto = id; }
+  });
+  return scelto;
+}
+function cosmApplicaAncora() {
+  const z = cosm.ancoraZoom, cam = cosm.cam;
+  if (!z || !cam) return;
+  const s = cosmLato(cam.W, cam.H) / Math.pow(10, cosm.L);
+  const anc = cosmAncoraRuotata(cosm.L);
+  let q = z.q, sx = z.sx, sy = z.sy;
+  if (z.corpo) {
+    const v = cosmPosizioneCorpo(z.corpo);
+    if (v) {
+      q = cosmRuota(cosmSullaCarta(v, cosmPesiPiano(cosm.L)));
+      // Avvicinandosi il corpo scivola al centro: dopo tre decade è lì
+      if (!cosm.ditaGiu) {
+        const w = Math.exp(-0.75 * Math.abs(cosm.L - z.L0));
+        sx = cam.W / 2 + (z.sx0 - cam.W / 2) * w;
+        sy = cam.H / 2 + (z.sy0 - cam.H / 2) * w;
+        z.sx = sx; z.sy = sy;
+      }
+    }
+  }
+  let px = q.x - anc.x - (sx - cam.W / 2) / s;
+  let py = q.y - anc.y + (sy - cam.H / 2) / s;
+  if (cosm.L > z.L0 && !z.corpo) {
+    const w = Math.exp(-(cosm.L - z.L0) * COSM_RIASSORBE);
+    px *= w; py *= w;
+  }
+  if (Number.isFinite(px) && Number.isFinite(py)) cosm.pan = { x: px, y: py };
+}
+
+// L'inerzia della carta: le stesse costanti della vista 3D, perché il dito
+// che lascia andare la carta deve sentire la stessa frenata
+const COSM_TAU_INERZIA = 0.48;
+const COSM_TAU_LANCIO = 0.06;
+const COSM_INERZIA_MIN = 7;
+const COSM_INERZIA_MAX = 3200;
+const COSM_GIRO_PER_PIXEL = 0.008;
+const COSM_ELEV_PER_PIXEL = 0.32;
+function cosmTrascina(dx, dy, tipo) {
+  const cam = cosm.cam;
+  if (tipo === 'giro') {
+    cosm.az += dx * COSM_GIRO_PER_PIXEL;
+    cosm.elev = Math.max(-89, Math.min(89.999, cosm.elev + dy * COSM_ELEV_PER_PIXEL));
+    cosm.azVoluto = cosm.az; cosm.elevVoluta = cosm.elev;
+  } else if (tipo === 'inclina') {
+    cosm.elev = Math.max(-89, Math.min(89.999, cosm.elev + dy * COSM_ELEV_PER_PIXEL));
+    cosm.elevVoluta = cosm.elev;
+  } else if (cam) {
+    const s = cosmLato(cam.W, cam.H) / Math.pow(10, cosm.L);
+    cosm.pan.x -= dx / s;
+    cosm.pan.y += dy / s;
+    // Lo spostamento a mano non va oltre qualche decina di viste: chi si
+    // perde ha il ⟲, e non deve ritrovarsi a dieci schermi dal niente
+    const lim = Math.pow(10, cosm.L) * 40;
+    cosm.pan.x = Math.max(-lim, Math.min(lim, cosm.pan.x));
+    cosm.pan.y = Math.max(-lim, Math.min(lim, cosm.pan.y));
+  }
 }
 
 function cosmPassoCamera(ora) {
   if (cosm.regia) return;
   // La camera scivola verso dove è stata chiesta (il ⟲, l'ingresso): il dito
   // invece la muove direttamente, e scrive le due grandezze insieme
-  const dtc = cosm.ultimoTs ? Math.min(0.1, (ora - cosm.ultimoTs) / 1000) : 0;
-  const kc = 1 - Math.exp(-dtc / 0.2);
+  const dt = cosm.ultimoTs ? Math.min(0.1, (ora - cosm.ultimoTs) / 1000) : 0;
+  const kc = 1 - Math.exp(-dt / 0.2);
   if (Math.abs(cosm.elevVoluta - cosm.elev) > 0.01) cosm.elev += (cosm.elevVoluta - cosm.elev) * kc;
   else cosm.elev = cosm.elevVoluta;
   if (Math.abs(cosm.azVoluto - cosm.az) > 1e-4) cosm.az += (cosm.azVoluto - cosm.az) * kc;
   else cosm.az = cosm.azVoluto;
+  // La corsa del dito che continua da sola
+  const i = cosm.inerzia;
+  if (i && dt && !cosm.ditaGiu) {
+    cosmTrascina(i.vx * dt, i.vy * dt, i.tipo);
+    const freno = Math.exp(-dt / COSM_TAU_INERZIA);
+    i.vx *= freno; i.vy *= freno;
+    if (Math.hypot(i.vx, i.vy) < COSM_INERZIA_MIN) cosm.inerzia = null;
+  }
   if (cosm.volo) {
     const v = cosm.volo;
     const u = Math.min(1, (ora - v.t0) / v.durata);
-    const k = u * u * (3 - 2 * u);
+    const k = cosmQuintica(u);
     cosm.L = v.da + (v.a - v.da) * k;
     cosm.pan = { x: v.panDa.x * (1 - k), y: v.panDa.y * (1 - k) };
     if (u >= 1) { cosm.volo = null; cosm.Lvoluto = cosm.L; }
     return;
   }
-  const dt = cosm.ultimoTs ? Math.min(0.1, (ora - cosm.ultimoTs) / 1000) : 0;
-  if (Math.abs(cosm.Lvoluto - cosm.L) > 1e-4) cosm.L += (cosm.Lvoluto - cosm.L) * (1 - Math.exp(-dt / 0.16));
+  if (Math.abs(cosm.Lvoluto - cosm.L) > 1e-4) cosm.L += (cosm.Lvoluto - cosm.L) * (1 - Math.exp(-dt / 0.14));
   else cosm.L = cosm.Lvoluto;
+  if (cosm.ancoraZoom) {
+    cosmApplicaAncora();
+    // Un corpo agganciato si continua a seguire anche a scala ferma: il
+    // tempo scorre, e la Terra a quella scala fa uno schermo in pochi minuti
+    if (cosm.L === cosm.Lvoluto && !cosm.ditaGiu && !cosm.ancoraZoom.corpo) cosm.ancoraZoom = null;
+  }
+  // La riga della scala trascinata riporta la carta sull'ancora delle tappe
+  if (cosm.riassorbi && dt) {
+    const k = Math.exp(-dt / 0.35);
+    cosm.pan = { x: cosm.pan.x * k, y: cosm.pan.y * k };
+    if (Math.hypot(cosm.pan.x, cosm.pan.y) < Math.pow(10, cosm.L) * 1e-3) { cosm.pan = { x: 0, y: 0 }; cosm.riassorbi = false; }
+  }
+  // In fondo alla scala, la Terra riempie lo schermo: si atterra. Solo se è
+  // lei che si sta guardando — zoomando nel vuoto accanto la scala si ferma
+  if (cosm.L <= COSM_L_ATTERRA + 0.004 && cosm.Lvoluto <= COSM_L_ATTERRA + 0.004) {
+    if (cosmTerraAlCentro()) cosmAtterra();
+    else cosm.Lvoluto = Math.max(cosm.Lvoluto, COSM_L_ATTERRA + 0.01);
+  }
 }
 
 // =====================================================================
@@ -785,7 +1049,7 @@ function cosmSpriteRagnatela() {
 function cosmPreparaMateriali() {
   const lavori = [cosmSpriteViaLattea, cosmSpriteGalassia, cosmSpriteRagnatela,
     () => cosmNuvola('oort'), () => cosmNuvola('laniakea'), () => cosmNuvola('vergine'), () => cosmNuvola('nane'),
-    () => cosmNuvola('kuiper'), () => cosmScia('voyager1'), () => cosmScia('voyager2')];
+    () => cosmNuvola('kuiper'), () => cosmNuvola('asteroidi')];
   const quando = typeof requestIdleCallback === 'function' ? f => requestIdleCallback(f, { timeout: 600 }) : f => setTimeout(f, 30);
   const prossimo = () => { const f = lavori.shift(); if (!f) return; try { f(); } catch (e) { /* niente */ } quando(prossimo); };
   quando(prossimo);
@@ -801,11 +1065,33 @@ function cosmNuvola(nome) {
   if (cosm.nuvole[nome]) return cosm.nuvole[nome];
   const punti = [];
   if (nome === 'kuiper') {
+    // I plutini in risonanza 3:2 con Nettuno a 39,4 UA, la fascia classica
+    // fra 42 e 48, e il disco diffuso che si allarga oltre il precipizio
     const d = cosmDado(3);
-    for (let i = 0; i < 700; i++) {
-      const r = 39.4 + (d() < 0.25 ? 0 : (d() - 0.4) * 14) + cosmGauss(d) * 1.2;
-      const a = d() * Math.PI * 2, z = cosmGauss(d) * 0.12 * r;
-      punti.push(cosmEclAGal(cosmVettore(r * Math.cos(a), r * Math.sin(a), z)));
+    for (let i = 0; i < 1500; i++) {
+      const x = d();
+      const r = x < 0.22 ? 39.4 + cosmGauss(d) * 0.6
+        : x < 0.82 ? 42 + d() * 5.8 + cosmGauss(d) * 0.5
+          : 48 + Math.pow(d(), 2) * 40;
+      const a = d() * Math.PI * 2, z = cosmGauss(d) * (x < 0.82 ? 0.08 : 0.25) * r;
+      const p = cosmEclAGal(cosmVettore(r * Math.cos(a), r * Math.sin(a), z));
+      p.luce = 0.35 + d() * 0.65;
+      punti.push(p);
+    }
+  } else if (nome === 'asteroidi') {
+    // La fascia principale fra Marte e Giove, coi vuoti di Kirkwood dove le
+    // orbite sono in risonanza con Giove (4:1, 3:1, 5:2, 7:3, 2:1): a
+    // differenza della vista 3D qui le distanze sono vere, e i vuoti stanno
+    // dove stanno
+    const d = cosmDado(9);
+    const vuoti = [2.065, 2.502, 2.825, 2.958, 3.279];
+    for (let i = 0; i < 2600 && punti.length < 1700; i++) {
+      const r = 2.1 + Math.pow(d(), 0.9) * 1.25;
+      if (vuoti.some(v => Math.abs(r - v) < 0.028) && d() < 0.9) continue;
+      const a = d() * Math.PI * 2, z = cosmGauss(d) * 0.1 * r;
+      const p = cosmEclAGal(cosmVettore(r * Math.cos(a), r * Math.sin(a), z));
+      p.luce = 0.3 + d() * 0.7;
+      punti.push(p);
     }
   } else if (nome === 'oort') {
     // La nube interna (di Hills) più fitta, l'esterna rada fino a centomila
@@ -905,7 +1191,8 @@ function cosmNomeStruttura(ctx, cam, id, x, y, alfa, sopra) {
   const nome = cosmT(`cosmo.${id}.nome`), misura = cosmT(`cosmo.${id}.breve`);
   const xx = Math.max(90, Math.min(W - 90, x));
   const cima = cosm.regia ? (cosm.rigaY || 26) + 30 : 70;
-  const yy = Math.max(cima, Math.min(H - (cosm.fondoPx || 120) - 26, y - (sopra || 0)));
+  // Sopra alla riga della scala, che in fondo occupa una fascia sua
+  const yy = Math.max(cima, Math.min(H - (cosm.fondoPx || 120) - (cosm.regia ? 26 : 70), y - (sopra || 0)));
   const evid = cosm.evidenza === id || (cosm.scelta && cosm.scelta.id === id);
   ctx.globalAlpha = Math.min(1, alfa * 1.15);
   cosmScritta(ctx, nome, xx, yy, evid ? '#fde68a' : '#e2e8f0', evid ? 15 : 13, 'center', 650);
@@ -954,16 +1241,273 @@ function cosmTracciaSagoma(ctx, cam, centro, raggio, forma, assi) {
 const COSM_ASSI_GAL = [cosmVettore(1, 0, 0), cosmVettore(0, 1, 0)];
 const COSM_ASSI_SG = [COSM_SG_X, COSM_SG_Y];
 
-// --- Il Sistema Solare: orbite, Kuiper, pianeti -----------------------------
-const COSM_ORBITE = [
-  { id: 'Earth', ua: 1, colore: '#60a5fa' }, { id: 'Jupiter', ua: 5.2, colore: '#fcd34d' },
-  { id: 'Saturn', ua: 9.54, colore: '#fde68a' }, { id: 'Uranus', ua: 19.2, colore: '#a5f3fc' },
-  { id: 'Neptune', ua: 30.07, colore: '#93c5fd' }
-];
-function cosmDisegnaPianeti(ctx, cam) {
-  const ms = cosmIstante();
-  COSM_ORBITE.forEach(o => {
-    const rpx = o.ua * cam.s;
+// --- Il Sistema Solare alla sua misura vera (v404) ---------------------------
+/* Sotto Kuiper la carta è la stessa di sopra: distanze vere, corpi alla loro
+ * misura vera. Vuol dire che la Terra, vista a scala dei pianeti di roccia, è
+ * un granello di un decimo di pixel — e si disegna lo stesso, con un pallino
+ * minimo e un alone, perché un pianeta che sparisce lascerebbe l'orbita senza
+ * chi la percorre. Quando invece è grande (ci si è avvicinati) ogni corpo ha
+ * la faccia della vista 3D: la Terra vera di §7.7-ter (coste, notte, luci
+ * delle città, il puntino di casa) e le facce dipinte di §7.3.2, con la fase
+ * vista da questa camera. Sono le stesse funzioni di app.js, chiamate con gli
+ * assi di questa camera: sotto Kuiper la carta è il piano dell'eclittica, e
+ * la terna di `cosmRuota` è la stessa di `solAssiVista`. */
+function cosmAssiCamera() {
+  const a = cosm.az || 0, e = (cosm.elev == null ? 90 : cosm.elev) * COSM_D2R;
+  const ca = Math.cos(a), sa = Math.sin(a), ce = Math.cos(e), se = Math.sin(e);
+  return { destra: [ca, -sa, 0], alto: [sa * se, ca * se, ce], verso: [-sa * ce, -ca * ce, se] };
+}
+function cosmSulloSchermo(p, cam, margine) {
+  return p.x > -margine && p.y > -margine && p.x < cam.W + margine && p.y < cam.H + margine;
+}
+function cosmNomeCorpo(id) {
+  return typeof nomeCorpo === 'function' ? nomeCorpo(id) : id;
+}
+
+// L'orbita di un pianeta: quella intera già campionata dalla vista 3D (le
+// stesse posizioni, quindi lo stesso disegno), o — quando ci si è avvicinati
+// tanto che fra due campioni l'orbita sarebbe una spezzata visibile — un arco
+// corto campionato fitto attorno al punto in cui il pianeta sta adesso
+const COSM_ORBITA_INTERA_MAX_PX = 480;
+function cosmTracciaOrbita(id) {
+  const t = typeof sol !== 'undefined' && sol.orbite && sol.orbite.tracce;
+  return t ? t.find(x => x.id === id) : null;
+}
+function cosmArcoOrbita(p, ms, cam) {
+  if (typeof Astronomy === 'undefined') return null;
+  const a = Math.hypot(p.pos.x, p.pos.y, p.pos.z) || 1;
+  const vista = Math.max(cam.W, cam.H) / cam.s;
+  const ampio = Math.min(Math.PI, 2.6 * vista / a);
+  const anni = Math.pow(a, 1.5);
+  // L'arco si centra sul pezzo d'orbita più vicino al centro dello schermo,
+  // che è quasi sempre dove sta il pianeta — ma non per forza: guardando la
+  // Terra da vicino passa nel quadro anche l'orbita di Venere, senza Venere
+  let centroMs = ms;
+  const t = cosmTracciaOrbita(p.id);
+  if (t && t.punti.length > 2) {
+    let migliore = Infinity, k = 0;
+    t.punti.forEach((v, i) => {
+      const q = cam.p(cosmEclAGal(v));
+      const d = Math.hypot(q.x - cam.W / 2, q.y - cam.H / 2);
+      if (d < migliore) { migliore = d; k = i; }
+    });
+    if (migliore > Math.hypot(cam.W, cam.H) * 1.2 + a * cam.s * 0.02) return null;
+    centroMs = ms + (k / (t.punti.length - 1) - 0.5) * anni * COSM_ANNO_MS;
+  }
+  const passo = Math.round(Math.log2(ampio) * 2);
+  const chiave = `${p.id}|${Math.round(centroMs / 60000)}|${passo}`;
+  cosm.archi = cosm.archi || new Map();
+  if (cosm.archi.has(chiave)) return cosm.archi.get(chiave);
+  const punti = [];
+  try {
+    for (let i = -40; i <= 40; i++) {
+      const d = new Date(centroMs + i / 40 * ampio / (2 * Math.PI) * anni * COSM_ANNO_MS);
+      const e = Astronomy.Ecliptic(Astronomy.HelioVector(p.id, Astronomy.MakeTime(d))).vec;
+      punti.push(cosmEclAGal(cosmVettore(e.x, e.y, e.z)));
+    }
+  } catch (e) { return null; }
+  if (cosm.archi.size > 24) cosm.archi.clear();
+  cosm.archi.set(chiave, punti);
+  return punti;
+}
+function cosmDisegnaOrbite(ctx, cam, corpi) {
+  corpi.pianeti.forEach(p => {
+    const a = Math.hypot(p.pos.x, p.pos.y, p.pos.z);
+    const rpx = a * cam.s;
+    let alfa = cosmVisibilita(rpx, cam.lato, 6, 40);
+    let punti = null;
+    if (rpx > COSM_ORBITA_INTERA_MAX_PX) {
+      // Da vicino resta il solo tratto che passa nello schermo: la strada che
+      // il pianeta sta facendo, appena accennata
+      punti = cosmArcoOrbita(p, corpi.ms, cam);
+      alfa = 0.55;
+    } else if (alfa > 0.02) {
+      const t = cosmTracciaOrbita(p.id);
+      punti = t ? t.punti.map(v => cosmEclAGal(v)) : null;
+      if (!punti) {
+        punti = [];
+        for (let i = 0; i <= 120; i++) {
+          const g = i / 120 * Math.PI * 2;
+          punti.push(cosmEclAGal(cosmVettore(a * Math.cos(g), a * Math.sin(g), 0)));
+        }
+      }
+    }
+    // Sopra a un globo grande l'orbita è una riga che lo taglia in due: si
+    // ritira man mano che il pianeta si prende lo schermo
+    const rCorpo = (p.km || 0) / 2 / COSM_KM_UA * cam.s;
+    alfa *= 1 - 0.8 * cosmLiscia(20, 90, rCorpo);
+    if (!punti || alfa < 0.02) return;
+    ctx.globalAlpha = alfa * 0.55;
+    ctx.strokeStyle = p.colore; ctx.lineWidth = p.id === 'Earth' ? 1.3 : 1;
+    ctx.beginPath();
+    punti.forEach((v, i) => { const q = cam.p(v); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); });
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// Un corpo alla sua misura vera: un pallino con l'alone quando è piccolo, la
+// faccia della vista 3D quando è grande
+function cosmDisegnaCorpo(ctx, cam, corpo, pos, rVero, assi, quando, minimo) {
+  const q = cam.p(cosmEclAGal(pos));
+  const r = rVero * cam.s;
+  if (!cosmSulloSchermo(q, cam, r + 30)) return null;
+  if (r >= 2.6 && typeof solDisegnaCorpo === 'function') {
+    try {
+      // La Terra vera vuole il suo istante (non quello della vista 3D)
+      if (corpo.id === 'Earth' && typeof solDisegnaTerraVera === 'function' && r >= 13) {
+        ctx.save();
+        ctx.translate(q.x, q.y);
+        const d = Math.hypot(pos.x, pos.y, pos.z) || 1;
+        const globo = typeof sol !== 'undefined' ? sol.globoTerra : null;
+        const fatto = solDisegnaTerraVera(ctx, [-pos.x / d, -pos.y / d, -pos.z / d], r, assi, quando);
+        if (typeof sol !== 'undefined') sol.globoTerra = globo;
+        ctx.restore();
+        if (fatto) { cosmAureola(ctx, q, r, '96,165,250'); return { q, r }; }
+      }
+      // `solDisegnaCorpo` legge lo stato della vista 3D solo per sapere se il
+      // corpo è quello scelto: qui non lo è mai
+      const scelto = sol.scelto; sol.scelto = null;
+      solDisegnaCorpo(ctx, Object.assign({}, corpo, { pos, schermo: { px: q.x, py: q.y }, rDisegno: r }), assi);
+      sol.scelto = scelto;
+      if (corpo.id === 'Earth') cosmAureola(ctx, q, r, '96,165,250');
+      return { q, r };
+    } catch (e) { /* si torna al pallino */ }
+  }
+  const rp = Math.max(minimo || 1.6, r);
+  const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, rp * 3.4);
+  g.addColorStop(0, corpo.colore);
+  g.addColorStop(0.3, corpo.colore + '88');
+  g.addColorStop(1, corpo.colore + '00');
+  ctx.fillStyle = g;
+  cosmPercorsoCerchio(ctx, q.x, q.y, rp * 3.4); ctx.fill();
+  ctx.fillStyle = corpo.colore;
+  cosmPercorsoCerchio(ctx, q.x, q.y, rp); ctx.fill();
+  return { q, r: rp };
+}
+// L'aria di taglio, attorno a un pianeta con l'atmosfera
+function cosmAureola(ctx, q, r, rgb) {
+  const g = ctx.createRadialGradient(q.x, q.y, r * 0.98, q.x, q.y, r * 1.1);
+  g.addColorStop(0, `rgba(${rgb},0.45)`);
+  g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g;
+  cosmPercorsoCerchio(ctx, q.x, q.y, r * 1.1); ctx.fill();
+}
+
+// L'orbita della Luna: un mese siderale di posizioni geocentriche, rifatte
+// ogni ora di carta, disegnate attorno alla Terra di adesso
+function cosmOrbitaLuna(ms) {
+  const chiave = Math.round(ms / 3600000);
+  if (cosm.orbitaLuna && cosm.orbitaLuna.chiave === chiave) return cosm.orbitaLuna.punti;
+  const punti = [];
+  try {
+    for (let i = 0; i <= 96; i++) {
+      const d = new Date(ms + (i / 96 - 0.5) * 27.3217 * 86400000);
+      const e = Astronomy.Ecliptic(Astronomy.GeoMoon(Astronomy.MakeTime(d))).vec;
+      punti.push({ x: e.x, y: e.y, z: e.z });
+    }
+  } catch (e) { return null; }
+  cosm.orbitaLuna = { chiave, punti };
+  return punti;
+}
+
+// Una riga di misura fra due corpi, col numero a metà: alla scala in cui la
+// distanza è la cosa da guardare, dirla è meglio che lasciarla indovinare
+function cosmRigaMisura(ctx, cam, a, b, testo, colore, alfa) {
+  if (alfa < 0.03) return;
+  const da = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const ux = (b.x - a.x) / da, uy = (b.y - a.y) / da;
+  ctx.globalAlpha = alfa * 0.7;
+  ctx.strokeStyle = colore; ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath(); ctx.moveTo(a.x + ux * 10, a.y + uy * 10); ctx.lineTo(b.x - ux * 10, b.y - uy * 10); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = alfa;
+  let x = (a.x + b.x) / 2, y = (a.y + b.y) / 2 - 11;
+  x = Math.max(120, Math.min(cam.W - 120, x));
+  y = Math.max(70, Math.min(cam.H - (cosm.fondoPx || 120) - 60, y));
+  cosmScritta(ctx, testo, x, y, colore, 11, 'center', 600);
+  ctx.globalAlpha = 1;
+}
+
+function cosmDisegnaSistemaVicino(ctx, cam) {
+  const corpi = cosmCorpiOra();
+  if (!corpi) { cosmDisegnaPianetiSemplici(ctx, cam); return; }
+  // La fascia degli asteroidi, fra Marte e Giove
+  cosmDisegnaNuvola(ctx, cam, 'asteroidi', 'rgba(214,200,170,1)', cosmVisibilita(2.8 * cam.s, cam.lato, 10, 16) * 0.85, 1.2);
+  cosmDisegnaOrbite(ctx, cam, corpi);
+  const assi = cosmAssiCamera();
+  const quando = new Date(corpi.ms);
+  const terraGal = cosmEclAGal(corpi.terra);
+  // La Luna e la sua orbita attorno alla Terra
+  const lunaPos = { x: corpi.terra.x + corpi.luna.x, y: corpi.terra.y + corpi.luna.y, z: corpi.terra.z + corpi.luna.z };
+  const dLuna = Math.hypot(corpi.luna.x, corpi.luna.y, corpi.luna.z);
+  const rOrbitaLuna = dLuna * cam.s;
+  const alfaOrbitaLuna = cosmVisibilita(rOrbitaLuna, cam.lato, 5, 40);
+  if (alfaOrbitaLuna > 0.02) {
+    const punti = cosmOrbitaLuna(corpi.ms);
+    if (punti) {
+      ctx.globalAlpha = alfaOrbitaLuna * 0.45;
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      punti.forEach((g, i) => {
+        const q = cam.p(cosmEclAGal({ x: corpi.terra.x + g.x, y: corpi.terra.y + g.y, z: corpi.terra.z + g.z }));
+        if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y);
+      });
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+  }
+  // I pianeti, dal più lontano al più vicino a chi guarda (la vicinanza è la
+  // coordinata lungo la direzione dello sguardo)
+  const dietro = v => -(v.x * assi.verso[0] + v.y * assi.verso[1] + v.z * assi.verso[2]);
+  const elenco = corpi.pianeti.map(p => ({ corpo: p, pos: p.pos, r: p.km / 2 / COSM_KM_UA, min: p.id === 'Earth' ? 2.3 : 1.6 }));
+  if (rOrbitaLuna > 3) {
+    elenco.push({ corpo: { id: 'Moon', colore: '#d4d4d8', asse: corpi.asseLuna }, pos: lunaPos, r: COSM_LUNA_R_UA, min: 1.3,
+      alfa: cosmLiscia(3, 14, rOrbitaLuna) });
+  }
+  elenco.sort((a, b) => dietro(b.pos) - dietro(a.pos));
+  const posti = [];
+  elenco.forEach(e => {
+    const aOrbita = e.corpo.id === 'Moon' ? rOrbitaLuna : Math.hypot(e.pos.x, e.pos.y, e.pos.z) * cam.s;
+    // Un pianeta si vede alla scala della sua orbita, o quando è grande lui
+    let alfa = Math.max(cosmVisibilita(aOrbita, cam.lato, 4, 90), e.r * cam.s >= 1.2 ? 1 : 0);
+    if (e.alfa != null) alfa = Math.min(alfa, e.alfa);
+    if (alfa < 0.03) return;
+    ctx.globalAlpha = alfa;
+    const fatto = cosmDisegnaCorpo(ctx, cam, e.corpo, e.pos, e.r, assi, quando, e.min);
+    ctx.globalAlpha = 1;
+    if (fatto) posti.push({ e, fatto, alfa, aOrbita });
+  });
+  // I nomi, dopo i corpi: un nome coperto da un pianeta non si legge
+  posti.forEach(({ e, fatto, alfa, aOrbita }) => {
+    const grande = fatto.r >= 13;
+    if (e.corpo.id === 'Earth' && grande) return;    // c'è già «Sei qui»
+    if (aOrbita < 26 && !grande) return;
+    const nome = cosmNomeCorpo(e.corpo.id);
+    ctx.globalAlpha = alfa;
+    cosmScritta(ctx, nome, fatto.q.x, fatto.q.y + fatto.r + 13, e.corpo.colore, grande ? 13 : 11, 'center', grande ? 650 : 500);
+    ctx.globalAlpha = 1;
+  });
+  // Le due misure che a quelle scale sono la cosa da guardare: la Luna e il Sole
+  const terra = cam.p(terraGal);
+  const luna = cam.p(cosmEclAGal(lunaPos));
+  cosmRigaMisura(ctx, cam, terra, luna,
+    cosmT('cosmo.etichetta.distanzaLuna', { d: cosmTestoDistanza(dLuna), luce: cosmTestoLuce(dLuna) }), '#e2e8f0',
+    Math.min(cosmLiscia(70, 140, rOrbitaLuna), 1 - cosmLiscia(900, 2400, rOrbitaLuna)));
+  const dSole = Math.hypot(corpi.terra.x, corpi.terra.y, corpi.terra.z);
+  cosmRigaMisura(ctx, cam, cam.p(cosmVettore(0, 0, 0)), terra,
+    cosmT('cosmo.etichetta.distanzaSole', { d: cosmTestoDistanza(dSole), luce: cosmTestoLuce(dSole) }), '#fde68a',
+    Math.min(cosmLiscia(80, 150, dSole * cam.s), 1 - cosmLiscia(700, 1600, dSole * cam.s)));
+}
+
+// Senza effemeridi (non dovrebbe capitare: le carica la pagina) restano i
+// cerchi delle orbite medie, come prima della v404
+function cosmDisegnaPianetiSemplici(ctx, cam) {
+  COSM_PIANETI.forEach(o => {
+    const ua = { Mercury: 0.387, Venus: 0.723, Earth: 1, Mars: 1.524, Jupiter: 5.2, Saturn: 9.54, Uranus: 19.2, Neptune: 30.07 }[o.id];
+    const rpx = ua * cam.s;
     const alfa = cosmVisibilita(rpx, cam.lato, 6, 40);
     if (alfa < 0.02) return;
     ctx.globalAlpha = alfa * 0.5;
@@ -971,21 +1515,10 @@ function cosmDisegnaPianeti(ctx, cam) {
     ctx.beginPath();
     for (let i = 0; i <= 90; i++) {
       const a = i / 90 * Math.PI * 2;
-      const p = cam.p(cosmEclAGal(cosmVettore(o.ua * Math.cos(a), o.ua * Math.sin(a), 0)));
+      const p = cam.p(cosmEclAGal(cosmVettore(ua * Math.cos(a), ua * Math.sin(a), 0)));
       if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y);
     }
     ctx.stroke();
-    // Il pianeta al suo posto, se l'istante è dentro a quello che la libreria sa
-    if (Math.abs(ms - Date.now()) < 3000 * COSM_ANNO_MS && typeof Astronomy !== 'undefined') {
-      try {
-        const e = Astronomy.Ecliptic(Astronomy.HelioVector(o.id, new Date(ms))).vec;
-        const p = cam.p(cosmEclAGal(cosmVettore(e.x, e.y, e.z)));
-        ctx.globalAlpha = alfa;
-        ctx.fillStyle = o.colore;
-        cosmPercorsoCerchio(ctx, p.x, p.y, 2.6); ctx.fill();
-        if (rpx > 26) cosmScritta(ctx, typeof nomeCorpo === 'function' ? nomeCorpo(o.id) : o.id, p.x, p.y - 11, o.colore, 11);
-      } catch (e) { /* fuori dal campo della libreria */ }
-    }
   });
   ctx.globalAlpha = 1;
 }
@@ -993,16 +1526,24 @@ function cosmDisegnaPianeti(ctx, cam) {
 function cosmDisegnaNuvola(ctx, cam, nome, colore, alfa, raggio) {
   if (alfa < 0.02) return;
   const punti = cosmNuvola(nome);
-  ctx.globalAlpha = alfa;
   ctx.fillStyle = colore;
-  ctx.beginPath();
   const W = cam.W, H = cam.H;
+  // Le nuvole che hanno una luce per punto (Kuiper, gli asteroidi) si
+  // stendono in tre passate: tutti uguali, mille sassi sono una nebbia
+  // uniforme; con tre luci sono una fascia di sassi
+  const livelli = punti.length && punti[0].luce != null ? 3 : 1;
+  const tracce = Array.from({ length: livelli }, () => new Path2D());
   for (let i = 0; i < punti.length; i++) {
     const p = cam.p(punti[i]);
     if (p.x < -4 || p.y < -4 || p.x > W + 4 || p.y > H + 4) continue;
-    ctx.rect(p.x - raggio / 2, p.y - raggio / 2, raggio, raggio);
+    const k = livelli > 1 ? Math.min(2, Math.floor(punti[i].luce * 3)) : 0;
+    const rr = raggio * (livelli > 1 ? 0.7 + k * 0.35 : 1);
+    tracce[k].rect(p.x - rr / 2, p.y - rr / 2, rr, rr);
   }
-  ctx.fill();
+  tracce.forEach((t, k) => {
+    ctx.globalAlpha = alfa * (livelli > 1 ? 0.45 + k * 0.28 : 1);
+    ctx.fill(t);
+  });
   ctx.globalAlpha = 1;
 }
 
@@ -1201,7 +1742,12 @@ function cosmDisegnaSonde(ctx, cam) {
     const dx = p.x - sole.x, dy = p.y - sole.y, l = Math.hypot(dx, dy) || 1;
     let x = p.x + dx / l * 16, y = p.y + dy / l * 16;
     const allinea = dx >= 0 ? 'left' : 'right';
-    x = Math.max(8, Math.min(cam.W - 8, x)); y = Math.max(54, Math.min(cam.H - (cosm.fondoPx || 120) - 44, y));
+    // Fuori dalla fascia della riga della scala: in fondo di solito, in cima
+    // durante una demo
+    const cima = cosm.regia ? (cosm.rigaY || 26) + 40 : 54;
+    x = Math.max(8, Math.min(cam.W - 8, x)); y = Math.max(cima, Math.min(cam.H - (cosm.fondoPx || 120) - (cosm.regia ? 44 : 96), y));
+    // In alto a sinistra stanno le tre viste: il nome scivola alla loro destra
+    if (!cosm.regia && y < 250 && x < 190) x = allinea === 'left' ? 190 : Math.max(x, 330);
     cosmScritta(ctx, m.nome, x, y, m.colore, 13, allinea, 700);
     cosmScritta(ctx, cosmT('cosmo.sonde.etichettaSole', { d: cosmTestoDistanza(m.dalSole) }), x, y + 15, '#e2e8f0', 11, allinea);
     if (m.terraNota) {
@@ -1232,10 +1778,18 @@ function cosmDisegnaSpritePiano(ctx, cam, sprite, centro, raggioUA, assi, alfa) 
 function cosmDisegnaGalassia(ctx, cam) {
   const s = COSM_PER_ID.get('viaLattea');
   const rpx = s.r * cam.s;
-  const alfa = cosmVisibilita(rpx, cam.lato, 3, 18);
+  // Compare già come una spiralina di pochi pixel (il «noi» del Gruppo
+  // Locale), e se ne va quando la sprite comincerebbe a vedersi a quadretti:
+  // da lì in giù il braccio di Orione ha le sue stelle, disegnate una per una
+  const alfa = cosmVisibilita(rpx, cam.lato, 1.2, 18) * (1 - cosmLiscia(900, 2600, rpx));
   if (alfa < 0.02) return 0;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   // Lo sprite ha il nord galattico verso chi guarda: a destra −y, in basso −x
-  cosmDisegnaSpritePiano(ctx, cam, cosmSpriteViaLattea(), COSM_CENTRO_GAL, 50000 * COSM_AL * (512 / 500),
+  // Sotto gli otto pixel la spirale si disegna di otto pixel: alla scala
+  // del Gruppo Locale è un segno, come Andromeda accanto, e non un granello
+  const raggio = Math.max(50000 * COSM_AL, 8 / cam.s) * (512 / 500);
+  cosmDisegnaSpritePiano(ctx, cam, cosmSpriteViaLattea(), COSM_CENTRO_GAL, raggio,
     [cosmVettore(0, -1, 0), cosmVettore(-1, 0, 0)], Math.min(1, alfa * 1.1));
   const c = cam.p(COSM_CENTRO_GAL);
   if (rpx > 40) cosmNomeStruttura(ctx, cam, 'viaLattea', c.x, c.y - rpx * 1.04, alfa, 0);
@@ -1257,18 +1811,36 @@ function cosmDisegnaBraccio(ctx, cam) {
   for (let i = 0; i <= 40; i++) { const p = cam.p(centro(da + (a - da) * i / 40, -1750)); if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }
   for (let i = 40; i >= 0; i--) { const p = cam.p(centro(da + (a - da) * i / 40, 1750)); ctx.lineTo(p.x, p.y); }
   ctx.closePath();
-  ctx.fillStyle = `rgba(147,170,240,${0.12 * alfa})`; ctx.fill();
-  ctx.strokeStyle = `rgba(165,180,252,${0.6 * alfa})`; ctx.lineWidth = 1.2;
+  // Il bagliore del braccio: più fitto lungo la sua spina, sfumato ai bordi
+  const m = cam.p(centro(Math.PI + 0.02, 0)), b = cam.p(centro(Math.PI + 0.02, 1750));
+  const largo = Math.hypot(b.x - m.x, b.y - m.y) || 1;
+  const bagliore = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, largo * 3.2);
+  bagliore.addColorStop(0, `rgba(170,190,250,${0.2 * alfa})`);
+  bagliore.addColorStop(0.5, `rgba(150,170,240,${0.1 * alfa})`);
+  bagliore.addColorStop(1, 'rgba(150,170,240,0)');
+  ctx.fillStyle = bagliore; ctx.fill();
+  ctx.strokeStyle = `rgba(165,180,252,${0.5 * alfa})`; ctx.lineWidth = 1.1;
   ctx.setLineDash([6, 5]); ctx.stroke(); ctx.setLineDash([]);
-  // Qualche stella dentro, perché un braccio è fatto di stelle
+  // Le stelle, una per una: un braccio è fatto di stelle, più fitte al
+  // centro della sua larghezza, con qualche gigante blu e qualche nube rosa
+  // d'idrogeno acceso — è lì che nascono, e sono loro a disegnare la spirale
   const d = cosmDado(41);
-  ctx.fillStyle = `rgba(226,232,255,${0.7 * alfa})`;
-  ctx.beginPath();
-  for (let i = 0; i < 260; i++) {
-    const p = cam.p(centro(da + (a - da) * d(), (d() * 2 - 1) * 1750));
-    ctx.rect(p.x, p.y, 1.2, 1.2);
+  const livelli = [new Path2D(), new Path2D(), new Path2D()];
+  const rosa = new Path2D();
+  for (let i = 0; i < 1400; i++) {
+    const t = d(), w = Math.max(-1, Math.min(1, cosmGauss(d) * 0.45));
+    const p = cam.p(centro(da + (a - da) * t, w * 1750));
+    if (p.x < -6 || p.y < -6 || p.x > cam.W + 6 || p.y > cam.H + 6) { d(); d(); continue; }
+    const k = d(), lum = d();
+    if (k < 0.025) { const r = 2.4 + lum * 2.6; rosa.moveTo(p.x + r, p.y); rosa.arc(p.x, p.y, r, 0, Math.PI * 2); continue; }
+    const liv = lum < 0.62 ? 0 : lum < 0.92 ? 1 : 2;
+    const r = 0.6 + liv * 0.55;
+    livelli[liv].rect(p.x - r, p.y - r, r * 2, r * 2);
   }
-  ctx.fill();
+  ctx.fillStyle = `rgba(255,140,190,${0.42 * alfa})`; ctx.fill(rosa);
+  [['226,232,255', 0.45], ['210,225,255', 0.7], ['190,215,255', 0.95]].forEach(([c, k], i) => {
+    ctx.fillStyle = `rgba(${c},${k * alfa})`; ctx.fill(livelli[i]);
+  });
   const p = cam.p(centro(Math.PI + 0.13, -1900));
   cosmNomeStruttura(ctx, cam, 'braccioOrione', p.x, p.y, alfa, 0);
   return alfa;
@@ -1327,8 +1899,20 @@ function cosmDisegnaKuiper(ctx, cam) {
   const rpx = 50 * cam.s;
   const alfa = cosmVisibilita(rpx, cam.lato, 5, 22);
   if (alfa < 0.02) return 0;
-  cosmDisegnaNuvola(ctx, cam, 'kuiper', 'rgba(186,200,230,1)', alfa * 0.75, 1.4);
   const sole = cam.p(cosmVettore(0, 0, 0));
+  // Il bagliore dell'anello, appena accennato: vista dall'alto con la camera
+  // dritta è una corona; inclinata resta un velo che non mente sulla forma,
+  // perché i punti sopra disegnano l'anello vero
+  if (rpx < 4e5 && cosm.elev > 55) {
+    const g = ctx.createRadialGradient(sole.x, sole.y, 34 * cam.s, sole.x, sole.y, 56 * cam.s);
+    g.addColorStop(0, 'rgba(150,170,220,0)');
+    g.addColorStop(0.35, `rgba(150,170,220,${0.07 * alfa})`);
+    g.addColorStop(0.62, `rgba(150,170,220,${0.05 * alfa})`);
+    g.addColorStop(1, 'rgba(150,170,220,0)');
+    ctx.fillStyle = g;
+    cosmPercorsoCerchio(ctx, sole.x, sole.y, 56 * cam.s); ctx.fill();
+  }
+  cosmDisegnaNuvola(ctx, cam, 'kuiper', 'rgba(196,210,240,1)', alfa * 0.85, 1.5);
   if (rpx > 30) cosmNomeStruttura(ctx, cam, 'kuiper', sole.x, sole.y + rpx + 14, alfa, 0);
   return alfa;
 }
@@ -1453,7 +2037,9 @@ function cosmDisegnaSegni(ctx, cam) {
     if (p.x < -50 || p.y < -50 || p.x > cam.W + 50 || p.y > cam.H + 50) return;
     ctx.globalAlpha = alfa;
     if (sg.galassia) {
-      const rpx = sg.galassia * cam.s;
+      // Come la Via Lattea, una galassia del gruppo resta un segno leggibile
+      // anche quando la sua misura vera è di pochi pixel
+      const rpx = Math.max(sg.galassia * cam.s, sg.galassia > 50000 * COSM_AL ? 9 : 6);
       if (rpx > 2.5) {
         ctx.save();
         ctx.translate(p.x, p.y); ctx.rotate((sg.gira || 0) * COSM_D2R); ctx.scale(1, sg.inclina || 0.75);
@@ -1477,19 +2063,42 @@ function cosmDisegnaSegni(ctx, cam) {
   });
 }
 
-// Il Sole, e quando non si vede più un disco il «sei qui»
+// Il Sole, e quando non si vede più un disco il «sei qui». Da vicino (v404)
+// è un disco alla sua misura vera, con la granulazione della vista 3D e la
+// corona attorno.
 function cosmDisegnaSole(ctx, cam) {
   const p = cam.p(cosmVettore(0, 0, 0));
-  const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 9);
+  const rVero = COSM_SOLE_R_UA * cam.s;
+  if (rVero > 4.5 && rVero < 4e5) {
+    if (!cosmSulloSchermo(p, cam, rVero * 3)) return;
+    const corona = ctx.createRadialGradient(p.x, p.y, rVero * 0.9, p.x, p.y, rVero * 3);
+    corona.addColorStop(0, 'rgba(255,236,170,0.55)');
+    corona.addColorStop(0.35, 'rgba(253,200,90,0.16)');
+    corona.addColorStop(1, 'rgba(253,190,80,0)');
+    ctx.fillStyle = corona; cosmPercorsoCerchio(ctx, p.x, p.y, rVero * 3); ctx.fill();
+    const faccia = typeof skyFacciaDi === 'function' && rVero <= 2048 ? skyFacciaDi({ id: 'Sun' }, rVero) : null;
+    if (faccia) ctx.drawImage(faccia, p.x - rVero, p.y - rVero, rVero * 2, rVero * 2);
+    else {
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rVero);
+      g.addColorStop(0, '#fffbe6'); g.addColorStop(0.7, '#fde047'); g.addColorStop(1, '#f59e0b');
+      ctx.fillStyle = g; cosmPercorsoCerchio(ctx, p.x, p.y, rVero); ctx.fill();
+    }
+    cosmScritta(ctx, cosmT('cosmo.etichetta.sole'), p.x, p.y + rVero + 14, '#fde68a', 12, 'center', 650);
+    return;
+  }
+  if (!cosmSulloSchermo(p, cam, 30)) return;
+  const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 11);
   g.addColorStop(0, 'rgba(255,250,220,1)');
-  g.addColorStop(0.35, 'rgba(253,224,71,0.9)');
+  g.addColorStop(0.3, 'rgba(253,224,71,0.9)');
   g.addColorStop(1, 'rgba(253,224,71,0)');
-  ctx.fillStyle = g; cosmPercorsoCerchio(ctx, p.x, p.y, 9); ctx.fill();
-  if (cam.L < 3.6) cosmScritta(ctx, cosmT('cosmo.etichetta.sole'), p.x, p.y + 16, '#fde68a', 11);
+  ctx.fillStyle = g; cosmPercorsoCerchio(ctx, p.x, p.y, 11); ctx.fill();
+  if (cam.L < 3.6) cosmScritta(ctx, cosmT('cosmo.etichetta.sole'), p.x, p.y + 17, '#fde68a', 11);
   else if (cam.L > 5.6) {
     ctx.strokeStyle = 'rgba(253,224,71,0.8)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(p.x + 6, p.y - 6); ctx.lineTo(p.x + 20, p.y - 20); ctx.stroke();
-    cosmScritta(ctx, cosmT('cosmo.etichetta.seiQui'), p.x + 22, p.y - 26, '#fde68a', 11, 'left', 650);
+    // In alto a sinistra: in alto a destra, alla scala delle stelle vicine,
+    // c'è Alfa Centauri col suo nome
+    ctx.beginPath(); ctx.moveTo(p.x - 6, p.y - 6); ctx.lineTo(p.x - 20, p.y - 20); ctx.stroke();
+    cosmScritta(ctx, cosmT('cosmo.etichetta.seiQui'), p.x - 22, p.y - 26, '#fde68a', 11, 'right', 650);
   }
 }
 
@@ -1500,7 +2109,8 @@ function cosmMetro(cam) {
   const voluto = cam.W * 0.18 / cam.s; // UA
   const al = voluto / COSM_UA_AL;
   let unita, scala;
-  if (al < 0.05) { unita = 'ua'; scala = 1; }
+  if (voluto < 0.02) { unita = 'km'; scala = 1 / COSM_KM_UA; }
+  else if (al < 0.05) { unita = 'ua'; scala = 1; }
   else if (al < 1e6) { unita = 'al'; scala = COSM_UA_AL; }
   else if (al < 1e9) { unita = 'mal'; scala = COSM_UA_AL * 1e6; }
   else { unita = 'gal'; scala = COSM_UA_AL * 1e9; }
@@ -1537,12 +2147,14 @@ function cosmDisegnaLetture(ctx, cam) {
   ctx.globalAlpha = 1;
 }
 
-/* La riga della scala, in fondo: un asse logaritmico da un'unità
- * astronomica al diametro dell'universo osservabile, con una tacca per ogni
- * struttura e un segno solo, dove sta la vista adesso. Le Voyager qui non
- * ci sono più (v401): la riga parla di scale, e la sonda segnata a ogni
- * scala era un'etichetta che non si poteva togliere. */
-const COSM_RIGA_DA = 0, COSM_RIGA_A = 15.6;
+/* La riga della scala, in fondo: un asse logaritmico dalla Terra (v404) al
+ * diametro dell'universo osservabile, con una tacca per ogni tappa e un segno
+ * solo, dove sta la vista adesso. Le Voyager qui non ci sono più (v401): la
+ * riga parla di scale, e la sonda segnata a ogni scala era un'etichetta che
+ * non si poteva togliere. Si tocca per volare a una tappa, e si **trascina**
+ * per scorrere la scala col dito (v404): è il modo più diretto di dire
+ * «più in là» quando le decade sono venti. */
+const COSM_RIGA_DA = COSM_L_MIN, COSM_RIGA_A = 15.6;
 function cosmDisegnaRiga(ctx, cam) {
   const W = cam.W;
   const destra = cosm.regia ? 18 : 64;
@@ -1550,7 +2162,7 @@ function cosmDisegnaRiga(ctx, cam) {
   if (x1 - x0 < 160) { cosm.schermo.riga = null; return; }
   const y = cosm.regia ? (cosm.rigaY || 26) : cam.H - (cosm.fondoPx || 100) - 22;
   const X = l => x0 + (x1 - x0) * (l - COSM_RIGA_DA) / (COSM_RIGA_A - COSM_RIGA_DA);
-  cosm.schermo.riga = { x0, x1, y, X };
+  cosm.schermo.riga = { x0, x1, y, X, Linv: x => COSM_RIGA_DA + (x - x0) / (x1 - x0) * (COSM_RIGA_A - COSM_RIGA_DA) };
   ctx.fillStyle = 'rgba(5,9,22,0.55)';
   ctx.fillRect(x0 - 8, y - 22, x1 - x0 + 16, 44);
   ctx.strokeStyle = 'rgba(148,163,184,0.7)'; ctx.lineWidth = 1;
@@ -1558,7 +2170,9 @@ function cosmDisegnaRiga(ctx, cam) {
   // Le tacche delle strutture, col loro nome breve sopra o sotto a turno
   const vicina = cosmStrutturaDellaScala(cam.L);
   COSM_STRUTTURE.forEach((s, i) => {
-    const x = X(Math.log10(s.r));
+    // La tacca sta dove la tappa si inquadra: arrivandoci, il segno della
+    // vista le si posa sopra
+    const x = X(Math.log10(s.vista));
     const evid = vicina && vicina.id === s.id;
     ctx.strokeStyle = evid ? '#fde68a' : 'rgba(203,213,225,0.7)';
     ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke();
@@ -1592,8 +2206,13 @@ function cosmStrutturaDellaScala(L) {
 function cosmDisegna(ctx) {
   if (!ctx || typeof sol === 'undefined') return;
   const ora = performance.now();
+  // Un istante solo per tutto il fotogramma: la Terra al centro e la Terra
+  // disegnata devono essere la stessa Terra
+  cosm.msFotogramma = cosmIstante();
+  if (!cosm.cam) cosm.cam = cosmCamera(cosm.L, sol.L, sol.H);
   cosmPassoCamera(ora);
   cosm.ultimoTs = ora;
+  if (!cosm.attivo) return;
   if (typeof solSfondo === 'function') solSfondo(ctx);
   else { ctx.fillStyle = '#04060f'; ctx.fillRect(0, 0, sol.L, sol.H); }
   const cam = cosmCamera(cosm.L, sol.L, sol.H);
@@ -1611,9 +2230,9 @@ function cosmDisegna(ctx) {
   cosmDisegnaOort(ctx, cam);
   cosmDisegnaEliosfera(ctx, cam);
   cosmDisegnaKuiper(ctx, cam);
-  cosmDisegnaPianeti(ctx, cam);
-  cosmDisegnaSegni(ctx, cam);
   cosmDisegnaSole(ctx, cam);
+  cosmDisegnaSistemaVicino(ctx, cam);
+  cosmDisegnaSegni(ctx, cam);
   cosmDisegnaSonde(ctx, cam);
   cosmDisegnaLetture(ctx, cam);
   cosmDisegnaRiga(ctx, cam);
@@ -1668,9 +2287,12 @@ function cosmPreparaInterfaccia() {
   scheda.id = 'cosm-scheda';
   scheda.hidden = true;
   scheda.setAttribute('aria-live', 'polite');
-  radice.append(scheda, fila);
+  const aiuto = document.createElement('p');
+  aiuto.className = 'cosm-aiuto';
+  aiuto.textContent = cosmT('cosmo.aiuto');
+  radice.append(aiuto, scheda, fila);
   guscio.append(radice);
-  cosm.ui = { radice, fila, scheda, firmaScheda: '' };
+  cosm.ui = { radice, fila, scheda, aiuto, firmaScheda: '' };
   cosmScriviFila();
   fila.addEventListener('click', e => {
     const b = e.target.closest('[data-cosm-vai]');
@@ -1729,12 +2351,26 @@ function cosmSchedaStruttura(id) {
   const kmsV1 = v1 ? v1.kms : 17;
   const uaAnnoV1 = kmsV1 * COSM_ANNO_MS / 1000 / COSM_KM_UA;
   const diam = s.r * 2;
-  const distanza = s.centro ? Math.hypot(s.centro.x, s.centro.y, s.centro.z) : 0;
+  const centro = cosmCentroDi(s);
+  const distanza = centro ? Math.hypot(centro.x, centro.y, centro.z) : 0;
   // Le strutture attorno al Sole si misurano dal Sole (fin dove arrivano, e
   // quanto ci mettono la luce e la sonda ad arrivarci); le altre per il
   // diametro. Oltre il Gruppo Locale lo spazio si espande: lì la sonda non
   // arriverà mai, e dirle un tempo sarebbe una bugia.
-  const righe = s.raggio ? [
+  // La Terra e la Luna (v404) si misurano da qui: quanto è grande la Terra e
+  // quanto è lontano il Sole, quanto è lontana adesso la Luna
+  const corpi = s.vicino ? cosmCorpiOra() : null;
+  const dLuna = corpi ? Math.hypot(corpi.luna.x, corpi.luna.y, corpi.luna.z) : COSM_LUNA_ORBITA_UA;
+  const righe = s.id === 'terra' ? [
+    [cosmT('cosmo.scheda.misura'), cosmTestoDistanza(diam)],
+    [cosmT('cosmo.scheda.distanza'), cosmTestoDistanza(distanza || 1)],
+    [cosmT('cosmo.scheda.luceDalSole'), cosmTestoLuce(distanza || 1)],
+    [cosmT('cosmo.scheda.voyager'), cosmTestoAnni(diam / uaAnnoV1)]
+  ] : s.id === 'terraLuna' ? [
+    [cosmT('cosmo.scheda.lunaOra'), cosmTestoDistanza(dLuna)],
+    [cosmT('cosmo.scheda.luceArriva'), cosmTestoLuce(dLuna)],
+    [cosmT('cosmo.scheda.voyagerArriva'), cosmTestoAnni(dLuna / uaAnnoV1)]
+  ] : s.raggio ? [
     [cosmT('cosmo.scheda.finoA'), cosmTestoDistanza(s.r)],
     [cosmT('cosmo.scheda.luceArriva'), cosmTestoAnni(s.r / COSM_UA_AL)],
     [cosmT('cosmo.scheda.voyagerArriva'), cosmTestoAnni(s.r / uaAnnoV1)]
@@ -1808,7 +2444,7 @@ function cosmCosaNelPunto(x, y) {
   const riga = cosm.schermo.riga;
   if (riga && Math.abs(y - riga.y) < 22 && x >= riga.x0 - 6 && x <= riga.x1 + 6) {
     let migliore = null, d = Infinity;
-    COSM_STRUTTURE.forEach(s => { const dd = Math.abs(riga.X(Math.log10(s.r)) - x); if (dd < d) { d = dd; migliore = s; } });
+    COSM_STRUTTURE.forEach(s => { const dd = Math.abs(riga.X(Math.log10(s.vista)) - x); if (dd < d) { d = dd; migliore = s; } });
     return migliore ? { tipo: 'struttura', id: migliore.id, vola: true } : null;
   }
   const sole = cam.p(cosmVettore(0, 0, 0));
@@ -1816,7 +2452,8 @@ function cosmCosaNelPunto(x, y) {
   COSM_STRUTTURE.forEach(s => {
     const rpx = s.r * cam.s;
     if (cosmVisibilita(rpx, cam.lato, 4, 9) < 0.25) return;
-    const c = s.centro ? cam.p(s.centro) : sole;
+    const centro = cosmCentroDi(s);
+    const c = centro ? cam.p(centro) : sole;
     const d = Math.hypot(c.x - x, c.y - y);
     if ((d < rpx * 1.05 || Math.abs(d - rpx) < 22) && rpx < raggio) { raggio = rpx; scelta = s; }
   });
@@ -1831,36 +2468,41 @@ function cosmTocco(x, y) {
   if (cosa.vola) cosmVolaA(cosmLDi(cosa.id));
 }
 
-// Lo zoom attorno a un punto dello schermo: il punto sotto al dito resta
-// dov'è, come in ogni carta
-// Sotto questa scala (una ventina di unità astronomiche di mezzo lato) si
-// torna fra i pianeti, nella vista 3D: è la stessa strada dello zoom che
-// porta qui, fatta all'indietro (v401). Più in basso di dove ci si entra
-// (`COSM_L_INGRESSO`), così un dito che trema sulla soglia non fa la spola.
-const COSM_L_RIENTRO = 1.3;
+// La scala a cui si entra arrivando dalla vista 3D senza una misura da
+// raccordare (le prove e chi la chiama da fuori): l'inquadratura di «Tutto»
 const COSM_L_INGRESSO = Math.log10(70);
 
+/* Lo zoom (v404). Tre cose lo rendono prevedibile, e mancavano tutte e tre:
+ *   - il punto sotto al dito resta sotto al dito **mentre** la scala scivola
+ *     (`cosmApplicaAncora`, rifatto a ogni fotogramma), non solo all'arrivo;
+ *   - due scatti di rotella di fila si sommano sullo stesso punto, invece di
+ *     ricominciare dal centro raggiunto a metà;
+ *   - allontanandosi lo spostamento a mano si riassorbe un poco per decade,
+ *     così la carta torna da sola sulla tappa che si sta guardando.
+ * Sotto Kuiper non si torna più alla vista 3D: la scala continua fino alla
+ * Terra, e in fondo si atterra nel planetario (`cosmAtterra`). */
 function cosmZoomAttorno(dL, x, y) {
   const cam = cosm.cam;
   cosm.volo = null;
+  cosm.inerzia = null;
+  cosm.riassorbi = false;
   const L1 = Math.max(COSM_L_MIN, Math.min(COSM_L_MAX, cosm.Lvoluto + dL));
-  if (dL < 0 && L1 < COSM_L_RIENTRO && !cosm.regia && cosmTornaAiPianeti()) return;
-  if (cam && x != null) {
-    const cx = (x - cam.W / 2) / cam.s, cy = -(y - cam.H / 2) / cam.s;
-    const k = 1 - Math.pow(10, L1 - cosm.Lvoluto);
-    cosm.pan = { x: cosm.pan.x + cx * k, y: cosm.pan.y + cy * k };
-    // Lo spostamento a mano non sopravvive a un salto di scala: oltre
-    // qualche vista di distanza dall'ancora si riassorbe
-    const lim = Math.pow(10, L1) * 3;
-    cosm.pan.x = Math.max(-lim, Math.min(lim, cosm.pan.x));
-    cosm.pan.y = Math.max(-lim, Math.min(lim, cosm.pan.y));
+  if (cam) {
+    const sx = x == null ? cam.W / 2 : x, sy = y == null ? cam.H / 2 : y;
+    const z = cosm.ancoraZoom;
+    // La stessa ancora se il dito non si è spostato: il punto si ricorda
+    // dalla prima tacca della rotella, non da dove la carta è arrivata
+    // (il confronto è col punto **di partenza**: un corpo agganciato scivola
+    // verso il centro, e il dito che resta fermo sta ancora chiedendo lui)
+    if (!z || Math.hypot(z.sx0 - sx, z.sy0 - sy) > 3) cosm.ancoraZoom = cosmAncoraAlPunto(sx, sy);
+    else if (dL < 0 && cosm.L < z.L0 && !z.corpo) z.L0 = cosm.L;
   }
   cosm.Lvoluto = L1;
 }
 
 function cosmZoomPasso(verso) {
   cosm.volo = null;
-  cosmZoomAttorno(verso * 0.35, null, null);
+  cosmZoomAttorno(verso * 0.45, null, null);
 }
 
 function cosmCollegaGesti() {
@@ -1869,25 +2511,57 @@ function cosmCollegaGesti() {
   if (!guscio) return;
   cosm.gestiPronti = true;
   const dita = new Map();
-  let partenza = null, toccoDa = null, ultimoTocco = 0, modoPan = false;
+  // `modo`: 'mappa' (un dito sposta la carta, v404), 'giro' (Maiusc o tasto
+  // destro: gira e inclina), 'riga' (il dito sulla riga della scala),
+  // 'pizzico', 'inclina' (due dita che salgono insieme, come nelle mappe
+  // dei telefoni)
+  let modo = 'mappa', partenza = null, toccoDa = null, ultimoTocco = 0, lancio = null;
   const sulla = e => cosm.attivo && typeof sol !== 'undefined' && e.target === sol.canvas;
   const locale = e => {
     const r = sol.canvas.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
   const ferma = e => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); };
+  const sullaRiga = p => {
+    const riga = cosm.schermo.riga;
+    return riga && Math.abs(p.y - riga.y) < 22 && p.x >= riga.x0 - 8 && p.x <= riga.x1 + 8;
+  };
+  // La velocità del dito, mediata come nella vista 3D: è da lei che parte
+  // la corsa quando lo si lascia andare
+  const ricorda = (dx, dy) => {
+    const ora = performance.now();
+    if (!lancio) { lancio = { vx: 0, vy: 0, quando: ora }; return; }
+    const dt = Math.max(0.004, Math.min(0.1, (ora - lancio.quando) / 1000));
+    const k = 1 - Math.exp(-dt / COSM_TAU_LANCIO);
+    lancio.vx += (dx / dt - lancio.vx) * k;
+    lancio.vy += (dy / dt - lancio.vy) * k;
+    lancio.quando = ora;
+  };
+  const datiPizzico = () => {
+    const [a, b] = [...dita.values()];
+    return { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+  };
   guscio.addEventListener('pointerdown', e => {
     if (!sulla(e)) return;
     ferma(e);
     try { sol.canvas.setPointerCapture(e.pointerId); } catch (_) { /* niente */ }
-    dita.set(e.pointerId, locale(e));
+    if (cosm.ui && cosm.ui.aiuto) cosm.ui.aiuto.classList.add('svanito');
+    const p = locale(e);
+    dita.set(e.pointerId, p);
     cosm.volo = null;
-    // Come nella vista 3D: col tasto destro o con Maiusc si sposta la scena
-    if (dita.size === 1) modoPan = e.button === 2 || e.shiftKey;
-    if (dita.size === 1) { const p = locale(e); toccoDa = { x: p.x, y: p.y, t: performance.now() }; partenza = null; }
-    else if (dita.size === 2) {
-      const [a, b] = [...dita.values()];
-      partenza = { d: Math.hypot(a.x - b.x, a.y - b.y), L: cosm.Lvoluto, m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+    cosm.inerzia = null;
+    cosm.ditaGiu = true;
+    lancio = null;
+    if (dita.size === 1) {
+      modo = sullaRiga(p) ? 'riga' : (e.button === 2 || e.shiftKey ? 'giro' : 'mappa');
+      toccoDa = { x: p.x, y: p.y, t: performance.now() };
+      partenza = null;
+    } else if (dita.size === 2) {
+      const d = datiPizzico();
+      partenza = { d: d.d, ang: d.ang, L: cosm.L, m: d.m, m0: d.m, deciso: false };
+      cosm.Lvoluto = cosm.L;
+      cosm.ancoraZoom = cosmAncoraAlPunto(d.m.x, d.m.y);
+      modo = 'pizzico';
       toccoDa = null;
     }
   }, true);
@@ -1897,50 +2571,86 @@ function cosmCollegaGesti() {
     const prima = dita.get(e.pointerId), ora = locale(e);
     dita.set(e.pointerId, ora);
     if (dita.size === 2 && partenza) {
-      const [a, b] = [...dita.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (d > 4) {
-        const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        cosmZoomAttorno(partenza.L - Math.log10(d / partenza.d) - cosm.Lvoluto, m.x, m.y);
-        cosm.L = cosm.Lvoluto;
-        // Due dita spostano anche la scena, come nella vista 3D
-        if (cosm.cam && partenza.m) {
-          cosm.pan.x -= (m.x - partenza.m.x) / cosm.cam.s;
-          cosm.pan.y += (m.y - partenza.m.y) / cosm.cam.s;
+      const d = datiPizzico();
+      // Due dita che salgono o scendono insieme senza allontanarsi inclinano
+      // la carta: si decide nei primi pixel, poi il gesto resta quello
+      if (!partenza.deciso) {
+        const dy = d.m.y - partenza.m0.y, dx = d.m.x - partenza.m0.x;
+        const rapporto = Math.abs(Math.log(d.d / partenza.d));
+        if (Math.hypot(dx, dy) > 10 || rapporto > 0.06) {
+          partenza.deciso = true;
+          if (Math.abs(dy) > 2.2 * Math.abs(dx) && rapporto < 0.05) modo = 'inclina';
         }
-        partenza.m = m;
+      }
+      if (modo === 'inclina') {
+        cosmTrascina(0, d.m.y - partenza.m.y, 'inclina');
+        partenza.m = d.m;
+        return;
+      }
+      if (d.d > 4) {
+        cosm.L = cosm.Lvoluto = Math.max(COSM_L_MIN, Math.min(COSM_L_MAX, partenza.L - Math.log10(d.d / partenza.d)));
+        // Due dita che ruotano girano la carta attorno al loro punto di mezzo
+        let da = d.ang - partenza.ang;
+        if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
+        if (Math.abs(da) > 1e-4) {
+          cosm.az -= da; cosm.azVoluto = cosm.az;
+          partenza.ang = d.ang;
+          const L0 = cosm.ancoraZoom ? cosm.ancoraZoom.L0 : cosm.L;
+          cosm.ancoraZoom = cosmAncoraAlPunto(d.m.x, d.m.y);
+          if (cosm.ancoraZoom) cosm.ancoraZoom.L0 = Math.min(L0, cosm.ancoraZoom.L0);
+        }
+        if (cosm.ancoraZoom) { cosm.ancoraZoom.sx = d.m.x; cosm.ancoraZoom.sy = d.m.y; }
+        cosmApplicaAncora();
+        partenza.m = d.m;
       }
       return;
     }
-    if (dita.size === 1 && cosm.cam) {
-      if (toccoDa && Math.hypot(ora.x - toccoDa.x, ora.y - toccoDa.y) < 6) return;
-      toccoDa = null;
-      const dx = ora.x - prima.x, dy = ora.y - prima.y;
-      if (modoPan) {
-        cosm.pan.x -= dx / cosm.cam.s;
-        cosm.pan.y += dy / cosm.cam.s;
-        return;
-      }
-      // Un dito gira la scena, nel verso del modellino (le stesse costanti
-      // della vista 3D): a destra e a sinistra attorno alla normale del
-      // piano, su e giù l'altezza dell'occhio
-      cosm.az += dx * 0.008;
-      cosm.elev = Math.max(-89, Math.min(89.999, cosm.elev + dy * 0.32));
-      cosm.azVoluto = cosm.az; cosm.elevVoluta = cosm.elev;
+    if (dita.size !== 1 || !cosm.cam) return;
+    if (toccoDa && Math.hypot(ora.x - toccoDa.x, ora.y - toccoDa.y) < 6) return;
+    toccoDa = null;
+    const dx = ora.x - prima.x, dy = ora.y - prima.y;
+    if (modo === 'riga') {
+      // Il dito sulla riga scorre la scala, e la carta torna sulla tappa
+      const riga = cosm.schermo.riga;
+      if (!riga) return;
+      cosm.ancoraZoom = null;
+      cosm.riassorbi = true;
+      cosm.Lvoluto = Math.max(COSM_L_MIN + 0.02, Math.min(COSM_L_MAX, riga.Linv(Math.max(riga.x0, Math.min(riga.x1, ora.x)))));
+      return;
     }
+    if (modo === 'pizzico') return;
+    cosm.ancoraZoom = null;
+    cosmTrascina(dx, dy, modo);
+    ricorda(dx, dy);
   }, true);
   const fine = e => {
     if (!dita.has(e.pointerId)) return;
     if (cosm.attivo) ferma(e);
     const p = dita.get(e.pointerId);
+    const era = dita.size;
     dita.delete(e.pointerId);
     if (dita.size < 2) partenza = null;
-    if (!dita.size) modoPan = false;
+    // Il dito che resta dopo un pizzico ricomincia a spostare da dov'è
+    if (era === 2 && dita.size === 1) { modo = 'mappa'; lancio = null; }
+    if (!dita.size) {
+      cosm.ditaGiu = false;
+      // Lasciato andare in corsa, il dito lancia la carta
+      if (e.type === 'pointerup' && lancio && (modo === 'mappa' || modo === 'giro') &&
+          performance.now() - lancio.quando < 90) {
+        const v = Math.hypot(lancio.vx, lancio.vy);
+        if (v > COSM_INERZIA_MIN) {
+          const lim = Math.min(1, COSM_INERZIA_MAX / v);
+          cosm.inerzia = { vx: lancio.vx * lim, vy: lancio.vy * lim, tipo: modo };
+        }
+      }
+      lancio = null;
+    }
     if (e.type === 'pointerup' && toccoDa && performance.now() - toccoDa.t < 450) {
       const ora = performance.now();
-      if (ora - ultimoTocco < 320) { cosmZoomAttorno(-0.8, p.x, p.y); ultimoTocco = 0; }
+      if (modo !== 'riga' && ora - ultimoTocco < 320) { cosmZoomAttorno(-0.8, p.x, p.y); ultimoTocco = 0; }
       else { ultimoTocco = ora; cosmTocco(p.x, p.y); }
     }
+    if (!dita.size) modo = 'mappa';
     toccoDa = null;
   };
   guscio.addEventListener('pointerup', fine, true);
@@ -1949,8 +2659,11 @@ function cosmCollegaGesti() {
     if (!sulla(e)) return;
     ferma(e);
     const p = locale(e);
-    const passo = Math.max(-1, Math.min(1, e.deltaY / (e.deltaMode === 1 ? 3 : 100)));
-    cosmZoomAttorno(passo * 0.22, p.x, p.y);
+    // La rotella di un mouse dà tacche da cento, il trackpad una pioggia di
+    // numeri piccoli: si somma la quantità, non il numero degli eventi
+    const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
+    const passo = Math.max(-2, Math.min(2, pixel / 100));
+    if (passo) cosmZoomAttorno(passo * 0.24, p.x, p.y);
   }, { capture: true, passive: false });
   guscio.addEventListener('dblclick', e => { if (sulla(e)) ferma(e); }, true);
   guscio.addEventListener('contextmenu', e => { if (sulla(e)) e.preventDefault(); }, true);
@@ -1968,16 +2681,37 @@ function cosmEntra(id, opzioni = {}) {
   const prima = cosm.attivo;
   cosm.attivo = true;
   cosm.pan = { x: 0, y: 0 };
-  if (!prima) { cosm.az = cosm.azVoluto = 0; cosm.elev = cosm.elevVoluta = 90; }
+  cosm.ancoraZoom = null;
+  cosm.inerzia = null;
+  cosm.riassorbi = false;
+  // La camera: quella della vista 3D da cui si arriva (v404: la carta e la
+  // scena hanno la stessa terna, quindi il passaggio non gira niente), o
+  // vista dall'alto
+  if (opzioni.camera) {
+    cosm.az = cosm.azVoluto = opzioni.camera.az || 0;
+    cosm.elev = cosm.elevVoluta = Math.max(-89, Math.min(90, opzioni.camera.elev == null ? 90 : opzioni.camera.elev));
+  } else if (!prima) { cosm.az = cosm.azVoluto = 0; cosm.elev = cosm.elevVoluta = 90; }
   const guscio = document.getElementById('sol-guscio');
   if (guscio) guscio.classList.add('cosmo-attivo');
   if (cosm.ui) cosm.ui.radice.hidden = false;
   if (typeof solChiudiScheda === 'function') { try { solChiudiScheda(); } catch (e) { /* niente */ } }
   const L = Number.isFinite(opzioni.L) ? opzioni.L : (id ? cosmLDi(id) : cosmLDi('voyager'));
-  // Si entra dalla scala dei pianeti e si vola fino a dove si voleva: è la
-  // stessa strada che dice di quanto ci si sta allontanando
-  if (!prima && !opzioni.immediato) { cosm.L = Math.log10(34); cosm.Lvoluto = cosm.L; }
+  // Si entra dalla scala da cui si arriva (`opzioni.da`, di serie i pianeti)
+  // e si vola fino a dove si voleva: è la stessa strada che dice di quanto
+  // ci si sta allontanando
+  if (!prima && !opzioni.immediato) {
+    const da = Number.isFinite(opzioni.da) ? opzioni.da : cosmLDi('pianeti');
+    cosm.L = cosm.Lvoluto = Math.max(COSM_L_MIN + 0.02, Math.min(COSM_L_MAX, da));
+  }
   cosmVolaA(L, { immediato: !!opzioni.immediato });
+  // Chi arriva dalla vista 3D girando attorno alla Terra la ritrova in mezzo
+  // allo schermo anche qui: lo spostamento è di un'unità astronomica, che
+  // allontanandosi diventa subito niente
+  if (opzioni.centraTerra && opzioni.immediato) {
+    const t = cosmRuota(cosmSullaCarta(cosmTerraGal(), cosmPesiPiano(cosm.L)));
+    const a = cosmAncoraRuotata(cosm.L);
+    cosm.pan = { x: t.x - a.x, y: t.y - a.y };
+  }
   if (id && id !== 'voyager' && COSM_PER_ID.has(id) && !opzioni.senzaScheda) cosmScegli(id);
   if (typeof solAggiornaTasti === 'function') solAggiornaTasti();
 }
@@ -2005,20 +2739,45 @@ function cosmGiraConTasti(tasto) {
   else if (tasto === 'ArrowDown') cosm.elevVoluta = Math.min(90, cosm.elevVoluta + 4);
 }
 
-// Dalla scala cosmica alla vista 3D dei pianeti, quando ci si avvicina oltre
-// Kuiper: la scena riparte da «Tutto», poco più larga, e ci scivola dentro
-function cosmTornaAiPianeti() {
-  if (typeof solRientraDalCosmo !== 'function') return false;
-  cosmEsci();
-  solRientraDalCosmo();
-  return true;
+// In fondo alla scala la Terra riempie lo schermo, e si atterra nel
+// planetario (v404): è la stessa discesa della vista 3D
+// (`solAtterraNelPlanetario`, il volo d'ingresso percorso all'indietro), e la
+// si prende dalla stessa misura — la Terra al 42% del lato corto — con la
+// stessa camera. Non durante una demo o un filmato, che hanno la loro regia:
+// lì la scala si ferma in fondo e basta.
+function cosmAtterra() {
+  if (cosm.atterrando || cosm.regia) return false;
+  const bloccato = (typeof AstroDemo === 'object' && AstroDemo && AstroDemo.inCorso) ||
+    (typeof sky !== 'undefined' && sky.reg && sky.reg.attiva) ||
+    typeof solAtterraNelPlanetario !== 'function' || typeof solPreparaAtterraggio !== 'function';
+  if (bloccato) { cosm.Lvoluto = Math.max(cosm.Lvoluto, COSM_L_ATTERRA + 0.01); return false; }
+  cosm.atterrando = true;
+  const camera = { az: cosm.az, elev: cosm.elev };
+  try {
+    cosmEsci();
+    solPreparaAtterraggio(camera);
+    return solAtterraNelPlanetario();
+  } finally { cosm.atterrando = false; }
 }
 
+// La Terra sta in mezzo allo schermo (entro un quarto del lato corto)?
+function cosmTerraAlCentro() {
+  const cam = cosm.cam;
+  if (!cam) return false;
+  const q = cam.p(cosmTerraGal());
+  return Math.hypot(q.x - cam.W / 2, q.y - cam.H / 2) < cam.lato * 0.5;
+}
+
+// Il ⟲: la carta dall'alto, senza spostamenti, sulla tappa più vicina alla
+// scala di adesso — non più sulle Voyager, che a scala della Terra voleva
+// dire un volo di sei decade per chiedere soltanto «rimettimi dritto»
 function cosmReimposta() {
   cosm.anni = 0;
-  cosm.pan = { x: 0, y: 0 };
+  cosm.ancoraZoom = null;
+  cosm.inerzia = null;
   cosm.azVoluto = 0; cosm.elevVoluta = 90;
-  cosmVolaA(cosmLDi('voyager'));
+  const vicina = cosmStrutturaDellaScala(cosm.L);
+  cosmVolaA(vicina ? Math.log10(vicina.vista) : cosmLDi('voyager'));
 }
 
 // Dal nome scritto nella ricerca della 3D: «Laniakea», «nube di Oort»,
@@ -2036,11 +2795,25 @@ function cosmCercaTesto(testo) {
   return false;
 }
 
-// Dal planetario: apre la vista 3D già sulla scala cosmica, senza il volo
-// d'ingresso (quello atterra sulla Terra, e qui si va dall'altra parte)
+// Dal planetario: apre la vista 3D già sulla scala cosmica. Senza una tappa
+// chiesta (il tasto del pannello Astri) si esce col volo d'ingresso e si
+// atterra sulla **Terra** della carta, alla stessa misura a cui la vista 3D
+// l'aveva lasciata (`arrival`), e da lì ci si allontana fino ai pianeti
+// (v404): uscendo dal planetario il centro è la Terra, non il Sole. Con una
+// tappa chiesta si va dritti lì, come prima.
 function apriScalaCosmica(id) {
   if (typeof apriSistemaSolare !== 'function') return;
   if (typeof sol !== 'undefined' && sol.aperto) { cosmEntra(id); return; }
+  if (!id) {
+    apriSistemaSolare({
+      inquadra: () => {
+        cosmEntra('terra', { L: cosmLDi('arrival'), immediato: true, senzaScheda: true,
+          camera: { az: sol.az, elev: sol.elev } });
+        cosmVolaA(cosmLDi('pianeti'));
+      }
+    });
+    return;
+  }
   apriSistemaSolare({ senzaVolo: true, inquadra: () => cosmEntra(id) });
 }
 
@@ -2093,7 +2866,7 @@ if (typeof document !== 'undefined') {
   // trecento millisecondi, confrontando l'HTML)
   if (typeof astroI18n !== 'undefined' && astroI18n.alCambio) astroI18n.alCambio(() => {
     cosmScriviFila();
-    if (cosm.ui) cosm.ui.firmaScheda = '';
+    if (cosm.ui) { cosm.ui.firmaScheda = ''; if (cosm.ui.aiuto) cosm.ui.aiuto.textContent = cosmT('cosmo.aiuto'); }
     cosm.sagome = Object.fromEntries(Object.entries(cosm.sagome).filter(([k]) => !k.startsWith('elio-')));
   });
 }
@@ -2104,6 +2877,6 @@ if (typeof module !== 'undefined' && module.exports) {
     cosmEclAGal, cosmGalAEcl, cosmDaRaDec, cosmDaGal, cosmSullaCarta, cosmPesiPiano,
     cosmMisuraSonda, cosmPosizioneSonda, cosmTappe, cosmQuandoA, cosmLDi, cosmCentro, cosmCamera,
     cosmTestoDistanza, cosmTestoAnni, cosmVisibilita, cosmStrutturaDellaScala, cosmStrutture,
-    cosmCercaTesto, cosmRegia, cosmEntra, cosmEsci, cosmRuota, cosmZoomAttorno, COSM_L_RIENTRO, COSM_L_INGRESSO, cosmContornoElio, COSM_ELIO, COSM_NASO, cosmRaggioElio, cosmParametriElio
+    cosmCercaTesto, cosmRegia, cosmEntra, cosmEsci, cosmRuota, cosmZoomAttorno, COSM_L_INGRESSO, COSM_L_ATTERRA, COSM_L_MIN, cosmAncoraRuotata, cosmCorpi, cosmTestoLuce, cosmContornoElio, COSM_ELIO, COSM_NASO, cosmRaggioElio, cosmParametriElio
   };
 }

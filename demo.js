@@ -444,12 +444,33 @@
       return { chiudi: () => evidenze.delete(p.name) };
     }
   };
+  // Il volo fra il planetario e la vista 3D, nei due versi. `solar_system_3d`
+  // è il decollo (la salita dal cielo di casa fino addosso alla Terra);
+  // `planetarium_view` (v404) è l'atterraggio, lo stesso volo percorso
+  // all'indietro: parte dalla Terra della scala cosmica (o della 3D) alla
+  // misura a cui la scena prima l'ha lasciata — `cosmic_scale { to: landing }`
+  // — e finisce sulla fotografia del planetario, che la scena dopo riprende.
   registro.zoom_view = {
     verifica(p) {
       campi(p, ['type', 'final_target']);
-      richiedi(p.type === 'geometric' && p.final_target === 'solar_system_3d', err('transizione'));
+      richiedi(p.type === 'geometric' && ['solar_system_3d', 'planetarium_view'].includes(p.final_target), err('transizione'));
     },
     crea(p, c) {
+      if (p.final_target === 'planetarium_view') {
+        if (!sol.aperto || typeof solAtterraNelPlanetario !== 'function' || typeof solPreparaAtterraggio !== 'function') {
+          vista('planetarium_view', c);
+          return {};
+        }
+        const camera = typeof cosm !== 'undefined' && cosm.attivo ? { az: cosm.az, elev: cosm.elev } : { az: sol.az, elev: sol.elev };
+        if (typeof cosmRegia === 'function') cosmRegia(null);
+        if (typeof cosmEsci === 'function') cosmEsci();
+        solPreparaAtterraggio(camera);
+        if (!solAtterraNelPlanetario({ manuale: true })) { vista('planetarium_view', c); return {}; }
+        return {
+          aggiorna(u) { solAtterraPasso(1 - (c && c.ridotto ? 1 : u)); },
+          chiudi() { solVoloChiudi(); }
+        };
+      }
       lasciaMappa();
       if (vistaAttuale !== 'cielo') mostraVista('cielo', { conservaTempo: true });
       presentaCielo(c);
@@ -1429,14 +1450,23 @@
       const La = scalaCosmica(da), Lb = scalaCosmica(p.to === undefined ? da : p.to);
       const zs = p.zoom_start || 0, ze = p.zoom_end === undefined ? 1 : p.zoom_end;
       const fuoco = p.focus !== undefined ? strutturaCosmica(p.focus).id : null;
-      const ea = p.elev_from === undefined ? (p.elev_to === undefined ? 90 : p.elev_to) : p.elev_from;
+      // La camera parte da dove l'ha lasciata la scena di prima, se la scala
+      // cosmica era già aperta: due scene di fila sono un volo solo. Con
+      // `from: arrival` (v404) la scena prima era la vista 3D addosso alla
+      // Terra, e la carta ne prende la camera: lo stesso giro e la stessa
+      // inclinazione, così il passaggio dall'una all'altra non si vede
+      const aperta = typeof cosm !== 'undefined' && cosm.attivo;
+      const daArrivo = da === 'arrival' && !aperta;
+      const ea = p.elev_from === undefined
+        ? (daArrivo ? Math.max(5, Math.min(90, sol.elev)) : (p.elev_to === undefined ? 90 : p.elev_to)) : p.elev_from;
       const eb = p.elev_to === undefined ? ea : p.elev_to;
       const giro = (p.orbit || 0) * GRADI;
-      // La camera parte da dove l'ha lasciata la scena di prima, se la scala
-      // cosmica era già aperta: due scene di fila sono un volo solo
-      const azBase = typeof cosm !== 'undefined' && cosm.attivo ? cosm.az : 0;
-      const oggi = Date.now();
-      istante(oggi);
+      const azBase = aperta ? cosm.az : (daArrivo ? sol.az : 0);
+      // L'istante della carta è quello del racconto, fermo per tutto il
+      // viaggio: da quando la scala comincia dalla Terra (v404) un salto
+      // d'orologio fra la vista 3D e la carta si vedrebbe — la Terra gira,
+      // e il confine fra il giorno e la notte con lei
+      const oggi = aperta && Number.isFinite(cosm.baseMs) ? cosm.baseMs : skyAdesso().getTime();
       // Le soste (`ease: stops`): le strutture che cadono fra le due scale,
       // in ordine di percorrenza; ogni tratto prende lo stesso tempo e parte
       // e arriva fermo
