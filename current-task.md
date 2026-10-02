@@ -1,8 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v402): la demo «Dalla Terra all'universo» (`universo`, 16 scene, 380 s).
+Ultimo lavoro (v403): il passaggio planetario ↔ vista 3D con lo zoom.
 
-- Torna l'azione `cosmic_scale` in `demo.js` (senza il futuro delle sonde), con in più la camera della carta (`orbit`, `elev_from`/`elev_to`) scritta da `cosmRegia`.
-- Due scene cosmiche di fila sono un volo solo: la chiusura lascia la carta aperta per un giro del browser.
-- `camera_3d` con `focus: 'Earth'` spegne i mondi minori (come già col Sole).
-- Prove: `node scripts/prova-demo-universo.js` (verde), `prova-demo-voyager`, `prova-demo-stagioni`, `prova-demo-regia`, `prova-scala-cosmica` verdi. In `prova-demo-browser.js` resta rossa, come prima, la prova «La demo lascia invariato lo stato dello schermo intero».
+- Zoomando indietro oltre i 180° di campo si esce nello spazio (`skySpintaOltreIlCampo`).
+- Zoomando sulla Terra finché riempie lo schermo si atterra nel planetario col volo al contrario (`solAtterraNelPlanetario`).
+- Tolto il tasto del Sistema Solare in basso a destra sulla mappa (`#skymap-btn-sistema-mappa`).
+- Prove: `node scripts/prova-passaggio-zoom.js` (verde). In `prova-volo.js` resta rossa, come prima, «e gli stessi pixel: il velo si apre su un’immagine che era già lì».

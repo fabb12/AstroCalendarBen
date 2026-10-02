@@ -8808,6 +8808,9 @@ function skyImpostaFov(gradi, opzioni = {}) {
   // della vista: si ignora quel singolo campione e il gesto successivo
   // continua dal campo ancora valido.
   if (!Number.isFinite(gradi) || gradi <= 0) return;
+  // Un gesto che chiede più cielo di quanto ce ne sia è una richiesta di
+  // uscire: vedi `skySpintaOltreIlCampo`, qui sotto
+  if (opzioni.gesto && skySpintaOltreIlCampo(gradi)) return;
   sky.fovVoluto = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, gradi));
   if (!opzioni.morbido) sky.fov = sky.fovVoluto;
   if (!skyDettoDelTremolio && sky.fovVoluto <= 6 && skyUsaSensori()) {
@@ -8815,6 +8818,50 @@ function skyImpostaFov(gradi, opzioni = {}) {
     skyAvviso('ingrandimento', 'A questo ingrandimento il tremolio della mano si vede tutto: ' +
       'spegni “Segui il telefono” e muovi la mappa col dito, oppure scegli l’astro e accendi “Insegui”.', 12000);
   }
+}
+
+// --- Uscire nello spazio allontanandosi ---
+// A centottanta gradi di campo il planetario ha finito il cielo da far
+// vedere: c'è tutta la volta, e allargare ancora non ha un significato da
+// terra. Ne ha uno da fuori — ci si allontana — e il gesto che lo chiede è
+// lo stesso di sempre: chi continua a pizzicare, a girare la rotellina o a
+// premere il − quando il campo è già al massimo sta chiedendo di salire. Si
+// apre allora il Sistema Solare in 3D, col volo d'ingresso di §7.7-quinquies
+// (la fotografia del planetario è l'ultimo fotogramma visto): è il tasto che
+// stava in basso a destra, fatto con lo zoom invece che con un tocco.
+//
+// Due cautele, e sono quelle che separano un passaggio naturale da uno che
+// scatta da solo. Si conta solo la spinta fatta **a campo già arrivato in
+// fondo** (`sky.fov`, non `sky.fovVoluto`: con lo zoom morbido il voluto
+// arriva al tetto un quarto di secondo prima del disegnato, e chi preme due
+// volte il − non deve trovarsi nello spazio senza aver visto i 180°). E la
+// spinta si **accumula** in logaritmo e si scorda dopo una pausa: uno
+// sfioramento di trackpad vale un quarantesimo di scatto, e un passaggio di
+// scala così grande non deve partire per un dito appoggiato male.
+const SKY_SPINTA_USCITA = Math.log(1.3);   // quanto oltre il tetto bisogna spingere
+const SKY_SPINTA_SCORDA_MS = 900;
+function skySpintaOltreIlCampo(gradi) {
+  const ora = performance.now();
+  const s = sky.spintaFuori || (sky.spintaFuori = { log: 0, quando: 0 });
+  if (ora - s.quando > SKY_SPINTA_SCORDA_MS) s.log = 0;
+  s.quando = ora;
+  if (!(gradi > SKY_FOV_MAX) || sky.fov < SKY_FOV_MAX - 0.5) { s.log = 0; return false; }
+  if (typeof apriSistemaSolare !== 'function' || (sol && sol.aperto)) return false;
+  if (typeof AstroDemo === 'object' && AstroDemo && AstroDemo.inCorso) return false;
+  if (sky.reg && sky.reg.attiva) return false;
+  if (skyCampoDaObiettivo()) return false;
+  // Il pizzico ridà ogni volta il campo voluto dall'inizio del gesto, non un
+  // passo: per lui conta quanto oltre il tetto si è arrivati, non la somma
+  s.log = sky.puntatori && sky.puntatori.size === 2
+    ? Math.log(gradi / SKY_FOV_MAX)
+    : s.log + Math.log(gradi / SKY_FOV_MAX);
+  if (s.log < SKY_SPINTA_USCITA) return false;
+  s.log = 0;
+  sky.pizzico = null;
+  if (sky.puntatori) sky.puntatori.clear();
+  skyMostraGruppo('');
+  apriSistemaSolare();
+  return true;
 }
 
 // Ultima rete prima della proiezione. Le coordinate della vista vengono da
@@ -29051,7 +29098,8 @@ function skyZoom(fattore, opzioni = {}) {
   // Il fattore si applica a dove lo zoom sta andando, non a dov'è arrivato:
   // due tocchi di fila sul + devono valere due passi interi, anche se il
   // primo non ha ancora finito di scivolare
-  skyImpostaFov((opzioni.morbido ? sky.fovVoluto || sky.fov : sky.fov) * fattore, opzioni);
+  skyImpostaFov((opzioni.morbido ? sky.fovVoluto || sky.fov : sky.fov) * fattore,
+    Object.assign({ gesto: fattore > 1 }, opzioni));
 }
 
 function skyImpostaVistaPulita(attiva) {
@@ -29131,7 +29179,7 @@ function skyInizializzaGesti() {
         const voluto = sky.pizzico.fov * sky.pizzico.distanza / d;
         // Con la fotocamera accesa il pizzico non ingrandisce: tara
         if (skyCampoDaObiettivo()) skyTaraCampoFotocamera(voluto);
-        else skyImpostaFov(voluto);
+        else skyImpostaFov(voluto, { gesto: true });
       }
       return;
     }
@@ -29384,7 +29432,6 @@ function inizializzaSkymap() {
   // schermo intero i pannelli non si aprono. Quello sulla mappa è il comando
   // vero e proprio, in colonna con lo schermo intero e l'inseguimento.
   collega('skymap-btn-sistema', () => { apriSistemaSolare(); skyMostraGruppo(''); });
-  collega('skymap-btn-sistema-mappa', () => { apriSistemaSolare(); skyMostraGruppo(''); });
   skyAggiornaTastoInsegui();
   document.querySelectorAll('#cielo-comandi [data-verso]').forEach(b => {
     b.addEventListener('click', () => {
@@ -39335,12 +39382,45 @@ function solRientraDalCosmo() {
   solAggiornaTasti();
 }
 
+// E dall'altra parte della scala: avvicinandosi alla Terra finché riempie lo
+// schermo si torna **a terra**, cioè nel planetario, nel luogo e nell'istante
+// da cui lo si guarda. È il gemello di `skySpintaOltreIlCampo` (uscire dal
+// planetario allontanandosi): i due gesti insieme fanno della vista 3D e del
+// cielo due scale della stessa cosa invece che due finestre.
+//
+// La soglia è il raggio disegnato della Terra contro il lato corto della
+// tela, e non uno zoom: lo zoom a cui la Terra riempie lo schermo dipende
+// dalla tela e dalle due misure dei corpi, la frazione di schermo no. Vale
+// solo col perno sulla Terra — chi si avvicina a Giove sta guardando Giove —
+// e mai durante una demo, un filmato o una tappa di Missione Cielo giocata
+// qui dentro, che hanno ognuno la sua regia.
+const SOL_ATTERRA_QUOTA = 0.55;
+function solZoomVersoIlPlanetario(z) {
+  if (sol.vicino || sol.grandTour || sol.perno !== 'Earth') return false;
+  if (!(z > sol.zoomVoluto)) return false;
+  if (typeof missModalitaGiocoSistema === 'function' && missModalitaGiocoSistema()) return false;
+  if (typeof AstroDemo === 'object' && AstroDemo && AstroDemo.inCorso) return false;
+  if (sky.reg && sky.reg.attiva) return false;
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  const lato = Math.min(sol.L || 0, sol.H || 0);
+  if (!terra || !(lato > 0) || !(sol.zoom > 0)) return false;
+  // Il raggio che la Terra avrebbe a questo zoom: con i pallini ingranditi
+  // cresce con la radice dello zoom (`solCrescitaCorpo`), in scala vera
+  // col metro della scena, cioè linearmente
+  const r = solRaggioCorpo(terra) * Math.pow(z / sol.zoom, sol.misureVere ? 1 : 0.5);
+  if (r < SOL_ATTERRA_QUOTA * lato && z < SOL_ZOOM_MAX_CORPO) return false;
+  return solAtterraNelPlanetario();
+}
+
 function solImpostaZoom(z, opzioni = {}) {
   if (opzioni.gesto) {
+    // Durante il volo d'atterraggio la camera non è più delle dita
+    if (typeof solVolo === 'object' && solVolo.attivo) return;
     // Mentre la scala cosmica è a schermo un pizzico cominciato fra i pianeti
     // non tocca più questa camera
     if (typeof cosmAttivo === 'function' && cosmAttivo()) return;
     if (solZoomVersoIlCosmo(z)) return;
+    if (solZoomVersoIlPlanetario(z)) return;
   }
   // Tre scene, tre corse dello zoom. Nel banco delle eclissi si deve poter
   // fare tutt'e due le cose: allontanarsi finché il cono d'ombra della Terra
@@ -41100,6 +41180,57 @@ function solVoloPasso(ts) {
   solVolo.raf = requestAnimationFrame(solVoloPasso);
 }
 
+// I numeri del volo, letti dalle due scene: da dove si parte nel planetario
+// e quanto grande la scena 3D disegna la Terra. Servono uguali al decollo e
+// all'atterraggio, che è lo stesso volo percorso all'indietro.
+function solVoloImpostaNumeri(rFine) {
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!terra) return false;
+  solVolo.versoSole = solVersoIlSole(terra);
+  solVolo.quando = new Date(sol.istante || skyAdesso().getTime());
+
+  // Da dove si parte: la posa vera dell'ultimo fotogramma del planetario. La
+  // terza componente dello sguardo è il seno dell'altezza — se il cielo non è
+  // mai stato aperto (si arriva da un evento, dalla dashboard, da una tappa di
+  // Missione Cielo) si parte dall'orizzonte, che è la posa in cui si guarda un
+  // panorama.
+  const f = sky.ultimaBase && sky.ultimaBase.f;
+  solVolo.alt0 = f ? Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D : 8;
+  solVolo.alt0 = Math.max(-5, Math.min(62, solVolo.alt0));
+
+  // La focale di partenza è **quella del planetario**, riportata all'altezza di
+  // questa tela: il primo fotogramma del volo è la fotografia disegnata alla
+  // sua scala, quindi il campo dev'essere lo stesso o si vedrebbe uno scatto
+  // di zoom appena il conto prende il posto dell'immagine.
+  const Fsky = (sky.ultimaFocale && sky.altezza) ? sky.ultimaFocale * (solVolo.H / sky.altezza) : 0;
+  solVolo.F0 = Fsky > 20 ? Fsky : (solVolo.H / 2) / (2 * Math.tan(80 / 4 * SKY_D2R));
+  if (solVolo.foto) {
+    solVolo.fotoL = sky.larghezza || solVolo.foto.width;
+    solVolo.fotoH = sky.altezza || solVolo.foto.height;
+    // Dov'era l'orizzonte **dentro** alla fotografia, nei suoi pixel: è
+    // l'unica cosa netta che quell'immagine abbia, ed è quella che va tenuta
+    // ferma sul bordo che il conto calcola (vedi `solVoloFotografia`).
+    solVolo.fotoOrizzonte = 2 * (sky.ultimaFocale || 0) * Math.tan(solVolo.alt0 / 2 * SKY_D2R);
+  }
+
+  // La focale d'arrivo si ricava all'indietro da quanto grande la scena
+  // disegnerà la Terra: `2F·tan(ρ/2) = r`, e da lì l'ultimo fotogramma del velo
+  // ha il pianeta esattamente della misura e nel posto in cui sta sotto.
+  solVolo.rhoFine = Math.asin(SOL_VOLO_R_KM / (SOL_VOLO_R_KM + SOL_VOLO_H1_KM));
+  solVolo.rFine = Math.max(4, Number.isFinite(rFine) ? rFine : solRaggioCorpo(terra));
+  solVolo.F1 = Math.max(60, Math.min(40000, solVolo.rFine / (2 * Math.tan(solVolo.rhoFine / 2))));
+
+  // Da dove parte il bordo del mondo, in mezze altezze di tela: a quota zero
+  // il pianeta è largo mezzo giro, quindi il suo bordo vicino **è**
+  // l'orizzonte, e l'orizzonte sta dove il planetario lo stava disegnando.
+  // Con questa riga il primo fotogramma del conto e la fotografia hanno la
+  // stessa riga di terra, ed è per questo che la dissolvenza fra i due non
+  // si vede.
+  solVolo.q0 = 2 * solVolo.F0 * Math.tan(solVolo.alt0 / 2 * SKY_D2R) / (solVolo.H / 2);
+
+  return true;
+}
+
 // L'avvio vero e proprio: si chiama a inquadratura già fatta, perché i numeri
 // d'arrivo — dov'è la Terra, quanto la scena la disegnerà grande, da che parte
 // le batte il Sole — si **leggono dalla scena** invece di essere indovinati.
@@ -41132,49 +41263,7 @@ function solAvviaTransizioneDecollo(opzioni = {}) {
   ponte.style.transition = '';
   if (!solVoloMisura()) { solVoloChiudi(); return; }
 
-  const terra = sol.pianeti.find(p => p.id === 'Earth');
-  if (!terra) { solVoloChiudi(); return; }
-  solVolo.versoSole = solVersoIlSole(terra);
-  solVolo.quando = new Date(sol.istante || skyAdesso().getTime());
-
-  // Da dove si parte: la posa vera dell'ultimo fotogramma del planetario. La
-  // terza componente dello sguardo è il seno dell'altezza — se il cielo non è
-  // mai stato aperto (si arriva da un evento, dalla dashboard, da una tappa di
-  // Missione Cielo) si parte dall'orizzonte, che è la posa in cui si guarda un
-  // panorama.
-  const f = sky.ultimaBase && sky.ultimaBase.f;
-  solVolo.alt0 = f ? Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D : 8;
-  solVolo.alt0 = Math.max(-5, Math.min(62, solVolo.alt0));
-
-  // La focale di partenza è **quella del planetario**, riportata all'altezza di
-  // questa tela: il primo fotogramma del volo è la fotografia disegnata alla
-  // sua scala, quindi il campo dev'essere lo stesso o si vedrebbe uno scatto
-  // di zoom appena il conto prende il posto dell'immagine.
-  const Fsky = (sky.ultimaFocale && sky.altezza) ? sky.ultimaFocale * (solVolo.H / sky.altezza) : 0;
-  solVolo.F0 = Fsky > 20 ? Fsky : (solVolo.H / 2) / (2 * Math.tan(80 / 4 * SKY_D2R));
-  if (solVolo.foto) {
-    solVolo.fotoL = sky.larghezza || solVolo.foto.width;
-    solVolo.fotoH = sky.altezza || solVolo.foto.height;
-    // Dov'era l'orizzonte **dentro** alla fotografia, nei suoi pixel: è
-    // l'unica cosa netta che quell'immagine abbia, ed è quella che va tenuta
-    // ferma sul bordo che il conto calcola (vedi `solVoloFotografia`).
-    solVolo.fotoOrizzonte = 2 * (sky.ultimaFocale || 0) * Math.tan(solVolo.alt0 / 2 * SKY_D2R);
-  }
-
-  // La focale d'arrivo si ricava all'indietro da quanto grande la scena
-  // disegnerà la Terra: `2F·tan(ρ/2) = r`, e da lì l'ultimo fotogramma del velo
-  // ha il pianeta esattamente della misura e nel posto in cui sta sotto.
-  solVolo.rhoFine = Math.asin(SOL_VOLO_R_KM / (SOL_VOLO_R_KM + SOL_VOLO_H1_KM));
-  solVolo.rFine = Math.max(4, solRaggioCorpo(terra));
-  solVolo.F1 = Math.max(60, Math.min(40000, solVolo.rFine / (2 * Math.tan(solVolo.rhoFine / 2))));
-
-  // Da dove parte il bordo del mondo, in mezze altezze di tela: a quota zero
-  // il pianeta è largo mezzo giro, quindi il suo bordo vicino **è**
-  // l'orizzonte, e l'orizzonte sta dove il planetario lo stava disegnando.
-  // Con questa riga il primo fotogramma del conto e la fotografia hanno la
-  // stessa riga di terra, ed è per questo che la dissolvenza fra i due non
-  // si vede.
-  solVolo.q0 = 2 * solVolo.F0 * Math.tan(solVolo.alt0 / 2 * SKY_D2R) / (solVolo.H / 2);
+  if (!solVoloImpostaNumeri()) { solVoloChiudi(); return; }
 
   solVolo.attivo = true;
   solVolo.avvio = 0;
@@ -41191,6 +41280,79 @@ function solAvviaTransizioneDecollo(opzioni = {}) {
   // della sentinella dei cicli (§7.4-quinquies), in piccolo.
   if (solVolo.timer) clearTimeout(solVolo.timer);
   solVolo.timer = setTimeout(solVoloChiudi, SOL_VOLO_MS + 1800);
+}
+
+// --- L'atterraggio: il volo all'indietro ---
+// Lo stesso volo del decollo, con `u` che va da uno a zero: si parte dalla
+// Terra disegnata dalla scena — alla misura a cui la si stava guardando —, si
+// scende attraverso l'aria e si atterra sulla fotografia del planetario, che
+// è il cielo che si ritrova chiudendo la finestra. Le due metà del velo si
+// invertono: all'inizio si **chiude** sopra la scena viva, alla fine resta
+// opaco finché la finestra non se n'è andata, e il planetario compare sotto
+// la sua stessa immagine.
+//
+// Quanto grande disegnare la Terra al primo fotogramma lo dice la scena, ma
+// con un tetto: il volo la vuole al centro e più piccola dello schermo, e
+// la dissolvenza d'apertura copre i pochi pixel di differenza.
+const SOL_ATTERRA_MS = 4200;
+function solAtterraNelPlanetario() {
+  if (!sol.aperto || solVolo.attivo) return false;
+  const ponte = document.getElementById('sol-transizione');
+  solVolo.tela = document.getElementById('sol-transizione-tela');
+  const ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Chi arriva qui da un'altra vista non ha un planetario dietro la finestra:
+  // ci si va dopo, e la fotografia non c'è
+  const daCielo = typeof vistaAttuale !== 'undefined' && vistaAttuale === 'cielo';
+  const atterra = () => {
+    solVolo.attivo = false;
+    solVolo.dopo = null;
+    chiudiSistemaSolare();
+    if (!daCielo && typeof mostraVista === 'function') mostraVista('cielo');
+    // Si è scesi a centottanta gradi di campo: il planetario si stringe da
+    // sé su una vista normale, che è l'ultimo tratto della discesa
+    if (sky.fov > 100) skyImpostaFov(100, { morbido: true });
+  };
+  if (!ponte || !solVolo.tela || ridotto) { atterra(); return true; }
+  solVoloFerma();
+  sol.inerzia = null;
+  solVolo.dopo = null;
+  solVolo.foto = daCielo ? solVoloFotografaIlCielo() : null;
+  ponte.style.transition = '';
+  ponte.classList.remove('transizione-finita');
+  ponte.classList.add('in-volo');
+  ponte.style.opacity = '0';
+  if (!solVoloMisura()) { solVoloChiudi(); atterra(); return true; }
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  const tetto = 0.42 * Math.min(solVolo.L, solVolo.H);
+  const rTerra = terra ? Math.min(tetto, solRaggioCorpo(terra)) : 62;
+  if (!solVoloImpostaNumeri(rTerra)) { solVoloChiudi(); atterra(); return true; }
+  solVolo.attivo = true;
+  solVolo.avvio = 0;
+  const passo = ts => {
+    solVolo.raf = 0;
+    if (!solVolo.attivo || !sol.aperto) return;
+    if (!solVolo.avvio) solVolo.avvio = ts;
+    const u = Math.max(0, 1 - (ts - solVolo.avvio) / SOL_ATTERRA_MS);
+    try {
+      solVoloDisegna(u);
+    } catch (e) {
+      skyGuastoFotogramma(e);
+      atterra();
+      return;
+    }
+    // Il velo si chiude nel primo tratto, sopra alla Terra della scena
+    ponte.style.opacity = String(solVoloRampa((1 - u) / (1 - SOL_VOLO_APRI)));
+    if (u <= 0) { atterra(); return; }
+    solVolo.raf = requestAnimationFrame(passo);
+  };
+  solVoloDisegna(1);
+  solVolo.raf = requestAnimationFrame(passo);
+  // Lo stesso paracadute del decollo: un cambio di scheda strozza le
+  // `requestAnimationFrame`, e una finestra che non si chiude più è peggio
+  // di un atterraggio senza volo
+  if (solVolo.timer) clearTimeout(solVolo.timer);
+  solVolo.timer = setTimeout(() => { if (sol.aperto) atterra(); }, SOL_ATTERRA_MS + 1800);
+  return true;
 }
 
 window.apriSistemaSolare = (opzioni = {}) => {
@@ -41536,7 +41698,7 @@ function inizializzaSistemaSolare() {
   const zoomPiuMappa = document.getElementById('sol-zoom-piu');
   if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () => {
     if (typeof cosmAttivo === 'function' && cosmAttivo()) { cosmZoomPasso(-1); return; }
-    solImpostaZoom(sol.zoomVoluto * Math.pow(1.4, solPrecisioneCamera()), { morbido: true });
+    solImpostaZoom(sol.zoomVoluto * Math.pow(1.4, solPrecisioneCamera()), { morbido: true, gesto: true });
   });
 
   // Il pieno schermo può finire anche senza passare dal tasto (Esc, o il
