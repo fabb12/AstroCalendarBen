@@ -5478,7 +5478,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "cosmo.scheda.vai": "Frame it",
     "cosmo.scheda.luceDalSole": "Sunlight gets here in",
     "cosmo.scheda.lunaOra": "The Moon, right now, is",
-    "cosmo.aiuto": "Drag to move · scroll or pinch to change scale · Shift or right button to turn · drag the bar at the bottom to slide through the scales",
+    "cosmo.aiuto": "Drag to turn · middle button, right button or Shift to move · scroll or pinch to change scale · drag the bar at the bottom to slide through the scales",
     "cosmo.scheda.chiudi": "Close the card",
     "cosmo.sonde.titolo": "The Voyagers",
     "cosmo.sonde.etichettaSole": "{d} from the Sun",

@@ -2511,11 +2511,14 @@ function cosmCollegaGesti() {
   if (!guscio) return;
   cosm.gestiPronti = true;
   const dita = new Map();
-  // `modo`: 'mappa' (un dito sposta la carta, v404), 'giro' (Maiusc o tasto
-  // destro: gira e inclina), 'riga' (il dito sulla riga della scala),
-  // 'pizzico', 'inclina' (due dita che salgono insieme, come nelle mappe
-  // dei telefoni)
-  let modo = 'mappa', partenza = null, toccoDa = null, ultimoTocco = 0, lancio = null;
+  // `modo`: 'giro' (tasto sinistro o un dito: gira e inclina), 'mappa'
+  // (tasto centrale, destro o Maiusc: sposta la carta), 'riga' (il dito
+  // sulla riga della scala), 'pizzico' (due dita: scala e spostamento).
+  // Sono gli stessi gesti della vista 3D (`solInizializzaGesti` in app.js),
+  // e non per pigrizia: la carta e la scena stanno sulla stessa tela e ci si
+  // passa dall'una all'altra con lo zoom — se il tasto sinistro girasse
+  // l'una e spostasse l'altra, il gesto cambierebbe significato a metà volo
+  let modo = 'giro', partenza = null, toccoDa = null, ultimoTocco = 0, lancio = null;
   const sulla = e => cosm.attivo && typeof sol !== 'undefined' && e.target === sol.canvas;
   const locale = e => {
     const r = sol.canvas.getBoundingClientRect();
@@ -2553,12 +2556,13 @@ function cosmCollegaGesti() {
     cosm.ditaGiu = true;
     lancio = null;
     if (dita.size === 1) {
-      modo = sullaRiga(p) ? 'riga' : (e.button === 2 || e.shiftKey ? 'giro' : 'mappa');
+      modo = sullaRiga(p) ? 'riga'
+        : (e.button === 1 || e.button === 2 || e.shiftKey ? 'mappa' : 'giro');
       toccoDa = { x: p.x, y: p.y, t: performance.now() };
       partenza = null;
     } else if (dita.size === 2) {
       const d = datiPizzico();
-      partenza = { d: d.d, ang: d.ang, L: cosm.L, m: d.m, m0: d.m, deciso: false };
+      partenza = { d: d.d, L: cosm.L };
       cosm.Lvoluto = cosm.L;
       cosm.ancoraZoom = cosmAncoraAlPunto(d.m.x, d.m.y);
       modo = 'pizzico';
@@ -2572,36 +2576,14 @@ function cosmCollegaGesti() {
     dita.set(e.pointerId, ora);
     if (dita.size === 2 && partenza) {
       const d = datiPizzico();
-      // Due dita che salgono o scendono insieme senza allontanarsi inclinano
-      // la carta: si decide nei primi pixel, poi il gesto resta quello
-      if (!partenza.deciso) {
-        const dy = d.m.y - partenza.m0.y, dx = d.m.x - partenza.m0.x;
-        const rapporto = Math.abs(Math.log(d.d / partenza.d));
-        if (Math.hypot(dx, dy) > 10 || rapporto > 0.06) {
-          partenza.deciso = true;
-          if (Math.abs(dy) > 2.2 * Math.abs(dx) && rapporto < 0.05) modo = 'inclina';
-        }
-      }
-      if (modo === 'inclina') {
-        cosmTrascina(0, d.m.y - partenza.m.y, 'inclina');
-        partenza.m = d.m;
-        return;
-      }
+      // Due dita fanno due cose insieme, come nella vista 3D: allontanandole
+      // si cambia la scala, spostandole tutt'e due si sposta la carta. Il
+      // punto di mezzo è la maniglia — l'ancora dello zoom resta sotto di
+      // lui mentre si muove, e lo spostamento viene da lì
       if (d.d > 4) {
         cosm.L = cosm.Lvoluto = Math.max(COSM_L_MIN, Math.min(COSM_L_MAX, partenza.L - Math.log10(d.d / partenza.d)));
-        // Due dita che ruotano girano la carta attorno al loro punto di mezzo
-        let da = d.ang - partenza.ang;
-        if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
-        if (Math.abs(da) > 1e-4) {
-          cosm.az -= da; cosm.azVoluto = cosm.az;
-          partenza.ang = d.ang;
-          const L0 = cosm.ancoraZoom ? cosm.ancoraZoom.L0 : cosm.L;
-          cosm.ancoraZoom = cosmAncoraAlPunto(d.m.x, d.m.y);
-          if (cosm.ancoraZoom) cosm.ancoraZoom.L0 = Math.min(L0, cosm.ancoraZoom.L0);
-        }
         if (cosm.ancoraZoom) { cosm.ancoraZoom.sx = d.m.x; cosm.ancoraZoom.sy = d.m.y; }
         cosmApplicaAncora();
-        partenza.m = d.m;
       }
       return;
     }
@@ -2630,8 +2612,8 @@ function cosmCollegaGesti() {
     const era = dita.size;
     dita.delete(e.pointerId);
     if (dita.size < 2) partenza = null;
-    // Il dito che resta dopo un pizzico ricomincia a spostare da dov'è
-    if (era === 2 && dita.size === 1) { modo = 'mappa'; lancio = null; }
+    // Il dito che resta dopo un pizzico ricomincia a girare da dov'è
+    if (era === 2 && dita.size === 1) { modo = 'giro'; lancio = null; }
     if (!dita.size) {
       cosm.ditaGiu = false;
       // Lasciato andare in corsa, il dito lancia la carta
@@ -2650,7 +2632,7 @@ function cosmCollegaGesti() {
       if (modo !== 'riga' && ora - ultimoTocco < 320) { cosmZoomAttorno(-0.8, p.x, p.y); ultimoTocco = 0; }
       else { ultimoTocco = ora; cosmTocco(p.x, p.y); }
     }
-    if (!dita.size) modo = 'mappa';
+    if (!dita.size) modo = 'giro';
     toccoDa = null;
   };
   guscio.addEventListener('pointerup', fine, true);
@@ -2666,6 +2648,9 @@ function cosmCollegaGesti() {
     if (passo) cosmZoomAttorno(passo * 0.24, p.x, p.y);
   }, { capture: true, passive: false });
   guscio.addEventListener('dblclick', e => { if (sulla(e)) ferma(e); }, true);
+  // Il tasto centrale sposta la carta: senza questo il browser lo prende per
+  // l'autoscorrimento della pagina e il gesto finisce prima di cominciare
+  guscio.addEventListener('mousedown', e => { if (e.button === 1 && sulla(e)) e.preventDefault(); }, true);
   guscio.addEventListener('contextmenu', e => { if (sulla(e)) e.preventDefault(); }, true);
 }
 
