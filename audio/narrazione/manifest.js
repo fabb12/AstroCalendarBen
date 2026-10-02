@@ -566,6 +566,128 @@
         file: 'demo/it/voyager-15.mp3',
         impronta: 'e3a4cea9'
       }
+    },
+    // ─────────────────────────────────────────────
+    // Universo
+    // ─────────────────────────────────────────────
+
+    'demo.narr.universo.1': {
+      it: {
+        file: 'demo/it/universo-1.mp3',
+        impronta: '9dc4a4aa'
+      }
+    },
+
+    'demo.narr.universo.2': {
+      it: {
+        file: 'demo/it/universo-2.mp3',
+        impronta: '52d057ea'
+      }
+    },
+
+    'demo.narr.universo.3': {
+      it: {
+        file: 'demo/it/universo-3.mp3',
+        impronta: 'f928dad2'
+      }
+    },
+
+    'demo.narr.universo.4': {
+      it: {
+        file: 'demo/it/universo-4.mp3',
+        impronta: '688f8b5a'
+      }
+    },
+
+    'demo.narr.universo.5': {
+      it: {
+        file: 'demo/it/universo-5.mp3',
+        impronta: '94580f19'
+      }
+    },
+
+    'demo.narr.universo.6': {
+      it: {
+        file: 'demo/it/universo-6.mp3',
+        impronta: '89a174e6'
+      }
+    },
+
+    'demo.narr.universo.7': {
+      it: {
+        file: 'demo/it/universo-7.mp3',
+        impronta: '3b755964'
+      }
+    },
+
+    'demo.narr.universo.8': {
+      it: {
+        file: 'demo/it/universo-8.mp3',
+        impronta: '2870a48b'
+      }
+    },
+
+    'demo.narr.universo.9': {
+      it: {
+        file: 'demo/it/universo-9.mp3',
+        impronta: 'f36c15b8'
+      }
+    },
+
+    'demo.narr.universo.10': {
+      it: {
+        file: 'demo/it/universo-10.mp3',
+        impronta: 'da6cbb3c'
+      }
+    },
+
+    'demo.narr.universo.11': {
+      it: {
+        file: 'demo/it/universo-11.mp3',
+        impronta: 'ec9b7574'
+      }
+    },
+
+    'demo.narr.universo.12': {
+      it: {
+        file: 'demo/it/universo-12.mp3',
+        impronta: '5489f0c3'
+      }
+    },
+
+    'demo.narr.universo.13': {
+      it: {
+        file: 'demo/it/universo-13.mp3',
+        impronta: 'c4e03262'
+      }
+    },
+
+    'demo.narr.universo.14': {
+      it: {
+        file: 'demo/it/universo-14.mp3',
+        impronta: '287121b9'
+      }
+    },
+
+    'demo.narr.universo.15': {
+      it: {
+        file: 'demo/it/universo-15.mp3',
+        impronta: '27b5ae3d'
+      }
+    },
+
+    'demo.narr.universo.16': {
+      it: {
+        file: 'demo/it/universo-16.mp3',
+        impronta: '9555cd42'
+      }
+    },
+
+    'demo.narr.universo.17': {
+      it: {
+        file: 'demo/it/universo-17.mp3',
+        impronta: 'daa13138'
+      }
     }
   }
 };
