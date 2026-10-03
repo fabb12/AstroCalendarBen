@@ -688,6 +688,65 @@
         file: 'demo/it/universo-17.mp3',
         impronta: 'daa13138'
       }
+    },
+    // ─────────────────────────────────────────────
+    // Storia della Luna
+    // ─────────────────────────────────────────────
+
+    'demo.narr.storia_luna.1': {
+      it: {
+        file: 'demo/it/storia_luna-1.mp3',
+        impronta: 'dd32df5a'
+      }
+    },
+
+    'demo.narr.storia_luna.2': {
+      it: {
+        file: 'demo/it/storia_luna-2.mp3',
+        impronta: '266de7ec'
+      }
+    },
+
+    'demo.narr.storia_luna.3': {
+      it: {
+        file: 'demo/it/storia_luna-3.mp3',
+        impronta: 'dab87ab6'
+      }
+    },
+
+    'demo.narr.storia_luna.4': {
+      it: {
+        file: 'demo/it/storia_luna-4.mp3',
+        impronta: 'cf7acecd'
+      }
+    },
+
+    'demo.narr.storia_luna.5': {
+      it: {
+        file: 'demo/it/storia_luna-5.mp3',
+        impronta: 'e75019b0'
+      }
+    },
+
+    'demo.narr.storia_luna.6': {
+      it: {
+        file: 'demo/it/storia_luna-6.mp3',
+        impronta: '1c864e11'
+      }
+    },
+
+    'demo.narr.storia_luna.7': {
+      it: {
+        file: 'demo/it/storia_luna-7.mp3',
+        impronta: '866c6b03'
+      }
+    },
+
+    'demo.narr.storia_luna.8': {
+      it: {
+        file: 'demo/it/storia_luna-8.mp3',
+        impronta: '0f693c1b'
+      }
     }
   }
 };
