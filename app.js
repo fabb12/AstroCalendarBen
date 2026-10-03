@@ -33694,8 +33694,10 @@ function solRaggioCorpo(p) {
 // misura: la base per il fattore di crescita, con il minimo che lo tiene in
 // vita quando ci si allontana.
 function solRaggioSole() {
-  if (sol.misureVere) return Math.max(0.25, solPixelDaKm(SOL_SOLE_KM / 2));
-  return Math.max(SOL_SOLE_MIN_PX, solSoleBase() * solCrescita());
+  const r = sol.misureVere ? Math.max(0.25, solPixelDaKm(SOL_SOLE_KM / 2))
+    : Math.max(SOL_SOLE_MIN_PX, solSoleBase() * solCrescita());
+  // Un Sole personaggio di una Storia cosmica può crescere o pulsare
+  return typeof storRaggio3D === 'function' ? storRaggio3D('Sun', r) : r;
 }
 
 // La Luna, che nelle due misure va trattata come tutti gli altri: coi pallini
@@ -33706,9 +33708,10 @@ function solRaggioLuna() {
   // Dalla Terra i due corpi crescono insieme; scegliendo direttamente la
   // Luna, invece, cresce il solo bersaglio come accade per ogni altro mondo.
   const crescita = solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita();
-  return sol.misureVere
+  const r = sol.misureVere
     ? Math.max(0.25, solPixelDaKm(SOL_LUNA_KM / 2))
     : SOL_RAGGIO_LUNA * crescita;
+  return typeof storRaggio3D === 'function' ? storRaggio3D('Moon', r) : r;
 }
 
 // --- Le posizioni vere -----------------------------------------------------
@@ -34372,7 +34375,8 @@ function solRaggioLunaPianeta(l) {
   if (sol.misureVere) return Math.max(0.25, solPixelDaKm(l.km / 2));
   const q = Math.cbrt(Math.max(1, l.km) / SOL_LUNA_KM_RIF);
   const crescita = solCorpoDelPerno(l.id) ? solCrescitaCorpo() : solCrescita();
-  return Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * crescita);
+  const r = Math.max(0.8, SOL_LUNA_RAGGIO_PX * q * crescita);
+  return typeof storRaggio3D === 'function' ? storRaggio3D(l.id, r) : r;
 }
 
 // Lo `stacco` di una luna, rimappato perché stia **fuori** dagli anelli del
@@ -34417,11 +34421,12 @@ function solScenaLunaPianeta(l, pianeta) {
   if (!t || !l.off) return null;
   const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
   const passo = solPassoLunaDi(l, p);
-  return {
+  const v = {
     x: t.x + l.off.x / d * passo,
     y: t.y + l.off.y / d * passo,
     z: t.z + l.off.z / d * passo * sol.esagera
   };
+  return typeof storScena3D === 'function' ? storScena3D(l.id, v, solRaggioLunaPianeta(l)) : v;
 }
 
 // Le lune non sono pallini colorati in miniatura. Queste sono le loro
@@ -35209,11 +35214,13 @@ function solScenaLuna() {
   if (!terra || !sol.luna) return null;
   const t = terra.scena || solScena(terra.pos);
   const passo = solStaccoLuna(terra);
-  return {
+  const v = {
     x: t.x + sol.luna.x * passo,
     y: t.y + sol.luna.y * passo,
     z: t.z + sol.luna.z * passo * sol.esagera
   };
+  // La Luna di una Storia cosmica può lasciare la sua orbita (storie-cosmiche.js)
+  return typeof storScena3D === 'function' ? storScena3D('Moon', v, solRaggioLuna()) : v;
 }
 
 // --- L'orbita della Luna, nella scena grande -------------------------------
@@ -38025,6 +38032,13 @@ function solDisegnaVicino() {
       rDisegno: Math.max(2.2, rLuna * px)
     }
   ];
+  // Le Storie cosmiche: gli stessi due ganci della scena grande (misura e
+  // posto), poi di nuovo la proiezione
+  if (typeof storScena3D === 'function') finti.forEach(c => {
+    c.rDisegno = storRaggio3D(c.id, c.rDisegno);
+    const s = storScena3D(c.id, c.scena, c.rDisegno);
+    if (s !== c.scena) { c.scena = s; c.schermo = solProietta(s); }
+  });
   // Anche il Sole appartiene alla profondità della scena. Disegnarlo sempre
   // per primo faceva sì che Terra e Luna gli passassero davanti qualunque
   // fosse il lato da cui si ruotava il banco. Mettiamo i tre dischi nella
@@ -38662,6 +38676,14 @@ function solDisegna() {
   corpi.forEach(p => {
     p.scena = solScena(p.pos);
     p.rDisegno = p.sonda ? Math.max(3.4, solMisuraModelloVoyager() * 0.55) : solRaggioCorpo(p);
+    // Le Storie cosmiche (storie-cosmiche.js §5-bis): un personaggio può
+    // crescere per portare il volto e viaggiare fuori dall'orbita. Prima
+    // del perno, così la camera che lo segue lo segue davvero; le sue lune
+    // vengono dietro da sé, perché partono da `p.scena`.
+    if (typeof storScena3D === 'function') {
+      p.rDisegno = storRaggio3D(p.id, p.rDisegno);
+      p.scena = storScena3D(p.id, p.scena, p.rDisegno);
+    }
   });
   solAggiornaPivot();
   corpi.forEach(p => { p.schermo = solProietta(p.scena); });

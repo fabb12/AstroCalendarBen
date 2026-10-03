@@ -541,6 +541,14 @@
   window.addEventListener('beforeunload', e => { if (sporco()) { e.preventDefault(); e.returnValue = ''; } });
   // La chiama `mostraVista('demo')` ogni volta che la pagina torna davanti.
   window.demoPaginaPrepara = () => { verifica(); preparaDemo(); };
+  // Lo Studio delle storie (storie-studio.js) salva nella stessa libreria:
+  // l'elenco si rifà con la storia appena salvata, ma un testo che si sta
+  // scrivendo nell'editor non si butta via per questo.
+  window.demoPaginaRicarica = chiave => prova(() => {
+    if (!sporco()) { carica(chiave); return; }
+    const dati = libreria.elenco();
+    for (const d of dati) if (!Array.from(elenco.options).some(o => o.value === d.chiave)) elenco.add(new Option(testoOpzione(d), d.chiave));
+  });
   astroI18n.alCambio(() => {
     prova(disegnaOpzioni);
     prova(() => {

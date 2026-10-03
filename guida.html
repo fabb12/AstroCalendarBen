@@ -1386,22 +1386,42 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
     </dl>
 
     <h3 style="margin-top:28px">Le Storie cosmiche</h3>
-    <p>Nella pagina Demo, gruppo <b>Storie cosmiche</b>, ci sono racconti per bambini in cui gli astri hanno
+    <p>Nella pagina Demo, linguetta <b>Storie cosmiche</b>, ci sono racconti per bambini in cui gli astri hanno
     un volto e una voce: due occhi grandi, sopracciglia che seguono le emozioni e una bocca che si muove
     soltanto quando quel personaggio parla, mentre gli altri lo guardano. Il sottotitolo dice sempre il
-    nome di chi parla. Gli astri restano dove sono davvero: la storia sceglie la sera e la camera, e un
-    oggetto troppo piccolo ha il volto in un dischetto accanto, collegato da un filo. Il primo episodio è
-    <b>«La Luna ha perso un pezzo?»</b>. Sotto all'elenco puoi provare un personaggio da vicino e
-    leggere l'esempio per scriverne una.</p>
+    nome di chi parla. La storia sceglie la sera e la camera, e il cielo da cui parte è quello vero. Nella
+    vista 3D il volto sta <b>sull'astro stesso</b> — che cresce quanto basta a portarlo, e prende la luce del
+    suo Sole — e un personaggio può lasciare la sua orbita, saltare, ballare e accendere effetti speciali;
+    nel planetario un oggetto troppo piccolo ha il volto in un dischetto accanto, collegato da un filo. Il
+    primo episodio è <b>«La Luna ha perso un pezzo?»</b>. Sotto all'elenco puoi provare un personaggio da
+    vicino e leggere l'esempio per scriverne una.</p>
     <dl class="kv">
+      <div><dt>Lo Studio delle storie</dt><dd>Per creare una storia senza scrivere codice. Scegli uno
+      <b>scopo</b> (le fasi della Luna, i giganti, le stagioni, un viaggio, un'avventura, o una storia
+      libera): è una storia completa da cambiare. Scrivi che cosa deve capire chi guarda, scegli i
+      <b>personaggi</b>, poi costruisci le <b>scene</b> (il Sistema Solare, un pianeta da vicino, Terra e
+      Luna, il cielo da casa; il giorno e i giorni che passano) e dentro ogni scena i <b>momenti</b>: chi
+      parla, che cosa dice, con che faccia, e le azioni che succedono intanto — vola verso un altro astro
+      con un arco, a saltelli, con un giro della morte o col teletrasporto, torna sulla sua orbita, salta,
+      trema, balla, cambia misura, esplosioni, fuochi d'artificio, cuori, fulmini. Le <b>idee</b> propongono
+      la faccia e le azioni adatte alle parole, e «Suggerisci il prossimo momento» scrive una bozza. In
+      <b>Dillo a parole</b> si scrive, una cosa per riga, «Marte vola verso Giove facendo un giro» o
+      «Giove: Benvenuto!». Il <b>controllo dello scopo</b> dice se tutti parlano, se la storia si apre con
+      una domanda e si chiude sullo scopo, se le frasi sono brevi. «Prova questa scena» e «Guarda la storia»
+      la fanno partire; «Salva nelle mie demo» la mette fra le tue demo, da esportare e condividere.</dd></div>
       <div><dt>I comandi</dt><dd><code>character_show { target: 'Moon', expression: 'worried' }</code> fa comparire
       un personaggio nella scena; <code>character_speak { target: 'Moon', id: '…' }</code> (o <code>text: '…'</code>)
       gli fa dire la battuta della scena; <code>character_expression</code>, <code>character_look_at</code>,
       <code>character_blink</code> e <code>character_hide</code> cambiano faccia, sguardo e palpebre.
+      Nella vista 3D <code>character_move { target: 'Mars', to: 'Jupiter', path: loop }</code> lo porta fuori
+      dall'orbita e <code>character_return</code> ce lo rimette; <code>character_animate</code>
+      (<code>jump</code>, <code>shake</code>, <code>dance</code>, …), <code>character_scale</code> ed
+      <code>effect { type: explosion, target: 'Jupiter' }</code> valgono anche nel planetario.
       Le espressioni sono <code>neutral</code>, <code>happy</code>, <code>surprised</code>, <code>worried</code>,
-      <code>sad</code> e <code>thinking</code>.</dd></div>
+      <code>sad</code>, <code>thinking</code>, <code>excited</code> e <code>sleepy</code>.</dd></div>
       <div><dt>Una battuta per scena</dt><dd>Ogni personaggio vive nella scena in cui compare: per farlo
-      parlare, guardare o cambiare faccia va mostrato in quella stessa scena.</dd></div>
+      parlare, guardare, muoversi o cambiare faccia va mostrato in quella stessa scena. Lo Studio fa da sé
+      una scena per ogni momento.</dd></div>
     </dl>
 
     <h3 style="margin-top:28px">Quando qualcosa non va</h3>

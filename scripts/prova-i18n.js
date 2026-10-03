@@ -148,8 +148,8 @@ const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.j
   // demo, che stanno scritti dentro ai tour e non in un file di codice.
   'narrazione.js', 'demo-predefiniti.js',
   // Le Storie cosmiche: la sezione della pagina Demo, le personalità e i
-  // messaggi d'errore dei comandi dei personaggi.
-  'storie-cosmiche.js'];
+  // messaggi d'errore dei comandi dei personaggi; lo Studio che le crea.
+  'storie-cosmiche.js', 'storie-studio.js'];
 
 function leggiFile(elenco) {
   const perFile = new Map();

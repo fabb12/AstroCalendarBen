@@ -541,6 +541,279 @@ prova('pausa e ripresa: una scena che si apre in pausa parla in pausa, la promes
 });
 
 // =====================================================================
+gruppo('il corpo nello spazio: crescita, viaggi, animazioni (v409)');
+
+// La camera finta della vista 3D: la proiezione è quella di `solProietta`
+const SOL_FINTO = () => ({ L: 800, H: 600, cx: 400, cy: 300, panX: 0, panY: 0, az: 0.7, elev: 35, scala: 100,
+  vicino: false, altaBarra: 0, luneSchermo: [], satSchermo: [] });
+function proietta(p, s = globalThis.sol) {
+  const a = s.az, e = s.elev * Math.PI / 180;
+  const xr = p.x * Math.cos(a) - p.y * Math.sin(a), yr = p.x * Math.sin(a) + p.y * Math.cos(a);
+  return { px: s.cx + s.panX + xr * s.scala, py: s.cy + s.panY - (yr * Math.sin(e) + p.z * Math.cos(e)) * s.scala, vicinanza: p.z * Math.sin(e) - yr * Math.cos(e) };
+}
+// L'orologio della storia avanza solo disegnando, a passi di al più 100 ms
+function scorri(ms) {
+  for (let fatto = 0; fatto < ms; fatto += 50) { avanza(50); S.disegnaPersonaggi(telaFinta().ctx, 'sistema', [], 800, 600); }
+}
+const MARTE = { x: 1.2, y: -0.4, z: 0.05 }, GIOVE = { x: -2, y: 1.5, z: -0.1 };
+
+prova('la terna dello schermo è quella della proiezione: un passo a destra è un pixel a destra', () => {
+  globalThis.sol = SOL_FINTO();
+  const assi = S.assiSchermo(globalThis.sol);
+  const o = proietta({ x: 0, y: 0, z: 0 });
+  const dx = proietta(assi.ex), su = proietta(assi.su), w = proietta(assi.w);
+  assert.ok(Math.abs(dx.px - o.px - 100) < 1e-9 && Math.abs(dx.py - o.py) < 1e-9, 'ex → destra');
+  assert.ok(Math.abs(su.py - o.py + 100) < 1e-9 && Math.abs(su.px - o.px) < 1e-9, 'su → in alto');
+  assert.ok(Math.abs(w.px - o.px) < 1e-9 && Math.abs(w.py - o.py) < 1e-9 && Math.abs(w.vicinanza - 1) < 1e-9, 'w → verso chi guarda');
+  delete globalThis.sol;
+});
+prova('nella 3D l\'astro cresce quanto basta a portare il volto addosso; con size: real resta com\'è; uscito di scena torna', () => {
+  globalThis.sol = SOL_FINTO();
+  scena({ Mars: {} });
+  assert.equal(S.raggio3D('Mars', 3), 3, 'al primo istante non è ancora cresciuto');
+  scorri(900);
+  const r = S.raggio3D('Mars', 3);
+  assert.ok(r * S.profilo('Mars').scala >= S.STOR_VOLTO_MIN_PX, 'il volto ci sta: ' + r);
+  const d = S.disegnaPersonaggi(telaFinta().ctx, 'sistema', [corpo('Mars', 400, 300, r)], 800, 600)[0];
+  assert.equal(d.addosso, true, 'il volto è sull\'astro, non in un adesivo');
+  assert.ok(Math.abs(S.raggio3D('Mars', 60) - 60) < 1e-9, 'un astro già grande non cresce');
+  scena({ Mars: { misura: 'real' } });
+  scorri(900);
+  assert.equal(S.raggio3D('Mars', 3), 3, 'real: la misura vera');
+  scena({ Mars: {} }); scorri(900); S.raggio3D('Mars', 3);
+  S.sgombra();
+  assert.ok(S.raggio3D('Mars', 3) > 3, 'appena uscito scivola indietro, non salta');
+  avanza(800);
+  assert.equal(S.raggio3D('Mars', 3), 3, 'e poi è tornato della sua misura');
+  assert.equal(S.scena3D('Jupiter', GIOVE, 5), GIOVE, 'senza personaggi la posizione passa intatta');
+  delete globalThis.sol;
+});
+prova('character_move porta l\'astro accanto alla meta, sullo schermo e nello spazio; character_return lo rimette sull\'orbita', async () => {
+  S.sgombra();
+  globalThis.sol = SOL_FINTO();
+  motore.avvia(demo(
+    sc('solar_system_3d', "character_show { target: 'Mars', size: 'real' }", "character_show { target: 'Jupiter', size: 'real' }",
+      "character_move { target: 'Mars', to: 'Jupiter', side: 'right', path: loop }"),
+    sc('solar_system_3d', "character_show { target: 'Mars', size: 'real' }", "character_show { target: 'Jupiter', size: 'real' }",
+      "character_return { target: 'Mars', path: hop }")), { ripristina() {} });
+  const fotogramma = () => { S.scena3D('Jupiter', GIOVE, 20); return S.scena3D('Mars', MARTE, 10); };
+  const partenza = fotogramma();
+  assert.deepEqual(partenza, MARTE, 'a u = 0 è ancora sull\'orbita');
+  passo(10); passo(1000);
+  const aMeta = fotogramma();
+  assert.ok(Math.hypot(aMeta.x - MARTE.x, aMeta.y - MARTE.y) > 0.1, 'a metà è in viaggio');
+  // in fondo alla prima scena Marte è accanto a Giove, a destra, alla distanza dei due raggi
+  passo(989);
+  const arrivo = fotogramma();
+  const g = proietta(GIOVE), m = proietta(arrivo);
+  assert.ok(m.px > g.px + 20, 'a destra di Giove: ' + (m.px - g.px));
+  assert.ok(Math.abs(m.py - g.py) < 1, 'alla stessa altezza');
+  assert.ok(Math.abs(Math.hypot(m.px - g.px, m.py - g.py) - ((20 + 10) * 1.3 + 8)) < 1, 'alla distanza dei due raggi: ' + Math.hypot(m.px - g.px, m.py - g.py));
+  passo(12);
+  await Promise.resolve(); await Promise.resolve();
+  assert.equal(motore.indice, 1, 'seconda scena');
+  const ripartenza = fotogramma();
+  assert.ok(Math.hypot(ripartenza.x - arrivo.x, ripartenza.y - arrivo.y) < 0.03, 'il ritorno parte da dove era arrivato: ' +
+    Math.hypot(ripartenza.x - arrivo.x, ripartenza.y - arrivo.y));
+  passo(10); passo(2100);
+  const casa = fotogramma();
+  assert.ok(Math.hypot(casa.x - MARTE.x, casa.y - MARTE.y, casa.z - MARTE.z) < 1e-9, 'tornato sulla sua orbita');
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  delete globalThis.sol;
+});
+prova('i percorsi partono e arrivano dove devono; il teletrasporto fa sparire e ricomparire', () => {
+  globalThis.sol = SOL_FINTO();
+  const assi = S.assiSchermo(globalThis.sol);
+  const A = { x: 1, y: 0, z: 0 }, D = { x: -1, y: 2, z: 0.3 };
+  for (const p of S.STOR_PERCORSI) {
+    const da = S.puntoViaggio(p, A, D, 0, assi, 0), a = S.puntoViaggio(p, A, D, 1, assi, 0);
+    assert.ok(Math.hypot(da.x - A.x, da.y - A.y, da.z - A.z) < 1e-9, p + ' parte da A');
+    assert.ok(Math.hypot(a.x - D.x, a.y - D.y, a.z - D.z) < 1e-9, p + ' arriva in D');
+  }
+  const arco = S.puntoViaggio('arc', A, D, 0.5, assi), dritto = S.puntoViaggio('straight', A, D, 0.5, assi);
+  assert.ok(proietta(arco).py < proietta(dritto).py - 5, 'l\'arco curva verso l\'alto');
+  scena({ Mars: { misura: 'real' } });
+  S.stato.personaggi.get('Mars').moto = { verso: 'orbit', percorso: 'teleport', u: 0.5, A: null };
+  assert.ok(S.raggio3D('Mars', 10) < 1, 'a metà teletrasporto è sparito');
+  S.stato.personaggi.get('Mars').moto.u = 0.95;
+  assert.ok(S.raggio3D('Mars', 10) > 8, 'e poi ricompare');
+  S.sgombra();
+  delete globalThis.sol;
+});
+prova('le animazioni sono ferme all\'inizio e alla fine, e si muovono in mezzo', () => {
+  for (const a of S.STOR_ANIMAZIONI) {
+    for (const u of [0, 1]) {
+      const o = S.animazioneAl(a, u, 2, 1);
+      assert.deepEqual([o.dx, o.dy, o.k, o.giro, o.sx, o.sy], [0, 0, 1, 0, 1, 1], a + ' ferma a ' + u);
+    }
+    let mosso = false;
+    for (let u = 0.05; u < 1; u += 0.1) {
+      const o = S.animazioneAl(a, u, 2, 1);
+      if (Math.abs(o.dx) + Math.abs(o.dy) + Math.abs(o.k - 1) + Math.abs(o.giro) + Math.abs(o.sx - 1) > 0.02) mosso = true;
+    }
+    assert.ok(mosso, a + ' si muove');
+  }
+  assert.ok(S.animazioneAl('jump', 0.25, 2, 1).dy < -1, 'il salto va in su');
+});
+prova('character_animate sposta l\'astro vero nella 3D; character_scale cambia la sua misura e la tiene', async () => {
+  S.sgombra();
+  globalThis.sol = SOL_FINTO();
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Mars', size: 'real' }",
+    "character_animate { target: 'Mars', animation: jump, times: 1 }", "character_scale { target: 'Mars', scale: 2, shot_to: 0.5 }")), { ripristina() {} });
+  passo(10); passo(500);
+  const r = S.raggio3D('Mars', 10);
+  const su = proietta(S.scena3D('Mars', MARTE, 10)).py, giu = proietta(MARTE).py;
+  assert.ok(su < giu - 5, 'il salto alza l\'astro vero: ' + (giu - su));
+  passo(600);
+  assert.ok(Math.abs(S.raggio3D('Mars', 10) - 20) < 1e-6 && r < 20, 'la scala arriva a 2 e ci resta');
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  delete globalThis.sol;
+});
+
+// =====================================================================
+gruppo('gli effetti speciali (v409)');
+
+prova('ogni effetto si disegna, segue il suo astro, e se ne va finito il suo tempo', () => {
+  S.sgombra();
+  for (const tipo of Object.keys(S.STOR_EFFETTI)) S.effetto(tipo, { target: 'Jupiter' });
+  S.effetto('flash', {});
+  assert.equal(S.effetti.length, Object.keys(S.STOR_EFFETTI).length + 1);
+  for (let k = 0; k < 8; k++) {
+    avanza(100);
+    const tela = telaFinta();
+    S.disegnaPersonaggi(tela.ctx, 'sistema', [corpo('Jupiter', 300, 200, 18)], 800, 600);
+    assert.ok(tela.chiamate.length > 20, 'si disegna qualcosa');
+  }
+  for (let k = 0; k < 40; k++) { avanza(100); S.disegnaPersonaggi(telaFinta().ctx, 'sistema', [], 800, 600); }
+  assert.equal(S.effetti.length, 0, 'finiti, se ne sono andati');
+});
+prova('il comando effect si valida e crea il suo effetto anche senza personaggi', async () => {
+  S.sgombra();
+  motore.avvia(demo(sc('planetarium_view', "effect { type: explosion, target: 'Jupiter', size: 1.5, color: '#ff8800' }",
+    "effect { type: confetti, at: top, shot_from: 0.5 }")), { ripristina() {} });
+  assert.deepEqual(S.effetti.map(e => e.tipo), ['explosion']);
+  passo(10); passo(1100);
+  assert.deepEqual(S.effetti.map(e => e.tipo).sort(), ['confetti', 'explosion']);
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+});
+prova('validazione dei comandi nuovi: vista, valori ammessi, numeri, colori, mete', () => {
+  const casi = [
+    [sc('planetarium_view', "character_show { target: 'Mars' }", "character_move { target: 'Mars', to: 'Jupiter' }"), /solo nella vista 3D/],
+    [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_move { target: 'Mars', to: 'Pandora' }"), /Non so dove andare: Pandora/],
+    [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_move { target: 'Mars', to: 'Mars' }"), /verso sé stesso/],
+    [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_move { target: 'Mars', to: 'center', path: wobbly }"), /path sconosciuto: wobbly/],
+    [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_move { target: 'Mars', to: 'Sun', distance: 99 }"), /distance vuole un numero fra 0.3 e 6/],
+    [sc('solar_system_3d', "character_move { target: 'Mars', to: 'Sun' }"), /deve comparire in questa scena/],
+    [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_animate { target: 'Mars', animation: fly }"), /animation sconosciuto: fly/],
+    [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_scale { target: 'Mars', scale: 40 }"), /scale vuole un numero/],
+    [sc('solar_system_3d', "effect { type: nuke }"), /type sconosciuto: nuke/],
+    [sc('solar_system_3d', "effect { type: smoke, color: 'red' }"), /Colore non valido/],
+    [sc('didactic_view', "effect { type: smoke }"), /solo nel planetario e nella vista 3D/]
+  ];
+  for (const [scena, atteso] of casi) assert.throws(() => motore.prepara(demo(scena)), atteso, scena);
+  lingua = 'en';
+  assert.throws(() => motore.prepara(demo(casi[0][0])), /only works in the 3D view/);
+  lingua = 'it';
+  motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Moon', size: 'real' }", "character_show { target: 'Earth' }",
+    "character_move { target: 'Moon', to: 'Earth', side: 'above', distance: 2, path: spiral, turns: 2, shot_to: 0.6 }",
+    "character_return { target: 'Moon', path: teleport, shot_from: 0.6 }", "character_animate { target: 'Earth', animation: dance, times: 3, strength: 1.5 }",
+    "character_scale { target: 'Earth', scale: 1.5 }", "effect { type: hearts, target: 'Earth', duration: 2.5 }")));
+});
+
+// =====================================================================
+gruppo('lo Studio delle storie (v409)');
+
+const St = require('../storie-studio.js');
+globalThis.ASTRO_DIZIONARI = DIZ;
+
+prova('ogni modello diventa un copione valido, che supera il suo stesso controllo', () => {
+  for (const scopo of Object.keys(St.STUDIO_SCOPI)) {
+    for (const l of ['it', 'en']) {
+      lingua = l;
+      const p = St.daModello(scopo);
+      const prep = motore.prepara(St.copione(p));
+      for (const s of prep.scene) assert.ok(s.azioni.filter(a => a.comando === 'character_speak').length <= 1, scopo + ': una battuta per scena');
+      const no = St.consigli(p, testo => motore.prepara(testo)).filter(c => !c.ok).map(c => c.chiave);
+      if (scopo !== 'libera') assert.deepEqual(no, [], `${scopo} (${l}): ${no.join(', ')}`);
+      for (const c of St.consigli(p)) assert.ok(c.testo && !/studio\./.test(c.testo), 'consiglio tradotto: ' + c.chiave);
+    }
+  }
+  lingua = 'it';
+});
+prova('il copione di una scena sola, i giorni che passano e i viaggi saltati dove non si può', () => {
+  const p = St.daModello('fasi');
+  const una = motore.prepara(St.copione(p, { scena: 2 }));
+  assert.equal(una.scene.length, 2);
+  const range = una.scene.map(s => s.azioni.find(a => a.comando === 'date_range').parametri);
+  assert.equal(range[0].to, range[1].from, 'i giorni si dividono fra i momenti senza buchi');
+  assert.equal(Math.round((Date.parse(range[1].to) - Date.parse(range[0].from)) / 86400000), 11);
+  p.scene[0].momenti[0].azioni.push(St.nuovaAzione('muovi', { chi: 'Moon', verso: 'Earth' }));
+  assert.ok(!/character_move/.test(St.copione(p, { scena: 0 })), 'nel planetario niente viaggi');
+  assert.ok(St.consigli(p).some(c => c.chiave === 'viaggi' && !c.ok), 'e il controllo lo dice');
+});
+prova('i comandi a parole, in italiano e in inglese', () => {
+  const p = St.daModello('viaggio');
+  const r = St.capisci("Marte vola verso Giove facendo un giro\nGiove dice: Benvenuto, Marte!\nfuochi d'artificio su Saturno\nla Luna è triste\nalla fine Saturno balla tre volte\nMarte torna a casa saltando\nbla bla", p);
+  const sintesi = r.ops.map(o => o.op === 'battuta' ? ['battuta', o.chi, o.testo] : [o.azione.tipo, o.azione.chi, o.azione.verso || o.azione.effetto || o.azione.animazione || o.azione.umore || o.azione.percorso]);
+  assert.deepEqual(sintesi, [['muovi', 'Mars', 'Jupiter'], ['battuta', 'Jupiter', 'Benvenuto, Marte!'], ['effetto', 'Saturn', 'fireworks'],
+    ['umore', 'Moon', 'sad'], ['anima', 'Saturn', 'dance'], ['torna', 'Mars', 'hop']]);
+  assert.equal(r.ops[0].azione.percorso, 'loop');
+  assert.equal(r.ops[4].azione.quando, 'fine'); assert.equal(r.ops[4].azione.volte, 3);
+  assert.deepEqual(r.nonCapite, ['bla bla']);
+  const prima = p.scene[0].momenti.length;
+  St.applica(p, 0, r.ops);
+  assert.equal(p.scene[0].momenti.length, prima + 1, 'la battuta apre un momento nuovo');
+  assert.ok(p.cast.includes('Moon'), 'chi è nominato entra nel cast');
+  assert.ok(motore.prepara(St.copione(p)), 'e il copione resta valido');
+  const en = St.capisci('Mars flies to Jupiter in a spiral\nJupiter says: Welcome!\nexplosion on Saturn', p);
+  assert.deepEqual(en.ops.map(o => o.op === 'battuta' ? o.testo : o.azione.tipo + ':' + (o.azione.percorso || o.azione.effetto)), ['muovi:spiral', 'Welcome!', 'effetto:explosion']);
+});
+prova('gli aiuti: la faccia dal testo, le idee per le azioni, l\'ambiente, il momento dopo', () => {
+  assert.equal(St.umoreDalTesto('Oh no! Mi manca un pezzo!'), 'worried');
+  assert.equal(St.umoreDalTesto('Che bello, evviva!'), 'excited');
+  assert.equal(St.umoreDalTesto('Perché gira?'), 'thinking');
+  assert.equal(St.umoreDalTesto('I am so sad'), 'sad');
+  const p = St.daModello('avventura');
+  const idee = St.ideeAzioni(p, p.scene[0], St.nuovoMomento({ chi: 'Jupiter', testo: 'Boom! Andiamo a festeggiare, amici!' }));
+  const tipi = idee.map(a => a.tipo + ':' + (a.effetto || a.animazione || a.verso || ''));
+  assert.ok(tipi.includes('effetto:explosion') && tipi.includes('muovi:Mars') && tipi.includes('effetto:hearts'), tipi.join());
+  assert.ok(idee.length <= 6);
+  assert.deepEqual(St.ambientePer(['Moon', 'Earth']), { ambiente: 'terra_luna' });
+  assert.deepEqual(St.ambientePer(['Saturn']), { ambiente: 'pianeta', fuoco: 'Saturn' });
+  assert.equal(St.ambientePer(['Mars', 'Venus']).ambiente, 'sistema');
+  const dopo = St.prossimoMomento(p, p.scene[0]);
+  assert.ok(dopo.chi && dopo.chi !== p.scene[0].momenti[p.scene[0].momenti.length - 1].chi, 'parla qualcun altro');
+  assert.ok(dopo.testo.length > 5);
+});
+prova('un progetto rotto o estraneo non rompe lo Studio', () => {
+  const p = St.ripulisci({ titolo: 42, cast: ['Moon', '<script>', 7], scene: [{ ambiente: 'marte', momenti: [{ testo: 'x'.repeat(900), azioni: [{ tipo: 'boh' }, { tipo: 'effetto', colore: 'rosso' }] }] }] });
+  assert.equal(p.titolo, '');
+  assert.deepEqual(p.cast, ['Moon']);
+  assert.equal(p.scene[0].ambiente, 'sistema');
+  assert.equal(p.scene[0].momenti[0].testo.length, 400);
+  assert.deepEqual(p.scene[0].momenti[0].azioni.map(a => a.tipo), ['effetto']);
+  assert.equal(p.scene[0].momenti[0].azioni[0].colore, '');
+  assert.throws(() => St.ripulisci(null));
+  assert.ok(motore.prepara(St.copione(St.ripulisci({ scene: [] }))));
+  assert.ok(/\\'/.test(St.copione(St.nuovoProgetto({ titolo: "L'avventura" }))), 'gli apostrofi si proteggono');
+});
+prova('ogni testo dello Studio e dei comandi nuovi esiste in tutte e due le lingue', () => {
+  const sorgente = fs.readFileSync(path.join(RADICE, 'storie-studio.js'), 'utf8');
+  const chiavi = new Set();
+  for (const m of sorgente.matchAll(/'((?:studio|storie)\.[\w.]+)'/g)) if (!/\.$/.test(m[1])) chiavi.add(m[1]);
+  for (const k of S.STOR_PERCORSI) chiavi.add('storie.percorso.' + k);
+  for (const k of S.STOR_ANIMAZIONI) chiavi.add('storie.animazione.' + k);
+  for (const k of Object.keys(S.STOR_EFFETTI)) chiavi.add('storie.effetto.' + k);
+  for (const k of St.STUDIO_TIPI) { chiavi.add('studio.tipo.' + k); chiavi.add('studio.descrivi.' + k); }
+  for (const k of St.STUDIO_AMBIENTI) chiavi.add('studio.ambiente.' + k);
+  for (const k of ['solo3d', 'destinazioneIgnota', 'versoSeStesso', 'valoreIgnoto', 'numeroFuori', 'coloreNonValido']) chiavi.add('demo.err.' + k);
+  for (const scopo of Object.keys(St.STUDIO_SCOPI)) for (const c of ['nome', 'titolo', 'obiettivo', 'descrizione']) chiavi.add(`studio.scopo.${scopo}.${c}`);
+  for (const k of chiavi) for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi[k], 'string', `${k} manca in ${l}`);
+  const it = Object.keys(DIZ.it.messaggi).filter(k => /^studio\./.test(k)), en = Object.keys(DIZ.en.messaggi).filter(k => /^studio\./.test(k));
+  assert.deepEqual(it.sort(), en.sort(), 'le due lingue hanno le stesse chiavi dello Studio');
+});
+
+// =====================================================================
 gruppo('italiano e inglese');
 
 prova('ogni testo delle storie e dei comandi esiste in tutte e due le lingue', () => {

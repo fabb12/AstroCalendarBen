@@ -58,7 +58,8 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `didattica.js` | Gli otto banchi del laboratorio (`did`, `aurL`, `spa`, `tram`, …). |
 | `narrazione.js` + `audio/narrazione/` | La voce di demo e Missione Cielo (`narr`). Vedi `NARRAZIONE.md`. |
 | `demo-motore.js`, `demo-intro.js`, `demo-libreria.js`, `demo-predefiniti.js`, `demo.js`, `demo-impostazioni.js` | Le demo automatizzate. Vedi `DEMO.md`. |
-| `storie-cosmiche.js` | Le Storie cosmiche: volti degli astri in stile «fiaba d'inchiostro» (`stor`). Vedi `STORIE.md`. |
+| `storie-cosmiche.js` | Le Storie cosmiche: volti degli astri in stile «fiaba d'inchiostro», astri che crescono e viaggiano nella 3D, effetti speciali (`stor`). Vedi `STORIE.md`. |
+| `storie-studio.js` | Lo Studio delle storie e le due linguette della pagina Demo (`studio`). Vedi `STORIE.md`. |
 | `config.js` | URL dei ponti ADS-B/Edge-TTS e `ASTROCAL_BUILD`. |
 | `worker-adsb.js` | Proxy ADS-B (Deno Deploy), non fa parte della PWA. Vedi `ADSB-PROXY.md`. |
 | `dati-*.js` | Cataloghi caricati su richiesta (non in `index.html` né in `ASSETS`). |
@@ -76,7 +77,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 `aerei.js` → `transiti.js` → `visione.js` → `inseguimento.js` →
 `eventi-extra.js` → `missione-cielo.js` → `ui-nuova.js` → `didattica.js` →
 demo (motore, intro, libreria, predefiniti, `demo.js`) → `storie-cosmiche.js`
-→ `demo-impostazioni.js`.
+→ `demo-impostazioni.js` → `storie-studio.js`.
 
 Ogni file usa quelli prima di lui; il contrario si protegge **sempre** con
 `typeof x === 'function'`. I ganci dentro `app.js` (in `apriSkymap`,
@@ -116,7 +117,8 @@ Regole da non rompere:
 `VISTE` e `mostraVista(nome)` in `app.js` (che accende e spegne cicli, sensori
 e fotocamera). Menu: **Stasera**, **Calendario** (Mese, Agenda, Diario come
 sottosezioni, `GRUPPI_VISTE`), **Planetario** (nel codice `cielo`),
-**Telescopio**, **Didattica**, **Demo**. Il planetario ha quattro pannelli:
+**Telescopio**, **Didattica**, **Demo** (due linguette: Demo e Storie
+cosmiche, `studioSchede`). Il planetario ha quattro pannelli:
 Tempo, Eventi, Visualizzazione (schede Direzione, Schermo, Oggetti, Cielo,
 Paesaggio) e Astri. La vista 3D del Sistema Solare è `modale-sistema` (`sol`),
 con la scala cosmica come quarto quadro. Dettagli in MAPPA-DETTAGLIATA §5.
@@ -125,7 +127,7 @@ con la scala cosmica come quarto quadro. Dettagli in MAPPA-DETTAGLIATA §5.
 
 Stati principali: `eventiCalcolati`, `sky`, `sol`, `sim`, `tel`, `cat`,
 `terreno`, `rilievo`, `acque`, `citta`, `cime`, `aur`, `tran`, `miss`, `narr`,
-`stor`. Chiavi di `localStorage` in MAPPA-DETTAGLIATA §9: il backup JSON
+`stor`, `studio`. Chiavi di `localStorage` in MAPPA-DETTAGLIATA §9: il backup JSON
 esporta quelle che sono preferenze e dati dell'utente, **non** le pagelle di
 rete né le memorie di comodo.
 
@@ -163,7 +165,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | Se tocchi… | Lancia |
 |---|---|
 | conti astronomici, catalogo, terreno, rilievo, acqua, Via Lattea, aurora, bussola, AR, transiti, aerei (geometria) | `verifica.html` da un server |
-| Storie cosmiche | `node scripts/prova-storie.js`, `node scripts/prova-storie-browser.js` |
+| Storie cosmiche, Studio delle storie | `node scripts/prova-storie.js`, `node scripts/prova-storie-browser.js`, `prova-demo-pagina.js` |
 | narrazione | `prova-narrazione.js`, `controlla-narrazione.js`, `prova-narrazione-browser.js` |
 | demo | `prova-demo.js`, `prova-demo-browser.js`, `prova-demo-regia.js`, `prova-demo-pagina.js` (e le `prova-demo-*` del tour toccato) |
 | Missione Cielo | `prova-missione.js` (`--solo-motore` per le regole), `prova-missione-stati.js`, `prova-missione-interattiva.js` |

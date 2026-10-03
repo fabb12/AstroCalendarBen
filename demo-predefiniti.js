@@ -1048,7 +1048,9 @@
       cast: 'Saturn,Jupiter,Sun',
       testo: `define_demo 'storia_giganti' {
   // Una storia d'esempio, corta, per chi vuole scriverne una: tutte le
-  // azioni dei personaggi in quattro scene. Giove e Saturno sono nella vista
+  // azioni dei personaggi in quattro scene — volti, sguardi, battute, e dalla
+  // v409 anche il viaggio fuori dall'orbita, la misura, le animazioni e gli
+  // effetti speciali. Giove e Saturno sono nella vista
   // 3D alla loro posizione vera di oggi; nell'ultima scena passano tre anni
   // d'orbita vera, e Giove fa un quarto di giro mentre Saturno un decimo.
   scene solar_system_3d {
@@ -1056,6 +1058,8 @@
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 12, elev_from: 52, elev_to: 58 };
     action: character_show { target: 'Saturn', expression: 'happy' };
     action: character_show { target: 'Jupiter', expression: 'neutral', look: 'Saturn' };
+    // Il viaggio (v409): Saturno lascia la sua orbita e va a presentarsi
+    action: character_move { target: 'Saturn', to: 'Jupiter', side: 'right', path: arc, shot_from: 0.35 };
     action: character_speak { target: 'Saturn', id: 'demo.narr.storia_giganti.1' };
   }
   scene solar_system_3d {
@@ -1064,6 +1068,10 @@
     action: character_show { target: 'Saturn', expression: 'happy' };
     action: character_show { target: 'Jupiter', expression: 'excited' };
     action: character_expression { target: 'Saturn', expression: 'surprised', shot_from: 0.45 };
+    // Giove si gonfia d'orgoglio, e l'onda d'urto fa sobbalzare Saturno
+    action: character_scale { target: 'Jupiter', scale: 1.4, shot_to: 0.4 };
+    action: character_animate { target: 'Jupiter', animation: pulse, times: 2, shot_from: 0.4, shot_to: 0.8 };
+    action: effect { type: shockwave, target: 'Jupiter', shot_from: 0.45 };
     action: character_speak { target: 'Jupiter', id: 'demo.narr.storia_giganti.2' };
   }
   scene solar_system_3d {
@@ -1072,6 +1080,10 @@
     action: character_show { target: 'Sun', expression: 'happy' };
     action: character_show { target: 'Saturn', expression: 'neutral' };
     action: character_show { target: 'Jupiter', expression: 'thinking' };
+    // Il Sole rimette ognuno al suo posto: Saturno torna sulla sua orbita
+    action: effect { type: glow, target: 'Sun', duration: 4 };
+    action: character_scale { target: 'Jupiter', scale: 1, shot_to: 0.4 };
+    action: character_return { target: 'Saturn', path: hop, shot_to: 0.6 };
     action: character_speak { target: 'Sun', id: 'demo.narr.storia_giganti.3' };
   }
   scene solar_system_3d {
@@ -1082,6 +1094,8 @@
     action: character_show { target: 'Jupiter', expression: 'happy', look: 'Saturn' };
     action: character_blink { target: 'Jupiter', shot_from: 0.3 };
     action: character_expression { target: 'Saturn', expression: 'happy', shot_from: 0.55 };
+    action: effect { type: sparkles, target: 'Jupiter', shot_from: 0.3 };
+    action: character_animate { target: 'Jupiter', animation: dance, times: 2, shot_from: 0.6 };
     action: character_speak { target: 'Saturn', id: 'demo.narr.storia_giganti.4' };
   }
 }`
