@@ -5580,6 +5580,8 @@ window.ASTRO_DIZIONARI['en'] = {
     "storie.espressione.worried": "Worried",
     "storie.espressione.sad": "Sad",
     "storie.espressione.thinking": "Thoughtful",
+    "storie.espressione.excited": "Excited",
+    "storie.espressione.sleepy": "Sleepy",
     "storie.personalita.Sun": "Warm and patient: explains things calmly, like a grandparent.",
     "storie.personalita.Mercury": "Super fast and a bit impatient: never stands still.",
     "storie.personalita.Venus": "Bright and a little vain: the evening star.",

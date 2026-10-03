@@ -114,13 +114,42 @@ rado col movimento ridotto), con un generatore seminato per personaggio.
 `palpebraSu`, `palpebraGiu` (0 aperto, 1 chiuso), `pupilla` (scala),
 `ciglio: { alza, inclina, curva, asimmetria }` (inclina > 0 alza l'estremo
 verso il naso), `bocca` (una forma di `STOR_BOCCHE`), `curva` (+ sorriso, −
-broncio), `guance`, `sguardo` (`null` o `{ x, y }`), `spostaBocca`; e le
-chiavi `storie.espressione.<nome>` nei due dizionari. Il DSL la accetta da
-sé. Di serie ci sono `neutral`, `happy`, `surprised`, `worried`, `sad`,
-`thinking`.
+broncio), `guance`, `sguardo` (`null` o `{ x, y }`), `spostaBocca`, più le
+manopole del corpo (tutte facoltative): `occhi` (quanto si allargano),
+`iride`, `stelle` (pupille a stella), `testa` (inclinazione in radianti),
+`rimbalzo`, `tremito` e `segno` (il segno da fumetto); e le chiavi
+`storie.espressione.<nome>` nei due dizionari. Il DSL la accetta da sé. Di
+serie ci sono `neutral`, `happy`, `surprised`, `worried`, `sad`, `thinking`,
+`excited` e `sleepy`. Sono **esagerate di proposito**: un volto largo
+settanta pixel, per dei bambini, si legge solo se dice una cosa sola e la
+dice forte.
 
 **Le forme della bocca** (`STOR_BOCCHE`): `chiusa`, `piccola`, `A`, `E`, `O`,
-`sorriso`, `triste`, con mezza larghezza, apertura, rotondità e curvatura.
+`sorriso`, `grande`, `triste`, `ondulata`, con mezza larghezza, apertura,
+rotondità, curvatura e `onda` (la bocca che trema).
+
+## Lo stile: la fiaba d'inchiostro (v408)
+
+Un pennino indaco scuro (`INCHIOSTRO`, mai nero puro) a spessore variabile —
+sopracciglia e ciglia sono tratti affusolati (`tracciaPennino`), il contorno
+dell'occhio è grosso sopra e sottile sotto —, stesure piatte con un'ombra sola
+a taglio netto e, dentro all'ombra degli adesivi, il **retino** a puntini dei
+fumetti stampati. Sotto ogni tratto un alone color panna (`ALONE`). Il disco
+grafico è un **adesivo** (`disegnaAdesivo`): ombra piatta spostata, bordo
+panna, riflesso a virgola; il filo che lo lega all'astro è tratteggiato e
+scorre. L'anteprima della pagina Demo usa lo stesso adesivo su un cielo
+d'inchiostro.
+
+**I segni da fumetto** (§6-bis, `storDisegnaSegno`): scintille (happy,
+excited), raggi della sorpresa, lacrima che scende (sad), goccia di sudore
+(worried), bolle del pensiero (thinking), zeta del sonno (sleepy). Le zeta
+sono tratti, non `fillText`: un segno, non una parola.
+
+**Il corpo del volto** (`storPosa`, funzione pura): comparsa con un pop
+elastico, respiro, rimbalzo della contentezza, tremito della paura, testa
+inclinata, «boing» a ogni cambio d'espressione, schiacciamento sulle sillabe,
+e occhiate brevi (saccadi) di chi sta fermo. Si muovono i tratti e l'adesivo,
+mai l'astro. Col movimento ridotto non c'è niente di tutto questo.
 
 ## Come si muove la bocca
 

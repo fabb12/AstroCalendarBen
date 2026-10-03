@@ -48,38 +48,69 @@
    * − broncio), lo sguardo una direzione (x verso destra, y verso il basso)
    * usata solo quando nessuno chiede di guardare altrove.
    *
+   * Le espressioni sono **esagerate di proposito**: il pubblico sono i
+   * bambini, e un volto appoggiato su una Luna larga settanta pixel si legge
+   * solo se dice una cosa sola e la dice forte — come nei cartoni, dove la
+   * sorpresa spalanca gli occhi a un terzo in più e le sopracciglia escono
+   * quasi dalla testa. Oltre ai tratti ci sono le manopole del corpo:
+   *   occhi     quanto si allargano gli occhi (1 = di serie)
+   *   iride     quanto è grande l'iride (gli occhioni tristi)
+   *   stelle    le pupille diventano stelle (l'entusiasmo)
+   *   testa     di quanto si inclina la testa, in radianti
+   *   rimbalzo  il saltello della contentezza
+   *   tremito   il tremolio della paura
+   *   segno     il «segno da fumetto» che accompagna il volto: scintille,
+   *             esclamazione, lacrima, goccia, pensiero, zzz (§6-bis)
+   *
    * Aggiungere un'espressione: una voce qui, e le due chiavi
    * `storie.espressione.<nome>` nei dizionari (le legge la pagina Demo). */
   const STOR_ESPRESSIONI = {
     neutral: {
-      palpebraSu: 0.1, palpebraGiu: 0.04, pupilla: 1,
-      ciglio: { alza: 0, inclina: 0, curva: 0.16, asimmetria: 0 },
-      bocca: 'chiusa', curva: 0.12, guance: 0.25, sguardo: null
+      palpebraSu: 0.08, palpebraGiu: 0.05, pupilla: 1,
+      ciglio: { alza: 0.04, inclina: 0, curva: 0.22, asimmetria: 0 },
+      bocca: 'chiusa', curva: 0.22, guance: 0.3, sguardo: null
     },
     happy: {
-      palpebraSu: 0.06, palpebraGiu: 0.24, pupilla: 1.06,
-      ciglio: { alza: 0.14, inclina: 0, curva: 0.34, asimmetria: 0 },
-      bocca: 'sorriso', curva: 0.55, guance: 0.85, sguardo: null
+      palpebraSu: 0.02, palpebraGiu: 0.4, pupilla: 1.12, iride: 1.05,
+      ciglio: { alza: 0.3, inclina: -0.1, curva: 0.6, asimmetria: 0 },
+      bocca: 'sorriso', curva: 0.85, guance: 1, sguardo: null,
+      rimbalzo: 1, segno: 'scintille'
     },
     surprised: {
-      palpebraSu: 0, palpebraGiu: 0, pupilla: 0.72,
-      ciglio: { alza: 0.42, inclina: 0, curva: 0.42, asimmetria: 0 },
-      bocca: 'O', curva: 0, guance: 0.3, sguardo: null
+      palpebraSu: 0, palpebraGiu: 0, pupilla: 0.5, occhi: 1.16, iride: 0.86,
+      ciglio: { alza: 0.95, inclina: 0, curva: 0.7, asimmetria: 0 },
+      bocca: 'O', curva: 0, guance: 0.35, sguardo: null,
+      segno: 'esclamazione'
     },
     worried: {
-      palpebraSu: 0.06, palpebraGiu: 0.02, pupilla: 1.14,
-      ciglio: { alza: 0.18, inclina: 0.5, curva: 0.08, asimmetria: 0 },
-      bocca: 'triste', curva: -0.22, guance: 0.2, sguardo: null
+      palpebraSu: 0.04, palpebraGiu: 0, pupilla: 0.72, occhi: 1.06,
+      ciglio: { alza: 0.38, inclina: 1, curva: 0.05, asimmetria: 0 },
+      bocca: 'ondulata', curva: -0.25, guance: 0.2, sguardo: null,
+      tremito: 1, segno: 'goccia'
     },
     sad: {
-      palpebraSu: 0.36, palpebraGiu: 0.06, pupilla: 1.16,
-      ciglio: { alza: 0.02, inclina: 0.62, curva: 0, asimmetria: 0 },
-      bocca: 'triste', curva: -0.48, guance: 0.1, sguardo: { x: 0, y: 0.5 }
+      palpebraSu: 0.44, palpebraGiu: 0.1, pupilla: 1.3, iride: 1.16,
+      ciglio: { alza: 0.06, inclina: 1.1, curva: -0.05, asimmetria: 0 },
+      bocca: 'triste', curva: -0.9, guance: 0.12, sguardo: { x: 0, y: 0.55 },
+      testa: 0.13, segno: 'lacrima'
     },
     thinking: {
-      palpebraSu: 0.24, palpebraGiu: 0.1, pupilla: 1,
-      ciglio: { alza: 0.12, inclina: -0.18, curva: 0.2, asimmetria: 0.26 },
-      bocca: 'chiusa', curva: 0.04, spostaBocca: 0.16, guance: 0.2, sguardo: { x: 0.6, y: -0.6 }
+      palpebraSu: 0.3, palpebraGiu: 0.14, pupilla: 1,
+      ciglio: { alza: 0.12, inclina: -0.3, curva: 0.25, asimmetria: 0.6 },
+      bocca: 'chiusa', curva: -0.1, spostaBocca: 0.2, guance: 0.2, sguardo: { x: 0.7, y: -0.65 },
+      testa: -0.15, segno: 'pensiero'
+    },
+    excited: {
+      palpebraSu: 0, palpebraGiu: 0.12, pupilla: 1.2, occhi: 1.12, iride: 1.1, stelle: 1,
+      ciglio: { alza: 0.62, inclina: -0.12, curva: 0.75, asimmetria: 0 },
+      bocca: 'grande', curva: 0.95, guance: 1, sguardo: null,
+      rimbalzo: 1.7, segno: 'scintille'
+    },
+    sleepy: {
+      palpebraSu: 0.64, palpebraGiu: 0.14, pupilla: 1,
+      ciglio: { alza: -0.04, inclina: 0.2, curva: 0.1, asimmetria: 0 },
+      bocca: 'piccola', curva: 0, guance: 0.45, sguardo: { x: 0, y: 0.3 },
+      testa: 0.12, segno: 'zzz'
     }
   };
   const STOR_ESPRESSIONE_DI_SERIE = 'neutral';
@@ -87,15 +118,18 @@
   /* Le forme della bocca, nelle unità del volto: `larg` è la mezza
    * larghezza, `aper` l'altezza dell'apertura, `tondo` quanto somiglia a un
    * cerchio (la O), `curva` la curvatura propria (il sorriso e il broncio la
-   * hanno anche da chiusi). Le prime cinque sono quelle del parlato. */
+   * hanno anche da chiusi), `onda` la bocca tremolante della paura. Le
+   * prime cinque sono quelle del parlato. */
   const STOR_BOCCHE = {
-    chiusa:  { larg: 0.17, aper: 0,     tondo: 0,   curva: 0 },
-    piccola: { larg: 0.12, aper: 0.07,  tondo: 0.4, curva: 0 },
-    A:       { larg: 0.16, aper: 0.22,  tondo: 0.25, curva: 0 },
-    E:       { larg: 0.21, aper: 0.1,   tondo: 0,   curva: 0.1 },
-    O:       { larg: 0.1,  aper: 0.17,  tondo: 1,   curva: 0 },
-    sorriso: { larg: 0.21, aper: 0.025, tondo: 0,   curva: 0.55 },
-    triste:  { larg: 0.16, aper: 0,     tondo: 0,   curva: -0.5 }
+    chiusa:   { larg: 0.17, aper: 0,    tondo: 0,    curva: 0,     onda: 0 },
+    piccola:  { larg: 0.11, aper: 0.08, tondo: 0.5,  curva: 0,     onda: 0 },
+    A:        { larg: 0.17, aper: 0.28, tondo: 0.25, curva: 0,     onda: 0 },
+    E:        { larg: 0.23, aper: 0.13, tondo: 0,    curva: 0.12,  onda: 0 },
+    O:        { larg: 0.13, aper: 0.26, tondo: 1,    curva: 0,     onda: 0 },
+    sorriso:  { larg: 0.3,  aper: 0.11, tondo: 0,    curva: 0.8,   onda: 0 },
+    grande:   { larg: 0.32, aper: 0.3,  tondo: 0,    curva: 0.75,  onda: 0 },
+    triste:   { larg: 0.2,  aper: 0,    tondo: 0,    curva: -0.7,  onda: 0 },
+    ondulata: { larg: 0.22, aper: 0,    tondo: 0,    curva: -0.15, onda: 1 }
   };
   const STOR_BOCCHE_PARLATO = ['chiusa', 'piccola', 'A', 'E', 'O'];
 
@@ -154,7 +188,7 @@
       voce: { ritmo: '-3%', tono: '0Hz' }, espressione: 'happy', personalita: 'Earth' },
     Moon:     { famiglia: 'luna', pelle: '#e2e8f0', iride: '#6366f1', sottotitolo: '#c7d2fe', guance: '#f9a8d4',
       voce: { ritmo: '2%', tono: '18Hz' }, espressione: 'neutral', personalita: 'Moon',
-      occhi: { r: 0.255, distanza: 0.36, alto: -0.1 } },
+      occhi: { r: 0.28, distanza: 0.39, alto: -0.12 } },
     Mars:     { famiglia: 'pianeta', pelle: '#fca5a5', iride: '#b91c1c', sottotitolo: '#fca5a5',
       voce: { ritmo: '8%', tono: '6Hz' }, espressione: 'happy', personalita: 'Mars' },
     Jupiter:  { famiglia: 'pianeta', pelle: '#fed7aa', iride: '#9a3412', sottotitolo: '#fdba74',
@@ -192,7 +226,9 @@
   const STOR_TAU_ESPRESSIONE = 180;
   const STOR_TAU_SGUARDO = 110;
   const STOR_TAU_BOCCA_APRE = 34;
-  const STOR_COMPARSA_MS = 320;
+  const STOR_COMPARSA_MS = 560;     // il «pop» elastico con cui un volto compare
+  const STOR_BOING_MS = 460;        // il rimbalzo di un cambio d'espressione
+  const STOR_SACCADI_MS = [900, 2600]; // le occhiate a vuoto di chi sta fermo
 
   // ===================================================================
   // 2. Chi è chi: profili, nomi, oggetti dell'app
@@ -285,7 +321,7 @@
     const p = Object.assign({}, base, colore && !proprio.pelle ? { pelle: colore } : {}, proprio);
     p.id = id; p.famiglia = famiglia;
     p.voce = Object.assign({}, base.voce, proprio.voce || {});
-    p.occhi = Object.assign({ r: 0.235, distanza: 0.35, alto: -0.08 }, base.occhi || {}, proprio.occhi || {});
+    p.occhi = Object.assign({ r: 0.26, distanza: 0.37, alto: -0.1 }, base.occhi || {}, proprio.occhi || {});
     p.scala = Math.max(0.3, Math.min(0.95, Number(p.scala) || 0.78));
     p.dx = Number(p.dx) || 0; p.dy = Number(p.dy) || 0;
     if (!STOR_ESPRESSIONI[p.espressione]) p.espressione = STOR_ESPRESSIONE_DI_SERIE;
@@ -461,14 +497,18 @@
   const mix = (a, b, k) => a + (b - a) * k;
   function mescolaEspressione(a, b, k) {
     const ca = a.ciglio, cb = b.ciglio;
+    const m = (campo, di) => mix(a[campo] === undefined ? di : a[campo], b[campo] === undefined ? di : b[campo], k);
     return {
       palpebraSu: mix(a.palpebraSu, b.palpebraSu, k), palpebraGiu: mix(a.palpebraGiu, b.palpebraGiu, k),
       pupilla: mix(a.pupilla, b.pupilla, k), curva: mix(a.curva, b.curva, k), guance: mix(a.guance, b.guance, k),
-      spostaBocca: mix(a.spostaBocca || 0, b.spostaBocca || 0, k),
+      spostaBocca: m('spostaBocca', 0),
+      occhi: m('occhi', 1), iride: m('iride', 1), stelle: m('stelle', 0),
+      testa: m('testa', 0), rimbalzo: m('rimbalzo', 0), tremito: m('tremito', 0),
       ciglio: { alza: mix(ca.alza, cb.alza, k), inclina: mix(ca.inclina, cb.inclina, k),
         curva: mix(ca.curva, cb.curva, k), asimmetria: mix(ca.asimmetria || 0, cb.asimmetria || 0, k) },
       bocca: k < 0.5 ? a.bocca : b.bocca,
-      sguardo: k < 0.5 ? a.sguardo : b.sguardo
+      sguardo: k < 0.5 ? a.sguardo : b.sguardo,
+      segno: k < 0.5 ? (a.segno || null) : (b.segno || null)
     };
   }
   function parametriEspressione(nome) {
@@ -476,7 +516,8 @@
     return mescolaEspressione(e, e, 1);
   }
   function mescolaBocca(a, b, k) {
-    return { larg: mix(a.larg, b.larg, k), aper: mix(a.aper, b.aper, k), tondo: mix(a.tondo, b.tondo, k), curva: mix(a.curva, b.curva, k) };
+    return { larg: mix(a.larg, b.larg, k), aper: mix(a.aper, b.aper, k), tondo: mix(a.tondo, b.tondo, k),
+      curva: mix(a.curva, b.curva, k), onda: mix(a.onda || 0, b.onda || 0, k) };
   }
 
   /* Lo sguardo verso un punto dello schermo, come vettore nel cerchio
@@ -498,12 +539,12 @@
    * Restituisce le parti, e nient'altro: il disegno è in §6. */
   function storGeometria(cx, cy, R, profilo, st) {
     const o = profilo.occhi;
-    const rx = o.r * R, ry = rx * 1.14;
     const e = st.espr;
+    const rx = o.r * R * Math.max(0.7, Math.min(1.3, e.occhi || 1)), ry = rx * 1.14;
     const g = st.sguardo || { x: 0, y: 0 };
     const gm = Math.hypot(g.x, g.y);
     const gx = gm > 1 ? g.x / gm : g.x, gy = gm > 1 ? g.y / gm : g.y;
-    const iride = rx * 0.6;
+    const iride = rx * Math.min(0.72, 0.6 * Math.max(0.6, e.iride || 1));
     const pupilla = Math.min(iride * 0.78, iride * 0.5 * Math.max(0.5, Math.min(1.4, e.pupilla)));
     // Quanto può correre l'iride senza uscire dall'occhio: l'ellisse è più
     // alta che larga, e il suo raggio più corto è rx.
@@ -529,32 +570,35 @@
         // Le palpebre come quota del loro bordo
         bordoSu: ey - ry + 2 * ry * su,
         bordoGiu: ey + ry - 2 * ry * giu,
-        chiusura: su + giu
+        chiusura: su + giu, giu
       };
     });
     const c = e.ciglio;
     const cigli = occhi.map(occ => {
       const asim = occ.lato < 0 ? (c.asimmetria || 0) : 0;
-      const yBase = occ.cy - occ.ry - R * (0.1 + (c.alza + asim) * 0.2) - (st.alzaCigli || 0) * R * 0.05;
+      const yBase = occ.cy - occ.ry - R * (0.09 + (c.alza + asim) * 0.24) - (st.alzaCigli || 0) * R * 0.07;
       // `inclina` > 0 alza l'estremo verso il naso: la faccia preoccupata
-      const interno = occ.cx - occ.lato * occ.rx * 0.95, esterno = occ.cx + occ.lato * occ.rx * 1.05;
-      const yInterno = yBase - c.inclina * R * 0.11, yEsterno = yBase + c.inclina * R * 0.05;
+      const interno = occ.cx - occ.lato * occ.rx * 0.95, esterno = occ.cx + occ.lato * occ.rx * 1.12;
+      const yInterno = yBase - c.inclina * R * 0.16, yEsterno = yBase + c.inclina * R * 0.07;
       return {
+        lato: occ.lato,
         x1: interno, y1: yInterno, x2: esterno, y2: yEsterno,
-        qx: (interno + esterno) / 2, qy: (yInterno + yEsterno) / 2 - c.curva * R * 0.12,
-        spessore: Math.max(1.4, R * 0.055)
+        qx: (interno + esterno) / 2, qy: (yInterno + yEsterno) / 2 - c.curva * R * 0.15,
+        spessore: Math.max(1.6, R * 0.07)
       };
     });
     const b = st.bocca;
     const bocca = {
-      x: cx + (e.spostaBocca || 0) * R, y: cy + 0.36 * R,
-      larg: b.larg * R, aper: b.aper * R, tondo: b.tondo,
+      x: cx + (e.spostaBocca || 0) * R, y: cy + 0.4 * R,
+      larg: b.larg * R, aper: b.aper * R, tondo: b.tondo, onda: b.onda || 0,
       // la curvatura dell'espressione resta anche parlando (si parla sorridendo)
       curva: Math.max(-1, Math.min(1, b.curva + e.curva * (b.aper > 0.04 ? 0.5 : 1)))
     };
-    const guance = e.guance > 0.05 ? occhi.map(occ => ({ x: occ.cx + occ.lato * occ.rx * 0.3, y: occ.cy + occ.ry * 1.45,
-      rx: occ.rx * 0.78, ry: occ.rx * 0.44, alfa: Math.min(0.55, e.guance * 0.5) })) : [];
-    return { cx, cy, R, occhi, cigli, bocca, guance };
+    const guance = e.guance > 0.05 ? occhi.map(occ => ({ lato: occ.lato, x: occ.cx + occ.lato * occ.rx * 0.45, y: occ.cy + occ.ry * 1.5,
+      rx: occ.rx * 0.8, ry: occ.rx * 0.46, alfa: Math.min(0.6, e.guance * 0.55), linee: e.guance > 0.6 })) : [];
+    // Il nasino: una virgola d'inchiostro fra gli occhi e la bocca
+    const naso = { x: cx + (e.spostaBocca || 0) * R * 0.4, y: cy + 0.2 * R, r: R * 0.045 };
+    return { cx, cy, R, occhi, cigli, bocca, guance, naso, stelle: e.stelle || 0, segno: e.segno || null };
   }
 
   // La pupilla è dentro l'occhio? (la prova delle pupille contenute)
@@ -632,7 +676,8 @@
       bocca: Object.assign({}, STOR_BOCCHE.chiusa), apertura: 0, forma: 'chiusa',
       dado: r, fase: (seme(id) % 628) / 100, prossimoBattito: stor.orologio + 400 + dado(r) * 1800, battitoDa: -1e9,
       comparsoDa: stor.orologio, nascosto: false, congedo: 0, misura: opz.misura || 'auto',
-      ultimoPunto: null
+      ultimoPunto: null, cambioDa: -1e9, segnoDa: stor.orologio, segno: null,
+      saccade: { x: 0, y: 0 }, prossimaSaccade: stor.orologio + 600 + dado(r) * 1200
     };
   }
 
@@ -653,6 +698,7 @@
   function storEspressione(target, nome) {
     const pg = stor.personaggi.get(storCanonico(target));
     if (!pg || !STOR_ESPRESSIONI[nome]) return false;
+    if (pg.espressione !== nome) pg.cambioDa = stor.orologio;
     pg.espressione = nome;
     if (stor.ridotto) pg.espr = parametriEspressione(nome);
     return true;
@@ -739,6 +785,19 @@
   // 6. Il disegno
   // ===================================================================
 
+  /* Lo stile: la **fiaba d'inchiostro**. Ogni tratto è un pennino indaco
+   * scuro (non nero: il nero puro sopra a un cielo notturno buca la tela),
+   * a spessore variabile — più grosso dove il tratto «appoggia», sottile
+   * dove sfugge —, i colori sono stesure piatte con **un'ombra sola a taglio
+   * netto**, come la cel animation, e dentro all'ombra c'è il **retino** dei
+   * fumetti stampati: puntini che crescono verso il bordo. Sotto a ogni
+   * tratto passa un alone color panna, che è quello che tiene leggibile un
+   * occhio appoggiato sulla parte buia di una falce di Luna. Sono tre scelte
+   * che un volto di cartone qualunque non fa insieme, e insieme fanno uno
+   * stile riconoscibile: quello delle Storie cosmiche. */
+  const INCHIOSTRO = '#1c1236';
+  const ALONE = 'rgba(255, 248, 235, 0.62)';
+
   function rgba(hex, a) {
     const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
     if (!m) return `rgba(226,232,240,${a})`;
@@ -752,35 +811,111 @@
     const c = v => Math.round(v * (1 - k)).toString(16).padStart(2, '0');
     return '#' + c(n >> 16) + c((n >> 8) & 255) + c(n & 255);
   }
+  function schiarisci(hex, k) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return '#f8fafc';
+    const n = parseInt(m[1], 16);
+    const c = v => Math.round(v + (255 - v) * k).toString(16).padStart(2, '0');
+    return '#' + c(n >> 16) + c((n >> 8) & 255) + c(n & 255);
+  }
 
-  function disegnaOcchio(ctx, occ, profilo) {
-    const palpebra = scurisci(profilo.pelle, 0.28);
+  /* Un tratto di pennino lungo una quadratica: largo `w0` all'attacco,
+   * gonfio a metà, affilato alla fine. È la differenza fra un sopracciglio
+   * di un'app e uno disegnato a mano. Restituisce il tracciato, chiuso. */
+  function tracciaPennino(ctx, x1, y1, qx, qy, x2, y2, w, profilo) {
+    const n = 12, sopra = [], sotto = [];
+    for (let i = 0; i <= n; i++) {
+      const u = i / n, v = 1 - u;
+      const x = v * v * x1 + 2 * v * u * qx + u * u * x2, y = v * v * y1 + 2 * v * u * qy + u * u * y2;
+      const tx = 2 * v * (qx - x1) + 2 * u * (x2 - qx), ty = 2 * v * (qy - y1) + 2 * u * (y2 - qy);
+      const tl = Math.hypot(tx, ty) || 1;
+      const larg = w * (profilo ? profilo(u) : 1) / 2;
+      sopra.push([x - ty / tl * larg, y + tx / tl * larg]);
+      sotto.push([x + ty / tl * larg, y - tx / tl * larg]);
+    }
+    ctx.beginPath();
+    ctx.moveTo(sopra[0][0], sopra[0][1]);
+    for (const [x, y] of sopra) ctx.lineTo(x, y);
+    for (let i = sotto.length - 1; i >= 0; i--) ctx.lineTo(sotto[i][0], sotto[i][1]);
+    ctx.closePath();
+  }
+  // Il profilo del sopracciglio: pieno verso il naso, affilato verso fuori
+  const profiloCiglio = u => (0.55 + 0.75 * Math.sin(Math.PI * (0.12 + 0.62 * u))) * (1 - 0.72 * u * u);
+
+  function stella(ctx, x, y, rEsterno, rInterno, punte, giro) {
+    ctx.beginPath();
+    for (let k = 0; k < punte * 2; k++) {
+      const r = k % 2 ? rInterno : rEsterno, a = giro + k * Math.PI / punte;
+      if (k) ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    }
+    ctx.closePath();
+  }
+
+  function disegnaOcchio(ctx, occ, profilo, stelle, t) {
+    const pelle = scurisci(profilo.pelle, 0.1);
     ctx.save();
     ctx.beginPath();
     ctx.ellipse(occ.cx, occ.cy, occ.rx, occ.ry, 0, 0, Math.PI * 2);
-    // il bianco, appena azzurrato in basso: un bianco piatto sembra carta
+    // il bianco: lavanda in alto, dove la palpebra fa ombra, bianco al centro
     const bianco = ctx.createLinearGradient(occ.cx, occ.cy - occ.ry, occ.cx, occ.cy + occ.ry);
-    bianco.addColorStop(0, '#ffffff'); bianco.addColorStop(1, '#e2e8f0');
+    bianco.addColorStop(0, '#d9dcf4'); bianco.addColorStop(0.38, '#ffffff'); bianco.addColorStop(1, '#eef1fb');
     ctx.fillStyle = bianco;
     ctx.fill();
     ctx.clip();
     if (occ.chiusura < 0.985) {
       const ir = occ.iride;
-      const grad = ctx.createRadialGradient(ir.x, ir.y - ir.r * 0.2, ir.r * 0.15, ir.x, ir.y, ir.r);
-      grad.addColorStop(0, rgba(profilo.iride, 0.75));
-      grad.addColorStop(0.55, profilo.iride);
-      grad.addColorStop(1, scurisci(profilo.iride, 0.45));
+      const grad = ctx.createRadialGradient(ir.x, ir.y + ir.r * 0.35, ir.r * 0.1, ir.x, ir.y, ir.r);
+      grad.addColorStop(0, schiarisci(profilo.iride, 0.55));
+      grad.addColorStop(0.5, profilo.iride);
+      grad.addColorStop(1, scurisci(profilo.iride, 0.5));
       ctx.fillStyle = grad;
       ctx.beginPath(); ctx.arc(ir.x, ir.y, ir.r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#0b1020';
-      ctx.beginPath(); ctx.arc(occ.pupilla.x, occ.pupilla.y, occ.pupilla.r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      // i raggi dell'iride, a pennino: un'iride piatta è un bottone
+      ctx.strokeStyle = rgba(scurisci(profilo.iride, 0.6), 0.32);
+      ctx.lineWidth = Math.max(0.5, ir.r * 0.06);
+      ctx.beginPath();
+      for (let k = 0; k < 12; k++) {
+        const a = k / 12 * Math.PI * 2;
+        ctx.moveTo(ir.x + Math.cos(a) * ir.r * 0.45, ir.y + Math.sin(a) * ir.r * 0.45);
+        ctx.lineTo(ir.x + Math.cos(a) * ir.r * 0.86, ir.y + Math.sin(a) * ir.r * 0.86);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = scurisci(profilo.iride, 0.62);
+      ctx.lineWidth = Math.max(0.8, ir.r * 0.13);
+      ctx.beginPath(); ctx.arc(ir.x, ir.y, ir.r * 0.94, 0, Math.PI * 2); ctx.stroke();
+      const pu = occ.pupilla;
+      if (stelle > 0.5) {
+        // l'entusiasmo: la pupilla è una stella dorata che pulsa
+        const pulsa = 1 + 0.12 * Math.sin(t / 140);
+        ctx.fillStyle = '#ffe066';
+        stella(ctx, pu.x, pu.y, ir.r * 0.78 * pulsa, ir.r * 0.34 * pulsa, 5, -Math.PI / 2);
+        ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, ir.r * 0.08); ctx.stroke();
+      } else {
+        ctx.fillStyle = '#0d0820';
+        ctx.beginPath(); ctx.arc(pu.x, pu.y, pu.r, 0, Math.PI * 2); ctx.fill();
+      }
+      // i riflessi: il grande tondo e il piccolo, più un bagliore a croce
+      ctx.fillStyle = 'rgba(255,255,255,0.97)';
       for (const l of occ.luci) { ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill(); }
+      const l0 = occ.luci[0];
+      if (l0.r > 1.6) {
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        stella(ctx, l0.x + l0.r * 1.6, l0.y - l0.r * 0.2, l0.r * 0.7, l0.r * 0.16, 4, 0);
+        ctx.fill();
+      }
     }
-    // Le palpebre: la pelle che scende dall'alto e sale dal basso, con il
-    // bordo appena curvo (una palpebra dritta è una tapparella)
-    ctx.fillStyle = palpebra;
-    const curvaP = occ.ry * 0.28;
+    // L'ombra della palpebra sul bianco: è quella che dà profondità all'occhio
+    const ombra = ctx.createLinearGradient(occ.cx, occ.bordoSu, occ.cx, occ.bordoSu + occ.ry * 0.5);
+    ombra.addColorStop(0, 'rgba(28,18,54,0.28)'); ombra.addColorStop(1, 'rgba(28,18,54,0)');
+    ctx.fillStyle = ombra;
+    ctx.fillRect(occ.cx - occ.rx, occ.bordoSu, occ.rx * 2, occ.ry * 0.5);
+    // Le palpebre: la pelle che scende dall'alto e sale dal basso. Quella di
+    // sotto si incurva tanto più quanto più sale — gli occhi che sorridono
+    // sono due mezzelune, ed è la palpebra di sotto a farle.
+    ctx.fillStyle = pelle;
+    const curvaP = occ.ry * 0.3;
+    const curvaG = occ.ry * (0.15 + occ.giu * 1.1);
     ctx.beginPath();
     ctx.moveTo(occ.cx - occ.rx * 1.2, occ.cy - occ.ry * 1.2);
     ctx.lineTo(occ.cx + occ.rx * 1.2, occ.cy - occ.ry * 1.2);
@@ -791,142 +926,336 @@
     ctx.moveTo(occ.cx - occ.rx * 1.2, occ.cy + occ.ry * 1.2);
     ctx.lineTo(occ.cx + occ.rx * 1.2, occ.cy + occ.ry * 1.2);
     ctx.lineTo(occ.cx + occ.rx * 1.2, occ.bordoGiu);
-    ctx.quadraticCurveTo(occ.cx, occ.bordoGiu - curvaP * 0.6, occ.cx - occ.rx * 1.2, occ.bordoGiu);
+    ctx.quadraticCurveTo(occ.cx, occ.bordoGiu - curvaG, occ.cx - occ.rx * 1.2, occ.bordoGiu);
     ctx.closePath(); ctx.fill();
+    if (occ.giu > 0.18) {
+      ctx.strokeStyle = rgba('#1c1236', 0.55);
+      ctx.lineWidth = Math.max(0.8, occ.rx * 0.08);
+      ctx.beginPath();
+      ctx.moveTo(occ.cx - occ.rx * 1.2, occ.bordoGiu);
+      ctx.quadraticCurveTo(occ.cx, occ.bordoGiu - curvaG, occ.cx + occ.rx * 1.2, occ.bordoGiu);
+      ctx.stroke();
+    }
     ctx.restore();
-    // Il contorno e la linea delle ciglia sul bordo della palpebra di sopra:
-    // sono quelle che fanno leggere l'occhio anche su un disco chiaro.
+    // Il contorno a pennino: sottile sotto, grosso sopra, e la riga delle
+    // ciglia sul bordo della palpebra con il colpo di coda verso l'esterno.
     ctx.save();
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.lineWidth = Math.max(1, occ.rx * 0.12);
-    ctx.beginPath(); ctx.ellipse(occ.cx, occ.cy, occ.rx, occ.ry, 0, 0, Math.PI * 2); ctx.stroke();
-    if (occ.bordoSu > occ.cy - occ.ry + 0.5) {
-      // la riga delle ciglia segue il bordo della palpebra, larga quanto
-      // l'occhio a quell'altezza
-      ctx.lineWidth = Math.max(1.2, occ.rx * 0.16);
-      const sopra = Math.max(occ.cy - occ.ry, Math.min(occ.cy + occ.ry, occ.bordoSu));
-      const dy = sopra - occ.cy, k = Math.max(0, 1 - (dy * dy) / (occ.ry * occ.ry));
-      const mezza = occ.rx * Math.sqrt(k);
-      if (mezza > 0.5) {
+    ctx.strokeStyle = INCHIOSTRO;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(0.9, occ.rx * 0.09);
+    ctx.beginPath(); ctx.ellipse(occ.cx, occ.cy, occ.rx, occ.ry, 0, 0, Math.PI); ctx.stroke();
+    ctx.lineWidth = Math.max(1.3, occ.rx * 0.15);
+    ctx.beginPath(); ctx.ellipse(occ.cx, occ.cy, occ.rx, occ.ry, 0, Math.PI, Math.PI * 2); ctx.stroke();
+    const sopra = Math.max(occ.cy - occ.ry, Math.min(occ.cy + occ.ry, occ.bordoSu));
+    const dy = sopra - occ.cy, k = Math.max(0, 1 - (dy * dy) / (occ.ry * occ.ry));
+    const mezza = occ.rx * Math.sqrt(k);
+    if (mezza > 0.5) {
+      ctx.lineWidth = Math.max(1.5, occ.rx * 0.2);
+      ctx.beginPath();
+      ctx.moveTo(occ.cx - mezza, sopra);
+      ctx.quadraticCurveTo(occ.cx, sopra + occ.ry * 0.3, occ.cx + mezza, sopra);
+      ctx.stroke();
+    }
+    // Le ciglia: due colpi di pennino all'angolo esterno, sempre — anche a
+    // occhio chiuso, dove sono loro a dire che quella riga è un occhio.
+    const ex = occ.cx + occ.lato * Math.max(mezza, occ.rx * 0.82), ey = mezza > 0.5 ? sopra : occ.cy;
+    ctx.fillStyle = INCHIOSTRO;
+    for (const [lun, ang] of [[0.5, -0.55], [0.38, -0.05]]) {
+      const a = occ.lato > 0 ? ang : Math.PI - ang;
+      const x2 = ex + Math.cos(a) * occ.rx * lun, y2 = ey + Math.sin(a) * occ.rx * lun;
+      tracciaPennino(ctx, ex, ey, (ex + x2) / 2, (ey + y2) / 2 - occ.rx * 0.06, x2, y2, Math.max(1.4, occ.rx * 0.16), u => 1 - u * 0.92);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function disegnaBocca(ctx, b, R) {
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const spessore = Math.max(1.5, b.larg * 0.15);
+    const angoli = b.y - b.curva * b.larg * 0.5;
+    const fossette = () => {
+      // le fossette agli angoli di un sorriso largo (o le pieghe del broncio)
+      if (Math.abs(b.curva) < 0.45) return;
+      const verso = b.curva > 0 ? -1 : 1;
+      ctx.lineWidth = spessore * 0.8;
+      ctx.beginPath();
+      for (const lato of [-1, 1]) {
+        const x = b.x + lato * b.larg, y = angoli;
+        ctx.moveTo(x - lato * b.larg * 0.08, y + verso * b.larg * 0.14);
+        ctx.quadraticCurveTo(x + lato * b.larg * 0.1, y, x + lato * b.larg * 0.04, y - verso * b.larg * 0.16);
+      }
+      ctx.stroke();
+    };
+    if (b.aper < Math.max(0.8, b.larg * 0.06)) {
+      const riga = () => {
         ctx.beginPath();
-        ctx.moveTo(occ.cx - mezza, sopra);
-        ctx.quadraticCurveTo(occ.cx, sopra + occ.ry * 0.28, occ.cx + mezza, sopra);
+        if (b.onda > 0.2) {
+          // la bocca della paura: un'onda che trema
+          const n = 16;
+          for (let i = 0; i <= n; i++) {
+            const u = i / n, x = b.x - b.larg + 2 * b.larg * u;
+            const y = b.y - b.curva * b.larg * 0.5 * (1 - Math.pow(2 * u - 1, 2)) * -1 +
+              Math.sin(u * Math.PI * 4) * b.larg * 0.12 * b.onda;
+            if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+          }
+        } else {
+          ctx.moveTo(b.x - b.larg, angoli);
+          ctx.quadraticCurveTo(b.x, b.y + b.curva * b.larg * 0.8, b.x + b.larg, angoli);
+        }
+      };
+      ctx.strokeStyle = ALONE; ctx.lineWidth = spessore + 2.6; riga(); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = spessore; riga(); ctx.stroke();
+      fossette();
+    } else {
+      const traccia = () => {
+        ctx.beginPath();
+        if (b.tondo > 0.6) ctx.ellipse(b.x, b.y, b.larg, b.aper / 2, 0, 0, Math.PI * 2);
+        else {
+          const ang = b.y - b.curva * b.larg * 0.42;
+          ctx.moveTo(b.x - b.larg, ang);
+          ctx.quadraticCurveTo(b.x, b.y - b.aper * (0.55 - b.tondo * 0.3) + b.curva * b.larg * 0.28, b.x + b.larg, ang);
+          ctx.quadraticCurveTo(b.x, b.y + b.aper * 1.25 + b.curva * b.larg * 0.5, b.x - b.larg, ang);
+          ctx.closePath();
+        }
+      };
+      traccia();
+      ctx.strokeStyle = ALONE; ctx.lineWidth = spessore + 2.6; ctx.stroke();
+      const fondo = ctx.createLinearGradient(b.x, b.y - b.aper, b.x, b.y + b.aper);
+      fondo.addColorStop(0, '#2a0a20'); fondo.addColorStop(1, '#5c1430');
+      ctx.fillStyle = fondo;
+      ctx.fill();
+      ctx.save(); ctx.clip();
+      // la lingua, col suo riflesso, e i denti di sopra quando si apre bene
+      ctx.fillStyle = '#f2577e';
+      ctx.beginPath(); ctx.ellipse(b.x, b.y + b.aper * 0.7, b.larg * 0.6, b.aper * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 196, 214, 0.75)';
+      ctx.beginPath(); ctx.ellipse(b.x - b.larg * 0.14, b.y + b.aper * 0.52, b.larg * 0.16, b.aper * 0.1, -0.3, 0, Math.PI * 2); ctx.fill();
+      if (b.aper > b.larg * 0.42 && b.tondo < 0.6) {
+        ctx.fillStyle = '#fffdf6';
+        ctx.fillRect(b.x - b.larg, b.y - b.aper * 1.2, b.larg * 2, b.aper * 0.62 + Math.max(0, b.curva) * b.larg * 0.1);
+      }
+      ctx.restore();
+      ctx.strokeStyle = INCHIOSTRO;
+      ctx.lineWidth = spessore;
+      traccia(); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO;
+      fossette();
+    }
+    ctx.restore();
+  }
+
+  function storDisegnaVolto(ctx, geom, profilo, alfa, t) {
+    ctx.save();
+    ctx.globalAlpha *= alfa;
+    ctx.lineCap = 'round';
+    // Le guance: un rossore sfumato, e da contenti le tre lineette a pennino
+    for (const g of geom.guance) {
+      const r = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, g.rx);
+      r.addColorStop(0, rgba(profilo.guance, g.alfa)); r.addColorStop(1, rgba(profilo.guance, 0));
+      ctx.fillStyle = r;
+      ctx.beginPath(); ctx.ellipse(g.x, g.y, g.rx, g.ry, 0, 0, Math.PI * 2); ctx.fill();
+      if (g.linee) {
+        ctx.strokeStyle = rgba(scurisci(profilo.guance, 0.35), 0.8);
+        ctx.lineWidth = Math.max(0.9, g.rx * 0.1);
+        ctx.beginPath();
+        for (let k = -1; k <= 1; k++) {
+          const x = g.x + k * g.rx * 0.38;
+          ctx.moveTo(x + g.rx * 0.1, g.y - g.ry * 0.42); ctx.lineTo(x - g.rx * 0.1, g.y + g.ry * 0.42);
+        }
         ctx.stroke();
       }
     }
-    ctx.restore();
-  }
-
-  function disegnaBocca(ctx, b, alone) {
-    ctx.save();
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const scuro = '#3b0a1a';
-    const spessore = Math.max(1.3, b.larg * 0.16);
-    if (b.aper < Math.max(0.8, b.larg * 0.06)) {
-      // Chiusa: una riga, curva quanto l'espressione
-      const riga = () => {
-        ctx.beginPath();
-        ctx.moveTo(b.x - b.larg, b.y - b.curva * b.larg * 0.45);
-        ctx.quadraticCurveTo(b.x, b.y + b.curva * b.larg * 0.55, b.x + b.larg, b.y - b.curva * b.larg * 0.45);
-      };
-      if (alone) { ctx.strokeStyle = alone; ctx.lineWidth = spessore + 2.4; riga(); ctx.stroke(); }
-      ctx.strokeStyle = 'rgba(30, 8, 18, 0.92)';
-      ctx.lineWidth = spessore;
-      riga();
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      if (b.tondo > 0.6) {
-        ctx.ellipse(b.x, b.y, b.larg, b.aper / 2, 0, 0, Math.PI * 2);
-      } else {
-        const angolo = b.y - b.curva * b.larg * 0.4;
-        ctx.moveTo(b.x - b.larg, angolo);
-        ctx.quadraticCurveTo(b.x, b.y - b.aper * (0.55 - b.tondo * 0.3) + b.curva * b.larg * 0.25, b.x + b.larg, angolo);
-        ctx.quadraticCurveTo(b.x, b.y + b.aper * 1.15 + b.curva * b.larg * 0.45, b.x - b.larg, angolo);
-        ctx.closePath();
-      }
-      ctx.fillStyle = scuro;
-      ctx.fill();
-      ctx.save(); ctx.clip();
-      // la lingua, e coi denti di sopra quando la bocca è bella aperta
-      ctx.fillStyle = '#f472b6';
-      ctx.beginPath(); ctx.ellipse(b.x, b.y + b.aper * 0.62, b.larg * 0.62, b.aper * 0.36, 0, 0, Math.PI * 2); ctx.fill();
-      if (b.aper > b.larg * 0.5) {
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(b.x - b.larg, b.y - b.aper, b.larg * 2, b.aper * 0.42);
-      }
-      ctx.restore();
-      ctx.strokeStyle = 'rgba(30, 8, 18, 0.9)';
-      ctx.lineWidth = spessore * 0.8;
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function storDisegnaVolto(ctx, geom, profilo, alfa) {
-    ctx.save();
-    ctx.globalAlpha *= alfa;
-    for (const g of geom.guance) {
-      ctx.fillStyle = rgba(profilo.guance, g.alfa);
-      ctx.beginPath(); ctx.ellipse(g.x, g.y, g.rx, g.ry, 0, 0, Math.PI * 2); ctx.fill();
-    }
-    // Un alone chiaro sotto ai tratti scuri: un volto appoggiato sulla parte
-    // in ombra di una falce di Luna è scuro su scuro, e senza alone le
-    // sopracciglia e la bocca sparirebbero proprio lì.
-    const alone = 'rgba(241, 245, 249, 0.55)';
-    ctx.lineCap = 'round';
+    // Gli aloni color panna sotto ai tratti scuri
     for (const occ of geom.occhi) {
-      ctx.strokeStyle = alone; ctx.lineWidth = Math.max(2, occ.rx * 0.32);
+      ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, occ.rx * 0.36);
       ctx.beginPath(); ctx.ellipse(occ.cx, occ.cy, occ.rx, occ.ry, 0, 0, Math.PI * 2); ctx.stroke();
     }
     for (const c of geom.cigli) {
-      ctx.strokeStyle = alone; ctx.lineWidth = c.spessore + 2.4;
-      ctx.beginPath(); ctx.moveTo(c.x1, c.y1); ctx.quadraticCurveTo(c.qx, c.qy, c.x2, c.y2); ctx.stroke();
+      tracciaPennino(ctx, c.x1, c.y1, c.qx, c.qy, c.x2, c.y2, c.spessore, profiloCiglio);
+      ctx.strokeStyle = ALONE; ctx.lineWidth = 2.6; ctx.lineJoin = 'round'; ctx.stroke();
     }
-    for (const occ of geom.occhi) disegnaOcchio(ctx, occ, profilo);
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.88)';
-    for (const c of geom.cigli) {
-      ctx.lineWidth = c.spessore;
-      ctx.beginPath(); ctx.moveTo(c.x1, c.y1); ctx.quadraticCurveTo(c.qx, c.qy, c.x2, c.y2); ctx.stroke();
-    }
-    disegnaBocca(ctx, geom.bocca, alone);
+    for (const occ of geom.occhi) disegnaOcchio(ctx, occ, profilo, geom.stelle, t);
+    ctx.fillStyle = INCHIOSTRO;
+    for (const c of geom.cigli) { tracciaPennino(ctx, c.x1, c.y1, c.qx, c.qy, c.x2, c.y2, c.spessore, profiloCiglio); ctx.fill(); }
+    // il nasino
+    const n = geom.naso;
+    ctx.strokeStyle = rgba('#1c1236', 0.5); ctx.lineWidth = Math.max(0.9, n.r * 0.5);
+    ctx.beginPath(); ctx.arc(n.x, n.y, n.r, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+    disegnaBocca(ctx, geom.bocca, geom.R);
     ctx.restore();
   }
 
-  // Il disco (o il riquadro) grafico di un oggetto troppo piccolo per avere
-  // il volto addosso: il volto vive lì, e un filo lo lega all'astro vero, che
-  // resta della sua misura vera.
-  function disegnaSupporto(ctx, posto, profilo, alfa) {
+  // ===================================================================
+  // 6-bis. I segni da fumetto
+  // ===================================================================
+
+  /* Il segno che accompagna un'espressione, come nei fumetti: le scintille
+   * della gioia, i tre raggi della sorpresa, la lacrima che scende, la
+   * goccia di sudore, le bolle del pensiero, le zeta del sonno. Le zeta sono
+   * disegnate a tratti e non scritte: sono un segno, non una parola, e una
+   * `fillText` qui sarebbe una scritta cablata sulla tela (I18N.md). Tutto
+   * a pennino, e tutto animato sull'orologio della storia: in pausa si
+   * fermano anche loro. `u` è quanto il segno è comparso (0…1). */
+  function goccia(ctx, x, y, r) {
+    // una goccia con la punta in su: il tondo centrato in (x, y)
+    ctx.beginPath();
+    ctx.moveTo(x, y - r * 1.8);
+    ctx.quadraticCurveTo(x + r * 1.05, y - r * 0.55, x + r, y);
+    ctx.arc(x, y, r, 0, Math.PI);
+    ctx.quadraticCurveTo(x - r * 1.05, y - r * 0.55, x, y - r * 1.8);
+    ctx.closePath();
+  }
+  function riempiAcqua(ctx, x, y, r) {
+    const g = ctx.createLinearGradient(x, y - r, x, y + r * 1.5);
+    g.addColorStop(0, '#e0f6ff'); g.addColorStop(1, '#3fb4f0');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, r * 0.22); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.ellipse(x - r * 0.35, y - r * 0.05, r * 0.2, r * 0.32, -0.3, 0, Math.PI * 2); ctx.fill();
+  }
+  function storDisegnaSegno(ctx, geom, segno, t, u, ridotto) {
+    if (!segno || u <= 0) return;
+    const { cx, cy, R } = geom;
+    const fermo = ridotto ? 0 : 1;
+    ctx.save();
+    ctx.globalAlpha *= Math.min(1, u * 1.6);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const pop = ridotto ? 1 : Math.min(1, u * 1.25) * (1 + 0.25 * Math.sin(Math.min(1, u) * Math.PI));
+    if (segno === 'scintille') {
+      [[-0.95, -0.85, 0], [1.02, -0.62, 1.9], [0.82, -1.08, 3.7]].forEach(([dx, dy, f]) => {
+        const s = R * 0.13 * pop * (0.7 + 0.3 * Math.abs(Math.sin(t / 260 * fermo + f)));
+        const x = cx + dx * R, y = cy + dy * R;
+        stella(ctx, x, y, s, s * 0.32, 4, t / 900 * fermo + f);
+        ctx.fillStyle = '#fff3b0'; ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.9, s * 0.16); ctx.stroke();
+      });
+    } else if (segno === 'esclamazione') {
+      const raggi = [[-0.62, 0.92, 1.22], [0, 0.98, 1.32], [0.62, 0.92, 1.22]];
+      for (const passata of [0, 1]) {
+        ctx.strokeStyle = passata ? INCHIOSTRO : ALONE;
+        ctx.lineWidth = Math.max(1.6, R * 0.07) + (passata ? 0 : 2.6);
+        ctx.beginPath();
+        for (const [a0, r0, r1] of raggi) {
+          const a = -Math.PI / 2 + a0 * 0.8;
+          const vibra = 1 + 0.06 * Math.sin(t / 70 * fermo + a0 * 5);
+          ctx.moveTo(cx + Math.cos(a) * R * r0, cy + Math.sin(a) * R * r0);
+          ctx.lineTo(cx + Math.cos(a) * R * mix(r0, r1, pop) * vibra, cy + Math.sin(a) * R * mix(r0, r1, pop) * vibra);
+        }
+        ctx.stroke();
+      }
+    } else if (segno === 'lacrima') {
+      const occ = geom.occhi[1];
+      const ciclo = ridotto ? 0.3 : ((t / 1700) % 1);
+      const r = Math.max(2, occ.rx * 0.24);
+      // il velo d'acqua sul bordo della palpebra di sotto
+      ctx.strokeStyle = 'rgba(125, 211, 252, 0.9)'; ctx.lineWidth = Math.max(1.2, occ.rx * 0.12);
+      ctx.beginPath(); ctx.ellipse(occ.cx, occ.cy, occ.rx * 0.92, occ.ry * 0.9, 0, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+      const x = occ.cx + occ.rx * 0.7, y = occ.cy + occ.ry * 0.95 + ciclo * ciclo * R * 0.75;
+      ctx.globalAlpha *= 1 - Math.pow(ciclo, 3);
+      const rg = r * (0.6 + 0.4 * Math.min(1, ciclo * 4));
+      goccia(ctx, x, y, rg);
+      riempiAcqua(ctx, x, y, rg);
+    } else if (segno === 'goccia') {
+      const r = R * 0.11 * pop;
+      const x = cx + R * 0.78, y = cy - R * 0.62 + Math.sin(t / 380 * fermo) * R * 0.03;
+      goccia(ctx, x, y, r);
+      riempiAcqua(ctx, x, y, r);
+    } else if (segno === 'pensiero') {
+      for (let k = 0; k < 3; k++) {
+        const f = ridotto ? k / 3 : ((t / 2400 + k / 3) % 1);
+        const x = cx + R * (0.75 + f * 0.45), y = cy - R * (0.75 + f * 0.65);
+        const r = R * (0.05 + f * 0.11) * pop;
+        ctx.globalAlpha = Math.min(1, u * 1.6) * (f < 0.15 ? f / 0.15 : f > 0.8 ? (1 - f) / 0.2 : 1);
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#fbfaff'; ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.9, r * 0.2); ctx.stroke();
+      }
+    } else if (segno === 'zzz') {
+      for (let k = 0; k < 3; k++) {
+        const f = ridotto ? k / 3 : ((t / 2600 + k / 3) % 1);
+        const s = R * (0.08 + f * 0.1) * pop;
+        const x = cx + R * (0.62 + f * 0.5) + Math.sin(f * 6) * R * 0.05, y = cy - R * (0.55 + f * 0.75);
+        ctx.globalAlpha = Math.min(1, u * 1.6) * (f > 0.75 ? (1 - f) / 0.25 : Math.min(1, f * 5));
+        const zeta = () => { ctx.beginPath(); ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y - s); ctx.lineTo(x - s, y + s); ctx.lineTo(x + s, y + s); };
+        ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(1.3, s * 0.3) + 2.4; zeta(); ctx.stroke();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.3, s * 0.3); zeta(); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  /* L'adesivo: il disco grafico di un oggetto troppo piccolo per avere il
+   * volto addosso, e il palco dell'anteprima. Un'ombra piatta spostata in
+   * basso a destra (l'adesivo è *appoggiato* sul cielo), il bordo color
+   * panna e il pennino attorno, la stesura piatta col taglio netto
+   * dell'ombra e dentro all'ombra il retino a puntini. */
+  function disegnaAdesivo(ctx, x, y, R, profilo) {
+    const forma = () => {
+      ctx.beginPath();
+      if (profilo.forma === 'riquadro') {
+        const L = R * 0.92, raggio = R * 0.34;
+        ctx.moveTo(x - L + raggio, y - L);
+        ctx.arcTo(x + L, y - L, x + L, y + L, raggio); ctx.arcTo(x + L, y + L, x - L, y + L, raggio);
+        ctx.arcTo(x - L, y + L, x - L, y - L, raggio); ctx.arcTo(x - L, y - L, x + L, y - L, raggio);
+        ctx.closePath();
+      } else ctx.arc(x, y, R, 0, Math.PI * 2);
+    };
+    ctx.save();
+    ctx.translate(R * 0.07, R * 0.1);
+    forma(); ctx.fillStyle = 'rgba(12, 6, 30, 0.45)'; ctx.fill();
+    ctx.restore();
+    forma();
+    ctx.strokeStyle = '#fff6e6'; ctx.lineWidth = Math.max(3, R * 0.16); ctx.stroke();
+    ctx.fillStyle = scurisci(profilo.pelle, 0.3); ctx.fill();
+    ctx.save(); ctx.clip();
+    // la stesura chiara, spostata verso la luce: il resto è l'ombra
+    ctx.fillStyle = profilo.pelle;
+    ctx.beginPath(); ctx.arc(x - R * 0.2, y - R * 0.22, R * 1.02, 0, Math.PI * 2); ctx.fill();
+    // il retino nell'ombra: puntini che crescono verso il bordo
+    ctx.fillStyle = rgba(scurisci(profilo.pelle, 0.5), 0.55);
+    const passo = Math.max(3, R * 0.15);
+    ctx.beginPath();
+    for (let py = y - R; py <= y + R; py += passo) {
+      for (let px = x - R + ((Math.round((py - y) / passo) & 1) ? passo / 2 : 0); px <= x + R; px += passo) {
+        const dentro = Math.hypot(px - (x - R * 0.2), py - (y - R * 0.22)) - R * 1.02;
+        if (dentro < -passo * 0.3) continue;
+        const r = Math.min(passo * 0.42, passo * (0.12 + Math.max(0, Math.hypot(px - x, py - y) / R - 0.55) * 0.6));
+        ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, Math.PI * 2);
+      }
+    }
+    ctx.fill();
+    // il riflesso: una virgola bianca in alto a sinistra e un puntino
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.ellipse(x - R * 0.5, y - R * 0.52, R * 0.17, R * 0.09, -0.75, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - R * 0.24, y - R * 0.7, R * 0.045, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    forma();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.6, R * 0.055); ctx.stroke();
+  }
+
+  // Il disco grafico, col filo tratteggiato che lo lega all'astro vero: il
+  // volto vive lì, e l'astro resta della sua misura vera.
+  function disegnaSupporto(ctx, posto, profilo, alfa, t) {
     const { x, y, R, ax, ay, ar } = posto;
     ctx.save();
     ctx.globalAlpha *= alfa;
-    // il filo e l'anello attorno all'astro
     const ang = Math.atan2(y - ay, x - ax);
-    const anello = Math.max(ar + 3, 6);
-    ctx.strokeStyle = rgba(profilo.sottotitolo, 0.75);
-    ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.arc(ax, ay, anello, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(ax + Math.cos(ang) * anello, ay + Math.sin(ang) * anello);
-    ctx.lineTo(x - Math.cos(ang) * R, y - Math.sin(ang) * R);
-    ctx.stroke();
-    const fondo = ctx.createRadialGradient(x - R * 0.3, y - R * 0.35, R * 0.1, x, y, R);
-    fondo.addColorStop(0, rgba('#ffffff', 0.95));
-    fondo.addColorStop(0.35, profilo.pelle);
-    fondo.addColorStop(1, scurisci(profilo.pelle, 0.22));
-    ctx.fillStyle = fondo;
-    ctx.beginPath();
-    if (profilo.forma === 'riquadro') {
-      const L = R * 0.92, raggio = R * 0.32;
-      ctx.moveTo(x - L + raggio, y - L);
-      ctx.arcTo(x + L, y - L, x + L, y + L, raggio); ctx.arcTo(x + L, y + L, x - L, y + L, raggio);
-      ctx.arcTo(x - L, y + L, x - L, y - L, raggio); ctx.arcTo(x - L, y - L, x + L, y - L, raggio);
-      ctx.closePath();
-    } else ctx.arc(x, y, R, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.7)';
-    ctx.stroke();
+    const anello = Math.max(ar + 3, 6) * (1 + 0.08 * Math.sin(t / 420));
+    ctx.lineCap = 'round';
+    for (const passata of [0, 1]) {
+      ctx.strokeStyle = passata ? rgba(profilo.sottotitolo, 0.95) : 'rgba(12, 6, 30, 0.55)';
+      ctx.lineWidth = passata ? 1.7 : 3.6;
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(ax, ay, anello, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([2.5, 5]);
+      ctx.lineDashOffset = -t / 60;
+      ctx.beginPath();
+      ctx.moveTo(ax + Math.cos(ang) * anello, ay + Math.sin(ang) * anello);
+      ctx.lineTo(x - Math.cos(ang) * R * 1.08, y - Math.sin(ang) * R * 1.08);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
     ctx.restore();
   }
 
@@ -955,6 +1284,34 @@
     const x = Math.max(m.lati + R, Math.min(L - m.lati - R, ax + Math.cos(a) * dist));
     const y = Math.max(m.su + R, Math.min(H - m.giu - R, ay + Math.sin(a) * dist));
     return { x, y, angolo: a };
+  }
+
+  /* La posa del volto in un istante: spostamento, rotazione e scala
+   * attorno al suo centro. Sono le regole dell'animazione dei cartoni,
+   * prese una per una: si compare con un «pop» che sfora e torna (una curva
+   * elastica, non una dissolvenza), si respira, la contentezza saltella e la
+   * paura trema, la tristezza e il pensiero piegano la testa, un cambio
+   * d'espressione fa «boing» (schiaccia e allunga), e ogni sillaba allunga
+   * appena la faccia in verticale. Col movimento ridotto non succede niente
+   * di tutto questo. Funzione pura dello stato: la provano le prove. */
+  function storPosa(pg, R, t, desDa, apertura, parla, ridotto) {
+    const posa = { dx: 0, dy: 0, giro: 0, sx: 1, sy: 1 };
+    if (ridotto) return posa;
+    const e = pg.espr || {};
+    const u = Math.max(0, Math.min(1, desDa / STOR_COMPARSA_MS));
+    // fuori-indietro: 0 → oltre 1 → 1
+    const c1 = 2.2, v = u - 1;
+    const pop = u >= 1 ? 1 : Math.max(0, 1 + (c1 + 1) * v * v * v + c1 * v * v);
+    const respiro = Math.sin(t / 950 + (pg.fase || 0)) * 0.014;
+    posa.sx = pop * (1 - respiro * 0.5);
+    posa.sy = pop * (1 + respiro);
+    if (parla) { posa.sy += apertura * 0.07; posa.sx -= apertura * 0.035; posa.giro += Math.sin(t / 230 + (pg.fase || 0)) * 0.035 * apertura; }
+    const w = (t - (pg.cambioDa || -1e9)) / STOR_BOING_MS;
+    if (w >= 0 && w < 1) { const k = Math.sin(w * Math.PI * 2.5) * (1 - w) * 0.11; posa.sx += k; posa.sy -= k; }
+    posa.dy -= Math.abs(Math.sin(t / 230 + (pg.fase || 0))) * R * 0.05 * (e.rimbalzo || 0);
+    posa.dx += Math.sin(t * 0.11) * R * 0.014 * (e.tremito || 0);
+    posa.giro += (e.testa || 0) + Math.sin(t / 1300 + (pg.fase || 0)) * 0.02;
+    return posa;
   }
 
   /* Il disegno di tutti i personaggi su una tela, a partire da quello che il
@@ -1016,7 +1373,8 @@
       const voluta = parametriEspressione(pg.espressione);
       const kE = ridotto ? 1 : 1 - Math.exp(-dt / STOR_TAU_ESPRESSIONE);
       pg.espr = mescolaEspressione(pg.espr, voluta, kE);
-      pg.espr.bocca = voluta.bocca; pg.espr.sguardo = voluta.sguardo;
+      pg.espr.bocca = voluta.bocca; pg.espr.sguardo = voluta.sguardo; pg.espr.segno = voluta.segno;
+      if (pg.segno !== (voluta.segno || null)) { pg.segno = voluta.segno || null; pg.segnoDa = stor.orologio; }
       // Lo sguardo: chi ascolta guarda chi parla; se no il suo bersaglio, poi
       // quello dell'espressione, poi lo spettatore.
       let verso = null;
@@ -1031,6 +1389,18 @@
         if (punto) verso = storSguardoVerso(cx, cy, R, punto);
       }
       if (!verso) verso = pg.espr.sguardo ? { x: pg.espr.sguardo.x, y: pg.espr.sguardo.y } : { x: 0, y: 0 };
+      // Le occhiate: un volto fermo che fissa sempre lo stesso punto è un
+      // manichino. Ogni tanto lo sguardo scatta di poco e torna — più ampio
+      // per chi non ha niente da guardare, appena accennato per chi ascolta.
+      if (!ridotto) {
+        if (stor.orologio >= pg.prossimaSaccade) {
+          const a = dado(pg.dado) * Math.PI * 2, m = dado(pg.dado) < 0.35 ? 0 : 0.12 + dado(pg.dado) * 0.16;
+          pg.saccade = { x: Math.cos(a) * m, y: Math.sin(a) * m * 0.7 };
+          pg.prossimaSaccade = stor.orologio + STOR_SACCADI_MS[0] + dado(pg.dado) * (STOR_SACCADI_MS[1] - STOR_SACCADI_MS[0]);
+        }
+        const peso = parlante && parlante !== pg.id ? 0.4 : 1;
+        verso = { x: verso.x + pg.saccade.x * peso, y: verso.y + pg.saccade.y * peso };
+      }
       const kS = ridotto ? 1 : 1 - Math.exp(-dt / STOR_TAU_SGUARDO);
       pg.sguardo = { x: mix(pg.sguardo.x, verso.x, kS), y: mix(pg.sguardo.y, verso.y, kS) };
       // Il battito naturale (e quello chiesto da character_blink)
@@ -1043,7 +1413,8 @@
       const battito = storChiusuraBattito(stor.orologio - pg.battitoDa);
       // La bocca: si muove solo per chi parla, e si chiude subito.
       let forma;
-      if (parlante === pg.id && voce && voce.parla) {
+      const staParlando = parlante === pg.id && voce && voce.parla;
+      if (staParlando) {
         const chiave = voce.testo || '';
         let ritmo = ritmi.get(chiave);
         if (!ritmo) { ritmo = storRitmo(chiave); ritmi.clear(); ritmi.set(chiave, ritmo); }
@@ -1056,13 +1427,35 @@
         pg.bocca = mescolaBocca(pg.bocca, meta, Math.max(kB, 0.35));
       } else pg.bocca = Object.assign({}, meta);  // chiusa subito
       pg.forma = forma.forma; pg.apertura = forma.apertura; pg.via = forma.via || '';
-      const geom = storGeometria(cx, cy, R, p, {
+      // Sull'adesivo il volto sta un po' più dentro del bordo: un occhio che
+      // tocca il contorno sembra uscire dal disco.
+      const geom = storGeometria(cx, cy, posto ? R * 0.9 : R, p, {
         espr: pg.espr, sguardo: pg.sguardo, battito, bocca: pg.bocca,
-        alzaCigli: parlante === pg.id && !ridotto ? forma.apertura : 0
+        alzaCigli: staParlando && !ridotto ? forma.apertura : 0
       });
-      const alfa = ridotto ? 1 : Math.min(1, (stor.orologio - pg.comparsoDa) / STOR_COMPARSA_MS);
-      if (posto) disegnaSupporto(ctx, posto, p, alfa);
-      storDisegnaVolto(ctx, geom, p, alfa);
+      const t = stor.orologio;
+      const desDa = t - pg.comparsoDa;
+      const alfa = ridotto ? Math.min(1, desDa / 320) : Math.min(1, desDa / (STOR_COMPARSA_MS * 0.35));
+      // Il corpo del volto: comparsa elastica, respiro, rimbalzo, tremito,
+      // testa inclinata, la «molla» di un cambio d'espressione e lo
+      // schiacciamento delle sillabe. Si muovono i tratti (e l'adesivo), mai
+      // l'astro: la Luna resta dov'è e com'è, il volto le vive sopra.
+      const att = storPosa(pg, R, t, desDa, forma.apertura, staParlando, ridotto);
+      ctx.save();
+      ctx.translate(cx + att.dx, cy + att.dy);
+      ctx.rotate(att.giro);
+      ctx.scale(att.sx, att.sy);
+      ctx.translate(-cx, -cy);
+      if (posto) {
+        ctx.restore();
+        disegnaSupporto(ctx, posto, p, alfa, t);
+        ctx.save();
+        ctx.translate(cx + att.dx, cy + att.dy); ctx.rotate(att.giro); ctx.scale(att.sx, att.sy); ctx.translate(-cx, -cy);
+        ctx.save(); ctx.globalAlpha *= alfa; disegnaAdesivo(ctx, cx, cy, R, p); ctx.restore();
+      }
+      storDisegnaVolto(ctx, geom, p, alfa, t);
+      storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa, ridotto);
+      ctx.restore();
       disegnati.push({ id: pg.id, vista, x: cx, y: cy, R, addosso: !posto, forma: pg.forma, apertura: pg.apertura, via: pg.via,
         parla: parlante === pg.id && !!(voce && voce.parla), battito, sguardo: Object.assign({}, pg.sguardo),
         espressione: pg.espressione, astro: { x: c.px, y: c.py, r: c.r }, geom });
@@ -1322,10 +1715,19 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
       const p = storProfilo(a.target);
-      const r = Math.min(w, h) * 0.4;
-      const g = ctx.createRadialGradient(w / 2 - r * 0.3, h / 2 - r * 0.3, r * 0.1, w / 2, h / 2, r);
-      g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, p.pelle); g.addColorStop(1, scurisci(p.pelle, 0.35));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(w / 2, h / 2, r, 0, Math.PI * 2); ctx.fill();
+      const r = Math.min(w, h) * 0.36;
+      // il palco: un cielo d'inchiostro con qualche stella, e l'astro come
+      // adesivo — lo stesso del disco grafico, così l'anteprima è lo stile vero
+      const fondo = ctx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
+      fondo.addColorStop(0, '#2a1f55'); fondo.addColorStop(1, '#0d0a1f');
+      ctx.fillStyle = fondo; ctx.fillRect(0, 0, w, h);
+      const st = { s: 7 };
+      for (let k = 0; k < 26; k++) {
+        const x = dado(st) * w, y = dado(st) * h, q = 0.6 + dado(st) * 1.2;
+        ctx.fillStyle = `rgba(255, 246, 220, ${0.35 + 0.4 * Math.abs(Math.sin(stor.orologio / 700 + k))})`;
+        ctx.beginPath(); ctx.arc(x, y, q, 0, Math.PI * 2); ctx.fill();
+      }
+      disegnaAdesivo(ctx, w / 2, h / 2, r, Object.assign({}, p, { forma: 'disco' }));
       storDisegnaPersonaggi(ctx, 'anteprima', [{ id: a.target, px: w / 2, py: h / 2, r: r / p.scala * 0.92 }], w, h, { su: 0, giu: 0, lati: 0 });
       a.raf = radice.requestAnimationFrame(passo);
     };
@@ -1504,7 +1906,7 @@
     nome: storNome, personalita: storPersonalita,
     ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale,
     tempoDelCarattere: storTempoDelCarattere,
-    geometria: storGeometria, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,
+    geometria: storGeometria, posa: storPosa, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,
     sguardoVerso: storSguardoVerso, parametriEspressione,
     mostra: storMostra, espressione: storEspressione, guarda: storGuarda, batti: storBatti,
     nascondi: storNascondi, congeda: storCongeda, sgombra: storSgombra, parla: storParla,
