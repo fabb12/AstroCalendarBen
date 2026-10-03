@@ -5717,6 +5717,8 @@ window.ASTRO_DIZIONARI['it'] = {
     "storie.espressione.worried": "Preoccupato",
     "storie.espressione.sad": "Triste",
     "storie.espressione.thinking": "Pensieroso",
+    "storie.espressione.excited": "Entusiasta",
+    "storie.espressione.sleepy": "Assonnato",
     "storie.personalita.Sun": "Caldo e paziente: spiega le cose con calma, come un nonno.",
     "storie.personalita.Mercury": "Velocissimo e un po’ impaziente: non sta mai fermo.",
     "storie.personalita.Venus": "Luminosa e un po’ vanitosa: la stella della sera.",

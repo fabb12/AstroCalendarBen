@@ -1036,7 +1036,7 @@
     action: set_date { iso: '2026-12-13T17:30:00Z' };
     action: set_fov { degrees: 2.6 };
     action: center_target { target: 'Moon' };
-    action: character_show { target: 'Moon', expression: 'happy' };
+    action: character_show { target: 'Moon', expression: 'excited' };
     action: character_blink { target: 'Moon', shot_from: 0.5 };
     action: character_speak { target: 'Moon', id: 'demo.narr.storia_luna.8' };
   }
@@ -1062,7 +1062,7 @@
     duration: 11s;
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 10, elev_from: 58, elev_to: 62 };
     action: character_show { target: 'Saturn', expression: 'happy' };
-    action: character_show { target: 'Jupiter', expression: 'happy' };
+    action: character_show { target: 'Jupiter', expression: 'excited' };
     action: character_expression { target: 'Saturn', expression: 'surprised', shot_from: 0.45 };
     action: character_speak { target: 'Jupiter', id: 'demo.narr.storia_giganti.2' };
   }

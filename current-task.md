@@ -1,9 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v407): le Storie cosmiche (`storie-cosmiche.js`, `STORIE.md`).
+Ultimo lavoro (v408): le Storie cosmiche ridisegnate in stile «fiaba d'inchiostro» (`storie-cosmiche.js` §6 e §6-bis, `STORIE.md`).
 
-- Volti per gli astri come livello separato, agganciato ai renderer esistenti (planetario e 3D), mai sugli astri spostati.
-- Comandi `character_show/expression/look_at/blink/speak/hide`, registrati con `AstroDemo.registra`.
-- Bocca da `narrazione.voce()`: ampiezza Web Audio, confini TTS, ritmo del testo; sottotitolo col nome.
-- Episodio pilota `storia_luna` e storia d'esempio `storia_giganti`; sezione 7 della pagina Demo con anteprima.
-- Prove: `node scripts/prova-storie.js`, `node scripts/prova-storie-browser.js`.
+- Pennino indaco a spessore variabile, ombre a taglio netto, retino nei dischi grafici (adesivi), filo tratteggiato.
+- Espressioni esagerate, due nuove (`excited`, `sleepy`), segni da fumetto (scintille, raggi, lacrima, goccia, pensiero, zeta).
+- `storPosa`: pop elastico, respiro, rimbalzo, tremito, testa inclinata, «boing», saccadi; niente col movimento ridotto.
+- CLAUDE.md ridotto a mappa corta; il testo completo è in `MAPPA-DETTAGLIATA.md` (escluso dal deploy).
