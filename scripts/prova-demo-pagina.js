@@ -156,12 +156,16 @@ async function prova(nome, fn) {
       await pagina.locator('#btn-vista-demo').click();
       const p = await pagina.evaluate(() => {
         const v = document.getElementById('vista-demo');
-        const titoli = [...v.querySelectorAll('.demo-gruppo-titolo')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
+        // I gruppi della linguetta Demo; le Storie cosmiche hanno la loro (v409)
+        const titoli = [...v.querySelectorAll('#demo-pannello-demo .demo-gruppo-titolo')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
+        const titoliStorie = [...v.querySelectorAll('#demo-pannello-storie .demo-gruppo-titolo')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
         const gruppoDi = id => { const el = document.getElementById(id); const g = el && el.closest('.demo-gruppo');
           return g ? g.querySelector('.demo-gruppo-titolo').textContent.replace(/\s+/g, ' ').trim() : null; };
         const avvia = document.getElementById('demo-avvia').getBoundingClientRect();
         const secondario = document.getElementById('demo-duplica').getBoundingClientRect();
-        return { titoli, h2: v.querySelector('h2').textContent.trim(),
+        return { titoli, titoliStorie, h2: v.querySelector('h2').textContent.trim(),
+          schede: [...document.querySelectorAll('#demo-schede [role="tab"]')].map(b => [b.textContent.trim(), b.getAttribute('aria-selected')]),
+          storieNascoste: document.getElementById('demo-pannello-storie').hidden,
           avvia: gruppoDi('demo-avvia'), schermo: gruppoDi('demo-opz-schermo'), pulita: gruppoDi('demo-opz-vista-pulita'),
           narr: gruppoDi('imp-narrazione-attiva'), musica: gruppoDi('demo-opz-musica-eclissi'),
           registra: gruppoDi('demo-opz-registra'), audio: gruppoDi('demo-opz-registra-audio'), livelli: gruppoDi('demo-livelli'),
@@ -173,6 +177,9 @@ async function prova(nome, fn) {
       assert.equal(p.h2, 'Demo automatizzate');
       assert.deepEqual(p.titoli, ['1 Demo da eseguire', '2 Presentazione', '3 Registrazione', '4 Intro delle Demo',
         '5 Narrazione e audio', '6 Elementi del Planetario']);
+      assert.deepEqual(p.titoliStorie, ['1 Storie cosmiche', '2 Studio delle storie']);
+      assert.deepEqual(p.schede, [['Demo', 'true'], ['Storie cosmiche', 'false']]);
+      assert.equal(p.storieNascoste, true, 'si apre sulla linguetta Demo');
       assert.equal(p.avvia, '1 Demo da eseguire');
       assert.equal(p.schermo, '2 Presentazione'); assert.equal(p.pulita, '2 Presentazione');
       assert.equal(p.registra, '3 Registrazione'); assert.equal(p.audio, '3 Registrazione');

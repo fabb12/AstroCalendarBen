@@ -138,6 +138,8 @@ function sintesiFinta() {
     {
       const { pagina, errori } = await apri();
       await pagina.evaluate(() => mostraVista('demo'));
+      // Le storie hanno la loro linguetta (v409)
+      await pagina.click('#demo-scheda-storie');
       await fotogrammi(pagina, 4);
       const schede = await pagina.$$eval('#storie-elenco .storia-scheda', s => s.map(x => ({
         titolo: x.querySelector('.storia-titolo').textContent, cast: x.querySelectorAll('.storia-cast li').length,
@@ -250,7 +252,10 @@ function sintesiFinta() {
       ok(vicino.length > 10 && vicino.every(c => c.d.every(d => d.vista === 'vicino')), 'Terra e Luna hanno il volto nel banco Terra e Luna');
       const terra = vicino.map(c => c.d.find(d => d.id === 'Earth'));
       const lunaAscolta = vicino.map(c => c.d.find(d => d.id === 'Moon'));
-      ok(terra.some(d => d.parla && d.via === 'confini' && d.apertura > 0.1), 'la Terra parla e la bocca segue i confini della sintesi');
+      // Dalla v408 la battuta ha anche l'audio registrato (audio/narrazione/demo/it/storia_luna-4.mp3):
+      // dove c'è, la bocca segue l'ampiezza del file; dove manca, i confini della sintesi.
+      ok(terra.some(d => d.parla && (d.via === 'confini' || d.via === 'ampiezza') && d.apertura > 0.1),
+        'la Terra parla e la bocca segue la voce (ampiezza del file o confini della sintesi)');
       ok(lunaAscolta.every(d => !d.parla && d.apertura === 0), 'la Luna tiene la bocca chiusa');
       const versoTerra = lunaAscolta.filter((d, i) => {
         const t = terra[i]; const dx = t.x - d.x, dy = t.y - d.y, n = Math.hypot(dx, dy);
@@ -263,7 +268,9 @@ function sintesiFinta() {
         return Math.hypot(d.astro.x - v.schermo.px, d.astro.y - v.schermo.py) < 1;
       }), 'il volto (o il suo filo) è attaccato alla Luna dove la 3D l\'ha proiettata');
       ok(await pagina.$eval('#demo-sottotitoli .narrazione-chi', e => e.textContent.trim() === 'Terra'), 'il sottotitolo passa alla Terra');
-      ok(await pagina.evaluate(() => window.__frasi.length >= 1), 'una sola voce: la sintesi finta ha ricevuto le battute');
+      // Con l'audio registrato (v408) le battute non passano più dalla sintesi finta
+      ok(await pagina.evaluate(() => window.__frasi.length >= 1 || !!narrVoceManifest('demo.narr.storia_luna.4', 'it')),
+        'una sola voce: le battute arrivano alla sintesi finta, o all\'audio registrato');
       await pagina.screenshot({ path: path.join(radice, 'work/storie-4.png') });
 
       // Salto: i personaggi della scena d'arrivo, e solo loro

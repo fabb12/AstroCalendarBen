@@ -1537,6 +1537,15 @@
         <p class="demo-pagina-aiuto" data-i18n="demo.paginaAiuto">Un racconto guidato del cielo: scegli la demo, decidi come presentarla e avviala. Alla fine, con Termina o con Esc, tutto torna com'era.</p>
       </header>
 
+      <!-- Due linguette (storie-studio.js, `studioSchede`): le demo con le
+           loro impostazioni, e le Storie cosmiche con lo Studio. -->
+      <div id="demo-schede" class="scheda-piena sottonav demo-schede" role="tablist" aria-label="Sezioni della pagina Demo" data-i18n-aria-label="demo.schede">
+        <button id="demo-scheda-demo" type="button" class="sottovoce attiva" role="tab" aria-selected="true" aria-controls="demo-pannello-demo" data-i18n="demo.scheda.demo">Demo</button>
+        <button id="demo-scheda-storie" type="button" class="sottovoce" role="tab" aria-selected="false" aria-controls="demo-pannello-storie" tabindex="-1" data-i18n="demo.scheda.storie">Storie cosmiche</button>
+      </div>
+
+      <div id="demo-pannello-demo" class="scheda-piena demo-pannello" role="tabpanel" aria-labelledby="demo-scheda-demo">
+
       <section class="scheda-piena demo-gruppo demo-gruppo-esegui" aria-labelledby="demo-gruppo-esegui-titolo">
         <h3 id="demo-gruppo-esegui-titolo" class="demo-gruppo-titolo">
           <span class="demo-gruppo-numero" aria-hidden="true">1</span>
@@ -1760,11 +1769,14 @@
         <div id="demo-livelli" class="demo-livelli demo-figlia" role="group" aria-labelledby="demo-livelli-titolo"></div>
       </section>
 
+      </div>
+
+      <div id="demo-pannello-storie" class="scheda-piena demo-pannello" role="tabpanel" aria-labelledby="demo-scheda-storie" hidden>
       <!-- Le Storie cosmiche (storie-cosmiche.js, STORIE.md): l'elenco delle
            storie, l'anteprima di un personaggio e l'esempio del DSL. -->
       <section id="storie-sezione" class="scheda-piena demo-gruppo demo-gruppo-storie" aria-labelledby="storie-titolo">
         <h3 class="demo-gruppo-titolo">
-          <span class="demo-gruppo-numero" aria-hidden="true">7</span>
+          <span class="demo-gruppo-numero" aria-hidden="true">1</span>
           <span id="storie-titolo" data-i18n="storie.gruppo">Storie cosmiche</span>
         </h3>
         <p class="demo-opzioni-aiuto" data-i18n="storie.aiuto">Racconti per bambini in cui gli astri hanno un volto e una voce.</p>
@@ -1793,6 +1805,19 @@
           </div>
         </details>
       </section>
+
+      <!-- Lo Studio delle storie (storie-studio.js): scopo, personaggi,
+           scene e momenti, comandi a parole, controllo, prova e salvataggio.
+           Il contenuto lo costruisce lo Studio. -->
+      <section id="studio-sezione" class="scheda-piena demo-gruppo demo-gruppo-studio" aria-labelledby="studio-titolo">
+        <h3 class="demo-gruppo-titolo">
+          <span class="demo-gruppo-numero" aria-hidden="true">2</span>
+          <span id="studio-titolo" data-i18n="studio.gruppo">Studio delle storie</span>
+        </h3>
+        <p class="demo-opzioni-aiuto" data-i18n="studio.aiuto">Crea una storia senza scrivere codice.</p>
+        <div id="studio-radice" class="studio"></div>
+      </section>
+      </div>
     </div>
 
   </main>
@@ -3303,5 +3328,6 @@
   <script src="demo.js"></script>
   <script src="storie-cosmiche.js"></script>
   <script src="demo-impostazioni.js"></script>
+  <script src="storie-studio.js"></script>
 </body>
 </html>

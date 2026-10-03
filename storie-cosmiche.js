@@ -8,14 +8,17 @@
  *
  * Tre promesse, e sono la ragione per cui il file è fatto così.
  *
- *   1. **Il cielo resta vero.** Questo modulo non calcola nessuna posizione
- *      e non sposta niente: i volti si appoggiano dove i renderer esistenti
+ *   1. **Il cielo di partenza è vero.** Questo modulo non calcola nessuna
+ *      posizione: i volti si appoggiano dove i renderer esistenti
  *      hanno appena disegnato l'astro — la ricevuta di `skyDisegnaAstro` e di
  *      `corpiMinoriDisegna` nel planetario, i corpi già proiettati da
  *      `solDisegna` e da `solDisegnaVicino` nella vista 3D. Niente seconda
  *      proiezione: se la Luna è una falce, il volto sta sulla falce; se
- *      Giove è un puntino, il volto sta in un **disco grafico** accanto a lui,
- *      collegato da un filo, e il puntino resta un puntino.
+ *      Giove è un puntino, nel planetario il volto sta in un **disco
+ *      grafico** accanto a lui, collegato da un filo. Nella vista 3D, dalla
+ *      v409, il personaggio è l'astro stesso: cresce per portare il volto e,
+ *      se la storia lo chiede, viaggia fuori dall'orbita (§5-bis) — sempre
+ *      attraverso i ganci che l'app chiama **prima** di proiettare.
  *   2. **Un livello a parte.** Si disegna sopra a tutto, alla fine del
  *      fotogramma, e solo nelle storie: fuori da una demo che lo chiede non
  *      c'è nessun volto, e `storRicevuta` esce alla prima riga.
@@ -230,6 +233,26 @@
   const STOR_BOING_MS = 460;        // il rimbalzo di un cambio d'espressione
   const STOR_SACCADI_MS = [900, 2600]; // le occhiate a vuoto di chi sta fermo
 
+  /* Il corpo nello spazio (§5-bis) e gli effetti speciali (§6-ter), v409.
+   * Le chiavi del DSL sono in inglese come tutte le altre; i nomi a schermo
+   * stanno nei dizionari (`storie.percorso.*`, `storie.animazione.*`,
+   * `storie.effetto.*`). */
+  const STOR_PERCORSI = ['arc', 'straight', 'hop', 'loop', 'spiral', 'zigzag', 'teleport'];
+  const STOR_LATI = ['auto', 'left', 'right', 'above', 'below', 'front', 'behind'];
+  // I posti dello schermo (oltre agli oggetti) verso cui un astro può andare;
+  // `orbit` è la sua orbita vera, cioè «torna a casa».
+  const STOR_LUOGHI = ['orbit', 'center', 'left', 'right', 'top', 'bottom'];
+  const STOR_ANIMAZIONI = ['jump', 'bounce', 'shake', 'nod', 'spin', 'pulse', 'dance', 'wobble'];
+  // Gli effetti e la loro durata di serie, in millisecondi della storia
+  const STOR_EFFETTI = {
+    explosion: 2400, shockwave: 1500, flash: 700, sparkles: 2200, fireworks: 2800, smoke: 3200,
+    hearts: 2600, lightning: 1200, shooting_star: 1800, glow: 3000, confetti: 2800
+  };
+  const STOR_POSTI_EFFETTO = ['center', 'left', 'right', 'top', 'bottom'];
+  const STOR_CRESCITA_MS = 700;     // quanto ci mette un astro a crescere per portare il volto
+  const STOR_RITORNO_MS = 750;      // e a tornare com'era quando la storia lo lascia
+  const STOR_VOLTO_3D_PX = STOR_VOLTO_MIN_PX * 1.25; // il raggio di volto che la 3D garantisce
+
   // ===================================================================
   // 2. Chi è chi: profili, nomi, oggetti dell'app
   // ===================================================================
@@ -338,6 +361,8 @@
       const x = tabella(nome).find(o => o.id === id);
       if (x && x.nome) return String(x.nome);
     }
+    // Senza `nomeCorpo` (lo Studio nelle prove Node) il dizionario basta
+    if (t('corpo.' + id)) return t('corpo.' + id);
     if (id.startsWith('min:')) return id.slice(4);
     if (p.alias && p.alias.length) return p.alias[p.alias.length - 1];
     return id;
@@ -642,7 +667,15 @@
     posti: new Map(),          // id → ultimo angolo del disco grafico (non salta di lato)
     ultimiDisegnati: [],       // per le prove: cosa si è disegnato l'ultima volta e dove
     anteprima: null,           // l'anteprima della pagina Demo, se è aperta
-    ridotto: false
+    ridotto: false,
+    // La vista 3D (§5-bis): dove ogni astro sarebbe davvero e dove la
+    // storia lo ha messo, nelle unità della scena; i ritorni di chi è uscito
+    // di scena spostato o ingrandito; gli effetti speciali in corso (§6-ter).
+    vere: new Map(),           // id → { scena, r } la posizione vera, a ogni fotogramma
+    mosse: new Map(),          // id → { scena, r } quella mostrata
+    vicinoVere: null,          // in quale banco sono state lette (sistema o Terra e Luna)
+    ritorni: new Map(),        // id → { delta, k, da }
+    effetti: []
   };
   function movimentoRidotto() {
     try { return !!(radice.matchMedia && radice.matchMedia('(prefers-reduced-motion: reduce)').matches); }
@@ -661,7 +694,7 @@
     // Una demo finita (anche male) non lascia personaggi sul cielo: è la rete
     // sotto alle chiusure delle azioni, che di regola bastano da sole.
     const d = radice.AstroDemo;
-    if (stor.personaggi.size && d && !d.inCorso && !stor.anteprima) storSgombra();
+    if ((stor.personaggi.size || stor.effetti.length) && d && !d.inCorso && !stor.anteprima) storSgombra();
     return dt;
   }
 
@@ -677,7 +710,11 @@
       dado: r, fase: (seme(id) % 628) / 100, prossimoBattito: stor.orologio + 400 + dado(r) * 1800, battitoDa: -1e9,
       comparsoDa: stor.orologio, nascosto: false, congedo: 0, misura: opz.misura || 'auto',
       ultimoPunto: null, cambioDa: -1e9, segnoDa: stor.orologio, segno: null,
-      saccade: { x: 0, y: 0 }, prossimaSaccade: stor.orologio + 600 + dado(r) * 1200
+      saccade: { x: 0, y: 0 }, prossimaSaccade: stor.orologio + 600 + dado(r) * 1200,
+      // Il corpo (§5-bis): il viaggio in corso o finito, le animazioni della
+      // scena, la scala chiesta, e quanto è stato mostrato nell'ultimo fotogramma
+      moto: null, animazioni: [], scalaVoluta: null,
+      rVero: 0, rMostrato: 0, ultimoPunto3D: null, ultimoDelta: null
     };
   }
 
@@ -735,14 +772,24 @@
       congedoInCoda = true;
       Promise.resolve().then(() => {
         congedoInCoda = false;
-        for (const [id, p] of stor.personaggi) if (p.congedo) stor.personaggi.delete(id);
+        for (const [id, p] of stor.personaggi) if (p.congedo) { storRitorno(p); stor.personaggi.delete(id); }
         if (!stor.personaggi.size) { stor.parlante = null; stor.posti.clear(); stor.ultimiDisegnati = []; }
       });
     }
   }
   function storSgombra() {
+    for (const p of stor.personaggi.values()) storRitorno(p);
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
-    stor.ultimiDisegnati = [];
+    stor.ultimiDisegnati = []; stor.effetti = [];
+  }
+  // Chi esce di scena spostato o ingrandito non torna a posto di colpo: per
+  // tre quarti di secondo scivola indietro verso l'orbita e la misura veri.
+  function storRitorno(pg) {
+    const k = pg.rVero > 0 && pg.rMostrato > 0 ? pg.rMostrato / pg.rVero : 1;
+    const d = pg.ultimoDelta;
+    const spostato = d && (Math.abs(d.x) + Math.abs(d.y) + Math.abs(d.z)) > 1e-12;
+    if (!spostato && Math.abs(k - 1) < 1e-3) return;
+    stor.ritorni.set(pg.id, { delta: spostato ? d : null, k, da: adesso() });
   }
   function narrazioneFerma() {
     const n = radice.narrazione;
@@ -779,6 +826,281 @@
     };
     Promise.resolve(fine).then(libera, () => libera(''));
     return { token, fine };
+  }
+
+  // ===================================================================
+  // 5-bis. Il corpo nello spazio: viaggi, animazioni, misura (vista 3D)
+  // ===================================================================
+
+  /* Fino alla v408 la promessa era «il cielo resta vero»: il volto si
+   * appoggiava dove il renderer aveva disegnato l'astro, e un pianeta di tre
+   * pixel aveva la faccia in un adesivo accanto. Chi scrive storie ha chiesto
+   * il contrario, e ha ragione: il personaggio è **l'astro stesso**. Allora,
+   * solo nella vista 3D e solo per chi è in scena:
+   *
+   *   - l'astro **cresce** quanto basta a portare il volto (di serie, con
+   *     `size: auto`; `size: real` lo lascia della sua misura);
+   *   - può **viaggiare** fuori dall'orbita (`character_move`) verso un altro
+   *     astro o un posto dello schermo, con un percorso da cartone, e tornare
+   *     (`character_return`);
+   *   - salta, trema, balla (`character_animate`), e cambia misura
+   *     (`character_scale`).
+   *
+   * Tutto avviene **nella scena 3D**, prima della proiezione: l'app chiede a
+   * `storScena3D` dove mettere un corpo e a `storRaggio3D` quanto farlo
+   * grosso, e da lì in poi lo tratta come sempre — la profondità, le lune
+   * che lo seguono, la fase, il nome, il dito che lo sceglie. Senza
+   * personaggi le due funzioni restituiscono quello che ricevono alla prima
+   * riga. Quando la storia lascia l'astro, l'astro torna a posto scivolando
+   * (`storRitorno`). Il planetario resta com'era: lì gli astri non viaggiano,
+   * e le animazioni muovono solo il volto.
+   *
+   * Lo spostamento si pensa **sullo schermo** (a destra di Giove, al centro,
+   * con un arco verso l'alto) e si fa **nello spazio**: la proiezione è
+   * ortogonale, quindi la terna dello schermo (`storAssiSchermo`) è una base
+   * ortonormale della scena e un passo di un pixel vale `1 / sol.scala`. */
+  const liscio = u => { const x = Math.max(0, Math.min(1, u)); return x * x * x * (x * (x * 6 - 15) + 10); };
+  const v3 = {
+    piu: (a, b) => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }),
+    meno: (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }),
+    per: (a, k) => ({ x: a.x * k, y: a.y * k, z: a.z * k }),
+    punto: (a, b) => a.x * b.x + a.y * b.y + a.z * b.z,
+    misto: (a, b, k) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k })
+  };
+  // La terna dello schermo nella scena: `ex` verso destra, `su` verso l'alto,
+  // `w` verso chi guarda. È quella di `solProietta` (app.js) letta al
+  // contrario: la camera gira di `az` (radianti) ed è alta `elev` (gradi).
+  function storAssiSchermo(s) {
+    const a = (s && s.az) || 0, e = ((s && s.elev) || 0) * Math.PI / 180;
+    return {
+      ex: { x: Math.cos(a), y: -Math.sin(a), z: 0 },
+      su: { x: Math.sin(a) * Math.sin(e), y: Math.cos(a) * Math.sin(e), z: Math.cos(e) },
+      w: { x: -Math.sin(a) * Math.cos(e), y: -Math.cos(a) * Math.cos(e), z: Math.sin(e) },
+      scala: Math.max(1e-9, (s && s.scala) || 1)
+    };
+  }
+  // Un passo sullo schermo (pixel, y in giù) come vettore della scena
+  function dalloSchermo(assi, dx, dy) {
+    return v3.piu(v3.per(assi.ex, dx / assi.scala), v3.per(assi.su, -dy / assi.scala));
+  }
+
+  /* L'animazione del corpo in un istante, in raggi del corpo: spostamento
+   * (`dx`, `dy`, y in giù), misura (`k`), e per il volto rotazione (`giro`) e
+   * schiacciamento (`sx`, `sy`). `u` va da 0 a 1 sulla ripresa; a 0 e a 1
+   * ogni animazione è ferma, così finisce dove è cominciata. Funzione pura. */
+  function storAnimazioneAl(tipo, u, volte, forza) {
+    const o = { dx: 0, dy: 0, k: 1, giro: 0, sx: 1, sy: 1 };
+    if (!(u > 0) || u >= 1) return o;
+    const n = Math.max(1, Math.round(Number(volte) || 0) || (tipo === 'bounce' || tipo === 'shake' || tipo === 'nod' ? 3 : 2));
+    const f = Number.isFinite(forza) ? Math.max(0.1, Math.min(3, forza)) : 1;
+    const P = Math.PI;
+    if (tipo === 'jump' || tipo === 'bounce') {
+      const alto = tipo === 'jump' ? 1.35 : 0.6, molla = tipo === 'jump' ? 0.12 : 0.22;
+      const h = Math.abs(Math.sin(P * n * u));
+      o.dy = -h * alto * f;
+      // schiacciato quando tocca terra, allungato in volo
+      const terra = Math.pow(1 - h, 6);
+      o.sx = 1 + molla * f * terra - 0.05 * f * h; o.sy = 1 - molla * f * terra + 0.07 * f * h;
+    } else if (tipo === 'shake') {
+      o.dx = Math.sin(2 * P * 3 * n * u) * 0.26 * f * (1 - u * 0.4);
+      o.giro = Math.sin(2 * P * 3 * n * u) * 0.06 * f;
+    } else if (tipo === 'nod') {
+      o.dy = Math.sin(2 * P * n * u) * 0.14 * f; o.giro = Math.sin(2 * P * n * u) * 0.07 * f;
+    } else if (tipo === 'spin') {
+      o.giro = 2 * P * n * liscio(u);
+    } else if (tipo === 'pulse') {
+      o.k = 1 + 0.24 * f * Math.abs(Math.sin(P * n * u));
+    } else if (tipo === 'dance') {
+      const a = Math.sin(2 * P * n * u);
+      o.dx = a * 0.5 * f; o.dy = -Math.abs(a) * 0.22 * f; o.giro = a * 0.3 * f;
+    } else if (tipo === 'wobble') {
+      const w = Math.sin(2 * P * 2 * n * u) * (1 - u) * 0.22 * f;
+      o.sx = 1 + w; o.sy = 1 - w;
+    }
+    return o;
+  }
+  // Tutte le animazioni del personaggio in questo istante, sommate
+  function storAnimazioniDi(pg) {
+    const o = { dx: 0, dy: 0, k: 1, giro: 0, sx: 1, sy: 1 };
+    if (stor.ridotto || !pg.animazioni || !pg.animazioni.length) return o;
+    for (const a of pg.animazioni) {
+      const x = storAnimazioneAl(a.tipo, a.u, a.volte, a.forza);
+      o.dx += x.dx; o.dy += x.dy; o.giro += x.giro; o.k *= x.k; o.sx *= x.sx; o.sy *= x.sy;
+    }
+    return o;
+  }
+  // La scala chiesta con `character_scale`, mentre ci arriva e dopo
+  function storScalaDi(pg) {
+    const s = pg.scalaVoluta;
+    if (!s) return 1;
+    return mix(s.da, s.a, stor.ridotto ? 1 : liscio(s.u));
+  }
+
+  /* Dove va un viaggio, nella scena. Un oggetto: accanto a lui, dal lato
+   * chiesto (di serie quello da cui si arriva), a una distanza fatta dei due
+   * raggi disegnati — così due astri ingranditi non si compenetrano. Un
+   * posto dello schermo: quel punto, alla propria profondità. L'orbita: la
+   * posizione vera di adesso. `null` finché il bersaglio non è stato visto. */
+  function storDestinazione(pg, moto, vera, A, assi, r) {
+    if (moto.verso === 'orbit') return vera;
+    const s = globale('sol') || {};
+    if (STOR_LUOGHI.includes(moto.verso)) {
+      const L = s.L || 800, H = s.H || 600;
+      const fx = { center: 0.5, left: 0.24, right: 0.76, top: 0.5, bottom: 0.5 }[moto.verso];
+      const fy = { center: 0.48, left: 0.48, right: 0.48, top: 0.28, bottom: 0.7 }[moto.verso];
+      // L'origine della scena (il Sole, o la Terra nel banco) sta qui sullo schermo
+      const ox = (s.cx || L / 2) + (s.panX || 0), oy = (s.cy || H / 2) + (s.panY || 0);
+      return v3.piu(dalloSchermo(assi, L * fx - ox, H * fy - oy), v3.per(assi.w, v3.punto(vera, assi.w)));
+    }
+    const b = stor.mosse.get(moto.verso) || stor.vere.get(moto.verso);
+    if (!b) return null;
+    const rMio = Math.max(pg.rMostrato || 0, r || 0, 2);
+    const passo = ((b.r || 2) + rMio) * 1.3 * (moto.distanza || 1) + 8;
+    let dx = 1, dy = 0, fondo = 0;
+    const lato = moto.lato || 'auto';
+    if (lato === 'left') dx = -1;
+    else if (lato === 'above') { dx = 0; dy = -1; }
+    else if (lato === 'below') { dx = 0; dy = 1; }
+    else if (lato === 'front' || lato === 'behind') { dx = 0.45; dy = 0.3; fondo = lato === 'front' ? 1 : -1; }
+    else if (lato === 'auto') {
+      const d = v3.meno(A, b.scena);
+      const cx = v3.punto(d, assi.ex), cy = -v3.punto(d, assi.su), n = Math.hypot(cx, cy);
+      if (n > 1e-12) { dx = cx / n; dy = cy / n; }
+    }
+    let D = v3.piu(b.scena, dalloSchermo(assi, dx * passo, dy * passo));
+    if (fondo) D = v3.piu(D, v3.per(assi.w, fondo * ((b.r || 2) + rMio) * 3 / assi.scala));
+    return D;
+  }
+
+  /* Il punto di un viaggio da A a D quando ne è passata la frazione `u`.
+   * Il percorso aggiunge la sua forma sul piano dello schermo: l'arco curva
+   * verso l'alto, il saltello fa `giri` balzi, il giro della morte un anello
+   * a metà strada, la spirale arriva girando attorno alla meta, lo zig-zag
+   * ondeggia, il teletrasporto sparisce e ricompare (la misura la fa
+   * `storRaggio3D`). Funzione pura. */
+  function storPuntoViaggio(percorso, A, D, u, assi, giri) {
+    const k = percorso === 'teleport' ? (u < 0.5 ? 0 : 1) : liscio(u);
+    const d = v3.meno(D, A);
+    const lx = v3.punto(d, assi.ex), ly = v3.punto(d, assi.su), L = Math.hypot(lx, ly);
+    if (percorso === 'spiral' && L > 1e-12) {
+      const n = Number(giri) > 0 ? Number(giri) : 1.25;
+      const vx = -lx, vy = -ly, vz = -v3.punto(d, assi.w);
+      const th = 2 * Math.PI * n * k, resto = 1 - k;
+      const rx = (vx * Math.cos(th) - vy * Math.sin(th)) * resto, ry = (vx * Math.sin(th) + vy * Math.cos(th)) * resto;
+      return v3.piu(D, v3.piu(v3.piu(v3.per(assi.ex, rx), v3.per(assi.su, ry)), v3.per(assi.w, vz * resto)));
+    }
+    let P = v3.misto(A, D, k);
+    if (L < 1e-12) return P;
+    // la perpendicolare sul piano dello schermo, girata verso l'alto
+    let qx = -ly / L, qy = lx / L;
+    if (qy < 0) { qx = -qx; qy = -qy; }
+    const lungo = v3.piu(v3.per(assi.ex, lx / L), v3.per(assi.su, ly / L));
+    const traverso = v3.piu(v3.per(assi.ex, qx), v3.per(assi.su, qy));
+    if (percorso === 'arc') P = v3.piu(P, v3.per(traverso, L * 0.32 * Math.sin(Math.PI * u)));
+    else if (percorso === 'hop') {
+      const n = Number(giri) > 0 ? Math.round(Number(giri)) : 3;
+      P = v3.piu(P, v3.per(assi.su, L * 0.22 * Math.abs(Math.sin(Math.PI * n * u))));
+    } else if (percorso === 'zigzag') {
+      const n = Number(giri) > 0 ? Math.round(Number(giri)) : 3;
+      P = v3.piu(P, v3.per(traverso, L * 0.14 * Math.sin(2 * Math.PI * n * u) * Math.sin(Math.PI * u)));
+    } else if (percorso === 'loop') {
+      const n = Number(giri) > 0 ? Math.round(Number(giri)) : 1;
+      const rho = Math.max(L * 0.16, 36 / assi.scala), th = 2 * Math.PI * n * k;
+      P = v3.piu(P, v3.piu(v3.per(lungo, rho * Math.sin(th)), v3.per(traverso, rho * (1 - Math.cos(th)))));
+    }
+    return P;
+  }
+
+  // Se i corpi sono stati letti in un altro banco (sistema ↔ Terra e Luna),
+  // le loro unità non c'entrano più: si dimentica tutto e si riparte da dove
+  // ogni astro si trova adesso.
+  function storBanco3D() {
+    const s = globale('sol');
+    const banco = !!(s && s.vicino);
+    if (stor.vicinoVere !== banco) {
+      stor.vicinoVere = banco;
+      stor.vere.clear(); stor.mosse.clear(); stor.ritorni.clear();
+      for (const pg of stor.personaggi.values()) { pg.ultimoPunto3D = null; if (pg.moto) pg.moto.A = null; }
+    }
+    return s;
+  }
+
+  /* Il gancio della posizione (app.js: `solDisegna`, `solDisegnaVicino`,
+   * `solScenaLuna`, `solScenaLunaPianeta`). `vera` è il punto della scena in
+   * cui l'app metterebbe il corpo, `r` il suo raggio disegnato. */
+  function storScena3D(id, vera, r) {
+    if ((!stor.personaggi.size && !stor.ritorni.size) || !vera) return vera;
+    const s = storBanco3D();
+    const cid = storCanonico(id);
+    stor.vere.set(cid, { scena: vera, r: r || 0 });
+    const pg = stor.personaggi.get(cid);
+    if (!pg) {
+      const rt = stor.ritorni.get(cid);
+      if (!rt) return vera;
+      const f = 1 - liscio((adesso() - rt.da) / STOR_RITORNO_MS);
+      if (f <= 0) { stor.ritorni.delete(cid); return vera; }
+      if (!rt.delta) return vera;
+      const P = v3.piu(vera, v3.per(rt.delta, f));
+      stor.mosse.set(cid, { scena: P, r: r || 0 });
+      return P;
+    }
+    const assi = storAssiSchermo(s);
+    let base = vera;
+    const m = pg.moto;
+    if (m) {
+      if (!m.A) m.A = pg.ultimoPunto3D || vera;
+      const D = storDestinazione(pg, m, vera, m.A, assi, r);
+      if (D) {
+        base = storPuntoViaggio(m.percorso, m.A, D, m.u, assi, m.giri);
+        if (m.u >= 1 && m.verso === 'orbit') pg.moto = null;   // tornato a casa
+      } else base = m.A;
+    }
+    pg.ultimoPunto3D = base;
+    pg.ultimoDelta = v3.meno(base, vera);
+    // Le animazioni spostano il corpo vero, in raggi del corpo mostrato
+    const an = storAnimazioniDi(pg);
+    let P = base;
+    if (an.dx || an.dy) {
+      const R = Math.max(pg.rMostrato || r || 0, 4);
+      P = v3.piu(base, dalloSchermo(assi, an.dx * R, an.dy * R));
+    }
+    stor.mosse.set(cid, { scena: P, r: pg.rMostrato || r || 0 });
+    return P;
+  }
+
+  /* Il gancio della misura (`solDisegna`, `solDisegnaVicino`,
+   * `solRaggioLuna`, `solRaggioLunaPianeta`, `solRaggioSole`). Con
+   * `size: auto` l'astro cresce, con un pop elastico, fino a portare un volto
+   * leggibile; poi la scala chiesta, il battito di `pulse` e il
+   * rimpicciolirsi del teletrasporto. */
+  function storRaggio3D(id, r) {
+    if ((!stor.personaggi.size && !stor.ritorni.size) || !(r > 0)) return r;
+    const s = storBanco3D();
+    const cid = storCanonico(id);
+    if (cid === 'Sun' && !(s && s.vicino)) stor.vere.set('Sun', { scena: { x: 0, y: 0, z: 0 }, r });
+    const pg = stor.personaggi.get(cid);
+    if (!pg) {
+      const rt = stor.ritorni.get(cid);
+      if (!rt) return r;
+      const f = 1 - liscio((adesso() - rt.da) / STOR_RITORNO_MS);
+      if (f <= 0) { stor.ritorni.delete(cid); return r; }
+      return r * (1 + (rt.k - 1) * f);
+    }
+    let k = 1;
+    if (pg.misura === 'auto') {
+      const voluto = STOR_VOLTO_3D_PX / pg.profilo.scala;
+      if (voluto > r) {
+        const u = stor.ridotto ? 1 : Math.max(0, Math.min(1, (stor.orologio - pg.comparsoDa) / STOR_CRESCITA_MS));
+        // fuori-indietro: sfora appena e si posa, come il pop del volto
+        const c1 = 1.6, v = u - 1, pop = u >= 1 ? 1 : 1 + (c1 + 1) * v * v * v + c1 * v * v;
+        k *= 1 + (voluto / r - 1) * Math.max(0, pop);
+      }
+    }
+    k *= storScalaDi(pg) * storAnimazioniDi(pg).k;
+    const m = pg.moto;
+    if (m && m.percorso === 'teleport' && m.u > 0 && m.u < 1 && !stor.ridotto) k *= Math.max(0.04, Math.abs(1 - 2 * m.u));
+    pg.rVero = r; pg.rMostrato = r * k;
+    return r * k;
   }
 
   // ===================================================================
@@ -1185,6 +1507,253 @@
     ctx.restore();
   }
 
+  // ===================================================================
+  // 6-ter. Gli effetti speciali
+  // ===================================================================
+
+  /* Esplosioni, onde d'urto, fuochi d'artificio, cuori, fulmini… nello
+   * stesso stile dei volti: stesure piatte, pennino d'inchiostro, l'esplosione
+   * è il «KABOOM» a punte dei fumetti e non una palla di fuoco realistica.
+   * Un effetto si attacca a un astro (e lo segue mentre si muove) o a un
+   * posto dello schermo; dura `durata` millisecondi dell'orologio della
+   * storia, quindi in pausa si ferma anche lui. Le particelle escono da un
+   * dado seminato rifatto a ogni fotogramma: sono sempre le stesse, e un
+   * salto indietro le ridisegna uguali.
+   *
+   * Col movimento ridotto un effetto è soltanto un alone che si accende e
+   * si spegne: niente lampi a tutto schermo, niente sfarfallio dei fulmini.
+   * Il lampo vero si accende **una volta**, mai a ripetizione. */
+  function stellaPiena(ctx, x, y, r, punte, giro, rientro) {
+    stella(ctx, x, y, r, r * (rientro || 0.45), punte, giro); ctx.fill();
+  }
+  function cuore(ctx, x, y, s) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.9);
+    ctx.bezierCurveTo(x - s * 1.4, y + s * 0.05, x - s * 0.85, y - s * 1.05, x, y - s * 0.35);
+    ctx.bezierCurveTo(x + s * 0.85, y - s * 1.05, x + s * 1.4, y + s * 0.05, x, y + s * 0.9);
+    ctx.closePath();
+  }
+  const COLORI_FESTA = ['#ff5d8f', '#ffd23f', '#3bceac', '#5aa9ff', '#c084fc', '#ff8c42'];
+
+  function storDisegnaEffetto(ctx, ef, x, y, r, t, L, H, ridotto) {
+    const s = (t - ef.inizio) / ef.durata;
+    if (!(s >= 0) || s > 1) return;
+    const R = Math.max(14, r || 0) * ef.scala;
+    const d = { s: ef.seme };
+    const colore = ef.colore;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (ridotto) {
+      const a = Math.sin(Math.PI * s) * 0.7;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, R * 2.2);
+      g.addColorStop(0, rgba(colore || '#fff3b0', a)); g.addColorStop(1, rgba(colore || '#fff3b0', 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R * 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
+    const tipo = ef.tipo;
+    if (tipo === 'explosion') {
+      // il fumo, dietro a tutto, che resta quando il resto è finito
+      if (s > 0.2) {
+        const q = (s - 0.2) / 0.8;
+        for (let k = 0; k < 9; k++) {
+          const a = dado(d) * Math.PI * 2, v = 0.7 + dado(d) * 0.6;
+          const px = x + Math.cos(a) * R * (0.6 + 1.7 * q * v), py = y + Math.sin(a) * R * (0.6 + 1.7 * q * v) - q * R * 0.4;
+          const rr = R * (0.32 + 0.55 * q) * (0.7 + dado(d) * 0.5);
+          ctx.globalAlpha = 0.55 * (1 - q);
+          ctx.fillStyle = '#6b5f86'; ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = rgba('#1c1236', 0.5); ctx.lineWidth = Math.max(1, rr * 0.08); ctx.stroke();
+        }
+      }
+      // il KABOOM: una stella a punte irregolari, gialla dentro e arancio fuori
+      if (s < 0.62) {
+        const cresce = 1 - Math.pow(1 - Math.min(1, s / 0.3), 3);
+        const svanisce = s < 0.45 ? 1 : 1 - (s - 0.45) / 0.17;
+        const ro = R * 2.3 * cresce;
+        ctx.globalAlpha = Math.max(0, svanisce);
+        ctx.beginPath();
+        const punte = 13;
+        for (let k = 0; k < punte * 2; k++) {
+          const a = k * Math.PI / punte + 0.2;
+          const rr = k % 2 ? ro * (0.5 + dado(d) * 0.14) : ro * (0.86 + dado(d) * 0.28);
+          if (k) ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+        }
+        ctx.closePath();
+        const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, ro));
+        g.addColorStop(0, '#fffbe6'); g.addColorStop(0.35, '#ffd23f'); g.addColorStop(0.75, colore || '#ff7a1a'); g.addColorStop(1, '#e8361b');
+        ctx.fillStyle = g; ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.6, R * 0.07); ctx.stroke();
+        ctx.fillStyle = '#fff6c2';
+        stellaPiena(ctx, x, y, ro * 0.48, 9, s * 2, 0.55);
+      }
+      // i sassolini che volano via, a pennino
+      for (let k = 0; k < 16; k++) {
+        const a = dado(d) * Math.PI * 2, v = 0.5 + dado(d), giro = dado(d) * 6;
+        const dist = R * (0.5 + 5 * s * v), q = R * (0.07 + dado(d) * 0.08) * (1 - s * 0.5);
+        const px = x + Math.cos(a) * dist, py = y + Math.sin(a) * dist;
+        ctx.globalAlpha = 1 - s * s;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(giro + s * 8 * v);
+        ctx.beginPath(); ctx.moveTo(-q, -q * 0.6); ctx.lineTo(q * 0.7, -q); ctx.lineTo(q, q * 0.5); ctx.lineTo(-q * 0.4, q); ctx.closePath();
+        ctx.fillStyle = k % 3 ? '#a08a72' : '#ffb347'; ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.8, q * 0.25); ctx.stroke();
+        ctx.restore();
+      }
+      // l'onda d'urto
+      ctx.globalAlpha = Math.max(0, 1 - s) * 0.85;
+      ctx.strokeStyle = '#fff2c8'; ctx.lineWidth = Math.max(1, R * 0.14 * (1 - s));
+      ctx.beginPath(); ctx.arc(x, y, R * (1 + 5.5 * s), 0, Math.PI * 2); ctx.stroke();
+      // il lampo iniziale
+      if (s < 0.18) {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, R * (1.5 + 6 * s));
+        g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,240,200,0)');
+        ctx.globalAlpha = 1 - s / 0.18; ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, R * (1.5 + 6 * s), 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (tipo === 'shockwave') {
+      for (let k = 0; k < 3; k++) {
+        const q = s * 1.4 - k * 0.2;
+        if (q <= 0 || q >= 1) continue;
+        ctx.globalAlpha = 1 - q;
+        for (const passata of [0, 1]) {
+          ctx.strokeStyle = passata ? (colore || '#bfe3ff') : 'rgba(12,6,30,0.5)';
+          ctx.lineWidth = Math.max(1.2, R * 0.12 * (1 - q)) + (passata ? 0 : 2.4);
+          ctx.beginPath(); ctx.arc(x, y, R * (1.05 + 4 * q), 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+    } else if (tipo === 'flash') {
+      const a = s < 0.2 ? s / 0.2 : 1 - (s - 0.2) / 0.8;
+      ctx.globalAlpha = Math.max(0, a) * 0.85;
+      ctx.fillStyle = colore || '#ffffff';
+      ctx.fillRect(0, 0, L, H);
+    } else if (tipo === 'sparkles' || tipo === 'glow') {
+      if (tipo === 'glow') {
+        const pulsa = 0.75 + 0.25 * Math.sin(t / 260);
+        const a = Math.sin(Math.PI * s) * pulsa;
+        const g = ctx.createRadialGradient(x, y, R * 0.6, x, y, R * 2.6);
+        g.addColorStop(0, rgba(colore || '#fde68a', 0.75 * a)); g.addColorStop(1, rgba(colore || '#fde68a', 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R * 2.6, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = a; ctx.strokeStyle = rgba(colore || '#fff3b0', 0.9); ctx.lineWidth = Math.max(1.2, R * 0.06);
+        ctx.setLineDash([R * 0.18, R * 0.22]); ctx.lineDashOffset = -t / 40;
+        ctx.beginPath(); ctx.arc(x, y, R * 1.35, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      }
+      const n = tipo === 'glow' ? 6 : 12;
+      for (let k = 0; k < n; k++) {
+        const a = dado(d) * Math.PI * 2, dist = R * (1.15 + dado(d) * 1.1), fase = dado(d) * 6;
+        const vita = Math.sin(Math.PI * Math.min(1, Math.max(0, s * 1.25 - dado(d) * 0.25)));
+        const q = R * (0.13 + dado(d) * 0.12) * vita * (0.6 + 0.4 * Math.abs(Math.sin(t / 220 + fase)));
+        if (q < 0.3) continue;
+        const px = x + Math.cos(a + s * 0.6) * dist, py = y + Math.sin(a + s * 0.6) * dist;
+        stella(ctx, px, py, q, q * 0.3, 4, t / 700 + fase);
+        ctx.globalAlpha = 1; ctx.fillStyle = k % 2 ? '#fff3b0' : (colore || '#ffe066'); ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.8, q * 0.16); ctx.stroke();
+      }
+    } else if (tipo === 'fireworks') {
+      for (let b = 0; b < 3; b++) {
+        const q = (s - b * 0.18) / 0.62;
+        if (q <= 0 || q >= 1) continue;
+        const a0 = dado(d) * Math.PI * 2, cx = x + Math.cos(a0) * R * (1.6 + dado(d)), cy = y + Math.sin(a0) * R * (1.2 + dado(d)) - R;
+        const tinta = colore && b === 0 ? colore : COLORI_FESTA[(b * 2 + Math.floor(dado(d) * 6)) % COLORI_FESTA.length];
+        const raggio = R * 1.5 * (1 - Math.pow(1 - q, 3));
+        ctx.globalAlpha = 1 - q * q;
+        for (let k = 0; k < 18; k++) {
+          const a = k / 18 * Math.PI * 2 + b;
+          const px = cx + Math.cos(a) * raggio, py = cy + Math.sin(a) * raggio + q * q * R * 0.8;
+          ctx.strokeStyle = tinta; ctx.lineWidth = Math.max(1, R * 0.05);
+          ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * raggio * 0.55, cy + Math.sin(a) * raggio * 0.55 + q * q * R * 0.5); ctx.lineTo(px, py); ctx.stroke();
+          ctx.fillStyle = '#fffbe6'; ctx.beginPath(); ctx.arc(px, py, Math.max(0.8, R * 0.05), 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    } else if (tipo === 'smoke') {
+      for (let k = 0; k < 10; k++) {
+        const ritardo = dado(d) * 0.4, q = (s - ritardo) / (1 - ritardo);
+        if (q <= 0) continue;
+        const px = x + (dado(d) - 0.5) * R * 1.6 + Math.sin(q * 4 + k) * R * 0.2, py = y - R * 0.3 - q * R * 2.6;
+        const rr = R * (0.3 + q * 0.6);
+        ctx.globalAlpha = 0.6 * Math.sin(Math.PI * q);
+        ctx.fillStyle = colore || '#8b84a6'; ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = rgba('#1c1236', 0.45); ctx.lineWidth = Math.max(1, rr * 0.07); ctx.stroke();
+      }
+    } else if (tipo === 'hearts') {
+      for (let k = 0; k < 8; k++) {
+        const ritardo = dado(d) * 0.45, q = (s - ritardo) / (1 - ritardo);
+        if (q <= 0) continue;
+        const px = x + (dado(d) - 0.5) * R * 2.4 + Math.sin(q * 6 + k) * R * 0.25, py = y - R * 0.4 - q * R * 2.4;
+        const q2 = R * (0.16 + dado(d) * 0.1) * Math.min(1, q * 4);
+        ctx.globalAlpha = q > 0.75 ? (1 - q) / 0.25 : 1;
+        cuore(ctx, px, py, q2);
+        ctx.fillStyle = colore || '#ff5d8f'; ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.9, q2 * 0.18); ctx.stroke();
+      }
+    } else if (tipo === 'lightning') {
+      // Due accensioni sole, distanti: un fulmine che sfarfalla veloce è
+      // proprio la cosa da non mettere davanti a un bambino.
+      const acceso = s < 0.35 || (s > 0.5 && s < 0.8);
+      if (acceso) {
+        for (let b = 0; b < 3; b++) {
+          const a = -Math.PI / 2 + (b - 1) * 0.7 + (dado(d) - 0.5) * 0.3;
+          let px = x + Math.cos(a) * R * 3.2, py = y + Math.sin(a) * R * 3.2;
+          const tratti = [[px, py]];
+          for (let k = 1; k <= 6; k++) {
+            const f = k / 6;
+            const bx = px + (x + Math.cos(a) * R * 1.05 - px) * f, by = py + (y + Math.sin(a) * R * 1.05 - py) * f;
+            tratti.push([bx + (dado(d) - 0.5) * R * 0.5 * (k < 6 ? 1 : 0), by + (dado(d) - 0.5) * R * 0.3 * (k < 6 ? 1 : 0)]);
+          }
+          for (const passata of [0, 1]) {
+            ctx.strokeStyle = passata ? (colore || '#fff59d') : INCHIOSTRO;
+            ctx.lineWidth = Math.max(1.4, R * 0.08) + (passata ? 0 : 2.6);
+            ctx.beginPath(); tratti.forEach(([qx, qy], i) => i ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy)); ctx.stroke();
+          }
+        }
+      }
+    } else if (tipo === 'shooting_star') {
+      const a = 0.6 + (dado(d) - 0.5) * 0.4;
+      const testa = -1.5 + 3 * liscio(s);
+      const hx = x + Math.cos(a) * R * 4 * testa, hy = y + Math.sin(a) * R * 4 * testa - R * 1.2;
+      const g = ctx.createLinearGradient(hx, hy, hx - Math.cos(a) * R * 3, hy - Math.sin(a) * R * 3);
+      g.addColorStop(0, rgba(colore || '#fff3b0', 0.95)); g.addColorStop(1, rgba(colore || '#fff3b0', 0));
+      ctx.strokeStyle = g; ctx.lineWidth = Math.max(2, R * 0.16);
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - Math.cos(a) * R * 3, hy - Math.sin(a) * R * 3); ctx.stroke();
+      ctx.fillStyle = '#fffbe6'; stellaPiena(ctx, hx, hy, R * 0.28, 5, t / 300, 0.45);
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.05); ctx.stroke();
+    } else if (tipo === 'confetti') {
+      for (let k = 0; k < 26; k++) {
+        const px0 = x + (dado(d) - 0.5) * R * 4, ritardo = dado(d) * 0.3, giro = dado(d) * 6;
+        const q = (s - ritardo) / (1 - ritardo);
+        if (q <= 0) continue;
+        const px = px0 + Math.sin(q * 7 + k) * R * 0.25, py = y - R * 1.8 + q * R * 3.6;
+        ctx.globalAlpha = q > 0.8 ? (1 - q) / 0.2 : 1;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(giro + q * 9);
+        ctx.fillStyle = COLORI_FESTA[k % COLORI_FESTA.length];
+        ctx.fillRect(-R * 0.08, -R * 0.04, R * 0.16, R * 0.08);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  // Dove sta un effetto in questo fotogramma: sull'astro (se è disegnato) o
+  // nel posto dello schermo chiesto. `null` se l'astro non c'è.
+  function storPostoEffetto(ef, perId, L, H) {
+    if (ef.target) {
+      const c = perId.get(ef.target);
+      if (!c || !Number.isFinite(c.px) || !Number.isFinite(c.py)) return null;
+      return { x: c.px, y: c.py, r: c.r };
+    }
+    const fx = { center: 0.5, left: 0.25, right: 0.75, top: 0.5, bottom: 0.5 }[ef.dove] || 0.5;
+    const fy = { center: 0.45, left: 0.45, right: 0.45, top: 0.25, bottom: 0.7 }[ef.dove] || 0.45;
+    return { x: L * fx, y: H * fy, r: Math.min(L, H) * 0.06 };
+  }
+  function storEffetto(tipo, opz = {}) {
+    if (!STOR_EFFETTI[tipo]) return null;
+    const ef = {
+      tipo, target: opz.target ? storCanonico(opz.target) : null, dove: opz.dove || 'center',
+      inizio: stor.orologio, durata: Math.max(300, opz.durata || STOR_EFFETTI[tipo]),
+      scala: Math.max(0.2, Math.min(5, Number(opz.scala) || 1)), colore: opz.colore || null,
+      seme: seme(tipo + ':' + (opz.target || '') + ':' + stor.effetti.length + ':' + Math.round(stor.orologio)) || 1
+    };
+    stor.effetti.push(ef);
+    return ef;
+  }
+
   /* L'adesivo: il disco grafico di un oggetto troppo piccolo per avere il
    * volto addosso, e il palco dell'anteprima. Un'ombra piatta spostata in
    * basso a destra (l'adesivo è *appoggiato* sul cielo), il bordo color
@@ -1322,7 +1891,7 @@
   function storDisegnaPersonaggi(ctx, vista, corpi, L, H, margini) {
     storTic();
     const disegnati = [];
-    if (!stor.personaggi.size) { stor.ultimiDisegnati = disegnati; return disegnati; }
+    if (!stor.personaggi.size && !stor.effetti.length) { stor.ultimiDisegnati = disegnati; return disegnati; }
     const perId = new Map();
     for (const c of corpi) { const id = storCanonico(c.id); if (!perId.has(id)) perId.set(id, c); }
     const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
@@ -1332,6 +1901,10 @@
     const dt = Math.max(0, stor.orologio - (stor.ultimoOrologio || stor.orologio));
     stor.ultimoOrologio = stor.orologio;
     const ridotto = stor.ridotto;
+    // Nella vista 3D l'astro porta il volto addosso: con `size: auto` è
+    // cresciuto apposta (`storRaggio3D`), e l'adesivo accanto resta solo per
+    // chi lo chiede (`badge`) o vuole la misura vera (`real`).
+    const in3d = vista === 'sistema' || vista === 'vicino';
     // Il volto sta addosso o accanto? Si decide prima per tutti, così i dischi
     // grafici conoscono i volti già posati e non ci finiscono sopra.
     const piano = [];
@@ -1347,7 +1920,8 @@
       // Con un po' di isteresi: durante uno zoom il volto non deve saltare
       // avanti e indietro fra il disco e il disco grafico accanto.
       const soglia = STOR_VOLTO_MIN_PX * (pg.addossoPrima ? 0.88 : 1.1);
-      const addosso = pg.misura === 'disk' || (pg.misura !== 'badge' && Rdisco >= soglia);
+      const addosso = pg.misura === 'disk' || (in3d && pg.misura === 'auto') ||
+        (pg.misura !== 'badge' && Rdisco >= soglia);
       pg.addossoPrima = addosso;
       pg.punto = { x: c.px, y: c.py };
       piano.push({ pg, c, addosso, Rdisco });
@@ -1441,27 +2015,116 @@
       // schiacciamento delle sillabe. Si muovono i tratti (e l'adesivo), mai
       // l'astro: la Luna resta dov'è e com'è, il volto le vive sopra.
       const att = storPosa(pg, R, t, desDa, forma.apertura, staParlando, ridotto);
-      ctx.save();
-      ctx.translate(cx + att.dx, cy + att.dy);
-      ctx.rotate(att.giro);
-      ctx.scale(att.sx, att.sy);
-      ctx.translate(-cx, -cy);
-      if (posto) {
-        ctx.restore();
-        disegnaSupporto(ctx, posto, p, alfa, t);
-        ctx.save();
-        ctx.translate(cx + att.dx, cy + att.dy); ctx.rotate(att.giro); ctx.scale(att.sx, att.sy); ctx.translate(-cx, -cy);
-        ctx.save(); ctx.globalAlpha *= alfa; disegnaAdesivo(ctx, cx, cy, R, p); ctx.restore();
+      // Le animazioni (§5-bis). Nella 3D il salto e la danza hanno già
+      // spostato l'astro vero, e il volto lo segue da sé: qui restano la
+      // rotazione e lo schiacciamento. Nel planetario l'astro non si muove,
+      // e allora si muove il volto (o l'adesivo) tutto intero, con la scala.
+      const an = storAnimazioniDi(pg);
+      att.giro += an.giro; att.sx *= an.sx; att.sy *= an.sy;
+      if (!in3d) {
+        const sc = storScalaDi(pg) * an.k;
+        att.dx += an.dx * R; att.dy += an.dy * R; att.sx *= sc; att.sy *= sc;
       }
-      storDisegnaVolto(ctx, geom, p, alfa, t);
-      storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa, ridotto);
-      ctx.restore();
+      // Il volto addosso è dipinto **sulla sfera**: guardando di lato la
+      // faccia scivola verso quel lato e si accorcia, come una testa che si
+      // gira, e non esce dal disco dell'astro.
+      const giraTesta = posto || ridotto ? null : {
+        ox: pg.sguardo.x * R * 0.14, oy: pg.sguardo.y * R * 0.1,
+        sx: 1 - Math.min(0.2, Math.abs(pg.sguardo.x) * 0.14), sy: 1 - Math.min(0.15, Math.abs(pg.sguardo.y) * 0.1)
+      };
+      const trasforma = g => {
+        g.translate(cx + att.dx, cy + att.dy);
+        if (giraTesta) { g.translate(giraTesta.ox, giraTesta.oy); g.scale(giraTesta.sx, giraTesta.sy); }
+        g.rotate(att.giro); g.scale(att.sx, att.sy); g.translate(-cx, -cy);
+      };
+      if (posto) {
+        disegnaSupporto(ctx, posto, p, alfa, t);
+        ctx.save(); trasforma(ctx);
+        ctx.save(); ctx.globalAlpha *= alfa; disegnaAdesivo(ctx, cx, cy, R, p); ctx.restore();
+        storDisegnaVolto(ctx, geom, p, alfa, t);
+        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa, ridotto);
+        ctx.restore();
+      } else {
+        // Sull'astro: ritagliato sul suo disco (le stazioni e le sonde non
+        // sono tonde, e lì non si ritaglia) e illuminato dal suo Sole.
+        // Nel planetario no: lì un salto porta il volto fuori dall'astro,
+        // che resta fermo dov'è davvero.
+        const ritaglia = in3d && p.forma !== 'riquadro';
+        const volto = g => {
+          g.save();
+          if (ritaglia) { g.beginPath(); g.arc(c.px, c.py, Math.max(c.r * 1.02, R * 1.05), 0, Math.PI * 2); g.clip(); }
+          trasforma(g);
+          storDisegnaVolto(g, geom, p, alfa, t);
+          g.restore();
+        };
+        conLuce(ctx, cx + att.dx, cy + att.dy, Math.max(c.r * 1.1, R * 1.6), in3d ? c.luce : null, volto);
+        ctx.save(); trasforma(ctx);
+        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa, ridotto);
+        ctx.restore();
+      }
       disegnati.push({ id: pg.id, vista, x: cx, y: cy, R, addosso: !posto, forma: pg.forma, apertura: pg.apertura, via: pg.via,
         parla: parlante === pg.id && !!(voce && voce.parla), battito, sguardo: Object.assign({}, pg.sguardo),
         espressione: pg.espressione, astro: { x: c.px, y: c.py, r: c.r }, geom });
     }
+    // Gli effetti speciali, sopra ai volti; quelli finiti se ne vanno
+    if (stor.effetti.length) {
+      const t = stor.orologio;
+      stor.effetti = stor.effetti.filter(ef => t - ef.inizio <= ef.durata);
+      for (const ef of stor.effetti) {
+        const posto = storPostoEffetto(ef, perId, L, H);
+        if (posto) storDisegnaEffetto(ctx, ef, posto.x, posto.y, posto.r, t, L, H, ridotto);
+      }
+    }
     stor.ultimiDisegnati = disegnati;
     return disegnati;
+  }
+
+  /* Il volto con la luce del suo Sole. Si dipinge su una tela di passaggio
+   * e lì sopra si stende l'ombra (`source-atop`: solo dove c'è il volto,
+   * non sul pianeta, che la sua ombra l'ha già), poi si appoggia sulla tela
+   * vera. `luce` dice da che parte sta il Sole sullo schermo e quanto della
+   * faccia rivolta a noi è in ombra; l'ombra si ferma a metà, perché un
+   * volto sulla notte di una falce deve restare leggibile. Senza tela di
+   * passaggio (le prove Node) si disegna dritto. */
+  let telaLuce = null;
+  function conLuce(ctx, x, y, mezzo, luce, disegna) {
+    const buio = luce ? Math.max(0, Math.min(1, luce.buio || 0)) : 0;
+    if (buio < 0.05 || typeof document === 'undefined' || !document.createElement || typeof ctx.getTransform !== 'function') {
+      disegna(ctx); return;
+    }
+    const m = ctx.getTransform();
+    const scala = Math.hypot(m.a, m.b) || 1;
+    const lato = Math.ceil(mezzo * 2 * scala) + 4;
+    if (lato > 2048) { disegna(ctx); return; }
+    if (!telaLuce) telaLuce = document.createElement('canvas');
+    if (telaLuce.width < lato || telaLuce.height < lato) { telaLuce.width = Math.max(lato, telaLuce.width); telaLuce.height = Math.max(lato, telaLuce.height); }
+    const g = telaLuce.getContext('2d');
+    if (!g) { disegna(ctx); return; }
+    const X0 = Math.floor(m.a * (x - mezzo) + m.c * (y - mezzo) + m.e) - 2, Y0 = Math.floor(m.b * (x - mezzo) + m.d * (y - mezzo) + m.f) - 2;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    g.clearRect(0, 0, lato, lato);
+    g.setTransform(m.a, m.b, m.c, m.d, m.e - X0, m.f - Y0);
+    g.globalAlpha = ctx.globalAlpha;
+    disegna(g);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-atop';
+    const cx = (m.a * x + m.c * y + m.e) - X0, cy = (m.b * x + m.d * y + m.f) - Y0, R = mezzo * scala;
+    const ox = luce.x || 0, oy = luce.y || 0;
+    const ombra = g.createLinearGradient(cx + ox * R, cy + oy * R, cx - ox * R, cy - oy * R);
+    const a = 0.5 * buio;
+    ombra.addColorStop(0, 'rgba(10, 6, 28, 0)');
+    ombra.addColorStop(0.45, `rgba(10, 6, 28, ${(a * 0.35).toFixed(3)})`);
+    ombra.addColorStop(1, `rgba(10, 6, 28, ${a.toFixed(3)})`);
+    g.fillStyle = ombra;
+    g.fillRect(0, 0, lato, lato);
+    g.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(telaLuce, 0, 0, lato, lato, X0, Y0, lato, lato);
+    ctx.restore();
   }
 
   // ===================================================================
@@ -1473,11 +2136,11 @@
    * bordo e di visibilità), con la sua posizione e il suo raggio. Senza
    * personaggi in scena si esce alla prima riga. */
   function storRicevuta(id, px, py, r, o) {
-    if (!stor.personaggi.size) return;
+    if (!stor.personaggi.size && !stor.effetti.length) return;
     stor.ricevute.set(id, { id, px, py, r, az: o && o.az, alt: o && o.alt, tipo: o && o.tipo });
   }
   function storDisegnaCielo(ctx) {
-    if (!stor.personaggi.size) { stor.ricevute.clear(); stor.ultimiDisegnati = []; return []; }
+    if (!stor.personaggi.size && !stor.effetti.length) { stor.ricevute.clear(); stor.ultimiDisegnati = []; return []; }
     const sky = globale('sky');
     const L = sky ? sky.larghezza : ctx.canvas.width, H = sky ? sky.altezza : ctx.canvas.height;
     const corpi = [];
@@ -1516,20 +2179,44 @@
    * passano qui i corpi che hanno appena proiettato, con la loro `vicinanza`:
    * chi ha davanti un disco più vicino che lo copre è occultato. */
   function storDisegnaSistema(ctx, scena) {
-    if (!stor.personaggi.size) { stor.ultimiDisegnati = []; return []; }
+    if (!stor.personaggi.size && !stor.effetti.length) { stor.ultimiDisegnati = []; return []; }
     const sol = globale('sol');
     if (!sol) return [];
     const elenco = [];
-    const metti = (id, px, py, r, vicinanza) => {
+    const assi = storAssiSchermo(sol);
+    const sole = scena && scena.sole;
+    // Da che parte arriva la luce, per l'ombra sul volto (`conLuce`). Nella
+    // scena grande il Sole è l'origine, e la frazione in ombra della faccia
+    // rivolta a noi viene dalla geometria vera; dove il punto della scena
+    // non c'è (il banco Terra e Luna, le lune), basta la direzione del Sole
+    // sullo schermo con un'ombra leggera.
+    const luceDi = (id, px, py, punto) => {
+      if (storCanonico(id) === 'Sun') return null;
+      if (punto && !sol.vicino) {
+        const n = Math.hypot(punto.x, punto.y, punto.z);
+        if (!(n > 0)) return null;
+        const vx = -v3.punto(punto, assi.ex) / n, vy = v3.punto(punto, assi.su) / n, vz = -v3.punto(punto, assi.w) / n;
+        const m = Math.hypot(vx, vy) || 1;
+        return { x: vx / m, y: vy / m, buio: Math.max(0, Math.min(1, (1 - vz) / 2)) };
+      }
+      if (sole && Number.isFinite(sole.px)) {
+        const dx = sole.px - px, dy = sole.py - py, m = Math.hypot(dx, dy);
+        if (m > 1) return { x: dx / m, y: dy / m, buio: 0.35 };
+      }
+      return null;
+    };
+    const metti = (id, px, py, r, vicinanza, punto) => {
       if (!id || !Number.isFinite(px) || !Number.isFinite(py)) return;
-      elenco.push({ id, px, py, r: Math.max(0, r || 0), vicinanza: Number.isFinite(vicinanza) ? vicinanza : 0 });
+      elenco.push({ id, px, py, r: Math.max(0, r || 0), vicinanza: Number.isFinite(vicinanza) ? vicinanza : 0,
+        luce: stor.personaggi.size ? luceDi(id, px, py, punto) : null });
     };
     for (const p of (scena && scena.corpi) || []) {
-      if (p && p.schermo) metti(p.id, p.schermo.px, p.schermo.py, p.rDisegno, p.schermo.vicinanza);
+      if (p && p.schermo) metti(p.id, p.schermo.px, p.schermo.py, p.rDisegno, p.schermo.vicinanza, p.scena);
     }
     if (scena && scena.sole) metti('Sun', scena.sole.px, scena.sole.py, scena.sole.r, scena.sole.vicinanza);
-    if (!sol.vicino && sol.lunaSchermo) metti('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r, sol.lunaSchermo.vicinanza);
-    for (const l of sol.luneSchermo || []) metti(l.id, l.px, l.py, l.r, l.vicinanza);
+    if (!sol.vicino && sol.lunaSchermo) metti('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r, sol.lunaSchermo.vicinanza,
+      (stor.mosse.get('Moon') || {}).scena);
+    for (const l of sol.luneSchermo || []) metti(l.id, l.px, l.py, l.r, l.vicinanza, (stor.mosse.get(l.id) || {}).scena);
     for (const s of sol.satSchermo || []) metti(s.id, s.px, s.py, s.r, s.vicinanza);
     for (const c of elenco) {
       c.nascosto = elenco.some(q => q !== c && q.vicinanza > c.vicinanza && q.r > c.r * 0.6 &&
@@ -1549,7 +2236,13 @@
     sguardoIgnoto: 'Non so dove guardare: {nome}',
     personaggioNonInScena: '{nome} deve comparire in questa scena con character_show',
     personaggioVista: 'I personaggi compaiono solo nel planetario e nella vista 3D',
-    personaggioMisura: 'size vuole auto, disk o badge',
+    personaggioMisura: 'size vuole auto, disk o badge, oppure real',
+    solo3d: '{comando} funziona solo nella vista 3D (solar_system_3d)',
+    destinazioneIgnota: 'Non so dove andare: {nome}',
+    versoSeStesso: '{nome} non può andare verso sé stesso',
+    valoreIgnoto: '{campo} sconosciuto: {nome} (ammessi: {elenco})',
+    numeroFuori: '{campo} vuole un numero fra {min} e {max}',
+    coloreNonValido: 'Colore non valido: {nome} (si scrive \'#rrggbb\')',
     parametroSconosciuto: 'Parametro sconosciuto: {nome}',
     narraVuota: 'character_speak vuole un id o un testo',
     narraLunga: 'Testo di narrazione troppo lungo (al massimo 400 caratteri)',
@@ -1601,7 +2294,7 @@
         bersaglio(p);
         if (p.expression !== undefined) espressione(p.expression);
         guardaVerso(p.look);
-        richiedi(p.size === undefined || ['auto', 'disk', 'badge'].includes(p.size), 'personaggioMisura');
+        richiedi(p.size === undefined || ['auto', 'disk', 'badge', 'real'].includes(p.size), 'personaggioMisura');
         inScena(p, scena, 'character_show');
       },
       crea(p) {
@@ -1662,6 +2355,136 @@
       }
     }
   };
+
+  // I comandi del corpo e degli effetti (v409)
+  function soloIn3d(scena, comando) {
+    if (!scena) return;
+    richiedi(scena.vista === 'solar_system_3d', 'solo3d', { comando });
+  }
+  function scelta(v, campo, ammessi) {
+    richiedi(v === undefined || (typeof v === 'string' && ammessi.includes(v)), 'valoreIgnoto',
+      { campo, nome: String(v), elenco: ammessi.join(', ') });
+    return v;
+  }
+  function numeroIn(v, campo, min, max) {
+    richiedi(v === undefined || (typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max), 'numeroFuori',
+      { campo, min, max });
+    return v;
+  }
+  function verso(p, id) {
+    const v = p.to;
+    richiedi(typeof v === 'string' && v.trim(), 'destinazioneIgnota', { nome: String(v) });
+    if (STOR_LUOGHI.includes(v)) return v;
+    const altro = storCanonico(v.trim());
+    richiedi(storOggettoNoto(altro), 'destinazioneIgnota', { nome: v });
+    richiedi(altro !== id, 'versoSeStesso', { nome: v });
+    return altro;
+  }
+  // Un'azione del corpo si lega al personaggio quando c'è: il motore crea le
+  // azioni nell'ordine in cui sono scritte, e `character_show` può venire dopo.
+  function legaPersonaggio(id, fa) {
+    let legato = null;
+    return () => {
+      const pg = stor.personaggi.get(id);
+      if (pg && pg !== legato) { legato = pg; fa(pg); }
+      return legato;
+    };
+  }
+  Object.assign(COMANDI, {
+    character_move: {
+      verifica(p, scena) {
+        campi(p, ['target', 'to', 'side', 'distance', 'path', 'turns']);
+        const id = bersaglio(p);
+        verso(p, id);
+        scelta(p.side, 'side', STOR_LATI); scelta(p.path, 'path', STOR_PERCORSI);
+        numeroIn(p.distance, 'distance', 0.3, 6); numeroIn(p.turns, 'turns', 0.5, 8);
+        inScena(p, scena); soloIn3d(scena, 'character_move');
+      },
+      crea(p) {
+        const id = storCanonico(p.target);
+        const moto = { verso: verso(p, id), lato: p.side || 'auto', distanza: p.distance || 1,
+          percorso: p.path || 'arc', giri: p.turns || 0, u: 0, A: null, lampi: 0 };
+        const lega = legaPersonaggio(id, pg => { moto.A = null; pg.moto = moto; });
+        lega();
+        return {
+          aggiorna(u) {
+            if (!lega()) return;
+            moto.u = stor.ridotto ? (u > 0 ? 1 : 0) : u;
+            // Il teletrasporto: una nuvola di scintille dove sparisce e una
+            // dove ricompare
+            if (moto.percorso === 'teleport' && !stor.ridotto) {
+              if (moto.lampi === 0 && u > 0) { moto.lampi = 1; storEffetto('sparkles', { target: id, durata: 900 }); }
+              if (moto.lampi === 1 && u >= 0.5) { moto.lampi = 2; storEffetto('sparkles', { target: id, durata: 1100 }); }
+            }
+          }
+        };
+      }
+    },
+    character_return: {
+      verifica(p, scena) {
+        campi(p, ['target', 'path']); bersaglio(p); scelta(p.path, 'path', STOR_PERCORSI);
+        inScena(p, scena); soloIn3d(scena, 'character_return');
+      },
+      crea(p) {
+        return COMANDI.character_move.crea({ target: p.target, to: 'orbit', path: p.path || 'arc' });
+      }
+    },
+    character_animate: {
+      verifica(p, scena) {
+        campi(p, ['target', 'animation', 'times', 'strength']); bersaglio(p);
+        richiedi(p.animation !== undefined, 'valoreIgnoto', { campo: 'animation', nome: '', elenco: STOR_ANIMAZIONI.join(', ') });
+        scelta(p.animation, 'animation', STOR_ANIMAZIONI);
+        numeroIn(p.times, 'times', 1, 20); numeroIn(p.strength, 'strength', 0.2, 3);
+        inScena(p, scena);
+      },
+      crea(p) {
+        const id = storCanonico(p.target);
+        const anim = { tipo: p.animation, u: 0, volte: p.times || 0, forza: p.strength === undefined ? 1 : p.strength };
+        const lega = legaPersonaggio(id, pg => pg.animazioni.push(anim));
+        lega();
+        return {
+          aggiorna(u) { if (lega()) anim.u = u; },
+          chiudi() { const pg = stor.personaggi.get(id); if (pg) pg.animazioni = pg.animazioni.filter(a => a !== anim); }
+        };
+      }
+    },
+    character_scale: {
+      verifica(p, scena) {
+        campi(p, ['target', 'scale']); bersaglio(p);
+        richiedi(p.scale !== undefined, 'numeroFuori', { campo: 'scale', min: 0.2, max: 6 });
+        numeroIn(p.scale, 'scale', 0.2, 6);
+        inScena(p, scena);
+      },
+      crea(p) {
+        const id = storCanonico(p.target);
+        const s = { da: 1, a: p.scale, u: 0 };
+        const lega = legaPersonaggio(id, pg => { s.da = storScalaDi(pg); pg.scalaVoluta = s; });
+        lega();
+        return { aggiorna(u) { if (lega()) s.u = u; } };
+      }
+    },
+    effect: {
+      verifica(p, scena) {
+        campi(p, ['type', 'target', 'at', 'size', 'color', 'duration']);
+        richiedi(p.type !== undefined, 'valoreIgnoto', { campo: 'type', nome: '', elenco: Object.keys(STOR_EFFETTI).join(', ') });
+        scelta(p.type, 'type', Object.keys(STOR_EFFETTI));
+        if (p.target !== undefined) bersaglio(p);
+        scelta(p.at, 'at', STOR_POSTI_EFFETTO);
+        numeroIn(p.size, 'size', 0.2, 5); numeroIn(p.duration, 'duration', 0.3, 20);
+        richiedi(p.color === undefined || (typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color)), 'coloreNonValido', { nome: String(p.color) });
+        if (scena) richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
+      },
+      crea(p) {
+        // Un effetto vive il suo tempo anche se la scena finisce prima: un
+        // botto in coda a una scena non si taglia a metà. Uno Stop o la fine
+        // della storia li tolgono tutti (`storSgombra`).
+        if (stor.anteprima) storChiudiAnteprima();
+        storEffetto(p.type, { target: p.target, dove: p.at, scala: p.size, colore: p.color,
+          durata: p.duration ? p.duration * 1000 : undefined });
+        return {};
+      }
+    }
+  });
 
   function registraComandi() {
     const d = radice.AstroDemo;
@@ -1851,6 +2674,8 @@
         try { radice.AstroDemo.avvia(st.testo); }
         catch (err) { const esito = document.getElementById('demo-esito'); if (esito) esito.textContent = err.message; }
       } else if (duplica && st) {
+        // L'editor sta nella linguetta Demo (v409): prima si passa di là
+        if (typeof radice.demoMostraScheda === 'function') radice.demoMostraScheda('demo-scheda-demo');
         const elenco = document.getElementById('demo-elenco');
         if (elenco) { elenco.value = st.chiave; elenco.dispatchEvent(new Event('change', { bubbles: true })); }
         const tasto = document.getElementById('demo-duplica');
@@ -1901,7 +2726,7 @@
 
   const api = {
     STOR_ESPRESSIONI, STOR_BOCCHE, STOR_BOCCHE_PARLATO, STOR_FAMIGLIE, STOR_PERSONAGGI, STOR_BATTITO_DURATA,
-    STOR_VOLTO_MIN_PX,
+    STOR_VOLTO_MIN_PX, STOR_PERCORSI, STOR_LATI, STOR_LUOGHI, STOR_ANIMAZIONI, STOR_EFFETTI, STOR_POSTI_EFFETTO,
     canonico: storCanonico, famigliaDi: storFamigliaDi, noto: storOggettoNoto, profilo: storProfilo,
     nome: storNome, personalita: storPersonalita,
     ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale,
@@ -1912,16 +2737,21 @@
     nascondi: storNascondi, congeda: storCongeda, sgombra: storSgombra, parla: storParla,
     disegnaPersonaggi: storDisegnaPersonaggi, disegnaCielo: storDisegnaCielo, disegnaSistema: storDisegnaSistema,
     comandi: COMANDI, registraComandi,
+    scena3D: storScena3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,
+    animazioneAl: storAnimazioneAl, effetto: storEffetto, disegnaEffetto: storDisegnaEffetto,
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce,
     riempiPagina: storRiempiPagina, storie: storieDisponibili,
     stato: stor,
     get attivi() { return stor.personaggi.size; },
     get disegnati() { return stor.ultimiDisegnati.map(d => Object.assign({}, d, { geom: undefined })); },
-    get parlante() { return stor.parlante ? stor.parlante.target : null; }
+    get parlante() { return stor.parlante ? stor.parlante.target : null; },
+    get effetti() { return stor.effetti.map(e => ({ tipo: e.tipo, target: e.target, dove: e.dove })); }
   };
   radice.storRicevuta = storRicevuta;
   radice.storDisegnaCielo = storDisegnaCielo;
   radice.storDisegnaSistema = storDisegnaSistema;
+  radice.storScena3D = storScena3D;
+  radice.storRaggio3D = storRaggio3D;
   radice.StorieCosmiche = api;
   registraComandi();
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

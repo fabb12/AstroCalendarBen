@@ -6,17 +6,20 @@ spiegano un fenomeno vero. Una Storia cosmica è una demo come le altre
 `storie-cosmiche.js` (prefisso `stor`), le storie in `demo-predefiniti.js`
 (voci con `storia: true`), i testi nei due dizionari.
 
-Si trovano nella pagina **Demo**, gruppo **7 · Storie cosmiche**: una scheda
-per storia (titolo, durata, personaggi con la loro personalità, **Guarda la
-storia**, **Duplica e modifica**), l'anteprima di un personaggio (scegli chi e
-con che espressione, poi **Fallo parlare**: funziona anche offline e senza
-nessuna vista astronomica) e l'esempio del DSL. Le storie compaiono anche
-nell'elenco generale delle demo.
+Si trovano nella pagina **Demo**, linguetta **Storie cosmiche** (v409; prima
+era il gruppo 7 in fondo alla pagina): una scheda per storia (titolo, durata,
+personaggi con la loro personalità, **Guarda la storia**, **Duplica e
+modifica**), l'anteprima di un personaggio (scegli chi e con che espressione,
+poi **Fallo parlare**: funziona anche offline e senza nessuna vista
+astronomica), l'esempio del DSL e lo **Studio delle storie**
+(`storie-studio.js`, §Lo Studio), che le crea senza scrivere codice. Le storie
+compaiono anche nell'elenco generale delle demo. La linguetta scelta si
+ricorda (`astrocal_demo_scheda_v1`); un link `?demo=` apre sempre la prima.
 
 ## Tre promesse
 
-1. **Il cielo resta vero.** Il modulo non calcola posizioni e non sposta
-   niente. I volti si appoggiano dove i renderer esistenti hanno appena
+1. **Il cielo di partenza è vero.** Il modulo non calcola posizioni. I
+   volti si appoggiano dove i renderer esistenti hanno appena
    disegnato l'astro: la ricevuta di `skyDisegnaAstro` e di
    `corpiMinoriDisegna` nel planetario (`storRicevuta`), i corpi già
    proiettati da `solDisegna` e da `solDisegnaVicino` nella vista 3D
@@ -24,7 +27,12 @@ nell'elenco generale delle demo.
    falce (il volto ci sta sopra), un puntino resta un puntino (il volto sta in
    un **disco grafico** accanto, con un filo e un anello che lo legano
    all'astro vero). La storia sceglie la sera, il luogo e la camera, come ogni
-   demo; le fasi e le distanze sono quelle di quell'istante.
+   demo; le fasi e le distanze sono quelle di quell'istante. **Dalla v409**,
+   solo nella vista 3D e solo per chi è in scena, la storia può cambiare
+   l'astro: lo fa crescere quanto basta a portare il volto addosso, lo fa
+   viaggiare fuori dall'orbita, saltare o cambiare misura (§Il corpo nello
+   spazio). Non è una seconda proiezione: l'app chiede al modulo dove mettere
+   il corpo **prima** di proiettarlo, e da lì lo tratta come sempre.
 2. **Un livello a parte.** Si disegna alla fine del fotogramma, sopra a
    tutto e prima della registrazione (quindi finisce anche nel filmato). Fuori
    da una scena che lo chiede non c'è nessun volto: `storRicevuta` e
@@ -44,6 +52,10 @@ nell'elenco generale delle demo.
 | fine di `skyDisegna` | `storDisegnaCielo(ctx)`, **prima** di `skyRegAcquisisci` |
 | fine di `solDisegna` | `storDisegnaSistema(ctx, { corpi: ordinati, sole })` |
 | fine di `solDisegnaVicino` | `storDisegnaSistema(ctx, { corpi: finti, sole: sol.soleVicinoSchermo })` |
+| `solDisegna`, per ogni corpo, prima di `solAggiornaPivot` (v409) | `p.rDisegno = storRaggio3D(id, r)`, `p.scena = storScena3D(id, p.scena, r)` |
+| `solDisegnaVicino`, sui due corpi finti (v409) | gli stessi due, poi di nuovo `solProietta` |
+| `solScenaLuna`, `solScenaLunaPianeta` (v409) | `storScena3D('Moon' / id della luna, punto, raggio)` |
+| `solRaggioLuna`, `solRaggioLunaPianeta`, `solRaggioSole` (v409) | `storRaggio3D(id, r)` |
 
 Per l'occlusione nella 3D `sol.lunaSchermo`, `sol.luneSchermo` e
 `sol.satSchermo` portano adesso anche la `vicinanza`, e
@@ -208,12 +220,30 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 
 | Azione | Parametri |
 |---|---|
-| `character_show` | `target`, `expression?`, `look?` (`viewer` o un oggetto), `size?` (`auto`, `disk`, `badge`) |
+| `character_show` | `target`, `expression?`, `look?` (`viewer` o un oggetto), `size?` (`auto`, `disk`, `badge`, `real`) |
 | `character_expression` | `target`, `expression` |
 | `character_look_at` | `target`, `object` (`viewer`/`camera` o un oggetto) |
 | `character_blink` | `target` |
 | `character_speak` | `target`, `id` (chiave del dizionario) **oppure** `text` (al più 400 caratteri) |
 | `character_hide` | `target` |
+| `character_move` (solo 3D) | `target`, `to` (un oggetto, o `orbit`, `center`, `left`, `right`, `top`, `bottom`), `side?` (`auto`, `left`, `right`, `above`, `below`, `front`, `behind`), `distance?` (0,3–6), `path?` (`arc`, `straight`, `hop`, `loop`, `spiral`, `zigzag`, `teleport`), `turns?` (0,5–8) |
+| `character_return` (solo 3D) | `target`, `path?` |
+| `character_animate` | `target`, `animation` (`jump`, `bounce`, `shake`, `nod`, `spin`, `pulse`, `dance`, `wobble`), `times?` (1–20), `strength?` (0,2–3) |
+| `character_scale` | `target`, `scale` (0,2–6) |
+| `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20) |
+
+`size`: `auto` (di serie) nel planetario mette il volto sull'astro se c'è
+posto e se no nell'adesivo; nella 3D **fa crescere l'astro** fino a portarlo.
+`disk` lo mette sempre addosso, `badge` sempre nell'adesivo, `real` lascia
+l'astro della sua misura vera (adesivo se è piccolo: era l'`auto` di prima
+della v409).
+
+Le azioni del corpo (`move`, `return`, `animate`, `scale`) durano la loro
+**ripresa**: `shot_from`/`shot_to` dicono quando partono e quando arrivano (di
+serie tutta la scena). Un viaggio finito resta dov'è — anche nelle scene dopo,
+finché il personaggio è in scena — e segue la sua meta se lei si muove;
+`character_return` lo rimette sull'orbita. `effect` non vuole un
+`character_show` e non si taglia a fine scena: vive la sua durata.
 
 `character_speak` vale come la narrazione della scena: la scena aspetta la
 fine della battuta (`fineNarrazione`), come con `narrate`. **Una battuta per
@@ -249,6 +279,110 @@ motore non sa niente dei personaggi. L'editor offre gli snippet
 - **«Giove e Saturno»** (`storia_giganti`, 47 s): la storia d'esempio, corta,
   che usa tutte le azioni. Da duplicare e modificare.
 
+## Il corpo nello spazio (v409)
+
+Prima i volti erano un adesivo appoggiato sul cielo vero. Chi scrive storie
+ha chiesto il contrario: il personaggio è **l'astro stesso**, gli occhi e la
+bocca stanno sul corpo 3D, e se la storia lo vuole l'astro vola dove serve.
+`storie-cosmiche.js` §5-bis.
+
+- **La misura** (`storRaggio3D`). Con `size: auto` l'astro cresce, con un
+  pop elastico in 0,7 s, fino a un raggio di volto di `STOR_VOLTO_3D_PX`
+  (27,5 px); un astro già grande non cresce. Poi la scala di
+  `character_scale`, il battito di `pulse`, e il rimpicciolirsi del
+  teletrasporto.
+- **Il posto** (`storScena3D`). Un viaggio va da dove l'astro si trova
+  (anche se era già spostato) a una meta: accanto a un altro astro, dal lato
+  chiesto, alla distanza dei due raggi disegnati; o un posto dello schermo,
+  alla propria profondità; o l'orbita vera. Il percorso aggiunge la sua forma
+  sul piano dello schermo (`storPuntoViaggio`, funzione pura). Le animazioni
+  `jump`, `dance`, `shake`, `nod` spostano l'astro vero; `spin`, `wobble` e
+  lo schiacciamento girano e deformano il volto.
+- **Pensato sullo schermo, fatto nello spazio.** La proiezione della 3D è
+  ortogonale, quindi la terna dello schermo (`storAssiSchermo`: `ex` a
+  destra, `su` in alto, `w` verso chi guarda) è una base ortonormale della
+  scena e un pixel vale `1 / sol.scala`. Lo spostamento entra nella scena
+  **prima** della proiezione: la profondità, le lune che seguono il loro
+  pianeta, la fase, il nome e il dito che sceglie funzionano da sé, e la
+  camera che segue un corpo lo segue anche in viaggio.
+- **Il ritorno.** Quando la storia lascia un astro spostato o ingrandito, in
+  0,75 s torna sull'orbita e alla misura veri (`storRitorno`), senza salti.
+  Passando fra il sistema e il banco Terra e Luna le unità cambiano: si
+  dimentica tutto e si riparte da dove ogni astro si trova (`storBanco3D`).
+- **Il volto sulla sfera.** Nella 3D il volto è ritagliato sul disco
+  dell'astro, scivola e si accorcia verso dove guarda (una testa che si gira)
+  e prende **la luce del suo Sole**: si dipinge su una tela di passaggio e
+  l'ombra, dal lato opposto al Sole e quanto vuole la fase vera, si stende
+  solo sui tratti del volto (`conLuce`, `source-atop`). Si ferma a metà:
+  un volto sulla notte di una falce deve restare leggibile.
+- **Non si muove**: il Sole (è l'origine della scena), e niente nel
+  planetario — lì le animazioni muovono il volto o l'adesivo, e
+  `character_move` è un errore di validazione.
+
+## Gli effetti speciali (v409)
+
+`storie-cosmiche.js` §6-ter, `storDisegnaEffetto`. Nello stile dei volti:
+stesure piatte e pennino d'inchiostro, e l'esplosione è il «KABOOM» a punte
+dei fumetti (lampo, stella di fuoco, sassolini, onda d'urto, fumo), non una
+palla realistica. Un effetto segue il suo astro mentre si muove, o sta in un
+posto dello schermo; dura i millisecondi dell'orologio della storia (in
+pausa si ferma), e le particelle escono da un dado seminato rifatto a ogni
+fotogramma, quindi un salto indietro le ridisegna uguali. Il lampo
+(`flash`) si accende una volta sola e i fulmini due, distanti: niente
+sfarfallio. Col movimento ridotto ogni effetto è un alone che si accende e si
+spegne. Aggiungere un effetto: una voce in `STOR_EFFETTI` (con la durata di
+serie), un ramo in `storDisegnaEffetto`, `storie.effetto.<nome>` nei
+dizionari.
+
+## Lo Studio delle storie (v409)
+
+`storie-studio.js` (prefisso `studio`), nella linguetta delle storie. Una
+storia è un **progetto**: scopo, titolo, che cosa deve capire chi guarda,
+personaggi, e **scene** (ambiente — Sistema Solare, un pianeta da vicino,
+Terra e Luna, il cielo da casa —, inquadratura, giorno, giorni che passano,
+chi è in scena) fatte di **momenti** (chi parla, la battuta, la faccia, la
+durata) con le loro **azioni** (cambia faccia, guarda, vola verso, torna,
+animazione, cambia misura, effetto, palpebre, esce; ognuna con il suo
+«quando»: all'inizio, a metà, alla fine, per tutto il momento).
+
+- **Il copione** (`studioCopione`, funzione pura): un momento diventa una
+  scena del DSL, perché il motore vuole una battuta per scena. La camera
+  riprende da dove era (elevazioni continue), le facce si portano da un
+  momento all'altro, i giorni che passano si dividono fra i momenti in
+  proporzione alla durata (`date_range` senza buchi), la durata di serie è
+  quella della battuta detta con calma più un respiro. Le azioni che la vista
+  non sa fare (un viaggio nel planetario) si saltano, e il controllo lo dice.
+- **I modelli per scopo** (`STUDIO_SCOPI`): libera, le fasi della Luna, i
+  giganti, le stagioni, un viaggio fra i pianeti, un'avventura con effetti
+  speciali. Ognuno è una storia intera, vera, che supera il suo stesso
+  controllo; i testi (`studio.tpl.*`) si prendono nella lingua di adesso
+  quando si sceglie il modello, e da lì sono di chi scrive.
+- **Gli aiuti**: la faccia dalla battuta (`studioUmoreDalTesto`: parole
+  dell'umore, poi punteggiatura), le idee per le azioni (dalle parole —
+  «boom» → esplosione, «andiamo» → viaggio, «amici» → cuori — e dalla
+  faccia), l'ambiente adatto a chi è in scena, il momento dopo (parla chi non
+  ha appena parlato; la bozza presenta, risponde o ricorda lo scopo).
+- **Dillo a parole** (`studioCapisci` + `studioApplica`): una riga alla
+  volta, «Marte vola verso Giove facendo un giro», «Giove dice: Benvenuto!»,
+  «esplosione su Saturno», «la Luna è triste», «alla fine Saturno balla tre
+  volte». Le parole chiave stanno nei dizionari (`studio.parole.*`, separate
+  da virgole; con `*` in fondo sono radici) e valgono **tutte le lingue
+  insieme**. Una battuta apre un momento nuovo, le azioni vanno nell'ultimo;
+  chi viene nominato entra nel cast.
+- **Il controllo dello scopo** (`studioConsigli`): titolo, scopo scritto,
+  tutti parlano, si apre con una domanda, l'ultima battuta torna sullo
+  scopo, battute sotto le 25 parole, durata fra 30 s e 4 minuti, nessun
+  viaggio nel planetario, nessun momento vuoto, copione valido.
+- **Salvare**: i progetti in `astrocal_storie_progetti_v1` (esporta e
+  importa in JSON, `studioRipulisci` tiene solo quello che il modello
+  conosce); «Salva nelle mie demo» mette il copione nella libreria delle demo
+  (`demoPaginaRicarica` rifà l'elenco senza buttare un testo che si sta
+  scrivendo nell'editor). Né i progetti né le demo personali sono nel backup
+  JSON dell'app.
+- L'interfaccia si costruisce col DOM (mai `innerHTML`: i testi sono di chi
+  scrive); i campi di testo aggiornano il modello senza ridisegnare, così il
+  clic sul bottone accanto non si perde.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
@@ -262,6 +396,9 @@ motore non sa niente dei personaggi. L'editor offre gli snippet
   narrazione spenta (solo testo, nessuna voce).
 - Nessun movimento rapido: il battito dura un quinto di secondo, lo sguardo
   scivola in un decimo, i dischi ondeggiano di un pixel.
+- Col movimento ridotto (v409) i viaggi arrivano subito, le animazioni non
+  ci sono, gli effetti sono un alone che si accende e si spegne.
+- Le linguette della pagina Demo sono un `tablist` vero (frecce, Home, End).
 
 ## Prove
 
@@ -276,6 +413,14 @@ della bocca, una voce sola e la promessa tardiva, pausa, occultamento (fuori
 schermo, collina, Luna davanti, eclissi, profondità 3D), dischi grafici
 dentro lo schermo e non sovrapposti, validazione con errori in due lingue, e
 il motore delle demo vero con cambio scena, salto, riavvio, stop ed errore.
+Dalla v409 anche: la terna dello schermo contro la proiezione, la crescita e
+il ritorno della misura, un viaggio col motore vero (accanto alla meta, dal
+lato e alla distanza giusti, e di nuovo sull'orbita), i percorsi, il
+teletrasporto, le animazioni ferme agli estremi, ogni effetto disegnato e
+scaduto, la validazione dei comandi nuovi, e lo Studio: ogni modello in due
+lingue diventa un copione valido che supera il suo controllo, i giorni divisi
+senza buchi, i comandi a parole in italiano e in inglese, gli aiuti, i
+progetti rotti.
 La seconda, in un Chromium senza rete: la sezione della pagina Demo e
 l'anteprima, il volto sulla Luna disegnata (stessa proiezione), l'ampiezza di
 un WAV vero nel grafo Web Audio, i confini di una sintesi finta, il ritmo del
@@ -297,3 +442,8 @@ demo di prima non abbiano volti.
   del cono d'ombra, né sul velo del volo fra le viste.
 - La Terra nel planetario non è disegnata (ci si sta sopra): lì può parlare,
   ma il suo volto si vede solo nella 3D.
+- Il Sole non viaggia (è l'origine della scena 3D); nel planetario nessuno
+  viaggia. I viaggi nel banco Terra e Luna funzionano, ma passando dal
+  sistema al banco ripartono da dove l'astro si trova.
+- I comandi a parole sono parole chiave, non comprensione della lingua: una
+  frase che non capiscono la dicono («Non ho capito») invece di indovinare.
