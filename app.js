@@ -347,6 +347,9 @@ const DISEGNI = {
 
   campana: `<path d="M18 10.4a6 6 0 1 0-12 0c0 4.2-1.6 5.6-1.6 5.6h15.2S18 14.6 18 10.4z"/>
     <path d="M10.2 19.2a2.1 2.1 0 0 0 3.6 0"/>`,
+  // La stessa campana barrata: le notifiche sono spente.
+  'campana-spenta': `<path d="M18 10.4a6 6 0 1 0-12 0c0 4.2-1.6 5.6-1.6 5.6h15.2S18 14.6 18 10.4z"/>
+    <path d="M10.2 19.2a2.1 2.1 0 0 0 3.6 0"/><path d="M4 4l16 16"/>`,
 
   // La rotellina classica, quella che ogni sistema usa per «Impostazioni»: il
   // disegno di prima — un cerchio con otto raggi — si leggeva come un Sole, e
@@ -7702,11 +7705,13 @@ function gestisciTab() {
 
 // =====================================================================
 // 4. Lettura Vocale (TTS)
-//    La voce parte SOLO in due casi: quando si preme il tasto “Ascolta” di una
-//    scheda ("tasto") oppure quando scatta il promemoria ("notifica").
-//    Qualsiasi altra chiamata viene ignorata, così l'app non parla da sola.
+//    La voce parte SOLO quando si preme il tasto “Ascolta” di una scheda
+//    ("tasto"). Prima partiva anche col promemoria: sul telefono, con la
+//    notifica che non arrivava (vedi la sezione 5), restava solo una voce
+//    che parlava da sola dall'altoparlante. Un promemoria è una notifica e
+//    basta, come per ogni altra app.
 // =====================================================================
-const ORIGINI_VOCE_AMMESSE = ['tasto', 'notifica'];
+const ORIGINI_VOCE_AMMESSE = ['tasto'];
 
 window.leggiEvento = (id, origine) => {
   if (!ORIGINI_VOCE_AMMESSE.includes(origine)) return;
@@ -7751,7 +7756,17 @@ if ('speechSynthesis' in window) {
 
 // =====================================================================
 // 5. Notifiche e promemoria degli eventi
-//    Quando scatta il promemoria di un evento parte anche la lettura vocale.
+//    Tre difetti segnalati insieme, e tutti e tre venivano da qui.
+//    - La campanella non si spegneva: «attive» voleva dire «permesso
+//      concesso», e un permesso concesso una pagina non lo può ritirare.
+//      Adesso c'è una scelta dell'utente (`CHIAVE_NOTIFICHE_ATTIVE`) sopra
+//      al permesso: la campanella la accende e la spegne, il permesso resta.
+//    - Sul telefono la notifica non arrivava: Chrome per Android rifiuta
+//      `new Notification()` («Illegal constructor») e vuole che passi dal
+//      service worker (`registration.showNotification`). L'errore finiva in
+//      console e restava solo la voce.
+//    - La voce: tolta. Un promemoria è una notifica del sistema, come per
+//      ogni altra app, con suono e vibrazione decisi dal telefono.
 // =====================================================================
 
 // Quanto prima dell'evento arriva il promemoria. E' il parametro unico usato
@@ -7770,14 +7785,18 @@ const INTERVALLO_CONTROLLO_MS = 60 * 1000;
 // aperta, e chi la riapre due giorni dopo non vuole sentirsi dire "manca un
 // mese" quando ormai mancano ventotto giorni.
 const SCAGLIONI_ECLISSI = [
-  { min: 365 * 24 * 60, finestraMin: 3 * 24 * 60, testo: 'Manca un anno' },
-  { min: 30 * 24 * 60, finestraMin: 24 * 60, testo: 'Manca un mese' },
-  { min: 7 * 24 * 60, finestraMin: 12 * 60, testo: 'Manca una settimana' },
-  { min: 15 * 60, finestraMin: 5 * 60, testo: 'È domani' },
-  { min: 60, finestraMin: 25, testo: 'Manca un\'ora' }
+  { min: 365 * 24 * 60, finestraMin: 3 * 24 * 60, chiave: 'notifiche.scaglione.anno' },
+  { min: 30 * 24 * 60, finestraMin: 24 * 60, chiave: 'notifiche.scaglione.mese' },
+  { min: 7 * 24 * 60, finestraMin: 12 * 60, chiave: 'notifiche.scaglione.settimana' },
+  { min: 15 * 60, finestraMin: 5 * 60, chiave: 'notifiche.scaglione.domani' },
+  { min: 60, finestraMin: 25, chiave: 'notifiche.scaglione.ora' }
 ];
 
 const CHIAVE_NOTIFICHE_INVIATE = 'astrocalendario_notifiche_inviate';
+// La scelta dell'utente: '1' accese, '0' spente. Manca del tutto per chi
+// aveva già dato il permesso con le versioni di prima: per loro vale «accese»,
+// così nessuno si ritrova senza promemoria dopo un aggiornamento.
+const CHIAVE_NOTIFICHE_ATTIVE = 'astrocalendario_notifiche_attive';
 
 let timerNotifiche = null;
 // Promemoria già mostrati: evita di ripetere la stessa notifica a ogni controllo
@@ -7812,23 +7831,59 @@ function salvaNotificheInviate() {
   }
 }
 
-// Avvia (una sola volta) il controllo periodico dei promemoria
+function notificheSupportate() {
+  return 'Notification' in window;
+}
+
+function notificheSceltaUtente() {
+  try {
+    const v = localStorage.getItem(CHIAVE_NOTIFICHE_ATTIVE);
+    if (v === '1') return true;
+    if (v === '0') return false;
+  } catch (err) { /* memoria chiusa: si decide dal permesso */ }
+  return null;
+}
+
+function notificheSalvaScelta(accese) {
+  try {
+    localStorage.setItem(CHIAVE_NOTIFICHE_ATTIVE, accese ? '1' : '0');
+  } catch (err) {
+    console.error('Errore salvataggio scelta notifiche:', err);
+  }
+}
+
+// Accese davvero: l'utente le vuole E il browser le permette. Le due cose
+// sono indipendenti, ed era il confonderle che bloccava la campanella.
+function notificheAttive() {
+  if (!notificheSupportate() || Notification.permission !== 'granted') return false;
+  return notificheSceltaUtente() !== false;
+}
+
+// Avvia il controllo periodico dei promemoria (una volta sola), oppure lo
+// ferma se le notifiche sono spente.
 function pianificaNotifiche() {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!notificheAttive()) {
+    if (timerNotifiche) { clearInterval(timerNotifiche); timerNotifiche = null; }
+    return;
+  }
   controllaNotifiche();
   if (timerNotifiche) return;
   timerNotifiche = setInterval(controllaNotifiche, INTERVALLO_CONTROLLO_MS);
 }
 
-// Cerca gli eventi imminenti e per ognuno mostra la notifica + legge la scheda
+// Cerca gli eventi imminenti. Quelli che scattano nello stesso giro vanno in
+// una notifica sola: riaprendo l'app dopo un'ora, tre promemoria uno sopra
+// l'altro sono rumore, uno che li elenca è un'informazione.
 function controllaNotifiche() {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!notificheAttive()) return;
 
   const adesso = Date.now();
   const inizioFinestra = adesso - RITARDO_MASSIMO_MIN * 60 * 1000;
   const fineFinestra = adesso + ANTICIPO_NOTIFICA_MIN * 60 * 1000;
+  const daAvvisare = [];
 
   eventiCalcolati.forEach(evento => {
+    if (!evento || !evento.dataObj) return;
     const istante = evento.dataObj.getTime();
 
     // Le eclissi hanno la loro scaletta di preavvisi, che parte da un anno
@@ -7842,8 +7897,7 @@ function controllaNotifiche() {
         const chiave = `${evento.titolo}#${s.min}@${istante}`;
         if (notificheInviate.includes(chiave)) return;
         notificheInviate.push(chiave);
-        salvaNotificheInviate();
-        mostraNotificaEvento(evento, s.testo);
+        daAvvisare.push({ evento, scaglione: s });
       });
       return;
     }
@@ -7852,78 +7906,228 @@ function controllaNotifiche() {
 
     const chiave = chiaveNotifica(evento);
     if (notificheInviate.includes(chiave)) return;
-
     notificheInviate.push(chiave);
-    salvaNotificheInviate();
-    mostraNotificaEvento(evento);
+    daAvvisare.push({ evento, scaglione: null });
+  });
+
+  if (!daAvvisare.length) return;
+  salvaNotificheInviate();
+
+  if (daAvvisare.length === 1) {
+    mostraNotificaEvento(daAvvisare[0].evento, daAvvisare[0].scaglione);
+  } else {
+    mostraNotificaGruppo(daAvvisare);
+  }
+}
+
+// «Tra 8 minuti», «iniziato 5 minuti fa», «alle 21:40»: la prima cosa che si
+// vuole sapere da un promemoria è quanto tempo resta.
+function notificaQuando(evento) {
+  const minuti = Math.round((evento.dataObj.getTime() - Date.now()) / 60000);
+  if (minuti > 90) return astroI18n.t('notifiche.alle', { ora: oraBreve(evento.dataObj) });
+  if (minuti > 0) return astroI18n.t('notifiche.tra', { n: minuti });
+  if (minuti === 0) return astroI18n.t('notifiche.adesso');
+  return astroI18n.t('notifiche.iniziato', { n: -minuti });
+}
+
+// La notifica passa dal service worker, che è l'unica strada che il telefono
+// accetta e quella che la mette fra le notifiche di sistema; il costruttore
+// resta come ripiego per i browser da scrivania senza service worker.
+async function notificaMostra(titolo, opzioni) {
+  const complete = Object.assign({
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    lang: (astroI18n.lingua && astroI18n.lingua()) || undefined,
+    vibrate: [120, 60, 120],
+    silent: false
+  }, opzioni);
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await Promise.race([
+        navigator.serviceWorker.getRegistration(),
+        new Promise(r => setTimeout(() => r(null), 3000))
+      ]);
+      if (reg && reg.showNotification) {
+        await reg.showNotification(titolo, complete);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.error('Errore notifica dal service worker:', err);
+  }
+  try {
+    const n = new Notification(titolo, complete);
+    n.onclick = () => {
+      window.focus();
+      notificaApri(complete.data);
+      n.close();
+    };
+    return true;
+  } catch (err) {
+    console.error('Errore invio notifica:', err);
+    return false;
+  }
+}
+
+// Cosa fa il tocco sulla notifica: porta alla scheda dell'evento, o
+// all'agenda se gli eventi erano più d'uno.
+function notificaApri(dati) {
+  if (dati && dati.eventoId && eventiCalcolati.some(e => e.id === dati.eventoId)) {
+    vaiAllEvento(dati.eventoId);
+  } else {
+    mostraVista('agenda');
+  }
+}
+
+function mostraNotificaEvento(evento, scaglione) {
+  const titolo = scaglione
+    ? astroI18n.t('notifiche.titoloScaglione', { anticipo: astroI18n.t(scaglione.chiave), titolo: evento.titolo })
+    : evento.titolo;
+  let giudizio = '';
+  try {
+    const locale = typeof circostanzeLocali === 'function' ? circostanzeLocali(evento) : null;
+    if (locale && locale.giudizio) giudizio = locale.giudizio;
+  } catch (err) { /* il giudizio è un di più */ }
+  const righe = [
+    scaglione ? evento.dataTesto : `${notificaQuando(evento)} · ${evento.dataTesto}`,
+    giudizio,
+    evento.spiegazione || ''
+  ].filter(Boolean);
+  notificaMostra(titolo, {
+    body: righe.join('\n'),
+    // Con la scaletta dei preavvisi lo stesso evento avvisa piu' volte:
+    // senza distinguere le targhette ogni promemoria cancellerebbe il
+    // precedente, che e' giusto per un promemoria solo e sbagliato qui.
+    tag: scaglione ? `${evento.id}-${scaglione.min}` : evento.id,
+    data: { eventoId: evento.id, url: urlEvento(evento.id) }
   });
 }
 
-function mostraNotificaEvento(evento, anticipo) {
-  try {
-    const notifica = new Notification(
-      anticipo ? `${anticipo}: ${evento.titolo}` : evento.titolo, {
-      body: `${evento.dataTesto}\n${evento.spiegazione || ''}`.trim(),
-      icon: 'icon-192.png',
-      badge: 'icon-192.png',
-      // Con la scaletta dei preavvisi lo stesso evento avvisa piu' volte:
-      // senza distinguere le targhette ogni promemoria cancellerebbe il
-      // precedente, che e' giusto per un promemoria solo e sbagliato qui.
-      tag: anticipo ? `${evento.id}-${anticipo}` : evento.id
-    });
-    // Cliccando la notifica si torna all'app sulla scheda dell'evento
-    notifica.onclick = () => {
-      window.focus();
-      mostraVista('agenda');
-      const card = document.querySelector(`article[data-evento-id="${evento.id}"]`);
-      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      notifica.close();
-    };
-  } catch (err) {
-    console.error('Errore invio notifica:', err);
-  }
-
-  // La voce parte insieme al promemoria: è uno dei due casi ammessi
-  leggiEvento(evento.id, 'notifica');
+function mostraNotificaGruppo(voci) {
+  const righe = voci.map(({ evento, scaglione }) =>
+    `${evento.titolo} — ${scaglione ? astroI18n.t(scaglione.chiave) : notificaQuando(evento)}`);
+  notificaMostra(astroI18n.t('notifiche.gruppoTitolo', { n: voci.length }), {
+    body: righe.join('\n'),
+    tag: 'astrocal-gruppo',
+    renotify: true,
+    data: { url: './?vista=agenda' }
+  });
 }
 
-// Aggiorna l'aspetto del pulsante “Avvisami” in base al permesso concesso
+// Un messaggio breve dentro all'app, per dire cosa è successo al tocco della
+// campanella: gli `alert` di prima bloccavano tutto e su Android sembravano
+// un errore.
+let notificheAvvisoTimer = null;
+function notificheAvviso(testo) {
+  let el = document.getElementById('notifiche-avviso');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'notifiche-avviso';
+    el.className = 'notifiche-avviso';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  el.textContent = testo;
+  el.classList.add('visibile');
+  clearTimeout(notificheAvvisoTimer);
+  notificheAvvisoTimer = setTimeout(() => el.classList.remove('visibile'), 4500);
+}
+
+// Aggiorna l'aspetto della campanella: piena e colorata se accese, barrata
+// se spente, e il titolo dice quale delle due cose manca.
 function aggiornaPulsanteNotifiche() {
   const btn = document.getElementById('btn-notifiche');
-  if (!btn || !('Notification' in window)) return;
-  const attive = Notification.permission === 'granted';
+  if (!btn) return;
+  const attive = notificheAttive();
   btn.classList.toggle('bg-blue-600', attive);
   btn.classList.toggle('text-white', attive);
   btn.classList.toggle('text-blue-400', !attive);
-  btn.title = attive
-    ? `Promemoria attivi: avviso ${ANTICIPO_NOTIFICA_MIN} minuti prima, con lettura vocale`
-    : 'Attiva Notifiche';
+  btn.setAttribute('aria-pressed', attive ? 'true' : 'false');
+  let chiave = 'notifiche.titoloSpente';
+  if (!notificheSupportate()) chiave = 'notifiche.nonSupportate';
+  else if (Notification.permission === 'denied') chiave = 'notifiche.titoloBloccate';
+  else if (attive) chiave = 'notifiche.titoloAttive';
+  btn.title = astroI18n.t(chiave, { n: ANTICIPO_NOTIFICA_MIN });
+  const segno = btn.querySelector('.azione-icona');
+  if (segno) segno.innerHTML = icona(attive ? 'campana' : 'campana-spenta', 18);
+}
+
+async function notificheCommuta() {
+  if (!notificheSupportate()) {
+    notificheAvviso(astroI18n.t('notifiche.nonSupportate'));
+    return;
+  }
+  // Accese → si spengono. Il permesso del browser resta: riaccenderle dopo
+  // non deve richiedere niente.
+  if (notificheAttive()) {
+    notificheSalvaScelta(false);
+    pianificaNotifiche();
+    aggiornaPulsanteNotifiche();
+    notificheAvviso(astroI18n.t('notifiche.spente'));
+    return;
+  }
+  // Bloccate dal browser: chiedere di nuovo non mostra niente (il browser
+  // risponde «denied» da solo), quindi si spiega dove sbloccarle.
+  if (Notification.permission === 'denied') {
+    aggiornaPulsanteNotifiche();
+    notificheAvviso(astroI18n.t('notifiche.bloccate'));
+    return;
+  }
+  let permesso = Notification.permission;
+  if (permesso !== 'granted') {
+    try {
+      permesso = await Notification.requestPermission();
+    } catch (err) {
+      console.error('Errore richiesta permesso notifiche:', err);
+    }
+  }
+  if (permesso !== 'granted') {
+    aggiornaPulsanteNotifiche();
+    notificheAvviso(astroI18n.t(permesso === 'denied' ? 'notifiche.bloccate' : 'notifiche.nonConcesse'));
+    return;
+  }
+  notificheSalvaScelta(true);
+  aggiornaPulsanteNotifiche();
+  notificheAvviso(astroI18n.t('notifiche.accese', { n: ANTICIPO_NOTIFICA_MIN }));
+  // Una prima notifica di sistema, che dice subito se sul telefono arrivano
+  notificaMostra(astroI18n.t('notifiche.confermaTitolo'), {
+    body: astroI18n.t('notifiche.confermaTesto', { n: ANTICIPO_NOTIFICA_MIN }),
+    tag: 'astrocal-conferma'
+  });
+  pianificaNotifiche();
 }
 
 function inizializzaNotifiche() {
   const btn = document.getElementById('btn-notifiche');
   if (btn) {
-    btn.addEventListener('click', async () => {
-      if (!('Notification' in window)) {
-        alert('Questo browser non supporta le notifiche.');
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      aggiornaPulsanteNotifiche();
-      if (permission === 'granted') {
-        new Notification('Notifiche AstroCalendario Ben Attive!', {
-          body: `Ti avviso ${ANTICIPO_NOTIFICA_MIN} minuti prima di ogni evento e ti leggo la scheda.`,
-          icon: 'icon-192.png'
-        });
-        pianificaNotifiche();
-      } else {
-        alert('Permesso notifiche negato.');
-      }
+    // Il titolo lo scrive `aggiornaPulsanteNotifiche` secondo lo stato: la
+    // chiave fissa dell'HTML, riapplicata al cambio lingua, lo riporterebbe
+    // a «Avvisami prima di un evento» anche a notifiche accese.
+    btn.removeAttribute('data-i18n-title');
+    btn.addEventListener('click', notificheCommuta);
+  }
+
+  // Il tocco su una notifica mostrata dal service worker arriva qui
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', e => {
+      const d = e.data;
+      if (d && d.tipo === 'notifica-aperta') notificaApri(d.dati);
     });
   }
 
+  // Con l'app in secondo piano il telefono rallenta o ferma i cronometri:
+  // al ritorno si recupera subito, invece di aspettare il giro successivo.
+  // Anche il permesso può essere cambiato nel frattempo dalle impostazioni.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    aggiornaPulsanteNotifiche();
+    pianificaNotifiche();
+  });
+  if (typeof astroI18n === 'object' && astroI18n.alCambio) astroI18n.alCambio(aggiornaPulsanteNotifiche);
+
   aggiornaPulsanteNotifiche();
-  // Se il permesso era già stato concesso, i promemoria ripartono da soli
+  // Se erano accese, i promemoria ripartono da soli
   pianificaNotifiche();
 }
 

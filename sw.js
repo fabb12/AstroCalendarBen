@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v409';
+const CACHE_NAME = 'astrocal-v410';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -203,6 +203,26 @@ self.addEventListener('activate', (e) => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+// Il tocco su un promemoria. Le notifiche nascono qui (`showNotification`,
+// l'unica strada che Chrome per Android accetta), quindi il tocco arriva qui:
+// se l'app è già aperta la si porta davanti e le si dice quale evento
+// mostrare, altrimenti la si apre direttamente sulla scheda.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const dati = e.notification.data || {};
+  const indirizzo = new URL(dati.url || './', self.registration.scope).href;
+  e.waitUntil((async () => {
+    const finestre = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const aperta = finestre.find(c => c.url.startsWith(self.registration.scope));
+    if (aperta) {
+      try { await aperta.focus(); } catch (err) { /* il sistema può rifiutare */ }
+      aperta.postMessage({ tipo: 'notifica-aperta', dati });
+      return;
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(indirizzo);
+  })());
 });
 
 // Il **proxy proprio** degli aerei (`ADSB_PROXY_URL`), che un service worker

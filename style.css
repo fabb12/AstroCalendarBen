@@ -12826,3 +12826,29 @@ body.demo-in-corso .cosm-aiuto { display: none; }
   width: auto; max-width: 100%; flex: 0 1 auto;
 }
 #vista-demo .studio-barra select, #vista-demo .studio-largo select { width: 100%; }
+
+/* Il messaggio breve della campanella (`notificheAvviso` in app.js): dice
+   cosa è successo al tocco senza fermare tutto come un `alert`. */
+.notifiche-avviso {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 1rem);
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 0.7rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10000;
+}
+.notifiche-avviso.visibile {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
