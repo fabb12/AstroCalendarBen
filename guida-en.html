@@ -1385,28 +1385,35 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
 
     <h3 style="margin-top:28px">Cosmic stories</h3>
     <p>In the Demo page, <b>Cosmic stories</b> tab, there are stories for children in which sky objects have
-    a face and a voice: two big eyes, eyebrows that follow the emotions and a mouth that moves only when that
-    character is speaking, while the others look at it. The subtitle always says the name of whoever is
-    speaking. The story chooses the evening and the camera, and the sky it starts from is the real one. In
-    the 3D view the face sits <b>on the body itself</b> — which grows just enough to carry it, and takes the
-    light of its Sun — and a character can leave its orbit, jump, dance and set off special effects; in the
-    planetarium an object that is too small gets its face in a small disc next to it, joined by a thread.
-    The first episode is <b>“Has the Moon lost a piece?”</b>. Below the list you can try a character up close
-    and read the example to write your own.</p>
+    a face, a body and a voice: big eyes, eyebrows that follow the emotions and a mouth that moves only when
+    that character is speaking, while the others look at it. There are eleven strong faces: calm, happy,
+    laughing, surprised, worried, sad, thinking, excited, in love, angry, sleepy. Characters are <b>she</b>
+    or <b>he</b>: the Moon, the Earth and Venus have long lashes and lips; Mars, Jupiter and Saturn bushy
+    eyebrows, and some a moustache or a beard. And each one has <b>its own body</b>: Voyager is a probe with
+    its dish, the ISS and Hubble have their panels, an asteroid is a rock, a comet has its coma and tail,
+    Saturn its rings. The subtitle always says the name of whoever is speaking. The story chooses the
+    evening and the camera, and the sky it starts from is the real one. The face sits <b>on the object</b>:
+    in the 3D view the body grows just enough to carry it (and takes the light of its Sun), and a character
+    can leave its orbit, jump, dance and set off special effects; in the planetarium an object that is too
+    small carries its drawn body in its own place, and goes next to it, joined by a thread, only when there
+    is no room there. The first episode is <b>“Has the Moon lost a piece?”</b>. Below the list you can try a
+    character up close and read the example to write your own.</p>
     <dl class="kv">
-      <div><dt>The Story studio</dt><dd>To make a story without writing code. Choose a <b>goal</b> (the
-      phases of the Moon, the giants, the seasons, a trip, an adventure, or a free story): it is a complete
-      story to change. Write what the audience should understand, choose the <b>characters</b>, then build
-      the <b>scenes</b> (the Solar System, a planet up close, Earth and Moon, the sky from home; the day and
-      the days passing) and inside each scene the <b>moments</b>: who speaks, what they say, with which face,
-      and the actions that happen meanwhile — flying to another body in an arc, hopping, with a
-      loop-the-loop or by teleport, going back to its orbit, jumping, shaking, dancing, changing size,
-      explosions, fireworks, hearts, lightning. The <b>ideas</b> suggest the face and actions that suit the
-      words, and “Suggest the next moment” writes a draft. In <b>Say it in words</b> you write, one thing per
-      line, “Mars flies to Jupiter doing a loop” or “Jupiter: Welcome!”. <b>Checking the goal</b> tells you
-      whether everyone speaks, whether the story opens with a question and closes on the goal, whether the
-      lines are short. “Try this scene” and “Watch the story” start it; “Save to my demos” puts it among your
-      demos, to export and share.</dd></div>
+      <div><dt>The Story studio</dt><dd>To make a story without writing code, by tapping faces and buttons.
+      At the top you choose the story, watch it and save it. <b>1 · The idea</b>: tap a ready-made story (the
+      phases of the Moon, the giants, the seasons, a trip, an adventure, or a free story) and write what the
+      audience should understand. <b>2 · Who acts</b>: tap the characters' figures. <b>3 · The script</b>:
+      each scene has four buttons for the place (the Solar System, near a planet, Earth and Moon, the sky
+      from home) and the figures of who is there; framing, day and days passing are folded in “Framing and
+      date”. Inside, one line after another: tap who speaks, write what they say in the speech bubble, tap
+      their face, and add what happens meanwhile — flying to another body, going back to its orbit, jumping,
+      shaking, dancing, changing size, explosions, fireworks, hearts, lightning. Each action is a label: tap
+      it to change it, × to remove it. The <b>ideas</b> suggest actions that suit the words and the face. At
+      the bottom of each scene, <b>Say it in words</b>: “Mars flies to Jupiter doing a loop”, “Jupiter:
+      Welcome!”, “explosion on Saturn”, and Enter. <b>4 · The check</b> tells you whether everyone speaks,
+      whether the story opens with a question and closes on the goal, whether the lines are short. “Try this
+      scene” and “Watch the story” start it; “Save to my demos” puts it among your demos, to export and
+      share.</dd></div>
       <div><dt>The commands</dt><dd><code>character_show { target: 'Moon', expression: 'worried' }</code> makes a
       character appear in the scene; <code>character_speak { target: 'Moon', id: '…' }</code> (or <code>text: '…'</code>)
       makes it say the scene's line; <code>character_expression</code>, <code>character_look_at</code>,
@@ -1415,8 +1422,9 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       its orbit and <code>character_return</code> puts it back; <code>character_animate</code>
       (<code>jump</code>, <code>shake</code>, <code>dance</code>, …), <code>character_scale</code> and
       <code>effect { type: explosion, target: 'Jupiter' }</code> also work in the planetarium.
-      The expressions are <code>neutral</code>, <code>happy</code>, <code>surprised</code>, <code>worried</code>,
-      <code>sad</code>, <code>thinking</code>, <code>excited</code> and <code>sleepy</code>.</dd></div>
+      The expressions are <code>neutral</code>, <code>happy</code>, <code>laughing</code>, <code>surprised</code>,
+      <code>worried</code>, <code>sad</code>, <code>thinking</code>, <code>excited</code>, <code>love</code>,
+      <code>angry</code> and <code>sleepy</code>.</dd></div>
       <div><dt>One line per scene</dt><dd>Each character lives in the scene where it appears: to make it
       speak, look, move or change face, show it in that same scene. The Studio makes one scene per moment
       by itself.</dd></div>

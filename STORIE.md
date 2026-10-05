@@ -24,9 +24,9 @@ ricorda (`astrocal_demo_scheda_v1`); un link `?demo=` apre sempre la prima.
    `corpiMinoriDisegna` nel planetario (`storRicevuta`), i corpi già
    proiettati da `solDisegna` e da `solDisegnaVicino` nella vista 3D
    (`storDisegnaSistema`). Niente seconda proiezione. Una falce resta una
-   falce (il volto ci sta sopra), un puntino resta un puntino (il volto sta in
-   un **disco grafico** accanto, con un filo e un anello che lo legano
-   all'astro vero). La storia sceglie la sera, il luogo e la camera, come ogni
+   falce (il volto ci sta sopra); un puntino porta, al suo posto, il **corpo
+   disegnato** del personaggio (§I corpi, v411), e solo se lì non c'è spazio
+   il corpo va accanto, con un filo e un anello che lo legano all'astro vero. La storia sceglie la sera, il luogo e la camera, come ogni
    demo; le fasi e le distanze sono quelle di quell'istante. **Dalla v409**,
    solo nella vista 3D e solo per chi è in scena, la storia può cambiare
    l'astro: lo fa crescere quanto basta a portare il volto addosso, lo fa
@@ -88,7 +88,12 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 | `iride` | colore degli occhi | della famiglia |
 | `sottotitolo` | colore del nome nel sottotitolo (su fondo scuro: va chiaro) | della famiglia |
 | `guance` | colore del rossore | della famiglia |
-| `forma` | `disco` o `riquadro` (il supporto quando il volto sta fuori) | `disco`; `riquadro` per stazioni e sonde |
+| `genere` | `f` o `m`: i tratti di lei o di lui (§Lei e lui) | della famiglia |
+| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble` | della famiglia |
+| `decoro` | il disegno sul corpo di un pianeta: `bande`, `macchia`, `continenti`, `calotta`, `nubi`, `crateri` | — (le lune: crateri) |
+| `baffi`, `barba` | solo lui: `manubrio`, `folti`, `spioventi`; `folta`, `onde`, `pizzetto`, `ispida` | — |
+| `peli` | il colore di baffi, barba e sopracciglia folte | la pelle scurita |
+| `labbra`, `trucco` | solo lei: il colore delle labbra e dell'ombretto | `#d9577b`; — |
 | `scala` | quanto del disco occupa il volto (0,3–0,95 del raggio) | 0,78 |
 | `dx`, `dy` | dove sta il volto rispetto al centro, in raggi | 0 |
 | `occhi` | `{ r, distanza, alto }` in frazioni del volto | `{ 0.235, 0.35, -0.08 }` |
@@ -112,9 +117,23 @@ tutte le viste (`storCanonico`).
 
 ## Occhi, bocca, espressioni
 
-**Gli occhi**: bianco con un filo d'azzurro in basso, iride a gradiente col
-colore del personaggio, pupilla, due riflessi, palpebra di sopra e di sotto
-(pelle scurita), riga delle ciglia sul bordo, contorno scuro con un alone
+**Gli occhi** (v411): l'occhio è **l'apertura fra le due palpebre**
+(`storAperturaOcchio`, funzione pura): la parte dell'ellisse che sta sotto
+al bordo della palpebra di sopra e sopra a quello della palpebra di sotto,
+due file di punti. Il bianco, l'iride e il contorno seguono quel bordo.
+Fino alla v410 le palpebre erano due stesure del colore della pelle
+appoggiate sull'occhio: sopra a un pianeta vero, di un altro colore,
+sembravano un paio d'occhiali, e a occhio spalancato il tratto della
+palpebra diventava una virgola scura in cima all'iride — da lontano una
+**seconda pupilla** (e la crocetta accanto al riflesso grande ci metteva
+del suo: tolta). La palpebra di sopra segue la curva del bulbo e si
+inclina (`inclinaSu`: verso il naso la rabbia, verso fuori la tristezza);
+quella di sotto si inarca all'insù (`arcoGiu`): gli occhi che sorridono
+sono mezzelune, con una piega leggera sotto. Chiuso, l'occhio è una riga:
+all'ingiù (il sonno, il battito) o ad arco all'insù (`felici`, la risata).
+Iride a gradiente col colore del personaggio, pupilla (a stella
+nell'entusiasmo, a cuore nell'amore), due riflessi (quattro negli occhi
+lucidi della tristezza), contorno grosso sopra e sottile sotto, alone
 chiaro sotto (un volto sulla parte in ombra di una falce resta leggibile). La
 corsa dell'iride è tosata perché iride, pupilla e riflessi restino **sempre**
 dentro l'ellisse dell'occhio. Lo sguardo va allo spettatore, a un oggetto
@@ -127,18 +146,86 @@ rado col movimento ridotto), con un generatore seminato per personaggio.
 `ciglio: { alza, inclina, curva, asimmetria }` (inclina > 0 alza l'estremo
 verso il naso), `bocca` (una forma di `STOR_BOCCHE`), `curva` (+ sorriso, −
 broncio), `guance`, `sguardo` (`null` o `{ x, y }`), `spostaBocca`, più le
-manopole del corpo (tutte facoltative): `occhi` (quanto si allargano),
-`iride`, `stelle` (pupille a stella), `testa` (inclinazione in radianti),
-`rimbalzo`, `tremito` e `segno` (il segno da fumetto); e le chiavi
-`storie.espressione.<nome>` nei due dizionari. Il DSL la accetta da sé. Di
-serie ci sono `neutral`, `happy`, `surprised`, `worried`, `sad`, `thinking`,
-`excited` e `sleepy`. Sono **esagerate di proposito**: un volto largo
+manopole (tutte facoltative): `occhi` (quanto si allargano), `iride`,
+`inclinaSu`, `arcoGiu`, `felici`, `lucidi`, `stelle` (pupille a stella),
+`cuori` (pupille a cuore), `rosso` (la fronte che si arrossa), `testa`
+(inclinazione in radianti), `rimbalzo`, `tremito` e `segno` (il segno da
+fumetto); e le chiavi `storie.espressione.<nome>` (e
+`storie.espressioneLei.<nome>`, la forma femminile che lo Studio usa per
+lei) nei due dizionari, più `studio.parole.umore.<nome>`. Il DSL la accetta
+da sé. Di serie ci sono `neutral`, `happy`, `laughing` (v411), `surprised`,
+`worried`, `sad`, `thinking`, `excited`, `love` (v411), `angry` (v411) e
+`sleepy`. Sono **esagerate di proposito**: un volto largo
 settanta pixel, per dei bambini, si legge solo se dice una cosa sola e la
 dice forte.
 
 **Le forme della bocca** (`STOR_BOCCHE`): `chiusa`, `piccola`, `A`, `E`, `O`,
-`sorriso`, `grande`, `triste`, `ondulata`, con mezza larghezza, apertura,
-rotondità, curvatura e `onda` (la bocca che trema).
+`sorriso` (aperto, coi denti di sopra), `grande`, `risata`, `triste` (col
+labbro che trema), `ondulata`, `denti` (i denti stretti della rabbia), con
+mezza larghezza, apertura, rotondità, curvatura, `onda` (la bocca che trema)
+e `denti`.
+
+## Lei e lui (v411)
+
+Ogni personaggio ha un `genere` (`f`, `m`), che segue il nome italiano e il
+mito: la Luna, la Terra, Venere, Io, Europa, Callisto, le stazioni e le
+Voyager sono lei; il Sole, Mercurio, Marte, Giove, Saturno, Urano, Nettuno,
+Plutone, Ganimede, Titano e Hubble sono lui. Una famiglia ha il suo di
+serie (le lune e le comete lei, i pianeti e gli asteroidi lui).
+
+- **Lei**: occhi un po' più grandi e alti, contorno di sopra più deciso,
+  tre ciglia lunghe e arricciate all'angolo esterno e due piccole sotto,
+  sopracciglia sottili e arcuate, le **labbra** (il labbro di sotto pieno,
+  quello di sopra con l'arco di Cupido, e da aperta il contorno nel colore
+  delle labbra), a Venere anche l'ombretto (`trucco`).
+- **Lui**: occhi un po' più stretti, un ciglio corto, **sopracciglia folte**
+  (nel colore dei `peli` se ha baffi o barba), il naso col bulbo, la bocca
+  d'inchiostro; e a chi li ha baffi e barba (`disegnaBaffi`,
+  `disegnaBarba`): il Sole i baffi folti arancioni, Giove la barba bianca
+  da re degli dèi, Saturno i baffi a manubrio, Nettuno la barba a onde,
+  Marte il pizzetto, Hubble i baffi grigi.
+
+Un profilo scritto male non fa una Luna coi baffi: `storProfilo` toglie
+baffi e barba a lei, labbra e ombretto a lui.
+
+## I corpi (v411)
+
+`storie-cosmiche.js` §6-quater, `disegnaCorpo`. Fino alla v410 un astro
+troppo piccolo per portare il volto lo portava in un adesivo tondo, per
+tutti: la Voyager parlava da un disco come se fosse un pianeta. Adesso il
+personaggio ha **il suo corpo**, la `sagoma`:
+
+| Sagoma | Il corpo | Dove sta il volto |
+|---|---|---|
+| `stella` | il disco con la corona di fiamme che gira | sul disco |
+| `pianeta`, `luna` | il disco col suo `decoro` (le bande e la Grande Macchia di Giove, i continenti della Terra, la calotta di Marte, le nubi di Venere, la macchia di Nettuno, i crateri) | sul disco |
+| `anelli` | Saturno: metà degli anelli dietro, metà davanti, sotto alla bocca | sul disco |
+| `asteroide` | un sasso a patata, diverso per ognuno (`patata`, seminata dal nome), coi crateri | sul sasso |
+| `cometa` | il nucleo, la chioma, la coda di polvere e quella degli ioni, dalla parte opposta al Sole (se si sa dov'è) | sul nucleo |
+| `voyager` | la grande parabola, il corpo a dieci facce dorato, il magnetometro, i tre generatori, la piattaforma con la telecamera, un'antennina in testa | sulla parabola |
+| `iss` | il traliccio, otto pannelli, i radiatori, il modulo centrale | sul modulo |
+| `tiangong` | le due ali e il laboratorio a T | sul modulo |
+| `hubble` | il tubo argentato col coperchio aperto, i due pannelli | sul tubo |
+
+`STOR_CORPI` dice per ognuna dove sta il volto (`storVoltoNelCorpo`) e
+quanto il corpo esce dal suo raggio (`ingombro`: i pannelli, gli anelli, la
+coda), che serve a non metterlo sopra a un altro personaggio.
+
+**Dove si mette.** Nel planetario, con `size: auto`, un astro abbastanza
+grande porta il volto da sé (la Luna ingrandita, il Sole); uno piccolo
+porta il suo corpo **al suo posto**, centrato sull'astro: l'astro è lui.
+Solo se lì il corpo non c'entra (il bordo dello schermo, un altro
+personaggio troppo vicino) va accanto, col filo; `size: badge` lo mette
+sempre accanto. Nella 3D l'app disegna le sonde come una crocetta e le
+stazioni come un puntino: per le sagome che non sono un disco
+(`STOR_SAGOME_FORMA`) il corpo lo disegna il modulo lì dove l'app ha messo
+l'astro, e prende la luce del suo Sole come il volto. Le sonde e i mondi
+minori che la scena ha spento si disegnano lo stesso se sono in scena
+(`storInScena`, chiamata da `solDisegna`).
+
+L'anteprima della pagina Demo e le figurine dello Studio
+(`StorieCosmiche.ritratto`, un ritratto fermo su una tela piccola) usano lo
+stesso corpo.
 
 ## Lo stile: la fiaba d'inchiostro (v408)
 
@@ -334,7 +421,7 @@ spegne. Aggiungere un effetto: una voce in `STOR_EFFETTI` (con la durata di
 serie), un ramo in `storDisegnaEffetto`, `storie.effetto.<nome>` nei
 dizionari.
 
-## Lo Studio delle storie (v409)
+## Lo Studio delle storie (v409, a figurine dalla v411)
 
 `storie-studio.js` (prefisso `studio`), nella linguetta delle storie. Una
 storia è un **progetto**: scopo, titolo, che cosa deve capire chi guarda,
@@ -344,6 +431,32 @@ chi è in scena) fatte di **momenti** (chi parla, la battuta, la faccia, la
 durata) con le loro **azioni** (cambia faccia, guarda, vola verso, torna,
 animazione, cambia misura, effetto, palpebre, esce; ognuna con il suo
 «quando»: all'inizio, a metà, alla fine, per tutto il momento).
+
+**L'interfaccia (v411).** Le scelte di tutti i giorni si fanno toccando un
+volto o un bottone acceso/spento (`aria-pressed`), non aprendo un menu:
+
+- in alto la barra: quale storia, «Nuova storia», **Guarda la storia**,
+  «Salva nelle mie demo», e il resto (duplica, esporta, importa, copione,
+  elimina) in «Altro»;
+- **1 · L'idea**: le storie pronte sono schede da toccare, con le figurine
+  dei loro personaggi; sotto, titolo e scopo;
+- **2 · Chi recita**: le figurine dei personaggi (col loro corpo e «lei» o
+  «lui»), in tre gruppi — il Sole e i pianeti, le lune e i mondi piccoli,
+  stazioni e sonde;
+- **3 · Il copione**: ogni scena ha quattro bottoni per l'ambiente, le
+  figurine di chi c'è, e «Inquadratura e data» chiusa (col riassunto su una
+  riga). Ogni momento è una battuta a fumetto: le figurine di chi può
+  parlare, la figurina grande con la faccia scelta accanto al fumetto, una
+  fila di **facce da toccare** (undici volti di quel personaggio, coi nomi
+  al femminile per lei), «Intanto» con le azioni come etichette (toccare
+  apre i campi, × la toglie), le idee e un bottone per tipo d'azione. In
+  fondo alla scena, **Scrivi a parole** (Invio applica a quella scena);
+- **4 · Il controllo**: chiuso in una riga («tutto a posto» o «3 consigli
+  per migliorarla»);
+- **5 · Guarda e salva**, di nuovo in fondo.
+
+Le figurine sono dipinte una volta sola e tenute come immagini (`figurina`):
+lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
 
 - **Il copione** (`studioCopione`, funzione pura): un momento diventa una
   scena del DSL, perché il motore vuole una battuta per scena. La camera
@@ -362,7 +475,7 @@ animazione, cambia misura, effetto, palpebre, esce; ognuna con il suo
   «boom» → esplosione, «andiamo» → viaggio, «amici» → cuori — e dalla
   faccia), l'ambiente adatto a chi è in scena, il momento dopo (parla chi non
   ha appena parlato; la bozza presenta, risponde o ricorda lo scopo).
-- **Dillo a parole** (`studioCapisci` + `studioApplica`): una riga alla
+- **Scrivi a parole** (`studioCapisci` + `studioApplica`): una riga alla
   volta, «Marte vola verso Giove facendo un giro», «Giove dice: Benvenuto!»,
   «esplosione su Saturno», «la Luna è triste», «alla fine Saturno balla tre
   volte». Le parole chiave stanno nei dizionari (`studio.parole.*`, separate
@@ -421,6 +534,13 @@ scaduto, la validazione dei comandi nuovi, e lo Studio: ogni modello in due
 lingue diventa un copione valido che supera il suo controllo, i giorni divisi
 senza buchi, i comandi a parole in italiano e in inglese, gli aiuti, i
 progetti rotti.
+Dalla v411 anche: il corpo giusto per ogni famiglia (la sonda è una sonda,
+l'asteroide un sasso, la cometa ha la coda) col volto dentro al corpo, il
+corpo sull'astro e accanto solo quando lì non c'entra, lei e lui
+(sopracciglia, labbra, baffi e barba, e nessuna Luna coi baffi), e l'occhio
+come apertura fra le palpebre: bordi in ordine e dentro all'ellisse per
+ogni espressione, la mezzaluna del sorriso, la palpebra inclinata della
+rabbia e della tristezza, la riga ad arco della risata.
 La seconda, in un Chromium senza rete: la sezione della pagina Demo e
 l'anteprima, il volto sulla Luna disegnata (stessa proiezione), l'ampiezza di
 un WAV vero nel grafo Web Audio, i confini di una sintesi finta, il ritmo del

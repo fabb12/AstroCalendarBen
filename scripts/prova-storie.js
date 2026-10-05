@@ -377,17 +377,80 @@ prova('fuori schermo, occultato, troppo piccolo, nascosto, non disegnato: niente
   ], 800, 600);
   assert.equal(d.length, 0, d.map(x => x.id).join());
 });
-prova('un oggetto piccolo ha il volto in un disco grafico accanto, e l\'astro resta della sua misura', () => {
+prova('un oggetto piccolo ha il suo corpo disegnato sopra di sé; accanto, col filo, solo se lì non c\'è posto o con size: badge', () => {
   scena({ Jupiter: {} });
   const d = S.disegnaPersonaggi(telaFinta().ctx, 'prova', [corpo('Jupiter', 400, 300, 3)], 800, 600)[0];
   assert.equal(d.addosso, false);
   assert.equal(d.astro.r, 3, 'il corpo non cresce');
-  assert.ok(Math.hypot(d.x - 400, d.y - 300) > d.R, 'il disco sta accanto, non sopra');
-  assert.ok(d.x - d.R >= 0 && d.x + d.R <= 800 && d.y - d.R >= 0 && d.y + d.R <= 600, 'dentro lo schermo');
+  assert.equal(d.corpo, 'pianeta', 'il corpo è quello del pianeta');
+  assert.ok(d.centrato && d.x === 400 && Math.abs(d.y - 300) < 2, 'il corpo sta sull\'astro (v411)');
+  // con size: badge (e vicino al bordo) va accanto, legato da un filo
+  scena({ Jupiter: { misura: 'badge' } });
+  const b = S.disegnaPersonaggi(telaFinta().ctx, 'prova', [corpo('Jupiter', 400, 300, 3)], 800, 600)[0];
+  assert.ok(!b.centrato && Math.hypot(b.x - 400, b.y - 300) > b.R, 'il disco sta accanto, non sopra');
+  assert.ok(b.x - b.R >= 0 && b.x + b.R <= 800 && b.y - b.R >= 0 && b.y + b.R <= 600, 'dentro lo schermo');
+  scena({ Jupiter: {} });
+  const bordo = S.disegnaPersonaggi(telaFinta().ctx, 'prova', [corpo('Jupiter', 795, 300, 3)], 800, 600)[0];
+  assert.ok(!bordo.centrato && bordo.x + bordo.R <= 800, 'al bordo dello schermo va accanto');
   scena({ Jupiter: {} });
   const grande = S.disegnaPersonaggi(telaFinta().ctx, 'prova', [corpo('Jupiter', 400, 300, 120)], 800, 600)[0];
   assert.equal(grande.addosso, true);
+  assert.equal(grande.corpo, null, 'un astro grande porta il volto da sé');
   assert.ok(Math.abs(grande.R - 120 * S.profilo('Jupiter').scala) < 1e-9, 'proporzionato al disco');
+});
+prova('ogni famiglia ha il corpo giusto: la sonda è una sonda, l\'asteroide un sasso, la cometa ha la coda', () => {
+  const attesi = { voyager1: 'voyager', 'Voyager 2': 'voyager', iss: 'iss', Tiangong: 'tiangong', hubble: 'hubble', Vesta: 'asteroide',
+    'min:12P/Pons-Brooks': 'cometa', Saturn: 'anelli', Jupiter: 'pianeta', Moon: 'luna', Sun: 'stella', Pluto: 'luna' };
+  for (const [id, sagoma] of Object.entries(attesi)) assert.equal(S.profilo(id).sagoma, sagoma, id);
+  // il volto sta dentro al suo corpo: sulla parabola, sul modulo, sul sasso
+  for (const sagoma of S.STOR_SAGOME) {
+    const v = S.voltoNelCorpo(sagoma, 0, 0, 50);
+    assert.ok(Math.hypot(v.cx, v.cy) + v.R <= 50 * 1.01, sagoma + ': il volto non esce dal corpo');
+    assert.ok(v.R >= 50 * 0.55, sagoma + ': il volto resta leggibile');
+  }
+  // nella 3D una sonda (che l'app disegna come una crocetta) ha il corpo disegnato
+  scena({ voyager1: {} });
+  const d = S.disegnaPersonaggi(telaFinta().ctx, 'sistema', [corpo('voyager1', 400, 300, 4)], 800, 600)[0];
+  assert.equal(d.corpo, 'voyager');
+  assert.equal(d.addosso, true, 'il corpo sta dove l\'app ha messo la sonda');
+  assert.ok(d.R * S.STOR_CORPI.voyager.volto[2] >= S.STOR_VOLTO_MIN_PX, 'il volto è leggibile');
+});
+prova('lei e lui: ciglia, sopracciglia, labbra, baffi e barba', () => {
+  const lei = ['Moon', 'Earth', 'Venus', 'Io', 'Europa', 'Callisto', 'iss'], lui = ['Sun', 'Mars', 'Jupiter', 'Saturn', 'Neptune', 'Mercury', 'hubble'];
+  for (const id of lei) assert.equal(S.profilo(id).genere, 'f', id);
+  for (const id of lui) assert.equal(S.profilo(id).genere, 'm', id);
+  const g = id => S.geometria(0, 0, 50, S.profilo(id), BASE_ST());
+  assert.ok(g('Mars').cigli[0].spessore > g('Moon').cigli[0].spessore * 1.6, 'lui ha le sopracciglia folte');
+  assert.ok(S.profilo('Moon').labbra && !S.profilo('Mars').labbra, 'le labbra sono di lei');
+  assert.ok(S.profilo('Jupiter').barba && S.profilo('Saturn').baffi, 'Giove ha la barba, Saturno i baffi');
+  // un profilo scritto male non fa una Luna coi baffi
+  S.STOR_PERSONAGGI.Prova = { famiglia: 'luna', genere: 'f', baffi: 'folti' };
+  assert.equal(S.profilo('Prova').baffi, null);
+  delete S.STOR_PERSONAGGI.Prova;
+});
+prova('gli occhi sono l\'apertura fra le palpebre: niente seconda pupilla, mezzelune nel sorriso, una riga a occhi chiusi', () => {
+  const p = S.profilo('Moon');
+  const g = (e, extra) => S.geometria(0, 0, 60, p, BASE_ST(e, extra));
+  for (const e of Object.keys(S.STOR_ESPRESSIONI)) {
+    for (const occ of g(e).occhi) {
+      if (!occ.apertura) { assert.ok(S.STOR_ESPRESSIONI[e].felici, e + ': chiuso solo se ride'); continue; }
+      // il bordo di sopra sta sempre sopra a quello di sotto, e l'apertura sta nell'ellisse
+      occ.apertura.sopra.forEach(([x, y], i) => {
+        assert.ok(y <= occ.apertura.sotto[i][1] + 1e-6, e + ': bordi in ordine');
+        assert.ok(((x - occ.cx) / occ.rx) ** 2 + ((y - occ.cy) / occ.ry) ** 2 <= 1 + 1e-6, e + ': dentro l\'occhio');
+      });
+    }
+  }
+  // il sorriso: la palpebra di sotto sale di più al centro che ai lati (la mezzaluna)
+  const h = g('happy').occhi[0];
+  assert.ok(h.palpebraGiu(0) < h.palpebraGiu(0.8) - 2, 'felice: mezzaluna');
+  // la rabbia abbassa la palpebra verso il naso, la tristezza verso fuori
+  const a = g('angry').occhi[1], s = g('sad').occhi[1];   // occhio destro: il naso è a sinistra (u < 0)
+  assert.ok(a.palpebraSu(-0.6) > a.palpebraSu(0.6), 'arrabbiato: giù verso il naso');
+  assert.ok(s.palpebraSu(0.6) > s.palpebraSu(-0.6), 'triste: giù verso fuori');
+  // a occhi chiusi non c'è apertura, e ridendo la riga è all'insù
+  assert.equal(g('neutral', { battito: 1 }).occhi[0].apertura, null);
+  assert.ok(g('laughing').occhi[0].felici && !g('laughing').occhi[0].apertura, 'la risata chiude gli occhi ad arco');
 });
 prova('due dischi grafici non si sovrappongono, e restano dentro anche ai bordi', () => {
   scena({ Earth: {}, Moon: {} });
@@ -457,7 +520,7 @@ prova('le storie predefinite si validano e usano solo personaggi ed espressioni 
 prova('validazione: errori localizzati per bersaglio, espressione, sguardo, misura, scena e parametri', () => {
   const casi = [
     [sc('planetarium_view', "character_show { target: 'Pandora' }"), /Personaggio sconosciuto: Pandora/],
-    [sc('planetarium_view', "character_show { target: 'Moon', expression: 'angry' }"), /Espressione sconosciuta: angry \(ammesse: neutral/],
+    [sc('planetarium_view', "character_show { target: 'Moon', expression: 'furious' }"), /Espressione sconosciuta: furious \(ammesse: neutral/],
     [sc('planetarium_view', "character_show { target: 'Moon', look: 'Pandora' }"), /Non so dove guardare/],
     [sc('planetarium_view', "character_show { target: 'Moon', size: 'huge' }"), /size vuole auto, disk o badge/],
     [sc('planetarium_view', "character_speak { target: 'Moon', text: 'ciao' }"), /deve comparire in questa scena/],
@@ -808,7 +871,9 @@ prova('ogni testo dello Studio e dei comandi nuovi esiste in tutte e due le ling
   for (const k of St.STUDIO_AMBIENTI) chiavi.add('studio.ambiente.' + k);
   for (const k of ['solo3d', 'destinazioneIgnota', 'versoSeStesso', 'valoreIgnoto', 'numeroFuori', 'coloreNonValido']) chiavi.add('demo.err.' + k);
   for (const scopo of Object.keys(St.STUDIO_SCOPI)) for (const c of ['nome', 'titolo', 'obiettivo', 'descrizione']) chiavi.add(`studio.scopo.${scopo}.${c}`);
-  for (const k of chiavi) for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi[k], 'string', `${k} manca in ${l}`);
+  // una voce col plurale è un oggetto { uno, altri }
+  const testo = v => typeof v === 'string' || !!(v && typeof v.altri === 'string' && typeof v.uno === 'string');
+  for (const k of chiavi) for (const l of ['it', 'en']) assert.ok(testo(DIZ[l].messaggi[k]), `${k} manca in ${l}`);
   const it = Object.keys(DIZ.it.messaggi).filter(k => /^studio\./.test(k)), en = Object.keys(DIZ.en.messaggi).filter(k => /^studio\./.test(k));
   assert.deepEqual(it.sort(), en.sort(), 'le due lingue hanno le stesse chiavi dello Studio');
 });
