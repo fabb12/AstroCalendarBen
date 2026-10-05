@@ -2236,6 +2236,11 @@ function cosmDisegna(ctx) {
   cosmDisegnaSonde(ctx, cam);
   cosmDisegnaLetture(ctx, cam);
   cosmDisegnaRiga(ctx, cam);
+  // Le Storie cosmiche (storie-cosmiche.js): i personaggi che viaggiano per
+  // l'universo, sopra alla carta e lontani dalla riga della scala
+  if (typeof storDisegnaCosmo === 'function') {
+    storDisegnaCosmo(ctx, cam, { su: (cosm.regia ? (cosm.rigaY || 26) + 34 : 60), giu: (cosm.fondoPx || 70) + 8, lati: 12 });
+  }
   if (cosm.ui && ora > (cosm.prossimaUi || 0)) {
     cosm.prossimaUi = ora + 300;
     cosmAggiornaInterfaccia();
@@ -2827,6 +2832,77 @@ function cosmRegia(stato) {
   }
 }
 
+// =====================================================================
+// 11-ter. I luoghi delle Storie cosmiche
+// =====================================================================
+/* Nelle Storie cosmiche (storie-cosmiche.js) i personaggi viaggiano per la
+ * carta: la Voyager parte da dov'è oggi, la Terra dal suo posto attorno al
+ * Sole, e possono andare verso un **luogo** dell'universo. I luoghi sono le
+ * tappe della scala (per nome delle demo: `oort`, `milky_way`, `laniakea`…)
+ * e i paletti con un nome (`andromeda`, `sirius`, `alpha_centauri`…), alla
+ * loro posizione vera. Le tappe centrate sul Sole (i pianeti, Kuiper, la
+ * nube di Oort, l'universo) non hanno un punto: andarci vuol dire arrivare
+ * al loro **bordo**, nella direzione in cui sta andando la Voyager 1 — la
+ * strada che qualcosa di nostro sta facendo davvero. `L` è la scala a cui
+ * il luogo si inquadra (la usa lo Studio per far seguire la camera). */
+const COSM_LUOGHI_SEGNI = {
+  alpha_centauri: 'alfaCen', sirius: 'sirio', orion_nebula: 'orione', galactic_center: 'centro',
+  lmc: 'gnm', smc: 'pnm', andromeda: 'm31', triangulum: 'm33', virgo_cluster: 'ammassoVergine', great_attractor: 'grandeAttrattore'
+};
+function cosmDirezioneFuori() {
+  const m = typeof cosmMisuraSonda === 'function' ? cosmMisuraSonda('voyager1', Date.now()) : null;
+  const v = m && m.gal ? m.gal : COSM_NASO;
+  const n = Math.hypot(v.x, v.y, v.z) || 1;
+  return cosmVettore(v.x / n, v.y / n, v.z / n);
+}
+function cosmLuogo(nome) {
+  const sg = COSM_LUOGHI_SEGNI[nome] && COSM_SEGNI.find(x => x.id === COSM_LUOGHI_SEGNI[nome]);
+  if (sg) {
+    const d = Math.hypot(sg.v.x, sg.v.y, sg.v.z);
+    return { id: nome, v: sg.v, L: Math.log10(Math.max(d * 1.7, 6 * COSM_AL)) };
+  }
+  const s = COSM_STRUTTURE.find(x => x.demo === nome || x.id === nome);
+  if (!s || s.demo === 'voyager') return null;
+  const c = cosmCentroDi(s);
+  let v;
+  if (s.centroDi === 'terra') v = c;
+  else if (!c || s.raggio || s.id === 'universo') {
+    const f = cosmDirezioneFuori();
+    v = cosmVettore(f.x * s.r, f.y * s.r, f.z * s.r);
+  } else v = c;
+  return { id: nome, v, L: Math.log10(s.vista) };
+}
+function cosmLuoghi() {
+  return Object.keys(COSM_LUOGHI_SEGNI).concat(COSM_STRUTTURE.map(s => s.demo));
+}
+// Dove sta un corpo del Sistema Solare sulla carta (coordinate galattiche,
+// in UA): i pianeti, la Luna, le Voyager al loro posto di oggi; una luna di
+// un altro pianeta e una stazione stanno col loro pianeta, che a queste
+// scale è lo stesso punto. `null` per chi la carta non conosce.
+function cosmDove(id) {
+  if (id === 'voyager1' || id === 'voyager2') {
+    const m = cosmMisuraSonda(id, Date.now());
+    return m && m.gal ? m.gal : null;
+  }
+  if (id === 'Earth') return cosmTerraGal();
+  if (id === 'iss' || id === 'css' || id === 'hubble') return cosmTerraGal();
+  const v = cosmPosizioneCorpo(id);
+  if (v) return v;
+  const luna = typeof SOL_LUNE !== 'undefined' ? SOL_LUNE.find(l => l.id === id) : null;
+  if (luna && luna.pianeta) return cosmPosizioneCorpo(luna.pianeta);
+  const mondo = typeof sol !== 'undefined' && sol.mondi ? sol.mondi.find(m => m.id === id) : null;
+  if (mondo && mondo.pos) return cosmEclAGal(mondo.pos);
+  return null;
+}
+
+// Il raggio vero di un corpo, in UA (0 per chi sulla carta è un punto)
+function cosmRaggioUA(id) {
+  if (id === 'Sun') return COSM_SOLE_R_UA;
+  if (id === 'Moon') return COSM_LUNA_R_UA;
+  const p = cosmTabellaPianeti().find(x => x.id === id);
+  return p && p.km ? p.km / 2 / COSM_KM_UA : 0;
+}
+
 // L'elenco delle strutture per chi le vuole nominare da fuori (le demo, le
 // prove): l'id interno, quello delle demo e la scala a cui si inquadra
 function cosmStrutture() {
@@ -2862,6 +2938,6 @@ if (typeof module !== 'undefined' && module.exports) {
     cosmEclAGal, cosmGalAEcl, cosmDaRaDec, cosmDaGal, cosmSullaCarta, cosmPesiPiano,
     cosmMisuraSonda, cosmPosizioneSonda, cosmTappe, cosmQuandoA, cosmLDi, cosmCentro, cosmCamera,
     cosmTestoDistanza, cosmTestoAnni, cosmVisibilita, cosmStrutturaDellaScala, cosmStrutture,
-    cosmCercaTesto, cosmRegia, cosmEntra, cosmEsci, cosmRuota, cosmZoomAttorno, COSM_L_INGRESSO, COSM_L_ATTERRA, COSM_L_MIN, cosmAncoraRuotata, cosmCorpi, cosmTestoLuce, cosmContornoElio, COSM_ELIO, COSM_NASO, cosmRaggioElio, cosmParametriElio
+    cosmCercaTesto, cosmRegia, cosmEntra, cosmEsci, cosmLuogo, cosmLuoghi, cosmDove, cosmRaggioUA, COSM_LUOGHI_SEGNI, cosmRuota, cosmZoomAttorno, COSM_L_INGRESSO, COSM_L_ATTERRA, COSM_L_MIN, cosmAncoraRuotata, cosmCorpi, cosmTestoLuce, cosmContornoElio, COSM_ELIO, COSM_NASO, cosmRaggioElio, cosmParametriElio
   };
 }

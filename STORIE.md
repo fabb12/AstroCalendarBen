@@ -227,6 +227,57 @@ L'anteprima della pagina Demo e le figurine dello Studio
 (`StorieCosmiche.ritratto`, un ritratto fermo su una tela piccola) usano lo
 stesso corpo.
 
+## Nella scala cosmica (v412)
+
+La scala cosmica (`scala-cosmica.js`, il quarto quadro della vista 3D) è un
+ambiente delle storie: una scena `solar_system_3d` con `cosmic_scale`. Lì
+`cosmDisegna`, alla fine del fotogramma, chiama `storDisegnaCosmo`
+(`storie-cosmiche.js` §7-bis), e i personaggi stanno **al loro posto
+vero** sulla carta (`cosmDove`): la Terra attorno al Sole, la Voyager 1 a
+centosettanta unità astronomiche, una luna o una stazione col suo pianeta,
+chi la carta non conosce col Sole. La promessa è la stessa del planetario:
+allontanandosi, il Sole, la Terra e la Voyager diventano lo stesso puntino,
+e i loro corpi si affollano accanto a lui, legati dai fili a quel pixel.
+Una storia non può mentire su questo, e anzi ci costruisce sopra la sua
+battuta migliore («Allora siamo un puntino…»). Vicino alla Terra, dove il
+Sole e i pianeti hanno un disco vero (`cosmRaggioUA`), il volto ci va
+sopra come altrove.
+
+**I personaggi dell'universo.** La famiglia `galassia` (sagoma a spirale:
+bracci logaritmici affusolati punteggiati di stelle, nucleo dorato col
+volto) e quattro personaggi che vivono **solo** nella scala cosmica, al loro
+luogo (`cosmo`): la **Via Lattea** (`milky_way`, al centro della Galassia),
+**Andromeda** (`andromeda`), **Sirio** (`sirius`) e **Alfa Centauri**
+(`alpha_centauri`). Mostrati fuori da una scena con `cosmic_scale`, la
+validazione lo dice (`demo.err.soloCosmo`).
+
+**I viaggi.** `character_move` va verso un altro personaggio o verso un
+**luogo dell'universo** (`STOR_LUOGHI_COSMO`, `cosmLuogo`): le tappe della
+scala per nome (`oort`, `heliopause`, `local_bubble`, `milky_way`,
+`laniakea`, `universe`, …) e i paletti (`alpha_centauri`, `sirius`,
+`orion_nebula`, `galactic_center`, `lmc`, `smc`, `andromeda`,
+`triangulum`, `virgo_cluster`, `great_attractor`). Le tappe centrate sul
+Sole non hanno un punto: andarci vuol dire arrivare al loro **bordo**, nella
+direzione della Voyager 1. Fra due distanze lontane molti ordini di
+grandezza la distanza cresce in progressione geometrica
+(`storPuntoCosmo`), così su una carta logaritmica il viaggio scorre invece
+di saltare in fondo; la forma del percorso (arco, saltelli, spirale…) è
+sullo schermo (`storScarto2D`). Anche `look`/`character_look_at` e
+`effect` accettano un luogo. Chi esce dal quadro resta sul bordo, con una
+**freccia** verso dove sta davvero. Tornati nella 3D, un viaggio verso un
+luogo dell'universo si dimentica (lì quel luogo non c'è).
+
+```
+scene solar_system_3d {
+  duration: 12s;
+  action: cosmic_scale { from: 'heliopause', to: 'oort' };
+  action: character_show { target: 'voyager1', expression: 'excited' };
+  action: character_show { target: 'Earth', look: 'voyager1' };
+  action: character_move { target: 'voyager1', to: 'oort', path: arc };
+  action: character_speak { target: 'voyager1', text: 'Vado verso la nube di Oort!' };
+}
+```
+
 ## Lo stile: la fiaba d'inchiostro (v408)
 
 Un pennino indaco scuro (`INCHIOSTRO`, mai nero puro) a spessore variabile —
@@ -453,6 +504,19 @@ volto o un bottone acceso/spento (`aria-pressed`), non aprendo un menu:
   fondo alla scena, **Scrivi a parole** (Invio applica a quella scena);
 - **4 · Il controllo**: chiuso in una riga («tutto a posto» o «3 consigli
   per migliorarla»);
+- **L'universo** (v412) è il quinto ambiente: la scena dice da quale tappa a
+  quale va la camera («La camera va da… a…»), e il viaggio si divide fra i
+  momenti con una curva morbida, così più battute di fila sono un volo solo
+  (`studioViaggioCosmo`). Se in un momento qualcuno parte verso un luogo
+  lontano, la camera di quel momento va a inquadrare la meta (le scale stanno
+  in `STUDIO_TAPPE_COSMO` e `STUDIO_SEGNI_COSMO`, la stessa regola di
+  `cosmLuogo`, per avere lo stesso copione anche senza la carta). Le mete,
+  gli sguardi e gli effetti offrono i luoghi dell'universo; i personaggi
+  dell'universo stanno solo nelle sue scene (`studioPresenti`). A metà di una
+  scena dell'universo «Suggerisci il prossimo momento» scrive un **fatto
+  vero** della tappa a cui la camera sta arrivando (`studio.fatto.*`: la luce
+  del Sole in otto minuti e venti secondi, Andromeda vista com'era prima di
+  noi, la luce più antica di 13,8 miliardi di anni);
 - **5 · Guarda e salva**, di nuovo in fondo.
 
 Le figurine sono dipinte una volta sola e tenute come immagini (`figurina`):
@@ -467,7 +531,11 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   non sa fare (un viaggio nel planetario) si saltano, e il controllo lo dice.
 - **I modelli per scopo** (`STUDIO_SCOPI`): libera, le fasi della Luna, i
   giganti, le stagioni, un viaggio fra i pianeti, un'avventura con effetti
-  speciali. Ognuno è una storia intera, vera, che supera il suo stesso
+  speciali e, nella scala cosmica (v412), «Quanto è grande l'universo?» (la
+  Terra, la Voyager e la Via Lattea, dalla Luna all'universo osservabile:
+  «siamo un puntino… ma un puntino che riesce a capirlo») e «Andromeda sta
+  arrivando!» (lo scontro fra galassie in cui le stelle non si toccano:
+  «due manciate di sabbia in uno stadio»). Ognuno è una storia intera, vera, che supera il suo stesso
   controllo; i testi (`studio.tpl.*`) si prendono nella lingua di adesso
   quando si sceglie il modello, e da lì sono di chi scrive.
 - **Gli aiuti**: la faccia dalla battuta (`studioUmoreDalTesto`: parole
@@ -485,7 +553,10 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
 - **Il controllo dello scopo** (`studioConsigli`): titolo, scopo scritto,
   tutti parlano, si apre con una domanda, l'ultima battuta torna sullo
   scopo, battute sotto le 25 parole, durata fra 30 s e 4 minuti, nessun
-  viaggio nel planetario, nessun momento vuoto, copione valido.
+  viaggio nel planetario, nessun momento vuoto, copione valido; e dalla v412
+  le due cose che fanno ricordare una storia: **l'emozione** (qualcuno
+  cambia faccia) e **la meraviglia** (un numero vero o un confronto:
+  `studio.parole.meraviglia`).
 - **Salvare**: i progetti in `astrocal_storie_progetti_v1` (esporta e
   importa in JSON, `studioRipulisci` tiene solo quello che il modello
   conosce); «Salva nelle mie demo» mette il copione nella libreria delle demo
@@ -558,8 +629,12 @@ demo di prima non abbiano volti.
   stimato del testo, che può scostarsi dalla voce vera di qualche decimo.
 - L'ampiezza si misura solo a contesto audio in marcia, cioè dopo un gesto: a
   demo avviata da un link senza tocchi la bocca usa le altre due strade.
-- I volti non si disegnano nella scala cosmica, nella Didattica e nella mappa
-  del cono d'ombra, né sul velo del volo fra le viste.
+- I volti non si disegnano nella Didattica e nella mappa del cono d'ombra, né
+  sul velo del volo fra le viste. Nella scala cosmica sì (v412).
+- Nella scala cosmica i personaggi non cambiano l'istante della carta: le
+  galassie non si muovono e le Voyager stanno al posto di oggi. L'incontro di
+  Andromeda con la Via Lattea, fra miliardi di anni, lo racconta un viaggio
+  della storia, non la carta.
 - La Terra nel planetario non è disegnata (ci si sta sopra): lì può parlare,
   ma il suo volto si vede solo nella 3D.
 - Il Sole non viaggia (è l'origine della scena 3D); nel planetario nessuno

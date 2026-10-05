@@ -1426,7 +1426,9 @@
   // ------------------------------------------------------------------
   const COSMO_FACILITA = ['smooth', 'linear', 'stops'];
   function scalaCosmica(v) {
-    if (typeof v === 'number') { richiedi(numero(v, 1, 1e16), err('scalaCosmica')); return Math.log10(v); }
+    // Un numero di UA: dalla Terra (un decimillesimo, v412: lo Studio delle
+    // storie divide il viaggio della camera fra i momenti) all'universo
+    if (typeof v === 'number') { richiedi(numero(v, 1e-6, 1e17), err('scalaCosmica')); return Math.log10(v); }
     richiedi(typeof v === 'string' && typeof cosmLDi === 'function', err('scalaCosmica'));
     const L = cosmLDi(v);
     richiedi(Number.isFinite(L), err('scalaCosmica'));

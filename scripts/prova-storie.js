@@ -500,6 +500,15 @@ const registro = Object.create(null);
 for (const [k, c] of Object.entries(S.comandi)) registro[k] = c;
 for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range'])
   registro[k] = { crea: () => ({}) };
+// La scala cosmica (demo.js): qui basta che le scale siano quelle che il
+// comando vero accetta, numeri di UA fra un milionesimo e 1e17 o un nome
+registro.cosmic_scale = {
+  verifica(p) {
+    for (const k of ['from', 'to']) if (p[k] !== undefined)
+      assert.ok(typeof p[k] === 'string' || (p[k] >= 1e-6 && p[k] <= 1e17), 'cosmic_scale ' + k + ': ' + p[k]);
+  },
+  crea: () => ({})
+};
 let tempo = 0, prossimo = 0;
 const raf = new Map();
 const motore = new Motore(registro, { ora: () => tempo, richiedi: f => { const id = ++prossimo; raf.set(id, f); return id; }, annulla: id => raf.delete(id) });
@@ -784,6 +793,99 @@ prova('validazione dei comandi nuovi: vista, valori ammessi, numeri, colori, met
 });
 
 // =====================================================================
+gruppo('la scala cosmica: personaggi in viaggio per l\'universo (v412)');
+
+prova('il viaggio cosmico: dritto fra distanze simili, geometrico fra distanze lontane', () => {
+  const A = { x: 1, y: 0, z: 0 }, B = { x: 0, y: 1.5, z: 0 }, M31 = { x: 0, y: 1.6e11, z: 0 };
+  assert.deepEqual(S.puntoCosmo(A, B, 0), A); assert.deepEqual(S.puntoCosmo(A, B, 1), B);
+  const m = S.puntoCosmo(A, B, 0.5);
+  assert.ok(Math.abs(m.x - 0.5) < 1e-12 && Math.abs(m.y - 0.75) < 1e-12, 'fra la Terra e Marte, la strada è dritta');
+  const lontano = S.puntoCosmo(A, M31, 0.5), d = Math.hypot(lontano.x, lontano.y, lontano.z);
+  // a metà strada fra 1 UA e 1,6e11 UA si è a 4e5 UA (la media geometrica), non a 8e10
+  assert.ok(d > 1e5 && d < 1e6, 'verso Andromeda la distanza cresce in progressione geometrica: ' + d);
+  const fine = S.puntoCosmo(A, M31, 1);
+  assert.ok(Math.abs(fine.y - 1.6e11) / 1.6e11 < 1e-9, 'e arriva');
+  for (const pc of ['arc', 'hop', 'loop', 'spiral', 'zigzag', 'straight', 'teleport'])
+    for (const u of [0, 1]) { const o = S.scarto2D(pc, 0, 0, 300, 0, u, 1); assert.ok(Math.hypot(o.x, o.y) < 1e-9, pc + ' fermo agli estremi'); }
+});
+prova('nella scala cosmica i personaggi stanno al loro posto vero, e chi è fuori dal quadro resta sul bordo con la freccia', () => {
+  // La carta finta: un'unità astronomica vale 100 pixel, il Sole al centro
+  globalThis.cosmDove = id => ({ Earth: { x: 1, y: 0, z: 0 }, voyager1: { x: 170, y: 0, z: 0 } })[id] || null;
+  globalThis.cosmLuogo = n => ({ oort: { v: { x: 1e5, y: 0, z: 0 }, L: 5 }, milky_way: { v: { x: -1.6e9, y: 0, z: 0 }, L: 9.6 } })[n] || null;
+  globalThis.cosmRaggioUA = () => 0;
+  const cam = { W: 1000, H: 700, s: 100, p: v => ({ x: 500 + v.x * 100, y: 350 - v.y * 100 }) };
+  scena({ Earth: {}, voyager1: {}, milky_way: {} });
+  const d = S.disegnaCosmo(telaFinta().ctx, cam, { su: 40, giu: 60, lati: 12 });
+  const di = id => d.find(x => x.id === id);
+  assert.ok(di('Earth') && di('Earth').astro.x === 600 && di('Earth').astro.y === 350, 'la Terra a una UA dal Sole');
+  assert.ok(di('voyager1').fuori && di('voyager1').astro.x <= 1000, 'la Voyager fuori dal quadro: sul bordo');
+  assert.ok(di('milky_way').fuori && di('milky_way').astro.x < 500, 'la Via Lattea sul bordo dalla parte giusta');
+  for (const x of d) assert.ok(x.x - x.R >= 0 && x.x + x.R <= 1000 && x.y - x.R >= 0 && x.y + x.R <= 700, x.id + ' dentro lo schermo');
+  assert.equal(di('voyager1').corpo, 'voyager');
+  assert.equal(di('milky_way').corpo, 'galassia');
+  // il viaggio verso la nube di Oort: a metà la Voyager è fra lei e la meta
+  S.stato.personaggi.get('voyager1').moto = { verso: 'oort', percorso: 'straight', u: 0.5, lato: 'auto', distanza: 1 };
+  S.disegnaCosmo(telaFinta().ctx, { W: 1000, H: 700, s: 1e-3, p: v => ({ x: 500 + v.x * 1e-3, y: 350 - v.y * 1e-3 }) }, {});
+  const v = S.stato.personaggi.get('voyager1').cosmoV;
+  assert.ok(v.x > 170 && v.x < 1e5, 'a metà strada verso Oort: ' + v.x);
+  delete globalThis.cosmDove; delete globalThis.cosmLuogo; delete globalThis.cosmRaggioUA;
+  S.sgombra();
+});
+prova('la Via Lattea e i luoghi dell\'universo vogliono la scala cosmica, e lì funzionano', () => {
+  const cosmo = "cosmic_scale { from: 'planets', to: 'milky_way' }";
+  const errori = [
+    [sc('solar_system_3d', "character_show { target: 'milky_way' }"), /scala cosmica/],
+    [sc('planetarium_view', "character_show { target: 'Andromeda' }"), /scala cosmica/],
+    [sc('solar_system_3d', "character_show { target: 'voyager1' }", "character_move { target: 'voyager1', to: 'oort' }"), /scala cosmica/],
+    [sc('solar_system_3d', "effect { type: sparkles, target: 'andromeda' }", "camera_3d { scene: system }"), /scala cosmica|Personaggio/]
+  ];
+  for (const [testo, atteso] of errori) assert.throws(() => motore.prepara(demo(testo)), atteso, testo);
+  motore.prepara(demo(sc('solar_system_3d', cosmo, "character_show { target: 'milky_way', look: 'andromeda' }",
+    "character_show { target: 'voyager1' }", "character_move { target: 'voyager1', to: 'oort', path: arc }",
+    "character_move { target: 'milky_way', to: 'andromeda' }", "effect { type: hearts, target: 'galactic_center' }",
+    "character_look_at { target: 'voyager1', object: 'great_attractor' }")));
+  lingua = 'en';
+  assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'milky_way' }"))), /cosmic scale/);
+  lingua = 'it';
+});
+prova('lo Studio nell\'universo: la camera si divide fra i momenti senza salti, segue chi viaggia, e i personaggi dell\'universo stanno solo lì', () => {
+  const p = St.daModello('universo');
+  const prep = motore.prepara(St.copione(p));
+  const scale = prep.scene.map(s => s.azioni.find(a => a.comando === 'cosmic_scale')).filter(Boolean).map(a => a.parametri);
+  assert.equal(scale.length, prep.scene.length, 'ogni momento ha la sua camera');
+  // dentro a una scena dello Studio la camera è un volo solo
+  let k = 0;
+  for (const scena of p.scene) {
+    for (let i = 1; i < scena.momenti.length; i++) assert.equal(scale[k + i].from, scale[k + i - 1].to, 'senza salti');
+    k += scena.momenti.length;
+  }
+  // il momento in cui la Voyager parte per Oort finisce alla scala di Oort
+  const iv = p.scene.flatMap(s => s.momenti).findIndex(m => m.azioni.some(a => a.tipo === 'muovi' && a.verso === 'oort'));
+  assert.ok(Math.abs(Math.log10(scale[iv].to) - Math.log10(128000)) < 0.01, 'la camera segue il viaggio fino a Oort');
+  // la Via Lattea non entra nelle scene che non sono nell'universo
+  const q = St.nuovoProgetto({ cast: ['Earth', 'milky_way'] });
+  q.scene[0].ambiente = 'sistema';
+  assert.deepEqual(St.presenti(q, q.scene[0]), ['Earth']);
+  q.scene[0].ambiente = 'cosmo';
+  assert.deepEqual(St.presenti(q, q.scene[0]), ['Earth', 'milky_way']);
+  assert.equal(St.ambientePer(['Earth', 'andromeda']).ambiente, 'cosmo');
+  // a parole: un luogo dell'universo è una meta
+  const r = St.capisci('la Voyager vola verso la nube di Oort\nVoyager 1 goes to the galactic centre', p);
+  assert.deepEqual(r.ops.map(o => [o.azione.tipo, o.azione.chi, o.azione.verso]), [['muovi', 'voyager1', 'oort'], ['muovi', 'voyager1', 'galactic_center']]);
+  // il momento dopo, a metà di una scena dell'universo, è un fatto vero della tappa
+  const sc3 = p.scene[2];
+  const prossimo = St.prossimoMomento(p, sc3);
+  assert.ok(/anni luce|galassia|stelle|Sole/.test(prossimo.testo), 'un fatto: ' + prossimo.testo);
+});
+prova('i consigli dell\'emozione e della meraviglia', () => {
+  const p = St.nuovoProgetto({ cast: ['Moon'] });
+  p.scene[0].momenti = [St.nuovoMomento({ chi: 'Moon', testo: 'Ciao a tutti!', umore: 'happy' })];
+  const c = chiave => St.consigli(p).find(x => x.chiave === chiave);
+  assert.equal(c('emozione').ok, false); assert.equal(c('meraviglia').ok, false);
+  p.scene[0].momenti.push(St.nuovoMomento({ chi: 'Moon', testo: 'Sono a 384.400 chilometri!', umore: 'surprised' }));
+  assert.equal(c('emozione').ok, true); assert.equal(c('meraviglia').ok, true);
+});
+
 gruppo('lo Studio delle storie (v409)');
 
 const St = require('../storie-studio.js');
