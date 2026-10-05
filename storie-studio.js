@@ -52,7 +52,59 @@
   const STUDIO_INQUADRABILI = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
   const STUDIO_FUOCHI_3D = ['Earth', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
   const STUDIO_FUOCHI_CIELO = ['Moon', 'Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
-  const STUDIO_AMBIENTI = ['sistema', 'pianeta', 'terra_luna', 'cielo'];
+  const STUDIO_AMBIENTI = ['sistema', 'pianeta', 'terra_luna', 'cielo', 'cosmo'];
+  /* La scala cosmica (v412, scala-cosmica.js): le tappe a cui la camera può
+   * andare, con la scala a cui ognuna si inquadra (il logaritmo di metà del
+   * lato corto, in UA: `Math.log10(vista)` di `COSM_STRUTTURE`), e i luoghi
+   * dell'universo verso cui un personaggio può viaggiare, con la loro
+   * distanza vera (anni luce) da cui si ricava la scala che li inquadra (la
+   * stessa regola di `cosmLuogo`). Tenuti qui, e non letti dalla carta,
+   * perché il copione esca uguale anche senza la scala cosmica caricata (le
+   * prove Node). */
+  const STUDIO_AL = 63241.077, STUDIO_KM_UA = 149597870.7;
+  const STUDIO_TAPPE_COSMO = {
+    earth: Math.log10(6371 / STUDIO_KM_UA * 2.3), earth_moon: Math.log10(384400 / STUDIO_KM_UA * 1.32),
+    inner_planets: Math.log10(1.95), planets: Math.log10(37), kuiper: Math.log10(64), heliopause: Math.log10(230),
+    oort: Math.log10(128000), local_cloud: Math.log10(28 * STUDIO_AL), local_bubble: Math.log10(700 * STUDIO_AL),
+    orion_arm: Math.log10(6500 * STUDIO_AL), milky_way: Math.log10(62000 * STUDIO_AL), local_group: Math.log10(6.2e6 * STUDIO_AL),
+    virgo: Math.log10(72e6 * STUDIO_AL), laniakea: Math.log10(330e6 * STUDIO_AL), universe: Math.log10(56e9 * STUDIO_AL)
+  };
+  const STUDIO_SEGNI_COSMO = {
+    alpha_centauri: 4.37, sirius: 8.6, orion_nebula: 1344, galactic_center: 26000, lmc: 160000, smc: 200000,
+    andromeda: 2.54e6, triangulum: 2.73e6, virgo_cluster: 54e6, great_attractor: 250e6
+  };
+  // I nomi a schermo: quelli della scala cosmica (`cosmo.*` nei dizionari)
+  const STUDIO_NOMI_TAPPE = {
+    earth: 'terra', earth_moon: 'terraLuna', inner_planets: 'pianetiInterni', planets: 'pianeti', kuiper: 'kuiper',
+    heliopause: 'eliopausa', oort: 'oort', local_cloud: 'mezzoLocale', local_bubble: 'bollaLocale', orion_arm: 'braccioOrione',
+    milky_way: 'viaLattea', local_group: 'gruppoLocale', virgo: 'vergine', laniakea: 'laniakea', universe: 'universo'
+  };
+  const STUDIO_NOMI_SEGNI = {
+    alpha_centauri: 'alfaCen', sirius: 'sirio', orion_nebula: 'orione', galactic_center: 'centro', lmc: 'gnm', smc: 'pnm',
+    andromeda: 'm31', triangulum: 'm33', virgo_cluster: 'ammassoVergine', great_attractor: 'grandeAttrattore'
+  };
+  const luogoCosmo = v => typeof v === 'string' && (v in STUDIO_TAPPE_COSMO || v in STUDIO_SEGNI_COSMO);
+  // La scala che inquadra un luogo (o un personaggio dell'universo, al suo luogo)
+  function studioLCosmo(v) {
+    const prof = S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[v];
+    if (prof && prof.cosmo) v = prof.cosmo;
+    if (v in STUDIO_TAPPE_COSMO) return STUDIO_TAPPE_COSMO[v];
+    if (v in STUDIO_SEGNI_COSMO) return Math.log10(Math.max(STUDIO_SEGNI_COSMO[v] * 1.7, 6) * STUDIO_AL);
+    return null;
+  }
+  function nomeLuogo(v) {
+    if (v in STUDIO_NOMI_TAPPE) return t('cosmo.' + STUDIO_NOMI_TAPPE[v] + '.nome') || v;
+    if (v in STUDIO_NOMI_SEGNI) return t('cosmo.etichetta.' + STUDIO_NOMI_SEGNI[v]) || v;
+    return v;
+  }
+  // La tappa più vicina a una scala: è di lei che parla un fatto
+  function studioTappaVicina(L) {
+    let meglio = 'planets', d = Infinity;
+    for (const [k, v] of Object.entries(STUDIO_TAPPE_COSMO)) if (Math.abs(v - L) < d) { d = Math.abs(v - L); meglio = k; }
+    return meglio;
+  }
+  // Chi vive solo nella scala cosmica (la Via Lattea, Andromeda, Sirio…)
+  const soloCosmo = id => !!(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id] && S().STOR_PERSONAGGI[id].cosmo);
   const STUDIO_ZOOM = { lontano: 0.75, normale: 1, vicino: 1.7 };
   const STUDIO_FOV = { lontano: 60, normale: 18, vicino: 3 };
   const STUDIO_QUANDO = ['inizio', 'meta', 'fine', 'tutto'];
@@ -80,7 +132,7 @@
   function studioNuovaScena(campi = {}) {
     return Object.assign({
       id: nuovoId('s'), ambiente: 'sistema', fuoco: 'Jupiter', zoom: 'normale',
-      data: '', ora: '21:00', giorni: 0, presenti: [], momenti: [studioNuovoMomento()]
+      data: '', ora: '21:00', giorni: 0, cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
     }, campi);
   }
   function studioNuovoProgetto(campi = {}) {
@@ -92,8 +144,10 @@
   // Chi è davvero in scena: quelli scelti, o tutto il cast; mai qualcuno
   // che non è più nel cast.
   function studioPresenti(progetto, scena) {
-    const scelti = (scena.presenti || []).filter(id => progetto.cast.includes(id));
-    return scelti.length ? scelti : progetto.cast.slice();
+    // la Via Lattea e Andromeda stanno solo nella scala cosmica
+    const qui = id => progetto.cast.includes(id) && (scena.ambiente === 'cosmo' || !soloCosmo(id));
+    const scelti = (scena.presenti || []).filter(qui);
+    return scelti.length ? scelti : progetto.cast.filter(qui);
   }
   // Un progetto letto da un file o dall'archivio: si tiene solo quello che
   // il modello conosce, coi tipi giusti. Un file rotto non rompe lo Studio.
@@ -114,6 +168,7 @@
       zoom: tra(sc && sc.zoom, Object.keys(STUDIO_ZOOM), 'normale'),
       data: /^\d{4}-\d{2}-\d{2}$/.test(sc && sc.data) ? sc.data : '', ora: /^\d{2}:\d{2}$/.test(sc && sc.ora) ? sc.ora : '21:00',
       giorni: numero(sc && sc.giorni, 0, 1000, 0), presenti: ids(sc && sc.presenti),
+      cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
         durata: numero(m && m.durata, 0, 120, 0),
@@ -204,6 +259,43 @@
         M('Jupiter', 4, 'happy', [['effetto', { effetto: 'fireworks', dove: 'Jupiter', quando: 'meta' }]]),
         M('Mars', 5, 'happy', [['torna', { chi: 'Mars' }], ['effetto', { effetto: 'hearts', dove: 'Jupiter', quando: 'meta' }]])
       ] }
+    ] },
+    /* Nella scala cosmica (v412). La camera si allontana di scena in scena,
+     * alla misura vera, e i personaggi stanno dove stanno davvero: la Voyager
+     * fuori dal quadro dei pianeti, poi un puntino col Sole e la Terra, poi
+     * niente rispetto alla Via Lattea. La storia è costruita su quello che la
+     * carta mostra, e non dice niente che la carta smentisca. */
+    universo: { cast: ['Earth', 'voyager1', 'milky_way'], scene: [
+      { ambiente: 'cosmo', da: 'earth_moon', a: 'planets', presenti: ['Earth', 'voyager1'], momenti: [
+        M('Earth', 1, 'thinking', [['guarda', { chi: 'Earth', oggetto: 'voyager1' }]]),
+        M('voyager1', 2, 'excited', [['anima', { chi: 'voyager1', animazione: 'bounce' }]])
+      ] },
+      { ambiente: 'cosmo', da: 'heliopause', a: 'oort', presenti: ['Earth', 'voyager1'], momenti: [
+        M('voyager1', 3, 'happy', [['effetto', { effetto: 'shockwave', dove: 'voyager1', quando: 'meta' }]]),
+        M('Earth', 4, 'surprised', []),
+        M('voyager1', 5, 'laughing', [['muovi', { chi: 'voyager1', verso: 'oort', percorso: 'arc' }]])
+      ] },
+      { ambiente: 'cosmo', da: 'local_bubble', a: 'milky_way', momenti: [
+        M('milky_way', 6, 'happy', [['effetto', { effetto: 'sparkles', dove: 'milky_way', quando: 'meta' }]]),
+        M('Earth', 7, 'worried', [['anima', { chi: 'Earth', animazione: 'shake' }]]),
+        M('milky_way', 8, 'laughing', [['torna', { chi: 'voyager1' }]])
+      ] },
+      { ambiente: 'cosmo', da: 'local_group', a: 'universe', momenti: [
+        M('milky_way', 9, 'thinking', []),
+        M('Earth', 10, 'love', [['effetto', { effetto: 'hearts', dove: 'Earth', quando: 'meta' }]])
+      ] }
+    ] },
+    andromeda: { cast: ['milky_way', 'andromeda', 'Sun'], scene: [
+      { ambiente: 'cosmo', da: 'milky_way', a: 'local_group', presenti: ['milky_way', 'andromeda'], momenti: [
+        M('milky_way', 1, 'surprised', [['guarda', { chi: 'milky_way', oggetto: 'andromeda' }]]),
+        M('andromeda', 2, 'love', [['effetto', { effetto: 'hearts', dove: 'andromeda', quando: 'meta' }]]),
+        M('milky_way', 3, 'worried', [['anima', { chi: 'milky_way', animazione: 'shake' }]])
+      ] },
+      { ambiente: 'cosmo', da: 'local_group', a: 'local_group', momenti: [
+        M('Sun', 4, 'laughing', [['anima', { chi: 'Sun', animazione: 'jump' }]]),
+        M('andromeda', 5, 'happy', [['muovi', { chi: 'andromeda', verso: 'milky_way', percorso: 'spiral' }]]),
+        M('milky_way', 6, 'love', [['effetto', { effetto: 'fireworks', dove: 'milky_way', quando: 'meta' }]])
+      ] }
     ] }
   };
 
@@ -216,6 +308,7 @@
     });
     p.scene = m.scene.map(sc => studioNuovaScena({
       ambiente: sc.ambiente, fuoco: sc.fuoco || (sc.ambiente === 'cielo' ? 'Moon' : 'Jupiter'), zoom: sc.zoom || 'normale',
+      cosmoDa: sc.da || 'planets', cosmoA: sc.a || 'milky_way',
       data: sc.data || '', ora: sc.ora || '21:00', giorni: sc.giorni || 0, presenti: (sc.presenti || []).slice(),
       momenti: sc.momenti.map(x => studioNuovoMomento({
         chi: x.chi, umore: x.umore, testo: t('studio.tpl.' + chiave + '.' + x.n),
@@ -265,7 +358,7 @@
   function numeroDsl(n) { return String(Math.round(n * 100) / 100); }
 
   // Le righe di una sola azione, o '' se in questa vista non si può fare
-  function righeAzione(az, vista, presenti) {
+  function righeAzione(az, vista, presenti, cosmo) {
     const chi = az.chi;
     const inScena = id => presenti.includes(id);
     const tre = vista === 'solar_system_3d';
@@ -275,6 +368,7 @@
         return `character_expression { target: ${virgolette(chi)}, expression: ${virgolette(az.umore)}${ripresa(az, false)} }`;
       case 'guarda':
         if (!inScena(chi)) return '';
+        if (!cosmo && luogoCosmo(az.oggetto) && !S().STOR_PERSONAGGI?.[az.oggetto]) return '';
         return `character_look_at { target: ${virgolette(chi)}, object: ${virgolette(az.oggetto || 'viewer')}${ripresa(az, false)} }`;
       case 'occhiolino':
         if (!inScena(chi)) return '';
@@ -284,6 +378,10 @@
         return `character_hide { target: ${virgolette(chi)}${ripresa(az, false)} }`;
       case 'muovi':
         if (!tre || !inScena(chi) || !az.verso || az.verso === chi) return '';
+        // nella scala cosmica le mete sono i luoghi dell'universo e gli altri
+        // personaggi; fuori, i luoghi dell'universo non esistono
+        if (!cosmo && luogoCosmo(az.verso) && !S().STOR_PERSONAGGI?.[az.verso]) return '';
+        if (cosmo && ['center', 'left', 'right', 'top', 'bottom'].includes(az.verso)) return '';
         return `character_move { target: ${virgolette(chi)}, to: ${virgolette(az.verso)}` +
           (az.lato && az.lato !== 'auto' ? `, side: ${az.lato}` : '') +
           (az.percorso ? `, path: ${az.percorso}` : '') + ripresa(az, true) + ' }';
@@ -301,6 +399,7 @@
         if (!az.effetto) return '';
         const luoghi = ['center', 'left', 'right', 'top', 'bottom'];
         const dove = az.dove || chi || '';
+        if (!cosmo && luogoCosmo(dove) && !S().STOR_PERSONAGGI?.[dove]) return '';
         const posto = !dove ? '' : luoghi.includes(dove) ? `, at: ${dove}` : `, target: ${virgolette(dove)}`;
         return `effect { type: ${az.effetto}${posto}` + (az.grandezza && az.grandezza !== 1 ? ', size: ' + numeroDsl(az.grandezza) : '') +
           (az.colore ? `, color: ${virgolette(az.colore)}` : '') + ripresa(az, false) + ' }';
@@ -331,12 +430,13 @@
       const momenti = sc.momenti.length ? sc.momenti : [studioNuovoMomento()];
       const durate = momenti.map(studioDurata);
       const totale = durate.reduce((a, b) => a + b, 0) || 1;
+      const cosmo = sc.ambiente === 'cosmo' ? studioViaggioCosmo(sc, momenti, durate) : null;
       let trascorso = 0;
       if (opz.scena === undefined && !prima) righe.push('');
       momenti.forEach((m, k) => {
         const az = [];
         // Il quando: all'inizio della scena, o un pezzo del tempo che scorre
-        if (sc.giorni > 0) {
+        if (sc.giorni > 0 && !cosmo) {
           const da = isoDi(sc.data, sc.ora, sc.giorni * trascorso / totale);
           const a = isoDi(sc.data, sc.ora, sc.giorni * (trascorso + durate[k]) / totale);
           if (da && a && da !== a) az.push(`date_range { from: ${virgolette(da)}, to: ${virgolette(a)} }`);
@@ -346,7 +446,12 @@
         }
         trascorso += durate[k];
         // La camera
-        if (vista === 'planetarium_view') {
+        if (cosmo) {
+          const [La, Lb] = cosmo[k];
+          if (k === 0 && elev < 60) elev = 62;   // la carta si guarda un po' dall'alto
+          az.push(`cosmic_scale { from: ${numeroUA(La)}, to: ${numeroUA(Lb)}, orbit: 14, elev_from: ${elev}, elev_to: ${Math.min(80, elev + 3)} }`);
+          elev = Math.min(80, elev + 3) >= 80 ? 62 : Math.min(80, elev + 3);
+        } else if (vista === 'planetarium_view') {
           const fuoco = STUDIO_FUOCHI_CIELO.includes(sc.fuoco) ? sc.fuoco : (presenti.find(id => STUDIO_FUOCHI_CIELO.includes(id)) || 'Moon');
           az.push(`center_target { target: ${virgolette(fuoco)} }`);
           az.push(`set_fov { degrees: ${STUDIO_FOV[sc.zoom] || 18} }`);
@@ -378,7 +483,7 @@
           az.push(`character_show { target: ${virgolette(id)}, expression: ${virgolette(espr)} }`);
         }
         for (const a of m.azioni || []) {
-          const riga = righeAzione(a, vista, presenti);
+          const riga = righeAzione(a, vista, presenti, !!cosmo);
           if (riga) az.push(riga);
           if (a.tipo === 'umore' && a.chi && a.umore) umori.set(a.chi, a.umore);
         }
@@ -393,6 +498,36 @@
     righe.push('}');
     return righe.join('\n');
   }
+  /* Il viaggio della camera in una scena della scala cosmica: da una tappa
+   * all'altra, diviso fra i momenti in proporzione alla loro durata con una
+   * curva morbida (parte piano e arriva piano), così più momenti di fila
+   * sono un volo solo. Se in un momento un personaggio parte verso un luogo
+   * dell'universo, la camera di quel momento va a inquadrare la meta: chi
+   * viaggia verso Andromeda non deve uscire dal quadro. Restituisce, per
+   * ogni momento, la scala d'inizio e di fine. */
+  function studioViaggioCosmo(sc, momenti, durate) {
+    const La = STUDIO_TAPPE_COSMO[sc.cosmoDa] ?? STUDIO_TAPPE_COSMO.planets;
+    const Lb = STUDIO_TAPPE_COSMO[sc.cosmoA] ?? La;
+    const totale = durate.reduce((a, b) => a + b, 0) || 1;
+    const liscio = u => u * u * (3 - 2 * u);
+    let fatto = 0, prima = La;
+    return momenti.map((m, k) => {
+      fatto += durate[k];
+      let fine = La + (Lb - La) * liscio(fatto / totale);
+      const viaggio = (m.azioni || []).find(a => a.tipo === 'muovi' && studioLCosmo(a.verso) !== null);
+      if (viaggio) fine = studioLCosmo(viaggio.verso);
+      const coppia = [prima, fine];
+      prima = fine;
+      return coppia;
+    });
+  }
+  // Una scala come numero di UA per `cosmic_scale` (metà del lato corto),
+  // con quattro cifre buone e senza notazione esponenziale
+  function numeroUA(L) {
+    const v = Number(Math.pow(10, L).toPrecision(4));
+    return v >= 1e-6 ? String(v) : '0.000001';
+  }
+
   function studioDurataTotale(progetto) {
     return progetto.scene.reduce((n, sc) => n + sc.momenti.reduce((m, x) => m + studioDurata(x), 0), 0);
   }
@@ -442,6 +577,11 @@
     return meglio;
   }
 
+  // I luoghi dell'universo che si possono nominare a parole (quelli che sono
+  // anche personaggi — la Via Lattea, Andromeda, Sirio — si trovano per nome)
+  const STUDIO_POSTI_PAROLE = ['oort', 'kuiper', 'heliopause', 'galactic_center', 'orion_nebula', 'lmc', 'smc', 'triangulum',
+    'virgo_cluster', 'great_attractor', 'laniakea', 'universe', 'local_group', 'local_bubble', 'orion_arm', 'local_cloud',
+    'inner_planets', 'planets'];
   const STUDIO_UMORI = ['laughing', 'love', 'angry', 'happy', 'excited', 'surprised', 'worried', 'sad', 'thinking', 'sleepy', 'neutral'];
   /* La faccia giusta per una frase: le parole dell'umore prima, poi la
    * punteggiatura. Non è un'analisi del sentimento, ed è dichiarato: è un
@@ -477,6 +617,11 @@
       cadente: 'shooting_star', fumo: 'smoke', urto: 'shockwave', scintille: 'sparkles', coriandoli: 'confetti', lampo: 'flash' };
     for (const [chiave, effetto] of Object.entries(effetti))
       if (trova(s, 'effetto.' + chiave)) metti('effetto', { effetto, dove: effetto === 'flash' ? 'center' : chi, quando: 'meta' });
+    // Nell'universo, un luogo nominato è una meta: «andiamo fino alla nube di Oort»
+    if (scena.ambiente === 'cosmo') {
+      const posto = STUDIO_POSTI_PAROLE.find(k => trova(s, 'posto.' + k));
+      if (posto) metti('muovi', { verso: posto, percorso: 'arc' });
+    }
     if (tre && altri.length && trova(s, 'muovi')) metti('muovi', { verso: altri[0], percorso: 'arc' });
     if (tre && trova(s, 'torna')) metti('torna', {});
     if (trova(s, 'grande')) metti('scala', { scala: 1.8 });
@@ -506,6 +651,7 @@
   // L'ambiente adatto a chi è in scena
   function studioAmbientePer(presenti) {
     const p = presenti || [];
+    if (p.some(soloCosmo)) return { ambiente: 'cosmo' };
     if (p.length && p.every(id => id === 'Moon' || id === 'Earth' || id === 'Sun') && p.includes('Moon')) return { ambiente: 'terra_luna' };
     if (p.some(id => /^Star\d/.test(id))) return { ambiente: 'cielo', fuoco: p.find(id => STUDIO_FUOCHI_CIELO.includes(id)) || 'Moon' };
     const pianeti = p.filter(id => STUDIO_INQUADRABILI.includes(id));
@@ -528,9 +674,18 @@
     const altro = ultimo && ultimo.chi && ultimo.chi !== chi && S().nome ? S().nome(ultimo.chi) : '';
     const posto = tutti.length;
     const fase = posto <= 1 ? 'inizio' : (progetto.scene.indexOf(scena) === progetto.scene.length - 1 && posto >= 3 ? 'fine' : 'mezzo');
-    const testo = fase === 'fine' && unaRiga(progetto.obiettivo)
+    // Nella scala cosmica, a metà storia, la bozza è un fatto vero della
+    // tappa a cui la camera sta arrivando: è la carta a suggerire che cosa dire
+    let fatto = '';
+    if (scena.ambiente === 'cosmo' && fase === 'mezzo') {
+      const n = scena.momenti.length + 1;
+      const durate = scena.momenti.map(studioDurata).concat(6);
+      const tappe = studioViaggioCosmo(scena, scena.momenti.concat(studioNuovoMomento()), durate);
+      fatto = t('studio.fatto.' + studioTappaVicina(tappe[n - 1][1]));
+    }
+    const testo = fatto || (fase === 'fine' && unaRiga(progetto.obiettivo)
       ? t('studio.bozza.scopo', { obiettivo: unaRiga(progetto.obiettivo) })
-      : t('studio.bozza.' + fase + (altro ? 'Altro' : ''), { nome, altro });
+      : t('studio.bozza.' + fase + (altro ? 'Altro' : ''), { nome, altro }));
     const umore = studioUmoreDalTesto(testo) || '';
     return studioNuovoMomento({ chi, testo, umore: fase === 'inizio' ? 'happy' : umore });
   }
@@ -615,8 +770,11 @@
             trova(s, 'percorso.zigzag') ? 'zigzag' : trova(s, 'percorso.teleport') ? 'teleport' : trova(s, 'percorso.straight') ? 'straight' : 'arc';
           const luogo = trova(s, 'luogo.center') ? 'center' : trova(s, 'luogo.left') ? 'left' : trova(s, 'luogo.right') ? 'right' :
             trova(s, 'luogo.top') ? 'top' : trova(s, 'luogo.bottom') ? 'bottom' : '';
+          // I luoghi dell'universo: «Voyager va verso la nube di Oort»
+          let posto = '', piuPresto = Infinity;
+          for (const k of STUDIO_POSTI_PAROLE) { const x = trova(s, 'posto.' + k); if (x && x.pos < piuPresto) { piuPresto = x.pos; posto = k; } }
           if (trova(s, 'torna')) azione('torna', { percorso: percorso === 'arc' ? 'arc' : percorso, quando: quando || 'tutto' });
-          else if (trova(s, 'muovi') && (oggetto || luogo)) azione('muovi', { verso: oggetto || luogo, percorso, quando: quando || 'tutto' });
+          else if (trova(s, 'muovi') && (oggetto || posto || luogo)) azione('muovi', { verso: oggetto || posto || luogo, percorso, quando: quando || 'tutto' });
           for (const a of ['jump', 'bounce', 'shake', 'nod', 'spin', 'pulse', 'dance', 'wobble'])
             if (trova(s, 'anima.' + a)) { azione('anima', { animazione: a, volte: numero }); break; }
           if (trova(s, 'grande')) azione('scala', { scala: 1.8 });
@@ -659,7 +817,8 @@
 
   // La frase che descrive un'azione, per la lista di «Ho capito» e per le idee
   function studioDescriviAzione(a) {
-    const nome = id => !id ? '' : ['center', 'left', 'right', 'top', 'bottom', 'viewer'].includes(id) ? t('studio.luogo.' + id) : (S().nome ? S().nome(id) : id);
+    const nome = id => !id ? '' : ['center', 'left', 'right', 'top', 'bottom', 'viewer'].includes(id) ? t('studio.luogo.' + id)
+      : luogoCosmo(id) && !(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id]) ? nomeLuogo(id) : (S().nome ? S().nome(id) : id);
     const dati = {
       chi: nome(a.chi), verso: nome(a.verso), oggetto: nome(a.oggetto), dove: nome(a.dove || a.chi),
       umore: t('storie.espressione.' + a.umore), animazione: t('storie.animazione.' + a.animazione),
@@ -696,6 +855,20 @@
     metti(!impossibili.length, 'viaggi', { n: impossibili.length });
     const vuote = momenti.filter(x => !unaRiga(x.m.testo) && !x.m.azioni.length);
     metti(!vuote.length, 'vuoti', { n: vuote.length });
+    /* Le due cose che fanno ricordare una storia (v412). L'emozione: qualcuno
+     * cambia faccia — si parte preoccupati, sorpresi, curiosi e si arriva
+     * contenti; una storia con una faccia sola è un elenco. La meraviglia:
+     * almeno un numero vero o un confronto («più grande della Terra», «due
+     * milioni e mezzo di anni luce»), che è quello che un bambino racconta a
+     * cena. Sono controlli a parole, dichiarati: suggerimenti, non giudizi. */
+    const facce = new Set();
+    for (const { m } of momenti) {
+      if (m.umore) facce.add(m.umore);
+      for (const a of m.azioni || []) if (a.tipo === 'umore' && a.umore) facce.add(a.umore);
+    }
+    metti(facce.size >= 2, 'emozione');
+    const meraviglia = battute.some(x => /\d/.test(x.m.testo) || trova(normalizza(x.m.testo), 'meraviglia'));
+    metti(meraviglia, 'meraviglia');
     if (typeof valida === 'function') {
       let errore = '';
       try { valida(studioCopione(progetto)); } catch (e) { errore = e.message; }
@@ -823,15 +996,20 @@
     const p = base + '.';
     if (az.tipo !== 'effetto' || az.chi) riga.append(selettore(p + 'chi', az.chi, opzioniPersonaggi(presenti, az.tipo === 'effetto'), { 'aria-label': t('studio.chi') }));
     const tre = scena.ambiente !== 'cielo';
+    const cosmo = scena.ambiente === 'cosmo';
     const altri = studio.progetto.cast.concat(['Sun', 'Moon', 'Earth', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'])
-      .filter((x, i, a) => a.indexOf(x) === i);
-    const luoghi = ['center', 'left', 'right', 'top', 'bottom'];
+      .filter((x, i, a) => a.indexOf(x) === i && (cosmo || !soloCosmo(x)));
+    // Nell'universo le mete sono i suoi luoghi; altrove, i posti dello schermo
+    const luoghi = cosmo ? Object.keys(STUDIO_SEGNI_COSMO).concat(Object.keys(STUDIO_TAPPE_COSMO))
+      .filter(x => !(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[x])) : ['center', 'left', 'right', 'top', 'bottom'];
+    const nomeDi = l => cosmo ? nomeLuogo(l) : t('studio.luogo.' + l);
     if (az.tipo === 'umore') riga.append(selettore(p + 'umore', az.umore, opzioniUmori(false), { 'aria-label': t('storie.espressioneEtichetta') }));
-    if (az.tipo === 'guarda') riga.append(selettore(p + 'oggetto', az.oggetto, [['viewer', t('studio.luogo.viewer')]].concat(opzioniPersonaggi(altri.filter(x => x !== az.chi))), { 'aria-label': t('studio.verso') }));
+    if (az.tipo === 'guarda') riga.append(selettore(p + 'oggetto', az.oggetto, [['viewer', t('studio.luogo.viewer')]].concat(opzioniPersonaggi(altri.filter(x => x !== az.chi)),
+      cosmo ? luoghi.map(l => [l, nomeDi(l)]) : []), { 'aria-label': t('studio.verso') }));
     if (az.tipo === 'muovi') {
-      riga.append(selettore(p + 'verso', az.verso, [['', t('studio.scegli')]].concat(opzioniPersonaggi(altri.filter(x => x !== az.chi)), luoghi.map(l => [l, t('studio.luogo.' + l)])), { 'aria-label': t('studio.verso') }));
+      riga.append(selettore(p + 'verso', az.verso, [['', t('studio.scegli')]].concat(opzioniPersonaggi(altri.filter(x => x !== az.chi)), luoghi.map(l => [l, nomeDi(l)])), { 'aria-label': t('studio.verso') }));
       riga.append(selettore(p + 'percorso', az.percorso, (S().STOR_PERCORSI || []).map(x => [x, t('storie.percorso.' + x)]), { 'aria-label': t('studio.percorso') }));
-      if (az.verso && !luoghi.includes(az.verso))
+      if (az.verso && !luoghi.includes(az.verso) && !cosmo)
         riga.append(selettore(p + 'lato', az.lato, (S().STOR_LATI || []).map(x => [x, t('studio.lato.' + x)]), { 'aria-label': t('studio.lato') }));
     }
     if (az.tipo === 'torna') riga.append(selettore(p + 'percorso', az.percorso, (S().STOR_PERCORSI || []).map(x => [x, t('storie.percorso.' + x)]), { 'aria-label': t('studio.percorso') }));
@@ -842,7 +1020,7 @@
     if (az.tipo === 'scala') riga.append(selettore(p + 'scala', String(az.scala), [['0.4', t('studio.scala.minuscolo')], ['0.7', t('studio.scala.piccolo')], ['1', t('studio.scala.normale')], ['1.6', t('studio.scala.grande')], ['2.5', t('studio.scala.enorme')]], { 'aria-label': t('studio.misura') }));
     if (az.tipo === 'effetto') {
       riga.append(selettore(p + 'effetto', az.effetto, Object.keys(S().STOR_EFFETTI || {}).map(x => [x, t('storie.effetto.' + x)]), { 'aria-label': t('studio.effetto') }));
-      riga.append(selettore(p + 'dove', az.dove, [['', t('studio.suChi')]].concat(opzioniPersonaggi(altri), luoghi.map(l => [l, t('studio.luogo.' + l)])), { 'aria-label': t('studio.dove') }));
+      riga.append(selettore(p + 'dove', az.dove, [['', t('studio.suChi')]].concat(opzioniPersonaggi(altri), luoghi.map(l => [l, nomeDi(l)])), { 'aria-label': t('studio.dove') }));
       riga.append(selettore(p + 'grandezza', String(az.grandezza || 1), [['0.6', t('studio.scala.piccolo')], ['1', t('studio.scala.normale')], ['1.8', t('studio.scala.grande')], ['3', t('studio.scala.enorme')]], { 'aria-label': t('studio.misura') }));
       riga.append(h('input', { type: 'color', value: az.colore || '#ffd23f', dataset: { campo: p + 'colore' }, 'aria-label': t('studio.colore'), class: 'studio-colore' }));
     }
@@ -950,18 +1128,29 @@
       chips.append(scelta(acceso, { class: 'studio-chip', dataset: { fai: 'presente', dove: base, id } }, figurina(id, '', 22), nome(id)));
     }
     card.append(chips);
+    // Nell'universo: da quale tappa a quale va la camera, in tutta la scena
+    const cosmo = sc.ambiente === 'cosmo';
+    if (cosmo) {
+      const tappe = Object.keys(STUDIO_TAPPE_COSMO).map(k => [k, nomeLuogo(k)]);
+      card.append(h('div', { class: 'studio-viaggio' },
+        h('span', { class: 'studio-etichetta' }, t('studio.ui.viaggio')),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.ui.da')), selettore(base + '.cosmoDa', sc.cosmoDa, tappe)),
+        h('span', { class: 'studio-freccia', 'aria-hidden': 'true' }, '→'),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.ui.a')), selettore(base + '.cosmoA', sc.cosmoA, tappe)),
+        h('small', { class: 'studio-viaggio-nota' }, t('studio.ui.viaggioNota'))));
+    }
     // Inquadratura e data: chiuse di serie, perché di solito vanno bene così
     const fuochi = sc.ambiente === 'cielo' ? STUDIO_FUOCHI_CIELO : STUDIO_FUOCHI_3D;
     const dettagli = h('details', { class: 'studio-dettagli' },
-      h('summary', {}, t('studio.ui.doveQuando'), h('small', {}, ' · ' + riassuntoScena(sc))),
+      h('summary', {}, t(cosmo ? 'studio.ui.data' : 'studio.ui.doveQuando'), h('small', {}, ' · ' + riassuntoScena(sc))),
       h('div', { class: 'studio-riga' },
         (sc.ambiente === 'pianeta' || sc.ambiente === 'cielo') ? h('label', { class: 'storie-campo' }, h('span', {}, t('studio.fuoco')),
           selettore(base + '.fuoco', fuochi.includes(sc.fuoco) ? sc.fuoco : fuochi[0], fuochi.map(f => [f, nome(f)]))) : null,
-        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.inquadratura')),
+        cosmo ? null : h('label', { class: 'storie-campo' }, h('span', {}, t('studio.inquadratura')),
           selettore(base + '.zoom', sc.zoom, Object.keys(STUDIO_ZOOM).map(z => [z, t('studio.zoom.' + z)]))),
         h('label', { class: 'storie-campo' }, h('span', {}, t('studio.giorno')), h('input', { type: 'date', value: sc.data, dataset: { campo: base + '.data' } })),
         h('label', { class: 'storie-campo studio-corto' }, h('span', {}, t('studio.ora')), h('input', { type: 'time', value: sc.ora, dataset: { campo: base + '.ora' } })),
-        h('label', { class: 'storie-campo studio-corto' }, h('span', {}, t('studio.giorni')),
+        cosmo ? null : h('label', { class: 'storie-campo studio-corto' }, h('span', {}, t('studio.giorni')),
           h('input', { type: 'number', min: '0', max: '1000', step: '1', value: String(sc.giorni || 0), dataset: { campo: base + '.giorni', numero: '1' } })),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'ambienteAdatto', dove: base } }, t('studio.ambienteAdatto'))));
     if (studio.dettagliAperti && studio.dettagliAperti.has(sc.id)) dettagli.open = true;
@@ -974,7 +1163,7 @@
     sc.momenti.forEach((m, k) => momenti.append(disegnaMomento(m, i, k, sc)));
     card.append(momenti);
     // In fondo alla scena: una battuta nuova, il suggerimento, e «scrivi a parole»
-    const parole = h('input', { type: 'text', class: 'studio-parole', dataset: { parole: base }, placeholder: t('studio.paroleAiuto'), 'aria-label': t('studio.passo4'),
+    const parole = h('input', { type: 'text', class: 'studio-parole', dataset: { parole: base }, placeholder: t(cosmo ? 'studio.ui.paroleAiutoCosmo' : 'studio.paroleAiuto'), 'aria-label': t('studio.passo4'),
       value: studio.paroleResto && studio.paroleResto.dove === base ? studio.paroleResto.testo : undefined });
     const capito = h('ul', { class: 'studio-capito', 'aria-live': 'polite' });
     if (studio.capito && studio.capitoScena === i) {
@@ -992,14 +1181,14 @@
   }
   // «Normale · 13 dic 2026, 18:30 · 11 giorni»: la riga della scena chiusa
   function riassuntoScena(sc) {
-    const pezzi = [t('studio.zoom.' + sc.zoom)];
+    const pezzi = sc.ambiente === 'cosmo' ? [] : [t('studio.zoom.' + sc.zoom)];
     if (sc.data) {
       try {
         const loc = haI18n() && radice.astroI18n.locale ? radice.astroI18n.locale() : 'it-IT';
         pezzi.push(new Intl.DateTimeFormat(loc, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(sc.data + 'T12:00:00')) + ', ' + sc.ora);
       } catch (_) { pezzi.push(sc.data); }
     } else pezzi.push(t('studio.ui.oggi'));
-    if (sc.giorni > 0) pezzi.push(t('studio.ui.giorniPassano', { n: sc.giorni }));
+    if (sc.giorni > 0 && sc.ambiente !== 'cosmo') pezzi.push(t('studio.ui.giorniPassano', { n: sc.giorni }));
     return pezzi.join(' · ');
   }
 
@@ -1053,10 +1242,10 @@
           h('input', { type: 'text', maxlength: '120', value: p.titolo, dataset: { campo: 'titolo' }, placeholder: t('studio.titoloAiuto') })),
         h('label', { class: 'storie-campo studio-largo' }, h('span', {}, t('studio.obiettivo')), obiettivo))));
     // 2. Chi recita: le figurine, divise in tre famiglie
-    const gruppi = { pianeti: [], lune: [], macchine: [] };
+    const gruppi = { pianeti: [], lune: [], macchine: [], universo: [] };
     for (const id of Object.keys(S().STOR_PERSONAGGI || {})) {
       const f = S().profilo ? S().profilo(id).famiglia : 'pianeta';
-      (f === 'stazione' || f === 'sonda' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
+      (soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
     }
     const cast = h('div', { class: 'studio-cast-gruppi' });
     for (const [g, ids] of Object.entries(gruppi)) {

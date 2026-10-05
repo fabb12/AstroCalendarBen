@@ -363,6 +363,43 @@ function sintesiFinta() {
     }
 
     // ================================================================
+    console.log('\n— nella scala cosmica (v412) —');
+    {
+      const { pagina, errori } = await apri();
+      // La storia dello Studio «Quanto è grande l'universo?»: i personaggi
+      // al loro posto vero sulla carta, e chi è fuori dal quadro sul bordo
+      await pagina.evaluate(() => AstroDemo.avvia(StudioStorie.copione(StudioStorie.daModello('universo'))));
+      await pagina.waitForFunction(() => typeof cosm !== 'undefined' && cosm.attivo && StorieCosmiche.disegnati.length >= 2, null, { timeout: 10000 });
+      // in pausa la camera sta ferma: si confronta lo stesso fotogramma
+      await pagina.evaluate(() => AstroDemo.pausa());
+      await fotogrammi(pagina, 4);
+      const d = await disegnati(pagina);
+      ok(d.every(x => x.vista === 'cosmo'), 'i volti si disegnano sulla carta della scala cosmica');
+      const terra = d.find(x => x.id === 'Earth'), voy = d.find(x => x.id === 'voyager1');
+      ok(terra && voy && voy.corpo === 'voyager', 'la Terra e la Voyager, col suo corpo di sonda');
+      // la Terra è dove la carta la disegna (stessa proiezione)
+      const vero = await pagina.evaluate(() => { const q = cosm.cam.p(cosmDove('Earth')); return { x: q.x, y: q.y }; });
+      ok(Math.hypot(terra.astro.x - vero.x, terra.astro.y - vero.y) < 1.5, 'la Terra sta al suo posto vero sulla carta');
+      ok(voy.fuori, 'alla scala della Luna la Voyager è fuori dal quadro: sul bordo, con la freccia');
+      const pixel = await pagina.evaluate(() => {
+        const c = sol.canvas.getContext('2d'), dpr = sol.canvas.width / sol.L;
+        const t = StorieCosmiche.disegnati.find(x => x.id === 'Earth');
+        const px = c.getImageData(Math.round(t.x * dpr) - 4, Math.round(t.y * dpr) - 4, 8, 8).data;
+        let n = 0; for (let i = 0; i < px.length; i += 4) n += px[i] + px[i + 1] + px[i + 2];
+        return n;
+      });
+      ok(pixel > 2000, 'il volto finisce nei pixel della tela (e quindi nel filmato)');
+      // più avanti la camera è alla scala della Via Lattea, e lei c'è
+      await pagina.evaluate(() => { AstroDemo.riprendi(); AstroDemo.vaiAScena(5, 0.5); });
+      await pagina.waitForFunction(() => StorieCosmiche.disegnati.some(x => x.id === 'milky_way'), null, { timeout: 10000 });
+      ok((await disegnati(pagina)).find(x => x.id === 'milky_way').corpo === 'galassia', 'la Via Lattea, a spirale, nella sua scena');
+      await pagina.evaluate(() => AstroDemo.ferma());
+      await fotogrammi(pagina, 3);
+      ok(await pagina.evaluate(() => StorieCosmiche.attivi === 0), 'fermata la storia, la carta resta senza volti');
+      ok(!errori.length, 'nessun errore di pagina: ' + errori.join(' | '));
+      await pagina.close();
+    }
+
     console.log('\n— le altre demo non cambiano —');
     {
       const { pagina, errori } = await apri();

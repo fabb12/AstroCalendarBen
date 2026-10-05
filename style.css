@@ -12924,6 +12924,13 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-tipo:hover, .studio-ambiente:hover, .studio-chi-tasto:hover, button.studio-chip:hover { border-color: rgba(255, 255, 255, 0.5); }
 .studio-a-parole { padding: 6px 8px; border-radius: 10px; background: rgba(124, 58, 237, 0.08); border: 1px dashed rgba(167, 139, 250, 0.45); }
 .studio-a-parole .studio-parole { flex: 1 1 14rem; }
+/* Il viaggio della camera nella scala cosmica (v412): da una tappa all'altra */
+.studio-viaggio { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; padding: 8px 10px; border-radius: 10px;
+  background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(167, 139, 250, 0.35); }
+.studio-viaggio .studio-etichetta { align-self: center; }
+.studio-freccia { align-self: center; color: #c4b5fd; font-weight: 800; padding-bottom: 4px; }
+.studio-viaggio-nota { flex: 1 1 100%; color: var(--testo-2, #94a3b8); font-size: 0.74rem; }
+#vista-demo .studio-viaggio select { width: auto; max-width: 100%; }
 .studio-controllo > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; cursor: pointer; }
 .studio-controllo > summary .storie-sottotitolo { margin: 0; }
 .studio-controllo-esito { color: #86efac; font-size: 0.82rem; }

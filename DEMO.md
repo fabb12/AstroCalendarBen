@@ -685,7 +685,8 @@ Azioni principali:
   la vista 3D) e `landing` (la Terra da cui parte l'atterraggio, v404) —; `stops` si ferma su ogni struttura
   che incontra, `zoom_start`/`zoom_end` dicono in che tratto della scena si muove, `orbit` e
   `elev_from`/`elev_to` (5…90, 90 = a picco) muovono la camera della carta. Tolta nella v401, tornata
-  nella v402 senza il futuro delle sonde)
+  nella v402 senza il futuro delle sonde; un numero di UA va da un milionesimo a 1e17, v412). Le
+  Storie cosmiche ci mettono i loro personaggi, al loro posto vero (`STORIE.md`, §Nella scala cosmica)
 - `narrate { id: 'demo.narr.eclisse_tour.1' }` oppure, in una demo personale,
   `narrate { text: 'Qui la Luna tocca il Sole.' }` (al massimo 400 caratteri;
   un `id` senza testo deve esistere nel dizionario)

@@ -198,7 +198,11 @@
     stazione: { pelle: '#e8edf3', iride: '#2563eb', sottotitolo: '#93c5fd', guance: '#bae6fd', genere: 'f', sagoma: 'iss',
       scala: 0.8, voce: { ritmo: '6%', tono: '4Hz' }, espressione: 'happy', personalita: 'stazione' },
     sonda:    { pelle: '#f4efe2', iride: '#a16207', sottotitolo: '#fcd34d', guance: '#fed7aa', genere: 'f', sagoma: 'voyager',
-      scala: 0.8, voce: { ritmo: '-4%', tono: '-4Hz' }, espressione: 'thinking', personalita: 'sonda' }
+      scala: 0.8, voce: { ritmo: '-4%', tono: '-4Hz' }, espressione: 'thinking', personalita: 'sonda' },
+    // Le galassie (v412): vivono soltanto nella scala cosmica, al loro posto
+    // sulla carta (`cosmo`, il luogo di scala-cosmica.js)
+    galassia: { pelle: '#fbefd0', iride: '#7c3aed', sottotitolo: '#e9d5ff', guance: '#f9a8d4', genere: 'f', sagoma: 'galassia',
+      braccia: '#a5b4fc', scala: 0.8, voce: { ritmo: '-10%', tono: '-6Hz' }, espressione: 'happy', personalita: 'galassia' }
   };
 
   /* I personaggi con un carattere loro. Ogni campo è facoltativo e vince su
@@ -277,9 +281,22 @@
       baffi: 'folti', peli: '#9ca3af' },
     voyager1: { famiglia: 'sonda', genere: 'f', alias: ['Voyager 1'], personalita: 'voyager' },
     voyager2: { famiglia: 'sonda', genere: 'f', alias: ['Voyager 2'], iride: '#be185d', sottotitolo: '#f9a8d4', labbra: '#db2777',
-      personalita: 'voyager' }
+      personalita: 'voyager' },
+    // I personaggi dell'universo (v412): compaiono soltanto nella scala
+    // cosmica, dove la carta sa dove stanno. `cosmo` è il loro luogo.
+    milky_way: { famiglia: 'galassia', genere: 'f', nome: 'storie.nome.milky_way', cosmo: 'milky_way', alias: ['Via Lattea', 'Milky Way'],
+      pelle: '#fdf0cf', braccia: '#93c5fd', iride: '#4338ca', sottotitolo: '#c7d2fe', labbra: '#c026d3', personalita: 'milky_way' },
+    andromeda: { famiglia: 'galassia', genere: 'f', nome: 'storie.nome.andromeda', cosmo: 'andromeda', alias: ['Andromeda', 'M31'],
+      pelle: '#fde2f3', braccia: '#e9a8f0', iride: '#9d174d', sottotitolo: '#f5d0fe', labbra: '#db2777', trucco: '#c084fc',
+      voce: { ritmo: '-6%', tono: '8Hz' }, personalita: 'andromeda' },
+    sirius:    { famiglia: 'stella', genere: 'm', nome: 'storie.nome.sirius', cosmo: 'sirius', alias: ['Sirio', 'Sirius'],
+      pelle: '#e0f2fe', raggi: '#7dd3fc', iride: '#1d4ed8', sottotitolo: '#bae6fd', baffi: 'manubrio', peli: '#1e3a8a',
+      voce: { ritmo: '4%', tono: '-4Hz' }, espressione: 'excited', personalita: 'sirius' },
+    alpha_centauri: { famiglia: 'stella', genere: 'f', nome: 'storie.nome.alpha_centauri', cosmo: 'alpha_centauri', alias: ['Alfa Centauri', 'Alpha Centauri'],
+      pelle: '#fef3c7', raggi: '#fbbf24', iride: '#b45309', sottotitolo: '#fde68a', labbra: '#e11d48',
+      voce: { ritmo: '2%', tono: '10Hz' }, espressione: 'happy', personalita: 'alpha_centauri' }
   };
-  const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble'];
+  const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia'];
   // Le sagome che non sono un disco: nella vista 3D l'app le disegna come un
   // segno (la crocetta della sonda, il puntino della stazione) e il corpo lo
   // disegna questo modulo, col volto sopra
@@ -1193,6 +1210,9 @@
     }
     const assi = storAssiSchermo(s);
     let base = vera;
+    // Un viaggio verso un luogo dell'universo vive solo nella scala
+    // cosmica: tornati nella 3D, il personaggio è di nuovo a casa
+    if (pg.moto && luogoCosmico(pg.moto.verso)) pg.moto = null;
     const m = pg.moto;
     if (m) {
       if (!m.A) m.A = pg.ultimoPunto3D || vera;
@@ -2177,7 +2197,8 @@
     voyager:   { volto: [0, -0.12, 0.72], ingombro: 1.5 },
     iss:       { volto: [0, 0, 0.62], ingombro: 1.75 },
     tiangong:  { volto: [0, 0.02, 0.6], ingombro: 1.7 },
-    hubble:    { volto: [0, 0.06, 0.58], ingombro: 1.35 }
+    hubble:    { volto: [0, 0.06, 0.58], ingombro: 1.35 },
+    galassia:  { volto: [0, 0, 0.72], ingombro: 1.5 }
   };
   // Dove sta il volto su un corpo di raggio R centrato in (x, y)
   function storVoltoNelCorpo(sagoma, x, y, R) {
@@ -2381,7 +2402,7 @@
     if (sagoma === 'stella') {
       // la corona: fiamme che girano piano, e un bagliore
       const alone = ctx.createRadialGradient(x, y, R * 0.8, x, y, R * 1.55);
-      alone.addColorStop(0, rgba('#fde68a', 0.5)); alone.addColorStop(1, rgba('#fde68a', 0));
+      alone.addColorStop(0, rgba(profilo.raggi ? schiarisci(profilo.raggi, 0.4) : '#fde68a', 0.5)); alone.addColorStop(1, rgba('#fde68a', 0));
       ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, R * 1.55, 0, Math.PI * 2); ctx.fill();
       const giro = t / 9000;
       parte(ctx, () => {
@@ -2395,7 +2416,7 @@
           ctx.quadraticCurveTo(x + Math.cos(c - 0.12) * R * 1.12, y + Math.sin(c - 0.12) * R * 1.12, x + Math.cos(c) * R * 0.98, y + Math.sin(c) * R * 0.98);
         }
         ctx.closePath();
-      }, '#fb923c', R, { buio: 0.15 });
+      }, profilo.raggi || '#fb923c', R, { buio: 0.15 });
       disegnaDisco(ctx, x, y, R, profilo.pelle);
     } else if (sagoma === 'pianeta' || sagoma === 'luna') {
       disegnaDisco(ctx, x, y, R, profilo.pelle, () => {
@@ -2546,6 +2567,67 @@
           ctx.beginPath();
           for (const k of [-0.62, 0.62]) { ctx.moveTo(x + k * R, y - R * 0.66); ctx.lineTo(x + k * R, y + R * 0.66); }
           ctx.stroke();
+        }
+      });
+    } else if (sagoma === 'galassia') {
+      // Una spirale vista di faccia: il bagliore, due bracci a spirale
+      // logaritmica (l'avvolgimento di 12°, come nella carta) punteggiati di
+      // stelle che girano piano, e il nucleo dorato dove sta il volto
+      const braccia = profilo.braccia || '#a5b4fc';
+      const alone = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 1.6);
+      alone.addColorStop(0, rgba(braccia, 0.45)); alone.addColorStop(1, rgba(braccia, 0));
+      ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, R * 1.6, 0, Math.PI * 2); ctx.fill();
+      const giro = t / 14000;
+      const passo = Math.tan(16 * Math.PI / 180);
+      // un braccio: una spirale logaritmica affusolata, dal nucleo verso fuori
+      const braccio = (b, larg, colore, alfa) => {
+        const n = 30, fine = Math.log(1.6 / 0.7) / passo, sx = [], dx = [], centro = [];
+        for (let i = 0; i <= n; i++) {
+          const f = fine * i / n, u = i / n;
+          const r = R * 0.7 * Math.exp(passo * f), a = giro + b + f;
+          const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * 0.9;
+          // la normale alla spirale, per lo spessore (quasi radiale: il
+          // braccio si avvolge di pochi gradi)
+          const ta = a - Math.atan(passo);
+          const w = R * larg * (1 - u * 0.85) / 2;
+          sx.push([px + Math.cos(ta) * w, py + Math.sin(ta) * w * 0.9]);
+          dx.push([px - Math.cos(ta) * w, py - Math.sin(ta) * w * 0.9]);
+          centro.push([px, py]);
+        }
+        const forma = () => {
+          ctx.beginPath(); ctx.moveTo(...sx[0]);
+          for (const q of sx) ctx.lineTo(...q);
+          for (let i = dx.length - 1; i >= 0; i--) ctx.lineTo(...dx[i]);
+          ctx.closePath();
+        };
+        ctx.save();
+        ctx.globalAlpha *= alfa;
+        forma(); ctx.strokeStyle = ALONE; ctx.lineWidth = 2.6; ctx.stroke();
+        ctx.fillStyle = colore; ctx.fill();
+        // la riga chiara al centro del braccio, e la polvere scura sul bordo interno
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = Math.max(0.8, R * larg * 0.18);
+        polilinea(ctx, centro.slice(0, -4)); ctx.stroke();
+        ctx.strokeStyle = rgba(INCHIOSTRO, 0.45); ctx.lineWidth = Math.max(0.6, R * 0.025);
+        polilinea(ctx, dx.slice(2, -6)); ctx.stroke();
+        forma(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.03); ctx.stroke();
+        // le stelle lungo il braccio
+        ctx.fillStyle = '#fffbeb';
+        for (let i = 4; i < centro.length - 2; i += 4) {
+          const [px, py] = centro[i], q = Math.max(0.8, R * 0.03) * (0.7 + 0.5 * Math.abs(Math.sin(t / 500 + i + b)));
+          stella(ctx, px, py, q * 2.2, q * 0.6, 4, 0); ctx.fill();
+        }
+        ctx.restore();
+      };
+      braccio(Math.PI / 2, 0.22, schiarisci(braccia, 0.2), 0.75);
+      braccio(Math.PI * 1.5, 0.22, schiarisci(braccia, 0.2), 0.75);
+      braccio(0, 0.36, braccia, 1);
+      braccio(Math.PI, 0.36, braccia, 1);
+      parte(ctx, () => { ctx.beginPath(); ctx.arc(x, y, R * 0.8, 0, Math.PI * 2); }, profilo.pelle, R, {
+        luce: 0.1, buio: 0.12,
+        dentro: () => {
+          const g = ctx.createRadialGradient(x, y, 0, x, y, R * 0.8);
+          g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = g; ctx.fillRect(x - R, y - R, R * 2, R * 2);
         }
       });
     } else if (sagoma === 'hubble') {
@@ -2728,7 +2810,7 @@
         R = pg.misura === 'costume' && c.costumeR ? c.costumeR : Rbadge;
         const Ri = R * ingombroDi(p.sagoma);
         const ondeggia = ridotto ? 0 : Math.sin(stor.orologio / 1700 + pg.fase) * 1.2;
-        const libero = pg.misura === 'costume' || (pg.misura === 'auto' &&
+        const libero = pg.misura === 'costume' || Number.isFinite(c.freccia) || (pg.misura === 'auto' &&
           c.px - Ri >= m.lati && c.px + Ri <= L - m.lati && c.py - Ri >= m.su && c.py + Ri <= H - m.giu &&
           !presi.some(q => q.id !== pg.id && Math.hypot(q.x - c.px, q.y - c.py) < q.R + Ri + 4));
         if (libero) {
@@ -2876,7 +2958,10 @@
         storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa, ridotto);
         ctx.restore();
       }
-      disegnati.push({ id: pg.id, vista, x: cx, y: cy, R, addosso: !posto || !!posto.in3d,
+      // Nella scala cosmica, chi è fuori dal quadro ha una freccia verso
+      // dove sta davvero
+      if (Number.isFinite(c.freccia)) disegnaFreccia(ctx, cx + att.dx, cy + att.dy, R * 1.25, c.freccia, p, alfa);
+      disegnati.push({ id: pg.id, vista, x: cx, y: cy, R, addosso: !posto || !!posto.in3d, fuori: Number.isFinite(c.freccia),
         corpo: posto ? p.sagoma : null, centrato: !!(posto && posto.centrato), forma: pg.forma, apertura: pg.apertura, via: pg.via,
         parla: parlante === pg.id && !!(voce && voce.parla), battito, sguardo: Object.assign({}, pg.sguardo),
         espressione: pg.espressione, astro: { x: c.px, y: c.py, r: c.r }, geom });
@@ -2892,6 +2977,21 @@
     }
     stor.ultimiDisegnati = disegnati;
     return disegnati;
+  }
+
+  // Una freccia a pennino sul bordo del corpo, verso l'angolo `a`
+  function disegnaFreccia(ctx, x, y, d, a, profilo, alfa) {
+    ctx.save();
+    ctx.globalAlpha *= alfa;
+    ctx.translate(x + Math.cos(a) * d, y + Math.sin(a) * d);
+    ctx.rotate(a);
+    const s = Math.max(7, d * 0.22);
+    ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s * 0.6, -s * 0.75); ctx.lineTo(-s * 0.25, 0); ctx.lineTo(-s * 0.6, s * 0.75); ctx.closePath();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = ALONE; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = profilo.sottotitolo || '#fde68a'; ctx.fill();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.restore();
   }
 
   /* Il volto con la luce del suo Sole. Si dipinge su una tela di passaggio
@@ -3042,6 +3142,154 @@
   }
 
   // ===================================================================
+  // 7-bis. La scala cosmica: personaggi in viaggio per l'universo (v412)
+  // ===================================================================
+
+  /* La scala cosmica (scala-cosmica.js) è il quarto quadro della vista 3D:
+   * una carta sola, alla misura vera, dalla Terra all'universo osservabile.
+   * Le storie ci possono entrare (`cosmic_scale` nella scena) e i personaggi
+   * ci stanno **al loro posto vero**: la Terra attorno al Sole, la Voyager 1
+   * a centosettanta unità astronomiche, la Via Lattea col suo centro a
+   * ventiseimila anni luce, Andromeda a due milioni e mezzo. È la stessa
+   * promessa del planetario: il punto di partenza è vero, e allontanandosi
+   * si vede quello che è vero — a un certo punto il Sole, la Terra e la
+   * Voyager diventano un puntino solo, e i loro corpi si affollano lì, legati
+   * dai fili allo stesso pixel. Una storia non può mentire su questo, e anzi
+   * ci si può costruire sopra la sua battuta migliore.
+   *
+   * Da lì un personaggio può **viaggiare** (`character_move`) verso un altro
+   * personaggio o verso un luogo dell'universo (`STOR_LUOGHI_COSMO`: le
+   * tappe della scala e i paletti con un nome). Il viaggio attraversa le
+   * decade come le attraversa la camera: quando partenza e arrivo sono
+   * distanti molti ordini di grandezza la distanza dal Sole cresce in
+   * progressione geometrica (`storPuntoCosmo`), così su una carta logaritmica
+   * il viaggio scorre invece di stare fermo e poi saltare in fondo. Chi esce
+   * dal quadro resta sul bordo, con una freccia verso dove sta davvero. */
+  const STOR_LUOGHI_COSMO = ['alpha_centauri', 'sirius', 'orion_nebula', 'galactic_center', 'lmc', 'smc', 'andromeda', 'triangulum',
+    'virgo_cluster', 'great_attractor', 'earth', 'earth_moon', 'inner_planets', 'planets', 'kuiper', 'heliopause', 'oort',
+    'local_cloud', 'local_bubble', 'orion_arm', 'milky_way', 'local_group', 'virgo', 'laniakea', 'universe'];
+  const luogoCosmico = v => typeof v === 'string' && STOR_LUOGHI_COSMO.includes(v);
+  const scenaCosmica = scena => !!(scena && Array.isArray(scena.azioni) && scena.azioni.some(a => a.comando === 'cosmic_scale'));
+
+  // Un punto del viaggio fra A e D (vettori della carta, in UA). Fra due
+  // cose a distanze simili dal Sole (la Terra e Marte) la strada è dritta;
+  // fra due distanze lontane molti ordini di grandezza (la Terra e
+  // Andromeda) la distanza cresce in progressione geometrica e la direzione
+  // gira piano: è la strada che su una carta logaritmica si vede scorrere.
+  function storPuntoCosmo(A, D, u) {
+    const k = Math.max(0, Math.min(1, u));
+    const la = Math.hypot(A.x, A.y, A.z), ld = Math.hypot(D.x, D.y, D.z);
+    const piccolo = Math.min(la, ld), grande = Math.max(la, ld);
+    if (!(grande > 0) || grande / Math.max(piccolo, 1e-9) < 8) {
+      return { x: A.x + (D.x - A.x) * k, y: A.y + (D.y - A.y) * k, z: A.z + (D.z - A.z) * k };
+    }
+    const eps = Math.max(1e-6, grande * 1e-12);
+    const m = Math.exp(Math.log(la + eps) + (Math.log(ld + eps) - Math.log(la + eps)) * k) - eps;
+    const da = la > 1e-9 ? { x: A.x / la, y: A.y / la, z: A.z / la } : null;
+    const a = ld > 1e-9 ? { x: D.x / ld, y: D.y / ld, z: D.z / ld } : null;
+    let dir = !da ? a : !a ? da : { x: da.x + (a.x - da.x) * k, y: da.y + (a.y - da.y) * k, z: da.z + (a.z - da.z) * k };
+    const n = Math.hypot(dir.x, dir.y, dir.z);
+    if (!(n > 1e-9)) dir = a || da;
+    else dir = { x: dir.x / n, y: dir.y / n, z: dir.z / n };
+    return { x: dir.x * m, y: dir.y * m, z: dir.z * m };
+  }
+  /* La forma del percorso sullo schermo: quanto il personaggio esce dalla
+   * strada dritta fra il pixel di partenza e quello d'arrivo. Funzione pura,
+   * zero all'inizio e alla fine. */
+  function storScarto2D(percorso, ax, ay, bx, by, u, giri) {
+    const dx = bx - ax, dy = by - ay, d = Math.hypot(dx, dy) || 1;
+    const nx = -dy / d, ny = dx / d;
+    const busta = Math.sin(Math.PI * Math.max(0, Math.min(1, u)));
+    switch (percorso) {
+      case 'arc': return { x: nx * busta * d * 0.22, y: ny * busta * d * 0.22 };
+      case 'hop': { const h = Math.abs(Math.sin(Math.PI * 3 * u)) * Math.min(70, d * 0.18); return { x: 0, y: -h }; }
+      case 'loop': {
+        if (u < 0.3 || u > 0.7) return { x: 0, y: 0 };
+        const a = (u - 0.3) / 0.4 * Math.PI * 2 * Math.max(1, Math.round(giri || 1)), r = Math.min(60, d * 0.16);
+        return { x: Math.sin(a) * r, y: -(1 - Math.cos(a)) * r };
+      }
+      case 'spiral': { const a = u * Math.PI * 2 * Math.max(1, giri || 2), r = Math.min(70, d * 0.2) * busta; return { x: Math.cos(a) * r, y: Math.sin(a) * r }; }
+      case 'zigzag': { const z = Math.abs(((u * 6) % 2) - 1) * 2 - 1; return { x: nx * z * busta * d * 0.08, y: ny * z * busta * d * 0.08 }; }
+      default: return { x: 0, y: 0 };
+    }
+  }
+  // Dove sta di casa un personaggio sulla carta: il suo luogo (le galassie,
+  // le stelle vicine) o il suo corpo (la Terra, la Voyager); chi la carta
+  // non conosce sta col Sole, che a queste scale è lo stesso puntino.
+  function storCasaCosmo(pg) {
+    const luogo = globale('cosmLuogo'), dove = globale('cosmDove');
+    if (pg.profilo.cosmo && typeof luogo === 'function') { const l = luogo(pg.profilo.cosmo); if (l) return l.v; }
+    if (typeof dove === 'function') { const v = dove(pg.id); if (v) return v; }
+    return { x: 0, y: 0, z: 0 };
+  }
+  // Il vettore di una meta: un luogo, un altro personaggio, o casa
+  function storMetaCosmo(pg, verso) {
+    if (!verso || verso === 'orbit') return storCasaCosmo(pg);
+    if (luogoCosmico(verso)) { const l = globale('cosmLuogo') && globale('cosmLuogo')(verso); if (l) return l.v; }
+    const altro = stor.personaggi.get(verso);
+    if (altro) return altro.cosmoV || storCasaCosmo(altro);
+    const dove = globale('cosmDove');
+    const v = typeof dove === 'function' ? dove(verso) : null;
+    return v || null;
+  }
+
+  function storDisegnaCosmo(ctx, cam, margini) {
+    if (!stor.personaggi.size && !stor.effetti.length) { stor.ultimiDisegnati = []; return []; }
+    if (!cam || typeof cam.p !== 'function') return [];
+    const L = cam.W, H = cam.H;
+    const m = Object.assign({ su: STOR_MARGINE_PX, giu: STOR_MARGINE_PX, lati: STOR_MARGINE_PX }, margini || {});
+    const raggio = globale('cosmRaggioUA');
+    const corpi = [];
+    // Ogni personaggio al suo posto, o a quello del suo viaggio
+    for (const pg of stor.personaggi.values()) {
+      const casa = storCasaCosmo(pg);
+      let v = casa, scarto = { x: 0, y: 0 };
+      const moto = pg.moto;
+      if (moto) {
+        if (!moto.Acosmo) moto.Acosmo = pg.cosmoV || casa;
+        const D = storMetaCosmo(pg, moto.verso);
+        if (D) {
+          const u = moto.percorso === 'teleport' ? (moto.u >= 0.5 ? 1 : 0) : moto.u * moto.u * (3 - 2 * moto.u);
+          v = storPuntoCosmo(moto.Acosmo, D, u);
+          const a = cam.p(moto.Acosmo), b = cam.p(D);
+          scarto = storScarto2D(moto.percorso, a.x, a.y, b.x, b.y, moto.u, moto.giri);
+          // Arrivando su un altro personaggio ci si ferma accanto, non sopra
+          if (moto.u > 0 && stor.personaggi.has(moto.verso)) {
+            const lato = { left: -1, right: 1 }[moto.lato] || (a.x <= b.x ? -1 : 1);
+            scarto.x += lato * Math.min(1, moto.u * 1.5) * 64 * (moto.distanza || 1);
+          }
+        }
+      }
+      pg.cosmoV = v;
+      if (moto && moto.u >= 1 && moto.verso === 'orbit') pg.moto = null;   // tornato a casa
+      const q = cam.p(v);
+      let px = q.x + scarto.x, py = q.y + scarto.y, freccia;
+      // Fuori dal quadro: sul bordo (tutto il corpo dentro), con la freccia
+      // verso dove sta davvero
+      const dentro = Math.max(STOR_DISCO_MIN_PX, Math.min(STOR_DISCO_MAX_PX, Math.min(L, H) * 0.075)) * 1.35;
+      const x0 = m.lati + dentro, x1 = L - m.lati - dentro, y0 = m.su + dentro, y1 = H - m.giu - dentro;
+      if (!(px >= x0 && px <= x1 && py >= y0 && py <= y1) && Number.isFinite(px) && Number.isFinite(py)) {
+        freccia = Math.atan2(py - H / 2, px - L / 2);
+        px = Math.max(x0, Math.min(x1, px)); py = Math.max(y0, Math.min(y1, py));
+      }
+      const r = typeof raggio === 'function' && !moto ? raggio(pg.id) * cam.s : 0;
+      corpi.push({ id: pg.id, px, py, r: Math.max(1, r || 0), freccia });
+    }
+    // I luoghi guardati o colpiti da un effetto, perché lo sguardo e l'effetto
+    // sappiano dove sono
+    const luogo = globale('cosmLuogo');
+    const nominati = new Set();
+    for (const pg of stor.personaggi.values()) if (luogoCosmico(pg.guarda)) nominati.add(pg.guarda);
+    for (const ef of stor.effetti) if (luogoCosmico(ef.target)) nominati.add(ef.target);
+    for (const n of nominati) {
+      if (stor.personaggi.has(n) || typeof luogo !== 'function') continue;
+      const l = luogo(n);
+      if (l) { const q = cam.p(l.v); corpi.push({ id: n, px: q.x, py: q.y, r: 0, luogo: true }); }
+    }
+    return storDisegnaPersonaggi(ctx, 'cosmo', corpi, L, H, m);
+  }
+
+  // ===================================================================
   // 8. Le azioni del DSL
   // ===================================================================
 
@@ -3051,6 +3299,7 @@
     sguardoIgnoto: 'Non so dove guardare: {nome}',
     personaggioNonInScena: '{nome} deve comparire in questa scena con character_show',
     personaggioVista: 'I personaggi compaiono solo nel planetario e nella vista 3D',
+    soloCosmo: '{nome} vive nella scala cosmica: la scena vuole cosmic_scale',
     personaggioMisura: 'size vuole auto, disk o badge, oppure real',
     solo3d: '{comando} funziona solo nella vista 3D (solar_system_3d)',
     destinazioneIgnota: 'Non so dove andare: {nome}',
@@ -3094,8 +3343,11 @@
       typeof a.parametri.target === 'string' && storCanonico(a.parametri.target) === id);
     richiedi(c, 'personaggioNonInScena', { nome: p.target });
   }
-  function guardaVerso(o) {
+  function guardaVerso(o, scena) {
     if (o === undefined || o === 'viewer' || o === 'camera') return null;
+    if (luogoCosmico(o) && !STOR_PERSONAGGI[o]) { richiedi(!scena || scenaCosmica(scena), 'soloCosmo', { nome: o }); return o; }
+    const cosmico = STOR_PERSONAGGI[storCanonico(o)];
+    if (cosmico && cosmico.cosmo) richiedi(!scena || scenaCosmica(scena), 'soloCosmo', { nome: storNome(storCanonico(o)) });
     richiedi(typeof o === 'string' && storOggettoNoto(storCanonico(o)), 'sguardoIgnoto', { nome: String(o) });
     return storCanonico(o);
   }
@@ -3106,9 +3358,12 @@
     character_show: {
       verifica(p, scena) {
         campi(p, ['target', 'expression', 'look', 'size']);
-        bersaglio(p);
+        const id = bersaglio(p);
+        // la Via Lattea, Andromeda, Sirio: la carta sa dove stanno, il cielo
+        // di casa e la vista 3D no
+        if (scena && STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo) richiedi(scenaCosmica(scena), 'soloCosmo', { nome: storNome(id) });
         if (p.expression !== undefined) espressione(p.expression);
-        guardaVerso(p.look);
+        guardaVerso(p.look, scena);
         richiedi(p.size === undefined || ['auto', 'disk', 'badge', 'real'].includes(p.size), 'personaggioMisura');
         inScena(p, scena, 'character_show');
       },
@@ -3130,7 +3385,7 @@
       verifica(p, scena) {
         campi(p, ['target', 'object']); bersaglio(p);
         richiedi(p.object !== undefined, 'sguardoIgnoto', { nome: '' });
-        guardaVerso(p.object); inScena(p, scena);
+        guardaVerso(p.object, scena); inScena(p, scena);
       },
       crea(p) { storGuarda(p.target, p.object); return {}; }
     },
@@ -3186,10 +3441,11 @@
       { campo, min, max });
     return v;
   }
-  function verso(p, id) {
+  function verso(p, id, scena) {
     const v = p.to;
     richiedi(typeof v === 'string' && v.trim(), 'destinazioneIgnota', { nome: String(v) });
     if (STOR_LUOGHI.includes(v)) return v;
+    if (luogoCosmico(v) && !STOR_PERSONAGGI[v]) { richiedi(!scena || scenaCosmica(scena), 'soloCosmo', { nome: v }); return v; }
     const altro = storCanonico(v.trim());
     richiedi(storOggettoNoto(altro), 'destinazioneIgnota', { nome: v });
     richiedi(altro !== id, 'versoSeStesso', { nome: v });
@@ -3210,7 +3466,7 @@
       verifica(p, scena) {
         campi(p, ['target', 'to', 'side', 'distance', 'path', 'turns']);
         const id = bersaglio(p);
-        verso(p, id);
+        verso(p, id, scena);
         scelta(p.side, 'side', STOR_LATI); scelta(p.path, 'path', STOR_PERCORSI);
         numeroIn(p.distance, 'distance', 0.3, 6); numeroIn(p.turns, 'turns', 0.5, 8);
         inScena(p, scena); soloIn3d(scena, 'character_move');
@@ -3283,7 +3539,12 @@
         campi(p, ['type', 'target', 'at', 'size', 'color', 'duration']);
         richiedi(p.type !== undefined, 'valoreIgnoto', { campo: 'type', nome: '', elenco: Object.keys(STOR_EFFETTI).join(', ') });
         scelta(p.type, 'type', Object.keys(STOR_EFFETTI));
-        if (p.target !== undefined) bersaglio(p);
+        if (p.target !== undefined && luogoCosmico(p.target) && !STOR_PERSONAGGI[p.target])
+          richiedi(!scena || scenaCosmica(scena), 'soloCosmo', { nome: p.target });
+        else if (p.target !== undefined) {
+          const id = bersaglio(p);
+          if (scena && STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo) richiedi(scenaCosmica(scena), 'soloCosmo', { nome: storNome(id) });
+        }
         scelta(p.at, 'at', STOR_POSTI_EFFETTO);
         numeroIn(p.size, 'size', 0.2, 5); numeroIn(p.duration, 'duration', 0.3, 20);
         richiedi(p.color === undefined || (typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color)), 'coloreNonValido', { nome: String(p.color) });
@@ -3586,6 +3847,7 @@
     nascondi: storNascondi, congeda: storCongeda, sgombra: storSgombra, parla: storParla,
     disegnaPersonaggi: storDisegnaPersonaggi, disegnaCielo: storDisegnaCielo, disegnaSistema: storDisegnaSistema,
     comandi: COMANDI, registraComandi,
+    disegnaCosmo: storDisegnaCosmo, puntoCosmo: storPuntoCosmo, scarto2D: storScarto2D, STOR_LUOGHI_COSMO,
     scena3D: storScena3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,
     animazioneAl: storAnimazioneAl, effetto: storEffetto, disegnaEffetto: storDisegnaEffetto,
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce, ritratto: storRitratto,
@@ -3601,6 +3863,7 @@
   radice.storDisegnaCielo = storDisegnaCielo;
   radice.storDisegnaSistema = storDisegnaSistema;
   radice.storScena3D = storScena3D;
+  radice.storDisegnaCosmo = storDisegnaCosmo;
   radice.storRaggio3D = storRaggio3D;
   // È in scena in questo momento? (la 3D disegna una sonda o un mondo minore
   // spenti, se sono personaggi)
