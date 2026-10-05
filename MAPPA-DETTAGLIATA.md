@@ -315,8 +315,8 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-costellazioni` (l'atlante),
 | 5268–5412 | **1-quater. La barra del periodo** — l'unico comando delle date di calendario e agenda: il nome di quello che si legge, le frecce, il tondo di oggi, e il foglio coi campi (mese/anno, oppure due date) | `periodoChiudiFogli()`, `periodoImpostaModo()`, `periodoApriFoglio()`, `periodoScorri()`, `periodoDurataDaOggi()`, `inizializzaSelettoriMese()`, `periodoNome()` / `periodoNomeIntervallo()` / `meseCorto()`, `sincronizzaSelettoriMese()` |
 | 5413–5741 | **1-ter.** Ricerca "morbida" (senza accenti) e filtro categorie | `inizializzaRicerca()` (**5522**) |
 | 5742–5817 | **3.** Viste e commutazione | `VISTE` (**5749**), `mostraVista()` (**5759**) |
-| 5818–5862 | **4. Lettura vocale (TTS)** — parte solo da tasto o notifica | `ORIGINI_VOCE_AMMESSE` (**5823**) |
-| 5863–6045 | **5. Notifiche e promemoria** | `inizializzaNotifiche()` (**6011**) |
+| 5818–5862 | **4. Lettura vocale (TTS)** — parte solo dal tasto «Ascolta» (mai dai promemoria) | `ORIGINI_VOCE_AMMESSE` (**5823**) |
+| 5863–6045 | **5. Notifiche e promemoria** — campanella a interruttore (`notificheCommuta`), scelta dell'utente separata dal permesso (`notificheAttive`), notifiche di sistema dal service worker (`notificaMostra` → `showNotification`, tocco in `sw.js` `notificationclick`), più eventi insieme in una notifica sola (`mostraNotificaGruppo`) | `inizializzaNotifiche()` (**6011**) |
 | 6046–6095 | **6. Installazione PWA** | `inizializzaInstallazione()` (**6050**) |
 | 6096–6751 | **7. Il planetario** — stato `sky`, algebra Est/Nord/Alto, filtro anti-tremolio bussola, limiti del campo visivo, campo visivo AR | `skyElenco()` (**6220**, che tiene dentro anche gli oggetti profondi), `skyVoceDiId()` (**6283**, l'astro *o* l'oggetto profondo che si chiama così), `sky` (**6295**), `sky.reg` (**6439**), `skyVettore()` (**6464**), `SKY_FOV_MIN` (**6650**)/`skyImpostaFov()` (**6667**), `skyProietta()` (**6799**) |
 | 6752–7460 | **7.1** Posizione e sensori (e **7.1-quinquies**, «La bussola», qui sotto); **7.1-bis** posizione a tre strati (GPS → IP → a mano), la sorveglianza che segue chi si sposta e la cascata dell'avvio; **7.1-bis-bis** come si chiama il posto in cui sei | `skyRichiediPosizione()`, `posizioneDallaRete()`, `trovaPosizioneAStrati()`, `avviaPosizioneAllAvvio()`, `skySorvegliaPosizione(autorizzata, modo)` / `skySorveglianzaARiposo()` / `posSeguiSpostamento()`, `nomeLuogoDaRete()` / `posAggiornaNomeLuogo()`, declinazione magnetica, `skyAscoltaOrientamento()` / `skyRichiediSensori()` / `skyAvviaSensori()` / `skySensoriAlPrimoTocco()` |
@@ -423,6 +423,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 |---|---|
 | `CHIAVE_EVENTI_MANUALI` | `astrocalendario_eventi_manuali` |
 | `CHIAVE_NOTIFICHE_INVIATE` | `astrocalendario_notifiche_inviate` |
+| `CHIAVE_NOTIFICHE_ATTIVE` | `astrocalendario_notifiche_attive` (`'1'`/`'0'`: la campanella. Assente = accese se il permesso c'è, per chi le aveva già prima) |
 | `CHIAVE_SKY_POSIZIONE` | `astrocalendario_posizione` (la posizione dell'app: quella delle Impostazioni. Il luogo di sola visita del planetario **non** si salva) |
 | `CHIAVE_SKY_BUSSOLA` | `astrocalendario_bussola_offset_v2` |
 | `CHIAVE_SKY_CAMERA` | `astrocalendario_camera_campo` |

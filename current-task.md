@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v409): le Storie cosmiche diventano uno strumento per crearle (`STORIE.md`).
+Ultimo lavoro (v410): il sistema delle notifiche (`app.js` §5, `sw.js` `notificationclick`). La campanella ora accende e spegne i promemoria (scelta separata dal permesso), le notifiche passano dal service worker e arrivano come notifiche di sistema anche su Android, la voce non parte più con i promemoria, più eventi insieme diventano una notifica sola.
+
+Prima (v409): le Storie cosmiche diventano uno strumento per crearle (`STORIE.md`).
 
 - Pagina Demo a due linguette: «Demo» e «Storie cosmiche» (`storie-studio.js`, `studioSchede`).
 - Lo Studio delle storie (`storie-studio.js`): scopo con modelli, personaggi, scene e momenti, azioni, idee, comandi a parole, controllo dello scopo, prova, salvataggio fra le demo.
