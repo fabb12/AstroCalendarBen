@@ -1,11 +1,10 @@
 # Niente in corso
 
-Ultimo lavoro (v410): il sistema delle notifiche (`app.js` §5, `sw.js` `notificationclick`). La campanella ora accende e spegne i promemoria (scelta separata dal permesso), le notifiche passano dal service worker e arrivano come notifiche di sistema anche su Android, la voce non parte più con i promemoria, più eventi insieme diventano una notifica sola.
+Ultimo lavoro (v411): i personaggi delle Storie cosmiche e lo Studio (`STORIE.md`, §Lei e lui, §I corpi, §Lo Studio).
 
-Prima (v409): le Storie cosmiche diventano uno strumento per crearle (`STORIE.md`).
-
-- Pagina Demo a due linguette: «Demo» e «Storie cosmiche» (`storie-studio.js`, `studioSchede`).
-- Lo Studio delle storie (`storie-studio.js`): scopo con modelli, personaggi, scene e momenti, azioni, idee, comandi a parole, controllo dello scopo, prova, salvataggio fra le demo.
-- Nella 3D il volto sta sull'astro (che cresce, gira la testa, prende la luce del Sole); gli astri possono viaggiare fuori dall'orbita e tornare (`character_move`, `character_return`), animarsi e cambiare misura (`character_animate`, `character_scale`); effetti speciali (`effect`). Ganci in `app.js` prima della proiezione (`storScena3D`, `storRaggio3D`).
-- Prove: `prova-storie.js` (50), `prova-storie-browser.js` (57), `prova-demo-pagina.js`. Due verifiche della prova nel browser sono state adattate all'audio registrato aggiunto dal commit «Aggiunto nuova narrazione».
-- Già rotte prima di questo lavoro (non toccate): `prova-narrazione.js` (5 fallite) e `prova-demo-browser.js` («La demo lascia invariato lo stato dello schermo intero»).
+- Gli occhi sono l'apertura fra le palpebre (`storAperturaOcchio`): niente più palpebre color pelle «a occhiali» né la virgola scura in cima all'iride che da lontano sembrava una seconda pupilla (era il tratto della palpebra a occhio spalancato, più la crocetta accanto al riflesso). Espressioni più marcate e tre nuove: `laughing`, `love`, `angry`.
+- Lei e lui (`genere`): ciglia lunghe, sopracciglia sottili, labbra (e l'ombretto a Venere) per lei; sopracciglia folte, baffi e barba per lui (Giove barba bianca, Saturno baffi a manubrio, Nettuno barba a onde, Marte pizzetto, il Sole baffi folti).
+- I corpi (`sagoma`, `disegnaCorpo`): la Voyager è una sonda con la parabola, la ISS/Tiangong/Hubble hanno i loro pannelli, gli asteroidi sono sassi, le comete hanno chioma e coda, i pianeti il loro disegno. Nel planetario il corpo sta sull'astro (accanto col filo solo se lì non c'entra); nella 3D sonde e stazioni hanno il corpo disegnato, e `storInScena` fa disegnare a `solDisegna` una sonda o un mondo minore spenti se sono in scena.
+- Lo Studio a figurine: idee come schede, personaggi come figurine, chi parla e la faccia si toccano, azioni come etichette, «Scrivi a parole» in ogni scena, inquadratura e data chiuse, controllo in una riga.
+- Prove: `prova-storie.js` (53), `prova-storie-browser.js` (57), `prova-demo-pagina.js` (22), `prova-demo.js`, `prova-guida.js`, `prova-lingua.js`, `prova-i18n.js`, `controlla-i18n.js --patto`.
+- Già rotta prima di questo lavoro (non toccata): `prova-sistema3d.js` si ferma a «si toccano, si trovano…» con `ReferenceError: SOL_LUNE is not defined`, identica sul codice di prima.

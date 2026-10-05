@@ -38875,8 +38875,12 @@ function solDisegna() {
   // stesso modo — la fila della profondità, il piombo, la fase, il nome — ed è
   // il motivo per cui un pianeta nano non ha avuto bisogno di un disegno suo.
   const corpi = sol.pianeti.slice();
-  if (sol.mondiAccesi) sol.mondi.forEach(m => corpi.push(m));
-  if (sol.sondeAccese) sol.sonde.forEach(s => { if (s.partita) corpi.push(s); });
+  // Un personaggio di una Storia cosmica (storie-cosmiche.js) c'è anche
+  // quando la scena ha spento sonde e mondi minori: una storia con la
+  // Voyager come protagonista non può perdere la Voyager
+  const inStoria = id => typeof storInScena === 'function' && storInScena(id);
+  sol.mondi.forEach(m => { if (sol.mondiAccesi || inStoria(m.id)) corpi.push(m); });
+  sol.sonde.forEach(s => { if (s.partita && (sol.sondeAccese || inStoria(s.id))) corpi.push(s); });
   corpi.forEach(p => {
     p.scena = solScena(p.pos);
     p.rDisegno = p.sonda ? Math.max(3.4, solMisuraModelloVoyager() * 0.55) : solRaggioCorpo(p);
