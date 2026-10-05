@@ -2810,7 +2810,8 @@
         R = pg.misura === 'costume' && c.costumeR ? c.costumeR : Rbadge;
         const Ri = R * ingombroDi(p.sagoma);
         const ondeggia = ridotto ? 0 : Math.sin(stor.orologio / 1700 + pg.fase) * 1.2;
-        const libero = pg.misura === 'costume' || Number.isFinite(c.freccia) || (pg.misura === 'auto' &&
+        const fuori = Number.isFinite(c.freccia);
+        const libero = pg.misura === 'costume' || ((pg.misura === 'auto' || fuori) &&
           c.px - Ri >= m.lati && c.px + Ri <= L - m.lati && c.py - Ri >= m.su && c.py + Ri <= H - m.giu &&
           !presi.some(q => q.id !== pg.id && Math.hypot(q.x - c.px, q.y - c.py) < q.R + Ri + 4));
         if (libero) {
@@ -2819,7 +2820,8 @@
         } else {
           const s = storPostoDisco(pg.id, c.px, c.py, c.r, Ri, L, H, presi, margini);
           cx = s.x; cy = s.y + ondeggia;
-          posto = { x: cx, y: cy, R, ax: c.px, ay: c.py, ar: c.r };
+          // chi è fuori dal quadro non ha un filo verso il bordo: ha la freccia
+          posto = fuori ? { x: cx, y: cy, R, centrato: true } : { x: cx, y: cy, R, ax: c.px, ay: c.py, ar: c.r };
         }
         presi.push({ id: pg.id, x: cx, y: cy, R: Ri });
       }

@@ -1099,6 +1099,147 @@
     action: character_speak { target: 'Saturn', id: 'demo.narr.storia_giganti.4' };
   }
 }`
+    },
+    {
+      chiave: 'storia_tempo',
+      storia: true,
+      cast: 'Moon,Sun,voyager1,alpha_centauri,milky_way,andromeda',
+      testo: `define_demo 'storia_tempo' {
+  // «Il cielo è una macchina del tempo» (v412). Un'idea sola, detta a
+  // passi: la luce è velocissima ma non istantanea, quindi più si guarda
+  // lontano più si guarda indietro. La Luna fa da guida e fa le domande; ogni
+  // astro risponde con quanto è vecchia la sua luce, mentre la scala cosmica
+  // si allarga alla misura vera e i personaggi stanno al loro posto vero:
+  // 1,3 secondi la Luna, 8 minuti e 20 il Sole, quasi un giorno la Voyager,
+  // 4 anni e 4 mesi Alfa Centauri, 26.000 anni il centro della Galassia
+  // (l'era dei mammut), 2,5 milioni Andromeda (prima di noi), 13,8 miliardi
+  // la luce più antica. Si parte e si torna nella stessa sera vera, la Luna
+  // crescente del 13 dicembre 2026 da Roma (quella dell'episodio pilota).
+  scene planetarium_view {
+    duration: 9s;
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2026-12-13T17:30:00Z' };
+    action: center_target { target: 'Moon' };
+    action: zoom_fov { from: 40, to: 6 };
+    action: character_show { target: 'Moon', expression: 'thinking' };
+    action: character_expression { target: 'Moon', expression: 'surprised', shot_from: 0.5 };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.1' };
+  }
+  scene planetarium_view {
+    duration: 12s;
+    action: set_fov { degrees: 6 };
+    action: center_target { target: 'Moon' };
+    action: date_card { label: 'demo.cartello.storia_tempo.luna', time: hide };
+    action: character_show { target: 'Moon', expression: 'excited' };
+    action: effect { type: sparkles, target: 'Moon', shot_from: 0.4 };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.2' };
+  }
+  scene transition {
+    duration: 8s;
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+    action: character_show { target: 'Moon', expression: 'happy' };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.3' };
+  }
+  scene solar_system_3d {
+    // Dalla Terra della vista 3D alla carta, e fuori fino al Sole
+    duration: 13s;
+    action: cosmic_scale { from: 'arrival', to: 'inner_planets', orbit: 20, elev_to: 62 };
+    action: date_card { label: 'demo.cartello.storia_tempo.sole', time: hide };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'Moon', expression: 'surprised', look: 'Sun' };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_tempo.4' };
+  }
+  scene solar_system_3d {
+    duration: 12s;
+    action: cosmic_scale { from: 'inner_planets', to: 'inner_planets', orbit: 12, elev_from: 62, elev_to: 66 };
+    action: character_show { target: 'Sun', expression: 'laughing' };
+    action: character_show { target: 'Moon', expression: 'worried', look: 'Sun' };
+    action: character_expression { target: 'Moon', expression: 'happy', shot_from: 0.75 };
+    action: effect { type: flash, at: center, shot_from: 0.2 };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_tempo.5' };
+  }
+  scene solar_system_3d {
+    // Oltre i pianeti, fino alla Voyager di oggi
+    duration: 14s;
+    action: cosmic_scale { from: 'inner_planets', to: 'voyager', orbit: 18, elev_from: 66, elev_to: 72 };
+    action: date_card { label: 'demo.cartello.storia_tempo.voyager', time: hide };
+    action: character_show { target: 'voyager1', expression: 'excited' };
+    action: character_show { target: 'Moon', expression: 'surprised', look: 'voyager1' };
+    action: effect { type: shockwave, target: 'voyager1', shot_from: 0.3 };
+    action: character_speak { target: 'voyager1', id: 'demo.narr.storia_tempo.6' };
+  }
+  scene solar_system_3d {
+    // Le stelle vicine: Alfa Centauri a 4,37 anni luce
+    duration: 14s;
+    action: cosmic_scale { from: 'voyager', to: 'local_cloud', orbit: 18, elev_from: 72, elev_to: 78 };
+    action: date_card { label: 'demo.cartello.storia_tempo.alfa', time: hide };
+    action: character_show { target: 'alpha_centauri', expression: 'happy' };
+    action: character_show { target: 'Moon', expression: 'thinking', look: 'alpha_centauri' };
+    action: character_speak { target: 'alpha_centauri', id: 'demo.narr.storia_tempo.7' };
+  }
+  scene solar_system_3d {
+    // La Galassia intera: la luce del suo centro ha 26.000 anni
+    duration: 16s;
+    action: cosmic_scale { from: 'local_cloud', to: 'milky_way', orbit: 25, elev_from: 78, elev_to: 60 };
+    action: date_card { label: 'demo.cartello.storia_tempo.centro', time: hide };
+    action: character_show { target: 'milky_way', expression: 'thinking' };
+    action: character_show { target: 'Moon', expression: 'surprised', look: 'milky_way' };
+    action: effect { type: glow, target: 'galactic_center', shot_from: 0.3, duration: 6 };
+    action: character_speak { target: 'milky_way', id: 'demo.narr.storia_tempo.8' };
+  }
+  scene solar_system_3d {
+    // Fuori dalla Galassia: Andromeda, a 2,5 milioni di anni luce
+    duration: 15s;
+    action: cosmic_scale { from: 'milky_way', to: 'local_group', orbit: 20, elev_from: 60, elev_to: 72 };
+    action: date_card { label: 'demo.cartello.storia_tempo.andromeda', time: hide };
+    action: character_show { target: 'andromeda', expression: 'love' };
+    action: character_show { target: 'milky_way', expression: 'happy', look: 'andromeda' };
+    action: effect { type: hearts, target: 'andromeda', shot_from: 0.4 };
+    action: character_speak { target: 'andromeda', id: 'demo.narr.storia_tempo.9' };
+  }
+  scene solar_system_3d {
+    // La domanda: la Luna (un puntino con tutti noi) ha capito il gioco
+    duration: 12s;
+    action: cosmic_scale { from: 'local_group', to: 'laniakea', orbit: 20, elev_from: 72, elev_to: 80 };
+    action: character_show { target: 'Moon', expression: 'excited' };
+    action: character_show { target: 'milky_way', expression: 'happy', look: 'Moon' };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.10' };
+  }
+  scene solar_system_3d {
+    // Il bordo dell'universo osservabile: la luce più antica
+    duration: 15s;
+    action: cosmic_scale { from: 'laniakea', to: 'universe', zoom_end: 0.8, orbit: 20, elev_from: 80, elev_to: 70 };
+    action: date_card { label: 'demo.cartello.storia_tempo.universo', time: hide };
+    action: character_show { target: 'milky_way', expression: 'surprised' };
+    action: character_show { target: 'Moon', expression: 'surprised', look: 'milky_way' };
+    action: effect { type: fireworks, at: center, shot_from: 0.55 };
+    action: character_speak { target: 'milky_way', id: 'demo.narr.storia_tempo.11' };
+  }
+  scene solar_system_3d {
+    // Il ritorno in un fiato, fino alla Terra che riempie lo schermo
+    duration: 12s;
+    action: cosmic_scale { from: 'universe', to: 'landing', ease: smooth, orbit: -40, elev_from: 70, elev_to: 90 };
+    action: character_show { target: 'Moon', expression: 'laughing' };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.12' };
+  }
+  scene transition {
+    duration: 6s;
+    action: zoom_view { type: geometric, final_target: planetarium_view };
+    action: character_show { target: 'Moon', expression: 'happy' };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.13' };
+  }
+  scene planetarium_view {
+    // Di nuovo sotto la stessa Luna: adesso si sa che cosa si sta guardando
+    duration: 13s;
+    action: set_date { iso: '2026-12-13T17:30:00Z' };
+    action: center_target { target: 'Moon' };
+    action: zoom_fov { from: 20, to: 6 };
+    action: date_card { label: 'demo.cartello.storia_tempo.casa', time: show };
+    action: character_show { target: 'Moon', expression: 'love' };
+    action: effect { type: sparkles, target: 'Moon', shot_from: 0.6 };
+    action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.14' };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;
