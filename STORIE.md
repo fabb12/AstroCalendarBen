@@ -416,6 +416,21 @@ motore non sa niente dei personaggi. L'editor offre gli snippet
   una fettina!».
 - **«Giove e Saturno»** (`storia_giganti`, 47 s): la storia d'esempio, corta,
   che usa tutte le azioni. Da duplicare e modificare.
+- **«Il cielo è una macchina del tempo»** (`storia_tempo`, 171 s, quattordici
+  scene, v413). Un'idea sola, detta a passi: la luce è velocissima ma non
+  istantanea, quindi **più si guarda lontano, più si guarda indietro**. Si
+  parte sotto la stessa Luna del pilota (Roma, 13 dicembre 2026), si sale con
+  il volo del planetario e poi la **scala cosmica** si allarga alla misura
+  vera; la Luna fa da guida e fa le domande, e ogni astro risponde, al suo
+  posto vero, con l'età della sua luce (il cartello la scrive): la Luna 1,3
+  secondi, il Sole 8 minuti e 20 («se mi spegnessi adesso, ve ne
+  accorgereste fra otto minuti»), la Voyager 1 quasi un giorno, Alfa
+  Centauri 4 anni e 4 mesi, il centro della Via Lattea 26.000 anni («quando
+  camminavano i mammut»), Andromeda 2,5 milioni («prima di voi esseri
+  umani»), la luce più antica 13,8 miliardi. Il ritorno in un fiato fino
+  alla Terra e l'atterraggio, e il congedo sotto la stessa Luna: «Il cielo è
+  una vera macchina del tempo!». Senza audio registrato: parla con la voce
+  di sintesi.
 
 ## Il corpo nello spazio (v409)
 

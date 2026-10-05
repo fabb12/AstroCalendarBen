@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v412): le Storie cosmiche nella scala cosmica (`STORIE.md`, §Nella scala cosmica; §Lo Studio).
+Ultimo lavoro (v413): la storia «Il cielo è una macchina del tempo» (`storia_tempo` in `demo-predefiniti.js`, testi `demo.narr.storia_tempo.*` e `demo.cartello.storia_tempo.*`): la luce che arriva in ritardo, dalla Luna alla luce più antica, nella scala cosmica. Senza audio registrato (voce di sintesi). Nella scala cosmica, durante una demo, il terzo in basso è dei sottotitoli: i personaggi che cadrebbero lì vanno accanto (`scala-cosmica.js`, chiamata a `storDisegnaCosmo`); chi è fuori dal quadro evita gli altri e ha la freccia, non il filo.
+
+Prima (v412): le Storie cosmiche nella scala cosmica (`STORIE.md`, §Nella scala cosmica; §Lo Studio).
 
 - `cosmDisegna` chiama `storDisegnaCosmo`: i personaggi stanno al loro posto vero sulla carta (`cosmDove`), chi è fuori dal quadro resta sul bordo con una freccia; viaggiano verso altri personaggi e verso i luoghi dell'universo (`cosmLuogo`, `STOR_LUOGHI_COSMO`), con la distanza che cresce in progressione geometrica (`storPuntoCosmo`).
 - Personaggi che vivono solo lì: Via Lattea, Andromeda (famiglia `galassia`, sagoma a spirale), Sirio, Alfa Centauri. Validazione `demo.err.soloCosmo`.
