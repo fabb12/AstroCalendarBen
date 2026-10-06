@@ -71,7 +71,9 @@
   };
   const STUDIO_SEGNI_COSMO = {
     alpha_centauri: 4.37, sirius: 8.6, orion_nebula: 1344, galactic_center: 26000, lmc: 160000, smc: 200000,
-    andromeda: 2.54e6, triangulum: 2.73e6, virgo_cluster: 54e6, great_attractor: 250e6
+    andromeda: 2.54e6, triangulum: 2.73e6, virgo_cluster: 54e6, great_attractor: 250e6,
+    // v414: i due luoghi delle storie sulle stelle (`COSM_LUOGHI_STORIE`)
+    betelgeuse: 548, crab_nebula: 6500
   };
   // I nomi a schermo: quelli della scala cosmica (`cosmo.*` nei dizionari)
   const STUDIO_NOMI_TAPPE = {
@@ -81,13 +83,14 @@
   };
   const STUDIO_NOMI_SEGNI = {
     alpha_centauri: 'alfaCen', sirius: 'sirio', orion_nebula: 'orione', galactic_center: 'centro', lmc: 'gnm', smc: 'pnm',
-    andromeda: 'm31', triangulum: 'm33', virgo_cluster: 'ammassoVergine', great_attractor: 'grandeAttrattore'
+    andromeda: 'm31', triangulum: 'm33', virgo_cluster: 'ammassoVergine', great_attractor: 'grandeAttrattore',
+    betelgeuse: 'betelgeuse', crab_nebula: 'granchio'
   };
   const luogoCosmo = v => typeof v === 'string' && (v in STUDIO_TAPPE_COSMO || v in STUDIO_SEGNI_COSMO);
   // La scala che inquadra un luogo (o un personaggio dell'universo, al suo luogo)
   function studioLCosmo(v) {
     const prof = S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[v];
-    if (prof && prof.cosmo) v = prof.cosmo;
+    if (prof && (prof.cosmo || prof.luogo)) v = prof.cosmo || prof.luogo;
     if (v in STUDIO_TAPPE_COSMO) return STUDIO_TAPPE_COSMO[v];
     if (v in STUDIO_SEGNI_COSMO) return Math.log10(Math.max(STUDIO_SEGNI_COSMO[v] * 1.7, 6) * STUDIO_AL);
     return null;
@@ -108,7 +111,10 @@
   const STUDIO_ZOOM = { lontano: 0.75, normale: 1, vicino: 1.7 };
   const STUDIO_FOV = { lontano: 60, normale: 18, vicino: 3 };
   const STUDIO_QUANDO = ['inizio', 'meta', 'fine', 'tutto'];
-  const STUDIO_TIPI = ['umore', 'guarda', 'muovi', 'torna', 'anima', 'scala', 'effetto', 'occhiolino', 'nascondi'];
+  const STUDIO_TIPI = ['umore', 'guarda', 'muovi', 'torna', 'anima', 'scala', 'diventa', 'effetto', 'occhiolino', 'nascondi'];
+  // Che cosa può diventare un personaggio (v414, `character_become`): le
+  // vesti di `STOR_VESTI`, tenute qui per lo stesso motivo delle tappe
+  const STUDIO_FORME = ['red_giant', 'white_dwarf', 'supernova', 'black_hole', 'self'];
   const STUDIO_PAROLE_BAMBINI = 25;     // oltre, una battuta è lunga per un bambino
   const STUDIO_DURATA_IDEALE = [30, 240];
 
@@ -121,7 +127,7 @@
     const di = {
       umore: { umore: 'happy' }, guarda: { oggetto: 'viewer' },
       muovi: { verso: '', lato: 'auto', percorso: 'arc', quando: 'tutto' }, torna: { percorso: 'arc', quando: 'tutto' },
-      anima: { animazione: 'jump', volte: 0 }, scala: { scala: 1.6, quando: 'inizio' },
+      anima: { animazione: 'jump', volte: 0 }, scala: { scala: 1.6, quando: 'inizio' }, diventa: { forma: 'red_giant', quando: 'tutto' },
       effetto: { effetto: 'sparkles', dove: '', grandezza: 1, colore: '' }, occhiolino: {}, nascondi: { quando: 'fine' }
     }[tipo] || {};
     return Object.assign(base, di, campi);
@@ -179,7 +185,7 @@
             umore: testo(a.umore, 20) || undefined, oggetto: testo(a.oggetto, 40) || undefined,
             verso: testo(a.verso, 40), lato: tra(a.lato, ['auto', 'left', 'right', 'above', 'below', 'front', 'behind'], 'auto'),
             percorso: testo(a.percorso, 20) || 'arc', animazione: testo(a.animazione, 20) || 'jump',
-            volte: numero(a.volte, 0, 20, 0), scala: numero(a.scala, 0.2, 6, 1.6),
+            volte: numero(a.volte, 0, 20, 0), scala: numero(a.scala, 0.2, 6, 1.6), forma: tra(a.forma, STUDIO_FORME, 'red_giant'),
             effetto: testo(a.effetto, 20) || 'sparkles', dove: testo(a.dove, 40),
             grandezza: numero(a.grandezza, 0.2, 5, 1), colore: /^#[0-9a-f]{6}$/i.test(a.colore || '') ? a.colore : ''
           }))
@@ -296,6 +302,24 @@
         M('andromeda', 5, 'happy', [['muovi', { chi: 'andromeda', verso: 'milky_way', percorso: 'spiral' }]]),
         M('milky_way', 6, 'love', [['effetto', { effetto: 'fireworks', dove: 'milky_way', quando: 'meta' }]])
       ] }
+    ] },
+    /* Buchi neri e buchi bianchi (v414). Il Sole prova a fare il buco nero
+     * (`diventa`), e Sagittario A* gli spiega che è troppo leggero; il buco
+     * bianco, che non ha un posto sulla carta, ammette di essere un'idea. */
+    buchi: { cast: ['Sun', 'sgr_a', 'white_hole'], scene: [
+      { ambiente: 'cosmo', da: 'inner_planets', a: 'local_bubble', presenti: ['Sun'], momenti: [
+        M('Sun', 1, 'thinking', [['anima', { chi: 'Sun', animazione: 'wobble', quando: 'meta' }]])
+      ] },
+      { ambiente: 'cosmo', da: 'orion_arm', a: 'milky_way', presenti: ['Sun', 'sgr_a'], momenti: [
+        M('sgr_a', 2, 'happy', [['effetto', { effetto: 'glow', dove: 'sgr_a', quando: 'meta' }]]),
+        M('Sun', 3, 'excited', [['diventa', { chi: 'Sun', forma: 'black_hole' }]]),
+        M('sgr_a', 4, 'laughing', [['diventa', { chi: 'Sun', forma: 'self', quando: 'fine' }]])
+      ] },
+      { ambiente: 'cosmo', da: 'milky_way', a: 'milky_way', presenti: ['sgr_a', 'white_hole'], momenti: [
+        M('white_hole', 5, 'excited', [['effetto', { effetto: 'flash', dove: 'center' }]]),
+        M('sgr_a', 6, 'surprised', [['guarda', { chi: 'sgr_a', oggetto: 'white_hole' }]]),
+        M('white_hole', 7, 'thinking', [['umore', { chi: 'white_hole', umore: 'laughing', quando: 'fine' }]])
+      ] }
     ] }
   };
 
@@ -395,6 +419,9 @@
       case 'scala':
         if (!inScena(chi)) return '';
         return `character_scale { target: ${virgolette(chi)}, scale: ${numeroDsl(az.scala || 1)}${ripresa(az, true)} }`;
+      case 'diventa':
+        if (!inScena(chi) || !STUDIO_FORME.includes(az.forma)) return '';
+        return `character_become { target: ${virgolette(chi)}, shape: ${az.forma}${ripresa(az, true)} }`;
       case 'effetto': {
         if (!az.effetto) return '';
         const luoghi = ['center', 'left', 'right', 'top', 'bottom'];
@@ -773,11 +800,17 @@
           // I luoghi dell'universo: «Voyager va verso la nube di Oort»
           let posto = '', piuPresto = Infinity;
           for (const k of STUDIO_POSTI_PAROLE) { const x = trova(s, 'posto.' + k); if (x && x.pos < piuPresto) { piuPresto = x.pos; posto = k; } }
-          if (trova(s, 'torna')) azione('torna', { percorso: percorso === 'arc' ? 'arc' : percorso, quando: quando || 'tutto' });
+          // «Il Sole diventa una gigante rossa», «il Sole torna com'era»
+          // (v414): la veste vince sul viaggio e sulla misura, che hanno
+          // parole in comune («si gonfia», «torna»)
+          const forma = STUDIO_FORME.find(f => trova(s, 'veste.' + f));
+          if (forma) azione('diventa', { forma, quando: quando || 'tutto' });
+          else if (trova(s, 'torna')) azione('torna', { percorso: percorso === 'arc' ? 'arc' : percorso, quando: quando || 'tutto' });
           else if (trova(s, 'muovi') && (oggetto || posto || luogo)) azione('muovi', { verso: oggetto || posto || luogo, percorso, quando: quando || 'tutto' });
           for (const a of ['jump', 'bounce', 'shake', 'nod', 'spin', 'pulse', 'dance', 'wobble'])
             if (trova(s, 'anima.' + a)) { azione('anima', { animazione: a, volte: numero }); break; }
-          if (trova(s, 'grande')) azione('scala', { scala: 1.8 });
+          if (forma) { /* la misura la porta la veste */ }
+          else if (trova(s, 'grande')) azione('scala', { scala: 1.8 });
           else if (trova(s, 'piccolo')) azione('scala', { scala: 0.55 });
           else if (trova(s, 'normale')) azione('scala', { scala: 1 });
           if (trova(s, 'guarda')) azione('guarda', { oggetto: oggetto || 'viewer' });
@@ -821,7 +854,7 @@
       : luogoCosmo(id) && !(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id]) ? nomeLuogo(id) : (S().nome ? S().nome(id) : id);
     const dati = {
       chi: nome(a.chi), verso: nome(a.verso), oggetto: nome(a.oggetto), dove: nome(a.dove || a.chi),
-      umore: t('storie.espressione.' + a.umore), animazione: t('storie.animazione.' + a.animazione),
+      umore: t('storie.espressione.' + a.umore), animazione: t('storie.animazione.' + a.animazione), forma: t('storie.veste.' + a.forma),
       percorso: t('storie.percorso.' + a.percorso), effetto: t('storie.effetto.' + a.effetto),
       scala: (() => { try { return new Intl.NumberFormat(haI18n() && radice.astroI18n.locale ? radice.astroI18n.locale() : 'it-IT').format(a.scala); } catch (_) { return String(a.scala); } })()
     };
@@ -1017,6 +1050,7 @@
       riga.append(selettore(p + 'animazione', az.animazione, (S().STOR_ANIMAZIONI || []).map(x => [x, t('storie.animazione.' + x)]), { 'aria-label': t('studio.animazione') }));
       riga.append(selettore(p + 'volte', String(az.volte || 0), [['0', t('studio.volteAuto')], ...[1, 2, 3, 4, 5, 6].map(n => [String(n), t('studio.volte', { n })])], { 'aria-label': t('studio.quanteVolte') }));
     }
+    if (az.tipo === 'diventa') riga.append(selettore(p + 'forma', az.forma, STUDIO_FORME.map(x => [x, t('storie.veste.' + x)]), { 'aria-label': t('studio.forma') }));
     if (az.tipo === 'scala') riga.append(selettore(p + 'scala', String(az.scala), [['0.4', t('studio.scala.minuscolo')], ['0.7', t('studio.scala.piccolo')], ['1', t('studio.scala.normale')], ['1.6', t('studio.scala.grande')], ['2.5', t('studio.scala.enorme')]], { 'aria-label': t('studio.misura') }));
     if (az.tipo === 'effetto') {
       riga.append(selettore(p + 'effetto', az.effetto, Object.keys(S().STOR_EFFETTI || {}).map(x => [x, t('storie.effetto.' + x)]), { 'aria-label': t('studio.effetto') }));

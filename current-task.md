@@ -1,20 +1,12 @@
 # Niente in corso
 
-Ultimo lavoro (v413): la storia «Il cielo è una macchina del tempo» (`storia_tempo` in `demo-predefiniti.js`, testi `demo.narr.storia_tempo.*` e `demo.cartello.storia_tempo.*`): la luce che arriva in ritardo, dalla Luna alla luce più antica, nella scala cosmica. Senza audio registrato (voce di sintesi). Nella scala cosmica, durante una demo, il terzo in basso è dei sottotitoli: i personaggi che cadrebbero lì vanno accanto (`scala-cosmica.js`, chiamata a `storDisegnaCosmo`); chi è fuori dal quadro evita gli altri e ha la freccia, non il filo.
+Ultimo lavoro (v414): la vita delle stelle nelle Storie cosmiche (`STORIE.md`, §La vita delle stelle).
 
-Prima (v412): le Storie cosmiche nella scala cosmica (`STORIE.md`, §Nella scala cosmica; §Lo Studio).
-
-- `cosmDisegna` chiama `storDisegnaCosmo`: i personaggi stanno al loro posto vero sulla carta (`cosmDove`), chi è fuori dal quadro resta sul bordo con una freccia; viaggiano verso altri personaggi e verso i luoghi dell'universo (`cosmLuogo`, `STOR_LUOGHI_COSMO`), con la distanza che cresce in progressione geometrica (`storPuntoCosmo`).
-- Personaggi che vivono solo lì: Via Lattea, Andromeda (famiglia `galassia`, sagoma a spirale), Sirio, Alfa Centauri. Validazione `demo.err.soloCosmo`.
-- Studio: ambiente «L'universo» (la camera da una tappa a un'altra, divisa fra i momenti e che segue chi viaggia), luoghi nelle mete/sguardi/effetti e nei comandi a parole, fatti veri per tappa nel «prossimo momento», due modelli («Quanto è grande l'universo?», «Andromeda sta arrivando!»), consigli nuovi «emozione» e «meraviglia».
-- `demo.js`: `cosmic_scale` accetta numeri di UA da 1e-6 a 1e17.
-- Prove: `prova-storie.js` (58), `prova-storie-browser.js` (nuova sezione sulla scala cosmica), `prova-scala-cosmica.js`, `prova-demo-pagina.js`, `prova-demo.js`.
-
-Prima (v411): i personaggi delle Storie cosmiche e lo Studio (`STORIE.md`, §Lei e lui, §I corpi, §Lo Studio).
-
-- Gli occhi sono l'apertura fra le palpebre (`storAperturaOcchio`): niente più palpebre color pelle «a occhiali» né la virgola scura in cima all'iride che da lontano sembrava una seconda pupilla (era il tratto della palpebra a occhio spalancato, più la crocetta accanto al riflesso). Espressioni più marcate e tre nuove: `laughing`, `love`, `angry`.
-- Lei e lui (`genere`): ciglia lunghe, sopracciglia sottili, labbra (e l'ombretto a Venere) per lei; sopracciglia folte, baffi e barba per lui (Giove barba bianca, Saturno baffi a manubrio, Nettuno barba a onde, Marte pizzetto, il Sole baffi folti).
-- I corpi (`sagoma`, `disegnaCorpo`): la Voyager è una sonda con la parabola, la ISS/Tiangong/Hubble hanno i loro pannelli, gli asteroidi sono sassi, le comete hanno chioma e coda, i pianeti il loro disegno. Nel planetario il corpo sta sull'astro (accanto col filo solo se lì non c'entra); nella 3D sonde e stazioni hanno il corpo disegnato, e `storInScena` fa disegnare a `solDisegna` una sonda o un mondo minore spenti se sono in scena.
-- Lo Studio a figurine: idee come schede, personaggi come figurine, chi parla e la faccia si toccano, azioni come etichette, «Scrivi a parole» in ogni scena, inquadratura e data chiuse, controllo in una riga.
-- Prove: `prova-storie.js` (53), `prova-storie-browser.js` (57), `prova-demo-pagina.js` (22), `prova-demo.js`, `prova-guida.js`, `prova-lingua.js`, `prova-i18n.js`, `controlla-i18n.js --patto`.
-- Già rotta prima di questo lavoro (non toccata): `prova-sistema3d.js` si ferma a «si toccano, si trovano…» con `ReferenceError: SOL_LUNE is not defined`, identica sul codice di prima.
+- Sagome nuove (`storie-cosmiche.js` §6-quater): `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco`; famiglia `buco`.
+- Personaggi: Betelgeuse (`Star7`, anche nel planetario; nella carta al `luogo` `betelgeuse`), la supernova del Granchio (`supernova`, a `crab_nebula`), Sirio B (`sirius_b`), Sagittario A* (`sgr_a`), il buco bianco (`white_hole`, `cosmo: 'idea'`: galleggia davanti alla carta, non viaggia e non si raggiunge, `demo.err.ideaFerma`). I luoghi nuovi sono in `COSM_LUOGHI_STORIE` (`scala-cosmica.js`), senza paletto disegnato.
+- `character_become { target, shape }` (`STOR_VESTI`: `red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`): un personaggio diventa un'altra cosa col suo volto. Nello Studio è l'azione «Diventa…», anche a parole; modello nuovo «Che cos'è un buco nero?» (`buchi`). Snippet nell'editor.
+- La storia «Che fine fanno le stelle?» (`storia_stelle`, 24 scene, 278 s, voce di sintesi): da Orione (Roma, 13/12/2026 alle 22) alla scala cosmica e ritorno.
+- Corretto: nella scala cosmica chi è fuori dal quadro porta sempre il suo corpo (il Sole appena partiti dalla Terra era un occhio gigante sul bordo, anche nella «macchina del tempo»).
+- Prove: `prova-storie.js` (62), `prova-storie-browser.js` (65), `prova-demo.js`, `prova-demo-pagina.js` (22), `prova-scala-cosmica.js` (155), `prova-guida.js`, `prova-lingua.js`, `prova-i18n.js`, `controlla-i18n.js --patto`. `scripts/giro-storia.js` fa girare una storia intera con le schermate in `work/` (non è una prova: serve a guardarla).
+- `prova-demo-browser.js`: l'elenco delle demo predefinite e delle durate non conosceva ancora `storia_tempo` (v413): aggiornato con le due storie. Si ferma comunque più avanti, a «La demo lascia invariato lo stato dello schermo intero», identica sul codice di prima (non toccata).
+- Già rotta prima (v411, non toccata): `prova-sistema3d.js` con `SOL_LUNE is not defined`.

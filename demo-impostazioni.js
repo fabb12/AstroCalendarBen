@@ -47,7 +47,10 @@
     character_look_at: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_show { target: 'Jupiter' };\n    action: character_look_at { target: 'Saturn', object: 'Jupiter' }"],
     character_blink: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_blink { target: 'Saturn', shot_from: 0.4 }"],
     character_speak: ['solar_system_3d', "character_show { target: 'Saturn', expression: 'happy' };\n    action: character_speak { target: 'Saturn', id: 'demo.narr.storia_giganti.1' }"],
-    character_hide: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_hide { target: 'Saturn', shot_from: 0.8 }"]
+    character_hide: ['solar_system_3d', "character_show { target: 'Saturn' };\n    action: character_hide { target: 'Saturn', shot_from: 0.8 }"],
+    // Il Sole che prova addosso il suo futuro (v414): red_giant, white_dwarf,
+    // supernova, black_hole, e self per tornare com'era
+    character_become: ['solar_system_3d', "character_show { target: 'Sun' };\n    action: character_become { target: 'Sun', shape: red_giant }"]
   };
   const scena = (vista, azione) => '  scene ' + vista + ' {\n    duration: 10s;\n    action: ' + azione + ';\n  }\n';
   const snippets = {

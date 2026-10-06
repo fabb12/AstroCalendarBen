@@ -1240,6 +1240,241 @@
     action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.14' };
   }
 }`
+    },
+    {
+      chiave: 'storia_stelle',
+      storia: true,
+      cast: 'Star7,Sun,Earth,supernova,sirius_b,sirius,sgr_a,white_hole',
+      testo: `define_demo 'storia_stelle' {
+  // «Che fine fanno le stelle?» (v414). Il Sole ha quattro miliardi e mezzo
+  // di anni e si chiede che cosa gli succederà; va a chiederlo a chi lo sa,
+  // ognuno al suo posto vero nella scala cosmica: Betelgeuse, la
+  // supergigante rossa (548 anni luce, l'offuscamento del 2019-2020, la
+  // supernova entro centomila anni), la supernova del 1054 che oggi è la
+  // nebulosa del Granchio (6500 anni luce, la pulsar di 20 km che gira trenta
+  // volte al secondo), Sirio B, la nana bianca (massa di un Sole, misura della
+  // Terra), Sagittario A* (quattro milioni di Soli, fotografato nel 2022) e il
+  // buco bianco, che dice da sé di essere soltanto un'idea. Il Sole prova
+  // addosso il suo futuro (gigante rossa, poi nana bianca: è troppo leggero
+  // per esplodere). Si parte e si torna sotto Orione, la sera del 13 dicembre
+  // 2026 da Roma, con Betelgeuse alta 41° a sud-est e la Luna già tramontata.
+  scene planetarium_view {
+    duration: 11s;
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2026-12-13T21:00:00Z' };
+    action: point_view { az: 126, alt: 34 };
+    action: zoom_fov { from: 70, to: 34 };
+    action: character_show { target: 'Star7', expression: 'happy' };
+    action: character_expression { target: 'Star7', expression: 'laughing', shot_from: 0.6 };
+    action: effect { type: sparkles, target: 'Star7', shot_from: 0.3 };
+    action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.1' };
+  }
+  scene planetarium_view {
+    duration: 10s;
+    action: set_fov { degrees: 34 };
+    action: point_view { az: 126, alt: 34 };
+    action: date_card { label: 'demo.cartello.storia_stelle.betelgeuse', time: hide };
+    action: character_show { target: 'Star7', expression: 'thinking' };
+    action: character_expression { target: 'Star7', expression: 'excited', shot_from: 0.65 };
+    action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.2' };
+  }
+  scene transition {
+    duration: 7s;
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+    action: character_show { target: 'Star7', expression: 'excited' };
+    action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.3' };
+  }
+  scene solar_system_3d {
+    // Il Sole e la Terra, alle distanze vere
+    duration: 12s;
+    action: cosmic_scale { from: 'arrival', to: 'inner_planets', orbit: 20, elev_to: 62 };
+    action: date_card { label: 'demo.cartello.storia_stelle.sole', time: hide };
+    action: character_show { target: 'Sun', expression: 'worried' };
+    action: character_show { target: 'Earth', expression: 'surprised', look: 'Sun' };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_stelle.4' };
+  }
+  scene solar_system_3d {
+    duration: 9s;
+    action: cosmic_scale { from: 'inner_planets', to: 'inner_planets', orbit: 10, elev_from: 62, elev_to: 66 };
+    action: character_show { target: 'Sun', expression: 'sad', look: 'Earth' };
+    action: character_show { target: 'Earth', expression: 'thinking' };
+    action: character_expression { target: 'Earth', expression: 'excited', shot_from: 0.5 };
+    action: character_speak { target: 'Earth', id: 'demo.narr.storia_stelle.5' };
+  }
+  scene solar_system_3d {
+    // Fuori, fino a Betelgeuse: 548 anni luce
+    duration: 14s;
+    action: cosmic_scale { from: 'inner_planets', to: 63000000, center: sun, orbit: 20, elev_from: 66, elev_to: 74 };
+    action: date_card { label: 'demo.cartello.storia_stelle.gigante', time: hide };
+    action: character_show { target: 'Star7', expression: 'happy' };
+    action: character_show { target: 'Sun', expression: 'surprised', look: 'Star7' };
+    action: character_animate { target: 'Star7', animation: pulse, times: 2, shot_from: 0.5 };
+    action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.6' };
+  }
+  scene solar_system_3d {
+    duration: 13s;
+    action: cosmic_scale { from: 63000000, to: 63000000, center: sun, orbit: 12, elev_from: 74, elev_to: 76 };
+    action: character_show { target: 'Star7', expression: 'surprised' };
+    action: character_show { target: 'Sun', expression: 'worried', look: 'Star7' };
+    action: character_animate { target: 'Star7', animation: shake, times: 3, shot_from: 0.55 };
+    action: character_expression { target: 'Star7', expression: 'excited', shot_from: 0.55 };
+    action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.7' };
+  }
+  scene solar_system_3d {
+    // La supernova del 1054: oggi la nebulosa del Granchio, a 6500 anni luce
+    duration: 14s;
+    action: cosmic_scale { from: 63000000, to: 570000000, center: sun, orbit: 18, elev_from: 76, elev_to: 70 };
+    action: date_card { label: 'demo.cartello.storia_stelle.supernova', time: hide };
+    action: character_show { target: 'supernova', expression: 'laughing' };
+    action: character_show { target: 'Sun', expression: 'surprised', look: 'supernova' };
+    action: effect { type: explosion, target: 'supernova', size: 1.6, shot_from: 0.25 };
+    action: character_speak { target: 'supernova', id: 'demo.narr.storia_stelle.8' };
+  }
+  scene solar_system_3d {
+    duration: 13s;
+    action: cosmic_scale { from: 570000000, to: 570000000, center: sun, orbit: 10, elev_from: 70, elev_to: 68 };
+    action: date_card { label: 'demo.cartello.storia_stelle.pulsar', time: hide };
+    action: character_show { target: 'supernova', expression: 'excited' };
+    action: character_show { target: 'Sun', expression: 'surprised', look: 'supernova' };
+    action: character_animate { target: 'supernova', animation: spin, times: 3, shot_from: 0.35 };
+    action: character_speak { target: 'supernova', id: 'demo.narr.storia_stelle.9' };
+  }
+  scene solar_system_3d {
+    // Di nuovo vicino a casa: la paura del Sole
+    duration: 9s;
+    action: cosmic_scale { from: 570000000, to: 1000000, center: sun, orbit: -95, elev_from: 68, elev_to: 72 };
+    action: character_show { target: 'Sun', expression: 'worried' };
+    action: character_animate { target: 'Sun', animation: shake, times: 4, strength: 0.6, shot_from: 0.4 };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_stelle.10' };
+  }
+  scene solar_system_3d {
+    // Sirio B, la nana bianca, accanto a Sirio, a 8,6 anni luce
+    duration: 13s;
+    action: cosmic_scale { from: 1000000, to: 1000000, center: sun, orbit: 10, elev_from: 72, elev_to: 74 };
+    action: date_card { label: 'demo.cartello.storia_stelle.nana', time: hide };
+    action: character_show { target: 'sirius_b', expression: 'happy' };
+    action: character_show { target: 'sirius', expression: 'happy', look: 'sirius_b' };
+    action: character_show { target: 'Sun', expression: 'surprised', look: 'sirius_b' };
+    action: character_animate { target: 'sirius_b', animation: bounce, times: 2, shot_from: 0.2 };
+    action: character_speak { target: 'sirius_b', id: 'demo.narr.storia_stelle.11' };
+  }
+  scene solar_system_3d {
+    duration: 11s;
+    action: cosmic_scale { from: 1000000, to: 1000000, center: sun, orbit: 8, elev_from: 74, elev_to: 75 };
+    action: character_show { target: 'sirius_b', expression: 'laughing' };
+    action: character_show { target: 'sirius', expression: 'happy', look: 'sirius_b' };
+    action: character_show { target: 'Sun', expression: 'happy', look: 'sirius_b' };
+    action: effect { type: sparkles, target: 'sirius_b', shot_from: 0.3 };
+    action: character_speak { target: 'sirius_b', id: 'demo.narr.storia_stelle.12' };
+  }
+  scene solar_system_3d {
+    // Il Sole prova addosso il suo futuro: prima gigante rossa…
+    duration: 14s;
+    action: cosmic_scale { from: 1000000, to: 'inner_planets', zoom_end: 0.35, orbit: 20, elev_from: 75, elev_to: 64 };
+    action: date_card { label: 'demo.cartello.storia_stelle.futuro', time: hide };
+    action: character_show { target: 'Sun', expression: 'surprised' };
+    action: character_show { target: 'Earth', expression: 'surprised', look: 'Sun' };
+    action: character_become { target: 'Sun', shape: red_giant, shot_from: 0.3, shot_to: 0.8 };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_stelle.13' };
+  }
+  scene solar_system_3d {
+    // …poi la nebulosa planetaria, e il cuore che resta: una nana bianca
+    duration: 14s;
+    action: cosmic_scale { from: 'inner_planets', to: 'inner_planets', orbit: 12, elev_from: 64, elev_to: 66 };
+    action: character_show { target: 'Sun', expression: 'thinking' };
+    action: character_show { target: 'Earth', expression: 'surprised', look: 'Sun' };
+    action: effect { type: shockwave, target: 'Sun', size: 2.6, color: '#5eead4', duration: 5, shot_from: 0.15 };
+    action: character_become { target: 'Sun', shape: white_dwarf, shot_from: 0.25, shot_to: 0.7 };
+    action: character_expression { target: 'Sun', expression: 'happy', shot_from: 0.7 };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_stelle.14' };
+  }
+  scene solar_system_3d {
+    // Di nuovo sé stesso, e via verso il centro della Galassia
+    duration: 14s;
+    action: cosmic_scale { from: 'inner_planets', to: 'milky_way', orbit: 25, elev_from: 66, elev_to: 58 };
+    action: character_show { target: 'Sun', expression: 'thinking' };
+    action: character_become { target: 'Sun', shape: self, shot_from: 0, shot_to: 0.2 };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_stelle.15' };
+  }
+  scene solar_system_3d {
+    // Sagittario A*, il buco nero al centro della Via Lattea
+    duration: 15s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 12, elev_from: 58, elev_to: 62 };
+    action: date_card { label: 'demo.cartello.storia_stelle.buco_nero', time: hide };
+    action: character_show { target: 'sgr_a', expression: 'thinking' };
+    action: character_show { target: 'Sun', expression: 'surprised', look: 'sgr_a' };
+    action: effect { type: glow, target: 'sgr_a', duration: 6, shot_from: 0.1 };
+    action: character_expression { target: 'sgr_a', expression: 'happy', shot_from: 0.6 };
+    action: character_speak { target: 'sgr_a', id: 'demo.narr.storia_stelle.16' };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 62, elev_to: 64 };
+    action: date_card { label: 'demo.cartello.storia_stelle.foto', time: hide };
+    action: character_show { target: 'sgr_a', expression: 'neutral' };
+    action: character_show { target: 'Sun', expression: 'worried', look: 'sgr_a' };
+    action: character_speak { target: 'sgr_a', id: 'demo.narr.storia_stelle.17' };
+  }
+  scene solar_system_3d {
+    duration: 12s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 64, elev_to: 66 };
+    action: character_show { target: 'sgr_a', expression: 'laughing' };
+    action: character_show { target: 'Sun', expression: 'happy', look: 'sgr_a' };
+    action: character_animate { target: 'sgr_a', animation: nod, times: 2, shot_from: 0.2 };
+    action: character_speak { target: 'sgr_a', id: 'demo.narr.storia_stelle.18' };
+  }
+  scene solar_system_3d {
+    // Il buco bianco: non sta sulla carta, galleggia davanti
+    duration: 11s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 66, elev_to: 66 };
+    action: character_show { target: 'white_hole', expression: 'excited' };
+    action: character_show { target: 'sgr_a', expression: 'surprised', look: 'white_hole' };
+    action: effect { type: flash, target: 'white_hole', shot_from: 0.05 };
+    action: effect { type: sparkles, target: 'white_hole', shot_from: 0.1 };
+    action: character_speak { target: 'white_hole', id: 'demo.narr.storia_stelle.19' };
+  }
+  scene solar_system_3d {
+    duration: 7s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 5, elev_from: 66, elev_to: 66 };
+    action: character_show { target: 'white_hole', expression: 'happy', look: 'sgr_a' };
+    action: character_show { target: 'sgr_a', expression: 'thinking', look: 'white_hole' };
+    action: character_speak { target: 'sgr_a', id: 'demo.narr.storia_stelle.20' };
+  }
+  scene solar_system_3d {
+    duration: 12s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 6, elev_from: 66, elev_to: 64 };
+    action: date_card { label: 'demo.cartello.storia_stelle.buco_bianco', time: hide };
+    action: character_show { target: 'white_hole', expression: 'thinking' };
+    action: character_show { target: 'sgr_a', expression: 'thinking', look: 'white_hole' };
+    action: character_expression { target: 'white_hole', expression: 'laughing', shot_from: 0.7 };
+    action: character_speak { target: 'white_hole', id: 'demo.narr.storia_stelle.21' };
+  }
+  scene solar_system_3d {
+    // Il ritorno in un fiato, fino alla Terra che riempie lo schermo
+    duration: 13s;
+    action: cosmic_scale { from: 'milky_way', to: 'landing', ease: smooth, orbit: -40, elev_from: 64, elev_to: 90 };
+    action: character_show { target: 'supernova', expression: 'love' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_speak { target: 'supernova', id: 'demo.narr.storia_stelle.22' };
+  }
+  scene transition {
+    duration: 6s;
+    action: zoom_view { type: geometric, final_target: planetarium_view };
+    action: character_show { target: 'Star7', expression: 'happy' };
+    action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.23' };
+  }
+  scene planetarium_view {
+    // Di nuovo sotto Orione: adesso si sa di che cosa è fatto chi guarda
+    duration: 14s;
+    action: set_date { iso: '2026-12-13T21:00:00Z' };
+    action: point_view { az: 126, alt: 34 };
+    action: zoom_fov { from: 50, to: 34 };
+    action: date_card { label: 'demo.cartello.storia_stelle.casa', time: show };
+    action: character_show { target: 'Star7', expression: 'love' };
+    action: effect { type: sparkles, target: 'Star7', shot_from: 0.55 };
+    action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.24' };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;
