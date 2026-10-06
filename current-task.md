@@ -1,8 +1,9 @@
 # Niente in corso
 
-Ultimo lavoro (v417): la grafica dei volti delle Storie cosmiche, gli «occhioni di luna» (`STORIE.md`, §Lo stile).
+Ultimo lavoro (v418): le voci dei personaggi delle Storie cosmiche, una cartella per personaggio (`audio/narrazione/LEGGIMI.md`, §Le voci dei personaggi).
 
-- `storie-cosmiche.js` §4: occhi più grandi e a mandorla (`mandorla` nelle palpebre), iride grande, la palpebra di sopra che copre la cima dell'iride, sopracciglia di lei sottili e alte, guance con le lineette sempre.
-- §6: `disegnaOcchio` riscritto (iride scura ad anello, falce di luna e stellina nei riflessi, `rigaPalpebra` con la codina, ciglia arricciate), naso di lei a goccia d'ombra e neo, guance più delicate, ombretto sfumato.
-- §6-quater: `disegnaDisco` senza retino (ombra a falce sfumata, bordo panna fra due fili), `crateri` piatti, la Luna coi crateri tutt'attorno.
-- Prove: `prova-storie.js` (72), `prova-storie-browser.js` (79), `prova-demo-pagina.js`.
+- `scripts/voci-storie.js` (nuovo): legge `audio/narrazione/storie/<nome>/<lingua>/<storia>-<n>.mp3`, scrive il blocco fra i segnalibri «INIZIO/FINE STORIE COSMICHE» di `audio/narrazione/manifest.js` (impronta del testo + `firma` del file) e `audio/narrazione/storie/COPIONE.md`; `--controlla`; `--genera <nome> [--lingua en] [--rifai] [--prova]` con l'API di ElevenLabs (`storie/voci-elevenlabs.json`, chiave in `ELEVENLABS_API_KEY`), provato contro un server finto.
+- Caricare dalla pagina di GitHub basta: `.github/workflows/voci-storie.yml` (nuovo) lancia lo script e rimette manifest e copione nel ramo; `pubblica.yml` lo lancia prima di copiare e mette l'impronta del manifest nel `CACHE_NAME` pubblicato (`astrocal-vN-a<impronta>`), così il service worker si reinstalla quando cambiano solo gli audio. Le cartelle vuote dei personaggi hanno un `.gitkeep`.
+- Gli otto audio di `storia_luna` spostati da `demo/it/` a `storie/luna|terra|sole/it/`.
+- `controlla-narrazione.js` accetta `storie/<nome>/<lingua>/` e segnala il blocco non allineato alle cartelle.
+- Prove: `prova-storie.js` (72), `prova-storie-browser.js` (79), `controlla-narrazione.js` (i 4 errori di durata in inglese di `storia_stelle` c'erano già), `prova-narrazione.js` (29/5, le stesse 5 di prima). `prova-narrazione-browser.js` si ferma già alla prima verifica (predefinite della pagina Demo), anche prima di questo lavoro.

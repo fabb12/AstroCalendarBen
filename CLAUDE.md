@@ -167,6 +167,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | conti astronomici, catalogo, terreno, rilievo, acqua, Via Lattea, aurora, bussola, AR, transiti, aerei (geometria) | `verifica.html` da un server |
 | Storie cosmiche, Studio delle storie | `node scripts/prova-storie.js`, `node scripts/prova-storie-browser.js`, `prova-demo-pagina.js` (e `giro-storia.js` per guardare una storia intera) |
 | narrazione | `prova-narrazione.js`, `controlla-narrazione.js`, `prova-narrazione-browser.js` |
+| voci dei personaggi delle storie (`audio/narrazione/storie/`) | `node scripts/voci-storie.js` (scrive manifest e copione; `--genera <nome>` con ElevenLabs) |
 | demo | `prova-demo.js`, `prova-demo-browser.js`, `prova-demo-regia.js`, `prova-demo-pagina.js` (e le `prova-demo-*` del tour toccato) |
 | Missione Cielo | `prova-missione.js` (`--solo-motore` per le regole), `prova-missione-stati.js`, `prova-missione-interattiva.js` |
 | lingue | `prova-i18n.js`, `prova-lingua.js`, `controlla-i18n.js` |

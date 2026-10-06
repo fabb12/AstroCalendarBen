@@ -33,7 +33,10 @@ voci: {
 L'`impronta` (FNV-1a del testo normalizzato) dice per quale testo l'audio è
 stato registrato: se il dizionario cambia, l'audio vecchio smette di suonare
 invece di dire una frase diversa da quella scritta. Come si aggiunge un audio
-è scritto in `audio/narrazione/LEGGIMI.md`.
+è scritto in `audio/narrazione/LEGGIMI.md`. Le battute delle Storie cosmiche
+non si scrivono a mano: una cartella per personaggio
+(`audio/narrazione/storie/<nome>/<lingua>/`) e `node scripts/voci-storie.js`,
+che scrive il loro blocco del manifest (fra i segnalibri) con l'impronta.
 
 ## La scala dei ripieghi
 

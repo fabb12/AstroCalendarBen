@@ -353,6 +353,16 @@ scala dei ripieghi (audio registrato → Edge-TTS → voce del dispositivo →
 solo testo) è quella di sempre, e `narrazione.parla` ferma qualunque frase
 prima di cominciare, quindi due voci insieme non esistono.
 
+**Le voci registrate** (v418): ogni personaggio ha la sua cartella,
+`audio/narrazione/storie/<nome>/<lingua>/`, con le battute che si chiamano
+come la chiave (`storia_luna-1.mp3` per `demo.narr.storia_luna.1`).
+`node scripts/voci-storie.js` legge le cartelle, scrive il blocco delle
+storie nel manifest e `storie/COPIONE.md` (chi dice cosa, il nome del file,
+lo stato); `--genera <nome>` le chiede a ElevenLabs. Chi parla lo sa dalle
+storie stesse (`character_speak`), non dalla cartella. Cambiare voce a un
+personaggio è cambiare i suoi file: niente codice. Tutto in
+`audio/narrazione/LEGGIMI.md`.
+
 `storBoccaDaSegnale(segnale, ritmo)` sceglie fra tre strade, nell'ordine:
 
 1. **Ampiezza (Web Audio).** Per l'audio registrato e l'Edge-TTS, che passano

@@ -252,7 +252,7 @@ function sintesiFinta() {
       ok(vicino.length > 10 && vicino.every(c => c.d.every(d => d.vista === 'vicino')), 'Terra e Luna hanno il volto nel banco Terra e Luna');
       const terra = vicino.map(c => c.d.find(d => d.id === 'Earth'));
       const lunaAscolta = vicino.map(c => c.d.find(d => d.id === 'Moon'));
-      // Dalla v408 la battuta ha anche l'audio registrato (audio/narrazione/demo/it/storia_luna-4.mp3):
+      // Dalla v408 la battuta ha anche l'audio registrato (audio/narrazione/storie/terra/it/storia_luna-4.mp3):
       // dove c'è, la bocca segue l'ampiezza del file; dove manca, i confini della sintesi.
       ok(terra.some(d => d.parla && (d.via === 'confini' || d.via === 'ampiezza') && d.apertura > 0.1),
         'la Terra parla e la bocca segue la voce (ampiezza del file o confini della sintesi)');
