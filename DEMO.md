@@ -394,6 +394,9 @@ fotografo di sempre (`avvia` in `demo.js`):
   giorno civile e per luogo (`fattiDelSole`), col sole di mezzanotte e la
   notte polare dichiarati. Con la vista pulita resta visibile (regola in
   `style.css`). La chiudono la fine della scena, Stop, Esc e l'errore.
+  Dalla v414 la data, l'ora e il luogo non ci sono di serie (`date`,
+  `time`, `place`: `show` per mostrarli): nelle storie la data della sera
+  scelta per il cielo stava sopra a ogni scena senza dire niente.
 - **`date_range`** — il calendario da una data UTC all'altra (fino a tre
   anni) per tutta la scena.
 - **`earth_axis`** — `sol.evidenziaAsse`, disegnato da
@@ -655,8 +658,10 @@ Azioni principali:
   `december_solstice`, cercati con `Astronomy.Seasons` vicino all'orologio del racconto)
 - `date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' }` (il calendario da una data
   UTC all'altra, fino a tre anni)
-- `date_card { label: 'demo.cartello.solstizi_equinozi.estate', time: show, sun: show, distance: hide }`
-  (il cartello della data; al posto di `label` si può scrivere `text: '…'`, al massimo 80 caratteri)
+- `date_card { label: 'demo.cartello.solstizi_equinozi.estate', date: show, time: show, place: show, sun: show, distance: hide }`
+  (il cartello; al posto di `label` si può scrivere `text: '…'`, al massimo 80 caratteri. Dalla v414 di
+  serie dice **solo la scritta**: la data (`date`), l'ora (`time`) e il luogo (`place`) compaiono solo se
+  chiesti con `show`, come l'alba e il tramonto (`sun`) e la distanza dal Sole (`distance`))
 - `earth_axis { parallel: 41.9 }` (solo in `solar_system_3d`: l'asse della Terra e, facoltativo, il
   parallelo di un luogo)
 - `sun_paths { dates: '2027-06-21,2027-12-22' }` (solo in `planetarium_view`: da uno a quattro archi

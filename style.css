@@ -12764,6 +12764,9 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 }
 .studio select { max-width: 100%; }
 .studio-corto input { width: 5.5rem; }
+/* La casella «Mostra la data e il luogo» (v414): in riga, non in colonna */
+.studio-spunta { grid-auto-flow: column; justify-content: start; align-items: center; align-self: end; gap: 6px; cursor: pointer; }
+.studio-spunta input { width: auto !important; accent-color: #fbbf24; }
 .studio-colore { width: 2.6rem; height: 2.1rem; padding: 2px; }
 .studio-cast { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
 .studio-personaggio {

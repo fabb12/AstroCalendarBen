@@ -612,6 +612,10 @@ volto o un bottone acceso/spento (`aria-pressed`), non aprendo un menu:
   del Sole in otto minuti e venti secondi, Andromeda vista com'era prima di
   noi, la luce più antica di 13,8 miliardi di anni);
 - **5 · Guarda e salva**, di nuovo in fondo.
+- **La data e il luogo a schermo** (v414): di serie non compaiono (il
+  cartello `date_card` dice solo la sua scritta); in «Inquadratura e data» la
+  casella «Mostra la data e il luogo» (`cartello` della scena) mette in ogni
+  momento `date_card { date: show, time: show, place: show }`.
 
 Le figurine sono dipinte una volta sola e tenute come immagini (`figurina`):
 lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.

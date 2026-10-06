@@ -1558,20 +1558,27 @@
   const MOSTRA = ['show', 'hide'];
   registro.date_card = {
     verifica(p) {
-      campi(p, ['label', 'text', 'time', 'sun', 'distance']);
+      campi(p, ['label', 'text', 'date', 'time', 'place', 'sun', 'distance']);
       if (p.label !== undefined)
         richiedi(typeof p.label === 'string' && /^[\w.-]+$/.test(p.label) && astroI18n.esiste(p.label),
           err('etichetta', { id: p.label }));
       if (p.text !== undefined)
         richiedi(typeof p.text === 'string' && p.text.trim() && p.text.length <= 80, err('cartelloTesto'));
-      for (const k of ['time', 'sun', 'distance'])
+      for (const k of ['date', 'time', 'place', 'sun', 'distance'])
         richiedi(p[k] === undefined || MOSTRA.includes(p[k]), err('mostra', { nome: k }));
     },
     crea(p) {
       cartello.dataset.chiave = '';
       cartello.dataset.etichetta = p.label || '';
       cartello.dataset.testo = typeof p.text === 'string' ? p.text : '';
-      cartello.dataset.ora = p.time === 'hide' ? '' : '1';
+      // Di serie il cartello dice solo la sua scritta (v414): nelle storie la
+      // data di una sera scelta per il cielo («Domenica 13 dicembre 2026»)
+      // stava lì sopra a ogni scena senza dire niente a chi guarda. La data,
+      // l'ora e il luogo si chiedono uno per uno, quando sono il racconto
+      // (le stagioni, il viaggio delle Voyager).
+      cartello.dataset.data = p.date === 'show' ? '1' : '';
+      cartello.dataset.ora = p.time === 'show' ? '1' : '';
+      cartello.dataset.luogo = p.place === 'show' ? '1' : '';
       cartello.dataset.sole = p.sun === 'show' ? '1' : '';
       cartello.dataset.distanza = p.distance === 'show' ? '1' : '';
       aggiornaCartello();
@@ -2258,9 +2265,10 @@
     const fuso = fusoDelLuogo(luogo).nome;
     const locale = localeData();
     scriviRiga('etichetta', d.testo || (d.etichetta ? astroI18n.t(d.etichetta) : ''));
-    scriviRiga('data', formattatoreData(locale, { timeZone: fuso, weekday: 'long', day: 'numeric',
-      month: 'long', year: 'numeric' }).format(quando));
-    scriviRiga('ora', d.ora ? oraDelLuogo(quando, luogo) + (luogo && luogo.nome ? ' · ' + luogo.nome : '') : '');
+    scriviRiga('data', d.data ? formattatoreData(locale, { timeZone: fuso, weekday: 'long', day: 'numeric',
+      month: 'long', year: 'numeric' }).format(quando) : '');
+    const nomeLuogo = d.luogo && luogo && luogo.nome ? luogo.nome : '';
+    scriviRiga('ora', [d.ora ? oraDelLuogo(quando, luogo) : '', nomeLuogo].filter(Boolean).join(' · '));
     let sole = '', giorno = '';
     if (d.sole) {
       const f = fattiDelSole(quando, luogo);

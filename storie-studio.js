@@ -138,7 +138,7 @@
   function studioNuovaScena(campi = {}) {
     return Object.assign({
       id: nuovoId('s'), ambiente: 'sistema', fuoco: 'Jupiter', zoom: 'normale',
-      data: '', ora: '21:00', giorni: 0, cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
+      data: '', ora: '21:00', giorni: 0, cartello: false, cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
     }, campi);
   }
   function studioNuovoProgetto(campi = {}) {
@@ -173,7 +173,7 @@
       ambiente: tra(sc && sc.ambiente, STUDIO_AMBIENTI, 'sistema'), fuoco: testo(sc && sc.fuoco, 40) || 'Jupiter',
       zoom: tra(sc && sc.zoom, Object.keys(STUDIO_ZOOM), 'normale'),
       data: /^\d{4}-\d{2}-\d{2}$/.test(sc && sc.data) ? sc.data : '', ora: /^\d{2}:\d{2}$/.test(sc && sc.ora) ? sc.ora : '21:00',
-      giorni: numero(sc && sc.giorni, 0, 1000, 0), presenti: ids(sc && sc.presenti),
+      giorni: numero(sc && sc.giorni, 0, 1000, 0), cartello: !!(sc && sc.cartello), presenti: ids(sc && sc.presenti),
       cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
@@ -472,6 +472,8 @@
           if (iso) az.push(`set_date { iso: ${virgolette(iso)} }`);
         }
         trascorso += durate[k];
+        // La data e il luogo a schermo (v414): solo se chi scrive li chiede
+        if (sc.cartello) az.push('date_card { date: show, time: show, place: show }');
         // La camera
         if (cosmo) {
           const [La, Lb] = cosmo[k];
@@ -1186,6 +1188,8 @@
         h('label', { class: 'storie-campo studio-corto' }, h('span', {}, t('studio.ora')), h('input', { type: 'time', value: sc.ora, dataset: { campo: base + '.ora' } })),
         cosmo ? null : h('label', { class: 'storie-campo studio-corto' }, h('span', {}, t('studio.giorni')),
           h('input', { type: 'number', min: '0', max: '1000', step: '1', value: String(sc.giorni || 0), dataset: { campo: base + '.giorni', numero: '1' } })),
+        h('label', { class: 'storie-campo studio-spunta' }, h('input', { type: 'checkbox', checked: !!sc.cartello, dataset: { campo: base + '.cartello' } }),
+          h('span', {}, t('studio.mostraCartello'))),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'ambienteAdatto', dove: base } }, t('studio.ambienteAdatto'))));
     if (studio.dettagliAperti && studio.dettagliAperti.has(sc.id)) dettagli.open = true;
     dettagli.addEventListener('toggle', () => {
@@ -1223,6 +1227,7 @@
       } catch (_) { pezzi.push(sc.data); }
     } else pezzi.push(t('studio.ui.oggi'));
     if (sc.giorni > 0 && sc.ambiente !== 'cosmo') pezzi.push(t('studio.ui.giorniPassano', { n: sc.giorni }));
+    if (sc.cartello) pezzi.push(t('studio.ui.conCartello'));
     return pezzi.join(' · ');
   }
 
@@ -1562,7 +1567,7 @@
         return;
       }
       if (el.dataset.campo) {
-        let v = el.value;
+        let v = el.type === 'checkbox' ? el.checked : el.value;
         if (el.dataset.numero) v = Math.max(0, Number(v) || 0);
         if (/\.(volte|scala|grandezza)$/.test(el.dataset.campo)) v = Number(v) || 0;
         scrivi(el.dataset.campo, v);

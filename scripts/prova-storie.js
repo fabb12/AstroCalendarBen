@@ -952,6 +952,16 @@ prova('lo Studio: «diventa», i comandi a parole e il modello dei buchi', () =>
   assert.ok(a.some(x => x.forma === 'self') && !a.some(x => x.tipo === 'torna'), 'com\'era non è un ritorno sull\'orbita');
 });
 
+prova('la data e il luogo a schermo si chiedono: lo Studio li mette solo con la casella', () => {
+  const p = St.daModello('fasi');
+  assert.ok(!/date_card/.test(St.copione(p)), 'di serie niente cartello');
+  p.scene[0].cartello = true;
+  const testo = St.copione(p);
+  assert.match(testo, /date_card \{ date: show, time: show, place: show \}/);
+  assert.equal(St.ripulisci(JSON.parse(JSON.stringify(p))).scene[0].cartello, true, 'la scelta si salva');
+  assert.equal(St.ripulisci({ scene: [{}] }).scene[0].cartello, false);
+});
+
 prova('lo Studio nell\'universo: la camera si divide fra i momenti senza salti, segue chi viaggia, e i personaggi dell\'universo stanno solo lì', () => {
   const p = St.daModello('universo');
   const prep = motore.prepara(St.copione(p));
