@@ -1,6 +1,6 @@
 # Niente in corso
 
-Ultimo lavoro (v418): le voci dei personaggi delle Storie cosmiche, una cartella per personaggio (`audio/narrazione/LEGGIMI.md`, §Le voci dei personaggi).
+Ultimo lavoro (v419): la regia delle voci, `audio/narrazione/storie/regia-voci.json` (carattere di ogni voce; per ogni battuta emozione, come dirla e testo coi tag di ElevenLabs v3, controllato contro il dizionario da `voci-storie.js`, mostrato nel copione, mandato a ElevenLabs col modello `eleven_v3`, ora di serie). Prima (v418): le voci dei personaggi delle Storie cosmiche, una cartella per personaggio (`audio/narrazione/LEGGIMI.md`, §Le voci dei personaggi).
 
 - `scripts/voci-storie.js` (nuovo): legge `audio/narrazione/storie/<nome>/<lingua>/<storia>-<n>.mp3`, scrive il blocco fra i segnalibri «INIZIO/FINE STORIE COSMICHE» di `audio/narrazione/manifest.js` (impronta del testo + `firma` del file) e `audio/narrazione/storie/COPIONE.md`; `--controlla`; `--genera <nome> [--lingua en] [--rifai] [--prova]` con l'API di ElevenLabs (`storie/voci-elevenlabs.json`, chiave in `ELEVENLABS_API_KEY`), provato contro un server finto.
 - Caricare dalla pagina di GitHub basta: `.github/workflows/voci-storie.yml` (nuovo) lancia lo script e rimette manifest e copione nel ramo; `pubblica.yml` lo lancia prima di copiare e mette l'impronta del manifest nel `CACHE_NAME` pubblicato (`astrocal-vN-a<impronta>`), così il service worker si reinstalla quando cambiano solo gli audio. Le cartelle vuote dei personaggi hanno un `.gitkeep`.

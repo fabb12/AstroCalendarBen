@@ -60,20 +60,44 @@ per cambiargli voce basta cambiare i file che ci stanno dentro.
 ```
 audio/narrazione/storie/
   COPIONE.md                 le battute di tutti, coi nomi dei file e lo stato
+  regia-voci.json            come va detta ogni battuta: emozione, tono, tag ElevenLabs
   voci-elevenlabs.json       (facoltativo) l'ID della voce ElevenLabs di ognuno
   luna/it/storia_luna-1.mp3  la prima battuta della Luna, in italiano
   luna/en/storia_luna-1.mp3  la stessa, in inglese
   terra/it/…   sole/it/…   betelgeuse/it/…
 ```
 
+### La regia: emozione e tono di ogni battuta
+
+`storie/regia-voci.json` dice **come** va detta ogni battuta, e il copione
+la mostra sotto al testo:
+
+- per ogni personaggio, **la voce** (lei/lui, età, carattere): serve a
+  scegliere la voce giusta nella libreria di ElevenLabs;
+- per ogni battuta, **l'emozione** (spaventata, fiera, misteriosa…) e
+  **come dirla** (dove sussurrare, dove ridere, dove rallentare);
+- il testo **con i tag audio** di ElevenLabs v3, in inglese fra parentesi
+  quadre: `[scared] Oh no, guardate in su! [gasps] Mi manca un pezzo!`.
+
+I tag funzionano solo col modello **Eleven v3**: su ElevenLabs scegli quel
+modello e incolla la riga «Da incollare su ElevenLabs v3» del copione. Con
+gli altri modelli (Multilingual v2) incolla il «Testo» senza tag, se no li
+legge ad alta voce, e usa l'emozione come guida per scegliere voce e
+impostazioni. Più bassa è la «Stability», più la voce recita.
+
+La regia si cambia a mano nel file. Una regola sola: tolti i tag, il testo
+deve restare **identico** a quello del dizionario. Se il dizionario cambia e
+la regia no, lo script lo segnala e manda a ElevenLabs il testo senza tag.
+
 ### A mano (genero su ElevenLabs e carico)
 
 1. Apri `storie/COPIONE.md`: per ogni personaggio c'è la cartella, e per ogni
    battuta il **nome del file**, il testo da far dire, lo stato (pronta,
    manca, da rifare) e quanto può durare al massimo.
-2. Su ElevenLabs scegli una voce per quel personaggio e genera le sue
-   battute copiando il testo **così com'è** (la stessa voce per tutte le
-   battute dello stesso personaggio).
+2. Su ElevenLabs scegli una voce adatta alla descrizione «La voce» del
+   personaggio, il modello Eleven v3, e genera le sue battute incollando la
+   riga coi tag (la stessa voce per tutte le battute dello stesso
+   personaggio).
 3. Salva ogni MP3 col nome del copione nella cartella del personaggio, per
    esempio `audio/narrazione/storie/luna/it/storia_luna-1.mp3`.
 4. **Dalla pagina di GitHub** (Add file → Upload files, dentro alla cartella
@@ -112,7 +136,10 @@ Se hai una chiave API di ElevenLabs, lo script può chiedere lui le battute:
    della libreria ElevenLabs) nel campo `voce` del personaggio. Per una voce
    diversa in inglese: `"voce": { "it": "…", "en": "…" }`. Le `impostazioni`
    (generali o del personaggio: `stability`, `similarity_boost`, `style`,
-   `speed`…) passano così come sono a ElevenLabs.
+   `speed`…) passano così come sono a ElevenLabs. Il modello di serie è
+   `eleven_v3`, che riceve il testo coi tag della regia (e vuole `stability`
+   0, 0,5 o 1); con `"modello": "eleven_multilingual_v2"`, generale o del
+   solo personaggio, parte il testo senza tag.
 2. Lancia, con la chiave **nell'ambiente** (mai scritta nel repository):
 
    ```

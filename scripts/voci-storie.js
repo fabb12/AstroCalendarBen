@@ -39,6 +39,7 @@ const MANIFEST = 'audio/narrazione/manifest.js';
 const CARTELLA = 'storie';                       // dentro alla radice del manifest
 const COPIONE = 'audio/narrazione/storie/COPIONE.md';
 const CONFIG_ELEVEN = 'audio/narrazione/storie/voci-elevenlabs.json';
+const REGIA = 'audio/narrazione/storie/regia-voci.json';
 const INIZIO = '// ── INIZIO STORIE COSMICHE: da qui a FINE lo scrive scripts/voci-storie.js, non toccare ──';
 const FINE = '// ── FINE STORIE COSMICHE ──';
 const ESTENSIONI = /\.(mp3|ogg|oga|opus|m4a|aac|wav|webm)$/i;
@@ -129,7 +130,10 @@ function carica() {
   const titoli = {};
   for (const d of predefiniti.filter(x => x.storia))
     titoli[d.chiave] = String(dizionari.it.messaggi[`demo.builtin.${d.chiave}.title`] || d.chiave).replace(/^Storie cosmiche · /, '');
-  mondo = { dizionari, battute, personaggi, titoli, perId: new Map(battute.map(b => [b.id, b])) };
+  // La regia: il carattere di ogni voce e, per ogni battuta, l'emozione, come
+  // dirla e il testo con i tag audio di ElevenLabs v3. Il file è facoltativo.
+  const regia = fs.existsSync(path.join(RADICE, REGIA)) ? JSON.parse(leggi(REGIA)) : {};
+  mondo = { dizionari, battute, personaggi, titoli, regia, perId: new Map(battute.map(b => [b.id, b])) };
   return mondo;
 }
 
@@ -140,6 +144,17 @@ function leggiManifest() {
   const testo = leggi(MANIFEST);
   vm.runInContext(testo, ctx);
   return { testo, manifest: ctx.ASTRO_NARRAZIONE_MANIFEST };
+}
+
+// --- La regia delle battute -------------------------------------------
+// `[excited] Ciao!` → `Ciao!`: tolti i tag deve restare il testo del dizionario,
+// se no la regia è rimasta indietro e si usa il testo nudo (con un avviso).
+const senzaTag = s => normalizza(String(s || '').replace(/\[[^\]]*\]/g, ' ')).replace(/\s+([,.;:!?…])/g, '$1');
+function regiaDi(b, lingua) {
+  const r = (carica().regia.battute || {})[b.id] || null;
+  const conTag = r && r.conTag && typeof r.conTag[lingua] === 'string' ? normalizza(r.conTag[lingua]) : '';
+  const valida = !!conTag && senzaTag(conTag) === normalizza(b.testi[lingua]);
+  return { emozione: r ? r.emozione || '' : '', come: r ? r.come || '' : '', conTag: valida ? conTag : '', vecchia: !!conTag && !valida };
 }
 
 // --- La durata di un MP3, per avvisare se una battuta non sta nella scena --
@@ -237,6 +252,11 @@ function esamina({ fresche = new Set() } = {}) {
   // Lo stato di ogni battuta, per il copione e per gli avvisi
   const stati = new Map();
   for (const b of battute) {
+    for (const l of LINGUE) {
+      const r = regiaDi(b, l);
+      if (r.vecchia) avvisi.push(`${b.id} [${l}]: in ${REGIA} il testo coi tag non torna più col dizionario — la regia è da riscrivere (intanto si usa il testo senza tag)`);
+      else if (!r.conTag) avvisi.push(`${b.id} [${l}]: nessuna regia in ${REGIA}`);
+    }
     const s = {};
     for (const l of LINGUE) {
       const v = voci[b.id] && voci[b.id][l];
@@ -299,13 +319,18 @@ function scriviCopione(stati) {
   for (const p of personaggi.values()) {
     o.push(`## ${p.nomi.it}`, '');
     o.push(`Cartella: \`audio/narrazione/storie/${p.cartella}/<lingua>/\` · nel codice \`${p.id}\` · in inglese ${p.nomi.en}`, '');
+    const carattere = (carica().regia.personaggi || {})[p.cartella];
+    if (carattere) o.push(`**La voce:** ${carattere}`, '');
     for (const l of LINGUE) {
       o.push(`### ${l === 'it' ? 'Italiano' : 'Inglese'} — \`storie/${p.cartella}/${l}/\``, '');
       for (const b of p.battute) {
         const s = stati.get(b.id)[l];
         const durata = s.v && s.v.durata != null ? ` · ${secondi(s.v.durata)}` : '';
         o.push(`- \`${b.base}.mp3\` — ${SEGNO[s.stato]}${durata} · ${titoli[b.storia]}, scena ${b.scena} (al massimo ${secondi(b.durata / 1000)})`);
-        o.push(`  > ${normalizza(b.testi[l] || '—')}`);
+        const r = regiaDi(b, l);
+        if (r.emozione || r.come) o.push(`  - **Emozione:** ${r.emozione || '—'} — ${r.come || ''}`);
+        o.push(`  - **Testo:** ${normalizza(b.testi[l] || '—')}`);
+        if (r.conTag) o.push(`  - **Da incollare su ElevenLabs v3:** \`${r.conTag}\``);
       }
       o.push('');
     }
@@ -340,17 +365,22 @@ async function genera(nome, { lingua, rifai, prova }) {
   const dir = path.join(RADICE, 'audio/narrazione', CARTELLA, p.cartella, lingua);
   fs.mkdirSync(dir, { recursive: true });
   for (const b of daFare) {
-    const testo = normalizza(b.testi[lingua]);
+    // Coi modelli v3 i tag ([excited], [whispers]) sono la regia; gli altri
+    // modelli li leggerebbero ad alta voce, e lì va il testo nudo.
+    const modello = suo.modello || config.modello || 'eleven_v3';
+    const v3 = /^eleven_v3/.test(modello);
+    const testo = (v3 && regiaDi(b, lingua).conTag) || normalizza(b.testi[lingua]);
     const meta = path.join(dir, b.base + '.mp3');
     console.log(`${prova ? '(prova) ' : ''}${path.relative(RADICE, meta)} ← «${testo.slice(0, 70)}${testo.length > 70 ? '…' : ''}»`);
     if (prova) continue;
     // La battuta di prima e quella dopo aiutano il tono a legarsi al dialogo
+    // (solo fuori dal v3, che non le accetta: lì il tono lo danno i tag)
     const corpo = {
       text: testo,
-      model_id: suo.modello || config.modello || 'eleven_multilingual_v2',
+      model_id: modello,
       voice_settings: Object.assign({}, config.impostazioni, suo.impostazioni),
-      previous_text: b.prima ? normalizza(b.prima.testi[lingua]) : undefined,
-      next_text: b.dopo ? normalizza(b.dopo.testi[lingua]) : undefined
+      previous_text: !v3 && b.prima ? normalizza(b.prima.testi[lingua]) : undefined,
+      next_text: !v3 && b.dopo ? normalizza(b.dopo.testi[lingua]) : undefined
     };
     const r = await fetch(`${indirizzo}/v1/text-to-speech/${encodeURIComponent(voce)}?output_format=${formato}`, {
       method: 'POST',
@@ -427,4 +457,4 @@ if (require.main === module) {
   })().catch(err => { console.error('ERRORE: ' + err.message); process.exit(1); });
 }
 
-module.exports = { esamina, carica, impronta, durataMp3, cartellaDi, INIZIO, FINE };
+module.exports = { esamina, carica, impronta, durataMp3, cartellaDi, senzaTag, regiaDi, INIZIO, FINE };

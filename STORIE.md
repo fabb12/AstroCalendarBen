@@ -358,7 +358,10 @@ prima di cominciare, quindi due voci insieme non esistono.
 come la chiave (`storia_luna-1.mp3` per `demo.narr.storia_luna.1`).
 `node scripts/voci-storie.js` legge le cartelle, scrive il blocco delle
 storie nel manifest e `storie/COPIONE.md` (chi dice cosa, il nome del file,
-lo stato); `--genera <nome>` le chiede a ElevenLabs. Chi parla lo sa dalle
+lo stato); `--genera <nome>` le chiede a ElevenLabs. `storie/regia-voci.json`
+(v419) dà il carattere di ogni voce e, per ogni battuta, l'emozione, come
+dirla e il testo coi tag audio di ElevenLabs v3; tolti i tag deve tornare il
+testo del dizionario, e lo script lo controlla. Chi parla lo sa dalle
 storie stesse (`character_speak`), non dalla cartella. Cambiare voce a un
 personaggio è cambiare i suoi file: niente codice. Tutto in
 `audio/narrazione/LEGGIMI.md`.
