@@ -129,6 +129,10 @@ spento (si può riaccendere nel gruppo **Narrazione e audio**):
   atmosfera, nuvole, aurora, terreno, rilievo, luci dei paesi, nomi dei monti,
   laghi e fiumi), col nome letto dal tasto stesso. Spenta la casella
   «Scegli per la demo» restano quelli attuali.
+- **Storie cosmiche: mostra nomi ed etichette** (`scritteStorie`, v423). È
+  **spenta di serie**: durante una storia (una demo con personaggi) le viste
+  non scrivono nomi né etichette sulla tela; restano sottotitoli e cartello
+  della data. Dettagli in `STORIE.md`, §Le stazioni in scena.
 
 Con **Vista pulita** attiva `AstroDemo.silenzioso` è vero: `skyAvviso`
 scarta gli avvisi di servizio (tranne il canale `demo`, che dice se il tour

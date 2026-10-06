@@ -8910,6 +8910,7 @@ function skyLevigaBase(nuova) {
 // modalita' esperto le nasconde. La preferenza salvata vale soltanto fuori
 // dalla missione e non viene modificata da questo aiuto temporaneo.
 function skyNomiVisibili() {
+  if (demoSenzaScritte()) return false;
   const missione = typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo();
   if (missione) return typeof missEtichetteMissioneVisibili !== 'function' || missEtichetteMissioneVisibili();
   return sky.mostraNomi;
@@ -8919,7 +8920,7 @@ function skyNomiVisibili() {
 // missione i nomi delle montagne toglierebbero spazio agli indizi e ai
 // bersagli. La preferenza resta intatta e torna visibile appena si esce.
 function skyNomiCimeVisibili() {
-  return typeof cime !== 'undefined' && cime.acceso &&
+  return !demoSenzaScritte() && typeof cime !== 'undefined' && cime.acceso &&
     !(typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo());
 }
 
@@ -20673,6 +20674,7 @@ const SKY_FONT_ETICHETTE = '"Inter", "SF Pro Display", system-ui, sans-serif';
 // di poco meno di due pixel per parte, che è quanto basta a staccare senza
 // ingrossare il carattere.
 function skyScrittaConAlone(ctx, testo, x, y, colore, alone, spessore = 3.5) {
+  if (demoSenzaScritte()) return;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.miterLimit = 2;
@@ -27691,7 +27693,7 @@ function skyDisegnaEventi(ctx, base, focale) {
     ctx.shadowBlur = 4;
     const etichetta = skyEtichettaEvento(ev, pos);
     const meta = ctx.measureText(etichetta).width / 2 + 8;
-    ctx.fillText(etichetta,
+    if (!demoSenzaScritte()) ctx.fillText(etichetta,
       Math.max(meta, Math.min(sky.larghezza - meta, p.px)), p.py - (pos.radiante ? 32 : 36));
     ctx.shadowBlur = 0;
   });
@@ -34435,16 +34437,58 @@ function solLeggiSatelliti(quando, t) {
   const elenco = [];
   SATELLITI.forEach(sat => {
     const p = solVersoreSatellite(sat, quando, t);
-    if (!p) return;
+    // Senza un TLE fresco la stazione c'è lo stesso, ma su un'orbita di
+    // riserva (`riserva`): la disegna solo una Storia cosmica che la fa
+    // parlare. Una storia con la ISS protagonista, ambientata nel 2030 o
+    // aperta senza rete, perdeva la sua protagonista — la voce partiva e
+    // sullo schermo non c'era nessuno.
+    const q = p || solVersoreSatelliteRiserva(sat, quando, t);
+    if (!q) return;
     elenco.push({
       id: sat.id, nome: sat.nome, colore: sat.colore, satellite: true,
-      u: p.u, quotaKm: p.quotaKm, raggioKm: p.raggioKm,
+      u: q.u, quotaKm: q.quotaKm, raggioKm: q.raggioKm,
       diametroKm: sat.diametroKm || 0,
       periodoMin: sat.periodoMin || 93, classe: sat.classe || '',
-      anello: solAnelloSatellite(sat, quando, t)
+      riserva: !p,
+      anello: p ? solAnelloSatellite(sat, quando, t) : solAnelloSatelliteRiserva(sat, quando, t)
     });
   });
   sol.satelliti = elenco;
+}
+
+// L'orbita di riserva: un cerchio con l'inclinazione e la quota vere della
+// stazione, il nodo fermo e il periodo vero. Non dice dove la stazione sta
+// adesso — per quello serve il TLE — ma dice che gira attorno alla Terra, a
+// che altezza e con che pendenza, che è tutto quello che una storia racconta.
+const SOL_SAT_RISERVA = {
+  iss: { inclinazione: 51.6, quotaKm: 420 },
+  css: { inclinazione: 41.5, quotaKm: 385 },
+  hubble: { inclinazione: 28.5, quotaKm: 530 }
+};
+function solVersoreSatelliteRiserva(sat, quando, t) {
+  const r = SOL_SAT_RISERVA[sat.id] || { inclinazione: 45, quotaKm: 450 };
+  const periodo = (sat.periodoMin || 93) * 60000;
+  const a = 2 * Math.PI * ((quando.getTime() % periodo) / periodo);
+  const i = r.inclinazione * Math.PI / 180;
+  const e = solEclitticaDaEquatoriali({ x: Math.cos(a), y: Math.sin(a) * Math.cos(i), z: Math.sin(a) * Math.sin(i) }, t);
+  const d = Math.hypot(e.x, e.y, e.z) || 1;
+  return { u: { x: e.x / d, y: e.y / d, z: e.z / d }, raggioKm: SOL_TERRA_RAGGIO_KM + r.quotaKm, quotaKm: r.quotaKm };
+}
+function solAnelloSatelliteRiserva(sat, quando, t) {
+  const periodo = (sat.periodoMin || 93) * 60000;
+  const punti = [];
+  for (let k = 0; k < SOL_SAT_ANELLO_PUNTI; k++) {
+    const p = solVersoreSatelliteRiserva(sat, new Date(quando.getTime() + (k / SOL_SAT_ANELLO_PUNTI) * periodo), t);
+    if (p) punti.push(p.u);
+  }
+  return punti.length > 12 ? punti : null;
+}
+
+// Una stazione che una Storia cosmica ha in scena si disegna sempre: anche
+// con le sonde spente, con la Terra troppo piccola per l'anello, con l'orbita
+// di riserva. Le altre seguono le regole di sempre.
+function solSatDelRacconto(id) {
+  return typeof storInScena === 'function' && storInScena(id);
 }
 
 // L'anello dell'orbita: un giro intero campionato con SGP4, normalizzato come
@@ -34940,7 +34984,18 @@ function solSfondo(ctx) {
 // Il carattere della pagina si chiede una volta sola: getComputedStyle costa
 // un calcolo di stile, e qui di scritte ce ne sono una dozzina per fotogramma
 let SOL_CARATTERE = '';
+// Le Storie cosmiche con le scritte spente (l'opzione `scritteStorie` della
+// pagina Demo, spenta di serie, v423): nessun nome né etichetta sulla tela,
+// in nessuna vista. Le scritte passano tutte da poche funzioni — questa, i
+// nomi della 3D, quelle del planetario e della scala cosmica — e ognuna lo
+// chiede qui. Il cartello della data e i sottotitoli sono della storia e
+// restano.
+function demoSenzaScritte() {
+  const d = typeof window !== 'undefined' ? window.AstroDemo : null;
+  return !!(d && d.senzaScritte);
+}
 function solTesto(ctx, testo, x, y, colore, misura, allinea) {
+  if (demoSenzaScritte()) return;
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
   ctx.font = `${misura || 12}px ${SOL_CARATTERE}`;
   ctx.textAlign = allinea || 'left';
@@ -34957,6 +35012,7 @@ function solTesto(ctx, testo, x, y, colore, misura, allinea) {
 // tutti occupati rinuncia: meglio un nome in meno che cinque sovrapposti.
 // Chi resta senza si legge lo stesso, toccandolo o dalla tabella qui sotto.
 function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbligata, idCorpo) {
+  if (demoSenzaScritte()) return;
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
   // Sotto la lente della regia delle storie (storie-cosmiche.js §7-ter) i
   // nomi restano della loro misura sullo schermo: ingranditi tre volte
@@ -36424,19 +36480,23 @@ function solDisegnaModelloVoyager(ctx, s, assi, px) {
 // coste sarebbe un cerchio incollato sopra, e la scena perderebbe l'unica
 // profondità che ha.
 function solDisegnaSatelliti(ctx, terra, assi, davanti) {
-  if (!sol.sondeAccese || !sol.satelliti.length || !terra || !terra.schermo) return;
+  if (!sol.satelliti.length || !terra || !terra.schermo) return;
   // Sotto una certa misura del pallino terrestre non c'è posto per un anello:
-  // si tace, e la ricerca lo dice a chi li va a cercare.
-  if ((terra.rDisegno || 0) < SOL_SAT_MIN_PX) return;
+  // si tace, e la ricerca lo dice a chi li va a cercare. Le stazioni di una
+  // Storia cosmica restano (il pallino, senza anello): chi parla si vede.
+  const piccola = (terra.rDisegno || 0) < SOL_SAT_MIN_PX;
   const dietro = terra.schermo.vicinanza;
   sol.satelliti.forEach(s => {
+    // Anche quella su cui è puntata la camera (`camera_3d { focus: 'ISS' }`)
+    const delRacconto = solSatDelRacconto(s.id) || (s.riserva && sol.perno === s.id);
+    if (!delRacconto && (!sol.sondeAccese || piccola || s.riserva)) return;
     const centro = solScenaSatellite(s, terra);
     if (!centro) return;
     const p = solProietta(centro);
     // L'anello: si disegna insieme alla metà a cui appartiene ogni suo tratto,
     // tratto per tratto, che è la stessa prova dell'orbita lunare
     const anello = s.anello;
-    if (anello && anello.length > 12) {
+    if (anello && anello.length > 12 && !piccola) {
       const passo = sol.distanzeVere
         ? solSatStacco(s.quotaKm)
         : (terra.rDisegno || 8) * solSatStacco(s.quotaKm) / Math.max(1e-6, sol.scala);
@@ -36463,8 +36523,10 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
     if ((p.vicinanza >= dietro) !== davanti) return;
     // Dove è finito sullo schermo: lo chiede il dito (`solTocco`) e lo chiede
     // il nome, che si scrive dopo tutti i pallini
+    // (a misure vere una stazione è meno di un pixel: quella che parla ne
+    // tiene due, se no la storia non avrebbe dove metterle il corpo)
     const rSatellite = sol.misureVere
-      ? solPixelDaKm((s.diametroKm || 0) / 2)
+      ? Math.max(delRacconto ? 2 : 0, solPixelDaKm((s.diametroKm || 0) / 2))
       : SOL_SAT_RAGGIO_PX;
     sol.satSchermo.push({
       id: s.id, nome: s.nome, colore: s.colore,
@@ -36671,7 +36733,7 @@ function solDisegnaBussolaOrari(ctx, terra, prese) {
     ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
     ctx.textAlign = allinea;
     ctx.textBaseline = 'middle';
-    ctx.fillText(v.testo, tx, ty);
+    if (!demoSenzaScritte()) ctx.fillText(v.testo, tx, ty);
     ctx.globalAlpha = 1;
   });
   ctx.restore();
@@ -37202,7 +37264,7 @@ function solDisegnaCasaSullaTerra(ctx, telaio, assi, r) {
   ctx.beginPath();
   ctx.arc(p.x, p.y, Math.max(1, raggio * 0.34), 0, Math.PI * 2);
   ctx.fill();
-  if (r >= SOL_CASA_NOME_PX) {
+  if (r >= SOL_CASA_NOME_PX && !demoSenzaScritte()) {
     // Il nome scappa verso l'esterno del globo, se no si legge sopra al
     // terreno che sta cercando di indicare
     const via = Math.hypot(p.x, p.y) || 1;
@@ -38057,9 +38119,11 @@ function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   ctx.lineWidth = 4;
   ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
   const etichetta = sol.misureVere ? 'SOLE · dimensione reale' : 'SOLE';
-  ctx.strokeText(etichetta, etichettaX, etichettaY);
-  ctx.fillStyle = '#fef3c7';
-  ctx.fillText(etichetta, etichettaX, etichettaY);
+  if (!demoSenzaScritte()) {
+    ctx.strokeText(etichetta, etichettaX, etichettaY);
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillText(etichetta, etichettaX, etichettaY);
+  }
   ctx.restore();
 }
 
@@ -38265,9 +38329,15 @@ function solDisegnaVicino() {
     id: c.id, schermo: c.schermo, disegna: () => solDisegnaCorpo(ctx, c, assi)
   }));
   dischi.push(soleVicino);
+  // Le stazioni attorno alla Terra, nella stessa fila della profondità: una
+  // che passa dietro al globo sparisce dietro di lui, come la Luna
+  const stazioni = solSatellitiVicino(finti[0]);
+  stazioni.forEach(v => dischi.push({ id: v.s.id, schermo: v.schermo, disegna: () => solDisegnaSatelliteVicino(ctx, v) }));
+  solDisegnaAnelliVicino(ctx, stazioni, finti[0].schermo.vicinanza, false);
   sol.soleVicinoSchermo = null;
   dischi.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
   dischi.forEach(c => c.disegna());
+  solDisegnaAnelliVicino(ctx, stazioni, finti[0].schermo.vicinanza, true);
   // Il globo non deve nascondere proprio l'arrivo del cono che questa scena
   // vuole spiegare. Ripassiamo soltanto i bordi (non il velo): cosi' la Terra
   // resta solida e leggibile, mentre le linee arrivano davanti fino al punto
@@ -38289,6 +38359,83 @@ function solDisegnaVicino() {
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
   solRighelloVicino(ctx);
   solRaccontoVicino(ctx, g, sLuna);
+}
+
+// --- Le stazioni nel banco Terra e Luna ------------------------------------
+//   Fino alla v422 il banco mostrava solo la Terra e la Luna: una Storia
+//   cosmica che faceva parlare la ISS «vicino alla Terra» aveva la voce e
+//   nessun corpo. Qui le stazioni girano attorno al globo **disegnato**, con
+//   la direzione vera (o quella di riserva, `solVersoreSatelliteRiserva`) e
+//   la quota esagerata come nella scena grande; a misure vere stanno alla
+//   loro quota, appena fuori dal globo.
+function solSatellitiVicino(terra) {
+  const px = solVicPx();
+  if (!(px > 0) || !terra || !terra.scena || !sol.satelliti.length) return [];
+  const rTerraPx = terra.rDisegno || 0;
+  const fuori = [];
+  sol.satelliti.forEach(s => {
+    const delRacconto = solSatDelRacconto(s.id);
+    if (!delRacconto && (!sol.sondeAccese || s.riserva)) return;
+    const q = Math.max(0, Math.min(1, ((s.quotaKm || 400) - 300) / 400));
+    const stacco = SOL_SAT_STACCO_MIN + q * (SOL_SAT_STACCO_MAX - SOL_SAT_STACCO_MIN);
+    const km = sol.misureVere ? RAGGIO_TERRA_KM + (s.quotaKm || 400) : solVicRaggioTerra() * stacco;
+    // Mai dentro al globo disegnato (la storia può averlo ingrandito)
+    const passo = Math.max(km, (rTerraPx + 7) / px) / SOL_VIC_KM;
+    const punto = u => solProietta({
+      x: terra.scena.x + u.x * passo, y: terra.scena.y + u.y * passo, z: terra.scena.z + u.z * passo
+    });
+    fuori.push({
+      s, delRacconto, schermo: punto(s.u),
+      anello: s.anello && s.anello.length > 12 ? s.anello.map(punto) : null
+    });
+  });
+  // A banco intero la Terra è un puntino di pochi pixel e i corpi delle
+  // stazioni che parlano ne misurano settanta: messi al loro posto coprivano
+  // la Terra e l'uno l'altro. Sullo schermo, e solo per loro, si allontanano
+  // dal globo lungo la loro direzione e, se due cadono insieme, la seconda
+  // gira attorno alla Terra finché non trova posto.
+  const t = terra.schermo, stacco = rTerraPx + SOL_SAT_STORIA_PX;
+  const messe = [];
+  fuori.forEach(v => {
+    if (!v.delRacconto || !t) return;
+    let a = Math.atan2(v.schermo.py - t.py, v.schermo.px - t.px);
+    const d = Math.hypot(v.schermo.px - t.px, v.schermo.py - t.py);
+    const r = Math.max(d, stacco);
+    for (let giro = 0; giro < 8; giro++) {
+      const x = t.px + Math.cos(a) * r, y = t.py + Math.sin(a) * r;
+      if (!messe.some(m => Math.hypot(m.x - x, m.y - y) < SOL_SAT_STORIA_PX * 1.6)) break;
+      a += Math.PI / 4;
+    }
+    v.schermo = Object.assign({}, v.schermo, { px: t.px + Math.cos(a) * r, py: t.py + Math.sin(a) * r });
+    messe.push({ x: v.schermo.px, y: v.schermo.py });
+  });
+  return fuori;
+}
+// Quanto sta lontano dal bordo del globo, sullo schermo, una stazione che
+// parla nel banco: poco più di mezzo corpo disegnato dalle storie
+const SOL_SAT_STORIA_PX = 88;
+function solDisegnaAnelliVicino(ctx, stazioni, dietro, davanti) {
+  stazioni.forEach(v => {
+    if (!v.anello) return;
+    ctx.save();
+    ctx.strokeStyle = v.s.colore;
+    ctx.globalAlpha = v.delRacconto ? 0.5 : 0.3;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < v.anello.length; i++) {
+      const a = v.anello[i], b = v.anello[(i + 1) % v.anello.length];
+      if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
+      ctx.beginPath(); ctx.moveTo(a.px, a.py); ctx.lineTo(b.px, b.py); ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+function solDisegnaSatelliteVicino(ctx, v) {
+  const p = v.schermo, r = SOL_SAT_RAGGIO_PX;
+  sol.satSchermo.push({ id: v.s.id, nome: v.s.nome, colore: v.s.colore, px: p.px, py: p.py, r, vicinanza: p.vicinanza });
+  ctx.save();
+  ctx.fillStyle = v.s.colore;
+  ctx.beginPath(); ctx.arc(p.px, p.py, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 
 // Il righello. In un disegno che promette di essere a scala vera è il pezzo
@@ -38356,6 +38503,9 @@ function solEtichetteVicino(ctx, corpi, orbita, g) {
   const prese = [];
   corpi.forEach(c => solEtichetta(ctx, c.nome, c.schermo.px, c.schermo.py,
     c.rDisegno + 5, c.id === 'Earth' ? '#bfdbfe' : '#e2e8f0', 12, prese, true, c.id));
+  // Le stazioni (`solSatellitiVicino`): il nome solo se c'è posto, e senza
+  // l'id del corpo — in questo banco non si scelgono col dito
+  sol.satSchermo.forEach(s => solEtichetta(ctx, s.nome, s.px, s.py, s.r + 2, s.colore, 10.5, prese, false));
   // «Verso il Sole» si appoggia al bordo della tela dalla parte giusta, non a
   // una distanza fissa dalla Terra: con la scena spostata di lato quella
   // distanza finiva fuori dal riquadro e la scritta spariva — cioè proprio

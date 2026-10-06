@@ -714,6 +714,42 @@ prima di un decimo di secondo (un salto di scena non fa una raffica), e Stop
 o la fine della storia li sfumano (`storZittisci`). Aggiungere un rumore:
 una ricetta in `RICETTE` e il nome in `STOR_SUONI`.
 
+## Le stazioni in scena, e le scritte spente (v423)
+
+**Le stazioni si vedono quando parlano.** Una storia che faceva parlare la
+ISS (o Tiangong, o Hubble) nella 3D aveva la voce e non il corpo: la scena
+grande disegna le stazioni solo con un TLE fresco, con le sonde accese e
+con la Terra abbastanza grande per l'anello (`SOL_SAT_MIN_PX`), e il banco
+Terra e Luna non le disegnava affatto. Ora:
+
+- senza TLE (offline, o una storia ambientata lontano dal TLE) la stazione
+  ha un'**orbita di riserva** (`solVersoreSatelliteRiserva`, `SOL_SAT_RISERVA`:
+  inclinazione e quota vere, nodo fermo), marcata `riserva`, che si disegna
+  solo per una storia che la ha in scena o per la camera puntata su di lei;
+- una stazione in scena (`solSatDelRacconto`, cioè `storInScena`) si
+  disegna anche con le sonde spente e con la Terra piccola (il pallino, senza
+  anello), e a misure vere tiene almeno due pixel;
+- il **banco Terra e Luna** ha le stazioni (`solSatellitiVicino`): attorno al
+  globo disegnato, nella fila della profondità di Terra, Luna e Sole, con
+  l'anello e il nome se c'è posto; fuori dalle storie seguono le sonde
+  accese e il TLE. Quelle che parlano stanno ad almeno `SOL_SAT_STORIA_PX`
+  dal bordo del globo sullo schermo e non si sovrappongono fra loro: a banco
+  intero la Terra è un puntino e due corpi di settanta pixel la coprivano.
+  Lasciano il posto in `sol.satSchermo`, che il modulo legge come nella
+  scena grande.
+
+**Le scritte spente.** L'opzione «Storie cosmiche: mostra nomi ed etichette»
+della pagina Demo (`scritteStorie`, **spenta di serie**) decide se, mentre
+gira una storia (una demo con almeno un'azione `character_*`), le viste
+scrivono sulla tela. Spenta, `AstroDemo.senzaScritte` è vero e
+`demoSenzaScritte()` (app.js) zittisce `solTesto`, `solEtichetta`, le
+scritte dirette della 3D (bussola sera/mattina, «sei qui», «SOLE»),
+`skyNomiVisibili`, `skyNomiCimeVisibili`, `skyScrittaConAlone`, le etichette
+degli eventi e `cosmScritta` della scala cosmica; in più all'avvio si
+spengono i livelli `nomi` e `cime`, che la fotografia dei livelli riaccende
+alla fine. Restano i sottotitoli e il cartello della data, che sono della
+storia. Prova: `node scripts/prova-stazioni-storie.js`.
+
 ```
 action: story_camera { mode: close, target: 'Moon', zoom: 2.5 };
 action: effect { type: explosion, target: 'Mars', sound: rumble };
