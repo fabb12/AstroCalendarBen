@@ -15,3 +15,5 @@ Prima (v419): la regia delle voci, `audio/narrazione/storie/regia-voci.json` (ca
 - Gli otto audio di `storia_luna` spostati da `demo/it/` a `storie/luna|terra|sole/it/`.
 - `controlla-narrazione.js` accetta `storie/<nome>/<lingua>/` e segnala il blocco non allineato alle cartelle.
 - Prove: `prova-storie.js` (72), `prova-storie-browser.js` (79), `controlla-narrazione.js` (i 4 errori di durata in inglese di `storia_stelle` c'erano già), `prova-narrazione.js` (29/5, le stesse 5 di prima). `prova-narrazione-browser.js` si ferma già alla prima verifica (predefinite della pagina Demo), anche prima di questo lavoro.
+
+Correzione ritorno alla scena (v424): alla fine di «Prova scena» e dopo Stop lo Studio conserva lo scorrimento. Verifica: `prova-storie-ritorno.js`, fine naturale e Stop su desktop/telefono.
