@@ -22,6 +22,15 @@
  * battuta o una storia, e il nome del file basta a sapere a quale battuta
  * appartiene — la cartella serve a chi lavora, non all'app.
  *
+ * Le storie fatte nello **Studio delle storie** hanno le battute scritte da
+ * chi le crea, non nei dizionari: lo Studio le mette in
+ * `storie/storie-studio.json` (v421) a ogni «Salva» e «Elimina». Qui
+ * diventano battute come le altre (`studio.<storia>.<n>`, file
+ * `<storia>-<n>.mp3`, il testo scritto nel manifest perché la narrazione le
+ * riconosca dal testo), con una regia di partenza presa dalla faccia del
+ * momento; e quello che dal file è sparito si toglie: la regia, le righe
+ * del manifest e gli audio `studio_*` che non sono più di nessuno.
+ *
  * L'impronta: un file nuovo (o cambiato: lo dice la `firma`, l'impronta dei
  * suoi byte) si dà per registrato sul testo di adesso, perché è quello che il
  * copione mostrava. Un file che non è cambiato tiene l'impronta che aveva:
@@ -40,6 +49,14 @@ const CARTELLA = 'storie';                       // dentro alla radice del manif
 const COPIONE = 'audio/narrazione/storie/COPIONE.md';
 const CONFIG_ELEVEN = 'audio/narrazione/storie/voci-elevenlabs.json';
 const REGIA = 'audio/narrazione/storie/regia-voci.json';
+const STUDIO = 'audio/narrazione/storie/storie-studio.json';
+const STUDIO_CHIAVE = /^studio_[a-z0-9_]{1,40}$/;   // la stessa di `STUDIO_VOCE_CHIAVE` (storie-studio.js)
+// La faccia di un momento dello Studio → il tag audio di ElevenLabs v3 con
+// cui comincia la sua battuta (la regia di partenza; poi si cambia a mano)
+const TAG_UMORE = {
+  happy: 'happy', surprised: 'surprised', worried: 'nervous', sad: 'sad', thinking: 'thoughtful',
+  excited: 'excited', sleepy: 'sleepy', laughing: 'laughs', love: 'warmly', angry: 'angry'
+};
 const INIZIO = '// ── INIZIO STORIE COSMICHE: da qui a FINE lo scrive scripts/voci-storie.js, non toccare ──';
 const FINE = '// ── FINE STORIE COSMICHE ──';
 const ESTENSIONI = /\.(mp3|ogg|oga|opus|m4a|aac|wav|webm)$/i;
@@ -97,7 +114,6 @@ function carica() {
   };
   const { analizza } = require('../demo-motore.js');
   const predefiniti = require('../demo-predefiniti.js');
-  if (prima === undefined) delete globalThis.astroI18n; else globalThis.astroI18n = prima;
 
   // Le battute, nell'ordine delle storie
   const battute = [];
@@ -130,10 +146,44 @@ function carica() {
   const titoli = {};
   for (const d of predefiniti.filter(x => x.storia))
     titoli[d.chiave] = String(dizionari.it.messaggi[`demo.builtin.${d.chiave}.title`] || d.chiave).replace(/^Storie cosmiche · /, '');
+  for (const b of battute) b.lingue = LINGUE;
+
+  // Le storie dello Studio, dal file che lo Studio scrive
+  const erroriStudio = [];
+  for (const st of leggiStudio(erroriStudio)) {
+    titoli[st.chiave] = st.titolo || st.chiave;
+    const dellaStoria = [];
+    for (const x of st.battute) {
+      const chi = S.canonico(x.chi);
+      if (!S.STOR_PERSONAGGI[chi]) { erroriStudio.push(`${STUDIO}: ${st.chiave}, battuta ${x.n}: «${x.chi}» non è un personaggio`); continue; }
+      if (!personaggi.has(chi)) {
+        const nomi = {};
+        for (const l of LINGUE) nomi[l] = nomeDi(chi, l);
+        personaggi.set(chi, { id: chi, nomi, cartella: cartellaDi(nomi.it), battute: [] });
+      }
+      const b = { id: `studio.${st.chiave}.${x.n}`, storia: st.chiave, n: x.n, scena: x.scena, durata: x.durata, chi,
+        testi: { [st.lingua]: x.testo }, lingue: [st.lingua], base: `${st.chiave}-${x.n}`, studio: true, umore: x.umore };
+      battute.push(b); dellaStoria.push(b);
+      personaggi.get(chi).battute.push(b);
+    }
+    dellaStoria.forEach((b, i) => { b.prima = dellaStoria[i - 1] || null; b.dopo = dellaStoria[i + 1] || null; });
+  }
+  if (prima === undefined) delete globalThis.astroI18n; else globalThis.astroI18n = prima;
+  // Un personaggio rimasto senza battute (le sue erano tutte in una storia
+  // dello Studio cancellata) non sta nel copione
+  for (const [id, p] of personaggi) if (!p.battute.length) personaggi.delete(id);
+
   // La regia: il carattere di ogni voce e, per ogni battuta, l'emozione, come
   // dirla e il testo con i tag audio di ElevenLabs v3. Il file è facoltativo.
-  const regia = fs.existsSync(path.join(RADICE, REGIA)) ? JSON.parse(leggi(REGIA)) : {};
-  mondo = { dizionari, battute, personaggi, titoli, regia, perId: new Map(battute.map(b => [b.id, b])) };
+  const testoRegia = fs.existsSync(path.join(RADICE, REGIA)) ? leggi(REGIA) : '';
+  const regia = testoRegia ? JSON.parse(testoRegia) : {};
+  const regiaNuova = regiaDelloStudio(regia, battute, l => dizionari.it.messaggi['storie.espressione.' + l]);
+  const testoRegiaNuovo = JSON.stringify(regiaNuova, null, 2) + '\n';
+  mondo = { dizionari, battute, personaggi, titoli, regia: regiaNuova, erroriStudio,
+    // `regiaDelloStudio` dà lo stesso oggetto se non c'è niente da cambiare:
+    // il file scritto a mano non si riformatta per niente
+    testoRegia: testoRegiaNuovo, cambiaRegia: regiaNuova !== regia,
+    perId: new Map(battute.map(b => [b.id, b])), perBase: new Map(battute.map(b => [b.base, b])) };
   return mondo;
 }
 
@@ -144,6 +194,66 @@ function leggiManifest() {
   const testo = leggi(MANIFEST);
   vm.runInContext(testo, ctx);
   return { testo, manifest: ctx.ASTRO_NARRAZIONE_MANIFEST };
+}
+
+/* Il file dello Studio: le storie, ognuna con la lingua in cui è scritta e
+ * le sue battute. I suoi errori sono errori del giro, che allora non scrive
+ * niente: con un file rotto le battute dello Studio sembrerebbero sparite, e
+ * i loro audio si cancellerebbero. */
+function leggiStudio(errori) {
+  if (!fs.existsSync(path.join(RADICE, STUDIO))) return [];
+  let dati;
+  try { dati = JSON.parse(leggi(STUDIO)); } catch (e) { errori.push(`${STUDIO}: non è JSON valido (${e.message})`); return []; }
+  const storie = [], viste = new Set();
+  for (const st of Array.isArray(dati && dati.storie) ? dati.storie : []) {
+    if (!st || !STUDIO_CHIAVE.test(st.chiave)) { errori.push(`${STUDIO}: una storia ha un nome non valido («${st && st.chiave}»)`); continue; }
+    if (viste.has(st.chiave)) { errori.push(`${STUDIO}: la storia ${st.chiave} c'è due volte`); continue; }
+    viste.add(st.chiave);
+    const lingua = LINGUE.includes(st.lingua) ? st.lingua : 'it';
+    const numeri = new Set(), battute = [];
+    for (const x of Array.isArray(st.battute) ? st.battute : []) {
+      const n = x && Number(x.n);
+      const testo = normalizza(x && x.testo);
+      if (!Number.isInteger(n) || n < 1 || numeri.has(n)) { errori.push(`${STUDIO}: ${st.chiave}, numero di battuta non valido o doppio (${x && x.n})`); continue; }
+      if (!testo || testo.length > 400) { errori.push(`${STUDIO}: ${st.chiave}, battuta ${n}: testo vuoto o più lungo di 400 caratteri`); continue; }
+      numeri.add(n);
+      battute.push({ n, chi: String(x.chi || ''), testo, umore: String(x.umore || ''),
+        scena: Number(x.scena) || 0, durata: Math.max(1000, Number(x.durata) || 0) });
+    }
+    storie.push({ chiave: st.chiave, titolo: normalizza(st.titolo).slice(0, 120), lingua, battute });
+  }
+  return storie;
+}
+
+/* La regia delle battute dello Studio: a una battuta nuova (o il cui testo
+ * è cambiato) la faccia del momento dà l'emozione e il tag di partenza; una
+ * regia che torna ancora col testo resta com'è (chi l'ha ritoccata a mano
+ * non la perde); quella delle battute che non ci sono più si toglie. Le
+ * storie pronte non si toccano: la loro regia è scritta a mano. */
+function regiaDelloStudio(regia, battute, nomeEmozione) {
+  const vecchie = regia.battute || {};
+  const dello = new Map(battute.filter(b => b.studio).map(b => [b.id, b]));
+  const nuove = {};
+  let cambia = false;
+  for (const [id, r] of Object.entries(vecchie)) {
+    if (/^studio\./.test(id) && !dello.has(id)) { cambia = true; continue; }
+    nuove[id] = r;
+  }
+  for (const b of dello.values()) {
+    const l = b.lingue[0];
+    const r = nuove[b.id];
+    const conTag = r && r.conTag && typeof r.conTag[l] === 'string' ? normalizza(r.conTag[l]) : '';
+    if (conTag && senzaTag(conTag) === normalizza(b.testi[l])) continue;
+    const tag = TAG_UMORE[b.umore];
+    nuove[b.id] = {
+      emozione: String(nomeEmozione(b.umore) || '').toLowerCase(),
+      come: (r && r.come) || '',
+      conTag: { [l]: (tag ? `[${tag}] ` : '') + normalizza(b.testi[l]) }
+    };
+    cambia = true;
+  }
+  if (!cambia) return regia;
+  return Object.assign({}, regia, { battute: nuove });
 }
 
 // --- La regia delle battute -------------------------------------------
@@ -210,9 +320,10 @@ function scansiona() {
 /* Il cuore: dalle cartelle al blocco del manifest, con tutto quello che non
  * va. Non scrive niente; lo usa anche `controlla-narrazione.js`. */
 function esamina({ fresche = new Set() } = {}) {
-  const { battute, personaggi, perId } = carica();
+  const { battute, personaggi, perId, perBase, erroriStudio } = carica();
   const { testo, manifest } = leggiManifest();
-  const errori = [], avvisi = [];
+  const errori = erroriStudio.slice(), avvisi = [];
+  const orfane = [];                         // audio di battute dello Studio che non ci sono più
   const prima = testo.indexOf(INIZIO), dopo = testo.indexOf(FINE);
   if (prima < 0 || dopo < prima) errori.push(`${MANIFEST}: mancano i segnalibri «INIZIO/FINE STORIE COSMICHE»`);
   const vecchie = manifest.voci || {};
@@ -226,8 +337,11 @@ function esamina({ fresche = new Set() } = {}) {
   const voci = {};                           // id → lingua → { file, impronta, firma, durata }
   for (const f of scansiona()) {
     const m = NOME_FILE.exec(f.nome);
-    const id = m && `demo.narr.${m[1]}.${m[2]}`;
-    const b = id && perId.get(id);
+    const b = m && perBase.get(`${m[1]}-${m[2]}`);
+    const id = b && b.id;
+    // Una battuta dello Studio tolta dalla sua storia (o la storia intera):
+    // il suo audio non è più di nessuno, e si cancella
+    if (!b && m && STUDIO_CHIAVE.test(m[1])) { orfane.push(f.file); continue; }
     if (!b) { errori.push(`${f.file}: il nome non è una battuta del copione (atteso tipo «storia_luna-1.mp3»)`); continue; }
     if (!LINGUE.includes(f.lingua)) { errori.push(`${f.file}: «${f.lingua}» non è una lingua (it, en)`); continue; }
     const p = personaggi.get(b.chi);
@@ -252,13 +366,14 @@ function esamina({ fresche = new Set() } = {}) {
   // Lo stato di ogni battuta, per il copione e per gli avvisi
   const stati = new Map();
   for (const b of battute) {
-    for (const l of LINGUE) {
+    for (const l of b.lingue) {
       const r = regiaDi(b, l);
       if (r.vecchia) avvisi.push(`${b.id} [${l}]: in ${REGIA} il testo coi tag non torna più col dizionario — la regia è da riscrivere (intanto si usa il testo senza tag)`);
       else if (!r.conTag) avvisi.push(`${b.id} [${l}]: nessuna regia in ${REGIA}`);
     }
     const s = {};
     for (const l of LINGUE) {
+      if (!b.lingue.includes(l)) { s[l] = { stato: 'non serve' }; continue; }
       const v = voci[b.id] && voci[b.id][l];
       if (!v) { s[l] = { stato: 'manca' }; continue; }
       const vecchia = v.impronta !== impronta(b.testi[l]);
@@ -281,7 +396,10 @@ function esamina({ fresche = new Set() } = {}) {
       const lingue = LINGUE.filter(l => voci[b.id][l]);
       lingue.forEach((l, i) => {
         const v = voci[b.id][l];
-        righe.push(`  ${l}: { file: '${v.file}', impronta: '${v.impronta}', firma: '${v.firma}' }${i < lingue.length - 1 ? ',' : ''}`);
+        // Il testo dello Studio non è nel dizionario: lo porta il manifest,
+        // e la narrazione riconosce la battuta da quello
+        const suo = b.studio ? `, testo: ${JSON.stringify(normalizza(b.testi[l]))}` : '';
+        righe.push(`  ${l}: { file: '${v.file}', impronta: '${v.impronta}', firma: '${v.firma}'${suo} }${i < lingue.length - 1 ? ',' : ''}`);
       });
       righe.push('},', '');
     }
@@ -289,7 +407,9 @@ function esamina({ fresche = new Set() } = {}) {
   righe.push(FINE);
   const bloccoNuovo = righe.map(r => r ? '    ' + r : '').join('\n').trimStart();
   const bloccoAttuale = prima >= 0 && dopo > prima ? testo.slice(prima, dopo + FINE.length) : '';
-  return { errori, avvisi, voci, stati, bloccoNuovo, bloccoAttuale, testo, prima, dopo,
+  if (carica().cambiaRegia) avvisi.push(`${REGIA}: la regia delle battute dello Studio va aggiornata (lo fa node scripts/voci-storie.js)`);
+  for (const f of orfane) avvisi.push(`${f}: la sua battuta non è più in nessuna storia dello Studio — si cancella`);
+  return { errori, avvisi, voci, stati, orfane, bloccoNuovo, bloccoAttuale, testo, prima, dopo,
     copione: scriviCopione(stati) };
 }
 
@@ -300,6 +420,7 @@ const secondi = x => (Math.round(x * 10) / 10).toLocaleString('it-IT') + ' s';
 function scriviCopione(stati) {
   const { battute, personaggi, titoli } = carica();
   const conta = l => battute.filter(b => stati.get(b.id)[l].stato === 'pronta').length;
+  const quante = l => battute.filter(b => b.lingue.includes(l)).length;
   const SEGNO = { pronta: 'pronta', manca: 'manca', 'da rifare': '**da rifare** (il testo è cambiato)', 'troppo lunga': '**troppo lunga**' };
   const o = [];
   o.push('# Il copione delle voci — Storie cosmiche', '');
@@ -309,10 +430,12 @@ function scriviCopione(stati) {
   o.push('di GitHub, il manifest e questo copione si aggiornano da soli (workflow «Voci delle storie»);');
   o.push('in locale lancia `node scripts/voci-storie.js`.');
   o.push('Istruzioni complete in `audio/narrazione/LEGGIMI.md`.', '');
-  o.push(`Pronte: **${conta('it')}/${battute.length}** in italiano · **${conta('en')}/${battute.length}** in inglese.`, '');
+  o.push('Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:');
+  o.push('Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.', '');
+  o.push(`Pronte: **${conta('it')}/${quante('it')}** in italiano · **${conta('en')}/${quante('en')}** in inglese.`, '');
   o.push('| Personaggio | Cartella | Battute | it | en |', '| --- | --- | --- | --- | --- |');
   for (const p of personaggi.values()) {
-    const pronte = l => p.battute.filter(b => stati.get(b.id)[l].stato === 'pronta').length;
+    const pronte = l => `${p.battute.filter(b => stati.get(b.id)[l].stato === 'pronta').length}/${p.battute.filter(b => b.lingue.includes(l)).length}`;
     o.push(`| ${p.nomi.it} | \`storie/${p.cartella}/\` | ${p.battute.length} | ${pronte('it')} | ${pronte('en')} |`);
   }
   o.push('');
@@ -322,11 +445,14 @@ function scriviCopione(stati) {
     const carattere = (carica().regia.personaggi || {})[p.cartella];
     if (carattere) o.push(`**La voce:** ${carattere}`, '');
     for (const l of LINGUE) {
+      const sue = p.battute.filter(b => b.lingue.includes(l));
+      if (!sue.length) continue;
       o.push(`### ${l === 'it' ? 'Italiano' : 'Inglese'} — \`storie/${p.cartella}/${l}/\``, '');
-      for (const b of p.battute) {
+      for (const b of sue) {
         const s = stati.get(b.id)[l];
         const durata = s.v && s.v.durata != null ? ` · ${secondi(s.v.durata)}` : '';
-        o.push(`- \`${b.base}.mp3\` — ${SEGNO[s.stato]}${durata} · ${titoli[b.storia]}, scena ${b.scena} (al massimo ${secondi(b.durata / 1000)})`);
+        const dove = b.studio ? `Studio: ${titoli[b.storia]}` : titoli[b.storia];
+        o.push(`- \`${b.base}.mp3\` — ${SEGNO[s.stato]}${durata} · ${dove}, scena ${b.scena} (al massimo ${secondi(b.durata / 1000)})`);
         const r = regiaDi(b, l);
         if (r.emozione || r.come) o.push(`  - **Emozione:** ${r.emozione || '—'} — ${r.come || ''}`);
         o.push(`  - **Testo:** ${normalizza(b.testi[l] || '—')}`);
@@ -358,7 +484,7 @@ async function genera(nome, { lingua, rifai, prova }) {
   const chiave = process.env.ELEVENLABS_API_KEY;
   if (!chiave && !prova) throw new Error('manca ELEVENLABS_API_KEY nell\'ambiente (la chiave non va mai scritta nel repository)');
   const { stati } = esamina();
-  const daFare = p.battute.filter(b => rifai || stati.get(b.id)[lingua].stato !== 'pronta');
+  const daFare = p.battute.filter(b => b.lingue.includes(lingua) && (rifai || stati.get(b.id)[lingua].stato !== 'pronta'));
   if (!daFare.length) { console.log(`${p.nomi.it} [${lingua}]: tutte le battute sono pronte (--rifai per rifarle).`); return []; }
   const formato = config.formato || 'mp3_44100_128';
   const indirizzo = (process.env.ELEVENLABS_URL || 'https://api.elevenlabs.io').replace(/\/$/, '');
@@ -402,7 +528,11 @@ function aggiorna({ scrivi, fresche }) {
   const cambiaManifest = e.bloccoNuovo !== e.bloccoAttuale && e.prima >= 0;
   const copioneVero = path.join(RADICE, COPIONE);
   const cambiaCopione = !fs.existsSync(copioneVero) || fs.readFileSync(copioneVero, 'utf8') !== e.copione + '\n';
+  const { cambiaRegia, testoRegia } = carica();
   if (scrivi && !e.errori.length) {
+    if (cambiaRegia) fs.writeFileSync(path.join(RADICE, REGIA), testoRegia);
+    // Gli audio delle battute dello Studio che non ci sono più
+    for (const f of e.orfane) fs.unlinkSync(path.join(RADICE, 'audio/narrazione', f));
     if (cambiaManifest) fs.writeFileSync(path.join(RADICE, MANIFEST),
       e.testo.slice(0, e.prima) + e.bloccoNuovo + e.testo.slice(e.dopo + FINE.length));
     if (cambiaCopione) { fs.mkdirSync(path.dirname(copioneVero), { recursive: true }); fs.writeFileSync(copioneVero, e.copione + '\n'); }
@@ -414,7 +544,7 @@ function aggiorna({ scrivi, fresche }) {
       if (!fs.readdirSync(dir).some(f => ESTENSIONI.test(f) || f === '.gitkeep')) fs.writeFileSync(path.join(dir, '.gitkeep'), '');
     }
   }
-  return Object.assign(e, { cambiaManifest, cambiaCopione });
+  return Object.assign(e, { cambiaManifest, cambiaCopione, cambiaRegia });
 }
 
 function riassunto(e) {
@@ -423,8 +553,8 @@ function riassunto(e) {
   for (const x of e.errori) console.log('  ERRORE   ' + x);
   console.log('');
   for (const p of personaggi.values()) {
-    const quante = l => p.battute.filter(b => e.stati.get(b.id)[l].stato === 'pronta').length;
-    console.log(`  ${p.nomi.it.padEnd(24)} storie/${p.cartella.padEnd(24)} it ${quante('it')}/${p.battute.length}  en ${quante('en')}/${p.battute.length}`);
+    const quante = l => `${p.battute.filter(b => e.stati.get(b.id)[l].stato === 'pronta').length}/${p.battute.filter(b => b.lingue.includes(l)).length}`;
+    console.log(`  ${p.nomi.it.padEnd(24)} storie/${p.cartella.padEnd(24)} it ${quante('it')}  en ${quante('en')}`);
   }
 }
 
@@ -448,9 +578,12 @@ if (require.main === module) {
     if (controlla) {
       if (e.cambiaManifest) e.errori.push('il manifest non corrisponde alle cartelle: lancia node scripts/voci-storie.js');
       if (e.cambiaCopione) e.errori.push('COPIONE.md non è aggiornato: lancia node scripts/voci-storie.js');
-      if (e.cambiaManifest || e.cambiaCopione) console.log('\n  ERRORE   ' + e.errori.slice(-1)[0]);
+      if (e.cambiaRegia) e.errori.push(`${REGIA} non è aggiornata alle storie dello Studio: lancia node scripts/voci-storie.js`);
+      if (e.orfane.length) e.errori.push('ci sono audio di battute dello Studio che non esistono più: lancia node scripts/voci-storie.js');
+      if (e.cambiaManifest || e.cambiaCopione || e.cambiaRegia || e.orfane.length) console.log('\n  ERRORE   ' + e.errori.slice(-1)[0]);
     } else if (!e.errori.length) {
-      console.log(`\n${e.cambiaManifest ? 'Manifest aggiornato' : 'Manifest già a posto'} · ${e.cambiaCopione ? 'copione riscritto' : 'copione già a posto'} (${COPIONE}).`);
+      console.log(`\n${e.cambiaManifest ? 'Manifest aggiornato' : 'Manifest già a posto'} · ${e.cambiaCopione ? 'copione riscritto' : 'copione già a posto'} (${COPIONE})` +
+        `${e.cambiaRegia ? ' · regia dello Studio aggiornata' : ''}${e.orfane.length ? ` · ${e.orfane.length} audio dello Studio cancellati` : ''}.`);
       if (e.cambiaManifest) console.log('Ricorda: CACHE_NAME in sw.js e la versione in config.js, se no chi ha l\'app installata non scarica le voci nuove.');
     }
     process.exit(e.errori.length ? 1 : 0);

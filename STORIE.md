@@ -822,6 +822,20 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   (`demoPaginaRicarica` rifà l'elenco senza buttare un testo che si sta
   scrivendo nell'editor). Né i progetti né le demo personali sono nel backup
   JSON dell'app.
+- **Le voci delle storie dello Studio** (v421): «Salva nelle mie demo» e
+  «Elimina» rifanno la fotografia delle battute delle storie salvate
+  (`astrocal_storie_voci_v1`, `studioVociStoria`) e il file
+  `audio/narrazione/storie/storie-studio.json` (`studioFileVoci`): scritto da
+  solo nella cartella collegata (File System Access, la maniglia in
+  IndexedDB `astrocal-studio-voci`) o scaricato da «Altro → File delle
+  voci». Ogni momento che parla ha un numero fisso (`voce`, col contatore
+  `voceProssima`) e la storia un nome fisso (`voceChiave`, `studio_<titolo>`):
+  le battute sono `studio.<nome>.<n>`, i file `<nome>-<n>.mp3`.
+  `scripts/voci-storie.js` le mette in copione, regia (di partenza, dalla
+  faccia) e manifest (col `testo`, perché la narrazione le riconosca dal
+  testo: il copione le dice con `text`, non con un ID), e toglie le battute
+  sparite con la loro regia e i loro audio. Istruzioni in
+  `audio/narrazione/LEGGIMI.md`; prova `scripts/prova-voci-studio.js`.
 - L'interfaccia si costruisce col DOM (mai `innerHTML`: i testi sono di chi
   scrive); i campi di testo aggiornano il modello senza ridisegnare, così il
   clic sul bottone accanto non si perde.

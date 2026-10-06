@@ -8,24 +8,27 @@ di GitHub, il manifest e questo copione si aggiornano da soli (workflow «Voci d
 in locale lancia `node scripts/voci-storie.js`.
 Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 
+Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
+Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
+
 Pronte: **8/50** in italiano · **0/50** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Luna | `storie/luna/` | 11 | 4 | 0 |
-| Terra | `storie/terra/` | 4 | 3 | 0 |
-| Sole | `storie/sole/` | 9 | 1 | 0 |
-| Saturno | `storie/saturno/` | 2 | 0 | 0 |
-| Giove | `storie/giove/` | 1 | 0 | 0 |
-| Voyager 1 | `storie/voyager-1/` | 1 | 0 | 0 |
-| Alfa Centauri | `storie/alfa-centauri/` | 1 | 0 | 0 |
-| Via Lattea | `storie/via-lattea/` | 2 | 0 | 0 |
-| Andromeda | `storie/andromeda/` | 1 | 0 | 0 |
-| Betelgeuse | `storie/betelgeuse/` | 7 | 0 | 0 |
-| Supernova del Granchio | `storie/supernova-del-granchio/` | 3 | 0 | 0 |
-| Sirio B | `storie/sirio-b/` | 2 | 0 | 0 |
-| Sagittario A* | `storie/sagittario-a/` | 4 | 0 | 0 |
-| Buco bianco | `storie/buco-bianco/` | 2 | 0 | 0 |
+| Luna | `storie/luna/` | 11 | 4/11 | 0/11 |
+| Terra | `storie/terra/` | 4 | 3/4 | 0/4 |
+| Sole | `storie/sole/` | 9 | 1/9 | 0/9 |
+| Saturno | `storie/saturno/` | 2 | 0/2 | 0/2 |
+| Giove | `storie/giove/` | 1 | 0/1 | 0/1 |
+| Voyager 1 | `storie/voyager-1/` | 1 | 0/1 | 0/1 |
+| Alfa Centauri | `storie/alfa-centauri/` | 1 | 0/1 | 0/1 |
+| Via Lattea | `storie/via-lattea/` | 2 | 0/2 | 0/2 |
+| Andromeda | `storie/andromeda/` | 1 | 0/1 | 0/1 |
+| Betelgeuse | `storie/betelgeuse/` | 7 | 0/7 | 0/7 |
+| Supernova del Granchio | `storie/supernova-del-granchio/` | 3 | 0/3 | 0/3 |
+| Sirio B | `storie/sirio-b/` | 2 | 0/2 | 0/2 |
+| Sagittario A* | `storie/sagittario-a/` | 4 | 0/4 | 0/4 |
+| Buco bianco | `storie/buco-bianco/` | 2 | 0/2 | 0/2 |
 
 ## Luna
 
