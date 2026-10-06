@@ -230,7 +230,8 @@
    *   luogo         il suo luogo nella scala cosmica, per chi vive anche
    *                 altrove (Betelgeuse, che è una stella del planetario)
    *   decoro        il disegno sul corpo di un pianeta: bande, macchia,
-   *                 continenti, calotta, nubi, crateri
+   *                 continenti, calotta, nubi, crateri, cuore (Plutone),
+   *                 sale (Cerere), macchia_scura (Haumea)
    *   baffi         'manubrio', 'folti', 'spioventi' (solo lui)
    *   barba         'folta', 'onde', 'pizzetto', 'ispida' (solo lui)
    *   peli          il colore di baffi, barba e sopracciglia folte
@@ -278,7 +279,31 @@
     Neptune:  { famiglia: 'pianeta', genere: 'm', pelle: '#7fb2f5', iride: '#1d4ed8', sottotitolo: '#93c5fd', decoro: 'macchia',
       barba: 'onde', peli: '#e0f2fe',
       voce: { ritmo: '-6%', tono: '-2Hz' }, espressione: 'neutral', personalita: 'Neptune' },
-    Pluto:    { famiglia: 'nano', genere: 'm', pelle: '#e3d3bd', iride: '#92400e', sottotitolo: '#fde68a', personalita: 'Pluto' },
+    Pluto:    { famiglia: 'nano', genere: 'm', pelle: '#e3d3bd', iride: '#92400e', sottotitolo: '#fde68a', decoro: 'cuore',
+      personalita: 'Pluto' },
+    /* Gli altri pianeti nani (v420), quelli di `SOL_MONDI`: fino alla v419
+     * parlavano con la faccia di famiglia, tutti uguali. Il genere segue il
+     * mito da cui viene il nome: Cerere, Eris, Haumea e Sedna sono dee;
+     * Makemake, Gonggong, Quaoar e Orco dèi. I colori sono quelli veri (Sedna
+     * e Gonggong fra i corpi più rossi del Sistema Solare, Eris quasi bianca
+     * di ghiaccio), il decoro quello per cui li si riconosce: le macchie di
+     * sale di Cerere, la macchia rosso scuro di Haumea. */
+    Ceres:    { famiglia: 'nano', genere: 'f', pelle: '#d6d9de', iride: '#475569', sottotitolo: '#e2e8f0', labbra: '#c0587a',
+      decoro: 'sale', voce: { ritmo: '0%', tono: '10Hz' }, espressione: 'happy', personalita: 'Ceres' },
+    Eris:     { famiglia: 'nano', genere: 'f', pelle: '#eef2f8', iride: '#7c3aed', sottotitolo: '#ddd6fe', labbra: '#be185d',
+      trucco: '#a78bfa', voce: { ritmo: '6%', tono: '14Hz' }, espressione: 'excited', personalita: 'Eris' },
+    Haumea:   { famiglia: 'nano', genere: 'f', pelle: '#dfe6f2', iride: '#0e7490', sottotitolo: '#a5f3fc', labbra: '#e85d75',
+      decoro: 'macchia_scura', voce: { ritmo: '14%', tono: '18Hz' }, espressione: 'laughing', personalita: 'Haumea' },
+    Sedna:    { famiglia: 'nano', genere: 'f', pelle: '#e0a88f', iride: '#1e3a8a', sottotitolo: '#fecaca', labbra: '#9f1239',
+      voce: { ritmo: '-10%', tono: '6Hz' }, espressione: 'sleepy', personalita: 'Sedna' },
+    Makemake: { famiglia: 'nano', genere: 'm', pelle: '#e8cfc0', iride: '#9a3412', sottotitolo: '#fed7aa',
+      voce: { ritmo: '4%', tono: '2Hz' }, espressione: 'happy', personalita: 'Makemake' },
+    Gonggong: { famiglia: 'nano', genere: 'm', pelle: '#d8a8a8', iride: '#991b1b', sottotitolo: '#fca5a5',
+      baffi: 'spioventi', peli: '#b91c1c', voce: { ritmo: '2%', tono: '-6Hz' }, espressione: 'neutral', personalita: 'Gonggong' },
+    Quaoar:   { famiglia: 'nano', genere: 'm', pelle: '#cdb8c8', iride: '#6d28d9', sottotitolo: '#e9d5ff',
+      voce: { ritmo: '6%', tono: '4Hz' }, espressione: 'happy', personalita: 'Quaoar' },
+    Orcus:    { famiglia: 'nano', genere: 'm', pelle: '#bcc6d8', iride: '#334155', sottotitolo: '#cbd5e1',
+      barba: 'ispida', peli: '#475569', voce: { ritmo: '-8%', tono: '-12Hz' }, espressione: 'thinking', personalita: 'Orcus' },
     Io:       { famiglia: 'luna', genere: 'f', pelle: '#fde68a', iride: '#ca8a04', sottotitolo: '#fde68a', espressione: 'surprised' },
     Europa:   { famiglia: 'luna', genere: 'f', pelle: '#e0f2fe', iride: '#0284c7', sottotitolo: '#bae6fd' },
     Ganymede: { famiglia: 'luna', genere: 'm', pelle: '#d6d3d1', iride: '#57534e', sottotitolo: '#e7e5e4' },
@@ -2586,6 +2611,35 @@
           ctx.bezierCurveTo(x - R * 0.4, y + (dy - 0.12 * a) * R, x + R * 0.3, y + (dy + 0.12 * a) * R, x + R, y + dy * R);
         }
         ctx.stroke();
+        break;
+      case 'cuore':
+        // il cuore di Plutone (la pianura Sputnik, ghiaccio chiaro), in basso
+        // a destra, lontano dalla bocca; attorno i crateri di una luna
+        decoroPianeta(ctx, x, y, R, Object.assign({}, profilo, { decoro: 'crateri' }));
+        ctx.fillStyle = rgba(schiarisci(pelle, 0.6), 0.9);
+        ctx.beginPath();
+        ctx.moveTo(x + R * 0.62, y + R * 0.86);
+        ctx.bezierCurveTo(x + R * 0.36, y + R * 0.68, x + R * 0.32, y + R * 0.42, x + R * 0.5, y + R * 0.38);
+        ctx.bezierCurveTo(x + R * 0.6, y + R * 0.36, x + R * 0.62, y + R * 0.46, x + R * 0.64, y + R * 0.5);
+        ctx.bezierCurveTo(x + R * 0.68, y + R * 0.42, x + R * 0.8, y + R * 0.36, x + R * 0.88, y + R * 0.46);
+        ctx.bezierCurveTo(x + R * 0.98, y + R * 0.6, x + R * 0.8, y + R * 0.76, x + R * 0.62, y + R * 0.86);
+        ctx.closePath(); ctx.fill();
+        break;
+      case 'sale':
+        // le due macchie bianche di sale nel cratere Occator di Cerere, in alto
+        // a destra sopra al sopracciglio: più in basso cadevano sulla guancia
+        decoroPianeta(ctx, x, y, R, Object.assign({}, profilo, { decoro: 'crateri' }));
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        for (const [dx, dy, r] of [[0.5, -0.66, 0.07], [0.62, -0.58, 0.04]]) {
+          ctx.beginPath(); ctx.arc(x + dx * R, y + dy * R, r * R, 0, Math.PI * 2); ctx.fill();
+        }
+        break;
+      case 'macchia_scura':
+        // la macchia rosso scuro di Haumea, sul bordo in alto (sotto, alle
+        // guance, si confondeva col rossore)
+        decoroPianeta(ctx, x, y, R, Object.assign({}, profilo, { decoro: 'crateri' }));
+        ctx.fillStyle = rgba('#8b3a3a', 0.7);
+        ctx.beginPath(); ctx.ellipse(x - R * 0.5, y - R * 0.7, R * 0.2, R * 0.12, -0.5, 0, Math.PI * 2); ctx.fill();
         break;
       case 'crateri':
         // tutt'attorno al volto, come nella Luna dei cartoni: più fitti sul bordo

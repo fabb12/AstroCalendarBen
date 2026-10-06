@@ -172,7 +172,10 @@ e `denti`.
 Ogni personaggio ha un `genere` (`f`, `m`), che segue il nome italiano e il
 mito: la Luna, la Terra, Venere, Io, Europa, Callisto, le stazioni e le
 Voyager sono lei; il Sole, Mercurio, Marte, Giove, Saturno, Urano, Nettuno,
-Plutone, Ganimede, Titano e Hubble sono lui. Una famiglia ha il suo di
+Plutone, Ganimede, Titano e Hubble sono lui. Dei pianeti nani (v420) Cerere,
+Eris, Haumea e Sedna sono lei, Makemake, Gonggong, Quaoar e Orco lui; ognuno
+ha i suoi colori e la sua personalità, e tre un decoro (`cuore` di Plutone,
+`sale` di Cerere, `macchia_scura` di Haumea). Una famiglia ha il suo di
 serie (le lune e le comete lei, i pianeti e gli asteroidi lui).
 
 - **Lei**: occhi un po' più grandi e alti, contorno di sopra più deciso,
