@@ -69,9 +69,13 @@ for (const [id, voce] of Object.entries(manifest.voci || {})) {
     if (!dizionari[lingua]) { errori.push(`${id}: lingua sconosciuta «${lingua}»`); continue; }
     const file = typeof x === 'string' ? x : x && x.file;
     if (!valido(file)) { errori.push(`${id} [${lingua}]: percorso non valido «${file}»`); continue; }
+    // Le Storie cosmiche hanno una cartella in più, quella del personaggio:
+    // storie/<nome>/<lingua>/ (le scrive scripts/voci-storie.js)
+    const storie = /^storie\/[a-z0-9-]+\/(it|en)\//.exec(file);
     const cartella = file.split('/').slice(0, 2).join('/');
-    if (!/^(demo|missione)\/(it|en)$/.test(cartella) || !file.startsWith(cartella.split('/')[0] + '/' + lingua + '/'))
-      avvisi.push(`${id} [${lingua}]: «${file}» non sta in <funzione>/${lingua}/`);
+    if (storie ? storie[1] !== lingua
+      : !/^(demo|missione)\/(it|en)$/.test(cartella) || !file.startsWith(cartella.split('/')[0] + '/' + lingua + '/'))
+      avvisi.push(`${id} [${lingua}]: «${file}» non sta in <funzione>/${lingua}/ (o storie/<personaggio>/${lingua}/)`);
     const vero = path.join(RADICE, radice, file);
     if (!fs.existsSync(vero)) errori.push(`${id} [${lingua}]: manca il file ${radice}${file}`);
     else if (fs.statSync(vero).size < 64) errori.push(`${id} [${lingua}]: ${radice}${file} è troppo piccolo per essere un audio`);
@@ -103,6 +107,17 @@ for (const d of predefiniti) {
       if (parole > tetto) errori.push(`${id} [${lingua}]: ${parole} parole in ${s.durata / 1000} s (al massimo ${tetto})`);
     }
   });
+}
+
+// 3. Le voci dei personaggi: il blocco delle storie nel manifest deve
+// essere quello che le cartelle dicono (un file aggiunto senza lanciare lo
+// script non suonerebbe, e la sintesi lo coprirebbe senza che nessuno se ne accorga).
+{
+  const voci = require('./voci-storie.js').esamina();
+  for (const e of voci.errori) errori.push('storie: ' + e);
+  for (const a of voci.avvisi) avvisi.push('storie: ' + a);
+  if (voci.bloccoNuovo !== voci.bloccoAttuale)
+    errori.push('storie: il manifest non corrisponde alle cartelle audio/narrazione/storie/ — lancia node scripts/voci-storie.js');
 }
 
 for (const a of avvisi) console.log('  avviso   ' + a);

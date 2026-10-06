@@ -689,64 +689,46 @@
         impronta: 'daa13138'
       }
     },
-    // ─────────────────────────────────────────────
-    // Storia della Luna
-    // ─────────────────────────────────────────────
+    // Le battute delle Storie cosmiche: una cartella per personaggio,
+    // storie/<nome>/<lingua>/. Non si scrivono a mano: le aggiunge
+    // `node scripts/voci-storie.js` leggendo le cartelle (LEGGIMI.md).
+    // ── INIZIO STORIE COSMICHE: da qui a FINE lo scrive scripts/voci-storie.js, non toccare ──
 
+    // Luna — storie/luna/
     'demo.narr.storia_luna.1': {
-      it: {
-        file: 'demo/it/storia_luna-1.mp3',
-        impronta: 'dd32df5a'
-      }
+      it: { file: 'storie/luna/it/storia_luna-1.mp3', impronta: 'dd32df5a', firma: '924b2b32b8' }
     },
 
     'demo.narr.storia_luna.2': {
-      it: {
-        file: 'demo/it/storia_luna-2.mp3',
-        impronta: '266de7ec'
-      }
-    },
-
-    'demo.narr.storia_luna.3': {
-      it: {
-        file: 'demo/it/storia_luna-3.mp3',
-        impronta: 'dab87ab6'
-      }
-    },
-
-    'demo.narr.storia_luna.4': {
-      it: {
-        file: 'demo/it/storia_luna-4.mp3',
-        impronta: 'cf7acecd'
-      }
+      it: { file: 'storie/luna/it/storia_luna-2.mp3', impronta: '266de7ec', firma: '3ede855254' }
     },
 
     'demo.narr.storia_luna.5': {
-      it: {
-        file: 'demo/it/storia_luna-5.mp3',
-        impronta: 'e75019b0'
-      }
-    },
-
-    'demo.narr.storia_luna.6': {
-      it: {
-        file: 'demo/it/storia_luna-6.mp3',
-        impronta: '1c864e11'
-      }
-    },
-
-    'demo.narr.storia_luna.7': {
-      it: {
-        file: 'demo/it/storia_luna-7.mp3',
-        impronta: '866c6b03'
-      }
+      it: { file: 'storie/luna/it/storia_luna-5.mp3', impronta: 'e75019b0', firma: 'a1c9c657a7' }
     },
 
     'demo.narr.storia_luna.8': {
-      it: {
-        file: 'demo/it/storia_luna-8.mp3',
-        impronta: '0f693c1b'
-      }
-    }
+      it: { file: 'storie/luna/it/storia_luna-8.mp3', impronta: '0f693c1b', firma: '1d5082a5f8' }
+    },
+
+    // Terra — storie/terra/
+    'demo.narr.storia_luna.3': {
+      it: { file: 'storie/terra/it/storia_luna-3.mp3', impronta: 'dab87ab6', firma: '6a2a22e7e2' }
+    },
+
+    'demo.narr.storia_luna.4': {
+      it: { file: 'storie/terra/it/storia_luna-4.mp3', impronta: 'cf7acecd', firma: 'bd7ab53174' }
+    },
+
+    'demo.narr.storia_luna.7': {
+      it: { file: 'storie/terra/it/storia_luna-7.mp3', impronta: '866c6b03', firma: 'a67f8c3f95' }
+    },
+
+    // Sole — storie/sole/
+    'demo.narr.storia_luna.6': {
+      it: { file: 'storie/sole/it/storia_luna-6.mp3', impronta: '1c864e11', firma: 'a395b7f118' }
+    },
+
+    // ── FINE STORIE COSMICHE ──
   }
 };

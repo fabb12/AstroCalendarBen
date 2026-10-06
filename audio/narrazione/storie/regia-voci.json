@@ -1,0 +1,421 @@
+{
+  "_leggimi": "La regia delle voci delle Storie cosmiche: per ogni personaggio il carattere della voce (per sceglierla su ElevenLabs), per ogni battuta l'emozione, come dirla e il testo con i tag audio di ElevenLabs v3 ([excited], [whispers], [laughs]…). Tolti i tag, il testo deve restare identico a quello del dizionario: se il dizionario cambia, scripts/voci-storie.js lo segnala e usa il testo senza tag. Si modifica a mano; il copione la mostra.",
+  "personaggi": {
+    "luna": "Lei. Una bambina curiosa e un po' impressionabile, voce chiara e luminosa, si spaventa e si entusiasma in un attimo. Racconta con meraviglia.",
+    "terra": "Lei. La sorella maggiore dolce e rassicurante: voce calda, sorridente, paziente, mai sbrigativa.",
+    "sole": "Lui. Il nonno del sistema solare: voce profonda e calda, bonaria, parla piano; quando ha paura diventa buffo e un po' tremolante.",
+    "saturno": "Lui. Elegante e un po' vanitoso dei suoi anelli: voce morbida, rotonda, tranquilla, lenta.",
+    "giove": "Lui. Il gigante orgoglioso e simpatico: voce grossa, rimbombante, allegra, che si vanta ridendo.",
+    "voyager-1": "Lei. Una piccola esploratrice lontanissima: voce limpida e un filo metallica, orgogliosa, emozionata, come da una radio.",
+    "alfa-centauri": "Lei (sono tre sorelle). Voce gentile e serena, cordiale, da vicina di casa.",
+    "via-lattea": "Lei. Antica, saggia e materna: voce ampia, lenta, sognante, con tante pause.",
+    "andromeda": "Lei. La vicina lontana, affettuosa: voce morbida e un po' misteriosa, come una ninna nanna.",
+    "betelgeuse": "Lei. Una vecchia diva teatrale: voce piena e un po' roca, scherzosa, enfatica, ama le pause ad effetto.",
+    "supernova-del-granchio": "Lei. Esplosiva ed energica: voce vivace, ride forte, racconta come un'avventura; alla fine diventa tenera.",
+    "sirio-b": "Lui. Il fratellino piccolo ma pesantissimo: voce giovane, vispa, sicura di sé, un po' birichina.",
+    "sagittario-a": "Lui. Il gigante buono del centro della galassia: voce bassissima, lenta, calma e profonda, mai minacciosa.",
+    "buco-bianco": "Lui. Un folletto dispettoso e misterioso: voce leggera, svelta, giocherellona, sussurra i segreti."
+  },
+  "battute": {
+    "demo.narr.storia_luna.1": {
+      "emozione": "spaventata",
+      "come": "agitata, quasi in lacrime; la voce sale su «Mi manca un pezzo!» e si fa piccola su «fettina»",
+      "conTag": {
+        "it": "[scared] Oh no, guardate in su! [gasps] Mi manca un pezzo! [sad] Ieri ero più grande, e stasera sono soltanto una fettina.",
+        "en": "[scared] Oh no, look up! [gasps] A piece of me is missing! [sad] Yesterday I was bigger, and tonight I’m just a little slice."
+      }
+    },
+    "demo.narr.storia_luna.2": {
+      "emozione": "preoccupata",
+      "come": "si guarda attorno cercando, pensosa poi sempre più ansiosa; i puntini sono una pausa vera",
+      "conTag": {
+        "it": "[worried] Dove sarà finito? [thoughtful] Forse l’ho perso dietro a una nuvola… [anxious] o mi è caduto nel mare!",
+        "en": "[worried] Where did it go? [thoughtful] Maybe I lost it behind a cloud… [anxious] or it fell into the sea!"
+      }
+    },
+    "demo.narr.storia_luna.3": {
+      "emozione": "rassicurante",
+      "come": "dolce, con un sorriso nella voce, come chi consola una sorellina",
+      "conTag": {
+        "it": "[warmly] Luna, non preoccuparti! [cheerfully] Saliamo un po’ più in alto e guardiamo da fuori.",
+        "en": "[warmly] Don’t worry, Moon! [cheerfully] Let’s fly up a little higher and look from outside."
+      }
+    },
+    "demo.narr.storia_luna.4": {
+      "emozione": "allegra",
+      "come": "contenta della sorpresa, calma; «nemmeno una briciola» detto con una risatina",
+      "conTag": {
+        "it": "[happy] Eccoti! Guarda bene: sei tonda e intera, proprio come sempre. [playfully] Da quassù non ti manca niente, nemmeno una briciola.",
+        "en": "[happy] There you are! Look closely: you’re round and whole, just like always. [playfully] From up here nothing is missing, not even a crumb."
+      }
+    },
+    "demo.narr.storia_luna.5": {
+      "emozione": "stupita",
+      "come": "meraviglia sincera, poi una domanda curiosa e lenta",
+      "conTag": {
+        "it": "[amazed] Ma è vero! Da qui sono tutta rotonda. [curious] E allora perché da laggiù sembravo una fettina?",
+        "en": "[amazed] It’s true! From here I’m completely round. [curious] So why did I look like a slice from down there?"
+      }
+    },
+    "demo.narr.storia_luna.6": {
+      "emozione": "paziente",
+      "come": "il nonno che spiega: lento, caldo, scandisce «la metà»",
+      "conTag": {
+        "it": "[warmly] Te lo spiego io, Luna. [calm] Io ti illumino sempre, ma soltanto la metà di te che guarda verso di me. L’altra metà resta al buio.",
+        "en": "[warmly] Let me explain, Moon. [calm] I always light you up, but only the half of you that faces me. The other half stays in the dark."
+      }
+    },
+    "demo.narr.storia_luna.7": {
+      "emozione": "affettuosa",
+      "come": "racconta come una fiaba, accompagnando il viaggio; cresce piano fino a «Luna piena»",
+      "conTag": {
+        "it": "[gently] E intanto tu mi giri attorno. Guarda: mentre cammini sulla tua strada, da qui vediamo un pezzo sempre più grande della tua metà illuminata, [delighted] fino alla Luna piena.",
+        "en": "[gently] And meanwhile you go around me. Look: as you travel along your path, from here we see more and more of your sunlit half, [delighted] all the way to the full Moon."
+      }
+    },
+    "demo.narr.storia_luna.8": {
+      "emozione": "felice",
+      "come": "sollievo e gioia, quasi saltella; l'ultima frase trionfante",
+      "conTag": {
+        "it": "[excited] Allora ho capito! [relieved] Non ho perso niente. [joyful] Sono sempre intera, anche quando sembro una fettina!",
+        "en": "[excited] Now I understand! [relieved] I didn’t lose anything. [joyful] I’m always whole, even when I look like a slice!"
+      }
+    },
+    "demo.narr.storia_giganti.1": {
+      "emozione": "fiera",
+      "come": "si presenta con eleganza, un po' vanitoso degli anelli",
+      "conTag": {
+        "it": "[cheerfully] Ciao! Sono Saturno, quello con gli anelli. [proudly] Sono fatti di miliardi di pezzetti di ghiaccio che mi girano attorno.",
+        "en": "[cheerfully] Hello! I’m Saturn, the one with the rings. [proudly] They’re made of billions of little pieces of ice going around me."
+      }
+    },
+    "demo.narr.storia_giganti.2": {
+      "emozione": "orgogliosa",
+      "come": "voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme",
+      "conTag": {
+        "it": "[boastfully] E io sono Giove, il più grande di tutti: [laughs] dentro di me ci starebbero più di mille Terre!",
+        "en": "[boastfully] And I’m Jupiter, the biggest of all: [laughs] more than a thousand Earths would fit inside me!"
+      }
+    },
+    "demo.narr.storia_giganti.3": {
+      "emozione": "bonaria",
+      "come": "il nonno che mette pace fra i due: caldo, divertito, lento sui numeri",
+      "conTag": {
+        "it": "[warmly] Siete bravissimi tutti e due. [calm] Giove fa un giro intorno a me in dodici anni; Saturno, che sta più lontano, in quasi trenta.",
+        "en": "[warmly] You’re both wonderful. [calm] Jupiter goes around me in twelve years; Saturn, who is farther away, in almost thirty."
+      }
+    },
+    "demo.narr.storia_giganti.4": {
+      "emozione": "divertita",
+      "come": "guarda Giove correre ridendo, poi si allunga pigro e soddisfatto su «lunghissima»",
+      "conTag": {
+        "it": "[amused] Guardate quanto corre Giove! [relaxed] Io sono più lento, ma la mia strada è lunghissima.",
+        "en": "[amused] Look how fast Jupiter runs! [relaxed] I’m slower, but my road is very, very long."
+      }
+    },
+    "demo.narr.storia_tempo.1": {
+      "emozione": "misteriosa",
+      "come": "comincia sussurrando come un segreto, poi la domanda curiosa",
+      "conTag": {
+        "it": "[whispers] Psst, tu che mi guardi! [curious] Lo sai che non mi vedi come sono adesso, ma come ero un attimo fa?",
+        "en": "[whispers] Psst, you up there looking! [curious] Did you know you see me not as I am now, but a moment ago?"
+      }
+    },
+    "demo.narr.storia_tempo.2": {
+      "emozione": "entusiasta",
+      "come": "veloce ed emozionata sulla velocità della luce, rallenta su «più di un secondo»",
+      "conTag": {
+        "it": "[excited] La luce corre a trecentomila chilometri al secondo, [thoughtful] ma io sono lontana: per arrivare ai tuoi occhi le serve più di un secondo.",
+        "en": "[excited] Light runs at three hundred thousand kilometres a second, [thoughtful] but I am far away: it needs more than a second to reach your eyes."
+      }
+    },
+    "demo.narr.storia_tempo.3": {
+      "emozione": "allegra",
+      "come": "invito all'avventura, prende per mano chi ascolta",
+      "conTag": {
+        "it": "[cheerfully] Vieni con me! [excited] Saliamo, e andiamo a vedere quanto è vecchia la luce delle altre stelle.",
+        "en": "[cheerfully] Come with me! [excited] Let’s go up and find out how old the light of the other stars is."
+      }
+    },
+    "demo.narr.storia_tempo.4": {
+      "emozione": "cordiale",
+      "come": "il nonno che saluta contento, scandisce «otto minuti e venti secondi»",
+      "conTag": {
+        "it": "[warmly] Ciao, sono il Sole! [calm] La mia luce, per arrivare fino a voi, viaggia otto minuti e venti secondi.",
+        "en": "[warmly] Hello, I’m the Sun! [calm] My light travels for eight minutes and twenty seconds to get to you."
+      }
+    },
+    "demo.narr.storia_tempo.5": {
+      "emozione": "scherzosa",
+      "come": "finge di fare paura, poi ride e rassicura con generosità",
+      "conTag": {
+        "it": "[mischievously] Quindi, se io mi spegnessi adesso, ve ne accorgereste soltanto fra otto minuti. [laughs] Ma tranquilli: ho ancora miliardi di anni di luce da regalarvi!",
+        "en": "[mischievously] So if I switched off right now, you would only notice in eight minutes. [laughs] But don’t worry: I still have billions of years of light to give you!"
+      }
+    },
+    "demo.narr.storia_tempo.6": {
+      "emozione": "emozionata",
+      "come": "voce che arriva da lontanissimo, fiera; «quasi un giorno intero» con stupore",
+      "conTag": {
+        "it": "[proudly] E io sono la Voyager 1, la cosa più lontana mai costruita da voi. [amazed] Un vostro messaggio ci mette quasi un giorno intero a raggiungermi.",
+        "en": "[proudly] And I am Voyager 1, the farthest thing you have ever built. [amazed] A message from you takes almost a whole day to reach me."
+      }
+    },
+    "demo.narr.storia_tempo.7": {
+      "emozione": "serena",
+      "come": "gentile, da vicina di casa, tranquilla",
+      "conTag": {
+        "it": "[friendly] Io sono Alfa Centauri: siamo tre stelle, le più vicine al Sole. [calm] La luce che vedi di noi è partita più di quattro anni fa.",
+        "en": "[friendly] I am Alpha Centauri: we are three stars, the closest to the Sun. [calm] The light you see from us left more than four years ago."
+      }
+    },
+    "demo.narr.storia_tempo.8": {
+      "emozione": "pensosa",
+      "come": "saggia e lenta, come chi ricorda; sorride sui mammut",
+      "conTag": {
+        "it": "[thoughtful] Io sono la Via Lattea, la vostra galassia. [slowly] La luce del mio centro è partita ventiseimila anni fa, [softly laughs] quando sulla Terra camminavano ancora i mammut.",
+        "en": "[thoughtful] I am the Milky Way, your galaxy. [slowly] The light from my centre left twenty-six thousand years ago, [softly laughs] when mammoths still walked the Earth."
+      }
+    },
+    "demo.narr.storia_tempo.9": {
+      "emozione": "affettuosa",
+      "come": "morbida, quasi una ninna nanna, un filo di mistero sul finale",
+      "conTag": {
+        "it": "[tenderly] E io sono Andromeda, la vostra vicina. [dreamy] La mia luce ha viaggiato due milioni e mezzo di anni: [mysteriously] è partita quando voi esseri umani non c’eravate ancora.",
+        "en": "[tenderly] And I am Andromeda, your neighbour. [dreamy] My light has travelled for two and a half million years: [mysteriously] it left before you humans even existed."
+      }
+    },
+    "demo.narr.storia_tempo.10": {
+      "emozione": "entusiasta",
+      "come": "l'illuminazione di chi ha capito, poi una domanda piena di curiosità",
+      "conTag": {
+        "it": "[excited] Ho capito il trucco! Più guardi lontano, più guardi indietro nel tempo. [curious] Ma allora qual è la luce più antica di tutte?",
+        "en": "[excited] I get the trick! The farther you look, the further back in time you see. [curious] So which is the oldest light of all?"
+      }
+    },
+    "demo.narr.storia_tempo.11": {
+      "emozione": "meravigliata",
+      "come": "solenne, con reverenza, lento sui numeri enormi",
+      "conTag": {
+        "it": "[in awe] È partita tredici miliardi e ottocento milioni di anni fa, quando l’universo era appena nato. [softly] Più indietro di così, nessuno può guardare.",
+        "en": "[in awe] It left thirteen billion eight hundred million years ago, when the universe was just born. [softly] Nobody can look further back than that."
+      }
+    },
+    "demo.narr.storia_tempo.12": {
+      "emozione": "allegra",
+      "come": "ride, energica, come all'inizio di una corsa",
+      "conTag": {
+        "it": "[laughs] E adesso torniamo a casa: [excited] tutta la strada fatta dalla luce, noi la rifacciamo in un attimo!",
+        "en": "[laughs] And now let’s go home: [excited] the whole road the light travelled, we cover in a flash!"
+      }
+    },
+    "demo.narr.storia_tempo.13": {
+      "emozione": "contenta",
+      "come": "breve e felice, come all'atterraggio di un aereo",
+      "conTag": {
+        "it": "[happy] Eccoci, stiamo atterrando!",
+        "en": "[happy] Here we are, landing!"
+      }
+    },
+    "demo.narr.storia_tempo.14": {
+      "emozione": "tenera",
+      "come": "la morale: lenta, calda, con meraviglia sull'ultima frase",
+      "conTag": {
+        "it": "[softly] Quindi stasera, quando guardi il cielo, non guardi solo lontano: guardi nel passato. [warmly] Il cielo è una vera macchina del tempo!",
+        "en": "[softly] So tonight, when you look at the sky, you are not only looking far away: you are looking into the past. [warmly] The sky is a real time machine!"
+      }
+    },
+    "demo.narr.storia_stelle.1": {
+      "emozione": "teatrale",
+      "come": "chiama da lontano, poi si presenta come una diva; risatina su «teatrale»",
+      "conTag": {
+        "it": "[calling out] Ehi, quaggiù! Vedi quella stella rossa sulla spalla di Orione? [dramatically] Sono io, Betelgeuse: vecchia, enorme… [laughs] e un po’ teatrale!",
+        "en": "[calling out] Hey, down there! See that red star on Orion’s shoulder? [dramatically] That’s me, Betelgeuse: old, huge… [laughs] and a little dramatic!"
+      }
+    },
+    "demo.narr.storia_stelle.2": {
+      "emozione": "entusiasta",
+      "come": "racconta con slancio, misteriosa sulla stella che si fa domande, invito finale energico",
+      "conTag": {
+        "it": "[storytelling] Anche le stelle nascono, crescono e invecchiano. [mysteriously] E là fuori c’è una stella che sta proprio cominciando a chiedersi che fine farà. [excited] Andiamo a trovarla!",
+        "en": "[storytelling] Stars are born, grow up and grow old too. [mysteriously] And out there is a star who is just starting to wonder what will become of it. [excited] Let’s go and see!"
+      }
+    },
+    "demo.narr.storia_stelle.3": {
+      "emozione": "euforica",
+      "come": "grido di partenza, come sulle montagne russe",
+      "conTag": {
+        "it": "[excited] Tieniti forte: [shouts] si vola fra le stelle!",
+        "en": "[excited] Hold on tight: [shouts] we’re flying among the stars!"
+      }
+    },
+    "demo.narr.storia_stelle.4": {
+      "emozione": "preoccupata",
+      "come": "il nonno che per la prima volta ha paura: voce incerta, un sospiro prima della domanda",
+      "conTag": {
+        "it": "[worried] Terra, ho sentito dire che le stelle non durano per sempre. [sighs] Io ho quattro miliardi e mezzo di anni… [nervously] che fine farò?",
+        "en": "[worried] Earth, I’ve heard that stars don’t last forever. [sighs] I’m four and a half billion years old… [nervously] what will become of me?"
+      }
+    },
+    "demo.narr.storia_stelle.5": {
+      "emozione": "incoraggiante",
+      "come": "vivace, coraggiosa, contagia il Sole di entusiasmo",
+      "conTag": {
+        "it": "[encouragingly] Non lo so, Sole! [excited] Chiediamolo alle stelle più vecchie di te. Ce n’è una rossa che ci sta aspettando.",
+        "en": "[encouragingly] I don’t know, Sun! [excited] Let’s ask the stars older than you. There’s a red one waiting for us."
+      }
+    },
+    "demo.narr.storia_stelle.6": {
+      "emozione": "fiera",
+      "come": "si mostra come una diva che entra in scena; «mi sono gonfiata» con una risata",
+      "conTag": {
+        "it": "[dramatically] Eccomi! Sono una supergigante rossa: ho finito l’idrogeno nel cuore e [laughs] mi sono gonfiata. [proudly] Al posto del Sole, arriverei oltre l’orbita di Marte!",
+        "en": "[dramatically] Here I am! I’m a red supergiant: I ran out of hydrogen in my heart and [laughs] I puffed up. [proudly] In the Sun’s place, I’d reach beyond the orbit of Mars!"
+      }
+    },
+    "demo.narr.storia_stelle.7": {
+      "emozione": "teatrale",
+      "come": "pettegola divertita, poi suspense e un «bum» detto piano con un sorriso",
+      "conTag": {
+        "it": "[amused] Qualche anno fa mi sono offuscata, e tutti pensavano che stessi per esplodere. [laughs] Era solo una nuvola di polvere! [suspenseful] Ma entro centomila anni… [whispers] farò davvero bum.",
+        "en": "[amused] A few years ago I went dim, and everyone thought I was about to explode. [laughs] It was just a cloud of dust! [suspenseful] But within a hundred thousand years… [whispers] I really will go boom."
+      }
+    },
+    "demo.narr.storia_stelle.8": {
+      "emozione": "esplosiva",
+      "come": "«Bum!» forte e ridendo, poi racconta l'avventura con orgoglio",
+      "conTag": {
+        "it": "[shouts] Bum! [laughs] Io l’ho già fatto. [excited] Ero una stella gigante e sono esplosa: nel 1054 gli astronomi cinesi mi videro brillare perfino di giorno, per ventitré giorni!",
+        "en": "[shouts] Boom! [laughs] I’ve already done it. [excited] I was a giant star and I exploded: in 1054 Chinese astronomers saw me shining even in daytime, for twenty-three days!"
+      }
+    },
+    "demo.narr.storia_stelle.9": {
+      "emozione": "stupita",
+      "come": "elenca le meraviglie una dopo l'altra, sempre più incredula; la montagna è il colpo finale",
+      "conTag": {
+        "it": "[excited] Del mio cuore è rimasta una stella di neutroni: grande come una città, gira trenta volte al secondo. [amazed] Un cucchiaino di lei pesa quanto una montagna!",
+        "en": "[excited] My heart is still here as a neutron star: as big as a city, spinning thirty times a second. [amazed] A teaspoon of it weighs as much as a mountain!"
+      }
+    },
+    "demo.narr.storia_stelle.10": {
+      "emozione": "spaventata",
+      "come": "panico buffo, voce che trema",
+      "conTag": {
+        "it": "[panicked] Aiuto! [scared] Allora anch’io, un giorno, farò bum?",
+        "en": "[panicked] Help! [scared] So one day, will I go boom too?"
+      }
+    },
+    "demo.narr.storia_stelle.11": {
+      "emozione": "rassicurante",
+      "come": "svelto e sicuro, un piccolo che consola il grande",
+      "conTag": {
+        "it": "[reassuringly] No, tranquillo! Per esplodere ci vuole una stella almeno otto volte più pesante di te. [cheerfully] Tu diventerai come me: una nana bianca.",
+        "en": "[reassuringly] No, don’t worry! To explode, a star must be at least eight times heavier than you. [cheerfully] You’ll become like me: a white dwarf."
+      }
+    },
+    "demo.narr.storia_stelle.12": {
+      "emozione": "birichina",
+      "come": "si vanta da fratellino, ride sugli elefanti",
+      "conTag": {
+        "it": "[playfully] Sono Sirio B, il fratellino di Sirio. Peso quanto un Sole intero, ma sono grande come la Terra: [laughs] un cucchiaino di me pesa come due elefanti!",
+        "en": "[playfully] I’m Sirius B, Sirius’s little brother. I weigh as much as a whole Sun, but I’m the size of the Earth: [laughs] a teaspoon of me weighs as much as two elephants!"
+      }
+    },
+    "demo.narr.storia_stelle.13": {
+      "emozione": "sbalordita",
+      "come": "scopre il proprio futuro con stupore crescente; «inghiottire» con un po' di imbarazzo",
+      "conTag": {
+        "it": "[surprised] Allora ecco il mio futuro: fra cinque miliardi di anni mi gonfierò e diventerò una gigante rossa, [amazed] tanto grande da inghiottire Mercurio e Venere!",
+        "en": "[surprised] So here’s my future: in five billion years I’ll swell up into a red giant, [amazed] so big that I’ll swallow Mercury and Venus!"
+      }
+    },
+    "demo.narr.storia_stelle.14": {
+      "emozione": "serena",
+      "come": "racconta il suo destino come una cosa bella, sognante, lento",
+      "conTag": {
+        "it": "[dreamy] Poi soffierò via i miei strati, come un grande anello di fumo colorato, [softly] e resterà soltanto il mio cuore: una piccola nana bianca, caldissima.",
+        "en": "[dreamy] Then I’ll blow my outer layers away, like a big ring of coloured smoke, [softly] and only my heart will be left: a small, very hot white dwarf."
+      }
+    },
+    "demo.narr.storia_stelle.15": {
+      "emozione": "sollevata",
+      "come": "sospiro di sollievo e risata, poi torna curioso e pensoso",
+      "conTag": {
+        "it": "[sighs with relief] Che sollievo, sono ancora io! [curious] Ma le stelle più pesanti di tutte, che fine fanno? Andiamo a vedere al centro della Galassia.",
+        "en": "[sighs with relief] Phew, I’m me again! [curious] But what happens to the heaviest stars of all? Let’s go and look at the centre of the Galaxy."
+      }
+    },
+    "demo.narr.storia_stelle.16": {
+      "emozione": "solenne",
+      "come": "voce bassissima e calma, si presenta con gentilezza, lento su «quattro milioni»",
+      "conTag": {
+        "it": "[deep voice] Quando esplodono, possono lasciare un buco nero. [calm] Io sono Sagittario A*, il cuore della Via Lattea: peso come quattro milioni di Soli.",
+        "en": "[deep voice] When they explode, they can leave a black hole behind. [calm] I’m Sagittarius A*, the heart of the Milky Way: I weigh as much as four million Suns."
+      }
+    },
+    "demo.narr.storia_stelle.17": {
+      "emozione": "misteriosa",
+      "come": "piano, quasi sussurrato, con meraviglia sull'anello di luce",
+      "conTag": {
+        "it": "[mysteriously] Da me non esce niente, nemmeno la luce: per questo sono nero. [softly] Di me si vede solo l’anello di luce che mi gira attorno.",
+        "en": "[mysteriously] Nothing gets out of me, not even light: that’s why I’m black. [softly] All you can see of me is the ring of light swirling around me."
+      }
+    },
+    "demo.narr.storia_stelle.18": {
+      "emozione": "divertita",
+      "come": "ride della sua fama di mostro, poi tranquillizza bonario",
+      "conTag": {
+        "it": "[laughs] Ma non sono un aspirapolvere! [calm] Se al posto del Sole ci fosse un buco nero pesante come lui, la Terra continuerebbe a girargli attorno, tranquilla.",
+        "en": "[laughs] But I’m not a vacuum cleaner! [calm] If a black hole as heavy as the Sun took its place, the Earth would keep going round it, quite calmly."
+      }
+    },
+    "demo.narr.storia_stelle.19": {
+      "emozione": "dispettosa",
+      "come": "spunta all'improvviso come un folletto, svelto e giocherellone",
+      "conTag": {
+        "it": "[mischievously] E io sono il tuo contrario: un buco bianco! [playfully] Da me le cose possono solo uscire, e nessuno può entrare.",
+        "en": "[mischievously] And I’m your opposite: a white hole! [playfully] Things can only come out of me, and nothing can get in."
+      }
+    },
+    "demo.narr.storia_stelle.20": {
+      "emozione": "incuriosita",
+      "come": "il gigante calmo che dubita, lento, un po' perplesso",
+      "conTag": {
+        "it": "[skeptical] Un buco bianco? [curious] Ma tu esisti davvero?",
+        "en": "[skeptical] A white hole? [curious] But do you really exist?"
+      }
+    },
+    "demo.narr.storia_stelle.21": {
+      "emozione": "birichina",
+      "come": "confida un segreto ridendo; l'ultima frase sussurrata",
+      "conTag": {
+        "it": "[playfully] Le equazioni di Einstein dicono che potrei esistere. [laughs] Ma nessuno mi ha mai visto: [whispers] per ora sono soltanto un’idea!",
+        "en": "[playfully] Einstein’s equations say I could exist. [laughs] But nobody has ever seen me: [whispers] for now I’m only an idea!"
+      }
+    },
+    "demo.narr.storia_stelle.22": {
+      "emozione": "tenera",
+      "come": "l'esplosiva che diventa dolce: piano, come un segreto prezioso",
+      "conTag": {
+        "it": "[softly] Ultimo segreto, mentre torniamo a casa: [tenderly] quando una stella esplode, sparge nello spazio tutto quello che ha costruito dentro di sé.",
+        "en": "[softly] One last secret, while we fly home: [tenderly] when a star explodes, it scatters into space everything it built inside itself."
+      }
+    },
+    "demo.narr.storia_stelle.23": {
+      "emozione": "accogliente",
+      "come": "calda, braccia aperte",
+      "conTag": {
+        "it": "[warmly] Bentornato sotto il mio cielo!",
+        "en": "[warmly] Welcome back under my sky!"
+      }
+    },
+    "demo.narr.storia_stelle.24": {
+      "emozione": "commossa",
+      "come": "la morale finale: lenta, emozionata, l'ultima frase con meraviglia e un sorriso",
+      "conTag": {
+        "it": "[tenderly] Il ferro nel tuo sangue e il calcio nelle tue ossa sono nati dentro le stelle. [in awe] Guarda su: siamo tutti fatti di polvere di stelle!",
+        "en": "[tenderly] The iron in your blood and the calcium in your bones were made inside stars. [in awe] Look up: we are all made of stardust!"
+      }
+    }
+  }
+}

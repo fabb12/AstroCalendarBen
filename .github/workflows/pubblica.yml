@@ -48,6 +48,16 @@ jobs:
       - name: Prendi il codice
         uses: actions/checkout@v4
 
+      - name: Le voci dei personaggi delle storie
+        # Chi carica gli audio di un personaggio dalla pagina di GitHub
+        # (audio/narrazione/storie/<nome>/<lingua>/) non ha lanciato
+        # `scripts/voci-storie.js`: lo si lancia qui, così il manifest
+        # pubblicato elenca sempre i file che ci sono davvero. Se lo script
+        # trova un errore (un nome di file che non è una battuta) non scrive
+        # niente e si pubblica il manifest del repository, con un avviso.
+        run: |
+          node scripts/voci-storie.js || echo "::warning::scripts/voci-storie.js ha trovato un errore: le voci nuove delle storie non sono nel manifest pubblicato (vedi il log di questo passo)"
+
       - name: Prepara la cartella del sito
         env:
           ADSB_PROXY_URL: ${{ vars.ADSB_PROXY_URL }}
@@ -89,6 +99,13 @@ jobs:
           if [ -z "$EDGE_TTS_API_URL" ]; then
             echo "::warning::Manca EDGE_TTS_API_URL: Missione Cielo userà la voce del dispositivo"
           fi
+          # Il service worker si reinstalla solo se sw.js cambia: un'impronta
+          # del manifest degli audio nel nome della cache fa sì che chi ha
+          # l'app installata scarichi le voci nuove anche quando sono stati
+          # caricati solo gli audio, senza nessun numero di versione toccato.
+          IMPRONTA_AUDIO="$(sha1sum _sito/audio/narrazione/manifest.js | cut -c1-8)"
+          sed -i -E "s/(const CACHE_NAME = 'astrocal-v[0-9]+)';/\\1-a${IMPRONTA_AUDIO}';/" _sito/sw.js
+          grep -q "a${IMPRONTA_AUDIO}'" _sito/sw.js || { echo "::error::non sono riuscito a mettere l'impronta degli audio in sw.js"; exit 1; }
           CACHE_VERSION="$(grep -oE 'astrocal-v[0-9]+' _sito/sw.js | head -1 | sed 's/astrocal-//')"
           if [ -z "$CACHE_VERSION" ]; then
             echo "::error::Impossibile ricavare la versione da sw.js"

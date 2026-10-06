@@ -1,0 +1,67 @@
+{
+  "_leggimi": "Le voci ElevenLabs dei personaggi, per node scripts/voci-storie.js --genera <cartella>. In voce va l'ID della voce (Voice ID, nella libreria di ElevenLabs); per una voce diversa in inglese: \"voce\": { \"it\": \"...\", \"en\": \"...\" }. Il modello eleven_v3 legge i tag di regia-voci.json ([excited], [whispers]...) e vuole stability 0, 0.5 o 1 (Creativo, Naturale, Robusto): più bassa = più espressiva. Con un altro modello (eleven_multilingual_v2) si manda il testo senza tag. impostazioni (generali o del personaggio, anche modello per personaggio) passano così come sono a voice_settings. La chiave API non va mai scritta qui: si passa con ELEVENLABS_API_KEY.",
+  "modello": "eleven_v3",
+  "formato": "mp3_44100_128",
+  "impostazioni": {
+    "stability": 0.5,
+    "similarity_boost": 0.8
+  },
+  "personaggi": {
+    "luna": {
+      "nome": "Luna",
+      "voce": ""
+    },
+    "terra": {
+      "nome": "Terra",
+      "voce": ""
+    },
+    "sole": {
+      "nome": "Sole",
+      "voce": ""
+    },
+    "saturno": {
+      "nome": "Saturno",
+      "voce": ""
+    },
+    "giove": {
+      "nome": "Giove",
+      "voce": ""
+    },
+    "voyager-1": {
+      "nome": "Voyager 1",
+      "voce": ""
+    },
+    "alfa-centauri": {
+      "nome": "Alfa Centauri",
+      "voce": ""
+    },
+    "via-lattea": {
+      "nome": "Via Lattea",
+      "voce": ""
+    },
+    "andromeda": {
+      "nome": "Andromeda",
+      "voce": ""
+    },
+    "betelgeuse": {
+      "nome": "Betelgeuse",
+      "voce": ""
+    },
+    "supernova-del-granchio": {
+      "nome": "Supernova del Granchio",
+      "voce": ""
+    },
+    "sirio-b": {
+      "nome": "Sirio B",
+      "voce": ""
+    },
+    "sagittario-a": {
+      "nome": "Sagittario A*",
+      "voce": ""
+    },
+    "buco-bianco": {
+      "nome": "Buco bianco",
+      "voce": ""
+    }
+  }
+}

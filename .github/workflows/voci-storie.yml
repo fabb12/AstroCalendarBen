@@ -1,0 +1,52 @@
+# Le voci dei personaggi delle Storie cosmiche, tenute in ordine da sole.
+#
+# Chi genera le battute di un personaggio (ElevenLabs o altro) e le carica
+# dalla pagina di GitHub in audio/narrazione/storie/<nome>/<lingua>/ non ha
+# Node sotto mano per lanciare `scripts/voci-storie.js`. Lo fa questo
+# workflow: aggiorna il blocco delle storie in audio/narrazione/manifest.js e
+# il copione (audio/narrazione/storie/COPIONE.md), e li rimette nel ramo con
+# un commit. Se un file ha un nome che non è una battuta, si ferma in rosso e
+# il log dice quale: è il posto dove guardare quando una voce caricata non si
+# sente. La pubblicazione (pubblica.yml) lancia lo stesso script per conto
+# suo, quindi il sito ha le voci nuove anche prima di questo commit.
+#
+# Il commit fatto da qui non fa ripartire nessun workflow (è la regola del
+# GITHUB_TOKEN): niente giri infiniti. Dopo, chi lavora in locale fa un pull.
+
+name: Voci delle storie
+
+on:
+  push:
+    paths:
+      - 'audio/narrazione/storie/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: voci-storie-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Manifest e copione dalle cartelle
+        run: node scripts/voci-storie.js
+      - name: Rimetti nel ramo
+        run: |
+          git add audio/narrazione/manifest.js audio/narrazione/storie/COPIONE.md
+          if git diff --cached --quiet; then
+            echo "Manifest e copione erano già a posto."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Voci delle storie: manifest e copione dalle cartelle"
+          git push
