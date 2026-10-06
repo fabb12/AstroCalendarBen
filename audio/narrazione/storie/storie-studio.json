@@ -1,0 +1,101 @@
+{
+  "_leggimi": "Le battute delle storie fatte nello Studio delle storie, scritto dallo Studio (Altro → File delle voci). Va in audio/narrazione/storie/: scripts/voci-storie.js le mette nel copione, nella regia e nel manifest, e toglie quelle che non ci sono più, audio compresi. Non modificarlo a mano.",
+  "v": 1,
+  "storie": [
+    {
+      "chiave": "studio_cosa_e_la_gravita",
+      "titolo": "Cosa è la gravità?",
+      "lingua": "it",
+      "battute": [
+        {
+          "n": 2,
+          "chi": "Moon",
+          "testo": "Ciao Terra, mi chiedevo, perché orbito intorno a te?",
+          "umore": "thinking",
+          "scena": 1,
+          "durata": 6000
+        },
+        {
+          "n": 4,
+          "chi": "Earth",
+          "testo": "Sei solo una luna !!",
+          "umore": "bully",
+          "scena": 2,
+          "durata": 3000
+        },
+        {
+          "n": 5,
+          "chi": "Earth",
+          "testo": "ah ah ah !!!",
+          "umore": "laughing",
+          "scena": 3,
+          "durata": 5000
+        },
+        {
+          "n": 1,
+          "chi": "Moon",
+          "testo": "Smettila !!!",
+          "umore": "annoyed",
+          "scena": 4,
+          "durata": 3000
+        },
+        {
+          "n": 7,
+          "chi": "hubble",
+          "testo": "esatto, perchè ci trattieni?",
+          "umore": "thinking",
+          "scena": 5,
+          "durata": 4000
+        },
+        {
+          "n": 8,
+          "chi": "iss",
+          "testo": "ci dobbiamo ribellare!",
+          "umore": "angry",
+          "scena": 6,
+          "durata": 3000
+        },
+        {
+          "n": 9,
+          "chi": "css",
+          "testo": "giusto!",
+          "umore": "angry",
+          "scena": 7,
+          "durata": 3000
+        },
+        {
+          "n": 3,
+          "chi": "Moon",
+          "testo": "vogliamo essere indipendenti!",
+          "umore": "angry",
+          "scena": 8,
+          "durata": 3000
+        },
+        {
+          "n": 6,
+          "chi": "Earth",
+          "testo": "oh no! adesso cosa faccio?",
+          "umore": "worried",
+          "scena": 9,
+          "durata": 4000
+        },
+        {
+          "n": 10,
+          "chi": "Sun",
+          "testo": "tranquilla terra!",
+          "umore": "laughing",
+          "scena": 10,
+          "durata": 4000
+        },
+        {
+          "n": 11,
+          "chi": "Sun",
+          "testo": "ti spiego io cos'è la gravità!",
+          "umore": "happy",
+          "scena": 11,
+          "durata": 4000
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,554 @@
+{
+  "_leggimi": "Le storie salvate nello Studio delle storie, scritte dall'app (Studio → Altro → Repository GitHub) e lette da ogni dispositivo. Non modificarlo a mano.",
+  "v": 1,
+  "storie": [
+    {
+      "v": 1,
+      "id": "pp9ffc58",
+      "titolo": "Cosa è la gravità?",
+      "scopo": "libera",
+      "obiettivo": "capire l'importanza della gravità tra gli astri.",
+      "cast": [
+        "Moon",
+        "Earth",
+        "Sun",
+        "Saturn",
+        "Jupiter",
+        "Sedna",
+        "iss",
+        "css",
+        "hubble",
+        "sgr_a",
+        "alpha_centauri"
+      ],
+      "scene": [
+        {
+          "id": "scs5jur2",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Moon",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m9dicy5w",
+              "chi": "Moon",
+              "testo": "Ciao Terra, mi chiedevo, perché orbito intorno a te?",
+              "umore": "thinking",
+              "durata": 0,
+              "voce": 2,
+              "audio": {
+                "durata": 4441,
+                "impronta": "be7e5c66",
+                "nome": "ElevenLabs_2026-10-06T19_19_44_Carlotta - Fairy Princess_pvc_sp110_s3_sb14_v4.mp"
+              },
+              "azioni": [
+                {
+                  "id": "abba5ht2",
+                  "tipo": "guarda",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "oggetto": "Earth",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ]
+            },
+            {
+              "id": "mi1mpdav",
+              "chi": "Earth",
+              "testo": "Sei solo una luna !!",
+              "umore": "bully",
+              "durata": 0,
+              "voce": 4,
+              "audio": {
+                "durata": 2273,
+                "impronta": "b1ad1131",
+                "nome": "ElevenLabs_2026-10-06T19_31_18_Nora - Bright Italian Female Narrator_pvc_sp108_s"
+              },
+              "azioni": [
+                {
+                  "id": "a4berfiz",
+                  "tipo": "guarda",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "oggetto": "Moon",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                },
+                {
+                  "id": "aupotct0",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "bully",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                },
+                {
+                  "id": "axfak7zy",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "fine",
+                  "umore": "laughing",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ]
+            },
+            {
+              "id": "mcif3yq7",
+              "chi": "Earth",
+              "testo": "ah ah ah !!!",
+              "umore": "laughing",
+              "durata": 0,
+              "voce": 5,
+              "audio": {
+                "durata": 3971,
+                "impronta": "d98309bb",
+                "nome": "ElevenLabs_2026-10-06T19_33_25_Nora - Bright Italian Female Narrator_pvc_sp108_s"
+              },
+              "azioni": [
+                {
+                  "id": "awj4yd8r",
+                  "tipo": "guarda",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "oggetto": "Moon",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ]
+            },
+            {
+              "id": "mstnigz1",
+              "chi": "Moon",
+              "testo": "Smettila !!!",
+              "umore": "annoyed",
+              "durata": 0,
+              "voce": 1,
+              "audio": {
+                "durata": 1411,
+                "impronta": "64994de1",
+                "nome": "ElevenLabs_2026-10-06T19_22_30_Carlotta - Fairy Princess_pvc_sp110_s3_sb14_v4.mp"
+              },
+              "azioni": [
+                {
+                  "id": "a0j6bbc3",
+                  "tipo": "guarda",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "oggetto": "Earth",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sxsnw6rn",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "hubble"
+          ],
+          "momenti": [
+            {
+              "id": "m3hkq11f",
+              "chi": "hubble",
+              "testo": "esatto, perchè ci trattieni?",
+              "umore": "thinking",
+              "durata": 0,
+              "voce": 7,
+              "audio": {
+                "durata": 2769,
+                "impronta": "808b37ae",
+                "nome": "ElevenLabs_2026-10-06T19_37_26_Fabio - Reliable, Calm_pvc_sp104_s40_sb75_v4.mp3"
+              },
+              "azioni": [
+                {
+                  "id": "aw87dyeh",
+                  "tipo": "guarda",
+                  "chi": "hubble",
+                  "quando": "inizio",
+                  "oggetto": "Earth",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sd3w8ike",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css"
+          ],
+          "momenti": [
+            {
+              "id": "m8jbnp15",
+              "chi": "iss",
+              "testo": "ci dobbiamo ribellare!",
+              "umore": "angry",
+              "durata": 0,
+              "voce": 8,
+              "audio": {
+                "durata": 1881,
+                "impronta": "3973dac1",
+                "nome": "ElevenLabs_2026-10-06T19_41_43_Cinzia_pvc_sp115_s50_sb100_v4.mp3"
+              },
+              "azioni": [
+                {
+                  "id": "akjk8tba",
+                  "tipo": "effetto",
+                  "chi": "iss",
+                  "quando": "inizio",
+                  "effetto": "smoke",
+                  "dove": "iss",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant"
+                },
+                {
+                  "id": "aon9y3e6",
+                  "tipo": "guarda",
+                  "chi": "iss",
+                  "quando": "inizio",
+                  "oggetto": "css",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "snmnsthu",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css"
+          ],
+          "momenti": [
+            {
+              "id": "mgeo6h74",
+              "chi": "css",
+              "testo": "giusto!",
+              "umore": "angry",
+              "durata": 0,
+              "voce": 9,
+              "audio": {
+                "durata": 993,
+                "impronta": "a0f96b63",
+                "nome": "ElevenLabs_2026-10-06T19_43_03_Sami - Rich, Urgent and Serious_pvc_sp111_s40_sb4"
+              },
+              "azioni": []
+            }
+          ]
+        },
+        {
+          "id": "s0e5y292",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "musye1rg",
+              "chi": "Moon",
+              "testo": "vogliamo essere indipendenti!",
+              "umore": "angry",
+              "durata": 0,
+              "voce": 3,
+              "audio": {
+                "durata": 2194,
+                "impronta": "f5ce684c",
+                "nome": "ElevenLabs_2026-10-06T19_24_09_Carlotta - Fairy Princess_pvc_sp110_s3_sb14_v4.mp"
+              },
+              "azioni": []
+            }
+          ]
+        },
+        {
+          "id": "st49i89w",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Sun",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mn24t2j6",
+              "chi": "Earth",
+              "testo": "oh no! adesso cosa faccio?",
+              "umore": "worried",
+              "durata": 0,
+              "voce": 6,
+              "audio": {
+                "durata": 2769,
+                "impronta": "bb51ba43",
+                "nome": "ElevenLabs_2026-10-06T19_34_21_Nora - Bright Italian Female Narrator_pvc_sp108_s"
+              },
+              "azioni": [
+                {
+                  "id": "akuniinw",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "surprised",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                },
+                {
+                  "id": "ampm8n6q",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "worried",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sa134cty",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "m9djl7rz",
+              "chi": "Sun",
+              "testo": "tranquilla terra!",
+              "umore": "laughing",
+              "durata": 0,
+              "voce": 10,
+              "audio": {
+                "durata": 2691,
+                "impronta": "8f614565",
+                "nome": "ElevenLabs_2026-10-06T19_44_03_Vito Pepe - Profound and Confident_pvc_sp100_s77_"
+              },
+              "azioni": []
+            }
+          ]
+        },
+        {
+          "id": "snm9aa4e",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "mvg5418a",
+              "chi": "Sun",
+              "testo": "ti spiego io cos'è la gravità!",
+              "umore": "happy",
+              "durata": 0,
+              "voce": 11,
+              "audio": {
+                "durata": 2926,
+                "impronta": "4954554a",
+                "nome": "ElevenLabs_2026-10-06T19_44_27_Vito Pepe - Profound and Confident_pvc_sp100_s77_"
+              },
+              "azioni": []
+            }
+          ]
+        }
+      ],
+      "demoChiave": "utente-mux38l7v-er8axq5pzbj",
+      "voceChiave": "studio_cosa_e_la_gravita",
+      "voceProssima": 12,
+      "aggiornato": 0,
+      "lingua": ""
+    }
+  ],
+  "eliminati": {}
+}
