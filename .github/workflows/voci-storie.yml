@@ -5,7 +5,10 @@
 # Node sotto mano per lanciare `scripts/voci-storie.js`. Lo fa questo
 # workflow: aggiorna il blocco delle storie in audio/narrazione/manifest.js e
 # il copione (audio/narrazione/storie/COPIONE.md), e li rimette nel ramo con
-# un commit. Se un file ha un nome che non è una battuta, si ferma in rosso e
+# un commit. Lo stesso quando arriva storie-studio.json, il file che lo Studio
+# delle storie scrive con le battute delle storie salvate (v421): le battute
+# nuove entrano in copione, regia e manifest, quelle tolte ne escono, e i loro
+# audio si cancellano (anche questo finisce nel commit). Se un file ha un nome che non è una battuta, si ferma in rosso e
 # il log dice quale: è il posto dove guardare quando una voce caricata non si
 # sente. La pubblicazione (pubblica.yml) lancia lo stesso script per conto
 # suo, quindi il sito ha le voci nuove anche prima di questo commit.
@@ -37,16 +40,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Manifest e copione dalle cartelle
+      - name: Manifest, copione e regia dalle cartelle e dallo Studio
         run: node scripts/voci-storie.js
       - name: Rimetti nel ramo
         run: |
-          git add audio/narrazione/manifest.js audio/narrazione/storie/COPIONE.md
+          # -A: anche gli audio cancellati delle battute tolte dallo Studio,
+          # la regia (regia-voci.json) e i .gitkeep delle cartelle nuove
+          git add -A audio/narrazione/manifest.js audio/narrazione/storie
           if git diff --cached --quiet; then
-            echo "Manifest e copione erano già a posto."
+            echo "Manifest, copione e regia erano già a posto."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Voci delle storie: manifest e copione dalle cartelle"
+          git commit -m "Voci delle storie: manifest, copione e regia dalle cartelle e dallo Studio"
           git push

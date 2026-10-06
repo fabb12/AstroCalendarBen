@@ -154,6 +154,45 @@ Se hai una chiave API di ElevenLabs, lo script può chiedere lui le battute:
    col nome della cartella (`luna`, `sagittario-a`) o col nome nel codice
    (`Moon`).
 
+### Le storie fatte nello Studio delle storie (v421)
+
+Le battute delle storie che crei nello **Studio delle storie** non stanno nei
+dizionari: le scrivi tu, e vivono nel browser. Per dar loro una voce lo
+Studio tiene aggiornato un file, `storie/storie-studio.json`, con le battute
+di **tutte** le storie salvate:
+
+1. Nello Studio, «Salva nelle mie demo» (o «Elimina» una storia) rifà le
+   battute nel file. La prima volta usa **Altro → File delle voci**:
+   - su Chrome ed Edge per computer ti chiede una cartella: scegli quella del
+     progetto (o direttamente `audio/narrazione/storie/`). Da lì in poi ogni
+     salvataggio e ogni cancellazione riscrivono il file da soli;
+   - sugli altri browser scarica `storie-studio.json`: mettilo in
+     `audio/narrazione/storie/` (dalla pagina di GitHub: Add file → Upload
+     files, sovrascrivendo quello che c'è).
+2. Al commit (o al caricamento su GitHub) il workflow «Voci delle storie»
+   lancia `node scripts/voci-storie.js`, che:
+   - mette le battute nuove nel copione, una per personaggio, coi nomi dei
+     file: `studio_<titolo>-<n>.mp3` (per esempio
+     `luna/it/studio_la_luna_e_marte-3.mp3`);
+   - scrive in `regia-voci.json` una regia di partenza dalla faccia del
+     momento (felice → `[happy]`, triste → `[sad]`…). Se la ritocchi a mano
+     resta tua, finché il testo della battuta non cambia;
+   - **toglie** dal copione, dalla regia e dal manifest le battute che nel
+     file non ci sono più (scene o storie cancellate) e **cancella i loro
+     audio**: tutti i file `studio_*` che non sono più di nessuno.
+3. Generi e carichi gli audio come per le altre battute (sopra).
+
+Ogni battuta ha un **numero che non cambia**: togliere una scena non
+rinumera le altre, e i loro audio restano giusti. Cambiare il testo di una
+battuta la segna «da rifare», come per le storie pronte. Il titolo della
+storia dà il nome ai file la prima volta che la salvi e poi resta quello,
+anche se cambi il titolo.
+
+Attenzione: il file dice le storie salvate **in quel browser**. Se scrivi
+storie su due dispositivi, carica il file da uno solo, se no l'altro
+cancella le battute che non conosce. Se il file è rotto, lo script non
+cancella niente e lo dice.
+
 ### Se il testo di una battuta cambia
 
 L'audio vecchio smette di suonare (dire una frase diversa da quella scritta

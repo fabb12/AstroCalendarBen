@@ -115,6 +115,9 @@
   // Che cosa può diventare un personaggio (v414, `character_become`): le
   // vesti di `STOR_VESTI`, tenute qui per lo stesso motivo delle tappe
   const STUDIO_FORME = ['red_giant', 'white_dwarf', 'supernova', 'black_hole', 'self'];
+  // Il nome che le battute di una storia dello Studio hanno nei file delle
+  // voci (`studio_la_luna-3.mp3`): lo stesso controllo di `scripts/voci-storie.js`
+  const STUDIO_VOCE_CHIAVE = /^studio_[a-z0-9_]{1,40}$/;
   const STUDIO_PAROLE_BAMBINI = 25;     // oltre, una battuta è lunga per un bambino
   const STUDIO_DURATA_IDEALE = [30, 240];
 
@@ -133,7 +136,7 @@
     return Object.assign(base, di, campi);
   }
   function studioNuovoMomento(campi = {}) {
-    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', durata: 0, azioni: [] }, campi);
+    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', durata: 0, voce: 0, azioni: [] }, campi);
   }
   function studioNuovaScena(campi = {}) {
     return Object.assign({
@@ -144,7 +147,8 @@
   function studioNuovoProgetto(campi = {}) {
     return Object.assign({
       v: 1, id: nuovoId('p'), titolo: '', scopo: 'libera', obiettivo: '',
-      cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null
+      cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
+      voceChiave: null, voceProssima: 1
     }, campi);
   }
   // Chi è davvero in scena: quelli scelti, o tutto il cast; mai qualcuno
@@ -167,7 +171,9 @@
       id: typeof p.id === 'string' ? p.id.slice(0, 30) : nuovoId('p'),
       titolo: testo(p.titolo, 120), scopo: tra(p.scopo, Object.keys(STUDIO_SCOPI), 'libera'),
       obiettivo: testo(p.obiettivo, 300), cast: ids(p.cast),
-      demoChiave: typeof p.demoChiave === 'string' && p.demoChiave.startsWith('utente-') ? p.demoChiave : null
+      demoChiave: typeof p.demoChiave === 'string' && p.demoChiave.startsWith('utente-') ? p.demoChiave : null,
+      voceChiave: typeof p.voceChiave === 'string' && STUDIO_VOCE_CHIAVE.test(p.voceChiave) ? p.voceChiave : null,
+      voceProssima: Math.floor(numero(p.voceProssima, 1, 100000, 1))
     });
     pulito.scene = (Array.isArray(p.scene) ? p.scene : []).slice(0, 40).map(sc => studioNuovaScena({
       ambiente: tra(sc && sc.ambiente, STUDIO_AMBIENTI, 'sistema'), fuoco: testo(sc && sc.fuoco, 40) || 'Jupiter',
@@ -177,7 +183,7 @@
       cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
-        durata: numero(m && m.durata, 0, 120, 0),
+        durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
         azioni: (Array.isArray(m && m.azioni) ? m.azioni : []).slice(0, 30)
           .filter(a => a && STUDIO_TIPI.includes(a.tipo))
           .map(a => studioNuovaAzione(a.tipo, {
@@ -936,6 +942,195 @@
     try { a.setItem(CHIAVE, JSON.stringify(progetti)); return true; } catch (_) { return false; }
   }
 
+  /* Il file delle voci (v421). Le battute delle storie scritte qui non stanno
+   * nei dizionari: sono testo di chi scrive, e vivono solo in questo browser.
+   * Chi voleva dar loro una voce registrata non trovava le battute nel
+   * copione delle voci (`audio/narrazione/storie/COPIONE.md`), e cancellare
+   * una scena lasciava lì la regia e l'audio di prima. Adesso ogni «Salva
+   * nelle mie demo» e ogni «Elimina» rifanno la fotografia delle storie
+   * salvate (`astrocal_storie_voci_v1`), e da lì `storie-studio.json`, che va
+   * in `audio/narrazione/storie/`: `scripts/voci-storie.js` (anche dal
+   * workflow, quando il file arriva su GitHub) aggiunge al copione, alla
+   * regia e al manifest le battute nuove e toglie quelle che non ci sono più,
+   * con i loro audio.
+   *
+   * Ogni battuta ha un numero che non cambia (`voce` del momento), dato la
+   * prima volta che si salva: togliere una scena non rinumera le altre, e i
+   * loro audio restano giusti. Il file dice **tutte** le storie salvate in
+   * questo browser: quello che non c'è più si cancella. */
+  const CHIAVE_VOCI = 'astrocal_storie_voci_v1';
+  const FILE_VOCI = 'storie-studio.json';
+  function studioChiaveVoci(titolo, prese) {
+    const radiceNome = 'studio_' + (unaRiga(titolo).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30).replace(/_+$/, '') || 'storia');
+    let chiave = radiceNome, n = 2;
+    while (prese.has(chiave)) chiave = radiceNome + '_' + n++;
+    return chiave;
+  }
+  /* Le battute di un progetto come le dice il copione (`studioCopione`):
+   * una per momento, solo se chi parla è in scena e ha qualcosa da dire, con
+   * la scena del DSL in cui cade (un momento è una scena) e la sua durata.
+   * Dà il numero ai momenti che non l'hanno e il nome alla storia, quindi
+   * cambia il progetto: va salvato dopo. `prese` sono i nomi delle altre
+   * storie, perché due storie con lo stesso titolo non si mescolino. */
+  function studioVociStoria(progetto, lingua, prese = new Set()) {
+    if (!progetto.voceChiave || prese.has(progetto.voceChiave)) progetto.voceChiave = studioChiaveVoci(progetto.titolo, prese);
+    const usati = new Set();
+    for (const sc of progetto.scene) for (const m of sc.momenti) {
+      if (m.voce > 0 && !usati.has(m.voce)) usati.add(m.voce);
+      else m.voce = 0;
+    }
+    let prossima = Math.max(progetto.voceProssima || 1, ...[...usati].map(n => n + 1));
+    const battute = [];
+    let scena = 0;
+    for (const sc of progetto.scene) {
+      const presenti = studioPresenti(progetto, sc);
+      const momenti = sc.momenti.length ? sc.momenti : [studioNuovoMomento()];
+      for (const m of momenti) {
+        scena++;
+        const testo = unaRiga(m.testo).slice(0, 400);
+        if (!m.chi || !presenti.includes(m.chi) || !testo) continue;
+        if (!m.voce) m.voce = prossima++;
+        battute.push({ n: m.voce, chi: m.chi, testo, umore: m.umore || '', scena, durata: Math.round(studioDurata(m) * 1000) });
+      }
+    }
+    progetto.voceProssima = prossima;
+    return {
+      chiave: progetto.voceChiave, progetto: progetto.id, titolo: unaRiga(progetto.titolo).slice(0, 120),
+      lingua: lingua === 'en' ? 'en' : 'it', battute
+    };
+  }
+  function studioVociCarica() {
+    const a = archivio();
+    try {
+      const dati = JSON.parse((a && a.getItem(CHIAVE_VOCI)) || '{}');
+      return dati && typeof dati === 'object' && !Array.isArray(dati) ? dati : {};
+    } catch (_) { return {}; }
+  }
+  function studioVociSalva(fotografie) {
+    const a = archivio();
+    try { if (a) a.setItem(CHIAVE_VOCI, JSON.stringify(fotografie)); } catch (_) { /* resta quella di prima */ }
+  }
+  // Il contenuto di `storie-studio.json`, nell'ordine dei nomi (un file che
+  // non cambia se le storie non cambiano: niente commit inutili)
+  function studioFileVoci(fotografie) {
+    const storie = Object.values(fotografie).filter(f => f && STUDIO_VOCE_CHIAVE.test(f.chiave) && Array.isArray(f.battute))
+      .sort((a, b) => a.chiave < b.chiave ? -1 : a.chiave > b.chiave ? 1 : 0)
+      .map(f => ({ chiave: f.chiave, titolo: f.titolo, lingua: f.lingua, battute: f.battute }));
+    return JSON.stringify({
+      _leggimi: 'Le battute delle storie fatte nello Studio delle storie, scritto dallo Studio (Altro → File delle voci). ' +
+        'Va in audio/narrazione/storie/: scripts/voci-storie.js le mette nel copione, nella regia e nel manifest, e toglie quelle che non ci sono più, audio compresi. Non modificarlo a mano.',
+      v: 1, storie
+    }, null, 2) + '\n';
+  }
+  const linguaStudio = () => {
+    const l = haI18n() && typeof radice.astroI18n.lingua === 'function' ? radice.astroI18n.lingua() : 'it';
+    return String(l || 'it').toLowerCase().startsWith('en') ? 'en' : 'it';
+  };
+
+  /* Dove scriverlo. Sui browser che lo sanno fare (Chrome, Edge) si sceglie
+   * una volta la cartella del progetto, e da lì ogni salvataggio riscrive il
+   * file da solo: la cartella si ricorda in IndexedDB (una maniglia di
+   * cartella non entra in `localStorage`). Altrove, e quando la cartella non
+   * è collegata, il bottone scarica il file. */
+  const DB_VOCI = 'astrocal-studio-voci';
+  function dbVoci(fai2) {
+    return new Promise((si, no) => {
+      if (typeof indexedDB === 'undefined') { no(new Error('indexedDB')); return; }
+      let r;
+      try { r = indexedDB.open(DB_VOCI, 1); } catch (e) { no(e); return; }
+      r.onupgradeneeded = () => r.result.createObjectStore('maniglie');
+      r.onerror = () => no(r.error || new Error('indexedDB'));
+      r.onsuccess = () => {
+        const db = r.result;
+        let tx, q;
+        // Una maniglia che non si può copiare (`put`) lancia qui dentro, fuori
+        // dalla promessa: senza questo, chi aspetta aspetterebbe per sempre
+        try { tx = db.transaction('maniglie', 'readwrite'); q = fai2(tx.objectStore('maniglie')); }
+        catch (e) { db.close(); no(e); return; }
+        tx.oncomplete = () => { db.close(); si(q && q.result); };
+        tx.onerror = () => { db.close(); no(tx.error || new Error('indexedDB')); };
+      };
+    });
+  }
+  const cartellaSalvata = () => dbVoci(s => s.get('cartella')).catch(() => null);
+  // Chi sceglie la radice del progetto (o `audio/`, o `narrazione/`) arriva
+  // lo stesso a `audio/narrazione/storie/`
+  async function cartellaDelleVoci(scelta) {
+    const scendi = async (dir, nomi) => {
+      let d = dir;
+      for (const n of nomi) d = await d.getDirectoryHandle(n);
+      return d;
+    };
+    for (const strada of [['audio', 'narrazione', 'storie'], ['narrazione', 'storie'], ['storie']]) {
+      try { return await scendi(scelta, strada); } catch (_) { /* la prossima */ }
+    }
+    return scelta;
+  }
+  function scaricaVoci(testo) {
+    const blob = new Blob([testo], { type: 'application/json' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: FILE_VOCI });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  /* Scrive il file. `chiedi`: dal bottone, si può aprire la scelta della
+   * cartella (o scaricare); dopo un salvataggio, solo se la cartella è già
+   * collegata. Restituisce come è andata: 'scritto', 'scaricato', 'nessuna'. */
+  async function studioScriviVoci(chiedi) {
+    const testo = studioFileVoci(studioVociCarica());
+    const sa = typeof radice.showDirectoryPicker === 'function';
+    let cartella = sa ? await cartellaSalvata() : null;
+    if (cartella) {
+      let permesso = 'denied';
+      try {
+        permesso = await cartella.queryPermission({ mode: 'readwrite' });
+        if (permesso !== 'granted') permesso = await cartella.requestPermission({ mode: 'readwrite' });
+      } catch (_) { permesso = 'denied'; }
+      if (permesso !== 'granted') cartella = null;
+    }
+    if (!cartella && chiedi && sa) {
+      try {
+        const scelta = await radice.showDirectoryPicker({ id: 'astrocal-voci', mode: 'readwrite' });
+        cartella = await cartellaDelleVoci(scelta);
+        await dbVoci(s => s.put(cartella, 'cartella')).catch(() => null);
+      } catch (e) {
+        if (e && e.name === 'AbortError') return 'annullato';
+        cartella = null;
+      }
+    }
+    if (cartella) {
+      const f = await cartella.getFileHandle(FILE_VOCI, { create: true });
+      const w = await f.createWritable();
+      await w.write(testo);
+      await w.close();
+      return 'scritto';
+    }
+    if (chiedi) { scaricaVoci(testo); return 'scaricato'; }
+    return 'nessuna';
+  }
+  // Le fotografie da rifare dopo un salvataggio o una cancellazione, e il file
+  function aggiornaVoci({ salvata, tolta, chiedi }) {
+    const foto = studioVociCarica();
+    for (const [k, f] of Object.entries(foto)) {
+      const id = f && f.progetto;
+      if (!f || (tolta && id === tolta) || (salvata && id === salvata.id)) delete foto[k];
+    }
+    if (salvata) {
+      const prese = new Set(Object.keys(foto));
+      for (const altro of studio.progetti) if (altro.id !== salvata.id && altro.voceChiave) prese.add(altro.voceChiave);
+      const f = studioVociStoria(salvata, linguaStudio(), prese);
+      foto[f.chiave] = f;
+    }
+    studioVociSalva(foto);
+    const storie = Object.keys(foto).length;
+    const battute = Object.values(foto).reduce((n, f) => n + f.battute.length, 0);
+    return studioScriviVoci(chiedi).then(come => {
+      if (come === 'scritto') return t('studio.voci.scritto', { storie, battute });
+      if (come === 'scaricato') return t('studio.voci.scaricato', { storie, battute });
+      return '';
+    }).catch(e => t('studio.voci.errore', { errore: e && e.message || String(e) }));
+  }
+
   // ===================================================================
   // 7. L'interfaccia
   // ===================================================================
@@ -1257,6 +1452,7 @@
         h('label', { class: 'tasto-cielo demo-importa-tasto', for: 'studio-importa' }, t('studio.importa')),
         h('input', { id: 'studio-importa', class: 'demo-file-nascosto', type: 'file', accept: '.json,application/json' }),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'copione' }, 'aria-expanded': String(studio.copioneAperto), 'aria-controls': 'studio-copione' }, t('studio.mostraCopione')),
+        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'fileVoci' }, title: t('studio.voci.aiuto') }, t('studio.voci.file')),
         h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'elimina' } }, t('studio.elimina'))));
     pezzi.push(h('div', { class: 'studio-blocco studio-barra' },
       h('label', { class: 'storie-campo studio-barra-scelta' }, h('span', {}, t('studio.progetti')), elenco),
@@ -1388,13 +1584,21 @@
     const contenitore = percorso => { const parti = percorso.split('.'); const i = Number(parti.pop()); return { lista: leggi(parti.join('.')), i }; };
     switch (nomeOp) {
       case 'nuovo': apri(studioNuovoProgetto()); return;
-      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; apri(c); return; }
+      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; apri(c); return; }
       case 'elimina':
         if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) {
           studio.progetti = studio.progetti.filter(x => x.id !== p.id);
           studioSalvaTutti(studio.progetti);
           apri(studio.progetti[0] || studioNuovoProgetto());
+          // Le sue battute escono dal file delle voci (se la cartella è collegata)
+          aggiornaVoci({ tolta: p.id, chiedi: false }).then(msg => { if (msg || p.demoChiave) esito(msg || t('studio.voci.ricorda')); });
         }
+        return;
+      case 'fileVoci':
+        // Le storie salvate prima del file delle voci entrano la prima volta
+        if (p.demoChiave && !Object.values(studioVociCarica()).some(f => f && f.progetto === p.id)) {
+          aggiornaVoci({ salvata: p, chiedi: true }).then(msg => { salvaPresto(); esito(msg); });
+        } else aggiornaVoci({ chiedi: true }).then(msg => esito(msg));
         return;
       case 'esporta': {
         const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
@@ -1520,6 +1724,11 @@
           p.demoChiave = chiave;
           if (typeof radice.demoPaginaRicarica === 'function') radice.demoPaginaRicarica(chiave);
           studio.esito = t('studio.salvata');
+          // Le battute nel file delle voci: numeri e nome della storia
+          // entrano nel progetto, che si salva subito sotto
+          const salvato = studio.esito;
+          aggiornaVoci({ salvata: p, chiedi: false })
+            .then(msg => esito(salvato + ' ' + (msg || t('studio.voci.ricorda'))));
         } catch (e) { studio.esito = e.message; }
         break;
       }
@@ -1667,6 +1876,7 @@
     umoreDalTesto: studioUmoreDalTesto, ideeAzioni: studioIdeeAzioni, ambientePer: studioAmbientePer,
     prossimoMomento: studioProssimoMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
+    vociStoria: studioVociStoria, fileVoci: studioFileVoci, chiaveVoci: studioChiaveVoci, CHIAVE_VOCI,
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
   };
   radice.StudioStorie = api;
