@@ -76,9 +76,11 @@
    *   testa        di quanto si inclina la testa, in radianti
    *   rimbalzo     il saltello della contentezza
    *   tremito      il tremolio della paura
+   *   storta       la bocca di traverso (−1…1, > 0 alza l'angolo di destra):
+   *                il ghigno del bullo, la smorfia di chi è infastidito
    *   segno        il «segno da fumetto» che accompagna il volto: scintille,
    *                esclamazione, lacrima, goccia, pensiero, zzz, rabbia,
-   *                cuori (§6-bis)
+   *                cuori, sbuffo, luccichio (§6-bis)
    *
    * Aggiungere un'espressione: una voce qui, e le due chiavi
    * `storie.espressione.<nome>` nei dizionari (le legge la pagina Demo). */
@@ -147,6 +149,24 @@
       ciglio: { alza: -0.04, inclina: 0.25, curva: 0.1, asimmetria: 0 },
       bocca: 'piccola', curva: 0, guance: 0.45, sguardo: { x: 0, y: 0.3 },
       testa: 0.12, segno: 'zzz'
+    },
+    // v422, chiesta da chi usa l'app: la faccia infastidita. Non è la
+    // rabbia (niente denti, niente rossore): palpebre pesanti e piatte,
+    // l'occhiata di traverso, la bocca storta da una parte e lo sbuffo
+    annoyed: {
+      palpebraSu: 0.5, palpebraGiu: 0.14, pupilla: 0.85, inclinaSu: 0.1, arcoGiu: 0.05,
+      ciglio: { alza: -0.06, inclina: -0.55, curva: -0.05, asimmetria: 0.3 },
+      bocca: 'chiusa', curva: -0.4, storta: -0.55, spostaBocca: -0.14, guance: 0.1, sguardo: { x: 0.8, y: -0.15 },
+      testa: 0.1, segno: 'sbuffo'
+    },
+    // v422, la faccia da bullo: lo sguardo dall'alto in basso (testa
+    // indietro, palpebre a mezz'asta), un sopracciglio su e uno giù, il
+    // ghigno storto coi denti e il luccichio sul dente, come nei cartoni
+    bully: {
+      palpebraSu: 0.36, palpebraGiu: 0.3, pupilla: 0.8, inclinaSu: 0.45, arcoGiu: 0.4,
+      ciglio: { alza: 0.02, inclina: -0.75, curva: 0.1, asimmetria: 0.55 },
+      bocca: 'ghigno', curva: 0.55, storta: 0.85, spostaBocca: 0.1, guance: 0.2, sguardo: { x: 0, y: 0.3 },
+      testa: -0.1, segno: 'luccichio'
     }
   };
   const STOR_ESPRESSIONE_DI_SERIE = 'neutral';
@@ -155,7 +175,7 @@
    * larghezza, `aper` l'altezza dell'apertura, `tondo` quanto somiglia a un
    * cerchio (la O), `curva` la curvatura propria (il sorriso e il broncio la
    * hanno anche da chiusi), `onda` la bocca tremolante della paura, `denti`
-   * i denti stretti della rabbia. Le prime cinque sono quelle del parlato. */
+   * i denti stretti della rabbia (e, all'insù, il ghigno del bullo). Le prime cinque sono quelle del parlato. */
   const STOR_BOCCHE = {
     chiusa:   { larg: 0.17, aper: 0,    tondo: 0,    curva: 0,     onda: 0 },
     piccola:  { larg: 0.1,  aper: 0.09, tondo: 0.7,  curva: 0,     onda: 0 },
@@ -167,7 +187,8 @@
     risata:   { larg: 0.34, aper: 0.38, tondo: 0,    curva: 0.9,   onda: 0 },
     triste:   { larg: 0.2,  aper: 0,    tondo: 0,    curva: -0.75, onda: 0.25 },
     ondulata: { larg: 0.22, aper: 0,    tondo: 0,    curva: -0.15, onda: 1 },
-    denti:    { larg: 0.24, aper: 0.14, tondo: 0,    curva: -0.25, onda: 0, denti: 1 }
+    denti:    { larg: 0.24, aper: 0.14, tondo: 0,    curva: -0.25, onda: 0, denti: 1 },
+    ghigno:   { larg: 0.26, aper: 0.12, tondo: 0,    curva: 0.45,  onda: 0, denti: 1 }
   };
   const STOR_BOCCHE_PARLATO = ['chiusa', 'piccola', 'A', 'E', 'O'];
 
@@ -696,7 +717,7 @@
       spostaBocca: m('spostaBocca', 0),
       occhi: m('occhi', 1), iride: m('iride', 1), stelle: m('stelle', 0), cuori: m('cuori', 0),
       inclinaSu: m('inclinaSu', 0), arcoGiu: m('arcoGiu', 0.15), felici: m('felici', 0), lucidi: m('lucidi', 0),
-      rosso: m('rosso', 0),
+      rosso: m('rosso', 0), storta: m('storta', 0),
       testa: m('testa', 0), rimbalzo: m('rimbalzo', 0), tremito: m('tremito', 0),
       ciglio: { alza: mix(ca.alza, cb.alza, k), inclina: mix(ca.inclina, cb.inclina, k),
         curva: mix(ca.curva, cb.curva, k), asimmetria: mix(ca.asimmetria || 0, cb.asimmetria || 0, k) },
@@ -874,6 +895,7 @@
     const bocca = {
       x: cx + (e.spostaBocca || 0) * R, y: cy + 0.4 * R,
       larg: b.larg * R * (lei ? 0.94 : 1), aper: b.aper * R, tondo: b.tondo, onda: b.onda || 0, denti: b.denti || 0,
+      storta: e.storta || 0,
       // la curvatura dell'espressione resta anche parlando (si parla sorridendo)
       curva: Math.max(-1, Math.min(1, b.curva + e.curva * (b.aper > 0.04 ? 0.5 : 1)))
     };
@@ -1703,6 +1725,11 @@
    * denti di sopra, la risata anche la lingua, la rabbia i denti stretti. */
   function disegnaBocca(ctx, b, R, profilo) {
     ctx.save();
+    // La bocca di traverso (`storta`): si gira attorno al suo centro, e
+    // l'angolo che sale è quello di destra per `storta` > 0
+    if (b.storta) {
+      ctx.translate(b.x, b.y); ctx.rotate(-b.storta * 0.32); ctx.translate(-b.x, -b.y);
+    }
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const lei = !!(profilo && profilo.genere === 'f' && profilo.labbra);
     const spessore = Math.max(1.5, b.larg * (lei ? 0.12 : 0.17));
@@ -2010,7 +2037,8 @@
 
   /* Il segno che accompagna un'espressione, come nei fumetti: le scintille
    * della gioia, i tre raggi della sorpresa, la lacrima che scende, la
-   * goccia di sudore, le bolle del pensiero, le zeta del sonno. Le zeta sono
+   * goccia di sudore, le bolle del pensiero, le zeta del sonno, lo sbuffo
+   * dell'infastidito e il luccichio sul dente del bullo. Le zeta sono
    * disegnate a tratti e non scritte: sono un segno, non una parola, e una
    * `fillText` qui sarebbe una scritta cablata sulla tela (I18N.md). Tutto
    * a pennino, e tutto animato sull'orologio della storia: in pausa si
@@ -2117,6 +2145,45 @@
         ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(1, s * 0.25) + 2.4; ctx.stroke();
         ctx.fillStyle = '#ff4d7d'; ctx.fill();
         ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, s * 0.25); ctx.stroke();
+      }
+    } else if (segno === 'sbuffo') {
+      // lo sbuffo di chi è infastidito: tre nuvolette che escono dall'angolo
+      // della bocca (dalla parte verso cui è storta) e si disperdono
+      const b = geom.bocca || { x: cx, y: cy + 0.4 * R, larg: R * 0.17 };
+      const verso = (b.storta || 0) > 0 ? 1 : -1;
+      for (let k = 0; k < 3; k++) {
+        const f = ridotto ? (k + 1) / 4 : ((t / 1500 + k / 3) % 1);
+        const x = b.x + verso * (b.larg * 1.1 + f * R * 0.55), y = b.y - f * R * 0.12 + Math.sin(f * 5 + k) * R * 0.03;
+        const r = R * (0.05 + f * 0.08) * pop;
+        ctx.globalAlpha = Math.min(1, u * 1.6) * (f > 0.6 ? (1 - f) / 0.4 : Math.min(1, f * 6));
+        const nuvola = () => {
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.moveTo(x + verso * r * 1.55, y - r * 0.15); ctx.arc(x + verso * r * 0.9, y - r * 0.15, r * 0.65, 0, Math.PI * 2);
+          ctx.moveTo(x - verso * r * 0.1 + r * 0.6, y + r * 0.5); ctx.arc(x - verso * r * 0.1, y + r * 0.5, r * 0.6, 0, Math.PI * 2);
+        };
+        // prima i contorni e poi la stesura sopra: dei tre tondi resta il
+        // bordo di fuori, e la nuvola è una sola
+        ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2, r * 0.44) + 4.8; nuvola(); ctx.stroke();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.8, r * 0.44); nuvola(); ctx.stroke();
+        ctx.fillStyle = '#f1f5f9'; nuvola(); ctx.fill();
+      }
+    } else if (segno === 'luccichio') {
+      // il «ting!» sul dente del ghigno: una stella sottile che si accende
+      // e si spegne all'angolo che sale, girando appena
+      const b = geom.bocca || { x: cx, y: cy + 0.4 * R, larg: R * 0.2, storta: 0 };
+      const verso = (b.storta || 0) >= 0 ? 1 : -1;
+      const ang = -(b.storta || 0) * 0.32;
+      const dx = verso * b.larg * 1.05, dy = -b.larg * 0.35;
+      const x = b.x + dx * Math.cos(ang) - dy * Math.sin(ang), y = b.y + dx * Math.sin(ang) + dy * Math.cos(ang);
+      const ciclo = ridotto ? 0.5 : ((t / 1800) % 1);
+      const lampo = ridotto ? 1 : Math.max(0, Math.sin(Math.min(1, ciclo / 0.35) * Math.PI));
+      const s = R * 0.21 * pop * (0.35 + 0.65 * lampo);
+      if (s > 0.5) {
+        stella(ctx, x, y, s, s * 0.18, 4, ciclo * 1.2 * fermo);
+        ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(1, s * 0.14) + 2.2; ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.8, s * 0.12); ctx.stroke();
       }
     } else if (segno === 'zzz') {
       for (let k = 0; k < 3; k++) {
@@ -4897,7 +4964,7 @@
     animazioneAl: storAnimazioneAl, effetto: storEffetto, disegnaEffetto: storDisegnaEffetto,
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce, ritratto: storRitratto,
     voltoNelCorpo: storVoltoNelCorpo, aperturaOcchio: storAperturaOcchio, STOR_SAGOME, STOR_CORPI,
-    STOR_VESTI, vesteProfilo: storVesteProfilo, scalaDi: storScalaDi, disegnaCorpo, disegnaVolto: storDisegnaVolto,
+    STOR_VESTI, vesteProfilo: storVesteProfilo, scalaDi: storScalaDi, disegnaCorpo, disegnaVolto: storDisegnaVolto, disegnaSegno: storDisegnaSegno,
     riempiPagina: storRiempiPagina, storie: storieDisponibili,
     stato: stor,
     STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,

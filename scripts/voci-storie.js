@@ -55,7 +55,8 @@ const STUDIO_CHIAVE = /^studio_[a-z0-9_]{1,40}$/;   // la stessa di `STUDIO_VOCE
 // cui comincia la sua battuta (la regia di partenza; poi si cambia a mano)
 const TAG_UMORE = {
   happy: 'happy', surprised: 'surprised', worried: 'nervous', sad: 'sad', thinking: 'thoughtful',
-  excited: 'excited', sleepy: 'sleepy', laughing: 'laughs', love: 'warmly', angry: 'angry'
+  excited: 'excited', sleepy: 'sleepy', laughing: 'laughs', love: 'warmly', angry: 'angry',
+  annoyed: 'annoyed', bully: 'mischievously'
 };
 const INIZIO = '// ── INIZIO STORIE COSMICHE: da qui a FINE lo scrive scripts/voci-storie.js, non toccare ──';
 const FINE = '// ── FINE STORIE COSMICHE ──';
