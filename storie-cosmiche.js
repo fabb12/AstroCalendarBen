@@ -263,7 +263,7 @@
     Moon:     { famiglia: 'luna', genere: 'f', pelle: '#e2e8f0', iride: '#6366f1', sottotitolo: '#c7d2fe', guance: '#f9a8d4',
       labbra: '#db6a8f',
       voce: { ritmo: '2%', tono: '18Hz' }, espressione: 'neutral', personalita: 'Moon',
-      occhi: { r: 0.31, distanza: 0.41, alto: -0.1 } },
+      occhi: { r: 0.345, distanza: 0.43, alto: -0.06 } },
     Mars:     { famiglia: 'pianeta', genere: 'm', pelle: '#f0907a', iride: '#b91c1c', sottotitolo: '#fca5a5', decoro: 'calotta',
       barba: 'pizzetto', peli: '#6b1d14',
       voce: { ritmo: '8%', tono: '6Hz' }, espressione: 'happy', personalita: 'Mars' },
@@ -478,7 +478,7 @@
     const p = Object.assign({}, base, colore && !proprio.pelle ? { pelle: colore } : {}, proprio);
     p.id = id; p.famiglia = famiglia;
     p.voce = Object.assign({}, base.voce, proprio.voce || {});
-    p.occhi = Object.assign({ r: 0.29, distanza: 0.4, alto: -0.08 }, base.occhi || {}, proprio.occhi || {});
+    p.occhi = Object.assign({ r: 0.33, distanza: 0.42, alto: -0.06 }, base.occhi || {}, proprio.occhi || {});
     p.scala = Math.max(0.3, Math.min(0.95, Number(p.scala) || 0.78));
     p.dx = Number(p.dx) || 0; p.dy = Number(p.dy) || 0;
     if (!STOR_ESPRESSIONI[p.espressione]) p.espressione = STOR_ESPRESSIONE_DI_SERIE;
@@ -759,14 +759,18 @@
     const e = st.espr;
     const lei = profilo.genere === 'f';
     const rx = o.r * R * Math.max(0.7, Math.min(1.3, e.occhi || 1)) * (lei ? 1.05 : 0.96);
-    // v417, gli «occhioni di luna»: l'occhio è una mandorla alta, l'iride
-    // quasi lo riempie e la palpebra di sopra ne copre sempre la cima
-    const ry = rx * (lei ? 1.22 : 1.1);
+    // v417-v418, gli «occhioni di luna»: l'occhio è grande e alto, a
+    // mandorla tonda; l'iride è un ovale che occupa poco più di metà della
+    // larghezza, così ha strada per guardare di lato (come nel disegno di
+    // riferimento, dove la Luna guarda da una parte)
+    const ry = rx * (lei ? 1.1 : 1.02);
     const g = st.sguardo || { x: 0, y: 0 };
     const gm = Math.hypot(g.x, g.y);
     const gx = gm > 1 ? g.x / gm : g.x, gy = gm > 1 ? g.y / gm : g.y;
-    const iride = rx * Math.min(0.86, 0.78 * Math.max(0.6, e.iride || 1));
-    const pupilla = Math.min(iride * 0.74, iride * 0.46 * Math.max(0.5, Math.min(1.4, e.pupilla)));
+    const iride = rx * Math.min(0.76, 0.62 * Math.max(0.6, e.iride || 1));
+    // la pupilla è grande: di serie occupa i tre quarti dell'iride, e
+    // dell'iride resta una corona di colore
+    const pupilla = Math.min(iride * 0.84, iride * 0.68 * Math.max(0.5, Math.min(1.3, e.pupilla)));
     // Quanto può correre l'iride senza uscire dall'occhio: l'ellisse è più
     // alta che larga, e il suo raggio più corto è rx.
     const corsa = Math.max(rx * 0.1, rx - iride - rx * 0.04);
@@ -782,20 +786,21 @@
     const inclina = (e.inclinaSu || 0) * (1 - battito);
     const arco = Math.max(0, e.arcoGiu === undefined ? 0.15 : e.arcoGiu) * (1 - battito);
     // quanto l'occhio è a mandorla: poco da spalancato (la sorpresa è tonda)
-    const mandorla = Math.min(1, 0.25 + su * 4);
+    const mandorla = Math.min(1, 0.3 + su * 4);
     const occhi = [-1, 1].map(lato => {
       const ex = cx + lato * o.distanza * R, ey = cy + o.alto * R;
       const ix = ex + gx * corsa, iy = ey + gy * corsa;
       const bordoSu = ey - ry + 2 * ry * su, bordoGiu = ey + ry - 2 * ry * giu;
+      const angolo = u => ey + ry * 0.07 * (1 - u * lato);
       const occ = {
         lato, cx: ex, cy: ey, rx, ry,
         iride: { x: ix, y: iy, r: iride },
         pupilla: { x: ix, y: iy, r: pupilla },
-        // Il primo riflesso è la falce di luna, il secondo un puntino;
-        // la stellina a quattro punte sta accanto alla falce (§6)
+        // I riflessi: un tondo grande in alto verso destra e un puntino
+        // sotto, a sinistra di lui (v418)
         luci: [
-          { x: ix - iride * 0.3, y: iy - iride * 0.3, r: iride * 0.3 },
-          { x: ix + iride * 0.36, y: iy + iride * 0.34, r: iride * 0.09 }
+          { x: ix + iride * 0.26, y: iy - iride * 0.3, r: iride * 0.27 },
+          { x: ix + iride * 0.02, y: iy + iride * 0.06, r: iride * 0.1 }
         ].concat((e.lucidi || 0) > 0.5 ? [{ x: ix + iride * 0.05, y: iy - iride * 0.52, r: iride * 0.1 },
           { x: ix - iride * 0.42, y: iy + iride * 0.28, r: iride * 0.08 }] : []),
         // Le palpebre come quota del loro bordo
@@ -806,12 +811,20 @@
         // destra). Quella di sopra segue la curva del bulbo, e `inclina` la
         // abbassa verso il naso (> 0, la rabbia) o verso fuori (< 0, la
         // tristezza); quella di sotto si inarca all'insù quanto dice `arco`.
-        // Dalla v417 le due palpebre scendono e salgono verso gli angoli
-        // (`mandorla`): l'occhio è una mandorla con gli angoli a punta, non
-        // un'ellisse tagliata sopra e sotto, che dava un occhio squadrato.
-        palpebraSu: u => bordoSu - ry * 0.22 * (1 - u * u) * mandorla + ry * 0.8 * Math.pow(u, 4) * mandorla +
-          inclina * ry * 0.42 * (-lato * u) * Math.min(1, su * 4 + 0.25),
-        palpebraGiu: u => bordoGiu - ry * arco * 0.72 * (1 - u * u) - ry * 0.8 * Math.pow(Math.abs(u), 3) * mandorla * (1 - Math.min(0.85, arco * 1.4))
+        // Dalla v418 le due palpebre disegnano loro la forma dell'occhio:
+        // la palpebra di sopra è una cupola morbida che scende fino
+        // all'angolo, quella di sotto una U che sale fino allo stesso
+        // angolo (`angolo`, un poco più basso vicino al naso). Così l'occhio
+        // è tondo col solo angolo esterno a punta, come nel disegno di
+        // riferimento, e non un'ellisse tagliata (squadrata) o un limone.
+        // `mandorla` dice quanto: poco da spalancati, e la sorpresa è tonda.
+        palpebraSu: u => {
+          const centro = bordoSu - ry * 0.15 * mandorla;
+          return centro + mandorla * Math.max(0, angolo(u) - centro) * Math.pow(Math.abs(u), 2.8) +
+            inclina * ry * 0.42 * (-lato * u) * Math.min(1, su * 4 + 0.25);
+        },
+        palpebraGiu: u => bordoGiu - ry * arco * 0.72 * (1 - u * u) -
+          mandorla * Math.max(0, bordoGiu - angolo(u)) * Math.pow(Math.abs(u), 2.6) * (1 - Math.min(0.85, arco * 1.4))
       };
       occ.apertura = occ.chiusura >= 0.985 ? null : storAperturaOcchio(occ);
       return occ;
@@ -1392,6 +1405,13 @@
     const c = v => Math.round(v * (1 - k)).toString(16).padStart(2, '0');
     return '#' + c(n >> 16) + c((n >> 8) & 255) + c(n & 255);
   }
+  function mescolaColori(a, b, k) {
+    const ma = /^#?([0-9a-f]{6})$/i.exec(a || ''), mb = /^#?([0-9a-f]{6})$/i.exec(b || '');
+    if (!ma || !mb) return a || b || '#e2e8f0';
+    const na = parseInt(ma[1], 16), nb = parseInt(mb[1], 16);
+    const c = sh => Math.round(mix((na >> sh) & 255, (nb >> sh) & 255, k)).toString(16).padStart(2, '0');
+    return '#' + c(16) + c(8) + c(0);
+  }
   function schiarisci(hex, k) {
     const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
     if (!m) return '#f8fafc';
@@ -1477,11 +1497,12 @@
     };
     const w = Math.max(1, occ.rx * (lei ? 0.13 : 0.11));
     if (lei) {
-      const voci = [[0.5, 0.26, 0.15], [0.62, 0.34, 0.3], [0.74, 0.42, 0.45], [0.86, 0.5, 0.6], [0.96, 0.52, 0.78]];
+      // raccolte all'angolo esterno, lunghe e arricciate (v418)
+      const voci = [[0.66, 0.3, 0.3], [0.77, 0.42, 0.45], [0.87, 0.52, 0.62], [0.95, 0.56, 0.8], [1, 0.46, 0.95]];
       for (const [f, lun, apre] of voci) colpo(f, occ.rx * lun, apre, w);
       if (!chiuso && occ.apertura) {
         const sotto = occ.apertura.sotto;
-        for (const [f, lun] of [[0.66, 0.12], [0.8, 0.16], [0.92, 0.18]]) {
+        for (const [f, lun] of [[0.74, 0.12], [0.85, 0.17], [0.94, 0.2]]) {
           const p = lungo(sotto, fr(f));
           const x2 = p.x + lato * lun * occ.rx * 0.55, y2 = p.y + lun * occ.rx;
           tracciaPennino(ctx, p.x, p.y, (p.x + x2) / 2 + lato * occ.rx * 0.03, (p.y + y2) / 2, x2, y2, w * 0.55, u => 1 - u * 0.85);
@@ -1531,25 +1552,6 @@
     ctx.fillStyle = INCHIOSTRO; ctx.fill();
   }
 
-  // La falce di luna dei riflessi: un tondo a cui un altro tondo morde il lato
-  function falce(ctx, x, y, r) {
-    ctx.beginPath();
-    ctx.arc(x, y, r, Math.PI * 0.32, Math.PI * 1.68, false);
-    ctx.arc(x + r * 0.42, y - r * 0.12, r * 0.78, Math.PI * 1.5, Math.PI * 0.42, true);
-    ctx.closePath();
-  }
-  // La stellina a quattro punte, coi fianchi incavati
-  function stellina(ctx, x, y, r) {
-    ctx.beginPath();
-    for (let k = 0; k < 4; k++) {
-      const a = k * Math.PI / 2 - Math.PI / 2, b = a + Math.PI / 4;
-      const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
-      if (!k) ctx.moveTo(px, py);
-      ctx.quadraticCurveTo(x + Math.cos(b) * r * 0.12, y + Math.sin(b) * r * 0.12, x + Math.cos(a + Math.PI / 2) * r, y + Math.sin(a + Math.PI / 2) * r);
-    }
-    ctx.closePath();
-  }
-
   function disegnaOcchio(ctx, occ, profilo, geom, t) {
     const ap = occ.apertura;
     const lei = profilo.genere === 'f';
@@ -1589,83 +1591,65 @@
       ctx.fillStyle = ombr;
       ctx.beginPath(); ctx.ellipse(ox, oy, occ.rx * 1.3, occ.ry * 1.05, 0, 0, Math.PI * 2); ctx.fill();
     }
-    // La piega della palpebra: un filo sottile sopra all'occhio, verso fuori
-    if (lei && occ.chiusura < 0.7) {
-      const piega = ap.sopra.filter((_, i, a) => occ.lato > 0 ? i > a.length * 0.3 : i < a.length * 0.7)
-        .map(([x, y]) => [occ.cx + (x - occ.cx) * 1.02, y - occ.ry * 0.26]);
-      ctx.strokeStyle = rgba(INCHIOSTRO, 0.35); ctx.lineWidth = Math.max(0.6, occ.rx * 0.045);
-      polilinea(ctx, piega); ctx.stroke();
+    // L'ombretto lilla (v418): una stesura piatta e tenue che segue la
+    // palpebra di sopra e sale verso l'angolo esterno, come nel disegno di
+    // riferimento; per lui appena accennata
+    if (occ.chiusura < 0.8) {
+      const pelle = profilo.pelle || '#e2e8f0';
+      const lilla = profilo.trucco || '#a78bfa';
+      const alto = ap.sopra.map(([x, y]) => {
+        const u = (x - occ.cx) / occ.rx * occ.lato;   // −1 dentro, 1 fuori
+        return [occ.cx + (x - occ.cx) * 1.08, y - occ.ry * (0.2 + 0.22 * Math.max(0, u + 0.3))];
+      });
+      ctx.beginPath();
+      alto.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      for (let i = ap.sopra.length - 1; i >= 0; i--) ctx.lineTo(ap.sopra[i][0], ap.sopra[i][1]);
+      ctx.closePath();
+      ctx.fillStyle = rgba(mescolaColori(pelle, lilla, 0.45), lei ? 0.55 : 0.28); ctx.fill();
     }
-    // Il bianco: panna, con l'ombra lavanda della palpebra in alto
+    // Il bianco: avorio, piatto, con l'ombra lavanda della palpebra in alto
     const bianco = ctx.createLinearGradient(occ.cx, occ.cy - occ.ry, occ.cx, occ.cy + occ.ry);
-    bianco.addColorStop(0, '#e2ddf2'); bianco.addColorStop(0.34, '#fffdf8'); bianco.addColorStop(1, '#f6f1fb');
+    bianco.addColorStop(0, '#e6e0f0'); bianco.addColorStop(0.3, '#fbf6e6'); bianco.addColorStop(1, '#f6f0dc');
     ctx.fillStyle = bianco;
     forma(); ctx.fill();
     ctx.save();
     forma(); ctx.clip();
     const ir = occ.iride;
     const pu = occ.pupilla;
-    // L'iride: scura al centro, poi il suo colore, e un anello chiaro lavanda
-    // al bordo; sopra, l'ombra della palpebra la scurisce dall'alto
-    const scuro = scurisci(profilo.iride, 0.78);
-    const grad = ctx.createRadialGradient(ir.x, ir.y, 0, ir.x, ir.y, ir.r);
-    grad.addColorStop(0, scuro);
-    grad.addColorStop(0.42, scurisci(profilo.iride, 0.6));
-    grad.addColorStop(0.68, scurisci(profilo.iride, 0.15));
-    grad.addColorStop(0.86, schiarisci(profilo.iride, 0.45));
-    grad.addColorStop(1, schiarisci(profilo.iride, 0.2));
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(ir.x, ir.y, ir.r, 0, Math.PI * 2); ctx.fill();
-    // i fili dell'iride, chiari, nell'anello di fuori
-    ctx.strokeStyle = rgba(schiarisci(profilo.iride, 0.75), 0.4);
-    ctx.lineWidth = Math.max(0.5, ir.r * 0.04);
-    ctx.beginPath();
-    for (let k = 0; k < 18; k++) {
-      const a = k / 18 * Math.PI * 2;
-      ctx.moveTo(ir.x + Math.cos(a) * ir.r * 0.62, ir.y + Math.sin(a) * ir.r * 0.62);
-      ctx.lineTo(ir.x + Math.cos(a) * ir.r * 0.9, ir.y + Math.sin(a) * ir.r * 0.9);
-    }
-    ctx.stroke();
-    // l'ombra della palpebra sull'iride
-    const ombra = ctx.createLinearGradient(ir.x, ir.y - ir.r, ir.x, ir.y + ir.r * 0.2);
-    ombra.addColorStop(0, 'rgba(13, 8, 32, 0.75)'); ombra.addColorStop(1, 'rgba(13, 8, 32, 0)');
-    ctx.fillStyle = ombra;
-    ctx.beginPath(); ctx.arc(ir.x, ir.y, ir.r, 0, Math.PI * 2); ctx.fill();
+    // L'iride (v418): un ovale piatto, alto, del suo colore con un'ombra a
+    // falce dal lato opposto allo sguardo; la pupilla quasi la riempie. Niente
+    // sfumature né fili: stesure piatte, come i cartoni di una volta.
+    const OV = 1.16;
+    const ovale = (x, y, r) => { ctx.beginPath(); ctx.ellipse(x, y, r, r * OV, 0, 0, Math.PI * 2); };
+    ovale(ir.x, ir.y, ir.r); ctx.fillStyle = profilo.iride; ctx.fill();
+    // l'ombra della palpebra sull'iride: una falce più scura in alto
+    ctx.save(); ovale(ir.x, ir.y, ir.r); ctx.clip();
+    ctx.fillStyle = scurisci(profilo.iride, 0.32);
+    ctx.beginPath(); ctx.ellipse(ir.x, ir.y - ir.r * 0.95, ir.r * 1.3, ir.r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
     const pulsa = 1 + 0.12 * Math.sin(t / 140);
     if (geom.cuori > 0.5) {
       // l'amore: la pupilla è un cuore rosso che batte
-      cuore(ctx, pu.x, pu.y + ir.r * 0.05, ir.r * 0.62 * pulsa);
+      cuore(ctx, pu.x, pu.y + ir.r * 0.05, ir.r * 0.66 * pulsa);
       ctx.fillStyle = '#ff3d6e'; ctx.fill();
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, ir.r * 0.09); ctx.stroke();
     } else if (geom.stelle > 0.5) {
       // l'entusiasmo: la pupilla è una stella dorata che pulsa
       ctx.fillStyle = '#ffe066';
-      stella(ctx, pu.x, pu.y, ir.r * 0.72 * pulsa, ir.r * 0.32 * pulsa, 5, -Math.PI / 2);
+      stella(ctx, pu.x, pu.y, ir.r * 0.8 * pulsa, ir.r * 0.36 * pulsa, 5, -Math.PI / 2);
       ctx.fill();
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, ir.r * 0.08); ctx.stroke();
     } else {
-      ctx.fillStyle = '#0b0619';
-      ctx.beginPath(); ctx.arc(pu.x, pu.y, pu.r, 0, Math.PI * 2); ctx.fill();
+      ovale(pu.x, pu.y, pu.r); ctx.fillStyle = '#100a24'; ctx.fill();
     }
-    // il contorno dell'iride
-    ctx.strokeStyle = rgba(INCHIOSTRO, 0.9); ctx.lineWidth = Math.max(0.7, ir.r * 0.07);
-    ctx.beginPath(); ctx.arc(ir.x, ir.y, ir.r * 0.97, 0, Math.PI * 2); ctx.stroke();
-    // I riflessi: la falce di luna, la stellina accanto e un puntino in
-    // basso. La falce è il segno delle Storie: ogni personaggio ha la Luna
-    // negli occhi.
-    ctx.fillStyle = 'rgba(255, 252, 244, 0.97)';
-    const [grande, piccolo, ...altri] = occ.luci;
-    if (geom.cuori > 0.5 || geom.stelle > 0.5) {
-      ctx.beginPath(); ctx.arc(grande.x, grande.y, grande.r * 0.62, 0, Math.PI * 2); ctx.fill();
-    } else {
-      falce(ctx, grande.x, grande.y, grande.r); ctx.fill();
-      stellina(ctx, ir.x + ir.r * 0.3, ir.y - ir.r * 0.48, ir.r * 0.22 * (1 + 0.08 * Math.sin(t / 260)));
-      ctx.fill();
-    }
-    for (const l of [piccolo, ...altri]) { ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill(); }
-    ctx.beginPath(); ctx.arc(piccolo.x - ir.r * 0.2, piccolo.y + ir.r * 0.08, piccolo.r * 0.55, 0, Math.PI * 2); ctx.fill();
+    // il contorno dell'iride, d'inchiostro
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, ir.r * 0.06);
+    ctx.beginPath(); ctx.ellipse(ir.x, ir.y, ir.r * 0.97, ir.r * 0.97 * OV, 0, 0, Math.PI * 2); ctx.stroke();
+    // I riflessi: un tondo grande e un puntino, color panna
+    ctx.fillStyle = '#fffaeb';
+    for (const l of occ.luci) { ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill(); }
     // L'ombra della palpebra di sopra sul bianco: dà profondità all'occhio
-    ctx.strokeStyle = 'rgba(60, 40, 110, 0.18)'; ctx.lineWidth = occ.ry * 0.3;
+    ctx.strokeStyle = 'rgba(80, 60, 140, 0.16)'; ctx.lineWidth = occ.ry * 0.26;
     polilinea(ctx, ap.sopra); ctx.stroke();
     // Gli occhi lucidi: un velo d'acqua sul bordo di sotto
     if (geom.lucidi > 0.5) {
