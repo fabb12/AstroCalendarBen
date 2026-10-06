@@ -643,7 +643,7 @@
   const STUDIO_POSTI_PAROLE = ['oort', 'kuiper', 'heliopause', 'galactic_center', 'orion_nebula', 'lmc', 'smc', 'triangulum',
     'virgo_cluster', 'great_attractor', 'laniakea', 'universe', 'local_group', 'local_bubble', 'orion_arm', 'local_cloud',
     'inner_planets', 'planets'];
-  const STUDIO_UMORI = ['laughing', 'love', 'angry', 'happy', 'excited', 'surprised', 'worried', 'sad', 'thinking', 'sleepy', 'neutral'];
+  const STUDIO_UMORI = ['laughing', 'love', 'angry', 'bully', 'annoyed', 'happy', 'excited', 'surprised', 'worried', 'sad', 'thinking', 'sleepy', 'neutral'];
   /* La faccia giusta per una frase: le parole dell'umore prima, poi la
    * punteggiatura. Non è un'analisi del sentimento, ed è dichiarato: è un
    * suggerimento da accettare o cambiare. */
@@ -699,7 +699,9 @@
       sleepy: [['anima', { animazione: 'wobble' }]],
       laughing: [['anima', { animazione: 'bounce' }], ['effetto', { effetto: 'confetti' }]],
       love: [['effetto', { effetto: 'hearts' }], ['anima', { animazione: 'pulse' }]],
-      angry: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'smoke' }]]
+      angry: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'smoke' }]],
+      annoyed: [['anima', { animazione: 'shake' }]],
+      bully: [['scala', { scala: 1.3 }], ['anima', { animazione: 'pulse' }]]
     }[umore] || [];
     for (const [tipo, campi] of perUmore) metti(tipo, Object.assign({ dove: tipo === 'effetto' ? chi : '' }, campi));
     if (altri.length) metti('guarda', { oggetto: altri[0] });

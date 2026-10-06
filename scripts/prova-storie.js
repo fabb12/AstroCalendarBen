@@ -189,6 +189,17 @@ prova('le espressioni si distinguono per sopracciglia, palpebre, pupille e bocca
   assert.ok(Math.abs(th.cigli[0].y1 - th.cigli[1].y1) > 1, 'pensierosa: sopracciglia asimmetriche');
   assert.ok(S.parametriEspressione('thinking').sguardo.y < 0, 'pensierosa: guarda in su');
 });
+prova('infastidita e da bullo: bocca storta dalle due parti, palpebre pesanti, i loro segni', () => {
+  const p = S.profilo('Moon');
+  const g = e => S.geometria(0, 0, 50, p, BASE_ST(e, { bocca: Object.assign({}, S.STOR_BOCCHE[S.STOR_ESPRESSIONI[e].bocca]) }));
+  const n = g('neutral'), an = g('annoyed'), bu = g('bully');
+  assert.ok(an.bocca.storta < 0 && bu.bocca.storta > 0, 'storte da parti opposte');
+  assert.ok(an.occhi[0].bordoSu > n.occhi[0].bordoSu + 3 && bu.occhi[0].bordoSu > n.occhi[0].bordoSu + 3, 'palpebre pesanti');
+  assert.ok(bu.bocca.denti && bu.bocca.curva > 0, 'il ghigno: denti all\'insù');
+  assert.ok(!an.bocca.denti && an.bocca.curva < 0, 'infastidita: bocca chiusa all\'ingiù');
+  assert.ok(Math.abs(bu.cigli[0].y1 - bu.cigli[1].y1) > 1, 'bullo: un sopracciglio su');
+  assert.equal(an.segno, 'sbuffo'); assert.equal(bu.segno, 'luccichio');
+});
 prova('il battito chiude e riapre le palpebre, e un occhio chiuso è chiuso davvero', () => {
   const D = S.STOR_BATTITO_DURATA;
   assert.equal(S.chiusuraBattito(0), 0);

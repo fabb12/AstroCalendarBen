@@ -151,19 +151,22 @@ broncio), `guance`, `sguardo` (`null` o `{ x, y }`), `spostaBocca`, più le
 manopole (tutte facoltative): `occhi` (quanto si allargano), `iride`,
 `inclinaSu`, `arcoGiu`, `felici`, `lucidi`, `stelle` (pupille a stella),
 `cuori` (pupille a cuore), `rosso` (la fronte che si arrossa), `testa`
-(inclinazione in radianti), `rimbalzo`, `tremito` e `segno` (il segno da
-fumetto); e le chiavi `storie.espressione.<nome>` (e
+(inclinazione in radianti), `rimbalzo`, `tremito`, `storta` (la bocca di traverso, > 0 alza l'angolo
+di destra) e `segno` (il segno da fumetto); e le chiavi `storie.espressione.<nome>` (e
 `storie.espressioneLei.<nome>`, la forma femminile che lo Studio usa per
 lei) nei due dizionari, più `studio.parole.umore.<nome>`. Il DSL la accetta
 da sé. Di serie ci sono `neutral`, `happy`, `laughing` (v411), `surprised`,
-`worried`, `sad`, `thinking`, `excited`, `love` (v411), `angry` (v411) e
-`sleepy`. Sono **esagerate di proposito**: un volto largo
+`worried`, `sad`, `thinking`, `excited`, `love` (v411), `angry` (v411),
+`sleepy`, `annoyed` (v422: palpebre pesanti, occhiata di traverso, bocca
+storta e lo sbuffo) e `bully` (v422: dall'alto in basso, un sopracciglio
+su, il ghigno storto coi denti e il luccichio sul dente). Sono **esagerate di proposito**: un volto largo
 settanta pixel, per dei bambini, si legge solo se dice una cosa sola e la
 dice forte.
 
 **Le forme della bocca** (`STOR_BOCCHE`): `chiusa`, `piccola`, `A`, `E`, `O`,
 `sorriso` (aperto, coi denti di sopra), `grande`, `risata`, `triste` (col
-labbro che trema), `ondulata`, `denti` (i denti stretti della rabbia), con
+labbro che trema), `ondulata`, `denti` (i denti stretti della rabbia), `ghigno` (i denti
+all'insù del bullo, v422), con
 mezza larghezza, apertura, rotondità, curvatura, `onda` (la bocca che trema)
 e `denti`.
 
@@ -353,7 +356,9 @@ chiama `StorieCosmiche.ritratto(tela, id, espressione)` per ogni personaggio.
 
 **I segni da fumetto** (§6-bis, `storDisegnaSegno`): scintille (happy,
 excited), raggi della sorpresa, lacrima che scende (sad), goccia di sudore
-(worried), bolle del pensiero (thinking), zeta del sonno (sleepy). Le zeta
+(worried), bolle del pensiero (thinking), zeta del sonno (sleepy),
+nuvolette dello sbuffo dall'angolo della bocca (annoyed), luccichio sul
+dente del ghigno (bully, v422). Le zeta
 sono tratti, non `fillText`: un segno, non una parola.
 
 **Il corpo del volto** (`storPosa`, funzione pura): comparsa con un pop
