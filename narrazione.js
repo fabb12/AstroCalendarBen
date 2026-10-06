@@ -82,6 +82,10 @@ const narr = {
   guasti: new Map(),  // url → 'mancante' | 'corrotto': non si riprova in questa sessione
   avvisati: new Set(),
   indici: new Map(),  // lingua → { firma, brani }
+  // Le voci caricate a mano nello Studio delle storie (v422): testo
+  // normalizzato → URL dell'audio (un blob di questo browser). Valgono in
+  // ogni lingua: è la voce che chi ha scritto la battuta ha registrato.
+  locali: new Map(),
   vocePronta: false,
   ttsMuto: false,     // la voce del dispositivo non è partita: fino al prossimo gesto
   sbloccato: false,
@@ -260,6 +264,9 @@ function narrComponi(id, testo, lingua, soloTts) {
   const intero = narrNormalizza(testo);
   if (!intero) return [];
   if (soloTts) return [{ testo: intero }];
+  // Una voce caricata nello Studio vince sul manifest: è più nuova
+  const locale = narr.locali.get(intero);
+  if (locale && !narr.guasti.has(locale)) return [{ testo: intero, audio: locale, id: id || 'studio' }];
   const diretta = narrVoceManifest(id, lingua);
   if (diretta && narrAudioValido(diretta, intero, id))
     return [{ testo: intero, audio: narrUrlAudio(diretta.file), id }];
@@ -1077,6 +1084,13 @@ const narrazione = {
   // Per le prove e per chi scrive il manifest.
   componi: (id, testo, lingua) => narrComponi(id, testo, lingua || narrLingua(), narrPreferenze().soloTts),
   impronta: narrImpronta,
+  // Lo Studio delle storie registra qui le voci caricate per una battuta:
+  // `url` vuoto la toglie.
+  voceLocale(testo, url) {
+    const k = narrNormalizza(testo);
+    if (!k) return;
+    if (url) { narr.locali.set(k, url); narr.guasti.delete(url); } else narr.locali.delete(k);
+  },
   quantiAudio: lingua => narrQuantiAudio(lingua || narrLingua()),
   guasti: () => Object.fromEntries(narr.guasti),
   dimentica() { narr.guasti.clear(); narr.indici.clear(); narr.ttsMuto = false; },

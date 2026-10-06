@@ -182,6 +182,23 @@ di **tutte** le storie salvate:
      audio**: tutti i file `studio_*` che non sono più di nessuno.
 3. Generi e carichi gli audio come per le altre battute (sopra).
 
+**Il modo più facile: carica la voce dalla battuta stessa (v422).** Sotto
+ogni battuta dello Studio c'è **Voce → Carica la voce**: scegli il file
+(mp3, wav, m4a…) e basta.
+
+- La voce suona subito al posto della sintesi, nell'anteprima e nella storia
+  salvata nelle demo, con la bocca del personaggio che si muove sulla voce.
+- **Il momento dura quanto la voce**, più un respiro di 0,6 s: le azioni
+  (un viaggio, un salto) e i giorni che passano sono frazioni della scena e
+  si stringono o si allungano con lei, quindi resta tutto a tempo. Una
+  durata scritta a mano più lunga vince (una pausa dopo la battuta); più
+  corta no, perché taglierebbe la voce.
+- La voce resta in quel browser. Con la cartella del progetto collegata
+  (Altro → File delle voci) viene scritta anche nel progetto, nella
+  cartella del personaggio e col nome giusto: dopo il commit suona per tutti.
+- Se cambi il testo della battuta, la voce non vale più (te lo dice accanto
+  al bottone) e torna la sintesi: ricaricala.
+
 Ogni battuta ha un **numero che non cambia**: togliere una scena non
 rinumera le altre, e i loro audio restano giusti. Cambiare il testo di una
 battuta la segna «da rifare», come per le storie pronte. Il titolo della

@@ -136,7 +136,7 @@
     return Object.assign(base, di, campi);
   }
   function studioNuovoMomento(campi = {}) {
-    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', durata: 0, voce: 0, azioni: [] }, campi);
+    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', durata: 0, voce: 0, audio: null, azioni: [] }, campi);
   }
   function studioNuovaScena(campi = {}) {
     return Object.assign({
@@ -184,6 +184,8 @@
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
+        audio: m && m.audio && Number(m.audio.durata) > 0 && /^[0-9a-f]{8}$/.test(m.audio.impronta)
+          ? { durata: numero(m.audio.durata, 1, 120000, 1), impronta: m.audio.impronta, nome: testo(m.audio.nome, 80) } : null,
         azioni: (Array.isArray(m && m.azioni) ? m.azioni : []).slice(0, 30)
           .filter(a => a && STUDIO_TIPI.includes(a.tipo))
           .map(a => studioNuovaAzione(a.tipo, {
@@ -364,7 +366,28 @@
   }
   // Quanto dura un momento: la sua battuta detta con calma, più un respiro.
   // La scena aspetta comunque la fine della voce: questo è il minimo.
+  /* La voce caricata a mano (v422): il momento dura quanto lei più un
+   * respiro, così la scena dopo non la taglia e non resta un silenzio
+   * lungo. Le azioni del momento (un viaggio, un salto) e i giorni che
+   * passano sono frazioni della scena: si stringono o si allungano con lei,
+   * e restano a tempo con la voce. Una durata scritta a mano più lunga
+   * vince (chi vuole una pausa dopo la battuta); più corta no, taglierebbe. */
+  const STUDIO_RESPIRO = 0.6;
+  // La stessa impronta della narrazione (`narrImpronta`, FNV-1a sul testo
+  // normalizzato): dice se la voce è stata caricata per il testo di adesso
+  function studioImpronta(testo) {
+    let x = 0x811c9dc5;
+    const s = String(testo == null ? '' : testo).replace(/\u00ad/g, '').replace(/\s+/g, ' ').trim();
+    for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; }
+    return x.toString(16).padStart(8, '0');
+  }
+  const testoDetto = m => unaRiga(m && m.testo).slice(0, 400);
+  function studioVoceValida(m) {
+    return !!(m && m.audio && m.audio.durata > 0 && testoDetto(m) && m.audio.impronta === studioImpronta(testoDetto(m)));
+  }
   function studioDurata(momento) {
+    if (studioVoceValida(momento))
+      return Math.max(3, Math.ceil(momento.audio.durata / 1000 + STUDIO_RESPIRO), momento.durata > 0 ? Math.round(momento.durata) : 0);
     if (momento.durata > 0) return Math.round(momento.durata);
     const testo = unaRiga(momento.testo);
     const viaggi = (momento.azioni || []).some(a => a.tipo === 'muovi' || a.tipo === 'torna');
@@ -1036,19 +1059,23 @@
    * cartella non entra in `localStorage`). Altrove, e quando la cartella non
    * è collegata, il bottone scarica il file. */
   const DB_VOCI = 'astrocal-studio-voci';
-  function dbVoci(fai2) {
+  // Due scaffali: la maniglia della cartella e (v422) gli audio caricati a
+  // mano per le battute, `<progetto>|<numero della battuta>` → { blob, … }
+  function dbVoci(fai2, scaffale = 'maniglie') {
     return new Promise((si, no) => {
       if (typeof indexedDB === 'undefined') { no(new Error('indexedDB')); return; }
       let r;
-      try { r = indexedDB.open(DB_VOCI, 1); } catch (e) { no(e); return; }
-      r.onupgradeneeded = () => r.result.createObjectStore('maniglie');
+      try { r = indexedDB.open(DB_VOCI, 2); } catch (e) { no(e); return; }
+      r.onupgradeneeded = () => {
+        for (const n of ['maniglie', 'audio']) if (!r.result.objectStoreNames.contains(n)) r.result.createObjectStore(n);
+      };
       r.onerror = () => no(r.error || new Error('indexedDB'));
       r.onsuccess = () => {
         const db = r.result;
         let tx, q;
         // Una maniglia che non si può copiare (`put`) lancia qui dentro, fuori
         // dalla promessa: senza questo, chi aspetta aspetterebbe per sempre
-        try { tx = db.transaction('maniglie', 'readwrite'); q = fai2(tx.objectStore('maniglie')); }
+        try { tx = db.transaction(scaffale, 'readwrite'); q = fai2(tx.objectStore(scaffale)); }
         catch (e) { db.close(); no(e); return; }
         tx.oncomplete = () => { db.close(); si(q && q.result); };
         tx.onerror = () => { db.close(); no(tx.error || new Error('indexedDB')); };
@@ -1101,10 +1128,22 @@
       }
     }
     if (cartella) {
-      const f = await cartella.getFileHandle(FILE_VOCI, { create: true });
-      const w = await f.createWritable();
-      await w.write(testo);
-      await w.close();
+      const scriviFile = async (dir, nome, dati) => {
+        const f = await dir.getFileHandle(nome, { create: true });
+        const w = await f.createWritable();
+        await w.write(dati);
+        await w.close();
+      };
+      await scriviFile(cartella, FILE_VOCI, testo);
+      // Le voci caricate nello Studio, ognuna nella cartella del suo
+      // personaggio e col nome del copione: dopo il commit suonano per tutti
+      for (const v of await vociDaScrivere()) {
+        try {
+          let dir = cartella;
+          for (const n of [v.cartella, v.lingua]) dir = await dir.getDirectoryHandle(n, { create: true });
+          await scriviFile(dir, v.nome, v.blob);
+        } catch (_) { /* una voce che non si scrive non ferma le altre */ }
+      }
       return 'scritto';
     }
     if (chiedi) { scaricaVoci(testo); return 'scaricato'; }
@@ -1131,6 +1170,153 @@
       if (come === 'scaricato') return t('studio.voci.scaricato', { storie, battute });
       return '';
     }).catch(e => t('studio.voci.errore', { errore: e && e.message || String(e) }));
+  }
+
+  /* Le voci caricate a mano (v422). Per ogni battuta si può caricare il suo
+   * file audio: resta in questo browser (IndexedDB, scaffale `audio`), suona
+   * al posto della sintesi (`narrazione.voceLocale`, riconosciuta dal
+   * testo: vale anche per la storia salvata nelle demo) e la durata del
+   * momento la segue (`studioDurata`). Con la cartella del progetto
+   * collegata, «File delle voci» la scrive anche nel progetto, nella
+   * cartella del personaggio e col nome del copione. */
+  const STUDIO_AUDIO_MAX = 10 * 1024 * 1024;
+  const STUDIO_ESTENSIONI = /\.(mp3|wav|ogg|oga|opus|m4a|aac|webm)$/i;
+  const vociCaricate = new Map();         // `<progetto>|<n>` → { url, testo }
+  const chiaveAudio = (pid, n) => pid + '|' + n;
+  function registraVoce(k, testo, url) {
+    const prima = vociCaricate.get(k);
+    const narr = radice.narrazione;
+    if (prima) {
+      if (narr && narr.voceLocale) narr.voceLocale(prima.testo, '');
+      if (prima.url && typeof URL !== 'undefined' && URL.revokeObjectURL) URL.revokeObjectURL(prima.url);
+      vociCaricate.delete(k);
+    }
+    if (url) {
+      vociCaricate.set(k, { url, testo });
+      if (narr && narr.voceLocale) narr.voceLocale(testo, url);
+    }
+  }
+  // Tutti i record dello scaffale, con la loro chiave
+  function tutteLeVoci() {
+    const trovate = [];
+    return dbVoci(st => {
+      const c = st.openCursor();
+      c.onsuccess = () => { const x = c.result; if (x) { trovate.push({ chiave: x.key, rec: x.value }); x.continue(); } };
+      return null;
+    }, 'audio').then(() => trovate, () => []);
+  }
+  // La durata vera del file: dall'elemento audio, o decodificandolo (un
+  // webm registrato dal telefono dice «Infinity» all'elemento)
+  function misuraDurata(blob) {
+    return new Promise(si => {
+      let finito = false;
+      const fine = v => { if (!finito) { finito = true; si(v > 0 && Number.isFinite(v) ? Math.round(v * 1000) : 0); } };
+      const decodifica = () => {
+        const C = radice.AudioContext || radice.webkitAudioContext;
+        if (!C || !blob.arrayBuffer) { fine(0); return; }
+        const ctx = new C();
+        blob.arrayBuffer().then(b => ctx.decodeAudioData(b)).then(a => fine(a.duration), () => fine(0))
+          .finally(() => { try { ctx.close(); } catch (_) { /* niente */ } });
+      };
+      if (typeof Audio === 'undefined') { decodifica(); return; }
+      const a = new Audio();
+      const url = URL.createObjectURL(blob);
+      a.preload = 'metadata';
+      a.onloadedmetadata = () => { const d = a.duration; URL.revokeObjectURL(url); if (Number.isFinite(d) && d > 0) fine(d); else decodifica(); };
+      a.onerror = () => { URL.revokeObjectURL(url); decodifica(); };
+      setTimeout(() => { if (!finito) decodifica(); }, 6000);
+      a.src = url;
+    });
+  }
+  async function caricaVoce(dove, file) {
+    const p = studio.progetto, m = leggi(dove);
+    if (!m || !file) return;
+    if (file.size > STUDIO_AUDIO_MAX) { esito(t('studio.voce.troppoGrande')); return; }
+    if (!/^audio\//.test(file.type || '') && !STUDIO_ESTENSIONI.test(file.name || '')) { esito(t('studio.voce.nonAudio')); return; }
+    const testo = testoDetto(m);
+    if (!m.chi || !testo) { esito(t('studio.voce.primaIlTesto')); return; }
+    const durata = await misuraDurata(file);
+    if (!durata) { esito(t('studio.voce.nonAudio')); return; }
+    if (!m.voce) {
+      const usati = p.scene.flatMap(sc => sc.momenti.map(x => x.voce || 0));
+      m.voce = Math.max(p.voceProssima || 1, ...usati.map(n => n + 1));
+      p.voceProssima = m.voce + 1;
+    }
+    const k = chiaveAudio(p.id, m.voce);
+    try { await dbVoci(st => st.put({ blob: file, nome: file.name || '', tipo: file.type || '', durata, testo }, k), 'audio'); }
+    catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return; }
+    registraVoce(k, testo, URL.createObjectURL(file));
+    m.audio = { durata, impronta: studioImpronta(testo), nome: String(file.name || '').slice(0, 80) };
+    salvaPresto();
+    disegna();
+    esito(t('studio.voce.caricata', { secondi: secondiDi(durata), durata: studioDurata(m) }));
+  }
+  function togliVoce(m) {
+    if (!m || !m.voce) { if (m) m.audio = null; return; }
+    const k = chiaveAudio(studio.progetto.id, m.voce);
+    registraVoce(k, '', '');
+    dbVoci(st => st.delete(k), 'audio').catch(() => null);
+    m.audio = null;
+  }
+  let anteprima = null;
+  function ascoltaVoce(m) {
+    const v = m && m.voce && vociCaricate.get(chiaveAudio(studio.progetto.id, m.voce));
+    if (anteprima) { try { anteprima.pause(); } catch (_) { /* niente */ } }
+    if (!v || typeof Audio === 'undefined') return;
+    anteprima = new Audio(v.url);
+    anteprima.play().catch(() => null);
+  }
+  const secondiDi = ms => (Math.round(ms / 100) / 10).toLocaleString(linguaStudio() === 'en' ? 'en' : 'it');
+  /* All'avvio: le voci di tutte le storie tornano a suonare; quelle di
+   * momenti o storie che non ci sono più si buttano (lo spazio del browser
+   * non è infinito). */
+  async function studioRiprendiVoci() {
+    const vive = new Map();
+    for (const p of studio.progetti) for (const sc of p.scene) for (const m of sc.momenti) if (m.voce && m.audio) vive.set(chiaveAudio(p.id, m.voce), m);
+    for (const { chiave, rec } of await tutteLeVoci()) {
+      if (!vive.has(chiave) || !rec || !rec.blob) { dbVoci(st => st.delete(chiave), 'audio').catch(() => null); continue; }
+      registraVoce(chiave, rec.testo, URL.createObjectURL(rec.blob));
+    }
+  }
+  // Una storia duplicata si porta dietro le sue voci
+  async function copiaVoci(da, a) {
+    for (const { chiave, rec } of await tutteLeVoci()) {
+      if (!String(chiave).startsWith(da + '|')) continue;
+      const k = a + chiave.slice(da.length);
+      await dbVoci(st => st.put(rec, k), 'audio').catch(() => null);
+      registraVoce(k, rec.testo, URL.createObjectURL(rec.blob));
+    }
+  }
+  function cancellaVoci(pid) {
+    tutteLeVoci().then(tutte => {
+      for (const { chiave } of tutte) if (String(chiave).startsWith(pid + '|')) {
+        registraVoce(chiave, '', '');
+        dbVoci(st => st.delete(chiave), 'audio').catch(() => null);
+      }
+    });
+  }
+  // Il nome italiano di un personaggio, da cui la sua cartella delle voci:
+  // la stessa strada di `nomeDi` in scripts/voci-storie.js
+  function cartellaPersonaggio(id) {
+    const diz = (radice.ASTRO_DIZIONARI && radice.ASTRO_DIZIONARI.it && radice.ASTRO_DIZIONARI.it.messaggi) || {};
+    const pg = (S().STOR_PERSONAGGI || {})[id] || {};
+    const nomeIt = (pg.nome && diz[pg.nome]) || diz['corpo.' + id] || diz['storie.nome.' + id] || nome(id);
+    return String(nomeIt).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'senza-nome';
+  }
+  // Le voci da mettere nel progetto: solo delle storie del file, e solo
+  // se il testo della battuta è ancora quello per cui sono state caricate
+  async function vociDaScrivere() {
+    const foto = studioVociCarica();
+    const tutte = new Map((await tutteLeVoci()).map(x => [x.chiave, x.rec]));
+    const fuori = [];
+    for (const f of Object.values(foto)) for (const b of f.battute || []) {
+      const rec = tutte.get(chiaveAudio(f.progetto, b.n));
+      if (!rec || !rec.blob || unaRiga(rec.testo) !== unaRiga(b.testo)) continue;
+      const est = (STUDIO_ESTENSIONI.exec(rec.nome || '') || [, /wav/.test(rec.tipo) ? 'wav' : /ogg/.test(rec.tipo) ? 'ogg' : 'mp3'])[1].toLowerCase();
+      fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, nome: `${f.chiave}-${b.n}.${est}`, blob: rec.blob });
+    }
+    return fuori;
   }
 
   // ===================================================================
@@ -1300,6 +1486,7 @@
         figurina(m.chi, umore, 64, 'studio-chi-grande'),
         h('div', { class: 'studio-nuvola' }, testo,
           h('span', { class: 'studio-contatore' + (parole > STUDIO_PAROLE_BAMBINI ? ' troppo' : '') }, t('studio.parole', { n: parole })))));
+      box.append(disegnaVoce(m, base));
       // Le facce: un volto per espressione, del personaggio che parla
       const facce = h('div', { class: 'studio-facce', role: 'group', 'aria-label': t('storie.espressioneEtichetta') },
         h('span', { class: 'studio-etichetta' }, t('studio.ui.faccia')));
@@ -1339,6 +1526,26 @@
       box.append(intanto, fila, aggiungi);
     } else box.append(intanto, aggiungi);
     return box;
+  }
+
+  // La voce della battuta: carica un file, ascoltalo, toglilo. Accanto, quanto
+  // dura e quanto dura il momento per lei; o l'avviso se il testo è cambiato.
+  function disegnaVoce(m, base) {
+    const id = 'studio-voce-' + base.replace(/\./g, '-');
+    const riga = h('div', { class: 'studio-voce', role: 'group', 'aria-label': t('studio.voce.titolo') },
+      h('span', { class: 'studio-etichetta' }, t('studio.voce.titolo')),
+      h('label', { class: 'tasto-cielo studio-mini-testo', for: id, title: t('studio.voce.aiuto') }, m.audio ? t('studio.voce.cambia') : t('studio.voce.carica')),
+      h('input', { id, class: 'demo-file-nascosto', type: 'file', accept: 'audio/*,.mp3,.wav,.ogg,.m4a,.opus,.webm', dataset: { voce: base } }));
+    if (m.audio) {
+      const valida = studioVoceValida(m);
+      riga.append(
+        h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'ascoltaVoce', dove: base } }, t('studio.voce.ascolta')),
+        h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'togliVoce', dove: base } }, t('studio.voce.togli')),
+        h('small', { class: 'studio-voce-stato' + (valida ? '' : ' troppo') }, valida
+          ? t('studio.voce.pronta', { secondi: secondiDi(m.audio.durata), durata: studioDurata(m) })
+          : t('studio.voce.vecchia')));
+    }
+    return riga;
   }
 
   function disegnaScena(sc, i) {
@@ -1586,12 +1793,13 @@
     const contenitore = percorso => { const parti = percorso.split('.'); const i = Number(parti.pop()); return { lista: leggi(parti.join('.')), i }; };
     switch (nomeOp) {
       case 'nuovo': apri(studioNuovoProgetto()); return;
-      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; apri(c); return; }
+      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; copiaVoci(p.id, c.id); apri(c); return; }
       case 'elimina':
         if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) {
           studio.progetti = studio.progetti.filter(x => x.id !== p.id);
           studioSalvaTutti(studio.progetti);
           apri(studio.progetti[0] || studioNuovoProgetto());
+          cancellaVoci(p.id);
           // Le sue battute escono dal file delle voci (se la cartella è collegata)
           aggiornaVoci({ tolta: p.id, chiedi: false }).then(msg => { if (msg || p.demoChiave) esito(msg || t('studio.voci.ricorda')); });
         }
@@ -1688,6 +1896,8 @@
         if (j >= 0 && j < lista.length) [lista[i], lista[j]] = [lista[j], lista[i]];
         break;
       }
+      case 'ascoltaVoce': ascoltaVoce(leggi(dove)); return;
+      case 'togliVoce': togliVoce(leggi(dove)); break;
       case 'umoreDalTesto': { const m = leggi(dove); const u = studioUmoreDalTesto(m.testo); if (u) m.umore = u; break; }
       case 'idea': {
         const m = leggi(dove);
@@ -1771,6 +1981,12 @@
       if (el.id === 'studio-progetti') {
         const scelto = studio.progetti.find(x => x.id === el.value);
         if (scelto) apri(scelto);
+        return;
+      }
+      // La voce di una battuta: un file audio, misurato e tenuto nel browser
+      if (el.dataset && el.dataset.voce) {
+        const file = el.files && el.files[0];
+        if (file) caricaVoce(el.dataset.voce, file).finally(() => { el.value = ''; });
         return;
       }
       if (el.id === 'studio-importa') {
@@ -1860,6 +2076,7 @@
     studio.progetto = studio.progetti[0] || studioDaModello('fasi');
     collega(r);
     disegna();
+    studioRiprendiVoci().catch(() => null);
     if (haI18n() && typeof radice.astroI18n.alCambio === 'function') radice.astroI18n.alCambio(() => { cacheParole.clear(); disegna(); });
   }
   if (typeof document !== 'undefined') {
@@ -1878,7 +2095,7 @@
     umoreDalTesto: studioUmoreDalTesto, ideeAzioni: studioIdeeAzioni, ambientePer: studioAmbientePer,
     prossimoMomento: studioProssimoMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
-    vociStoria: studioVociStoria, fileVoci: studioFileVoci, chiaveVoci: studioChiaveVoci, CHIAVE_VOCI,
+    vociStoria: studioVociStoria, impronta: studioImpronta, voceValida: studioVoceValida, fileVoci: studioFileVoci, chiaveVoci: studioChiaveVoci, CHIAVE_VOCI,
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
   };
   radice.StudioStorie = api;
