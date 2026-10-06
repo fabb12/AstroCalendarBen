@@ -2213,6 +2213,9 @@ function cosmDisegna(ctx) {
   cosmPassoCamera(ora);
   cosm.ultimoTs = ora;
   if (!cosm.attivo) return;
+  // La lente della regia delle storie (storie-cosmiche.js §7-ter): la carta
+  // e i personaggi si avvicinano, le letture e la riga della scala no
+  if (typeof storLenteApri === 'function') storLenteApri(ctx, 'cosmo', sol.L, sol.H);
   if (typeof solSfondo === 'function') solSfondo(ctx);
   else { ctx.fillStyle = '#04060f'; ctx.fillRect(0, 0, sol.L, sol.H); }
   const cam = cosmCamera(cosm.L, sol.L, sol.H);
@@ -2234,16 +2237,19 @@ function cosmDisegna(ctx) {
   cosmDisegnaSistemaVicino(ctx, cam);
   cosmDisegnaSegni(ctx, cam);
   cosmDisegnaSonde(ctx, cam);
-  cosmDisegnaLetture(ctx, cam);
-  cosmDisegnaRiga(ctx, cam);
   // Le Storie cosmiche (storie-cosmiche.js): i personaggi che viaggiano per
-  // l'universo, sopra alla carta e lontani dalla riga della scala
+  // l'universo, sopra alla carta e lontani dalla riga della scala. Prima
+  // delle letture e della riga (v416): sono dentro alla lente della regia,
+  // le scritte di misura no.
   if (typeof storDisegnaCosmo === 'function') {
     // In una demo il terzo in basso è dei sottotitoli: un personaggio che
     // cadrebbe lì va accanto al suo posto, col filo, invece che sotto la scritta
     const giu = (cosm.fondoPx || 70) + 8;
     storDisegnaCosmo(ctx, cam, { su: (cosm.regia ? (cosm.rigaY || 26) + 34 : 60), giu: cosm.regia ? Math.max(giu, cam.H * 0.32) : giu, lati: 12 });
   }
+  if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
+  cosmDisegnaLetture(ctx, cam);
+  cosmDisegnaRiga(ctx, cam);
   if (cosm.ui && ora > (cosm.prossimaUi || 0)) {
     cosm.prossimaUi = ora + 300;
     cosmAggiornaInterfaccia();

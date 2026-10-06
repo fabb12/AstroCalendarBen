@@ -378,6 +378,12 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_scale` | `target`, `scale` (0,2–6) |
 | `character_become` (v414) | `target`, `shape` (`red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`) |
 | `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20) |
+| `story_camera` (v416) | `mode` (`auto`, `wide`, `close`), `target?` (con `close`, un personaggio in scena), `zoom?` (1–4, il tetto del primo piano) |
+| `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
+
+Dalla v416 `character_show`, `character_move`, `character_return`,
+`character_animate`, `character_become` ed `effect` accettano anche
+`sound` (`auto` di serie, `off`, o il nome di un rumore): §La regia e i rumori.
 
 `size`: `auto` (di serie) nel planetario mette il volto sull'astro se c'è
 posto e se no nell'adesivo; nella 3D **fa crescere l'astro** fino a portarlo.
@@ -559,6 +565,95 @@ spegne. Aggiungere un effetto: una voce in `STOR_EFFETTI` (con la durata di
 serie), un ramo in `storDisegnaEffetto`, `storie.effetto.<nome>` nei
 dizionari.
 
+## La regia e i rumori (v416)
+
+Chi scrive storie ha chiesto una camera **viva**, per spiegare ai bambini le
+dinamiche del cielo in modo giocoso: quando un personaggio parla la camera
+gli va vicino e gli inquadra bene gli occhi, quando succede qualcosa va a
+guardarlo, e ogni botto si sente. `storie-cosmiche.js` §7-ter e §7-quater.
+
+**La lente** (`storLenteApri`/`storLenteChiudi`). Non è una seconda camera
+astronomica: è una traslazione e una scala sul contesto della tela, che
+`skyDisegna`, `solDisegna` (e `solDisegnaVicino`) e `cosmDisegna` aprono
+all'inizio del fotogramma e chiudono subito dopo i volti, prima delle
+scritte di servizio (la riga in basso della 3D, il righello e il racconto
+del banco Terra e Luna, le letture e la riga della scala cosmica). Le camere
+delle scene restano padrone di cosa si guarda; la regia sceglie il primo
+piano. Una lente e non uno zoom vero perché nella 3D il volto ha già la sua
+misura in pixel (uno zoom della scena non lo ingrandirebbe) e perché tutto
+quello che si disegna è vettoriale: un volto a tre volte resta nitido. Le
+tele dipinte una volta (le stelle, la Via Lattea) un po' si sgranano: per
+questo il tetto è ×3,2 (`STOR_REGIA.zoomMax`). La finestra non esce mai
+dalla tela (niente bordi vuoti), e le posizioni salvate per il dito e per le
+prove (`ultimiDisegnati`, i corpi di `sol`) restano senza lente;
+`StorieCosmiche.lenteSchermo(x, y)` dice dove un punto del disegno finisce
+sullo schermo. I nomi dei corpi della 3D (`solEtichetta`) restano della loro
+misura (`storLenteK`).
+
+**Che cosa si inquadra** (`storRegiaInquadra`, funzione pura sullo stato),
+in quest'ordine:
+
+1. un effetto grosso appena cominciato (`STOR_REGIA.effetti`: l'esplosione,
+   l'onda d'urto, i fuochi, il fulmine, i cuori, i coriandoli, la stella
+   cadente), finché dura il suo momento;
+2. il personaggio di `story_camera { mode: close, target }`;
+3. chi parla: gli occhi vanno al 40% dell'altezza (sotto ci sono i
+   sottotitoli) e il raggio del volto al 17% del lato corto. Se chi ascolta
+   gli sta accanto e ci stanno tutti e due senza allontanarsi troppo, la
+   camera li tiene insieme (il campo e controcampo dei cartoni: si vede lo
+   sguardo che va da uno all'altro);
+4. chi sta facendo qualcosa: un viaggio, un'animazione, una veste nuova
+   (piano medio, che lo segue);
+5. se no, largo: la camera della scena.
+
+Finita una battuta il quadro resta ancora 0,9 s, poi si allarga. Il moto è
+una **molla smorzata al punto giusto** (`molla`, ω = 4,4 rad/s) su zoom (in
+logaritmo), centro e altezza degli occhi: arriva in un secondo, senza scatti
+né rimbalzi, e passa da un personaggio all'altro con una carrellata. Si
+ferma in pausa. **La scossa** (`storScossa`): esplosione, onda d'urto,
+fulmine, fuochi e la veste `supernova` fanno tremare il quadro per meno di
+un secondo (due seni sfasati che si spengono, con un 3,5% d'ingrandimento in
+più perché il tremito non scopra i bordi).
+
+**Tace** col movimento ridotto, quando la persona prende la camera
+(`AstroDemo.cameraManuale`: fino alla scena dopo), con l'opzione «Storie
+cosmiche: la camera va vicino a chi parla» spenta (`cameraStorie` nelle
+opzioni delle demo), nell'anteprima della pagina e fuori dalle storie, e
+nelle scene con `story_camera { mode: wide }`. `story_camera` vale per la
+sua scena; la scena dopo torna `auto`.
+
+**I rumori** (§7-quater, `storSuona`). Ogni effetto ha il rumore col suo
+stesso nome, e i gesti hanno il loro: il «pop» di chi entra in scena la
+prima volta, il boing di `jump`, `bounce` e del percorso `hop`, il fischio
+dei viaggi, lo zap del teletrasporto, il giro di `spin`, il tremolio di
+`shake` e `wobble`, il «ta-da» di `dance`, e per le vesti il gonfiarsi della
+gigante rossa, il botto della supernova, il risucchio del buco nero, la
+magia della nana bianca e del ritorno. In più `boing`, `whoosh`, `pop`,
+`zap`, `magic`, `inflate`, `suck`, `wobble`, `spin`, `tada`, `ding`,
+`drumroll`, `rumble` si suonano da soli col comando `sound`. Sono
+**sintetizzati** con Web Audio (`RICETTE`: pochi oscillatori e un soffio di
+rumore bianco filtrato ciascuno), niente file: l'app resta offline e il
+suono è da cartone, come il disegno. Il contesto è quello della voce
+(`narr.audioContesto`), e l'uscita passa da un compressore e arriva anche
+alla presa del filmato (`narr.cattura`): un video registrato con l'audio ha
+anche i botti. Sotto la voce di un personaggio i rumori si abbassano.
+Tacciono con l'opzione «Storie cosmiche: effetti sonori» spenta
+(`effettiSonori`), in pausa, fuori da una demo; lo stesso rumore non riparte
+prima di un decimo di secondo (un salto di scena non fa una raffica), e Stop
+o la fine della storia li sfumano (`storZittisci`). Aggiungere un rumore:
+una ricetta in `RICETTE` e il nome in `STOR_SUONI`.
+
+```
+action: story_camera { mode: close, target: 'Moon', zoom: 2.5 };
+action: effect { type: explosion, target: 'Mars', sound: rumble };
+action: character_animate { target: 'Jupiter', animation: jump, sound: off };
+action: sound { type: drumroll, volume: 0.6, shot_from: 0.4 };
+```
+
+Nello Studio, in «Inquadratura e data», la casella **«La camera va vicino a
+chi parla»** (`cameraViva` della scena, accesa di serie): spenta, la scena
+porta `story_camera { mode: wide }`.
+
 ## Lo Studio delle storie (v409, a figurine dalla v411)
 
 `storie-studio.js` (prefisso `studio`), nella linguetta delle storie. Una
@@ -718,6 +813,16 @@ carta, il buco bianco che galleggia senza filo né freccia e non viaggia, il
 Sole fuori quadro che non è un occhio gigante, e nello Studio «diventa», le
 parole («si gonfia e diventa una gigante rossa» non è anche un «cambia
 misura», «torna com'era» non è un ritorno sull'orbita) e il modello `buchi`.
+Dalla v416 anche: la regia (chi parla in primo piano con gli occhi in alto al
+centro e il volto grande, la finestra sempre dentro alla tela, la pausa dopo
+la battuta e il ritorno largo, il dialogo con tutti e due nel quadro, il botto
+inquadrato e il quadro che trema, `story_camera` con `close`, `wide` e il
+tetto dello zoom, la camera presa a mano e l'opzione spenta, la pausa), ogni
+ricetta dei rumori su un contesto audio finto (sorgenti che partono e si
+fermano entro quattro secondi, volumi sotto 1, rampe esponenziali su valori
+positivi), il silenzio con l'opzione spenta, in pausa e fuori da una demo, il
+rumore che non fa la raffica, i comandi che suonano nell'ordine giusto
+(pop, boing, explosion, zap, ding) e la casella dello Studio.
 `scripts/giro-storia.js` (`STORIA=storia_stelle`) fa girare «Che fine fanno le stelle?»
 intera in un Chromium, con una schermata a metà di ogni scena.
 La seconda, in un Chromium senza rete: la sezione della pagina Demo e
@@ -726,7 +831,10 @@ un WAV vero nel grafo Web Audio, i confini di una sintesi finta, il ritmo del
 solo testo, pausa, fuori quadro, i pixel della tela e del fotogramma passato
 al registratore, il dialogo nel banco Terra e Luna (chi ascolta guarda chi
 parla), salto e stop, l'inglese, il telefono col movimento ridotto, e che le
-demo di prima non abbiano volti.
+demo di prima non abbiano volti. Dalla v416 anche la regia nella 3D vera (chi
+parla ingrandito, con l'occhio nei pixel della tela e sopra ai sottotitoli,
+il botto inquadrato, la camera presa col mouse che toglie la lente) e ogni
+rumore reso da un `OfflineAudioContext`: suona, e non esagera.
 
 ## Limiti
 
@@ -739,6 +847,13 @@ demo di prima non abbiano volti.
   demo avviata da un link senza tocchi la bocca usa le altre due strade.
 - I volti non si disegnano nella Didattica e nella mappa del cono d'ombra, né
   sul velo del volo fra le viste. Nella scala cosmica sì (v412).
+- La lente della regia ingrandisce anche le tele dipinte una volta (le
+  stelle, la Via Lattea), che a ×3 si sgranano un poco; e nel planetario
+  ingrandisce i nomi delle stelle e delle costellazioni (nella 3D no). Il
+  dito, mentre la lente è chiusa su qualcuno, sceglie dove il disegno sta
+  senza lente: ma toccare prende la camera, e la lente si toglie.
+- I rumori sono sintetizzati: un'esplosione è un botto da cartone, non una
+  registrazione. Senza Web Audio (o prima di un gesto) la storia è muta.
 - Il buco bianco non ha un posto: non viaggia, non si raggiunge, e la sua
   misura non dice niente (è un'idea). Le vesti non sono un'evoluzione
   stellare calcolata: sono un costume, alla misura che la storia sceglie.

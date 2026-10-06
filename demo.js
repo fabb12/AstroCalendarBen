@@ -1788,11 +1788,16 @@
           : (typeof o.musicaEclissiTraccia === 'string' && o.musicaEclissiTraccia
             ? o.musicaEclissiTraccia : 'Encelado1'),
         livelli: o.livelli && typeof o.livelli === 'object' ? o.livelli : null,
-        durataComandiSec: durataComandiValida(o.durataComandiSec)
+        durataComandiSec: durataComandiValida(o.durataComandiSec),
+        // Le Storie cosmiche (v416): la camera che va vicino a chi parla e i
+        // rumori dei botti. Accese di serie, come la musica.
+        cameraStorie: o.cameraStorie !== false,
+        effettiSonori: o.effettiSonori !== false
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: true, registra: false, vistaPulita: true, registraAudio: true,
-      musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null, durataComandiSec: DURATA_COMANDI_SEC };
+      musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null, durataComandiSec: DURATA_COMANDI_SEC,
+      cameraStorie: true, effettiSonori: true };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
@@ -2576,6 +2581,9 @@
     // Gli avvisi di servizio tacciono soltanto nella vista pulita: spegnendo
     // l'opzione l'interfaccia resta deliberatamente utilizzabile e visibile.
     get silenzioso() { return !!(contesto && contesto.vistaPulita); },
+    // Vero quando la persona ha preso la camera in mano per questa scena: la
+    // regia delle Storie cosmiche le lascia il quadro.
+    get cameraManuale() { return !!(contesto && contesto.cameraManuale); },
     get opzioni() {
       return {
         ...opzioni,

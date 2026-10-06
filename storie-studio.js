@@ -138,7 +138,7 @@
   function studioNuovaScena(campi = {}) {
     return Object.assign({
       id: nuovoId('s'), ambiente: 'sistema', fuoco: 'Jupiter', zoom: 'normale',
-      data: '', ora: '21:00', giorni: 0, cartello: false, cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
+      data: '', ora: '21:00', giorni: 0, cartello: false, cameraViva: true, cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
     }, campi);
   }
   function studioNuovoProgetto(campi = {}) {
@@ -173,7 +173,7 @@
       ambiente: tra(sc && sc.ambiente, STUDIO_AMBIENTI, 'sistema'), fuoco: testo(sc && sc.fuoco, 40) || 'Jupiter',
       zoom: tra(sc && sc.zoom, Object.keys(STUDIO_ZOOM), 'normale'),
       data: /^\d{4}-\d{2}-\d{2}$/.test(sc && sc.data) ? sc.data : '', ora: /^\d{2}:\d{2}$/.test(sc && sc.ora) ? sc.ora : '21:00',
-      giorni: numero(sc && sc.giorni, 0, 1000, 0), cartello: !!(sc && sc.cartello), presenti: ids(sc && sc.presenti),
+      giorni: numero(sc && sc.giorni, 0, 1000, 0), cartello: !!(sc && sc.cartello), cameraViva: !(sc && sc.cameraViva === false), presenti: ids(sc && sc.presenti),
       cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
@@ -474,6 +474,9 @@
         trascorso += durate[k];
         // La data e il luogo a schermo (v414): solo se chi scrive li chiede
         if (sc.cartello) az.push('date_card { date: show, time: show, place: show }');
+        // La regia (v416): di serie la camera va vicino a chi parla e ai
+        // botti; chi la vuole ferma la tiene alla camera della scena
+        if (sc.cameraViva === false) az.push('story_camera { mode: wide }');
         // La camera
         if (cosmo) {
           const [La, Lb] = cosmo[k];
@@ -1190,6 +1193,8 @@
           h('input', { type: 'number', min: '0', max: '1000', step: '1', value: String(sc.giorni || 0), dataset: { campo: base + '.giorni', numero: '1' } })),
         h('label', { class: 'storie-campo studio-spunta' }, h('input', { type: 'checkbox', checked: !!sc.cartello, dataset: { campo: base + '.cartello' } }),
           h('span', {}, t('studio.mostraCartello'))),
+        h('label', { class: 'storie-campo studio-spunta' }, h('input', { type: 'checkbox', checked: sc.cameraViva !== false, dataset: { campo: base + '.cameraViva' } }),
+          h('span', {}, t('studio.cameraViva'))),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'ambienteAdatto', dove: base } }, t('studio.ambienteAdatto'))));
     if (studio.dettagliAperti && studio.dettagliAperti.has(sc.id)) dettagli.open = true;
     dettagli.addEventListener('toggle', () => {
@@ -1228,6 +1233,7 @@
     } else pezzi.push(t('studio.ui.oggi'));
     if (sc.giorni > 0 && sc.ambiente !== 'cosmo') pezzi.push(t('studio.ui.giorniPassano', { n: sc.giorni }));
     if (sc.cartello) pezzi.push(t('studio.ui.conCartello'));
+    if (sc.cameraViva === false) pezzi.push(t('studio.ui.cameraFerma'));
     return pezzi.join(' · ');
   }
 
