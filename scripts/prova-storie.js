@@ -498,7 +498,7 @@ gruppo('i comandi del DSL, col motore delle demo');
 
 const registro = Object.create(null);
 for (const [k, c] of Object.entries(S.comandi)) registro[k] = c;
-for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card'])
+for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card', 'point_view'])
   registro[k] = { crea: () => ({}) };
 // La scala cosmica (demo.js): qui basta che le scale siano quelle che il
 // comando vero accetta, numeri di UA fra un milionesimo e 1e17 o un nome
@@ -848,6 +848,110 @@ prova('la Via Lattea e i luoghi dell\'universo vogliono la scala cosmica, e lì 
   assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'milky_way' }"))), /cosmic scale/);
   lingua = 'it';
 });
+// =====================================================================
+gruppo('la vita delle stelle: giganti, supernove, nane, buchi neri e bianchi (v414)');
+
+prova('i personaggi nuovi hanno il loro corpo, il loro posto e il loro nome', () => {
+  const attesi = { Star7: 'gigante_rossa', Betelgeuse: 'gigante_rossa', supernova: 'supernova', 'SN 1054': 'supernova',
+    sirius_b: 'nana_bianca', sgr_a: 'buco_nero', 'Sagittario A*': 'buco_nero', white_hole: 'buco_bianco' };
+  for (const [id, sagoma] of Object.entries(attesi)) {
+    assert.ok(S.noto(S.canonico(id)), id + ' è noto');
+    assert.equal(S.profilo(id).sagoma, sagoma, id + ' → ' + sagoma);
+  }
+  assert.equal(S.canonico('Betelgeuse'), 'Star7', 'Betelgeuse è la settima stella del planetario');
+  assert.equal(S.nome('Star7'), 'Betelgeuse');
+  assert.equal(S.nome('sgr_a'), 'Sagittario A*');
+  assert.equal(S.profilo('sgr_a').famiglia, 'buco');
+  assert.ok(S.profilo('sgr_a').baffi && !S.profilo('Star7').baffi && S.profilo('Star7').labbra, 'lui coi baffi, lei con le labbra');
+  // Betelgeuse non è chiusa nella carta (ha un `luogo`, non un `cosmo`); gli altri sì
+  assert.ok(!S.STOR_PERSONAGGI.Star7.cosmo && S.STOR_PERSONAGGI.Star7.luogo === 'betelgeuse');
+  for (const id of ['supernova', 'sirius_b', 'sgr_a', 'white_hole']) assert.ok(S.STOR_PERSONAGGI[id].cosmo, id + ' vive nella scala cosmica');
+  // ogni corpo nuovo si disegna, a ogni istante, senza errori
+  for (const sagoma of ['gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco']) {
+    for (const t of [0, 777, 5000]) {
+      const tela = telaFinta();
+      S.disegnaCorpo(tela.ctx, 100, 100, 40, Object.assign({}, S.profilo('Sun'), { sagoma }), t);
+      assert.ok(tela.chiamate.length > 15, sagoma + ' si disegna');
+    }
+  }
+});
+prova('character_become: il Sole diventa gigante rossa, poi nana bianca, poi di nuovo sé stesso', async () => {
+  S.sgombra();
+  motore.avvia(demo(sc('planetarium_view', "character_show { target: 'Sun' }", "character_become { target: 'Sun', shape: red_giant }"),
+    sc('planetarium_view', "character_show { target: 'Sun' }", "character_become { target: 'Sun', shape: white_dwarf }"),
+    sc('planetarium_view', "character_show { target: 'Sun' }", "character_become { target: 'Sun', shape: self }"),
+    sc('planetarium_view', "character_show { target: 'Sun' }")), { ripristina() {} });
+  const pg = () => S.stato.personaggi.get('Sun');
+  passo(10);
+  assert.equal(S.vesteProfilo(pg()).sagoma, 'gigante_rossa', 'la veste cambia il corpo');
+  assert.equal(S.vesteProfilo(pg()).baffi, 'folti', 'ma il volto resta il suo');
+  assert.ok(S.effetti.some(e => e.tipo === 'sparkles'), 'con un lampo di scintille');
+  // nel planetario il Sole è un disco grande: con la veste porta il corpo nuovo sopra di sé
+  const d = S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [corpo('Sun', 400, 300, 40)], 800, 600)[0];
+  assert.equal(d.corpo, 'gigante_rossa'); assert.equal(d.veste, 'red_giant'); assert.ok(d.centrato, 'sopra all\'astro');
+  passo(1950);
+  assert.ok(S.scalaDi(pg()) > 1.79 && S.scalaDi(pg()) <= 1.8, 'a fine ripresa è gonfia: ' + S.scalaDi(pg()));
+  passo(150);
+  assert.equal(S.vesteProfilo(pg()).sagoma, 'nana_bianca', 'la scena dopo: nana bianca');
+  passo(1850);
+  assert.ok(S.scalaDi(pg()) < 0.56, 'e piccola: ' + S.scalaDi(pg()));
+  passo(150); passo(2000); passo(100);
+  assert.equal(pg().veste, null, 'di nuovo sé stesso, anche nella scena dopo');
+  assert.ok(Math.abs(S.scalaDi(pg()) - 1) < 1e-6);
+  assert.equal(S.vesteProfilo(pg()).sagoma, 'stella');
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  for (const [scena, atteso] of [
+    [sc('planetarium_view', "character_show { target: 'Sun' }", "character_become { target: 'Sun', shape: dragon }"), /shape sconosciuto: dragon/],
+    [sc('planetarium_view', "character_show { target: 'Sun' }", "character_become { target: 'Sun' }"), /shape sconosciuto/],
+    [sc('planetarium_view', "character_become { target: 'Sun', shape: white_dwarf }"), /deve comparire in questa scena/]
+  ]) assert.throws(() => motore.prepara(demo(scena)), atteso, scena);
+});
+prova('nella scala cosmica: Betelgeuse al suo luogo, il buco bianco davanti alla carta, e il Sole fuori quadro non è un occhio gigante', () => {
+  globalThis.cosmDove = id => ({ Earth: { x: 1, y: 0, z: 0 } })[id] || null;
+  globalThis.cosmLuogo = n => ({ betelgeuse: { v: { x: 2, y: 1, z: 0 }, L: 7 }, galactic_center: { v: { x: -3, y: 0, z: 0 }, L: 9 } })[n] || null;
+  globalThis.cosmRaggioUA = id => (id === 'Sun' ? 0.00465 : 0);
+  const cam = { W: 1000, H: 700, s: 100, p: v => ({ x: 500 + v.x * 100, y: 350 - v.y * 100 }) };
+  scena({ Star7: {}, sgr_a: {}, white_hole: {} });
+  const d = S.disegnaCosmo(telaFinta().ctx, cam, { su: 40, giu: 60, lati: 12 });
+  const di = id => d.find(x => x.id === id);
+  assert.ok(di('Star7').astro.x === 700 && di('Star7').astro.y === 250, 'Betelgeuse al suo luogo');
+  assert.equal(di('Star7').corpo, 'gigante_rossa');
+  assert.ok(di('sgr_a').astro.x === 200, 'Sagittario A* al centro della Galassia');
+  assert.ok(di('white_hole').idea && di('white_hole').centrato && !di('white_hole').fuori, 'il buco bianco galleggia, senza filo e senza freccia');
+  // il Sole fuori dal quadro, con un disco vero di migliaia di pixel: sul bordo, col corpo, non con un volto gigante
+  scena({ Sun: {} });
+  const vicino = { W: 1000, H: 700, s: 1e6, p: v => ({ x: 500 + (v.x - 0.003) * 1e6, y: 350 - v.y * 1e6 }) };
+  const sole = S.disegnaCosmo(telaFinta().ctx, vicino, { su: 40, giu: 60, lati: 12 })[0];
+  assert.ok(sole.fuori && sole.corpo === 'stella' && sole.R < 80, 'il Sole sul bordo, col suo corpo: R ' + sole.R);
+  delete globalThis.cosmDove; delete globalThis.cosmLuogo; delete globalThis.cosmRaggioUA;
+  S.sgombra();
+  const cosmo = "cosmic_scale { from: 'planets', to: 'milky_way' }";
+  for (const [scena, atteso] of [
+    [sc('solar_system_3d', "character_show { target: 'white_hole' }"), /scala cosmica/],
+    [sc('solar_system_3d', cosmo, "character_show { target: 'white_hole' }", "character_move { target: 'white_hole', to: 'sgr_a' }"), /non ha un posto sulla carta/],
+    [sc('solar_system_3d', cosmo, "character_show { target: 'sgr_a' }", "character_move { target: 'sgr_a', to: 'Buco bianco' }"), /non ha un posto sulla carta/]
+  ]) assert.throws(() => motore.prepara(demo(scena)), atteso, scena);
+  // Betelgeuse parla anche dal cielo di casa, e nella carta può andare al Granchio
+  motore.prepara(demo(sc('planetarium_view', "character_show { target: 'Betelgeuse' }")));
+  motore.prepara(demo(sc('solar_system_3d', cosmo, "character_show { target: 'Star7' }", "character_move { target: 'Star7', to: 'crab_nebula' }",
+    "character_show { target: 'sgr_a', look: 'white_hole' }", "character_show { target: 'white_hole' }")));
+});
+prova('lo Studio: «diventa», i comandi a parole e il modello dei buchi', () => {
+  const p = St.daModello('buchi');
+  const testo = St.copione(p);
+  assert.match(testo, /character_become \{ target: 'Sun', shape: black_hole/);
+  assert.match(testo, /character_become \{ target: 'Sun', shape: self/);
+  motore.prepara(testo);
+  const capisci = frase => St.capisci(frase, p).ops.filter(o => o.op === 'azione').map(o => o.azione);
+  let a = capisci('il Sole si gonfia e diventa una gigante rossa');
+  assert.ok(a.some(x => x.tipo === 'diventa' && x.forma === 'red_giant' && x.chi === 'Sun'), 'gigante rossa');
+  assert.ok(!a.some(x => x.tipo === 'scala'), 'la veste porta la sua misura: niente «cambia misura»');
+  a = capisci('the Sun becomes a white dwarf');
+  assert.ok(a.some(x => x.tipo === 'diventa' && x.forma === 'white_dwarf'), 'in inglese');
+  a = capisci('il Sole torna com\'era');
+  assert.ok(a.some(x => x.forma === 'self') && !a.some(x => x.tipo === 'torna'), 'com\'era non è un ritorno sull\'orbita');
+});
+
 prova('lo Studio nell\'universo: la camera si divide fra i momenti senza salti, segue chi viaggia, e i personaggi dell\'universo stanno solo lì', () => {
   const p = St.daModello('universo');
   const prep = motore.prepara(St.copione(p));

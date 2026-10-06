@@ -82,14 +82,16 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 
 | Campo | Cosa | Di serie |
 |---|---|---|
-| `famiglia` | `stella`, `pianeta`, `luna`, `nano`, `asteroide`, `cometa`, `stazione`, `sonda` | dedotta dall'oggetto |
+| `famiglia` | `stella`, `pianeta`, `luna`, `nano`, `asteroide`, `cometa`, `stazione`, `sonda`, `galassia`, `buco` | dedotta dall'oggetto |
 | `nome` | chiave del dizionario del nome | il nome che l'app gli dà già (`corpo.<id>`, `SOL_LUNE`, …) |
 | `pelle` | colore del disco grafico e delle palpebre | il colore dell'app per quell'oggetto |
 | `iride` | colore degli occhi | della famiglia |
 | `sottotitolo` | colore del nome nel sottotitolo (su fondo scuro: va chiaro) | della famiglia |
 | `guance` | colore del rossore | della famiglia |
 | `genere` | `f` o `m`: i tratti di lei o di lui (§Lei e lui) | della famiglia |
-| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble` | della famiglia |
+| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble`, `galassia`, `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco` | della famiglia |
+| `cosmo` | il luogo della scala cosmica in cui vive, e **solo** lì (`idea`: in nessun posto, v414) | — |
+| `luogo` | il suo luogo nella scala cosmica, per chi vive anche altrove (v414: Betelgeuse) | — |
 | `decoro` | il disegno sul corpo di un pianeta: `bande`, `macchia`, `continenti`, `calotta`, `nubi`, `crateri` | — (le lune: crateri) |
 | `baffi`, `barba` | solo lui: `manubrio`, `folti`, `spioventi`; `folta`, `onde`, `pizzetto`, `ispida` | — |
 | `peli` | il colore di baffi, barba e sopracciglia folte | la pelle scurita |
@@ -206,6 +208,12 @@ personaggio ha **il suo corpo**, la `sagoma`:
 | `iss` | il traliccio, otto pannelli, i radiatori, il modulo centrale | sul modulo |
 | `tiangong` | le due ali e il laboratorio a T | sul modulo |
 | `hubble` | il tubo argentato col coperchio aperto, i due pannelli | sul tubo |
+| `galassia` | i bracci a spirale punteggiati di stelle (v412) | sul nucleo |
+| `gigante_rossa` | una stella che ribolle: il contorno che ondeggia, le celle chiare e scure, il velo di polvere attorno (v414) | sul corpo |
+| `nana_bianca` | il disco bianco che splende azzurro, con le quattro punte di luce (v414) | sul disco |
+| `supernova` | la nube azzurra coi filamenti rossi del Granchio, le onde d'urto, la stella di fuoco a punte e i due fasci della pulsar (v414) | sul cuore |
+| `buco_nero` | l'ombra viola quasi nera, l'anello di luce, il disco di gas che gira (metà dietro, metà davanti come gli anelli di Saturno, più chiaro dal lato che viene verso di noi) e la luce piegata sopra all'ombra (v414) | sull'ombra |
+| `buco_bianco` | il disco bianco col contorno **a tratteggio** (è un'idea), raggi e onde che corrono fuori (v414) | sul disco |
 
 `STOR_CORPI` dice per ognuna dove sta il volto (`storVoltoNelCorpo`) e
 quanto il corpo esce dal suo raggio (`ingombro`: i pannelli, gli anelli, la
@@ -368,6 +376,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_return` (solo 3D) | `target`, `path?` |
 | `character_animate` | `target`, `animation` (`jump`, `bounce`, `shake`, `nod`, `spin`, `pulse`, `dance`, `wobble`), `times?` (1–20), `strength?` (0,2–3) |
 | `character_scale` | `target`, `scale` (0,2–6) |
+| `character_become` (v414) | `target`, `shape` (`red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`) |
 | `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20) |
 
 `size`: `auto` (di serie) nel planetario mette il volto sull'astro se c'è
@@ -403,6 +412,49 @@ Il registro si estende con `AstroDemo.registra` (`registraComandi`): il
 motore non sa niente dei personaggi. L'editor offre gli snippet
 `character_*` (pagina Demo → Dettagli avanzati).
 
+## La vita delle stelle (v414)
+
+Giganti rosse, supernove, nane bianche, buchi neri e bianchi. Cinque sagome
+nuove (§I corpi), la famiglia `buco` (la pelle è un viola quasi nero, non
+nero: i tratti d'inchiostro hanno l'alone color panna e così si leggono) e
+cinque personaggi:
+
+| Personaggio | Chi è | Dove sta |
+|---|---|---|
+| `Star7` (`Betelgeuse`) | la supergigante rossa nella spalla di Orione: lei, una vecchia diva | nel planetario sulla stella vera (è lo slot `Star7` di `SKY_STELLE`); nella scala cosmica al suo `luogo`, `betelgeuse`, a 548 anni luce |
+| `supernova` | la supernova del 1054, oggi la nebulosa del Granchio con la sua pulsar: lei | solo nella scala cosmica, a `crab_nebula` (6500 anni luce) |
+| `sirius_b` | Sirio B, la nana bianca, il «fratellino» di Sirio: lui | solo nella scala cosmica, con Sirio |
+| `sgr_a` | Sagittario A*, il buco nero al centro della Via Lattea: lui, saggio, coi baffi spioventi | solo nella scala cosmica, a `galactic_center` |
+| `white_hole` | il buco bianco: lui, allegro | da nessuna parte (`cosmo: 'idea'`) |
+
+I due luoghi nuovi stanno in `COSM_LUOGHI_STORIE` (`scala-cosmica.js`), senza
+un paletto disegnato sulla carta: un segno in più affollerebbe il quadro di
+chi non sta guardando una storia.
+
+**Il buco bianco non sta sulla carta.** Nessuno ne ha mai visto uno: esiste
+nelle equazioni di Einstein. Una storia che lo mettesse in un punto della
+carta vera direbbe una cosa falsa, quindi galleggia davanti alla carta, a
+destra in alto, senza filo e senza freccia, e il suo corpo è disegnato a
+tratteggio. Non viaggia e non si raggiunge (`demo.err.ideaFerma`); si può
+guardare, e gli effetti lo trovano.
+
+**Diventare un'altra cosa** (`character_become`, `STOR_VESTI`). Un
+personaggio prende per un po' un altro corpo, col suo volto: il Sole coi suoi
+baffi diventa una gigante rossa (gonfia fino a 1,8 volte), poi una nana
+bianca (0,55). La veste arriva con le scintille e la «molla» del volto, e la
+misura nuova ci arriva per tutta la ripresa (`shot_from`/`shot_to`). Resta
+come un viaggio, anche nelle scene dopo, finché il personaggio è in scena o
+finché `shape: self` non lo rimette com'era. Nel planetario e nella scala
+cosmica un astro con la veste porta il corpo nuovo sopra di sé (non è più
+l'astro che l'app ha disegnato); nella 3D il corpo si disegna dove l'app ha
+messo l'astro, cresciuto o rimpicciolito.
+
+**Il Sole fuori dal quadro** (v414). Appena partiti dalla Terra, nella scala
+cosmica, il Sole è fuori dallo schermo ma largo migliaia di pixel: fino alla
+v413 il suo volto andava sul bordo alla misura del disco vero, un occhio
+gigante (succedeva anche nella «macchina del tempo»). Adesso chi è fuori dal
+quadro porta sempre il suo corpo, con la freccia.
+
 ## Gli episodi
 
 - **«La Luna ha perso un pezzo?»** (`storia_luna`, 85 s, otto scene). Roma,
@@ -431,6 +483,26 @@ motore non sa niente dei personaggi. L'editor offre gli snippet
   alla Terra e l'atterraggio, e il congedo sotto la stessa Luna: «Il cielo è
   una vera macchina del tempo!». Senza audio registrato: parla con la voce
   di sintesi.
+- **«Che fine fanno le stelle?»** (`storia_stelle`, 278 s, ventiquattro
+  scene, v414). Roma, 13 dicembre 2026 alle 22: Betelgeuse è alta 41° a
+  sud-est, la Luna è tramontata. Dalla spalla di Orione Betelgeuse chiama;
+  il Sole ha quattro miliardi e mezzo di anni e si chiede che fine farà, e
+  nella scala cosmica (con `center: sun`, così ogni luogo cade nel quadro) va a
+  chiederlo: a Betelgeuse (supergigante rossa, «al posto del Sole arriverei
+  oltre l'orbita di Marte», l'offuscamento del 2019-2020, la supernova entro
+  centomila anni), alla supernova del 1054 (vista di giorno per ventitré
+  giorni; la stella di neutroni grande come una città, trenta giri al
+  secondo), a Sirio B (per esplodere serve una stella otto volte più pesante
+  del Sole; una nana bianca pesa come il Sole ed è grande come la Terra, un
+  cucchiaino pesa come due elefanti). Il Sole prova addosso il suo futuro —
+  gigante rossa che inghiotte Mercurio e Venere, l'anello della nebulosa
+  planetaria, la nana bianca — e torna sé stesso. Al centro della Galassia,
+  Sagittario A*: quattro milioni di Soli, fotografato nel 2022, e «non sono un
+  aspirapolvere» (un buco nero pesante come il Sole al suo posto non
+  cambierebbe l'orbita della Terra). Poi il buco bianco, che ammette di
+  essere un'idea. Il ritorno, l'atterraggio, e Betelgeuse sotto Orione: il
+  ferro nel sangue e il calcio nelle ossa sono nati nelle stelle, «siamo
+  tutti fatti di polvere di stelle». Voce di sintesi.
 
 ## Il corpo nello spazio (v409)
 
@@ -519,6 +591,13 @@ volto o un bottone acceso/spento (`aria-pressed`), non aprendo un menu:
   fondo alla scena, **Scrivi a parole** (Invio applica a quella scena);
 - **4 · Il controllo**: chiuso in una riga («tutto a posto» o «3 consigli
   per migliorarla»);
+- **Diventa…** (v414) è un'azione come le altre: gigante rossa, nana bianca,
+  supernova, buco nero o di nuovo com'era; a parole, «il Sole diventa una
+  gigante rossa», «il Sole torna com'era» (la veste vince sulle parole del
+  viaggio e della misura, che ne hanno in comune: «si gonfia», «torna»). Il
+  modello **«Che cos'è un buco nero?»** (`buchi`): il Sole va a conoscere
+  Sagittario A* e prova a diventare un buco nero («sei troppo leggero»), poi
+  arriva il buco bianco, che è soltanto un'idea;
 - **L'universo** (v412) è il quinto ambiente: la scena dice da quale tappa a
   quale va la camera («La camera va da… a…»), e il viaggio si divide fra i
   momenti con una curva morbida, così più battute di fila sono un volo solo
@@ -627,6 +706,16 @@ corpo sull'astro e accanto solo quando lì non c'entra, lei e lui
 come apertura fra le palpebre: bordi in ordine e dentro all'ellisse per
 ogni espressione, la mezzaluna del sorriso, la palpebra inclinata della
 rabbia e della tristezza, la riga ad arco della risata.
+Dalla v414 anche: i personaggi nuovi col loro corpo, nome e posto (Betelgeuse
+è `Star7`), ogni sagoma nuova disegnata a più istanti, `character_become`
+col motore vero (la veste, la misura che arriva a 1,8 e a 0,55, il ritorno
+con `self` che vale anche nella scena dopo), Betelgeuse al suo luogo nella
+carta, il buco bianco che galleggia senza filo né freccia e non viaggia, il
+Sole fuori quadro che non è un occhio gigante, e nello Studio «diventa», le
+parole («si gonfia e diventa una gigante rossa» non è anche un «cambia
+misura», «torna com'era» non è un ritorno sull'orbita) e il modello `buchi`.
+`scripts/giro-storia.js` (`STORIA=storia_stelle`) fa girare «Che fine fanno le stelle?»
+intera in un Chromium, con una schermata a metà di ogni scena.
 La seconda, in un Chromium senza rete: la sezione della pagina Demo e
 l'anteprima, il volto sulla Luna disegnata (stessa proiezione), l'ampiezza di
 un WAV vero nel grafo Web Audio, i confini di una sintesi finta, il ritmo del
@@ -646,6 +735,9 @@ demo di prima non abbiano volti.
   demo avviata da un link senza tocchi la bocca usa le altre due strade.
 - I volti non si disegnano nella Didattica e nella mappa del cono d'ombra, né
   sul velo del volo fra le viste. Nella scala cosmica sì (v412).
+- Il buco bianco non ha un posto: non viaggia, non si raggiunge, e la sua
+  misura non dice niente (è un'idea). Le vesti non sono un'evoluzione
+  stellare calcolata: sono un costume, alla misura che la storia sceglie.
 - Nella scala cosmica i personaggi non cambiano l'istante della carta: le
   galassie non si muovono e le Voyager stanno al posto di oggi. L'incontro di
   Andromeda con la Via Lattea, fra miliardi di anni, lo racconta un viaggio

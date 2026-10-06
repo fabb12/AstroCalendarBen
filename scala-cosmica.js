@@ -2858,7 +2858,18 @@ function cosmDirezioneFuori() {
   const n = Math.hypot(v.x, v.y, v.z) || 1;
   return cosmVettore(v.x / n, v.y / n, v.z / n);
 }
+/* Luoghi delle storie che sulla carta non hanno un paletto disegnato (v414):
+ * Betelgeuse, la supergigante rossa nella spalla di Orione (548 anni luce,
+ * Joyce e altri 2020), e la nebulosa del Granchio, quello che resta della
+ * supernova del 1054 (circa 6500 anni luce). Un paletto in più fra i segni
+ * della carta affollerebbe il quadro di chi non sta guardando una storia. */
+const COSM_LUOGHI_STORIE = {
+  betelgeuse: cosmDaRaDec(88.793, 7.407, 548 * COSM_AL),
+  crab_nebula: cosmDaRaDec(83.633, 22.015, 6500 * COSM_AL)
+};
 function cosmLuogo(nome) {
+  const ls = COSM_LUOGHI_STORIE[nome];
+  if (ls) return { id: nome, v: ls, L: Math.log10(Math.max(Math.hypot(ls.x, ls.y, ls.z) * 1.7, 6 * COSM_AL)) };
   const sg = COSM_LUOGHI_SEGNI[nome] && COSM_SEGNI.find(x => x.id === COSM_LUOGHI_SEGNI[nome]);
   if (sg) {
     const d = Math.hypot(sg.v.x, sg.v.y, sg.v.z);
@@ -2876,7 +2887,7 @@ function cosmLuogo(nome) {
   return { id: nome, v, L: Math.log10(s.vista) };
 }
 function cosmLuoghi() {
-  return Object.keys(COSM_LUOGHI_SEGNI).concat(COSM_STRUTTURE.map(s => s.demo));
+  return Object.keys(COSM_LUOGHI_SEGNI).concat(Object.keys(COSM_LUOGHI_STORIE), COSM_STRUTTURE.map(s => s.demo));
 }
 // Dove sta un corpo del Sistema Solare sulla carta (coordinate galattiche,
 // in UA): i pianeti, la Luna, le Voyager al loro posto di oggi; una luna di

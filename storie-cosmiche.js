@@ -202,7 +202,12 @@
     // Le galassie (v412): vivono soltanto nella scala cosmica, al loro posto
     // sulla carta (`cosmo`, il luogo di scala-cosmica.js)
     galassia: { pelle: '#fbefd0', iride: '#7c3aed', sottotitolo: '#e9d5ff', guance: '#f9a8d4', genere: 'f', sagoma: 'galassia',
-      braccia: '#a5b4fc', scala: 0.8, voce: { ritmo: '-10%', tono: '-6Hz' }, espressione: 'happy', personalita: 'galassia' }
+      braccia: '#a5b4fc', scala: 0.8, voce: { ritmo: '-10%', tono: '-6Hz' }, espressione: 'happy', personalita: 'galassia' },
+    // I buchi (v414): il buco nero, col disco di gas che gli gira attorno, e
+    // il suo contrario. La pelle è un viola quasi nero e non nero puro: i
+    // tratti d'inchiostro hanno l'alone color panna, e così si leggono.
+    buco:     { pelle: '#2a1c4a', iride: '#f97316', sottotitolo: '#fdba74', guance: '#fb7185', genere: 'm', sagoma: 'buco_nero',
+      disco: '#fb923c', scala: 0.8, voce: { ritmo: '-14%', tono: '-18Hz' }, espressione: 'thinking', personalita: 'buco' }
   };
 
   /* I personaggi con un carattere loro. Ogni campo è facoltativo e vince su
@@ -218,7 +223,12 @@
    *   genere        'f' o 'm': i tratti di lei o di lui
    *   sagoma        il corpo quando l'astro vero è troppo piccolo (§6-quater):
    *                 stella, pianeta, luna, anelli, asteroide, cometa,
-   *                 voyager, iss, tiangong, hubble
+   *                 voyager, iss, tiangong, hubble, galassia, gigante_rossa,
+   *                 nana_bianca, supernova, buco_nero, buco_bianco
+   *   cosmo         il luogo della scala cosmica in cui vive, e solo lì
+   *                 (`idea`: in nessun posto della carta, v414)
+   *   luogo         il suo luogo nella scala cosmica, per chi vive anche
+   *                 altrove (Betelgeuse, che è una stella del planetario)
    *   decoro        il disegno sul corpo di un pianeta: bande, macchia,
    *                 continenti, calotta, nubi, crateri
    *   baffi         'manubrio', 'folti', 'spioventi' (solo lui)
@@ -294,9 +304,46 @@
       voce: { ritmo: '4%', tono: '-4Hz' }, espressione: 'excited', personalita: 'sirius' },
     alpha_centauri: { famiglia: 'stella', genere: 'f', nome: 'storie.nome.alpha_centauri', cosmo: 'alpha_centauri', alias: ['Alfa Centauri', 'Alpha Centauri'],
       pelle: '#fef3c7', raggi: '#fbbf24', iride: '#b45309', sottotitolo: '#fde68a', labbra: '#e11d48',
-      voce: { ritmo: '2%', tono: '10Hz' }, espressione: 'happy', personalita: 'alpha_centauri' }
+      voce: { ritmo: '2%', tono: '10Hz' }, espressione: 'happy', personalita: 'alpha_centauri' },
+    /* La vita e la morte delle stelle (v414). Betelgeuse è anche la settima
+     * stella del planetario (`SKY_STELLE` di app.js, lo slot `Star7`): parla
+     * dalla spalla di Orione nel cielo di casa e, nella scala cosmica, dal suo
+     * posto vero a 548 anni luce (`luogo`, che a differenza di `cosmo` non la
+     * chiude nella carta). Gli altri vivono solo lì: la supernova del 1054,
+     * che oggi è la nebulosa del Granchio (`crab_nebula`, 6500 anni luce),
+     * Sirio B, la nana bianca accanto a Sirio, e Sagittario A*, il buco nero
+     * al centro della Galassia. Il buco bianco non ha un posto (`cosmo:
+     * 'idea'`): nessuno ne ha mai visto uno, e la storia non può metterlo su
+     * una carta vera; galleggia davanti alla carta, disegnato a tratteggio. */
+    Star7: { famiglia: 'stella', genere: 'f', sagoma: 'gigante_rossa', nome: 'storie.nome.betelgeuse', luogo: 'betelgeuse', alias: ['Betelgeuse'],
+      pelle: '#f97a5c', raggi: '#dc3b26', iride: '#7f1d1d', sottotitolo: '#fca5a5', guance: '#fb7185', labbra: '#9f1239', trucco: '#a855f7',
+      voce: { ritmo: '-8%', tono: '-2Hz' }, espressione: 'happy', personalita: 'betelgeuse' },
+    supernova: { famiglia: 'stella', genere: 'f', sagoma: 'supernova', nome: 'storie.nome.supernova', cosmo: 'crab_nebula',
+      alias: ['Supernova', 'SN 1054', 'Granchio', 'Crab'], pelle: '#fef3c7', raggi: '#f97316', iride: '#0369a1', sottotitolo: '#fdba74',
+      labbra: '#e11d48', voce: { ritmo: '10%', tono: '8Hz' }, espressione: 'excited', personalita: 'supernova' },
+    sirius_b: { famiglia: 'stella', genere: 'm', sagoma: 'nana_bianca', nome: 'storie.nome.sirius_b', cosmo: 'sirius', alias: ['Sirio B', 'Sirius B'],
+      pelle: '#f1f5ff', raggi: '#93c5fd', iride: '#1e40af', sottotitolo: '#dbeafe', guance: '#c7d2fe',
+      voce: { ritmo: '8%', tono: '20Hz' }, espressione: 'happy', personalita: 'sirius_b' },
+    sgr_a: { famiglia: 'buco', genere: 'm', nome: 'storie.nome.sgr_a', cosmo: 'galactic_center', alias: ['Sagittario A*', 'Sagittarius A*', 'Sgr A*'],
+      baffi: 'spioventi', peli: '#e9d5ff', personalita: 'sgr_a' },
+    white_hole: { famiglia: 'buco', genere: 'm', sagoma: 'buco_bianco', nome: 'storie.nome.white_hole', cosmo: 'idea', alias: ['Buco bianco', 'White hole'],
+      pelle: '#f8fafc', iride: '#0891b2', sottotitolo: '#a5f3fc', guance: '#a5f3fc',
+      voce: { ritmo: '12%', tono: '16Hz' }, espressione: 'excited', personalita: 'white_hole' }
   };
-  const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia'];
+  const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
+    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco'];
+  /* Le vesti (v414, `character_become`): un personaggio diventa per un po'
+   * un'altra cosa, col suo volto. Il Sole, fra cinque miliardi di anni, si
+   * gonfierà in una gigante rossa e poi resterà una nana bianca: la storia
+   * glielo fa provare addosso. `k` è la misura a cui arriva, rispetto alla
+   * sua; il resto vince sul profilo come una riga di `STOR_PERSONAGGI`. */
+  const STOR_VESTI = {
+    red_giant:   { sagoma: 'gigante_rossa', pelle: '#f97a5c', raggi: '#dc3b26', k: 1.8 },
+    white_dwarf: { sagoma: 'nana_bianca', pelle: '#f1f5ff', raggi: '#93c5fd', k: 0.55 },
+    supernova:   { sagoma: 'supernova', pelle: '#fef3c7', raggi: '#f97316', k: 1.5 },
+    black_hole:  { sagoma: 'buco_nero', pelle: '#2a1c4a', disco: '#fb923c', k: 1 },
+    self:        null
+  };
   // Le sagome che non sono un disco: nella vista 3D l'app le disegna come un
   // segno (la crocetta della sonda, il puntino della stazione) e il corpo lo
   // disegna questo modulo, col volto sopra
@@ -877,7 +924,7 @@
       saccade: { x: 0, y: 0 }, prossimaSaccade: stor.orologio + 600 + dado(r) * 1200,
       // Il corpo (§5-bis): il viaggio in corso o finito, le animazioni della
       // scena, la scala chiesta, e quanto è stato mostrato nell'ultimo fotogramma
-      moto: null, animazioni: [], scalaVoluta: null,
+      moto: null, animazioni: [], scalaVoluta: null, veste: null,
       rVero: 0, rMostrato: 0, ultimoPunto3D: null, ultimoDelta: null
     };
   }
@@ -1096,8 +1143,30 @@
   // La scala chiesta con `character_scale`, mentre ci arriva e dopo
   function storScalaDi(pg) {
     const s = pg.scalaVoluta;
-    if (!s) return 1;
-    return mix(s.da, s.a, stor.ridotto ? 1 : liscio(s.u));
+    const k = storVesteK(pg);
+    if (!s) return k;
+    return mix(s.da, s.a, stor.ridotto ? 1 : liscio(s.u)) * k;
+  }
+  /* La veste (`character_become`, v414): quanto è grande adesso rispetto a
+   * sé (la gigante rossa si gonfia per tutta la ripresa, la nana bianca si
+   * rimpicciolisce) e il profilo con cui si disegna. Il volto resta il suo:
+   * gli occhi, i baffi del Sole, la voce. */
+  function storVesteK(pg) {
+    const v = pg.veste;
+    if (!v) return 1;
+    const a = v.forma === 'self' ? 1 : (STOR_VESTI[v.forma] || { k: 1 }).k;
+    return mix(v.kDa, a, stor.ridotto ? 1 : liscio(v.u));
+  }
+  function storVesteProfilo(pg) {
+    const v = pg.veste;
+    if (!v || !STOR_VESTI[v.forma]) return pg.profilo;
+    if (!v.profilo || v.di !== pg.profilo) {
+      const resto = Object.assign({}, STOR_VESTI[v.forma]);
+      delete resto.k;
+      v.profilo = Object.assign({}, pg.profilo, resto);
+      v.di = pg.profilo;
+    }
+    return v.profilo;
   }
 
   /* Dove va un viaggio, nella scena. Un oggetto: accanto a lui, dal lato
@@ -2198,7 +2267,13 @@
     iss:       { volto: [0, 0, 0.62], ingombro: 1.75 },
     tiangong:  { volto: [0, 0.02, 0.6], ingombro: 1.7 },
     hubble:    { volto: [0, 0.06, 0.58], ingombro: 1.35 },
-    galassia:  { volto: [0, 0, 0.72], ingombro: 1.5 }
+    galassia:  { volto: [0, 0, 0.72], ingombro: 1.5 },
+    // v414: le stelle che invecchiano, quelle che esplodono, i buchi
+    gigante_rossa: { volto: [0, 0.02, 0.82], ingombro: 1.4 },
+    nana_bianca:   { volto: [0, 0, 0.86], ingombro: 1.45 },
+    supernova:     { volto: [0, 0, 0.7], ingombro: 1.85 },
+    buco_nero:     { volto: [0, -0.04, 0.8], ingombro: 1.75 },
+    buco_bianco:   { volto: [0, 0, 0.8], ingombro: 1.6 }
   };
   // Dove sta il volto su un corpo di raggio R centrato in (x, y)
   function storVoltoNelCorpo(sagoma, x, y, R) {
@@ -2630,6 +2705,200 @@
           ctx.fillStyle = g; ctx.fillRect(x - R, y - R, R * 2, R * 2);
         }
       });
+    } else if (sagoma === 'gigante_rossa') {
+      // La supergigante rossa ribolle: celle di gas grandi come l'orbita
+      // della Terra salgono e scendono, il contorno ondeggia piano, e
+      // attorno c'è il velo di polvere che ha già soffiato via (quello che
+      // nel 2019-2020 la fece scurire, e tutti pensarono che stesse per
+      // esplodere)
+      const raggi = profilo.raggi || '#dc2626';
+      const velo = ctx.createRadialGradient(x, y, R * 0.85, x, y, R * 1.7);
+      velo.addColorStop(0, rgba(schiarisci(raggi, 0.15), 0.45)); velo.addColorStop(1, rgba(raggi, 0));
+      ctx.fillStyle = velo; ctx.beginPath(); ctx.arc(x, y, R * 1.7, 0, Math.PI * 2); ctx.fill();
+      const st = { s: seme(profilo.id || 'gigante') || 1 };
+      ctx.fillStyle = rgba(schiarisci(raggi, 0.25), 0.4);
+      for (let k = 0; k < 7; k++) {
+        const a = k / 7 * Math.PI * 2 + dado(st) * 0.8, d = R * (1.28 + 0.1 * Math.sin(t / 2300 + k * 1.9));
+        ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, R * (0.09 + dado(st) * 0.08), 0, Math.PI * 2); ctx.fill();
+      }
+      const bordo = () => {
+        const n = 40, punti = [];
+        for (let i = 0; i < n; i++) {
+          const a = i / n * Math.PI * 2;
+          const r = R * (1 + 0.045 * Math.sin(3 * a + t / 1300) + 0.03 * Math.sin(5 * a - t / 900 + 1.3) + 0.018 * Math.sin(8 * a + t / 700));
+          punti.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
+        }
+        const mezzo = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+        ctx.beginPath(); ctx.moveTo(...mezzo(punti[n - 1], punti[0]));
+        for (let i = 0; i < n; i++) ctx.quadraticCurveTo(...punti[i], ...mezzo(punti[i], punti[(i + 1) % n]));
+        ctx.closePath();
+      };
+      parte(ctx, bordo, profilo.pelle, R, {
+        luce: 0.12, buio: 0.3,
+        dentro: () => {
+          // le celle: chiazze chiare (il gas caldo che sale) e scure (quello
+          // freddo che scende), che respirano piano; ai bordi, lontano dagli occhi
+          for (const [dx, dy, r, chiara] of [[-0.62, -0.5, 0.26, 1], [0.66, -0.42, 0.22, 0], [-0.72, 0.36, 0.2, 0], [0.7, 0.44, 0.25, 1],
+            [0, -0.86, 0.2, 1], [-0.2, 0.86, 0.18, 1], [0.32, 0.8, 0.14, 0], [-0.9, -0.05, 0.14, 1], [0.9, 0, 0.13, 0]]) {
+            const q = r * R * (1 + 0.12 * Math.sin(t / 1100 + dx * 7 + dy * 5));
+            ctx.fillStyle = chiara ? rgba('#fdba74', 0.5) : rgba(scurisci(profilo.pelle, 0.22), 0.45);
+            ctx.beginPath(); ctx.ellipse(x + dx * R, y + dy * R, q, q * 0.82, dx + dy, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      });
+    } else if (sagoma === 'nana_bianca') {
+      // La nana bianca: piccola, caldissima, densa. Un disco bianco che
+      // splende azzurro, con le quattro punte di luce di una stella vista al
+      // telescopio che pulsano appena
+      const raggi = profilo.raggi || '#93c5fd';
+      const alone = ctx.createRadialGradient(x, y, R * 0.7, x, y, R * 1.6);
+      alone.addColorStop(0, rgba(raggi, 0.7)); alone.addColorStop(1, rgba(raggi, 0));
+      ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, R * 1.6, 0, Math.PI * 2); ctx.fill();
+      const lampo = 1 + 0.05 * Math.sin(t / 380);
+      parte(ctx, () => stella(ctx, x, y, R * 1.42 * lampo, R * 0.2, 4, -Math.PI / 2), '#f8fbff', R, { buio: 0.12, pennino: 0.03 });
+      parte(ctx, () => stella(ctx, x, y, R * 1.12, R * 0.3, 4, -Math.PI / 4), schiarisci(raggi, 0.5), R, { buio: 0.12, pennino: 0.025 });
+      disegnaDisco(ctx, x, y, R * 0.97, profilo.pelle, () => {
+        ctx.strokeStyle = rgba(raggi, 0.6); ctx.lineWidth = R * 0.12;
+        ctx.beginPath(); ctx.arc(x, y, R * 0.92, 0, Math.PI * 2); ctx.stroke();
+      });
+    } else if (sagoma === 'supernova') {
+      // La supernova: la stella che è esplosa. Dietro, la nuvola che si
+      // allarga (la nebulosa del Granchio: un bagliore azzurro con i
+      // filamenti rossi e arancioni), le onde d'urto che corrono via, la
+      // stella di fuoco a punte; in mezzo il cuore rimasto, la stella di
+      // neutroni, coi due fasci di luce che girano come un faro (la pulsar
+      // del Granchio gira trenta volte al secondo: qui molto più piano)
+      const raggi = profilo.raggi || '#f97316';
+      const st = { s: seme(profilo.id || 'supernova') || 1 };
+      const nube = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 1.7);
+      nube.addColorStop(0, rgba('#93c5fd', 0.55)); nube.addColorStop(0.7, rgba('#a5b4fc', 0.3)); nube.addColorStop(1, rgba('#a5b4fc', 0));
+      ctx.fillStyle = nube;
+      ctx.beginPath();
+      for (let i = 0; i <= 18; i++) {
+        const a = i / 18 * Math.PI * 2, r = R * (1.45 + 0.2 * Math.sin(a * 3 + 1.1) + 0.12 * Math.sin(a * 5 + 2.3));
+        if (i) ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.85); else ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.85);
+      }
+      ctx.closePath(); ctx.fill();
+      // i filamenti: tratti mossi dal centro verso fuori
+      for (let k = 0; k < 16; k++) {
+        const a = k / 16 * Math.PI * 2 + dado(st) * 0.3, r0 = R * (0.95 + dado(st) * 0.2), r1 = R * (1.4 + dado(st) * 0.3);
+        const piega = (dado(st) - 0.5) * 0.5;
+        const c = k % 3 ? raggi : '#ef4444';
+        ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(1.6, R * 0.07);
+        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0 * 0.85);
+        ctx.quadraticCurveTo(x + Math.cos(a + piega) * (r0 + r1) / 2, y + Math.sin(a + piega) * (r0 + r1) / 2 * 0.85, x + Math.cos(a) * r1, y + Math.sin(a) * r1 * 0.85);
+        ctx.stroke();
+        ctx.strokeStyle = c; ctx.lineWidth = Math.max(0.9, R * 0.04); ctx.stroke();
+      }
+      // le onde d'urto che corrono via, una dopo l'altra
+      for (let k = 0; k < 3; k++) {
+        const f = (t / 2600 + k / 3) % 1;
+        ctx.strokeStyle = rgba(schiarisci(raggi, 0.3), (1 - f) * 0.7); ctx.lineWidth = Math.max(0.8, R * 0.07 * (1 - f));
+        ctx.beginPath(); ctx.ellipse(x, y, R * (0.95 + 0.85 * f), R * (0.95 + 0.85 * f) * 0.85, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      // i due fasci della pulsar
+      const faro = t / 1400;
+      for (const lato of [0, Math.PI]) {
+        const a = faro + lato, ux = Math.cos(a), uy = Math.sin(a), nx = -uy, ny = ux, L = R * 1.8;
+        const g = ctx.createLinearGradient(x, y, x + ux * L, y + uy * L);
+        g.addColorStop(0, 'rgba(255,255,255,0.85)'); g.addColorStop(1, 'rgba(186,230,253,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(x + nx * R * 0.06, y + ny * R * 0.06);
+        ctx.lineTo(x + ux * L + nx * R * 0.22, y + uy * L + ny * R * 0.22);
+        ctx.lineTo(x + ux * L - nx * R * 0.22, y + uy * L - ny * R * 0.22);
+        ctx.lineTo(x - nx * R * 0.06, y - ny * R * 0.06); ctx.closePath(); ctx.fill();
+      }
+      // la stella di fuoco a punte, che pulsa
+      const pulsa = 1 + 0.06 * Math.sin(t / 260);
+      parte(ctx, () => stella(ctx, x, y, R * 1.18 * pulsa, R * 0.86, 12, t / 9000), '#fde047', R, { buio: 0.15, pennino: 0.03 });
+      parte(ctx, () => stella(ctx, x, y, R * 1.0 * pulsa, R * 0.8, 9, -t / 7000), schiarisci(raggi, 0.15), R, { buio: 0.12, pennino: 0.025 });
+      disegnaDisco(ctx, x, y, R * 0.8, profilo.pelle);
+    } else if (sagoma === 'buco_nero') {
+      // Il buco nero: un'ombra tonda da cui la luce non esce, l'anello di luce
+      // che le gira attorno (quello delle fotografie del 2019 e del 2022), il
+      // disco di gas caldo che ci gira dentro come l'acqua nel lavandino. La
+      // metà di dietro del disco sta sotto all'ombra, quella davanti sopra,
+      // abbastanza in basso da passare sotto alla bocca, come gli anelli di
+      // Saturno; e la parte lontana del disco si vede piegata sopra
+      // all'ombra, perché la gravità piega la luce. Il lato che viene verso di
+      // noi è più chiaro (si vede davvero così).
+      const disco = profilo.disco || '#fb923c';
+      const alone = ctx.createRadialGradient(x, y, R * 0.95, x, y, R * 1.8);
+      alone.addColorStop(0, rgba(disco, 0.5)); alone.addColorStop(1, rgba(disco, 0));
+      ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, R * 1.8, 0, Math.PI * 2); ctx.fill();
+      const ax = x, ay = y + R * 0.34, rx = R * 1.7, ry = R * 0.36, giro = -0.08;
+      const luce = ctx.createLinearGradient(x - rx, 0, x + rx, 0);
+      luce.addColorStop(0, '#fef3c7'); luce.addColorStop(0.4, disco); luce.addColorStop(1, scurisci(disco, 0.3));
+      const metaDisco = (da, a) => {
+        ctx.lineCap = 'butt';
+        ctx.strokeStyle = ALONE; ctx.lineWidth = R * 0.34 + 3;
+        ctx.beginPath(); ctx.ellipse(ax, ay, rx, ry, giro, da, a); ctx.stroke();
+        for (const [w, c] of [[R * 0.34, INCHIOSTRO], [R * 0.27, luce], [R * 0.08, rgba('#fffbeb', 0.85)]]) {
+          ctx.strokeStyle = c; ctx.lineWidth = w;
+          ctx.beginPath(); ctx.ellipse(ax, ay, rx, ry, giro, da, a); ctx.stroke();
+        }
+        // il gas che gira: trattini che scorrono lungo il disco
+        ctx.strokeStyle = rgba(scurisci(disco, 0.35), 0.55); ctx.lineWidth = Math.max(0.8, R * 0.035);
+        ctx.setLineDash([R * 0.22, R * 0.3]); ctx.lineDashOffset = t / 30;
+        ctx.beginPath(); ctx.ellipse(ax, ay, rx * 0.93, ry * 0.86, giro, da, a); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(ax, ay, rx * 1.06, ry * 1.12, giro, da, a); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineCap = 'round';
+      };
+      metaDisco(Math.PI, Math.PI * 2);
+      // la luce piegata sopra all'ombra
+      ctx.strokeStyle = ALONE; ctx.lineWidth = R * 0.2 + 3;
+      ctx.beginPath(); ctx.arc(x, y, R * 1.13, Math.PI * 1.06, Math.PI * 1.94); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = R * 0.2; ctx.stroke();
+      ctx.strokeStyle = luce; ctx.lineWidth = R * 0.14; ctx.stroke();
+      // l'anello di luce, che tremola appena
+      ctx.strokeStyle = rgba('#fde68a', 0.85 + 0.15 * Math.sin(t / 420)); ctx.lineWidth = Math.max(1.4, R * 0.07);
+      ctx.beginPath(); ctx.arc(x, y, R * 1.02, 0, Math.PI * 2); ctx.stroke();
+      // l'ombra: il viola quasi nero della pelle, più buio verso il centro
+      parte(ctx, () => { ctx.beginPath(); ctx.arc(x, y, R * 0.97, 0, Math.PI * 2); }, profilo.pelle, R, {
+        luce: 0.06, buio: 0.35,
+        dentro: () => {
+          const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+          g.addColorStop(0, 'rgba(5, 2, 14, 0.55)'); g.addColorStop(1, 'rgba(5, 2, 14, 0)');
+          ctx.fillStyle = g; ctx.fillRect(x - R, y - R, R * 2, R * 2);
+        }
+      });
+      metaDisco(0, Math.PI);
+    } else if (sagoma === 'buco_bianco') {
+      // Il buco bianco: il buco nero al contrario, da cui le cose possono
+      // solo uscire. Nessuno ne ha mai visto uno: esiste nelle equazioni di
+      // Einstein, e per questo è disegnato **a tratteggio**, come un'idea
+      // a matita. La luce corre fuori, in raggi e in onde che si allargano.
+      const alone = ctx.createRadialGradient(x, y, R * 0.8, x, y, R * 1.65);
+      alone.addColorStop(0, 'rgba(165, 243, 252, 0.6)'); alone.addColorStop(1, 'rgba(165, 243, 252, 0)');
+      ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, R * 1.65, 0, Math.PI * 2); ctx.fill();
+      for (let k = 0; k < 3; k++) {
+        const f = (t / 1800 + k / 3) % 1;
+        ctx.strokeStyle = rgba('#67e8f9', (1 - f) * 0.65); ctx.lineWidth = Math.max(0.8, R * 0.06 * (1 - f));
+        ctx.beginPath(); ctx.arc(x, y, R * (1.02 + 0.55 * f), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.setLineDash([R * 0.14, R * 0.12]); ctx.lineDashOffset = -t / 25;
+      for (let k = 0; k < 12; k++) {
+        const a = k / 12 * Math.PI * 2 + 0.13;
+        const x0 = x + Math.cos(a) * R * 1.05, y0 = y + Math.sin(a) * R * 1.05, x1 = x + Math.cos(a) * R * 1.55, y1 = y + Math.sin(a) * R * 1.55;
+        ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2, R * 0.08);
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = Math.max(1, R * 0.04); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      const forma = () => { ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); };
+      const g = ctx.createRadialGradient(x - R * 0.2, y - R * 0.2, 0, x, y, R);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(0.75, profilo.pelle); g.addColorStop(1, '#cffafe');
+      forma(); ctx.fillStyle = g; ctx.fill();
+      ctx.save(); forma(); ctx.clip();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath(); ctx.ellipse(x - R * 0.5, y - R * 0.52, R * 0.17, R * 0.09, -0.75, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // il contorno a tratteggio, che gira piano
+      ctx.setLineDash([R * 0.2, R * 0.13]); ctx.lineDashOffset = -t / 60;
+      forma(); ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(3, R * 0.12); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.4, R * 0.05); ctx.stroke();
+      ctx.setLineDash([]);
     } else if (sagoma === 'hubble') {
       // i due pannelli lunghi ai lati, il tubo argentato, il coperchio aperto
       for (const lato of [-1, 1]) {
@@ -2769,19 +3038,21 @@
       if (!(Number.isFinite(c.px) && Number.isFinite(c.py))) continue;
       if (c.px < 0 || c.py < 0 || c.px > L || c.py > H) continue;            // fuori schermo
       if (!(c.r >= STOR_ASTRO_MIN_PX)) continue;                             // troppo piccolo per indicarlo
-      const p = pg.profilo;
+      const p = storVesteProfilo(pg);
       const Rdisco = c.r * p.scala;
       // Con un po' di isteresi: durante uno zoom il volto non deve saltare
       // avanti e indietro fra il disco e il disco grafico accanto.
       const soglia = STOR_VOLTO_MIN_PX * (pg.addossoPrima ? 0.88 : 1.1);
+      // Chi ha una veste (`character_become`) non è più l'astro che l'app ha
+      // disegnato: porta il suo corpo nuovo, sopra all'astro
       const addosso = pg.misura !== 'costume' && (pg.misura === 'disk' || (in3d && pg.misura === 'auto') ||
-        (pg.misura !== 'badge' && Rdisco >= soglia));
+        (pg.misura !== 'badge' && Rdisco >= soglia)) && (in3d || !pg.veste);
       pg.addossoPrima = addosso;
       pg.punto = { x: c.px, y: c.py };
       // Nella 3D una sonda, una stazione, un asteroide non hanno un disco su
       // cui mettere il volto (l'app li disegna come un segno): il corpo lo
       // disegna questo modulo, lì dove l'app ha messo l'astro (§6-quater)
-      const corpo3d = in3d && addosso && pg.misura !== 'real' && STOR_SAGOME_FORMA.includes(p.sagoma);
+      const corpo3d = in3d && addosso && pg.misura !== 'real' && (STOR_SAGOME_FORMA.includes(p.sagoma) || !!pg.veste);
       piano.push({ pg, c, addosso, Rdisco, corpo3d });
       if (corpo3d) {
         const Rc = Math.max(c.r, STOR_VOLTO_3D_PX / STOR_CORPI[p.sagoma].volto[2]);
@@ -2794,7 +3065,7 @@
     const m = Object.assign({ su: STOR_MARGINE_PX, giu: STOR_MARGINE_PX, lati: STOR_MARGINE_PX }, margini || {});
     for (const posa of piano) {
       const { pg, c, addosso } = posa;
-      const p = pg.profilo;
+      const p = storVesteProfilo(pg);
       let cx, cy, R, posto = null;
       if (posa.corpo3d) {
         R = Math.max(c.r, STOR_VOLTO_3D_PX / STOR_CORPI[p.sagoma].volto[2]);
@@ -2807,10 +3078,12 @@
          * posto (v411) — l'astro è lui. Solo se lì non c'entra (il bordo
          * dello schermo, un altro personaggio troppo vicino) o se la storia
          * chiede `badge`, va accanto, legato all'astro da un filo. */
-        R = pg.misura === 'costume' && c.costumeR ? c.costumeR : Rbadge;
+        R = pg.misura === 'costume' && c.costumeR ? c.costumeR : pg.veste ? Math.max(Rbadge, c.r) : Rbadge;
         const Ri = R * ingombroDi(p.sagoma);
         const ondeggia = ridotto ? 0 : Math.sin(stor.orologio / 1700 + pg.fase) * 1.2;
-        const fuori = Number.isFinite(c.freccia);
+        // Fuori dal quadro della scala cosmica, o un'idea che non sta sulla
+        // carta (il buco bianco): niente filo verso un astro
+        const fuori = Number.isFinite(c.freccia) || !!c.idea;
         const libero = pg.misura === 'costume' || ((pg.misura === 'auto' || fuori) &&
           c.px - Ri >= m.lati && c.px + Ri <= L - m.lati && c.py - Ri >= m.su && c.py + Ri <= H - m.giu &&
           !presi.some(q => q.id !== pg.id && Math.hypot(q.x - c.px, q.y - c.py) < q.R + Ri + 4));
@@ -2964,6 +3237,7 @@
       // dove sta davvero
       if (Number.isFinite(c.freccia)) disegnaFreccia(ctx, cx + att.dx, cy + att.dy, R * 1.25, c.freccia, p, alfa);
       disegnati.push({ id: pg.id, vista, x: cx, y: cy, R, addosso: !posto || !!posto.in3d, fuori: Number.isFinite(c.freccia),
+        idea: !!c.idea, veste: pg.veste && STOR_VESTI[pg.veste.forma] ? pg.veste.forma : null, scala: att.sx,
         corpo: posto ? p.sagoma : null, centrato: !!(posto && posto.centrato), forma: pg.forma, apertura: pg.apertura, via: pg.via,
         parla: parlante === pg.id && !!(voce && voce.parla), battito, sguardo: Object.assign({}, pg.sguardo),
         espressione: pg.espressione, astro: { x: c.px, y: c.py, r: c.r }, geom });
@@ -3168,7 +3442,7 @@
    * il viaggio scorre invece di stare fermo e poi saltare in fondo. Chi esce
    * dal quadro resta sul bordo, con una freccia verso dove sta davvero. */
   const STOR_LUOGHI_COSMO = ['alpha_centauri', 'sirius', 'orion_nebula', 'galactic_center', 'lmc', 'smc', 'andromeda', 'triangulum',
-    'virgo_cluster', 'great_attractor', 'earth', 'earth_moon', 'inner_planets', 'planets', 'kuiper', 'heliopause', 'oort',
+    'virgo_cluster', 'great_attractor', 'betelgeuse', 'crab_nebula', 'earth', 'earth_moon', 'inner_planets', 'planets', 'kuiper', 'heliopause', 'oort',
     'local_cloud', 'local_bubble', 'orion_arm', 'milky_way', 'local_group', 'virgo', 'laniakea', 'universe'];
   const luogoCosmico = v => typeof v === 'string' && STOR_LUOGHI_COSMO.includes(v);
   const scenaCosmica = scena => !!(scena && Array.isArray(scena.azioni) && scena.azioni.some(a => a.comando === 'cosmic_scale'));
@@ -3219,8 +3493,10 @@
   // le stelle vicine) o il suo corpo (la Terra, la Voyager); chi la carta
   // non conosce sta col Sole, che a queste scale è lo stesso puntino.
   function storCasaCosmo(pg) {
+    if (pg.profilo.cosmo === 'idea') return null;
     const luogo = globale('cosmLuogo'), dove = globale('cosmDove');
-    if (pg.profilo.cosmo && typeof luogo === 'function') { const l = luogo(pg.profilo.cosmo); if (l) return l.v; }
+    const suo = pg.profilo.cosmo || pg.profilo.luogo;
+    if (suo && typeof luogo === 'function') { const l = luogo(suo); if (l) return l.v; }
     if (typeof dove === 'function') { const v = dove(pg.id); if (v) return v; }
     return { x: 0, y: 0, z: 0 };
   }
@@ -3229,6 +3505,7 @@
     if (!verso || verso === 'orbit') return storCasaCosmo(pg);
     if (luogoCosmico(verso)) { const l = globale('cosmLuogo') && globale('cosmLuogo')(verso); if (l) return l.v; }
     const altro = stor.personaggi.get(verso);
+    if (altro && altro.profilo.cosmo === 'idea') return null;
     if (altro) return altro.cosmoV || storCasaCosmo(altro);
     const dove = globale('cosmDove');
     const v = typeof dove === 'function' ? dove(verso) : null;
@@ -3244,6 +3521,14 @@
     const corpi = [];
     // Ogni personaggio al suo posto, o a quello del suo viaggio
     for (const pg of stor.personaggi.values()) {
+      // Il buco bianco non ha un posto sulla carta: nessuno ne ha mai visto
+      // uno. Galleggia davanti alla carta, a destra in alto (e se lì c'è già
+      // qualcuno si sposta, senza il filo: non è legato a niente).
+      if (pg.profilo.cosmo === 'idea') {
+        pg.moto = null; pg.cosmoV = null;
+        corpi.push({ id: pg.id, px: L * 0.72, py: m.su + (H - m.su - m.giu) * 0.34, r: 1, idea: true });
+        continue;
+      }
       const casa = storCasaCosmo(pg);
       let v = casa, scarto = { x: 0, y: 0 };
       const moto = pg.moto;
@@ -3274,7 +3559,11 @@
         freccia = Math.atan2(py - H / 2, px - L / 2);
         px = Math.max(x0, Math.min(x1, px)); py = Math.max(y0, Math.min(y1, py));
       }
-      const r = typeof raggio === 'function' && !moto ? raggio(pg.id) * cam.s : 0;
+      // Chi sta fuori dal quadro porta il suo corpo sul bordo, mai il disco
+      // vero: appena partiti dalla Terra il Sole è fuori dallo schermo ma
+      // largo migliaia di pixel, e il volto sarebbe stato un occhio gigante
+      // appoggiato al bordo (v414)
+      const r = typeof raggio === 'function' && !moto && !Number.isFinite(freccia) ? raggio(pg.id) * cam.s : 0;
       corpi.push({ id: pg.id, px, py, r: Math.max(1, r || 0), freccia });
     }
     // I luoghi guardati o colpiti da un effetto, perché lo sguardo e l'effetto
@@ -3302,6 +3591,7 @@
     personaggioNonInScena: '{nome} deve comparire in questa scena con character_show',
     personaggioVista: 'I personaggi compaiono solo nel planetario e nella vista 3D',
     soloCosmo: '{nome} vive nella scala cosmica: la scena vuole cosmic_scale',
+    ideaFerma: '{nome} non ha un posto sulla carta: non viaggia e non si raggiunge',
     personaggioMisura: 'size vuole auto, disk o badge, oppure real',
     solo3d: '{comando} funziona solo nella vista 3D (solar_system_3d)',
     destinazioneIgnota: 'Non so dove andare: {nome}',
@@ -3451,8 +3741,10 @@
     const altro = storCanonico(v.trim());
     richiedi(storOggettoNoto(altro), 'destinazioneIgnota', { nome: v });
     richiedi(altro !== id, 'versoSeStesso', { nome: v });
+    richiedi(!sonoIdea(altro), 'ideaFerma', { nome: storNome(altro) });
     return altro;
   }
+  const sonoIdea = id => !!(STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo === 'idea');
   // Un'azione del corpo si lega al personaggio quando c'è: il motore crea le
   // azioni nell'ordine in cui sono scritte, e `character_show` può venire dopo.
   function legaPersonaggio(id, fa) {
@@ -3468,6 +3760,7 @@
       verifica(p, scena) {
         campi(p, ['target', 'to', 'side', 'distance', 'path', 'turns']);
         const id = bersaglio(p);
+        richiedi(!sonoIdea(id), 'ideaFerma', { nome: storNome(id) });
         verso(p, id, scena);
         scelta(p.side, 'side', STOR_LATI); scelta(p.path, 'path', STOR_PERCORSI);
         numeroIn(p.distance, 'distance', 0.3, 6); numeroIn(p.turns, 'turns', 0.5, 8);
@@ -3500,6 +3793,39 @@
       },
       crea(p) {
         return COMANDI.character_move.crea({ target: p.target, to: 'orbit', path: p.path || 'arc' });
+      }
+    },
+    // Diventa un'altra cosa, col suo volto (v414): il Sole che si gonfia in
+    // una gigante rossa e poi resta una nana bianca. La veste arriva con un
+    // lampo di scintille e la «molla» del volto; la misura nuova ci arriva per
+    // tutta la ripresa. Resta, come un viaggio, finché il personaggio è in
+    // scena o finché `shape: self` non lo rimette com'era.
+    character_become: {
+      verifica(p, scena) {
+        campi(p, ['target', 'shape']); bersaglio(p);
+        richiedi(p.shape !== undefined, 'valoreIgnoto', { campo: 'shape', nome: '', elenco: Object.keys(STOR_VESTI).join(', ') });
+        scelta(p.shape, 'shape', Object.keys(STOR_VESTI));
+        inScena(p, scena);
+      },
+      crea(p) {
+        const id = storCanonico(p.target);
+        const v = { forma: p.shape, u: 0, kDa: 1 };
+        const lega = legaPersonaggio(id, pg => {
+          v.kDa = storVesteK(pg);
+          pg.veste = v;
+          pg.cambioDa = stor.orologio;
+          if (!stor.ridotto) storEffetto('sparkles', { target: id, durata: 1100 });
+        });
+        lega();
+        return {
+          aggiorna(u) {
+            const pg = lega();
+            if (!pg) return;
+            v.u = stor.ridotto ? 1 : u;
+            // tornato com'era: niente più veste
+            if (v.forma === 'self' && v.u >= 1 && pg.veste === v) pg.veste = null;
+          }
+        };
       }
     },
     character_animate: {
@@ -3854,6 +4180,7 @@
     animazioneAl: storAnimazioneAl, effetto: storEffetto, disegnaEffetto: storDisegnaEffetto,
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce, ritratto: storRitratto,
     voltoNelCorpo: storVoltoNelCorpo, aperturaOcchio: storAperturaOcchio, STOR_SAGOME, STOR_CORPI,
+    STOR_VESTI, vesteProfilo: storVesteProfilo, scalaDi: storScalaDi, disegnaCorpo, disegnaVolto: storDisegnaVolto,
     riempiPagina: storRiempiPagina, storie: storieDisponibili,
     stato: stor,
     get attivi() { return stor.personaggi.size; },

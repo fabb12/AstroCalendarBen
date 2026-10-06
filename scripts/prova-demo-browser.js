@@ -59,8 +59,8 @@ const server = http.createServer((req, res) => {
     assert.deepEqual(builtins.map(d => d.chiave),
       ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss', 'solstizi_equinozi', 'voyager', 'universo',
         // Le Storie cosmiche sono demo predefinite anche loro (storie-cosmiche.js)
-        'storia_luna', 'storia_giganti']);
-    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000]);
+        'storia_luna', 'storia_giganti', 'storia_tempo', 'storia_stelle']);
+    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000, 171000, 278000]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
