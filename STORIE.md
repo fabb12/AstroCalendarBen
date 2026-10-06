@@ -291,12 +291,45 @@ scene solar_system_3d {
 Un pennino indaco scuro (`INCHIOSTRO`, mai nero puro) a spessore variabile —
 sopracciglia e ciglia sono tratti affusolati (`tracciaPennino`), il contorno
 dell'occhio è grosso sopra e sottile sotto —, stesure piatte con un'ombra sola
-a taglio netto e, dentro all'ombra degli adesivi, il **retino** a puntini dei
-fumetti stampati. Sotto ogni tratto un alone color panna (`ALONE`). Il disco
+a taglio netto. Sotto ogni tratto un alone color panna (`ALONE`; attorno
+agli occhi solo il velo leggero `ALONE_TENUE`, che non fa gli occhiali). Fino
+alla v416 dentro all'ombra c'era il retino a puntini dei fumetti stampati:
+accanto agli occhioni faceva rumore, ed è uscito. Il disco
 grafico è un **adesivo** (`disegnaAdesivo`): ombra piatta spostata, bordo
 panna, riflesso a virgola; il filo che lo lega all'astro è tratteggiato e
 scorre. L'anteprima della pagina Demo usa lo stesso adesivo su un cielo
 d'inchiostro.
+
+**Gli «occhioni di luna» (v417).** Su un disegno di riferimento chiesto da chi
+usa l'app — una Luna piena con occhi grandi da cartone — tutti i volti sono
+stati ridisegnati nello stesso stile:
+
+- **gli occhi** sono più grandi (`occhi` di serie `{ r: 0.29, distanza: 0.4,
+  alto: -0.08 }`, la Luna 0,31) e a **mandorla**: le due palpebre scendono e
+  salgono verso gli angoli (`mandorla` in `storGeometria`), così gli angoli
+  sono a punta e non c'è più l'ellisse tagliata che dava un occhio squadrato;
+  da spalancati (la sorpresa) la mandorla si attenua, nel sorriso la
+  palpebra di sotto non si alza agli angoli (resta la mezzaluna). La palpebra
+  di sopra copre sempre un poco la cima dell'iride;
+- **l'iride** quasi riempie l'occhio (0,78 della larghezza, al più 0,86): scura
+  al centro, il suo colore, un anello chiaro al bordo coi fili, e l'ombra
+  della palpebra che la scurisce dall'alto;
+- **i riflessi**: il primo è una **falce di luna** (`falce`), accanto una
+  **stellina a quattro punte** che pulsa piano (`stellina`), sotto un puntino
+  e mezzo. Con le pupille a stella o a cuore la falce torna un tondo;
+- **le ciglia**: la riga della palpebra di sopra è un tratto pieno che
+  s'ingrossa verso fuori e per lei scappa in una **codina** all'insù
+  (`rigaPalpebra`); per lei cinque ciglia arricciate a ventaglio sulla metà
+  esterna, tre piccole sotto, e la piega della palpebra; per lui due corte;
+- **sopracciglia** di lei sottili, alte e arcuate; **naso** di lei a goccia
+  fatto d'ombra; un **neo** sotto all'occhio sinistro di lei; le **guance**
+  hanno sempre le tre lineette sottili in diagonale;
+- **il corpo**: un'ombra a falce dal bordo appena sfumato, i **crateri**
+  piatti senza pennino (l'orlo chiaro, la conca in ombra; sulla Luna tutt'attorno
+  al volto), il bordo panna fra due fili d'inchiostro.
+
+Per guardarli tutti insieme basta una pagina con `storie-cosmiche.js` che
+chiama `StorieCosmiche.ritratto(tela, id, espressione)` per ogni personaggio.
 
 **I segni da fumetto** (§6-bis, `storDisegnaSegno`): scintille (happy,
 excited), raggi della sorpresa, lacrima che scende (sad), goccia di sudore
