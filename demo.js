@@ -1943,6 +1943,15 @@
     ultimoScript = testo;
     const precedente = Object.fromEntries(chiavi.map(k => [k, sky[k]]));
     const manuale = { ...sky.manuale }, vistaPrima = vistaAttuale;
+    // Nascondendo la pagina dello Studio, il documento si accorcia e il
+    // browser perde lo scorrimento: ricordalo prima di aprire la scena.
+    const scorrimentoPrima = vistaPrima === 'demo' ? { x: window.scrollX, y: window.scrollY } : null;
+    const ripristinaScorrimento = () => {
+      // Un ritorno asincrono dal pieno schermo non deve spostare una nuova
+      // demo o una pagina che la persona ha aperto nel frattempo.
+      if (scorrimentoPrima && !contesto && vistaAttuale === vistaPrima)
+        window.scrollTo({ left: scorrimentoPrima.x, top: scorrimentoPrima.y, behavior: 'instant' });
+    };
     const cameraSistema = Object.fromEntries(['az', 'elev', 'elevVoluta', 'zoom', 'zoomVoluto',
       'panX', 'panY', 'perno', 'vicino', 'quadro', 'scelto', 'mondiAccesi', 'sondeAccese',
       'evidenziaAsse', 'grandTour', 'distanzeVere', 'misureVere'].map(k => [k, sol[k]]));
@@ -2027,7 +2036,7 @@
         // Il pieno schermo dell'intero documento l'ha chiesto la demo: lo
         // chiude lei, e solo se è ancora il suo.
         if (c.schermoNativo && document.fullscreenElement === document.documentElement && document.exitFullscreen)
-          document.exitFullscreen().catch(() => {});
+          document.exitFullscreen().then(ripristinaScorrimento).catch(() => {});
         sky.reg.sorgente = null;
         sky.reg.durataSec = regPrima.durataSec; sky.reg.origine = regPrima.origine;
         // Il filmato si mostra nel pannello del planetario: chi ha chiesto di
@@ -2036,6 +2045,10 @@
         if (modaleImpostazioni) modaleImpostazioni.classList.toggle('hidden', impostazioniNascostePrima);
         pannello.hidden = true;
         cartello.hidden = true;
+        if (!registrava) {
+          ripristinaScorrimento();
+          requestAnimationFrame(ripristinaScorrimento);
+        }
       }
     };
     contesto = c;

@@ -197,7 +197,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "demo.opzioneSuoniStorie": "Cosmic stories: sound effects",
     "demo.opzioneStorieAiuto": "When a character speaks the camera moves in and frames their eyes; when something blows up it goes to look and the picture shakes. Explosions, lightning, jumps and journeys have their own sounds. With reduced motion the camera stays still. By default names and labels are hidden: only the characters are shown.",
     "demo.opzioneScritteStorie": "Cosmic stories: show names and labels",
-    "demo.narrazioneNota": "Voice and text also apply to Sky Quest.",
+    "demo.narrazioneNota": "Voice and subtitles are independent. The subtitle setting applies to demos, Cosmic Stories, tests and scene previews, including while paused, and to Sky Quest.",
     "demo.comandi": "Demo controls",
     "demo.cronologia": "Demo timeline",
     "demo.cronologiaScena": "Scene {n} of {totale}",

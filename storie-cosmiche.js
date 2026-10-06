@@ -1094,7 +1094,7 @@
     const n = radice.narrazione;
     if (!n || typeof n.parla !== 'function') { stor.parlante = null; return { token, fine: Promise.resolve('vuota') }; }
     const fine = n.parla(Object.assign({
-      canale: 'demo', personaggio: id, sottotitolo: 'sempre', testoSeSpenta: true,
+      canale: 'demo', personaggio: id, testoSeSpenta: true,
       chi: { nome: storNome(profilo), colore: profilo.sottotitolo },
       tono: profilo.voce
     }, richiesta));
