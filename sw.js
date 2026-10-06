@@ -276,6 +276,10 @@ self.addEventListener('fetch', (e) => {
       url.hostname === 'nominatim.openstreetmap.org' ||
       url.hostname === 'api.bigdatacloud.net' ||
       SERVIZI_ADSB.indexOf(url.hostname) !== -1 ||
+      // Le storie dello Studio sul repository (storie-studio.js §6b): sempre
+      // fresche, e un errore di GitHub resta suo invece di diventare un 504
+      url.hostname === 'api.github.com' ||
+      url.hostname === 'raw.githubusercontent.com' ||
       proxyAdsb(url)) {
     return;
   }

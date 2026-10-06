@@ -295,7 +295,11 @@ function sintesiFinta() {
       ok(await pagina.evaluate(() => StorieCosmiche.disegnati.length === 0 || (skyDisegna(), StorieCosmiche.disegnati.length === 0)),
         'fuori dalla storia il planetario non disegna volti');
       ok(!errori.length, 'nessun errore di pagina: ' + errori.join(' | '));
-      ok(esterne.every(u => !/storie|narrazione|demo/i.test(u)), 'offline: nessuna richiesta esterna serve alle storie');
+      // La lettura delle storie degli altri dispositivi dal repository
+      // (storie-studio.js §6b) si tenta, ma non serve: qui è rifiutata e le
+      // storie girano lo stesso
+      ok(esterne.every(u => /^https:\/\/(api\.github\.com|raw\.githubusercontent\.com)\//.test(u) || !/storie|narrazione|demo/i.test(u)),
+        'offline: nessuna richiesta esterna serve alle storie');
       await pagina.close();
     }
 

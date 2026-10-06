@@ -12848,6 +12848,9 @@ body.demo-in-corso .cosm-aiuto { display: none; }
   border: 1px solid var(--bordo); border-radius: 12px; background: #120c2b; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 .studio-pericolo { color: #fca5a5; }
+.studio-repo { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--bordo); border-radius: 12px; background: rgba(2, 6, 23, 0.4); }
+.studio-repo .storie-campo { flex: 1 1 14rem; }
+.studio-repo input { width: 100%; }
 .studio-idee-pronte { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
 .studio-idea-pronta {
   display: grid; gap: 4px; justify-items: start; text-align: left; padding: 10px; cursor: pointer; color: var(--testo, #e2e8f0);
