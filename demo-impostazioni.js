@@ -374,6 +374,7 @@
   }
   const registra = $('opz-registra'), audio = $('opz-registra-audio');
   const musica = $('opz-musica-eclissi'), musicaTraccia = $('opz-musica-traccia');
+  const cameraStorie = $('opz-camera-storie'), suoniStorie = $('opz-suoni-storie');
   const personali = $('livelli-personali'), griglia = $('livelli');
   const TRACCIA_MUSICA_PREDEFINITA = 'Encelado1';
 
@@ -414,6 +415,8 @@
     disegnaComandi();
     registra.checked = o.registra;
     if (musica) musica.checked = o.musicaDemo !== false;
+    if (cameraStorie) cameraStorie.checked = o.cameraStorie !== false;
+    if (suoniStorie) suoniStorie.checked = o.effettiSonori !== false;
     popolaTracceMusica();
     personali.checked = !!o.livelli;
     const livelli = AstroDemo.livelli();
@@ -454,6 +457,8 @@
     AstroDemo.impostaOpzioni({ musicaDemo: musica.checked });
     disegnaDipendenze();
   });
+  if (cameraStorie) cameraStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ cameraStorie: cameraStorie.checked }));
+  if (suoniStorie) suoniStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ effettiSonori: suoniStorie.checked }));
   if (musicaTraccia) musicaTraccia.addEventListener('change', () => {
     AstroDemo.impostaOpzioni({ musicaDemoTraccia: musicaTraccia.value });
   });

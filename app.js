@@ -23219,6 +23219,9 @@ function skyDisegna() {
   // `save`/`restore`, non tocca quella geometria. Gli overlay del mirino la
   // chiudono quindi esplicitamente dopo averla disegnata.
   ctx.clearRect(0, 0, L, H);
+  // La regia delle Storie cosmiche: una lente sul fotogramma che va vicino a
+  // chi parla e ai botti (storie-cosmiche.js §7-ter). Si chiude dopo i volti.
+  if (typeof storLenteApri === 'function') storLenteApri(ctx, 'cielo', L, H);
 
   // Con la fotocamera accesa il campo del disegno lo detta l'obiettivo, non
   // la preferenza dell'utente: si ricontrolla qui perché il video parte dopo
@@ -23464,6 +23467,7 @@ function skyDisegna() {
   // I volti delle Storie cosmiche: un livello a parte, sopra a tutto il cielo
   // e prima della registrazione, così finiscono anche nel filmato.
   if (typeof storDisegnaCielo === 'function') storDisegnaCielo(ctx);
+  if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
 
   // Se si sta registrando, questo fotogramma finisce anche nel filmato: il
   // montaggio si fa qui, appena il cielo è finito (vedi 7.6)
@@ -34954,6 +34958,10 @@ function solTesto(ctx, testo, x, y, colore, misura, allinea) {
 // Chi resta senza si legge lo stesso, toccandolo o dalla tabella qui sotto.
 function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbligata, idCorpo) {
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  // Sotto la lente della regia delle storie (storie-cosmiche.js §7-ter) i
+  // nomi restano della loro misura sullo schermo: ingranditi tre volte
+  // coprivano i volti in primo piano
+  if (typeof storLenteK === 'function') misura /= storLenteK();
   ctx.font = `${misura}px ${SOL_CARATTERE}`;
   const largo = ctx.measureText(testo).width;
   const alto = misura + 2;
@@ -38274,10 +38282,13 @@ function solDisegnaVicino() {
   solDisegnaPiomboVicino(ctx, g.luna);
 
   solEtichetteVicino(ctx, finti, orbita, g);
+  // I volti delle Storie cosmiche, sopra al disegno (storie-cosmiche.js), e
+  // con loro si chiude la lente della regia: il righello e il racconto sono
+  // scritte di servizio e restano della loro misura
+  if (typeof storDisegnaSistema === 'function') storDisegnaSistema(ctx, { corpi: finti, sole: sol.soleVicinoSchermo });
+  if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
   solRighelloVicino(ctx);
   solRaccontoVicino(ctx, g, sLuna);
-  // I volti delle Storie cosmiche, sopra a tutto (storie-cosmiche.js)
-  if (typeof storDisegnaSistema === 'function') storDisegnaSistema(ctx, { corpi: finti, sole: sol.soleVicinoSchermo });
 }
 
 // Il righello. In un disegno che promette di essere a scala vera è il pezzo
@@ -38852,6 +38863,9 @@ function solDisegna() {
   sol.luneSchermo = [];
   sol.etichetteSchermo = [];
   solMisura();
+  // La lente della regia delle storie (storie-cosmiche.js §7-ter), chiusa
+  // dopo i volti e prima delle scritte in basso
+  if (typeof storLenteApri === 'function') storLenteApri(ctx, sol.vicino ? 'vicino' : 'sistema', sol.L, sol.H);
   solSfondo(ctx);
 
   if (!sol.pianeti.length) {
@@ -39044,6 +39058,7 @@ function solDisegna() {
   // proiezione e la stessa fila della profondità (storie-cosmiche.js).
   if (typeof storDisegnaSistema === 'function')
     storDisegnaSistema(ctx, { corpi: ordinati, sole: { px: sole.px, py: sole.py, r: rSole, vicinanza: dietroAlSole } });
+  if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
 
   // In basso: da che altezza si sta guardando, e quanto è largo il disegno.
   // Su una tela stretta le due scritte si tamponerebbero a metà strada:

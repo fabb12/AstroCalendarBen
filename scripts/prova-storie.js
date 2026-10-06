@@ -1095,6 +1095,219 @@ prova('ogni testo dello Studio e dei comandi nuovi esiste in tutte e due le ling
 });
 
 // =====================================================================
+gruppo('la regia e i rumori (v416)');
+
+// Un fotogramma con la lente: si apre, si disegnano i volti, si chiude
+function fotogramma(corpi, L = 800, H = 600, vista = 'sistema') {
+  avanza(16);
+  const { ctx } = telaFinta(L, H);
+  S.lenteApri(ctx, vista, L, H);
+  const d = S.disegnaPersonaggi(ctx, vista, corpi, L, H);
+  S.lenteChiudi(ctx);
+  return d;
+}
+function finestraDentro(L, H) {
+  const r = S.regia;
+  assert.ok(r.k >= 1 && r.tx <= 1e-9 && r.ty <= 1e-9 && r.tx >= L * (1 - r.k) - 1e-9 && r.ty >= H * (1 - r.k) - 1e-9,
+    `la finestra della lente sta dentro alla tela: k ${r.k}, t ${r.tx}, ${r.ty}`);
+}
+prova('chi parla: la camera gli va vicino, con gli occhi in alto al centro, e poi torna larga', () => {
+  scena({ Earth: {}, Moon: {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);   // riparte da zero
+  const corpi = [corpo('Earth', 150, 420, 30), corpo('Moon', 620, 220, 26)];
+  fotogramma(corpi);
+  assert.equal(S.regia.k, 1, 'senza battute la lente non c\'è');
+  S.parla('Moon', { id: 'demo.narr.storia_luna.1' });
+  voce.segnale = { parla: true, personaggio: 'Moon', testo: 'ciao', tempo: 0 };
+  let d;
+  for (let k = 0; k < 150; k++) { d = fotogramma(corpi); finestraDentro(800, 600); }
+  assert.equal(S.regia.motivo, 'parla');
+  assert.ok(S.regia.k > 2, 'primo piano: ' + S.regia.k);
+  const luna = d.find(x => x.id === 'Moon');
+  const g = S.stato.ultimiDisegnati.find(x => x.id === 'Moon').geom;
+  const ex = (g.occhi[0].cx + g.occhi[1].cx) / 2, ey = (g.occhi[0].cy + g.occhi[1].cy) / 2;
+  const s = S.lenteSchermo(ex, ey);
+  assert.ok(s.x > 250 && s.x < 550 && s.y > 120 && s.y < 330, `gli occhi stanno nel quadro, in alto al centro: ${s.x}, ${s.y}`);
+  // Il volto in primo piano è grande: il raggio almeno un decimo del lato corto
+  assert.ok(luna.R * S.regia.k > 600 / 10, 'raggio del volto a schermo ' + luna.R * S.regia.k);
+  // Finita la battuta, resta un attimo, poi si allarga
+  S.stato.parlante = null; voce.segnale = { parla: false };
+  for (let k = 0; k < 20; k++) fotogramma(corpi);
+  assert.ok(S.regia.k > 1.8, 'tiene il quadro ancora un poco');
+  for (let k = 0; k < 200; k++) fotogramma(corpi);
+  assert.ok(S.regia.k < 1.02, 'poi torna larga: ' + S.regia.k);
+});
+prova('il dialogo: se chi ascolta è vicino, la camera tiene tutti e due', () => {
+  scena({ Earth: {}, Moon: {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  const corpi = [corpo('Earth', 330, 300, 28), corpo('Moon', 470, 300, 28)];
+  S.parla('Earth', { id: 'demo.narr.storia_luna.1' });
+  for (let k = 0; k < 150; k++) fotogramma(corpi);
+  assert.equal(S.regia.motivo, 'dialogo');
+  for (const id of ['Earth', 'Moon']) {
+    const d = S.stato.ultimiDisegnati.find(x => x.id === id);
+    const a = S.lenteSchermo(d.x - d.R, d.y - d.R), b = S.lenteSchermo(d.x + d.R, d.y + d.R);
+    assert.ok(a.x >= 0 && a.y >= 0 && b.x <= 800 && b.y <= 600, id + ' resta tutto nel quadro');
+  }
+  assert.ok(S.regia.k > 1.4, 'e comunque più vicini di prima: ' + S.regia.k);
+  S.stato.parlante = null;
+});
+prova('un botto: la camera va a guardarlo e il quadro trema; col movimento ridotto niente lente', () => {
+  scena({ Jupiter: {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  const corpi = [corpo('Jupiter', 640, 160, 20)];
+  S.effetto('explosion', { target: 'Jupiter' });
+  const prese = [];
+  for (let k = 0; k < 60; k++) { fotogramma(corpi); prese.push({ tx: S.regia.tx, k: S.regia.k }); finestraDentro(800, 600); }
+  assert.equal(S.regia.motivo, 'effetto');
+  assert.ok(S.regia.k > 1.3, 'si avvicina al botto: ' + S.regia.k);
+  assert.ok(S.stato.regia.scosse.length > 0 || prese.some((p, i) => i && Math.abs(p.tx - prese[i - 1].tx) > 2), 'il quadro trema');
+  for (let k = 0; k < 160; k++) fotogramma(corpi);
+  assert.notEqual(S.regia.motivo, 'effetto', 'finito il botto, la camera lo lascia');
+  S.sgombra();
+});
+prova('story_camera: wide la ferma, close resta su un personaggio; la camera presa a mano e l\'opzione spenta la fermano', async () => {
+  S.sgombra();
+  const corpi = [corpo('Earth', 150, 420, 30), corpo('Moon', 620, 220, 26)];
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_show { target: 'Moon' }",
+    "story_camera { mode: close, target: 'Moon', zoom: 2 }")), { ripristina() {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  for (let k = 0; k < 150; k++) fotogramma(corpi);
+  assert.equal(S.regia.motivo, 'vicino');
+  assert.ok(Math.abs(S.regia.k - 2) < 0.05, 'il tetto chiesto: ' + S.regia.k);
+  globalThis.AstroDemo.cameraManuale = true;
+  for (let k = 0; k < 200; k++) fotogramma(corpi);
+  assert.ok(S.regia.k < 1.02, 'la camera presa a mano: niente lente');
+  globalThis.AstroDemo.cameraManuale = false;
+  globalThis.AstroDemo.opzioni = { cameraStorie: false };
+  for (let k = 0; k < 200; k++) fotogramma(corpi);
+  assert.ok(S.regia.k < 1.02, 'l\'opzione spenta: niente lente');
+  delete globalThis.AstroDemo.opzioni;
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  assert.equal(S.stato.regia.modo, 'auto', 'la scena chiusa rimette la regia di serie');
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Moon' }", "story_camera { mode: wide }",
+    "character_speak { target: 'Moon', text: 'Ciao!' }")), { ripristina() {} });
+  for (let k = 0; k < 150; k++) fotogramma(corpi);
+  assert.ok(S.regia.k < 1.02, 'mode: wide tiene la camera della scena');
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  for (const [testo, re] of [
+    [sc('solar_system_3d', "story_camera { mode: zoom }"), /mode sconosciuto/],
+    [sc('solar_system_3d', "story_camera { mode: close }"), /Personaggio sconosciuto/],
+    [sc('solar_system_3d', "story_camera { mode: close, target: 'Moon' }"), /deve comparire/],
+    [sc('solar_system_3d', "story_camera { mode: auto, zoom: 9 }"), /zoom vuole un numero/],
+    [sc('solar_system_3d', "sound { type: fart }"), /type sconosciuto/],
+    [sc('solar_system_3d', "effect { type: smoke, sound: nope }"), /sound sconosciuto/],
+    [sc('solar_system_3d', "sound { type: boing, volume: 3 }"), /volume vuole un numero/]
+  ]) assert.throws(() => motore.prepara(demo(testo)), re, testo);
+  motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Mars', sound: off }",
+    "character_animate { target: 'Mars', animation: jump, sound: tada }", "effect { type: explosion, sound: rumble }", "sound { type: drumroll, volume: 0.5 }")));
+});
+prova('in pausa la camera si ferma con la storia', () => {
+  scena({ Moon: {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  const corpi = [corpo('Moon', 620, 220, 26)];
+  S.parla('Moon', { id: 'demo.narr.storia_luna.1' });
+  for (let k = 0; k < 10; k++) fotogramma(corpi);
+  const prima = S.regia.k;
+  globalThis.AstroDemo.stato = 'pausa';
+  for (let k = 0; k < 60; k++) fotogramma(corpi);
+  assert.equal(S.regia.k, prima, 'ferma');
+  globalThis.AstroDemo.stato = 'attivo';
+  for (let k = 0; k < 10; k++) fotogramma(corpi);
+  assert.ok(S.regia.k > prima, 'riparte');
+  S.sgombra();
+});
+
+// Un contesto audio finto: annota ogni nodo, i suoi istanti e i suoi volumi
+function audioFinto() {
+  const nodi = [];
+  const param = v => ({ value: v, eventi: [], setValueAtTime(x, t) { this.eventi.push(['set', x, t]); },
+    exponentialRampToValueAtTime(x, t) { assert.ok(x > 0, 'una rampa esponenziale vuole un valore positivo'); this.eventi.push(['exp', x, t]); },
+    setTargetAtTime(x, t) { this.eventi.push(['target', x, t]); }, setValueCurveAtTime(c, t, d) { assert.ok(c.length > 1 && d > 0); this.eventi.push(['curva', c[0], t + d]); } });
+  const nodo = (tipo, extra = {}) => { const n = Object.assign({ tipo, connect(x) { return x; }, disconnect() {} }, extra); nodi.push(n); return n; };
+  const sorgente = tipo => nodo(tipo, { avvio: null, fine: null, start(t) { this.avvio = t; }, stop(t) { this.fine = t; } });
+  const a = {
+    currentTime: 10, sampleRate: 8000, state: 'running', destination: nodo('uscita'),
+    createGain: () => nodo('gain', { gain: param(1) }),
+    createOscillator: () => Object.assign(sorgente('osc'), { type: 'sine', frequency: param(440) }),
+    createBufferSource: () => Object.assign(sorgente('rumore'), { buffer: null }),
+    createBiquadFilter: () => nodo('filtro', { type: 'lowpass', frequency: param(350), Q: param(1) }),
+    createBuffer: (c, n) => ({ getChannelData: () => new Float32Array(n) }),
+    createDynamicsCompressor: () => nodo('comp', { threshold: param(0), ratio: param(1), attack: param(0), release: param(0) })
+  };
+  return { a, nodi };
+}
+prova('ogni rumore è una ricetta che suona, si spegne in pochi secondi e non satura', () => {
+  assert.deepEqual(Object.keys(S.RICETTE_SUONI).sort(), [...S.STOR_SUONI].sort());
+  for (const tipo of Object.keys(S.STOR_EFFETTI)) assert.ok(S.STOR_SUONI.includes(tipo), 'l\'effetto ' + tipo + ' ha il suo rumore');
+  for (const nome of S.STOR_SUONI) {
+    const { a, nodi } = audioFinto();
+    assert.ok(S.suona(nome, { contesto: a, forza: true }), nome + ' parte');
+    const sorgenti = nodi.filter(n => n.tipo === 'osc' || n.tipo === 'rumore');
+    assert.ok(sorgenti.length >= 1, nome + ': almeno una sorgente');
+    for (const s of sorgenti) {
+      assert.ok(s.avvio >= 10 && s.fine > s.avvio && s.fine - 10 < 4, `${nome}: da ${s.avvio} a ${s.fine}`);
+      if (s.tipo === 'rumore') assert.ok(s.buffer, nome + ': il rumore ha il suo buffer');
+    }
+    for (const g of nodi.filter(n => n.tipo === 'gain')) for (const e of g.gain.eventi) assert.ok(e[1] <= 1, `${nome}: volume ${e[1]}`);
+  }
+});
+prova('i rumori tacciono con l\'opzione spenta, in pausa e fuori da una demo; un rumore non fa la raffica', () => {
+  const vero = globalThis.AudioContext;
+  let creati = 0;
+  globalThis.AudioContext = function () { creati++; return audioFinto().a; };
+  try {
+    globalThis.AstroDemo.opzioni = { effettiSonori: false };
+    assert.equal(S.suona('boing'), false, 'opzione spenta');
+    delete globalThis.AstroDemo.opzioni;
+    globalThis.AstroDemo.stato = 'pausa';
+    assert.equal(S.suona('boing'), false, 'in pausa');
+    globalThis.AstroDemo.stato = 'attivo';
+    globalThis.AstroDemo.inCorso = false;
+    assert.equal(S.suona('boing'), false, 'fuori da una demo');
+    globalThis.AstroDemo.inCorso = true;
+    avanza(500);
+    assert.equal(S.suona('boing'), true, 'in una demo suona');
+    assert.equal(S.suona('boing'), false, 'subito dopo, lo stesso no');
+    avanza(150);
+    assert.equal(S.suona('boing'), true, 'un attimo dopo sì');
+    assert.equal(creati, 1, 'un contesto solo');
+  } finally { if (vero) globalThis.AudioContext = vero; else delete globalThis.AudioContext; }
+});
+prova('i comandi suonano: il botto di effect, il pop di chi entra, il boing del salto, lo zap del teletrasporto', async () => {
+  const vero = globalThis.AudioContext;
+  const suonati = [];
+  const finto = audioFinto();
+  globalThis.AudioContext = function () { return finto.a; };
+  const prima = S.RICETTE_SUONI;
+  const copia = Object.assign({}, prima);
+  for (const k of Object.keys(prima)) prima[k] = (...x) => { suonati.push(k); return copia[k](...x); };
+  try {
+    S.sgombra();
+    avanza(1000);
+    motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Mars' }", "character_show { target: 'Venus', sound: off }",
+      "character_animate { target: 'Mars', animation: jump, shot_from: 0.1 }", "effect { type: explosion, target: 'Mars', shot_from: 0.3 }",
+      "character_move { target: 'Venus', to: 'Mars', path: teleport, shot_from: 0.5 }", "sound { type: ding, shot_from: 0.7 }")), { ripristina() {} });
+    for (let k = 0; k < 20; k++) { avanza(100); passo(100); }
+    assert.deepEqual(suonati, ['pop', 'boing', 'explosion', 'zap', 'ding']);
+    motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  } finally {
+    Object.assign(prima, copia);
+    if (vero) globalThis.AudioContext = vero; else delete globalThis.AudioContext;
+  }
+});
+prova('lo Studio: la camera viva è di serie, e chi la vuole ferma la ferma', () => {
+  const p = St.daModello('fasi');
+  assert.ok(!/story_camera/.test(St.copione(p)), 'di serie la regia è automatica');
+  p.scene[0].cameraViva = false;
+  const testo = St.copione(p);
+  assert.match(testo, /story_camera \{ mode: wide \}/);
+  motore.prepara(testo);
+  assert.equal(St.ripulisci(JSON.parse(JSON.stringify(p))).scene[0].cameraViva, false, 'la scelta si salva');
+  assert.equal(St.ripulisci({ scene: [{}] }).scene[0].cameraViva, true);
+});
+
+// =====================================================================
 gruppo('italiano e inglese');
 
 prova('ogni testo delle storie e dei comandi esiste in tutte e due le lingue', () => {

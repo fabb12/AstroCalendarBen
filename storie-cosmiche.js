@@ -992,6 +992,8 @@
     for (const p of stor.personaggi.values()) storRitorno(p);
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
     stor.ultimiDisegnati = []; stor.effetti = [];
+    stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
+    storZittisci();
   }
   // Chi esce di scena spostato o ingrandito non torna a posto di colpo: per
   // tre quarti di secondo scivola indietro verso l'orbita e la misura veri.
@@ -2232,6 +2234,9 @@
       seme: seme(tipo + ':' + (opz.target || '') + ':' + stor.effetti.length + ':' + Math.round(stor.orologio)) || 1
     };
     stor.effetti.push(ef);
+    // I botti fanno tremare il quadro (la lente della regia, §7-ter)
+    const scossa = STOR_REGIA.scosse[tipo];
+    if (scossa && !opz.quieto) storScossa(scossa * Math.min(1.4, Math.sqrt(ef.scala)), tipo === 'lightning' ? 500 : 800);
     return ef;
   }
 
@@ -3248,6 +3253,8 @@
       stor.effetti = stor.effetti.filter(ef => t - ef.inizio <= ef.durata);
       for (const ef of stor.effetti) {
         const posto = storPostoEffetto(ef, perId, L, H);
+        // La regia (§7-ter) va a guardare il botto dove è stato disegnato
+        ef.ultimoPosto = posto ? { x: posto.x, y: posto.y, r: posto.r, vista } : null;
         if (posto) storDisegnaEffetto(ctx, ef, posto.x, posto.y, posto.r, t, L, H, ridotto);
       }
     }
@@ -3581,6 +3588,485 @@
   }
 
   // ===================================================================
+  // 7-ter. La regia: la camera che va dove succede qualcosa (v416)
+  // ===================================================================
+
+  /* Chi scrive storie ha chiesto una camera viva: quando un personaggio
+   * parla la camera gli va vicino, con gli occhi ben dentro al quadro; quando
+   * scoppia qualcosa si gira a guardarlo e il quadro trema; quando nessuno
+   * parla torna larga, dove la scena l'aveva messa.
+   *
+   * Non è una seconda camera astronomica: è una **lente** sulla tela. Ogni
+   * renderer apre la lente all'inizio del fotogramma (`storLenteApri`, una
+   * traslazione e una scala sul contesto) e la chiude dopo i volti
+   * (`storLenteChiudi`), prima delle scritte di servizio in basso. Così le
+   * camere delle scene (`camera_3d`, `center_target`, `cosmic_scale`)
+   * restano padrone di cosa si guarda, e la regia sceglie solo il primo
+   * piano. Una lente e non uno zoom vero per due ragioni: nella 3D il volto
+   * ha già la sua misura in pixel (`STOR_VOLTO_3D_PX`) e uno zoom della scena
+   * non lo ingrandirebbe; e tutto quello che si disegna è vettoriale, quindi
+   * un volto a tre volte resta nitido. Le tele dipinte una volta (le stelle,
+   * la Via Lattea) un po' si sgranano: per questo lo zoom ha un tetto.
+   *
+   * Il quadro non esce mai dalla tela (la finestra vista dalla lente sta
+   * sempre dentro a [0, L] × [0, H]): niente bordi vuoti, e lo sfondo che il
+   * renderer stende su tutta la tela copre tutto anche ingrandito. Le
+   * posizioni salvate per le prove e per il dito (`ultimiDisegnati`, i
+   * corpi di `sol`) restano nelle coordinate del disegno, senza lente.
+   *
+   * Tace col movimento ridotto, quando la persona prende la camera in mano
+   * (`AstroDemo.cameraManuale`), con l'opzione spenta, fuori dalle storie,
+   * e nelle scene con `story_camera { mode: wide }`. */
+  const STOR_REGIA = {
+    zoomMax: 3.2,          // oltre, le tele dipinte una volta si sgranano troppo
+    volto: 0.17,           // il raggio del volto in primo piano, in frazione del lato corto
+    occhiY: 0.4,           // dove vanno gli occhi: sopra al centro, sotto ci sono i sottotitoli
+    effettoY: 0.45,
+    omega: 4.4,            // la molla della camera (rad/s): arriva in un secondo, senza scatti
+    tieniMs: 900,          // finita una battuta, resta ancora un poco prima di allargarsi
+    // Gli effetti che la camera va a guardare, per quanto (ms della storia)
+    // e quanto sono grandi rispetto al raggio dell'astro che li porta
+    effetti: { explosion: [1700, 2.6], shockwave: [1300, 3.2], fireworks: [2100, 3], lightning: [1100, 2.4],
+      hearts: [1500, 2.2], confetti: [1500, 2.6], shooting_star: [1200, 3.5] },
+    // E quelli che fanno tremare il quadro, con che forza
+    scosse: { explosion: 1, shockwave: 0.55, lightning: 0.7, fireworks: 0.3 }
+  };
+  stor.regia = {
+    modo: 'auto', chi: null, zoomMax: null,       // quello che la scena chiede
+    lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0,
+    vista: '', L: 0, H: 0, ultimo: 0, tieni: null, scosse: [],
+    aperta: null, k: 1, tx: 0, ty: 0, motivo: 'largo'
+  };
+  function regiaAccesa() {
+    const r = stor.regia;
+    if (r.modo === 'wide' || stor.ridotto || stor.anteprima) return false;
+    if (!stor.personaggi.size && !stor.effetti.length) return false;
+    const d = radice.AstroDemo;
+    if (d) {
+      if (d.cameraManuale) return false;
+      const o = d.opzioni;
+      if (o && o.cameraStorie === false) return false;
+    }
+    return true;
+  }
+  // Dove sono gli occhi di un volto disegnato, e quanto è grande
+  function storOcchiDi(d) {
+    const g = d.geom;
+    const R = Math.max(4, d.R * Math.abs(d.scala || 1));
+    if (g && g.occhi && g.occhi.length === 2)
+      return { x: (g.occhi[0].cx + g.occhi[1].cx) / 2, y: (g.occhi[0].cy + g.occhi[1].cy) / 2 + R * 0.12, R };
+    return { x: d.x, y: d.y - R * 0.1, R };
+  }
+  /* Che cosa inquadrare adesso. Restituisce il punto del disegno da portare
+   * al centro, lo zoom e a che altezza dello schermo va il punto; `null`
+   * vuol dire «largo». Funzione pura sullo stato: la provano le prove.
+   *   1. un effetto grosso appena cominciato (il botto si guarda);
+   *   2. il personaggio che la scena chiede (`story_camera { mode: close }`);
+   *   3. chi parla — da solo, o insieme a chi gli sta accanto e lo ascolta
+   *      se ci stanno tutti e due senza allontanarsi troppo;
+   *   4. chi sta facendo qualcosa (un viaggio, un salto, una veste nuova). */
+  function storRegiaInquadra(vista, L, H) {
+    const r = stor.regia;
+    const lato = Math.min(L, H);
+    const tetto = Math.max(1, Math.min(4, r.zoomMax || STOR_REGIA.zoomMax));
+    const quanti = stor.ultimiDisegnati.filter(d => d.vista === vista && !d.fuori);
+    const dentro = (x, y) => x >= 0 && y >= 0 && x <= L && y <= H;
+    const primoPiano = (d, frazione, motivo) => {
+      const o = storOcchiDi(d);
+      return { x: o.x, y: o.y, k: Math.max(1, Math.min(tetto, lato * frazione / o.R)), ay: STOR_REGIA.occhiY, motivo, id: d.id };
+    };
+    // 1. Il botto
+    let ultimo = null;
+    for (const ef of stor.effetti) {
+      const regola = STOR_REGIA.effetti[ef.tipo];
+      const p = ef.ultimoPosto;
+      if (!regola || !p || p.vista !== vista || !dentro(p.x, p.y)) continue;
+      const eta = stor.orologio - ef.inizio;
+      if (eta < 0 || eta > regola[0]) continue;
+      if (!ultimo || ef.inizio >= ultimo.ef.inizio) ultimo = { ef, p, regola };
+    }
+    if (ultimo) {
+      const Rv = Math.max(14, ultimo.p.r || 0) * ultimo.ef.scala * ultimo.regola[1];
+      return { x: ultimo.p.x, y: ultimo.p.y, k: Math.max(1, Math.min(tetto * 0.8, lato * 0.42 / Rv)),
+        ay: STOR_REGIA.effettoY, motivo: 'effetto', id: ultimo.ef.tipo };
+    }
+    // 2. Chi la scena vuole vicino
+    if (r.modo === 'close' && r.chi) {
+      const d = quanti.find(x => x.id === r.chi);
+      if (d) return primoPiano(d, STOR_REGIA.volto, 'vicino');
+    }
+    // 3. Chi parla
+    const parla = stor.parlante ? quanti.find(d => d.id === stor.parlante.target) : null;
+    if (parla) {
+      const solo = primoPiano(parla, STOR_REGIA.volto, 'parla');
+      // Il campo e controcampo dei cartoni: se chi ascolta è vicino, li si
+      // tiene tutti e due (si vede lo sguardo che va da uno all'altro)
+      const a = storOcchiDi(parla);
+      let meglio = null;
+      for (const d of quanti) {
+        if (d.id === parla.id) continue;
+        const b = storOcchiDi(d);
+        const x0 = Math.min(a.x - a.R * 1.35, b.x - b.R * 1.35), x1 = Math.max(a.x + a.R * 1.35, b.x + b.R * 1.35);
+        const y0 = Math.min(a.y - a.R * 1.2, b.y - b.R * 1.2), y1 = Math.max(a.y + a.R * 1.5, b.y + b.R * 1.5);
+        const k = Math.min(L * 0.84 / (x1 - x0), H * 0.6 / (y1 - y0), tetto);
+        if (k >= solo.k * 0.6 && (!meglio || k > meglio.k))
+          meglio = { x: (x0 + x1) / 2, y: (y0 + y1) / 2, k: Math.max(1, k), ay: 0.44, motivo: 'dialogo', id: parla.id + '+' + d.id };
+      }
+      return meglio || solo;
+    }
+    // 4. Chi sta facendo qualcosa
+    for (const d of quanti) {
+      const pg = stor.personaggi.get(d.id);
+      if (!pg) continue;
+      const viaggia = pg.moto && pg.moto.u > 0 && pg.moto.u < 1;
+      const salta = pg.animazioni.some(a => a.u > 0 && a.u < 1);
+      const cambia = pg.veste && pg.veste.u > 0 && pg.veste.u < 1;
+      if (viaggia || salta || cambia) return primoPiano(d, STOR_REGIA.volto * 0.62, 'azione');
+    }
+    return null;
+  }
+  // La molla della camera: smorzata al punto giusto, arriva senza oscillare
+  function molla(x, v, meta, w, dt) {
+    const a = w * w * (meta - x) - 2 * w * v;
+    v += a * dt; x += v * dt;
+    return [x, v];
+  }
+  // Una scossa: il botto la chiede, la lente la consuma
+  function storScossa(forza, durata = 700) {
+    if (!(forza > 0)) return;
+    stor.regia.scosse.push({ da: stor.orologio, forza: Math.min(1.5, forza), durata });
+  }
+  function storLenteApri(ctx, vista, L, H) {
+    const r = stor.regia;
+    if (r.aperta) storLenteChiudi();
+    if (!ctx || !(L > 0 && H > 0)) return;
+    const ora = adesso();
+    const dt = r.ultimo ? Math.min(0.1, Math.max(0, (ora - r.ultimo) / 1000)) : 0;
+    r.ultimo = ora;
+    const accesa = regiaAccesa();
+    // Un'altra vista (il volo dal cielo alla 3D) o un'altra tela: si riparte larghi
+    if (r.vista !== vista || Math.abs(r.L - L) > 1 || Math.abs(r.H - H) > 1) {
+      Object.assign(r, { vista, L, H, lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0, tieni: null });
+    }
+    if (!accesa && r.lk < 0.002 && !r.scosse.length) { r.k = 1; r.tx = 0; r.ty = 0; r.motivo = 'largo'; r.vfx = r.vfy = r.vlk = 0; return; }
+    let meta = accesa ? storRegiaInquadra(vista, L, H) : null;
+    if (meta) r.tieni = { meta, da: ora };
+    else if (accesa && r.tieni && ora - r.tieni.da < STOR_REGIA.tieniMs) meta = r.tieni.meta;
+    if (!Number.isFinite(r.fx)) { r.fx = meta ? meta.x : L / 2; r.fy = meta ? meta.y : H / 2; }
+    const lkMeta = meta ? Math.log(meta.k) : 0;
+    // In pausa la camera si ferma con la storia
+    const passo = demoInPausa() ? 0 : dt;
+    const w = STOR_REGIA.omega;
+    for (let n = Math.max(1, Math.ceil(passo / 0.02)), i = 0; i < n && passo > 0; i++) {
+      const h = passo / n;
+      [r.lk, r.vlk] = molla(r.lk, r.vlk, lkMeta, w, h);
+      if (meta) {
+        [r.fx, r.vfx] = molla(r.fx, r.vfx, meta.x, w, h);
+        [r.fy, r.vfy] = molla(r.fy, r.vfy, meta.y, w, h);
+        [r.ay, r.vay] = molla(r.ay, r.vay, meta.ay, w, h);
+      }
+    }
+    r.lk = Math.max(0, r.lk);
+    // La scossa: ingrandisce appena (così il tremito non scopre i bordi) e
+    // sposta il quadro su due seni sfasati, che si spengono in fretta
+    let forza = 0;
+    r.scosse = r.scosse.filter(s => stor.orologio - s.da < s.durata && stor.orologio >= s.da - 50);
+    for (const s of r.scosse) { const q = 1 - (stor.orologio - s.da) / s.durata; forza += s.forza * q * q; }
+    if (stor.ridotto) forza = 0;
+    const k = Math.exp(r.lk) * (1 + 0.035 * Math.min(1.5, forza));
+    const ax = L / 2, ay = H * r.ay;
+    let tx = ax - k * r.fx, ty = ay - k * r.fy;
+    if (forza > 0) {
+      const t = stor.orologio;
+      tx += forza * 7 * (Math.sin(t * 0.061) + 0.6 * Math.sin(t * 0.137 + 1.3));
+      ty += forza * 6 * (Math.sin(t * 0.077 + 0.4) + 0.6 * Math.sin(t * 0.151 + 2.1));
+    }
+    // La finestra non esce dalla tela
+    tx = Math.min(0, Math.max(L * (1 - k), tx));
+    ty = Math.min(0, Math.max(H * (1 - k), ty));
+    r.k = k; r.tx = tx; r.ty = ty; r.motivo = meta ? meta.motivo : 'largo';
+    if (k < 1.0005 && Math.abs(tx) < 0.05 && Math.abs(ty) < 0.05) return;
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.scale(k, k);
+    r.aperta = ctx;
+  }
+  function storLenteChiudi() {
+    const r = stor.regia;
+    if (!r.aperta) return;
+    const ctx = r.aperta;
+    r.aperta = null;
+    try { ctx.restore(); } catch (_) { /* contesto perso */ }
+  }
+  // Da un punto del disegno a dove si vede sullo schermo, con la lente di adesso
+  function storLenteSchermo(x, y) {
+    const r = stor.regia;
+    return { x: r.tx + r.k * x, y: r.ty + r.k * y };
+  }
+
+  // ===================================================================
+  // 7-quater. I rumori: botti, boing e scintille (v416)
+  // ===================================================================
+
+  /* Ogni effetto ha il suo rumore, e così i gesti dei personaggi: il boing
+   * di un salto, il fischio di un viaggio, lo zap del teletrasporto, il
+   * risucchio di un buco nero. Sono **sintetizzati** con Web Audio, nello
+   * stesso spirito dei disegni: niente file da scaricare (l'app funziona
+   * offline), un suono da cartone animato e non una registrazione vera, e
+   * ognuno è una ricetta di pochi oscillatori e un soffio di rumore filtrato.
+   *
+   * Il contesto audio è quello della voce (`narr.audioContesto`), così i
+   * rumori finiscono anche nel filmato registrato con l'audio, attraverso la
+   * stessa presa (`narr.cattura`). Mentre un personaggio parla i rumori si
+   * abbassano, per non coprirlo. Tacciono con l'opzione «Effetti sonori
+   * nelle storie» spenta, in pausa, fuori da una demo, e senza Web Audio. */
+  const STOR_SUONI = ['explosion', 'shockwave', 'flash', 'sparkles', 'fireworks', 'smoke', 'hearts', 'lightning',
+    'shooting_star', 'glow', 'confetti', 'boing', 'whoosh', 'pop', 'zap', 'magic', 'inflate', 'suck', 'wobble',
+    'spin', 'tada', 'ding', 'drumroll', 'rumble'];
+  // Il rumore che fa ogni gesto, quando la storia non ne sceglie un altro
+  const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
+  const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
+  const STOR_SUONO_VESTE = { red_giant: 'inflate', white_dwarf: 'magic', supernova: 'explosion', black_hole: 'suck', self: 'magic' };
+  const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet() };
+
+  function storContestoAudio() {
+    const AC = radice.AudioContext || radice.webkitAudioContext;
+    const n = typeof narr !== 'undefined' ? narr : null;   // narrazione.js
+    let a = (n && n.audioContesto) || suono.contesto;
+    if (!a) {
+      if (!AC) return null;
+      try { a = new AC(); } catch (_) { return null; }
+      if (n) n.audioContesto = a;
+    }
+    if (a.state === 'suspended' && a.resume) Promise.resolve(a.resume()).catch(() => {});
+    if (suono.contesto !== a) {
+      suono.contesto = a; suono.rumore = null;
+      const g = a.createGain(); g.gain.value = 0.6;
+      let fine = g;
+      // Un compressore in fondo: tre botti di fila non devono gracchiare
+      if (typeof a.createDynamicsCompressor === 'function') {
+        const c = a.createDynamicsCompressor();
+        try { c.threshold.value = -14; c.ratio.value = 6; c.attack.value = 0.003; c.release.value = 0.25; } catch (_) { /* valori di serie */ }
+        g.connect(c); fine = c;
+      }
+      fine.connect(a.destination);
+      suono.uscita = { g, fine };
+    }
+    // Il filmato con l'audio: la stessa presa della voce
+    const presa = n && n.cattura && n.cattura.destinazione;
+    if (presa && !suono.prese.has(presa)) { try { suono.uscita.fine.connect(presa); suono.prese.add(presa); } catch (_) { /* niente */ } }
+    return a;
+  }
+  // Due secondi di rumore bianco, fatti una volta sola
+  function rumoreBianco(a) {
+    if (suono.rumore) return suono.rumore;
+    const n = Math.floor(a.sampleRate * 2);
+    const b = a.createBuffer(1, n, a.sampleRate);
+    const dati = b.getChannelData(0);
+    const r = { s: 12345 };
+    for (let i = 0; i < n; i++) dati[i] = dado(r) * 2 - 1;
+    suono.rumore = b;
+    return b;
+  }
+  function vivo(nodo, fine) {
+    suono.attivi.add(nodo);
+    nodo.onended = () => suono.attivi.delete(nodo);
+    nodo.stop(fine);
+  }
+  // L'inviluppo: sale in `attacco` fino a `picco`, poi si spegne in `durata`
+  function inviluppo(param, t0, attacco, picco, durata) {
+    param.setValueAtTime(0.0001, t0);
+    param.exponentialRampToValueAtTime(Math.max(0.0002, picco), t0 + Math.max(0.002, attacco));
+    param.exponentialRampToValueAtTime(0.0001, t0 + Math.max(attacco + 0.01, durata));
+  }
+  // Un tono, con la sua scivolata di altezza
+  function tono(a, uscita, o) {
+    const t0 = o.t0, durata = o.durata;
+    const osc = a.createOscillator();
+    osc.type = o.tipo || 'sine';
+    osc.frequency.setValueAtTime(o.f0, t0);
+    if (o.curva) osc.frequency.setValueCurveAtTime(o.curva, t0, durata);
+    else if (o.f1) osc.frequency.exponentialRampToValueAtTime(o.f1, t0 + durata);
+    const g = a.createGain();
+    inviluppo(g.gain, t0, o.attacco || 0.005, o.picco || 0.2, durata);
+    let ultimo = osc;
+    if (o.taglio) {
+      const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(o.taglio, t0);
+      osc.connect(f); ultimo = f;
+    }
+    if (o.vibrato) {
+      const lfo = a.createOscillator(), prof = a.createGain();
+      lfo.frequency.value = o.vibrato[0]; prof.gain.value = o.vibrato[1];
+      lfo.connect(prof); prof.connect(osc.frequency);
+      lfo.start(t0); vivo(lfo, t0 + durata + 0.05);
+    }
+    ultimo.connect(g); g.connect(uscita);
+    osc.start(t0); vivo(osc, t0 + durata + 0.05);
+  }
+  // Un soffio di rumore filtrato: il fumo, il vento, il tuono, il botto
+  function soffio(a, uscita, o) {
+    const t0 = o.t0, durata = o.durata;
+    const src = a.createBufferSource();
+    src.buffer = rumoreBianco(a);
+    const f = a.createBiquadFilter();
+    f.type = o.filtro || 'lowpass';
+    f.Q.value = o.q || 0.8;
+    f.frequency.setValueAtTime(o.f0, t0);
+    if (o.fm) { f.frequency.exponentialRampToValueAtTime(o.fm, t0 + durata * 0.45); if (o.f1) f.frequency.exponentialRampToValueAtTime(o.f1, t0 + durata); }
+    else if (o.f1) f.frequency.exponentialRampToValueAtTime(o.f1, t0 + durata);
+    const g = a.createGain();
+    inviluppo(g.gain, t0, o.attacco || 0.005, o.picco || 0.3, durata);
+    src.connect(f); f.connect(g); g.connect(uscita);
+    src.start(t0, (o.da || 0) % 1.5);
+    vivo(src, t0 + durata + 0.05);
+  }
+  // Il «boing»: un'altezza che oscilla e si smorza, come una molla pizzicata
+  function curvaBoing(f, n = 96) {
+    const c = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const u = i / (n - 1); c[i] = f * (1 + 0.35 * u) * (1 + 0.55 * Math.exp(-4.5 * u) * Math.sin(2 * Math.PI * 6 * u)); }
+    return c;
+  }
+  /* Le ricette. `t` è l'istante di partenza, `d` il dado seminato (lo stesso
+   * effetto suona sempre uguale), `v` il volume. */
+  const RICETTE = {
+    explosion(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 0.12, filtro: 'highpass', f0: 2200, picco: 0.45 * v, attacco: 0.002 });
+      soffio(a, u, { t0: t, durata: 1.7, f0: 3200, f1: 80, picco: 0.7 * v, attacco: 0.004 });
+      tono(a, u, { t0: t, durata: 0.95, f0: 120, f1: 30, picco: 0.65 * v, attacco: 0.006 });
+      for (let i = 0; i < 6; i++) soffio(a, u, { t0: t + 0.25 + dado(d) * 0.8, durata: 0.05, filtro: 'bandpass', f0: 900 + dado(d) * 1800, q: 2, picco: 0.18 * v, da: dado(d) });
+    },
+    shockwave(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 1.1, filtro: 'bandpass', f0: 220, fm: 2400, f1: 260, q: 1.6, picco: 0.5 * v, attacco: 0.08 });
+      tono(a, u, { t0: t, durata: 1.2, f0: 70, f1: 38, picco: 0.5 * v, attacco: 0.12 });
+    },
+    flash(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 0.4, f0: 2600, f1: 1800, picco: 0.16 * v });
+      tono(a, u, { t0: t, durata: 0.22, tipo: 'triangle', f0: 3900, picco: 0.07 * v });
+      soffio(a, u, { t0: t, durata: 0.3, filtro: 'highpass', f0: 6000, picco: 0.1 * v });
+    },
+    sparkles(a, u, t, d, v) {
+      const note = [1568, 1760, 2093, 2349, 2637, 3136, 3520];
+      for (let i = 0; i < 9; i++) {
+        const f = note[Math.floor(dado(d) * note.length)], t0 = t + i * 0.075 + dado(d) * 0.03;
+        tono(a, u, { t0, durata: 0.2, f0: f, picco: 0.11 * v });
+        tono(a, u, { t0, durata: 0.12, tipo: 'triangle', f0: f * 2, picco: 0.03 * v });
+      }
+    },
+    fireworks(a, u, t, d, v) {
+      for (let c = 0; c < 2; c++) {
+        const t0 = t + c * 0.75;
+        tono(a, u, { t0, durata: 0.55, f0: 520 + c * 90, f1: 1900 + c * 200, picco: 0.1 * v, vibrato: [18, 25] });
+        soffio(a, u, { t0: t0 + 0.55, durata: 0.6, f0: 2000, f1: 180, picco: 0.6 * v, attacco: 0.003 });
+        tono(a, u, { t0: t0 + 0.55, durata: 0.35, f0: 150, f1: 50, picco: 0.45 * v });
+        for (let i = 0; i < 10; i++) soffio(a, u, { t0: t0 + 0.7 + dado(d) * 0.8, durata: 0.03, filtro: 'bandpass', f0: 2500 + dado(d) * 2500, q: 3, picco: 0.12 * v, da: dado(d) });
+      }
+    },
+    smoke(a, u, t, d, v) { soffio(a, u, { t0: t, durata: 1.2, f0: 900, f1: 260, picco: 0.24 * v, attacco: 0.2 }); },
+    hearts(a, u, t, d, v) {
+      [1047, 1319, 1568].forEach((f, i) => {
+        tono(a, u, { t0: t + i * 0.16, durata: 0.4, f0: f, picco: 0.14 * v, vibrato: [6, 8] });
+        tono(a, u, { t0: t + i * 0.16, durata: 0.3, tipo: 'triangle', f0: f / 2, picco: 0.05 * v });
+      });
+    },
+    lightning(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 0.2, filtro: 'highpass', f0: 1600, picco: 0.8 * v, attacco: 0.002 });
+      soffio(a, u, { t0: t + 0.08, durata: 2.2, f0: 420, f1: 70, picco: 0.6 * v, attacco: 0.14 });
+      tono(a, u, { t0: t + 0.1, durata: 1.8, f0: 48, f1: 36, picco: 0.35 * v, attacco: 0.2 });
+    },
+    shooting_star(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 1.0, f0: 2700, f1: 700, picco: 0.12 * v, vibrato: [9, 30] });
+      soffio(a, u, { t0: t, durata: 0.9, filtro: 'bandpass', f0: 4200, f1: 1400, q: 1.2, picco: 0.06 * v });
+      tono(a, u, { t0: t + 0.9, durata: 0.7, f0: 1760, picco: 0.08 * v });
+    },
+    glow(a, u, t, d, v) { [523, 659, 784, 1047].forEach(f => tono(a, u, { t0: t, durata: 1.7, f0: f, picco: 0.06 * v, attacco: 0.4 })); },
+    confetti(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 0.09, filtro: 'bandpass', f0: 1300, q: 1, picco: 0.6 * v, attacco: 0.002 });
+      for (let i = 0; i < 10; i++) soffio(a, u, { t0: t + 0.06 + i * 0.03, durata: 0.025, filtro: 'highpass', f0: 3500, picco: 0.1 * v, da: dado(d) });
+      tono(a, u, { t0: t + 0.16, durata: 0.16, tipo: 'triangle', f0: 784, picco: 0.14 * v });
+      tono(a, u, { t0: t + 0.33, durata: 0.55, tipo: 'triangle', f0: 1047, picco: 0.16 * v, vibrato: [6, 10] });
+    },
+    boing(a, u, t, d, v) { tono(a, u, { t0: t, durata: 0.6, tipo: 'triangle', f0: 260, curva: curvaBoing(240 + dado(d) * 60), picco: 0.28 * v }); },
+    whoosh(a, u, t, d, v) { soffio(a, u, { t0: t, durata: 0.7, filtro: 'bandpass', f0: 300, fm: 2400, f1: 500, q: 1.3, picco: 0.36 * v, attacco: 0.12 }); },
+    pop(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 0.1, f0: 340, f1: 1000, picco: 0.32 * v });
+      soffio(a, u, { t0: t, durata: 0.025, filtro: 'highpass', f0: 3000, picco: 0.12 * v });
+    },
+    zap(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 0.3, tipo: 'sawtooth', f0: 1700, f1: 160, picco: 0.1 * v, taglio: 3200 });
+      tono(a, u, { t0: t + 0.04, durata: 0.26, tipo: 'square', f0: 1200, f1: 220, picco: 0.05 * v, taglio: 2600 });
+    },
+    magic(a, u, t, d, v) {
+      [784, 988, 1175, 1568, 1976, 2349].forEach((f, i) => tono(a, u, { t0: t + i * 0.06, durata: 0.45, f0: f, picco: 0.1 * v }));
+      soffio(a, u, { t0: t, durata: 1.0, filtro: 'highpass', f0: 5200, picco: 0.05 * v, attacco: 0.25 });
+    },
+    inflate(a, u, t, d, v) { tono(a, u, { t0: t, durata: 1.1, tipo: 'sawtooth', f0: 70, f1: 230, picco: 0.2 * v, attacco: 0.15, taglio: 900 }); },
+    suck(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 1.5, f0: 320, f1: 36, picco: 0.4 * v, attacco: 0.5 });
+      soffio(a, u, { t0: t, durata: 1.5, f0: 2600, f1: 110, picco: 0.32 * v, attacco: 0.7 });
+    },
+    wobble(a, u, t, d, v) { tono(a, u, { t0: t, durata: 0.7, tipo: 'triangle', f0: 210, picco: 0.2 * v, vibrato: [11, 70] }); },
+    spin(a, u, t, d, v) {
+      for (let i = 0; i < 3; i++) soffio(a, u, { t0: t + i * 0.17, durata: 0.2, filtro: 'bandpass', f0: 600, f1: 2800, q: 2, picco: 0.26 * v, attacco: 0.05, da: i * 0.3 });
+    },
+    tada(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 0.14, tipo: 'sawtooth', f0: 784, picco: 0.1 * v, taglio: 2400 });
+      tono(a, u, { t0: t + 0.15, durata: 0.65, tipo: 'sawtooth', f0: 1047, picco: 0.12 * v, taglio: 2600, vibrato: [6, 9] });
+    },
+    ding(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 1.2, f0: 1319, picco: 0.2 * v });
+      tono(a, u, { t0: t, durata: 0.6, f0: 2637, picco: 0.06 * v });
+    },
+    drumroll(a, u, t, d, v) {
+      for (let i = 0; i < 22; i++) soffio(a, u, { t0: t + i * 0.06, durata: 0.05, filtro: 'bandpass', f0: 800, q: 1.4, picco: (0.08 + 0.2 * i / 22) * v, da: dado(d) });
+      soffio(a, u, { t0: t + 1.35, durata: 1.0, filtro: 'highpass', f0: 5000, picco: 0.3 * v, attacco: 0.003 });
+    },
+    rumble(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 2.0, f0: 220, f1: 90, picco: 0.5 * v, attacco: 0.4 });
+      tono(a, u, { t0: t, durata: 2.0, f0: 40, picco: 0.3 * v, attacco: 0.4 });
+    }
+  };
+  function suoniAccesi() {
+    const d = radice.AstroDemo;
+    if (!d || !d.inCorso || d.stato === 'pausa') return false;
+    const o = d.opzioni;
+    return !(o && o.effettiSonori === false);
+  }
+  /* Suona un rumore. `volume` da 0 a 2 (1 di serie). Restituisce vero se è
+   * partito. Lo stesso rumore non riparte prima di un decimo di secondo: un
+   * salto di scena che crea dieci azioni insieme non fa una raffica. */
+  function storSuona(nome, opz = {}) {
+    if (!RICETTE[nome] || !(opz.forza || suoniAccesi())) return false;
+    const ora = adesso();
+    if (ora - (suono.ultimi.get(nome) || -1e9) < 100) return false;
+    const a = opz.contesto || storContestoAudio();
+    if (!a) return false;
+    suono.ultimi.set(nome, ora);
+    const uscita = opz.contesto ? opz.uscita || a.destination : suono.uscita.g;
+    // Sotto la voce di un personaggio i rumori si abbassano
+    if (!opz.contesto) {
+      const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
+      try { uscita.gain.setTargetAtTime(voce && voce.parla ? 0.38 : 0.6, a.currentTime, 0.05); } catch (_) { /* niente */ }
+    }
+    const v = Math.max(0, Math.min(2, opz.volume === undefined ? 1 : Number(opz.volume) || 0));
+    if (!(v > 0)) return false;
+    try {
+      RICETTE[nome](a, uscita, a.currentTime + 0.01, { s: seme(nome + ':' + (opz.seme || '')) || 1 }, v);
+      return true;
+    } catch (e) { return false; }
+  }
+  // Uno Stop o la fine della storia zittiscono anche i rumori in corso
+  function storZittisci() {
+    if (!suono.attivi.size) return;
+    // Non un taglio secco: un'ombra di dissolvenza, poi tutto fermo
+    const a = suono.contesto, fine = a ? a.currentTime + 0.2 : 0;
+    try { if (a && suono.uscita) suono.uscita.g.gain.setTargetAtTime(0.0001, a.currentTime, 0.04); } catch (_) { /* niente */ }
+    for (const n of suono.attivi) { try { n.stop(fine); } catch (_) { /* già fermo */ } }
+    suono.attivi.clear();
+  }
+  // Il rumore di un gesto: `sound` del comando (`off`, un nome) o quello di serie
+  function suonoScelto(p, diSerie) { return p.sound === 'off' ? null : p.sound && p.sound !== 'auto' ? p.sound : diSerie; }
+
+  // ===================================================================
   // 8. Le azioni del DSL
   // ===================================================================
 
@@ -3649,8 +4135,9 @@
   const COMANDI = {
     character_show: {
       verifica(p, scena) {
-        campi(p, ['target', 'expression', 'look', 'size']);
+        campi(p, ['target', 'expression', 'look', 'size', 'sound']);
         const id = bersaglio(p);
+        sceltaSuono(p);
         // la Via Lattea, Andromeda, Sirio: la carta sa dove stanno, il cielo
         // di casa e la vista 3D no
         if (scena && STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo) richiedi(scenaCosmica(scena), 'soloCosmo', { nome: storNome(id) });
@@ -3663,7 +4150,11 @@
         // Una demo che comincia spegne l'anteprima della pagina: i volti di
         // una storia non si mescolano con quello di prova.
         if (stor.anteprima) storChiudiAnteprima();
+        const nuovo = !stor.personaggi.has(storCanonico(p.target));
         const pg = storMostra(p.target, { espressione: p.expression, guarda: guardaVerso(p.look), misura: p.size });
+        // Chi entra in scena per la prima volta fa «pop»
+        const rumore = suonoScelto(p, nuovo ? 'pop' : null);
+        if (rumore) storSuona(rumore, { seme: pg.id });
         const token = ++gettoni;
         pg.token = token;
         return { chiudi() { storCongeda(pg.id, token); } };
@@ -3758,8 +4249,9 @@
   Object.assign(COMANDI, {
     character_move: {
       verifica(p, scena) {
-        campi(p, ['target', 'to', 'side', 'distance', 'path', 'turns']);
+        campi(p, ['target', 'to', 'side', 'distance', 'path', 'turns', 'sound']);
         const id = bersaglio(p);
+        sceltaSuono(p);
         richiedi(!sonoIdea(id), 'ideaFerma', { nome: storNome(id) });
         verso(p, id, scena);
         scelta(p.side, 'side', STOR_LATI); scelta(p.path, 'path', STOR_PERCORSI);
@@ -3772,10 +4264,13 @@
           percorso: p.path || 'arc', giri: p.turns || 0, u: 0, A: null, lampi: 0 };
         const lega = legaPersonaggio(id, pg => { moto.A = null; pg.moto = moto; });
         lega();
+        const rumore = suonoScelto(p, STOR_SUONO_PERCORSO[moto.percorso]);
+        let suonato = false;
         return {
           aggiorna(u) {
             if (!lega()) return;
             moto.u = stor.ridotto ? (u > 0 ? 1 : 0) : u;
+            if (!suonato && u > 0 && u < 1) { suonato = true; if (rumore) storSuona(rumore, { seme: id }); }
             // Il teletrasporto: una nuvola di scintille dove sparisce e una
             // dove ricompare
             if (moto.percorso === 'teleport' && !stor.ridotto) {
@@ -3788,11 +4283,11 @@
     },
     character_return: {
       verifica(p, scena) {
-        campi(p, ['target', 'path']); bersaglio(p); scelta(p.path, 'path', STOR_PERCORSI);
+        campi(p, ['target', 'path', 'sound']); bersaglio(p); scelta(p.path, 'path', STOR_PERCORSI); sceltaSuono(p);
         inScena(p, scena); soloIn3d(scena, 'character_return');
       },
       crea(p) {
-        return COMANDI.character_move.crea({ target: p.target, to: 'orbit', path: p.path || 'arc' });
+        return COMANDI.character_move.crea({ target: p.target, to: 'orbit', path: p.path || 'arc', sound: p.sound });
       }
     },
     // Diventa un'altra cosa, col suo volto (v414): il Sole che si gonfia in
@@ -3802,7 +4297,7 @@
     // scena o finché `shape: self` non lo rimette com'era.
     character_become: {
       verifica(p, scena) {
-        campi(p, ['target', 'shape']); bersaglio(p);
+        campi(p, ['target', 'shape', 'sound']); bersaglio(p); sceltaSuono(p);
         richiedi(p.shape !== undefined, 'valoreIgnoto', { campo: 'shape', nome: '', elenco: Object.keys(STOR_VESTI).join(', ') });
         scelta(p.shape, 'shape', Object.keys(STOR_VESTI));
         inScena(p, scena);
@@ -3815,6 +4310,10 @@
           pg.veste = v;
           pg.cambioDa = stor.orologio;
           if (!stor.ridotto) storEffetto('sparkles', { target: id, durata: 1100 });
+          const rumore = suonoScelto(p, STOR_SUONO_VESTE[p.shape]);
+          if (rumore) storSuona(rumore, { seme: id });
+          // Una stella che esplode fa tremare il quadro anche senza `effect`
+          if (p.shape === 'supernova') storScossa(1.1, 900);
         });
         lega();
         return {
@@ -3830,7 +4329,7 @@
     },
     character_animate: {
       verifica(p, scena) {
-        campi(p, ['target', 'animation', 'times', 'strength']); bersaglio(p);
+        campi(p, ['target', 'animation', 'times', 'strength', 'sound']); bersaglio(p); sceltaSuono(p);
         richiedi(p.animation !== undefined, 'valoreIgnoto', { campo: 'animation', nome: '', elenco: STOR_ANIMAZIONI.join(', ') });
         scelta(p.animation, 'animation', STOR_ANIMAZIONI);
         numeroIn(p.times, 'times', 1, 20); numeroIn(p.strength, 'strength', 0.2, 3);
@@ -3841,8 +4340,14 @@
         const anim = { tipo: p.animation, u: 0, volte: p.times || 0, forza: p.strength === undefined ? 1 : p.strength };
         const lega = legaPersonaggio(id, pg => pg.animazioni.push(anim));
         lega();
+        const rumore = suonoScelto(p, STOR_SUONO_ANIMAZIONE[p.animation]);
+        let suonato = false;
         return {
-          aggiorna(u) { if (lega()) anim.u = u; },
+          aggiorna(u) {
+            if (!lega()) return;
+            anim.u = u;
+            if (!suonato && u > 0 && u < 1) { suonato = true; if (rumore) storSuona(rumore, { seme: id }); }
+          },
           chiudi() { const pg = stor.personaggi.get(id); if (pg) pg.animazioni = pg.animazioni.filter(a => a !== anim); }
         };
       }
@@ -3864,7 +4369,8 @@
     },
     effect: {
       verifica(p, scena) {
-        campi(p, ['type', 'target', 'at', 'size', 'color', 'duration']);
+        campi(p, ['type', 'target', 'at', 'size', 'color', 'duration', 'sound']);
+        sceltaSuono(p);
         richiedi(p.type !== undefined, 'valoreIgnoto', { campo: 'type', nome: '', elenco: Object.keys(STOR_EFFETTI).join(', ') });
         scelta(p.type, 'type', Object.keys(STOR_EFFETTI));
         if (p.target !== undefined && luogoCosmico(p.target) && !STOR_PERSONAGGI[p.target])
@@ -3883,12 +4389,47 @@
         // botto in coda a una scena non si taglia a metà. Uno Stop o la fine
         // della storia li tolgono tutti (`storSgombra`).
         if (stor.anteprima) storChiudiAnteprima();
-        storEffetto(p.type, { target: p.target, dove: p.at, scala: p.size, colore: p.color,
+        const ef = storEffetto(p.type, { target: p.target, dove: p.at, scala: p.size, colore: p.color,
           durata: p.duration ? p.duration * 1000 : undefined });
+        // Il botto si sente: il rumore dello stesso nome, o quello scelto
+        const rumore = suonoScelto(p, p.type);
+        if (rumore) storSuona(rumore, { seme: p.type + (p.target || ''), volume: ef ? Math.min(1.4, 0.75 + 0.25 * ef.scala) : 1 });
         return {};
       }
     }
   });
+
+  // La regia di una scena (§7-ter): `auto` (di serie) va da chi parla e dai
+  // botti, `wide` tiene la camera della scena, `close` resta su un personaggio
+  const STOR_MODI_REGIA = ['auto', 'wide', 'close'];
+  Object.assign(COMANDI, {
+    story_camera: {
+      verifica(p, scena) {
+        campi(p, ['mode', 'target', 'zoom']);
+        richiedi(p.mode !== undefined, 'valoreIgnoto', { campo: 'mode', nome: '', elenco: STOR_MODI_REGIA.join(', ') });
+        scelta(p.mode, 'mode', STOR_MODI_REGIA);
+        numeroIn(p.zoom, 'zoom', 1, 4);
+        if (p.mode === 'close') { richiedi(p.target !== undefined, 'personaggioIgnoto', { nome: '' }); inScena(p, scena); }
+        else if (p.target !== undefined) bersaglio(p);
+        if (scena) richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
+      },
+      crea(p) {
+        const r = stor.regia;
+        r.modo = p.mode; r.chi = p.target ? storCanonico(p.target) : null; r.zoomMax = p.zoom || null;
+        return { chiudi() { r.modo = 'auto'; r.chi = null; r.zoomMax = null; } };
+      }
+    },
+    sound: {
+      verifica(p, scena) {
+        campi(p, ['type', 'volume']);
+        richiedi(p.type !== undefined, 'valoreIgnoto', { campo: 'type', nome: '', elenco: STOR_SUONI.join(', ') });
+        scelta(p.type, 'type', STOR_SUONI);
+        numeroIn(p.volume, 'volume', 0, 2);
+      },
+      crea(p) { storSuona(p.type, { volume: p.volume }); return {}; }
+    }
+  });
+  function sceltaSuono(p) { return scelta(p.sound, 'sound', ['auto', 'off'].concat(STOR_SUONI)); }
 
   function registraComandi() {
     const d = radice.AstroDemo;
@@ -4183,6 +4724,9 @@
     STOR_VESTI, vesteProfilo: storVesteProfilo, scalaDi: storScalaDi, disegnaCorpo, disegnaVolto: storDisegnaVolto,
     riempiPagina: storRiempiPagina, storie: storieDisponibili,
     stato: stor,
+    STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
+    lenteSchermo: storLenteSchermo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
+    get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },
     get disegnati() { return stor.ultimiDisegnati.map(d => Object.assign({}, d, { geom: undefined })); },
     get parlante() { return stor.parlante ? stor.parlante.target : null; },
@@ -4194,6 +4738,9 @@
   radice.storScena3D = storScena3D;
   radice.storDisegnaCosmo = storDisegnaCosmo;
   radice.storRaggio3D = storRaggio3D;
+  radice.storLenteApri = storLenteApri;
+  radice.storLenteChiudi = storLenteChiudi;
+  radice.storLenteK = () => stor.regia.aperta ? stor.regia.k : 1;
   // È in scena in questo momento? (la 3D disegna una sonda o un mondo minore
   // spenti, se sono personaggi)
   radice.storInScena = id => stor.personaggi.size > 0 && stor.personaggi.has(storCanonico(id));

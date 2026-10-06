@@ -440,6 +440,82 @@ function sintesiFinta() {
       await pagina.close();
     }
 
+    // ================================================================
+    console.log('\n— la regia e i rumori (v416) —');
+    {
+      const { pagina, errori } = await apri();
+      await pagina.evaluate(() => AstroDemo.avvia(`define_demo 'regia' {
+  scene planetarium_view { duration: 1s; action: set_date { iso: '2026-12-13T21:00:00Z' }; }
+  scene solar_system_3d { duration: 14s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter' };
+    action: character_show { target: 'Jupiter', expression: 'happy' };
+    action: character_show { target: 'Mars' };
+    action: character_speak { target: 'Jupiter', text: 'Ciao bambini! Sono Giove, il più grande di tutti i pianeti, e oggi vi racconto una storia bellissima.' };
+    action: effect { type: explosion, target: 'Mars', shot_from: 0.55 };
+  }
+}`));
+      await pagina.waitForFunction(() => sol.aperto && StorieCosmiche.parlante === 'Jupiter' && StorieCosmiche.regia.k > 1.5, null, { timeout: 15000 });
+      await pagina.waitForTimeout(1500);
+      const r = await pagina.evaluate(() => StorieCosmiche.regia);
+      ok(['parla', 'dialogo'].includes(r.motivo) && r.k > 1.5 && r.vista === 'sistema', `chi parla è in primo piano: ${r.motivo}, ×${r.k.toFixed(2)}`);
+      // Nei pixel veri della tela: dove la lente porta il volto di Giove ci
+      // sono il bianco degli occhi e l'inchiostro
+      const pixel = await pagina.evaluate(() => {
+        const d = StorieCosmiche.stato.ultimiDisegnati.find(x => x.id === 'Jupiter');
+        const g = d.geom, occ = g.occhi[0];
+        const a = StorieCosmiche.lenteSchermo(occ.cx - occ.rx, occ.cy - occ.ry), b = StorieCosmiche.lenteSchermo(occ.cx + occ.rx, occ.cy + occ.ry);
+        const dpr = sol.ctx.canvas.width / sol.L;
+        const x0 = Math.round(a.x * dpr), y0 = Math.round(a.y * dpr), w = Math.max(2, Math.round((b.x - a.x) * dpr)), h = Math.max(2, Math.round((b.y - a.y) * dpr));
+        const dati = sol.ctx.getImageData(x0, y0, w, h).data;
+        let bianchi = 0, scuri = 0;
+        for (let i = 0; i < dati.length; i += 4) {
+          const l = (dati[i] + dati[i + 1] + dati[i + 2]) / 3;
+          if (l > 215) bianchi++; if (l < 60) scuri++;
+        }
+        const occhiSchermo = StorieCosmiche.lenteSchermo((g.occhi[0].cx + g.occhi[1].cx) / 2, (g.occhi[0].cy + g.occhi[1].cy) / 2);
+        return { bianchi, scuri, tot: dati.length / 4, w: w / dpr, occhi: occhiSchermo, L: sol.L, H: sol.H };
+      });
+      ok(pixel.bianchi > pixel.tot * 0.08 && pixel.scuri > 3, `l'occhio ingrandito è nei pixel: ${pixel.bianchi} chiari e ${pixel.scuri} scuri su ${pixel.tot}`);
+      ok(pixel.w > 14, 'un occhio largo ' + pixel.w.toFixed(1) + ' px sullo schermo');
+      ok(pixel.occhi.x > 0 && pixel.occhi.x < pixel.L && pixel.occhi.y > 0 && pixel.occhi.y < pixel.H * 0.68,
+        `gli occhi stanno nel quadro, sopra ai sottotitoli: ${pixel.occhi.x.toFixed(0)}, ${pixel.occhi.y.toFixed(0)}`);
+      await pagina.screenshot({ path: path.join(radice, 'work/storie-regia-parla.png') });
+      // Il botto: la camera va a guardarlo
+      await pagina.evaluate(() => AstroDemo.vaiAScena(1, 0.54));
+      await pagina.waitForFunction(() => StorieCosmiche.regia.motivo === 'effetto', null, { timeout: 8000 });
+      await pagina.waitForTimeout(450);
+      ok(await pagina.evaluate(() => StorieCosmiche.regia.k > 1.2), 'il botto è inquadrato da vicino');
+      await pagina.screenshot({ path: path.join(radice, 'work/storie-regia-botto.png') });
+      // La persona prende la camera: la lente si toglie
+      await pagina.evaluate(() => AstroDemo.vaiAScena(1, 0.1));
+      await pagina.mouse.move(500, 300); await pagina.mouse.down(); await pagina.mouse.move(560, 330, { steps: 4 }); await pagina.mouse.up();
+      await pagina.waitForTimeout(1800);
+      ok(await pagina.evaluate(() => AstroDemo.cameraManuale && StorieCosmiche.regia.k < 1.05), 'la camera presa a mano: la regia le lascia il quadro');
+      await pagina.evaluate(() => AstroDemo.ferma());
+      await fotogrammi(pagina, 3);
+      ok(await pagina.evaluate(() => StorieCosmiche.regia.k === 1 && StorieCosmiche.attivi === 0), 'finita la storia, niente lente');
+      // I rumori, resi davvero da un contesto audio fuori linea
+      const suoni = await pagina.evaluate(async () => {
+        const out = {};
+        for (const nome of StorieCosmiche.STOR_SUONI) {
+          const a = new OfflineAudioContext(1, 22050 * 4, 22050);
+          const ok = StorieCosmiche.suona(nome, { contesto: a, uscita: a.destination, forza: true });
+          const b = await a.startRendering();
+          const c = b.getChannelData(0);
+          let somma = 0, picco = 0;
+          for (let i = 0; i < c.length; i++) { somma += c[i] * c[i]; picco = Math.max(picco, Math.abs(c[i])); }
+          out[nome] = { ok, rms: Math.sqrt(somma / c.length), picco };
+        }
+        return out;
+      });
+      const muti = Object.entries(suoni).filter(([, s]) => !s.ok || !(s.rms > 0.002)).map(([n]) => n);
+      ok(!muti.length, 'ogni rumore suona davvero: ' + (muti.join(', ') || Object.keys(suoni).length + ' rumori'));
+      const forti = Object.entries(suoni).filter(([, s]) => s.picco > 1.5).map(([n, s]) => n + ' ' + s.picco.toFixed(2));
+      ok(!forti.length, 'nessun rumore esagera: ' + (forti.join(', ') || 'tutti sotto 1,5'));
+      ok(!errori.length, 'nessun errore di pagina: ' + errori.join(' | '));
+      await pagina.close();
+    }
+
     console.log(`\nStorie cosmiche nel browser: ${verifiche} verifiche superate`);
   } finally {
     if (browser) await browser.close();
