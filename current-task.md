@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v414): la vita delle stelle nelle Storie cosmiche (`STORIE.md`, §La vita delle stelle).
+Ultimo lavoro (v415): il cartello delle demo (`date_card`) di serie dice solo la sua scritta; la data, l'ora e il luogo si chiedono con `date: show`, `time: show`, `place: show` (`demo.js`, `aggiornaCartello`). Le stagioni e le Voyager li chiedono (la data è il loro racconto), le storie e «Dalla Terra all'universo» no, tranne il congedo «di nuovo qui» (ora e luogo). Nello Studio, in «Inquadratura e data», la casella «Mostra la data e il luogo» (`cartello` della scena). Prove: `prova-storie.js` (63), `prova-storie-browser.js` (69), `prova-demo.js`, `prova-demo-stagioni.js`, `prova-demo-universo.js`, `prova-demo-voyager.js`, `prova-demo-pagina.js`, `prova-guida.js`, `controlla-i18n.js --patto`.
+
+Prima (v414): la vita delle stelle nelle Storie cosmiche (`STORIE.md`, §La vita delle stelle).
 
 - Sagome nuove (`storie-cosmiche.js` §6-quater): `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco`; famiglia `buco`.
 - Personaggi: Betelgeuse (`Star7`, anche nel planetario; nella carta al `luogo` `betelgeuse`), la supernova del Granchio (`supernova`, a `crab_nebula`), Sirio B (`sirius_b`), Sagittario A* (`sgr_a`), il buco bianco (`white_hole`, `cosmo: 'idea'`: galleggia davanti alla carta, non viaggia e non si raggiunge, `demo.err.ideaFerma`). I luoghi nuovi sono in `COSM_LUOGHI_STORIE` (`scala-cosmica.js`), senza paletto disegnato.

@@ -476,7 +476,7 @@
     action: timelapse { start: 11:40, end: 12:20 };
     action: zoom_fov { from: 110, to: 70 };
     action: center_target { target: 'Sun' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.roma' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.roma', date: show, time: show, place: show };
   }
   scene transition {
     duration: 7s;
@@ -488,7 +488,7 @@
     // l'inclinazione rispetto alla perpendicolare all'orbita si legge intera.
     duration: 20s;
     action: narrate { id: 'demo.narr.solstizi_equinozi.3' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.asse', time: hide };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.asse', date: show };
     action: earth_axis { parallel: 41.9 };
     action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: -70, elev_from: 30, elev_to: 2, zoom_from: 0.8, zoom_to: 1.8 };
   }
@@ -500,7 +500,7 @@
     duration: 26s;
     action: narrate { id: 'demo.narr.solstizi_equinozi.4' };
     action: date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.anno', time: hide, distance: show };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.anno', date: show, distance: show };
     action: earth_axis {};
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 0, elev_from: 38, elev_to: 50, zoom_from: 2.3, zoom_to: 2.3 };
   }
@@ -511,7 +511,7 @@
     action: narrate { id: 'demo.narr.solstizi_equinozi.5' };
     action: set_date { iso: '2027-06-21T00:00:00Z' };
     action: event_window { event: june_solstice, from: -240, to: 240 };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.estate' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.estate', date: show, time: show, place: show };
     action: earth_axis { parallel: 41.9 };
     action: camera_3d { scene: system, focus: 'Earth', sun_az: 0, orbit: 35, elev_from: 10, elev_to: 18, zoom_from: 1.6, zoom_to: 2.2 };
   }
@@ -520,7 +520,7 @@
     duration: 12s;
     action: narrate { id: 'demo.narr.solstizi_equinozi.6' };
     action: date_range { from: '2027-06-22T00:00:00Z', to: '2027-12-21T00:00:00Z' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.viaggio', time: hide, distance: show };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.viaggio', date: show, distance: show };
     action: earth_axis {};
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 0, elev_from: 50, elev_to: 36, zoom_from: 2.3, zoom_to: 2.3 };
   }
@@ -531,7 +531,7 @@
     action: narrate { id: 'demo.narr.solstizi_equinozi.7' };
     action: set_date { iso: '2027-12-21T00:00:00Z' };
     action: event_window { event: december_solstice, from: -240, to: 240 };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.inverno' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.inverno', date: show, time: show, place: show };
     action: earth_axis { parallel: 41.9 };
     action: camera_3d { scene: system, focus: 'Earth', sun_az: 0, orbit: 35, elev_from: 10, elev_to: 18, zoom_from: 1.6, zoom_to: 2.2 };
   }
@@ -542,7 +542,7 @@
     action: narrate { id: 'demo.narr.solstizi_equinozi.8' };
     action: set_date { iso: '2028-03-20T00:00:00Z' };
     action: event_window { event: march_equinox, from: -240, to: 240 };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.primavera' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.primavera', date: show, time: show, place: show };
     action: earth_axis { parallel: 41.9 };
     action: camera_3d { scene: system, focus: 'Earth', sun_az: 0, orbit: 70, elev_from: 8, elev_to: 12, zoom_from: 1.8, zoom_to: 2 };
   }
@@ -552,7 +552,7 @@
     action: narrate { id: 'demo.narr.solstizi_equinozi.9' };
     action: set_date { iso: '2028-09-22T00:00:00Z' };
     action: event_window { event: september_equinox, from: -240, to: 240 };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.autunno' };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.autunno', date: show, time: show, place: show };
     action: earth_axis { parallel: 41.9 };
     action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: -70, elev_from: 12, elev_to: 8, zoom_from: 2, zoom_to: 1.8 };
   }
@@ -569,7 +569,7 @@
     action: set_fov { degrees: 125 };
     action: track_azimuth { target: 'Sun', alt: 18 };
     action: sun_paths { dates: '2027-06-21' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloEstate', sun: show };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloEstate', date: show, time: show, place: show, sun: show };
   }
   scene planetarium_view {
     // Il 22 dicembre, stesso posto e stessa camera: l'arco basso e corto,
@@ -581,7 +581,7 @@
     action: set_fov { degrees: 125 };
     action: track_azimuth { target: 'Sun', alt: 18 };
     action: sun_paths { dates: '2027-06-21,2027-12-22' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloInverno', sun: show };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloInverno', date: show, time: show, place: show, sun: show };
   }
   scene planetarium_view {
     // L'equinozio di marzo: est esatto, ovest esatto, e l'arco nel mezzo.
@@ -592,7 +592,7 @@
     action: set_fov { degrees: 125 };
     action: track_azimuth { target: 'Sun', alt: 18 };
     action: sun_paths { dates: '2027-06-21,2028-03-20,2027-12-22' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloEquinozio', sun: show };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.cieloEquinozio', date: show, time: show, place: show, sun: show };
   }
   scene planetarium_view {
     // I tre archi insieme, a campo largo verso sud, attorno a mezzogiorno.
@@ -602,7 +602,7 @@
     action: zoom_fov { from: 115, to: 150 };
     action: point_view { az: 180, alt: 34 };
     action: sun_paths { dates: '2027-06-21,2028-03-20,2027-12-22' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.confronto', time: hide };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.confronto', date: show };
   }
   scene planetarium_view {
     // Tromsø (69,6° N) al solstizio di giugno: a mezzanotte il Sole passa a
@@ -615,7 +615,7 @@
     action: set_fov { degrees: 115 };
     action: track_azimuth { target: 'Sun', alt: 14 };
     action: sun_paths { dates: '2027-06-21' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.tromso', sun: show };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.tromso', date: show, time: show, place: show, sun: show };
   }
   scene transition {
     duration: 7s;
@@ -627,7 +627,7 @@
     duration: 22s;
     action: narrate { id: 'demo.narr.solstizi_equinozi.16' };
     action: date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' };
-    action: date_card { label: 'demo.cartello.solstizi_equinozi.riepilogo', time: hide };
+    action: date_card { label: 'demo.cartello.solstizi_equinozi.riepilogo', date: show };
     action: earth_axis {};
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 120, elev_from: 24, elev_to: 44, zoom_from: 2, zoom_to: 2.4 };
   }
@@ -655,7 +655,7 @@
     action: timelapse { start: 04:30, end: 05:40 };
     action: zoom_fov { from: 120, to: 75 };
     action: frame_objects { names: 'Venus,Mars,Jupiter' };
-    action: date_card { label: 'demo.cartello.voyager.capo', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.capo', date: show };
   }
   scene transition {
     duration: 7s;
@@ -668,7 +668,7 @@
     action: narrate { id: 'demo.narr.voyager.3' };
     action: voyager_journey { from: '1977-08-20T15:00:00Z', to: '1977-09-06T12:00:00Z', future: show, model_from: 0 };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn,Uranus,Neptune', orbit: 50, elev_from: 75, elev_to: 32, zoom_from: 0.95, zoom_to: 1.05 };
-    action: date_card { label: 'demo.cartello.voyager.piano', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.piano', date: show };
   }
   scene solar_system_3d {
     // I due lanci, a distanze e dimensioni vere, in quattro riprese dentro
@@ -690,8 +690,8 @@
     action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Earth', profile: show, orbit: 12, elev_from: 4, elev_to: 10, zoom_from: 1.15, zoom_to: 0.95, shot_from: 0.15, shot_to: 0.4 };
     action: camera_3d { scene: system, focus: 'Voyager 1', keep: 'Earth,Voyager 1,Voyager 2', orbit: 26, elev_from: 34, elev_to: 24, blend: 0.45, shot_from: 0.4, shot_to: 0.62 };
     action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Earth', orbit: 24, elev_from: 22, elev_to: 12, zoom_from: 1, zoom_to: 60, zoom_start: 0.2, blend: 0.3, shot_from: 0.62 };
-    action: date_card { label: 'demo.cartello.voyager.lancio2', time: hide, shot_to: 0.15 };
-    action: date_card { label: 'demo.cartello.voyager.lancio', time: hide, shot_from: 0.15 };
+    action: date_card { label: 'demo.cartello.voyager.lancio2', date: show, shot_to: 0.15 };
+    action: date_card { label: 'demo.cartello.voyager.lancio', date: show, shot_from: 0.15 };
   }
   scene solar_system_3d {
     // Diciotto mesi di salita verso Giove, in tre riprese legate fra loro
@@ -707,7 +707,7 @@
     action: camera_3d { scene: system, focus: 'Voyager 1', keep: 'Voyager 1,Voyager 2', orbit: 18, elev_from: 78, elev_to: 66, zoom_from: 0.3, zoom_to: 0.4, blend: 0.4, shot_from: 0.3, shot_to: 0.68 };
     action: voyager_journey { from: '1978-01-05T00:00:00Z', to: '1979-03-01T00:00:00Z', future: show, model_from: 0.035, ease: smooth, shot_from: 0.68 };
     action: camera_3d { scene: system, focus: 'Voyager 1', keep: 'Voyager 1,Voyager 2,Jupiter', orbit: 16, elev_from: 40, elev_to: 34, blend: 0.5, shot_from: 0.68 };
-    action: date_card { label: 'demo.cartello.voyager.salita', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.salita', date: show };
   }
   scene solar_system_3d {
     // Giove, a distanze e dimensioni vere: la curva della fionda. La camera
@@ -717,7 +717,7 @@
     action: narrate { id: 'demo.narr.voyager.6' };
     action: voyager_journey { from: '1979-03-04T12:00:00Z', to: '1979-03-06T12:00:00Z', probes: 'voyager1', scale: real, ease: flyby, future: show, model_from: 0.05, milestones: hide };
     action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Jupiter', flyby_tilt: 28, orbit: 30, elev_from: 4, elev_to: -6 };
-    action: date_card { label: 'demo.cartello.voyager.giove', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.giove', date: show };
   }
   scene solar_system_3d {
     // Saturno e Titano: la fionda che la porta fuori dal piano.
@@ -725,7 +725,7 @@
     action: narrate { id: 'demo.narr.voyager.7' };
     action: voyager_journey { from: '1980-11-12T06:00:00Z', to: '1980-11-13T18:00:00Z', probes: 'voyager1', scale: real, ease: flyby, future: show, model_from: 0.05, milestones: hide };
     action: camera_3d { scene: system, focus: 'Voyager 1', frame_with: 'Saturn', flyby_tilt: 32, orbit: -30, elev_from: 6, elev_to: -4 };
-    action: date_card { label: 'demo.cartello.voyager.saturno', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.saturno', date: show };
   }
   scene solar_system_3d {
     // Voyager 2 da sola: Saturno, Urano, Nettuno. La camera la segue e si
@@ -735,7 +735,7 @@
     action: narrate { id: 'demo.narr.voyager.8' };
     action: voyager_journey { from: '1980-11-14T00:00:00Z', to: '1989-08-24T16:00:00Z', probes: 'voyager2', scale: real, future: show, model_from: 0.035, ease: flyby };
     action: camera_3d { scene: system, focus: 'Voyager 2', frame_with: 'auto', orbit: 50, elev_from: 30, elev_to: 18 };
-    action: date_card { label: 'demo.cartello.voyager.giganti', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.giganti', date: show };
   }
   scene solar_system_3d {
     // Nettuno e Tritone: il sorvolo più stretto del viaggio, cinquemila
@@ -744,7 +744,7 @@
     action: narrate { id: 'demo.narr.voyager.9' };
     action: voyager_journey { from: '1989-08-24T16:00:00Z', to: '1989-08-25T16:00:00Z', probes: 'voyager2', scale: real, ease: flyby, future: show, model_from: 0.05, milestones: hide };
     action: camera_3d { scene: system, focus: 'Voyager 2', frame_with: 'Neptune', flyby_tilt: 24, orbit: 36, elev_from: 4, elev_to: -6 };
-    action: date_card { label: 'demo.cartello.voyager.nettuno', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.nettuno', date: show };
   }
   scene solar_system_3d {
     // La V: una sopra il piano, una sotto; l'eliopausa nel 2012.
@@ -752,7 +752,7 @@
     action: narrate { id: 'demo.narr.voyager.10' };
     action: voyager_journey { from: '1989-09-01T00:00:00Z', to: '2012-08-25T00:00:00Z', model_from: 0.035 };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Neptune', orbit: 70, elev_from: 30, elev_to: 6, zoom_from: 0.95, zoom_to: 0.55 };
-    action: date_card { label: 'demo.cartello.voyager.fuga', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.fuga', date: show };
   }
   scene solar_system_3d {
     // Il pallido puntino blu: da quaranta unità astronomiche, verso casa.
@@ -763,7 +763,7 @@
     action: narrate { id: 'demo.narr.voyager.11' };
     action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show, gaze: show, proportion: free };
     action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -105, orbit: 25, elev_from: -4, elev_to: 4, zoom_from: 1.05, zoom_to: 0.95 };
-    action: date_card { label: 'demo.cartello.voyager.puntino', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.puntino', date: show };
   }
   scene solar_system_3d {
     // Il Disco d'Oro: la camera parte dalla sonda intera e si avvicina al
@@ -774,7 +774,7 @@
     action: voyager_journey { from: 'now-280d', to: 'now', probes: 'voyager1', model_from: 0.42, model_to: 3.4, model_end: 0.5, milestones: hide, proportion: free, record: show };
     action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: 22, orbit: -16, elev_from: 10, elev_to: 2, zoom_from: 40, zoom_to: 50 };
     action: golden_record { at: 0.3 };
-    action: date_card { label: 'demo.cartello.voyager.disco', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.disco', date: show };
   }
   scene solar_system_3d {
     // Oggi: tutto il viaggio in un colpo d'occhio.
@@ -782,7 +782,7 @@
     action: narrate { id: 'demo.narr.voyager.13' };
     action: voyager_journey { from: 'now', to: 'now+365d', model_from: 0.035 };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Neptune', orbit: 60, elev_from: 14, elev_to: 32, zoom_from: 0.52, zoom_to: 0.6 };
-    action: date_card { label: 'demo.cartello.voyager.oggi', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.oggi', date: show };
   }
   scene planetarium_view {
     // Roma, stasera (il giorno in cui si guarda la demo): dove guardare.
@@ -794,7 +794,7 @@
     action: probe_markers {};
     action: zoom_fov { from: 110, to: 30 };
     action: point_view { probe: 'voyager1' };
-    action: date_card { label: 'demo.cartello.voyager.stasera', time: hide };
+    action: date_card { label: 'demo.cartello.voyager.stasera', date: show };
   }
   scene planetarium_view {
     // Il congedo: il campo si riapre sulla notte.
@@ -830,7 +830,7 @@
     action: timelapse { start: 21:30, end: 22:10 };
     action: zoom_fov { from: 70, to: 125 };
     action: point_view { az: 180, alt: 55 };
-    action: date_card { label: 'demo.cartello.universo.casa', time: show };
+    action: date_card { label: 'demo.cartello.universo.casa', time: show, place: show };
   }
   scene transition {
     // Cento chilometri: l'aria finisce e il blu diventa nero.
@@ -846,7 +846,7 @@
     duration: 22s;
     action: narrate { id: 'demo.narr.universo.3' };
     action: cosmic_scale { from: 'arrival', to: 'earth', orbit: -40, elev_to: 24 };
-    action: date_card { label: 'demo.cartello.universo.terra', time: hide };
+    action: date_card { label: 'demo.cartello.universo.terra' };
   }
   scene solar_system_3d {
     // La camera si allontana dalla Terra finché nel quadro entra la Luna:
@@ -854,70 +854,70 @@
     duration: 22s;
     action: narrate { id: 'demo.narr.universo.4' };
     action: cosmic_scale { from: 'earth', to: 'earth_moon', orbit: 30, elev_from: 24, elev_to: 62 };
-    action: date_card { label: 'demo.cartello.universo.luna', time: hide };
+    action: date_card { label: 'demo.cartello.universo.luna' };
   }
   scene solar_system_3d {
     // Il Sole e i pianeti di roccia: la Terra lascia il centro al Sole.
     duration: 24s;
     action: narrate { id: 'demo.narr.universo.5' };
     action: cosmic_scale { from: 'earth_moon', to: 'inner_planets', orbit: 30, elev_from: 62, elev_to: 74 };
-    action: date_card { label: 'demo.cartello.universo.sole', time: hide };
+    action: date_card { label: 'demo.cartello.universo.sole' };
   }
   scene solar_system_3d {
     // I giganti, fino a Nettuno: il Sistema Solare che tutti conoscono.
     duration: 24s;
     action: narrate { id: 'demo.narr.universo.6' };
     action: cosmic_scale { from: 'inner_planets', to: 'planets', orbit: 30, elev_from: 74, elev_to: 70 };
-    action: date_card { label: 'demo.cartello.universo.nettuno', time: hide };
+    action: date_card { label: 'demo.cartello.universo.nettuno' };
   }
   scene solar_system_3d {
     // Oltre i pianeti: Kuiper e la bolla del Sole, con le Voyager di oggi.
     duration: 26s;
     action: narrate { id: 'demo.narr.universo.7' };
     action: cosmic_scale { from: 'planets', to: 'voyager', focus: 'heliopause', orbit: 20, elev_from: 70, elev_to: 58 };
-    action: date_card { label: 'demo.cartello.universo.eliopausa', time: hide };
+    action: date_card { label: 'demo.cartello.universo.eliopausa' };
   }
   scene solar_system_3d {
     // La scala comincia a correre: la nube di Oort.
     duration: 26s;
     action: narrate { id: 'demo.narr.universo.8' };
     action: cosmic_scale { from: 'voyager', to: 'oort', focus: 'oort', center: 'sun', orbit: 25, elev_from: 58, elev_to: 70 };
-    action: date_card { label: 'demo.cartello.universo.oort', time: hide };
+    action: date_card { label: 'demo.cartello.universo.oort' };
   }
   scene solar_system_3d {
     // Le stelle vicine: Alfa Centauri, Sirio, la nube interstellare locale.
     duration: 24s;
     action: narrate { id: 'demo.narr.universo.9' };
     action: cosmic_scale { from: 'oort', to: 'local_cloud', focus: 'local_cloud', orbit: 20, elev_from: 70, elev_to: 80 };
-    action: date_card { label: 'demo.cartello.universo.stelle', time: hide };
+    action: date_card { label: 'demo.cartello.universo.stelle' };
   }
   scene solar_system_3d {
     // La Bolla Locale e il braccio di Orione, con una sosta su ognuno.
     duration: 26s;
     action: narrate { id: 'demo.narr.universo.10' };
     action: cosmic_scale { from: 'local_cloud', to: 'orion_arm', ease: stops, orbit: 15, elev_from: 80, elev_to: 90 };
-    action: date_card { label: 'demo.cartello.universo.orione', time: hide };
+    action: date_card { label: 'demo.cartello.universo.orione' };
   }
   scene solar_system_3d {
     // La Via Lattea intera, prima a picco e poi un poco di sbieco.
     duration: 28s;
     action: narrate { id: 'demo.narr.universo.11' };
     action: cosmic_scale { from: 'orion_arm', to: 'milky_way', focus: 'milky_way', zoom_end: 0.6, orbit: 30, elev_from: 90, elev_to: 55 };
-    action: date_card { label: 'demo.cartello.universo.galassia', time: hide };
+    action: date_card { label: 'demo.cartello.universo.galassia' };
   }
   scene solar_system_3d {
     // Fuori dalla galassia: Magellano, Andromeda, il Gruppo Locale.
     duration: 26s;
     action: narrate { id: 'demo.narr.universo.12' };
     action: cosmic_scale { from: 'milky_way', to: 'local_group', focus: 'local_group', orbit: 25, elev_from: 55, elev_to: 75 };
-    action: date_card { label: 'demo.cartello.universo.andromeda', time: hide };
+    action: date_card { label: 'demo.cartello.universo.andromeda' };
   }
   scene solar_system_3d {
     // La Vergine e Laniakea, con una sosta su ognuna.
     duration: 28s;
     action: narrate { id: 'demo.narr.universo.13' };
     action: cosmic_scale { from: 'local_group', to: 'laniakea', ease: stops, orbit: 20, elev_from: 75, elev_to: 85 };
-    action: date_card { label: 'demo.cartello.universo.laniakea', time: hide };
+    action: date_card { label: 'demo.cartello.universo.laniakea' };
   }
   scene solar_system_3d {
     // L'universo osservabile: la ragnatela, e il bordo oltre il quale la
@@ -925,7 +925,7 @@
     duration: 32s;
     action: narrate { id: 'demo.narr.universo.14' };
     action: cosmic_scale { from: 'laniakea', to: 'universe', focus: 'universe', zoom_end: 0.75, orbit: 25, elev_from: 85, elev_to: 70 };
-    action: date_card { label: 'demo.cartello.universo.tutto', time: hide };
+    action: date_card { label: 'demo.cartello.universo.tutto' };
   }
   scene solar_system_3d {
     // Il ritorno in un fiato: venti decade in venti secondi, fino alla Terra
@@ -934,7 +934,7 @@
     duration: 20s;
     action: narrate { id: 'demo.narr.universo.15' };
     action: cosmic_scale { from: 'universe', to: 'landing', ease: smooth, orbit: -40, elev_from: 70, elev_to: 90 };
-    action: date_card { label: 'demo.cartello.universo.ritorno', time: hide };
+    action: date_card { label: 'demo.cartello.universo.ritorno' };
   }
   scene transition {
     // L'atterraggio: il volo del decollo percorso all'indietro, attraverso
@@ -942,7 +942,7 @@
     duration: 6s;
     action: narrate { id: 'demo.narr.universo.16' };
     action: zoom_view { type: geometric, final_target: planetarium_view };
-    action: date_card { label: 'demo.cartello.universo.ritornoCasa', time: hide };
+    action: date_card { label: 'demo.cartello.universo.ritornoCasa' };
   }
   scene planetarium_view {
     // Il congedo: di nuovo sotto il cielo di casa, nella stessa posa in cui
@@ -954,7 +954,7 @@
     action: timelapse { start: 22:10, end: 22:55 };
     action: zoom_fov { from: 125, to: 95 };
     action: point_view { az: 180, alt: 55 };
-    action: date_card { label: 'demo.cartello.universo.ritornoCasa', time: show };
+    action: date_card { label: 'demo.cartello.universo.ritornoCasa', time: show, place: show };
   }
 }`
     },
@@ -1129,7 +1129,7 @@
     duration: 12s;
     action: set_fov { degrees: 6 };
     action: center_target { target: 'Moon' };
-    action: date_card { label: 'demo.cartello.storia_tempo.luna', time: hide };
+    action: date_card { label: 'demo.cartello.storia_tempo.luna' };
     action: character_show { target: 'Moon', expression: 'excited' };
     action: effect { type: sparkles, target: 'Moon', shot_from: 0.4 };
     action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.2' };
@@ -1144,7 +1144,7 @@
     // Dalla Terra della vista 3D alla carta, e fuori fino al Sole
     duration: 13s;
     action: cosmic_scale { from: 'arrival', to: 'inner_planets', orbit: 20, elev_to: 62 };
-    action: date_card { label: 'demo.cartello.storia_tempo.sole', time: hide };
+    action: date_card { label: 'demo.cartello.storia_tempo.sole' };
     action: character_show { target: 'Sun', expression: 'happy' };
     action: character_show { target: 'Moon', expression: 'surprised', look: 'Sun' };
     action: character_speak { target: 'Sun', id: 'demo.narr.storia_tempo.4' };
@@ -1162,7 +1162,7 @@
     // Oltre i pianeti, fino alla Voyager di oggi
     duration: 14s;
     action: cosmic_scale { from: 'inner_planets', to: 'voyager', orbit: 18, elev_from: 66, elev_to: 72 };
-    action: date_card { label: 'demo.cartello.storia_tempo.voyager', time: hide };
+    action: date_card { label: 'demo.cartello.storia_tempo.voyager' };
     action: character_show { target: 'voyager1', expression: 'excited' };
     action: character_show { target: 'Moon', expression: 'surprised', look: 'voyager1' };
     action: effect { type: shockwave, target: 'voyager1', shot_from: 0.3 };
@@ -1172,7 +1172,7 @@
     // Le stelle vicine: Alfa Centauri a 4,37 anni luce
     duration: 14s;
     action: cosmic_scale { from: 'voyager', to: 'local_cloud', orbit: 18, elev_from: 72, elev_to: 78 };
-    action: date_card { label: 'demo.cartello.storia_tempo.alfa', time: hide };
+    action: date_card { label: 'demo.cartello.storia_tempo.alfa' };
     action: character_show { target: 'alpha_centauri', expression: 'happy' };
     action: character_show { target: 'Moon', expression: 'thinking', look: 'alpha_centauri' };
     action: character_speak { target: 'alpha_centauri', id: 'demo.narr.storia_tempo.7' };
@@ -1181,7 +1181,7 @@
     // La Galassia intera: la luce del suo centro ha 26.000 anni
     duration: 16s;
     action: cosmic_scale { from: 'local_cloud', to: 'milky_way', orbit: 25, elev_from: 78, elev_to: 60 };
-    action: date_card { label: 'demo.cartello.storia_tempo.centro', time: hide };
+    action: date_card { label: 'demo.cartello.storia_tempo.centro' };
     action: character_show { target: 'milky_way', expression: 'thinking' };
     action: character_show { target: 'Moon', expression: 'surprised', look: 'milky_way' };
     action: effect { type: glow, target: 'galactic_center', shot_from: 0.3, duration: 6 };
@@ -1191,7 +1191,7 @@
     // Fuori dalla Galassia: Andromeda, a 2,5 milioni di anni luce
     duration: 15s;
     action: cosmic_scale { from: 'milky_way', to: 'local_group', orbit: 20, elev_from: 60, elev_to: 72 };
-    action: date_card { label: 'demo.cartello.storia_tempo.andromeda', time: hide };
+    action: date_card { label: 'demo.cartello.storia_tempo.andromeda' };
     action: character_show { target: 'andromeda', expression: 'love' };
     action: character_show { target: 'milky_way', expression: 'happy', look: 'andromeda' };
     action: effect { type: hearts, target: 'andromeda', shot_from: 0.4 };
@@ -1209,7 +1209,7 @@
     // Il bordo dell'universo osservabile: la luce più antica
     duration: 15s;
     action: cosmic_scale { from: 'laniakea', to: 'universe', zoom_end: 0.8, orbit: 20, elev_from: 80, elev_to: 70 };
-    action: date_card { label: 'demo.cartello.storia_tempo.universo', time: hide };
+    action: date_card { label: 'demo.cartello.storia_tempo.universo' };
     action: character_show { target: 'milky_way', expression: 'surprised' };
     action: character_show { target: 'Moon', expression: 'surprised', look: 'milky_way' };
     action: effect { type: fireworks, at: center, shot_from: 0.55 };
@@ -1234,7 +1234,7 @@
     action: set_date { iso: '2026-12-13T17:30:00Z' };
     action: center_target { target: 'Moon' };
     action: zoom_fov { from: 20, to: 6 };
-    action: date_card { label: 'demo.cartello.storia_tempo.casa', time: show };
+    action: date_card { label: 'demo.cartello.storia_tempo.casa', time: show, place: show };
     action: character_show { target: 'Moon', expression: 'love' };
     action: effect { type: sparkles, target: 'Moon', shot_from: 0.6 };
     action: character_speak { target: 'Moon', id: 'demo.narr.storia_tempo.14' };
@@ -1273,7 +1273,7 @@
     duration: 10s;
     action: set_fov { degrees: 34 };
     action: point_view { az: 126, alt: 34 };
-    action: date_card { label: 'demo.cartello.storia_stelle.betelgeuse', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.betelgeuse' };
     action: character_show { target: 'Star7', expression: 'thinking' };
     action: character_expression { target: 'Star7', expression: 'excited', shot_from: 0.65 };
     action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.2' };
@@ -1288,7 +1288,7 @@
     // Il Sole e la Terra, alle distanze vere
     duration: 12s;
     action: cosmic_scale { from: 'arrival', to: 'inner_planets', orbit: 20, elev_to: 62 };
-    action: date_card { label: 'demo.cartello.storia_stelle.sole', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.sole' };
     action: character_show { target: 'Sun', expression: 'worried' };
     action: character_show { target: 'Earth', expression: 'surprised', look: 'Sun' };
     action: character_speak { target: 'Sun', id: 'demo.narr.storia_stelle.4' };
@@ -1305,7 +1305,7 @@
     // Fuori, fino a Betelgeuse: 548 anni luce
     duration: 14s;
     action: cosmic_scale { from: 'inner_planets', to: 63000000, center: sun, orbit: 20, elev_from: 66, elev_to: 74 };
-    action: date_card { label: 'demo.cartello.storia_stelle.gigante', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.gigante' };
     action: character_show { target: 'Star7', expression: 'happy' };
     action: character_show { target: 'Sun', expression: 'surprised', look: 'Star7' };
     action: character_animate { target: 'Star7', animation: pulse, times: 2, shot_from: 0.5 };
@@ -1324,7 +1324,7 @@
     // La supernova del 1054: oggi la nebulosa del Granchio, a 6500 anni luce
     duration: 14s;
     action: cosmic_scale { from: 63000000, to: 570000000, center: sun, orbit: 18, elev_from: 76, elev_to: 70 };
-    action: date_card { label: 'demo.cartello.storia_stelle.supernova', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.supernova' };
     action: character_show { target: 'supernova', expression: 'laughing' };
     action: character_show { target: 'Sun', expression: 'surprised', look: 'supernova' };
     action: effect { type: explosion, target: 'supernova', size: 1.6, shot_from: 0.25 };
@@ -1333,7 +1333,7 @@
   scene solar_system_3d {
     duration: 13s;
     action: cosmic_scale { from: 570000000, to: 570000000, center: sun, orbit: 10, elev_from: 70, elev_to: 68 };
-    action: date_card { label: 'demo.cartello.storia_stelle.pulsar', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.pulsar' };
     action: character_show { target: 'supernova', expression: 'excited' };
     action: character_show { target: 'Sun', expression: 'surprised', look: 'supernova' };
     action: character_animate { target: 'supernova', animation: spin, times: 3, shot_from: 0.35 };
@@ -1351,7 +1351,7 @@
     // Sirio B, la nana bianca, accanto a Sirio, a 8,6 anni luce
     duration: 13s;
     action: cosmic_scale { from: 1000000, to: 1000000, center: sun, orbit: 10, elev_from: 72, elev_to: 74 };
-    action: date_card { label: 'demo.cartello.storia_stelle.nana', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.nana' };
     action: character_show { target: 'sirius_b', expression: 'happy' };
     action: character_show { target: 'sirius', expression: 'happy', look: 'sirius_b' };
     action: character_show { target: 'Sun', expression: 'surprised', look: 'sirius_b' };
@@ -1371,7 +1371,7 @@
     // Il Sole prova addosso il suo futuro: prima gigante rossa…
     duration: 14s;
     action: cosmic_scale { from: 1000000, to: 'inner_planets', zoom_end: 0.35, orbit: 20, elev_from: 75, elev_to: 64 };
-    action: date_card { label: 'demo.cartello.storia_stelle.futuro', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.futuro' };
     action: character_show { target: 'Sun', expression: 'surprised' };
     action: character_show { target: 'Earth', expression: 'surprised', look: 'Sun' };
     action: character_become { target: 'Sun', shape: red_giant, shot_from: 0.3, shot_to: 0.8 };
@@ -1400,7 +1400,7 @@
     // Sagittario A*, il buco nero al centro della Via Lattea
     duration: 15s;
     action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 12, elev_from: 58, elev_to: 62 };
-    action: date_card { label: 'demo.cartello.storia_stelle.buco_nero', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.buco_nero' };
     action: character_show { target: 'sgr_a', expression: 'thinking' };
     action: character_show { target: 'Sun', expression: 'surprised', look: 'sgr_a' };
     action: effect { type: glow, target: 'sgr_a', duration: 6, shot_from: 0.1 };
@@ -1410,7 +1410,7 @@
   scene solar_system_3d {
     duration: 10s;
     action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 62, elev_to: 64 };
-    action: date_card { label: 'demo.cartello.storia_stelle.foto', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.foto' };
     action: character_show { target: 'sgr_a', expression: 'neutral' };
     action: character_show { target: 'Sun', expression: 'worried', look: 'sgr_a' };
     action: character_speak { target: 'sgr_a', id: 'demo.narr.storia_stelle.17' };
@@ -1443,7 +1443,7 @@
   scene solar_system_3d {
     duration: 12s;
     action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 6, elev_from: 66, elev_to: 64 };
-    action: date_card { label: 'demo.cartello.storia_stelle.buco_bianco', time: hide };
+    action: date_card { label: 'demo.cartello.storia_stelle.buco_bianco' };
     action: character_show { target: 'white_hole', expression: 'thinking' };
     action: character_show { target: 'sgr_a', expression: 'thinking', look: 'white_hole' };
     action: character_expression { target: 'white_hole', expression: 'laughing', shot_from: 0.7 };
@@ -1469,7 +1469,7 @@
     action: set_date { iso: '2026-12-13T21:00:00Z' };
     action: point_view { az: 126, alt: 34 };
     action: zoom_fov { from: 50, to: 34 };
-    action: date_card { label: 'demo.cartello.storia_stelle.casa', time: show };
+    action: date_card { label: 'demo.cartello.storia_stelle.casa', time: show, place: show };
     action: character_show { target: 'Star7', expression: 'love' };
     action: effect { type: sparkles, target: 'Star7', shot_from: 0.55 };
     action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.24' };

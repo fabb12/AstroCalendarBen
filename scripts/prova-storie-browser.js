@@ -418,6 +418,28 @@ function sintesiFinta() {
       await pagina.close();
     }
 
+    console.log('\n— il cartello: la data e il luogo solo se chiesti (v414) —');
+    {
+      const { pagina, errori } = await apri();
+      const cartello = async righe => {
+        await pagina.evaluate(r => AstroDemo.avvia(`define_demo 'cartello' {
+  scene planetarium_view { duration: 20s; action: set_date { iso: '2026-12-13T21:00:00Z' }; action: date_card { ${r} }; }
+}`), righe);
+        await pagina.waitForTimeout(400);
+        const testo = await pagina.evaluate(() => { const c = document.getElementById('demo-cartello'); return c && !c.hidden ? c.innerText : ''; });
+        await pagina.evaluate(() => AstroDemo.ferma());
+        return testo;
+      };
+      const solo = await cartello("label: 'demo.cartello.storia_stelle.sole'");
+      ok(/4,6 miliardi/i.test(solo) && !/2026/.test(solo) && !/Milano/.test(solo), 'di serie il cartello dice solo la sua scritta: ' + JSON.stringify(solo));
+      const tutto = await cartello("label: 'demo.cartello.storia_stelle.sole', date: show, time: show, place: show");
+      ok(/13 dicembre 2026/i.test(tutto) && /Milano/.test(tutto) && /\d{1,2}:\d{2}/.test(tutto), 'con date, time e place il cartello dice data, ora e luogo: ' + JSON.stringify(tutto));
+      const luogo = await cartello("text: 'Qui', place: show");
+      ok(/Milano/.test(luogo) && !/:/.test(luogo) && !/2026/.test(luogo), 'il luogo da solo, senza ora né data: ' + JSON.stringify(luogo));
+      ok(!errori.length, 'nessun errore di pagina: ' + errori.join(' | '));
+      await pagina.close();
+    }
+
     console.log(`\nStorie cosmiche nel browser: ${verifiche} verifiche superate`);
   } finally {
     if (browser) await browser.close();

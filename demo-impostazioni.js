@@ -33,7 +33,8 @@
     shadow_map: ['eclipse_map', 'shadow_map { from: -30, to: 30, zoom_from: 3, zoom_to: 4 }'],
     // Il cartello della data, un tratto di calendario, l'asse della Terra
     // nella 3D e gli archi del Sole nel planetario (la demo delle stagioni).
-    date_card: ['planetarium_view', "date_card { text: 'Il giorno più lungo', sun: show }"],
+    // Il cartello dice solo la sua scritta: data, ora e luogo si chiedono (v414)
+    date_card: ['planetarium_view', "date_card { text: 'Il giorno più lungo', date: show, time: show, place: show, sun: show }"],
     date_range: ['solar_system_3d', "date_range { from: '2027-06-21T12:00:00Z', to: '2028-06-20T12:00:00Z' }"],
     earth_axis: ['solar_system_3d', 'earth_axis { parallel: 45 }'],
     sun_paths: ['planetarium_view', "sun_paths { dates: '2027-06-21,2027-12-22' }"],

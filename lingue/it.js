@@ -5965,6 +5965,8 @@ window.ASTRO_DIZIONARI['it'] = {
     "studio.volte": "{n} volte",
     "studio.quanteVolte": "Quante volte",
     "studio.misura": "Misura",
+    "studio.mostraCartello": "Mostra la data e il luogo",
+    "studio.ui.conCartello": "data a schermo",
     "studio.forma": "Che cosa diventa",
     "studio.tipo.diventa": "Diventa…",
     "studio.descrivi.diventa": "{chi} diventa: {forma}",
