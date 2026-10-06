@@ -351,6 +351,25 @@ che guarda di lato, alla Betty Boop — gli occhi sono cambiati ancora:
   da `trucco`, se c'è); le **ciglia** di lei sono raccolte all'angolo esterno,
   cinque lunghe e arricciate sopra e tre sotto.
 
+**Più chiari ed esagerati (v425).** Su un terzo disegno di riferimento — la
+Luna piena sorridente, a contorni grossi — i tratti si leggono da lontano:
+
+- **le espressioni** sono spinte più in là (`STOR_ESPRESSIONI`): sopracciglia
+  che corrono di più (0,3 del volto per `alza`, 0,2/0,09 per `inclina`),
+  sorpresa con occhi 1,4 e pupille piccole, rabbia e tristezza più inclinate,
+  infastidito e bullo più storti; il volto di riposo (`neutral`) è un piccolo
+  sorriso con le guance, non una riga. Gli occhi spalancati non si toccano mai
+  (`rx` al più 0,9 della `distanza`), e le guance restano nel viso;
+- **la bocca** è un terzo più grande e ha il contorno d'inchiostro pieno anche
+  per lei (le labbra restano come colore);
+- **gli occhi**: il bianco è bianco vero, l'iride scura in alto e luminosa in
+  basso, il contorno di sotto è un tratto pieno, i riflessi più grandi (il
+  puntino in basso a sinistra); per lei tre ciglia grosse sopra e una sotto,
+  per tutti la riga della palpebra più spessa;
+- **sopracciglia** di lei più spesse (0,062 del volto); **guance** ovali quasi
+  piene, con le tre lineette solo nella contentezza piena (`guance` > 1,05);
+  **niente naso né neo** per lei, come nel disegno.
+
 Per guardarli tutti insieme basta una pagina con `storie-cosmiche.js` che
 chiama `StorieCosmiche.ritratto(tela, id, espressione)` per ogni personaggio.
 
