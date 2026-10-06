@@ -92,6 +92,31 @@ prova('lo Studio dà un nome alla storia e un numero a ogni battuta', () => {
   assert.deepEqual(r.scene.flatMap(sc => sc.momenti.map(m => m.voce)), [1, 2, 3, 0]);
 });
 
+prova('una voce caricata decide la durata del momento, finché il testo è quello', () => {
+  const m = St.nuovoMomento({ chi: 'Moon', testo: 'Ciao   Marte, come stai?' });
+  const senza = St.durata(m);
+  m.audio = { durata: 7300, impronta: St.impronta('Ciao Marte, come stai?'), nome: 'luna.mp3' };
+  assert.ok(St.voceValida(m));
+  assert.equal(St.durata(m), 8, 'la voce più un respiro');
+  m.durata = 12;
+  assert.equal(St.durata(m), 12, 'una pausa scritta a mano più lunga resta');
+  m.durata = 2;
+  assert.equal(St.durata(m), 8, 'più corta no: taglierebbe la voce');
+  m.durata = 0;
+  // Nel copione la scena dura quanto la voce
+  const pr = St.nuovoProgetto({ cast: ['Moon'], scene: [St.nuovaScena({ ambiente: 'sistema', presenti: ['Moon'], momenti: [m] })] });
+  assert.match(St.copione(pr), /duration: 8s;/);
+  // Ricaricata dall'archivio, la voce resta
+  assert.deepEqual(St.ripulisci(JSON.parse(JSON.stringify(pr))).scene[0].momenti[0].audio, m.audio);
+  // Il testo cambia: la voce non vale più e la durata torna quella del testo
+  m.testo = 'Ciao Marte!';
+  assert.ok(!St.voceValida(m));
+  assert.notEqual(St.durata(m), 8);
+  assert.ok(senza > 0);
+  // La stessa impronta della narrazione
+  assert.equal(St.impronta('Oh  no! Dov’è?'), require('../narrazione.js').impronta('Oh no! Dov’è?'));
+});
+
 prova('due storie con lo stesso titolo non si mescolano', () => {
   const altra = St.nuovoProgetto({ titolo: 'La Luna e Marte!' });
   const chiave = St.vociStoria(altra, 'it', new Set(['studio_la_luna_e_marte'])).chiave;
