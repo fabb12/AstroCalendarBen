@@ -885,6 +885,27 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   frazioni della scena, restano a tempo. Con la cartella collegata
   l'audio si scrive anche in `storie/<personaggio>/<lingua>/`. Istruzioni in
   `audio/narrazione/LEGGIMI.md`; prova `scripts/prova-voci-studio.js`.
+- **Le storie sul repository** (v424, §6b di `storie-studio.js`): le storie
+  salvate nelle demo stanno anche nel repository GitHub, in
+  `storie-studio/storie.json` (`studioFileCondivise`), e ogni dispositivo le
+  legge all'avvio dall'API dei contenuti (senza token, con
+  `raw.githubusercontent.com` di riserva) e le mette fra progetti e demo
+  (`libreria.metti`, la demo tiene la sua chiave). Scrivere vuole un token
+  fine-grained («Contents: Read and write») in «Altro → Repository GitHub»
+  (`astrocal_storie_repo_v1`, fuori dal backup). «Salva nelle mie demo»,
+  «Elimina», «Sincronizza ora» e ogni audio caricato in una storia salvata
+  fanno un giro: leggi, unisci (`studioUnisci`: vince `aggiornato` più
+  recente; un'eliminazione lascia una lapide in `eliminati`,
+  `astrocal_storie_eliminati_v1`), e un commit solo con API Git (blob,
+  albero, commit, ramo; un ramo andato avanti fa riprovare) con le storie, il
+  file delle voci e gli audio caricati, ognuno in
+  `audio/narrazione/storie/<personaggio>/<lingua>/` (solo quelli che non ci
+  sono già uguali, per SHA del blob; al massimo 40 MB per giro). Il workflow
+  delle voci e la pubblicazione li mettono nel manifest: dopo il deploy
+  suonano dappertutto. Le bozze mai salvate restano sul dispositivo.
+  `studioRipulisci` tiene gli id di scene, momenti e azioni, perché la stessa
+  storia riletta sia lo stesso file. Prova `scripts/prova-storie-repo.js`
+  (due dispositivi e un GitHub finto).
 - L'interfaccia si costruisce col DOM (mai `innerHTML`: i testi sono di chi
   scrive); i campi di testo aggiornano il modello senza ridisegnare, così il
   clic sul bottone accanto non si perde.
@@ -911,6 +932,7 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
 ```
 node scripts/prova-storie.js            # il motore, senza browser
 node scripts/prova-storie-browser.js    # planetario, 3D, voce, filmato, telefono, inglese
+node scripts/prova-storie-repo.js       # le storie dello Studio sul repository (v424)
 ```
 
 La prima: tutti i tipi di personaggio, pupille dentro agli occhi per ogni

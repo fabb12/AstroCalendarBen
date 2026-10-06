@@ -148,7 +148,7 @@
     return Object.assign({
       v: 1, id: nuovoId('p'), titolo: '', scopo: 'libera', obiettivo: '',
       cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
-      voceChiave: null, voceProssima: 1
+      voceChiave: null, voceProssima: 1, aggiornato: 0, lingua: ''
     }, campi);
   }
   // Chi è davvero in scena: quelli scelti, o tutto il cast; mai qualcuno
@@ -166,6 +166,10 @@
     const testo = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
     const tra = (v, ammessi, di) => ammessi.includes(v) ? v : di;
     const numero = (v, a, b, di) => Number.isFinite(Number(v)) ? Math.max(a, Math.min(b, Number(v))) : di;
+    // v424: scene, momenti e azioni tengono il loro id, perché la stessa
+    // storia letta due volte (dal repository, da un altro dispositivo) sia
+    // lo stesso file e non un commit nuovo a ogni giro
+    const idDi = (v, pre) => typeof v === 'string' && /^[a-z][a-z0-9]{1,15}$/.test(v) ? v : nuovoId(pre);
     const ids = v => Array.isArray(v) ? v.filter(x => typeof x === 'string' && /^[\w :.-]{1,40}$/.test(x)).slice(0, 24) : [];
     const pulito = studioNuovoProgetto({
       id: typeof p.id === 'string' ? p.id.slice(0, 30) : nuovoId('p'),
@@ -173,23 +177,26 @@
       obiettivo: testo(p.obiettivo, 300), cast: ids(p.cast),
       demoChiave: typeof p.demoChiave === 'string' && p.demoChiave.startsWith('utente-') ? p.demoChiave : null,
       voceChiave: typeof p.voceChiave === 'string' && STUDIO_VOCE_CHIAVE.test(p.voceChiave) ? p.voceChiave : null,
-      voceProssima: Math.floor(numero(p.voceProssima, 1, 100000, 1))
+      voceProssima: Math.floor(numero(p.voceProssima, 1, 100000, 1)),
+      // v424: quando è stato toccato l'ultima volta (chi vince fra due
+      // dispositivi) e la lingua delle sue battute nel file delle voci
+      aggiornato: Math.floor(numero(p.aggiornato, 0, 1e13, 0)), lingua: p.lingua === 'en' || p.lingua === 'it' ? p.lingua : ''
     });
     pulito.scene = (Array.isArray(p.scene) ? p.scene : []).slice(0, 40).map(sc => studioNuovaScena({
-      ambiente: tra(sc && sc.ambiente, STUDIO_AMBIENTI, 'sistema'), fuoco: testo(sc && sc.fuoco, 40) || 'Jupiter',
+      id: idDi(sc && sc.id, 's'), ambiente: tra(sc && sc.ambiente, STUDIO_AMBIENTI, 'sistema'), fuoco: testo(sc && sc.fuoco, 40) || 'Jupiter',
       zoom: tra(sc && sc.zoom, Object.keys(STUDIO_ZOOM), 'normale'),
       data: /^\d{4}-\d{2}-\d{2}$/.test(sc && sc.data) ? sc.data : '', ora: /^\d{2}:\d{2}$/.test(sc && sc.ora) ? sc.ora : '21:00',
       giorni: numero(sc && sc.giorni, 0, 1000, 0), cartello: !!(sc && sc.cartello), cameraViva: !(sc && sc.cameraViva === false), presenti: ids(sc && sc.presenti),
       cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
-        chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
+        id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
         audio: m && m.audio && Number(m.audio.durata) > 0 && /^[0-9a-f]{8}$/.test(m.audio.impronta)
           ? { durata: numero(m.audio.durata, 1, 120000, 1), impronta: m.audio.impronta, nome: testo(m.audio.nome, 80) } : null,
         azioni: (Array.isArray(m && m.azioni) ? m.azioni : []).slice(0, 30)
           .filter(a => a && STUDIO_TIPI.includes(a.tipo))
           .map(a => studioNuovaAzione(a.tipo, {
-            chi: testo(a.chi, 40), quando: tra(a.quando, STUDIO_QUANDO, 'inizio'),
+            id: idDi(a.id, 'a'), chi: testo(a.chi, 40), quando: tra(a.quando, STUDIO_QUANDO, 'inizio'),
             umore: testo(a.umore, 20) || undefined, oggetto: testo(a.oggetto, 40) || undefined,
             verso: testo(a.verso, 40), lato: tra(a.lato, ['auto', 'left', 'right', 'above', 'below', 'front', 'behind'], 'auto'),
             percorso: testo(a.percorso, 20) || 'arc', animazione: testo(a.animazione, 20) || 'jump',
@@ -1159,7 +1166,8 @@
     if (salvata) {
       const prese = new Set(Object.keys(foto));
       for (const altro of studio.progetti) if (altro.id !== salvata.id && altro.voceChiave) prese.add(altro.voceChiave);
-      const f = studioVociStoria(salvata, linguaStudio(), prese);
+      salvata.lingua = linguaStudio();
+      const f = studioVociStoria(salvata, salvata.lingua, prese);
       foto[f.chiave] = f;
     }
     studioVociSalva(foto);
@@ -1249,7 +1257,17 @@
     m.audio = { durata, impronta: studioImpronta(testo), nome: String(file.name || '').slice(0, 80) };
     salvaPresto();
     disegna();
-    esito(t('studio.voce.caricata', { secondi: secondiDi(durata), durata: studioDurata(m) }));
+    const caricata = t('studio.voce.caricata', { secondi: secondiDi(durata), durata: studioDurata(m) });
+    esito(caricata);
+    // v424: l'audio va subito anche sul repository (§6b), nella cartella del
+    // personaggio, perché suoni dagli altri dispositivi; una storia mai
+    // salvata ce lo manda al primo «Salva nelle mie demo»
+    if (!condivisa(p)) { esito(caricata + ' ' + t('studio.repo.audioDopo')); return; }
+    if (!studioRepoImpostazioni().token) { esito(caricata + ' ' + t('studio.repo.senzaToken')); return; }
+    esito(caricata + ' ' + t('studio.repo.inCorso'));
+    const msg = await aggiornaVoci({ salvata: p, chiedi: false });
+    salvaPresto();
+    esito(caricata + ' ' + (msg ? msg + ' ' : '') + await studioSincronizza({ spingi: true, titolo: p.titolo }));
   }
   function togliVoce(m) {
     if (!m || !m.voce) { if (m) m.audio = null; return; }
@@ -1320,6 +1338,288 @@
   }
 
   // ===================================================================
+  // 6b. Le storie sul repository (v424)
+  // ===================================================================
+
+  /* Una storia scritta sul computer non si vedeva dal telefono: progetti,
+   * demo e voci vivevano solo nel browser che li aveva fatti. Adesso le
+   * storie **salvate** («Salva nelle mie demo») stanno anche nel repository
+   * GitHub del sito, in `storie-studio/storie.json`, e ogni dispositivo che
+   * apre l'app le legge da lì e le mette fra le sue (progetto e demo).
+   *
+   * Leggere non chiede niente: il repository è pubblico, e l'API dei
+   * contenuti risponde subito (la pubblicazione su Pages ci mette qualche
+   * minuto, e il file pubblicato starebbe nella cache del service worker).
+   * Scrivere vuole un token di GitHub (fine-grained, «Contents: Read and
+   * write» su questo solo repository) scritto una volta in «Altro →
+   * Repository GitHub»: resta in questo browser e non entra nel backup.
+   *
+   * Un salvataggio è **un commit solo** (API Git: blob, albero, commit,
+   * ramo) con tre cose: le storie, il file delle voci
+   * (`audio/narrazione/storie/storie-studio.json`, §6, che fa partire il
+   * workflow delle voci) e gli audio caricati a mano nelle battute. Prima di
+   * scrivere si rilegge e si unisce: fra due dispositivi vince la versione
+   * toccata per ultima di ogni storia (`aggiornato`), e una storia eliminata
+   * lascia una lapide (`eliminati`) perché non torni dall'altro. Se nel
+   * frattempo qualcun altro ha scritto, il ramo rifiuta e si riprova. */
+  const CHIAVE_REPO = 'astrocal_storie_repo_v1';
+  const CHIAVE_ELIMINATI = 'astrocal_storie_eliminati_v1';
+  const FILE_CONDIVISE = 'storie-studio/storie.json';
+  const PERCORSO_VOCI = 'audio/narrazione/storie/' + FILE_VOCI;
+  const REPO_DI_SERIE = 'fabb12/AstroCalendarBen';
+  const REPO_VALIDO = /^[\w.-]{1,100}\/[\w.-]{1,100}$/;
+  const RAMO_VALIDO = /^[\w./-]{1,100}$/;
+  const STUDIO_REPO_AUDIO_MAX = 40 * 1024 * 1024;
+
+  // Il repository di questo sito: quello scritto in config.js, o quello che
+  // dice l'indirizzo di Pages (`<proprietario>.github.io/<repository>/`)
+  function studioRepoDiSerie(luogo) {
+    if (typeof radice.STORIE_REPO === 'string' && REPO_VALIDO.test(radice.STORIE_REPO)) return radice.STORIE_REPO;
+    const m = luogo && /^([\w-]+)\.github\.io$/i.exec(luogo.hostname || '');
+    const pezzo = luogo && String(luogo.pathname || '').split('/').filter(Boolean)[0];
+    if (m && pezzo && REPO_VALIDO.test(m[1] + '/' + pezzo)) return m[1] + '/' + pezzo;
+    return REPO_DI_SERIE;
+  }
+  function studioRepoImpostazioni() {
+    let salvate = {};
+    try { salvate = JSON.parse((archivio() && archivio().getItem(CHIAVE_REPO)) || '{}') || {}; } catch (_) { salvate = {}; }
+    return {
+      repo: REPO_VALIDO.test(salvate.repo || '') ? salvate.repo : studioRepoDiSerie(radice.location),
+      ramo: RAMO_VALIDO.test(salvate.ramo || '') ? salvate.ramo : 'main',
+      token: typeof salvate.token === 'string' ? salvate.token.trim() : ''
+    };
+  }
+  function studioRepoSalvaImpostazioni(imp) {
+    const a = archivio();
+    try { if (a) a.setItem(CHIAVE_REPO, JSON.stringify({ repo: imp.repo, ramo: imp.ramo, token: imp.token || '' })); return true; }
+    catch (_) { return false; }
+  }
+  function eliminatiCarica() {
+    try {
+      const d = JSON.parse((archivio() && archivio().getItem(CHIAVE_ELIMINATI)) || '{}');
+      return d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+    } catch (_) { return {}; }
+  }
+  function eliminatiSalva(e) {
+    try { if (archivio()) archivio().setItem(CHIAVE_ELIMINATI, JSON.stringify(e)); } catch (_) { /* resta la lapide di prima */ }
+  }
+  // Le lapidi, pulite: un id e un istante
+  function lapidi(e) {
+    const fuori = {};
+    if (e && typeof e === 'object' && !Array.isArray(e))
+      for (const [id, q] of Object.entries(e)) if (/^[\w-]{1,30}$/.test(id) && Number.isFinite(Number(q)) && Number(q) > 0) fuori[id] = Math.floor(Number(q));
+    return fuori;
+  }
+  // Quali storie vanno sul repository: quelle salvate nelle demo
+  const condivisa = p => !!(p && p.demoChiave);
+
+  // Il contenuto di `storie-studio/storie.json`, in un ordine fisso (lo
+  // stesso file per le stesse storie: niente commit inutili)
+  function studioFileCondivise(progetti, eliminati) {
+    const storie = progetti.filter(condivisa).map(copia).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    const e = lapidi(eliminati), ordinati = {};
+    for (const k of Object.keys(e).sort()) ordinati[k] = e[k];
+    return JSON.stringify({
+      _leggimi: 'Le storie salvate nello Studio delle storie, scritte dall\'app (Studio → Altro → Repository GitHub) e lette da ogni dispositivo. Non modificarlo a mano.',
+      v: 1, storie, eliminati: ordinati
+    }, null, 2) + '\n';
+  }
+  // E il contrario: un file rotto vale come vuoto, una storia rotta si salta
+  function studioLeggiCondivise(testo) {
+    let d = null;
+    try { d = JSON.parse(testo); } catch (_) { d = null; }
+    if (!d || typeof d !== 'object') return { progetti: [], eliminati: {} };
+    const progetti = (Array.isArray(d.storie) ? d.storie : [])
+      .map(p => { try { return studioRipulisci(p); } catch (_) { return null; } })
+      .filter(p => p && p.demoChiave);
+    return { progetti, eliminati: lapidi(d.eliminati) };
+  }
+  /* L'unione di quello che c'è qui con quello del repository. Di ogni
+   * storia vince la versione toccata per ultima; una lapide più recente
+   * dell'ultima modifica la toglie. Le bozze mai salvate (senza demo) non
+   * si toccano. `arrivati`: storie nuove o più fresche dal repository;
+   * `tolti`: storie di qui eliminate altrove. */
+  function studioUnisci(locali, eliminatiLocali, remoto) {
+    const eliminati = lapidi(eliminatiLocali);
+    for (const [id, q] of Object.entries(lapidi(remoto && remoto.eliminati))) eliminati[id] = Math.max(eliminati[id] || 0, q);
+    const progetti = locali.slice();
+    const arrivati = [], tolti = [];
+    for (const r of (remoto && remoto.progetti) || []) {
+      if ((eliminati[r.id] || 0) >= (r.aggiornato || 0)) continue;
+      const i = progetti.findIndex(p => p.id === r.id);
+      if (i < 0) { progetti.push(r); arrivati.push(r); }
+      else if ((r.aggiornato || 0) > (progetti[i].aggiornato || 0)) { progetti[i] = r; arrivati.push(r); }
+    }
+    for (let i = progetti.length - 1; i >= 0; i--) {
+      const p = progetti[i];
+      if (condivisa(p) && eliminati[p.id] && (p.aggiornato || 0) <= eliminati[p.id]) { tolti.push(p); progetti.splice(i, 1); }
+    }
+    return { progetti, eliminati, arrivati, tolti };
+  }
+
+  // Lo SHA di un blob come lo calcola git, per non ricaricare un audio
+  // che sul repository c'è già uguale
+  async function shaBlob(byte) {
+    const testa = new TextEncoder().encode('blob ' + byte.length + '\0');
+    const tutto = new Uint8Array(testa.length + byte.length);
+    tutto.set(testa); tutto.set(byte, testa.length);
+    const h2 = new Uint8Array(await crypto.subtle.digest('SHA-1', tutto));
+    return Array.from(h2, b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function base64Di(byte) {
+    let s = '';
+    for (let i = 0; i < byte.length; i += 0x8000) s += String.fromCharCode.apply(null, byte.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  const percorsoUrl = percorso => percorso.split('/').map(encodeURIComponent).join('/');
+
+  // Una chiamata all'API di GitHub. `null` per un 404 (il file non c'è
+  // ancora), un errore con lo stato per il resto.
+  async function gh(imp, metodo, percorso, corpo, accetta) {
+    const intest = { Accept: accetta || 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    if (imp.token) intest.Authorization = 'Bearer ' + imp.token;
+    if (corpo !== undefined) intest['Content-Type'] = 'application/json';
+    const r = await fetch('https://api.github.com/repos/' + imp.repo + percorso, {
+      method: metodo, headers: intest, cache: 'no-store', body: corpo === undefined ? undefined : JSON.stringify(corpo)
+    });
+    if (r.status === 404) return null;
+    if (!r.ok) {
+      let dett = '';
+      try { dett = (await r.json()).message || ''; } catch (_) { /* senza spiegazione */ }
+      const e = new Error((r.status === 401 ? t('studio.repo.errToken') : r.status === 403 ? t('studio.repo.errPermesso') : '') || ('GitHub ' + r.status + (dett ? ': ' + dett : '')));
+      e.stato = r.status;
+      throw e;
+    }
+    return accetta === 'application/vnd.github.raw+json' ? r.text() : r.json();
+  }
+  const leggiFile = (imp, percorso) => gh(imp, 'GET', '/contents/' + percorsoUrl(percorso) + '?ref=' + encodeURIComponent(imp.ramo), undefined, 'application/vnd.github.raw+json');
+
+  // Il repository, letto: dall'API (fresca), e se non risponde (limite di
+  // richieste senza token) dal file grezzo
+  async function leggiRemoto(imp) {
+    try {
+      const testo = await leggiFile(imp, FILE_CONDIVISE);
+      return testo === null ? { progetti: [], eliminati: {} } : studioLeggiCondivise(testo);
+    } catch (e) {
+      if (imp.token) throw e;
+      const r = await fetch('https://raw.githubusercontent.com/' + imp.repo + '/' + percorsoUrl(imp.ramo) + '/' + FILE_CONDIVISE + '?t=' + Date.now(), { cache: 'no-store' });
+      if (r.status === 404) return { progetti: [], eliminati: {} };
+      if (!r.ok) throw e;
+      return studioLeggiCondivise(await r.text());
+    }
+  }
+
+  // Quello che arriva entra nello Studio e nella libreria delle demo
+  function applicaUnione(u) {
+    const lib = radice.AstroDemo && radice.AstroDemo.libreria;
+    const foto = studioVociCarica();
+    const togliFoto = id => { for (const [k, f] of Object.entries(foto)) if (!f || f.progetto === id) delete foto[k]; };
+    // La demo di una storia eliminata altrove resta, come resta sul
+    // dispositivo che l'ha eliminata (§7, «Elimina» toglie solo il progetto)
+    for (const p of u.tolti) {
+      cancellaVoci(p.id);
+      togliFoto(p.id);
+    }
+    for (const p of u.arrivati) {
+      try {
+        if (lib && typeof lib.metti === 'function') lib.metti(p.demoChiave, studioCopione(p));
+      } catch (_) { /* un copione che il motore di qui non accetta: resta il progetto */ }
+      togliFoto(p.id);
+      const prese = new Set(Object.keys(foto));
+      const f = studioVociStoria(p, p.lingua || linguaStudio(), prese);
+      foto[f.chiave] = f;
+    }
+    studioVociSalva(foto);
+    studio.progetti = u.progetti;
+    studioSalvaTutti(studio.progetti);
+    eliminatiSalva(u.eliminati);
+    if (studio.progetto) {
+      const ora = studio.progetti.find(p => p.id === studio.progetto.id);
+      if (ora) studio.progetto = ora;
+      else if (u.tolti.some(p => p.id === studio.progetto.id)) studio.progetto = studio.progetti[0] || studioNuovoProgetto();
+    }
+    if (u.arrivati.length || u.tolti.length) {
+      if (typeof radice.demoPaginaRicarica === 'function') { try { radice.demoPaginaRicarica(); } catch (_) { /* la pagina Demo si rifà quando si apre */ } }
+      disegna();
+    }
+  }
+
+  // Un commit solo con tutti i file cambiati; `false` se il ramo nel
+  // frattempo è andato avanti (si riprova da capo)
+  async function scriviCommit(imp, file, messaggio) {
+    const ref = await gh(imp, 'GET', '/git/ref/heads/' + percorsoUrl(imp.ramo));
+    if (!ref) throw new Error(t('studio.repo.errRamo', { ramo: imp.ramo }));
+    const base = await gh(imp, 'GET', '/git/commits/' + ref.object.sha);
+    const albero = [];
+    for (const f of file) {
+      const blob = await gh(imp, 'POST', '/git/blobs', f.testo !== undefined
+        ? { content: f.testo, encoding: 'utf-8' } : { content: base64Di(f.byte), encoding: 'base64' });
+      albero.push({ path: f.percorso, mode: '100644', type: 'blob', sha: blob.sha });
+    }
+    const nuovo = await gh(imp, 'POST', '/git/trees', { base_tree: base.tree.sha, tree: albero });
+    const commit = await gh(imp, 'POST', '/git/commits', { message: messaggio, tree: nuovo.sha, parents: [ref.object.sha] });
+    try { await gh(imp, 'PATCH', '/git/refs/heads/' + percorsoUrl(imp.ramo), { sha: commit.sha, force: false }); }
+    catch (e) { if (e.stato === 422 || e.stato === 409) return false; throw e; }
+    return true;
+  }
+
+  // I file da scrivere: solo quelli che sul repository non sono già così
+  async function fileDaScrivere(imp) {
+    const fuori = [];
+    const storie = studioFileCondivise(studio.progetti, eliminatiCarica());
+    if (await leggiFile(imp, FILE_CONDIVISE) !== storie) fuori.push({ percorso: FILE_CONDIVISE, testo: storie });
+    const voci = studioFileVoci(studioVociCarica());
+    if (await leggiFile(imp, PERCORSO_VOCI) !== voci) fuori.push({ percorso: PERCORSO_VOCI, testo: voci });
+    const cartelle = new Map();
+    let peso = 0;
+    for (const v of await vociDaScrivere()) {
+      const dir = 'audio/narrazione/storie/' + v.cartella + '/' + v.lingua;
+      if (!cartelle.has(dir)) {
+        let elenco = null;
+        try { elenco = await gh(imp, 'GET', '/contents/' + percorsoUrl(dir) + '?ref=' + encodeURIComponent(imp.ramo)); } catch (_) { elenco = null; }
+        cartelle.set(dir, new Map((Array.isArray(elenco) ? elenco : []).map(x => [x.name, x.sha])));
+      }
+      const byte = new Uint8Array(await v.blob.arrayBuffer());
+      if (cartelle.get(dir).get(v.nome) === await shaBlob(byte)) continue;
+      if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) break;   // il resto al prossimo salvataggio
+      fuori.push({ percorso: dir + '/' + v.nome, byte });
+    }
+    return fuori;
+  }
+
+  /* Il giro intero: leggi, unisci, e (`spingi`, con un token) scrivi.
+   * Restituisce la frase per chi guarda. Uno alla volta: un salvataggio che
+   * arriva durante un giro aspetta la fine e ne fa uno suo. */
+  let giroInCorso = Promise.resolve();
+  function studioSincronizza({ spingi = false, titolo = '' } = {}) {
+    const giro = giroInCorso.then(() => sincronizzaOra(spingi, titolo));
+    giroInCorso = giro.catch(() => null);
+    return giro;
+  }
+  async function sincronizzaOra(spingi, titolo) {
+    if (typeof fetch !== 'function') return '';
+    const imp = studioRepoImpostazioni();
+    // Senza l'interfaccia (le prove Node) l'archivio non è ancora stato letto
+    if (!studio.radice) studio.progetti = studioCaricaTutti();
+    try {
+      for (let prova = 0; prova < 3; prova++) {
+        const u = studioUnisci(studio.progetti, eliminatiCarica(), await leggiRemoto(imp));
+        applicaUnione(u);
+        const arrivo = u.arrivati.length || u.tolti.length ? t('studio.repo.arrivate', { n: u.arrivati.length, tolte: u.tolti.length }) + ' ' : '';
+        if (!spingi) return arrivo;
+        if (!imp.token) return arrivo + t('studio.repo.senzaToken');
+        const file = await fileDaScrivere(imp);
+        if (!file.length) return arrivo + t('studio.repo.giaAPosto');
+        const msg = 'Storie dello Studio: ' + (unaRiga(titolo) || 'aggiornamento').slice(0, 72);
+        if (await scriviCommit(imp, file, msg)) return arrivo + t('studio.repo.scritto', { file: file.length, repo: imp.repo });
+      }
+      return t('studio.repo.errOccupato');
+    } catch (e) {
+      return t('studio.repo.errore', { errore: e && e.message || String(e) });
+    }
+  }
+
+  // ===================================================================
   // 7. L'interfaccia
   // ===================================================================
 
@@ -1381,10 +1681,13 @@
 
   const studio = {
     progetti: [], progetto: null, radice: null, capito: null, capitoScena: -1, esito: '', copioneAperto: false,
-    salvaTimer: 0, aperta: null
+    salvaTimer: 0, aperta: null, repoAperto: false
   };
 
-  function salvaPresto() {
+  // `tocca`: è una modifica (e non solo un'apertura), quindi il progetto
+  // diventa il più recente fra i dispositivi (§6b)
+  function salvaPresto(tocca = true) {
+    if (tocca && studio.progetto) studio.progetto.aggiornato = Date.now();
     clearTimeout(studio.salvaTimer);
     studio.salvaTimer = setTimeout(() => {
       const i = studio.progetti.findIndex(p => p.id === studio.progetto.id);
@@ -1641,6 +1944,24 @@
     return pezzi.join(' · ');
   }
 
+  // Le impostazioni del repository (§6b): dove, quale ramo, il token
+  function pannelloRepo() {
+    const imp = studioRepoImpostazioni();
+    return h('div', { id: 'studio-repo', class: 'studio-repo' },
+      h('p', { class: 'demo-opzioni-nota' }, t('studio.repo.aiuto')),
+      h('div', { class: 'studio-riga' },
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.repo.repository')),
+          h('input', { id: 'studio-repo-nome', type: 'text', value: imp.repo, autocomplete: 'off', spellcheck: 'false' })),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.repo.ramo')),
+          h('input', { id: 'studio-repo-ramo', type: 'text', value: imp.ramo, autocomplete: 'off', spellcheck: 'false' }))),
+      h('label', { class: 'storie-campo' }, h('span', {}, t('studio.repo.token')),
+        h('input', { id: 'studio-repo-token', type: 'password', value: imp.token, autocomplete: 'off', placeholder: 'github_pat_…' })),
+      h('p', { class: 'demo-opzioni-nota' }, t('studio.repo.tokenAiuto')),
+      h('div', { class: 'demo-azioni' },
+        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'repoSalva' } }, t('studio.repo.salva')),
+        imp.token ? h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'repoDimentica' } }, t('studio.repo.dimentica')) : null));
+  }
+
   function disegna() {
     const r = studio.radice;
     if (!r || !studio.progetto) return;
@@ -1662,6 +1983,8 @@
         h('input', { id: 'studio-importa', class: 'demo-file-nascosto', type: 'file', accept: '.json,application/json' }),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'copione' }, 'aria-expanded': String(studio.copioneAperto), 'aria-controls': 'studio-copione' }, t('studio.mostraCopione')),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'fileVoci' }, title: t('studio.voci.aiuto') }, t('studio.voci.file')),
+        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'repo' }, 'aria-expanded': String(!!studio.repoAperto), 'aria-controls': 'studio-repo' }, t('studio.repo.titolo')),
+        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'sincronizza' } }, t('studio.repo.sincronizza')),
         h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'elimina' } }, t('studio.elimina'))));
     pezzi.push(h('div', { class: 'studio-blocco studio-barra' },
       h('label', { class: 'storie-campo studio-barra-scelta' }, h('span', {}, t('studio.progetti')), elenco),
@@ -1671,6 +1994,7 @@
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'salvaDemo' } }, t('studio.salvaDemo')),
         altro),
       h('p', { id: 'studio-esito', class: 'demo-opzioni-nota', role: 'status', 'aria-live': 'polite' }, studio.esito),
+      studio.repoAperto ? pannelloRepo() : null,
       h('pre', { id: 'studio-copione', class: 'storie-codice', tabindex: '0', hidden: !studio.copioneAperto })));
     // 1. L'idea: le storie pronte come schede da toccare
     const idee = h('div', { class: 'studio-idee-pronte', role: 'group', 'aria-label': t('studio.passo1') });
@@ -1783,7 +2107,7 @@
   function apri(progetto) {
     studio.progetto = progetto;
     studio.capito = null; studio.capitoScena = -1; studio.esito = ''; studio.aperta = null;
-    salvaPresto();
+    salvaPresto(false);
     disegna();
   }
 
@@ -1798,10 +2122,15 @@
         if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) {
           studio.progetti = studio.progetti.filter(x => x.id !== p.id);
           studioSalvaTutti(studio.progetti);
+          // Una lapide, perché dagli altri dispositivi non torni (§6b)
+          if (condivisa(p)) { const e = eliminatiCarica(); e[p.id] = Math.max(Date.now(), (p.aggiornato || 0) + 1); eliminatiSalva(e); }
           apri(studio.progetti[0] || studioNuovoProgetto());
           cancellaVoci(p.id);
-          // Le sue battute escono dal file delle voci (se la cartella è collegata)
-          aggiornaVoci({ tolta: p.id, chiedi: false }).then(msg => { if (msg || p.demoChiave) esito(msg || t('studio.voci.ricorda')); });
+          // Le sue battute escono dal file delle voci (se la cartella è
+          // collegata) e la storia dal repository
+          aggiornaVoci({ tolta: p.id, chiedi: false })
+            .then(msg => condivisa(p) ? studioSincronizza({ spingi: true, titolo: p.titolo }).then(r2 => (msg ? msg + ' ' : '') + r2) : msg)
+            .then(msg => { if (msg || p.demoChiave) esito(msg || t('studio.voci.ricorda')); });
         }
         return;
       case 'fileVoci':
@@ -1823,7 +2152,7 @@
         const vuoto = !p.scene.some(sc => sc.momenti.some(m => unaRiga(m.testo)));
         if (vuoto || !radice.confirm || radice.confirm(t('studio.confermaModello'))) {
           const nuovo = studioDaModello(scopo);
-          nuovo.id = p.id; nuovo.demoChiave = p.demoChiave;
+          nuovo.id = p.id; nuovo.demoChiave = p.demoChiave; nuovo.aggiornato = Date.now();
           apri(nuovo);
         }
         return;
@@ -1896,6 +2225,23 @@
         if (j >= 0 && j < lista.length) [lista[i], lista[j]] = [lista[j], lista[i]];
         break;
       }
+      case 'repo': studio.repoAperto = !studio.repoAperto; disegna(); return;
+      case 'repoSalva': case 'repoDimentica': {
+        const val = id => { const x = studio.radice.querySelector('#' + id); return x ? x.value.trim() : ''; };
+        const imp = { repo: val('studio-repo-nome'), ramo: val('studio-repo-ramo') || 'main', token: nomeOp === 'repoDimentica' ? '' : val('studio-repo-token') };
+        if (!REPO_VALIDO.test(imp.repo) || !RAMO_VALIDO.test(imp.ramo)) { esito(t('studio.repo.errNome')); return; }
+        if (!studioRepoSalvaImpostazioni(imp)) { esito(t('studio.repo.errore', { errore: 'localStorage' })); return; }
+        studio.repoAperto = nomeOp === 'repoSalva' ? false : studio.repoAperto;
+        disegna();
+        if (nomeOp === 'repoDimentica') { esito(t('studio.repo.dimenticato')); return; }
+        esito(t('studio.repo.inCorso'));
+        studioSincronizza({ spingi: !!imp.token, titolo: '' }).then(msg => esito(msg || t('studio.repo.giaAPosto')));
+        return;
+      }
+      case 'sincronizza':
+        esito(t('studio.repo.inCorso'));
+        studioSincronizza({ spingi: true, titolo: p.titolo }).then(msg => esito(msg || t('studio.repo.giaAPosto')));
+        return;
       case 'ascoltaVoce': ascoltaVoce(leggi(dove)); return;
       case 'togliVoce': togliVoce(leggi(dove)); break;
       case 'umoreDalTesto': { const m = leggi(dove); const u = studioUmoreDalTesto(m.testo); if (u) m.umore = u; break; }
@@ -1939,8 +2285,17 @@
           // Le battute nel file delle voci: numeri e nome della storia
           // entrano nel progetto, che si salva subito sotto
           const salvato = studio.esito;
+          // Poi sul repository, perché si veda dagli altri dispositivi (§6b):
+          // il progetto deve essere già nell'archivio quando il giro lo legge
           aggiornaVoci({ salvata: p, chiedi: false })
-            .then(msg => esito(salvato + ' ' + (msg || t('studio.voci.ricorda'))));
+            .then(msg => {
+              const i = studio.progetti.findIndex(x => x.id === p.id);
+              if (i >= 0) studio.progetti[i] = p; else studio.progetti.unshift(p);
+              studioSalvaTutti(studio.progetti);
+              const prima = salvato + ' ' + (msg || (studioRepoImpostazioni().token ? '' : t('studio.voci.ricorda')));
+              esito(prima + ' ' + t('studio.repo.inCorso'));
+              return studioSincronizza({ spingi: true, titolo: p.titolo }).then(r2 => esito(prima + ' ' + r2));
+            });
         } catch (e) { studio.esito = e.message; }
         break;
       }
@@ -2077,6 +2432,9 @@
     collega(r);
     disegna();
     studioRiprendiVoci().catch(() => null);
+    // Le storie salvate dagli altri dispositivi (§6b), in silenzio se non
+    // arriva niente: senza rete resta quello che c'è qui
+    studioSincronizza({ spingi: false }).then(msg => { if (msg && !studio.esito) esito(msg); }).catch(() => null);
     if (haI18n() && typeof radice.astroI18n.alCambio === 'function') radice.astroI18n.alCambio(() => { cacheParole.clear(); disegna(); });
   }
   if (typeof document !== 'undefined') {
@@ -2095,6 +2453,8 @@
     umoreDalTesto: studioUmoreDalTesto, ideeAzioni: studioIdeeAzioni, ambientePer: studioAmbientePer,
     prossimoMomento: studioProssimoMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
+    unisci: studioUnisci, fileCondivise: studioFileCondivise, leggiCondivise: studioLeggiCondivise, repoDiSerie: studioRepoDiSerie,
+    sincronizza: studioSincronizza, FILE_CONDIVISE,
     vociStoria: studioVociStoria, impronta: studioImpronta, voceValida: studioVoceValida, fileVoci: studioFileVoci, chiaveVoci: studioChiaveVoci, CHIAVE_VOCI,
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
   };

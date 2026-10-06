@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v423';
+const CACHE_NAME = 'astrocal-v424';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -276,6 +276,10 @@ self.addEventListener('fetch', (e) => {
       url.hostname === 'nominatim.openstreetmap.org' ||
       url.hostname === 'api.bigdatacloud.net' ||
       SERVIZI_ADSB.indexOf(url.hostname) !== -1 ||
+      // Le storie dello Studio sul repository (storie-studio.js §6b): sempre
+      // fresche, e un errore di GitHub resta suo invece di diventare un 504
+      url.hostname === 'api.github.com' ||
+      url.hostname === 'raw.githubusercontent.com' ||
       proxyAdsb(url)) {
     return;
   }

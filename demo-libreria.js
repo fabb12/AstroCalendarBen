@@ -46,7 +46,20 @@
       if (!dati.some(d => d.chiave === chiave)) throw new Error(messaggio('nonTrovata'));
       storage.setItem(CHIAVE, JSON.stringify(dati.filter(d => d.chiave !== chiave)));
     }
-    return { elenco, salva, elimina };
+    // Una demo arrivata da un altro dispositivo (le storie dello Studio sul
+    // repository, storie-studio.js §6b): tiene la sua chiave, così lo stesso
+    // progetto indica la stessa demo dappertutto, e la crea se non c'è.
+    function metti(chiave, testo) {
+      valida(testo);
+      if (typeof chiave !== 'string' || !chiave.startsWith('utente-') || base.some(d => d.chiave === chiave))
+        throw new Error(messaggio('solaLettura'));
+      const dati = utenti();
+      const c = dati.find(d => d.chiave === chiave);
+      if (c) c.testo = testo; else dati.push({ chiave, testo });
+      storage.setItem(CHIAVE, JSON.stringify(dati.map(d => ({ chiave: d.chiave, testo: d.testo }))));
+      return chiave;
+    }
+    return { elenco, salva, elimina, metti };
   }
   const api = { crea, CHIAVE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
