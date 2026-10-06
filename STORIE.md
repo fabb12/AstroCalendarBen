@@ -314,9 +314,7 @@ stati ridisegnati nello stesso stile:
 - **l'iride** quasi riempie l'occhio (0,78 della larghezza, al più 0,86): scura
   al centro, il suo colore, un anello chiaro al bordo coi fili, e l'ombra
   della palpebra che la scurisce dall'alto;
-- **i riflessi**: il primo è una **falce di luna** (`falce`), accanto una
-  **stellina a quattro punte** che pulsa piano (`stellina`), sotto un puntino
-  e mezzo. Con le pupille a stella o a cuore la falce torna un tondo;
+- **i riflessi**: una falce di luna e una stellina (sostituiti nella v418);
 - **le ciglia**: la riga della palpebra di sopra è un tratto pieno che
   s'ingrossa verso fuori e per lei scappa in una **codina** all'insù
   (`rigaPalpebra`); per lei cinque ciglia arricciate a ventaglio sulla metà
@@ -327,6 +325,25 @@ stati ridisegnati nello stesso stile:
 - **il corpo**: un'ombra a falce dal bordo appena sfumato, i **crateri**
   piatti senza pennino (l'orlo chiaro, la conca in ombra; sulla Luna tutt'attorno
   al volto), il bordo panna fra due fili d'inchiostro.
+
+**Gli occhi retrò (v418).** Su un secondo disegno di riferimento — la Luna
+che guarda di lato, alla Betty Boop — gli occhi sono cambiati ancora:
+
+- la **forma** la fanno le due palpebre (`angolo` in `storGeometria`): una
+  cupola morbida sopra e una U sotto che si incontrano negli angoli, quello
+  esterno a punta e quello verso il naso un poco più basso; l'occhio è più
+  largo (`occhi` di serie `{ r: 0.33, distanza: 0.42, alto: -0.06 }`, la Luna
+  0,345) e meno alto (`ry` 1,1 volte `rx` per lei);
+- **l'iride** è un ovale piatto, alto, del suo colore, con una falce più scura
+  in alto e il contorno d'inchiostro; occupa poco più di metà della larghezza
+  (0,62), così può guardare di lato; la **pupilla** è un ovale nero che ne
+  prende i tre quarti. Niente sfumature né fili;
+- **i riflessi** sono un tondo grande in alto a destra e un puntino sotto (la
+  falce di luna e la stellina della v417 sono uscite);
+- **il bianco** è avorio; sopra all'occhio c'è un **ombretto lilla** piatto
+  che sale verso l'angolo esterno (per lui appena accennato; il colore viene
+  da `trucco`, se c'è); le **ciglia** di lei sono raccolte all'angolo esterno,
+  cinque lunghe e arricciate sopra e tre sotto.
 
 Per guardarli tutti insieme basta una pagina con `storie-cosmiche.js` che
 chiama `StorieCosmiche.ritratto(tela, id, espressione)` per ogni personaggio.

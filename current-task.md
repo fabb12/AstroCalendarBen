@@ -1,8 +1,7 @@
 # Niente in corso
 
-Ultimo lavoro (v417): la grafica dei volti delle Storie cosmiche, gli «occhioni di luna» (`STORIE.md`, §Lo stile).
+Ultimo lavoro (v418): gli occhi retrò dei volti delle Storie cosmiche, su un secondo disegno di riferimento (`STORIE.md`, §Lo stile).
 
-- `storie-cosmiche.js` §4: occhi più grandi e a mandorla (`mandorla` nelle palpebre), iride grande, la palpebra di sopra che copre la cima dell'iride, sopracciglia di lei sottili e alte, guance con le lineette sempre.
-- §6: `disegnaOcchio` riscritto (iride scura ad anello, falce di luna e stellina nei riflessi, `rigaPalpebra` con la codina, ciglia arricciate), naso di lei a goccia d'ombra e neo, guance più delicate, ombretto sfumato.
-- §6-quater: `disegnaDisco` senza retino (ombra a falce sfumata, bordo panna fra due fili), `crateri` piatti, la Luna coi crateri tutt'attorno.
-- Prove: `prova-storie.js` (72), `prova-storie-browser.js` (79), `prova-demo-pagina.js`.
+- `storie-cosmiche.js` §4: la forma dell'occhio la fanno le palpebre (`angolo`: cupola sopra, U sotto, angolo esterno a punta), occhi più larghi e meno alti, iride ovale a 0,62 della larghezza con la pupilla ai tre quarti, due riflessi tondi.
+- §6: `disegnaOcchio` con iride piatta e falce scura in alto, bianco avorio, ombretto lilla (`mescolaColori`), ciglia raccolte all'angolo esterno; uscite `falce` e `stellina` (v417).
+- Prove: `prova-storie.js` (72), `prova-storie-browser.js` (79), `prova-demo-pagina.js` (22).
