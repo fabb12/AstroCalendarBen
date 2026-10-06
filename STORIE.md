@@ -834,7 +834,15 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   `scripts/voci-storie.js` le mette in copione, regia (di partenza, dalla
   faccia) e manifest (col `testo`, perché la narrazione le riconosca dal
   testo: il copione le dice con `text`, non con un ID), e toglie le battute
-  sparite con la loro regia e i loro audio. Istruzioni in
+  sparite con la loro regia e i loro audio. **Una voce per battuta**
+  (v422): «Voce → Carica la voce» sotto al fumetto misura il file
+  (`misuraDurata`), lo tiene in IndexedDB (scaffale `audio`, chiave
+  `<progetto>|<numero>`), lo registra nella narrazione per testo
+  (`narrazione.voceLocale`, che vince sul manifest) e mette in `audio` del
+  momento durata e impronta del testo: `studioDurata` dà allora la voce più
+  0,6 s (mai meno di una durata scritta a mano), e azioni e giorni, che sono
+  frazioni della scena, restano a tempo. Con la cartella collegata
+  l'audio si scrive anche in `storie/<personaggio>/<lingua>/`. Istruzioni in
   `audio/narrazione/LEGGIMI.md`; prova `scripts/prova-voci-studio.js`.
 - L'interfaccia si costruisce col DOM (mai `innerHTML`: i testi sono di chi
   scrive); i campi di testo aggiornano il modello senza ridisegnare, così il

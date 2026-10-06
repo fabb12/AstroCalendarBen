@@ -12868,7 +12868,7 @@ button.studio-personaggio { font: inherit; text-align: left; color: inherit; wid
 .studio-personaggio[aria-pressed="false"] .studio-figurina { opacity: 0.55; filter: saturate(0.5); }
 .studio-genere { color: var(--testo-2, #94a3b8); font-weight: 500; }
 .studio-scena-testa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.studio-ambienti, .studio-chi, .studio-facce, .studio-intanto, .studio-aggiungi, .studio-piede, .studio-a-parole {
+.studio-ambienti, .studio-chi, .studio-facce, .studio-voce, .studio-intanto, .studio-aggiungi, .studio-piede, .studio-a-parole {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0;
 }
 .studio-ambiente, .studio-chi-tasto, .studio-tipo, button.studio-chip {
@@ -12884,6 +12884,9 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-chi-tasto[aria-pressed="true"] { color: #fff; border-color: rgba(167, 139, 250, 0.85); background: rgba(124, 58, 237, 0.25); }
 .studio-strumenti { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
 .studio-mini { min-width: 2.1rem; padding-inline: 6px; }
+.studio-mini-testo { padding: 4px 10px; font-size: 0.82rem; }
+.studio-voce-stato { color: var(--testo-2, #94a3b8); font-size: 0.78rem; }
+.studio-voce-stato.troppo { color: #fbbf24; }
 .studio-secondi { display: inline-flex; align-items: center; gap: 4px; color: var(--testo-2, #94a3b8); font-size: 0.76rem; }
 .studio-secondi input { width: 4.2rem; }
 .studio-dettagli > summary { cursor: pointer; color: #cbd5e1; font-size: 0.82rem; }
