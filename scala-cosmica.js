@@ -1164,6 +1164,8 @@ function cosmCarattere(misura, peso) {
 // Una scritta col suo alone scuro: è appoggiata su un fondo che cambia
 // sotto di lei a ogni decade
 function cosmScritta(ctx, testo, x, y, colore, misura, allinea, peso) {
+  // Le Storie cosmiche con le scritte spente (app.js, `demoSenzaScritte`)
+  if (typeof demoSenzaScritte === 'function' && demoSenzaScritte()) return;
   ctx.font = cosmCarattere(misura, peso);
   ctx.textAlign = allinea || 'center';
   ctx.textBaseline = 'middle';

@@ -1792,12 +1792,17 @@
         // Le Storie cosmiche (v416): la camera che va vicino a chi parla e i
         // rumori dei botti. Accese di serie, come la musica.
         cameraStorie: o.cameraStorie !== false,
-        effettiSonori: o.effettiSonori !== false
+        effettiSonori: o.effettiSonori !== false,
+        // Le scritte nelle Storie cosmiche (v423): i nomi degli astri, le
+        // etichette e le didascalie delle viste. Spente di serie: una storia
+        // per bambini si guarda con le facce, e i nomi accanto ai personaggi
+        // si leggevano sopra ai loro volti. Solo un `true` le riaccende.
+        scritteStorie: o.scritteStorie === true
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: true, registra: false, vistaPulita: true, registraAudio: true,
       musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null, durataComandiSec: DURATA_COMANDI_SEC,
-      cameraStorie: true, effettiSonori: true };
+      cameraStorie: true, effettiSonori: true, scritteStorie: false };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
@@ -1952,6 +1957,10 @@
     const gruppoPrima = comandiCielo ? (comandiCielo.dataset.gruppoAttivo || '') : '';
     const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero, gruppoPrima,
       vistaPulita: opzioni.vistaPulita !== false,
+      // Una Storia cosmica è una demo con dei personaggi: lì, se l'opzione
+      // non le chiede, le scritte delle viste tacciono (`senzaScritte`)
+      senzaScritte: opzioni.scritteStorie !== true &&
+        demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
         // Ogni scena puo impostare la propria inquadratura iniziale. Dopo un
@@ -2058,6 +2067,9 @@
     skyFermaPlayback(); skyFermaMovimenti(); sky.seguiTelefono = false; sky.modalitaHover = false;
     sky.eventoInseguito = null;
     applicaLivelli(opzioni.livelli);
+    // Senza scritte, anche i nomi del planetario e delle vette si spengono;
+    // la fotografia dei livelli presa sopra li riaccende alla fine
+    if (c.senzaScritte) applicaLivelli({ nomi: false, cime: false });
     // Il pieno schermo vero si chiede qui, dentro al gesto che ha avviato la
     // demo, sull'intero documento: le tre viste del racconto se lo passano
     // col solo CSS, e il browser non ne esce a ogni cambio di scena.
@@ -2581,6 +2593,10 @@
     // Gli avvisi di servizio tacciono soltanto nella vista pulita: spegnendo
     // l'opzione l'interfaccia resta deliberatamente utilizzabile e visibile.
     get silenzioso() { return !!(contesto && contesto.vistaPulita); },
+    // Vero mentre gira una Storia cosmica con le scritte spente (l'opzione
+    // `scritteStorie`, spenta di serie): le viste non scrivono nomi né
+    // etichette sulla tela (`demoSenzaScritte` in app.js)
+    get senzaScritte() { return !!(contesto && !contesto.chiuso && contesto.senzaScritte); },
     // Vero quando la persona ha preso la camera in mano per questa scena: la
     // regia delle Storie cosmiche le lascia il quadro.
     get cameraManuale() { return !!(contesto && contesto.cameraManuale); },
