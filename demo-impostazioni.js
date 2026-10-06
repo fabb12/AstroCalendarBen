@@ -403,7 +403,8 @@
     griglia.classList.toggle('spenta', !personali.checked);
     const narr = document.getElementById('imp-narrazione-attiva');
     const figli = document.getElementById('demo-narrazione-figli');
-    if (narr && figli) figli.classList.toggle('spenta', !narr.checked);
+    // Il testo si può scegliere anche quando la voce è spenta.
+    if (narr && figli) figli.classList.remove('spenta');
     const sceltaMusica = document.getElementById('demo-opz-musica-eclissi-scelta');
     if (musicaTraccia && musica) musicaTraccia.disabled = !musica.checked;
     if (sceltaMusica && musica) sceltaMusica.classList.toggle('spenta', !musica.checked);

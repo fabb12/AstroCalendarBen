@@ -333,14 +333,14 @@ prova('cambiando lingua a metà battuta il personaggio non perde la parola', asy
   delete globalThis.narrazione.stato;
   voce.segnale = { parla: false };
 });
-prova('il sottotitolo porta il nome del personaggio e il suo colore, sempre', () => {
+prova('il sottotitolo identifica il personaggio senza forzare la visualizzazione', () => {
   voce.richieste.length = 0;
   S.parla('Saturn', { testo: 'Ciao' });
   const r = voce.richieste[0];
   assert.equal(r.personaggio, 'Saturn');
   assert.equal(r.chi.nome, S.nome('Saturn'));
   assert.equal(r.chi.colore, S.profilo('Saturn').sottotitolo);
-  assert.equal(r.sottotitolo, 'sempre');
+  assert.equal(r.sottotitolo, undefined);
   assert.equal(r.testoSeSpenta, true);
   assert.equal(r.canale, 'demo');
 });

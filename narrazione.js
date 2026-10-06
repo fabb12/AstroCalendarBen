@@ -316,11 +316,9 @@ function narrOspiteDiSerie() {
 
 function narrMostraTesto(c) {
   if (typeof document === 'undefined') return;
-  // `sottotitolo: 'sempre'` è delle Storie cosmiche: lì la fascia porta il
-  // nome di chi parla, ed è la sola cosa che dica ai bambini (e a chi non
-  // distingue i colori) quale personaggio sta parlando.
-  const vuole = !!(c && c.testo && c.r.sottotitolo !== false &&
-    (narrPreferenze().testo || c.r.sottotitolo === 'sempre'));
+  // La scelta del testo vale per ogni canale, incluse prove e Storie.
+  // Una richiesta può nasconderlo, ma non forzarlo contro le preferenze.
+  const vuole = !!(c && c.testo && c.r.sottotitolo !== false && narrPreferenze().testo);
   if (!vuole) { if (narr.elTesto) narr.elTesto.hidden = true; return; }
   let el = narr.elTesto;
   if (!el) {
@@ -1012,7 +1010,8 @@ function narrAggiornaImpostazioni() {
   if (valore) valore.textContent = Math.round(p.volume * 100) + '%';
   if (testo) testo.checked = p.testo;
   if (solo) solo.checked = p.soloTts;
-  for (const el of [volume, testo, solo]) if (el) el.disabled = !p.attiva;
+  if (testo) testo.disabled = false;
+  for (const el of [volume, solo]) if (el) el.disabled = !p.attiva;
   if (stato) {
     const lingua = narrLingua();
     const audio = narrQuantiAudio(lingua);

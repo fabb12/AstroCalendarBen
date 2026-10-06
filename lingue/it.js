@@ -206,7 +206,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "demo.opzioneSuoniStorie": "Storie cosmiche: effetti sonori",
     "demo.opzioneStorieAiuto": "Quando un personaggio parla la camera gli si avvicina e ne inquadra gli occhi; quando scoppia qualcosa va a guardarlo e il quadro trema. Esplosioni, fulmini, salti e viaggi hanno il loro rumore. Col movimento ridotto la camera resta ferma. Di serie nomi ed etichette sono nascosti: si vedono solo i personaggi.",
     "demo.opzioneScritteStorie": "Storie cosmiche: mostra nomi ed etichette",
-    "demo.narrazioneNota": "Voce e testo valgono anche per Missione Cielo.",
+    "demo.narrazioneNota": "Voce e sottotitoli sono indipendenti. La scelta dei sottotitoli vale per demo, Storie cosmiche, prove e anteprime delle scene, anche in pausa, e per Missione Cielo.",
     "demo.comandi": "Comandi della demo",
     "demo.cronologia": "Cronologia della demo",
     "demo.cronologiaScena": "Scena {n} di {totale}",
