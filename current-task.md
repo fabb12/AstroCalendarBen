@@ -1,9 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v416): la regia e i rumori delle Storie cosmiche (`STORIE.md`, §La regia e i rumori).
+Ultimo lavoro (v417): la grafica dei volti delle Storie cosmiche, gli «occhioni di luna» (`STORIE.md`, §Lo stile).
 
-- `storie-cosmiche.js` §7-ter: una lente sulla tela (`storLenteApri`/`storLenteChiudi`, aperta da `skyDisegna`, `solDisegna`, `solDisegnaVicino`, `cosmDisegna` e chiusa dopo i volti) che va vicino a chi parla con gli occhi al 40% dell'altezza, tiene insieme chi dialoga, va a guardare i botti con la scossa, segue chi si muove; molla smorzata, tetto ×3,2, finestra sempre dentro alla tela. Comando `story_camera { mode: auto|wide|close, target, zoom }`.
-- §7-quater: 24 rumori sintetizzati con Web Audio (`RICETTE`, `STOR_SUONI`), sul contesto della voce e nella presa del filmato; ogni effetto e ogni gesto ha il suo (`sound` sui comandi: `auto`, `off`, un nome), comando `sound { type, volume }`.
-- Opzioni delle demo `cameraStorie` ed `effettiSonori` (pagina Demo, opzioni, sotto la musica); `AstroDemo.cameraManuale`. Studio: casella «La camera va vicino a chi parla» (`cameraViva`).
-- I nomi della 3D restano della loro misura sotto la lente (`storLenteK` in `solEtichetta`); nel banco Terra e Luna righello e racconto dopo la lente; nella scala cosmica letture e riga dopo i volti.
-- Prove: `prova-storie.js` (72), `prova-storie-browser.js` (79), `prova-demo.js`, `controlla-i18n.js --patto` (342, invariato) e le altre elencate nel messaggio del commit.
+- `storie-cosmiche.js` §4: occhi più grandi e a mandorla (`mandorla` nelle palpebre), iride grande, la palpebra di sopra che copre la cima dell'iride, sopracciglia di lei sottili e alte, guance con le lineette sempre.
+- §6: `disegnaOcchio` riscritto (iride scura ad anello, falce di luna e stellina nei riflessi, `rigaPalpebra` con la codina, ciglia arricciate), naso di lei a goccia d'ombra e neo, guance più delicate, ombretto sfumato.
+- §6-quater: `disegnaDisco` senza retino (ombra a falce sfumata, bordo panna fra due fili), `crateri` piatti, la Luna coi crateri tutt'attorno.
+- Prove: `prova-storie.js` (72), `prova-storie-browser.js` (79), `prova-demo-pagina.js`.
