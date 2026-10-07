@@ -177,8 +177,8 @@ async function prova(nome, fn) {
       assert.equal(p.h2, 'Demo automatizzate');
       assert.deepEqual(p.titoli, ['1 Demo da eseguire', '2 Presentazione', '3 Registrazione', '4 Intro delle Demo',
         '5 Narrazione e audio', '6 Elementi del Planetario']);
-      assert.deepEqual(p.titoliStorie, ['1 Storie cosmiche', '2 Studio delle storie']);
-      assert.deepEqual(p.schede, [['Demo', 'true'], ['Storie cosmiche', 'false']]);
+      assert.deepEqual(p.titoliStorie, ['1 CosmoStorie', '2 Studio delle storie']);
+      assert.deepEqual(p.schede, [['Demo', 'true'], ['CosmoStorie', 'false']]);
       assert.equal(p.storieNascoste, true, 'si apre sulla linguetta Demo');
       assert.equal(p.avvia, '1 Demo da eseguire');
       assert.equal(p.schermo, '2 Presentazione'); assert.equal(p.pulita, '2 Presentazione');

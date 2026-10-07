@@ -34994,6 +34994,16 @@ function demoSenzaScritte() {
   const d = typeof window !== 'undefined' ? window.AstroDemo : null;
   return !!(d && d.senzaScritte);
 }
+// Le CosmoStorie hanno un aspetto da cartone (v427): mentre ne gira una, la
+// 3D stende un cielo sfumato e pieno di stelle (`solSfondoStoria`), il Sole
+// ha un alone caldo e largo, e tutte le righe della lezione — orbite, piano,
+// fili a piombo, bussola, coni d'ombra, righello, scritte in basso — tacciono.
+// Una storia racconta con i personaggi: le righe erano un secondo discorso
+// sotto al primo, e chi la guardava le leggeva come parte del disegno.
+function demoStoriaCinema() {
+  const d = typeof window !== 'undefined' ? window.AstroDemo : null;
+  return !!(d && d.storia);
+}
 function solTesto(ctx, testo, x, y, colore, misura, allinea) {
   if (demoSenzaScritte()) return;
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
@@ -35148,6 +35158,125 @@ function solFasciaScena(f) {
   return f.scena;
 }
 
+// --- Il cielo delle CosmoStorie (v427) --------------------------------------
+//   Su un disegno di riferimento chiesto da chi usa l'app: un blu-viola
+//   profondo che sfuma senza bordi, nubi di nebulosa appena accennate, un
+//   pulviscolo fitto di stelle piccole e qualche stella grande con l'alone.
+//   È fermo e complesso, quindi si dipinge una volta su una tela fuori schermo
+//   (rifatta solo quando cambia la misura); a ogni fotogramma si aggiungono
+//   soltanto poche decine di stelle che scintillano. Si stende **prima** della
+//   lente della regia, che altrimenti lo ingrandirebbe sgranandolo: al suo
+//   posto un poco di parallasse (lo sfondo è lontano, si muove appena).
+const SOL_CIELO_STORIA = { tela: null, chiave: '', vive: [] };
+function solCieloStoriaDado(seme) {
+  let x = seme >>> 0 || 1;
+  return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
+}
+function solCieloStoriaDipingi(L, H, dpr) {
+  // Un poco più grande della tela: la parallasse non deve scoprirne i bordi
+  const M = 1.12, W = Math.ceil(L * M), A = Math.ceil(H * M);
+  const tela = document.createElement('canvas');
+  tela.width = Math.round(W * dpr); tela.height = Math.round(A * dpr);
+  const g = tela.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const caso = solCieloStoriaDado(7919 + Math.round(W) * 31 + Math.round(A));
+  const diag = Math.hypot(W, A);
+  // Il fondo: viola-blu al centro, quasi nero agli angoli, senza gradini
+  const fondo = g.createRadialGradient(W * 0.5, A * 0.48, 0, W * 0.5, A * 0.5, diag * 0.62);
+  fondo.addColorStop(0, '#2a1d4a');
+  fondo.addColorStop(0.35, '#1a1638');
+  fondo.addColorStop(0.7, '#0d0e26');
+  fondo.addColorStop(1, '#05050f');
+  g.fillStyle = fondo;
+  g.fillRect(0, 0, W, A);
+  // Le nubi: macchie larghe e tenui, sommate alla luce che c'è
+  g.globalCompositeOperation = 'lighter';
+  const tinte = ['92, 52, 130', '40, 62, 128', '128, 52, 92', '64, 40, 110', '30, 80, 120'];
+  for (let i = 0; i < 9; i++) {
+    const x = W * (0.05 + caso() * 0.9), y = A * (0.05 + caso() * 0.9);
+    const r = diag * (0.12 + caso() * 0.22);
+    const nube = g.createRadialGradient(x, y, 0, x, y, r);
+    const t = tinte[i % tinte.length];
+    nube.addColorStop(0, `rgba(${t}, ${0.1 + caso() * 0.08})`);
+    nube.addColorStop(0.5, `rgba(${t}, 0.04)`);
+    nube.addColorStop(1, `rgba(${t}, 0)`);
+    g.fillStyle = nube;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // Il pulviscolo: tante stelle piccole, qualcuna appena azzurra o calda
+  const quante = Math.min(2600, Math.round(W * A / 520));
+  const colori = ['255, 255, 255', '214, 226, 255', '255, 240, 214', '230, 214, 255'];
+  for (let i = 0; i < quante; i++) {
+    const x = caso() * W, y = caso() * A;
+    const p = caso();
+    const r = p < 0.86 ? 0.35 + caso() * 0.45 : 0.7 + caso() * 0.7;
+    g.fillStyle = `rgba(${colori[Math.floor(caso() * colori.length)]}, ${0.25 + caso() * (p < 0.86 ? 0.45 : 0.6)})`;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  // Qualche stella grande con l'alone morbido
+  for (let i = 0; i < Math.round(quante / 90); i++) {
+    const x = caso() * W, y = caso() * A, r = 1.1 + caso() * 1.2;
+    const alone = g.createRadialGradient(x, y, 0, x, y, r * 6);
+    alone.addColorStop(0, 'rgba(235, 230, 255, 0.5)');
+    alone.addColorStop(1, 'rgba(235, 230, 255, 0)');
+    g.fillStyle = alone;
+    g.fillRect(x - r * 6, y - r * 6, r * 12, r * 12);
+    g.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  g.globalCompositeOperation = 'source-over';
+  // Il velo agli angoli, che porta l'occhio al centro
+  const velo = g.createRadialGradient(W / 2, A / 2, Math.min(W, A) * 0.35, W / 2, A / 2, diag * 0.6);
+  velo.addColorStop(0, 'rgba(3, 3, 12, 0)');
+  velo.addColorStop(1, 'rgba(3, 3, 12, 0.55)');
+  g.fillStyle = velo;
+  g.fillRect(0, 0, W, A);
+  // Le stelle che scintillano, ridisegnate a ogni fotogramma (poche)
+  const vive = [];
+  for (let i = 0; i < 46; i++) vive.push({ x: caso(), y: caso(), r: 0.7 + caso() * 1.1, f: caso() * Math.PI * 2, v: 0.6 + caso() * 1.6, croce: caso() < 0.3 });
+  return { tela, W, A, vive };
+}
+function solSfondoStoria(ctx) {
+  const L = sol.L, H = sol.H;
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const chiave = `${Math.round(L)}x${Math.round(H)}@${dpr}`;
+  if (SOL_CIELO_STORIA.chiave !== chiave || !SOL_CIELO_STORIA.tela) {
+    Object.assign(SOL_CIELO_STORIA, solCieloStoriaDipingi(L, H, dpr), { chiave });
+  }
+  const c = SOL_CIELO_STORIA;
+  ctx.save();
+  ctx.fillStyle = '#05050f';
+  ctx.fillRect(0, 0, L, H);
+  // La parallasse: la lente della regia del fotogramma prima, divisa per
+  // dodici — il primo piano si avvicina al personaggio, il cielo quasi no
+  const lente = typeof storLenteStato === 'function' ? storLenteStato() : null;
+  const k = lente ? 1 + (lente.k - 1) * 0.08 : 1;
+  const cx = lente && lente.k > 1.001 ? (L / 2 - lente.tx) / lente.k : L / 2;
+  const cy = lente && lente.k > 1.001 ? (H / 2 - lente.ty) / lente.k : H / 2;
+  const sx = Math.max(-(c.W - L) / 2, Math.min((c.W - L) / 2, (L / 2 - cx) * 0.06));
+  const sy = Math.max(-(c.A - H) / 2, Math.min((c.A - H) / 2, (H / 2 - cy) * 0.06));
+  ctx.translate(L / 2 + sx, H / 2 + sy);
+  ctx.scale(k, k);
+  ctx.drawImage(c.tela, -c.W / 2, -c.A / 2, c.W, c.A);
+  // Lo scintillio: lento, con la croce di luce sulle più grandi
+  const t = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
+  const ridotto = typeof window !== 'undefined' && window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (const s of c.vive) {
+    const a = ridotto ? 0.7 : 0.35 + 0.55 * (0.5 + 0.5 * Math.sin(t * s.v + s.f));
+    const x = (s.x - 0.5) * c.W, y = (s.y - 0.5) * c.A;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(x, y, s.r, 0, Math.PI * 2); ctx.fill();
+    if (s.croce) {
+      ctx.globalAlpha = a * 0.55;
+      ctx.fillRect(x - s.r * 4, y - 0.35, s.r * 8, 0.7);
+      ctx.fillRect(x - 0.35, y - s.r * 4, 0.7, s.r * 8);
+    }
+  }
+  ctx.restore();
+}
+
 // Il disegno. La proiezione è srotolata qui dentro invece di passare da
 // `solProietta` per la stessa ragione per cui `catalogo.js` fa lo stesso col
 // cielo: novecento oggetti costruiti e buttati a ogni fotogramma si sentono.
@@ -35158,7 +35287,10 @@ function solDisegnaFasce(ctx) {
   const a = sol.az, e = sol.elev * SKY_D2R;
   const ca = Math.cos(a), sa = Math.sin(a), se = Math.sin(e), ce = Math.cos(e);
   const s = sol.scala, cx = sol.cx + sol.panX, cy = sol.cy + sol.panY;
-  const lato = SOL_FASCIA_PUNTO;
+  // Nelle CosmoStorie la fascia è un nastro di sassi grigi, come nel disegno
+  // di riferimento: chicchi più grossi e di un colore solo, roccia
+  const cinema = demoStoriaCinema();
+  const lato = SOL_FASCIA_PUNTO * (cinema ? 1.7 : 1);
   ctx.save();
   sol.fasce.forEach(f => {
     if (!sol.fasceAccese[f.id]) return;
@@ -35177,13 +35309,21 @@ function solDisegnaFasce(ctx) {
       const secchio = dietro ? 0 : (p.b > 0.75 ? 2 : 1);
       f.secchi[secchio].push(px, py);
     }
-    ctx.fillStyle = f.colore;
+    ctx.fillStyle = cinema ? '#c9c2bb' : f.colore;
     [0.22, 0.42, 0.7].forEach((alfa, i) => {
       const v = f.secchi[i];
       if (!v.length) return;
       ctx.globalAlpha = alfa;
       ctx.beginPath();
-      for (let j = 0; j < v.length; j += 2) ctx.rect(v[j], v[j + 1], lato, lato);
+      // I sassi delle CosmoStorie sono tondi: la lente della regia li
+      // ingrandisce, e un quadratino ingrandito è un pixel, non un sasso
+      if (cinema) {
+        const rr = lato / 2;
+        for (let j = 0; j < v.length; j += 2) {
+          const q = rr * (0.7 + ((j * 7919) % 13) / 20);
+          ctx.moveTo(v[j] + q, v[j + 1]); ctx.arc(v[j], v[j + 1], q, 0, Math.PI * 2);
+        }
+      } else for (let j = 0; j < v.length; j += 2) ctx.rect(v[j], v[j + 1], lato, lato);
       ctx.fill();
     });
   });
@@ -35260,6 +35400,30 @@ function solDisegnaAloneSole(ctx) {
   // cresce con lo zoom, sei volte un Sole ingrandito sarebbe una velatura
   // gialla su tutto il disegno, e le orbite interne non si vedrebbero più
   const alone = Math.max(raggio * 1.6, Math.min(raggio * 6, Math.min(sol.L, sol.H) * 0.8));
+  // Nelle CosmoStorie il Sole scalda la scena: un bagliore rosa-arancio largo
+  // e tenue che sfuma nel viola del fondo, come nel disegno di riferimento.
+  // Qui non ci sono orbite da tenere leggibili.
+  if (demoStoriaCinema()) {
+    const largo = Math.max(raggio * 3, Math.min(sol.L, sol.H) * 0.75, raggio * 9);
+    const caldo = ctx.createRadialGradient(p.px, p.py, raggio * 0.6, p.px, p.py, largo);
+    caldo.addColorStop(0, 'rgba(255, 196, 120, 0.55)');
+    caldo.addColorStop(0.12, 'rgba(251, 146, 90, 0.32)');
+    caldo.addColorStop(0.35, 'rgba(190, 80, 110, 0.16)');
+    caldo.addColorStop(0.7, 'rgba(110, 50, 120, 0.06)');
+    caldo.addColorStop(1, 'rgba(60, 30, 90, 0)');
+    ctx.fillStyle = caldo;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, largo, 0, Math.PI * 2);
+    ctx.fill();
+    const corona = ctx.createRadialGradient(p.px, p.py, raggio * 0.9, p.px, p.py, raggio * 2.4);
+    corona.addColorStop(0, 'rgba(255, 220, 150, 0.7)');
+    corona.addColorStop(1, 'rgba(255, 170, 90, 0)');
+    ctx.fillStyle = corona;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, raggio * 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
   const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, alone);
   g.addColorStop(0, 'rgba(253, 224, 71, 0.55)');
   g.addColorStop(0.35, 'rgba(251, 146, 60, 0.18)');
@@ -35568,11 +35732,14 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   const p = solProietta(centro);
   if (davanti !== undefined && (p.vicinanza >= terra.schermo.vicinanza) !== davanti) return;
   ctx.save();
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  solLineaInVista(ctx, terra.schermo.px, terra.schermo.py, p.px, p.py);
-  ctx.stroke();
+  // Il filo Terra–Luna è una riga della lezione: nelle CosmoStorie tace (v427)
+  if (!demoStoriaCinema()) {
+    ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    solLineaInVista(ctx, terra.schermo.px, terra.schermo.py, p.px, p.py);
+    ctx.stroke();
+  }
   // La Luna ha la fase della Terra: da qui fuori sono nello stesso punto
   // rispetto al Sole, e questa è la cosa che di solito non viene in mente —
   // quando da noi è Luna Nuova, chi guardasse da Giove vedrebbe una Terra e
@@ -36496,7 +36663,7 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
     // L'anello: si disegna insieme alla metà a cui appartiene ogni suo tratto,
     // tratto per tratto, che è la stessa prova dell'orbita lunare
     const anello = s.anello;
-    if (anello && anello.length > 12 && !piccola) {
+    if (anello && anello.length > 12 && !piccola && !demoStoriaCinema()) {
       const passo = sol.distanzeVere
         ? solSatStacco(s.quotaKm)
         : (terra.rDisegno || 8) * solSatStacco(s.quotaKm) / Math.max(1e-6, sol.scala);
@@ -36584,7 +36751,9 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
     const passo = solPassoLunaDi(l, pianeta);
     const { u1, u2 } = solPianoLuna(pianeta.asse, l.incl || 0);
     const punti = [];
-    for (let i = 0; i < SOL_LUNA_ANELLO_PUNTI; i++) {
+    // Nelle CosmoStorie (v427) l'anello dell'orbita tace: è una riga della
+    // lezione, e attorno a un Giove ingrandito erano dieci cerchi sul volto
+    for (let i = 0; i < (demoStoriaCinema() ? 0 : SOL_LUNA_ANELLO_PUNTI); i++) {
       const th = (i / SOL_LUNA_ANELLO_PUNTI) * Math.PI * 2;
       const c = Math.cos(th), s = Math.sin(th);
       punti.push(solProietta({
@@ -38167,8 +38336,13 @@ function solDisegnaVicino() {
   // restare in mezzo alla tela, e la Terra le gira attorno (vedi `solScegli`)
   solAggiornaPivot();
 
-  solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
-  solDisegnaPianoVicino(ctx, g.dLuna);
+  // Nelle CosmoStorie (v427) il banco è un palco: niente raggi, piano, coni,
+  // bersaglio, orbita, piombo, righello e racconto, che sono la lezione
+  const cinema = demoStoriaCinema();
+  if (!cinema) {
+    solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
+    solDisegnaPianoVicino(ctx, g.dLuna);
+  }
 
   // I riempimenti dei due coni stanno dietro ai corpi, che restano opachi. Il
   // contorno del cono lunare avra' invece una seconda passata davanti alla
@@ -38198,7 +38372,7 @@ function solDisegnaVicino() {
   const luce = skyDot(solVersore(g.luna), g.versoSole);
   const ombraSole = luce > 0.9 ? solOmbraLunareSuTerra(quando) : null;
   const coniLuna = (soloContorno = false) => {
-    if (!(luce > 0.9)) return;
+    if (!(luce > 0.9) || cinema) return;
     const antiLuna = [-versoSoleDallaLuna[0], -versoSoleDallaLuna[1], -versoSoleDallaLuna[2]];
     const apiceLuna = solApiceOmbra(RAGGIO_LUNA_KM, dSoleLuna);
     // Il cono si ferma dove incontra la Terra, se la incontra: tirarlo dritto
@@ -38264,7 +38438,7 @@ function solDisegnaVicino() {
     }
   };
 
-  coniTerra();
+  if (!cinema) coniTerra();
   coniLuna();
 
   // Il bersaglio: l'ombra alla distanza a cui sta adesso la Luna, misurata
@@ -38272,7 +38446,7 @@ function solDisegnaVicino() {
   // quando la Luna sta di lato
   const sLuna = skyDot(g.luna, antiSole);
   const bersaglio = () => {
-    if (!(sLuna > 0)) return;
+    if (!(sLuna > 0) || cinema) return;
     solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
       solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, sLuna) * k, 'rgba(129, 152, 210, 0.55)', [3, 3]);
     solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
@@ -38280,7 +38454,7 @@ function solDisegnaVicino() {
   };
   bersaglio();
 
-  solDisegnaOrbitaLunare(ctx, orbita || { punti: [], nodi: [] });
+  if (!cinema) solDisegnaOrbitaLunare(ctx, orbita || { punti: [], nodi: [] });
 
   // I due corpi, con la faccia e la fase vere. Si costruiscono al volo come
   // se fossero due pianeti della scena grande, così `solDisegnaCorpo` — che
@@ -38349,7 +38523,7 @@ function solDisegnaVicino() {
 
   // Il filo a piombo della Luna sul piano: dice di quanto è fuori bersaglio,
   // e lo dice prima di qualunque numero
-  solDisegnaPiomboVicino(ctx, g.luna);
+  if (!cinema) solDisegnaPiomboVicino(ctx, g.luna);
 
   solEtichetteVicino(ctx, finti, orbita, g);
   // I volti delle Storie cosmiche, sopra al disegno (storie-cosmiche.js), e
@@ -38357,6 +38531,7 @@ function solDisegnaVicino() {
   // scritte di servizio e restano della loro misura
   if (typeof storDisegnaSistema === 'function') storDisegnaSistema(ctx, { corpi: finti, sole: sol.soleVicinoSchermo });
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
+  if (cinema) return;
   solRighelloVicino(ctx);
   solRaccontoVicino(ctx, g, sLuna);
 }
@@ -38415,6 +38590,7 @@ function solSatellitiVicino(terra) {
 // parla nel banco: poco più di mezzo corpo disegnato dalle storie
 const SOL_SAT_STORIA_PX = 88;
 function solDisegnaAnelliVicino(ctx, stazioni, dietro, davanti) {
+  if (demoStoriaCinema()) return;   // le CosmoStorie non hanno righe d'orbita (v427)
   stazioni.forEach(v => {
     if (!v.anello) return;
     ctx.save();
@@ -39015,8 +39191,10 @@ function solDisegna() {
   solMisura();
   // La lente della regia delle storie (storie-cosmiche.js §7-ter), chiusa
   // dopo i volti e prima delle scritte in basso
+  const cinema = demoStoriaCinema();
+  if (cinema) solSfondoStoria(ctx);
   if (typeof storLenteApri === 'function') storLenteApri(ctx, sol.vicino ? 'vicino' : 'sistema', sol.L, sol.H);
-  solSfondo(ctx);
+  if (!cinema) solSfondo(ctx);
 
   if (!sol.pianeti.length) {
     solTesto(ctx, 'Le posizioni dei pianeti non sono disponibili', sol.L / 2, sol.H / 2, '#94a3b8', 13, 'center');
@@ -39066,21 +39244,25 @@ function solDisegna() {
   const scelto = corpi.find(p => p.id === sol.scelto) || null;
   const assi = solAssiVista();     // gli stessi per tutti: si calcolano una volta
 
-  solDisegnaPiano(ctx);
+  // Nelle CosmoStorie (`cinema`) le righe della lezione tacciono: piano,
+  // orbite, nodi, scie, la riga dello sguardo, i fili a piombo, la bussola
+  if (!cinema) solDisegnaPiano(ctx);
   // Le fasce vanno sotto alle orbite: sono il fondo su cui i pianeti corrono,
   // e una riga d'orbita coperta da un pulviscolo non si segue più
   solDisegnaFasce(ctx);
-  solDisegnaOrbiteMondi(ctx);
-  // Quella scelta va per ultima: oltre a essere più spessa e luminosa non
-  // deve finire coperta da un'altra orbita nel punto in cui si incrociano.
-  sol.orbite.tracce.filter(t => t.id !== sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
-  sol.orbite.tracce.filter(t => t.id === sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
-  if (sol.nodi) sol.orbite.tracce.forEach(t => solDisegnaNodiOrbita(ctx, t));
-  // Le scie del Grand Tour (la demo delle Voyager): sopra alle orbite, sotto
-  // ai corpi — la sonda passa davanti alla sua strada, non dietro
-  if (sol.grandTour) solDisegnaGrandTour(ctx);
+  if (!cinema) {
+    solDisegnaOrbiteMondi(ctx);
+    // Quella scelta va per ultima: oltre a essere più spessa e luminosa non
+    // deve finire coperta da un'altra orbita nel punto in cui si incrociano.
+    sol.orbite.tracce.filter(t => t.id !== sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
+    sol.orbite.tracce.filter(t => t.id === sol.scelto).forEach(t => solDisegnaOrbita(ctx, t));
+    if (sol.nodi) sol.orbite.tracce.forEach(t => solDisegnaNodiOrbita(ctx, t));
+    // Le scie del Grand Tour (la demo delle Voyager): sopra alle orbite, sotto
+    // ai corpi — la sonda passa davanti alla sua strada, non dietro
+    if (sol.grandTour) solDisegnaGrandTour(ctx);
+  }
   solDisegnaAloneSole(ctx);
-  solDisegnaSguardo(ctx, terra, scelto);
+  if (!cinema) solDisegnaSguardo(ctx, terra, scelto);
 
   // Il terreno che le scritte non possono occupare. Prima di tutto i corpi
   // stessi: «Venere» scritto in bianco sopra al disco del Sole non si legge, e
@@ -39118,10 +39300,10 @@ function solDisegna() {
   const soleQui = () => { if (!soleFatto) { soleFatto = true; solDisegnaDiscoSole(ctx); } };
   ordinati.forEach(p => {
     if (p.schermo.vicinanza >= dietroAlSole) soleQui();
-    solDisegnaPiombo(ctx, p);
+    if (!cinema) solDisegnaPiombo(ctx, p);
     if (p.sonda) { solDisegnaSonda(ctx, p); return; }
     if (p.id === 'Earth') {
-      solDisegnaOrbitaLuna(ctx, p, false);
+      if (!cinema) solDisegnaOrbitaLuna(ctx, p, false);
       solDisegnaLuna(ctx, p, false, assi);
       // Con l'asse in evidenza gli anelli delle stazioni si tacciono: attorno
       // al globo ci sono già l'asse, l'equatore e il parallelo, e tre orbite
@@ -39133,7 +39315,7 @@ function solDisegna() {
     solDisegnaLune(ctx, p, assi, false);
     solDisegnaCorpo(ctx, p, assi);
     if (p.id === 'Earth') {
-      solDisegnaOrbitaLuna(ctx, p, true);
+      if (!cinema) solDisegnaOrbitaLuna(ctx, p, true);
       solDisegnaLuna(ctx, p, true, assi);
       if (!sol.evidenziaAsse) solDisegnaSatelliti(ctx, p, assi, true);
     }
@@ -39143,14 +39325,16 @@ function solDisegna() {
 
   // L'asse della Terra messo in evidenza (la demo delle stagioni): sopra a
   // tutti i corpi, perché è la riga che il racconto chiede di guardare
-  if (sol.evidenziaAsse) solDisegnaAsseTerra(ctx, terra, assi);
+  if (sol.evidenziaAsse && !cinema) solDisegnaAsseTerra(ctx, terra, assi);
   // Il pallido puntino blu (la demo delle Voyager): un anello attorno alla
   // Terra, perché da quaranta unità astronomiche il pallino si perde
-  if (sol.grandTour && sol.grandTour.casa) solDisegnaCasaLontana(ctx, terra, prese);
-  // Il lancio (l'aria attraversata) e il sorpasso: sopra ai corpi, perché
-  // sono le cose che il racconto chiede di guardare in quel momento
-  if (sol.grandTour && sol.grandTour.atmosfera) solDisegnaUscitaAtmosfera(ctx, terra);
-  if (sol.grandTour && sol.grandTour.gara) solDisegnaGaraVoyager(ctx);
+  if (sol.grandTour && !cinema) {
+    if (sol.grandTour.casa) solDisegnaCasaLontana(ctx, terra, prese);
+    // Il lancio (l'aria attraversata) e il sorpasso: sopra ai corpi, perché
+    // sono le cose che il racconto chiede di guardare in quel momento
+    if (sol.grandTour.atmosfera) solDisegnaUscitaAtmosfera(ctx, terra);
+    if (sol.grandTour.gara) solDisegnaGaraVoyager(ctx);
+  }
 
   // La bussola sera/mattina, sopra ai pallini (se no il disco della Terra le
   // coprirebbe l'attacco) ma sotto ai nomi: registra qui il suo ingombro,
@@ -39160,7 +39344,7 @@ function solDisegna() {
   // leggerebbero come altre due direzioni da guardare
   // E si tacciono anche nel racconto delle Voyager: lì la Terra è il punto
   // di partenza di un viaggio, non un posto da cui guardare la sera
-  if (!sol.evidenziaAsse && !sol.grandTour) solDisegnaBussolaOrari(ctx, terra, prese);
+  if (!sol.evidenziaAsse && !sol.grandTour && !cinema) solDisegnaBussolaOrari(ctx, terra, prese);
 
   // I nomi vengono dopo tutti i pallini, altrimenti un pianeta disegnato più
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
@@ -39199,7 +39383,7 @@ function solDisegna() {
     sol.luneSchermo.forEach(l => solEtichetta(ctx, l.nome, l.px, l.py, l.r + 2,
       l.colore, 10, prese, missioneSistema || sol.scelto === l.id, l.id));
   }
-  if (sol.nodi) sol.orbite.tracce.forEach(t => solEtichettaNodi(ctx, t, prese));
+  if (sol.nodi && !cinema) sol.orbite.tracce.forEach(t => solEtichettaNodi(ctx, t, prese));
   // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
   // manchi niente — la nuvola di punti si riconosce da sé
   sol.fasce.forEach(f => { if (sol.fasceAccese[f.id]) solEtichettaFascia(ctx, f, prese); });
@@ -39209,6 +39393,7 @@ function solDisegna() {
   if (typeof storDisegnaSistema === 'function')
     storDisegnaSistema(ctx, { corpi: ordinati, sole: { px: sole.px, py: sole.py, r: rSole, vicinanza: dietroAlSole } });
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
+  if (cinema) return;
 
   // In basso: da che altezza si sta guardando, e quanto è largo il disegno.
   // Su una tela stretta le due scritte si tamponerebbero a metà strada:

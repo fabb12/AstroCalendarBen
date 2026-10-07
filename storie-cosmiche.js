@@ -1260,6 +1260,50 @@
     }
     return o;
   }
+  /* Il corpo di chi parla (v427). Chi ha chiesto le CosmoStorie voleva
+   * personaggi vivi mentre parlano, non una bocca che si apre su una palla
+   * ferma: allora chi parla annuisce sulle sillabe, ondeggia piano da un lato
+   * all'altro, dondola la testa, si sporge verso chi guarda, e ogni frase ha
+   * i suoi «colpi» — un saltello con lo schiacciamento all'atterraggio, ogni
+   * secondo e un quarto circa, come un attore che sottolinea le parole.
+   *
+   * `energia` (0…1) sale in un quarto di secondo quando la voce comincia e
+   * scende in mezzo secondo quando tace: niente scatti a inizio e fine
+   * battuta. In raggi del corpo (`dx`, `dy`, y in giù), radianti (`giro`) e
+   * fattori (`sx`, `sy`, `k` per la misura del corpo nella 3D). Nella 3D lo
+   * spostamento muove l'astro vero (`storScena3D`), nel planetario il volto
+   * (`storPosa`). Funzione pura dello stato; col movimento ridotto è ferma. */
+  const STOR_COLPO_MS = 1250;
+  function storMotoParlato(pg, t) {
+    const m = { dx: 0, dy: 0, giro: 0, sx: 1, sy: 1, k: 1 };
+    const en = Math.max(0, Math.min(1, pg.energia || 0));
+    if (!(en > 0.002) || stor.ridotto) return m;
+    const f = pg.fase || 0;
+    const ap = Math.max(0, Math.min(1, pg.apertura || 0));
+    const tp = t - (pg.parlaDa || 0);
+    // Il cenno sulle parole e l'ondeggiare lento
+    m.dy -= (0.05 * ap + 0.04 * Math.abs(Math.sin(tp / 210 + f))) * en;
+    m.dx += Math.sin(tp / 540 + f) * 0.06 * en;
+    // La testa che dondola, più viva sulle sillabe aperte
+    m.giro += (Math.sin(tp / 660 + f * 1.7) * 0.09 + Math.sin(tp / 250 + f) * 0.04 * ap) * en;
+    // Si sporge verso chi guarda
+    const sg = pg.sguardo ? Math.max(-1, Math.min(1, pg.sguardo.x)) : 0;
+    m.dx += sg * 0.07 * en; m.giro += sg * 0.06 * en;
+    // I colpi: un saltello, poi lo schiacciamento quando ricade
+    const periodo = STOR_COLPO_MS * (0.85 + ((seme(pg.id || '') % 30) / 100));
+    const b = (((tp + f * 400) % periodo) + periodo) % periodo / periodo;
+    if (b < 0.28) {
+      const q = Math.sin(b / 0.28 * Math.PI);
+      m.dy -= 0.1 * q * en; m.sy += 0.06 * q * en; m.sx -= 0.035 * q * en;
+    } else if (b < 0.4) {
+      const q = Math.sin((b - 0.28) / 0.12 * Math.PI);
+      m.sy -= 0.07 * q * en; m.sx += 0.06 * q * en;
+    }
+    // Il corpo si gonfia appena sulle sillabe
+    m.k = 1 + 0.04 * ap * en;
+    return m;
+  }
+
   // La scala chiesta con `character_scale`, mentre ci arriva e dopo
   function storScalaDi(pg) {
     const s = pg.scalaVoluta;
@@ -1413,12 +1457,15 @@
     }
     pg.ultimoPunto3D = base;
     pg.ultimoDelta = v3.meno(base, vera);
-    // Le animazioni spostano il corpo vero, in raggi del corpo mostrato
+    // Le animazioni spostano il corpo vero, in raggi del corpo mostrato, e
+    // così fa chi parla (v427): annuisce, ondeggia, sottolinea le parole
     const an = storAnimazioniDi(pg);
+    const mp = storMotoParlato(pg, stor.orologio);
     let P = base;
-    if (an.dx || an.dy) {
+    const ddx = an.dx + mp.dx, ddy = an.dy + mp.dy;
+    if (ddx || ddy) {
       const R = Math.max(pg.rMostrato || r || 0, 4);
-      P = v3.piu(base, dalloSchermo(assi, an.dx * R, an.dy * R));
+      P = v3.piu(base, dalloSchermo(assi, ddx * R, ddy * R));
     }
     stor.mosse.set(cid, { scena: P, r: pg.rMostrato || r || 0 });
     return P;
@@ -1452,7 +1499,7 @@
         k *= 1 + (voluto / r - 1) * Math.max(0, pop);
       }
     }
-    k *= storScalaDi(pg) * storAnimazioniDi(pg).k;
+    k *= storScalaDi(pg) * storAnimazioniDi(pg).k * storMotoParlato(pg, stor.orologio).k;
     const m = pg.moto;
     if (m && m.percorso === 'teleport' && m.u > 0 && m.u < 1 && !stor.ridotto) k *= Math.max(0.04, Math.abs(1 - 2 * m.u));
     pg.rVero = r; pg.rMostrato = r * k;
@@ -3300,7 +3347,7 @@
    * d'espressione fa «boing» (schiaccia e allunga), e ogni sillaba allunga
    * appena la faccia in verticale. Col movimento ridotto non succede niente
    * di tutto questo. Funzione pura dello stato: la provano le prove. */
-  function storPosa(pg, R, t, desDa, apertura, parla, ridotto) {
+  function storPosa(pg, R, t, desDa, apertura, parla, ridotto, corpoSiMuove) {
     const posa = { dx: 0, dy: 0, giro: 0, sx: 1, sy: 1 };
     if (ridotto) return posa;
     const e = pg.espr || {};
@@ -3311,7 +3358,13 @@
     const respiro = Math.sin(t / 950 + (pg.fase || 0)) * 0.014;
     posa.sx = pop * (1 - respiro * 0.5);
     posa.sy = pop * (1 + respiro);
-    if (parla) { posa.sy += apertura * 0.07; posa.sx -= apertura * 0.035; posa.giro += Math.sin(t / 230 + (pg.fase || 0)) * 0.035 * apertura; }
+    if (parla) { posa.sy += apertura * 0.1; posa.sx -= apertura * 0.05; posa.giro += Math.sin(t / 230 + (pg.fase || 0)) * 0.035 * apertura; }
+    // Il corpo di chi parla (v427): rotazione e schiacciamento sempre; lo
+    // spostamento qui solo dove l'astro non si muove da sé (nella 3D lo
+    // porta già `storScena3D`, e il volto lo segue)
+    const mp = storMotoParlato(pg, t);
+    posa.giro += mp.giro; posa.sx *= mp.sx; posa.sy *= mp.sy;
+    if (!corpoSiMuove) { posa.dx += mp.dx * R; posa.dy += mp.dy * R; }
     const w = (t - (pg.cambioDa || -1e9)) / STOR_BOING_MS;
     if (w >= 0 && w < 1) { const k = Math.sin(w * Math.PI * 2.5) * (1 - w) * 0.11; posa.sx += k; posa.sy -= k; }
     posa.dy -= Math.abs(Math.sin(t / 230 + (pg.fase || 0))) * R * 0.05 * (e.rimbalzo || 0);
@@ -3476,6 +3529,11 @@
         pg.bocca = mescolaBocca(pg.bocca, meta, Math.max(kB, 0.5));
       }
       pg.forma = forma.forma; pg.apertura = forma.apertura; pg.via = forma.via || '';
+      // L'energia di chi parla (v427): sale in fretta e scende piano, così il
+      // corpo non scatta all'inizio e alla fine di una battuta
+      if (staParlando && !(pg.energia > 0.02)) pg.parlaDa = stor.orologio;
+      const kEn = ridotto ? 1 : 1 - Math.exp(-dt / (staParlando ? 240 : 520));
+      pg.energia = mix(pg.energia || 0, staParlando ? 1 : 0, kEn);
       // Sul corpo disegnato il volto sta dove dice la sagoma: sulla
       // parabola della Voyager, sul modulo centrale della stazione, un po'
       // più dentro del bordo di un disco (un occhio che tocca il contorno
@@ -3492,7 +3550,7 @@
       // testa inclinata, la «molla» di un cambio d'espressione e lo
       // schiacciamento delle sillabe. Si muovono i tratti (e l'adesivo), mai
       // l'astro: la Luna resta dov'è e com'è, il volto le vive sopra.
-      const att = storPosa(pg, R, t, desDa, forma.apertura, staParlando, ridotto);
+      const att = storPosa(pg, R, t, desDa, forma.apertura, staParlando, ridotto, in3d);
       // Le animazioni (§5-bis). Nella 3D il salto e la danza hanno già
       // spostato l'astro vero, e il volto lo segue da sé: qui restano la
       // rotazione e lo schiacciamento. Nel planetario l'astro non si muove,
@@ -3938,6 +3996,12 @@
     occhiY: 0.4,           // dove vanno gli occhi: sopra al centro, sotto ci sono i sottotitoli
     effettoY: 0.45,
     omega: 4.4,            // la molla della camera (rad/s): arriva in un secondo, senza scatti
+    omegaZoom: 3.4,        // lo zoom un poco più lento del carrello (v427): prima ci si gira, poi ci si avvicina
+    carrello: 0.09,        // durante una battuta la camera si avvicina ancora piano, fino a +9% (v427)
+    carrelloMs: 6000,
+    respiro: 0.006,        // la camera a mano: un ondeggiare lento, in frazione del lato corto (v427)
+    arco: 0.45,            // passando da un personaggio all'altro si allarga un poco e torna (v427)
+    terzi: 0.1,            // chi parla guardando di lato va a un terzo, con lo spazio davanti (v427)
     tieniMs: 900,          // finita una battuta, resta ancora un poco prima di allargarsi
     // Gli effetti che la camera va a guardare, per quanto (ms della storia)
     // e quanto sono grandi rispetto al raggio dell'astro che li porta
@@ -3948,7 +4012,7 @@
   };
   stor.regia = {
     modo: 'auto', chi: null, zoomMax: null,       // quello che la scena chiede
-    lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0,
+    lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0, ax: 0.5, vax: 0, ripresa: null,
     vista: '', L: 0, H: 0, ultimo: 0, tieni: null, scosse: [],
     aperta: null, k: 1, tx: 0, ty: 0, motivo: 'largo'
   };
@@ -3988,7 +4052,12 @@
     const dentro = (x, y) => x >= 0 && y >= 0 && x <= L && y <= H;
     const primoPiano = (d, frazione, motivo) => {
       const o = storOcchiDi(d);
-      return { x: o.x, y: o.y, k: Math.max(1, Math.min(tetto, lato * frazione / o.R)), ay: STOR_REGIA.occhiY, motivo, id: d.id };
+      // La regola dei terzi (v427): chi guarda di lato lascia lo spazio
+      // davanti allo sguardo, come in ogni inquadratura di un cartone
+      const pg = stor.personaggi.get(d.id);
+      const sg = pg && pg.sguardo ? pg.sguardo.x : 0;
+      const ax = Math.abs(sg) > 0.15 ? 0.5 - STOR_REGIA.terzi * Math.sign(sg) : 0.5;
+      return { x: o.x, y: o.y, k: Math.max(1, Math.min(tetto, lato * frazione / o.R)), ay: STOR_REGIA.occhiY, ax, motivo, id: d.id };
     };
     // 1. Il botto
     let ultimo = null;
@@ -4061,25 +4130,44 @@
     const accesa = regiaAccesa();
     // Un'altra vista (il volo dal cielo alla 3D) o un'altra tela: si riparte larghi
     if (r.vista !== vista || Math.abs(r.L - L) > 1 || Math.abs(r.H - H) > 1) {
-      Object.assign(r, { vista, L, H, lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0, tieni: null });
+      Object.assign(r, { vista, L, H, lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0, ax: 0.5, vax: 0, tieni: null, ripresa: null });
     }
     if (!accesa && r.lk < 0.002 && !r.scosse.length) { r.k = 1; r.tx = 0; r.ty = 0; r.motivo = 'largo'; r.vfx = r.vfy = r.vlk = 0; return; }
     let meta = accesa ? storRegiaInquadra(vista, L, H) : null;
     if (meta) r.tieni = { meta, da: ora };
     else if (accesa && r.tieni && ora - r.tieni.da < STOR_REGIA.tieniMs) meta = r.tieni.meta;
     if (!Number.isFinite(r.fx)) { r.fx = meta ? meta.x : L / 2; r.fy = meta ? meta.y : H / 2; }
-    const lkMeta = meta ? Math.log(meta.k) : 0;
+    // La ripresa (v427): da quando la camera tiene lo stesso soggetto. Su una
+    // battuta lunga si avvicina ancora piano (il carrello dei cartoni), così
+    // il quadro non è mai fermo del tutto
+    const tetto = Math.max(1, Math.min(4, r.zoomMax || STOR_REGIA.zoomMax));
+    if (meta && (!r.ripresa || r.ripresa.id !== meta.id)) r.ripresa = { id: meta.id, da: stor.orologio };
+    if (!meta) r.ripresa = null;
+    let kMeta = meta ? meta.k : 1;
+    if (meta && (meta.motivo === 'parla' || meta.motivo === 'dialogo') && !stor.ridotto) {
+      const u = liscio((stor.orologio - r.ripresa.da) / STOR_REGIA.carrelloMs);
+      kMeta = Math.min(tetto * (1 + STOR_REGIA.carrello), kMeta * (1 + STOR_REGIA.carrello * u));
+    }
+    let lkMeta = Math.log(kMeta);
+    // L'arco (v427): passando da un personaggio lontano a un altro la camera
+    // si allarga un poco a metà strada e si riavvicina all'arrivo, invece di
+    // strisciare in primo piano sul vuoto fra i due
+    if (meta && Number.isFinite(r.fx) && !stor.ridotto) {
+      const lontano = Math.hypot(meta.x - r.fx, meta.y - r.fy) / Math.max(1, Math.min(L, H));
+      lkMeta = Math.max(0, lkMeta - Math.min(STOR_REGIA.arco, lontano * 0.9));
+    }
     // In pausa la camera si ferma con la storia
     const passo = demoInPausa() ? 0 : dt;
-    const w = STOR_REGIA.omega;
+    const w = STOR_REGIA.omega, wz = STOR_REGIA.omegaZoom;
     for (let n = Math.max(1, Math.ceil(passo / 0.02)), i = 0; i < n && passo > 0; i++) {
       const h = passo / n;
-      [r.lk, r.vlk] = molla(r.lk, r.vlk, lkMeta, w, h);
+      [r.lk, r.vlk] = molla(r.lk, r.vlk, lkMeta, wz, h);
       if (meta) {
         [r.fx, r.vfx] = molla(r.fx, r.vfx, meta.x, w, h);
         [r.fy, r.vfy] = molla(r.fy, r.vfy, meta.y, w, h);
         [r.ay, r.vay] = molla(r.ay, r.vay, meta.ay, w, h);
       }
+      [r.ax, r.vax] = molla(r.ax, r.vax, meta && Number.isFinite(meta.ax) ? meta.ax : 0.5, w * 0.6, h);
     }
     r.lk = Math.max(0, r.lk);
     // La scossa: ingrandisce appena (così il tremito non scopre i bordi) e
@@ -4089,8 +4177,16 @@
     for (const s of r.scosse) { const q = 1 - (stor.orologio - s.da) / s.durata; forza += s.forza * q * q; }
     if (stor.ridotto) forza = 0;
     const k = Math.exp(r.lk) * (1 + 0.035 * Math.min(1.5, forza));
-    const ax = L / 2, ay = H * r.ay;
+    const ax = L * r.ax, ay = H * r.ay;
     let tx = ax - k * r.fx, ty = ay - k * r.fy;
+    // La camera a mano (v427): in primo piano il quadro respira, due seni
+    // lenti e sfasati; largo resta fermo. Segue l'orologio della storia,
+    // quindi in pausa si ferma anche lui
+    if (!stor.ridotto && k > 1.01) {
+      const t = stor.orologio, amp = STOR_REGIA.respiro * Math.min(L, H) * Math.min(1, k - 1);
+      tx += amp * (Math.sin(t * 0.00037) + 0.5 * Math.sin(t * 0.00091 + 1.1));
+      ty += amp * 0.8 * (Math.sin(t * 0.00029 + 0.7) + 0.5 * Math.sin(t * 0.00083 + 2.3));
+    }
     if (forza > 0) {
       const t = stor.orologio;
       tx += forza * 7 * (Math.sin(t * 0.061) + 0.6 * Math.sin(t * 0.137 + 1.3));
@@ -5056,6 +5152,9 @@
   radice.storLenteApri = storLenteApri;
   radice.storLenteChiudi = storLenteChiudi;
   radice.storLenteK = () => stor.regia.aperta ? stor.regia.k : 1;
+  // La lente dell'ultimo fotogramma, per la parallasse del cielo delle
+  // CosmoStorie (`solSfondoStoria`, app.js), che si stende prima di aprirla
+  radice.storLenteStato = () => ({ k: stor.regia.k || 1, tx: stor.regia.tx || 0, ty: stor.regia.ty || 0 });
   // È in scena in questo momento? (la 3D disegna una sonda o un mondo minore
   // spenti, se sono personaggi)
   radice.storInScena = id => stor.personaggi.size > 0 && stor.personaggi.has(storCanonico(id));

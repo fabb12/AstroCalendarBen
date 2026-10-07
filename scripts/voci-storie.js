@@ -146,7 +146,7 @@ function carica() {
   }
   const titoli = {};
   for (const d of predefiniti.filter(x => x.storia))
-    titoli[d.chiave] = String(dizionari.it.messaggi[`demo.builtin.${d.chiave}.title`] || d.chiave).replace(/^Storie cosmiche · /, '');
+    titoli[d.chiave] = String(dizionari.it.messaggi[`demo.builtin.${d.chiave}.title`] || d.chiave).replace(/^(CosmoStorie|Storie cosmiche) · /, '');
   for (const b of battute) b.lingue = LINGUE;
 
   // Le storie dello Studio, dal file che lo Studio scrive

@@ -1970,6 +1970,10 @@
       // non le chiede, le scritte delle viste tacciono (`senzaScritte`)
       senzaScritte: opzioni.scritteStorie !== true &&
         demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
+      // Una CosmoStoria, con o senza scritte: le viste passano al loro
+      // aspetto da cartone (`demoStoriaCinema` in app.js) — cielo sfumato e
+      // pieno di stelle, niente orbite, fili, piani e righelli della lezione
+      storia: demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       scena(scena) {
         // Ogni scena puo impostare la propria inquadratura iniziale. Dopo un
@@ -2083,6 +2087,15 @@
     // Senza scritte, anche i nomi del planetario e delle vette si spengono;
     // la fotografia dei livelli presa sopra li riaccende alla fine
     if (c.senzaScritte) applicaLivelli({ nomi: false, cime: false });
+    // In una CosmoStoria anche le righe della lezione del planetario tacciono
+    // (griglia, eclittica, traccia, eventi), a meno che le opzioni della demo
+    // non le chiedano apposta. Come sopra, la fotografia le riaccende alla fine.
+    if (c.storia) {
+      const voluti = opzioni.livelli || {};
+      const spenti = {};
+      ['griglia', 'eclittica', 'traccia', 'eventi'].forEach(id => { if (voluti[id] !== true) spenti[id] = false; });
+      applicaLivelli(spenti);
+    }
     // Il pieno schermo vero si chiede qui, dentro al gesto che ha avviato la
     // demo, sull'intero documento: le tre viste del racconto se lo passano
     // col solo CSS, e il browser non ne esce a ogni cambio di scena.
@@ -2610,6 +2623,9 @@
     // `scritteStorie`, spenta di serie): le viste non scrivono nomi né
     // etichette sulla tela (`demoSenzaScritte` in app.js)
     get senzaScritte() { return !!(contesto && !contesto.chiuso && contesto.senzaScritte); },
+    // Vero mentre gira una CosmoStoria: le viste hanno l'aspetto da cartone
+    // (`demoStoriaCinema` in app.js)
+    get storia() { return !!(contesto && !contesto.chiuso && contesto.storia); },
     // Vero quando la persona ha preso la camera in mano per questa scena: la
     // regia delle Storie cosmiche le lascia il quadro.
     get cameraManuale() { return !!(contesto && contesto.cameraManuale); },
