@@ -1,4 +1,4 @@
-# Storie cosmiche
+# Storie cosmiche (a schermo: CosmoStorie)
 
 Racconti per bambini in cui gli astri hanno un **volto** e una **voce** e
 spiegano un fenomeno vero. Una Storia cosmica è una demo come le altre
@@ -754,6 +754,52 @@ Tacciono con l'opzione «Storie cosmiche: effetti sonori» spenta
 prima di un decimo di secondo (un salto di scena non fa una raffica), e Stop
 o la fine della storia li sfumano (`storZittisci`). Aggiungere un rumore:
 una ricetta in `RICETTE` e il nome in `STOR_SUONI`.
+
+## L'aspetto da cartone, il corpo che parla e la camera viva (v427)
+
+A schermo la sezione si chiama **CosmoStorie** (*CosmoStories*): sono
+cambiati solo i testi dei dizionari, di `index.html` e delle guide; nel
+codice i nomi restano `stor`, `storie.*`, `demo.scheda.storie`.
+
+**Il cielo da cartone.** Mentre gira una storia (`AstroDemo.storia`, vero
+per ogni demo con un'azione `character_*`, con o senza scritte;
+`demoStoriaCinema()` in app.js) la 3D cambia aspetto, su un disegno di
+riferimento chiesto da chi usa l'app (il Sole con l'alone rosa, il nastro
+di sassi, il cielo viola):
+
+- lo sfondo è `solSfondoStoria`: blu-viola sfumato senza bordi, nubi tenui,
+  un pulviscolo fitto di stelle e qualche stella grande con l'alone, dipinto
+  una volta su una tela fuori schermo (`SOL_CIELO_STORIA`, rifatta solo
+  quando cambia la misura), più 46 stelle che scintillano. Si stende
+  **prima** della lente della regia, con un poco di parallasse
+  (`storLenteStato`), così non si sgrana in primo piano;
+- il Sole ha un bagliore rosa-arancio largo (`solDisegnaAloneSole`);
+- le fasce sono sassi grigi e tondi (`solDisegnaFasce`);
+- tacciono tutte le righe della lezione: piano, orbite (anche di lune e
+  stazioni), nodi, scie del Grand Tour, riga dello sguardo, fili a piombo,
+  filo Terra–Luna, asse, bussola sera/mattina, scritte in basso; nel banco
+  Terra e Luna raggi, piano, coni d'ombra, bersaglio, orbita, piombo,
+  righello e racconto. Nel planetario si spengono i livelli `griglia`,
+  `eclittica`, `traccia` ed `eventi` (se le opzioni della demo non li
+  chiedono), e la fotografia dei livelli li riaccende alla fine.
+
+**Il corpo di chi parla** (`storMotoParlato`, funzione pura). Chi parla
+annuisce sulle sillabe, ondeggia, dondola la testa, si sporge verso chi
+guarda e sottolinea le frasi con un saltello e lo schiacciamento
+all'atterraggio, circa ogni 1,25 s (`STOR_COLPO_MS`, un poco diverso per
+ognuno). `pg.energia` sale in un quarto di secondo e scende in mezzo, così
+non ci sono scatti a inizio e fine battuta. Nella 3D lo spostamento muove
+l'astro vero (`storScena3D`) e il corpo si gonfia appena sulle sillabe
+(`storRaggio3D`); nel planetario muove il volto (`storPosa`, ultimo
+argomento `corpoSiMuove`). Col movimento ridotto è fermo.
+
+**La camera viva** (`STOR_REGIA`): lo zoom va un poco più lento del
+carrello (`omegaZoom`), su una battuta la camera continua ad avvicinarsi
+piano fino a +9% (`carrello`), in primo piano il quadro respira come una
+camera a mano (`respiro`, sull'orologio della storia: in pausa si ferma),
+passando fra due personaggi lontani si allarga a metà strada e si
+riavvicina (`arco`), e chi parla guardando di lato va a un terzo del quadro
+con lo spazio davanti allo sguardo (`terzi`).
 
 ## Le stazioni in scena, e le scritte spente (v423)
 
