@@ -12892,6 +12892,7 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-mini-testo { padding: 4px 10px; font-size: 0.82rem; }
 .studio-voce-stato { color: var(--testo-2, #94a3b8); font-size: 0.78rem; }
 .studio-voce-stato.troppo { color: #fbbf24; }
+#vista-demo .studio-registra-attivo { border-color: #f87171; color: #fecaca; background: rgba(248, 113, 113, 0.18); }
 /* La musica di sottofondo (v440): il menu non deve allargare la riga sul telefono */
 .studio-musica { margin: 6px 0; }
 #vista-demo .studio-voce.studio-musica select { width: auto; flex: 0 1 18rem; max-width: 100%; min-width: 0; }

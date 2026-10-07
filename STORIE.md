@@ -1369,6 +1369,13 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   frazioni della scena, restano a tempo. Con la cartella collegata
   l'audio si scrive anche in `storie/<personaggio>/<lingua>/`. Istruzioni in
   `audio/narrazione/LEGGIMI.md`; prova `scripts/prova-voci-studio.js`.
+  **Registrata col microfono** (v441): accanto a «Carica la voce» c'è
+  «Registra» (solo dove ci sono `MediaRecorder` e `getUserMedia`): lo stesso
+  tasto diventa «Ferma (n s)» e la registrazione finita (webm, o m4a su
+  Safari) fa la strada di un file caricato (`caricaVoce`). Una registrazione
+  alla volta, al massimo `STUDIO_REGISTRA_MAX` (90) s; aprire un'altra
+  storia o avviare la prova la ferma, e quella di una storia lasciata si
+  butta (`registraDalMicrofono`, `fermaRegistrazione`).
 - **Le storie sul repository** (v424, §6b di `storie-studio.js`): le storie
   salvate nelle demo stanno anche nel repository GitHub, in
   `storie-studio/storie.json` (`studioFileCondivise`), e ogni dispositivo le
