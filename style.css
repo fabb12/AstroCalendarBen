@@ -12903,6 +12903,28 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 #vista-demo .studio-voce.studio-musica select { width: auto; flex: 0 1 18rem; max-width: 100%; min-width: 0; }
 .studio-musica-volume { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; }
 .studio-musica-volume input[type="range"] { width: 6.5rem; accent-color: #a78bfa; }
+/* ElevenLabs nello Studio (v444): le voci dei personaggi, la scelta della
+   voce, «Genera» e la proposta da ascoltare prima di usarla */
+.studio-voci-pg { display: grid; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--bordo); }
+.studio-voce-pg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 8px; border: 1px solid var(--bordo); border-radius: 12px; background: rgba(2, 6, 23, 0.3); min-width: 0; }
+.studio-voce-pg-nome { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; flex: 1 1 10rem; min-width: 0; }
+.studio-voce-pg-nome small { color: var(--testo-2, #94a3b8); }
+.studio-voce-pg-scelta { font-size: 0.82rem; color: #c4b5fd; overflow-wrap: anywhere; }
+.studio-voce-pg-scelta.vuota { color: var(--testo-2, #94a3b8); font-style: italic; }
+.studio-el-scelta { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(167, 139, 250, 0.5); border-radius: 12px; background: rgba(124, 58, 237, 0.08); min-width: 0; }
+.studio-el-filtri { align-items: flex-end; }
+.studio-el-filtri .storie-campo { flex: 1 1 9rem; min-width: 0; }
+#vista-demo .studio-el-filtri select, #vista-demo .studio-el-filtri input { width: 100%; min-width: 0; }
+.studio-el-voci { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 26rem; overflow-y: auto; }
+.studio-el-voce { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 8px; border-radius: 10px; background: rgba(2, 6, 23, 0.4); }
+.studio-el-voce-testo { display: grid; gap: 1px; flex: 1 1 12rem; min-width: 0; }
+.studio-el-voce-testo small { color: var(--testo-2, #94a3b8); font-size: 0.76rem; overflow-wrap: anywhere; }
+.studio-el-voce-tasti { display: flex; flex-wrap: wrap; gap: 6px; }
+.studio-el-riga { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 100%; min-width: 0; }
+#vista-demo .studio-el-richiesta { flex: 1 1 14rem; min-width: 0; width: auto; }
+.studio-el-proposta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 3px 6px; border: 1px dashed rgba(250, 204, 21, 0.6); border-radius: 10px; }
+#vista-demo .studio-el-usa { border-color: rgba(74, 222, 128, 0.7); color: #bbf7d0; }
+.studio-el-tasto[aria-busy="true"] { opacity: 0.8; font-style: italic; }
 .studio-secondi { display: inline-flex; align-items: center; gap: 4px; color: var(--testo-2, #94a3b8); font-size: 0.76rem; }
 .studio-secondi input { width: 4.2rem; }
 .studio-dettagli > summary { cursor: pointer; color: #cbd5e1; font-size: 0.82rem; }

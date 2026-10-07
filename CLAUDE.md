@@ -168,6 +168,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | Storie cosmiche, Studio delle storie | `node scripts/prova-storie.js`, `node scripts/prova-storie-repo.js` (storie sul repository), `node scripts/prova-musica-storie.js` (musica di sottofondo), `node scripts/prova-storie-browser.js`, `prova-stazioni-storie.js`, `prova-demo-pagina.js` (e `giro-storia.js` per guardare una storia intera) |
 | narrazione | `prova-narrazione.js`, `controlla-narrazione.js`, `prova-narrazione-browser.js` |
 | voci dei personaggi delle storie (`audio/narrazione/storie/`), anche quelle dello Studio (`storie-studio.json`) | `node scripts/voci-storie.js` (scrive manifest, copione e regia; `--genera <nome>` con ElevenLabs), `node scripts/prova-voci-studio.js` |
+| ElevenLabs nello Studio (voci dei personaggi, «Genera», suoni e musica) | `node scripts/prova-elevenlabs-studio.js`, `node scripts/prova-musica-storie.js` |
 | demo | `prova-demo.js`, `prova-demo-browser.js`, `prova-demo-regia.js`, `prova-demo-pagina.js` (e le `prova-demo-*` del tour toccato) |
 | Missione Cielo | `prova-missione.js` (`--solo-motore` per le regole), `prova-missione-stati.js`, `prova-missione-interattiva.js` |
 | lingue | `prova-i18n.js`, `prova-lingua.js`, `controlla-i18n.js` |

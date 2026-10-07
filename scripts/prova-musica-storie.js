@@ -344,6 +344,91 @@ prova('togliere la musica di una scena la toglie anche dal repository', async ()
   assert.equal(gh.file('README.md').toString(), 'ciao\n', 'il resto del repository resta');
 });
 
+// --- v444: i suoni da file e ElevenLabs ----------------------------------------
+
+prova('sound accetta un rumore sintetizzato o un file del sito, e rifiuta il resto', () => {
+  const v = p => A.Sc.comandi.sound.verifica(p);
+  v({ type: 'drumroll', volume: 0.6 });
+  v({ src: 'audio/storie-musica/pabc/suono-a1b2c3d.mp3?v=0123abcdef', volume: 1.5 });
+  for (const p of [{}, { src: 'https://altro.sito/x.mp3' }, { src: 'audio/../x.mp3' }, { src: 'audio/x.exe' }, { type: 'nonce' }, { src: 'audio/a.mp3', volume: 3 }])
+    assert.throws(() => v(p), JSON.stringify(p));
+});
+
+prova('il suono da file suona dal blob locale durante la storia, e lo Stop lo ferma', () => {
+  const S = A.Sc, d = A.ctx.AstroDemo;
+  d.inCorso = true; d.opzioni = {};
+  S.musicaLocale('audio/storie-musica/p9/suono-a1.mp3', 'blob:suono-1');
+  S.comandi.sound.crea({ src: 'audio/storie-musica/p9/suono-a1.mp3?v=0123456789' });
+  assert.equal(suonati.at(-1), 'blob:suono-1');
+  d.opzioni = { effettiSonori: false };
+  const n = suonati.length;
+  S.comandi.sound.crea({ src: 'audio/storie-musica/p9/suono-a1.mp3' });
+  assert.equal(suonati.length, n, 'con gli effetti sonori spenti tace');
+  d.opzioni = {}; d.inCorso = false;
+  S.zittisci();
+});
+
+prova('l\'azione Suono: copione, riletta, nel commit e via dal repository quando si toglie', async () => {
+  const p = A.St.daModello('fasi');
+  p.titolo = 'Coi suoni';
+  A.St.apri(p);
+  const m = p.scene[0].momenti[0];
+  const az = A.St.nuovaAzione('suono', { quando: 'meta' });
+  m.azioni.push(az);
+  // sintetizzato: la riga che il motore conosce già
+  assert.match(A.St.copione(p), new RegExp(`action: sound \\{ type: tada, shot_from: 0.45 \\};`));
+  // da file (generato o caricato): nella cartella della musica della storia
+  const byte = Buffer.from('ID3 razzo che parte '.repeat(20));
+  assert.equal(await A.St.caricaSuono('scene.0.momenti.0.azioni.' + (m.azioni.length - 1), new File([byte], 'razzo.mp3', { type: 'audio/mpeg' })), true);
+  assert.equal(az.fonte, 'file');
+  assert.equal(az.file.sha, shaGit(byte));
+  const percorso = `audio/storie-musica/${p.id}/suono-${az.id}.mp3`;
+  const riga = A.St.copione(p).split('\n').find(r => /action: sound \{ src/.test(r)).trim();
+  assert.equal(riga, `action: sound { src: '${percorso}?v=${shaGit(byte).slice(0, 10)}', shot_from: 0.45 };`);
+  A.Sc.comandi.sound.verifica({ src: `${percorso}?v=${shaGit(byte).slice(0, 10)}` });
+  // riletto da un file: il suono resta, un file rotto torna sintetizzato
+  const riletto = A.St.ripulisci(JSON.parse(JSON.stringify(p)));
+  const az2 = riletto.scene[0].momenti[0].azioni.find(a => a.tipo === 'suono');
+  assert.equal(az2.fonte, 'file'); assert.equal(az2.file.sha, az.file.sha);
+  const rotto = A.St.ripulisci(JSON.parse(JSON.stringify(p).replace(az.file.sha, 'zz')));
+  assert.equal(rotto.scene[0].momenti[0].azioni.find(a => a.tipo === 'suono').fonte, 'sintesi');
+  await A.salva(p);
+  assert.deepEqual(gh.file(percorso), byte);
+  // tolta l'azione, il file se ne va al salvataggio dopo
+  const q = A.St.progetto;
+  q.scene[0].momenti[0].azioni = q.scene[0].momenti[0].azioni.filter(a => a.tipo !== 'suono');
+  await A.salva(q);
+  assert.equal(gh.file(percorso), null);
+});
+
+prova('ElevenLabs: il testo con la regia, le voci lette dalle API, i filtri e la scelta nel progetto', () => {
+  const St = A.St;
+  const m = St.nuovoMomento({ chi: 'Moon', testo: '  Oh no,   guardate in su! ', umore: 'worried' });
+  assert.equal(St.testoPerVoce(m, 'eleven_v3'), '[nervous] Oh no, guardate in su!');
+  assert.equal(St.testoPerVoce(m, 'eleven_multilingual_v2'), 'Oh no, guardate in su!');
+  assert.equal(St.testoPerVoce(St.nuovoMomento({ testo: '[whispers] Psst!', umore: 'happy' }), 'eleven_v3'), '[whispers] Psst!', 'un tag scritto a mano vince');
+  assert.equal(St.testoPerVoce(St.nuovoMomento({ testo: '[whispers] Psst!' }), 'eleven_flash_v2_5'), 'Psst!');
+  for (const u of Object.keys(A.Sc.STOR_ESPRESSIONI)) if (u !== 'neutral') assert.ok(St.ELEVEN_TAG_UMORE[u], 'manca il tag di ' + u);
+  // una voce della libreria e una dell'account
+  const lib = St.voceDaEleven({ voice_id: 'AbCdEf1234567890', public_owner_id: 'own1', name: 'Giulia', gender: 'female', accent: 'standard', age: 'young', language: 'it',
+    description: 'Calda', preview_url: 'https://x.io/a.mp3', verified_languages: [{ language: 'it', preview_url: 'https://x.io/it.mp3' }] }, 'it');
+  assert.deepEqual(JSON.parse(JSON.stringify(lib)), { id: 'AbCdEf1234567890', nome: 'Giulia', proprietario: 'own1', genere: 'f', accento: 'standard', eta: 'young',
+    lingue: ['it'], descrizione: 'Calda', anteprima: 'https://x.io/it.mp3', mia: false });
+  const mia = St.voceDaEleven({ voice_id: 'Zz9876543210', name: 'Marco', labels: { gender: 'male', language: 'it' }, preview_url: 'https://x.io/m.mp3' }, 'it');
+  assert.equal(mia.genere, 'm'); assert.equal(mia.mia, true);
+  const en = St.voceDaEleven({ voice_id: 'Ee1111111111', name: 'Rachel', labels: { gender: 'female', language: 'en' } }, 'it');
+  assert.equal(St.voceDaEleven({ voice_id: 'x' }, 'it'), null, 'un ID storto non passa');
+  assert.deepEqual(St.filtraVoci([lib, mia, en], { lingua: 'it', genere: 'f' }).map(v => v.nome), ['Giulia']);
+  assert.deepEqual(St.filtraVoci([lib, mia, en], { lingua: '', genere: 'f' }).map(v => v.nome), ['Giulia', 'Rachel']);
+  assert.deepEqual(St.filtraVoci([lib, mia, en], { cerca: 'calda' }).map(v => v.nome), ['Giulia']);
+  // la voce scelta sta nel progetto, e una rotta si butta
+  const p = St.ripulisci({ titolo: 'x', cast: ['Moon'], voci: { Moon: { id: 'AbCdEf1234567890', nome: 'Giulia', anteprima: 'https://x.io/it.mp3', genere: 'f' },
+    Earth: { id: 'no' }, Sun: { id: 'Zz9876543210', anteprima: 'javascript:alert(1)' } }, scene: [] });
+  assert.deepEqual(Object.keys(p.voci), ['Moon', 'Sun']);
+  assert.equal(p.voci.Sun.anteprima, '');
+  assert.equal(St.voceDi(p, 'Moon').nome, 'Giulia');
+});
+
 (async () => {
   let ok = 0;
   for (const [nome, fn] of prove) {
