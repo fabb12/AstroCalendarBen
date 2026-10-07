@@ -1307,6 +1307,32 @@ prova('story_camera: speaker resta stretto su chi parla, orbit gira la camera at
   motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Moon' }", "story_camera { mode: orbit, speed: -20 }")));
   motore.prepara(demo(sc('planetarium_view', "character_show { target: 'Moon' }", "story_camera { mode: speaker }")));
 });
+prova('il volto girato: di lato un occhio solo e un pezzo dell\'altro, da dietro la nuca (v432)', () => {
+  const g = S.geometria(400, 300, 60, S.profilo('Moon'), BASE_ST());
+  const [sx, dx] = g.occhi.slice().sort((a, b) => a.cx - b.cx);
+  const vede = (occ, yaw) => S.posaSullaSfera(g, occ.cx, occ.cy, yaw);
+  // dritto: tutto dov'è
+  const dritto = vede(sx, 0);
+  assert.ok(Math.abs(dritto.x - sx.cx) < 1e-6 && Math.abs(dritto.sx - 1) < 1e-6, 'senza giro il volto non cambia');
+  // un quarto di giro: un occhio verso il bordo, schiacciato; l'altro dietro
+  const q1 = vede(sx, 1.5), q2 = vede(dx, 1.5);
+  assert.ok(q1 && q1.sx < 0.65 && q1.x > 400, 'l\'occhio che resta è schiacciato e scivola verso il bordo: ' + JSON.stringify(q1));
+  assert.equal(q2, null, 'l\'altro è andato dietro');
+  // poco meno: tutti e due, ma il secondo è solo un pezzo sul bordo
+  const p1 = vede(sx, 1.0), p2 = vede(dx, 1.0);
+  assert.ok(p1 && p2 && p2.sx < p1.sx && p2.alfa < 1, 'di tre quarti: uno intero e un pezzo dell\'altro');
+  // da dietro: niente volto
+  for (const o of [sx, dx]) assert.equal(vede(o, Math.PI), null, 'da dietro solo la nuca');
+  assert.equal(S.posaSullaSfera(g, g.bocca.x, g.bocca.y, Math.PI), null, 'nemmeno la bocca');
+  // e nel disegno: girato di mezzo giro non si stende un tratto del volto
+  const { ctx } = telaFinta();
+  let tratti = 0;
+  for (const k of ['fill', 'stroke']) { const v = ctx[k]; ctx[k] = function () { tratti++; return v && v.apply(this, arguments); }; }
+  S.disegnaVolto(ctx, Object.assign({}, g, { yaw: Math.PI }), S.profilo('Moon'), 1, 0);
+  assert.equal(tratti, 0, 'da dietro nessun tratto');
+  S.disegnaVolto(ctx, Object.assign({}, g, { yaw: 0 }), S.profilo('Moon'), 1, 0);
+  assert.ok(tratti > 5, 'davanti sì');
+});
 prova('in pausa la camera si ferma con la storia', () => {
   scena({ Moon: {} });
   S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
@@ -1548,15 +1574,19 @@ prova('story_question: il cartello della domanda, validato, che se ne va con la 
   S.sgombra();
 });
 prova('lo Studio: la domanda finale nasce dagli eventi, e solo quando è adatta', () => {
-  const tipo = scopo => { const d = St.domandaFinale(St.daModello(scopo)); return d && d.tipo; };
+  // v432: la domanda è facoltativa, spenta di serie
+  assert.equal(St.domandaFinale(St.daModello('buchi')), null, 'di serie la storia finisce senza domanda');
+  assert.ok(!/story_question/.test(St.copione(St.daModello('buchi'))), 'e il copione non ce l\'ha');
+  const accesa = p => { p.domanda.attiva = true; return p; };
+  const tipo = scopo => { const d = St.domandaFinale(accesa(St.daModello(scopo))); return d && d.tipo; };
   assert.equal(tipo('buchi'), 'previsione', 'il Sole ha provato a diventare un buco nero: che cosa diventerà davvero?');
   assert.equal(tipo('universo'), 'sonda', 'c\'è la Voyager: dove dovrebbe andare?');
   assert.equal(tipo('avventura'), 'ragione', 'hanno litigato: chi ha ragione?');
   assert.equal(tipo('libera'), null, 'una storia senza eventi non ha domanda');
-  const p = St.daModello('libera');
+  const p = accesa(St.daModello('libera'));
   p.domanda.modo = 'sempre';
   assert.ok(St.domandaFinale(p), 'ma la si può chiedere sempre');
-  const b = St.daModello('buchi');
+  const b = accesa(St.daModello('buchi'));
   const d = St.domandaFinale(b);
   assert.equal(d.chi, 'Sun'); assert.deepEqual([d.a, d.b], ['Nana bianca', 'Buco nero']);
   // Il copione: una scena in più, valida, col cartello e la battuta
@@ -1569,19 +1599,20 @@ prova('lo Studio: la domanda finale nasce dagli eventi, e solo quando è adatta'
   b.domanda.modo = 'mai';
   assert.ok(!/story_question/.test(St.copione(b)), 'mai: niente domanda');
   // Scegliere il tipo, o scriverla a mano
-  b.domanda = St.nuovaDomanda({ tipo: 'protagonista' });
+  b.domanda = St.nuovaDomanda({ attiva: true, tipo: 'protagonista' });
   assert.equal(St.domandaFinale(b).tipo, 'protagonista');
-  b.domanda = St.nuovaDomanda({ testo: 'Vi piacciono i buchi neri?', a: 'Sì', b: 'No', chi: 'sgr_a' });
+  b.domanda = St.nuovaDomanda({ attiva: true, testo: 'Vi piacciono i buchi neri?', a: 'Sì', b: 'No', chi: 'sgr_a' });
   const s = St.domandaFinale(b);
   assert.equal(s.scritta, true); assert.equal(s.chi, 'sgr_a'); assert.equal(s.testo, 'Vi piacciono i buchi neri?');
   assert.deepEqual(St.ripulisci(JSON.parse(JSON.stringify(b))).domanda, b.domanda, 'si salva e si rilegge');
   assert.equal(St.ripulisci({ scene: [] }).domanda.modo, 'auto', 'un progetto vecchio: automatica');
+  assert.equal(St.ripulisci({ scene: [], domanda: { modo: 'auto' } }).domanda.attiva, false, 'un progetto di prima della v432: spenta');
   // «Io» a inizio frase non è la luna di Giove
   const f = St.fattiEpisodio(St.daModello('giganti'));
   assert.ok(!f.nominati.includes('Io'), 'nominati: ' + f.nominati.join(','));
   for (const scopo of Object.keys(St.STUDIO_SCOPI)) for (const l of ['it', 'en']) {
     lingua = l;
-    const dd = St.domandaFinale(Object.assign(St.daModello(scopo), { domanda: St.nuovaDomanda({ modo: 'sempre' }) }));
+    const dd = St.domandaFinale(Object.assign(St.daModello(scopo), { domanda: St.nuovaDomanda({ attiva: true, modo: 'sempre' }) }));
     if (dd) assert.ok(!/studio\.|\{/.test(dd.testo + dd.a + dd.b), scopo + ' ' + l + ': ' + dd.testo);
   }
   lingua = 'it';
