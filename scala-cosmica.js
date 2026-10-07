@@ -1437,7 +1437,10 @@ function cosmDisegnaSistemaVicino(ctx, cam) {
   if (!corpi) { cosmDisegnaPianetiSemplici(ctx, cam); return; }
   // La fascia degli asteroidi, fra Marte e Giove
   cosmDisegnaNuvola(ctx, cam, 'asteroidi', 'rgba(214,200,170,1)', cosmVisibilita(2.8 * cam.s, cam.lato, 10, 16) * 0.85, 1.2);
-  cosmDisegnaOrbite(ctx, cam, corpi);
+  // Nelle CosmoStorie (v429) le orbite dei pianeti e della Luna tacciono:
+  // sono righe della lezione, come nella 3D
+  const cinema = typeof demoStoriaCinema === 'function' && demoStoriaCinema();
+  if (!cinema) cosmDisegnaOrbite(ctx, cam, corpi);
   const assi = cosmAssiCamera();
   const quando = new Date(corpi.ms);
   const terraGal = cosmEclAGal(corpi.terra);
@@ -1446,7 +1449,7 @@ function cosmDisegnaSistemaVicino(ctx, cam) {
   const dLuna = Math.hypot(corpi.luna.x, corpi.luna.y, corpi.luna.z);
   const rOrbitaLuna = dLuna * cam.s;
   const alfaOrbitaLuna = cosmVisibilita(rOrbitaLuna, cam.lato, 5, 40);
-  if (alfaOrbitaLuna > 0.02) {
+  if (alfaOrbitaLuna > 0.02 && !cinema) {
     const punti = cosmOrbitaLuna(corpi.ms);
     if (punti) {
       ctx.globalAlpha = alfaOrbitaLuna * 0.45;
@@ -2217,8 +2220,13 @@ function cosmDisegna(ctx) {
   if (!cosm.attivo) return;
   // La lente della regia delle storie (storie-cosmiche.js §7-ter): la carta
   // e i personaggi si avvicinano, le letture e la riga della scala no
+  // Nelle CosmoStorie (v429) anche la scala cosmica ha il cielo da cartone
+  // della 3D, steso prima della lente come lì
+  const cinema = typeof demoStoriaCinema === 'function' && demoStoriaCinema() && typeof solSfondoStoria === 'function';
+  if (cinema) solSfondoStoria(ctx);
   if (typeof storLenteApri === 'function') storLenteApri(ctx, 'cosmo', sol.L, sol.H);
-  if (typeof solSfondo === 'function') solSfondo(ctx);
+  if (cinema) { /* già steso */ }
+  else if (typeof solSfondo === 'function') solSfondo(ctx);
   else { ctx.fillStyle = '#04060f'; ctx.fillRect(0, 0, sol.L, sol.H); }
   const cam = cosmCamera(cosm.L, sol.L, sol.H);
   cosm.cam = cam;
@@ -2250,8 +2258,19 @@ function cosmDisegna(ctx) {
     storDisegnaCosmo(ctx, cam, { su: (cosm.regia ? (cosm.rigaY || 26) + 34 : 60), giu: cosm.regia ? Math.max(giu, cam.H * 0.32) : giu, lati: 12 });
   }
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
-  cosmDisegnaLetture(ctx, cam);
-  cosmDisegnaRiga(ctx, cam);
+  if (cinema) {
+    if (cosm.schermo) cosm.schermo.riga = null;
+    // Al posto della riga della scala e delle letture, che sono la lezione,
+    // il cartello del luogo: «Sei qui · Eliopausa», «Sei qui · Gruppo Locale».
+    // Fra due tappe resta l'ultima incontrata.
+    const qui = cosmStrutturaDellaScala(cam.L);
+    if (qui) cosm.luogoStoria = qui.id;
+    if (cosm.luogoStoria && typeof storDisegnaCartelloLuogo === 'function')
+      storDisegnaCartelloLuogo(ctx, `cosmo.${cosm.luogoStoria}.nome`, sol.L, sol.H);
+  } else {
+    cosmDisegnaLetture(ctx, cam);
+    cosmDisegnaRiga(ctx, cam);
+  }
   if (cosm.ui && ora > (cosm.prossimaUi || 0)) {
     cosm.prossimaUi = ora + 300;
     cosmAggiornaInterfaccia();

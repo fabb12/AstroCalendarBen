@@ -13166,7 +13166,14 @@ function skyDisegnaSfondo(ctx, base, focale, aria) {
     g.addColorStop(t, skyRgba(skyColoreCielo(aria, altezzaDellaRiga(t * H)), 1));
   }
   ctx.fillStyle = g;
+  // Nelle CosmoStorie il cielo da cartone è già steso sotto (`skyDisegna`):
+  // di notte il colore vero lo lascia vedere, di giorno lo copre
+  if (demoStoriaCinema()) {
+    const buio = Math.max(0, Math.min(1, 1 - (sky.luceCielo || 0) / 0.3));
+    ctx.globalAlpha = 1 - 0.88 * buio;
+  }
   ctx.fillRect(0, 0, L, H);
+  ctx.globalAlpha = 1;
 }
 
 // L'alone del Sole: di giorno lo sbianca tutto attorno a sé, al tramonto
@@ -23221,6 +23228,11 @@ function skyDisegna() {
   // `save`/`restore`, non tocca quella geometria. Gli overlay del mirino la
   // chiudono quindi esplicitamente dopo averla disegnata.
   ctx.clearRect(0, 0, L, H);
+  // Le CosmoStorie (v429): il cielo da cartone sotto a tutto e fuori dalla
+  // lente, come nella 3D; il cielo vero ci si stende sopra trasparente quanto
+  // è buio (`skyDisegnaSfondo`). Con la fotocamera no: lì il fondo è il video.
+  const cinemaCielo = demoStoriaCinema() && !sky.camera;
+  if (cinemaCielo) solSfondoStoria(ctx, L, H);
   // La regia delle Storie cosmiche: una lente sul fotogramma che va vicino a
   // chi parla e ai botti (storie-cosmiche.js §7-ter). Si chiude dopo i volti.
   if (typeof storLenteApri === 'function') storLenteApri(ctx, 'cielo', L, H);
@@ -23470,6 +23482,9 @@ function skyDisegna() {
   // e prima della registrazione, così finiscono anche nel filmato.
   if (typeof storDisegnaCielo === 'function') storDisegnaCielo(ctx);
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
+  // Il cartello del luogo delle CosmoStorie (v429): «Sei qui · Il cielo da casa tua»
+  if (demoStoriaCinema() && typeof storDisegnaCartelloLuogo === 'function')
+    storDisegnaCartelloLuogo(ctx, 'storie.luogo.cielo', L, H);
 
   // Se si sta registrando, questo fotogramma finisce anche nel filmato: il
   // montaggio si fa qui, appena il cielo è finito (vedi 7.6)
@@ -35236,8 +35251,7 @@ function solCieloStoriaDipingi(L, H, dpr) {
   for (let i = 0; i < 46; i++) vive.push({ x: caso(), y: caso(), r: 0.7 + caso() * 1.1, f: caso() * Math.PI * 2, v: 0.6 + caso() * 1.6, croce: caso() < 0.3 });
   return { tela, W, A, vive };
 }
-function solSfondoStoria(ctx) {
-  const L = sol.L, H = sol.H;
+function solSfondoStoria(ctx, L = sol.L, H = sol.H) {
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const chiave = `${Math.round(L)}x${Math.round(H)}@${dpr}`;
   if (SOL_CIELO_STORIA.chiave !== chiave || !SOL_CIELO_STORIA.tela) {
@@ -38531,7 +38545,10 @@ function solDisegnaVicino() {
   // scritte di servizio e restano della loro misura
   if (typeof storDisegnaSistema === 'function') storDisegnaSistema(ctx, { corpi: finti, sole: sol.soleVicinoSchermo });
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
-  if (cinema) return;
+  if (cinema) {
+    if (typeof storDisegnaCartelloLuogo === 'function') storDisegnaCartelloLuogo(ctx, 'cosmo.terraLuna.nome', sol.L, sol.H);
+    return;
+  }
   solRighelloVicino(ctx);
   solRaccontoVicino(ctx, g, sLuna);
 }
@@ -39393,7 +39410,11 @@ function solDisegna() {
   if (typeof storDisegnaSistema === 'function')
     storDisegnaSistema(ctx, { corpi: ordinati, sole: { px: sole.px, py: sole.py, r: rSole, vicinanza: dietroAlSole } });
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
-  if (cinema) return;
+  if (cinema) {
+    // Il cartello del luogo (v429): lo spettatore sa dove si trova
+    if (typeof storDisegnaCartelloLuogo === 'function') storDisegnaCartelloLuogo(ctx, 'cosmo.pianeti.nome', sol.L, sol.H);
+    return;
+  }
 
   // In basso: da che altezza si sta guardando, e quanto è largo il disegno.
   // Su una tela stretta le due scritte si tamponerebbero a metà strada:

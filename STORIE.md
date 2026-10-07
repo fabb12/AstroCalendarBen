@@ -801,6 +801,52 @@ passando fra due personaggi lontani si allarga a metà strada e si
 riavvicina (`arco`), e chi parla guardando di lato va a un terzo del quadro
 con lo spazio davanti allo sguardo (`terzi`).
 
+## Lo stesso cielo dappertutto, e il cartello «Sei qui» (v429)
+
+- **Il cielo da cartone in tutti gli ambienti.** Oltre alla 3D e al banco
+  Terra e Luna, mentre gira una storia anche la **scala cosmica**
+  (`cosmDisegna`) stende `solSfondoStoria` prima della lente, e tace la riga
+  della scala, le letture e le orbite di pianeti e Luna. Nel **planetario**
+  `skyDisegna` stende lo stesso cielo sotto a tutto (non con la fotocamera),
+  e `skyDisegnaSfondo` ci mette sopra il colore vero trasparente quanto è
+  buio (di giorno lo copre); le stelle vere sono quelle di un cielo di
+  montagna (Bortle 2, `catMagnitudineVoluta`).
+- **Il cartello del luogo** (`storDisegnaCartelloLuogo`, `StorieCosmiche.cartelloLuogo`):
+  un cartiglio d'inchiostro in alto al centro, fuori dalla lente, con «Sei
+  qui» piccolo in oro e il nome del luogo grande, due stelline ai lati e un
+  pop quando il luogo cambia. Planetario: `storie.luogo.cielo`; 3D:
+  `cosmo.pianeti.nome`; banco Terra e Luna: `cosmo.terraLuna.nome`; scala
+  cosmica: `cosmo.<struttura>.nome` della struttura più vicina alla scala
+  (`cosmStrutturaDellaScala`; fra due tappe resta l'ultima, `cosm.luogoStoria`),
+  quindi in volo si leggono le tappe una dopo l'altra (Eliopausa, Nube di
+  Oort, Gruppo Locale…). C'è anche con le scritte spente; sotto i 640 px di
+  larghezza scende sotto al cartello della data.
+
+## Il palco della 3D: prospettiva e nessuno sopra a un altro (v428)
+
+`storPalco3D` (§7, chiamata da `storDisegnaSistema` prima dei volti), su
+richiesta di chi guarda le storie:
+
+- **la prospettiva**: la 3D è ortogonale e con `size: auto` tutti crescevano
+  alla stessa misura di volto. Ora ognuno ha un fattore `pg.prosp`, come in
+  una camera vera a `STOR_PALCO.camera` (1,8) volte il lato corto dello
+  schermo: chi sta più avanti della profondità media dei personaggi
+  (lungo `assi.w`) è più grande, chi sta dietro più piccolo, fra 0,62 e 1,6.
+  Lo usa `storRaggio3D` (per `size: auto`) e la misura dei corpi disegnati
+  di sonde e stazioni; scivola in circa 0,4 s;
+- **nessuno copre un altro**: dal posto che ognuno avrebbe senza passi di
+  lato, chi si tocca (contando gli anelli di Saturno, 2,3 raggi, e i corpi
+  disegnati) si allontana a coppie per qualche giro; lo spostamento è il
+  passo di lato `pg.scarto` (pixel dello schermo), a cui il personaggio
+  scivola e che `storScena3D` mette nella scena prima della proiezione —
+  così volto, profondità e lune lo seguono. Il Sole non si sposta: si scansa
+  l'altro. Partendo sempre dal posto senza passi il risultato non oscilla, e
+  torna a zero quando i due si allontanano da sé; uscendo di scena il
+  personaggio torna sull'orbita anche dal passo di lato (`ultimoDelta`).
+
+Nel planetario gli astri non si spostano: lì restano i dischi grafici
+accanto (`storPostoDisco`), che già non si coprono.
+
 ## Le stazioni in scena, e le scritte spente (v423)
 
 **Le stazioni si vedono quando parlano.** Una storia che faceva parlare la

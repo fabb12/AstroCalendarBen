@@ -690,6 +690,33 @@ prova('nella 3D l\'astro cresce quanto basta a portare il volto addosso; con siz
   assert.equal(S.scena3D('Jupiter', GIOVE, 5), GIOVE, 'senza personaggi la posizione passa intatta');
   delete globalThis.sol;
 });
+prova('il palco della 3D (v428): chi è più vicino alla camera è più grande, e nessuno copre un altro', () => {
+  S.sgombra();
+  globalThis.sol = SOL_FINTO();
+  scena({ Mars: {}, Jupiter: {} });
+  const w = S.assiSchermo(globalThis.sol).w;
+  // Marte davanti, Giove dietro, sullo stesso punto dello schermo
+  const vicino = { x: w.x, y: w.y, z: w.z }, lontano = { x: -w.x, y: -w.y, z: -w.z };
+  let ultimo;
+  for (let k = 0; k < 120; k++) {
+    avanza(16);
+    const corpi = [['Mars', vicino], ['Jupiter', lontano]].map(([id, v]) => {
+      const r = S.raggio3D(id, 3);
+      const scena = S.scena3D(id, v, r);
+      return { id, rDisegno: r, scena, schermo: proietta(scena) };
+    });
+    S.disegnaSistema(telaFinta().ctx, { corpi, sole: null });
+    ultimo = corpi;
+  }
+  const [m, g] = ultimo;
+  // i volti, che non dipendono da quanto del disco ognuno occupa
+  const vm = m.rDisegno * S.profilo('Mars').scala, vg = g.rDisegno * S.profilo('Jupiter').scala;
+  assert.ok(vm > vg * 1.12, `il più vicino è più grande: ${vm} contro ${vg}`);
+  const d = Math.hypot(m.schermo.px - g.schermo.px, m.schermo.py - g.schermo.py);
+  assert.ok(d >= m.rDisegno + g.rDisegno, `non si sovrappongono: distanza ${d}, raggi ${m.rDisegno} + ${g.rDisegno}`);
+  S.sgombra();
+  delete globalThis.sol;
+});
 prova('character_move porta l\'astro accanto alla meta, sullo schermo e nello spazio; character_return lo rimette sull\'orbita', async () => {
   S.sgombra();
   globalThis.sol = SOL_FINTO();

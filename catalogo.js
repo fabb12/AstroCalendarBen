@@ -679,7 +679,9 @@ function catProfonditaCatalogo() {
 // catalogo, ed è lei a dire di quanto (`catOltreIlCatalogo`).
 function catMagnitudineVoluta() {
   const bortleMissione = typeof missBortlePlanetario === 'function' ? missBortlePlanetario() : null;
-  const cielo = CAT_CIELI[bortleMissione || cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
+  // Le CosmoStorie (v429) guardano da un cielo di montagna: più stelle vere
+  const bortleStoria = typeof demoStoriaCinema === 'function' && demoStoriaCinema() ? 2 : null;
+  const cielo = CAT_CIELI[bortleMissione || bortleStoria || cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
 
   // Di giorno e al crepuscolo restano solo le più luminose, e il conto lo
   // fa già `skyVelo()` sull'opacità: qui si taglia più in basso per non

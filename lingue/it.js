@@ -5850,6 +5850,8 @@ window.ASTRO_DIZIONARI['it'] = {
     "storie.personalita.voyager": "Viaggiatrice instancabile, sempre in cammino.",
     "storie.personalita.stella": "Brillante e gentile.",
     "storie.personalita.pianeta": "Curioso e chiacchierone.",
+    "storie.cartello.seiQui": "Sei qui",
+    "storie.luogo.cielo": "Il cielo da casa tua",
     "storie.personalita.luna": "Timida ma curiosa.",
     "storie.personalita.nano": "Piccolo e simpatico.",
     "storie.personalita.asteroide": "Vivace e un po’ sbadato.",
