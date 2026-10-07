@@ -12892,6 +12892,11 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-mini-testo { padding: 4px 10px; font-size: 0.82rem; }
 .studio-voce-stato { color: var(--testo-2, #94a3b8); font-size: 0.78rem; }
 .studio-voce-stato.troppo { color: #fbbf24; }
+/* La musica di sottofondo (v440): il menu non deve allargare la riga sul telefono */
+.studio-musica { margin: 6px 0; }
+#vista-demo .studio-voce.studio-musica select { width: auto; flex: 0 1 18rem; max-width: 100%; min-width: 0; }
+.studio-musica-volume { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; }
+.studio-musica-volume input[type="range"] { width: 6.5rem; accent-color: #a78bfa; }
 .studio-secondi { display: inline-flex; align-items: center; gap: 4px; color: var(--testo-2, #94a3b8); font-size: 0.76rem; }
 .studio-secondi input { width: 4.2rem; }
 .studio-dettagli > summary { cursor: pointer; color: #cbd5e1; font-size: 0.82rem; }

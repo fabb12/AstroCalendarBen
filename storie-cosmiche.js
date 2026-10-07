@@ -5651,7 +5651,8 @@
     narraLunga: 'Testo di narrazione troppo lungo (al massimo 400 caratteri)',
     narraId: 'Narrazione sconosciuta: {id}',
     domandaVuota: 'story_question vuole il testo della domanda (text)',
-    domandaLunga: '{campo} è troppo lungo (al massimo {max} caratteri)'
+    domandaLunga: '{campo} è troppo lungo (al massimo {max} caratteri)',
+    musicaSrc: 'story_music vuole in src un file audio del sito (audio/… o musica/…) oppure off, non {nome}'
   };
   function errore(chiave, dati = {}) {
     const k = 'demo.err.' + chiave;
@@ -6039,6 +6040,97 @@
     }
   });
 
+  /* La musica di sottofondo di una storia (v440, `story_music`). Lo Studio
+   * dà a una storia una traccia per tutta la storia e, se chi scrive vuole,
+   * una per scena (o il silenzio): il copione la chiede all'inizio di ogni
+   * scena dello Studio. Una traccia che suona già **continua** (la stessa
+   * colonna sonora per tre scene di fila non riparte da capo a ogni taglio),
+   * e una lasciata per un'altra riprende da dove era quando torna. Mentre
+   * suona, la colonna sonora generale delle demo tace (`musicaDemoSospendi`,
+   * app.js): due musiche insieme sono un rumore. Sotto la voce di un
+   * personaggio si abbassa, come i rumori; con l'opzione «Musica nelle
+   * demo» spenta non suona; Stop, Esc, la fine o un errore la spengono
+   * (`storMusicaFerma`, dal ripristino di demo.js).
+   *
+   * `src` è un file del sito (`audio/…` o `musica/…`, con un `?v=` facoltativo
+   * che cambia quando cambia il file, per non sentire quello vecchio dalla
+   * cache) oppure `off`. Una traccia caricata nello Studio e non ancora
+   * pubblicata suona lo stesso su questo dispositivo: lo Studio la registra
+   * qui (`storMusicaLocale`), col percorso che avrà sul sito. */
+  const STOR_MUSICA_SRC = /^(?:audio|musica)\/(?:[\w%.-]+\/)*[\w%.-]+\.(?:mp3|wav|ogg|oga|opus|m4a|aac|webm)(?:\?v=[0-9a-f]{4,40})?$/i;
+  const STOR_MUSICA_VOLUME = 0.35;
+  const STOR_MUSICA_SOTTO_VOCE = 0.45;
+  const musica = { src: '', volume: STOR_MUSICA_VOLUME, attiva: null, tracce: new Map(), locali: new Map(), timer: 0 };
+  const senzaVersione = src => String(src || '').split('?')[0];
+  function storMusicaLocale(percorso, url) {
+    const k = senzaVersione(percorso);
+    if (!k) return;
+    if (url) musica.locali.set(k, url); else musica.locali.delete(k);
+  }
+  function musicaAccesa() {
+    const d = radice.AstroDemo;
+    const o = d && d.opzioni;
+    return !(o && o.musicaDemo === false);
+  }
+  // Il volume che la traccia deve avere adesso: piano sotto una voce
+  function musicaBersaglio() {
+    const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
+    return musica.volume * (voce && voce.parla ? STOR_MUSICA_SOTTO_VOCE : 1);
+  }
+  function musicaVigila() {
+    const a = musica.attiva;
+    const d = radice.AstroDemo;
+    if (!a || !d || !d.inCorso) { storMusicaFerma(); return; }
+    const bersaglio = musicaAccesa() ? musicaBersaglio() : 0;
+    // Un passo morbido verso il bersaglio: niente scalini quando entra una voce
+    a.audio.volume = Math.max(0, Math.min(1, a.audio.volume + (bersaglio - a.audio.volume) * 0.35));
+  }
+  function storMusica(src, volume) {
+    if (typeof Audio === 'undefined') return false;
+    if (volume !== undefined) musica.volume = Math.max(0, Math.min(1, Number(volume) || 0));
+    if (!src || src === 'off' || !musicaAccesa()) {
+      if (musica.attiva) { try { musica.attiva.audio.pause(); } catch (_) { /* già ferma */ } }
+      musica.attiva = null; musica.src = '';
+      return false;
+    }
+    if (musica.attiva && musica.src === src) return true;   // continua
+    if (musica.attiva) { try { musica.attiva.audio.pause(); } catch (_) { /* già ferma */ } }
+    let traccia = musica.tracce.get(src);
+    if (!traccia) {
+      const audio = new Audio(musica.locali.get(senzaVersione(src)) || src);
+      audio.loop = true;
+      audio.preload = 'auto';
+      audio.volume = 0;
+      traccia = { audio };
+      musica.tracce.set(src, traccia);
+    }
+    musica.attiva = traccia; musica.src = src;
+    if (typeof radice.musicaDemoSospendi === 'function') radice.musicaDemoSospendi(true);
+    traccia.audio.play().catch(() => null);
+    if (!musica.timer && typeof setInterval === 'function') musica.timer = setInterval(musicaVigila, 120);
+    return true;
+  }
+  function storMusicaFerma() {
+    if (musica.timer) { clearInterval(musica.timer); musica.timer = 0; }
+    for (const { audio } of musica.tracce.values()) {
+      try { audio.pause(); audio.removeAttribute('src'); audio.load(); } catch (_) { /* già chiusa */ }
+    }
+    const suonava = musica.tracce.size > 0;
+    musica.tracce.clear(); musica.attiva = null; musica.src = ''; musica.volume = STOR_MUSICA_VOLUME;
+    if (suonava && typeof radice.musicaDemoSospendi === 'function') radice.musicaDemoSospendi(false);
+  }
+  Object.assign(COMANDI, {
+    story_music: {
+      verifica(p) {
+        campi(p, ['src', 'volume']);
+        richiedi(typeof p.src === 'string' && (p.src === 'off' || (STOR_MUSICA_SRC.test(p.src) && !p.src.includes('..'))),
+          'musicaSrc', { nome: String(p.src === undefined ? '' : p.src) });
+        numeroIn(p.volume, 'volume', 0, 1);
+      },
+      crea(p) { storMusica(p.src, p.volume); return {}; }
+    }
+  });
+
   function registraComandi() {
     const d = radice.AstroDemo;
     if (!d || typeof d.registra !== 'function') return false;
@@ -6347,6 +6439,8 @@
     get domanda() { return stor.domanda ? Object.assign({}, stor.domanda) : null; },
     stato: stor,
     STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, regiaGruppo: storRegiaGruppo, regiaGiro: storRegiaGiro, posaSullaSfera: storPosaSullaSfera, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
+    musica: storMusica, musicaFerma: storMusicaFerma, musicaLocale: storMusicaLocale, STOR_MUSICA_SRC,
+    get musicaInCorso() { return musica.attiva ? { src: musica.src, volume: musica.volume, suona: !musica.attiva.audio.paused } : null; },
     lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
     get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },
@@ -6355,6 +6449,7 @@
     get effetti() { return stor.effetti.map(e => ({ tipo: e.tipo, target: e.target, dove: e.dove })); }
   };
   radice.storRicevuta = storRicevuta;
+  radice.storMusicaFerma = storMusicaFerma;
   radice.storDisegnaCielo = storDisegnaCielo;
   radice.storDisegnaSistema = storDisegnaSistema;
   radice.storScena3D = storScena3D;

@@ -2026,6 +2026,8 @@
         // torna com'era: stessa traccia, stesso volume, suona se suonava.
         if (c.musica && typeof musicaDemoFerma === 'function') musicaDemoFerma();
         c.musica = null;
+        // E la musica di sottofondo di una storia (v440, `story_music`)
+        if (typeof storMusicaFerma === 'function') storMusicaFerma();
         document.body.classList.remove('demo-in-corso', 'demo-vista-pulita');
         togliVistaPulita();
         const registrava = sky.reg.attiva && sky.reg.sorgente;
