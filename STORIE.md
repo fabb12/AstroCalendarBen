@@ -1401,6 +1401,25 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   scrive); i campi di testo aggiornano il modello senza ridisegnare, così il
   clic sul bottone accanto non si perde.
 
+## «Vicino a un pianeta» che si distingue dal Sistema Solare (v442)
+
+Nello Studio le due scene 3D sembravano la stessa cosa. «Vicino a un
+pianeta» su Giove, Saturno, Urano o Nettuno scriveva `camera_3d { scene:
+system, focus: 'Jupiter' }`, e per i fuochi lontani la base dello zoom mette
+**il Sole sul bordo del quadro** visto dal pianeta: mezzo Sistema Solare col
+pianeta al centro, i volti piccoli quanto nella scena «Il Sistema Solare».
+Solo la Terra (`solZoomSullaTerra`) si avvicinava davvero.
+
+Ora lo Studio aggiunge `close_up: show` (demo.js, `zoomAddossoA`): il
+pianeta è grosso come la Terra quando ci si entra, col suo seguito di lune,
+e la camera gli gira intorno; l'inquadratura della scena (lontano, normale,
+vicino) moltiplica da lì. Misurato nel browser col modello «giganti»: Giove
+con R 38–45 px nel Sistema Solare, R 94–129 px vicino a lui; Saturno con gli
+anelli che riempiono il quadro. Nello Studio la scelta del pianeta sta
+accanto all'ambiente (non più nei dettagli chiusi) e sotto ai bottoni una
+riga dice che cosa si vedrà (`studio.ambienteNota.<ambiente>`,
+`studio.qualePianeta`).
+
 ## La musica di sottofondo (v440)
 
 Una storia può avere una **traccia per tutta la storia** e ogni scena può

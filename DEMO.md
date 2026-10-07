@@ -573,6 +573,12 @@ tarate sulla frase registrata.
   centro che si muove in modo che il bersaglio non esca mai dal quadro) e
   `profile: show` (con `frame_with`: si guarda di traverso alla strada della
   sonda rispetto al corpo, dalla parte del Sole).
+- **`close_up: show`** di `camera_3d` (v442, solo `scene: system` con
+  `focus` su Giove, Saturno, Urano o Nettuno, senza `frame_with` né `keep`):
+  lo zoom di base mette il pianeta grosso come la Terra quando ci si entra
+  (`zoomAddossoA`, bisezione su `solRaggioCorpo`) invece del Sole sul bordo
+  del quadro. `zoom_from`/`zoom_to` moltiplicano da lì. Lo usa lo Studio per
+  l'ambiente «Vicino a un pianeta».
 - **Il lancio** (scena 4, 24 s): Voyager 2 il 20 agosto, poi lo stacco al 5
   settembre per Voyager 1 (quando la voce lo dice), poi la camera si allarga
   sulle due sonde e infine si stringe sul modellino con l'antenna verso casa.
