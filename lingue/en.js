@@ -5713,7 +5713,6 @@ window.ASTRO_DIZIONARI['en'] = {
     "storie.personalita.voyager": "A tireless traveller, always on the way.",
     "storie.personalita.stella": "Bright and kind.",
     "storie.personalita.pianeta": "Curious and chatty.",
-    "storie.cartello.seiQui": "You are here",
     "storie.luogo.cielo": "The sky from your home",
     "storie.personalita.luna": "Shy but curious.",
     "storie.personalita.nano": "Small and friendly.",

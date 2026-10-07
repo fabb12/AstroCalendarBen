@@ -811,16 +811,25 @@ con lo spazio davanti allo sguardo (`terzi`).
   e `skyDisegnaSfondo` ci mette sopra il colore vero trasparente quanto è
   buio (di giorno lo copre); le stelle vere sono quelle di un cielo di
   montagna (Bortle 2, `catMagnitudineVoluta`).
-- **Il cartello del luogo** (`storDisegnaCartelloLuogo`, `StorieCosmiche.cartelloLuogo`):
-  un cartiglio d'inchiostro in alto al centro, fuori dalla lente, con «Sei
-  qui» piccolo in oro e il nome del luogo grande, due stelline ai lati e un
-  pop quando il luogo cambia. Planetario: `storie.luogo.cielo`; 3D:
+- **Il cartello del luogo** (`storDisegnaCartelloLuogo`, `StorieCosmiche.cartelloLuogo`;
+  rifatto nella v430): solo il nome del luogo, piccolo e semitrasparente
+  nell'angolo in alto a destra, per pochi secondi quando il luogo cambia
+  (`STOR_CARTELLO`: entra in 0,4 s, resta 3,2 s, se ne va in 0,9 s). Nella
+  v429 era un cartiglio grande con «Sei qui» sempre acceso, e chi guarda l'ha
+  trovato troppo appariscente. Planetario: `storie.luogo.cielo`; 3D:
   `cosmo.pianeti.nome`; banco Terra e Luna: `cosmo.terraLuna.nome`; scala
   cosmica: `cosmo.<struttura>.nome` della struttura più vicina alla scala
-  (`cosmStrutturaDellaScala`; fra due tappe resta l'ultima, `cosm.luogoStoria`),
-  quindi in volo si leggono le tappe una dopo l'altra (Eliopausa, Nube di
-  Oort, Gruppo Locale…). C'è anche con le scritte spente; sotto i 640 px di
-  larghezza scende sotto al cartello della data.
+  (`cosmStrutturaDellaScala`; fra due tappe resta l'ultima, `cosm.luogoStoria`).
+  C'è anche con le scritte spente.
+- **Il cielo si muove con la camera (v430).** Nella v427 il cielo da cartone
+  era quasi fermo e, con le orbite spente, a chi guardava sembrava che la
+  camera delle scene non si muovesse più (si muoveva: misurato fotogramma per
+  fotogramma, uguale a prima). Ora `solSfondoStoria(ctx, L, H, cam)` ha due
+  tele: il fondo con le nubi (parallasse leggera) e una piastrella di stelle
+  senza cuciture che scorre con la camera — `solCameraCielo` dal giro e
+  dall'altezza della 3D e della scala cosmica (dove sale anche attraversando
+  le decadi), il puntamento `sky.manuale` del planetario — e si avvicina
+  della metà dello zoom della lente della regia.
 
 ## Il palco della 3D: prospettiva e nessuno sopra a un altro (v428)
 

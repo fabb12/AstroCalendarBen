@@ -130,10 +130,9 @@ const STORIA = `define_demo 'stazioni' {
       ok(grande.senza && grande.nomi === false, 'durante la storia le scritte sono spente, anche i nomi del planetario');
       await pagina.evaluate(() => { window.__scritte = []; });
       await attendi(pagina, 10);
-      // Il cartello del luogo («Sei qui · Il Sistema Solare», v429) è della
-      // storia, come i sottotitoli: resta anche con le scritte spente
-      const delCartello = await pagina.evaluate(() => [...astroI18n.t('storie.cartello.seiQui').toUpperCase().split(''),
-        astroI18n.t('cosmo.pianeti.nome'), astroI18n.t('cosmo.terraLuna.nome')]);
+      // Il cartello del luogo («Il Sistema Solare», v430) è della storia,
+      // come i sottotitoli: resta anche con le scritte spente
+      const delCartello = await pagina.evaluate(() => [astroI18n.t('cosmo.pianeti.nome'), astroI18n.t('cosmo.terraLuna.nome')]);
       const scritte = (await pagina.evaluate(() => window.__scritte.slice())).filter(x => !delCartello.includes(x));
       ok(!scritte.length, 'la tela della 3D non scrive niente: ' + (scritte.slice(0, 5).join(' | ') || 'nessuna scritta'));
       await pagina.screenshot({ path: path.join(radice, 'work/stazioni-storia-sistema.png') });

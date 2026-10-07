@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v429): nelle CosmoStorie il **cielo da cartone in tutti gli ambienti** (scala cosmica senza riga, letture e orbite; planetario col cielo vero trasparente di notte sopra al cielo da cartone, stelle da cielo di montagna) e il **cartello del luogo** «Sei qui · …» (`storDisegnaCartelloLuogo`: cielo di casa, Sistema Solare, Terra e Luna, le strutture della scala cosmica). Dettagli in `STORIE.md` (v429).
+Ultimo lavoro (v430): il cartello del luogo delle CosmoStorie ridotto a un nome piccolo e semitrasparente in alto a destra, per pochi secondi al cambio di luogo (`STOR_CARTELLO`); il cielo da cartone scorre con la camera (stelle a piastrella, `solCameraCielo`, `sky.manuale` nel planetario), perché con il cielo fermo e senza orbite la camera delle scene sembrava ferma.
+
+Prima: Ultimo lavoro (v429): nelle CosmoStorie il **cielo da cartone in tutti gli ambienti** (scala cosmica senza riga, letture e orbite; planetario col cielo vero trasparente di notte sopra al cielo da cartone, stelle da cielo di montagna) e il **cartello del luogo** «Sei qui · …» (`storDisegnaCartelloLuogo`: cielo di casa, Sistema Solare, Terra e Luna, le strutture della scala cosmica). Dettagli in `STORIE.md` (v429).
 
 Prima (v428): il **palco della 3D** delle CosmoStorie (`storPalco3D`): prospettiva (`pg.prosp`, chi è più vicino alla camera è più grande) e nessun personaggio sopra a un altro (`pg.scarto`, passo di lato nella scena). Prove: `prova-storie.js` (75, una nuova), `prova-stazioni-storie.js` (17), `prova-demo.js`, `prova-demo-pagina.js` (22); `prova-storie-browser.js` si ferma all'episodio pilota come prima.
 
