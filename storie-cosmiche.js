@@ -4886,16 +4886,17 @@
     return { x: r.tx + r.k * x, y: r.ty + r.k * y };
   }
 
-  /* Il cartello del luogo (v429). Chi guarda una CosmoStoria deve sapere
-   * dove si trova: nel cielo di casa, nel Sistema Solare, fra la Terra e la
-   * Luna, e nella scala cosmica a che altezza dell'universo (l'eliopausa, la
-   * nube di Oort, il Gruppo Locale…). Un cartiglio nello stile dei volti —
-   * stesura d'inchiostro indaco, bordo panna, due stelline d'oro ai lati,
-   * «Sei qui» piccolo sopra e il nome grande sotto — in alto al centro, fuori
-   * dalla lente della regia (resta della sua misura), con un pop quando il
-   * luogo cambia. Su uno schermo stretto scende sotto al cartello della data,
-   * che sta in alto a sinistra. È della storia: c'è anche con le scritte
-   * spente, e fuori da una storia non c'è. */
+  /* Il cartello del luogo (v429, rifatto nella v430). Chi guarda una
+   * CosmoStoria deve sapere dove si trova — il cielo di casa, il Sistema
+   * Solare, la Terra e la Luna, e nella scala cosmica a che altezza
+   * dell'universo (l'eliopausa, la nube di Oort, il Gruppo Locale…). Nella
+   * v429 era un cartiglio grande in alto al centro con «Sei qui», sempre
+   * acceso: troppo appariscente, ha detto chi guarda. Ora è solo il nome,
+   * piccolo e semitrasparente nell'angolo in alto a destra, e solo per
+   * qualche secondo quando il luogo cambia (`STOR_CARTELLO`): compare piano,
+   * resta, se ne va. Fuori dalla lente della regia; è della storia, quindi
+   * c'è anche con le scritte spente, e fuori da una storia non c'è. */
+  const STOR_CARTELLO = { entra: 400, resta: 3200, esce: 900, alfa: 0.78 };
   function storDisegnaCartelloLuogo(ctx, chiave, L, H) {
     const d = radice.AstroDemo;
     if (!ctx || !chiave || !(d && d.storia) || !(L > 0 && H > 0)) return;
@@ -4904,83 +4905,29 @@
     const c = stor.cartello || (stor.cartello = { chiave: '', da: 0 });
     const ora = adesso();
     if (c.chiave !== chiave) { c.chiave = chiave; c.da = ora; }
-    const ridotto = movimentoRidotto();
-    const u = ridotto ? 1 : Math.min(1, (ora - c.da) / 520);
-    const c1 = 1.9, v = u - 1;
-    const pop = u >= 1 ? 1 : Math.max(0, 1 + (c1 + 1) * v * v * v + c1 * v * v);
-    const alfa = Math.min(1, u * 2.5);
-    const sopra = t('storie.cartello.seiQui');
-    const fs = Math.max(15, Math.min(24, L * 0.026));
-    const fp = Math.max(9, fs * 0.5);
+    const eta = ora - c.da, C = STOR_CARTELLO;
+    if (eta > C.entra + C.resta + C.esce) return;
+    const alfa = C.alfa * (eta < C.entra ? eta / C.entra : eta < C.entra + C.resta ? 1 : 1 - (eta - C.entra - C.resta) / C.esce);
+    if (!(alfa > 0.01)) return;
+    const fs = Math.max(11, Math.min(13.5, L * 0.012));
     const carattere = (radice.document && radice.document.body && radice.getComputedStyle
       ? radice.getComputedStyle(radice.document.body).fontFamily : '') || 'sans-serif';
     ctx.save();
-    ctx.font = `800 ${fs}px ${carattere}`;
-    const largoNome = ctx.measureText(nome).width;
-    ctx.font = `700 ${fp}px ${carattere}`;
-    const largoSopra = ctx.measureText(sopra.toUpperCase()).width + sopra.length * fp * 0.18;
-    const w = Math.min(L - 24, Math.max(largoNome, largoSopra) + fs * 3.2);
-    const h = fs * 2.55;
-    const cx = L / 2;
-    const cy = (L < 640 ? 100 : 16) + h / 2 + (ridotto ? 0 : Math.sin(ora / 1700) * 1.5);
+    ctx.font = `600 ${fs}px ${carattere}`;
+    const w = Math.min(L * 0.5, ctx.measureText(nome).width + fs * 1.6), h = fs * 2;
+    const margine = 14;
+    const x = L - margine - w, y = margine;
     ctx.globalAlpha = alfa;
-    ctx.translate(cx, cy);
-    ctx.scale(pop, pop);
-    const pillola = (x, y, ww, hh) => {
-      const r = hh / 2;
-      ctx.beginPath();
-      ctx.moveTo(x + r, y); ctx.lineTo(x + ww - r, y);
-      ctx.arc(x + ww - r, y + r, r, -Math.PI / 2, Math.PI / 2);
-      ctx.lineTo(x + r, y + hh);
-      ctx.arc(x + r, y + r, r, Math.PI / 2, Math.PI * 1.5);
-      ctx.closePath();
-    };
-    // L'ombra piatta, spostata: lo stesso adesivo dei volti
-    ctx.fillStyle = 'rgba(8, 4, 20, 0.55)';
-    pillola(-w / 2 + 3, -h / 2 + 4, w, h); ctx.fill();
-    const fondo = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
-    fondo.addColorStop(0, 'rgba(52, 34, 96, 0.94)');
-    fondo.addColorStop(1, 'rgba(24, 16, 52, 0.94)');
-    ctx.fillStyle = fondo;
-    pillola(-w / 2, -h / 2, w, h); ctx.fill();
-    ctx.lineWidth = 2.4; ctx.strokeStyle = 'rgba(255, 248, 235, 0.9)'; ctx.stroke();
-    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(253, 230, 138, 0.55)';
-    pillola(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8); ctx.stroke();
-    // Le due stelline ai lati, che girano piano
-    const stellina = (x, y, r, giro) => {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(giro);
-      ctx.beginPath();
-      for (let i = 0; i < 8; i++) {
-        const a = i * Math.PI / 4, q = i % 2 ? r * 0.38 : r;
-        ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q);
-      }
-      ctx.closePath();
-      ctx.fillStyle = '#fde68a'; ctx.fill();
-      ctx.lineWidth = 1.2; ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-      ctx.restore();
-    };
-    const giro = ridotto ? 0 : ora / 2600;
-    stellina(-w / 2 + fs * 0.95, 0, fs * 0.42, giro);
-    stellina(w / 2 - fs * 0.95, 0, fs * 0.42, -giro);
-    // «Sei qui», piccolo e spaziato, poi il nome
+    ctx.fillStyle = 'rgba(12, 10, 32, 0.5)';
+    ctx.beginPath();
+    const r = h / 2;
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(x + r, y + h); ctx.arc(x + r, y + r, r, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
+    ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255, 248, 235, 0.22)'; ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 248, 235, 0.92)';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `700 ${fp}px ${carattere}`;
-    ctx.fillStyle = '#fde68a';
-    const lettere = sopra.toUpperCase().split('');
-    const passo = fp * 0.18;
-    let x = -largoSopra / 2;
-    for (const l of lettere) {
-      const lw = ctx.measureText(l).width;
-      ctx.fillText(l, x + lw / 2, -h * 0.2);
-      x += lw + passo;
-    }
-    ctx.font = `800 ${fs}px ${carattere}`;
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(3, fs * 0.2);
-    ctx.strokeStyle = INCHIOSTRO;
-    ctx.strokeText(nome, 0, h * 0.14, w - fs * 3);
-    ctx.fillStyle = '#fff8eb';
-    ctx.fillText(nome, 0, h * 0.14, w - fs * 3);
+    ctx.fillText(nome, x + w / 2, y + h / 2 + 0.5, w - fs);
     ctx.restore();
   }
 

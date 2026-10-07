@@ -23232,7 +23232,15 @@ function skyDisegna() {
   // lente, come nella 3D; il cielo vero ci si stende sopra trasparente quanto
   // è buio (`skyDisegnaSfondo`). Con la fotocamera no: lì il fondo è il video.
   const cinemaCielo = demoStoriaCinema() && !sky.camera;
-  if (cinemaCielo) solSfondoStoria(ctx, L, H);
+  // Nel planetario le stelle da cartone scorrono col cielo vero: un grado di
+  // puntamento vale quanto un grado di campo sullo schermo
+  if (cinemaCielo) {
+    // (arrotondato perché un giro intero sia un numero intero di piastrelle:
+    // passando per il nord le stelle non saltano)
+    const pxGrado = Math.max(1, Math.round(360 / Math.max(1, sky.fov || 60))) * L / 360;
+    const m = sky.manuale || { az: 0, alt: 0 };
+    solSfondoStoria(ctx, L, H, { x: (m.az || 0) * pxGrado, y: -(m.alt || 0) * pxGrado });
+  }
   // La regia delle Storie cosmiche: una lente sul fotogramma che va vicino a
   // chi parla e ai botti (storie-cosmiche.js §7-ter). Si chiude dopo i volti.
   if (typeof storLenteApri === 'function') storLenteApri(ctx, 'cielo', L, H);
@@ -35182,21 +35190,30 @@ function solFasciaScena(f) {
 //   soltanto poche decine di stelle che scintillano. Si stende **prima** della
 //   lente della regia, che altrimenti lo ingrandirebbe sgranandolo: al suo
 //   posto un poco di parallasse (lo sfondo è lontano, si muove appena).
-const SOL_CIELO_STORIA = { tela: null, chiave: '', vive: [] };
+//   Due tele (v430): il **fondo** (il colore, le nubi, il velo agli angoli),
+//   fermo con un poco di parallasse, e le **stelle**, una piastrella grande
+//   quanto la tela che si ripete senza cuciture e scorre con la camera — il
+//   giro e l'altezza della 3D e della scala cosmica, il puntamento del
+//   planetario, la lente della regia. Nella v427 il cielo era una tela sola
+//   quasi ferma: con le orbite spente non restava niente a dire che la
+//   camera girava, e a chi guardava sembrava che la camera non si muovesse più.
+const SOL_CIELO_STORIA = { fondo: null, stelle: null, chiave: '', vive: [] };
 function solCieloStoriaDado(seme) {
   let x = seme >>> 0 || 1;
   return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
 }
-function solCieloStoriaDipingi(L, H, dpr) {
-  // Un poco più grande della tela: la parallasse non deve scoprirne i bordi
-  const M = 1.12, W = Math.ceil(L * M), A = Math.ceil(H * M);
+function solCieloStoriaTela(W, A, dpr) {
   const tela = document.createElement('canvas');
   tela.width = Math.round(W * dpr); tela.height = Math.round(A * dpr);
   const g = tela.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const caso = solCieloStoriaDado(7919 + Math.round(W) * 31 + Math.round(A));
-  const diag = Math.hypot(W, A);
-  // Il fondo: viola-blu al centro, quasi nero agli angoli, senza gradini
+  return { tela, g };
+}
+function solCieloStoriaDipingi(L, H, dpr) {
+  const caso = solCieloStoriaDado(7919 + Math.round(L) * 31 + Math.round(H));
+  // Il fondo, un poco più grande della tela: la parallasse non ne scopre i bordi
+  const W = Math.ceil(L * 1.3), A = Math.ceil(H * 1.3), diag = Math.hypot(W, A);
+  const f = solCieloStoriaTela(W, A, dpr), g = f.g;
   const fondo = g.createRadialGradient(W * 0.5, A * 0.48, 0, W * 0.5, A * 0.5, diag * 0.62);
   fondo.addColorStop(0, '#2a1d4a');
   fondo.addColorStop(0.35, '#1a1638');
@@ -35204,7 +35221,6 @@ function solCieloStoriaDipingi(L, H, dpr) {
   fondo.addColorStop(1, '#05050f');
   g.fillStyle = fondo;
   g.fillRect(0, 0, W, A);
-  // Le nubi: macchie larghe e tenui, sommate alla luce che c'è
   g.globalCompositeOperation = 'lighter';
   const tinte = ['92, 52, 130', '40, 62, 128', '128, 52, 92', '64, 40, 110', '30, 80, 120'];
   for (let i = 0; i < 9; i++) {
@@ -35218,69 +35234,89 @@ function solCieloStoriaDipingi(L, H, dpr) {
     g.fillStyle = nube;
     g.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  // Il pulviscolo: tante stelle piccole, qualcuna appena azzurra o calda
-  const quante = Math.min(2600, Math.round(W * A / 520));
-  const colori = ['255, 255, 255', '214, 226, 255', '255, 240, 214', '230, 214, 255'];
-  for (let i = 0; i < quante; i++) {
-    const x = caso() * W, y = caso() * A;
-    const p = caso();
-    const r = p < 0.86 ? 0.35 + caso() * 0.45 : 0.7 + caso() * 0.7;
-    g.fillStyle = `rgba(${colori[Math.floor(caso() * colori.length)]}, ${0.25 + caso() * (p < 0.86 ? 0.45 : 0.6)})`;
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-  }
-  // Qualche stella grande con l'alone morbido
-  for (let i = 0; i < Math.round(quante / 90); i++) {
-    const x = caso() * W, y = caso() * A, r = 1.1 + caso() * 1.2;
-    const alone = g.createRadialGradient(x, y, 0, x, y, r * 6);
-    alone.addColorStop(0, 'rgba(235, 230, 255, 0.5)');
-    alone.addColorStop(1, 'rgba(235, 230, 255, 0)');
-    g.fillStyle = alone;
-    g.fillRect(x - r * 6, y - r * 6, r * 12, r * 12);
-    g.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-  }
   g.globalCompositeOperation = 'source-over';
-  // Il velo agli angoli, che porta l'occhio al centro
   const velo = g.createRadialGradient(W / 2, A / 2, Math.min(W, A) * 0.35, W / 2, A / 2, diag * 0.6);
   velo.addColorStop(0, 'rgba(3, 3, 12, 0)');
-  velo.addColorStop(1, 'rgba(3, 3, 12, 0.55)');
+  velo.addColorStop(1, 'rgba(3, 3, 12, 0.5)');
   g.fillStyle = velo;
   g.fillRect(0, 0, W, A);
-  // Le stelle che scintillano, ridisegnate a ogni fotogramma (poche)
+  // Le stelle: una piastrella L × H; chi cade vicino a un bordo si disegna
+  // anche dall'altra parte, così ripetendola non si vede la cucitura
+  const s = solCieloStoriaTela(L, H, dpr), q = s.g;
+  const punto = (x, y, r, colore) => {
+    for (const dx of [-L, 0, L]) for (const dy of [-H, 0, H]) {
+      const X = x + dx, Y = y + dy;
+      if (X < -r * 7 || Y < -r * 7 || X > L + r * 7 || Y > H + r * 7) continue;
+      q.fillStyle = colore; q.beginPath(); q.arc(X, Y, r, 0, Math.PI * 2); q.fill();
+    }
+  };
+  const quante = Math.min(2200, Math.round(L * H / 600));
+  const colori = ['255, 255, 255', '214, 226, 255', '255, 240, 214', '230, 214, 255'];
+  for (let i = 0; i < quante; i++) {
+    const x = caso() * L, y = caso() * H, p = caso();
+    const r = p < 0.86 ? 0.35 + caso() * 0.45 : 0.7 + caso() * 0.7;
+    punto(x, y, r, `rgba(${colori[Math.floor(caso() * colori.length)]}, ${0.25 + caso() * (p < 0.86 ? 0.45 : 0.6)})`);
+  }
+  for (let i = 0; i < Math.round(quante / 90); i++) {
+    const x = caso() * L, y = caso() * H, r = 1.1 + caso() * 1.2;
+    for (const dx of [-L, 0, L]) for (const dy of [-H, 0, H]) {
+      const X = x + dx, Y = y + dy;
+      if (X < -r * 6 || Y < -r * 6 || X > L + r * 6 || Y > H + r * 6) continue;
+      const alone = q.createRadialGradient(X, Y, 0, X, Y, r * 6);
+      alone.addColorStop(0, 'rgba(235, 230, 255, 0.5)');
+      alone.addColorStop(1, 'rgba(235, 230, 255, 0)');
+      q.fillStyle = alone;
+      q.fillRect(X - r * 6, Y - r * 6, r * 12, r * 12);
+    }
+    punto(x, y, r, 'rgba(255, 255, 255, 0.95)');
+  }
   const vive = [];
   for (let i = 0; i < 46; i++) vive.push({ x: caso(), y: caso(), r: 0.7 + caso() * 1.1, f: caso() * Math.PI * 2, v: 0.6 + caso() * 1.6, croce: caso() < 0.3 });
-  return { tela, W, A, vive };
+  return { fondo: { tela: f.tela, W, A }, stelle: { tela: s.tela, W: L, A: H }, vive };
 }
-function solSfondoStoria(ctx, L = sol.L, H = sol.H) {
+// `cam`: dove guarda la camera della vista, in pixel — `x`, `y` lo
+// scorrimento delle stelle (un giro della 3D, il puntamento del planetario)
+function solSfondoStoria(ctx, L = sol.L, H = sol.H, cam = null) {
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const chiave = `${Math.round(L)}x${Math.round(H)}@${dpr}`;
-  if (SOL_CIELO_STORIA.chiave !== chiave || !SOL_CIELO_STORIA.tela) {
+  if (SOL_CIELO_STORIA.chiave !== chiave || !SOL_CIELO_STORIA.stelle) {
     Object.assign(SOL_CIELO_STORIA, solCieloStoriaDipingi(L, H, dpr), { chiave });
   }
   const c = SOL_CIELO_STORIA;
+  const lente = typeof storLenteStato === 'function' ? storLenteStato() : null;
+  const kL = lente ? lente.k : 1;
+  // Il punto del disegno che la lente tiene al centro, e quanto ne è lontano
+  const fx = lente && kL > 1.001 ? (L / 2 - lente.tx) / kL - L / 2 : 0;
+  const fy = lente && kL > 1.001 ? (H / 2 - lente.ty) / kL - H / 2 : 0;
+  const cx = (cam && cam.x) || 0, cy = (cam && cam.y) || 0;
   ctx.save();
   ctx.fillStyle = '#05050f';
   ctx.fillRect(0, 0, L, H);
-  // La parallasse: la lente della regia del fotogramma prima, divisa per
-  // dodici — il primo piano si avvicina al personaggio, il cielo quasi no
-  const lente = typeof storLenteStato === 'function' ? storLenteStato() : null;
-  const k = lente ? 1 + (lente.k - 1) * 0.08 : 1;
-  const cx = lente && lente.k > 1.001 ? (L / 2 - lente.tx) / lente.k : L / 2;
-  const cy = lente && lente.k > 1.001 ? (H / 2 - lente.ty) / lente.k : H / 2;
-  const sx = Math.max(-(c.W - L) / 2, Math.min((c.W - L) / 2, (L / 2 - cx) * 0.06));
-  const sy = Math.max(-(c.A - H) / 2, Math.min((c.A - H) / 2, (H / 2 - cy) * 0.06));
-  ctx.translate(L / 2 + sx, H / 2 + sy);
+  // Il fondo: lontanissimo, si muove appena
+  const F = c.fondo;
+  const mx = (F.W - L) / 2, my = (F.A - H) / 2;
+  const nx = Math.max(-mx, Math.min(mx, -(cx * 0.04 + fx * 0.1) % (mx * 2)));
+  const ny = Math.max(-my, Math.min(my, -(cy * 0.04 + fy * 0.1)));
+  ctx.drawImage(F.tela, (L - F.W) / 2 + nx, (H - F.A) / 2 + ny, F.W, F.A);
+  // Le stelle: scorrono con la camera e si avvicinano con la lente, a metà
+  ctx.translate(L / 2, H / 2);
+  const k = 1 + (kL - 1) * 0.5;
   ctx.scale(k, k);
-  ctx.drawImage(c.tela, -c.W / 2, -c.A / 2, c.W, c.A);
+  const S = c.stelle;
+  const ox = ((-(cx + fx * 0.5) % S.W) + S.W) % S.W, oy = ((-(cy + fy * 0.5) % S.A) + S.A) % S.A;
+  const x0 = -L / 2 / k - S.W, y0 = -H / 2 / k - S.A;
+  for (let x = x0 + ((ox - x0) % S.W + S.W) % S.W - S.W; x < L / 2 / k; x += S.W)
+    for (let y = y0 + ((oy - y0) % S.A + S.A) % S.A - S.A; y < H / 2 / k; y += S.A)
+      ctx.drawImage(S.tela, x, y, S.W, S.A);
   // Lo scintillio: lento, con la croce di luce sulle più grandi
   const t = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
   const ridotto = typeof window !== 'undefined' && window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ctx.fillStyle = '#ffffff';
   for (const s of c.vive) {
     const a = ridotto ? 0.7 : 0.35 + 0.55 * (0.5 + 0.5 * Math.sin(t * s.v + s.f));
-    const x = (s.x - 0.5) * c.W, y = (s.y - 0.5) * c.A;
+    const x = ((s.x * S.W + ox) % S.W) - S.W / 2, y = ((s.y * S.A + oy) % S.A) - S.A / 2;
     ctx.globalAlpha = a;
-    ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.arc(x, y, s.r, 0, Math.PI * 2); ctx.fill();
     if (s.croce) {
       ctx.globalAlpha = a * 0.55;
@@ -35289,6 +35325,12 @@ function solSfondoStoria(ctx, L = sol.L, H = sol.H) {
     }
   }
   ctx.restore();
+}
+// La camera della 3D (e della scala cosmica) per il cielo da cartone: un
+// radiante di giro sposta le stelle di mezza tela, l'altezza le fa salire
+function solCameraCielo(az, elev, panX, panY, L) {
+  const passo = L * 0.5;
+  return { x: -(az || 0) * passo - (panX || 0) * 0.3, y: ((elev || 0) * Math.PI / 180) * passo - (panY || 0) * 0.3 };
 }
 
 // Il disegno. La proiezione è srotolata qui dentro invece di passare da
@@ -39209,7 +39251,7 @@ function solDisegna() {
   // La lente della regia delle storie (storie-cosmiche.js §7-ter), chiusa
   // dopo i volti e prima delle scritte in basso
   const cinema = demoStoriaCinema();
-  if (cinema) solSfondoStoria(ctx);
+  if (cinema) solSfondoStoria(ctx, sol.L, sol.H, solCameraCielo(sol.az, sol.elev, sol.panX, sol.panY, sol.L));
   if (typeof storLenteApri === 'function') storLenteApri(ctx, sol.vicino ? 'vicino' : 'sistema', sol.L, sol.H);
   if (!cinema) solSfondo(ctx);
 

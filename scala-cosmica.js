@@ -2221,9 +2221,11 @@ function cosmDisegna(ctx) {
   // La lente della regia delle storie (storie-cosmiche.js §7-ter): la carta
   // e i personaggi si avvicinano, le letture e la riga della scala no
   // Nelle CosmoStorie (v429) anche la scala cosmica ha il cielo da cartone
-  // della 3D, steso prima della lente come lì
+  // della 3D, steso prima della lente come lì. Le stelle scorrono col giro
+  // della carta e, attraversando le decadi, salgono (v430): il viaggio si vede
   const cinema = typeof demoStoriaCinema === 'function' && demoStoriaCinema() && typeof solSfondoStoria === 'function';
-  if (cinema) solSfondoStoria(ctx);
+  if (cinema) solSfondoStoria(ctx, sol.L, sol.H, typeof solCameraCielo === 'function'
+    ? solCameraCielo(cosm.az, (cosm.elev == null ? 90 : cosm.elev) + cosm.L * 25, 0, 0, sol.L) : null);
   if (typeof storLenteApri === 'function') storLenteApri(ctx, 'cosmo', sol.L, sol.H);
   if (cinema) { /* già steso */ }
   else if (typeof solSfondo === 'function') solSfondo(ctx);
