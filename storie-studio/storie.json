@@ -69,6 +69,12 @@
                   "dove": "",
                   "grandezza": 1,
                   "colore": ""
+                },
+                {
+                  "id": "ap27zk8l",
+                  "tipo": "occhiolino",
+                  "chi": "Moon",
+                  "quando": "inizio"
                 }
               ]
             },
@@ -541,12 +547,283 @@
               "azioni": []
             }
           ]
+        },
+        {
+          "id": "sq4ys6tn",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "me6kl2d1",
+              "chi": "Sun",
+              "testo": "La gravità è una forza attrattiva che tiene uno o più astri stabili.",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 12,
+              "audio": null,
+              "azioni": []
+            }
+          ]
+        },
+        {
+          "id": "sprzq2ot",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "mf7nsmge",
+              "chi": "Earth",
+              "testo": "Continuo a non capire.",
+              "umore": "thinking",
+              "durata": 0,
+              "voce": 13,
+              "audio": null,
+              "azioni": []
+            }
+          ]
+        },
+        {
+          "id": "s829qn5g",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn"
+          ],
+          "momenti": [
+            {
+              "id": "m63bjnb1",
+              "chi": "Saturn",
+              "testo": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 14,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "ag8isjx7",
+                  "tipo": "diventa",
+                  "chi": "Saturn",
+                  "quando": "tutto",
+                  "forma": "red_giant"
+                },
+                {
+                  "id": "aeak23y3",
+                  "tipo": "diventa",
+                  "chi": "Saturn",
+                  "quando": "tutto",
+                  "forma": "red_giant"
+                },
+                {
+                  "id": "aeau3ca6",
+                  "tipo": "scala",
+                  "chi": "Saturn",
+                  "quando": "inizio",
+                  "scala": 1.6
+                },
+                {
+                  "id": "a60hgl2a",
+                  "tipo": "anima",
+                  "chi": "Saturn",
+                  "quando": "inizio",
+                  "animazione": "jump",
+                  "volte": 0
+                },
+                {
+                  "id": "a7mfrf4f",
+                  "tipo": "torna",
+                  "chi": "Saturn",
+                  "quando": "tutto",
+                  "percorso": "arc"
+                },
+                {
+                  "id": "aft6q5bi",
+                  "tipo": "muovi",
+                  "chi": "Saturn",
+                  "quando": "tutto",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc"
+                },
+                {
+                  "id": "aelmufrk",
+                  "tipo": "guarda",
+                  "chi": "Saturn",
+                  "quando": "inizio",
+                  "oggetto": "viewer"
+                },
+                {
+                  "id": "awr0qync",
+                  "tipo": "nascondi",
+                  "chi": "Saturn",
+                  "quando": "fine"
+                },
+                {
+                  "id": "afel22le",
+                  "tipo": "umore",
+                  "chi": "Saturn",
+                  "quando": "inizio",
+                  "umore": "happy"
+                },
+                {
+                  "id": "awv4oapv",
+                  "tipo": "umore",
+                  "chi": "Saturn",
+                  "quando": "inizio",
+                  "umore": "happy"
+                },
+                {
+                  "id": "a667q4i8",
+                  "tipo": "guarda",
+                  "chi": "Saturn",
+                  "quando": "inizio",
+                  "oggetto": "viewer"
+                },
+                {
+                  "id": "apb9sgh1",
+                  "tipo": "nascondi",
+                  "chi": "Saturn",
+                  "quando": "fine"
+                },
+                {
+                  "id": "an55isnm",
+                  "tipo": "occhiolino",
+                  "chi": "Saturn",
+                  "quando": "inizio"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sjqfsvxn",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mk9li7b8",
+              "chi": "Earth",
+              "testo": "Potresti spiegarti meglio?",
+              "umore": "sleepy",
+              "durata": 0,
+              "voce": 15,
+              "audio": null,
+              "azioni": []
+            }
+          ]
+        },
+        {
+          "id": "svg8wpg6",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Jupiter"
+          ],
+          "momenti": [
+            {
+              "id": "mxx3tjfj",
+              "chi": "Jupiter",
+              "testo": " Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 16,
+              "audio": null,
+              "azioni": []
+            }
+          ]
+        },
+        {
+          "id": "sgegyse8",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Earth",
+            "Jupiter"
+          ],
+          "momenti": [
+            {
+              "id": "m6w26mrb",
+              "chi": "Earth",
+              "testo": "Cosa è la massa, cosa è un peso e che cosa è un volume?",
+              "umore": "thinking",
+              "durata": 0,
+              "voce": 17,
+              "audio": null,
+              "azioni": []
+            }
+          ]
         }
       ],
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
-      "voceProssima": 12,
-      "aggiornato": 1791317416800,
+      "voceProssima": 18,
+      "aggiornato": 1791396567162,
       "lingua": "it"
     }
   ],

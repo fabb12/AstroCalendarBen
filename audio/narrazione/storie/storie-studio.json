@@ -94,6 +94,54 @@
           "umore": "happy",
           "scena": 11,
           "durata": 4000
+        },
+        {
+          "n": 12,
+          "chi": "Sun",
+          "testo": "La gravità è una forza attrattiva che tiene uno o più astri stabili.",
+          "umore": "neutral",
+          "scena": 12,
+          "durata": 8000
+        },
+        {
+          "n": 13,
+          "chi": "Earth",
+          "testo": "Continuo a non capire.",
+          "umore": "thinking",
+          "scena": 13,
+          "durata": 4000
+        },
+        {
+          "n": 14,
+          "chi": "Saturn",
+          "testo": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.",
+          "umore": "neutral",
+          "scena": 14,
+          "durata": 9000
+        },
+        {
+          "n": 15,
+          "chi": "Earth",
+          "testo": "Potresti spiegarti meglio?",
+          "umore": "sleepy",
+          "scena": 15,
+          "durata": 4000
+        },
+        {
+          "n": 16,
+          "chi": "Jupiter",
+          "testo": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
+          "umore": "neutral",
+          "scena": 16,
+          "durata": 18000
+        },
+        {
+          "n": 17,
+          "chi": "Earth",
+          "testo": "Cosa è la massa, cosa è un peso e che cosa è un volume?",
+          "umore": "thinking",
+          "scena": 17,
+          "durata": 8000
         }
       ]
     }
