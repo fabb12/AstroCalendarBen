@@ -39230,7 +39230,29 @@ function solDisegnaAsseTerra(ctx, terra, assi) {
   ctx.restore();
 }
 
+// Il giro della regia delle CosmoStorie (v431, `story_camera { mode: orbit }`,
+// storie-cosmiche.js §7-ter): un azimut in più che vale per il solo
+// fotogramma. Si somma qui e si toglie alla fine, così le camere delle
+// scene (`camera_3d`, `cosmic_scale`), che riscrivono l'azimut a ogni
+// fotogramma, restano padrone della loro posa e il giro non si accumula.
+// Se durante il disegno qualcuno ha riscritto l'azimut (un ingresso nel
+// banco Terra e Luna), quello che ha scritto vince.
 function solDisegna() {
+  const giro = sol.ctx && typeof storRegiaGiro === 'function' ? storRegiaGiro() : 0;
+  if (!giro) { solDisegnaFotogramma(); return; }
+  const conCosmo = typeof cosm !== 'undefined' && cosm && Number.isFinite(cosm.az);
+  const az = sol.az, azCosmo = conCosmo ? cosm.az : 0, azCosmoVoluto = conCosmo ? cosm.azVoluto : 0;
+  sol.az = az + giro;
+  if (conCosmo) { cosm.az = azCosmo + giro; if (Number.isFinite(azCosmoVoluto)) cosm.azVoluto = azCosmoVoluto + giro; }
+  try { solDisegnaFotogramma(); } finally {
+    if (sol.az === az + giro) sol.az = az;
+    if (conCosmo) {
+      if (cosm.az === azCosmo + giro) cosm.az = azCosmo;
+      if (Number.isFinite(azCosmoVoluto) && cosm.azVoluto === azCosmoVoluto + giro) cosm.azVoluto = azCosmoVoluto;
+    }
+  }
+}
+function solDisegnaFotogramma() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
   // La scala cosmica (scala-cosmica.js) è il quarto quadro di questa

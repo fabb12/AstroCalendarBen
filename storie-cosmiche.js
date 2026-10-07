@@ -1215,6 +1215,7 @@
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
     stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
+    Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel });
     storZittisci();
   }
   // Chi esce di scena spostato o ingrandito non torna a posto di colpo: per
@@ -4660,7 +4661,22 @@
    *
    * Tace col movimento ridotto, quando la persona prende la camera in mano
    * (`AstroDemo.cameraManuale`), con l'opzione spenta, fuori dalle storie,
-   * e nelle scene con `story_camera { mode: wide }`. */
+   * e nelle scene con `story_camera { mode: wide }`.
+   *
+   * Ogni scena può scegliere la sua regia (v431, chiesto da chi scrive le
+   * storie: «la camera dev'essere dinamica, zoomare quando qualcuno parla e
+   * girare intorno al personaggio se serve»): `auto` (quella di sempre),
+   * `speaker` (primo piano stretto su chi parla, e fra due battute resta
+   * su di lui invece di allargarsi), `close` (su un personaggio solo),
+   * `orbit` (la camera gira attorno a un personaggio, o a chi parla) e
+   * `wide` (la camera della scena, ferma). Il giro nella 3D e nella scala
+   * cosmica è vero: un azimut in più che `solDisegna` somma alla camera per
+   * il solo fotogramma (`storRegiaGiro`), e la lente tiene al centro il
+   * personaggio — girare attorno al perno e poi ricentrare su di lui è lo
+   * stesso che girare attorno a lui, perché la proiezione è ortogonale. Nel
+   * planetario, dove la camera sta per terra e girare attorno a un astro non
+   * ha senso, il giro è il quadro che rolla piano e scivola in cerchio
+   * attorno al personaggio, come una camera a mano che gli passa accanto. */
   const STOR_REGIA = {
     zoomMax: 3.2,          // oltre, le tele dipinte una volta si sgranano troppo
     volto: 0.17,           // il raggio del volto in primo piano, in frazione del lato corto
@@ -4673,6 +4689,12 @@
     respiro: 0.006,        // la camera a mano: un ondeggiare lento, in frazione del lato corto (v427)
     arco: 0.45,            // passando da un personaggio all'altro si allarga un poco e torna (v427)
     terzi: 0.1,            // chi parla guardando di lato va a un terzo, con lo spazio davanti (v427)
+    voltoStretto: 0.22,    // il primo piano di `speaker`, più stretto di quello di `auto` (v431)
+    giroVolto: 0.13,       // nel giro il volto è più piccolo: si deve vedere il mondo che gli gira dietro (v431)
+    giroVel: 14,           // gradi al secondo del giro, di serie (v431): un giro intero in poco meno di mezzo minuto
+    giroAvvio: 1.6,        // secondi per prendere (e lasciare) la velocità del giro, senza strappi
+    giroRollio: 0.08,      // nel planetario il quadro rolla al più di tanto (radianti, ~4,6°)
+    giroCerchio: 0.03,     // e scivola in cerchio attorno al personaggio, in frazione del lato corto
     tieniMs: 900,          // finita una battuta, resta ancora un poco prima di allargarsi
     // Gli effetti che la camera va a guardare, per quanto (ms della storia)
     // e quanto sono grandi rispetto al raggio dell'astro che li porta
@@ -4683,6 +4705,7 @@
   };
   stor.regia = {
     modo: 'auto', chi: null, zoomMax: null,       // quello che la scena chiede
+    velGiro: 14, giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0,
     lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0, ax: 0.5, vax: 0, ripresa: null,
     vista: '', L: 0, H: 0, ultimo: 0, tieni: null, scosse: [],
     aperta: null, k: 1, tx: 0, ty: 0, motivo: 'largo'
@@ -4750,8 +4773,22 @@
       const d = quanti.find(x => x.id === r.chi);
       if (d) return primoPiano(d, STOR_REGIA.volto, 'vicino');
     }
-    // 3. Chi parla
     const parla = stor.parlante ? quanti.find(d => d.id === stor.parlante.target) : null;
+    // 2-bis. Il giro (v431): attorno a chi la scena ha scelto, se no a chi
+    // parla, se no a chi c'era prima, se no al primo che c'è. Il volto più
+    // piccolo, perché il bello del giro è il mondo che si muove dietro
+    if (r.modo === 'orbit') {
+      const d = (r.chi && quanti.find(x => x.id === r.chi)) || parla ||
+        (r.ultimoGiro && quanti.find(x => x.id === r.ultimoGiro)) || quanti[0];
+      if (d) return Object.assign(primoPiano(d, STOR_REGIA.giroVolto, 'giro'), { ax: 0.5 });
+    }
+    // 2-ter. Sempre su chi parla (v431): primo piano stretto, niente campo e
+    // controcampo, e fra due battute resta su chi ha parlato per ultimo
+    if (r.modo === 'speaker') {
+      const d = parla || (r.ultimoParlante && quanti.find(x => x.id === r.ultimoParlante));
+      if (d) return primoPiano(d, STOR_REGIA.voltoStretto, 'parla');
+    }
+    // 3. Chi parla
     if (parla) {
       const solo = primoPiano(parla, STOR_REGIA.volto, 'parla');
       // Il campo e controcampo dei cartoni: se chi ascolta è vicino, li si
@@ -4803,8 +4840,17 @@
     if (r.vista !== vista || Math.abs(r.L - L) > 1 || Math.abs(r.H - H) > 1) {
       Object.assign(r, { vista, L, H, lk: 0, vlk: 0, fx: NaN, fy: NaN, vfx: 0, vfy: 0, ay: 0.5, vay: 0, ax: 0.5, vax: 0, tieni: null, ripresa: null });
     }
-    if (!accesa && r.lk < 0.002 && !r.scosse.length) { r.k = 1; r.tx = 0; r.ty = 0; r.motivo = 'largo'; r.vfx = r.vfy = r.vlk = 0; return; }
+    if (!accesa && r.lk < 0.002 && !r.scosse.length && Math.abs(r.rot) < 1e-4) { r.k = 1; r.tx = 0; r.ty = 0; r.rot = 0; r.vrot = 0; r.motivo = 'largo'; r.vfx = r.vfy = r.vlk = 0; return; }
     let meta = accesa ? storRegiaInquadra(vista, L, H) : null;
+    if (meta && meta.motivo === 'parla') r.ultimoParlante = meta.id;
+    if (meta && meta.motivo === 'giro') r.ultimoGiro = meta.id;
+    const giro = storRegiaGiro();
+    // Nel planetario il giro è il quadro che scivola in cerchio attorno al
+    // personaggio (nella 3D e nella scala cosmica gira la camera vera)
+    if (meta && meta.motivo === 'giro' && vista === 'cielo' && !stor.ridotto) {
+      const raggio = STOR_REGIA.giroCerchio * Math.min(L, H) / Math.max(1, meta.k);
+      meta = Object.assign({}, meta, { x: meta.x + raggio * Math.cos(giro), y: meta.y + raggio * 0.6 * Math.sin(giro) });
+    }
     if (meta) r.tieni = { meta, da: ora };
     else if (accesa && r.tieni && ora - r.tieni.da < STOR_REGIA.tieniMs) meta = r.tieni.meta;
     if (!Number.isFinite(r.fx)) { r.fx = meta ? meta.x : L / 2; r.fy = meta ? meta.y : H / 2; }
@@ -4834,11 +4880,19 @@
       const h = passo / n;
       [r.lk, r.vlk] = molla(r.lk, r.vlk, lkMeta, wz, h);
       if (meta) {
-        [r.fx, r.vfx] = molla(r.fx, r.vfx, meta.x, w, h);
-        [r.fy, r.vfy] = molla(r.fy, r.vfy, meta.y, w, h);
+        // Nel giro il personaggio si sposta sul disegno di continuo (è il
+        // mondo che gli gira attorno): una molla più svelta lo tiene al centro
+        const wf = meta.motivo === 'giro' && r.ripresa && stor.orologio - r.ripresa.da > 1200 ? w * 2.2 : w;
+        [r.fx, r.vfx] = molla(r.fx, r.vfx, meta.x, wf, h);
+        [r.fy, r.vfy] = molla(r.fy, r.vfy, meta.y, wf, h);
         [r.ay, r.vay] = molla(r.ay, r.vay, meta.ay, w, h);
       }
       [r.ax, r.vax] = molla(r.ax, r.vax, meta && Number.isFinite(meta.ax) ? meta.ax : 0.5, w * 0.6, h);
+      // Il rollio del giro nel planetario: va e viene col giro, e finito il
+      // giro torna dritto con la sua molla
+      const rotMeta = meta && meta.motivo === 'giro' && vista === 'cielo' && !stor.ridotto
+        ? STOR_REGIA.giroRollio * Math.sin(giro * 1.3) : 0;
+      [r.rot, r.vrot] = molla(r.rot, r.vrot, rotMeta, w * 0.5, h);
     }
     r.lk = Math.max(0, r.lk);
     // La scossa: ingrandisce appena (così il tremito non scopre i bordi) e
@@ -4867,8 +4921,14 @@
     tx = Math.min(0, Math.max(L * (1 - k), tx));
     ty = Math.min(0, Math.max(H * (1 - k), ty));
     r.k = k; r.tx = tx; r.ty = ty; r.motivo = meta ? meta.motivo : 'largo';
-    if (k < 1.0005 && Math.abs(tx) < 0.05 && Math.abs(ty) < 0.05) return;
+    r.rx = ax; r.ry = ay;
+    if (stor.ridotto) r.rot = 0;
+    const ruota = Math.abs(r.rot) > 1e-4;
+    if (k < 1.0005 && Math.abs(tx) < 0.05 && Math.abs(ty) < 0.05 && !ruota) return;
     ctx.save();
+    // Il rollio gira attorno al punto dove la lente porta il soggetto: lui
+    // resta lì, è il cielo che gli si inclina attorno
+    if (ruota) { ctx.translate(ax, ay); ctx.rotate(r.rot); ctx.translate(-ax, -ay); }
     ctx.translate(tx, ty);
     ctx.scale(k, k);
     r.aperta = ctx;
@@ -4883,7 +4943,34 @@
   // Da un punto del disegno a dove si vede sullo schermo, con la lente di adesso
   function storLenteSchermo(x, y) {
     const r = stor.regia;
-    return { x: r.tx + r.k * x, y: r.ty + r.k * y };
+    const sx = r.tx + r.k * x, sy = r.ty + r.k * y;
+    if (!r.rot) return { x: sx, y: sy };
+    const c = Math.cos(r.rot), s = Math.sin(r.rot), dx = sx - (r.rx || 0), dy = sy - (r.ry || 0);
+    return { x: (r.rx || 0) + c * dx - s * dy, y: (r.ry || 0) + s * dx + c * dy };
+  }
+  /* Il giro della camera (v431), in radianti: quanto la regia vuole che la
+   * camera della 3D e della scala cosmica giri **in più** di quella della
+   * scena. Corre sull'orologio della storia (in pausa si ferma), prende e
+   * lascia la velocità in `giroAvvio` secondi, e tace dove tace la regia;
+   * presa la camera a mano resta dov'era (niente scatto sotto il dito). Si
+   * azzera con la scena (`story_camera` che si chiude): il taglio di scena
+   * è il momento giusto per uno stacco. `solDisegna` lo somma a `sol.az` e
+   * a `cosm.az` per il solo fotogramma. */
+  function storRegiaGiro() {
+    const r = stor.regia;
+    const t = stor.orologio;
+    const dt = Number.isFinite(r.giroOra) ? Math.max(0, Math.min(0.1, (t - r.giroOra) / 1000)) : 0;
+    r.giroOra = t;
+    const manuale = !!(radice.AstroDemo && radice.AstroDemo.cameraManuale);
+    if (manuale) { r.vGiro = 0; return r.giro; }
+    const vuole = r.modo === 'orbit' && regiaAccesa() ? r.velGiro * Math.PI / 180 : 0;
+    if (dt > 0) {
+      const a = Math.min(1, dt / Math.max(0.05, STOR_REGIA.giroAvvio / 3));
+      r.vGiro += (vuole - r.vGiro) * a;
+      if (Math.abs(r.vGiro) < 1e-4 && !vuole) r.vGiro = 0;
+      r.giro += r.vGiro * dt;
+    }
+    return r.giro;
   }
 
   /* Il cartello del luogo (v429, rifatto nella v430). Chi guarda una
@@ -5641,23 +5728,33 @@
   });
 
   // La regia di una scena (§7-ter): `auto` (di serie) va da chi parla e dai
-  // botti, `wide` tiene la camera della scena, `close` resta su un personaggio
-  const STOR_MODI_REGIA = ['auto', 'wide', 'close'];
+  // botti, `wide` tiene la camera della scena, `close` resta su un
+  // personaggio; dalla v431 `speaker` sta sempre stretto su chi parla e
+  // `orbit` gira attorno a un personaggio (o a chi parla), a `speed` gradi
+  // al secondo (negativo: nell'altro verso)
+  const STOR_MODI_REGIA = ['auto', 'wide', 'close', 'speaker', 'orbit'];
   Object.assign(COMANDI, {
     story_camera: {
       verifica(p, scena) {
-        campi(p, ['mode', 'target', 'zoom']);
+        campi(p, ['mode', 'target', 'zoom', 'speed']);
         richiedi(p.mode !== undefined, 'valoreIgnoto', { campo: 'mode', nome: '', elenco: STOR_MODI_REGIA.join(', ') });
         scelta(p.mode, 'mode', STOR_MODI_REGIA);
         numeroIn(p.zoom, 'zoom', 1, 4);
+        numeroIn(p.speed, 'speed', -90, 90);
         if (p.mode === 'close') { richiedi(p.target !== undefined, 'personaggioIgnoto', { nome: '' }); inScena(p, scena); }
+        else if (p.mode === 'orbit' && p.target !== undefined) inScena(p, scena);
         else if (p.target !== undefined) bersaglio(p);
         if (scena) richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
       },
       crea(p) {
         const r = stor.regia;
         r.modo = p.mode; r.chi = p.target ? storCanonico(p.target) : null; r.zoomMax = p.zoom || null;
-        return { chiudi() { r.modo = 'auto'; r.chi = null; r.zoomMax = null; } };
+        r.velGiro = p.speed !== undefined ? p.speed : STOR_REGIA.giroVel;
+        return { chiudi() {
+          r.modo = 'auto'; r.chi = null; r.zoomMax = null; r.velGiro = STOR_REGIA.giroVel;
+          // Il giro finisce col taglio di scena: la scena dopo riparte dritta
+          r.giro = 0; r.vGiro = 0; r.ultimoGiro = null;
+        } };
       }
     },
     sound: {
@@ -6014,7 +6111,7 @@
     disegnaFisica: storDisegnaFisica, lunaReagisce: storLunaReagisce, padreDi: storPadreDi,
     get domanda() { return stor.domanda ? Object.assign({}, stor.domanda) : null; },
     stato: stor,
-    STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
+    STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, regiaGiro: storRegiaGiro, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
     lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
     get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },
@@ -6030,6 +6127,7 @@
   radice.storRaggio3D = storRaggio3D;
   radice.storLenteApri = storLenteApri;
   radice.storLenteChiudi = storLenteChiudi;
+  radice.storRegiaGiro = storRegiaGiro;
   radice.storDisegnaCartelloLuogo = storDisegnaCartelloLuogo;
   radice.storLenteK = () => stor.regia.aperta ? stor.regia.k : 1;
   // La lente dell'ultimo fotogramma, per la parallasse del cielo delle

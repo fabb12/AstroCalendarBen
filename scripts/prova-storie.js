@@ -1259,6 +1259,54 @@ prova('story_camera: wide la ferma, close resta su un personaggio; la camera pre
   motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Mars', sound: off }",
     "character_animate { target: 'Mars', animation: jump, sound: tada }", "effect { type: explosion, sound: rumble }", "sound { type: drumroll, volume: 0.5 }")));
 });
+prova('story_camera: speaker resta stretto su chi parla, orbit gira la camera attorno al personaggio (v431)', async () => {
+  S.sgombra();
+  const corpi = [corpo('Earth', 150, 420, 30), corpo('Moon', 620, 220, 26)];
+  // speaker: primo piano più stretto di auto, e fra due battute resta lì
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_show { target: 'Moon' }",
+    "story_camera { mode: speaker }")), { ripristina() {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  S.parla('Moon', { id: 'demo.narr.storia_luna.1' });
+  for (let k = 0; k < 150; k++) { fotogramma(corpi); finestraDentro(800, 600); }
+  assert.equal(S.regia.motivo, 'parla');
+  const stretto = S.regia.k;
+  assert.ok(stretto > 2.5, 'primo piano stretto: ' + stretto);
+  S.stato.parlante = null;
+  for (let k = 0; k < 200; k++) fotogramma(corpi);
+  assert.equal(S.regia.motivo, 'parla', 'finita la battuta resta su chi ha parlato');
+  assert.ok(S.regia.k > 2, 'e non si allarga: ' + S.regia.k);
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  // orbit: il giro corre sull'orologio della storia, la lente tiene il personaggio
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_show { target: 'Moon' }",
+    "story_camera { mode: orbit, target: 'Earth', speed: 30 }")), { ripristina() {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  const g0 = S.regiaGiro();
+  for (let k = 0; k < 150; k++) fotogramma(corpi);
+  assert.equal(S.regia.motivo, 'giro');
+  const g1 = S.regiaGiro();
+  assert.ok(g1 - g0 > 0.3, 'la camera gira: ' + (g1 - g0));
+  assert.ok(g1 - g0 < 150 * 0.016 * 30 * Math.PI / 180 + 1e-9, 'non più svelta di quanto chiesto');
+  // nel planetario il giro è il quadro che rolla e il soggetto resta nel quadro
+  for (let k = 0; k < 150; k++) fotogramma(corpi, 800, 600, 'cielo');
+  assert.ok(Math.abs(S.stato.regia.rot) > 1e-3, 'nel planetario il quadro rolla: ' + S.stato.regia.rot);
+  const d = S.stato.ultimiDisegnati.find(x => x.id === 'Earth');
+  const q = S.lenteSchermo(d.x, d.y);
+  assert.ok(q.x > 150 && q.x < 650 && q.y > 80 && q.y < 450, `la Terra resta in mezzo al quadro: ${q.x}, ${q.y}`);
+  // la camera presa a mano: il giro si ferma dov'è
+  globalThis.AstroDemo.cameraManuale = true;
+  const g2 = S.regiaGiro();
+  for (let k = 0; k < 60; k++) fotogramma(corpi);
+  assert.equal(S.regiaGiro(), g2, 'presa a mano, il giro resta fermo');
+  globalThis.AstroDemo.cameraManuale = false;
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  assert.equal(S.regiaGiro(), 0, 'chiusa la scena il giro riparte da zero');
+  for (const [testo, re] of [
+    [sc('solar_system_3d', "story_camera { mode: orbit, target: 'Moon' }"), /deve comparire/],
+    [sc('solar_system_3d', "story_camera { mode: orbit, speed: 200 }"), /speed vuole un numero/]
+  ]) assert.throws(() => motore.prepara(demo(testo)), re, testo);
+  motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Moon' }", "story_camera { mode: orbit, speed: -20 }")));
+  motore.prepara(demo(sc('planetarium_view', "character_show { target: 'Moon' }", "story_camera { mode: speaker }")));
+});
 prova('in pausa la camera si ferma con la storia', () => {
   scena({ Moon: {} });
   S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
@@ -1362,6 +1410,25 @@ prova('lo Studio: la camera viva è di serie, e chi la vuole ferma la ferma', ()
   motore.prepara(testo);
   assert.equal(St.ripulisci(JSON.parse(JSON.stringify(p))).scene[0].cameraViva, false, 'la scelta si salva');
   assert.equal(St.ripulisci({ scene: [{}] }).scene[0].cameraViva, true);
+});
+prova('lo Studio: la camera si sceglie per ogni scena (v431)', () => {
+  const p = St.daModello('fasi');
+  const sc0 = p.scene[0];
+  const chi = St.ripulisci(JSON.parse(JSON.stringify(p))).scene[0].presenti[0] || p.cast[0];
+  sc0.presenti = [chi];
+  for (const [camera, re] of [['parla', /story_camera \{ mode: speaker \}/], ['giro', /story_camera \{ mode: orbit \}/],
+    ['vicino', new RegExp(`story_camera \\{ mode: close, target: '${chi}' \\}`)], ['ferma', /story_camera \{ mode: wide \}/]]) {
+    sc0.camera = camera; sc0.cameraChi = '';
+    const testo = St.copione(p);
+    assert.match(testo, re, camera);
+    motore.prepara(testo);
+  }
+  sc0.camera = 'giro'; sc0.cameraChi = chi;
+  assert.match(St.copione(p), new RegExp(`story_camera \\{ mode: orbit, target: '${chi}' \\}`));
+  motore.prepara(St.copione(p));
+  assert.equal(St.ripulisci(JSON.parse(JSON.stringify(p))).scene[0].camera, 'giro', 'la scelta si salva');
+  assert.equal(St.ripulisci({ scene: [{ cameraViva: false }] }).scene[0].camera, 'ferma', 'le copie di prima: la casella spenta è «ferma»');
+  assert.equal(St.ripulisci({ scene: [{ camera: 'boh' }] }).scene[0].camera, 'auto');
 });
 
 // =====================================================================

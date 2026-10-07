@@ -601,7 +601,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_scale` | `target`, `scale` (0,2–6) |
 | `character_become` (v414) | `target`, `shape` (`red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`) |
 | `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20) |
-| `story_camera` (v416) | `mode` (`auto`, `wide`, `close`), `target?` (con `close`, un personaggio in scena), `zoom?` (1–4, il tetto del primo piano) |
+| `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
 
@@ -1011,9 +1011,55 @@ action: character_animate { target: 'Jupiter', animation: jump, sound: off };
 action: sound { type: drumroll, volume: 0.6, shot_from: 0.4 };
 ```
 
-Nello Studio, in «Inquadratura e data», la casella **«La camera va vicino a
-chi parla»** (`cameraViva` della scena, accesa di serie): spenta, la scena
-porta `story_camera { mode: wide }`.
+Nello Studio, in «Inquadratura e data», il menu **«Camera»** di ogni scena
+(v431, prima era la casella «La camera va vicino a chi parla»): §La camera
+scelta per ogni scena.
+
+## La camera scelta per ogni scena: primo piano su chi parla e giro (v431)
+
+Chi scrive storie ha chiesto una camera più dinamica: che zoomi su chi parla
+e che, se serve, giri attorno al personaggio, scelta scena per scena.
+`story_camera` ha due modi in più (`storie-cosmiche.js` §7-ter):
+
+- **`speaker`**: sempre su chi parla, con un primo piano più stretto di
+  `auto` (`STOR_REGIA.voltoStretto`, il raggio del volto al 22% del lato
+  corto), senza campo e controcampo, e fra due battute resta su chi ha
+  parlato per ultimo (`regia.ultimoParlante`) invece di allargarsi;
+- **`orbit`**: la camera gira attorno a `target`, o se manca a chi parla, a
+  chi c'era prima, al primo in scena; il volto è più piccolo
+  (`giroVolto`, 13%) perché si deve vedere il mondo che gli gira dietro.
+  `speed` in gradi al secondo (di serie 14, negativo nell'altro verso).
+  **Nella 3D e nella scala cosmica il giro è vero**: `storRegiaGiro()` tiene
+  un azimut in più sull'orologio della storia (prende e lascia la velocità
+  in `giroAvvio` secondi, in pausa si ferma), e `solDisegna` (app.js) lo
+  somma a `sol.az` e a `cosm.az`/`cosm.azVoluto` per il solo fotogramma
+  (`solDisegnaFotogramma` è il disegno di prima). Così `camera_3d` e
+  `cosmic_scale`, che riscrivono l'azimut a ogni fotogramma, restano padrone
+  della loro posa; se durante il disegno qualcuno riscrive l'azimut vince
+  lui. La lente tiene il personaggio al centro: girare attorno al perno e
+  ricentrare su di lui è girare attorno a lui, perché la proiezione è
+  ortogonale. Nel giro la molla del centro è più svelta (×2,2), se no il
+  volto resterebbe indietro rispetto al mondo che gira. **Nel planetario**
+  la camera sta per terra: il giro è il quadro che rolla piano
+  (`giroRollio`, ±0,08 rad, ruotando attorno al punto dove la lente porta il
+  soggetto: `regia.rot`, e `lenteSchermo` ne tiene conto) e scivola in
+  cerchio attorno al personaggio (`giroCerchio`). Il giro si azzera quando
+  la scena si chiude (il taglio di scena è lo stacco), si ferma dov'è con la
+  camera presa a mano, e tace dove tace la regia (movimento ridotto,
+  opzione `cameraStorie` spenta, anteprima).
+
+Nello Studio il menu **«Camera»** della scena (`camera`: `auto`, `parla`,
+`vicino`, `giro`, `ferma`; `studioRigaCamera`) e, per `vicino` e `giro`, il
+menu **«Su chi»** (`cameraChi`: un personaggio in scena; vuoto vuol dire il
+primo in scena per `vicino`, chi parla per `giro`). Le copie salvate prima
+con la casella `cameraViva` spenta valgono `ferma`, e il menu tiene la
+casella allineata. Prove: `prova-storie.js` («speaker resta stretto…, orbit
+gira…», «la camera si sceglie per ogni scena»).
+
+```
+action: story_camera { mode: speaker };
+action: story_camera { mode: orbit, target: 'Earth', speed: 20 };
+```
 
 ## Lo Studio delle storie (v409, a figurine dalla v411)
 
