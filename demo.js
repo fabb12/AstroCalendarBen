@@ -752,12 +752,13 @@
   }
   registro.camera_3d = {
     verifica(p) {
-      campi(p, ['scene', 'focus', 'frame', 'orbit', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az', 'probe_az',
+      campi(p, ['scene', 'focus', 'frame', 'orbit', 'orbit_from', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az', 'probe_az',
         'frame_with', 'flyby_tilt', 'zoom_start', 'keep', 'blend', 'profile']);
       richiedi(p.scene === 'earth_moon' || p.scene === 'system', err('scena3d'));
       richiedi((p.scene === 'earth_moon' ? FUOCHI_VICINO : FUOCHI_SISTEMA).includes(p.focus),
         err('fuoco', { nome: p.focus }));
       richiedi(p.orbit === undefined || numero(p.orbit, -720, 720), err('angolo'));
+      richiedi(p.orbit_from === undefined || numero(p.orbit_from, -720, 720), err('angolo'));
       for (const k of ['elev_from', 'elev_to'])
         richiedi(p[k] === undefined || numero(p[k], -85, 85), err('elevazione'));
       const zoomMax = FUOCHI_LONTANI[p.focus] ? 30000 : 60;
@@ -846,6 +847,14 @@
       const za = p.zoom_from !== undefined ? p.zoom_from : 1;
       const zb = p.zoom_to !== undefined ? p.zoom_to : za;
       const giro = (p.orbit || 0) * GRADI;
+      // `orbit_from` (v434): da quanti gradi di giro parte la ripresa. Ogni
+      // `camera_3d` riparte dall'azimut di base della sua scena (nel banco
+      // Terra e Luna, il Sole di fianco): due riprese di fila con `orbit: 8`
+      // facevano otto gradi e poi uno scatto indietro di otto, e in una
+      // storia dello Studio — una ripresa per battuta — la camera sembrava
+      // andare avanti e indietro sul posto. Con `orbit_from` uguale al giro
+      // già fatto, la ripresa dopo continua da dove l'altra è arrivata.
+      const giro0 = (p.orbit_from || 0) * GRADI;
       function centra() {
         if (!vicino) {
           if (p.focus === 'Sun') { sol.panX = 0; sol.panY = 0; }
@@ -933,7 +942,7 @@
         const k = rampa(c, u);
         const kz = zs > 0 ? rampa(c, (u - zs) / (1 - zs)) : k;
         const posa = posaSonda();
-        sol.az = (posa ? posa.az : azDiBase()) + (c.ridotto ? 0 : giro * k);
+        sol.az = (posa ? posa.az : azDiBase()) + giro0 + (c.ridotto ? 0 : giro * k);
         if (gruppo) {
           sol.elev = sol.elevVoluta = Math.max(-85, Math.min(85, mescola(ea, eb, k)));
           inquadraGruppo(gruppo, mescolaZoom(za, zb, kz));
@@ -1974,7 +1983,17 @@
       // aspetto da cartone (`demoStoriaCinema` in app.js) — cielo sfumato e
       // pieno di stelle, niente orbite, fili, piani e righelli della lezione
       storia: demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
-      ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+      // Col movimento ridotto le camere delle demo non viaggiano. In una
+      // CosmoStoria no (v434): lì il movimento della camera è il racconto
+      // che chi l'ha scritta ha scelto, ed è lento e morbido. Chi guarda una
+      // storia su un computer con «effetti di animazione» spenti — un'opzione
+      // di Windows che molti tengono così senza saperlo — vedeva la camera
+      // ferma dal primo all'ultimo secondo, e ha chiesto che si muovesse.
+      // Il movimento ridotto doma comunque i personaggi e la regia
+      // (`stor.ridotto`: niente scosse, respiro, rollio), e la camera si
+      // ferma del tutto con l'opzione `cameraStorie` spenta.
+      ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) &&
+        !demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
       scena(scena) {
         // Ogni scena puo impostare la propria inquadratura iniziale. Dopo un
         // intervento della persona, pero, le animazioni della scena corrente

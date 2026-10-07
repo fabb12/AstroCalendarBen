@@ -839,7 +839,7 @@ fulmine, fuochi e la veste `supernova` fanno tremare il quadro per meno di
 un secondo (due seni sfasati che si spengono, con un 3,5% d'ingrandimento in
 più perché il tremito non scopra i bordi).
 
-**Tace** col movimento ridotto, quando la persona prende la camera
+**Tace** (dalla v434 non più col movimento ridotto, dove va solo più piano: §La camera che non sta mai ferma) quando la persona prende la camera
 (`AstroDemo.cameraManuale`: fino alla scena dopo), con l'opzione «Storie
 cosmiche: la camera va vicino a chi parla» spenta (`cameraStorie` nelle
 opzioni delle demo), nell'anteprima della pagina e fuori dalle storie, e
@@ -942,6 +942,44 @@ con lo spazio davanti allo sguardo (`terzi`).
   dall'altezza della 3D e della scala cosmica (dove sale anche attraversando
   le decadi), il puntamento `sky.manuale` del planetario — e si avvicina
   della metà dello zoom della lente della regia.
+
+## La camera che non sta mai ferma (v434)
+
+Chi scrive storie ha chiesto di nuovo che la camera «si muova, zoomi, sia
+dinamica durante la riproduzione». Misurata fotogramma per fotogramma su
+«Cosa è la gravità?» (la storia dello Studio sul repository) e su
+`storia_luna`, la camera aveva tre modi veri di sembrare ferma:
+
+- **col movimento ridotto era ferma davvero**, dal primo all'ultimo
+  secondo: lente a 1, azimut costante. `prefers-reduced-motion` è acceso da
+  «Effetti di animazione» spenti in Windows, da «Riduci movimento» in iOS e
+  da «Rimuovi animazioni» in Android, e molti lo tengono così senza
+  saperlo. Ora la regia non tace più (`regiaAccesa`): va più piano
+  (`STOR_REGIA.ridottoMolla`, il giro a metà velocità) e senza scosse,
+  respiro, arco, carrello e rollio; e in una CosmoStoria le camere delle
+  scene viaggiano anche col movimento ridotto (`c.ridotto` è falso quando
+  la demo è una storia, demo.js). Per fermare tutto resta l'opzione
+  «Storie cosmiche: la camera va vicino a chi parla» (`cameraStorie`);
+- **il giro della 3D andava avanti e indietro sul posto**: ogni
+  `camera_3d` riparte dall'azimut di base della sua scena, e lo Studio
+  scriveva `orbit: 8` per ogni battuta. Otto gradi, poi uno scatto indietro
+  di otto. Ora `camera_3d` ha `orbit_from` (i gradi di giro da cui parte)
+  e il copione dello Studio continua il giro da una battuta all'altra,
+  `STUDIO_GIRO_AL_SECONDO` (4) gradi per ogni secondo di battuta (fra 6 e
+  40), con l'elevazione che sale e scende fra `STUDIO_ELEV` (26°–62°)
+  invece di tornare di colpo a 34°. La scena della domanda riparte da dove
+  la camera è arrivata. Anche `storia_luna` e `storia_giganti` continuano il
+  giro fra le scene della 3D. Misurato: la storia della gravità gira di
+  165° in 42 s senza nessun passo indietro (prima 8° per battuta e ritorno);
+- **fra due battute il quadro era fermo**: la lente tornava a 1 e restava.
+  Ora il largo è il **piano d'insieme** (`storRegiaGruppo`, motivo
+  `gruppo`): tiene tutti i personaggi disegnati, al più `gruppoMax` (1,35)
+  volte, e gli si avvicina piano (`gruppoCarrello`, +12% in 10 s). Viene
+  dopo i 0,9 s in cui il quadro tiene chi ha appena parlato. Misurato: la
+  lente è oltre 1,05 il 96% del tempo della storia (prima si fermava a 1 fra
+  ogni battuta e l'altra).
+
+Prova: `prova-storie.js` («la camera non sta mai ferma…»).
 
 ## La regia che non si spegne più per sbaglio (v433)
 

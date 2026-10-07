@@ -109,6 +109,10 @@
   // Chi vive solo nella scala cosmica (la Via Lattea, Andromeda, Sirio…)
   const soloCosmo = id => !!(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id] && S().STOR_PERSONAGGI[id].cosmo);
   const STUDIO_ZOOM = { lontano: 0.75, normale: 1, vicino: 1.7 };
+  // La camera della 3D nel copione (v434): quanti gradi gira per ogni secondo
+  // di battuta, e fra che elevazioni sale e scende
+  const STUDIO_GIRO_AL_SECONDO = 4;
+  const STUDIO_ELEV = [26, 62];
   const STUDIO_FOV = { lontano: 60, normale: 18, vicino: 3 };
   const STUDIO_QUANDO = ['inizio', 'meta', 'fine', 'tutto'];
   const STUDIO_TIPI = ['umore', 'guarda', 'muovi', 'torna', 'anima', 'scala', 'diventa', 'effetto', 'occhiolino', 'nascondi'];
@@ -521,7 +525,29 @@
     if (unaRiga(progetto.obiettivo)) righe.push('  // ' + unaRiga(progetto.obiettivo).slice(0, 200));
     const umori = new Map();
     for (const id of progetto.cast) umori.set(id, (S().profilo ? S().profilo(id).espressione : '') || 'neutral');
-    let elev = 34, prima = true;
+    /* La camera della 3D va avanti per tutta la storia (v434): il giro
+     * continua da una battuta all'altra (`orbit_from`, il giro già fatto) e
+     * l'elevazione sale e scende fra due quote invece di tornare di colpo a
+     * 34° arrivata in alto. Prima ogni battuta ripartiva dall'azimut di base
+     * e girava di 8°, qualunque fosse la sua durata: in una storia di
+     * battute corte la camera faceva un passettino e tornava indietro, e
+     * chi guardava la vedeva ferma. Ora gira `STUDIO_GIRO_AL_SECONDO` gradi
+     * per ogni secondo della battuta, che in una storia di un minuto è un
+     * mezzo giro attorno alla scena. */
+    let elev = 34, verso = 1, giro = 0, prima = true;
+    const elevazione = durata => {
+      const da = elev;
+      let a = elev + verso * Math.max(2, Math.min(8, durata * 0.9));
+      if (a >= STUDIO_ELEV[1] || a <= STUDIO_ELEV[0]) { a = Math.max(STUDIO_ELEV[0], Math.min(STUDIO_ELEV[1], a)); verso = -verso; }
+      elev = Math.round(a);
+      return [Math.round(da), elev];
+    };
+    const giroDi = durata => {
+      const da = giro;
+      const passo = Math.round(Math.max(6, Math.min(40, durata * STUDIO_GIRO_AL_SECONDO)));
+      giro = (giro + passo) % 360;
+      return [da, passo];
+    };
     // Dove eravamo alla fine: la vista, la camera, chi era in scena (per la domanda)
     let fine = null;
     const scene = progetto.scene.map((sc, i) => ({ sc, i })).filter(x => opz.scena === undefined || x.i === opz.scena);
@@ -564,22 +590,23 @@
           az.push(`set_fov { degrees: ${STUDIO_FOV[sc.zoom] || 18} }`);
         } else {
           const z = STUDIO_ZOOM[sc.zoom] || 1;
-          const elev2 = Math.min(72, elev + 3);
+          const [e1, e2] = elevazione(durate[k]);
+          const [g0, passo] = giroDi(durate[k]);
           const zoom = z !== 1 ? `, zoom_from: ${z}, zoom_to: ${z}` : '';
+          const giroRiga = `orbit: ${passo}${g0 ? ', orbit_from: ' + g0 : ''}, elev_from: ${e1}, elev_to: ${e2}`;
           if (sc.ambiente === 'terra_luna') {
-            az.push(`camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 8, elev_from: ${elev}, elev_to: ${elev2}${zoom} }`);
+            az.push(`camera_3d { scene: earth_moon, focus: 'Earth-Moon', ${giroRiga}${zoom} }`);
           } else if (sc.ambiente === 'pianeta') {
             const fuoco = STUDIO_FUOCHI_3D.includes(sc.fuoco) ? sc.fuoco : 'Jupiter';
-            az.push(`camera_3d { scene: system, focus: ${virgolette(fuoco)}, orbit: 8, elev_from: ${elev}, elev_to: ${elev2}${zoom} }`);
+            az.push(`camera_3d { scene: system, focus: ${virgolette(fuoco)}, ${giroRiga}${zoom} }`);
           } else {
             let quadro = presenti.map(id => id === 'Moon' ? 'Earth' : id).filter(id => STUDIO_INQUADRABILI.includes(id));
             // I viaggi verso un pianeta fuori dal cast: anche lui nel quadro
             for (const a of m.azioni || []) if (a.tipo === 'muovi' && STUDIO_INQUADRABILI.includes(a.verso)) quadro.push(a.verso);
             quadro = [...new Set(quadro)];
             if (!quadro.length) quadro = ['Earth', 'Mars', 'Jupiter'];
-            az.push(`camera_3d { scene: system, focus: 'Sun', frame: ${virgolette(quadro.join(','))}, orbit: 6, elev_from: ${elev}, elev_to: ${elev2}${zoom} }`);
+            az.push(`camera_3d { scene: system, focus: 'Sun', frame: ${virgolette(quadro.join(','))}, ${giroRiga}${zoom} }`);
           }
-          elev = elev2 >= 72 ? 34 : elev2;
         }
         // I personaggi: chi parla con la faccia del momento, gli altri con
         // quella che avevano
@@ -602,7 +629,10 @@
         prima = false;
         fine = { vista, presenti, cosmo: !!cosmo, sc,
           camera: az.filter(a => /^(camera_3d|cosmic_scale|center_target|set_fov|story_camera)\b/.test(a))
-            .map(a => a.startsWith('cosmic_scale') && cosmo ? a.replace(/from: [^,]+/, 'from: ' + numeroUA(cosmo[k][1])) : a) };
+            .map(a => a.startsWith('cosmic_scale') && cosmo ? a.replace(/from: [^,]+/, 'from: ' + numeroUA(cosmo[k][1])) : a)
+            // La domanda riparte da dove la camera è arrivata, e gira ancora un poco
+            .map(a => a.startsWith('camera_3d') ? a.replace(/orbit: [^,]+(, orbit_from: [^,]+)?, elev_from: [^,]+, elev_to: [^,} ]+/,
+              `orbit: 10${giro ? ', orbit_from: ' + giro : ''}, elev_from: ${elev}, elev_to: ${elev}`) : a) };
       });
     }
     // La domanda al pubblico (v430, §4-bis): una scena in più, ferma, con il

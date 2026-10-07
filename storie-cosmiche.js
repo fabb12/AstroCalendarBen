@@ -3781,7 +3781,7 @@
       });
       // Il volto girato (v432): nella 3D e nella scala cosmica, quando la
       // regia gira la camera attorno, il volto resta dov'era sulla sfera
-      if ((vista === 'sistema' || vista === 'vicino' || vista === 'cosmo') && !ridotto) geom.yaw = stor.regia.giro || 0;
+      if (vista === 'sistema' || vista === 'vicino' || vista === 'cosmo') geom.yaw = stor.regia.giro || 0;
       // Il segno da fumetto (le scintille, la goccia) è del volto: girato di
       // spalle se ne va con lui (v433), di lato si vede appena
       const segnoVisto = Math.max(0, Math.min(1, Math.cos(geom.yaw || 0) * 1.6 + 0.4));
@@ -4711,9 +4711,12 @@
    * posizioni salvate per le prove e per il dito (`ultimiDisegnati`, i
    * corpi di `sol`) restano nelle coordinate del disegno, senza lente.
    *
-   * Tace col movimento ridotto, quando la persona prende la camera in mano
+   * Tace quando la persona prende la camera in mano
    * (`AstroDemo.cameraManuale`), con l'opzione spenta, fuori dalle storie,
-   * e nelle scene con `story_camera { mode: wide }`.
+   * e nelle scene con `story_camera { mode: wide }`. Col movimento ridotto
+   * non tace più (v434): va più piano e senza scosse. Fra due battute non
+   * torna ferma alla camera della scena ma tiene il gruppo e gli si
+   * avvicina (`storRegiaGruppo`).
    *
    * Ogni scena può scegliere la sua regia (v431, chiesto da chi scrive le
    * storie: «la camera dev'essere dinamica, zoomare quando qualcuno parla e
@@ -4749,6 +4752,10 @@
     giroCerchio: 0.03,     // e scivola in cerchio attorno al personaggio, in frazione del lato corto
     tieniMs: 900,          // finita una battuta, resta ancora un poco prima di allargarsi
     manoMs: 3500,          // dopo l'ultimo gesto sulla camera la regia aspetta tanto, poi riparte (v433)
+    gruppoMax: 1.35,       // senza battute la camera tiene il gruppo, al più di tanto (v434)
+    gruppoCarrello: 0.12,  // e gli si avvicina piano, fino a +12% in `gruppoMs`
+    gruppoMs: 10000,
+    ridottoMolla: 0.55,    // col movimento ridotto la camera va più piano (v434), ma va
     // Gli effetti che la camera va a guardare, per quanto (ms della storia)
     // e quanto sono grandi rispetto al raggio dell'astro che li porta
     effetti: { explosion: [1700, 2.6], shockwave: [1300, 3.2], fireworks: [2100, 3], lightning: [1100, 2.4],
@@ -4779,7 +4786,11 @@
   }
   function regiaAccesa() {
     const r = stor.regia;
-    if (r.modo === 'wide' || stor.ridotto || stor.anteprima) return false;
+    // Col movimento ridotto la regia non tace più (v434): chi guarda una
+    // storia con le animazioni del sistema spente vedeva la camera ferma dal
+    // primo all'ultimo secondo. Va più piano e senza scosse, respiro, arco,
+    // carrello e rollio; per fermarla del tutto c'è l'opzione `cameraStorie`
+    if (r.modo === 'wide' || stor.anteprima) return false;
     if (!stor.personaggi.size && !stor.effetti.length) return false;
     const d = radice.AstroDemo;
     if (d) {
@@ -4905,6 +4916,25 @@
     }
     return null;
   }
+  /* Il largo che non sta fermo (v434). Prima, quando nessuno parlava, la
+   * lente tornava a 1 e il quadro restava quello della scena: in una storia
+   * di battute corte la camera faceva «dentro e fuori» e fra una battuta e
+   * l'altra restava immobile. Ora il largo è il piano d'insieme dei
+   * cartoni: tiene tutti i personaggi disegnati (un poco più stretto della
+   * scena, al più `gruppoMax`) e gli si avvicina piano (`gruppoCarrello`),
+   * così il quadro non è mai fermo. Funzione pura sullo stato. */
+  function storRegiaGruppo(vista, L, H) {
+    const quanti = stor.ultimiDisegnati.filter(d => d.vista === vista && !d.fuori);
+    if (!quanti.length) return null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const d of quanti) {
+      const o = storOcchiDi(d);
+      x0 = Math.min(x0, o.x - o.R * 1.8); x1 = Math.max(x1, o.x + o.R * 1.8);
+      y0 = Math.min(y0, o.y - o.R * 1.6); y1 = Math.max(y1, o.y + o.R * 1.9);
+    }
+    const k = Math.max(1, Math.min(STOR_REGIA.gruppoMax, L * 0.8 / Math.max(1, x1 - x0), H * 0.62 / Math.max(1, y1 - y0)));
+    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, k, ay: 0.46, ax: 0.5, motivo: 'gruppo', id: 'gruppo' };
+  }
   // La molla della camera: smorzata al punto giusto, arriva senza oscillare
   function molla(x, v, meta, w, dt) {
     const a = w * w * (meta - x) - 2 * w * v;
@@ -4939,8 +4969,9 @@
       const raggio = STOR_REGIA.giroCerchio * Math.min(L, H) / Math.max(1, meta.k);
       meta = Object.assign({}, meta, { x: meta.x + raggio * Math.cos(giro), y: meta.y + raggio * 0.6 * Math.sin(giro) });
     }
-    if (meta) r.tieni = { meta, da: ora };
+    if (meta && meta.motivo !== 'gruppo') r.tieni = { meta, da: ora };
     else if (accesa && r.tieni && ora - r.tieni.da < STOR_REGIA.tieniMs) meta = r.tieni.meta;
+    if (!meta && accesa) meta = storRegiaGruppo(vista, L, H);
     if (!Number.isFinite(r.fx)) { r.fx = meta ? meta.x : L / 2; r.fy = meta ? meta.y : H / 2; }
     // La ripresa (v427): da quando la camera tiene lo stesso soggetto. Su una
     // battuta lunga si avvicina ancora piano (il carrello dei cartoni), così
@@ -4953,6 +4984,10 @@
       const u = liscio((stor.orologio - r.ripresa.da) / STOR_REGIA.carrelloMs);
       kMeta = Math.min(tetto * (1 + STOR_REGIA.carrello), kMeta * (1 + STOR_REGIA.carrello * u));
     }
+    if (meta && meta.motivo === 'gruppo') {
+      const u = liscio((stor.orologio - r.ripresa.da) / STOR_REGIA.gruppoMs);
+      kMeta *= 1 + STOR_REGIA.gruppoCarrello * (stor.ridotto ? 0.5 : 1) * u;
+    }
     let lkMeta = Math.log(kMeta);
     // L'arco (v427): passando da un personaggio lontano a un altro la camera
     // si allarga un poco a metà strada e si riavvicina all'arrivo, invece di
@@ -4963,7 +4998,8 @@
     }
     // In pausa la camera si ferma con la storia
     const passo = demoInPausa() ? 0 : dt;
-    const w = STOR_REGIA.omega, wz = STOR_REGIA.omegaZoom;
+    const piano = stor.ridotto ? STOR_REGIA.ridottoMolla : 1;
+    const w = STOR_REGIA.omega * piano, wz = STOR_REGIA.omegaZoom * piano;
     for (let n = Math.max(1, Math.ceil(passo / 0.02)), i = 0; i < n && passo > 0; i++) {
       const h = passo / n;
       [r.lk, r.vlk] = molla(r.lk, r.vlk, lkMeta, wz, h);
@@ -5050,7 +5086,7 @@
     const dt = Number.isFinite(r.giroOra) ? Math.max(0, Math.min(0.1, (t - r.giroOra) / 1000)) : 0;
     r.giroOra = t;
     if (cameraInMano()) { r.vGiro = 0; return r.giro; }
-    const vuole = r.modo === 'orbit' && regiaAccesa() ? r.velGiro * Math.PI / 180 : 0;
+    const vuole = r.modo === 'orbit' && regiaAccesa() ? r.velGiro * Math.PI / 180 * (stor.ridotto ? 0.5 : 1) : 0;
     if (dt > 0) {
       const a = Math.min(1, dt / Math.max(0.05, STOR_REGIA.giroAvvio / 3));
       r.vGiro += (vuole - r.vGiro) * a;
@@ -6200,7 +6236,7 @@
     disegnaFisica: storDisegnaFisica, lunaReagisce: storLunaReagisce, padreDi: storPadreDi,
     get domanda() { return stor.domanda ? Object.assign({}, stor.domanda) : null; },
     stato: stor,
-    STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, regiaGiro: storRegiaGiro, posaSullaSfera: storPosaSullaSfera, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
+    STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, regiaGruppo: storRegiaGruppo, regiaGiro: storRegiaGiro, posaSullaSfera: storPosaSullaSfera, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
     lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
     get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },

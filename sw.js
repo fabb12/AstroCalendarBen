@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v433';
+const CACHE_NAME = 'astrocal-v434';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [

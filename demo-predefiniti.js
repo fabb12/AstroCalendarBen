@@ -1007,7 +1007,7 @@
   }
   scene solar_system_3d {
     duration: 10s;
-    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 14, elev_from: 30, elev_to: 34 };
+    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 14, orbit_from: 18, elev_from: 30, elev_to: 34 };
     action: character_show { target: 'Earth', expression: 'happy' };
     action: character_show { target: 'Moon', expression: 'surprised' };
     action: character_look_at { target: 'Moon', object: 'viewer' };
@@ -1015,7 +1015,7 @@
   }
   scene solar_system_3d {
     duration: 13s;
-    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 16, elev_from: 34, elev_to: 40 };
+    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 16, orbit_from: 32, elev_from: 34, elev_to: 40 };
     action: character_show { target: 'Sun', expression: 'happy' };
     action: character_show { target: 'Earth', expression: 'neutral', look: 'Sun' };
     action: character_show { target: 'Moon', expression: 'thinking' };
@@ -1025,7 +1025,7 @@
     duration: 16s;
     // Undici giorni d'orbita vera: dalla falce alla Luna piena
     action: date_range { from: '2026-12-13T17:30:00Z', to: '2026-12-24T01:30:00Z' };
-    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 10, elev_from: 40, elev_to: 46 };
+    action: camera_3d { scene: earth_moon, focus: 'Earth-Moon', orbit: 10, orbit_from: 48, elev_from: 40, elev_to: 46 };
     action: character_show { target: 'Earth', expression: 'happy', look: 'Moon' };
     action: character_show { target: 'Moon', expression: 'surprised', look: 'Earth' };
     action: character_expression { target: 'Moon', expression: 'happy', shot_from: 0.7 };
@@ -1064,7 +1064,7 @@
   }
   scene solar_system_3d {
     duration: 11s;
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 10, elev_from: 58, elev_to: 62 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 10, orbit_from: 12, elev_from: 58, elev_to: 62 };
     action: character_show { target: 'Saturn', expression: 'happy' };
     action: character_show { target: 'Jupiter', expression: 'excited' };
     action: character_expression { target: 'Saturn', expression: 'surprised', shot_from: 0.45 };
@@ -1076,7 +1076,7 @@
   }
   scene solar_system_3d {
     duration: 13s;
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 10, elev_from: 62, elev_to: 66 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 10, orbit_from: 22, elev_from: 62, elev_to: 66 };
     action: character_show { target: 'Sun', expression: 'happy' };
     action: character_show { target: 'Saturn', expression: 'neutral' };
     action: character_show { target: 'Jupiter', expression: 'thinking' };
@@ -1089,7 +1089,7 @@
   scene solar_system_3d {
     duration: 12s;
     action: date_range { from: '2026-10-01T00:00:00Z', to: '2029-10-01T00:00:00Z' };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 8, elev_from: 66, elev_to: 70 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 8, orbit_from: 32, elev_from: 66, elev_to: 70 };
     action: character_show { target: 'Saturn', expression: 'surprised', look: 'Jupiter' };
     action: character_show { target: 'Jupiter', expression: 'happy', look: 'Saturn' };
     action: character_blink { target: 'Jupiter', shot_from: 0.3 };
