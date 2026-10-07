@@ -86,7 +86,9 @@ const DEMO_BREVE = "define_demo breve { scene planetarium_view { duration: 2s; a
         // Nessuna voce elencata: un oggetto finto assegnato a `utterance.voice`
         // solleva, e la frase finirebbe nel solo testo senza passare di qui.
         window.speechSynthesis.getVoices = () => [];
-      }, opz.intro || null);
+      // L'intro è spenta di serie (v438): chi passa delle preferenze la vuole
+      // vedere, salvo che dica il contrario
+      }, opz.intro ? Object.assign({ attiva: true }, opz.intro) : null);
       await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
       await pagina.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof AstroDemoIntro !== 'undefined' &&
         sky.observer && sky.oggetti.length, null, { timeout: 30000 });
@@ -113,10 +115,12 @@ const DEMO_BREVE = "define_demo breve { scene planetarium_view { duration: 2s; a
     // ------------------------------------------------------------------
     const { pagina, errori } = await nuovaPagina();
 
-    await prova('l’intro è accesa di serie, dura tre secondi, col logo e il titolo predefiniti', async () => {
+    await prova('l’intro è spenta di serie, dura tre secondi, col logo e il titolo predefiniti', async () => {
       const o = await pagina.evaluate(() => ({ imp: AstroDemoIntro.impostazioni(), logo: AstroDemoIntro.statoLogo(),
         titolo: AstroDemoIntro.titoloDaMostrare() }));
-      assert.equal(o.imp.attiva, true);
+      assert.equal(o.imp.attiva, false);
+      // le prove che seguono la guardano: si accende a mano
+      await pagina.evaluate(() => AstroDemoIntro.imposta({ attiva: true }));
       assert.equal(o.imp.durataSec, 3);
       assert.equal(o.imp.mostraTitolo, true);
       assert.equal(o.logo.personale, false);
@@ -447,7 +451,7 @@ const DEMO_BREVE = "define_demo breve { scene planetarium_view { duration: 2s; a
     }
 
     await prova('movimento ridotto: comparsa statica, nessuna animazione, stessa durata', async () => {
-      const { pagina: p, contesto, errori: e } = await nuovaPagina({ ridotto: true });
+      const { pagina: p, contesto, errori: e } = await nuovaPagina({ ridotto: true, intro: {} });
       const t0 = await p.evaluate(t => { AstroDemo.avvia(t); return performance.now(); }, DEMO_BREVE);
       const v = await velo(p);
       const trasforma = await p.evaluate(() => {

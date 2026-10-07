@@ -46,7 +46,9 @@
       ? Math.min(DURATA.max, Math.max(DURATA.min, Math.round(d / DURATA.passo) * DURATA.passo))
       : DURATA.predefinita;
     return {
-      attiva: !(o && o.attiva === false),
+      // Spenta di serie (v438): chi la vuole la accende dalla pagina Demo, e
+      // chi l'aveva accesa a mano la ritrova accesa.
+      attiva: !!(o && o.attiva === true),
       durataSec,
       // `null` vuol dire «il titolo predefinito», che segue la lingua: un
       // titolo scritto a mano no, resta com'è stato scritto.

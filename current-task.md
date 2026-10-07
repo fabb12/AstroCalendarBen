@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v437): tornate le pupille negli occhi delle CosmoStorie, nello stile da cartone (ovale d'inchiostro col puntino di luce, senza iride). Prove: `prova-storie.js`, `prova-demo-pagina.js`.
+Ultimo lavoro (v438): occlusioni fra i personaggi delle CosmoStorie nella 3D — si disegnano dal più lontano al più vicino e i dischi più vicini tagliano il volto di chi sta dietro (`storCoprentiDavanti`, `ritagliaFuori`, STORIE.md); l'intro delle demo (logo e titolo iniziale) è spenta di serie (`demo-intro.js`, `index.html`, guide). Prove: `prova-storie.js` (88), `prova-storie-repo.js`, `prova-demo.js`, `prova-demo-pagina.js`, `prova-stazioni-storie.js`, `prova-guida.js`, `prova-demo-intro.js` (resta FALLITA «aurore: la narrazione non si taglia», uguale sulla v437).
+
+Prima (v437): tornate le pupille negli occhi delle CosmoStorie, nello stile da cartone (ovale d'inchiostro col puntino di luce, senza iride). Prove: `prova-storie.js`, `prova-demo-pagina.js`.
 
 Prima (v436): occhi dei personaggi delle CosmoStorie bianchi, senza iride, pupilla né riflessi (l'espressione la fanno palpebre, sopracciglia e bocca; lo sguardo sposta l'occhio intero); al posto delle prominenze e dei raggi a punta del Sole un fuoco vivo a lingue (`disegnaFiamme`). Prove: `prova-storie.js` (87), `prova-storie-repo.js`, `prova-demo-pagina.js`, `prova-stazioni-storie.js`; `prova-storie-browser.js` si ferma ancora sul sottotitolo `.narrazione-chi`, come prima.
 

@@ -1123,6 +1123,18 @@ richiesta di chi guarda le storie:
 Nel planetario gli astri non si spostano: lì restano i dischi grafici
 accanto (`storPostoDisco`), che già non si coprono.
 
+**Chi sta davanti copre chi sta dietro (v438).** I volti si disegnano tutti
+dopo i corpi della 3D, e prima nell'ordine d'entrata in scena: quando due
+personaggi si sovrapponevano (durante lo scivolamento del palco, o un anello
+di Saturno), il volto di chi stava dietro finiva sopra al disco di chi gli
+passava davanti. Ora in `storDisegnaPersonaggi` i personaggi della 3D si
+disegnano dal più lontano al più vicino (`vicinanza`), e a ognuno i dischi
+più vicini alla camera che l'app ha disegnato (pianeti, Sole, Luna, lune,
+stazioni: `storCoprentiDavanti`) tagliano via volto, corpo disegnato e
+fisica (`ritagliaFuori`, un ritaglio `evenodd` per disco). L'adesivo accanto
+col filo non si taglia: è un cartellino. Gli anelli veri di Saturno davanti
+non tagliano (solo il disco). Prova in `prova-storie.js`.
+
 ## Le stazioni in scena, e le scritte spente (v423)
 
 **Le stazioni si vedono quando parlano.** Una storia che faceva parlare la
