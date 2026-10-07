@@ -123,7 +123,7 @@
           "n": 15,
           "chi": "Earth",
           "testo": "Potresti spiegarti meglio?",
-          "umore": "sleepy",
+          "umore": "thinking",
           "scena": 15,
           "durata": 4000
         },
@@ -142,6 +142,38 @@
           "umore": "thinking",
           "scena": 17,
           "durata": 8000
+        },
+        {
+          "n": 18,
+          "chi": "Jupiter",
+          "testo": "Calma Terra, una domanda alla volta",
+          "umore": "neutral",
+          "scena": 18,
+          "durata": 5000
+        },
+        {
+          "n": 19,
+          "chi": "Sedna",
+          "testo": "Ciao Terra, Giove ha ragione!",
+          "umore": "neutral",
+          "scena": 19,
+          "durata": 5000
+        },
+        {
+          "n": 20,
+          "chi": "Earth",
+          "testo": "Oh! Che spavento! Chi ha parlato?",
+          "umore": "surprised",
+          "scena": 20,
+          "durata": 6000
+        },
+        {
+          "n": 21,
+          "chi": "Sedna",
+          "testo": "Sono Sedna! Un pianeta nano candidato",
+          "umore": "neutral",
+          "scena": 21,
+          "durata": 6000
         }
       ]
     }

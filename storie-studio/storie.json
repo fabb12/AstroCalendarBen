@@ -32,6 +32,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -74,7 +76,18 @@
                   "id": "ap27zk8l",
                   "tipo": "occhiolino",
                   "chi": "Moon",
-                  "quando": "inizio"
+                  "quando": "inizio",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
                 }
               ]
             },
@@ -213,7 +226,9 @@
                 }
               ]
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "sxsnw6rn",
@@ -225,6 +240,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -264,7 +281,9 @@
                 }
               ]
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "sd3w8ike",
@@ -276,6 +295,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -333,7 +354,9 @@
                 }
               ]
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "snmnsthu",
@@ -345,6 +368,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -366,7 +391,9 @@
               },
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "s0e5y292",
@@ -378,6 +405,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -401,7 +430,9 @@
               },
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "st49i89w",
@@ -413,6 +444,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -474,7 +507,9 @@
                 }
               ]
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "sa134cty",
@@ -486,6 +521,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -510,7 +547,9 @@
               },
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "snm9aa4e",
@@ -522,6 +561,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -546,7 +587,9 @@
               },
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "sq4ys6tn",
@@ -558,6 +601,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -578,7 +623,9 @@
               "audio": null,
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "sprzq2ot",
@@ -590,6 +637,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -610,7 +659,9 @@
               "audio": null,
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "s829qn5g",
@@ -622,6 +673,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -638,11 +691,13 @@
               "audio": null,
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "sjqfsvxn",
-          "ambiente": "terra_luna",
+          "ambiente": "pianeta",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -650,6 +705,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -661,17 +718,19 @@
               "id": "mk9li7b8",
               "chi": "Earth",
               "testo": "Potresti spiegarti meglio?",
-              "umore": "sleepy",
+              "umore": "thinking",
               "durata": 0,
               "voce": 15,
               "audio": null,
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "svg8wpg6",
-          "ambiente": "terra_luna",
+          "ambiente": "pianeta",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -679,6 +738,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -696,11 +757,13 @@
               "audio": null,
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
         },
         {
           "id": "sgegyse8",
-          "ambiente": "terra_luna",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -708,6 +771,8 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
@@ -725,14 +790,196 @@
               "audio": null,
               "azioni": []
             }
-          ]
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "s601shmj",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Earth",
+            "Jupiter",
+            "Sedna"
+          ],
+          "momenti": [
+            {
+              "id": "meex2aqj",
+              "chi": "Jupiter",
+              "testo": "Calma Terra, una domanda alla volta ",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 18,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "sb8nr13d",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Earth",
+            "Jupiter",
+            "Sedna"
+          ],
+          "momenti": [
+            {
+              "id": "mfikxnpm",
+              "chi": "Sedna",
+              "testo": "Ciao Terra, Giove ha ragione!",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 19,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "s4u3l8az",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Earth",
+            "Jupiter",
+            "Sedna"
+          ],
+          "momenti": [
+            {
+              "id": "mhb53zg9",
+              "chi": "Earth",
+              "testo": "Oh! Che spavento! Chi ha parlato?",
+              "umore": "surprised",
+              "durata": 0,
+              "voce": 20,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "al0ykbog",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "thinking"
+                },
+                {
+                  "id": "a5n3hdrd",
+                  "tipo": "effetto",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "effetto": "shockwave",
+                  "dove": "Earth",
+                  "grandezza": 1,
+                  "colore": ""
+                },
+                {
+                  "id": "a7x5p677",
+                  "tipo": "guarda",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "oggetto": "Jupiter"
+                },
+                {
+                  "id": "a5wfuyxh",
+                  "tipo": "anima",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "animazione": "wobble",
+                  "volte": 0,
+                  "dove": ""
+                }
+              ]
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "s1bt01dd",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Earth",
+            "Jupiter",
+            "Sedna"
+          ],
+          "momenti": [
+            {
+              "id": "mr51z8rg",
+              "chi": "Sedna",
+              "testo": "Sono Sedna! Un pianeta nano candidato ",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 21,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
         }
       ],
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
-      "voceProssima": 18,
-      "aggiornato": 1791396899554,
-      "lingua": "it"
+      "voceProssima": 22,
+      "aggiornato": 1791399828938,
+      "lingua": "it",
+      "musica": null,
+      "domanda": {
+        "attiva": false,
+        "modo": "auto",
+        "tipo": "auto",
+        "testo": "",
+        "a": "",
+        "b": "",
+        "chi": ""
+      }
     }
   ],
   "eliminati": {}
