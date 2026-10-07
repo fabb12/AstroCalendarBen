@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v436): occhi dei personaggi delle CosmoStorie bianchi, senza iride, pupilla né riflessi (l'espressione la fanno palpebre, sopracciglia e bocca; lo sguardo sposta l'occhio intero); al posto delle prominenze e dei raggi a punta del Sole un fuoco vivo a lingue (`disegnaFiamme`). Prove: `prova-storie.js` (87), `prova-storie-repo.js`, `prova-demo-pagina.js`, `prova-stazioni-storie.js`; `prova-storie-browser.js` si ferma ancora sul sottotitolo `.narrazione-chi`, come prima.
+Ultimo lavoro (v437): tornate le pupille negli occhi delle CosmoStorie, nello stile da cartone (ovale d'inchiostro col puntino di luce, senza iride). Prove: `prova-storie.js`, `prova-demo-pagina.js`.
+
+Prima (v436): occhi dei personaggi delle CosmoStorie bianchi, senza iride, pupilla né riflessi (l'espressione la fanno palpebre, sopracciglia e bocca; lo sguardo sposta l'occhio intero); al posto delle prominenze e dei raggi a punta del Sole un fuoco vivo a lingue (`disegnaFiamme`). Prove: `prova-storie.js` (87), `prova-storie-repo.js`, `prova-demo-pagina.js`, `prova-stazioni-storie.js`; `prova-storie-browser.js` si ferma ancora sul sottotitolo `.narrazione-chi`, come prima.
 
 Prima (v435): orbite delle CosmoStorie più sottili e nascoste di serie (opzione «CosmoStorie: mostra le orbite», `orbiteStorie`); il Sole del banco Terra e Luna più grande (13 raggi terrestri a 1,36 orbite lunari) e realistico, dipinto su una tela fuori schermo (`solTelaSoleVicino`). Prove: `prova-storie.js`, `prova-demo.js`, `prova-demo-pagina.js`, `prova-stazioni-storie.js`, `prova-guida.js`, `prova-i18n.js`. `prova-nel-browser.js` si ferma in `solDisegnaVicino` con `sol.ctx` nullo, e ha tre FALLITO (Esc dell'oculare, scheda dell'aereo, fluidità): tutto uguale anche sulla v433, da guardare.
 

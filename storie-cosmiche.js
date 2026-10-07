@@ -2,8 +2,8 @@
  *
  * Una Storia cosmica è una demo come le altre (`demo.js`, `DEMO.md`): stesso
  * motore, stesso orologio, stessa voce. In più, per la durata di una scena,
- * alcuni astri hanno un **volto** — due occhi bianchi da cartone, senza
- * iride né pupilla (v436), le palpebre che ne fanno la forma, le
+ * alcuni astri hanno un **volto** — due occhi bianchi da cartone con la
+ * pupilla d'inchiostro (v436-v437), le palpebre che ne fanno la forma, le
  * sopracciglia, una bocca che si muove
  * soltanto quando quel personaggio parla — e il sottotitolo dice il suo nome.
  *
@@ -1854,9 +1854,9 @@
     const lei = profilo.genere === 'f';
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    // v436: senza pupilla lo sguardo lo dice l'occhio intero, che scivola
-    // appena verso dove guarda (le occhiate restano vive)
-    ctx.translate((occ.iride.x - occ.cx) * 0.22, (occ.iride.y - occ.cy) * 0.16);
+    // v436: l'occhio intero scivola appena verso dove guarda; dalla v437
+    // lo dice soprattutto la pupilla, e lo scivolo è un accenno
+    ctx.translate((occ.iride.x - occ.cx) * 0.08, (occ.iride.y - occ.cy) * 0.06);
     if (!ap) {
       // Chiuso: una riga. Dalla risata è un arco all'insù (gli occhi che
       // ridono), dal sonno e dal battito la palpebra abbassata, all'ingiù.
@@ -1924,7 +1924,7 @@
     const ir = occ.iride;
     const pu = occ.pupilla;
     const pulsa = 1 + 0.12 * Math.sin(t / 140);
-    // I due umori che restano nel bianco: sono l'espressione, non una pupilla
+    // Nel bianco: il cuore dell'amore, la stella dell'entusiasmo, se no la pupilla
     if (geom.cuori > 0.5) {
       // l'amore: un cuore rosso che batte
       cuore(ctx, pu.x, pu.y + ir.r * 0.05, ir.r * 0.66 * pulsa);
@@ -1936,6 +1936,21 @@
       stella(ctx, pu.x, pu.y, ir.r * 0.8 * pulsa, ir.r * 0.36 * pulsa, 5, -Math.PI / 2);
       ctx.fill();
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, ir.r * 0.08); ctx.stroke();
+    } else {
+      // v437, la pupilla da cartone: chiesta di nuovo dopo gli occhi tutti
+      // bianchi, ma «che stia bene con lo stile». Niente iride colorata né
+      // anello: un ovale pieno d'inchiostro, un poco più alto che largo, e
+      // un solo puntino di luce in alto. Corre più lontano dell'iride di
+      // prima (è più piccola), così l'occhiata di lato si legge; la sua
+      // misura segue l'espressione: piccolissima nella sorpresa e nella
+      // paura, grande e dolce nella tristezza e nell'amore.
+      const r = pu.r * 0.72;
+      const corsa = 1 + (ir.r - r) / Math.max(1e-6, occ.rx) * 0.9;
+      const px = occ.cx + (pu.x - occ.cx) * corsa, py = occ.cy + (pu.y - occ.cy) * corsa;
+      ctx.fillStyle = INCHIOSTRO;
+      ctx.beginPath(); ctx.ellipse(px, py, r, r * 1.14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(px + r * 0.32, py - r * 0.4, Math.max(0.6, r * 0.3), 0, Math.PI * 2); ctx.fill();
     }
     // L'ombra della palpebra di sopra sul bianco: dà profondità all'occhio
     ctx.strokeStyle = 'rgba(90, 100, 160, 0.14)'; ctx.lineWidth = occ.ry * 0.3;

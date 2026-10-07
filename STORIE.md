@@ -1035,6 +1035,18 @@ dopo il gesto…»). Il volto girato è stato guardato nell'app a 0°, 45°, 90�
 135°, 180° e 270°: due occhi; uno intero e l'altro schiacciato sul bordo;
 uno solo sul bordo; nessun tratto; nessun tratto; uno solo dall'altra parte.
 
+## La pupilla da cartone (v437)
+
+Dopo gli occhi tutti bianchi della v436 è tornata la pupilla, ma nello
+stile del foglio: **un ovale pieno d'inchiostro**, un poco più alto che
+largo, con un solo puntino di luce in alto; niente iride colorata, niente
+anello. È più piccola dell'iride di prima (`pupilla × 0,72`) e corre più
+lontano verso il bordo, così l'occhiata di lato si legge; la misura segue
+l'espressione (minuscola nella sorpresa e nella paura, grande nella
+tristezza). Il bianco, il contorno grosso, i cuori e le stelle restano
+quelli della v436; lo scivolo dell'occhio intero verso lo sguardo è
+ridotto a un accenno, perché adesso lo sguardo lo porta la pupilla.
+
 ## Gli occhi bianchi e il fuoco del Sole (v436)
 
 Su un foglio di occhi da fumetto portato da chi usa l'app, gli occhi dei
