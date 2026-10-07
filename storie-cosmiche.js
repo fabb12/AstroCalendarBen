@@ -2,8 +2,9 @@
  *
  * Una Storia cosmica è una demo come le altre (`demo.js`, `DEMO.md`): stesso
  * motore, stesso orologio, stessa voce. In più, per la durata di una scena,
- * alcuni astri hanno un **volto** — due occhi grandi con l'iride, la
- * pupilla, le palpebre e i riflessi, le sopracciglia, una bocca che si muove
+ * alcuni astri hanno un **volto** — due occhi bianchi da cartone con la
+ * pupilla d'inchiostro (v436-v437), le palpebre che ne fanno la forma, le
+ * sopracciglia, una bocca che si muove
  * soltanto quando quel personaggio parla — e il sottotitolo dice il suo nome.
  *
  * Tre promesse, e sono la ragione per cui il file è fatto così.
@@ -947,7 +948,9 @@
     const e = st.espr;
     const lei = profilo.genere === 'f';
     // (v425: gli occhi spalancati non si toccano mai fra loro)
-    const rx = Math.min(o.distanza * R * 0.9, o.r * R * Math.max(0.7, Math.min(1.45, e.occhi || 1)) * (lei ? 1.05 : 0.96));
+    // v436: gli occhi bianchi un poco più piccoli (0,86): senza iride
+    // l'occhio grande era un paio d'occhialoni vuoti
+    const rx = Math.min(o.distanza * R * 0.9, o.r * R * Math.max(0.7, Math.min(1.45, e.occhi || 1)) * (lei ? 1.05 : 0.96) * 0.86);
     // v417-v418, gli «occhioni di luna»: l'occhio è grande e alto, a
     // mandorla tonda; l'iride è un ovale che occupa poco più di metà della
     // larghezza, così ha strada per guardare di lato (come nel disegno di
@@ -1851,6 +1854,9 @@
     const lei = profilo.genere === 'f';
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // v436: l'occhio intero scivola appena verso dove guarda; dalla v437
+    // lo dice soprattutto la pupilla, e lo scivolo è un accenno
+    ctx.translate((occ.iride.x - occ.cx) * 0.08, (occ.iride.y - occ.cy) * 0.06);
     if (!ap) {
       // Chiuso: una riga. Dalla risata è un arco all'insù (gli occhi che
       // ridono), dal sonno e dal battito la palpebra abbassata, all'ingiù.
@@ -1901,55 +1907,53 @@
       ctx.closePath();
       ctx.fillStyle = rgba(mescolaColori(pelle, lilla, 0.45), lei ? 0.55 : 0.28); ctx.fill();
     }
-    // Il bianco: avorio, piatto, con l'ombra lavanda della palpebra in alto
+    // v436, gli occhi bianchi dei cartoni: niente iride, niente pupilla,
+    // niente riflessi. Chi usa l'app ha portato un foglio di occhi da
+    // fumetto (bianchi, un contorno grosso, le palpebre e le sopracciglia
+    // che dicono tutto) e il Sole sorridente con due ovali bianchi: con
+    // l'iride colorata e i riflessi i volti piccoli erano un grumo di
+    // dettagli, e l'umore lo portano già la forma dell'apertura, le
+    // palpebre storte, le sopracciglia e la bocca. Il bianco ha soltanto
+    // l'ombra azzurrina della palpebra di sopra, piatta come nel foglio.
     const bianco = ctx.createLinearGradient(occ.cx, occ.cy - occ.ry, occ.cx, occ.cy + occ.ry);
-    // v425: bianco vero, non avorio: è il contrasto bianco–iride–pupilla
-    // che fa leggere lo sguardo da lontano
-    bianco.addColorStop(0, '#e9e6f6'); bianco.addColorStop(0.28, '#ffffff'); bianco.addColorStop(1, '#ffffff');
+    bianco.addColorStop(0, '#d9def0'); bianco.addColorStop(0.34, '#f3f5fc'); bianco.addColorStop(1, '#ffffff');
     ctx.fillStyle = bianco;
     forma(); ctx.fill();
     ctx.save();
     forma(); ctx.clip();
     const ir = occ.iride;
     const pu = occ.pupilla;
-    // L'iride (v418): un ovale piatto, alto, del suo colore con un'ombra a
-    // falce dal lato opposto allo sguardo; la pupilla quasi la riempie. Niente
-    // sfumature né fili: stesure piatte, come i cartoni di una volta.
-    const OV = 1.16;
-    const ovale = (x, y, r) => { ctx.beginPath(); ctx.ellipse(x, y, r, r * OV, 0, 0, Math.PI * 2); };
-    // v425, come nel disegno di riferimento: l'iride scura in alto e
-    // luminosa in basso, il colore che «si accende» sotto alla pupilla
-    const sfum = ctx.createLinearGradient(ir.x, ir.y - ir.r * OV, ir.x, ir.y + ir.r * OV);
-    sfum.addColorStop(0, scurisci(profilo.iride, 0.35)); sfum.addColorStop(0.55, profilo.iride); sfum.addColorStop(1, schiarisci(profilo.iride, 0.35));
-    ovale(ir.x, ir.y, ir.r); ctx.fillStyle = sfum; ctx.fill();
-    // l'ombra della palpebra sull'iride: una falce più scura in alto
-    ctx.save(); ovale(ir.x, ir.y, ir.r); ctx.clip();
-    ctx.fillStyle = scurisci(profilo.iride, 0.32);
-    ctx.beginPath(); ctx.ellipse(ir.x, ir.y - ir.r * 0.95, ir.r * 1.3, ir.r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
     const pulsa = 1 + 0.12 * Math.sin(t / 140);
+    // Nel bianco: il cuore dell'amore, la stella dell'entusiasmo, se no la pupilla
     if (geom.cuori > 0.5) {
-      // l'amore: la pupilla è un cuore rosso che batte
+      // l'amore: un cuore rosso che batte
       cuore(ctx, pu.x, pu.y + ir.r * 0.05, ir.r * 0.66 * pulsa);
       ctx.fillStyle = '#ff3d6e'; ctx.fill();
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, ir.r * 0.09); ctx.stroke();
     } else if (geom.stelle > 0.5) {
-      // l'entusiasmo: la pupilla è una stella dorata che pulsa
+      // l'entusiasmo: una stella dorata che pulsa
       ctx.fillStyle = '#ffe066';
       stella(ctx, pu.x, pu.y, ir.r * 0.8 * pulsa, ir.r * 0.36 * pulsa, 5, -Math.PI / 2);
       ctx.fill();
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, ir.r * 0.08); ctx.stroke();
     } else {
-      ovale(pu.x, pu.y, pu.r); ctx.fillStyle = '#100a24'; ctx.fill();
+      // v437, la pupilla da cartone: chiesta di nuovo dopo gli occhi tutti
+      // bianchi, ma «che stia bene con lo stile». Niente iride colorata né
+      // anello: un ovale pieno d'inchiostro, un poco più alto che largo, e
+      // un solo puntino di luce in alto. Corre più lontano dell'iride di
+      // prima (è più piccola), così l'occhiata di lato si legge; la sua
+      // misura segue l'espressione: piccolissima nella sorpresa e nella
+      // paura, grande e dolce nella tristezza e nell'amore.
+      const r = pu.r * 0.72;
+      const corsa = 1 + (ir.r - r) / Math.max(1e-6, occ.rx) * 0.9;
+      const px = occ.cx + (pu.x - occ.cx) * corsa, py = occ.cy + (pu.y - occ.cy) * corsa;
+      ctx.fillStyle = INCHIOSTRO;
+      ctx.beginPath(); ctx.ellipse(px, py, r, r * 1.14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(px + r * 0.32, py - r * 0.4, Math.max(0.6, r * 0.3), 0, Math.PI * 2); ctx.fill();
     }
-    // il contorno dell'iride, d'inchiostro
-    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.9, ir.r * 0.09);
-    ctx.beginPath(); ctx.ellipse(ir.x, ir.y, ir.r * 0.97, ir.r * 0.97 * OV, 0, 0, Math.PI * 2); ctx.stroke();
-    // I riflessi: un tondo grande e un puntino, color panna
-    ctx.fillStyle = '#ffffff';
-    for (const l of occ.luci) { ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill(); }
     // L'ombra della palpebra di sopra sul bianco: dà profondità all'occhio
-    ctx.strokeStyle = 'rgba(80, 60, 140, 0.16)'; ctx.lineWidth = occ.ry * 0.26;
+    ctx.strokeStyle = 'rgba(90, 100, 160, 0.14)'; ctx.lineWidth = occ.ry * 0.3;
     polilinea(ctx, ap.sopra); ctx.stroke();
     // Gli occhi lucidi: un velo d'acqua sul bordo di sotto
     if (geom.lucidi > 0.5) {
@@ -1959,8 +1963,9 @@
     ctx.restore();
     // Il contorno: un filo sotto, la riga piena della palpebra sopra
     // v425: il contorno di sotto è un tratto pieno, come quello di sopra
-    // appena più sottile: l'occhio è una forma chiusa e netta
-    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.2, occ.rx * 0.11);
+    // appena più sottile: l'occhio è una forma chiusa e netta. v436: senza
+    // pupilla è il contorno a reggere l'occhio, ed è grosso come nel foglio
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.6, occ.rx * 0.17);
     polilinea(ctx, ap.sotto); ctx.stroke();
     rigaPalpebra(ctx, occ, ap.sopra, lei);
     // Gli occhi che sorridono spingono su le guance: una piega sotto
@@ -3037,19 +3042,13 @@
       const alone = ctx.createRadialGradient(x, y, R * 0.8, x, y, R * 1.55);
       alone.addColorStop(0, rgba(profilo.raggi ? schiarisci(profilo.raggi, 0.4) : '#fde68a', 0.5)); alone.addColorStop(1, rgba('#fde68a', 0));
       ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, R * 1.55, 0, Math.PI * 2); ctx.fill();
-      const giro = t / 9000;
-      parte(ctx, () => {
-        ctx.beginPath();
-        const n = 14;
-        for (let k = 0; k < n; k++) {
-          const a = giro + k / n * Math.PI * 2, b = giro + (k + 0.5) / n * Math.PI * 2, c = giro + (k + 1) / n * Math.PI * 2;
-          const lun = R * (1.3 + 0.06 * Math.sin(t / 300 + k * 1.7));
-          if (!k) ctx.moveTo(x + Math.cos(a) * R * 0.98, y + Math.sin(a) * R * 0.98);
-          ctx.quadraticCurveTo(x + Math.cos(a + 0.1) * lun * 0.95, y + Math.sin(a + 0.1) * lun * 0.95, x + Math.cos(b) * lun, y + Math.sin(b) * lun);
-          ctx.quadraticCurveTo(x + Math.cos(c - 0.12) * R * 1.12, y + Math.sin(c - 0.12) * R * 1.12, x + Math.cos(c) * R * 0.98, y + Math.sin(c) * R * 0.98);
-        }
-        ctx.closePath();
-      }, profilo.raggi || '#fb923c', R, { buio: 0.15 });
+      // v436: al posto dei quattordici raggi a punta contornati d'inchiostro
+      // (sembravano un ingranaggio) il fuoco vivo, senza contorno, che
+      // guizza più alto e più svelto con l'umore (`reazione.prominenze`)
+      const re = profilo.reazione;
+      const s = re && Number.isFinite(re.prominenze) ? re.prominenze : 0.3;
+      const fuori = re && Number.isFinite(re.atmoR) ? mescolaColori(profilo.raggi || '#fb923c', coloreAtmo(re), 0.5) : profilo.raggi || '#fb923c';
+      disegnaFiamme(ctx, x, y, R, s, t, coloriFiamme(fuori, profilo.pelle));
       disegnaDisco(ctx, x, y, R, profilo.pelle);
     } else if (sagoma === 'pianeta' || sagoma === 'luna') {
       disegnaDisco(ctx, x, y, R, profilo.pelle, () => {
@@ -4105,7 +4104,9 @@
         g.addColorStop(0, rgba(col, alfa)); g.addColorStop(0.45, rgba(col, alfa * 0.45)); g.addColorStop(1, rgba(col, 0));
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, est, 0, Math.PI * 2); ctx.fill();
       }
-      if (fis.prominenze && re.prominenze > 0.02) disegnaProminenze(ctx, x, y, R, re, tm, opz);
+      // v436: il fuoco di una stella disegnata lo fa `disegnaCorpo` (al posto
+      // dei suoi raggi); qui solo sull'astro vero, dove il corpo non c'è
+      if (opz.fuori && fis.prominenze && re.prominenze > 0.02) disegnaProminenze(ctx, x, y, R, re, tm);
       ctx.restore();
       if (opz.anelli !== false && fis.anelli) disegnaAnelliFisica(ctx, x, y, R, fis.anelli, re, tm, false);
       if (opz.lune !== false && fis.lune.length) disegnaLune(ctx, x, y, R, fis, re, opz.tempoLune, tm, false);
@@ -4133,7 +4134,8 @@
         const a = k / n * Math.PI * 2 + t / 14000 + (k % 2) * 0.08;
         const lun = R * (1.25 + (0.25 + 0.55 * s) * (0.65 + 0.35 * Math.sin(t / 520 + k * 2.7)));
         const g = ctx.createLinearGradient(x + Math.cos(a) * R, y + Math.sin(a) * R, x + Math.cos(a) * lun, y + Math.sin(a) * lun);
-        g.addColorStop(0, `rgba(254, 240, 138, ${(0.18 + 0.32 * s).toFixed(3)})`); g.addColorStop(1, 'rgba(254, 240, 138, 0)');
+        // v436: più tenue, ché davanti c'è il fuoco
+        g.addColorStop(0, `rgba(254, 240, 138, ${(0.08 + 0.2 * s).toFixed(3)})`); g.addColorStop(1, 'rgba(254, 240, 138, 0)');
         ctx.fillStyle = g;
         const w = 0.07 + 0.04 * (k % 3);
         ctx.beginPath();
@@ -4171,35 +4173,68 @@
     }
   }
 
-  /* Le prominenze: archi di plasma che si alzano dal bordo e ricadono. Con
-   * la rabbia sono di più, più alte, e ogni tanto una si stacca e vola via
-   * (l'espulsione di massa coronale). I piedi stanno dietro al disco. */
-  function disegnaProminenze(ctx, x, y, R, re, t, opz) {
-    const s = re.prominenze;
-    const n = 2 + Math.round(5 * s);
-    const st = { s: seme('prominenze') };
+  /* Le fiamme del bordo (v436, al posto delle prominenze). Fino alla v435
+   * le stelle avevano archi di plasma che si alzavano dal bordo e ogni tanto
+   * una bolla che volava via: visti da lontano erano curve sottili, fili
+   * staccati dal corpo, e chi usa l'app ha chiesto di toglierle e di dare al
+   * Sole una fiamma viva come nel disegno del Sole sorridente: una corona di
+   * lingue di fuoco tutt'attorno al disco, gialle e arancio, che guizzano.
+   * Tre stesure piatte una dentro l'altra (il fuoco di fuori del colore
+   * dell'atmosfera, che con la rabbia si arrossa; l'arancio; il giallo
+   * vivo), ognuna fatta delle stesse lingue: si alzano e si piegano ognuna
+   * col suo passo, e l'umore (`re.prominenze`) le fa più alte e più svelte.
+   * I piedi stanno dietro al disco. */
+  const STOR_FIAMME_LINGUE = 22;
+  // I colori del fuoco di una stella: quello di fuori, l'arancio, il giallo
+  // vivo di dentro (per una stella azzurra, il suo azzurro che si schiarisce)
+  function coloriFiamme(fuori, pelle) {
+    const caldo = mescolaColori(fuori, '#f59e0b', 0.35);
+    return { fuori: caldo, mezzo: schiarisci(mescolaColori(caldo, '#fb923c', 0.6), 0.1),
+      dentro: schiarisci(mescolaColori(pelle || '#fde047', '#fde047', 0.5), 0.15) };
+  }
+  // Il fuoco sull'astro vero (la fisica con `opz.fuori`): lì il corpo non lo
+  // disegna `disegnaCorpo`, e le fiamme le porta l'atmosfera che si arrossa
+  function disegnaProminenze(ctx, x, y, R, re, t) {
+    disegnaFiamme(ctx, x, y, R, re.prominenze, t, coloriFiamme(coloreAtmo(re)));
+  }
+  function disegnaFiamme(ctx, x, y, R, s, t, colori) {
+    const n = STOR_FIAMME_LINGUE, passo = Math.PI * 2 / n;
+    const st = { s: seme('fiamme') };
+    const lingue = [];
+    const svelte = 1 + 1.3 * s;
     for (let k = 0; k < n; k++) {
-      const a = dado(st) * Math.PI * 2 + t / 20000 * (k % 2 ? 1 : -1);
-      const largo = 0.14 + dado(st) * 0.12;
-      const h = R * (0.14 + 0.4 * s * (0.55 + 0.45 * Math.sin(t / (380 + k * 70) + k * 1.7)));
-      const p1 = [x + Math.cos(a - largo) * R * 0.95, y + Math.sin(a - largo) * R * 0.95];
-      const p2 = [x + Math.cos(a + largo) * R * 0.95, y + Math.sin(a + largo) * R * 0.95];
-      const c1 = [x + Math.cos(a - largo * 0.9) * (R + h * 1.5), y + Math.sin(a - largo * 0.9) * (R + h * 1.5)];
-      const c2 = [x + Math.cos(a + largo * 0.9) * (R + h * 1.5), y + Math.sin(a + largo * 0.9) * (R + h * 1.5)];
-      for (const [w, c] of [[R * 0.13, 'rgba(234, 88, 12, 0.55)'], [R * 0.065, 'rgba(251, 146, 60, 0.9)'], [R * 0.025, 'rgba(254, 240, 138, 0.95)']]) {
-        ctx.strokeStyle = c; ctx.lineWidth = Math.max(0.8, w * (0.7 + 0.5 * s));
-        ctx.beginPath(); ctx.moveTo(...p1); ctx.bezierCurveTo(...c1, ...c2, ...p2); ctx.stroke();
+      const fase = dado(st) * Math.PI * 2, lunga = (k % 3 === 1 ? 0.6 : 0.85) + dado(st) * 0.4, batte = 0.7 + dado(st) * 0.6;
+      const guizzo = 0.78 + 0.22 * Math.sin(t / 210 * svelte * batte + fase) + 0.12 * Math.sin(t / 77 * batte + fase * 3);
+      // la piega: tutte un poco dalla stessa parte (il fuoco «gira» col
+      // disco), ognuna che ondeggia per conto suo
+      lingue.push({ h: R * (0.26 + 0.22 * s) * lunga * guizzo, piega: 0.55 + Math.sin(t / 330 * batte + fase * 1.7) * 0.5 });
+    }
+    const giro = t / 16000;
+    const strato = (scala, colore) => {
+      ctx.beginPath();
+      for (let k = 0; k < n; k++) {
+        const l = lingue[k], a0 = giro + k * passo, a1 = a0 + passo, h = l.h * scala;
+        const pt = (a, r) => [x + Math.cos(a) * r, y + Math.sin(a) * r];
+        const rb = R * 0.97;
+        if (!k) ctx.moveTo(...pt(a0, rb));
+        // la lingua: il fianco di dietro gonfio, quello davanti incavato,
+        // e la punta piegata da una parte, come una fiammella che si torce
+        ctx.bezierCurveTo(...pt(a0 + passo * 0.05, R + h * 0.45), ...pt(a0 + passo * (0.3 + l.piega * 0.6), R + h * 0.8),
+          ...pt(a0 + passo * (0.5 + l.piega * 1.1), R + h));
+        ctx.bezierCurveTo(...pt(a0 + passo * (0.55 + l.piega * 0.5), R + h * 0.5), ...pt(a1 - passo * 0.05, R + h * 0.3),
+          ...pt(a1, rb));
       }
-    }
-    // l'espulsione: una bolla di plasma che parte dal bordo e si allarga
-    if (s > 0.6 && !opz.ridotto) {
-      const ciclo = 2600, u = (t % ciclo) / ciclo;
-      const a = seme('cme' + Math.floor(t / ciclo)) % 628 / 100;
-      const d = R * (1.05 + u * 1.3), q = R * (0.12 + u * 0.35);
-      ctx.strokeStyle = `rgba(251, 146, 60, ${((1 - u) * 0.7 * (s - 0.5) * 2).toFixed(3)})`;
-      ctx.lineWidth = Math.max(1, R * 0.05 * (1 - u));
-      ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, q, a - 1.4, a + 1.4); ctx.stroke();
-    }
+      ctx.closePath();
+      ctx.fillStyle = colore; ctx.fill();
+    };
+    // il bagliore: un velo caldo appena fuori dal bordo, che pulsa
+    const vivo = 0.8 + 0.2 * Math.sin(t / 160 * svelte);
+    const g = ctx.createRadialGradient(x, y, R * 0.95, x, y, R * (1.25 + 0.3 * s));
+    g.addColorStop(0, rgba(colori.dentro, 0.55 * vivo)); g.addColorStop(1, rgba(colori.dentro, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R * (1.25 + 0.3 * s), 0, Math.PI * 2); ctx.fill();
+    strato(1, rgba(colori.fuori, 0.95));
+    strato(0.72, colori.mezzo);
+    strato(0.46, colori.dentro);
   }
 
   // Gli anelli sottili di Urano, Nettuno e Giove: la metà di dietro prima del
