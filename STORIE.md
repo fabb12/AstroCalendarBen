@@ -370,6 +370,28 @@ Luna piena sorridente, a contorni grossi — i tratti si leggono da lontano:
   piene, con le tre lineette solo nella contentezza piena (`guance` > 1,05);
   **niente naso né neo** per lei, come nel disegno.
 
+**Le bocche che parlano con l'umore (v426).**
+
+- **Si parla con la faccia dell'umore**: `storBoccaBersaglio(espr, forma)`
+  (funzione pura, `StorieCosmiche.boccaBersaglio`) dà la bocca a cui tendere.
+  A riposo è quella dell'espressione; sulle sillabe la larghezza sta a metà
+  fra sillaba e umore, chi ha i denti (rabbia, ghigno) parla fra i denti e mai
+  a O, chi trema (preoccupato, triste) trema anche parlando, chi sorride parla
+  sorridendo. Fino alla v425 chi parlava aveva le cinque bocche del parlato e
+  basta, e `mescolaBocca` perdeva i denti alla prima sillaba.
+- **Le sillabe** sono più grandi (`STOR_BOCCHE.piccola|A|E|O`): chi parlava
+  aveva la bocca più piccola di chi taceva. Il ritorno alla bocca di riposo,
+  a fine frase o a un cambio d'umore, dura due fotogrammi
+  (`STOR_TAU_BOCCA_CHIUDE`) invece di uno scatto.
+- **Il disegno** (`disegnaBocca`, `bordiBocca`): il tratto è d'inchiostro pieno
+  per tutti, le labbra di lei sono una velatura sotto alla riga (prima, chiusa
+  e all'ingiù, era un grumo rosa); la bocca aperta è una «D» col fondo tondo,
+  il labbro di sopra che trema con `onda`; la tristezza è una bocca aperta
+  all'ingiù; i denti sono due file che seguono i bordi e si separano quando
+  si parla, in un rettangolo dagli angoli tondi piegato all'ingiù (rabbia) o
+  all'insù (ghigno). Sotto ai baffi la bocca scende (0,5 del volto invece di
+  0,42), se no restava coperta.
+
 Per guardarli tutti insieme basta una pagina con `storie-cosmiche.js` che
 chiama `StorieCosmiche.ritratto(tela, id, espressione)` per ogni personaggio.
 

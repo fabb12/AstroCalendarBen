@@ -268,6 +268,25 @@ prova('la bocca si chiude subito quando la voce non parla, è in pausa o è fini
   for (const s of [null, { parla: false }, { parla: true, pausa: true, tempo: 400, testo: 'aaa' }])
     assert.deepEqual(S.boccaDaSegnale(s), { forma: 'chiusa', apertura: 0, via: 'muta' });
 });
+prova('si parla con la faccia dell\'umore: denti, tremito e sorriso restano sulle sillabe (v426)', () => {
+  const B = (e, forma, apertura) => S.boccaBersaglio(S.parametriEspressione(e), forma ? { forma, apertura } : null);
+  // a riposo, la bocca dell'espressione
+  assert.equal(B('angry').denti, 1, 'a riposo l\'arrabbiato ha i denti');
+  for (const f of ['piccola', 'A', 'E', 'O']) {
+    const a = B('angry', f, 0.8);
+    assert.ok(a.denti > 0.5 && a.tondo === 0, 'l\'arrabbiato parla fra i denti, mai a O: ' + f);
+    assert.ok(a.aper >= S.STOR_BOCCHE.denti.aper - 1e-9, 'e la bocca non si stringe sotto a quella di riposo: ' + f);
+    assert.ok(B('bully', f, 0.8).denti > 0.5 && B('bully', f, 0.8).curva > 0, 'il bullo parla col ghigno: ' + f);
+    assert.ok(B('worried', f, 0.8).onda > 0.3, 'il preoccupato trema anche parlando: ' + f);
+    const h = B('happy', f, 0.8);
+    assert.ok(h.aper > 0.05 && h.curva > 0.3, 'il contento parla sorridendo: ' + f);
+  }
+  // la sillaba conta: la A apre più della «piccola», per tutti
+  for (const e of Object.keys(S.STOR_ESPRESSIONI))
+    assert.ok(B(e, 'A', 0.9).aper > B(e, 'piccola', 0.3).aper, 'la A apre più della piccola: ' + e);
+  // e la tristezza è una bocca all'ingiù, non una riga
+  assert.ok(S.STOR_BOCCHE.triste.aper > 0.1 && S.STOR_BOCCHE.triste.curva < -0.5, 'triste: aperta all\'ingiù');
+});
 
 // --- Il disegno con la voce finta ------------------------------------
 function scena(personaggi) {
