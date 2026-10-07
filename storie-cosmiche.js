@@ -182,17 +182,20 @@
    * i denti stretti della rabbia (e, all'insù, il ghigno del bullo). Le prime cinque sono quelle del parlato. */
   const STOR_BOCCHE = {
     chiusa:   { larg: 0.17, aper: 0,    tondo: 0,    curva: 0,     onda: 0 },
-    piccola:  { larg: 0.1,  aper: 0.09, tondo: 0.7,  curva: 0,     onda: 0 },
-    A:        { larg: 0.17, aper: 0.28, tondo: 0.25, curva: 0,     onda: 0 },
-    E:        { larg: 0.23, aper: 0.13, tondo: 0,    curva: 0.12,  onda: 0 },
-    O:        { larg: 0.14, aper: 0.3,  tondo: 1,    curva: 0,     onda: 0 },
+    // v426: le sillabe più grandi, alla misura delle bocche delle
+    // espressioni: prima chi parlava aveva la bocca più piccola di chi taceva
+    piccola:  { larg: 0.12, aper: 0.11, tondo: 0.7,  curva: 0,     onda: 0 },
+    A:        { larg: 0.2,  aper: 0.34, tondo: 0.25, curva: 0,     onda: 0 },
+    E:        { larg: 0.26, aper: 0.17, tondo: 0,    curva: 0.12,  onda: 0 },
+    O:        { larg: 0.15, aper: 0.34, tondo: 1,    curva: 0,     onda: 0 },
     sorriso:  { larg: 0.3,  aper: 0.16, tondo: 0,    curva: 0.85,  onda: 0 },
     grande:   { larg: 0.33, aper: 0.32, tondo: 0,    curva: 0.8,   onda: 0 },
     risata:   { larg: 0.34, aper: 0.38, tondo: 0,    curva: 0.9,   onda: 0 },
-    triste:   { larg: 0.2,  aper: 0,    tondo: 0,    curva: -0.75, onda: 0.25 },
+    // v426: la tristezza è una bocca aperta all'ingiù, col labbro che trema
+    triste:   { larg: 0.22, aper: 0.19, tondo: 0,    curva: -0.85, onda: 0.35 },
     ondulata: { larg: 0.22, aper: 0,    tondo: 0,    curva: -0.15, onda: 1 },
-    denti:    { larg: 0.24, aper: 0.14, tondo: 0,    curva: -0.25, onda: 0, denti: 1 },
-    ghigno:   { larg: 0.26, aper: 0.12, tondo: 0,    curva: 0.45,  onda: 0, denti: 1 }
+    denti:    { larg: 0.27, aper: 0.2,  tondo: 0,    curva: -0.25, onda: 0, denti: 1 },
+    ghigno:   { larg: 0.27, aper: 0.16, tondo: 0,    curva: 0.45,  onda: 0, denti: 1 }
   };
   const STOR_BOCCHE_PARLATO = ['chiusa', 'piccola', 'A', 'E', 'O'];
 
@@ -413,6 +416,7 @@
   const STOR_TAU_ESPRESSIONE = 180;
   const STOR_TAU_SGUARDO = 110;
   const STOR_TAU_BOCCA_APRE = 34;
+  const STOR_TAU_BOCCA_CHIUDE = 22;
   const STOR_COMPARSA_MS = 560;     // il «pop» elastico con cui un volto compare
   const STOR_BOING_MS = 460;        // il rimbalzo di un cambio d'espressione
   const STOR_SACCADI_MS = [900, 2600]; // le occhiate a vuoto di chi sta fermo
@@ -735,8 +739,39 @@
     return mescolaEspressione(e, e, 1);
   }
   function mescolaBocca(a, b, k) {
+    // v426: anche i denti si mescolano (fino alla v425 si perdevano alla
+    // prima sillaba, e chi era arrabbiato parlava a bocca spalancata)
     return { larg: mix(a.larg, b.larg, k), aper: mix(a.aper, b.aper, k), tondo: mix(a.tondo, b.tondo, k),
-      curva: mix(a.curva, b.curva, k), onda: mix(a.onda || 0, b.onda || 0, k) };
+      curva: mix(a.curva, b.curva, k), onda: mix(a.onda || 0, b.onda || 0, k), denti: mix(a.denti || 0, b.denti || 0, k) };
+  }
+
+  /* La bocca a cui tendere (v426): quella dell'espressione a riposo, o,
+   * mentre il personaggio parla, la sillaba **detta con la sua faccia**.
+   * Fino alla v425 chi parlava aveva le cinque bocche del parlato e basta:
+   * l'arrabbiato perdeva i denti stretti, il preoccupato smetteva di
+   * tremare, il contento parlava con la bocca stretta di chi è serio. Adesso
+   * la larghezza sta a metà fra la sillaba e la bocca dell'umore; chi ha i
+   * denti parla fra i denti (la sillaba apre poco, e non diventa mai una O);
+   * chi trema trema anche parlando; chi sorride parla sorridendo (la bocca
+   * non si chiude mai del tutto fra una sillaba e l'altra). La curvatura
+   * dell'umore la aggiunge `storGeometria`. Funzione pura: la provano le
+   * prove e la usa l'anteprima delle bocche. */
+  function storBoccaBersaglio(espr, forma) {
+    const riposo = STOR_BOCCHE[espr && espr.bocca] || STOR_BOCCHE.chiusa;
+    if (!forma || !(forma.apertura > 0)) return Object.assign({ onda: 0, denti: 0 }, riposo);
+    const sill = STOR_BOCCHE[forma.forma] || STOR_BOCCHE.chiusa;
+    const out = { larg: mix(sill.larg, riposo.larg, 0.5), aper: sill.aper, tondo: sill.tondo, curva: sill.curva,
+      onda: (riposo.onda || 0) * 0.6, denti: riposo.denti || 0 };
+    if (out.denti) {
+      out.aper = Math.max(riposo.aper, sill.aper * 0.85);
+      out.tondo = 0;
+      out.curva = riposo.curva;
+    } else if (riposo.aper > 0.1 && riposo.curva > 0.5) {
+      out.aper = Math.max(sill.aper, riposo.aper * 0.55);
+      out.curva = Math.max(sill.curva, riposo.curva * 0.6);
+      out.tondo = sill.tondo * 0.6;
+    }
+    return out;
   }
 
   /* Lo sguardo verso un punto dello schermo, come vettore nel cerchio
@@ -901,8 +936,9 @@
     const b = st.bocca;
     const bocca = {
       // v425: la bocca è più grande (un terzo in più), come nei cartoni: è
-      // il segno che si legge meglio su un astro piccolo
-      x: cx + (e.spostaBocca || 0) * R, y: cy + 0.42 * R,
+      // il segno che si legge meglio su un astro piccolo. Sotto ai baffi
+      // scende un poco (v426), se no i baffi la coprivano tutta
+      x: cx + (e.spostaBocca || 0) * R, y: cy + (profilo.baffi ? 0.5 : 0.42) * R,
       larg: b.larg * R * 1.3 * (lei ? 0.94 : 1), aper: b.aper * R * 1.3, tondo: b.tondo, onda: b.onda || 0, denti: b.denti || 0,
       storta: e.storta || 0,
       // la curvatura dell'espressione resta anche parlando (si parla sorridendo)
@@ -1742,10 +1778,43 @@
     ctx.restore();
   }
 
-  /* La bocca. Per lei le labbra: il labbro di sotto pieno, quello di sopra
-   * con l'arco di Cupido, e da aperta il contorno nel colore delle labbra;
-   * per lui una riga d'inchiostro più decisa. Il sorriso aperto mostra i
-   * denti di sopra, la risata anche la lingua, la rabbia i denti stretti. */
+  /* La bocca (riscritta nella v426, sul disegno della Luna sorridente). Il
+   * tratto è sempre d'inchiostro pieno, per lei e per lui: fino alla v425
+   * la bocca chiusa di lei erano due labbra colorate, e da preoccupata,
+   * triste o pensierosa diventava un grumo rosa che non diceva niente. Le
+   * labbra restano come una velatura sotto alla riga. La bocca aperta è una
+   * forma campionata (`bordi`): il bordo di sopra e quello di sotto, con
+   * gli angoli che salgono nel sorriso e scendono nel broncio, e il labbro
+   * di sopra che trema (`onda`) nella paura e nel pianto. Dentro, il fondo
+   * scuro, la lingua e i denti di sopra; con `denti` due file di denti che
+   * si separano quando il personaggio parla (la rabbia, il ghigno). */
+  function bordiBocca(b) {
+    const N = 18, sopra = [], sotto = [];
+    const denti = b.denti > 0.5;
+    const ang = b.y - b.curva * b.larg * 0.42;
+    const cSu = b.y - b.aper * (0.55 - b.tondo * 0.3) + b.curva * b.larg * 0.28;
+    const cGiu = b.y + b.aper * 1.6 + b.curva * b.larg * 0.5;
+    for (let i = 0; i <= N; i++) {
+      const u = -1 + 2 * i / N;
+      const x = b.x + u * b.larg;
+      if (denti) {
+        // i denti stretti: un rettangolo dagli angoli tondi, piegato
+        // all'ingiù (la rabbia) o all'insù (il ghigno) lungo la sua mezzeria
+        const mezzo = b.y - b.curva * b.larg * 0.6 * u * u;
+        const h = b.aper * 0.5 * Math.pow(1 - u * u, 0.22);
+        sopra.push([x, mezzo - h]); sotto.push([x, mezzo + h]);
+        continue;
+      }
+      // sopra la quadratica fra i due angoli (la stessa di prima della
+      // v426); sotto un fondo più pieno e tondo, la «D» dei cartoni, che
+      // non scende a punta come una V
+      const kSu = (1 - u * u) / 2, kGiu = Math.pow(1 - u * u, 0.6) / 2;
+      const trema = Math.sin(u * Math.PI * 3) * b.larg * 0.07 * (b.onda || 0) * (1 - u * u);
+      sopra.push([x, ang + (cSu - ang) * kSu + trema]);
+      sotto.push([x, ang + (cGiu - ang) * kGiu]);
+    }
+    return { sopra, sotto };
+  }
   function disegnaBocca(ctx, b, R, profilo) {
     ctx.save();
     // La bocca di traverso (`storta`): si gira attorno al suo centro, e
@@ -1755,119 +1824,106 @@
     }
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const lei = !!(profilo && profilo.genere === 'f' && profilo.labbra);
-    const spessore = Math.max(2, b.larg * (lei ? 0.15 : 0.18));
+    const spessore = Math.max(2, b.larg * 0.17);
     const angoli = b.y - b.curva * b.larg * 0.5;
     const fossette = () => {
       // le fossette agli angoli di un sorriso largo (o le pieghe del broncio)
-      if (Math.abs(b.curva) < 0.45) return;
+      if (Math.abs(b.curva) < 0.45 || (b.onda || 0) > 0.2) return;
       const verso = b.curva > 0 ? -1 : 1;
+      const yAng = b.aper < 1 ? angoli : b.y - b.curva * b.larg * 0.42;
       ctx.strokeStyle = INCHIOSTRO;
-      ctx.lineWidth = spessore * 0.8;
+      ctx.lineWidth = spessore * 0.75;
       ctx.beginPath();
       for (const lato of [-1, 1]) {
-        const x = b.x + lato * b.larg, y = angoli;
-        ctx.moveTo(x - lato * b.larg * 0.08, y + verso * b.larg * 0.14);
-        ctx.quadraticCurveTo(x + lato * b.larg * 0.1, y, x + lato * b.larg * 0.04, y - verso * b.larg * 0.16);
+        const x = b.x + lato * b.larg;
+        ctx.moveTo(x - lato * b.larg * 0.08, yAng + verso * b.larg * 0.14);
+        ctx.quadraticCurveTo(x + lato * b.larg * 0.1, yAng, x + lato * b.larg * 0.04, yAng - verso * b.larg * 0.16);
       }
       ctx.stroke();
     };
-    if (b.aper < Math.max(0.8, b.larg * 0.06)) {
+    if (b.aper < Math.max(1, b.larg * 0.08)) {
       const riga = () => {
         ctx.beginPath();
-        if (b.onda > 0.2) {
-          // la bocca della paura (e il labbro che trema del pianto): un'onda
-          const n = 16;
-          for (let i = 0; i <= n; i++) {
-            const u = i / n, x = b.x - b.larg + 2 * b.larg * u;
-            const y = b.y + b.curva * b.larg * 0.5 * (1 - Math.pow(2 * u - 1, 2)) +
-              Math.sin(u * Math.PI * 4) * b.larg * 0.12 * b.onda;
-            if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-          }
-        } else {
-          ctx.moveTo(b.x - b.larg, angoli);
-          ctx.quadraticCurveTo(b.x, b.y + b.curva * b.larg * 0.8, b.x + b.larg, angoli);
+        const n = 16;
+        for (let i = 0; i <= n; i++) {
+          const u = i / n, x = b.x - b.larg + 2 * b.larg * u;
+          // la stessa quadratica di prima della v426: angoli, e il centro più giù di 1,3 volte
+          const y = angoli + b.curva * b.larg * 1.3 * 2 * u * (1 - u) +
+            Math.sin(u * Math.PI * 4) * b.larg * 0.12 * (b.onda || 0);
+          if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
         }
       };
-      if (lei) {
-        // Il labbro di sotto: una mezzaluna piena sotto alla riga
-        const mezzo = b.y + b.curva * b.larg * 0.4;
+      // le labbra di lei: una velatura sotto alla riga, mai un disegno a sé
+      if (lei && (b.onda || 0) < 0.4) {
+        ctx.strokeStyle = rgba(profilo.labbra, 0.55); ctx.lineWidth = spessore * 1.6;
+        ctx.save(); ctx.translate(0, spessore * 0.75);
         ctx.beginPath();
-        ctx.moveTo(b.x - b.larg * 0.86, angoli + (mezzo - angoli) * 0.25);
-        ctx.quadraticCurveTo(b.x, mezzo + b.larg * 0.62, b.x + b.larg * 0.86, angoli + (mezzo - angoli) * 0.25);
-        ctx.quadraticCurveTo(b.x, mezzo + b.larg * 0.1, b.x - b.larg * 0.86, angoli + (mezzo - angoli) * 0.25);
-        ctx.closePath();
-        ctx.strokeStyle = ALONE; ctx.lineWidth = 2.4; ctx.stroke();
-        ctx.fillStyle = profilo.labbra; ctx.fill();
-        // e quello di sopra, con l'arco di Cupido
-        ctx.beginPath();
-        ctx.moveTo(b.x - b.larg * 0.9, angoli + (mezzo - angoli) * 0.2);
-        ctx.quadraticCurveTo(b.x - b.larg * 0.45, mezzo - b.larg * 0.32, b.x - b.larg * 0.16, mezzo - b.larg * 0.26);
-        ctx.quadraticCurveTo(b.x, mezzo - b.larg * 0.14, b.x + b.larg * 0.16, mezzo - b.larg * 0.26);
-        ctx.quadraticCurveTo(b.x + b.larg * 0.45, mezzo - b.larg * 0.32, b.x + b.larg * 0.9, angoli + (mezzo - angoli) * 0.2);
-        ctx.quadraticCurveTo(b.x, mezzo + b.larg * 0.04, b.x - b.larg * 0.9, angoli + (mezzo - angoli) * 0.2);
-        ctx.closePath();
-        ctx.fillStyle = scurisci(profilo.labbra, 0.12); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.beginPath(); ctx.ellipse(b.x - b.larg * 0.18, mezzo + b.larg * 0.3, b.larg * 0.18, b.larg * 0.06, -0.15, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = spessore; riga(); ctx.stroke();
-      } else {
-        ctx.strokeStyle = ALONE; ctx.lineWidth = spessore + 2.6; riga(); ctx.stroke();
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = spessore; riga(); ctx.stroke();
-      }
-      fossette();
-    } else {
-      const traccia = () => {
-        ctx.beginPath();
-        if (b.tondo > 0.6) ctx.ellipse(b.x, b.y, b.larg, b.aper / 2, 0, 0, Math.PI * 2);
-        else if (b.denti > 0.5) {
-          // i denti stretti: un rettangolo arrotondato che si piega in giù agli angoli
-          const ang = b.y - b.curva * b.larg * 0.35;
-          ctx.moveTo(b.x - b.larg, ang - b.aper * 0.4);
-          ctx.quadraticCurveTo(b.x, b.y - b.aper * 0.62, b.x + b.larg, ang - b.aper * 0.4);
-          ctx.lineTo(b.x + b.larg, ang + b.aper * 0.4);
-          ctx.quadraticCurveTo(b.x, b.y + b.aper * 0.58, b.x - b.larg, ang + b.aper * 0.4);
-          ctx.closePath();
-        } else {
-          const ang = b.y - b.curva * b.larg * 0.42;
-          ctx.moveTo(b.x - b.larg, ang);
-          ctx.quadraticCurveTo(b.x, b.y - b.aper * (0.55 - b.tondo * 0.3) + b.curva * b.larg * 0.28, b.x + b.larg, ang);
-          ctx.quadraticCurveTo(b.x, b.y + b.aper * 1.25 + b.curva * b.larg * 0.5, b.x - b.larg, ang);
-          ctx.closePath();
+        for (let i = 3; i <= 13; i++) {
+          const u = i / 16, x = b.x - b.larg + 2 * b.larg * u;
+          const y = angoli + b.curva * b.larg * 1.3 * 2 * u * (1 - u);
+          if (i > 3) ctx.lineTo(x, y); else ctx.moveTo(x, y);
         }
-      };
-      traccia();
-      ctx.strokeStyle = ALONE; ctx.lineWidth = spessore + 2.6; ctx.stroke();
-      if (b.denti > 0.5 && b.tondo <= 0.6) {
-        ctx.fillStyle = '#fffdf6'; ctx.fill();
-        ctx.save(); ctx.clip();
-        ctx.strokeStyle = rgba(INCHIOSTRO, 0.7); ctx.lineWidth = Math.max(0.8, spessore * 0.45);
-        ctx.beginPath();
-        ctx.moveTo(b.x - b.larg, b.y); ctx.lineTo(b.x + b.larg, b.y);
-        for (let k = -2; k <= 2; k++) { ctx.moveTo(b.x + k * b.larg * 0.36, b.y - b.aper); ctx.lineTo(b.x + k * b.larg * 0.36, b.y + b.aper); }
-        ctx.stroke();
-        ctx.restore();
-      } else {
-        const fondo = ctx.createLinearGradient(b.x, b.y - b.aper, b.x, b.y + b.aper);
-        fondo.addColorStop(0, '#3a0c26'); fondo.addColorStop(1, '#7a1c3c');
-        ctx.fillStyle = fondo;
-        ctx.fill();
-        ctx.save(); ctx.clip();
-        // la lingua, col suo riflesso, e i denti di sopra nei sorrisi e quando si apre bene
-        ctx.fillStyle = '#e8577a';
-        ctx.beginPath(); ctx.ellipse(b.x, b.y + b.aper * 0.78, b.larg * 0.66, b.aper * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(255, 196, 214, 0.75)';
-        ctx.beginPath(); ctx.ellipse(b.x - b.larg * 0.14, b.y + b.aper * 0.52, b.larg * 0.16, b.aper * 0.1, -0.3, 0, Math.PI * 2); ctx.fill();
-        if ((b.aper > b.larg * 0.42 || b.curva > 0.4) && b.tondo < 0.6) {
-          ctx.fillStyle = '#fffdf6';
-          ctx.fillRect(b.x - b.larg, b.y - b.aper * 1.4, b.larg * 2, b.aper * 0.95 + Math.max(0, b.curva) * b.larg * 0.12);
-        }
-        ctx.restore();
+        ctx.stroke(); ctx.restore();
       }
-      ctx.strokeStyle = INCHIOSTRO;
-      ctx.lineWidth = spessore;
-      traccia(); ctx.stroke();
+      ctx.strokeStyle = ALONE; ctx.lineWidth = spessore + 2.6; riga(); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = spessore; riga(); ctx.stroke();
       fossette();
+      ctx.restore();
+      return;
     }
+    const tonda = b.tondo > 0.6 && !(b.denti > 0.5);
+    const { sopra, sotto } = tonda ? { sopra: null, sotto: null } : bordiBocca(b);
+    const traccia = () => {
+      ctx.beginPath();
+      if (tonda) { ctx.ellipse(b.x, b.y, b.larg, b.aper / 2, 0, 0, Math.PI * 2); return; }
+      sopra.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      for (let i = sotto.length - 1; i >= 0; i--) ctx.lineTo(sotto[i][0], sotto[i][1]);
+      ctx.closePath();
+    };
+    traccia();
+    ctx.strokeStyle = ALONE; ctx.lineWidth = spessore + 2.6; ctx.stroke();
+    const fondo = ctx.createLinearGradient(b.x, b.y - b.aper, b.x, b.y + b.aper);
+    fondo.addColorStop(0, '#3a0c26'); fondo.addColorStop(1, '#7a1c3c');
+    ctx.fillStyle = fondo; ctx.fill();
+    ctx.save(); traccia(); ctx.clip();
+    if (b.denti > 0.5) {
+      // due file di denti che seguono i bordi: a bocca stretta si toccano,
+      // parlando si separano e in mezzo si vede il buio
+      const h = Math.max(b.aper * 0.42, b.larg * 0.16);
+      const fila = (bordo, verso) => {
+        ctx.beginPath();
+        bordo.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        for (let i = bordo.length - 1; i >= 0; i--) ctx.lineTo(bordo[i][0], bordo[i][1] + verso * h);
+        ctx.closePath();
+        ctx.fillStyle = '#fffdf6'; ctx.fill();
+        ctx.strokeStyle = rgba(INCHIOSTRO, 0.75); ctx.lineWidth = Math.max(0.8, spessore * 0.4);
+        ctx.beginPath();
+        bordo.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + verso * h) : ctx.moveTo(x, y + verso * h)));
+        for (let k = -2; k <= 2; k++) {
+          const x = b.x + k * b.larg * 0.36, y = lungo(bordo, (k * 0.36 + 1) / 2).y;
+          ctx.moveTo(x, y); ctx.lineTo(x, y + verso * h);
+        }
+        ctx.stroke();
+      };
+      fila(sopra, 1); fila(sotto, -1);
+    } else {
+      // la lingua col suo riflesso, e i denti di sopra nei sorrisi e quando si apre bene
+      ctx.fillStyle = '#e8577a';
+      ctx.beginPath(); ctx.ellipse(b.x, b.y + b.aper * 0.78, b.larg * 0.66, b.aper * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 196, 214, 0.75)';
+      ctx.beginPath(); ctx.ellipse(b.x - b.larg * 0.14, b.y + b.aper * 0.52, b.larg * 0.16, b.aper * 0.1, -0.3, 0, Math.PI * 2); ctx.fill();
+      if (!tonda && (b.aper > b.larg * 0.42 || b.curva > 0.4) && b.curva > -0.2) {
+        ctx.fillStyle = '#fffdf6';
+        ctx.beginPath();
+        sopra.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        for (let i = sopra.length - 1; i >= 0; i--) ctx.lineTo(sopra[i][0], sopra[i][1] + b.aper * 0.32);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = spessore;
+    traccia(); ctx.stroke();
+    fossette();
     ctx.restore();
   }
 
@@ -3408,11 +3464,17 @@
         forma = storBoccaDaSegnale(voce, ritmo);
         if (ridotto) forma.apertura *= 0.7;
       } else forma = { forma: pg.espr.bocca, apertura: 0 };
-      const meta = STOR_BOCCHE[forma.forma] || STOR_BOCCHE.chiusa;
+      const meta = storBoccaBersaglio(pg.espr, forma);
       if (forma.apertura > 0) {
         const kB = 1 - Math.exp(-dt / STOR_TAU_BOCCA_APRE);
         pg.bocca = mescolaBocca(pg.bocca, meta, Math.max(kB, 0.35));
-      } else pg.bocca = Object.assign({}, meta);  // chiusa subito
+      } else if (ridotto) pg.bocca = Object.assign({}, meta);
+      else {
+        // si chiude in due fotogrammi: subito per l'occhio, ma senza lo
+        // scatto da una forma all'altra a fine frase e a ogni cambio d'umore
+        const kB = 1 - Math.exp(-dt / STOR_TAU_BOCCA_CHIUDE);
+        pg.bocca = mescolaBocca(pg.bocca, meta, Math.max(kB, 0.5));
+      }
       pg.forma = forma.forma; pg.apertura = forma.apertura; pg.via = forma.via || '';
       // Sul corpo disegnato il volto sta dove dice la sagoma: sulla
       // parabola della Voyager, sul modulo centrale della stazione, un po'
@@ -4961,7 +5023,7 @@
     STOR_VOLTO_MIN_PX, STOR_PERCORSI, STOR_LATI, STOR_LUOGHI, STOR_ANIMAZIONI, STOR_EFFETTI, STOR_POSTI_EFFETTO,
     canonico: storCanonico, famigliaDi: storFamigliaDi, noto: storOggettoNoto, profilo: storProfilo,
     nome: storNome, personalita: storPersonalita,
-    ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale,
+    ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale, boccaBersaglio: storBoccaBersaglio,
     tempoDelCarattere: storTempoDelCarattere,
     geometria: storGeometria, posa: storPosa, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,
     sguardoVerso: storSguardoVerso, parametriEspressione,
