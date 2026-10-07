@@ -416,6 +416,125 @@
         "it": "[tenderly] Il ferro nel tuo sangue e il calcio nelle tue ossa sono nati dentro le stelle. [in awe] Guarda su: siamo tutti fatti di polvere di stelle!",
         "en": "[tenderly] The iron in your blood and the calcium in your bones were made inside stars. [in awe] Look up: we are all made of stardust!"
       }
+    },
+    "studio.studio_cosa_e_la_gravita.2": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.4": {
+      "emozione": "da bullo",
+      "come": "",
+      "conTag": {
+        "it": "[mischievously] Sei solo una luna !!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.5": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] ah ah ah !!!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.1": {
+      "emozione": "infastidito",
+      "come": "",
+      "conTag": {
+        "it": "[annoyed] Smettila !!!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.7": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] esatto, perchè ci trattieni?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.8": {
+      "emozione": "arrabbiato",
+      "come": "",
+      "conTag": {
+        "it": "[angry] ci dobbiamo ribellare!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.9": {
+      "emozione": "arrabbiato",
+      "come": "",
+      "conTag": {
+        "it": "[angry] giusto!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.3": {
+      "emozione": "arrabbiato",
+      "come": "",
+      "conTag": {
+        "it": "[angry] vogliamo essere indipendenti!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.6": {
+      "emozione": "preoccupato",
+      "come": "",
+      "conTag": {
+        "it": "[nervous] oh no! adesso cosa faccio?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.10": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] tranquilla terra!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.11": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] ti spiego io cos'è la gravità!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.12": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "La gravità è una forza attrattiva che tiene uno o più astri stabili."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.13": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Continuo a non capire."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.14": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.15": {
+      "emozione": "assonnato",
+      "come": "",
+      "conTag": {
+        "it": "[sleepy] Potresti spiegarti meglio?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.16": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.17": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Cosa è la massa, cosa è un peso e che cosa è un volume?"
+      }
     }
   }
 }

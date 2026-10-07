@@ -711,6 +711,18 @@
       it: { file: 'storie/luna/it/storia_luna-8.mp3', impronta: '0f693c1b', firma: '1d5082a5f8' }
     },
 
+    'studio.studio_cosa_e_la_gravita.2': {
+      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-2.mp3', impronta: 'be7e5c66', firma: 'd7f88ec9ee', testo: "Ciao Terra, mi chiedevo, perché orbito intorno a te?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.1': {
+      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-1.mp3', impronta: '64994de1', firma: '313954399e', testo: "Smettila !!!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.3': {
+      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-3.mp3', impronta: 'f5ce684c', firma: '4f5fd1dfb2', testo: "vogliamo essere indipendenti!" }
+    },
+
     // Terra — storie/terra/
     'demo.narr.storia_luna.3': {
       it: { file: 'storie/terra/it/storia_luna-3.mp3', impronta: 'dab87ab6', firma: '6a2a22e7e2' }
@@ -724,9 +736,44 @@
       it: { file: 'storie/terra/it/storia_luna-7.mp3', impronta: '866c6b03', firma: 'a67f8c3f95' }
     },
 
+    'studio.studio_cosa_e_la_gravita.4': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-4.mp3', impronta: 'b1ad1131', firma: '3275b71661', testo: "Sei solo una luna !!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.5': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-5.mp3', impronta: 'd98309bb', firma: 'c7187f3542', testo: "ah ah ah !!!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.6': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-6.mp3', impronta: 'bb51ba43', firma: '9c9b19f77f', testo: "oh no! adesso cosa faccio?" }
+    },
+
     // Sole — storie/sole/
     'demo.narr.storia_luna.6': {
       it: { file: 'storie/sole/it/storia_luna-6.mp3', impronta: '1c864e11', firma: 'a395b7f118' }
+    },
+
+    'studio.studio_cosa_e_la_gravita.10': {
+      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-10.mp3', impronta: '8f614565', firma: '8e621c914d', testo: "tranquilla terra!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.11': {
+      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-11.mp3', impronta: '4954554a', firma: '7303242223', testo: "ti spiego io cos'è la gravità!" }
+    },
+
+    // hubble — storie/hubble/
+    'studio.studio_cosa_e_la_gravita.7': {
+      it: { file: 'storie/hubble/it/studio_cosa_e_la_gravita-7.mp3', impronta: '808b37ae', firma: '4b36217b39', testo: "esatto, perchè ci trattieni?" }
+    },
+
+    // iss — storie/iss/
+    'studio.studio_cosa_e_la_gravita.8': {
+      it: { file: 'storie/iss/it/studio_cosa_e_la_gravita-8.mp3', impronta: '3973dac1', firma: '88d874f638', testo: "ci dobbiamo ribellare!" }
+    },
+
+    // css — storie/css/
+    'studio.studio_cosa_e_la_gravita.9': {
+      it: { file: 'storie/tiangong/it/studio_cosa_e_la_gravita-9.mp3', impronta: 'a0f96b63', firma: '385e1ec2fd', testo: "giusto!" }
     },
 
     // ── FINE STORIE COSMICHE ──
