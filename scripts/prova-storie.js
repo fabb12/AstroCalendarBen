@@ -1365,6 +1365,162 @@ prova('lo Studio: la camera viva è di serie, e chi la vuole ferma la ferma', ()
 });
 
 // =====================================================================
+gruppo('la fisica dei personaggi e la domanda al pubblico (v430)');
+
+prova('ogni personaggio ha la sua fisica, e il carattere dei pianeti viene da lei', () => {
+  for (const id of Object.keys(S.STOR_PERSONAGGI)) {
+    const f = S.fisica(id);
+    assert.ok(f.passo >= 0.3 && f.passo <= 3, id + ': passo');
+    assert.ok(f.ingombro >= 1 && f.ingombro < 2.2, id + ': ingombro ' + f.ingombro);
+    for (const l of f.lune) assert.ok(l.r > 0 && l.d > 1 && l.periodo, id + ': luna ' + l.nome);
+  }
+  assert.equal(S.fisica('Mercury').atmosfera, null, 'Mercurio non ha atmosfera');
+  assert.ok(S.fisica('Mercury').passo > 1.5 && S.fisica('Mercury').tremito > 0, 'ed è nervoso');
+  assert.ok(S.fisica('Venus').atmosfera.densita > 0.9, 'Venere ha l\'atmosfera più densa');
+  assert.equal(S.fisica('Jupiter').lune.length, 4, 'le quattro lune di Galileo');
+  assert.deepEqual(S.fisica('Mars').lune.map(l => l.nome), ['Phobos', 'Deimos']);
+  assert.equal(S.fisica('Saturn').anelli, null, 'gli anelli di Saturno sono la sua sagoma');
+  assert.ok(S.fisica('Uranus').anelli.giro > 1.2 && S.fisica('Uranus').testa > 0, 'Urano è coricato, anelli in piedi');
+  assert.ok(S.fisica('Neptune').lune[0].periodo < 0, 'Tritone gira al contrario');
+  assert.ok(S.fisica('Pluto').lune[0].r > 0.4, 'Caronte è grande quasi metà di Plutone');
+  assert.ok(S.fisica('Sun').prominenze && S.fisica('Sun').avatar === 'corona');
+  for (const id of ['Sun', 'Mercury', 'Venus', 'Earth', 'Moon', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'])
+    for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi['storie.fisica.' + id], 'string', id + ' ' + l);
+  assert.match(DIZ.it.messaggi['storie.personalita.Pluto'], /declassat/);
+  assert.match(DIZ.it.messaggi['storie.personalita.Mars'], /umani/);
+  assert.match(S.tratto('Uranus'), /98/);
+  // Chi cambia corpo cambia fisica: il Sole buco nero non ha prominenze
+  const buco = Object.assign({}, S.profilo('Sun'), { sagoma: 'buco_nero' });
+  assert.equal(S.fisica(buco).prominenze, false);
+});
+prova('l\'umore muove la fisica: tempeste, prominenze, atmosfera, lune e anelli', () => {
+  const R = (id, e, en = 0) => S.reazioneFisica(S.fisica(id), e, en);
+  assert.equal(R('Jupiter', 'angry').tempesta, 1, 'Giove arrabbiato: le tempeste più forti');
+  assert.equal(R('Jupiter', 'happy').tempesta, 0);
+  assert.equal(R('Mercury', 'angry').tempesta, 0, 'Mercurio non ha tempo atmosferico da far arrabbiare');
+  assert.ok(R('Sun', 'angry').prominenze > R('Sun', 'sad').prominenze + 0.5, 'il Sole risponde con le prominenze');
+  assert.ok(R('Sun', 'neutral', 1).prominenze > R('Sun', 'neutral', 0).prominenze, 'e parlando');
+  assert.ok(R('Earth', 'angry').atmoK > R('Earth', 'sad').atmoK, 'l\'atmosfera si gonfia con la rabbia');
+  assert.ok(R('Earth', 'angry').atmoR > R('Earth', 'neutral').atmoR + 50, 'e arrossa');
+  assert.ok(R('Jupiter', 'worried').luneK < 0.85, 'le lune si stringono quando ha paura');
+  assert.ok(R('Jupiter', 'surprised').luneK > 1.2, 'e saltano fuori per la sorpresa');
+  assert.ok(R('Saturn', 'happy').anelliInclina > R('Saturn', 'sad').anelliInclina + 0.3, 'gli anelli si alzano per l\'orgoglio');
+  // Le lune disegnate: si stringono, passano davanti e dietro al corpo
+  const f = S.fisica('Jupiter');
+  const dist = re => S.postiLune(f, re, 100, 0, 0).map(m => Math.hypot(m.x, m.y));
+  const calme = dist(R('Jupiter', 'neutral')), paura = dist(R('Jupiter', 'worried'));
+  calme.forEach((d, i) => assert.ok(paura[i] < d, 'luna ' + i + ' più vicina'));
+  const lati = new Set();
+  for (let tl = 0; tl < 12000; tl += 500) for (const m of S.postiLune(f, R('Jupiter', 'neutral'), 100, tl, 0)) lati.add(m.davanti);
+  assert.equal(lati.size, 2, 'le orbite passano davanti e dietro');
+});
+prova('il disegno della fisica: nel planetario, nel ritratto, e la reazione che scivola', () => {
+  scena({ Jupiter: { espressione: 'angry' }, Sun: { espressione: 'angry' } });
+  const { ctx, chiamate } = telaFinta();
+  for (let k = 0; k < 30; k++) { avanza(16); S.disegnaPersonaggi(ctx, 'cielo', [corpo('Jupiter', 300, 300, 3), corpo('Sun', 600, 300, 60)], 800, 600); }
+  assert.ok(chiamate.includes('ellipse') && chiamate.includes('bezierCurveTo'), 'tempeste e prominenze disegnate');
+  const g = S.stato.personaggi.get('Jupiter');
+  assert.ok(g.reazione.tempesta > 0.5 && g.reazione.tempesta < 1.0001, 'la tempesta sale: ' + g.reazione.tempesta);
+  assert.ok(g.tempoLune > 0, 'il tempo delle lune corre');
+  const prima = g.tempoLune;
+  S.espressione('Jupiter', 'sleepy');
+  avanza(16); S.disegnaPersonaggi(ctx, 'cielo', [corpo('Jupiter', 300, 300, 3)], 800, 600);
+  assert.ok(g.reazione.tempesta > 0.4, 'la reazione scivola, non scatta');
+  assert.ok(g.tempoLune > prima, 'e le lune non tornano indietro');
+  S.sgombra();
+  const tela = { clientWidth: 64, clientHeight: 64, getContext: () => telaFinta(64, 64).ctx };
+  for (const id of ['Uranus', 'Mars', 'Pluto', 'Saturn', 'voyager1']) assert.equal(S.ritratto(tela, id, 'happy'), true, id);
+});
+prova('nella 3D le lune vere reagiscono al loro pianeta: si stringono quando ha paura', () => {
+  S.sgombra();
+  globalThis.sol = SOL_FINTO();
+  scena({ Earth: { espressione: 'worried', misura: 'real' } });
+  const TERRA = { x: 1, y: 0, z: 0 }, LUNA = { x: 1.3, y: 0, z: 0 };
+  const g = S.stato.personaggi.get('Earth');
+  g.reazione = S.reazioneFisica(S.fisica('Earth'), 'worried', 0);
+  S.scena3D('Earth', TERRA, 5);
+  const l = S.scena3D('Moon', LUNA, 2);
+  const d = Math.hypot(l.x - TERRA.x, l.y - TERRA.y, l.z - TERRA.z);
+  assert.ok(d < 0.3 * 0.9, 'la Luna si stringe alla Terra: ' + d);
+  assert.equal(S.padreDi('Moon'), 'Earth'); assert.equal(S.padreDi('Io'), null, 'senza tabella dell\'app nessun padre inventato');
+  S.sgombra();
+  assert.deepEqual(S.scena3D('Moon', LUNA, 2), LUNA, 'senza personaggi la Luna è al suo posto');
+  delete globalThis.sol;
+});
+prova('la fisica muove anche il corpo: Mercurio svelto e nervoso, Urano con la testa piegata', () => {
+  scena({ Uranus: { espressione: 'neutral' }, Neptune: { espressione: 'neutral' }, Mercury: { espressione: 'neutral' } });
+  const pg = id => S.stato.personaggi.get(id);
+  const posa = (id, t) => S.posa(pg(id), 50, t, 5000, 0, false, false, false);
+  assert.ok(posa('Uranus', 3000).giro - posa('Neptune', 3000).giro > 0.2, 'Urano piega la testa');
+  let mosso = 0;
+  for (let t = 3000; t < 3400; t += 20) mosso += Math.abs(posa('Mercury', t + 20).dx - posa('Mercury', t).dx);
+  assert.ok(mosso > 3, 'Mercurio non sta fermo: ' + mosso);
+  S.sgombra();
+});
+prova('story_question: il cartello della domanda, validato, che se ne va con la scena', async () => {
+  S.sgombra();
+  for (const [testo, errore] of [
+    [sc('planetarium_view', 'story_question { a: \'Giove\' }'), /vuole il testo/],
+    [sc('planetarium_view', `story_question { text: '${'x'.repeat(201)}' }`), /troppo lungo/],
+    [sc('planetarium_view', "story_question { text: 'Chi?', kind: quiz }"), /kind sconosciuto/],
+    [sc('planetarium_view', "story_question { text: 'Chi?', from: 'Pippo' }"), /Personaggio sconosciuto/],
+    [sc('planetarium_view', "story_question { text: 'Chi?', colore: 'rosso' }"), /Parametro sconosciuto/]
+  ]) assert.throws(() => motore.prepara(demo(testo)), errore);
+  motore.avvia(demo(sc('planetarium_view', "character_show { target: 'Jupiter' }",
+    "story_question { text: 'Chi ha ragione? Giove o Saturno?', a: 'Giove', b: 'Saturno', kind: who_is_right, from: 'Jupiter' }"),
+  sc('planetarium_view', "character_show { target: 'Jupiter' }")), { ripristina() {} });
+  passo(10);
+  assert.equal(S.domanda.testo, 'Chi ha ragione? Giove o Saturno?');
+  assert.equal(S.domanda.tipo, 'who_is_right');
+  const { ctx, chiamate } = telaFinta();
+  S.disegnaPersonaggi(ctx, 'cielo', [corpo('Jupiter', 400, 300, 3)], 800, 600);
+  assert.ok(chiamate.filter(c => c === 'fillText').length >= 4, 'la domanda, le due scelte e l\'invito');
+  passo(2100); passo(10);
+  assert.equal(S.domanda, null, 'la scena dopo non ce l\'ha più');
+  motore.ferma && motore.ferma();
+  S.sgombra();
+});
+prova('lo Studio: la domanda finale nasce dagli eventi, e solo quando è adatta', () => {
+  const tipo = scopo => { const d = St.domandaFinale(St.daModello(scopo)); return d && d.tipo; };
+  assert.equal(tipo('buchi'), 'previsione', 'il Sole ha provato a diventare un buco nero: che cosa diventerà davvero?');
+  assert.equal(tipo('universo'), 'sonda', 'c\'è la Voyager: dove dovrebbe andare?');
+  assert.equal(tipo('avventura'), 'ragione', 'hanno litigato: chi ha ragione?');
+  assert.equal(tipo('libera'), null, 'una storia senza eventi non ha domanda');
+  const p = St.daModello('libera');
+  p.domanda.modo = 'sempre';
+  assert.ok(St.domandaFinale(p), 'ma la si può chiedere sempre');
+  const b = St.daModello('buchi');
+  const d = St.domandaFinale(b);
+  assert.equal(d.chi, 'Sun'); assert.deepEqual([d.a, d.b], ['Nana bianca', 'Buco nero']);
+  // Il copione: una scena in più, valida, col cartello e la battuta
+  const prep = motore.prepara(St.copione(b));
+  const ultima = prep.scene[prep.scene.length - 1];
+  assert.ok(ultima.azioni.some(a => a.comando === 'story_question' && a.parametri.kind === 'prediction'));
+  assert.equal(ultima.azioni.filter(a => a.comando === 'character_speak').length, 1);
+  assert.match(ultima.azioni.find(a => a.comando === 'character_speak').parametri.text, /commenti/);
+  assert.ok(!/story_question/.test(St.copione(b, { scena: 0 })), 'non nella prova di una scena sola');
+  b.domanda.modo = 'mai';
+  assert.ok(!/story_question/.test(St.copione(b)), 'mai: niente domanda');
+  // Scegliere il tipo, o scriverla a mano
+  b.domanda = St.nuovaDomanda({ tipo: 'protagonista' });
+  assert.equal(St.domandaFinale(b).tipo, 'protagonista');
+  b.domanda = St.nuovaDomanda({ testo: 'Vi piacciono i buchi neri?', a: 'Sì', b: 'No', chi: 'sgr_a' });
+  const s = St.domandaFinale(b);
+  assert.equal(s.scritta, true); assert.equal(s.chi, 'sgr_a'); assert.equal(s.testo, 'Vi piacciono i buchi neri?');
+  assert.deepEqual(St.ripulisci(JSON.parse(JSON.stringify(b))).domanda, b.domanda, 'si salva e si rilegge');
+  assert.equal(St.ripulisci({ scene: [] }).domanda.modo, 'auto', 'un progetto vecchio: automatica');
+  // «Io» a inizio frase non è la luna di Giove
+  const f = St.fattiEpisodio(St.daModello('giganti'));
+  assert.ok(!f.nominati.includes('Io'), 'nominati: ' + f.nominati.join(','));
+  for (const scopo of Object.keys(St.STUDIO_SCOPI)) for (const l of ['it', 'en']) {
+    lingua = l;
+    const dd = St.domandaFinale(Object.assign(St.daModello(scopo), { domanda: St.nuovaDomanda({ modo: 'sempre' }) }));
+    if (dd) assert.ok(!/studio\.|\{/.test(dd.testo + dd.a + dd.b), scopo + ' ' + l + ': ' + dd.testo);
+  }
+  lingua = 'it';
+});
+
+// =====================================================================
 gruppo('italiano e inglese');
 
 prova('ogni testo delle storie e dei comandi esiste in tutte e due le lingue', () => {

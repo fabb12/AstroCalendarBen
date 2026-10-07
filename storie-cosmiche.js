@@ -403,6 +403,109 @@
   const STOR_SAGOME_FORMA = ['asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble'];
   const STOR_PIANETI = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
 
+  /* La fisica del personaggio (v430). Chi usa l'app ha chiesto che ogni
+   * personaggio sia **il suo corpo celeste**, con quello che lo distingue
+   * davvero — la superficie, l'atmosfera, gli anelli, le lune che gli
+   * girano attorno, l'eventuale avatar d'energia (la corona del Sole, la
+   * magnetosfera di Giove) — e che la fisica muova anche le emozioni: Giove
+   * arrabbiato ha le tempeste più forti, il Sole risponde con le
+   * prominenze, le lune di un pianeta impaurito gli si stringono attorno,
+   * Saturno gesticola con gli anelli. E soprattutto che **il carattere venga
+   * dalla fisica**: Mercurio è nervoso perché fa un giro del Sole in 88
+   * giorni, Plutone è insicuro perché nel 2006 l'hanno declassato.
+   *
+   *   superficie   cosa c'è sotto (la dice la pagina Demo, la usa il disegno)
+   *   atmosfera    { colore, spessore (in raggi), densita 0–1 } o null
+   *   tempeste     il tipo di maltempo che la rabbia gonfia: vortici (Giove),
+   *                venti (Nettuno), cicloni (Terra), fulmini (Venere),
+   *                polvere (Marte), esagono (Saturno), vulcani (Io)
+   *   prominenze   true per le stelle: gli archi di plasma dal bordo
+   *   avatar       l'energia attorno al corpo: corona, magnetosfera, aura
+   *   anelli       { colore, rx, ry, giro, alfa } — gli anelli sottili di
+   *                Urano (quasi verticali: è coricato di 98°), Nettuno, Giove;
+   *                quelli di Saturno sono già la sua sagoma
+   *   lune         [{ nome, colore, r, d, periodo (ms, < 0 = all'indietro),
+   *                piatto (quanto è schiacciata l'orbita), giro, sasso }]
+   *                in raggi del corpo: abbastanza vicine da stare nel quadro
+   *   passo        quanto è svelto il suo corpo (respiro, occhiate, lune)
+   *   tremito      il nervoso di fondo (Mercurio)
+   *   testa        la testa piegata di serie (Urano, coricato su un fianco)
+   *   tratto       la chiave `storie.fisica.<…>`: perché è fatto così
+   *
+   * Una famiglia dà i valori di serie; un personaggio senza riga eredita
+   * quelli della famiglia (una luna qualunque: niente atmosfera, crateri). */
+  const STOR_FISICA_FAMIGLIE = {
+    stella:    { superficie: 'plasma', atmosfera: { colore: '#fdba74', spessore: 0.16, densita: 0.55 }, prominenze: true, avatar: 'corona', passo: 0.9 },
+    pianeta:   { superficie: 'roccia', atmosfera: null, passo: 1 },
+    luna:      { superficie: 'regolite', atmosfera: null, passo: 1 },
+    nano:      { superficie: 'ghiaccio', atmosfera: null, passo: 1 },
+    asteroide: { superficie: 'roccia', atmosfera: null, passo: 1.15 },
+    cometa:    { superficie: 'ghiaccio_sporco', atmosfera: null, passo: 1.2 },
+    stazione:  { superficie: 'metallo', atmosfera: null, passo: 1.1 },
+    sonda:     { superficie: 'metallo', atmosfera: null, passo: 0.9 },
+    galassia:  { superficie: 'stelle', atmosfera: null, avatar: 'aura', passo: 0.6 },
+    buco:      { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.7 }
+  };
+  const STOR_FISICA = {
+    Sun:     { superficie: 'plasma', atmosfera: { colore: '#fb923c', spessore: 0.2, densita: 0.6 }, prominenze: true, avatar: 'corona',
+      passo: 0.85, tratto: 'Sun' },
+    Mercury: { superficie: 'crateri', atmosfera: null, passo: 1.85, tremito: 0.3, tratto: 'Mercury' },
+    Venus:   { superficie: 'nubi_acide', atmosfera: { colore: '#facc15', spessore: 0.2, densita: 0.95 }, tempeste: 'fulmini',
+      passo: 0.8, tratto: 'Venus' },
+    Earth:   { superficie: 'oceani', atmosfera: { colore: '#7dd3fc', spessore: 0.11, densita: 0.55 }, tempeste: 'cicloni', avatar: 'magnetosfera',
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.27, d: 1.42, periodo: 9000, piatto: 0.34, giro: -0.12 }], tratto: 'Earth' },
+    Moon:    { superficie: 'crateri', atmosfera: null, tratto: 'Moon' },
+    Mars:    { superficie: 'deserto', atmosfera: { colore: '#fdba74', spessore: 0.06, densita: 0.25 }, tempeste: 'polvere', passo: 1.15,
+      lune: [{ nome: 'Phobos', colore: '#a8937f', r: 0.11, d: 1.2, periodo: 2600, piatto: 0.3, giro: 0.05, sasso: true },
+        { nome: 'Deimos', colore: '#c4b39c', r: 0.08, d: 1.48, periodo: 6200, piatto: 0.3, giro: 0.05, sasso: true }], tratto: 'Mars' },
+    Jupiter: { superficie: 'bande', atmosfera: { colore: '#fde7c4', spessore: 0.1, densita: 0.5 }, tempeste: 'vortici', avatar: 'magnetosfera',
+      anelli: { colore: '#c8b49a', rx: 1.3, ry: 0.07, giro: 0.04, alfa: 0.35 }, passo: 0.7,
+      lune: [{ nome: 'Io', colore: '#fde68a', r: 0.09, d: 1.22, periodo: 3000, piatto: 0.12, giro: 0.04 },
+        { nome: 'Europa', colore: '#e0f2fe', r: 0.08, d: 1.38, periodo: 4500, piatto: 0.12, giro: 0.04 },
+        { nome: 'Ganymede', colore: '#d6d3d1', r: 0.11, d: 1.55, periodo: 7000, piatto: 0.12, giro: 0.04 },
+        { nome: 'Callisto', colore: '#a8a29e', r: 0.1, d: 1.72, periodo: 11000, piatto: 0.12, giro: 0.04 }], tratto: 'Jupiter' },
+    Saturn:  { superficie: 'bande', atmosfera: { colore: '#fde68a', spessore: 0.08, densita: 0.45 }, tempeste: 'esagono', passo: 0.85,
+      lune: [{ nome: 'Titan', colore: '#f59e0b', r: 0.13, d: 1.82, periodo: 9000, piatto: 0.26, giro: -0.1 }], tratto: 'Saturn' },
+    Uranus:  { superficie: 'ghiaccio', atmosfera: { colore: '#a5f3fc', spessore: 0.12, densita: 0.55 }, passo: 0.9, testa: 0.3,
+      anelli: { colore: '#e2e8f0', rx: 1.5, ry: 0.36, giro: 1.4, alfa: 0.7 },
+      lune: [{ nome: 'Miranda', colore: '#cbd5e1', r: 0.07, d: 1.3, periodo: 3400, piatto: 0.36, giro: 1.4 },
+        { nome: 'Titania', colore: '#d6d3d1', r: 0.1, d: 1.65, periodo: 7600, piatto: 0.36, giro: 1.4 }], tratto: 'Uranus' },
+    Neptune: { superficie: 'ghiaccio', atmosfera: { colore: '#60a5fa', spessore: 0.12, densita: 0.6 }, tempeste: 'venti', passo: 0.6,
+      anelli: { colore: '#bfdbfe', rx: 1.4, ry: 0.3, giro: -0.3, alfa: 0.3 },
+      lune: [{ nome: 'Triton', colore: '#fbcfe8', r: 0.12, d: 1.6, periodo: -8000, piatto: 0.45, giro: -0.3 }], tratto: 'Neptune' },
+    Pluto:   { superficie: 'ghiaccio_azoto', atmosfera: { colore: '#bfdbfe', spessore: 0.06, densita: 0.25 }, passo: 1.05, tremito: 0.1,
+      lune: [{ nome: 'Charon', colore: '#cbd5e1', r: 0.48, d: 1.7, periodo: 9500, piatto: 0.3, giro: -0.15 }], tratto: 'Pluto' },
+    Io:      { superficie: 'zolfo', atmosfera: null, tempeste: 'vulcani', passo: 1.2 },
+    Europa:  { superficie: 'ghiaccio', atmosfera: null },
+    Titan:   { superficie: 'metano', atmosfera: { colore: '#f59e0b', spessore: 0.22, densita: 0.9 } }
+  };
+  /* Come la fisica risponde a un'emozione: quanto si gonfiano le tempeste
+   * e le prominenze, come cambia l'atmosfera (`k` lo spessore, `tinta` il
+   * colore verso cui va, `alfa` quanto si vede), che fanno le lune (`k` il
+   * raggio dell'orbita: < 1 si stringono, `giro` quanto corrono, `tremito`,
+   * `balla`, `cala`) e gli anelli (`inclina` in radianti, `apri` quanto si
+   * aprono, `brilla`), e quanto si accende l'avatar. */
+  const STOR_FISICA_EMOZIONI = {
+    neutral:   {},
+    happy:     { prominenze: 0.25, atmo: { k: 1.05 }, lune: { giro: 1.25, balla: 0.4 }, anelli: { inclina: 0.12, apri: 0.12, brilla: 0.6 }, avatar: 0.35 },
+    excited:   { tempesta: 0.15, prominenze: 0.7, atmo: { k: 1.15, tinta: '#fde047', mix: 0.2 }, lune: { k: 1.08, giro: 2, balla: 1 },
+      anelli: { inclina: 0.22, apri: 0.3, brilla: 1 }, avatar: 0.8 },
+    laughing:  { tempesta: 0.1, prominenze: 0.55, atmo: { k: 1.1 }, lune: { giro: 1.7, balla: 1 }, anelli: { inclina: 0.1, apri: 0.2, scuoti: 1, brilla: 0.8 }, avatar: 0.6 },
+    surprised: { prominenze: 0.6, atmo: { k: 1.25 }, lune: { k: 1.3, giro: 0.6 }, anelli: { apri: 0.45 }, avatar: 0.6 },
+    love:      { prominenze: 0.3, atmo: { k: 1.15, tinta: '#f472b6', mix: 0.35 }, lune: { k: 0.85, giro: 1.1 }, anelli: { inclina: 0.1, apri: 0.1, brilla: 0.5 }, avatar: 0.6 },
+    thinking:  { lune: { giro: 0.6 }, anelli: { inclina: -0.06 }, avatar: 0.3 },
+    worried:   { tempesta: 0.2, atmo: { k: 0.95, tinta: '#94a3b8', mix: 0.2 }, lune: { k: 0.78, giro: 0.8, tremito: 0.5 }, anelli: { inclina: -0.15, apri: -0.1 }, avatar: 0.2 },
+    sad:       { tempesta: 0.1, atmo: { k: 0.85, tinta: '#64748b', mix: 0.35, alfa: 0.7 }, lune: { k: 0.88, giro: 0.45, cala: 1 },
+      anelli: { inclina: -0.28, apri: -0.2 }, avatar: 0.1 },
+    sleepy:    { atmo: { k: 0.9, alfa: 0.8 }, lune: { k: 0.95, giro: 0.3, cala: 0.5 }, anelli: { inclina: -0.2, apri: -0.3 }, avatar: 0.1 },
+    annoyed:   { tempesta: 0.5, prominenze: 0.45, atmo: { k: 1.15, tinta: '#f97316', mix: 0.2 }, lune: { giro: 1.2, tremito: 0.35 },
+      anelli: { inclina: -0.12, apri: -0.15 }, avatar: 0.5 },
+    angry:     { tempesta: 1, prominenze: 1, atmo: { k: 1.35, tinta: '#ef4444', mix: 0.45 }, lune: { k: 1.05, giro: 1.8, tremito: 1 },
+      anelli: { apri: -0.25, scuoti: 0.6 }, avatar: 1 },
+    bully:     { tempesta: 0.4, prominenze: 0.6, atmo: { k: 1.2, tinta: '#a855f7', mix: 0.2 }, lune: { k: 1.1, giro: 1.4 },
+      anelli: { inclina: 0.3, apri: 0.2, brilla: 1 }, avatar: 0.7 }
+  };
+
   // Le misure del disegno, in pixel CSS.
   const STOR_VOLTO_MIN_PX = 22;      // sotto questo raggio di volto, il disco grafico
   const STOR_DISCO_MIN_PX = 28;      // il disco grafico: mai più piccolo di così
@@ -1004,7 +1107,8 @@
     mosse: new Map(),          // id → { scena, r } quella mostrata
     vicinoVere: null,          // in quale banco sono state lette (sistema o Terra e Luna)
     ritorni: new Map(),        // id → { delta, k, da }
-    effetti: []
+    effetti: [],
+    domanda: null              // il cartello della domanda al pubblico (v430, story_question)
   };
   function movimentoRidotto() {
     try { return !!(radice.matchMedia && radice.matchMedia('(prefers-reduced-motion: reduce)').matches); }
@@ -1109,7 +1213,7 @@
   function storSgombra() {
     for (const p of stor.personaggi.values()) storRitorno(p);
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
-    stor.ultimiDisegnati = []; stor.effetti = [];
+    stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
     storZittisci();
   }
@@ -1433,7 +1537,7 @@
     const pg = stor.personaggi.get(cid);
     if (!pg) {
       const rt = stor.ritorni.get(cid);
-      if (!rt) return vera;
+      if (!rt) return storLunaReagisce(cid, vera, s);
       const f = 1 - liscio((adesso() - rt.da) / STOR_RITORNO_MS);
       if (f <= 0) { stor.ritorni.delete(cid); return vera; }
       if (!rt.delta) return vera;
@@ -1476,6 +1580,36 @@
       pg.ultimoDelta = v3.piu(pg.ultimoDelta, passo);
     }
     stor.mosse.set(cid, { scena: P, r: pg.rMostrato || r || 0 });
+    return P;
+  }
+
+  /* Le lune vere reagiscono al loro pianeta (v430, §6-sexies): una luna che
+   * non è un personaggio, attorno a un pianeta che lo è, si stringe a lui
+   * quando ha paura, si allarga quando si sorprende, trema quando si
+   * arrabbia, balla quando è contento. Lo spostamento entra nella scena
+   * prima della proiezione, come i viaggi; il centro è il pianeta **come
+   * è mostrato** (anche lui può essere in viaggio). */
+  const STOR_PADRI = { Moon: 'Earth', Phobos: 'Mars', Deimos: 'Mars', Charon: 'Pluto' };
+  function storPadreDi(id) {
+    if (STOR_PADRI[id]) return STOR_PADRI[id];
+    const l = tabella('SOL_LUNE').find(x => x.id === id);
+    return l && l.idPianeta ? storCanonico(l.idPianeta) : null;
+  }
+  function storLunaReagisce(id, vera, s) {
+    const padre = storPadreDi(id);
+    const pp = padre && stor.personaggi.get(padre);
+    if (!pp || pp.nascosto || !pp.reazione) return vera;
+    const centro = (stor.mosse.get(padre) || {}).scena;
+    if (!centro) return vera;
+    const re = pp.reazione;
+    let P = v3.piu(centro, v3.per(v3.meno(vera, centro), re.luneK));
+    if (!stor.ridotto && (re.luneTremito || re.luneBalla || re.luneCala)) {
+      const R = Math.max(pp.rMostrato || 0, 4), tt = stor.orologio, f = (seme(id) % 628) / 100;
+      const dx = Math.sin(tt * 0.06 + f) * 0.08 * re.luneTremito;
+      const dy = Math.cos(tt * 0.071 + f) * 0.06 * re.luneTremito
+        - Math.abs(Math.sin(tt / 240 + f)) * 0.15 * re.luneBalla + 0.2 * re.luneCala;   // y in giù
+      P = v3.piu(P, dalloSchermo(storAssiSchermo(s), dx * R, dy * R));
+    }
     return P;
   }
 
@@ -2618,7 +2752,13 @@
     const v = (STOR_CORPI[sagoma] || STOR_CORPI.pianeta).volto;
     return { cx: x + v[0] * R, cy: y + v[1] * R, R: R * v[2] };
   }
-  const ingombroDi = sagoma => (STOR_CORPI[sagoma] || STOR_CORPI.pianeta).ingombro;
+  // Quanto il corpo esce dal suo raggio. Con un profilo (v430) contano
+  // anche le lune e gli anelli della sua fisica (§6-sexies)
+  const ingombroDi = x => {
+    const sag = x && typeof x === 'object' ? x.sagoma : x;
+    const base = (STOR_CORPI[sag] || STOR_CORPI.pianeta).ingombro;
+    return x && typeof x === 'object' ? Math.max(base, storFisica(x).ingombro) : base;
+  };
 
   /* Una parte del corpo: la stesura scura, quella chiara spostata verso la
    * luce (in alto a sinistra) e il pennino attorno, con l'alone sotto. */
@@ -2873,7 +3013,12 @@
     } else if (sagoma === 'anelli') {
       // Gli anelli: la metà di dietro sotto al disco, quella davanti sopra,
       // abbastanza in basso da passare sotto alla bocca
-      const ax = x, ay = y + R * 0.3, rx = R * 1.62, ry = R * 0.4, giro = -0.1;
+      // v430: Saturno gesticola con gli anelli (§6-sexies). L'orgoglio li
+      // alza e li apre come un petto in fuori, la tristezza li lascia
+      // cadere, la rabbia li fa vibrare, e chi parla li muove sulle parole
+      const re = profilo.reazione || null;
+      const gesto = re ? re.anelliInclina + Math.sin(t / 260) * 0.08 * re.energia + Math.sin(t / 90) * 0.05 * re.anelliScuoti : 0;
+      const ax = x, ay = y + R * 0.3, rx = R * 1.62, ry = R * 0.4 * (1 + (re ? Math.max(-0.5, re.anelliApri) : 0)), giro = -0.1 + gesto;
       const anello = (da, a) => {
         for (const [w, c] of [[R * 0.3, INCHIOSTRO], [R * 0.24, '#ead39d'], [R * 0.035, rgba('#8a6d3b', 0.8)]]) {
           ctx.strokeStyle = c; ctx.lineWidth = w;
@@ -2889,6 +3034,15 @@
         for (const dy of [-0.6, -0.35]) { ctx.beginPath(); ctx.ellipse(x, y + dy * R, R * 1.1, R * 0.07, 0, 0, Math.PI * 2); ctx.fill(); }
       });
       anello(0, Math.PI);
+      // e quando è fiero, gli anelli luccicano (è vanitoso, e lo sa)
+      if (re && re.anelliBrilla > 0.05) {
+        for (let k = 0; k < 3; k++) {
+          const a = t / 1400 + k * 2.1, cg = Math.cos(giro), sg = Math.sin(giro);
+          const lx = Math.cos(a) * rx, ly = Math.abs(Math.sin(a)) * ry;
+          luccichio(ctx, ax + lx * cg - ly * sg, ay + lx * sg + ly * cg, R * 0.13 * (0.6 + 0.4 * Math.sin(t / 200 + k)),
+            re.anelliBrilla * (0.5 + 0.5 * Math.sin(t / 330 + k * 1.7)));
+        }
+      }
     } else if (sagoma === 'asteroide') {
       parte(ctx, () => patata(ctx, x, y, R * 0.98, profilo.id, 1.2), profilo.pelle, R, {
         luce: 0.16,
@@ -3366,7 +3520,12 @@
     // fuori-indietro: 0 → oltre 1 → 1
     const c1 = 2.2, v = u - 1;
     const pop = u >= 1 ? 1 : Math.max(0, 1 + (c1 + 1) * v * v * v + c1 * v * v);
-    const respiro = Math.sin(t / 950 + (pg.fase || 0)) * 0.014;
+    // La fisica muove anche il corpo (v430): Mercurio respira svelto e ha il
+    // nervoso addosso, Giove e Nettuno sono lenti, Urano tiene la testa
+    // piegata come il suo asse coricato
+    const fis = pg.profilo ? storFisica(storVesteProfilo(pg)) : null;
+    const passo = fis ? fis.passo : 1;
+    const respiro = Math.sin(t * passo / 950 + (pg.fase || 0)) * 0.014;
     posa.sx = pop * (1 - respiro * 0.5);
     posa.sy = pop * (1 + respiro);
     if (parla) { posa.sy += apertura * 0.1; posa.sx -= apertura * 0.05; posa.giro += Math.sin(t / 230 + (pg.fase || 0)) * 0.035 * apertura; }
@@ -3381,6 +3540,13 @@
     posa.dy -= Math.abs(Math.sin(t / 230 + (pg.fase || 0))) * R * 0.05 * (e.rimbalzo || 0);
     posa.dx += Math.sin(t * 0.11) * R * 0.014 * (e.tremito || 0);
     posa.giro += (e.testa || 0) + Math.sin(t / 1300 + (pg.fase || 0)) * 0.02;
+    if (fis) {
+      posa.giro += fis.testa;
+      if (fis.tremito) {
+        posa.dx += Math.sin(t * 0.09 * passo + (pg.fase || 0)) * R * 0.03 * fis.tremito;
+        posa.giro += Math.sin(t * 0.05 * passo) * 0.05 * fis.tremito;
+      }
+    }
     return posa;
   }
 
@@ -3392,7 +3558,12 @@
   function storDisegnaPersonaggi(ctx, vista, corpi, L, H, margini) {
     storTic();
     const disegnati = [];
-    if (!stor.personaggi.size && !stor.effetti.length) { stor.ultimiDisegnati = disegnati; return disegnati; }
+    // La domanda al pubblico (v430) sta sopra a tutto, anche senza personaggi
+    const domanda = vista !== 'anteprima' && stor.domanda;
+    if (!stor.personaggi.size && !stor.effetti.length) {
+      if (domanda) storDisegnaDomanda(ctx, L, H);
+      stor.ultimiDisegnati = disegnati; return disegnati;
+    }
     const perId = new Map();
     for (const c of corpi) { const id = storCanonico(c.id); if (!perId.has(id)) perId.set(id, c); }
     const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
@@ -3434,7 +3605,7 @@
       piano.push({ pg, c, addosso, Rdisco, corpo3d });
       if (corpo3d) {
         const Rc = Math.max(c.r, STOR_VOLTO_3D_PX * (pg.prosp || 1) / STOR_CORPI[p.sagoma].volto[2]);
-        presi.push({ id: pg.id, x: c.px, y: c.py, R: Rc * ingombroDi(p.sagoma) });
+        presi.push({ id: pg.id, x: c.px, y: c.py, R: Rc * ingombroDi(p) });
       } else if (addosso) presi.push({ id: pg.id, x: c.px + p.dx * c.r, y: c.py + p.dy * c.r, R: Rdisco });
     }
     // Un disco grafico non deve coprire l'astro di un altro personaggio
@@ -3457,7 +3628,7 @@
          * dello schermo, un altro personaggio troppo vicino) o se la storia
          * chiede `badge`, va accanto, legato all'astro da un filo. */
         R = pg.misura === 'costume' && c.costumeR ? c.costumeR : pg.veste ? Math.max(Rbadge, c.r) : Rbadge;
-        const Ri = R * ingombroDi(p.sagoma);
+        const Ri = R * ingombroDi(in3d ? p.sagoma : p);
         const ondeggia = ridotto ? 0 : Math.sin(stor.orologio / 1700 + pg.fase) * 1.2;
         // Fuori dal quadro della scala cosmica, o un'idea che non sta sulla
         // carta (il buco bianco): niente filo verso un astro
@@ -3476,6 +3647,13 @@
         }
         presi.push({ id: pg.id, x: cx, y: cy, R: Ri });
       }
+      // La fisica risponde all'umore (v430, §6-sexies): tempeste, prominenze,
+      // atmosfera, lune e anelli scivolano verso la reazione voluta, e il
+      // tempo delle lune corre più o meno svelto senza mai saltare
+      const fis = storFisica(p);
+      const kR = ridotto ? 1 : 1 - Math.exp(-dt / STOR_TAU_REAZIONE);
+      pg.reazione = mescolaReazione(pg.reazione, storReazioneFisica(fis, pg.espressione, pg.energia || 0), kR);
+      if (!ridotto) pg.tempoLune = (pg.tempoLune || 0) + dt * Math.max(0, pg.reazione.luneGiro) * fis.passo;
       // L'espressione scivola verso quella voluta; col movimento ridotto ci salta
       const voluta = parametriEspressione(pg.espressione);
       const kE = ridotto ? 1 : 1 - Math.exp(-dt / STOR_TAU_ESPRESSIONE);
@@ -3503,7 +3681,7 @@
         if (stor.orologio >= pg.prossimaSaccade) {
           const a = dado(pg.dado) * Math.PI * 2, m = dado(pg.dado) < 0.35 ? 0 : 0.12 + dado(pg.dado) * 0.16;
           pg.saccade = { x: Math.cos(a) * m, y: Math.sin(a) * m * 0.7 };
-          pg.prossimaSaccade = stor.orologio + STOR_SACCADI_MS[0] + dado(pg.dado) * (STOR_SACCADI_MS[1] - STOR_SACCADI_MS[0]);
+          pg.prossimaSaccade = stor.orologio + (STOR_SACCADI_MS[0] + dado(pg.dado) * (STOR_SACCADI_MS[1] - STOR_SACCADI_MS[0])) / fis.passo;
         }
         const peso = parlante && parlante !== pg.id ? 0.4 : 1;
         verso = { x: verso.x + pg.saccade.x * peso, y: verso.y + pg.saccade.y * peso };
@@ -3594,9 +3772,16 @@
             : sole && Number.isFinite(sole.px) && Math.hypot(sole.px - c.px, sole.py - c.py) > 1 ? Math.atan2(c.py - sole.py, c.px - sole.px) : NaN;
           pc = Object.assign({}, p, { codaVerso: verso });
         }
+        pc = Object.assign({}, pc, { reazione: pg.reazione });
+        // Nella 3D le lune e gli anelli veri li disegna l'app
+        const opzFis = { ridotto, tempoLune: pg.tempoLune || 0, lune: !posto.in3d, anelli: !posto.in3d };
         const tutto = g => {
           g.save(); trasforma(g);
-          g.save(); g.globalAlpha *= alfa; disegnaCorpo(g, cx, cy, R, pc, t); g.restore();
+          g.save(); g.globalAlpha *= alfa;
+          storDisegnaFisica(g, 'dietro', cx, cy, R, fis, pg.reazione, t, opzFis);
+          disegnaCorpo(g, cx, cy, R, pc, t);
+          storDisegnaFisica(g, 'davanti', cx, cy, R, fis, pg.reazione, t, opzFis);
+          g.restore();
           storDisegnaVolto(g, geom, p, alfa, t);
           g.restore();
         };
@@ -3610,9 +3795,20 @@
         // Nel planetario no: lì un salto porta il volto fuori dall'astro,
         // che resta fermo dov'è davvero.
         const ritaglia = in3d;
+        // La fisica sull'astro vero (v430): dietro, solo fuori dal suo disco
+        // (l'atmosfera, la corona, le prominenze); le lune e gli anelli solo
+        // nel planetario, perché nella 3D ci sono già quelli veri
+        const opzFis = { ridotto, tempoLune: pg.tempoLune || 0, fuori: true, lune: !in3d, anelli: !in3d };
+        ctx.save(); ctx.globalAlpha *= alfa;
+        storDisegnaFisica(ctx, 'dietro', c.px, c.py, c.r, fis, pg.reazione, t, opzFis);
+        ctx.restore();
         const volto = g => {
           g.save();
           if (ritaglia) { g.beginPath(); g.arc(c.px, c.py, Math.max(c.r * 1.02, R * 1.05), 0, Math.PI * 2); g.clip(); }
+          // le tempeste stanno sul disco, sotto al volto, e prendono la sua luce
+          g.save(); g.globalAlpha *= alfa;
+          storDisegnaFisica(g, 'davanti', c.px, c.py, c.r, fis, pg.reazione, t, opzFis);
+          g.restore();
           trasforma(g);
           storDisegnaVolto(g, geom, p, alfa, t);
           g.restore();
@@ -3642,6 +3838,7 @@
         if (posto) storDisegnaEffetto(ctx, ef, posto.x, posto.y, posto.r, t, L, H, ridotto);
       }
     }
+    if (domanda) storDisegnaDomanda(ctx, L, H);
     stor.ultimiDisegnati = disegnati;
     return disegnati;
   }
@@ -3708,6 +3905,380 @@
     ctx.drawImage(telaLuce, 0, 0, lato, lato, X0, Y0, lato, lato);
     ctx.restore();
   }
+
+  // ===================================================================
+  // 6-sexies. La fisica del personaggio: atmosfera, tempeste, lune e anelli (v430)
+  // ===================================================================
+
+  /* Chi cambia corpo (`character_become`) cambia anche fisica: il Sole
+   * gigante rossa ha un'atmosfera gonfia e polverosa, da buco nero non ha più
+   * prominenze né atmosfera. Il carattere (`tratto`) resta il suo. */
+  const STOR_FISICA_VESTI = {
+    gigante_rossa: { superficie: 'plasma', atmosfera: { colore: '#f97a5c', spessore: 0.3, densita: 0.6 }, prominenze: true, avatar: 'corona', passo: 0.6 },
+    nana_bianca:   { superficie: 'plasma', atmosfera: { colore: '#bfdbfe', spessore: 0.1, densita: 0.5 }, prominenze: false, avatar: 'corona', passo: 1.4 },
+    supernova:     { superficie: 'plasma', atmosfera: null, prominenze: false, avatar: 'aura', passo: 1.2 },
+    buco_nero:     { superficie: 'orizzonte', atmosfera: null, prominenze: false, avatar: 'aura', passo: 0.7 }
+  };
+  const STOR_TAU_REAZIONE = 420;   // quanto ci mette la fisica a seguire l'umore
+  const fisicheFatte = typeof WeakMap === 'function' ? new WeakMap() : null;
+  // La fisica di un profilo: la riga del personaggio sopra a quella della
+  // famiglia, e la veste sopra a tutte e due. Si calcola una volta per profilo.
+  function storFisica(target) {
+    const p = target && typeof target === 'object' ? target : storProfilo(target);
+    if (fisicheFatte && fisicheFatte.has(p)) return fisicheFatte.get(p);
+    const base = STOR_FISICA_FAMIGLIE[p.famiglia] || STOR_FISICA_FAMIGLIE.pianeta;
+    const propria = STOR_FISICA[p.id] || {};
+    const f = Object.assign({ superficie: '', atmosfera: null, tempeste: null, prominenze: false, avatar: null, anelli: null, lune: [],
+      passo: 1, tremito: 0, testa: 0, tratto: '' }, base, propria);
+    const veste = STOR_FISICA_VESTI[p.sagoma];
+    if (veste && STOR_FISICA_VESTI[STOR_PERSONAGGI[p.id] && STOR_PERSONAGGI[p.id].sagoma] !== veste)
+      Object.assign(f, { tempeste: null, anelli: null, lune: [] }, veste);
+    // Saturno ha gli anelli nella sagoma (§6-quater): qui non si ridisegnano
+    if (p.sagoma === 'anelli') f.anelli = null;
+    f.passo = Math.max(0.3, Math.min(3, Number(f.passo) || 1));
+    f.lune = Array.isArray(f.lune) ? f.lune : [];
+    // Quanto il corpo esce dal suo raggio con lune e anelli
+    f.ingombro = Math.max(1, ...f.lune.map(l => l.d + l.r), f.anelli ? f.anelli.rx : 1);
+    if (fisicheFatte) fisicheFatte.set(p, f);
+    return f;
+  }
+  function storTratto(target) {
+    const f = storFisica(target);
+    return f.tratto ? t('storie.fisica.' + f.tratto) || '' : '';
+  }
+
+  /* Come la fisica risponde all'umore, in un istante: una funzione pura
+   * della fisica, dell'espressione e dell'energia di chi parla (le prove la
+   * leggono). Tutti i campi sono numeri, così due reazioni si mescolano
+   * campo per campo e un cambio d'umore scivola invece di scattare. Ciò che
+   * il corpo non ha resta spento: Mercurio non ha atmosfera da arrossare,
+   * la Luna non ha tempeste. */
+  function storReazioneFisica(fis, espressione, energia) {
+    const e = STOR_FISICA_EMOZIONI[espressione] || {};
+    const en = Math.max(0, Math.min(1, Number(energia) || 0));
+    const atmo = e.atmo || {}, lune = e.lune || {}, an = e.anelli || {};
+    const base = fis.atmosfera ? fis.atmosfera.colore : '#ffffff';
+    const tinta = atmo.tinta ? mescolaColori(base, atmo.tinta, atmo.mix || 0) : base;
+    const n = parseInt(/^#?([0-9a-f]{6})$/i.exec(tinta) ? tinta.replace('#', '') : 'ffffff', 16);
+    return {
+      energia: en,
+      tempesta: fis.tempeste ? Math.min(1, (e.tempesta || 0) + 0.15 * en) : 0,
+      prominenze: fis.prominenze ? Math.min(1, 0.12 + (e.prominenze || 0) + 0.25 * en) : 0,
+      atmoK: fis.atmosfera ? (atmo.k || 1) * (1 + 0.08 * en) : 1,
+      atmoAlfa: fis.atmosfera ? (atmo.alfa || 1) : 0,
+      atmoR: n >> 16, atmoG: (n >> 8) & 255, atmoB: n & 255,
+      luneK: fis.lune.length ? (lune.k || 1) : 1,
+      luneGiro: lune.giro === undefined ? 1 : lune.giro,
+      luneTremito: lune.tremito || 0, luneBalla: lune.balla || 0, luneCala: lune.cala || 0,
+      anelliInclina: an.inclina || 0, anelliApri: an.apri || 0, anelliScuoti: an.scuoti || 0, anelliBrilla: an.brilla || 0,
+      avatar: fis.avatar ? Math.min(1, 0.25 + (e.avatar || 0) * 0.75 + 0.2 * en) : 0
+    };
+  }
+  function mescolaReazione(a, b, k) {
+    if (!a) return Object.assign({}, b);
+    const r = {};
+    for (const c of Object.keys(b)) r[c] = mix(Number.isFinite(a[c]) ? a[c] : b[c], b[c], k);
+    return r;
+  }
+  // Il colore dell'atmosfera di adesso, dai tre canali mescolati
+  const coloreAtmo = re => '#' + [re.atmoR, re.atmoG, re.atmoB]
+    .map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+
+  // Una stellina a quattro punte, il luccichio dei cartoni
+  function luccichio(ctx, x, y, s, alfa) {
+    if (!(s > 0.4) || !(alfa > 0.02)) return;
+    ctx.save();
+    ctx.globalAlpha *= Math.min(1, alfa);
+    ctx.fillStyle = '#fffbeb';
+    ctx.beginPath();
+    ctx.moveTo(x, y - s); ctx.quadraticCurveTo(x, y, x + s, y); ctx.quadraticCurveTo(x, y, x, y + s);
+    ctx.quadraticCurveTo(x, y, x - s, y); ctx.quadraticCurveTo(x, y, x, y - s);
+    ctx.fill();
+    ctx.restore();
+  }
+  // Fuori dal disco: per disegnare dietro a un astro che l'app ha già dipinto
+  function clipFuoriDisco(ctx, x, y, R) {
+    ctx.beginPath();
+    ctx.rect(x - R * 6, y - R * 6, R * 12, R * 12);
+    ctx.arc(x, y, R, 0, Math.PI * 2, true);
+    ctx.clip('evenodd');
+  }
+
+  /* Dove sta ogni luna disegnata, in pixel, rispetto al centro del corpo: la
+   * sua orbita schiacciata (la vediamo di taglio) e girata, l'angolo che
+   * cresce col tempo delle lune (`tempoLune`, che corre più o meno svelto con
+   * l'umore senza mai saltare), e la reazione: si stringono, si allargano,
+   * tremano, ballano, si lasciano cadere. `davanti` dice se passa davanti al
+   * corpo (la metà bassa dell'orbita, verso di noi). Funzione pura. */
+  function storPostiLune(fis, re, R, tempoLune, t) {
+    const k = re ? re.luneK : 1;
+    return fis.lune.map((l, i) => {
+      const a = (tempoLune || 0) / (l.periodo || 6000) * Math.PI * 2 + i * 2.1 + 0.6;
+      const lx = Math.cos(a) * l.d * k * R, ly = Math.sin(a) * l.d * k * R * (l.piatto || 0.3);
+      const g = l.giro || 0, cg = Math.cos(g), sg = Math.sin(g);
+      let x = lx * cg - ly * sg, y = lx * sg + ly * cg;
+      if (re) {
+        x += Math.sin(t * 0.06 + i * 1.9) * R * 0.05 * re.luneTremito;
+        y += Math.cos(t * 0.071 + i * 2.3) * R * 0.04 * re.luneTremito;
+        y -= Math.abs(Math.sin(t / 240 + i * 1.3)) * R * 0.1 * re.luneBalla;
+        y += R * 0.14 * re.luneCala * (0.6 + 0.4 * Math.cos(a));
+      }
+      return { x, y, r: Math.max(1.2, l.r * R), davanti: Math.sin(a) > 0, luna: l };
+    });
+  }
+
+  /* Il disegno della fisica, in due strati: `dietro` va prima del corpo
+   * (l'avatar d'energia, l'atmosfera, le prominenze, la metà di dietro di
+   * anelli e orbite), `davanti` dopo il corpo e prima del volto (le
+   * tempeste sul disco, la metà davanti). `opz.fuori` disegna lo strato di
+   * dietro solo fuori dal disco: è il caso dell'astro vero, già dipinto
+   * dall'app, su cui il volto sta addosso. `opz.lune` e `opz.anelli` li
+   * spengono dove l'app disegna già quelli veri (la vista 3D). */
+  function storDisegnaFisica(ctx, strato, x, y, R, fis, re, t, opz = {}) {
+    if (!fis || !re || !(R > 1)) return;
+    const tm = opz.ridotto ? 0 : t;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (strato === 'dietro') {
+      ctx.save();
+      if (opz.fuori) clipFuoriDisco(ctx, x, y, R * 0.98);
+      if (fis.avatar && re.avatar > 0.02) disegnaAvatar(ctx, x, y, R, fis, re, tm);
+      if (fis.atmosfera && re.atmoAlfa > 0.02) {
+        const a = fis.atmosfera, est = R * (1 + a.spessore * re.atmoK);
+        const pulsa = 1 + 0.18 * Math.sin(tm / 170) * re.tempesta;
+        const alfa = Math.min(0.85, a.densita * 0.6 * re.atmoAlfa * pulsa);
+        const col = coloreAtmo(re);
+        const g = ctx.createRadialGradient(x, y, R * 0.97, x, y, est);
+        g.addColorStop(0, rgba(col, alfa)); g.addColorStop(0.45, rgba(col, alfa * 0.45)); g.addColorStop(1, rgba(col, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, est, 0, Math.PI * 2); ctx.fill();
+      }
+      if (fis.prominenze && re.prominenze > 0.02) disegnaProminenze(ctx, x, y, R, re, tm, opz);
+      ctx.restore();
+      if (opz.anelli !== false && fis.anelli) disegnaAnelliFisica(ctx, x, y, R, fis.anelli, re, tm, false);
+      if (opz.lune !== false && fis.lune.length) disegnaLune(ctx, x, y, R, fis, re, opz.tempoLune, tm, false);
+    } else {
+      if (fis.tempeste && re.tempesta > 0.02) {
+        ctx.save();
+        ctx.beginPath(); ctx.arc(x, y, R * 0.99, 0, Math.PI * 2); ctx.clip();
+        disegnaTempesta(ctx, x, y, R, fis.tempeste, re.tempesta, tm, opz);
+        ctx.restore();
+        if (fis.tempeste === 'vulcani') disegnaVulcani(ctx, x, y, R, re.tempesta, tm);
+      }
+      if (opz.anelli !== false && fis.anelli) disegnaAnelliFisica(ctx, x, y, R, fis.anelli, re, tm, true);
+      if (opz.lune !== false && fis.lune.length) disegnaLune(ctx, x, y, R, fis, re, opz.tempoLune, tm, true);
+    }
+    ctx.restore();
+  }
+
+  // L'energia attorno al corpo: la corona a raggi del Sole, la magnetosfera
+  // di Giove e della Terra (le aurore ai poli e le linee del campo), l'aura
+  function disegnaAvatar(ctx, x, y, R, fis, re, t) {
+    const s = re.avatar;
+    if (fis.avatar === 'corona') {
+      const n = 18;
+      for (let k = 0; k < n; k++) {
+        const a = k / n * Math.PI * 2 + t / 14000 + (k % 2) * 0.08;
+        const lun = R * (1.25 + (0.25 + 0.55 * s) * (0.65 + 0.35 * Math.sin(t / 520 + k * 2.7)));
+        const g = ctx.createLinearGradient(x + Math.cos(a) * R, y + Math.sin(a) * R, x + Math.cos(a) * lun, y + Math.sin(a) * lun);
+        g.addColorStop(0, `rgba(254, 240, 138, ${(0.18 + 0.32 * s).toFixed(3)})`); g.addColorStop(1, 'rgba(254, 240, 138, 0)');
+        ctx.fillStyle = g;
+        const w = 0.07 + 0.04 * (k % 3);
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(a - w) * R, y + Math.sin(a - w) * R);
+        ctx.lineTo(x + Math.cos(a) * lun, y + Math.sin(a) * lun);
+        ctx.lineTo(x + Math.cos(a + w) * R, y + Math.sin(a + w) * R);
+        ctx.closePath(); ctx.fill();
+      }
+    } else if (fis.avatar === 'magnetosfera') {
+      // le linee del campo: anse dal polo nord al polo sud, ai due lati
+      ctx.setLineDash([R * 0.08, R * 0.1]); ctx.lineDashOffset = -t / 70;
+      ctx.lineWidth = Math.max(0.8, R * 0.025);
+      ctx.strokeStyle = `rgba(165, 180, 252, ${(0.12 + 0.3 * s).toFixed(3)})`;
+      for (const lato of [-1, 1]) for (const largo of [1.55, 1.95]) {
+        ctx.beginPath();
+        ctx.moveTo(x, y - R * 0.86);
+        ctx.bezierCurveTo(x + lato * R * largo, y - R * 1.15, x + lato * R * largo, y + R * 1.15, x, y + R * 0.86);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      // le aurore: due ovali verdi e viola sopra ai poli, che tremolano
+      for (const polo of [-1, 1]) {
+        const tr = 0.75 + 0.25 * Math.sin(t / 230 + polo);
+        ctx.strokeStyle = `rgba(74, 222, 128, ${((0.2 + 0.55 * s) * tr).toFixed(3)})`;
+        ctx.lineWidth = Math.max(1, R * 0.06);
+        ctx.beginPath(); ctx.ellipse(x, y + polo * R * 0.93, R * 0.34, R * 0.09, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = `rgba(192, 132, 252, ${((0.12 + 0.35 * s) * tr).toFixed(3)})`;
+        ctx.lineWidth = Math.max(0.8, R * 0.03);
+        ctx.beginPath(); ctx.ellipse(x, y + polo * R * 1.0, R * 0.4, R * 0.1, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+    } else {
+      const g = ctx.createRadialGradient(x, y, R * 0.8, x, y, R * (1.5 + 0.5 * s));
+      g.addColorStop(0, `rgba(196, 181, 253, ${(0.15 + 0.35 * s).toFixed(3)})`); g.addColorStop(1, 'rgba(196, 181, 253, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R * (1.5 + 0.5 * s), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  /* Le prominenze: archi di plasma che si alzano dal bordo e ricadono. Con
+   * la rabbia sono di più, più alte, e ogni tanto una si stacca e vola via
+   * (l'espulsione di massa coronale). I piedi stanno dietro al disco. */
+  function disegnaProminenze(ctx, x, y, R, re, t, opz) {
+    const s = re.prominenze;
+    const n = 2 + Math.round(5 * s);
+    const st = { s: seme('prominenze') };
+    for (let k = 0; k < n; k++) {
+      const a = dado(st) * Math.PI * 2 + t / 20000 * (k % 2 ? 1 : -1);
+      const largo = 0.14 + dado(st) * 0.12;
+      const h = R * (0.14 + 0.4 * s * (0.55 + 0.45 * Math.sin(t / (380 + k * 70) + k * 1.7)));
+      const p1 = [x + Math.cos(a - largo) * R * 0.95, y + Math.sin(a - largo) * R * 0.95];
+      const p2 = [x + Math.cos(a + largo) * R * 0.95, y + Math.sin(a + largo) * R * 0.95];
+      const c1 = [x + Math.cos(a - largo * 0.9) * (R + h * 1.5), y + Math.sin(a - largo * 0.9) * (R + h * 1.5)];
+      const c2 = [x + Math.cos(a + largo * 0.9) * (R + h * 1.5), y + Math.sin(a + largo * 0.9) * (R + h * 1.5)];
+      for (const [w, c] of [[R * 0.13, 'rgba(234, 88, 12, 0.55)'], [R * 0.065, 'rgba(251, 146, 60, 0.9)'], [R * 0.025, 'rgba(254, 240, 138, 0.95)']]) {
+        ctx.strokeStyle = c; ctx.lineWidth = Math.max(0.8, w * (0.7 + 0.5 * s));
+        ctx.beginPath(); ctx.moveTo(...p1); ctx.bezierCurveTo(...c1, ...c2, ...p2); ctx.stroke();
+      }
+    }
+    // l'espulsione: una bolla di plasma che parte dal bordo e si allarga
+    if (s > 0.6 && !opz.ridotto) {
+      const ciclo = 2600, u = (t % ciclo) / ciclo;
+      const a = seme('cme' + Math.floor(t / ciclo)) % 628 / 100;
+      const d = R * (1.05 + u * 1.3), q = R * (0.12 + u * 0.35);
+      ctx.strokeStyle = `rgba(251, 146, 60, ${((1 - u) * 0.7 * (s - 0.5) * 2).toFixed(3)})`;
+      ctx.lineWidth = Math.max(1, R * 0.05 * (1 - u));
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, q, a - 1.4, a + 1.4); ctx.stroke();
+    }
+  }
+
+  // Gli anelli sottili di Urano, Nettuno e Giove: la metà di dietro prima del
+  // corpo, quella davanti dopo. L'umore li inclina e li apre come gesti.
+  function disegnaAnelliFisica(ctx, x, y, R, an, re, t, davanti) {
+    const gesto = re.anelliInclina * 0.6 + Math.sin(t / 260) * 0.06 * re.energia + Math.sin(t / 90) * 0.05 * re.anelliScuoti;
+    const rx = R * an.rx, ry = Math.max(R * 0.02, R * an.ry * (1 + re.anelliApri * 0.6));
+    const giro = an.giro + gesto;
+    const da = davanti ? 0 : Math.PI, a = davanti ? Math.PI : Math.PI * 2;
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = rgba(INCHIOSTRO, an.alfa * 0.6); ctx.lineWidth = Math.max(1.2, R * 0.06);
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, giro, da, a); ctx.stroke();
+    ctx.strokeStyle = rgba(an.colore, an.alfa); ctx.lineWidth = Math.max(0.8, R * 0.035);
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, giro, da, a); ctx.stroke();
+    ctx.lineCap = 'round';
+  }
+
+  function disegnaLune(ctx, x, y, R, fis, re, tempoLune, t, davanti) {
+    for (const m of storPostiLune(fis, re, R, tempoLune, t)) {
+      if (m.davanti !== davanti) continue;
+      const lx = x + m.x, ly = y + m.y, l = m.luna;
+      if (m.r < 2.2) {
+        ctx.fillStyle = l.colore; ctx.beginPath(); ctx.arc(lx, ly, m.r, 0, Math.PI * 2); ctx.fill();
+        continue;
+      }
+      parte(ctx, l.sasso ? () => patata(ctx, lx, ly, m.r, l.nome, 1.4) : () => { ctx.beginPath(); ctx.arc(lx, ly, m.r, 0, Math.PI * 2); },
+        l.colore, m.r, { luce: 0.18, pennino: 0.07 });
+    }
+  }
+
+  /* Il maltempo sul disco, tanto più forte quanto più il personaggio è
+   * arrabbiato (`s`, 0–1). Ognuno ha il suo, quello vero: Giove i vortici
+   * attorno alla Grande Macchia Rossa, Nettuno i venti più veloci del
+   * Sistema Solare e la sua macchia scura, la Terra i cicloni, Venere i
+   * fulmini nelle nubi d'acido, Marte le tempeste di polvere, Saturno
+   * l'esagono al polo. */
+  function disegnaTempesta(ctx, x, y, R, tipo, s, t, opz) {
+    const veloce = 0.3 + 1.7 * s;
+    if (tipo === 'vortici' || tipo === 'cicloni') {
+      const giove = tipo === 'vortici';
+      const centri = giove ? [[0.62, 0.46, 0.2], [-0.5, 0.58, 0.09], [0.2, 0.7, 0.07], [-0.2, -0.5, 0.08]] : [[-0.45, 0.42, 0.16], [0.55, 0.3, 0.13], [0.1, -0.62, 0.11]];
+      const quanti = giove ? 1 + Math.round(3 * s) : 1 + Math.round(2 * s);
+      centri.slice(0, quanti).forEach(([cx, cy, q], i) => {
+        const px = x + cx * R, py = y + cy * R, r = q * R * (1 + 0.5 * s);
+        ctx.strokeStyle = giove && !i ? `rgba(185, 28, 28, ${(0.3 + 0.45 * s).toFixed(3)})` : `rgba(255, 255, 255, ${(0.35 + 0.45 * s).toFixed(3)})`;
+        ctx.lineWidth = Math.max(0.8, R * 0.025);
+        const giro = t / 1000 * veloce * (i % 2 ? -1 : 1) * Math.PI;
+        for (let k = 0; k < 3; k++) {
+          ctx.beginPath(); ctx.ellipse(px, py, r * (1 - k * 0.28), r * (1 - k * 0.28) * (giove ? 0.6 : 0.9), 0, giro + k * 2, giro + k * 2 + 3.6); ctx.stroke();
+        }
+      });
+      if (giove && s > 0.55) lampoTempesta(ctx, x, y, R, s, t, opz, '#fef9c3');
+    } else if (tipo === 'venti') {
+      // le nubi bianche che corrono, la macchia scura che si gonfia
+      ctx.fillStyle = `rgba(30, 58, 138, ${(0.25 + 0.4 * s).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(x - R * 0.6, y + R * 0.5, R * 0.18 * (1 + 0.6 * s), R * 0.1 * (1 + 0.6 * s), 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255, 255, 255, ${(0.3 + 0.5 * s).toFixed(3)})`;
+      for (let k = 0; k < 2 + Math.round(3 * s); k++) {
+        const v = R * 0.00045 * veloce * (1 + k * 0.3);
+        const px = x - R * 1.2 + (((t * v + k * R * 0.83) % (R * 2.4)) + R * 2.4) % (R * 2.4);
+        const py = y + R * (-0.7 + k * 0.33);
+        ctx.beginPath(); ctx.ellipse(px, py, R * 0.22, R * 0.025, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (tipo === 'fulmini') {
+      ctx.strokeStyle = `rgba(254, 249, 195, ${(0.25 + 0.4 * s).toFixed(3)})`;
+      ctx.lineWidth = Math.max(1, R * 0.05);
+      const sp = (t / 1000 * veloce * R * 0.25) % (R * 0.5);
+      for (const dy of [-0.55, 0, 0.55]) {
+        ctx.beginPath();
+        ctx.moveTo(x - R * 1.1 + sp, y + (dy - 0.2) * R);
+        ctx.quadraticCurveTo(x + sp * 0.5, y + dy * R, x - R * 1.1 + sp, y + (dy + 0.2) * R);
+        ctx.stroke();
+      }
+      lampoTempesta(ctx, x, y, R, s, t, opz, '#fefce8');
+    } else if (tipo === 'polvere') {
+      ctx.fillStyle = `rgba(194, 65, 12, ${(0.45 * s).toFixed(3)})`;
+      ctx.fillRect(x - R, y - R, R * 2, R * 2);
+      ctx.strokeStyle = `rgba(253, 186, 116, ${(0.5 * s).toFixed(3)})`;
+      ctx.lineWidth = Math.max(1, R * 0.06);
+      for (let k = 0; k < 4; k++) {
+        const px = x - R * 1.3 + (((t * R * 0.0004 * veloce + k * R * 0.65) % (R * 2.6)) + R * 2.6) % (R * 2.6);
+        ctx.beginPath(); ctx.moveTo(px, y + R * (-0.6 + k * 0.38)); ctx.lineTo(px + R * 0.45, y + R * (-0.65 + k * 0.38)); ctx.stroke();
+      }
+    } else if (tipo === 'esagono') {
+      ctx.strokeStyle = `rgba(120, 85, 30, ${(0.25 + 0.45 * s).toFixed(3)})`;
+      ctx.lineWidth = Math.max(1, R * 0.035);
+      const giro = t / 6000 * veloce;
+      ctx.beginPath();
+      for (let k = 0; k <= 6; k++) {
+        const a = giro + k / 6 * Math.PI * 2;
+        const px = x + Math.cos(a) * R * 0.3, py = y - R * 0.78 + Math.sin(a) * R * 0.1;
+        if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+      if (s > 0.4) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${(0.6 * s).toFixed(3)})`;
+        ctx.beginPath(); ctx.ellipse(x + R * 0.55, y + R * 0.55, R * 0.12 * s, R * 0.06 * s, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+  // Un fulmine: pochi, distanti, mai uno sfarfallio (col movimento ridotto niente)
+  function lampoTempesta(ctx, x, y, R, s, t, opz, colore) {
+    if (opz.ridotto) return;
+    const ciclo = 1700 - 1000 * s, n = Math.floor(t / ciclo), u = (t % ciclo) / ciclo;
+    if (u > 0.09) return;
+    const st = { s: seme('lampo' + n) || 1 };
+    let px = x + (dado(st) - 0.5) * R * 1.1, py = y - R * 0.5 + dado(st) * R * 0.3;
+    ctx.strokeStyle = colore; ctx.lineWidth = Math.max(1, R * 0.035);
+    ctx.beginPath(); ctx.moveTo(px, py);
+    for (let k = 0; k < 4; k++) { px += (dado(st) - 0.5) * R * 0.25; py += R * 0.14; ctx.lineTo(px, py); }
+    ctx.stroke();
+  }
+  // I pennacchi dei vulcani di Io: ombrelli di zolfo sul bordo, una colonna
+  // sottile e una cupola sfumata che ricade (non un tratto: sembravano antenne)
+  function disegnaVulcani(ctx, x, y, R, s, t) {
+    for (const a of [-1.9, -1.2, -0.5].slice(0, 1 + Math.round(2 * s))) {
+      const h = R * (0.15 + 0.35 * s) * (0.85 + 0.15 * Math.sin(t / 300 + a));
+      const bx = x + Math.cos(a) * R * 0.97, by = y + Math.sin(a) * R * 0.97;
+      const tx = x + Math.cos(a) * (R + h * 0.7), ty = y + Math.sin(a) * (R + h * 0.7);
+      const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, h * 0.6);
+      g.addColorStop(0, `rgba(253, 230, 138, ${(0.35 + 0.35 * s).toFixed(3)})`); g.addColorStop(1, 'rgba(250, 204, 21, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(tx, ty, h * 0.6, h * 0.42, a + Math.PI / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(250, 204, 21, ${(0.25 + 0.3 * s).toFixed(3)})`;
+      const nx = -Math.sin(a), ny = Math.cos(a), w = R * 0.035;
+      ctx.beginPath();
+      ctx.moveTo(bx + nx * w, by + ny * w); ctx.lineTo(tx + nx * w * 0.4, ty + ny * w * 0.4);
+      ctx.lineTo(tx - nx * w * 0.4, ty - ny * w * 0.4); ctx.lineTo(bx - nx * w, by - ny * w);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
 
   // ===================================================================
   // 7. I ganci dei renderer
@@ -4360,6 +4931,118 @@
     ctx.restore();
   }
 
+  /* Il cartello della domanda al pubblico (v430, `story_question`). Sta in
+   * alto, sotto al cartello «Sei qui», nello stesso adesivo: la domanda a
+   * capo su al più tre righe, poi le due scelte A e B (se ci sono) in due
+   * pillole di colore diverso, e l'invito a rispondere. Compare col pop
+   * elastico; col movimento ridotto c'è e basta. */
+  // La larghezza di un testo; senza misura (una tela finta) una stima
+  function larghezzaTesto(ctx, testo, fs) {
+    const m = ctx.measureText ? ctx.measureText(testo) : null;
+    return m && Number.isFinite(m.width) ? m.width : String(testo).length * fs * 0.55;
+  }
+  function storRigheTesto(ctx, testo, largo, max, fs) {
+    const parole = String(testo).split(/\s+/).filter(Boolean), righe = [];
+    let riga = '';
+    for (const p of parole) {
+      const prova = riga ? riga + ' ' + p : p;
+      if (riga && larghezzaTesto(ctx, prova, fs) > largo) { righe.push(riga); riga = p; }
+      else riga = prova;
+    }
+    if (riga) righe.push(riga);
+    if (righe.length > max) { righe.length = max; righe[max - 1] = righe[max - 1].replace(/\s*\S*$/, '') + '…'; }
+    return righe;
+  }
+  function storDisegnaDomanda(ctx, L, H) {
+    const d = stor.domanda;
+    if (!ctx || !d || !(L > 0 && H > 0)) return;
+    const ora = adesso();
+    const ridotto = movimentoRidotto();
+    const u = ridotto ? 1 : Math.min(1, (ora - d.da) / 560);
+    const c1 = 1.9, v = u - 1;
+    const pop = u >= 1 ? 1 : Math.max(0, 1 + (c1 + 1) * v * v * v + c1 * v * v);
+    const carattere = (radice.document && radice.document.body && radice.getComputedStyle
+      ? radice.getComputedStyle(radice.document.body).fontFamily : '') || 'sans-serif';
+    const fsC = Math.max(15, Math.min(24, L * 0.026));
+    const fs = Math.max(14, Math.min(22, L * 0.024));
+    const w = Math.min(L - 24, 600);
+    ctx.save();
+    ctx.font = `800 ${fs}px ${carattere}`;
+    const righe = storRigheTesto(ctx, d.testo, w - fs * 2, 3, fs);
+    const scelte = [d.a, d.b].filter(Boolean);
+    const fsS = fs * 0.85, hS = fsS * 2;
+    ctx.font = `800 ${fsS}px ${carattere}`;
+    const largoS = Math.max(0, ...scelte.map(x => larghezzaTesto(ctx, x, fsS))) + hS * 1.6;
+    const inColonna = scelte.length === 2 && largoS * 2 + fs > w - fs * 1.6;
+    const altScelte = !scelte.length ? 0 : (inColonna ? scelte.length * (hS + 6) : hS + 6);
+    const fsI = Math.max(10, fs * 0.58);
+    const h = fs * 0.9 + righe.length * fs * 1.25 + (altScelte ? altScelte + fs * 0.35 : 0) + fsI * 1.9;
+    const cx = L / 2;
+    const y0 = (L < 640 ? 100 : 16) + fsC * 2.55 + 12;
+    const cy = Math.min(H - h / 2 - 8, y0 + h / 2) + (ridotto ? 0 : Math.sin(ora / 1900) * 1.5);
+    ctx.globalAlpha = Math.min(1, u * 2.5);
+    ctx.translate(cx, cy);
+    ctx.scale(pop, pop);
+    // l'adesivo: l'ombra piatta, il fondo viola, il bordo color panna
+    ctx.fillStyle = 'rgba(8, 4, 20, 0.55)';
+    rettangolo(ctx, -w / 2 + 3, -h / 2 + 4, w, h, fs * 0.9); ctx.fill();
+    const fondo = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    fondo.addColorStop(0, 'rgba(60, 36, 110, 0.95)'); fondo.addColorStop(1, 'rgba(26, 16, 56, 0.95)');
+    ctx.fillStyle = fondo;
+    rettangolo(ctx, -w / 2, -h / 2, w, h, fs * 0.9); ctx.fill();
+    ctx.lineWidth = 2.4; ctx.strokeStyle = 'rgba(255, 248, 235, 0.9)'; ctx.stroke();
+    // il punto di domanda, nel suo tondo, che dondola
+    const qx = -w / 2 + fs * 0.2, qy = -h / 2 + fs * 0.15, qr = fs * 0.8;
+    ctx.save();
+    ctx.translate(qx, qy); ctx.rotate(ridotto ? 0 : Math.sin(ora / 500) * 0.15);
+    ctx.beginPath(); ctx.arc(0, 0, qr, 0, Math.PI * 2);
+    ctx.fillStyle = '#fbbf24'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
+    ctx.font = `900 ${fs * 1.15}px ${carattere}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = INCHIOSTRO;
+    ctx.fillText('?', 0, fs * 0.05);
+    ctx.restore();
+    // la domanda
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    ctx.font = `800 ${fs}px ${carattere}`;
+    let y = -h / 2 + fs * 0.9 + fs * 0.5;
+    for (const r of righe) {
+      ctx.lineWidth = Math.max(3, fs * 0.2); ctx.strokeStyle = INCHIOSTRO; ctx.strokeText(r, 0, y);
+      ctx.fillStyle = '#fff8eb'; ctx.fillText(r, 0, y);
+      y += fs * 1.25;
+    }
+    // le scelte
+    if (scelte.length) {
+      y += fs * 0.1;
+      const colori = [['#fbbf24', '#78350f'], ['#67e8f9', '#164e63']];
+      const lw = inColonna ? Math.min(w - fs * 2, largoS) : largoS;
+      const posti = inColonna ? scelte.map((_, i) => [0, y + i * (hS + 6) + hS / 2])
+        : scelte.length === 1 ? [[0, y + hS / 2]] : [[-(lw + fs) / 2, y + hS / 2], [(lw + fs) / 2, y + hS / 2]];
+      scelte.forEach((testo, i) => {
+        const [px, py] = posti[i];
+        ctx.font = `800 ${fsS}px ${carattere}`;
+        rettangolo(ctx, px - lw / 2, py - hS / 2, lw, hS, hS / 2);
+        ctx.fillStyle = 'rgba(255, 248, 235, 0.96)'; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
+        const lx = px - lw / 2 + hS / 2;
+        ctx.beginPath(); ctx.arc(lx, py, hS * 0.36, 0, Math.PI * 2);
+        ctx.fillStyle = colori[i][0]; ctx.fill(); ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = colori[i][1];
+        ctx.fillText(i ? 'B' : 'A', lx, py + fsS * 0.04);
+        ctx.fillStyle = INCHIOSTRO;
+        ctx.fillText(testo, px + hS * 0.3, py + fsS * 0.04, lw - hS * 1.3);
+      });
+      y += altScelte;
+    }
+    // l'invito
+    const invito = t('storie.domanda.invito');
+    if (invito) {
+      ctx.font = `700 ${fsI}px ${carattere}`;
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText(invito, 0, h / 2 - fsI * 1.05, w - fs);
+    }
+    ctx.restore();
+  }
+
   // ===================================================================
   // 7-quater. I rumori: botti, boing e scintille (v416)
   // ===================================================================
@@ -4644,7 +5327,9 @@
     parametroSconosciuto: 'Parametro sconosciuto: {nome}',
     narraVuota: 'character_speak vuole un id o un testo',
     narraLunga: 'Testo di narrazione troppo lungo (al massimo 400 caratteri)',
-    narraId: 'Narrazione sconosciuta: {id}'
+    narraId: 'Narrazione sconosciuta: {id}',
+    domandaVuota: 'story_question vuole il testo della domanda (text)',
+    domandaLunga: '{campo} è troppo lungo (al massimo {max} caratteri)'
   };
   function errore(chiave, dati = {}) {
     const k = 'demo.err.' + chiave;
@@ -4987,6 +5672,41 @@
   });
   function sceltaSuono(p) { return scelta(p.sound, 'sound', ['auto', 'off'].concat(STOR_SUONI)); }
 
+  /* La domanda al pubblico (v430): il cartello che chiude un episodio con
+   * una domanda vera, nata da quello che è successo — «Chi ha ragione?»,
+   * «Dove dovrebbe andare la sonda?», una scelta fra A e B, una previsione.
+   * La scrive lo Studio (`studioDomandaFinale`) o chi scrive il copione; qui
+   * c'è solo il cartello, che resta per tutta la scena e se ne va con lei.
+   * Il personaggio che la pone la dice con `character_speak` nella stessa
+   * scena. `kind` dice il tipo (serve al disegno: la sonda ha la parabola,
+   * la fiducia un cuore) e le scelte `a` e `b` sono facoltative: una
+   * previsione può restare aperta. */
+  const STOR_TIPI_DOMANDA = ['who_is_right', 'probe', 'trust', 'explore', 'choice', 'prediction', 'next_star'];
+  const STOR_DOMANDA_MAX = 200, STOR_SCELTA_MAX = 60;
+  Object.assign(COMANDI, {
+    story_question: {
+      verifica(p) {
+        campi(p, ['text', 'a', 'b', 'kind', 'from']);
+        richiedi(typeof p.text === 'string' && p.text.trim(), 'domandaVuota');
+        richiedi(p.text.length <= STOR_DOMANDA_MAX, 'domandaLunga', { campo: 'text', max: STOR_DOMANDA_MAX });
+        for (const c of ['a', 'b']) {
+          richiedi(p[c] === undefined || typeof p[c] === 'string', 'valoreIgnoto', { campo: c, nome: String(p[c]), elenco: '' });
+          richiedi(p[c] === undefined || p[c].length <= STOR_SCELTA_MAX, 'domandaLunga', { campo: c, max: STOR_SCELTA_MAX });
+        }
+        scelta(p.kind, 'kind', STOR_TIPI_DOMANDA);
+        if (p.from !== undefined) bersaglio({ target: p.from });
+      },
+      crea(p) {
+        if (stor.anteprima) storChiudiAnteprima();
+        const d = { testo: p.text.trim(), a: (p.a || '').trim(), b: (p.b || '').trim(), tipo: p.kind || 'choice',
+          chi: p.from ? storCanonico(p.from) : null, da: adesso() };
+        stor.domanda = d;
+        storSuona('ding', { seme: 'domanda' });
+        return { chiudi() { if (stor.domanda === d) stor.domanda = null; } };
+      }
+    }
+  });
+
   function registraComandi() {
     const d = radice.AstroDemo;
     if (!d || typeof d.registra !== 'function') return false;
@@ -5041,7 +5761,7 @@
       storPalco(ctx, w, h, stor.orologio);
       // il personaggio col suo corpo, lo stesso che avrà nel cielo
       const p = storProfilo(a.target);
-      const r = Math.min(w, h) * 0.4 / Math.max(1, ingombroDi(p.sagoma) * 0.8);
+      const r = Math.min(w, h) * 0.4 / Math.max(1, ingombroDi(p) * 0.8);
       storDisegnaPersonaggi(ctx, 'anteprima', [{ id: a.target, px: w / 2, py: h / 2 + (p.sagoma === 'voyager' ? r * 0.12 : 0), r: 1, costumeR: r }],
         w, h, { su: 0, giu: 0, lati: 0 });
       a.raf = radice.requestAnimationFrame(passo);
@@ -5080,14 +5800,21 @@
     const nome = STOR_ESPRESSIONI[espressioneScelta] ? espressioneScelta : profilo.espressione;
     const pg = nuovoStato(id, profilo, { espressione: nome, misura: 'costume' });
     pg.espr = parametriEspressione(nome);
-    const r = Math.min(w, h) * (opz.misura || 0.36) / Math.max(1, ingombroDi(profilo.sagoma) * 0.75);
+    const r = Math.min(w, h) * (opz.misura || 0.36) / Math.max(1, ingombroDi(opz.fisica === false ? profilo.sagoma : profilo) * 0.75);
     const x = w / 2, y = h / 2 + (profilo.sagoma === 'voyager' ? r * 0.15 : 0);
     const sulCorpo = storVoltoNelCorpo(profilo.sagoma, x, y, r);
     const geom = storGeometria(sulCorpo.cx, sulCorpo.cy, sulCorpo.R, profilo, {
       espr: pg.espr, sguardo: { x: 0, y: 0 }, battito: 0, bocca: Object.assign({}, STOR_BOCCHE[pg.espr.bocca] || STOR_BOCCHE.chiusa)
     });
     ctx.save();
-    disegnaCorpo(ctx, x, y, r, profilo, 0);
+    // La fisica (v430): l'atmosfera, gli anelli sottili, le lune ferme al
+    // loro posto di partenza. È ciò che fa riconoscere una figurina piccola:
+    // Urano col suo anello in piedi, Marte coi due sassolini, Plutone e Caronte
+    const fis = opz.fisica === false ? null : storFisica(profilo);
+    const re = fis ? storReazioneFisica(fis, nome, 0) : null;
+    if (fis) storDisegnaFisica(ctx, 'dietro', x, y, r, fis, re, 0, { ridotto: true, tempoLune: 0 });
+    disegnaCorpo(ctx, x, y, r, re ? Object.assign({}, profilo, { reazione: re }) : profilo, 0);
+    if (fis) storDisegnaFisica(ctx, 'davanti', x, y, r, fis, re, 0, { ridotto: true, tempoLune: 0 });
     storDisegnaVolto(ctx, geom, profilo, 1, 0);
     ctx.restore();
     return true;
@@ -5152,6 +5879,9 @@
         nome.textContent = storNome(p);
         nome.style.color = p.sottotitolo;
         li.append(nome, document.createTextNode(' — ' + storPersonalita(p)));
+        // v430: perché è fatto così, la fisica sotto al carattere
+        const tratto = storTratto(p);
+        if (tratto) { const sm = document.createElement('small'); sm.className = 'storia-tratto'; sm.textContent = ' ' + tratto; li.append(sm); }
         cast.append(li);
       }
       const azioni = document.createElement('div');
@@ -5279,6 +6009,10 @@
     voltoNelCorpo: storVoltoNelCorpo, aperturaOcchio: storAperturaOcchio, STOR_SAGOME, STOR_CORPI,
     STOR_VESTI, vesteProfilo: storVesteProfilo, scalaDi: storScalaDi, disegnaCorpo, disegnaVolto: storDisegnaVolto, disegnaSegno: storDisegnaSegno,
     riempiPagina: storRiempiPagina, storie: storieDisponibili,
+    STOR_FISICA, STOR_FISICA_FAMIGLIE, STOR_FISICA_EMOZIONI, STOR_TIPI_DOMANDA,
+    fisica: storFisica, reazioneFisica: storReazioneFisica, postiLune: storPostiLune, tratto: storTratto,
+    disegnaFisica: storDisegnaFisica, lunaReagisce: storLunaReagisce, padreDi: storPadreDi,
+    get domanda() { return stor.domanda ? Object.assign({}, stor.domanda) : null; },
     stato: stor,
     STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
     lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
