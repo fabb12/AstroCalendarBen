@@ -956,7 +956,8 @@
     const g = st.sguardo || { x: 0, y: 0 };
     const gm = Math.hypot(g.x, g.y);
     const gx = gm > 1 ? g.x / gm : g.x, gy = gm > 1 ? g.y / gm : g.y;
-    const iride = rx * Math.min(0.8, 0.66 * Math.max(0.6, e.iride || 1));
+    // v432: l'iride un poco più grande (era 0,66): lo sguardo più dolce
+    const iride = rx * Math.min(0.8, 0.7 * Math.max(0.6, e.iride || 1));
     // la pupilla è grande: di serie occupa i tre quarti dell'iride, e
     // dell'iride resta una corona di colore
     const pupilla = Math.min(iride * 0.84, iride * 0.68 * Math.max(0.5, Math.min(1.3, e.pupilla)));
@@ -1042,7 +1043,8 @@
       // il segno che si legge meglio su un astro piccolo. Sotto ai baffi
       // scende un poco (v426), se no i baffi la coprivano tutta
       x: cx + (e.spostaBocca || 0) * R, y: cy + (profilo.baffi ? 0.5 : 0.42) * R,
-      larg: b.larg * R * 1.3 * (lei ? 0.94 : 1), aper: b.aper * R * 1.3, tondo: b.tondo, onda: b.onda || 0, denti: b.denti || 0,
+      // v432: un filo più stretta (era 1,3), più da bambola
+      larg: b.larg * R * 1.2 * (lei ? 0.94 : 1), aper: b.aper * R * 1.3, tondo: b.tondo, onda: b.onda || 0, denti: b.denti || 0,
       storta: e.storta || 0,
       // la curvatura dell'espressione resta anche parlando (si parla sorridendo)
       curva: Math.max(-1, Math.min(1, b.curva + e.curva * (b.aper > 0.04 ? 0.5 : 1)))
@@ -1050,7 +1052,8 @@
     const guance = e.guance > 0.05 ? occhi.map(occ => ({ lato: occ.lato, x: Math.min(Math.abs(occ.cx + occ.lato * occ.rx * 0.45 - cx), R * 0.6) * occ.lato + cx,
       // con gli occhi spalancati (la sorpresa) le guance non scappano dal viso
       y: Math.min(occ.cy + occ.ry * 1.5, cy + 0.36 * R),
-      rx: Math.min(occ.rx, o.r * R * 1.05) * 0.78, ry: Math.min(occ.rx, o.r * R * 1.05) * 0.46, alfa: Math.min(0.8, 0.28 + e.guance * 0.45), linee: e.guance > 1.05 })) : [];
+      // v432: guance più tonde e un poco più grandi (erano 0,78 × 0,46)
+      rx: Math.min(occ.rx, o.r * R * 1.05) * 0.86, ry: Math.min(occ.rx, o.r * R * 1.05) * 0.54, alfa: Math.min(0.8, 0.28 + e.guance * 0.45), linee: e.guance > 1.05 })) : [];
     // Il naso: una virgola d'inchiostro fra gli occhi e la bocca (più
     // grande e col suo bulbo per lui)
     const naso = { x: cx + (e.spostaBocca || 0) * R * 0.4, y: cy + 0.2 * R, r: R * (lei ? 0.04 : 0.058) };
@@ -2240,22 +2243,58 @@
     }
   }
 
+  /* Il volto girato (v432). Quando la regia gira attorno al personaggio
+   * (`story_camera { mode: orbit }`, §7-ter) la camera vera si sposta, e il
+   * volto non può restare sempre dritto verso chi guarda: dipinto sulla
+   * sfera, guarda dove guardava quando la camera è partita. Visto di lato si
+   * vede un occhio solo e un pezzo dell'altro, schiacciato sul bordo; da
+   * dietro non si vede più niente del volto, solo la nuca (l'astro).
+   * Ogni tratto ha una sua longitudine sulla sfera (dove sta il suo centro
+   * sul disco): girando di `yaw` il suo centro va a R·cosφ·sin(λ + yaw) e
+   * il tratto si accorcia in largo di cos(λ + yaw)/cos λ. Un tratto oltre il
+   * bordo sparisce, e vicino al bordo sfuma; tutto è ritagliato sul disco.
+   * `yaw` = 0 è il volto di sempre. Funzione pura: la provano le prove. */
+  function storPosaSullaSfera(geom, x0, y0, yaw) {
+    const { cx, cy, R } = geom;
+    const v = Math.max(-0.95, Math.min(0.95, (y0 - cy) / R));
+    const cphi = Math.sqrt(1 - v * v);
+    const lam = Math.asin(Math.max(-0.98, Math.min(0.98, (x0 - cx) / (R * cphi))));
+    const lam2 = lam + yaw;
+    const c2 = Math.cos(lam2);
+    if (c2 <= 0.02) return null;
+    return { x: cx + R * cphi * Math.sin(lam2), sx: c2 / Math.max(0.25, Math.cos(lam)),
+      alfa: Math.min(1, (c2 - 0.02) / 0.22), davanti: c2 };
+  }
   function storDisegnaVolto(ctx, geom, profilo, alfa, t) {
     ctx.save();
     ctx.globalAlpha *= alfa;
     ctx.lineCap = 'round';
     const { cx, cy, R } = geom;
+    const yaw = geom.yaw || 0;
+    const gira = Math.abs(Math.sin(yaw)) > 1e-3 || Math.cos(yaw) < 0;
+    if (gira) { ctx.beginPath(); ctx.arc(cx, cy, R * 1.04, 0, Math.PI * 2); ctx.clip(); }
+    // Un tratto al suo posto sulla sfera girata (o così com'è, senza giro)
+    const posa = (x0, y0, fn) => {
+      if (!gira) { fn(); return; }
+      const q = storPosaSullaSfera(geom, x0, y0, yaw);
+      if (!q) return;
+      ctx.save();
+      ctx.globalAlpha *= q.alfa;
+      ctx.translate(q.x, 0); ctx.scale(q.sx, 1); ctx.translate(-x0, 0);
+      fn();
+      ctx.restore();
+    };
     // La rabbia: la fronte si fa rossa, dall'alto
-    if (geom.rosso > 0.05) {
+    if (geom.rosso > 0.05) posa(cx, cy - R * 0.25, () => {
       const g = ctx.createLinearGradient(cx, cy - R, cx, cy + R * 0.1);
       g.addColorStop(0, `rgba(220, 38, 38, ${(0.45 * geom.rosso).toFixed(3)})`); g.addColorStop(1, 'rgba(220, 38, 38, 0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.ellipse(cx, cy - R * 0.25, R * 0.92, R * 0.78, 0, 0, Math.PI * 2); ctx.fill();
-    }
+    });
     // Le guance: un rossore sfumato e, sopra, le tre lineette sottili in
     // diagonale dei cartoni (v417: ci sono sempre, più fitte da contenti)
     const colGuance = geom.rosso > 0.5 ? '#ef4444' : profilo.guance;
-    for (const g of geom.guance) {
+    for (const g of geom.guance) posa(g.x, g.y, () => {
       const r = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, g.rx);
       // v425: un ovale quasi pieno, il bordo appena morbido (il disegno di
       // riferimento): si legge come rossore, non come una macchia sfocata
@@ -2272,21 +2311,27 @@
         }
         ctx.stroke();
       }
-    }
-    for (const occ of geom.occhi) disegnaOcchio(ctx, occ, profilo, geom, t);
-    disegnaSopracciglia(ctx, geom, profilo);
+    });
+    // Ogni occhio col suo sopracciglio, alla stessa longitudine: girando
+    // restano insieme, e l'occhio che va dietro se li porta via tutti e due
+    for (const occ of geom.occhi) posa(occ.cx, occ.cy, () => {
+      disegnaOcchio(ctx, occ, profilo, geom, t);
+      disegnaSopracciglia(ctx, Object.assign({}, geom, { cigli: geom.cigli.filter(c => c.lato === occ.lato) }), profilo);
+    });
     // Il naso: per lui la virgola d'inchiostro col bulbo. Per lei, dalla
     // v425, niente naso né neo, come nel disegno di riferimento: occhi,
     // guance e bocca, e il volto si legge al primo colpo
     const n = geom.naso;
-    if (!geom.lei) {
+    if (!geom.lei) posa(n.x, n.y, () => {
       ctx.strokeStyle = rgba('#1c1236', 0.55); ctx.lineWidth = Math.max(0.9, n.r * 0.42);
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
       ctx.beginPath(); ctx.arc(n.x, n.y - n.r * 0.9, n.r * 0.55, Math.PI * 0.6, Math.PI * 1.25); ctx.stroke();
-    }
-    if (profilo.barba) disegnaBarba(ctx, geom, profilo);
-    disegnaBocca(ctx, geom.bocca, R, profilo);
-    if (profilo.baffi) disegnaBaffi(ctx, geom, profilo);
+    });
+    posa(geom.bocca.x, geom.bocca.y, () => {
+      if (profilo.barba) disegnaBarba(ctx, geom, profilo);
+      disegnaBocca(ctx, geom.bocca, R, profilo);
+      if (profilo.baffi) disegnaBaffi(ctx, geom, profilo);
+    });
     ctx.restore();
   }
 
@@ -3733,6 +3778,9 @@
         espr: pg.espr, sguardo: pg.sguardo, battito, bocca: pg.bocca,
         alzaCigli: staParlando && !ridotto ? forma.apertura : 0
       });
+      // Il volto girato (v432): nella 3D e nella scala cosmica, quando la
+      // regia gira la camera attorno, il volto resta dov'era sulla sfera
+      if ((vista === 'sistema' || vista === 'vicino' || vista === 'cosmo') && !ridotto) geom.yaw = stor.regia.giro || 0;
       const t = stor.orologio;
       const desDa = t - pg.comparsoDa;
       const alfa = ridotto ? Math.min(1, desDa / 320) : Math.min(1, desDa / (STOR_COMPARSA_MS * 0.35));
@@ -4996,13 +5044,15 @@
     if (eta > C.entra + C.resta + C.esce) return;
     const alfa = C.alfa * (eta < C.entra ? eta / C.entra : eta < C.entra + C.resta ? 1 : 1 - (eta - C.entra - C.resta) / C.esce);
     if (!(alfa > 0.01)) return;
-    const fs = Math.max(11, Math.min(13.5, L * 0.012));
+    // v432: un poco più grande (era 11–13,5 px): chi guarda lo trovava
+    // troppo piccolo per leggerlo al volo
+    const fs = Math.max(14, Math.min(19, L * 0.017));
     const carattere = (radice.document && radice.document.body && radice.getComputedStyle
       ? radice.getComputedStyle(radice.document.body).fontFamily : '') || 'sans-serif';
     ctx.save();
     ctx.font = `600 ${fs}px ${carattere}`;
     const w = Math.min(L * 0.5, ctx.measureText(nome).width + fs * 1.6), h = fs * 2;
-    const margine = 14;
+    const margine = 16;
     const x = L - margine - w, y = margine;
     ctx.globalAlpha = alfa;
     ctx.fillStyle = 'rgba(12, 10, 32, 0.5)';
@@ -6111,7 +6161,7 @@
     disegnaFisica: storDisegnaFisica, lunaReagisce: storLunaReagisce, padreDi: storPadreDi,
     get domanda() { return stor.domanda ? Object.assign({}, stor.domanda) : null; },
     stato: stor,
-    STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, regiaGiro: storRegiaGiro, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
+    STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, regiaGiro: storRegiaGiro, posaSullaSfera: storPosaSullaSfera, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
     lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
     get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },

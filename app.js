@@ -35415,6 +35415,56 @@ function solEtichettaFascia(ctx, f, prese) {
 // Un'orbita, in due passate: prima il mezzo giro che passa dietro al Sole,
 // più smorzato, poi quello che passa davanti. Costa due tratti invece di
 // centoventotto, e basta a far sentire quale metà è più vicina.
+// Le orbite delle CosmoStorie (v432). Nelle storie le righe della lezione
+// tacciono (v427), ma chi guarda le storie ha chiesto di vedere la strada di
+// chi è in scena: il pianeta che parla col suo giro attorno al Sole, la luna
+// col suo attorno al pianeta. Non la riga sottile dell'app: un nastro tenue
+// del colore dell'astro, schiarito, con sopra una fila di puntini tondi
+// color crema, come la strada tratteggiata di una mappa dei cartoni. La metà
+// dietro è più tenue, così si capisce da che parte l'orbita gira.
+function solColoreStoria(colore, verso = 0.45) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(colore || '').trim());
+  if (!m) return 'rgb(226, 214, 255)';
+  const n = parseInt(m[1], 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => Math.round(v + (255 - v) * verso));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+function solTrattoStoria(ctx, colore, davanti, percorso) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+  ctx.shadowColor = 'transparent';
+  // il nastro
+  ctx.globalAlpha = davanti ? 0.3 : 0.12;
+  ctx.strokeStyle = solColoreStoria(colore, 0.35);
+  ctx.lineWidth = 7;
+  ctx.beginPath(); percorso(); ctx.stroke();
+  // i puntini
+  ctx.globalAlpha = davanti ? 0.9 : 0.35;
+  ctx.strokeStyle = solColoreStoria(colore, 0.75);
+  ctx.lineWidth = 3;
+  ctx.setLineDash([0.01, 10]);
+  ctx.beginPath(); percorso(); ctx.stroke();
+  ctx.restore();
+}
+// L'orbita di un pianeta (o di un mondo minore) attorno al Sole
+function solDisegnaOrbitaStoria(ctx, traccia) {
+  const punti = traccia.punti.map(v => solProietta(solScena(v)));
+  if (punti.length < 3) return;
+  punti.push(punti[0]);
+  [false, true].forEach(davanti => solTrattoStoria(ctx, traccia.colore, davanti, () =>
+    solPolilineaInVista(ctx, punti, (a, b) => (a.vicinanza >= 0) === davanti && (b.vicinanza >= 0) === davanti)));
+}
+// Un anello attorno al suo pianeta (la Luna, le lune degli altri): la metà
+// dietro al pianeta e quella davanti si disegnano in due momenti, come l'astro
+function solDisegnaAnelloStoria(ctx, punti, colore, dietro, davanti) {
+  if (punti.length < 3) return;
+  const chiuso = punti.concat([punti[0]]);
+  solTrattoStoria(ctx, colore, davanti, () => solPolilineaInVista(ctx, chiuso,
+    (a, b) => (((a.vicinanza + b.vicinanza) / 2) >= dietro) === davanti));
+}
+
 function solDisegnaOrbita(ctx, traccia) {
   const punti = traccia.punti.map(v => solProietta(solScena(v)));
   if (punti.length) punti.push(punti[0]);
@@ -35760,6 +35810,7 @@ function solDisegnaOrbitaLuna(ctx, terra, davanti) {
   const schermo = punti.map(u => solProietta({
     x: t.x + u.x * passo, y: t.y + u.y * passo, z: t.z + u.z * passo * sol.esagera
   }));
+  if (demoStoriaCinema()) { solDisegnaAnelloStoria(ctx, schermo, '#cbd5e1', terra.schermo.vicinanza, davanti); return; }
   ctx.save();
   const scelta = sol.scelto === 'Moon';
   ctx.strokeStyle = scelta ? '#fff' : 'rgba(203, 213, 225, 0.34)';
@@ -36809,7 +36860,10 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
     const punti = [];
     // Nelle CosmoStorie (v427) l'anello dell'orbita tace: è una riga della
     // lezione, e attorno a un Giove ingrandito erano dieci cerchi sul volto
-    for (let i = 0; i < (demoStoriaCinema() ? 0 : SOL_LUNA_ANELLO_PUNTI); i++) {
+    // (dalla v432 c'è, in stile cartone, per la luna che è in scena)
+    const cinemaLuna = demoStoriaCinema();
+    const ancheInStoria = cinemaLuna && typeof storInScena === 'function' && storInScena(l.id);
+    for (let i = 0; i < (cinemaLuna && !ancheInStoria ? 0 : SOL_LUNA_ANELLO_PUNTI); i++) {
       const th = (i / SOL_LUNA_ANELLO_PUNTI) * Math.PI * 2;
       const c = Math.cos(th), s = Math.sin(th);
       punti.push(solProietta({
@@ -36818,20 +36872,23 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
         z: t.z + (u1[2] * c + u2[2] * s) * passo * sol.esagera
       }));
     }
-    ctx.save();
-    const scelta = sol.scelto === l.id;
-    ctx.strokeStyle = scelta ? '#fff' : l.colore;
-    ctx.globalAlpha = scelta ? (davanti ? 0.98 : 0.68) : 0.22;
-    ctx.lineWidth = scelta ? 3.2 : 1;
-    if (scelta) { ctx.shadowColor = l.colore; ctx.shadowBlur = 12; }
-    for (let i = 0; i < punti.length; i++) {
-      const a = punti[i], b = punti[(i + 1) % punti.length];
-      if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
-      ctx.beginPath();
-      solLineaInVista(ctx, a.px, a.py, b.px, b.py);
-      ctx.stroke();
+    if (ancheInStoria) solDisegnaAnelloStoria(ctx, punti, l.colore, dietro, davanti);
+    else {
+      ctx.save();
+      const scelta = sol.scelto === l.id;
+      ctx.strokeStyle = scelta ? '#fff' : l.colore;
+      ctx.globalAlpha = scelta ? (davanti ? 0.98 : 0.68) : 0.22;
+      ctx.lineWidth = scelta ? 3.2 : 1;
+      if (scelta) { ctx.shadowColor = l.colore; ctx.shadowBlur = 12; }
+      for (let i = 0; i < punti.length; i++) {
+        const a = punti[i], b = punti[(i + 1) % punti.length];
+        if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
+        ctx.beginPath();
+        solLineaInVista(ctx, a.px, a.py, b.px, b.py);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
-    ctx.restore();
     if ((p.vicinanza >= dietro) !== davanti) return;
     const r = solRaggioLunaPianeta(l);
     sol.luneSchermo.push({ id: l.id, nome: l.nome, colore: l.colore, px: p.px, py: p.py, r, vicinanza: p.vicinanza });
@@ -38511,6 +38568,16 @@ function solDisegnaVicino() {
   bersaglio();
 
   if (!cinema) solDisegnaOrbitaLunare(ctx, orbita || { punti: [], nodi: [] });
+  else if (orbita && orbita.punti && typeof storInScena === 'function' && storInScena('Moon')) {
+    // Nelle storie l'orbita della Luna in scena, in stile cartone (v432): la
+    // metà sopra al piano dell'eclittica piena, quella sotto più tenue
+    const punti = orbita.punti.map(v => Object.assign(solVicPunto(v), { sopra: v[2] >= 0 }));
+    if (punti.length > 2) {
+      punti.push(punti[0]);
+      [false, true].forEach(sopra => solTrattoStoria(ctx, '#cbd5e1', sopra, () =>
+        solPolilineaInVista(ctx, punti, (a, b) => a.sopra === sopra && b.sopra === sopra)));
+    }
+  }
 
   // I due corpi, con la faccia e la fase vere. Si costruiscono al volo come
   // se fossero due pianeti della scena grande, così `solDisegnaCorpo` — che
@@ -39341,6 +39408,10 @@ function solDisegnaFotogramma() {
     // Le scie del Grand Tour (la demo delle Voyager): sopra alle orbite, sotto
     // ai corpi — la sonda passa davanti alla sua strada, non dietro
     if (sol.grandTour) solDisegnaGrandTour(ctx);
+  } else {
+    // Nelle storie solo le orbite di chi è in scena, in stile cartone (v432)
+    sol.orbite.tracce.filter(t => inStoria(t.id)).forEach(t => solDisegnaOrbitaStoria(ctx, t));
+    ((sol.orbiteMondi && sol.orbiteMondi.tracce) || []).filter(t => inStoria(t.id)).forEach(t => solDisegnaOrbitaStoria(ctx, t));
   }
   solDisegnaAloneSole(ctx);
   if (!cinema) solDisegnaSguardo(ctx, terra, scelto);
@@ -39384,7 +39455,7 @@ function solDisegnaFotogramma() {
     if (!cinema) solDisegnaPiombo(ctx, p);
     if (p.sonda) { solDisegnaSonda(ctx, p); return; }
     if (p.id === 'Earth') {
-      if (!cinema) solDisegnaOrbitaLuna(ctx, p, false);
+      if (!cinema || inStoria('Moon')) solDisegnaOrbitaLuna(ctx, p, false);
       solDisegnaLuna(ctx, p, false, assi);
       // Con l'asse in evidenza gli anelli delle stazioni si tacciono: attorno
       // al globo ci sono già l'asse, l'equatore e il parallelo, e tre orbite
@@ -39396,7 +39467,7 @@ function solDisegnaFotogramma() {
     solDisegnaLune(ctx, p, assi, false);
     solDisegnaCorpo(ctx, p, assi);
     if (p.id === 'Earth') {
-      if (!cinema) solDisegnaOrbitaLuna(ctx, p, true);
+      if (!cinema || inStoria('Moon')) solDisegnaOrbitaLuna(ctx, p, true);
       solDisegnaLuna(ctx, p, true, assi);
       if (!sol.evidenziaAsse) solDisegnaSatelliti(ctx, p, assi, true);
     }

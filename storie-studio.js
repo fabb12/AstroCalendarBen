@@ -171,13 +171,13 @@
       v: 1, id: nuovoId('p'), titolo: '', scopo: 'libera', obiettivo: '',
       cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
       voceChiave: null, voceProssima: 1, aggiornato: 0, lingua: '',
-      // v430: la domanda finale al pubblico (§4-bis): di serie la storia la
-      // fa solo se gli eventi ne danno una buona
+      // v430: la domanda finale al pubblico (§4-bis). Dalla v432 è
+      // facoltativa: spenta di serie, la accende chi scrive la storia
       domanda: studioNuovaDomanda()
     }, campi);
   }
   function studioNuovaDomanda(campi = {}) {
-    return Object.assign({ modo: 'auto', tipo: 'auto', testo: '', a: '', b: '', chi: '' }, campi);
+    return Object.assign({ attiva: false, modo: 'auto', tipo: 'auto', testo: '', a: '', b: '', chi: '' }, campi);
   }
   // Chi è davvero in scena: quelli scelti, o tutto il cast; mai qualcuno
   // che non è più nel cast.
@@ -210,6 +210,8 @@
       // dispositivi) e la lingua delle sue battute nel file delle voci
       aggiornato: Math.floor(numero(p.aggiornato, 0, 1e13, 0)), lingua: p.lingua === 'en' || p.lingua === 'it' ? p.lingua : '',
       domanda: studioNuovaDomanda(p.domanda && typeof p.domanda === 'object' ? {
+        // (le copie di prima della v432 non hanno `attiva`: restano senza domanda)
+        attiva: p.domanda.attiva === true,
         modo: tra(p.domanda.modo, ['auto', 'sempre', 'mai'], 'auto'),
         tipo: tra(p.domanda.tipo, ['auto', 'ragione', 'sonda', 'fiducia', 'esplora', 'ab', 'previsione', 'protagonista'], 'auto'),
         testo: testo(p.domanda.testo, 200), a: testo(p.domanda.a, 60), b: testo(p.domanda.b, 60), chi: testo(p.domanda.chi, 40)
@@ -832,7 +834,8 @@
   function studioDomandaFinale(progetto) {
     const d = progetto.domanda || {};
     const modo = STUDIO_MODI_DOMANDA.includes(d.modo) ? d.modo : 'auto';
-    if (modo === 'mai') return null;
+    // v432: la domanda è facoltativa, e c'è solo se chi scrive la accende
+    if (d.attiva !== true || modo === 'mai') return null;
     const f = studioFattiEpisodio(progetto);
     const protagonista = [...f.parlato.keys()].sort((a, b) => f.parlato.get(b) - f.parlato.get(a))[0] || progetto.cast[0] || '';
     // Scritta a mano: vince sempre, con le scelte scritte accanto
@@ -2336,7 +2339,19 @@
     const d = p.domanda || (p.domanda = studioNuovaDomanda());
     const modi = STUDIO_MODI_DOMANDA.map(m => [m, t('studio.domanda.modo.' + m)]);
     const tipi = ['auto'].concat(STUDIO_TIPI_DOMANDA).map(k => [k, t('studio.domanda.tipo.' + k)]);
+    const accesa = d.attiva === true;
+    const spunta = h('label', { class: 'storie-campo studio-spunta' },
+      h('input', { type: 'checkbox', checked: accesa, dataset: { campo: 'domanda.attiva' } }),
+      h('span', {}, t('studio.domanda.attiva')));
+    if (!accesa) {
+      return h('div', { class: 'studio-blocco studio-domanda' },
+        h('h4', { class: 'storie-sottotitolo' }, t('studio.domanda.titolo')),
+        h('p', { class: 'demo-opzioni-nota' }, t('studio.domanda.aiuto')),
+        spunta,
+        h('p', { class: 'studio-domanda-anteprima', id: 'studio-domanda-anteprima', role: 'status', 'aria-live': 'polite' }));
+    }
     const campi = [
+      spunta,
       h('div', { class: 'studio-riga' },
         h('label', { class: 'storie-campo' }, h('span', {}, t('studio.domanda.modo')), selettore('domanda.modo', d.modo, modi)),
         h('label', { class: 'storie-campo' }, h('span', {}, t('studio.domanda.tipo')), selettore('domanda.tipo', d.tipo, tipi, { disabled: d.modo === 'mai' })),
@@ -2365,7 +2380,7 @@
   // La domanda che la storia farà, a parole, sotto ai campi
   function anteprimaDomanda(el, p) {
     const d = studioDomandaFinale(p);
-    if (!d) { el.replaceChildren(t(p.domanda && p.domanda.modo === 'mai' ? 'studio.domanda.spenta' : 'studio.domanda.nessuna')); return; }
+    if (!d) { el.replaceChildren(t(!p.domanda || p.domanda.attiva !== true || p.domanda.modo === 'mai' ? 'studio.domanda.spenta' : 'studio.domanda.nessuna')); return; }
     const scelte = [d.a, d.b].filter(Boolean);
     el.replaceChildren(t('studio.domanda.sara'), ' ',
       h('strong', {}, (d.chi ? nome(d.chi) + ': ' : '') + '«' + d.testo + '»'),
@@ -2422,7 +2437,7 @@
       // La domanda proposta dalla storia diventa testo da modificare; e si
       // torna a quella della storia svuotando i campi
       case 'domandaUsa': {
-        const d = studioDomandaFinale(Object.assign({}, p, { domanda: Object.assign({}, p.domanda, { modo: 'sempre', testo: '' }) }));
+        const d = studioDomandaFinale(Object.assign({}, p, { domanda: Object.assign({}, p.domanda, { attiva: true, modo: 'sempre', testo: '' }) }));
         if (d) Object.assign(p.domanda, { testo: d.testo, a: d.a, b: d.b, chi: d.chi, tipo: d.tipo });
         salvaPresto(); disegna(); return;
       }
@@ -2680,7 +2695,7 @@
         // campo di testo o di numero vorrebbe dire rifare la pagina proprio
         // mentre il dito sta premendo il bottone accanto: il clic si perde.
         // La data e l'ora cambiano soltanto il riassunto della scena.
-        if (el.tagName === 'SELECT') disegna();
+        if (el.tagName === 'SELECT' || el.dataset.campo === 'domanda.attiva') disegna();
         else {
           aggiornaVivi();
           const det = el.closest('.studio-dettagli');

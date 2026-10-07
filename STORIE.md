@@ -943,6 +943,38 @@ con lo spazio davanti allo sguardo (`terzi`).
   le decadi), il puntamento `sky.manuale` del planetario — e si avvicina
   della metà dello zoom della lente della regia.
 
+## Le orbite di chi è in scena, il volto girato, la domanda facoltativa (v432)
+
+- **Le orbite in stile cartone.** Nelle storie le righe della lezione
+  tacciono (v427), ma chi guarda ha chiesto di vedere la strada di chi è in
+  scena. Ora `solDisegna` disegna l'orbita dei pianeti e dei mondi minori in
+  scena attorno al Sole (`solDisegnaOrbitaStoria`), `solDisegnaOrbitaLuna`
+  quella della Luna attorno alla Terra, `solDisegnaLune` l'anello di una
+  luna di un altro pianeta (`solDisegnaAnelloStoria`), e il banco Terra e
+  Luna l'orbita della Luna (sopra al piano piena, sotto tenue). Lo stile è
+  uno solo, `solTrattoStoria`: un nastro tenue del colore dell'astro
+  schiarito (`solColoreStoria`) con sopra una fila di puntini tondi color
+  crema, la metà dietro più tenue. Solo per chi è in scena (`storInScena`).
+- **Il volto girato.** Quando la regia gira attorno (`orbit`, v431) il
+  volto resta dov'era sulla sfera: `geom.yaw` = `regia.giro` nella 3D, nel
+  banco e nella scala cosmica (non nel planetario, dove la camera non gira
+  attorno, né col movimento ridotto). `storDisegnaVolto` mette ogni tratto
+  alla sua longitudine (`storPosaSullaSfera`, pura): di lato un occhio solo
+  e un pezzo dell'altro schiacciato sul bordo, da dietro nessun tratto, solo
+  la nuca. Occhio e sopracciglio dello stesso lato vanno insieme; naso,
+  bocca, barba e baffi con la bocca; vicino al bordo sfumano, e tutto è
+  ritagliato sul disco.
+- **I visi ritoccati**: iride un poco più grande (0,7 della larghezza
+  dell'occhio, era 0,66), guance più tonde (0,86 × 0,54, erano 0,78 × 0,46),
+  bocca un filo più stretta (1,2, era 1,3).
+- **La domanda finale è facoltativa**: nello Studio la casella «Chiudi la
+  storia con una domanda al pubblico» (`domanda.attiva`, spenta di serie;
+  le copie salvate prima, che non hanno il campo, restano senza domanda).
+  Accesa, valgono «Quando», «Che domanda» e «Chi la fa» come prima.
+- **Il cartello del luogo** è più grande: 14–19 px (era 11–13,5).
+
+Prove: `prova-storie.js` («il volto girato…», «la domanda finale…»).
+
 ## Il palco della 3D: prospettiva e nessuno sopra a un altro (v428)
 
 `storPalco3D` (§7, chiamata da `storDisegnaSistema` prima dei volti), su
