@@ -1623,6 +1623,70 @@
     salvaPresto();
     esito(caricata + ' ' + (msg ? msg + ' ' : '') + await studioSincronizza({ spingi: true, titolo: p.titolo }));
   }
+  /* La voce registrata col microfono (v441). Chi scrive una storia spesso
+   * non ha un file pronto: vuole dire la battuta lì, al telefono o al
+   * computer. «Registra» apre il microfono (MediaRecorder), lo stesso tasto
+   * diventa «Ferma» col tempo che passa, e la registrazione finita fa la
+   * stessa strada di un file caricato (`caricaVoce`): misurata, tenuta in
+   * IndexedDB, mandata sul repository. Una registrazione sola alla volta;
+   * dopo `STUDIO_REGISTRA_MAX` secondi si ferma da sola (un momento non
+   * dura più di 120 s, e il file resta sotto i 10 MB). Il nome dà
+   * l'estensione: Chrome e Firefox registrano in webm, Safari in mp4. */
+  const STUDIO_REGISTRA_MAX = 90;
+  let registrazione = null;               // { dove, rec, flusso, inizio, timer }
+  const puoRegistrare = () => !!(radice.MediaRecorder && radice.navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  function tastoRegistra(dove) {
+    return studio.radice && [...studio.radice.querySelectorAll('[data-fai="registraVoce"]')].find(b => b.dataset.dove === dove);
+  }
+  function aggiornaTastoRegistra() {
+    if (!registrazione) return;
+    const b = tastoRegistra(registrazione.dove);
+    if (b) b.textContent = t('studio.voce.ferma', { secondi: Math.floor((Date.now() - registrazione.inizio) / 1000) });
+  }
+  async function registraDalMicrofono(dove) {
+    if (registrazione) { const era = registrazione.dove; fermaRegistrazione(); if (era === dove) return; }
+    const m = leggi(dove);
+    if (!m) return;
+    if (!m.chi || !testoDetto(m)) { esito(t('studio.voce.primaIlTesto')); return; }
+    if (!puoRegistrare()) { esito(t('studio.voce.senzaMicrofono')); return; }
+    let flusso;
+    try { flusso = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+    catch (e) { esito(t('studio.voce.microfonoNegato', { errore: e && (e.name || e.message) || String(e) })); return; }
+    const tipi = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    const tipo = radice.MediaRecorder.isTypeSupported ? tipi.find(x => radice.MediaRecorder.isTypeSupported(x)) : '';
+    let rec;
+    try { rec = tipo ? new radice.MediaRecorder(flusso, { mimeType: tipo }) : new radice.MediaRecorder(flusso); }
+    catch (e) { flusso.getTracks().forEach(x => x.stop()); esito(t('studio.voce.microfonoNegato', { errore: e && e.message || String(e) })); return; }
+    const pezzi = [], suo = studio.progetto;
+    rec.ondataavailable = e => { if (e.data && e.data.size) pezzi.push(e.data); };
+    rec.onstop = () => {
+      flusso.getTracks().forEach(x => x.stop());
+      const tipoVero = (rec.mimeType || tipo || 'audio/webm').split(';')[0];
+      const est = /mp4|m4a|aac/.test(tipoVero) ? 'm4a' : /ogg/.test(tipoVero) ? 'ogg' : 'webm';
+      const blob = new Blob(pezzi, { type: tipoVero });
+      // aperta un'altra storia nel frattempo: `dove` ora indicherebbe un'altra battuta
+      if (studio.progetto !== suo) return;
+      if (!blob.size) { esito(t('studio.voce.registrazioneVuota')); return; }
+      const file = typeof File === 'function' ? new File([blob], 'registrazione.' + est, { type: tipoVero }) : Object.assign(blob, { name: 'registrazione.' + est });
+      caricaVoce(dove, file);
+    };
+    registrazione = { dove, rec, flusso, inizio: Date.now(), timer: setInterval(() => {
+      if (registrazione && Date.now() - registrazione.inizio >= STUDIO_REGISTRA_MAX * 1000) fermaRegistrazione();
+      else aggiornaTastoRegistra();
+    }, 250) };
+    rec.start();
+    disegna();
+    esito(t('studio.voce.inRegistrazione', { massimo: STUDIO_REGISTRA_MAX }));
+  }
+  function fermaRegistrazione() {
+    const r = registrazione;
+    if (!r) return;
+    registrazione = null;
+    clearInterval(r.timer);
+    try { if (r.rec.state !== 'inactive') r.rec.stop(); else r.flusso.getTracks().forEach(x => x.stop()); }
+    catch (_) { r.flusso.getTracks().forEach(x => x.stop()); }
+    disegna();
+  }
   function togliVoce(m) {
     if (!m || !m.voce) { if (m) m.audio = null; return; }
     const k = chiaveAudio(studio.progetto.id, m.voce);
@@ -1694,7 +1758,7 @@
     for (const f of Object.values(foto)) for (const b of f.battute || []) {
       const rec = tutte.get(chiaveAudio(f.progetto, b.n));
       if (!rec || !rec.blob || unaRiga(rec.testo) !== unaRiga(b.testo)) continue;
-      const est = (STUDIO_ESTENSIONI.exec(rec.nome || '') || [, /wav/.test(rec.tipo) ? 'wav' : /ogg/.test(rec.tipo) ? 'ogg' : 'mp3'])[1].toLowerCase();
+      const est = (STUDIO_ESTENSIONI.exec(rec.nome || '') || [, /wav/.test(rec.tipo) ? 'wav' : /ogg/.test(rec.tipo) ? 'ogg' : /mp4|m4a|aac/.test(rec.tipo) ? 'm4a' : /webm/.test(rec.tipo) ? 'webm' : 'mp3'])[1].toLowerCase();
       fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, nome: `${f.chiave}-${b.n}.${est}`, blob: rec.blob });
     }
     return fuori;
@@ -2345,6 +2409,13 @@
       h('span', { class: 'studio-etichetta' }, t('studio.voce.titolo')),
       h('label', { class: 'tasto-cielo studio-mini-testo', for: id, title: t('studio.voce.aiuto') }, m.audio ? t('studio.voce.cambia') : t('studio.voce.carica')),
       h('input', { id, class: 'demo-file-nascosto', type: 'file', accept: 'audio/*,.mp3,.wav,.ogg,.m4a,.opus,.webm', dataset: { voce: base } }));
+    // v441: o registrata qui col microfono; il tasto diventa «Ferma» mentre registra
+    if (puoRegistrare()) {
+      const qui = registrazione && registrazione.dove === base;
+      riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo' + (qui ? ' studio-registra-attivo' : ''), title: t('studio.voce.registraAiuto'),
+        'aria-pressed': qui ? 'true' : 'false', dataset: { fai: 'registraVoce', dove: base } },
+        qui ? t('studio.voce.ferma', { secondi: Math.floor((Date.now() - registrazione.inizio) / 1000) }) : t('studio.voce.registra')));
+    }
     if (m.audio) {
       const valida = studioVoceValida(m);
       riga.append(
@@ -2708,6 +2779,7 @@
   }
 
   function avvia(testo) {
+    if (registrazione) fermaRegistrazione();
     // l'ascolto di prova di una musica non si sovrappone alla storia
     if (ascoltoMusica) fermaAscoltoMusica();
     try {
@@ -2717,6 +2789,7 @@
     } catch (e) { esito(e.message); }
   }
   function apri(progetto) {
+    if (registrazione) fermaRegistrazione();
     studio.progetto = progetto;
     studio.capito = null; studio.capitoScena = -1; studio.esito = ''; studio.aperta = null;
     salvaPresto(false);
@@ -2863,6 +2936,7 @@
         studioSincronizza({ spingi: true, titolo: p.titolo }).then(msg => esito(msg || t('studio.repo.giaAPosto')));
         return;
       case 'ascoltaVoce': ascoltaVoce(leggi(dove)); return;
+      case 'registraVoce': registraDalMicrofono(dove); return;
       case 'ascoltaMusica': ascoltaMusica(dove); disegna(); return;
       case 'togliMusica': if (ascoltoMusica && ascoltoMusica.dove === dove) fermaAscoltoMusica(); togliMusica(dove); break;
       case 'togliVoce': togliVoce(leggi(dove)); break;

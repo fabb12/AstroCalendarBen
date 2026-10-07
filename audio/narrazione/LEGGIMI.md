@@ -184,7 +184,9 @@ di **tutte** le storie salvate:
 
 **Il modo più facile: carica la voce dalla battuta stessa (v422).** Sotto
 ogni battuta dello Studio c'è **Voce → Carica la voce**: scegli il file
-(mp3, wav, m4a…) e basta.
+(mp3, wav, m4a…) e basta. Oppure **Registra** (v441): dici la battuta al
+microfono, premi «Ferma», e la registrazione diventa la sua voce come un
+file caricato.
 
 - La voce suona subito al posto della sintesi, nell'anteprima e nella storia
   salvata nelle demo, con la bocca del personaggio che si muove sulla voce.
