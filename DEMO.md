@@ -674,7 +674,9 @@ Azioni principali:
 - `camera_3d { scene: earth_moon, focus: 'Earth', orbit: 70, elev_from: 16, elev_to: 38, zoom_from: 1.2, zoom_to: 5.5 }`
   (`scene: system` con `focus: 'Sun'` e `frame`, oppure `focus: 'Earth'`/`'ISS'`; con `focus: 'Earth'`
   anche `sun_az`, l'angolo della camera attorno alla Terra misurato dalla direzione del Sole: 0 = Sole
-  a sinistra, 90 = dalla parte del giorno, −90 dalla parte della notte)
+  a sinistra, 90 = dalla parte del giorno, −90 dalla parte della notte; dalla v434 `orbit_from`, i
+  gradi di giro da cui parte la ripresa, perché due riprese di fila continuino il giro invece di
+  ripartire dall'azimut di base: `orbit: 16, orbit_from: 18` dopo una ripresa con `orbit: 18`)
 - `aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 150 }` (solo in `didactic_view`;
   i capitoli sono `vento`, `scudo`, `scarica`, `anello` e `taglio` — il quinto è il
   disegno visto di lato, senza camera, con `place` fra i luoghi del banco,

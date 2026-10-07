@@ -1192,7 +1192,9 @@ prova('chi parla: la camera gli va vicino, con gli occhi in alto al centro, e po
   for (let k = 0; k < 20; k++) fotogramma(corpi);
   assert.ok(S.regia.k > 1.8, 'tiene il quadro ancora un poco');
   for (let k = 0; k < 200; k++) fotogramma(corpi);
-  assert.ok(S.regia.k < 1.02, 'poi torna larga: ' + S.regia.k);
+  // Larga vuol dire il piano d'insieme (v434): tutti e due nel quadro, appena più stretto della scena
+  assert.equal(S.regia.motivo, 'gruppo');
+  assert.ok(S.regia.k < 1.45, 'poi torna larga: ' + S.regia.k);
 });
 prova('il dialogo: se chi ascolta è vicino, la camera tiene tutti e due', () => {
   scena({ Earth: {}, Moon: {} });
@@ -1478,6 +1480,51 @@ prova('lo Studio: la camera si sceglie per ogni scena (v431)', () => {
   assert.equal(St.ripulisci(JSON.parse(JSON.stringify(p))).scene[0].camera, 'giro', 'la scelta si salva');
   assert.equal(St.ripulisci({ scene: [{ cameraViva: false }] }).scene[0].camera, 'ferma', 'le copie di prima: la casella spenta è «ferma»');
   assert.equal(St.ripulisci({ scene: [{ camera: 'boh' }] }).scene[0].camera, 'auto');
+});
+prova('la camera non sta mai ferma: il largo tiene il gruppo e si avvicina, il movimento ridotto non la spegne, il giro dello Studio continua (v434)', async () => {
+  S.sgombra();
+  const corpi = [corpo('Earth', 150, 420, 30), corpo('Moon', 620, 220, 26)];
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_show { target: 'Moon' }")), { ripristina() {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  // Nessuno parla: il piano d'insieme, che si avvicina piano
+  for (let k = 0; k < 60; k++) fotogramma(corpi);
+  assert.equal(S.regia.motivo, 'gruppo');
+  const k1 = S.regia.k;
+  for (let k = 0; k < 500; k++) { fotogramma(corpi); finestraDentro(800, 600); }
+  assert.ok(S.regia.k > k1 + 0.03, `il largo si avvicina piano: ${k1} → ${S.regia.k}`);
+  for (const id of ['Earth', 'Moon']) {
+    const d = S.stato.ultimiDisegnati.find(x => x.id === id);
+    const a = S.lenteSchermo(d.x - d.R, d.y - d.R), b = S.lenteSchermo(d.x + d.R, d.y + d.R);
+    assert.ok(a.x >= 0 && a.y >= 0 && b.x <= 800 && b.y <= 600, id + ' resta nel piano d\'insieme');
+  }
+  // Col movimento ridotto la camera va ancora da chi parla (prima restava larga e ferma)
+  const prima = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: true });
+  try {
+    S.parla('Moon', { id: 'demo.narr.storia_luna.1' });
+    voce.segnale = { parla: true, personaggio: 'Moon', testo: 'ciao', tempo: 0 };
+    const prese = [];
+    for (let k = 0; k < 250; k++) { fotogramma(corpi); prese.push(S.regia.tx); finestraDentro(800, 600); }
+    assert.ok(S.stato.ridotto, 'il movimento ridotto è acceso');
+    assert.equal(S.regia.motivo, 'parla');
+    assert.ok(S.regia.k > 2, 'col movimento ridotto la camera stringe lo stesso: ' + S.regia.k);
+    assert.ok(S.stato.regia.scosse.length === 0 && Math.abs(S.stato.regia.rot) < 1e-9, 'ma senza scosse né rollio');
+    S.stato.parlante = null; voce.segnale = { parla: false };
+  } finally { globalThis.matchMedia = prima; }
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  // Lo Studio: ogni battuta riprende il giro da dove l'altra l'ha lasciato
+  const p = St.daModello('fasi');
+  for (const x of p.scene) x.ambiente = 'terra_luna';
+  const testo = St.copione(p);
+  motore.prepara(testo);
+  const riprese = [...testo.matchAll(/camera_3d \{[^}]*?orbit: (\d+)(?:, orbit_from: (\d+))?, elev_from: (\d+), elev_to: (\d+)/g)]
+    .map(m => ({ giro: +m[1], da: +(m[2] || 0), e0: +m[3], e1: +m[4] }));
+  assert.ok(riprese.length >= 3, 'le riprese della 3D: ' + riprese.length);
+  for (let i = 1; i < riprese.length; i++) {
+    assert.equal(riprese[i].da, (riprese[i - 1].da + riprese[i - 1].giro) % 360, 'il giro continua alla ripresa ' + i);
+    assert.equal(riprese[i].e0, riprese[i - 1].e1, 'l\'elevazione continua alla ripresa ' + i);
+  }
+  assert.ok(riprese.every(r => r.giro >= 6 && r.e0 >= 20 && r.e0 <= 72), 'ogni battuta gira, e la camera non va né troppo bassa né troppo alta');
 });
 
 // =====================================================================
