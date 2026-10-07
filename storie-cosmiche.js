@@ -3613,7 +3613,8 @@
     const perId = new Map();
     for (const c of corpi) { const id = storCanonico(c.id); if (!perId.has(id)) perId.set(id, c); }
     const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
-    const parlante = stor.parlante && voce && voce.personaggio === stor.parlante.target ? stor.parlante.target : null;
+    const chiOra = storChiParlaOra();
+    const parlante = chiOra && voce && voce.personaggio === chiOra ? chiOra : null;
     const ritmi = storDisegnaPersonaggi.ritmi || (storDisegnaPersonaggi.ritmi = new Map());
     const presi = [];
     const dt = Math.max(0, stor.orologio - (stor.ultimoOrologio || stor.orologio));
@@ -3781,6 +3782,9 @@
       // Il volto girato (v432): nella 3D e nella scala cosmica, quando la
       // regia gira la camera attorno, il volto resta dov'era sulla sfera
       if ((vista === 'sistema' || vista === 'vicino' || vista === 'cosmo') && !ridotto) geom.yaw = stor.regia.giro || 0;
+      // Il segno da fumetto (le scintille, la goccia) è del volto: girato di
+      // spalle se ne va con lui (v433), di lato si vede appena
+      const segnoVisto = Math.max(0, Math.min(1, Math.cos(geom.yaw || 0) * 1.6 + 0.4));
       const t = stor.orologio;
       const desDa = t - pg.comparsoDa;
       const alfa = ridotto ? Math.min(1, desDa / 320) : Math.min(1, desDa / (STOR_COMPARSA_MS * 0.35));
@@ -3837,7 +3841,7 @@
         if (posto.in3d) conLuce(ctx, cx + att.dx, cy + att.dy, R * 2.2, c.luce, tutto);
         else tutto(ctx);
         ctx.save(); trasforma(ctx);
-        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa, ridotto);
+        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
         ctx.restore();
       } else {
         // Sull'astro: ritagliato sul suo disco e illuminato dal suo Sole.
@@ -3864,7 +3868,7 @@
         };
         conLuce(ctx, cx + att.dx, cy + att.dy, Math.max(c.r * 1.1, R * 1.6), in3d ? c.luce : null, volto);
         ctx.save(); trasforma(ctx);
-        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa, ridotto);
+        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
         ctx.restore();
       }
       // Nella scala cosmica, chi è fuori dal quadro ha una freccia verso
@@ -4744,6 +4748,7 @@
     giroRollio: 0.08,      // nel planetario il quadro rolla al più di tanto (radianti, ~4,6°)
     giroCerchio: 0.03,     // e scivola in cerchio attorno al personaggio, in frazione del lato corto
     tieniMs: 900,          // finita una battuta, resta ancora un poco prima di allargarsi
+    manoMs: 3500,          // dopo l'ultimo gesto sulla camera la regia aspetta tanto, poi riparte (v433)
     // Gli effetti che la camera va a guardare, per quanto (ms della storia)
     // e quanto sono grandi rispetto al raggio dell'astro che li porta
     effetti: { explosion: [1700, 2.6], shockwave: [1300, 3.2], fireworks: [2100, 3], lightning: [1100, 2.4],
@@ -4758,17 +4763,49 @@
     vista: '', L: 0, H: 0, ultimo: 0, tieni: null, scosse: [],
     aperta: null, k: 1, tx: 0, ty: 0, motivo: 'largo'
   };
+  /* La camera presa a mano (v433). Prima della v433 bastava un giro di
+   * rotellina, un trascinamento di sei pixel fatto per sbaglio o un tasto
+   * freccia e la regia taceva fino alla scena dopo: a chi guarda sembrava
+   * che lo zoom su chi parla non funzionasse più. Ora tace solo mentre la
+   * persona sta muovendo la camera, e `STOR_REGIA.manoMs` dopo l'ultimo
+   * gesto riparte (le camere della scena restano invece alla persona fino
+   * alla scena dopo, come prima). */
+  function cameraInMano() {
+    const d = radice.AstroDemo;
+    if (!d || !d.cameraManuale) return false;
+    const da = Number(d.cameraManualeDa);
+    if (!(da > 0)) return true;
+    return adesso() - da < STOR_REGIA.manoMs;
+  }
   function regiaAccesa() {
     const r = stor.regia;
     if (r.modo === 'wide' || stor.ridotto || stor.anteprima) return false;
     if (!stor.personaggi.size && !stor.effetti.length) return false;
     const d = radice.AstroDemo;
     if (d) {
-      if (d.cameraManuale) return false;
+      if (cameraInMano()) return false;
       const o = d.opzioni;
       if (o && o.cameraStorie === false) return false;
     }
     return true;
+  }
+  /* Chi sta parlando adesso (v433). Di solito lo dice `stor.parlante`, che
+   * `storParla` tiene finché la voce non finisce. Ma se la voce si rompe
+   * (una sintesi del dispositivo che lancia un errore, un ponte che non
+   * risponde) la promessa della narrazione fallisce subito e `parlante` si
+   * azzera, mentre il sottotitolo col nome resta a schermo per il tempo di
+   * leggerlo: la regia credeva che nessuno parlasse e non stringeva mai.
+   * Allora si chiede anche alla narrazione chi ha la parola nel canale delle
+   * demo. */
+  function storChiParlaOra() {
+    if (stor.parlante) return stor.parlante.target;
+    const n = radice.narrazione;
+    if (!n || typeof n.voce !== 'function' || typeof n.stato !== 'function') return null;
+    const st = n.stato();
+    if (!st || st.canale !== 'demo' || st.fase === 'finita') return null;
+    const v = n.voce();
+    const id = v && v.personaggio ? storCanonico(v.personaggio) : null;
+    return id && stor.personaggi.has(id) ? id : null;
   }
   // Dove sono gli occhi di un volto disegnato, e quanto è grande
   function storOcchiDi(d) {
@@ -4821,14 +4858,17 @@
       const d = quanti.find(x => x.id === r.chi);
       if (d) return primoPiano(d, STOR_REGIA.volto, 'vicino');
     }
-    const parla = stor.parlante ? quanti.find(d => d.id === stor.parlante.target) : null;
+    const chi = storChiParlaOra();
+    const parla = chi ? quanti.find(d => d.id === chi) : null;
     // 2-bis. Il giro (v431): attorno a chi la scena ha scelto, se no a chi
     // parla, se no a chi c'era prima, se no al primo che c'è. Il volto più
     // piccolo, perché il bello del giro è il mondo che si muove dietro
     if (r.modo === 'orbit') {
       const d = (r.chi && quanti.find(x => x.id === r.chi)) || parla ||
         (r.ultimoGiro && quanti.find(x => x.id === r.ultimoGiro)) || quanti[0];
-      if (d) return Object.assign(primoPiano(d, STOR_REGIA.giroVolto, 'giro'), { ax: 0.5 });
+      // Anche girando, chi parla si guarda da vicino (v433): il giro continua
+      // e la camera stringe su di lui finché parla, poi torna al giro largo
+      if (d) return Object.assign(primoPiano(d, d === parla ? STOR_REGIA.voltoStretto : STOR_REGIA.giroVolto, 'giro'), { ax: 0.5 });
     }
     // 2-ter. Sempre su chi parla (v431): primo piano stretto, niente campo e
     // controcampo, e fra due battute resta su chi ha parlato per ultimo
@@ -5009,8 +5049,7 @@
     const t = stor.orologio;
     const dt = Number.isFinite(r.giroOra) ? Math.max(0, Math.min(0.1, (t - r.giroOra) / 1000)) : 0;
     r.giroOra = t;
-    const manuale = !!(radice.AstroDemo && radice.AstroDemo.cameraManuale);
-    if (manuale) { r.vGiro = 0; return r.giro; }
+    if (cameraInMano()) { r.vGiro = 0; return r.giro; }
     const vuole = r.modo === 'orbit' && regiaAccesa() ? r.velGiro * Math.PI / 180 : 0;
     if (dt > 0) {
       const a = Math.min(1, dt / Math.max(0.05, STOR_REGIA.giroAvvio / 3));

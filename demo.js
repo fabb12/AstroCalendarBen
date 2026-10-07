@@ -1984,6 +1984,9 @@
       },
       cediCamera() {
         c.cameraManuale = true;
+        // Quando, l'ultima volta: la regia delle CosmoStorie torna a muoversi
+        // poco dopo l'ultimo gesto (v433), le camere della scena no
+        c.cameraManualeDa = performance.now();
         sky.inseguimento = false;
       },
       // La voce segue l'orologio del racconto: ferma con la pausa (anche
@@ -2629,6 +2632,7 @@
     // Vero quando la persona ha preso la camera in mano per questa scena: la
     // regia delle Storie cosmiche le lascia il quadro.
     get cameraManuale() { return !!(contesto && contesto.cameraManuale); },
+    get cameraManualeDa() { return contesto && contesto.cameraManuale ? contesto.cameraManualeDa || 0 : 0; },
     get opzioni() {
       return {
         ...opzioni,
