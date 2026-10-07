@@ -1467,6 +1467,14 @@
       const R = Math.max(pg.rMostrato || r || 0, 4);
       P = v3.piu(base, dalloSchermo(assi, ddx * R, ddy * R));
     }
+    // Il passo di lato perché nessuno copra un altro personaggio (v428,
+    // `storPalco3D`), in pixel dello schermo
+    if (pg.scarto && (pg.scarto.x || pg.scarto.y)) {
+      const passo = dalloSchermo(assi, pg.scarto.x, pg.scarto.y);
+      P = v3.piu(P, passo);
+      // uscendo di scena torna a posto anche dal passo di lato, senza scatti
+      pg.ultimoDelta = v3.piu(pg.ultimoDelta, passo);
+    }
     stor.mosse.set(cid, { scena: P, r: pg.rMostrato || r || 0 });
     return P;
   }
@@ -1491,6 +1499,9 @@
     }
     let k = 1;
     if (pg.misura === 'auto') {
+      // La prospettiva (v428): chi è più vicino alla camera è più grande
+      // (`storPalco3D`); prima tutti crescevano alla stessa misura
+      k *= pg.prosp || 1;
       const voluto = STOR_VOLTO_3D_PX / pg.profilo.scala;
       if (voluto > r) {
         const u = stor.ridotto ? 1 : Math.max(0, Math.min(1, (stor.orologio - pg.comparsoDa) / STOR_CRESCITA_MS));
@@ -3422,7 +3433,7 @@
       const corpo3d = in3d && addosso && pg.misura !== 'real' && (STOR_SAGOME_FORMA.includes(p.sagoma) || !!pg.veste);
       piano.push({ pg, c, addosso, Rdisco, corpo3d });
       if (corpo3d) {
-        const Rc = Math.max(c.r, STOR_VOLTO_3D_PX / STOR_CORPI[p.sagoma].volto[2]);
+        const Rc = Math.max(c.r, STOR_VOLTO_3D_PX * (pg.prosp || 1) / STOR_CORPI[p.sagoma].volto[2]);
         presi.push({ id: pg.id, x: c.px, y: c.py, R: Rc * ingombroDi(p.sagoma) });
       } else if (addosso) presi.push({ id: pg.id, x: c.px + p.dx * c.r, y: c.py + p.dy * c.r, R: Rdisco });
     }
@@ -3435,7 +3446,7 @@
       const p = storVesteProfilo(pg);
       let cx, cy, R, posto = null;
       if (posa.corpo3d) {
-        R = Math.max(c.r, STOR_VOLTO_3D_PX / STOR_CORPI[p.sagoma].volto[2]);
+        R = Math.max(c.r, STOR_VOLTO_3D_PX * (pg.prosp || 1) / STOR_CORPI[p.sagoma].volto[2]);
         cx = c.px; cy = c.py;
         posto = { x: cx, y: cy, R, centrato: true, in3d: true };
       } else if (addosso) { R = posa.Rdisco; cx = c.px + p.dx * c.r; cy = c.py + p.dy * c.r; }
@@ -3794,7 +3805,96 @@
         Math.hypot(q.px - c.px, q.py - c.py) < q.r - Math.min(c.r, q.r) * 0.25);
     }
     const giu = (sol.altaBarra || 0) + 54;
+    storPalco3D(elenco, assi, sol);
     return storDisegnaPersonaggi(ctx, sol.vicino ? 'vicino' : 'sistema', elenco, sol.L, sol.H, { su: 12, giu, lati: 64 });
+  }
+
+  /* Il palco della 3D (v428). Chi guarda una storia ha chiesto due cose:
+   * che i personaggi non si coprano l'un l'altro, e che la loro misura dica
+   * quanto sono lontani dalla camera.
+   *
+   * **La prospettiva.** La proiezione della 3D è ortogonale e ogni
+   * personaggio cresceva fino alla stessa misura di volto (`STOR_VOLTO_3D_PX`):
+   * Giove dietro a Saturno era grande quanto lui. Ora ognuno ha un fattore
+   * `prosp`, come in una camera vera a distanza `STOR_PALCO.camera` volte il
+   * lato corto dello schermo: chi sta più avanti della media dei personaggi
+   * (lungo l'asse che guarda chi guarda) è più grande, chi sta dietro più
+   * piccolo, fra `prospMin` e `prospMax`. Scivola, non salta.
+   *
+   * **Il posto.** Si parte da dove ognuno starebbe senza passi di lato,
+   * si allontanano a coppie quelli che si toccano (contando gli anelli di
+   * Saturno e i corpi disegnati di sonde e stazioni) per qualche giro, e lo
+   * spostamento che ne viene è il passo di lato (`scarto`, in pixel) a cui
+   * ognuno scivola: da quel punto `storScena3D` lo mette nella scena, e il
+   * volto, la profondità e le lune lo seguono. Il Sole non si sposta: si
+   * scansa l'altro. Partendo ogni volta dal posto senza passi, il risultato
+   * non oscilla e torna a zero quando i due si allontanano da sé. */
+  const STOR_PALCO = { camera: 1.8, prospMin: 0.62, prospMax: 1.6, aria: 1.1, spazio: 8, giri: 10, tauMs: 320, tauProspMs: 420 };
+  function storPalco3D(elenco, assi, sol) {
+    const L = sol.L || 0, H = sol.H || 0, lato = Math.max(1, Math.min(L, H));
+    const ora = stor.orologio;
+    const dt = Math.max(0, Math.min(200, ora - (stor.ultimoPalco || ora)));
+    stor.ultimoPalco = ora;
+    const kS = stor.ridotto ? 1 : 1 - Math.exp(-dt / STOR_PALCO.tauMs);
+    const kP = stor.ridotto ? 1 : 1 - Math.exp(-dt / STOR_PALCO.tauProspMs);
+    const perId = new Map();
+    for (const c of elenco) { const id = storCanonico(c.id); if (!perId.has(id)) perId.set(id, c); }
+    const attori = [];
+    for (const pg of stor.personaggi.values()) {
+      const c = perId.get(pg.id);
+      if (!pg.scarto) pg.scarto = { x: 0, y: 0 };
+      if (!c || pg.nascosto || pg.misura === 'real' || !Number.isFinite(c.px)) {
+        // fuori scena: il passo di lato torna a zero piano
+        pg.scarto.x *= 1 - kS; pg.scarto.y *= 1 - kS;
+        continue;
+      }
+      const punto = (stor.mosse.get(pg.id) || stor.vere.get(pg.id) || {}).scena;
+      const z = punto ? v3.punto(punto, assi.w) * assi.scala : 0;
+      const p = storVesteProfilo(pg);
+      let rad = c.r * (pg.id === 'Saturn' ? 2.3 : 1);
+      if (STOR_SAGOME_FORMA.includes(p.sagoma) || pg.veste) {
+        const sag = STOR_CORPI[p.sagoma] ? p.sagoma : 'pianeta';
+        rad = Math.max(rad, STOR_VOLTO_3D_PX * (pg.prosp || 1) / STOR_CORPI[sag].volto[2] * ingombroDi(sag));
+      }
+      attori.push({ pg, z, rad, fermo: pg.id === 'Sun',
+        x: c.px - pg.scarto.x, y: c.py - pg.scarto.y });
+    }
+    // La prospettiva, attorno alla profondità media di chi è in scena
+    const ref = attori.length ? attori.reduce((a, b) => a + b.z, 0) / attori.length : 0;
+    const D = STOR_PALCO.camera * lato;
+    for (const a of attori) {
+      const voluta = attori.length < 2 || stor.ridotto ? 1
+        : Math.max(STOR_PALCO.prospMin, Math.min(STOR_PALCO.prospMax, D / Math.max(D * 0.2, D - (a.z - ref))));
+      a.pg.prosp = mix(a.pg.prosp || 1, voluta, kP);
+    }
+    // Il posto: a coppie, chi si tocca si allontana
+    const pos = attori.map(a => ({ x: a.x, y: a.y }));
+    for (let g = 0; g < STOR_PALCO.giri; g++) {
+      let mosso = false;
+      for (let i = 0; i < attori.length; i++) for (let j = i + 1; j < attori.length; j++) {
+        const A = attori[i], B = attori[j];
+        if (A.fermo && B.fermo) continue;
+        let dx = pos[j].x - pos[i].x, dy = pos[j].y - pos[i].y;
+        let d = Math.hypot(dx, dy);
+        const serve = (A.rad + B.rad) * STOR_PALCO.aria + STOR_PALCO.spazio;
+        if (d >= serve) continue;
+        if (d < 0.5) { const a = (seme(A.pg.id + B.pg.id) % 628) / 100; dx = Math.cos(a); dy = Math.sin(a); d = 1; }
+        const spinta = serve - d, ux = dx / d, uy = dy / d;
+        const qa = A.fermo ? 0 : B.fermo ? 1 : 0.5, qb = 1 - qa;
+        pos[i].x -= ux * spinta * qa; pos[i].y -= uy * spinta * qa;
+        pos[j].x += ux * spinta * qb; pos[j].y += uy * spinta * qb;
+        mosso = true;
+      }
+      if (!mosso) break;
+    }
+    const tetto = lato * 0.6;
+    attori.forEach((a, i) => {
+      let sx = pos[i].x - a.x, sy = pos[i].y - a.y;
+      const m = Math.hypot(sx, sy);
+      if (m > tetto) { sx *= tetto / m; sy *= tetto / m; }
+      a.pg.scarto.x = mix(a.pg.scarto.x, sx, kS);
+      a.pg.scarto.y = mix(a.pg.scarto.y, sy, kS);
+    });
   }
 
   // ===================================================================
