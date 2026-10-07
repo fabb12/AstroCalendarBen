@@ -167,7 +167,10 @@
   function studioNuovaScena(campi = {}) {
     return Object.assign({
       id: nuovoId('s'), ambiente: 'sistema', fuoco: 'Jupiter', zoom: 'normale',
-      data: '', ora: '21:00', giorni: 0, cartello: false, cameraViva: true, camera: 'auto', cameraChi: '', cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
+      data: '', ora: '21:00', giorni: 0, cartello: false, cameraViva: true, camera: 'auto', cameraChi: '', cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()],
+      // v440: la musica di sottofondo della scena (§4-ter): quella della
+      // storia, una sua, o il silenzio
+      musicaModo: 'storia', musica: null
     }, campi);
   }
   function studioNuovoProgetto(campi = {}) {
@@ -175,6 +178,8 @@
       v: 1, id: nuovoId('p'), titolo: '', scopo: 'libera', obiettivo: '',
       cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
       voceChiave: null, voceProssima: 1, aggiornato: 0, lingua: '',
+      // v440: la musica di sottofondo di tutta la storia (§4-ter)
+      musica: null,
       // v430: la domanda finale al pubblico (§4-bis). Dalla v432 è
       // facoltativa: spenta di serie, la accende chi scrive la storia
       domanda: studioNuovaDomanda()
@@ -182,6 +187,22 @@
   }
   function studioNuovaDomanda(campi = {}) {
     return Object.assign({ attiva: false, modo: 'auto', tipo: 'auto', testo: '', a: '', b: '', chi: '' }, campi);
+  }
+  /* Una musica di sottofondo (v440): una traccia dell'app (`catalogo`, il
+   * suo id in `ASTRO_TRACCE_MUSICALI`) o un file caricato nello Studio
+   * (`file`: nome, estensione, SHA del blob git, durata), col suo volume. */
+  const STUDIO_MUSICA_VOLUME = 0.35;
+  const STUDIO_MUSICA_MODI = ['storia', 'propria', 'silenzio'];
+  const STUDIO_MUSICA_EST = /^(mp3|wav|ogg|oga|opus|m4a|aac|webm)$/;
+  function studioPulisciMusica(m) {
+    if (!m || typeof m !== 'object') return null;
+    const v = Number(m.volume);
+    const volume = Number.isFinite(v) && m.volume !== null && m.volume !== '' ? Math.max(0.05, Math.min(1, v)) : STUDIO_MUSICA_VOLUME;
+    if (m.tipo === 'catalogo' && typeof m.id === 'string' && /^[\w-]{1,40}$/.test(m.id)) return { tipo: 'catalogo', id: m.id, volume };
+    if (m.tipo === 'file' && STUDIO_MUSICA_EST.test(m.est) && /^[0-9a-f]{8,40}$/.test(m.sha))
+      return { tipo: 'file', nome: typeof m.nome === 'string' ? m.nome.slice(0, 80) : '', est: m.est, sha: m.sha,
+        durata: Math.max(0, Math.min(36e5, Math.round(Number(m.durata) || 0))), volume };
+    return null;
   }
   // Chi è davvero in scena: quelli scelti, o tutto il cast; mai qualcuno
   // che non è più nel cast.
@@ -210,6 +231,7 @@
       demoChiave: typeof p.demoChiave === 'string' && p.demoChiave.startsWith('utente-') ? p.demoChiave : null,
       voceChiave: typeof p.voceChiave === 'string' && STUDIO_VOCE_CHIAVE.test(p.voceChiave) ? p.voceChiave : null,
       voceProssima: Math.floor(numero(p.voceProssima, 1, 100000, 1)),
+      musica: studioPulisciMusica(p.musica),
       // v424: quando è stato toccato l'ultima volta (chi vince fra due
       // dispositivi) e la lingua delle sue battute nel file delle voci
       aggiornato: Math.floor(numero(p.aggiornato, 0, 1e13, 0)), lingua: p.lingua === 'en' || p.lingua === 'it' ? p.lingua : '',
@@ -228,6 +250,7 @@
       giorni: numero(sc && sc.giorni, 0, 1000, 0), cartello: !!(sc && sc.cartello), cameraViva: !(sc && sc.cameraViva === false), presenti: ids(sc && sc.presenti),
       camera: tra(sc && sc.camera, STUDIO_CAMERE, sc && sc.cameraViva === false ? 'ferma' : 'auto'), cameraChi: testo(sc && sc.cameraChi, 40),
       cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
+      musicaModo: tra(sc && sc.musicaModo, STUDIO_MUSICA_MODI, 'storia'), musica: studioPulisciMusica(sc && sc.musica),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
@@ -550,6 +573,8 @@
     };
     // Dove eravamo alla fine: la vista, la camera, chi era in scena (per la domanda)
     let fine = null;
+    // La musica che suona (§4-ter): all'inizio, niente
+    let musicaOra = 'off';
     const scene = progetto.scene.map((sc, i) => ({ sc, i })).filter(x => opz.scena === undefined || x.i === opz.scena);
     for (const { sc } of scene) {
       const presenti = studioPresenti(progetto, sc);
@@ -572,6 +597,12 @@
           if (iso) az.push(`set_date { iso: ${virgolette(iso)} }`);
         }
         trascorso += durate[k];
+        // La musica della scena, solo se cambia (§4-ter)
+        if (k === 0) {
+          const mu = studioMusicaSrc(progetto, sc);
+          const chiave = mu.src === 'off' ? 'off' : mu.src + '|' + numeroDsl(mu.volume);
+          if (chiave !== musicaOra) { az.unshift(rigaMusica(mu)); musicaOra = chiave; }
+        }
         // La data e il luogo a schermo (v414): solo se chi scrive li chiede
         if (sc.cartello) az.push('date_card { date: show, time: show, place: show }');
         // La regia (v416, scelta per scena dalla v431): di serie la camera va
@@ -690,6 +721,43 @@
   function numeroUA(L) {
     const v = Number(Math.pow(10, L).toPrecision(4));
     return v >= 1e-6 ? String(v) : '0.000001';
+  }
+
+  // ===================================================================
+  // 4-ter. La musica di sottofondo (v440)
+  // ===================================================================
+
+  /* Una storia può avere una traccia per tutta la storia, e ogni scena
+   * quella della storia, una sua o il silenzio. Il copione lo dice con
+   * `story_music` all'inizio di ogni scena dello Studio in cui la musica
+   * cambia: una traccia che continua non si richiede, e così suona senza
+   * ricominciare da capo (STORIE.md, «La musica»).
+   *
+   * I file caricati stanno sul sito in `audio/storie-musica/<storia>/`,
+   * `storia.<est>` e `scena-<id della scena>.<est>`: l'id del progetto e
+   * quello della scena non cambiano, quindi il percorso è lo stesso su ogni
+   * dispositivo. Il `?v=` è un pezzo dello SHA del file: una traccia
+   * sostituita ha un indirizzo nuovo, e la cache non fa sentire la vecchia. */
+  const STUDIO_MUSICA_CARTELLA = 'audio/storie-musica';
+  const cartellaMusica = pid => STUDIO_MUSICA_CARTELLA + '/' + (String(pid || '').replace(/[^\w-]/g, '').slice(0, 30) || 'storia');
+  function studioPercorsoMusica(pid, sid, mu) {
+    return cartellaMusica(pid) + '/' + (sid ? 'scena-' + sid : 'storia') + '.' + mu.est;
+  }
+  // La traccia che suona in una scena (o in tutta la storia, senza scena),
+  // come la vuole il copione: `{ src, volume }`, `{ src: 'off' }`, o null
+  // se la musica non si sa trovare (una traccia tolta dal catalogo)
+  function studioMusicaSrc(progetto, sc) {
+    let mu = progetto.musica, sid = '';
+    if (sc && sc.musicaModo === 'silenzio') return { src: 'off' };
+    if (sc && sc.musicaModo === 'propria' && sc.musica) { mu = sc.musica; sid = sc.id; }
+    if (!mu) return { src: 'off' };
+    if (mu.tipo === 'file') return { src: studioPercorsoMusica(progetto.id, sid, mu) + '?v=' + mu.sha.slice(0, 10), volume: mu.volume };
+    const tracce = Array.isArray(radice.ASTRO_TRACCE_MUSICALI) ? radice.ASTRO_TRACCE_MUSICALI : [];
+    const tr = tracce.find(x => x && x.id === mu.id && typeof x.file === 'string');
+    return tr ? { src: 'musica/' + encodeURIComponent(tr.file), volume: mu.volume } : { src: 'off' };
+  }
+  function rigaMusica(m) {
+    return m.src === 'off' ? 'story_music { src: off }' : `story_music { src: ${virgolette(m.src)}, volume: ${numeroDsl(m.volume)} }`;
   }
 
   function studioDurataTotale(progetto) {
@@ -1577,7 +1645,15 @@
   async function studioRiprendiVoci() {
     const vive = new Map();
     for (const p of studio.progetti) for (const sc of p.scene) for (const m of sc.momenti) if (m.voce && m.audio) vive.set(chiaveAudio(p.id, m.voce), m);
+    // v440: e le musiche, se la storia dice ancora di avere quel file
+    const musiche = new Map([...studioMusicheVolute(studio.progetti)].map(([percorso, v]) => [v.chiave, Object.assign({ percorso }, v)]));
     for (const { chiave, rec } of await tutteLeVoci()) {
+      if (eMusica(chiave)) {
+        const v = musiche.get(chiave);
+        if (!v || !rec || !rec.blob || rec.sha !== v.sha) { dbVoci(st => st.delete(chiave), 'audio').catch(() => null); continue; }
+        registraMusica(chiave, v.percorso, URL.createObjectURL(rec.blob));
+        continue;
+      }
       if (!vive.has(chiave) || !rec || !rec.blob) { dbVoci(st => st.delete(chiave), 'audio').catch(() => null); continue; }
       registraVoce(chiave, rec.testo, URL.createObjectURL(rec.blob));
     }
@@ -1588,13 +1664,14 @@
       if (!String(chiave).startsWith(da + '|')) continue;
       const k = a + chiave.slice(da.length);
       await dbVoci(st => st.put(rec, k), 'audio').catch(() => null);
-      registraVoce(k, rec.testo, URL.createObjectURL(rec.blob));
+      if (eMusica(chiave)) { if (rec.est) registraMusica(k, studioPercorsoMusica(a, rec.sid || '', { est: rec.est }), URL.createObjectURL(rec.blob)); }
+      else registraVoce(k, rec.testo, URL.createObjectURL(rec.blob));
     }
   }
   function cancellaVoci(pid) {
     tutteLeVoci().then(tutte => {
       for (const { chiave } of tutte) if (String(chiave).startsWith(pid + '|')) {
-        registraVoce(chiave, '', '');
+        if (eMusica(chiave)) registraMusica(chiave, '', ''); else registraVoce(chiave, '', '');
         dbVoci(st => st.delete(chiave), 'audio').catch(() => null);
       }
     });
@@ -1619,6 +1696,118 @@
       if (!rec || !rec.blob || unaRiga(rec.testo) !== unaRiga(b.testo)) continue;
       const est = (STUDIO_ESTENSIONI.exec(rec.nome || '') || [, /wav/.test(rec.tipo) ? 'wav' : /ogg/.test(rec.tipo) ? 'ogg' : 'mp3'])[1].toLowerCase();
       fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, nome: `${f.chiave}-${b.n}.${est}`, blob: rec.blob });
+    }
+    return fuori;
+  }
+
+  /* La musica di sottofondo caricata a mano (v440, §4-ter). Come le voci:
+   * il file resta in questo browser (IndexedDB, scaffale `audio`, chiave
+   * `<progetto>|musica|<scena o «storia»>`), suona subito su questo
+   * dispositivo col percorso che avrà sul sito (`StorieCosmiche.musicaLocale`)
+   * e parte verso il repository con la storia salvata (§6b), dove dopo il
+   * deploy suona dappertutto. */
+  const STUDIO_MUSICA_MAX = 20 * 1024 * 1024;
+  const musicheCaricate = new Map();      // chiave → { url, percorso }
+  const chiaveMusica = (pid, sid) => pid + '|musica|' + (sid || 'storia');
+  const eMusica = k => String(k).includes('|musica|');
+  function registraMusica(k, percorso, url) {
+    const prima = musicheCaricate.get(k);
+    const stor = S();
+    if (prima) {
+      if (stor.musicaLocale) stor.musicaLocale(prima.percorso, '');
+      if (prima.url && typeof URL !== 'undefined' && URL.revokeObjectURL) URL.revokeObjectURL(prima.url);
+      musicheCaricate.delete(k);
+    }
+    if (url) {
+      musicheCaricate.set(k, { url, percorso });
+      if (stor.musicaLocale) stor.musicaLocale(percorso, url);
+    }
+  }
+  // Dove sta la musica di cui parla un campo dello Studio: `storia` (tutta
+  // la storia) o `scene.<i>`
+  function musicaDi(dove) {
+    const p = studio.progetto;
+    if (dove === 'storia') return { tiene: p, sid: '', mu: p.musica };
+    const sc = leggi(dove);
+    return sc ? { tiene: sc, sid: sc.id, mu: sc.musica } : null;
+  }
+  // Uno SHA per dire se il file è cambiato: quello del blob git, se il
+  // browser sa calcolarlo (serve una pagina sicura), se no un'impronta
+  async function improntaFile(file) {
+    const byte = new Uint8Array(await file.arrayBuffer());
+    try { if (radice.crypto && radice.crypto.subtle) return await shaBlob(byte); } catch (_) { /* sotto, l'impronta */ }
+    let x = 0x811c9dc5;
+    for (let i = 0; i < byte.length; i += Math.max(1, Math.floor(byte.length / 65536))) { x ^= byte[i]; x = Math.imul(x, 0x01000193) >>> 0; }
+    return (x.toString(16).padStart(8, '0') + byte.length.toString(16)).slice(0, 40);
+  }
+  async function caricaMusica(dove, file) {
+    const p = studio.progetto, di = musicaDi(dove);
+    if (!di || !file) return;
+    if (file.size > STUDIO_MUSICA_MAX) { esito(t('studio.musica.troppoGrande')); return; }
+    if (!/^audio\//.test(file.type || '') && !STUDIO_ESTENSIONI.test(file.name || '')) { esito(t('studio.voce.nonAudio')); return; }
+    const durata = await misuraDurata(file);
+    if (!durata) { esito(t('studio.voce.nonAudio')); return; }
+    const est = (STUDIO_ESTENSIONI.exec(file.name || '') || [, /wav/.test(file.type) ? 'wav' : /ogg/.test(file.type) ? 'ogg' : /mp4|m4a|aac/.test(file.type) ? 'm4a' : /webm/.test(file.type) ? 'webm' : 'mp3'])[1].toLowerCase();
+    let sha;
+    try { sha = await improntaFile(file); } catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return; }
+    const k = chiaveMusica(p.id, di.sid);
+    try { await dbVoci(st => st.put({ blob: file, nome: file.name || '', tipo: file.type || '', durata, musica: true, est, sha, sid: di.sid }, k), 'audio'); }
+    catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return; }
+    const mu = { tipo: 'file', nome: String(file.name || '').slice(0, 80), est, sha, durata, volume: di.mu ? di.mu.volume : STUDIO_MUSICA_VOLUME };
+    di.tiene.musica = mu;
+    if (di.sid) di.tiene.musicaModo = 'propria';
+    registraMusica(k, studioPercorsoMusica(p.id, di.sid, mu), URL.createObjectURL(file));
+    salvaPresto();
+    disegna();
+    const caricata = t('studio.musica.caricata', { nome: mu.nome || est, secondi: secondiDi(durata) });
+    esito(caricata);
+    // Sul repository subito, come una voce, se la storia è già salvata
+    if (!condivisa(p)) { esito(caricata + ' ' + t('studio.repo.audioDopo')); return; }
+    if (!studioRepoImpostazioni().token) { esito(caricata + ' ' + t('studio.repo.senzaToken')); return; }
+    esito(caricata + ' ' + t('studio.repo.inCorso'));
+    salvaPresto();
+    esito(caricata + ' ' + await studioSincronizza({ spingi: true, titolo: p.titolo }));
+  }
+  function togliMusica(dove) {
+    const p = studio.progetto, di = musicaDi(dove);
+    if (!di) return;
+    const k = chiaveMusica(p.id, di.sid);
+    registraMusica(k, '', '');
+    dbVoci(st => st.delete(k), 'audio').catch(() => null);
+    di.tiene.musica = null;
+    if (di.sid) di.tiene.musicaModo = 'storia';
+  }
+  // Ascoltare la traccia scelta nello Studio, senza guardare la storia
+  let ascoltoMusica = null;
+  function fermaAscoltoMusica() {
+    if (ascoltoMusica) { try { ascoltoMusica.audio.pause(); } catch (_) { /* niente */ } }
+    ascoltoMusica = null;
+  }
+  function ascoltaMusica(dove) {
+    const era = ascoltoMusica && ascoltoMusica.dove;
+    fermaAscoltoMusica();
+    if (era === dove || typeof Audio === 'undefined') return;
+    const di = musicaDi(dove);
+    if (!di || !di.mu) return;
+    const p = studio.progetto;
+    const locale = di.mu.tipo === 'file' && musicheCaricate.get(chiaveMusica(p.id, di.sid));
+    const m = studioMusicaSrc(p, di.sid ? Object.assign({}, di.tiene, { musicaModo: 'propria' }) : null);
+    const url = locale ? locale.url : m.src !== 'off' ? m.src : '';
+    if (!url) return;
+    const audio = new Audio(url);
+    audio.volume = di.mu.volume;
+    ascoltoMusica = { dove, audio };
+    audio.addEventListener('ended', () => { if (ascoltoMusica && ascoltoMusica.audio === audio) { ascoltoMusica = null; disegna(); } });
+    audio.play().catch(() => { ascoltoMusica = null; esito(t('studio.musica.nonSuona')); disegna(); });
+  }
+  // Le musiche che le storie dicono di avere, con dove vanno sul sito:
+  // `percorso` → { chiave, sha }
+  function studioMusicheVolute(progetti) {
+    const fuori = new Map();
+    for (const p of progetti) {
+      const metti = (mu, sid) => { if (mu && mu.tipo === 'file') fuori.set(studioPercorsoMusica(p.id, sid, mu), { chiave: chiaveMusica(p.id, sid), sha: mu.sha, pid: p.id }); };
+      metti(p.musica, '');
+      for (const sc of p.scene) if (sc.musicaModo === 'propria') metti(sc.musica, sc.id);
     }
     return fuori;
   }
@@ -1838,6 +2027,8 @@
     const base = await gh(imp, 'GET', '/git/commits/' + ref.object.sha);
     const albero = [];
     for (const f of file) {
+      // v440: un file da togliere (una musica che nessuna storia usa più)
+      if (f.togli) { albero.push({ path: f.percorso, mode: '100644', type: 'blob', sha: null }); continue; }
       const blob = await gh(imp, 'POST', '/git/blobs', f.testo !== undefined
         ? { content: f.testo, encoding: 'utf-8' } : { content: base64Di(f.byte), encoding: 'base64' });
       albero.push({ path: f.percorso, mode: '100644', type: 'blob', sha: blob.sha });
@@ -1869,6 +2060,35 @@
       if (cartelle.get(dir).get(v.nome) === await shaBlob(byte)) continue;
       if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) break;   // il resto al prossimo salvataggio
       fuori.push({ percorso: dir + '/' + v.nome, byte });
+    }
+    /* v440: le musiche di sottofondo (§4-ter). Si scrivono quelle caricate
+     * qui che sul repository non ci sono uguali, e si tolgono quelle che
+     * nessuna storia salvata usa più (una traccia sostituita, una scena o una
+     * storia eliminata). Una musica caricata da un altro dispositivo non è
+     * qui, ma una storia la vuole: resta. */
+    const volute = studioMusicheVolute(studio.progetti.filter(condivisa));
+    const sulRepo = new Map();
+    const elenca = async percorso => {
+      try { const x = await gh(imp, 'GET', '/contents/' + percorsoUrl(percorso) + '?ref=' + encodeURIComponent(imp.ramo)); return Array.isArray(x) ? x : []; }
+      catch (_) { return null; }
+    };
+    const cartelleMusica = await elenca(STUDIO_MUSICA_CARTELLA);
+    let elencoCompleto = cartelleMusica !== null;
+    for (const c of cartelleMusica || []) {
+      if (c.type !== 'dir') continue;
+      const dentro = await elenca(c.path);
+      if (dentro === null) { elencoCompleto = false; continue; }
+      for (const f of dentro) if (f.type === 'file') sulRepo.set(f.path, f.sha);
+    }
+    if (elencoCompleto) for (const percorso of sulRepo.keys()) if (!volute.has(percorso)) fuori.push({ percorso, togli: true });
+    const registrate = new Map((await tutteLeVoci()).filter(x => eMusica(x.chiave)).map(x => [x.chiave, x.rec]));
+    for (const [percorso, v] of volute) {
+      const rec = registrate.get(v.chiave);
+      if (!rec || !rec.blob || rec.sha !== v.sha || sulRepo.get(percorso) === v.sha) continue;
+      const byte = new Uint8Array(await rec.blob.arrayBuffer());
+      if (sulRepo.get(percorso) === await shaBlob(byte)) continue;
+      if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) break;
+      fuori.push({ percorso, byte });
     }
     return fuori;
   }
@@ -2137,6 +2357,45 @@
     return riga;
   }
 
+  /* La musica di sottofondo (v440, §4-ter): per tutta la storia (`storia`)
+   * o per una scena (`scene.<i>`). Un menu (nessuna, quella della storia, il
+   * silenzio, le tracce dell'app, il file caricato), «Carica un file»,
+   * «Ascolta», il volume e «Togli». */
+  function disegnaMusica(dove) {
+    const p = studio.progetto, di = musicaDi(dove);
+    if (!di) return null;
+    const scena = !!di.sid, sc = scena ? di.tiene : null;
+    const id = 'studio-musica-' + dove.replace(/\./g, '-');
+    const tracce = (Array.isArray(radice.ASTRO_TRACCE_MUSICALI) ? radice.ASTRO_TRACCE_MUSICALI : [])
+      .filter(x => x && typeof x.id === 'string' && typeof x.file === 'string');
+    const opzioni = scena
+      ? [['storia', p.musica ? t('studio.musica.dellaStoria') : t('studio.musica.dellaStoriaNessuna')], ['silenzio', t('studio.musica.silenzio')]]
+      : [['', t('studio.musica.nessuna')]];
+    for (const tr of tracce) opzioni.push(['cat:' + tr.id, t('studio.musica.traccia', { nome: String(tr.nome || tr.id).replace(/_/g, ' ') })]);
+    if (di.mu && di.mu.tipo === 'file') opzioni.push(['file', t('studio.musica.file', { nome: di.mu.nome || di.mu.est })]);
+    let valore = '';
+    if (scena && sc.musicaModo !== 'propria') valore = sc.musicaModo;
+    else if (di.mu) valore = di.mu.tipo === 'file' ? 'file' : 'cat:' + di.mu.id;
+    else valore = scena ? 'storia' : '';
+    const propria = di.mu && (!scena || sc.musicaModo === 'propria');
+    const riga = h('div', { class: 'studio-voce studio-musica', role: 'group', 'aria-label': t(scena ? 'studio.musica.scena' : 'studio.musica.titolo') },
+      h('span', { class: 'studio-etichetta' }, t(scena ? 'studio.musica.scena' : 'studio.musica.titolo')),
+      selettore('', valore, opzioni, { dataset: { musicaScelta: dove }, 'aria-label': t(scena ? 'studio.musica.scena' : 'studio.musica.titolo') }),
+      h('label', { class: 'tasto-cielo studio-mini-testo', for: id, title: t('studio.musica.aiuto') }, t('studio.musica.carica')),
+      h('input', { id, class: 'demo-file-nascosto', type: 'file', accept: 'audio/*,.mp3,.wav,.ogg,.m4a,.opus,.webm', dataset: { musica: dove } }));
+    if (propria) {
+      const inAscolto = ascoltoMusica && ascoltoMusica.dove === dove;
+      riga.append(
+        h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'ascoltaMusica', dove }, 'aria-pressed': String(!!inAscolto) },
+          t(inAscolto ? 'studio.musica.ferma' : 'studio.voce.ascolta')),
+        h('label', { class: 'storie-campo studio-musica-volume' }, h('span', {}, t('studio.musica.volume')),
+          h('input', { type: 'range', min: '5', max: '100', step: '5', value: String(Math.round(di.mu.volume * 100)), dataset: { musicaVolume: dove } })),
+        h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'togliMusica', dove } }, t('studio.musica.togli')));
+      if (di.mu.tipo === 'file' && di.mu.durata) riga.append(h('small', { class: 'studio-voce-stato' }, t('studio.musica.durata', { secondi: secondiDi(di.mu.durata) })));
+    }
+    return riga;
+  }
+
   function disegnaScena(sc, i) {
     const base = `scene.${i}`;
     const presenti = studioPresenti(studio.progetto, sc);
@@ -2160,6 +2419,7 @@
       chips.append(scelta(acceso, { class: 'studio-chip', dataset: { fai: 'presente', dove: base, id } }, figurina(id, '', 22), nome(id)));
     }
     card.append(chips);
+    card.append(disegnaMusica(base));
     // Nell'universo: da quale tappa a quale va la camera, in tutta la scena
     const cosmo = sc.ambiente === 'cosmo';
     if (cosmo) {
@@ -2336,7 +2596,10 @@
     p.scene.forEach((sc, i) => scene.append(disegnaScena(sc, i)));
     pezzi.push(h('div', { class: 'studio-blocco' },
       h('h4', { class: 'storie-sottotitolo' }, t('studio.passo3')),
-      h('p', { class: 'demo-opzioni-nota' }, t('studio.passo3Aiuto')), scene,
+      h('p', { class: 'demo-opzioni-nota' }, t('studio.passo3Aiuto')),
+      disegnaMusica('storia'),
+      h('p', { class: 'demo-opzioni-nota' }, t('studio.musica.nota')),
+      scene,
       h('div', { class: 'demo-azioni' }, h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'nuovaScena' } }, '+ ' + t('studio.aggiungiScena')))));
     // La domanda finale al pubblico (v430, §4-bis): quando, che tipo, e chi
     // vuole la scrive a mano; sotto, la domanda che la storia farà davvero
@@ -2445,6 +2708,8 @@
   }
 
   function avvia(testo) {
+    // l'ascolto di prova di una musica non si sovrappone alla storia
+    if (ascoltoMusica) fermaAscoltoMusica();
     try {
       if (radice.StorieCosmiche && radice.StorieCosmiche.chiudiAnteprima) radice.StorieCosmiche.chiudiAnteprima();
       radice.AstroDemo.avvia(testo);
@@ -2598,6 +2863,8 @@
         studioSincronizza({ spingi: true, titolo: p.titolo }).then(msg => esito(msg || t('studio.repo.giaAPosto')));
         return;
       case 'ascoltaVoce': ascoltaVoce(leggi(dove)); return;
+      case 'ascoltaMusica': ascoltaMusica(dove); disegna(); return;
+      case 'togliMusica': if (ascoltoMusica && ascoltoMusica.dove === dove) fermaAscoltoMusica(); togliMusica(dove); break;
       case 'togliVoce': togliVoce(leggi(dove)); break;
       case 'umoreDalTesto': { const m = leggi(dove); const u = studioUmoreDalTesto(m.testo); if (u) m.umore = u; break; }
       case 'idea': {
@@ -2660,6 +2927,28 @@
     disegna();
   }
 
+  // Una scelta del menu della musica: la traccia dell'app, quella della
+  // storia, il silenzio, nessuna. Un file caricato che non si usa più se ne
+  // va (dal browser subito, dal repository al prossimo salvataggio)
+  function sceltaMusica(dove, valore) {
+    const di = musicaDi(dove);
+    if (!di) return;
+    if (ascoltoMusica && ascoltoMusica.dove === dove) fermaAscoltoMusica();
+    const volume = di.mu ? di.mu.volume : STUDIO_MUSICA_VOLUME;
+    if (valore === 'storia' || valore === 'silenzio') {
+      if (di.mu && di.mu.tipo === 'file') togliMusica(dove);
+      di.tiene.musicaModo = valore;
+    }
+    else if (valore === 'file') { if (di.sid) di.tiene.musicaModo = 'propria'; }
+    else if (valore.startsWith('cat:')) {
+      if (di.mu && di.mu.tipo === 'file') togliMusica(dove);
+      di.tiene.musica = { tipo: 'catalogo', id: valore.slice(4), volume };
+      if (di.sid) di.tiene.musicaModo = 'propria';
+    } else if (!valore && !di.sid) togliMusica(dove);
+    salvaPresto();
+    disegna();
+  }
+
   function collega(r) {
     r.addEventListener('click', e => {
       const b = e.target.closest('[data-fai]');
@@ -2697,6 +2986,22 @@
       if (el.dataset && el.dataset.voce) {
         const file = el.files && el.files[0];
         if (file) caricaVoce(el.dataset.voce, file).finally(() => { el.value = ''; });
+        return;
+      }
+      // La musica di sottofondo (v440): un file, una scelta del menu, il volume
+      if (el.dataset && el.dataset.musica) {
+        const file = el.files && el.files[0];
+        if (file) caricaMusica(el.dataset.musica, file).finally(() => { el.value = ''; });
+        return;
+      }
+      if (el.dataset && el.dataset.musicaScelta) { sceltaMusica(el.dataset.musicaScelta, el.value); return; }
+      if (el.dataset && el.dataset.musicaVolume) {
+        const di = musicaDi(el.dataset.musicaVolume);
+        if (di && di.mu) {
+          di.mu.volume = Math.max(0.05, Math.min(1, (Number(el.value) || 35) / 100));
+          if (ascoltoMusica && ascoltoMusica.dove === el.dataset.musicaVolume) ascoltoMusica.audio.volume = di.mu.volume;
+          salvaPresto(); aggiornaVivi();
+        }
         return;
       }
       if (el.id === 'studio-importa') {
@@ -2819,6 +3124,10 @@
     domandaFinale: studioDomandaFinale, fattiEpisodio: studioFattiEpisodio, nuovaDomanda: studioNuovaDomanda,
     STUDIO_TIPI_DOMANDA, STUDIO_MODI_DOMANDA, STUDIO_KIND_DOMANDA,
     vociStoria: studioVociStoria, impronta: studioImpronta, voceValida: studioVoceValida, fileVoci: studioFileVoci, chiaveVoci: studioChiaveVoci, CHIAVE_VOCI,
+    // v440: la musica di sottofondo (§4-ter)
+    musicaSrc: studioMusicaSrc, percorsoMusica: studioPercorsoMusica, musicheVolute: studioMusicheVolute, pulisciMusica: studioPulisciMusica,
+    caricaMusica, togliMusica, sceltaMusica, riprendiVoci: studioRiprendiVoci, STUDIO_MUSICA_CARTELLA,
+    apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
   };
   radice.StudioStorie = api;

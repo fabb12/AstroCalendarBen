@@ -47362,6 +47362,18 @@ function musicaDemoFerma() {
   }
 }
 
+// La musica di una storia (v440, `story_music` in storie-cosmiche.js)
+// prende il posto della colonna sonora della demo: dalla prima traccia della
+// storia in poi questa resta in pausa (anche nelle scene che la storia vuole
+// in silenzio), e a fine demo `musicaDemoFerma` rimette tutto com'era.
+function musicaDemoSospendi(sospesa) {
+  const d = musicaDemo;
+  if (!d) return;
+  d.sospesa = !!sospesa;
+  if (sospesa) d.audio.pause();
+  else d.audio.play().catch(() => {});
+}
+
 function musicaDemoStato() {
   return {
     demo: musicaDemo ? { id: musicaDemo.id, volume: musicaDemo.audio.volume, suona: !musicaDemo.audio.paused } : null,

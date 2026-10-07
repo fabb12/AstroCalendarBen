@@ -610,6 +610,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
+| `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo |
 
 Dalla v416 `character_show`, `character_move`, `character_return`,
 `character_animate`, `character_become` ed `effect` accettano anche
@@ -1393,6 +1394,47 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   scrive); i campi di testo aggiornano il modello senza ridisegnare, così il
   clic sul bottone accanto non si perde.
 
+## La musica di sottofondo (v440)
+
+Una storia può avere una **traccia per tutta la storia** e ogni scena può
+tenerla, averne **una sua** o stare in **silenzio**. Nel copione è il comando
+`story_music { src, volume }` (`storie-cosmiche.js` §8): la musica suona in
+ciclo e **continua** finché un altro `story_music` non la cambia, quindi una
+traccia che va da una scena all'altra non ricomincia (lo Studio la chiede solo
+all'inizio delle scene in cui cambia), e una lasciata per un'altra riprende da
+dove era. Mentre suona la colonna sonora generale delle demo resta in pausa
+(`musicaDemoSospendi` in `app.js`); sotto la voce di un personaggio si abbassa
+(`STOR_MUSICA_SOTTO_VOCE`, la vigilanza `musicaVigila` ogni 120 ms); con
+«Musica nelle demo» spenta non suona; Stop, Esc, la fine o un errore la
+spengono (`storMusicaFerma` dal ripristino di `demo.js`, e la vigilanza se la
+demo non è più in corso). `src` è un file dello stesso sito (`audio/…` o
+`musica/…`, niente `..`, niente indirizzi esterni) oppure `off`.
+
+**Nello Studio** (§4-ter e §6 di `storie-studio.js`): la riga «Musica della
+storia» in cima al copione e la riga «Musica» di ogni scena (`disegnaMusica`):
+un menu (nessuna, quella della storia, il silenzio, le tracce dell'app di
+`ASTRO_TRACCE_MUSICALI`, il file caricato), «Carica un file», «Ascolta», il
+volume e «Togli la musica». Nel modello: `progetto.musica` e, per scena,
+`musicaModo` (`storia`, `propria`, `silenzio`) e `musica`, con
+`{ tipo: 'catalogo', id, volume }` o `{ tipo: 'file', nome, est, sha, durata,
+volume }` (`studioPulisciMusica`). Un file caricato (al massimo 20 MB) fa la
+**stessa strada delle voci**: resta in IndexedDB (`astrocal-studio-voci`,
+scaffale `audio`, chiave `<progetto>|musica|<id della scena o «storia»>`),
+suona subito su questo dispositivo col percorso che avrà sul sito
+(`StorieCosmiche.musicaLocale`, che vince sul file pubblicato), e con la storia
+salvata nelle demo va sul **repository nello stesso commit** delle storie e
+delle voci (`fileDaScrivere`), in `audio/storie-musica/<id del
+progetto>/storia.<est>` o `scena-<id della scena>.<est>` (`studioPercorsoMusica`).
+Il copione lo chiede con `?v=` e i primi dieci caratteri dello SHA del blob
+git: una traccia sostituita ha un indirizzo nuovo e la cache non fa sentire la
+vecchia. Nello stesso giro si **tolgono** dal repository i file di
+`audio/storie-musica/` che nessuna storia salvata usa più (una traccia
+sostituita o tolta, una scena o una storia eliminata); un file caricato da un
+altro dispositivo, che qui non c'è, resta, perché una storia lo vuole
+(`studioMusicheVolute`). Dopo il deploy suona dappertutto. La cartella
+collegata del «File delle voci» non riceve la musica: il file sta in
+`audio/narrazione/storie/`, la musica fuori. Prova `scripts/prova-musica-storie.js`.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
@@ -1416,6 +1458,7 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
 node scripts/prova-storie.js            # il motore, senza browser
 node scripts/prova-storie-browser.js    # planetario, 3D, voce, filmato, telefono, inglese
 node scripts/prova-storie-repo.js       # le storie dello Studio sul repository (v424)
+node scripts/prova-musica-storie.js     # la musica di sottofondo, dal comando al repository (v440)
 ```
 
 La prima: tutti i tipi di personaggio, pupille dentro agli occhi per ogni
