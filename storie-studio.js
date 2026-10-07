@@ -148,8 +148,14 @@
     return Object.assign({
       v: 1, id: nuovoId('p'), titolo: '', scopo: 'libera', obiettivo: '',
       cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
-      voceChiave: null, voceProssima: 1, aggiornato: 0, lingua: ''
+      voceChiave: null, voceProssima: 1, aggiornato: 0, lingua: '',
+      // v430: la domanda finale al pubblico (§4-bis): di serie la storia la
+      // fa solo se gli eventi ne danno una buona
+      domanda: studioNuovaDomanda()
     }, campi);
+  }
+  function studioNuovaDomanda(campi = {}) {
+    return Object.assign({ modo: 'auto', tipo: 'auto', testo: '', a: '', b: '', chi: '' }, campi);
   }
   // Chi è davvero in scena: quelli scelti, o tutto il cast; mai qualcuno
   // che non è più nel cast.
@@ -180,7 +186,12 @@
       voceProssima: Math.floor(numero(p.voceProssima, 1, 100000, 1)),
       // v424: quando è stato toccato l'ultima volta (chi vince fra due
       // dispositivi) e la lingua delle sue battute nel file delle voci
-      aggiornato: Math.floor(numero(p.aggiornato, 0, 1e13, 0)), lingua: p.lingua === 'en' || p.lingua === 'it' ? p.lingua : ''
+      aggiornato: Math.floor(numero(p.aggiornato, 0, 1e13, 0)), lingua: p.lingua === 'en' || p.lingua === 'it' ? p.lingua : '',
+      domanda: studioNuovaDomanda(p.domanda && typeof p.domanda === 'object' ? {
+        modo: tra(p.domanda.modo, ['auto', 'sempre', 'mai'], 'auto'),
+        tipo: tra(p.domanda.tipo, ['auto', 'ragione', 'sonda', 'fiducia', 'esplora', 'ab', 'previsione', 'protagonista'], 'auto'),
+        testo: testo(p.domanda.testo, 200), a: testo(p.domanda.a, 60), b: testo(p.domanda.b, 60), chi: testo(p.domanda.chi, 40)
+      } : {})
     });
     pulito.scene = (Array.isArray(p.scene) ? p.scene : []).slice(0, 40).map(sc => studioNuovaScena({
       id: idDi(sc && sc.id, 's'), ambiente: tra(sc && sc.ambiente, STUDIO_AMBIENTI, 'sistema'), fuoco: testo(sc && sc.fuoco, 40) || 'Jupiter',
@@ -486,6 +497,8 @@
     const umori = new Map();
     for (const id of progetto.cast) umori.set(id, (S().profilo ? S().profilo(id).espressione : '') || 'neutral');
     let elev = 34, prima = true;
+    // Dove eravamo alla fine: la vista, la camera, chi era in scena (per la domanda)
+    let fine = null;
     const scene = progetto.scene.map((sc, i) => ({ sc, i })).filter(x => opz.scena === undefined || x.i === opz.scena);
     for (const { sc } of scene) {
       const presenti = studioPresenti(progetto, sc);
@@ -561,7 +574,34 @@
         for (const a of az) righe.push(`    action: ${a};`);
         righe.push('  }');
         prima = false;
+        fine = { vista, presenti, cosmo: !!cosmo, sc,
+          camera: az.filter(a => /^(camera_3d|cosmic_scale|center_target|set_fov|story_camera)\b/.test(a))
+            .map(a => a.startsWith('cosmic_scale') && cosmo ? a.replace(/from: [^,]+/, 'from: ' + numeroUA(cosmo[k][1])) : a) };
       });
+    }
+    // La domanda al pubblico (v430, §4-bis): una scena in più, ferma, con il
+    // cartello e chi la pone che la dice. Solo nel copione intero.
+    const domanda = opz.scena === undefined && fine ? studioDomandaFinale(progetto) : null;
+    if (domanda) {
+      const qui = id => progetto.cast.includes(id) && (fine.sc.ambiente === 'cosmo' || !soloCosmo(id));
+      const presenti = fine.presenti.slice();
+      let chi = qui(domanda.chi) ? domanda.chi : presenti[0];
+      if (chi && !presenti.includes(chi)) presenti.push(chi);
+      const detta = t('studio.domanda.detta', { domanda: domanda.testo }) || domanda.testo;
+      const durata = studioDurata(studioNuovoMomento({ testo: detta })) + 3;
+      righe.push('');
+      righe.push(`  scene ${fine.vista} {`);
+      righe.push(`    duration: ${durata}s;`);
+      for (const a of fine.camera) righe.push(`    action: ${a};`);
+      for (const id of presenti) {
+        const espr = id === chi ? 'excited' : umori.get(id) || 'neutral';
+        righe.push(`    action: character_show { target: ${virgolette(id)}, expression: ${virgolette(espr)} };`);
+      }
+      if (chi) righe.push(`    action: character_look_at { target: ${virgolette(chi)}, object: 'viewer' };`);
+      righe.push(`    action: story_question { text: ${virgolette(domanda.testo)}` + (domanda.a ? `, a: ${virgolette(domanda.a)}` : '') +
+        (domanda.b ? `, b: ${virgolette(domanda.b)}` : '') + `, kind: ${domanda.kind}` + (chi ? `, from: ${virgolette(chi)}` : '') + ' };');
+      if (chi) righe.push(`    action: character_speak { target: ${virgolette(chi)}, text: ${virgolette(detta.slice(0, 400))} };`);
+      righe.push('  }');
     }
     righe.push('}');
     return righe.join('\n');
@@ -598,6 +638,195 @@
 
   function studioDurataTotale(progetto) {
     return progetto.scene.reduce((n, sc) => n + sc.momenti.reduce((m, x) => m + studioDurata(x), 0), 0);
+  }
+
+  // ===================================================================
+  // 4-bis. La domanda finale al pubblico (v430)
+  // ===================================================================
+
+  /* Un episodio può chiudersi con una domanda a chi guarda — «Chi ha
+   * ragione?», «Dove dovrebbe andare la sonda?», «Di chi ti fideresti?»,
+   * «Quale oggetto celeste dovremmo esplorare?», una scelta fra A e B, una
+   * previsione, il protagonista del prossimo Short. Non c'è sempre: nasce
+   * **da quello che è successo** nell'episodio (chi ha litigato, chi è
+   * partito e per dove, chi è diventato un'altra cosa, chi è rimasto zitto),
+   * e quando non è successo niente che valga una domanda la storia finisce
+   * senza. Chi scrive può chiederla sempre, mai, sceglierne il tipo o
+   * scriverla a mano.
+   *
+   * `studioDomandaFinale` è una funzione pura: legge gli eventi
+   * (`studioFattiEpisodio`), dà un punteggio a ogni tipo e tiene il
+   * migliore; sotto `STUDIO_DOMANDA_SOGLIA`, in modo automatico, non c'è
+   * domanda. Il copione la mette in una scena in più, dopo l'ultima, con il
+   * cartello `story_question` e chi la pone che la dice. */
+  const STUDIO_TIPI_DOMANDA = ['ragione', 'sonda', 'fiducia', 'esplora', 'ab', 'previsione', 'protagonista'];
+  const STUDIO_MODI_DOMANDA = ['auto', 'sempre', 'mai'];
+  const STUDIO_KIND_DOMANDA = { ragione: 'who_is_right', sonda: 'probe', fiducia: 'trust', esplora: 'explore', ab: 'choice',
+    previsione: 'prediction', protagonista: 'next_star' };
+  const STUDIO_DOMANDA_SOGLIA = 2;
+  const UMORI_DURI = ['angry', 'annoyed', 'bully'];
+  const UMORI_GENTILI = ['happy', 'love', 'excited', 'laughing', 'thinking', 'neutral'];
+  const POSTI_SCHERMO = ['center', 'left', 'right', 'top', 'bottom', 'orbit', 'viewer'];
+  // Le vesti che vengono dopo una veste, per la previsione: la vita vera
+  // delle stelle (una gigante rossa come il Sole diventa una nana bianca;
+  // una stella molto più pesante esplode e può lasciare un buco nero)
+  const STUDIO_DOPO_VESTE = { red_giant: ['white_dwarf', 'supernova'], supernova: ['black_hole', 'white_dwarf'],
+    white_dwarf: ['white_dwarf', 'black_hole'], black_hole: ['white_dwarf', 'black_hole'] };
+  const nomeQualunque = id => !id ? '' : luogoCosmo(id) && !(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id]) ? nomeLuogo(id)
+    : S().nome ? S().nome(id) : id;
+  const eSonda = id => !!(S().profilo && S().profilo(id).famiglia === 'sonda');
+  const eMacchina = id => !!(S().profilo && ['sonda', 'stazione'].includes(S().profilo(id).famiglia));
+
+  // Quello che è successo nell'episodio, in ordine. Funzione pura.
+  function studioFattiEpisodio(progetto) {
+    const f = { battute: [], parlato: new Map(), umori: new Map(), mete: [], viaggi: new Map(), vesti: [], presenti: new Set(),
+      litigi: [], nominati: [], luoghi: [], partenze: [] };
+    const tutti = Object.keys(S().STOR_PERSONAGGI || {});
+    let prima = null;
+    for (const sc of progetto.scene) {
+      studioPresenti(progetto, sc).forEach(id => f.presenti.add(id));
+      if (sc.ambiente === 'cosmo' && sc.cosmoA && !f.luoghi.includes(sc.cosmoA)) f.luoghi.push(sc.cosmoA);
+      for (const m of sc.momenti) {
+        const testo = unaRiga(m.testo);
+        if (m.chi && testo) {
+          const umore = m.umore || studioUmoreDalTesto(testo) || '';
+          const b = { chi: m.chi, testo, umore };
+          f.battute.push(b);
+          f.parlato.set(m.chi, (f.parlato.get(m.chi) || 0) + 1);
+          if (umore) f.umori.set(m.chi, umore);
+          // Un litigio: chi risponde a un altro con un «no», un «sbagli»,
+          // un «invece», o con la faccia dura
+          if (prima && prima.chi !== m.chi && (trova(normalizza(testo), 'disaccordo') || UMORI_DURI.includes(umore)))
+            f.litigi.push([prima.chi, m.chi]);
+          // Chi è nominato: con la maiuscola, perché «io» non è Io e «sole»
+          // in «sole parole» non è il Sole (la normalizzazione tiene le posizioni)
+          // (e «Io sono…» a inizio frase non è la luna: `studio.parole.pronomi`)
+          const norm = normalizza(testo);
+          for (const n of personaggiNelTesto(norm, tutti)) {
+            const iniziale = testo.charAt(n.pos);
+            if (parole('pronomi').includes(norm.slice(n.pos, n.fine))) continue;
+            if (n.id !== m.chi && iniziale !== iniziale.toLowerCase() && !f.nominati.includes(n.id)) f.nominati.push(n.id);
+          }
+          prima = b;
+        }
+        for (const a of m.azioni || []) {
+          if (a.tipo === 'umore' && a.chi && a.umore) f.umori.set(a.chi, a.umore);
+          if (a.tipo === 'muovi' && a.chi && a.verso && !POSTI_SCHERMO.includes(a.verso)) {
+            if (!f.mete.includes(a.verso)) f.mete.push(a.verso);
+            f.viaggi.delete(a.chi); f.viaggi.set(a.chi, a.verso);
+            f.partenze.push([a.chi, a.verso]);
+          }
+          if (a.tipo === 'torna' && a.chi) f.viaggi.delete(a.chi);
+          if (a.tipo === 'diventa' && a.chi) f.vesti.push({ chi: a.chi, forma: a.forma });
+        }
+      }
+    }
+    return f;
+  }
+
+  // I candidati, uno per tipo (o null), col loro punteggio
+  function candidatiDomanda(progetto, f) {
+    const c = {};
+    const parlanti = [...f.parlato.keys()];
+    const protagonista = parlanti.slice().sort((a, b) => f.parlato.get(b) - f.parlato.get(a))[0] || progetto.cast[0] || '';
+    const terzo = coppia => [...f.presenti].find(id => !coppia.includes(id) && f.parlato.has(id)) || coppia[1];
+    const voce = (tipo, punteggio, dati, chi, a, b) => ({ tipo, punteggio, dati, chi: chi || protagonista, a: a || '', b: b || '' });
+    // Chi ha ragione: l'ultimo litigio, o due che chiudono con facce opposte
+    const litigio = f.litigi[f.litigi.length - 1];
+    const duri = parlanti.filter(id => UMORI_DURI.includes(f.umori.get(id)));
+    const gentili = parlanti.filter(id => UMORI_GENTILI.includes(f.umori.get(id)) || !f.umori.get(id));
+    const coppiaUmori = duri.length && gentili.find(id => id !== duri[0]) ? [duri[0], gentili.find(id => id !== duri[0])] : null;
+    const coppiaRagione = litigio || coppiaUmori;
+    if (coppiaRagione) {
+      const [x, y] = coppiaRagione;
+      c.ragione = voce('ragione', litigio ? 3 : 2.2, { a: nomeQualunque(x), b: nomeQualunque(y) }, terzo(coppiaRagione), nomeQualunque(x), nomeQualunque(y));
+    }
+    // Dove dovrebbe andare la sonda: le mete viste e chi è stato nominato
+    const sonda = [...f.presenti].find(eSonda) || progetto.cast.find(eSonda);
+    if (sonda) {
+      const mete = [...new Set(f.mete.concat(f.nominati, [...f.presenti]))]
+        .filter(id => id !== sonda && !eMacchina(id) && !POSTI_SCHERMO.includes(id));
+      const riserva = ['Jupiter', 'Saturn', 'Neptune', 'Mars', 'Pluto'].filter(id => !mete.includes(id));
+      const [a, b] = mete.concat(riserva);
+      c.sonda = voce('sonda', f.viaggi.has(sonda) || f.mete.length ? 3 : 2.4,
+        { sonda: nomeQualunque(sonda), a: nomeQualunque(a), b: nomeQualunque(b) }, sonda, nomeQualunque(a), nomeQualunque(b));
+    }
+    // Di chi ti fideresti: un bullo (o un infastidito) contro uno gentile
+    const bullo = parlanti.find(id => ['bully', 'annoyed'].includes(f.umori.get(id)));
+    const buono = bullo && gentili.find(id => id !== bullo);
+    if (bullo && buono) c.fiducia = voce('fiducia', 2.6, { a: nomeQualunque(buono), b: nomeQualunque(bullo) }, terzo([buono, bullo]),
+      nomeQualunque(buono), nomeQualunque(bullo));
+    else if (parlanti.length >= 2 && f.litigi.length) {
+      const [x, y] = f.litigi[f.litigi.length - 1];
+      c.fiducia = voce('fiducia', 1.6, { a: nomeQualunque(x), b: nomeQualunque(y) }, terzo([x, y]), nomeQualunque(x), nomeQualunque(y));
+    }
+    // Quale oggetto celeste esplorare: dove si è andati, i luoghi della carta,
+    // chi è stato nominato
+    const oggetti = [...new Set(f.mete.concat(f.luoghi, f.nominati))].filter(id => !eMacchina(id));
+    const esplorabili = oggetti.length >= 2 ? oggetti : [...new Set(oggetti.concat([...f.presenti].filter(id => !eMacchina(id))))];
+    if (esplorabili.length >= 2) {
+      const [a, b] = esplorabili.slice(-2);
+      c.esplora = voce('esplora', oggetti.length >= 2 ? 2.2 : 1.4, { a: nomeQualunque(a), b: nomeQualunque(b) }, protagonista,
+        nomeQualunque(a), nomeQualunque(b));
+    }
+    // A o B: chi è partito avrebbe potuto restare
+    const [viaggiatore, meta] = [...f.viaggi.entries()].pop() || [];
+    const ultimoViaggio = viaggiatore ? [viaggiatore, meta] : null;
+    const partenza = ultimoViaggio || f.partenze[f.partenze.length - 1];
+    if (partenza) {
+      const [chi, dove] = partenza;
+      const a = t('studio.domanda.scelta.vai', { meta: nomeQualunque(dove) }), b = t('studio.domanda.scelta.resta');
+      c.ab = voce('ab', 1.8, { chi: nomeQualunque(chi), meta: nomeQualunque(dove) }, chi, a, b);
+    }
+    // La previsione: dopo una veste, che cosa viene; dopo un viaggio senza
+    // ritorno, se tornerà a casa
+    const veste = f.vesti.filter(v => v.forma !== 'self').pop();
+    if (veste && STUDIO_DOPO_VESTE[veste.forma]) {
+      const [x, y] = STUDIO_DOPO_VESTE[veste.forma].map(v => t('storie.veste.' + v));   // la fine della sua vita
+      c.previsione = voce('previsione', 2.8, { chi: nomeQualunque(veste.chi), a: x, b: y }, veste.chi, x, y);
+    } else if (ultimoViaggio) {
+      const a = t('studio.domanda.scelta.torna'), b = t('studio.domanda.scelta.restaLa', { meta: nomeQualunque(ultimoViaggio[1]) });
+      c.previsione = voce('previsione', 2, { chi: nomeQualunque(ultimoViaggio[0]), a, b }, ultimoViaggio[0], a, b);
+      c.previsione.variante = 'Viaggio';
+    }
+    // Il protagonista del prossimo Short: chi è stato zitto, chi è stato
+    // nominato senza esserci, poi chi ha parlato meno
+    const zitti = [...f.presenti].filter(id => !f.parlato.has(id) && id !== protagonista);
+    const fuori = f.nominati.filter(id => !f.presenti.has(id) && S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id]);
+    const pochi = parlanti.filter(id => id !== protagonista).sort((a, b) => f.parlato.get(a) - f.parlato.get(b));
+    const nuovi = [...new Set(zitti.concat(fuori, pochi))];
+    if (nuovi.length >= 2) {
+      const [a, b] = nuovi;
+      c.protagonista = voce('protagonista', zitti.length || fuori.length ? 2 : 1, { a: nomeQualunque(a), b: nomeQualunque(b) }, protagonista,
+        nomeQualunque(a), nomeQualunque(b));
+    }
+    return c;
+  }
+
+  /* La domanda di un progetto, o null. `{ tipo, kind, testo, a, b, chi,
+   * punteggio, scritta }`: `scritta` quando l'ha scritta chi crea la storia. */
+  function studioDomandaFinale(progetto) {
+    const d = progetto.domanda || {};
+    const modo = STUDIO_MODI_DOMANDA.includes(d.modo) ? d.modo : 'auto';
+    if (modo === 'mai') return null;
+    const f = studioFattiEpisodio(progetto);
+    const protagonista = [...f.parlato.keys()].sort((a, b) => f.parlato.get(b) - f.parlato.get(a))[0] || progetto.cast[0] || '';
+    // Scritta a mano: vince sempre, con le scelte scritte accanto
+    if (unaRiga(d.testo)) {
+      const tipo = STUDIO_TIPI_DOMANDA.includes(d.tipo) ? d.tipo : 'ab';
+      return { tipo, kind: STUDIO_KIND_DOMANDA[tipo], testo: unaRiga(d.testo).slice(0, 200), a: unaRiga(d.a).slice(0, 60),
+        b: unaRiga(d.b).slice(0, 60), chi: progetto.cast.includes(d.chi) ? d.chi : protagonista, punteggio: Infinity, scritta: true };
+    }
+    if (f.battute.length < 2 && modo === 'auto') return null;
+    const c = candidatiDomanda(progetto, f);
+    let scelto = null;
+    if (STUDIO_TIPI_DOMANDA.includes(d.tipo)) scelto = c[d.tipo] || null;
+    else for (const tipo of STUDIO_TIPI_DOMANDA) if (c[tipo] && (!scelto || c[tipo].punteggio > scelto.punteggio)) scelto = c[tipo];
+    if (!scelto || (modo === 'auto' && scelto.punteggio < STUDIO_DOMANDA_SOGLIA)) return null;
+    const testo = t('studio.domanda.tpl.' + scelto.tipo + (scelto.variante || ''), scelto.dati);
+    if (!testo) return null;
+    return { tipo: scelto.tipo, kind: STUDIO_KIND_DOMANDA[scelto.tipo], testo: testo.slice(0, 200), a: scelto.a.slice(0, 60),
+      b: scelto.b.slice(0, 60), chi: scelto.chi || protagonista, punteggio: scelto.punteggio, scritta: false };
   }
 
   // ===================================================================
@@ -2033,7 +2262,7 @@
           h('span', { class: 'studio-personaggio-testo' },
             h('strong', { style: 'color:' + (prof.sottotitolo || '#fff') }, nome(id),
               h('small', { class: 'studio-genere' }, ' · ' + t('studio.ui.genere.' + (prof.genere === 'f' ? 'f' : 'm')))),
-            h('small', {}, S().personalita ? S().personalita(id) : ''))));
+            h('small', { title: S().tratto ? S().tratto(id) : '' }, S().personalita ? S().personalita(id) : ''))));
       }
       cast.append(h('div', { class: 'studio-cast-gruppo' }, h('h5', { class: 'studio-gruppo-titolo' }, t('studio.ui.gruppo.' + g)), fila));
     }
@@ -2047,6 +2276,9 @@
       h('h4', { class: 'storie-sottotitolo' }, t('studio.passo3')),
       h('p', { class: 'demo-opzioni-nota' }, t('studio.passo3Aiuto')), scene,
       h('div', { class: 'demo-azioni' }, h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'nuovaScena' } }, '+ ' + t('studio.aggiungiScena')))));
+    // La domanda finale al pubblico (v430, §4-bis): quando, che tipo, e chi
+    // vuole la scrive a mano; sotto, la domanda che la storia farà davvero
+    pezzi.push(disegnaDomanda(p));
     // 4. Il controllo, chiuso in una riga quando è tutto a posto
     const consigli = h('ul', { class: 'studio-consigli', id: 'studio-consigli' });
     pezzi.push(h('details', { class: 'studio-blocco studio-controllo', id: 'studio-controllo' },
@@ -2071,10 +2303,51 @@
       if (el) el.focus();
     }
   }
+  function disegnaDomanda(p) {
+    const d = p.domanda || (p.domanda = studioNuovaDomanda());
+    const modi = STUDIO_MODI_DOMANDA.map(m => [m, t('studio.domanda.modo.' + m)]);
+    const tipi = ['auto'].concat(STUDIO_TIPI_DOMANDA).map(k => [k, t('studio.domanda.tipo.' + k)]);
+    const campi = [
+      h('div', { class: 'studio-riga' },
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.domanda.modo')), selettore('domanda.modo', d.modo, modi)),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.domanda.tipo')), selettore('domanda.tipo', d.tipo, tipi, { disabled: d.modo === 'mai' })),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.domanda.chi')),
+          selettore('domanda.chi', d.chi, [['', t('studio.domanda.chiAuto')]].concat(opzioniPersonaggi(p.cast)), { disabled: d.modo === 'mai' })))
+    ];
+    if (d.modo !== 'mai') {
+      campi.push(h('div', { class: 'studio-riga' },
+        h('label', { class: 'storie-campo studio-largo' }, h('span', {}, t('studio.domanda.scrivi')),
+          h('input', { type: 'text', maxlength: '200', value: d.testo, dataset: { campo: 'domanda.testo' }, placeholder: t('studio.domanda.scriviAiuto') })),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.domanda.a')),
+          h('input', { type: 'text', maxlength: '60', value: d.a, dataset: { campo: 'domanda.a' } })),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.domanda.b')),
+          h('input', { type: 'text', maxlength: '60', value: d.b, dataset: { campo: 'domanda.b' } }))));
+      campi.push(h('div', { class: 'demo-azioni' },
+        unaRiga(d.testo)
+          ? h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'domandaTogli' } }, t('studio.domanda.togli'))
+          : h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'domandaUsa' } }, t('studio.domanda.usa'))));
+    }
+    return h('div', { class: 'studio-blocco studio-domanda' },
+      h('h4', { class: 'storie-sottotitolo' }, t('studio.domanda.titolo')),
+      h('p', { class: 'demo-opzioni-nota' }, t('studio.domanda.aiuto')),
+      ...campi,
+      h('p', { class: 'studio-domanda-anteprima', id: 'studio-domanda-anteprima', role: 'status', 'aria-live': 'polite' }));
+  }
+  // La domanda che la storia farà, a parole, sotto ai campi
+  function anteprimaDomanda(el, p) {
+    const d = studioDomandaFinale(p);
+    if (!d) { el.replaceChildren(t(p.domanda && p.domanda.modo === 'mai' ? 'studio.domanda.spenta' : 'studio.domanda.nessuna')); return; }
+    const scelte = [d.a, d.b].filter(Boolean);
+    el.replaceChildren(t('studio.domanda.sara'), ' ',
+      h('strong', {}, (d.chi ? nome(d.chi) + ': ' : '') + '«' + d.testo + '»'),
+      scelte.length ? h('span', { class: 'studio-domanda-scelte' }, ' ', scelte.map((x, i) => (i ? 'B' : 'A') + ' · ' + x).join('   ')) : null);
+  }
   // Quello che cambia a ogni lettera: il controllo, il copione, i contatori
   function aggiornaVivi() {
     const r = studio.radice;
     if (!r) return;
+    const anteprima = r.querySelector('#studio-domanda-anteprima');
+    if (anteprima) anteprimaDomanda(anteprima, studio.progetto);
     const lista = r.querySelector('#studio-consigli');
     if (lista) {
       const valida = radice.AstroDemo && typeof radice.AstroDemo.valida === 'function' ? radice.AstroDemo.valida : null;
@@ -2117,6 +2390,14 @@
     const contenitore = percorso => { const parti = percorso.split('.'); const i = Number(parti.pop()); return { lista: leggi(parti.join('.')), i }; };
     switch (nomeOp) {
       case 'nuovo': apri(studioNuovoProgetto()); return;
+      // La domanda proposta dalla storia diventa testo da modificare; e si
+      // torna a quella della storia svuotando i campi
+      case 'domandaUsa': {
+        const d = studioDomandaFinale(Object.assign({}, p, { domanda: Object.assign({}, p.domanda, { modo: 'sempre', testo: '' }) }));
+        if (d) Object.assign(p.domanda, { testo: d.testo, a: d.a, b: d.b, chi: d.chi, tipo: d.tipo });
+        salvaPresto(); disegna(); return;
+      }
+      case 'domandaTogli': Object.assign(p.domanda, { testo: '', a: '', b: '' }); salvaPresto(); disegna(); return;
       case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; copiaVoci(p.id, c.id); apri(c); return; }
       case 'elimina':
         if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) {
@@ -2455,6 +2736,8 @@
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
     unisci: studioUnisci, fileCondivise: studioFileCondivise, leggiCondivise: studioLeggiCondivise, repoDiSerie: studioRepoDiSerie,
     sincronizza: studioSincronizza, FILE_CONDIVISE,
+    domandaFinale: studioDomandaFinale, fattiEpisodio: studioFattiEpisodio, nuovaDomanda: studioNuovaDomanda,
+    STUDIO_TIPI_DOMANDA, STUDIO_MODI_DOMANDA, STUDIO_KIND_DOMANDA,
     vociStoria: studioVociStoria, impronta: studioImpronta, voceValida: studioVoceValida, fileVoci: studioFileVoci, chiaveVoci: studioChiaveVoci, CHIAVE_VOCI,
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
   };

@@ -12716,6 +12716,8 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 .storia-descrizione { margin: 0; color: #cbd5e1; font-size: 0.88rem; line-height: 1.45; }
 .storia-cast { margin: 0; padding-left: 1.1em; color: #cbd5e1; font-size: 0.85rem; line-height: 1.5; }
 .storia-cast strong { font-weight: 750; }
+/* v430: perché è fatto così, la fisica sotto al carattere */
+.storia-tratto { display: block; color: #94a3b8; font-size: 0.78rem; line-height: 1.45; margin-bottom: 0.3em; }
 .storia-avvia { width: auto; }
 .storie-anteprima { display: grid; gap: 8px; }
 .storie-sottotitolo { margin: 6px 0 0; color: #fff; font-size: 0.95rem; font-weight: 700; }
@@ -12944,6 +12946,10 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-controllo > summary .storie-sottotitolo { margin: 0; }
 .studio-controllo-esito { color: #86efac; font-size: 0.82rem; }
 .studio-controllo-esito.no { color: #fcd34d; }
+/* v430: la domanda finale al pubblico, e quella che la storia farà davvero */
+.studio-domanda-anteprima { margin: 0.6rem 0 0; color: #e2e8f0; font-size: 0.86rem; line-height: 1.5; }
+.studio-domanda-anteprima strong { color: #fde68a; }
+.studio-domanda-scelte { color: #94a3b8; white-space: pre-wrap; }
 .studio button:focus-visible, .studio summary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (max-width: 560px) {
   .studio-strumenti { margin-left: 0; }

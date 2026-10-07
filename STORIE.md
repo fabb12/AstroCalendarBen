@@ -241,6 +241,117 @@ L'anteprima della pagina Demo e le figurine dello Studio
 (`StorieCosmiche.ritratto`, un ritratto fermo su una tela piccola) usano lo
 stesso corpo.
 
+## La fisica dei personaggi (v430)
+
+`storie-cosmiche.js` §1 (`STOR_FISICA`, `STOR_FISICA_FAMIGLIE`,
+`STOR_FISICA_EMOZIONI`) e §6-sexies. Chi usa l'app ha chiesto che ogni
+personaggio sia **il suo corpo celeste** e che il carattere venga dalla
+fisica. Ogni personaggio ha:
+
+| Cosa | Campo | Esempi |
+|---|---|---|
+| il corpo centrale | la `sagoma` (§I corpi) | — |
+| la superficie vera | `superficie` e il `decoro` | crateri di Mercurio, nubi d'acido di Venere, oceani della Terra, deserto di Marte, bande di Giove |
+| l'atmosfera | `atmosfera { colore, spessore, densita }` | nessuna per Mercurio e la Luna, densissima per Venere e Titano, la foschia azzurra di Plutone |
+| gli anelli | `anelli { colore, rx, ry, giro, alfa }` | Urano coi suoi anelli **in piedi** (asse a 98°), Nettuno, quello tenue di Giove; Saturno li ha nella sagoma |
+| le lune | `lune [{ nome, colore, r, d, periodo, piatto, giro, sasso }]` | la Luna della Terra, Phobos e Deimos (sassi), le quattro di Galileo in fila, Titano, Miranda e Titania, Tritone che gira **al contrario**, Caronte grande quasi metà di Plutone |
+| l'avatar d'energia | `avatar` | `corona` (il Sole: raggi che pulsano), `magnetosfera` (Terra e Giove: aurore ai poli e linee del campo), `aura` (galassie e buchi) |
+| la silhouette | tutto insieme | è quello che fa riconoscere una figurina di 48 pixel |
+| il corpo che si muove | `passo`, `tremito`, `testa` | Mercurio respira e guarda in giro quasi al doppio e ha il nervoso addosso; Giove e Nettuno sono lenti; Urano tiene la testa piegata |
+| il perché | `tratto` → `storie.fisica.<id>` | detto nella pagina Demo sotto alla personalità, e nel suggerimento delle figurine dello Studio |
+
+**La personalità viene dalla fisica** (i testi `storie.personalita.*` sono
+stati riscritti così): Mercurio è veloce, nervoso, impaziente (un anno di 88
+giorni, nessuna atmosfera a proteggerlo); Venere elegante ma intensa e
+«infernale» (460 gradi sotto le nubi d'acido); Marte ossessionato dall'idea
+che gli umani ci possano vivere; Giove grande e protettivo (la sua gravità
+devia comete e asteroidi); Saturno vanitoso e orgoglioso degli anelli; Urano
+eccentrico e fuori dagli schemi (rotola coricato); Nettuno freddo, distante e
+misterioso; Plutone insicuro da quando, nel 2006, l'hanno declassato.
+
+**L'umore muove la fisica** (`storReazioneFisica`, funzione pura; la
+reazione scivola verso quella voluta in `STOR_TAU_REAZIONE`, e col movimento
+ridotto ci salta):
+
+- **Le tempeste** crescono con la rabbia, ognuna la sua (`tempeste`):
+  `vortici` attorno alla Grande Macchia Rossa e fulmini (Giove), `venti`
+  bianchi che corrono e la macchia scura che si gonfia (Nettuno), `cicloni`
+  (Terra), `fulmini` nelle nubi (Venere), `polvere` che vela il disco
+  (Marte), l'`esagono` al polo (Saturno), i pennacchi dei `vulcani` (Io).
+- **Le prominenze** delle stelle: archi di plasma dal bordo, di più e più
+  alti con la rabbia e l'entusiasmo (e parlando); oltre una certa rabbia,
+  un'espulsione di massa che parte e si allarga.
+- **L'atmosfera** si gonfia (`atmoK`) e cambia colore: rossa di rabbia,
+  rosa d'amore, grigia e sottile di tristezza, che pulsa con la tempesta.
+- **Le lune reagiscono**: si stringono al pianeta quando ha paura o è triste
+  (e calano), saltano fuori per la sorpresa, tremano per la rabbia, ballano
+  per la contentezza; il loro tempo (`pg.tempoLune`) corre più o meno svelto
+  senza mai saltare all'indietro. Nella 3D le lune **vere** fanno lo stesso
+  (`storLunaReagisce`, da `storScena3D`): una luna che non è un personaggio,
+  attorno a un pianeta che lo è, si avvicina e trema attorno al pianeta
+  com'è mostrato.
+- **Gli anelli nella gestualità**: Saturno li alza e li apre quando è fiero o
+  entusiasta (e luccicano: è vanitoso), li lascia cadere da triste, li fa
+  vibrare da arrabbiato, li muove sulle parole quando parla.
+- **L'avatar** si accende con l'emozione e la voce.
+
+**Dove si disegna.** Due strati attorno al corpo, `dietro` (avatar,
+atmosfera, prominenze, metà di dietro di anelli e orbite) e `davanti`
+(tempeste sul disco, metà davanti), in `storDisegnaFisica`. Sul corpo
+disegnato tutto; sull'astro vero col volto addosso lo strato di dietro solo
+fuori dal disco (`clipFuoriDisco`) e le tempeste sotto al volto, con la sua
+luce. Nella 3D le lune e gli anelli disegnati non ci sono (ci sono quelli
+veri, che reagiscono). Il ritratto (figurine e anteprima) porta la fisica
+ferma; `ingombroDi(profilo)` conta lune e anelli.
+
+Aggiungere la fisica a un personaggio: una riga in `STOR_FISICA` con la sua
+chiave e, se ha un perché da dire, `storie.fisica.<id>` nei due dizionari.
+
+## La domanda al pubblico (v430)
+
+Un episodio può chiudersi con una domanda a chi guarda. Il cartello è
+l'azione `story_question` (§8): `text` (al più 200 caratteri), le scelte `a`
+e `b` (al più 60, facoltative: una previsione può restare aperta), `kind`
+(`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`,
+`next_star`) e `from` (chi la pone). Sta in alto sotto al cartello «Sei
+qui», con le due pillole A e B e l'invito «Rispondi nei commenti!», per tutta
+la scena (`stor.domanda`, `storDisegnaDomanda`).
+
+```
+action: story_question { text: 'Chi ha ragione? Marte o Giove?', a: 'Marte', b: 'Giove', kind: who_is_right, from: 'Jupiter' };
+action: character_speak { target: 'Jupiter', text: 'Chi ha ragione? Marte o Giove? Scrivilo nei commenti!' };
+```
+
+**Nello Studio** (`storie-studio.js` §4-bis) la domanda **nasce dagli
+eventi** dell'episodio (`studioFattiEpisodio`: chi ha parlato e quanto, le
+facce finali, i litigi — una risposta con «no», «sbagli», «invece» o con la
+faccia dura —, le mete dei viaggi e chi non è tornato, le vesti, i luoghi
+della carta, chi è stato nominato con la maiuscola), e ogni tipo ha un
+punteggio:
+
+| Tipo | Quando | Esempio |
+|---|---|---|
+| `ragione` | un litigio (3), o due facce opposte (2,2) | «Chi ha ragione? Terra o Sole?» |
+| `sonda` | c'è una sonda: partita (3) o solo in scena (2,4) | «Dove dovrei andare adesso? Nube di Oort o Sole?» |
+| `fiducia` | un bullo o un infastidito contro uno gentile (2,6) | «Di chi ti fideresti? …» |
+| `esplora` | almeno due mete o luoghi (2,2) | «Quale oggetto celeste dovremmo esplorare? Giove o Saturno?» |
+| `ab` | qualcuno è partito (1,8) | «E tu, al mio posto, che cosa avresti fatto?» Partire · Giove / Restare a casa |
+| `previsione` | una veste (2,8), o un viaggio senza ritorno (2) | «Secondo te, alla fine della mia vita che cosa diventerò? Nana bianca o Buco nero?» |
+| `protagonista` | qualcuno è stato zitto o solo nominato (2) | «Chi vuoi come protagonista del prossimo Short? …» |
+
+**Non c'è sempre**: in automatico (`domanda.modo: 'auto'`) si fa solo se il
+migliore arriva a `STUDIO_DOMANDA_SOGLIA` (2) e ci sono almeno due battute.
+Chi scrive sceglie in «La domanda finale» (fra il copione e il controllo):
+quando (solo se è adatta, sempre, mai), che tipo, chi la fa, oppure la scrive
+a mano con le sue scelte («Modifica questa» copia lì la proposta). Sotto ai
+campi c'è la domanda che la storia farà davvero. Il copione la mette in una
+scena in più, ferma, con la camera dell'ultima, chi la pone che guarda chi
+guarda con la faccia entusiasta e la dice («… Scrivilo nei commenti!»); non
+nella prova di una scena sola. La battuta della domanda parla con la voce di
+sintesi (non ha un numero di voce dello Studio). I nomi stanno nelle domande
+come etichette («Terra o Sole?»), senza articoli, così le frasi tornano con
+ogni astro.
+
 ## Nella scala cosmica (v412)
 
 La scala cosmica (`scala-cosmica.js`, il quarto quadro della vista 3D) è un
@@ -492,6 +603,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20) |
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`), `target?` (con `close`, un personaggio in scena), `zoom?` (1–4, il tetto del primo piano) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
+| `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
 
 Dalla v416 `character_show`, `character_move`, `character_return`,
 `character_animate`, `character_become` ed `effect` accettano anche
@@ -946,6 +1058,8 @@ volto o un bottone acceso/spento (`aria-pressed`), non aprendo un menu:
   vero** della tappa a cui la camera sta arrivando (`studio.fatto.*`: la luce
   del Sole in otto minuti e venti secondi, Andromeda vista com'era prima di
   noi, la luce più antica di 13,8 miliardi di anni);
+- **La domanda finale** (v430), fra il copione e il controllo: quando, che
+  tipo, chi la fa, o scritta a mano; §La domanda al pubblico.
 - **5 · Guarda e salva**, di nuovo in fondo.
 - **La data e il luogo a schermo** (v414): di serie non compaiono (il
   cartello `date_card` dice solo la sua scritta); in «Inquadratura e data» la
@@ -1107,6 +1221,16 @@ fermano entro quattro secondi, volumi sotto 1, rampe esponenziali su valori
 positivi), il silenzio con l'opzione spenta, in pausa e fuori da una demo, il
 rumore che non fa la raffica, i comandi che suonano nell'ordine giusto
 (pop, boing, explosion, zap, ding) e la casella dello Studio.
+Dalla v430 anche: la fisica di ogni personaggio (Mercurio senza atmosfera e
+nervoso, le quattro lune di Galileo, Urano coricato, Tritone al contrario,
+Caronte), la reazione all'umore (tempeste, prominenze, atmosfera che arrossa,
+lune che si stringono e saltano, anelli che si alzano), il disegno che
+scivola e il tempo delle lune che non torna indietro, la Luna vera che si
+stringe alla Terra impaurita nella 3D, la posa di Urano e di Mercurio,
+`story_question` validato e disegnato, e nello Studio la domanda che nasce
+dagli eventi (previsione per `buchi`, sonda per `universo`, ragione per
+`avventura`, niente per una storia senza eventi), i modi, il tipo scelto,
+quella scritta a mano, il salvataggio, e «Io sono…» che non è la luna.
 `scripts/giro-storia.js` (`STORIA=storia_stelle`) fa girare «Che fine fanno le stelle?»
 intera in un Chromium, con una schermata a metà di ogni scena.
 La seconda, in un Chromium senza rete: la sezione della pagina Demo e
