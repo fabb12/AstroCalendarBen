@@ -943,6 +943,24 @@ con lo spazio davanti allo sguardo (`terzi`).
   le decadi), il puntamento `sky.manuale` del planetario — e si avvicina
   della metà dello zoom della lente della regia.
 
+## Le orbite a richiesta e il Sole del banco più vero (v435)
+
+- **Le orbite di chi è in scena** (v432) sono ancora più sottili (nastro di
+  1,4 px, puntini di 1 px ogni 5, tutto più tenue) e **nascoste di serie**:
+  si vedono solo con l'opzione «CosmoStorie: mostra le orbite» della pagina
+  Demo (`orbiteStorie`, `demoOrbiteStorie()` in app.js, che
+  `solTrattoStoria` chiede prima di disegnare). Chi guarda le storie le
+  trovava ancora troppo presenti.
+- **Il Sole del banco Terra e Luna** (`solDisegnaSoleVicino`) è più grande
+  e più vero: 13 raggi terrestri invece di 6, a 1,36 orbite lunari invece di
+  1,18 (il bordo vicino resta fuori dall'orbita della Luna), con lo
+  scurimento al bordo, la granulazione fine, le macchie con la penombra, le
+  facole, qualche protuberanza e la corona a pennacchi tenui, senza il
+  contorno. È dipinto una volta su una tela fuori schermo
+  (`solTelaSoleVicino`, rifatta solo quando il raggio cambia di gradino,
+  al più `SOL_SOLE_TELA_MAX` px e poi ingrandita). Nelle storie in cui il
+  Sole è un personaggio il suo corpo da cartone ci sta sopra come prima.
+
 ## La camera che non sta mai ferma (v434)
 
 Chi scrive storie ha chiesto di nuovo che la camera «si muova, zoomi, sia

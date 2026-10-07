@@ -35027,6 +35027,14 @@ function demoStoriaCinema() {
   const d = typeof window !== 'undefined' ? window.AstroDemo : null;
   return !!(d && d.storia);
 }
+// Le orbite di chi è in scena nelle CosmoStorie (v432) si vedono solo con
+// l'opzione `orbiteStorie` della pagina Demo, spenta di serie (v435): chi
+// guarda le storie le ha trovate ancora troppo presenti anche sottili, e
+// preferisce il cielo pulito coi soli personaggi.
+function demoOrbiteStorie() {
+  const d = typeof window !== 'undefined' ? window.AstroDemo : null;
+  return !!(d && d.opzioni && d.opzioni.orbiteStorie === true);
+}
 function solTesto(ctx, testo, x, y, colore, misura, allinea) {
   if (demoSenzaScritte()) return;
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
@@ -35430,21 +35438,23 @@ function solColoreStoria(colore, verso = 0.45) {
   return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }
 function solTrattoStoria(ctx, colore, davanti, percorso) {
+  if (!demoOrbiteStorie()) return;
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.setLineDash([]);
   ctx.shadowColor = 'transparent';
-  // il nastro (v433: più sottile, era 7 px; chi guarda lo trovava grosso)
-  ctx.globalAlpha = davanti ? 0.22 : 0.09;
+  // il nastro (v433: era 7 px, poi 3; v435: 1,4, chi guarda lo trovava
+  // ancora grosso)
+  ctx.globalAlpha = davanti ? 0.16 : 0.06;
   ctx.strokeStyle = solColoreStoria(colore, 0.35);
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 1.4;
   ctx.beginPath(); percorso(); ctx.stroke();
-  // i puntini (erano di 3 px ogni 10)
-  ctx.globalAlpha = davanti ? 0.85 : 0.32;
+  // i puntini (erano di 3 px ogni 10, poi di 1,6 ogni 6)
+  ctx.globalAlpha = davanti ? 0.7 : 0.25;
   ctx.strokeStyle = solColoreStoria(colore, 0.75);
-  ctx.lineWidth = 1.6;
-  ctx.setLineDash([0.01, 6]);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([0.01, 5]);
   ctx.beginPath(); percorso(); ctx.stroke();
   ctx.restore();
 }
@@ -38323,8 +38333,18 @@ function solDisegnaRaggiVicino(ctx, versoSole, portata) {
 // abbastanza grande da riconoscere da dove partono i raggi, senza coprire il
 // banco delle ombre. Se si scelgono «Dimensioni reali», invece, il suo raggio
 // e' davvero 696.350 km nello stesso metro degli altri corpi.
-const SOL_VIC_SOLE_DISTANZA_ORBITE = 1.18;
-const SOL_VIC_SOLE_RAGGI_TERRA = 6;
+// Il Sole del banco Terra e Luna (v435: più grande e più vero). Era un
+// disco di sei raggi terrestri a 1,18 orbite lunari, un'arancia con il
+// contorno e tre macchie: chi guarda le storie l'ha trovato piccolo e finto
+// accanto alla Terra. Ora è di 13 raggi terrestri, un poco più lontano perché
+// non copra l'orbita della Luna (il bordo vicino resta fuori dall'orbita
+// anche all'apogeo), e ha la faccia di un Sole fotografato: il bordo più
+// scuro e rosso del centro (lo scurimento al bordo), la granulazione fine,
+// le macchie con la penombra, le facole chiare vicino al bordo, qualche
+// protuberanza e la corona. La misura resta dichiarata: il Sole vero, a
+// questa distanza, riempirebbe il quadro (`misureVere` lo mostra).
+const SOL_VIC_SOLE_DISTANZA_ORBITE = 1.36;
+const SOL_VIC_SOLE_RAGGI_TERRA = 13;
 function solPuntoSoleVicino(versoSole, distanzaLuna) {
   const distanza = (distanzaLuna || 384400) * SOL_VIC_SOLE_DISTANZA_ORBITE;
   return [
@@ -38332,6 +38352,105 @@ function solPuntoSoleVicino(versoSole, distanzaLuna) {
     versoSole[1] * distanza,
     versoSole[2] * distanza
   ];
+}
+// La faccia del Sole, dipinta una volta su una tela fuori schermo e
+// ricopiata: sono centinaia di granuli e qualche gradiente, troppi da
+// rifare a ogni fotogramma. Si rifà solo quando il raggio cambia di gradino;
+// oltre `SOL_SOLE_TELA_MAX` pixel di raggio la tela si ingrandisce
+// copiandola (la fotosfera è morbida, non si vede la differenza).
+const SOL_SOLE_TELA_MAX = 360;
+const SOL_SOLE_CORONA = 2.9;           // fin dove arriva la corona, in raggi
+let SOL_SOLE_TELA = null;
+function solTelaSoleVicino(r) {
+  const R = Math.max(8, Math.min(SOL_SOLE_TELA_MAX, Math.round(r / 4) * 4));
+  if (SOL_SOLE_TELA && SOL_SOLE_TELA.R === R) return SOL_SOLE_TELA;
+  const lato = Math.ceil(R * SOL_SOLE_CORONA * 2);
+  const tela = document.createElement('canvas');
+  tela.width = tela.height = lato;
+  const c = tela.getContext('2d');
+  const x = lato / 2, y = lato / 2;
+  // Numeri pseudo-casuali fissi: il Sole non cambia faccia a ogni rifacimento
+  let seme = 7;
+  const caso = () => (seme = (seme * 16807) % 2147483647) / 2147483647;
+  // La corona: un bagliore che si spegne piano, più qualche pennacchio
+  const corona = c.createRadialGradient(x, y, R * 0.9, x, y, R * SOL_SOLE_CORONA);
+  corona.addColorStop(0, 'rgba(255, 236, 180, 0.62)');
+  corona.addColorStop(0.12, 'rgba(255, 196, 92, 0.30)');
+  corona.addColorStop(0.4, 'rgba(250, 150, 50, 0.10)');
+  corona.addColorStop(1, 'rgba(240, 120, 30, 0)');
+  c.fillStyle = corona;
+  c.beginPath(); c.arc(x, y, R * SOL_SOLE_CORONA, 0, Math.PI * 2); c.fill();
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  // I pennacchi: tanti, stretti e tenui, se no il Sole diventa la stella
+  // a raggi di un fumetto
+  for (let i = 0; i < 24; i++) {
+    const a = i / 24 * Math.PI * 2 + caso() * 0.25, lungo = R * (1.3 + caso() * 1.2), largo = 0.02 + caso() * 0.04;
+    const g = c.createRadialGradient(x, y, R * 0.95, x, y, lungo);
+    g.addColorStop(0, 'rgba(255, 214, 140, 0.07)');
+    g.addColorStop(1, 'rgba(255, 180, 90, 0)');
+    c.fillStyle = g;
+    c.beginPath(); c.moveTo(x, y); c.arc(x, y, lungo, a - largo, a + largo); c.closePath(); c.fill();
+  }
+  c.restore();
+  // Le protuberanze: anse rosse e sfumate, attaccate al bordo
+  c.save();
+  c.lineCap = 'round';
+  c.shadowColor = 'rgba(255, 80, 40, 0.8)';
+  c.shadowBlur = Math.max(2, R * 0.04);
+  for (let i = 0; i < 4; i++) {
+    const a = caso() * Math.PI * 2, alto = R * (0.04 + caso() * 0.05), largo = 0.04 + caso() * 0.05;
+    c.strokeStyle = 'rgba(255, 110, 70, 0.4)';
+    c.lineWidth = Math.max(1, R * 0.03);
+    c.beginPath();
+    c.moveTo(x + Math.cos(a - largo) * R * 0.99, y + Math.sin(a - largo) * R * 0.99);
+    c.quadraticCurveTo(x + Math.cos(a) * (R + alto * 2), y + Math.sin(a) * (R + alto * 2),
+      x + Math.cos(a + largo) * R * 0.99, y + Math.sin(a + largo) * R * 0.99);
+    c.stroke();
+  }
+  c.restore();
+  // La fotosfera: chiara al centro, più scura e rossa al bordo
+  const disco = c.createRadialGradient(x, y, 0, x, y, R);
+  disco.addColorStop(0, '#fffbe8');
+  disco.addColorStop(0.45, '#fff0b3');
+  disco.addColorStop(0.72, '#ffd36b');
+  disco.addColorStop(0.9, '#f9a03a');
+  disco.addColorStop(1, '#d9531e');
+  c.fillStyle = disco;
+  c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.fill();
+  c.save();
+  c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.clip();
+  // La granulazione: tante celle piccole, chiare e scure appena
+  const granuli = Math.round(Math.min(900, R * R * 0.09));
+  const misura = Math.max(0.8, R * 0.022);
+  for (let i = 0; i < granuli; i++) {
+    const a = caso() * Math.PI * 2, d = R * Math.sqrt(caso());
+    c.fillStyle = caso() < 0.5 ? 'rgba(255, 255, 235, 0.10)' : 'rgba(150, 60, 10, 0.08)';
+    c.beginPath(); c.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, misura * (0.6 + caso() * 0.8), 0, Math.PI * 2); c.fill();
+  }
+  // Le facole: chiazze chiare vicino al bordo, dove la fotosfera è più scura
+  for (let i = 0; i < 10; i++) {
+    const a = caso() * Math.PI * 2, d = R * (0.8 + caso() * 0.14);
+    c.fillStyle = 'rgba(255, 246, 210, 0.22)';
+    c.beginPath(); c.ellipse(x + Math.cos(a) * d, y + Math.sin(a) * d, R * 0.05, R * 0.018, a + Math.PI / 2, 0, Math.PI * 2); c.fill();
+  }
+  // Le macchie: l'ombra scura dentro la penombra, in due gruppi come sul Sole vero
+  [[-0.34, 0.16, 0.045], [-0.28, 0.2, 0.024], [0.22, -0.26, 0.034], [0.29, -0.22, 0.02], [0.05, 0.42, 0.016]].forEach(m => {
+    const mx = x + m[0] * R, my = y + m[1] * R, mr = m[2] * R;
+    c.fillStyle = 'rgba(140, 62, 16, 0.55)';
+    c.beginPath(); c.ellipse(mx, my, mr * 1.7, mr * 1.25, -0.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(54, 20, 6, 0.85)';
+    c.beginPath(); c.ellipse(mx, my, mr * 0.8, mr * 0.6, -0.3, 0, Math.PI * 2); c.fill();
+  });
+  // Lo scurimento al bordo, ancora un velo: il bordo del disco si perde
+  const bordo = c.createRadialGradient(x, y, R * 0.7, x, y, R);
+  bordo.addColorStop(0, 'rgba(120, 30, 0, 0)');
+  bordo.addColorStop(1, 'rgba(120, 30, 0, 0.28)');
+  c.fillStyle = bordo;
+  c.fillRect(x - R, y - R, R * 2, R * 2);
+  c.restore();
+  SOL_SOLE_TELA = { R, tela, lato };
+  return SOL_SOLE_TELA;
 }
 function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   const dir = solVersoRaggi(versoSole);
@@ -38347,51 +38466,13 @@ function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   sol.soleVicinoSchermo = { px: x, py: y, r, vicinanza: centro.vicinanza };
 
   ctx.save();
-  const alone = ctx.createRadialGradient(x, y, r * 0.18, x, y, r * 2.7);
-  alone.addColorStop(0, 'rgba(255, 250, 210, 0.95)');
-  alone.addColorStop(0.3, 'rgba(251, 191, 36, 0.48)');
-  alone.addColorStop(1, 'rgba(245, 158, 11, 0)');
-  ctx.fillStyle = alone;
-  ctx.beginPath();
-  ctx.arc(x, y, r * 2.7, 0, Math.PI * 2);
-  ctx.fill();
-
-  const disco = ctx.createRadialGradient(x - r * 0.3, y - r * 0.32, r * 0.08, x, y, r);
-  disco.addColorStop(0, '#fffde7');
-  disco.addColorStop(0.42, '#fde047');
-  disco.addColorStop(0.82, '#f59e0b');
-  disco.addColorStop(1, '#ea580c');
-  ctx.fillStyle = disco;
-  ctx.shadowColor = 'rgba(253, 224, 71, 0.9)';
-  ctx.shadowBlur = 18;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  // Granulazione e macchie deterministiche: danno materia alla fotosfera
-  // senza scintillare o cambiare disposizione a ogni fotogramma.
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, r * 0.97, 0, Math.PI * 2);
-  ctx.clip();
-  for (let i = 0; i < 42; i++) {
-    const a = i * 2.399963, rr = r * 0.84 * Math.sqrt((i + 0.5) / 42);
-    const gx = x + Math.cos(a) * rr, gy = y + Math.sin(a) * rr;
-    ctx.fillStyle = i % 3 ? 'rgba(255,255,220,0.11)' : 'rgba(180,72,8,0.10)';
-    ctx.beginPath();
-    ctx.ellipse(gx, gy, r * 0.055, r * 0.025, a, 0, Math.PI * 2);
-    ctx.fill();
+  // Un Sole enorme (le misure vere) si disegna solo se il quadro lo vede
+  const mezzo = r * SOL_SOLE_CORONA;
+  if (x + mezzo > -50 && x - mezzo < sol.L + 50 && y + mezzo > -50 && y - mezzo < sol.H + 50) {
+    const t = solTelaSoleVicino(r);
+    const scala = r / t.R;
+    ctx.drawImage(t.tela, x - t.lato / 2 * scala, y - t.lato / 2 * scala, t.lato * scala, t.lato * scala);
   }
-  [[-0.31, 0.18, 0.075], [0.24, -0.23, 0.055], [0.33, -0.18, 0.032]].forEach(m => {
-    ctx.fillStyle = 'rgba(91, 33, 8, 0.72)';
-    ctx.beginPath();
-    ctx.ellipse(x + m[0] * r, y + m[1] * r, m[2] * r, m[2] * r * 0.48, -0.25, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  ctx.restore();
-  ctx.strokeStyle = 'rgba(255, 251, 235, 0.82)';
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
   ctx.font = `700 11px ${SOL_CARATTERE}`;
   ctx.textAlign = 'center';
