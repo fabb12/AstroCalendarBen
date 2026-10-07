@@ -11,15 +11,15 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **19/67** in italiano · **0/50** in inglese.
+Pronte: **19/71** in italiano · **0/50** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
 | Luna | `storie/luna/` | 14 | 7/14 | 0/11 |
-| Terra | `storie/terra/` | 10 | 6/10 | 0/4 |
+| Terra | `storie/terra/` | 11 | 6/11 | 0/4 |
 | Sole | `storie/sole/` | 12 | 3/12 | 0/9 |
 | Saturno | `storie/saturno/` | 3 | 0/3 | 0/2 |
-| Giove | `storie/giove/` | 2 | 0/2 | 0/1 |
+| Giove | `storie/giove/` | 3 | 0/3 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 0/1 | 0/1 |
 | Alfa Centauri | `storie/alfa-centauri/` | 1 | 0/1 | 0/1 |
 | Via Lattea | `storie/via-lattea/` | 2 | 0/2 | 0/2 |
@@ -32,6 +32,7 @@ Pronte: **19/67** in italiano · **0/50** in inglese.
 | hubble | `storie/hubble/` | 1 | 1/1 | 0/0 |
 | iss | `storie/iss/` | 1 | 1/1 | 0/0 |
 | css | `storie/css/` | 1 | 1/1 | 0/0 |
+| Sedna | `storie/sedna/` | 2 | 0/2 | 0/0 |
 
 ## Luna
 
@@ -190,6 +191,10 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** pensieroso — 
   - **Testo:** Cosa è la massa, cosa è un peso e che cosa è un volume?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Cosa è la massa, cosa è un peso e che cosa è un volume?`
+- `studio_cosa_e_la_gravita-20.mp3` — manca · Studio: Cosa è la gravità?, scena 20 (al massimo 6 s)
+  - **Emozione:** sorpreso — 
+  - **Testo:** Oh! Che spavento! Chi ha parlato?
+  - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Che spavento! Chi ha parlato?`
 
 ### Inglese — `storie/terra/en/`
 
@@ -354,6 +359,10 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
   - **Emozione:** tranquillo — 
   - **Testo:** Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume
   - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
+- `studio_cosa_e_la_gravita-18.mp3` — manca · Studio: Cosa è la gravità?, scena 18 (al massimo 5 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Calma Terra, una domanda alla volta
+  - **Da incollare su ElevenLabs v3:** `Calma Terra, una domanda alla volta`
 
 ### Inglese — `storie/giove/en/`
 
@@ -686,4 +695,19 @@ Cartella: `audio/narrazione/storie/css/<lingua>/` · nel codice `css` · in ingl
   - **Emozione:** arrabbiato — 
   - **Testo:** giusto!
   - **Da incollare su ElevenLabs v3:** `[angry] giusto!`
+
+## Sedna
+
+Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in inglese Sedna
+
+### Italiano — `storie/sedna/it/`
+
+- `studio_cosa_e_la_gravita-19.mp3` — manca · Studio: Cosa è la gravità?, scena 19 (al massimo 5 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ciao Terra, Giove ha ragione!
+  - **Da incollare su ElevenLabs v3:** `Ciao Terra, Giove ha ragione!`
+- `studio_cosa_e_la_gravita-21.mp3` — manca · Studio: Cosa è la gravità?, scena 21 (al massimo 6 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Sono Sedna! Un pianeta nano candidato
+  - **Da incollare su ElevenLabs v3:** `Sono Sedna! Un pianeta nano candidato`
 

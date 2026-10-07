@@ -535,6 +535,34 @@
       "conTag": {
         "it": "[thoughtful] Cosa è la massa, cosa è un peso e che cosa è un volume?"
       }
+    },
+    "studio.studio_cosa_e_la_gravita.18": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Calma Terra, una domanda alla volta"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.19": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ciao Terra, Giove ha ragione!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.20": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Oh! Che spavento! Chi ha parlato?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.21": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Sono Sedna! Un pianeta nano candidato"
+      }
     }
   }
 }
