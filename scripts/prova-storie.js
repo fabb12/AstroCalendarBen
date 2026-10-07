@@ -717,6 +717,39 @@ prova('il palco della 3D (v428): chi è più vicino alla camera è più grande, 
   S.sgombra();
   delete globalThis.sol;
 });
+prova('le occlusioni della 3D: chi sta dietro si disegna prima e il disco di chi gli passa davanti gli taglia il volto', () => {
+  S.sgombra();
+  globalThis.sol = SOL_FINTO();
+  // Giove entra per primo in scena ma sta dietro; Marte davanti, a metà sopra di lui
+  scena({ Jupiter: {}, Mars: {} });
+  scorri(900);
+  const corpi = [
+    { id: 'Jupiter', rDisegno: 40, schermo: { px: 400, py: 300, vicinanza: -1 } },
+    { id: 'Mars', rDisegno: 40, schermo: { px: 440, py: 300, vicinanza: 1 } }
+  ];
+  const tagli = [];
+  const ctx = new Proxy({ canvas: { width: 800, height: 600 }, globalAlpha: 1 }, {
+    get(o, k) {
+      if (k in o) return o[k];
+      if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => ({ addColorStop() {} });
+      // il ritaglio delle occlusioni parte da un rettangolo grande tre schermi
+      if (k === 'rect') return (...a) => { if (a[0] === -800 && a[2] === 2400) tagli.push(a); };
+      return () => undefined;
+    },
+    set(o, k, v) { o[k] = v; return true; }
+  });
+  const prima = S.disegnaSistema(telaFinta().ctx, { corpi, sole: null });
+  assert.deepEqual(prima.map(d => d.id), ['Jupiter', 'Mars'], 'il più lontano per primo, il più vicino sopra');
+  S.disegnaSistema(ctx, { corpi, sole: null });
+  assert.equal(tagli.length, 1, 'un taglio solo: il disco di Marte su Giove, e niente su Marte');
+  // Lontani fra loro, nessun taglio
+  tagli.length = 0;
+  corpi[1].schermo.px = 700;
+  S.disegnaSistema(ctx, { corpi, sole: null });
+  assert.equal(tagli.length, 0, 'chi non si tocca non si taglia');
+  S.sgombra();
+  delete globalThis.sol;
+});
 prova('character_move porta l\'astro accanto alla meta, sullo schermo e nello spazio; character_return lo rimette sull\'orbita', async () => {
   S.sgombra();
   globalThis.sol = SOL_FINTO();

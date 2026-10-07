@@ -3654,6 +3654,11 @@
         presi.push({ id: pg.id, x: c.px, y: c.py, R: Rc * ingombroDi(p) });
       } else if (addosso) presi.push({ id: pg.id, x: c.px + p.dx * c.r, y: c.py + p.dy * c.r, R: Rdisco });
     }
+    // Nella 3D chi è più lontano si disegna per primo: chi gli passa davanti
+    // lo copre col suo corpo, il suo volto e la sua fisica, e non il
+    // contrario (prima l'ordine era quello d'entrata in scena, e il volto di
+    // Saturno dietro a Giove gli finiva sopra)
+    if (in3d) piano.sort((u, v) => (u.c.vicinanza || 0) - (v.c.vicinanza || 0));
     // Un disco grafico non deve coprire l'astro di un altro personaggio
     for (const { pg, c } of piano) presi.push({ id: pg.id, astro: true, x: c.px, y: c.py, R: Math.max(8, c.r) });
     const Rbadge = Math.max(STOR_DISCO_MIN_PX, Math.min(STOR_DISCO_MAX_PX, Math.min(L, H) * 0.075));
@@ -3814,6 +3819,14 @@
         if (giraTesta) { g.translate(giraTesta.ox, giraTesta.oy); g.scale(giraTesta.sx, giraTesta.sy); }
         g.rotate(att.giro); g.scale(att.sx, att.sy); g.translate(-cx, -cy);
       };
+      // I dischi che l'app ha disegnato **davanti** a questo astro (un
+      // pianeta, una luna, la Terra più vicini alla camera) gli tagliano via
+      // volto, corpo disegnato e fisica: i volti si disegnano tutti dopo i
+      // corpi, e senza questo taglio il volto di chi sta dietro restava
+      // sopra al disco di chi gli passa davanti. L'adesivo accanto col filo
+      // è un cartellino, non sta nella scena, e non si taglia.
+      const coprenti = in3d && (!posto || posto.centrato) ? storCoprentiDavanti(corpi, c, pg.id, R) : null;
+      if (coprenti) { ctx.save(); ritagliaFuori(ctx, coprenti, L, H); }
       if (posto) {
         if (!posto.centrato) disegnaSupporto(ctx, posto, p, alfa, t);
         // La coda di una cometa va dalla parte opposta al Sole
@@ -3870,6 +3883,7 @@
         storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
         ctx.restore();
       }
+      if (coprenti) ctx.restore();
       // Nella scala cosmica, chi è fuori dal quadro ha una freccia verso
       // dove sta davvero
       if (Number.isFinite(c.freccia)) disegnaFreccia(ctx, cx + att.dx, cy + att.dy, R * 1.25, c.freccia, p, alfa);
@@ -3893,6 +3907,35 @@
     if (domanda) storDisegnaDomanda(ctx, L, H);
     stor.ultimiDisegnati = disegnati;
     return disegnati;
+  }
+
+  /* Chi sta davanti a un personaggio nella 3D: i corpi proiettati (pianeti,
+   * Sole, Luna, lune, stazioni) più vicini alla camera il cui disco arriva
+   * fin dove il personaggio si disegna (fino a 2,5 volte il suo raggio, per
+   * l'atmosfera e la corona). Il personaggio stesso non si copre. */
+  function storCoprentiDavanti(corpi, c, id, R) {
+    const mio = storCanonico(id), giro = Math.max(c.r || 0, R || 0) * 2.5;
+    const v = Number.isFinite(c.vicinanza) ? c.vicinanza : 0;
+    const fuori = [];
+    for (const q of corpi) {
+      if (q === c || !(q.r > 0.5) || !Number.isFinite(q.vicinanza) || q.vicinanza <= v) continue;
+      if (storCanonico(q.id) === mio) continue;
+      if (Math.hypot(q.px - c.px, q.py - c.py) >= q.r + giro) continue;
+      fuori.push(q);
+    }
+    return fuori.length ? fuori : null;
+  }
+  // Toglie dal disegno i dischi di `coprenti`: un ritaglio per disco (tutto
+  // lo schermo meno il cerchio, `evenodd`), e i ritagli si intersecano, così
+  // due dischi che si sovrappongono restano tolti tutti e due.
+  function ritagliaFuori(ctx, coprenti, L, H) {
+    for (const q of coprenti) {
+      ctx.beginPath();
+      ctx.rect(-L, -H, L * 3, H * 3);
+      ctx.moveTo(q.px + q.r, q.py);
+      ctx.arc(q.px, q.py, q.r, 0, Math.PI * 2);
+      ctx.clip('evenodd');
+    }
   }
 
   // Una freccia a pennino sul bordo del corpo, verso l'angolo `a`
