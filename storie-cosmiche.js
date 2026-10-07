@@ -4315,6 +4315,104 @@
     return { x: r.tx + r.k * x, y: r.ty + r.k * y };
   }
 
+  /* Il cartello del luogo (v429). Chi guarda una CosmoStoria deve sapere
+   * dove si trova: nel cielo di casa, nel Sistema Solare, fra la Terra e la
+   * Luna, e nella scala cosmica a che altezza dell'universo (l'eliopausa, la
+   * nube di Oort, il Gruppo Locale…). Un cartiglio nello stile dei volti —
+   * stesura d'inchiostro indaco, bordo panna, due stelline d'oro ai lati,
+   * «Sei qui» piccolo sopra e il nome grande sotto — in alto al centro, fuori
+   * dalla lente della regia (resta della sua misura), con un pop quando il
+   * luogo cambia. Su uno schermo stretto scende sotto al cartello della data,
+   * che sta in alto a sinistra. È della storia: c'è anche con le scritte
+   * spente, e fuori da una storia non c'è. */
+  function storDisegnaCartelloLuogo(ctx, chiave, L, H) {
+    const d = radice.AstroDemo;
+    if (!ctx || !chiave || !(d && d.storia) || !(L > 0 && H > 0)) return;
+    const nome = t(chiave);
+    if (!nome) return;
+    const c = stor.cartello || (stor.cartello = { chiave: '', da: 0 });
+    const ora = adesso();
+    if (c.chiave !== chiave) { c.chiave = chiave; c.da = ora; }
+    const ridotto = movimentoRidotto();
+    const u = ridotto ? 1 : Math.min(1, (ora - c.da) / 520);
+    const c1 = 1.9, v = u - 1;
+    const pop = u >= 1 ? 1 : Math.max(0, 1 + (c1 + 1) * v * v * v + c1 * v * v);
+    const alfa = Math.min(1, u * 2.5);
+    const sopra = t('storie.cartello.seiQui');
+    const fs = Math.max(15, Math.min(24, L * 0.026));
+    const fp = Math.max(9, fs * 0.5);
+    const carattere = (radice.document && radice.document.body && radice.getComputedStyle
+      ? radice.getComputedStyle(radice.document.body).fontFamily : '') || 'sans-serif';
+    ctx.save();
+    ctx.font = `800 ${fs}px ${carattere}`;
+    const largoNome = ctx.measureText(nome).width;
+    ctx.font = `700 ${fp}px ${carattere}`;
+    const largoSopra = ctx.measureText(sopra.toUpperCase()).width + sopra.length * fp * 0.18;
+    const w = Math.min(L - 24, Math.max(largoNome, largoSopra) + fs * 3.2);
+    const h = fs * 2.55;
+    const cx = L / 2;
+    const cy = (L < 640 ? 100 : 16) + h / 2 + (ridotto ? 0 : Math.sin(ora / 1700) * 1.5);
+    ctx.globalAlpha = alfa;
+    ctx.translate(cx, cy);
+    ctx.scale(pop, pop);
+    const pillola = (x, y, ww, hh) => {
+      const r = hh / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.lineTo(x + ww - r, y);
+      ctx.arc(x + ww - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+      ctx.lineTo(x + r, y + hh);
+      ctx.arc(x + r, y + r, r, Math.PI / 2, Math.PI * 1.5);
+      ctx.closePath();
+    };
+    // L'ombra piatta, spostata: lo stesso adesivo dei volti
+    ctx.fillStyle = 'rgba(8, 4, 20, 0.55)';
+    pillola(-w / 2 + 3, -h / 2 + 4, w, h); ctx.fill();
+    const fondo = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    fondo.addColorStop(0, 'rgba(52, 34, 96, 0.94)');
+    fondo.addColorStop(1, 'rgba(24, 16, 52, 0.94)');
+    ctx.fillStyle = fondo;
+    pillola(-w / 2, -h / 2, w, h); ctx.fill();
+    ctx.lineWidth = 2.4; ctx.strokeStyle = 'rgba(255, 248, 235, 0.9)'; ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(253, 230, 138, 0.55)';
+    pillola(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8); ctx.stroke();
+    // Le due stelline ai lati, che girano piano
+    const stellina = (x, y, r, giro) => {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(giro);
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4, q = i % 2 ? r * 0.38 : r;
+        ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#fde68a'; ctx.fill();
+      ctx.lineWidth = 1.2; ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
+      ctx.restore();
+    };
+    const giro = ridotto ? 0 : ora / 2600;
+    stellina(-w / 2 + fs * 0.95, 0, fs * 0.42, giro);
+    stellina(w / 2 - fs * 0.95, 0, fs * 0.42, -giro);
+    // «Sei qui», piccolo e spaziato, poi il nome
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `700 ${fp}px ${carattere}`;
+    ctx.fillStyle = '#fde68a';
+    const lettere = sopra.toUpperCase().split('');
+    const passo = fp * 0.18;
+    let x = -largoSopra / 2;
+    for (const l of lettere) {
+      const lw = ctx.measureText(l).width;
+      ctx.fillText(l, x + lw / 2, -h * 0.2);
+      x += lw + passo;
+    }
+    ctx.font = `800 ${fs}px ${carattere}`;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(3, fs * 0.2);
+    ctx.strokeStyle = INCHIOSTRO;
+    ctx.strokeText(nome, 0, h * 0.14, w - fs * 3);
+    ctx.fillStyle = '#fff8eb';
+    ctx.fillText(nome, 0, h * 0.14, w - fs * 3);
+    ctx.restore();
+  }
+
   // ===================================================================
   // 7-quater. I rumori: botti, boing e scintille (v416)
   // ===================================================================
@@ -5236,7 +5334,7 @@
     riempiPagina: storRiempiPagina, storie: storieDisponibili,
     stato: stor,
     STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
-    lenteSchermo: storLenteSchermo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
+    lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
     get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },
     get disegnati() { return stor.ultimiDisegnati.map(d => Object.assign({}, d, { geom: undefined })); },
@@ -5251,6 +5349,7 @@
   radice.storRaggio3D = storRaggio3D;
   radice.storLenteApri = storLenteApri;
   radice.storLenteChiudi = storLenteChiudi;
+  radice.storDisegnaCartelloLuogo = storDisegnaCartelloLuogo;
   radice.storLenteK = () => stor.regia.aperta ? stor.regia.k : 1;
   // La lente dell'ultimo fotogramma, per la parallasse del cielo delle
   // CosmoStorie (`solSfondoStoria`, app.js), che si stende prima di aprirla

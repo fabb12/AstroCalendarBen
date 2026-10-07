@@ -801,6 +801,27 @@ passando fra due personaggi lontani si allarga a metà strada e si
 riavvicina (`arco`), e chi parla guardando di lato va a un terzo del quadro
 con lo spazio davanti allo sguardo (`terzi`).
 
+## Lo stesso cielo dappertutto, e il cartello «Sei qui» (v429)
+
+- **Il cielo da cartone in tutti gli ambienti.** Oltre alla 3D e al banco
+  Terra e Luna, mentre gira una storia anche la **scala cosmica**
+  (`cosmDisegna`) stende `solSfondoStoria` prima della lente, e tace la riga
+  della scala, le letture e le orbite di pianeti e Luna. Nel **planetario**
+  `skyDisegna` stende lo stesso cielo sotto a tutto (non con la fotocamera),
+  e `skyDisegnaSfondo` ci mette sopra il colore vero trasparente quanto è
+  buio (di giorno lo copre); le stelle vere sono quelle di un cielo di
+  montagna (Bortle 2, `catMagnitudineVoluta`).
+- **Il cartello del luogo** (`storDisegnaCartelloLuogo`, `StorieCosmiche.cartelloLuogo`):
+  un cartiglio d'inchiostro in alto al centro, fuori dalla lente, con «Sei
+  qui» piccolo in oro e il nome del luogo grande, due stelline ai lati e un
+  pop quando il luogo cambia. Planetario: `storie.luogo.cielo`; 3D:
+  `cosmo.pianeti.nome`; banco Terra e Luna: `cosmo.terraLuna.nome`; scala
+  cosmica: `cosmo.<struttura>.nome` della struttura più vicina alla scala
+  (`cosmStrutturaDellaScala`; fra due tappe resta l'ultima, `cosm.luogoStoria`),
+  quindi in volo si leggono le tappe una dopo l'altra (Eliopausa, Nube di
+  Oort, Gruppo Locale…). C'è anche con le scritte spente; sotto i 640 px di
+  larghezza scende sotto al cartello della data.
+
 ## Il palco della 3D: prospettiva e nessuno sopra a un altro (v428)
 
 `storPalco3D` (§7, chiamata da `storDisegnaSistema` prima dei volti), su
