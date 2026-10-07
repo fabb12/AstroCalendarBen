@@ -278,9 +278,15 @@ ridotto ci salta):
   bianchi che corrono e la macchia scura che si gonfia (Nettuno), `cicloni`
   (Terra), `fulmini` nelle nubi (Venere), `polvere` che vela il disco
   (Marte), l'`esagono` al polo (Saturno), i pennacchi dei `vulcani` (Io).
-- **Le prominenze** delle stelle: archi di plasma dal bordo, di più e più
-  alti con la rabbia e l'entusiasmo (e parlando); oltre una certa rabbia,
-  un'espulsione di massa che parte e si allarga.
+- **Il fuoco** delle stelle (v436, al posto delle prominenze): una corona
+  di lingue di fiamma senza contorno, in tre stesure (fuori, arancio,
+  giallo vivo), che si piegano e guizzano ognuna col suo passo; più alte e
+  più svelte con la rabbia e l'entusiasmo (e parlando), e il fuoco di fuori
+  si arrossa con l'atmosfera. Le disegna `disegnaFiamme`: per un corpo
+  disegnato le chiama `disegnaCorpo` (al posto dei vecchi raggi a punta
+  contornati), sull'astro vero la fisica (`opz.fuori`). Gli archi di plasma
+  e la bolla dell'espulsione non ci sono più: da lontano erano fili staccati
+  dal corpo.
 - **L'atmosfera** si gonfia (`atmoK`) e cambia colore: rossa di rabbia,
   rosa d'amore, grigia e sottile di tristezza, che pulsa con la tempesta.
 - **Le lune reagiscono**: si stringono al pianeta quando ha paura o è triste
@@ -1028,6 +1034,25 @@ l'astro si gira di spalle. Prova: `prova-storie.js` («la regia riparte poco
 dopo il gesto…»). Il volto girato è stato guardato nell'app a 0°, 45°, 90°,
 135°, 180° e 270°: due occhi; uno intero e l'altro schiacciato sul bordo;
 uno solo sul bordo; nessun tratto; nessun tratto; uno solo dall'altra parte.
+
+## Gli occhi bianchi e il fuoco del Sole (v436)
+
+Su un foglio di occhi da fumetto portato da chi usa l'app, gli occhi dei
+personaggi sono **bianchi, senza iride, pupilla né riflessi**: l'umore lo
+dicono la forma dell'apertura fra le palpebre, le palpebre storte, le
+sopracciglia e la bocca. Il bianco ha soltanto l'ombra azzurrina della
+palpebra di sopra; il contorno di sotto è grosso (`rx × 0,17`) come quello
+del foglio, e l'occhio è un poco più piccolo (`× 0,86`), se no senza iride
+faceva gli occhialoni. Lo sguardo resta: l'occhio intero scivola appena
+verso dove guarda (`ctx.translate` in `disegnaOcchio`). Cuori e stelle
+dell'amore e dell'entusiasmo restano, dentro al bianco. La geometria
+(`iride`, `pupilla`, `luci`) è quella di prima, e le prove che la usano
+(`pupillaDentro`) valgono ancora: semplicemente non si dipinge.
+
+Il Sole (e ogni stella) ha perso gli archi delle prominenze e i raggi a
+triangolo contornati d'inchiostro: al loro posto **il fuoco** (vedi «La
+fisica dei personaggi»), sul modello del Sole sorridente dello stesso
+foglio. La corona a raggi pallidi è più tenue.
 
 ## Le orbite di chi è in scena, il volto girato, la domanda facoltativa (v432)
 
