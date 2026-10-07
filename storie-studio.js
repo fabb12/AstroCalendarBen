@@ -138,10 +138,32 @@
   function studioNuovoMomento(campi = {}) {
     return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', durata: 0, voce: 0, audio: null, azioni: [] }, campi);
   }
+  /* La camera di una scena (v431): automatica (va da chi parla e dai botti),
+   * sempre stretta su chi parla, su un personaggio solo, che gira attorno a
+   * un personaggio (o a chi parla), o ferma sulla camera della scena. Prima
+   * c'era solo la casella `cameraViva`: spenta vuol dire ancora «ferma». */
+  const STUDIO_CAMERE = ['auto', 'parla', 'vicino', 'giro', 'ferma'];
+  function studioCameraDi(sc) {
+    const c = sc && STUDIO_CAMERE.includes(sc.camera) ? sc.camera : 'auto';
+    return c === 'auto' && sc && sc.cameraViva === false ? 'ferma' : c;
+  }
+  // La riga `story_camera` della scena, o niente se la regia è quella di serie
+  function studioRigaCamera(sc, presenti) {
+    const modo = studioCameraDi(sc);
+    const chi = sc.cameraChi && presenti.includes(sc.cameraChi) ? sc.cameraChi : '';
+    if (modo === 'ferma') return 'story_camera { mode: wide }';
+    if (modo === 'parla') return 'story_camera { mode: speaker }';
+    if (modo === 'vicino') {
+      const su = chi || presenti[0];
+      return su ? `story_camera { mode: close, target: ${virgolette(su)} }` : null;
+    }
+    if (modo === 'giro') return chi ? `story_camera { mode: orbit, target: ${virgolette(chi)} }` : 'story_camera { mode: orbit }';
+    return null;
+  }
   function studioNuovaScena(campi = {}) {
     return Object.assign({
       id: nuovoId('s'), ambiente: 'sistema', fuoco: 'Jupiter', zoom: 'normale',
-      data: '', ora: '21:00', giorni: 0, cartello: false, cameraViva: true, cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
+      data: '', ora: '21:00', giorni: 0, cartello: false, cameraViva: true, camera: 'auto', cameraChi: '', cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()]
     }, campi);
   }
   function studioNuovoProgetto(campi = {}) {
@@ -198,6 +220,7 @@
       zoom: tra(sc && sc.zoom, Object.keys(STUDIO_ZOOM), 'normale'),
       data: /^\d{4}-\d{2}-\d{2}$/.test(sc && sc.data) ? sc.data : '', ora: /^\d{2}:\d{2}$/.test(sc && sc.ora) ? sc.ora : '21:00',
       giorni: numero(sc && sc.giorni, 0, 1000, 0), cartello: !!(sc && sc.cartello), cameraViva: !(sc && sc.cameraViva === false), presenti: ids(sc && sc.presenti),
+      camera: tra(sc && sc.camera, STUDIO_CAMERE, sc && sc.cameraViva === false ? 'ferma' : 'auto'), cameraChi: testo(sc && sc.cameraChi, 40),
       cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
@@ -523,9 +546,10 @@
         trascorso += durate[k];
         // La data e il luogo a schermo (v414): solo se chi scrive li chiede
         if (sc.cartello) az.push('date_card { date: show, time: show, place: show }');
-        // La regia (v416): di serie la camera va vicino a chi parla e ai
-        // botti; chi la vuole ferma la tiene alla camera della scena
-        if (sc.cameraViva === false) az.push('story_camera { mode: wide }');
+        // La regia (v416, scelta per scena dalla v431): di serie la camera va
+        // vicino a chi parla e ai botti; se no quella che la scena ha scelto
+        const rigaCamera = studioRigaCamera(sc, presenti);
+        if (rigaCamera) az.push(rigaCamera);
         // La camera
         if (cosmo) {
           const [La, Lb] = cosmo[k];
@@ -2129,8 +2153,12 @@
           h('input', { type: 'number', min: '0', max: '1000', step: '1', value: String(sc.giorni || 0), dataset: { campo: base + '.giorni', numero: '1' } })),
         h('label', { class: 'storie-campo studio-spunta' }, h('input', { type: 'checkbox', checked: !!sc.cartello, dataset: { campo: base + '.cartello' } }),
           h('span', {}, t('studio.mostraCartello'))),
-        h('label', { class: 'storie-campo studio-spunta' }, h('input', { type: 'checkbox', checked: sc.cameraViva !== false, dataset: { campo: base + '.cameraViva' } }),
-          h('span', {}, t('studio.cameraViva'))),
+        h('label', { class: 'storie-campo' }, h('span', {}, t('studio.camera')),
+          selettore(base + '.camera', studioCameraDi(sc), STUDIO_CAMERE.map(c => [c, t('studio.camera.' + c)]))),
+        (studioCameraDi(sc) === 'vicino' || studioCameraDi(sc) === 'giro') ? h('label', { class: 'storie-campo' }, h('span', {}, t('studio.cameraChi')),
+          selettore(base + '.cameraChi', presenti.includes(sc.cameraChi) ? sc.cameraChi : '',
+            (studioCameraDi(sc) === 'giro' ? [['', t('studio.cameraChi.parla')]] : [['', t('studio.cameraChi.primo')]])
+              .concat(presenti.map(id => [id, nome(id)])))) : null,
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'ambienteAdatto', dove: base } }, t('studio.ambienteAdatto'))));
     if (studio.dettagliAperti && studio.dettagliAperti.has(sc.id)) dettagli.open = true;
     dettagli.addEventListener('toggle', () => {
@@ -2169,7 +2197,8 @@
     } else pezzi.push(t('studio.ui.oggi'));
     if (sc.giorni > 0 && sc.ambiente !== 'cosmo') pezzi.push(t('studio.ui.giorniPassano', { n: sc.giorni }));
     if (sc.cartello) pezzi.push(t('studio.ui.conCartello'));
-    if (sc.cameraViva === false) pezzi.push(t('studio.ui.cameraFerma'));
+    const camera = studioCameraDi(sc);
+    if (camera !== 'auto') pezzi.push(t('studio.ui.camera.' + camera));
     return pezzi.join(' · ');
   }
 
@@ -2640,6 +2669,12 @@
         if (el.dataset.numero) v = Math.max(0, Number(v) || 0);
         if (/\.(volte|scala|grandezza)$/.test(el.dataset.campo)) v = Number(v) || 0;
         scrivi(el.dataset.campo, v);
+        // La camera scelta dal menu decide anche la vecchia casella, che le
+        // copie salvate prima della v431 leggono ancora
+        if (/\.camera$/.test(el.dataset.campo)) {
+          const sc = leggi(el.dataset.campo.replace(/\.camera$/, ''));
+          if (sc) sc.cameraViva = v !== 'ferma';
+        }
         salvaPresto();
         // Solo una scelta cambia i campi da mostrare. Ridisegnare dopo un
         // campo di testo o di numero vorrebbe dire rifare la pagina proprio
