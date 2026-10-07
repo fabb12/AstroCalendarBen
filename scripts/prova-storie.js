@@ -1307,6 +1307,29 @@ prova('story_camera: speaker resta stretto su chi parla, orbit gira la camera at
   motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Moon' }", "story_camera { mode: orbit, speed: -20 }")));
   motore.prepara(demo(sc('planetarium_view', "character_show { target: 'Moon' }", "story_camera { mode: speaker }")));
 });
+prova('la regia riparte poco dopo il gesto sulla camera, e sa chi parla anche se la voce si rompe (v433)', async () => {
+  S.sgombra();
+  const corpi = [corpo('Earth', 150, 420, 30), corpo('Moon', 620, 220, 26)];
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_show { target: 'Moon' }")), { ripristina() {} });
+  S.lenteApri(telaFinta().ctx, 'nessuna', 1, 1);
+  // la voce si è rotta: niente `parlante`, ma la narrazione dice che la Luna ha la parola
+  S.stato.parlante = null;
+  voce.segnale = { parla: true, personaggio: 'Moon', testo: 'ciao', tempo: 0 };
+  globalThis.narrazione.stato = () => ({ canale: 'demo', fase: 'testo' });
+  for (let k = 0; k < 150; k++) fotogramma(corpi);
+  assert.equal(S.regia.motivo, 'parla', 'la camera va comunque su chi ha la parola');
+  assert.ok(S.regia.k > 2, 'e stringe: ' + S.regia.k);
+  // un gesto sulla camera la ferma, ma solo per poco
+  globalThis.AstroDemo.cameraManuale = true;
+  globalThis.AstroDemo.cameraManualeDa = adesso;
+  for (let k = 0; k < 150; k++) fotogramma(corpi);
+  assert.ok(S.regia.k < 1.05, 'mentre la persona muove la camera la regia tace: ' + S.regia.k);
+  for (let k = 0; k < 250; k++) fotogramma(corpi);
+  assert.ok(S.regia.k > 2, 'poco dopo l\'ultimo gesto riparte: ' + S.regia.k);
+  globalThis.AstroDemo.cameraManuale = false; delete globalThis.AstroDemo.cameraManualeDa;
+  delete globalThis.narrazione.stato; voce.segnale = { parla: false };
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+});
 prova('il volto girato: di lato un occhio solo e un pezzo dell\'altro, da dietro la nuca (v432)', () => {
   const g = S.geometria(400, 300, 60, S.profilo('Moon'), BASE_ST());
   const [sx, dx] = g.occhi.slice().sort((a, b) => a.cx - b.cx);

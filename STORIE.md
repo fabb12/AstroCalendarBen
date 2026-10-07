@@ -943,6 +943,36 @@ con lo spazio davanti allo sguardo (`terzi`).
   le decadi), il puntamento `sky.manuale` del planetario — e si avvicina
   della metà dello zoom della lente della regia.
 
+## La regia che non si spegne più per sbaglio (v433)
+
+Chi guarda le storie ha detto che lo zoom su chi parla «non funzionava
+più». Nel browser di prova funzionava, ma c'erano tre modi veri in cui si
+spegneva:
+
+- **un gesto qualunque sulla camera** (un giro di rotellina, anche per
+  scorrere la pagina, un trascinamento di sei pixel fatto cliccando, un
+  tasto freccia) cedeva la camera fino alla scena dopo, e con lei la regia.
+  Ora la regia tace solo mentre la persona muove la camera e riparte
+  `STOR_REGIA.manoMs` (3,5 s) dopo l'ultimo gesto (`cameraInMano`,
+  `AstroDemo.cameraManualeDa` in demo.js); le camere delle scene restano
+  alla persona fino alla scena dopo, come prima. Il giro (`orbit`) si ferma
+  e riparte con la stessa regola;
+- **una voce che si rompe** (la sintesi del dispositivo che lancia un
+  errore, un ponte che non risponde) faceva fallire subito la promessa di
+  `narrazione.parla`, e `stor.parlante` si azzerava mentre il sottotitolo
+  restava a schermo: niente zoom e bocca ferma. Ora `storChiParlaOra`
+  chiede anche alla narrazione chi ha la parola nel canale delle demo; lo
+  usano la regia e la bocca;
+- **nel giro** chi parla non si avvicinava mai: ora la camera continua a
+  girare e stringe su chi parla (`voltoStretto`), poi torna al giro largo.
+
+In più le orbite delle storie sono più sottili (nastro di 3 px, puntini di
+1,6 px ogni 6) e il segno da fumetto (le scintille) sfuma col volto quando
+l'astro si gira di spalle. Prova: `prova-storie.js` («la regia riparte poco
+dopo il gesto…»). Il volto girato è stato guardato nell'app a 0°, 45°, 90°,
+135°, 180° e 270°: due occhi; uno intero e l'altro schiacciato sul bordo;
+uno solo sul bordo; nessun tratto; nessun tratto; uno solo dall'altra parte.
+
 ## Le orbite di chi è in scena, il volto girato, la domanda facoltativa (v432)
 
 - **Le orbite in stile cartone.** Nelle storie le righe della lezione

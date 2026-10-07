@@ -35435,16 +35435,16 @@ function solTrattoStoria(ctx, colore, davanti, percorso) {
   ctx.lineJoin = 'round';
   ctx.setLineDash([]);
   ctx.shadowColor = 'transparent';
-  // il nastro
-  ctx.globalAlpha = davanti ? 0.3 : 0.12;
+  // il nastro (v433: più sottile, era 7 px; chi guarda lo trovava grosso)
+  ctx.globalAlpha = davanti ? 0.22 : 0.09;
   ctx.strokeStyle = solColoreStoria(colore, 0.35);
-  ctx.lineWidth = 7;
-  ctx.beginPath(); percorso(); ctx.stroke();
-  // i puntini
-  ctx.globalAlpha = davanti ? 0.9 : 0.35;
-  ctx.strokeStyle = solColoreStoria(colore, 0.75);
   ctx.lineWidth = 3;
-  ctx.setLineDash([0.01, 10]);
+  ctx.beginPath(); percorso(); ctx.stroke();
+  // i puntini (erano di 3 px ogni 10)
+  ctx.globalAlpha = davanti ? 0.85 : 0.32;
+  ctx.strokeStyle = solColoreStoria(colore, 0.75);
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([0.01, 6]);
   ctx.beginPath(); percorso(); ctx.stroke();
   ctx.restore();
 }
