@@ -1806,12 +1806,15 @@
         // etichette e le didascalie delle viste. Spente di serie: una storia
         // per bambini si guarda con le facce, e i nomi accanto ai personaggi
         // si leggevano sopra ai loro volti. Solo un `true` le riaccende.
-        scritteStorie: o.scritteStorie === true
+        scritteStorie: o.scritteStorie === true,
+        // Le orbite di chi è in scena (v435): nascoste di serie, solo un
+        // `true` le mostra (`demoOrbiteStorie` in app.js)
+        orbiteStorie: o.orbiteStorie === true
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: true, registra: false, vistaPulita: true, registraAudio: true,
       musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null, durataComandiSec: DURATA_COMANDI_SEC,
-      cameraStorie: true, effettiSonori: true, scritteStorie: false };
+      cameraStorie: true, effettiSonori: true, scritteStorie: false, orbiteStorie: false };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
