@@ -1,4 +1,4 @@
-// Tornando dalla prova scena lo Studio conserva la posizione di lettura.
+// Le scene iniziano chiuse e conservano le aperture durante le modifiche.
 'use strict';
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
@@ -29,34 +29,28 @@ const server = http.createServer((req, res) => {
     await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
     await pagina.waitForFunction(() => window.narrazione && window.StorieCosmiche && window.AstroDemo);
     await pagina.waitForFunction(() => sky.observer);
-    for (const larghezza of [1100, 390]) {
-      await pagina.setViewportSize({ width: larghezza, height: 800 });
-      await pagina.evaluate(() => {
-        AstroDemo.impostaOpzioni({ schermoIntero: false, registra: false, musicaDemo: false });
-        narrazione.impostaPreferenze({ attiva: false, testo: false });
-        mostraVista('demo'); demoMostraScheda('demo-scheda-storie');
-        for (const sc of StudioStorie.progetto.scene) {
-          sc.momenti = [sc.momenti[0]];
-          sc.momenti[0].durata = 1;
-          sc.momenti[0].testo = '';
-        }
-        StudioStorie.ridisegna();
-        document.querySelectorAll('.studio-scena').forEach(el => { el.open = true; });
-      });
-      const bottone = pagina.locator('[data-fai="provaScena"]').last();
-      await bottone.scrollIntoViewIfNeeded();
-      const prima = await pagina.evaluate(() => window.scrollY);
-      assert.ok(prima > 300, 'La prova parte davvero da una pagina scorsa');
-      await bottone.click();
-      await pagina.waitForFunction(() => vistaAttuale !== 'demo');
-      await pagina.waitForFunction(() => AstroDemo.stato === 'completato', null, { timeout: 30000 });
-      await pagina.waitForFunction(y => vistaAttuale === 'demo' && Math.abs(window.scrollY - y) < 2, prima);
-      assert.equal(await pagina.locator('#demo-scheda-storie').getAttribute('aria-selected'), 'true');
-      await bottone.click();
-      await pagina.waitForFunction(() => vistaAttuale !== 'demo');
-      await pagina.evaluate(() => AstroDemo.ferma());
-      await pagina.waitForFunction(y => vistaAttuale === 'demo' && Math.abs(window.scrollY - y) < 2, prima);
+    for (const width of [1100, 390]) {
+      await pagina.setViewportSize({ width, height: 800 });
+      await pagina.evaluate(() => { mostraVista('demo'); demoMostraScheda('demo-scheda-storie'); });
+      const scene = pagina.locator('.studio-scena');
+      assert.ok(await scene.count() > 1);
+      assert.equal(await pagina.locator('.studio-scena[open]').count(), 0);
+      const prima = scene.first();
+      const seconda = scene.nth(1);
+      await prima.locator(':scope > summary').click();
+      assert.equal(await prima.locator('[data-fai="provaScena"]').isVisible(), true);
+      assert.equal(await seconda.locator('[data-fai="provaScena"]').isVisible(), false);
+      // Una modifica ricostruisce la scheda senza richiuderla.
+      await prima.locator('[data-fai="ambiente"][data-valore="cielo"]').click();
+      assert.equal(await pagina.locator('.studio-scena[open]').count(), 1);
+      await seconda.locator(':scope > summary').focus();
+      await pagina.keyboard.press('Enter');
+      assert.equal(await pagina.locator('.studio-scena[open]').count(), 2);
+      await seconda.locator(':scope > summary').click();
+      await prima.locator(':scope > summary').click();
+      await pagina.evaluate(() => StudioStorie.ridisegna());
+      assert.equal(await pagina.locator('.studio-scena[open]').count(), 0);
     }
-    console.log('Ritorno alla scena: posizione e scheda conservate a fine prova e Stop, su desktop e telefono.');
+    console.log('Scene compresse: apertura, chiusura, tastiera e stato dopo modifica verificati su desktop e telefono.');
   } finally { if (browser) await browser.close(); server.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

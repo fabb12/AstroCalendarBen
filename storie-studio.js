@@ -2470,11 +2470,17 @@
     }
     return riga;
   }
+  const sceneAperte = new Set();
 
   function disegnaScena(sc, i) {
     const base = `scene.${i}`;
     const presenti = studioPresenti(studio.progetto, sc);
-    const card = h('section', { class: 'studio-scena', 'aria-label': t('studio.scena', { n: i + 1 }) });
+    const chiave = studio.progetto.id + '|' + sc.id;
+    const card = h('div', { class: 'studio-scena-corpo' });
+    const sezione = h('details', { class: 'studio-scena', open: sceneAperte.has(chiave), dataset: { scenaChiave: chiave } },
+      h('summary', { class: 'studio-scena-riassunto' },
+        h('span', { class: 'studio-scena-titolo' }, t('studio.scena', { n: i + 1 })),
+        h('small', {}, riassuntoScena(sc))), card);
     // Dove siamo: quattro bottoni, uno per ambiente
     const ambienti = h('div', { class: 'studio-ambienti', role: 'group', 'aria-label': t('studio.ambiente') });
     for (const a of STUDIO_AMBIENTI)
@@ -2485,7 +2491,6 @@
     const quale = sc.ambiente === 'pianeta' ? h('label', { class: 'storie-campo' }, h('span', {}, t('studio.qualePianeta')),
       selettore(base + '.fuoco', STUDIO_FUOCHI_3D.includes(sc.fuoco) ? sc.fuoco : STUDIO_FUOCHI_3D[0], STUDIO_FUOCHI_3D.map(f => [f, nome(f)]))) : null;
     card.append(h('div', { class: 'studio-scena-testa' },
-      h('h5', { class: 'studio-scena-titolo' }, t('studio.scena', { n: i + 1 })),
       ambienti,
       h('div', { class: 'studio-strumenti' },
         h('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { fai: 'provaScena', dove: base }, 'data-storia-prova': '' }, iconaSvg('gioca', 16), ' ', t('studio.provaScena')),
@@ -2559,7 +2564,7 @@
         h('span', { class: 'studio-etichetta' }, t('studio.passo4')), parole,
         h('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { fai: 'capisci', dove: base } }, t('studio.fallo'))),
       capito);
-    return card;
+    return sezione;
   }
   // «Normale · 13 dic 2026, 18:30 · 11 giorni»: la riga della scena chiusa
   function riassuntoScena(sc) {
@@ -2598,6 +2603,12 @@
   function disegna() {
     const r = studio.radice;
     if (!r || !studio.progetto) return;
+    // Conserva le aperture quando una scelta ridisegna i campi; le scene
+    // nuove restano chiuse e il riordino segue l'identità della scena.
+    for (const el of r.querySelectorAll('.studio-scena[data-scena-chiave]')) {
+      if (el.open) sceneAperte.add(el.dataset.scenaChiave);
+      else sceneAperte.delete(el.dataset.scenaChiave);
+    }
     const attivo = document.activeElement;
     const fuoco = attivo && r.contains(attivo) ? (attivo.dataset.campo || attivo.dataset.parole && 'parole|' + attivo.dataset.parole ||
       attivo.dataset.fai && attivo.dataset.fai + '|' + attivo.dataset.dove + '|' + (attivo.dataset.id || attivo.dataset.valore || attivo.dataset.tipo || '')) : null;
