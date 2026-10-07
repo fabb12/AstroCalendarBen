@@ -614,7 +614,7 @@
         },
         {
           "id": "s829qn5g",
-          "ambiente": "terra_luna",
+          "ambiente": "pianeta",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -636,99 +636,7 @@
               "durata": 0,
               "voce": 14,
               "audio": null,
-              "azioni": [
-                {
-                  "id": "ag8isjx7",
-                  "tipo": "diventa",
-                  "chi": "Saturn",
-                  "quando": "tutto",
-                  "forma": "red_giant"
-                },
-                {
-                  "id": "aeak23y3",
-                  "tipo": "diventa",
-                  "chi": "Saturn",
-                  "quando": "tutto",
-                  "forma": "red_giant"
-                },
-                {
-                  "id": "aeau3ca6",
-                  "tipo": "scala",
-                  "chi": "Saturn",
-                  "quando": "inizio",
-                  "scala": 1.6
-                },
-                {
-                  "id": "a60hgl2a",
-                  "tipo": "anima",
-                  "chi": "Saturn",
-                  "quando": "inizio",
-                  "animazione": "jump",
-                  "volte": 0
-                },
-                {
-                  "id": "a7mfrf4f",
-                  "tipo": "torna",
-                  "chi": "Saturn",
-                  "quando": "tutto",
-                  "percorso": "arc"
-                },
-                {
-                  "id": "aft6q5bi",
-                  "tipo": "muovi",
-                  "chi": "Saturn",
-                  "quando": "tutto",
-                  "verso": "",
-                  "lato": "auto",
-                  "percorso": "arc"
-                },
-                {
-                  "id": "aelmufrk",
-                  "tipo": "guarda",
-                  "chi": "Saturn",
-                  "quando": "inizio",
-                  "oggetto": "viewer"
-                },
-                {
-                  "id": "awr0qync",
-                  "tipo": "nascondi",
-                  "chi": "Saturn",
-                  "quando": "fine"
-                },
-                {
-                  "id": "afel22le",
-                  "tipo": "umore",
-                  "chi": "Saturn",
-                  "quando": "inizio",
-                  "umore": "happy"
-                },
-                {
-                  "id": "awv4oapv",
-                  "tipo": "umore",
-                  "chi": "Saturn",
-                  "quando": "inizio",
-                  "umore": "happy"
-                },
-                {
-                  "id": "a667q4i8",
-                  "tipo": "guarda",
-                  "chi": "Saturn",
-                  "quando": "inizio",
-                  "oggetto": "viewer"
-                },
-                {
-                  "id": "apb9sgh1",
-                  "tipo": "nascondi",
-                  "chi": "Saturn",
-                  "quando": "fine"
-                },
-                {
-                  "id": "an55isnm",
-                  "tipo": "occhiolino",
-                  "chi": "Saturn",
-                  "quando": "inizio"
-                }
-              ]
+              "azioni": []
             }
           ]
         },
@@ -823,7 +731,7 @@
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
       "voceProssima": 18,
-      "aggiornato": 1791396567162,
+      "aggiornato": 1791396899554,
       "lingua": "it"
     }
   ],
