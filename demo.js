@@ -582,6 +582,26 @@
   // modellino — lo zoom va molto oltre quello di una vista d'insieme.
   const FUOCHI_LONTANI = { 'Voyager 1': 'voyager1', 'Voyager 2': 'voyager2',
     Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune' };
+  const PIANETI_GIGANTI = ['Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+  // `close_up: show` (v442): lo zoom a cui il pianeta gigante su cui si gira è
+  // grosso come la Terra quando ci si entra (`solZoomSullaTerra`). Di serie
+  // la base dei fuochi lontani mette il Sole sul bordo del quadro, cioè mezzo
+  // Sistema Solare col pianeta al centro: nelle CosmoStorie la scena «Vicino
+  // a un pianeta» su Giove era quasi uguale a quella del Sistema Solare, e
+  // chi scriveva non capiva la differenza. Si cerca per bisezione, perché
+  // `solRaggioCorpo` ha due misure e dipende dalla scala che `solMisura`
+  // ricava dallo zoom. Va chiamata col perno già sul pianeta.
+  function zoomAddossoA(corpo) {
+    const prima = sol.zoom;
+    let a = 0.35, b = SOL_ZOOM_MAX_CORPO;
+    for (let i = 0; i < 40; i++) {
+      const m = Math.sqrt(a * b);
+      sol.zoom = m; solMisura();
+      if (solRaggioCorpo(corpo) < SOL_ENTRATA_TERRA_PX) a = m; else b = m;
+    }
+    sol.zoom = prima; solMisura();
+    return b;
+  }
   function elencoCorpiSistema(v) {
     if (v === undefined) return [];
     richiedi(typeof v === 'string' && v.length <= 120, err('elenco'));
@@ -753,7 +773,7 @@
   registro.camera_3d = {
     verifica(p) {
       campi(p, ['scene', 'focus', 'frame', 'orbit', 'orbit_from', 'elev_from', 'elev_to', 'zoom_from', 'zoom_to', 'sun_az', 'probe_az',
-        'frame_with', 'flyby_tilt', 'zoom_start', 'keep', 'blend', 'profile']);
+        'frame_with', 'flyby_tilt', 'zoom_start', 'keep', 'blend', 'profile', 'close_up']);
       richiedi(p.scene === 'earth_moon' || p.scene === 'system', err('scena3d'));
       richiedi((p.scene === 'earth_moon' ? FUOCHI_VICINO : FUOCHI_SISTEMA).includes(p.focus),
         err('fuoco', { nome: p.focus }));
@@ -774,6 +794,9 @@
       richiedi(p.flyby_tilt === undefined || (p.frame_with !== undefined && p.frame_with !== 'Earth' &&
         numero(p.flyby_tilt, -85, 85)), err('inquadraSonda'));
       richiedi(p.zoom_start === undefined || numero(p.zoom_start, 0, 0.95), err('frazioneScena'));
+      // `close_up: show` (v442) solo coi pianeti giganti, e senza le camere dei sorvoli
+      richiedi(p.close_up === undefined || (p.close_up === 'show' && p.scene === 'system' && PIANETI_GIGANTI.includes(p.focus) &&
+        p.frame_with === undefined && p.keep === undefined), err('fuoco', { nome: p.focus }));
       if (p.keep !== undefined) {
         richiedi(p.scene === 'system' && p.frame_with === undefined && p.probe_az === undefined, err('inquadraSonda'));
         elencoKeep(p.keep);
@@ -814,7 +837,7 @@
           const corpo = solCorpoDiId(id);
           richiedi(corpo, err('fuoco', { nome: p.focus }));
           sol.perno = id; sol.quadro = 'tutto'; sol.scelto = null;
-          base = solZoomPer(Math.max(0.3, corpo.r || 1));
+          base = p.close_up === 'show' ? zoomAddossoA(corpo) : solZoomPer(Math.max(0.3, corpo.r || 1));
         } else {
           sol.perno = 'Earth'; sol.quadro = 'terra';
           // Come attorno al Sole: addosso alla Terra si racconta lei, e i

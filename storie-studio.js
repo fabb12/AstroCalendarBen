@@ -629,7 +629,11 @@
             az.push(`camera_3d { scene: earth_moon, focus: 'Earth-Moon', ${giroRiga}${zoom} }`);
           } else if (sc.ambiente === 'pianeta') {
             const fuoco = STUDIO_FUOCHI_3D.includes(sc.fuoco) ? sc.fuoco : 'Jupiter';
-            az.push(`camera_3d { scene: system, focus: ${virgolette(fuoco)}, ${giroRiga}${zoom} }`);
+            // Addosso al pianeta (v442): sui giganti la base di serie era mezzo
+            // Sistema Solare col pianeta al centro, quasi uguale alla scena
+            // «Sistema Solare»; la Terra ha già da sé lo zoom da vicino
+            const vicino = fuoco !== 'Earth' ? ', close_up: show' : '';
+            az.push(`camera_3d { scene: system, focus: ${virgolette(fuoco)}, ${giroRiga}${zoom}${vicino} }`);
           } else {
             let quadro = presenti.map(id => id === 'Moon' ? 'Earth' : id).filter(id => STUDIO_INQUADRABILI.includes(id));
             // I viaggi verso un pianeta fuori dal cast: anche lui nel quadro
@@ -2475,6 +2479,11 @@
     const ambienti = h('div', { class: 'studio-ambienti', role: 'group', 'aria-label': t('studio.ambiente') });
     for (const a of STUDIO_AMBIENTI)
       ambienti.append(scelta(sc.ambiente === a, { class: 'studio-ambiente', dataset: { fai: 'ambiente', dove: base, valore: a } }, t('studio.ambiente.' + a)));
+    // Quale pianeta (v442): accanto all'ambiente e non nei dettagli chiusi,
+    // perché è lui a fare la differenza fra «Vicino a un pianeta» e il
+    // Sistema Solare intero; e una riga che dice che cosa si vedrà
+    const quale = sc.ambiente === 'pianeta' ? h('label', { class: 'storie-campo' }, h('span', {}, t('studio.qualePianeta')),
+      selettore(base + '.fuoco', STUDIO_FUOCHI_3D.includes(sc.fuoco) ? sc.fuoco : STUDIO_FUOCHI_3D[0], STUDIO_FUOCHI_3D.map(f => [f, nome(f)]))) : null;
     card.append(h('div', { class: 'studio-scena-testa' },
       h('h5', { class: 'studio-scena-titolo' }, t('studio.scena', { n: i + 1 })),
       ambienti,
@@ -2482,7 +2491,9 @@
         h('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { fai: 'provaScena', dove: base }, 'data-storia-prova': '' }, iconaSvg('gioca', 16), ' ', t('studio.provaScena')),
         h('button', { type: 'button', class: 'tasto-cielo studio-mini', dataset: { fai: 'su', dove: base }, 'aria-label': t('studio.su'), title: t('studio.su') }, '↑'),
         h('button', { type: 'button', class: 'tasto-cielo studio-mini', dataset: { fai: 'giu', dove: base }, 'aria-label': t('studio.giu'), title: t('studio.giu') }, '↓'),
-        h('button', { type: 'button', class: 'tasto-cielo studio-mini studio-x', dataset: { fai: 'togliScena', dove: base }, 'aria-label': t('studio.togli'), title: t('studio.togli') }, '×'))));
+        h('button', { type: 'button', class: 'tasto-cielo studio-mini studio-x', dataset: { fai: 'togliScena', dove: base }, 'aria-label': t('studio.togli'), title: t('studio.togli') }, '×')),
+      h('small', { class: 'studio-viaggio-nota studio-ambiente-nota' }, t('studio.ambienteNota.' + sc.ambiente)),
+      quale));
     // Chi c'è: le figurine del cast, da accendere e spegnere
     const chips = h('div', { class: 'studio-chips', role: 'group', 'aria-label': t('studio.inScena') }, h('span', { class: 'studio-etichetta' }, t('studio.inScena')));
     for (const id of studio.progetto.cast) {
@@ -2507,7 +2518,7 @@
     const dettagli = h('details', { class: 'studio-dettagli' },
       h('summary', {}, t(cosmo ? 'studio.ui.data' : 'studio.ui.doveQuando'), h('small', {}, ' · ' + riassuntoScena(sc))),
       h('div', { class: 'studio-riga' },
-        (sc.ambiente === 'pianeta' || sc.ambiente === 'cielo') ? h('label', { class: 'storie-campo' }, h('span', {}, t('studio.fuoco')),
+        sc.ambiente === 'cielo' ? h('label', { class: 'storie-campo' }, h('span', {}, t('studio.fuoco')),
           selettore(base + '.fuoco', fuochi.includes(sc.fuoco) ? sc.fuoco : fuochi[0], fuochi.map(f => [f, nome(f)]))) : null,
         cosmo ? null : h('label', { class: 'storie-campo' }, h('span', {}, t('studio.inquadratura')),
           selettore(base + '.zoom', sc.zoom, Object.keys(STUDIO_ZOOM).map(z => [z, t('studio.zoom.' + z)]))),
