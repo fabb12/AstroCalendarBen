@@ -1574,10 +1574,11 @@
     const mp = storMotoParlato(pg, stor.orologio);
     let P = base;
     const ddx = an.dx + mp.dx, ddy = an.dy + mp.dy;
-    if (ddx || ddy) {
-      const R = Math.max(pg.rMostrato || r || 0, 4);
-      P = v3.piu(base, dalloSchermo(assi, ddx * R, ddy * R));
-    }
+    const R = Math.max(pg.rMostrato || r || 0, 4);
+    // quanto il corpo si è mosso per l'animazione, in pixel dello schermo:
+    // il palco lo toglie per sapere dove il personaggio *sta* (v439)
+    pg.oscilla = { x: ddx * R, y: ddy * R };
+    if (ddx || ddy) P = v3.piu(base, dalloSchermo(assi, ddx * R, ddy * R));
     // Il passo di lato perché nessuno copra un altro personaggio (v428,
     // `storPalco3D`), in pixel dello schermo
     if (pg.scarto && (pg.scarto.x || pg.scarto.y)) {
@@ -1651,7 +1652,10 @@
         k *= 1 + (voluto / r - 1) * Math.max(0, pop);
       }
     }
-    k *= storScalaDi(pg) * storAnimazioniDi(pg).k * storMotoParlato(pg, stor.orologio).k;
+    // il gonfiarsi di un'animazione o di una sillaba dura un attimo: il palco
+    // lo toglie dalla misura con cui tiene lontani i personaggi (v439)
+    pg.kOscilla = storAnimazioniDi(pg).k * storMotoParlato(pg, stor.orologio).k;
+    k *= storScalaDi(pg) * pg.kOscilla;
     const m = pg.moto;
     if (m && m.percorso === 'teleport' && m.u > 0 && m.u < 1 && !stor.ridotto) k *= Math.max(0.04, Math.abs(1 - 2 * m.u));
     pg.rVero = r; pg.rMostrato = r * k;
@@ -3583,7 +3587,9 @@
     const w = (t - (pg.cambioDa || -1e9)) / STOR_BOING_MS;
     if (w >= 0 && w < 1) { const k = Math.sin(w * Math.PI * 2.5) * (1 - w) * 0.11; posa.sx += k; posa.sy -= k; }
     posa.dy -= Math.abs(Math.sin(t / 230 + (pg.fase || 0))) * R * 0.05 * (e.rimbalzo || 0);
-    posa.dx += Math.sin(t * 0.11) * R * 0.014 * (e.tremito || 0);
+    // la paura trema a otto colpi al secondo: a diciassette, campionata a
+    // sessanta fotogrammi, il volto saltava a caso invece di tremare (v439)
+    posa.dx += Math.sin(t * 0.052 + (pg.fase || 0)) * R * 0.014 * (e.tremito || 0);
     posa.giro += (e.testa || 0) + Math.sin(t / 1300 + (pg.fase || 0)) * 0.02;
     if (fis) {
       posa.giro += fis.testa;
@@ -4530,7 +4536,29 @@
    * ognuno scivola: da quel punto `storScena3D` lo mette nella scena, e il
    * volto, la profondità e le lune lo seguono. Il Sole non si sposta: si
    * scansa l'altro. Partendo ogni volta dal posto senza passi, il risultato
-   * non oscilla e torna a zero quando i due si allontanano da sé. */
+   * non oscilla e torna a zero quando i due si allontanano da sé.
+   *
+   * **Chi trema (v439).** Il preoccupato fa `shake`: il corpo va di qua e di
+   * là di un quarto di raggio, sei volte in un secondo. Il palco misurava il
+   * posto *con* il tremito dentro, e a ogni fotogramma spingeva il vicino di
+   * qua e di là con lui: tremavano tutti e due, e la coppia ballava. Adesso
+   * il posto è quello da fermo (si toglie `pg.oscilla`, lo spostamento
+   * dell'animazione e del parlato, e `pg.kOscilla`, il loro gonfiarsi), e
+   * per tutta l'animazione chi trema o balla tiene un po' d'aria in più,
+   * quanto è ampio il suo movimento (`storAmpiezzaOscilla`): costante finché
+   * l'animazione dura, così il vicino scivola via una volta sola e resta lì
+   * fermo mentre l'altro trema. */
+  function storAmpiezzaOscilla(pg) {
+    if (stor.ridotto || !pg.animazioni) return 0;
+    let a = 0;
+    for (const x of pg.animazioni) {
+      if (!(x.u > 0) || x.u >= 1) continue;
+      const f = Number.isFinite(x.forza) ? Math.max(0.1, Math.min(3, x.forza)) : 1;
+      if (x.tipo === 'shake') a += 0.26 * f;
+      else if (x.tipo === 'dance') a += 0.5 * f;
+    }
+    return a;
+  }
   const STOR_PALCO = { camera: 1.8, prospMin: 0.62, prospMax: 1.6, aria: 1.1, spazio: 8, giri: 10, tauMs: 320, tauProspMs: 420 };
   function storPalco3D(elenco, assi, sol) {
     const L = sol.L || 0, H = sol.H || 0, lato = Math.max(1, Math.min(L, H));
@@ -4553,13 +4581,17 @@
       const punto = (stor.mosse.get(pg.id) || stor.vere.get(pg.id) || {}).scena;
       const z = punto ? v3.punto(punto, assi.w) * assi.scala : 0;
       const p = storVesteProfilo(pg);
-      let rad = c.r * (pg.id === 'Saturn' ? 2.3 : 1);
+      // da fermo: senza il tremito, i salti e il gonfiarsi del momento
+      const kO = pg.kOscilla > 0 ? pg.kOscilla : 1, os = pg.oscilla || { x: 0, y: 0 };
+      let rad = c.r / kO * (pg.id === 'Saturn' ? 2.3 : 1);
       if (STOR_SAGOME_FORMA.includes(p.sagoma) || pg.veste) {
         const sag = STOR_CORPI[p.sagoma] ? p.sagoma : 'pianeta';
         rad = Math.max(rad, STOR_VOLTO_3D_PX * (pg.prosp || 1) / STOR_CORPI[sag].volto[2] * ingombroDi(sag));
       }
+      // e l'aria per tremare senza toccare il vicino
+      rad += storAmpiezzaOscilla(pg) * c.r / kO;
       attori.push({ pg, z, rad, fermo: pg.id === 'Sun',
-        x: c.px - pg.scarto.x, y: c.py - pg.scarto.y });
+        x: c.px - pg.scarto.x - os.x, y: c.py - pg.scarto.y - os.y });
     }
     // La prospettiva, attorno alla profondità media di chi è in scena
     const ref = attori.length ? attori.reduce((a, b) => a + b.z, 0) / attori.length : 0;

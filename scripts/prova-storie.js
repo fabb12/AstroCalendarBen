@@ -717,6 +717,41 @@ prova('il palco della 3D (v428): chi è più vicino alla camera è più grande, 
   S.sgombra();
   delete globalThis.sol;
 });
+prova('il palco della 3D (v439): chi trema non fa tremare il vicino, e il vicino gli lascia l\'aria per tremare', () => {
+  S.sgombra();
+  globalThis.sol = SOL_FINTO();
+  scena({ Mars: {}, Jupiter: {} });
+  const w = S.assiSchermo(globalThis.sol).w;
+  const vicino = { x: w.x, y: w.y, z: w.z }, lontano = { x: -w.x, y: -w.y, z: -w.z };
+  const marte = S.stato.personaggi.get('Mars');
+  const giro = () => [['Mars', vicino], ['Jupiter', lontano]].map(([id, v]) => {
+    const r = S.raggio3D(id, 3);
+    const scena = S.scena3D(id, v, r);
+    return { id, rDisegno: r, scena, schermo: proietta(scena) };
+  });
+  // si sistemano da fermi
+  for (let k = 0; k < 120; k++) { avanza(16); S.disegnaSistema(telaFinta().ctx, { corpi: giro(), sole: null }); }
+  // Marte ha paura e trema per quattro secondi
+  marte.animazioni = [{ tipo: 'shake', u: 0, volte: 12, forza: 1 }];
+  const posti = [];
+  let toccati = 0;
+  for (let k = 0; k < 250; k++) {
+    avanza(16);
+    marte.animazioni[0].u = Math.min(0.999, k / 250);
+    const [m, g] = giro();
+    S.disegnaSistema(telaFinta().ctx, { corpi: [m, g], sole: null });
+    if (k >= 60) posti.push(g.schermo.px);
+    if (Math.hypot(m.schermo.px - g.schermo.px, m.schermo.py - g.schermo.py) < m.rDisegno + g.rDisegno) toccati++;
+  }
+  // Giove, sistemato il posto, sta fermo: niente avanti e indietro a ogni scossa
+  let salti = 0;
+  for (let i = 1; i < posti.length; i++) salti += Math.abs(posti[i] - posti[i - 1]);
+  assert.ok(salti < 3, 'il vicino non trema: si è mosso di ' + salti.toFixed(2) + ' px in tutto');
+  assert.equal(toccati, 0, 'e tremando Marte non lo tocca');
+  marte.animazioni = [];
+  S.sgombra();
+  delete globalThis.sol;
+});
 prova('le occlusioni della 3D: chi sta dietro si disegna prima e il disco di chi gli passa davanti gli taglia il volto', () => {
   S.sgombra();
   globalThis.sol = SOL_FINTO();

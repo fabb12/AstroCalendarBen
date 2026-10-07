@@ -1135,6 +1135,20 @@ fisica (`ritagliaFuori`, un ritaglio `evenodd` per disco). L'adesivo accanto
 col filo non si taglia: è un cartellino. Gli anelli veri di Saturno davanti
 non tagliano (solo il disco). Prova in `prova-storie.js`.
 
+**Chi trema non fa tremare il vicino (v439).** Il preoccupato fa `shake` (lo
+Studio lo aggiunge di serie): il corpo va di qua e di là di un quarto di
+raggio, sei volte al secondo. Il palco misurava il posto col tremito dentro e
+a ogni fotogramma spingeva il vicino avanti e indietro con lui: tremavano tutti
+e due, e la coppia ballava (nella prova, 392 pixel di avanti e indietro del
+vicino in quattro secondi). Ora `storScena3D` lascia in `pg.oscilla` lo
+spostamento dell'animazione e del parlato, `storRaggio3D` in `pg.kOscilla` il
+loro gonfiarsi, e `storPalco3D` li toglie: il posto è quello da fermo. Per
+tutta la durata di `shake` e `dance` chi si muove tiene in più l'aria del suo
+movimento (`storAmpiezzaOscilla`), costante, così il vicino scivola via una
+volta e resta fermo mentre l'altro trema senza toccarlo. Anche il tremito
+del volto della paura va a otto colpi al secondo invece di diciassette, che a
+sessanta fotogrammi saltavano a caso. Prova in `prova-storie.js`.
+
 ## Le stazioni in scena, e le scritte spente (v423)
 
 **Le stazioni si vedono quando parlano.** Una storia che faceva parlare la
