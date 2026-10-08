@@ -1443,6 +1443,15 @@ mai l'ultimo), poi una linguetta per famiglia con quanti sono scelti e i loro
 volti, e una per le voci ElevenLabs (`schedeCast`); `apriScelta` su un
 personaggio apre quella delle voci, perché la scelta si veda.
 
+### Le schede delle storie pronte (v448)
+
+Anche l'elenco della linguetta CosmoStorie (`storRiempiPagina`,
+`storie-cosmiche.js`) prende lo stile dello Studio: ogni scheda ha titolo,
+durata, i volti dei personaggi (`storFigurina`, dipinti una volta), tre righe
+della trama e due linguette, *La trama* (la toglie dalle tre righe) e
+*Personaggi (n)* (l'elenco coi caratteri e i perché, `hidden` di serie ma nel
+DOM, che `prova-storie-browser.js` conta). Se ne apre una per scheda.
+
 ## «Vicino a un pianeta» che si distingue dal Sistema Solare (v442)
 
 Nello Studio le due scene 3D sembravano la stessa cosa. «Vicino a un

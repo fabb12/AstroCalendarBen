@@ -12719,6 +12719,14 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 /* v430: perché è fatto così, la fisica sotto al carattere */
 .storia-tratto { display: block; color: #94a3b8; font-size: 0.78rem; line-height: 1.45; margin-bottom: 0.3em; }
 .storia-avvia { width: auto; }
+.storia-volti { display: flex; }
+.storia-volti .studio-figurina + .studio-figurina { margin-left: -8px; }
+.storia-linguette .storia-linguetta { flex: 1 1 8rem; }
+.storia-descrizione.corta { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.storia-scheda > .demo-azioni { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; }
+.storia-scheda > .demo-azioni .storia-avvia { flex: 1 1 10rem; }
+.storia-scheda { grid-template-rows: auto auto auto auto auto 1fr; }
+.storia-cast[hidden] { display: none; }
 .storie-anteprima { display: grid; gap: 8px; }
 .storie-sottotitolo { margin: 6px 0 0; color: #fff; font-size: 0.95rem; font-weight: 700; }
 .storie-anteprima-comandi { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
