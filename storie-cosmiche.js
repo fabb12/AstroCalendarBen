@@ -7064,9 +7064,12 @@
    * aspetto, `.demo-immagine`), visibile per la ripresa dell'azione. */
   const STOR_FOTO = {
     pale_blue_dot: {
-      candidate: ['https://commons.wikimedia.org/wiki/Special:FilePath/Pale_Blue_Dot.png?width=640',
-        'https://upload.wikimedia.org/wikipedia/commons/7/73/Pale_Blue_Dot.png'],
-      voci: ['https://it.wikipedia.org/api/rest_v1/page/summary/Pale_Blue_Dot', 'https://en.wikipedia.org/api/rest_v1/page/summary/Pale_Blue_Dot'],
+      // v455: la fotografia vera non si mostra più (l'ha chiesto chi
+      // guarda la storia): niente richieste a Wikimedia, si vede sempre
+      // l'illustrazione, con la freccia sulla Terra. Il meccanismo delle
+      // candidate resta per altre foto
+      candidate: [],
+      voci: [],
       illustrazione: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">' +
         '<defs><linearGradient id="r" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c2410c" stop-opacity="0"/>' +
