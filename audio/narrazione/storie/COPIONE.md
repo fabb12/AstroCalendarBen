@@ -11,12 +11,12 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **19/71** in italiano · **0/50** in inglese.
+Pronte: **19/77** in italiano · **0/50** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
 | Luna | `storie/luna/` | 14 | 7/14 | 0/11 |
-| Terra | `storie/terra/` | 11 | 6/11 | 0/4 |
+| Terra | `storie/terra/` | 15 | 6/15 | 0/4 |
 | Sole | `storie/sole/` | 12 | 3/12 | 0/9 |
 | Saturno | `storie/saturno/` | 3 | 0/3 | 0/2 |
 | Giove | `storie/giove/` | 3 | 0/3 | 0/1 |
@@ -32,7 +32,7 @@ Pronte: **19/71** in italiano · **0/50** in inglese.
 | hubble | `storie/hubble/` | 1 | 1/1 | 0/0 |
 | iss | `storie/iss/` | 1 | 1/1 | 0/0 |
 | css | `storie/css/` | 1 | 1/1 | 0/0 |
-| Sedna | `storie/sedna/` | 2 | 0/2 | 0/0 |
+| Sedna | `storie/sedna/` | 4 | 0/4 | 0/0 |
 
 ## Luna
 
@@ -195,6 +195,22 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Che spavento! Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Che spavento! Chi ha parlato?`
+- `studio_cosa_e_la_gravita-22.mp3` — manca · Studio: Cosa è la gravità?, scena 22 (al massimo 16 s)
+  - **Emozione:** sorpreso — 
+  - **Testo:** Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!
+  - **Da incollare su ElevenLabs v3:** `[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!`
+- `studio_cosa_e_la_gravita-23.mp3` — manca · Studio: Cosa è la gravità?, scena 23 (al massimo 12 s)
+  - **Emozione:** infastidito — 
+  - **Testo:** Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e
+  - **Da incollare su ElevenLabs v3:** `[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e`
+- `studio_cosa_e_la_gravita-25.mp3` — manca · Studio: Cosa è la gravità?, scena 25 (al massimo 5 s)
+  - **Emozione:** sorpreso — 
+  - **Testo:** Oh! Scusa! Continua.
+  - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Scusa! Continua.`
+- `studio_cosa_e_la_gravita-27.mp3` — manca · Studio: Cosa è la gravità?, scena 27 (al massimo 7 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Wow! Non sapevo che la scienza potesse essere così bella.
+  - **Da incollare su ElevenLabs v3:** `Wow! Non sapevo che la scienza potesse essere così bella.`
 
 ### Inglese — `storie/terra/en/`
 
@@ -706,8 +722,16 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
   - **Emozione:** tranquillo — 
   - **Testo:** Ciao Terra, Giove ha ragione!
   - **Da incollare su ElevenLabs v3:** `Ciao Terra, Giove ha ragione!`
-- `studio_cosa_e_la_gravita-21.mp3` — manca · Studio: Cosa è la gravità?, scena 21 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-21.mp3` — manca · Studio: Cosa è la gravità?, scena 21 (al massimo 11 s)
   - **Emozione:** tranquillo — 
-  - **Testo:** Sono Sedna! Un pianeta nano candidato
-  - **Da incollare su ElevenLabs v3:** `Sono Sedna! Un pianeta nano candidato`
+  - **Testo:** Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!
+  - **Da incollare su ElevenLabs v3:** `Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!`
+- `studio_cosa_e_la_gravita-24.mp3` — manca · Studio: Cosa è la gravità?, scena 24 (al massimo 5 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ehm, scusa Terra, hai finito?
+  - **Da incollare su ElevenLabs v3:** `Ehm, scusa Terra, hai finito?`
+- `studio_cosa_e_la_gravita-26.mp3` — manca · Studio: Cosa è la gravità?, scena 26 (al massimo 20 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".
+  - **Da incollare su ElevenLabs v3:** `Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".`
 
