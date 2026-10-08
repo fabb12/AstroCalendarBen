@@ -43,8 +43,8 @@ window.INS_ORT_URL = window.INS_ORT_URL || '';
 // Actions li sostituisce con versione della cache, numero della build, commit
 // e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v458',
+  version: 'v459',
   build: '',
   commit: '',
-  builtAt: '2026-10-08T21:13:00.000Z'
+  builtAt: '2026-10-08T21:23:00.000Z'
 });

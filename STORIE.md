@@ -2031,6 +2031,29 @@ Prove: `prova-storie.js` (107: «il coro pieno resta tutto nel quadro…»,
 «Carl Sagan cambia faccia…»), `prova-storie-repo.js`, `prova-demo.js`,
 `prova-musica-storie.js`, `controlla-i18n.js --patto`.
 
+### Il discorso affiatato (v459)
+
+Chi guarda le storie sentiva silenzi lunghi fra una battuta e l'altra: la
+`duration` di una scena è scritta per la voce più lenta (la sintesi
+italiana), e con la voce registrata, con l'inglese o con una voce svelta la
+frase finiva secondi prima della scena. Ora in una CosmoStoria (una demo con
+dei personaggi, `stringiVoce` nel contesto di `demo.js`) il motore
+(`demo-motore.js`, `seguiVoce`, `durataScena`) chiude la scena **un quarto
+di secondo dopo** che l'ultima voce ha taciuto, mai sotto i due secondi.
+Restano aperte le scene che hanno ancora una battuta da cominciare (una
+ripresa di `character_speak` o `narrate` più avanti, `Motore.VOCI`: prima
+le loro voci non si aspettavano nemmeno) e quelle con un gesto scritto dopo
+la battuta, che si vede per mezzo secondo prima di chiudere. Una voce spenta
+(`spenta`, `vuota`) o interrotta non stringe niente; le scene senza voce, e
+quindi le storie cantate, durano quanto è scritto; le demo che non sono
+storie pure. Chiudendo prima, le azioni già partite arrivano al loro stato
+finale e quelle non ancora cominciate non nascono (niente botto creato e
+chiuso nello stesso istante). Misurato in Chromium su «La Luna ha perso un
+pezzo?»: scene di 7,0 s invece di 10, 9,3 invece di 13, 11,7 invece di 16.
+
+Prova: `prova-demo.js` («Storia: la scena chiude un attimo dopo la voce» e
+le cinque accanto).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

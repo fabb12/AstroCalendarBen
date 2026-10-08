@@ -234,6 +234,53 @@ for (const d of predefiniti) {
   ok(m.indice === 1 && Math.abs(progresso - 0.5) < 0.01, 'Dopo il salto il disegno riparte (' + progresso.toFixed(2) + ')');
   m.ferma();
 }
+// Il discorso affiatato (v458): in una storia (`stringiVoce`) la scena
+// chiude poco dopo la voce; fuori da una storia aspetta la sua durata. Una
+// battuta che deve ancora cominciare, o un gesto scritto più avanti, la
+// tengono aperta; una voce spenta non la stringe.
+{
+  const giro = (contesto, testoDemo, esito = 'audio') => {
+    const reg = Object.create(null);
+    const voci = [];
+    reg.character_speak = { crea: () => { let fine; const p = new Promise(r => { fine = r; }); voci.push(() => fine(esito)); return { fineNarrazione: p }; } };
+    reg.gesto = { crea: () => ({}) };
+    let t = 0; const coda = new Map(); let id = 0;
+    const m = new Motore(reg, { ora: () => t, richiedi: f => { coda.set(++id, f); return id; }, annulla: k => coda.delete(k) });
+    const avanti = async ms => { t += ms; const l = [...coda.values()]; coda.clear(); l.forEach(f => f()); await null; await null; };
+    m.avvia(testoDemo, contesto);
+    return { m, voci, avanti, cambio: async () => { for (let k = 0; k < 120; k++) { if (m.indice > 0) return t; await avanti(100); if (k === 29) voci.shift()(); } return t; } };
+  };
+  const due = 'define_demo s { scene a { duration: 10s; action: character_speak {}; } scene b { duration: 5s; action: gesto {}; }}';
+  const stretta = { stringiVoce: { coda: 250, minimo: 2000 } };
+  (async () => {
+    let g = giro(stretta, due);
+    let quando = await g.cambio();
+    ok(quando >= 3000 && quando <= 3500, 'Storia: la scena chiude un attimo dopo la voce (' + quando + ' ms invece di 10 s)');
+    g.m.ferma();
+    g = giro({}, due);
+    quando = await g.cambio();
+    ok(quando >= 10000, 'Fuori da una storia la scena dura quanto è scritto (' + quando + ')');
+    g.m.ferma();
+    g = giro(stretta, due, 'spenta');
+    quando = await g.cambio();
+    ok(quando >= 10000, 'Una voce spenta non stringe la scena (' + quando + ')');
+    g.m.ferma();
+    g = giro(stretta, 'define_demo s { scene a { duration: 10s; action: character_speak {}; action: gesto { shot_from: 0.6 }; } scene b { duration: 5s; action: gesto {}; }}');
+    quando = await g.cambio();
+    ok(quando >= 6500 && quando <= 7000, 'Un gesto scritto dopo la battuta si vede prima di chiudere (' + quando + ')');
+    g.m.ferma();
+    g = giro(stretta, 'define_demo s { scene a { duration: 10s; action: character_speak {}; action: character_speak { shot_from: 0.5 }; } scene b { duration: 5s; action: gesto {}; }}');
+    for (let k = 0; k < 30; k++) await g.avanti(100);
+    g.voci.shift()();
+    for (let k = 0; k < 25; k++) await g.avanti(100);
+    ok(g.m.indice === 0 && g.voci.length === 1, 'La seconda battuta comincia: la prima voce finita non chiude la scena');
+    g.voci.shift()();
+    for (let k = 0; k < 6; k++) await g.avanti(100);
+    ok(g.m.indice === 1, 'Finita anche la seconda, la scena chiude (' + g.m.indice + ')');
+    g.m.ferma();
+    console.log('Demo: discorso affiatato, ' + verifiche + ' verifiche');
+  })().catch(e => { console.error(e); process.exitCode = 1; });
+}
 console.log('Demo: ' + verifiche + ' verifiche superate');
 
 // Archivio indipendente dal DOM: protezioni, persistenza e scritture atomiche.

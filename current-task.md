@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v458): «Pallido puntino blu», le pupille di chi canta si muovono (`storOcchiataCanto`), Carl Sagan cambia faccia verso per verso, la camera non tiene solo il suo viso, nei ritornelli cantano tutti e la camera li tiene nel quadro (coro pieno, `storCoroInVista`), e niente effetti sonori (`story_music { sounds: off }`). `STORIE.md` §Le pupille che si muovono, le facce di Sagan, il coro e solo la musica. Prove: `prova-storie.js` (107), `prova-storie-repo.js`, `prova-demo.js`, `prova-musica-storie.js`, `controlla-i18n.js --patto`.
+Ultimo lavoro (v459): il discorso affiatato, in una CosmoStoria la scena chiude 250 ms dopo la voce (mai sotto 2 s, aspettando le battute e i gesti scritti dopo). `STORIE.md` §Il discorso affiatato. Prove: `prova-demo.js`, `prova-demo-regia.js`, `prova-storie.js`; `prova-narrazione.js` (5 fallite) e `prova-storie-browser.js` (`.narrazione-chi`) falliscono uguali prima della modifica.
+
+Prima (v458): «Pallido puntino blu», le pupille di chi canta si muovono (`storOcchiataCanto`), Carl Sagan cambia faccia verso per verso, la camera non tiene solo il suo viso, nei ritornelli cantano tutti e la camera li tiene nel quadro (coro pieno, `storCoroInVista`), e niente effetti sonori (`story_music { sounds: off }`). `STORIE.md` §Le pupille che si muovono, le facce di Sagan, il coro e solo la musica. Prove: `prova-storie.js` (107), `prova-storie-repo.js`, `prova-demo.js`, `prova-musica-storie.js`, `controlla-i18n.js --patto`.
 
 Prima (v457): chi canta ha la bocca dritta e in mezzo (Sagan pensoso la apriva storta), senza sbuffo. `STORIE.md` §La bocca dritta di chi canta.
 
