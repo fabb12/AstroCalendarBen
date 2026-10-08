@@ -1475,6 +1475,377 @@
     action: character_speak { target: 'Star7', id: 'demo.narr.storia_stelle.24' };
   }
 }`
+    },
+    {
+      chiave: 'storia_puntino',
+      storia: true,
+      cast: 'sagan,Earth,voyager1,voyager2,Moon,Sun,Mars,Jupiter,Saturn,Venus',
+      testo: `define_demo 'storia_puntino' {
+  // «Pallido puntino blu» (v450): una CosmoStoria che segue una canzone.
+  // La canzone (musica/canzoni/pallido-punto-blu.mp3, 4'08")
+  // è un rap sulle parole che Carl Sagan scrisse nel 1994 sulla fotografia
+  // della Terra fatta dalla Voyager 1 il 14 febbraio 1990, da sei miliardi
+  // di chilometri. La cantano Carl Sagan (un ospite: sta in un posto dello
+  // schermo in ogni vista), la Terra, la Luna, le due Voyager, il Sole e i
+  // pianeti, verso per verso (\`character_sing\`); il karaoke colora le
+  // parole cantate. Ogni scena ripete \`story_music\` col punto della
+  // canzone in cui comincia (\`at\`): la musica è agganciata al tempo della
+  // demo (\`sync: on\`), e chi salta a una scena la trova al punto giusto.
+  // Il battito (87 bpm, un verso per battuta) lo tengono la camera e i
+  // personaggi. I tempi dei versi sono stati misurati sulla canzone
+  // (riconoscimento del parlato parola per parola, poi allineato al testo).
+  // Questo copione è generato: i numeri vengono da lì.
+  scene solar_system_3d {
+    // L'intro parlata: la Voyager 1 il 14 febbraio 1990, a quaranta unità astronomiche, si gira verso casa.
+    duration: 19.5s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: -1.5 };
+    action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show, gaze: show, proportion: free };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -105, orbit: 22, elev_from: -6, elev_to: 6, zoom_from: 1.1, zoom_to: 0.92 };
+    action: story_title { id: 'storie.titolo.puntino', sub_id: 'storie.titolo.puntinoSotto', shot_to: 0.36 };
+    action: character_show { target: 'voyager1', expression: 'thinking' };
+    action: character_show { target: 'sagan', expression: 'happy', at: left };
+    action: character_expression { target: 'sagan', expression: 'thinking', shot_from: 0.3 };
+    action: effect { type: glow, target: 'voyager1', duration: 6, shot_from: 0.2 };
+    action: character_expression { target: 'voyager1', expression: 'surprised', shot_from: 0.62 };
+    action: effect { type: flash, target: 'voyager1', sound: off, shot_from: 0.66 };
+    action: character_expression { target: 'sagan', expression: 'happy', shot_from: 0.68 };
+    action: character_expression { target: 'voyager1', expression: 'love', shot_from: 0.82 };
+    action: effect { type: sparkles, target: 'voyager1', shot_from: 0.82 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.1', shot_from: 0.1836, shot_to: 0.441 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.2', shot_from: 0.4574, shot_to: 0.6523 };
+    action: character_sing { target: 'sagan', with: 'voyager1', id: 'storie.canzone.puntino.3', shot_from: 0.6974, shot_to: 0.9036 };
+  }
+  scene solar_system_3d {
+    // Prima strofa: la Terra e la Luna da vicino, la base del rap entra.
+    duration: 26s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 18, bpm: 87, beat: 0.85 };
+    action: story_camera { mode: auto };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 34, elev_from: 18, elev_to: 34 };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: character_show { target: 'Moon', expression: 'neutral', look: 'Earth' };
+    action: character_show { target: 'sagan', expression: 'excited', at: right };
+    action: effect { type: shockwave, target: 'Earth', sound: off, shot_from: 0.1596 };
+    action: effect { type: sparkles, target: 'Earth', shot_from: 0.1654 };
+    action: character_expression { target: 'Earth', expression: 'love', shot_from: 0.3654 };
+    action: effect { type: hearts, target: 'Earth', shot_from: 0.3692 };
+    action: character_expression { target: 'Earth', expression: 'happy', shot_from: 0.5 };
+    action: character_expression { target: 'Moon', expression: 'excited', shot_from: 0.5808 };
+    action: character_expression { target: 'Moon', expression: 'laughing', shot_from: 0.6827 };
+    action: character_expression { target: 'Moon', expression: 'sad', shot_from: 0.7096 };
+    action: character_expression { target: 'Moon', expression: 'love', shot_from: 0.7346 };
+    action: character_expression { target: 'Moon', expression: 'angry', shot_from: 0.7615 };
+    action: character_animate { target: 'Moon', animation: shake, times: 2, shot_from: 0.7615, shot_to: 0.7923 };
+    action: character_expression { target: 'Moon', expression: 'happy', shot_from: 0.8077 };
+    action: character_expression { target: 'Earth', expression: 'thinking', shot_from: 0.8885 };
+    action: character_animate { target: 'Earth', animation: bounce, times: 4, shot_from: 0.8923, shot_to: 0.9962 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.4', shot_from: 0.1585, shot_to: 0.2569 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.5', shot_from: 0.2623, shot_to: 0.3492 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.6', shot_from: 0.3662, shot_to: 0.4485 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.7', shot_from: 0.4454, shot_to: 0.5762 };
+    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.8', shot_from: 0.5831, shot_to: 0.6862 };
+    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.9', shot_from: 0.6831, shot_to: 0.7954 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.10', shot_from: 0.7946, shot_to: 0.8938 };
+    action: character_sing { target: 'Earth', with: 'Moon', id: 'storie.canzone.puntino.11', shot_from: 0.8908, shot_to: 0.999 };
+  }
+  scene planetarium_view {
+    // Seconda strofa, flow veloce: il cielo di casa, la Luna sopra ai tetti di Roma, e tutti quelli che l'hanno guardata.
+    duration: 16.55s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 44, bpm: 87, beat: 0.85 };
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2026-12-13T17:30:00Z' };
+    action: center_target { target: 'Moon' };
+    action: zoom_fov { from: 70, to: 14 };
+    action: character_show { target: 'Moon', expression: 'excited' };
+    action: character_show { target: 'sagan', expression: 'excited', at: left };
+    action: character_expression { target: 'Moon', expression: 'annoyed', shot_from: 0.1813 };
+    action: character_expression { target: 'Moon', expression: 'excited', shot_from: 0.3323 };
+    action: effect { type: explosion, at: right, size: 0.6, shot_from: 0.3988 };
+    action: character_expression { target: 'Moon', expression: 'love', shot_from: 0.6707 };
+    action: effect { type: hearts, target: 'Moon', shot_from: 0.6767 };
+    action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.6707 };
+    action: effect { type: shooting_star, at: top, shot_from: 0.8822 };
+    action: character_expression { target: 'Moon', expression: 'surprised', shot_from: 0.8882 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.12', shot_from: 0.0097, shot_to: 0.1813 };
+    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.13', shot_from: 0.1764, shot_to: 0.3239 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.14', shot_from: 0.3335, shot_to: 0.4737 };
+    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.15', shot_from: 0.5112, shot_to: 0.6695 };
+    action: character_sing { target: 'sagan', with: 'Moon', id: 'storie.canzone.puntino.16', shot_from: 0.6755, shot_to: 0.8338 };
+    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.17', shot_from: 0.8411, shot_to: 0.999 };
+  }
+  scene solar_system_3d {
+    // La Terra si allontana fino a diventare un granello in un raggio di Sole.
+    duration: 11.75s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 60.55, bpm: 87, beat: 0.85 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 18, elev_from: 30, elev_to: 14, zoom_from: 1.7, zoom_to: 1.05 };
+    action: character_show { target: 'Earth', expression: 'thinking' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'sagan', expression: 'thinking', at: left };
+    action: character_expression { target: 'Earth', expression: 'surprised', shot_from: 0.2426 };
+    action: effect { type: glow, target: 'Sun', duration: 5, shot_from: 0.4723 };
+    action: character_look_at { target: 'Earth', object: 'Sun', shot_from: 0.4809 };
+    action: character_expression { target: 'Earth', expression: 'sad', shot_from: 0.7021 };
+    action: character_scale { target: 'Earth', scale: 0.55, shot_from: 0.7106 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.18', shot_from: 0.0111, shot_to: 0.2409 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.19', shot_from: 0.2494, shot_to: 0.474 };
+    action: character_sing { target: 'Sun', id: 'storie.canzone.puntino.20', shot_from: 0.4826, shot_to: 0.7174 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.21', shot_from: 0.7106, shot_to: 0.9847 };
+  }
+  scene solar_system_3d {
+    // Primo ritornello: la camera esce nella scala cosmica, l'arena è vasta, la Terra un granello.
+    duration: 11.05s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 72.3, bpm: 87, beat: 0.85 };
+    action: story_camera { mode: auto };
+    action: cosmic_scale { from: 'inner_planets', to: 'heliopause', ease: smooth };
+    action: character_show { target: 'Earth', expression: 'excited' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'voyager1', expression: 'excited' };
+    action: character_show { target: 'voyager2', expression: 'excited' };
+    action: character_show { target: 'sagan', expression: 'excited', at: top };
+    action: effect { type: fireworks, target: 'Earth', shot_from: 0.0181 };
+    action: effect { type: sparkles, target: 'voyager1', shot_from: 0.3077 };
+    action: effect { type: sparkles, target: 'voyager2', shot_from: 0.3258 };
+    action: character_expression { target: 'Earth', expression: 'surprised', shot_from: 0.543 };
+    action: character_expression { target: 'Earth', expression: 'happy', shot_from: 0.7511 };
+    action: character_sing { target: 'Earth', with: 'sagan,Sun', id: 'storie.canzone.puntino.22', shot_from: 0.0181, shot_to: 0.2552 };
+    action: character_sing { target: 'voyager1', with: 'voyager2,sagan', id: 'storie.canzone.puntino.23', shot_from: 0.3077, shot_to: 0.5267 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.24', shot_from: 0.5502, shot_to: 0.7077 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.25', shot_from: 0.7602, shot_to: 0.9792 };
+  }
+  scene solar_system_3d {
+    // La camera torna a casa: pallido punto blu, cantato da tutti.
+    duration: 13.15s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 83.35, bpm: 87, beat: 0.85 };
+    action: cosmic_scale { from: 'heliopause', to: 'earth_moon', ease: smooth };
+    action: character_show { target: 'Earth', expression: 'love' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'voyager1', expression: 'love' };
+    action: character_show { target: 'voyager2', expression: 'happy' };
+    action: character_show { target: 'sagan', expression: 'excited', at: left };
+    action: effect { type: fireworks, target: 'Earth', shot_from: 0.0114 };
+    action: effect { type: fireworks, target: 'Earth', shot_from: 0.3916 };
+    action: effect { type: hearts, target: 'Earth', shot_from: 0.5513 };
+    action: character_animate { target: 'Earth', animation: dance, times: 4, shot_from: 0.7567, shot_to: 0.9848 };
+    action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.5513 };
+    action: character_sing { target: 'Earth', with: 'sagan,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.26', shot_from: 0.0084, shot_to: 0.1103 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.27', shot_from: 0.1042, shot_to: 0.3627 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.28', shot_from: 0.3901, shot_to: 0.5529 };
+    action: character_sing { target: 'sagan', with: 'voyager1,voyager2', id: 'storie.canzone.puntino.29', shot_from: 0.5468, shot_to: 0.781 };
+  }
+  scene solar_system_3d {
+    // Terza strofa, rap duro: Marte, il dio della guerra, e Giove, il re degli dèi, si contendono la Terra.
+    duration: 10.92s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 96.5, bpm: 87, beat: 0.85, kick: 1.6 };
+    action: story_camera { mode: speaker };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 14, elev_from: 48, elev_to: 40 };
+    action: character_show { target: 'Mars', expression: 'angry' };
+    action: character_show { target: 'Jupiter', expression: 'bully' };
+    action: character_show { target: 'Earth', expression: 'worried' };
+    action: character_show { target: 'sagan', expression: 'sad', at: right };
+    action: effect { type: glow, target: 'Mars', color: '#dc2626', duration: 4, shot_from: 0.0458 };
+    action: character_move { target: 'Mars', to: 'Earth', side: left, path: zigzag, shot_from: 0.2839, shot_to: 0.5037 };
+    action: character_move { target: 'Jupiter', to: 'Earth', side: right, path: arc, shot_from: 0.3022, shot_to: 0.5403 };
+    action: effect { type: lightning, target: 'Jupiter', shot_from: 0.4762 };
+    action: character_animate { target: 'Earth', animation: shake, times: 3, shot_from: 0.7326, shot_to: 0.9615 };
+    action: character_sing { target: 'Mars', id: 'storie.canzone.puntino.30', shot_from: 0.044, shot_to: 0.2399 };
+    action: character_sing { target: 'Jupiter', id: 'storie.canzone.puntino.31', shot_from: 0.293, shot_to: 0.4872 };
+    action: character_sing { target: 'Mars', with: 'Jupiter', id: 'storie.canzone.puntino.32', shot_from: 0.4799, shot_to: 0.7418 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.33', shot_from: 0.7381, shot_to: 0.999 };
+  }
+  scene solar_system_3d {
+    // Fratello contro fratello: lampi, botti e il quadro che trema; poi la domanda: ma perché?
+    duration: 10.88s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 107.42, bpm: 87, beat: 0.85, kick: 1.8 };
+    action: story_camera { mode: auto };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 14, orbit_from: 14, elev_from: 40, elev_to: 30 };
+    action: character_show { target: 'Mars', expression: 'angry' };
+    action: character_show { target: 'Jupiter', expression: 'angry' };
+    action: character_show { target: 'Earth', expression: 'worried' };
+    action: character_show { target: 'sagan', expression: 'sad', at: right };
+    action: effect { type: explosion, target: 'Mars', shot_from: 0.0074 };
+    action: effect { type: lightning, target: 'Mars', shot_from: 0.2463 };
+    action: effect { type: lightning, target: 'Jupiter', shot_from: 0.3474 };
+    action: character_animate { target: 'Mars', animation: shake, times: 4, shot_from: 0.2371, shot_to: 0.4761 };
+    action: character_animate { target: 'Jupiter', animation: shake, times: 4, shot_from: 0.2371, shot_to: 0.4761 };
+    action: character_expression { target: 'Earth', expression: 'sad', shot_from: 0.4853 };
+    action: effect { type: smoke, target: 'Earth', shot_from: 0.4945 };
+    action: character_expression { target: 'Mars', expression: 'sad', shot_from: 0.7426 };
+    action: character_expression { target: 'Jupiter', expression: 'thinking', shot_from: 0.7426 };
+    action: character_return { target: 'Mars', path: arc, shot_from: 0.7518, shot_to: 0.9908 };
+    action: character_return { target: 'Jupiter', path: arc, shot_from: 0.7518, shot_to: 0.9908 };
+    action: character_sing { target: 'Mars', id: 'storie.canzone.puntino.34', shot_from: 0.0018, shot_to: 0.2408 };
+    action: character_sing { target: 'Mars', with: 'Jupiter', id: 'storie.canzone.puntino.35', shot_from: 0.2426, shot_to: 0.4945 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.36', shot_from: 0.4945, shot_to: 0.75 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.37', shot_from: 0.7463, shot_to: 0.999 };
+  }
+  scene solar_system_3d {
+    // Quarta strofa, lenta: Saturno si vanta, il Sole ride dell'idea di essere al centro.
+    duration: 10.85s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 118.3, bpm: 87, beat: 0.85, kick: 0.7 };
+    action: story_camera { mode: orbit, speed: 10 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Saturn', orbit: 10, elev_from: 30, elev_to: 50 };
+    action: character_show { target: 'Saturn', expression: 'bully' };
+    action: character_show { target: 'Sun', expression: 'thinking' };
+    action: character_show { target: 'Earth', expression: 'thinking' };
+    action: character_show { target: 'sagan', expression: 'thinking', at: left };
+    action: effect { type: sparkles, target: 'Saturn', shot_from: 0.0092 };
+    action: character_expression { target: 'Sun', expression: 'laughing', shot_from: 0.2673 };
+    action: character_animate { target: 'Sun', animation: bounce, times: 3, shot_from: 0.2765, shot_to: 0.4885 };
+    action: character_expression { target: 'Saturn', expression: 'surprised', shot_from: 0.2765 };
+    action: character_expression { target: 'Saturn', expression: 'sad', shot_from: 0.5069 };
+    action: character_sing { target: 'Saturn', id: 'storie.canzone.puntino.38', shot_from: 0.0055, shot_to: 0.2599 };
+    action: character_sing { target: 'Sun', id: 'storie.canzone.puntino.39', shot_from: 0.271, shot_to: 0.5088 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.40', shot_from: 0.5106, shot_to: 0.7207 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.41', shot_from: 0.776, shot_to: 0.9972 };
+  }
+  scene solar_system_3d {
+    // Soli nel buio: la camera si allontana fino alla nube di Oort, la Voyager guarda avanti.
+    duration: 11.85s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 129.15, bpm: 87, beat: 0.85, kick: 0.6 };
+    action: cosmic_scale { from: 'earth_moon', to: 'oort', ease: smooth };
+    action: character_show { target: 'Earth', expression: 'sad' };
+    action: character_show { target: 'voyager1', expression: 'thinking', look: 'oort' };
+    action: character_show { target: 'sagan', expression: 'sad', at: right };
+    action: character_expression { target: 'sagan', expression: 'thinking', shot_from: 0.443 };
+    action: character_expression { target: 'Earth', expression: 'excited', shot_from: 0.6793 };
+    action: character_expression { target: 'sagan', expression: 'excited', shot_from: 0.6793 };
+    action: effect { type: glow, target: 'Earth', duration: 4, shot_from: 0.6793 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.42', shot_from: 0.0076, shot_to: 0.2101 };
+    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.43', shot_from: 0.2101, shot_to: 0.4532 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.44', shot_from: 0.4464, shot_to: 0.6726 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.45', shot_from: 0.6776, shot_to: 0.9257 };
+  }
+  scene solar_system_3d {
+    // Secondo ritornello: tutti i pianeti ballano, la camera gira.
+    duration: 10.9s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 141, bpm: 87, beat: 0.85, kick: 1.3 };
+    action: story_camera { mode: orbit, speed: 22 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Venus,Earth,Mars,Jupiter', orbit: 24, elev_from: 40, elev_to: 58 };
+    action: character_show { target: 'Earth', expression: 'excited' };
+    action: character_show { target: 'Venus', expression: 'happy' };
+    action: character_show { target: 'Mars', expression: 'happy' };
+    action: character_show { target: 'Jupiter', expression: 'happy' };
+    action: character_show { target: 'Sun', expression: 'excited' };
+    action: character_show { target: 'sagan', expression: 'excited', at: right };
+    action: effect { type: confetti, at: center, shot_from: 0.0367 };
+    action: character_animate { target: 'Venus', animation: dance, times: 8, shot_from: 0.0367, shot_to: 0.9908 };
+    action: character_animate { target: 'Mars', animation: dance, times: 8, shot_from: 0.0367, shot_to: 0.9908 };
+    action: character_animate { target: 'Jupiter', animation: bounce, times: 8, shot_from: 0.0367, shot_to: 0.9908 };
+    action: character_animate { target: 'Earth', animation: dance, times: 8, shot_from: 0.0367, shot_to: 0.9908 };
+    action: effect { type: glow, target: 'Sun', duration: 5, shot_from: 0.2936 };
+    action: character_sing { target: 'Earth', with: 'Venus,Mars', id: 'storie.canzone.puntino.46', shot_from: 0.0404, shot_to: 0.2789 };
+    action: character_sing { target: 'Jupiter', with: 'Sun', id: 'storie.canzone.puntino.47', shot_from: 0.2991, shot_to: 0.4697 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.48', shot_from: 0.5523, shot_to: 0.7853 };
+    action: character_sing { target: 'sagan', with: 'Earth,Venus,Mars,Jupiter,Sun', id: 'storie.canzone.puntino.49', shot_from: 0.778, shot_to: 0.999 };
+  }
+  scene solar_system_3d {
+    // Pallido punto blu, ancora: la Terra e la Luna da vicino, e i fuochi.
+    duration: 11.7s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 151.9, bpm: 87, beat: 0.85, kick: 1.3 };
+    action: story_camera { mode: auto };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: -30, elev_from: 30, elev_to: 16 };
+    action: character_show { target: 'Earth', expression: 'love' };
+    action: character_show { target: 'Moon', expression: 'happy' };
+    action: character_show { target: 'sagan', expression: 'excited', at: left };
+    action: effect { type: fireworks, target: 'Earth', shot_from: 0.0085 };
+    action: effect { type: fireworks, target: 'Moon', shot_from: 0.4786 };
+    action: effect { type: hearts, target: 'Earth', shot_from: 0.6496 };
+    action: character_expression { target: 'Moon', expression: 'love', shot_from: 0.6496 };
+    action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.6496 };
+    action: character_sing { target: 'Earth', with: 'Moon,sagan', id: 'storie.canzone.puntino.50', shot_from: 0.0051, shot_to: 0.1897 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.51', shot_from: 0.1829, shot_to: 0.4462 };
+    action: character_sing { target: 'Moon', with: 'Earth,sagan', id: 'storie.canzone.puntino.52', shot_from: 0.4786, shot_to: 0.6547 };
+    action: character_sing { target: 'sagan', with: 'Moon', id: 'storie.canzone.puntino.53', shot_from: 0.6479, shot_to: 0.8735 };
+  }
+  scene solar_system_3d {
+    // Il ponte, parlato, con l'orchestra che cresce: non c'è un altro posto dove andare.
+    duration: 20.65s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 163.6, bpm: 87, beat: 0.85, kick: 0.35 };
+    action: story_camera { mode: auto };
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 26, elev_from: 14, elev_to: 34, zoom_from: 0.9, zoom_to: 1.15 };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: character_show { target: 'Mars', expression: 'excited' };
+    action: character_show { target: 'sagan', expression: 'thinking', at: left };
+    action: effect { type: glow, target: 'Earth', duration: 5, shot_from: 0.0242 };
+    action: character_expression { target: 'Mars', expression: 'sad', shot_from: 0.4068 };
+    action: character_animate { target: 'Mars', animation: nod, times: 2, shot_from: 0.4116, shot_to: 0.5327 };
+    action: character_expression { target: 'sagan', expression: 'happy', shot_from: 0.6053 };
+    action: character_expression { target: 'Earth', expression: 'love', shot_from: 0.6053 };
+    action: effect { type: sparkles, target: 'Earth', shot_from: 0.7458 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.54', shot_from: 0.0213, shot_to: 0.2189 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.55', shot_from: 0.2838, shot_to: 0.5579 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.56', shot_from: 0.6053, shot_to: 0.9453 };
+  }
+  scene solar_system_3d {
+    // Ultima strofa: di nuovo la Voyager 1 e la sua fotografia.
+    duration: 11s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 184.25, bpm: 87, beat: 0.85, kick: 1.4 };
+    action: story_camera { mode: auto };
+    action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show, gaze: show, proportion: free };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -80, orbit: -24, elev_from: 8, elev_to: -4, zoom_from: 0.95, zoom_to: 1.1 };
+    action: character_show { target: 'voyager1', expression: 'thinking' };
+    action: character_show { target: 'sagan', expression: 'excited', at: right };
+    action: character_expression { target: 'voyager1', expression: 'excited', shot_from: 0.2591 };
+    action: character_expression { target: 'sagan', expression: 'annoyed', shot_from: 0.4955 };
+    action: effect { type: flash, target: 'voyager1', shot_from: 0.75 };
+    action: character_expression { target: 'voyager1', expression: 'love', shot_from: 0.7591 };
+    action: character_expression { target: 'sagan', expression: 'happy', shot_from: 0.7591 };
+    action: effect { type: sparkles, target: 'voyager1', shot_from: 0.7682 };
+    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.57', shot_from: 0.0264, shot_to: 0.2627 };
+    action: character_sing { target: 'voyager1', with: 'sagan', id: 'storie.canzone.puntino.58', shot_from: 0.2645, shot_to: 0.5009 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.59', shot_from: 0.4973, shot_to: 0.7555 };
+    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.60', shot_from: 0.7482, shot_to: 0.9882 };
+  }
+  scene solar_system_3d {
+    // Il crescendo: dalla nube di Oort a casa, tutti insieme.
+    duration: 12.35s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 195.25, bpm: 87, beat: 0.85, kick: 1.6 };
+    action: story_camera { mode: auto };
+    action: cosmic_scale { from: 'heliopause', to: 'earth_moon', ease: smooth };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'voyager1', expression: 'excited' };
+    action: character_show { target: 'voyager2', expression: 'excited' };
+    action: character_show { target: 'sagan', expression: 'excited', at: top };
+    action: character_expression { target: 'Earth', expression: 'love', shot_from: 0.4413 };
+    action: effect { type: fireworks, target: 'Earth', shot_from: 0.668 };
+    action: effect { type: confetti, at: center, shot_from: 0.6761 };
+    action: character_expression { target: 'sagan', expression: 'laughing', shot_from: 0.668 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.61', shot_from: 0.0089, shot_to: 0.2081 };
+    action: character_sing { target: 'voyager1', with: 'voyager2', id: 'storie.canzone.puntino.62', shot_from: 0.2049, shot_to: 0.4526 };
+    action: character_sing { target: 'Sun', with: 'Earth', id: 'storie.canzone.puntino.63', shot_from: 0.4462, shot_to: 0.6713 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.64', shot_from: 0.6713, shot_to: 0.9773 };
+  }
+  scene solar_system_3d {
+    // L'outro: la voce profonda, il battito che si spegne, la Terra e la Luna.
+    duration: 16.4s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 207.6, bpm: 87, beat: 0.85, kick: 0.4 };
+    action: story_camera { mode: auto };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 40, elev_from: 24, elev_to: 12 };
+    action: character_show { target: 'Earth', expression: 'love' };
+    action: character_show { target: 'Moon', expression: 'love', look: 'Earth' };
+    action: character_show { target: 'sagan', expression: 'happy', at: right };
+    action: effect { type: glow, target: 'Earth', duration: 8, shot_from: 0.0244 };
+    action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.1829 };
+    action: effect { type: hearts, target: 'Earth', shot_from: 0.4207 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.65', shot_from: 0.0268, shot_to: 0.1415 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.66', shot_from: 0.1878, shot_to: 0.4012 };
+  }
+  scene solar_system_3d {
+    // Il congedo: tutti canticchiano mentre la camera esce dalla Terra verso la bolla locale.
+    duration: 23s;
+    action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 224, bpm: 87, beat: 0.85, kick: 0.3 };
+    action: story_camera { mode: auto };
+    action: cosmic_scale { from: 'earth', to: 'local_bubble', ease: smooth };
+    action: character_show { target: 'Earth', expression: 'love' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'voyager1', expression: 'happy' };
+    action: character_show { target: 'voyager2', expression: 'happy' };
+    action: character_show { target: 'sagan', expression: 'happy', at: top };
+    action: effect { type: sparkles, target: 'Earth', shot_from: 0.4174 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.67', shot_from: 0.0104, shot_to: 0.3791 };
+    action: character_sing { target: 'Earth', with: 'sagan,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.68', shot_from: 0.4435, shot_to: 0.84 };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

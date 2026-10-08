@@ -60,6 +60,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `demo-motore.js`, `demo-intro.js`, `demo-libreria.js`, `demo-predefiniti.js`, `demo.js`, `demo-impostazioni.js` | Le demo automatizzate. Vedi `DEMO.md`. |
 | `storie-cosmiche.js` | Le Storie cosmiche: volti degli astri in stile «fiaba d'inchiostro», astri che crescono e viaggiano nella 3D, effetti speciali (`stor`). Vedi `STORIE.md`. |
 | `storie-studio.js` | Lo Studio delle storie e le due linguette della pagina Demo (`studio`). Vedi `STORIE.md`. |
+| `musica/` | Tracce di sottofondo (`catalogo.js`) e, in `canzoni/`, le canzoni che una CosmoStoria segue (`story_music { sync: on }`; fuori dal catalogo e fuori da `audio/storie-musica/`, che lo Studio ripulisce). |
 | `config.js` | URL dei ponti ADS-B/Edge-TTS e `ASTROCAL_BUILD`. |
 | `worker-adsb.js` | Proxy ADS-B (Deno Deploy), non fa parte della PWA. Vedi `ADSB-PROXY.md`. |
 | `dati-*.js` | Cataloghi caricati su richiesta (non in `index.html` né in `ASSETS`). |

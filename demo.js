@@ -2664,6 +2664,9 @@
     get stato() { return motore.stato; },
     get inCorso() { return inCorso(); },
     get scena() { return motore.indice; },
+    // ms dall'inizio della prima scena (v450): la canzone di una CosmoStoria
+    // ci si aggancia (`story_music { sync: on }`)
+    get tempo() { return inCorso() ? motore.tempoDemo() : 0; },
     // Vero mentre gira l'intro comune, prima della prima scena.
     get intro() { return !!motore.inIntro; },
     // Gli avvisi di servizio tacciono soltanto nella vista pulita: spegnendo

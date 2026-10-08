@@ -108,6 +108,9 @@
   }
   // Chi vive solo nella scala cosmica (la Via Lattea, Andromeda, Sirio…)
   const soloCosmo = id => !!(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id] && S().STOR_PERSONAGGI[id].cosmo);
+  // v450: un ospite (Carl Sagan) sta in un posto dello schermo in ogni vista e
+  // non viaggia: i viaggi e i ritorni per lui non vanno nel copione
+  const ospite = id => !!(S().STOR_PERSONAGGI && S().STOR_PERSONAGGI[id] && S().STOR_PERSONAGGI[id].ospite);
   const STUDIO_ZOOM = { lontano: 0.75, normale: 1, vicino: 1.7 };
   // La camera della 3D nel copione (v434): quanti gradi gira per ogni secondo
   // di battuta, e fra che elevazioni sale e scende
@@ -556,7 +559,7 @@
         if (!inScena(chi)) return '';
         return `character_hide { target: ${virgolette(chi)}${ripresa(az, false)} }`;
       case 'muovi':
-        if (!tre || !inScena(chi) || !az.verso || az.verso === chi) return '';
+        if (!tre || !inScena(chi) || !az.verso || az.verso === chi || ospite(chi) || ospite(az.verso)) return '';
         // nella scala cosmica le mete sono i luoghi dell'universo e gli altri
         // personaggi; fuori, i luoghi dell'universo non esistono
         if (!cosmo && luogoCosmo(az.verso) && !S().STOR_PERSONAGGI?.[az.verso]) return '';
@@ -565,7 +568,7 @@
           (az.lato && az.lato !== 'auto' ? `, side: ${az.lato}` : '') +
           (az.percorso ? `, path: ${az.percorso}` : '') + ripresa(az, true) + ' }';
       case 'torna':
-        if (!tre || !inScena(chi)) return '';
+        if (!tre || !inScena(chi) || ospite(chi)) return '';
         return `character_return { target: ${virgolette(chi)}${az.percorso ? ', path: ' + az.percorso : ''}${ripresa(az, true)} }`;
       case 'anima':
         if (!inScena(chi) || !az.animazione) return '';
@@ -3707,10 +3710,10 @@
     // la × per toglierlo; sotto una linguetta per famiglia (coi volti
     // scelti e quanti sono) e una per le voci ElevenLabs. Prima erano
     // quaranta schede aperte in quattro gruppi, e le voci sotto a tutte.
-    const gruppi = { pianeti: [], lune: [], macchine: [], universo: [] };
+    const gruppi = { narratori: [], pianeti: [], lune: [], macchine: [], universo: [] };
     for (const id of Object.keys(S().STOR_PERSONAGGI || {})) {
       const f = S().profilo ? S().profilo(id).famiglia : 'pianeta';
-      (soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
+      (f === 'persona' ? gruppi.narratori : soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
     }
     const nella = h('div', { class: 'studio-chips studio-nel-cast', role: 'group', 'aria-label': t('studio.ui.nellaStoria') },
       h('span', { class: 'studio-etichetta' }, t('studio.ui.nellaStoria')));

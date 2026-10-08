@@ -236,7 +236,13 @@
     // il suo contrario. La pelle è un viola quasi nero e non nero puro: i
     // tratti d'inchiostro hanno l'alone color panna, e così si leggono.
     buco:     { pelle: '#2a1c4a', iride: '#f97316', sottotitolo: '#fdba74', guance: '#fb7185', genere: 'm', sagoma: 'buco_nero',
-      disco: '#fb923c', scala: 0.8, voce: { ritmo: '-14%', tono: '-18Hz' }, espressione: 'thinking', personalita: 'buco' }
+      disco: '#fb923c', scala: 0.8, voce: { ritmo: '-14%', tono: '-18Hz' }, espressione: 'thinking', personalita: 'buco' },
+    // Le persone (v450): chi racconta il cielo, disegnato come un pianeta
+    // (la testa è un disco con l'ombra a falce e il bordo color panna).
+    // Non hanno un astro sotto: accompagnano la storia da un posto dello
+    // schermo (`ospite`, §7), in ogni vista.
+    persona:  { pelle: '#eaa676', iride: '#5b3a1e', sottotitolo: '#fecaca', guance: '#f87171', genere: 'm', sagoma: 'sagan',
+      scala: 0.8, voce: { ritmo: '-4%', tono: '-6Hz' }, espressione: 'happy', personalita: 'persona' }
   };
 
   /* I personaggi con un carattere loro. Ogni campo è facoltativo e vince su
@@ -382,10 +388,24 @@
       baffi: 'spioventi', peli: '#e9d5ff', personalita: 'sgr_a' },
     white_hole: { famiglia: 'buco', genere: 'm', sagoma: 'buco_bianco', nome: 'storie.nome.white_hole', cosmo: 'idea', alias: ['Buco bianco', 'White hole'],
       pelle: '#f8fafc', iride: '#0891b2', sottotitolo: '#a5f3fc', guance: '#a5f3fc',
-      voce: { ritmo: '12%', tono: '16Hz' }, espressione: 'excited', personalita: 'white_hole' }
+      voce: { ritmo: '12%', tono: '16Hz' }, espressione: 'excited', personalita: 'white_hole' },
+    /* Carl Sagan (v450), chiesto da chi usa l'app per la storia «Pallido
+     * puntino blu»: la canzone sulle sue parole del 1994, cantata con lui
+     * dalla Terra, dalle Voyager e dagli altri astri. Disegnato nello stile
+     * dei pianeti, su un ritratto da cartone portato da chi l'ha chiesto: la
+     * testa è un disco caldo con l'ombra a falce, i capelli castani
+     * voluminosi con la riga di lato e le basette, il dolcevita rosso e la
+     * giacca di velluto marrone; attorno gli gira un puntino azzurro, la
+     * Terra della fotografia (§6-sexies). Non è un astro: è un **ospite**
+     * (`ospite`), che sta in un posto dello schermo in ogni vista e non
+     * viaggia (§7). */
+    sagan: { famiglia: 'persona', genere: 'm', sagoma: 'sagan', nome: 'storie.nome.sagan', ospite: true, alias: ['Carl Sagan', 'Sagan'],
+      pelle: '#eaa676', iride: '#4a2a14', sottotitolo: '#fca5a5', guance: '#f87171', peli: '#3f2412',
+      scala: 0.8, occhi: { r: 0.29, distanza: 0.4, alto: -0.02 },
+      voce: { ritmo: '-6%', tono: '-8Hz' }, espressione: 'happy', personalita: 'sagan' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
-    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco'];
+    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan'];
   /* Le vesti (v414, `character_become`): un personaggio diventa per un po'
    * un'altra cosa, col suo volto. Il Sole, fra cinque miliardi di anni, si
    * gonfierà in una gigante rossa e poi resterà una nana bianca: la storia
@@ -445,7 +465,8 @@
     stazione:  { superficie: 'metallo', atmosfera: null, passo: 1.1 },
     sonda:     { superficie: 'metallo', atmosfera: null, passo: 0.9 },
     galassia:  { superficie: 'stelle', atmosfera: null, avatar: 'aura', passo: 0.6 },
-    buco:      { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.7 }
+    buco:      { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.7 },
+    persona:   { superficie: 'pelle', atmosfera: null, passo: 1 }
   };
   const STOR_FISICA = {
     Sun:     { superficie: 'plasma', atmosfera: { colore: '#fb923c', spessore: 0.2, densita: 0.6 }, prominenze: true, avatar: 'corona',
@@ -478,7 +499,11 @@
       lune: [{ nome: 'Charon', colore: '#cbd5e1', r: 0.48, d: 1.7, periodo: 9500, piatto: 0.3, giro: -0.15 }], tratto: 'Pluto' },
     Io:      { superficie: 'zolfo', atmosfera: null, tempeste: 'vulcani', passo: 1.2 },
     Europa:  { superficie: 'ghiaccio', atmosfera: null },
-    Titan:   { superficie: 'metano', atmosfera: { colore: '#f59e0b', spessore: 0.22, densita: 0.9 } }
+    Titan:   { superficie: 'metano', atmosfera: { colore: '#f59e0b', spessore: 0.22, densita: 0.9 } },
+    // Carl Sagan (v450): il pallido puntino blu gli gira attorno, piccolo
+    // com'era nella fotografia, e quando canta l'aura si accende
+    sagan:   { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'sagan',
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.075, d: 1.32, periodo: 9000, piatto: 0.28, giro: -0.18 }] }
   };
   /* Come la fisica risponde a un'emozione: quanto si gonfiano le tempeste
    * e le prominenze, come cambia l'atmosfera (`k` lo spessore, `tinta` il
@@ -1114,7 +1139,14 @@
     vicinoVere: null,          // in quale banco sono state lette (sistema o Terra e Luna)
     ritorni: new Map(),        // id → { delta, k, da }
     effetti: [],
-    domanda: null              // il cartello della domanda al pubblico (v430, story_question)
+    domanda: null,             // il cartello della domanda al pubblico (v430, story_question)
+    // v450, le storie cantate: i versi in corso (`character_sing`), il titolo
+    // grande (`story_title`) e la canzone a cui la storia va a tempo
+    // (`story_music { sync: on }`: dove era la canzone a che punto della demo,
+    // e il battito)
+    canti: [],
+    titolo: null,
+    canzone: null
   };
   function movimentoRidotto() {
     try { return !!(radice.matchMedia && radice.matchMedia('(prefers-reduced-motion: reduce)').matches); }
@@ -1169,6 +1201,9 @@
       pg.guarda = opz.guarda || null;
       storEspressione(id, opz.espressione || profilo.espressione);
     }
+    // L'ospite (v450) sta in un posto dello schermo; se la scena dopo lo
+    // chiede altrove ci scivola, non salta
+    if (profilo.ospite) pg.postoOspite = opz.posto || pg.postoOspite || 'left';
     return pg;
   }
   function storEspressione(target, nome) {
@@ -1220,6 +1255,7 @@
     for (const p of stor.personaggi.values()) storRitorno(p);
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
     stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
+    stor.canti = []; stor.titolo = null; stor.canzone = null;
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
     Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel });
     storZittisci();
@@ -1269,6 +1305,65 @@
     Promise.resolve(fine).then(libera, () => libera(''));
     return { token, fine };
   }
+
+  /* Il canto (v450, `character_sing`). Chi ha chiesto «Pallido puntino
+   * blu» voleva una storia che segue una canzone, con gli astri che la
+   * cantano. La voce è già nella canzone (`story_music`): qui non parla
+   * nessuno, si muovono le bocche. Un verso ha chi lo canta (uno o più
+   * personaggi: il ritornello lo cantano tutti), il testo e il suo tempo,
+   * che è la ripresa dell'azione (`shot_from`/`shot_to`) sull'orologio della
+   * demo — lo stesso a cui la canzone è agganciata, quindi parole, bocche e
+   * musica vanno insieme. Le bocche seguono la fila delle sillabe del verso
+   * stesa sulla sua durata (§3), il karaoke in basso colora le parole
+   * cantate (§7-quinquies). Più versi insieme: vince l'ultimo cominciato. */
+  function storCanta(chi, testo) {
+    const pulito = String(testo || '').replace(/\s+/g, ' ').trim();
+    const c = { chi: chi.slice(), testo: pulito, ritmo: storRitmo(pulito), u: 0, attivo: true, da: stor.orologio, fine: 0 };
+    stor.canti.push(c);
+    return c;
+  }
+  function storCantoOra() {
+    for (let i = stor.canti.length - 1; i >= 0; i--) if (stor.canti[i].attivo) return stor.canti[i];
+    return null;
+  }
+  // Fin dove è arrivato il verso: il carattere (con la frazione dentro alla
+  // sillaba) e la sillaba in corso. Funzione pura.
+  function storPuntoDelCanto(ritmo, u, lunghezza) {
+    const tempo = Math.max(0, Math.min(1, u)) * ritmo.totale;
+    const s = segmentoAl(ritmo, tempo);
+    if (!s) return { carattere: lunghezza, frazione: 1, sillaba: false };
+    if (s.tipo !== 'sillaba') return { carattere: s.da, frazione: 0, sillaba: false };
+    const f = Math.max(0, Math.min(1, (tempo - s.inizio) / Math.max(1e-6, s.fine - s.inizio)));
+    return { carattere: s.da + (s.a - s.da) * f, frazione: f, sillaba: true, da: s.da, a: s.a };
+  }
+
+  /* La canzone a cui la storia va a tempo (v450). `story_music { sync: on,
+   * at }` dice in che punto della canzone si è quando la scena comincia; da
+   * lì la canzone segue il tempo della demo (`AstroDemo.tempo`), e la musica
+   * vera ci viene riportata se scappa (§8). Senza la demo (le prove Node)
+   * vale l'orologio della storia. */
+  function storTempoDemo() {
+    const d = radice.AstroDemo;
+    const v = d && d.inCorso ? Number(d.tempo) : NaN;
+    return Number.isFinite(v) ? v : stor.orologio;
+  }
+  function storTempoCanzone() {
+    const c = stor.canzone;
+    if (!c) return NaN;
+    return c.at + (storTempoDemo() - c.da) / 1000;
+  }
+  // Il battito: a che punto del colpo si è (0 sul colpo, verso 1 prima del
+  // prossimo), quale colpo e se è il primo della battuta. `null` senza bpm.
+  function storBattito() {
+    const c = stor.canzone;
+    if (!c || !(c.periodo > 0)) return null;
+    const s = storTempoCanzone();
+    if (!Number.isFinite(s) || s < 0) return null;
+    const n = (s - c.zero) / c.periodo, i = Math.floor(n);
+    return { f: n - i, i, forte: ((i % 4) + 4) % 4 === 0, periodo: c.periodo, kick: c.kick };
+  }
+  // Quanto si sente il colpo adesso: 1 sul colpo, e si spegne in `ms`
+  function colpoBattito(b, ms) { return b ? Math.exp(-b.f * b.periodo * 1000 / ms) : 0; }
 
   // ===================================================================
   // 5-bis. Il corpo nello spazio: viaggi, animazioni, misura (vista 3D)
@@ -1400,14 +1495,19 @@
     // Si sporge verso chi guarda
     const sg = pg.sguardo ? Math.max(-1, Math.min(1, pg.sguardo.x)) : 0;
     m.dx += sg * 0.07 * en; m.giro += sg * 0.06 * en;
-    // I colpi: un saltello, poi lo schiacciamento quando ricade
+    // I colpi: un saltello, poi lo schiacciamento quando ricade. In una
+    // storia cantata (v450) il colpo è quello della musica: chi canta un rap
+    // salta a tempo, e più forte sul primo della battuta
     const periodo = STOR_COLPO_MS * (0.85 + ((seme(pg.id || '') % 30) / 100));
-    const b = (((tp + f * 400) % periodo) + periodo) % periodo / periodo;
+    const battito = storBattito();
+    let b = (((tp + f * 400) % periodo) + periodo) % periodo / periodo;
+    if (battito) b = battito.f;
+    const forte = battito && battito.forte ? 1.4 : 1;
     if (b < 0.28) {
-      const q = Math.sin(b / 0.28 * Math.PI);
+      const q = Math.sin(b / 0.28 * Math.PI) * forte;
       m.dy -= 0.1 * q * en; m.sy += 0.06 * q * en; m.sx -= 0.035 * q * en;
     } else if (b < 0.4) {
-      const q = Math.sin((b - 0.28) / 0.12 * Math.PI);
+      const q = Math.sin((b - 0.28) / 0.12 * Math.PI) * forte;
       m.sy -= 0.07 * q * en; m.sx += 0.06 * q * en;
     }
     // Il corpo si gonfia appena sulle sillabe
@@ -2800,7 +2900,9 @@
     nana_bianca:   { volto: [0, 0, 0.86], ingombro: 1.45 },
     supernova:     { volto: [0, 0, 0.7], ingombro: 1.85 },
     buco_nero:     { volto: [0, -0.04, 0.8], ingombro: 1.75 },
-    buco_bianco:   { volto: [0, 0, 0.8], ingombro: 1.6 }
+    buco_bianco:   { volto: [0, 0, 0.8], ingombro: 1.6 },
+    // v450: Carl Sagan, la testa-pianeta sopra al busto
+    sagan:         { volto: [0, -0.2, 0.62], ingombro: 1.4 }
   };
   // Dove sta il volto su un corpo di raggio R centrato in (x, y)
   function storVoltoNelCorpo(sagoma, x, y, R) {
@@ -3474,6 +3576,8 @@
       forma(); ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(3, R * 0.12); ctx.stroke();
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.4, R * 0.05); ctx.stroke();
       ctx.setLineDash([]);
+    } else if (sagoma === 'sagan') {
+      disegnaSagan(ctx, x, y, R, profilo, t);
     } else if (sagoma === 'hubble') {
       // i due pannelli lunghi ai lati, il tubo argentato, il coperchio aperto
       for (const lato of [-1, 1]) {
@@ -3495,6 +3599,125 @@
       ctx.beginPath(); ctx.ellipse(x, y - R * 0.96, R * 0.5, R * 0.1, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
+  }
+
+  /* Carl Sagan come un pianeta (v450). Sul ritratto da cartone portato da
+   * chi l'ha chiesto: il busto con la giacca di velluto marrone e i revers,
+   * il dolcevita rosso a coste fino al mento, la testa che è un disco caldo
+   * col taglio d'ombra e il bordo color panna dei pianeti, e i capelli
+   * castani voluminosi degli anni Settanta — la riga di lato, il ciuffo che
+   * scende sulla fronte, le basette che coprono le orecchie e si aprono in
+   * fuori. Il volto (occhi, sopracciglia folte, il sorriso largo) lo mette
+   * `storDisegnaVolto` sopra, dove dice `STOR_CORPI.sagan`. I capelli si
+   * muovono appena col respiro: è vivo, non un francobollo. */
+  function disegnaSagan(ctx, x, y, R, profilo, t) {
+    const hx = x, hy = y - R * 0.2, hr = R * 0.72;
+    const giacca = '#9a6638', revers = '#7c4f2a', maglia = '#c0262b';
+    const capelli = '#6b3e1c', riflesso = '#a8713c';
+    const mosso = Math.sin(t / 900) * R * 0.012;
+    // il busto: le spalle tonde della giacca, che finiscono morbide in basso
+    const busto = () => {
+      ctx.beginPath();
+      ctx.moveTo(x - R * 1.12, y + R * 1.22);
+      ctx.bezierCurveTo(x - R * 1.16, y + R * 0.78, x - R * 0.9, y + R * 0.52, x - R * 0.42, y + R * 0.46);
+      ctx.lineTo(x + R * 0.42, y + R * 0.46);
+      ctx.bezierCurveTo(x + R * 0.9, y + R * 0.52, x + R * 1.16, y + R * 0.78, x + R * 1.12, y + R * 1.22);
+      ctx.quadraticCurveTo(x, y + R * 1.36, x - R * 1.12, y + R * 1.22);
+      ctx.closePath();
+    };
+    parte(ctx, busto, giacca, R, {
+      luce: 0.1,
+      dentro: () => {
+        // il velluto a coste: righe verticali sottili
+        ctx.strokeStyle = rgba(scurisci(giacca, 0.3), 0.35); ctx.lineWidth = Math.max(0.6, R * 0.012);
+        ctx.beginPath();
+        for (let k = -10; k <= 10; k++) { ctx.moveTo(x + k * R * 0.11, y + R * 0.4); ctx.lineTo(x + k * R * 0.11, y + R * 1.4); }
+        ctx.stroke();
+      }
+    });
+    // il dolcevita rosso nel mezzo, a coste orizzontali, fino sotto al mento
+    const collo = () => {
+      ctx.beginPath();
+      ctx.moveTo(x - R * 0.36, y + R * 0.34);
+      ctx.quadraticCurveTo(x, y + R * 0.46, x + R * 0.36, y + R * 0.34);
+      ctx.lineTo(x + R * 0.4, y + R * 0.66);
+      ctx.lineTo(x + R * 0.2, y + R * 1.3);
+      ctx.lineTo(x - R * 0.2, y + R * 1.3);
+      ctx.lineTo(x - R * 0.4, y + R * 0.66);
+      ctx.closePath();
+    };
+    parte(ctx, collo, maglia, R, {
+      luce: 0.08, pennino: 0.03,
+      dentro: () => {
+        ctx.strokeStyle = rgba(scurisci(maglia, 0.35), 0.55); ctx.lineWidth = Math.max(0.6, R * 0.016);
+        ctx.beginPath();
+        for (let k = 0; k < 7; k++) { const yy = y + R * (0.42 + k * 0.045); ctx.moveTo(x - R * 0.4, yy); ctx.quadraticCurveTo(x, yy + R * 0.05, x + R * 0.4, yy); }
+        ctx.stroke();
+      }
+    });
+    // i revers della giacca, aperti a V sul dolcevita
+    for (const lato of [-1, 1]) {
+      parte(ctx, () => {
+        ctx.beginPath();
+        ctx.moveTo(x + lato * R * 0.4, y + R * 0.5);
+        ctx.lineTo(x + lato * R * 0.66, y + R * 0.62);
+        ctx.lineTo(x + lato * R * 0.5, y + R * 0.8);
+        ctx.lineTo(x + lato * R * 0.62, y + R * 0.86);
+        ctx.lineTo(x + lato * R * 0.22, y + R * 1.32);
+        ctx.lineTo(x + lato * R * 0.2, y + R * 1.0);
+        ctx.closePath();
+      }, revers, R, { luce: 0.06, pennino: 0.03 });
+    }
+    // I capelli sono due ciocche di punti (in raggi della testa) lisciate
+    // come il sasso a patata: la massa dietro, più scura, che dà il volume, e
+    // il caschetto davanti col ciuffo. Il contorno di fuori è mosso (le onde
+    // dei capelli) e in basso si apre in fuori, come nel ritratto.
+    const liscia = (punti, onda) => {
+      const P = punti.map(([px, py], i) => {
+        const o = onda ? onda * Math.sin(i * 2.3 + t / 700) : 0;
+        const n = Math.hypot(px, py) || 1;
+        return [hx + (px + px / n * o) * hr, hy + (py + py / n * o) * hr + (py < -0.6 ? mosso : 0)];
+      });
+      const m = (u, v) => [(u[0] + v[0]) / 2, (u[1] + v[1]) / 2];
+      ctx.beginPath(); ctx.moveTo(...m(P[P.length - 1], P[0]));
+      for (let i = 0; i < P.length; i++) ctx.quadraticCurveTo(...P[i], ...m(P[i], P[(i + 1) % P.length]));
+      ctx.closePath();
+    };
+    const dietro = [[-1.06, 0.36], [-1.3, 0.56], [-1.3, 0.12], [-1.24, -0.42], [-1.02, -0.92], [-0.56, -1.24], [0, -1.32], [0.56, -1.24],
+      [1.02, -0.92], [1.24, -0.42], [1.3, 0.12], [1.3, 0.56], [1.06, 0.36], [0.6, 0.2], [-0.6, 0.2]];
+    parte(ctx, () => liscia(dietro, 0.025), scurisci(capelli, 0.12), R, { luce: 0.1 });
+    // la testa: un pianeta, col suo taglio d'ombra
+    disegnaDisco(ctx, hx, hy, hr, profilo.pelle);
+    const davanti = [[-0.94, 0.5], [-1.22, 0.6], [-1.17, 0.12], [-1.17, -0.36], [-1.02, -0.8], [-0.7, -1.1], [-0.28, -1.24], [0.2, -1.27],
+      [0.64, -1.16], [1.0, -0.86], [1.18, -0.42], [1.2, 0.04], [1.24, 0.58], [0.96, 0.5],
+      // dentro: la basetta destra, la tempia, il ciuffo che gira sulla
+      // fronte (alto: la fronte si vede), la tempia sinistra
+      [0.86, 0.26], [0.88, -0.1], [0.78, -0.46], [0.48, -0.7], [0.12, -0.8], [-0.2, -0.84], [-0.46, -0.9], [-0.68, -0.64],
+      [-0.84, -0.22], [-0.87, 0.22]];
+    parte(ctx, () => liscia(davanti, 0.035), capelli, R, {
+      luce: 0.08,
+      dentro: () => {
+        // la riga di lato, e le ciocche che ne partono verso destra e in giù
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = rgba(scurisci(capelli, 0.45), 0.9); ctx.lineWidth = Math.max(0.8, R * 0.022);
+        ctx.beginPath(); ctx.moveTo(hx - hr * 0.46, hy - hr * 1.16 + mosso); ctx.quadraticCurveTo(hx - hr * 0.5, hy - hr * 0.94, hx - hr * 0.56, hy - hr * 0.76); ctx.stroke();
+        ctx.strokeStyle = rgba(riflesso, 0.9); ctx.lineWidth = Math.max(0.8, R * 0.02);
+        ctx.beginPath();
+        for (const [k, l] of [[0, 1], [1, 0.92], [2, 0.84], [3, 0.7]]) {
+          ctx.moveTo(hx - hr * 0.42, hy - hr * (1.08 - k * 0.1) + mosso);
+          ctx.bezierCurveTo(hx + hr * 0.1, hy - hr * (1.18 - k * 0.1) + mosso, hx + hr * 0.7 * l, hy - hr * (0.96 - k * 0.12),
+            hx + hr * (0.96 - k * 0.06) * l, hy - hr * (0.42 - k * 0.16));
+        }
+        for (const [k, l] of [[0, 1], [1, 0.85]]) {
+          ctx.moveTo(hx - hr * 0.58, hy - hr * (1.0 - k * 0.12) + mosso);
+          ctx.bezierCurveTo(hx - hr * 0.9, hy - hr * (0.8 - k * 0.1), hx - hr * 1.02 * l, hy - hr * 0.2, hx - hr * 1.0 * l, hy + hr * 0.3);
+        }
+        ctx.stroke();
+        // il lucido sulla cupola
+        ctx.fillStyle = 'rgba(255, 236, 214, 0.2)';
+        ctx.beginPath(); ctx.ellipse(hx + hr * 0.1, hy - hr * 0.98 + mosso, hr * 0.42, hr * 0.08, 0.12, 0, Math.PI * 2); ctx.fill();
+      }
+    });
   }
 
   // ===================================================================
@@ -3587,6 +3810,15 @@
     const w = (t - (pg.cambioDa || -1e9)) / STOR_BOING_MS;
     if (w >= 0 && w < 1) { const k = Math.sin(w * Math.PI * 2.5) * (1 - w) * 0.11; posa.sx += k; posa.sy -= k; }
     posa.dy -= Math.abs(Math.sin(t / 230 + (pg.fase || 0))) * R * 0.05 * (e.rimbalzo || 0);
+    // Il groove (v450): in una storia cantata tutti tengono il tempo, chi
+    // canta e chi ascolta — un cenno schiacciato a ogni colpo e la testa
+    // che va di qua e di là a colpi alterni, più marcato sul primo
+    const battito = storBattito();
+    if (battito) {
+      const q = colpoBattito(battito, 150) * (battito.forte ? 1.35 : 1);
+      posa.sy *= 1 - 0.035 * q; posa.sx *= 1 + 0.022 * q;
+      posa.giro += (battito.i % 2 ? 1 : -1) * 0.03 * (1 - battito.f) * (0.6 + 0.4 * Math.sin((pg.fase || 0) * 3));
+    }
     // la paura trema a otto colpi al secondo: a diciassette, campionata a
     // sessanta fotogrammi, il volto saltava a caso invece di tremare (v439)
     posa.dx += Math.sin(t * 0.052 + (pg.fase || 0)) * R * 0.014 * (e.tremito || 0);
@@ -3619,7 +3851,10 @@
     for (const c of corpi) { const id = storCanonico(c.id); if (!perId.has(id)) perId.set(id, c); }
     const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
     const chiOra = storChiParlaOra();
-    const parlante = chiOra && voce && voce.personaggio === chiOra ? chiOra : null;
+    // v450: in una storia cantata il verso in corso dice chi canta; il primo
+    // della fila è quello che gli altri guardano
+    const canto = storCantoOra();
+    const parlante = canto ? canto.chi[0] : chiOra && voce && voce.personaggio === chiOra ? chiOra : null;
     const ritmi = storDisegnaPersonaggi.ritmi || (storDisegnaPersonaggi.ritmi = new Map());
     const presi = [];
     const dt = Math.max(0, stor.orologio - (stor.ultimoOrologio || stor.orologio));
@@ -3632,6 +3867,7 @@
     // Il volto sta addosso o accanto? Si decide prima per tutti, così i dischi
     // grafici conoscono i volti già posati e non ci finiscono sopra.
     const piano = [];
+    const posaCostume = new Map();
     for (const pg of stor.personaggi.values()) {
       const c = perId.get(pg.id);
       pg.punto = null;
@@ -3646,7 +3882,10 @@
       const soglia = STOR_VOLTO_MIN_PX * (pg.addossoPrima ? 0.88 : 1.1);
       // Chi ha una veste (`character_become`) non è più l'astro che l'app ha
       // disegnato: porta il suo corpo nuovo, sopra all'astro
-      const addosso = pg.misura !== 'costume' && (pg.misura === 'disk' || (in3d && pg.misura === 'auto') ||
+      // l'ospite (v450) è sempre il suo corpo intero, come nell'anteprima
+      const costume = pg.misura === 'costume' || !!c.ospite;
+      posaCostume.set(pg.id, costume);
+      const addosso = !costume && (pg.misura === 'disk' || (in3d && pg.misura === 'auto') ||
         (pg.misura !== 'badge' && Rdisco >= soglia)) && (in3d || !pg.veste);
       pg.addossoPrima = addosso;
       pg.punto = { x: c.px, y: c.py };
@@ -3655,6 +3894,8 @@
       // disegna questo modulo, lì dove l'app ha messo l'astro (§6-quater)
       const corpo3d = in3d && addosso && pg.misura !== 'real' && (STOR_SAGOME_FORMA.includes(p.sagoma) || !!pg.veste);
       piano.push({ pg, c, addosso, Rdisco, corpo3d });
+      // l'ospite (v450) ha il suo posto: chi deve mettersi accanto lo evita
+      if (c.ospite) presi.push({ id: pg.id, x: c.px, y: c.py, R: (c.costumeR || 40) * 1.3 });
       if (corpo3d) {
         const Rc = Math.max(c.r, STOR_VOLTO_3D_PX * (pg.prosp || 1) / STOR_CORPI[p.sagoma].volto[2]);
         presi.push({ id: pg.id, x: c.px, y: c.py, R: Rc * ingombroDi(p) });
@@ -3684,13 +3925,14 @@
          * posto (v411) — l'astro è lui. Solo se lì non c'entra (il bordo
          * dello schermo, un altro personaggio troppo vicino) o se la storia
          * chiede `badge`, va accanto, legato all'astro da un filo. */
-        R = pg.misura === 'costume' && c.costumeR ? c.costumeR : pg.veste ? Math.max(Rbadge, c.r) : Rbadge;
+        const costume = posaCostume.get(pg.id);
+        R = costume && c.costumeR ? c.costumeR : pg.veste ? Math.max(Rbadge, c.r) : Rbadge;
         const Ri = R * ingombroDi(in3d ? p.sagoma : p);
         const ondeggia = ridotto ? 0 : Math.sin(stor.orologio / 1700 + pg.fase) * 1.2;
         // Fuori dal quadro della scala cosmica, o un'idea che non sta sulla
         // carta (il buco bianco): niente filo verso un astro
         const fuori = Number.isFinite(c.freccia) || !!c.idea;
-        const libero = pg.misura === 'costume' || ((pg.misura === 'auto' || fuori) &&
+        const libero = costume || ((pg.misura === 'auto' || fuori) &&
           c.px - Ri >= m.lati && c.px + Ri <= L - m.lati && c.py - Ri >= m.su && c.py + Ri <= H - m.giu &&
           !presi.some(q => q.id !== pg.id && Math.hypot(q.x - c.px, q.y - c.py) < q.R + Ri + 4));
         if (libero) {
@@ -3720,7 +3962,9 @@
       // Lo sguardo: chi ascolta guarda chi parla; se no il suo bersaglio, poi
       // quello dell'espressione, poi lo spettatore.
       let verso = null;
-      if (parlante && parlante !== pg.id) {
+      const canta = !!(canto && canto.chi.includes(pg.id));
+      // chi canta nel coro guarda chi guarda, non il primo della fila
+      if (parlante && parlante !== pg.id && !canta) {
         const altro = stor.personaggi.get(parlante);
         if (altro && altro.punto) verso = storSguardoVerso(cx, cy, R, altro.punto);
       }
@@ -3755,8 +3999,11 @@
       const battito = storChiusuraBattito(stor.orologio - pg.battitoDa);
       // La bocca: si muove solo per chi parla, e si chiude subito.
       let forma;
-      const staParlando = parlante === pg.id && voce && voce.parla;
-      if (staParlando) {
+      const staParlando = canta || !!(parlante === pg.id && voce && voce.parla);
+      if (canta) {
+        forma = storBoccaDaSegnale({ parla: true, testo: canto.testo, progresso: canto.u }, canto.ritmo);
+        if (ridotto) forma.apertura *= 0.7;
+      } else if (staParlando) {
         const chiave = voce.testo || '';
         let ritmo = ritmi.get(chiave);
         if (!ritmo) { ritmo = storRitmo(chiave); ritmi.clear(); ritmi.set(chiave, ritmo); }
@@ -3831,7 +4078,7 @@
       // corpi, e senza questo taglio il volto di chi sta dietro restava
       // sopra al disco di chi gli passa davanti. L'adesivo accanto col filo
       // è un cartellino, non sta nella scena, e non si taglia.
-      const coprenti = in3d && (!posto || posto.centrato) ? storCoprentiDavanti(corpi, c, pg.id, R) : null;
+      const coprenti = in3d && !c.ospite && (!posto || posto.centrato) ? storCoprentiDavanti(corpi, c, pg.id, R) : null;
       if (coprenti) { ctx.save(); ritagliaFuori(ctx, coprenti, L, H); }
       if (posto) {
         if (!posto.centrato) disegnaSupporto(ctx, posto, p, alfa, t);
@@ -3896,7 +4143,7 @@
       disegnati.push({ id: pg.id, vista, x: cx, y: cy, R, addosso: !posto || !!posto.in3d, fuori: Number.isFinite(c.freccia),
         idea: !!c.idea, veste: pg.veste && STOR_VESTI[pg.veste.forma] ? pg.veste.forma : null, scala: att.sx,
         corpo: posto ? p.sagoma : null, centrato: !!(posto && posto.centrato), forma: pg.forma, apertura: pg.apertura, via: pg.via,
-        parla: parlante === pg.id && !!(voce && voce.parla), battito, sguardo: Object.assign({}, pg.sguardo),
+        parla: staParlando, canta, battito, sguardo: Object.assign({}, pg.sguardo),
         espressione: pg.espressione, astro: { x: c.px, y: c.py, r: c.r }, geom });
     }
     // Gli effetti speciali, sopra ai volti; quelli finiti se ne vanno
@@ -4425,6 +4672,38 @@
    * ricevuta di ogni astro che hanno disegnato davvero (dopo i loro tagli di
    * bordo e di visibilità), con la sua posizione e il suo raggio. Senza
    * personaggi in scena si esce alla prima riga. */
+  /* Gli ospiti (v450): chi non è un astro — Carl Sagan — non ha una ricevuta
+   * da nessun renderer. Sta in un posto dello schermo (`character_show {
+   * at }`: a sinistra di serie), uguale nel planetario, nella 3D e nella
+   * scala cosmica, col suo corpo intero e senza filo, e ci scivola quando la
+   * scena lo chiede altrove. Il posto è nel disegno, sotto alla lente: la
+   * regia gli va vicino come a tutti gli altri quando canta. */
+  const STOR_POSTI_OSPITE = { left: [0.19, 0.5], right: [0.81, 0.5], center: [0.5, 0.47], top: [0.5, 0.32], bottom: [0.5, 0.62] };
+  const STOR_TAU_OSPITE = 700;
+  function storOspiti(L, H, m) {
+    const fuori = [];
+    const mm = Object.assign({ su: STOR_MARGINE_PX, giu: STOR_MARGINE_PX, lati: STOR_MARGINE_PX }, m || {});
+    for (const pg of stor.personaggi.values()) {
+      if (!pg.profilo.ospite) continue;
+      const R = Math.max(30, Math.min(92, Math.min(L, H) * 0.105));
+      const [fx, fy] = STOR_POSTI_OSPITE[pg.postoOspite] || STOR_POSTI_OSPITE.left;
+      // dentro ai margini con tutto il busto (la testa sale di 1,3 raggi,
+      // la giacca scende di 1,35)
+      const x = Math.max(mm.lati + R * 1.3, Math.min(L - mm.lati - R * 1.3, L * fx));
+      const y = Math.max(mm.su + R * 1.4, Math.min(H - mm.giu - R * 1.4, H * fy));
+      const ora = stor.orologio;
+      const dt = Math.max(0, Math.min(200, ora - (pg.ospiteOra || ora)));
+      pg.ospiteOra = ora;
+      if (!pg.ospiteXY || stor.ridotto) pg.ospiteXY = { x, y };
+      else {
+        const k = 1 - Math.exp(-dt / STOR_TAU_OSPITE);
+        pg.ospiteXY.x = mix(pg.ospiteXY.x, x, k); pg.ospiteXY.y = mix(pg.ospiteXY.y, y, k);
+      }
+      // `vicinanza` infinita: nella 3D si disegna per ultimo, davanti a tutti
+      fuori.push({ id: pg.id, px: pg.ospiteXY.x, py: pg.ospiteXY.y, r: 1, costumeR: R, ospite: true, idea: true, vicinanza: Infinity });
+    }
+    return fuori;
+  }
   function storRicevuta(id, px, py, r, o) {
     if (!stor.personaggi.size && !stor.effetti.length) return;
     stor.ricevute.set(id, { id, px, py, r, az: o && o.az, alt: o && o.alt, tipo: o && o.tipo });
@@ -4454,6 +4733,7 @@
     }
     stor.ricevute.clear();
     const fasce = margini();
+    corpi.push(...storOspiti(L, H, fasce));
     return storDisegnaPersonaggi(ctx, 'cielo', corpi, L, H, fasce);
   }
   // Le fasce dello schermo dove un disco grafico non va: la bussola in cima e
@@ -4513,6 +4793,8 @@
         Math.hypot(q.px - c.px, q.py - c.py) < q.r - Math.min(c.r, q.r) * 0.25);
     }
     const giu = (sol.altaBarra || 0) + 54;
+    // l'ospite (v450) sta sul palco anche lui: fermo, e gli astri gli fanno posto
+    elenco.push(...storOspiti(sol.L, sol.H, { su: 12, giu, lati: 64 }));
     storPalco3D(elenco, assi, sol);
     return storDisegnaPersonaggi(ctx, sol.vicino ? 'vicino' : 'sistema', elenco, sol.L, sol.H, { su: 12, giu, lati: 64 });
   }
@@ -4573,6 +4855,11 @@
     for (const pg of stor.personaggi.values()) {
       const c = perId.get(pg.id);
       if (!pg.scarto) pg.scarto = { x: 0, y: 0 };
+      if (c && c.ospite && !pg.nascosto) {
+        // l'ospite: non si sposta, non ha profondità, ingombra col busto
+        attori.push({ pg, z: NaN, rad: (c.costumeR || 40) * 1.25, fermo: true, ospite: true, x: c.px, y: c.py });
+        continue;
+      }
       if (!c || pg.nascosto || pg.misura === 'real' || !Number.isFinite(c.px)) {
         // fuori scena: il passo di lato torna a zero piano
         pg.scarto.x *= 1 - kS; pg.scarto.y *= 1 - kS;
@@ -4594,10 +4881,11 @@
         x: c.px - pg.scarto.x - os.x, y: c.py - pg.scarto.y - os.y });
     }
     // La prospettiva, attorno alla profondità media di chi è in scena
-    const ref = attori.length ? attori.reduce((a, b) => a + b.z, 0) / attori.length : 0;
+    const astri = attori.filter(a => !a.ospite);
+    const ref = astri.length ? astri.reduce((a, b) => a + b.z, 0) / astri.length : 0;
     const D = STOR_PALCO.camera * lato;
-    for (const a of attori) {
-      const voluta = attori.length < 2 || stor.ridotto ? 1
+    for (const a of astri) {
+      const voluta = astri.length < 2 || stor.ridotto ? 1
         : Math.max(STOR_PALCO.prospMin, Math.min(STOR_PALCO.prospMax, D / Math.max(D * 0.2, D - (a.z - ref))));
       a.pg.prosp = mix(a.pg.prosp || 1, voluta, kP);
     }
@@ -4623,6 +4911,7 @@
     }
     const tetto = lato * 0.6;
     attori.forEach((a, i) => {
+      if (a.ospite) return;
       let sx = pos[i].x - a.x, sy = pos[i].y - a.y;
       const m = Math.hypot(sx, sy);
       if (m > tetto) { sx *= tetto / m; sy *= tetto / m; }
@@ -4735,6 +5024,7 @@
     const corpi = [];
     // Ogni personaggio al suo posto, o a quello del suo viaggio
     for (const pg of stor.personaggi.values()) {
+      if (pg.profilo.ospite) continue;   // v450: l'ospite sta sullo schermo (`storOspiti`)
       // Il buco bianco non ha un posto sulla carta: nessuno ne ha mai visto
       // uno. Galleggia davanti alla carta, a destra in alto (e se lì c'è già
       // qualcuno si sposta, senza il filo: non è legato a niente).
@@ -4791,6 +5081,7 @@
       const l = luogo(n);
       if (l) { const q = cam.p(l.v); corpi.push({ id: n, px: q.x, py: q.y, r: 0, luogo: true }); }
     }
+    corpi.push(...storOspiti(L, H, m));
     return storDisegnaPersonaggi(ctx, 'cosmo', corpi, L, H, m);
   }
 
@@ -4919,6 +5210,8 @@
    * Allora si chiede anche alla narrazione chi ha la parola nel canale delle
    * demo. */
   function storChiParlaOra() {
+    const canto = storCantoOra();
+    if (canto) return canto.chi[0];   // v450: chi canta il verso
     if (stor.parlante) return stor.parlante.target;
     const n = radice.narrazione;
     if (!n || typeof n.voce !== 'function' || typeof n.stato !== 'function') return null;
@@ -4996,6 +5289,23 @@
     if (r.modo === 'speaker') {
       const d = parla || (r.ultimoParlante && quanti.find(x => x.id === r.ultimoParlante));
       if (d) return primoPiano(d, STOR_REGIA.voltoStretto, 'parla');
+    }
+    // 3-bis. Il coro (v450): un verso cantato da più personaggi si inquadra
+    // tutto insieme, stretto quanto ci stanno (in `speaker` e `orbit` resta
+    // la regola della scena, sul primo della fila)
+    const canto = storCantoOra();
+    if (canto && canto.chi.length > 1 && r.modo !== 'speaker' && r.modo !== 'orbit') {
+      const coro = quanti.filter(d => canto.chi.includes(d.id));
+      if (coro.length > 1) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const d of coro) {
+          const o = storOcchiDi(d);
+          x0 = Math.min(x0, o.x - o.R * 1.5); x1 = Math.max(x1, o.x + o.R * 1.5);
+          y0 = Math.min(y0, o.y - o.R * 1.3); y1 = Math.max(y1, o.y + o.R * 1.7);
+        }
+        const k = Math.max(1, Math.min(tetto, L * 0.86 / Math.max(1, x1 - x0), H * 0.6 / Math.max(1, y1 - y0)));
+        return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, k, ay: 0.42, ax: 0.5, motivo: 'coro', id: 'coro:' + coro.map(d => d.id).join('+') };
+      }
     }
     // 3. Chi parla
     if (parla) {
@@ -5090,7 +5400,7 @@
     if (meta && (!r.ripresa || r.ripresa.id !== meta.id)) r.ripresa = { id: meta.id, da: stor.orologio };
     if (!meta) r.ripresa = null;
     let kMeta = meta ? meta.k : 1;
-    if (meta && (meta.motivo === 'parla' || meta.motivo === 'dialogo') && !stor.ridotto) {
+    if (meta && (meta.motivo === 'parla' || meta.motivo === 'dialogo' || meta.motivo === 'coro') && !stor.ridotto) {
       const u = liscio((stor.orologio - r.ripresa.da) / STOR_REGIA.carrelloMs);
       kMeta = Math.min(tetto * (1 + STOR_REGIA.carrello), kMeta * (1 + STOR_REGIA.carrello * u));
     }
@@ -5135,7 +5445,13 @@
     r.scosse = r.scosse.filter(s => stor.orologio - s.da < s.durata && stor.orologio >= s.da - 50);
     for (const s of r.scosse) { const q = 1 - (stor.orologio - s.da) / s.durata; forza += s.forza * q * q; }
     if (stor.ridotto) forza = 0;
-    const k = Math.exp(r.lk) * (1 + 0.035 * Math.min(1.5, forza));
+    // Il colpo di camera (v450): in una storia cantata il quadro batte il
+    // tempo, un piccolo spintone in avanti a ogni colpo che si spegne in un
+    // decimo di secondo, più forte sul primo della battuta. Come la scossa:
+    // solo ingrandisce, quindi non scopre mai i bordi
+    const battito = accesa && !stor.ridotto && !demoInPausa() ? storBattito() : null;
+    const kick = battito ? colpoBattito(battito, 110) * (battito.forte ? 0.028 : 0.011) * (battito.kick || 1) : 0;
+    const k = Math.exp(r.lk) * (1 + 0.035 * Math.min(1.5, forza)) * (1 + kick);
     const ax = L * r.ax, ay = H * r.ay;
     let tx = ax - k * r.fx, ty = ay - k * r.fy;
     // La camera a mano (v427): in primo piano il quadro respira, due seni
@@ -5219,6 +5535,9 @@
   const STOR_CARTELLO = { entra: 400, resta: 3200, esce: 900, alfa: 0.78 };
   function storDisegnaCartelloLuogo(ctx, chiave, L, H) {
     const d = radice.AstroDemo;
+    // v450: il karaoke e il titolo di una storia cantata stanno anche loro
+    // fuori dalla lente, e tutti i renderer passano di qui
+    if (ctx && d && d.storia && L > 0 && H > 0) storDisegnaSovrimpressioni(ctx, L, H, chiave === 'storie.luogo.cielo' ? margini().giu : 0);
     if (!ctx || !chiave || !(d && d.storia) || !(L > 0 && H > 0)) return;
     const nome = t(chiave);
     if (!nome) return;
@@ -5250,6 +5569,145 @@
     ctx.fillStyle = 'rgba(255, 248, 235, 0.92)';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(nome, x + w / 2, y + h / 2 + 0.5, w - fs);
+    ctx.restore();
+  }
+
+  /* Le sovrimpressioni di una storia cantata (v450): il verso in corso, in
+   * basso, col karaoke, e il titolo grande (`story_title`) al centro.
+   *
+   * Il karaoke: sopra i nomi di chi canta (ognuno col suo colore, come nei
+   * sottotitoli), sotto il verso su al più tre righe; la parte già cantata
+   * è dorata e brilla, quella da cantare è bianca e tenue, e sopra la
+   * sillaba in corso salta un pallino azzurro — il pallido puntino blu. Il
+   * verso compare in un quinto di secondo e, finito, resta ancora un poco
+   * mentre se ne va, se il prossimo non è già cominciato. Disegnato sulla
+   * tela, finisce anche nel filmato. */
+  const STOR_KARAOKE = { entra: 180, resta: 450 };
+  function caratterePagina() {
+    return (radice.document && radice.document.body && radice.getComputedStyle
+      ? radice.getComputedStyle(radice.document.body).fontFamily : '') || 'sans-serif';
+  }
+  function storDisegnaSovrimpressioni(ctx, L, H, giu) {
+    const ora = stor.orologio;
+    // il verso: quello in corso, o l'ultimo finito da poco
+    let c = storCantoOra(), alfa = 1;
+    if (!c) {
+      const ultimo = stor.canti.reduce((a, x) => !x.attivo && x.fine && (!a || x.fine > a.fine) ? x : a, null);
+      if (ultimo && ora - ultimo.fine < STOR_KARAOKE.resta) { c = ultimo; alfa = 1 - (ora - ultimo.fine) / STOR_KARAOKE.resta; }
+    }
+    if (c && c.testo) storDisegnaKaraoke(ctx, c, L, H, giu || 0, alfa * Math.min(1, (ora - c.da) / STOR_KARAOKE.entra));
+    if (stor.titolo) storDisegnaTitolo(ctx, stor.titolo, L, H);
+  }
+  function storDisegnaKaraoke(ctx, c, L, H, giu, alfa) {
+    if (!(alfa > 0.01)) return;
+    const font = caratterePagina();
+    const fs = Math.max(17, Math.min(34, L * 0.03));
+    const fsN = Math.max(11, fs * 0.56);
+    const largo = Math.min(L - 28, 920);
+    ctx.save();
+    ctx.font = `800 ${fs}px ${font}`;
+    const righe = storRigheTesto(ctx, c.testo, largo - fs * 1.4, 3, fs);
+    const punto = storPuntoDelCanto(c.ritmo, c.u, c.testo.length);
+    const passo = fs * 1.32;
+    const h = fsN * 1.9 + righe.length * passo + fs * 0.55;
+    // chi canta, coi suoi colori: la riga dei nomi conta per la larghezza
+    ctx.font = `700 ${fsN}px ${font}`;
+    const nomi = c.chi.map(id => { const p = storProfilo(id); return { nome: storNome(p), colore: p.sottotitolo || '#fff' }; });
+    const sep = ' · ';
+    const larghi = nomi.map(n => larghezzaTesto(ctx, n.nome, fsN));
+    const tot = larghi.reduce((a, b) => a + b, 0) + larghezzaTesto(ctx, sep, fsN) * (nomi.length - 1) + fsN * 1.2;
+    ctx.font = `800 ${fs}px ${font}`;
+    const w = Math.min(largo, Math.max(tot, ...righe.map(r => larghezzaTesto(ctx, r, fs))) + fs * 1.6);
+    const cx = L / 2, y0 = H - giu - Math.max(14, H * 0.035) - h;
+    ctx.globalAlpha = alfa;
+    // il fondo: una pillola scura appena trasparente, il filo color panna
+    ctx.fillStyle = 'rgba(12, 10, 32, 0.6)';
+    rettangolo(ctx, cx - w / 2, y0, w, h, Math.min(22, h / 2));
+    ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255, 248, 235, 0.2)'; ctx.stroke();
+    ctx.font = `700 ${fsN}px ${font}`;
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    let x = cx - tot / 2;
+    const yN = y0 + fsN * 1.05;
+    ctx.fillStyle = '#93c5fd';
+    ctx.beginPath(); ctx.arc(x + fsN * 0.3, yN, fsN * 0.28, 0, Math.PI * 2); ctx.fill();
+    x += fsN * 1.2;
+    nomi.forEach((n, i) => {
+      ctx.fillStyle = n.colore; ctx.fillText(n.nome, x, yN); x += larghi[i];
+      if (i < nomi.length - 1) { ctx.fillStyle = 'rgba(255, 248, 235, 0.55)'; ctx.fillText(sep, x, yN); x += larghezzaTesto(ctx, sep, fsN); }
+    });
+    // il verso, riga per riga: prima tutto tenue, poi la parte cantata dorata
+    ctx.font = `800 ${fs}px ${font}`;
+    let inizio = 0;
+    righe.forEach((riga, i) => {
+      const y = y0 + fsN * 1.9 + passo * (i + 0.5) + fs * 0.1;
+      const wR = larghezzaTesto(ctx, riga, fs), xR = cx - wR / 2;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
+      ctx.fillText(riga, xR, y);
+      const qui = Math.max(0, Math.min(riga.length, punto.carattere - inizio));
+      if (qui > 0) {
+        const intero = Math.floor(qui), resto = qui - intero;
+        const wC = larghezzaTesto(ctx, riga.slice(0, intero), fs) +
+          (intero < riga.length ? larghezzaTesto(ctx, riga[intero], fs) * resto : 0);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(xR - 2, y - fs, wC + 2, fs * 2); ctx.clip();
+        ctx.shadowColor = 'rgba(251, 191, 36, 0.75)'; ctx.shadowBlur = fs * 0.45;
+        ctx.fillStyle = '#fde68a';
+        ctx.fillText(riga, xR, y);
+        ctx.restore();
+        // il pallino azzurro che salta sulla sillaba in corso
+        if (punto.sillaba && qui < riga.length) {
+          const salto = Math.sin(Math.PI * punto.frazione) * fs * 0.42;
+          const bx = xR + wC, by = y - fs * 0.78 - salto, br = Math.max(3, fs * 0.17);
+          ctx.fillStyle = '#60a5fa'; ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, fs * 0.06);
+          ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.beginPath(); ctx.arc(bx - br * 0.35, by - br * 0.35, br * 0.3, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      inizio += riga.length + 1;
+    });
+    ctx.restore();
+  }
+  // Il titolo grande (`story_title`): entra, resta, se ne va con la sua
+  // ripresa, e intanto si avvicina appena (il titolo di un film)
+  function storDisegnaTitolo(ctx, ti, L, H) {
+    const u = Math.max(0, Math.min(1, ti.u || 0));
+    const alfa = u < 0.14 ? u / 0.14 : u > 0.82 ? Math.max(0, (1 - u) / 0.18) : 1;
+    if (!(alfa > 0.01)) return;
+    const font = caratterePagina();
+    const fsT = Math.max(26, Math.min(66, L * 0.058));
+    const fsS = Math.max(13, fsT * 0.36);
+    ctx.save();
+    ctx.globalAlpha = alfa;
+    // un velo scuro dietro alle parole, perché si leggano sopra ai personaggi
+    const velo = ctx.createRadialGradient(L / 2, H * 0.38, 0, L / 2, H * 0.38, Math.max(L, H) * 0.5);
+    velo.addColorStop(0, 'rgba(8, 6, 24, 0.62)'); velo.addColorStop(0.55, 'rgba(8, 6, 24, 0.3)'); velo.addColorStop(1, 'rgba(8, 6, 24, 0)');
+    ctx.fillStyle = velo; ctx.fillRect(0, 0, L, H);
+    ctx.translate(L / 2, H * 0.36);
+    const k = stor.ridotto ? 1 : 0.96 + 0.06 * u;
+    ctx.scale(k, k);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `800 ${fsT}px ${font}`;
+    const righe = storRigheTesto(ctx, ti.testo, L * 0.86, 2, fsT);
+    const alto = righe.length * fsT * 1.12;
+    righe.forEach((r, i) => {
+      const y = -alto / 2 + fsT * 1.12 * (i + 0.5);
+      ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, fsT * 0.12);
+      ctx.strokeStyle = 'rgba(12, 10, 32, 0.85)'; ctx.strokeText(r, 0, y);
+      ctx.shadowColor = 'rgba(96, 165, 250, 0.85)'; ctx.shadowBlur = fsT * 0.45;
+      ctx.fillStyle = '#fef3c7'; ctx.fillText(r, 0, y);
+      ctx.shadowBlur = 0;
+    });
+    if (ti.sotto) {
+      ctx.font = `600 ${fsS}px ${font}`;
+      const righeS = storRigheTesto(ctx, ti.sotto, L * 0.8, 2, fsS);
+      righeS.forEach((r, i) => {
+        const y = alto / 2 + fsS * (1.3 + i * 1.3);
+        ctx.lineWidth = Math.max(2, fsS * 0.18); ctx.strokeStyle = 'rgba(12, 10, 32, 0.8)'; ctx.strokeText(r, 0, y);
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.95)'; ctx.fillText(r, 0, y);
+      });
+    }
     ctx.restore();
   }
 
@@ -5674,7 +6132,11 @@
     domandaVuota: 'story_question vuole il testo della domanda (text)',
     domandaLunga: '{campo} è troppo lungo (al massimo {max} caratteri)',
     musicaSrc: 'story_music vuole in src un file audio del sito (audio/… o musica/…) oppure off, non {nome}',
-    suonoSrc: 'sound vuole in src un file audio del sito (audio/… o musica/…), non {nome}'
+    suonoSrc: 'sound vuole in src un file audio del sito (audio/… o musica/…), non {nome}',
+    ospiteFermo: '{nome} accompagna la storia da un posto dello schermo: non viaggia',
+    cantoVuoto: '{comando} vuole un id o un testo',
+    cantoLungo: 'Testo troppo lungo (al massimo {max} caratteri)',
+    cantoChi: 'Chi canta con with deve comparire in questa scena: {nome}'
   };
   function errore(chiave, dati = {}) {
     const k = 'demo.err.' + chiave;
@@ -5721,9 +6183,11 @@
   const COMANDI = {
     character_show: {
       verifica(p, scena) {
-        campi(p, ['target', 'expression', 'look', 'size', 'sound']);
+        campi(p, ['target', 'expression', 'look', 'size', 'sound', 'at']);
         const id = bersaglio(p);
         sceltaSuono(p);
+        // v450: `at` è il posto dello schermo di un ospite (Carl Sagan)
+        scelta(p.at, 'at', Object.keys(STOR_POSTI_OSPITE));
         // la Via Lattea, Andromeda, Sirio: la carta sa dove stanno, il cielo
         // di casa e la vista 3D no
         if (scena && STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo) richiedi(scenaCosmica(scena), 'soloCosmo', { nome: storNome(id) });
@@ -5737,7 +6201,7 @@
         // una storia non si mescolano con quello di prova.
         if (stor.anteprima) storChiudiAnteprima();
         const nuovo = !stor.personaggi.has(storCanonico(p.target));
-        const pg = storMostra(p.target, { espressione: p.expression, guarda: guardaVerso(p.look), misura: p.size });
+        const pg = storMostra(p.target, { espressione: p.expression, guarda: guardaVerso(p.look), misura: p.size, posto: p.at });
         // Chi entra in scena per la prima volta fa «pop»
         const rumore = suonoScelto(p, nuovo ? 'pop' : null);
         if (rumore) storSuona(rumore, { seme: pg.id });
@@ -5819,9 +6283,11 @@
     richiedi(storOggettoNoto(altro), 'destinazioneIgnota', { nome: v });
     richiedi(altro !== id, 'versoSeStesso', { nome: v });
     richiedi(!sonoIdea(altro), 'ideaFerma', { nome: storNome(altro) });
+    richiedi(!sonoOspite(altro), 'ospiteFermo', { nome: storNome(altro) });
     return altro;
   }
   const sonoIdea = id => !!(STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo === 'idea');
+  const sonoOspite = id => !!(STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].ospite);
   // Un'azione del corpo si lega al personaggio quando c'è: il motore crea le
   // azioni nell'ordine in cui sono scritte, e `character_show` può venire dopo.
   function legaPersonaggio(id, fa) {
@@ -5839,6 +6305,7 @@
         const id = bersaglio(p);
         sceltaSuono(p);
         richiedi(!sonoIdea(id), 'ideaFerma', { nome: storNome(id) });
+        richiedi(!sonoOspite(id), 'ospiteFermo', { nome: storNome(id) });
         verso(p, id, scena);
         scelta(p.side, 'side', STOR_LATI); scelta(p.path, 'path', STOR_PERCORSI);
         numeroIn(p.distance, 'distance', 0.3, 6); numeroIn(p.turns, 'turns', 0.5, 8);
@@ -5869,7 +6336,8 @@
     },
     character_return: {
       verifica(p, scena) {
-        campi(p, ['target', 'path', 'sound']); bersaglio(p); scelta(p.path, 'path', STOR_PERCORSI); sceltaSuono(p);
+        campi(p, ['target', 'path', 'sound']); scelta(p.path, 'path', STOR_PERCORSI); sceltaSuono(p);
+        richiedi(!sonoOspite(bersaglio(p)), 'ospiteFermo', { nome: storNome(bersaglio(p)) });
         inScena(p, scena); soloIn3d(scena, 'character_return');
       },
       crea(p) {
@@ -6104,15 +6572,44 @@
     const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
     return musica.volume * (voce && voce.parla ? STOR_MUSICA_SOTTO_VOCE : 1);
   }
+  /* La canzone agganciata (v450): dove deve essere adesso (`storTempoCanzone`)
+   * e dov'è davvero. Prima di `at` 0 aspetta ferma all'inizio (il file ha
+   * il tempo di caricarsi), in pausa si ferma con la demo, finita tace. Se
+   * scappa di molto (`STOR_MUSICA_SCARTO` secondi: un salto di scena, la
+   * scheda tornata in primo piano) ci salta; se scappa di poco — e il
+   * `play()` del browser parte sempre con un paio di decimi di ritardo,
+   * misurati in Chromium: 0,19 s — la si recupera correndo appena più
+   * svelta o più piano (`playbackRate` fra 0,94 e 1,06, l'altezza della
+   * voce resta quella), che a differenza di un salto non si sente. */
+  const STOR_MUSICA_SCARTO = 0.6, STOR_MUSICA_TOLLERANZA = 0.03;
+  function musicaAggancia(a) {
+    const au = a.audio;
+    const s = storTempoCanzone();
+    if (!Number.isFinite(s)) return;
+    const fine = Number.isFinite(au.duration) && au.duration > 0 ? au.duration : Infinity;
+    if (demoInPausa() || s < 0 || s >= fine - 0.05 || !musicaAccesa()) {
+      if (!au.paused) { try { au.pause(); } catch (_) { /* già ferma */ } }
+      if (s < 0 && au.currentTime > 0) { try { au.currentTime = 0; } catch (_) { /* non ancora caricata */ } }
+      return;
+    }
+    const scarto = (au.currentTime || 0) - s;
+    if (Math.abs(scarto) > STOR_MUSICA_SCARTO) {
+      try { au.currentTime = s; } catch (_) { /* non ancora caricata */ }
+      au.playbackRate = 1;
+    } else if (Math.abs(scarto) > STOR_MUSICA_TOLLERANZA) au.playbackRate = 1 - Math.max(-0.06, Math.min(0.06, scarto * 0.6));
+    else au.playbackRate = 1;
+    if (au.paused) au.play().catch(() => null);
+  }
   function musicaVigila() {
     const a = musica.attiva;
     const d = radice.AstroDemo;
     if (!a || !d || !d.inCorso) { storMusicaFerma(); return; }
+    if (a.sync) musicaAggancia(a);
     const bersaglio = musicaAccesa() ? musicaBersaglio() : 0;
     // Un passo morbido verso il bersaglio: niente scalini quando entra una voce
     a.audio.volume = Math.max(0, Math.min(1, a.audio.volume + (bersaglio - a.audio.volume) * 0.35));
   }
-  function storMusica(src, volume) {
+  function storMusica(src, volume, opz = {}) {
     if (typeof Audio === 'undefined') return false;
     if (volume !== undefined) musica.volume = Math.max(0, Math.min(1, Number(volume) || 0));
     if (!src || src === 'off' || !musicaAccesa()) {
@@ -6120,7 +6617,11 @@
       musica.attiva = null; musica.src = '';
       return false;
     }
-    if (musica.attiva && musica.src === src) return true;   // continua
+    if (musica.attiva && musica.src === src) {   // continua
+      musica.attiva.sync = !!opz.sync; musica.attiva.audio.loop = opz.loop !== false;
+      if (musica.attiva.sync) musicaAggancia(musica.attiva);
+      return true;
+    }
     if (musica.attiva) { try { musica.attiva.audio.pause(); } catch (_) { /* già ferma */ } }
     let traccia = musica.tracce.get(src);
     if (!traccia) {
@@ -6132,8 +6633,10 @@
       musica.tracce.set(src, traccia);
     }
     musica.attiva = traccia; musica.src = src;
+    traccia.sync = !!opz.sync; traccia.audio.loop = opz.loop !== false;
     if (typeof radice.musicaDemoSospendi === 'function') radice.musicaDemoSospendi(true);
-    traccia.audio.play().catch(() => null);
+    if (traccia.sync) musicaAggancia(traccia);
+    else traccia.audio.play().catch(() => null);
     if (!musica.timer && typeof setInterval === 'function') musica.timer = setInterval(musicaVigila, 120);
     return true;
   }
@@ -6145,6 +6648,7 @@
     }
     const suonava = musica.tracce.size > 0;
     musica.tracce.clear(); musica.attiva = null; musica.src = ''; musica.volume = STOR_MUSICA_VOLUME;
+    stor.canzone = null;
     if (suonava && typeof radice.musicaDemoSospendi === 'function') radice.musicaDemoSospendi(false);
   }
   Object.assign(COMANDI, {
@@ -6156,6 +6660,86 @@
         numeroIn(p.volume, 'volume', 0, 1);
       },
       crea(p) { storMusica(p.src, p.volume); return {}; }
+    }
+  });
+  // v450: la canzone che la storia segue. `sync: on` aggancia la musica al
+  // tempo della demo, `at` dice dove è la canzone quando la scena comincia
+  // (negativo: comincia fra un po'), `loop: off` la fa finire una volta
+  // sola, `bpm` e `beat` (un primo della battuta, in secondi della canzone)
+  // danno il battito che la camera e i personaggi tengono, `kick` quanto
+  // forte la camera lo batte. Ogni scena lo ripete col suo `at`: chi salta
+  // a una scena trova la canzone al punto giusto.
+  COMANDI.story_music.verifica = function (p) {
+    campi(p, ['src', 'volume', 'sync', 'at', 'loop', 'bpm', 'beat', 'kick']);
+    richiedi(typeof p.src === 'string' && (p.src === 'off' || (STOR_MUSICA_SRC.test(p.src) && !p.src.includes('..'))),
+      'musicaSrc', { nome: String(p.src === undefined ? '' : p.src) });
+    numeroIn(p.volume, 'volume', 0, 1);
+    scelta(p.sync, 'sync', ['on', 'off']); scelta(p.loop, 'loop', ['on', 'off']);
+    numeroIn(p.at, 'at', -30, 3600); numeroIn(p.bpm, 'bpm', 30, 240); numeroIn(p.beat, 'beat', 0, 3600); numeroIn(p.kick, 'kick', 0, 3);
+  };
+  COMANDI.story_music.crea = function (p) {
+    const sync = p.sync === 'on';
+    stor.canzone = sync ? { at: Number(p.at) || 0, da: storTempoDemo(), periodo: p.bpm ? 60 / p.bpm : 0, zero: Number(p.beat) || 0,
+      kick: p.kick === undefined ? 1 : p.kick } : null;
+    storMusica(p.src, p.volume, { sync, loop: p.loop !== 'off' });
+    // la scena dopo la riaggancia col suo `at`; finita la demo, niente canzone
+    const c = stor.canzone;
+    return { chiudi() { if (c && stor.canzone === c) stor.canzone = null; } };
+  };
+  /* Il canto (v450): `character_sing { target, with, id | text }`. `with`
+   * sono gli altri che cantano lo stesso verso, separati da virgole. Il
+   * verso dura la ripresa dell'azione. */
+  const STOR_CANTO_MAX = 240;
+  function cantori(p) {
+    const altri = p.with === undefined ? [] : String(p.with).split(',').map(x => x.trim()).filter(Boolean);
+    return [storCanonico(p.target)].concat(altri.map(storCanonico)).filter((x, i, a) => a.indexOf(x) === i);
+  }
+  function testoDi(p, comando, max) {
+    richiedi(typeof p.id === 'string' || typeof p.text === 'string', 'cantoVuoto', { comando });
+    if (typeof p.text === 'string') richiedi(p.text.trim() && p.text.length <= max, 'cantoLungo', { max });
+    else richiedi(/^[\w.-]+$/.test(p.id) && (!haI18n() || radice.astroI18n.esiste(p.id)), 'narraId', { id: p.id });
+  }
+  Object.assign(COMANDI, {
+    character_sing: {
+      verifica(p, scena) {
+        campi(p, ['target', 'with', 'id', 'text']);
+        bersaglio(p);
+        testoDi(p, 'character_sing', STOR_CANTO_MAX);
+        inScena(p, scena);
+        if (p.with !== undefined) {
+          richiedi(typeof p.with === 'string', 'personaggioIgnoto', { nome: String(p.with) });
+          for (const id of cantori(p).slice(1)) {
+            richiedi(storOggettoNoto(id), 'personaggioIgnoto', { nome: id });
+            if (scena) richiedi(scena.azioni.some(a => a.comando === 'character_show' && a.parametri &&
+              typeof a.parametri.target === 'string' && storCanonico(a.parametri.target) === id), 'cantoChi', { nome: id });
+          }
+        }
+      },
+      crea(p) {
+        if (stor.anteprima) storChiudiAnteprima();
+        const testo = typeof p.text === 'string' ? p.text : t(p.id) || p.id;
+        const c = storCanta(cantori(p), testo);
+        const via = () => { if (c.attivo) { c.attivo = false; c.fine = stor.orologio; } };
+        return {
+          aggiorna(u) { c.u = u; if (u >= 1) via(); },
+          chiudi() { via(); stor.canti = stor.canti.filter(x => x === c || x.attivo || stor.orologio - x.fine < 2000); }
+        };
+      }
+    },
+    // Il titolo grande (v450): `story_title { id | text, sub_id | subtitle }`
+    story_title: {
+      verifica(p) {
+        campi(p, ['id', 'text', 'sub_id', 'subtitle']);
+        testoDi(p, 'story_title', 120);
+        if (p.sub_id !== undefined || p.subtitle !== undefined) testoDi({ id: p.sub_id, text: p.subtitle }, 'story_title', 160);
+      },
+      crea(p) {
+        if (stor.anteprima) storChiudiAnteprima();
+        const ti = { testo: typeof p.text === 'string' ? p.text : t(p.id) || p.id,
+          sotto: typeof p.subtitle === 'string' ? p.subtitle : p.sub_id ? t(p.sub_id) || '' : '', u: 0 };
+        stor.titolo = ti;
+        return { aggiorna(u) { ti.u = u; }, chiudi() { if (stor.titolo === ti) stor.titolo = null; } };
+      }
     }
   });
 
@@ -6530,13 +7114,21 @@
     stato: stor,
     STOR_REGIA, STOR_SUONI, regiaInquadra: storRegiaInquadra, regiaGruppo: storRegiaGruppo, regiaGiro: storRegiaGiro, posaSullaSfera: storPosaSullaSfera, lenteApri: storLenteApri, lenteChiudi: storLenteChiudi,
     musica: storMusica, musicaFerma: storMusicaFerma, musicaLocale: storMusicaLocale, STOR_MUSICA_SRC,
-    get musicaInCorso() { return musica.attiva ? { src: musica.src, volume: musica.volume, suona: !musica.attiva.audio.paused } : null; },
+    get musicaInCorso() {
+      return musica.attiva ? { src: musica.src, volume: musica.volume, suona: !musica.attiva.audio.paused, tempo: musica.attiva.audio.currentTime,
+        sync: !!musica.attiva.sync, loop: !!musica.attiva.audio.loop } : null;
+    },
     lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
     get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },
     get disegnati() { return stor.ultimiDisegnati.map(d => Object.assign({}, d, { geom: undefined })); },
     get parlante() { return stor.parlante ? stor.parlante.target : null; },
-    get effetti() { return stor.effetti.map(e => ({ tipo: e.tipo, target: e.target, dove: e.dove })); }
+    get effetti() { return stor.effetti.map(e => ({ tipo: e.tipo, target: e.target, dove: e.dove })); },
+    // v450: le storie cantate e gli ospiti
+    canta: storCanta, cantoOra: storCantoOra, puntoDelCanto: storPuntoDelCanto, battito: storBattito,
+    tempoCanzone: storTempoCanzone, ospiti: storOspiti, sovrimpressioni: storDisegnaSovrimpressioni, STOR_POSTI_OSPITE,
+    get canto() { const c = storCantoOra(); return c ? { chi: c.chi.slice(), testo: c.testo, u: c.u } : null; },
+    get titolo() { return stor.titolo ? Object.assign({}, stor.titolo) : null; }
   };
   radice.storRicevuta = storRicevuta;
   radice.storMusicaFerma = storMusicaFerma;

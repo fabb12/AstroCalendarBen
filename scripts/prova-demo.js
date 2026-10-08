@@ -171,6 +171,12 @@ for (const d of predefiniti) {
     // Nelle Storie cosmiche la narrazione della scena è la battuta di un
     // personaggio (`character_speak`), con lo stesso ID stabile.
     const narra = s.azioni.filter(a => a.comando === 'narrate' || a.comando === 'character_speak');
+    // Una storia cantata (v450) non ha narrazione: le parole sono della
+    // canzone, e ogni scena ha i suoi versi (`character_sing`)
+    if (demo.scene.some(x => x.azioni.some(a => a.comando === 'character_sing'))) {
+      ok(!narra.length && s.azioni.some(a => a.comando === 'character_sing'), 'Versi, e nessuna voce sopra, nella scena ' + (i + 1) + ' di ' + d.chiave);
+      return;
+    }
     ok(narra.length === 1 && narra[0].parametri.id === 'demo.narr.' + d.chiave + '.' + (i + 1),
       'Narrazione della scena ' + (i + 1) + ' di ' + d.chiave);
   });
