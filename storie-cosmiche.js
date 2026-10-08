@@ -6304,6 +6304,25 @@
     try { return Math.round(radice.AstroDemoMotore.analizza(testo).scene.reduce((n, sc) => n + sc.durata, 0) / 1000); }
     catch (_) { return 0; }
   }
+  // Il volto piccolo di un personaggio, dipinto una volta e tenuto come immagine
+  const storFigurine = new Map();
+  function storFigurina(id, px) {
+    const k = id + '|' + px;
+    if (!storFigurine.has(k)) {
+      let url = '';
+      try {
+        const tela = document.createElement('canvas');
+        if (storRitratto(tela, id, '', { larghezza: px, altezza: px, palco: false, misura: 0.54 })) url = tela.toDataURL('image/png');
+      } catch (_) { url = ''; }
+      storFigurine.set(k, url);
+    }
+    const url = storFigurine.get(k);
+    if (url) { const img = document.createElement('img'); img.className = 'studio-figurina'; img.src = url; img.width = px; img.height = px; img.alt = ''; return img; }
+    const pallino = document.createElement('span');
+    pallino.className = 'studio-figurina studio-pallino';
+    pallino.style.cssText = 'width:' + px + 'px;height:' + px + 'px;background:' + (storProfilo(id).pelle || '#cbd5e1');
+    return pallino;
+  }
   function storRiempiPagina() {
     if (typeof document === 'undefined') return;
     const elenco = document.getElementById('storie-elenco');
@@ -6319,12 +6338,23 @@
       durata.className = 'storia-durata';
       durata.textContent = t('storie.durata', { n: durataDi(st.testo) });
       const descr = document.createElement('p');
-      descr.className = 'storia-descrizione';
+      descr.className = 'storia-descrizione corta';
+      descr.id = 'storia-trama-' + st.chiave;
       descr.textContent = t('demo.builtin.' + st.chiave + '.description');
+      const ids = String(st.cast || '').split(',').map(x => x.trim()).filter(Boolean);
+      // v447: i volti in fila, come nello Studio; i caratteri e i perché
+      // stanno dietro a una linguetta, chiusa di serie: prima ogni scheda
+      // era un elenco lungo di personalità, e le schede un muro di testo
+      const volti = document.createElement('div');
+      volti.className = 'storia-volti';
+      volti.setAttribute('aria-hidden', 'true');
+      for (const id of ids.slice(0, 6)) volti.append(storFigurina(id, 34));
       const cast = document.createElement('ul');
       cast.className = 'storia-cast';
+      cast.id = 'storia-cast-' + st.chiave;
+      cast.hidden = true;
       cast.setAttribute('aria-label', t('storie.cast', { nomi: '' }).replace(/[:\s]+$/, ''));
-      for (const id of String(st.cast || '').split(',').map(x => x.trim()).filter(Boolean)) {
+      for (const id of ids) {
         const p = storProfilo(id);
         const li = document.createElement('li');
         const nome = document.createElement('strong');
@@ -6350,7 +6380,26 @@
       const testa = document.createElement('div');
       testa.className = 'storia-testa';
       testa.append(titolo, durata);
-      scheda.append(testa, descr, cast, azioni);
+      // Due linguette, come nello Studio: la trama intera (di serie se ne
+      // leggono tre righe) e i personaggi; se ne apre una per scheda
+      const linguetta = (cosa, controlla, nomeL, stato) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'studio-linguetta storia-linguetta';
+        b.dataset.storiaApri = cosa;
+        b.setAttribute('aria-expanded', 'false');
+        b.setAttribute('aria-controls', controlla);
+        const ln = document.createElement('span'); ln.className = 'studio-linguetta-nome'; ln.textContent = nomeL;
+        const ls = document.createElement('small');
+        const lt = document.createElement('span'); lt.className = 'studio-linguetta-stato'; lt.textContent = stato;
+        ls.append(lt); b.append(ln, ls);
+        return b;
+      };
+      const linguette = document.createElement('div');
+      linguette.className = 'studio-linguette storia-linguette';
+      linguette.append(
+        linguetta('trama', descr.id, t('storie.trama'), t('storie.tramaTutta')),
+        linguetta('cast', cast.id, t('storie.personaggi', { n: ids.length }), ids.map(id => storNome(storProfilo(id))).join(', ')));
+      scheda.append(testa, volti, descr, linguette, cast, azioni);
       elenco.append(scheda);
     }
     const codice = document.getElementById('storie-codice');
@@ -6385,6 +6434,19 @@
     sezione.addEventListener('click', e => {
       const avvia = e.target.closest('[data-storia-avvia]');
       const duplica = e.target.closest('[data-storia-duplica]');
+      // La trama intera o i personaggi di una storia: una linguetta per scheda
+      const lc = e.target.closest('[data-storia-apri]');
+      if (lc) {
+        const apri = lc.getAttribute('aria-expanded') !== 'true';
+        for (const b of lc.parentElement.querySelectorAll('[data-storia-apri]')) {
+          const qui = b === lc && apri;
+          b.setAttribute('aria-expanded', String(qui));
+          const el = document.getElementById(b.getAttribute('aria-controls'));
+          if (!el) continue;
+          if (b.dataset.storiaApri === 'trama') el.classList.toggle('corta', !qui); else el.hidden = !qui;
+        }
+        return;
+      }
       const st = storieDisponibili().find(x => x.chiave === ((avvia || duplica) || {}).dataset?.[avvia ? 'storiaAvvia' : 'storiaDuplica']);
       if (avvia && st) {
         storChiudiAnteprima();
