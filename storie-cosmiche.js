@@ -400,8 +400,8 @@
      * (`ospite`), che sta in un posto dello schermo in ogni vista e non
      * viaggia (§7). */
     sagan: { famiglia: 'persona', genere: 'm', sagoma: 'sagan', nome: 'storie.nome.sagan', ospite: true, alias: ['Carl Sagan', 'Sagan'],
-      pelle: '#eaa676', iride: '#4a2a14', sottotitolo: '#fca5a5', guance: '#f87171', peli: '#3f2412',
-      scala: 0.8, occhi: { r: 0.29, distanza: 0.4, alto: -0.02 },
+      pelle: '#eaa676', iride: '#6b4423', sottotitolo: '#fca5a5', guance: '#f08c74', peli: '#3a2010',
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
       voce: { ritmo: '-6%', tono: '-8Hz' }, espressione: 'happy', personalita: 'sagan' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
@@ -1316,9 +1316,10 @@
    * musica vanno insieme. Le bocche seguono la fila delle sillabe del verso
    * stesa sulla sua durata (§3), il karaoke in basso colora le parole
    * cantate (§7-quinquies). Più versi insieme: vince l'ultimo cominciato. */
-  function storCanta(chi, testo, tempiParole) {
+  function storCanta(chi, testo, tempiParole, voce) {
     const pulito = String(testo || '').replace(/\s+/g, ' ').trim();
-    const c = { chi: chi.slice(), testo: pulito, ritmo: storRitmo(pulito), u: 0, attivo: true, da: stor.orologio, fine: 0, parole: null };
+    const c = { chi: chi.slice(), testo: pulito, ritmo: storRitmo(pulito), u: 0, attivo: true, da: stor.orologio, fine: 0, parole: null,
+      voce: Array.isArray(voce) && voce.length > 1 ? voce : null };
     c.parole = storParoleDelCanto(pulito, c.ritmo, tempiParole);
     stor.canti.push(c);
     return c;
@@ -1347,6 +1348,25 @@
       c0 += b.length + 1;
     });
     return parole.length ? parole : null;
+  }
+  /* L'intensità della voce vera (v452, `character_sing { voice }`): la
+   * canzone è stata separata in voce e base (Demucs), e della sola voce si è
+   * misurata l'energia nella banda del parlato, 25 volte al secondo, sulla
+   * ripresa del verso, una cifra da 0 a 9 per campione. La bocca si apre
+   * quanto la voce è forte in quel momento — si chiude da sola sulle pause e
+   * fra le sillabe, si spalanca sulle note tenute — e la vocale la dà la
+   * sillaba della parola in corso. È la stessa strada dell'ampiezza della
+   * narrazione (§3, `livello`), ma misurata prima: funziona anche senza Web
+   * Audio e in pausa resta ferma. Funzione pura. */
+  const STOR_VOCE_ANTICIPO = 1.4;
+  function storVoceDelCanto(c, u) {
+    const v = c.voce;
+    if (!v) return null;
+    // le labbra si muovono un attimo prima del suono, come quando si parla
+    // davvero: STOR_VOCE_ANTICIPO campioni (25 al secondo) avanti. Misurato
+    // nel browser, senza anticipo la bocca arrivava otto centesimi dopo la voce
+    const x = Math.min(v.length - 1, Math.max(0, Math.min(1, u)) * (v.length - 1) + STOR_VOCE_ANTICIPO), i = Math.floor(x), f = x - i;
+    return v[i] + ((v[i + 1] === undefined ? v[i] : v[i + 1]) - v[i]) * f;
   }
   // Dove si è nella fila delle sillabe al punto `u` del verso, e se in quel
   // momento si sta cantando una parola (`muto` fra una parola e l'altra)
@@ -2065,7 +2085,7 @@
     // L'ombretto lilla (v418): una stesura piatta e tenue che segue la
     // palpebra di sopra e sale verso l'angolo esterno, come nel disegno di
     // riferimento; per lui appena accennata
-    if (occ.chiusura < 0.8) {
+    if (occ.chiusura < 0.8 && !profilo.irideVera) {
       const pelle = profilo.pelle || '#e2e8f0';
       const lilla = profilo.trucco || '#a78bfa';
       const alto = ap.sopra.map(([x, y]) => {
@@ -2115,9 +2135,25 @@
       // prima (è più piccola), così l'occhiata di lato si legge; la sua
       // misura segue l'espressione: piccolissima nella sorpresa e nella
       // paura, grande e dolce nella tristezza e nell'amore.
-      const r = pu.r * 0.72;
+      const r = pu.r * (profilo.irideVera ? 0.5 : 0.72);
       const corsa = 1 + (ir.r - r) / Math.max(1e-6, occ.rx) * 0.9;
       const px = occ.cx + (pu.x - occ.cx) * corsa, py = occ.cy + (pu.y - occ.cy) * corsa;
+      // v452, l'iride vera (`irideVera`, Carl Sagan): una persona non ha gli
+      // occhi tutti bianchi dei pianeti. L'anello del suo colore, più scuro
+      // al bordo e con le striature, attorno a una pupilla più piccola
+      if (profilo.irideVera) {
+        const ri = r * 2.05;
+        const g = ctx.createRadialGradient(px, py, r * 0.6, px, py, ri);
+        g.addColorStop(0, scurisci(profilo.iride, 0.35)); g.addColorStop(0.45, profilo.iride); g.addColorStop(0.85, schiarisci(profilo.iride, 0.12));
+        g.addColorStop(1, scurisci(profilo.iride, 0.45));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py, ri, ri * 1.06, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = rgba(scurisci(profilo.iride, 0.5), 0.5); ctx.lineWidth = Math.max(0.4, ri * 0.06);
+        ctx.beginPath();
+        for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; ctx.moveTo(px + Math.cos(a) * r * 1.15, py + Math.sin(a) * r * 1.15); ctx.lineTo(px + Math.cos(a) * ri * 0.86, py + Math.sin(a) * ri * 0.86); }
+        ctx.stroke();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.6, ri * 0.1);
+        ctx.beginPath(); ctx.ellipse(px, py, ri, ri * 1.06, 0, 0, Math.PI * 2); ctx.stroke();
+      }
       ctx.fillStyle = INCHIOSTRO;
       ctx.beginPath(); ctx.ellipse(px, py, r, r * 1.14, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff';
@@ -2498,7 +2534,7 @@
     // v425, niente naso né neo, come nel disegno di riferimento: occhi,
     // guance e bocca, e il volto si legge al primo colpo
     const n = geom.naso;
-    if (!geom.lei) posa(n.x, n.y, () => {
+    if (!geom.lei && !profilo.nasoProprio) posa(n.x, n.y, () => {
       ctx.strokeStyle = rgba('#1c1236', 0.55); ctx.lineWidth = Math.max(0.9, n.r * 0.42);
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
       ctx.beginPath(); ctx.arc(n.x, n.y - n.r * 0.9, n.r * 0.55, Math.PI * 0.6, Math.PI * 1.25); ctx.stroke();
@@ -2969,7 +3005,7 @@
     buco_nero:     { volto: [0, -0.04, 0.8], ingombro: 1.75 },
     buco_bianco:   { volto: [0, 0, 0.8], ingombro: 1.6 },
     // v450: Carl Sagan, la testa-pianeta sopra al busto
-    sagan:         { volto: [0, -0.2, 0.62], ingombro: 1.4 }
+    sagan:         { volto: [0, -0.18, 0.6], ingombro: 1.45 }
   };
   // Dove sta il volto su un corpo di raggio R centrato in (x, y)
   function storVoltoNelCorpo(sagoma, x, y, R) {
@@ -3735,6 +3771,22 @@
         ctx.closePath();
       }, revers, R, { luce: 0.06, pennino: 0.03 });
     }
+    // v452: la testa non è più un disco perfetto ma un ovale con la
+    // mascella, più alto che largo (`hw` × `hh`): chi l'ha guardato lo
+    // voleva più caratterizzato e più vero. Resta nello stile dei pianeti:
+    // l'ombra spostata, il bordo color panna, il taglio d'ombra, la luce in
+    // alto a sinistra.
+    const hw = R * 0.6, hh = R * 0.76;
+    const testa = () => {
+      ctx.beginPath();
+      ctx.moveTo(hx, hy - hh);
+      ctx.bezierCurveTo(hx + hw * 0.62, hy - hh, hx + hw * 1.02, hy - hh * 0.52, hx + hw, hy - hh * 0.05);
+      ctx.bezierCurveTo(hx + hw * 0.98, hy + hh * 0.42, hx + hw * 0.72, hy + hh * 0.8, hx + hw * 0.3, hy + hh * 0.96);
+      ctx.quadraticCurveTo(hx, hy + hh * 1.06, hx - hw * 0.3, hy + hh * 0.96);
+      ctx.bezierCurveTo(hx - hw * 0.72, hy + hh * 0.8, hx - hw * 0.98, hy + hh * 0.42, hx - hw, hy - hh * 0.05);
+      ctx.bezierCurveTo(hx - hw * 1.02, hy - hh * 0.52, hx - hw * 0.62, hy - hh, hx, hy - hh);
+      ctx.closePath();
+    };
     // I capelli sono due ciocche di punti (in raggi della testa) lisciate
     // come il sasso a patata: la massa dietro, più scura, che dà il volume, e
     // il caschetto davanti col ciuffo. Il contorno di fuori è mosso (le onde
@@ -3743,7 +3795,7 @@
       const P = punti.map(([px, py], i) => {
         const o = onda ? onda * Math.sin(i * 2.3 + t / 700) : 0;
         const n = Math.hypot(px, py) || 1;
-        return [hx + (px + px / n * o) * hr, hy + (py + py / n * o) * hr + (py < -0.6 ? mosso : 0)];
+        return [hx + (px + px / n * o) * hw * 1.18, hy + (py + py / n * o) * hh * 0.97 + (py < -0.6 ? mosso : 0)];
       });
       const m = (u, v) => [(u[0] + v[0]) / 2, (u[1] + v[1]) / 2];
       ctx.beginPath(); ctx.moveTo(...m(P[P.length - 1], P[0]));
@@ -3753,8 +3805,54 @@
     const dietro = [[-1.06, 0.36], [-1.3, 0.56], [-1.3, 0.12], [-1.24, -0.42], [-1.02, -0.92], [-0.56, -1.24], [0, -1.32], [0.56, -1.24],
       [1.02, -0.92], [1.24, -0.42], [1.3, 0.12], [1.3, 0.56], [1.06, 0.36], [0.6, 0.2], [-0.6, 0.2]];
     parte(ctx, () => liscia(dietro, 0.025), scurisci(capelli, 0.12), R, { luce: 0.1 });
-    // la testa: un pianeta, col suo taglio d'ombra
-    disegnaDisco(ctx, hx, hy, hr, profilo.pelle);
+    // le orecchie, dietro alla testa, sotto alle basette
+    for (const lato of [-1, 1]) {
+      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(hx + lato * hw * 0.98, hy + hh * 0.08, hw * 0.17, hh * 0.22, lato * 0.18, 0, Math.PI * 2); },
+        profilo.pelle, R, { luce: 0.05, pennino: 0.03,
+          dentro: () => {
+            ctx.strokeStyle = rgba(scurisci(profilo.pelle, 0.4), 0.7); ctx.lineWidth = Math.max(0.6, R * 0.014);
+            ctx.beginPath(); ctx.arc(hx + lato * hw * 1.0, hy + hh * 0.08, hw * 0.08, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
+          } });
+    }
+    // la testa: nello stile dei pianeti, col suo taglio d'ombra
+    ctx.save(); ctx.translate(R * 0.04, R * 0.05); testa(); ctx.fillStyle = 'rgba(12, 6, 30, 0.4)'; ctx.fill(); ctx.restore();
+    testa(); ctx.strokeStyle = '#fff6e6'; ctx.lineWidth = Math.max(2, R * 0.06); ctx.stroke();
+    testa(); ctx.fillStyle = scurisci(profilo.pelle, 0.24); ctx.fill();
+    ctx.save(); testa(); ctx.clip();
+    const lx = hx - hw * 0.28, ly = hy - hh * 0.26, lr = Math.max(hw, hh) * 1.02;
+    const luce = ctx.createRadialGradient(lx, ly, lr * 0.82, lx, ly, lr);
+    luce.addColorStop(0, profilo.pelle); luce.addColorStop(1, rgba(profilo.pelle, 0));
+    ctx.fillStyle = profilo.pelle; ctx.beginPath(); ctx.arc(lx, ly, lr * 0.82, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = luce; ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
+    // gli zigomi, il mento, la mascella: ombre morbide che fanno una faccia
+    ctx.fillStyle = rgba(scurisci(profilo.pelle, 0.3), 0.32);
+    ctx.beginPath(); ctx.ellipse(hx + hw * 0.62, hy + hh * 0.42, hw * 0.3, hh * 0.42, -0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rgba(schiarisci(profilo.pelle, 0.25), 0.4);
+    ctx.beginPath(); ctx.ellipse(hx - hw * 0.1, hy + hh * 0.84, hw * 0.24, hh * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+    // il naso lungo e dritto: la canna in luce, l'ombra di lato, le narici
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = rgba(scurisci(profilo.pelle, 0.42), 0.55); ctx.lineWidth = Math.max(0.8, R * 0.02);
+    ctx.beginPath(); ctx.moveTo(hx + hw * 0.05, hy - hh * 0.16); ctx.quadraticCurveTo(hx + hw * 0.12, hy + hh * 0.02, hx + hw * 0.1, hy + hh * 0.11); ctx.stroke();
+    ctx.fillStyle = rgba(scurisci(profilo.pelle, 0.3), 0.35);
+    ctx.beginPath(); ctx.ellipse(hx + hw * 0.02, hy + hh * 0.15, hw * 0.15, hh * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgba(INCHIOSTRO, 0.7); ctx.lineWidth = Math.max(0.8, R * 0.022);
+    ctx.beginPath(); ctx.arc(hx, hy + hh * 0.12, hw * 0.09, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+    for (const lato of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(hx + lato * hw * 0.12, hy + hh * 0.11, hw * 0.045, lato < 0 ? Math.PI * 0.4 : -Math.PI * 0.4, lato < 0 ? Math.PI * 1.3 : Math.PI * 0.6, lato > 0); ctx.stroke();
+    }
+    // le pieghe del sorriso dal naso agli angoli della bocca, e le zampe di
+    // gallina ai lati degli occhi: il sorriso largo e un po' segnato di lui
+    ctx.strokeStyle = rgba(scurisci(profilo.pelle, 0.45), 0.45); ctx.lineWidth = Math.max(0.7, R * 0.016);
+    for (const lato of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(hx + lato * hw * 0.2, hy + hh * 0.12);
+      ctx.quadraticCurveTo(hx + lato * hw * 0.44, hy + hh * 0.3, hx + lato * hw * 0.42, hy + hh * 0.5); ctx.stroke();
+      for (const k of [-1, 0, 1]) {
+        ctx.beginPath(); ctx.moveTo(hx + lato * hw * 0.74, hy - hh * 0.1 + k * hh * 0.05);
+        ctx.lineTo(hx + lato * hw * 0.86, hy - hh * 0.12 + k * hh * 0.09); ctx.stroke();
+      }
+    }
+    ctx.restore();
+    testa(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.4, R * 0.035); ctx.stroke();
     const davanti = [[-0.94, 0.5], [-1.22, 0.6], [-1.17, 0.12], [-1.17, -0.36], [-1.02, -0.8], [-0.7, -1.1], [-0.28, -1.24], [0.2, -1.27],
       [0.64, -1.16], [1.0, -0.86], [1.18, -0.42], [1.2, 0.04], [1.24, 0.58], [0.96, 0.5],
       // dentro: la basetta destra, la tempia, il ciuffo che gira sulla
@@ -4071,7 +4169,14 @@
       const staParlando = canta || !!(parlante === pg.id && voce && voce.parla);
       if (canta) {
         const qui = storTempoNelCanto(canto, canto.u);
-        if (qui.muto) forma = { forma: 'chiusa', apertura: 0, via: 'canto' };
+        const livello = storVoceDelCanto(canto, canto.u);
+        if (livello !== null) {
+          // la voce vera apre la bocca; la vocale dalla sillaba (o dall'ultima)
+          const vocale = storFormaAlTempo(canto.ritmo, qui.tempo).vocale || pg.vocaleCanto || 'a';
+          pg.vocaleCanto = vocale;
+          const apertura = livello < 0.12 ? 0 : Math.min(1, Math.pow((livello - 0.12) / 0.75, 0.8));
+          forma = { forma: formaDaApertura(apertura, vocale), apertura, vocale, via: 'voce' };
+        } else if (qui.muto) forma = { forma: 'chiusa', apertura: 0, via: 'canto' };
         else {
           forma = Object.assign(storFormaAlTempo(canto.ritmo, qui.tempo), { via: 'canto' });
           // si canta con la bocca più aperta di come si parla
@@ -5242,6 +5347,9 @@
     gruppoCarrello: 0.12,  // e gli si avvicina piano, fino a +12% in `gruppoMs`
     gruppoMs: 10000,
     ridottoMolla: 0.55,    // col movimento ridotto la camera va più piano (v434), ma va
+    ritmoRollio: 0.035,    // v452: il rollio della regia a ritmo, in radianti (2°)
+    ritmoCarrello: 0.16,   // e quanto spinge in avanti ogni inquadratura, in una battuta
+    ritmoSvelto: 1.9,      // e quanto è più svelta la molla, come una frustata di camera
     // Gli effetti che la camera va a guardare, per quanto (ms della storia)
     // e quanto sono grandi rispetto al raggio dell'astro che li porta
     effetti: { explosion: [1700, 2.6], shockwave: [1300, 3.2], fireworks: [2100, 3], lightning: [1100, 2.4],
@@ -5369,6 +5477,9 @@
       // e la camera stringe su di lui finché parla, poi torna al giro largo
       if (d) return Object.assign(primoPiano(d, d === parla ? STOR_REGIA.voltoStretto : STOR_REGIA.giroVolto, 'giro'), { ax: 0.5 });
     }
+    // 2-quater. A ritmo (v452, `story_camera { mode: rhythm }`): la regia di
+    // un video musicale (storRegiaRitmo)
+    if (r.modo === 'rhythm') { const m = storRegiaRitmo(quanti, primoPiano, L, H, tetto); if (m) return m; }
     // 2-ter. Sempre su chi parla (v431): primo piano stretto, niente campo e
     // controcampo, e fra due battute resta su chi ha parlato per ultimo
     if (r.modo === 'speaker') {
@@ -5420,6 +5531,64 @@
       if (viaggia || salta || cambia) return primoPiano(d, STOR_REGIA.volto * 0.62, 'azione');
     }
     return null;
+  }
+  /* La regia a ritmo (v452). Chi ha guardato «Pallido puntino blu» voleva
+   * una camera «più dinamica e coinvolgente», da video musicale: allora a
+   * ogni battuta (quattro colpi della canzone; senza battito ogni 2,8 s)
+   * l'inquadratura cambia, in una sequenza che non si ripete uguale:
+   *   - chi canta da solo: primo piano stretto, piano a due con chi gli sta
+   *     più vicino, di nuovo stretto dall'altro lato, campo largo;
+   *   - il coro: tutti insieme, poi un cantante per battuta, uno dopo
+   *     l'altro, poi di nuovo tutti;
+   *   - nessuno canta: il gruppo, che si stringe.
+   * Ogni inquadratura ha un leggero rollio (il quadro inclinato di un paio di
+   * gradi, da una parte o dall'altra) e il carrello che spinge in avanti
+   * (`storLenteApri`); fra l'una e l'altra la camera ci va con una molla
+   * svelta (`svelto`), come una frustata di camera, non con uno stacco
+   * secco che salterebbe. Funzione pura sullo stato. */
+  function storRegiaRitmo(quanti, primoPiano, L, H, tetto) {
+    if (!quanti.length) return null;
+    const b = storBattito();
+    const battuta = b ? Math.floor(b.i / 4) : Math.floor(stor.orologio / 2760);
+    const canto = storCantoOra();
+    const rollio = (battuta % 2 ? 1 : -1) * STOR_REGIA.ritmoRollio;
+    const conRollio = m => m && Object.assign(m, { rot: rollio, svelto: true,
+      k: Math.max(m.k, 1 + Math.abs(rollio) * 2.4 * Math.max(L, H) / Math.max(1, Math.min(L, H))) });
+    const gruppo = (chi, motivo) => {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const d of chi) {
+        const o = storOcchiDi(d);
+        x0 = Math.min(x0, o.x - o.R * 1.5); x1 = Math.max(x1, o.x + o.R * 1.5);
+        y0 = Math.min(y0, o.y - o.R * 1.3); y1 = Math.max(y1, o.y + o.R * 1.7);
+      }
+      const k = Math.max(1, Math.min(tetto, L * 0.86 / Math.max(1, x1 - x0), H * 0.6 / Math.max(1, y1 - y0)));
+      return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, k, ay: 0.44, ax: 0.5, motivo, id: motivo + ':' + battuta };
+    };
+    const cantori = canto ? quanti.filter(d => canto.chi.includes(d.id)) : [];
+    if (cantori.length > 1) {
+      // il coro: tutti, poi uno per battuta, poi tutti
+      const giro = battuta % (cantori.length + 1);
+      if (!giro) return conRollio(gruppo(cantori, 'ritmo'));
+      const d = cantori[(giro - 1) % cantori.length];
+      return conRollio(Object.assign(primoPiano(d, STOR_REGIA.voltoStretto, 'ritmo'), { id: 'ritmo:' + d.id + ':' + battuta }));
+    }
+    if (cantori.length === 1) {
+      const d = cantori[0];
+      const tipo = battuta % 4;
+      if (tipo === 1) {
+        // il piano a due: chi canta e chi gli sta più vicino
+        const o = storOcchiDi(d);
+        const altro = quanti.filter(x => x !== d).sort((p, q) => {
+          const a = storOcchiDi(p), c = storOcchiDi(q);
+          return Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(c.x - o.x, c.y - o.y);
+        })[0];
+        if (altro) return conRollio(gruppo([d, altro], 'ritmo'));
+      }
+      if (tipo === 3 && quanti.length > 1) return conRollio(gruppo(quanti, 'ritmo'));
+      const m = primoPiano(d, tipo === 2 ? STOR_REGIA.voltoStretto * 1.15 : STOR_REGIA.voltoStretto, 'ritmo');
+      return conRollio(Object.assign(m, { id: 'ritmo:' + d.id + ':' + battuta }));
+    }
+    return conRollio(gruppo(quanti, 'ritmo'));
   }
   /* Il largo che non sta fermo (v434). Prima, quando nessuno parlava, la
    * lente tornava a 1 e il quadro restava quello della scena: in una storia
@@ -5489,6 +5658,11 @@
       const u = liscio((stor.orologio - r.ripresa.da) / STOR_REGIA.carrelloMs);
       kMeta = Math.min(tetto * (1 + STOR_REGIA.carrello), kMeta * (1 + STOR_REGIA.carrello * u));
     }
+    if (meta && meta.motivo === 'ritmo' && !stor.ridotto) {
+      const b = storBattito();
+      const u = liscio((stor.orologio - r.ripresa.da) / ((b ? b.periodo * 4 : 2.76) * 1000));
+      kMeta *= 1 + STOR_REGIA.ritmoCarrello * u;
+    }
     if (meta && meta.motivo === 'gruppo') {
       const u = liscio((stor.orologio - r.ripresa.da) / STOR_REGIA.gruppoMs);
       kMeta *= 1 + STOR_REGIA.gruppoCarrello * (stor.ridotto ? 0.5 : 1) * u;
@@ -5511,7 +5685,8 @@
       if (meta) {
         // Nel giro il personaggio si sposta sul disegno di continuo (è il
         // mondo che gli gira attorno): una molla più svelta lo tiene al centro
-        const wf = meta.motivo === 'giro' && r.ripresa && stor.orologio - r.ripresa.da > 1200 ? w * 2.2 : w;
+        const wf = meta.motivo === 'giro' && r.ripresa && stor.orologio - r.ripresa.da > 1200 ? w * 2.2
+          : meta.svelto ? w * STOR_REGIA.ritmoSvelto : w;
         [r.fx, r.vfx] = molla(r.fx, r.vfx, meta.x, wf, h);
         [r.fy, r.vfy] = molla(r.fy, r.vfy, meta.y, wf, h);
         [r.ay, r.vay] = molla(r.ay, r.vay, meta.ay, w, h);
@@ -5520,7 +5695,8 @@
       // Il rollio del giro nel planetario: va e viene col giro, e finito il
       // giro torna dritto con la sua molla
       const rotMeta = meta && meta.motivo === 'giro' && vista === 'cielo' && !stor.ridotto
-        ? STOR_REGIA.giroRollio * Math.sin(giro * 1.3) : 0;
+        ? STOR_REGIA.giroRollio * Math.sin(giro * 1.3)
+        : meta && Number.isFinite(meta.rot) && !stor.ridotto ? meta.rot : 0;
       [r.rot, r.vrot] = molla(r.rot, r.vrot, rotMeta, w * 0.5, h);
     }
     r.lk = Math.max(0, r.lk);
@@ -6548,7 +6724,7 @@
   // personaggio; dalla v431 `speaker` sta sempre stretto su chi parla e
   // `orbit` gira attorno a un personaggio (o a chi parla), a `speed` gradi
   // al secondo (negativo: nell'altro verso)
-  const STOR_MODI_REGIA = ['auto', 'wide', 'close', 'speaker', 'orbit'];
+  const STOR_MODI_REGIA = ['auto', 'wide', 'close', 'speaker', 'orbit', 'rhythm'];
   Object.assign(COMANDI, {
     story_camera: {
       verifica(p, scena) {
@@ -6887,7 +7063,9 @@
   Object.assign(COMANDI, {
     character_sing: {
       verifica(p, scena) {
-        campi(p, ['target', 'with', 'id', 'text', 'words']);
+        campi(p, ['target', 'with', 'id', 'text', 'words', 'voice']);
+        richiedi(p.voice === undefined || (typeof p.voice === 'string' && /^[0-9]{2,6000}$/.test(p.voice)),
+          'valoreIgnoto', { campo: 'voice', nome: String(p.voice).slice(0, 20), elenco: '0123456789…' });
         bersaglio(p);
         testoDi(p, 'character_sing', STOR_CANTO_MAX);
         richiedi(p.words === undefined || (typeof p.words === 'string' && p.words.length <= 3000 && !!tempiParole(p.words)),
@@ -6905,7 +7083,8 @@
       crea(p) {
         if (stor.anteprima) storChiudiAnteprima();
         const testo = typeof p.text === 'string' ? p.text : t(p.id) || p.id;
-        const c = storCanta(cantori(p), testo, p.words ? tempiParole(p.words) : null);
+        const c = storCanta(cantori(p), testo, p.words ? tempiParole(p.words) : null,
+          p.voice ? Array.from(p.voice, x => Number(x) / 9) : null);
         const via = () => { if (c.attivo) { c.attivo = false; c.fine = stor.orologio; } };
         return {
           aggiorna(u) { c.u = u; if (u >= 1) via(); },
@@ -7314,6 +7493,7 @@
     // v450: le storie cantate e gli ospiti
     canta: storCanta, cantoOra: storCantoOra, puntoDelCanto: storPuntoDelCanto, battito: storBattito,
     tempoNelCanto: storTempoNelCanto, paroleDelCanto: storParoleDelCanto, spintaBattuta, giroVolto: storGiroVolto,
+    voceDelCanto: storVoceDelCanto, regiaRitmo: storRegiaRitmo,
     tempoCanzone: storTempoCanzone, ospiti: storOspiti, sovrimpressioni: storDisegnaSovrimpressioni, STOR_POSTI_OSPITE,
     get canto() { const c = storCantoOra(); return c ? { chi: c.chi.slice(), testo: c.testo, u: c.u } : null; },
     get titolo() { return stor.titolo ? Object.assign({}, stor.titolo) : null; }

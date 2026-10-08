@@ -609,11 +609,11 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_scale` | `target`, `scale` (0,2–6) |
 | `character_become` (v414) | `target`, `shape` (`red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`) |
 | `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20) |
-| `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
+| `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`, dalla v452 `rhythm`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
 | `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo; dalla v450 `sync?` (`on`), `at?` (−30–3600), `loop?` (`off`), `bpm?` (30–240), `beat?`, `kick?` (0–3): §Le storie cantate |
-| `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri), `words?` (v451: i tempi di ogni parola, `'0.00-0.21 0.21-0.35 - …'` in frazioni della ripresa): il verso dura la sua ripresa |
+| `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri), `words?` (v451: i tempi di ogni parola, `'0.00-0.21 0.21-0.35 - …'` in frazioni della ripresa), `voice?` (v452: l'intensità della voce, una cifra 0–9 ogni 40 ms della ripresa): il verso dura la sua ripresa |
 | `story_photo` (v451) | `photo` (`pale_blue_dot`): la fotografia vera accanto alla scena, per la ripresa dell'azione |
 | `story_title` (v450) | `id` o `text`, `sub_id?` o `subtitle?`: il titolo grande al centro, per la sua ripresa |
 
@@ -1811,6 +1811,60 @@ Chi ha guardato «Pallido puntino blu» ha chiesto cinque cose.
   un movimento sopra, un clic o un tocco sulla scena li riportano. Prova:
   `prova-demo-browser.js` (che si ferma, come già nella v449, sullo stato
   dello schermo intero più avanti).
+
+### La voce vera, la regia a ritmo, un Sagan più vero (v452)
+
+Seconda visione, altre richieste: il sincronismo più realistico, la camera
+più dinamica e coinvolgente, i personaggi e l'ambiente che rappresentino bene
+quello che si dice, Carl Sagan più caratterizzato e realistico, e via il
+sottotitolo del titolo («Una canzone per Carl Sagan e le Voyager»).
+
+- **La voce separata.** La canzone è stata divisa in voce e base con Demucs
+  (il modello HTDemucs a quattro tracce, dal pacchetto npm `demucs`, sulla
+  CPU). Sulla sola voce: il riconoscimento delle parole rifatto (Whisper
+  small), poi ogni inizio di parola agganciato all'**attacco** vero della
+  voce entro ±0,12 s (376 parole su 425, di 6 centesimi in media); e
+  l'**intensità** della voce nella banda del parlato, misurata 25 volte al
+  secondo. Ogni verso la porta in `character_sing { voice: '2344249876…' }`
+  (una cifra da 0 a 9 per campione, sulla ripresa del verso).
+- **La bocca segue la voce vera** (`storVoceDelCanto`): si apre quanto la
+  voce è forte in quel momento, si chiude sulle pause e fra le sillabe, si
+  spalanca sulle note tenute; la vocale (A, E, O) la dà la sillaba della
+  parola in corso. Le labbra anticipano il suono di 1,4 campioni (56 ms,
+  `STOR_VOCE_ANTICIPO`), come nel parlato vero. Misurato nel browser: la
+  correlazione fra apertura della bocca e intensità della voce è 0,91, col
+  massimo a 4 centesimi d'anticipo (senza anticipo: 0,81 a 8 centesimi di
+  ritardo). Senza `voice` restano le parole (`words`), poi la fila stesa.
+- **La regia a ritmo** (`story_camera { mode: rhythm }`, `storRegiaRitmo`):
+  a ogni battuta cambia inquadratura. Chi canta da solo: primo piano
+  stretto, piano a due con chi gli sta più vicino, primo piano più largo,
+  campo largo; il coro: tutti, poi un cantante per battuta, uno dopo
+  l'altro. Ogni inquadratura col quadro inclinato di 2° da una parte o
+  dall'altra (`ritmoRollio`, con lo zoom che basta a non scoprire gli
+  angoli), il carrello che spinge avanti del 16% in una battuta
+  (`ritmoCarrello`), e una molla quasi due volte più svelta fra l'una e
+  l'altra (`ritmoSvelto`), come una frustata di camera. Nella storia: le
+  strofe a ritmo, i ritornelli e il finale col giro della camera (fino a 32°
+  al secondo), le camere 3D con giri, salite e zoom molto più ampi.
+- **Il testo raccontato dalle immagini**: nell'intro la Terra compare come
+  quel puntino che «può non sembrare di particolare interesse» (`size:
+  real`, l'adesivo legato al pixel vero) e poi i cuori su «ma per noi è
+  diverso»; la seconda strofa («ogni cacciatore…») è il cielo d'inverno di
+  Roma con Orione, il cacciatore, e la canta Betelgeuse dalla sua spalla;
+  nel ritornello la Terra rimpicciolisce sul «piccolissimo palco» e il fumo
+  scende sul «buio cosmico»; scintille della vita nel ponte, cuori
+  sull'«occuparci l'uno dell'altro», il bagliore sul «proteggere».
+- **Carl Sagan** (`disegnaSagan`): la testa non è più un disco ma un ovale
+  con la mascella, ancora nello stile dei pianeti (ombra spostata, bordo
+  color panna, taglio d'ombra), con gli zigomi, il naso lungo con le narici,
+  le pieghe del sorriso e le zampe di gallina, le orecchie sotto alle
+  basette, i capelli che seguono la testa nuova; occhi più piccoli e umani
+  con **l'iride castana** (`irideVera` nel profilo: l'anello col suo colore e
+  le striature attorno a una pupilla più piccola) e niente ombretto; il naso
+  generico dei volti di lui spento (`nasoProprio`).
+
+Prove: `prova-storie.js` («la bocca segue la voce vera…», «la regia a ritmo
+cambia inquadratura a ogni battuta…»).
 
 ## Accessibilità
 
