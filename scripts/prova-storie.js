@@ -823,6 +823,24 @@ prova('character_move porta l\'astro accanto alla meta, sullo schermo e nello sp
   motore.ferma(); await Promise.resolve(); await Promise.resolve();
   delete globalThis.sol;
 });
+prova('il perno della camera sta sul personaggio da fermo, non sul suo tremito (v454)', async () => {
+  globalThis.sol = SOL_FINTO();
+  motore.avvia(demo(sc('solar_system_3d', "character_show { target: 'Mars', size: 'real' }",
+    "character_animate { target: 'Mars', animation: shake, times: 6 }")), { ripristina() {} });
+  passo(10);
+  let mosso = null;
+  for (let i = 0; i < 40 && !mosso; i++) {
+    passo(23);
+    const P = S.scena3D('Mars', MARTE, 10);
+    if (Math.hypot(P.x - MARTE.x, P.y - MARTE.y, P.z - MARTE.z) > 1e-6) mosso = P;
+  }
+  assert.ok(mosso, 'Marte trema davvero');
+  assert.deepEqual(S.puntoFermo3D('Mars', mosso), MARTE, 'il perno resta sul punto da fermo');
+  assert.equal(S.puntoFermo3D('Mars', MARTE), null, 'un punto che non è quello appena mostrato non vale');
+  assert.equal(S.puntoFermo3D('Jupiter', mosso), null, 'chi non è un personaggio: il punto dell\'app');
+  motore.ferma(); await Promise.resolve(); await Promise.resolve();
+  delete globalThis.sol;
+});
 prova('i percorsi partono e arrivano dove devono; il teletrasporto fa sparire e ricomparire', () => {
   globalThis.sol = SOL_FINTO();
   const assi = S.assiSchermo(globalThis.sol);
