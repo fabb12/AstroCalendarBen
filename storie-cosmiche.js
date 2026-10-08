@@ -1316,11 +1316,49 @@
    * musica vanno insieme. Le bocche seguono la fila delle sillabe del verso
    * stesa sulla sua durata (§3), il karaoke in basso colora le parole
    * cantate (§7-quinquies). Più versi insieme: vince l'ultimo cominciato. */
-  function storCanta(chi, testo) {
+  function storCanta(chi, testo, tempiParole) {
     const pulito = String(testo || '').replace(/\s+/g, ' ').trim();
-    const c = { chi: chi.slice(), testo: pulito, ritmo: storRitmo(pulito), u: 0, attivo: true, da: stor.orologio, fine: 0 };
+    const c = { chi: chi.slice(), testo: pulito, ritmo: storRitmo(pulito), u: 0, attivo: true, da: stor.orologio, fine: 0, parole: null };
+    c.parole = storParoleDelCanto(pulito, c.ritmo, tempiParole);
     stor.canti.push(c);
     return c;
+  }
+  /* Il labiale sulle parole vere (v450, rifatto). Prima la fila delle
+   * sillabe era stesa uguale su tutto il verso: in un rap, dove le parole
+   * corrono e poi si fermano, la bocca andava avanti o indietro rispetto
+   * alla voce anche di mezzo secondo. Ora un verso può portare i tempi di
+   * ogni parola (`words`, misurati sulla canzone: «0.00-0.21 0.21-0.35 …», in
+   * frazioni della ripresa, `-` per una parola che non si canta, come «—»):
+   * ogni parola stende le sue sillabe sul suo tempo, e fra una parola e
+   * l'altra la bocca si chiude. Senza tempi, o se non tornano col testo, vale
+   * la fila stesa sul verso. Funzione pura. */
+  function storParoleDelCanto(testo, ritmo, tempi) {
+    if (!Array.isArray(tempi) || !tempi.length) return null;
+    const blocchi = testo.split(' ');
+    if (blocchi.length !== tempi.length) return null;
+    const parole = [];
+    let c0 = 0;
+    blocchi.forEach((b, i) => {
+      const tm = tempi[i];
+      if (tm && /[\p{L}\p{N}]/u.test(b)) {
+        const r0 = storTempoDelCarattere(ritmo, c0), r1 = Math.max(r0 + 1e-3, storFineParola(ritmo, c0));
+        parole.push({ a: tm[0], b: Math.max(tm[0] + 0.005, tm[1]), c0, c1: c0 + b.length, r0, r1 });
+      }
+      c0 += b.length + 1;
+    });
+    return parole.length ? parole : null;
+  }
+  // Dove si è nella fila delle sillabe al punto `u` del verso, e se in quel
+  // momento si sta cantando una parola (`muto` fra una parola e l'altra)
+  function storTempoNelCanto(c, u) {
+    if (!c.parole) return { tempo: Math.max(0, Math.min(1, u)) * c.ritmo.totale, muto: false };
+    let prima = null;
+    for (const p of c.parole) {
+      if (u < p.a) break;
+      if (u < p.b) return { tempo: p.r0 + (u - p.a) / (p.b - p.a) * (p.r1 - p.r0) * 0.999, muto: false };
+      prima = p;
+    }
+    return { tempo: prima ? prima.r1 : 0, muto: true };
   }
   function storCantoOra() {
     for (let i = stor.canti.length - 1; i >= 0; i--) if (stor.canti[i].attivo) return stor.canti[i];
@@ -1328,8 +1366,9 @@
   }
   // Fin dove è arrivato il verso: il carattere (con la frazione dentro alla
   // sillaba) e la sillaba in corso. Funzione pura.
-  function storPuntoDelCanto(ritmo, u, lunghezza) {
-    const tempo = Math.max(0, Math.min(1, u)) * ritmo.totale;
+  function storPuntoDelCanto(ritmo, u, lunghezza) { return storPuntoAlTempo(ritmo, Math.max(0, Math.min(1, u)) * ritmo.totale, lunghezza); }
+  function storPuntoAlTempo(ritmo, tempo, lunghezza) {
+    if (tempo >= ritmo.totale) return { carattere: lunghezza, frazione: 1, sillaba: false };
     const s = segmentoAl(ritmo, tempo);
     if (!s) return { carattere: lunghezza, frazione: 1, sillaba: false };
     if (s.tipo !== 'sillaba') return { carattere: s.da, frazione: 0, sillaba: false };
@@ -1362,8 +1401,36 @@
     const n = (s - c.zero) / c.periodo, i = Math.floor(n);
     return { f: n - i, i, forte: ((i % 4) + 4) % 4 === 0, periodo: c.periodo, kick: c.kick };
   }
+  /* Di quanto è girato il volto di un personaggio sulla sua sfera, quando la
+   * regia fa girare la camera (v450): il volto rincorre il giro con una molla
+   * lenta (`STOR_TAU_VOLTO_GIRO`), quindi gira solo finché la camera gira e
+   * poi torna di fronte, e mai oltre `STOR_VOLTO_GIRO_MAX`. Un salto del giro
+   * (la scena nuova lo azzera) non fa girare nessuno: si riparte di fronte. */
+  const STOR_VOLTO_GIRO_MAX = 0.42, STOR_TAU_VOLTO_GIRO = 650;
+  function storGiroVolto(pg, giro) {
+    const ora = stor.orologio;
+    if (stor.ridotto || !pg.voltoGiro || Math.abs(giro - pg.voltoGiro.segue) > 1.2) {
+      pg.voltoGiro = { segue: giro, ora };
+      return 0;
+    }
+    const dt = Math.max(0, Math.min(200, ora - pg.voltoGiro.ora));
+    pg.voltoGiro.ora = ora;
+    pg.voltoGiro.segue = mix(pg.voltoGiro.segue, giro, 1 - Math.exp(-dt / STOR_TAU_VOLTO_GIRO));
+    return Math.max(-STOR_VOLTO_GIRO_MAX, Math.min(STOR_VOLTO_GIRO_MAX, giro - pg.voltoGiro.segue));
+  }
   // Quanto si sente il colpo adesso: 1 sul colpo, e si spegne in `ms`
   function colpoBattito(b, ms) { return b ? Math.exp(-b.f * b.periodo * 1000 / ms) : 0; }
+  /* La spinta della battuta (v450, rifatta): una volta ogni quattro colpi,
+   * sul primo, sale in `sale` ms e scende piano in `scende` ms. La prima
+   * versione dava uno spintone secco a ogni colpo, spento in un decimo di
+   * secondo: un'ottantina di scatti al minuto, e chi guardava vedeva il
+   * quadro tremare. Funzione pura del battito: 0…1. */
+  function spintaBattuta(b, sale = 240, scende = 520) {
+    if (!b) return 0;
+    const ms = (((b.i % 4) + 4) % 4 + b.f) * b.periodo * 1000;
+    // sale con una mezza onda (parte e arriva piano), poi si spegne
+    return ms < sale ? 0.5 - 0.5 * Math.cos(ms / sale * Math.PI) : Math.exp(-(ms - sale) / scende);
+  }
 
   // ===================================================================
   // 5-bis. Il corpo nello spazio: viaggi, animazioni, misura (vista 3D)
@@ -3815,9 +3882,11 @@
     // che va di qua e di là a colpi alterni, più marcato sul primo
     const battito = storBattito();
     if (battito) {
-      const q = colpoBattito(battito, 150) * (battito.forte ? 1.35 : 1);
-      posa.sy *= 1 - 0.035 * q; posa.sx *= 1 + 0.022 * q;
-      posa.giro += (battito.i % 2 ? 1 : -1) * 0.03 * (1 - battito.f) * (0.6 + 0.4 * Math.sin((pg.fase || 0) * 3));
+      // un cenno morbido (sale e scende in tutto il colpo, niente scatto) e
+      // la testa che dondola piano da un lato all'altro, un lato per colpo
+      const q = Math.sin(Math.PI * battito.f) * (battito.forte ? 1.2 : 1);
+      posa.sy *= 1 - 0.018 * q; posa.sx *= 1 + 0.012 * q;
+      posa.giro += Math.sin(Math.PI * (battito.i + battito.f)) * 0.025 * (0.6 + 0.4 * Math.sin((pg.fase || 0) * 3));
     }
     // la paura trema a otto colpi al secondo: a diciassette, campionata a
     // sessanta fotogrammi, il volto saltava a caso invece di tremare (v439)
@@ -4001,7 +4070,14 @@
       let forma;
       const staParlando = canta || !!(parlante === pg.id && voce && voce.parla);
       if (canta) {
-        forma = storBoccaDaSegnale({ parla: true, testo: canto.testo, progresso: canto.u }, canto.ritmo);
+        const qui = storTempoNelCanto(canto, canto.u);
+        if (qui.muto) forma = { forma: 'chiusa', apertura: 0, via: 'canto' };
+        else {
+          forma = Object.assign(storFormaAlTempo(canto.ritmo, qui.tempo), { via: 'canto' });
+          // si canta con la bocca più aperta di come si parla
+          forma.apertura = Math.min(1, forma.apertura * 1.12);
+          forma.forma = formaDaApertura(forma.apertura, forma.vocale || 'a');
+        }
         if (ridotto) forma.apertura *= 0.7;
       } else if (staParlando) {
         const chiave = voce.testo || '';
@@ -4038,7 +4114,16 @@
       });
       // Il volto girato (v432): nella 3D e nella scala cosmica, quando la
       // regia gira la camera attorno, il volto resta dov'era sulla sfera
-      if (vista === 'sistema' || vista === 'vicino' || vista === 'cosmo') geom.yaw = stor.regia.giro || 0;
+      // v450: il volto **segue** la camera, con un po' di ritardo e al più di
+      // `STOR_VOLTO_GIRO_MAX`: nel giro lungo della regia (centinaia di gradi
+      // in una scena) i personaggi finivano di spalle proprio mentre
+      // cantavano, e il viso schiacciato sul bordo sembrava uno sbaglio.
+      // Così è una testa che si gira verso chi la riprende. I corpi disegnati
+      // piatti — l'ospite, le sonde, le stazioni, le vesti — non sono una
+      // sfera: lì il viso girava da solo sopra a un corpo fermo (Carl Sagan
+      // con gli occhi scivolati di lato), e adesso guardano sempre in camera.
+      if ((vista === 'sistema' || vista === 'vicino' || vista === 'cosmo') && !posto) geom.yaw = storGiroVolto(pg, stor.regia.giro || 0);
+      else pg.voltoGiro = null;
       // Il segno da fumetto (le scintille, la goccia) è del volto: girato di
       // spalle se ne va con lui (v433), di lato si vede appena
       const segnoVisto = Math.max(0, Math.min(1, Math.cos(geom.yaw || 0) * 1.6 + 0.4));
@@ -5450,7 +5535,7 @@
     // decimo di secondo, più forte sul primo della battuta. Come la scossa:
     // solo ingrandisce, quindi non scopre mai i bordi
     const battito = accesa && !stor.ridotto && !demoInPausa() ? storBattito() : null;
-    const kick = battito ? colpoBattito(battito, 110) * (battito.forte ? 0.028 : 0.011) * (battito.kick || 1) : 0;
+    const kick = battito ? spintaBattuta(battito) * 0.014 * (battito.kick || 1) : 0;
     const k = Math.exp(r.lk) * (1 + 0.035 * Math.min(1.5, forza)) * (1 + kick);
     const ax = L * r.ax, ay = H * r.ay;
     let tx = ax - k * r.fx, ty = ay - k * r.fy;
@@ -5463,9 +5548,12 @@
       ty += amp * 0.8 * (Math.sin(t * 0.00029 + 0.7) + 0.5 * Math.sin(t * 0.00083 + 2.3));
     }
     if (forza > 0) {
+      // v450: a metà della frequenza di prima (circa 4,5 oscillazioni al
+      // secondo invece di 10): a 10 il quadro vibrava, e chi guardava lo
+      // trovava troppo veloce; così è uno scossone, non un ronzio
       const t = stor.orologio;
-      tx += forza * 7 * (Math.sin(t * 0.061) + 0.6 * Math.sin(t * 0.137 + 1.3));
-      ty += forza * 6 * (Math.sin(t * 0.077 + 0.4) + 0.6 * Math.sin(t * 0.151 + 2.1));
+      tx += forza * 6 * (Math.sin(t * 0.029) + 0.5 * Math.sin(t * 0.063 + 1.3));
+      ty += forza * 5 * (Math.sin(t * 0.035 + 0.4) + 0.5 * Math.sin(t * 0.071 + 2.1));
     }
     // La finestra non esce dalla tela
     tx = Math.min(0, Math.max(L * (1 - k), tx));
@@ -5607,7 +5695,9 @@
     ctx.save();
     ctx.font = `800 ${fs}px ${font}`;
     const righe = storRigheTesto(ctx, c.testo, largo - fs * 1.4, 3, fs);
-    const punto = storPuntoDelCanto(c.ritmo, c.u, c.testo.length);
+    const qui = storTempoNelCanto(c, c.u);
+    const punto = c.attivo ? storPuntoAlTempo(c.ritmo, qui.tempo, c.testo.length) : { carattere: c.testo.length, frazione: 1, sillaba: false };
+    if (qui.muto) punto.sillaba = false;
     const passo = fs * 1.32;
     const h = fsN * 1.9 + righe.length * passo + fs * 0.55;
     // chi canta, coi suoi colori: la riga dei nomi conta per la larghezza
@@ -6662,6 +6752,87 @@
       crea(p) { storMusica(p.src, p.volume); return {}; }
     }
   });
+  /* La fotografia vera (v450, `story_photo { photo }`): quando la canzone
+   * parla del pallido puntino blu, chi ha chiesto la storia voleva vedere
+   * **la** fotografia, quella fatta dalla Voyager 1 il 14 febbraio 1990. È
+   * della NASA (pubblico dominio) e sta su Wikimedia Commons: la si chiede al
+   * browser di chi guarda, come la copertina del Disco d'Oro (`golden_record`
+   * in demo.js), prima dal file di Commons, poi dall'immagine della voce di
+   * Wikipedia; senza rete un'illustrazione disegnata qui, **con scritto che è
+   * un'illustrazione**. Sta in una scheda accanto alla scena (lo stesso
+   * aspetto, `.demo-immagine`), visibile per la ripresa dell'azione. */
+  const STOR_FOTO = {
+    pale_blue_dot: {
+      candidate: ['https://commons.wikimedia.org/wiki/Special:FilePath/Pale_Blue_Dot.png?width=640',
+        'https://upload.wikimedia.org/wikipedia/commons/7/73/Pale_Blue_Dot.png'],
+      voci: ['https://it.wikipedia.org/api/rest_v1/page/summary/Pale_Blue_Dot', 'https://en.wikipedia.org/api/rest_v1/page/summary/Pale_Blue_Dot'],
+      illustrazione: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">' +
+        '<defs><linearGradient id="r" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c2410c" stop-opacity="0"/>' +
+        '<stop offset=".5" stop-color="#fdba74" stop-opacity=".5"/><stop offset="1" stop-color="#c2410c" stop-opacity="0"/></linearGradient></defs>' +
+        '<rect width="300" height="400" fill="#07060c"/>' +
+        [[40, 26, '#7c2d12'], [96, 34, '#9a3412'], [168, 40, '#b45309'], [226, 30, '#1e3a8a']].map(([x, w, c]) =>
+          `<g transform="rotate(-12 150 200)"><rect x="${x}" y="-80" width="${w}" height="560" fill="url(#r)" opacity=".55"/>` +
+          `<rect x="${x + w * 0.3}" y="-80" width="${w * 0.4}" height="560" fill="${c}" opacity=".35"/></g>`).join('') +
+        '<circle cx="196" cy="262" r="1.8" fill="#bfdbfe"/>' +
+        '<circle cx="196" cy="262" r="11" fill="none" stroke="#fde68a" stroke-width="1.4" stroke-dasharray="3 3"/></svg>')
+    }
+  };
+  const fotoTrovate = new Map();   // la prima candidata che ha risposto, per le scene dopo
+  Object.assign(COMANDI, {
+    story_photo: {
+      verifica(p) {
+        campi(p, ['photo']);
+        scelta(p.photo, 'photo', Object.keys(STOR_FOTO));
+        richiedi(p.photo !== undefined, 'valoreIgnoto', { campo: 'photo', nome: '', elenco: Object.keys(STOR_FOTO).join(', ') });
+      },
+      crea(p) {
+        const f = STOR_FOTO[p.photo];
+        if (typeof document === 'undefined' || !document.createElement) return {};
+        const chiave = 'storie.foto.' + p.photo;
+        const scheda = document.createElement('figure');
+        scheda.className = 'demo-immagine demo-immagine-foto'; scheda.setAttribute('role', 'note');
+        const cornice = document.createElement('div'); cornice.className = 'demo-immagine-cornice';
+        const img = document.createElement('img');
+        img.alt = t(chiave + '.alt'); img.decoding = 'async'; img.referrerPolicy = 'no-referrer';
+        const didascalia = document.createElement('figcaption');
+        const titolo = document.createElement('span'); titolo.className = 'demo-immagine-titolo';
+        const credito = document.createElement('span'); credito.className = 'demo-immagine-credito';
+        titolo.textContent = t(chiave + '.didascalia');
+        didascalia.append(titolo, credito); cornice.append(img); scheda.append(cornice, didascalia);
+        const candidate = fotoTrovate.has(p.photo) ? [fotoTrovate.get(p.photo)] : f.candidate.slice();
+        const voci = f.voci.slice();
+        let chiusa = false;
+        const metti = (src, illustrazione) => {
+          img.dataset.illustrazione = illustrazione ? '1' : '';
+          credito.textContent = t(chiave + (illustrazione ? '.illustrazione' : '.credito'));
+          img.src = src;
+        };
+        const prossima = () => {
+          if (chiusa) return;
+          if (candidate.length) { metti(candidate.shift(), false); return; }
+          if (voci.length && typeof fetch === 'function') {
+            fetch(voci.shift()).then(r => (r.ok ? r.json() : null)).then(d => {
+              const src = d && ((d.originalimage && d.originalimage.source) || (d.thumbnail && d.thumbnail.source));
+              if (src) candidate.push(src);
+              prossima();
+            }).catch(() => prossima());
+            return;
+          }
+          metti(f.illustrazione, true);
+        };
+        img.addEventListener('error', () => { if (img.dataset.illustrazione !== '1') prossima(); });
+        img.addEventListener('load', () => { if (img.dataset.illustrazione !== '1' && !img.src.startsWith('data:')) fotoTrovate.set(p.photo, img.src); });
+        prossima();
+        const sotto = document.getElementById('demo-sottotitoli');
+        (sotto && sotto.parentElement || document.body).append(scheda);
+        return {
+          aggiorna(u) { scheda.classList.toggle('visibile', u < 1); },
+          chiudi() { chiusa = true; scheda.remove(); }
+        };
+      }
+    }
+  });
   // v450: la canzone che la storia segue. `sync: on` aggancia la musica al
   // tempo della demo, `at` dice dove è la canzone quando la scena comincia
   // (negativo: comincia fra un po'), `loop: off` la fa finire una volta
@@ -6690,6 +6861,20 @@
    * sono gli altri che cantano lo stesso verso, separati da virgole. Il
    * verso dura la ripresa dell'azione. */
   const STOR_CANTO_MAX = 240;
+  // «0.00-0.21 0.21-0.35 - 0.4-0.6» → [[0, 0.21], [0.21, 0.35], null, [0.4, 0.6]]
+  function tempiParole(v) {
+    const pezzi = String(v).trim().split(/\s+/);
+    const fuori = [];
+    for (const x of pezzi) {
+      if (x === '-') { fuori.push(null); continue; }
+      const m = /^(\d*\.?\d+)-(\d*\.?\d+)$/.exec(x);
+      if (!m) return null;
+      const a = Number(m[1]), b = Number(m[2]);
+      if (!(a >= 0 && b >= a && b <= 1.5)) return null;
+      fuori.push([a, b]);
+    }
+    return fuori.length ? fuori : null;
+  }
   function cantori(p) {
     const altri = p.with === undefined ? [] : String(p.with).split(',').map(x => x.trim()).filter(Boolean);
     return [storCanonico(p.target)].concat(altri.map(storCanonico)).filter((x, i, a) => a.indexOf(x) === i);
@@ -6702,9 +6887,11 @@
   Object.assign(COMANDI, {
     character_sing: {
       verifica(p, scena) {
-        campi(p, ['target', 'with', 'id', 'text']);
+        campi(p, ['target', 'with', 'id', 'text', 'words']);
         bersaglio(p);
         testoDi(p, 'character_sing', STOR_CANTO_MAX);
+        richiedi(p.words === undefined || (typeof p.words === 'string' && p.words.length <= 3000 && !!tempiParole(p.words)),
+          'valoreIgnoto', { campo: 'words', nome: String(p.words).slice(0, 40), elenco: '0.00-0.20 0.22-0.41 …' });
         inScena(p, scena);
         if (p.with !== undefined) {
           richiedi(typeof p.with === 'string', 'personaggioIgnoto', { nome: String(p.with) });
@@ -6718,7 +6905,7 @@
       crea(p) {
         if (stor.anteprima) storChiudiAnteprima();
         const testo = typeof p.text === 'string' ? p.text : t(p.id) || p.id;
-        const c = storCanta(cantori(p), testo);
+        const c = storCanta(cantori(p), testo, p.words ? tempiParole(p.words) : null);
         const via = () => { if (c.attivo) { c.attivo = false; c.fine = stor.orologio; } };
         return {
           aggiorna(u) { c.u = u; if (u >= 1) via(); },
@@ -7126,6 +7313,7 @@
     get effetti() { return stor.effetti.map(e => ({ tipo: e.tipo, target: e.target, dove: e.dove })); },
     // v450: le storie cantate e gli ospiti
     canta: storCanta, cantoOra: storCantoOra, puntoDelCanto: storPuntoDelCanto, battito: storBattito,
+    tempoNelCanto: storTempoNelCanto, paroleDelCanto: storParoleDelCanto, spintaBattuta, giroVolto: storGiroVolto,
     tempoCanzone: storTempoCanzone, ospiti: storOspiti, sovrimpressioni: storDisegnaSovrimpressioni, STOR_POSTI_OSPITE,
     get canto() { const c = storCantoOra(); return c ? { chi: c.chi.slice(), testo: c.testo, u: c.u } : null; },
     get titolo() { return stor.titolo ? Object.assign({}, stor.titolo) : null; }

@@ -1852,6 +1852,60 @@ prova('Carl Sagan è un ospite: sta sullo schermo in ogni vista, scivola al post
   assert.ok(S.ritratto({ getContext: () => ctx, clientWidth: 120, clientHeight: 120 }, 'sagan', 'happy'));
   assert.ok(chiamate.filter(k => k === 'quadraticCurveTo').length > 20, 'i capelli: le ciocche lisciate');
 });
+prova('il labiale sulle parole vere: ogni parola sul suo tempo, la bocca chiusa fra una parola e l\'altra', () => {
+  const testo = 'Pallido punto blu';
+  const c = S.canta(['Earth'], testo, [[0, 0.3], [0.5, 0.7], [0.8, 1]]);
+  assert.ok(c.parole && c.parole.length === 3, 'tre parole coi loro tempi');
+  assert.equal(S.tempoNelCanto(c, 0.4).muto, true, 'fra «Pallido» e «punto» la bocca è chiusa');
+  assert.equal(S.tempoNelCanto(c, 0.1).muto, false);
+  const a = S.tempoNelCanto(c, 0.55).tempo, b = S.tempoNelCanto(c, 0.65).tempo;
+  assert.ok(a >= c.parole[1].r0 && b > a && b < c.parole[1].r1, '«punto» stende le sue sillabe sul suo tempo');
+  // il karaoke: a metà della pausa è finito «Pallido» e non ancora cominciato «punto»
+  const p = S.puntoDelCanto(c.ritmo, 0, testo.length);
+  assert.equal(p.carattere, 0);
+  assert.equal(S.paroleDelCanto(testo, c.ritmo, [[0, 1]]), null, 'tempi che non tornano col testo: la fila stesa sul verso');
+  S.sgombra();
+});
+prova('la camera batte il tempo senza scatti: una spinta morbida per battuta, non un colpo a ogni battito', () => {
+  const periodo = 60 / 87;
+  let max = 0, massimi = 0, prima = null;
+  for (let ms = 0; ms < 4 * periodo * 1000 * 3; ms += 16) {
+    const n = ms / 1000 / periodo, i = Math.floor(n);
+    const v = S.spintaBattuta({ i, f: n - i, periodo });
+    if (prima !== null) max = Math.max(max, Math.abs(v - prima));
+    if (v > 0.98) massimi++;
+    prima = v;
+  }
+  assert.ok(max < 0.12, 'nessun salto fra due fotogrammi: ' + max.toFixed(3));
+  assert.ok(massimi >= 3 && massimi <= 12, 'tre battute, tre spinte: ' + massimi);
+});
+prova('nel giro della camera il volto la segue senza andare di spalle, e Carl Sagan guarda sempre in camera', () => {
+  scena({ Earth: {}, sagan: {} });
+  const pg = S.stato.personaggi.get('Earth');
+  let giro = 0, peggio = 0;
+  for (let k = 0; k < 300; k++) { avanza(16); S.stato.orologio += 16; giro += 0.4 * 0.016; peggio = Math.max(peggio, Math.abs(S.giroVolto(pg, giro))); }
+  assert.ok(giro > 1.5 && peggio <= 0.42 + 1e-9 && peggio > 0.1, `girati ${giro.toFixed(2)} rad, il volto al più ${peggio.toFixed(2)}`);
+  // ferma la camera: il volto torna di fronte
+  for (let k = 0; k < 300; k++) { avanza(16); S.stato.orologio += 16; S.giroVolto(pg, giro); }
+  assert.ok(Math.abs(S.giroVolto(pg, giro)) < 0.02, 'camera ferma: di fronte');
+  // nel disegno l'ospite non ha giro
+  S.stato.regia.giro = 1.2;
+  const d = S.disegnaPersonaggi(telaFinta().ctx, 'sistema', S.ospiti(800, 600), 800, 600);
+  const g = S.stato.ultimiDisegnati.find(x => x.id === 'sagan');
+  assert.ok(g && !(g.geom.yaw), 'Carl Sagan non gira il viso sopra al corpo fermo');
+  S.stato.regia.giro = 0;
+  S.sgombra();
+});
+prova('story_photo: la fotografia vera, validata', () => {
+  motore.prepara(demo(sc('solar_system_3d', "story_photo { photo: pale_blue_dot }")));
+  assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "story_photo { photo: luna }"))), /photo sconosciuto/);
+  assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_sing { target: 'Earth', text: 'la', words: 'a-b' }"))), /words sconosciuto/);
+  for (const l of ['it', 'en']) for (const k of ['alt', 'didascalia', 'credito', 'illustrazione'])
+    assert.equal(typeof DIZ[l].messaggi['storie.foto.pale_blue_dot.' + k], 'string');
+  const d = predefiniti.find(x => x.chiave === 'storia_puntino');
+  assert.ok((d.testo.match(/story_photo/g) || []).length >= 4, 'la foto torna quando si canta del puntino');
+  assert.ok((d.testo.match(/words: '/g) || []).length >= 60, 'i versi portano i tempi delle parole');
+});
 prova('«Pallido puntino blu»: la storia dura la canzone, ogni scena la riaggancia al punto giusto, i versi vanno in ordine', () => {
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');
   const prep = motore.prepara(d.testo);
