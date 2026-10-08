@@ -98,6 +98,8 @@ const prova = (nome, fn) => prove.push([nome, fn]);
     await pagina.goto(origine, { waitUntil: 'domcontentloaded' });
     await pagina.waitForFunction(() => window.StudioStorie && window.StorieCosmiche && window.AstroDemo && window.mostraVista);
     await pagina.evaluate(() => { mostraVista('demo'); demoMostraScheda('demo-scheda-storie'); });
+    // v447: le voci dei personaggi stanno nella loro linguetta del passo 2
+    await pagina.locator('[data-fai="schedaPasso"][data-dove="cast"][data-valore="voci"]').click();
     await pagina.waitForSelector('#studio-voci-pg');
     const ultima = () => richieste[richieste.length - 1];
     const esito = () => pagina.locator('#studio-esito').textContent();

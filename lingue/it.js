@@ -6612,5 +6612,13 @@ window.ASTRO_DIZIONARI['it'] = {
     "studio.ui.musicaNessuna": "nessuna musica",
     "studio.ui.momenti": "I momenti ({n})",
     "studio.ui.momentiAiuto": "tocca un momento per aprirlo",
+    "studio.ui.scheda.idea": "Storia pronta",
+    "studio.ui.scheda.titolo": "Titolo e obiettivo",
+    "studio.ui.nellaStoria": "Nella storia:",
+    "studio.ui.togliDallaStoria": "Togli {nome} dalla storia",
+    "studio.ui.sceltiDi": "{n} su {tot}",
+    "studio.ui.nessunoDi": "nessuno · {tot} da scegliere",
+    "studio.ui.conLaVoce": "{n} su {tot} con la voce",
+    "studio.ui.elSpento": "ElevenLabs non collegato",
   }
 };
