@@ -12855,13 +12855,39 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 .studio-barra { display: grid; gap: 8px; }
 .studio-barra-tasti { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .studio-barra-tasti .storia-avvia { width: auto; flex: 1 1 12rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.studio-altro { position: relative; }
-.studio-altro > summary { list-style: none; cursor: pointer; }
-.studio-altro > summary::-webkit-details-marker { display: none; }
-.studio-altro-menu {
-  position: absolute; right: 0; z-index: 5; margin-top: 6px; display: grid; gap: 6px; min-width: 12rem; padding: 8px;
-  border: 1px solid var(--bordo); border-radius: 12px; background: #120c2b; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+/* v449: le impostazioni dello Studio in un pannello a parte (Storia, Sincronizza, ElevenLabs) */
+.studio-imp-tasto { display: inline-flex; align-items: center; gap: 6px; }
+.studio-imp-tasto[aria-expanded="true"] { border-color: #a78bfa; background: rgba(167, 139, 250, 0.16); }
+.studio-impostazioni {
+  display: grid; gap: 10px; padding: 12px; border: 1px solid rgba(167, 139, 250, 0.45); border-radius: 14px;
+  background: rgba(18, 12, 43, 0.85); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); min-width: 0;
 }
+.studio-imp-testa { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.studio-imp-testa .storie-sottotitolo { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.studio-linguette-imp .studio-linguetta { flex: 1 1 9rem; }
+.studio-imp-corpo { display: grid; gap: 8px; min-width: 0; }
+.studio-imp-corpo .studio-gruppo-titolo { margin: 6px 0 0; }
+.studio-imp-voce { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.studio-imp-voce > .tasto-cielo { flex: 0 0 11rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.studio-imp-voce > small { flex: 1 1 14rem; min-width: 0; color: var(--testo-2, #94a3b8); font-size: 0.8rem; line-height: 1.35; }
+.studio-imp-principale { border-color: #a78bfa; font-weight: 700; }
+.studio-impostazioni .demo-opzioni-nota { margin: 0; }
+.studio-imp-pericolo { margin-top: 8px; padding-top: 10px; border-top: 1px dashed rgba(252, 165, 165, 0.35); }
+.studio-imp-stato { margin: 0; padding: 8px 10px; border-radius: 10px; font-size: 0.82rem; background: rgba(251, 191, 36, 0.1); color: #fde68a; overflow-wrap: anywhere; }
+.studio-imp-stato.ok { background: rgba(52, 211, 153, 0.1); color: #a7f3d0; }
+@media (max-width: 767px) {
+  .studio-imp-voce > .tasto-cielo { flex: 1 1 100%; }
+}
+/* v449: l'intonazione della battuta per ElevenLabs (faccia, tono, testo inviato) */
+.studio-intonazione { display: grid; gap: 6px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--bordo); border-radius: 12px; background: rgba(2, 6, 23, 0.35); min-width: 0; }
+.studio-tono-faccia { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+.studio-tono-faccia small { color: var(--testo-2, #94a3b8); }
+.studio-toni { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.studio-tono-titolo { flex: 1 1 100%; color: var(--testo-2, #94a3b8); }
+.studio-tono { padding: 4px 10px; border: 1px solid rgba(148, 163, 184, 0.4); border-radius: 999px; background: transparent; color: inherit; font-size: 0.8rem; cursor: pointer; }
+.studio-tono[aria-pressed="true"] { border-color: #c4b5fd; background: rgba(139, 92, 246, 0.45); color: #ede9fe; font-weight: 600; }
+.studio-tono-invio { color: var(--testo-2, #94a3b8); overflow-wrap: anywhere; }
+.studio-tono-invio code { color: #e9d5ff; }
 .studio-pericolo { color: #fca5a5; }
 .studio-repo { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--bordo); border-radius: 12px; background: rgba(2, 6, 23, 0.4); }
 .studio-repo .storie-campo { flex: 1 1 14rem; }

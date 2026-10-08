@@ -4,7 +4,7 @@
  *   node scripts/prova-elevenlabs-studio.js
  *
  * Un ElevenLabs finto (le rotte di Playwright su api.elevenlabs.io) e il giro
- * intero di chi scrive una storia: la chiave in Altro → ElevenLabs (verificata
+ * intero di chi scrive una storia: la chiave in Impostazioni → ElevenLabs (verificata
  * coi crediti), la scelta della voce di un personaggio dalla libreria in
  * italiano e del suo genere, l'anteprima, la prova con la sua battuta, la
  * voce scelta; «Genera» su una battuta con la proposta da ascoltare e «Usa
@@ -205,6 +205,53 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.equal(await pagina.locator(`[data-fai="elUsa"][data-dove="${base}"]`).count(), 0, 'la proposta usata se ne va');
       assert.match(await esito(), /Voce caricata/);
       if (process.env.FOTO) await pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${base}"]`).locator('xpath=ancestor::article[1]').screenshot({ path: path.join(process.env.FOTO, 'battuta.png') });
+    });
+
+    prova('l\'intonazione: la faccia e il tono vanno a ElevenLabs come tag, e cambiarli chiede di rigenerare (v449)', async () => {
+      const p = await progetto();
+      let si = -1, mk = -1;
+      p.scene.some((sc, i) => sc.momenti.some((m, k) => { if (m.chi === pg && m.testo.trim() && m.audio) { si = i; mk = k; return true; } return false; }));
+      const base = `scene.${si}.momenti.${mk}`;
+      await apriLinguetta(base, 'voce');
+      const invio = pagina.locator('.studio-tono-invio code');
+      const faccia = await pagina.evaluate(b => StudioStorie.facciaParlata(StudioStorie.progetto, b.split('.').reduce((o, k) => o[k], StudioStorie.progetto)), base);
+      const tagFaccia = await pagina.evaluate(f => StudioStorie.ELEVEN_TAG_UMORE[f] || '', faccia);
+      if (tagFaccia) assert.ok((await invio.textContent()).startsWith('[' + tagFaccia + ']'), 'la faccia che ha mentre parla');
+      assert.equal(await pagina.locator('.studio-voce-stato', { hasText: 'altra intonazione' }).count(), 0);
+      await pagina.locator(`[data-fai="tono"][data-dove="${base}"][data-valore="whispers"]`).click();
+      assert.equal(await pagina.locator(`[data-fai="tono"][data-dove="${base}"][data-valore="whispers"]`).getAttribute('aria-pressed'), 'true');
+      assert.match(await invio.textContent(), /\[whispers\]/);
+      assert.equal(await pagina.locator('.studio-voce-stato', { hasText: 'altra intonazione' }).count(), 1, 'l\'audio di prima è da rifare');
+      const n = richieste.length;
+      await pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${base}"]`).click();
+      await pagina.waitForSelector(`[data-fai="elUsa"][data-dove="${base}"]`);
+      const tts = richieste.slice(n).find(x => (x.via || '').startsWith('/v1/text-to-speech/'));
+      assert.equal(tts.corpo.text, (await invio.textContent()).trim(), 'parte proprio il testo mostrato');
+      assert.match(tts.corpo.text, tagFaccia ? new RegExp('^\\[' + tagFaccia + '\\] \\[whispers\\] ') : /^\[whispers\] /);
+      await pagina.locator(`[data-fai="elUsa"][data-dove="${base}"]`).click();
+      await pagina.waitForFunction(b => { const m = b.split('.').reduce((o, k) => o[k], StudioStorie.progetto); return m.audio && /whispers/.test(m.audio.tag || ''); }, base);
+      assert.equal(await pagina.locator('.studio-voce-stato', { hasText: 'altra intonazione' }).count(), 0);
+    });
+
+    prova('le impostazioni: un pannello a parte con Questa storia, Sincronizza ed ElevenLabs (v449)', async () => {
+      const tasto = pagina.locator('.studio-barra-tasti [data-fai="impostazioni"]');
+      if ((await tasto.getAttribute('aria-expanded')) === 'true') await tasto.click();
+      assert.equal(await pagina.locator('#studio-impostazioni').count(), 0);
+      await tasto.click();
+      assert.equal(await pagina.locator('#studio-impostazioni [data-fai="impScheda"]').count(), 3);
+      await pagina.locator('[data-fai="impScheda"][data-valore="storia"]').click();
+      for (const f of ['esporta', 'duplica', 'copione', 'fileVoci', 'elimina']) assert.equal(await pagina.locator(`#studio-impostazioni [data-fai="${f}"]`).count(), 1, f);
+      assert.equal(await pagina.locator('#studio-impostazioni label[for="studio-importa"]').count(), 1);
+      assert.equal(await pagina.locator('#studio-impostazioni .studio-imp-pericolo [data-fai="elimina"]').count(), 1, 'elimina sta a parte');
+      await pagina.locator('[data-fai="impScheda"][data-valore="repo"]').click();
+      assert.equal(await pagina.locator('#studio-impostazioni [data-fai="sincronizza"]').count(), 1);
+      assert.equal(await pagina.locator('#studio-impostazioni #studio-repo-token').count(), 1);
+      assert.match(await pagina.locator('#studio-impostazioni .studio-imp-stato').textContent(), /token|Collegato/);
+      await pagina.locator('[data-fai="impScheda"][data-valore="el"]').click();
+      assert.equal(await pagina.locator('#studio-impostazioni #studio-el-chiave').inputValue(), CHIAVE);
+      assert.match(await pagina.locator('[data-fai="impScheda"][data-valore="el"]').textContent(), /collegato/);
+      await pagina.locator('#studio-impostazioni .studio-imp-testa [data-fai="impostazioni"]').click();
+      assert.equal(await pagina.locator('#studio-impostazioni').count(), 0);
     });
 
     prova('Genera le mancanti: tutte le battute del personaggio, una dopo l\'altra', async () => {

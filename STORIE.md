@@ -1258,8 +1258,9 @@ animazione, cambia misura, effetto, palpebre, esce; ognuna con il suo
 volto o un bottone acceso/spento (`aria-pressed`), non aprendo un menu:
 
 - in alto la barra: quale storia, «Nuova storia», **Guarda la storia**,
-  «Salva nelle mie demo», e il resto (duplica, esporta, importa, copione,
-  elimina) in «Altro»;
+  «Salva nelle mie demo», e **Impostazioni** (dalla v449 un pannello a
+  parte, vedi §Le impostazioni in un pannello a parte; prima il menu
+  «Altro»);
 - **1 · L'idea**: le storie pronte sono schede da toccare, con le figurine
   dei loro personaggi; sotto, titolo e scopo;
 - **2 · Chi recita**: le figurine dei personaggi (col loro corpo e «lei» o
@@ -1352,8 +1353,8 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   (`astrocal_storie_voci_v1`, `studioVociStoria`) e il file
   `audio/narrazione/storie/storie-studio.json` (`studioFileVoci`): scritto da
   solo nella cartella collegata (File System Access, la maniglia in
-  IndexedDB `astrocal-studio-voci`) o scaricato da «Altro → File delle
-  voci». Ogni momento che parla ha un numero fisso (`voce`, col contatore
+  IndexedDB `astrocal-studio-voci`) o scaricato da «Impostazioni →
+  Questa storia → File delle voci». Ogni momento che parla ha un numero fisso (`voce`, col contatore
   `voceProssima`) e la storia un nome fisso (`voceChiave`, `studio_<titolo>`):
   le battute sono `studio.<nome>.<n>`, i file `<nome>-<n>.mp3`.
   `scripts/voci-storie.js` le mette in copione, regia (di partenza, dalla
@@ -1382,7 +1383,7 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   legge all'avvio dall'API dei contenuti (senza token, con
   `raw.githubusercontent.com` di riserva) e le mette fra progetti e demo
   (`libreria.metti`, la demo tiene la sua chiave). Scrivere vuole un token
-  fine-grained («Contents: Read and write») in «Altro → Repository GitHub»
+  fine-grained («Contents: Read and write») in «Impostazioni → Sincronizza»
   (`astrocal_storie_repo_v1`, fuori dal backup). «Salva nelle mie demo»,
   «Elimina», «Sincronizza ora» e ogni audio caricato in una storia salvata
   fanno un giro: leggi, unisci (`studioUnisci`: vince `aggiornato` più
@@ -1518,7 +1519,7 @@ Lo Studio parla con le API di ElevenLabs direttamente dal browser (§6c di
 `storie-studio.js`), senza passare dal terminale (`scripts/voci-storie.js
 --genera`, che resta per le storie pronte).
 
-- **La chiave**: Altro → **ElevenLabs**. Si incolla la chiave API (su
+- **La chiave**: Impostazioni → **ElevenLabs**. Si incolla la chiave API (su
   elevenlabs.io: Developers → API Keys), si sceglie il modello (Eleven v3,
   di serie, legge la faccia come tag di regia; Multilingual v2; Flash v2.5)
   e la recitazione (stabilità 0 / 0,5 / 1). «Salva e verifica» la prova
@@ -1589,6 +1590,59 @@ permesso Voices: scrittura, piano), la scelta spariva in silenzio.
   personaggio in quella scena cambia, la battuta è «da rifare»
   (`studioVoceDaRifare`), lo dice la riga della voce e «Genera le mancanti»
   la rifà.
+
+### L'intonazione della battuta: la faccia mentre parla e il tono (v449)
+
+A ElevenLabs (modello v3) andava come tag soltanto la faccia scelta **nel
+momento** (`m.umore`). Una battuta lasciata «di serie», detta con la faccia
+rimasta da un momento prima o cambiata da un'azione «Faccia» all'inizio
+partiva senza tag e usciva piatta, mentre a schermo il volto rideva o
+piangeva.
+
+- `studioFacciaParlata(progetto, m)` fa lo stesso conto del copione: la
+  faccia del momento, se no quella di un'azione «Faccia» sul personaggio
+  all'inizio (o per tutto) il momento, se no l'ultima avuta prima nella
+  storia (anche nelle scene prima, anche data da un'azione di un altro
+  momento), se no quella di serie del profilo. `ELEVEN_TAG_UMORE` la
+  traduce nel tag (`neutral` non ne ha).
+- **Il tono** (`m.tono`, al massimo `STUDIO_TONI_MAX` = 2 fra
+  `STUDIO_TONI`: whispers, shouts, sighs, gasps, laughs, crying, curious,
+  sarcastic) si aggiunge dopo la faccia: `[sad] [whispers] Psst!`. Al
+  terzo scelto esce il più vecchio. Ripulito in `studioRipulisci`.
+- `studioTestoPerVoce(m, modello, progetto)`: i tag scritti a mano in testa
+  alla battuta vincono ancora; senza v3 si manda il testo nudo.
+- Nella linguetta **Voce e durata**, sotto «Genera», il riquadro
+  **Intonazione** (`disegnaIntonazione`): l'emozione con la figurina e il
+  suo tag, i bottoni del tono e il testo esatto che parte («Va a
+  ElevenLabs: …»); col modello che non legge i tag lo dice. Nella
+  linguetta «Faccia» una riga ricorda che la faccia è anche l'emozione
+  della voce.
+- L'audio generato ricorda i suoi tag (`m.audio.tag`, `studioFirmaTag`):
+  se faccia o tono cambiano dopo, `studioTonoCambiato` lo segna «Generata
+  con un'altra intonazione» e la battuta entra fra le mancanti. Gli audio
+  caricati o registrati non hanno `tag` e non si toccano.
+
+### Le impostazioni in un pannello a parte (v449)
+
+«Altro» era un menu a tendina con dieci tasti uguali in fila (Duplica,
+Esporta, Importa, copione, file delle voci, Repository GitHub, Sincronizza,
+ElevenLabs, Elimina) e i pannelli del repository e della chiave si aprivano
+sotto la barra senza dire dove si era. Ora il tasto **Impostazioni**
+(ingranaggio, `data-fai="impostazioni"`) apre `#studio-impostazioni`
+(`pannelloImpostazioni`), con tre linguette e lo stato in piccolo
+(`STUDIO_SCHEDE_IMP`, `studio.impScheda`):
+
+- **Questa storia**: «Portarla altrove» (Esporta, Importa, Duplica) e «Per
+  chi scrive» (copione, file delle voci), ogni tasto con una riga che dice
+  cosa fa; **Elimina** in fondo, a parte, sotto una linea.
+- **Sincronizza**: a che punto è (collegato col token o solo lettura, con
+  repository e ramo), «Sincronizza ora» e il collegamento (`pannelloRepo`).
+- **ElevenLabs**: lo stato e la chiave (`pannelloEleven`).
+
+«Collega ElevenLabs» al passo 2 (`elPannello`) e `repo` aprono il pannello
+sulla loro linguetta e lo portano in vista (`apriImpostazioni`). Testi in
+`studio.imp.*`. Prove: `prova-elevenlabs-studio.js` (13),
+`prova-musica-storie.js` (12).
 
 ## Accessibilità
 

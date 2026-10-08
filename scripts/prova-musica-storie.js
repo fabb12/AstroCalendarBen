@@ -438,6 +438,48 @@ prova('ElevenLabs: il testo con la regia, le voci lette dalle API, i filtri e la
   assert.equal(St.voceDaRifare(sc, sc.scene[0], sc.scene[0].momenti[0]), false);
 });
 
+prova('ElevenLabs: l\'intonazione è la faccia che ha mentre parla, più il tono della battuta (v449)', () => {
+  const St = A.St;
+  const diSerie = A.Sc.profilo('Moon').espressione || 'neutral';
+  const p = St.ripulisci({ titolo: 'x', cast: ['Moon', 'Earth'], scene: [
+    { momenti: [
+      { chi: 'Moon', testo: 'Che paura!', umore: 'worried' },
+      { chi: 'Moon', testo: 'Ancora qui.' },
+      { chi: 'Earth', testo: 'Ehi!', azioni: [{ tipo: 'umore', chi: 'Moon', umore: 'sad', quando: 'fine' }] }] },
+    { momenti: [
+      { chi: 'Moon', testo: 'Che tristezza.' },
+      { chi: 'Moon', testo: 'Psst!', tono: ['whispers', 'nonesiste', 'whispers', 'sighs', 'gasps'] },
+      { chi: 'Moon', testo: 'Evviva!', azioni: [{ tipo: 'umore', chi: 'Moon', umore: 'excited', quando: 'inizio' }] }] }] });
+  const [m0, m1] = p.scene[0].momenti, [m3, m4, m5] = p.scene[1].momenti;
+  assert.equal(St.facciaParlata(p, m0), 'worried');
+  assert.equal(St.facciaParlata(p, m1), 'worried', 'la faccia rimasta dal momento prima');
+  assert.equal(St.facciaParlata(p, m3), 'sad', 'cambiata da un\'azione Faccia di un altro momento, anche fra le scene');
+  assert.equal(St.facciaParlata(p, m5), 'excited', 'un\'azione Faccia all\'inizio del momento');
+  assert.equal(St.facciaParlata(St.ripulisci({ cast: ['Moon'], scene: [{ momenti: [{ chi: 'Moon', testo: 'Ciao' }] }] }),
+    St.ripulisci({ cast: ['Moon'], scene: [{ momenti: [{ chi: 'Moon', testo: 'Ciao' }] }] }).scene[0].momenti[0]), diSerie, 'di serie, se niente l\'ha cambiata');
+  assert.equal(St.testoPerVoce(m1, 'eleven_v3', p), '[nervous] Ancora qui.');
+  assert.equal(St.testoPerVoce(m3, 'eleven_v3', p), '[sad] Che tristezza.');
+  // il tono: pulito, senza doppioni, al massimo due
+  assert.equal(m4.tono.join(','), 'whispers,sighs');
+  assert.equal(St.testoPerVoce(m4, 'eleven_v3', p), '[sad] [whispers] [sighs] Psst!');
+  assert.equal(St.testoPerVoce(m4, 'eleven_multilingual_v2', p), 'Psst!', 'senza v3 nessun tag');
+  assert.equal(St.firmaTag('[sad] [whispers]  Psst! [laughs]'), '[sad] [whispers]');
+  // generata con un'intonazione che poi cambia: da rifare; caricata a mano no
+  const voce = 'AbCdEf1234567890';
+  p.voci = { Moon: { id: voce, nome: 'Giulia' } };
+  const conTag = tag => ({ durata: 900, impronta: St.impronta(m4.testo), voce, tag });
+  m4.audio = St.ripulisci({ cast: ['Moon'], scene: [{ momenti: [{ chi: 'Moon', testo: m4.testo, audio: conTag('[sad] [whispers] [sighs]') }] }] }).scene[0].momenti[0].audio;
+  assert.equal(m4.audio.tag, '[sad] [whispers] [sighs]', 'il tag dell\'audio resta nel progetto');
+  if (St.elevenImpostazioni().modello === 'eleven_v3') {
+    assert.equal(St.voceDaRifare(p, p.scene[1], m4), false);
+    m4.tono = ['shouts'];
+    assert.equal(St.tonoCambiato(p, m4), true);
+    assert.equal(St.voceDaRifare(p, p.scene[1], m4), true);
+  }
+  m4.audio = { durata: 900, impronta: St.impronta(m4.testo) };
+  assert.equal(St.voceDaRifare(p, p.scene[1], m4), false, 'un audio caricato non ha tag e non si tocca');
+});
+
 (async () => {
   let ok = 0;
   for (const [nome, fn] of prove) {
