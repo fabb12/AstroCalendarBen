@@ -1866,6 +1866,50 @@ sottotitolo del titolo («Una canzone per Carl Sagan e le Voyager»).
 Prove: `prova-storie.js` («la bocca segue la voce vera…», «la regia a ritmo
 cambia inquadratura a ogni battuta…»).
 
+### Lo schermo piccolo fermo, la foto una volta sola e la Terra indicata (v453)
+
+Terza visione, sul telefono: lo sfondo tremava ancora troppo, e la fotografia
+della Voyager tornava troppe volte senza dire dove fosse la Terra.
+
+- **Perché tremava.** Misurato fotogramma per fotogramma, il tremolio non era
+  il battito: erano tre cose che sullo schermo piccolo si sommavano. La regia
+  a ritmo cambiava inquadratura **dentro** alla battuta (lo zoom pompava fra
+  ×1,1 e ×2,2 più volte al secondo), la camera inseguiva le teste che
+  ondeggiano a tempo, e lo sfondo stellato e la nebulosa della 3D si
+  spostavano con lei. Adesso: la scelta della regia si tiene per tutta la
+  battuta (`r.ritmoScelta`); il bersaglio della camera è il personaggio
+  **senza** la sua oscillazione (`storOcchiDi` toglie `pg.oscilla`); sotto i
+  520 px di lato corto (`STOR_SCHERMO_PICCOLO`) gli stacchi sono uno ogni due
+  battute, niente rollio, zoom al più ×2,2; colpo di lente, carrello e molla
+  svelta si riducono col lato corto (`storOsaRegia`, da 0,25 a 360 px a 1
+  sopra gli 800); a ritmo restano solo gli effetti che sono il racconto
+  (esplosione, fulmine, onda d'urto). In `app.js` (`solSfondoStoria`) la
+  nebulosa si sposta con una tangente iperbolica (non esce mai dal suo
+  margine) e sul telefono le stelle seguono la camera a metà. Le inversioni
+  di direzione dello sfondo, sul telefono, sono scese da 1,1 a 0,4 al
+  secondo.
+- **La foto una volta sola**, nella prima scena, quando Sagan dice «guardate
+  ancora quel puntino» (le altre quattro tolte dal copione).
+- **La Terra indicata.** Quando la foto è arrivata, `storTerraNellaFoto`
+  (rimpicciolita a 520 px, letta con `getImageData`) la passa a
+  `storTrovaPuntino`: cerca il puntino più chiaro del suo intorno, **isolato**
+  (l'anello attorno deve essere scuro, così un pezzo di raggio non vale),
+  non rossastro (la Terra della foto è azzurrina), lontano dai bordi; e lo
+  accetta solo se stacca di un quarto il secondo candidato, altrimenti si
+  arrende. Se la foto non si può leggere (un server senza CORS: il secondo
+  tentativo la carica senza `crossOrigin`) o la ricerca si arrende, vale il
+  posto noto (`terraIllustrazione`, quello dell'illustrazione e della
+  foto di Commons). Sopra la Terra un anello che pulsa con la scritta «Questa
+  è la Terra» (`storie.foto.pale_blue_dot.terra`), poi la foto si ingrandisce
+  ×3,4 **attorno al puntino** (`transform-origin` sulla Terra,
+  `STOR_FOTO_TEMPI`): prima si vede dov'è nella foto intera, poi quanto è
+  piccola da vicino. Sul telefono la scheda sta al centro, larga il 70%.
+
+Prove: `prova-storie.js` («la Terra nella fotografia: il puntino chiaro e
+isolato nel raggio di luce…», su un'immagine sintetica coi raggi e senza la
+Terra). La fotografia vera non si è potuta vedere nel contenitore (niente
+rete verso Wikimedia): si è vista l'illustrazione, col segno e l'ingrandimento.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

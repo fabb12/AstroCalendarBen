@@ -5768,6 +5768,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "storie.foto.pale_blue_dot.didascalia": "The Earth seen by Voyager 1 on 14 February 1990, from six billion kilometres away: the dot in the sunbeam.",
     "storie.foto.pale_blue_dot.credito": "NASA/JPL · Wikimedia Commons, public domain",
     "storie.foto.pale_blue_dot.illustrazione": "Illustration: without a connection the real photograph cannot be loaded",
+    "storie.foto.pale_blue_dot.terra": "This is the Earth",
     "storie.personalita.sagan": "Astronomer and storyteller of the sky: curious, kind, always amazed. He was the one who asked for Voyager 1 to turn round and photograph the Earth.",
     "storie.personalita.persona": "A person who tells stories about the sky: not a celestial body, but someone who looks at it in wonder.",
     "storie.fisica.sagan": "He is not a celestial body: he is one of us, made of the same stardust. The pale blue dot circles him, as small as it was in the photograph.",

@@ -1257,7 +1257,7 @@
     stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
     stor.canti = []; stor.titolo = null; stor.canzone = null;
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
-    Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel });
+    Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel, ritmoScelta: null });
     storZittisci();
   }
   // Chi esce di scena spostato o ingrandito non torna a posto di colpo: per
@@ -5415,13 +5415,33 @@
     return id && stor.personaggi.has(id) ? id : null;
   }
   // Dove sono gli occhi di un volto disegnato, e quanto è grande
+  /* v453: per la camera conta il volto **fermo**. Prima la misura veniva
+   * col respiro e lo schiacciamento del momento (`scala`), e il posto col
+   * saltello di chi canta sul battito (`pg.oscilla`, che nella 3D sposta
+   * l'astro vero): la camera rincorreva la testa a ogni colpo, e su uno
+   * schermo piccolo, dove lo zoom è più forte, lo sfondo tremava tutto. */
   function storOcchiDi(d) {
     const g = d.geom;
-    const R = Math.max(4, d.R * Math.abs(d.scala || 1));
+    const R = Math.max(4, d.R);
+    const pg = stor.personaggi.get(d.id);
+    const os = pg && pg.oscilla && (d.vista === 'sistema' || d.vista === 'vicino') ? pg.oscilla : { x: 0, y: 0 };
     if (g && g.occhi && g.occhi.length === 2)
-      return { x: (g.occhi[0].cx + g.occhi[1].cx) / 2, y: (g.occhi[0].cy + g.occhi[1].cy) / 2 + R * 0.12, R };
-    return { x: d.x, y: d.y - R * 0.1, R };
+      return { x: (g.occhi[0].cx + g.occhi[1].cx) / 2 - os.x, y: (g.occhi[0].cy + g.occhi[1].cy) / 2 + R * 0.12 - os.y, R };
+    return { x: d.x - os.x, y: d.y - R * 0.1 - os.y, R };
   }
+  /* Quanto la regia può osare su questo schermo (v453): 1 da 800 pixel di
+   * lato corto in su, fino a 0,45 su un telefono. Il rollio, la spinta sul
+   * battito, la frustata fra due inquadrature e il tetto dello zoom si
+   * misurano con questo: lo stesso gesto, su un quadro piccolo e ingrandito
+   * tre volte, diventava un tremito. */
+  function storOsaRegia(L, H) {
+    const lato = Math.min(L, H);
+    return 0.25 + 0.75 * Math.max(0, Math.min(1, (lato - 360) / 440));
+  }
+  // Sotto questo lato corto lo schermo è «piccolo» (un telefono): niente
+  // quadro inclinato, inquadrature che cambiano ogni due battute, e lo zoom
+  // che si ferma prima
+  const STOR_SCHERMO_PICCOLO = 520;
   /* Che cosa inquadrare adesso. Restituisce il punto del disegno da portare
    * al centro, lo zoom e a che altezza dello schermo va il punto; `null`
    * vuol dire «largo». Funzione pura sullo stato: la provano le prove.
@@ -5433,7 +5453,7 @@
   function storRegiaInquadra(vista, L, H) {
     const r = stor.regia;
     const lato = Math.min(L, H);
-    const tetto = Math.max(1, Math.min(4, r.zoomMax || STOR_REGIA.zoomMax));
+    const tetto = Math.max(1, Math.min(4, r.zoomMax || STOR_REGIA.zoomMax, lato < STOR_SCHERMO_PICCOLO ? 2.2 : 4));
     const quanti = stor.ultimiDisegnati.filter(d => d.vista === vista && !d.fuori);
     const dentro = (x, y) => x >= 0 && y >= 0 && x <= L && y <= H;
     const primoPiano = (d, frazione, motivo) => {
@@ -5449,6 +5469,10 @@
     let ultimo = null;
     for (const ef of stor.effetti) {
       const regola = STOR_REGIA.effetti[ef.tipo];
+      // nella regia a ritmo (v453) i cuori, i coriandoli, i fuochi non si
+      // prendono la camera: la battuta è sua, e a strapparla per un attimo il
+      // quadro andava avanti e indietro. Solo i botti e i fulmini sì
+      if (r.modo === 'rhythm' && !['explosion', 'lightning', 'shockwave'].includes(ef.tipo)) continue;
       const p = ef.ultimoPosto;
       if (!regola || !p || p.vista !== vista || !dentro(p.x, p.y)) continue;
       const eta = stor.orologio - ef.inizio;
@@ -5549,9 +5573,10 @@
   function storRegiaRitmo(quanti, primoPiano, L, H, tetto) {
     if (!quanti.length) return null;
     const b = storBattito();
-    const battuta = b ? Math.floor(b.i / 4) : Math.floor(stor.orologio / 2760);
+    const piccolo = Math.min(L, H) < STOR_SCHERMO_PICCOLO;
+    const battuta = Math.floor((b ? Math.floor(b.i / 4) : Math.floor(stor.orologio / 2760)) / (piccolo ? 2 : 1));
     const canto = storCantoOra();
-    const rollio = (battuta % 2 ? 1 : -1) * STOR_REGIA.ritmoRollio;
+    const rollio = piccolo ? 0 : (battuta % 2 ? 1 : -1) * STOR_REGIA.ritmoRollio * storOsaRegia(L, H);
     const conRollio = m => m && Object.assign(m, { rot: rollio, svelto: true,
       k: Math.max(m.k, 1 + Math.abs(rollio) * 2.4 * Math.max(L, H) / Math.max(1, Math.min(L, H))) });
     const gruppo = (chi, motivo) => {
@@ -5564,12 +5589,29 @@
       const k = Math.max(1, Math.min(tetto, L * 0.86 / Math.max(1, x1 - x0), H * 0.6 / Math.max(1, y1 - y0)));
       return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, k, ay: 0.44, ax: 0.5, motivo, id: motivo + ':' + battuta };
     };
+    // v453: l'inquadratura si sceglie all'inizio della battuta e **resta**
+    // fino alla prossima (due battute su uno schermo piccolo). Prima la
+    // scelta seguiva il verso in corso: un verso a due che finiva a metà
+    // battuta, un altro da solo che cominciava, e lo zoom andava da ×1,1 a
+    // ×2,2 e indietro in mezzo secondo — su un telefono, un tremolio a pompa.
+    // Dentro alla battuta si aggiornano solo le posizioni di chi è inquadrato.
+    const r = stor.regia;
+    const scelta = r.ritmoScelta;
+    if (scelta && scelta.battuta === battuta) {
+      const chi = scelta.ids.map(id => quanti.find(d => d.id === id)).filter(Boolean);
+      if (chi.length === scelta.ids.length) {
+        if (scelta.tipo === 'primo') return conRollio(Object.assign(primoPiano(chi[0], scelta.frazione, 'ritmo'), { id: 'ritmo:' + chi[0].id + ':' + battuta }));
+        return conRollio(gruppo(chi, 'ritmo'));
+      }
+    }
+    const ricorda = (tipo, ids, frazione) => { r.ritmoScelta = { battuta, tipo, ids, frazione }; };
     const cantori = canto ? quanti.filter(d => canto.chi.includes(d.id)) : [];
     if (cantori.length > 1) {
       // il coro: tutti, poi uno per battuta, poi tutti
       const giro = battuta % (cantori.length + 1);
-      if (!giro) return conRollio(gruppo(cantori, 'ritmo'));
+      if (!giro) { ricorda('gruppo', cantori.map(d => d.id)); return conRollio(gruppo(cantori, 'ritmo')); }
       const d = cantori[(giro - 1) % cantori.length];
+      ricorda('primo', [d.id], STOR_REGIA.voltoStretto);
       return conRollio(Object.assign(primoPiano(d, STOR_REGIA.voltoStretto, 'ritmo'), { id: 'ritmo:' + d.id + ':' + battuta }));
     }
     if (cantori.length === 1) {
@@ -5582,12 +5624,14 @@
           const a = storOcchiDi(p), c = storOcchiDi(q);
           return Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(c.x - o.x, c.y - o.y);
         })[0];
-        if (altro) return conRollio(gruppo([d, altro], 'ritmo'));
+        if (altro) { ricorda('gruppo', [d.id, altro.id]); return conRollio(gruppo([d, altro], 'ritmo')); }
       }
-      if (tipo === 3 && quanti.length > 1) return conRollio(gruppo(quanti, 'ritmo'));
-      const m = primoPiano(d, tipo === 2 ? STOR_REGIA.voltoStretto * 1.15 : STOR_REGIA.voltoStretto, 'ritmo');
-      return conRollio(Object.assign(m, { id: 'ritmo:' + d.id + ':' + battuta }));
+      if (tipo === 3 && quanti.length > 1) { ricorda('gruppo', quanti.map(x => x.id)); return conRollio(gruppo(quanti, 'ritmo')); }
+      const frazione = tipo === 2 ? STOR_REGIA.voltoStretto * 1.15 : STOR_REGIA.voltoStretto;
+      ricorda('primo', [d.id], frazione);
+      return conRollio(Object.assign(primoPiano(d, frazione, 'ritmo'), { id: 'ritmo:' + d.id + ':' + battuta }));
     }
+    ricorda('gruppo', quanti.map(x => x.id));
     return conRollio(gruppo(quanti, 'ritmo'));
   }
   /* Il largo che non sta fermo (v434). Prima, quando nessuno parlava, la
@@ -5660,8 +5704,8 @@
     }
     if (meta && meta.motivo === 'ritmo' && !stor.ridotto) {
       const b = storBattito();
-      const u = liscio((stor.orologio - r.ripresa.da) / ((b ? b.periodo * 4 : 2.76) * 1000));
-      kMeta *= 1 + STOR_REGIA.ritmoCarrello * u;
+      const u = liscio((stor.orologio - r.ripresa.da) / ((b ? b.periodo * 4 : 2.76) * 1000) / (Math.min(L, H) < STOR_SCHERMO_PICCOLO ? 2 : 1));
+      kMeta *= 1 + STOR_REGIA.ritmoCarrello * u * storOsaRegia(L, H);
     }
     if (meta && meta.motivo === 'gruppo') {
       const u = liscio((stor.orologio - r.ripresa.da) / STOR_REGIA.gruppoMs);
@@ -5686,7 +5730,7 @@
         // Nel giro il personaggio si sposta sul disegno di continuo (è il
         // mondo che gli gira attorno): una molla più svelta lo tiene al centro
         const wf = meta.motivo === 'giro' && r.ripresa && stor.orologio - r.ripresa.da > 1200 ? w * 2.2
-          : meta.svelto ? w * STOR_REGIA.ritmoSvelto : w;
+          : meta.svelto ? w * (1 + (STOR_REGIA.ritmoSvelto - 1) * storOsaRegia(L, H)) : w;
         [r.fx, r.vfx] = molla(r.fx, r.vfx, meta.x, wf, h);
         [r.fy, r.vfy] = molla(r.fy, r.vfy, meta.y, wf, h);
         [r.ay, r.vay] = molla(r.ay, r.vay, meta.ay, w, h);
@@ -5711,7 +5755,7 @@
     // decimo di secondo, più forte sul primo della battuta. Come la scossa:
     // solo ingrandisce, quindi non scopre mai i bordi
     const battito = accesa && !stor.ridotto && !demoInPausa() ? storBattito() : null;
-    const kick = battito ? spintaBattuta(battito) * 0.014 * (battito.kick || 1) : 0;
+    const kick = battito ? spintaBattuta(battito) * 0.014 * (battito.kick || 1) * storOsaRegia(L, H) : 0;
     const k = Math.exp(r.lk) * (1 + 0.035 * Math.min(1.5, forza)) * (1 + kick);
     const ax = L * r.ax, ay = H * r.ay;
     let tx = ax - k * r.fx, ty = ay - k * r.fy;
@@ -5719,7 +5763,7 @@
     // lenti e sfasati; largo resta fermo. Segue l'orologio della storia,
     // quindi in pausa si ferma anche lui
     if (!stor.ridotto && k > 1.01) {
-      const t = stor.orologio, amp = STOR_REGIA.respiro * Math.min(L, H) * Math.min(1, k - 1);
+      const t = stor.orologio, amp = STOR_REGIA.respiro * Math.min(L, H) * Math.min(1, k - 1) * storOsaRegia(L, H);
       tx += amp * (Math.sin(t * 0.00037) + 0.5 * Math.sin(t * 0.00091 + 1.1));
       ty += amp * 0.8 * (Math.sin(t * 0.00029 + 0.7) + 0.5 * Math.sin(t * 0.00083 + 2.3));
     }
@@ -6954,7 +6998,79 @@
         '<circle cx="196" cy="262" r="11" fill="none" stroke="#fde68a" stroke-width="1.4" stroke-dasharray="3 3"/></svg>')
     }
   };
+  // dov'è la Terra nell'illustrazione (frazioni del quadro): il puntino del disegno
+  STOR_FOTO.pale_blue_dot.terraIllustrazione = { x: 196 / 300, y: 262 / 400 };
+
+  /* Dov'è la Terra nella fotografia vera (v453). Chi guarda voleva lo zoom
+   * sulla foto e la Terra evidenziata, «in modo da capire bene dov'è». La
+   * posizione non è scritta qui: la fotografia arriva da Wikimedia e il suo
+   * ritaglio può cambiare. La si cerca nella foto stessa, dal browser (la
+   * foto arriva con CORS, quindi la tela non si «sporca»): il puntino è il
+   * pixel chiaro e **isolato** — molto più luminoso del suo intorno e dello
+   * stesso anello attorno — e non rossastro, dentro a un raggio di luce (il
+   * suo intorno non è il nero del fondo). Se il migliore non stacca bene dal
+   * secondo, la ricerca si arrende: niente zoom piuttosto che un cerchio nel
+   * posto sbagliato. Funzione pura sui pixel: `dati` RGBA, `w` × `h`. */
+  function storTrovaPuntino(dati, w, h) {
+    const n = w * h, lum = new Float32Array(n);
+    for (let i = 0; i < n; i++) lum[i] = (dati[i * 4] + dati[i * 4 + 1] + dati[i * 4 + 2]) / 3;
+    // la somma integrale, per le medie locali
+    const I = new Float64Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y++) {
+      let riga = 0;
+      for (let x = 0; x < w; x++) { riga += lum[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + riga; }
+    }
+    const media = (x0, y0, x1, y1) => {
+      x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(w, x1); y1 = Math.min(h, y1);
+      const a = (x1 - x0) * (y1 - y0);
+      return a > 0 ? (I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0]) / a : 0;
+    };
+    const R = Math.max(6, Math.round(Math.min(w, h) * 0.025));
+    const bordo = Math.round(Math.min(w, h) * 0.04);
+    const candidati = [];
+    for (let y = bordo; y < h - bordo; y++) for (let x = bordo; x < w - bordo; x++) {
+      const i = y * w + x, l = lum[i];
+      const cuore = media(x - 1, y - 1, x + 2, y + 2);
+      const intorno = media(x - R, y - R, x + R + 1, y + R + 1);
+      const stacco = cuore - intorno;
+      if (stacco < 14) continue;
+      // isolato: l'anello attorno (fra 3 e 6 pixel) è ben più scuro del cuore
+      const anello = (media(x - 6, y - 6, x + 7, y + 7) * 169 - media(x - 2, y - 2, x + 3, y + 3) * 25) / 144;
+      if (anello > cuore * 0.6) continue;
+      const r = dati[i * 4], b = dati[i * 4 + 2];
+      if (b < r - 12) continue;                 // rossastro: un granello del raggio, non la Terra
+      if (intorno < 3) continue;                // nel nero del fondo, fuori dai raggi
+      candidati.push({ x, y, punti: stacco + Math.max(0, b - r) * 1.2 + (l > cuore ? 0 : -5) });
+    }
+    if (!candidati.length) return null;
+    candidati.sort((a, b) => b.punti - a.punti);
+    const primo = candidati[0];
+    const secondo = candidati.find(c => Math.hypot(c.x - primo.x, c.y - primo.y) > R * 2);
+    if (secondo && primo.punti < secondo.punti * 1.25) return null;
+    return { x: (primo.x + 0.5) / w, y: (primo.y + 0.5) / h, certezza: secondo ? primo.punti / secondo.punti : 9 };
+  }
+  // La Terra in una foto già caricata: si ridipinge piccola su una tela e si
+  // cerca lì. Con una foto senza CORS la tela è «sporca» e non si legge: null.
+  function storTerraNellaFoto(img) {
+    try {
+      const w0 = img.naturalWidth, h0 = img.naturalHeight;
+      if (!(w0 > 8 && h0 > 8)) return null;
+      const k = Math.min(1, 520 / Math.max(w0, h0));
+      const w = Math.max(8, Math.round(w0 * k)), h = Math.max(8, Math.round(h0 * k));
+      const tela = document.createElement('canvas'); tela.width = w; tela.height = h;
+      const g = tela.getContext('2d', { willReadFrequently: true });
+      g.drawImage(img, 0, 0, w, h);
+      return storTrovaPuntino(g.getImageData(0, 0, w, h).data, w, h);
+    } catch (_) { return null; }
+  }
+
   const fotoTrovate = new Map();   // la prima candidata che ha risposto, per le scene dopo
+  /* La scheda della foto (v453): più grande, e in tre tempi sulla ripresa
+   * dell'azione. Compare; poco dopo un anello pulsa sulla Terra con la
+   * scritta; poi la foto si ingrandisce attorno a lei (`transform-origin`
+   * sul puntino: il puntino resta fermo, e l'anello, che sta fuori dallo
+   * zoom, ci resta sopra). Col movimento ridotto niente zoom animato. */
+  const STOR_FOTO_TEMPI = { anello: 0.16, zoom: 0.26, ingrandisci: 3.4 };
   Object.assign(COMANDI, {
     story_photo: {
       verifica(p) {
@@ -6969,20 +7085,28 @@
         const scheda = document.createElement('figure');
         scheda.className = 'demo-immagine demo-immagine-foto'; scheda.setAttribute('role', 'note');
         const cornice = document.createElement('div'); cornice.className = 'demo-immagine-cornice';
+        const zoom = document.createElement('div'); zoom.className = 'demo-foto-zoom';
         const img = document.createElement('img');
         img.alt = t(chiave + '.alt'); img.decoding = 'async'; img.referrerPolicy = 'no-referrer';
+        const segno = document.createElement('div'); segno.className = 'demo-foto-segno'; segno.hidden = true;
+        const etichetta = document.createElement('span'); etichetta.className = 'demo-foto-etichetta';
+        etichetta.textContent = t(chiave + '.terra');
+        segno.append(etichetta);
         const didascalia = document.createElement('figcaption');
         const titolo = document.createElement('span'); titolo.className = 'demo-immagine-titolo';
         const credito = document.createElement('span'); credito.className = 'demo-immagine-credito';
         titolo.textContent = t(chiave + '.didascalia');
-        didascalia.append(titolo, credito); cornice.append(img); scheda.append(cornice, didascalia);
-        const candidate = fotoTrovate.has(p.photo) ? [fotoTrovate.get(p.photo)] : f.candidate.slice();
+        didascalia.append(titolo, credito); zoom.append(img); cornice.append(zoom, segno); scheda.append(cornice, didascalia);
+        // le candidate prima con CORS (si può cercare la Terra), poi senza
+        const base = fotoTrovate.has(p.photo) ? [fotoTrovate.get(p.photo)] : f.candidate.slice();
+        const candidate = base.map(src => ({ src, cors: true })).concat(base.map(src => ({ src, cors: false })));
         const voci = f.voci.slice();
-        let chiusa = false;
-        const metti = (src, illustrazione) => {
+        let chiusa = false, terra = null, u = 0;
+        const metti = (c, illustrazione) => {
           img.dataset.illustrazione = illustrazione ? '1' : '';
           credito.textContent = t(chiave + (illustrazione ? '.illustrazione' : '.credito'));
-          img.src = src;
+          if (c.cors) img.crossOrigin = 'anonymous'; else img.removeAttribute('crossorigin');
+          img.src = c.src;
         };
         const prossima = () => {
           if (chiusa) return;
@@ -6990,22 +7114,41 @@
           if (voci.length && typeof fetch === 'function') {
             fetch(voci.shift()).then(r => (r.ok ? r.json() : null)).then(d => {
               const src = d && ((d.originalimage && d.originalimage.source) || (d.thumbnail && d.thumbnail.source));
-              if (src) candidate.push(src);
+              if (src) candidate.push({ src, cors: true }, { src, cors: false });
               prossima();
             }).catch(() => prossima());
             return;
           }
-          metti(f.illustrazione, true);
+          metti({ src: f.illustrazione, cors: false }, true);
+        };
+        const mettiTerra = q => {
+          terra = q;
+          if (!q) return;
+          const x = (q.x * 100).toFixed(2) + '%', y = (q.y * 100).toFixed(2) + '%';
+          zoom.style.transformOrigin = x + ' ' + y;
+          segno.style.left = x; segno.style.top = y;
+          segno.classList.toggle('a-sinistra', q.x > 0.62);
+          aggiorna(u);
         };
         img.addEventListener('error', () => { if (img.dataset.illustrazione !== '1') prossima(); });
-        img.addEventListener('load', () => { if (img.dataset.illustrazione !== '1' && !img.src.startsWith('data:')) fotoTrovate.set(p.photo, img.src); });
+        img.addEventListener('load', () => {
+          const illustrazione = img.dataset.illustrazione === '1';
+          if (!illustrazione && !img.src.startsWith('data:')) fotoTrovate.set(p.photo, img.src);
+          mettiTerra(illustrazione ? f.terraIllustrazione : storTerraNellaFoto(img));
+        });
         prossima();
         const sotto = document.getElementById('demo-sottotitoli');
         (sotto && sotto.parentElement || document.body).append(scheda);
-        return {
-          aggiorna(u) { scheda.classList.toggle('visibile', u < 1); },
-          chiudi() { chiusa = true; scheda.remove(); }
+        const aggiorna = v => {
+          u = v;
+          scheda.classList.toggle('visibile', v < 1);
+          const T = STOR_FOTO_TEMPI;
+          segno.hidden = !(terra && v >= T.anello && v < 1);
+          const z = terra && v >= T.zoom && v < 1;
+          zoom.style.transform = z ? `scale(${T.ingrandisci})` : '';
+          scheda.classList.toggle('zoomata', !!z);
         };
+        return { aggiorna, chiudi() { chiusa = true; scheda.remove(); } };
       }
     }
   });
@@ -7493,7 +7636,7 @@
     // v450: le storie cantate e gli ospiti
     canta: storCanta, cantoOra: storCantoOra, puntoDelCanto: storPuntoDelCanto, battito: storBattito,
     tempoNelCanto: storTempoNelCanto, paroleDelCanto: storParoleDelCanto, spintaBattuta, giroVolto: storGiroVolto,
-    voceDelCanto: storVoceDelCanto, regiaRitmo: storRegiaRitmo,
+    voceDelCanto: storVoceDelCanto, regiaRitmo: storRegiaRitmo, trovaPuntino: storTrovaPuntino,
     tempoCanzone: storTempoCanzone, ospiti: storOspiti, sovrimpressioni: storDisegnaSovrimpressioni, STOR_POSTI_OSPITE,
     get canto() { const c = storCantoOra(); return c ? { chi: c.chi.slice(), testo: c.testo, u: c.u } : null; },
     get titolo() { return stor.titolo ? Object.assign({}, stor.titolo) : null; }

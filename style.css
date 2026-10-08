@@ -12558,11 +12558,32 @@ body.demo-vista-pulita .did-pieno-ripiego .demo-cartello, body.demo-vista-pulita
 .demo-immagine-titolo { color:#fcd34d; font-size:.82rem; font-weight:700; letter-spacing:.02em; }
 .demo-immagine-credito { color:#94a3b8; font-size:.7rem; }
 /* v450: la fotografia vera di una CosmoStoria (story_photo), intera e non
-   ritagliata: il puntino della Terra non deve finire fuori dal quadro */
-.demo-immagine-foto .demo-immagine-cornice { aspect-ratio:auto; }
-.demo-immagine-foto .demo-immagine-cornice img { height:auto; max-height:42vh; object-fit:contain; }
+   ritagliata: il puntino della Terra non deve finire fuori dal quadro.
+   v453: più grande, e lo zoom sulla Terra con l'anello che la indica (la
+   larghezza tiene conto dell'altezza, così la foto, alta, entra sempre) */
+.demo-immagine.demo-immagine-foto { width:min(36vw, 380px, 46vh); }
+.demo-immagine-foto .demo-immagine-cornice { aspect-ratio:auto; position:relative; }
+.demo-foto-zoom { transition:transform 2.8s cubic-bezier(.45, 0, .2, 1); will-change:transform; }
+.demo-immagine-foto .demo-immagine-cornice img { height:auto; object-fit:contain; }
+.demo-foto-segno { position:absolute; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%;
+  border:2px solid #fde68a; box-shadow:0 0 0 2px rgba(12, 10, 32, .65), 0 0 14px rgba(253, 230, 138, .8);
+  animation:demo-foto-pulsa 1.3s ease-in-out infinite; pointer-events:none; }
+.demo-foto-segno[hidden] { display:none; }
+.demo-foto-etichetta { position:absolute; left:calc(100% + 8px); top:50%; transform:translateY(-50%); white-space:nowrap;
+  padding:.15rem .5rem; border-radius:999px; background:rgba(12, 10, 32, .82); border:1px solid rgba(253, 230, 138, .6);
+  color:#fde68a; font-size:.8rem; font-weight:700; }
+.demo-foto-segno.a-sinistra .demo-foto-etichetta { left:auto; right:calc(100% + 8px); }
+@keyframes demo-foto-pulsa { 0%, 100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.25); opacity:.75; } }
+@media (prefers-reduced-motion: reduce) {
+  .demo-foto-zoom { transition:none; }
+  .demo-foto-segno { animation:none; }
+}
 @media (max-width: 520px) {
   .demo-immagine { width:40vw; top:calc(env(safe-area-inset-top, 0px) + 112px); transform:translate(10px, 0); padding:.35rem; }
+  /* la foto vera, sul telefono: in alto al centro e larga, se no la Terra
+     evidenziata non si vede */
+  .demo-immagine.demo-immagine-foto { width:min(70vw, 42vh); left:50%; right:auto; transform:translate(-50%, 10px); }
+  .demo-immagine.demo-immagine-foto.visibile { transform:translate(-50%, 0); }
   .demo-immagine.visibile { transform:none; }
   .demo-immagine-titolo { font-size:.68rem; }
   .demo-immagine-credito { font-size:.6rem; }
