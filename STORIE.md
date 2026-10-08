@@ -1515,6 +1515,30 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### La voce per scena e la scelta che si apre sul posto (v445)
+
+«Scegli la voce» sembrava non fare niente: dalla battuta il pannello si
+apriva al passo 2, fuori vista, e ogni messaggio (anche gli errori di
+ElevenLabs) finiva solo nella riga in cima allo Studio; se poi l'aggiunta
+della voce della libreria all'account veniva rifiutata (chiave senza il
+permesso Voices: scrittura, piano), la scelta spariva in silenzio.
+
+- La scelta si apre **dove si preme** (`apriScelta(id, { luogo, scena,
+  ambitoLibero })`): nella riga del personaggio al passo 2, nelle voci della
+  scena, sotto la battuta. Da una battuta un menu dice se la voce vale per
+  tutta la storia o solo per quella scena.
+- I messaggi stanno accanto al tasto (`notifica`, `notaEl`, `studio.elMsg`).
+- Un'aggiunta rifiutata non perde la scelta (`elevenAggiungi` dà
+  `{ id, avviso }`): si tiene l'ID della libreria e si dice perché.
+- **Voci in questa scena** (in ogni scena, con la chiave): chi parla lì, con
+  la voce della storia o una sua (`scena.voci`), «Cambia solo qui», «Come
+  nella storia», «Genera le mancanti» della scena. `studioVoceDi(p, id,
+  scena)` sceglie scena → storia → di serie.
+- Ogni audio generato ricorda la voce (`audio.voce`): se la voce del
+  personaggio in quella scena cambia, la battuta è «da rifare»
+  (`studioVoceDaRifare`), lo dice la riga della voce e «Genera le mancanti»
+  la rifà.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

@@ -173,7 +173,9 @@
       data: '', ora: '21:00', giorni: 0, cartello: false, cameraViva: true, camera: 'auto', cameraChi: '', cosmoDa: 'planets', cosmoA: 'milky_way', presenti: [], momenti: [studioNuovoMomento()],
       // v440: la musica di sottofondo della scena (§4-ter): quella della
       // storia, una sua, o il silenzio
-      musicaModo: 'storia', musica: null
+      musicaModo: 'storia', musica: null,
+      // v445: le voci ElevenLabs cambiate solo per questa scena (§6c)
+      voci: {}
     }, campi);
   }
   function studioNuovoProgetto(campi = {}) {
@@ -291,11 +293,14 @@
       camera: tra(sc && sc.camera, STUDIO_CAMERE, sc && sc.cameraViva === false ? 'ferma' : 'auto'), cameraChi: testo(sc && sc.cameraChi, 40),
       cosmoDa: tra(sc && sc.cosmoDa, Object.keys(STUDIO_TAPPE_COSMO), 'planets'), cosmoA: tra(sc && sc.cosmoA, Object.keys(STUDIO_TAPPE_COSMO), 'milky_way'),
       musicaModo: tra(sc && sc.musicaModo, STUDIO_MUSICA_MODI, 'storia'), musica: studioPulisciMusica(sc && sc.musica),
+      voci: studioPulisciVoci(sc && sc.voci),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
         audio: m && m.audio && Number(m.audio.durata) > 0 && /^[0-9a-f]{8}$/.test(m.audio.impronta)
-          ? { durata: numero(m.audio.durata, 1, 120000, 1), impronta: m.audio.impronta, nome: testo(m.audio.nome, 80) } : null,
+          ? Object.assign({ durata: numero(m.audio.durata, 1, 120000, 1), impronta: m.audio.impronta, nome: testo(m.audio.nome, 80) },
+            // v445: la voce ElevenLabs con cui è stato generato (per dire quando è da rifare)
+            STUDIO_VOCE_ID.test(m.audio.voce || '') ? { voce: m.audio.voce } : {}) : null,
         azioni: (Array.isArray(m && m.azioni) ? m.azioni : []).slice(0, 30)
           .filter(a => a && STUDIO_TIPI.includes(a.tipo))
           .map(a => studioNuovaAzione(a.tipo, {
@@ -1650,7 +1655,7 @@
   }
   // `sincronizza`: falso quando chi chiama manda tutto insieme alla fine
   // (le battute generate a raffica con ElevenLabs, §6c). Vero se la voce è entrata.
-  async function caricaVoce(dove, file, { sincronizza = true } = {}) {
+  async function caricaVoce(dove, file, { sincronizza = true, voce = '' } = {}) {
     const p = studio.progetto, m = leggi(dove);
     if (!m || !file) return false;
     if (file.size > STUDIO_AUDIO_MAX) { esito(t('studio.voce.troppoGrande')); return false; }
@@ -1669,6 +1674,7 @@
     catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return false; }
     registraVoce(k, testo, URL.createObjectURL(file));
     m.audio = { durata, impronta: studioImpronta(testo), nome: String(file.name || '').slice(0, 80) };
+    if (STUDIO_VOCE_ID.test(voce || '')) m.audio.voce = voce;
     salvaPresto();
     disegna();
     const caricata = t('studio.voce.caricata', { secondi: secondiDi(durata), durata: studioDurata(m) });
@@ -2366,12 +2372,30 @@
   function vociDiSerie() {
     try { return studioPulisciVoci(JSON.parse((archivio() && archivio().getItem(CHIAVE_VOCI_PG)) || '{}')); } catch (_) { return {}; }
   }
-  function studioVoceDi(progetto, id) {
-    return (progetto && progetto.voci && progetto.voci[id]) || vociDiSerie()[id] || null;
+  /* La voce di un personaggio in una scena (v445): quella cambiata solo per
+   * la scena, se c'è, se no quella della storia, se no quella di serie. */
+  function studioVoceDi(progetto, id, scena) {
+    return (scena && scena.voci && scena.voci[id]) || (progetto && progetto.voci && progetto.voci[id]) || vociDiSerie()[id] || null;
   }
-  function scegliVocePersonaggio(id, voce) {
+  // La scena di un campo `scene.<i>…`
+  const scenaDi = dove => studio.progetto.scene[Number(String(dove).split('.')[1])] || null;
+  // Una battuta generata con una voce che non è più la sua è da rifare
+  function studioVoceDaRifare(progetto, scena, m) {
+    if (!m || !m.chi || !testoDetto(m)) return false;
+    if (!studioVoceValida(m)) return true;
+    const v = studioVoceDi(progetto, m.chi, scena);
+    return !!(v && m.audio.voce && m.audio.voce !== v.id);
+  }
+  // `scena`: la voce vale solo lì (v445); senza, per tutta la storia
+  function scegliVocePersonaggio(id, voce, scena) {
     const p = studio.progetto;
     const pulita = voce ? studioPulisciVoce(voce) : null;
+    if (scena) {
+      scena.voci = Object.assign({}, scena.voci);
+      if (pulita) scena.voci[id] = pulita; else delete scena.voci[id];
+      salvaPresto();
+      return;
+    }
     p.voci = Object.assign({}, p.voci);
     const serie = vociDiSerie();
     if (pulita) { p.voci[id] = pulita; serie[id] = pulita; } else { delete p.voci[id]; delete serie[id]; }
@@ -2483,14 +2507,21 @@
   /* Una voce della libreria, per parlare via API, deve stare fra le voci
    * dell'account: si aggiunge. Se c'è già (o il piano non lo permette),
    * si prova con l'ID com'è: l'errore vero, se c'è, lo dirà la sintesi. */
+  /* v445: un rifiuto (chiave senza il permesso Voices: scrittura, piano,
+   * voce già presente) non deve far sparire la scelta, come succedeva: si
+   * tiene l'ID della libreria e si dice perché, nel pannello. */
+  const aggiunte = new Map();             // id della libreria → id nell'account
   async function elevenAggiungi(v) {
-    if (!v.proprietario) return v.id;
+    if (!v.proprietario) return { id: v.id };
+    if (aggiunte.has(v.id)) return { id: aggiunte.get(v.id) };
     try {
       const r = await eleven('POST', `/v1/voices/add/${encodeURIComponent(v.proprietario)}/${encodeURIComponent(v.id)}`, { new_name: v.nome || v.id });
-      return r && STUDIO_VOCE_ID.test(r.voice_id || '') ? r.voice_id : v.id;
+      const id = r && STUDIO_VOCE_ID.test(r.voice_id || '') ? r.voice_id : v.id;
+      aggiunte.set(v.id, id);
+      return { id };
     } catch (e) {
-      if (/already|exist/i.test(e.message)) return v.id;
-      throw e;
+      if (/already|exist/i.test(e.message)) { aggiunte.set(v.id, v.id); return { id: v.id }; }
+      return { id: v.id, avviso: e.message };
     }
   }
 
@@ -2500,7 +2531,7 @@
   let elInCorso = null;                   // la chiave della proposta in lavorazione
   function mettiProposta(k, file) {
     togliProposta(k);
-    proposte.set(k, { file, url: URL.createObjectURL(file) });
+    proposte.set(k, { file, url: URL.createObjectURL(file), voce: file.voce || '' });
   }
   function togliProposta(k) {
     const x = proposte.get(k);
@@ -2516,13 +2547,27 @@
     if (volume !== undefined) ascoltoEl.volume = Math.max(0, Math.min(1, volume));
     ascoltoEl.play().catch(() => esito(t('studio.el.nonSuona')));
   }
+  /* I messaggi di ElevenLabs stanno dove si è premuto (v445): prima
+   * finivano soltanto nella riga in cima allo Studio, e chi lavorava su una
+   * battuta in fondo alla pagina non vedeva né «sto generando» né l'errore,
+   * e pensava che il tasto non facesse niente. `luogo` è la chiave del
+   * posto (`voce|<momento>`, `pg|<personaggio>`, `scelta`…). */
+  function notifica(luogo, testo, errore) {
+    studio.elMsg = testo ? { luogo, testo, errore: !!errore } : null;
+    esito(testo);
+  }
+  function notaEl(luogo) {
+    const m = studio.elMsg;
+    if (!m || m.luogo !== luogo) return null;
+    return h('small', { class: 'studio-el-nota' + (m.errore ? ' errore' : ''), role: m.errore ? 'alert' : 'status' }, m.testo);
+  }
   // Un lavoro con ElevenLabs alla volta: il tasto dice che sta lavorando
-  async function lavoro(k, fai2) {
-    if (elInCorso) { esito(t('studio.el.attendi')); return null; }
+  async function lavoro(k, fai2, luogo = k) {
+    if (elInCorso) { notifica(luogo, t('studio.el.attendi'), true); disegna(); return null; }
     elInCorso = k;
     disegna();
     try { return await fai2(); }
-    catch (e) { esito(t('studio.el.errore', { errore: e && e.message || String(e) })); return null; }
+    catch (e) { notifica(luogo, t('studio.el.errore', { errore: e && e.message || String(e) }), true); return null; }
     finally { elInCorso = null; disegna(); }
   }
   // La chiave di una proposta di musica: la storia o la scena
@@ -2530,40 +2575,47 @@
 
   // «Genera» di una battuta: la proposta, che parte subito in ascolto
   async function generaVoce(dove) {
-    const p = studio.progetto, m = leggi(dove);
+    const p = studio.progetto, m = leggi(dove), sc = scenaDi(dove);
     if (!m) return;
-    if (!m.chi || !testoDetto(m)) { esito(t('studio.voce.primaIlTesto')); return; }
-    const voce = studioVoceDi(p, m.chi);
-    if (!voce) { esito(t('studio.el.primaLaVoce', { nome: nome(m.chi) })); apriScelta(m.chi); return; }
-    const imp = studioElevenImpostazioni();
     const k = 'voce|' + m.id;
-    const file = await lavoro(k, () => { esito(t('studio.el.generoVoce', { nome: nome(m.chi) })); return elevenParla(voce.id, studioTestoPerVoce(m, imp.modello), imp); });
+    if (!m.chi || !testoDetto(m)) { notifica(k, t('studio.voce.primaIlTesto'), true); disegna(); return; }
+    const voce = studioVoceDi(p, m.chi, sc);
+    // senza voce: la scelta si apre qui, sotto la battuta
+    if (!voce) { apriScelta(m.chi, { luogo: k, scena: sc && sc.id, ambitoLibero: true }); return; }
+    const imp = studioElevenImpostazioni();
+    const file = await lavoro(k, () => { notifica(k, t('studio.el.generoVoce', { nome: nome(m.chi) })); return elevenParla(voce.id, studioTestoPerVoce(m, imp.modello), imp); });
     if (!file) return;
-    mettiProposta(k, file);
-    esito(t('studio.el.propostaPronta'));
+    mettiProposta(k, Object.assign(file, { voce: voce.id }));
+    notifica(k, t('studio.el.propostaPronta'));
     disegna();
     suonaAnteprima(proposte.get(k).url);
   }
   // «Genera le battute mancanti» di un personaggio: senza proposta, dritte
   // alle battute; il repository una volta sola alla fine
-  async function generaMancanti(id) {
-    const p = studio.progetto, voce = studioVoceDi(p, id);
-    if (!voce) { apriScelta(id); return; }
+  // `scena`: solo le battute di quella scena (v445). Ogni battuta con la
+  // voce che ha nella sua scena; anche quelle generate con un'altra voce.
+  async function generaMancanti(id, scena) {
+    const p = studio.progetto, luogo = scena ? 'sc|' + scena.id + '|' + id : 'pg|' + id;
     const imp = studioElevenImpostazioni();
     const dove = [];
-    p.scene.forEach((sc, i) => sc.momenti.forEach((m, k) => { if (m.chi === id && testoDetto(m) && !studioVoceValida(m)) dove.push(`scene.${i}.momenti.${k}`); }));
-    if (!dove.length) { esito(t('studio.el.nienteDaFare', { nome: nome(id) })); return; }
+    p.scene.forEach((sc, i) => { if (!scena || sc === scena) sc.momenti.forEach((m, k) => { if (m.chi === id && studioVoceDaRifare(p, sc, m)) dove.push(`scene.${i}.momenti.${k}`); }); });
+    if (!dove.length) { notifica(luogo, t('studio.el.nienteDaFare', { nome: nome(id) })); disegna(); return; }
+    const senza = dove.find(d => !studioVoceDi(p, id, scenaDi(d)));
+    if (senza) { apriScelta(id, { luogo, scena: scena && scena.id }); return; }
     let fatte = 0;
-    await lavoro('pg|' + id, async () => {
+    await lavoro(luogo, async () => {
       for (const d of dove) {
         if (studio.progetto !== p) break;
-        esito(t('studio.el.generoN', { nome: nome(id), n: fatte + 1, totale: dove.length }));
+        notifica(luogo, t('studio.el.generoN', { nome: nome(id), n: fatte + 1, totale: dove.length }));
+        const voce = studioVoceDi(p, id, scenaDi(d));
         const file = await elevenParla(voce.id, studioTestoPerVoce(leggi(d), imp.modello), imp);
-        if (await caricaVoce(d, file, { sincronizza: false })) fatte++;
+        if (await caricaVoce(d, file, { sincronizza: false, voce: voce.id })) fatte++;
       }
     });
     if (!fatte) return;
     const finito = t('studio.el.generate', { n: fatte, nome: nome(id) });
+    notifica(luogo, finito);
+    disegna();
     if (!condivisa(p) || !studioRepoImpostazioni().token) { esito(finito + ' ' + t(condivisa(p) ? 'studio.repo.senzaToken' : 'studio.repo.audioDopo')); return; }
     esito(finito + ' ' + t('studio.repo.inCorso'));
     const msg = await aggiornaVoci({ salvata: p, chiedi: false });
@@ -2575,17 +2627,17 @@
     const az = leggi(dove);
     if (!az || az.tipo !== 'suono') return;
     const richiesta = unaRiga(az.richiesta);
-    if (!richiesta) { esito(t('studio.el.primaLaDescrizione')); return; }
     const k = 'suono|' + az.id;
+    if (!richiesta) { notifica(k, t('studio.el.primaLaDescrizione'), true); disegna(); return; }
     const file = await lavoro(k, async () => {
-      esito(t('studio.el.generoSuono'));
+      notifica(k, t('studio.el.generoSuono'));
       const corpo = { text: richiesta, prompt_influence: 0.4 };
       if (az.secondi > 0) corpo.duration_seconds = Math.max(0.5, Math.min(30, Number(az.secondi)));
       return fileDa(await eleven('POST', `/v1/sound-generation?output_format=${ELEVEN_FORMATO}`, corpo, { audio: true }), 'suono-elevenlabs.mp3');
     });
     if (!file) return;
     mettiProposta(k, file);
-    esito(t('studio.el.propostaPronta'));
+    notifica(k, t('studio.el.propostaPronta'));
     disegna();
     suonaAnteprima(proposte.get(k).url);
   }
@@ -2602,15 +2654,15 @@
   async function generaMusica(dove) {
     const k = chiaveMusicaEl(dove);
     const r = richiestaMusica(k);
-    if (!unaRiga(r.testo)) { esito(t('studio.el.primaLaDescrizione')); return; }
+    if (!unaRiga(r.testo)) { notifica(k, t('studio.el.primaLaDescrizione'), true); disegna(); return; }
     const file = await lavoro(k, async () => {
-      esito(t('studio.el.generoMusica'));
+      notifica(k, t('studio.el.generoMusica'));
       const ms = Math.round(Math.max(10, Math.min(300, Number(r.secondi) || 60)) * 1000);
       return fileDa(await eleven('POST', `/v1/music?output_format=${ELEVEN_FORMATO}`, { prompt: unaRiga(r.testo), music_length_ms: ms }, { audio: true }), 'musica-elevenlabs.mp3');
     });
     if (!file) return;
     mettiProposta(k, file);
-    esito(t('studio.el.propostaPronta'));
+    notifica(k, t('studio.el.propostaPronta'));
     disegna();
     suonaAnteprima(proposte.get(k).url, 0.6);
   }
@@ -2621,19 +2673,32 @@
     const pr = proposte.get(k);
     if (!pr) return;
     if (ascoltoEl) { try { ascoltoEl.pause(); } catch (_) { /* niente */ } }
-    const ok = tipo === 'voce' ? await caricaVoce(dove, pr.file) : tipo === 'suono' ? await caricaSuono(dove, pr.file) : await caricaMusica(dove, pr.file);
+    studio.elMsg = null;
+    const ok = tipo === 'voce' ? await caricaVoce(dove, pr.file, { voce: pr.voce }) : tipo === 'suono' ? await caricaSuono(dove, pr.file) : await caricaMusica(dove, pr.file);
     if (ok !== false) togliProposta(k);
     disegna();
   }
 
   /* La scelta della voce di un personaggio: un pannello sotto la sua riga,
    * coi filtri (libreria o voci mie, lingua, genere, parole) e l'elenco. */
-  function apriScelta(id) {
+  /* v445: la scelta si apre **dove si è premuto** — nella riga del
+   * personaggio (passo 2), nelle voci della scena, sotto la battuta — e non
+   * più soltanto al passo 2, dove da una battuta in fondo alla pagina non
+   * la si vedeva aprire. `scena`: l'id della scena se la voce vale solo lì;
+   * `ambitoLibero`: chi sceglie decide (da una battuta) se vale per tutta
+   * la storia o solo per quella scena. */
+  function apriScelta(id, { luogo = 'pg|' + id, scena = '', ambitoLibero = false } = {}) {
     const prof = S().profilo ? S().profilo(id) : {};
-    studio.elScelta = { pg: id, fonte: 'libreria', lingua: linguaStudio() === 'en' ? 'en' : 'it', genere: prof.genere === 'f' ? 'f' : 'm',
-      cerca: '', pagina: 0, voci: [], ancora: false, caricando: false, errore: '', tutteMie: null };
+    const p = studio.progetto;
+    studio.elScelta = { pg: id, luogo, scena: scena || '', ambito: ambitoLibero && !(p.voci && p.voci[id]) ? '' : scena || '', ambitoLibero,
+      fonte: 'libreria', lingua: linguaStudio() === 'en' ? 'en' : 'it', genere: prof.genere === 'f' ? 'f' : 'm',
+      cerca: '', pagina: 0, voci: [], ancora: false, caricando: false, errore: '', nota: '', tutteMie: null };
+    studio.elMsg = null;
     disegna();
     cercaVoci();
+    // e si porta in vista: su un telefono il pannello può nascere sotto il bordo
+    const pannello = studio.radice && studio.radice.querySelector('.studio-el-scelta');
+    if (pannello && pannello.scrollIntoView) { try { pannello.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) { /* vecchi browser */ } }
   }
   async function cercaVoci(altre) {
     const c = studio.elScelta;
@@ -2658,9 +2723,13 @@
       studioNuovoMomento({ chi: c.pg, testo: t('studio.el.fraseProva', { nome: nome(c.pg) }), umore: 'happy' });
     const imp = studioElevenImpostazioni();
     const file = await lavoro('prova|' + v.id, async () => {
-      esito(t('studio.el.generoProva', { voce: v.nome }));
-      return elevenParla(await elevenAggiungi(v), studioTestoPerVoce(m, imp.modello), imp);
-    });
+      c.nota = t('studio.el.generoProva', { voce: v.nome }); c.errore = '';
+      esito(c.nota);
+      const a = await elevenAggiungi(v);
+      return elevenParla(a.id, studioTestoPerVoce(m, imp.modello), imp);
+    }, 'scelta');
+    if (studio.elScelta === c) { c.nota = file ? t('studio.el.provaPronta', { voce: v.nome }) : ''; c.errore = file ? '' : (studio.elMsg && studio.elMsg.testo) || ''; }
+    disegna();
     if (!file) return;
     mettiProposta('prova', file);
     esito(t('studio.el.provaPronta', { voce: v.nome }));
@@ -2669,11 +2738,14 @@
   async function scegliVoce(v) {
     const c = studio.elScelta;
     if (!c) return;
-    const id = await lavoro('scegli|' + v.id, () => elevenAggiungi(v));
-    if (!id) return;
-    scegliVocePersonaggio(c.pg, { id, nome: v.nome, anteprima: v.anteprima, genere: v.genere });
-    esito(t('studio.el.voceScelta', { voce: v.nome, nome: nome(c.pg) }));
+    const a = await lavoro('scegli|' + v.id, () => elevenAggiungi(v), 'scelta');
+    if (!a || studio.elScelta !== c) return;
+    const sc = c.ambito ? studio.progetto.scene.find(x => x.id === c.ambito) : null;
+    scegliVocePersonaggio(c.pg, { id: a.id, nome: v.nome, anteprima: v.anteprima, genere: v.genere }, sc);
+    const detto = t(sc ? 'studio.el.voceSceltaScena' : 'studio.el.voceScelta', { voce: v.nome, nome: nome(c.pg), n: sc ? studio.progetto.scene.indexOf(sc) + 1 : '' }) +
+      (a.avviso ? ' ' + t('studio.el.avvisoAggiungi', { errore: a.avviso }) : '');
     studio.elScelta = null;
+    notifica(c.luogo, detto, !!a.avviso);
     disegna();
   }
 
@@ -2741,7 +2813,7 @@
     progetti: [], progetto: null, radice: null, capito: null, capitoScena: -1, esito: '', copioneAperto: false,
     salvaTimer: 0, aperta: null, repoAperto: false,
     // v444: il pannello della chiave ElevenLabs e la scelta della voce aperta (§6c)
-    elAperto: false, elScelta: null, elCrediti: ''
+    elAperto: false, elScelta: null, elCrediti: '', elMsg: null
   };
 
   // `tocca`: è una modifica (e non solo un'apertura), quindi il progetto
@@ -2909,10 +2981,11 @@
     }
     // v444: o generata con ElevenLabs, con la voce scelta per il personaggio
     const el = studioElevenImpostazioni().chiave;
+    const voce = el && m.chi ? studioVoceDi(studio.progetto, m.chi, scenaDi(base)) : null;
     if (el && m.chi) {
-      const voce = studioVoceDi(studio.progetto, m.chi);
       riga.append(tastoLavoro('voce|' + m.id, { fai: 'elGeneraVoce', dove: base },
-        voce ? t('studio.el.genera') : t('studio.el.scegliPrima'), voce ? t('studio.el.generaAiuto', { voce: voce.nome, testo: studioTestoPerVoce(m, studioElevenImpostazioni().modello) }) : ''));
+        voce ? t('studio.el.generaCon', { voce: voce.nome || voce.id }) : t('studio.el.scegliPrima'),
+        voce ? t('studio.el.generaAiuto', { voce: voce.nome, testo: studioTestoPerVoce(m, studioElevenImpostazioni().modello) }) : ''));
     }
     if (m.audio) {
       const valida = studioVoceValida(m);
@@ -2923,9 +2996,49 @@
           ? t('studio.voce.pronta', { secondi: secondiDi(m.audio.durata), durata: studioDurata(m) })
           : t('studio.voce.vecchia')));
     }
+    // v445: generata con una voce che non è più quella del personaggio qui
+    if (m.audio && voce && m.audio.voce && m.audio.voce !== voce.id && studioVoceValida(m))
+      riga.append(h('small', { class: 'studio-voce-stato troppo' }, t('studio.el.altraVoce')));
     const pr = rigaProposta('voce|' + m.id, 'voce', base, 'elGeneraVoce');
     if (pr) riga.append(pr);
+    const nota = notaEl('voce|' + m.id);
+    if (nota) riga.append(nota);
+    // la scelta della voce, aperta da questa battuta
+    if (studio.elScelta && studio.elScelta.luogo === 'voce|' + m.id) riga.append(disegnaScelta(studio.elScelta));
     return riga;
+  }
+
+  /* Le voci di una scena (v445): chi parla in questa scena, con la voce
+   * della storia o una sua solo per qui. «Cambia solo qui» apre la scelta
+   * nella scena; «Come nella storia» toglie quella della scena. */
+  function disegnaVociScena(sc, base) {
+    const p = studio.progetto;
+    if (!studioElevenImpostazioni().chiave) return null;
+    const parlano = [...new Set(sc.momenti.filter(m => m.chi && testoDetto(m)).map(m => m.chi))].filter(id => p.cast.includes(id));
+    if (!parlano.length) return null;
+    const blocco = h('div', { class: 'studio-voci-scena', role: 'group', 'aria-label': t('studio.el.vociScena') },
+      h('span', { class: 'studio-etichetta' }, t('studio.el.vociScena')));
+    for (const id of parlano) {
+      const luogo = 'sc|' + sc.id + '|' + id;
+      const sua = sc.voci && sc.voci[id];
+      const voce = studioVoceDi(p, id, sc);
+      const mancano = sc.momenti.filter(m => m.chi === id && studioVoceDaRifare(p, sc, m)).length;
+      const riga = h('div', { class: 'studio-voce-pg studio-voce-scena' },
+        figurina(id, '', 26),
+        h('span', { class: 'studio-voce-pg-nome' }, h('strong', {}, nome(id))),
+        h('span', { class: 'studio-voce-pg-scelta' + (voce ? '' : ' vuota') },
+          voce ? t(sua ? 'studio.el.soloQui' : 'studio.el.dellaStoria', { voce: voce.nome || voce.id }) : t('studio.el.nessunaVoce')));
+      if (voce && voce.anteprima) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elAscoltaPg', id, dove: base } }, t('studio.el.anteprima')));
+      riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elScegliScena', id, dove: base },
+        'aria-expanded': String(!!(studio.elScelta && studio.elScelta.luogo === luogo)) }, t(voce ? 'studio.el.cambiaQui' : 'studio.el.scegliQui')));
+      if (sua) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elTornaStoria', id, dove: base } }, t('studio.el.comeStoria')));
+      if (voce && mancano) riga.append(tastoLavoro(luogo, { fai: 'elMancantiScena', id, dove: base }, t('studio.el.mancanti', { n: mancano })));
+      blocco.append(riga);
+      const nota = notaEl(luogo);
+      if (nota) blocco.append(nota);
+      if (studio.elScelta && studio.elScelta.luogo === luogo) blocco.append(disegnaScelta(studio.elScelta));
+    }
+    return blocco;
   }
 
   /* I pezzi dell'interfaccia di ElevenLabs (v444, §6c). Un tasto che
@@ -3024,19 +3137,23 @@
       const prof = S().profilo ? S().profilo(id) : {};
       const voce = studioVoceDi(p, id);
       const battute = p.scene.flatMap(sc => sc.momenti).filter(m => m.chi === id && testoDetto(m));
-      const mancano = battute.filter(m => !studioVoceValida(m)).length;
+      const mancano = p.scene.reduce((n, sc) => n + sc.momenti.filter(m => m.chi === id && studioVoceDaRifare(p, sc, m)).length, 0);
+      const scenaDiversa = p.scene.filter(sc => sc.voci && sc.voci[id]).length;
       const riga = h('div', { class: 'studio-voce-pg' },
         figurina(id, '', 36),
         h('span', { class: 'studio-voce-pg-nome' }, h('strong', {}, nome(id)),
           h('small', {}, ' · ' + t('studio.ui.genere.' + (prof.genere === 'f' ? 'f' : 'm')) + ' · ' + t('studio.el.battute', { n: battute.length, mancano }))),
-        h('span', { class: 'studio-voce-pg-scelta' + (voce ? '' : ' vuota') }, voce ? voce.nome || voce.id : t('studio.el.nessunaVoce')));
+        h('span', { class: 'studio-voce-pg-scelta' + (voce ? '' : ' vuota') }, voce ? voce.nome || voce.id : t('studio.el.nessunaVoce'),
+          scenaDiversa ? h('small', {}, ' · ' + t('studio.el.inScene', { n: scenaDiversa })) : null));
       if (voce && voce.anteprima) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elAscoltaPg', id } }, t('studio.el.anteprima')));
       riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elScegli', id },
-        'aria-expanded': String(!!(studio.elScelta && studio.elScelta.pg === id)) }, voce ? t('studio.el.cambia') : t('studio.el.scegli')));
+        'aria-expanded': String(!!(studio.elScelta && studio.elScelta.luogo === 'pg|' + id)) }, voce ? t('studio.el.cambia') : t('studio.el.scegli')));
       if (voce && mancano) riga.append(tastoLavoro('pg|' + id, { fai: 'elMancanti', id }, t('studio.el.mancanti', { n: mancano })));
       if (voce) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elTogliVoce', id } }, t('studio.el.togliVoce')));
       blocco.append(riga);
-      if (studio.elScelta && studio.elScelta.pg === id) blocco.append(disegnaScelta(studio.elScelta));
+      const nota = notaEl('pg|' + id);
+      if (nota) blocco.append(nota);
+      if (studio.elScelta && studio.elScelta.luogo === 'pg|' + id) blocco.append(disegnaScelta(studio.elScelta));
     }
     return blocco;
   }
@@ -3063,10 +3180,18 @@
           tastoLavoro('prova|' + v.id, { fai: 'elProva', dove: String(i) }, t('studio.el.prova'), t('studio.el.provaAiuto')),
           tastoLavoro('scegli|' + v.id, { fai: 'elScegliVoce', dove: String(i) }, t('studio.el.questa')))));
     });
+    const scena = c.scena ? studio.progetto.scene.findIndex(x => x.id === c.scena) : -1;
+    // Per chi vale: da una battuta si sceglie; dalla scena vale lì, dal passo 2 per tutta la storia
+    const ambito = c.ambitoLibero && scena >= 0
+      ? h('label', { class: 'storie-campo studio-el-ambito' }, h('span', {}, t('studio.el.valePer')),
+        selettore('', c.ambito, [['', t('studio.el.valeStoria')], [c.scena, t('studio.el.valeScena', { n: scena + 1 })]], { dataset: { elAmbito: '1' } }))
+      : h('p', { class: 'demo-opzioni-nota' }, c.ambito && scena >= 0 ? t('studio.el.valeScenaNota', { n: scena + 1 }) : t('studio.el.valeStoriaNota'));
     return h('div', { class: 'studio-el-scelta', role: 'region', 'aria-label': t('studio.el.sceltaPer', { nome: nome(c.pg) }) },
       h('p', { class: 'demo-opzioni-nota' }, t('studio.el.sceltaPer', { nome: nome(c.pg) }) + ' ' + t('studio.el.sceltaAiuto')),
+      ambito,
       filtri,
       c.errore ? h('p', { class: 'studio-avviso', role: 'alert' }, c.errore) : null,
+      c.nota ? h('p', { class: 'studio-el-nota', role: 'status' }, c.nota) : null,
       c.caricando ? h('p', { class: 'demo-opzioni-nota' }, t('studio.el.carico')) : !c.voci.length && !c.errore ? h('p', { class: 'demo-opzioni-nota' }, t('studio.el.nessunaTrovata')) : null,
       elenco,
       c.ancora && !c.caricando ? h('div', { class: 'demo-azioni' }, h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'elAltre' } }, t('studio.el.altre'))) : null);
@@ -3149,6 +3274,9 @@
     }
     card.append(chips);
     card.append(disegnaMusica(base));
+    // v445: le voci ElevenLabs di chi parla qui, anche diverse da quelle della storia
+    const vociScena = disegnaVociScena(sc, base);
+    if (vociScena) card.append(vociScena);
     // Nell'universo: da quale tappa a quale va la camera, in tutta la scena
     const cosmo = sc.ambiente === 'cosmo';
     if (cosmo) {
@@ -3456,7 +3584,7 @@
   }
   function apri(progetto) {
     for (const k of [...proposte.keys()]) togliProposta(k);
-    studio.elScelta = null;
+    studio.elScelta = null; studio.elMsg = null;
     if (registrazione) fermaRegistrazione();
     studio.progetto = progetto;
     studio.capito = null; studio.capitoScena = -1; studio.esito = ''; studio.aperta = null;
@@ -3627,7 +3755,15 @@
         }, e => { studio.elCrediti = e.message; }).then(() => disegna());
         return;
       }
-      case 'elScegli': { const id = el.dataset.id; if (studio.elScelta && studio.elScelta.pg === id) { studio.elScelta = null; disegna(); } else apriScelta(id); return; }
+      case 'elScegli': { const id = el.dataset.id; if (studio.elScelta && studio.elScelta.luogo === 'pg|' + id) { studio.elScelta = null; disegna(); } else apriScelta(id); return; }
+      // v445: la voce di un personaggio solo per una scena
+      case 'elScegliScena': {
+        const sc = leggi(dove), id = el.dataset.id, luogo = 'sc|' + sc.id + '|' + id;
+        if (studio.elScelta && studio.elScelta.luogo === luogo) { studio.elScelta = null; disegna(); } else apriScelta(id, { luogo, scena: sc.id });
+        return;
+      }
+      case 'elTornaStoria': { const sc = leggi(dove); scegliVocePersonaggio(el.dataset.id, null, sc); studio.elMsg = null; disegna(); return; }
+      case 'elMancantiScena': generaMancanti(el.dataset.id, leggi(dove)); return;
       case 'elChiudi': studio.elScelta = null; disegna(); return;
       case 'elCerca': {
         const c = studio.elScelta, campo = studio.radice.querySelector('[data-el-cerca]');
@@ -3638,7 +3774,7 @@
       case 'elAnteprima': { const v = studio.elScelta && studio.elScelta.voci[Number(dove)]; if (v) suonaAnteprima(v.anteprima); return; }
       case 'elProva': { const v = studio.elScelta && studio.elScelta.voci[Number(dove)]; if (v) provaVoce(v); return; }
       case 'elScegliVoce': { const v = studio.elScelta && studio.elScelta.voci[Number(dove)]; if (v) scegliVoce(v); return; }
-      case 'elAscoltaPg': { const v = studioVoceDi(p, el.dataset.id); if (v && v.anteprima) suonaAnteprima(v.anteprima); return; }
+      case 'elAscoltaPg': { const v = studioVoceDi(p, el.dataset.id, dove ? leggi(dove) : null); if (v && v.anteprima) suonaAnteprima(v.anteprima); return; }
       case 'elTogliVoce': scegliVocePersonaggio(el.dataset.id, null); disegna(); return;
       case 'elMancanti': generaMancanti(el.dataset.id); return;
       case 'elGeneraVoce': generaVoce(dove); return;
@@ -3804,6 +3940,7 @@
         }
         return;
       }
+      if (el.dataset && el.dataset.elAmbito) { if (studio.elScelta) studio.elScelta.ambito = el.value; return; }
       if (el.dataset && el.dataset.elFiltro) {
         const c = studio.elScelta;
         if (c) {
@@ -3948,7 +4085,7 @@
     musicaSrc: studioMusicaSrc, percorsoMusica: studioPercorsoMusica, musicheVolute: studioMusicheVolute, pulisciMusica: studioPulisciMusica,
     caricaMusica, togliMusica, sceltaMusica, riprendiVoci: studioRiprendiVoci, STUDIO_MUSICA_CARTELLA,
     // v444: ElevenLabs (§6c) e i suoni da file
-    testoPerVoce: studioTestoPerVoce, voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi,
+    testoPerVoce: studioTestoPerVoce, voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
     caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN,
     apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },

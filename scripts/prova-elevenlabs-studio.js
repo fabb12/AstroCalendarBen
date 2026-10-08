@@ -79,6 +79,8 @@ const prova = (nome, fn) => prove.push([nome, fn]);
           { voice_id: 'Lib' + (g || 'x') + 'Voce0002' + u.searchParams.get('page'), public_owner_id: 'prop2', name: 'Seconda ' + u.searchParams.get('page'), gender: g, language: 'it', preview_url: 'https://anteprime.test/b.mp3' }] });
       }
       if (u.pathname === '/v2/voices') return json({ has_more: false, voices: [{ voice_id: 'MiaVoce00001', name: 'La mia voce', labels: { gender: 'female', language: 'it' }, preview_url: 'https://anteprime.test/mia.mp3' }] });
+      // la seconda voce della libreria: la chiave non può aggiungerla (v445)
+      if (u.pathname.startsWith('/v1/voices/add/prop2/')) return r.fulfill({ status: 403, headers: cors, contentType: 'application/json', body: JSON.stringify({ detail: { message: 'missing_permissions voices_write' } }) });
       if (u.pathname.startsWith('/v1/voices/add/')) return json({ voice_id: 'Aggiunta' + u.pathname.split('/').pop().slice(0, 12) });
       if (u.pathname.startsWith('/v1/text-to-speech/') || u.pathname === '/v1/sound-generation' || u.pathname === '/v1/music')
         return r.fulfill({ status: 200, headers: cors, contentType: 'audio/wav', body: wav(u.pathname === '/v1/music' ? 3 : 1.2) });
@@ -231,6 +233,76 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.deepEqual(mu.corpo, { prompt: 'arpa e archi, dolce', music_length_ms: 30000 });
       await pagina.locator('[data-fai="elUsa"][data-dove="storia"]').click();
       await pagina.waitForFunction(() => StudioStorie.progetto.musica && StudioStorie.progetto.musica.tipo === 'file');
+    });
+
+    // v445: dove sta una battuta di un personaggio
+    const battutaDi = async id => {
+      const p = await progetto();
+      for (let i = 0; i < p.scene.length; i++) for (let k = 0; k < p.scene[i].momenti.length; k++) {
+        const m = p.scene[i].momenti[k];
+        if (m.chi === id && m.testo.trim()) return { i, k, base: `scene.${i}.momenti.${k}`, sid: p.scene[i].id };
+      }
+      return null;
+    };
+    const apriScena = async i => {
+      const scena = pagina.locator('.studio-scena').nth(i);
+      if (!(await scena.evaluate(e => e.open))) await scena.locator(':scope > summary').click();
+      return scena;
+    };
+
+    prova('dalla battuta senza voce: la scelta si apre lì sotto, e può valere solo per la scena', async () => {
+      const altro = await pagina.evaluate(pg => StudioStorie.progetto.cast.find(id => id !== pg && StudioStorie.progetto.scene.some(sc => sc.momenti.some(m => m.chi === id && m.testo.trim()))), pg);
+      assert.ok(altro, 'serve un secondo personaggio che parla');
+      const b = await battutaDi(altro);
+      await apriScena(b.i);
+      const tasto = pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${b.base}"]`);
+      assert.match(await tasto.textContent(), /Scegli la voce/);
+      await tasto.click();
+      // la scelta nasce dentro la riga della voce di quella battuta, non al passo 2
+      const qui = pagina.locator(`.studio-voce:has([data-dove="${b.base}"]) .studio-el-scelta`);
+      await qui.waitFor();
+      assert.equal(await pagina.locator('#studio-voci-pg .studio-el-scelta').count(), 0);
+      await qui.locator('.studio-el-voce').first().waitFor();
+      await qui.locator('[data-el-ambito]').selectOption(b.sid);
+      await qui.locator('.studio-el-voce [data-fai="elScegliVoce"]').first().click();
+      await pagina.waitForFunction(() => !document.querySelector('.studio-el-scelta'));
+      const p = await progetto();
+      assert.ok(p.scene[b.i].voci[altro], 'la voce sta nella scena');
+      assert.ok(!p.voci[altro], 'e non in tutta la storia');
+      // il messaggio è accanto alla battuta, e il tasto ora genera con quella voce
+      assert.match(await pagina.locator(`.studio-voce:has([data-dove="${b.base}"]) .studio-el-nota`).textContent(), /Nella scena \d+/);
+      assert.match(await pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${b.base}"]`).textContent(), /Genera con/);
+    });
+
+    prova('voce cambiata solo in una scena: le battute di lì la usano, e quelle vecchie sono da rifare', async () => {
+      const b = await battutaDi(pg);
+      const scena = await apriScena(b.i);
+      const prima = (await progetto()).voci[pg].id;
+      await scena.locator(`[data-fai="elScegliScena"][data-id="${pg}"]`).click();
+      const pannello = scena.locator('.studio-voci-scena .studio-el-scelta');
+      await pannello.locator('.studio-el-voce').first().waitFor();
+      assert.match(await pannello.textContent(), /solo nella scena/);
+      if (process.env.FOTO) await scena.locator('.studio-voci-scena').screenshot({ path: path.join(process.env.FOTO, 'voci-scena.png') });
+      // la seconda voce: l'account non può aggiungerla, ma la scelta resta
+      await pannello.locator('.studio-el-voce [data-fai="elScegliVoce"]').nth(1).click();
+      await pagina.waitForFunction(() => !document.querySelector('.studio-el-scelta'));
+      const p = await progetto();
+      const sua = p.scene[b.i].voci[pg];
+      assert.ok(sua && sua.id !== prima, 'la voce della scena');
+      assert.equal(p.voci[pg].id, prima, 'la storia tiene la sua');
+      assert.match(await scena.locator('.studio-voci-scena .studio-el-nota').textContent(), /non sono riuscito ad aggiungerla.*voices_write/);
+      // la battuta generata con l'altra voce ora è da rifare
+      assert.match(await scena.locator('.studio-voci-scena').textContent(), /solo in questa scena/);
+      await scena.locator(`[data-fai="elMancantiScena"][data-id="${pg}"]`).click();
+      await pagina.waitForFunction(() => /Battute generate/.test(document.getElementById('studio-esito').textContent));
+      const tts = richieste.filter(x => (x.via || '').startsWith('/v1/text-to-speech/')).pop();
+      assert.equal(tts.via, '/v1/text-to-speech/' + sua.id);
+      const m = (await progetto()).scene[b.i].momenti[b.k];
+      assert.equal(m.audio.voce, sua.id);
+      // e si torna a quella della storia
+      await scena.locator(`[data-fai="elTornaStoria"][data-id="${pg}"]`).click();
+      assert.ok(!(await progetto()).scene[b.i].voci[pg]);
+      assert.match(await scena.locator('.studio-voci-scena').textContent(), /quella della storia/);
     });
 
     prova('la chiave è andata solo a ElevenLabs, nell\'intestazione', async () => {

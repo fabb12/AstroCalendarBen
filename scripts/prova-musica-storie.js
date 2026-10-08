@@ -427,6 +427,15 @@ prova('ElevenLabs: il testo con la regia, le voci lette dalle API, i filtri e la
   assert.deepEqual(Object.keys(p.voci), ['Moon', 'Sun']);
   assert.equal(p.voci.Sun.anteprima, '');
   assert.equal(St.voceDi(p, 'Moon').nome, 'Giulia');
+  // v445: una scena può cambiarla, e la battuta fatta con l'altra è da rifare
+  const sc = St.ripulisci({ cast: ['Moon'], voci: p.voci, scene: [{ voci: { Moon: { id: 'Scena12345678', nome: 'Altra' } },
+    momenti: [{ chi: 'Moon', testo: 'Ciao', audio: { durata: 900, impronta: St.impronta('Ciao'), voce: 'AbCdEf1234567890' } }] }] });
+  assert.equal(St.voceDi(sc, 'Moon', sc.scene[0]).id, 'Scena12345678');
+  assert.equal(St.voceDi(sc, 'Moon').id, 'AbCdEf1234567890');
+  assert.equal(sc.scene[0].momenti[0].audio.voce, 'AbCdEf1234567890', 'la voce dell\'audio resta nel progetto');
+  assert.equal(St.voceDaRifare(sc, sc.scene[0], sc.scene[0].momenti[0]), true);
+  sc.scene[0].voci = {};
+  assert.equal(St.voceDaRifare(sc, sc.scene[0], sc.scene[0].momenti[0]), false);
 });
 
 (async () => {

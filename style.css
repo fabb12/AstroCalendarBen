@@ -12925,6 +12925,13 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-el-proposta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 3px 6px; border: 1px dashed rgba(250, 204, 21, 0.6); border-radius: 10px; }
 #vista-demo .studio-el-usa { border-color: rgba(74, 222, 128, 0.7); color: #bbf7d0; }
 .studio-el-tasto[aria-busy="true"] { opacity: 0.8; font-style: italic; }
+.studio-voce > .studio-el-scelta, .studio-voce > .studio-el-nota, .studio-voce > .studio-el-proposta { flex: 1 1 100%; }
+.studio-el-nota { display: block; color: #c4b5fd; font-size: 0.8rem; }
+.studio-el-nota.errore { color: #fca5a5; }
+/* v445: le voci della scena */
+.studio-voci-scena { display: grid; gap: 6px; margin: 6px 0; }
+.studio-voce-scena { padding: 4px 8px; }
+.studio-el-ambito { max-width: 20rem; }
 .studio-secondi { display: inline-flex; align-items: center; gap: 4px; color: var(--testo-2, #94a3b8); font-size: 0.76rem; }
 .studio-secondi input { width: 4.2rem; }
 .studio-dettagli > summary { cursor: pointer; color: #cbd5e1; font-size: 0.82rem; }
