@@ -59,8 +59,8 @@ const server = http.createServer((req, res) => {
     assert.deepEqual(builtins.map(d => d.chiave),
       ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss', 'solstizi_equinozi', 'voyager', 'universo',
         // Le Storie cosmiche sono demo predefinite anche loro (storie-cosmiche.js)
-        'storia_luna', 'storia_giganti', 'storia_tempo', 'storia_stelle']);
-    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000, 171000, 278000]);
+        'storia_luna', 'storia_giganti', 'storia_tempo', 'storia_stelle', 'storia_puntino']);
+    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000, 171000, 278000, 248500]);
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
@@ -192,7 +192,18 @@ const server = http.createServer((req, res) => {
     });
     assert.deepEqual([inPausa.stato, inPausa.forma, inPausa.premuto, inPausa.etichetta], ['pausa', true, 'true', 'Riprendi'],
       'Pausa: icona e nome diventano Riprendi');
-    assert.ok(inPausa.w >= 20 && inPausa.visibile === 'visible', 'In pausa i comandi restano in vista');
+    assert.ok(inPausa.w >= 20 && inPausa.visibile === 'visible', 'Messa in pausa, i comandi sono in vista');
+    // v450: se non si usano se ne vanno anche in pausa, anche col mouse fermo
+    // sopra e col fuoco rimasto sul tasto cliccato; un tocco li riporta
+    await pagina.waitForTimeout(6200);
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'hidden',
+      'In pausa, senza usarli, i comandi scompaiono dopo cinque secondi');
+    // un tocco fuori dai comandi li riporta (qui sul fondo della pagina: sulla
+    // tela, due tocchi vicini sarebbero un doppio clic, che apre lo schermo intero)
+    await pagina.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 9 })));
+    await pagina.waitForTimeout(300);
+    assert.equal(await pagina.evaluate(() => getComputedStyle(document.getElementById('demo-controlli')).visibility), 'visible',
+      'Un tocco li riporta');
     await pagina.locator('#demo-controlli [data-azione="riprendi"]').click();
     assert.equal(await pagina.evaluate(() => AstroDemo.stato), 'attivo', 'Riprendi');
     await pagina.locator('#skymap-canvas').click({ position: { x: 20, y: 20 } });

@@ -2396,23 +2396,37 @@
     stop: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>'
   };
   const inCorso = () => motore.stato === 'attivo' || motore.stato === 'pausa';
-  const trattenuti = () => motore.stato === 'pausa' || pannello.matches(':hover') ||
-    pannello.contains(document.activeElement);
+  /* I comandi se ne vanno dopo `durataComandiSec` secondi (cinque di serie,
+   * un'opzione della pagina Demo) **senza essere usati** (v450). Fino alla
+   * v449 li trattenevano tre cose che con l'uso non c'entrano: il mouse
+   * fermo sopra, il fuoco che resta sul tasto appena cliccato (cioè sempre,
+   * dopo un clic) e la pausa — e chi guardava una storia se li ritrovava
+   * piantati sullo schermo. Ora conta l'ultimo uso vero (`usaComandi`: un
+   * movimento, un clic, un tasto dentro ai comandi); li trattiene solo chi ci
+   * è arrivato con la tastiera (`:focus-visible`), che se no non saprebbe
+   * dove sta. In pausa spariscono anche loro: un tocco o un movimento sulla
+   * scena li riporta. */
+  let ultimoUsoComandi = 0;
+  const usaComandi = () => { ultimoUsoComandi = Date.now(); };
+  const trattenuti = () => {
+    try { return !!pannello.querySelector(':focus-visible'); } catch (_) { return false; }
+  };
   function nascondiComandi() {
     if (timerComandi) { clearTimeout(timerComandi); timerComandi = null; }
     pannello.classList.remove('visibile');
   }
-  // Quanto restano a schermo: è un'opzione della pagina Demo
-  // (`durataComandiSec`, cinque secondi di serie).
   function programmaRitiro() {
     if (timerComandi) clearTimeout(timerComandi);
+    const durata = durataComandiValida(opzioni.durataComandiSec) * 1000;
+    const resta = Math.max(200, durata - (Date.now() - ultimoUsoComandi));
     timerComandi = setTimeout(() => {
       timerComandi = null;
-      if (trattenuti()) programmaRitiro(); else nascondiComandi();
-    }, durataComandiValida(opzioni.durataComandiSec) * 1000);
+      if (trattenuti() || Date.now() - ultimoUsoComandi < durata - 50) programmaRitiro(); else nascondiComandi();
+    }, resta);
   }
   function mostraComandi() {
     if (!inCorso()) return;
+    usaComandi();
     pannello.classList.add('visibile');
     aggiornaCronologia();
     if (!cronoRaf) cronoRaf = requestAnimationFrame(giroCronologia);
@@ -2527,6 +2541,12 @@
   // sono ritirati, e si vedono appena ci si arriva.
   pannello.addEventListener('focusin', mostraComandi);
   pannello.addEventListener('pointerenter', mostraComandi);
+  // Muoversi sopra ai comandi (o usarli da tastiera) è usarli: si riparte
+  // dai cinque secondi, e se erano già ritirati tornano
+  pannello.addEventListener('pointermove', () => {
+    if (pannello.classList.contains('visibile')) usaComandi(); else mostraComandi();
+  });
+  pannello.addEventListener('keydown', usaComandi);
   document.body.append(pannello, sottotitoli, cartello);
   function aggiornaEtichette() {
     const inPausa = motore.stato === 'pausa';
@@ -2551,6 +2571,7 @@
           (document.fullscreenElement && document.fullscreenElement !== document.documentElement
             ? document.fullscreenElement : document.body);
   }
+  let pausaMostrata = false;
   function aggiornaPannello() {
     if (inCorso()) {
       const genitore = genitoreDemo();
@@ -2559,9 +2580,10 @@
       if (genitore && cartello.parentElement !== genitore) genitore.append(cartello);
       pannello.hidden = false;
       aggiornaEtichette();
-      // In pausa i comandi restano in vista: il tasto per riprendere non
-      // deve sparire proprio mentre serve.
-      if (motore.stato === 'pausa') mostraComandi();
+      // Entrando in pausa i comandi si mostrano (il tasto per riprendere),
+      // e poi si ritirano come sempre se non si usano (v450)
+      if (motore.stato === 'pausa' && !pausaMostrata) { pausaMostrata = true; mostraComandi(); }
+      if (motore.stato !== 'pausa') pausaMostrata = false;
     } else {
       if (pannello.parentElement !== document.body) document.body.append(pannello);
       if (sottotitoli.parentElement !== document.body) document.body.append(sottotitoli);

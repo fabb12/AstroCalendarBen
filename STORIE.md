@@ -613,7 +613,8 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
 | `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo; dalla v450 `sync?` (`on`), `at?` (−30–3600), `loop?` (`off`), `bpm?` (30–240), `beat?`, `kick?` (0–3): §Le storie cantate |
-| `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri): il verso dura la sua ripresa |
+| `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri), `words?` (v451: i tempi di ogni parola, `'0.00-0.21 0.21-0.35 - …'` in frazioni della ripresa): il verso dura la sua ripresa |
+| `story_photo` (v451) | `photo` (`pale_blue_dot`): la fotografia vera accanto alla scena, per la ripresa dell'azione |
 | `story_title` (v450) | `id` o `text`, `sub_id?` o `subtitle?`: il titolo grande al centro, per la sua ripresa |
 
 Dalla v416 `character_show`, `character_move`, `character_return`,
@@ -1761,6 +1762,55 @@ Prove: `prova-storie.js`, gruppo «le storie cantate e gli ospiti (v450)»
 karaoke che non torna indietro, la validazione, l'ospite in ogni vista e che
 scivola, la storia che dura la canzone con ogni `at` giusto e i versi in
 ordine). Guardata intera in Chromium, scena per scena.
+
+### Le correzioni dopo la prima visione (v451)
+
+Chi ha guardato «Pallido puntino blu» ha chiesto cinque cose.
+
+- **«All'inizio trema tutto, troppo veloce».** Due cause. Il colpo di camera
+  sul battito era uno spintone secco a ogni colpo, spento in un decimo di
+  secondo: ottantasette scatti al minuto. Ora è una spinta morbida **una
+  volta per battuta**, sul primo colpo (`spintaBattuta`, funzione pura:
+  sale in 240 ms con una mezza onda, scende in mezzo secondo; 1,4% per
+  `kick: 1`). E all'ingresso della base l'onda d'urto faceva la scossa del
+  quadro a quasi dieci oscillazioni al secondo: la scossa di tutte le storie
+  (`storLenteApri`) va ora a circa 4,5, uno scossone e non un ronzio, e nella
+  storia al posto dell'onda d'urto c'è un bagliore. Anche il cenno a tempo dei
+  personaggi è più lieve e senza scatto (una mezza onda per colpo). Prova:
+  «la camera batte il tempo senza scatti».
+- **Il labiale.** Un verso porta i tempi di ogni parola (`character_sing {
+  words: '0.00-0.21 0.21-0.35 - …' }`, frazioni della ripresa, `-` per una
+  parola che non si canta), misurati sulla canzone parola per parola
+  (`storParoleDelCanto`, `storTempoNelCanto`): ogni parola stende le sue
+  sillabe sul suo tempo, fra una parola e l'altra la bocca si chiude, e si
+  canta con la bocca un poco più aperta di come si parla. Il karaoke segue
+  gli stessi tempi. Senza `words`, o se i tempi non tornano col testo, vale la
+  fila stesa sul verso come prima.
+- **Gli occhi nel giro della camera.** Il volto girato della v432 seguiva
+  tutto il giro della regia: nel giro lungo (centinaia di gradi in una scena)
+  i personaggi finivano di spalle mentre cantavano. Ora il volto **rincorre**
+  la camera con una molla lenta e al più di 0,42 rad (`storGiroVolto`): è una
+  testa che si gira verso chi la riprende, e a camera ferma torna di fronte.
+  E soprattutto i corpi **disegnati** piatti — Carl Sagan, le sonde, le
+  stazioni, le vesti — non girano più il viso: su Sagan gli occhi scivolavano
+  di lato sopra a un corpo fermo. Lì il volto guarda sempre in camera.
+- **La fotografia vera.** `story_photo { photo: pale_blue_dot }` (§8,
+  `STOR_FOTO`): quando si canta del puntino compare accanto alla scena la
+  fotografia della Voyager 1 del 14 febbraio 1990 (NASA, pubblico dominio),
+  chiesta dal browser a Wikimedia Commons, poi alla voce di Wikipedia; senza
+  rete un'illustrazione disegnata, con scritto che è un'illustrazione. Lo
+  stesso schema e lo stesso aspetto della copertina del Disco d'Oro
+  (`.demo-immagine`, `.demo-immagine-foto` per non ritagliarla). Nella
+  storia compare cinque volte: «Guardate ancora quel puntino», i due «Pallido
+  punto blu», «in questa immagine distante», l'ultimo «pallido punto blu».
+- **I comandi della demo** se ne vanno dopo cinque secondi (l'opzione
+  `durataComandiSec`) **senza essere usati** (`demo.js`, `usaComandi`): fino
+  alla v450 li trattenevano il mouse fermo sopra, il fuoco rimasto sul tasto
+  appena cliccato (anche con la regola `:focus-within` di `style.css`, ora
+  `:has(:focus-visible)`) e la pausa. Li trattiene solo il fuoco da tastiera;
+  un movimento sopra, un clic o un tocco sulla scena li riportano. Prova:
+  `prova-demo-browser.js` (che si ferma, come già nella v449, sullo stato
+  dello schermo intero più avanti).
 
 ## Accessibilità
 

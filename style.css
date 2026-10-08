@@ -12259,6 +12259,8 @@ body.demo-vista-pulita #demo-cartello,
 body.demo-vista-pulita #demo-cartello *,
 body.demo-vista-pulita #demo-immagine,
 body.demo-vista-pulita #demo-immagine *,
+body.demo-vista-pulita .demo-immagine-foto,
+body.demo-vista-pulita .demo-immagine-foto *,
 body.demo-vista-pulita #sol-transizione,
 body.demo-vista-pulita #sol-transizione *,
 body.demo-vista-pulita .narrazione-testo {
@@ -12278,13 +12280,13 @@ body.demo-vista-pulita .demo-scena-pulita > video { pointer-events:auto !importa
    fuoco), non la vista pulita: forzarli visibili qui li teneva a schermo per
    tutta la demo, sopra al racconto. */
 body.demo-vista-pulita .demo-scena-pulita > #demo-controlli.visibile,
-body.demo-vista-pulita .demo-scena-pulita > #demo-controlli:focus-within,
+body.demo-vista-pulita .demo-scena-pulita > #demo-controlli:has(:focus-visible),
 body.demo-vista-pulita #demo-controlli.visibile,
-body.demo-vista-pulita #demo-controlli:focus-within {
+body.demo-vista-pulita #demo-controlli:has(:focus-visible) {
   visibility:visible !important; pointer-events:auto !important;
 }
 body.demo-vista-pulita #demo-controlli.visibile *,
-body.demo-vista-pulita #demo-controlli:focus-within * { visibility:visible !important; pointer-events:auto !important; }
+body.demo-vista-pulita #demo-controlli:has(:focus-visible) * { visibility:visible !important; pointer-events:auto !important; }
 body.demo-vista-pulita #modale-sistema .testata-modale,
 body.demo-vista-pulita #modale-sistema .corpo-modale > *:not(#sol-guscio),
 body.demo-vista-pulita main button,
@@ -12404,7 +12406,10 @@ body.demo-vista-pulita .skymap-avviso { display:none !important; }
 }
 .demo-controlli[hidden] { display:none !important; }
 .demo-controlli.visibile { opacity:1; visibility:visible; pointer-events:auto; }
-.demo-controlli:focus-within { opacity:1; visibility:visible; pointer-events:auto; }
+/* v450: solo il fuoco **da tastiera** li tiene in vista. Con `:focus-within`
+   bastava aver cliccato un tasto (che il fuoco poi lo tiene) e i comandi non
+   si ritiravano più: chi guardava se li trovava piantati sullo schermo. */
+.demo-controlli:has(:focus-visible) { opacity:1; visibility:visible; pointer-events:auto; }
 body .demo-controlli .demo-tasto {
   width:44px; height:44px; min-width:44px; padding:0; display:grid; place-items:center;
   border-radius:50%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
@@ -12552,6 +12557,10 @@ body.demo-vista-pulita .did-pieno-ripiego .demo-cartello, body.demo-vista-pulita
 .demo-immagine figcaption { display:flex; flex-direction:column; gap:.1rem; margin-top:.45rem; padding:0 .2rem; }
 .demo-immagine-titolo { color:#fcd34d; font-size:.82rem; font-weight:700; letter-spacing:.02em; }
 .demo-immagine-credito { color:#94a3b8; font-size:.7rem; }
+/* v450: la fotografia vera di una CosmoStoria (story_photo), intera e non
+   ritagliata: il puntino della Terra non deve finire fuori dal quadro */
+.demo-immagine-foto .demo-immagine-cornice { aspect-ratio:auto; }
+.demo-immagine-foto .demo-immagine-cornice img { height:auto; max-height:42vh; object-fit:contain; }
 @media (max-width: 520px) {
   .demo-immagine { width:40vw; top:calc(env(safe-area-inset-top, 0px) + 112px); transform:translate(10px, 0); padding:.35rem; }
   .demo-immagine.visibile { transform:none; }
