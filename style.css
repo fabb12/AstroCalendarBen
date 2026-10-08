@@ -13022,3 +13022,61 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* Lo Studio in linguette (v446): la scena e il momento dicono com'è in una
+   riga di linguette, e se ne apre una sola alla volta; il momento chiuso è
+   una riga sola che si tocca per aprirlo */
+.studio-linguette { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.studio-linguetta {
+  display: inline-grid; gap: 1px; justify-items: start; text-align: left; min-width: 0; max-width: 100%;
+  padding: 5px 11px; cursor: pointer; font: inherit; color: var(--testo, #e2e8f0);
+  border: 1px solid var(--bordo); border-radius: 10px; background: rgba(2, 6, 23, 0.35);
+}
+.studio-linguetta:hover { border-color: rgba(255, 255, 255, 0.45); }
+.studio-linguetta:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.studio-linguetta-nome { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; }
+.studio-linguetta-nome::after { content: '▾'; font-size: 0.7rem; color: var(--testo-2, #94a3b8); }
+.studio-linguetta[aria-expanded="true"] .studio-linguetta-nome::after { content: '▴'; }
+.studio-linguetta > small { color: var(--testo-2, #94a3b8); font-size: 0.72rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-linguetta[aria-expanded="true"] { border-color: rgba(167, 139, 250, 0.85); background: rgba(124, 58, 237, 0.2); }
+.studio-linguette-scena .studio-linguetta { flex: 1 1 9.5rem; }
+.studio-linguette-scena .studio-linguetta[aria-expanded="true"] { border-color: rgba(250, 204, 21, 0.7); background: rgba(250, 204, 21, 0.1); }
+.studio-linguetta-volti { display: inline-flex; align-items: center; order: 2; }
+.studio-linguetta-volti .studio-figurina + .studio-figurina { margin-left: -6px; }
+.studio-linguetta-volti small { margin-left: 3px; color: var(--testo-2, #94a3b8); font-size: 0.7rem; font-weight: 500; }
+.studio-linguetta-nome::after { order: 3; }
+.studio-pannello {
+  display: grid; gap: 8px; min-width: 0; padding: 10px;
+  border: 1px solid var(--bordo); border-radius: 10px; background: rgba(2, 6, 23, 0.3);
+}
+.studio-pannello > .studio-voce, .studio-pannello > .studio-voci-scena { margin: 0; }
+.studio-scena-testa > .studio-strumenti { margin-left: 0; }
+.studio-momenti-titolo { margin: 6px 0 0; }
+.studio-momento.aperto { border-left-color: rgba(250, 204, 21, 0.75); background: rgba(2, 6, 23, 0.5); }
+.studio-momento-testa { flex-wrap: nowrap; min-width: 0; }
+.studio-momento-riga {
+  display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; padding: 2px 4px; cursor: pointer;
+  font: inherit; text-align: left; color: inherit; background: none; border: 0; border-radius: 8px;
+}
+.studio-momento-riga:hover { background: rgba(255, 255, 255, 0.04); }
+.studio-momento-riga:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.studio-momento-titolo { color: #fde68a; font-weight: 700; font-size: 0.88rem; }
+.studio-momento-sunto { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1 1 auto; font-size: 0.84rem; }
+.studio-momento-sunto strong { flex: 0 0 auto; }
+.studio-momento-parole { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e2e8f0; }
+.studio-momento-parole.vuote { color: var(--testo-2, #94a3b8); font-style: italic; }
+.studio-momento-segni { flex: 0 1 auto; color: #c4b5fd; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.studio-momento-testa .studio-strumenti { flex: 0 0 auto; }
+.studio-aggiungi { display: grid; gap: 6px; }
+.studio-famiglia { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.studio-famiglia-nome { min-width: 7.5rem; color: #c4b5fd; font-size: 0.74rem; font-weight: 650; }
+.studio-pannello .studio-secondi small { color: var(--testo-2, #94a3b8); }
+@media (max-width: 560px) {
+  .studio-momento-segni { display: none; }
+  .studio-linguette-scena { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .studio-linguetta { padding: 5px 8px; }
+  .studio-momento-testa { gap: 4px; }
+  .studio-momento-testa .studio-strumenti { gap: 3px; }
+  .studio-famiglia-nome { min-width: 0; flex: 1 1 100%; }
+  .studio-momento-testa .studio-strumenti .studio-mini { min-width: 1.9rem; padding-inline: 4px; }
+}
