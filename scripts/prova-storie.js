@@ -1903,7 +1903,7 @@ prova('story_photo: la fotografia vera, validata', () => {
   for (const l of ['it', 'en']) for (const k of ['alt', 'didascalia', 'credito', 'illustrazione'])
     assert.equal(typeof DIZ[l].messaggi['storie.foto.pale_blue_dot.' + k], 'string');
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');
-  assert.ok((d.testo.match(/story_photo/g) || []).length >= 4, 'la foto torna quando si canta del puntino');
+  assert.ok((d.testo.match(/story_photo/g) || []).length === 1, 'la foto, una volta sola');
   assert.ok((d.testo.match(/words: '/g) || []).length >= 60, 'i versi portano i tempi delle parole');
 });
 prova('la bocca segue la voce vera del verso: chiusa sulle pause, spalancata sulle note forti', () => {
@@ -1941,6 +1941,38 @@ prova('la regia a ritmo cambia inquadratura a ogni battuta, col rollio e il coro
     assert.ok(rollii.has(1) && rollii.has(-1), 'il quadro si inclina da una parte e dall\'altra');
     motore.ferma();
   } finally { delete globalThis.AstroDemo.tempo; S.sgombra(); }
+});
+prova('la Terra nella fotografia: il puntino chiaro e isolato nel raggio di luce, e se non c\'è la ricerca si arrende', () => {
+  // una foto finta come quella della Voyager: fondo nero granuloso, quattro
+  // raggi di luce in diagonale, granelli rossastri, e (se c'è) la Terra
+  const finta = (terra, semeDado = 7) => {
+    const w = 300, h = 400, d = new Uint8ClampedArray(w * h * 4);
+    let st = semeDado;
+    const dado = () => { st = (st * 16807) % 2147483647; return st / 2147483647; };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      let r = 6 + dado() * 10, g = 5 + dado() * 8, b = 6 + dado() * 10;
+      for (const [x0, larg, col] of [[40, 26, [120, 50, 20]], [96, 34, [150, 60, 22]], [168, 40, [170, 90, 30]], [226, 30, [40, 50, 110]]]) {
+        const u = Math.abs(x - (x0 + (h - y) * 0.2) - larg / 2) / (larg / 2);
+        if (u < 1) { const k = (1 - u * u) * 0.5; r += col[0] * k; g += col[1] * k; b += col[2] * k; }
+      }
+      if (dado() < 0.002) { r += 60; g += 20; }         // granelli rossastri
+      d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255;
+    }
+    if (terra) for (const [dx, dy, k] of [[0, 0, 1], [1, 0, 0.7], [0, 1, 0.7], [1, 1, 0.5]]) {
+      const i = ((terra.y + dy) * w + terra.x + dx) * 4;
+      d[i] += 110 * k; d[i + 1] += 140 * k; d[i + 2] += 190 * k;
+    }
+    return { d, w, h };
+  };
+  const { d, w, h } = finta({ x: 210, y: 262 });
+  const q = S.trovaPuntino(d, w, h);
+  assert.ok(q && Math.abs(q.x * w - 211) < 3 && Math.abs(q.y * h - 263) < 3, 'trovata dove è: ' + JSON.stringify(q));
+  const vuota = finta(null);
+  assert.equal(S.trovaPuntino(vuota.d, vuota.w, vuota.h), null, 'senza Terra nessun cerchio a caso');
+  for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi['storie.foto.pale_blue_dot.terra'], 'string');
+  const storia = predefiniti.find(x => x.chiave === 'storia_puntino');
+  assert.equal((storia.testo.match(/story_photo/g) || []).length, 1, 'la foto una volta sola');
 });
 prova('«Pallido puntino blu»: la storia dura la canzone, ogni scena la riaggancia al punto giusto, i versi vanno in ordine', () => {
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');

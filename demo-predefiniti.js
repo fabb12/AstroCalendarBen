@@ -1637,7 +1637,6 @@
     action: character_show { target: 'voyager2', expression: 'happy' };
     action: character_show { target: 'sagan', expression: 'excited', at: left };
     action: effect { type: fireworks, target: 'Earth', shot_from: 0.0114 };
-    action: story_photo { photo: pale_blue_dot, shot_from: 0.0038, shot_to: 0.7795 };
     action: effect { type: fireworks, target: 'Earth', shot_from: 0.3916 };
     action: effect { type: hearts, target: 'Earth', shot_from: 0.5513 };
     action: character_animate { target: 'Earth', animation: dance, times: 4, shot_from: 0.7567, shot_to: 0.9848 };
@@ -1764,7 +1763,6 @@
     action: character_show { target: 'Moon', expression: 'happy' };
     action: character_show { target: 'sagan', expression: 'excited', at: left };
     action: effect { type: fireworks, target: 'Earth', shot_from: 0.0085 };
-    action: story_photo { photo: pale_blue_dot, shot_from: 0.0043, shot_to: 0.8718 };
     action: effect { type: fireworks, target: 'Moon', shot_from: 0.4786 };
     action: effect { type: hearts, target: 'Earth', shot_from: 0.6496 };
     action: character_expression { target: 'Moon', expression: 'love', shot_from: 0.6496 };
@@ -1803,7 +1801,6 @@
     action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -80, orbit: -40, elev_from: 14, elev_to: -8, zoom_from: 0.8, zoom_to: 1.3 };
     action: character_show { target: 'voyager1', expression: 'thinking' };
     action: character_show { target: 'sagan', expression: 'excited', at: left };
-    action: story_photo { photo: pale_blue_dot, shot_from: 0.7409 };
     action: character_expression { target: 'voyager1', expression: 'excited', shot_from: 0.2591 };
     action: character_expression { target: 'sagan', expression: 'annoyed', shot_from: 0.4955 };
     action: effect { type: flash, target: 'voyager1', shot_from: 0.75 };
@@ -1830,7 +1827,6 @@
     action: character_expression { target: 'Earth', expression: 'love', shot_from: 0.4413 };
     action: effect { type: glow, target: 'Earth', duration: 3, shot_from: 0.4494 };
     action: effect { type: fireworks, target: 'Earth', shot_from: 0.668 };
-    action: story_photo { photo: pale_blue_dot, shot_from: 0.668 };
     action: effect { type: confetti, at: center, shot_from: 0.6761 };
     action: character_expression { target: 'sagan', expression: 'laughing', shot_from: 0.668 };
     action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.61', words: '.000-.304 .272-.464 .496-.760 .736-.888 .904-.976', voice: '550047636555477767676620016510175036435401881157402797655632561', shot_from: 0.0073, shot_to: 0.2097 };

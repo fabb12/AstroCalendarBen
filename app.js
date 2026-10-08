@@ -35303,15 +35303,23 @@ function solSfondoStoria(ctx, L = sol.L, H = sol.H, cam = null) {
   // Il fondo: lontanissimo, si muove appena
   const F = c.fondo;
   const mx = (F.W - L) / 2, my = (F.A - H) / 2;
-  const nx = Math.max(-mx, Math.min(mx, -(cx * 0.04 + fx * 0.1) % (mx * 2)));
-  const ny = Math.max(-my, Math.min(my, -(cy * 0.04 + fy * 0.1)));
+  // v453: lo spostamento del fondo va e viene morbido dentro al margine
+  // (una tangente iperbolica) invece del resto della divisione, che al
+  // giro del margine lo faceva saltare indietro tutto d'un colpo: sugli
+  // schermi stretti, dove il margine è di poche decine di pixel, succedeva
+  // spesso, e chi guardava vedeva lo sfondo tremare
+  const nx = mx * Math.tanh(-(cx * 0.04 + fx * 0.1) / Math.max(1, mx));
+  const ny = my * Math.tanh(-(cy * 0.04 + fy * 0.1) / Math.max(1, my));
   ctx.drawImage(F.tela, (L - F.W) / 2 + nx, (H - F.A) / 2 + ny, F.W, F.A);
   // Le stelle: scorrono con la camera e si avvicinano con la lente, a metà
   ctx.translate(L / 2, H / 2);
   const k = 1 + (kL - 1) * 0.5;
   ctx.scale(k, k);
   const S = c.stelle;
-  const ox = ((-(cx + fx * 0.5) % S.W) + S.W) % S.W, oy = ((-(cy + fy * 0.5) % S.A) + S.A) % S.A;
+  // le stelle seguono la lente della regia per metà sugli schermi grandi, e
+  // meno su quelli piccoli, dove la lente ingrandisce di più (v453)
+  const segue = Math.min(L, H) < 520 ? 0.25 : 0.5;
+  const ox = ((-(cx + fx * segue) % S.W) + S.W) % S.W, oy = ((-(cy + fy * segue) % S.A) + S.A) % S.A;
   const x0 = -L / 2 / k - S.W, y0 = -H / 2 / k - S.A;
   for (let x = x0 + ((ox - x0) % S.W + S.W) % S.W - S.W; x < L / 2 / k; x += S.W)
     for (let y = y0 + ((oy - y0) % S.A + S.A) % S.A - S.A; y < H / 2 / k; y += S.A)

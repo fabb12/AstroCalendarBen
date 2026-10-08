@@ -5905,6 +5905,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "storie.foto.pale_blue_dot.didascalia": "La Terra vista dalla Voyager 1 il 14 febbraio 1990, da sei miliardi di chilometri: il puntino nel raggio di Sole.",
     "storie.foto.pale_blue_dot.credito": "NASA/JPL · Wikimedia Commons, pubblico dominio",
     "storie.foto.pale_blue_dot.illustrazione": "Illustrazione: senza rete la fotografia vera non si può caricare",
+    "storie.foto.pale_blue_dot.terra": "Questa è la Terra",
     "storie.personalita.sagan": "Astronomo e narratore del cielo: curioso, gentile, sempre meravigliato. Fu lui a chiedere che la Voyager 1 si girasse a fotografare la Terra.",
     "storie.personalita.persona": "Una persona che racconta il cielo: non è un astro, ma lo guarda con meraviglia.",
     "storie.fisica.sagan": "Non è un astro: è uno di noi, fatto della stessa polvere di stelle. Attorno gli gira il pallido puntino blu, piccolo com'era nella fotografia.",
