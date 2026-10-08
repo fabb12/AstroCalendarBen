@@ -12565,24 +12565,35 @@ body.demo-vista-pulita .did-pieno-ripiego .demo-cartello, body.demo-vista-pulita
 .demo-immagine-foto .demo-immagine-cornice { aspect-ratio:auto; position:relative; }
 .demo-foto-zoom { transition:transform 2.8s cubic-bezier(.45, 0, .2, 1); will-change:transform; }
 .demo-immagine-foto .demo-immagine-cornice img { height:auto; object-fit:contain; }
-.demo-foto-segno { position:absolute; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%;
+.demo-foto-segno { position:absolute; width:0; height:0; pointer-events:none; }
+/* l'anello che pulsa sulla Terra; la freccia (v454) arriva dall'alto, di
+   sbieco, dal lato dove c'è posto, e porta in cima la scritta */
+.demo-foto-segno::before { content:''; position:absolute; left:-15px; top:-15px; width:30px; height:30px; border-radius:50%;
   border:2px solid #fde68a; box-shadow:0 0 0 2px rgba(12, 10, 32, .65), 0 0 14px rgba(253, 230, 138, .8);
-  animation:demo-foto-pulsa 1.3s ease-in-out infinite; pointer-events:none; }
+  animation:demo-foto-pulsa 1.3s ease-in-out infinite; }
 .demo-foto-segno[hidden] { display:none; }
-.demo-foto-etichetta { position:absolute; left:calc(100% + 8px); top:50%; transform:translateY(-50%); white-space:nowrap;
+.demo-foto-freccia { position:absolute; width:46px; height:46px; left:12px; top:-58px; overflow:visible; transform:scaleX(-1);
+  fill:none; stroke:#fde68a; stroke-width:5; stroke-linecap:round; stroke-linejoin:round;
+  filter:drop-shadow(0 0 2px rgba(12, 10, 32, .95)) drop-shadow(0 0 6px rgba(253, 230, 138, .55));
+  --ritorno-x:6px; animation:demo-foto-freccia 1.1s ease-in-out infinite; }
+.demo-foto-segno.a-sinistra .demo-foto-freccia { left:-58px; transform:none; --ritorno-x:-6px; }
+.demo-foto-etichetta { position:absolute; left:52px; top:-62px; transform:translate(-50%, -100%); white-space:nowrap;
   padding:.15rem .5rem; border-radius:999px; background:rgba(12, 10, 32, .82); border:1px solid rgba(253, 230, 138, .6);
   color:#fde68a; font-size:.8rem; font-weight:700; }
-.demo-foto-segno.a-sinistra .demo-foto-etichetta { left:auto; right:calc(100% + 8px); }
+.demo-foto-segno.a-sinistra .demo-foto-etichetta { left:-52px; }
+@keyframes demo-foto-freccia { 0%, 100% { translate:0 0; } 50% { translate:var(--ritorno-x) -6px; } }
 @keyframes demo-foto-pulsa { 0%, 100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.25); opacity:.75; } }
 @media (prefers-reduced-motion: reduce) {
   .demo-foto-zoom { transition:none; }
-  .demo-foto-segno { animation:none; }
+  .demo-foto-segno::before, .demo-foto-freccia { animation:none; }
 }
 @media (max-width: 520px) {
   .demo-immagine { width:40vw; top:calc(env(safe-area-inset-top, 0px) + 112px); transform:translate(10px, 0); padding:.35rem; }
   /* la foto vera, sul telefono: in alto al centro e larga, se no la Terra
      evidenziata non si vede */
-  .demo-immagine.demo-immagine-foto { width:min(70vw, 42vh); left:50%; right:auto; transform:translate(-50%, 10px); }
+  /* v454: un poco più piccola e più in alto, così non copre il verso del
+     karaoke che le sta sotto */
+  .demo-immagine.demo-immagine-foto { width:min(66vw, 36vh); top:calc(env(safe-area-inset-top, 0px) + 64px); left:50%; right:auto; transform:translate(-50%, 10px); }
   .demo-immagine.demo-immagine-foto.visibile { transform:translate(-50%, 0); }
   .demo-immagine.visibile { transform:none; }
   .demo-immagine-titolo { font-size:.68rem; }

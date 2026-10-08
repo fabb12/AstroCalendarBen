@@ -1570,7 +1570,28 @@
   function storMotoParlato(pg, t) {
     const m = { dx: 0, dy: 0, giro: 0, sx: 1, sy: 1, k: 1 };
     const en = Math.max(0, Math.min(1, pg.energia || 0));
-    if (!(en > 0.002) || stor.ridotto) return m;
+    if (stor.ridotto) return m;
+    // Il ballo della canzone (v454). Chi guarda «Pallido puntino blu» ha
+    // detto che durante la canzone i personaggi stavano fermi: il groove
+    // della v450 era un cenno di pochi gradi, e chi non cantava non si
+    // muoveva affatto. Adesso, finché c'è un battito, tutti ballano: il corpo
+    // va di qua e di là, un lato ogni colpo (un giro intero in due colpi,
+    // una sinusoide: morbido, mai a scatti), la testa lo segue inclinandosi,
+    // e chi non canta fa anche un passo in su a ogni colpo, giù sul colpo.
+    // Chi canta salta già sui colpi (sotto). La camera e il palco tolgono
+    // questo spostamento (`pg.oscilla`): il personaggio balla, il cielo no.
+    const battito = storBattito();
+    if (battito) {
+      const verso = (seme(pg.id || '') % 2) ? 1 : -1;   // metà del coro a specchio
+      const x = Math.PI * (battito.i + battito.f);
+      const lato = Math.sin(x) * verso;
+      const su = Math.sin(Math.PI * battito.f);
+      m.dx += lato * (0.16 + 0.06 * en);
+      m.giro += lato * 0.1;
+      m.dy -= su * 0.08 * (1 - en);
+      m.sy += su * 0.025 * (1 - en); m.sx -= su * 0.015 * (1 - en);
+    }
+    if (!(en > 0.002)) return m;
     const f = pg.fase || 0;
     const ap = Math.max(0, Math.min(1, pg.apertura || 0));
     const tp = t - (pg.parlaDa || 0);
@@ -1586,7 +1607,6 @@
     // storia cantata (v450) il colpo è quello della musica: chi canta un rap
     // salta a tempo, e più forte sul primo della battuta
     const periodo = STOR_COLPO_MS * (0.85 + ((seme(pg.id || '') % 30) / 100));
-    const battito = storBattito();
     let b = (((tp + f * 400) % periodo) + periodo) % periodo / periodo;
     if (battito) b = battito.f;
     const forte = battito && battito.forte ? 1.4 : 1;
@@ -1775,7 +1795,32 @@
       pg.ultimoDelta = v3.piu(pg.ultimoDelta, passo);
     }
     stor.mosse.set(cid, { scena: P, r: pg.rMostrato || r || 0 });
+    // Il punto da fermo, per il perno della camera (v454, `storPuntoFermo3D`).
+    // Se il punto mostrato è proprio `base`, lo si copia: il perno deve poter
+    // riconoscere la risposta di questo fotogramma da quella di un altro
+    if (P === base) P = { x: base.x, y: base.y, z: base.z };
+    pg.fermo3D = { mostrato: P, fermo: base };
     return P;
+  }
+
+  /* Il perno della camera (v454). Nella prima scena di «Pallido puntino blu»
+   * la camera gira attorno alla Voyager 1 (`sol.perno`) e lo sfondo tremava,
+   * anche col palco e la regia fermi. Misurato: lo spostamento della camera
+   * saltava di venti, trenta pixel da un fotogramma all'altro. Il perno
+   * leggeva il punto della sonda **come è mostrato**, cioè con il dondolio
+   * del canto (`storMotoParlato`), le animazioni e il passo di lato del
+   * palco che la tiene lontana da Sagan (`storPalco3D`): la camera inseguiva
+   * il dondolio, la sonda restava inchiodata al centro e tutto il resto — il
+   * Sole, i pianeti, le stelle, la nebulosa — ballava al posto suo. La
+   * camera segue il viaggio (`character_move`, che è il racconto), non il
+   * dondolio né il passo di lato: quelli si vedono sul personaggio, come
+   * deve essere. `mostrato` è il punto che `storScena3D` ha dato in questo
+   * fotogramma: se il corpo non è più quello (un'altra vista, un altro
+   * giro), si torna al punto dell'app. */
+  function storPuntoFermo3D(id, mostrato) {
+    const pg = stor.personaggi.get(storCanonico(id));
+    const f = pg && pg.fermo3D;
+    return f && mostrato && f.mostrato === mostrato ? f.fermo : null;
   }
 
   /* Le lune vere reagiscono al loro pianeta (v430, §6-sexies): una luna che
@@ -5755,7 +5800,7 @@
     // decimo di secondo, più forte sul primo della battuta. Come la scossa:
     // solo ingrandisce, quindi non scopre mai i bordi
     const battito = accesa && !stor.ridotto && !demoInPausa() ? storBattito() : null;
-    const kick = battito ? spintaBattuta(battito) * 0.014 * (battito.kick || 1) * storOsaRegia(L, H) : 0;
+    const kick = battito ? spintaBattuta(battito) * 0.008 * (battito.kick || 1) * storOsaRegia(L, H) : 0;
     const k = Math.exp(r.lk) * (1 + 0.035 * Math.min(1.5, forza)) * (1 + kick);
     const ax = L * r.ax, ay = H * r.ay;
     let tx = ax - k * r.fx, ty = ay - k * r.fy;
@@ -5771,9 +5816,12 @@
       // v450: a metà della frequenza di prima (circa 4,5 oscillazioni al
       // secondo invece di 10): a 10 il quadro vibrava, e chi guardava lo
       // trovava troppo veloce; così è uno scossone, non un ronzio
-      const t = stor.orologio;
-      tx += forza * 6 * (Math.sin(t * 0.029) + 0.5 * Math.sin(t * 0.063 + 1.3));
-      ty += forza * 5 * (Math.sin(t * 0.035 + 0.4) + 0.5 * Math.sin(t * 0.071 + 2.1));
+      // v454: ancora più piano e meno ampio (circa 2,5 al secondo, metà
+      // dell'ampiezza, e meno sullo schermo piccolo): chi guarda ha chiesto
+      // niente tremolio esagerato, in nessuna storia
+      const t = stor.orologio, ampS = 0.5 * storOsaRegia(L, H);
+      tx += forza * 6 * ampS * (Math.sin(t * 0.016) + 0.5 * Math.sin(t * 0.037 + 1.3));
+      ty += forza * 5 * ampS * (Math.sin(t * 0.019 + 0.4) + 0.5 * Math.sin(t * 0.041 + 2.1));
     }
     // La finestra non esce dalla tela
     tx = Math.min(0, Math.max(L * (1 - k), tx));
@@ -5906,10 +5954,42 @@
     if (c && c.testo) storDisegnaKaraoke(ctx, c, L, H, giu || 0, alfa * Math.min(1, (ora - c.da) / STOR_KARAOKE.entra));
     if (stor.titolo) storDisegnaTitolo(ctx, stor.titolo, L, H);
   }
+  /* Quanto del fondo della tela non si vede (v454). Sul telefono il verso
+   * stava sul fondo della tela, e il fondo della tela non è il fondo di ciò
+   * che si vede: la barra del browser, la navigazione in basso e i comandi
+   * della demo lo coprivano, e chi guardava leggeva i versi tagliati. Il
+   * karaoke sta dunque dove stanno i sottotitoli della narrazione
+   * (`.demo-sottotitoli`: la barra in basso più 86 px, 140 coi comandi a
+   * schermo), in pixel della tela; il valore scivola, così quando i comandi
+   * compaiono o se ne vanno il verso sale e scende senza saltare. */
+  function storKaraokeRiserva(ctx, H) {
+    let voluta = 0;
+    try {
+      const doc = radice.document, tela = ctx && ctx.canvas;
+      if (doc && tela && tela.getBoundingClientRect && radice.getComputedStyle) {
+        const r = tela.getBoundingClientRect();
+        if (r.height > 0) {
+          const vv = radice.visualViewport;
+          const fondoVisto = vv ? vv.offsetTop + vv.height : radice.innerHeight;
+          const barra = parseFloat(radice.getComputedStyle(doc.documentElement).getPropertyValue('--barra-inferiore')) || 0;
+          const comandi = doc.getElementById('demo-controlli');
+          const suComandi = comandi && !comandi.hidden && comandi.classList.contains('visibile');
+          const limite = fondoVisto - barra - (suComandi ? 140 : 86) + 14;
+          voluta = Math.max(0, (r.bottom - limite) * H / r.height);
+        }
+      }
+    } catch (_) { voluta = 0; }
+    const ora = adesso(), k = stor.karaokeRis;
+    if (!k || stor.ridotto) { stor.karaokeRis = { v: voluta, ora }; return voluta; }
+    const dt = Math.max(0, Math.min(200, ora - k.ora));
+    k.v += (voluta - k.v) * (1 - Math.exp(-dt / 160)); k.ora = ora;
+    return k.v;
+  }
   function storDisegnaKaraoke(ctx, c, L, H, giu, alfa) {
     if (!(alfa > 0.01)) return;
     const font = caratterePagina();
-    const fs = Math.max(17, Math.min(34, L * 0.03));
+    // v454: un poco più grande sul telefono (era 17 px al minimo)
+    const fs = Math.max(19, Math.min(34, L * 0.03));
     const fsN = Math.max(11, fs * 0.56);
     const largo = Math.min(L - 28, 920);
     ctx.save();
@@ -5928,10 +6008,11 @@
     const tot = larghi.reduce((a, b) => a + b, 0) + larghezzaTesto(ctx, sep, fsN) * (nomi.length - 1) + fsN * 1.2;
     ctx.font = `800 ${fs}px ${font}`;
     const w = Math.min(largo, Math.max(tot, ...righe.map(r => larghezzaTesto(ctx, r, fs))) + fs * 1.6);
-    const cx = L / 2, y0 = H - giu - Math.max(14, H * 0.035) - h;
+    const cx = L / 2, y0 = H - Math.max(giu, storKaraokeRiserva(ctx, H)) - Math.max(14, H * 0.035) - h;
     ctx.globalAlpha = alfa;
-    // il fondo: una pillola scura appena trasparente, il filo color panna
-    ctx.fillStyle = 'rgba(12, 10, 32, 0.6)';
+    // il fondo: una pillola scura, poco trasparente (v454: col cielo chiaro
+    // dietro il verso si leggeva male)
+    ctx.fillStyle = 'rgba(12, 10, 32, 0.8)';
     rettangolo(ctx, cx - w / 2, y0, w, h, Math.min(22, h / 2));
     ctx.fill();
     ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255, 248, 235, 0.2)'; ctx.stroke();
@@ -7091,7 +7172,13 @@
         const segno = document.createElement('div'); segno.className = 'demo-foto-segno'; segno.hidden = true;
         const etichetta = document.createElement('span'); etichetta.className = 'demo-foto-etichetta';
         etichetta.textContent = t(chiave + '.terra');
-        segno.append(etichetta);
+        // v454: una freccia che punta la Terra, dall'alto, con la scritta in
+        // cima: l'anello da solo, su un telefono, non bastava a trovarla
+        const freccia = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        freccia.setAttribute('class', 'demo-foto-freccia'); freccia.setAttribute('viewBox', '0 0 48 48');
+        freccia.setAttribute('aria-hidden', 'true');
+        freccia.innerHTML = '<path d="M6 6 L38 38" /><path d="M40 22 L40 40 L22 40" />';
+        segno.append(freccia, etichetta);
         const didascalia = document.createElement('figcaption');
         const titolo = document.createElement('span'); titolo.className = 'demo-immagine-titolo';
         const credito = document.createElement('span'); credito.className = 'demo-immagine-credito';
@@ -7610,7 +7697,7 @@
     disegnaPersonaggi: storDisegnaPersonaggi, disegnaCielo: storDisegnaCielo, disegnaSistema: storDisegnaSistema,
     comandi: COMANDI, registraComandi,
     disegnaCosmo: storDisegnaCosmo, puntoCosmo: storPuntoCosmo, scarto2D: storScarto2D, STOR_LUOGHI_COSMO,
-    scena3D: storScena3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,
+    scena3D: storScena3D, puntoFermo3D: storPuntoFermo3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,
     animazioneAl: storAnimazioneAl, effetto: storEffetto, disegnaEffetto: storDisegnaEffetto,
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce, ritratto: storRitratto,
     voltoNelCorpo: storVoltoNelCorpo, aperturaOcchio: storAperturaOcchio, STOR_SAGOME, STOR_CORPI,
@@ -7646,6 +7733,7 @@
   radice.storDisegnaCielo = storDisegnaCielo;
   radice.storDisegnaSistema = storDisegnaSistema;
   radice.storScena3D = storScena3D;
+  radice.storPuntoFermo3D = storPuntoFermo3D;
   radice.storDisegnaCosmo = storDisegnaCosmo;
   radice.storRaggio3D = storRaggio3D;
   radice.storLenteApri = storLenteApri;

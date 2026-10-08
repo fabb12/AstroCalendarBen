@@ -40520,7 +40520,14 @@ function solPuntoPerno() {
   // pianeta nano, una sonda, un satellite (§7.7-bis, `solPuntoDiCorpo`).
   // Cercandolo fra i soli pianeti, girare intorno a Plutone o alla ISS
   // rispondeva `null` e la telecamera restava appesa al Sole.
-  return solPuntoDiCorpo(sol.perno);
+  //
+  // Il personaggio di una Storia cosmica che dondola mentre canta o si scansa
+  // per non coprire un altro: il perno sta sul suo punto da fermo, se no la
+  // camera insegue il dondolio e tutto il cielo trema (storie-cosmiche.js,
+  // `storPuntoFermo3D`, v454)
+  const p = solPuntoDiCorpo(sol.perno);
+  const fermo = p && typeof storPuntoFermo3D === 'function' ? storPuntoFermo3D(sol.perno, p) : null;
+  return fermo || p;
 }
 
 // Il perno della telecamera, quando si è scelto di girare intorno a un corpo

@@ -1910,6 +1910,48 @@ isolato nel raggio di luce…», su un'immagine sintetica coi raggi e senza la
 Terra). La fotografia vera non si è potuta vedere nel contenitore (niente
 rete verso Wikimedia): si è vista l'illustrazione, col segno e l'ingrandimento.
 
+### Il perno fermo, la freccia sulla Terra, il karaoke in vista e il ballo (v454)
+
+Quarta visione, sul telefono.
+
+- **Perché lo sfondo della prima scena tremava ancora.** Non era la regia:
+  nella prima scena la camera gira attorno alla Voyager 1 (`sol.perno`), e
+  il perno leggeva il punto della sonda **come è mostrato**, cioè col
+  dondolio del canto e delle animazioni e col passo di lato del palco che
+  la tiene lontana da Sagan (`storPalco3D`, la regola che non fa
+  sovrapporre i personaggi). La camera inseguiva quel dondolio: la sonda
+  restava inchiodata al centro e il Sole, i pianeti, le stelle e la
+  nebulosa ballavano al posto suo. Misurato: lo spostamento della camera
+  saltava di 20–30 px da un fotogramma all'altro, con decine di inversioni
+  in 18 s; adesso zero. `storScena3D` ricorda il punto da fermo
+  (`pg.fermo3D`, solo il viaggio di `character_move`), `storPuntoFermo3D`
+  lo dà a `solPuntoPerno` in `app.js` se il punto è quello appena mostrato.
+- **Meno scossoni dappertutto.** La scossa degli scoppi a metà ampiezza e
+  più lenta (circa 2,5 al secondo), ridotta ancora col lato corto
+  (`storOsaRegia`); il colpo di camera sul battito da 0,014 a 0,008.
+- **La freccia sulla Terra.** Nella foto della Voyager, oltre all'anello,
+  una freccia che arriva di sbieco dall'alto dal lato dove c'è posto
+  (`.demo-foto-freccia`) e porta in cima «Questa è la Terra». L'anello
+  pulsa in un `::before`, così la freccia non pulsa con lui. Sul telefono
+  la scheda è un poco più piccola e più in alto, per non coprire il verso.
+- **Il karaoke in vista.** Stava sul fondo della tela, che sul telefono è
+  coperto dalla barra del browser, dalla navigazione e dai comandi della
+  demo: i versi si vedevano tagliati. Ora sta all'altezza dei sottotitoli
+  della narrazione (`storKaraokeRiserva`: la barra in basso più 86 px, 140
+  coi comandi a schermo, convertiti in pixel della tela, e il valore
+  scivola), su un fondo più scuro (0,8) e almeno a 19 px.
+- **Il ballo.** Durante la canzone, finché c'è un battito, tutti ballano
+  (`storMotoParlato`): il corpo va di qua e di là, un lato per colpo, la
+  testa si inclina con lui, metà del coro a specchio, e chi non canta fa un
+  passo in su a ogni colpo. Il palco e la camera tolgono lo spostamento
+  (`pg.oscilla`, il perno fermo): balla il personaggio, non il cielo.
+
+Prove: `prova-storie.js` (102, «il perno della camera sta sul personaggio
+da fermo…»). `prova-storie-browser.js` (il nome nel sottotitolo
+dell'episodio pilota), `prova-demo-pagina.js` (la camera a mano nel
+planetario) e `prova-lingua.js` (i tempi del cambio lingua) falliscono
+uguali sulla v453: da guardare a parte.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
