@@ -1499,9 +1499,13 @@
     // L'intro parlata: la Voyager 1 il 14 febbraio 1990, a quaranta unità astronomiche, si gira verso casa.
     duration: 19.5s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: -1.5 };
+    action: story_camera { mode: auto };
     action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show, gaze: show, proportion: free };
-    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -105, orbit: 22, elev_from: -6, elev_to: 6, zoom_from: 1.1, zoom_to: 0.92 };
-    action: story_title { id: 'storie.titolo.puntino', sub_id: 'storie.titolo.puntinoSotto', shot_to: 0.36 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -105, orbit: 34, elev_from: -10, elev_to: 10, zoom_from: 1.5, zoom_to: 0.85 };
+    action: story_title { id: 'storie.titolo.puntino', shot_to: 0.36 };
+    action: character_show { target: 'Earth', expression: 'sad', size: real, shot_from: 0.4564 };
+    action: character_expression { target: 'Earth', expression: 'love', shot_from: 0.6974 };
+    action: effect { type: hearts, target: 'Earth', shot_from: 0.7077 };
     action: character_show { target: 'voyager1', expression: 'thinking' };
     action: character_show { target: 'sagan', expression: 'happy', at: left };
     action: character_expression { target: 'sagan', expression: 'thinking', shot_from: 0.3 };
@@ -1511,16 +1515,18 @@
     action: character_expression { target: 'sagan', expression: 'happy', shot_from: 0.68 };
     action: character_expression { target: 'voyager1', expression: 'love', shot_from: 0.82 };
     action: effect { type: sparkles, target: 'voyager1', shot_from: 0.82 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.1', words: '.000-.052 .052-.104 .104-.343 .478-.514 .514-.544 .542-.976', shot_from: 0.1836, shot_to: 0.441 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.2', words: '.000-.058 .058-.116 .116-.153 .153-.221 .221-.326 .326-.405 .405-.574 .574-.968', shot_from: 0.4574, shot_to: 0.6523 };
-    action: character_sing { target: 'sagan', with: 'voyager1', id: 'storie.canzone.puntino.3', words: '.000-.050 .050-.125 .125-.657 .657-.886 .886-.970', shot_from: 0.6974, shot_to: 0.9036 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.1', words: '.000-.056 .056-.128 .139-.274 .659-.704 .693-.743 .715-.966', voice: '4552034142001543100122000000000000000000000000000000000243115325453344424401343542210000000', shot_from: 0.1867, shot_to: 0.3703 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.2', words: '.000-.057 .007-.129 .114-.186 .193-.279 .300-.421 .443-.529 .557-.757 .779-.957', voice: '48677600453453554421144765404115651034156646663420115647636421352000000', shot_from: 0.4605, shot_to: 0.6041 };
+    action: character_sing { target: 'sagan', with: 'voyager1', id: 'storie.canzone.puntino.3', words: '.000-.051 .028-.117 .108-.196 .804-.836 .836-.972', voice: '511564103543331100000110001201000011111002421111110121222232122113424222243233322146424535776565555101111111', shot_from: 0.6964, shot_to: 0.9159 };
   }
   scene solar_system_3d {
     // Prima strofa: la Terra e la Luna da vicino, la base del rap entra.
     duration: 26s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 18, bpm: 87, beat: 0.85 };
-    action: story_camera { mode: auto };
-    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 34, elev_from: 18, elev_to: 34 };
+    action: story_camera { mode: rhythm };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 70, elev_from: 8, elev_to: 42 };
+    action: effect { type: sparkles, target: 'Earth', shot_from: 0.5 };
+    action: effect { type: smoke, target: 'Earth', size: 0.6, shot_from: 0.9462 };
     action: character_show { target: 'Earth', expression: 'happy' };
     action: character_show { target: 'Moon', expression: 'neutral', look: 'Earth' };
     action: character_show { target: 'sagan', expression: 'excited', at: left };
@@ -1539,45 +1545,49 @@
     action: character_expression { target: 'Moon', expression: 'happy', shot_from: 0.8077 };
     action: character_expression { target: 'Earth', expression: 'thinking', shot_from: 0.8885 };
     action: character_animate { target: 'Earth', animation: bounce, times: 4, shot_from: 0.8923, shot_to: 0.9962 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.4', words: '.000-.226 .226-.344 .344-.437 .437-.633 .633-.953', shot_from: 0.1585, shot_to: 0.2569 };
-    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.5', words: '.000-.097 .097-.204 .204-.292 .292-.434 .434-.584 .584-.753 .753-.788 .753-.885 .885-.947', shot_from: 0.2623, shot_to: 0.3492 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.6', words: '.000-.093 .093-.186 .186-.336 .336-.532 .532-.682 .682-.719 .682-.962', shot_from: 0.3662, shot_to: 0.4485 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.7', words: '.000-.082 .082-.170 .170-.259 .259-.453 .453-.529 .529-.623 .623-.711 .711-.964', shot_from: 0.4454, shot_to: 0.5762 };
-    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.8', words: '.000-.142 .142-.224 .224-.373 .373-.447 .447-.544 .544-.619 .619-.970', shot_from: 0.5831, shot_to: 0.6862 };
-    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.9', words: '.000-.096 .096-.240 .240-.294 .294-.472 .472-.502 .500-.671 .671-.726 .726-.959', shot_from: 0.6831, shot_to: 0.7954 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.10', words: '.000-.241 .241-.357 .357-.481 .481-.512 .481-.574 .574-.652 .652-.721 .721-.969', shot_from: 0.7946, shot_to: 0.8938 };
-    action: character_sing { target: 'Earth', with: 'Moon', id: 'storie.canzone.puntino.11', words: '.000-.170 .170-.327 .327-.526 .526-.760 .839-.974', shot_from: 0.8908, shot_to: 0.999 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.4', words: '.000-.313 .322-.426 .391-.522 .539-.687 .696-.948', voice: '58761487137531476778203740123101465536667887741655555200000', shot_from: 0.1546, shot_to: 0.2431 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.5', words: '.000-.054 .000-.154 .163-.254 .272-.309 .427-.554 .500-.654 .663-.709 .663-.863 .809-.945', voice: '22455675055886165015872353047777400037777610255442000034', shot_from: 0.2662, shot_to: 0.3508 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.6', words: '.000-.061 .000-.164 .175-.329 .350-.556 .608-.721 .680-.763 .680-1.000', voice: '2544662025501310043046765777777326885277861661331', shot_from: 0.3685, shot_to: 0.4431 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.7', words: '.000-.121 .103-.213 .190-.299 .299-.483 .506-.558 .552-.644 .650-.736 .713-.966', voice: '3310251016763351277103665254334566116401310057636720253018500044440011222223304730234315', shot_from: 0.44, shot_to: 0.5738 };
+    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.8', words: '.000-.197 .164-.279 .279-.443 .418-.525 .508-.640 .656-.713 .713-1.000', voice: '23446720016766421788876721651016841788856511330003542024200234', shot_from: 0.58, shot_to: 0.6738 };
+    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.9', words: '.000-.084 .143-.331 .351-.381 .351-.539 .526-.565 .578-.734 .747-.777 .747-.961', voice: '234424987666544334126679500469987420166569843888888604740178950354444303510133', shot_from: 0.6708, shot_to: 0.7892 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.10', words: '.000-.256 .264-.384 .352-.512 .488-.544 .488-.608 .624-.680 .688-.760 .752-1.000', voice: '442015751561176337401487764750130154001430376667667754124300642', shot_from: 0.7931, shot_to: 0.8892 };
+    action: character_sing { target: 'Earth', with: 'Moon', id: 'storie.canzone.puntino.11', words: '.000-.201 .180-.361 .347-.493 .535-.785 .785-.959', voice: '6421699717820455566414300357663552154017766673034444577448766777778665210', shot_from: 0.8862, shot_to: 0.9969 };
   }
   scene planetarium_view {
-    // Seconda strofa, flow veloce: il cielo di casa, la Luna sopra ai tetti di Roma, e tutti quelli che l'hanno guardata.
+    // Seconda strofa, flow veloce: il cielo di Roma d'inverno e Orione, il cacciatore; Betelgeuse dalla sua spalla canta le vite che quel cielo l'hanno guardato.
     duration: 16.55s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 44, bpm: 87, beat: 0.85 };
+    action: story_camera { mode: rhythm };
     action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
-    action: set_date { iso: '2026-12-13T17:30:00Z' };
-    action: center_target { target: 'Moon' };
-    action: zoom_fov { from: 70, to: 14 };
-    action: character_show { target: 'Moon', expression: 'excited' };
+    action: set_date { iso: '2026-12-13T21:00:00Z' };
+    action: point_view { az: 126, alt: 34 };
+    action: zoom_fov { from: 75, to: 32 };
+    action: character_show { target: 'Star7', expression: 'excited' };
     action: character_show { target: 'sagan', expression: 'excited', at: left };
-    action: character_expression { target: 'Moon', expression: 'annoyed', shot_from: 0.1813 };
-    action: character_expression { target: 'Moon', expression: 'excited', shot_from: 0.3323 };
+    action: effect { type: glow, target: 'Star7', duration: 3, shot_from: 0.006 };
+    action: character_expression { target: 'Star7', expression: 'bully', shot_from: 0.1752 };
+    action: character_expression { target: 'Star7', expression: 'excited', shot_from: 0.3323 };
     action: effect { type: explosion, at: right, size: 0.6, shot_from: 0.3988 };
-    action: character_expression { target: 'Moon', expression: 'love', shot_from: 0.6707 };
-    action: effect { type: hearts, target: 'Moon', shot_from: 0.6767 };
+    action: effect { type: sparkles, target: 'Star7', shot_from: 0.5076 };
+    action: character_expression { target: 'Star7', expression: 'love', shot_from: 0.6707 };
+    action: effect { type: hearts, target: 'Star7', shot_from: 0.6767 };
     action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.6707 };
     action: effect { type: shooting_star, at: top, shot_from: 0.8822 };
-    action: character_expression { target: 'Moon', expression: 'surprised', shot_from: 0.8882 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.12', words: '.000-.077 .077-.429 .429-.507 .507-.965', shot_from: 0.0097, shot_to: 0.1813 };
-    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.13', words: '.000-.058 .058-.205 .205-.254 .254-.475 .574-.672 .672-.951', shot_from: 0.1764, shot_to: 0.3239 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.14', words: '.000-.104 .104-.250 .250-.293 .336-.604 .604-.707 .707-.948', shot_from: 0.3335, shot_to: 0.4737 };
-    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.15', words: '.000-.099 .099-.130 .130-.160 .130-.305 .382-.458 .458-.649 .649-.748 .748-.954', shot_from: 0.5112, shot_to: 0.6695 };
-    action: character_sing { target: 'sagan', with: 'Moon', id: 'storie.canzone.puntino.16', words: '.000-.099 .099-.199 .199-.473 .527-.641 .641-.718 .718-.809 .809-.954', shot_from: 0.6755, shot_to: 0.8338 };
-    action: character_sing { target: 'Moon', id: 'storie.canzone.puntino.17', words: '.000-.107 .107-.222 .222-.505 .505-.612 .612-.750 .750-.964', shot_from: 0.8411, shot_to: 0.999 };
+    action: character_expression { target: 'Star7', expression: 'surprised', shot_from: 0.8882 };
+    action: character_sing { target: 'Star7', id: 'storie.canzone.puntino.12', words: '.000-.094 .051-.453 .521-.624 .641-.948', voice: '750488301671167667762012106865677776117777436203666667755555', shot_from: 0.0097, shot_to: 0.1511 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.13', words: '.000-.080 .080-.208 .208-.264 .272-.480 .560-.672 .696-.952', voice: '6767666667750376168775563127636776346104877244015666777635665786', shot_from: 0.174, shot_to: 0.3251 };
+    action: character_sing { target: 'Star7', id: 'storie.canzone.puntino.14', words: '.000-.071 .097-.230 .239-.274 .327-.575 .549-.681 .699-.947', voice: '378711566667316400264004666763164001564575104877764300001', shot_from: 0.3384, shot_to: 0.4749 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.15', words: '.000-.071 .087-.118 .087-.134 .087-.299 .402-.449 .433-.646 .614-.748 .740-.953', voice: '76750266127677776345643530257652676467415710267676410144455541666', shot_from: 0.5148, shot_to: 0.6683 };
+    action: character_sing { target: 'sagan', with: 'Star7', id: 'storie.canzone.puntino.16', words: '.000-.124 .149-.223 .223-.513 .570-.703 .703-.885 .885-.918 .885-.951', voice: '6301564015764576646565556316756653564676634730177666146555445', shot_from: 0.6743, shot_to: 0.8205 };
+    action: character_sing { target: 'Star7', id: 'storie.canzone.puntino.17', words: '.000-.107 .069-.222 .199-.497 .520-.605 .589-.712 .727-.972', voice: '630015656720057777510045515500561055001776678615766666655545542257', shot_from: 0.8411, shot_to: 0.999 };
   }
   scene solar_system_3d {
     // La Terra si allontana fino a diventare un granello in un raggio di Sole.
     duration: 11.75s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 60.55, bpm: 87, beat: 0.85 };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 18, elev_from: 30, elev_to: 14, zoom_from: 1.7, zoom_to: 1.05 };
+    action: story_camera { mode: rhythm };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 30, elev_from: 40, elev_to: 10, zoom_from: 2.4, zoom_to: 0.95 };
     action: character_show { target: 'Earth', expression: 'thinking' };
     action: character_show { target: 'Sun', expression: 'happy' };
     action: character_show { target: 'sagan', expression: 'thinking', at: left };
@@ -1586,16 +1596,16 @@
     action: character_look_at { target: 'Earth', object: 'Sun', shot_from: 0.4809 };
     action: character_expression { target: 'Earth', expression: 'sad', shot_from: 0.7021 };
     action: character_scale { target: 'Earth', scale: 0.55, shot_from: 0.7106 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.18', words: '.000-.067 .067-.178 .178-.222 .222-.489 .489-.615 .615-.718 .718-.955', shot_from: 0.0111, shot_to: 0.2409 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.19', words: '.000-.189 .189-.235 .235-.280 .280-.485 - .485-.636 .636-.955', shot_from: 0.2494, shot_to: 0.474 };
-    action: character_sing { target: 'Sun', id: 'storie.canzone.puntino.20', words: '.000-.174 .174-.217 .217-.290 .290-.384 .384-.507 .507-.630 .667-.891 .891-.971', shot_from: 0.4826, shot_to: 0.7174 };
-    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.21', words: '.000-.062 .062-.205 .205-.292 .292-.342 - .373-.429 .429-.547 .547-.621 .621-.752 .752-.963', shot_from: 0.7106, shot_to: 0.9847 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.18', words: '.000-.081 .081-.211 .219-.252 .284-.545 .553-.683 .634-.789 .772-.951', voice: '66100576206502840287105556776577676100287776665666666763000000', shot_from: 0.0094, shot_to: 0.2187 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.19', words: '.000-.211 .203-.268 .268-.309 .268-.528 - .569-.683 .675-.951', voice: '74001553163027667877566655720576623776776765304777767754445544', shot_from: 0.2477, shot_to: 0.457 };
+    action: character_sing { target: 'Sun', id: 'storie.canzone.puntino.20', words: '.000-.183 .141-.225 .233-.296 .324-.387 .366-.507 .514-.570 .669-.887 .908-.958', voice: '661005765156666667776115626610166556672045677103763068302766566656530566', shot_from: 0.4791, shot_to: 0.7209 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.21', words: '.000-.047 .000-.208 .235-.289 .342-.376 - .403-.450 .456-.577 .591-.658 .631-.799 .812-.960', voice: '5663036666655774017766567686104410461015776457226400257666652553000000000000', shot_from: 0.714, shot_to: 0.9677 };
   }
   scene solar_system_3d {
     // Primo ritornello: la camera esce nella scala cosmica, l'arena è vasta, la Terra un granello.
     duration: 11.05s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 72.3, bpm: 87, beat: 0.85 };
-    action: story_camera { mode: auto };
+    action: story_camera { mode: orbit, speed: 26 };
     action: cosmic_scale { from: 'inner_planets', to: 'heliopause', ease: smooth };
     action: character_show { target: 'Earth', expression: 'excited' };
     action: character_show { target: 'Sun', expression: 'happy' };
@@ -1603,19 +1613,23 @@
     action: character_show { target: 'voyager2', expression: 'excited' };
     action: character_show { target: 'sagan', expression: 'excited', at: top };
     action: effect { type: fireworks, target: 'Earth', shot_from: 0.0181 };
+    action: character_scale { target: 'Earth', scale: 0.6, shot_from: 0.0271, shot_to: 0.2443 };
+    action: character_scale { target: 'Earth', scale: 1, shot_from: 0.7511, shot_to: 0.9231 };
+    action: effect { type: smoke, at: center, size: 1.4, shot_from: 0.7602 };
     action: effect { type: sparkles, target: 'voyager1', shot_from: 0.3077 };
     action: effect { type: sparkles, target: 'voyager2', shot_from: 0.3258 };
     action: character_expression { target: 'Earth', expression: 'surprised', shot_from: 0.543 };
     action: character_expression { target: 'Earth', expression: 'happy', shot_from: 0.7511 };
-    action: character_sing { target: 'Earth', with: 'sagan,Sun', id: 'storie.canzone.puntino.22', words: '.000-.130 .130-.221 .221-.275 .275-.366 .366-.939 .939-.969', shot_from: 0.0181, shot_to: 0.2552 };
-    action: character_sing { target: 'voyager1', with: 'voyager2,sagan', id: 'storie.canzone.puntino.23', words: '.000-.091 .091-.240 .240-.496 .496-.752 .752-.950', shot_from: 0.3077, shot_to: 0.5267 };
-    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.24', words: '.000-.104 .104-.793 .793-.931', shot_from: 0.5502, shot_to: 0.7077 };
-    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.25', words: '.000-.066 .132-.231 .231-.376 .521-.752 .752-.950', shot_from: 0.7602, shot_to: 0.9792 };
+    action: character_sing { target: 'Earth', with: 'sagan,Sun', id: 'storie.canzone.puntino.22', words: '.000-.049 .000-.176 .176-.218 .247-.317 .317-.838 .838-.958', voice: '588886668888753103666520004777778667730016888657751388887777641048873010', shot_from: 0.0253, shot_to: 0.2824 };
+    action: character_sing { target: 'voyager1', with: 'voyager2,sagan', id: 'storie.canzone.puntino.23', words: '.000-.099 .144-.261 .288-.532 .532-.820 .847-.946', voice: '66567763788741004888788877888887688623787765224763389987', shot_from: 0.3077, shot_to: 0.5086 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.24', words: '.000-.139 .092-.695 .713-.945', voice: '4544788767765676566555766630003788888877752598777778876', shot_from: 0.5394, shot_to: 0.7348 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.25', words: '.000-.119 .127-.271 .254-.593 .559-.788 .763-.949', voice: '667885348854773588426741475116830456678413788863115763368777', shot_from: 0.7475, shot_to: 0.9611 };
   }
   scene solar_system_3d {
     // La camera torna a casa: pallido punto blu, cantato da tutti.
     duration: 13.15s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 83.35, bpm: 87, beat: 0.85 };
+    action: story_camera { mode: rhythm };
     action: cosmic_scale { from: 'heliopause', to: 'earth_moon', ease: smooth };
     action: character_show { target: 'Earth', expression: 'love' };
     action: character_show { target: 'Sun', expression: 'happy' };
@@ -1628,17 +1642,17 @@
     action: effect { type: hearts, target: 'Earth', shot_from: 0.5513 };
     action: character_animate { target: 'Earth', animation: dance, times: 4, shot_from: 0.7567, shot_to: 0.9848 };
     action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.5513 };
-    action: character_sing { target: 'Earth', with: 'sagan,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.26', words: '.000-.447 .447-.507 .447-1.000', shot_from: 0.0084, shot_to: 0.1103 };
-    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.27', words: '.000-.335 .335-.388 .388-.500 .500-.635 .635-.800 .800-.965', shot_from: 0.1042, shot_to: 0.3627 };
-    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.28', words: '.000-.383 .383-.477 .673-.962', shot_from: 0.3901, shot_to: 0.5529 };
-    action: character_sing { target: 'sagan', with: 'voyager1,voyager2', id: 'storie.canzone.puntino.29', words: '.000-.149 - .305-.364 .364-.487 .487-.571 .571-.714 .714-.799 .799-.961', shot_from: 0.5468, shot_to: 0.781 };
+    action: character_sing { target: 'Earth', with: 'sagan,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.26', words: '.000-.452 .503-.669 .592-.924', voice: '8767723677510254420266156565322899998867', shot_from: 0, shot_to: 0.1194 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.27', words: '.000-.274 .280-.338 .331-.459 .459-.605 .586-.784 .771-.962', voice: '6788898679974699888864686479623898777656755898876314788887766677521116777765368', shot_from: 0.124, shot_to: 0.3627 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.28', words: '.000-.343 .407-.528 .639-1.000', voice: '8997667548776100344411672376663003788887656789875325899', shot_from: 0.3871, shot_to: 0.5513 };
+    action: character_sing { target: 'sagan', with: 'voyager1,voyager2', id: 'storie.canzone.puntino.29', words: '.000-.141 - .144-.191 .198-.258 .258-.298 .282-.375 .382-.416 .406-1.000', voice: '899985224888898876531482035201640047866771578898500588885785255666530033000000000000000000000000000000000000000000000000000000000000000000000000000000', shot_from: 0.5452, shot_to: 0.999 };
   }
   scene solar_system_3d {
     // Terza strofa, rap duro: Marte, il dio della guerra, e Giove, il re degli dèi, si contendono la Terra.
     duration: 10.92s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 96.5, bpm: 87, beat: 0.85, kick: 1.6 };
-    action: story_camera { mode: speaker };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 14, elev_from: 48, elev_to: 40 };
+    action: story_camera { mode: rhythm };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 30, elev_from: 60, elev_to: 32, zoom_from: 0.8, zoom_to: 1.2 };
     action: character_show { target: 'Mars', expression: 'angry' };
     action: character_show { target: 'Jupiter', expression: 'bully' };
     action: character_show { target: 'Earth', expression: 'worried' };
@@ -1648,17 +1662,17 @@
     action: character_move { target: 'Jupiter', to: 'Earth', side: right, path: arc, shot_from: 0.3022, shot_to: 0.5403 };
     action: effect { type: lightning, target: 'Jupiter', shot_from: 0.4762 };
     action: character_animate { target: 'Earth', animation: shake, times: 3, shot_from: 0.7326, shot_to: 0.9615 };
-    action: character_sing { target: 'Mars', id: 'storie.canzone.puntino.30', words: '.000-.187 .187-.234 .234-.374 .374-.505 .505-.645 .645-.944', shot_from: 0.044, shot_to: 0.2399 };
-    action: character_sing { target: 'Jupiter', id: 'storie.canzone.puntino.31', words: '.000-.151 .151-.406 .406-.443 .406-.613 .679-.953', shot_from: 0.293, shot_to: 0.4872 };
-    action: character_sing { target: 'Mars', with: 'Jupiter', id: 'storie.canzone.puntino.32', words: '.000-.084 .084-.322 .322-.503 .503-.559 .559-.650 .650-.790 .797-.958', shot_from: 0.4799, shot_to: 0.7418 };
-    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.33', words: '.000-.049 .049-.105 .105-.274 .274-.309 .309-.372 .372-.505 - .541-.688 .688-.821 .821-.997', shot_from: 0.7381, shot_to: 0.999 };
+    action: character_sing { target: 'Mars', id: 'storie.canzone.puntino.30', words: '.000-.158 .084-.211 .179-.368 .337-.516 .547-.674 .726-.937', voice: '6730551036553451240006866337566400178874242001110', shot_from: 0.0531, shot_to: 0.2271 };
+    action: character_sing { target: 'Jupiter', id: 'storie.canzone.puntino.31', words: '.000-.181 .209-.419 .400-.457 .400-.638 .705-.981', voice: '75024765666777775651057667004766565038521566851520574', shot_from: 0.2894, shot_to: 0.4817 };
+    action: character_sing { target: 'Mars', with: 'Jupiter', id: 'storie.canzone.puntino.32', words: '.000-.112 .074-.366 .380-.560 .522-.619 .657-.716 .664-.888 .925-1.000', voice: '57400454475104877776127401666565520466554100476667536434777520430145', shot_from: 0.4744, shot_to: 0.7198 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.33', words: '.000-.091 .176-.206 .176-.373 .366-.408 .366-.472 .500-.599 - .669-.803 .803-.923 .923-.958', voice: '145530366873377211487666614610254202765564035103721575100550486446777763', shot_from: 0.7125, shot_to: 0.9725 };
   }
   scene solar_system_3d {
     // Fratello contro fratello: lampi, botti e il quadro che trema; poi la domanda: ma perché?
     duration: 10.88s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 107.42, bpm: 87, beat: 0.85, kick: 1.8 };
-    action: story_camera { mode: auto };
-    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 14, orbit_from: 14, elev_from: 40, elev_to: 30 };
+    action: story_camera { mode: rhythm };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth,Mars,Jupiter', orbit: 30, orbit_from: 30, elev_from: 32, elev_to: 14, zoom_from: 1.2, zoom_to: 0.9 };
     action: character_show { target: 'Mars', expression: 'angry' };
     action: character_show { target: 'Jupiter', expression: 'angry' };
     action: character_show { target: 'Earth', expression: 'worried' };
@@ -1674,10 +1688,10 @@
     action: character_expression { target: 'Jupiter', expression: 'thinking', shot_from: 0.7426 };
     action: character_return { target: 'Mars', path: arc, shot_from: 0.7518, shot_to: 0.9908 };
     action: character_return { target: 'Jupiter', path: arc, shot_from: 0.7518, shot_to: 0.9908 };
-    action: character_sing { target: 'Mars', id: 'storie.canzone.puntino.34', words: '.000-.208 .208-.385 .385-.462 .462-.508 .508-.585 .585-.700 .700-.954', shot_from: 0.0018, shot_to: 0.2408 };
-    action: character_sing { target: 'Mars', with: 'Jupiter', id: 'storie.canzone.puntino.35', words: '.000-.095 .095-.277 .277-.372 - .372-.606 .606-.686 .686-.956', shot_from: 0.2426, shot_to: 0.4945 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.36', words: '.000-.158 .158-.345 .345-.403 .403-.683 .683-.791 .813-.957', shot_from: 0.4945, shot_to: 0.75 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.37', words: '.000-.109 .109-.306 .306-.371 .371-.618 - .648-.778 .778-.895 .953-.997', shot_from: 0.7463, shot_to: 0.999 };
+    action: character_sing { target: 'Mars', id: 'storie.canzone.puntino.34', words: '.000-.083 .250-.386 .386-.462 .439-.508 .500-.583 .591-.697 .697-.962', voice: '7626740178403530172004876465177657876536678765889876202661025555783', shot_from: 0, shot_to: 0.2426 };
+    action: character_sing { target: 'Mars', with: 'Jupiter', id: 'storie.canzone.puntino.35', words: '.000-.159 .159-.383 .392-.514 - .561-.804 .813-.925 .878-.944', voice: '7834861027100476423106740178713776577227751156128832798', shot_from: 0.2353, shot_to: 0.432 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.36', words: '.000-.177 .128-.362 .347-.440 .475-.695 .667-.801 .801-.957', voice: '886357224742367766410465675415651277420167654612887568876777521224544687', shot_from: 0.489, shot_to: 0.7482 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.37', words: '.000-.068 .076-.274 .258-.319 .319-.601 - .570-.783 .783-.890 .928-.989', voice: '4753587566665245145101357625610243046687840188876502671017776666779', shot_from: 0.7574, shot_to: 0.999 };
   }
   scene solar_system_3d {
     // Quarta strofa, lenta: Saturno si vanta, il Sole ride dell'idea di essere al centro.
@@ -1694,15 +1708,16 @@
     action: character_animate { target: 'Sun', animation: bounce, times: 3, shot_from: 0.2765, shot_to: 0.4885 };
     action: character_expression { target: 'Saturn', expression: 'surprised', shot_from: 0.2765 };
     action: character_expression { target: 'Saturn', expression: 'sad', shot_from: 0.5069 };
-    action: character_sing { target: 'Saturn', id: 'storie.canzone.puntino.38', words: '.000-.073 .073-.189 .189-.420 .551-.652 .652-.710 .710-.957', shot_from: 0.0055, shot_to: 0.2599 };
-    action: character_sing { target: 'Sun', id: 'storie.canzone.puntino.39', words: '.000-.256 .256-.356 .356-.449 .449-.581 .581-.643 - .666-.698 .698-.752 .752-.829 .829-.953', shot_from: 0.271, shot_to: 0.5088 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.40', words: '.000-.114 .114-.421 .421-.772 .772-.948', shot_from: 0.5106, shot_to: 0.7207 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.41', words: '.000-.125 .125-.258 .258-.450 .450-.575 .575-.725 .725-.875 .875-.950', shot_from: 0.776, shot_to: 0.9972 };
+    action: character_sing { target: 'Saturn', id: 'storie.canzone.puntino.38', words: '.000-.052 .074-.170 .207-.400 .504-.644 .644-.711 .711-.956', voice: '88720587337851582016888776488864537977874117871371003766668778887874', shot_from: 0.0111, shot_to: 0.2599 };
+    action: character_sing { target: 'Sun', id: 'storie.canzone.puntino.39', words: '.000-.273 .258-.379 .333-.462 .477-.583 .591-.651 - .651-.750 .735-.780 .735-.833 .864-.954', voice: '7766773027767685056000698457100278876305765898876986766668876667798', shot_from: 0.2654, shot_to: 0.5088 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.40', words: '.000-.066 .074-.347 .364-.678 .645-.950', voice: '48611610038767771277317765640026989328637767876667327889610164', shot_from: 0.5198, shot_to: 0.7429 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.41', words: '.000-.131 .082-.262 .303-.451 .492-.574 .566-.705 .722-.861 .853-1.000', voice: '78300686353004620038776772372058301820145651573540005888720036', shot_from: 0.7742, shot_to: 0.999 };
   }
   scene solar_system_3d {
     // Soli nel buio: la camera si allontana fino alla nube di Oort, la Voyager guarda avanti.
     duration: 11.85s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 129.15, bpm: 87, beat: 0.85, kick: 0.6 };
+    action: story_camera { mode: rhythm };
     action: cosmic_scale { from: 'earth_moon', to: 'oort', ease: smooth };
     action: character_show { target: 'Earth', expression: 'sad' };
     action: character_show { target: 'voyager1', expression: 'thinking', look: 'oort' };
@@ -1711,16 +1726,16 @@
     action: character_expression { target: 'Earth', expression: 'excited', shot_from: 0.6793 };
     action: character_expression { target: 'sagan', expression: 'excited', shot_from: 0.6793 };
     action: effect { type: glow, target: 'Earth', duration: 4, shot_from: 0.6793 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.42', words: '.000-.075 .075-.208 .208-.367 .367-.442 .442-.692 .692-.733 .800-.950', shot_from: 0.0076, shot_to: 0.2101 };
-    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.43', words: '.000-.049 .049-.125 .097-.215 .215-.299 .299-.424 - .618-.660 .660-.690 .687-.717 .715-.972', shot_from: 0.2101, shot_to: 0.4532 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.44', words: '.000-.142 .142-.209 .216-.396 .448-.493 .493-.664 .664-.769 .769-.955', shot_from: 0.4464, shot_to: 0.6726 };
-    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.45', words: '.000-.150 .150-.218 - .225-.299 .299-.551 .551-.619 .619-.742 .742-.878 .878-.953 .953-.983', shot_from: 0.6776, shot_to: 0.9257 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.42', words: '.000-.102 .127-.249 .200-.380 .347-.469 .420-.714 .681-.820 .771-.951', voice: '65478202850069747774064003877750038876886696203555676776575267', shot_from: 0, shot_to: 0.2068 };
+    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.43', words: '.000-.076 .076-.118 .187-.250 .222-.333 .299-.556 - .660-.695 .660-.750 .708-.778 .708-1.000', voice: '4673138734651371378777766553876100233443014750028503888766656357625623786', shot_from: 0.2017, shot_to: 0.4447 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.44', words: '.000-.180 .173-.244 .244-.381 .475-.511 .539-.676 .669-.777 .791-1.000', voice: '78667657730057100456784016888853035100660036100571583001510499888200487', shot_from: 0.438, shot_to: 0.6726 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.45', words: '.000-.147 .162-.192 - .213-.258 .248-.446 .446-.502 .481-.593 .613-.689 .704-.745 .709-1.000', voice: '4875671004766676667504511688875476266410387677459856887788631466659853877673018999865200000000015556', shot_from: 0.6658, shot_to: 0.999 };
   }
   scene solar_system_3d {
     // Secondo ritornello: tutti i pianeti ballano, la camera gira.
     duration: 10.9s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 141, bpm: 87, beat: 0.85, kick: 1.3 };
-    action: story_camera { mode: orbit, speed: 22 };
+    action: story_camera { mode: orbit, speed: 32 };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Venus,Earth,Mars,Jupiter', orbit: 24, elev_from: 40, elev_to: 58 };
     action: character_show { target: 'Earth', expression: 'excited' };
     action: character_show { target: 'Venus', expression: 'happy' };
@@ -1734,17 +1749,17 @@
     action: character_animate { target: 'Jupiter', animation: bounce, times: 8, shot_from: 0.0367, shot_to: 0.9908 };
     action: character_animate { target: 'Earth', animation: dance, times: 8, shot_from: 0.0367, shot_to: 0.9908 };
     action: effect { type: glow, target: 'Sun', duration: 5, shot_from: 0.2936 };
-    action: character_sing { target: 'Earth', with: 'Venus,Mars', id: 'storie.canzone.puntino.46', words: '.000-.077 .077-.138 .138-.169 .169-.223 .223-.600 .661-.954', shot_from: 0.0404, shot_to: 0.2789 };
-    action: character_sing { target: 'Jupiter', with: 'Sun', id: 'storie.canzone.puntino.47', words: '.000-.140 .140-.269 .269-.548 .548-.828 .828-.936', shot_from: 0.2991, shot_to: 0.4697 };
-    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.48', words: '.000-.071 .157-.409 .409-1.000', shot_from: 0.5523, shot_to: 0.7853 };
-    action: character_sing { target: 'sagan', with: 'Earth,Venus,Mars,Jupiter,Sun', id: 'storie.canzone.puntino.49', words: '.000-.066 .133-.257 .332-.506 .506-.631 .764-.980', shot_from: 0.778, shot_to: 0.999 };
+    action: character_sing { target: 'Earth', with: 'Venus,Mars', id: 'storie.canzone.puntino.46', words: '.000-.086 .060-.146 .179-.209 .179-.212 .238-.596 .629-.967', voice: '79623787787414840036877755200026656861038999862048877630167777643211048885455', shot_from: 0.033, shot_to: 0.3101 };
+    action: character_sing { target: 'Jupiter', with: 'Sun', id: 'storie.canzone.puntino.47', words: '.000-.083 .052-.188 .195-.376 .391-.504 .451-.955', voice: '4556998788521588889999987676316997521158723899864203667765421213766', shot_from: 0.3028, shot_to: 0.5468 };
+    action: character_sing { target: 'Earth', id: 'storie.canzone.puntino.48', words: '.000-.068 .000-.476 .505-.942', voice: '58977887787777510378888885542028998899999878888754227', shot_from: 0.556, shot_to: 0.745 };
+    action: character_sing { target: 'sagan', with: 'Earth,Venus,Mars,Jupiter,Sun', id: 'storie.canzone.puntino.49', words: '.000-.079 .065-.166 .286-.506 .498-.670 .637-.988', voice: '45558999769857985489743762487767887765169998631378737998775579', shot_from: 0.7743, shot_to: 0.999 };
   }
   scene solar_system_3d {
     // Pallido punto blu, ancora: la Terra e la Luna da vicino, e i fuochi.
     duration: 11.7s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 151.9, bpm: 87, beat: 0.85, kick: 1.3 };
-    action: story_camera { mode: auto };
-    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: -30, elev_from: 30, elev_to: 16 };
+    action: story_camera { mode: rhythm };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: -60, elev_from: 40, elev_to: 10 };
     action: character_show { target: 'Earth', expression: 'love' };
     action: character_show { target: 'Moon', expression: 'happy' };
     action: character_show { target: 'sagan', expression: 'excited', at: left };
@@ -1754,17 +1769,18 @@
     action: effect { type: hearts, target: 'Earth', shot_from: 0.6496 };
     action: character_expression { target: 'Moon', expression: 'love', shot_from: 0.6496 };
     action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.6496 };
-    action: character_sing { target: 'Earth', with: 'Moon,sagan', id: 'storie.canzone.puntino.50', words: '.000-.343 .343-.482 .482-.963', shot_from: 0.0051, shot_to: 0.1897 };
-    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.51', words: '.000-.253 .253-.318 .318-.435 .435-.591 .591-.766 .766-.961', shot_from: 0.1829, shot_to: 0.4462 };
-    action: character_sing { target: 'Moon', with: 'Earth,sagan', id: 'storie.canzone.puntino.52', words: '.000-.350 .350-.515 .515-.961', shot_from: 0.4786, shot_to: 0.6547 };
-    action: character_sing { target: 'sagan', with: 'Moon', id: 'storie.canzone.puntino.53', words: '.000-.348 - .348-.424 .424-.583 .583-.674 .674-.841 .841-.955 .955-.985', shot_from: 0.6479, shot_to: 0.8735 };
+    action: character_sing { target: 'Earth', with: 'Moon,sagan', id: 'storie.canzone.puntino.50', words: '.000-.513 .527-.698 .619-.921', voice: '997787589876201455315843898753104999997', shot_from: 0.0034, shot_to: 0.1333 };
+    action: character_sing { target: 'Earth', with: 'sagan', id: 'storie.canzone.puntino.51', words: '.000-.272 .272-.335 .323-.443 .443-.595 .595-.778 .766-.962', voice: '76789976998569999999857965997599998988888779999863169988999777776443368888743899', shot_from: 0.1761, shot_to: 0.4462 };
+    action: character_sing { target: 'Moon', with: 'Earth,sagan', id: 'storie.canzone.puntino.52', words: '.000-.395 .420-.593 .543-.926', voice: '88469888511244531784588764203999986578999', shot_from: 0.4872, shot_to: 0.6256 };
+    action: character_sing { target: 'sagan', with: 'Moon', id: 'storie.canzone.puntino.53', words: '.000-.147 - .279-.311 .328-.421 .437-.492 .464-.612 .628-.688 .672-.967', voice: '79998422486789999743228502630067124787558627888610168998558722445551037500000000000000000000', shot_from: 0.6462, shot_to: 0.959 };
   }
   scene solar_system_3d {
     // Il ponte, parlato, con l'orchestra che cresce: non c'è un altro posto dove andare.
     duration: 20.65s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 163.6, bpm: 87, beat: 0.85, kick: 0.35 };
     action: story_camera { mode: auto };
-    action: camera_3d { scene: system, focus: 'Earth', orbit: 26, elev_from: 14, elev_to: 34, zoom_from: 0.9, zoom_to: 1.15 };
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 40, elev_from: 8, elev_to: 46, zoom_from: 0.75, zoom_to: 1.35 };
+    action: effect { type: sparkles, target: 'Earth', shot_from: 0.0678 };
     action: character_show { target: 'Earth', expression: 'happy' };
     action: character_show { target: 'Mars', expression: 'excited' };
     action: character_show { target: 'sagan', expression: 'thinking', at: left };
@@ -1774,17 +1790,17 @@
     action: character_expression { target: 'sagan', expression: 'happy', shot_from: 0.6053 };
     action: character_expression { target: 'Earth', expression: 'love', shot_from: 0.6053 };
     action: effect { type: sparkles, target: 'Earth', shot_from: 0.7458 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.54', words: '.000-.069 .069-.137 .137-.176 .176-.299 .299-.392 .392-.505 .505-.588 .588-.652 .652-.789 .789-.858 .858-.971', shot_from: 0.0213, shot_to: 0.2189 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.55', words: '.000-.030 .028-.067 .067-.138 .138-.339 - .339-.392 .392-.480 .480-.710 - .710-.753 .753-.979', shot_from: 0.2838, shot_to: 0.5579 };
-    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.56', words: '.000-.030 .023-.053 .046-.100 .100-.145 .145-.399 .399-.430 .430-.462 .462-.492 .484-.835 .835-.865 .860-.952 .952-.983', shot_from: 0.6053, shot_to: 0.9453 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.54', words: '.000-.091 .086-.162 .187-.217 .187-.328 .339-.414 .394-.540 .525-.626 .636-.692 .707-.833 .818-.894 .914-.970', voice: '5511798657876766631333312640355313510343344203320440230016542113532200310156553324400100001200000000', shot_from: 0.0174, shot_to: 0.2092 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.55', words: '.000-.045 .020-.089 .085-.167 .187-.280 - .390-.463 .451-.565 .569-.715 - .805-.878 .890-.976', voice: '4214578861146104765221022000000000000000000000002100220253430346764210100000000000000000000000000003202310100346654432100000', shot_from: 0.2809, shot_to: 0.5191 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.56', words: '.000-.030 .026-.056 .026-.094 .097-.135 .135-.165 .387-.427 .441-.471 .441-.481 .487-.553 .825-.862 .845-.948 .951-.983', voice: '3541146850244652145542100000000000000000000000000000000000000000000151037424245412411447643100000000000000000000000000000000000000000000000000015304431003421777774101442000000', shot_from: 0.6073, shot_to: 0.9453 };
   }
   scene solar_system_3d {
     // Ultima strofa: di nuovo la Voyager 1 e la sua fotografia.
     duration: 11s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 184.25, bpm: 87, beat: 0.85, kick: 1.4 };
-    action: story_camera { mode: auto };
+    action: story_camera { mode: rhythm };
     action: voyager_journey { from: '1990-02-13T00:00:00Z', to: '1990-02-15T00:00:00Z', probes: 'voyager1', model_from: 0.17, model_to: 0.22, home: show, gaze: show, proportion: free };
-    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -80, orbit: -24, elev_from: 8, elev_to: -4, zoom_from: 0.95, zoom_to: 1.1 };
+    action: camera_3d { scene: system, focus: 'Voyager 1', probe_az: -80, orbit: -40, elev_from: 14, elev_to: -8, zoom_from: 0.8, zoom_to: 1.3 };
     action: character_show { target: 'voyager1', expression: 'thinking' };
     action: character_show { target: 'sagan', expression: 'excited', at: left };
     action: story_photo { photo: pale_blue_dot, shot_from: 0.7409 };
@@ -1794,52 +1810,54 @@
     action: character_expression { target: 'voyager1', expression: 'love', shot_from: 0.7591 };
     action: character_expression { target: 'sagan', expression: 'happy', shot_from: 0.7591 };
     action: effect { type: sparkles, target: 'voyager1', shot_from: 0.7682 };
-    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.57', words: '.000-.269 .269-.299 .308-.562 .562-.592 .638-.700 .700-.954', shot_from: 0.0264, shot_to: 0.2627 };
-    action: character_sing { target: 'voyager1', with: 'sagan', id: 'storie.canzone.puntino.58', words: '.000-.062 .062-.131 .131-.462 .462-.577 .577-.662 .662-.708 .800-.954', shot_from: 0.2645, shot_to: 0.5009 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.59', words: '.000-.141 .141-.267 .267-.387 .387-.451 .479-.648 .662-.774 .774-.922 .922-.972', shot_from: 0.4973, shot_to: 0.7555 };
-    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.60', words: '.000-.091 .091-.167 .167-.197 .401-.576 .576-.682 .682-.795 .939-.969', shot_from: 0.7482, shot_to: 0.9882 };
+    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.57', words: '.000-.292 .331-.361 .331-.592 .615-.669 .669-.731 .692-.954', voice: '672003654354234466653354105878301003675487328777875014766764003314', shot_from: 0.0191, shot_to: 0.2555 };
+    action: character_sing { target: 'voyager1', with: 'sagan', id: 'storie.canzone.puntino.58', words: '.000-.102 .094-.181 .197-.512 .535-.630 .630-.716 .677-.764 .827-.953', voice: '4752346403434641027510046656614513887642634976227314776657402452', shot_from: 0.2555, shot_to: 0.4864 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.59', words: '.000-.152 .117-.276 .235-.379 .345-.483 .462-.662 .697-.765 .765-.917 .910-.959', voice: '57558501463233661463364005876551048643577655510120047300660068777667764137', shot_from: 0.4936, shot_to: 0.7573 };
+    action: character_sing { target: 'voyager1', id: 'storie.canzone.puntino.60', words: '.000-.062 .070-.140 .140-.383 .414-.562 .539-.672 .680-.789 .883-.953', voice: '66102842477773455477213100497611642760034101771034431000178757767', shot_from: 0.7555, shot_to: 0.9882 };
   }
   scene solar_system_3d {
     // Il crescendo: dalla nube di Oort a casa, tutti insieme.
     duration: 12.35s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 195.25, bpm: 87, beat: 0.85, kick: 1.6 };
-    action: story_camera { mode: auto };
+    action: story_camera { mode: orbit, speed: 24 };
     action: cosmic_scale { from: 'heliopause', to: 'earth_moon', ease: smooth };
     action: character_show { target: 'Earth', expression: 'happy' };
     action: character_show { target: 'Sun', expression: 'happy' };
     action: character_show { target: 'voyager1', expression: 'excited' };
     action: character_show { target: 'voyager2', expression: 'excited' };
     action: character_show { target: 'sagan', expression: 'excited', at: top };
+    action: effect { type: hearts, at: center, shot_from: 0.2065 };
     action: character_expression { target: 'Earth', expression: 'love', shot_from: 0.4413 };
+    action: effect { type: glow, target: 'Earth', duration: 3, shot_from: 0.4494 };
     action: effect { type: fireworks, target: 'Earth', shot_from: 0.668 };
     action: story_photo { photo: pale_blue_dot, shot_from: 0.668 };
     action: effect { type: confetti, at: center, shot_from: 0.6761 };
     action: character_expression { target: 'sagan', expression: 'laughing', shot_from: 0.668 };
-    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.61', words: '.000-.301 .301-.472 .472-.667 .756-.894 .894-.951', shot_from: 0.0089, shot_to: 0.2081 };
-    action: character_sing { target: 'voyager1', with: 'voyager2', id: 'storie.canzone.puntino.62', words: '.000-.065 .065-.242 .242-.353 .353-.399 - .582-.647 .647-.752 .752-.974', shot_from: 0.2049, shot_to: 0.4526 };
-    action: character_sing { target: 'Sun', with: 'Earth', id: 'storie.canzone.puntino.63', words: '.000-.086 .115-.280 .280-.310 .324-.583 .583-.712 .712-.798 .798-.828 .885-.957', shot_from: 0.4462, shot_to: 0.6713 };
-    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.64', words: '.000-.058 .058-.201 .196-.280 .280-.439 - .508-.661 .661-.720 .720-.751 .751-.810 .810-.968', shot_from: 0.6713, shot_to: 0.9773 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.61', words: '.000-.304 .272-.464 .496-.760 .736-.888 .904-.976', voice: '550047636555477767676620016510175036435401881157402797655632561', shot_from: 0.0073, shot_to: 0.2097 };
+    action: character_sing { target: 'voyager1', with: 'voyager2', id: 'storie.canzone.puntino.62', words: '.000-.080 .106-.265 .291-.358 .338-.411 - .563-.669 .675-.762 .722-.993', voice: '56104511676302464565546632743587640176415514510241048305753168766556214620550', shot_from: 0.2032, shot_to: 0.4478 };
+    action: character_sing { target: 'Sun', with: 'Earth', id: 'storie.canzone.puntino.63', words: '.000-.132 .118-.312 .347-.377 .354-.583 .590-.708 .722-.792 .826-.875 .896-.958', voice: '5500573027612877665003640488612477761042003710165410575772015554346775100', shot_from: 0.4413, shot_to: 0.6745 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.64', words: '.000-.040 .057-.194 .212-.286 .252-.389 - .503-.692 .697-.754 .732-.789 .794-.852 .852-.966', voice: '6875365165001566401750456520000000000000000023313116641444313622651013443331000000000000', shot_from: 0.6777, shot_to: 0.9611 };
   }
   scene solar_system_3d {
     // L'outro: la voce profonda, il battito che si spegne, la Terra e la Luna.
     duration: 16.4s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 207.6, bpm: 87, beat: 0.85, kick: 0.4 };
-    action: story_camera { mode: auto };
-    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 40, elev_from: 24, elev_to: 12 };
+    action: story_camera { mode: orbit, speed: 12 };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 60, elev_from: 30, elev_to: 6 };
     action: character_show { target: 'Earth', expression: 'love' };
     action: character_show { target: 'Moon', expression: 'love', look: 'Earth' };
     action: character_show { target: 'sagan', expression: 'happy', at: right };
     action: effect { type: glow, target: 'Earth', duration: 8, shot_from: 0.0244 };
     action: character_expression { target: 'sagan', expression: 'love', shot_from: 0.1829 };
     action: effect { type: hearts, target: 'Earth', shot_from: 0.4207 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.65', words: '.000-.330 .330-.936', shot_from: 0.0268, shot_to: 0.1415 };
-    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.66', words: '.000-.086 .086-.183 .183-.251 .251-.966', shot_from: 0.1878, shot_to: 0.4012 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.65', words: '.000-.296 .296-.949', voice: '233221562055654211200000000000000000000000000000000000000000', shot_from: 0.0232, shot_to: 0.1671 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.66', words: '.000-.030 .017-.058 .065-.095 .077-.990', voice: '5773046653443476630655456676634320243100000000000000000011211232210332333223322123333333333211334444445554565666554443445444444443322332232222222222222234433433333544444445555666666666665566664355666555544555555555544545555555554444555565567777765556666644332110000000000000000000000000000000', shot_from: 0.1854, shot_to: 0.8963 };
   }
   scene solar_system_3d {
     // Il congedo: tutti canticchiano mentre la camera esce dalla Terra verso la bolla locale.
     duration: 23s;
     action: story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', volume: 0.95, sync: on, loop: off, at: 224, bpm: 87, beat: 0.85, kick: 0.3 };
-    action: story_camera { mode: auto };
+    action: story_camera { mode: orbit, speed: 10 };
     action: cosmic_scale { from: 'earth', to: 'local_bubble', ease: smooth };
     action: character_show { target: 'Earth', expression: 'love' };
     action: character_show { target: 'Sun', expression: 'happy' };
@@ -1847,8 +1865,8 @@
     action: character_show { target: 'voyager2', expression: 'happy' };
     action: character_show { target: 'sagan', expression: 'happy', at: top };
     action: effect { type: sparkles, target: 'Earth', shot_from: 0.4174 };
-    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.67', shot_from: 0.0104, shot_to: 0.3791 };
-    action: character_sing { target: 'Earth', with: 'sagan,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.68', shot_from: 0.4435, shot_to: 0.84 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.67', voice: '433443444344453454544444444445544554556666677776666666777777666766666555656665665665555666666665555666665456676777777777766666666667667776655667765777776676666767777667777776667877877877767765543332100000000000000', shot_from: 0.0104, shot_to: 0.3791 };
+    action: character_sing { target: 'Earth', with: 'sagan,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.68', voice: '0000000000034455566566666666666676667667666466666776777677776888888889999998889999999999888898878878888888888888788887887888888888888999998999888889998988888888888888888988888878798888888886788888888898999899999999988888888877677', shot_from: 0.4435, shot_to: 0.84 };
   }
 }`
     }

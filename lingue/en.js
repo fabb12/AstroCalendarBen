@@ -5763,7 +5763,6 @@ window.ASTRO_DIZIONARI['en'] = {
     "demo.builtin.storia_puntino.title": "Pale blue dot",
     "demo.builtin.storia_puntino.description": "A sung CosmoStory. On 14 February 1990 Voyager 1, six billion kilometres away, turned round to photograph the Earth: a dot in a sunbeam. Carl Sagan wrote famous words about it, and here they become a rap (in Italian, with English subtitles) sung by him, the Earth, the Moon, both Voyagers, the Sun and the planets, line by line, karaoke style. The camera keeps the beat and flies from the Voyager to the cosmic scale, among lightning, fireworks and hearts, and back home.",
     "storie.titolo.puntino": "Pale blue dot",
-    "storie.titolo.puntinoSotto": "A song for Carl Sagan and the Voyagers",
     "storie.nome.sagan": "Carl Sagan",
     "storie.foto.pale_blue_dot.alt": "The “Pale Blue Dot” photograph: diagonal rays of light on the black of space and, inside one of them, the Earth, smaller than a pixel.",
     "storie.foto.pale_blue_dot.didascalia": "The Earth seen by Voyager 1 on 14 February 1990, from six billion kilometres away: the dot in the sunbeam.",

@@ -1906,6 +1906,42 @@ prova('story_photo: la fotografia vera, validata', () => {
   assert.ok((d.testo.match(/story_photo/g) || []).length >= 4, 'la foto torna quando si canta del puntino');
   assert.ok((d.testo.match(/words: '/g) || []).length >= 60, 'i versi portano i tempi delle parole');
 });
+prova('la bocca segue la voce vera del verso: chiusa sulle pause, spalancata sulle note forti', () => {
+  scena({ Earth: {} });
+  const c = S.canta(['Earth'], 'Pallido punto blu', null, [0, 0, 1, 1, 0, 0, 0.5, 0.5, 0, 0].map(x => x));
+  // la bocca anticipa la voce di 1,4 campioni (le labbra prima del suono)
+  const qui = x => (x - 1.4) / 9;
+  assert.ok(Math.abs(S.voceDelCanto(c, qui(2.5)) - 1) < 1e-9);
+  assert.equal(S.voceDelCanto(c, qui(4.5)), 0);
+  const { ctx } = telaFinta();
+  const apertura = u => { c.u = u; let d; for (let k = 0; k < 8; k++) { avanza(16); d = S.disegnaPersonaggi(ctx, 'prova', [corpo('Earth', 400, 300, 80)], 800, 600); } return d.find(x => x.id === 'Earth'); };
+  const forte = apertura(qui(2.5)), muto = apertura(qui(4.5)), mezzo = apertura(qui(6.5));
+  assert.ok(forte.apertura > 0.8 && forte.via === 'voce', 'nota forte: ' + forte.apertura);
+  assert.equal(muto.apertura, 0, 'pausa: chiusa');
+  assert.ok(mezzo.apertura > 0.2 && mezzo.apertura < forte.apertura, 'a metà voce, a metà bocca');
+  S.sgombra();
+});
+prova('la regia a ritmo cambia inquadratura a ogni battuta, col rollio e il coro uno per uno', () => {
+  S.sgombra();
+  Object.defineProperty(globalThis.AstroDemo, 'tempo', { get: () => motore.tempoDemo(), configurable: true });
+  try {
+    motore.avvia(demo(`scene solar_system_3d { duration: 30s; action: ${CANZONE}; action: story_camera { mode: rhythm };
+      action: character_show { target: 'Earth' }; action: character_show { target: 'Moon' }; action: character_show { target: 'Mars' };
+      action: character_sing { target: 'Earth', with: 'Moon,Mars', text: 'Pallido punto blu' }; }`), { ripresa() {} });
+    const corpi = [corpo('Earth', 300, 300, 40), corpo('Moon', 500, 260, 30), corpo('Mars', 650, 330, 30)];
+    const visti = new Set(), rollii = new Set();
+    for (let k = 0; k < 900; k++) {
+      passo(16); avanza(16);
+      S.disegnaPersonaggi(telaFinta().ctx, 'sistema', corpi, 800, 600);
+      const m = S.regiaInquadra('sistema', 800, 600);
+      if (m) { visti.add(m.id); rollii.add(Math.sign(m.rot || 0)); assert.equal(m.motivo, 'ritmo'); }
+    }
+    assert.ok(visti.size >= 5, 'in quattordici secondi tante inquadrature: ' + [...visti].join(' '));
+    assert.ok(['Earth', 'Moon', 'Mars'].every(id => [...visti].some(v => v.includes(id))), 'il coro, uno per uno');
+    assert.ok(rollii.has(1) && rollii.has(-1), 'il quadro si inclina da una parte e dall\'altra');
+    motore.ferma();
+  } finally { delete globalThis.AstroDemo.tempo; S.sgombra(); }
+});
 prova('«Pallido puntino blu»: la storia dura la canzone, ogni scena la riaggancia al punto giusto, i versi vanno in ordine', () => {
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');
   const prep = motore.prepara(d.testo);
