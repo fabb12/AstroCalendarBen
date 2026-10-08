@@ -1432,6 +1432,17 @@ Le prove che toccano lo Studio aprono prima la linguetta giusta
 (`apriLinguetta`, `apriSchedaScena` in `prova-elevenlabs-studio.js`);
 `prova-storie-sezioni.js` controlla linguette e momenti, desktop e telefono.
 
+### L'idea e chi recita in linguette (v447)
+
+Lo stesso stile anche per i passi 1 e 2 (`disegna`, `storie-studio.js`):
+«L'idea» ha due linguette, *Storia pronta* (le schede delle idee) e *Titolo e
+obiettivo*; una storia senza titolo la apre già sull'idea (`schedeIdea`, per
+progetto, decisa una volta: scrivere il titolo non la richiude). «Chi recita»
+mostra in cima chi è nella storia, piccolo e con la × (`studio-cast-chip`,
+mai l'ultimo), poi una linguetta per famiglia con quanti sono scelti e i loro
+volti, e una per le voci ElevenLabs (`schedeCast`); `apriScelta` su un
+personaggio apre quella delle voci, perché la scelta si veda.
+
 ## «Vicino a un pianeta» che si distingue dal Sistema Solare (v442)
 
 Nello Studio le due scene 3D sembravano la stessa cosa. «Vicino a un

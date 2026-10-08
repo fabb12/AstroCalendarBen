@@ -2688,6 +2688,8 @@
    * `ambitoLibero`: chi sceglie decide (da una battuta) se vale per tutta
    * la storia o solo per quella scena. */
   function apriScelta(id, { luogo = 'pg|' + id, scena = '', ambitoLibero = false } = {}) {
+    // v447: la scelta del passo 2 sta nella linguetta delle voci, che si apre
+    if (luogo.startsWith('pg|') && studio.progetto) schedeCast.set(studio.progetto.id, 'voci');
     const prof = S().profilo ? S().profilo(id) : {};
     const p = studio.progetto;
     studio.elScelta = { pg: id, luogo, scena: scena || '', ambito: ambitoLibero && !(p.voci && p.voci[id]) ? '' : scena || '', ambitoLibero,
@@ -2913,7 +2915,7 @@
   // Una linguetta: il nome, e sotto in piccolo com'è adesso
   function linguetta(acceso, dati, testo, stato, extra) {
     return h('button', Object.assign({ type: 'button', class: 'studio-linguetta', 'aria-expanded': String(!!acceso), dataset: dati }, extra || {}),
-      h('span', { class: 'studio-linguetta-nome' }, testo), stato ? h('small', {}, stato) : null);
+      h('span', { class: 'studio-linguetta-nome' }, testo), stato ? h('small', {}, h('span', { class: 'studio-linguetta-stato' }, stato)) : null);
   }
   function nomeFaccia(id, e) {
     const lei = id && S().profilo && S().profilo(id).genere === 'f';
@@ -3316,6 +3318,8 @@
    * cast, la musica, le voci e l'inquadratura prima ancora della prima
    * battuta. Si chiudono tutte di serie: il riassunto basta quasi sempre. */
   const schedeScena = new Map();
+  // v447: le linguette dei passi 1 e 2, per progetto
+  const schedeIdea = new Map(), schedeCast = new Map();
   const STUDIO_SCHEDE_SCENA = ['dove', 'chi', 'camera', 'suoni'];
 
   function disegnaScena(sc, i) {
@@ -3349,7 +3353,7 @@
     for (const s of STUDIO_SCHEDE_SCENA) {
       const nomeS = s === 'camera' && cosmo ? t('studio.ui.data') : t('studio.ui.scheda.' + s);
       const l = linguetta(aperta === s, { fai: 'schedaScena', dove: base, valore: s }, nomeS, stato[s]);
-      if (s === 'chi') l.querySelector('.studio-linguetta-nome').append(volti);
+      if (s === 'chi') l.querySelector('small').prepend(volti);
       fila.append(l);
     }
     card.append(fila);
@@ -3512,50 +3516,90 @@
       studio.repoAperto ? pannelloRepo() : null,
       studio.elAperto ? pannelloEleven() : null,
       h('pre', { id: 'studio-copione', class: 'storie-codice', tabindex: '0', hidden: !studio.copioneAperto })));
-    // 1. L'idea: le storie pronte come schede da toccare
-    const idee = h('div', { class: 'studio-idee-pronte', role: 'group', 'aria-label': t('studio.passo1') });
-    for (const k of Object.keys(STUDIO_SCOPI)) {
-      const cast = STUDIO_SCOPI[k].cast;
-      idee.append(scelta(p.scopo === k, { class: 'studio-idea-pronta', dataset: { fai: 'modello', valore: k } },
-        h('span', { class: 'studio-idea-volti', 'aria-hidden': 'true' }, cast.slice(0, 3).map(id => figurina(id, '', 30))),
-        h('strong', {}, t('studio.scopo.' + k + '.nome')),
-        h('small', {}, t('studio.scopo.' + k + '.descrizione'))));
-    }
-    const obiettivo = h('textarea', { rows: '2', maxlength: '300', dataset: { campo: 'obiettivo' }, placeholder: t('studio.obiettivoAiuto') });
-    obiettivo.value = p.obiettivo || '';
-    pezzi.push(h('div', { class: 'studio-blocco' },
-      h('h4', { class: 'storie-sottotitolo' }, t('studio.passo1')),
-      h('p', { class: 'demo-opzioni-nota' }, t('studio.passo1Aiuto')),
-      idee,
-      h('div', { class: 'studio-riga studio-titoli' },
+    // 1. L'idea (v447): due linguette, l'idea pronta e il titolo con
+    // l'obiettivo, ognuna con lo stato in piccolo. Prima stavano sempre
+    // aperte sette schede grandi e i due campi, anche a storia già avviata.
+    // Una storia senza titolo apre l'idea (è da lì che si comincia).
+    if (!schedeIdea.has(p.id)) schedeIdea.set(p.id, p.titolo ? '' : 'idea');
+    const apertaIdea = schedeIdea.get(p.id);
+    const filaIdea = h('div', { class: 'studio-linguette studio-linguette-passo', role: 'group', 'aria-label': t('studio.passo1') },
+      linguetta(apertaIdea === 'idea', { fai: 'schedaPasso', dove: 'idea', valore: 'idea' }, t('studio.ui.scheda.idea'),
+        STUDIO_SCOPI[p.scopo] ? t('studio.scopo.' + p.scopo + '.nome') : ''),
+      linguetta(apertaIdea === 'titolo', { fai: 'schedaPasso', dove: 'idea', valore: 'titolo' }, t('studio.ui.scheda.titolo'),
+        unaRiga(p.titolo) || t('studio.senzaTitolo')));
+    const pannelloIdea = h('div', { class: 'studio-pannello' });
+    if (apertaIdea === 'idea') {
+      const idee = h('div', { class: 'studio-idee-pronte', role: 'group', 'aria-label': t('studio.passo1') });
+      for (const k of Object.keys(STUDIO_SCOPI)) {
+        const cast = STUDIO_SCOPI[k].cast;
+        idee.append(scelta(p.scopo === k, { class: 'studio-idea-pronta', dataset: { fai: 'modello', valore: k } },
+          h('span', { class: 'studio-idea-volti', 'aria-hidden': 'true' }, cast.slice(0, 3).map(id => figurina(id, '', 30))),
+          h('strong', {}, t('studio.scopo.' + k + '.nome')),
+          h('small', {}, t('studio.scopo.' + k + '.descrizione'))));
+      }
+      pannelloIdea.append(h('p', { class: 'demo-opzioni-nota' }, t('studio.passo1Aiuto')), idee);
+    } else if (apertaIdea === 'titolo') {
+      const obiettivo = h('textarea', { rows: '2', maxlength: '300', dataset: { campo: 'obiettivo' }, placeholder: t('studio.obiettivoAiuto') });
+      obiettivo.value = p.obiettivo || '';
+      pannelloIdea.append(h('div', { class: 'studio-riga studio-titoli' },
         h('label', { class: 'storie-campo studio-largo' }, h('span', {}, t('studio.titolo')),
           h('input', { type: 'text', maxlength: '120', value: p.titolo, dataset: { campo: 'titolo' }, placeholder: t('studio.titoloAiuto') })),
-        h('label', { class: 'storie-campo studio-largo' }, h('span', {}, t('studio.obiettivo')), obiettivo))));
-    // 2. Chi recita: le figurine, divise in tre famiglie
+        h('label', { class: 'storie-campo studio-largo' }, h('span', {}, t('studio.obiettivo')), obiettivo)));
+    }
+    pezzi.push(h('div', { class: 'studio-blocco' },
+      h('h4', { class: 'storie-sottotitolo' }, t('studio.passo1')),
+      filaIdea, apertaIdea ? pannelloIdea : null));
+
+    // 2. Chi recita (v447): in cima chi è già nella storia, piccolo e con
+    // la × per toglierlo; sotto una linguetta per famiglia (coi volti
+    // scelti e quanti sono) e una per le voci ElevenLabs. Prima erano
+    // quaranta schede aperte in quattro gruppi, e le voci sotto a tutte.
     const gruppi = { pianeti: [], lune: [], macchine: [], universo: [] };
     for (const id of Object.keys(S().STOR_PERSONAGGI || {})) {
       const f = S().profilo ? S().profilo(id).famiglia : 'pianeta';
       (soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
     }
-    const cast = h('div', { class: 'studio-cast-gruppi' });
+    const nella = h('div', { class: 'studio-chips studio-nel-cast', role: 'group', 'aria-label': t('studio.ui.nellaStoria') },
+      h('span', { class: 'studio-etichetta' }, t('studio.ui.nellaStoria')));
+    for (const id of p.cast) {
+      nella.append(h('span', { class: 'studio-azione-chip studio-cast-chip' },
+        h('span', { class: 'studio-cast-chip-nome' }, figurina(id, '', 22), nome(id)),
+        p.cast.length > 1 ? h('button', { type: 'button', class: 'studio-azione-x', dataset: { fai: 'cast', id }, 'aria-label': t('studio.ui.togliDallaStoria', { nome: nome(id) }), title: t('studio.ui.togliDallaStoria', { nome: nome(id) }) }, '×') : null));
+    }
+    if (!schedeCast.has(p.id)) schedeCast.set(p.id, '');
+    const apertaCast = schedeCast.get(p.id);
+    const filaCast = h('div', { class: 'studio-linguette studio-linguette-passo', role: 'group', 'aria-label': t('studio.passo2') });
     for (const [g, ids] of Object.entries(gruppi)) {
       if (!ids.length) continue;
+      const scelti = ids.filter(id => p.cast.includes(id));
+      const l = linguetta(apertaCast === g, { fai: 'schedaPasso', dove: 'cast', valore: g }, t('studio.ui.gruppo.' + g),
+        scelti.length ? t('studio.ui.sceltiDi', { n: scelti.length, tot: ids.length }) : t('studio.ui.nessunoDi', { tot: ids.length }));
+      if (scelti.length) l.querySelector('small').prepend(h('span', { class: 'studio-linguetta-volti', 'aria-hidden': 'true' },
+        scelti.slice(0, 4).map(id => figurina(id, '', 20)), scelti.length > 4 ? h('small', {}, '+' + (scelti.length - 4)) : null));
+      filaCast.append(l);
+    }
+    const conChiave = !!studioElevenImpostazioni().chiave;
+    const conVoce = p.cast.filter(id => studioVoceDi(p, id)).length;
+    filaCast.append(linguetta(apertaCast === 'voci', { fai: 'schedaPasso', dove: 'cast', valore: 'voci' }, t('studio.el.vociTitolo'),
+      conChiave ? t('studio.ui.conLaVoce', { n: conVoce, tot: p.cast.length }) : t('studio.ui.elSpento')));
+    const pannelloCast = h('div', { class: 'studio-pannello' });
+    if (apertaCast === 'voci') pannelloCast.append(disegnaVociPersonaggi(p));
+    else if (gruppi[apertaCast]) {
       const fila = h('div', { class: 'studio-cast' });
-      for (const id of ids) {
+      for (const id of gruppi[apertaCast]) {
         const prof = S().profilo ? S().profilo(id) : {};
-        const acceso = p.cast.includes(id);
-        fila.append(scelta(acceso, { class: 'studio-personaggio', dataset: { fai: 'cast', id } },
+        fila.append(scelta(p.cast.includes(id), { class: 'studio-personaggio', dataset: { fai: 'cast', id } },
           figurina(id, '', 48),
           h('span', { class: 'studio-personaggio-testo' },
             h('strong', { style: 'color:' + (prof.sottotitolo || '#fff') }, nome(id),
               h('small', { class: 'studio-genere' }, ' · ' + t('studio.ui.genere.' + (prof.genere === 'f' ? 'f' : 'm')))),
             h('small', { title: S().tratto ? S().tratto(id) : '' }, S().personalita ? S().personalita(id) : ''))));
       }
-      cast.append(h('div', { class: 'studio-cast-gruppo' }, h('h5', { class: 'studio-gruppo-titolo' }, t('studio.ui.gruppo.' + g)), fila));
+      pannelloCast.append(h('p', { class: 'demo-opzioni-nota' }, t('studio.passo2Aiuto')), fila);
     }
     pezzi.push(h('div', { class: 'studio-blocco' },
       h('h4', { class: 'storie-sottotitolo' }, t('studio.passo2'), h('small', { class: 'studio-conta' }, ' · ' + t('studio.ui.nelCast', { n: p.cast.length }))),
-      h('p', { class: 'demo-opzioni-nota' }, t('studio.passo2Aiuto')), cast, disegnaVociPersonaggi(p)));
+      nella, filaCast, apertaCast ? pannelloCast : null));
     // 3. Il copione: le scene
     const scene = h('div', { class: 'studio-scene' });
     p.scene.forEach((sc, i) => scene.append(disegnaScena(sc, i)));
@@ -3796,6 +3840,11 @@
         disegna(); return;
       }
       case 'schedaMomento': studio.schedaMomento = studio.schedaMomento === el.dataset.valore ? '' : el.dataset.valore; disegna(); return;
+      case 'schedaPasso': {
+        const m = el.dataset.dove === 'idea' ? schedeIdea : schedeCast;
+        m.set(p.id, m.get(p.id) === el.dataset.valore ? '' : el.dataset.valore);
+        disegna(); return;
+      }
       case 'schedaScena': {
         const k = chiaveScena(leggi(dove));
         if (schedeScena.get(k) === el.dataset.valore) schedeScena.delete(k); else schedeScena.set(k, el.dataset.valore);

@@ -13037,14 +13037,14 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-linguetta-nome { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; }
 .studio-linguetta-nome::after { content: '▾'; font-size: 0.7rem; color: var(--testo-2, #94a3b8); }
 .studio-linguetta[aria-expanded="true"] .studio-linguetta-nome::after { content: '▴'; }
-.studio-linguetta > small { color: var(--testo-2, #94a3b8); font-size: 0.72rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-linguetta > small { display: flex; align-items: center; min-width: 0; color: var(--testo-2, #94a3b8); font-size: 0.72rem; max-width: 100%; }
+.studio-linguetta-stato { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-linguetta[aria-expanded="true"] { border-color: rgba(167, 139, 250, 0.85); background: rgba(124, 58, 237, 0.2); }
 .studio-linguette-scena .studio-linguetta { flex: 1 1 9.5rem; }
 .studio-linguette-scena .studio-linguetta[aria-expanded="true"] { border-color: rgba(250, 204, 21, 0.7); background: rgba(250, 204, 21, 0.1); }
-.studio-linguetta-volti { display: inline-flex; align-items: center; order: 2; }
+.studio-linguetta-volti { display: inline-flex; align-items: center; margin-right: 5px; vertical-align: middle; }
 .studio-linguetta-volti .studio-figurina + .studio-figurina { margin-left: -6px; }
 .studio-linguetta-volti small { margin-left: 3px; color: var(--testo-2, #94a3b8); font-size: 0.7rem; font-weight: 500; }
-.studio-linguetta-nome::after { order: 3; }
 .studio-pannello {
   display: grid; gap: 8px; min-width: 0; padding: 10px;
   border: 1px solid var(--bordo); border-radius: 10px; background: rgba(2, 6, 23, 0.3);
@@ -13079,4 +13079,16 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
   .studio-momento-testa .studio-strumenti { gap: 3px; }
   .studio-famiglia-nome { min-width: 0; flex: 1 1 100%; }
   .studio-momento-testa .studio-strumenti .studio-mini { min-width: 1.9rem; padding-inline: 4px; }
+}
+/* v447: i passi 1 e 2 con le stesse linguette; chi è nella storia in cima,
+   piccolo, con la × per toglierlo */
+.studio-linguette-passo { margin-top: 4px; }
+.studio-linguette-passo .studio-linguetta { flex: 1 1 11rem; }
+.studio-linguette-passo + .studio-pannello { margin-top: 8px; }
+.studio-nel-cast { margin: 2px 0 8px; }
+.studio-cast-chip { border-color: rgba(167, 139, 250, 0.5); background: rgba(124, 58, 237, 0.14); }
+.studio-cast-chip-nome { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 3px; font-size: 0.8rem; color: #ede9fe; }
+.studio-pannello > .studio-voci-pg { margin-top: 0; padding-top: 0; border-top: 0; }
+@media (max-width: 560px) {
+  .studio-linguette-passo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

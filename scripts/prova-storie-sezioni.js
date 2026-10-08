@@ -32,6 +32,24 @@ const server = http.createServer((req, res) => {
     for (const width of [1100, 390]) {
       await pagina.setViewportSize({ width, height: 800 });
       await pagina.evaluate(() => { mostraVista('demo'); demoMostraScheda('demo-scheda-storie'); });
+      // v447: i passi 1 e 2 in linguette; le figurine del cast in quella della loro famiglia
+      const passo2 = pagina.locator('#vista-demo .studio-blocco').nth(2);
+      assert.equal(await passo2.locator('.studio-personaggio').count(), 0);
+      const nelCast = await passo2.locator('.studio-cast-chip').count();
+      assert.ok(nelCast >= 1);
+      await passo2.locator('[data-fai="schedaPasso"][data-valore="pianeti"]').click();
+      const fuori = passo2.locator('.studio-personaggio[aria-pressed="false"]').first();
+      await fuori.click();
+      assert.equal(await passo2.locator('.studio-cast-chip').count(), nelCast + 1);
+      assert.equal(await passo2.locator('[data-fai="schedaPasso"][data-valore="pianeti"]').getAttribute('aria-expanded'), 'true');
+      await passo2.locator('.studio-cast-chip [data-fai="cast"]').last().click();
+      assert.equal(await passo2.locator('.studio-cast-chip').count(), nelCast);
+      await passo2.locator('[data-fai="schedaPasso"][data-valore="pianeti"]').click();
+      assert.equal(await passo2.locator('.studio-personaggio').count(), 0);
+      const passo1 = pagina.locator('#vista-demo .studio-blocco').nth(1);
+      await passo1.locator('[data-fai="schedaPasso"][data-valore="titolo"]').click();
+      assert.equal(await passo1.locator('input[data-campo="titolo"]').count(), 1);
+      await passo1.locator('[data-fai="schedaPasso"][data-valore="titolo"]').click();
       const scene = pagina.locator('.studio-scena');
       assert.ok(await scene.count() > 1);
       assert.equal(await pagina.locator('.studio-scena[open]').count(), 0);
