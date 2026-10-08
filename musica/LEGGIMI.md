@@ -27,3 +27,15 @@ preferenze più vecchie: non rinominarne l'`id`.
 Non inserire percorsi esterni o sottocartelle in `file`. Le tracce vengono
 riprodotte in loop e rispettano il volume scelto. Verifica sempre di avere i
 diritti per distribuire i file audio aggiunti al repository.
+
+## Le canzoni delle CosmoStorie (`canzoni/`)
+
+La sottocartella `canzoni/` contiene le canzoni che una CosmoStoria segue dal
+principio alla fine (`story_music { sync: on }`, vedi `STORIE.md` §Le storie
+cantate). **Non** vanno in `catalogo.js`: hanno la voce, e come colonna sonora
+di tutte le demo in ciclo non hanno senso. Stanno qui e non in
+`audio/storie-musica/` perché quella cartella è dello Studio, che a ogni
+sincronizzazione ne toglie i file che nessuna sua storia usa.
+
+- `pallido-punto-blu.mp3` — «Pallido puntino blu», il rap sulle parole di
+  Carl Sagan per la storia `storia_puntino` (4'08", portato da chi usa l'app).

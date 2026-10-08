@@ -82,14 +82,14 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 
 | Campo | Cosa | Di serie |
 |---|---|---|
-| `famiglia` | `stella`, `pianeta`, `luna`, `nano`, `asteroide`, `cometa`, `stazione`, `sonda`, `galassia`, `buco` | dedotta dall'oggetto |
+| `famiglia` | `stella`, `pianeta`, `luna`, `nano`, `asteroide`, `cometa`, `stazione`, `sonda`, `galassia`, `buco`, `persona` (v450) | dedotta dall'oggetto |
 | `nome` | chiave del dizionario del nome | il nome che l'app gli dà già (`corpo.<id>`, `SOL_LUNE`, …) |
 | `pelle` | colore del disco grafico e delle palpebre | il colore dell'app per quell'oggetto |
 | `iride` | colore degli occhi | della famiglia |
 | `sottotitolo` | colore del nome nel sottotitolo (su fondo scuro: va chiaro) | della famiglia |
 | `guance` | colore del rossore | della famiglia |
 | `genere` | `f` o `m`: i tratti di lei o di lui (§Lei e lui) | della famiglia |
-| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble`, `galassia`, `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco` | della famiglia |
+| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble`, `galassia`, `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco`, `sagan` (v450) | della famiglia |
 | `cosmo` | il luogo della scala cosmica in cui vive, e **solo** lì (`idea`: in nessun posto, v414) | — |
 | `luogo` | il suo luogo nella scala cosmica, per chi vive anche altrove (v414: Betelgeuse) | — |
 | `decoro` | il disegno sul corpo di un pianeta: `bande`, `macchia`, `continenti`, `calotta`, `nubi`, `crateri` | — (le lune: crateri) |
@@ -103,6 +103,7 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 | `espressione` | quella di partenza | della famiglia |
 | `personalita` | chiave `storie.personalita.<…>` | della famiglia |
 | `alias` | altri nomi con cui l'app lo chiama in un'altra vista | — |
+| `ospite` | non è un astro: sta in un posto dello schermo in ogni vista e non viaggia (v450, Carl Sagan: §Le storie cantate) | — |
 
 La personalità va scritta in `storie.personalita.<…>` nei due dizionari (la
 legge la pagina Demo). Un oggetto che l'app conosce e che nessuna riga nomina
@@ -220,6 +221,7 @@ personaggio ha **il suo corpo**, la `sagoma`:
 | `supernova` | la nube azzurra coi filamenti rossi del Granchio, le onde d'urto, la stella di fuoco a punte e i due fasci della pulsar (v414) | sul cuore |
 | `buco_nero` | l'ombra viola quasi nera, l'anello di luce, il disco di gas che gira (metà dietro, metà davanti come gli anelli di Saturno, più chiaro dal lato che viene verso di noi) e la luce piegata sopra all'ombra (v414) | sull'ombra |
 | `buco_bianco` | il disco bianco col contorno **a tratteggio** (è un'idea), raggi e onde che corrono fuori (v414) | sul disco |
+| `sagan` | Carl Sagan (v450): il busto con la giacca di velluto e il dolcevita rosso, la testa che è un disco-pianeta, i capelli a ciuffo | sulla testa |
 
 `STOR_CORPI` dice per ognuna dove sta il volto (`storVoltoNelCorpo`) e
 quanto il corpo esce dal suo raggio (`ingombro`: i pannelli, gli anelli, la
@@ -595,7 +597,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 
 | Azione | Parametri |
 |---|---|
-| `character_show` | `target`, `expression?`, `look?` (`viewer` o un oggetto), `size?` (`auto`, `disk`, `badge`, `real`) |
+| `character_show` | `target`, `expression?`, `look?` (`viewer` o un oggetto), `size?` (`auto`, `disk`, `badge`, `real`), `at?` (v450, il posto di un ospite: `left`, `right`, `center`, `top`, `bottom`) |
 | `character_expression` | `target`, `expression` |
 | `character_look_at` | `target`, `object` (`viewer`/`camera` o un oggetto) |
 | `character_blink` | `target` |
@@ -610,7 +612,9 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
-| `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo |
+| `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo; dalla v450 `sync?` (`on`), `at?` (−30–3600), `loop?` (`off`), `bpm?` (30–240), `beat?`, `kick?` (0–3): §Le storie cantate |
+| `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri): il verso dura la sua ripresa |
+| `story_title` (v450) | `id` o `text`, `sub_id?` o `subtitle?`: il titolo grande al centro, per la sua ripresa |
 
 Dalla v416 `character_show`, `character_move`, `character_return`,
 `character_animate`, `character_become` ed `effect` accettano anche
@@ -740,6 +744,8 @@ quadro porta sempre il suo corpo, con la freccia.
   essere un'idea. Il ritorno, l'atterraggio, e Betelgeuse sotto Orione: il
   ferro nel sangue e il calcio nelle ossa sono nati nelle stelle, «siamo
   tutti fatti di polvere di stelle». Voce di sintesi.
+- **«Pallido puntino blu»** (`storia_puntino`, 248,5 s, diciassette scene,
+  v450): la prima storia **cantata**, §Le storie cantate.
 
 ## Il corpo nello spazio (v409)
 
@@ -1644,6 +1650,118 @@ sulla loro linguetta e lo portano in vista (`apriImpostazioni`). Testi in
 `studio.imp.*`. Prove: `prova-elevenlabs-studio.js` (13),
 `prova-musica-storie.js` (12).
 
+## Le storie cantate e gli ospiti (v450)
+
+Chi usa l'app ha portato una canzone — «Pallido puntino blu», un rap di
+4'08" sulle parole che Carl Sagan scrisse nel 1994 sulla fotografia della
+Terra fatta dalla Voyager 1 il 14 febbraio 1990 — e ha chiesto una
+CosmoStoria che la segua: i personaggi che la cantano, gli effetti speciali,
+la camera che si muove come in un video rap, le Voyager, e Carl Sagan stesso
+fra i personaggi, disegnato nello stile dei pianeti su un ritratto da cartone.
+
+**La canzone agganciata** (`story_music { sync: on, at, loop: off }`, §8). Il
+motore delle demo dice da quanto gira la storia (`Motore.tempoDemo`, esposto
+come `AstroDemo.tempo`: le scene finite più quanto è passato in questa, fermo
+in pausa). Ogni scena ripete `story_music` con `at`, il punto della canzone in
+cui comincia: la canzone dove deve essere è `at` più il tempo passato dalla
+scena (`storTempoCanzone`). Ogni 120 ms (`musicaAggancia`) la musica vera ci
+viene riportata: prima di 0 aspetta ferma all'inizio (la prima scena ha
+`at: -1.5`, un secondo e mezzo per caricare il file), in pausa si ferma con la
+demo, finita tace; uno scarto grande (oltre `STOR_MUSICA_SCARTO`, 0,6 s: un
+salto di scena, la scheda tornata davanti) è un salto, uno piccolo si
+recupera con `playbackRate` fra 0,94 e 1,06, che non si sente. Il `play()` di
+Chromium parte sempre circa 0,19 s in ritardo: misurato nel browser, dopo
+l'aggancio lo scarto resta sotto i 70 ms all'avvio, dopo una pausa e dopo un
+salto. Saltare richiede che il server accetti le richieste a intervalli
+(`Range`), come GitHub Pages.
+
+**Il canto** (`character_sing { target, with, id | text }`). La voce è nella
+canzone: nessuno parla, si muovono le bocche. Un verso ha chi lo canta (il
+primo e gli altri di `with`), il testo e il suo tempo, che è la ripresa
+dell'azione (`shot_from`/`shot_to`) sull'orologio della demo — lo stesso a cui
+è agganciata la musica, quindi parole, bocche e voce vanno insieme. Le bocche
+di tutti i cantanti seguono la fila delle sillabe del verso stesa sulla sua
+durata (`storBoccaDaSegnale` con `progresso`); chi canta nel coro guarda chi
+guarda, gli altri guardano il primo. La regia inquadra il coro tutto insieme
+(motivo `coro`, `storRegiaInquadra` 3-bis), il cantante solo come chi parla.
+
+**Il karaoke** (`storDisegnaSovrimpressioni`, chiamata da
+`storDisegnaCartelloLuogo`, cioè fuori dalla lente in tutte le viste). In
+basso, in una pillola scura: i nomi di chi canta coi loro colori, poi il
+verso su al più tre righe, la parte cantata dorata che brilla e quella da
+cantare bianca e tenue, e sopra alla sillaba in corso salta un pallino
+azzurro — il pallido puntino blu (`storPuntoDelCanto`, funzione pura). È
+disegnato sulla tela: finisce anche nel filmato.
+
+**Il titolo** (`story_title { id, sub_id }`): grande al centro, con un velo
+scuro dietro perché si legga sopra ai personaggi; entra, resta e se ne va con
+la sua ripresa, avvicinandosi appena.
+
+**Il battito** (`story_music { bpm, beat, kick }`). `beat` è un primo della
+battuta, in secondi della canzone (misurato: 87 bpm, `beat: 0.85`, un verso
+per battuta). `storBattito` dice a che punto del colpo si è. Lo tengono:
+la camera (`storLenteApri`: uno spintone in avanti a ogni colpo che si spegne
+in un decimo di secondo, più forte sul primo della battuta, quanto dice
+`kick`; solo ingrandisce, quindi non scopre i bordi), chi canta (i «colpi» di
+`storMotoParlato` cadono sul battito) e tutti gli altri (un cenno schiacciato
+e la testa a colpi alterni, `storPosa`). Col movimento ridotto la camera non
+batte.
+
+**Gli ospiti** (`ospite: true`, `storOspiti`). Carl Sagan non è un astro:
+nessun renderer lascia la sua ricevuta. Sta in un posto dello schermo
+(`character_show { at }`: `left` di serie, `right`, `center`, `top`,
+`bottom`, `STOR_POSTI_OSPITE`), uguale nel planetario, nella 3D, nel banco
+Terra e Luna e nella scala cosmica, col corpo intero e senza filo, e quando la
+scena lo chiede altrove ci scivola. Si disegna per ultimo (davanti a tutti),
+il palco della 3D gli fa posto come al Sole (fermo), e i corpi accanto lo
+evitano. Non viaggia (`demo.err.ospiteFermo`), e nessuno viaggia verso di lui.
+
+**Carl Sagan** (`sagan`, famiglia `persona`, sagoma `sagan`,
+`disegnaSagan`): il busto con la giacca di velluto a coste e i revers, il
+dolcevita rosso a coste fino al mento, la testa che è un disco-pianeta caldo
+col taglio d'ombra e il bordo color panna, i capelli castani voluminosi degli
+anni Settanta (la massa dietro e il caschetto davanti, due ciocche di punti
+lisciate col contorno mosso: la riga di lato, il ciuffo che gira sulla
+fronte, le basette che si aprono in fuori). Le sopracciglia folte, il sorriso
+largo; attorno gli gira il pallido puntino blu (`STOR_FISICA.sagan.lune`) e,
+quando canta, si accende l'aura. Si sceglie anche nello Studio (gruppo «Chi
+racconta», `studio.ui.gruppo.narratori`), dove i viaggi per lui non vanno
+nel copione, e nell'anteprima della pagina Demo.
+
+**La storia** (`storia_puntino` in `demo-predefiniti.js`). I tempi dei
+sessantotto versi sono stati **misurati sulla canzone**: il riconoscimento
+del parlato parola per parola (Whisper small, in Node) e poi l'allineamento
+col testo vero (programmazione dinamica con somiglianza delle parole); il
+battito dalla cassa (87 bpm). Il copione è stato generato da quei numeri, con
+le scene, le facce, gli effetti e le camere scritti a mano:
+
+| Canzone | Scena |
+|---|---|
+| 0–18 s, intro parlata | la Voyager 1 il 14 febbraio 1990, a quaranta UA (`voyager_journey`), il titolo; Sagan la dice, la Voyager si stupisce, il lampo della fotografia |
+| 18–44 s, prima strofa | il banco Terra e Luna: la base entra con un'onda d'urto; la Luna canta «ha riso, ha pianto, ha amato, ha tradito» cambiando faccia a ogni parola |
+| 44–60 s, seconda strofa | il cielo di Roma, la Luna sopra ai tetti, i cuori, una stella cadente «sotto stelle avare» |
+| 60–72 s | il Sole e la Terra: «sospeso in un raggio di sole» lo canta il Sole, la Terra rimpicciolisce |
+| 72–96 s, ritornello | la scala cosmica esce fino all'eliopausa (le Voyager ai bordi con le frecce) e torna a casa: tutti cantano «pallido punto blu», i fuochi |
+| 96–118 s, terza strofa | Marte (il dio della guerra) e Giove (il re degli dèi) si contendono la Terra: lampi, botti, il quadro che trema; poi «ma perché poi?» |
+| 118–141 s, quarta strofa | Saturno si vanta, il Sole ride dell'idea di stare al centro; poi la scala cosmica fino alla nube di Oort, soli nel buio |
+| 141–164 s, ritornello | i pianeti ballano e la camera gira; poi la Terra e la Luna coi fuochi e i cuori |
+| 164–184 s, ponte parlato | Sagan da solo, Marte triste («non c'è altro posto dove migrare») |
+| 184–208 s, ultima strofa | di nuovo la Voyager e la sua fotografia, poi dall'eliopausa a casa, tutti insieme, coriandoli |
+| 208–247 s, outro | la Terra e la Luna, poi tutti canticchiano mentre la camera esce verso la bolla locale |
+
+La canzone sta in `musica/canzoni/pallido-punto-blu.mp3`, **non** in
+`audio/storie-musica/`: quella cartella è dello Studio, che a ogni
+sincronizzazione ne toglie i file che nessuna sua storia usa. Non è nel
+catalogo delle tracce (`musica/LEGGIMI.md`). Il testo inglese dei versi
+(`storie.canzone.puntino.*` in `en.js`) è la traduzione, come dei sottotitoli:
+la canzone resta in italiano.
+
+Prove: `prova-storie.js`, gruppo «le storie cantate e gli ospiti (v450)»
+(il coro con due bocche e la Luna zitta, il verso che tace a fine ripresa, il
+karaoke che non torna indietro, la validazione, l'ospite in ogni vista e che
+scivola, la storia che dura la canzone con ogni `at` giusto e i versi in
+ordine). Guardata intera in Chromium, scena per scena.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
@@ -1660,6 +1778,9 @@ sulla loro linguetta e lo portano in vista (`apriImpostazioni`). Testi in
 - Col movimento ridotto (v409) i viaggi arrivano subito, le animazioni non
   ci sono, gli effetti sono un alone che si accende e si spegne.
 - Le linguette della pagina Demo sono un `tablist` vero (frecce, Home, End).
+- Le storie cantate (v450): il karaoke porta, come il sottotitolo, il **nome
+  scritto** di chi canta; il verso resta a schermo per tutta la sua durata e
+  la parte cantata si distingue anche per luminosità, non solo per colore.
 
 ## Prove
 

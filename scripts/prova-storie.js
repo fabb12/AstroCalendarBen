@@ -528,7 +528,7 @@ gruppo('i comandi del DSL, col motore delle demo');
 
 const registro = Object.create(null);
 for (const [k, c] of Object.entries(S.comandi)) registro[k] = c;
-for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card', 'point_view'])
+for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card', 'point_view', 'voyager_journey'])
   registro[k] = { crea: () => ({}) };
 // La scala cosmica (demo.js): qui basta che le scale siano quelle che il
 // comando vero accetta, numeri di UA fra un milionesimo e 1e17 o un nome
@@ -553,7 +553,12 @@ prova('le storie predefinite si validano e usano solo personaggi ed espressioni 
     const prep = motore.prepara(d.testo);
     const totale = prep.scene.reduce((n, s) => n + s.durata, 0);
     if (d.chiave === 'storia_luna') assert.ok(totale >= 60000 && totale <= 90000, 'il pilota dura fra 60 e 90 s: ' + totale);
-    for (const s of prep.scene) assert.equal(s.azioni.filter(a => a.comando === 'character_speak').length, 1, 'una battuta per scena');
+    // Una storia cantata (v450) non ha battute: i versi li canta la canzone
+    const cantata = prep.scene.some(s => s.azioni.some(a => a.comando === 'character_sing'));
+    for (const s of prep.scene) {
+      if (cantata) assert.equal(s.azioni.filter(a => a.comando === 'character_speak').length, 0, 'una storia cantata non parla sopra alla canzone');
+      else assert.equal(s.azioni.filter(a => a.comando === 'character_speak').length, 1, 'una battuta per scena');
+    }
   }
 });
 prova('validazione: errori localizzati per bersaglio, espressione, sguardo, misura, scena e parametri', () => {
@@ -1757,6 +1762,119 @@ prova('lo Studio: la domanda finale nasce dagli eventi, e solo quando è adatta'
 });
 
 // =====================================================================
+// =====================================================================
+gruppo('le storie cantate e gli ospiti (v450)');
+
+const CANZONE = "story_music { src: 'musica/canzoni/pallido-punto-blu.mp3', sync: on, loop: off, at: 10, bpm: 87, beat: 0.85 }";
+prova('il canto: più cantanti muovono la bocca insieme sulla ripresa del verso, gli altri no; il verso finisce col suo tempo', () => {
+  S.sgombra();
+  Object.defineProperty(globalThis.AstroDemo, 'tempo', { get: () => motore.tempoDemo(), configurable: true });
+  try {
+    motore.avvia(demo(`scene solar_system_3d { duration: 4s; action: ${CANZONE}; action: character_show { target: 'Earth' };
+      action: character_show { target: 'sagan', at: right }; action: character_show { target: 'Moon' };
+      action: character_sing { target: 'Earth', with: 'sagan', text: 'Pallido punto blu', shot_from: 0.25, shot_to: 0.75 }; }`), { ripristina() {} });
+    passo(500);
+    assert.equal(S.canto, null, 'prima della sua ripresa il verso non c\'è');
+    assert.ok(Math.abs(S.tempoCanzone() - 10.5) < 0.05, 'la canzone è a «at» più il tempo della demo: ' + S.tempoCanzone());
+    const b = S.battito();
+    assert.ok(b && Math.abs(b.periodo - 60 / 87) < 1e-9 && b.f >= 0 && b.f < 1, 'il battito a 87 bpm');
+    passo(600);
+    const c = S.canto;
+    assert.deepEqual(c.chi, ['Earth', 'sagan']);
+    assert.equal(c.testo, 'Pallido punto blu');
+    const { ctx } = telaFinta();
+    let terra = 0, sagan = 0, luna = 0, karaoke = 0;
+    for (let k = 0; k < 40; k++) {
+      passo(25); avanza(25);
+      const d = S.disegnaPersonaggi(ctx, 'sistema', [corpo('Earth', 400, 300, 60, { vicinanza: 1 }), corpo('Moon', 250, 200, 30, { vicinanza: 0 })]
+        .concat(S.ospiti(800, 600)), 800, 600);
+      const di = id => d.find(x => x.id === id);
+      if (di('Earth').apertura > 0.1) terra++;
+      if (di('sagan').apertura > 0.1) sagan++;
+      if (di('Moon').apertura > 0) luna++;
+      assert.ok(di('Earth').canta && di('sagan').canta && !di('Moon').canta);
+      assert.equal(di('sagan').corpo, 'sagan', 'Carl Sagan ha il suo corpo');
+      assert.ok(di('sagan').centrato && Math.abs(di('sagan').x - 800 * 0.81) < 80, 'a destra, senza filo: ' + di('sagan').x);
+      S.sovrimpressioni(ctx, 800, 600, 0); karaoke++;
+    }
+    assert.ok(terra > 10 && sagan > 10, `le due bocche si muovono: ${terra}, ${sagan}`);
+    assert.equal(luna, 0, 'la Luna non canta questo verso');
+    passo(1400);
+    assert.equal(S.canto, null, 'finita la ripresa il verso tace');
+    motore.ferma();
+    assert.equal(S.tempoCanzone(), NaN, 'a demo finita niente canzone') ;
+  } finally { delete globalThis.AstroDemo.tempo; }
+});
+prova('il karaoke: il punto del verso va avanti con la ripresa, dalla prima all\'ultima lettera', () => {
+  const testo = 'Guardate ancora quel puntino laggiù';
+  const r = S.ritmo(testo);
+  let prima = -1;
+  for (let u = 0; u <= 1.0001; u += 0.05) {
+    const p = S.puntoDelCanto(r, u, testo.length);
+    assert.ok(p.carattere >= prima - 1e-9, 'non torna indietro a ' + u);
+    prima = p.carattere;
+  }
+  assert.equal(S.puntoDelCanto(r, 0, testo.length).carattere, 0);
+  assert.equal(S.puntoDelCanto(r, 1, testo.length).carattere, testo.length);
+});
+prova('validazione: canto, titolo, musica agganciata e ospite fermo', () => {
+  const casi = [
+    [sc('solar_system_3d', "character_show { target: 'Earth' }", "character_sing { target: 'Earth' }"), /vuole un id o un testo/],
+    [sc('solar_system_3d', "character_show { target: 'Earth' }", "character_sing { target: 'Earth', with: 'Moon', text: 'la' }"), /deve comparire in questa scena: Moon/],
+    [sc('solar_system_3d', "character_sing { target: 'Earth', text: 'la' }"), /deve comparire in questa scena/],
+    [sc('solar_system_3d', "character_show { target: 'sagan' }", "character_move { target: 'sagan', to: 'Mars' }"), /non viaggia/],
+    [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_move { target: 'Mars', to: 'sagan' }"), /non viaggia/],
+    [sc('solar_system_3d', "character_show { target: 'sagan', at: 'ovunque' }"), /at sconosciuto/],
+    [sc('solar_system_3d', "story_music { src: 'musica/canzoni/x.mp3', sync: on, bpm: 500 }"), /bpm vuole un numero/],
+    [sc('solar_system_3d', "story_music { src: 'musica/canzoni/x.mp3', sync: forse }"), /sync sconosciuto/],
+    [sc('solar_system_3d', "story_title { subtitle: 'x' }"), /vuole un id o un testo/]
+  ];
+  for (const [scena, atteso] of casi) assert.throws(() => motore.prepara(demo(scena)), atteso, scena);
+  motore.prepara(demo(sc('planetarium_view', "character_show { target: 'sagan', at: left }", "story_title { text: 'Ciao', subtitle: 'sotto' }",
+    "character_sing { target: 'sagan', text: 'la la' }")));
+});
+prova('Carl Sagan è un ospite: sta sullo schermo in ogni vista, scivola al posto nuovo, e il suo ritratto ha il corpo', () => {
+  scena({ sagan: { posto: 'left' } });
+  const [a] = S.ospiti(800, 600);
+  assert.ok(a.ospite && a.costumeR >= 30 && Math.abs(a.px - 800 * 0.19) < 40, 'a sinistra: ' + a.px);
+  S.mostra('sagan', { posto: 'right' });
+  avanza(100); S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [], 800, 600);
+  const [b] = S.ospiti(800, 600);
+  assert.ok(b.px > a.px && b.px < 800 * 0.81, 'ci scivola, non salta: ' + b.px);
+  // nella 3D e nel planetario si disegna anche senza nessuna ricevuta
+  globalThis.sol = { L: 800, H: 600, vicino: false, altaBarra: 0, luneSchermo: [], satSchermo: [] };
+  assert.ok(globalThis.storDisegnaSistema(telaFinta().ctx, { corpi: [] }).some(x => x.id === 'sagan' && x.corpo === 'sagan'));
+  delete globalThis.sol;
+  assert.ok(globalThis.storDisegnaCielo(telaFinta().ctx).some(x => x.id === 'sagan'));
+  assert.equal(S.profilo('Carl Sagan').id, 'sagan');
+  assert.ok(S.fisica('sagan').lune.some(l => l.nome === 'Earth'), 'il pallido puntino blu gli gira attorno');
+  const { ctx, chiamate } = telaFinta(120, 120);
+  assert.ok(S.ritratto({ getContext: () => ctx, clientWidth: 120, clientHeight: 120 }, 'sagan', 'happy'));
+  assert.ok(chiamate.filter(k => k === 'quadraticCurveTo').length > 20, 'i capelli: le ciocche lisciate');
+});
+prova('«Pallido puntino blu»: la storia dura la canzone, ogni scena la riaggancia al punto giusto, i versi vanno in ordine', () => {
+  const d = predefiniti.find(x => x.chiave === 'storia_puntino');
+  const prep = motore.prepara(d.testo);
+  let t = 0, ultimo = -Infinity, versi = 0;
+  const LEAD = 1.5;
+  for (const s of prep.scene) {
+    const m = s.azioni.find(a => a.comando === 'story_music');
+    assert.ok(m && m.parametri.sync === 'on' && m.parametri.loop === 'off', 'ogni scena aggancia la canzone');
+    assert.ok(Math.abs(m.parametri.at - (t / 1000 - LEAD)) < 0.01, `at ${m.parametri.at} invece di ${t / 1000 - LEAD}`);
+    for (const a of s.azioni.filter(a => a.comando === 'character_sing')) {
+      const da = t + (a.ripresa ? a.ripresa.da : 0) * s.durata;
+      assert.ok(da > ultimo, 'versi in ordine: ' + a.parametri.id);
+      ultimo = da; versi++;
+      for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi[a.parametri.id], 'string', a.parametri.id + ' in ' + l);
+      assert.ok(DIZ.it.messaggi[a.parametri.id].length <= 240);
+    }
+    t += s.durata;
+  }
+  assert.ok(Math.abs(t / 1000 - LEAD - 247) < 1, 'la canzone dura 4\'08": ' + t);
+  assert.equal(versi, 68, 'sessantotto versi');
+  assert.ok(d.cast.split(',').includes('sagan'));
+});
+
 gruppo('italiano e inglese');
 
 prova('ogni testo delle storie e dei comandi esiste in tutte e due le lingue', () => {

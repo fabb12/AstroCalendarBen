@@ -398,6 +398,20 @@
         if (this.stato === 'attivo' && this.raf === null) this.programma();
       } catch (e) { this.fallisci(e); }
     }
+    // Il tempo del racconto, in ms dall'inizio della prima scena: le scene
+    // già finite più quanto è passato in questa (fermo in pausa, zero
+    // durante l'intro). La canzone di una CosmoStoria (v450, `story_music {
+    // sync: on }`) lo legge per stare a tempo con le scene anche dopo un
+    // salto, una pausa o un caricamento lento del file.
+    tempoDemo() {
+      if (!this.demo || this.inIntro) return 0;
+      const scene = this.demo.scene;
+      let t = 0;
+      for (let i = 0; i < this.indice && i < scene.length; i++) t += scene[i].durata;
+      let qui = this.trascorso;
+      if (this.stato === 'attivo' && !this.attesaFineNarrazione) qui += Math.max(0, this.ora() - this.ultimo);
+      return t + (scene[this.indice] ? Math.min(qui, scene[this.indice].durata) : 0);
+    }
     pausa() {
       if (this.stato !== 'attivo') return;
       if (this.raf !== null) this.annulla(this.raf);
