@@ -1952,6 +1952,15 @@ dell'episodio pilota), `prova-demo-pagina.js` (la camera a mano nel
 planetario) e `prova-lingua.js` (i tempi del cambio lingua) falliscono
 uguali sulla v453: da guardare a parte.
 
+### Solo l'illustrazione della foto (v455)
+
+Chi guarda la storia ha chiesto di togliere la fotografia vera: in
+`STOR_FOTO.pale_blue_dot` le candidate e le voci di Wikipedia sono vuote,
+nessuna richiesta parte verso Wikimedia e si vede sempre l'illustrazione,
+con l'anello, la freccia e lo zoom sulla Terra (`terraIllustrazione`). La
+didascalia di sotto dice «Illustrazione della fotografia della Voyager 1».
+Prova: `prova-storie.js` (nessun indirizzo di Wikimedia nel modulo).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

@@ -1914,7 +1914,7 @@ prova('nel giro della camera il volto la segue senza andare di spalle, e Carl Sa
   S.stato.regia.giro = 0;
   S.sgombra();
 });
-prova('story_photo: la fotografia vera, validata', () => {
+prova('story_photo: la fotografia validata, e per «Pallido puntino blu» solo l\'illustrazione (v455)', () => {
   motore.prepara(demo(sc('solar_system_3d', "story_photo { photo: pale_blue_dot }")));
   assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "story_photo { photo: luna }"))), /photo sconosciuto/);
   assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_sing { target: 'Earth', text: 'la', words: 'a-b' }"))), /words sconosciuto/);
@@ -1922,6 +1922,8 @@ prova('story_photo: la fotografia vera, validata', () => {
     assert.equal(typeof DIZ[l].messaggi['storie.foto.pale_blue_dot.' + k], 'string');
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');
   assert.ok((d.testo.match(/story_photo/g) || []).length === 1, 'la foto, una volta sola');
+  assert.ok(!/wikimedia\.org|wikipedia\.org\/api/.test(fs.readFileSync(path.join(__dirname, '..', 'storie-cosmiche.js'), 'utf8')),
+    'la fotografia vera non si chiede più');
   assert.ok((d.testo.match(/words: '/g) || []).length >= 60, 'i versi portano i tempi delle parole');
 });
 prova('la bocca segue la voce vera del verso: chiusa sulle pause, spalancata sulle note forti', () => {
