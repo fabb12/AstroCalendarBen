@@ -115,6 +115,12 @@
   const STUDIO_ELEV = [26, 62];
   const STUDIO_FOV = { lontano: 60, normale: 18, vicino: 3 };
   const STUDIO_QUANDO = ['inizio', 'meta', 'fine', 'tutto'];
+  /* v449: il tono di una battuta, oltre alla faccia: come la dice. Sono tag
+   * audio del modello v3 di ElevenLabs, che si sommano a quello della faccia
+   * (`[happy] [whispers] Psst!`). Al massimo due: di più il modello li
+   * mescola e la battuta esce confusa. */
+  const STUDIO_TONI = ['whispers', 'shouts', 'sighs', 'gasps', 'laughs', 'crying', 'curious', 'sarcastic'];
+  const STUDIO_TONI_MAX = 2;
   const STUDIO_TIPI = ['umore', 'guarda', 'muovi', 'torna', 'anima', 'scala', 'diventa', 'effetto', 'suono', 'occhiolino', 'nascondi'];
   // Che cosa può diventare un personaggio (v414, `character_become`): le
   // vesti di `STOR_VESTI`, tenute qui per lo stesso motivo delle tappe
@@ -143,7 +149,7 @@
     return Object.assign(base, di, campi);
   }
   function studioNuovoMomento(campi = {}) {
-    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', durata: 0, voce: 0, audio: null, azioni: [] }, campi);
+    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', tono: [], durata: 0, voce: 0, audio: null, azioni: [] }, campi);
   }
   /* La camera di una scena (v431): automatica (va da chi parla e dai botti),
    * sempre stretta su chi parla, su un personaggio solo, che gira attorno a
@@ -296,11 +302,15 @@
       voci: studioPulisciVoci(sc && sc.voci),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
         id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
+        // v449: come dice la battuta (sussurra, grida…), tag di ElevenLabs v3
+        tono: [...new Set((Array.isArray(m && m.tono) ? m.tono : []).filter(x => STUDIO_TONI.includes(x)))].slice(0, STUDIO_TONI_MAX),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
         audio: m && m.audio && Number(m.audio.durata) > 0 && /^[0-9a-f]{8}$/.test(m.audio.impronta)
           ? Object.assign({ durata: numero(m.audio.durata, 1, 120000, 1), impronta: m.audio.impronta, nome: testo(m.audio.nome, 80) },
             // v445: la voce ElevenLabs con cui è stato generato (per dire quando è da rifare)
-            STUDIO_VOCE_ID.test(m.audio.voce || '') ? { voce: m.audio.voce } : {}) : null,
+            STUDIO_VOCE_ID.test(m.audio.voce || '') ? { voce: m.audio.voce } : {},
+            // v449: i tag d'intonazione con cui è stato generato
+            typeof m.audio.tag === 'string' && m.audio.tag.length <= 160 ? { tag: m.audio.tag } : {}) : null,
         azioni: (Array.isArray(m && m.azioni) ? m.azioni : []).slice(0, 30)
           .filter(a => a && STUDIO_TIPI.includes(a.tipo))
           .map(a => studioNuovaAzione(a.tipo, {
@@ -1467,7 +1477,7 @@
       .sort((a, b) => a.chiave < b.chiave ? -1 : a.chiave > b.chiave ? 1 : 0)
       .map(f => ({ chiave: f.chiave, titolo: f.titolo, lingua: f.lingua, battute: f.battute }));
     return JSON.stringify({
-      _leggimi: 'Le battute delle storie fatte nello Studio delle storie, scritto dallo Studio (Altro → File delle voci). ' +
+      _leggimi: 'Le battute delle storie fatte nello Studio delle storie, scritto dallo Studio (Impostazioni → Questa storia → File delle voci). ' +
         'Va in audio/narrazione/storie/: scripts/voci-storie.js le mette nel copione, nella regia e nel manifest, e toglie quelle che non ci sono più, audio compresi. Non modificarlo a mano.',
       v: 1, storie
     }, null, 2) + '\n';
@@ -1655,7 +1665,7 @@
   }
   // `sincronizza`: falso quando chi chiama manda tutto insieme alla fine
   // (le battute generate a raffica con ElevenLabs, §6c). Vero se la voce è entrata.
-  async function caricaVoce(dove, file, { sincronizza = true, voce = '' } = {}) {
+  async function caricaVoce(dove, file, { sincronizza = true, voce = '', tag } = {}) {
     const p = studio.progetto, m = leggi(dove);
     if (!m || !file) return false;
     if (file.size > STUDIO_AUDIO_MAX) { esito(t('studio.voce.troppoGrande')); return false; }
@@ -1675,6 +1685,7 @@
     registraVoce(k, testo, URL.createObjectURL(file));
     m.audio = { durata, impronta: studioImpronta(testo), nome: String(file.name || '').slice(0, 80) };
     if (STUDIO_VOCE_ID.test(voce || '')) m.audio.voce = voce;
+    if (typeof tag === 'string') m.audio.tag = tag.slice(0, 160);
     salvaPresto();
     disegna();
     const caricata = t('studio.voce.caricata', { secondi: secondiDi(durata), durata: studioDurata(m) });
@@ -1961,8 +1972,8 @@
    * contenuti risponde subito (la pubblicazione su Pages ci mette qualche
    * minuto, e il file pubblicato starebbe nella cache del service worker).
    * Scrivere vuole un token di GitHub (fine-grained, «Contents: Read and
-   * write» su questo solo repository) scritto una volta in «Altro →
-   * Repository GitHub»: resta in questo browser e non entra nel backup.
+   * write» su questo solo repository) scritto una volta in «Impostazioni →
+   * Sincronizza»: resta in questo browser e non entra nel backup.
    *
    * Un salvataggio è **un commit solo** (API Git: blob, albero, commit,
    * ramo) con tre cose: le storie, il file delle voci
@@ -2030,7 +2041,7 @@
     const e = lapidi(eliminati), ordinati = {};
     for (const k of Object.keys(e).sort()) ordinati[k] = e[k];
     return JSON.stringify({
-      _leggimi: 'Le storie salvate nello Studio delle storie, scritte dall\'app (Studio → Altro → Repository GitHub) e lette da ogni dispositivo. Non modificarlo a mano.',
+      _leggimi: 'Le storie salvate nello Studio delle storie, scritte dall\'app (Studio → Impostazioni → Sincronizza) e lette da ogni dispositivo. Non modificarlo a mano.',
       v: 1, storie, eliminati: ordinati
     }, null, 2) + '\n';
   }
@@ -2319,7 +2330,7 @@
    * battuta (lo faceva `scripts/voci-storie.js --genera`, dal terminale).
    * Adesso lo Studio parla con le API di ElevenLabs dal browser:
    *
-   *   - la **chiave** si scrive una volta (Altro → ElevenLabs) e resta in
+   *   - la **chiave** si scrive una volta (Impostazioni → ElevenLabs) e resta in
    *     questo browser, come il token di GitHub: non entra nel backup, non
    *     va nel repository e parte solo verso api.elevenlabs.io;
    *   - per ogni **personaggio** si sceglie la voce: dalla libreria pubblica
@@ -2384,7 +2395,14 @@
     if (!m || !m.chi || !testoDetto(m)) return false;
     if (!studioVoceValida(m)) return true;
     const v = studioVoceDi(progetto, m.chi, scena);
-    return !!(v && m.audio.voce && m.audio.voce !== v.id);
+    return !!(v && m.audio.voce && m.audio.voce !== v.id) || studioTonoCambiato(progetto, m);
+  }
+  // v449: generata da ElevenLabs con un'intonazione che non è più quella
+  // (faccia o tono cambiati dopo). Gli audio caricati o registrati non
+  // hanno `tag` e non si toccano.
+  function studioTonoCambiato(progetto, m) {
+    return !!(m && m.audio && m.audio.voce && typeof m.audio.tag === 'string' &&
+      m.audio.tag !== studioFirmaTag(studioTestoPerVoce(m, studioElevenImpostazioni().modello, progetto)));
   }
   // `scena`: la voce vale solo lì (v445); senza, per tutta la storia
   function scegliVocePersonaggio(id, voce, scena) {
@@ -2402,15 +2420,53 @@
     try { archivio() && archivio().setItem(CHIAVE_VOCI_PG, JSON.stringify(serie)); } catch (_) { /* resta nel progetto */ }
     salvaPresto();
   }
-  /* Il testo che va a ElevenLabs: col modello v3 la faccia del momento
-   * diventa il tag di regia all'inizio (se la battuta non ne ha già); gli
-   * altri modelli i tag li leggerebbero ad alta voce, e lì va il testo nudo. */
-  function studioTestoPerVoce(m, modello) {
+  /* La faccia che il personaggio ha **mentre dice** la battuta (v449).
+   * Prima a ElevenLabs andava solo la faccia scelta nel momento: una
+   * battuta lasciata «di serie», o detta con la faccia rimasta da un
+   * momento prima, o cambiata da un'azione «Faccia» all'inizio, partiva
+   * senza tag e usciva piatta, mentre a schermo il volto rideva o
+   * piangeva. Qui si fa lo stesso conto del copione (`studioCopione`): la
+   * faccia del momento, se no quella data da un'azione all'inizio, se no
+   * l'ultima avuta nella storia, se no quella di serie del personaggio. */
+  function studioFacciaParlata(progetto, m) {
+    if (!m || !m.chi) return m && m.umore || '';
+    if (m.umore) return m.umore;
+    const subito = (m.azioni || []).find(a => a && a.tipo === 'umore' && a.chi === m.chi && a.umore && (a.quando === 'inizio' || a.quando === 'tutto'));
+    if (subito) return subito.umore;
+    const diSerie = (S().profilo ? S().profilo(m.chi).espressione : '') || 'neutral';
+    let faccia = diSerie;
+    for (const sc of (progetto && progetto.scene) || []) {
+      for (const x of sc.momenti || []) {
+        if (x === m || x.id === m.id) return faccia;
+        if (x.chi === m.chi && x.umore) faccia = x.umore;
+        for (const a of x.azioni || []) if (a && a.tipo === 'umore' && a.chi === m.chi && a.umore) faccia = a.umore;
+      }
+    }
+    return diSerie;
+  }
+  // I tag d'intonazione di una battuta: la faccia, poi il tono (v449)
+  function studioTagVoce(progetto, m) {
+    const tag = [];
+    const f = ELEVEN_TAG_UMORE[studioFacciaParlata(progetto, m)];
+    if (f) tag.push(f);
+    for (const x of (m && m.tono) || []) if (STUDIO_TONI.includes(x) && !tag.includes(x)) tag.push(x);
+    return tag;
+  }
+  // I tag in testa a un testo inviato: `[happy] [whispers]`
+  const studioFirmaTag = testo => ((String(testo || '').match(/^(?:\[[^\]]{1,30}\]\s*)+/) || [''])[0]).replace(/\s+/g, ' ').trim();
+  /* Il testo che va a ElevenLabs: col modello v3 la faccia che il
+   * personaggio ha mentre parla e il tono della battuta diventano i tag di
+   * regia all'inizio (se la battuta non ne ha già di suoi, scritti a mano:
+   * quelli vincono); gli altri modelli i tag li leggerebbero ad alta voce,
+   * e lì va il testo nudo. `progetto`: la storia, per la faccia rimasta da
+   * prima (di serie quella aperta nello Studio). */
+  function studioTestoPerVoce(m, modello, progetto) {
     const testo = testoDetto(m);
     if (!/^eleven_v3/.test(modello || '')) return testo.replace(/\[[^\]]{1,30}\]\s*/g, '').trim();
     if (/^\[[^\]]{1,30}\]/.test(testo)) return testo;
-    const tag = ELEVEN_TAG_UMORE[m.umore];
-    return tag ? `[${tag}] ${testo}` : testo;
+    const p = progetto !== undefined ? progetto : studio.progetto;
+    const tag = studioTagVoce(p, m);
+    return tag.length ? tag.map(x => `[${x}]`).join(' ') + ' ' + testo : testo;
   }
   // Una voce di ElevenLabs (dell'account o della libreria) nella forma dello
   // Studio. `lingua`: la lingua dell'anteprima da preferire.
@@ -2531,7 +2587,7 @@
   let elInCorso = null;                   // la chiave della proposta in lavorazione
   function mettiProposta(k, file) {
     togliProposta(k);
-    proposte.set(k, { file, url: URL.createObjectURL(file), voce: file.voce || '' });
+    proposte.set(k, { file, url: URL.createObjectURL(file), voce: file.voce || '', tag: file.tag });
   }
   function togliProposta(k) {
     const x = proposte.get(k);
@@ -2583,9 +2639,11 @@
     // senza voce: la scelta si apre qui, sotto la battuta
     if (!voce) { apriScelta(m.chi, { luogo: k, scena: sc && sc.id, ambitoLibero: true }); return; }
     const imp = studioElevenImpostazioni();
-    const file = await lavoro(k, () => { notifica(k, t('studio.el.generoVoce', { nome: nome(m.chi) })); return elevenParla(voce.id, studioTestoPerVoce(m, imp.modello), imp); });
+    // v449: con la faccia che ha mentre parla e il tono della battuta
+    const testo = studioTestoPerVoce(m, imp.modello, p);
+    const file = await lavoro(k, () => { notifica(k, t('studio.el.generoVoce', { nome: nome(m.chi) })); return elevenParla(voce.id, testo, imp); });
     if (!file) return;
-    mettiProposta(k, Object.assign(file, { voce: voce.id }));
+    mettiProposta(k, Object.assign(file, { voce: voce.id, tag: studioFirmaTag(testo) }));
     notifica(k, t('studio.el.propostaPronta'));
     disegna();
     suonaAnteprima(proposte.get(k).url);
@@ -2608,8 +2666,9 @@
         if (studio.progetto !== p) break;
         notifica(luogo, t('studio.el.generoN', { nome: nome(id), n: fatte + 1, totale: dove.length }));
         const voce = studioVoceDi(p, id, scenaDi(d));
-        const file = await elevenParla(voce.id, studioTestoPerVoce(leggi(d), imp.modello), imp);
-        if (await caricaVoce(d, file, { sincronizza: false, voce: voce.id })) fatte++;
+        const testo = studioTestoPerVoce(leggi(d), imp.modello, p);
+        const file = await elevenParla(voce.id, testo, imp);
+        if (await caricaVoce(d, file, { sincronizza: false, voce: voce.id, tag: studioFirmaTag(testo) })) fatte++;
       }
     });
     if (!fatte) return;
@@ -2674,7 +2733,7 @@
     if (!pr) return;
     if (ascoltoEl) { try { ascoltoEl.pause(); } catch (_) { /* niente */ } }
     studio.elMsg = null;
-    const ok = tipo === 'voce' ? await caricaVoce(dove, pr.file, { voce: pr.voce }) : tipo === 'suono' ? await caricaSuono(dove, pr.file) : await caricaMusica(dove, pr.file);
+    const ok = tipo === 'voce' ? await caricaVoce(dove, pr.file, { voce: pr.voce, tag: pr.tag }) : tipo === 'suono' ? await caricaSuono(dove, pr.file) : await caricaMusica(dove, pr.file);
     if (ok !== false) togliProposta(k);
     disegna();
   }
@@ -2728,7 +2787,7 @@
       c.nota = t('studio.el.generoProva', { voce: v.nome }); c.errore = '';
       esito(c.nota);
       const a = await elevenAggiungi(v);
-      return elevenParla(a.id, studioTestoPerVoce(m, imp.modello), imp);
+      return elevenParla(a.id, studioTestoPerVoce(m, imp.modello, p), imp);
     }, 'scelta');
     if (studio.elScelta === c) { c.nota = file ? t('studio.el.provaPronta', { voce: v.nome }) : ''; c.errore = file ? '' : (studio.elMsg && studio.elMsg.testo) || ''; }
     disegna();
@@ -2813,9 +2872,11 @@
 
   const studio = {
     progetti: [], progetto: null, radice: null, capito: null, capitoScena: -1, esito: '', copioneAperto: false,
-    salvaTimer: 0, aperta: null, repoAperto: false, schedaMomento: '',
+    salvaTimer: 0, aperta: null, schedaMomento: '',
+    // v449: il pannello delle impostazioni e la sua linguetta aperta
+    impAperto: false, impScheda: 'storia',
     // v444: il pannello della chiave ElevenLabs e la scelta della voce aperta (§6c)
-    elAperto: false, elScelta: null, elCrediti: '', elMsg: null
+    elScelta: null, elCrediti: '', elMsg: null
   };
 
   // `tocca`: è una modifica (e non solo un'apertura), quindi il progetto
@@ -2985,6 +3046,8 @@
     box.append(fila);
     const pannello = h('div', { class: 'studio-pannello' });
     if (aperta === 'faccia') {
+      // v449: la faccia è anche l'intonazione della voce generata
+      if (studioElevenImpostazioni().chiave) pannello.append(h('p', { class: 'demo-opzioni-nota' }, t('studio.el.facciaTono')));
       // Le facce: un volto per espressione, del personaggio che parla
       const facce = h('div', { class: 'studio-facce', role: 'group', 'aria-label': t('storie.espressioneEtichetta') });
       for (const e of Object.keys(S().STOR_ESPRESSIONI || {})) {
@@ -2997,6 +3060,7 @@
       pannello.append(facce);
     } else if (aperta === 'voce') {
       if (m.chi) pannello.append(disegnaVoce(m, base));
+      if (m.chi && studioElevenImpostazioni().chiave) pannello.append(disegnaIntonazione(m, base));
       pannello.append(h('label', { class: 'studio-secondi' }, h('span', {}, t('studio.ui.quantoDura')),
         h('input', { type: 'number', min: '0', max: '120', step: '1', value: String(m.durata || ''), placeholder: t('studio.auto'), dataset: { campo: base + '.durata', numero: '1' } }),
         h('small', {}, t('studio.ui.durataNota'))));
@@ -3058,7 +3122,7 @@
     if (el && m.chi) {
       riga.append(tastoLavoro('voce|' + m.id, { fai: 'elGeneraVoce', dove: base },
         voce ? t('studio.el.generaCon', { voce: voce.nome || voce.id }) : t('studio.el.scegliPrima'),
-        voce ? t('studio.el.generaAiuto', { voce: voce.nome, testo: studioTestoPerVoce(m, studioElevenImpostazioni().modello) }) : ''));
+        voce ? t('studio.el.generaAiuto', { voce: voce.nome, testo: studioTestoPerVoce(m, studioElevenImpostazioni().modello, studio.progetto) }) : ''));
     }
     if (m.audio) {
       const valida = studioVoceValida(m);
@@ -3072,6 +3136,9 @@
     // v445: generata con una voce che non è più quella del personaggio qui
     if (m.audio && voce && m.audio.voce && m.audio.voce !== voce.id && studioVoceValida(m))
       riga.append(h('small', { class: 'studio-voce-stato troppo' }, t('studio.el.altraVoce')));
+    // v449: o con un'intonazione che non è più quella (faccia o tono cambiati)
+    else if (m.audio && studioVoceValida(m) && studioTonoCambiato(studio.progetto, m))
+      riga.append(h('small', { class: 'studio-voce-stato troppo' }, t('studio.el.altroTono')));
     const pr = rigaProposta('voce|' + m.id, 'voce', base, 'elGeneraVoce');
     if (pr) riga.append(pr);
     const nota = notaEl('voce|' + m.id);
@@ -3079,6 +3146,34 @@
     // la scelta della voce, aperta da questa battuta
     if (studio.elScelta && studio.elScelta.luogo === 'voce|' + m.id) riga.append(disegnaScelta(studio.elScelta));
     return riga;
+  }
+
+  /* L'intonazione della battuta per ElevenLabs (v449): la faccia che il
+   * personaggio ha mentre parla (si cambia nella linguetta «Faccia»), il
+   * tono scelto qui (al massimo due) e, sotto, il testo esatto che parte,
+   * coi tag. Prima il testo inviato stava solo nel suggerimento del tasto
+   * «Genera», e chi scriveva non sapeva con che emozione sarebbe uscita. */
+  function disegnaIntonazione(m, base) {
+    const p = studio.progetto, imp = studioElevenImpostazioni();
+    const faccia = studioFacciaParlata(p, m);
+    const tagFaccia = ELEVEN_TAG_UMORE[faccia];
+    const blocco = h('div', { class: 'studio-intonazione', role: 'group', 'aria-label': t('studio.el.intonazione') },
+      h('span', { class: 'studio-etichetta' }, t('studio.el.intonazione')));
+    blocco.append(h('div', { class: 'studio-tono-faccia' },
+      figurina(m.chi, faccia, 26),
+      h('span', {}, t('studio.el.tonoFaccia', { faccia: nomeFaccia(m.chi, faccia) }),
+        h('small', {}, ' · ' + (tagFaccia ? '[' + tagFaccia + ']' : t('studio.el.senzaTag')) + (m.umore ? '' : ' · ' + t('studio.el.facciaDaPrima'))))));
+    const toni = h('div', { class: 'studio-toni', role: 'group', 'aria-label': t('studio.el.tono') },
+      h('small', { class: 'studio-tono-titolo' }, t('studio.el.tono', { n: STUDIO_TONI_MAX })));
+    const scelti = m.tono || [];
+    for (const x of STUDIO_TONI)
+      toni.append(scelta(scelti.includes(x), { class: 'studio-tono', dataset: { fai: 'tono', dove: base, valore: x }, title: '[' + x + ']' }, t('studio.el.toni.' + x)));
+    blocco.append(toni);
+    const v3 = /^eleven_v3/.test(imp.modello);
+    blocco.append(v3
+      ? h('small', { class: 'studio-tono-invio' }, t('studio.el.testoInviato'), ' ', h('code', {}, studioTestoPerVoce(m, imp.modello, p)))
+      : h('small', { class: 'studio-voce-stato troppo' }, t('studio.el.tonoSoloV3')));
+    return blocco;
   }
 
   /* Le voci di una scena (v445): chi parla in questa scena, con la voce
@@ -3176,7 +3271,7 @@
     if (pr) riga.append(pr);
     return riga;
   }
-  // Il pannello della chiave (Altro → ElevenLabs)
+  // Il pannello della chiave (Impostazioni → ElevenLabs)
   function pannelloEleven() {
     const imp = studioElevenImpostazioni();
     return h('div', { id: 'studio-eleven', class: 'studio-repo' },
@@ -3474,6 +3569,74 @@
         imp.token ? h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'repoDimentica' } }, t('studio.repo.dimentica')) : null));
   }
 
+  /* Le impostazioni dello Studio (v449), in un pannello a parte sotto la
+   * barra. Prima stavano in «Altro», un menu a tendina con dieci tasti
+   * uguali in fila — Duplica, Esporta, Importa, il copione, il file delle
+   * voci, il repository, Sincronizza, ElevenLabs, Elimina — e chi cercava
+   * «come porto la storia sull'altro computer» non capiva quale premere.
+   * Ora sono tre linguette, ognuna con lo stato in piccolo: **Questa
+   * storia** (i file: esporta, importa, duplica, copione, voci; in fondo,
+   * a parte, elimina), **Sincronizza** (il repository: a che punto è,
+   * «Sincronizza ora», le chiavi) ed **ElevenLabs** (la chiave, il modello,
+   * i crediti). Ogni tasto ha accanto una riga che dice cosa fa. */
+  const STUDIO_SCHEDE_IMP = ['storia', 'repo', 'el'];
+  function apriImpostazioni(scheda) {
+    studio.impAperto = true;
+    studio.impScheda = STUDIO_SCHEDE_IMP.includes(scheda) ? scheda : studio.impScheda;
+    disegna();
+    const pannello = studio.radice && studio.radice.querySelector('#studio-impostazioni');
+    if (pannello && pannello.scrollIntoView) { try { pannello.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) { /* vecchi browser */ } }
+  }
+  function voceImp(tasto, testo, extra) {
+    return h('div', { class: 'studio-imp-voce' }, tasto, h('small', {}, testo), extra || null);
+  }
+  function pannelloImpostazioni(p) {
+    const repo = studioRepoImpostazioni(), el = studioElevenImpostazioni();
+    const scheda = STUDIO_SCHEDE_IMP.includes(studio.impScheda) ? studio.impScheda : 'storia';
+    const stato = {
+      storia: unaRiga(p.titolo) || t('studio.senzaTitolo'),
+      repo: repo.token ? t('studio.imp.repoScrive') : t('studio.imp.repoLegge'),
+      el: el.chiave ? t('studio.imp.elCollegato') : t('studio.imp.elDaCollegare')
+    };
+    const fila = h('div', { class: 'studio-linguette studio-linguette-imp', role: 'group', 'aria-label': t('studio.imp.titolo') });
+    for (const x of STUDIO_SCHEDE_IMP) fila.append(linguetta(scheda === x, { fai: 'impScheda', valore: x }, t('studio.imp.scheda.' + x), stato[x]));
+    const corpo = h('div', { class: 'studio-pannello studio-imp-corpo' });
+    if (scheda === 'storia') {
+      corpo.append(
+        h('h5', { class: 'studio-gruppo-titolo' }, t('studio.imp.file')),
+        voceImp(h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'esporta' } }, iconaSvg('scarica', 16), ' ', t('studio.esporta')), t('studio.imp.esportaAiuto')),
+        voceImp(h('label', { class: 'tasto-cielo demo-importa-tasto', for: 'studio-importa' }, t('studio.importa')), t('studio.imp.importaAiuto'),
+          h('input', { id: 'studio-importa', class: 'demo-file-nascosto', type: 'file', accept: '.json,application/json' })),
+        voceImp(h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'duplica' } }, t('studio.duplica')), t('studio.imp.duplicaAiuto')),
+        h('h5', { class: 'studio-gruppo-titolo' }, t('studio.imp.perChiScrive')),
+        voceImp(h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'copione' }, 'aria-expanded': String(studio.copioneAperto), 'aria-controls': 'studio-copione' },
+          t(studio.copioneAperto ? 'studio.imp.nascondiCopione' : 'studio.mostraCopione')), t('studio.imp.copioneAiuto')),
+        voceImp(h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'fileVoci' } }, t('studio.voci.file')), t('studio.voci.aiuto')),
+        h('div', { class: 'studio-imp-pericolo' },
+          voceImp(h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'elimina' } }, t('studio.elimina')), t('studio.imp.eliminaAiuto'))));
+    } else if (scheda === 'repo') {
+      corpo.append(
+        h('p', { class: 'studio-imp-stato' + (repo.token ? ' ok' : '') }, repo.token
+          ? t('studio.imp.repoStatoScrive', { repo: repo.repo, ramo: repo.ramo })
+          : t('studio.imp.repoStatoLegge', { repo: repo.repo, ramo: repo.ramo })),
+        voceImp(h('button', { type: 'button', class: 'tasto-cielo studio-imp-principale', dataset: { fai: 'sincronizza' } }, t('studio.repo.sincronizza')),
+          repo.token ? t('studio.imp.sincronizzaAiuto') : t('studio.imp.sincronizzaSoloLegge')),
+        h('h5', { class: 'studio-gruppo-titolo' }, t('studio.imp.collegamento')),
+        pannelloRepo());
+    } else {
+      corpo.append(
+        h('p', { class: 'studio-imp-stato' + (el.chiave ? ' ok' : '') }, el.chiave
+          ? t('studio.imp.elStato', { modello: t('studio.el.modelli.' + el.modello) })
+          : t('studio.imp.elStatoSenza')),
+        pannelloEleven());
+    }
+    return h('section', { id: 'studio-impostazioni', class: 'studio-impostazioni', 'aria-label': t('studio.imp.titolo') },
+      h('div', { class: 'studio-imp-testa' },
+        h('h4', { class: 'storie-sottotitolo' }, iconaSvg('ingranaggio', 18), ' ', t('studio.imp.titolo')),
+        h('button', { type: 'button', class: 'tasto-cielo studio-mini studio-x', dataset: { fai: 'impostazioni' }, 'aria-label': t('studio.imp.chiudi'), title: t('studio.imp.chiudi') }, '×')),
+      fila, corpo);
+  }
+
   function disegna() {
     const r = studio.radice;
     if (!r || !studio.progetto) return;
@@ -3488,33 +3651,23 @@
       attivo.dataset.fai && attivo.dataset.fai + '|' + attivo.dataset.dove + '|' + (attivo.dataset.id || attivo.dataset.valore || attivo.dataset.tipo || '')) : null;
     const p = studio.progetto;
     const pezzi = [];
-    // La barra: quale storia, una nuova, guarda e salva; il resto in «Altro»
+    // La barra: quale storia, una nuova, guarda e salva; il resto nelle Impostazioni
     const elenco = selettore('', p.id, studio.progetti.map(x => [x.id, x.titolo || t('studio.senzaTitolo')]), { id: 'studio-progetti', 'aria-label': t('studio.progetti') });
     if (!studio.progetti.some(x => x.id === p.id)) elenco.prepend(new Option(p.titolo || t('studio.senzaTitolo'), p.id));
     elenco.value = p.id;
-    const altro = h('details', { class: 'studio-altro' },
-      h('summary', { class: 'tasto-cielo' }, t('studio.ui.altro')),
-      h('div', { class: 'studio-altro-menu' },
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'duplica' } }, t('studio.duplica')),
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'esporta' } }, t('studio.esporta')),
-        h('label', { class: 'tasto-cielo demo-importa-tasto', for: 'studio-importa' }, t('studio.importa')),
-        h('input', { id: 'studio-importa', class: 'demo-file-nascosto', type: 'file', accept: '.json,application/json' }),
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'copione' }, 'aria-expanded': String(studio.copioneAperto), 'aria-controls': 'studio-copione' }, t('studio.mostraCopione')),
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'fileVoci' }, title: t('studio.voci.aiuto') }, t('studio.voci.file')),
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'repo' }, 'aria-expanded': String(!!studio.repoAperto), 'aria-controls': 'studio-repo' }, t('studio.repo.titolo')),
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'sincronizza' } }, t('studio.repo.sincronizza')),
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'elPannello' }, 'aria-expanded': String(!!studio.elAperto), 'aria-controls': 'studio-eleven' }, t('studio.el.titolo')),
-        h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'elimina' } }, t('studio.elimina'))));
+    // v449: «Altro» era un menu a tendina con dieci tasti alla rinfusa
+    // (file, repository, ElevenLabs, elimina); ora è un pannello a parte
+    const impostazioni = h('button', { type: 'button', class: 'tasto-cielo studio-imp-tasto', dataset: { fai: 'impostazioni' },
+      'aria-expanded': String(!!studio.impAperto), 'aria-controls': 'studio-impostazioni' }, iconaSvg('ingranaggio', 16), ' ', t('studio.imp.titolo'));
     pezzi.push(h('div', { class: 'studio-blocco studio-barra' },
       h('label', { class: 'storie-campo studio-barra-scelta' }, h('span', {}, t('studio.progetti')), elenco),
       h('div', { class: 'studio-barra-tasti' },
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'nuovo' } }, '+ ' + t('studio.nuovo')),
         h('button', { type: 'button', class: 'demo-avvia-principale storia-avvia', dataset: { fai: 'guarda' }, 'data-storia-prova': '' }, iconaSvg('gioca', 18), ' ', t('studio.guarda')),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'salvaDemo' } }, t('studio.salvaDemo')),
-        altro),
+        impostazioni),
       h('p', { id: 'studio-esito', class: 'demo-opzioni-nota', role: 'status', 'aria-live': 'polite' }, studio.esito),
-      studio.repoAperto ? pannelloRepo() : null,
-      studio.elAperto ? pannelloEleven() : null,
+      studio.impAperto ? pannelloImpostazioni(p) : null,
       h('pre', { id: 'studio-copione', class: 'storie-codice', tabindex: '0', hidden: !studio.copioneAperto })));
     // 1. L'idea (v447): due linguette, l'idea pronta e il titolo con
     // l'obiettivo, ognuna con lo stato in piccolo. Prima stavano sempre
@@ -3822,6 +3975,14 @@
         m.umore = m.umore === el.dataset.valore ? '' : el.dataset.valore;
         break;
       }
+      // v449: il tono della battuta; il terzo scelto fa uscire il più vecchio
+      case 'tono': {
+        const m = leggi(dove), x = el.dataset.valore;
+        if (!STUDIO_TONI.includes(x)) return;
+        const tono = (m.tono || []).filter(y => STUDIO_TONI.includes(y));
+        m.tono = tono.includes(x) ? tono.filter(y => y !== x) : tono.concat(x).slice(-STUDIO_TONI_MAX);
+        break;
+      }
       case 'aggiungiTipo': {
         const m = leggi(dove);
         const sc = p.scene[Number(dove.split('.')[1])];
@@ -3884,13 +4045,15 @@
         if (j >= 0 && j < lista.length) [lista[i], lista[j]] = [lista[j], lista[i]];
         break;
       }
-      case 'repo': studio.repoAperto = !studio.repoAperto; disegna(); return;
+      // v449: le impostazioni in un pannello a parte (Storia, Sincronizza, ElevenLabs)
+      case 'impostazioni': studio.impAperto = !studio.impAperto; studio.elCrediti = ''; disegna(); return;
+      case 'impScheda': studio.impScheda = el.dataset.valore; studio.elCrediti = ''; disegna(); return;
+      case 'repo': apriImpostazioni('repo'); return;
       case 'repoSalva': case 'repoDimentica': {
         const val = id => { const x = studio.radice.querySelector('#' + id); return x ? x.value.trim() : ''; };
         const imp = { repo: val('studio-repo-nome'), ramo: val('studio-repo-ramo') || 'main', token: nomeOp === 'repoDimentica' ? '' : val('studio-repo-token') };
         if (!REPO_VALIDO.test(imp.repo) || !RAMO_VALIDO.test(imp.ramo)) { esito(t('studio.repo.errNome')); return; }
         if (!studioRepoSalvaImpostazioni(imp)) { esito(t('studio.repo.errore', { errore: 'localStorage' })); return; }
-        studio.repoAperto = nomeOp === 'repoSalva' ? false : studio.repoAperto;
         disegna();
         if (nomeOp === 'repoDimentica') { esito(t('studio.repo.dimenticato')); return; }
         esito(t('studio.repo.inCorso'));
@@ -3903,7 +4066,7 @@
         return;
       case 'ascoltaVoce': ascoltaVoce(leggi(dove)); return;
       // v444: ElevenLabs (§6c)
-      case 'elPannello': studio.elAperto = !studio.elAperto; studio.elCrediti = ''; disegna(); return;
+      case 'elPannello': studio.elCrediti = ''; apriImpostazioni('el'); return;
       case 'elSalva': case 'elDimentica': {
         const val = id => { const x = studio.radice.querySelector('#' + id); return x ? x.value.trim() : ''; };
         const imp = { chiave: nomeOp === 'elDimentica' ? '' : val('studio-el-chiave'), modello: val('studio-el-modello') || 'eleven_v3', stabilita: Number(val('studio-el-stabilita')) };
@@ -4249,7 +4412,8 @@
     musicaSrc: studioMusicaSrc, percorsoMusica: studioPercorsoMusica, musicheVolute: studioMusicheVolute, pulisciMusica: studioPulisciMusica,
     caricaMusica, togliMusica, sceltaMusica, riprendiVoci: studioRiprendiVoci, STUDIO_MUSICA_CARTELLA,
     // v444: ElevenLabs (§6c) e i suoni da file
-    testoPerVoce: studioTestoPerVoce, voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
+    testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
+    voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
     caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN,
     apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },
