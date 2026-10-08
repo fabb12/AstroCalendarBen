@@ -40,9 +40,35 @@ const server = http.createServer((req, res) => {
       await prima.locator(':scope > summary').click();
       assert.equal(await prima.locator('[data-fai="provaScena"]').isVisible(), true);
       assert.equal(await seconda.locator('[data-fai="provaScena"]').isVisible(), false);
-      // Una modifica ricostruisce la scheda senza richiuderla.
+      // v446: l'ambiente sta nella linguetta «Dove», chiusa di serie
+      assert.equal(await prima.locator('[data-fai="ambiente"]').count(), 0);
+      await prima.locator('[data-fai="schedaScena"][data-valore="dove"]').click();
+      // Una modifica ricostruisce la scheda senza richiuderla, linguetta compresa.
       await prima.locator('[data-fai="ambiente"][data-valore="cielo"]').click();
       assert.equal(await pagina.locator('.studio-scena[open]').count(), 1);
+      assert.equal(await prima.locator('[data-fai="schedaScena"][data-valore="dove"]').getAttribute('aria-expanded'), 'true');
+      await prima.locator('[data-fai="schedaScena"][data-valore="dove"]').click();
+      assert.equal(await prima.locator('[data-fai="ambiente"]').count(), 0);
+      // I momenti sono righe chiuse; uno si apre, e la linguetta della faccia mostra i volti
+      const riga = prima.locator('[data-fai="apriMomento"]').first();
+      assert.equal(await prima.locator('.studio-momento textarea').count(), 0);
+      await riga.click();
+      assert.equal(await prima.locator('.studio-momento.aperto').count(), 1);
+      assert.equal(await prima.locator('.studio-faccia').count(), 0);
+      const faccia = prima.locator('.studio-momento.aperto [data-fai="schedaMomento"][data-valore="faccia"]');
+      if (await faccia.count()) { await faccia.click(); assert.ok(await prima.locator('.studio-faccia').count() > 3); await faccia.click(); }
+      await prima.locator('.studio-momento.aperto [data-fai="schedaMomento"][data-valore="azioni"]').click();
+      assert.ok(await prima.locator('.studio-famiglia [data-fai="aggiungiTipo"]').count() >= 8);
+      await prima.locator('.studio-momento.aperto [data-fai="schedaMomento"][data-valore="azioni"]').click();
+      // un altro momento chiude il primo
+      if (await prima.locator('[data-fai="apriMomento"]').count() > 1) {
+        await prima.locator('[data-fai="apriMomento"]').nth(1).click();
+        assert.equal(await prima.locator('.studio-momento.aperto').count(), 1);
+      }
+      await prima.locator('.studio-momento.aperto [data-fai="apriMomento"]').click();
+      assert.equal(await prima.locator('.studio-momento.aperto').count(), 0);
+      // niente si allarga oltre lo schermo
+      assert.ok(await pagina.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'nessuno scorrimento di lato');
       await seconda.locator(':scope > summary').focus();
       await pagina.keyboard.press('Enter');
       assert.equal(await pagina.locator('.studio-scena[open]').count(), 2);

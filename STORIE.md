@@ -1401,6 +1401,37 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   scrive); i campi di testo aggiornano il modello senza ridisegnare, così il
   clic sul bottone accanto non si perde.
 
+### La scena e il momento in linguette (v446)
+
+Una scena aperta mostrava tutto insieme: i cinque ambienti, il cast, la
+musica, le voci, l'inquadratura chiusa a metà; e ogni battuta chi parla,
+tredici facce, la riga della voce, le azioni, le idee e tredici bottoni
+«+ …». Con sei battute la scena era un muro. Ora (`disegnaScena`,
+`disegnaMomento` in `storie-studio.js`):
+
+- **la scena** ha in cima i tasti (prova, sposta, togli) e quattro
+  linguette — *Dove*, *Chi c'è*, *Camera e data* (*Data* nell'universo),
+  *Musica e voci* — ognuna col suo stato in piccolo; se ne apre una sola
+  per scena (`schedeScena`, per progetto e scena), di serie nessuna.
+  L'ambiente sta in *Dove*, col pianeta, il soggetto del planetario, il
+  viaggio cosmico e «Suggerisci un posto»; le voci ElevenLabs della scena in
+  *Musica e voci*;
+- **i momenti** chiusi sono una riga sola (`apriMomento`): numero, volto con
+  la faccia, nome, parole, e in piccolo faccia, «con la voce», quante azioni.
+  Se ne apre uno per scena (`momentiAperti`); «Aggiungi momento» e
+  «Suggerisci il prossimo» aprono quello nuovo;
+- **il momento aperto** ha chi parla, il fumetto e tre linguette: *Faccia*,
+  *Voce e durata* (la riga della voce e i secondi, prima in testa), *Cosa
+  succede*. La linguetta aperta (`studio.schedaMomento`) vale per tutte le
+  battute: chi sistema le facce una dopo l'altra la ritrova aperta;
+- **i tipi di azione** stanno in quattro famiglie
+  (`STUDIO_FAMIGLIE_AZIONI`): il volto, il movimento, la forma, effetti e
+  suoni; un tipo nuovo che non è in nessuna finisce negli effetti.
+
+Le prove che toccano lo Studio aprono prima la linguetta giusta
+(`apriLinguetta`, `apriSchedaScena` in `prova-elevenlabs-studio.js`);
+`prova-storie-sezioni.js` controlla linguette e momenti, desktop e telefono.
+
 ## «Vicino a un pianeta» che si distingue dal Sistema Solare (v442)
 
 Nello Studio le due scene 3D sembravano la stessa cosa. «Vicino a un

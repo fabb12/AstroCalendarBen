@@ -173,6 +173,18 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.ok(await pagina.evaluate(id => !!JSON.parse(localStorage.getItem('astrocal_storie_voci_pg_v1'))[id], pg));
     });
 
+    // v446: il momento si apre toccando la sua riga, e la voce sta nella sua linguetta
+    const apriLinguetta = async (base, scheda) => {
+      const riga = pagina.locator(`[data-fai="apriMomento"][data-dove="${base}"]`);
+      if ((await riga.getAttribute('aria-expanded')) !== 'true') await riga.click();
+      const l = pagina.locator(`[data-fai="schedaMomento"][data-dove="${base}"][data-valore="${scheda}"]`);
+      if ((await l.getAttribute('aria-expanded')) !== 'true') await l.click();
+    };
+    const apriSchedaScena = async (scena, scheda) => {
+      const l = scena.locator(`[data-fai="schedaScena"][data-valore="${scheda}"]`);
+      if ((await l.getAttribute('aria-expanded')) !== 'true') await l.click();
+    };
+
     prova('una battuta: Genera, la proposta si ascolta, Usa questa la mette alla battuta', async () => {
       const p = await progetto();
       let si = -1, mk = -1;
@@ -180,6 +192,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       const base = `scene.${si}.momenti.${mk}`;
       const scena = pagina.locator('.studio-scena').nth(si);
       if (!(await scena.evaluate(e => e.open))) await scena.locator(':scope > summary').click();
+      await apriLinguetta(base, 'voce');
       const n = richieste.length;
       await pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${base}"]`).click();
       await pagina.waitForSelector(`[data-fai="elUsa"][data-dove="${base}"]`);
@@ -207,6 +220,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
     prova('un\'azione Suono generata da una descrizione entra nel copione', async () => {
       const scena = pagina.locator('.studio-scena').first();
       if (!(await scena.evaluate(e => e.open))) await scena.locator(':scope > summary').click();
+      await apriLinguetta('scene.0.momenti.0', 'azioni');
       await scena.locator('[data-fai="aggiungiTipo"][data-tipo="suono"]').first().click();
       const campo = pagina.locator('.studio-azione input[data-campo$=".richiesta"]');
       await campo.fill('un razzo che parte');
@@ -255,6 +269,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.ok(altro, 'serve un secondo personaggio che parla');
       const b = await battutaDi(altro);
       await apriScena(b.i);
+      await apriLinguetta(b.base, 'voce');
       const tasto = pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${b.base}"]`);
       assert.match(await tasto.textContent(), /Scegli la voce/);
       await tasto.click();
@@ -278,6 +293,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       const b = await battutaDi(pg);
       const scena = await apriScena(b.i);
       const prima = (await progetto()).voci[pg].id;
+      await apriSchedaScena(scena, 'suoni');
       await scena.locator(`[data-fai="elScegliScena"][data-id="${pg}"]`).click();
       const pannello = scena.locator('.studio-voci-scena .studio-el-scelta');
       await pannello.locator('.studio-el-voce').first().waitFor();
