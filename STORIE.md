@@ -1961,6 +1961,21 @@ con l'anello, la freccia e lo zoom sulla Terra (`terraIllustrazione`). La
 didascalia di sotto dice «Illustrazione della fotografia della Voyager 1».
 Prova: `prova-storie.js` (nessun indirizzo di Wikimedia nel modulo).
 
+### Senza foto, più cupa, più Sagan (v456)
+
+Chi guarda la storia ha chiesto di togliere anche l'illustrazione della foto,
+di non esagerare con l'amore e l'entusiasmo (le parole della canzone sono
+amare) e di far cantare di più Carl Sagan. Nel copione di `storia_puntino`:
+nessun `story_photo` (il comando resta per le altre storie); via cuori,
+fuochi, coriandoli, scintille e balli scritti; le espressioni `love`,
+`excited`, `happy` diventano `sad`, `thinking`, `neutral` (Sagan resta
+pensoso), il Sole non ride ma guarda storto; le camere in orbita girano al
+più a 14. La Luna mima ancora «ha riso, ha pianto, ha amato, ha tradito».
+Sagan guida 62 versi su 68, gli altri cantano con lui (`with`); restano
+soli Marte (30, 34), Giove (31), Saturno (38), il Sole (39) e la Luna (9),
+i versi che parlano di loro. Prova: `prova-storie.js` (nessuna foto, niente
+festa, Sagan in almeno 60 versi).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

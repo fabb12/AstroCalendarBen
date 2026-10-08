@@ -1914,14 +1914,17 @@ prova('nel giro della camera il volto la segue senza andare di spalle, e Carl Sa
   S.stato.regia.giro = 0;
   S.sgombra();
 });
-prova('story_photo: la fotografia validata, e per «Pallido puntino blu» solo l\'illustrazione (v455)', () => {
+prova('story_photo: la fotografia validata, e «Pallido puntino blu» senza foto (v456)', () => {
   motore.prepara(demo(sc('solar_system_3d', "story_photo { photo: pale_blue_dot }")));
   assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "story_photo { photo: luna }"))), /photo sconosciuto/);
   assert.throws(() => motore.prepara(demo(sc('solar_system_3d', "character_show { target: 'Earth' }", "character_sing { target: 'Earth', text: 'la', words: 'a-b' }"))), /words sconosciuto/);
   for (const l of ['it', 'en']) for (const k of ['alt', 'didascalia', 'credito', 'illustrazione'])
     assert.equal(typeof DIZ[l].messaggi['storie.foto.pale_blue_dot.' + k], 'string');
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');
-  assert.ok((d.testo.match(/story_photo/g) || []).length === 1, 'la foto, una volta sola');
+  assert.equal((d.testo.match(/story_photo/g) || []).length, 0, 'nessuna foto nella storia');
+  assert.ok(!/type: (hearts|fireworks|confetti)|animation: dance/.test(d.testo), 'niente festa: il tono è quello delle parole');
+  const versi = d.testo.match(/character_sing \{[^}]*\}/g);
+  assert.ok(versi.filter(v => /target: 'sagan'|with: '[^']*sagan/.test(v)).length >= 60, 'Carl Sagan canta quasi tutti i versi');
   assert.ok(!/wikimedia\.org|wikipedia\.org\/api/.test(fs.readFileSync(path.join(__dirname, '..', 'storie-cosmiche.js'), 'utf8')),
     'la fotografia vera non si chiede più');
   assert.ok((d.testo.match(/words: '/g) || []).length >= 60, 'i versi portano i tempi delle parole');
@@ -1992,7 +1995,7 @@ prova('la Terra nella fotografia: il puntino chiaro e isolato nel raggio di luce
   assert.equal(S.trovaPuntino(vuota.d, vuota.w, vuota.h), null, 'senza Terra nessun cerchio a caso');
   for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi['storie.foto.pale_blue_dot.terra'], 'string');
   const storia = predefiniti.find(x => x.chiave === 'storia_puntino');
-  assert.equal((storia.testo.match(/story_photo/g) || []).length, 1, 'la foto una volta sola');
+  assert.equal((storia.testo.match(/story_photo/g) || []).length, 0, 'nessuna foto nella storia');
 });
 prova('«Pallido puntino blu»: la storia dura la canzone, ogni scena la riaggancia al punto giusto, i versi vanno in ordine', () => {
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');
