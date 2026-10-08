@@ -612,7 +612,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`, dalla v452 `rhythm`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
-| `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo; dalla v450 `sync?` (`on`), `at?` (−30–3600), `loop?` (`off`), `bpm?` (30–240), `beat?`, `kick?` (0–3): §Le storie cantate |
+| `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo; dalla v450 `sync?` (`on`), `at?` (−30–3600), `loop?` (`off`), `bpm?` (30–240), `beat?`, `kick?` (0–3): §Le storie cantate; dalla v458 `sounds?` (`off`: con la canzone agganciata tacciono gli effetti sonori) |
 | `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri), `words?` (v451: i tempi di ogni parola, `'0.00-0.21 0.21-0.35 - …'` in frazioni della ripresa), `voice?` (v452: l'intensità della voce, una cifra 0–9 ogni 40 ms della ripresa): il verso dura la sua ripresa |
 | `story_photo` (v451) | `photo` (`pale_blue_dot`): la fotografia vera accanto alla scena, per la ripresa dell'azione |
 | `story_title` (v450) | `id` o `text`, `sub_id?` o `subtitle?`: il titolo grande al centro, per la sua ripresa |
@@ -1986,6 +1986,50 @@ chi canta tende a `storta: 0` e `spostaBocca: 0`, senza lo sbuffo; l'umore
 resta negli occhi e nelle sopracciglia, e finito il verso la bocca torna
 quella dell'espressione. Prova: `prova-storie.js` («Carl Sagan pensoso canta
 con la bocca dritta»), guardato in Chromium (scena 14, prima e dopo).
+
+### Le pupille che si muovono, le facce di Sagan, il coro e solo la musica (v458)
+
+Chi guarda la storia ha chiesto quattro cose.
+
+- **Le pupille di Sagan ferme.** Pensoso tutta la canzone, il suo sguardo
+  era quello del pensoso (`sguardo: { x: 0.85, y: -0.75 }`), già fuori dal
+  cerchio: le piccole occhiate a vuoto di sempre, sommate lì, venivano
+  riportate sul bordo da `storGeometria` e l'iride restava inchiodata in
+  alto a destra. Ora chi canta sceglie dove guardare a ogni frase
+  (`storOcchiataCanto`, da 0,7 a 2,2 s, `STOR_OCCHIATE_CANTO_MS`): in camera,
+  uno degli altri in scena, il punto dell'espressione a 0,62 (non fino al
+  bordo) o di lato, dalla parte opposta all'ultima volta; le occhiate a
+  vuoto ci si sommano sopra. Vale per tutti quelli che cantano, non per chi
+  ha un `look` scritto.
+- **Le facce.** Nel copione Sagan cambia espressione verso per verso
+  (`character_expression` alla ripresa di ogni suo verso): pensoso,
+  neutro, triste, preoccupato, sorpreso («Guardate ancora quel puntino»,
+  «Pallido punto blu»), seccato (i traditori, la follia delle vanità),
+  arrabbiato sui fiumi di sangue, assonnato sugli «oh» del congedo, e un
+  solo sorriso su «occuparci l'uno dell'altro». Il tono resta quello della
+  v456: niente cuori né feste.
+- **Non solo il suo viso.** La regia teneva Sagan in primo piano quasi
+  sempre: a ritmo, da solo, tre battute su quattro; nel giro, chi parla
+  (cioè lui, il primo della fila) si stringeva per tutta la scena. Ora a
+  ritmo il primo piano è una battuta su quattro (le altre: il piano a due,
+  il campo largo, ancora il piano a due) e meno stretto (`volto`); nel giro
+  chi canta da solo resta largo; fuori dal ritmo chi canta da solo alterna
+  primo piano e tutti ogni 2,76 s (`cantoAlterna`).
+- **Il coro.** Nei ritornelli (versi 22–29 e 46–53) e nei versi 64, 67 e
+  68 cantano tutti quelli in scena (`with`). Un verso cantato da tre o più
+  in vista è un **coro pieno** (`STOR_CORO_PIENO`, `storCoroInVista`): la
+  camera li tiene tutti nel quadro, a ritmo (a battute alterne un poco più
+  largo) e anche nel giro (`storInquadraGruppo`). Il coro a due resta uno
+  per uno.
+- **Solo la musica.** `story_music { sounds: off }` (§8) spegne gli effetti
+  sonori finché la canzone è agganciata (`suoniAccesi` guarda
+  `stor.canzone.zitti`) e zittisce quelli in corso; tutte le scene di
+  «Pallido puntino blu» lo portano.
+
+Prove: `prova-storie.js` (107: «il coro pieno resta tutto nel quadro…»,
+«le pupille di chi canta si muovono…», «story_music { sounds: off }…»,
+«Carl Sagan cambia faccia…»), `prova-storie-repo.js`, `prova-demo.js`,
+`prova-musica-storie.js`, `controlla-i18n.js --patto`.
 
 ## Accessibilità
 

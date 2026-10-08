@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v457): chi canta ha la bocca dritta e in mezzo (Sagan pensoso la apriva storta), senza sbuffo. `STORIE.md` §La bocca dritta di chi canta. Prove: `prova-storie.js` (103).
+Ultimo lavoro (v458): «Pallido puntino blu», le pupille di chi canta si muovono (`storOcchiataCanto`), Carl Sagan cambia faccia verso per verso, la camera non tiene solo il suo viso, nei ritornelli cantano tutti e la camera li tiene nel quadro (coro pieno, `storCoroInVista`), e niente effetti sonori (`story_music { sounds: off }`). `STORIE.md` §Le pupille che si muovono, le facce di Sagan, il coro e solo la musica. Prove: `prova-storie.js` (107), `prova-storie-repo.js`, `prova-demo.js`, `prova-musica-storie.js`, `controlla-i18n.js --patto`.
+
+Prima (v457): chi canta ha la bocca dritta e in mezzo (Sagan pensoso la apriva storta), senza sbuffo. `STORIE.md` §La bocca dritta di chi canta.
 
 Prima (v456): «Pallido puntino blu» senza nessuna foto (nemmeno l'illustrazione), tono più cupo (niente cuori, fuochi, coriandoli, balli; espressioni tristi o pensose) e Carl Sagan che guida 62 versi su 68. `STORIE.md` §Senza foto, più cupa, più Sagan. Prove: `prova-storie.js` (102), `prova-storie-repo.js`, `prova-demo.js`, `controlla-i18n.js --patto`; `prova-storie-browser.js` si ferma su `#demo-sottotitoli .narrazione-chi` uguale sulla v455.
 

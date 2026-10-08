@@ -4050,6 +4050,43 @@
    * oggetto è finito (`id`, `px`, `py`, `r`, e `nascosto` quando il renderer
    * sa che è occultato). Chi è fuori schermo, nascosto o non disegnato non
    * ha volto. */
+  /* Le occhiate di chi canta (v458). Chi ha guardato «Pallido puntino blu»
+   * vedeva le pupille di Carl Sagan ferme: pensoso per tutta la canzone, lo
+   * sguardo del pensoso (in alto a destra) sta già sul bordo del cerchio, e
+   * le piccole occhiate a vuoto, sommate lì, venivano schiacciate sul bordo.
+   * Chi canta allora sceglie dove guardare a ogni frase, come un cantante
+   * vero: a chi guarda (la camera), a uno degli altri in scena, al punto
+   * dell'espressione (su per chi pensa, giù per chi è triste) ma non fino al
+   * bordo, o di lato a vuoto; ci resta da 0,7 a 2,2 secondi. Le piccole
+   * occhiate di sempre ci si sommano sopra. Il caso si tira col dado del
+   * personaggio: la stessa storia rifà gli stessi sguardi. */
+  const STOR_OCCHIATE_CANTO_MS = [700, 2200];
+  function storOcchiataCanto(pg, cx, cy, R) {
+    const ora = stor.orologio;
+    if (!pg.occhiataCanto || ora >= pg.occhiataCanto.fino) {
+      const r = dado(pg.dado);
+      const altri = [];
+      for (const q of stor.personaggi.values()) if (q !== pg && q.punto && !q.nascosto) altri.push(q.id);
+      const prima = pg.occhiataCanto && pg.occhiataCanto.dove;
+      let dove;
+      if (r < 0.34) dove = { x: 0, y: 0 };
+      else if (r < 0.64 && altri.length) dove = { chi: altri[Math.floor(dado(pg.dado) * altri.length) % altri.length] };
+      else if (r < 0.82 && pg.espr.sguardo) dove = { x: pg.espr.sguardo.x * 0.62, y: pg.espr.sguardo.y * 0.62 };
+      else {
+        // di lato, dalla parte opposta all'ultima occhiata: si vede che si muove
+        const lato = prima && Number.isFinite(prima.x) && prima.x > 0 ? -1 : 1;
+        dove = { x: lato * (0.45 + dado(pg.dado) * 0.3), y: (dado(pg.dado) - 0.5) * 0.6 };
+      }
+      const [a, b] = STOR_OCCHIATE_CANTO_MS;
+      pg.occhiataCanto = { dove, fino: ora + a + dado(pg.dado) * (b - a) };
+    }
+    const dove = pg.occhiataCanto.dove;
+    if (dove.chi) {
+      const q = stor.personaggi.get(dove.chi);
+      return q && q.punto ? storSguardoVerso(cx, cy, R, q.punto) : { x: 0, y: 0 };
+    }
+    return { x: dove.x, y: dove.y };
+  }
   function storDisegnaPersonaggi(ctx, vista, corpi, L, H, margini) {
     storTic();
     const disegnati = [];
@@ -4196,6 +4233,7 @@
         const punto = bersaglio ? { x: bersaglio.px, y: bersaglio.py } : (altro && altro.punto) || null;
         if (punto) verso = storSguardoVerso(cx, cy, R, punto);
       }
+      if (!verso && canta && !ridotto) verso = storOcchiataCanto(pg, cx, cy, R);
       if (!verso) verso = pg.espr.sguardo ? { x: pg.espr.sguardo.x, y: pg.espr.sguardo.y } : { x: 0, y: 0 };
       // Le occhiate: un volto fermo che fissa sempre lo stesso punto è un
       // manichino. Ogni tanto lo sguardo scatta di poco e torna — più ampio
@@ -5390,6 +5428,7 @@
     respiro: 0.006,        // la camera a mano: un ondeggiare lento, in frazione del lato corto (v427)
     arco: 0.45,            // passando da un personaggio all'altro si allarga un poco e torna (v427)
     terzi: 0.1,            // chi parla guardando di lato va a un terzo, con lo spazio davanti (v427)
+    cantoAlterna: 2760,    // ms: chi canta da solo, fuori dal ritmo, alterna primo piano e tutti (v458)
     voltoStretto: 0.22,    // il primo piano di `speaker`, più stretto di quello di `auto` (v431)
     giroVolto: 0.13,       // nel giro il volto è più piccolo: si deve vedere il mondo che gli gira dietro (v431)
     giroVel: 14,           // gradi al secondo del giro, di serie (v431): un giro intero in poco meno di mezzo minuto
@@ -5505,6 +5544,28 @@
    *   3. chi parla — da solo, o insieme a chi gli sta accanto e lo ascolta
    *      se ci stanno tutti e due senza allontanarsi troppo;
    *   4. chi sta facendo qualcosa (un viaggio, un salto, una veste nuova). */
+  /* Tutti quelli di `chi` nel quadro, stretti quanto ci stanno (v450, messo
+   * a parte nella v458 perché lo usano il coro, il giro e la regia a ritmo). */
+  function storInquadraGruppo(chi, L, H, tetto) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const d of chi) {
+      const o = storOcchiDi(d);
+      x0 = Math.min(x0, o.x - o.R * 1.5); x1 = Math.max(x1, o.x + o.R * 1.5);
+      y0 = Math.min(y0, o.y - o.R * 1.3); y1 = Math.max(y1, o.y + o.R * 1.7);
+    }
+    const k = Math.max(1, Math.min(tetto, L * 0.86 / Math.max(1, x1 - x0), H * 0.6 / Math.max(1, y1 - y0)));
+    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, k, ay: 0.44, ax: 0.5 };
+  }
+  /* Il coro pieno (v458): un verso cantato da tre o più personaggi in vista.
+   * Chi ha guardato «Pallido puntino blu» voleva, nei ritornelli, vedere
+   * **tutti** che cantano insieme, non uno alla volta. */
+  const STOR_CORO_PIENO = 3;
+  function storCoroInVista(quanti) {
+    const canto = storCantoOra();
+    if (!canto || canto.chi.length < STOR_CORO_PIENO) return null;
+    const coro = quanti.filter(d => canto.chi.includes(d.id));
+    return coro.length >= STOR_CORO_PIENO ? coro : null;
+  }
   function storRegiaInquadra(vista, L, H) {
     const r = stor.regia;
     const lato = Math.min(L, H);
@@ -5550,11 +5611,19 @@
     // parla, se no a chi c'era prima, se no al primo che c'è. Il volto più
     // piccolo, perché il bello del giro è il mondo che si muove dietro
     if (r.modo === 'orbit') {
+      // v458: il coro si guarda tutto insieme anche girando. Nei ritornelli
+      // di «Pallido puntino blu» chi parla era sempre Carl Sagan, il primo
+      // della fila, e il giro restava sul suo viso mentre tutti cantavano
+      const coroGiro = storCoroInVista(quanti);
+      if (coroGiro) return Object.assign(storInquadraGruppo(coroGiro, L, H, tetto), { motivo: 'giro', id: 'giro:coro' });
       const d = (r.chi && quanti.find(x => x.id === r.chi)) || parla ||
         (r.ultimoGiro && quanti.find(x => x.id === r.ultimoGiro)) || quanti[0];
       // Anche girando, chi parla si guarda da vicino (v433): il giro continua
       // e la camera stringe su di lui finché parla, poi torna al giro largo
-      if (d) return Object.assign(primoPiano(d, d === parla ? STOR_REGIA.voltoStretto : STOR_REGIA.giroVolto, 'giro'), { ax: 0.5 });
+      // chi canta da solo non si stringe: il canto dura tutta la scena, e
+      // il giro sarebbe stato un unico primo piano
+      const vicino = d === parla ? (storCantoOra() ? STOR_REGIA.giroVolto * 1.25 : STOR_REGIA.voltoStretto) : STOR_REGIA.giroVolto;
+      if (d) return Object.assign(primoPiano(d, vicino, 'giro'), { ax: 0.5 });
     }
     // 2-quater. A ritmo (v452, `story_camera { mode: rhythm }`): la regia di
     // un video musicale (storRegiaRitmo)
@@ -5571,18 +5640,14 @@
     const canto = storCantoOra();
     if (canto && canto.chi.length > 1 && r.modo !== 'speaker' && r.modo !== 'orbit') {
       const coro = quanti.filter(d => canto.chi.includes(d.id));
-      if (coro.length > 1) {
-        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-        for (const d of coro) {
-          const o = storOcchiDi(d);
-          x0 = Math.min(x0, o.x - o.R * 1.5); x1 = Math.max(x1, o.x + o.R * 1.5);
-          y0 = Math.min(y0, o.y - o.R * 1.3); y1 = Math.max(y1, o.y + o.R * 1.7);
-        }
-        const k = Math.max(1, Math.min(tetto, L * 0.86 / Math.max(1, x1 - x0), H * 0.6 / Math.max(1, y1 - y0)));
-        return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, k, ay: 0.42, ax: 0.5, motivo: 'coro', id: 'coro:' + coro.map(d => d.id).join('+') };
-      }
+      if (coro.length > 1)
+        return Object.assign(storInquadraGruppo(coro, L, H, tetto), { ay: 0.42, motivo: 'coro', id: 'coro:' + coro.map(d => d.id).join('+') });
     }
     // 3. Chi parla
+    // v458: chi canta da solo non si tiene in primo piano per tutta la
+    // scena: una battuta sì e una no la camera si allarga su tutti
+    if (parla && canto && quanti.length > 1 && Math.floor(stor.orologio / STOR_REGIA.cantoAlterna) % 2)
+      return Object.assign(storInquadraGruppo(quanti, L, H, tetto), { motivo: 'coro', id: 'canto:tutti' });
     if (parla) {
       const solo = primoPiano(parla, STOR_REGIA.volto, 'parla');
       // Il campo e controcampo dei cartoni: se chi ascolta è vicino, li si
@@ -5661,6 +5726,14 @@
     }
     const ricorda = (tipo, ids, frazione) => { r.ritmoScelta = { battuta, tipo, ids, frazione }; };
     const cantori = canto ? quanti.filter(d => canto.chi.includes(d.id)) : [];
+    // v458: il coro pieno resta tutto nel quadro; a ogni battuta cambia solo
+    // quanto è largo (e il rollio), così si vedono cantare insieme
+    if (cantori.length >= STOR_CORO_PIENO) {
+      ricorda('gruppo', cantori.map(d => d.id));
+      const m = conRollio(gruppo(cantori, 'ritmo'));
+      if (battuta % 2) { m.k = Math.max(1, m.k * 0.82); m.id = 'ritmo:coro-largo:' + battuta; }
+      return m;
+    }
     if (cantori.length > 1) {
       // il coro: tutti, poi uno per battuta, poi tutti
       const giro = battuta % (cantori.length + 1);
@@ -5671,7 +5744,11 @@
     }
     if (cantori.length === 1) {
       const d = cantori[0];
-      const tipo = battuta % 4;
+      // v458: da solo, un primo piano su quattro battute (era tre su
+      // quattro): Carl Sagan canta quasi tutta la canzone, e la camera non
+      // riprendeva che il suo viso. Le altre: il piano a due, il campo
+      // largo, di nuovo il piano a due
+      const tipo = [1, 0, 3, 1][battuta % 4];
       if (tipo === 1) {
         // il piano a due: chi canta e chi gli sta più vicino
         const o = storOcchiDi(d);
@@ -5682,7 +5759,7 @@
         if (altro) { ricorda('gruppo', [d.id, altro.id]); return conRollio(gruppo([d, altro], 'ritmo')); }
       }
       if (tipo === 3 && quanti.length > 1) { ricorda('gruppo', quanti.map(x => x.id)); return conRollio(gruppo(quanti, 'ritmo')); }
-      const frazione = tipo === 2 ? STOR_REGIA.voltoStretto * 1.15 : STOR_REGIA.voltoStretto;
+      const frazione = STOR_REGIA.volto;
       ricorda('primo', [d.id], frazione);
       return conRollio(Object.assign(primoPiano(d, frazione, 'ritmo'), { id: 'ritmo:' + d.id + ':' + battuta }));
     }
@@ -6449,7 +6526,11 @@
     const d = radice.AstroDemo;
     if (!d || !d.inCorso || d.stato === 'pausa') return false;
     const o = d.opzioni;
-    return !(o && o.effettiSonori === false);
+    if (o && o.effettiSonori === false) return false;
+    // v458: una storia cantata può volere solo la sua canzone
+    // (`story_music { sounds: off }`): chi ha guardato «Pallido puntino blu»
+    // sentiva i botti e i «pop» degli effetti sopra alla voce di Sagan
+    return !(stor.canzone && stor.canzone.zitti);
   }
   /* Suona un rumore. `volume` da 0 a 2 (1 di serie). Restituisce vero se è
    * partito. Lo stesso rumore non riparte prima di un decimo di secondo: un
@@ -7260,7 +7341,8 @@
   // forte la camera lo batte. Ogni scena lo ripete col suo `at`: chi salta
   // a una scena trova la canzone al punto giusto.
   COMANDI.story_music.verifica = function (p) {
-    campi(p, ['src', 'volume', 'sync', 'at', 'loop', 'bpm', 'beat', 'kick']);
+    campi(p, ['src', 'volume', 'sync', 'at', 'loop', 'bpm', 'beat', 'kick', 'sounds']);
+    scelta(p.sounds, 'sounds', ['on', 'off']);
     richiedi(typeof p.src === 'string' && (p.src === 'off' || (STOR_MUSICA_SRC.test(p.src) && !p.src.includes('..'))),
       'musicaSrc', { nome: String(p.src === undefined ? '' : p.src) });
     numeroIn(p.volume, 'volume', 0, 1);
@@ -7270,7 +7352,10 @@
   COMANDI.story_music.crea = function (p) {
     const sync = p.sync === 'on';
     stor.canzone = sync ? { at: Number(p.at) || 0, da: storTempoDemo(), periodo: p.bpm ? 60 / p.bpm : 0, zero: Number(p.beat) || 0,
-      kick: p.kick === undefined ? 1 : p.kick } : null;
+      kick: p.kick === undefined ? 1 : p.kick, zitti: p.sounds === 'off' } : null;
+    // con `sounds: off` tace anche il rumore già partito (uno scoppio a cavallo
+    // del salto di scena)
+    if (stor.canzone && stor.canzone.zitti) storZittisci();
     storMusica(p.src, p.volume, { sync, loop: p.loop !== 'off' });
     // la scena dopo la riaggancia col suo `at`; finita la demo, niente canzone
     const c = stor.canzone;

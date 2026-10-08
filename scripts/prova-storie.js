@@ -1974,9 +1974,10 @@ prova('la regia a ritmo cambia inquadratura a ogni battuta, col rollio e il coro
   S.sgombra();
   Object.defineProperty(globalThis.AstroDemo, 'tempo', { get: () => motore.tempoDemo(), configurable: true });
   try {
+    // v458: il coro a due va uno per uno; da tre in su resta tutto nel quadro (prova sotto)
     motore.avvia(demo(`scene solar_system_3d { duration: 30s; action: ${CANZONE}; action: story_camera { mode: rhythm };
       action: character_show { target: 'Earth' }; action: character_show { target: 'Moon' }; action: character_show { target: 'Mars' };
-      action: character_sing { target: 'Earth', with: 'Moon,Mars', text: 'Pallido punto blu' }; }`), { ripresa() {} });
+      action: character_sing { target: 'Earth', with: 'Moon', text: 'Pallido punto blu' }; }`), { ripresa() {} });
     const corpi = [corpo('Earth', 300, 300, 40), corpo('Moon', 500, 260, 30), corpo('Mars', 650, 330, 30)];
     const visti = new Set(), rollii = new Set();
     for (let k = 0; k < 900; k++) {
@@ -1986,10 +1987,103 @@ prova('la regia a ritmo cambia inquadratura a ogni battuta, col rollio e il coro
       if (m) { visti.add(m.id); rollii.add(Math.sign(m.rot || 0)); assert.equal(m.motivo, 'ritmo'); }
     }
     assert.ok(visti.size >= 5, 'in quattordici secondi tante inquadrature: ' + [...visti].join(' '));
-    assert.ok(['Earth', 'Moon', 'Mars'].every(id => [...visti].some(v => v.includes(id))), 'il coro, uno per uno');
+    assert.ok(['Earth', 'Moon'].every(id => [...visti].some(v => v.includes(id))), 'il coro, uno per uno');
     assert.ok(rollii.has(1) && rollii.has(-1), 'il quadro si inclina da una parte e dall\'altra');
     motore.ferma();
   } finally { delete globalThis.AstroDemo.tempo; S.sgombra(); }
+});
+prova('il coro pieno resta tutto nel quadro, anche nel giro; chi canta da solo non è sempre in primo piano (v458)', () => {
+  S.sgombra();
+  Object.defineProperty(globalThis.AstroDemo, 'tempo', { get: () => motore.tempoDemo(), configurable: true });
+  const corpi = [corpo('Earth', 300, 300, 40), corpo('Moon', 500, 260, 30), corpo('Mars', 650, 330, 30)];
+  const giro = (modo, canto) => {
+    motore.avvia(demo(`scene solar_system_3d { duration: 30s; action: ${CANZONE}; action: story_camera { mode: ${modo} };
+      action: character_show { target: 'Earth' }; action: character_show { target: 'Moon' }; action: character_show { target: 'Mars' };
+      action: ${canto}; }`), { ripresa() {} });
+    const quadri = [];
+    for (let k = 0; k < 700; k++) {
+      passo(16); avanza(16);
+      S.disegnaPersonaggi(telaFinta().ctx, 'sistema', corpi, 800, 600);
+      const m = S.regiaInquadra('sistema', 800, 600);
+      if (m) quadri.push(Object.assign({ scelta: S.stato.regia.ritmoScelta && Object.assign({}, S.stato.regia.ritmoScelta) }, m));
+    }
+    motore.ferma();
+    return quadri;
+  };
+  try {
+    for (const modo of ['rhythm', 'orbit']) {
+      const quadri = giro(modo, "character_sing { target: 'Earth', with: 'Moon,Mars', text: 'Pallido punto blu' }");
+      assert.ok(quadri.length > 100);
+      for (const m of quadri) {
+        const mezzo = 400 / m.k;
+        for (const c of corpi) assert.ok(Math.abs(c.px - m.x) < mezzo, `${modo}: ${c.id} nel quadro (${m.id})`);
+      }
+    }
+    const solo = giro('rhythm', "character_sing { target: 'Earth', text: 'Pallido punto blu' }");
+    const primi = solo.filter(m => m.scelta && m.scelta.tipo === 'primo').length;
+    assert.ok(primi < solo.length * 0.4, 'da solo il primo piano è una battuta su quattro: ' + primi + '/' + solo.length);
+  } finally { delete globalThis.AstroDemo.tempo; S.sgombra(); }
+});
+prova('le pupille di chi canta si muovono: Carl Sagan pensoso guarda in camera, gli altri, di lato (v458)', () => {
+  S.sgombra();
+  Object.defineProperty(globalThis.AstroDemo, 'tempo', { get: () => motore.tempoDemo(), configurable: true });
+  try {
+    motore.avvia(demo(`scene solar_system_3d { duration: 20s; action: ${CANZONE};
+      action: character_show { target: 'Earth' };
+      action: character_show { target: 'sagan', expression: 'thinking', at: left };
+      action: character_sing { target: 'sagan', text: 'Pallido punto blu' }; }`), { ripresa() {} });
+    const { ctx } = telaFinta();
+    const xs = [], ys = [];
+    for (let k = 0; k < 600; k++) {
+      passo(20); avanza(20);
+      S.disegnaPersonaggi(ctx, 'sistema', S.ospiti(800, 600).concat([corpo('Earth', 560, 300, 60)]), 800, 600);
+      const g = S.stato.ultimiDisegnati.find(x => x.id === 'sagan');
+      xs.push(g.sguardo.x); ys.push(g.sguardo.y);
+    }
+    const ampio = a => Math.max(...a) - Math.min(...a);
+    assert.ok(ampio(xs) > 0.6, 'lo sguardo va di qua e di là: ' + ampio(xs).toFixed(2));
+    assert.ok(xs.some(x => Math.abs(x) < 0.15) && ys.some(y => y > -0.2), 'e torna anche in camera, non solo in alto a destra');
+    // gli scatti: lo sguardo cambia meta più volte, non scivola una volta sola
+    let cambi = 0;
+    for (let i = 10; i < xs.length; i += 10) if (Math.abs(xs[i] - xs[i - 10]) > 0.25) cambi++;
+    assert.ok(cambi >= 4, 'occhiate: ' + cambi);
+    motore.ferma();
+  } finally { delete globalThis.AstroDemo.tempo; S.sgombra(); }
+});
+prova('una storia cantata può tenere solo la canzone: story_music { sounds: off } zittisce gli effetti (v458)', () => {
+  const vero = globalThis.AudioContext;
+  globalThis.AudioContext = function () { return audioFinto().a; };
+  S.sgombra();
+  Object.defineProperty(globalThis.AstroDemo, 'tempo', { get: () => motore.tempoDemo(), configurable: true });
+  try {
+    assert.throws(() => motore.prepara(demo(sc('solar_system_3d', CANZONE.replace(' }', ', sounds: forse }')))), /sounds/);
+    motore.avvia(demo(`scene solar_system_3d { duration: 4s; action: ${CANZONE.replace(' }', ', sounds: off }')}; }`), { ripresa() {} });
+    passo(16); avanza(400);
+    assert.equal(S.suona('boing'), false, 'con sounds: off niente botti');
+    motore.ferma();
+    motore.avvia(demo(`scene solar_system_3d { duration: 4s; action: ${CANZONE}; }`), { ripresa() {} });
+    passo(16); avanza(400);
+    assert.equal(S.suona('boing'), true, 'di serie gli effetti suonano');
+    motore.ferma();
+    const d = predefiniti.find(x => x.chiave === 'storia_puntino');
+    const musiche = d.testo.match(/story_music \{[^}]*\}/g);
+    assert.ok(musiche.length > 10 && musiche.every(m => /sounds: off/.test(m)), '«Pallido puntino blu»: solo la musica');
+  } finally { if (vero) globalThis.AudioContext = vero; else delete globalThis.AudioContext; delete globalThis.AstroDemo.tempo; S.sgombra(); }
+});
+prova('«Pallido puntino blu»: Carl Sagan cambia faccia, e nei ritornelli cantano tutti quelli in scena (v458)', () => {
+  const d = predefiniti.find(x => x.chiave === 'storia_puntino');
+  const facce = new Set([...d.testo.matchAll(/target: 'sagan', expression: '(\w+)'/g)].map(m => m[1]));
+  assert.ok(facce.size >= 6, 'facce di Sagan: ' + [...facce].join(' '));
+  const prep = motore.prepara(d.testo);
+  for (const s of prep.scene) {
+    const mostrati = s.azioni.filter(a => a.comando === 'character_show').map(a => a.parametri.target);
+    for (const a of s.azioni.filter(a => a.comando === 'character_sing')) {
+      const n = Number(a.parametri.id.split('.').pop());
+      if (!((n >= 22 && n <= 29) || (n >= 46 && n <= 53))) continue;
+      const chi = [a.parametri.target].concat(String(a.parametri.with || '').split(',').filter(Boolean));
+      assert.ok(mostrati.every(m => chi.includes(m)), `ritornello, verso ${n}: cantano tutti (${chi.join(',')})`);
+    }
+  }
 });
 prova('la Terra nella fotografia: il puntino chiaro e isolato nel raggio di luce, e se non c\'è la ricerca si arrende', () => {
   // una foto finta come quella della Voyager: fondo nero granuloso, quattro
