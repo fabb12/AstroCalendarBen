@@ -170,10 +170,58 @@
         {
           "n": 21,
           "chi": "Sedna",
-          "testo": "Sono Sedna! Un pianeta nano candidato",
+          "testo": "Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!",
           "umore": "neutral",
           "scena": 21,
-          "durata": 6000
+          "durata": 11000
+        },
+        {
+          "n": 22,
+          "chi": "Earth",
+          "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
+          "umore": "surprised",
+          "scena": 22,
+          "durata": 16000
+        },
+        {
+          "n": 23,
+          "chi": "Earth",
+          "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
+          "umore": "annoyed",
+          "scena": 23,
+          "durata": 12000
+        },
+        {
+          "n": 24,
+          "chi": "Sedna",
+          "testo": "Ehm, scusa Terra, hai finito?",
+          "umore": "neutral",
+          "scena": 24,
+          "durata": 5000
+        },
+        {
+          "n": 25,
+          "chi": "Earth",
+          "testo": "Oh! Scusa! Continua.",
+          "umore": "surprised",
+          "scena": 25,
+          "durata": 5000
+        },
+        {
+          "n": 26,
+          "chi": "Sedna",
+          "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
+          "umore": "neutral",
+          "scena": 26,
+          "durata": 20000
+        },
+        {
+          "n": 27,
+          "chi": "Earth",
+          "testo": "Wow! Non sapevo che la scienza potesse essere così bella.",
+          "umore": "neutral",
+          "scena": 27,
+          "durata": 7000
         }
       ]
     }

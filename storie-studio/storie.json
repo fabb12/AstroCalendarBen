@@ -232,8 +232,8 @@
         },
         {
           "id": "sxsnw6rn",
-          "ambiente": "terra_luna",
-          "fuoco": "Jupiter",
+          "ambiente": "pianeta",
+          "fuoco": "Earth",
           "zoom": "normale",
           "data": "",
           "ora": "21:00",
@@ -245,7 +245,8 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "hubble"
+            "hubble",
+            "Earth"
           ],
           "momenti": [
             {
@@ -267,6 +268,24 @@
                   "chi": "hubble",
                   "quando": "inizio",
                   "oggetto": "Earth",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
+                },
+                {
+                  "id": "acth5xza",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "tutto",
+                  "umore": "thinking",
                   "verso": "",
                   "lato": "auto",
                   "percorso": "arc",
@@ -896,7 +915,18 @@
                   "tipo": "umore",
                   "chi": "Earth",
                   "quando": "meta",
-                  "umore": "thinking"
+                  "umore": "thinking",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
                 },
                 {
                   "id": "a5n3hdrd",
@@ -906,14 +936,32 @@
                   "effetto": "shockwave",
                   "dove": "Earth",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant"
                 },
                 {
                   "id": "a7x5p677",
                   "tipo": "guarda",
                   "chi": "Earth",
                   "quando": "inizio",
-                  "oggetto": "Jupiter"
+                  "oggetto": "Jupiter",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
                 },
                 {
                   "id": "a5wfuyxh",
@@ -922,7 +970,15 @@
                   "quando": "inizio",
                   "animazione": "wobble",
                   "volte": 0,
-                  "dove": ""
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": ""
                 }
               ]
             }
@@ -945,7 +1001,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Earth",
             "Jupiter",
             "Sedna"
           ],
@@ -953,10 +1008,291 @@
             {
               "id": "mr51z8rg",
               "chi": "Sedna",
-              "testo": "Sono Sedna! Un pianeta nano candidato ",
+              "testo": "Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!",
               "umore": "neutral",
               "durata": 0,
               "voce": 21,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "sv0wo63r",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m4ucy7of",
+              "chi": "Earth",
+              "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
+              "umore": "surprised",
+              "durata": 0,
+              "voce": 22,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "amfyo2o8",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "surprised"
+                },
+                {
+                  "id": "aq67c9yx",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "fine",
+                  "umore": "annoyed"
+                },
+                {
+                  "id": "azm2au0n",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "happy"
+                }
+              ]
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "smiyi83o",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun",
+            "Saturn",
+            "iss",
+            "css",
+            "hubble",
+            "Moon",
+            "alpha_centauri"
+          ],
+          "momenti": [
+            {
+              "id": "mggi5syp",
+              "chi": "Earth",
+              "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
+              "umore": "annoyed",
+              "durata": 0,
+              "voce": 23,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "szsrnzy3",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna"
+          ],
+          "momenti": [
+            {
+              "id": "mm1gvi28",
+              "chi": "Sedna",
+              "testo": "Ehm, scusa Terra, hai finito?",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 24,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "sj7c0puk",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mai3qaln",
+              "chi": "Earth",
+              "testo": "Oh! Scusa! Continua.",
+              "umore": "surprised",
+              "durata": 0,
+              "voce": 25,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a88yq948",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "surprised"
+                },
+                {
+                  "id": "ah0wj96y",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "neutral"
+                }
+              ]
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "stanvs5z",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m0ryphg8",
+              "chi": "Sedna",
+              "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 26,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "src03ht7",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m9984wwl",
+              "chi": "Earth",
+              "testo": "Wow! Non sapevo che la scienza potesse essere così bella.",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 27,
+              "audio": null,
+              "azioni": []
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null
+        },
+        {
+          "id": "s0qigi4l",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mdv6rx46",
+              "chi": "Jupiter",
+              "testo": "",
+              "umore": "neutral",
+              "durata": 0,
+              "voce": 0,
               "audio": null,
               "azioni": []
             }
@@ -967,8 +1303,8 @@
       ],
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
-      "voceProssima": 22,
-      "aggiornato": 1791399828938,
+      "voceProssima": 28,
+      "aggiornato": 1791483055917,
       "lingua": "it",
       "musica": null,
       "domanda": {
