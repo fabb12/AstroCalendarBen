@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v456): «Pallido puntino blu» senza nessuna foto (nemmeno l'illustrazione), tono più cupo (niente cuori, fuochi, coriandoli, balli; espressioni tristi o pensose) e Carl Sagan che guida 62 versi su 68. `STORIE.md` §Senza foto, più cupa, più Sagan. Prove: `prova-storie.js` (102), `prova-storie-repo.js`, `prova-demo.js`, `controlla-i18n.js --patto`; `prova-storie-browser.js` si ferma su `#demo-sottotitoli .narrazione-chi` uguale sulla v455.
+Ultimo lavoro (v457): chi canta ha la bocca dritta e in mezzo (Sagan pensoso la apriva storta), senza sbuffo. `STORIE.md` §La bocca dritta di chi canta. Prove: `prova-storie.js` (103).
+
+Prima (v456): «Pallido puntino blu» senza nessuna foto (nemmeno l'illustrazione), tono più cupo (niente cuori, fuochi, coriandoli, balli; espressioni tristi o pensose) e Carl Sagan che guida 62 versi su 68. `STORIE.md` §Senza foto, più cupa, più Sagan. Prove: `prova-storie.js` (102), `prova-storie-repo.js`, `prova-demo.js`, `controlla-i18n.js --patto`; `prova-storie-browser.js` si ferma su `#demo-sottotitoli .narrazione-chi` uguale sulla v455.
 
 Prima (v455): «Pallido puntino blu», tolta la fotografia vera della Voyager: si vede solo l'illustrazione, con freccia e zoom sulla Terra. `STORIE.md` §Solo l'illustrazione della foto.
 

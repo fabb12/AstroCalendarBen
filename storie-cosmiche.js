@@ -4167,6 +4167,16 @@
       if (!ridotto) pg.tempoLune = (pg.tempoLune || 0) + dt * Math.max(0, pg.reazione.luneGiro) * fis.passo;
       // L'espressione scivola verso quella voluta; col movimento ridotto ci salta
       const voluta = parametriEspressione(pg.espressione);
+      // Chi canta ha la bocca dritta e in mezzo (v457). In «Pallido puntino
+      // blu» Carl Sagan è pensoso tutta la canzone, e il pensoso tiene la
+      // bocca di traverso e spostata di lato: cantando, la bocca spalancata
+      // si apriva storta sotto ai baffi. L'umore resta negli occhi e nelle
+      // sopracciglia; la bocca torna storta quando il verso finisce. Niente
+      // sbuffo del seccato, che usciva di lato dalla bocca aperta a cantare.
+      if (canto && canto.chi.includes(pg.id)) {
+        voluta.storta = 0; voluta.spostaBocca = 0;
+        if (voluta.segno === 'sbuffo') voluta.segno = null;
+      }
       const kE = ridotto ? 1 : 1 - Math.exp(-dt / STOR_TAU_ESPRESSIONE);
       pg.espr = mescolaEspressione(pg.espr, voluta, kE);
       pg.espr.bocca = voluta.bocca; pg.espr.sguardo = voluta.sguardo; pg.espr.segno = voluta.segno;
