@@ -5898,7 +5898,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "storie.nome.white_hole": "Buco bianco",
     // v450: «Pallido puntino blu», la storia cantata, e Carl Sagan
     "demo.builtin.storia_puntino.title": "Pallido puntino blu",
-    "demo.builtin.storia_puntino.description": "Una CosmoStoria cantata. Il 14 febbraio 1990 la Voyager 1, a sei miliardi di chilometri, si girò a fotografare la Terra: un puntino in un raggio di Sole. Carl Sagan ci scrisse sopra parole famose, e qui diventano un rap che cantano lui, la Terra, la Luna, le due Voyager, il Sole e i pianeti, verso per verso, col karaoke. La camera batte il tempo e vola dalla Voyager alla scala cosmica, fra lampi, fuochi e cuori, e ritorno a casa.",
+    "demo.builtin.storia_puntino.description": "Una CosmoStoria cantata. Il 14 febbraio 1990 la Voyager 1, a sei miliardi di chilometri, si girò a fotografare la Terra: un puntino in un raggio di Sole. Carl Sagan ci scrisse sopra parole famose, e qui diventano un rap che canta soprattutto lui, con la Terra, la Luna, le due Voyager, il Sole e i pianeti, verso per verso, col karaoke. La camera batte il tempo e vola dalla Voyager alla scala cosmica, nel buio, e ritorno a casa.",
     "storie.titolo.puntino": "Pallido puntino blu",
     "storie.nome.sagan": "Carl Sagan",
     "storie.foto.pale_blue_dot.alt": "Illustrazione della fotografia «Pale Blue Dot»: raggi di luce diagonali sul nero dello spazio e, dentro a uno, la Terra grande meno di un pixel.",

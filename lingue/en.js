@@ -5761,7 +5761,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "storie.nome.white_hole": "White hole",
     // v450: «Pallido puntino blu», la storia cantata, e Carl Sagan
     "demo.builtin.storia_puntino.title": "Pale blue dot",
-    "demo.builtin.storia_puntino.description": "A sung CosmoStory. On 14 February 1990 Voyager 1, six billion kilometres away, turned round to photograph the Earth: a dot in a sunbeam. Carl Sagan wrote famous words about it, and here they become a rap (in Italian, with English subtitles) sung by him, the Earth, the Moon, both Voyagers, the Sun and the planets, line by line, karaoke style. The camera keeps the beat and flies from the Voyager to the cosmic scale, among lightning, fireworks and hearts, and back home.",
+    "demo.builtin.storia_puntino.description": "A sung CosmoStory. On 14 February 1990 Voyager 1, six billion kilometres away, turned round to photograph the Earth: a dot in a sunbeam. Carl Sagan wrote famous words about it, and here they become a rap (in Italian, with English subtitles) sung mostly by him, with the Earth, the Moon, both Voyagers, the Sun and the planets, line by line, karaoke style. The camera keeps the beat and flies from the Voyager to the cosmic scale, through the dark, and back home.",
     "storie.titolo.puntino": "Pale blue dot",
     "storie.nome.sagan": "Carl Sagan",
     "storie.foto.pale_blue_dot.alt": "Illustration of the “Pale Blue Dot” photograph: diagonal rays of light on the black of space and, inside one of them, the Earth, smaller than a pixel.",

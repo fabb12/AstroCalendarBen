@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v455): «Pallido puntino blu», tolta la fotografia vera della Voyager: si vede solo l'illustrazione, con freccia e zoom sulla Terra. `STORIE.md` §Solo l'illustrazione della foto.
+Ultimo lavoro (v456): «Pallido puntino blu» senza nessuna foto (nemmeno l'illustrazione), tono più cupo (niente cuori, fuochi, coriandoli, balli; espressioni tristi o pensose) e Carl Sagan che guida 62 versi su 68. `STORIE.md` §Senza foto, più cupa, più Sagan. Prove: `prova-storie.js` (102), `prova-storie-repo.js`, `prova-demo.js`, `controlla-i18n.js --patto`; `prova-storie-browser.js` si ferma su `#demo-sottotitoli .narrazione-chi` uguale sulla v455.
+
+Prima (v455): «Pallido puntino blu», tolta la fotografia vera della Voyager: si vede solo l'illustrazione, con freccia e zoom sulla Terra. `STORIE.md` §Solo l'illustrazione della foto.
 
 Prima (v454): «Pallido puntino blu», quarta visione. Lo sfondo della prima scena non trema più: il perno della camera (sulla Voyager 1) leggeva il punto mostrato, col dondolio del canto e il passo di lato del palco; ora sta sul punto da fermo (`storPuntoFermo3D`, `solPuntoPerno`). Scosse e colpo di camera più leggeri. Freccia sulla Terra nella foto della Voyager. Karaoke all'altezza dei sottotitoli (`storKaraokeRiserva`), più leggibile. I personaggi ballano durante la canzone (`storMotoParlato`). Dettagli in `STORIE.md` §Il perno fermo, la freccia sulla Terra, il karaoke in vista e il ballo. Prove: `prova-storie.js` (102); tre prove browser falliscono uguali sulla v453 (vedi STORIE.md).
 
