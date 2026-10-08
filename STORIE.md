@@ -1461,6 +1461,60 @@ altro dispositivo, che qui non c'è, resta, perché una storia lo vuole
 collegata del «File delle voci» non riceve la musica: il file sta in
 `audio/narrazione/storie/`, la musica fuori. Prova `scripts/prova-musica-storie.js`.
 
+## Voci, suoni e musica con ElevenLabs (v444)
+
+Lo Studio parla con le API di ElevenLabs direttamente dal browser (§6c di
+`storie-studio.js`), senza passare dal terminale (`scripts/voci-storie.js
+--genera`, che resta per le storie pronte).
+
+- **La chiave**: Altro → **ElevenLabs**. Si incolla la chiave API (su
+  elevenlabs.io: Developers → API Keys), si sceglie il modello (Eleven v3,
+  di serie, legge la faccia come tag di regia; Multilingual v2; Flash v2.5)
+  e la recitazione (stabilità 0 / 0,5 / 1). «Salva e verifica» la prova
+  chiedendo i crediti (`/v1/user/subscription`). Resta in questo browser
+  (`astrocal_elevenlabs_v1`), **non** va nel backup né nel repository e parte
+  solo nell'intestazione `xi-api-key` verso `api.elevenlabs.io`. Meglio una
+  chiave solo per lo Studio, coi permessi giusti e un tetto di crediti.
+- **Le voci dei personaggi** (passo 2, sotto il cast): una riga per
+  personaggio con la voce scelta, «Anteprima», «Scegli la voce», «Genera le
+  mancanti (n)», «Togli». «Scegli la voce» apre la ricerca: libreria pubblica
+  di ElevenLabs (`/v1/shared-voices`) o «Le mie voci» (`/v2/voices`), in
+  italiano e del genere del personaggio di serie (`profilo(id).genere`), con
+  parole da cercare e «Altre voci». Per ogni voce: «Anteprima» (il campione
+  di ElevenLabs, gratis), «Prova» (dice la prima battuta del personaggio,
+  consuma crediti), «Questa». Una voce della libreria si aggiunge all'account
+  (`/v1/voices/add/...`) perché l'API la possa usare. La scelta sta nel
+  progetto (`voci`, va col repository) e diventa quella di serie per le
+  storie nuove (`astrocal_storie_voci_pg_v1`).
+- **Le battute**: accanto a «Carica la voce» e «Registra» c'è **«Genera»**
+  (`generaVoce`): il testo va col tag della faccia del momento
+  (`ELEVEN_TAG_UMORE`, gli stessi di `voci-storie.js`; un tag scritto a mano
+  in testa alla battuta vince; coi modelli non v3 i tag si tolgono). Arriva
+  una **proposta** che parte in ascolto: «Ascolta», «Usa questa», «Rifai»,
+  «Scarta». «Usa questa» la passa a `caricaVoce`, la stessa strada di un
+  file caricato (IndexedDB, narrazione, durata del momento, repository).
+  «Genera le mancanti» fa tutte le battute del personaggio senza voce valida
+  e sincronizza una volta sola alla fine.
+- **I suoni**: un'azione nuova, **Suono** (`suono`), con il quando come le
+  altre. È un rumore sintetizzato del motore (`STOR_SUONI`) o un file:
+  caricato, o generato da una descrizione e una durata facoltativa
+  (`/v1/sound-generation`), con la stessa proposta. Il file sta accanto alla
+  musica, `audio/storie-musica/<progetto>/suono-<azione>.<est>`, e il copione
+  lo chiede con `sound { src: 'audio/…?v=<sha>', volume, shot_from }`: il
+  comando `sound` del motore accetta ora `src` oltre a `type`
+  (`storSuonaFile`, suona dal blob locale finché il file non è pubblicato,
+  tace con gli effetti sonori spenti, si ferma con lo Stop).
+- **La musica**: sotto la musica della storia e di ogni scena, una
+  descrizione e i secondi (10–300) e «Genera» (`/v1/music`); «Usa questa» la
+  passa a `caricaMusica`.
+
+Un lavoro alla volta (`lavoro`): il tasto dice «Genero…» e gli altri
+aspettano. Gli errori (chiave, crediti, piano che non permette le voci della
+libreria o la musica via API, troppe richieste) finiscono nella riga
+dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
+con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
+`sound` con `src`, l'azione Suono sul repository, le funzioni pure).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

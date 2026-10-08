@@ -5388,7 +5388,7 @@
   const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
   const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
   const STOR_SUONO_VESTE = { red_giant: 'inflate', white_dwarf: 'magic', supernova: 'explosion', black_hole: 'suck', self: 'magic' };
-  const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet() };
+  const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet(), file: new Set() };
 
   function storContestoAudio() {
     const AC = radice.AudioContext || radice.webkitAudioContext;
@@ -5615,8 +5615,29 @@
       return true;
     } catch (e) { return false; }
   }
+  /* Un suono da file (v444): un effetto generato con ElevenLabs o caricato
+   * nello Studio, `sound { src: 'audio/storie-musica/…' }`. Non è una ricetta
+   * di oscillatori ma una registrazione, e suona con un elemento audio come
+   * la musica di sottofondo: un file non ancora pubblicato suona lo stesso
+   * su questo dispositivo, dal blob che lo Studio ha registrato
+   * (`storMusicaLocale`, la stessa tabella dei percorsi). Tace con gli
+   * effetti sonori spenti, come i rumori sintetizzati. */
+  function storSuonaFile(src, volume) {
+    if (typeof Audio === 'undefined' || !suoniAccesi()) return false;
+    const a = new Audio(musica.locali.get(senzaVersione(src)) || src);
+    a.volume = Math.max(0, Math.min(1, (volume === undefined ? 1 : Number(volume) || 0) * 0.8));
+    suono.file.add(a);
+    a.addEventListener('ended', () => suono.file.delete(a));
+    a.play().catch(() => suono.file.delete(a));
+    return true;
+  }
+  function storZittisciFile() {
+    for (const a of suono.file) { try { a.pause(); a.removeAttribute('src'); a.load(); } catch (_) { /* già fermo */ } }
+    suono.file.clear();
+  }
   // Uno Stop o la fine della storia zittiscono anche i rumori in corso
   function storZittisci() {
+    storZittisciFile();
     if (!suono.attivi.size) return;
     // Non un taglio secco: un'ombra di dissolvenza, poi tutto fermo
     const a = suono.contesto, fine = a ? a.currentTime + 0.2 : 0;
@@ -5652,7 +5673,8 @@
     narraId: 'Narrazione sconosciuta: {id}',
     domandaVuota: 'story_question vuole il testo della domanda (text)',
     domandaLunga: '{campo} è troppo lungo (al massimo {max} caratteri)',
-    musicaSrc: 'story_music vuole in src un file audio del sito (audio/… o musica/…) oppure off, non {nome}'
+    musicaSrc: 'story_music vuole in src un file audio del sito (audio/… o musica/…) oppure off, non {nome}',
+    suonoSrc: 'sound vuole in src un file audio del sito (audio/… o musica/…), non {nome}'
   };
   function errore(chiave, dati = {}) {
     const k = 'demo.err.' + chiave;
@@ -5995,12 +6017,17 @@
     },
     sound: {
       verifica(p, scena) {
-        campi(p, ['type', 'volume']);
-        richiedi(p.type !== undefined, 'valoreIgnoto', { campo: 'type', nome: '', elenco: STOR_SUONI.join(', ') });
-        scelta(p.type, 'type', STOR_SUONI);
+        campi(p, ['type', 'src', 'volume']);
+        // v444: o un rumore sintetizzato (`type`) o un file del sito (`src`)
+        if (p.src !== undefined) {
+          richiedi(typeof p.src === 'string' && STOR_MUSICA_SRC.test(p.src) && !p.src.includes('..'), 'suonoSrc', { nome: String(p.src) });
+        } else {
+          richiedi(p.type !== undefined, 'valoreIgnoto', { campo: 'type', nome: '', elenco: STOR_SUONI.join(', ') });
+          scelta(p.type, 'type', STOR_SUONI);
+        }
         numeroIn(p.volume, 'volume', 0, 2);
       },
-      crea(p) { storSuona(p.type, { volume: p.volume }); return {}; }
+      crea(p) { if (p.src !== undefined) storSuonaFile(p.src, p.volume); else storSuona(p.type, { volume: p.volume }); return {}; }
     }
   });
   function sceltaSuono(p) { return scelta(p.sound, 'sound', ['auto', 'off'].concat(STOR_SUONI)); }
@@ -6111,6 +6138,7 @@
     return true;
   }
   function storMusicaFerma() {
+    storZittisciFile();
     if (musica.timer) { clearInterval(musica.timer); musica.timer = 0; }
     for (const { audio } of musica.tracce.values()) {
       try { audio.pause(); audio.removeAttribute('src'); audio.load(); } catch (_) { /* già chiusa */ }
