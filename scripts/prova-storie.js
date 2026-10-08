@@ -1823,6 +1823,32 @@ prova('il canto: più cantanti muovono la bocca insieme sulla ripresa del verso,
     assert.equal(S.tempoCanzone(), NaN, 'a demo finita niente canzone') ;
   } finally { delete globalThis.AstroDemo.tempo; }
 });
+prova('Carl Sagan pensoso canta con la bocca dritta e in mezzo, e finito il verso torna di traverso (v457)', () => {
+  S.sgombra();
+  Object.defineProperty(globalThis.AstroDemo, 'tempo', { get: () => motore.tempoDemo(), configurable: true });
+  try {
+    motore.avvia(demo(`scene solar_system_3d { duration: 4s; action: ${CANZONE};
+      action: character_show { target: 'sagan', expression: 'thinking', at: left };
+      action: character_sing { target: 'sagan', text: 'Pallido punto blu', shot_from: 0.25, shot_to: 0.6 }; }`), { ripristina() {} });
+    const { ctx } = telaFinta();
+    const bocca = () => {
+      S.disegnaPersonaggi(ctx, 'sistema', S.ospiti(800, 600), 800, 600);
+      const g = S.stato.ultimiDisegnati.find(x => x.id === 'sagan');
+      return g.geom.bocca;
+    };
+    for (let k = 0; k < 30; k++) { passo(25); avanza(25); bocca(); }
+    const prima = bocca();
+    assert.ok(prima.storta > 0.3, 'pensoso e zitto: la bocca di traverso, ' + prima.storta);
+    for (let k = 0; k < 40; k++) { passo(25); avanza(25); bocca(); }
+    const canta = bocca();
+    assert.ok(S.canto && Math.abs(canta.storta) < 0.02, 'cantando dritta: ' + canta.storta);
+    const g = S.stato.ultimiDisegnati.find(x => x.id === 'sagan').geom;
+    assert.ok(Math.abs(canta.x - g.cx) < g.R * 0.01, 'cantando in mezzo al viso');
+    for (let k = 0; k < 60; k++) { passo(25); avanza(25); bocca(); }
+    assert.ok(!S.canto && bocca().storta > 0.3, 'finito il verso torna pensoso');
+    motore.ferma();
+  } finally { delete globalThis.AstroDemo.tempo; S.sgombra(); }
+});
 prova('il karaoke: il punto del verso va avanti con la ripresa, dalla prima all\'ultima lettera', () => {
   const testo = 'Guardate ancora quel puntino laggiù';
   const r = S.ritmo(testo);

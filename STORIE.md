@@ -1976,6 +1976,17 @@ soli Marte (30, 34), Giove (31), Saturno (38), il Sole (39) e la Luna (9),
 i versi che parlano di loro. Prova: `prova-storie.js` (nessuna foto, niente
 festa, Sagan in almeno 60 versi).
 
+### La bocca dritta di chi canta (v457)
+
+Con Sagan pensoso per tutta la canzone, la bocca cantava di traverso: il
+pensoso (`thinking`) ha `storta: 0.5` e `spostaBocca: 0.28`, e la bocca
+spalancata si apriva storta e spostata di lato sotto ai baffi (lo stesso col
+seccato, che in più sbuffava dalla bocca aperta). Ora in `storDisegnaPersonaggi`
+chi canta tende a `storta: 0` e `spostaBocca: 0`, senza lo sbuffo; l'umore
+resta negli occhi e nelle sopracciglia, e finito il verso la bocca torna
+quella dell'espressione. Prova: `prova-storie.js` («Carl Sagan pensoso canta
+con la bocca dritta»), guardato in Chromium (scena 14, prima e dopo).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
