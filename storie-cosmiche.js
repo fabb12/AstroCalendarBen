@@ -172,6 +172,50 @@
       ciglio: { alza: 0, inclina: -0.95, curva: 0.1, asimmetria: 0.75 },
       bocca: 'ghigno', curva: 0.6, storta: 1, spostaBocca: 0.12, guance: 0.2, sguardo: { x: 0, y: 0.3 },
       testa: -0.14, segno: 'luccichio'
+    },
+    // v460, chieste per «Pallido puntino blu»: Carl Sagan era triste troppe
+    // volte, perché fra le facce non c'era quella giusta per le sue parole.
+    // La meraviglia davanti al cosmo: occhi grandi e lucidi, sopracciglia
+    // alte, lo sguardo un poco in su, la bocca socchiusa in un mezzo sorriso
+    wonder: {
+      palpebraSu: 0, palpebraGiu: 0.08, pupilla: 1.3, occhi: 1.22, iride: 1.12, lucidi: 1, arcoGiu: 0.3,
+      ciglio: { alza: 0.85, inclina: 0.25, curva: 0.9, asimmetria: 0 },
+      bocca: 'piccola', curva: 0.45, guance: 0.6, sguardo: { x: 0.1, y: -0.45 },
+      testa: -0.08
+    },
+    // la tenerezza: occhi che sorridono a mezzaluna, sopracciglia morbide e
+    // un poco in dentro, il sorriso dolce a bocca chiusa, la testa inclinata
+    tender: {
+      palpebraSu: 0.22, palpebraGiu: 0.26, pupilla: 1.2, iride: 1.1, arcoGiu: 0.7,
+      ciglio: { alza: 0.35, inclina: 0.7, curva: 0.6, asimmetria: 0 },
+      bocca: 'chiusa', curva: 0.85, guance: 0.95, sguardo: null,
+      testa: -0.14
+    },
+    // la decisione: sguardo dritto in camera, palpebre appena basse e tese,
+    // sopracciglia basse e piatte, la bocca chiusa e ferma. Non è la rabbia:
+    // niente rossore, niente denti, niente tremito
+    determined: {
+      palpebraSu: 0.2, palpebraGiu: 0.12, pupilla: 0.9, inclinaSu: 0.45,
+      ciglio: { alza: -0.05, inclina: -0.85, curva: -0.05, asimmetria: 0 },
+      bocca: 'chiusa', curva: -0.1, guance: 0.25, sguardo: null,
+      testa: 0.06
+    },
+    // lo scetticismo: un sopracciglio su e uno giù, l'occhiata di lato, il
+    // mezzo sorriso storto di chi non ci crede
+    skeptical: {
+      palpebraSu: 0.34, palpebraGiu: 0.14, pupilla: 0.85, inclinaSu: 0.1, arcoGiu: 0.15,
+      ciglio: { alza: 0.3, inclina: -0.3, curva: 0.2, asimmetria: 1 },
+      bocca: 'chiusa', curva: 0.3, storta: 0.7, spostaBocca: 0.1, guance: 0.3, sguardo: { x: -0.55, y: 0 },
+      testa: 0.1
+    },
+    // la malinconia: non è il pianto (niente lacrima, niente bocca all'ingiù):
+    // palpebre pesanti, sopracciglia appena in dentro, lo sguardo lontano,
+    // in alto da una parte, e un sorriso amaro appena accennato
+    wistful: {
+      palpebraSu: 0.42, palpebraGiu: 0.12, pupilla: 1.15, iride: 1.08, inclinaSu: -0.45,
+      ciglio: { alza: 0.25, inclina: 0.85, curva: 0.2, asimmetria: 0 },
+      bocca: 'chiusa', curva: 0.2, guance: 0.35, sguardo: { x: -0.5, y: -0.4 },
+      testa: 0.1
     }
   };
   const STOR_ESPRESSIONE_DI_SERIE = 'neutral';
@@ -529,7 +573,13 @@
     angry:     { tempesta: 1, prominenze: 1, atmo: { k: 1.35, tinta: '#ef4444', mix: 0.45 }, lune: { k: 1.05, giro: 1.8, tremito: 1 },
       anelli: { apri: -0.25, scuoti: 0.6 }, avatar: 1 },
     bully:     { tempesta: 0.4, prominenze: 0.6, atmo: { k: 1.2, tinta: '#a855f7', mix: 0.2 }, lune: { k: 1.1, giro: 1.4 },
-      anelli: { inclina: 0.3, apri: 0.2, brilla: 1 }, avatar: 0.7 }
+      anelli: { inclina: 0.3, apri: 0.2, brilla: 1 }, avatar: 0.7 },
+    // v460
+    wonder:     { prominenze: 0.35, atmo: { k: 1.12, tinta: '#a5b4fc', mix: 0.2 }, lune: { k: 1.1, giro: 0.8 }, anelli: { apri: 0.25, brilla: 0.8 }, avatar: 0.5 },
+    tender:     { atmo: { k: 1.05, tinta: '#fbcfe8', mix: 0.15 }, lune: { k: 0.92, giro: 0.8 }, anelli: { inclina: 0.06, brilla: 0.3 }, avatar: 0.35 },
+    determined: { prominenze: 0.3, atmo: { k: 1.08 }, lune: { giro: 1.1 }, anelli: { apri: -0.05 }, avatar: 0.55 },
+    skeptical:  { lune: { giro: 0.7 }, anelli: { inclina: 0.12 }, avatar: 0.2 },
+    wistful:    { atmo: { k: 0.92, tinta: '#94a3b8', mix: 0.2, alfa: 0.85 }, lune: { k: 0.94, giro: 0.55 }, anelli: { inclina: -0.12, apri: -0.08 }, avatar: 0.15 }
   };
 
   // Le misure del disegno, in pixel CSS.
