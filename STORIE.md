@@ -2131,6 +2131,41 @@ L'elenco dello Studio mostra le storie in cantiere (quella aperta sempre,
 col segno «CosmoStoria» se è ufficiale). `ufficiale` e `origine` viaggiano
 col progetto anche sul repository (§6b).
 
+### Le espressioni dentro la frase e quattordici facce nuove (v462)
+
+**Le espressioni di ElevenLabs nel punto esatto della frase.** Prima la
+battuta partiva con l'emozione della faccia e al più due toni, tutti
+all'inizio. Ora, nella linguetta «Voce e durata» (con la chiave ElevenLabs),
+«Espressioni dentro la frase» ha quattro linguette — Emozioni (36), Come
+parla (18), Risate, sospiri e suoni (18), Pause e ritmo (6),
+`STUDIO_TAG_FRASE` — e un tasto per espressione mette `[tag]` **dove sta il
+cursore** nella battuta (`inserisciTag`; il cursore si ricorda anche dopo
+aver cliccato altrove, `studio.cursore`). Una scritta libera mette
+qualunque altro tag di ElevenLabs (in inglese, `STUDIO_TAG_LIBERO`). Le
+espressioni messe stanno in fila, ognuna con la sua ×, e «Togli tutte».
+
+I tag vivono nel testo della battuta (`m.testo`, ora fino a 600 caratteri):
+`testoGrezzo` li tiene (va a ElevenLabs, e l'impronta della voce generata
+è su di lui: cambiare un tag chiede di rigenerarla), `testoDetto` li toglie
+(`studioSenzaTag`: sottotitoli, karaoke, voce del dispositivo, conteggio
+delle parole, durata). Un tag all'inizio della frase prende il posto
+dell'emozione della faccia, come prima per i tag scritti a mano. Il file
+delle voci porta anche `conTag`, e `scripts/voci-storie.js` lo mette nella
+regia (con davanti l'emozione della faccia, se la frase non comincia già
+con un tag). Coi modelli diversi da v3 i tag non partono.
+
+**Quattordici facce nuove**, una per ogni emozione nuova che la voce sa
+dire, perché il volto non contraddica la voce: orgoglioso (`proud`),
+sollevato (`relieved`), speranzoso (`hopeful`), giocherellone (`playful`),
+curioso (`curious`), confuso (`confused`), colpito (`impressed`),
+spaventato (`scared`), in panico (`panicked`), imbarazzato (`embarrassed`),
+deluso (`disappointed`), frustrato (`frustrated`), annoiato (`bored`),
+misterioso (`mysterious`). Ognuna ha la sua fisica (`STOR_FISICA_EMOZIONI`),
+il suo tag per ElevenLabs (`ELEVEN_TAG_UMORE`, `TAG_UMORE`), le parole che la
+suggeriscono (`studio.parole.umore.*`), le idee d'azione e i nomi al
+maschile e al femminile. Curioso e confuso hanno un segno nuovo, il punto di
+domanda che dondola sopra la testa (`domanda`).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

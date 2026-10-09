@@ -81,7 +81,7 @@
    *                il ghigno del bullo, la smorfia di chi è infastidito
    *   segno        il «segno da fumetto» che accompagna il volto: scintille,
    *                esclamazione, lacrima, goccia, pensiero, zzz, rabbia,
-   *                cuori, sbuffo, luccichio (§6-bis)
+   *                cuori, sbuffo, luccichio, domanda (v462) (§6-bis)
    *
    * Aggiungere un'espressione: una voce qui, e le due chiavi
    * `storie.espressione.<nome>` nei dizionari (le legge la pagina Demo). */
@@ -216,6 +216,119 @@
       ciglio: { alza: 0.25, inclina: 0.85, curva: 0.2, asimmetria: 0 },
       bocca: 'chiusa', curva: 0.2, guance: 0.35, sguardo: { x: -0.5, y: -0.4 },
       testa: 0.1
+    },
+    // v462, chieste insieme alle espressioni di ElevenLabs dentro la frase:
+    // una faccia per ogni emozione nuova che la voce sa dire, perché il volto
+    // non contraddica la voce. L'orgoglio: il mento in su, le palpebre a metà
+    // da gatto contento, il sorriso chiuso e largo
+    proud: {
+      palpebraSu: 0.34, palpebraGiu: 0.2, pupilla: 1, arcoGiu: 0.45,
+      ciglio: { alza: 0.35, inclina: -0.35, curva: 0.6, asimmetria: 0 },
+      bocca: 'chiusa', curva: 0.95, guance: 0.7, sguardo: { x: 0, y: 0.2 },
+      testa: -0.12, segno: 'scintille'
+    },
+    // il sollievo: palpebre che si abbassano, sopracciglia che si sciolgono,
+    // la boccuccia del «fiuuu» e lo sbuffo
+    relieved: {
+      palpebraSu: 0.45, palpebraGiu: 0.2, pupilla: 1, arcoGiu: 0.5, inclinaSu: -0.2,
+      ciglio: { alza: 0.4, inclina: 0.6, curva: 0.5, asimmetria: 0 },
+      bocca: 'piccola', curva: 0.6, guance: 0.6, sguardo: { x: 0, y: -0.2 },
+      testa: 0.08, segno: 'sbuffo'
+    },
+    // la speranza: occhi grandi e un poco lucidi verso l'alto, sopracciglia
+    // alzate in dentro, il sorriso trattenuto
+    hopeful: {
+      palpebraSu: 0, palpebraGiu: 0.1, pupilla: 1.25, occhi: 1.12, iride: 1.1, lucidi: 0.6, arcoGiu: 0.35,
+      ciglio: { alza: 0.7, inclina: 0.9, curva: 0.7, asimmetria: 0 },
+      bocca: 'chiusa', curva: 0.6, guance: 0.6, sguardo: { x: 0.2, y: -0.6 },
+      testa: -0.06, segno: 'scintille'
+    },
+    // la voglia di giocare: un sopracciglio più su, il sorriso di traverso,
+    // la testa piegata e il saltello
+    playful: {
+      palpebraSu: 0.1, palpebraGiu: 0.3, pupilla: 1.1, arcoGiu: 0.7,
+      ciglio: { alza: 0.6, inclina: -0.2, curva: 0.9, asimmetria: 0.6 },
+      bocca: 'sorriso', curva: 1, storta: 0.5, spostaBocca: 0.08, guance: 1, sguardo: { x: 0.5, y: 0 },
+      testa: -0.18, rimbalzo: 1.8, segno: 'scintille'
+    },
+    // la curiosità: occhi aperti, un sopracciglio su, la testa piegata verso
+    // quello che guarda, la bocca piccola e il punto di domanda
+    curious: {
+      palpebraSu: 0, palpebraGiu: 0.05, pupilla: 1.1, occhi: 1.15,
+      ciglio: { alza: 0.7, inclina: 0.1, curva: 0.8, asimmetria: 0.7 },
+      bocca: 'piccola', curva: 0.2, guance: 0.4, sguardo: { x: 0.6, y: -0.2 },
+      testa: -0.22, segno: 'domanda'
+    },
+    // la confusione: sopracciglia una su e una giù, la bocca a onda storta,
+    // lo sguardo che cerca in alto
+    confused: {
+      palpebraSu: 0.15, palpebraGiu: 0.1, pupilla: 0.85,
+      ciglio: { alza: 0.45, inclina: 0.6, curva: 0.1, asimmetria: 1 },
+      bocca: 'ondulata', curva: -0.1, storta: 0.6, spostaBocca: 0.1, guance: 0.25, sguardo: { x: -0.3, y: -0.3 },
+      testa: 0.2, segno: 'domanda'
+    },
+    // colpito, ammirato: non lo spavento della sorpresa (pupille normali,
+    // guance rosse), la bocca a O che sorride
+    impressed: {
+      palpebraSu: 0, palpebraGiu: 0.12, pupilla: 1.1, occhi: 1.2, iride: 1.05, arcoGiu: 0.4,
+      ciglio: { alza: 1, inclina: 0, curva: 0.9, asimmetria: 0 },
+      bocca: 'O', curva: 0.5, guance: 0.9, sguardo: null,
+      rimbalzo: 0.8, segno: 'scintille'
+    },
+    // la paura: occhi spalancati con le pupille piccole, sopracciglia su in
+    // dentro, i denti stretti e il tremito forte
+    scared: {
+      palpebraSu: 0, palpebraGiu: 0, pupilla: 0.3, occhi: 1.45, iride: 0.65, inclinaSu: -0.4,
+      ciglio: { alza: 1, inclina: 1.6, curva: 0, asimmetria: 0 },
+      bocca: 'denti', curva: -0.6, guance: 0.1, sguardo: { x: -0.2, y: 0 },
+      testa: 0.1, tremito: 2, segno: 'goccia'
+    },
+    // il panico: la paura con la bocca spalancata e il tremito più forte
+    panicked: {
+      palpebraSu: 0, palpebraGiu: 0, pupilla: 0.26, occhi: 1.5, iride: 0.62, inclinaSu: -0.5,
+      ciglio: { alza: 1.2, inclina: 1.8, curva: -0.1, asimmetria: 0 },
+      bocca: 'O', curva: -0.5, guance: 0.1, sguardo: null,
+      tremito: 2.8, segno: 'esclamazione'
+    },
+    // l'imbarazzo: le guance in fiamme, lo sguardo che scappa in basso di
+    // lato, il sorriso che ondeggia
+    embarrassed: {
+      palpebraSu: 0.3, palpebraGiu: 0.2, pupilla: 1, arcoGiu: 0.4, inclinaSu: -0.3,
+      ciglio: { alza: 0.4, inclina: 1, curva: 0.3, asimmetria: 0 },
+      bocca: 'ondulata', curva: 0.3, guance: 1.9, sguardo: { x: -0.6, y: 0.5 },
+      testa: 0.18, segno: 'goccia'
+    },
+    // la delusione: non il pianto. Palpebre pesanti, la bocca chiusa
+    // all'ingiù, lo sguardo a terra e lo sbuffo
+    disappointed: {
+      palpebraSu: 0.45, palpebraGiu: 0.08, pupilla: 1, inclinaSu: -0.6,
+      ciglio: { alza: 0.1, inclina: 1.1, curva: -0.1, asimmetria: 0 },
+      bocca: 'chiusa', curva: -0.8, guance: 0.1, sguardo: { x: 0.2, y: 0.55 },
+      testa: 0.15, segno: 'sbuffo'
+    },
+    // la frustrazione: sopracciglia basse, denti stretti, un poco di rosso
+    // e di tremito, ma non la rabbia piena
+    frustrated: {
+      palpebraSu: 0.3, palpebraGiu: 0.2, pupilla: 0.75, inclinaSu: 0.9, rosso: 0.45,
+      ciglio: { alza: -0.1, inclina: -1.4, curva: -0.2, asimmetria: 0.3 },
+      bocca: 'denti', curva: -0.4, storta: -0.4, guance: 0.15, sguardo: { x: 0, y: 0.2 },
+      testa: 0.1, tremito: 0.6, segno: 'sbuffo'
+    },
+    // la noia: palpebre a metà, sopracciglia piatte, la bocca dritta da una
+    // parte, lo sguardo altrove e la testa che cade
+    bored: {
+      palpebraSu: 0.62, palpebraGiu: 0.1, pupilla: 0.9,
+      ciglio: { alza: -0.05, inclina: 0, curva: 0, asimmetria: 0.2 },
+      bocca: 'chiusa', curva: -0.25, storta: 0.3, spostaBocca: 0.14, guance: 0.15, sguardo: { x: 0.8, y: 0.1 },
+      testa: 0.22, segno: 'zzz'
+    },
+    // il mistero: occhi socchiusi, l'occhiata di lato, un sopracciglio su e
+    // il sorrisetto di chi sa qualcosa
+    mysterious: {
+      palpebraSu: 0.45, palpebraGiu: 0.3, pupilla: 0.8, inclinaSu: 0.3, arcoGiu: 0.3,
+      ciglio: { alza: 0.15, inclina: -0.6, curva: 0.3, asimmetria: 0.6 },
+      bocca: 'chiusa', curva: 0.55, storta: 0.6, spostaBocca: 0.1, guance: 0.3, sguardo: { x: -0.7, y: 0.05 },
+      testa: -0.1
     }
   };
   const STOR_ESPRESSIONE_DI_SERIE = 'neutral';
@@ -579,7 +692,22 @@
     tender:     { atmo: { k: 1.05, tinta: '#fbcfe8', mix: 0.15 }, lune: { k: 0.92, giro: 0.8 }, anelli: { inclina: 0.06, brilla: 0.3 }, avatar: 0.35 },
     determined: { prominenze: 0.3, atmo: { k: 1.08 }, lune: { giro: 1.1 }, anelli: { apri: -0.05 }, avatar: 0.55 },
     skeptical:  { lune: { giro: 0.7 }, anelli: { inclina: 0.12 }, avatar: 0.2 },
-    wistful:    { atmo: { k: 0.92, tinta: '#94a3b8', mix: 0.2, alfa: 0.85 }, lune: { k: 0.94, giro: 0.55 }, anelli: { inclina: -0.12, apri: -0.08 }, avatar: 0.15 }
+    wistful:    { atmo: { k: 0.92, tinta: '#94a3b8', mix: 0.2, alfa: 0.85 }, lune: { k: 0.94, giro: 0.55 }, anelli: { inclina: -0.12, apri: -0.08 }, avatar: 0.15 },
+    // v462
+    proud:        { prominenze: 0.4, atmo: { k: 1.12, tinta: '#fde047', mix: 0.15 }, lune: { giro: 1.1 }, anelli: { inclina: 0.15, apri: 0.2, brilla: 0.8 }, avatar: 0.6 },
+    relieved:     { atmo: { k: 1, alfa: 0.9 }, lune: { k: 1.02, giro: 0.7 }, anelli: { apri: 0.05 }, avatar: 0.25 },
+    hopeful:      { prominenze: 0.2, atmo: { k: 1.06, tinta: '#a5b4fc', mix: 0.15 }, lune: { giro: 0.9 }, anelli: { apri: 0.15, brilla: 0.5 }, avatar: 0.4 },
+    playful:      { prominenze: 0.3, atmo: { k: 1.08 }, lune: { giro: 1.6, balla: 0.8 }, anelli: { inclina: 0.18, apri: 0.15, scuoti: 0.5, brilla: 0.6 }, avatar: 0.45 },
+    curious:      { lune: { k: 1.05, giro: 0.9 }, anelli: { inclina: 0.1, apri: 0.1 }, avatar: 0.3 },
+    confused:     { lune: { giro: 0.6, tremito: 0.2 }, anelli: { inclina: 0.2, scuoti: 0.3 }, avatar: 0.15 },
+    impressed:    { prominenze: 0.45, atmo: { k: 1.15 }, lune: { k: 1.15, giro: 0.9 }, anelli: { apri: 0.35, brilla: 0.9 }, avatar: 0.55 },
+    scared:       { tempesta: 0.25, atmo: { k: 0.9, tinta: '#94a3b8', mix: 0.25 }, lune: { k: 0.72, giro: 1.2, tremito: 1 }, anelli: { inclina: -0.2, apri: -0.2, scuoti: 0.6 }, avatar: 0.2 },
+    panicked:     { tempesta: 0.45, prominenze: 0.5, atmo: { k: 1.1, tinta: '#fca5a5', mix: 0.2 }, lune: { k: 0.8, giro: 2.2, tremito: 1.4 }, anelli: { scuoti: 1 }, avatar: 0.6 },
+    embarrassed:  { atmo: { k: 1.05, tinta: '#f9a8d4', mix: 0.4 }, lune: { k: 0.9, giro: 0.8 }, anelli: { inclina: -0.1 }, avatar: 0.3 },
+    disappointed: { atmo: { k: 0.9, tinta: '#64748b', mix: 0.25 }, lune: { k: 0.92, giro: 0.5, cala: 0.6 }, anelli: { inclina: -0.2, apri: -0.15 }, avatar: 0.1 },
+    frustrated:   { tempesta: 0.6, prominenze: 0.5, atmo: { k: 1.15, tinta: '#f97316', mix: 0.25 }, lune: { giro: 1.4, tremito: 0.6 }, anelli: { apri: -0.2, scuoti: 0.4 }, avatar: 0.55 },
+    bored:        { atmo: { k: 0.92, alfa: 0.8 }, lune: { giro: 0.35, cala: 0.4 }, anelli: { inclina: -0.15, apri: -0.25 }, avatar: 0.05 },
+    mysterious:   { atmo: { k: 1.1, tinta: '#7c3aed', mix: 0.35, alfa: 0.9 }, lune: { k: 1.05, giro: 0.7 }, anelli: { inclina: 0.1, brilla: 0.4 }, avatar: 0.5 }
   };
 
   // Le misure del disegno, in pixel CSS.
@@ -2796,6 +2924,19 @@
         ctx.fillStyle = '#ffffff'; ctx.fill();
         ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.8, s * 0.12); ctx.stroke();
       }
+    } else if (segno === 'domanda') {
+      // v462, curioso e confuso: il punto di domanda che dondola sopra la testa
+      const s = R * 0.3 * pop, x = cx + R * 0.9, y = cy - R * 0.95;
+      const dondola = Math.sin(t / 420 * fermo) * 0.18;
+      ctx.translate(x, y); ctx.rotate(dondola);
+      const ricciolo = () => {
+        ctx.beginPath();
+        ctx.arc(0, -s * 0.35, s * 0.5, Math.PI * 1.05, Math.PI * 2.35);
+        ctx.quadraticCurveTo(0, s * 0.05, 0, s * 0.4);
+      };
+      ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(1.6, s * 0.28) + 2.6; ricciolo(); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.6, s * 0.28); ricciolo(); ctx.stroke();
+      ctx.fillStyle = INCHIOSTRO; ctx.beginPath(); ctx.arc(0, s * 0.82, Math.max(1.2, s * 0.16), 0, Math.PI * 2); ctx.fill();
     } else if (segno === 'zzz') {
       for (let k = 0; k < 3; k++) {
         const f = ridotto ? k / 3 : ((t / 2600 + k / 3) % 1);

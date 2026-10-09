@@ -124,6 +124,29 @@
    * mescola e la battuta esce confusa. */
   const STUDIO_TONI = ['whispers', 'shouts', 'sighs', 'gasps', 'laughs', 'crying', 'curious', 'sarcastic'];
   const STUDIO_TONI_MAX = 2;
+  /* Le espressioni da mettere **dentro** la frase (v462), nel punto esatto in
+   * cui devono cominciare: `[whispers]`, `[laughs]`, `[long pause]`… Sono i
+   * tag audio di ElevenLabs v3, che valgono da lì in avanti nella battuta. Si
+   * scrivono nel testo della battuta stesso (`m.testo`); l'app li toglie da
+   * sottotitoli, karaoke e voce del dispositivo (`studioSenzaTag`), e vanno
+   * solo a ElevenLabs. Prima c'erano l'emozione della faccia e due toni
+   * all'inizio della frase, e basta: chi usa l'app voleva il massimo
+   * controllo, frase per frase, parola per parola. Divise in quattro
+   * famiglie; il nome a schermo sta in `studio.el.tag.<tag>`. */
+  const STUDIO_TAG_FRASE = {
+    emozioni: ['happy', 'excited', 'cheerfully', 'playfully', 'proud', 'relieved', 'hopeful', 'warmly', 'tenderly', 'in awe',
+      'impressed', 'curious', 'thoughtful', 'surprised', 'confused', 'skeptical', 'sarcastic', 'mischievously', 'determined',
+      'nervous', 'scared', 'panicked', 'embarrassed', 'disappointed', 'frustrated', 'annoyed', 'angry', 'jealous', 'bored',
+      'sad', 'wistfully', 'regretful', 'resigned', 'sleepy', 'dramatically', 'mysteriously'],
+    voce: ['whispers', 'softly', 'calmly', 'shouts', 'loudly', 'excitedly', 'seriously', 'firmly', 'deadpan', 'quickly',
+      'slowly', 'hesitates', 'stammers', 'breathless', 'sings', 'singsong', 'storytelling', 'announcer'],
+    suoni: ['laughs', 'chuckles', 'giggles', 'laughs harder', 'wheezing', 'sighs', 'gasps', 'exhales', 'inhales deeply',
+      'gulps', 'sniffles', 'crying', 'clears throat', 'yawns', 'snorts', 'hums', 'whistles', 'coughs'],
+    ritmo: ['short pause', 'pause', 'long pause', 'dramatic pause', 'continues', 'interrupting']
+  };
+  const STUDIO_TAG_LIBERO = /^[a-z][a-z' -]{0,28}[a-z]$/i;
+  // La battuta senza i tag: quella che si legge e che dice la voce dell'app
+  const studioSenzaTag = s => String(s || '').replace(/\[[^\]\n]{1,30}\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([,.;:!?…])/g, '$1').trim();
   const STUDIO_TIPI = ['umore', 'guarda', 'muovi', 'torna', 'anima', 'scala', 'diventa', 'effetto', 'suono', 'occhiolino', 'nascondi'];
   // Che cosa può diventare un personaggio (v414, `character_become`): le
   // vesti di `STOR_VESTI`, tenute qui per lo stesso motivo delle tappe
@@ -345,7 +368,7 @@
       musicaModo: tra(sc && sc.musicaModo, STUDIO_MUSICA_MODI, 'storia'), musica: studioPulisciMusica(sc && sc.musica),
       voci: studioPulisciVoci(sc && sc.voci),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
-        id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
+        id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 600), umore: testo(m && m.umore, 20),
         // v449: come dice la battuta (sussurra, grida…), tag di ElevenLabs v3
         tono: [...new Set((Array.isArray(m && m.tono) ? m.tono : []).filter(x => STUDIO_TONI.includes(x)))].slice(0, STUDIO_TONI_MAX),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
@@ -553,9 +576,12 @@
     for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; }
     return x.toString(16).padStart(8, '0');
   }
-  const testoDetto = m => unaRiga(m && m.testo).slice(0, 400);
+  // Detto: senza i tag (sottotitoli, voce dell'app); grezzo: coi tag dentro,
+  // per ElevenLabs e per sapere se la voce generata è ancora quella (v462)
+  const testoDetto = m => studioSenzaTag(unaRiga(m && m.testo)).slice(0, 400);
+  const testoGrezzo = m => unaRiga(m && m.testo).slice(0, 600);
   function studioVoceValida(m) {
-    return !!(m && m.audio && m.audio.durata > 0 && testoDetto(m) && m.audio.impronta === studioImpronta(testoDetto(m)));
+    return !!(m && m.audio && m.audio.durata > 0 && testoDetto(m) && m.audio.impronta === studioImpronta(testoGrezzo(m)));
   }
   function studioDurata(momento) {
     if (studioVoceValida(momento))
@@ -563,7 +589,7 @@
     // v461: un momento preso da una storia pronta dura quanto la sua scena,
     // al millesimo (una storia cantata va a tempo con la canzone)
     if (momento.durata > 0) return momento.copione ? Math.round(momento.durata * 1000) / 1000 : Math.round(momento.durata);
-    const testo = unaRiga(momento.testo);
+    const testo = testoDetto(momento);
     const viaggi = (momento.azioni || []).some(a => a.tipo === 'muovi' || a.tipo === 'torna');
     if (!testo) return viaggi ? 6 : 4;
     const ritmo = typeof S().ritmo === 'function' ? S().ritmo(testo).totale : testo.split(/\s+/).length * 0.42;
@@ -781,7 +807,7 @@
         }
         // I personaggi: chi parla con la faccia del momento, gli altri con
         // quella che avevano
-        const parla = m.chi && presentiM.includes(m.chi) && unaRiga(m.testo);
+        const parla = m.chi && presentiM.includes(m.chi) && testoDetto(m);
         if (m.chi && m.umore) umori.set(m.chi, m.umore);
         if (cp) {
           // Le righe dell'originale, nel loro ordine; chi parla con la faccia
@@ -809,7 +835,7 @@
         const pa = m.parla;
         if (parla && pa && pa.chi === m.chi && unaRiga(pa.testo) === unaRiga(m.testo))
           az.push(`character_speak { target: ${virgolette(m.chi)}, id: ${virgolette(pa.id)} }`);
-        else if (parla) az.push(`character_speak { target: ${virgolette(m.chi)}, text: ${virgolette(unaRiga(m.testo).slice(0, 400))} }`);
+        else if (parla) az.push(`character_speak { target: ${virgolette(m.chi)}, text: ${virgolette(testoDetto(m))} }`);
         righe.push(`  scene ${vistaM} {`);
         righe.push(cp ? `    duration: ${Math.round(durate[k] * 1000)}ms;` : `    duration: ${durate[k]}s;`);
         for (const a of az) righe.push(`    action: ${a};`);
@@ -1310,7 +1336,10 @@
     'virgo_cluster', 'great_attractor', 'laniakea', 'universe', 'local_group', 'local_bubble', 'orion_arm', 'local_cloud',
     'inner_planets', 'planets'];
   const STUDIO_UMORI = ['laughing', 'love', 'angry', 'bully', 'annoyed', 'happy', 'excited', 'surprised', 'worried', 'sad', 'thinking', 'sleepy',
-    'wonder', 'tender', 'determined', 'skeptical', 'wistful', 'neutral'];
+    'wonder', 'tender', 'determined', 'skeptical', 'wistful',
+    // v462 (vince la parola che viene prima nella frase, e a pari posto la più lunga)
+    'panicked', 'scared', 'embarrassed', 'disappointed', 'frustrated', 'bored', 'proud', 'relieved', 'hopeful', 'playful',
+    'curious', 'confused', 'impressed', 'mysterious', 'neutral'];
   /* La faccia giusta per una frase: le parole dell'umore prima, poi la
    * punteggiatura. Non è un'analisi del sentimento, ed è dichiarato: è un
    * suggerimento da accettare o cambiare. */
@@ -1373,7 +1402,22 @@
       tender: [['anima', { animazione: 'pulse' }]],
       determined: [['anima', { animazione: 'nod' }]],
       skeptical: [['anima', { animazione: 'wobble' }]],
-      wistful: [['scala', { scala: 0.9 }]]
+      wistful: [['scala', { scala: 0.9 }]],
+      // v462
+      proud: [['scala', { scala: 1.2 }], ['effetto', { effetto: 'sparkles' }]],
+      relieved: [['anima', { animazione: 'wobble' }]],
+      hopeful: [['effetto', { effetto: 'glow' }]],
+      playful: [['anima', { animazione: 'bounce' }]],
+      curious: [['anima', { animazione: 'nod' }]],
+      confused: [['anima', { animazione: 'wobble' }]],
+      impressed: [['effetto', { effetto: 'sparkles' }]],
+      scared: [['anima', { animazione: 'shake' }], ['scala', { scala: 0.8 }]],
+      panicked: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'flash' }]],
+      embarrassed: [['scala', { scala: 0.85 }]],
+      disappointed: [['scala', { scala: 0.9 }]],
+      frustrated: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'smoke' }]],
+      bored: [['anima', { animazione: 'wobble' }]],
+      mysterious: [['effetto', { effetto: 'smoke' }]]
     }[umore] || [];
     for (const [tipo, campi] of perUmore) metti(tipo, Object.assign({ dove: tipo === 'effetto' ? chi : '' }, campi));
     if (altri.length) metti('guarda', { oggetto: altri[0] });
@@ -1686,12 +1730,15 @@
       const momenti = sc.momenti.length ? sc.momenti : [studioNuovoMomento()];
       for (const m of momenti) {
         scena++;
-        const testo = unaRiga(m.testo).slice(0, 400);
+        const testo = testoDetto(m);
         if (!m.chi || !presenti.includes(m.chi) || !testo) continue;
         // v461: la battuta di una storia pronta rimasta quella ha già la sua voce
-        if (m.parla && m.parla.chi === m.chi && unaRiga(m.parla.testo) === testo) continue;
+        if (m.parla && m.parla.chi === m.chi && unaRiga(m.parla.testo) === testoGrezzo(m)) continue;
         if (!m.voce) m.voce = prossima++;
-        battute.push({ n: m.voce, chi: m.chi, testo, umore: m.umore || '', scena, durata: Math.round(studioDurata(m) * 1000) });
+        const b = { n: m.voce, chi: m.chi, testo, umore: m.umore || '', scena, durata: Math.round(studioDurata(m) * 1000) };
+        // v462: le espressioni dentro la frase vanno anche alla regia delle voci
+        if (testoGrezzo(m) !== testo) b.conTag = testoGrezzo(m);
+        battute.push(b);
       }
     }
     progetto.voceProssima = prossima;
@@ -1924,7 +1971,7 @@
     try { await dbVoci(st => st.put({ blob: file, nome: file.name || '', tipo: file.type || '', durata, testo }, k), 'audio'); }
     catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return false; }
     registraVoce(k, testo, URL.createObjectURL(file));
-    m.audio = { durata, impronta: studioImpronta(testo), nome: String(file.name || '').slice(0, 80) };
+    m.audio = { durata, impronta: studioImpronta(testoGrezzo(m)), nome: String(file.name || '').slice(0, 80) };
     if (STUDIO_VOCE_ID.test(voce || '')) m.audio.voce = voce;
     if (typeof tag === 'string') m.audio.tag = tag.slice(0, 160);
     salvaPresto();
@@ -2605,7 +2652,10 @@
     happy: 'happy', surprised: 'surprised', worried: 'nervous', sad: 'sad', thinking: 'thoughtful',
     excited: 'excited', sleepy: 'sleepy', laughing: 'laughs', love: 'warmly', angry: 'angry',
     annoyed: 'annoyed', bully: 'mischievously',
-    wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully'
+    wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully',
+    // v462
+    proud: 'proud', relieved: 'relieved', hopeful: 'hopeful', playful: 'playfully', curious: 'curious', confused: 'confused', impressed: 'impressed',
+    scared: 'scared', panicked: 'panicked', embarrassed: 'embarrassed', disappointed: 'disappointed', frustrated: 'frustrated', bored: 'bored', mysterious: 'mysteriously'
   };
   function studioElevenImpostazioni() {
     const a = archivio();
@@ -2703,8 +2753,8 @@
    * e lì va il testo nudo. `progetto`: la storia, per la faccia rimasta da
    * prima (di serie quella aperta nello Studio). */
   function studioTestoPerVoce(m, modello, progetto) {
-    const testo = testoDetto(m);
-    if (!/^eleven_v3/.test(modello || '')) return testo.replace(/\[[^\]]{1,30}\]\s*/g, '').trim();
+    const testo = testoGrezzo(m);
+    if (!/^eleven_v3/.test(modello || '')) return testoDetto(m);
     if (/^\[[^\]]{1,30}\]/.test(testo)) return testo;
     const p = progetto !== undefined ? progetto : studio.progetto;
     const tag = studioTagVoce(p, m);
@@ -3115,6 +3165,8 @@
   const studio = {
     progetti: [], progetto: null, radice: null, capito: null, capitoScena: -1, esito: '', copioneAperto: false,
     salvaTimer: 0, aperta: null, schedaMomento: '',
+    // v462: dove sta il cursore nella battuta, e la famiglia di espressioni aperta
+    cursore: null, famigliaTag: '',
     // v449: il pannello delle impostazioni e la sua linguetta aperta
     impAperto: false, impScheda: 'storia',
     // v444: il pannello della chiave ElevenLabs e la scelta della voce aperta (§6c)
@@ -3266,9 +3318,10 @@
     box.append(chi);
     // Il fumetto: la figurina grande e le parole
     if (m.chi) {
-      const testo = h('textarea', { rows: '2', maxlength: '400', dataset: { campo: base + '.testo' }, placeholder: t('studio.testoAiuto', { nome: nome(m.chi) }), 'aria-label': t('studio.battuta') });
+      const testo = h('textarea', { rows: '2', maxlength: '600', dataset: { campo: base + '.testo' }, placeholder: t('studio.testoAiuto', { nome: nome(m.chi) }), 'aria-label': t('studio.battuta') });
       testo.value = m.testo || '';
-      const n = parole ? parole.split(' ').length : 0;
+      const detto = testoDetto(m);
+      const n = detto ? detto.split(' ').length : 0;
       box.append(h('div', { class: 'studio-fumetto' },
         figurina(m.chi, umore, 64, 'studio-chi-grande'),
         h('div', { class: 'studio-nuvola' }, testo,
@@ -3428,11 +3481,72 @@
     for (const x of STUDIO_TONI)
       toni.append(scelta(scelti.includes(x), { class: 'studio-tono', dataset: { fai: 'tono', dove: base, valore: x }, title: '[' + x + ']' }, t('studio.el.toni.' + x)));
     blocco.append(toni);
+    blocco.append(disegnaTagFrase(m, base));
     const v3 = /^eleven_v3/.test(imp.modello);
     blocco.append(v3
       ? h('small', { class: 'studio-tono-invio' }, t('studio.el.testoInviato'), ' ', h('code', {}, studioTestoPerVoce(m, imp.modello, p)))
       : h('small', { class: 'studio-voce-stato troppo' }, t('studio.el.tonoSoloV3')));
     return blocco;
+  }
+
+  /* Le espressioni dentro la frase (v462): quattro linguette (emozioni, come
+   * parla, suoni, pause), un tasto per espressione che la mette **dove sta
+   * il cursore** nella battuta, una scritta libera per qualunque altro tag,
+   * e in fila quelle già messe, ognuna con la sua ×. */
+  function tagNelTesto(testo) { return [...String(testo || '').matchAll(/\[([^\]\n]{1,30})\]/g)].map(x => x[1]); }
+  function disegnaTagFrase(m, base) {
+    const blocco = h('div', { class: 'studio-tag-frase', role: 'group', 'aria-label': t('studio.el.tagFrase.titolo') },
+      h('small', { class: 'studio-tono-titolo' }, t('studio.el.tagFrase.titolo')),
+      h('small', { class: 'studio-voce-stato' }, t('studio.el.tagFrase.aiuto')));
+    const messi = tagNelTesto(m.testo);
+    if (messi.length) {
+      const fila = h('div', { class: 'studio-chips', role: 'group', 'aria-label': t('studio.el.tagFrase.messi') },
+        h('span', { class: 'studio-etichetta' }, t('studio.el.tagFrase.messi')));
+      messi.forEach((x, j) => fila.append(h('span', { class: 'studio-azione-chip' },
+        h('span', { class: 'studio-azione-testo', title: '[' + x + ']' }, nomeTag(x)),
+        h('button', { type: 'button', class: 'studio-azione-x', dataset: { fai: 'tagVia', dove: base, valore: String(j) }, 'aria-label': t('studio.togli'), title: t('studio.togli') }, '×'))));
+      fila.append(h('button', { type: 'button', class: 'studio-idea', dataset: { fai: 'tagVia', dove: base, valore: 'tutti' } }, t('studio.el.tagFrase.togliTutti')));
+      blocco.append(fila);
+    }
+    const famiglie = Object.keys(STUDIO_TAG_FRASE);
+    const aperta = famiglie.includes(studio.famigliaTag) ? studio.famigliaTag : '';
+    const fila = h('div', { class: 'studio-linguette', role: 'group', 'aria-label': t('studio.el.tagFrase.titolo') });
+    for (const f of famiglie) {
+      const quanti = messi.filter(x => STUDIO_TAG_FRASE[f].includes(x)).length;
+      fila.append(linguetta(aperta === f, { fai: 'famigliaTag', dove: base, valore: f }, t('studio.el.tagFrase.famiglia.' + f),
+        quanti ? t('studio.el.tagFrase.nellaFrase', { n: quanti }) : t('studio.el.tagFrase.quante', { n: STUDIO_TAG_FRASE[f].length })));
+    }
+    blocco.append(fila);
+    if (aperta) {
+      const tasti = h('div', { class: 'studio-toni', role: 'group', 'aria-label': t('studio.el.tagFrase.famiglia.' + aperta) });
+      for (const x of STUDIO_TAG_FRASE[aperta])
+        tasti.append(h('button', { type: 'button', class: 'studio-tono', dataset: { fai: 'tagFrase', dove: base, valore: x }, title: '[' + x + ']' }, '+ ' + nomeTag(x)));
+      blocco.append(tasti);
+    }
+    // Qualunque altro tag di ElevenLabs, scritto a mano (in inglese)
+    blocco.append(h('div', { class: 'studio-riga studio-tag-libero' },
+      h('input', { type: 'text', maxlength: '30', class: 'studio-tag-libero-campo', dataset: { tagLibero: base },
+        placeholder: t('studio.el.tagFrase.liberoAiuto'), 'aria-label': t('studio.el.tagFrase.libero') }),
+      h('button', { type: 'button', class: 'tasto-cielo studio-mini', dataset: { fai: 'tagLibero', dove: base } }, t('studio.el.tagFrase.metti'))));
+    return blocco;
+  }
+  const nomeTag = x => t('studio.el.tag.' + x.replace(/[^a-z]+/gi, '_')) || x;
+  // Mette `[tag]` dove sta il cursore nella battuta (o in fondo)
+  function inserisciTag(dove, tag) {
+    const m = leggi(dove);
+    if (!m) return false;
+    const campo = dove + '.testo', testo = String(m.testo || '');
+    let da = testo.length, a = testo.length;
+    if (studio.cursore && studio.cursore.campo === campo) {
+      da = Math.max(0, Math.min(studio.cursore.da, testo.length)); a = Math.max(da, Math.min(studio.cursore.a, testo.length));
+    }
+    const prima = testo.slice(0, da), dopo = testo.slice(a);
+    const pezzo = (prima && !/\s$/.test(prima) ? ' ' : '') + '[' + tag + ']' + (!/^\s/.test(dopo) ? ' ' : '');
+    if ((prima + pezzo + dopo).length > 600) { esito(t('studio.el.tagFrase.troppo')); return false; }
+    m.testo = prima + pezzo + dopo;
+    const pos = (prima + pezzo).length;
+    studio.cursore = { campo, da: pos, a: pos };
+    return true;
   }
 
   /* Le voci di una scena (v445): chi parla in questa scena, con la voce
@@ -4256,6 +4370,29 @@
         m.tono = tono.includes(x) ? tono.filter(y => y !== x) : tono.concat(x).slice(-STUDIO_TONI_MAX);
         break;
       }
+      // v462: le espressioni dentro la frase
+      case 'famigliaTag': studio.famigliaTag = studio.famigliaTag === el.dataset.valore ? '' : el.dataset.valore; disegna(); return;
+      case 'tagFrase': {
+        const x = el.dataset.valore;
+        if (!Object.values(STUDIO_TAG_FRASE).some(l => l.includes(x)) || !inserisciTag(dove, x)) return;
+        break;
+      }
+      case 'tagLibero': {
+        const campo = studio.radice.querySelector(`[data-tag-libero="${CSS.escape(dove)}"]`);
+        const x = unaRiga(campo && campo.value).replace(/^\[|\]$/g, '');
+        if (!STUDIO_TAG_LIBERO.test(x)) { esito(t('studio.el.tagFrase.liberoNo')); return; }
+        if (!inserisciTag(dove, x)) return;
+        break;
+      }
+      case 'tagVia': {
+        const m = leggi(dove);
+        if (!m) return;
+        let j = -1;
+        const quale = el.dataset.valore;
+        m.testo = String(m.testo || '').replace(/\s?\[[^\]\n]{1,30}\]/g, tag => (quale === 'tutti' || ++j === Number(quale)) ? '' : tag).replace(/^\s+/, '');
+        studio.cursore = null;
+        break;
+      }
       case 'aggiungiTipo': {
         const m = leggi(dove);
         const sc = p.scene[Number(dove.split('.')[1])];
@@ -4549,6 +4686,14 @@
   }
 
   function collega(r) {
+    // v462: dove sta il cursore nella battuta, per mettere l'espressione
+    // proprio lì anche dopo aver cliccato altrove
+    const ricordaCursore = e => {
+      const el = e.target;
+      if (el && el.tagName === 'TEXTAREA' && el.dataset && /\.testo$/.test(el.dataset.campo || ''))
+        studio.cursore = { campo: el.dataset.campo, da: el.selectionStart, a: el.selectionEnd };
+    };
+    for (const ev of ['keyup', 'click', 'select', 'input', 'focusout']) r.addEventListener(ev, ricordaCursore);
     r.addEventListener('click', e => {
       const b = e.target.closest('[data-fai]');
       if (b && r.contains(b)) fai(b.dataset.fai, b.dataset.dove, b);
@@ -4558,6 +4703,7 @@
       const el = e.target;
       if (e.key === 'Enter' && el.dataset && el.dataset.parole && el.value.trim()) { e.preventDefault(); fai('capisci', el.dataset.parole, el); }
       if (e.key === 'Enter' && el.dataset && el.dataset.elCerca) { e.preventDefault(); fai('elCerca', '', el); }
+      if (e.key === 'Enter' && el.dataset && el.dataset.tagLibero) { e.preventDefault(); fai('tagLibero', el.dataset.tagLibero, el); }
     });
     r.addEventListener('input', e => {
       const el = e.target;
@@ -4576,7 +4722,7 @@
       // Il contatore delle parole senza ridisegnare (il cursore resta dov'è)
       if (/\.testo$/.test(el.dataset.campo)) {
         const c = el.parentElement && el.parentElement.querySelector('.studio-contatore');
-        const n = unaRiga(el.value) ? unaRiga(el.value).split(' ').length : 0;
+        const n = studioSenzaTag(el.value) ? studioSenzaTag(el.value).split(' ').length : 0;
         if (c) { c.textContent = t('studio.parole', { n }); c.classList.toggle('troppo', n > STUDIO_PAROLE_BAMBINI); }
       }
       aggiornaVivi();
@@ -4766,7 +4912,7 @@
     testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
-    caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN,
+    caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag,
     ufficiali: studioUfficiali, apriProgetto: studioApriProgetto, apriDaStoria: studioApriDaStoria,
     apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
