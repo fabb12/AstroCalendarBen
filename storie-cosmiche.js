@@ -6529,6 +6529,12 @@
   const STOR_SUONO_VESTE = { red_giant: 'inflate', white_dwarf: 'magic', supernova: 'explosion', black_hole: 'suck', self: 'magic' };
   const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet(), file: new Set() };
 
+  // v467: la musica e i suoni da file entrano nel filmato registrato, nella
+  // stessa traccia della voce (`narrazione.audioDelRacconto`)
+  function audioNelFilmato(el) {
+    const n = radice.narrazione;
+    if (n && typeof n.audioDelRacconto === 'function') { try { n.audioDelRacconto(el); } catch (_) { /* resta fuori */ } }
+  }
   function storContestoAudio() {
     const AC = radice.AudioContext || radice.webkitAudioContext;
     const n = typeof narr !== 'undefined' ? narr : null;   // narrazione.js
@@ -6770,6 +6776,7 @@
     const a = new Audio(musica.locali.get(senzaVersione(src)) || src);
     a.volume = Math.max(0, Math.min(1, (volume === undefined ? 1 : Number(volume) || 0) * 0.8));
     suono.file.add(a);
+    audioNelFilmato(a);
     a.addEventListener('ended', () => suono.file.delete(a));
     a.play().catch(() => suono.file.delete(a));
     return true;
@@ -7314,6 +7321,7 @@
       audio.loop = true;
       audio.preload = 'auto';
       audio.volume = 0;
+      audioNelFilmato(audio);
       traccia = { audio };
       musica.tracce.set(src, traccia);
     }

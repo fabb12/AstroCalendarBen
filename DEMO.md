@@ -122,6 +122,17 @@ spento (si può riaccendere nel gruppo **Narrazione e audio**):
   espone il proprio segnale alle Web API: resta udibile alla persona ma non è
   registrabile in modo portabile. Stop, Esc, errore e fine scollegano la
   destinazione e fermano le tracce MediaStream.
+  **Dalla v467 nella stessa traccia entra tutto l'audio del racconto**: la
+  colonna sonora della demo (`musicaDemoAvvia`), la musica e la canzone
+  delle storie (`storMusica`) e i loro suoni da file (`storSuonaFile`)
+  passano da `narrazione.audioDelRacconto(el)`, che durante una cattura porta
+  l'elemento nel grafo (solo a contesto in marcia, se no tacerebbe) e lo
+  collega alla presa; i rumori sintetizzati delle storie ci passavano già.
+  Una traccia sola, mescolata, perché il registratore ne tiene una. Il
+  contesto si sblocca dentro al gesto che avvia la demo registrata
+  (`narrazione.sbloccaContesto`), e un analizzatore sulla presa misura il
+  suono più forte passato (`catturaStato().picco`, poi `sky.reg.esito.piccoAudio`):
+  la finestra di YouTube avvisa se il filmato non ha la traccia o se è muta.
 - **Elementi del planetario da mostrare.** L'elenco non è inventato: sono gli
   interruttori della scheda Visualizzazione (stelle, nomi, costellazioni e
   loro disegni, pianeti, Sole e Luna, cielo profondo, Via Lattea, corpi minori,

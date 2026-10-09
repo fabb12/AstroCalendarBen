@@ -86,6 +86,8 @@ const YT_DOPO_MAX_MS = 3 * 3600 * 1000;
 // controllare, e chi pubblica lo guarda nell'anteprima.
 const YT_FILE_MIN = 1024;
 const YT_CONTROLLO_MS = 12000;
+// v467: sotto questo picco (−60 dB) la traccia audio registrata è muta
+const YT_SOGLIA_MUTO = 0.001;
 
 const yt = {
   token: '', scade: 0,     // il gettone di Google, solo in memoria
@@ -615,7 +617,7 @@ function ytControllaVideo(blob) {
       if (!Number.isFinite(v.duration)) return false;
       if (!(v.videoWidth > 0 && v.videoHeight > 0)) chiudi({ ok: false, motivo: 'senzaImmagine' });
       else if (!(v.duration > 0.2)) chiudi({ ok: false, motivo: 'troppoCorto' });
-      else chiudi({ ok: true, durata: v.duration, larghezza: v.videoWidth, altezza: v.videoHeight });
+      else chiudi({ ok: true, durata: v.duration, larghezza: v.videoWidth, altezza: v.videoHeight, audio: ytHaAudio(v) });
       return true;
     };
     const timer = setTimeout(() => chiudi({ ok: true, durata: 0, larghezza: v.videoWidth || 0, altezza: v.videoHeight || 0, avviso: 'nonControllato' }), YT_CONTROLLO_MS);
@@ -631,6 +633,15 @@ function ytControllaVideo(blob) {
     v.addEventListener('error', () => chiudi({ ok: false, motivo: 'illeggibile' }), { once: true });
     v.src = url;
   });
+}
+
+// v467: se il file ha l'audio, dove il browser lo sa dire dai soli metadati
+// (Firefox `mozHasAudio`, le `audioTracks` dove ci sono); se no `null`, e
+// vale quello che dice il registratore (`video.audio`)
+function ytHaAudio(v) {
+  if (typeof v.mozHasAudio === 'boolean') return v.mozHasAudio;
+  if (v.audioTracks && typeof v.audioTracks.length === 'number') return v.audioTracks.length > 0;
+  return null;
 }
 
 // «4:08», «1:02:05»
@@ -676,7 +687,11 @@ function ytMostraPubblica(video, esame, ritorno) {
   const imp = ytImpostazioni();
   const titolo = String(video.titolo || '').trim();
   yt.finestra = {
-    video: { blob: video.blob, nome: String(video.nome || 'video.webm'), tipo: video.tipo || video.blob.type || 'video/webm' },
+    video: { blob: video.blob, nome: String(video.nome || 'video.webm'), tipo: video.tipo || video.blob.type || 'video/webm',
+      // v467: il file stesso, se il browser lo sa dire; se no il registratore
+      audio: esame && typeof esame.audio === 'boolean' ? esame.audio : typeof video.audio === 'boolean' ? video.audio : null,
+      // v467: una traccia c'è ma non ci è passato niente (sotto -60 dB)
+      muto: video.audio !== false && typeof video.piccoAudio === 'number' && video.piccoAudio < YT_SOGLIA_MUTO },
     esame: esame || { ok: true },
     url: URL.createObjectURL(video.blob),
     anteprima: null,
@@ -785,8 +800,11 @@ function ytDisegnaFinestra() {
   const dettagli = [f.video.nome, ytPeso(f.video.blob.size)];
   if (es.larghezza > 0 && es.altezza > 0) dettagli.push(`${es.larghezza} × ${es.altezza} (${ytQualita(es.larghezza, es.altezza)})`);
   if (es.durata > 0) dettagli.push(ytDurata(es.durata));
+  if (f.video.audio === true && !f.video.muto) dettagli.push(ytT('conAudio'));
   corpo.append(ytEl('p', { class: 'yt-file' }, dettagli.join(' · ')));
   if (es.avviso) corpo.append(ytEl('p', { class: 'yt-nota' }, ytT('controllo.' + es.avviso)));
+  if (!guasto && (f.video.audio === false || f.video.muto))
+    corpo.append(ytEl('p', { class: 'yt-messaggio errore yt-senza-audio', role: 'status' }, ytT(f.video.audio === false ? 'controllo.senzaAudio' : 'controllo.muto')));
   if (guasto) {
     corpo.append(ytEl('p', { class: 'yt-messaggio errore', role: 'alert' }, ytT('controllo.' + (es.motivo || 'illeggibile'))));
   } else if (!imp.collegato) {
@@ -900,7 +918,9 @@ function ytRegistraEPubblica(testo, titolo) {
   // v465: per YouTube il filmato è a risoluzione piena e senza data e luogo
   // (`perYoutube`, in `skyRegPreparaTela` e `skyRegFirma`), e la storia a
   // tutto schermo, perché la tela prende la misura della finestra
-  try { demo.avvia(testo, { registra: true, perYoutube: true, schermoIntero: true }); }
+  // v467: e sempre con l'audio (voce, musica, canzone, suoni), anche se
+  // nelle opzioni delle demo la registrazione dell'audio è spenta
+  try { demo.avvia(testo, { registra: true, registraAudio: true, perYoutube: true, schermoIntero: true }); }
   catch (e) { yt.dopo = null; throw e; }
   if (!demo.inCorso) yt.dopo = null;
   return !!yt.dopo;
@@ -913,7 +933,7 @@ function ytDopoRegistrazione(esito) {
   // sempre): è una registrazione fatta a mano, dopo una storia fermata
   // prima che il registratore partisse. Non è quello da pubblicare.
   if (!d || !esito || !esito.blob || !esito.titolo || Date.now() > d.scade) return false;
-  return ytApriPubblica({ blob: esito.blob, nome: esito.nome, tipo: esito.tipo, titolo: d.titolo || esito.titolo });
+  return ytApriPubblica({ blob: esito.blob, nome: esito.nome, tipo: esito.tipo, titolo: d.titolo || esito.titolo, audio: esito.audio, piccoAudio: esito.piccoAudio });
 }
 
 // ====================================================================
