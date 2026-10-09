@@ -13173,3 +13173,98 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 @media (max-width: 560px) {
   .studio-linguette-passo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* v464: il «+» fra due scene o due momenti. Una riga sottile tratteggiata
+   col tasto in mezzo, quasi spenta finché non ci si passa sopra (o non ci
+   arriva la tastiera): con diciassette scene, diciassette tasti pieni
+   farebbero del copione una scala. Sui telefoni, dove non si passa sopra,
+   resta sempre un po' acceso. La griglia attorno ha già il suo spazio: il
+   «+» se lo mangia con un margine negativo, e il copione non si allunga. */
+.studio-inserisci {
+  display: flex; align-items: center; gap: 8px; margin: -6px 0; min-width: 0;
+  opacity: 0.35; transition: opacity 0.15s ease;
+}
+.studio-inserisci::before, .studio-inserisci::after {
+  content: ''; flex: 1 1 auto; height: 0; border-top: 1px dashed rgba(167, 139, 250, 0.55);
+}
+.studio-inserisci:hover, .studio-inserisci:focus-within { opacity: 1; }
+.studio-inserisci-tasto {
+  flex: 0 0 auto; padding: 1px 10px; font: inherit; font-size: 0.74rem; line-height: 1.5; cursor: pointer;
+  color: #ddd6fe; background: rgba(124, 58, 237, 0.18); border: 1px solid rgba(167, 139, 250, 0.55); border-radius: 999px;
+}
+.studio-inserisci-tasto:hover { background: rgba(124, 58, 237, 0.35); color: #fff; }
+.studio-inserisci-tasto:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.studio-inserisci-tasto > span { font-weight: 700; }
+@media (hover: none) { .studio-inserisci { opacity: 0.7; } }
+@media (prefers-reduced-motion: reduce) { .studio-inserisci { transition: none; } }
+
+/* v464: YouTube (`youtube.js`). La finestra di pubblicazione sta sopra a
+   tutto, anche alla Galleria (z-50) da cui la si può aprire, e sul telefono
+   occupa la larghezza con il margine di sempre. */
+.tasto-youtube { border-color: rgba(248, 113, 113, 0.45); }
+.tasto-youtube:hover { border-color: rgba(248, 113, 113, 0.8); }
+.yt-icona { display: inline-flex; vertical-align: -3px; }
+.yt-velo {
+  position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-start; justify-content: center;
+  overflow-y: auto; padding: 24px 16px; background: rgba(0, 0, 0, 0.65);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.yt-finestra {
+  width: 100%; max-width: 34rem; margin: auto 0; min-width: 0;
+  background: var(--superficie-piena); color: var(--testo);
+  border: 1px solid var(--bordo-forte); border-radius: 16px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.yt-testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--bordo); }
+.yt-testa h2 { margin: 0; font-size: 1.12rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.yt-x {
+  flex: 0 0 auto; width: 2.2rem; height: 2.2rem; border-radius: 999px; font-size: 1.3rem; line-height: 1;
+  color: var(--testo-2); background: none; border: 1px solid var(--bordo); cursor: pointer;
+}
+.yt-x:hover { color: var(--testo); border-color: var(--bordo-forte); }
+.yt-x:disabled { opacity: 0.4; cursor: default; }
+.yt-corpo { display: grid; gap: 8px; padding: 14px 16px 16px; min-width: 0; }
+.yt-file { margin: 0; color: var(--testo-2); font-size: 0.8rem; overflow-wrap: anywhere; }
+.yt-canale, .yt-stato { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.88rem; }
+.yt-stato.ok { color: #bbf7d0; }
+.yt-miniatura { width: 28px; height: 28px; border-radius: 999px; flex: 0 0 auto; }
+.yt-etichetta { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: 0.8rem; font-weight: 600; color: var(--testo-2); }
+.yt-conta { font-weight: 400; color: var(--testo-3); }
+.yt-campo {
+  width: 100%; min-width: 0; box-sizing: border-box; padding: 7px 10px; font: inherit; font-size: 0.9rem;
+  color: var(--testo); background: var(--incassato); border: 1px solid var(--bordo-forte); border-radius: 10px;
+}
+textarea.yt-campo { resize: vertical; min-height: 5.5rem; }
+.yt-campo:focus-visible { outline: 2px solid var(--blu-chiaro); outline-offset: 1px; }
+.yt-scelte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.yt-scelta {
+  display: grid; gap: 2px; padding: 7px 8px; font: inherit; text-align: center; cursor: pointer; min-width: 0;
+  color: var(--testo); background: var(--incassato); border: 1px solid var(--bordo-forte); border-radius: 10px;
+}
+.yt-scelta small { color: var(--testo-3); font-size: 0.72rem; }
+.yt-scelta[aria-pressed="true"] { border-color: rgba(248, 113, 113, 0.85); background: rgba(248, 113, 113, 0.14); }
+.yt-scelta:disabled { opacity: 0.55; cursor: default; }
+.yt-spunta { display: flex; align-items: center; gap: 6px; font-size: 0.86rem; }
+.yt-nota { margin: 2px 0 0; font-size: 0.76rem; color: var(--testo-3); }
+.yt-nota a, .yt-pubblicati a, .yt-come a { color: var(--blu-chiaro); }
+.yt-messaggio { margin: 0; font-size: 0.84rem; color: var(--testo-2); min-height: 0; }
+.yt-messaggio:empty { display: none; }
+.yt-messaggio.ok { color: #bbf7d0; }
+.yt-messaggio.errore { color: #fecaca; }
+.yt-avanzamento { display: grid; gap: 4px; }
+.yt-barra { width: 100%; height: 10px; accent-color: #f87171; }
+.yt-barra-testo { font-size: 0.82rem; color: var(--testo-2); }
+.yt-azioni, .yt-tasti { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.yt-azioni a { text-decoration: none; }
+.yt-pannello { display: grid; gap: 8px; min-width: 0; }
+.yt-aiuto { color: var(--testo-3); font-size: 0.75rem; }
+.yt-come summary { cursor: pointer; font-size: 0.8rem; color: var(--blu-chiaro); }
+.yt-passi { margin: 6px 0; padding-left: 1.3rem; display: grid; gap: 4px; font-size: 0.8rem; color: var(--testo-2); overflow-wrap: anywhere; }
+.yt-preferenze { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; }
+.yt-preferenze .yt-etichetta { display: grid; gap: 4px; margin: 0; }
+.yt-sottotitolo { margin: 4px 0 0; font-size: 0.82rem; font-weight: 700; color: var(--testo-2); }
+.yt-pubblicati { margin: 0; padding-left: 1.1rem; display: grid; gap: 3px; font-size: 0.82rem; overflow-wrap: anywhere; }
+.yt-pubblicati small { color: var(--testo-3); }
+.yt-collega-qui { padding: 10px; border: 1px dashed var(--bordo-forte); border-radius: 12px; background: var(--incassato); }
+@media (max-width: 420px) {
+  .yt-scelte { grid-template-columns: minmax(0, 1fr); }
+  .yt-scelta { grid-template-columns: auto 1fr; text-align: left; align-items: baseline; gap: 6px; }
+}

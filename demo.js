@@ -1969,7 +1969,10 @@
     return prima ? prima.id : MUSICA_DEMO.tracciaPredefinita;
   }
 
-  function avvia(testo = script) {
+  // `perUnaVolta` (v464): opzioni che valgono solo per questa corsa, senza
+  // toccare quelle salvate. «Registra e pubblica» di YouTube (`youtube.js`)
+  // gira la storia registrandola anche a chi la registrazione l'ha spenta.
+  function avvia(testo = script, perUnaVolta = null) {
     const demo = valida(testo);
     motore.ferma();
     richiedi(!sol.aperto && !sky.reg.attiva && !sky.reg.preparazione &&
@@ -1999,7 +2002,13 @@
     const impostazioniNascostePrima = !!(modaleImpostazioni && modaleImpostazioni.classList.contains('hidden'));
     const comandiCielo = document.getElementById('cielo-comandi');
     const gruppoPrima = comandiCielo ? (comandiCielo.dataset.gruppoAttivo || '') : '';
-    const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero, gruppoPrima,
+    // Le opzioni di questa corsa sola: quelle di prima tornano con `ripristina`
+    let opzioniPrima = null;
+    if (perUnaVolta && typeof perUnaVolta === 'object') {
+      opzioniPrima = Object.fromEntries(Object.keys(perUnaVolta).map(k => [k, opzioni[k]]));
+      opzioni = Object.assign({}, opzioni, perUnaVolta);
+    }
+    const c = { chiuso: false, eclisse: null, cameraManuale: false, schermo: !!opzioni.schermoIntero, gruppoPrima, opzioniPrima,
       vistaPulita: opzioni.vistaPulita !== false,
       // Una Storia cosmica è una demo con dei personaggi: lì, se l'opzione
       // non le chiede, le scritte delle viste tacciono (`senzaScritte`)
@@ -2045,6 +2054,7 @@
       riprendi() { if (typeof narrazione === 'object') narrazione.riprendi('demo'); },
       ripristina() {
         c.chiuso = true; contesto = null; evidenze.clear(); c.dopoIntro = null;
+        if (c.opzioniPrima) { opzioni = Object.assign({}, opzioni, c.opzioniPrima); c.opzioniPrima = null; }
         // Nessun velo dell'intro può sopravvivere alla demo: Stop, Esc, un
         // errore o la fine lo tolgono subito, anche a metà dissolvenza.
         if (typeof AstroDemoIntro === 'object') AstroDemoIntro.rimuovi();
@@ -2183,6 +2193,12 @@
   function avviaRegistrazione(c, demo) {
     const totale = demo.scene.reduce((n, s) => n + s.durata, 0) / 1000;
     sky.reg.origine = 'planetario';
+    // v464: il nome della demo o della storia viaggia col filmato, ed è il
+    // titolo che la finestra di YouTube propone (`skyRegAvviaVideo`). Le
+    // predefinite hanno l'id nel copione e il titolo nel dizionario.
+    const chiaveTitolo = 'demo.builtin.' + demo.id + '.title';
+    sky.reg.titolo = typeof astroI18n === 'object' && typeof astroI18n.esiste === 'function' && astroI18n.esiste(chiaveTitolo)
+      ? astroI18n.t(chiaveTitolo) : String(demo.id || '');
     sky.reg.sorgente = telaInScena;
     sky.reg.durataSec = totale + 3600;
 

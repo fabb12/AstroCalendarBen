@@ -7655,14 +7655,14 @@
     // Solo per le storie: una demo senza personaggi non ha bocche da muovere,
     // e non c'è ragione di portare la sua voce dentro al grafo audio.
     const conPersonaggi = el => {
-      if (el.matches('[data-storia-avvia], [data-storia-prova]')) return true;
+      if (el.matches('[data-storia-avvia], [data-storia-prova], [data-storia-youtube]')) return true;
       const scelta = document.getElementById('demo-elenco');
       const d = scelta && storieDisponibili().find(x => x.chiave === scelta.value);
       const editor = document.getElementById('demo-editor');
       return !!d || !!(editor && /character_/.test(editor.value || ''));
     };
     document.addEventListener('click', e => {
-      const tasto = e.target && e.target.closest && e.target.closest('#demo-avvia, [data-storia-avvia], [data-storia-prova]');
+      const tasto = e.target && e.target.closest && e.target.closest('#demo-avvia, [data-storia-avvia], [data-storia-prova], [data-storia-youtube]');
       if (tasto && conPersonaggi(tasto) && radice.narrazione && typeof radice.narrazione.preparaAnalisi === 'function')
         radice.narrazione.preparaAnalisi();
     }, true);
@@ -7866,6 +7866,15 @@
       duplica.dataset.storiaDuplica = st.chiave;
       duplica.textContent = t('storie.duplica');
       azioni.append(guarda, duplica);
+      // v464: la storia, registrata, dritta sul canale YouTube (`youtube.js`)
+      if (typeof radice.ytRegistraEPubblica === 'function') {
+        const yt = document.createElement('button');
+        yt.type = 'button'; yt.className = 'tasto-cielo tasto-youtube';
+        yt.dataset.storiaYoutube = st.chiave;
+        yt.textContent = t('storie.youtube');
+        yt.title = t('storie.youtubeAiuto');
+        azioni.append(yt);
+      }
       let segno = null;
       // v461: una storia dello Studio messa qui si riapre nello Studio, ed è
       // segnata come fatta da chi usa l'app
@@ -7944,6 +7953,17 @@
       }
       const avvia = e.target.closest('[data-storia-avvia]');
       const duplica = e.target.closest('[data-storia-duplica]');
+      // v464: «YouTube»: gira la storia registrandola, poi la finestra di
+      // pubblicazione col suo titolo
+      const suYoutube = e.target.closest('[data-storia-youtube]');
+      if (suYoutube) {
+        const st = storieDisponibili().find(x => x.chiave === suYoutube.dataset.storiaYoutube);
+        if (!st || typeof radice.ytRegistraEPubblica !== 'function') return;
+        storChiudiAnteprima();
+        try { radice.ytRegistraEPubblica(st.testo, st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave); }
+        catch (err) { const esito = document.getElementById('demo-esito'); if (esito) esito.textContent = err.message; }
+        return;
+      }
       // La trama intera o i personaggi di una storia: una linguetta per scheda
       const lc = e.target.closest('[data-storia-apri]');
       if (lc) {

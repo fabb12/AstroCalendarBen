@@ -94,7 +94,39 @@ const server = http.createServer((req, res) => {
       await prima.locator(':scope > summary').click();
       await pagina.evaluate(() => StudioStorie.ridisegna());
       assert.equal(await pagina.locator('.studio-scena[open]').count(), 0);
+      // v464: una scena fra la prima e la seconda, e un momento fra due battute
+      const idScene = () => pagina.evaluate(() => StudioStorie.progetto.scene.map(sc => sc.id));
+      const primaDi = await idScene();
+      assert.equal(await pagina.locator('[data-fai="inserisciScena"]').count(), primaDi.length);
+      await pagina.locator('[data-fai="inserisciScena"][data-valore="1"]').click();
+      const dopo = await idScene();
+      assert.equal(dopo.length, primaDi.length + 1);
+      assert.equal(dopo[0], primaDi[0]);
+      assert.equal(dopo[2], primaDi[1], 'la seconda scena di prima è scivolata al terzo posto');
+      const inMezzo = pagina.locator('.studio-scena').nth(1);
+      assert.equal(await inMezzo.getAttribute('open'), '', 'la scena inserita si apre');
+      assert.equal(await inMezzo.locator('.studio-momento.aperto').count(), 1, 'col suo primo momento aperto');
+      const nuovaSc = await pagina.evaluate(() => { const p = StudioStorie.progetto; return { amb: p.scene[1].ambiente, vicina: p.scene[0].ambiente, n: p.scene[1].momenti.length }; });
+      assert.equal(nuovaSc.amb, nuovaSc.vicina, 'prende l\'ambiente della scena di sopra');
+      assert.equal(nuovaSc.n, 1);
+      // un secondo momento in fondo, poi uno in mezzo ai due
+      await inMezzo.locator('[data-fai="nuovoMomento"]').click();
+      const momenti = () => pagina.evaluate(() => StudioStorie.progetto.scene[1].momenti.map(m => ({ id: m.id, chi: m.chi })));
+      const due = await momenti();
+      assert.equal(due.length, 2);
+      assert.equal(await inMezzo.locator('[data-fai="inserisciMomento"]').count(), 1);
+      await inMezzo.locator('[data-fai="inserisciMomento"]').click();
+      const tre = await momenti();
+      assert.equal(tre.length, 3);
+      assert.deepEqual([tre[0].id, tre[2].id], [due[0].id, due[1].id], 'il momento nuovo sta in mezzo');
+      assert.equal(await inMezzo.locator('.studio-momento.aperto').getAttribute('data-momento'), tre[1].id, 'ed è quello aperto');
+      if (tre[1].chi) assert.equal(await pagina.evaluate(() => document.activeElement && document.activeElement.tagName), 'TEXTAREA', 'col cursore nella battuta');
+      if (await pagina.evaluate(() => StudioStorie.presenti(StudioStorie.progetto, StudioStorie.progetto.scene[1]).length) > 1)
+        assert.notEqual(tre[1].chi, tre[0].chi, 'non parla di nuovo chi ha appena parlato');
+      assert.ok(await pagina.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'nessuno scorrimento di lato col «+»');
+      // si rimette com'era
+      await pagina.evaluate(() => { const p = StudioStorie.progetto; p.scene.splice(1, 1); StudioStorie.ridisegna(); });
     }
-    console.log('Scene compresse: apertura, chiusura, tastiera e stato dopo modifica verificati su desktop e telefono.');
+    console.log('Scene compresse: apertura, chiusura, tastiera, stato dopo modifica e scene e momenti inseriti in mezzo verificati su desktop e telefono.');
   } finally { if (browser) await browser.close(); server.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

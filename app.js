@@ -342,6 +342,11 @@ const DISEGNI = {
   // del tasto «Avvia demo» che la pagina tiene in primo piano.
   demo: `<circle cx="12" cy="12" r="8.6"/><path d="M10.2 8.6v6.8l5.4-3.4z"/>`,
 
+  // v464: pubblicare un filmato (YouTube, `youtube.js`): lo schermo col
+  // «play» e la freccia che sale
+  pubblica: `<rect x="3" y="7.4" width="18" height="12.6" rx="3"/>
+    <path d="M10.4 11.2v5.2l4.4-2.6zM12 2.8v2.6M9.8 4.4 12 2.4l2.2 2"/>`,
+
   galleria: `<rect x="3.5" y="5" width="17" height="14" rx="2"/>
     <path d="m5.8 16 4.1-4.2 3.1 3 2.2-2.2 3 3.4"/><circle cx="15.8" cy="9" r="1.4"/>`,
 
@@ -31279,6 +31284,11 @@ function skyRegAvviaVideo() {
   r.pezzi = [];
   r.est = tipo.est;
   r.mime = tipo.mime.split(';')[0];
+  // v464: il titolo della demo o della storia che si registra (lo mette
+  // `demo.js`), da proporre quando il filmato va su YouTube. Si prende qui e
+  // si azzera subito: la registrazione dopo, fatta a mano, non è più quella
+  const titolo = r.titolo || '';
+  r.titolo = '';
   r.registratore.ondataavailable = (e) => { if (e.data && e.data.size) r.pezzi.push(e.data); };
   r.registratore.onstop = () => {
     if (r.flusso) { r.flusso.getTracks().forEach(t => t.stop()); r.flusso = null; }
@@ -31289,7 +31299,7 @@ function skyRegAvviaVideo() {
       skyAvviso('registra', 'La registrazione è rimasta vuota: riprova.', 8000);
       return;
     }
-    skyRegMostraEsito(new Blob(pezzi, { type: r.mime }), r.est, r.mime);
+    skyRegMostraEsito(new Blob(pezzi, { type: r.mime }), r.est, r.mime, titolo);
   };
   r.registratore.start();
   return true;
@@ -31394,14 +31404,15 @@ function skyRegNomeFile(est) {
     `${due(d.getHours())}${due(d.getMinutes())}${due(d.getSeconds())}.${est}`;
 }
 
-function skyRegMostraEsito(blob, est, tipo) {
+function skyRegMostraEsito(blob, est, tipo, titolo) {
   const r = sky.reg;
   skyRegDimenticaEsito();
   r.esito = {
     blob,
     url: URL.createObjectURL(blob),
     nome: skyRegNomeFile(est),
-    tipo: tipo || blob.type
+    tipo: tipo || blob.type,
+    titolo: titolo || ''
   };
 
   const prefisso = r.origine === 'solare' ? 'sol' : 'skymap';
@@ -31428,6 +31439,9 @@ function skyRegMostraEsito(blob, est, tipo) {
   }
   const pannello = document.getElementById(`${prefisso}-clip`);
   if (pannello) pannello.classList.add('visibile');
+  // v464: una storia girata con «Registra e pubblica» apre da sola la
+  // finestra di YouTube, col suo titolo (`youtube.js`)
+  if (typeof ytDopoRegistrazione === 'function') ytDopoRegistrazione(r.esito);
 }
 
 function skyRegChiudiPannello() {
@@ -31477,6 +31491,17 @@ async function skyRegCondividi() {
   skyRegSalva();
   skyAvviso('registra', 'Questo dispositivo non passa i file alle altre app: ' +
     'l\'ho scaricato, così lo puoi allegare a mano.', 9000);
+}
+
+// v464: «YouTube» nel pannello del filmato. La finestra di `youtube.js` fa
+// tutto il resto (il collegamento, se manca, il titolo, la visibilità, il
+// caricamento); qui si passa soltanto il filmato. Senza il modulo il tasto
+// non fa niente, e il pannello resta quello di prima.
+function skyRegYoutube() {
+  const e = sky.reg.esito;
+  if (!e || typeof ytApriPubblica !== 'function') return;
+  ytApriPubblica({ blob: e.blob, nome: e.nome, tipo: e.tipo, titolo: e.titolo,
+    origine: sky.reg.origine === 'solare' ? 'solare' : 'planetario' });
 }
 
 function skyRegScarica(e) {
@@ -32546,6 +32571,11 @@ function videoDisegnaSchede(elenco, video) {
     if (condivisione && videoCondivisibile(elemento)) {
       azioni.append(videoTastoAzione('ui.condividi', () => videoCondividiSalvato(elemento)));
     }
+    // v464: un video della galleria va anche su YouTube (`youtube.js`)
+    if (genere === 'video' && typeof ytApriPubblica === 'function') {
+      azioni.append(videoTastoAzione('galleria.youtube', () => ytApriPubblica({
+        blob: elemento.blob, nome: elemento.nome, tipo: videoTipoDi(elemento) })));
+    }
     azioni.append(
       videoTastoAzione('galleria.scarica', () => videoScaricaSalvato(elemento)),
       videoTastoAzione('galleria.elimina', () => videoElimina(elemento))
@@ -33033,6 +33063,9 @@ function skyRegInizializza() {
   collega('skymap-clip-condividi', skyRegCondividi);
   collega('skymap-clip-salva', skyRegSalva);
   collega('skymap-clip-rifai', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); skyRegAvvia(); });
+  // v464: il filmato appena fatto, dritto sul canale YouTube (`youtube.js`)
+  collega('skymap-clip-youtube', skyRegYoutube);
+  collega('sol-clip-youtube', skyRegYoutube);
   collega('sol-clip-chiudi', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); });
   collega('sol-clip-condividi', skyRegCondividi);
   collega('sol-clip-salva', skyRegSalva);

@@ -62,6 +62,7 @@ jobs:
         env:
           ADSB_PROXY_URL: ${{ vars.ADSB_PROXY_URL }}
           EDGE_TTS_API_URL: ${{ vars.EDGE_TTS_API_URL }}
+          YOUTUBE_CLIENT_ID: ${{ vars.YOUTUBE_CLIENT_ID }}
         # L'app non ha build: i file sorgente *sono* il sito. Si copiano da una
         # parte solo per lasciar fuori quello che online non serve — la storia
         # di git, i workflow, la mappa del progetto e lo script che rigenera i
@@ -116,6 +117,7 @@ jobs:
           {
             printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)"
             printf "window.EDGE_TTS_API_URL = %s;\n" "$(printf %s "$EDGE_TTS_API_URL" | jq -Rs .)"
+            printf "window.YOUTUBE_CLIENT_ID = %s;\n" "$(printf %s "$YOUTUBE_CLIENT_ID" | jq -Rs .)"
             printf "window.ASTROCAL_BUILD = Object.freeze({ version: %s, build: %s, commit: %s, builtAt: %s });\n" \
               "$(printf %s "$CACHE_VERSION" | jq -Rs .)" \
               "$(printf %s "$GITHUB_RUN_NUMBER" | jq -Rs .)" \

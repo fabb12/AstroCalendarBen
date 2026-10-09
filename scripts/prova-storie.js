@@ -1212,6 +1212,39 @@ prova('gli aiuti: la faccia dal testo, le idee per le azioni, l\'ambiente, il mo
   assert.ok(dopo.chi && dopo.chi !== p.scene[0].momenti[p.scene[0].momenti.length - 1].chi, 'parla qualcun altro');
   assert.ok(dopo.testo.length > 5);
 });
+prova('v464: una scena e un momento si inseriscono fra gli altri, non solo in fondo', () => {
+  const p = St.daModello('avventura');
+  p.scene.push(St.nuovaScena({ ambiente: 'terra_luna', presenti: [] }));
+  const ids = p.scene.map(sc => sc.id);
+  const nuova = St.inserisciScena(p, 1);
+  assert.deepEqual(p.scene.map(sc => sc.id), [ids[0], nuova.id, ...ids.slice(1)]);
+  assert.equal(nuova.ambiente, p.scene[0].ambiente, 'prende il posto della scena di sopra');
+  assert.deepEqual(nuova.presenti, p.scene[0].presenti);
+  assert.equal(nuova.momenti.length, 1);
+  assert.ok(nuova.momenti[0].testo.length > 5, 'la bozza scrive la prima battuta');
+  // in cima: prende da quella di sotto, ed è l'inizio della storia
+  const cima = St.inserisciScena(p, 0);
+  assert.equal(p.scene[0], cima);
+  assert.equal(cima.ambiente, p.scene[1].ambiente);
+  // fuori misura: si ferma ai bordi
+  const inFondo = St.inserisciScena(p, 99);
+  assert.equal(p.scene[p.scene.length - 1], inFondo);
+  // il momento: in mezzo, e non lo dice chi ha detto la battuta di sopra né quella di sotto
+  const q = St.nuovoProgetto({ cast: ['Sun', 'Earth', 'Moon'] });
+  q.scene = [St.nuovaScena({ ambiente: 'sistema', presenti: ['Sun', 'Earth', 'Moon'],
+    momenti: [St.nuovoMomento({ chi: 'Sun', testo: 'Ciao!' }), St.nuovoMomento({ chi: 'Earth', testo: 'Ciao Sole!' })] })];
+  const sc = q.scene[0];
+  assert.equal(St.presenti(q, sc).length, 3);
+  const [a, b] = sc.momenti;
+  const m = St.inserisciMomento(q, sc, 1);
+  assert.deepEqual(sc.momenti.slice(0, 3), [a, m, b]);
+  assert.ok(m.chi && m.chi !== a.chi && m.chi !== b.chi, m.chi + ' fra ' + a.chi + ' e ' + b.chi);
+  assert.equal(m.testo, '');
+  // la bozza «in mezzo» guarda la battuta di sopra, non l'ultima della scena
+  assert.equal(m.chi, 'Moon');
+  const bozza = St.prossimoMomento(q, sc, 1);
+  assert.notEqual(bozza.chi, a.chi, 'la bozza in mezzo non ridà la parola a chi sta sopra');
+});
 prova('un progetto rotto o estraneo non rompe lo Studio', () => {
   const p = St.ripulisci({ titolo: 42, cast: ['Moon', '<script>', 7], scene: [{ ambiente: 'marte', momenti: [{ testo: 'x'.repeat(900), azioni: [{ tipo: 'boh' }, { tipo: 'effetto', colore: 'rosso' }] }] }] });
   assert.equal(p.titolo, '');

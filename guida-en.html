@@ -1147,7 +1147,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
         <h3>Data</h3>
         <p class="desc"><b>Export backup</b> and <b>Restore backup</b> to save or recover your logbook,
         position, telescope, terrain and Sky Mission roll of honour; <b>Download the next 12 months</b>
-        instead creates a file to add to your calendar.</p>
+        instead creates a file to add to your calendar. This is also where you connect the <a href="#youtube">YouTube account</a>.</p>
       </div>
     </div>
 
@@ -1159,6 +1159,39 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <div><dt>Notify me</dt><dd>Reminders for the events that are coming up.</dd></div>
       <div><dt>Settings</dt><dd>The tabs above and the guide. Automated demos have their own menu entry, <b>Demo</b>.</dd></div>
       <div><dt>Language</dt><dd>Italian or English. Instant, reloads nothing.</dd></div>
+    </dl>
+
+    <h3 id="youtube" style="margin-top:26px">Publishing on YouTube</h3>
+    <p>The app's clips — a minute of planetarium, the 3D Solar System, a demo or a recorded CosmoStory — can go
+    <strong>straight to your YouTube channel</strong>, without downloading them and uploading them again from a
+    computer. You connect the account once, in <b>Settings → Data → YouTube account</b> (or in the <b>YouTube</b>
+    tab of the Story Studio settings).</p>
+    <dl class="kv">
+      <div><dt>Connecting</dt><dd>“Connect your YouTube account” opens Google's window: choose the channel's
+      account and press “Allow”. The app never sees your password and asks for only two permissions, uploading
+      videos and reading the channel name. The permission lasts an hour and lives only in memory: afterwards, at
+      the first “Publish”, Google's window opens and closes by itself. “Disconnect” forgets it; to remove it for
+      good there is the permissions page of your Google account.</dd></div>
+      <div><dt>The client ID</dt><dd>Google wants to know which project is asking for permission. If the app you
+      use doesn't already have one, the panel asks for the <b>OAuth client ID</b>, made once and for free: on
+      console.cloud.google.com create a project; in “APIs &amp; Services → Library” enable <b>YouTube Data API
+      v3</b>; in “OAuth consent screen” choose “External” and add yourself among the test users; in
+      “Credentials” create an “OAuth client ID” of type “Web application” with the app's address (for example
+      <code>https://fabb12.github.io</code>) among the authorised JavaScript origins. Copy the ID (it ends with
+      <code>.apps.googleusercontent.com</code>) and paste it into the panel. It is not a password. Whoever
+      publishes the app can put it in the repository variable <code>YOUTUBE_CLIENT_ID</code>, and then nobody
+      has to.</dd></div>
+      <div><dt>Publishing</dt><dd>The <b>YouTube</b> button is in the “Your moment” panel after each recording,
+      in the Gallery cards and in the CosmoStories cards; at the bottom of the Studio there is <b>Record and
+      publish on YouTube</b>. These last two start the story while recording it (even if recording is off in the
+      demo options) and at the end open the window by themselves. There you choose title (suggested: the
+      story's), description, tags, visibility — <b>Private</b>, <b>Unlisted</b>, <b>Public</b> — and whether it
+      is made for kids; “Publish” uploads it with a progress bar. If the network drops halfway, it resumes from
+      where it got to; “Cancel” stops everything. At the end: “Open on YouTube”, “Open in YouTube Studio”, “Copy
+      the link”. The last ten published are listed in the panel.</dd></div>
+      <div><dt>Two Google limits</dt><dd>Until the Google project has been verified by YouTube, videos uploaded
+      by an app stay <b>private</b>: you make them public from YouTube Studio. And each project has a daily quota
+      that is enough for about six uploads a day, for everyone using the same client ID.</dd></div>
     </dl>
 
     <h3 style="margin-top:26px">Sharing</h3>
@@ -1442,6 +1475,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <b>Camera and date</b> (framing, camera, day, days passing and “Show the date and place”, off by
       default) and <b>Music and voices</b> — and only one opens at a time. Below come the moments: each one,
       closed, is a single row (who speaks, their words, the face, how many actions); tap it to open it.
+      Between two moments there is a <b>+ Moment here</b>, and before each scene a <b>+ Scene here</b>: the new
+      line or scene is born right there in the middle, already open, instead of at the end (the scene takes the
+      place and the cast of the scene above; the moment gives the word to someone who said neither the line
+      above nor the one below).
       Inside, tap who speaks and write what they say in the speech bubble; below, three tabs: <b>Face</b>,
       <b>Voice and length</b> and <b>What happens</b>, where you add what happens meanwhile, grouped into the
       face, movement, shape, effects and sounds — flying to another body, going back to its orbit, jumping,
@@ -1470,9 +1507,11 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       With ElevenLabs, in “Voice and length” → <b>Expressions inside the line</b> put the cursor in the line and tap
       an emotion, a way of speaking, a laugh or a pause: it goes in right there as <code>[whispers]</code> and applies
       from that point on (heard only with the v3 model; subtitles and the app voice do not show it).
-      <b>Settings</b> (the gear at the top) opens a panel with three tabs: <b>This story</b> (export to a
+      <b>Settings</b> (the gear at the top) opens a panel with four tabs: <b>This story</b> (export to a
       file, import, duplicate, the script, the voice file and, at the bottom, delete), <b>Sync</b> (where the
-      repository stands, “Sync now” and the token) and <b>ElevenLabs</b> (the key, the model and the credits).
+      repository stands, “Sync now” and the token), <b>ElevenLabs</b> (the key, the model and the credits) and
+      <b>YouTube</b> (the connected channel and “Record and publish on YouTube”, which is also at the bottom of
+      the Studio: see <a href="#youtube">Publishing on YouTube</a>).
       With ElevenLabs the line is generated with the right <b>intonation</b>: the emotion is the face the
       character has while speaking (even one left over from before), and in “Voice and length” you can add how
       it says it (whispers, shouts, laughs…); below you can read the exact text that is sent, tags

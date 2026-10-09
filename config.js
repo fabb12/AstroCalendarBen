@@ -37,14 +37,21 @@ window.INS_MODELLO_URL = window.INS_MODELLO_URL || '';
 // dal CDN, che è quello che serve per farlo funzionare offline.
 window.INS_ORT_URL = window.INS_ORT_URL || '';
 
+// YouTube (v464, `youtube.js`): l'ID client OAuth di Google con cui chi usa
+// l'app collega il proprio canale per pubblicarci i filmati. Non è un
+// segreto (finisce comunque nella finestra di accesso di Google): è il nome
+// del progetto Google Cloud che chiede il permesso. Il deploy lo prende dalla
+// variabile di repository `YOUTUBE_CLIENT_ID`; vuoto, lo si incolla nelle
+// Impostazioni (Dati → Account YouTube). Come crearlo: `guida.html#youtube`.
+window.YOUTUBE_CLIENT_ID = window.YOUTUBE_CLIENT_ID || '';
 
 // Informazioni della copia locale. `version` e `builtAt` vanno aggiornati
 // insieme a CACHE_NAME in sw.js a ogni modifica. Durante il deploy GitHub
 // Actions li sostituisce con versione della cache, numero della build, commit
 // e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v463',
+  version: 'v464',
   build: '',
   commit: '',
-  builtAt: '2026-10-09T09:58:00.000Z'
+  builtAt: '2026-10-09T12:24:00.000Z'
 });
