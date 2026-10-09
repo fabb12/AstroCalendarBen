@@ -105,6 +105,14 @@ Pausa e ripresa arrivano dal motore (`contesto.pausa`/`contesto.riprendi` in
 porta con sé nel pieno schermo. Le frasi devono stare nella durata della
 scena (due parole e mezza al secondo): `controlla-narrazione.js` lo verifica.
 
+Dalla v468 (lo scambio di battute delle CosmoStorie, `STORIE.md`): un file
+registrato è finito dove finisce il suono, non il file (`narrFineSuono`
+decodifica il file una volta e `narrUltimoSuono` trova l'ultimo blocco che
+suona; senza Web Audio vale la fine del file), e `narrazione.prepara({ id,
+testo })` scarica prima i file di una battuta che sta per venire (solo i file
+del sito, al più `NARR_PRONTI_MAX` in attesa; `narrCaricaFile` li prende da
+lì).
+
 ## Missione Cielo
 
 `missRacconta` consegna la frase alla narrazione sul canale `missione`, con

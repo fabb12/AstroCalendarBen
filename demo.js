@@ -2018,10 +2018,15 @@
       // aspetto da cartone (`demoStoriaCinema` in app.js) — cielo sfumato e
       // pieno di stelle, niente orbite, fili, piani e righelli della lezione
       storia: demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
-      // v458, il discorso affiatato: in una CosmoStoria la scena chiude un
-      // quarto di secondo dopo la voce, non alla fine della sua durata (che
-      // è scritta per la voce più lenta). Mai sotto i due secondi
-      stringiVoce: demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))) ? { coda: 250, minimo: 2000 } : null,
+      // v458, il discorso affiatato: in una CosmoStoria la scena chiude
+      // subito dopo la voce, non alla fine della sua durata (che è scritta
+      // per la voce più lenta). v468, lo scambio di battute: la coda scende
+      // da 250 a 40 ms (la voce registrata finisce dove finisce il suono,
+      // non il file: `narrFineSuono`), il minimo da 2 a 1 s (un «Giusto!»
+      // dura un secondo), e i gesti scritti dopo la voce si stringono fra
+      // 0,35 e 0,6 s invece di aspettare il loro tempo (`Motore.stringi`)
+      stringiVoce: demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando)))
+        ? { coda: 40, minimo: 1000, gesto: { min: 350, max: 600 } } : null,
       // Col movimento ridotto le camere delle demo non viaggiano. In una
       // CosmoStoria no (v434): lì il movimento della camera è il racconto
       // che chi l'ha scritta ha scelto, ed è lento e morbido. Chi guarda una
@@ -2033,12 +2038,22 @@
       // ferma del tutto con l'opzione `cameraStorie` spenta.
       ridotto: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) &&
         !demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
-      scena(scena) {
+      scena(scena, indice) {
         // Ogni scena puo impostare la propria inquadratura iniziale. Dopo un
         // intervento della persona, pero, le animazioni della scena corrente
         // le cedono la camera mentre il racconto e il suo orologio proseguono.
         c.cameraManuale = false;
         if (scena.vista !== 'transition') vista(scena.vista, c);
+        // v468, lo scambio di battute: in una CosmoStoria le voci di questa
+        // scena e della seguente si scaricano adesso, e la battuta dopo parte
+        // senza aspettare la rete (`narrazione.prepara`)
+        if (c.storia && typeof narrazione === 'object' && typeof narrazione.prepara === 'function') {
+          for (const sc of [scena, demo.scene[indice + 1]]) for (const a of (sc && sc.azioni) || []) {
+            if (a.comando !== 'character_speak') continue;
+            const p = a.parametri || {};
+            try { narrazione.prepara({ id: typeof p.id === 'string' ? p.id : '', testo: typeof p.text === 'string' ? p.text : undefined }); } catch (_) { /* si scarica alla battuta */ }
+          }
+        }
       },
       cediCamera() {
         c.cameraManuale = true;

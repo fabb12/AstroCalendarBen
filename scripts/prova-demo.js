@@ -243,19 +243,21 @@ for (const d of predefiniti) {
     const reg = Object.create(null);
     const voci = [];
     reg.character_speak = { crea: () => { let fine; const p = new Promise(r => { fine = r; }); voci.push(() => fine(esito)); return { fineNarrazione: p }; } };
-    reg.gesto = { crea: () => ({}) };
+    const gesti = [];
+    reg.gesto = { crea: () => { const g = { nato: t, u: [] }; gesti.push(g); return { aggiorna: u => g.u.push([t, u]) }; } };
+    reg.story_question = { crea: () => ({}) };
     let t = 0; const coda = new Map(); let id = 0;
     const m = new Motore(reg, { ora: () => t, richiedi: f => { coda.set(++id, f); return id; }, annulla: k => coda.delete(k) });
     const avanti = async ms => { t += ms; const l = [...coda.values()]; coda.clear(); l.forEach(f => f()); await null; await null; };
     m.avvia(testoDemo, contesto);
-    return { m, voci, avanti, cambio: async () => { for (let k = 0; k < 120; k++) { if (m.indice > 0) return t; await avanti(100); if (k === 29) voci.shift()(); } return t; } };
+    return { m, voci, gesti, avanti, ora: () => t, cambio: async () => { for (let k = 0; k < 120; k++) { if (m.indice > 0) return t; await avanti(100); if (k === 29) voci.shift()(); } return t; } };
   };
   const due = 'define_demo s { scene a { duration: 10s; action: character_speak {}; } scene b { duration: 5s; action: gesto {}; }}';
-  const stretta = { stringiVoce: { coda: 250, minimo: 2000 } };
+  const stretta = { stringiVoce: { coda: 40, minimo: 1000, gesto: { min: 350, max: 600 } } };
   (async () => {
     let g = giro(stretta, due);
     let quando = await g.cambio();
-    ok(quando >= 3000 && quando <= 3500, 'Storia: la scena chiude un attimo dopo la voce (' + quando + ' ms invece di 10 s)');
+    ok(quando >= 3000 && quando <= 3200, 'Storia: la scena chiude un attimo dopo la voce (' + quando + ' ms invece di 10 s)');
     g.m.ferma();
     g = giro({}, due);
     quando = await g.cambio();
@@ -267,13 +269,52 @@ for (const d of predefiniti) {
     g.m.ferma();
     g = giro(stretta, 'define_demo s { scene a { duration: 10s; action: character_speak {}; action: gesto { shot_from: 0.6 }; } scene b { duration: 5s; action: gesto {}; }}');
     quando = await g.cambio();
-    ok(quando >= 6500 && quando <= 7000, 'Un gesto scritto dopo la battuta si vede prima di chiudere (' + quando + ')');
+    // v468: il gesto scritto a 6 s non tiene la scena aperta fino a lì: si
+    // stringe nella finestra dopo la voce (un quarto dei 7 s rimasti, al più
+    // 0,6 s) e si vede prima di chiudere
+    const gesto = g.gesti[0];
+    ok(quando >= 3600 && quando <= 3800, 'Un gesto scritto dopo la battuta non tiene aperta la scena fino al suo tempo (' + quando + ')');
+    ok(gesto && gesto.nato >= 3000 && gesto.nato < quando - 300, 'E nasce prima di chiudere (' + (gesto && gesto.nato) + ')');
+    ok(gesto && gesto.u.some(([tu, u]) => u === 1 && tu < quando), 'E arriva al suo stato finale prima di chiudere');
+    g.m.ferma();
+    g = giro(stretta, 'define_demo s { scene a { duration: 5s; action: character_speak {}; action: gesto { shot_from: 0.9 }; } scene b { duration: 5s; action: gesto {}; }}');
+    quando = await g.cambio();
+    ok(quando >= 3500 && quando <= 3700, 'Poco tempo dopo la voce: il gesto si vede ancora (' + quando + ')');
+    g.m.ferma();
+    // con una finestra larga (1,5 s) il gesto scritto a 3,2 s non la porta
+    // oltre i 3,7 s: mai più tardi delle regole di prima
+    g = giro({ stringiVoce: { coda: 40, minimo: 1000, gesto: { min: 350, max: 1500 } } },
+      'define_demo s { scene a { duration: 10s; action: character_speak {}; action: gesto { shot_from: 0.32 }; } scene b { duration: 5s; action: gesto {}; }}');
+    quando = await g.cambio();
+    ok(quando >= 3700 && quando <= 3800, 'Mai più tardi di mezzo secondo dopo il gesto scritto (' + quando + ')');
+    g.m.ferma();
+    g = giro(stretta, 'define_demo s { scene a { duration: 3.2s; action: character_speak {}; action: gesto { shot_from: 0.97 }; } scene b { duration: 5s; action: gesto {}; }}');
+    quando = await g.cambio();
+    ok(quando >= 3200 && quando <= 3400, 'Poco tempo rimasto: la scena dura quanto è scritto (' + quando + ')');
+    g.m.ferma();
+    g = giro(stretta, 'define_demo s { scene a { duration: 10s; action: character_speak {}; } scene b { duration: 5s; action: gesto {}; }}');
+    for (let k = 0; k < 3; k++) await g.avanti(100);
+    g.voci.shift()();
+    for (let k = 0; k < 15; k++) { if (g.m.indice > 0) break; await g.avanti(100); }
+    ok(g.m.indice === 1 && g.ora() >= 1000 && g.ora() <= 1100, 'Una battuta cortissima tiene la scena un secondo, non due (' + g.ora() + ')');
+    g.m.ferma();
+    g = giro(stretta, 'define_demo s { scene a { duration: 10s; action: story_question {}; action: character_speak {}; } scene b { duration: 5s; action: gesto {}; }}');
+    quando = await g.cambio();
+    ok(quando >= 10000, 'La domanda al pubblico tiene il suo tempo per pensare (' + quando + ')');
+    g.m.ferma();
+    g = giro({}, 'define_demo s { scene a { duration: 10s; action: character_speak {}; action: gesto { shot_from: 0.6 }; } scene b { duration: 5s; action: gesto {}; }}');
+    quando = await g.cambio();
+    ok(quando >= 10000 && g.gesti[0].nato >= 6000, 'Fuori da una storia il gesto aspetta il suo tempo (' + g.gesti[0].nato + ')');
     g.m.ferma();
     g = giro(stretta, 'define_demo s { scene a { duration: 10s; action: character_speak {}; action: character_speak { shot_from: 0.5 }; } scene b { duration: 5s; action: gesto {}; }}');
     for (let k = 0; k < 30; k++) await g.avanti(100);
     g.voci.shift()();
-    for (let k = 0; k < 25; k++) await g.avanti(100);
-    ok(g.m.indice === 0 && g.voci.length === 1, 'La seconda battuta comincia: la prima voce finita non chiude la scena');
+    // v468, lo scambio di battute: la seconda, scritta a 5 s, comincia
+    // subito dopo la prima (finita a 3 s), non due secondi dopo
+    for (let k = 0; k < 4; k++) await g.avanti(100);
+    ok(g.m.indice === 0 && g.voci.length === 1, 'La seconda battuta comincia subito dopo la prima (' + g.ora() + ' ms, scritta a 5000)');
+    for (let k = 0; k < 21; k++) await g.avanti(100);
+    ok(g.m.indice === 0, 'La prima voce finita non chiude la scena');
     g.voci.shift()();
     for (let k = 0; k < 6; k++) await g.avanti(100);
     ok(g.m.indice === 1, 'Finita anche la seconda, la scena chiude (' + g.m.indice + ')');

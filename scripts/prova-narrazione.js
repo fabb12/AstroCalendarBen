@@ -78,7 +78,7 @@ function creaMondo(opz = {}) {
     if (!r) return { ok: false, status: 404, headers: { get: () => '' }, blob: async () => ({ size: 0, type: '' }) };
     if (r.errore) throw new TypeError('Failed to fetch');
     return { ok: r.status === 200, status: r.status, headers: { get: () => r.tipo || 'audio/mpeg' },
-      blob: async () => ({ size: r.size, type: r.tipo || 'audio/mpeg', da: url }), json: async () => r.json };
+      blob: async () => ({ size: r.size, type: r.tipo || 'audio/mpeg', da: url, arrayBuffer: async () => ({ da: url }) }), json: async () => r.json };
   }
   const URLFinto = { createObjectURL(b) { const u = 'blob:' + (prossimoBlob++); blob.set(u, b.da); return u; },
     revokeObjectURL(u) { blob.delete(u); } };
@@ -106,6 +106,8 @@ function creaMondo(opz = {}) {
       return Promise.resolve();
     }
     pause() { if (this.suona) { clearTimeout(this.fine); this.resta -= adesso - this.partito; this.suona = false; } }
+    get paused() { return !this.suona; }
+    get currentTime() { return (audioStato.durata - this.resta + (this.suona ? adesso - this.partito : 0)) / 1000; }
   }
 
   // La sintesi del dispositivo: parla cento millisecondi a parola.
@@ -539,6 +541,58 @@ prova('le preferenze si salvano, e un salvataggio illeggibile non rompe niente',
   assert.deepEqual(JSON.parse(JSON.stringify(rotto.n.preferenze())), { attiva: true, volume: 0.9, testo: true, soloTts: false });
   const fuori = creaMondo({ memoria: [['astrocalendario_narrazione', '{"volume":7}']] });
   assert.equal(fuori.n.preferenze().volume, 1);
+});
+
+// ---------------------------------------------------------------------
+// v468, lo scambio di battute: la fine vera del suono e la battuta scaricata prima
+// ---------------------------------------------------------------------
+// Un audio decodificato finto: suona (0,2) fino a `fino` secondi, poi tace
+const audioFinto = (fino, durata = 1, frequenza = 1000) => ({
+  sampleRate: frequenza, numberOfChannels: 1, length: durata * frequenza,
+  getChannelData: () => Float32Array.from({ length: durata * frequenza }, (_, i) => i < fino * frequenza ? (i % 2 ? 0.2 : -0.2) : 0.0005)
+});
+prova('la fine vera del suono: l’ultimo blocco che suona, più un margine', () => {
+  const m = creaMondo();
+  assert.ok(Math.abs(m.n.ultimoSuono(audioFinto(0.6)) - 0.66) < 0.011);
+  assert.equal(m.n.ultimoSuono(audioFinto(0.99)), 1, 'mai oltre la fine del file');
+  assert.equal(m.n.ultimoSuono(audioFinto(0)), null, 'un file muto non ha una fine');
+  assert.equal(m.n.ultimoSuono(null), null);
+});
+
+prova('la voce registrata finisce dove finisce il suono, non il file', async () => {
+  const m = conFile(creaMondo({ manifest: MANIFEST }), 'demo/it/prova-1.mp3');
+  m.window.OfflineAudioContext = class { decodeAudioData(dati, si) { si(audioFinto(0.6)); } };
+  let finita = null;
+  const esito = m.n.parla({ canale: 'demo', id: 'demo.narr.prova.1' });
+  esito.then(() => { finita = m.adesso(); });
+  await m.avanza(1500);
+  assert.equal(await esito, 'audio');
+  assert.ok(finita !== null && finita >= 650 && finita < 800, 'finita a ' + finita + ' ms invece che a 1000');
+});
+
+prova('senza Web Audio la voce finisce alla fine del file, come prima', async () => {
+  const m = conFile(creaMondo({ manifest: MANIFEST }), 'demo/it/prova-1.mp3');
+  let finita = null;
+  const esito = m.n.parla({ canale: 'demo', id: 'demo.narr.prova.1' });
+  esito.then(() => { finita = m.adesso(); });
+  await m.avanza(1500);
+  assert.equal(await esito, 'audio');
+  assert.ok(finita >= 1000, 'finita a ' + finita);
+});
+
+prova('la battuta che sta per venire si scarica prima, una volta sola', async () => {
+  const m = conFile(creaMondo({ manifest: MANIFEST }), 'demo/it/prova-1.mp3');
+  const file = 'audio/narrazione/demo/it/prova-1.mp3';
+  assert.equal(m.n.prepara({ id: 'demo.narr.prova.1' }), 1);
+  assert.equal(m.n.prepara({ id: 'demo.narr.prova.1' }), 0, 'già in arrivo: non si richiede');
+  await m.avanza(10);
+  const esito = m.n.parla({ canale: 'demo', id: 'demo.narr.prova.1' });
+  await m.avanza(1500);
+  assert.equal(await esito, 'audio');
+  assert.equal(m.chiesti.filter(c => c.url === file).length, 1, 'il file si scarica una volta sola');
+  assert.equal(m.n.prepara({ testo: 'Una frase senza voce registrata' }), 0, 'la sintesi non si chiede prima');
+  m.n.impostaPreferenze({ attiva: false });
+  assert.equal(m.n.prepara({ id: 'demo.narr.prova.1' }), 0, 'a narrazione spenta non si scarica niente');
 });
 
 prova('senza elemento audio (un browser vecchio) si va in sintesi', async () => {
