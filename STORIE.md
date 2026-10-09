@@ -2312,6 +2312,53 @@ canzone passa all'altra strofa e il karaoke resta lì.
   presto nella ripresa. Testi `studio.ui.primaFraseChi` e
   `studio.ui.primaFrase`, `.studio-scena-frase` in `style.css`.
 
+### Il filmato per YouTube: risoluzione piena, senza data e luogo, controllato prima (v466)
+
+Chi preme **YouTube** (sulla scheda di una CosmoStoria o «Registra e
+pubblica su YouTube» nello Studio: le due interfacce passano tutte e due da
+`ytRegistraEPubblica`) ha chiesto tre cose.
+
+- **La risoluzione massima.** Il registratore dei filmati (`app.js`, «Il
+  tuo momento») tiene il lato lungo a 1080 px, la misura buona per le chat:
+  un filmato per YouTube usciva a 1080 × 608. Ora `ytRegistraEPubblica`
+  avvia la demo con `{ registra: true, perYoutube: true, schermoIntero:
+  true }`; `demo.js` (`avviaRegistrazione`) accende `sky.reg.perYoutube` e
+  la tela si misura con `skyRegMisuraTela(l, h, dpr, alta)`: i pixel veri
+  dello schermo (CSS × `devicePixelRatio`), mai sotto 1920 di lato lungo
+  (sotto YouTube lo tratta da 720p) e mai sopra 3840 (4K). Il flusso segue
+  (`skyRegBitrate`: 0,2 bit per pixel, da 8 a 45 Mbit/s; i filmati normali
+  restano a 6). Se il registratore rifiuta la misura grande, si riprova a
+  1920 prima di arrendersi. Se il pieno schermo chiesto all'avvio non è
+  ancora arrivato quando la registrazione parte (senza l'intro), la tela
+  prende la misura dello schermo (`sky.reg.misura`), non quella della
+  finestra di quel momento. Tutto torna com'era in `ripristina`.
+- **Niente data e luogo in basso a sinistra.** Con `perYoutube` la firma
+  (`skyRegFirma(ctx, L, H, { soloMarchio: true })`) lascia solo il nome
+  dell'app in basso a destra: il titolo e la descrizione del video dicono
+  già cos'è.
+- **Il file controllato prima della finestra.** `ytApriPubblica` non apre
+  più subito: `ytControllaVideo(blob)` apre il filmato in un `<video>` come
+  farebbe un lettore. Sotto un kilobyte è vuoto; deve avere un'immagine e una
+  durata (i webm del registratore non la scrivono: la si fa calcolare
+  saltando in fondo). Se è guasto la finestra lo dice (`yt.controllo.*`),
+  senza campi né «Pubblica», con «Scarica il filmato»; se è a posto la
+  finestra ha l'**anteprima** del filmato (`.yt-anteprima`, un elemento solo
+  per tutta la vita della finestra, che non riparte a ogni ridisegno) e la
+  riga con nome, peso, misura e qualità (`1920 × 1080 (1080p)`) e durata.
+  Se il browser non risponde entro 12 s la finestra si apre lo stesso,
+  dicendo che non si è potuto controllare.
+- **Le due finestre una sull'altra.** Alla fine della registrazione si apre
+  anche il pannello «Il tuo momento» del planetario, col suo filmato in
+  ciclo: sotto alla finestra di YouTube erano due filmati insieme. Ora
+  quello sotto si ferma (`ytFermaAnteprimeSotto`) e resta lì, per scaricarlo
+  o condividerlo dopo.
+
+Prove: `prova-youtube.js` (12, 2 nuove: il file vuoto e quello rovinato; la
+misura, il flusso, la firma senza data e luogo e una demo vera registrata
+per YouTube), con un filmato vero registrato nella pagina al posto dei 2400
+byte finti. Guardato in Chromium: dalla scheda di una CosmoStoria, 1920 ×
+1080, fotogramma senza data e luogo.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

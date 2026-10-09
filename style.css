@@ -13229,6 +13229,12 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .yt-x:disabled { opacity: 0.4; cursor: default; }
 .yt-corpo { display: grid; gap: 8px; padding: 14px 16px 16px; min-width: 0; }
 .yt-file { margin: 0; color: var(--testo-2); font-size: 0.8rem; overflow-wrap: anywhere; }
+/* v465: il filmato da guardare prima di pubblicarlo; basso abbastanza da
+   lasciare in vista i campi anche al telefono */
+.yt-anteprima {
+  display: block; width: 100%; max-height: min(34vh, 320px); border-radius: 10px;
+  background: #000; object-fit: contain;
+}
 .yt-canale, .yt-stato { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.88rem; }
 .yt-stato.ok { color: #bbf7d0; }
 .yt-miniatura { width: 28px; height: 28px; border-radius: 999px; flex: 0 0 auto; }

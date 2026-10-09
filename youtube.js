@@ -79,6 +79,13 @@ const YT_CLIENT_VALIDO = /^[0-9]{5,}-[a-z0-9]{8,}\.apps\.googleusercontent\.com$
 // arriva entro questo tempo: una storia lunga più di tre ore non esiste, e un
 // filmato fatto a mano il giorno dopo non è quello.
 const YT_DOPO_MAX_MS = 3 * 3600 * 1000;
+// v465: il filmato si controlla prima di aprire la finestra. Meno di un
+// kilobyte è un registratore che non ha scritto niente; il resto lo dice il
+// browser aprendolo (immagine, durata). Oltre YT_CONTROLLO_MS senza risposta
+// non lo si dichiara guasto: si apre la finestra dicendo che non si è potuto
+// controllare, e chi pubblica lo guarda nell'anteprima.
+const YT_FILE_MIN = 1024;
+const YT_CONTROLLO_MS = 12000;
 
 const yt = {
   token: '', scade: 0,     // il gettone di Google, solo in memoria
@@ -90,7 +97,8 @@ const yt = {
   conta: 0,                // per gli `id` dei campi, unici anche con due pannelli
   messaggio: '', tipoMessaggio: '',
   finestra: null,          // la finestra di pubblicazione aperta
-  dopo: null               // «Registra e pubblica»: la registrazione attesa
+  dopo: null,              // «Registra e pubblica»: la registrazione attesa
+  controllo: null          // v465: il controllo del filmato in corso (l'ultimo vince)
 };
 
 const ytT = (k, dati) => (typeof astroI18n === 'object' && astroI18n.t) ? astroI18n.t('yt.' + k, dati) : k;
@@ -577,15 +585,101 @@ const ytPeso = n => {
   return mb >= 1 ? fmt(mb, 1) + ' MB' : fmt(Math.max(1, Math.round(n / 1024)), 0) + ' kB';
 };
 
+/* Il controllo del filmato (v465). Chi preme YouTube vuole essere sicuro
+ * che quello che parte sia il filmato giusto e intero: prima la finestra si
+ * apriva su qualsiasi cosa il registratore avesse lasciato, anche un file
+ * vuoto o rotto, e lo si scopriva su YouTube («elaborazione non riuscita»).
+ * Qui il browser lo apre come lo aprirebbe un lettore: deve avere
+ * un'immagine (larghezza e altezza) e una durata. I webm del registratore
+ * non scrivono la durata: la si fa calcolare saltando in fondo. Risolve con
+ * { ok, motivo, durata, larghezza, altezza, avviso }. */
+function ytControllaVideo(blob) {
+  return new Promise(fine => {
+    if (!blob || !(blob.size >= YT_FILE_MIN)) { fine({ ok: false, motivo: 'vuoto' }); return; }
+    if (typeof document === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) {
+      fine({ ok: true, durata: 0, larghezza: 0, altezza: 0, avviso: 'nonControllato' }); return;
+    }
+    const v = document.createElement('video');
+    const url = URL.createObjectURL(blob);
+    let finito = false;
+    const chiudi = esito => {
+      if (finito) return;
+      finito = true;
+      clearTimeout(timer);
+      v.removeAttribute('src');
+      try { v.load(); } catch (_) { /* niente */ }
+      URL.revokeObjectURL(url);
+      fine(esito);
+    };
+    const misura = () => {
+      if (!Number.isFinite(v.duration)) return false;
+      if (!(v.videoWidth > 0 && v.videoHeight > 0)) chiudi({ ok: false, motivo: 'senzaImmagine' });
+      else if (!(v.duration > 0.2)) chiudi({ ok: false, motivo: 'troppoCorto' });
+      else chiudi({ ok: true, durata: v.duration, larghezza: v.videoWidth, altezza: v.videoHeight });
+      return true;
+    };
+    const timer = setTimeout(() => chiudi({ ok: true, durata: 0, larghezza: v.videoWidth || 0, altezza: v.videoHeight || 0, avviso: 'nonControllato' }), YT_CONTROLLO_MS);
+    v.muted = true;
+    v.preload = 'metadata';
+    v.playsInline = true;
+    v.addEventListener('loadedmetadata', () => {
+      if (misura()) return;
+      v.addEventListener('durationchange', misura);
+      v.addEventListener('timeupdate', misura);
+      try { v.currentTime = 1e7; } catch (_) { /* il browser non salta: aspetta il tempo massimo */ }
+    }, { once: true });
+    v.addEventListener('error', () => chiudi({ ok: false, motivo: 'illeggibile' }), { once: true });
+    v.src = url;
+  });
+}
+
+// «4:08», «1:02:05»
+function ytDurata(s) {
+  const n = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(n / 3600), m = Math.floor(n / 60) % 60, ss = String(n % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+// La qualità con cui YouTube lo mostrerà: dal lato corto
+function ytQualita(l, a) {
+  const corto = Math.min(l, a);
+  return corto >= 2160 ? '4K' : corto >= 1440 ? '1440p' : corto >= 1080 ? '1080p' : corto >= 720 ? '720p' : corto + 'p';
+}
+
+// I filmati dei pannelli «Il tuo momento» girano in ciclo sotto alla
+// finestra: con l'anteprima di qui sarebbero due filmati insieme, uno
+// coperto. Si fermano finché la finestra è aperta.
+function ytFermaAnteprimeSotto() {
+  if (typeof document === 'undefined') return;
+  for (const v of document.querySelectorAll('[id$="-clip-anteprima"] video')) { try { v.pause(); } catch (_) { /* niente */ } }
+}
+
 // `video` = { blob, nome, tipo, titolo, origine }. Il titolo proposto è
-// quello della storia registrata, se c'è; la descrizione dice da dove viene
+// quello della storia registrata, se c'è; la descrizione dice da dove viene.
+// v465: prima si controlla il filmato (`ytControllaVideo`), poi si apre la
+// finestra, con l'anteprima da guardare prima di pubblicare; se il file è
+// guasto la finestra lo dice e non lo pubblica.
 function ytApriPubblica(video) {
   if (!video || !video.blob || typeof document === 'undefined') return false;
+  if (yt.finestra) ytChiudiFinestra(true);
+  const turno = yt.controllo = { ritorno: document.activeElement };
+  ytPreparaGoogle();
+  ytControllaVideo(video.blob).then(esame => {
+    if (yt.controllo !== turno) return;
+    yt.controllo = null;
+    ytMostraPubblica(video, esame, turno.ritorno);
+  });
+  return true;
+}
+
+function ytMostraPubblica(video, esame, ritorno) {
   if (yt.finestra) ytChiudiFinestra(true);
   const imp = ytImpostazioni();
   const titolo = String(video.titolo || '').trim();
   yt.finestra = {
     video: { blob: video.blob, nome: String(video.nome || 'video.webm'), tipo: video.tipo || video.blob.type || 'video/webm' },
+    esame: esame || { ok: true },
+    url: URL.createObjectURL(video.blob),
+    anteprima: null,
     campi: {
       titolo: (titolo || ytT('titoloSerie')).slice(0, YT_TITOLO_MAX),
       descrizione: ytT('descrizioneSerie', { titolo: titolo || ytT('titoloSerie') }),
@@ -593,12 +687,12 @@ function ytApriPubblica(video) {
       privacy: imp.privacy,
       bambini: imp.bambini
     },
-    stato: 'pronto', quota: 0, esito: '', tipoEsito: '', risultato: null,
-    ritorno: document.activeElement, el: null
+    stato: esame && esame.ok === false ? 'guasto' : 'pronto', quota: 0, esito: '', tipoEsito: '', risultato: null,
+    ritorno: ritorno || document.activeElement, el: null
   };
-  ytPreparaGoogle();
+  ytFermaAnteprimeSotto();
   ytDisegnaFinestra();
-  const primo = yt.finestra.el.querySelector('[data-yt-campo="titolo"], [data-yt="collega"]');
+  const primo = yt.finestra.el.querySelector('[data-yt-campo="titolo"], [data-yt="collega"], [data-yt="chiudi"]');
   if (primo) { try { primo.focus({ preventScroll: true }); } catch (_) { primo.focus(); } }
   return true;
 }
@@ -609,6 +703,8 @@ function ytChiudiFinestra(forza) {
   if (f.stato === 'invio' && !forza) return;
   if (f.stato === 'invio') ytAnnulla();
   yt.finestra = null;
+  if (f.anteprima) { try { f.anteprima.pause(); } catch (_) { /* niente */ } f.anteprima.removeAttribute('src'); }
+  if (f.url) URL.revokeObjectURL(f.url);
   if (f.el) f.el.remove();
   document.removeEventListener('keydown', ytTastiFinestra, true);
   if (f.ritorno && f.ritorno.isConnected && f.ritorno.focus) { try { f.ritorno.focus({ preventScroll: true }); } catch (_) { /* niente */ } }
@@ -669,14 +765,31 @@ function ytDisegnaFinestra() {
   if (!f) return;
   const imp = ytImpostazioni();
   const valido = YT_CLIENT_VALIDO.test(ytClientId());
-  const invio = f.stato === 'invio', fatto = f.stato === 'fatto';
+  const invio = f.stato === 'invio', fatto = f.stato === 'fatto', guasto = f.stato === 'guasto';
   // Dove sta il fuoco, per rimetterlo dopo il ridisegno
   const attivo = f.el && f.el.contains(document.activeElement) ? document.activeElement : null;
   const fuoco = attivo ? (attivo.dataset.ytCampo ? 'c:' + attivo.dataset.ytCampo : attivo.dataset.yt ? 'b:' + attivo.dataset.yt + ':' + (attivo.dataset.valore || '') : '') : '';
 
   const corpo = ytEl('div', { class: 'yt-corpo' });
-  corpo.append(ytEl('p', { class: 'yt-file' }, f.video.nome + ' · ' + ytPeso(f.video.blob.size)));
-  if (!imp.collegato) {
+  // v465: il filmato da guardare prima di pubblicarlo, con la misura e la
+  // durata che il file dice davvero. Un elemento solo per tutta la vita della
+  // finestra: ridisegnando (una scelta di visibilità, la lingua) non riparte
+  const es = f.esame || {};
+  if (!guasto) {
+    if (!f.anteprima) {
+      f.anteprima = ytEl('video', { class: 'yt-anteprima', controls: true, playsinline: true, preload: 'metadata', src: f.url });
+    }
+    f.anteprima.setAttribute('aria-label', ytT('anteprima'));
+    corpo.append(f.anteprima);
+  }
+  const dettagli = [f.video.nome, ytPeso(f.video.blob.size)];
+  if (es.larghezza > 0 && es.altezza > 0) dettagli.push(`${es.larghezza} × ${es.altezza} (${ytQualita(es.larghezza, es.altezza)})`);
+  if (es.durata > 0) dettagli.push(ytDurata(es.durata));
+  corpo.append(ytEl('p', { class: 'yt-file' }, dettagli.join(' · ')));
+  if (es.avviso) corpo.append(ytEl('p', { class: 'yt-nota' }, ytT('controllo.' + es.avviso)));
+  if (guasto) {
+    corpo.append(ytEl('p', { class: 'yt-messaggio errore', role: 'alert' }, ytT('controllo.' + (es.motivo || 'illeggibile'))));
+  } else if (!imp.collegato) {
     // Non ancora collegato: il collegamento si fa da qui, senza uscire
     const box = ytEl('div', { class: 'yt-collega-qui' });
     corpo.append(box);
@@ -686,7 +799,7 @@ function ytDisegnaFinestra() {
       imp.canale && imp.canale.miniatura ? ytEl('img', { class: 'yt-miniatura', src: imp.canale.miniatura, alt: '', width: '28', height: '28', referrerpolicy: 'no-referrer' }) : null,
       ytEl('span', {}, imp.canale ? ytT('sulCanale', { canale: imp.canale.titolo }) : ytT('statoCollegato'))));
   }
-  if (!fatto) {
+  if (!fatto && !guasto) {
     const titolo = ytEl('input', { type: 'text', class: 'yt-campo', id: 'yt-f-titolo', maxlength: String(YT_TITOLO_MAX), value: f.campi.titolo, dataset: { ytCampo: 'titolo' }, disabled: invio });
     const conta = ytEl('small', { class: 'yt-conta' }, `${f.campi.titolo.length}/${YT_TITOLO_MAX}`);
     titolo.addEventListener('input', () => { f.campi.titolo = titolo.value; conta.textContent = `${titolo.value.length}/${YT_TITOLO_MAX}`; });
@@ -731,6 +844,11 @@ function ytDisegnaFinestra() {
       ytEl('button', { type: 'button', class: 'tasto-cielo', dataset: { yt: 'chiudi' }, onclick: () => ytChiudiFinestra() }, ytT('chiudi')));
   } else if (invio) {
     azioni.append(ytEl('button', { type: 'button', class: 'tasto-cielo', dataset: { yt: 'annulla' }, onclick: ytAnnulla }, ytT('annulla')));
+  } else if (guasto) {
+    // Il file guasto non parte: lo si può ancora scaricare per guardarlo
+    azioni.append(
+      ytEl('a', { class: 'tasto-cielo', href: f.url, download: f.video.nome, dataset: { yt: 'scarica' } }, ytT('scarica')),
+      ytEl('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { yt: 'chiudi' }, onclick: () => ytChiudiFinestra() }, ytT('chiudi')));
   } else {
     azioni.append(
       ytEl('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { yt: 'pubblica' }, disabled: !imp.collegato || !valido,
@@ -779,7 +897,10 @@ function ytRegistraEPubblica(testo, titolo) {
   if (!demo || typeof demo.avvia !== 'function') return false;
   yt.dopo = { titolo: String(titolo || ''), scade: Date.now() + YT_DOPO_MAX_MS };
   ytPreparaGoogle();
-  try { demo.avvia(testo, { registra: true }); }
+  // v465: per YouTube il filmato è a risoluzione piena e senza data e luogo
+  // (`perYoutube`, in `skyRegPreparaTela` e `skyRegFirma`), e la storia a
+  // tutto schermo, perché la tela prende la misura della finestra
+  try { demo.avvia(testo, { registra: true, perYoutube: true, schermoIntero: true }); }
   catch (e) { yt.dopo = null; throw e; }
   if (!demo.inCorso) yt.dopo = null;
   return !!yt.dopo;

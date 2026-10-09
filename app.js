@@ -8733,7 +8733,9 @@ const sky = {
     foto: new Map(),       // indirizzo → promessa del data URL: le fotografie già incorporate
     esito: null,           // { blob, url, nome, tipo }
     origine: 'planetario', // oppure `solare`: decide tela, comandi e risultato
-    sorgente: null         // funzione → tela da riprendere (la demo che cambia vista)
+    sorgente: null,        // funzione → tela da riprendere (la demo che cambia vista)
+    perYoutube: false,     // v465: il filmato va su YouTube: risoluzione piena, niente data e luogo
+    misura: null           // v465: { l, h } in px CSS da usare al posto della finestra (pieno schermo in arrivo)
   },
   ultimoPuntatore: 'mouse'  // com'è arrivato l'ultimo tocco: dito o mouse
 };
@@ -30540,6 +30542,15 @@ const SKY_REG_FPS_VIDEO = 30;
 // Lato lungo del filmato: la misura di uno schermo di telefono, che è anche
 // quella che le chat non ricomprimono fino a rovinarla
 const SKY_REG_LATO_VIDEO = 1080;
+// v465: il filmato che va su YouTube si registra alla risoluzione piena
+// dello schermo, i pixel veri del cielo (CSS × devicePixelRatio): almeno
+// 1920 di lato lungo — sotto, YouTube lo tratta da 720p e lo comprime di più
+// — e al più 3840, il 4K, oltre il quale i registratori dei browser non
+// vanno. Chi ha chiesto «la risoluzione massima» premeva YouTube e si
+// ritrovava un filmato a 1080 di lato lungo, cioè un 608p.
+const SKY_REG_LATO_YOUTUBE_MIN = 1920;
+const SKY_REG_LATO_YOUTUBE_MAX = 3840;
+const SKY_REG_BITRATE = 6000000;
 
 // Il tipo di file lo decide il browser: si prende il primo che sa scrivere.
 // L'mp4 per primo perché è quello che le chat aprono senza discutere.
@@ -30576,20 +30587,43 @@ function skyRegTipoVideo() {
 // vista 3D e al banco delle aurore dentro allo stesso filmato. Il formato
 // del video allora è quello della finestra, che è il riquadro che le tre
 // scene si danno il cambio a riempire.
-function skyRegPreparaTela() {
-  const finestra = !!sky.reg.sorgente;
-  const l = finestra ? (window.innerWidth || 320)
-    : sky.reg.origine === 'solare' ? (sol.L || 320) : (sky.larghezza || 320);
-  const h = finestra ? (window.innerHeight || 320)
-    : sky.reg.origine === 'solare' ? (sol.H || 320) : (sky.altezza || 320);
-  const dpr = window.devicePixelRatio || 1;
-  const k = Math.min(dpr, SKY_REG_LATO_VIDEO / Math.max(l, h));
+// La misura del filmato (funzione pura): `l`×`h` in pixel CSS della scena,
+// `alta` per YouTube. Lati pari, che certi codificatori non digeriscono i
+// numeri dispari. `latoMax` abbassa il tetto (il ripiego di skyRegAvviaVideo).
+function skyRegMisuraTela(l, h, dpr, alta, latoMax) {
+  const lungo = Math.max(1, l, h);
+  let lato = alta
+    ? Math.min(SKY_REG_LATO_YOUTUBE_MAX, Math.max(SKY_REG_LATO_YOUTUBE_MIN, lungo * (dpr || 1)))
+    : Math.min(lungo * (dpr || 1), SKY_REG_LATO_VIDEO);
+  if (latoMax) lato = Math.min(lato, latoMax);
+  const k = lato / lungo;
+  return { larghezza: Math.max(2, Math.round(l * k / 2) * 2), altezza: Math.max(2, Math.round(h * k / 2) * 2) };
+}
+
+// Il flusso che il filmato può reggere (funzione pura): quello di sempre per
+// i filmati da mandare in una chat; per YouTube quello che YouTube consiglia
+// per caricare (circa 12 Mbit/s a 1080p, 45 a 4K, a 30 fotogrammi), cioè
+// 0,2 bit per pixel, perché la sua ricompressione parta da un originale pulito
+function skyRegBitrate(larghezza, altezza, alta) {
+  if (!alta) return SKY_REG_BITRATE;
+  return Math.round(Math.min(45000000, Math.max(8000000, larghezza * altezza * SKY_REG_FPS_VIDEO * 0.2)));
+}
+
+function skyRegPreparaTela(latoMax) {
+  const r = sky.reg;
+  const finestra = !!r.sorgente;
+  const misura = finestra && r.misura && r.misura.l > 0 && r.misura.h > 0 ? r.misura : null;
+  const l = misura ? misura.l : finestra ? (window.innerWidth || 320)
+    : r.origine === 'solare' ? (sol.L || 320) : (sky.larghezza || 320);
+  const h = misura ? misura.h : finestra ? (window.innerHeight || 320)
+    : r.origine === 'solare' ? (sol.H || 320) : (sky.altezza || 320);
+  const m = skyRegMisuraTela(l, h, window.devicePixelRatio || 1, !!r.perYoutube, latoMax);
   const tela = document.createElement('canvas');
-  tela.width = Math.max(2, Math.round(l * k / 2) * 2);
-  tela.height = Math.max(2, Math.round(h * k / 2) * 2);
-  sky.reg.tela = tela;
-  sky.reg.ctx = tela.getContext('2d');
-  return !!sky.reg.ctx;
+  tela.width = m.larghezza;
+  tela.height = m.altezza;
+  r.tela = tela;
+  r.ctx = tela.getContext('2d');
+  return !!r.ctx;
 }
 
 // Un fotogramma: fotocamera sotto, cielo sopra, eventuale scheda informativa
@@ -30627,8 +30661,11 @@ function skyRegComponi() {
   if ((scelta ? scelta === sky.canvas : r.origine !== 'solare')) skyRegDisegnaScheda(ctx, L, H);
 
   // La firma passa sotto lo stesso filtro di tutto il resto: una scritta
-  // bianca su un filmato rosso si vedrebbe subito che è stata appiccicata dopo
-  skyRegFirma(ctx, L, H);
+  // bianca su un filmato rosso si vedrebbe subito che è stata appiccicata dopo.
+  // v465: nel filmato per YouTube niente data e luogo in basso a sinistra
+  // (una storia non è «il cielo di quella sera, da lì», e il titolo e la
+  // descrizione del video dicono già cos'è): resta solo il nome dell'app
+  skyRegFirma(ctx, L, H, { soloMarchio: !!r.perYoutube });
   ctx.filter = 'none';
 }
 
@@ -31104,10 +31141,22 @@ function skyRegTestoEntro(ctx, testo, larghezza) {
 // La firma: quando e da dove. Senza, un filmato di stelle mandato a qualcuno
 // è un fondo nero con dei puntini; con due righe diventa "il cielo di
 // quella sera, da lì".
-function skyRegFirma(ctx, L, H) {
+function skyRegFirma(ctx, L, H, opzioni = {}) {
   const misura = Math.max(11, Math.round(H / 34));
   const margine = Math.round(misura * 1.1);
   const passo = Math.round(misura * 1.25);
+  if (opzioni.soloMarchio) {
+    ctx.save();
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'right';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = Math.round(misura / 2);
+    ctx.font = `${Math.round(misura * 0.82)}px system-ui, sans-serif`;
+    ctx.fillStyle = 'rgba(148, 168, 214, 0.85)';
+    ctx.fillText('AstroCalendario di Ben', L - margine, H - margine);
+    ctx.restore();
+    return;
+  }
   const quando = skyAdesso();
   const dataConMese = mese => quando.toLocaleString('it-IT', {
     day: 'numeric', month: mese, year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -31272,14 +31321,27 @@ function skyRegAvviaVideo() {
       'recente di Chrome, Safari o Firefox.', 10000);
     return false;
   }
-  try {
+  const crea = () => {
     r.flusso = r.tela.captureStream(SKY_REG_FPS_VIDEO);
-    r.registratore = new MediaRecorder(r.flusso, { mimeType: tipo.mime, videoBitsPerSecond: 6000000 });
+    r.registratore = new MediaRecorder(r.flusso, { mimeType: tipo.mime,
+      videoBitsPerSecond: skyRegBitrate(r.tela.width, r.tela.height, !!r.perYoutube) });
+  };
+  try {
+    crea();
   } catch (e) {
+    if (r.flusso) { r.flusso.getTracks().forEach(t => t.stop()); }
     r.flusso = null;
     r.registratore = null;
-    skyAvviso('registra', 'Il registratore video non è partito: riprova, o aggiorna il browser.', 10000);
-    return false;
+    // v465: il 4K di un filmato per YouTube è più di quello che certi
+    // codificatori reggono: si riprova a 1920 di lato lungo prima di arrendersi
+    let ripreso = false;
+    if (r.perYoutube && Math.max(r.tela.width, r.tela.height) > SKY_REG_LATO_YOUTUBE_MIN && skyRegPreparaTela(SKY_REG_LATO_YOUTUBE_MIN)) {
+      try { crea(); ripreso = true; } catch (_) { r.flusso = null; r.registratore = null; }
+    }
+    if (!ripreso) {
+      skyAvviso('registra', 'Il registratore video non è partito: riprova, o aggiorna il browser.', 10000);
+      return false;
+    }
   }
   r.pezzi = [];
   r.est = tipo.est;
@@ -31289,6 +31351,7 @@ function skyRegAvviaVideo() {
   // si azzera subito: la registrazione dopo, fatta a mano, non è più quella
   const titolo = r.titolo || '';
   r.titolo = '';
+  const misura = { larghezza: r.tela.width, altezza: r.tela.height };
   r.registratore.ondataavailable = (e) => { if (e.data && e.data.size) r.pezzi.push(e.data); };
   r.registratore.onstop = () => {
     if (r.flusso) { r.flusso.getTracks().forEach(t => t.stop()); r.flusso = null; }
@@ -31299,7 +31362,7 @@ function skyRegAvviaVideo() {
       skyAvviso('registra', 'La registrazione è rimasta vuota: riprova.', 8000);
       return;
     }
-    skyRegMostraEsito(new Blob(pezzi, { type: r.mime }), r.est, r.mime, titolo);
+    skyRegMostraEsito(new Blob(pezzi, { type: r.mime }), r.est, r.mime, titolo, misura);
   };
   r.registratore.start();
   return true;
@@ -31404,7 +31467,7 @@ function skyRegNomeFile(est) {
     `${due(d.getHours())}${due(d.getMinutes())}${due(d.getSeconds())}.${est}`;
 }
 
-function skyRegMostraEsito(blob, est, tipo, titolo) {
+function skyRegMostraEsito(blob, est, tipo, titolo, misura) {
   const r = sky.reg;
   skyRegDimenticaEsito();
   r.esito = {
@@ -31412,7 +31475,11 @@ function skyRegMostraEsito(blob, est, tipo, titolo) {
     url: URL.createObjectURL(blob),
     nome: skyRegNomeFile(est),
     tipo: tipo || blob.type,
-    titolo: titolo || ''
+    titolo: titolo || '',
+    // v465: la misura della tela registrata (la finestra di YouTube la
+    // confronta con quella che il file dice davvero)
+    larghezza: misura ? misura.larghezza : 0,
+    altezza: misura ? misura.altezza : 0
   };
 
   const prefisso = r.origine === 'solare' ? 'sol' : 'skymap';
