@@ -11,12 +11,12 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **19/77** in italiano · **0/50** in inglese.
+Pronte: **17/77** in italiano · **0/50** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Luna | `storie/luna/` | 14 | 7/14 | 0/11 |
-| Terra | `storie/terra/` | 15 | 6/15 | 0/4 |
+| Luna | `storie/luna/` | 14 | 6/14 | 0/11 |
+| Terra | `storie/terra/` | 15 | 4/15 | 0/4 |
 | Sole | `storie/sole/` | 12 | 3/12 | 0/9 |
 | Saturno | `storie/saturno/` | 3 | 0/3 | 0/2 |
 | Giove | `storie/giove/` | 3 | 0/3 | 0/1 |
@@ -32,7 +32,7 @@ Pronte: **19/77** in italiano · **0/50** in inglese.
 | hubble | `storie/hubble/` | 1 | 1/1 | 0/0 |
 | iss | `storie/iss/` | 1 | 1/1 | 0/0 |
 | css | `storie/css/` | 1 | 1/1 | 0/0 |
-| Sedna | `storie/sedna/` | 4 | 0/4 | 0/0 |
+| Sedna | `storie/sedna/` | 4 | 1/4 | 0/0 |
 
 ## Luna
 
@@ -90,9 +90,10 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Emozione:** pensieroso — 
   - **Testo:** Ciao Terra, mi chiedevo, perché orbito intorno a te?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?`
-- `studio_cosa_e_la_gravita-1.mp3` — pronta · 1,4 s · Studio: Cosa è la gravità?, scena 4 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-1.mp3` — **da rifare** (il testo è cambiato) · 1,4 s · Studio: Cosa è la gravità?, scena 4 (al massimo 3 s)
   - **Emozione:** infastidito — 
-  - **Testo:** Smettila !!!
+  - **Testo:** Smettila!!!
+  - **Da incollare su ElevenLabs v3:** `[annoyed] Smettila !!!`
 - `studio_cosa_e_la_gravita-3.mp3` — pronta · 2,2 s · Studio: Cosa è la gravità?, scena 8 (al massimo 3 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** vogliamo essere indipendenti!
@@ -169,12 +170,14 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** incoraggiante — vivace, coraggiosa, contagia il Sole di entusiasmo
   - **Testo:** Non lo so, Sole! Chiediamolo alle stelle più vecchie di te. Ce n’è una rossa che ci sta aspettando.
   - **Da incollare su ElevenLabs v3:** `[encouragingly] Non lo so, Sole! [excited] Chiediamolo alle stelle più vecchie di te. Ce n’è una rossa che ci sta aspettando.`
-- `studio_cosa_e_la_gravita-4.mp3` — pronta · 2,3 s · Studio: Cosa è la gravità?, scena 2 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-4.mp3` — **da rifare** (il testo è cambiato) · 2,3 s · Studio: Cosa è la gravità?, scena 2 (al massimo 3 s)
   - **Emozione:** da bullo — 
-  - **Testo:** Sei solo una luna !!
-- `studio_cosa_e_la_gravita-5.mp3` — pronta · 4 s · Studio: Cosa è la gravità?, scena 3 (al massimo 5 s)
+  - **Testo:** Sei solo una luna!!
+  - **Da incollare su ElevenLabs v3:** `[mischievously] Sei solo una luna !!`
+- `studio_cosa_e_la_gravita-5.mp3` — **da rifare** (il testo è cambiato) · 4 s · Studio: Cosa è la gravità?, scena 3 (al massimo 5 s)
   - **Emozione:** ride — 
-  - **Testo:** ah ah ah !!!
+  - **Testo:** ah ah ah!!!
+  - **Da incollare su ElevenLabs v3:** `[laughs] ah ah ah !!!`
 - `studio_cosa_e_la_gravita-6.mp3` — pronta · 2,8 s · Studio: Cosa è la gravità?, scena 9 (al massimo 4 s)
   - **Emozione:** preoccupato — 
   - **Testo:** oh no! adesso cosa faccio?
@@ -726,10 +729,10 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
   - **Emozione:** tranquillo — 
   - **Testo:** Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!
   - **Da incollare su ElevenLabs v3:** `Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!`
-- `studio_cosa_e_la_gravita-24.mp3` — manca · Studio: Cosa è la gravità?, scena 24 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-24.mp3` — pronta · 4 s · Studio: Cosa è la gravità?, scena 24 (al massimo 5 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ehm, scusa Terra, hai finito?
-  - **Da incollare su ElevenLabs v3:** `Ehm, scusa Terra, hai finito?`
+  - **Da incollare su ElevenLabs v3:** `[shouts] Ehm, scusa Terra, hai finito? [frustrated]`
 - `studio_cosa_e_la_gravita-26.mp3` — manca · Studio: Cosa è la gravità?, scena 26 (al massimo 20 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".

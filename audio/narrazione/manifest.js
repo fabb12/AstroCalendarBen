@@ -716,7 +716,7 @@
     },
 
     'studio.studio_cosa_e_la_gravita.1': {
-      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-1.mp3', impronta: '64994de1', firma: '313954399e', testo: "Smettila !!!" }
+      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-1.mp3', impronta: '64994de1', firma: '313954399e', testo: "Smettila!!!" }
     },
 
     'studio.studio_cosa_e_la_gravita.3': {
@@ -737,11 +737,11 @@
     },
 
     'studio.studio_cosa_e_la_gravita.4': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-4.mp3', impronta: 'b1ad1131', firma: '3275b71661', testo: "Sei solo una luna !!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-4.mp3', impronta: 'b1ad1131', firma: '3275b71661', testo: "Sei solo una luna!!" }
     },
 
     'studio.studio_cosa_e_la_gravita.5': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-5.mp3', impronta: 'd98309bb', firma: 'c7187f3542', testo: "ah ah ah !!!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-5.mp3', impronta: 'd98309bb', firma: 'c7187f3542', testo: "ah ah ah!!!" }
     },
 
     'studio.studio_cosa_e_la_gravita.6': {
@@ -774,6 +774,11 @@
     // css — storie/css/
     'studio.studio_cosa_e_la_gravita.9': {
       it: { file: 'storie/tiangong/it/studio_cosa_e_la_gravita-9.mp3', impronta: 'a0f96b63', firma: '385e1ec2fd', testo: "giusto!" }
+    },
+
+    // Sedna — storie/sedna/
+    'studio.studio_cosa_e_la_gravita.24': {
+      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-24.mp3', impronta: 'fd80a4be', firma: '064d2342c6', testo: "Ehm, scusa Terra, hai finito?" }
     },
 
     // ── FINE STORIE COSMICHE ──
