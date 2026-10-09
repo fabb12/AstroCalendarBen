@@ -67,35 +67,11 @@
           "durata": 3000
         },
         {
-          "n": 3,
-          "chi": "Moon",
-          "testo": "vogliamo essere indipendenti!",
-          "umore": "angry",
-          "scena": 8,
-          "durata": 3000
-        },
-        {
           "n": 6,
           "chi": "Earth",
           "testo": "oh no! adesso cosa faccio?",
           "umore": "worried",
-          "scena": 9,
-          "durata": 4000
-        },
-        {
-          "n": 10,
-          "chi": "Sun",
-          "testo": "tranquilla terra!",
-          "umore": "laughing",
-          "scena": 10,
-          "durata": 4000
-        },
-        {
-          "n": 11,
-          "chi": "Sun",
-          "testo": "ti spiego io cos'è la gravità!",
-          "umore": "happy",
-          "scena": 11,
+          "scena": 8,
           "durata": 4000
         },
         {
@@ -103,23 +79,15 @@
           "chi": "Sun",
           "testo": "La gravità è una forza attrattiva che tiene uno o più astri stabili.",
           "umore": "neutral",
-          "scena": 12,
+          "scena": 9,
           "durata": 8000
-        },
-        {
-          "n": 13,
-          "chi": "Earth",
-          "testo": "Continuo a non capire.",
-          "umore": "thinking",
-          "scena": 13,
-          "durata": 4000
         },
         {
           "n": 14,
           "chi": "Saturn",
           "testo": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.",
           "umore": "neutral",
-          "scena": 14,
+          "scena": 10,
           "durata": 9000
         },
         {
@@ -127,7 +95,7 @@
           "chi": "Earth",
           "testo": "Potresti spiegarti meglio?",
           "umore": "thinking",
-          "scena": 15,
+          "scena": 11,
           "durata": 4000
         },
         {
@@ -135,31 +103,15 @@
           "chi": "Jupiter",
           "testo": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
           "umore": "neutral",
-          "scena": 16,
+          "scena": 12,
           "durata": 18000
-        },
-        {
-          "n": 17,
-          "chi": "Earth",
-          "testo": "Cosa è la massa, cosa è un peso e che cosa è un volume?",
-          "umore": "thinking",
-          "scena": 17,
-          "durata": 8000
-        },
-        {
-          "n": 18,
-          "chi": "Jupiter",
-          "testo": "Calma Terra, una domanda alla volta",
-          "umore": "neutral",
-          "scena": 18,
-          "durata": 5000
         },
         {
           "n": 19,
           "chi": "Sedna",
           "testo": "Ciao Terra, Giove ha ragione!",
           "umore": "neutral",
-          "scena": 19,
+          "scena": 13,
           "durata": 5000
         },
         {
@@ -167,23 +119,15 @@
           "chi": "Earth",
           "testo": "Oh! Che spavento! Chi ha parlato?",
           "umore": "surprised",
-          "scena": 20,
+          "scena": 14,
           "durata": 6000
-        },
-        {
-          "n": 21,
-          "chi": "Sedna",
-          "testo": "Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!",
-          "umore": "neutral",
-          "scena": 21,
-          "durata": 11000
         },
         {
           "n": 22,
           "chi": "Earth",
           "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
           "umore": "surprised",
-          "scena": 22,
+          "scena": 15,
           "durata": 16000
         },
         {
@@ -191,7 +135,7 @@
           "chi": "Earth",
           "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
           "umore": "annoyed",
-          "scena": 23,
+          "scena": 16,
           "durata": 12000
         },
         {
@@ -199,7 +143,7 @@
           "chi": "Sedna",
           "testo": "Ehm, scusa Terra, hai finito?",
           "umore": "neutral",
-          "scena": 24,
+          "scena": 17,
           "durata": 5000,
           "conTag": "[shouts] Ehm, scusa Terra, hai finito? [frustrated]"
         },
@@ -208,7 +152,7 @@
           "chi": "Earth",
           "testo": "Oh! Scusa! Continua.",
           "umore": "surprised",
-          "scena": 25,
+          "scena": 18,
           "durata": 5000
         },
         {
@@ -216,7 +160,7 @@
           "chi": "Sedna",
           "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
           "umore": "neutral",
-          "scena": 26,
+          "scena": 19,
           "durata": 20000
         },
         {
@@ -224,7 +168,39 @@
           "chi": "Earth",
           "testo": "Wow! Non sapevo che la scienza potesse essere così bella.",
           "umore": "neutral",
-          "scena": 27,
+          "scena": 20,
+          "durata": 7000
+        },
+        {
+          "n": 28,
+          "chi": "alpha_centauri",
+          "testo": "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.",
+          "umore": "neutral",
+          "scena": 21,
+          "durata": 16000
+        },
+        {
+          "n": 29,
+          "chi": "Earth",
+          "testo": "Cosa? Di nuovo? Chi ha parlato?",
+          "umore": "surprised",
+          "scena": 22,
+          "durata": 6000
+        },
+        {
+          "n": 30,
+          "chi": "Sedna",
+          "testo": "è vero! Chi è?",
+          "umore": "thinking",
+          "scena": 23,
+          "durata": 4000
+        },
+        {
+          "n": 31,
+          "chi": "Jupiter",
+          "testo": "So chi è! è la mia amica proxima centauri!",
+          "umore": "neutral",
+          "scena": 24,
           "durata": 7000
         }
       ]

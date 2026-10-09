@@ -453,49 +453,6 @@
           "voci": {}
         },
         {
-          "id": "s0e5y292",
-          "ambiente": "terra_luna",
-          "fuoco": "Jupiter",
-          "zoom": "normale",
-          "data": "",
-          "ora": "21:00",
-          "giorni": 0,
-          "cartello": false,
-          "cameraViva": true,
-          "camera": "auto",
-          "cameraChi": "",
-          "cosmoDa": "planets",
-          "cosmoA": "milky_way",
-          "presenti": [
-            "iss",
-            "css",
-            "Moon",
-            "Earth"
-          ],
-          "momenti": [
-            {
-              "id": "musye1rg",
-              "chi": "Moon",
-              "testo": "vogliamo essere indipendenti!",
-              "umore": "angry",
-              "tono": [],
-              "durata": 0,
-              "voce": 3,
-              "audio": {
-                "durata": 2194,
-                "impronta": "f5ce684c",
-                "nome": "ElevenLabs_2026-10-06T19_24_09_Carlotta - Fairy Princess_pvc_sp110_s3_sb14_v4.mp"
-              },
-              "azioni": [],
-              "copione": null,
-              "parla": null
-            }
-          ],
-          "musicaModo": "storia",
-          "musica": null,
-          "voci": {}
-        },
-        {
           "id": "st49i89w",
           "ambiente": "terra_luna",
           "fuoco": "Jupiter",
@@ -579,94 +536,6 @@
           "voci": {}
         },
         {
-          "id": "sa134cty",
-          "ambiente": "terra_luna",
-          "fuoco": "Jupiter",
-          "zoom": "normale",
-          "data": "",
-          "ora": "21:00",
-          "giorni": 0,
-          "cartello": false,
-          "cameraViva": true,
-          "camera": "auto",
-          "cameraChi": "",
-          "cosmoDa": "planets",
-          "cosmoA": "milky_way",
-          "presenti": [
-            "iss",
-            "css",
-            "Moon",
-            "Earth",
-            "Sun"
-          ],
-          "momenti": [
-            {
-              "id": "m9djl7rz",
-              "chi": "Sun",
-              "testo": "tranquilla terra!",
-              "umore": "laughing",
-              "tono": [],
-              "durata": 0,
-              "voce": 10,
-              "audio": {
-                "durata": 2691,
-                "impronta": "8f614565",
-                "nome": "ElevenLabs_2026-10-06T19_44_03_Vito Pepe - Profound and Confident_pvc_sp100_s77_"
-              },
-              "azioni": [],
-              "copione": null,
-              "parla": null
-            }
-          ],
-          "musicaModo": "storia",
-          "musica": null,
-          "voci": {}
-        },
-        {
-          "id": "snm9aa4e",
-          "ambiente": "terra_luna",
-          "fuoco": "Jupiter",
-          "zoom": "normale",
-          "data": "",
-          "ora": "21:00",
-          "giorni": 0,
-          "cartello": false,
-          "cameraViva": true,
-          "camera": "auto",
-          "cameraChi": "",
-          "cosmoDa": "planets",
-          "cosmoA": "milky_way",
-          "presenti": [
-            "iss",
-            "css",
-            "Moon",
-            "Earth",
-            "Sun"
-          ],
-          "momenti": [
-            {
-              "id": "mvg5418a",
-              "chi": "Sun",
-              "testo": "ti spiego io cos'è la gravità!",
-              "umore": "happy",
-              "tono": [],
-              "durata": 0,
-              "voce": 11,
-              "audio": {
-                "durata": 2926,
-                "impronta": "4954554a",
-                "nome": "ElevenLabs_2026-10-06T19_44_27_Vito Pepe - Profound and Confident_pvc_sp100_s77_"
-              },
-              "azioni": [],
-              "copione": null,
-              "parla": null
-            }
-          ],
-          "musicaModo": "storia",
-          "musica": null,
-          "voci": {}
-        },
-        {
           "id": "sq4ys6tn",
           "ambiente": "terra_luna",
           "fuoco": "Jupiter",
@@ -696,46 +565,6 @@
               "tono": [],
               "durata": 0,
               "voce": 12,
-              "audio": null,
-              "azioni": [],
-              "copione": null,
-              "parla": null
-            }
-          ],
-          "musicaModo": "storia",
-          "musica": null,
-          "voci": {}
-        },
-        {
-          "id": "sprzq2ot",
-          "ambiente": "terra_luna",
-          "fuoco": "Jupiter",
-          "zoom": "normale",
-          "data": "",
-          "ora": "21:00",
-          "giorni": 0,
-          "cartello": false,
-          "cameraViva": true,
-          "camera": "auto",
-          "cameraChi": "",
-          "cosmoDa": "planets",
-          "cosmoA": "milky_way",
-          "presenti": [
-            "iss",
-            "css",
-            "Moon",
-            "Earth",
-            "Sun"
-          ],
-          "momenti": [
-            {
-              "id": "mf7nsmge",
-              "chi": "Earth",
-              "testo": "Continuo a non capire.",
-              "umore": "thinking",
-              "tono": [],
-              "durata": 0,
-              "voce": 13,
               "audio": null,
               "azioni": [],
               "copione": null,
@@ -846,81 +675,6 @@
               "tono": [],
               "durata": 0,
               "voce": 16,
-              "audio": null,
-              "azioni": [],
-              "copione": null,
-              "parla": null
-            }
-          ],
-          "musicaModo": "storia",
-          "musica": null,
-          "voci": {}
-        },
-        {
-          "id": "sgegyse8",
-          "ambiente": "sistema",
-          "fuoco": "Jupiter",
-          "zoom": "normale",
-          "data": "",
-          "ora": "21:00",
-          "giorni": 0,
-          "cartello": false,
-          "cameraViva": true,
-          "camera": "auto",
-          "cameraChi": "",
-          "cosmoDa": "planets",
-          "cosmoA": "milky_way",
-          "presenti": [
-            "Earth",
-            "Jupiter"
-          ],
-          "momenti": [
-            {
-              "id": "m6w26mrb",
-              "chi": "Earth",
-              "testo": "Cosa è la massa, cosa è un peso e che cosa è un volume?",
-              "umore": "thinking",
-              "tono": [],
-              "durata": 0,
-              "voce": 17,
-              "audio": null,
-              "azioni": [],
-              "copione": null,
-              "parla": null
-            }
-          ],
-          "musicaModo": "storia",
-          "musica": null,
-          "voci": {}
-        },
-        {
-          "id": "s601shmj",
-          "ambiente": "sistema",
-          "fuoco": "Jupiter",
-          "zoom": "normale",
-          "data": "",
-          "ora": "21:00",
-          "giorni": 0,
-          "cartello": false,
-          "cameraViva": true,
-          "camera": "auto",
-          "cameraChi": "",
-          "cosmoDa": "planets",
-          "cosmoA": "milky_way",
-          "presenti": [
-            "Earth",
-            "Jupiter",
-            "Sedna"
-          ],
-          "momenti": [
-            {
-              "id": "meex2aqj",
-              "chi": "Jupiter",
-              "testo": "Calma Terra, una domanda alla volta ",
-              "umore": "neutral",
-              "tono": [],
-              "durata": 0,
-              "voce": 18,
               "audio": null,
               "azioni": [],
               "copione": null,
@@ -1074,43 +828,6 @@
                   "esatta": null
                 }
               ],
-              "copione": null,
-              "parla": null
-            }
-          ],
-          "musicaModo": "storia",
-          "musica": null,
-          "voci": {}
-        },
-        {
-          "id": "s1bt01dd",
-          "ambiente": "sistema",
-          "fuoco": "Jupiter",
-          "zoom": "normale",
-          "data": "",
-          "ora": "21:00",
-          "giorni": 0,
-          "cartello": false,
-          "cameraViva": true,
-          "camera": "auto",
-          "cameraChi": "",
-          "cosmoDa": "planets",
-          "cosmoA": "milky_way",
-          "presenti": [
-            "Jupiter",
-            "Sedna"
-          ],
-          "momenti": [
-            {
-              "id": "mr51z8rg",
-              "chi": "Sedna",
-              "testo": "Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!",
-              "umore": "neutral",
-              "tono": [],
-              "durata": 0,
-              "voce": 21,
-              "audio": null,
-              "azioni": [],
               "copione": null,
               "parla": null
             }
@@ -1461,6 +1178,45 @@
         },
         {
           "id": "s0qigi4l",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Earth",
+            "iss",
+            "alpha_centauri"
+          ],
+          "momenti": [
+            {
+              "id": "mdv6rx46",
+              "chi": "alpha_centauri",
+              "testo": "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 0,
+              "voce": 28,
+              "audio": null,
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s7l6k894",
           "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
@@ -1480,13 +1236,90 @@
           ],
           "momenti": [
             {
-              "id": "mdv6rx46",
+              "id": "m895uwev",
+              "chi": "Earth",
+              "testo": "Cosa? Di nuovo? Chi ha parlato?",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 0,
+              "voce": 29,
+              "audio": null,
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "so5qjilt",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mbrl7swl",
+              "chi": "Sedna",
+              "testo": "è vero! Chi è?",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 0,
+              "voce": 30,
+              "audio": null,
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sl7z6o5v",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "mo41dzg3",
               "chi": "Jupiter",
-              "testo": "",
+              "testo": "So chi è! è la mia amica proxima centauri!",
               "umore": "neutral",
               "tono": [],
               "durata": 0,
-              "voce": 0,
+              "voce": 31,
               "audio": null,
               "azioni": [],
               "copione": null,
@@ -1500,8 +1333,8 @@
       ],
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
-      "voceProssima": 28,
-      "aggiornato": 1791545526257,
+      "voceProssima": 32,
+      "aggiornato": 1791547231465,
       "lingua": "it",
       "musica": null,
       "voci": {
