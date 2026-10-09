@@ -12838,6 +12838,12 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 .studio-scena-riassunto::marker { color: #fde68a; }
 .studio-scena-riassunto small { color: var(--testo-2); }
 .studio-scena-riassunto:focus-visible { outline: 2px solid #fde68a; outline-offset: 4px; border-radius: 4px; }
+/* v465: la prima frase della scena, solo da chiusa (aperta si leggono i momenti) */
+.studio-scena-frase {
+  display: block; margin: 2px 0 0 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  color: var(--testo-1, #e2e8f0); font-size: 0.82rem; font-style: italic;
+}
+.studio-scena[open] .studio-scena-frase { display: none; }
 .studio-scena-corpo { display: grid; gap: 8px; min-width: 0; margin-top: 12px; }
 .studio-scena-titolo { margin: 0 6px 6px 0; color: #fde68a; font-size: 0.95rem; font-weight: 750; align-self: center; }
 .studio-momento {
@@ -13223,6 +13229,12 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .yt-x:disabled { opacity: 0.4; cursor: default; }
 .yt-corpo { display: grid; gap: 8px; padding: 14px 16px 16px; min-width: 0; }
 .yt-file { margin: 0; color: var(--testo-2); font-size: 0.8rem; overflow-wrap: anywhere; }
+/* v465: il filmato da guardare prima di pubblicarlo; basso abbastanza da
+   lasciare in vista i campi anche al telefono */
+.yt-anteprima {
+  display: block; width: 100%; max-height: min(34vh, 320px); border-radius: 10px;
+  background: #000; object-fit: contain;
+}
 .yt-canale, .yt-stato { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.88rem; }
 .yt-stato.ok { color: #bbf7d0; }
 .yt-miniatura { width: 28px; height: 28px; border-radius: 999px; flex: 0 0 auto; }

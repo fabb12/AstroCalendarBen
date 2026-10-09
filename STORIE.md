@@ -2272,6 +2272,93 @@ inglese, scollega), `prova-storie.js` (112, una nuova per l'inserimento),
 `prova-musica-storie.js`, `prova-storie-repo.js`, `prova-i18n.js`,
 `prova-lingua.js`, `prova-guida.js`, `controlla-i18n.js --patto`.
 
+### «Conosciuto» che non finisce più, e la prima frase delle scene chiuse (v465)
+
+Chi ha guardato «Pallido puntino blu» ha scritto: su «che abbiamo mai
+conosciuto» la storia non va a tempo, su «conosciuto» rallenta tutto, la
+canzone passa all'altra strofa e il karaoke resta lì.
+
+- **La causa.** I tempi dei versi vengono dal riconoscimento delle parole
+  (Whisper), che **allunga l'ultima parola fino a dove ricomincia il
+  parlato**. «Che abbiamo mai conosciuto» è cantato a cappella da 210,6 a
+  212,0 s (a 212,0 entra tutta la base); il copione teneva «conosciuto» da
+  211,5 a 222,2 s, e il verso durava dodici secondi invece di uno e mezzo.
+  Misurato sulla canzone con l'energia del canale centrale (dove sta la
+  voce) contro quella dei lati, a grana di 20 ms, e con la voce separata
+  (`voice`) già nel copione: tutt'e due dicono dove la voce si ferma.
+- **Gli altri uguali.** Cercati verso per verso confrontando la fine
+  dell'ultima parola con la fine della voce: «L'unica casa…» (verso 65, la
+  voce finisce a 208,85 s, il copione a 210,2) e «…è tutto quello che
+  abbiamo avuto» due volte (versi 29 e 53, 3 s e 0,7 s di troppo). Ripresa,
+  parole e `voice` tagliati dove la voce si ferma.
+- **Il primo «Oh… oh… oh… oh…».** Fra 212,8 e 221 s la voce canta un
+  «oh» che il testo non scriveva (lo spettro di quel tratto è quello degli
+  altri due «oh», non quello del tratto solo strumentale): ora ha il suo
+  verso (`storie.canzone.puntino.67` riusato, Carl Sagan con la Terra e la
+  Luna). I versi sono 69, tre «oh» come nella canzone.
+- **Prova** (`prova-storie.js`): «l'ultima parola di un verso non continua
+  dopo la voce», al più 0,6 s oltre la fine della voce, e il verso al più
+  1,2 s. Una canzone nuova misurata nello stesso modo la passa solo se i
+  tempi sono stati ripuliti.
+- **La scena chiusa dice la sua prima frase.** Nello Studio una scena chiusa
+  diceva solo «Scena 3 · Il Sistema Solare (3D) · 1 momento»: in una storia
+  duplicata da diciassette scene per ritrovarne una bisognava aprirle tutte.
+  Ora sotto al titolo c'è chi parla per primo e cosa dice, su una riga
+  tagliata coi puntini (intera al passaggio del mouse; da aperta sparisce,
+  si leggono i momenti). `studioPrimaFrase(sc)` (funzione pura, anche
+  `StudioStorie.primaFrase`): la battuta del primo momento che ne ha una,
+  senza i tag di ElevenLabs; se no il primo verso cantato o la prima
+  battuta rimasti fra i comandi dell'originale (`m.copione.righe`), il più
+  presto nella ripresa. Testi `studio.ui.primaFraseChi` e
+  `studio.ui.primaFrase`, `.studio-scena-frase` in `style.css`.
+
+### Il filmato per YouTube: risoluzione piena, senza data e luogo, controllato prima (v466)
+
+Chi preme **YouTube** (sulla scheda di una CosmoStoria o «Registra e
+pubblica su YouTube» nello Studio: le due interfacce passano tutte e due da
+`ytRegistraEPubblica`) ha chiesto tre cose.
+
+- **La risoluzione massima.** Il registratore dei filmati (`app.js`, «Il
+  tuo momento») tiene il lato lungo a 1080 px, la misura buona per le chat:
+  un filmato per YouTube usciva a 1080 × 608. Ora `ytRegistraEPubblica`
+  avvia la demo con `{ registra: true, perYoutube: true, schermoIntero:
+  true }`; `demo.js` (`avviaRegistrazione`) accende `sky.reg.perYoutube` e
+  la tela si misura con `skyRegMisuraTela(l, h, dpr, alta)`: i pixel veri
+  dello schermo (CSS × `devicePixelRatio`), mai sotto 1920 di lato lungo
+  (sotto YouTube lo tratta da 720p) e mai sopra 3840 (4K). Il flusso segue
+  (`skyRegBitrate`: 0,2 bit per pixel, da 8 a 45 Mbit/s; i filmati normali
+  restano a 6). Se il registratore rifiuta la misura grande, si riprova a
+  1920 prima di arrendersi. Se il pieno schermo chiesto all'avvio non è
+  ancora arrivato quando la registrazione parte (senza l'intro), la tela
+  prende la misura dello schermo (`sky.reg.misura`), non quella della
+  finestra di quel momento. Tutto torna com'era in `ripristina`.
+- **Niente data e luogo in basso a sinistra.** Con `perYoutube` la firma
+  (`skyRegFirma(ctx, L, H, { soloMarchio: true })`) lascia solo il nome
+  dell'app in basso a destra: il titolo e la descrizione del video dicono
+  già cos'è.
+- **Il file controllato prima della finestra.** `ytApriPubblica` non apre
+  più subito: `ytControllaVideo(blob)` apre il filmato in un `<video>` come
+  farebbe un lettore. Sotto un kilobyte è vuoto; deve avere un'immagine e una
+  durata (i webm del registratore non la scrivono: la si fa calcolare
+  saltando in fondo). Se è guasto la finestra lo dice (`yt.controllo.*`),
+  senza campi né «Pubblica», con «Scarica il filmato»; se è a posto la
+  finestra ha l'**anteprima** del filmato (`.yt-anteprima`, un elemento solo
+  per tutta la vita della finestra, che non riparte a ogni ridisegno) e la
+  riga con nome, peso, misura e qualità (`1920 × 1080 (1080p)`) e durata.
+  Se il browser non risponde entro 12 s la finestra si apre lo stesso,
+  dicendo che non si è potuto controllare.
+- **Le due finestre una sull'altra.** Alla fine della registrazione si apre
+  anche il pannello «Il tuo momento» del planetario, col suo filmato in
+  ciclo: sotto alla finestra di YouTube erano due filmati insieme. Ora
+  quello sotto si ferma (`ytFermaAnteprimeSotto`) e resta lì, per scaricarlo
+  o condividerlo dopo.
+
+Prove: `prova-youtube.js` (12, 2 nuove: il file vuoto e quello rovinato; la
+misura, il flusso, la firma senza data e luogo e una demo vera registrata
+per YouTube), con un filmato vero registrato nella pagina al posto dei 2400
+byte finti. Guardato in Chromium: dalla scheda di una CosmoStoria, 1920 ×
+1080, fotogramma senza data e luogo.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

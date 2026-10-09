@@ -2183,8 +2183,31 @@ prova('«Pallido puntino blu»: la storia dura la canzone, ogni scena la riaggan
     t += s.durata;
   }
   assert.ok(Math.abs(t / 1000 - LEAD - 247) < 1, 'la canzone dura 4\'08": ' + t);
-  assert.equal(versi, 68, 'sessantotto versi');
+  // sessantotto versi del testo, e il primo «Oh… oh…» dell'outro (v465) che
+  // il testo non scrive ma la canzone canta: tre «oh», non due
+  assert.equal(versi, 69, 'sessantanove versi');
   assert.ok(d.cast.split(',').includes('sagan'));
+});
+prova('«Pallido puntino blu»: l\'ultima parola di un verso non continua dopo la voce (v465)', () => {
+  // Il riconoscimento delle parole allunga l'ultima parola fino a dove
+  // ricomincia il parlato: «che abbiamo mai conosciuto» teneva «conosciuto»
+  // per dieci secondi, mentre la canzone era già al «Oh… oh…». La voce
+  // separata (`voice`) dice quando si smette di cantare: l'ultima parola può
+  // andare oltre di poco (la coda della nota), non di secondi.
+  const d = predefiniti.find(x => x.chiave === 'storia_puntino');
+  const prep = motore.prepara(d.testo);
+  let controllati = 0;
+  for (const s of prep.scene) for (const a of s.azioni.filter(a => a.comando === 'character_sing' && a.parametri.words && a.parametri.voice)) {
+    const v = a.parametri.voice, lungo = (a.ripresa ? a.ripresa.a - a.ripresa.da : 1) * s.durata / 1000;
+    let ultimo = v.length - 1;
+    while (ultimo > 0 && v[ultimo] === '0') ultimo--;
+    const fineVoce = (ultimo + 1) / v.length;
+    const fineParola = Math.max(...a.parametri.words.split(/\s+/).filter(x => x !== '-').map(x => Number(x.split('-')[1])));
+    assert.ok((fineParola - fineVoce) * lungo < 0.6, `${a.parametri.id}: l'ultima parola dura ${((fineParola - fineVoce) * lungo).toFixed(1)} s dopo la voce`);
+    assert.ok((1 - fineVoce) * lungo < 1.2, `${a.parametri.id}: il verso resta ${((1 - fineVoce) * lungo).toFixed(1)} s dopo la voce`);
+    controllati++;
+  }
+  assert.ok(controllati > 60, 'versi controllati: ' + controllati);
 });
 
 gruppo('italiano e inglese');
@@ -2232,6 +2255,24 @@ prova('ogni storia pronta, portata nello Studio e riscritta senza ritocchi, è l
     const riletto = St.ripulisci(JSON.parse(JSON.stringify(p)));
     assert.equal(St.copione(riletto), St.copione(p), d.chiave + ': uguale dopo l\'archivio');
   }
+});
+prova('la scena chiusa dice la sua prima frase: la battuta, o il primo verso cantato dell\'originale (v465)', () => {
+  lingua = 'it';
+  const d = predefiniti.find(x => x.chiave === 'storia_puntino');
+  const p = St.daCopione(d.testo, { chiave: d.chiave, cast: d.cast, titolo: d.chiave });
+  const prima = St.primaFrase(p.scene[0]);
+  assert.ok(prima, 'la prima scena ha una frase');
+  assert.equal(prima.chi, 'sagan');
+  assert.equal(prima.testo, DIZ.it.messaggi['storie.canzone.puntino.1']);
+  assert.ok(p.scene.every(sc => St.primaFrase(sc)), 'ogni scena della canzone ha la sua prima frase');
+  // una battuta scritta nello Studio vince, senza i tag di ElevenLabs
+  const sc = { momenti: [{ chi: '', testo: '', copione: null }, { chi: 'Moon', testo: '[sad] Ciao,   Terra!', copione: null }] };
+  assert.deepEqual(St.primaFrase(sc), { chi: 'Moon', testo: 'Ciao, Terra!' });
+  assert.equal(St.primaFrase({ momenti: [{ chi: '', testo: '', copione: { vista: 'x', righe: [] } }] }), null, 'senza parole nessuna frase');
+  // fra i comandi dell'originale vale il più presto nella ripresa, non il primo scritto
+  const righe = [{ comando: 'character_sing', parametri: { target: 'Earth', text: 'dopo' }, ripresa: { da: 0.5, a: 0.7 } },
+    { comando: 'character_sing', parametri: { target: 'Moon', text: 'prima' }, ripresa: { da: 0.1, a: 0.3 } }];
+  assert.deepEqual(St.primaFrase({ momenti: [{ testo: '', copione: { vista: 'x', righe } }] }), { chi: 'Moon', testo: 'prima' });
 });
 prova('la battuta cambiata diventa testo, quella rimasta tiene la voce registrata', () => {
   lingua = 'it';

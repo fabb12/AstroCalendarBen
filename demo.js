@@ -2106,6 +2106,7 @@
         if (c.schermoNativo && document.fullscreenElement === document.documentElement && document.exitFullscreen)
           document.exitFullscreen().then(ripristinaScorrimento).catch(() => {});
         sky.reg.sorgente = null;
+        sky.reg.perYoutube = false; sky.reg.misura = null;
         sky.reg.durataSec = regPrima.durataSec; sky.reg.origine = regPrima.origine;
         // Il filmato si mostra nel pannello del planetario: chi ha chiesto di
         // registrare trova lì il risultato, anche se era partito da un'altra vista.
@@ -2201,6 +2202,15 @@
       ? astroI18n.t(chiaveTitolo) : String(demo.id || '');
     sky.reg.sorgente = telaInScena;
     sky.reg.durataSec = totale + 3600;
+    // v465: il filmato per YouTube (`ytRegistraEPubblica`) si registra alla
+    // risoluzione piena e senza data e luogo (`skyRegPreparaTela`,
+    // `skyRegFirma`). La tela si misura adesso e non cambia più: se il pieno
+    // schermo chiesto all'avvio non è ancora arrivato (senza l'intro la
+    // registrazione parte subito), la finestra diventerà lo schermo, e la
+    // tela prende la misura dello schermo invece di quella di adesso
+    sky.reg.perYoutube = !!opzioni.perYoutube;
+    const pienoInArrivo = c.schermoNativo && !document.fullscreenElement && window.screen && screen.width > 0 && screen.height > 0;
+    sky.reg.misura = sky.reg.perYoutube && pienoInArrivo ? { l: screen.width, h: screen.height } : null;
 
     let flussoAudio = null;
     if (opzioni.registraAudio !== false && typeof narrazione === 'object' &&

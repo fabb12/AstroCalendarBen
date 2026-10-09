@@ -12,7 +12,12 @@
  * quota finita; «Annulla»; «Registra e pubblica» dallo Studio e dalle
  * schede delle CosmoStorie; la finestra a larghezza di telefono e in
  * inglese; «Scollega». Il gettone di Google non deve mai finire in
- * `localStorage`. */
+ * `localStorage`.
+ *
+ * v465: il filmato si controlla prima di aprire la finestra, che ha
+ * l'anteprima e dice misura e durata (un filmato vero, registrato nella
+ * pagina; uno vuoto e uno rovinato non si pubblicano); le corse per YouTube
+ * si registrano a risoluzione piena e senza data e luogo in basso a sinistra. */
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -122,11 +127,31 @@ const prova = (nome, fn) => prove.push([nome, fn]);
     };
     const chiudiImpostazioni = () => pagina.click('#btn-chiudi-impostazioni');
     const salvate = () => pagina.evaluate(() => JSON.parse(localStorage.getItem('astrocal_youtube_v1') || '{}'));
-    // un filmato finto di 2400 byte, come quello che esce dal registratore
-    const filmato = (titolo) => pagina.evaluate(t => {
+    // v465: un filmato vero (un secondo di tela che cambia colore, registrato
+    // nella pagina come fa il registratore dell'app), perché la finestra lo
+    // controlla prima di aprirsi; `guasto` = 2400 byte che non sono un
+    // filmato, `vuoto` = meno di un kilobyte. Restituisce la misura in byte.
+    const filmato = (titolo, guasto) => pagina.evaluate(async ({ titolo, guasto }) => {
       mostraVista('cielo');
-      skyRegMostraEsito(new Blob([new Uint8Array(2400).fill(7)], { type: 'video/webm' }), 'webm', 'video/webm', t);
-    }, titolo);
+      if (!window.__filmatoVero) window.__filmatoVero = await new Promise(ok => {
+        const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+        const x = c.getContext('2d');
+        let n = 0;
+        const disegna = () => { x.fillStyle = `hsl(${(n * 12) % 360}, 70%, 40%)`; x.fillRect(0, 0, 320, 180); x.fillStyle = '#fff'; x.fillRect((n * 6) % 300, 80, 20, 20); n++; };
+        disegna();
+        const reg = new MediaRecorder(c.captureStream(30), { mimeType: 'video/webm' });
+        const pezzi = [];
+        reg.ondataavailable = e => { if (e.data.size) pezzi.push(e.data); };
+        reg.onstop = () => ok(new Blob(pezzi, { type: 'video/webm' }));
+        reg.start(100);
+        const giro = setInterval(disegna, 33);
+        setTimeout(() => { clearInterval(giro); reg.stop(); }, 1200);
+      });
+      const blob = guasto === 'vuoto' ? new Blob([new Uint8Array(500)], { type: 'video/webm' })
+        : guasto ? new Blob([new Uint8Array(2400).fill(7)], { type: 'video/webm' }) : window.__filmatoVero;
+      skyRegMostraEsito(blob, 'webm', 'video/webm', titolo);
+      return blob.size;
+    }, { titolo, guasto: guasto || '' });
 
     prova('le Impostazioni: senza ID client il tasto è spento, uno sbagliato si dice, uno giusto si salva', async () => {
       await apriImpostazioni();
@@ -161,9 +186,15 @@ const prova = (nome, fn) => prove.push([nome, fn]);
     });
 
     prova('il filmato di una storia: titolo proposto, visibilità scelta, la rete cade e si riprende', async () => {
-      await filmato('Pallido puntino blu');
+      const peso = await filmato('Pallido puntino blu');
+      assert.ok(peso > 1000, 'un filmato vero: ' + peso);
       await pagina.evaluate(() => document.getElementById('skymap-clip-youtube').click());
       await pagina.waitForSelector('#yt-finestra');
+      // v465: controllato prima di aprire, con l'anteprima e la misura vera
+      assert.equal(await pagina.locator('#yt-finestra video.yt-anteprima').count(), 1, 'l\'anteprima del filmato');
+      assert.match(await pagina.locator('#yt-finestra .yt-file').textContent(), /320 × 180 \(180p\) · 0:01/);
+      assert.equal(await pagina.evaluate(() => [...document.querySelectorAll('#skymap-clip-anteprima video')].every(v => v.paused)), true,
+        'l\'anteprima del pannello sotto si ferma');
       assert.equal(await pagina.inputValue('#yt-f-titolo'), 'Pallido puntino blu');
       assert.match(await pagina.inputValue('#yt-f-descr'), /Pallido puntino blu[\s\S]*AstroCalendario/);
       assert.match(await pagina.locator('#yt-finestra .yt-canale').textContent(), /Il canale di Ben/);
@@ -177,7 +208,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.equal(apri, 'https://youtu.be/abcDEF12345');
       const post = richieste.find(x => x.metodo === 'POST');
       assert.equal(post.q.uploadType, 'resumable');
-      assert.equal(post.intest['x-upload-content-length'], '2400');
+      assert.equal(post.intest['x-upload-content-length'], String(peso));
       assert.equal(post.intest['x-upload-content-type'], 'video/webm');
       assert.equal(post.corpo.snippet.title, 'Pallido puntino blu', 'le parentesi angolari che YouTube rifiuta se ne vanno');
       assert.equal(post.corpo.status.privacyStatus, 'unlisted');
@@ -185,10 +216,10 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.ok(post.corpo.snippet.tags.includes('astronomia'));
       const put = richieste.filter(x => x.metodo === 'PUT');
       assert.equal(put.length, 3, 'il pezzo intero, la domanda, il resto');
-      assert.equal(put[0].byte, 2400);
-      assert.equal(put[1].range, 'bytes */2400');
-      assert.equal(put[2].range, 'bytes 1000-2399/2400');
-      assert.equal(put[2].byte, 1400);
+      assert.equal(put[0].byte, peso);
+      assert.equal(put[1].range, `bytes */${peso}`);
+      assert.equal(put[2].range, `bytes 1000-${peso - 1}/${peso}`);
+      assert.equal(put[2].byte, peso - 1000);
       const s = await salvate();
       assert.equal(s.pubblicati[0].id, 'abcDEF12345');
       assert.equal(s.privacy, 'unlisted', 'la visibilità scelta diventa quella di serie');
@@ -244,7 +275,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.locator('#vista-demo .studio-blocco:last-child [data-fai="registraYoutube"]').click();
       const avvii = await pagina.evaluate(() => window.__avvii);
       assert.equal(avvii.length, 1);
-      assert.deepEqual(avvii[0].una, { registra: true });
+      assert.deepEqual(avvii[0].una, { registra: true, perYoutube: true, schermoIntero: true });
       assert.match(avvii[0].testo, /^define_demo/);
       // il filmato arriva: la finestra si apre da sola, col titolo della storia
       await filmato('altro');
@@ -264,7 +295,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await tasto.evaluate(b => b.click());
       const avvii = await pagina.evaluate(() => window.__avvii);
       assert.equal(avvii.length, 1);
-      assert.deepEqual(avvii[0].una, { registra: true });
+      assert.deepEqual(avvii[0].una, { registra: true, perYoutube: true, schermoIntero: true });
       // un filmato senza titolo (fatto a mano) non è quello della storia
       await filmato('');
       assert.equal(await pagina.locator('#yt-finestra').count(), 0);
@@ -290,6 +321,66 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.waitForFunction(() => !AstroDemo.inCorso);
       assert.equal(await pagina.evaluate(() => AstroDemo.opzioni.registra), false);
       assert.equal(await pagina.evaluate(() => JSON.parse(localStorage.getItem('astrocal_demo_opzioni_v1') || '{}').registra || false), false);
+      await pagina.evaluate(() => { if (sky.reg.attiva) skyRegFerma({ annulla: true }); skyRegChiudiPannello(); });
+    });
+
+    prova('un filmato vuoto o rovinato non si pubblica: la finestra lo dice, e lo si può scaricare (v465)', async () => {
+      for (const [guasto, frase] of [['vuoto', /vuoto/], ['rovinato', /non si apre/]]) {
+        await filmato('Rotto', guasto);
+        await pagina.evaluate(() => document.getElementById('skymap-clip-youtube').click());
+        await pagina.waitForSelector('#yt-finestra .yt-messaggio.errore');
+        assert.match(await pagina.locator('#yt-finestra .yt-messaggio.errore').textContent(), frase);
+        assert.equal(await pagina.locator('#yt-finestra [data-yt="pubblica"]').count(), 0, 'niente «Pubblica»');
+        assert.equal(await pagina.locator('#yt-finestra #yt-f-titolo').count(), 0, 'niente campi');
+        assert.equal(await pagina.locator('#yt-finestra video').count(), 0, 'niente anteprima');
+        assert.equal(await pagina.locator('#yt-finestra [data-yt="scarica"]').count(), 1);
+        await pagina.locator('#yt-finestra [data-yt="chiudi"]').click();
+        assert.equal(await pagina.locator('#yt-finestra').count(), 0);
+      }
+    });
+
+    prova('il filmato per YouTube: risoluzione piena, e niente data e luogo in basso a sinistra (v465)', async () => {
+      const misure = await pagina.evaluate(() => ({
+        normale: skyRegMisuraTela(1100, 900, 1, false), yt: skyRegMisuraTela(1100, 900, 1, true),
+        ytTelefono: skyRegMisuraTela(412, 915, 2.625, true), yt4k: skyRegMisuraTela(1920, 1080, 2, true),
+        ytOltre: skyRegMisuraTela(2560, 1440, 2, true), ripiego: skyRegMisuraTela(1920, 1080, 2, true, 1920),
+        flusso: [skyRegBitrate(1920, 1080, true), skyRegBitrate(3840, 2160, true), skyRegBitrate(1080, 884, false)]
+      }));
+      assert.deepEqual(misure.normale, { larghezza: 1080, altezza: 884 }, 'il filmato da chat resta a 1080');
+      assert.deepEqual(misure.yt, { larghezza: 1920, altezza: 1570 }, 'YouTube: almeno 1920 di lato lungo');
+      assert.deepEqual(misure.ytTelefono, { larghezza: 1082, altezza: 2402 }, 'al telefono, i pixel veri dello schermo');
+      assert.deepEqual(misure.yt4k, { larghezza: 3840, altezza: 2160 }, 'uno schermo 4K, in 4K');
+      assert.deepEqual(misure.ytOltre, { larghezza: 3840, altezza: 2160 }, 'mai oltre il 4K');
+      assert.deepEqual(misure.ripiego, { larghezza: 1920, altezza: 1080 });
+      assert.ok(misure.flusso[0] >= 12000000 && misure.flusso[1] === 45000000 && misure.flusso[2] === 6000000, misure.flusso.join(' '));
+      // la firma: sul nero, in basso a sinistra c'è scritto qualcosa solo nel filmato normale
+      const firma = await pagina.evaluate(() => {
+        const prova = solo => {
+          const c = document.createElement('canvas'); c.width = 1920; c.height = 1080;
+          const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, 1920, 1080);
+          skyRegFirma(x, 1920, 1080, { soloMarchio: solo });
+          const acceso = (x0, y0, w, h) => { const d = x.getImageData(x0, y0, w, h).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 200) n++; return n; };
+          return { sinistra: acceso(0, 900, 900, 180), destra: acceso(1300, 980, 620, 100) };
+        };
+        return { normale: prova(false), youtube: prova(true) };
+      });
+      assert.ok(firma.normale.sinistra > 200, 'la firma normale ha data e luogo: ' + firma.normale.sinistra);
+      assert.equal(firma.youtube.sinistra, 0, 'per YouTube in basso a sinistra non c\'è niente');
+      assert.ok(firma.youtube.destra > 50, 'resta il nome dell\'app: ' + firma.youtube.destra);
+      // una demo vera, per YouTube: la tela è quella grande, poi tutto torna com'era
+      const durante = await pagina.evaluate(async () => {
+        try { AstroDemo.avvia(undefined, { registra: true, perYoutube: true, schermoIntero: false }); } catch (e) { return 'errore: ' + e.message; }
+        for (let i = 0; i < 50 && !sky.reg.attiva; i++) await new Promise(ok => setTimeout(ok, 100));
+        const r = { attiva: sky.reg.attiva, perYoutube: sky.reg.perYoutube, l: sky.reg.tela && sky.reg.tela.width, h: sky.reg.tela && sky.reg.tela.height };
+        AstroDemo.ferma();
+        return r;
+      });
+      assert.equal(durante.attiva, true, JSON.stringify(durante));
+      assert.equal(durante.perYoutube, true);
+      assert.ok(Math.max(durante.l, durante.h) >= 1920, 'la tela registrata: ' + durante.l + '×' + durante.h);
+      await pagina.waitForFunction(() => !AstroDemo.inCorso);
+      assert.equal(await pagina.evaluate(() => sky.reg.perYoutube || !!sky.reg.misura), false, 'dopo la demo, i filmati a mano sono quelli di sempre');
+      await pagina.waitForTimeout(300);
       await pagina.evaluate(() => { if (sky.reg.attiva) skyRegFerma({ annulla: true }); skyRegChiudiPannello(); });
     });
 
