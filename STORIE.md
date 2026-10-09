@@ -2388,6 +2388,72 @@ canzone dopo.
 Prove: `prova-youtube.js` (14, 2 nuove: la canzone dentro al file, misurata
 decodificandolo; gli avvisi della traccia assente e di quella muta).
 
+### Lo scambio di battute (v468)
+
+«Nelle CosmoStorie c'è troppa pausa tra una battuta e l'altra: i dialoghi
+devono essere più rapidi, uno scambio di battute.» Dopo il discorso
+affiatato (v459) il silenzio fra due voci era ancora, misurato in Chromium
+su «La Luna ha perso un pezzo?» dalla fine vera del suono alla partenza
+della voce seguente, di 450–1000 ms (media 759). Veniva da quattro cose, e
+tutte e quattro stanno nel motore, non nei copioni: valgono per le storie
+pronte, per quelle dello Studio e per quelle che si scriveranno.
+
+- **Il silenzio in fondo ai file.** Le voci registrate (ElevenLabs,
+  Edge-TTS) finiscono con un quarto di secondo muto, e la scena aspettava
+  la fine del file. Ora un file scaricato si decodifica una volta, fuori
+  schermo (`narrFineSuono`, `OfflineAudioContext`), e si trova l'ultimo
+  blocco di 10 ms che suona (`narrUltimoSuono`, sopra 0,006 di valore
+  efficace, più 60 ms per l'ultima consonante): `narrSuona` dà la voce per
+  finita lì. Il resto muto continua a suonare finché non lo ferma la voce
+  dopo. Senza Web Audio, o con un file che non si decodifica, vale la fine
+  del file come prima. Vale anche per le voci caricate nello Studio.
+- **La coda e il minimo.** In `demo.js` (`stringiVoce`) la coda dopo la
+  voce scende da 250 a 40 ms e il minimo di una scena da 2 a 1 s: un
+  «Giusto!» di un secondo teneva la scena due.
+- **I gesti scritti dopo la voce.** Una faccia a 0,7 di una scena di 16 s
+  la teneva aperta fino a 11,7 s anche se la voce taceva a 10,8. Ora i
+  gesti che non sono ancora cominciati quando l'ultima voce tace si
+  stringono in una finestra breve (`Motore.stringi`, `oraRiprese`: un
+  quarto del tempo che restava, fra 0,35 e 0,6 s, e mai più tardi di come
+  era prima): arrivano al loro stato finale nei primi sette decimi e si
+  vedono fermi nel resto. Le riprese già in corso (un viaggio) accelerano
+  con loro; la camera e le azioni senza ripresa no, arrivano alla fine
+  alla chiusura come prima.
+- **La seconda battuta nella stessa scena.** Una `character_speak` con
+  `shot_from: 0.5` aspettava il suo tempo scritto anche se la prima era già
+  finita: ora l'orologio delle riprese salta (`salto`) e la seconda parte
+  40 ms dopo la prima. I gesti scritti fra le due nascono insieme a lei.
+- **La rete fra una scena e l'altra.** All'apertura di una scena le voci
+  sue e della seguente si scaricano subito (`narrazione.prepara`, chiamata
+  da `contesto.scena` in `demo.js`, al più quattro file in attesa, e solo i
+  file del sito: la sintesi non si chiede per una frase che forse non si
+  dirà); alla battuta il file c'è già, e si decodifica anche la sua fine.
+
+Misurato dopo, con gli stessi file: 155–250 ms fra una voce e l'altra
+(media 435, contro 759). Restano più lunghi il primo ingresso nella vista 3D
+(la scena di passaggio: il lavoro del browser per aprirla, ~1 s, uguale a
+prima) e la scena 7 col gesto finale (0,77 s invece di 1,19). Fuori da una
+CosmoStoria (le demo senza personaggi) non cambia niente: `stringiVoce` è
+nullo, il salto e l'anticipo restano a zero e le scene durano quanto è
+scritto. Le storie cantate non hanno voci da aspettare e vanno sempre a
+tempo con la canzone.
+
+La scena della domanda al pubblico (`story_question`, `Motore.PENSARE`) non
+si stringe più: dalla v459 il cartello spariva appena detta la domanda, senza
+i tre secondi che lo Studio le aggiunge per pensare.
+
+Per chi scrive una storia: `duration` resta il tetto della scena, scritto
+per la voce più lenta (la sintesi); non serve accorciarlo, né mettere i
+gesti presto per non lasciare buchi. Una pausa voluta dopo una battuta si
+ottiene con una scena senza voce (che dura quanto è scritto).
+
+Prove: `prova-demo.js` (il discorso affiatato, 270: la coda, il gesto che
+non tiene aperta la scena, la finestra minima, il tetto delle regole di
+prima, la battuta cortissima, la seconda battuta anticipata, la domanda che
+tiene il suo tempo, fuori da una storia niente cambia), `prova-narrazione.js` (4 nuove: la fine vera del
+suono, la voce che finisce lì, senza Web Audio come prima, la battuta
+scaricata prima e una volta sola).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

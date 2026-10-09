@@ -62,6 +62,13 @@ const NARR_TESTO_MIN_MS = 2500;
 // Un pezzo registrato si cerca dentro a una frase solo se è abbastanza lungo
 // da non essere un caso: «Evviva!» sta in mille frasi, un enigma no.
 const NARR_BRANO_MIN = 12;
+// Quante battute scaricate prima possono aspettare il loro turno (v468)
+const NARR_PRONTI_MAX = 4;
+// La coda muta di un file registrato (v468): sotto questo valore efficace,
+// a blocchi di 10 ms, è silenzio; e la voce finisce un poco dopo l'ultimo
+// blocco che suona, perché l'ultima consonante sfuma.
+const NARR_SOGLIA_MUTA = 0.006;
+const NARR_MARGINE_MUTO_S = 0.06;
 const NARR_ESTENSIONI = /\.(mp3|ogg|oga|opus|m4a|aac|wav|webm)$/i;
 // Le voci di serie del ponte Edge-TTS per chi non ne chiede una sua.
 const NARR_VOCI_EDGE = { it: 'it-IT-ElsaNeural', en: 'en-US-AriaNeural' };
@@ -86,6 +93,14 @@ const narr = {
   // normalizzato → URL dell'audio (un blob di questo browser). Valgono in
   // ogni lingua: è la voce che chi ha scritto la battuta ha registrato.
   locali: new Map(),
+  // v468, lo scambio di battute: i file delle battute che stanno per venire
+  // (`narrPrepara`), url → promessa del blob. Prima ogni scena di una storia
+  // scaricava la sua voce solo all'apertura, e fra una battuta e l'altra si
+  // sentiva l'attesa della rete. Pochi alla volta: se ne usa uno e si butta.
+  pronti: new Map(),
+  // v468: dove finisce davvero il suono di un file, url → promessa dei
+  // secondi (o null se non si sa): `narrFineSuono`
+  fini: new Map(),
   vocePronta: false,
   ttsMuto: false,     // la voce del dispositivo non è partita: fino al prossimo gesto
   sbloccato: false,
@@ -636,7 +651,20 @@ function narrSuona(c, sorgente) {
   return narrAttesa(c, fine => {
     let partito = false;
     const scadenza = setTimeout(() => { if (!partito && !c.pausa) fine('corrotto'); }, NARR_AUDIO_CARICA_MS);
-    const chiudi = v => { clearTimeout(scadenza); fine(v); };
+    let muta = null;
+    const chiudi = v => { clearTimeout(scadenza); clearTimeout(muta); fine(v); };
+    // v468: la voce è finita dove finisce il suono (`narrFineSuono`), non
+    // dove finisce il file. Il resto muto continua: lo ferma la voce dopo.
+    const pezzo = c.suonoPezzo;
+    const guardaFine = () => {
+      muta = setTimeout(() => {
+        const f = c.fineSuono;
+        if (c.suonoPezzo !== pezzo || (pezzo.saputo && !(f > 0))) return;
+        if (partito && !c.pausa && f > 0 && !a.paused && a.currentTime >= f) { chiudi('audio'); return; }
+        guardaFine();
+      }, 25);
+    };
+    if (pezzo && pezzo.attesa) guardaFine();
     a.onended = () => { c.suonoDa = 0; chiudi('audio'); };
     a.onerror = () => { c.suonoDa = 0; chiudi('corrotto'); };
     a.onplaying = () => { partito = true; c.suonoDa = narrOra(); };
@@ -671,15 +699,95 @@ async function narrCaricaFile(url) {
   // Da `file://` una `fetch` è vietata: l'elemento audio invece il file lo
   // legge lo stesso, e si passa l'indirizzo così com'è.
   if (typeof location !== 'undefined' && location.protocol === 'file:') return url;
-  const r = await fetch(url);
-  if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { motivo: 'mancante' });
-  const blob = await r.blob();
+  const pronto = narr.pronti.get(url);
+  narr.pronti.delete(url);
+  const blob = await (pronto || narrScaricaFile(url));
   // Un audio di sessanta byte non è un audio: è un'intestazione e basta, o
   // una pagina d'errore servita col tipo sbagliato.
   if (!blob.size || blob.size < 64 || /^text\//i.test(blob.type || ''))
     throw Object.assign(new Error('file vuoto o non audio'), { motivo: 'corrotto' });
+  narrFineSuono(url, blob);
   const oggetto = URL.createObjectURL(blob);
   return oggetto;
+}
+
+/* Dove finisce davvero il suono di un file (v468). Le voci registrate
+ * (ElevenLabs, Edge-TTS) finiscono con un quarto di secondo muto, che si
+ * sommava a ogni pausa fra una battuta e l'altra: chi guardava le storie
+ * sentiva il dialogo lento. Il file si decodifica una volta (fuori schermo,
+ * senza suonarlo) e si cerca l'ultimo blocco che suona; `narrSuona` dà la
+ * voce per finita lì. Senza Web Audio, o con un file che non si decodifica,
+ * resta la fine del file. */
+function narrFineSuono(url, blob) {
+  if (narr.fini.has(url)) return narr.fini.get(url);
+  const Contesto = typeof window !== 'undefined' && (window.OfflineAudioContext || window.webkitOfflineAudioContext);
+  if (!Contesto || !blob || typeof blob.arrayBuffer !== 'function') return Promise.resolve(null);
+  const promessa = blob.arrayBuffer()
+    .then(dati => new Promise((si, no) => {
+      const r = new Contesto(1, 1, 22050).decodeAudioData(dati, si, no);
+      if (r && typeof r.then === 'function') r.then(si, no);
+    }))
+    .then(narrUltimoSuono, () => null);
+  narr.fini.set(url, promessa);
+  return promessa;
+}
+
+// L'ultimo istante in cui un audio decodificato suona, in secondi (col
+// margine), o null se è muto del tutto. Funzione pura: le prove la chiamano
+// con un finto `{ sampleRate, numberOfChannels, length, getChannelData }`.
+function narrUltimoSuono(audio) {
+  if (!audio || !(audio.sampleRate > 0) || !(audio.length > 0)) return null;
+  const canali = [];
+  for (let k = 0; k < (audio.numberOfChannels || 1); k++) canali.push(audio.getChannelData(k));
+  const blocco = Math.max(1, Math.round(audio.sampleRate / 100));
+  for (let fine = audio.length; fine > 0; fine -= blocco) {
+    const inizio = Math.max(0, fine - blocco);
+    let somma = 0;
+    for (const dati of canali) for (let i = inizio; i < fine; i++) somma += dati[i] * dati[i];
+    if (Math.sqrt(somma / ((fine - inizio) * canali.length)) >= NARR_SOGLIA_MUTA)
+      return Math.min(audio.length / audio.sampleRate, fine / audio.sampleRate + NARR_MARGINE_MUTO_S);
+  }
+  return null;
+}
+
+async function narrScaricaFile(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { motivo: 'mancante' });
+  return r.blob();
+}
+
+/* Scarica prima i file di una battuta che sta per venire (v468): la stessa
+ * richiesta di `narrParla` ({ id, testo }), niente voce e niente sottotitolo.
+ * Solo i file del sito: le voci dello Studio sono già blob di questo
+ * browser, e la sintesi non si chiede per una frase che forse non si dirà.
+ * Un errore qui non conta: alla battuta vera il file si riprova. */
+function narrPrepara(r) {
+  r = r || {};
+  const p = narrPreferenze();
+  if (!p.attiva || p.soloTts || typeof fetch !== 'function') return 0;
+  if (typeof location !== 'undefined' && location.protocol === 'file:') return 0;
+  const testo = narrNormalizza(narrTestoDi(r));
+  if (!testo) return 0;
+  let n = 0;
+  for (const pezzo of narrComponi(r.id, testo, narrLingua(), false)) {
+    const url = pezzo.audio;
+    if (!url || /^(blob|data):/i.test(url) || narr.guasti.has(url) || narr.pronti.has(url)) continue;
+    const promessa = narrScaricaFile(url);
+    promessa.then(blob => narrFineSuono(url, blob), () => { if (narr.pronti.get(url) === promessa) narr.pronti.delete(url); });
+    narr.pronti.set(url, promessa);
+    n++;
+    while (narr.pronti.size > NARR_PRONTI_MAX) narr.pronti.delete(narr.pronti.keys().next().value);
+  }
+  return n;
+}
+
+// La fine vera del pezzo che sta per suonare, quando la decodifica la dice;
+// un pezzo dopo (o la sintesi) la cancella
+function narrFinePezzo(c, promessa) {
+  const pezzo = { attesa: !!promessa, saputo: false };
+  c.suonoPezzo = pezzo; c.fineSuono = null;
+  if (promessa) promessa.then(f => { pezzo.saputo = true; if (c.suonoPezzo === pezzo) c.fineSuono = f; });
+  return pezzo;
 }
 
 async function narrSuonaFile(c, url) {
@@ -693,7 +801,9 @@ async function narrSuonaFile(c, url) {
   }
   if (narrVecchia(c)) { if (sorgente.startsWith('blob:')) URL.revokeObjectURL(sorgente); return 'interrotta'; }
   if (sorgente.startsWith('blob:')) narr.urlOggetto = sorgente;
+  const pezzo = narrFinePezzo(c, narr.fini.get(url));
   const esito = await narrSuona(c, sorgente);
+  if (c.suonoPezzo === pezzo) c.fineSuono = null;
   if (narr.urlOggetto === sorgente) { URL.revokeObjectURL(sorgente); narr.urlOggetto = ''; }
   if (esito === 'corrotto') {
     narr.guasti.set(url, 'corrotto');
@@ -759,6 +869,7 @@ async function narrEdge(c, testo) {
   if (narrVecchia(c)) { if (sorgente && sorgente.startsWith('blob:')) URL.revokeObjectURL(sorgente); return 'interrotta'; }
   if (!sorgente) return '';
   if (sorgente.startsWith('blob:')) narr.urlOggetto = sorgente;
+  narrFinePezzo(c, null);
   const esito = await narrSuona(c, sorgente);
   if (narr.urlOggetto === sorgente) { URL.revokeObjectURL(sorgente); narr.urlOggetto = ''; }
   return esito === 'audio' ? 'tts' : esito === 'interrotta' ? 'interrotta' : '';
@@ -1183,6 +1294,8 @@ const narrazione = {
       ? narr.cattura.stream.getAudioTracks().length : 0
   }),
   // Per le prove e per chi scrive il manifest.
+  prepara: narrPrepara,
+  ultimoSuono: narrUltimoSuono,
   componi: (id, testo, lingua) => narrComponi(id, testo, lingua || narrLingua(), narrPreferenze().soloTts),
   impronta: narrImpronta,
   // Lo Studio delle storie registra qui le voci caricate per una battuta:

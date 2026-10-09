@@ -148,6 +148,15 @@
 // l'altra: le durate sono scritte per la voce più lenta (la sintesi), e con
 // la voce registrata o con l'inglese la frase finiva secondi prima.
       this.fineVoce = null;
+// v468, lo scambio di battute: chi guardava le storie sentiva ancora pause
+// lunghe, e venivano da quello che la scena aveva scritto **dopo** la voce.
+// Un gesto (una faccia a 0,7 di una scena di 16 s) la teneva aperta fino al
+// suo tempo scritto, e una seconda battuta a metà scena aspettava il suo:
+// secondi di silenzio. Ora le riprese hanno un loro orologio che può correre
+// avanti: `salto` (ms) lo porta alla battuta seguente appena la voce tace,
+// `anticipo` stringe i gesti rimasti in una finestra breve prima di chiudere.
+      this.salto = 0;
+      this.anticipo = null;
 
 // L'intro comune (logo e titolo su fondo nero) sta **prima** della prima
 // scena ed è del motore, non di una demo: gira sullo stesso orologio, quindi
@@ -208,6 +217,8 @@
       this.narrazioneFinita = true;
       this.attesaFineNarrazione = false;
       this.fineVoce = null;
+      this.salto = 0;
+      this.anticipo = null;
       this.vociAperte = 0;
 
       if (this.contesto.scena)
@@ -240,8 +251,8 @@
       this.avvisa(this);
     }
     // Una voce da aspettare: la scena non chiude finché non tacciono tutte.
-    // Quando l'ultima tace, una storia stringe la scena (`fineVoce`), se
-    // nessun'altra battuta deve ancora cominciare.
+    // Quando l'ultima tace, una storia stringe la scena o anticipa la
+    // battuta seguente (`stringi`).
     seguiVoce(promessa, token) {
       if (!promessa || typeof promessa.then !== 'function') return;
       this.narrazioneFinita = false;
@@ -252,18 +263,8 @@
         if (--this.vociAperte > 0) return;
         this.narrazioneFinita = true;
         const detta = esito.status === 'fulfilled' && ['audio', 'tts', 'testo'].includes(esito.value);
-        const altre = (this.riprese || []).some(r => !r.esecutore && Motore.VOCI.includes(r.azione.comando));
         const stringi = this.contesto && this.contesto.stringiVoce;
-        if (stringi && detta && !altre && !this.attesaFineNarrazione) {
-          const durata = this.demo.scene[this.indice].durata;
-          const qui = this.trascorso + (this.stato === 'attivo' ? Math.max(0, this.ora() - this.ultimo) : 0);
-          // un gesto scritto dopo la battuta (una faccia, un viaggio) si vede
-          // comunque: la scena chiude mezzo secondo dopo che è cominciato
-          let gesti = 0;
-          for (const r of this.riprese || []) if (!r.esecutore) gesti = Math.max(gesti, r.azione.ripresa.da * durata + 500);
-          const fine = Math.max(qui + (Number(stringi.coda) || 0), Math.min(durata, Number(stringi.minimo) || 0), gesti);
-          if (fine < durata) this.fineVoce = fine;
-        }
+        if (stringi && detta && !this.attesaFineNarrazione) this.stringi(stringi);
         // Se la durata minima era già terminata, non c'è più un RAF attivo:
         // riavvia l'orologio adesso, senza conteggiare come tempo di scena
         // i secondi trascorsi mentre aspettavamo soltanto la voce.
@@ -274,6 +275,58 @@
         }
       });
     }
+    // L'ultima voce aperta di una storia ha taciuto (v458, rifatta nella
+    // v468). Se nella scena c'è ancora una battuta da cominciare, l'orologio
+    // delle riprese salta fino a lei: parte `coda` ms dopo, non al suo tempo
+    // scritto, ed è uno scambio di battute invece di un silenzio. Se no la
+    // scena chiude `coda` ms dopo la voce; i gesti scritti più avanti (una
+    // faccia, un effetto, un viaggio) non la tengono aperta fino al loro
+    // tempo: si stringono in una finestra breve, un quarto del tempo che
+    // restava fra `gesto.min` e `gesto.max` ms, e si vedono prima di chiudere.
+    stringi(s) {
+      const durata = this.demo.scene[this.indice].durata;
+      const qui = this.trascorso + (this.stato === 'attivo' ? Math.max(0, this.ora() - this.ultimo) : 0);
+      const coda = Number(s.coda) || 0;
+      const attese = (this.riprese || []).filter(r => !r.esecutore);
+      const voci = attese.filter(r => Motore.VOCI.includes(r.azione.comando));
+      if (voci.length) {
+        const prossima = Math.min(...voci.map(r => r.azione.ripresa.da * durata));
+        this.salto = Math.max(this.salto, prossima - qui - coda);
+        return;
+      }
+      // una scena che chiede di pensare (la domanda al pubblico) tiene il
+      // tempo che ha scritto: lì il silenzio dopo la voce è voluto
+      if (this.demo.scene[this.indice].azioni.some(a => Motore.PENSARE.includes(a.comando))) return;
+      const gesto = s.gesto || {};
+      const minimo = Number(gesto.min) || 350;
+      let fine = qui + coda;
+      if (attese.length) {
+        // mai più tardi di come era prima (mezzo secondo dopo il gesto
+        // scritto più tardi): la finestra stringe, non allunga
+        let scritto = 0;
+        for (const r of attese) scritto = Math.max(scritto, r.azione.ripresa.da * durata - this.salto + 500);
+        const finestra = Math.min(Number(gesto.max) || 600, Math.max(minimo, (durata - qui - this.salto) / 4));
+        fine = Math.max(fine, qui + Math.min(finestra, Math.max(minimo, scritto - qui)));
+      }
+      fine = Math.max(fine, Math.min(durata, Number(s.minimo) || 0));
+      if (fine >= durata) return;
+      this.fineVoce = fine;
+      // i gesti arrivano al loro stato finale nei primi sette decimi della
+      // finestra, e nel resto si vedono fermi
+      if (attese.length) this.anticipo = { da: qui, r0: qui + this.salto, lungo: Math.max(1, (fine - qui) * 0.7) };
+    }
+    // L'orologio delle riprese (v468), come progresso della scena: quello
+    // della scena più il salto alla battuta seguente, e dopo l'ultima voce
+    // stretto nella finestra dei gesti. Fuori da una storia è quello della
+    // scena.
+    oraRiprese(progresso) {
+      if (progresso >= 1) return 1;
+      const durata = this.demo.scene[this.indice].durata;
+      const t = progresso * durata;
+      const a = this.anticipo;
+      const r = a && t >= a.da ? a.r0 + (durata - a.r0) * Math.min(1, (t - a.da) / a.lungo) : t + this.salto;
+      return Math.min(1, r / durata);
+    }
     // Quanto dura la scena in corso: la sua `duration`, o meno se la voce di
     // una storia è finita prima (v458)
     durataScena() {
@@ -281,16 +334,17 @@
       return this.fineVoce !== null && this.fineVoce < durata ? this.fineVoce : durata;
     }
     aggiorna(progresso, soloAperti) {
-      for (const e of this.esecutori) if (e.aggiorna) e.aggiorna(progresso);
+      const pr = this.oraRiprese(progresso);
+      for (const e of this.esecutori) if (e.aggiorna) e.aggiorna(e.ripresa ? pr : progresso);
       // la scena stretta dalla voce non apre più le riprese che non sono
       // arrivate: un botto creato e chiuso nello stesso istante suonerebbe
       if (soloAperti) return;
       for (const r of this.riprese || []) {
-        if (r.esecutore || progresso < r.azione.ripresa.da) continue;
+        if (r.esecutore || pr < r.azione.ripresa.da) continue;
         const grezzo = this.registro[r.azione.comando].crea(r.azione.parametri, this.contesto, r.scena) || {};
         r.esecutore = this.inRipresa(grezzo, r.azione.ripresa);
         this.esecutori.push(r.esecutore);
-        r.esecutore.aggiorna(progresso);
+        r.esecutore.aggiorna(pr);
         this.seguiVoce(r.esecutore.fineNarrazione, this.tokenScena);
       }
     }
@@ -309,7 +363,8 @@
           esecutore.aggiorna(locale);
         },
         chiudi() { if (esecutore.chiudi) esecutore.chiudi(); },
-        fineNarrazione: esecutore.fineNarrazione
+        fineNarrazione: esecutore.fineNarrazione,
+        ripresa: true   // segue l'orologio delle riprese (`oraRiprese`)
       };
     }
     esci() {
@@ -493,8 +548,12 @@
     }
   }
   // I comandi che parlano: una scena che ne ha ancora uno da cominciare non
-  // si stringe sulla voce che è appena finita (v458)
+  // si stringe sulla voce che è appena finita (v458), ma lo anticipa (v468)
   Motore.VOCI = ['narrate', 'character_speak'];
+  // I comandi che chiedono tempo a chi guarda: la loro scena non si stringe
+  // sulla voce (v468). Prima la domanda al pubblico spariva appena detta,
+  // senza i tre secondi che lo Studio le dà per pensare.
+  Motore.PENSARE = ['story_question'];
   const api = { analizza, Motore, messaggio };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else radice.AstroDemoMotore = api;
