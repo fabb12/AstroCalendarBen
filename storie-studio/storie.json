@@ -453,6 +453,46 @@
           "voci": {}
         },
         {
+          "id": "svltnqk7",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun",
+            "Moon"
+          ],
+          "momenti": [
+            {
+              "id": "mky8mksy",
+              "chi": "Moon",
+              "testo": "Vogliamo essere indipendenti!",
+              "umore": "angry",
+              "tono": [],
+              "durata": 0,
+              "voce": 32,
+              "audio": null,
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
           "id": "st49i89w",
           "ambiente": "terra_luna",
           "fuoco": "Jupiter",
@@ -1292,7 +1332,7 @@
           "voci": {}
         },
         {
-          "id": "sl7z6o5v",
+          "id": "spnpt5ky",
           "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
@@ -1313,10 +1353,65 @@
           ],
           "momenti": [
             {
+              "id": "mkzwkqf4",
+              "chi": "Sun",
+              "testo": "Tranquilla Terra! Ti spiego io cos'è la gravità!",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 0,
+              "voce": 33,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a165zrp9",
+                  "tipo": "umore",
+                  "chi": "Sun",
+                  "quando": "inizio",
+                  "umore": "laughing"
+                },
+                {
+                  "id": "atk58ew0",
+                  "tipo": "umore",
+                  "chi": "Sun",
+                  "quando": "meta",
+                  "umore": "happy"
+                }
+              ],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sl7z6o5v",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun",
+            "Saturn"
+          ],
+          "momenti": [
+            {
               "id": "mo41dzg3",
-              "chi": "Jupiter",
+              "chi": "Sun",
               "testo": "So chi è! è la mia amica proxima centauri!",
-              "umore": "neutral",
+              "umore": "impressed",
               "tono": [],
               "durata": 0,
               "voce": 31,
@@ -1333,8 +1428,8 @@
       ],
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
-      "voceProssima": 32,
-      "aggiornato": 1791547231465,
+      "voceProssima": 34,
+      "aggiornato": 1791548379058,
       "lingua": "it",
       "musica": null,
       "voci": {

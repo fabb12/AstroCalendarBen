@@ -67,11 +67,19 @@
           "durata": 3000
         },
         {
+          "n": 32,
+          "chi": "Moon",
+          "testo": "Vogliamo essere indipendenti!",
+          "umore": "angry",
+          "scena": 8,
+          "durata": 5000
+        },
+        {
           "n": 6,
           "chi": "Earth",
           "testo": "oh no! adesso cosa faccio?",
           "umore": "worried",
-          "scena": 8,
+          "scena": 9,
           "durata": 4000
         },
         {
@@ -79,7 +87,7 @@
           "chi": "Sun",
           "testo": "La gravità è una forza attrattiva che tiene uno o più astri stabili.",
           "umore": "neutral",
-          "scena": 9,
+          "scena": 10,
           "durata": 8000
         },
         {
@@ -87,7 +95,7 @@
           "chi": "Saturn",
           "testo": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.",
           "umore": "neutral",
-          "scena": 10,
+          "scena": 11,
           "durata": 9000
         },
         {
@@ -95,7 +103,7 @@
           "chi": "Earth",
           "testo": "Potresti spiegarti meglio?",
           "umore": "thinking",
-          "scena": 11,
+          "scena": 12,
           "durata": 4000
         },
         {
@@ -103,7 +111,7 @@
           "chi": "Jupiter",
           "testo": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
           "umore": "neutral",
-          "scena": 12,
+          "scena": 13,
           "durata": 18000
         },
         {
@@ -111,7 +119,7 @@
           "chi": "Sedna",
           "testo": "Ciao Terra, Giove ha ragione!",
           "umore": "neutral",
-          "scena": 13,
+          "scena": 14,
           "durata": 5000
         },
         {
@@ -119,7 +127,7 @@
           "chi": "Earth",
           "testo": "Oh! Che spavento! Chi ha parlato?",
           "umore": "surprised",
-          "scena": 14,
+          "scena": 15,
           "durata": 6000
         },
         {
@@ -127,7 +135,7 @@
           "chi": "Earth",
           "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
           "umore": "surprised",
-          "scena": 15,
+          "scena": 16,
           "durata": 16000
         },
         {
@@ -135,7 +143,7 @@
           "chi": "Earth",
           "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
           "umore": "annoyed",
-          "scena": 16,
+          "scena": 17,
           "durata": 12000
         },
         {
@@ -143,7 +151,7 @@
           "chi": "Sedna",
           "testo": "Ehm, scusa Terra, hai finito?",
           "umore": "neutral",
-          "scena": 17,
+          "scena": 18,
           "durata": 5000,
           "conTag": "[shouts] Ehm, scusa Terra, hai finito? [frustrated]"
         },
@@ -152,7 +160,7 @@
           "chi": "Earth",
           "testo": "Oh! Scusa! Continua.",
           "umore": "surprised",
-          "scena": 18,
+          "scena": 19,
           "durata": 5000
         },
         {
@@ -160,7 +168,7 @@
           "chi": "Sedna",
           "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
           "umore": "neutral",
-          "scena": 19,
+          "scena": 20,
           "durata": 20000
         },
         {
@@ -168,7 +176,7 @@
           "chi": "Earth",
           "testo": "Wow! Non sapevo che la scienza potesse essere così bella.",
           "umore": "neutral",
-          "scena": 20,
+          "scena": 21,
           "durata": 7000
         },
         {
@@ -176,7 +184,7 @@
           "chi": "alpha_centauri",
           "testo": "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.",
           "umore": "neutral",
-          "scena": 21,
+          "scena": 22,
           "durata": 16000
         },
         {
@@ -184,7 +192,7 @@
           "chi": "Earth",
           "testo": "Cosa? Di nuovo? Chi ha parlato?",
           "umore": "surprised",
-          "scena": 22,
+          "scena": 23,
           "durata": 6000
         },
         {
@@ -192,15 +200,23 @@
           "chi": "Sedna",
           "testo": "è vero! Chi è?",
           "umore": "thinking",
-          "scena": 23,
+          "scena": 24,
           "durata": 4000
         },
         {
+          "n": 33,
+          "chi": "Sun",
+          "testo": "Tranquilla Terra! Ti spiego io cos'è la gravità!",
+          "umore": "laughing",
+          "scena": 25,
+          "durata": 7000
+        },
+        {
           "n": 31,
-          "chi": "Jupiter",
+          "chi": "Sun",
           "testo": "So chi è! è la mia amica proxima centauri!",
-          "umore": "neutral",
-          "scena": 24,
+          "umore": "impressed",
+          "scena": 26,
           "durata": 7000
         }
       ]
