@@ -4434,6 +4434,9 @@
           storDisegnaFisica(g, 'davanti', cx, cy, R, fis, pg.reazione, t, opzFis);
           g.restore();
           storDisegnaVolto(g, geom, p, alfa, t);
+          g.save(); g.globalAlpha *= alfa;
+          storDisegnaFisica(g, 'primo', cx, cy, R, fis, pg.reazione, t, opzFis);
+          g.restore();
           g.restore();
         };
         if (posto.in3d) conLuce(ctx, cx + att.dx, cy + att.dy, R * 2.2, c.luce, tutto);
@@ -4460,8 +4463,13 @@
           g.save(); g.globalAlpha *= alfa;
           storDisegnaFisica(g, 'davanti', c.px, c.py, c.r, fis, pg.reazione, t, opzFis);
           g.restore();
-          trasforma(g);
+          g.save(); trasforma(g);
           storDisegnaVolto(g, geom, p, alfa, t);
+          g.restore();
+          // la metà davanti delle lune e degli anelli, sopra al volto
+          g.save(); g.globalAlpha *= alfa;
+          storDisegnaFisica(g, 'primo', c.px, c.py, c.r, fis, pg.reazione, t, opzFis);
+          g.restore();
           g.restore();
         };
         conLuce(ctx, cx + att.dx, cy + att.dy, Math.max(c.r * 1.1, R * 1.6), in3d ? c.luce : null, volto);
@@ -4711,7 +4719,10 @@
   /* Il disegno della fisica, in due strati: `dietro` va prima del corpo
    * (l'avatar d'energia, l'atmosfera, le prominenze, la metà di dietro di
    * anelli e orbite), `davanti` dopo il corpo e prima del volto (le
-   * tempeste sul disco, la metà davanti). `opz.fuori` disegna lo strato di
+   * tempeste sul disco), `primo` dopo il volto (la metà davanti di anelli e
+   * orbite). Fino alla v460 la metà davanti stava in `davanti`, e la luna che
+   * girava attorno a Carl Sagan o alla Terra passava **dietro** alla faccia
+   * invece che davanti: chi usa l'app l'ha visto. `opz.fuori` disegna lo strato di
    * dietro solo fuori dal disco: è il caso dell'astro vero, già dipinto
    * dall'app, su cui il volto sta addosso. `opz.lune` e `opz.anelli` li
    * spengono dove l'app disegna già quelli veri (la vista 3D). */
@@ -4739,6 +4750,9 @@
       ctx.restore();
       if (opz.anelli !== false && fis.anelli) disegnaAnelliFisica(ctx, x, y, R, fis.anelli, re, tm, false);
       if (opz.lune !== false && fis.lune.length) disegnaLune(ctx, x, y, R, fis, re, opz.tempoLune, tm, false);
+    } else if (strato === 'primo') {
+      if (opz.anelli !== false && fis.anelli) disegnaAnelliFisica(ctx, x, y, R, fis.anelli, re, tm, true);
+      if (opz.lune !== false && fis.lune.length) disegnaLune(ctx, x, y, R, fis, re, opz.tempoLune, tm, true);
     } else {
       if (fis.tempeste && re.tempesta > 0.02) {
         ctx.save();
@@ -4747,8 +4761,6 @@
         ctx.restore();
         if (fis.tempeste === 'vulcani') disegnaVulcani(ctx, x, y, R, re.tempesta, tm);
       }
-      if (opz.anelli !== false && fis.anelli) disegnaAnelliFisica(ctx, x, y, R, fis.anelli, re, tm, true);
-      if (opz.lune !== false && fis.lune.length) disegnaLune(ctx, x, y, R, fis, re, opz.tempoLune, tm, true);
     }
     ctx.restore();
   }
@@ -7596,6 +7608,7 @@
     disegnaCorpo(ctx, x, y, r, re ? Object.assign({}, profilo, { reazione: re }) : profilo, 0);
     if (fis) storDisegnaFisica(ctx, 'davanti', x, y, r, fis, re, 0, { ridotto: true, tempoLune: 0 });
     storDisegnaVolto(ctx, geom, profilo, 1, 0);
+    if (fis) storDisegnaFisica(ctx, 'primo', x, y, r, fis, re, 0, { ridotto: true, tempoLune: 0 });
     ctx.restore();
     return true;
   }
@@ -7626,7 +7639,14 @@
    * del DSL. Tutto si riscrive al cambio lingua. */
   function storieDisponibili() {
     const d = radice.AstroDemo;
-    try { return d && d.libreria ? d.libreria.elenco().filter(x => x.storia) : []; } catch (_) { return []; }
+    let pronte = [];
+    try { pronte = d && d.libreria ? d.libreria.elenco().filter(x => x.storia) : []; } catch (_) { pronte = []; }
+    // v461: e quelle dello Studio che chi scrive ha messo fra le CosmoStorie
+    // (le altre restano in cantiere, nello Studio)
+    const st = radice.StudioStorie;
+    let ufficiali = [];
+    try { ufficiali = st && typeof st.ufficiali === 'function' ? st.ufficiali() : []; } catch (_) { ufficiali = []; }
+    return pronte.concat(ufficiali);
   }
   function durataDi(testo) {
     try { return Math.round(radice.AstroDemoMotore.analizza(testo).scene.reduce((n, sc) => n + sc.durata, 0) / 1000); }
@@ -7661,14 +7681,14 @@
       scheda.className = 'storia-scheda';
       const titolo = document.createElement('h4');
       titolo.className = 'storia-titolo';
-      titolo.textContent = t('demo.builtin.' + st.chiave + '.title') || st.chiave;
+      titolo.textContent = st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave;
       const durata = document.createElement('span');
       durata.className = 'storia-durata';
       durata.textContent = t('storie.durata', { n: durataDi(st.testo) });
       const descr = document.createElement('p');
       descr.className = 'storia-descrizione corta';
       descr.id = 'storia-trama-' + st.chiave;
-      descr.textContent = t('demo.builtin.' + st.chiave + '.description');
+      descr.textContent = st.progetto ? st.descrizione || '' : t('demo.builtin.' + st.chiave + '.description');
       const ids = String(st.cast || '').split(',').map(x => x.trim()).filter(Boolean);
       // v447: i volti in fila, come nello Studio; i caratteri e i perché
       // stanno dietro a una linguetta, chiusa di serie: prima ogni scheda
@@ -7705,9 +7725,23 @@
       duplica.dataset.storiaDuplica = st.chiave;
       duplica.textContent = t('storie.duplica');
       azioni.append(guarda, duplica);
+      let segno = null;
+      // v461: una storia dello Studio messa qui si riapre nello Studio, ed è
+      // segnata come fatta da chi usa l'app
+      if (st.progetto) {
+        const modifica = document.createElement('button');
+        modifica.type = 'button'; modifica.className = 'tasto-cielo';
+        modifica.dataset.storiaStudio = st.progetto;
+        modifica.textContent = t('storie.modificaStudio');
+        azioni.append(modifica);
+        segno = document.createElement('span');
+        segno.className = 'storia-durata storia-tua';
+        segno.textContent = t('storie.dalloStudio');
+      }
       const testa = document.createElement('div');
       testa.className = 'storia-testa';
       testa.append(titolo, durata);
+      if (segno) testa.append(segno);
       // Due linguette, come nello Studio: la trama intera (di serie se ne
       // leggono tre righe) e i personaggi; se ne apre una per scheda
       const linguetta = (cosa, controlla, nomeL, stato) => {
@@ -7760,6 +7794,13 @@
     storRiempiPagina();
     if (haI18n() && typeof radice.astroI18n.alCambio === 'function') radice.astroI18n.alCambio(storRiempiPagina);
     sezione.addEventListener('click', e => {
+      // v461: una storia dello Studio messa fra le CosmoStorie torna nello Studio
+      const nelloStudio = e.target.closest('[data-storia-studio]');
+      if (nelloStudio) {
+        const st = radice.StudioStorie;
+        if (st && typeof st.apriProgetto === 'function') st.apriProgetto(nelloStudio.dataset.storiaStudio);
+        return;
+      }
       const avvia = e.target.closest('[data-storia-avvia]');
       const duplica = e.target.closest('[data-storia-duplica]');
       // La trama intera o i personaggi di una storia: una linguetta per scheda
@@ -7779,6 +7820,15 @@
       if (avvia && st) {
         storChiudiAnteprima();
         try { radice.AstroDemo.avvia(st.testo); }
+        catch (err) { const esito = document.getElementById('demo-esito'); if (esito) esito.textContent = err.message; }
+      } else if (duplica && st && radice.StudioStorie && typeof radice.StudioStorie.apriDaStoria === 'function') {
+        // v461: la copia si apre nello Studio, con tutto quello che c'era
+        // (le battute, le facce, le azioni, la camera, la musica), pronta
+        // da modificare e salvare. Prima portava al copione DSL.
+        storChiudiAnteprima();
+        const titoloSt = st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave;
+        const descrSt = st.progetto ? st.descrizione : t('demo.builtin.' + st.chiave + '.description');
+        try { radice.StudioStorie.apriDaStoria(Object.assign({}, st, { titolo: titoloSt, descrizione: descrSt })); }
         catch (err) { const esito = document.getElementById('demo-esito'); if (esito) esito.textContent = err.message; }
       } else if (duplica && st) {
         // L'editor sta nella linguetta Demo (v409): prima si passa di là

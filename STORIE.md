@@ -2081,6 +2081,56 @@ chiusa; il luccichio della meraviglia cadeva sulla bocca ed è stato tolto.
 Prova: `prova-storie.js` («Carl Sagan cambia faccia…»: al più tre volte
 triste, le cinque facce nuove usate e scritte nelle due lingue).
 
+### Le lune davanti al volto, «Duplica e modifica» nello Studio, le storie in cantiere e le CosmoStorie (v461)
+
+Tre richieste di chi usa l'app.
+
+**Le lune passavano dietro alla faccia.** La metà davanti delle orbite (le
+lune disegnate, la Terra che gira attorno a Carl Sagan, Caronte, la metà
+davanti degli anelli sottili) stava nello strato `davanti` di
+`storDisegnaFisica`, che si dipinge dopo il corpo ma **prima** del volto: la
+luna che girava verso di noi spariva sotto occhi e bocca. Ora c'è un terzo
+strato, `primo`, dipinto **dopo** il volto in tutti e tre i casi (il corpo
+disegnato in `storDisegnaVolti`, l'astro vero del planetario, il ritratto di
+`storRitratto`); `davanti` tiene solo le tempeste sul disco. La metà di
+dietro resta dietro alla testa. Guardato nell'anteprima di Sagan: la Terra
+passa sul mento, poi dietro.
+
+**«Duplica e modifica» apre la copia nello Studio.** Prima portava al
+copione DSL nella linguetta Demo. Ora `StudioStorie.apriDaStoria`
+(`storie-studio.js` §3-bis) trasforma il copione in un progetto con
+`studioDaCopione`: ogni scena del DSL è un momento, le scene di fila nello
+stesso posto (cielo, Terra e Luna, un pianeta, Sistema Solare, scala
+cosmica; una `transition` resta col gruppo di prima) sono una scena dello
+Studio. Diventa modificabile quello che lo Studio sa scrivere: chi parla e
+cosa dice (il testo dal dizionario), la faccia di chi parla (dalla sua
+`character_show`), e le azioni di `STUDIO_DAL_DSL` (umore, sguardo,
+occhiolino, uscita, viaggio, ritorno, animazione, misura, forma, effetto,
+suono). Un'azione entra fra quelle dello Studio **solo se lo Studio la
+riscrive uguale**: si compone con `righeAzione`, la si rilegge col motore e
+si confronta la firma (`firmaAzione`); i tempi esatti (`shot_from`/`shot_to`)
+restano in `azione.esatta` finché non si cambia il «quando». Tutto il resto
+(camera, date, luogo, musica a tempo, versi cantati, cartelli, titoli,
+`voyager_journey`, le `character_show` coi loro sguardi e posti) resta nel
+momento come `m.copione.righe` — comandi già analizzati, mai testo da
+incollare — e `studioCopione` li riscrive tali e quali (`studioRigaDsl`),
+con la vista dell'originale e la durata al millesimo. Nel momento si vedono
+sotto «Cosa succede → Dalla storia originale», e con × si tolgono. La
+battuta registrata resta sua (`m.parla`, `character_speak { id }`) finché
+chi parla e il testo non cambiano; cambiati, diventa testo, e solo allora
+entra nel file delle voci. Prova: ognuna delle cinque storie pronte, portata
+nello Studio e riscritta senza ritocchi, ha le stesse scene, viste, durate e
+azioni (`prova-storie.js`).
+
+**In cantiere e fra le CosmoStorie.** Un progetto ha `ufficiale`: spento, la
+storia è in cantiere e sta solo nell'elenco dello Studio; «Metti fra le
+CosmoStorie» la salva come demo e la mette fra le schede delle storie pronte
+(`StudioStorie.ufficiali`, letta da `storieDisponibili`), con «Dallo Studio»
+accanto al titolo e «Modifica nello Studio»; «Rimetti in cantiere» la toglie.
+L'elenco dello Studio mostra le storie in cantiere (quella aperta sempre,
+col segno «CosmoStoria» se è ufficiale). `ufficiale` e `origine` viaggiano
+col progetto anche sul repository (§6b).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
