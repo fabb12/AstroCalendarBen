@@ -2166,6 +2166,24 @@ suggeriscono (`studio.parole.umore.*`), le idee d'azione e i nomi al
 maschile e al femminile. Curioso e confuso hanno un segno nuovo, il punto di
 domanda che dondola sopra la testa (`domanda`).
 
+### «Pallido puntino blu» con le facce nuove (v463)
+
+Le facce della v462 messe nella canzone, dove le parole le chiedono (25
+cambi, il resto del copione com'era; il tono resta cupo, niente cuori):
+la Terra speranzosa a «Ma per noi… è diverso»; Sagan confuso sulle
+«ideologie, errori» e sulle «incomprensioni», deluso su «eroe e codardo,
+traditore», «ma perché poi?» e «la follia delle vanità», speranzoso su
+«ogni figlio speranzoso» e nel congedo, colpito sulla «vasta arena
+cosmica» (nei due ritornelli) e sulla «dimostrazione più grande»,
+misterioso sul «buio cosmico», frustrato sui «padroni per un solo momento»,
+spaventato su «non c'è aiuto che arriva»; Betelgeuse orgogliosa del
+«creatore e distruttore di civiltà»; Saturno orgoglioso delle sue
+«ostentazioni» e poi imbarazzato; Marte imbarazzato e Giove confuso dopo le
+guerre, Marte deluso quando non c'è altro posto dove migrare; la Voyager 1
+curiosa all'inizio e orgogliosa della sua fotografia; le due Voyager
+speranzose quando si parla di occuparci l'uno dell'altro. Prova:
+`prova-storie.js` (la storia usa dieci facce nuove, Sagan almeno tre).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

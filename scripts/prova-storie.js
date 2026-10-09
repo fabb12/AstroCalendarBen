@@ -2083,6 +2083,11 @@ prova('«Pallido puntino blu»: Carl Sagan cambia faccia, e nei ritornelli canta
     for (const l of ['it', 'en']) for (const k of ['storie.espressione.', 'storie.espressioneLei.', 'studio.parole.umore.'])
       assert.equal(typeof DIZ[l].messaggi[k + e], 'string', k + e + ' in ' + l);
   }
+  // v462: le facce nuove dove le parole le chiedono
+  const tutte = new Set([...d.testo.matchAll(/expression: '(\w+)'/g)].map(m => m[1]));
+  for (const e of ['hopeful', 'disappointed', 'confused', 'impressed', 'mysterious', 'proud', 'embarrassed', 'scared', 'frustrated', 'curious'])
+    assert.ok(tutte.has(e), 'la storia usa ' + e);
+  assert.ok(facce.has('hopeful') && facce.has('disappointed') && facce.has('impressed'), 'Sagan usa le facce nuove');
   const prep = motore.prepara(d.testo);
   for (const s of prep.scene) {
     const mostrati = s.azioni.filter(a => a.comando === 'character_show').map(a => a.parametri.target);
