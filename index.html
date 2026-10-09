@@ -1176,6 +1176,9 @@
               title="Scarica il file sul dispositivo" data-i18n-title="ui.scarica-il-file-sul-dispositivo" data-i18n="ui.salva">Salva</button>
             <button id="skymap-clip-rifai" type="button" class="tasto-cielo"
               title="Butta questo e registra di nuovo" data-i18n-title="ui.butta-questo-e-registra-di-nuovo" data-i18n="ui.rifai">Rifai</button>
+            <!-- v464: sul proprio canale YouTube (youtube.js) -->
+            <button id="skymap-clip-youtube" type="button" class="tasto-cielo tasto-youtube"
+              title="Pubblicalo sul tuo canale YouTube" data-i18n-title="ui.pubblicalo-sul-tuo-canale-youtube" data-i18n="ui.youtube">YouTube</button>
           </div>
         </aside>
 
@@ -2531,6 +2534,8 @@
               <button id="sol-clip-condividi" type="button" class="tasto-cielo tasto-primario" data-i18n="ui.condividi">Condividi</button>
               <button id="sol-clip-salva" type="button" class="tasto-cielo" data-i18n="ui.salva">Salva</button>
               <button id="sol-clip-rifai" type="button" class="tasto-cielo" data-i18n="ui.rifai">Rifai</button>
+              <button id="sol-clip-youtube" type="button" class="tasto-cielo tasto-youtube"
+                title="Pubblicalo sul tuo canale YouTube" data-i18n-title="ui.pubblicalo-sul-tuo-canale-youtube" data-i18n="ui.youtube">YouTube</button>
             </div>
           </aside>
 
@@ -3048,6 +3053,15 @@
           <p id="imp-esito" class="text-xs text-slate-400"></p>
         </section>
 
+        <!-- v464: l'account YouTube, per pubblicare i filmati e le storie
+             registrate sul proprio canale. Il contenuto lo disegna
+             youtube.js (`ytPannello`), lo stesso delle Impostazioni dello
+             Studio delle storie. -->
+        <section id="imp-youtube" class="space-y-2 border-t border-slate-700 pt-4" aria-labelledby="imp-youtube-titolo">
+          <h3 id="imp-youtube-titolo" class="font-bold text-white" data-i18n="ui.account-youtube">Account YouTube</h3>
+          <div id="imp-youtube-corpo"></div>
+        </section>
+
         <section class="space-y-2 border-t border-slate-700 pt-4" aria-labelledby="imp-build-titolo">
           <h3 id="imp-build-titolo" class="font-bold text-white" data-i18n="ui.informazioni-sull-app">Informazioni sull'app</h3>
           <dl class="space-y-2 text-sm">
@@ -3347,5 +3361,6 @@
   <script src="storie-cosmiche.js"></script>
   <script src="demo-impostazioni.js"></script>
   <script src="storie-studio.js"></script>
+  <script src="youtube.js"></script>
 </body>
 </html>

@@ -1146,7 +1146,7 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
         <h3>Dati</h3>
         <p class="desc"><b>Esporta backup</b> e <b>Ripristina backup</b> per salvare o recuperare diario,
         posizione, telescopio, terreno e albo di Missione Cielo; <b>Scarica i prossimi 12 mesi</b>
-        crea invece un file da aggiungere al tuo calendario.</p>
+        crea invece un file da aggiungere al tuo calendario. Qui si collega anche l'<a href="#youtube">account YouTube</a>.</p>
       </div>
     </div>
 
@@ -1158,6 +1158,38 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <div><dt>Avvisami</dt><dd>I promemoria per gli eventi che stanno arrivando.</dd></div>
       <div><dt>Impostazioni</dt><dd>Le linguette qui sopra e la guida. Le demo automatizzate hanno una voce loro nel menu, <b>Demo</b>.</dd></div>
       <div><dt>Lingua</dt><dd>Italiano o inglese. Immediato, non ricarica niente.</dd></div>
+    </dl>
+
+    <h3 id="youtube" style="margin-top:26px">Pubblicare su YouTube</h3>
+    <p>I filmati dell'app — un minuto di planetario, il Sistema Solare in 3D, una demo o una CosmoStoria
+    registrata — possono andare <strong>dritti sul tuo canale YouTube</strong>, senza scaricarli e
+    ricaricarli dal computer. Si collega l'account una volta, in <b>Impostazioni → Dati → Account YouTube</b>
+    (oppure nella linguetta <b>YouTube</b> delle Impostazioni dello Studio delle storie).</p>
+    <dl class="kv">
+      <div><dt>Collegare</dt><dd>«Collega l'account YouTube» apre la finestra di Google: scegli l'account del
+      canale e premi «Consenti». L'app non vede mai la tua password e chiede solo due permessi, caricare video e
+      leggere il nome del canale. Il permesso dura un'ora e sta solo in memoria: dopo, al primo «Pubblica» la
+      finestra di Google si apre e si chiude da sola. «Scollega» lo dimentica; per toglierlo del tutto c'è la
+      pagina delle autorizzazioni del tuo account Google.</dd></div>
+      <div><dt>L'ID client</dt><dd>Google vuole sapere quale progetto chiede il permesso. Se l'app che usi non
+      ne ha già uno, il pannello chiede l'<b>ID client OAuth</b>, che si fa una volta e gratis: su
+      console.cloud.google.com crea un progetto; in «API e servizi → Libreria» accendi <b>YouTube Data API
+      v3</b>; in «Schermata consenso OAuth» scegli «Esterno» e mettiti fra gli utenti di prova; in «Credenziali»
+      crea un «ID client OAuth» di tipo «Applicazione web» con l'indirizzo dell'app (per esempio
+      <code>https://fabb12.github.io</code>) fra le origini JavaScript autorizzate. Copia l'ID (finisce con
+      <code>.apps.googleusercontent.com</code>) e incollalo nel pannello. Non è una password. Chi pubblica l'app
+      può metterlo nella variabile di repository <code>YOUTUBE_CLIENT_ID</code>, e allora nessuno deve farlo.</dd></div>
+      <div><dt>Pubblicare</dt><dd>Il tasto <b>YouTube</b> sta nel pannello «Il tuo momento» dopo ogni
+      registrazione, nelle schede della Galleria e nelle schede delle CosmoStorie; in fondo allo Studio c'è
+      <b>Registra e pubblica su YouTube</b>. Questi ultimi due fanno partire la storia registrandola (anche se
+      nelle opzioni delle demo la registrazione è spenta) e alla fine aprono la finestra da soli. Lì scegli
+      titolo (proposto: quello della storia), descrizione, tag, visibilità — <b>Privato</b>, <b>Non in
+      elenco</b>, <b>Pubblico</b> — e se è pensato per i bambini; «Pubblica» lo carica con una barra. Se la rete
+      cade a metà, riprende da dove era arrivato; «Annulla» ferma tutto. Alla fine: «Apri su YouTube», «Apri in
+      YouTube Studio», «Copia il link». Gli ultimi dieci pubblicati sono elencati nel pannello.</dd></div>
+      <div><dt>Due limiti di Google</dt><dd>Finché il progetto Google non è stato verificato da YouTube, i video
+      caricati da un'app restano <b>privati</b>: li rendi pubblici da YouTube Studio. E ogni progetto ha una quota
+      giornaliera che basta per circa sei caricamenti al giorno, per tutti quelli che usano lo stesso ID client.</dd></div>
     </dl>
 
     <h3 style="margin-top:26px">Condividere</h3>
@@ -1449,6 +1481,9 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       spegnere), <b>Camera e data</b> (inquadratura, camera, giorno, giorni che passano e «Mostra la data e il
       luogo», di serie spento) e <b>Musica e voci</b> — e se ne apre una sola alla volta. Sotto, i momenti:
       ognuno chiuso è una riga sola (chi parla, le sue parole, la faccia, quante azioni); toccalo per aprirlo.
+      Fra due momenti c'è un <b>+ Momento qui</b>, e prima di ogni scena un <b>+ Scena qui</b>: la battuta o la
+      scena nuova nasce lì in mezzo, già aperta, invece che in fondo (la scena prende il posto e chi c'è dalla
+      scena di sopra; il momento fa parlare qualcuno che non ha detto la battuta di sopra né quella di sotto).
       Dentro tocca chi parla e scrivi che cosa dice nel fumetto; sotto, tre linguette: <b>Faccia</b>,
       <b>Voce e durata</b> e <b>Cosa succede</b>, dove aggiungi quello che succede intanto, diviso in il volto,
       il movimento, la forma, effetti e suoni — vola verso un altro
@@ -1475,10 +1510,12 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       Con ElevenLabs, in «Voce e durata» → <b>Espressioni dentro la frase</b> metti il cursore nella battuta e tocca
       un'emozione, un modo di parlare, una risata o una pausa: entra lì come <code>[whispers]</code> e vale da quel
       punto in avanti (si sente solo col modello v3; sottotitoli e voce dell'app non lo mostrano).
-      <b>Impostazioni</b> (l'ingranaggio in alto) apre un pannello con tre linguette: <b>Questa storia</b>
+      <b>Impostazioni</b> (l'ingranaggio in alto) apre un pannello con quattro linguette: <b>Questa storia</b>
       (esporta in un file, importa, duplica, il copione, il file delle voci e, in fondo, elimina),
       <b>Sincronizza</b> (a che punto è il repository, «Sincronizza ora» e il token) ed <b>ElevenLabs</b>
-      (la chiave, il modello e i crediti). Con ElevenLabs la battuta si genera con l'<b>intonazione</b>
+      (la chiave, il modello e i crediti) e <b>YouTube</b> (il canale collegato e «Registra e pubblica su
+      YouTube», che c'è anche in fondo allo Studio: vedi <a href="#youtube">Pubblicare su YouTube</a>). Con
+      ElevenLabs la battuta si genera con l'<b>intonazione</b>
       giusta: l'emozione è la faccia che il personaggio ha mentre parla (anche quella rimasta da prima), e in
       «Voce e durata» puoi aggiungere come la dice (sussurra, grida, ride…); sotto si legge il testo esatto che
       parte, coi tag.</dd></div>

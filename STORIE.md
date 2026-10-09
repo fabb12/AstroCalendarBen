@@ -2184,6 +2184,94 @@ curiosa all'inizio e orgogliosa della sua fotografia; le due Voyager
 speranzose quando si parla di occuparci l'uno dell'altro. Prova:
 `prova-storie.js` (la storia usa dieci facce nuove, Sagan almeno tre).
 
+### Inserire scene e momenti in mezzo, e pubblicare su YouTube (v464)
+
+Chi scrive ha chiesto due cose: mettere una scena (o una battuta) **fra le
+altre**, e mandare la storia finita **dritta sul suo canale YouTube**.
+
+**In mezzo, non solo in fondo.** Prima «Aggiungi scena» e «Aggiungi
+momento» mettevano in coda, e per portare una scena al secondo posto in una
+storia di diciassette servivano sedici «↑». Ora (`storie-studio.js`):
+
+- prima di ogni scena c'è un **+ Scena qui** (`tastoInserisci`, `fai`
+  `inserisciScena` con `data-valore` = il posto), e fra due momenti un
+  **+ Momento qui** (`inserisciMomento`). In fondo restano «Aggiungi scena» e
+  «Aggiungi momento»;
+- `studioInserisciScena(p, i)`: la scena nuova prende ambiente,
+  inquadratura e chi c'è da quella di sopra (in cima, da quella di sotto),
+  e il suo primo momento lo scrive la bozza (`studioProssimoMomento(p, sc,
+  0)`: col terzo argomento la bozza guarda la battuta **di sopra**, non
+  l'ultima della scena, e in cima alla storia è l'«inizio»);
+- `studioInserisciMomento(p, sc, k)`: un momento vuoto, e parla qualcuno che
+  non ha detto né la battuta di sopra né quella di sotto (con due soli in
+  scena, almeno non quella di sopra);
+- scena o momento nuovi si aprono, vengono in vista e il cursore va nella
+  battuta (`studio.inserito`, alla fine di `disegna`);
+- il «+» è una riga tratteggiata quasi spenta, che si accende al passaggio
+  o alla tastiera (`.studio-inserisci`; sui telefoni resta a metà); con un
+  margine negativo non allunga il copione.
+
+**YouTube** (`youtube.js`, prefisso `yt`, cappello in testa al file). L'app
+non ha un server, quindi il collegamento è l'accesso di Google per le app
+web: lo script di Google (`accounts.google.com/gsi/client`, scaricato solo
+quando si vede un tasto che lo userà) apre la sua finestra, e all'app arriva
+un gettone di un'ora, **solo in memoria**, per due cose: caricare video e
+leggere il nome del canale. In `astrocal_youtube_v1` (fuori dal backup) ci
+sono l'ID client scritto a mano, il canale, la visibilità di serie, «per i
+bambini» e gli ultimi dieci pubblicati.
+
+- **L'ID client OAuth** di un progetto Google Cloud (YouTube Data API v3
+  accesa, l'indirizzo dell'app fra le origini autorizzate) non è un segreto:
+  il deploy lo prende dalla variabile di repository `YOUTUBE_CLIENT_ID` e lo
+  scrive in `config.js` (`pubblica.yml`); senza, il pannello lo chiede, coi
+  cinque passi per farlo e la guida (`guida.html#youtube`).
+- **Dove si collega**: Impostazioni → Dati → *Account YouTube*
+  (`#imp-youtube-corpo`) e la quarta linguetta, **YouTube**, delle
+  Impostazioni dello Studio (`STUDIO_SCHEDE_IMP`). Lo stesso pannello
+  (`ytPannello`), ridisegnato dappertutto a ogni cambio (`ytRidisegna`, e
+  l'evento `astrocal:youtube` per la riga delle linguette dello Studio).
+- **Dove si pubblica**: il tasto *YouTube* nel pannello «Il tuo momento»
+  (planetario e 3D, `skyRegYoutube`), nelle schede della Galleria e nelle
+  schede delle CosmoStorie; in fondo allo Studio e nella sua linguetta
+  YouTube **Registra e pubblica su YouTube**. Gli ultimi due girano la storia
+  **registrandola** con `AstroDemo.avvia(testo, { registra: true })`: le
+  opzioni «per una volta» (`demo.js`) valgono per quella corsa e tornano
+  com'erano in `ripristina`, senza toccare quelle salvate. Il filmato arriva
+  a `skyRegMostraEsito`, che chiama `ytDopoRegistrazione`: la finestra si
+  apre da sola, col titolo della storia. Il titolo viaggia anche nei
+  filmati fatti col tasto Registra delle demo: `demo.js` lo mette in
+  `sky.reg.titolo`, `skyRegAvviaVideo` lo prende (e lo azzera) e lo passa
+  all'esito.
+- **La finestra** (`ytApriPubblica`, `#yt-finestra`, sopra anche alla
+  Galleria): titolo (al più 100, senza `<` e `>` che YouTube rifiuta),
+  descrizione, tag, visibilità (privato, non in elenco, pubblico), «per i
+  bambini»; «Pubblica» parte dentro al tocco (la finestra di Google, se il
+  gettone è scaduto, si apre solo lì). Il caricamento è quello a riprese:
+  `ytApriSessione` (POST coi metadati, l'indirizzo della sessione in
+  `Location`), `ytInvia` (un PUT solo con la barra), e se la rete cade
+  `ytStatoSessione` chiede fin dove è arrivato (`308` e `Range`) e si riparte
+  da lì, fino a `YT_TENTATIVI` volte. «Annulla» ferma; durante l'invio Esc e
+  la × non chiudono. Alla fine: «Apri su YouTube», «Apri in YouTube Studio»,
+  «Copia il link».
+- **Gli errori** hanno un nome (`ytErroreDaRisposta`): quota del progetto
+  finita, troppi caricamenti oggi, account senza canale, API spenta nel
+  progetto, gettone scaduto (il collegamento va rifatto), permesso tolto,
+  titolo/descrizione/tag rifiutati, finestra di Google bloccata o chiusa.
+- **I due limiti di Google**, detti nel pannello e nella finestra: un
+  progetto non verificato da YouTube carica i video **solo privati** (e la
+  finestra lo dice se succede: `fattoPrivato`); la quota di un progetto basta
+  per circa sei caricamenti al giorno, per tutti quelli che usano lo stesso
+  ID client.
+
+Prove: `prova-youtube.js` (nuova: un Google finto, il giro intero, la
+ripresa dopo la rete caduta, quota, annulla, Studio, CosmoStorie, telefono,
+inglese, scollega), `prova-storie.js` (112, una nuova per l'inserimento),
+`prova-storie-sezioni.js` (i «+» nel browser, desktop e telefono),
+`prova-elevenlabs-studio.js` (quattro linguette), `prova-demo.js`,
+`prova-demo-pagina.js`, `prova-galleria.js`, `prova-registrazione.js`,
+`prova-musica-storie.js`, `prova-storie-repo.js`, `prova-i18n.js`,
+`prova-lingua.js`, `prova-guida.js`, `controlla-i18n.js --patto`.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

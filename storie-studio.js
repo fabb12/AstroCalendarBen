@@ -1442,17 +1442,24 @@
    * chi è in scena), con una bozza adatta al punto della storia — il
    * principio presenta e domanda, il mezzo risponde, la fine ricorda lo
    * scopo. */
-  function studioProssimoMomento(progetto, scena) {
+  function studioProssimoMomento(progetto, scena, inMezzo) {
     const presenti = studioPresenti(progetto, scena);
     const tutti = progetto.scene.flatMap(sc => sc.momenti);
-    const ultimo = [...scena.momenti].reverse().find(m => m.chi) || [...tutti].reverse().find(m => m.chi);
+    // v464: `inMezzo` è dove andrà il momento dentro la scena (di serie in
+    // fondo). Chi lo inserisce fra due battute vuole che «chi ha appena
+    // parlato» sia la battuta di sopra, non l'ultima della scena
+    const dentro = Number.isInteger(inMezzo);
+    const sopra = dentro ? scena.momenti.slice(0, inMezzo) : scena.momenti;
+    const ultimo = [...sopra].reverse().find(m => m.chi) || [...studioMomentiPrima(progetto, scena)].reverse().find(m => m.chi) ||
+      (dentro ? null : [...tutti].reverse().find(m => m.chi));
     const parlati = new Set(tutti.filter(m => m.chi && m.testo).map(m => m.chi));
     let chi = presenti.find(id => !parlati.has(id) && (!ultimo || id !== ultimo.chi)) ||
       presenti.find(id => !ultimo || id !== ultimo.chi) || presenti[0] || '';
     const nome = chi && S().nome ? S().nome(chi) : chi;
     const altro = ultimo && ultimo.chi && ultimo.chi !== chi && S().nome ? S().nome(ultimo.chi) : '';
-    const posto = tutti.length;
-    const fase = posto <= 1 ? 'inizio' : (progetto.scene.indexOf(scena) === progetto.scene.length - 1 && posto >= 3 ? 'fine' : 'mezzo');
+    // in mezzo contano le battute di sopra: una scena messa in cima è l'inizio
+    const posto = dentro ? studioMomentiPrima(progetto, scena).length + inMezzo : tutti.length;
+    const fase = posto <= 1 ? 'inizio' : (!dentro || inMezzo >= scena.momenti.length) && progetto.scene.indexOf(scena) === progetto.scene.length - 1 && posto >= 3 ? 'fine' : 'mezzo';
     // Nella scala cosmica, a metà storia, la bozza è un fatto vero della
     // tappa a cui la camera sta arrivando: è la carta a suggerire che cosa dire
     let fatto = '';
@@ -1467,6 +1474,43 @@
       : t('studio.bozza.' + fase + (altro ? 'Altro' : ''), { nome, altro }));
     const umore = studioUmoreDalTesto(testo) || '';
     return studioNuovoMomento({ chi, testo, umore: fase === 'inizio' ? 'happy' : umore });
+  }
+  // I momenti delle scene che vengono prima di `scena`
+  function studioMomentiPrima(progetto, scena) {
+    const i = progetto.scene.indexOf(scena);
+    return i > 0 ? progetto.scene.slice(0, i).flatMap(sc => sc.momenti) : [];
+  }
+
+  /* Inserire fra le altre (v464). Prima una scena o un momento nuovi
+   * andavano solo in fondo, e per metterli in mezzo bisognava premere «↑»
+   * tante volte quante erano le scene dopo: in una storia di diciassette
+   * scene, sedici tocchi. Ora fra due scene e fra due battute c'è un «+».
+   *
+   * La scena nuova prende l'ambiente, l'inquadratura e chi c'è da quella di
+   * sopra (o, in cima, da quella di sotto): è quasi sempre il posto in cui
+   * la storia si trova. Il suo primo momento lo scrive la bozza, come per
+   * «Aggiungi scena». Il momento nuovo è vuoto, con chi parla scelto fra
+   * chi non ha detto la battuta di sopra né quella di sotto, perché un
+   * dialogo inserito a metà non metta due volte di fila la stessa voce. */
+  function studioInserisciScena(progetto, i) {
+    const posto = Math.max(0, Math.min(progetto.scene.length, Math.round(Number(i) || 0)));
+    const vicina = progetto.scene[posto - 1] || progetto.scene[posto];
+    const nuova = studioNuovaScena(vicina ? { ambiente: vicina.ambiente, fuoco: vicina.fuoco, zoom: vicina.zoom, presenti: vicina.presenti.slice(), momenti: [] } : {});
+    progetto.scene.splice(posto, 0, nuova);
+    if (!nuova.momenti.length) nuova.momenti.push(studioProssimoMomento(progetto, nuova, 0));
+    return nuova;
+  }
+  function studioInserisciMomento(progetto, scena, k) {
+    const posto = Math.max(0, Math.min(scena.momenti.length, Math.round(Number(k) || 0)));
+    const presenti = studioPresenti(progetto, scena);
+    const sopra = [...scena.momenti.slice(0, posto)].reverse().find(m => m.chi) ||
+      [...studioMomentiPrima(progetto, scena)].reverse().find(m => m.chi);
+    const sotto = scena.momenti.slice(posto).find(m => m.chi);
+    const chi = presenti.find(id => (!sopra || id !== sopra.chi) && (!sotto || id !== sotto.chi)) ||
+      presenti.find(id => !sopra || id !== sopra.chi) || presenti[0] || '';
+    const nuovo = studioNuovoMomento({ chi });
+    scena.momenti.splice(posto, 0, nuovo);
+    return nuovo;
   }
 
   // I nomi con cui si può chiamare un personaggio, in tutte le lingue
@@ -3281,7 +3325,7 @@
     const base = `scene.${i}.momenti.${k}`;
     const presenti = studioPresenti(studio.progetto, scena);
     const aperto = momentiAperti.get(chiaveScena(scena)) === m.id;
-    const box = h('article', { class: 'studio-momento' + (aperto ? ' aperto' : ''), 'aria-label': t('studio.momento', { n: k + 1 }) });
+    const box = h('article', { class: 'studio-momento' + (aperto ? ' aperto' : ''), dataset: { momento: m.id }, 'aria-label': t('studio.momento', { n: k + 1 }) });
     const umore = m.umore || (m.chi && S().profilo ? S().profilo(m.chi).espressione : 'neutral');
     const nAzioni = (m.azioni || []).length;
     const strumenti = h('div', { class: 'studio-strumenti' },
@@ -3779,6 +3823,13 @@
     return riga;
   }
   const sceneAperte = new Set();
+  // v464: il «+» fra due scene o due momenti, una riga sottile che si
+  // accende al passaggio (per non fare di ogni copione una scala di tasti)
+  function tastoInserisci(fai, dove, valore, testo, spiega) {
+    return h('div', { class: 'studio-inserisci' },
+      h('button', { type: 'button', class: 'studio-inserisci-tasto', dataset: { fai, dove, valore: String(valore) }, 'aria-label': spiega, title: spiega },
+        h('span', { 'aria-hidden': 'true' }, '+'), ' ', testo));
+  }
   /* La scena aperta (v446): in cima il titolo coi tasti (prova, sposta,
    * togli), poi quattro linguette che dicono com'è la scena — dove, chi
    * c'è, camera e data, musica e voci — e se ne apre una sola alla volta;
@@ -3889,7 +3940,11 @@
     card.append(h('h5', { class: 'studio-gruppo-titolo studio-momenti-titolo' }, t('studio.ui.momenti', { n: sc.momenti.length }),
       h('small', { class: 'studio-conta' }, ' · ' + t('studio.ui.momentiAiuto'))));
     const momenti = h('div', { class: 'studio-momenti' });
-    sc.momenti.forEach((m, k) => momenti.append(disegnaMomento(m, i, k, sc)));
+    sc.momenti.forEach((m, k) => {
+      // v464: fra due battute, un «+» per metterne una in mezzo
+      if (k > 0) momenti.append(tastoInserisci('inserisciMomento', base, k, t('studio.ui.momentoQui'), t('studio.ui.inserisciMomento', { a: k, b: k + 1 })));
+      momenti.append(disegnaMomento(m, i, k, sc));
+    });
     card.append(momenti);
     // In fondo alla scena: una battuta nuova, il suggerimento, e «scrivi a parole»
     const parole = h('input', { type: 'text', class: 'studio-parole', dataset: { parole: base }, placeholder: t(cosmo ? 'studio.ui.paroleAiutoCosmo' : 'studio.paroleAiuto'), 'aria-label': t('studio.passo4'),
@@ -3952,13 +4007,21 @@
    * a parte, elimina), **Sincronizza** (il repository: a che punto è,
    * «Sincronizza ora», le chiavi) ed **ElevenLabs** (la chiave, il modello,
    * i crediti). Ogni tasto ha accanto una riga che dice cosa fa. */
-  const STUDIO_SCHEDE_IMP = ['storia', 'repo', 'el'];
+  // v464: e **YouTube** (`youtube.js`): il collegamento al canale e «Registra
+  // e pubblica», che gira la storia registrandola e la manda sul canale
+  const STUDIO_SCHEDE_IMP = ['storia', 'repo', 'el', 'yt'];
+  const ytPronto = () => typeof radice.ytPannello === 'function' && typeof radice.ytImpostazioni === 'function';
   function apriImpostazioni(scheda) {
     studio.impAperto = true;
     studio.impScheda = STUDIO_SCHEDE_IMP.includes(scheda) ? scheda : studio.impScheda;
     disegna();
     const pannello = studio.radice && studio.radice.querySelector('#studio-impostazioni');
     if (pannello && pannello.scrollIntoView) { try { pannello.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) { /* vecchi browser */ } }
+  }
+  // v464: «Registra e pubblica su YouTube» (nelle Impostazioni e in fondo)
+  function tastoYoutube() {
+    return h('button', { type: 'button', class: 'tasto-cielo tasto-youtube', dataset: { fai: 'registraYoutube' }, 'data-storia-prova': '' },
+      iconaSvg('pubblica', 16), ' ', t('studio.registraYoutube'));
   }
   function voceImp(tasto, testo, extra) {
     return h('div', { class: 'studio-imp-voce' }, tasto, h('small', {}, testo), extra || null);
@@ -3969,10 +4032,11 @@
     const stato = {
       storia: unaRiga(p.titolo) || t('studio.senzaTitolo'),
       repo: repo.token ? t('studio.imp.repoScrive') : t('studio.imp.repoLegge'),
-      el: el.chiave ? t('studio.imp.elCollegato') : t('studio.imp.elDaCollegare')
+      el: el.chiave ? t('studio.imp.elCollegato') : t('studio.imp.elDaCollegare'),
+      yt: ytPronto() && radice.ytImpostazioni().collegato ? t('studio.imp.elCollegato') : t('studio.imp.elDaCollegare')
     };
     const fila = h('div', { class: 'studio-linguette studio-linguette-imp', role: 'group', 'aria-label': t('studio.imp.titolo') });
-    for (const x of STUDIO_SCHEDE_IMP) fila.append(linguetta(scheda === x, { fai: 'impScheda', valore: x }, t('studio.imp.scheda.' + x), stato[x]));
+    for (const x of STUDIO_SCHEDE_IMP) if (x !== 'yt' || ytPronto()) fila.append(linguetta(scheda === x, { fai: 'impScheda', valore: x }, t('studio.imp.scheda.' + x), stato[x]));
     const corpo = h('div', { class: 'studio-pannello studio-imp-corpo' });
     if (scheda === 'storia') {
       corpo.append(
@@ -3996,6 +4060,13 @@
           repo.token ? t('studio.imp.sincronizzaAiuto') : t('studio.imp.sincronizzaSoloLegge')),
         h('h5', { class: 'studio-gruppo-titolo' }, t('studio.imp.collegamento')),
         pannelloRepo());
+    } else if (scheda === 'yt' && ytPronto()) {
+      const box = h('div', { class: 'studio-yt' });
+      radice.ytPannello(box);
+      corpo.append(
+        voceImp(tastoYoutube(), t('studio.imp.ytAiuto')),
+        h('h5', { class: 'studio-gruppo-titolo' }, t('studio.imp.collegamento')),
+        box);
     } else {
       corpo.append(
         h('p', { class: 'studio-imp-stato' + (el.chiave ? ' ok' : '') }, el.chiave
@@ -4134,7 +4205,12 @@
       nella, filaCast, apertaCast ? pannelloCast : null));
     // 3. Il copione: le scene
     const scene = h('div', { class: 'studio-scene' });
-    p.scene.forEach((sc, i) => scene.append(disegnaScena(sc, i)));
+    p.scene.forEach((sc, i) => {
+      // v464: prima di ogni scena un «+» per metterne una lì (in fondo c'è «Aggiungi scena»)
+      scene.append(tastoInserisci('inserisciScena', '', i, t('studio.ui.scenaQui'),
+        i ? t('studio.ui.inserisciScena', { a: i, b: i + 1 }) : t('studio.ui.inserisciScenaPrima')));
+      scene.append(disegnaScena(sc, i));
+    });
     pezzi.push(h('div', { class: 'studio-blocco' },
       h('h4', { class: 'storie-sottotitolo' }, t('studio.passo3')),
       h('p', { class: 'demo-opzioni-nota' }, t('studio.passo3Aiuto')),
@@ -4156,7 +4232,8 @@
       h('div', { class: 'demo-azioni' },
         h('button', { type: 'button', class: 'demo-avvia-principale storia-avvia', dataset: { fai: 'guarda' }, 'data-storia-prova': '' }, iconaSvg('gioca', 18), ' ', t('studio.guarda')),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'salvaDemo' } }, t('studio.salvaDemo')),
-        tastoUfficiale(p))));
+        tastoUfficiale(p),
+        ytPronto() ? tastoYoutube() : null)));
     r.replaceChildren(...pezzi);
     aggiornaVivi();
     if (fuoco) {
@@ -4168,6 +4245,21 @@
         el = tutti.find(x => (x.dataset.id || x.dataset.valore || x.dataset.tipo || '') === extra) || tutti[0] || null;
       } else el = r.querySelector(`[data-campo="${CSS.escape(fuoco)}"]`);
       if (el) el.focus();
+    }
+    // v464: la scena o il momento appena inseriti si portano in vista, col
+    // cursore dove si scrive (la battuta, se c'è chi parla)
+    if (studio.inserito) {
+      const [cosa, id] = studio.inserito.split('|');
+      studio.inserito = null;
+      const box = cosa === 'scena' ? r.querySelector(`.studio-scena[data-scena-chiave="${CSS.escape(p.id + '|' + id)}"]`)
+        : r.querySelector(`.studio-momento[data-momento="${CSS.escape(id)}"]`);
+      if (box) {
+        // una per volta: con la virgola vincerebbe la prima nella pagina, cioè la riga
+        const dove = cosa === 'scena' ? box.querySelector('.studio-momento.aperto textarea') || box.querySelector('summary')
+          : box.querySelector('textarea') || box.querySelector('.studio-momento-riga');
+        if (box.scrollIntoView) { try { box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) { /* vecchi browser */ } }
+        if (dove) { try { dove.focus({ preventScroll: true }); } catch (_) { dove.focus(); } }
+      }
     }
   }
   // Fra le CosmoStorie, o di nuovo in cantiere (v461)
@@ -4255,13 +4347,15 @@
     if (el) el.textContent = studio.esito;
   }
 
-  function avvia(testo) {
+  // `perYoutube` (v464): il titolo con cui la storia, registrata, va su YouTube
+  function avvia(testo, perYoutube) {
     if (registrazione) fermaRegistrazione();
     // l'ascolto di prova di una musica non si sovrappone alla storia
     if (ascoltoMusica) fermaAscoltoMusica();
     try {
       if (radice.StorieCosmiche && radice.StorieCosmiche.chiudiAnteprima) radice.StorieCosmiche.chiudiAnteprima();
-      radice.AstroDemo.avvia(testo);
+      if (typeof perYoutube === 'string' && typeof radice.ytRegistraEPubblica === 'function') radice.ytRegistraEPubblica(testo, perYoutube);
+      else radice.AstroDemo.avvia(testo);
       esito('');
     } catch (e) { esito(e.message); }
   }
@@ -4428,6 +4522,21 @@
         nuova.momenti.push(studioProssimoMomento(p, nuova));
         break;
       }
+      // v464: una scena o un momento fra gli altri, non solo in fondo
+      case 'inserisciScena': {
+        const nuova = studioInserisciScena(p, Number(el.dataset.valore));
+        sceneAperte.add(chiaveScena(nuova));
+        momentiAperti.set(chiaveScena(nuova), nuova.momenti[0].id);
+        studio.inserito = 'scena|' + nuova.id;
+        break;
+      }
+      case 'inserisciMomento': {
+        const sc = leggi(dove);
+        const nuovo = studioInserisciMomento(p, sc, Number(el.dataset.valore));
+        momentiAperti.set(chiaveScena(sc), nuovo.id);
+        studio.inserito = 'momento|' + nuovo.id;
+        break;
+      }
       case 'togliScena': { const { lista, i } = contenitore(dove); if (lista.length > 1) lista.splice(i, 1); break; }
       case 'nuovoMomento': {
         const sc = leggi(dove);
@@ -4542,6 +4651,7 @@
       }
       case 'provaScena': avvia(studioCopione(p, { scena: Number(dove.split('.')[1]) })); return;
       case 'guarda': avvia(studioCopione(p)); return;
+      case 'registraYoutube': avvia(studioCopione(p), unaRiga(p.titolo) || t('studio.senzaTitolo')); return;
       case 'copione': studio.copioneAperto = !studio.copioneAperto; break;
       case 'capisci': {
         const campo = studio.radice.querySelector(`[data-parole="${CSS.escape(dove)}"]`);
@@ -4697,6 +4807,13 @@
     r.addEventListener('click', e => {
       const b = e.target.closest('[data-fai]');
       if (b && r.contains(b)) fai(b.dataset.fai, b.dataset.dove, b);
+    });
+    // v464: YouTube collegato o scollegato: la linguetta lo dice subito. Il
+    // pannello dentro si ridisegna da sé (`ytRidisegna`): qui basta la riga
+    // delle linguette, e solo a Impostazioni aperte
+    if (radice.addEventListener) radice.addEventListener('astrocal:youtube', () => {
+      const fila = studio.impAperto && studio.radice && studio.radice.querySelector('.studio-linguette-imp [data-valore="yt"] .studio-linguetta-stato');
+      if (fila && ytPronto()) fila.textContent = t(radice.ytImpostazioni().collegato ? 'studio.imp.elCollegato' : 'studio.imp.elDaCollegare');
     });
     // «Scrivi a parole»: Invio è come «Fallo!»
     r.addEventListener('keydown', e => {
@@ -4898,7 +5015,7 @@
     nuovoProgetto: studioNuovoProgetto, nuovaScena: studioNuovaScena, nuovoMomento: studioNuovoMomento, nuovaAzione: studioNuovaAzione,
     daModello: studioDaModello, copione: studioCopione, daCopione: studioDaCopione, rigaDsl: studioRigaDsl, durata: studioDurata, durataTotale: studioDurataTotale,
     umoreDalTesto: studioUmoreDalTesto, ideeAzioni: studioIdeeAzioni, ambientePer: studioAmbientePer,
-    prossimoMomento: studioProssimoMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
+    prossimoMomento: studioProssimoMomento, inserisciScena: studioInserisciScena, inserisciMomento: studioInserisciMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
     unisci: studioUnisci, fileCondivise: studioFileCondivise, leggiCondivise: studioLeggiCondivise, repoDiSerie: studioRepoDiSerie,
     sincronizza: studioSincronizza, FILE_CONDIVISE,

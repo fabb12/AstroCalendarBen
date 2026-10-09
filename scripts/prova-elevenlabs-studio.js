@@ -238,7 +238,9 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       if ((await tasto.getAttribute('aria-expanded')) === 'true') await tasto.click();
       assert.equal(await pagina.locator('#studio-impostazioni').count(), 0);
       await tasto.click();
-      assert.equal(await pagina.locator('#studio-impostazioni [data-fai="impScheda"]').count(), 3);
+      // v464: e la quarta, YouTube (`youtube.js`)
+      assert.equal(await pagina.locator('#studio-impostazioni [data-fai="impScheda"]').count(), 4);
+      assert.equal(await pagina.locator('#studio-impostazioni [data-fai="impScheda"][data-valore="yt"]').count(), 1);
       await pagina.locator('[data-fai="impScheda"][data-valore="storia"]').click();
       for (const f of ['esporta', 'duplica', 'copione', 'fileVoci', 'elimina']) assert.equal(await pagina.locator(`#studio-impostazioni [data-fai="${f}"]`).count(), 1, f);
       assert.equal(await pagina.locator('#studio-impostazioni label[for="studio-importa"]').count(), 1);

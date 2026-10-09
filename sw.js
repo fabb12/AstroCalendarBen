@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v463';
+const CACHE_NAME = 'astrocal-v464';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -18,6 +18,7 @@ const ASSETS = [
   './demo.js',
   './storie-cosmiche.js',
   './storie-studio.js',
+  './youtube.js',
   './demo-predefiniti.js',
   './demo-libreria.js',
   './demo-impostazioni.js',
@@ -280,6 +281,11 @@ self.addEventListener('fetch', (e) => {
       // fresche, e un errore di GitHub resta suo invece di diventare un 504
       url.hostname === 'api.github.com' ||
       url.hostname === 'raw.githubusercontent.com' ||
+      // YouTube (youtube.js, v464): l'accesso di Google e le sue API non
+      // si mettono mai in cache, e un loro errore deve arrivare com'è
+      url.hostname === 'accounts.google.com' ||
+      url.hostname === 'www.googleapis.com' ||
+      url.hostname === 'oauth2.googleapis.com' ||
       proxyAdsb(url)) {
     return;
   }
