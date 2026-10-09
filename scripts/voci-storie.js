@@ -57,7 +57,10 @@ const TAG_UMORE = {
   happy: 'happy', surprised: 'surprised', worried: 'nervous', sad: 'sad', thinking: 'thoughtful',
   excited: 'excited', sleepy: 'sleepy', laughing: 'laughs', love: 'warmly', angry: 'angry',
   annoyed: 'annoyed', bully: 'mischievously',
-  wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully'
+  wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully',
+  // v462
+  proud: 'proud', relieved: 'relieved', hopeful: 'hopeful', playful: 'playfully', curious: 'curious', confused: 'confused', impressed: 'impressed',
+  scared: 'scared', panicked: 'panicked', embarrassed: 'embarrassed', disappointed: 'disappointed', frustrated: 'frustrated', bored: 'bored', mysterious: 'mysteriously'
 };
 const INIZIO = '// ── INIZIO STORIE COSMICHE: da qui a FINE lo scrive scripts/voci-storie.js, non toccare ──';
 const FINE = '// ── FINE STORIE COSMICHE ──';
@@ -164,7 +167,7 @@ function carica() {
         personaggi.set(chi, { id: chi, nomi, cartella: cartellaDi(nomi.it), battute: [] });
       }
       const b = { id: `studio.${st.chiave}.${x.n}`, storia: st.chiave, n: x.n, scena: x.scena, durata: x.durata, chi,
-        testi: { [st.lingua]: x.testo }, lingue: [st.lingua], base: `${st.chiave}-${x.n}`, studio: true, umore: x.umore };
+        testi: { [st.lingua]: x.testo }, lingue: [st.lingua], base: `${st.chiave}-${x.n}`, studio: true, umore: x.umore, conTag: x.conTag || '' };
       battute.push(b); dellaStoria.push(b);
       personaggi.get(chi).battute.push(b);
     }
@@ -219,8 +222,12 @@ function leggiStudio(errori) {
       if (!Number.isInteger(n) || n < 1 || numeri.has(n)) { errori.push(`${STUDIO}: ${st.chiave}, numero di battuta non valido o doppio (${x && x.n})`); continue; }
       if (!testo || testo.length > 400) { errori.push(`${STUDIO}: ${st.chiave}, battuta ${n}: testo vuoto o più lungo di 400 caratteri`); continue; }
       numeri.add(n);
-      battute.push({ n, chi: String(x.chi || ''), testo, umore: String(x.umore || ''),
-        scena: Number(x.scena) || 0, durata: Math.max(1000, Number(x.durata) || 0) });
+      // v462: la battuta con le espressioni dentro la frase (`[whispers]`…);
+      // tolte, deve restare la battuta, se no non vale
+      const conTag = normalizza(x && x.conTag);
+      battute.push(Object.assign({ n, chi: String(x.chi || ''), testo, umore: String(x.umore || ''),
+        scena: Number(x.scena) || 0, durata: Math.max(1000, Number(x.durata) || 0) },
+      conTag && conTag.length <= 700 && senzaTag(conTag) === testo ? { conTag } : {}));
     }
     storie.push({ chiave: st.chiave, titolo: normalizza(st.titolo).slice(0, 120), lingua, battute });
   }
@@ -245,12 +252,16 @@ function regiaDelloStudio(regia, battute, nomeEmozione) {
     const l = b.lingue[0];
     const r = nuove[b.id];
     const conTag = r && r.conTag && typeof r.conTag[l] === 'string' ? normalizza(r.conTag[l]) : '';
-    if (conTag && senzaTag(conTag) === normalizza(b.testi[l])) continue;
     const tag = TAG_UMORE[b.umore];
+    // v462: le espressioni messe dallo Studio dentro la frase comandano: la
+    // regia le segue (con l'emozione della faccia davanti, se la frase non
+    // comincia già con un tag)
+    const voluto = b.conTag ? (/^\[/.test(b.conTag) || !tag ? b.conTag : `[${tag}] ${b.conTag}`) : '';
+    if (voluto ? conTag === voluto : conTag && senzaTag(conTag) === normalizza(b.testi[l])) continue;
     nuove[b.id] = {
       emozione: String(nomeEmozione(b.umore) || '').toLowerCase(),
       come: (r && r.come) || '',
-      conTag: { [l]: (tag ? `[${tag}] ` : '') + normalizza(b.testi[l]) }
+      conTag: { [l]: voluto || (tag ? `[${tag}] ` : '') + normalizza(b.testi[l]) }
     };
     cambia = true;
   }

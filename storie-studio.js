@@ -124,6 +124,29 @@
    * mescola e la battuta esce confusa. */
   const STUDIO_TONI = ['whispers', 'shouts', 'sighs', 'gasps', 'laughs', 'crying', 'curious', 'sarcastic'];
   const STUDIO_TONI_MAX = 2;
+  /* Le espressioni da mettere **dentro** la frase (v462), nel punto esatto in
+   * cui devono cominciare: `[whispers]`, `[laughs]`, `[long pause]`… Sono i
+   * tag audio di ElevenLabs v3, che valgono da lì in avanti nella battuta. Si
+   * scrivono nel testo della battuta stesso (`m.testo`); l'app li toglie da
+   * sottotitoli, karaoke e voce del dispositivo (`studioSenzaTag`), e vanno
+   * solo a ElevenLabs. Prima c'erano l'emozione della faccia e due toni
+   * all'inizio della frase, e basta: chi usa l'app voleva il massimo
+   * controllo, frase per frase, parola per parola. Divise in quattro
+   * famiglie; il nome a schermo sta in `studio.el.tag.<tag>`. */
+  const STUDIO_TAG_FRASE = {
+    emozioni: ['happy', 'excited', 'cheerfully', 'playfully', 'proud', 'relieved', 'hopeful', 'warmly', 'tenderly', 'in awe',
+      'impressed', 'curious', 'thoughtful', 'surprised', 'confused', 'skeptical', 'sarcastic', 'mischievously', 'determined',
+      'nervous', 'scared', 'panicked', 'embarrassed', 'disappointed', 'frustrated', 'annoyed', 'angry', 'jealous', 'bored',
+      'sad', 'wistfully', 'regretful', 'resigned', 'sleepy', 'dramatically', 'mysteriously'],
+    voce: ['whispers', 'softly', 'calmly', 'shouts', 'loudly', 'excitedly', 'seriously', 'firmly', 'deadpan', 'quickly',
+      'slowly', 'hesitates', 'stammers', 'breathless', 'sings', 'singsong', 'storytelling', 'announcer'],
+    suoni: ['laughs', 'chuckles', 'giggles', 'laughs harder', 'wheezing', 'sighs', 'gasps', 'exhales', 'inhales deeply',
+      'gulps', 'sniffles', 'crying', 'clears throat', 'yawns', 'snorts', 'hums', 'whistles', 'coughs'],
+    ritmo: ['short pause', 'pause', 'long pause', 'dramatic pause', 'continues', 'interrupting']
+  };
+  const STUDIO_TAG_LIBERO = /^[a-z][a-z' -]{0,28}[a-z]$/i;
+  // La battuta senza i tag: quella che si legge e che dice la voce dell'app
+  const studioSenzaTag = s => String(s || '').replace(/\[[^\]\n]{1,30}\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([,.;:!?…])/g, '$1').trim();
   const STUDIO_TIPI = ['umore', 'guarda', 'muovi', 'torna', 'anima', 'scala', 'diventa', 'effetto', 'suono', 'occhiolino', 'nascondi'];
   // Che cosa può diventare un personaggio (v414, `character_become`): le
   // vesti di `STOR_VESTI`, tenute qui per lo stesso motivo delle tappe
@@ -152,7 +175,10 @@
     return Object.assign(base, di, campi);
   }
   function studioNuovoMomento(campi = {}) {
-    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', tono: [], durata: 0, voce: 0, audio: null, azioni: [] }, campi);
+    // v461: `copione` e `parla` li ha solo un momento nato da una CosmoStoria
+    // pronta (`studioDaCopione`): i comandi che lo Studio non sa scrivere,
+    // tali e quali, e la battuta registrata dell'originale
+    return Object.assign({ id: nuovoId('m'), chi: '', testo: '', umore: '', tono: [], durata: 0, voce: 0, audio: null, azioni: [], copione: null, parla: null }, campi);
   }
   /* La camera di una scena (v431): automatica (va da chi parla e dai botti),
    * sempre stretta su chi parla, su un personaggio solo, che gira attorno a
@@ -190,6 +216,9 @@
   function studioNuovoProgetto(campi = {}) {
     return Object.assign({
       v: 1, id: nuovoId('p'), titolo: '', scopo: 'libera', obiettivo: '',
+      // v461: `ufficiale` la mette fra le CosmoStorie (le altre sono in
+      // cantiere, solo nello Studio); `origine` la storia pronta da cui viene
+      ufficiale: false, origine: '',
       cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
       voceChiave: null, voceProssima: 1, aggiornato: 0, lingua: '',
       // v440: la musica di sottofondo di tutta la storia (§4-ter)
@@ -262,6 +291,40 @@
     const scelti = (scena.presenti || []).filter(qui);
     return scelti.length ? scelti : progetto.cast.filter(qui);
   }
+  /* I comandi dell'originale tenuti in un momento (v461): come li dà
+   * `AstroDemoMotore.analizza`, cioè nome, parametri e ripresa, mai testo
+   * DSL da incollare (una riga con dentro `} scene …` romperebbe il
+   * copione). Si riscrivono con `studioRigaDsl`. */
+  const STUDIO_VISTE_COPIONE = /^[a-z_0-9]{2,40}$/;
+  function studioPulisciRiga(r) {
+    if (!r || typeof r !== 'object' || typeof r.comando !== 'string' || !/^[a-z_0-9]{2,40}$/.test(r.comando)) return null;
+    const parametri = {};
+    for (const [k, v] of Object.entries(r.parametri && typeof r.parametri === 'object' ? r.parametri : {}).slice(0, 30)) {
+      if (!/^[a-z_0-9]{1,30}$/.test(k)) continue;
+      if (typeof v === 'number' && Number.isFinite(v)) parametri[k] = v;
+      else if (typeof v === 'string' && v.length <= 2000) parametri[k] = v;
+    }
+    const riga = { comando: r.comando, parametri };
+    const e = studioPulisciEsatta(r.ripresa);
+    if (e) riga.ripresa = { da: e.da, a: e.a };
+    return riga;
+  }
+  function studioPulisciCopione(c) {
+    if (!c || typeof c !== 'object' || !STUDIO_VISTE_COPIONE.test(c.vista || '')) return null;
+    return { vista: c.vista, righe: (Array.isArray(c.righe) ? c.righe : []).slice(0, 80).map(studioPulisciRiga).filter(Boolean) };
+  }
+  function studioPulisciParla(x) {
+    if (!x || typeof x !== 'object' || typeof x.id !== 'string' || !/^[\w.-]{1,80}$/.test(x.id)) return null;
+    return { id: x.id, chi: typeof x.chi === 'string' ? x.chi.slice(0, 40) : '', testo: typeof x.testo === 'string' ? x.testo.slice(0, 400) : '' };
+  }
+  // La ripresa esatta dell'originale (`shot_from`/`shot_to`), che vale
+  // finché chi scrive non cambia il «quando» dell'azione
+  function studioPulisciEsatta(e) {
+    if (!e || typeof e !== 'object') return null;
+    const da = Number(e.da), a = Number(e.a);
+    if (!(Number.isFinite(da) && Number.isFinite(a) && da >= 0 && a <= 1 && da < a)) return null;
+    return Object.assign({ da, a }, STUDIO_QUANDO.includes(e.quando) ? { quando: e.quando } : {});
+  }
   // Un progetto letto da un file o dall'archivio: si tiene solo quello che
   // il modello conosce, coi tipi giusti. Un file rotto non rompe lo Studio.
   function studioRipulisci(p) {
@@ -278,6 +341,7 @@
       id: typeof p.id === 'string' ? p.id.slice(0, 30) : nuovoId('p'),
       titolo: testo(p.titolo, 120), scopo: tra(p.scopo, Object.keys(STUDIO_SCOPI), 'libera'),
       obiettivo: testo(p.obiettivo, 300), cast: ids(p.cast),
+      ufficiale: p.ufficiale === true, origine: typeof p.origine === 'string' && /^[\w-]{1,60}$/.test(p.origine) ? p.origine : '',
       demoChiave: typeof p.demoChiave === 'string' && p.demoChiave.startsWith('utente-') ? p.demoChiave : null,
       voceChiave: typeof p.voceChiave === 'string' && STUDIO_VOCE_CHIAVE.test(p.voceChiave) ? p.voceChiave : null,
       voceProssima: Math.floor(numero(p.voceProssima, 1, 100000, 1)),
@@ -304,10 +368,11 @@
       musicaModo: tra(sc && sc.musicaModo, STUDIO_MUSICA_MODI, 'storia'), musica: studioPulisciMusica(sc && sc.musica),
       voci: studioPulisciVoci(sc && sc.voci),
       momenti: (Array.isArray(sc && sc.momenti) ? sc.momenti : []).slice(0, 60).map(m => studioNuovoMomento({
-        id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 400), umore: testo(m && m.umore, 20),
+        id: idDi(m && m.id, 'm'), chi: testo(m && m.chi, 40), testo: testo(m && m.testo, 600), umore: testo(m && m.umore, 20),
         // v449: come dice la battuta (sussurra, grida…), tag di ElevenLabs v3
         tono: [...new Set((Array.isArray(m && m.tono) ? m.tono : []).filter(x => STUDIO_TONI.includes(x)))].slice(0, STUDIO_TONI_MAX),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
+        copione: studioPulisciCopione(m && m.copione), parla: studioPulisciParla(m && m.parla),
         audio: m && m.audio && Number(m.audio.durata) > 0 && /^[0-9a-f]{8}$/.test(m.audio.impronta)
           ? Object.assign({ durata: numero(m.audio.durata, 1, 120000, 1), impronta: m.audio.impronta, nome: testo(m.audio.nome, 80) },
             // v445: la voce ElevenLabs con cui è stato generato (per dire quando è da rifare)
@@ -324,6 +389,7 @@
             volte: numero(a.volte, 0, 20, 0), scala: numero(a.scala, 0.2, 6, 1.6), forma: tra(a.forma, STUDIO_FORME, 'red_giant'),
             effetto: testo(a.effetto, 20) || 'sparkles', dove: testo(a.dove, 40),
             grandezza: numero(a.grandezza, 0.2, 5, 1), colore: /^#[0-9a-f]{6}$/i.test(a.colore || '') ? a.colore : '',
+            esatta: studioPulisciEsatta(a.esatta),
             ...(a.tipo === 'suono' ? studioPulisciSuono(a) : {})
           }))
       }))
@@ -510,15 +576,20 @@
     for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; }
     return x.toString(16).padStart(8, '0');
   }
-  const testoDetto = m => unaRiga(m && m.testo).slice(0, 400);
+  // Detto: senza i tag (sottotitoli, voce dell'app); grezzo: coi tag dentro,
+  // per ElevenLabs e per sapere se la voce generata è ancora quella (v462)
+  const testoDetto = m => studioSenzaTag(unaRiga(m && m.testo)).slice(0, 400);
+  const testoGrezzo = m => unaRiga(m && m.testo).slice(0, 600);
   function studioVoceValida(m) {
-    return !!(m && m.audio && m.audio.durata > 0 && testoDetto(m) && m.audio.impronta === studioImpronta(testoDetto(m)));
+    return !!(m && m.audio && m.audio.durata > 0 && testoDetto(m) && m.audio.impronta === studioImpronta(testoGrezzo(m)));
   }
   function studioDurata(momento) {
     if (studioVoceValida(momento))
       return Math.max(3, Math.ceil(momento.audio.durata / 1000 + STUDIO_RESPIRO), momento.durata > 0 ? Math.round(momento.durata) : 0);
-    if (momento.durata > 0) return Math.round(momento.durata);
-    const testo = unaRiga(momento.testo);
+    // v461: un momento preso da una storia pronta dura quanto la sua scena,
+    // al millesimo (una storia cantata va a tempo con la canzone)
+    if (momento.durata > 0) return momento.copione ? Math.round(momento.durata * 1000) / 1000 : Math.round(momento.durata);
+    const testo = testoDetto(momento);
     const viaggi = (momento.azioni || []).some(a => a.tipo === 'muovi' || a.tipo === 'torna');
     if (!testo) return viaggi ? 6 : 4;
     const ritmo = typeof S().ritmo === 'function' ? S().ritmo(testo).totale : testo.split(/\s+/).length * 0.42;
@@ -530,6 +601,9 @@
   const PUNTI = { inizio: 0, meta: 0.45, fine: 0.75, tutto: 0 };
   function ripresa(azione, durevole) {
     const q = azione.quando || 'inizio';
+    // v461: l'azione presa da una storia pronta tiene i suoi tempi esatti
+    const e = azione.esatta;
+    if (e && e.quando === q) return (e.da > 0 ? ', shot_from: ' + e.da : '') + (e.a < 1 ? ', shot_to: ' + e.a : '');
     if (durevole) {
       const [a, b] = TRATTI[q] || TRATTI.inizio;
       return (a > 0 ? ', shot_from: ' + a : '') + (b < 1 ? ', shot_to: ' + b : '');
@@ -538,6 +612,17 @@
     return a > 0 ? ', shot_from: ' + a : '';
   }
   function numeroDsl(n) { return String(Math.round(n * 100) / 100); }
+  // Un comando tenuto dall'originale (v461) di nuovo in DSL; i numeri senza
+  // la notazione esponenziale, che il DSL non legge
+  function studioRigaDsl(r) {
+    const num = v => /e/i.test(String(v)) ? v.toFixed(20).replace(/\.?0+$/, '') : String(v);
+    const parti = Object.entries(r.parametri || {}).map(([k, v]) => k + ': ' + (typeof v === 'number' ? num(v) : virgolette(v)));
+    if (r.ripresa) {
+      if (r.ripresa.da > 0) parti.push('shot_from: ' + num(r.ripresa.da));
+      if (r.ripresa.a < 1) parti.push('shot_to: ' + num(r.ripresa.a));
+    }
+    return r.comando + ' { ' + parti.join(', ') + ' }';
+  }
 
   // Le righe di una sola azione, o '' se in questa vista non si può fare
   function righeAzione(az, vista, presenti, cosmo, pid) {
@@ -655,6 +740,13 @@
       if (opz.scena === undefined && !prima) righe.push('');
       momenti.forEach((m, k) => {
         const az = [];
+        // v461: un momento preso da una storia pronta ha la sua vista, la sua
+        // camera e i suoi personaggi, quelli dell'originale (`m.copione`)
+        const cp = m.copione;
+        const visti = new Set(cp ? cp.righe.filter(r => r.comando === 'character_show').map(r => r.parametri.target) : []);
+        const presentiM = cp ? [...new Set(presenti.concat([...visti], m.chi && progetto.cast.includes(m.chi) ? [m.chi] : []))] : presenti;
+        const vistaM = cp ? cp.vista : vista;
+        const cosmoM = cp ? cp.righe.some(r => r.comando === 'cosmic_scale') : !!cosmo;
         // Il quando: all'inizio della scena, o un pezzo del tempo che scorre
         if (sc.giorni > 0 && !cosmo) {
           const da = isoDi(sc.data, sc.ora, sc.giorni * trascorso / totale);
@@ -677,8 +769,10 @@
         // vicino a chi parla e ai botti; se no quella che la scena ha scelto
         const rigaCamera = studioRigaCamera(sc, presenti);
         if (rigaCamera) az.push(rigaCamera);
-        // La camera
-        if (cosmo) {
+        // La camera (quella dell'originale sta fra le sue righe)
+        if (cp) {
+          // niente: la camera, le date e la musica dell'originale sono sotto
+        } else if (cosmo) {
           const [La, Lb] = cosmo[k];
           if (k === 0 && elev < 60) elev = 62;   // la carta si guarda un po' dall'alto
           az.push(`cosmic_scale { from: ${numeroUA(La)}, to: ${numeroUA(Lb)}, orbit: 14, elev_from: ${elev}, elev_to: ${Math.min(80, elev + 3)} }`);
@@ -713,25 +807,43 @@
         }
         // I personaggi: chi parla con la faccia del momento, gli altri con
         // quella che avevano
-        const parla = m.chi && presenti.includes(m.chi) && unaRiga(m.testo);
+        const parla = m.chi && presentiM.includes(m.chi) && testoDetto(m);
         if (m.chi && m.umore) umori.set(m.chi, m.umore);
-        for (const id of presenti) {
+        if (cp) {
+          // Le righe dell'originale, nel loro ordine; chi parla con la faccia
+          // che gli ha dato chi scrive
+          for (const r of cp.righe) {
+            let riga = r;
+            if (r.comando === 'character_show' && r.parametri.target === m.chi && m.umore)
+              riga = Object.assign({}, r, { parametri: Object.assign({}, r.parametri, { expression: m.umore }) });
+            if ((riga.comando === 'character_show' || riga.comando === 'character_expression') && typeof riga.parametri.expression === 'string')
+              umori.set(riga.parametri.target, riga.parametri.expression);
+            az.push(studioRigaDsl(riga));
+          }
+          if (parla && !visti.has(m.chi) && !(m.parla && m.parla.chi === m.chi)) az.push(`character_show { target: ${virgolette(m.chi)}, expression: ${virgolette(umori.get(m.chi) || 'neutral')} }`);
+        } else for (const id of presenti) {
           const espr = umori.get(id) || 'neutral';
           az.push(`character_show { target: ${virgolette(id)}, expression: ${virgolette(espr)} }`);
         }
         for (const a of m.azioni || []) {
-          const riga = righeAzione(a, vista, presenti, !!cosmo, progetto.id);
+          const riga = righeAzione(a, vistaM, presentiM, cosmoM, progetto.id);
           if (riga) az.push(riga);
           if (a.tipo === 'umore' && a.chi && a.umore) umori.set(a.chi, a.umore);
         }
-        if (parla) az.push(`character_speak { target: ${virgolette(m.chi)}, text: ${virgolette(unaRiga(m.testo).slice(0, 400))} }`);
-        righe.push(`  scene ${vista} {`);
-        righe.push(`    duration: ${durate[k]}s;`);
+        // La battuta dell'originale, finché resta quella, con la sua voce
+        // registrata (`id`); cambiata, diventa testo
+        const pa = m.parla;
+        if (parla && pa && pa.chi === m.chi && unaRiga(pa.testo) === unaRiga(m.testo))
+          az.push(`character_speak { target: ${virgolette(m.chi)}, id: ${virgolette(pa.id)} }`);
+        else if (parla) az.push(`character_speak { target: ${virgolette(m.chi)}, text: ${virgolette(testoDetto(m))} }`);
+        righe.push(`  scene ${vistaM} {`);
+        righe.push(cp ? `    duration: ${Math.round(durate[k] * 1000)}ms;` : `    duration: ${durate[k]}s;`);
         for (const a of az) righe.push(`    action: ${a};`);
         righe.push('  }');
         prima = false;
-        fine = { vista, presenti, cosmo: !!cosmo, sc,
+        fine = { vista: vistaM, presenti: presentiM, cosmo: cosmoM, sc,
           camera: az.filter(a => /^(camera_3d|cosmic_scale|center_target|set_fov|story_camera)\b/.test(a))
+            .map(a => a.replace(/, shot_(from|to): [\d.]+/g, ''))
             .map(a => a.startsWith('cosmic_scale') && cosmo ? a.replace(/from: [^,]+/, 'from: ' + numeroUA(cosmo[k][1])) : a)
             // La domanda riparte da dove la camera è arrivata, e gira ancora un poco
             .map(a => a.startsWith('camera_3d') ? a.replace(/orbit: [^,]+(, orbit_from: [^,]+)?, elev_from: [^,]+, elev_to: [^,} ]+/,
@@ -793,6 +905,150 @@
   function numeroUA(L) {
     const v = Number(Math.pow(10, L).toPrecision(4));
     return v >= 1e-6 ? String(v) : '0.000001';
+  }
+
+  // ===================================================================
+  // 3-bis. Da una CosmoStoria pronta a un progetto dello Studio (v461)
+  // ===================================================================
+
+  /* «Duplica e modifica» su una CosmoStoria pronta portava al copione DSL
+   * nella linguetta Demo: chi usa l'app voleva invece ritrovarla **nello
+   * Studio**, con tutto quello che c'era già (le battute, le facce, le
+   * azioni, la camera, la musica), da ritoccare e salvare. Qui il copione
+   * torna progetto: ogni scena del DSL diventa un momento, le scene di fila
+   * nello stesso posto (il cielo, la Terra e la Luna, un pianeta, il Sistema
+   * Solare, la scala cosmica) diventano una scena dello Studio.
+   *
+   * Quello che lo Studio sa scrivere diventa modificabile: chi parla e cosa
+   * dice, la sua faccia, le azioni (umore, sguardo, viaggio, salto, misura,
+   * effetto…). Un'azione entra fra quelle dello Studio solo se lo Studio la
+   * riscrive **uguale** (si prova: `righeAzione` e il motore che rilegge);
+   * se no resta com'era fra i comandi dell'originale (`m.copione.righe`),
+   * con la camera, le date, la musica a tempo, i versi cantati, le
+   * fotografie: si vedono nel momento e si possono togliere, e il copione
+   * li rimette tali e quali. Così la storia duplicata, senza ritocchi, è la
+   * stessa storia. La battuta registrata resta sua (`m.parla`) finché il
+   * testo non cambia. */
+  const STUDIO_DAL_DSL = {
+    character_expression: { chiavi: ['target', 'expression'], fai: p => ({ tipo: 'umore', chi: p.target, umore: p.expression }) },
+    character_look_at: { chiavi: ['target', 'object'], fai: p => ({ tipo: 'guarda', chi: p.target, oggetto: p.object }) },
+    character_blink: { chiavi: ['target'], fai: p => ({ tipo: 'occhiolino', chi: p.target }) },
+    character_hide: { chiavi: ['target'], fai: p => ({ tipo: 'nascondi', chi: p.target }) },
+    character_move: { chiavi: ['target', 'to', 'side', 'path'], fai: p => ({ tipo: 'muovi', chi: p.target, verso: p.to, lato: p.side || 'auto', percorso: p.path || 'arc' }) },
+    character_return: { chiavi: ['target', 'path'], fai: p => ({ tipo: 'torna', chi: p.target, percorso: p.path || 'arc' }) },
+    character_animate: { chiavi: ['target', 'animation', 'times'], fai: p => ({ tipo: 'anima', chi: p.target, animazione: p.animation, volte: p.times || 0 }) },
+    character_scale: { chiavi: ['target', 'scale'], fai: p => ({ tipo: 'scala', chi: p.target, scala: p.scale }) },
+    character_become: { chiavi: ['target', 'shape'], fai: p => ({ tipo: 'diventa', chi: p.target, forma: p.shape }) },
+    effect: { chiavi: ['type', 'target', 'at', 'size', 'color'],
+      fai: p => ({ tipo: 'effetto', chi: '', effetto: p.type, dove: p.at || p.target || '', grandezza: p.size || 1, colore: p.color || '' }) },
+    sound: { chiavi: ['type', 'volume'], fai: p => ({ tipo: 'suono', fonte: 'sintesi', suono: p.type, volume: p.volume || 1 }) }
+  };
+  const STUDIO_DUREVOLI = ['muovi', 'torna', 'anima', 'scala', 'diventa'];
+  // Un'azione del motore in una forma da confrontare (l'ordine dei parametri
+  // e le virgolette non contano)
+  function firmaAzione(a) {
+    const par = Object.keys(a.parametri).sort().map(k => k + '=' + String(a.parametri[k]));
+    const r = a.ripresa || { da: 0, a: 1 };
+    return a.comando + '|' + par.join('|') + '|' + r.da + '-' + r.a;
+  }
+  function rileggiAzione(riga) {
+    const M = radice.AstroDemoMotore;
+    if (!M || typeof M.analizza !== 'function' || !riga) return null;
+    try { return M.analizza(`define_demo 'x' {\n scene x {\n duration: 1s;\n action: ${riga};\n }\n}`).scene[0].azioni[0]; }
+    catch (_) { return null; }
+  }
+  // L'azione dello Studio che riscrive `a` uguale, o null
+  function azioneDalDsl(a, vista, presenti, cosmo) {
+    const regola = STUDIO_DAL_DSL[a.comando];
+    if (!regola || Object.keys(a.parametri).some(k => !regola.chiavi.includes(k))) return null;
+    if (a.comando === 'effect' && a.parametri.target && a.parametri.at) return null;
+    const campi = regola.fai(a.parametri);
+    const durevole = STUDIO_DUREVOLI.includes(campi.tipo);
+    const r = a.ripresa || { da: 0, a: 1 };
+    // il «quando» più vicino, e i tempi esatti dell'originale
+    const quando = STUDIO_QUANDO.reduce((meglio, q) => {
+      const d = durevole ? Math.abs(TRATTI[q][0] - r.da) + Math.abs(TRATTI[q][1] - r.a) : Math.abs(PUNTI[q] - r.da) + (q === 'tutto' ? 0.01 : 0);
+      return d < meglio.d ? { q, d } : meglio;
+    }, { q: 'inizio', d: Infinity }).q;
+    // passata dalla pulizia di un progetto letto, perché si provi quella che resterà
+    const grezza = studioNuovaAzione(campi.tipo, Object.assign(campi, { quando, esatta: { da: r.da, a: r.a, quando } }));
+    let az;
+    try { az = studioRipulisci({ cast: [], scene: [{ momenti: [{ azioni: [grezza] }] }] }).scene[0].momenti[0].azioni[0]; } catch (_) { return null; }
+    if (!az) return null;
+    const rifatta = rileggiAzione(righeAzione(az, vista, presenti, cosmo, ''));
+    return rifatta && firmaAzione(rifatta) === firmaAzione(a) ? az : null;
+  }
+  function ambienteDsl(sc) {
+    if (sc.vista === 'planetarium_view') return 'cielo';
+    if (sc.vista !== 'solar_system_3d') return null;
+    if (sc.azioni.some(a => a.comando === 'cosmic_scale')) return 'cosmo';
+    const cam = sc.azioni.find(a => a.comando === 'camera_3d');
+    if (!cam) return null;
+    if (cam.parametri.scene === 'earth_moon') return 'terra_luna';
+    const f = cam.parametri.focus;
+    return f && f !== 'Sun' && STUDIO_FUOCHI_3D.includes(f) ? 'pianeta' : 'sistema';
+  }
+  function studioDaCopione(testo, opz = {}) {
+    const M = radice.AstroDemoMotore;
+    if (!M || typeof M.analizza !== 'function') throw new Error(t('studio.err.file') || 'motore');
+    const dsl = M.analizza(testo);
+    const castBase = String(opz.cast || '').split(',').map(x => x.trim()).filter(Boolean);
+    const cast = [...castBase];
+    const aggiungi = id => { if (typeof id === 'string' && /^[\w :.-]{1,40}$/.test(id) && !cast.includes(id) && cast.length < 24) cast.push(id); };
+    for (const sc of dsl.scene) for (const a of sc.azioni)
+      if (a.comando === 'character_show' || a.comando === 'character_speak' || a.comando === 'character_sing') aggiungi(a.parametri.target);
+    const scene = [];
+    let gruppo = null;
+    for (const sc of dsl.scene) {
+      const amb = ambienteDsl(sc);
+      if (!gruppo || (amb && amb !== gruppo.ambiente && gruppo.momenti.length) || gruppo.momenti.length >= 60) {
+        if (scene.length >= 40) break;
+        gruppo = studioNuovaScena({ ambiente: amb || 'sistema', presenti: [], momenti: [] });
+        scene.push(gruppo);
+      }
+      if (amb && !gruppo.momenti.length) gruppo.ambiente = amb;
+      const fuoco = sc.azioni.find(a => a.comando === 'center_target') || sc.azioni.find(a => a.comando === 'camera_3d');
+      const f = fuoco && (fuoco.parametri.target || fuoco.parametri.focus);
+      if (gruppo.ambiente === 'cielo' && STUDIO_FUOCHI_CIELO.includes(f)) gruppo.fuoco = f;
+      if (gruppo.ambiente === 'pianeta' && STUDIO_FUOCHI_3D.includes(f)) gruppo.fuoco = f;
+      // In scena: chi è mostrato e chi parla
+      const qui = [];
+      for (const a of sc.azioni) if ((a.comando === 'character_show' || a.comando === 'character_speak') && cast.includes(a.parametri.target) && !qui.includes(a.parametri.target)) qui.push(a.parametri.target);
+      for (const id of qui) if (!gruppo.presenti.includes(id)) gruppo.presenti.push(id);
+      const m = studioNuovoMomento({ durata: Math.min(120, sc.durata / 1000) });
+      const righe = [];
+      const cosmo = sc.azioni.some(a => a.comando === 'cosmic_scale');
+      for (const a of sc.azioni) {
+        const chiavi = Object.keys(a.parametri);
+        // La battuta (una per momento): chi, cosa, e la voce registrata
+        if (a.comando === 'character_speak' && !m.chi && !a.ripresa && cast.includes(a.parametri.target) &&
+            chiavi.every(k => ['target', 'id', 'text'].includes(k)) && (a.parametri.id || a.parametri.text) && !(a.parametri.id && a.parametri.text)) {
+          m.chi = a.parametri.target;
+          if (a.parametri.id) {
+            const detto = t(a.parametri.id);
+            m.testo = String(detto && detto !== a.parametri.id ? detto : a.parametri.id).slice(0, 400);
+            m.parla = { id: String(a.parametri.id).slice(0, 80), chi: m.chi, testo: m.testo };
+            if (!/^[\w.-]{1,80}$/.test(m.parla.id)) { m.chi = ''; m.testo = ''; m.parla = null; righe.push(a); }
+          } else m.testo = String(a.parametri.text).slice(0, 400);
+          continue;
+        }
+        const az = m.azioni.length < 30 ? azioneDalDsl(a, sc.vista, qui, cosmo) : null;
+        if (az) m.azioni.push(az);
+        else righe.push(a);
+      }
+      // La faccia di chi parla: quella con cui l'originale lo mostra
+      const mostra = m.chi && righe.find(a => a.comando === 'character_show' && a.parametri.target === m.chi);
+      if (mostra && typeof mostra.parametri.expression === 'string') m.umore = mostra.parametri.expression.slice(0, 20);
+      m.copione = studioPulisciCopione({ vista: sc.vista, righe: righe.slice(0, 80).map(a => ({ comando: a.comando, parametri: a.parametri, ripresa: a.ripresa })) });
+      gruppo.momenti.push(m);
+    }
+    const p = studioNuovoProgetto({
+      titolo: unaRiga(opz.titolo || dsl.id).slice(0, 120), obiettivo: unaRiga(opz.obiettivo || '').slice(0, 300),
+      cast: cast.length ? cast : ['Moon'], scene, origine: typeof opz.chiave === 'string' && /^[\w-]{1,60}$/.test(opz.chiave) ? opz.chiave : '',
+      aggiornato: Date.now()
+    });
+    for (const sc of p.scene) if (!sc.presenti.length) sc.presenti = p.cast.slice(0, 1);
+    return studioRipulisci(p);
   }
 
   // ===================================================================
@@ -1080,7 +1336,10 @@
     'virgo_cluster', 'great_attractor', 'laniakea', 'universe', 'local_group', 'local_bubble', 'orion_arm', 'local_cloud',
     'inner_planets', 'planets'];
   const STUDIO_UMORI = ['laughing', 'love', 'angry', 'bully', 'annoyed', 'happy', 'excited', 'surprised', 'worried', 'sad', 'thinking', 'sleepy',
-    'wonder', 'tender', 'determined', 'skeptical', 'wistful', 'neutral'];
+    'wonder', 'tender', 'determined', 'skeptical', 'wistful',
+    // v462 (vince la parola che viene prima nella frase, e a pari posto la più lunga)
+    'panicked', 'scared', 'embarrassed', 'disappointed', 'frustrated', 'bored', 'proud', 'relieved', 'hopeful', 'playful',
+    'curious', 'confused', 'impressed', 'mysterious', 'neutral'];
   /* La faccia giusta per una frase: le parole dell'umore prima, poi la
    * punteggiatura. Non è un'analisi del sentimento, ed è dichiarato: è un
    * suggerimento da accettare o cambiare. */
@@ -1143,7 +1402,22 @@
       tender: [['anima', { animazione: 'pulse' }]],
       determined: [['anima', { animazione: 'nod' }]],
       skeptical: [['anima', { animazione: 'wobble' }]],
-      wistful: [['scala', { scala: 0.9 }]]
+      wistful: [['scala', { scala: 0.9 }]],
+      // v462
+      proud: [['scala', { scala: 1.2 }], ['effetto', { effetto: 'sparkles' }]],
+      relieved: [['anima', { animazione: 'wobble' }]],
+      hopeful: [['effetto', { effetto: 'glow' }]],
+      playful: [['anima', { animazione: 'bounce' }]],
+      curious: [['anima', { animazione: 'nod' }]],
+      confused: [['anima', { animazione: 'wobble' }]],
+      impressed: [['effetto', { effetto: 'sparkles' }]],
+      scared: [['anima', { animazione: 'shake' }], ['scala', { scala: 0.8 }]],
+      panicked: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'flash' }]],
+      embarrassed: [['scala', { scala: 0.85 }]],
+      disappointed: [['scala', { scala: 0.9 }]],
+      frustrated: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'smoke' }]],
+      bored: [['anima', { animazione: 'wobble' }]],
+      mysterious: [['effetto', { effetto: 'smoke' }]]
     }[umore] || [];
     for (const [tipo, campi] of perUmore) metti(tipo, Object.assign({ dove: tipo === 'effetto' ? chi : '' }, campi));
     if (altri.length) metti('guarda', { oggetto: altri[0] });
@@ -1456,10 +1730,15 @@
       const momenti = sc.momenti.length ? sc.momenti : [studioNuovoMomento()];
       for (const m of momenti) {
         scena++;
-        const testo = unaRiga(m.testo).slice(0, 400);
+        const testo = testoDetto(m);
         if (!m.chi || !presenti.includes(m.chi) || !testo) continue;
+        // v461: la battuta di una storia pronta rimasta quella ha già la sua voce
+        if (m.parla && m.parla.chi === m.chi && unaRiga(m.parla.testo) === testoGrezzo(m)) continue;
         if (!m.voce) m.voce = prossima++;
-        battute.push({ n: m.voce, chi: m.chi, testo, umore: m.umore || '', scena, durata: Math.round(studioDurata(m) * 1000) });
+        const b = { n: m.voce, chi: m.chi, testo, umore: m.umore || '', scena, durata: Math.round(studioDurata(m) * 1000) };
+        // v462: le espressioni dentro la frase vanno anche alla regia delle voci
+        if (testoGrezzo(m) !== testo) b.conTag = testoGrezzo(m);
+        battute.push(b);
       }
     }
     progetto.voceProssima = prossima;
@@ -1692,7 +1971,7 @@
     try { await dbVoci(st => st.put({ blob: file, nome: file.name || '', tipo: file.type || '', durata, testo }, k), 'audio'); }
     catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return false; }
     registraVoce(k, testo, URL.createObjectURL(file));
-    m.audio = { durata, impronta: studioImpronta(testo), nome: String(file.name || '').slice(0, 80) };
+    m.audio = { durata, impronta: studioImpronta(testoGrezzo(m)), nome: String(file.name || '').slice(0, 80) };
     if (STUDIO_VOCE_ID.test(voce || '')) m.audio.voce = voce;
     if (typeof tag === 'string') m.audio.tag = tag.slice(0, 160);
     salvaPresto();
@@ -2373,7 +2652,10 @@
     happy: 'happy', surprised: 'surprised', worried: 'nervous', sad: 'sad', thinking: 'thoughtful',
     excited: 'excited', sleepy: 'sleepy', laughing: 'laughs', love: 'warmly', angry: 'angry',
     annoyed: 'annoyed', bully: 'mischievously',
-    wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully'
+    wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully',
+    // v462
+    proud: 'proud', relieved: 'relieved', hopeful: 'hopeful', playful: 'playfully', curious: 'curious', confused: 'confused', impressed: 'impressed',
+    scared: 'scared', panicked: 'panicked', embarrassed: 'embarrassed', disappointed: 'disappointed', frustrated: 'frustrated', bored: 'bored', mysterious: 'mysteriously'
   };
   function studioElevenImpostazioni() {
     const a = archivio();
@@ -2471,8 +2753,8 @@
    * e lì va il testo nudo. `progetto`: la storia, per la faccia rimasta da
    * prima (di serie quella aperta nello Studio). */
   function studioTestoPerVoce(m, modello, progetto) {
-    const testo = testoDetto(m);
-    if (!/^eleven_v3/.test(modello || '')) return testo.replace(/\[[^\]]{1,30}\]\s*/g, '').trim();
+    const testo = testoGrezzo(m);
+    if (!/^eleven_v3/.test(modello || '')) return testoDetto(m);
     if (/^\[[^\]]{1,30}\]/.test(testo)) return testo;
     const p = progetto !== undefined ? progetto : studio.progetto;
     const tag = studioTagVoce(p, m);
@@ -2883,6 +3165,8 @@
   const studio = {
     progetti: [], progetto: null, radice: null, capito: null, capitoScena: -1, esito: '', copioneAperto: false,
     salvaTimer: 0, aperta: null, schedaMomento: '',
+    // v462: dove sta il cursore nella battuta, e la famiglia di espressioni aperta
+    cursore: null, famigliaTag: '',
     // v449: il pannello delle impostazioni e la sua linguetta aperta
     impAperto: false, impScheda: 'storia',
     // v444: il pannello della chiave ElevenLabs e la scelta della voce aperta (§6c)
@@ -3010,6 +3294,7 @@
     if (m.chi && m.umore) segni.push(nomeFaccia(m.chi, m.umore));
     if (m.audio) segni.push(t('studio.ui.conVoce'));
     if (nAzioni) segni.push(t('studio.ui.nAzioni', { n: nAzioni }));
+    if (m.copione && m.copione.righe.length) segni.push(t('studio.originale.n', { n: m.copione.righe.length }));
     const riga = h('button', { type: 'button', class: 'studio-momento-riga', dataset: { fai: 'apriMomento', dove: base }, 'aria-expanded': String(aperto),
       title: t(aperto ? 'studio.ui.chiudiMomento' : 'studio.ui.apriMomento') },
       h('span', { class: 'studio-numero' }, String(k + 1)),
@@ -3033,9 +3318,10 @@
     box.append(chi);
     // Il fumetto: la figurina grande e le parole
     if (m.chi) {
-      const testo = h('textarea', { rows: '2', maxlength: '400', dataset: { campo: base + '.testo' }, placeholder: t('studio.testoAiuto', { nome: nome(m.chi) }), 'aria-label': t('studio.battuta') });
+      const testo = h('textarea', { rows: '2', maxlength: '600', dataset: { campo: base + '.testo' }, placeholder: t('studio.testoAiuto', { nome: nome(m.chi) }), 'aria-label': t('studio.battuta') });
       testo.value = m.testo || '';
-      const n = parole ? parole.split(' ').length : 0;
+      const detto = testoDetto(m);
+      const n = detto ? detto.split(' ').length : 0;
       box.append(h('div', { class: 'studio-fumetto' },
         figurina(m.chi, umore, 64, 'studio-chi-grande'),
         h('div', { class: 'studio-nuvola' }, testo,
@@ -3049,7 +3335,8 @@
     const stato = {
       faccia: nomeFaccia(m.chi, umore) + (m.umore ? '' : ' · ' + t('studio.ui.diSerie')),
       voce: statoVoce,
-      azioni: nAzioni ? t('studio.ui.nAzioni', { n: nAzioni }) : t('studio.ui.nienteAzioni')
+      azioni: [nAzioni ? t('studio.ui.nAzioni', { n: nAzioni }) : t('studio.ui.nienteAzioni'),
+        m.copione && m.copione.righe.length ? t('studio.originale.n', { n: m.copione.righe.length }) : ''].filter(Boolean).join(' · ')
     };
     const fila = h('div', { class: 'studio-linguette', role: 'group', 'aria-label': t('studio.momento', { n: k + 1 }) });
     for (const s of schede) fila.append(linguetta(aperta === s, { fai: 'schedaMomento', dove: base, valore: s }, t('studio.ui.scheda.' + s), stato[s]));
@@ -3072,7 +3359,7 @@
       if (m.chi) pannello.append(disegnaVoce(m, base));
       if (m.chi && studioElevenImpostazioni().chiave) pannello.append(disegnaIntonazione(m, base));
       pannello.append(h('label', { class: 'studio-secondi' }, h('span', {}, t('studio.ui.quantoDura')),
-        h('input', { type: 'number', min: '0', max: '120', step: '1', value: String(m.durata || ''), placeholder: t('studio.auto'), dataset: { campo: base + '.durata', numero: '1' } }),
+        h('input', { type: 'number', min: '0', max: '120', step: m.copione ? 'any' : '1', value: String(m.durata || ''), placeholder: t('studio.auto'), dataset: { campo: base + '.durata', numero: '1' } }),
         h('small', {}, t('studio.ui.durataNota'))));
     } else if (aperta === 'azioni') {
       // Intanto: le azioni come etichette; quella aperta mostra i suoi campi
@@ -3088,6 +3375,21 @@
         if (apertaAz) intanto.append(disegnaAzione(az, dove, presenti, scena));
       });
       pannello.append(intanto);
+      // v461: i comandi della storia pronta che lo Studio non sa scrivere
+      // (la camera, le date, la musica, i versi…): restano come sono, e
+      // chi non li vuole li toglie
+      if (m.copione && m.copione.righe.length) {
+        const orig = h('div', { class: 'studio-intanto studio-originale', role: 'group', 'aria-label': t('studio.originale.titolo') },
+          h('span', { class: 'studio-etichetta' }, t('studio.originale.titolo')),
+          h('small', { class: 'studio-voce-stato' }, t('studio.originale.aiuto')));
+        m.copione.righe.forEach((r, j) => {
+          const bersaglio = r.parametri.target ? ' · ' + nome(r.parametri.target) : '';
+          orig.append(h('span', { class: 'studio-azione-chip' },
+            h('span', { class: 'studio-azione-testo', title: studioRigaDsl(r) }, (t('studio.originale.comando.' + r.comando) || r.comando) + bersaglio),
+            h('button', { type: 'button', class: 'studio-azione-x', dataset: { fai: 'togliRiga', dove: base, valore: String(j) }, 'aria-label': t('studio.togli'), title: t('studio.togli') }, '×')));
+        });
+        pannello.append(orig);
+      }
       // Le idee adatte a parole e faccia
       const idee = studioIdeeAzioni(studio.progetto, scena, m);
       if (idee.length) {
@@ -3179,11 +3481,72 @@
     for (const x of STUDIO_TONI)
       toni.append(scelta(scelti.includes(x), { class: 'studio-tono', dataset: { fai: 'tono', dove: base, valore: x }, title: '[' + x + ']' }, t('studio.el.toni.' + x)));
     blocco.append(toni);
+    blocco.append(disegnaTagFrase(m, base));
     const v3 = /^eleven_v3/.test(imp.modello);
     blocco.append(v3
       ? h('small', { class: 'studio-tono-invio' }, t('studio.el.testoInviato'), ' ', h('code', {}, studioTestoPerVoce(m, imp.modello, p)))
       : h('small', { class: 'studio-voce-stato troppo' }, t('studio.el.tonoSoloV3')));
     return blocco;
+  }
+
+  /* Le espressioni dentro la frase (v462): quattro linguette (emozioni, come
+   * parla, suoni, pause), un tasto per espressione che la mette **dove sta
+   * il cursore** nella battuta, una scritta libera per qualunque altro tag,
+   * e in fila quelle già messe, ognuna con la sua ×. */
+  function tagNelTesto(testo) { return [...String(testo || '').matchAll(/\[([^\]\n]{1,30})\]/g)].map(x => x[1]); }
+  function disegnaTagFrase(m, base) {
+    const blocco = h('div', { class: 'studio-tag-frase', role: 'group', 'aria-label': t('studio.el.tagFrase.titolo') },
+      h('small', { class: 'studio-tono-titolo' }, t('studio.el.tagFrase.titolo')),
+      h('small', { class: 'studio-voce-stato' }, t('studio.el.tagFrase.aiuto')));
+    const messi = tagNelTesto(m.testo);
+    if (messi.length) {
+      const fila = h('div', { class: 'studio-chips', role: 'group', 'aria-label': t('studio.el.tagFrase.messi') },
+        h('span', { class: 'studio-etichetta' }, t('studio.el.tagFrase.messi')));
+      messi.forEach((x, j) => fila.append(h('span', { class: 'studio-azione-chip' },
+        h('span', { class: 'studio-azione-testo', title: '[' + x + ']' }, nomeTag(x)),
+        h('button', { type: 'button', class: 'studio-azione-x', dataset: { fai: 'tagVia', dove: base, valore: String(j) }, 'aria-label': t('studio.togli'), title: t('studio.togli') }, '×'))));
+      fila.append(h('button', { type: 'button', class: 'studio-idea', dataset: { fai: 'tagVia', dove: base, valore: 'tutti' } }, t('studio.el.tagFrase.togliTutti')));
+      blocco.append(fila);
+    }
+    const famiglie = Object.keys(STUDIO_TAG_FRASE);
+    const aperta = famiglie.includes(studio.famigliaTag) ? studio.famigliaTag : '';
+    const fila = h('div', { class: 'studio-linguette', role: 'group', 'aria-label': t('studio.el.tagFrase.titolo') });
+    for (const f of famiglie) {
+      const quanti = messi.filter(x => STUDIO_TAG_FRASE[f].includes(x)).length;
+      fila.append(linguetta(aperta === f, { fai: 'famigliaTag', dove: base, valore: f }, t('studio.el.tagFrase.famiglia.' + f),
+        quanti ? t('studio.el.tagFrase.nellaFrase', { n: quanti }) : t('studio.el.tagFrase.quante', { n: STUDIO_TAG_FRASE[f].length })));
+    }
+    blocco.append(fila);
+    if (aperta) {
+      const tasti = h('div', { class: 'studio-toni', role: 'group', 'aria-label': t('studio.el.tagFrase.famiglia.' + aperta) });
+      for (const x of STUDIO_TAG_FRASE[aperta])
+        tasti.append(h('button', { type: 'button', class: 'studio-tono', dataset: { fai: 'tagFrase', dove: base, valore: x }, title: '[' + x + ']' }, '+ ' + nomeTag(x)));
+      blocco.append(tasti);
+    }
+    // Qualunque altro tag di ElevenLabs, scritto a mano (in inglese)
+    blocco.append(h('div', { class: 'studio-riga studio-tag-libero' },
+      h('input', { type: 'text', maxlength: '30', class: 'studio-tag-libero-campo', dataset: { tagLibero: base },
+        placeholder: t('studio.el.tagFrase.liberoAiuto'), 'aria-label': t('studio.el.tagFrase.libero') }),
+      h('button', { type: 'button', class: 'tasto-cielo studio-mini', dataset: { fai: 'tagLibero', dove: base } }, t('studio.el.tagFrase.metti'))));
+    return blocco;
+  }
+  const nomeTag = x => t('studio.el.tag.' + x.replace(/[^a-z]+/gi, '_')) || x;
+  // Mette `[tag]` dove sta il cursore nella battuta (o in fondo)
+  function inserisciTag(dove, tag) {
+    const m = leggi(dove);
+    if (!m) return false;
+    const campo = dove + '.testo', testo = String(m.testo || '');
+    let da = testo.length, a = testo.length;
+    if (studio.cursore && studio.cursore.campo === campo) {
+      da = Math.max(0, Math.min(studio.cursore.da, testo.length)); a = Math.max(da, Math.min(studio.cursore.a, testo.length));
+    }
+    const prima = testo.slice(0, da), dopo = testo.slice(a);
+    const pezzo = (prima && !/\s$/.test(prima) ? ' ' : '') + '[' + tag + ']' + (!/^\s/.test(dopo) ? ' ' : '');
+    if ((prima + pezzo + dopo).length > 600) { esito(t('studio.el.tagFrase.troppo')); return false; }
+    m.testo = prima + pezzo + dopo;
+    const pos = (prima + pezzo).length;
+    studio.cursore = { campo, da: pos, a: pos };
+    return true;
   }
 
   /* Le voci di una scena (v445): chi parla in questa scena, con la voce
@@ -3662,8 +4025,12 @@
     const p = studio.progetto;
     const pezzi = [];
     // La barra: quale storia, una nuova, guarda e salva; il resto nelle Impostazioni
-    const elenco = selettore('', p.id, studio.progetti.map(x => [x.id, x.titolo || t('studio.senzaTitolo')]), { id: 'studio-progetti', 'aria-label': t('studio.progetti') });
-    if (!studio.progetti.some(x => x.id === p.id)) elenco.prepend(new Option(p.titolo || t('studio.senzaTitolo'), p.id));
+    // v461: nell'elenco le storie in cantiere; quelle messe fra le
+    // CosmoStorie stanno là, e qui solo quando le si apre
+    const inCantiere = studio.progetti.filter(x => !x.ufficiale);
+    const elenco = selettore('', p.id, inCantiere.map(x => [x.id, x.titolo || t('studio.senzaTitolo')]), { id: 'studio-progetti', 'aria-label': t('studio.progetti') });
+    if (!inCantiere.some(x => x.id === p.id))
+      elenco.prepend(new Option((p.titolo || t('studio.senzaTitolo')) + (p.ufficiale ? ' · ' + t('studio.ufficiale.segno') : ''), p.id));
     elenco.value = p.id;
     // v449: «Altro» era un menu a tendina con dieci tasti alla rinfusa
     // (file, repository, ElevenLabs, elimina); ora è un pannello a parte
@@ -3675,7 +4042,9 @@
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'nuovo' } }, '+ ' + t('studio.nuovo')),
         h('button', { type: 'button', class: 'demo-avvia-principale storia-avvia', dataset: { fai: 'guarda' }, 'data-storia-prova': '' }, iconaSvg('gioca', 18), ' ', t('studio.guarda')),
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'salvaDemo' } }, t('studio.salvaDemo')),
+        tastoUfficiale(p),
         impostazioni),
+      p.ufficiale ? h('p', { class: 'demo-opzioni-nota' }, t('studio.ufficiale.nota')) : null,
       h('p', { id: 'studio-esito', class: 'demo-opzioni-nota', role: 'status', 'aria-live': 'polite' }, studio.esito),
       studio.impAperto ? pannelloImpostazioni(p) : null,
       h('pre', { id: 'studio-copione', class: 'storie-codice', tabindex: '0', hidden: !studio.copioneAperto })));
@@ -3786,7 +4155,8 @@
       h('h4', { class: 'storie-sottotitolo' }, t('studio.passo6')),
       h('div', { class: 'demo-azioni' },
         h('button', { type: 'button', class: 'demo-avvia-principale storia-avvia', dataset: { fai: 'guarda' }, 'data-storia-prova': '' }, iconaSvg('gioca', 18), ' ', t('studio.guarda')),
-        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'salvaDemo' } }, t('studio.salvaDemo')))));
+        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'salvaDemo' } }, t('studio.salvaDemo')),
+        tastoUfficiale(p))));
     r.replaceChildren(...pezzi);
     aggiornaVivi();
     if (fuoco) {
@@ -3799,6 +4169,12 @@
       } else el = r.querySelector(`[data-campo="${CSS.escape(fuoco)}"]`);
       if (el) el.focus();
     }
+  }
+  // Fra le CosmoStorie, o di nuovo in cantiere (v461)
+  function tastoUfficiale(p) {
+    return p.ufficiale
+      ? h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'ritira' }, title: t('studio.ufficiale.ritiraAiuto') }, t('studio.ufficiale.ritira'))
+      : h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'pubblica' }, title: t('studio.ufficiale.pubblicaAiuto') }, t('studio.ufficiale.pubblica'));
   }
   function disegnaDomanda(p) {
     const d = p.domanda || (p.domanda = studioNuovaDomanda());
@@ -3913,11 +4289,12 @@
         salvaPresto(); disegna(); return;
       }
       case 'domandaTogli': Object.assign(p.domanda, { testo: '', a: '', b: '' }); salvaPresto(); disegna(); return;
-      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; copiaVoci(p.id, c.id); apri(c); return; }
+      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.ufficiale = false; c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; copiaVoci(p.id, c.id); apri(c); return; }
       case 'elimina':
         if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) {
           studio.progetti = studio.progetti.filter(x => x.id !== p.id);
           studioSalvaTutti(studio.progetti);
+          if (p.ufficiale) aggiornaCosmoStorie();
           // Una lapide, perché dagli altri dispositivi non torni (§6b)
           if (condivisa(p)) { const e = eliminatiCarica(); e[p.id] = Math.max(Date.now(), (p.aggiornato || 0) + 1); eliminatiSalva(e); }
           apri(studio.progetti[0] || studioNuovoProgetto());
@@ -3991,6 +4368,29 @@
         if (!STUDIO_TONI.includes(x)) return;
         const tono = (m.tono || []).filter(y => STUDIO_TONI.includes(y));
         m.tono = tono.includes(x) ? tono.filter(y => y !== x) : tono.concat(x).slice(-STUDIO_TONI_MAX);
+        break;
+      }
+      // v462: le espressioni dentro la frase
+      case 'famigliaTag': studio.famigliaTag = studio.famigliaTag === el.dataset.valore ? '' : el.dataset.valore; disegna(); return;
+      case 'tagFrase': {
+        const x = el.dataset.valore;
+        if (!Object.values(STUDIO_TAG_FRASE).some(l => l.includes(x)) || !inserisciTag(dove, x)) return;
+        break;
+      }
+      case 'tagLibero': {
+        const campo = studio.radice.querySelector(`[data-tag-libero="${CSS.escape(dove)}"]`);
+        const x = unaRiga(campo && campo.value).replace(/^\[|\]$/g, '');
+        if (!STUDIO_TAG_LIBERO.test(x)) { esito(t('studio.el.tagFrase.liberoNo')); return; }
+        if (!inserisciTag(dove, x)) return;
+        break;
+      }
+      case 'tagVia': {
+        const m = leggi(dove);
+        if (!m) return;
+        let j = -1;
+        const quale = el.dataset.valore;
+        m.testo = String(m.testo || '').replace(/\s?\[[^\]\n]{1,30}\]/g, tag => (quale === 'tutti' || ++j === Number(quale)) ? '' : tag).replace(/^\s+/, '');
+        studio.cursore = null;
         break;
       }
       case 'aggiungiTipo': {
@@ -4154,37 +4554,113 @@
         studio.paroleResto = studio.capito.ops.length ? null : { dove, testo };
         break;
       }
-      case 'salvaDemo': {
-        try {
-          const lib = radice.AstroDemo.libreria;
-          const testo = studioCopione(p);
-          let chiave = p.demoChiave;
-          try { chiave = lib.salva(testo, chiave || undefined); }
-          catch (e) { if (chiave) chiave = lib.salva(testo); else throw e; }   // la demo era stata cancellata
-          p.demoChiave = chiave;
-          if (typeof radice.demoPaginaRicarica === 'function') radice.demoPaginaRicarica(chiave);
-          studio.esito = t('studio.salvata');
-          // Le battute nel file delle voci: numeri e nome della storia
-          // entrano nel progetto, che si salva subito sotto
-          const salvato = studio.esito;
-          // Poi sul repository, perché si veda dagli altri dispositivi (§6b):
-          // il progetto deve essere già nell'archivio quando il giro lo legge
-          aggiornaVoci({ salvata: p, chiedi: false })
-            .then(msg => {
-              const i = studio.progetti.findIndex(x => x.id === p.id);
-              if (i >= 0) studio.progetti[i] = p; else studio.progetti.unshift(p);
-              studioSalvaTutti(studio.progetti);
-              const prima = salvato + ' ' + (msg || (studioRepoImpostazioni().token ? '' : t('studio.voci.ricorda')));
-              esito(prima + ' ' + t('studio.repo.inCorso'));
-              return studioSincronizza({ spingi: true, titolo: p.titolo }).then(r2 => esito(prima + ' ' + r2));
-            });
-        } catch (e) { studio.esito = e.message; }
+      case 'togliRiga': {
+        const m = leggi(dove);
+        if (m && m.copione) m.copione.righe.splice(Number(el.dataset.valore), 1);
         break;
       }
+      // v461: la storia va fra le CosmoStorie (salvata come demo, perché la
+      // scheda la faccia partire), o torna in cantiere
+      case 'pubblica':
+        p.ufficiale = true;
+        if (!salvaDemo(p, t('studio.ufficiale.pubblicata'))) p.ufficiale = false;
+        aggiornaCosmoStorie();
+        break;
+      case 'ritira':
+        p.ufficiale = false;
+        studio.esito = t('studio.ufficiale.ritirata');
+        salvaDemo(p, studio.esito);
+        aggiornaCosmoStorie();
+        break;
+      case 'salvaDemo':
+        salvaDemo(p, t(p.ufficiale ? 'studio.ufficiale.aggiornata' : 'studio.salvata'));
+        aggiornaCosmoStorie();
+        break;
       default: return;
     }
     salvaPresto();
     disegna();
+  }
+
+  /* Salva la storia come demo (nella libreria, nel file delle voci e sul
+   * repository). Restituisce false se non si è potuto: allora `studio.esito`
+   * dice perché. `ok` è il messaggio di quando va bene. */
+  function salvaDemo(p, ok) {
+    try {
+      const lib = radice.AstroDemo.libreria;
+      const testo = studioCopione(p);
+      let chiave = p.demoChiave;
+      try { chiave = lib.salva(testo, chiave || undefined); }
+      catch (e) { if (chiave) chiave = lib.salva(testo); else throw e; }   // la demo era stata cancellata
+      p.demoChiave = chiave;
+      if (typeof radice.demoPaginaRicarica === 'function') radice.demoPaginaRicarica(chiave);
+      studio.esito = ok;
+      // Le battute nel file delle voci: numeri e nome della storia
+      // entrano nel progetto, che si salva subito sotto
+      const salvato = studio.esito;
+      // Poi sul repository, perché si veda dagli altri dispositivi (§6b):
+      // il progetto deve essere già nell'archivio quando il giro lo legge
+      aggiornaVoci({ salvata: p, chiedi: false })
+        .then(msg => {
+          const i = studio.progetti.findIndex(x => x.id === p.id);
+          if (i >= 0) studio.progetti[i] = p; else studio.progetti.unshift(p);
+          studioSalvaTutti(studio.progetti);
+          aggiornaCosmoStorie();
+          const prima = salvato + ' ' + (msg || (studioRepoImpostazioni().token ? '' : t('studio.voci.ricorda')));
+          esito(prima + ' ' + t('studio.repo.inCorso'));
+          return studioSincronizza({ spingi: true, titolo: p.titolo }).then(r2 => esito(prima + ' ' + r2));
+        });
+      return true;
+    } catch (e) { studio.esito = e.message; return false; }
+  }
+  // Le schede delle CosmoStorie (storie-cosmiche.js) si rifanno quando una
+  // storia dello Studio entra, esce o cambia
+  function aggiornaCosmoStorie() {
+    const s = radice.StorieCosmiche;
+    if (s && typeof s.riempiPagina === 'function') { try { s.riempiPagina(); } catch (_) { /* la pagina resta com'era */ } }
+  }
+  /* Le storie dello Studio messe fra le CosmoStorie: per le schede della
+   * pagina, col copione salvato (o quello di adesso, se non c'è più). */
+  function studioUfficiali() {
+    const lib = radice.AstroDemo && radice.AstroDemo.libreria;
+    let demo = [];
+    try { demo = lib ? lib.elenco() : []; } catch (_) { demo = []; }
+    return studio.progetti.filter(p => p.ufficiale).map(p => {
+      const d = p.demoChiave && demo.find(x => x.chiave === p.demoChiave);
+      let testo = d ? d.testo : '';
+      if (!testo) { try { testo = studioCopione(p); } catch (_) { testo = ''; } }
+      return { chiave: p.demoChiave || p.id, progetto: p.id, titolo: unaRiga(p.titolo) || t('studio.senzaTitolo'),
+        descrizione: unaRiga(p.obiettivo), cast: p.cast.join(','), testo, storia: true };
+    }).filter(x => x.testo);
+  }
+  // Apre nello Studio un progetto, e lo porta in vista
+  function mostraNelloStudio() {
+    if (typeof radice.demoMostraScheda === 'function') radice.demoMostraScheda('demo-scheda-storie');
+    disegna();
+    if (studio.radice && studio.radice.scrollIntoView) studio.radice.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  function studioApriProgetto(id) {
+    const p = studio.progetti.find(x => x.id === id);
+    if (!p) return false;
+    apri(p);
+    mostraNelloStudio();
+    return true;
+  }
+  /* «Duplica e modifica» di una CosmoStoria (v461): la copia nello Studio,
+   * con tutto quello che c'era, pronta da ritoccare e salvare. */
+  function studioApriDaStoria(st) {
+    if (!st || typeof st.testo !== 'string') return false;
+    const p = studioDaCopione(st.testo, { chiave: st.chiave, cast: st.cast, titolo: st.titolo, obiettivo: st.descrizione });
+    // «CosmoStorie · Giove e Saturno» diventa «Copia di Giove e Saturno»
+    const titolo = p.titolo.replace(/^Cosmo\w{0,12}\s*·\s*/, '') || p.titolo;
+    p.titolo = (t('studio.copiaDi', { titolo }) || titolo).slice(0, 120);
+    // la prima scena aperta, perché si veda subito che dentro c'è tutto
+    if (p.scene[0]) sceneAperte.add(p.id + '|' + p.scene[0].id);
+    apri(p);
+    const tenuti = p.scene.reduce((n, sc) => n + sc.momenti.reduce((k, m) => k + (m.copione ? m.copione.righe.length : 0), 0), 0);
+    esito(t('studio.daStoria.pronta', { n: tenuti }));
+    mostraNelloStudio();
+    return true;
   }
 
   // Una scelta del menu della musica: la traccia dell'app, quella della
@@ -4210,6 +4686,14 @@
   }
 
   function collega(r) {
+    // v462: dove sta il cursore nella battuta, per mettere l'espressione
+    // proprio lì anche dopo aver cliccato altrove
+    const ricordaCursore = e => {
+      const el = e.target;
+      if (el && el.tagName === 'TEXTAREA' && el.dataset && /\.testo$/.test(el.dataset.campo || ''))
+        studio.cursore = { campo: el.dataset.campo, da: el.selectionStart, a: el.selectionEnd };
+    };
+    for (const ev of ['keyup', 'click', 'select', 'input', 'focusout']) r.addEventListener(ev, ricordaCursore);
     r.addEventListener('click', e => {
       const b = e.target.closest('[data-fai]');
       if (b && r.contains(b)) fai(b.dataset.fai, b.dataset.dove, b);
@@ -4219,6 +4703,7 @@
       const el = e.target;
       if (e.key === 'Enter' && el.dataset && el.dataset.parole && el.value.trim()) { e.preventDefault(); fai('capisci', el.dataset.parole, el); }
       if (e.key === 'Enter' && el.dataset && el.dataset.elCerca) { e.preventDefault(); fai('elCerca', '', el); }
+      if (e.key === 'Enter' && el.dataset && el.dataset.tagLibero) { e.preventDefault(); fai('tagLibero', el.dataset.tagLibero, el); }
     });
     r.addEventListener('input', e => {
       const el = e.target;
@@ -4237,7 +4722,7 @@
       // Il contatore delle parole senza ridisegnare (il cursore resta dov'è)
       if (/\.testo$/.test(el.dataset.campo)) {
         const c = el.parentElement && el.parentElement.querySelector('.studio-contatore');
-        const n = unaRiga(el.value) ? unaRiga(el.value).split(' ').length : 0;
+        const n = studioSenzaTag(el.value) ? studioSenzaTag(el.value).split(' ').length : 0;
         if (c) { c.textContent = t('studio.parole', { n }); c.classList.toggle('troppo', n > STUDIO_PAROLE_BAMBINI); }
       }
       aggiornaVivi();
@@ -4391,10 +4876,12 @@
     studio.progetto = studio.progetti[0] || studioDaModello('fasi');
     collega(r);
     disegna();
+    // le storie dello Studio messe fra le CosmoStorie (v461)
+    aggiornaCosmoStorie();
     studioRiprendiVoci().catch(() => null);
     // Le storie salvate dagli altri dispositivi (§6b), in silenzio se non
     // arriva niente: senza rete resta quello che c'è qui
-    studioSincronizza({ spingi: false }).then(msg => { if (msg && !studio.esito) esito(msg); }).catch(() => null);
+    studioSincronizza({ spingi: false }).then(msg => { aggiornaCosmoStorie(); if (msg && !studio.esito) esito(msg); }).catch(() => null);
     if (haI18n() && typeof radice.astroI18n.alCambio === 'function') radice.astroI18n.alCambio(() => { cacheParole.clear(); disegna(); });
   }
   if (typeof document !== 'undefined') {
@@ -4409,7 +4896,7 @@
   const api = {
     STUDIO_SCOPI, STUDIO_AMBIENTI, STUDIO_TIPI, CHIAVE,
     nuovoProgetto: studioNuovoProgetto, nuovaScena: studioNuovaScena, nuovoMomento: studioNuovoMomento, nuovaAzione: studioNuovaAzione,
-    daModello: studioDaModello, copione: studioCopione, durata: studioDurata, durataTotale: studioDurataTotale,
+    daModello: studioDaModello, copione: studioCopione, daCopione: studioDaCopione, rigaDsl: studioRigaDsl, durata: studioDurata, durataTotale: studioDurataTotale,
     umoreDalTesto: studioUmoreDalTesto, ideeAzioni: studioIdeeAzioni, ambientePer: studioAmbientePer,
     prossimoMomento: studioProssimoMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
@@ -4425,7 +4912,8 @@
     testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
-    caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN,
+    caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag,
+    ufficiali: studioUfficiali, apriProgetto: studioApriProgetto, apriDaStoria: studioApriDaStoria,
     apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
   };

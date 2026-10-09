@@ -1217,7 +1217,7 @@ prova('un progetto rotto o estraneo non rompe lo Studio', () => {
   assert.equal(p.titolo, '');
   assert.deepEqual(p.cast, ['Moon']);
   assert.equal(p.scene[0].ambiente, 'sistema');
-  assert.equal(p.scene[0].momenti[0].testo.length, 400);
+  assert.equal(p.scene[0].momenti[0].testo.length, 600);   // v462: coi tag dentro la frase
   assert.deepEqual(p.scene[0].momenti[0].azioni.map(a => a.tipo), ['effetto']);
   assert.equal(p.scene[0].momenti[0].azioni[0].colore, '');
   assert.throws(() => St.ripulisci(null));
@@ -2083,6 +2083,11 @@ prova('«Pallido puntino blu»: Carl Sagan cambia faccia, e nei ritornelli canta
     for (const l of ['it', 'en']) for (const k of ['storie.espressione.', 'storie.espressioneLei.', 'studio.parole.umore.'])
       assert.equal(typeof DIZ[l].messaggi[k + e], 'string', k + e + ' in ' + l);
   }
+  // v462: le facce nuove dove le parole le chiedono
+  const tutte = new Set([...d.testo.matchAll(/expression: '(\w+)'/g)].map(m => m[1]));
+  for (const e of ['hopeful', 'disappointed', 'confused', 'impressed', 'mysterious', 'proud', 'embarrassed', 'scared', 'frustrated', 'curious'])
+    assert.ok(tutte.has(e), 'la storia usa ' + e);
+  assert.ok(facce.has('hopeful') && facce.has('disappointed') && facce.has('impressed'), 'Sagan usa le facce nuove');
   const prep = motore.prepara(d.testo);
   for (const s of prep.scene) {
     const mostrati = s.azioni.filter(a => a.comando === 'character_show').map(a => a.parametri.target);
@@ -2168,6 +2173,96 @@ prova('ogni testo delle storie e dei comandi esiste in tutte e due le lingue', (
     assert.equal(typeof DIZ[l].messaggi[k], 'string', `${k} manca in ${l}`);
   assert.ok(chiavi.size > 40, 'chiavi controllate: ' + chiavi.size);
 });
+gruppo('Duplica e modifica: una CosmoStoria pronta nello Studio (v461)');
+
+globalThis.AstroDemoMotore = require('../demo-motore.js');
+const firmaV461 = a => a.comando + '|' + Object.keys(a.parametri).sort().map(k => k + '=' + a.parametri[k]).join('|') +
+  '|' + (a.ripresa ? a.ripresa.da + '-' + a.ripresa.a : '0-1');
+prova('ogni storia pronta, portata nello Studio e riscritta senza ritocchi, è la stessa storia', () => {
+  lingua = 'it';
+  for (const d of predefiniti.filter(x => x.storia)) {
+    const p = St.daCopione(d.testo, { chiave: d.chiave, cast: d.cast, titolo: d.chiave });
+    const prima = analizza(d.testo), dopo = analizza(St.copione(p));
+    motore.prepara(St.copione(p));
+    assert.equal(dopo.scene.length, prima.scene.length, d.chiave + ': scene');
+    prima.scene.forEach((sc, i) => {
+      const sd = dopo.scene[i];
+      assert.equal(sd.vista, sc.vista, `${d.chiave} scena ${i + 1}: vista`);
+      assert.equal(sd.durata, sc.durata, `${d.chiave} scena ${i + 1}: durata`);
+      assert.deepEqual(sd.azioni.map(firmaV461).sort(), sc.azioni.map(firmaV461).sort(), `${d.chiave} scena ${i + 1}: azioni`);
+    });
+    // e qualcosa da modificare c'è davvero: le battute e le azioni dello Studio
+    const momenti = p.scene.flatMap(sc => sc.momenti);
+    if (d.chiave !== 'storia_puntino') assert.ok(momenti.some(m => m.chi && m.testo && !/^demo\.narr/.test(m.testo)), d.chiave + ': battute col testo');
+    if (d.chiave === 'storia_giganti') assert.ok(momenti.some(m => m.azioni.some(a => a.tipo === 'muovi')), 'il viaggio di Saturno è un\'azione dello Studio');
+    // e resta uguale passando dall'archivio
+    const riletto = St.ripulisci(JSON.parse(JSON.stringify(p)));
+    assert.equal(St.copione(riletto), St.copione(p), d.chiave + ': uguale dopo l\'archivio');
+  }
+});
+prova('la battuta cambiata diventa testo, quella rimasta tiene la voce registrata', () => {
+  lingua = 'it';
+  const d = predefiniti.find(x => x.chiave === 'storia_luna');
+  const p = St.daCopione(d.testo, { chiave: d.chiave, cast: d.cast });
+  const m = p.scene[0].momenti[0];
+  assert.equal(m.chi, 'Moon'); assert.match(m.testo, /pezzo/); assert.equal(m.umore, 'worried');
+  assert.match(St.copione(p), /id: 'demo\.narr\.storia_luna\.1'/);
+  m.testo = 'Ciao a tutti!'; m.umore = 'happy';
+  const c = St.copione(p);
+  assert.doesNotMatch(c, /storia_luna\.1'/);
+  assert.match(c, /text: 'Ciao a tutti!'/);
+  assert.match(analizza(c).scene[0].azioni.map(firmaV461).join('\n'), /character_show\|expression=happy\|target=Moon/);
+  // un comando dell'originale tolto non torna
+  const n = m.copione.righe.length;
+  m.copione.righe = m.copione.righe.filter(r => r.comando !== 'zoom_fov');
+  assert.equal(m.copione.righe.length, n - 1);
+  assert.doesNotMatch(St.copione(p).split('scene')[1], /zoom_fov/);
+});
+
+gruppo('Le espressioni dentro la frase per ElevenLabs (v462)');
+
+prova('i tag dentro la frase vanno solo a ElevenLabs: sottotitoli e voce dell\'app non li vedono', () => {
+  lingua = 'it';
+  const p = St.nuovoProgetto({ cast: ['Moon'], scene: [St.nuovaScena({ ambiente: 'terra_luna', presenti: ['Moon'],
+    momenti: [St.nuovoMomento({ chi: 'Moon', umore: 'happy', testo: 'Ciao [whispers] amici, [long pause] sono io [laughs]!' })] })] });
+  const c = St.copione(p);
+  assert.match(c, /text: 'Ciao amici, sono io!'/);
+  assert.doesNotMatch(c, /whispers|laughs/);
+  const m = p.scene[0].momenti[0];
+  assert.equal(St.testoPerVoce(m, 'eleven_v3', p), '[happy] Ciao [whispers] amici, [long pause] sono io [laughs]!');
+  assert.equal(St.testoPerVoce(m, 'eleven_multilingual_v2', p), 'Ciao amici, sono io!');
+  // un tag all'inizio prende il posto dell'emozione della faccia
+  m.testo = '[sarcastic] Ma certo [sighs] come no.';
+  assert.equal(St.testoPerVoce(m, 'eleven_v3', p), '[sarcastic] Ma certo [sighs] come no.');
+  // il file delle voci porta la battuta pulita e quella coi tag
+  const f = St.vociStoria(p, 'it');
+  assert.equal(f.battute[0].testo, 'Ma certo come no.');
+  assert.equal(f.battute[0].conTag, '[sarcastic] Ma certo [sighs] come no.');
+  // una voce generata con altri tag non vale più
+  m.audio = { durata: 2000, impronta: St.impronta('[sarcastic] Ma certo [sighs] come no.'), nome: 'x' };
+  assert.equal(St.voceValida(m), true);
+  m.testo = '[sarcastic] Ma certo [laughs] come no.';
+  assert.equal(St.voceValida(m), false);
+  // ogni espressione del catalogo ha il nome nelle due lingue
+  for (const lista of Object.values(St.STUDIO_TAG_FRASE)) for (const x of lista)
+    for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi['studio.el.tag.' + x.replace(/[^a-z]+/gi, '_')], 'string', x + ' ' + l);
+});
+
+prova('le facce nuove (v462): ognuna col nome, la fisica, le parole e l\'emozione per ElevenLabs', () => {
+  const nuove = ['proud', 'relieved', 'hopeful', 'playful', 'curious', 'confused', 'impressed', 'scared', 'panicked',
+    'embarrassed', 'disappointed', 'frustrated', 'bored', 'mysterious'];
+  for (const e of nuove) {
+    assert.ok(S.STOR_ESPRESSIONI[e], e + ' è un\'espressione');
+    for (const l of ['it', 'en']) for (const k of ['storie.espressione.', 'storie.espressioneLei.', 'studio.parole.umore.'])
+      assert.equal(typeof DIZ[l].messaggi[k + e], 'string', k + e + ' in ' + l);
+    assert.ok(St.ELEVEN_TAG_UMORE[e], e + ' ha il suo tag per ElevenLabs');
+  }
+  lingua = 'it';
+  assert.equal(St.umoreDalTesto('Che vergogna, scusate!'), 'embarrassed');
+  assert.equal(St.umoreDalTesto('Meno male, finalmente a casa.'), 'relieved');
+  assert.equal(St.umoreDalTesto('Non capisco proprio.'), 'confused');
+});
+
 prova('il pilota dice le battute del soggetto, e chiude con quella giusta', () => {
   const t = k => DIZ.it.messaggi[k];
   assert.match(t('demo.narr.storia_luna.1'), /pezzo/);

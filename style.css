@@ -12925,6 +12925,12 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 .studio-tono-faccia small { color: var(--testo-2, #94a3b8); }
 .studio-toni { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .studio-tono-titolo { flex: 1 1 100%; color: var(--testo-2, #94a3b8); }
+/* v462: le espressioni dentro la frase, titolo e spiegazione su righe loro;
+   la scritta libera e il suo tasto in fila */
+.studio-tag-frase { display: grid; gap: 6px; min-width: 0; }
+.studio-tag-frase > small { display: block; }
+.studio-tag-libero { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+.studio-tag-libero-campo { flex: 1 1 auto; min-width: 0; }
 .studio-tono { padding: 4px 10px; border: 1px solid rgba(148, 163, 184, 0.4); border-radius: 999px; background: transparent; color: inherit; font-size: 0.8rem; cursor: pointer; }
 .studio-tono[aria-pressed="true"] { border-color: #c4b5fd; background: rgba(139, 92, 246, 0.45); color: #ede9fe; font-weight: 600; }
 .studio-tono-invio { color: var(--testo-2, #94a3b8); overflow-wrap: anywhere; }
