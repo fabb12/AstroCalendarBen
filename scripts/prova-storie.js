@@ -2074,6 +2074,15 @@ prova('«Pallido puntino blu»: Carl Sagan cambia faccia, e nei ritornelli canta
   const d = predefiniti.find(x => x.chiave === 'storia_puntino');
   const facce = new Set([...d.testo.matchAll(/target: 'sagan', expression: '(\w+)'/g)].map(m => m[1]));
   assert.ok(facce.size >= 6, 'facce di Sagan: ' + [...facce].join(' '));
+  // v460: triste solo dove le parole lo chiedono, e le facce nuove ci sono
+  const tristi = [...d.testo.matchAll(/target: 'sagan', expression: 'sad'/g)].length;
+  assert.ok(tristi <= 3, 'Sagan triste ' + tristi + ' volte');
+  for (const e of ['wonder', 'tender', 'determined', 'skeptical', 'wistful']) {
+    assert.ok(facce.has(e), 'Sagan usa ' + e);
+    assert.ok(S.STOR_ESPRESSIONI[e], e + ' è un\'espressione');
+    for (const l of ['it', 'en']) for (const k of ['storie.espressione.', 'storie.espressioneLei.', 'studio.parole.umore.'])
+      assert.equal(typeof DIZ[l].messaggi[k + e], 'string', k + e + ' in ' + l);
+  }
   const prep = motore.prepara(d.testo);
   for (const s of prep.scene) {
     const mostrati = s.azioni.filter(a => a.comando === 'character_show').map(a => a.parametri.target);

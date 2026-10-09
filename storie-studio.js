@@ -1079,7 +1079,8 @@
   const STUDIO_POSTI_PAROLE = ['oort', 'kuiper', 'heliopause', 'galactic_center', 'orion_nebula', 'lmc', 'smc', 'triangulum',
     'virgo_cluster', 'great_attractor', 'laniakea', 'universe', 'local_group', 'local_bubble', 'orion_arm', 'local_cloud',
     'inner_planets', 'planets'];
-  const STUDIO_UMORI = ['laughing', 'love', 'angry', 'bully', 'annoyed', 'happy', 'excited', 'surprised', 'worried', 'sad', 'thinking', 'sleepy', 'neutral'];
+  const STUDIO_UMORI = ['laughing', 'love', 'angry', 'bully', 'annoyed', 'happy', 'excited', 'surprised', 'worried', 'sad', 'thinking', 'sleepy',
+    'wonder', 'tender', 'determined', 'skeptical', 'wistful', 'neutral'];
   /* La faccia giusta per una frase: le parole dell'umore prima, poi la
    * punteggiatura. Non è un'analisi del sentimento, ed è dichiarato: è un
    * suggerimento da accettare o cambiare. */
@@ -1137,7 +1138,12 @@
       love: [['effetto', { effetto: 'hearts' }], ['anima', { animazione: 'pulse' }]],
       angry: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'smoke' }]],
       annoyed: [['anima', { animazione: 'shake' }]],
-      bully: [['scala', { scala: 1.3 }], ['anima', { animazione: 'pulse' }]]
+      bully: [['scala', { scala: 1.3 }], ['anima', { animazione: 'pulse' }]],
+      wonder: [['effetto', { effetto: 'glow' }]],
+      tender: [['anima', { animazione: 'pulse' }]],
+      determined: [['anima', { animazione: 'nod' }]],
+      skeptical: [['anima', { animazione: 'wobble' }]],
+      wistful: [['scala', { scala: 0.9 }]]
     }[umore] || [];
     for (const [tipo, campi] of perUmore) metti(tipo, Object.assign({ dove: tipo === 'effetto' ? chi : '' }, campi));
     if (altri.length) metti('guarda', { oggetto: altri[0] });
@@ -2366,7 +2372,8 @@
   const ELEVEN_TAG_UMORE = {
     happy: 'happy', surprised: 'surprised', worried: 'nervous', sad: 'sad', thinking: 'thoughtful',
     excited: 'excited', sleepy: 'sleepy', laughing: 'laughs', love: 'warmly', angry: 'angry',
-    annoyed: 'annoyed', bully: 'mischievously'
+    annoyed: 'annoyed', bully: 'mischievously',
+    wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully'
   };
   function studioElevenImpostazioni() {
     const a = archivio();

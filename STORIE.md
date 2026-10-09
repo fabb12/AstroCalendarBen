@@ -2054,6 +2054,33 @@ pezzo?»: scene di 7,0 s invece di 10, 9,3 invece di 13, 11,7 invece di 16.
 Prova: `prova-demo.js` («Storia: la scena chiude un attimo dopo la voce» e
 le cinque accanto).
 
+### Le facce giuste al momento giusto (v460)
+
+Chi guarda «Pallido puntino blu» trovava Carl Sagan triste troppe volte: fra
+le facce non c'era quella giusta per le sue parole, e la tristezza copriva
+la meraviglia, la tenerezza, la malinconia. Cinque espressioni nuove in
+`STOR_ESPRESSIONI` (con la fisica in `STOR_FISICA_EMOZIONI`, i nomi
+`storie.espressione.*` e `storie.espressioneLei.*`, le parole dello Studio
+`studio.parole.umore.*`, `STUDIO_UMORI`, le idee per le azioni e il tag di
+ElevenLabs in `storie-studio.js` e `scripts/voci-storie.js`):
+
+| Nome | Faccia | Dove la usa Sagan |
+|---|---|---|
+| `wonder` (meravigliato) | occhi grandi e lucidi, sopracciglia alte, sguardo in su, bocca socchiusa | il punto d'osservazione lontano, «Guardate ancora quel puntino», il piccolissimo palco, la vastità |
+| `tender` (intenerito) | occhi a mezzaluna, sorriso dolce a bocca chiusa, testa inclinata | «È qui, è casa», coloro che amate, «Pallido punto blu», «occuparci l'uno dell'altro» |
+| `determined` (deciso) | sguardo dritto, palpebre tese, sopracciglia basse e piatte, bocca ferma | «Proteggila», «dipende solo da noi», la responsabilità |
+| `skeptical` (scettico) | un sopracciglio su, occhiata di lato, mezzo sorriso storto | «può non sembrare di particolare interesse», la posizione privilegiata |
+| `wistful` (malinconico) | palpebre pesanti, sguardo lontano, sorriso amaro accennato, senza lacrima | le vite vissute, il granellino solitario, «l'unica casa», gli «oh» del congedo |
+
+Triste (`sad`) resta soltanto su «tutto questo tormento» e «ma perché poi?»;
+nelle scene della guerra Sagan, finché ascolta Marte e Giove, è preoccupato.
+Guardate nel browser con l'anteprima (`StorieCosmiche.anteprima`): il
+sorriso dell'intenerito era aperto come una risata ed è diventato a bocca
+chiusa; il luccichio della meraviglia cadeva sulla bocca ed è stato tolto.
+
+Prova: `prova-storie.js` («Carl Sagan cambia faccia…»: al più tre volte
+triste, le cinque facce nuove usate e scritte nelle due lingue).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
