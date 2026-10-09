@@ -466,13 +466,6 @@
         "it": "[angry] giusto!"
       }
     },
-    "studio.studio_cosa_e_la_gravita.3": {
-      "emozione": "arrabbiato",
-      "come": "",
-      "conTag": {
-        "it": "[angry] vogliamo essere indipendenti!"
-      }
-    },
     "studio.studio_cosa_e_la_gravita.6": {
       "emozione": "preoccupato",
       "come": "",
@@ -480,32 +473,11 @@
         "it": "[nervous] oh no! adesso cosa faccio?"
       }
     },
-    "studio.studio_cosa_e_la_gravita.10": {
-      "emozione": "ride",
-      "come": "",
-      "conTag": {
-        "it": "[laughs] tranquilla terra!"
-      }
-    },
-    "studio.studio_cosa_e_la_gravita.11": {
-      "emozione": "felice",
-      "come": "",
-      "conTag": {
-        "it": "[happy] ti spiego io cos'è la gravità!"
-      }
-    },
     "studio.studio_cosa_e_la_gravita.12": {
       "emozione": "tranquillo",
       "come": "",
       "conTag": {
         "it": "La gravità è una forza attrattiva che tiene uno o più astri stabili."
-      }
-    },
-    "studio.studio_cosa_e_la_gravita.13": {
-      "emozione": "pensieroso",
-      "come": "",
-      "conTag": {
-        "it": "[thoughtful] Continuo a non capire."
       }
     },
     "studio.studio_cosa_e_la_gravita.14": {
@@ -529,20 +501,6 @@
         "it": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
       }
     },
-    "studio.studio_cosa_e_la_gravita.17": {
-      "emozione": "pensieroso",
-      "come": "",
-      "conTag": {
-        "it": "[thoughtful] Cosa è la massa, cosa è un peso e che cosa è un volume?"
-      }
-    },
-    "studio.studio_cosa_e_la_gravita.18": {
-      "emozione": "tranquillo",
-      "come": "",
-      "conTag": {
-        "it": "Calma Terra, una domanda alla volta"
-      }
-    },
     "studio.studio_cosa_e_la_gravita.19": {
       "emozione": "tranquillo",
       "come": "",
@@ -555,13 +513,6 @@
       "come": "",
       "conTag": {
         "it": "[surprised] Oh! Che spavento! Chi ha parlato?"
-      }
-    },
-    "studio.studio_cosa_e_la_gravita.21": {
-      "emozione": "tranquillo",
-      "come": "",
-      "conTag": {
-        "it": "Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!"
       }
     },
     "studio.studio_cosa_e_la_gravita.22": {
@@ -604,6 +555,34 @@
       "come": "",
       "conTag": {
         "it": "Wow! Non sapevo che la scienza potesse essere così bella."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.28": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.29": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Cosa? Di nuovo? Chi ha parlato?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.30": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] è vero! Chi è?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.31": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "So chi è! è la mia amica proxima centauri!"
       }
     }
   }

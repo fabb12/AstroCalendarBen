@@ -719,10 +719,6 @@
       it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-1.mp3', impronta: '64994de1', firma: '313954399e', testo: "Smettila!!!" }
     },
 
-    'studio.studio_cosa_e_la_gravita.3': {
-      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-3.mp3', impronta: 'f5ce684c', firma: '4f5fd1dfb2', testo: "vogliamo essere indipendenti!" }
-    },
-
     // Terra — storie/terra/
     'demo.narr.storia_luna.3': {
       it: { file: 'storie/terra/it/storia_luna-3.mp3', impronta: 'dab87ab6', firma: '6a2a22e7e2' }
@@ -751,14 +747,6 @@
     // Sole — storie/sole/
     'demo.narr.storia_luna.6': {
       it: { file: 'storie/sole/it/storia_luna-6.mp3', impronta: '1c864e11', firma: 'a395b7f118' }
-    },
-
-    'studio.studio_cosa_e_la_gravita.10': {
-      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-10.mp3', impronta: '8f614565', firma: '8e621c914d', testo: "tranquilla terra!" }
-    },
-
-    'studio.studio_cosa_e_la_gravita.11': {
-      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-11.mp3', impronta: '4954554a', firma: '7303242223', testo: "ti spiego io cos'è la gravità!" }
     },
 
     // hubble — storie/hubble/
