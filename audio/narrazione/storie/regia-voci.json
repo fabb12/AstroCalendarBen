@@ -584,6 +584,27 @@
       "conTag": {
         "it": "So chi è! è la mia amica proxima centauri!"
       }
+    },
+    "studio.studio_cosa_e_la_gravita.32": {
+      "emozione": "arrabbiato",
+      "come": "",
+      "conTag": {
+        "it": "[angry] Vogliamo essere indipendenti!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.33": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] Tranquilla Terra! Ti spiego io cos'è la gravità!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.34": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa."
+      }
     }
   }
 }
