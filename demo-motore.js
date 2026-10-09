@@ -141,6 +141,13 @@
 // la scena può restare aperta oltre quel tempo finché la voce non termina.
       this.narrazioneFinita = true;
       this.attesaFineNarrazione = false;
+// v458, il discorso affiatato: in una CosmoStoria (`contesto.stringiVoce`)
+// la voce che finisce prima della scena non lascia il silenzio fino a
+// `duration`: la scena chiude poco dopo (`fineVoce`, ms dell'orologio della
+// scena). Chi guardava le storie sentiva pause lunghe fra una battuta e
+// l'altra: le durate sono scritte per la voce più lenta (la sintesi), e con
+// la voce registrata o con l'inglese la frase finiva secondi prima.
+      this.fineVoce = null;
 
 // L'intro comune (logo e titolo su fondo nero) sta **prima** della prima
 // scena ed è del motore, non di una demo: gira sullo stesso orologio, quindi
@@ -200,6 +207,8 @@
 
       this.narrazioneFinita = true;
       this.attesaFineNarrazione = false;
+      this.fineVoce = null;
+      this.vociAperte = 0;
 
       if (this.contesto.scena)
         this.contesto.scena(scena, this.indice);
@@ -223,41 +232,66 @@
       // Gli esecutori possono esporre una Promise `fineNarrazione`.
       // `duration` resta la durata minima: se la voce dura più della scena,
       // il motore aspetta la conclusione della voce prima di proseguire.
-      const atteseNarrazione = this.esecutori
-          .map(e => e.fineNarrazione)
-          .filter(p => p && typeof p.then === 'function');
-
-      if (atteseNarrazione.length) {
-        this.narrazioneFinita = false;
-
-        Promise.allSettled(atteseNarrazione).then(() => {
-          // La scena potrebbe essere stata fermata o sostituita nel frattempo.
-          if (this.tokenScena !== token) return;
-
-          this.narrazioneFinita = true;
-
-          // Se la durata minima era già terminata, non c'è più un RAF attivo:
-          // riavvia l'orologio adesso, senza conteggiare come tempo di scena
-          // i secondi trascorsi mentre aspettavamo soltanto la voce.
-          if (this.attesaFineNarrazione && this.stato === 'attivo') {
-            this.attesaFineNarrazione = false;
-            this.ultimo = this.ora();
-            this.programma();
-          }
-        });
-      }
+      // (v458: anche le voci delle riprese che cominciano più avanti, in
+      // `aggiorna`: prima una seconda battuta a metà scena non si aspettava.)
+      for (const e of this.esecutori) this.seguiVoce(e.fineNarrazione, token);
 
       this.aggiorna(0);
       this.avvisa(this);
     }
-    aggiorna(progresso) {
+    // Una voce da aspettare: la scena non chiude finché non tacciono tutte.
+    // Quando l'ultima tace, una storia stringe la scena (`fineVoce`), se
+    // nessun'altra battuta deve ancora cominciare.
+    seguiVoce(promessa, token) {
+      if (!promessa || typeof promessa.then !== 'function') return;
+      this.narrazioneFinita = false;
+      this.vociAperte++;
+      Promise.allSettled([promessa]).then(([esito]) => {
+        // La scena potrebbe essere stata fermata o sostituita nel frattempo.
+        if (this.tokenScena !== token) return;
+        if (--this.vociAperte > 0) return;
+        this.narrazioneFinita = true;
+        const detta = esito.status === 'fulfilled' && ['audio', 'tts', 'testo'].includes(esito.value);
+        const altre = (this.riprese || []).some(r => !r.esecutore && Motore.VOCI.includes(r.azione.comando));
+        const stringi = this.contesto && this.contesto.stringiVoce;
+        if (stringi && detta && !altre && !this.attesaFineNarrazione) {
+          const durata = this.demo.scene[this.indice].durata;
+          const qui = this.trascorso + (this.stato === 'attivo' ? Math.max(0, this.ora() - this.ultimo) : 0);
+          // un gesto scritto dopo la battuta (una faccia, un viaggio) si vede
+          // comunque: la scena chiude mezzo secondo dopo che è cominciato
+          let gesti = 0;
+          for (const r of this.riprese || []) if (!r.esecutore) gesti = Math.max(gesti, r.azione.ripresa.da * durata + 500);
+          const fine = Math.max(qui + (Number(stringi.coda) || 0), Math.min(durata, Number(stringi.minimo) || 0), gesti);
+          if (fine < durata) this.fineVoce = fine;
+        }
+        // Se la durata minima era già terminata, non c'è più un RAF attivo:
+        // riavvia l'orologio adesso, senza conteggiare come tempo di scena
+        // i secondi trascorsi mentre aspettavamo soltanto la voce.
+        if (this.attesaFineNarrazione && this.stato === 'attivo') {
+          this.attesaFineNarrazione = false;
+          this.ultimo = this.ora();
+          this.programma();
+        }
+      });
+    }
+    // Quanto dura la scena in corso: la sua `duration`, o meno se la voce di
+    // una storia è finita prima (v458)
+    durataScena() {
+      const durata = this.demo.scene[this.indice].durata;
+      return this.fineVoce !== null && this.fineVoce < durata ? this.fineVoce : durata;
+    }
+    aggiorna(progresso, soloAperti) {
       for (const e of this.esecutori) if (e.aggiorna) e.aggiorna(progresso);
+      // la scena stretta dalla voce non apre più le riprese che non sono
+      // arrivate: un botto creato e chiuso nello stesso istante suonerebbe
+      if (soloAperti) return;
       for (const r of this.riprese || []) {
         if (r.esecutore || progresso < r.azione.ripresa.da) continue;
         const grezzo = this.registro[r.azione.comando].crea(r.azione.parametri, this.contesto, r.scena) || {};
         r.esecutore = this.inRipresa(grezzo, r.azione.ripresa);
         this.esecutori.push(r.esecutore);
         r.esecutore.aggiorna(progresso);
+        this.seguiVoce(r.esecutore.fineNarrazione, this.tokenScena);
       }
     }
     // Un esecutore dentro alla sua ripresa: riceve il progresso **della
@@ -328,11 +362,12 @@
           return;
         }
 
-        while (this.trascorso >= this.demo.scene[this.indice].durata) {
-          const durata = this.demo.scene[this.indice].durata;
+        while (this.trascorso >= this.durataScena()) {
+          const durata = this.durataScena();
+          const stretta = durata < this.demo.scene[this.indice].durata;
 
           // La parte visiva della scena raggiunge comunque il suo stato finale.
-          this.aggiorna(1);
+          this.aggiorna(1, stretta);
 
           // `duration` è una durata minima.
           // Se l'audio/TTS della scena sta ancora parlando, non chiudere
@@ -457,6 +492,9 @@
       try { this.ferma('errore'); } catch (_) { this.stato = 'errore'; this.avvisa(this); }
     }
   }
+  // I comandi che parlano: una scena che ne ha ancora uno da cominciare non
+  // si stringe sulla voce che è appena finita (v458)
+  Motore.VOCI = ['narrate', 'character_speak'];
   const api = { analizza, Motore, messaggio };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else radice.AstroDemoMotore = api;

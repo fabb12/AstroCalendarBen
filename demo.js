@@ -2009,6 +2009,10 @@
       // aspetto da cartone (`demoStoriaCinema` in app.js) — cielo sfumato e
       // pieno di stelle, niente orbite, fili, piani e righelli della lezione
       storia: demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))),
+      // v458, il discorso affiatato: in una CosmoStoria la scena chiude un
+      // quarto di secondo dopo la voce, non alla fine della sua durata (che
+      // è scritta per la voce più lenta). Mai sotto i due secondi
+      stringiVoce: demo.scene.some(sc => sc.azioni.some(a => /^character_/.test(a.comando))) ? { coda: 250, minimo: 2000 } : null,
       // Col movimento ridotto le camere delle demo non viaggiano. In una
       // CosmoStoria no (v434): lì il movimento della camera è il racconto
       // che chi l'ha scritta ha scelto, ed è lento e morbido. Chi guarda una
