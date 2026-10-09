@@ -1,5 +1,5 @@
 {
-  "_leggimi": "Le battute delle storie fatte nello Studio delle storie, scritto dallo Studio (Altro → File delle voci). Va in audio/narrazione/storie/: scripts/voci-storie.js le mette nel copione, nella regia e nel manifest, e toglie quelle che non ci sono più, audio compresi. Non modificarlo a mano.",
+  "_leggimi": "Le battute delle storie fatte nello Studio delle storie, scritto dallo Studio (Impostazioni → Questa storia → File delle voci). Va in audio/narrazione/storie/: scripts/voci-storie.js le mette nel copione, nella regia e nel manifest, e toglie quelle che non ci sono più, audio compresi. Non modificarlo a mano.",
   "v": 1,
   "storie": [
     {

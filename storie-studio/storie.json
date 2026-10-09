@@ -1,5 +1,5 @@
 {
-  "_leggimi": "Le storie salvate nello Studio delle storie, scritte dall'app (Studio → Altro → Repository GitHub) e lette da ogni dispositivo. Non modificarlo a mano.",
+  "_leggimi": "Le storie salvate nello Studio delle storie, scritte dall'app (Studio → Impostazioni → Sincronizza) e lette da ogni dispositivo. Non modificarlo a mano.",
   "v": 1,
   "storie": [
     {
@@ -8,6 +8,8 @@
       "titolo": "Cosa è la gravità?",
       "scopo": "libera",
       "obiettivo": "capire l'importanza della gravità tra gli astri.",
+      "ufficiale": false,
+      "origine": "",
       "cast": [
         "Moon",
         "Earth",
@@ -46,6 +48,7 @@
               "chi": "Moon",
               "testo": "Ciao Terra, mi chiedevo, perché orbito intorno a te?",
               "umore": "thinking",
+              "tono": [],
               "durata": 0,
               "voce": 2,
               "audio": {
@@ -70,7 +73,8 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "ap27zk8l",
@@ -87,15 +91,19 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             },
             {
               "id": "mi1mpdav",
               "chi": "Earth",
               "testo": "Sei solo una luna !!",
               "umore": "bully",
+              "tono": [],
               "durata": 0,
               "voce": 4,
               "audio": {
@@ -120,7 +128,8 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "aupotct0",
@@ -138,7 +147,8 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "axfak7zy",
@@ -156,15 +166,19 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             },
             {
               "id": "mcif3yq7",
               "chi": "Earth",
               "testo": "ah ah ah !!!",
               "umore": "laughing",
+              "tono": [],
               "durata": 0,
               "voce": 5,
               "audio": {
@@ -189,15 +203,19 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             },
             {
               "id": "mstnigz1",
               "chi": "Moon",
               "testo": "Smettila !!!",
               "umore": "annoyed",
+              "tono": [],
               "durata": 0,
               "voce": 1,
               "audio": {
@@ -222,13 +240,17 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sxsnw6rn",
@@ -254,6 +276,7 @@
               "chi": "hubble",
               "testo": "esatto, perchè ci trattieni?",
               "umore": "thinking",
+              "tono": [],
               "durata": 0,
               "voce": 7,
               "audio": {
@@ -278,7 +301,8 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "acth5xza",
@@ -296,13 +320,17 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sd3w8ike",
@@ -328,6 +356,7 @@
               "chi": "iss",
               "testo": "ci dobbiamo ribellare!",
               "umore": "angry",
+              "tono": [],
               "durata": 0,
               "voce": 8,
               "audio": {
@@ -351,7 +380,8 @@
                   "animazione": "jump",
                   "volte": 0,
                   "scala": 1.6,
-                  "forma": "red_giant"
+                  "forma": "red_giant",
+                  "esatta": null
                 },
                 {
                   "id": "aon9y3e6",
@@ -369,13 +399,17 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "snmnsthu",
@@ -401,6 +435,7 @@
               "chi": "css",
               "testo": "giusto!",
               "umore": "angry",
+              "tono": [],
               "durata": 0,
               "voce": 9,
               "audio": {
@@ -408,11 +443,14 @@
                 "impronta": "a0f96b63",
                 "nome": "ElevenLabs_2026-10-06T19_43_03_Sami - Rich, Urgent and Serious_pvc_sp111_s40_sb4"
               },
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "s0e5y292",
@@ -440,6 +478,7 @@
               "chi": "Moon",
               "testo": "vogliamo essere indipendenti!",
               "umore": "angry",
+              "tono": [],
               "durata": 0,
               "voce": 3,
               "audio": {
@@ -447,11 +486,14 @@
                 "impronta": "f5ce684c",
                 "nome": "ElevenLabs_2026-10-06T19_24_09_Carlotta - Fairy Princess_pvc_sp110_s3_sb14_v4.mp"
               },
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "st49i89w",
@@ -480,6 +522,7 @@
               "chi": "Earth",
               "testo": "oh no! adesso cosa faccio?",
               "umore": "worried",
+              "tono": [],
               "durata": 0,
               "voce": 6,
               "audio": {
@@ -504,7 +547,8 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "ampm8n6q",
@@ -522,13 +566,17 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sa134cty",
@@ -557,6 +605,7 @@
               "chi": "Sun",
               "testo": "tranquilla terra!",
               "umore": "laughing",
+              "tono": [],
               "durata": 0,
               "voce": 10,
               "audio": {
@@ -564,11 +613,14 @@
                 "impronta": "8f614565",
                 "nome": "ElevenLabs_2026-10-06T19_44_03_Vito Pepe - Profound and Confident_pvc_sp100_s77_"
               },
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "snm9aa4e",
@@ -597,6 +649,7 @@
               "chi": "Sun",
               "testo": "ti spiego io cos'è la gravità!",
               "umore": "happy",
+              "tono": [],
               "durata": 0,
               "voce": 11,
               "audio": {
@@ -604,11 +657,14 @@
                 "impronta": "4954554a",
                 "nome": "ElevenLabs_2026-10-06T19_44_27_Vito Pepe - Profound and Confident_pvc_sp100_s77_"
               },
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sq4ys6tn",
@@ -637,14 +693,18 @@
               "chi": "Sun",
               "testo": "La gravità è una forza attrattiva che tiene uno o più astri stabili.",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 12,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sprzq2ot",
@@ -673,14 +733,18 @@
               "chi": "Earth",
               "testo": "Continuo a non capire.",
               "umore": "thinking",
+              "tono": [],
               "durata": 0,
               "voce": 13,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "s829qn5g",
@@ -705,14 +769,18 @@
               "chi": "Saturn",
               "testo": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 14,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sjqfsvxn",
@@ -738,14 +806,18 @@
               "chi": "Earth",
               "testo": "Potresti spiegarti meglio?",
               "umore": "thinking",
+              "tono": [],
               "durata": 0,
               "voce": 15,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "svg8wpg6",
@@ -771,14 +843,18 @@
               "chi": "Jupiter",
               "testo": " Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 16,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sgegyse8",
@@ -804,14 +880,18 @@
               "chi": "Earth",
               "testo": "Cosa è la massa, cosa è un peso e che cosa è un volume?",
               "umore": "thinking",
+              "tono": [],
               "durata": 0,
               "voce": 17,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "s601shmj",
@@ -838,14 +918,18 @@
               "chi": "Jupiter",
               "testo": "Calma Terra, una domanda alla volta ",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 18,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sb8nr13d",
@@ -872,14 +956,18 @@
               "chi": "Sedna",
               "testo": "Ciao Terra, Giove ha ragione!",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 19,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "s4u3l8az",
@@ -906,6 +994,7 @@
               "chi": "Earth",
               "testo": "Oh! Che spavento! Chi ha parlato?",
               "umore": "surprised",
+              "tono": [],
               "durata": 0,
               "voce": 20,
               "audio": null,
@@ -926,7 +1015,8 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "a5n3hdrd",
@@ -943,7 +1033,8 @@
                   "animazione": "jump",
                   "volte": 0,
                   "scala": 1.6,
-                  "forma": "red_giant"
+                  "forma": "red_giant",
+                  "esatta": null
                 },
                 {
                   "id": "a7x5p677",
@@ -961,7 +1052,8 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "a5wfuyxh",
@@ -978,13 +1070,17 @@
                   "effetto": "sparkles",
                   "dove": "",
                   "grandezza": 1,
-                  "colore": ""
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "s1bt01dd",
@@ -1010,14 +1106,18 @@
               "chi": "Sedna",
               "testo": "Sono Sedna! Un pianeta nano candidato. La mia orbita dura più di 11 Mila anni terrestri!",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 21,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sv0wo63r",
@@ -1044,6 +1144,7 @@
               "chi": "Earth",
               "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
               "umore": "surprised",
+              "tono": [],
               "durata": 0,
               "voce": 22,
               "audio": null,
@@ -1053,27 +1154,66 @@
                   "tipo": "umore",
                   "chi": "Earth",
                   "quando": "inizio",
-                  "umore": "surprised"
+                  "umore": "surprised",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "aq67c9yx",
                   "tipo": "umore",
                   "chi": "Earth",
                   "quando": "fine",
-                  "umore": "annoyed"
+                  "umore": "annoyed",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "azm2au0n",
                   "tipo": "umore",
                   "chi": "Earth",
                   "quando": "inizio",
-                  "umore": "happy"
+                  "umore": "happy",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "smiyi83o",
@@ -1107,14 +1247,18 @@
               "chi": "Earth",
               "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
               "umore": "annoyed",
+              "tono": [],
               "durata": 0,
               "voce": 23,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "szsrnzy3",
@@ -1140,14 +1284,18 @@
               "chi": "Sedna",
               "testo": "Ehm, scusa Terra, hai finito?",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 24,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "sj7c0puk",
@@ -1174,6 +1322,7 @@
               "chi": "Earth",
               "testo": "Oh! Scusa! Continua.",
               "umore": "surprised",
+              "tono": [],
               "durata": 0,
               "voce": 25,
               "audio": null,
@@ -1183,20 +1332,47 @@
                   "tipo": "umore",
                   "chi": "Earth",
                   "quando": "inizio",
-                  "umore": "surprised"
+                  "umore": "surprised",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "ah0wj96y",
                   "tipo": "umore",
                   "chi": "Earth",
                   "quando": "meta",
-                  "umore": "neutral"
+                  "umore": "neutral",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
-              ]
+              ],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "stanvs5z",
@@ -1223,14 +1399,18 @@
               "chi": "Sedna",
               "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 26,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "src03ht7",
@@ -1257,14 +1437,18 @@
               "chi": "Earth",
               "testo": "Wow! Non sapevo che la scienza potesse essere così bella.",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 27,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         },
         {
           "id": "s0qigi4l",
@@ -1291,22 +1475,27 @@
               "chi": "Jupiter",
               "testo": "",
               "umore": "neutral",
+              "tono": [],
               "durata": 0,
               "voce": 0,
               "audio": null,
-              "azioni": []
+              "azioni": [],
+              "copione": null,
+              "parla": null
             }
           ],
           "musicaModo": "storia",
-          "musica": null
+          "musica": null,
+          "voci": {}
         }
       ],
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
       "voceProssima": 28,
-      "aggiornato": 1791483055917,
+      "aggiornato": 1791483063340,
       "lingua": "it",
       "musica": null,
+      "voci": {},
       "domanda": {
         "attiva": false,
         "modo": "auto",
