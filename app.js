@@ -31351,7 +31351,11 @@ function skyRegAvviaVideo() {
   // si azzera subito: la registrazione dopo, fatta a mano, non è più quella
   const titolo = r.titolo || '';
   r.titolo = '';
-  const misura = { larghezza: r.tela.width, altezza: r.tela.height };
+  // v467: e se il filmato ha la traccia audio (la voce, la musica, la
+  // canzone di una storia): la finestra di YouTube lo dice prima di pubblicare
+  const misura = { larghezza: r.tela.width, altezza: r.tela.height,
+    audio: !!(r.flusso && typeof r.flusso.getAudioTracks === 'function' && r.flusso.getAudioTracks().length) };
+  r.piccoAudio = null;
   r.registratore.ondataavailable = (e) => { if (e.data && e.data.size) r.pezzi.push(e.data); };
   r.registratore.onstop = () => {
     if (r.flusso) { r.flusso.getTracks().forEach(t => t.stop()); r.flusso = null; }
@@ -31362,6 +31366,7 @@ function skyRegAvviaVideo() {
       skyAvviso('registra', 'La registrazione è rimasta vuota: riprova.', 8000);
       return;
     }
+    misura.picco = misura.audio ? r.piccoAudio : null;
     skyRegMostraEsito(new Blob(pezzi, { type: r.mime }), r.est, r.mime, titolo, misura);
   };
   r.registratore.start();
@@ -31393,6 +31398,10 @@ function skyRegFerma(opzioni = {}) {
   // Fermando prima del tempo la registrazione dura quello che è durata: è
   // questa la misura da scrivere sotto al risultato, non quella scelta
   r.durataReale = Math.max(0.1, (performance.now() - r.avvio) / 1000);
+  // v467: quanto suono è passato nella traccia audio (la presa della demo si
+  // chiude subito dopo, prima che il file arrivi)
+  const presa = typeof narrazione === 'object' && typeof narrazione.catturaStato === 'function' ? narrazione.catturaStato() : null;
+  r.piccoAudio = presa && presa.attiva && typeof presa.picco === 'number' ? presa.picco : null;
   skyRegAggiornaComando(null);
 
   if (r.registratore) {
@@ -31479,7 +31488,10 @@ function skyRegMostraEsito(blob, est, tipo, titolo, misura) {
     // v465: la misura della tela registrata (la finestra di YouTube la
     // confronta con quella che il file dice davvero)
     larghezza: misura ? misura.larghezza : 0,
-    altezza: misura ? misura.altezza : 0
+    altezza: misura ? misura.altezza : 0,
+    audio: misura && typeof misura.audio === 'boolean' ? misura.audio : null,
+    // il suono più forte passato nella traccia (0–1), `null` se non si sa
+    piccoAudio: misura && typeof misura.picco === 'number' ? misura.picco : null
   };
 
   const prefisso = r.origine === 'solare' ? 'sol' : 'skymap';
@@ -31567,7 +31579,7 @@ async function skyRegCondividi() {
 function skyRegYoutube() {
   const e = sky.reg.esito;
   if (!e || typeof ytApriPubblica !== 'function') return;
-  ytApriPubblica({ blob: e.blob, nome: e.nome, tipo: e.tipo, titolo: e.titolo,
+  ytApriPubblica({ blob: e.blob, nome: e.nome, tipo: e.tipo, titolo: e.titolo, audio: e.audio, piccoAudio: e.piccoAudio,
     origine: sky.reg.origine === 'solare' ? 'solare' : 'planetario' });
 }
 
@@ -47454,6 +47466,8 @@ function musicaDemoAvvia(id, volumeCursore) {
   audio.loop = true;
   audio.preload = 'auto';
   audio.volume = Math.max(0, Math.min(1, volumeCursore)) ** 2;
+  // v467: la colonna sonora della demo entra nel filmato registrato
+  if (typeof narrazione === 'object' && typeof narrazione.audioDelRacconto === 'function') narrazione.audioDelRacconto(audio);
   musicaDemo = { id, audio, prima, originale: musicaSpaziale, avviaDopo: false };
   audio.play().catch(() => {});
   return musicaDemo;

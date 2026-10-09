@@ -95,6 +95,12 @@ const narr = {
   audioContesto: null,
   audioSorgente: null,
   cattura: null,
+  // v467: gli altri elementi audio del racconto (la canzone e i suoni da file
+  // delle storie, la colonna sonora della demo), che il filmato deve sentire
+  // come la voce: `narrAudioDelRacconto`. Le sorgenti Web Audio si fanno una
+  // volta per elemento (il browser non ne permette una seconda).
+  elementiRacconto: new Set(),
+  sorgentiElementi: new WeakMap(),
   // L'ascolto dell'ampiezza, per chi deve muovere una bocca (le Storie
   // cosmiche). Nasce solo quando qualcuno lo chiede dentro a un gesto
   // (`narrPreparaAnalisi`) e si collega solo a contesto già in marcia:
@@ -430,6 +436,16 @@ function narrFermaCatturaAudio(canale) {
   if (c.destinazione && narr.audioSorgente) {
     try { narr.audioSorgente.disconnect(c.destinazione); } catch (_) { /* già scollegata */ }
   }
+  if (c.destinazione && c.elementi) {
+    for (const el of c.elementi) {
+      const s = narr.sorgentiElementi.get(el);
+      if (s) { try { s.disconnect(c.destinazione); } catch (_) { /* già scollegata */ } }
+    }
+    c.elementi.clear();
+  }
+  // gli elementi lasciati senza file (la musica fermata) non servono più
+  for (const el of narr.elementiRacconto) if (!el.getAttribute || !el.getAttribute('src')) narr.elementiRacconto.delete(el);
+  if (c.ascolto) { clearInterval(c.ascolto.timer); try { c.ascolto.sorgente.disconnect(); } catch (_) { /* niente */ } }
   if (c.stream && typeof c.stream.getTracks === 'function')
     c.stream.getTracks().forEach(t => { try { t.stop(); } catch (_) { /* già ferma */ } });
   narr.cattura = null;
@@ -449,9 +465,11 @@ function narrCatturaAudio(canale = '') {
       const destinazione = narr.audioContesto.createMediaStreamDestination();
       narr.audioSorgente.connect(destinazione);
       const stream = destinazione.stream;
-      narr.cattura = { canale, destinazione, stream, tipo: 'webaudio' };
+      narr.cattura = { canale, destinazione, stream, tipo: 'webaudio', elementi: new Set(), picco: 0 };
+      narrAscoltaCattura(narr.cattura);
       if (narr.audioContesto.state === 'suspended' && narr.audioContesto.resume)
         Promise.resolve(narr.audioContesto.resume()).catch(() => {});
+      narrCollegaElementi();
       return stream;
     } catch (e) {
       console.warn('[narrazione] Cattura Web Audio non disponibile:', e.message);
@@ -469,6 +487,85 @@ function narrCatturaAudio(canale = '') {
     } catch (_) { /* non supportata in questa configurazione */ }
   }
   return null;
+}
+
+/* Il resto dell'audio nel filmato (v467). Chi registrava una storia per
+ * YouTube si ritrovava un filmato con la sola voce: la canzone di «Pallido
+ * puntino blu», la musica di sottofondo delle storie, i suoni da file e la
+ * colonna sonora della demo suonavano da elementi audio loro, fuori dalla
+ * presa. Ora chi crea uno di quegli elementi lo dice qui
+ * (`narrazione.audioDelRacconto(el)`), e durante una cattura entra nella
+ * stessa traccia della voce e dei rumori sintetizzati (che usano già questo
+ * contesto): una traccia sola, perché il registratore ne tiene una.
+ * L'elemento si porta nel grafo solo durante una cattura e solo a contesto
+ * in marcia: portato dentro a contesto sospeso, tacerebbe anche per chi
+ * ascolta. Da lì continua a suonare dagli altoparlanti attraverso il grafo. */
+function narrAudioDelRacconto(el) {
+  if (!el) return false;
+  narr.elementiRacconto.add(el);
+  return narrCollegaElemento(el);
+}
+function narrCollegaElemento(el) {
+  const c = narr.cattura, ctx = narr.audioContesto;
+  if (!c || !c.destinazione || !c.elementi || !ctx) return false;
+  if (c.elementi.has(el)) return true;
+  if (ctx.state !== 'running') {
+    // si collega quando il contesto parte (una volta per cattura)
+    if (!c.inAttesa && ctx.addEventListener) {
+      c.inAttesa = true;
+      const via = () => { if (ctx.state === 'running') { ctx.removeEventListener('statechange', via); if (narr.cattura === c) { c.inAttesa = false; narrCollegaElementi(); } } };
+      ctx.addEventListener('statechange', via);
+    }
+    return false;
+  }
+  let s = narr.sorgentiElementi.get(el);
+  try {
+    if (!s) {
+      s = ctx.createMediaElementSource(el);
+      s.connect(ctx.destination);
+      narr.sorgentiElementi.set(el, s);
+    }
+    s.connect(c.destinazione);
+    c.elementi.add(el);
+    return true;
+  } catch (e) {
+    console.warn('[narrazione] Un audio del racconto resta fuori dal filmato:', e.message);
+    return false;
+  }
+}
+// v467: quanto forte è passato il suono nella presa, il picco di tutta la
+// cattura. Una traccia audio può esserci ed essere muta (la voce del
+// dispositivo non si registra, la musica spenta): chi pubblica deve saperlo
+function narrAscoltaCattura(c) {
+  const ctx = narr.audioContesto;
+  if (!ctx || !c.stream || typeof ctx.createMediaStreamSource !== 'function') return;
+  try {
+    const sorgente = ctx.createMediaStreamSource(c.stream);
+    const an = ctx.createAnalyser();
+    an.fftSize = 1024;
+    sorgente.connect(an);
+    const campioni = new Float32Array(an.fftSize);
+    const timer = setInterval(() => {
+      an.getFloatTimeDomainData(campioni);
+      for (let i = 0; i < campioni.length; i++) { const v = Math.abs(campioni[i]); if (v > c.picco) c.picco = v; }
+    }, 100);
+    c.ascolto = { sorgente, an, timer };
+  } catch (_) { /* senza ascolto il picco resta sconosciuto */ c.picco = null; }
+}
+function narrCollegaElementi() {
+  for (const el of narr.elementiRacconto) narrCollegaElemento(el);
+}
+// Dentro a un gesto (chi preme «Registra» o «YouTube»): il contesto nasce e
+// parte adesso, così la cattura che comincia dopo l'intro lo trova in marcia
+function narrSbloccaContesto() {
+  const AudioCtx = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+  if (!AudioCtx) return false;
+  try {
+    if (!narr.audioContesto) narr.audioContesto = new AudioCtx();
+    if (narr.audioContesto.state === 'suspended' && narr.audioContesto.resume)
+      Promise.resolve(narr.audioContesto.resume()).catch(() => {});
+    return true;
+  } catch (_) { return false; }
 }
 
 // L'ampiezza della voce. Si prepara dentro a un gesto (chi avvia una Storia
@@ -1074,7 +1171,12 @@ const narrazione = {
   impostaPreferenze: narrImpostaPreferenze,
   catturaAudio: narrCatturaAudio,
   fermaCatturaAudio: narrFermaCatturaAudio,
+  audioDelRacconto: narrAudioDelRacconto,
+  sbloccaContesto: narrSbloccaContesto,
   catturaStato: () => ({
+    elementi: narr.cattura && narr.cattura.elementi ? narr.cattura.elementi.size : 0,
+    // il suono più forte passato finora (0–1), `null` se non si sa
+    picco: narr.cattura && narr.cattura.ascolto ? narr.cattura.picco : null,
     attiva: !!narr.cattura,
     tipo: narr.cattura ? narr.cattura.tipo : '',
     tracce: narr.cattura && narr.cattura.stream && narr.cattura.stream.getAudioTracks

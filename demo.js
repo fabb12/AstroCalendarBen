@@ -2169,6 +2169,11 @@
       try { document.documentElement.requestFullscreen().catch(() => { c.schermoNativo = false; }); }
       catch (_) { c.schermoNativo = false; }
     }
+    // v467: chi registra con l'audio ha appena premuto un tasto: il contesto
+    // audio nasce e parte adesso, dentro al gesto, così la presa che si apre
+    // dopo l'intro lo trova in marcia e la musica entra nel filmato
+    if (opzioni.registra && opzioni.registraAudio !== false && typeof narrazione === 'object' &&
+        typeof narrazione.sbloccaContesto === 'function') narrazione.sbloccaContesto();
     if (opzioni.musicaDemo !== false && typeof musicaDemoAvvia === 'function')
       c.musica = musicaDemoAvvia(tracciaMusicaDemo(), MUSICA_DEMO.volume);
     motore.avvia(testo, c);

@@ -17,7 +17,10 @@
  * v465: il filmato si controlla prima di aprire la finestra, che ha
  * l'anteprima e dice misura e durata (un filmato vero, registrato nella
  * pagina; uno vuoto e uno rovinato non si pubblicano); le corse per YouTube
- * si registrano a risoluzione piena e senza data e luogo in basso a sinistra. */
+ * si registrano a risoluzione piena e senza data e luogo in basso a sinistra.
+ * v467: e con l'audio: la canzone di una storia dentro al file (misurata
+ * decodificandolo), e la finestra che avvisa di un filmato senza traccia o
+ * con la traccia muta. */
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -32,7 +35,7 @@ const GETTONE = 'ya29.gettone-finto';
 const server = http.createServer((req, res) => {
   const file = path.resolve(radice, '.' + (req.url.split('?')[0] === '/' ? '/index.html' : req.url.split('?')[0]));
   if (!file.startsWith(radice + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end(); return; }
-  res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html');
+  res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.mp3') ? 'audio/mpeg' : 'text/html');
   res.end(fs.readFileSync(file));
 });
 function chromiumVero() {
@@ -69,7 +72,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
   try {
     await new Promise(r => server.listen(0, '127.0.0.1', r));
     const origine = 'http://127.0.0.1:' + server.address().port;
-    browser = await pw.chromium.launch({ executablePath: chromiumVero() });
+    browser = await pw.chromium.launch({ executablePath: chromiumVero(), args: ['--autoplay-policy=no-user-gesture-required'] });
     const pagina = await browser.newPage({ serviceWorkers: 'block', viewport: { width: 1100, height: 900 } });
     pagina.setDefaultTimeout(Number(process.env.ATTESA) || 20000);
     if (process.env.DEBUG) pagina.on('console', m => console.log('console:', m.text()));
@@ -275,7 +278,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.locator('#vista-demo .studio-blocco:last-child [data-fai="registraYoutube"]').click();
       const avvii = await pagina.evaluate(() => window.__avvii);
       assert.equal(avvii.length, 1);
-      assert.deepEqual(avvii[0].una, { registra: true, perYoutube: true, schermoIntero: true });
+      assert.deepEqual(avvii[0].una, { registra: true, registraAudio: true, perYoutube: true, schermoIntero: true });
       assert.match(avvii[0].testo, /^define_demo/);
       // il filmato arriva: la finestra si apre da sola, col titolo della storia
       await filmato('altro');
@@ -295,7 +298,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await tasto.evaluate(b => b.click());
       const avvii = await pagina.evaluate(() => window.__avvii);
       assert.equal(avvii.length, 1);
-      assert.deepEqual(avvii[0].una, { registra: true, perYoutube: true, schermoIntero: true });
+      assert.deepEqual(avvii[0].una, { registra: true, registraAudio: true, perYoutube: true, schermoIntero: true });
       // un filmato senza titolo (fatto a mano) non è quello della storia
       await filmato('');
       assert.equal(await pagina.locator('#yt-finestra').count(), 0);
@@ -324,7 +327,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.evaluate(() => { if (sky.reg.attiva) skyRegFerma({ annulla: true }); skyRegChiudiPannello(); });
     });
 
-    prova('un filmato vuoto o rovinato non si pubblica: la finestra lo dice, e lo si può scaricare (v465)', async () => {
+    prova('un filmato vuoto o rovinato non si pubblica: la finestra lo dice, e lo si può scaricare (v466)', async () => {
       for (const [guasto, frase] of [['vuoto', /vuoto/], ['rovinato', /non si apre/]]) {
         await filmato('Rotto', guasto);
         await pagina.evaluate(() => document.getElementById('skymap-clip-youtube').click());
@@ -339,7 +342,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       }
     });
 
-    prova('il filmato per YouTube: risoluzione piena, e niente data e luogo in basso a sinistra (v465)', async () => {
+    prova('il filmato per YouTube: risoluzione piena, e niente data e luogo in basso a sinistra (v466)', async () => {
       const misure = await pagina.evaluate(() => ({
         normale: skyRegMisuraTela(1100, 900, 1, false), yt: skyRegMisuraTela(1100, 900, 1, true),
         ytTelefono: skyRegMisuraTela(412, 915, 2.625, true), yt4k: skyRegMisuraTela(1920, 1080, 2, true),
@@ -382,6 +385,44 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.equal(await pagina.evaluate(() => sky.reg.perYoutube || !!sky.reg.misura), false, 'dopo la demo, i filmati a mano sono quelli di sempre');
       await pagina.waitForTimeout(300);
       await pagina.evaluate(() => { if (sky.reg.attiva) skyRegFerma({ annulla: true }); skyRegChiudiPannello(); });
+    });
+
+    prova('il filmato per YouTube ha l\'audio: la canzone della storia è dentro al file (v467)', async () => {
+      await pagina.evaluate(() => { mostraVista('demo'); demoMostraScheda('demo-scheda-storie'); });
+      await pagina.locator('[data-storia-youtube="storia_puntino"]').evaluate(b => b.click());
+      await pagina.waitForFunction(() => sky.reg.attiva, null, { timeout: 15000 });
+      await pagina.waitForTimeout(5000);
+      const durante = await pagina.evaluate(() => ({ presa: narrazione.catturaStato(), tracce: sky.reg.flusso.getAudioTracks().length }));
+      assert.equal(durante.tracce, 1, 'una traccia audio nel registratore');
+      assert.ok(durante.presa.elementi >= 1, 'la canzone è collegata alla presa: ' + JSON.stringify(durante.presa));
+      assert.ok(durante.presa.picco > 0.01, 'e ci passa il suono: ' + durante.presa.picco);
+      await pagina.evaluate(() => AstroDemo.ferma());
+      await pagina.waitForSelector('#yt-finestra', { timeout: 30000 });
+      assert.match(await pagina.locator('#yt-finestra .yt-file').textContent(), /con l'audio/);
+      assert.equal(await pagina.locator('#yt-finestra .yt-senza-audio').count(), 0);
+      const suono = await pagina.evaluate(async () => {
+        const buf = await new AudioContext().decodeAudioData(await sky.reg.esito.blob.arrayBuffer());
+        const d = buf.getChannelData(0); let picco = 0;
+        for (let i = 0; i < d.length; i++) picco = Math.max(picco, Math.abs(d[i]));
+        return picco;
+      });
+      assert.ok(suono > 0.02, 'il file registrato suona: picco ' + suono);
+      await pagina.locator('#yt-finestra [data-yt="chiudi"]').click();
+      await pagina.evaluate(() => skyRegChiudiPannello());
+    });
+
+    prova('un filmato senza traccia audio, o con la traccia muta, si dice prima di pubblicare (v467)', async () => {
+      for (const [audio, picco, frase] of [[false, null, /non ha la traccia audio/], [true, 0, /è muta/]]) {
+        await pagina.evaluate(async ({ audio, picco }) => {
+          mostraVista('cielo');
+          skyRegMostraEsito(window.__filmatoVero, 'webm', 'video/webm', 'Muto', { larghezza: 320, altezza: 180, audio, picco });
+        }, { audio, picco });
+        await pagina.evaluate(() => document.getElementById('skymap-clip-youtube').click());
+        await pagina.waitForSelector('#yt-finestra .yt-senza-audio');
+        assert.match(await pagina.locator('#yt-finestra .yt-senza-audio').textContent(), frase);
+        assert.doesNotMatch(await pagina.locator('#yt-finestra .yt-file').textContent(), /con l'audio/);
+        await pagina.locator('#yt-finestra [data-yt="chiudi"]').click();
+      }
     });
 
     prova('al telefono e in inglese: la finestra sta nello schermo e parla la lingua scelta', async () => {

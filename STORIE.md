@@ -2359,6 +2359,35 @@ per YouTube), con un filmato vero registrato nella pagina al posto dei 2400
 byte finti. Guardato in Chromium: dalla scheda di una CosmoStoria, 1920 ×
 1080, fotogramma senza data e luogo.
 
+### L'audio nel filmato per YouTube (v467)
+
+«Quando registri per YouTube assicurati che registri anche la traccia
+audio.» Il filmato aveva una traccia audio, ma **muta**: la presa
+(`narrazione.catturaAudio`) prendeva solo l'elemento della voce, e la
+canzone di «Pallido puntino blu» (`storMusica`), la musica e i suoni da file
+delle storie e la colonna sonora della demo suonavano da elementi loro.
+Misurato decodificando il file registrato: otto secondi a zero prima, la
+canzone dopo.
+
+- Ognuno di quegli elementi si dichiara a `narrazione.audioDelRacconto(el)`
+  (`audioNelFilmato` in `storie-cosmiche.js`, `musicaDemoAvvia` in
+  `app.js`); durante una cattura entra nel grafo Web Audio e nella stessa
+  traccia della voce e dei rumori sintetizzati (`DEMO.md` §Registra anche
+  l'audio). Fuori da una registrazione nulla cambia.
+- Le corse per YouTube hanno l'audio sempre acceso (`registraAudio: true`
+  in `ytRegistraEPubblica`, anche con l'opzione spenta), e il contesto audio
+  si sblocca dentro al clic (`narrazione.sbloccaContesto`, in
+  `AstroDemo.avvia`).
+- La finestra dice «con l'audio» quando il file ha la traccia e ci è passato
+  del suono; altrimenti avvisa (`yt.controllo.senzaAudio`, `yt.controllo.muto`:
+  sotto −60 dB di picco, `YT_SOGLIA_MUTO`).
+- Resta fuori la voce sintetica del dispositivo (`speechSynthesis`), che non
+  espone il suo segnale: una storia narrata così ha il filmato muto nella
+  voce, e la finestra lo dice se non c'è altro suono.
+
+Prove: `prova-youtube.js` (14, 2 nuove: la canzone dentro al file, misurata
+decodificandolo; gli avvisi della traccia assente e di quella muta).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
