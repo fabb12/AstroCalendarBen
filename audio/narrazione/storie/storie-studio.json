@@ -18,26 +18,29 @@
         {
           "n": 4,
           "chi": "Earth",
-          "testo": "Sei solo una luna !!",
+          "testo": "Sei solo una luna!!",
           "umore": "bully",
           "scena": 2,
-          "durata": 3000
+          "durata": 3000,
+          "conTag": "Sei solo una luna !!"
         },
         {
           "n": 5,
           "chi": "Earth",
-          "testo": "ah ah ah !!!",
+          "testo": "ah ah ah!!!",
           "umore": "laughing",
           "scena": 3,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "ah ah ah !!!"
         },
         {
           "n": 1,
           "chi": "Moon",
-          "testo": "Smettila !!!",
+          "testo": "Smettila!!!",
           "umore": "annoyed",
           "scena": 4,
-          "durata": 3000
+          "durata": 3000,
+          "conTag": "Smettila !!!"
         },
         {
           "n": 7,
@@ -197,7 +200,8 @@
           "testo": "Ehm, scusa Terra, hai finito?",
           "umore": "neutral",
           "scena": 24,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "[shouts] Ehm, scusa Terra, hai finito? [frustrated]"
         },
         {
           "n": 25,

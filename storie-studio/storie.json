@@ -1282,12 +1282,21 @@
             {
               "id": "mm1gvi28",
               "chi": "Sedna",
-              "testo": "Ehm, scusa Terra, hai finito?",
+              "testo": "[shouts] Ehm, scusa Terra, hai finito? [frustrated]",
               "umore": "neutral",
-              "tono": [],
+              "tono": [
+                "shouts",
+                "sarcastic"
+              ],
               "durata": 0,
               "voce": 24,
-              "audio": null,
+              "audio": {
+                "durata": 4000,
+                "impronta": "267258c8",
+                "nome": "elevenlabs.mp3",
+                "voce": "lFHyHlRLX5EFGKJ9tJ2M",
+                "tag": "[shouts]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -1492,10 +1501,23 @@
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
       "voceProssima": 28,
-      "aggiornato": 1791483063340,
+      "aggiornato": 1791545526257,
       "lingua": "it",
       "musica": null,
-      "voci": {},
+      "voci": {
+        "Moon": {
+          "id": "zFA34HbdHBvF8WhlSusK",
+          "nome": "Nora - Bright Italian Female Narrator",
+          "anteprima": "https://api.us.elevenlabs.io/v1/voices/zFA34HbdHBvF8WhlSusK/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiIzMTM1NTVlNjQ4ODA0NmQ1YmI1MjMzNTYxNDkxNmE1NSIsImZpbGVuYW1lIjoiaTBlWHVad2hnS0hQMGJiTUV3dUUubXAzIiwidGltZXN0YW1wIjoxNzkxNTQzNjAwMDAwMDAwfQ%3D%3D",
+          "genere": "f"
+        },
+        "Sedna": {
+          "id": "lFHyHlRLX5EFGKJ9tJ2M",
+          "nome": "Valeria",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1f29ce2d4b704bfb831fc541b60c7a3f/voices/lFHyHlRLX5EFGKJ9tJ2M/c4e162dc-e9e4-4922-8acc-3845d79f39cd.mp3",
+          "genere": "f"
+        }
+      },
       "domanda": {
         "attiva": false,
         "modo": "auto",
