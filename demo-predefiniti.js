@@ -1512,6 +1512,11 @@
   // perché poi?»); per il resto le facce nuove: la meraviglia davanti al
   // cosmo, la tenerezza per la casa, la decisione su «proteggila», lo
   // scetticismo sulla posizione privilegiata, la malinconia del buio.
+  // v465: «conosciuto» finiva dopo dieci secondi invece che a 212 s (il
+  // riconoscimento allungava l'ultima parola fino al «Oh… oh…» che segue),
+  // e con lui «casa», «avuto» due volte: tagliati dove la voce si ferma. E il
+  // primo «Oh… oh… oh… oh…» (212,8-221 s), che il testo non scrive ma la
+  // canzone canta, ha il suo verso.
   scene solar_system_3d {
     // L'intro parlata: la Voyager 1 il 14 febbraio 1990, a quaranta unità astronomiche, si gira verso casa.
     duration: 19.5s;
@@ -1669,7 +1674,7 @@
     action: character_expression { target: 'sagan', expression: 'tender', shot_from: 0.3871 };
     action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.28', words: '.000-.343 .407-.528 .639-1.000', voice: '8997667548776100344411672376663003788887656789875325899', shot_from: 0.3871, shot_to: 0.5513 };
     action: character_expression { target: 'sagan', expression: 'determined', shot_from: 0.5452 };
-    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.29', words: '.000-.141 - .144-.191 .198-.258 .258-.298 .282-.375 .382-.416 .406-1.000', voice: '899985224888898876531482035201640047866771578898500588885785255666530033000000000000000000000000000000000000000000000000000000000000000000000000000000', shot_from: 0.5452, shot_to: 0.999 };
+    action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.29', words: '.000-.286 - .292-.387 .401-.523 .523-.604 .572-.760 .774-.843 .823-.978', voice: '89998522488889887653148203520164004786677157889850058888578525566653003300', shot_from: 0.5452, shot_to: 0.7691 };
   }
   scene solar_system_3d {
     // Terza strofa, rap duro: Marte, il dio della guerra, e Giove, il re degli dèi, si contendono la Terra.
@@ -1801,7 +1806,7 @@
     action: character_expression { target: 'sagan', expression: 'tender', shot_from: 0.4872 };
     action: character_sing { target: 'sagan', with: 'Earth,Moon', id: 'storie.canzone.puntino.52', words: '.000-.395 .420-.593 .543-.926', voice: '88469888511244531784588764203999986578999', shot_from: 0.4872, shot_to: 0.6256 };
     action: character_expression { target: 'sagan', expression: 'determined', shot_from: 0.6462 };
-    action: character_sing { target: 'sagan', with: 'Earth,Moon', id: 'storie.canzone.puntino.53', words: '.000-.147 - .279-.311 .328-.421 .437-.492 .464-.612 .628-.688 .672-.967', voice: '79998422486789999743228502630067124787558627888610168998558722445551037500000000000000000000', shot_from: 0.6462, shot_to: 0.959 };
+    action: character_sing { target: 'sagan', with: 'Earth,Moon', id: 'storie.canzone.puntino.53', words: '.000-.183 - .347-.387 .408-.523 .543-.612 .577-.761 .781-.855 .835-.982', voice: '79998422486789999743228502630067124787558627888610168998558722445551037500', shot_from: 0.6462, shot_to: 0.8978 };
   }
   scene solar_system_3d {
     // Il ponte, parlato, con l'orchestra che cresce: non c'è un altro posto dove andare.
@@ -1877,9 +1882,11 @@
     action: character_show { target: 'sagan', expression: 'wistful', at: right };
     action: effect { type: glow, target: 'Earth', duration: 8, shot_from: 0.0244 };
     action: character_expression { target: 'sagan', expression: 'wistful', shot_from: 0.0232 };
-    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.65', words: '.000-.296 .296-.949', voice: '233221562055654211200000000000000000000000000000000000000000', shot_from: 0.0232, shot_to: 0.1671 };
+    action: character_sing { target: 'sagan', id: 'storie.canzone.puntino.65', words: '.000-.375 .397-.961', voice: '23322156205565421120000', shot_from: 0.0232, shot_to: 0.0784 };
     action: character_expression { target: 'sagan', expression: 'tender', shot_from: 0.1854 };
-    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.66', words: '.000-.030 .017-.058 .065-.095 .077-.990', voice: '5773046653443476630655456676634320243100000000000000000011211232210332333223322123333333333211334444445554565666554443445444444443322332232222222222222234433433333544444445555666666666665566664355666555544555555555544545555555554444555565567777765556666644332110000000000000000000000000000000', shot_from: 0.1854, shot_to: 0.8963 };
+    action: character_sing { target: 'sagan', with: 'Earth', id: 'storie.canzone.puntino.66', words: '.000-.117 .125-.508 .537-.633 .633-.965', voice: '5773046653443476630655456676634320', shot_from: 0.1854, shot_to: 0.2682 };
+    action: character_expression { target: 'sagan', expression: 'wistful', shot_from: 0.3193 };
+    action: character_sing { target: 'sagan', with: 'Earth,Moon', id: 'storie.canzone.puntino.67', voice: '011211232210332333223322123333333333211334444445554565666554443445444444443322332232222222222222234433433333544444445555666666666665566664355666555544555555555544545555555554444555565567777765556666644332110', shot_from: 0.3193, shot_to: 0.8233 };
   }
   scene solar_system_3d {
     // Il congedo: tutti canticchiano mentre la camera esce dalla Terra verso la bolla locale.

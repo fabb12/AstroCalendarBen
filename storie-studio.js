@@ -580,6 +580,29 @@
   // per ElevenLabs e per sapere se la voce generata è ancora quella (v462)
   const testoDetto = m => studioSenzaTag(unaRiga(m && m.testo)).slice(0, 400);
   const testoGrezzo = m => unaRiga(m && m.testo).slice(0, 600);
+  /* La prima frase di una scena (v465), per il titolo della scena chiusa:
+   * con le scene tutte chiuse si leggeva solo «Scena 3 · Sistema Solare · 1
+   * momento», e per ritrovare un punto (in «Pallido puntino blu» duplicata,
+   * diciassette scene così) bisognava aprirle una per una. La battuta del
+   * primo momento che ne ha una; se no il primo verso cantato o la prima
+   * battuta rimasti fra i comandi dell'originale (`m.copione.righe`), il più
+   * presto nella ripresa. Funzione pura: { chi, testo } o null. */
+  function studioPrimaFrase(sc) {
+    for (const m of (sc && sc.momenti) || []) {
+      const detto = testoDetto(m);
+      if (detto) return { chi: m.chi || '', testo: detto };
+      let prima = null;
+      for (const r of (m.copione && m.copione.righe) || []) {
+        if (r.comando !== 'character_speak' && r.comando !== 'character_sing') continue;
+        const p = r.parametri || {};
+        const testo = studioSenzaTag(unaRiga(typeof p.text === 'string' ? p.text : p.id ? (t(p.id) || p.id) : ''));
+        const da = r.ripresa ? r.ripresa.da : 0;
+        if (testo && (!prima || da < prima.da)) prima = { chi: typeof p.target === 'string' ? p.target : '', testo, da };
+      }
+      if (prima) return { chi: prima.chi, testo: prima.testo.slice(0, 400) };
+    }
+    return null;
+  }
   function studioVoceValida(m) {
     return !!(m && m.audio && m.audio.durata > 0 && testoDetto(m) && m.audio.impronta === studioImpronta(testoGrezzo(m)));
   }
@@ -3841,6 +3864,14 @@
   const schedeIdea = new Map(), schedeCast = new Map();
   const STUDIO_SCHEDE_SCENA = ['dove', 'chi', 'camera', 'suoni'];
 
+  // v465: sotto il titolo della scena chiusa, chi parla per primo e cosa
+  // dice (una riga, tagliata coi puntini; intera al passaggio del mouse)
+  function fraseScena(sc) {
+    const f = studioPrimaFrase(sc);
+    if (!f) return null;
+    const detta = f.chi ? t('studio.ui.primaFraseChi', { chi: nome(f.chi), testo: f.testo }) : t('studio.ui.primaFrase', { testo: f.testo });
+    return h('span', { class: 'studio-scena-frase', title: detta }, detta);
+  }
   function disegnaScena(sc, i) {
     const base = `scene.${i}`;
     const presenti = studioPresenti(studio.progetto, sc);
@@ -3850,7 +3881,8 @@
     const sezione = h('details', { class: 'studio-scena', open: sceneAperte.has(chiave), dataset: { scenaChiave: chiave } },
       h('summary', { class: 'studio-scena-riassunto' },
         h('span', { class: 'studio-scena-titolo' }, t('studio.scena', { n: i + 1 })),
-        h('small', {}, t('studio.ambiente.' + sc.ambiente) + ' · ' + t('studio.ui.nMomenti', { n: sc.momenti.length }))), card);
+        h('small', {}, t('studio.ambiente.' + sc.ambiente) + ' · ' + t('studio.ui.nMomenti', { n: sc.momenti.length })),
+        fraseScena(sc)), card);
     card.append(h('div', { class: 'studio-scena-testa' },
       h('div', { class: 'studio-strumenti' },
         h('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { fai: 'provaScena', dove: base }, 'data-storia-prova': '' }, iconaSvg('gioca', 16), ' ', t('studio.provaScena')),
@@ -5029,7 +5061,7 @@
     testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
-    caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag,
+    caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag, primaFrase: studioPrimaFrase,
     ufficiali: studioUfficiali, apriProgetto: studioApriProgetto, apriDaStoria: studioApriDaStoria,
     apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()

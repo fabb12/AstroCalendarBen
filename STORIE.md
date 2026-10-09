@@ -2272,6 +2272,46 @@ inglese, scollega), `prova-storie.js` (112, una nuova per l'inserimento),
 `prova-musica-storie.js`, `prova-storie-repo.js`, `prova-i18n.js`,
 `prova-lingua.js`, `prova-guida.js`, `controlla-i18n.js --patto`.
 
+### «Conosciuto» che non finisce più, e la prima frase delle scene chiuse (v465)
+
+Chi ha guardato «Pallido puntino blu» ha scritto: su «che abbiamo mai
+conosciuto» la storia non va a tempo, su «conosciuto» rallenta tutto, la
+canzone passa all'altra strofa e il karaoke resta lì.
+
+- **La causa.** I tempi dei versi vengono dal riconoscimento delle parole
+  (Whisper), che **allunga l'ultima parola fino a dove ricomincia il
+  parlato**. «Che abbiamo mai conosciuto» è cantato a cappella da 210,6 a
+  212,0 s (a 212,0 entra tutta la base); il copione teneva «conosciuto» da
+  211,5 a 222,2 s, e il verso durava dodici secondi invece di uno e mezzo.
+  Misurato sulla canzone con l'energia del canale centrale (dove sta la
+  voce) contro quella dei lati, a grana di 20 ms, e con la voce separata
+  (`voice`) già nel copione: tutt'e due dicono dove la voce si ferma.
+- **Gli altri uguali.** Cercati verso per verso confrontando la fine
+  dell'ultima parola con la fine della voce: «L'unica casa…» (verso 65, la
+  voce finisce a 208,85 s, il copione a 210,2) e «…è tutto quello che
+  abbiamo avuto» due volte (versi 29 e 53, 3 s e 0,7 s di troppo). Ripresa,
+  parole e `voice` tagliati dove la voce si ferma.
+- **Il primo «Oh… oh… oh… oh…».** Fra 212,8 e 221 s la voce canta un
+  «oh» che il testo non scriveva (lo spettro di quel tratto è quello degli
+  altri due «oh», non quello del tratto solo strumentale): ora ha il suo
+  verso (`storie.canzone.puntino.67` riusato, Carl Sagan con la Terra e la
+  Luna). I versi sono 69, tre «oh» come nella canzone.
+- **Prova** (`prova-storie.js`): «l'ultima parola di un verso non continua
+  dopo la voce», al più 0,6 s oltre la fine della voce, e il verso al più
+  1,2 s. Una canzone nuova misurata nello stesso modo la passa solo se i
+  tempi sono stati ripuliti.
+- **La scena chiusa dice la sua prima frase.** Nello Studio una scena chiusa
+  diceva solo «Scena 3 · Il Sistema Solare (3D) · 1 momento»: in una storia
+  duplicata da diciassette scene per ritrovarne una bisognava aprirle tutte.
+  Ora sotto al titolo c'è chi parla per primo e cosa dice, su una riga
+  tagliata coi puntini (intera al passaggio del mouse; da aperta sparisce,
+  si leggono i momenti). `studioPrimaFrase(sc)` (funzione pura, anche
+  `StudioStorie.primaFrase`): la battuta del primo momento che ne ha una,
+  senza i tag di ElevenLabs; se no il primo verso cantato o la prima
+  battuta rimasti fra i comandi dell'originale (`m.copione.righe`), il più
+  presto nella ripresa. Testi `studio.ui.primaFraseChi` e
+  `studio.ui.primaFrase`, `.studio-scena-frase` in `style.css`.
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei

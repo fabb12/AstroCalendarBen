@@ -6789,6 +6789,8 @@ window.ASTRO_DIZIONARI['en'] = {
     "studio.ui.famiglia.forma": "Shape",
     "studio.ui.famiglia.effetti": "Effects and sounds",
     "studio.ui.nMomenti": { uno: "{n} moment", altri: "{n} moments" },
+    "studio.ui.primaFraseChi": "{chi}: “{testo}”",
+    "studio.ui.primaFrase": "“{testo}”",
     "studio.ui.nInScena": { uno: "{n} on stage", altri: "{n} on stage" },
     "studio.ui.inScenaNota": "Tap a character to bring them into this scene or take them out.",
     "studio.ui.musicaSua": "its own music",
