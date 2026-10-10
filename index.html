@@ -1540,14 +1540,15 @@
         <p class="demo-pagina-aiuto" data-i18n="demo.paginaAiuto">Un racconto guidato del cielo: scegli la demo, decidi come presentarla e avviala. Alla fine, con Termina o con Esc, tutto torna com'era.</p>
       </header>
 
-      <!-- Due linguette (storie-studio.js, `studioSchede`): le demo con le
-           loro impostazioni, e le Storie cosmiche con lo Studio. -->
+      <!-- Due linguette (storie-studio.js, `studioSchede`): le Storie
+           cosmiche con lo Studio, e le demo con le loro impostazioni. Dalla
+           v472 le CosmoStorie vengono prima e la pagina si apre su di loro. -->
       <div id="demo-schede" class="scheda-piena sottonav demo-schede" role="tablist" aria-label="Sezioni della pagina Demo" data-i18n-aria-label="demo.schede">
-        <button id="demo-scheda-demo" type="button" class="sottovoce attiva" role="tab" aria-selected="true" aria-controls="demo-pannello-demo" data-i18n="demo.scheda.demo">Demo</button>
-        <button id="demo-scheda-storie" type="button" class="sottovoce" role="tab" aria-selected="false" aria-controls="demo-pannello-storie" tabindex="-1" data-i18n="demo.scheda.storie">CosmoStorie</button>
+        <button id="demo-scheda-storie" type="button" class="sottovoce attiva" role="tab" aria-selected="true" aria-controls="demo-pannello-storie" data-i18n="demo.scheda.storie">CosmoStorie</button>
+        <button id="demo-scheda-demo" type="button" class="sottovoce" role="tab" aria-selected="false" aria-controls="demo-pannello-demo" tabindex="-1" data-i18n="demo.scheda.demo">Demo</button>
       </div>
 
-      <div id="demo-pannello-demo" class="scheda-piena demo-pannello" role="tabpanel" aria-labelledby="demo-scheda-demo">
+      <div id="demo-pannello-demo" class="scheda-piena demo-pannello" role="tabpanel" aria-labelledby="demo-scheda-demo" hidden>
 
       <section class="scheda-piena demo-gruppo demo-gruppo-esegui" aria-labelledby="demo-gruppo-esegui-titolo">
         <h3 id="demo-gruppo-esegui-titolo" class="demo-gruppo-titolo">
@@ -1792,7 +1793,7 @@
 
       </div>
 
-      <div id="demo-pannello-storie" class="scheda-piena demo-pannello" role="tabpanel" aria-labelledby="demo-scheda-storie" hidden>
+      <div id="demo-pannello-storie" class="scheda-piena demo-pannello" role="tabpanel" aria-labelledby="demo-scheda-storie">
       <!-- Le Storie cosmiche (storie-cosmiche.js, STORIE.md): l'elenco delle
            storie, l'anteprima di un personaggio e l'esempio del DSL. -->
       <section id="storie-sezione" class="scheda-piena demo-gruppo demo-gruppo-storie" aria-labelledby="storie-titolo">

@@ -5354,8 +5354,11 @@
   /* La pagina Demo era una colonna sola di sette gruppi: le storie stavano
    * in fondo, dopo le impostazioni dell'audio. Adesso sono una linguetta a
    * parte, «Storie cosmiche», con le storie pronte, l'anteprima e lo Studio.
-   * La scelta si ricorda (per questo dispositivo). */
-  const CHIAVE_SCHEDA = 'astrocal_demo_scheda_v1';
+   * La scelta si ricorda (per questo dispositivo). Dalla v472 le CosmoStorie
+   * sono la prima linguetta e la pagina si apre su di loro: la chiave è
+   * nuova, perché chi aveva in memoria «Demo» (era la sola di serie) si
+   * ritroverebbe sulla vecchia prima. */
+  const CHIAVE_SCHEDA = 'astrocal_demo_scheda_v2';
   function studioSchede() {
     const barra = document.getElementById('demo-schede');
     if (!barra) return;
@@ -5384,9 +5387,9 @@
       if (e.key === 'End') j = schede.length - 1;
       if (j !== null) { e.preventDefault(); mostra(schede[j].id, true); }
     });
-    let iniziale = 'demo-scheda-demo';
+    let iniziale = 'demo-scheda-storie';
     try { const v = radice.localStorage.getItem(CHIAVE_SCHEDA); if (schede.some(s => s.id === v)) iniziale = v; } catch (_) { /* di serie */ }
-    // Chi arriva da un link di una demo vuole la prima linguetta
+    // Chi arriva da un link di una demo vuole la linguetta Demo
     if (/[?#&]demo=/.test(String(radice.location && radice.location.href))) iniziale = 'demo-scheda-demo';
     mostra(iniziale, false);
     radice.demoMostraScheda = id => mostra(id, false);
