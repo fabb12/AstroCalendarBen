@@ -647,11 +647,14 @@
       scala: 0.8, occhi: { r: 0.25, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
       voce: { ritmo: '4%', tono: '22Hz' }, espressione: 'happy', personalita: 'cristoforetti' },
     astro_ben: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.astro_ben', ospite: true, alias: ['Astro Ben', 'AstroBen', 'Ben'],
-      pelle: '#f6d0ae', iride: '#2f6f9f', sottotitolo: '#fdba74', guance: '#fb8f7a',
-      figura: { capelli: 'ciuffo', chioma: '#c27a3a', copricapo: 'casco', veste: 'tuta', colori: ['#f97316', '#c2410c', '#f8fafc'], bandiera: 'it', bambino: true,
-        segni: { lentiggini: true } },
+      // v470: come il bambino della foto: occhi scuri, capelli castano scuro
+      // corti e spettinati con la frangia, la carnagione olivastra chiara,
+      // le orecchie un po' in fuori e il sorriso largo coi denti
+      pelle: '#ebbd96', iride: '#3a2416', sottotitolo: '#fdba74', guance: '#f08c74', peli: '#3b2414',
+      figura: { capelli: 'spettinati', chioma: '#4a2e18', copricapo: 'casco', veste: 'tuta', colori: ['#f97316', '#c2410c', '#f8fafc'], bandiera: 'it', bambino: true,
+        orecchie: 1.3, segni: {} },
       scala: 0.82, occhi: { r: 0.3, distanza: 0.38, alto: -0.04 }, irideVera: true, nasoProprio: true,
-      voce: { ritmo: '10%', tono: '40Hz' }, espressione: 'excited', personalita: 'astro_ben' }
+      voce: { ritmo: '10%', tono: '40Hz' }, espressione: 'happy', personalita: 'astro_ben' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
     'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona'];
@@ -4151,13 +4154,13 @@
     ctx.bezierCurveTo(hx - hw * 1.02, hy - hh * 0.52, hx - hw * 0.62, hy - hh, hx, hy - hh);
     ctx.closePath();
   }
-  function orecchieDaCartone(ctx, hx, hy, hw, hh, R, pelle) {
+  function orecchieDaCartone(ctx, hx, hy, hw, hh, R, pelle, k = 1) {
     for (const lato of [-1, 1]) {
-      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(hx + lato * hw * 0.98, hy + hh * 0.08, hw * 0.17, hh * 0.22, lato * 0.18, 0, Math.PI * 2); },
+      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(hx + lato * hw * (0.98 + 0.12 * (k - 1)), hy + hh * 0.08, hw * 0.17 * k, hh * 0.22 * k, lato * (0.18 + 0.2 * (k - 1)), 0, Math.PI * 2); },
         pelle, R, { luce: 0.05, pennino: 0.03,
           dentro: () => {
             ctx.strokeStyle = rgba(scurisci(pelle, 0.4), 0.7); ctx.lineWidth = Math.max(0.6, R * 0.014);
-            ctx.beginPath(); ctx.arc(hx + lato * hw * 1.0, hy + hh * 0.08, hw * 0.08, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
+            ctx.beginPath(); ctx.arc(hx + lato * hw * (1.0 + 0.12 * (k - 1)), hy + hh * 0.08, hw * 0.08 * k, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
           } });
     }
   }
@@ -4245,7 +4248,8 @@
    *
    *   capelli    arruffati (Einstein), corona (la calvizie con la frangia
    *              ai lati), lunghi, ricci, parrucca (Huygens), caschetto
-   *              (Copernico), corti, corti_lei, ciuffo (Astro Ben), nessuno
+   *              (Copernico), corti, corti_lei, spettinati (Astro Ben),
+   *              ciuffo, nessuno
    *   chioma     il colore dei capelli
    *   copricapo  corona (Tolomeo, come lo dipinsero i pittori che lo
    *              confondevano coi re d'Egitto), fascia (Pitagora), casco
@@ -4257,6 +4261,7 @@
    *   barbaLunga la barba che scende sul petto, nel colore dei `peli`
    *   sedia      lo schienale e il poggiatesta della carrozzina (Hawking)
    *   bambino    spalle strette e testa più tonda
+   *   orecchie   quanto sono grandi e in fuori (1 di serie; Astro Ben 1,3)
    *   segni      { rughe, lentiggini, pieghe, zampe } per `testaDaCartone` */
   const STOR_CAPELLI = (() => {
     // un arco di punti attorno alla testa, da a0 ad a1 (0 in cima, positivo
@@ -4306,6 +4311,12 @@
         dietro: [[-0.98, 0.6], ...arco(-2.0, 2.0, 13, 1.12), [0.98, 0.6], [0.6, 0.5], [-0.6, 0.5]],
         davanti: [...arco(-1.85, 1.85, 13, 1.1), [0.92, 0.4], [0.9, -0.1], [0.72, -0.4], [0.36, -0.42], [-0.1, -0.52], [-0.5, -0.64],
           [-0.8, -0.46], [-0.9, -0.1], [-0.92, 0.4]], onda: 0.02
+      },
+      // v470: Astro Ben come il bambino della foto portata da chi usa l'app:
+      // corti, spettinati in cima, la frangia a ciocche sulla fronte
+      spettinati: {
+        davanti: [...arco(-1.42, 1.42, 15, i => [1.06, 1.18, 1.1, 1.22][i % 4]), [0.9, -0.3], [0.8, -0.44], [0.64, -0.5], [0.48, -0.36],
+          [0.3, -0.52], [0.12, -0.38], [-0.06, -0.54], [-0.24, -0.4], [-0.42, -0.56], [-0.62, -0.44], [-0.8, -0.46], [-0.9, -0.3]], onda: 0.035
       },
       ciuffo: {
         davanti: [...ciuffo, [0.9, -0.05], [0.82, -0.4], [0.45, -0.6], [0.1, -0.52], [-0.25, -0.62], [-0.62, -0.56], [-0.84, -0.38], [-0.9, -0.05]],
@@ -4490,7 +4501,7 @@
     // capelli davanti, con le ciocche chiare dentro
     const stile = STOR_CAPELLI[f.capelli] || STOR_CAPELLI.corti;
     if (stile.dietro) parte(ctx, () => ciocca(stile.dietro, stile.onda), scurisci(chioma, 0.12), R, { luce: 0.1 });
-    orecchieDaCartone(ctx, hx, hy, hw, hh, R, profilo.pelle);
+    orecchieDaCartone(ctx, hx, hy, hw, hh, R, profilo.pelle, Number(f.orecchie) || 1);
     // la barba lunga sul petto, sotto al mento (quella attorno alla bocca è
     // del volto, `barba` del profilo, e le si disegna sopra)
     if (f.barbaLunga) {
