@@ -46,7 +46,7 @@ const prove = [];
 const prova = (nome, fn) => prove.push([nome, fn]);
 
 (async () => {
-  let browser;
+  let browser, ritardoTts = 0;
   const richieste = [];
   try {
     await new Promise(r => server.listen(0, '127.0.0.1', r));
@@ -82,6 +82,8 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       // la seconda voce della libreria: la chiave non può aggiungerla (v445)
       if (u.pathname.startsWith('/v1/voices/add/prop2/')) return r.fulfill({ status: 403, headers: cors, contentType: 'application/json', body: JSON.stringify({ detail: { message: 'missing_permissions voices_write' } }) });
       if (u.pathname.startsWith('/v1/voices/add/')) return json({ voice_id: 'Aggiunta' + u.pathname.split('/').pop().slice(0, 12) });
+      // v471: una voce che si fa aspettare, per provare «Ferma»
+      if (u.pathname.startsWith('/v1/text-to-speech/') && ritardoTts) await new Promise(fatto => setTimeout(fatto, ritardoTts));
       if (u.pathname.startsWith('/v1/text-to-speech/') || u.pathname === '/v1/sound-generation' || u.pathname === '/v1/music')
         return r.fulfill({ status: 200, headers: cors, contentType: 'audio/wav', body: wav(u.pathname === '/v1/music' ? 3 : 1.2) });
       return r.fulfill({ status: 404, headers: cors, body: '{}' });
@@ -372,6 +374,120 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.match(await scena.locator('.studio-voci-scena').textContent(), /quella della storia/);
     });
 
+    // v471: «Genera tutte le battute» e la regia delle emozioni
+    const tts = da => richieste.slice(da).filter(x => (x.via || '').startsWith('/v1/text-to-speech/'));
+    const momento = b => pagina.evaluate(b2 => JSON.parse(JSON.stringify(b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto))), b);
+    const pannelloPg = pagina.locator('#studio-voci-pg .studio-el-battute');
+    prova('Genera tutte le battute: si apre scelta la voce, ogni battuta con la sua regia, e partono quelle spuntate (v471)', async () => {
+      // tre battute almeno, la prima con due emozioni e un sussulto
+      await pagina.evaluate(pg2 => {
+        const p = StudioStorie.progetto, sc = p.scene[0];
+        while (p.scene.flatMap(x => x.momenti).filter(m => m.chi === pg2 && m.testo.trim()).length < 3)
+          sc.momenti.push(StudioStorie.nuovoMomento({ chi: pg2, testo: 'Come mai la Luna cambia forma?' }));
+        const m = p.scene.flatMap(x => x.momenti).find(x => x.chi === pg2 && x.testo.trim());
+        Object.assign(m, { testo: 'Che bello, siamo arrivati! Oh no… il motore si è spento.', umore: '', tono: [], azioni: [] });
+        StudioStorie.ridisegna();
+      }, pg);
+      await pagina.locator('[data-fai="schedaPasso"][data-dove="cast"][data-valore="voci"]').evaluate(e => e.getAttribute('aria-expanded') === 'true' || e.click());
+      // si è aperto da sé quando si è scelta la voce del personaggio
+      assert.equal(await pannelloPg.count(), 1, 'il pannello delle battute aperto dalla scelta della voce');
+      const p = await progetto();
+      const sue = p.scene.flatMap(sc => sc.momenti).filter(m => m.chi === pg && m.testo.trim());
+      const righe = pannelloPg.locator('.studio-el-battuta');
+      assert.equal(await righe.count(), sue.length);
+      const prima = righe.first();
+      assert.match(await prima.locator('.studio-regia-proposta').textContent(), /^\[excited\] Che bello, siamo arrivati! \[nervous\] \[gasps\] Oh no… il motore si è spento\.$/);
+      assert.match(await prima.locator('.studio-regia-perche').textContent(), /da «che bello».*da «oh no»/);
+      assert.equal(await prima.locator('.studio-regia-tag').count(), 3, 'i tag evidenziati');
+      // l'ultima resta fuori
+      await righe.last().locator('[data-fai="elBattutaScelta"]').click();
+      assert.equal(await righe.last().locator('[data-fai="elBattutaScelta"]').isChecked(), false);
+      assert.match(await pannelloPg.locator('[data-fai="elGeneraBattute"]').textContent(), new RegExp('\\(' + (sue.length - 1) + '\\)'));
+      const n = richieste.length;
+      await pannelloPg.locator('[data-fai="elGeneraBattute"]').click();
+      await pagina.waitForFunction(() => /Battute generate/.test(document.getElementById('studio-esito').textContent));
+      const partite = tts(n);
+      assert.equal(partite.length, sue.length - 1, 'solo quelle spuntate');
+      assert.equal(partite[0].corpo.text, '[excited] Che bello, siamo arrivati! [nervous] [gasps] Oh no… il motore si è spento.');
+      assert.ok(partite.every(x => x.via === '/v1/text-to-speech/' + p.voci[pg].id));
+      // i tag sono nella battuta, il testo detto non cambia, la faccia segue le parole
+      const m = (await progetto()).scene.flatMap(sc => sc.momenti).find(x => x.id === sue[0].id);
+      assert.equal(m.testo, partite[0].corpo.text);
+      assert.equal(m.umore, 'excited');
+      assert.equal(m.audio.tag, '[excited]');
+      assert.equal(await pagina.evaluate(t => StudioStorie.senzaTag(t), m.testo), 'Che bello, siamo arrivati! Oh no… il motore si è spento.');
+      assert.equal(await righe.first().locator('.studio-el-stato').textContent(), 'Pronta');
+      if (process.env.FOTO) await pannelloPg.screenshot({ path: path.join(process.env.FOTO, 'battute.png') });
+    });
+
+    prova('Ferma: le battute già generate restano, le altre no (v471)', async () => {
+      const scelte = await pannelloPg.locator('[data-fai="elBattutaScelta"]:checked').count();
+      assert.ok(scelte >= 2);
+      ritardoTts = 700;
+      const n = richieste.length;
+      try {
+        await pannelloPg.locator('[data-fai="elGeneraBattute"]').click();
+        await pannelloPg.locator('[data-fai="elFermaBattute"]').click();
+        await pagina.waitForFunction(() => /Fermato/.test(document.getElementById('studio-esito').textContent));
+      } finally { ritardoTts = 0; }
+      assert.ok(tts(n).length >= 1 && tts(n).length < scelte, tts(n).length + ' su ' + scelte);
+      assert.equal(await pannelloPg.locator('[data-fai="elFermaBattute"]').count(), 0);
+    });
+
+    prova('la regia nel momento: la proposta coi perché, «Metti la regia» la scrive nella battuta (v471)', async () => {
+      const b = await battutaDi(pg);
+      await pagina.evaluate(b2 => {
+        const m = b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto);
+        Object.assign(m, { testo: 'Psst, ti dico un segreto. Ah ah, ci sei cascato!', umore: 'happy', tono: [], azioni: [] });
+        StudioStorie.ridisegna();
+      }, b.base);
+      await apriScena(b.i);
+      await apriLinguetta(b.base, 'voce');
+      const regia = pagina.locator(`.studio-intonazione:has([data-dove="${b.base}"]) .studio-regia`);
+      assert.match(await regia.locator('.studio-regia-proposta').textContent(), /^\[happy\] \[whispers\] Psst, ti dico un segreto\. \[laughs\] Ah ah, ci sei cascato!$/);
+      assert.match(await regia.locator('.studio-regia-perche').textContent(), /dalla faccia.*da «psst».*da «ah ah»/);
+      if (process.env.FOTO) await pagina.locator(`.studio-intonazione:has([data-dove="${b.base}"])`).screenshot({ path: path.join(process.env.FOTO, 'regia.png') });
+      await regia.locator(`[data-fai="regiaMetti"][data-dove="${b.base}"]`).click();
+      const m = await momento(b.base);
+      assert.equal(m.testo, '[happy] [whispers] Psst, ti dico un segreto. [laughs] Ah ah, ci sei cascato!');
+      assert.match(await regia.textContent(), /già nella battuta/);
+      assert.equal((await pagina.locator(`.studio-intonazione:has([data-dove="${b.base}"]) .studio-tono-invio code`).textContent()).trim(), m.testo, 'parte la regia');
+      // cambiata la faccia, la regia si propone di nuovo
+      await pagina.evaluate(b2 => { b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto).umore = 'sad'; StudioStorie.ridisegna(); }, b.base);
+      assert.match(await regia.locator('.studio-regia-proposta').textContent(), /^\[sad\] \[whispers\]/);
+      const n = richieste.length;
+      await regia.locator(`[data-fai="regiaGenera"][data-dove="${b.base}"]`).click();
+      await pagina.waitForSelector(`[data-fai="elUsa"][data-dove="${b.base}"]`);
+      assert.equal(tts(n)[0].corpo.text, '[sad] [whispers] Psst, ti dico un segreto. [laughs] Ah ah, ci sei cascato!');
+      await pagina.locator(`[data-fai="elUsa"][data-dove="${b.base}"]`).click();
+      await pagina.waitForFunction(b2 => { const x = b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto); return x.audio && x.audio.tag === '[sad] [whispers]'; }, b.base);
+    });
+
+    prova('nella scena: tutte le battute della scena, di chiunque le dica (v471)', async () => {
+      const b = await battutaDi(pg);
+      const scena = await apriScena(b.i);
+      await apriSchedaScena(scena, 'suoni');
+      await scena.locator('[data-fai="elBattuteScena"][data-id=""]').click();
+      const pan = scena.locator('.studio-voci-scena .studio-el-battute');
+      await pan.waitFor();
+      const quante = (await progetto()).scene[b.i].momenti.filter(m => m.chi && m.testo.trim()).length;
+      assert.equal(await pan.locator('.studio-el-battuta').count(), quante);
+      assert.match(await pan.textContent(), /Le battute della scena/);
+      // chi non ha una voce lo dice, e una battuta si apre dal pannello
+      const senza = await pan.locator('.studio-el-stato.senza').count();
+      const conVoce = (await progetto()).scene[b.i].momenti.filter(m => m.chi && m.testo.trim() && m.chi === pg).length;
+      assert.ok(senza <= quante - conVoce);
+      await scena.locator('[data-fai="elChiudiBattute"]').click();
+      assert.equal(await scena.locator('.studio-voci-scena .studio-el-battute').count(), 0);
+      // e quelle di un personaggio solo nella scena
+      await scena.locator(`[data-fai="elBattuteScena"][data-id="${pg}"]`).click();
+      await scena.locator('.studio-voci-scena .studio-el-battute').waitFor();
+      assert.equal(await scena.locator('.studio-voci-scena .studio-el-battuta').count(), conVoce);
+      await scena.locator('.studio-voci-scena [data-fai="elVaiBattuta"]').first().click();
+      assert.equal(await pagina.locator(`[data-fai="apriMomento"][data-dove="${b.base}"]`).getAttribute('aria-expanded'), 'true');
+      await scena.locator('[data-fai="elChiudiBattute"]').click();
+    });
+
     prova('la chiave è andata solo a ElevenLabs, nell\'intestazione', async () => {
       const api = richieste.filter(x => x.via);
       assert.ok(api.length > 5);
@@ -381,7 +497,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       }
     });
 
-    prova('al telefono: niente righe che escono di lato, la scelta della voce compresa', async () => {
+    prova('al telefono: niente righe che escono di lato, la scelta della voce e le battute comprese', async () => {
       await pagina.setViewportSize({ width: 390, height: 800 });
       await pagina.locator(`[data-fai="elScegli"][data-id="${pg}"]`).click();
       await pagina.waitForSelector('.studio-el-voce');
@@ -393,6 +509,17 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.equal(largo.scorre, false, JSON.stringify(largo));
       assert.deepEqual(largo.fuori, []);
       if (process.env.FOTO) await pagina.locator('#studio-voci-pg').screenshot({ path: path.join(process.env.FOTO, 'telefono.png') });
+      // v471: e il pannello delle battute
+      await pagina.locator(`[data-fai="elBattute"][data-id="${pg}"]`).click();
+      await pannelloPg.waitFor();
+      const largo2 = await pagina.evaluate(() => {
+        const r = document.getElementById('studio-radice');
+        const fuori = [...r.querySelectorAll('*')].filter(e => { const b = e.getBoundingClientRect(); return b.width && b.right > window.innerWidth + 1; });
+        return { scorre: document.documentElement.scrollWidth > window.innerWidth + 1, fuori: fuori.slice(0, 5).map(e => e.className || e.tagName) };
+      });
+      assert.equal(largo2.scorre, false, JSON.stringify(largo2));
+      assert.deepEqual(largo2.fuori, []);
+      if (process.env.FOTO) await pannelloPg.screenshot({ path: path.join(process.env.FOTO, 'battute-telefono.png') });
     });
 
     let ok = 0;

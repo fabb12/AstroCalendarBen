@@ -2565,6 +2565,91 @@ nascondeva gli occhi). La foto non è nel repository. Tuta, casco e voce sono
 quelli di prima. Prove: `prova-storie.js` (114); i ritratti guardati in
 Chromium con più facce.
 
+### La regia delle emozioni e «Genera tutte le battute» (v471)
+
+Chi usa l'app voleva, scelta la voce di un personaggio, un tasto che generi
+tutte le sue battute, ognuna col tono e le emozioni giuste per quel momento, e
+una gestione delle voci più semplice per le singole scene e i singoli momenti.
+Prima a ElevenLabs andavano la faccia e il tono, tutti in testa alla battuta:
+«Che bello, siamo arrivati! Oh no… il motore si è spento.» partiva felice fino
+in fondo; per fare meglio bisognava mettere i tag a mano, battuta per battuta.
+
+**La regia** (`studioRegiaBattuta(progetto, m, { rifai })`, §6c, funzione
+pura) fa i tag frase per frase (`studioFrasi`):
+
+- la **prima frase** prende l'emozione dalla faccia scelta nel momento
+  (`studioFacciaScelta`: `m.umore` o un'azione «Faccia» all'inizio; la voce
+  non contraddice il volto che si vede); se la faccia non è scelta, dalle
+  parole (`studioUmoreDalleParole`, gli stessi `studio.parole.umore.*` di
+  «Dal testo»), poi da quello che succede in scena (`studioRegiaScena`:
+  esplosione e onda d'urto → `[surprised] [gasps]`, fulmine → spaventato,
+  fuochi e coriandoli → entusiasta, cuori → affettuoso, supernova, buco nero…;
+  non le azioni «alla fine»), poi dalla faccia rimasta da prima, e per ultima
+  dalla punteggiatura (domanda → `[curious]`, «!!» → `[excited]`). Il tono
+  scelto a mano (`m.tono`) si aggiunge lì;
+- le **frasi dopo** cambiano emozione solo se le loro parole ne dicono
+  un'altra («Oh no» → `[nervous]`);
+- in ogni frase al più un **suono o modo di dire**, dalle parole
+  (`studio.parole.regia.*`, `STUDIO_REGIA_VOCE`): ride, sospira, trasalisce,
+  sussurra, esita, grida (solo col punto esclamativo); mai lo stesso nella
+  frase subito dopo, perché un tag vale da lì in avanti;
+- al più `STUDIO_REGIA_MAX` = 6 tag; dentro i 600 caratteri della battuta;
+  niente tag in mezzo a «3.5» (una frase nuova comincia dopo uno spazio). Il
+  testo detto (senza tag) resta identico lettera per lettera.
+
+Ogni tag porta il suo perché (`perche`: faccia, parole con la parola trovata,
+scena, faccia di prima, domanda, esclamativi, tono). Non è un'analisi del
+sentimento ed è dichiarato: la proposta si vede prima di spendere crediti. I
+tag scritti a mano vincono (`manuale`), salvo `rifai`, che li toglie e rifà la
+regia. `facciaProposta`: se la faccia non è scelta e le parole (o la scena) ne
+dicono un'altra, la faccia può seguire la voce.
+
+**La regia entra nella battuta** (`applicaRegia`): i tag si scrivono in
+`m.testo`, come quelli messi a mano dalla v462. Così si vedono fra le
+espressioni della battuta e si tolgono con la loro ×, vanno nel file delle voci
+(`conTag`) e l'impronta della voce generata li comprende. Le battute che non si
+generano non si toccano: una voce caricata o registrata non diventa «vecchia».
+Per lo stesso motivo `studioTestoPerVoce` non è cambiata (le voci già generate
+nelle storie salvate non diventano «da rifare»).
+
+**Dove si usa:**
+
+- **Passo 2, le voci dei personaggi**: accanto a ogni personaggio con la voce,
+  **Genera tutte le battute (n)** (`elBattute`, `apriBattute`). Scelta la voce
+  per tutta la storia, il pannello si apre da sé. Il pannello
+  (`disegnaBattute`, `.studio-el-battute`) ha una riga per battuta: la spunta,
+  il volto con la faccia che avrà, «Scena 2 · battuta 3», il testo che partirà
+  coi tag evidenziati (`testoConTag`), il perché di ogni tag, lo stato della
+  voce (`studioStatoVoce`: da generare, da rifare, pronta, voce tua, senza
+  voce), «Ascolta» e «Apri» (`vaiABattuta`: apre scena e momento sulla
+  linguetta della voce). Di serie sono spuntate tutte tranne le voci caricate
+  o registrate. Due scelte: «La faccia segue le parole, dove non l'hai scelta
+  tu» (accesa) e «Rifai la regia anche dove hai scritto tu dei tag» (spenta).
+  In fondo **Genera le battute scelte (n)**, **Solo quelle da fare (n)**,
+  **Ferma** (`elFermaBattute`: si ferma dopo quella in corso; le fatte
+  restano) e «Chiudi».
+- **Le voci di ogni scena**: **Genera tutte le battute della scena (n)**, di
+  chiunque le dica (ognuna con la voce del suo personaggio in quella scena;
+  chi non ha voce si salta e si dice), e per ogni personaggio **Genera tutte
+  le battute (n)** solo lì.
+- **Il singolo momento**, «Voce e durata» → Intonazione: il riquadro **Regia
+  delle emozioni** (`disegnaRegia`) con la proposta, i perché, «Metti la
+  regia» (`regiaMetti`), «Metti e genera» (`regiaGenera`, poi la solita
+  proposta da ascoltare) e, se le parole dicono un'altra faccia, «Anche la
+  faccia: …». Una battuta che ha già i tag mostra la regia rifatta da capo
+  («Rifai la regia»), così cambiare la faccia dopo si corregge con un tocco.
+
+`generaInFila` è la fila comune: anche **Genera le mancanti** ora passa dalla
+regia (senza toccare le facce né i tag scritti a mano). Un errore di
+ElevenLabs a metà tiene le battute già fatte e lo dice; il repository si
+sincronizza una volta sola alla fine. Testi in `studio.regia.*`, parole in
+`studio.parole.regia.*` (nelle due lingue: si cercano tutte e due, come le
+altre parole). Prove: `prova-storie.js` (116, 2 nuove: la regia e le battute
+da generare), `prova-elevenlabs-studio.js` (17, 4 nuove: il pannello aperto
+dalla scelta, le battute spuntate con la regia mandata a ElevenLabs, «Ferma»
+con una voce finta lenta, la regia nel momento, le battute della scena; e il
+pannello al telefono senza righe che escono di lato).
+
 ## Accessibilità
 
 - **Movimento ridotto**: niente comparsa sfumata, niente ondeggiare dei
