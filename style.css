@@ -13015,6 +13015,30 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .studio-voce > .studio-el-scelta, .studio-voce > .studio-el-nota, .studio-voce > .studio-el-proposta { flex: 1 1 100%; }
 .studio-el-nota { display: block; color: #c4b5fd; font-size: 0.8rem; }
 .studio-el-nota.errore { color: #fca5a5; }
+/* v471: «Genera tutte le battute» e la regia delle emozioni */
+#vista-demo .studio-el-tutte { border-color: rgba(74, 222, 128, 0.7); color: #bbf7d0; }
+.studio-el-battute { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(74, 222, 128, 0.45); border-radius: 12px; background: rgba(22, 101, 52, 0.1); min-width: 0; }
+.studio-el-battute-titolo { margin: 0; overflow-wrap: anywhere; }
+.studio-el-battute-titolo small { color: var(--testo-2, #94a3b8); }
+.studio-el-battute-opzioni { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.studio-el-battute-opzioni .studio-spunta { display: inline-grid; align-self: center; font-size: 0.82rem; min-width: 0; }
+.studio-el-battute-elenco { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; max-height: 60vh; overflow-y: auto; }
+.studio-el-battuta { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 8px; padding: 6px 8px; border-radius: 10px; background: rgba(2, 6, 23, 0.4); min-width: 0; }
+.studio-el-battuta.fuori { opacity: 0.55; }
+.studio-el-battuta-spunta { width: auto !important; margin-top: 8px; accent-color: #4ade80; }
+.studio-el-battuta-testo { display: grid; gap: 2px; flex: 1 1 9rem; min-width: 0; }
+.studio-el-battuta-testo > small { color: var(--testo-2, #94a3b8); font-size: 0.74rem; }
+.studio-el-battuta-tasti { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.studio-el-stato { padding: 1px 8px; border-radius: 999px; font-size: 0.72rem; background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
+.studio-el-stato.pronta { background: rgba(74, 222, 128, 0.18); color: #bbf7d0; }
+.studio-el-stato.manca, .studio-el-stato.rifare { background: rgba(250, 204, 21, 0.18); color: #fde68a; }
+.studio-el-stato.senza { background: rgba(248, 113, 113, 0.18); color: #fecaca; }
+.studio-el-battute-piede { flex-wrap: wrap; }
+.studio-regia { display: grid; gap: 4px; padding: 6px 8px; border: 1px dashed rgba(74, 222, 128, 0.45); border-radius: 10px; min-width: 0; }
+.studio-regia-tasti { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.studio-regia-proposta { overflow-wrap: anywhere; font-size: 0.86rem; }
+.studio-regia-tag { color: #86efac; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8em; }
+.studio-regia-perche { color: var(--testo-2, #94a3b8); font-size: 0.74rem; overflow-wrap: anywhere; }
 /* v445: le voci della scena */
 .studio-voci-scena { display: grid; gap: 6px; margin: 6px 0; }
 .studio-voce-scena { padding: 4px 8px; }

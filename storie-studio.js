@@ -1366,15 +1366,21 @@
   /* La faccia giusta per una frase: le parole dell'umore prima, poi la
    * punteggiatura. Non è un'analisi del sentimento, ed è dichiarato: è un
    * suggerimento da accettare o cambiare. */
-  function studioUmoreDalTesto(testo) {
-    const s = normalizza(testo);
-    if (!s.trim()) return null;
+  // Solo le parole (v471, anche per la regia della voce): `s` già normalizzata;
+  // { umore, parola } della parola che viene prima, o null
+  function studioUmoreDalleParole(s) {
     let meglio = null;
     for (const u of STUDIO_UMORI) {
       const x = trova(s, 'umore.' + u);
-      if (x && (!meglio || x.pos < meglio.pos || (x.pos === meglio.pos && x.parola.length > meglio.lun)))
-        meglio = { umore: u, pos: x.pos, lun: x.parola.length };
+      if (x && (!meglio || x.pos < meglio.pos || (x.pos === meglio.pos && x.parola.length > meglio.parola.length)))
+        meglio = { umore: u, pos: x.pos, parola: x.parola };
     }
+    return meglio;
+  }
+  function studioUmoreDalTesto(testo) {
+    const s = normalizza(testo);
+    if (!s.trim()) return null;
+    const meglio = studioUmoreDalleParole(s);
     if (meglio) return meglio.umore;
     const esclamativi = (s.match(/!/g) || []).length;
     if (/\?/.test(s)) return 'thinking';
@@ -2827,6 +2833,135 @@
     const tag = studioTagVoce(p, m);
     return tag.length ? tag.map(x => `[${x}]`).join(' ') + ' ' + testo : testo;
   }
+
+  /* La regia della battuta (v471). Chi usa l'app voleva generare tutte le
+   * battute di un personaggio con un tasto, ognuna col tono e le emozioni
+   * giuste per quel momento. Prima a ElevenLabs andavano la faccia e il
+   * tono, tutti in testa: «Che bello, siamo arrivati! Oh no… il motore si
+   * è spento.» partiva tutta felice, anche la seconda frase. Qui la regia
+   * si fa frase per frase, come farebbe un regista col copione in mano:
+   *
+   *   - la prima frase prende l'emozione dalla faccia scelta nel momento
+   *     (quella che si vede: la voce non deve contraddirla); se la faccia
+   *     non è stata scelta, dalle parole (`studio.parole.umore.*`), poi da
+   *     ciò che succede in scena intanto (un'esplosione fa trasalire, i
+   *     fuochi d'artificio entusiasmano), poi dalla faccia rimasta da prima,
+   *     e per ultima dalla punteggiatura (una domanda è curiosa, «!!» è
+   *     eccitato). Il tono scelto a mano (`m.tono`) si aggiunge lì;
+   *   - ogni frase dopo cambia emozione solo se le sue parole ne dicono
+   *     un'altra («Oh no» → [nervous]);
+   *   - in ogni frase al più un suono o un modo di dire, dalle parole
+   *     (`studio.parole.regia.*`): «ah ah» ride, «ahimè» sospira, «psst»
+   *     sussurra, «ehm» esita, «aiuto!» grida (solo col punto esclamativo);
+   *   - non più di `STUDIO_REGIA_MAX` tag in tutto, e mai la stessa
+   *     emozione ripetuta: troppi tag e il modello recita sopra le righe.
+   *
+   * Non è un'analisi del sentimento, ed è dichiarato: ogni tag porta il
+   * suo perché, e la proposta si vede e si cambia prima di generare. I tag
+   * scritti a mano vincono: una battuta che ne ha resta com'è, salvo
+   * `rifai` (che li toglie e rifà la regia). Funzione pura: { testo,
+   * tag: [{ tag, frase, perche, parola }], manuale, facciaProposta }. Il
+   * testo detto (senza tag) resta identico, lettera per lettera. */
+  const STUDIO_REGIA_VOCE = ['laughs', 'sighs', 'gasps', 'whispers', 'hesitates', 'shouts'];
+  // Quello che succede in scena → l'emozione con cui si reagisce e il suono
+  const STUDIO_REGIA_EFFETTI = {
+    explosion: ['surprised', 'gasps'], shockwave: ['surprised', 'gasps'], lightning: ['scared', 'gasps'], flash: ['surprised', ''],
+    fireworks: ['excited', ''], confetti: ['excited', ''], hearts: ['love', ''], shooting_star: ['wonder', ''], glow: ['wonder', '']
+  };
+  const STUDIO_REGIA_FORME = { supernova: ['surprised', 'gasps'], black_hole: ['scared', ''], red_giant: ['wonder', ''], white_dwarf: ['wistful', ''] };
+  const STUDIO_REGIA_MAX = 6;
+  // Le frasi di una battuta, col punto in cui ciascuna comincia nel testo
+  function studioFrasi(testo) {
+    const s = String(testo || ''), frasi = [];
+    const re = /[^.!?…]+(?:[.!?…]+["»”’)]*|$)/g;
+    let x;
+    while ((x = re.exec(s))) {
+      const frase = x[0].trim();
+      if (frase) frasi.push({ da: x.index + x[0].match(/^\s*/)[0].length, frase });
+    }
+    return frasi;
+  }
+  function studioRegiaFrase(frase) {
+    const s = normalizza(frase);
+    const u = studioUmoreDalleParole(s);
+    const voce = [];
+    for (const x of STUDIO_REGIA_VOCE) {
+      const w = trova(s, 'regia.' + x);
+      if (w && (x !== 'shouts' || /!/.test(frase))) voce.push({ tag: x, parola: w.parola, pos: w.pos });
+    }
+    voce.sort((a, b) => a.pos - b.pos);
+    return { umore: u && u.umore !== 'neutral' ? u.umore : '', parola: u ? u.parola : '', voce: voce.slice(0, 1),
+      domanda: /\?["»”’)]*$/.test(frase), esclama: (frase.match(/!/g) || []).length };
+  }
+  // La faccia scelta proprio per questo momento (non rimasta da prima)
+  function studioFacciaScelta(m) {
+    if (m.umore) return m.umore;
+    const a = (m.azioni || []).find(x => x && x.tipo === 'umore' && x.chi === m.chi && x.umore && (x.quando === 'inizio' || x.quando === 'tutto'));
+    return a ? a.umore : '';
+  }
+  // Quello che succede in scena mentre si parla (non alla fine: lì si reagisce dopo)
+  function studioRegiaScena(m) {
+    for (const a of m.azioni || []) {
+      if (!a || a.quando === 'fine') continue;
+      const r = a.tipo === 'effetto' ? STUDIO_REGIA_EFFETTI[a.effetto] : a.tipo === 'diventa' ? STUDIO_REGIA_FORME[a.forma] : null;
+      if (r) return { umore: r[0], voce: a.quando === 'meta' ? '' : r[1],
+        cosa: String(a.tipo === 'effetto' ? t('storie.effetto.' + a.effetto) : t('storie.veste.' + a.forma)).toLowerCase() };
+    }
+    return { umore: '', voce: '', cosa: '' };
+  }
+  function studioRegiaBattuta(progetto, m, { rifai = false } = {}) {
+    const grezzo = testoGrezzo(m);
+    const vuota = { testo: grezzo, tag: [], manuale: false, facciaProposta: '' };
+    if (!m || !m.chi || !testoDetto(m)) return vuota;
+    const conTag = tagNelTesto(grezzo).length > 0;
+    if (conTag && !rifai) return Object.assign(vuota, { manuale: true });
+    const testo = conTag ? studioSenzaTag(grezzo) : grezzo;
+    const frasi = studioFrasi(testo);
+    if (!frasi.length) return vuota;
+    const analisi = frasi.map(f => studioRegiaFrase(f.frase));
+    const faccia = studioFacciaParlata(progetto, m), scelta = studioFacciaScelta(m), scena = studioRegiaScena(m);
+    const a0 = analisi[0];
+    let umore = '', perche = '', parola = '';
+    if (scelta) { umore = scelta === 'neutral' ? '' : scelta; perche = 'faccia'; }
+    else if (a0.umore) { umore = a0.umore; perche = 'parole'; parola = a0.parola; }
+    else if (scena.umore) { umore = scena.umore; perche = 'scena'; parola = scena.cosa; }
+    else if (faccia && faccia !== 'neutral') { umore = faccia; perche = 'facciaPrima'; }
+    else if (a0.domanda) { umore = 'curious'; perche = 'domanda'; }
+    else if (a0.esclama >= 2) { umore = 'excited'; perche = 'esclama'; }
+    // la faccia che si vede, se non è stata scelta, può seguire la voce
+    const facciaProposta = !scelta && (perche === 'parole' || perche === 'scena') && umore !== faccia ? umore : '';
+    const perFrase = frasi.map(() => []);
+    let quanti = 0;
+    const metti = (i, tag, perche2, parola2) => {
+      if (!tag || quanti >= STUDIO_REGIA_MAX || perFrase[i].some(x => x.tag === tag)) return;
+      perFrase[i].push({ tag, frase: i, perche: perche2, parola: parola2 || '' });
+      quanti++;
+    };
+    metti(0, ELEVEN_TAG_UMORE[umore], perche, parola);
+    for (const x of (m.tono || [])) if (STUDIO_TONI.includes(x)) metti(0, x, 'tono');
+    if (scena.voce) metti(0, scena.voce, 'scena', scena.cosa);
+    // un tag vale da lì in avanti: la stessa emozione o lo stesso modo di
+    // dire non si ripete nella frase dopo («Aiuto! Scappate!» grida una volta)
+    let corrente = umore, vocePrima = [];
+    analisi.forEach((a, i) => {
+      if (i > 0 && a.umore && a.umore !== corrente) { metti(i, ELEVEN_TAG_UMORE[a.umore], 'parole', a.parola); corrente = a.umore; }
+      for (const v of a.voce) if (!vocePrima.includes(v.tag)) metti(i, v.tag, 'parole', v.parola);
+      vocePrima = a.voce.map(v => v.tag);
+    });
+    // Un tag si mette solo dove la frase comincia dopo uno spazio (o in
+    // testa): «3.5 miliardi» non è una frase nuova, e il testo detto non cambia
+    frasi.forEach((f, i) => { if (f.da > 0 && !/\s/.test(testo[f.da - 1])) perFrase[i] = []; });
+    const componi = () => {
+      let out = testo;
+      for (let i = frasi.length - 1; i >= 0; i--)
+        if (perFrase[i].length) out = out.slice(0, frasi[i].da) + perFrase[i].map(x => '[' + x.tag + ']').join(' ') + ' ' + out.slice(frasi[i].da);
+      return out;
+    };
+    let out = componi();
+    // dentro i 600 caratteri della battuta: si lasciano cadere i tag delle ultime frasi
+    for (let i = frasi.length - 1; out.length > 600 && i >= 0; i--) { perFrase[i] = []; out = componi(); }
+    return { testo: out.length > 600 ? testo : out, tag: [].concat(...perFrase), manuale: false, facciaProposta };
+  }
   // Una voce di ElevenLabs (dell'account o della libreria) nella forma dello
   // Studio. `lingua`: la lingua dell'anteprima da preferire.
   function studioVoceDaEleven(v, lingua) {
@@ -3011,34 +3146,113 @@
   // alle battute; il repository una volta sola alla fine
   // `scena`: solo le battute di quella scena (v445). Ogni battuta con la
   // voce che ha nella sua scena; anche quelle generate con un'altra voce.
+  // v471: anche queste con la regia, frase per frase (`studioRegiaBattuta`)
   async function generaMancanti(id, scena) {
     const p = studio.progetto, luogo = scena ? 'sc|' + scena.id + '|' + id : 'pg|' + id;
+    const lista = studioBattuteDa(p, { pg: id, scena: scena && scena.id }).filter(b => b.stato === 'manca' || b.stato === 'rifare');
+    if (!lista.length) { notifica(luogo, t('studio.el.nienteDaFare', { nome: nome(id) })); disegna(); return; }
+    if (lista.some(b => !studioVoceDi(p, id, b.scena))) { apriScelta(id, { luogo, scena: scena && scena.id }); return; }
+    await generaInFila(p, lista, { luogo, chi: nome(id) });
+  }
+
+  /* Le battute di un personaggio, o di tutti, in tutta la storia o in una
+   * scena (v471): dove stanno, la scena, il momento e com'è la loro voce.
+   * `stato`: 'manca' (nessuna), 'rifare' (testo, voce o intonazione
+   * cambiati dopo), 'pronta' (generata e ancora giusta), 'tua' (caricata o
+   * registrata da chi scrive: la regia automatica non la tocca di serie). */
+  function studioStatoVoce(progetto, sc, m) {
+    if (!studioVoceValida(m)) return m.audio ? 'rifare' : 'manca';
+    if (!m.audio.voce) return 'tua';
+    return studioVoceDaRifare(progetto, sc, m) ? 'rifare' : 'pronta';
+  }
+  function studioBattuteDa(progetto, { pg = '', scena = '' } = {}) {
+    const out = [];
+    ((progetto && progetto.scene) || []).forEach((sc, i) => {
+      if (scena && sc.id !== scena) return;
+      sc.momenti.forEach((m, k) => {
+        if (m.chi && testoDetto(m) && (!pg || m.chi === pg))
+          out.push({ dove: `scene.${i}.momenti.${k}`, scena: sc, i, k, m, stato: studioStatoVoce(progetto, sc, m) });
+      });
+    });
+    return out;
+  }
+  /* La regia scritta nella battuta, prima di generarla: i tag entrano nel
+   * testo (`m.testo`), come quelli messi a mano dalla v462, così si vedono
+   * fra le espressioni della battuta, si tolgono con la loro × e vanno
+   * anche nel file delle voci (`conTag`). `faccia`: se la faccia non era
+   * scelta e le parole ne dicono un'altra, la faccia segue la voce. */
+  function applicaRegia(progetto, m, { rifai = false, faccia = false } = {}) {
+    let r = studioRegiaBattuta(progetto, m, { rifai });
+    if (faccia && r.facciaProposta && !studioFacciaScelta(m)) { m.umore = r.facciaProposta; r = studioRegiaBattuta(progetto, m, { rifai }); }
+    if (!r.manuale && r.testo !== testoGrezzo(m)) m.testo = r.testo;
+    return r;
+  }
+  /* Genera una dopo l'altra le battute di `lista` (da `studioBattuteDa`),
+   * dritte alle battute senza proposta, ognuna con la voce che il suo
+   * personaggio ha nella sua scena e con la regia; il repository una volta
+   * sola alla fine. Si può fermare (`ferma()` vero): le battute già fatte
+   * restano. Le battute di chi non ha ancora una voce si saltano e si dice. */
+  async function generaInFila(p, lista, { luogo, chi, rifai = false, faccia = false, ferma = () => false }) {
     const imp = studioElevenImpostazioni();
-    const dove = [];
-    p.scene.forEach((sc, i) => { if (!scena || sc === scena) sc.momenti.forEach((m, k) => { if (m.chi === id && studioVoceDaRifare(p, sc, m)) dove.push(`scene.${i}.momenti.${k}`); }); });
-    if (!dove.length) { notifica(luogo, t('studio.el.nienteDaFare', { nome: nome(id) })); disegna(); return; }
-    const senza = dove.find(d => !studioVoceDi(p, id, scenaDi(d)));
-    if (senza) { apriScelta(id, { luogo, scena: scena && scena.id }); return; }
-    let fatte = 0;
+    const con = lista.filter(b => studioVoceDi(p, b.m.chi, b.scena));
+    const saltate = lista.length - con.length;
+    if (!con.length) { notifica(luogo, t('studio.regia.senzaVoci'), true); disegna(); return 0; }
+    let fatte = 0, fermata = false;
     await lavoro(luogo, async () => {
-      for (const d of dove) {
+      for (const b of con) {
         if (studio.progetto !== p) break;
-        notifica(luogo, t('studio.el.generoN', { nome: nome(id), n: fatte + 1, totale: dove.length }));
-        const voce = studioVoceDi(p, id, scenaDi(d));
-        const testo = studioTestoPerVoce(leggi(d), imp.modello, p);
+        if (ferma()) { fermata = true; break; }
+        const m = leggi(b.dove);
+        if (!m || m.id !== b.m.id) continue;
+        notifica(luogo, t('studio.el.generoN', { nome: chi, n: fatte + 1, totale: con.length }));
+        disegna();
+        applicaRegia(p, m, { rifai, faccia });
+        const voce = studioVoceDi(p, m.chi, b.scena);
+        const testo = studioTestoPerVoce(m, imp.modello, p);
         const file = await elevenParla(voce.id, testo, imp);
-        if (await caricaVoce(d, file, { sincronizza: false, voce: voce.id, tag: studioFirmaTag(testo) })) fatte++;
+        if (await caricaVoce(b.dove, file, { sincronizza: false, voce: voce.id, tag: studioFirmaTag(testo) })) fatte++;
       }
     });
-    if (!fatte) return;
-    const finito = t('studio.el.generate', { n: fatte, nome: nome(id) });
-    notifica(luogo, finito);
+    const errore = studio.elMsg && studio.elMsg.luogo === luogo && studio.elMsg.errore ? studio.elMsg.testo : '';
+    if (!fatte) { if (!errore) { notifica(luogo, t('studio.regia.nessunaFatta'), true); disegna(); } return 0; }
+    const finito = [errore, t(fermata ? 'studio.regia.fermate' : 'studio.el.generate', { n: fatte, nome: chi }),
+      saltate ? t('studio.regia.saltate', { n: saltate }) : ''].filter(Boolean).join(' ');
+    notifica(luogo, finito, !!errore);
     disegna();
-    if (!condivisa(p) || !studioRepoImpostazioni().token) { esito(finito + ' ' + t(condivisa(p) ? 'studio.repo.senzaToken' : 'studio.repo.audioDopo')); return; }
+    if (!condivisa(p) || !studioRepoImpostazioni().token) { esito(finito + ' ' + t(condivisa(p) ? 'studio.repo.senzaToken' : 'studio.repo.audioDopo')); return fatte; }
     esito(finito + ' ' + t('studio.repo.inCorso'));
     const msg = await aggiornaVoci({ salvata: p, chiedi: false });
     salvaPresto();
     esito(finito + ' ' + (msg ? msg + ' ' : '') + await studioSincronizza({ spingi: true, titolo: p.titolo }));
+    return fatte;
+  }
+  /* «Genera tutte le battute» (v471): il pannello con le battute di un
+   * personaggio (o di tutti quelli di una scena), ognuna con la regia
+   * proposta e il suo perché, da scegliere prima di spendere i crediti.
+   * Di serie sono scelte tutte, tranne le voci caricate o registrate da
+   * chi scrive. `pg` vuoto: tutti; `scena` vuota: tutta la storia. */
+  function apriBattute(pg, scena) {
+    const p = studio.progetto;
+    const luogo = 'bt|' + (pg || '') + '|' + (scena || '');
+    if (studio.elBattute && studio.elBattute.luogo === luogo) { studio.elBattute = null; disegna(); return; }
+    if (pg && !scena) schedeCast.set(p.id, 'voci');
+    studio.elBattute = { pg: pg || '', scena: scena || '', luogo, rifai: false, faccia: true, ferma: false,
+      tolte: studioBattuteDa(p, { pg, scena }).filter(b => b.stato === 'tua').map(b => b.m.id) };
+    studio.elScelta = null;
+    studio.elMsg = null;
+    disegna();
+    const pannello = studio.radice && studio.radice.querySelector('.studio-el-battute');
+    if (pannello && pannello.scrollIntoView) { try { pannello.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) { /* vecchi browser */ } }
+  }
+  async function generaBattute(soloDaFare) {
+    const c = studio.elBattute, p = studio.progetto;
+    if (!c) return;
+    const lista = studioBattuteDa(p, c).filter(b => soloDaFare ? b.stato === 'manca' || b.stato === 'rifare' : !c.tolte.includes(b.m.id));
+    if (!lista.length) { notifica(c.luogo, t('studio.regia.nessuna'), true); disegna(); return; }
+    c.ferma = false;
+    await generaInFila(p, lista, { luogo: c.luogo, chi: c.pg ? nome(c.pg) : t('studio.regia.tutti'), rifai: c.rifai, faccia: c.faccia,
+      ferma: () => c.ferma });
+    c.ferma = false;
   }
   // Un effetto sonoro da una descrizione (da 0,5 a 30 s; senza durata la sceglie ElevenLabs)
   async function generaSuono(dove) {
@@ -3165,6 +3379,10 @@
     const detto = t(sc ? 'studio.el.voceSceltaScena' : 'studio.el.voceScelta', { voce: v.nome, nome: nome(c.pg), n: sc ? studio.progetto.scene.indexOf(sc) + 1 : '' }) +
       (a.avviso ? ' ' + t('studio.el.avvisoAggiungi', { errore: a.avviso }) : '');
     studio.elScelta = null;
+    // v471: scelta la voce per tutta la storia, sotto si aprono le sue
+    // battute con la regia, pronte da generare tutte insieme
+    if (!sc && c.luogo === 'pg|' + c.pg && !(studio.elBattute && studio.elBattute.luogo === 'bt|' + c.pg + '|') &&
+      studioBattuteDa(studio.progetto, { pg: c.pg }).length) apriBattute(c.pg, '');
     notifica(c.luogo, detto, !!a.avviso);
     disegna();
   }
@@ -3237,7 +3455,9 @@
     // v449: il pannello delle impostazioni e la sua linguetta aperta
     impAperto: false, impScheda: 'storia',
     // v444: il pannello della chiave ElevenLabs e la scelta della voce aperta (§6c)
-    elScelta: null, elCrediti: '', elMsg: null
+    elScelta: null, elCrediti: '', elMsg: null,
+    // v471: il pannello «Genera tutte le battute» aperto (`apriBattute`)
+    elBattute: null
   };
 
   // `tocca`: è una modifica (e non solo un'apertura), quindi il progetto
@@ -3542,6 +3762,7 @@
       figurina(m.chi, faccia, 26),
       h('span', {}, t('studio.el.tonoFaccia', { faccia: nomeFaccia(m.chi, faccia) }),
         h('small', {}, ' · ' + (tagFaccia ? '[' + tagFaccia + ']' : t('studio.el.senzaTag')) + (m.umore ? '' : ' · ' + t('studio.el.facciaDaPrima'))))));
+    blocco.append(disegnaRegia(m, base));
     const toni = h('div', { class: 'studio-toni', role: 'group', 'aria-label': t('studio.el.tono') },
       h('small', { class: 'studio-tono-titolo' }, t('studio.el.tono', { n: STUDIO_TONI_MAX })));
     const scelti = m.tono || [];
@@ -3553,6 +3774,35 @@
     blocco.append(v3
       ? h('small', { class: 'studio-tono-invio' }, t('studio.el.testoInviato'), ' ', h('code', {}, studioTestoPerVoce(m, imp.modello, p)))
       : h('small', { class: 'studio-voce-stato troppo' }, t('studio.el.tonoSoloV3')));
+    return blocco;
+  }
+
+  /* La regia automatica di una battuta (v471), sopra i comandi a mano: la
+   * proposta coi tag evidenziati e il loro perché, «Metti la regia» (i tag
+   * entrano nella battuta) e «Metti e genera». Se le parole dicono
+   * un'emozione e la faccia non è scelta, «Usa questa faccia». Una battuta
+   * che ha già i suoi tag mostra la regia che si rifarebbe da capo. */
+  function disegnaRegia(m, base) {
+    const p = studio.progetto;
+    const conTag = tagNelTesto(m.testo).length > 0;
+    const r = studioRegiaBattuta(p, m, { rifai: conTag });
+    const uguale = r.testo === testoGrezzo(m);
+    const blocco = h('div', { class: 'studio-regia', role: 'group', 'aria-label': t('studio.regia.titolo') },
+      h('small', { class: 'studio-tono-titolo' }, t('studio.regia.titolo')),
+      h('small', { class: 'studio-voce-stato' }, t(conTag ? 'studio.regia.aiutoRifai' : 'studio.regia.aiutoMomento')));
+    if (r.tag.length) blocco.append(h('span', { class: 'studio-regia-proposta' }, testoConTag(r.testo)));
+    blocco.append(h('small', { class: 'studio-regia-perche' }, percheRegia(r, m, '')));
+    const tasti = h('div', { class: 'studio-riga studio-regia-tasti' });
+    if (r.facciaProposta && !studioFacciaScelta(m))
+      tasti.append(h('button', { type: 'button', class: 'studio-idea', dataset: { fai: 'umore', dove: base, valore: r.facciaProposta } },
+        t('studio.regia.usaFaccia', { faccia: nomeFaccia(m.chi, r.facciaProposta) })));
+    if (r.tag.length && !uguale) {
+      tasti.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'regiaMetti', dove: base } },
+        t(conTag ? 'studio.regia.rifai' : 'studio.regia.metti')));
+      if (studioVoceDi(p, m.chi, scenaDi(base)))
+        tasti.append(tastoLavoro('voce|' + m.id, { fai: 'regiaGenera', dove: base }, t('studio.regia.mettiGenera')));
+    } else if (r.tag.length) tasti.append(h('small', { class: 'studio-voce-stato' }, t('studio.regia.giaMessa')));
+    if (tasti.childElementCount) blocco.append(tasti);
     return blocco;
   }
 
@@ -3626,6 +3876,13 @@
     if (!parlano.length) return null;
     const blocco = h('div', { class: 'studio-voci-scena', role: 'group', 'aria-label': t('studio.el.vociScena') },
       h('span', { class: 'studio-etichetta' }, t('studio.el.vociScena')));
+    // v471: tutte le battute della scena, di chiunque le dica, con la regia
+    const tutteQui = studioBattuteDa(p, { scena: sc.id }).length;
+    const luogoTutte = 'bt||' + sc.id;
+    blocco.append(h('div', { class: 'studio-riga' },
+      h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo studio-el-tutte', dataset: { fai: 'elBattuteScena', id: '', dove: base },
+        'aria-expanded': String(!!(studio.elBattute && studio.elBattute.luogo === luogoTutte)) }, t('studio.regia.tastoScena', { n: tutteQui }))));
+    if (studio.elBattute && studio.elBattute.luogo === luogoTutte) blocco.append(disegnaBattute(studio.elBattute));
     for (const id of parlano) {
       const luogo = 'sc|' + sc.id + '|' + id;
       const sua = sc.voci && sc.voci[id];
@@ -3640,11 +3897,15 @@
       riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elScegliScena', id, dove: base },
         'aria-expanded': String(!!(studio.elScelta && studio.elScelta.luogo === luogo)) }, t(voce ? 'studio.el.cambiaQui' : 'studio.el.scegliQui')));
       if (sua) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elTornaStoria', id, dove: base } }, t('studio.el.comeStoria')));
+      const qui = sc.momenti.filter(m => m.chi === id && testoDetto(m)).length;
+      if (voce && qui) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo studio-el-tutte', dataset: { fai: 'elBattuteScena', id, dove: base },
+        'aria-expanded': String(!!(studio.elBattute && studio.elBattute.luogo === 'bt|' + id + '|' + sc.id)) }, t('studio.regia.tasto', { n: qui })));
       if (voce && mancano) riga.append(tastoLavoro(luogo, { fai: 'elMancantiScena', id, dove: base }, t('studio.el.mancanti', { n: mancano })));
       blocco.append(riga);
       const nota = notaEl(luogo);
       if (nota) blocco.append(nota);
       if (studio.elScelta && studio.elScelta.luogo === luogo) blocco.append(disegnaScelta(studio.elScelta));
+      if (studio.elBattute && studio.elBattute.luogo === 'bt|' + id + '|' + sc.id) blocco.append(disegnaBattute(studio.elBattute));
     }
     return blocco;
   }
@@ -3756,14 +4017,102 @@
       if (voce && voce.anteprima) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elAscoltaPg', id } }, t('studio.el.anteprima')));
       riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elScegli', id },
         'aria-expanded': String(!!(studio.elScelta && studio.elScelta.luogo === 'pg|' + id)) }, voce ? t('studio.el.cambia') : t('studio.el.scegli')));
+      // v471: tutte le battute del personaggio, con la regia delle emozioni
+      if (voce && battute.length) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo studio-el-tutte', dataset: { fai: 'elBattute', id },
+        'aria-expanded': String(!!(studio.elBattute && studio.elBattute.luogo === 'bt|' + id + '|')) }, t('studio.regia.tasto', { n: battute.length })));
       if (voce && mancano) riga.append(tastoLavoro('pg|' + id, { fai: 'elMancanti', id }, t('studio.el.mancanti', { n: mancano })));
       if (voce) riga.append(h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elTogliVoce', id } }, t('studio.el.togliVoce')));
       blocco.append(riga);
       const nota = notaEl('pg|' + id);
       if (nota) blocco.append(nota);
       if (studio.elScelta && studio.elScelta.luogo === 'pg|' + id) blocco.append(disegnaScelta(studio.elScelta));
+      if (studio.elBattute && studio.elBattute.luogo === 'bt|' + id + '|') blocco.append(disegnaBattute(studio.elBattute));
     }
     return blocco;
+  }
+
+  /* Il pannello «Genera tutte le battute» (v471): in cima che cosa fa e le
+   * due scelte (la faccia segue le parole; rifare la regia anche dove ci
+   * sono tag scritti a mano), poi una riga per battuta — la spunta, il
+   * volto con la faccia che avrà, dove sta, il testo che partirà coi tag
+   * evidenziati, il perché di ognuno e com'è la voce adesso — e in fondo
+   * «Genera le battute scelte», «Solo quelle da fare», «Ferma». */
+  function disegnaBattute(c) {
+    const p = studio.progetto, imp = studioElevenImpostazioni();
+    const lista = studioBattuteDa(p, c);
+    const scelte = lista.filter(b => !c.tolte.includes(b.m.id));
+    const daFare = lista.filter(b => b.stato === 'manca' || b.stato === 'rifare');
+    const iScena = c.scena ? p.scene.findIndex(x => x.id === c.scena) : -1;
+    const titolo = c.pg ? (iScena >= 0 ? t('studio.regia.titoloPgScena', { nome: nome(c.pg), n: iScena + 1 }) : t('studio.regia.titoloPg', { nome: nome(c.pg) }))
+      : t('studio.regia.titoloScena', { n: iScena + 1 });
+    const qui = elInCorso === c.luogo || elInCorso === c.luogo + '|f';
+    const box = h('div', { class: 'studio-el-battute', role: 'region', 'aria-label': titolo },
+      h('p', { class: 'studio-el-battute-titolo' }, h('strong', {}, titolo),
+        h('small', {}, ' · ' + t('studio.regia.quante', { n: lista.length, daFare: daFare.length }))),
+      h('p', { class: 'demo-opzioni-nota' }, t('studio.regia.aiuto')),
+      /^eleven_v3/.test(imp.modello) ? null : h('p', { class: 'studio-avviso' }, t('studio.regia.soloV3')),
+      h('div', { class: 'studio-riga studio-el-battute-opzioni' },
+        h('label', { class: 'studio-spunta' }, h('input', { type: 'checkbox', checked: c.faccia, dataset: { fai: 'elOpzione', valore: 'faccia' } }),
+          h('span', {}, t('studio.regia.opzFaccia'))),
+        h('label', { class: 'studio-spunta' }, h('input', { type: 'checkbox', checked: c.rifai, dataset: { fai: 'elOpzione', valore: 'rifai' } }),
+          h('span', {}, t('studio.regia.opzRifai')))));
+    const elenco = h('ol', { class: 'studio-el-battute-elenco' });
+    for (const b of lista) {
+      const r = studioRegiaBattuta(p, b.m, { rifai: c.rifai });
+      const facciaNuova = c.faccia && r.facciaProposta && !studioFacciaScelta(b.m) ? r.facciaProposta : '';
+      const prova = Object.assign({}, b.m, { testo: r.testo, umore: facciaNuova || b.m.umore });
+      const invio = studioTestoPerVoce(prova, imp.modello, p);
+      const voce = studioVoceDi(p, b.m.chi, b.scena);
+      const dentro = !c.tolte.includes(b.m.id);
+      const dove = [t('studio.regia.dove', { scena: b.i + 1, n: b.k + 1 }), c.pg ? '' : nome(b.m.chi)].filter(Boolean).join(' · ');
+      elenco.append(h('li', { class: 'studio-el-battuta' + (dentro ? '' : ' fuori') },
+        h('input', { type: 'checkbox', checked: dentro, class: 'studio-el-battuta-spunta', dataset: { fai: 'elBattutaScelta', dove: b.m.id },
+          'aria-label': t('studio.regia.includi', { testo: testoDetto(b.m).slice(0, 60) }) }),
+        figurina(b.m.chi, facciaNuova || studioFacciaParlata(p, b.m), 32),
+        h('span', { class: 'studio-el-battuta-testo' },
+          h('small', {}, dove),
+          h('span', { class: 'studio-regia-proposta' }, testoConTag(invio)),
+          h('small', { class: 'studio-regia-perche' }, percheRegia(r, b.m, facciaNuova))),
+        h('span', { class: 'studio-el-battuta-tasti' },
+          h('small', { class: 'studio-el-stato ' + (voce ? b.stato : 'senza') }, voce ? t('studio.regia.stato.' + b.stato) : t('studio.regia.senzaVoce')),
+          b.m.audio && studioVoceValida(b.m) ? h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'ascoltaVoce', dove: b.dove } }, t('studio.voce.ascolta')) : null,
+          h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'elVaiBattuta', dove: b.dove }, title: t('studio.regia.vaiAiuto') }, t('studio.regia.vai')))));
+    }
+    box.append(elenco);
+    const piede = h('div', { class: 'demo-azioni studio-el-battute-piede' },
+      tastoLavoro(c.luogo, { fai: 'elGeneraBattute' }, t('studio.regia.genera', { n: scelte.length }), t('studio.regia.generaAiuto')));
+    if (daFare.length && daFare.length !== scelte.length) piede.append(tastoLavoro(c.luogo + '|f', { fai: 'elGeneraDaFare' }, t('studio.regia.soloDaFare', { n: daFare.length })));
+    if (qui) piede.append(h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'elFermaBattute' }, disabled: c.ferma }, t(c.ferma ? 'studio.regia.fermando' : 'studio.regia.ferma')));
+    piede.append(h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'elChiudiBattute' } }, t('studio.el.chiudi')));
+    box.append(piede);
+    const nota = notaEl(c.luogo);
+    if (nota) box.append(nota);
+    return box;
+  }
+  // Il testo che parte, coi tag evidenziati (costruito col DOM: è testo di chi scrive)
+  function testoConTag(s) {
+    const box = h('span', { class: 'studio-regia-testo' });
+    for (const pezzo of String(s || '').split(/(\[[^\]\n]{1,30}\])/))
+      if (pezzo) box.append(/^\[[^\]]+\]$/.test(pezzo) ? h('span', { class: 'studio-regia-tag', title: nomeTag(pezzo.slice(1, -1)) }, pezzo) : pezzo);
+    return box;
+  }
+  // Il perché di ogni tag: «[excited] da «wow» · [laughs] da «ah ah»»
+  function percheRegia(r, m, facciaNuova) {
+    if (r.manuale) return t('studio.regia.perche.manuale');
+    const pezzi = r.tag.map(x => '[' + x.tag + '] ' + t('studio.regia.perche.' + x.perche, { parola: x.parola, faccia: nomeFaccia(m.chi, studioFacciaParlata(studio.progetto, m)) }));
+    if (facciaNuova) pezzi.push(t('studio.regia.facciaNuova', { faccia: nomeFaccia(m.chi, facciaNuova) }));
+    return pezzi.length ? pezzi.join(' · ') : t('studio.regia.nienteDaDire');
+  }
+  // Una battuta del pannello: la sua scena si apre, il momento pure, sulla linguetta della voce
+  function vaiABattuta(dove) {
+    const m = leggi(dove), sc = scenaDi(dove);
+    if (!m || !sc) return;
+    sceneAperte.add(chiaveScena(sc));
+    momentiAperti.set(chiaveScena(sc), m.id);
+    studio.schedaMomento = 'voce';
+    disegna();
+    const riga = studio.radice && [...studio.radice.querySelectorAll('[data-fai="apriMomento"]')].find(x => x.dataset.dove === dove);
+    if (riga) { try { riga.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { /* vecchi browser */ } riga.focus(); }
   }
   function disegnaScelta(c) {
     const filtri = h('div', { class: 'studio-riga studio-el-filtri' },
@@ -4393,7 +4742,7 @@
   }
   function apri(progetto) {
     for (const k of [...proposte.keys()]) togliProposta(k);
-    studio.elScelta = null; studio.elMsg = null;
+    studio.elScelta = null; studio.elMsg = null; studio.elBattute = null;
     if (registrazione) fermaRegistrazione();
     studio.progetto = progetto;
     studio.capito = null; studio.capitoScena = -1; studio.esito = ''; studio.aperta = null;
@@ -4656,6 +5005,34 @@
       case 'elTogliVoce': scegliVocePersonaggio(el.dataset.id, null); disegna(); return;
       case 'elMancanti': generaMancanti(el.dataset.id); return;
       case 'elGeneraVoce': generaVoce(dove); return;
+      // v471: «Genera tutte le battute» e la regia delle emozioni
+      case 'elBattute': apriBattute(el.dataset.id, ''); return;
+      case 'elBattuteScena': { const sc = leggi(dove); if (sc) apriBattute(el.dataset.id, sc.id); return; }
+      case 'elGeneraBattute': generaBattute(false); return;
+      case 'elGeneraDaFare': generaBattute(true); return;
+      case 'elFermaBattute': if (studio.elBattute) studio.elBattute.ferma = true; disegna(); return;
+      case 'elChiudiBattute': studio.elBattute = null; studio.elMsg = null; disegna(); return;
+      case 'elBattutaScelta': {
+        const c = studio.elBattute;
+        if (c) c.tolte = el.checked ? c.tolte.filter(x => x !== dove) : c.tolte.filter(x => x !== dove).concat(dove);
+        disegna(); return;
+      }
+      case 'elOpzione': {
+        const c = studio.elBattute;
+        if (c && (el.dataset.valore === 'rifai' || el.dataset.valore === 'faccia')) c[el.dataset.valore] = !!el.checked;
+        disegna(); return;
+      }
+      case 'elVaiBattuta': vaiABattuta(dove); return;
+      case 'regiaMetti': { const m = leggi(dove); if (!m) return; applicaRegia(p, m, { rifai: true }); studio.cursore = null; break; }
+      case 'regiaGenera': {
+        const m = leggi(dove);
+        if (!m) return;
+        applicaRegia(p, m, { rifai: true });
+        studio.cursore = null;
+        salvaPresto();
+        generaVoce(dove);
+        return;
+      }
       case 'elSuono': generaSuono(dove); return;
       case 'elMusica': generaMusica(dove); return;
       case 'elAscoltaProposta': { const x = proposte.get(dove); if (x) suonaAnteprima(x.url, dove.startsWith('musica|') ? 0.6 : undefined); return; }
@@ -5062,6 +5439,9 @@
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
     caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag, primaFrase: studioPrimaFrase,
+    // v471: la regia delle emozioni e «Genera tutte le battute»
+    regia: studioRegiaBattuta, frasi: studioFrasi, battuteDa: studioBattuteDa, statoVoce: studioStatoVoce, facciaScelta: studioFacciaScelta,
+    STUDIO_REGIA_VOCE, STUDIO_REGIA_MAX,
     ufficiali: studioUfficiali, apriProgetto: studioApriProgetto, apriDaStoria: studioApriDaStoria,
     apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()

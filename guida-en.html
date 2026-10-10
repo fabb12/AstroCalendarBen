@@ -1531,7 +1531,14 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       With ElevenLabs the line is generated with the right <b>intonation</b>: the emotion is the face the
       character has while speaking (even one left over from before), and in “Voice and length” you can add how
       it says it (whispers, shouts, laughs…); below you can read the exact text that is sent, tags
-      included.</dd></div>
+      included. The <b>emotion direction</b> writes the tags by itself, sentence by sentence: the emotion from
+      the face, from the words (“Oh no” → nervous) and from what happens in the scene (an explosion makes them
+      gasp), and laughs, sighs, whispers or shouts where the words ask for them; “Apply the direction” writes
+      them into the line, “Apply and generate” generates it straight away. Once a character’s voice is chosen,
+      <b>Generate all lines</b> opens the list of their lines, each with the proposed direction and its reason:
+      untick the ones to leave as they are (voices you uploaded or recorded are already out), then “Generate the
+      chosen lines”; “Stop” stops after the one in progress. The same button is in each scene’s voices, for one
+      character or for everyone.</dd></div>
       <div><dt>The commands</dt><dd><code>character_show { target: 'Moon', expression: 'worried' }</code> makes a
       character appear in the scene; <code>character_speak { target: 'Moon', id: '…' }</code> (or <code>text: '…'</code>)
       makes it say the scene's line; <code>character_expression</code>, <code>character_look_at</code>,

@@ -2337,6 +2337,87 @@ prova('le facce nuove (v462): ognuna col nome, la fisica, le parole e l\'emozion
   assert.equal(St.umoreDalTesto('Non capisco proprio.'), 'confused');
 });
 
+gruppo('La regia delle emozioni e «Genera tutte le battute» (v471)');
+
+prova('la regia frase per frase: faccia, parole, scena, suoni; il testo detto non cambia', () => {
+  lingua = 'it';
+  const m = St.nuovoMomento({ chi: 'Moon', testo: 'Che bello, siamo arrivati! Oh no… il motore si è spento.' });
+  const p = St.nuovoProgetto({ cast: ['Moon'], scene: [St.nuovaScena({ ambiente: 'terra_luna', presenti: ['Moon'], momenti: [m] })] });
+  // la faccia non scelta: l'emozione dalle parole, e la faccia può seguirla
+  let r = St.regia(p, m);
+  assert.equal(r.testo, '[excited] Che bello, siamo arrivati! [nervous] [gasps] Oh no… il motore si è spento.');
+  assert.equal(r.facciaProposta, 'excited');
+  assert.deepEqual(r.tag.map(x => x.perche), ['parole', 'parole', 'parole']);
+  assert.equal(St.senzaTag(r.testo), St.senzaTag(m.testo));
+  // la faccia scelta vince nella prima frase; il tono si aggiunge lì
+  m.umore = 'happy'; m.tono = ['whispers'];
+  r = St.regia(p, m);
+  assert.match(r.testo, /^\[happy\] \[whispers\] Che bello, siamo arrivati! \[nervous\] \[gasps\] Oh no/);
+  assert.equal(r.facciaProposta, '');
+  // risate, sussurri, esitazioni; un grido solo col punto esclamativo, e non ripetuto
+  m.umore = ''; m.tono = [];
+  m.testo = 'Psst, ti dico un segreto. Ah ah, ci sei cascato!';
+  assert.equal(St.regia(p, m).testo, '[mysteriously] [whispers] Psst, ti dico un segreto. [laughs] Ah ah, ci sei cascato!');
+  m.testo = 'Aiuto! Scappate tutti!';
+  assert.equal(St.regia(p, m).testo, '[nervous] [shouts] Aiuto! Scappate tutti!');
+  m.testo = 'Aiuto, dice la Luna.';
+  assert.doesNotMatch(St.regia(p, m).testo, /shouts/);
+  m.testo = 'Ehm... non so. Forse domani?';
+  assert.equal(St.regia(p, m).testo, '[hesitates] Ehm... non so. [thoughtful] Forse domani?');
+  // una domanda senza altri indizi è curiosa
+  m.testo = 'E tu da dove mi guardi?';
+  assert.equal(St.regia(p, m).testo, '[curious] E tu da dove mi guardi?');
+  // quello che succede in scena: un'esplosione all'inizio fa trasalire
+  m.testo = 'Guarda là!';
+  m.azioni = [St.nuovaAzione('effetto', { effetto: 'explosion', quando: 'inizio' })];
+  r = St.regia(p, m);
+  assert.equal(r.testo, '[surprised] [gasps] Guarda là!');
+  assert.equal(r.tag[0].perche, 'scena');
+  m.azioni[0].quando = 'fine';
+  assert.doesNotMatch(St.regia(p, m).testo, /gasps/);
+  m.azioni = [];
+  // «3.5» non è una frase nuova: nessun tag in mezzo al numero
+  m.testo = 'Sono lontana 3.5 secondi luce. Uffa, che noia.';
+  r = St.regia(p, m);
+  assert.equal(St.senzaTag(r.testo), m.testo);
+  assert.doesNotMatch(r.testo, /3\.\s*\[/);
+  // i tag scritti a mano vincono, salvo «rifai»
+  m.testo = '[sad] Già fatto. Evviva!';
+  assert.equal(St.regia(p, m).manuale, true);
+  assert.equal(St.regia(p, m).testo, '[sad] Già fatto. Evviva!');
+  assert.equal(St.regia(p, m, { rifai: true }).testo, 'Già fatto. [happy] [shouts] Evviva!');
+  // mai più di STUDIO_REGIA_MAX tag, e una battuta lunga resta nei 600 caratteri
+  m.testo = Array.from({ length: 12 }, (_, i) => i % 2 ? 'Ah ah, che ridere!' : 'Oh no, che paura!').join(' ');
+  assert.ok(St.regia(p, m).tag.length <= St.STUDIO_REGIA_MAX);
+  m.testo = ('Che bello! Oh no! '.repeat(40)).trim().slice(0, 590);
+  assert.ok(St.regia(p, m).testo.length <= 600);
+  // ogni suono della regia ha le sue parole nelle due lingue, e un nome
+  for (const x of St.STUDIO_REGIA_VOCE) for (const l of ['it', 'en']) {
+    assert.equal(typeof DIZ[l].messaggi['studio.parole.regia.' + x], 'string', x + ' ' + l);
+    assert.equal(typeof DIZ[l].messaggi['studio.el.tag.' + x], 'string', x + ' nome ' + l);
+  }
+});
+
+prova('le battute da generare: di un personaggio o di una scena, con lo stato della voce', () => {
+  const a = St.nuovoMomento({ chi: 'Moon', testo: 'Ciao!' });
+  const b = St.nuovoMomento({ chi: 'Earth', testo: 'Ciao Luna!' });
+  const c = St.nuovoMomento({ chi: 'Moon', testo: 'Che bello!' });
+  const s1 = St.nuovaScena({ presenti: ['Moon', 'Earth'], momenti: [a, b] }), s2 = St.nuovaScena({ presenti: ['Moon'], momenti: [c, St.nuovoMomento({ chi: 'Moon', testo: '' })] });
+  const p = St.nuovoProgetto({ cast: ['Moon', 'Earth'], scene: [s1, s2] });
+  assert.deepEqual(St.battuteDa(p, { pg: 'Moon' }).map(x => x.dove), ['scene.0.momenti.0', 'scene.1.momenti.0']);
+  assert.deepEqual(St.battuteDa(p, { scena: s1.id }).map(x => x.m.chi), ['Moon', 'Earth']);
+  assert.equal(St.battuteDa(p, { pg: 'Moon', scena: s2.id }).length, 1);
+  assert.equal(St.statoVoce(p, s1, a), 'manca');
+  // caricata da chi scrive: «tua»; generata con ElevenLabs: «pronta»; testo cambiato: «rifare»
+  a.audio = { durata: 1000, impronta: St.impronta('Ciao!'), nome: 'x' };
+  assert.equal(St.statoVoce(p, s1, a), 'tua');
+  a.audio.voce = 'VoceProva0001'; a.audio.tag = St.firmaTag(St.testoPerVoce(a, 'eleven_v3', p));
+  p.voci = { Moon: { id: 'VoceProva0001', nome: 'Prova' } };
+  assert.equal(St.statoVoce(p, s1, a), 'pronta');
+  a.testo = 'Ciao a tutti!';
+  assert.equal(St.statoVoce(p, s1, a), 'rifare');
+});
+
 prova('il pilota dice le battute del soggetto, e chiude con quella giusta', () => {
   const t = k => DIZ.it.messaggi[k];
   assert.match(t('demo.narr.storia_luna.1'), /pezzo/);
