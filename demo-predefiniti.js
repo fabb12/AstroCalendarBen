@@ -1905,6 +1905,369 @@
     action: character_sing { target: 'sagan', with: 'Earth,Sun,voyager1,voyager2', id: 'storie.canzone.puntino.68', voice: '0000000000034455566566666666666676667667666466666776777677776888888889999998889999999999888898878878888888888888788887887888888888888999998999888889998988888888888888888988888878798888888886788888888898999899999999988888888877677', shot_from: 0.4435, shot_to: 0.84 };
   }
 }`
+    },
+    {
+      chiave: 'storia_einstein',
+      storia: true,
+      cast: 'einstein,astro_ben,Sun,Earth,Mercury,iss,cristoforetti,sgr_a,gargantua,hawking',
+      testo: `define_demo 'storia_einstein' {
+  // «Einstein e il tempo elastico» (v469). Astro Ben, il bambino
+  // astronauta, ha visto «Interstellar» e chiede ad Albert Einstein se è vero
+  // che un'ora può valere sette anni. Einstein glielo spiega a passi, con
+  // l'effetto spacetime (il telo che sprofonda): la gravità come curva
+  // (il Sole, la Terra, la frase di Wheeler), le prove (Mercurio, 43″ al
+  // secolo; l'eclissi del 1919), il tempo che rallenta vicino a una massa
+  // (la domanda a chi guarda: montagna o mare?, il GPS, i millesimi di
+  // Samantha Cristoforetti sulla Stazione), poi il buco nero vero al centro
+  // della Galassia (Sagittario A*, orizzonte degli eventi, il tempo che si
+  // ferma visto da fuori), Gargantua del film (Kip Thorne, il pianeta di
+  // Miller, Cooper e Murph), LIGO 2015 e la foto del 2022, e un saluto di
+  // Stephen Hawking. Si parte e si torna nel cielo di Roma la sera del 16
+  // ottobre 2026, verso il Sagittario, dove sta il centro della Galassia.
+  scene planetarium_view {
+    // Il cielo di Roma, verso il Sagittario: là in basso, oltre le stelle,
+    // c'è il buco nero al centro della Galassia che si andrà a trovare
+    duration: 17s;
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2026-10-16T18:45:00Z' };
+    action: point_view { az: 218, alt: 16 };
+    action: zoom_fov { from: 75, to: 48 };
+    action: story_title { id: 'storie.titolo.einstein', shot_to: 0.3 };
+    action: character_show { target: 'einstein', expression: 'thinking', at: left };
+    action: character_show { target: 'astro_ben', expression: 'excited', at: right, look: 'einstein' };
+    action: character_animate { target: 'astro_ben', animation: jump, times: 2, shot_from: 0.3 };
+    action: character_look_at { target: 'einstein', object: 'astro_ben' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.1', shot_from: 0.3 };
+  }
+  scene planetarium_view {
+    duration: 14s;
+    action: set_fov { degrees: 48 };
+    action: point_view { az: 218, alt: 16 };
+    action: character_show { target: 'einstein', expression: 'playful', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: right, look: 'einstein' };
+    action: character_expression { target: 'einstein', expression: 'wonder', shot_from: 0.55 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.2' };
+  }
+  scene transition {
+    duration: 18s;
+    action: zoom_view { type: geometric, final_target: solar_system_3d };
+    action: date_card { label: 'demo.cartello.storia_einstein.relativita' };
+    action: character_show { target: 'einstein', expression: 'thinking', at: left };
+    action: character_show { target: 'astro_ben', expression: 'surprised', at: right, look: 'einstein' };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.3' };
+  }
+  scene solar_system_3d {
+    // Il telo elastico: la griglia sprofonda attorno al Sole e una biglia
+    // (la Terra) ci gira dentro, seguendo la curva
+    duration: 19s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 40, elev_from: 34, elev_to: 48, zoom_from: 1.6, zoom_to: 2.1 };
+    action: character_show { target: 'einstein', expression: 'happy', at: left, look: 'Sun' };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: right, look: 'Sun' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'Earth', expression: 'happy', look: 'Sun' };
+    action: effect { type: spacetime, target: 'Sun', duration: 18, shot_from: 0.12 };
+    action: character_expression { target: 'astro_ben', expression: 'wonder', shot_from: 0.6 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.4' };
+  }
+  scene solar_system_3d {
+    duration: 7s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 10, orbit_from: 40, elev_from: 48, elev_to: 46, zoom_from: 2.1, zoom_to: 2.15 };
+    action: character_show { target: 'einstein', expression: 'happy', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'excited', at: right };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'Earth', expression: 'laughing', look: 'Sun' };
+    action: character_animate { target: 'astro_ben', animation: bounce, times: 2 };
+    action: effect { type: sparkles, target: 'Earth', shot_from: 0.1 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.5' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 20, orbit_from: 50, elev_from: 46, elev_to: 40, zoom_from: 2.15, zoom_to: 2.2 };
+    action: character_show { target: 'einstein', expression: 'laughing', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: right, look: 'einstein' };
+    action: character_show { target: 'Sun', expression: 'happy' };
+    action: character_show { target: 'Earth', expression: 'happy', look: 'Sun' };
+    action: character_expression { target: 'einstein', expression: 'proud', shot_from: 0.35 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.6' };
+  }
+  scene solar_system_3d {
+    duration: 20s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Mercury', orbit: 60, elev_from: 30, elev_to: 55, zoom_from: 1.4, zoom_to: 2 };
+    action: date_card { label: 'demo.cartello.storia_einstein.mercurio' };
+    action: character_show { target: 'einstein', expression: 'proud', at: left, look: 'Mercury' };
+    action: character_show { target: 'Mercury', expression: 'surprised', look: 'einstein' };
+    action: character_show { target: 'Sun', expression: 'thinking', look: 'Mercury' };
+    action: effect { type: spacetime, target: 'Sun', size: 0.8, duration: 16, shot_from: 0.3 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.7' };
+  }
+  scene solar_system_3d {
+    duration: 13s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Mercury', orbit: 25, orbit_from: 60, elev_from: 55, elev_to: 50, zoom_from: 2, zoom_to: 2.2 };
+    action: character_show { target: 'einstein', expression: 'laughing', at: left, look: 'Mercury' };
+    action: character_show { target: 'Mercury', expression: 'relieved' };
+    action: character_show { target: 'Sun', expression: 'happy', look: 'Mercury' };
+    action: character_animate { target: 'Mercury', animation: dance, times: 2, shot_from: 0.2 };
+    action: effect { type: confetti, target: 'Mercury', shot_from: 0.15 };
+    action: character_speak { target: 'Mercury', id: 'demo.narr.storia_einstein.8' };
+  }
+  scene solar_system_3d {
+    duration: 17s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 30, elev_from: 20, elev_to: 14, zoom_from: 2.4, zoom_to: 3 };
+    action: date_card { label: 'demo.cartello.storia_einstein.eclissi' };
+    action: character_show { target: 'einstein', expression: 'determined', at: left, look: 'Sun' };
+    action: character_show { target: 'Sun', expression: 'surprised' };
+    action: effect { type: glow, target: 'Sun', duration: 10, shot_from: 0.1 };
+    action: effect { type: shooting_star, at: right, shot_from: 0.4 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.9' };
+  }
+  scene solar_system_3d {
+    duration: 7s;
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Earth', orbit: 15, orbit_from: 30, elev_from: 14, elev_to: 12, zoom_from: 3, zoom_to: 3.2 };
+    action: character_show { target: 'einstein', expression: 'happy', at: left, look: 'Sun' };
+    action: character_show { target: 'Sun', expression: 'excited' };
+    action: character_animate { target: 'Sun', animation: pulse, times: 2, shot_from: 0.1 };
+    action: effect { type: sparkles, target: 'Sun', shot_from: 0.1 };
+    action: character_speak { target: 'Sun', id: 'demo.narr.storia_einstein.10' };
+  }
+  scene solar_system_3d {
+    duration: 14s;
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: -25, elev_from: 20, elev_to: 12, zoom_from: 1.2, zoom_to: 1.7 };
+    action: character_show { target: 'einstein', expression: 'mysterious', at: left, look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'surprised', at: right, look: 'einstein' };
+    action: character_show { target: 'Earth', expression: 'surprised' };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.11' };
+  }
+  scene solar_system_3d {
+    duration: 5s;
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: -15, orbit_from: -25, elev_from: 12, elev_to: 10, zoom_from: 1.7, zoom_to: 1.8 };
+    action: character_show { target: 'einstein', expression: 'mysterious', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: right, look: 'einstein' };
+    action: character_show { target: 'Earth', expression: 'curious' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.12' };
+  }
+  scene solar_system_3d {
+    // La domanda a chi guarda: montagna o mare?
+    duration: 17s;
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: -20, orbit_from: -40, elev_from: 10, elev_to: 16, zoom_from: 1.8, zoom_to: 2.1 };
+    action: character_show { target: 'einstein', expression: 'playful', at: left, look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'thinking', at: right };
+    action: character_show { target: 'Earth', expression: 'thinking' };
+    action: effect { type: sparkles, target: 'einstein', shot_from: 0.1 };
+    action: character_expression { target: 'astro_ben', expression: 'curious', shot_from: 0.8 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.13' };
+  }
+  scene solar_system_3d {
+    duration: 11s;
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: 20, orbit_from: -8, elev_from: 16, elev_to: 22, zoom_from: 2.1, zoom_to: 1.9 };
+    action: character_show { target: 'einstein', expression: 'impressed', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'excited', at: right };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: effect { type: spacetime, target: 'Earth', size: 0.6, color: '#93c5fd', duration: 12, shot_from: 0.2 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.14' };
+  }
+  scene solar_system_3d {
+    duration: 17s;
+    action: camera_3d { scene: system, focus: 'Earth', sun_az: 70, orbit: 20, orbit_from: 12, elev_from: 22, elev_to: 26, zoom_from: 1.9, zoom_to: 1.6 };
+    action: date_card { label: 'demo.cartello.storia_einstein.gps' };
+    action: character_show { target: 'einstein', expression: 'proud', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'impressed', at: right, look: 'einstein' };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.15' };
+  }
+  scene solar_system_3d {
+    // Sulla Stazione: corre a 7,7 km/s e il suo tempo va un poco più piano
+    // (lassù la velocità conta più della gravità, che è appena più debole)
+    duration: 8s;
+    action: camera_3d { scene: system, focus: 'ISS', orbit: 25, elev_from: 15, elev_to: 22, zoom_from: 0.8, zoom_to: 0.95 };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: left, look: 'cristoforetti' };
+    action: character_show { target: 'cristoforetti', expression: 'happy', at: right, look: 'astro_ben' };
+    action: character_show { target: 'iss', expression: 'happy' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.16' };
+  }
+  scene solar_system_3d {
+    duration: 15s;
+    action: camera_3d { scene: system, focus: 'ISS', orbit: 30, orbit_from: 25, elev_from: 22, elev_to: 32, zoom_from: 0.95, zoom_to: 1.1 };
+    action: character_show { target: 'astro_ben', expression: 'surprised', at: left, look: 'cristoforetti' };
+    action: character_show { target: 'cristoforetti', expression: 'playful', at: right, look: 'viewer' };
+    action: character_show { target: 'iss', expression: 'excited' };
+    action: character_animate { target: 'iss', animation: spin, times: 1, shot_from: 0.3 };
+    action: character_speak { target: 'cristoforetti', id: 'demo.narr.storia_einstein.17' };
+  }
+  scene solar_system_3d {
+    duration: 8s;
+    action: camera_3d { scene: system, focus: 'ISS', orbit: 25, orbit_from: 55, elev_from: 32, elev_to: 40, zoom_from: 1.1, zoom_to: 1.2 };
+    action: character_show { target: 'astro_ben', expression: 'laughing', at: left };
+    action: character_show { target: 'cristoforetti', expression: 'laughing', at: right, look: 'astro_ben' };
+    action: character_show { target: 'iss', expression: 'laughing' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.18' };
+  }
+  scene solar_system_3d {
+    // Dalla Terra al centro della Galassia, alla misura vera
+    duration: 18s;
+    action: cosmic_scale { from: 'arrival', to: 'milky_way', orbit: 25, elev_from: 40, elev_to: 60 };
+    action: character_show { target: 'einstein', expression: 'mysterious', at: left };
+    action: character_show { target: 'astro_ben', expression: 'scared', at: right, look: 'einstein' };
+    action: character_expression { target: 'astro_ben', expression: 'excited', shot_from: 0.7 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.19' };
+  }
+  scene solar_system_3d {
+    // Il pozzo senza fondo: lo stesso telo, molto più profondo
+    duration: 13s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 12, elev_from: 60, elev_to: 64 };
+    action: date_card { label: 'demo.cartello.storia_einstein.buco' };
+    action: character_show { target: 'einstein', expression: 'wonder', at: left, look: 'sgr_a' };
+    action: character_show { target: 'astro_ben', expression: 'surprised', at: right, look: 'sgr_a' };
+    action: character_show { target: 'sgr_a', expression: 'happy' };
+    action: effect { type: spacetime, target: 'sgr_a', size: 1.6, color: '#c4b5fd', duration: 20, shot_from: 0.05 };
+    action: character_speak { target: 'sgr_a', id: 'demo.narr.storia_einstein.20' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 64, elev_to: 66 };
+    action: character_show { target: 'einstein', expression: 'thinking', at: left, look: 'sgr_a' };
+    action: character_show { target: 'astro_ben', expression: 'worried', at: right, look: 'sgr_a' };
+    action: character_show { target: 'sgr_a', expression: 'mysterious' };
+    action: effect { type: glow, target: 'sgr_a', color: '#fb923c', duration: 6, shot_from: 0.3 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.21' };
+  }
+  scene solar_system_3d {
+    duration: 5s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 5, elev_from: 66, elev_to: 67 };
+    action: character_show { target: 'einstein', expression: 'mysterious', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: right, look: 'einstein' };
+    action: character_show { target: 'sgr_a', expression: 'thinking' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.22' };
+  }
+  scene solar_system_3d {
+    duration: 19s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 67, elev_to: 68 };
+    action: character_show { target: 'einstein', expression: 'mysterious', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'scared', at: right, look: 'sgr_a' };
+    action: character_show { target: 'sgr_a', expression: 'thinking' };
+    action: effect { type: spacetime, target: 'sgr_a', size: 1.8, color: '#c4b5fd', duration: 14, shot_from: 0.1 };
+    action: character_animate { target: 'astro_ben', animation: shake, times: 2, strength: 0.6, shot_from: 0.6 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.23' };
+  }
+  scene solar_system_3d {
+    // Gargantua è un'idea (il film): galleggia davanti alla carta
+    duration: 20s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 68, elev_to: 68 };
+    action: date_card { label: 'demo.cartello.storia_einstein.interstellar' };
+    action: character_show { target: 'einstein', expression: 'excited', at: left, look: 'gargantua' };
+    action: character_show { target: 'gargantua', expression: 'mysterious' };
+    action: effect { type: flash, target: 'gargantua', shot_from: 0.03 };
+    action: effect { type: glow, target: 'gargantua', color: '#fde68a', duration: 10, shot_from: 0.1 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.24' };
+  }
+  scene solar_system_3d {
+    duration: 11s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 5, elev_from: 68, elev_to: 67 };
+    action: character_show { target: 'einstein', expression: 'impressed', at: left, look: 'gargantua' };
+    action: character_show { target: 'gargantua', expression: 'playful', look: 'einstein' };
+    action: character_animate { target: 'gargantua', animation: spin, times: 2, shot_from: 0.4 };
+    action: character_speak { target: 'gargantua', id: 'demo.narr.storia_einstein.25' };
+  }
+  scene solar_system_3d {
+    duration: 17s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 6, elev_from: 67, elev_to: 66 };
+    action: character_show { target: 'einstein', expression: 'wistful', at: left, look: 'gargantua' };
+    action: character_show { target: 'astro_ben', expression: 'sad', at: bottom, look: 'einstein' };
+    action: character_show { target: 'gargantua', expression: 'mysterious' };
+    action: effect { type: spacetime, target: 'gargantua', size: 1.4, color: '#fde68a', duration: 20, shot_from: 0.05 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.26' };
+  }
+  scene solar_system_3d {
+    duration: 6s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 4, elev_from: 66, elev_to: 66 };
+    action: character_show { target: 'einstein', expression: 'tender', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'wonder', at: bottom };
+    action: character_show { target: 'gargantua', expression: 'mysterious' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.27' };
+  }
+  scene solar_system_3d {
+    duration: 22s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 6, elev_from: 66, elev_to: 64 };
+    action: character_show { target: 'einstein', expression: 'laughing', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'laughing', at: bottom };
+    action: character_show { target: 'gargantua', expression: 'playful' };
+    action: character_expression { target: 'einstein', expression: 'playful', shot_from: 0.6 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.28' };
+  }
+  scene solar_system_3d {
+    duration: 18s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 10, elev_from: 64, elev_to: 61 };
+    action: date_card { label: 'demo.cartello.storia_einstein.ligo' };
+    action: character_show { target: 'einstein', expression: 'proud', at: left, look: 'sgr_a' };
+    action: character_show { target: 'astro_ben', expression: 'impressed', at: right, look: 'einstein' };
+    action: character_show { target: 'sgr_a', expression: 'happy' };
+    action: effect { type: shockwave, target: 'sgr_a', size: 2, color: '#c4b5fd', shot_from: 0.25 };
+    action: effect { type: shockwave, target: 'sgr_a', size: 2.6, color: '#a5b4fc', shot_from: 0.4 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.29' };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 6, elev_from: 61, elev_to: 60 };
+    action: character_show { target: 'einstein', expression: 'happy', at: left, look: 'sgr_a' };
+    action: character_show { target: 'astro_ben', expression: 'laughing', at: right, look: 'sgr_a' };
+    action: character_show { target: 'sgr_a', expression: 'proud' };
+    action: effect { type: flash, at: center, shot_from: 0.1 };
+    action: character_speak { target: 'sgr_a', id: 'demo.narr.storia_einstein.30' };
+  }
+  scene solar_system_3d {
+    // Un saluto di Stephen Hawking: la radiazione dei buchi neri (1974)
+    duration: 16s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 8, elev_from: 60, elev_to: 62 };
+    action: character_show { target: 'einstein', expression: 'surprised', at: left, look: 'hawking' };
+    action: character_show { target: 'hawking', expression: 'playful', at: right, look: 'einstein' };
+    action: character_show { target: 'sgr_a', expression: 'surprised', look: 'hawking' };
+    action: effect { type: glow, target: 'sgr_a', color: '#a78bfa', duration: 8, shot_from: 0.4 };
+    action: character_speak { target: 'hawking', id: 'demo.narr.storia_einstein.31' };
+  }
+  scene solar_system_3d {
+    duration: 9s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 5, elev_from: 62, elev_to: 63 };
+    action: character_show { target: 'einstein', expression: 'laughing', at: left, look: 'hawking' };
+    action: character_show { target: 'hawking', expression: 'happy', at: right, look: 'einstein' };
+    action: character_show { target: 'sgr_a', expression: 'happy' };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.32' };
+  }
+  scene solar_system_3d {
+    // Il ritorno in un fiato, fino alla Terra che riempie lo schermo
+    duration: 9s;
+    action: cosmic_scale { from: 'milky_way', to: 'landing', ease: smooth, orbit: -40, elev_from: 63, elev_to: 90 };
+    action: character_show { target: 'einstein', expression: 'happy', at: left };
+    action: character_show { target: 'astro_ben', expression: 'excited', at: right };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.33' };
+  }
+  scene transition {
+    duration: 9s;
+    action: zoom_view { type: geometric, final_target: planetarium_view };
+    action: character_show { target: 'einstein', expression: 'tender', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: right };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.34' };
+  }
+  scene planetarium_view {
+    // Di nuovo sotto lo stesso cielo, e una risposta da Einstein
+    duration: 6s;
+    action: set_date { iso: '2026-10-16T18:45:00Z' };
+    action: point_view { az: 218, alt: 16 };
+    action: zoom_fov { from: 60, to: 48 };
+    action: date_card { label: 'demo.cartello.storia_einstein.casa', time: show, place: show };
+    action: character_show { target: 'einstein', expression: 'playful', at: left, look: 'astro_ben' };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: right, look: 'einstein' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.storia_einstein.35' };
+  }
+  scene planetarium_view {
+    duration: 8s;
+    action: set_fov { degrees: 48 };
+    action: point_view { az: 218, alt: 16 };
+    action: character_show { target: 'einstein', expression: 'laughing', at: left, look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'laughing', at: right, look: 'einstein' };
+    action: effect { type: fireworks, at: center, shot_from: 0.2 };
+    action: character_animate { target: 'astro_ben', animation: jump, times: 2, shot_from: 0.3 };
+    action: character_speak { target: 'einstein', id: 'demo.narr.storia_einstein.36' };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

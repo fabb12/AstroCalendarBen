@@ -543,6 +543,13 @@
       voce: { ritmo: '8%', tono: '20Hz' }, espressione: 'happy', personalita: 'sirius_b' },
     sgr_a: { famiglia: 'buco', genere: 'm', nome: 'storie.nome.sgr_a', cosmo: 'galactic_center', alias: ['Sagittario A*', 'Sagittarius A*', 'Sgr A*'],
       baffi: 'spioventi', peli: '#e9d5ff', personalita: 'sgr_a' },
+    /* Gargantua (v469), il buco nero di «Interstellar» (2014): inventato per
+     * il film, ma disegnato con le equazioni vere da Kip Thorne. È un'idea
+     * come il buco bianco (`cosmo: 'idea'`): galleggia davanti alla carta
+     * della scala cosmica. Il disco è dorato e chiaro come nel film. */
+    gargantua: { famiglia: 'buco', genere: 'm', nome: 'storie.nome.gargantua', cosmo: 'idea', alias: ['Gargantua'],
+      pelle: '#1a1033', disco: '#fde68a', iride: '#f59e0b', sottotitolo: '#fde68a', guance: '#fb923c',
+      voce: { ritmo: '-16%', tono: '-22Hz' }, espressione: 'mysterious', personalita: 'gargantua' },
     white_hole: { famiglia: 'buco', genere: 'm', sagoma: 'buco_bianco', nome: 'storie.nome.white_hole', cosmo: 'idea', alias: ['Buco bianco', 'White hole'],
       pelle: '#f8fafc', iride: '#0891b2', sottotitolo: '#a5f3fc', guance: '#a5f3fc',
       voce: { ritmo: '12%', tono: '16Hz' }, espressione: 'excited', personalita: 'white_hole' },
@@ -559,10 +566,95 @@
     sagan: { famiglia: 'persona', genere: 'm', sagoma: 'sagan', nome: 'storie.nome.sagan', ospite: true, alias: ['Carl Sagan', 'Sagan'],
       pelle: '#eaa676', iride: '#6b4423', sottotitolo: '#fca5a5', guance: '#f08c74', peli: '#3a2010',
       scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
-      voce: { ritmo: '-6%', tono: '-8Hz' }, espressione: 'happy', personalita: 'sagan' }
+      voce: { ritmo: '-6%', tono: '-8Hz' }, espressione: 'happy', personalita: 'sagan' },
+    /* Chi racconta il cielo (v469), chiesti da chi usa l'app dopo Sagan:
+     * ospiti come lui, col corpo `persona` vestito dalla loro `figura`
+     * (§6-quater, `disegnaPersona`). In ordine di tempo, dai Greci agli
+     * astronauti; Astro Ben è il bambino astronauta che fa le domande. */
+    pythagoras: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.pythagoras', ospite: true, alias: ['Pitagora', 'Pythagoras'],
+      pelle: '#d9a36f', iride: '#4a3420', sottotitolo: '#fde68a', guance: '#e88e6e', peli: '#e7e5e4', barba: 'folta',
+      figura: { capelli: 'lunghi', chioma: '#e7e5e4', copricapo: 'fascia', veste: 'toga', colori: ['#f5efe0', '#b45309', '#f8fafc'], barbaLunga: true, segni: { rughe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-8%', tono: '-10Hz' }, espressione: 'thinking', personalita: 'pythagoras' },
+    plato: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.plato', ospite: true, alias: ['Platone', 'Plato'],
+      pelle: '#dca878', iride: '#4a3420', sottotitolo: '#ddd6fe', guance: '#e88e6e', peli: '#f1f5f9', barba: 'folta',
+      figura: { capelli: 'corona', chioma: '#f1f5f9', veste: 'toga', colori: ['#c4b5fd', '#b91c1c'], barbaLunga: true, segni: { rughe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-10%', tono: '-12Hz' }, espressione: 'thinking', personalita: 'plato' },
+    aristotle: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.aristotle', ospite: true, alias: ['Aristotele', 'Aristotle'],
+      pelle: '#d9a36f', iride: '#3f2a17', sottotitolo: '#bfdbfe', guance: '#e88e6e', peli: '#6b4a2b', barba: 'folta',
+      figura: { capelli: 'ricci', chioma: '#6b4a2b', veste: 'toga', colori: ['#93c5fd', '#7c4a1e'], segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-8Hz' }, espressione: 'skeptical', personalita: 'aristotle' },
+    eratosthenes: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.eratosthenes', ospite: true, alias: ['Eratostene', 'Eratosthenes'],
+      pelle: '#c98e5e', iride: '#3f2a17', sottotitolo: '#bbf7d0', guance: '#e07a5f', peli: '#3b2a1a', barba: 'folta',
+      figura: { capelli: 'ricci', chioma: '#3b2a1a', veste: 'toga', colori: ['#f5efe0', '#15803d'], segni: { zampe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '0%', tono: '-6Hz' }, espressione: 'happy', personalita: 'eratosthenes' },
+    archimedes: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.archimedes', ospite: true, alias: ['Archimede', 'Archimedes'],
+      pelle: '#d9a36f', iride: '#4a3420', sottotitolo: '#fed7aa', guance: '#e88e6e', peli: '#d6d3d1', barba: 'folta',
+      figura: { capelli: 'corona', chioma: '#d6d3d1', veste: 'toga', colori: ['#e2e8f0', '#1d4ed8'], segni: { rughe: true, zampe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '6%', tono: '-4Hz' }, espressione: 'excited', personalita: 'archimedes' },
+    ptolemy: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.ptolemy', ospite: true, alias: ['Tolomeo', 'Claudio Tolomeo', 'Ptolemy'],
+      pelle: '#d4a070', iride: '#3f2a17', sottotitolo: '#fef08a', guance: '#e88e6e', peli: '#57534e', barba: 'folta',
+      figura: { capelli: 'ricci', chioma: '#57534e', copricapo: 'corona', veste: 'toga', colori: ['#fde68a', '#a16207'], segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-6%', tono: '-10Hz' }, espressione: 'proud', personalita: 'ptolemy' },
+    copernicus: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.copernicus', ospite: true, alias: ['Copernico', 'Niccolò Copernico', 'Copernicus'],
+      pelle: '#e8b48a', iride: '#3f2a17', sottotitolo: '#fca5a5', guance: '#f08c74',
+      figura: { capelli: 'caschetto', chioma: '#2b1b10', veste: 'tonaca', colori: ['#b91c1c', '#3f2a1d', '#1f2937'], segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-4Hz' }, espressione: 'thinking', personalita: 'copernicus' },
+    galileo: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.galileo', ospite: true, alias: ['Galileo', 'Galileo Galilei'],
+      pelle: '#e4aa7c', iride: '#3f2a17', sottotitolo: '#fdba74', guance: '#f08c74', peli: '#a0522d', barba: 'folta', baffi: 'folti',
+      figura: { capelli: 'corona', chioma: '#8b4a26', veste: 'farsetto', colori: ['#1f1d2b', '#111827', '#f8fafc'], segni: { rughe: true, zampe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '2%', tono: '-8Hz' }, espressione: 'determined', personalita: 'galileo' },
+    huygens: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.huygens', ospite: true, alias: ['Huygens', 'Christiaan Huygens'],
+      pelle: '#f0c4a0', iride: '#2f4a6b', sottotitolo: '#fde68a', guance: '#f4a08a', peli: '#5b3a1e', baffi: 'manubrio',
+      figura: { capelli: 'parrucca', chioma: '#6b4423', veste: 'jabot', colori: ['#3b2f2f', '#24201f', '#f8fafc'], segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-2%', tono: '-2Hz' }, espressione: 'curious', personalita: 'huygens' },
+    schiaparelli: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.schiaparelli', ospite: true, alias: ['Schiaparelli', 'Giovanni Schiaparelli'],
+      pelle: '#ebb895', iride: '#3f2a17', sottotitolo: '#fca5a5', guance: '#f08c74', peli: '#e5e7eb', barba: 'folta', baffi: 'folti',
+      figura: { capelli: 'corona', chioma: '#e5e7eb', veste: 'abito', cravatta: 'farfalla', colori: ['#27272a', '#18181b', '#111827'], segni: { rughe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-10Hz' }, espressione: 'curious', personalita: 'schiaparelli' },
+    einstein: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.einstein', ospite: true, alias: ['Einstein', 'Albert Einstein'],
+      pelle: '#f0bf98', iride: '#5b3a1e', sottotitolo: '#e9d5ff', guance: '#f4a08a', peli: '#d4d4d8', baffi: 'folti',
+      figura: { capelli: 'arruffati', chioma: '#f4f4f5', veste: 'maglione', colori: ['#6b7280', '#4b5563', '#f8fafc'], segni: { rughe: true, zampe: true, pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-6%', tono: '-6Hz' }, espressione: 'playful', personalita: 'einstein' },
+    hawking: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.hawking', ospite: true, alias: ['Hawking', 'Stephen Hawking'],
+      pelle: '#f2c9a8', iride: '#4b5563', sottotitolo: '#a5f3fc', guance: '#f4a08a', occhiali: 'quadrati',
+      figura: { capelli: 'corti', chioma: '#7a5a3a', veste: 'abito', cravatta: 'lunga', colori: ['#1e293b', '#0f172a', '#2563eb'], sedia: true, segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-12%', tono: '-14Hz' }, espressione: 'playful', personalita: 'hawking' },
+    armstrong: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.armstrong', ospite: true, alias: ['Armstrong', 'Neil Armstrong'],
+      pelle: '#f2c4a0', iride: '#2f5f8a', sottotitolo: '#e2e8f0', guance: '#f4a08a',
+      figura: { capelli: 'corti', chioma: '#a47a4a', copricapo: 'casco', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'us', pannello: true, segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-6%', tono: '-6Hz' }, espressione: 'happy', personalita: 'armstrong' },
+    parmitano: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.parmitano', ospite: true, alias: ['Parmitano', 'Luca Parmitano'],
+      pelle: '#e3ad84', iride: '#3f2a17', sottotitolo: '#bbf7d0', guance: '#f08c74',
+      figura: { capelli: 'corti', chioma: '#2b1b10', copricapo: 'casco', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'it', pannello: true, segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '2%', tono: '-4Hz' }, espressione: 'happy', personalita: 'parmitano' },
+    cristoforetti: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.cristoforetti', ospite: true, alias: ['Cristoforetti', 'Samantha Cristoforetti', 'AstroSamantha'],
+      pelle: '#f2c4a0', iride: '#3f5f4a', sottotitolo: '#93c5fd', guance: '#f4a08a', labbra: '#c2556b',
+      figura: { capelli: 'corti_lei', chioma: '#6b4423', veste: 'tuta', colori: ['#1e3a8a', '#172554', '#f8fafc'], bandiera: 'it', segni: {} },
+      scala: 0.8, occhi: { r: 0.25, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '4%', tono: '22Hz' }, espressione: 'happy', personalita: 'cristoforetti' },
+    astro_ben: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.astro_ben', ospite: true, alias: ['Astro Ben', 'AstroBen', 'Ben'],
+      pelle: '#f6d0ae', iride: '#2f6f9f', sottotitolo: '#fdba74', guance: '#fb8f7a',
+      figura: { capelli: 'ciuffo', chioma: '#c27a3a', copricapo: 'casco', veste: 'tuta', colori: ['#f97316', '#c2410c', '#f8fafc'], bandiera: 'it', bambino: true,
+        segni: { lentiggini: true } },
+      scala: 0.82, occhi: { r: 0.3, distanza: 0.38, alto: -0.04 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '10%', tono: '40Hz' }, espressione: 'excited', personalita: 'astro_ben' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
-    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan'];
+    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona'];
   /* Le vesti (v414, `character_become`): un personaggio diventa per un po'
    * un'altra cosa, col suo volto. Il Sole, fra cinque miliardi di anni, si
    * gonfierà in una gigante rossa e poi resterà una nana bianca: la storia
@@ -660,7 +752,50 @@
     // Carl Sagan (v450): il pallido puntino blu gli gira attorno, piccolo
     // com'era nella fotografia, e quando canta l'aura si accende
     sagan:   { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'sagan',
-      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.075, d: 1.32, periodo: 9000, piatto: 0.28, giro: -0.18 }] }
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.075, d: 1.32, periodo: 9000, piatto: 0.28, giro: -0.18 }] },
+    // v469: chi racconta il cielo, ognuno con quello che ha scoperto che
+    // gli gira attorno. Galileo le quattro lune di Giove, quasi in fila come
+    // le vide nel cannocchiale; Tolomeo il Sole (per lui girava attorno a
+    // noi), Copernico la Terra (che invece gira); Archimede un granello di
+    // sabbia (li contò per riempire l'universo); Hawking un buchino nero.
+    pythagoras:   { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.9, tratto: 'pythagoras',
+      lune: [{ colore: '#fde68a', r: 0.05, d: 1.3, periodo: 6000, piatto: 0.3, giro: 0 }, { colore: '#93c5fd', r: 0.05, d: 1.45, periodo: 9000, piatto: 0.3, giro: 0 },
+        { colore: '#fca5a5', r: 0.05, d: 1.52, periodo: 12000, piatto: 0.3, giro: 0 }] },
+    plato:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.85, tratto: 'plato',
+      lune: [{ colore: '#fde047', r: 0.07, d: 1.4, periodo: 12000, piatto: 0.3, giro: -0.1 }] },
+    aristotle:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'aristotle',
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.07, d: 1.38, periodo: 10000, piatto: 0.3, giro: -0.12 }] },
+    eratosthenes: { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'eratosthenes',
+      lune: [{ nome: 'Sun', colore: '#fbbf24', r: 0.08, d: 1.42, periodo: 11000, piatto: 0.3, giro: 0.1 }] },
+    archimedes:   { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.2, tratto: 'archimedes',
+      lune: [{ colore: '#e7c48a', r: 0.05, d: 1.3, periodo: 7000, piatto: 0.3, giro: 0.1, sasso: true }] },
+    ptolemy:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.9, tratto: 'ptolemy',
+      lune: [{ nome: 'Sun', colore: '#fbbf24', r: 0.08, d: 1.42, periodo: 12000, piatto: 0.3, giro: -0.1 }] },
+    copernicus:   { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'copernicus',
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.07, d: 1.4, periodo: 10000, piatto: 0.3, giro: -0.12 }] },
+    galileo:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'galileo',
+      lune: [{ nome: 'Io', colore: '#fde68a', r: 0.045, d: 1.26, periodo: 3000, piatto: 0.08, giro: 0.02 },
+        { nome: 'Europa', colore: '#e0f2fe', r: 0.04, d: 1.36, periodo: 4500, piatto: 0.08, giro: 0.02 },
+        { nome: 'Ganymede', colore: '#d6d3d1', r: 0.055, d: 1.48, periodo: 7000, piatto: 0.08, giro: 0.02 },
+        { nome: 'Callisto', colore: '#a8a29e', r: 0.05, d: 1.56, periodo: 11000, piatto: 0.08, giro: 0.02 }] },
+    huygens:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'huygens',
+      lune: [{ nome: 'Titan', colore: '#f59e0b', r: 0.07, d: 1.4, periodo: 9000, piatto: 0.26, giro: -0.1 }] },
+    schiaparelli: { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'schiaparelli',
+      lune: [{ nome: 'Mars', colore: '#f87171', r: 0.07, d: 1.38, periodo: 9500, piatto: 0.3, giro: 0.12 }] },
+    einstein:     { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.1, tratto: 'einstein',
+      lune: [{ colore: '#fef08a', r: 0.045, d: 1.32, periodo: 2200, piatto: 0.3, giro: -0.2 }] },
+    hawking:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.8, testa: 0.1, tratto: 'hawking',
+      lune: [{ colore: '#a78bfa', r: 0.06, d: 1.36, periodo: 8000, piatto: 0.3, giro: 0.1 }] },
+    armstrong:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'armstrong',
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.08, d: 1.42, periodo: 10000, piatto: 0.3, giro: -0.12 }] },
+    parmitano:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'parmitano',
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.08, d: 1.42, periodo: 9000, piatto: 0.3, giro: 0.1 }] },
+    cristoforetti: { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'cristoforetti',
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.08, d: 1.42, periodo: 9000, piatto: 0.3, giro: -0.1 }] },
+    // Gargantua gira quasi alla velocità della luce: il disco corre
+    gargantua:    { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.6, tratto: 'gargantua' },
+    astro_ben:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.3, tratto: 'astro_ben',
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.06, d: 1.36, periodo: 6000, piatto: 0.3, giro: 0.15 }] }
   };
   /* Come la fisica risponde a un'emozione: quanto si gonfiano le tempeste
    * e le prominenze, come cambia l'atmosfera (`k` lo spessore, `tinta` il
@@ -741,7 +876,9 @@
   // Gli effetti e la loro durata di serie, in millisecondi della storia
   const STOR_EFFETTI = {
     explosion: 2400, shockwave: 1500, flash: 700, sparkles: 2200, fireworks: 2800, smoke: 3200,
-    hearts: 2600, lightning: 1200, shooting_star: 1800, glow: 3000, confetti: 2800
+    hearts: 2600, lightning: 1200, shooting_star: 1800, glow: 3000, confetti: 2800,
+    // v469: il telo dello spazio-tempo che sprofonda attorno a una massa
+    spacetime: 4000
   };
   const STOR_POSTI_EFFETTO = ['center', 'left', 'right', 'top', 'bottom'];
   const STOR_CRESCITA_MS = 700;     // quanto ci mette un astro a crescere per portare il volto
@@ -2753,6 +2890,7 @@
       disegnaOcchio(ctx, occ, profilo, geom, t);
       disegnaSopracciglia(ctx, Object.assign({}, geom, { cigli: geom.cigli.filter(c => c.lato === occ.lato) }), profilo);
     });
+    if (profilo.occhiali) disegnaOcchiali(ctx, geom, profilo, posa);
     // Il naso: per lui la virgola d'inchiostro col bulbo. Per lei, dalla
     // v425, niente naso né neo, come nel disegno di riferimento: occhi,
     // guance e bocca, e il volto si legge al primo colpo
@@ -3064,6 +3202,8 @@
           ctx.beginPath(); ctx.arc(x, y, R * (1.05 + 4 * q), 0, Math.PI * 2); ctx.stroke();
         }
       }
+    } else if (tipo === 'spacetime') {
+      storDisegnaSpaziotempo(ctx, x, y, R, s, t, L, H, colore);
     } else if (tipo === 'flash') {
       const a = s < 0.2 ? s / 0.2 : 1 - (s - 0.2) / 0.8;
       ctx.globalAlpha = Math.max(0, a) * 0.85;
@@ -3175,6 +3315,56 @@
     ctx.restore();
   }
   // Dove sta un effetto in questo fotogramma: sull'astro (se è disegnato) o
+  /* Lo spazio-tempo che si incurva (v469, per la storia di Einstein): il
+   * telo elastico dei libri di divulgazione, una griglia vista un po'
+   * dall'alto (schiacciata in verticale) che sprofonda a imbuto verso la
+   * massa e la tiene sul fondo; la profondità va come 1/distanza, quindi
+   * la curva è dolce lontano e ripida vicino. Una biglia azzurra (la Terra)
+   * gira attorno all'imbuto: non la tira nessuna corda, segue la curva. Le
+   * righe si spengono sul bordo e vicino all'astro, che resta leggibile col
+   * suo volto. Per un buco nero si scrive `size` grande: il pozzo si fa
+   * profondo e stretto. Sale nel primo quarto, resta, si spegne alla fine. */
+  function storDisegnaSpaziotempo(ctx, x, y, R, s, t, L, H, colore) {
+    const a = Math.min(1, s / 0.25) * Math.min(1, (1 - s) / 0.15);
+    if (!(a > 0.01)) return;
+    const W = Math.max(R * 3.4, Math.min(L, H) * 0.3), schiaccia = 0.42;
+    const D = W * 0.5 * a, nucleo = R * 0.7;
+    const punto = (gx, gy) => {
+      const rr = Math.hypot(gx, gy);
+      const f = 1 - 0.22 * a * nucleo / (rr + nucleo);
+      return [x + gx * f, y - D + gy * f * schiaccia + D * nucleo / (rr + nucleo), rr];
+    };
+    const tinta = colore || '#a5b4fc';
+    const N = 8, passi = 36;
+    ctx.lineWidth = Math.max(1, Math.min(2.4, W * 0.01));
+    for (const verso of [0, 1]) for (let i = -N; i <= N; i++) {
+      const u = i / N * W;
+      let prima = null;
+      for (let k = 0; k <= passi; k++) {
+        const v = (k / passi * 2 - 1) * W;
+        const q = verso ? punto(u, v) : punto(v, u);
+        if (prima) {
+          const rr = (q[2] + prima[2]) / 2;
+          const al = a * Math.max(0, 1 - Math.pow(rr / W, 2)) * Math.min(1, Math.max(0.15, (rr - R * 0.4) / (R * 1.4)));
+          if (al > 0.02) {
+            ctx.strokeStyle = rgba(tinta, 0.78 * al);
+            ctx.beginPath(); ctx.moveTo(prima[0], prima[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+          }
+        }
+        prima = q;
+      }
+    }
+    // la biglia che gira lungo la curva
+    const th = t / 1100, ro = Math.max(R * 1.9, W * 0.42);
+    const [bx, by] = punto(Math.cos(th) * ro, Math.sin(th) * ro);
+    const rb = Math.max(3, Math.min(R * 0.22, W * 0.05));
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#60a5fa'; ctx.beginPath(); ctx.arc(bx, by, rb, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, rb * 0.25); ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.beginPath(); ctx.arc(bx - rb * 0.35, by - rb * 0.35, rb * 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   // nel posto dello schermo chiesto. `null` se l'astro non c'è.
   function storPostoEffetto(ef, perId, L, H) {
     if (ef.target) {
@@ -3241,7 +3431,9 @@
     buco_nero:     { volto: [0, -0.04, 0.8], ingombro: 1.75 },
     buco_bianco:   { volto: [0, 0, 0.8], ingombro: 1.6 },
     // v450: Carl Sagan, la testa-pianeta sopra al busto
-    sagan:         { volto: [0, -0.18, 0.6], ingombro: 1.45 }
+    sagan:         { volto: [0, -0.18, 0.6], ingombro: 1.45 },
+    // v469: chi racconta il cielo, vestito con la sua `figura`
+    persona:       { volto: [0, -0.18, 0.6], ingombro: 1.45 }
   };
   // Dove sta il volto su un corpo di raggio R centrato in (x, y)
   function storVoltoNelCorpo(sagoma, x, y, R) {
@@ -3917,6 +4109,8 @@
       ctx.setLineDash([]);
     } else if (sagoma === 'sagan') {
       disegnaSagan(ctx, x, y, R, profilo, t);
+    } else if (sagoma === 'persona') {
+      disegnaPersona(ctx, x, y, R, profilo, t);
     } else if (sagoma === 'hubble') {
       // i due pannelli lunghi ai lati, il tubo argentato, il coperchio aperto
       for (const lato of [-1, 1]) {
@@ -3938,6 +4132,451 @@
       ctx.beginPath(); ctx.ellipse(x, y - R * 0.96, R * 0.5, R * 0.1, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
+  }
+
+  /* La testa da cartone delle persone (v469: era dentro a `disegnaSagan`,
+   * ora la usano tutti quelli che raccontano il cielo). Un ovale con la
+   * mascella, più alto che largo, nello stile dei pianeti: l'ombra spostata,
+   * il bordo color panna, il taglio d'ombra, la luce in alto a sinistra, gli
+   * zigomi e il naso. `opz` accende i segni di chi li ha: le pieghe del
+   * sorriso e le zampe di gallina (Sagan), le rughe della fronte (i vecchi
+   * saggi), le lentiggini (Astro Ben). */
+  function tracciaTesta(ctx, hx, hy, hw, hh) {
+    ctx.beginPath();
+    ctx.moveTo(hx, hy - hh);
+    ctx.bezierCurveTo(hx + hw * 0.62, hy - hh, hx + hw * 1.02, hy - hh * 0.52, hx + hw, hy - hh * 0.05);
+    ctx.bezierCurveTo(hx + hw * 0.98, hy + hh * 0.42, hx + hw * 0.72, hy + hh * 0.8, hx + hw * 0.3, hy + hh * 0.96);
+    ctx.quadraticCurveTo(hx, hy + hh * 1.06, hx - hw * 0.3, hy + hh * 0.96);
+    ctx.bezierCurveTo(hx - hw * 0.72, hy + hh * 0.8, hx - hw * 0.98, hy + hh * 0.42, hx - hw, hy - hh * 0.05);
+    ctx.bezierCurveTo(hx - hw * 1.02, hy - hh * 0.52, hx - hw * 0.62, hy - hh, hx, hy - hh);
+    ctx.closePath();
+  }
+  function orecchieDaCartone(ctx, hx, hy, hw, hh, R, pelle) {
+    for (const lato of [-1, 1]) {
+      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(hx + lato * hw * 0.98, hy + hh * 0.08, hw * 0.17, hh * 0.22, lato * 0.18, 0, Math.PI * 2); },
+        pelle, R, { luce: 0.05, pennino: 0.03,
+          dentro: () => {
+            ctx.strokeStyle = rgba(scurisci(pelle, 0.4), 0.7); ctx.lineWidth = Math.max(0.6, R * 0.014);
+            ctx.beginPath(); ctx.arc(hx + lato * hw * 1.0, hy + hh * 0.08, hw * 0.08, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
+          } });
+    }
+  }
+  function testaDaCartone(ctx, hx, hy, hw, hh, R, pelle, opz = {}) {
+    const testa = () => tracciaTesta(ctx, hx, hy, hw, hh);
+    ctx.save(); ctx.translate(R * 0.04, R * 0.05); testa(); ctx.fillStyle = 'rgba(12, 6, 30, 0.4)'; ctx.fill(); ctx.restore();
+    testa(); ctx.strokeStyle = '#fff6e6'; ctx.lineWidth = Math.max(2, R * 0.06); ctx.stroke();
+    testa(); ctx.fillStyle = scurisci(pelle, 0.24); ctx.fill();
+    ctx.save(); testa(); ctx.clip();
+    const lx = hx - hw * 0.28, ly = hy - hh * 0.26, lr = Math.max(hw, hh) * 1.02;
+    const luce = ctx.createRadialGradient(lx, ly, lr * 0.82, lx, ly, lr);
+    luce.addColorStop(0, pelle); luce.addColorStop(1, rgba(pelle, 0));
+    ctx.fillStyle = pelle; ctx.beginPath(); ctx.arc(lx, ly, lr * 0.82, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = luce; ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
+    // gli zigomi, il mento, la mascella: ombre morbide che fanno una faccia
+    ctx.fillStyle = rgba(scurisci(pelle, 0.3), 0.32);
+    ctx.beginPath(); ctx.ellipse(hx + hw * 0.62, hy + hh * 0.42, hw * 0.3, hh * 0.42, -0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rgba(schiarisci(pelle, 0.25), 0.4);
+    ctx.beginPath(); ctx.ellipse(hx - hw * 0.1, hy + hh * 0.84, hw * 0.24, hh * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+    // il naso: la canna in luce, l'ombra di lato, le narici (più piccolo
+    // per un bambino e per lei)
+    const kn = opz.nasino ? 0.72 : 1;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = rgba(scurisci(pelle, 0.42), 0.55); ctx.lineWidth = Math.max(0.8, R * 0.02);
+    ctx.beginPath(); ctx.moveTo(hx + hw * 0.05, hy - hh * 0.16 * kn); ctx.quadraticCurveTo(hx + hw * 0.12, hy + hh * 0.02, hx + hw * 0.1, hy + hh * 0.11); ctx.stroke();
+    ctx.fillStyle = rgba(scurisci(pelle, 0.3), 0.35);
+    ctx.beginPath(); ctx.ellipse(hx + hw * 0.02, hy + hh * 0.15, hw * 0.15 * kn, hh * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgba(INCHIOSTRO, 0.7); ctx.lineWidth = Math.max(0.8, R * 0.022);
+    ctx.beginPath(); ctx.arc(hx, hy + hh * 0.12, hw * 0.09 * kn, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+    for (const lato of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(hx + lato * hw * 0.12 * kn, hy + hh * 0.11, hw * 0.045 * kn, lato < 0 ? Math.PI * 0.4 : -Math.PI * 0.4, lato < 0 ? Math.PI * 1.3 : Math.PI * 0.6, lato > 0); ctx.stroke();
+    }
+    // le pieghe del sorriso dal naso agli angoli della bocca, e le zampe di
+    // gallina ai lati degli occhi: il sorriso largo e un po' segnato
+    ctx.strokeStyle = rgba(scurisci(pelle, 0.45), 0.45); ctx.lineWidth = Math.max(0.7, R * 0.016);
+    for (const lato of [-1, 1]) {
+      if (opz.pieghe) {
+        ctx.beginPath(); ctx.moveTo(hx + lato * hw * 0.2, hy + hh * 0.12);
+        ctx.quadraticCurveTo(hx + lato * hw * 0.44, hy + hh * 0.3, hx + lato * hw * 0.42, hy + hh * 0.5); ctx.stroke();
+      }
+      if (opz.zampe) for (const k of [-1, 0, 1]) {
+        ctx.beginPath(); ctx.moveTo(hx + lato * hw * 0.74, hy - hh * 0.1 + k * hh * 0.05);
+        ctx.lineTo(hx + lato * hw * 0.86, hy - hh * 0.12 + k * hh * 0.09); ctx.stroke();
+      }
+    }
+    // le rughe della fronte: tre archi lunghi sopra alle sopracciglia
+    if (opz.rughe) {
+      ctx.beginPath();
+      for (const k of [0, 1, 2]) {
+        const yy = hy - hh * (0.5 + k * 0.1), ll = hw * (0.42 - k * 0.06);
+        ctx.moveTo(hx - ll, yy + hh * 0.02); ctx.quadraticCurveTo(hx, yy - hh * 0.04, hx + ll, yy + hh * 0.02);
+      }
+      ctx.stroke();
+    }
+    // le lentiggini sul naso e sulle guance, seminate (sempre le stesse)
+    if (opz.lentiggini) {
+      ctx.fillStyle = rgba(scurisci(pelle, 0.38), 0.6);
+      const st = { s: 29 };
+      ctx.beginPath();
+      for (let k = 0; k < 16; k++) {
+        const lato = k % 2 ? 1 : -1;
+        const px = hx + lato * hw * (0.2 + 0.38 * dado(st)), py = hy + hh * (0.02 + 0.2 * dado(st));
+        const r = Math.max(0.5, R * 0.014);
+        ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    ctx.restore();
+    testa(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.4, R * 0.035); ctx.stroke();
+  }
+
+  /* Chi racconta il cielo (v469). Chi usa l'app ha chiesto, dopo Carl Sagan,
+   * i grandi del cielo come personaggi delle CosmoStorie: Pitagora, Platone,
+   * Aristotele, Eratostene, Archimede e Tolomeo, Copernico, Galileo, Huygens,
+   * Schiaparelli, Einstein e Hawking, e gli astronauti — Neil Armstrong, Luca
+   * Parmitano, Samantha Cristoforetti — con un astronauta bambino, Astro Ben.
+   * Sedici disegni a mano sarebbero sedici funzioni come `disegnaSagan`;
+   * invece il corpo è uno, la sagoma `persona`, e ognuno lo veste con la sua
+   * `figura` (una riga di `STOR_PERSONAGGI`): i capelli, il copricapo, la
+   * veste coi suoi colori, la barba lunga sul petto, il casco, la sedia.
+   * Tutto nello stile di Sagan e dei pianeti: stesure con l'ombra a taglio,
+   * il bordo color panna, il pennino. Il volto (occhi, sopracciglia, bocca,
+   * barba e baffi del profilo, occhiali) lo mette `storDisegnaVolto` sopra,
+   * dove dice `STOR_CORPI.persona`, cioè dove sta quello di Sagan.
+   *
+   *   capelli    arruffati (Einstein), corona (la calvizie con la frangia
+   *              ai lati), lunghi, ricci, parrucca (Huygens), caschetto
+   *              (Copernico), corti, corti_lei, ciuffo (Astro Ben), nessuno
+   *   chioma     il colore dei capelli
+   *   copricapo  corona (Tolomeo, come lo dipinsero i pittori che lo
+   *              confondevano coi re d'Egitto), fascia (Pitagora), casco
+   *   veste      toga, tonaca, farsetto, jabot, abito, maglione, tuta
+   *   colori     [principale, secondo, terzo] della veste
+   *   cravatta   lunga o farfalla (con `abito`)
+   *   bandiera   it o us sulla tuta;  pannello  la scatola dei comandi
+   *              della tuta da passeggiata spaziale
+   *   barbaLunga la barba che scende sul petto, nel colore dei `peli`
+   *   sedia      lo schienale e il poggiatesta della carrozzina (Hawking)
+   *   bambino    spalle strette e testa più tonda
+   *   segni      { rughe, lentiggini, pieghe, zampe } per `testaDaCartone` */
+  const STOR_CAPELLI = (() => {
+    // un arco di punti attorno alla testa, da a0 ad a1 (0 in cima, positivo
+    // a destra), col raggio di ogni punto (un numero o una funzione dell'indice)
+    const arco = (a0, a1, n, r) => Array.from({ length: n }, (_, i) => {
+      const a = a0 + (a1 - a0) * i / (n - 1), rr = typeof r === 'function' ? r(i) : r;
+      return [Math.sin(a) * rr, -Math.cos(a) * rr];
+    });
+    const alterna = (a, b) => i => (i % 2 ? a : b);
+    const ciuffo = arco(-1.6, 1.6, 11, 1.08);
+    ciuffo[6] = [ciuffo[6][0] * 1.3, -1.3]; ciuffo[7] = [ciuffo[7][0] * 1.1, -1.18];
+    return {
+      arruffati: {
+        dietro: [...arco(-2.3, 2.3, 21, i => [1.18, 1.62, 1.3, 1.5][i % 4]), [0.7, 0.3], [-0.7, 0.3]],
+        davanti: [...arco(-1.2, 1.2, 13, alterna(1.0, 1.12)), ...arco(1.0, -1.0, 7, 0.9)], onda: 0.06
+      },
+      corona: {
+        dietro: [[-1.0, 0.55], [-1.24, 0.3], [-1.27, -0.1], [-1.12, -0.45], [-0.85, -0.62], [0.85, -0.62], [1.12, -0.45], [1.27, -0.1],
+          [1.24, 0.3], [1.0, 0.55], [0, 0.4]],
+        lati: true, onda: 0.03
+      },
+      lunghi: {
+        dietro: [[-0.95, 1.3], [-1.14, 0.95], ...arco(-1.95, 1.95, 15, 1.14), [1.14, 0.95], [0.95, 1.3], [0.6, 1.0], [-0.6, 1.0]],
+        davanti: [...arco(-1.75, 1.75, 13, 1.07), [0.86, 0.25], [0.88, -0.2], [0.6, -0.6], [0.2, -0.7], [0, -0.6], [-0.2, -0.7], [-0.6, -0.6],
+          [-0.88, -0.2], [-0.86, 0.25]], onda: 0.025
+      },
+      ricci: {
+        dietro: [[-1.05, 0.75], ...arco(-1.95, 1.95, 17, alterna(1.12, 1.24)), [1.05, 0.75], [0.6, 0.5], [-0.6, 0.5]],
+        davanti: [...arco(-1.7, 1.7, 15, alterna(1.04, 1.12)), [0.86, 0.15], [0.84, -0.3], [0.5, -0.6], [0, -0.66], [-0.5, -0.6],
+          [-0.84, -0.3], [-0.86, 0.15]], onda: 0.045
+      },
+      parrucca: {
+        dietro: [[-0.95, 1.75], [-1.32, 1.5], ...arco(-2.2, 2.2, 19, alterna(1.3, 1.44)), [1.32, 1.5], [0.95, 1.75], [0.7, 1.2], [-0.7, 1.2]],
+        davanti: [...arco(-1.85, 1.85, 15, alterna(1.08, 1.16)), [0.9, 0.55], [0.86, -0.2], [0.55, -0.62], [0.08, -0.72], [0, -0.62],
+          [-0.08, -0.72], [-0.55, -0.62], [-0.86, -0.2], [-0.9, 0.55]], onda: 0.05
+      },
+      caschetto: {
+        dietro: [[-1.05, 0.75], ...arco(-2.0, 2.0, 13, 1.12), [1.05, 0.75], [0.7, 0.6], [-0.7, 0.6]],
+        davanti: [...arco(-1.95, 1.95, 13, 1.1), [0.9, 0.7], [0.88, -0.1], [0.75, -0.42], [0.4, -0.46], [0, -0.44], [-0.4, -0.46],
+          [-0.75, -0.42], [-0.88, -0.1], [-0.9, 0.7]], onda: 0.015
+      },
+      corti: {
+        davanti: [...arco(-1.6, 1.6, 11, 1.06), [0.9, -0.05], [0.82, -0.42], [0.5, -0.66], [0.1, -0.7], [-0.3, -0.62], [-0.62, -0.6],
+          [-0.84, -0.4], [-0.9, -0.05]], onda: 0.02
+      },
+      corti_lei: {
+        dietro: [[-0.98, 0.6], ...arco(-2.0, 2.0, 13, 1.12), [0.98, 0.6], [0.6, 0.5], [-0.6, 0.5]],
+        davanti: [...arco(-1.85, 1.85, 13, 1.1), [0.92, 0.4], [0.9, -0.1], [0.72, -0.4], [0.36, -0.42], [-0.1, -0.52], [-0.5, -0.64],
+          [-0.8, -0.46], [-0.9, -0.1], [-0.92, 0.4]], onda: 0.02
+      },
+      ciuffo: {
+        davanti: [...ciuffo, [0.9, -0.05], [0.82, -0.4], [0.45, -0.6], [0.1, -0.52], [-0.25, -0.62], [-0.62, -0.56], [-0.84, -0.38], [-0.9, -0.05]],
+        onda: 0.02
+      },
+      nessuno: {}
+    };
+  })();
+  function disegnaPersona(ctx, x, y, R, profilo, t) {
+    const f = profilo.figura || {};
+    const piccolo = !!f.bambino;
+    const hx = x, hy = y - R * 0.2;
+    const hw = R * (piccolo ? 0.66 : 0.6), hh = R * (piccolo ? 0.72 : 0.76);
+    const colori = Array.isArray(f.colori) ? f.colori : [];
+    const c0 = colori[0] || '#64748b', c1 = colori[1] || scurisci(c0, 0.3), c2 = colori[2] || '#f8fafc';
+    const chioma = f.chioma || '#5b3a1e';
+    const mosso = Math.sin(t / 900) * R * 0.012;
+    const sp = piccolo ? 0.82 : 1;   // la larghezza delle spalle
+    // una ciocca: punti in raggi della testa, lisciati come il sasso a
+    // patata, col contorno che ondeggia appena col respiro
+    const ciocca = (punti, onda) => {
+      const P = punti.map(([px, py], i) => {
+        const o = onda ? onda * Math.sin(i * 2.3 + t / 700) : 0;
+        const n = Math.hypot(px, py) || 1;
+        return [hx + (px + px / n * o) * hw, hy + (py + py / n * o) * hh + (py < -0.6 ? mosso : 0)];
+      });
+      const m = (u, v) => [(u[0] + v[0]) / 2, (u[1] + v[1]) / 2];
+      ctx.beginPath(); ctx.moveTo(...m(P[P.length - 1], P[0]));
+      for (let i = 0; i < P.length; i++) ctx.quadraticCurveTo(...P[i], ...m(P[i], P[(i + 1) % P.length]));
+      ctx.closePath();
+    };
+    const busto = () => {
+      ctx.beginPath();
+      ctx.moveTo(x - R * 1.12 * sp, y + R * 1.22);
+      ctx.bezierCurveTo(x - R * 1.16 * sp, y + R * 0.78, x - R * 0.9 * sp, y + R * 0.52, x - R * 0.42, y + R * 0.46);
+      ctx.lineTo(x + R * 0.42, y + R * 0.46);
+      ctx.bezierCurveTo(x + R * 0.9 * sp, y + R * 0.52, x + R * 1.16 * sp, y + R * 0.78, x + R * 1.12 * sp, y + R * 1.22);
+      ctx.quadraticCurveTo(x, y + R * 1.36, x - R * 1.12 * sp, y + R * 1.22);
+      ctx.closePath();
+    };
+    const pieghe = (righe, colore) => {
+      ctx.strokeStyle = rgba(colore, 0.5); ctx.lineWidth = Math.max(0.6, R * 0.016); ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (const [x0, y0, qx, qy, x1, y1] of righe) { ctx.moveTo(x + x0 * R, y + y0 * R); ctx.quadraticCurveTo(x + qx * R, y + qy * R, x + x1 * R, y + y1 * R); }
+      ctx.stroke();
+    };
+    // La carrozzina (Hawking): lo schienale scuro dietro alle spalle e il
+    // poggiatesta; accanto, sul braccio, lo schermo con cui parlava
+    if (f.sedia) {
+      for (const lato of [-1, 1]) {
+        asta(ctx, x + lato * R * 1.08 * sp, y + R * 1.32, x + lato * R * 1.0 * sp, y + R * 0.3, Math.max(2, R * 0.09), '#64748b');
+        asta(ctx, x + lato * R * 1.0 * sp, y + R * 0.3, x + lato * R * 1.2 * sp, y + R * 0.22, Math.max(2, R * 0.08), '#1f2937');
+      }
+      parte(ctx, () => rettangolo(ctx, x - R * 0.62, y - R * 0.12, R * 1.24, R * 0.5, R * 0.2), '#1f2937', R, { luce: 0.05, pennino: 0.03 });
+    }
+    // il collo, sotto al busto e alla testa
+    parte(ctx, () => rettangolo(ctx, x - R * 0.2, y + R * 0.18, R * 0.4, R * 0.42, R * 0.1), profilo.pelle, R, { luce: 0.04, pennino: 0.03 });
+    // La veste
+    const veste = f.veste || 'abito';
+    if (veste === 'tuta') {
+      parte(ctx, busto, c0, R, {
+        luce: 0.1,
+        dentro: () => {
+          // le cuciture della tuta e, per quella da passeggiata, le spalle imbottite
+          pieghe([[-0.98 * sp, 0.66, -0.7, 0.8, -0.62, 1.32], [0.98 * sp, 0.66, 0.7, 0.8, 0.62, 1.32]], scurisci(c0, 0.45));
+          if (!f.pannello) { ctx.strokeStyle = rgba(scurisci(c0, 0.5), 0.8); ctx.lineWidth = Math.max(0.8, R * 0.02); ctx.beginPath(); ctx.moveTo(x + R * 0.06, y + R * 0.5); ctx.lineTo(x + R * 0.06, y + R * 1.4); ctx.stroke(); }
+        }
+      });
+      // il colletto (l'anello del casco o il colletto della tuta da volo)
+      if (f.copricapo === 'casco') parte(ctx, () => { ctx.beginPath(); ctx.ellipse(x, y + R * 0.5, R * 0.6, R * 0.16, 0, 0, Math.PI * 2); }, '#94a3b8', R, { luce: 0.05, pennino: 0.03 });
+      else for (const lato of [-1, 1]) parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(x + lato * R * 0.08, y + R * 0.48); ctx.lineTo(x + lato * R * 0.44, y + R * 0.44); ctx.lineTo(x + lato * R * 0.3, y + R * 0.72); ctx.closePath();
+      }, scurisci(c0, 0.12), R, { luce: 0.04, pennino: 0.03 });
+      if (f.pannello) {
+        parte(ctx, () => rettangolo(ctx, x - R * 0.34, y + R * 0.76, R * 0.68, R * 0.36, R * 0.06), '#cbd5e1', R, { luce: 0.05, pennino: 0.03 });
+        for (const [k, col] of [[-1, '#ef4444'], [0, '#facc15'], [1, '#22c55e']]) {
+          ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + k * R * 0.18, y + R * 0.94, Math.max(1, R * 0.045), 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.6, R * 0.012); ctx.stroke();
+        }
+      } else if (!f.bambino) {
+        // il cartellino col nome (vuoto: i nomi stanno nei dizionari)
+        parte(ctx, () => rettangolo(ctx, x + R * 0.3, y + R * 0.78, R * 0.42, R * 0.13, R * 0.03), c2, R, { luce: 0.02, pennino: 0.02 });
+      }
+      // la bandiera sul petto
+      if (f.bandiera) {
+        const bx = x - R * 0.72 * sp, by = y + R * 0.74, bw = R * 0.3, bh = R * 0.2;
+        ctx.save(); rettangolo(ctx, bx, by, bw, bh, R * 0.02); ctx.clip();
+        if (f.bandiera === 'it') {
+          for (const [k, col] of [[0, '#16a34a'], [1, '#f8fafc'], [2, '#dc2626']]) { ctx.fillStyle = col; ctx.fillRect(bx + k * bw / 3, by, bw / 3 + 0.5, bh); }
+        } else {
+          for (let k = 0; k < 7; k++) { ctx.fillStyle = k % 2 ? '#f8fafc' : '#dc2626'; ctx.fillRect(bx, by + k * bh / 7, bw, bh / 7 + 0.5); }
+          ctx.fillStyle = '#1e3a8a'; ctx.fillRect(bx, by, bw * 0.42, bh * 0.54);
+        }
+        ctx.restore();
+        rettangolo(ctx, bx, by, bw, bh, R * 0.02); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(0.7, R * 0.02); ctx.stroke();
+      }
+    } else if (veste === 'toga') {
+      // la tunica e il mantello gettato sulla spalla, in diagonale sul petto
+      parte(ctx, busto, c0, R, { luce: 0.1, dentro: () => pieghe([[-0.2, 0.6, -0.1, 0.9, -0.24, 1.3], [0.3, 0.55, 0.36, 0.8, 0.3, 1.0]], scurisci(c0, 0.4)) });
+      ctx.save(); busto(); ctx.clip();
+      parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(x - R * 1.3, y + R * 0.46); ctx.lineTo(x - R * 0.36, y + R * 0.44);
+        ctx.quadraticCurveTo(x + R * 0.1, y + R * 0.8, x + R * 1.3, y + R * 0.98); ctx.lineTo(x + R * 1.3, y + R * 1.5); ctx.lineTo(x - R * 1.3, y + R * 1.5); ctx.closePath();
+      }, c1, R, { luce: 0.08, dentro: () => pieghe([[-0.8, 0.7, -0.3, 0.9, 0.2, 1.3], [-0.9, 0.95, -0.4, 1.1, -0.1, 1.4], [-0.4, 0.62, 0.2, 0.9, 0.8, 1.2]], scurisci(c1, 0.45)) });
+      ctx.restore();
+      // lo scollo
+      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(x + R * 0.05, y + R * 0.47, R * 0.28, R * 0.1, 0, 0, Math.PI); ctx.closePath(); }, profilo.pelle, R, { luce: 0.03, pennino: 0.025 });
+    } else if (veste === 'maglione') {
+      // il maglione e, sotto, la camicia col colletto a punta
+      parte(ctx, busto, c0, R, {
+        luce: 0.1,
+        dentro: () => {
+          ctx.strokeStyle = rgba(scurisci(c0, 0.35), 0.35); ctx.lineWidth = Math.max(0.6, R * 0.012);
+          ctx.beginPath(); for (let k = -9; k <= 9; k++) { ctx.moveTo(x + k * R * 0.12, y + R * 1.18); ctx.lineTo(x + k * R * 0.12, y + R * 1.4); } ctx.stroke();
+        }
+      });
+      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(x, y + R * 0.5, R * 0.36, R * 0.13, 0, 0, Math.PI * 2); }, scurisci(c0, 0.1), R, { luce: 0.04, pennino: 0.03 });
+      for (const lato of [-1, 1]) parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(x, y + R * 0.46); ctx.lineTo(x + lato * R * 0.3, y + R * 0.4); ctx.lineTo(x + lato * R * 0.2, y + R * 0.66); ctx.closePath();
+      }, c2, R, { luce: 0.03, pennino: 0.03 });
+    } else {
+      // le vesti con l'apertura sul davanti: tonaca, farsetto, jabot, abito
+      parte(ctx, busto, c0, R, { luce: 0.1, dentro: () => pieghe([[-0.7, 0.7, -0.6, 1.0, -0.66, 1.34], [0.7, 0.7, 0.6, 1.0, 0.66, 1.34]], scurisci(c0, 0.45)) });
+      // la camicia (o la sottoveste) nel mezzo, a V
+      parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(x - R * 0.3, y + R * 0.44); ctx.lineTo(x + R * 0.3, y + R * 0.44); ctx.lineTo(x, y + R * (veste === 'tonaca' ? 1.0 : 1.2)); ctx.closePath();
+      }, veste === 'tonaca' ? c2 : '#f8fafc', R, { luce: 0.04, pennino: 0.03 });
+      if (veste === 'tonaca') {
+        // il bavero di pelliccia ai due lati dell'apertura
+        for (const lato of [-1, 1]) parte(ctx, () => {
+          ctx.beginPath(); ctx.moveTo(x + lato * R * 0.3, y + R * 0.42); ctx.lineTo(x + lato * R * 0.6, y + R * 0.5); ctx.lineTo(x + lato * R * 0.12, y + R * 1.36);
+          ctx.lineTo(x + lato * R * 0.02, y + R * 1.04); ctx.closePath();
+        }, c1, R, { luce: 0.05, pennino: 0.03 });
+      } else if (veste === 'farsetto') {
+        // i bottoni, e il colletto bianco largo e piatto sulle spalle
+        ctx.fillStyle = '#e5e7eb';
+        for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(x, y + R * (0.86 + k * 0.16), Math.max(0.8, R * 0.03), 0, Math.PI * 2); ctx.fill(); }
+        parte(ctx, () => {
+          ctx.beginPath(); ctx.moveTo(x - R * 0.62, y + R * 0.5); ctx.quadraticCurveTo(x - R * 0.6, y + R * 0.8, x - R * 0.1, y + R * 0.76);
+          ctx.lineTo(x, y + R * 0.66); ctx.lineTo(x + R * 0.1, y + R * 0.76); ctx.quadraticCurveTo(x + R * 0.6, y + R * 0.8, x + R * 0.62, y + R * 0.5);
+          ctx.quadraticCurveTo(x, y + R * 0.36, x - R * 0.62, y + R * 0.5); ctx.closePath();
+        }, c2, R, { luce: 0.04, pennino: 0.03 });
+      } else if (veste === 'jabot') {
+        // la cravatta di pizzo che scende a onde
+        parte(ctx, () => {
+          ctx.beginPath(); ctx.moveTo(x - R * 0.12, y + R * 0.46); ctx.lineTo(x + R * 0.12, y + R * 0.46);
+          for (let k = 0; k < 4; k++) ctx.quadraticCurveTo(x + R * (0.26 + k * 0.02), y + R * (0.58 + k * 0.14), x + R * (0.12 + k * 0.02), y + R * (0.64 + k * 0.14));
+          ctx.lineTo(x - R * 0.2, y + R * 1.06);
+          for (let k = 3; k >= 0; k--) ctx.quadraticCurveTo(x - R * (0.3 + k * 0.02), y + R * (0.52 + k * 0.14), x - R * (0.14 + k * 0.02), y + R * (0.5 + k * 0.14));
+          ctx.closePath();
+        }, c2, R, { luce: 0.04, pennino: 0.03 });
+      }
+      if (veste === 'abito' || veste === 'jabot') {
+        // i revers della giacca
+        for (const lato of [-1, 1]) parte(ctx, () => {
+          ctx.beginPath(); ctx.moveTo(x + lato * R * 0.3, y + R * 0.46); ctx.lineTo(x + lato * R * 0.58, y + R * 0.58); ctx.lineTo(x + lato * R * 0.46, y + R * 0.76);
+          ctx.lineTo(x + lato * R * 0.56, y + R * 0.82); ctx.lineTo(x + lato * R * 0.06, y + R * 1.3); ctx.lineTo(x + lato * R * 0.02, y + R * 1.12); ctx.closePath();
+        }, c1, R, { luce: 0.06, pennino: 0.03 });
+      }
+      if (veste === 'abito' && f.cravatta === 'farfalla') {
+        parte(ctx, () => {
+          ctx.beginPath(); ctx.moveTo(x, y + R * 0.52); ctx.lineTo(x - R * 0.2, y + R * 0.44); ctx.lineTo(x - R * 0.2, y + R * 0.62); ctx.closePath();
+          ctx.moveTo(x, y + R * 0.52); ctx.lineTo(x + R * 0.2, y + R * 0.44); ctx.lineTo(x + R * 0.2, y + R * 0.62); ctx.closePath();
+        }, c2, R, { luce: 0.03, pennino: 0.03 });
+      } else if (veste === 'abito' && f.cravatta) {
+        parte(ctx, () => {
+          ctx.beginPath(); ctx.moveTo(x - R * 0.06, y + R * 0.48); ctx.lineTo(x + R * 0.06, y + R * 0.48); ctx.lineTo(x + R * 0.1, y + R * 1.05);
+          ctx.lineTo(x, y + R * 1.16); ctx.lineTo(x - R * 0.1, y + R * 1.05); ctx.closePath();
+        }, c2, R, { luce: 0.03, pennino: 0.03 });
+      }
+    }
+    // Il casco (gli astronauti): la bolla di vetro dietro alla testa, che si
+    // vede attorno, e il riflesso disegnato dopo i capelli
+    const casco = f.copricapo === 'casco';
+    const rc = Math.max(hw, hh) * 1.36;
+    if (casco) {
+      const g = ctx.createRadialGradient(hx - rc * 0.3, hy - rc * 0.35, rc * 0.1, hx, hy, rc);
+      g.addColorStop(0, 'rgba(224, 242, 254, 0.28)'); g.addColorStop(0.8, 'rgba(125, 211, 252, 0.16)'); g.addColorStop(1, 'rgba(56, 189, 248, 0.34)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, rc, 0, Math.PI * 2); ctx.fill();
+    }
+    // I capelli: la massa dietro (più scura), le orecchie, la testa, poi i
+    // capelli davanti, con le ciocche chiare dentro
+    const stile = STOR_CAPELLI[f.capelli] || STOR_CAPELLI.corti;
+    if (stile.dietro) parte(ctx, () => ciocca(stile.dietro, stile.onda), scurisci(chioma, 0.12), R, { luce: 0.1 });
+    orecchieDaCartone(ctx, hx, hy, hw, hh, R, profilo.pelle);
+    // la barba lunga sul petto, sotto al mento (quella attorno alla bocca è
+    // del volto, `barba` del profilo, e le si disegna sopra)
+    if (f.barbaLunga) {
+      parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(hx - hw * 0.8, hy + hh * 0.35);
+        ctx.quadraticCurveTo(hx - hw * 0.95, hy + hh * 1.3, hx - hw * 0.2, hy + hh * 1.75);
+        ctx.quadraticCurveTo(hx, hy + hh * 1.95, hx + hw * 0.2, hy + hh * 1.75);
+        ctx.quadraticCurveTo(hx + hw * 0.95, hy + hh * 1.3, hx + hw * 0.8, hy + hh * 0.35); ctx.closePath();
+      }, profilo.peli, R, { luce: 0.06, dentro: () => pieghe([[-0.3, 0.55, -0.34, 0.85, -0.16, 1.1], [0.1, 0.6, 0.16, 0.9, 0.04, 1.15], [0.36, 0.55, 0.38, 0.8, 0.22, 1.0]], scurisci(profilo.peli, 0.35)) });
+    }
+    const segni = f.segni || {};
+    testaDaCartone(ctx, hx, hy, hw, hh, R, profilo.pelle, { pieghe: !!segni.pieghe, zampe: !!segni.zampe, rughe: !!segni.rughe,
+      lentiggini: !!segni.lentiggini, nasino: piccolo || profilo.genere === 'f' });
+    const ciocche = () => {
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = rgba(schiarisci(chioma, 0.3), 0.85); ctx.lineWidth = Math.max(0.7, R * 0.018);
+      ctx.beginPath();
+      for (let k = -3; k <= 3; k++) {
+        ctx.moveTo(hx + k * hw * 0.16, hy - hh * 1.02 + mosso);
+        ctx.quadraticCurveTo(hx + k * hw * 0.3, hy - hh * 0.9, hx + k * hw * 0.38, hy - hh * 0.62);
+      }
+      ctx.stroke();
+    };
+    if (stile.davanti) parte(ctx, () => ciocca(stile.davanti, stile.onda), chioma, R, { luce: 0.08, dentro: ciocche });
+    if (stile.lati) for (const lato of [-1, 1]) {
+      // la frangia ai lati di chi ha perso i capelli in cima: sopra alle orecchie
+      parte(ctx, () => ciocca([[lato * 0.78, -0.62], [lato * 1.04, -0.52], [lato * 1.17, -0.3], [lato * 1.15, -0.08], [lato * 1.0, -0.13], [lato * 0.88, -0.32]], stile.onda),
+        chioma, R, { luce: 0.06, pennino: 0.03 });
+    }
+    // Il copricapo
+    if (f.copricapo === 'corona') {
+      parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(hx - hw * 0.72, hy - hh * 0.72);
+        const punte = 5;
+        for (let k = 0; k <= punte * 2; k++) {
+          const u = k / (punte * 2), px = hx - hw * 0.72 + u * hw * 1.44;
+          ctx.lineTo(px, hy - hh * (k % 2 ? 1.08 : 1.32) + mosso);
+        }
+        ctx.lineTo(hx + hw * 0.72, hy - hh * 0.72); ctx.quadraticCurveTo(hx, hy - hh * 0.62, hx - hw * 0.72, hy - hh * 0.72); ctx.closePath();
+      }, '#facc15', R, { luce: 0.06, pennino: 0.03 });
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.arc(hx, hy - hh * 0.8, Math.max(1, R * 0.05), 0, Math.PI * 2); ctx.fill();
+    } else if (f.copricapo === 'fascia') {
+      parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(hx - hw * 0.98, hy - hh * 0.42); ctx.quadraticCurveTo(hx, hy - hh * 0.78, hx + hw * 0.98, hy - hh * 0.42);
+        ctx.lineTo(hx + hw * 0.96, hy - hh * 0.3); ctx.quadraticCurveTo(hx, hy - hh * 0.64, hx - hw * 0.96, hy - hh * 0.3); ctx.closePath();
+      }, c2, R, { luce: 0.04, pennino: 0.03 });
+    } else if (casco) {
+      // il bordo della bolla e i riflessi del vetro, fuori dal volto
+      ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07);
+      ctx.beginPath(); ctx.arc(hx, hy, rc, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = rgba('#e0f2fe', 0.9); ctx.lineWidth = Math.max(1.2, R * 0.035); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'; ctx.lineWidth = Math.max(1.5, R * 0.05); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(hx, hy, rc * 0.9, -Math.PI * 0.86, -Math.PI * 0.62); ctx.stroke();
+      ctx.lineWidth = Math.max(1, R * 0.03);
+      ctx.beginPath(); ctx.arc(hx, hy, rc * 0.9, -Math.PI * 0.56, -Math.PI * 0.5); ctx.stroke();
+    }
+    // lo schermo della carrozzina, accanto
+    if (f.sedia) {
+      const sx = x + R * 1.0 * sp, sy = y + R * 0.72;
+      asta(ctx, sx - R * 0.1, sy + R * 0.42, sx, sy + R * 0.16, Math.max(1, R * 0.04));
+      parte(ctx, () => rettangolo(ctx, sx - R * 0.2, sy - R * 0.12, R * 0.4, R * 0.28, R * 0.04), '#0f172a', R, { luce: 0.02, pennino: 0.03,
+        dentro: () => { ctx.fillStyle = rgba('#67e8f9', 0.55 + 0.2 * Math.sin(t / 600)); ctx.fillRect(sx - R * 0.15, sy - R * 0.07, R * 0.3, R * 0.18); } });
+    }
+  }
+
+  /* Gli occhiali (v469, Hawking): due lenti attorno agli occhi e il ponte,
+   * disegnati sopra agli occhi; ogni lente segue il suo occhio sulla sfera
+   * girata (`posa` di `storDisegnaVolto`). */
+  function disegnaOcchiali(ctx, geom, profilo, posa) {
+    const tondi = profilo.occhiali === 'tondi';
+    const [a, b] = geom.occhi[0].cx < geom.occhi[1].cx ? geom.occhi : [geom.occhi[1], geom.occhi[0]];
+    const lente = occ => {
+      const w = occ.rx * 1.55, h = occ.ry * (tondi ? 1.5 : 1.25);
+      if (tondi) { ctx.beginPath(); ctx.ellipse(occ.cx, occ.cy, w, h, 0, 0, Math.PI * 2); }
+      else rettangolo(ctx, occ.cx - w, occ.cy - h, w * 2, h * 2, w * 0.45);
+    };
+    for (const occ of [a, b]) posa(occ.cx, occ.cy, () => {
+      lente(occ); ctx.fillStyle = 'rgba(224, 242, 254, 0.12)'; ctx.fill();
+      ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, geom.R * 0.08); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.1, geom.R * 0.045); ctx.stroke();
+    });
+    posa((a.cx + b.cx) / 2, a.cy, () => {
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, geom.R * 0.04);
+      ctx.beginPath(); ctx.moveTo(a.cx + a.rx * 1.5, a.cy - a.ry * 0.3); ctx.quadraticCurveTo((a.cx + b.cx) / 2, a.cy - a.ry * 0.7, b.cx - b.rx * 1.5, b.cy - b.ry * 0.3); ctx.stroke();
+    });
   }
 
   /* Carl Sagan come un pianeta (v450). Sul ritratto da cartone portato da
@@ -4013,16 +4652,6 @@
     // l'ombra spostata, il bordo color panna, il taglio d'ombra, la luce in
     // alto a sinistra.
     const hw = R * 0.6, hh = R * 0.76;
-    const testa = () => {
-      ctx.beginPath();
-      ctx.moveTo(hx, hy - hh);
-      ctx.bezierCurveTo(hx + hw * 0.62, hy - hh, hx + hw * 1.02, hy - hh * 0.52, hx + hw, hy - hh * 0.05);
-      ctx.bezierCurveTo(hx + hw * 0.98, hy + hh * 0.42, hx + hw * 0.72, hy + hh * 0.8, hx + hw * 0.3, hy + hh * 0.96);
-      ctx.quadraticCurveTo(hx, hy + hh * 1.06, hx - hw * 0.3, hy + hh * 0.96);
-      ctx.bezierCurveTo(hx - hw * 0.72, hy + hh * 0.8, hx - hw * 0.98, hy + hh * 0.42, hx - hw, hy - hh * 0.05);
-      ctx.bezierCurveTo(hx - hw * 1.02, hy - hh * 0.52, hx - hw * 0.62, hy - hh, hx, hy - hh);
-      ctx.closePath();
-    };
     // I capelli sono due ciocche di punti (in raggi della testa) lisciate
     // come il sasso a patata: la massa dietro, più scura, che dà il volume, e
     // il caschetto davanti col ciuffo. Il contorno di fuori è mosso (le onde
@@ -4042,53 +4671,9 @@
       [1.02, -0.92], [1.24, -0.42], [1.3, 0.12], [1.3, 0.56], [1.06, 0.36], [0.6, 0.2], [-0.6, 0.2]];
     parte(ctx, () => liscia(dietro, 0.025), scurisci(capelli, 0.12), R, { luce: 0.1 });
     // le orecchie, dietro alla testa, sotto alle basette
-    for (const lato of [-1, 1]) {
-      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(hx + lato * hw * 0.98, hy + hh * 0.08, hw * 0.17, hh * 0.22, lato * 0.18, 0, Math.PI * 2); },
-        profilo.pelle, R, { luce: 0.05, pennino: 0.03,
-          dentro: () => {
-            ctx.strokeStyle = rgba(scurisci(profilo.pelle, 0.4), 0.7); ctx.lineWidth = Math.max(0.6, R * 0.014);
-            ctx.beginPath(); ctx.arc(hx + lato * hw * 1.0, hy + hh * 0.08, hw * 0.08, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
-          } });
-    }
+    orecchieDaCartone(ctx, hx, hy, hw, hh, R, profilo.pelle);
     // la testa: nello stile dei pianeti, col suo taglio d'ombra
-    ctx.save(); ctx.translate(R * 0.04, R * 0.05); testa(); ctx.fillStyle = 'rgba(12, 6, 30, 0.4)'; ctx.fill(); ctx.restore();
-    testa(); ctx.strokeStyle = '#fff6e6'; ctx.lineWidth = Math.max(2, R * 0.06); ctx.stroke();
-    testa(); ctx.fillStyle = scurisci(profilo.pelle, 0.24); ctx.fill();
-    ctx.save(); testa(); ctx.clip();
-    const lx = hx - hw * 0.28, ly = hy - hh * 0.26, lr = Math.max(hw, hh) * 1.02;
-    const luce = ctx.createRadialGradient(lx, ly, lr * 0.82, lx, ly, lr);
-    luce.addColorStop(0, profilo.pelle); luce.addColorStop(1, rgba(profilo.pelle, 0));
-    ctx.fillStyle = profilo.pelle; ctx.beginPath(); ctx.arc(lx, ly, lr * 0.82, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = luce; ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
-    // gli zigomi, il mento, la mascella: ombre morbide che fanno una faccia
-    ctx.fillStyle = rgba(scurisci(profilo.pelle, 0.3), 0.32);
-    ctx.beginPath(); ctx.ellipse(hx + hw * 0.62, hy + hh * 0.42, hw * 0.3, hh * 0.42, -0.35, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = rgba(schiarisci(profilo.pelle, 0.25), 0.4);
-    ctx.beginPath(); ctx.ellipse(hx - hw * 0.1, hy + hh * 0.84, hw * 0.24, hh * 0.08, 0, 0, Math.PI * 2); ctx.fill();
-    // il naso lungo e dritto: la canna in luce, l'ombra di lato, le narici
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = rgba(scurisci(profilo.pelle, 0.42), 0.55); ctx.lineWidth = Math.max(0.8, R * 0.02);
-    ctx.beginPath(); ctx.moveTo(hx + hw * 0.05, hy - hh * 0.16); ctx.quadraticCurveTo(hx + hw * 0.12, hy + hh * 0.02, hx + hw * 0.1, hy + hh * 0.11); ctx.stroke();
-    ctx.fillStyle = rgba(scurisci(profilo.pelle, 0.3), 0.35);
-    ctx.beginPath(); ctx.ellipse(hx + hw * 0.02, hy + hh * 0.15, hw * 0.15, hh * 0.06, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = rgba(INCHIOSTRO, 0.7); ctx.lineWidth = Math.max(0.8, R * 0.022);
-    ctx.beginPath(); ctx.arc(hx, hy + hh * 0.12, hw * 0.09, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
-    for (const lato of [-1, 1]) {
-      ctx.beginPath(); ctx.arc(hx + lato * hw * 0.12, hy + hh * 0.11, hw * 0.045, lato < 0 ? Math.PI * 0.4 : -Math.PI * 0.4, lato < 0 ? Math.PI * 1.3 : Math.PI * 0.6, lato > 0); ctx.stroke();
-    }
-    // le pieghe del sorriso dal naso agli angoli della bocca, e le zampe di
-    // gallina ai lati degli occhi: il sorriso largo e un po' segnato di lui
-    ctx.strokeStyle = rgba(scurisci(profilo.pelle, 0.45), 0.45); ctx.lineWidth = Math.max(0.7, R * 0.016);
-    for (const lato of [-1, 1]) {
-      ctx.beginPath(); ctx.moveTo(hx + lato * hw * 0.2, hy + hh * 0.12);
-      ctx.quadraticCurveTo(hx + lato * hw * 0.44, hy + hh * 0.3, hx + lato * hw * 0.42, hy + hh * 0.5); ctx.stroke();
-      for (const k of [-1, 0, 1]) {
-        ctx.beginPath(); ctx.moveTo(hx + lato * hw * 0.74, hy - hh * 0.1 + k * hh * 0.05);
-        ctx.lineTo(hx + lato * hw * 0.86, hy - hh * 0.12 + k * hh * 0.09); ctx.stroke();
-      }
-    }
-    ctx.restore();
-    testa(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.4, R * 0.035); ctx.stroke();
+    testaDaCartone(ctx, hx, hy, hw, hh, R, profilo.pelle, { pieghe: true, zampe: true });
     const davanti = [[-0.94, 0.5], [-1.22, 0.6], [-1.17, 0.12], [-1.17, -0.36], [-1.02, -0.8], [-0.7, -1.1], [-0.28, -1.24], [0.2, -1.27],
       [0.64, -1.16], [1.0, -0.86], [1.18, -0.42], [1.2, 0.04], [1.24, 0.58], [0.96, 0.5],
       // dentro: la basetta destra, la tempia, il ciuffo che gira sulla
@@ -6522,7 +7107,7 @@
    * nelle storie» spenta, in pausa, fuori da una demo, e senza Web Audio. */
   const STOR_SUONI = ['explosion', 'shockwave', 'flash', 'sparkles', 'fireworks', 'smoke', 'hearts', 'lightning',
     'shooting_star', 'glow', 'confetti', 'boing', 'whoosh', 'pop', 'zap', 'magic', 'inflate', 'suck', 'wobble',
-    'spin', 'tada', 'ding', 'drumroll', 'rumble'];
+    'spin', 'tada', 'ding', 'drumroll', 'rumble', 'spacetime'];
   // Il rumore che fa ogni gesto, quando la storia non ne sceglie un altro
   const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
   const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
@@ -6729,6 +7314,12 @@
     rumble(a, u, t, d, v) {
       soffio(a, u, { t0: t, durata: 2.0, f0: 220, f1: 90, picco: 0.5 * v, attacco: 0.4 });
       tono(a, u, { t0: t, durata: 2.0, f0: 40, picco: 0.3 * v, attacco: 0.4 });
+    },
+    // v469: il telo dello spazio-tempo che sprofonda: una nota che scende
+    // piano nel grave, e sopra un accordo sospeso che si allontana
+    spacetime(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 2.4, f0: 196, f1: 49, picco: 0.28 * v, attacco: 0.45 });
+      [392, 587, 784].forEach((f, k) => tono(a, u, { t0: t + k * 0.12, durata: 2.0, f0: f, f1: f * 0.94, picco: 0.035 * v, attacco: 0.5 }));
     }
   };
   function suoniAccesi() {

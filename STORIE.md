@@ -89,7 +89,7 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 | `sottotitolo` | colore del nome nel sottotitolo (su fondo scuro: va chiaro) | della famiglia |
 | `guance` | colore del rossore | della famiglia |
 | `genere` | `f` o `m`: i tratti di lei o di lui (§Lei e lui) | della famiglia |
-| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble`, `galassia`, `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco`, `sagan` (v450) | della famiglia |
+| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble`, `galassia`, `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco`, `sagan` (v450), `persona` (v469) | della famiglia |
 | `cosmo` | il luogo della scala cosmica in cui vive, e **solo** lì (`idea`: in nessun posto, v414) | — |
 | `luogo` | il suo luogo nella scala cosmica, per chi vive anche altrove (v414: Betelgeuse) | — |
 | `decoro` | il disegno sul corpo di un pianeta: `bande`, `macchia`, `continenti`, `calotta`, `nubi`, `crateri` | — (le lune: crateri) |
@@ -104,6 +104,8 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 | `personalita` | chiave `storie.personalita.<…>` | della famiglia |
 | `alias` | altri nomi con cui l'app lo chiama in un'altra vista | — |
 | `ospite` | non è un astro: sta in un posto dello schermo in ogni vista e non viaggia (v450, Carl Sagan: §Le storie cantate) | — |
+| `figura` | il corpo di chi racconta il cielo, con la sagoma `persona` (v469: capelli, copricapo, veste, barba lunga, casco, sedia: §Chi racconta il cielo) | — |
+| `occhiali` | `quadrati` o `tondi` (v469, Hawking) | — |
 
 La personalità va scritta in `storie.personalita.<…>` nei due dizionari (la
 legge la pagina Demo). Un oggetto che l'app conosce e che nessuna riga nomina
@@ -222,6 +224,7 @@ personaggio ha **il suo corpo**, la `sagoma`:
 | `buco_nero` | l'ombra viola quasi nera, l'anello di luce, il disco di gas che gira (metà dietro, metà davanti come gli anelli di Saturno, più chiaro dal lato che viene verso di noi) e la luce piegata sopra all'ombra (v414) | sull'ombra |
 | `buco_bianco` | il disco bianco col contorno **a tratteggio** (è un'idea), raggi e onde che corrono fuori (v414) | sul disco |
 | `sagan` | Carl Sagan (v450): il busto con la giacca di velluto e il dolcevita rosso, la testa che è un disco-pianeta, i capelli a ciuffo | sulla testa |
+| `persona` | chi racconta il cielo (v469): lo stesso busto e la stessa testa, vestiti dalla `figura` del personaggio | sulla testa |
 
 `STOR_CORPI` dice per ognuna dove sta il volto (`storVoltoNelCorpo`) e
 quanto il corpo esce dal suo raggio (`ingombro`: i pannelli, gli anelli, la
@@ -2453,6 +2456,100 @@ prima, la battuta cortissima, la seconda battuta anticipata, la domanda che
 tiene il suo tempo, fuori da una storia niente cambia), `prova-narrazione.js` (4 nuove: la fine vera del
 suono, la voce che finisce lì, senza Web Audio come prima, la battuta
 scaricata prima e una volta sola).
+
+### Chi racconta il cielo, e «Einstein e il tempo elastico» (v469)
+
+«Nelle CosmoStorie metti Einstein, Galileo, Platone, Erastotele, Archimede,
+Pitagora, Copernico, Tolomeo, Huygens, Schiaparelli; un astronauta bambino,
+Astro Ben; Luca Parmitano, Neil Armstrong, Samantha Cristoforetti, Stephen
+Hawking. Poi una storia di Einstein che spiega che cos'è lo spazio-tempo e come
+cambia vicino ai buchi neri, citando *Interstellar*: coinvolgente e
+intelligente.» «Erastotele» può essere Eratostene o Aristotele: ci sono tutti e
+due.
+
+**Un corpo solo, vestito da ognuno** (`disegnaPersona`, sagoma `persona`,
+§6-quater). Sedici funzioni come `disegnaSagan` sarebbero state sedici copie;
+invece la testa da cartone di Sagan è diventata comune (`tracciaTesta`,
+`testaDaCartone`, `orecchieDaCartone`: Sagan si disegna identico a prima) e
+ogni personaggio ha la sua `figura` nella riga di `STOR_PERSONAGGI`:
+
+| Campo | Valori |
+|---|---|
+| `capelli` | `arruffati` (Einstein), `corona` (la calvizie con la frangia ai lati: Platone, Archimede, Galileo, Schiaparelli), `lunghi` (Pitagora), `ricci` (Aristotele, Eratostene, Tolomeo), `parrucca` (Huygens), `caschetto` (Copernico), `corti`, `corti_lei` (Cristoforetti), `ciuffo` (Astro Ben), `nessuno` — ciocche di punti in `STOR_CAPELLI`, lisciate come il sasso a patata |
+| `chioma` | il colore dei capelli |
+| `copricapo` | `corona` (Tolomeo: Raffaello e altri lo dipinsero coronato, confondendolo coi re d'Egitto), `fascia` (Pitagora), `casco` (la bolla di vetro degli astronauti, dietro alla testa, coi riflessi fuori dal volto) |
+| `veste`, `colori` | `toga` (il mantello in diagonale), `tonaca` (col bavero di pelliccia), `farsetto` (il colletto bianco piatto), `jabot` (la cravatta di pizzo), `abito` (con `cravatta`: `lunga` o `farfalla`), `maglione` (col colletto della camicia), `tuta` (con `bandiera`: `it`, `us`, e `pannello`, la scatola dei comandi della tuta da passeggiata) |
+| `barbaLunga` | la barba che scende sul petto, nel colore dei `peli` (quella attorno alla bocca resta `barba` del profilo) |
+| `sedia` | la carrozzina di Hawking: i montanti dietro alle spalle, il poggiatesta e lo schermo con cui parlava |
+| `bambino` | spalle strette, testa più tonda, naso piccolo |
+| `segni` | `rughe`, `lentiggini`, `pieghe`, `zampe` |
+
+Gli occhiali (`occhiali: 'quadrati' | 'tondi'` nel profilo, Hawking) sono del
+volto: `disegnaOcchiali`, chiamata da `storDisegnaVolto` dopo gli occhi, con
+le lenti che seguono gli occhi sulla sfera girata.
+
+Sono tutti **ospiti** come Sagan (§Le storie cantate e gli ospiti): stanno in
+un posto dello schermo in ogni vista, non viaggiano, e nello Studio stanno nel
+gruppo «Chi racconta». Ognuno ha la sua fisica (`STOR_FISICA`): attorno gli
+gira ciò che ha scoperto o amato — a Galileo le quattro lune di Giove quasi in
+fila come nel cannocchiale, a Tolomeo il Sole (per lui girava attorno a noi),
+a Copernico la Terra, ad Archimede un granello di sabbia (l'*Arenario*), a
+Huygens Titano, a Schiaparelli Marte, ad Aristotele la Luna (l'ombra tonda
+della Terra nelle eclissi), a Eratostene il Sole delle ombre di Siene, a
+Pitagora tre sfere armoniche, a Einstein un raggio di luce, a Hawking un
+buchino nero, ad Armstrong e ad Astro Ben la Luna, a Parmitano e Cristoforetti
+la Terra. Nomi, personalità e «perché è fatto così» stanno in `storie.nome.*`,
+`storie.personalita.*`, `storie.fisica.*` (e `studio.alias.*`) nei due
+dizionari. Le lune stanno entro 1,56 raggi: più lontane, il ritratto
+rimpiccioliva il personaggio (Galileo era la metà degli altri).
+
+**Gargantua** (`gargantua`, famiglia `buco`, `cosmo: 'idea'`): il buco nero di
+*Interstellar*, col disco dorato del film. È un'idea come il buco bianco:
+galleggia davanti alla carta della scala cosmica.
+
+**Lo spazio-tempo che si incurva** (`effect { type: spacetime }`,
+`storDisegnaSpaziotempo`): il telo elastico dei libri, una griglia vista un
+po' dall'alto che sprofonda a imbuto verso l'astro (profondità come
+1/distanza: dolce lontano, ripida vicino) e lo tiene sul fondo, con una biglia
+azzurra che ci gira attorno seguendo la curva. Le righe si spengono sul bordo
+e vicino all'astro, che resta leggibile col volto. `size` grande fa il pozzo
+di un buco nero; di serie dura 4 s (le storie lo allungano fino a 20). Ha il
+suo rumore (`spacetime` in `STOR_SUONI`: una nota che scende nel grave e un
+accordo sospeso). Col movimento ridotto è un alone, come gli altri effetti.
+
+**La storia** (`storia_einstein`, 36 scene, una battuta ciascuna; il copione
+è generato e poi riletto a mano). Astro Ben ha visto *Interstellar*; Einstein
+(ospite a sinistra) gli spiega, con Ben a destra:
+
+| Scene | Cosa |
+|---|---|
+| 1–3 | il cielo di Roma il 16 ottobre 2026, verso il Sagittario (lì c'è il centro della Galassia); il titolo; «lo spazio e il tempo sono una stoffa sola» (1915) |
+| 4–6 | il telo che sprofonda attorno al Sole e la Terra che «va dritta su una strada curva»; la frase di Wheeler |
+| 7–10 | Mercurio e i 43″ al secolo (e Vulcano, il pianeta che non c'era); l'eclissi del 1919 e la luce piegata |
+| 11–15 | il tempo che rallenta vicino a una massa; la domanda a chi guarda (montagna o mare?), il telo attorno alla Terra, il GPS (38 µs al giorno, una decina di km) |
+| 16–18 | sulla Stazione, Samantha Cristoforetti: chi corre invecchia più piano, quasi un centesimo di secondo in due missioni |
+| 19–23 | nella scala cosmica fino a Sagittario A* (4 milioni di Soli in meno dell'orbita di Mercurio), l'orizzonte degli eventi, il tempo che si ferma visto da fuori |
+| 24–28 | Gargantua di *Interstellar* (Kip Thorne, il disco piegato), il pianeta di Miller (un'ora, sette anni), Cooper e Murph, le onde alte come montagne |
+| 29–32 | le prove: LIGO 2015, la foto di Sagittario A* del 2022; Stephen Hawking e i buchi neri che evaporano |
+| 33–36 | il ritorno a casa; «non smettere mai di farsi domande»; «quanto tempo è passato?» — «dipende da dove lo guardi!» |
+
+I conti stanno in piedi: 43″ al secolo, Eddington il 29 maggio 1919, il GPS
+avanti di 38 µs al giorno (+45 la gravità, −7 la velocità), la Stazione a
+7,7 km/s (≈ 0,3 ns al secondo più lenta: in ~370 giorni di Cristoforetti
+fanno ~9 ms), il raggio di Sagittario A* (~0,08 UA) dentro all'orbita di
+Mercurio (0,39 UA), GW150914 a 1,3 miliardi di anni luce, la foto dell'EHT
+del 12 maggio 2022. Hawking ed Einstein non si sono mai incontrati: qui sì.
+
+Le voci: la sintesi, coi toni dei profili (Astro Ben acuto e svelto,
+Cristoforetti chiara, Gargantua profondissimo); `regia-voci.json` ha il
+carattere delle sei voci nuove e la regia di tutte le 36 battute coi tag di
+ElevenLabs, `voci-elevenlabs.json` le righe vuote da riempire con le voci
+scelte (`node scripts/voci-storie.js --genera albert-einstein`).
+
+Prove: `prova-storie.js` (114: la storia si valida, ha una battuta per scena,
+l'effetto nuovo si disegna, scade e ha il suo rumore); guardata intera in
+Chromium (`STORIA=storia_einstein node scripts/giro-storia.js`: nessun
+errore, 240 s con la voce finta) e i ritratti dei sedici uno per uno.
 
 ## Accessibilità
 
