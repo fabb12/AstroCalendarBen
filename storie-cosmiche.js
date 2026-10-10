@@ -695,6 +695,31 @@
       figura: { capelli: 'corti', chioma: '#3b2a1a', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'us', segni: { pieghe: true } },
       scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
       voce: { ritmo: '-4%', tono: '-10Hz' }, espressione: 'happy', personalita: 'stafford' },
+    // v474: i cacciatori di pianeti. Herschel (la parrucca bianca e il
+    // jabot del Settecento, Urano), Percival Lowell (la stempiatura, i baffi
+    // folti e il farfallino, Marte e il «Pianeta X»), Clyde Tombaugh (il
+    // ragazzo del Kansas col ciuffo che trovò Plutone a 24 anni) e Michael
+    // E. Brown (Eris, il pianeta nano che fece «morire» Plutone)
+    herschel: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.herschel', ospite: true, alias: ['Herschel', 'William Herschel'],
+      pelle: '#f2c9a8', iride: '#4b6b8a', sottotitolo: '#a5f3fc', guance: '#f4a08a', peli: '#9ca3af',
+      figura: { capelli: 'parrucca', chioma: '#f1f5f9', veste: 'jabot', colori: ['#1e3a5f', '#13263f', '#f8fafc'], segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-4Hz' }, espressione: 'curious', personalita: 'herschel' },
+    lowell: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.lowell', ospite: true, alias: ['Lowell', 'Percival Lowell'],
+      pelle: '#f0c4a0', iride: '#3f2a17', sottotitolo: '#fca5a5', guance: '#f4a08a', peli: '#4a3220', baffi: 'folti',
+      figura: { capelli: 'corona', chioma: '#4a3220', veste: 'abito', cravatta: 'farfalla', colori: ['#1f2937', '#111827', '#f8fafc'], segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-8Hz' }, espressione: 'excited', personalita: 'lowell' },
+    tombaugh: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.tombaugh', ospite: true, alias: ['Tombaugh', 'Clyde Tombaugh', 'Tombal', 'Clyde Tombal'],
+      pelle: '#f2c4a0', iride: '#3b5b7a', sottotitolo: '#c4b5fd', guance: '#f4a08a',
+      figura: { capelli: 'ciuffo', chioma: '#5b3a1e', veste: 'maglione', colori: ['#78716c', '#57534e', '#f8fafc'], segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '4%', tono: '0Hz' }, espressione: 'happy', personalita: 'tombaugh' },
+    mike_brown: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.mike_brown', ospite: true, alias: ['Michael Brown', 'Michael E. Brown', 'Mike Brown'],
+      pelle: '#f2c4a0', iride: '#4b5563', sottotitolo: '#ddd6fe', guance: '#f4a08a', peli: '#6b4a2e',
+      figura: { capelli: 'corti', chioma: '#6b4a2e', veste: 'maglione', colori: ['#0f766e', '#115e59', '#f8fafc'], segni: { zampe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '4%', tono: '-4Hz' }, espressione: 'playful', personalita: 'mike_brown' },
     astro_ben: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.astro_ben', ospite: true, alias: ['Astro Ben', 'AstroBen', 'Ben'],
       // v470: come il bambino della foto: occhi scuri, capelli castano scuro
       // corti e spettinati con la frangia, la carnagione olivastra chiara,
@@ -865,6 +890,16 @@
     stafford:     { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'stafford',
       lune: [{ colore: '#e5e7eb', r: 0.05, d: 1.4, periodo: 9000, piatto: 0.3, giro: -0.1 },
         { colore: '#86efac', r: 0.045, d: 1.48, periodo: 9000, piatto: 0.3, giro: -0.1 }] },
+    herschel:     { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'herschel',
+      lune: [{ nome: 'Uranus', colore: '#a5f3fc', r: 0.08, d: 1.42, periodo: 11000, piatto: 0.3, giro: 0.1 }] },
+    lowell:       { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'lowell',
+      lune: [{ nome: 'Mars', colore: '#f87171', r: 0.07, d: 1.38, periodo: 9500, piatto: 0.3, giro: -0.12 }] },
+    tombaugh:     { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.1, tratto: 'tombaugh',
+      lune: [{ nome: 'Pluto', colore: '#e7d3c0', r: 0.06, d: 1.42, periodo: 12000, piatto: 0.3, giro: 0.14 }] },
+    // Eris con la sua luna Disnomia, più piccola e più scura
+    mike_brown:   { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'mike_brown',
+      lune: [{ nome: 'Eris', colore: '#eef2f8', r: 0.065, d: 1.42, periodo: 12000, piatto: 0.3, giro: -0.12 },
+        { colore: '#94a3b8', r: 0.035, d: 1.26, periodo: 5000, piatto: 0.3, giro: -0.12 }] },
     // Gargantua gira quasi alla velocità della luce: il disco corre
     gargantua:    { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.6, tratto: 'gargantua' },
     astro_ben:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.3, tratto: 'astro_ben',

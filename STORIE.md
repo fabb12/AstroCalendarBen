@@ -2820,3 +2820,17 @@ come quelli della v472, senza codice di disegno nuovo:
 Aldrin con la stessa tuta di Armstrong era la sua copia: ha i capelli più
 scuri, la pelle un filo più calda e le rughe del sorriso (`zampe`, `pieghe`).
 
+### I cacciatori di pianeti: Herschel, Lowell, Tombaugh, Brown (v474)
+
+«Aggiungi anche Percival Lowell, Clyde Tombal, William Hersher e Michael
+Brown, Michael E. Brown.» «Tombal» è Clyde Tombaugh, «Hersher» William
+Herschel, e i due Brown sono la stessa persona (lo scopritore di Eris): le
+grafie sentite stanno fra gli alias. Ospiti come i precedenti:
+
+| Chi | Figura | Gli gira attorno |
+|---|---|---|
+| `herschel` | `parrucca` bianca, `jabot` blu | Urano (1781) |
+| `lowell` | `corona` (stempiato), baffi folti, `abito` col farfallino | Marte dei canali |
+| `tombaugh` | `ciuffo`, `maglione` grigio | Plutone (1930) |
+| `mike_brown` | `corti`, `maglione` verde acqua | Eris e Disnomia (2005) |
+
