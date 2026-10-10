@@ -671,6 +671,30 @@
       figura: { capelli: 'corti', chioma: '#3b2a1a', veste: 'tuta', colori: ['#1d4ed8', '#1e3a8a', '#f8fafc'], bandiera: 'it', segni: { pieghe: true } },
       scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
       voce: { ritmo: '-2%', tono: '-6Hz' }, espressione: 'happy', personalita: 'malerba' },
+    // v473: Newton (la parrucca grigia lunga dei ritratti di Kneller, il
+    // jabot), Wernher von Braun (giacca e cravatta, il ciuffo biondo
+    // scuro), Buzz Aldrin (la tuta bianca dell'Apollo 11 col pannello) e
+    // Thomas Stafford (Apollo 10 e Apollo-Soyuz, la tuta bianca senza casco)
+    newton: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.newton', ospite: true, alias: ['Newton', 'Isaac Newton'],
+      pelle: '#f2c9a8', iride: '#4b5563', sottotitolo: '#fecaca', guance: '#f4a08a', peli: '#9ca3af',
+      figura: { capelli: 'parrucca', chioma: '#d1d5db', veste: 'jabot', colori: ['#4a2c1d', '#2e1b12', '#f8fafc'], segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-6Hz' }, espressione: 'curious', personalita: 'newton' },
+    von_braun: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.von_braun', ospite: true, alias: ['von Braun', 'Von Braun', 'Wernher von Braun'],
+      pelle: '#f2c4a0', iride: '#3b5b7a', sottotitolo: '#e2e8f0', guance: '#f4a08a', peli: '#8a6a45',
+      figura: { capelli: 'ciuffo', chioma: '#8a6a45', veste: 'abito', cravatta: 'lunga', colori: ['#374151', '#1f2937', '#0f172a'], segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-2%', tono: '-8Hz' }, espressione: 'determined', personalita: 'von_braun' },
+    aldrin: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.aldrin', ospite: true, alias: ['Aldrin', 'Buzz Aldrin', 'Buzz'],
+      pelle: '#ecbb94', iride: '#3b5b7a', sottotitolo: '#fef3c7', guance: '#f4a08a',
+      figura: { capelli: 'corti', chioma: '#3f2a1a', copricapo: 'casco', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'us', pannello: true, segni: { zampe: true, pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '2%', tono: '-4Hz' }, espressione: 'playful', personalita: 'aldrin' },
+    stafford: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.stafford', ospite: true, alias: ['Stafford', 'Thomas Stafford', 'Tom Stafford'],
+      pelle: '#f0c4a0', iride: '#4b5563', sottotitolo: '#c7d2fe', guance: '#f4a08a',
+      figura: { capelli: 'corti', chioma: '#3b2a1a', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'us', segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-10Hz' }, espressione: 'happy', personalita: 'stafford' },
     astro_ben: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.astro_ben', ospite: true, alias: ['Astro Ben', 'AstroBen', 'Ben'],
       // v470: come il bambino della foto: occhi scuri, capelli castano scuro
       // corti e spettinati con la frangia, la carnagione olivastra chiara,
@@ -829,6 +853,18 @@
     // il satellite al guinzaglio della missione TSS-1
     malerba:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'malerba',
       lune: [{ colore: '#e5e7eb', r: 0.05, d: 1.4, periodo: 9000, piatto: 0.3, giro: -0.1 }] },
+    // a Newton la Luna, che cade sulla Terra come la mela e non la tocca mai
+    newton:       { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'newton',
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.07, d: 1.4, periodo: 9500, piatto: 0.3, giro: 0.1 },
+        { colore: '#dc2626', r: 0.04, d: 1.24, periodo: 4000, piatto: 0.3, giro: 0.1 }] },
+    von_braun:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'von_braun',
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.08, d: 1.42, periodo: 10000, piatto: 0.3, giro: -0.1 }] },
+    aldrin:       { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'aldrin',
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.08, d: 1.42, periodo: 10000, piatto: 0.3, giro: 0.12 }] },
+    // l'Apollo e la Sojuz che si agganciano nel 1975: due capsule vicine
+    stafford:     { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'stafford',
+      lune: [{ colore: '#e5e7eb', r: 0.05, d: 1.4, periodo: 9000, piatto: 0.3, giro: -0.1 },
+        { colore: '#86efac', r: 0.045, d: 1.48, periodo: 9000, piatto: 0.3, giro: -0.1 }] },
     // Gargantua gira quasi alla velocità della luce: il disco corre
     gargantua:    { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.6, tratto: 'gargantua' },
     astro_ben:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.3, tratto: 'astro_ben',

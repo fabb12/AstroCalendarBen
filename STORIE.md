@@ -2803,3 +2803,20 @@ pagina si apre su di lei (`studioSchede`, `index.html`). La chiave della scelta
 è passata a `astrocal_demo_scheda_v2`, perché con la vecchia chi non aveva mai
 toccato le linguette aveva in memoria «Demo» e avrebbe continuato ad aprirla.
 Un link `?demo=` apre la linguetta Demo come prima.
+
+### Newton, von Braun, Aldrin e Stafford (v473)
+
+«Aggiungi personaggi: Newton, Wernher von Braun, Buzz Aldrin, Stafford.»
+Stafford è Thomas Stafford (Gemini, Apollo 10, Apollo-Soyuz). Quattro ospiti
+come quelli della v472, senza codice di disegno nuovo:
+
+| Chi | Figura | Gli gira attorno |
+|---|---|---|
+| `newton` | `parrucca` grigia lunga, `jabot` marrone | la Luna e, più vicina, una mela rossa (la Luna cade come la mela) |
+| `von_braun` | `ciuffo`, `abito` con la cravatta | la Luna, la meta del Saturn V |
+| `aldrin` | casco, tuta bianca col `pannello`, bandiera `us` | la Luna |
+| `stafford` | `corti`, tuta bianca senza casco, bandiera `us` | due capsule vicine, l'Apollo e la Sojuz del 1975 |
+
+Aldrin con la stessa tuta di Armstrong era la sua copia: ha i capelli più
+scuri, la pelle un filo più calda e le rughe del sorriso (`zampe`, `pieghe`).
+
