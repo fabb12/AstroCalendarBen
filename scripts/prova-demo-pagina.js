@@ -154,6 +154,12 @@ async function prova(nome, fn) {
     });
     await prova('la pagina ha i sei gruppi, nell\'ordine, e un\'azione principale', async () => {
       await pagina.locator('#btn-vista-demo').click();
+      // v472: la pagina si apre sulle CosmoStorie; le misure dei tasti si
+      // prendono sulla linguetta Demo, che va aperta
+      const apertura = await pagina.evaluate(() => ({
+        schede: [...document.querySelectorAll('#demo-schede [role="tab"]')].map(b => [b.textContent.trim(), b.getAttribute('aria-selected')]),
+        storieNascoste: document.getElementById('demo-pannello-storie').hidden }));
+      await pagina.locator('#demo-scheda-demo').click();
       const p = await pagina.evaluate(() => {
         const v = document.getElementById('vista-demo');
         // I gruppi della linguetta Demo; le Storie cosmiche hanno la loro (v409)
@@ -164,8 +170,6 @@ async function prova(nome, fn) {
         const avvia = document.getElementById('demo-avvia').getBoundingClientRect();
         const secondario = document.getElementById('demo-duplica').getBoundingClientRect();
         return { titoli, titoliStorie, h2: v.querySelector('h2').textContent.trim(),
-          schede: [...document.querySelectorAll('#demo-schede [role="tab"]')].map(b => [b.textContent.trim(), b.getAttribute('aria-selected')]),
-          storieNascoste: document.getElementById('demo-pannello-storie').hidden,
           avvia: gruppoDi('demo-avvia'), schermo: gruppoDi('demo-opz-schermo'), pulita: gruppoDi('demo-opz-vista-pulita'),
           narr: gruppoDi('imp-narrazione-attiva'), musica: gruppoDi('demo-opz-musica-eclissi'),
           registra: gruppoDi('demo-opz-registra'), audio: gruppoDi('demo-opz-registra-audio'), livelli: gruppoDi('demo-livelli'),
@@ -178,8 +182,9 @@ async function prova(nome, fn) {
       assert.deepEqual(p.titoli, ['1 Demo da eseguire', '2 Presentazione', '3 Registrazione', '4 Intro delle Demo',
         '5 Narrazione e audio', '6 Elementi del Planetario']);
       assert.deepEqual(p.titoliStorie, ['1 CosmoStorie', '2 Studio delle storie']);
-      assert.deepEqual(p.schede, [['Demo', 'true'], ['CosmoStorie', 'false']]);
-      assert.equal(p.storieNascoste, true, 'si apre sulla linguetta Demo');
+      // v472: le CosmoStorie sono la prima linguetta e la pagina si apre lì
+      assert.deepEqual(apertura.schede, [['CosmoStorie', 'true'], ['Demo', 'false']]);
+      assert.equal(apertura.storieNascoste, false, 'si apre sulla linguetta CosmoStorie');
       assert.equal(p.avvia, '1 Demo da eseguire');
       assert.equal(p.schermo, '2 Presentazione'); assert.equal(p.pulita, '2 Presentazione');
       assert.equal(p.registra, '3 Registrazione'); assert.equal(p.audio, '3 Registrazione');

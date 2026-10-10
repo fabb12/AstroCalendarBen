@@ -646,6 +646,31 @@
       figura: { capelli: 'corti_lei', chioma: '#6b4423', veste: 'tuta', colori: ['#1e3a8a', '#172554', '#f8fafc'], bandiera: 'it', segni: {} },
       scala: 0.8, occhi: { r: 0.25, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
       voce: { ritmo: '4%', tono: '22Hz' }, espressione: 'happy', personalita: 'cristoforetti' },
+    // v472: i pionieri del volo: Gagarin (la tuta arancione del Vostok 1 e
+    // la bandiera sovietica), Tereškova (la prima donna, la stessa tuta,
+    // senza casco perché si vedano i capelli), Sally Ride (la prima
+    // americana, la tuta blu della NASA e i ricci) e Franco Malerba (il primo
+    // italiano, sullo Shuttle nel 1992, coi baffi di allora)
+    gagarin: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.gagarin', ospite: true, alias: ['Gagarin', 'Yuri Gagarin', 'Jurij Gagarin'],
+      pelle: '#f2c4a0', iride: '#3b5b7a', sottotitolo: '#fdba74', guance: '#f4a08a',
+      figura: { capelli: 'corti', chioma: '#7a5530', copricapo: 'casco', veste: 'tuta', colori: ['#ea580c', '#c2410c', '#f8fafc'], bandiera: 'urss', segni: { zampe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '4%', tono: '-2Hz' }, espressione: 'happy', personalita: 'gagarin' },
+    tereskova: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.tereskova', ospite: true, alias: ['Tereskova', 'Tereshkova', 'Valentina Tereskova', 'Valentina Tereshkova', 'Valentina Tereškova'],
+      pelle: '#f4cdb0', iride: '#5b6b7a', sottotitolo: '#fca5a5', guance: '#f4a08a', labbra: '#c2556b',
+      figura: { capelli: 'corti_lei', chioma: '#8a6a45', veste: 'tuta', colori: ['#ea580c', '#c2410c', '#f8fafc'], bandiera: 'urss', segni: {} },
+      scala: 0.8, occhi: { r: 0.25, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '0%', tono: '18Hz' }, espressione: 'happy', personalita: 'tereskova' },
+    ride: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.ride', ospite: true, alias: ['Ride', 'Sally Ride'],
+      pelle: '#f2c4a0', iride: '#4b6b4a', sottotitolo: '#bfdbfe', guance: '#f4a08a', labbra: '#c2556b',
+      figura: { capelli: 'ricci', chioma: '#5b3a1e', veste: 'tuta', colori: ['#1d4ed8', '#1e3a8a', '#f8fafc'], bandiera: 'us', segni: { lentiggini: true } },
+      scala: 0.8, occhi: { r: 0.25, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '6%', tono: '20Hz' }, espressione: 'happy', personalita: 'ride' },
+    malerba: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.malerba', ospite: true, alias: ['Malerba', 'Franco Malerba'],
+      pelle: '#ebbd96', iride: '#3f2a17', sottotitolo: '#86efac', guance: '#f08c74', baffi: 'folti', peli: '#3b2a1a',
+      figura: { capelli: 'corti', chioma: '#3b2a1a', veste: 'tuta', colori: ['#1d4ed8', '#1e3a8a', '#f8fafc'], bandiera: 'it', segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-2%', tono: '-6Hz' }, espressione: 'happy', personalita: 'malerba' },
     astro_ben: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.astro_ben', ospite: true, alias: ['Astro Ben', 'AstroBen', 'Ben'],
       // v470: come il bambino della foto: occhi scuri, capelli castano scuro
       // corti e spettinati con la frangia, la carnagione olivastra chiara,
@@ -795,6 +820,15 @@
       lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.08, d: 1.42, periodo: 9000, piatto: 0.3, giro: 0.1 }] },
     cristoforetti: { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'cristoforetti',
       lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.08, d: 1.42, periodo: 9000, piatto: 0.3, giro: -0.1 }] },
+    gagarin:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.1, tratto: 'gagarin',
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.08, d: 1.42, periodo: 7000, piatto: 0.3, giro: 0.12 }] },
+    tereskova:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'tereskova',
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.08, d: 1.42, periodo: 7500, piatto: 0.3, giro: -0.12 }] },
+    ride:         { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.1, tratto: 'ride',
+      lune: [{ nome: 'Earth', colore: '#60a5fa', r: 0.08, d: 1.42, periodo: 8500, piatto: 0.3, giro: 0.1 }] },
+    // il satellite al guinzaglio della missione TSS-1
+    malerba:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'malerba',
+      lune: [{ colore: '#e5e7eb', r: 0.05, d: 1.4, periodo: 9000, piatto: 0.3, giro: -0.1 }] },
     // Gargantua gira quasi alla velocità della luce: il disco corre
     gargantua:    { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.6, tratto: 'gargantua' },
     astro_ben:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.3, tratto: 'astro_ben',
@@ -4256,7 +4290,7 @@
    *   veste      toga, tonaca, farsetto, jabot, abito, maglione, tuta
    *   colori     [principale, secondo, terzo] della veste
    *   cravatta   lunga o farfalla (con `abito`)
-   *   bandiera   it o us sulla tuta;  pannello  la scatola dei comandi
+   *   bandiera   it, us o urss sulla tuta;  pannello  la scatola dei comandi
    *              della tuta da passeggiata spaziale
    *   barbaLunga la barba che scende sul petto, nel colore dei `peli`
    *   sedia      lo schienale e il poggiatesta della carrozzina (Hawking)
@@ -4406,6 +4440,21 @@
         ctx.save(); rettangolo(ctx, bx, by, bw, bh, R * 0.02); ctx.clip();
         if (f.bandiera === 'it') {
           for (const [k, col] of [[0, '#16a34a'], [1, '#f8fafc'], [2, '#dc2626']]) { ctx.fillStyle = col; ctx.fillRect(bx + k * bw / 3, by, bw / 3 + 0.5, bh); }
+        } else if (f.bandiera === 'urss') {
+          // il rosso con la stellina, la falce e il martello nell'angolo
+          // (Gagarin, Tereškova): con la stella sola sembrava la cinese
+          ctx.fillStyle = '#dc2626'; ctx.fillRect(bx, by, bw, bh);
+          ctx.fillStyle = ctx.strokeStyle = '#facc15'; ctx.beginPath();
+          for (let k = 0; k < 10; k++) {
+            const a = -Math.PI / 2 + k * Math.PI / 5, r = (k % 2 ? 0.4 : 1) * bh * 0.11;
+            ctx.lineTo(bx + bw * 0.2 + Math.cos(a) * r, by + bh * 0.18 + Math.sin(a) * r);
+          }
+          ctx.closePath(); ctx.fill();
+          const fx = bx + bw * 0.2, fy = by + bh * 0.55, fr = bh * 0.2;
+          ctx.lineWidth = Math.max(0.6, bh * 0.08); ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.arc(fx, fy, fr, -Math.PI * 0.15, Math.PI * 0.95); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(fx - fr * 0.7, fy - fr * 0.7); ctx.lineTo(fx + fr * 0.6, fy + fr * 0.8); ctx.stroke();
+          ctx.lineCap = 'butt';
         } else {
           for (let k = 0; k < 7; k++) { ctx.fillStyle = k % 2 ? '#f8fafc' : '#dc2626'; ctx.fillRect(bx, by + k * bh / 7, bw, bh / 7 + 0.5); }
           ctx.fillStyle = '#1e3a8a'; ctx.fillRect(bx, by, bw * 0.42, bh * 0.54);

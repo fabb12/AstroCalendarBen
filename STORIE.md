@@ -6,7 +6,8 @@ spiegano un fenomeno vero. Una Storia cosmica è una demo come le altre
 `storie-cosmiche.js` (prefisso `stor`), le storie in `demo-predefiniti.js`
 (voci con `storia: true`), i testi nei due dizionari.
 
-Si trovano nella pagina **Demo**, linguetta **Storie cosmiche** (v409; prima
+Si trovano nella pagina **Demo**, linguetta **Storie cosmiche** (v409, la
+prima e quella su cui si apre la pagina dalla v472; prima
 era il gruppo 7 in fondo alla pagina): una scheda per storia (titolo, durata,
 personaggi con la loro personalità, **Guarda la storia**, **Duplica e
 modifica**), l'anteprima di un personaggio (scegli chi e con che espressione,
@@ -14,7 +15,7 @@ poi **Fallo parlare**: funziona anche offline e senza nessuna vista
 astronomica), l'esempio del DSL e lo **Studio delle storie**
 (`storie-studio.js`, §Lo Studio), che le crea senza scrivere codice. Le storie
 compaiono anche nell'elenco generale delle demo. La linguetta scelta si
-ricorda (`astrocal_demo_scheda_v1`); un link `?demo=` apre sempre la prima.
+ricorda (`astrocal_demo_scheda_v2`); un link `?demo=` apre sempre la linguetta Demo.
 
 ## Tre promesse
 
@@ -2773,3 +2774,32 @@ rumore reso da un `OfflineAudioContext`: suona, e non esagera.
   sistema al banco ripartono da dove l'astro si trova.
 - I comandi a parole sono parole chiave, non comprensione della lingua: una
   frase che non capiscono la dicono («Non ho capito») invece di indovinare.
+
+### I pionieri del volo, e le CosmoStorie prima delle Demo (v472)
+
+«Aggiungi personaggi alle CosmoStorie: Yuri Gagarin, Valentina Tereškova,
+Sally Ride, Franco Malerba; poi inverti la linguetta CosmoStorie con Demo,
+metti prima CosmoStorie.»
+
+Quattro ospiti nuovi come gli astronauti della v469 (`STOR_PERSONAGGI`,
+sagoma `persona`, gruppo «Chi racconta» dello Studio), con la loro riga in
+`STOR_FISICA` e i testi `storie.nome/personalita/fisica.*` e `studio.alias.*`:
+
+| Chi | Figura | Gli gira attorno |
+|---|---|---|
+| `gagarin` | casco, tuta arancione del Vostok, bandiera `urss` | la Terra (Vostok 1, 1961) |
+| `tereskova` | `corti_lei`, tuta arancione, bandiera `urss` | la Terra (48 orbite, 1963) |
+| `ride` | `ricci`, tuta blu della NASA, bandiera `us`, lentiggini | la Terra |
+| `malerba` | `corti`, baffi, tuta blu, bandiera `it` | il satellite al filo della TSS-1 (1992) |
+
+La bandiera `urss` è nuova in `disegnaPersona`: il rosso con la stellina, la
+falce e il martello gialli nell'angolo (con la stella sola sembrava la
+bandiera cinese).
+Le voci registrate non ci sono: parlano con la sintesi finché non compaiono in
+una storia (allora `voci-storie.js`).
+
+Le linguette della pagina Demo sono invertite: **CosmoStorie** è la prima e la
+pagina si apre su di lei (`studioSchede`, `index.html`). La chiave della scelta
+è passata a `astrocal_demo_scheda_v2`, perché con la vecchia chi non aveva mai
+toccato le linguette aveva in memoria «Demo» e avrebbe continuato ad aprirla.
+Un link `?demo=` apre la linguetta Demo come prima.
