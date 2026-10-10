@@ -8,7 +8,10 @@
  * commit, ramo). Una storia salvata dal primo deve comparire nel secondo,
  * con la sua demo; la versione toccata per ultima vince; un'eliminazione
  * arriva anche all'altro e non torna indietro; senza token si legge e basta;
- * un ramo andato avanti nel frattempo fa riprovare invece di perdere dati. */
+ * un ramo andato avanti nel frattempo fa riprovare invece di perdere dati.
+ * v475: due dispositivi sulla stessa storia si fondono (scene, battute,
+ * cast) invece di cancellarsi; chi scrive nel mezzo di un salvataggio resta;
+ * il salvataggio automatico manda solo le storie salvate e cambiate. */
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -25,8 +28,8 @@ const gh = {
   oggetti: new Map(), testa: '', chiamate: [], scritture: 0, rifiutaProssima: false,
   sha: o => crypto.createHash('sha1').update(JSON.stringify(o) + Math.random()).digest('hex'),
   albero(sha) { return new Map(this.oggetti.get(sha).voci); },
-  file(percorso) {
-    const blob = this.albero(this.oggetti.get(this.testa).tree).get(percorso);
+  file(percorso, commit) {
+    const blob = this.albero(this.oggetti.get(commit || this.testa).tree).get(percorso);
     return blob ? this.oggetti.get(blob).contenuto : null;
   }
 };
@@ -52,9 +55,14 @@ async function fetchFinto(url, op = {}) {
   const via = decodeURIComponent(u.pathname.slice(base.length));
   const corpo = op.body ? JSON.parse(op.body) : null;
   if (metodo !== 'GET' && auth !== 'Bearer ' + TOKEN) return risposta(401, { message: 'Bad credentials' });
+  if (metodo === 'GET' && via.startsWith('/contents/') && gh.mentreLeggo && via.endsWith(gh.mentreLeggo.percorso)) {
+    const fai = gh.mentreLeggo.fai; gh.mentreLeggo = null; fai();
+  }
   if (metodo === 'GET' && via.startsWith('/contents/')) {
-    assert.equal(u.searchParams.get('ref'), RAMO);
-    const f = gh.file(via.slice('/contents/'.length));
+    // il ramo, o un commit preciso (v475: si legge al commit che farà da genitore)
+    const rif = u.searchParams.get('ref');
+    assert.ok(rif === RAMO || gh.oggetti.has(rif), 'ref sconosciuto: ' + rif);
+    const f = gh.file(via.slice('/contents/'.length), rif === RAMO ? '' : rif);
     return f === null ? risposta(404, {}) : risposta(200, null, f);
   }
   if (metodo === 'GET' && via === '/git/ref/heads/' + RAMO) return risposta(200, { object: { sha: gh.testa } });
@@ -243,6 +251,150 @@ prova('un file rotto sul repository vale come vuoto', () => {
   const r = A.St.leggiCondivise(JSON.stringify({ storie: [{ id: 'x', titolo: 'senza demo' }, null], eliminati: { y: 'no', z: 3 } }));
   assert.equal(r.progetti.length, 0);
   assert.deepEqual(JSON.parse(JSON.stringify(r.eliminati)), { z: 3 });
+});
+
+// --- v475: due dispositivi sulla stessa storia -----------------------------
+// Un commit fatto «da fuori» (un altro dispositivo, a mano) con il file delle
+// storie cambiato da `cambia`
+function scriveUnAltro(cambia) {
+  const file = JSON.parse(gh.file(A.St.FILE_CONDIVISE));
+  cambia(file);
+  const blob = gh.sha('blob'); gh.oggetti.set(blob, { contenuto: JSON.stringify(file, null, 2) + '\n' });
+  const voci = gh.albero(gh.oggetti.get(gh.testa).tree); voci.set(A.St.FILE_CONDIVISE, blob);
+  const albero = gh.sha('albero'); gh.oggetti.set(albero, { voci: [...voci] });
+  const c = gh.sha('commit'); gh.oggetti.set(c, { tree: albero, parents: [gh.testa] });
+  gh.testa = c; gh.scritture++;
+}
+const sulRepo = id => JSON.parse(gh.file(A.St.FILE_CONDIVISE)).storie.find(s => s.id === id);
+const E = dispositivo(TOKEN), F = dispositivo(TOKEN);
+let comune;
+
+prova('v475: il telefono con la storia vecchia non cancella le scene nuove del computer', async () => {
+  comune = E.St.daModello('fasi'); comune.titolo = 'Fasi, insieme';
+  await E.salva(comune);
+  await F.St.sincronizza();
+  // il computer (E) aggiunge una scena e corregge una battuta
+  const pe = E.progetti().find(x => x.id === comune.id);
+  const nuova = E.St.nuovaScena({ fuoco: 'Moon' }); nuova.momenti[0].testo = 'Scena scritta dal computer';
+  pe.scene.push(nuova);
+  pe.scene[0].momenti[0].testo = 'Prima battuta corretta dal computer';
+  await E.salva(pe);
+  // il telefono (F), senza aver riletto, cambia solo il titolo e salva
+  const pf = F.progetti().find(x => x.id === comune.id);
+  pf.titolo = 'Fasi, dal telefono';
+  const msg = await F.salva(pf);
+  assert.match(msg, /Unite le modifiche/);
+  const r = sulRepo(comune.id);
+  assert.equal(r.titolo, 'Fasi, dal telefono');
+  assert.ok(r.scene.some(sc => sc.id === nuova.id), 'la scena del computer è sparita');
+  assert.equal(r.scene[0].momenti[0].testo, 'Prima battuta corretta dal computer');
+  assert.equal(r.scene[r.scene.length - 1].id, nuova.id, 'la scena nuova resta in fondo');
+  // e il computer, rileggendo, ha tutto senza aver fatto niente
+  await E.St.sincronizza();
+  const qui = E.progetti().find(x => x.id === comune.id);
+  assert.equal(qui.titolo, 'Fasi, dal telefono');
+  assert.ok(qui.scene.some(sc => sc.id === nuova.id));
+  assert.ok(E.demo().find(d => d.chiave === qui.demoChiave).testo.length > 0);
+});
+
+prova('v475: la stessa battuta cambiata da tutte e due: vince la modifica più recente, il resto si somma', async () => {
+  const pe = E.progetti().find(x => x.id === comune.id);
+  const pf = F.progetti().find(x => x.id === comune.id);
+  pe.scene[0].momenti[0].testo = 'dal computer, prima';
+  pe.obiettivo = 'obiettivo dal computer';
+  pe.aggiornato = ++orologio;
+  E.localStorage.setItem(E.St.CHIAVE, JSON.stringify(E.progetti().map(x => x.id === pe.id ? pe : x)));
+  pf.scene[0].momenti[0].testo = 'dal telefono, dopo';
+  pf.cast.push('Mars');
+  await E.salva(pe);
+  const msg = await F.salva(pf);
+  assert.match(msg, /tenuta la modifica più recente/);
+  const r = sulRepo(comune.id);
+  assert.equal(r.scene[0].momenti[0].testo, 'dal telefono, dopo');
+  assert.equal(r.obiettivo, 'obiettivo dal computer');
+  assert.ok(r.cast.includes('Mars'));
+});
+
+prova('v475: una scena tolta da una parte e un\'altra ritoccata dall\'altra', async () => {
+  await E.St.sincronizza(); await F.St.sincronizza();
+  const pe = E.progetti().find(x => x.id === comune.id);
+  const pf = F.progetti().find(x => x.id === comune.id);
+  const via = pe.scene[1].id, tocca = pe.scene[0].id;
+  pe.scene.splice(1, 1);
+  await E.salva(pe);
+  pf.scene.find(sc => sc.id === tocca).momenti[0].testo = 'ritoccata dal telefono';
+  await F.salva(pf);
+  const r = sulRepo(comune.id);
+  assert.ok(!r.scene.some(sc => sc.id === via), 'la scena tolta è tornata');
+  assert.equal(r.scene.find(sc => sc.id === tocca).momenti[0].testo, 'ritoccata dal telefono');
+});
+
+prova('v475: un orologio indietro non fa perdere la modifica', async () => {
+  await E.St.sincronizza(); await F.St.sincronizza();
+  const pf = F.progetti().find(x => x.id === comune.id);
+  const base = pf.aggiornato;
+  pf.titolo = 'Dal telefono con l\'orologio indietro';
+  // come se il telefono segnasse dieci minuti prima della versione del computer
+  pf.aggiornato = base - 10 * 60 * 1000;
+  F.localStorage.setItem(F.St.CHIAVE, JSON.stringify(F.progetti().map(x => x.id === pf.id ? pf : x)));
+  await F.St.sincronizza({ spingi: true });
+  assert.equal(sulRepo(comune.id).titolo, 'Dal telefono con l\'orologio indietro');
+});
+
+prova('v475: chi scrive mentre si salva non viene cancellato (il commit nasce sopra la versione letta)', async () => {
+  await E.St.sincronizza();
+  const altra = F.St.daModello('libera'); altra.titolo = 'Arrivata nel mezzo';
+  altra.demoChiave = 'utente-mezzo'; altra.aggiornato = ++orologio;
+  // un altro dispositivo scrive proprio mentre E prepara i suoi file
+  gh.mentreLeggo = { percorso: 'storie-studio.json', fai: () => scriveUnAltro(f => f.storie.push(JSON.parse(JSON.stringify(altra)))) };
+  const pe = E.progetti().find(x => x.id === comune.id);
+  pe.obiettivo = 'scritto mentre un altro scriveva';
+  const msg = await E.salva(pe);
+  assert.match(msg, /Salvata nel repository/);
+  assert.ok(sulRepo(altra.id), 'la storia scritta nel mezzo è sparita');
+  assert.equal(sulRepo(comune.id).obiettivo, 'scritto mentre un altro scriveva');
+  assert.ok(E.progetti().some(x => x.id === altra.id), 'e il computer l\'ha presa');
+});
+
+prova('v475: il salvataggio automatico manda le modifiche delle storie salvate, non le bozze', async () => {
+  await F.St.sincronizza();
+  const prima = gh.scritture;
+  // niente di nuovo: legge e basta
+  await F.St.autoSalva();
+  assert.equal(gh.scritture, prima);
+  const pf = F.progetti().find(x => x.id === comune.id);
+  pf.titolo = 'Salvata da sé';
+  pf.aggiornato = ++orologio;
+  const bozza = F.St.nuovoProgetto({ titolo: 'bozza del telefono' });
+  F.localStorage.setItem(F.St.CHIAVE, JSON.stringify([bozza, ...F.progetti().map(x => x.id === pf.id ? pf : x)]));
+  assert.equal(F.St.daMandare(F.progetti(), JSON.parse(F.localStorage.getItem(F.St.CHIAVE_BASI))).length, 1);
+  const msg = await F.St.autoSalva();
+  assert.match(msg, /Salvata nel repository/);
+  assert.equal(gh.scritture, prima + 1);
+  assert.equal(sulRepo(comune.id).titolo, 'Salvata da sé');
+  assert.ok(!JSON.parse(gh.file(A.St.FILE_CONDIVISE)).storie.some(s => s.titolo === 'bozza del telefono'));
+  // la demo di qui segue la storia
+  assert.match(F.demo().find(d => d.chiave === pf.demoChiave).testo, /Salvata da sé/);
+  // e spento non fa niente
+  F.localStorage.setItem('astrocal_storie_repo_v1', JSON.stringify({ repo: REPO, ramo: RAMO, token: TOKEN, auto: false }));
+  pf.titolo = 'non parte'; pf.aggiornato = ++orologio;
+  F.localStorage.setItem(F.St.CHIAVE, JSON.stringify(F.progetti().map(x => x.id === pf.id ? pf : x)));
+  assert.equal(await F.St.autoSalva(), '');
+  assert.equal(sulRepo(comune.id).titolo, 'Salvata da sé');
+});
+
+prova('v475: la fusione a tre vie, da sola', () => {
+  const f = E.St.fondi;
+  const b = { a: 1, l: [{ id: 'x', t: 1 }, { id: 'y', t: 1 }], c: ['Moon'] };
+  const l = { a: 2, l: [{ id: 'x', t: 1 }, { id: 'y', t: 1 }, { id: 'z', t: 1 }], c: ['Moon', 'Mars'] };
+  const r = { a: 1, l: [{ id: 'y', t: 2 }, { id: 'x', t: 1 }], c: ['Moon', 'Venus'] };
+  const conto = { n: 0 };
+  const v = JSON.parse(JSON.stringify(f(b, l, r, true, conto)));
+  assert.deepEqual(v, { a: 2, l: [{ id: 'y', t: 2 }, { id: 'x', t: 1 }, { id: 'z', t: 1 }], c: ['Moon', 'Venus', 'Mars'] });
+  assert.equal(conto.n, 0);
+  const c2 = { n: 0 };
+  assert.equal(f({ t: 'a' }, { t: 'b' }, { t: 'c' }, false, c2).t, 'c');
+  assert.equal(c2.n, 1);
 });
 
 (async () => {

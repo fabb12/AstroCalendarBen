@@ -1408,7 +1408,10 @@ lo Studio ne mostra centinaia, e ridipingerle a ogni clic non serve.
   suonano dappertutto. Le bozze mai salvate restano sul dispositivo.
   `studioRipulisci` tiene gli id di scene, momenti e azioni, perché la stessa
   storia riletta sia lo stesso file. Prova `scripts/prova-storie-repo.js`
-  (due dispositivi e un GitHub finto).
+  (due dispositivi e un GitHub finto). **v475**: due versioni cambiate tutte e due
+  si fondono a tre vie invece di vincere per storia intera, il commit nasce
+  sopra la versione letta, e le modifiche partono da sole ogni 5 minuti
+  (§Più dispositivi sulla stessa storia).
 - L'interfaccia si costruisce col DOM (mai `innerHTML`: i testi sono di chi
   scrive); i campi di testo aggiornano il modello senza ridisegnare, così il
   clic sul bottone accanto non si perde.
@@ -2834,3 +2837,63 @@ grafie sentite stanno fra gli alias. Ospiti come i precedenti:
 | `tombaugh` | `ciuffo`, `maglione` grigio | Plutone (1930) |
 | `mike_brown` | `corti`, `maglione` verde acqua | Eris e Disnomia (2005) |
 
+### Più dispositivi sulla stessa storia: unire invece di cancellare, e il salvataggio automatico (v475)
+
+«Quando salvo una modifica da un dispositivo non vada a cancellare la
+versione più recente presente: prima di salvare sincronizza, poi salva; e un
+salvataggio automatico ogni 5 minuti.» Il giro «leggi, unisci, scrivi» c'era
+già (v424), ma aveva tre buchi, tutti e tre riprodotti in
+`scripts/prova-storie-repo.js` sul codice di prima:
+
+1. **Si vinceva per storia intera.** Di ogni storia restava la versione con
+   l'`aggiornato` più grande. Il telefono, aperto dal giorno prima, aveva la
+   storia vecchia; un ritocco al titolo la rendeva «la più recente» e il
+   salvataggio buttava via la scena e la battuta scritte nel frattempo dal
+   computer. Adesso ogni dispositivo ricorda la **base** di ogni storia,
+   l'ultima versione vista sul repository (`astrocal_storie_base_v1`, fuori
+   dal backup), e al giro guarda chi è cambiato rispetto a lei (per
+   contenuto, non per ora): solo il repository → si prende quella; solo qui
+   → resta questa; tutti e due → `studioFondi` le fonde a tre vie. Gli
+   oggetti chiave per chiave; scene, momenti e azioni per `id`, e il cast per
+   nome, così una scena aggiunta da una parte e una battuta corretta
+   dall'altra restano tutte e due; una scena tolta da una parte se ne va, a
+   meno che l'altra l'abbia cambiata (meglio una scena da togliere che una
+   riscritta persa); un elemento nuovo entra prima di quello che lo seguiva,
+   in fondo se era in fondo. Solo dove tutti e due hanno cambiato **la stessa
+   cosa** vince la modifica più recente, e il messaggio lo dice («In 2 punti
+   tutte e due avevano cambiato la stessa cosa…»). Senza base (la prima volta
+   dopo l'aggiornamento) si fa come prima. Una lettura più vecchia della base
+   (il file grezzo, in cache qualche minuto) non conta.
+2. **L'orologio.** `aggiornato` era `Date.now()` del dispositivo: un telefono
+   dieci minuti indietro segnava il suo ritocco «prima» della versione presa
+   dal computer. Ora non va mai indietro (`studioPiuNuovo`: almeno un
+   millisecondo dopo la versione da cui si parte), e la scelta fra le due
+   versioni non dipende più dall'ora.
+3. **Chi scriveva nel mezzo spariva.** Il file si leggeva dal ramo, poi
+   (dopo l'unione e la lettura delle voci e delle cartelle) si rileggeva la
+   punta del ramo e il commit nasceva sopra quella: un salvataggio di un
+   altro dispositivo in mezzo finiva sotto il nostro `storie.json`. Ora, col
+   token, si legge la punta (`testaDelRamo`), il file a quel commit, e il
+   commit nasce sopra quello (`scriviCommit(…, genitore)`): se il ramo è
+   andato avanti GitHub lo rifiuta come non fast-forward e il giro rilegge,
+   fonde e riprova (fino a tre volte).
+
+**Salvataggio automatico** (`studioAutoSalva`): ogni cinque minuti, se in
+questo browser le storie salvate nelle demo hanno modifiche che il
+repository non ha (`studioDaMandare`), la demo di qui si rifà dalla storia e
+parte il giro completo (leggi, fondi, scrivi); se non c'è niente di nuovo, il
+giro legge soltanto e porta le modifiche degli altri. Parte anche quando la
+pagina va in secondo piano (solo se c'è qualcosa da mandare) e quando torna
+in primo piano dopo almeno un minuto; con la pagina nascosta il giro dei
+cinque minuti salta (senza token GitHub concede 60 richieste l'ora). Le bozze
+mai salvate restano sul dispositivo, come prima: si mandano con «Salva nelle
+mie demo». Si spegne in Impostazioni → Sincronizza → «Salva da sé ogni 5
+minuti» (`auto` in `astrocal_storie_repo_v1`, acceso di serie); il
+messaggio comincia con «Salvataggio automatico delle hh:mm:» e compare solo
+se è arrivato o partito qualcosa (o se c'è un errore).
+
+Prove: `prova-storie-repo.js` (19, 7 nuove: la scena del computer resta col
+titolo del telefono, la stessa battuta cambiata dai due, una scena tolta e
+un'altra ritoccata, l'orologio indietro, un commit nel mezzo, il salvataggio
+automatico, la fusione da sola); sul codice di prima le cinque sui dati
+falliscono.
