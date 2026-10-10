@@ -2475,13 +2475,14 @@ ogni personaggio ha la sua `figura` nella riga di `STOR_PERSONAGGI`:
 
 | Campo | Valori |
 |---|---|
-| `capelli` | `arruffati` (Einstein), `corona` (la calvizie con la frangia ai lati: Platone, Archimede, Galileo, Schiaparelli), `lunghi` (Pitagora), `ricci` (Aristotele, Eratostene, Tolomeo), `parrucca` (Huygens), `caschetto` (Copernico), `corti`, `corti_lei` (Cristoforetti), `ciuffo` (Astro Ben), `nessuno` — ciocche di punti in `STOR_CAPELLI`, lisciate come il sasso a patata |
+| `capelli` | `arruffati` (Einstein), `corona` (la calvizie con la frangia ai lati: Platone, Archimede, Galileo, Schiaparelli), `lunghi` (Pitagora), `ricci` (Aristotele, Eratostene, Tolomeo), `parrucca` (Huygens), `caschetto` (Copernico), `corti`, `corti_lei` (Cristoforetti), `spettinati` (Astro Ben, v470), `ciuffo`, `nessuno` — ciocche di punti in `STOR_CAPELLI`, lisciate come il sasso a patata |
 | `chioma` | il colore dei capelli |
 | `copricapo` | `corona` (Tolomeo: Raffaello e altri lo dipinsero coronato, confondendolo coi re d'Egitto), `fascia` (Pitagora), `casco` (la bolla di vetro degli astronauti, dietro alla testa, coi riflessi fuori dal volto) |
 | `veste`, `colori` | `toga` (il mantello in diagonale), `tonaca` (col bavero di pelliccia), `farsetto` (il colletto bianco piatto), `jabot` (la cravatta di pizzo), `abito` (con `cravatta`: `lunga` o `farfalla`), `maglione` (col colletto della camicia), `tuta` (con `bandiera`: `it`, `us`, e `pannello`, la scatola dei comandi della tuta da passeggiata) |
 | `barbaLunga` | la barba che scende sul petto, nel colore dei `peli` (quella attorno alla bocca resta `barba` del profilo) |
 | `sedia` | la carrozzina di Hawking: i montanti dietro alle spalle, il poggiatesta e lo schermo con cui parlava |
 | `bambino` | spalle strette, testa più tonda, naso piccolo |
+| `orecchie` | quanto sono grandi e in fuori (v470; 1 di serie, Astro Ben 1,3) |
 | `segni` | `rughe`, `lentiggini`, `pieghe`, `zampe` |
 
 Gli occhiali (`occhiali: 'quadrati' | 'tondi'` nel profilo, Hawking) sono del
@@ -2550,6 +2551,19 @@ Prove: `prova-storie.js` (114: la storia si valida, ha una battuta per scena,
 l'effetto nuovo si disegna, scade e ha il suo rumore); guardata intera in
 Chromium (`STORIA=storia_einstein node scripts/giro-storia.js`: nessun
 errore, 240 s con la voce finta) e i ritratti dei sedici uno per uno.
+
+### Astro Ben come il bambino della foto (v470)
+
+Chi usa l'app ha mandato la foto di un bambino e ha chiesto Astro Ben «simile
+a questo, occhi scuri». Ora ha gli occhi scuri (iride `#3a2416`), i capelli
+castano scuro corti, spettinati in cima e con la frangia a ciocche sulla fronte
+(`spettinati` in `STOR_CAPELLI`, coi lati alti perché le orecchie si vedano),
+la carnagione olivastra chiara, le orecchie un po' più grandi e in fuori
+(`figura.orecchie`, passato a `orecchieDaCartone`), niente lentiggini, e di
+serie la faccia contenta col sorriso coi denti (prima la risata a occhi chiusi
+nascondeva gli occhi). La foto non è nel repository. Tuta, casco e voce sono
+quelli di prima. Prove: `prova-storie.js` (114); i ritratti guardati in
+Chromium con più facce.
 
 ## Accessibilità
 
