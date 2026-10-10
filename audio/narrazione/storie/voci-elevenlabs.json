@@ -62,6 +62,30 @@
     "buco-bianco": {
       "nome": "Buco bianco",
       "voce": ""
+    },
+    "albert-einstein": {
+      "nome": "Albert Einstein",
+      "voce": ""
+    },
+    "astro-ben": {
+      "nome": "Astro Ben",
+      "voce": ""
+    },
+    "mercurio": {
+      "nome": "Mercurio",
+      "voce": ""
+    },
+    "samantha-cristoforetti": {
+      "nome": "Samantha Cristoforetti",
+      "voce": ""
+    },
+    "gargantua": {
+      "nome": "Gargantua",
+      "voce": ""
+    },
+    "stephen-hawking": {
+      "nome": "Stephen Hawking",
+      "voce": ""
     }
   }
 }

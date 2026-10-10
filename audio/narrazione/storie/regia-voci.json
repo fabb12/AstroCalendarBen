@@ -14,7 +14,13 @@
     "supernova-del-granchio": "Lei. Esplosiva ed energica: voce vivace, ride forte, racconta come un'avventura; alla fine diventa tenera.",
     "sirio-b": "Lui. Il fratellino piccolo ma pesantissimo: voce giovane, vispa, sicura di sé, un po' birichina.",
     "sagittario-a": "Lui. Il gigante buono del centro della galassia: voce bassissima, lenta, calma e profonda, mai minacciosa.",
-    "buco-bianco": "Lui. Un folletto dispettoso e misterioso: voce leggera, svelta, giocherellona, sussurra i segreti."
+    "buco-bianco": "Lui. Un folletto dispettoso e misterioso: voce leggera, svelta, giocherellona, sussurra i segreti.",
+    "albert-einstein": "Lui. Un vecchio professore giocoso e caldo, voce un po' roca e sorridente, ritmo calmo; si accende di entusiasmo sulle idee e ride di gusto delle sue battute. Mai solenne.",
+    "astro-ben": "Lui. Un bambino di otto-nove anni, astronauta in erba: voce acuta, svelta, piena di meraviglia; fa domande a raffica, si spaventa e si entusiasma in un attimo.",
+    "mercurio": "Lui. Il pianetino nervoso e svelto: voce rapida, un po' stridula, sollevato di essere finalmente capito.",
+    "samantha-cristoforetti": "Lei. Un'astronauta precisa e ironica: voce chiara, sicura, sorridente, con un filo di complicità.",
+    "gargantua": "Lui. Il buco nero del film: voce profondissima, lenta, misteriosa, con un'ironia nascosta.",
+    "stephen-hawking": "Lui. Il cosmologo ironico: voce calma, posata, un po' sintetica come quella del suo computer, con una battuta sempre pronta."
   },
   "battute": {
     "demo.narr.storia_luna.1": {
@@ -604,6 +610,294 @@
       "come": "",
       "conTag": {
         "it": "[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa."
+      }
+    },
+    "demo.narr.storia_einstein.1": {
+      "emozione": "entusiasta",
+      "come": "senza fiato, corre con le parole; la domanda finale sale, sospettosa",
+      "conTag": {
+        "it": "[excited] Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?",
+        "en": "[excited] Professor Einstein! Last night I watched Interstellar: one hour on that planet was worth seven years on Earth! Is it true, or is it a movie trick?"
+      }
+    },
+    "demo.narr.storia_einstein.2": {
+      "emozione": "divertito",
+      "come": "sorride, rassicurante; rallenta su «spazio e tempo»",
+      "conTag": {
+        "it": "[warmly] È vero, Ben. E non è magia: è geometria. Ma per capirla dobbiamo cambiare idea su due cose che credi immobili: lo spazio e il tempo.",
+        "en": "[warmly] It's true, Ben. And it isn't magic: it's geometry. But to understand it we have to change our minds about two things you think never move: space and time."
+      }
+    },
+    "demo.narr.storia_einstein.3": {
+      "emozione": "pensoso",
+      "come": "racconta come un segreto; «lo spazio-tempo» detto con meraviglia",
+      "conTag": {
+        "it": "[thoughtful] Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo.",
+        "en": "[thoughtful] Newton thought space was a fixed stage and time a clock that ticks the same for everyone. In 1915 I realised they are one single thing, woven together like a fabric: spacetime."
+      }
+    },
+    "demo.narr.storia_einstein.4": {
+      "emozione": "appassionato",
+      "come": "spiega con le mani, chiaro e lento; pausa prima di «Questa è la gravità»",
+      "conTag": {
+        "it": "[curious] Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità.",
+        "en": "[curious] Imagine a stretchy sheet pulled tight. You put a heavy ball on it, the Sun, and the sheet sinks. A marble rolling nearby isn't pulled by any string: it rolls along the curve. That is gravity."
+      }
+    },
+    "demo.narr.storia_einstein.5": {
+      "emozione": "folgorato",
+      "come": "ha capito: un lampo di gioia",
+      "conTag": {
+        "it": "[excited] Allora la Terra va dritta… ma su una strada curva!",
+        "en": "[excited] So the Earth goes straight… but along a curved road!"
+      }
+    },
+    "demo.narr.storia_einstein.6": {
+      "emozione": "fiero",
+      "come": "ride, poi scandisce la frase di Wheeler come una filastrocca",
+      "conTag": {
+        "it": "[laughs] Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi.",
+        "en": "[laughs] Brilliant! My friend John Wheeler put it like this: matter tells spacetime how to curve, and spacetime tells matter how to move."
+      }
+    },
+    "demo.narr.storia_einstein.7": {
+      "emozione": "orgoglioso",
+      "come": "racconta una vittoria, i numeri detti con gusto",
+      "conTag": {
+        "it": "[proud] La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero.",
+        "en": "[proud] My first proof came from Mercury, the planet closest to the Sun. Its orbit slowly turns, forty-three arcseconds a century more than Newton predicted. My equations gave exactly that number."
+      }
+    },
+    "demo.narr.storia_einstein.8": {
+      "emozione": "sollevato",
+      "come": "sbuffa di sollievo e ride",
+      "conTag": {
+        "it": "[relieved] Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.",
+        "en": "[relieved] Finally, someone who understands me! For years they hunted for a hidden planet, Vulcan, to explain my wobbly orbit."
+      }
+    },
+    "demo.narr.storia_einstein.9": {
+      "emozione": "deciso",
+      "come": "racconto avventuroso; «di quanto avevo calcolato» con orgoglio trattenuto",
+      "conTag": {
+        "it": "[determined] Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato.",
+        "en": "[determined] Light follows the curve too. In 1919, during a total eclipse, Arthur Eddington photographed the stars beside the Sun: they had shifted by exactly as much as I had calculated."
+      }
+    },
+    "demo.narr.storia_einstein.10": {
+      "emozione": "stupito",
+      "come": "meraviglia vanitosa",
+      "conTag": {
+        "it": "[in awe] Io piego la luce delle stelle? Che potere!",
+        "en": "[in awe] I bend the light of the stars? What power!"
+      }
+    },
+    "demo.narr.storia_einstein.11": {
+      "emozione": "misterioso",
+      "come": "abbassa la voce, quasi un segreto",
+      "conTag": {
+        "it": "[mysteriously] E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano.",
+        "en": "[mysteriously] And now the strangest part. The curve doesn't only bend space: it slows time down too. The stronger the gravity, the slower clocks tick."
+      }
+    },
+    "demo.narr.storia_einstein.12": {
+      "emozione": "curioso",
+      "come": "domanda veloce, sorpresa",
+      "conTag": {
+        "it": "[curious] Anche qui, sulla Terra?",
+        "en": "[curious] Even here, on Earth?"
+      }
+    },
+    "demo.narr.storia_einstein.13": {
+      "emozione": "giocoso",
+      "come": "rivolto a chi guarda; lascia la pausa sui puntini",
+      "conTag": {
+        "it": "[playfully] Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…",
+        "en": "[playfully] Even here. So now I'll ask you a question, and everyone watching too: who ages more slowly, someone living in the mountains or someone living by the sea? Think about it…"
+      }
+    },
+    "demo.narr.storia_einstein.14": {
+      "emozione": "pensoso poi entusiasta",
+      "come": "«Mmm» lungo, poi la risposta di getto",
+      "conTag": {
+        "it": "[thoughtful] Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.",
+        "en": "[thoughtful] Hmm… by the sea! It's closer to the centre of the Earth, down in the curve, where gravity pulls harder."
+      }
+    },
+    "demo.narr.storia_einstein.15": {
+      "emozione": "colpito",
+      "come": "«Esatto!» squillante, poi spiega pratico",
+      "conTag": {
+        "it": "[impressed] Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno.",
+        "en": "[impressed] Exactly! Only by a tiny amount, but it's true. GPS satellites have to correct for it every day: without relativity, your sat nav would drift by about ten kilometres a day."
+      }
+    },
+    "demo.narr.storia_einstein.16": {
+      "emozione": "curioso",
+      "come": "domanda emozionata",
+      "conTag": {
+        "it": "[curious] E Samantha Cristoforetti, lassù sulla Stazione Spaziale?",
+        "en": "[curious] And Samantha Cristoforetti, up on the Space Station?"
+      }
+    },
+    "demo.narr.storia_einstein.17": {
+      "emozione": "ironica",
+      "come": "divertita, complice; «quasi un centesimo» con finta solennità",
+      "conTag": {
+        "it": "[playfully] Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!",
+        "en": "[playfully] Up here we race along at twenty-eight thousand kilometres an hour, and whoever moves fast ages more slowly. Over my two missions I gained almost a hundredth of a second!"
+      }
+    },
+    "demo.narr.storia_einstein.18": {
+      "emozione": "divertito",
+      "come": "ride della scoperta",
+      "conTag": {
+        "it": "[laughs] Un centesimo! Non basta neanche per saltare un compleanno…",
+        "en": "[laughs] A hundredth! That's not even enough to skip a birthday…"
+      }
+    },
+    "demo.narr.storia_einstein.19": {
+      "emozione": "misterioso",
+      "come": "voce che scende, poi l'invito al viaggio",
+      "conTag": {
+        "it": "[mysteriously] E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia.",
+        "en": "[mysteriously] And what if an enormous mass were squeezed into a tiny point? The sheet would sink into a bottomless well: a black hole. Let's go and visit a real one, at the centre of our Galaxy."
+      }
+    },
+    "demo.narr.storia_einstein.20": {
+      "emozione": "accogliente",
+      "come": "profondo e lento, padrone di casa",
+      "conTag": {
+        "it": "[warmly] Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio.",
+        "en": "[warmly] Welcome! I'm Sagittarius A*: four million times the mass of the Sun, in a space smaller than Mercury's orbit."
+      }
+    },
+    "demo.narr.storia_einstein.21": {
+      "emozione": "pensoso",
+      "come": "serio, lento; «nemmeno la luce» quasi sussurrato",
+      "conTag": {
+        "it": "[thoughtful] Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce.",
+        "en": "[thoughtful] Its edge is called the event horizon. From there, to get back out, you would have to go faster than light. And nothing can do that: not even light."
+      }
+    },
+    "demo.narr.storia_einstein.22": {
+      "emozione": "curioso",
+      "come": "domanda piccola, un po' preoccupata",
+      "conTag": {
+        "it": "[curious] E il tempo, lì vicino?",
+        "en": "[curious] And time, close to it?"
+      }
+    },
+    "demo.narr.storia_einstein.23": {
+      "emozione": "misterioso",
+      "come": "racconto da brivido, rallenta su «come congelato»",
+      "conTag": {
+        "it": "[mysteriously] Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato.",
+        "en": "[mysteriously] Seen from far away, it almost stops. If you fell in, everything would seem normal to you. But I, watching from outside, would see you slow down, turn redder and redder, and stop at the edge, as if frozen."
+      }
+    },
+    "demo.narr.storia_einstein.24": {
+      "emozione": "entusiasta",
+      "come": "si accende parlando del film",
+      "conTag": {
+        "it": "[excited] Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità.",
+        "en": "[excited] And here is the black hole from Interstellar: Gargantua. For the film, physicist Kip Thorne calculated how light swirls around it. That ring curving over and under the shadow is the disc of gas, bent by gravity."
+      }
+    },
+    "demo.narr.storia_einstein.25": {
+      "emozione": "misterioso",
+      "come": "profondissimo, con un sorriso nella voce",
+      "conTag": {
+        "it": "[mysteriously] Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce.",
+        "en": "[mysteriously] I'm make-believe… but made with real equations. And I spin at almost the speed of light."
+      }
+    },
+    "demo.narr.storia_einstein.26": {
+      "emozione": "malinconico",
+      "come": "tenero, con un velo di tristezza su Cooper e Murph",
+      "conTag": {
+        "it": "[wistfully] Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui.",
+        "en": "[wistfully] Miller's planet orbits so close to it that one hour there is seven years on Earth. That's why Cooper, coming home, finds his daughter Murph older than he is."
+      }
+    },
+    "demo.narr.storia_einstein.27": {
+      "emozione": "meravigliato",
+      "come": "un sussurro di scoperta",
+      "conTag": {
+        "it": "[in awe] Allora il tempo… è elastico!",
+        "en": "[in awe] So time… is stretchy!"
+      }
+    },
+    "demo.narr.storia_einstein.28": {
+      "emozione": "divertito",
+      "come": "serio all'inizio, poi ride sull'ultima frase",
+      "conTag": {
+        "it": "[playfully] Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!",
+        "en": "[playfully] Exactly. In real life you would need a gigantic black hole, spinning at almost the speed of light, and a planet right at the edge of its curve. Possible, in theory… but with waves as tall as mountains, I wouldn't go there on holiday!"
+      }
+    },
+    "demo.narr.storia_einstein.29": {
+      "emozione": "fiero",
+      "come": "racconta la notizia come un traguardo",
+      "conTag": {
+        "it": "[proud] E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria.",
+        "en": "[proud] And these aren't just ideas. In 2015 the LIGO detectors felt spacetime tremble: two black holes colliding, more than a billion light years away. A hundred years after my theory."
+      }
+    },
+    "demo.narr.storia_einstein.30": {
+      "emozione": "vanitoso",
+      "come": "compiaciuto, quasi in posa",
+      "conTag": {
+        "it": "[proud] E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?",
+        "en": "[proud] And in 2022 the Event Horizon Telescope took my picture too. I came out rather well, didn't I?"
+      }
+    },
+    "demo.narr.storia_einstein.31": {
+      "emozione": "ironico",
+      "come": "calmo, ogni parola pesata",
+      "conTag": {
+        "it": "[playfully] Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano.",
+        "en": "[playfully] May I add something, Albert? Black holes aren't completely black. Because of a quantum effect they give off a very faint heat, and very slowly they evaporate."
+      }
+    },
+    "demo.narr.storia_einstein.32": {
+      "emozione": "divertito",
+      "come": "ride di cuore, affettuoso",
+      "conTag": {
+        "it": "[laughs] Stephen, tu riesci sempre a rendere il mio universo ancora più strano!",
+        "en": "[laughs] Stephen, you always manage to make my universe even stranger!"
+      }
+    },
+    "demo.narr.storia_einstein.33": {
+      "emozione": "entusiasta",
+      "come": "felice, guarda in su",
+      "conTag": {
+        "it": "[excited] Allora stanotte, guardando le stelle, guardo una stoffa che si piega!",
+        "en": "[excited] So tonight, looking at the stars, I'm looking at a fabric that bends!"
+      }
+    },
+    "demo.narr.storia_einstein.34": {
+      "emozione": "tenero",
+      "come": "piano, da nonno",
+      "conTag": {
+        "it": "[tenderly] Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.",
+        "en": "[tenderly] Exactly. And remember, Ben: the important thing is never to stop asking questions."
+      }
+    },
+    "demo.narr.storia_einstein.35": {
+      "emozione": "curioso",
+      "come": "domanda furba",
+      "conTag": {
+        "it": "[curious] Professore… quanto tempo è passato?",
+        "en": "[curious] Professor… how much time has passed?"
+      }
+    },
+    "demo.narr.storia_einstein.36": {
+      "emozione": "divertito",
+      "come": "pausa sui puntini, poi la battuta finale ridendo",
+      "conTag": {
+        "it": "[laughs] Dipende… da dove lo guardi!",
+        "en": "[laughs] That depends… on where you're watching from!"
       }
     }
   }
