@@ -2343,9 +2343,29 @@
    * scrivere si rilegge e si unisce: fra due dispositivi vince la versione
    * toccata per ultima di ogni storia (`aggiornato`), e una storia eliminata
    * lascia una lapide (`eliminati`) perché non torni dall'altro. Se nel
-   * frattempo qualcun altro ha scritto, il ramo rifiuta e si riprova. */
+   * frattempo qualcun altro ha scritto, il ramo rifiuta e si riprova.
+   *
+   * v475: due dispositivi sulla stessa storia si cancellavano a vicenda. Il
+   * telefono, rimasto aperto dal giorno prima, aveva la storia vecchia; un
+   * ritocco al titolo la rendeva «la più recente» e il salvataggio buttava
+   * via le tre scene scritte nel frattempo dal computer. Adesso:
+   *   - di ogni storia si ricorda la **base**, l'ultima versione vista sul
+   *     repository (`astrocal_storie_base_v1`); al giro si guarda chi è
+   *     cambiato rispetto a lei: se solo il repository, vince lui; se solo
+   *     qui, vince qui; se tutti e due, le due versioni si **fondono**
+   *     (`studioFondi`) campo per campo, scena per scena, battuta per
+   *     battuta, e solo dove tutti e due hanno cambiato la stessa cosa
+   *     vince la modifica più recente;
+   *   - il commit nasce sopra la versione **letta** (prima si rileggeva il
+   *     ramo dopo, e uno scritto nel mezzo spariva): se intanto il ramo è
+   *     andato avanti, è rifiutato e il giro rilegge, unisce e riprova;
+   *   - le modifiche alle storie salvate partono da sole ogni cinque minuti
+   *     (`studioAutoSalva`) e quando si lascia la pagina, e tornando sulla
+   *     pagina si prendono quelle degli altri. */
   const CHIAVE_REPO = 'astrocal_storie_repo_v1';
   const CHIAVE_ELIMINATI = 'astrocal_storie_eliminati_v1';
+  const CHIAVE_BASI = 'astrocal_storie_base_v1';
+  const STUDIO_AUTO_MS = 5 * 60 * 1000;
   const FILE_CONDIVISE = 'storie-studio/storie.json';
   const PERCORSO_VOCI = 'audio/narrazione/storie/' + FILE_VOCI;
   const REPO_DI_SERIE = 'fabb12/AstroCalendarBen';
@@ -2368,12 +2388,14 @@
     return {
       repo: REPO_VALIDO.test(salvate.repo || '') ? salvate.repo : studioRepoDiSerie(radice.location),
       ramo: RAMO_VALIDO.test(salvate.ramo || '') ? salvate.ramo : 'main',
-      token: typeof salvate.token === 'string' ? salvate.token.trim() : ''
+      token: typeof salvate.token === 'string' ? salvate.token.trim() : '',
+      // v475: il salvataggio automatico ogni cinque minuti, acceso di serie
+      auto: salvate.auto !== false
     };
   }
   function studioRepoSalvaImpostazioni(imp) {
     const a = archivio();
-    try { if (a) a.setItem(CHIAVE_REPO, JSON.stringify({ repo: imp.repo, ramo: imp.ramo, token: imp.token || '' })); return true; }
+    try { if (a) a.setItem(CHIAVE_REPO, JSON.stringify({ repo: imp.repo, ramo: imp.ramo, token: imp.token || '', auto: imp.auto !== false })); return true; }
     catch (_) { return false; }
   }
   function eliminatiCarica() {
@@ -2416,27 +2438,175 @@
       .filter(p => p && p.demoChiave);
     return { progetti, eliminati: lapidi(d.eliminati) };
   }
-  /* L'unione di quello che c'è qui con quello del repository. Di ogni
-   * storia vince la versione toccata per ultima; una lapide più recente
-   * dell'ultima modifica la toglie. Le bozze mai salvate (senza demo) non
-   * si toccano. `arrivati`: storie nuove o più fresche dal repository;
-   * `tolti`: storie di qui eliminate altrove. */
-  function studioUnisci(locali, eliminatiLocali, remoto) {
+  /* v475: le basi, l'ultima versione di ogni storia vista sul repository
+   * (letta o scritta da qui). Servono a capire chi ha cambiato cosa: senza,
+   * fra due versioni diverse si poteva solo guardare l'ora. */
+  function basiCarica() {
+    try {
+      const d = JSON.parse((archivio() && archivio().getItem(CHIAVE_BASI)) || '{}');
+      return d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+    } catch (_) { return {}; }
+  }
+  function basiSalva(basi) {
+    // Piene o rotte, si torna all'unione per ora, come prima della v475
+    try { if (archivio()) archivio().setItem(CHIAVE_BASI, JSON.stringify(basi)); }
+    catch (_) { try { archivio().removeItem(CHIAVE_BASI); } catch (_e) { /* niente basi */ } }
+  }
+  // Le basi dopo un giro: le storie del repository, e niente di quelle
+  // che non ci sono più. Una lettura più vecchia della base che c'è (il
+  // file grezzo in cache) non la sposta indietro.
+  function basiDa(progetti, prima = {}) {
+    const basi = {};
+    for (const p of progetti) {
+      if (!p || !p.id) continue;
+      const b = prima[p.id];
+      basi[p.id] = oggettoSemplice(b) && (b.aggiornato || 0) > (p.aggiornato || 0) ? b : p;
+    }
+    return basi;
+  }
+
+  /* Un'ora di modifica che non va mai indietro: almeno un millisecondo
+   * dopo la versione da cui si parte. Un telefono con l'orologio indietro
+   * di dieci minuti segnava il suo ritocco «prima» della versione che aveva
+   * appena preso dal computer, e alla lettura dopo sembrava vecchio. */
+  function studioPiuNuovo(...prima) {
+    return Math.max(Date.now(), ...prima.map(q => (Number(q) || 0) + 1));
+  }
+
+  // Lo stesso contenuto dà la stessa impronta, in qualunque ordine siano
+  // state scritte le chiavi
+  function impronta(v) {
+    return JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x)
+      ? Object.keys(x).sort().reduce((o, c) => { o[c] = x[c]; return o; }, {}) : x);
+  }
+  // Una storia, senza l'ora: due dispositivi che hanno toccato e rimesso
+  // com'era non hanno cambiato niente
+  const improntaStoria = p => p ? impronta(Object.assign({}, p, { aggiornato: 0 })) : '';
+  // Quella di qui passata dalla stessa pulizia di quelle lette dal
+  // repository: un campo scritto in un altro ordine o mancante non è una
+  // modifica
+  const normale = p => { try { return studioRipulisci(copia(p)); } catch (_) { return p; } };
+  const oggettoSemplice = x => !!x && typeof x === 'object' && !Array.isArray(x);
+
+  /* La fusione a tre vie di due versioni (`locale`, `remoto`) nate dalla
+   * stessa `base`: quello che ha cambiato uno solo passa, quello che hanno
+   * cambiato tutti e due in modo diverso va a `vinceLocale` e si conta in
+   * `conto.n`. Gli oggetti si fondono chiave per chiave; gli elenchi di
+   * scene, momenti e azioni (che hanno un id) e di nomi (il cast) elemento
+   * per elemento, così una scena aggiunta da una parte e una battuta
+   * corretta dall'altra restano tutte e due. */
+  function studioFondi(base, locale, remoto, vinceLocale, conto = { n: 0 }) {
+    const il = impronta(locale), ir = impronta(remoto);
+    if (il === ir) return locale;
+    const ib = base === undefined ? undefined : impronta(base);
+    if (ib === il) return remoto;
+    if (ib === ir) return locale;
+    if (oggettoSemplice(locale) && oggettoSemplice(remoto)) {
+      const b = oggettoSemplice(base) ? base : {}, fuori = {};
+      for (const k of new Set([...Object.keys(remoto), ...Object.keys(locale)])) {
+        const v = studioFondi(Object.prototype.hasOwnProperty.call(b, k) ? b[k] : undefined, locale[k], remoto[k], vinceLocale, conto);
+        if (v !== undefined) fuori[k] = v;
+      }
+      return fuori;
+    }
+    if (Array.isArray(locale) && Array.isArray(remoto)) {
+      const v = fondiElenchi(Array.isArray(base) ? base : [], locale, remoto, vinceLocale, conto);
+      if (v) return v;
+    }
+    conto.n++;
+    return vinceLocale ? locale : remoto;
+  }
+  // Chi è un elemento di un elenco: l'id di un oggetto, il valore di un
+  // nome; `null` se non si sa (allora l'elenco si prende intero)
+  function chiaveElemento(x) {
+    if (oggettoSemplice(x)) return typeof x.id === 'string' && x.id ? 'id:' + x.id : null;
+    return x === null || typeof x !== 'object' ? 'v:' + JSON.stringify(x) : null;
+  }
+  function fondiElenchi(base, locale, remoto, vinceLocale, conto) {
+    const mappa = a => {
+      const m = new Map();
+      for (const x of a) { const k = chiaveElemento(x); if (k === null || m.has(k)) return null; m.set(k, x); }
+      return m;
+    };
+    const mb = mappa(base), ml = mappa(locale), mr = mappa(remoto);
+    if (!mb || !ml || !mr) return null;
+    const tieni = new Map();
+    for (const k of new Set([...mr.keys(), ...ml.keys()])) {
+      const inL = ml.has(k), inR = mr.has(k);
+      if (inL && inR) { tieni.set(k, studioFondi(mb.get(k), ml.get(k), mr.get(k), vinceLocale, conto)); continue; }
+      const lato = inL ? ml.get(k) : mr.get(k);
+      // Nuovo da una parte: resta. Tolto dall'altra: se questa non l'ha
+      // toccato se ne va; se l'ha cambiato resta (meglio una scena in più
+      // da togliere che una riscritta persa)
+      if (!mb.has(k)) { tieni.set(k, lato); continue; }
+      if (impronta(lato) === impronta(mb.get(k))) continue;
+      conto.n++;
+      tieni.set(k, lato);
+    }
+    // L'ordine di chi ha riordinato (di serie quello del repository); gli
+    // elementi che ha solo l'altro entrano prima di quello che li seguiva
+    // (e in fondo, se erano in fondo: una scena aggiunta resta l'ultima)
+    const sequenza = a => a.map(chiaveElemento).filter(k => mb.has(k) && tieni.has(k)).join('\n');
+    const riordinatoQui = sequenza(locale) !== sequenza(base);
+    const primo = riordinatoQui ? locale : remoto, secondo = riordinatoQui ? remoto : locale;
+    const ordine = primo.map(chiaveElemento).filter(k => tieni.has(k));
+    let prima = ordine.length;
+    for (const k of secondo.map(chiaveElemento).reverse()) {
+      if (!tieni.has(k)) continue;
+      const i = ordine.indexOf(k);
+      if (i >= 0) prima = i;
+      else ordine.splice(prima, 0, k);
+    }
+    for (const k of tieni.keys()) if (!ordine.includes(k)) ordine.push(k);
+    return ordine.map(k => tieni.get(k));
+  }
+
+  /* L'unione di quello che c'è qui con quello del repository. Le bozze mai
+   * salvate (senza demo) non si toccano. `arrivati`: storie nuove o
+   * cambiate dal repository; `tolti`: storie di qui eliminate altrove;
+   * `fusi`: storie cambiate qui e là, fuse (con quanti `conflitti`).
+   *
+   * Con la `base` di una storia (v475) si guarda chi l'ha cambiata; senza
+   * (la prima volta, o le prove di prima) vince la versione toccata per
+   * ultima, come prima. Una versione del repository più vecchia della base
+   * (il file grezzo, che sta qualche minuto in cache) non conta. Una lapide
+   * più recente dell'ultima modifica toglie la storia. */
+  function studioUnisci(locali, eliminatiLocali, remoto, basi) {
     const eliminati = lapidi(eliminatiLocali);
     for (const [id, q] of Object.entries(lapidi(remoto && remoto.eliminati))) eliminati[id] = Math.max(eliminati[id] || 0, q);
     const progetti = locali.slice();
-    const arrivati = [], tolti = [];
+    const arrivati = [], tolti = [], fusi = [];
     for (const r of (remoto && remoto.progetti) || []) {
       if ((eliminati[r.id] || 0) >= (r.aggiornato || 0)) continue;
       const i = progetti.findIndex(p => p.id === r.id);
-      if (i < 0) { progetti.push(r); arrivati.push(r); }
-      else if ((r.aggiornato || 0) > (progetti[i].aggiornato || 0)) { progetti[i] = r; arrivati.push(r); }
+      if (i < 0) { progetti.push(r); arrivati.push(r); continue; }
+      const l = progetti[i], ln = normale(l), b = basi && oggettoSemplice(basi[r.id]) ? basi[r.id] : null;
+      if (!b) {
+        if ((r.aggiornato || 0) > (l.aggiornato || 0)) { progetti[i] = r; arrivati.push(r); }
+        continue;
+      }
+      const ib = improntaStoria(b);
+      if (improntaStoria(r) === ib || (r.aggiornato || 0) < (b.aggiornato || 0)) continue;   // il repository non ha niente di nuovo
+      if (improntaStoria(ln) === ib) { progetti[i] = r; arrivati.push(r); continue; }   // qui niente di nuovo
+      if (improntaStoria(ln) === improntaStoria(r)) continue;   // la stessa modifica da tutte e due le parti
+      const conto = { n: 0 };
+      let f = studioFondi(Object.assign({}, b, { aggiornato: 0 }), Object.assign({}, ln, { aggiornato: 0 }), Object.assign({}, r, { aggiornato: 0 }),
+        (l.aggiornato || 0) >= (r.aggiornato || 0), conto);
+      try { f = studioRipulisci(f); } catch (_) { f = (l.aggiornato || 0) >= (r.aggiornato || 0) ? l : r; }
+      f.aggiornato = studioPiuNuovo(l.aggiornato, r.aggiornato);
+      progetti[i] = f;
+      arrivati.push(f);
+      fusi.push({ id: f.id, titolo: f.titolo, conflitti: conto.n });
     }
     for (let i = progetti.length - 1; i >= 0; i--) {
       const p = progetti[i];
       if (condivisa(p) && eliminati[p.id] && (p.aggiornato || 0) <= eliminati[p.id]) { tolti.push(p); progetti.splice(i, 1); }
     }
-    return { progetti, eliminati, arrivati, tolti };
+    return { progetti, eliminati, arrivati, tolti, fusi };
+  }
+  // Le storie salvate che hanno qui modifiche che il repository non ha
+  function studioDaMandare(progetti, basi) {
+    return progetti.filter(p => condivisa(p) && (!basi[p.id] || improntaStoria(normale(p)) !== improntaStoria(basi[p.id])));
   }
 
   // Lo SHA di un blob come lo calcola git, per non ricaricare un audio
@@ -2474,13 +2644,21 @@
     }
     return accetta === 'application/vnd.github.raw+json' ? r.text() : r.json();
   }
-  const leggiFile = (imp, percorso) => gh(imp, 'GET', '/contents/' + percorsoUrl(percorso) + '?ref=' + encodeURIComponent(imp.ramo), undefined, 'application/vnd.github.raw+json');
+  // `rif`: un commit preciso (v475), se no la punta del ramo
+  const leggiFile = (imp, percorso, rif) => gh(imp, 'GET', '/contents/' + percorsoUrl(percorso) + '?ref=' + encodeURIComponent(rif || imp.ramo), undefined, 'application/vnd.github.raw+json');
+  const elencaCartella = (imp, percorso, rif) => gh(imp, 'GET', '/contents/' + percorsoUrl(percorso) + '?ref=' + encodeURIComponent(rif || imp.ramo));
+  // La punta del ramo, adesso
+  async function testaDelRamo(imp) {
+    const ref = await gh(imp, 'GET', '/git/ref/heads/' + percorsoUrl(imp.ramo));
+    if (!ref) throw new Error(t('studio.repo.errRamo', { ramo: imp.ramo }));
+    return ref.object.sha;
+  }
 
   // Il repository, letto: dall'API (fresca), e se non risponde (limite di
   // richieste senza token) dal file grezzo
-  async function leggiRemoto(imp) {
+  async function leggiRemoto(imp, rif) {
     try {
-      const testo = await leggiFile(imp, FILE_CONDIVISE);
+      const testo = await leggiFile(imp, FILE_CONDIVISE, rif);
       return testo === null ? { progetti: [], eliminati: {} } : studioLeggiCondivise(testo);
     } catch (e) {
       if (imp.token) throw e;
@@ -2491,26 +2669,30 @@
     }
   }
 
-  // Quello che arriva entra nello Studio e nella libreria delle demo
-  function applicaUnione(u) {
+  // La demo e la fotografia delle voci di storie arrivate o cambiate
+  const togliFoto = (foto, id) => { for (const [k, f] of Object.entries(foto)) if (!f || f.progetto === id) delete foto[k]; };
+  function rifaiDemo(progetti, foto) {
     const lib = radice.AstroDemo && radice.AstroDemo.libreria;
-    const foto = studioVociCarica();
-    const togliFoto = id => { for (const [k, f] of Object.entries(foto)) if (!f || f.progetto === id) delete foto[k]; };
-    // La demo di una storia eliminata altrove resta, come resta sul
-    // dispositivo che l'ha eliminata (§7, «Elimina» toglie solo il progetto)
-    for (const p of u.tolti) {
-      cancellaVoci(p.id);
-      togliFoto(p.id);
-    }
-    for (const p of u.arrivati) {
+    for (const p of progetti) {
       try {
         if (lib && typeof lib.metti === 'function') lib.metti(p.demoChiave, studioCopione(p));
       } catch (_) { /* un copione che il motore di qui non accetta: resta il progetto */ }
-      togliFoto(p.id);
+      togliFoto(foto, p.id);
       const prese = new Set(Object.keys(foto));
       const f = studioVociStoria(p, p.lingua || linguaStudio(), prese);
       foto[f.chiave] = f;
     }
+  }
+  // Quello che arriva entra nello Studio e nella libreria delle demo
+  function applicaUnione(u) {
+    const foto = studioVociCarica();
+    // La demo di una storia eliminata altrove resta, come resta sul
+    // dispositivo che l'ha eliminata (§7, «Elimina» toglie solo il progetto)
+    for (const p of u.tolti) {
+      cancellaVoci(p.id);
+      togliFoto(foto, p.id);
+    }
+    rifaiDemo(u.arrivati, foto);
     studioVociSalva(foto);
     studio.progetti = u.progetti;
     studioSalvaTutti(studio.progetti);
@@ -2526,12 +2708,14 @@
     }
   }
 
-  // Un commit solo con tutti i file cambiati; `false` se il ramo nel
-  // frattempo è andato avanti (si riprova da capo)
-  async function scriviCommit(imp, file, messaggio) {
-    const ref = await gh(imp, 'GET', '/git/ref/heads/' + percorsoUrl(imp.ramo));
-    if (!ref) throw new Error(t('studio.repo.errRamo', { ramo: imp.ramo }));
-    const base = await gh(imp, 'GET', '/git/commits/' + ref.object.sha);
+  /* Un commit solo con tutti i file cambiati, sopra `genitore`: il commit
+   * da cui si sono lette le storie. `false` se il ramo nel frattempo è
+   * andato avanti (si rilegge e si riprova da capo). Prima il genitore era
+   * la punta del ramo riletta qui, dopo l'unione: chi aveva scritto in
+   * mezzo finiva sotto il nostro `storie.json` senza che ce ne accorgessimo. */
+  async function scriviCommit(imp, file, messaggio, genitore) {
+    const padre = genitore || await testaDelRamo(imp);
+    const base = await gh(imp, 'GET', '/git/commits/' + padre);
     const albero = [];
     for (const f of file) {
       // v440: un file da togliere (una musica che nessuna storia usa più)
@@ -2541,26 +2725,26 @@
       albero.push({ path: f.percorso, mode: '100644', type: 'blob', sha: blob.sha });
     }
     const nuovo = await gh(imp, 'POST', '/git/trees', { base_tree: base.tree.sha, tree: albero });
-    const commit = await gh(imp, 'POST', '/git/commits', { message: messaggio, tree: nuovo.sha, parents: [ref.object.sha] });
+    const commit = await gh(imp, 'POST', '/git/commits', { message: messaggio, tree: nuovo.sha, parents: [padre] });
     try { await gh(imp, 'PATCH', '/git/refs/heads/' + percorsoUrl(imp.ramo), { sha: commit.sha, force: false }); }
     catch (e) { if (e.stato === 422 || e.stato === 409) return false; throw e; }
     return true;
   }
 
-  // I file da scrivere: solo quelli che sul repository non sono già così
-  async function fileDaScrivere(imp) {
+  // I file da scrivere: solo quelli che sul repository (al commit `rif`)
+  // non sono già così. `storie`: il testo di `storie.json` da scrivere
+  async function fileDaScrivere(imp, rif, storie) {
     const fuori = [];
-    const storie = studioFileCondivise(studio.progetti, eliminatiCarica());
-    if (await leggiFile(imp, FILE_CONDIVISE) !== storie) fuori.push({ percorso: FILE_CONDIVISE, testo: storie });
+    if (await leggiFile(imp, FILE_CONDIVISE, rif) !== storie) fuori.push({ percorso: FILE_CONDIVISE, testo: storie });
     const voci = studioFileVoci(studioVociCarica());
-    if (await leggiFile(imp, PERCORSO_VOCI) !== voci) fuori.push({ percorso: PERCORSO_VOCI, testo: voci });
+    if (await leggiFile(imp, PERCORSO_VOCI, rif) !== voci) fuori.push({ percorso: PERCORSO_VOCI, testo: voci });
     const cartelle = new Map();
     let peso = 0;
     for (const v of await vociDaScrivere()) {
       const dir = 'audio/narrazione/storie/' + v.cartella + '/' + v.lingua;
       if (!cartelle.has(dir)) {
         let elenco = null;
-        try { elenco = await gh(imp, 'GET', '/contents/' + percorsoUrl(dir) + '?ref=' + encodeURIComponent(imp.ramo)); } catch (_) { elenco = null; }
+        try { elenco = await elencaCartella(imp, dir, rif); } catch (_) { elenco = null; }
         cartelle.set(dir, new Map((Array.isArray(elenco) ? elenco : []).map(x => [x.name, x.sha])));
       }
       const byte = new Uint8Array(await v.blob.arrayBuffer());
@@ -2576,7 +2760,7 @@
     const volute = studioMusicheVolute(studio.progetti.filter(condivisa));
     const sulRepo = new Map();
     const elenca = async percorso => {
-      try { const x = await gh(imp, 'GET', '/contents/' + percorsoUrl(percorso) + '?ref=' + encodeURIComponent(imp.ramo)); return Array.isArray(x) ? x : []; }
+      try { const x = await elencaCartella(imp, percorso, rif); return Array.isArray(x) ? x : []; }
       catch (_) { return null; }
     };
     const cartelleMusica = await elenca(STUDIO_MUSICA_CARTELLA);
@@ -2614,22 +2798,104 @@
     const imp = studioRepoImpostazioni();
     // Senza l'interfaccia (le prove Node) l'archivio non è ancora stato letto
     if (!studio.radice) studio.progetti = studioCaricaTutti();
+    const scrive = spingi && !!imp.token;
+    const fusi = new Map();
     try {
       for (let prova = 0; prova < 3; prova++) {
-        const u = studioUnisci(studio.progetti, eliminatiCarica(), await leggiRemoto(imp));
+        // v475: con il token si legge a un commit preciso, che sarà il
+        // genitore del nostro; e si legge prima di guardare le storie di
+        // qui, così l'unione sotto non ha attese in mezzo e una modifica
+        // scritta nel frattempo non resta fuori
+        const testa = scrive ? await testaDelRamo(imp) : '';
+        const remoto = await leggiRemoto(imp, testa);
+        // la storia aperta, con le modifiche degli ultimi 250 ms
+        if (studio.progetto) {
+          const i = studio.progetti.findIndex(p => p.id === studio.progetto.id);
+          if (i >= 0) studio.progetti[i] = studio.progetto;
+        }
+        const u = studioUnisci(studio.progetti, eliminatiCarica(), remoto, basiCarica());
         applicaUnione(u);
-        const arrivo = u.arrivati.length || u.tolti.length ? t('studio.repo.arrivate', { n: u.arrivati.length, tolte: u.tolti.length }) + ' ' : '';
+        for (const f of u.fusi) fusi.set(f.id, f);
+        basiSalva(basiDa(remoto.progetti, basiCarica()));
+        const arrivo = (u.arrivati.length || u.tolti.length ? t('studio.repo.arrivate', { n: u.arrivati.length, tolte: u.tolti.length }) + ' ' : '') + fraseFusi([...fusi.values()]);
         if (!spingi) return arrivo;
         if (!imp.token) return arrivo + t('studio.repo.senzaToken');
-        const file = await fileDaScrivere(imp);
+        const storie = studioFileCondivise(studio.progetti, eliminatiCarica());
+        const file = await fileDaScrivere(imp, testa, storie);
         if (!file.length) return arrivo + t('studio.repo.giaAPosto');
         const msg = 'Storie dello Studio: ' + (unaRiga(titolo) || 'aggiornamento').slice(0, 72);
-        if (await scriviCommit(imp, file, msg)) return arrivo + t('studio.repo.scritto', { file: file.length, repo: imp.repo });
+        if (await scriviCommit(imp, file, msg, testa)) {
+          // Quello che è appena andato sul repository è la nuova base
+          basiSalva(basiDa(studioLeggiCondivise(storie).progetti));
+          return arrivo + t('studio.repo.scritto', { file: file.length, repo: imp.repo });
+        }
       }
       return t('studio.repo.errOccupato');
     } catch (e) {
       return t('studio.repo.errore', { errore: e && e.message || String(e) });
     }
+  }
+  // Le storie fuse in un giro, dette a chi guarda
+  function fraseFusi(fusi) {
+    if (!fusi.length) return '';
+    const titoli = fusi.map(f => '«' + (unaRiga(f.titolo) || t('studio.senzaTitolo')) + '»').join(', ');
+    const conflitti = fusi.reduce((n, f) => n + f.conflitti, 0);
+    return t('studio.repo.fuse', { titoli }) + ' ' + (conflitti ? t('studio.repo.fuseConflitti', { n: conflitti }) + ' ' : '');
+  }
+
+  /* v475: il salvataggio automatico. Chi scriveva una storia sul computer e
+   * poi la riapriva sul telefono trovava la versione dell'ultimo «Salva
+   * nelle mie demo», e il primo salvataggio dal telefono rimetteva in gioco
+   * quella vecchia. Adesso ogni cinque minuti (e quando la pagina va in
+   * secondo piano) le storie salvate che qui hanno modifiche nuove partono
+   * verso il repository, col solito giro (leggi, fondi, scrivi); se qui non
+   * c'è niente di nuovo, il giro prende soltanto quelle degli altri (anche
+   * quando la pagina torna in primo piano). Le bozze mai salvate restano sul
+   * dispositivo, come prima: le si manda con «Salva nelle mie demo». La
+   * demo di qui segue la storia, come quella degli altri dispositivi. */
+  let autoUltimo = 0;
+  async function studioAutoSalva({ soloSeCambiate = false } = {}) {
+    const imp = studioRepoImpostazioni();
+    if (!imp.auto || typeof fetch !== 'function') return '';
+    if (!studio.radice) studio.progetti = studioCaricaTutti();
+    if (studio.progetto) {
+      const i = studio.progetti.findIndex(p => p.id === studio.progetto.id);
+      if (i >= 0) studio.progetti[i] = studio.progetto;
+    }
+    const daMandare = imp.token ? studioDaMandare(studio.progetti, basiCarica()) : [];
+    if (soloSeCambiate && !daMandare.length) return '';
+    autoUltimo = Date.now();
+    if (daMandare.length) {
+      const foto = studioVociCarica();
+      rifaiDemo(daMandare, foto);
+      studioVociSalva(foto);
+      studioSalvaTutti(studio.progetti);
+      aggiornaCosmoStorie();
+    }
+    const titolo = daMandare.length === 1 ? daMandare[0].titolo : 'salvataggio automatico';
+    const msg = await studioSincronizza({ spingi: daMandare.length > 0, titolo });
+    if (msg && msg.trim() !== t('studio.repo.giaAPosto') && studio.radice) {
+      const ora = new Date().toLocaleTimeString(linguaStudio() === 'en' ? 'en-GB' : 'it-IT', { hour: '2-digit', minute: '2-digit' });
+      esito(t('studio.repo.auto', { ora }) + ' ' + msg);
+    }
+    return msg;
+  }
+  // Il giro dei cinque minuti, e quello di quando si lascia o si ritrova la pagina
+  function studioAvviaAutoSalva() {
+    if (typeof setInterval !== 'function' || studioAvviaAutoSalva.fatto) return;
+    studioAvviaAutoSalva.fatto = true;
+    // con la pagina nascosta niente giri (le richieste a GitHub senza token
+    // sono 60 all'ora): al ritorno ci pensa `visibilitychange`
+    setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      studioAutoSalva().catch(() => null);
+    }, STUDIO_AUTO_MS);
+    if (typeof document === 'undefined' || !document.addEventListener) return;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') studioAutoSalva({ soloSeCambiate: true }).catch(() => null);
+      // tornando qui dopo almeno un minuto, le modifiche degli altri
+      else if (Date.now() - autoUltimo > 60 * 1000) studioAutoSalva().catch(() => null);
+    });
   }
 
   /* Il suono di un'azione caricato o generato (v444): come la musica, il
@@ -3461,9 +3727,11 @@
   };
 
   // `tocca`: è una modifica (e non solo un'apertura), quindi il progetto
-  // diventa il più recente fra i dispositivi (§6b)
+  // diventa il più recente fra i dispositivi (§6b). v475: mai all'indietro,
+  // anche se l'orologio di questo dispositivo è indietro rispetto a quello
+  // che ha scritto la versione di partenza (`studioPiuNuovo`)
   function salvaPresto(tocca = true) {
-    if (tocca && studio.progetto) studio.progetto.aggiornato = Date.now();
+    if (tocca && studio.progetto) studio.progetto.aggiornato = studioPiuNuovo(studio.progetto.aggiornato);
     clearTimeout(studio.salvaTimer);
     studio.salvaTimer = setTimeout(() => {
       const i = studio.progetti.findIndex(p => p.id === studio.progetto.id);
@@ -4439,6 +4707,10 @@
           : t('studio.imp.repoStatoLegge', { repo: repo.repo, ramo: repo.ramo })),
         voceImp(h('button', { type: 'button', class: 'tasto-cielo studio-imp-principale', dataset: { fai: 'sincronizza' } }, t('studio.repo.sincronizza')),
           repo.token ? t('studio.imp.sincronizzaAiuto') : t('studio.imp.sincronizzaSoloLegge')),
+        // v475: il salvataggio automatico ogni cinque minuti (§6b)
+        voceImp(h('label', { class: 'studio-spunta' },
+          h('input', { id: 'studio-repo-auto', type: 'checkbox', checked: repo.auto, dataset: { fai: 'repoAuto' } }), ' ', t('studio.repo.autoNome')),
+          repo.token ? t('studio.repo.autoAiuto') : t('studio.repo.autoSoloLegge')),
         h('h5', { class: 'studio-gruppo-titolo' }, t('studio.imp.collegamento')),
         pannelloRepo());
     } else if (scheda === 'yt' && ytPronto()) {
@@ -4800,7 +5072,7 @@
         const vuoto = !p.scene.some(sc => sc.momenti.some(m => unaRiga(m.testo)));
         if (vuoto || !radice.confirm || radice.confirm(t('studio.confermaModello'))) {
           const nuovo = studioDaModello(scopo);
-          nuovo.id = p.id; nuovo.demoChiave = p.demoChiave; nuovo.aggiornato = Date.now();
+          nuovo.id = p.id; nuovo.demoChiave = p.demoChiave; nuovo.aggiornato = studioPiuNuovo(p.aggiornato);
           apri(nuovo);
         }
         return;
@@ -4951,13 +5223,22 @@
       case 'repo': apriImpostazioni('repo'); return;
       case 'repoSalva': case 'repoDimentica': {
         const val = id => { const x = studio.radice.querySelector('#' + id); return x ? x.value.trim() : ''; };
-        const imp = { repo: val('studio-repo-nome'), ramo: val('studio-repo-ramo') || 'main', token: nomeOp === 'repoDimentica' ? '' : val('studio-repo-token') };
+        const imp = { repo: val('studio-repo-nome'), ramo: val('studio-repo-ramo') || 'main', token: nomeOp === 'repoDimentica' ? '' : val('studio-repo-token'),
+          auto: studioRepoImpostazioni().auto };
         if (!REPO_VALIDO.test(imp.repo) || !RAMO_VALIDO.test(imp.ramo)) { esito(t('studio.repo.errNome')); return; }
         if (!studioRepoSalvaImpostazioni(imp)) { esito(t('studio.repo.errore', { errore: 'localStorage' })); return; }
         disegna();
         if (nomeOp === 'repoDimentica') { esito(t('studio.repo.dimenticato')); return; }
         esito(t('studio.repo.inCorso'));
         studioSincronizza({ spingi: !!imp.token, titolo: '' }).then(msg => esito(msg || t('studio.repo.giaAPosto')));
+        return;
+      }
+      case 'repoAuto': {
+        const imp = studioRepoImpostazioni();
+        imp.auto = !!el.checked;
+        if (!studioRepoSalvaImpostazioni(imp)) { esito(t('studio.repo.errore', { errore: 'localStorage' })); return; }
+        esito(t(imp.auto ? 'studio.repo.autoAcceso' : 'studio.repo.autoSpento'));
+        if (imp.auto) studioAutoSalva().catch(() => null);
         return;
       }
       case 'sincronizza':
@@ -5411,6 +5692,8 @@
     // Le storie salvate dagli altri dispositivi (§6b), in silenzio se non
     // arriva niente: senza rete resta quello che c'è qui
     studioSincronizza({ spingi: false }).then(msg => { aggiornaCosmoStorie(); if (msg && !studio.esito) esito(msg); }).catch(() => null);
+    // v475: e poi ogni cinque minuti, e quando si lascia o si ritrova la pagina
+    studioAvviaAutoSalva();
     if (haI18n() && typeof radice.astroI18n.alCambio === 'function') radice.astroI18n.alCambio(() => { cacheParole.clear(); disegna(); });
   }
   if (typeof document !== 'undefined') {
@@ -5429,7 +5712,8 @@
     umoreDalTesto: studioUmoreDalTesto, ideeAzioni: studioIdeeAzioni, ambientePer: studioAmbientePer,
     prossimoMomento: studioProssimoMomento, inserisciScena: studioInserisciScena, inserisciMomento: studioInserisciMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
-    unisci: studioUnisci, fileCondivise: studioFileCondivise, leggiCondivise: studioLeggiCondivise, repoDiSerie: studioRepoDiSerie,
+    unisci: studioUnisci, fondi: studioFondi, daMandare: studioDaMandare, autoSalva: studioAutoSalva, CHIAVE_BASI, STUDIO_AUTO_MS,
+    fileCondivise: studioFileCondivise, leggiCondivise: studioLeggiCondivise, repoDiSerie: studioRepoDiSerie,
     sincronizza: studioSincronizza, FILE_CONDIVISE,
     domandaFinale: studioDomandaFinale, fattiEpisodio: studioFattiEpisodio, nuovaDomanda: studioNuovaDomanda,
     STUDIO_TIPI_DOMANDA, STUDIO_MODI_DOMANDA, STUDIO_KIND_DOMANDA,
