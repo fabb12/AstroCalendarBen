@@ -10,7 +10,10 @@
  * storia, quella di una scena, il silenzio, e nessuna richiesta doppia); e il
  * giro intero di una traccia caricata: IndexedDB, commit sul repository (un
  * GitHub finto, come in `prova-storie-repo.js`), l'altro dispositivo che la
- * trova, e una traccia sostituita che toglie dal repository quella vecchia. */
+ * trova, e una traccia sostituita che toglie dal repository quella vecchia.
+ * v476: le voci delle battute (personali ed ElevenLabs) sul repository così
+ * come sono nello Studio: rifatte, tolte, sulle battute di una CosmoStoria,
+ * e oltre i 40 MB di un commit. */
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -478,6 +481,126 @@ prova('ElevenLabs: l\'intonazione è la faccia che ha mentre parla, più il tono
   }
   m4.audio = { durata: 900, impronta: St.impronta(m4.testo) };
   assert.equal(St.voceDaRifare(p, p.scene[1], m4), false, 'un audio caricato non ha tag e non si tocca');
+});
+
+// --- v476: le voci delle battute sul repository, così come sono -------------
+// Una voce personale (caricata o registrata col microfono) e una generata con
+// ElevenLabs fanno la stessa strada (`caricaVoce`): IndexedDB, file delle
+// voci, commit. Qui si guarda che arrivino uguali, byte per byte, con i dati
+// della voce nel progetto, e che quello che chi scrive cambia (una voce
+// rifatta in un altro formato, una voce tolta, una battuta di una CosmoStoria
+// con una voce sua, tante voci insieme) sul repository sia come nello Studio.
+const VOCE_EL = 'AbCdEf1234567890';
+const fileVoce = (testo, nome, tipo) => new File([Buffer.from(testo)], nome, { type: tipo });
+const fileVoci = () => JSON.parse(gh.file('audio/narrazione/storie/storie-studio.json').toString());
+const storieSulRepo = () => JSON.parse(gh.file(A.St.FILE_CONDIVISE).toString()).storie;
+// I file sul repository della battuta `n` della storia `chiave`
+const audioDi = (chiave, n) => [...gh.tutto().keys()].filter(p => p.startsWith('audio/narrazione/storie/') &&
+  path.basename(p).replace(/\.\w+$/, '') === `${chiave}-${n}`);
+const chiaveDi = p => fileVoci().storie.find(s => s.titolo === p.titolo).chiave;
+
+let conVoci;
+prova('v476: una voce personale e una di ElevenLabs vanno sul repository uguali, coi dati della voce', async () => {
+  conVoci = A.St.daModello('fasi');
+  conVoci.titolo = 'Con le voci';
+  conVoci.voci = { Moon: { id: VOCE_EL, nome: 'Giulia', anteprima: 'https://x.io/g.mp3', genere: 'f' } };
+  conVoci.scene[1].voci = { Earth: { id: 'Zz9876543210', nome: 'Marco', anteprima: '', genere: 'm' } };
+  A.St.apri(conVoci);
+  await A.salva(conVoci);
+  storia = corrente(); conVoci = storia;
+  const mia = 'webm la mia voce registrata '.repeat(30), el = 'ID3 voce generata da ElevenLabs '.repeat(30);
+  assert.equal(await A.St.caricaVoce('scene.0.momenti.0', fileVoce(mia, 'registrazione.webm', 'audio/webm')), true);
+  assert.equal(await A.St.caricaVoce('scene.1.momenti.0', fileVoce(el, 'voce.mp3', 'audio/mpeg'), { voce: 'Zz9876543210', tag: '[happy]' }), true);
+  const p = corrente(), chiave = chiaveDi(p);
+  const [m0, m1] = [p.scene[0].momenti[0], p.scene[1].momenti[0]];
+  assert.deepEqual(audioDi(chiave, m0.voce).map(x => path.basename(x)), [`${chiave}-${m0.voce}.webm`]);
+  assert.equal(gh.file(audioDi(chiave, m0.voce)[0]).toString(), mia, 'la voce personale è arrivata uguale');
+  assert.equal(gh.file(audioDi(chiave, m1.voce)[0]).toString(), el, 'la voce di ElevenLabs è arrivata uguale');
+  assert.match(audioDi(chiave, m1.voce)[0], /\/it\/[^/]+\.mp3$/);
+  // il file delle voci ha le due battute, e la storia sul repository i dati delle voci
+  const battute = fileVoci().storie.find(s => s.chiave === chiave).battute.map(b => b.n);
+  assert.ok(battute.includes(m0.voce) && battute.includes(m1.voce));
+  const r = storieSulRepo().find(x => x.id === p.id);
+  assert.equal(r.voci.Moon.id, VOCE_EL);
+  assert.equal(r.scene[1].voci.Earth.id, 'Zz9876543210');
+  assert.equal(r.scene[1].momenti[0].audio.voce, 'Zz9876543210');
+  assert.equal(r.scene[1].momenti[0].audio.tag, '[happy]');
+  assert.equal(r.scene[0].momenti[0].audio.nome, 'registrazione.webm');
+  // l'altro dispositivo la trova uguale, e salvando una storia sua non tocca gli audio di A
+  await B.St.sincronizza();
+  const suB = B.St.ripulisci(B.progetti().find(x => x.id === p.id));
+  assert.deepEqual(JSON.parse(JSON.stringify(suB.scene[1].momenti[0].audio)), JSON.parse(JSON.stringify(m1.audio)));
+  assert.equal(B.St.copione(suB), A.St.copione(p), 'lo stesso copione sui due dispositivi');
+  const daB = B.St.daModello('stagioni'); daB.titolo = 'Voci di B';
+  await B.salva(daB);
+  assert.equal(gh.file(audioDi(chiave, m0.voce)[0]).toString(), mia);
+  assert.equal(gh.file(audioDi(chiave, m1.voce)[0]).toString(), el);
+});
+
+prova('v476: una voce rifatta in un altro formato sostituisce quella di prima (un file per battuta)', async () => {
+  const p = corrente(), chiave = chiaveDi(p), m0 = p.scene[0].momenti[0];
+  const nuova = 'ID3 ora generata con ElevenLabs '.repeat(30);
+  assert.equal(await A.St.caricaVoce('scene.0.momenti.0', fileVoce(nuova, 'voce.mp3', 'audio/mpeg'), { voce: VOCE_EL, tag: '[nervous]' }), true);
+  assert.deepEqual(audioDi(chiave, m0.voce).map(x => path.basename(x)), [`${chiave}-${m0.voce}.mp3`], 'il webm di prima è rimasto');
+  assert.equal(gh.file(audioDi(chiave, m0.voce)[0]).toString(), nuova);
+});
+
+prova('v476: una voce tolta con «Togli» se ne va anche dal repository', async () => {
+  const p = corrente(), chiave = chiaveDi(p), m1 = p.scene[1].momenti[0];
+  assert.equal(audioDi(chiave, m1.voce).length, 1);
+  A.St.togliVoce(m1);
+  await A.salva(p);
+  assert.deepEqual(audioDi(chiave, m1.voce), [], 'dopo il deploy si sarebbe sentita ancora la voce tolta');
+  assert.equal(storieSulRepo().find(x => x.id === p.id).scene[1].momenti[0].audio, null);
+  assert.equal(audioDi(chiave, p.scene[0].momenti[0].voce).length, 1, 'le altre voci restano');
+});
+
+prova('v476: una battuta di una CosmoStoria rimasta quella, con una voce sua, va sul repository e nel copione', async () => {
+  const p = A.St.daModello('fasi');
+  p.titolo = 'Da una CosmoStoria';
+  const m = p.scene[0].momenti[0];
+  m.parla = { id: 'demo.narr.prova.1', chi: m.chi, testo: m.testo };
+  A.St.apri(p);
+  assert.match(A.St.copione(p), /character_speak \{ target: 'Moon', id: 'demo\.narr\.prova\.1' \}/, 'senza voce sua resta quella dell\'originale');
+  await A.salva(p);
+  corrente();
+  const voce = 'ID3 la Luna con la voce di ElevenLabs '.repeat(30);
+  assert.equal(await A.St.caricaVoce('scene.0.momenti.0', fileVoce(voce, 'voce.mp3', 'audio/mpeg'), { voce: VOCE_EL }), true);
+  const r = corrente(), mr = r.scene[0].momenti[0];
+  assert.ok(mr.parla, 'la battuta resta dell\'originale');
+  assert.doesNotMatch(A.St.copione(r), /id: 'demo\.narr\.prova\.1'/, 'il copione chiedeva ancora la voce registrata dell\'originale');
+  assert.match(A.St.copione(r), /character_speak \{ target: 'Moon', text: /);
+  const chiave = chiaveDi(r);
+  assert.ok(fileVoci().storie.find(s => s.chiave === chiave).battute.some(b => b.n === mr.voce), 'manca nel file delle voci');
+  assert.equal(audioDi(chiave, mr.voce).length, 1, 'l\'audio non è andato sul repository');
+  assert.equal(gh.file(audioDi(chiave, mr.voce)[0]).toString(), voce);
+  // tolta la voce, torna quella dell'originale
+  A.St.togliVoce(mr);
+  assert.match(A.St.copione(r), /id: 'demo\.narr\.prova\.1'/);
+});
+
+prova('v476: oltre i 40 MB di un commit, le voci vanno tutte nello stesso giro (più commit)', async () => {
+  const p = A.St.daModello('fasi');
+  p.titolo = 'Tante voci';
+  A.St.apri(p);
+  await A.salva(p);
+  corrente();
+  const dove = ['scene.0.momenti.0', 'scene.1.momenti.0', 'scene.1.momenti.1', 'scene.2.momenti.0', 'scene.2.momenti.1'];
+  const grande = 9 * 1024 * 1024;
+  assert.ok(grande * dove.length > A.St.STUDIO_REPO_AUDIO_MAX);
+  const contenuti = dove.map((_, i) => Buffer.alloc(grande, 65 + i));
+  const prima = gh.scritture;
+  for (let i = 0; i < dove.length; i++)
+    assert.equal(await A.St.caricaVoce(dove[i], new File([contenuti[i]], 'voce.mp3', { type: 'audio/mpeg' }), { sincronizza: i === dove.length - 1, voce: VOCE_EL }), true);
+  const r = corrente(), chiave = chiaveDi(r);
+  const momenti = dove.map(d => { const [, i, , k] = d.split('.'); return r.scene[+i].momenti[+k]; });
+  for (let i = 0; i < momenti.length; i++) {
+    const sul = audioDi(chiave, momenti[i].voce);
+    assert.equal(sul.length, 1, `la voce ${i + 1} aspettava un salvataggio che non partiva più`);
+    assert.ok(gh.file(sul[0]).equals(contenuti[i]));
+  }
+  assert.ok(gh.scritture - prima >= 2, 'in più commit');
+  assert.match(await A.St.sincronizza({ spingi: true }), /già aggiornato/);
 });
 
 (async () => {
