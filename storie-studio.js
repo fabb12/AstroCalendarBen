@@ -373,6 +373,8 @@
         tono: [...new Set((Array.isArray(m && m.tono) ? m.tono : []).filter(x => STUDIO_TONI.includes(x)))].slice(0, STUDIO_TONI_MAX),
         durata: numero(m && m.durata, 0, 120, 0), voce: Math.floor(numero(m && m.voce, 0, 100000, 0)),
         copione: studioPulisciCopione(m && m.copione), parla: studioPulisciParla(m && m.parla),
+        // v479: quando comincia la battuta nel momento (0–1), solo se non subito
+        ...(Number(m && m.dettoDa) > 0 && Number(m.dettoDa) < 1 ? { dettoDa: Number(m.dettoDa) } : {}),
         audio: m && m.audio && Number(m.audio.durata) > 0 && /^[0-9a-f]{8}$/.test(m.audio.impronta)
           ? Object.assign({ durata: numero(m.audio.durata, 1, 120000, 1), impronta: m.audio.impronta, nome: testo(m.audio.nome, 80) },
             // v445: la voce ElevenLabs con cui è stato generato (per dire quando è da rifare)
@@ -395,7 +397,38 @@
       }))
     }));
     if (!pulito.scene.length) pulito.scene.push(studioNuovaScena());
+    for (const sc of pulito.scene) for (const m of sc.momenti) studioRiprendiBattuta(m, pulito.cast);
     return pulito;
+  }
+  /* Le copie fatte prima della v479 (v479): duplicando «Einstein e il tempo
+   * elastico» la prima battuta, che aspetta il titolo (`shot_from`), restava
+   * fra i comandi dell'originale; si sentiva ma il momento non la mostrava.
+   * Chi aveva già generato le altre voci con ElevenLabs non voleva rifare la
+   * copia: qui, a ogni lettura, la battuta torna nel momento com'è nelle
+   * copie nuove (`studioDaCopione`). Si toccano solo il momento senza chi
+   * parla e quella riga: id, altri momenti e voci restano dove sono, e il
+   * copione che ne esce è lo stesso. */
+  function studioRiprendiBattuta(m, cast) {
+    if (!m || m.chi || unaRiga(m.testo) || !m.copione) return;
+    const righe = m.copione.righe;
+    const i = righe.findIndex(r => {
+      const p = r.parametri, e = r.ripresa;
+      return r.comando === 'character_speak' && e && e.a === 1 && e.da > 0 && cast.includes(p.target) &&
+        Object.keys(p).every(k => ['target', 'id', 'text'].includes(k)) && !!p.id !== !!p.text &&
+        (!p.id || /^[\w.-]{1,80}$/.test(p.id));
+    });
+    if (i < 0) return;
+    const p = righe[i].parametri;
+    m.chi = p.target;
+    if (p.id) {
+      const detto = t(p.id);
+      m.testo = String(detto && detto !== p.id ? detto : p.id).slice(0, 400);
+      m.parla = { id: p.id, chi: m.chi, testo: m.testo };
+    } else m.testo = String(p.text).slice(0, 400);
+    m.dettoDa = Math.round(righe[i].ripresa.da * 10000) / 10000;
+    righe.splice(i, 1);
+    const mostra = righe.find(r => r.comando === 'character_show' && r.parametri.target === m.chi);
+    if (!m.umore && mostra && typeof mostra.parametri.expression === 'string') m.umore = mostra.parametri.expression.slice(0, 20);
   }
 
   // ===================================================================
@@ -862,9 +895,11 @@
         }
         // La battuta dell'originale, finché resta quella, con la sua voce
         // registrata (`id`); cambiata, o con una voce sua (v476), diventa testo
+        // v479: e dal suo punto del momento, se l'originale la faceva aspettare
+        const dopo = m.dettoDa > 0 && m.dettoDa < 1 ? `, shot_from: ${m.dettoDa}` : '';
         if (parla && dettaDallOriginale(m))
-          az.push(`character_speak { target: ${virgolette(m.chi)}, id: ${virgolette(m.parla.id)} }`);
-        else if (parla) az.push(`character_speak { target: ${virgolette(m.chi)}, text: ${virgolette(testoDetto(m))} }`);
+          az.push(`character_speak { target: ${virgolette(m.chi)}, id: ${virgolette(m.parla.id)}${dopo} }`);
+        else if (parla) az.push(`character_speak { target: ${virgolette(m.chi)}, text: ${virgolette(testoDetto(m))}${dopo} }`);
         righe.push(`  scene ${vistaM} {`);
         righe.push(cp ? `    duration: ${Math.round(durate[k] * 1000)}ms;` : `    duration: ${durate[k]}s;`);
         for (const a of az) righe.push(`    action: ${a};`);
@@ -1058,14 +1093,21 @@
       for (const a of sc.azioni) {
         const chiavi = Object.keys(a.parametri);
         // La battuta (una per momento): chi, cosa, e la voce registrata
-        if (a.comando === 'character_speak' && !m.chi && !a.ripresa && cast.includes(a.parametri.target) &&
+        // v479: anche quella che comincia più avanti (`shot_from`, la prima
+        // di «Einstein e il tempo elastico» aspetta il titolo): prima restava
+        // fra i comandi dell'originale, si sentiva ma nello Studio il momento
+        // non la mostrava e non si poteva modificare. Il suo «dopo» resta in
+        // `m.dettoDa` e il copione lo rimette
+        const dopo = a.ripresa && a.ripresa.a === 1 && a.ripresa.da > 0 && a.ripresa.da < 1 ? a.ripresa.da : 0;
+        if (a.comando === 'character_speak' && !m.chi && (!a.ripresa || dopo) && cast.includes(a.parametri.target) &&
             chiavi.every(k => ['target', 'id', 'text'].includes(k)) && (a.parametri.id || a.parametri.text) && !(a.parametri.id && a.parametri.text)) {
           m.chi = a.parametri.target;
+          if (dopo) m.dettoDa = Math.round(dopo * 10000) / 10000;
           if (a.parametri.id) {
             const detto = t(a.parametri.id);
             m.testo = String(detto && detto !== a.parametri.id ? detto : a.parametri.id).slice(0, 400);
             m.parla = { id: String(a.parametri.id).slice(0, 80), chi: m.chi, testo: m.testo };
-            if (!/^[\w.-]{1,80}$/.test(m.parla.id)) { m.chi = ''; m.testo = ''; m.parla = null; righe.push(a); }
+            if (!/^[\w.-]{1,80}$/.test(m.parla.id)) { m.chi = ''; m.testo = ''; m.parla = null; delete m.dettoDa; righe.push(a); }
           } else m.testo = String(a.parametri.text).slice(0, 400);
           continue;
         }
@@ -5084,6 +5126,19 @@
     disegna();
   }
 
+  /* Il nome della copia (v479): chi duplica una storia voleva darle subito
+   * un nome suo, e prima doveva cercare la linguetta «Titolo» e cancellare
+   * «Copia di…» a mano. Ora la linguetta si apre da sé e il campo è già
+   * pronto, col titolo proposto tutto selezionato: si scrive e basta. */
+  function chiediNomeCopia(c) {
+    schedeIdea.set(c.id, 'titolo');
+    disegna();
+    const campo = studio.radice && studio.radice.querySelector('input[data-campo="titolo"]');
+    if (!campo || typeof campo.focus !== 'function') return;
+    try { campo.focus({ preventScroll: true }); if (campo.select) campo.select(); } catch (_) {}
+    if (campo.scrollIntoView) campo.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
   // Le operazioni dei bottoni
   function fai(nomeOp, dove, el) {
     const p = studio.progetto;
@@ -5098,7 +5153,7 @@
         salvaPresto(); disegna(); return;
       }
       case 'domandaTogli': Object.assign(p.domanda, { testo: '', a: '', b: '' }); salvaPresto(); disegna(); return;
-      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.ufficiale = false; c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; copiaVoci(p.id, c.id); apri(c); return; }
+      case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.ufficiale = false; c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; copiaVoci(p.id, c.id); apri(c); chiediNomeCopia(c); return; }
       case 'elimina':
         if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) {
           studio.progetti = studio.progetti.filter(x => x.id !== p.id);
@@ -5522,6 +5577,7 @@
     const tenuti = p.scene.reduce((n, sc) => n + sc.momenti.reduce((k, m) => k + (m.copione ? m.copione.righe.length : 0), 0), 0);
     esito(t('studio.daStoria.pronta', { n: tenuti }));
     mostraNelloStudio();
+    chiediNomeCopia(p);
     return true;
   }
 

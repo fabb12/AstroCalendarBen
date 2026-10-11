@@ -6923,7 +6923,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "studio.originale.titolo": "Dalla storia originale",
     "studio.originale.aiuto": "Camera, date, musica e gli altri comandi che lo Studio non sa scrivere: restano come nell'originale. Con × li togli.",
     "studio.originale.n": { uno: "{n} comando originale", altri: "{n} comandi originali" },
-    "studio.daStoria.pronta": "La copia è nello Studio, pronta da modificare: battute, facce e azioni sono qui sotto, la camera e il resto restano come nell'originale. Quando hai finito, salvala.",
+    "studio.daStoria.pronta": "La copia è nello Studio: scrivile subito un nome nel titolo, già selezionato. Battute, facce e azioni sono qui sotto, la camera e il resto restano come nell'originale. Quando hai finito, salvala.",
     "studio.ufficiale.segno": "CosmoStoria",
     "studio.ufficiale.pubblica": "Metti fra le CosmoStorie",
     "studio.ufficiale.pubblicaAiuto": "La salva e la mette fra le storie pronte delle CosmoStorie; finché non lo fai resta in cantiere, solo nello Studio.",
