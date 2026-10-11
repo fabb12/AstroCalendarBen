@@ -61,6 +61,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `storie-cosmiche.js` | Le Storie cosmiche: volti degli astri in stile «fiaba d'inchiostro», astri che crescono e viaggiano nella 3D, effetti speciali (`stor`). Vedi `STORIE.md`. |
 | `storie-studio.js` | Lo Studio delle storie e le due linguette della pagina Demo (`studio`). Vedi `STORIE.md`. |
 | `musica/` | Tracce di sottofondo (`catalogo.js`) e, in `canzoni/`, le canzoni che una CosmoStoria segue (`story_music { sync: on }`; fuori dal catalogo e fuori da `audio/storie-musica/`, che lo Studio ripulisce). |
+| `voci-filmato.js` | Le voci del filmato: prima di registrare per YouTube, le battute che andrebbero alla voce di sistema (che non si registra) diventano audio con ElevenLabs o Piper (`vfilm`). |
 | `youtube.js` | Collegare il canale YouTube e pubblicarci i filmati (`yt`). |
 | `config.js` | URL dei ponti ADS-B/Edge-TTS, `YOUTUBE_CLIENT_ID` e `ASTROCAL_BUILD`. |
 | `worker-adsb.js` | Proxy ADS-B (Deno Deploy), non fa parte della PWA. Vedi `ADSB-PROXY.md`. |
@@ -79,7 +80,8 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 `aerei.js` → `transiti.js` → `visione.js` → `inseguimento.js` →
 `eventi-extra.js` → `missione-cielo.js` → `ui-nuova.js` → `didattica.js` →
 demo (motore, intro, libreria, predefiniti, `demo.js`) → `storie-cosmiche.js`
-→ `demo-impostazioni.js` → `storie-studio.js` → `youtube.js`.
+→ `demo-impostazioni.js` → `storie-studio.js` → `voci-filmato.js` →
+`youtube.js`.
 
 Ogni file usa quelli prima di lui; il contrario si protegge **sempre** con
 `typeof x === 'function'`. I ganci dentro `app.js` (in `apriSkymap`,
@@ -99,7 +101,10 @@ geocoding), Open-Elevation/OpenTopoData (quote di riserva), tessere Terrarium
 su S3 (rilievo), quattro istanze Overpass (paesi, vette, acque), CelesTrak
 (TLE), NOAA (Kp), geolocalizzazione da IP, BigDataCloud/Nominatim (nome del
 luogo), ADS-B (proxy proprio, poi ponti pubblici). L'unico con un permesso
-dell'utente è YouTube (accesso di Google, `youtube.js`), solo a richiesta. `sw.js` non mette in cache
+dell'utente è YouTube (accesso di Google, `youtube.js`), solo a richiesta.
+Per le voci del filmato (`voci-filmato.js`, solo a richiesta): ElevenLabs con
+la chiave dello Studio, o Piper (motore da jsdelivr, modelli da Hugging Face,
+tenuti nella cache `astrocal-piper-v1`, che il service worker non cancella). `sw.js` non mette in cache
 questi host, tranne le quote del suolo. Tabella con i ripieghi in
 MAPPA-DETTAGLIATA §4.
 
@@ -190,6 +195,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | aerei: trasporto e aggregatore | `prova-adsb.js`, `prova-riserve-rete.js` |
 | guida | `prova-guida.js` |
 | YouTube (collegamento, pubblicazione, «Registra e pubblica») | `prova-youtube.js` |
+| voci del filmato (ElevenLabs e Piper prima di registrare) | `prova-voci-filmato.js` (vuole anche `onnxruntime-web@1.18.0 @diffusionstudio/piper-wasm@1.0.0`) |
 
 Perché ognuna esiste e le sue trappole (rotte di Playwright, `<script>` unici
 di `verifica.html` che si portano via le sezioni dopo un errore, copie di

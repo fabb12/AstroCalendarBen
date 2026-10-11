@@ -728,7 +728,18 @@
       figura: { capelli: 'spettinati', chioma: '#4a2e18', copricapo: 'casco', veste: 'tuta', colori: ['#f97316', '#c2410c', '#f8fafc'], bandiera: 'it', bambino: true,
         orecchie: 1.3, segni: {} },
       scala: 0.82, occhi: { r: 0.3, distanza: 0.38, alto: -0.04 }, irideVera: true, nasoProprio: true,
-      voce: { ritmo: '10%', tono: '40Hz' }, espressione: 'happy', personalita: 'astro_ben' }
+      voce: { ritmo: '10%', tono: '40Hz' }, espressione: 'happy', personalita: 'astro_ben' },
+    // v477: Zaira, una bambina di sette anni: i ricci biondi a boccoli fino
+    // alle spalle con la molletta a stellina, gli occhi castani grandi, la
+    // maglietta col sole stampato (è solare), mille interessi e altrettante
+    // passioni. Come Astro Ben è una bambina (`bambino`: spalle strette e
+    // testa più tonda), ma senza casco: si devono vedere i ricci
+    zaira: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.zaira', ospite: true, alias: ['Zaira'],
+      pelle: '#f6d2b6', iride: '#6b3f1f', sottotitolo: '#fde047', guance: '#f59e8b', labbra: '#e0707e', peli: '#c9952f',
+      figura: { capelli: 'riccioli', chioma: '#e9b949', copricapo: 'molletta', veste: 'maglietta', stampa: 'sole',
+        colori: ['#2dd4bf', '#0f766e', '#facc15'], bambino: true, segni: {} },
+      scala: 0.8, occhi: { r: 0.3, distanza: 0.38, alto: -0.04 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '8%', tono: '48Hz' }, espressione: 'happy', personalita: 'zaira' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
     'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona'];
@@ -903,7 +914,13 @@
     // Gargantua gira quasi alla velocità della luce: il disco corre
     gargantua:    { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.6, tratto: 'gargantua' },
     astro_ben:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.3, tratto: 'astro_ben',
-      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.06, d: 1.36, periodo: 6000, piatto: 0.3, giro: 0.15 }] }
+      lune: [{ nome: 'Moon', colore: '#e2e8f0', r: 0.06, d: 1.36, periodo: 6000, piatto: 0.3, giro: 0.15 }] },
+    // Zaira ha mille interessi: le girano attorno tre mondini svelti, il
+    // Sole, la Terra e Saturno, ognuno sulla sua orbita
+    zaira:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.35, tratto: 'zaira',
+      lune: [{ nome: 'Sun', colore: '#fde047', r: 0.055, d: 1.3, periodo: 5200, piatto: 0.3, giro: 0.12 },
+        { nome: 'Earth', colore: '#60a5fa', r: 0.05, d: 1.44, periodo: 7000, piatto: 0.3, giro: -0.1 },
+        { nome: 'Saturn', colore: '#fbbf77', r: 0.045, d: 1.56, periodo: 9000, piatto: 0.3, giro: 0.06 }] }
   };
   /* Come la fisica risponde a un'emozione: quanto si gonfiano le tempeste
    * e le prominenze, come cambia l'atmosfera (`k` lo spessore, `tinta` il
@@ -1552,6 +1569,7 @@
     ricevute: new Map(),       // planetario: id → dove l'astro è stato disegnato, in questo fotogramma
     posti: new Map(),          // id → ultimo angolo del disco grafico (non salta di lato)
     ultimiDisegnati: [],       // per le prove: cosa si è disegnato l'ultima volta e dove
+    cosmoFuori: new Map(),     // v477: chi è fuori dal quadro della carta, e di quanti pixel
     anteprima: null,           // l'anteprima della pagina Demo, se è aperta
     ridotto: false,
     // La vista 3D (§5-bis): dove ogni astro sarebbe davvero e dove la
@@ -4354,11 +4372,13 @@
    *   capelli    arruffati (Einstein), corona (la calvizie con la frangia
    *              ai lati), lunghi, ricci, parrucca (Huygens), caschetto
    *              (Copernico), corti, corti_lei, spettinati (Astro Ben),
-   *              ciuffo, nessuno
+   *              riccioli (Zaira, coi boccoli a spirale), ciuffo, nessuno
    *   chioma     il colore dei capelli
    *   copricapo  corona (Tolomeo, come lo dipinsero i pittori che lo
-   *              confondevano coi re d'Egitto), fascia (Pitagora), casco
-   *   veste      toga, tonaca, farsetto, jabot, abito, maglione, tuta
+   *              confondevano coi re d'Egitto), fascia (Pitagora), casco,
+   *              molletta (la stellina fra i ricci di Zaira)
+   *   veste      toga, tonaca, farsetto, jabot, abito, maglione, tuta,
+   *              maglietta (a girocollo; `stampa: 'sole'` sul petto)
    *   colori     [principale, secondo, terzo] della veste
    *   cravatta   lunga o farfalla (con `abito`)
    *   bandiera   it, us o urss sulla tuta;  pannello  la scatola dei comandi
@@ -4422,6 +4442,16 @@
       spettinati: {
         davanti: [...arco(-1.42, 1.42, 15, i => [1.06, 1.18, 1.1, 1.22][i % 4]), [0.9, -0.3], [0.8, -0.44], [0.64, -0.5], [0.48, -0.36],
           [0.3, -0.52], [0.12, -0.38], [-0.06, -0.54], [-0.24, -0.4], [-0.42, -0.56], [-0.62, -0.44], [-0.8, -0.46], [-0.9, -0.3]], onda: 0.035
+      },
+      // v477: Zaira, i ricci biondi a boccoli fino alle spalle: la massa
+      // dietro gonfia e a onde fitte che scende ai lati del viso, davanti
+      // la frangetta a riccioli; `boccoli` disegna le spirali dei ricci
+      riccioli: {
+        dietro: [[-1.0, 1.28], [-1.3, 1.02], ...arco(-2.05, 2.05, 23, i => [1.22, 1.4, 1.3, 1.46][i % 4]), [1.3, 1.02], [1.0, 1.28],
+          [0.72, 1.06], [0.5, 0.82], [-0.5, 0.82], [-0.72, 1.06]],
+        davanti: [...arco(-1.72, 1.72, 17, alterna(1.04, 1.16)), [0.9, 0.12], [0.86, -0.3], [0.64, -0.62], [0.44, -0.56], [0.22, -0.7],
+          [0, -0.6], [-0.22, -0.7], [-0.44, -0.56], [-0.64, -0.62], [-0.86, -0.3], [-0.9, 0.12]], onda: 0.06,
+        boccoli: [[-1.12, 0.1], [-1.2, 0.56], [-1.0, 0.98], [1.12, 0.1], [1.2, 0.56], [1.0, 0.98], [-0.66, -0.9], [0.1, -1.06], [0.74, -0.86]]
       },
       ciuffo: {
         davanti: [...ciuffo, [0.9, -0.05], [0.82, -0.4], [0.45, -0.6], [0.1, -0.52], [-0.25, -0.62], [-0.62, -0.56], [-0.84, -0.38], [-0.9, -0.05]],
@@ -4557,6 +4587,23 @@
       for (const lato of [-1, 1]) parte(ctx, () => {
         ctx.beginPath(); ctx.moveTo(x, y + R * 0.46); ctx.lineTo(x + lato * R * 0.3, y + R * 0.4); ctx.lineTo(x + lato * R * 0.2, y + R * 0.66); ctx.closePath();
       }, c2, R, { luce: 0.03, pennino: 0.03 });
+    } else if (veste === 'maglietta') {
+      // v477 (Zaira): la maglietta a girocollo, le cuciture delle maniche e,
+      // sul petto, la stampa (`stampa: 'sole'`, un sole coi raggi)
+      parte(ctx, busto, c0, R, { luce: 0.1, dentro: () => pieghe([[-0.9 * sp, 0.62, -0.74, 0.86, -0.8 * sp, 1.3], [0.9 * sp, 0.62, 0.74, 0.86, 0.8 * sp, 1.3]], scurisci(c0, 0.4)) });
+      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(x, y + R * 0.47, R * 0.3, R * 0.12, 0, 0, Math.PI * 2); }, c1, R, { luce: 0.04, pennino: 0.03 });
+      parte(ctx, () => { ctx.beginPath(); ctx.ellipse(x, y + R * 0.45, R * 0.23, R * 0.08, 0, 0, Math.PI * 2); }, profilo.pelle, R, { luce: 0.03, pennino: 0.02 });
+      if (f.stampa === 'sole') {
+        const sx = x, sy = y + R * 0.9, sr = R * 0.13;
+        ctx.strokeStyle = c2; ctx.lineWidth = Math.max(1, R * 0.035); ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const a = k * Math.PI / 4 + Math.sin(t / 1500) * 0.08;
+          ctx.moveTo(sx + Math.cos(a) * sr * 1.35, sy + Math.sin(a) * sr * 1.35); ctx.lineTo(sx + Math.cos(a) * sr * 1.8, sy + Math.sin(a) * sr * 1.8);
+        }
+        ctx.stroke();
+        parte(ctx, () => { ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); }, c2, R, { luce: 0.04, pennino: 0.025 });
+      }
     } else {
       // le vesti con l'apertura sul davanti: tonaca, farsetto, jabot, abito
       parte(ctx, busto, c0, R, { luce: 0.1, dentro: () => pieghe([[-0.7, 0.7, -0.6, 1.0, -0.66, 1.34], [0.7, 0.7, 0.6, 1.0, 0.66, 1.34]], scurisci(c0, 0.45)) });
@@ -4646,6 +4693,22 @@
       ctx.stroke();
     };
     if (stile.davanti) parte(ctx, () => ciocca(stile.davanti, stile.onda), chioma, R, { luce: 0.08, dentro: ciocche });
+    // i boccoli (v477, Zaira): una spirale per riccio, che respira coi capelli
+    if (stile.boccoli) {
+      ctx.lineCap = 'round';
+      for (const [k, [bx, by]] of stile.boccoli.entries()) {
+        const cx = hx + bx * hw, cy = hy + by * hh + (by < -0.6 ? mosso : 0), r = R * 0.075, a0 = k * 1.7 + Math.sin(t / 800 + k) * 0.15;
+        ctx.strokeStyle = rgba(scurisci(chioma, 0.32), 0.75); ctx.lineWidth = Math.max(0.7, R * 0.02);
+        ctx.beginPath();
+        for (let i = 0; i <= 18; i++) {
+          const u = i / 18, a = a0 + u * Math.PI * 3, rr = r * (1 - u * 0.75);
+          if (i) ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); else ctx.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = rgba(schiarisci(chioma, 0.35), 0.8); ctx.lineWidth = Math.max(0.6, R * 0.014);
+        ctx.beginPath(); ctx.arc(cx - r * 0.2, cy - r * 0.25, r * 0.55, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+      }
+    }
     if (stile.lati) for (const lato of [-1, 1]) {
       // la frangia ai lati di chi ha perso i capelli in cima: sopra alle orecchie
       parte(ctx, () => ciocca([[lato * 0.78, -0.62], [lato * 1.04, -0.52], [lato * 1.17, -0.3], [lato * 1.15, -0.08], [lato * 1.0, -0.13], [lato * 0.88, -0.32]], stile.onda),
@@ -4664,6 +4727,17 @@
       }, '#facc15', R, { luce: 0.06, pennino: 0.03 });
       ctx.fillStyle = '#dc2626';
       ctx.beginPath(); ctx.arc(hx, hy - hh * 0.8, Math.max(1, R * 0.05), 0, Math.PI * 2); ctx.fill();
+    } else if (f.copricapo === 'molletta') {
+      // la molletta a stellina fra i ricci, di lato (v477, Zaira)
+      const mx = hx + hw * 0.6, my = hy - hh * 0.74 + mosso, mr = R * 0.12;
+      parte(ctx, () => {
+        ctx.beginPath();
+        for (let k = 0; k < 10; k++) {
+          const a = -Math.PI / 2 + 0.25 + k * Math.PI / 5, r = (k % 2 ? 0.45 : 1) * mr;
+          ctx.lineTo(mx + Math.cos(a) * r, my + Math.sin(a) * r);
+        }
+        ctx.closePath();
+      }, '#facc15', R, { luce: 0.05, pennino: 0.025 });
     } else if (f.copricapo === 'fascia') {
       parte(ctx, () => {
         ctx.beginPath(); ctx.moveTo(hx - hw * 0.98, hy - hh * 0.42); ctx.quadraticCurveTo(hx, hy - hh * 0.78, hx + hw * 0.98, hy - hh * 0.42);
@@ -6216,6 +6290,32 @@
     const v = typeof dove === 'function' ? dove(verso) : null;
     return v || null;
   }
+  /* La scala a cui un personaggio sta nel quadro della carta (v477), o
+   * `null` per chi non ha un posto (l'ospite, che sta sullo schermo, e
+   * l'idea). Chi vive in un luogo (Andromeda, Sirio) prende la scala del
+   * luogo, quella che usa anche lo Studio; chi sta viaggiando, quella del
+   * punto in cui è adesso; gli altri, quella del loro corpo. Serve alla
+   * camera di `cosmic_scale` per andare subito da chi parla: con Andromeda
+   * che parlava in una scena partita dal Sistema Solare la camera ci
+   * arrivava a fine scena, e la battuta finiva prima che lei si vedesse. */
+  function storCosmoScalaDi(id) {
+    const chi = storCanonico(id);
+    if (!chi) return null;
+    const pg = stor.personaggi.get(chi);
+    const prof = pg ? pg.profilo : STOR_PERSONAGGI[chi];
+    if (prof && (prof.ospite || prof.cosmo === 'idea')) return null;
+    const luogo = globale('cosmLuogo');
+    let v = pg && pg.cosmoV;
+    if (!v) {
+      const suo = prof && (prof.cosmo || prof.luogo);
+      if (suo && typeof luogo === 'function') { const l = luogo(suo); if (l && Number.isFinite(l.L)) return l.L; }
+      const dove = globale('cosmDove');
+      v = typeof dove === 'function' ? dove(chi) : null;
+    }
+    if (!v) return null;
+    const d = Math.hypot(v.x, v.y, v.z);
+    return d > 0 ? Math.log10(d * 1.7) : null;
+  }
 
   function storDisegnaCosmo(ctx, cam, margini) {
     if (!stor.personaggi.size && !stor.effetti.length) { stor.ultimiDisegnati = []; return []; }
@@ -6224,6 +6324,7 @@
     const m = Object.assign({ su: STOR_MARGINE_PX, giu: STOR_MARGINE_PX, lati: STOR_MARGINE_PX }, margini || {});
     const raggio = globale('cosmRaggioUA');
     const corpi = [];
+    stor.cosmoFuori.clear();
     // Ogni personaggio al suo posto, o a quello del suo viaggio
     for (const pg of stor.personaggi.values()) {
       if (pg.profilo.ospite) continue;   // v450: l'ospite sta sullo schermo (`storOspiti`)
@@ -6262,6 +6363,9 @@
       const dentro = Math.max(STOR_DISCO_MIN_PX, Math.min(STOR_DISCO_MAX_PX, Math.min(L, H) * 0.075)) * 1.35;
       const x0 = m.lati + dentro, x1 = L - m.lati - dentro, y0 = m.su + dentro, y1 = H - m.giu - dentro;
       if (!(px >= x0 && px <= x1 && py >= y0 && py <= y1) && Number.isFinite(px) && Number.isFinite(py)) {
+        // quanto ne resta fuori, in pixel (v477: la camera di `cosmic_scale`
+        // si allarga per chi parla solo finché questo cala)
+        stor.cosmoFuori.set(pg.id, Math.hypot(Math.max(0, x0 - px, px - x1), Math.max(0, y0 - py, py - y1)));
         freccia = Math.atan2(py - H / 2, px - L / 2);
         px = Math.max(x0, Math.min(x1, px)); py = Math.max(y0, Math.min(y1, py));
       }
@@ -8785,7 +8889,7 @@
     nascondi: storNascondi, congeda: storCongeda, sgombra: storSgombra, parla: storParla,
     disegnaPersonaggi: storDisegnaPersonaggi, disegnaCielo: storDisegnaCielo, disegnaSistema: storDisegnaSistema,
     comandi: COMANDI, registraComandi,
-    disegnaCosmo: storDisegnaCosmo, puntoCosmo: storPuntoCosmo, scarto2D: storScarto2D, STOR_LUOGHI_COSMO,
+    disegnaCosmo: storDisegnaCosmo, puntoCosmo: storPuntoCosmo, cosmoScalaDi: storCosmoScalaDi, scarto2D: storScarto2D, STOR_LUOGHI_COSMO,
     scena3D: storScena3D, puntoFermo3D: storPuntoFermo3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,
     animazioneAl: storAnimazioneAl, effetto: storEffetto, disegnaEffetto: storDisegnaEffetto,
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce, ritratto: storRitratto,
@@ -8824,6 +8928,20 @@
   radice.storScena3D = storScena3D;
   radice.storPuntoFermo3D = storPuntoFermo3D;
   radice.storDisegnaCosmo = storDisegnaCosmo;
+  // v477: la scala che inquadra chi parla adesso (o un personaggio dato),
+  // per la camera di `cosmic_scale` (demo.js)
+  radice.storCosmoScalaChiParla = id => {
+    const chi = id || (stor.personaggi.size ? storChiParlaOra() : null);
+    return chi ? storCosmoScalaDi(chi) : null;
+  };
+  // e di quanti pixel, nell'ultimo fotogramma della carta, chi parla è
+  // rimasto fuori dal quadro (sul bordo, con la freccia; 0 se è dentro): la
+  // scala del luogo lo mette appena sopra ai sottotitoli, e su certi schermi
+  // appena sotto
+  radice.storCosmoChiParlaFuori = () => {
+    const chi = stor.personaggi.size ? storChiParlaOra() : null;
+    return chi ? stor.cosmoFuori.get(chi) || 0 : 0;
+  };
   radice.storRaggio3D = storRaggio3D;
   radice.storLenteApri = storLenteApri;
   radice.storLenteChiudi = storLenteChiudi;

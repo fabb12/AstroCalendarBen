@@ -1486,7 +1486,7 @@
       for (const k of ['elev_from', 'elev_to'])
         richiedi(p[k] === undefined || numero(p[k], 5, 90), err('elevazioneCosmica'));
     },
-    crea(p, c) {
+    crea(p, c, scena) {
       richiedi(sol.aperto && typeof cosmRegia === 'function', err('serve3d'));
       const da = p.from === undefined ? 'voyager' : p.from;
       const La = scalaCosmica(da), Lb = scalaCosmica(p.to === undefined ? da : p.to);
@@ -1526,10 +1526,71 @@
         const n = tappe.length - 1, x = Math.min(n - 1e-9, k * n), i = Math.floor(x), f = x - i;
         return tappe[i] + (tappe[i + 1] - tappe[i]) * f * f * (3 - 2 * f);
       };
+      // Chi parla dev'essere nel quadro (v477). Il viaggio della scena dura
+      // tutta la scena, e una storia la chiude appena la voce tace: con
+      // Andromeda che parlava in una scena partita dal Sistema Solare la
+      // camera arrivava da lei dopo la battuta, e chi guardava sentiva la
+      // voce senza vedere chi parlava. Se chi parla sta più lontano di dove
+      // il viaggio è arrivato, la camera esce fino a lui con una molla (in
+      // poco più di un secondo, partendo e arrivando morbida); finita la
+      // battuta (e un respiro dopo) torna morbida al viaggio della scena.
+      // Chi parla all'inizio della scena si sa già adesso, così la camera
+      // parte col primo fotogramma e non aspetta che la voce cominci.
+      const primi = (scena && Array.isArray(scena.azioni) ? scena.azioni : [])
+        .filter(a => a.comando === 'character_speak' && !(a.ripresa && a.ripresa.da > 0) && a.parametri && a.parametri.target)
+        .map(a => a.parametri.target);
+      const orologio = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const molla = { L: null, v: 0, meta: null, finoA: 0, ora: null, inizio: orologio(), sentito: false, spinta: -Infinity, passi: 0, fuori: Infinity, piuOra: 0, rientra: false };
+      const seguiChiParla = (L, ridotto) => {
+        if (typeof storCosmoScalaChiParla !== 'function') return L;
+        const ora = orologio();
+        const dt = molla.ora === null ? 0 : Math.max(0, Math.min(0.1, (ora - molla.ora) / 1000));
+        molla.ora = ora;
+        let voluta = storCosmoScalaChiParla();
+        if (Number.isFinite(voluta)) molla.sentito = true;
+        else if (!molla.sentito && primi.length && ora - molla.inizio < 2500) voluta = storCosmoScalaChiParla(primi[0]);
+        // La scala del luogo mette chi parla a sei decimi dal centro, e sotto
+        // ci sono i sottotitoli: quando la camera deve andarlo a prendere si
+        // tiene un poco più larga (×1,4; le scene che lo inquadrano già, come
+        // Betelgeuse e Sirio B nelle storie pronte, restano come sono); e se
+        // arrivata lì chi parla è ancora sul bordo (certi schermi, il centro
+        // della carta che si sposta con la scala) si allarga ancora a piccoli
+        // passi
+        // (solo finché serve: se un passo non l'ha avvicinato al quadro, il
+        // centro della carta gli scivola via con la scala e allargare non
+        // basta — Alfa Centauri nella «macchina del tempo» — e ci si ferma)
+        const ferma = molla.L !== null && Math.abs(molla.v) < 0.3 && molla.L >= Math.max(L, molla.meta !== null ? molla.meta : L) - 0.05;
+        const fuori = Number.isFinite(voluta) && ferma && ora - molla.piuOra > 90 && molla.passi < 12 &&
+          typeof storCosmoChiParlaFuori === 'function' ? Number(storCosmoChiParlaFuori()) || 0 : 0;
+        if (fuori > 0) {
+          if (molla.passi && fuori > molla.fuori - 2) molla.passi = 12;
+          else { molla.spinta = Math.max(molla.L, L) + 0.1; molla.passi++; molla.piuOra = ora; molla.fuori = fuori; }
+        }
+        if (Number.isFinite(voluta)) {
+          molla.meta = Math.min(Math.max(voluta + (voluta > L ? 0.15 : 0), molla.spinta), Math.log10(1e17));
+          molla.finoA = ora + 1200;
+        }
+        else if (molla.meta !== null && ora > molla.finoA) { molla.meta = null; molla.rientra = true; }
+        // senza nessuno da inquadrare (e finito il rientro) la camera è il
+        // viaggio della scena, esatto: anche quando torna verso la Terra
+        if (molla.L === null || (molla.meta === null && !molla.rientra)) { molla.L = L; molla.v = 0; return L; }
+        const bersaglio = molla.meta !== null ? Math.max(L, molla.meta) : L;
+        if (molla.L < L) { molla.L = L; molla.v = Math.max(0, molla.v); }
+        if (ridotto) { molla.L = bersaglio; molla.v = 0; return bersaglio; }
+        // la molla critica, a passi piccoli anche se un fotogramma tarda
+        const w = 4.6;
+        for (let resto = dt; resto > 1e-6; resto -= 1 / 120) {
+          const h = Math.min(resto, 1 / 120);
+          molla.v += (w * w * (bersaglio - molla.L) - 2 * w * molla.v) * h;
+          molla.L += molla.v * h;
+        }
+        if (Math.abs(bersaglio - molla.L) < 0.005 && Math.abs(molla.v) < 0.05) { molla.L = bersaglio; molla.v = 0; if (molla.meta === null) molla.rientra = false; }
+        return Math.max(L, molla.L);
+      };
       const aggiorna = u => {
         const ridotto = !!(c && c.ridotto);
         const k = ridotto ? 1 : Math.max(0, Math.min(1, (u - zs) / (ze - zs)));
-        const L = scala(k);
+        const L = (c && c.cameraManuale) ? scala(k) : seguiChiParla(scala(k), ridotto);
         let evidenza = fuoco;
         if (!evidenza && p.ease === 'stops' && typeof cosmStrutturaDellaScala === 'function') {
           const s = cosmStrutturaDellaScala(L);

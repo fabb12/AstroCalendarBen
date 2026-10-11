@@ -2425,6 +2425,50 @@ prova('il pilota dice le battute del soggetto, e chiude con quella giusta', () =
   assert.match(DIZ.en.messaggi['demo.narr.storia_luna.8'], /always whole/);
 });
 
+prova('Zaira (v477): la bambina coi ricci biondi, gli occhi castani, la molletta e il sole sulla maglietta', () => {
+  const p = S.profilo('Zaira');
+  assert.equal(p.id, 'zaira');
+  assert.ok(p.ospite && p.genere === 'f' && p.sagoma === 'persona', 'un\'ospite, lei');
+  const f = p.figura;
+  assert.ok(f.bambino && f.capelli === 'riccioli' && f.copricapo === 'molletta' && f.veste === 'maglietta' && f.stampa === 'sole', 'la figura');
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const [cr, cg, cb] = rgb(f.chioma), [ir, ig, ib] = rgb(p.iride);
+  assert.ok(cr > 200 && cg > 150 && cb < 120, 'i capelli biondi: ' + f.chioma);
+  assert.ok(ir > ig && ig > ib && ir < 140, 'gli occhi castani: ' + p.iride);
+  assert.equal(S.fisica('zaira').lune.length, 3, 'mille interessi: tre mondini attorno');
+  for (const l of ['it', 'en']) for (const k of ['storie.nome.zaira', 'storie.personalita.zaira', 'storie.fisica.zaira', 'studio.alias.zaira'])
+    assert.ok(DIZ[l].messaggi[k], l + ': ' + k);
+  const { ctx, chiamate } = telaFinta(120, 120);
+  assert.ok(S.ritratto({ getContext: () => ctx, clientWidth: 120, clientHeight: 120 }, 'zaira', 'happy'));
+  assert.ok(chiamate.filter(k => k === 'quadraticCurveTo').length > 40, 'i ricci: la massa e la frangetta lisciate');
+  assert.ok(chiamate.filter(k => k === 'lineTo').length > 9 * 18, 'i boccoli a spirale e la stellina');
+});
+
+prova('scala cosmica (v477): chi parla lontano è nel quadro, nello Studio e nella camera della scena', () => {
+  // la scala che inquadra un personaggio: quella del suo luogo; niente per
+  // l'ospite (sta sullo schermo) e per l'idea (non ha un posto)
+  globalThis.cosmLuogo = n => (n === 'andromeda' ? { id: n, v: { x: 1e11, y: 0, z: 0 }, L: 11.44 } : null);
+  try {
+    assert.equal(S.cosmoScalaDi('andromeda'), 11.44);
+    assert.equal(S.cosmoScalaDi('zaira'), null);
+    assert.equal(S.cosmoScalaDi('white_hole'), null);
+    assert.equal(globalThis.storCosmoScalaChiParla('andromeda'), 11.44);
+  } finally { delete globalThis.cosmLuogo; }
+  // lo Studio: in una scena dal Sistema Solare alla Via Lattea il momento in
+  // cui parla Andromeda finisce almeno alla sua scala, e quello dopo riparte da lì
+  const momenti = [St.nuovoMomento({ chi: 'Earth', testo: 'Guardate lassù!' }), St.nuovoMomento({ chi: 'andromeda', testo: 'Ciao, sono Andromeda!' }),
+    St.nuovoMomento({ chi: 'Earth', testo: 'Che lontana!' })];
+  const sc = St.nuovaScena({ ambiente: 'cosmo', presenti: ['Earth', 'andromeda'], momenti });
+  sc.cosmoDa = 'planets'; sc.cosmoA = 'milky_way';
+  const p = St.nuovoProgetto({ cast: ['Earth', 'andromeda'], scene: [sc] });
+  const prep = motore.prepara(St.copione(p));
+  const scale = prep.scene.map(s => s.azioni.find(a => a.comando === 'cosmic_scale')).filter(Boolean).map(a => a.parametri);
+  assert.equal(scale.length, 3);
+  assert.ok(Math.log10(scale[1].to) >= 11.3, 'il momento di Andromeda arriva da lei: ' + scale[1].to);
+  assert.equal(scale[2].from, scale[1].to, 'senza salti');
+  assert.ok(Math.log10(scale[0].to) < 11, 'il momento di prima no: ' + scale[0].to);
+});
+
 // =====================================================================
 (async () => {
   for (const p of prove) {

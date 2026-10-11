@@ -147,6 +147,64 @@ function ok(c, m) { assert.ok(c, m); verifiche++; }
     const dopo = await misura();
     ok(dopo.aperto === false && !dopo.cosmo, 'Terminando, la vista 3D e la scala cosmica si chiudono');
     ok(!errori.length, 'Nessun errore di pagina: ' + errori.join(' | '));
+
+    // --- 4. Chi parla lontano si vede subito (v477) ---
+    // Una scena di storia che parte dal Sistema Solare e va verso la Via
+    // Lattea, con Andromeda che parla: prima la camera ci arrivava a fine
+    // scena (a fine battuta era ancora a L 3,4) e lei restava sul bordo con
+    // la freccia. Adesso la camera esce fino a lei in un secondo e mezzo.
+    // Una pagina nuova, con una sintesi finta che parla e finisce davvero.
+    const storia = await browser.newPage({ viewport: { width: larghezza, height: altezza }, serviceWorkers: 'block' });
+    const erroriStoria = [];
+    storia.on('pageerror', e => erroriStoria.push(e.message));
+    await storia.route('**/*', route => {
+      const url = route.request().url();
+      if (url.startsWith(origine)) return route.continue();
+      if (url.includes('astronomy.browser.min.js'))
+        return route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(require.resolve('astronomy-engine').replace(/astronomy\.js$/, 'astronomy.browser.min.js')) });
+      if (url.includes('satellite.min.js'))
+        return route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(path.join(path.dirname(require.resolve('satellite.js/package.json')), 'dist/satellite.min.js')) });
+      return route.abort();
+    });
+    await storia.addInitScript(() => {
+      localStorage.setItem('astrocalendario_posizione', JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' }));
+      localStorage.setItem('astrocal_lingua', 'it');
+      localStorage.setItem('astrocal_demo_intro_v1', JSON.stringify({ attiva: false }));
+      localStorage.setItem('astrocal_demo_opzioni_v1', JSON.stringify({ schermoIntero: false, registra: false, livelli: null }));
+      const voce = { corrente: null, timer: [], getVoices: () => [{ name: 'Finta', lang: 'it-IT', default: true, localService: true }], addEventListener() {},
+        speak(u) { voce.cancel(); voce.corrente = u; const n = u.text.split(/\s+/).length;
+          voce.timer.push(setTimeout(() => u.onstart && u.onstart(), 20));
+          voce.timer.push(setTimeout(() => { if (voce.corrente === u) { voce.corrente = null; u.onend && u.onend(); } }, 60 + n * 300)); },
+        cancel() { voce.timer.forEach(clearTimeout); voce.timer = []; const u = voce.corrente; voce.corrente = null; if (u && u.onerror) u.onerror({ error: 'interrupted' }); } };
+      Object.defineProperty(window, 'speechSynthesis', { value: voce, configurable: true });
+      window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; this.lang = ''; } };
+    });
+    await storia.goto(origine, { waitUntil: 'domcontentloaded' });
+    await storia.waitForFunction(() => typeof AstroDemo !== 'undefined' && typeof StorieCosmiche !== 'undefined' &&
+      sky.observer && sky.oggetti.length, null, { timeout: 30000 });
+    await storia.evaluate(() => AstroDemo.avvia(`define_demo 'prova_andromeda' {
+  scene solar_system_3d {
+    duration: 14s;
+    action: cosmic_scale { from: 'planets', to: 'milky_way', orbit: 14, elev_from: 62, elev_to: 65 };
+    action: character_show { target: 'andromeda', expression: 'happy' };
+    action: character_show { target: 'Earth', expression: 'happy' };
+    action: character_speak { target: 'andromeda', text: 'Ciao, sono Andromeda, la galassia vicina: la mia luce viaggia da due milioni e mezzo di anni.' };
+  }
+}`));
+    const t0 = Date.now();
+    let vista = null;
+    while (Date.now() - t0 < 4000) {
+      await storia.waitForTimeout(100);
+      const m = await storia.evaluate(() => {
+        const d = (StorieCosmiche.disegnati || []).find(x => x.id === 'andromeda' && x.vista === 'cosmo');
+        return { L: cosm.L, voluta: storCosmoScalaChiParla('andromeda'), dentro: !!d && !d.fuori, parla: AstroDemo.inCorso };
+      });
+      if (m.dentro && m.L >= m.voluta) { vista = { ms: Date.now() - t0, L: m.L }; break; }
+    }
+    ok(vista && vista.ms < 2600, 'Andromeda che parla è nel quadro in un attimo' + (vista ? ` (${vista.ms} ms, L ${vista.L.toFixed(2)})` : ', mai'));
+    ok(await storia.evaluate(() => AstroDemo.inCorso), 'e la battuta non è ancora finita');
+    await storia.evaluate(() => AstroDemo.ferma());
+    ok(!erroriStoria.length, 'Nessun errore nella storia: ' + erroriStoria.join(' | '));
     console.log(`Demo dalla Terra all'universo: ${verifiche} verifiche superate`);
   } finally {
     if (browser) await browser.close();
