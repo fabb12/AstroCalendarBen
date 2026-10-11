@@ -2318,6 +2318,32 @@ prova('ogni battuta parlata delle storie pronte è un momento da modificare, anc
   }
 });
 
+prova('una copia di Einstein fatta prima della v479 ritrova la prima battuta, con le sue voci al loro posto', () => {
+  lingua = 'it';
+  const d = predefiniti.find(x => x.chiave === 'storia_einstein');
+  const nuova = St.daCopione(d.testo, { chiave: d.chiave, cast: d.cast });
+  // la copia di prima: la battuta che aspetta fra i comandi dell'originale,
+  // e le voci ElevenLabs già generate sugli altri momenti
+  const vecchia = JSON.parse(JSON.stringify(nuova));
+  const m0 = vecchia.scene[0].momenti[0];
+  m0.copione.righe.push({ comando: 'character_speak', parametri: { target: 'astro_ben', id: 'demo.narr.storia_einstein.1' }, ripresa: { da: 0.3, a: 1 } });
+  Object.assign(m0, { chi: '', testo: '', umore: '', parla: null }); delete m0.dettoDa;
+  const altri = vecchia.scene.flatMap(sc => sc.momenti).filter(m => m.chi);
+  altri.forEach((m, i) => { m.audio = { durata: 3000, impronta: 'abcdef0' + (i % 10), nome: 'el', voce: 'AbCdEfGhIjKlMnOpQrSt' }; });
+  const riparata = St.ripulisci(JSON.parse(JSON.stringify(vecchia)));
+  const r0 = riparata.scene[0].momenti[0];
+  assert.equal(r0.chi, 'astro_ben'); assert.equal(r0.dettoDa, 0.3); assert.equal(r0.umore, 'excited');
+  assert.equal(r0.testo, DIZ.it.messaggi['demo.narr.storia_einstein.1']);
+  assert.equal(St.copione(riparata), St.copione(nuova), 'lo stesso copione di una copia nuova');
+  const tutti = riparata.scene.flatMap(sc => sc.momenti);
+  assert.deepEqual(tutti.map(m => m.id), vecchia.scene.flatMap(sc => sc.momenti).map(m => m.id), 'gli id non cambiano');
+  assert.equal(tutti.filter(m => m.audio).length, altri.length, 'le voci restano');
+  // un momento con le sue parole, o senza battute fra i comandi, non si tocca
+  const fermo = St.ripulisci({ cast: ['Moon'], scene: [{ momenti: [{ testo: 'mie', copione: { vista: 'planetarium_view',
+    righe: [{ comando: 'character_speak', parametri: { target: 'Moon', text: 'x' }, ripresa: { da: 0.2, a: 1 } }] } }] }] });
+  assert.equal(fermo.scene[0].momenti[0].chi, ''); assert.equal(fermo.scene[0].momenti[0].copione.righe.length, 1);
+});
+
 gruppo('Le espressioni dentro la frase per ElevenLabs (v462)');
 
 prova('i tag dentro la frase vanno solo a ElevenLabs: sottotitoli e voce dell\'app non li vedono', () => {

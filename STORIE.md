@@ -2143,6 +2143,16 @@ proposto tutto selezionato: si scrive subito il nome. Prove:
 `prova-storie.js` (nessuna battuta parlata delle storie pronte resta fra i
 comandi), `prova-demo-pagina.js` (Einstein duplicata nel browser).
 
+**Le copie fatte prima (v480).** Chi aveva già duplicato Einstein e
+generato le altre voci con ElevenLabs non voleva rifare la copia.
+`studioRiprendiBattuta`, chiamata da `studioRipulisci` (cioè a ogni lettura:
+browser, repository, file, fusione), rimette nel momento senza chi parla la
+battuta con solo `shot_from` rimasta fra i comandi dell'originale, come fa
+oggi `studioDaCopione`. Id dei momenti, altri momenti e voci (in IndexedDB
+sotto `idProgetto|…`) non si toccano; il copione esce uguale a quello di
+una copia nuova. Un momento con le sue parole non si tocca. Prova:
+`prova-storie.js` (copia di Einstein «di prima» con le voci).
+
 **In cantiere e fra le CosmoStorie.** Un progetto ha `ufficiale`: spento, la
 storia è in cantiere e sta solo nell'elenco dello Studio; «Metti fra le
 CosmoStorie» la salva come demo e la mette fra le schede delle storie pronte

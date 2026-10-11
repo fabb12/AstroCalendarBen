@@ -397,7 +397,38 @@
       }))
     }));
     if (!pulito.scene.length) pulito.scene.push(studioNuovaScena());
+    for (const sc of pulito.scene) for (const m of sc.momenti) studioRiprendiBattuta(m, pulito.cast);
     return pulito;
+  }
+  /* Le copie fatte prima della v479 (v479): duplicando «Einstein e il tempo
+   * elastico» la prima battuta, che aspetta il titolo (`shot_from`), restava
+   * fra i comandi dell'originale; si sentiva ma il momento non la mostrava.
+   * Chi aveva già generato le altre voci con ElevenLabs non voleva rifare la
+   * copia: qui, a ogni lettura, la battuta torna nel momento com'è nelle
+   * copie nuove (`studioDaCopione`). Si toccano solo il momento senza chi
+   * parla e quella riga: id, altri momenti e voci restano dove sono, e il
+   * copione che ne esce è lo stesso. */
+  function studioRiprendiBattuta(m, cast) {
+    if (!m || m.chi || unaRiga(m.testo) || !m.copione) return;
+    const righe = m.copione.righe;
+    const i = righe.findIndex(r => {
+      const p = r.parametri, e = r.ripresa;
+      return r.comando === 'character_speak' && e && e.a === 1 && e.da > 0 && cast.includes(p.target) &&
+        Object.keys(p).every(k => ['target', 'id', 'text'].includes(k)) && !!p.id !== !!p.text &&
+        (!p.id || /^[\w.-]{1,80}$/.test(p.id));
+    });
+    if (i < 0) return;
+    const p = righe[i].parametri;
+    m.chi = p.target;
+    if (p.id) {
+      const detto = t(p.id);
+      m.testo = String(detto && detto !== p.id ? detto : p.id).slice(0, 400);
+      m.parla = { id: p.id, chi: m.chi, testo: m.testo };
+    } else m.testo = String(p.text).slice(0, 400);
+    m.dettoDa = Math.round(righe[i].ripresa.da * 10000) / 10000;
+    righe.splice(i, 1);
+    const mostra = righe.find(r => r.comando === 'character_show' && r.parametri.target === m.chi);
+    if (!m.umore && mostra && typeof mostra.parametri.expression === 'string') m.umore = mostra.parametri.expression.slice(0, 20);
   }
 
   // ===================================================================
