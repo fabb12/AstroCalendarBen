@@ -49,6 +49,14 @@ che scrive il loro blocco del manifest (fra i segnalibri) con l'impronta.
    browser la blocca, il testo resta a schermo il tempo di leggerlo e il
    racconto va avanti.
 
+Fra 1 e 2, solo mentre si registra per YouTube (v478): **le voci del
+filmato** (`narr.vociFilmato`, dato da `narrazione.vociFilmato({ testo: url })`
+in `voci-filmato.js`). La voce del dispositivo non passa dalla pagina e nel
+filmato sarebbe muta; i pezzi che andrebbero alla sintesi, generati prima con
+ElevenLabs o Piper, suonano da un file e quindi entrano nella presa. Si
+riconoscono dal testo del pezzo, come le voci dello Studio; finita la
+registrazione si tolgono (`STORIE.md` §Le voci del filmato).
+
 Un file che manca (404, o 504 del service worker offline) o che non si
 decodifica finisce in `narr.guasti` e non si richiede più nella sessione; un
 file che il browser non lascia suonare senza gesto (`NotAllowedError`) invece

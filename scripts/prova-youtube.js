@@ -276,6 +276,13 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       });
       const titolo = await pagina.evaluate(() => StudioStorie.progetto.titolo || '');
       await pagina.locator('#vista-demo .studio-blocco:last-child [data-fai="registraYoutube"]').click();
+      // v478: le battute dello Studio senza una voce loro andrebbero alla
+      // voce di sistema, che non si registra: prima la finestra delle voci
+      // del filmato (`prova-voci-filmato.js`); qui si registra così
+      if (await pagina.locator('#vfilm-finestra').count()) {
+        assert.equal((await pagina.evaluate(() => window.__avvii)).length, 0, 'non parte prima della scelta');
+        await pagina.click('#vfilm-finestra [data-vfilm="senza"]');
+      }
       const avvii = await pagina.evaluate(() => window.__avvii);
       assert.equal(avvii.length, 1);
       assert.deepEqual(avvii[0].una, { registra: true, registraAudio: true, perYoutube: true, schermoIntero: true });

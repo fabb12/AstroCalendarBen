@@ -910,25 +910,38 @@ function ytDisegnaFinestra() {
 // demo resta com'era) e, quando il filmato è pronto, apre la finestra di
 // pubblicazione col titolo della storia. Il filmato arriva al pannello del
 // planetario (`skyRegMostraEsito`), che chiama `ytDopoRegistrazione`.
-function ytRegistraEPubblica(testo, titolo) {
+// v478: prima le voci del filmato (`voci-filmato.js`). La voce di sistema
+// del dispositivo non si può registrare: se la storia la userebbe, una
+// finestra propone di generare quelle battute con ElevenLabs o Piper, e la
+// registrazione parte dal suo tasto; se no si parte subito come prima.
+// `opz.voceDi(id)`: la voce ElevenLabs di un personaggio (lo Studio).
+function ytRegistraEPubblica(testo, titolo, opz) {
   const demo = typeof window !== 'undefined' ? window.AstroDemo : null;
   if (!demo || typeof demo.avvia !== 'function') return false;
-  yt.dopo = { titolo: String(titolo || ''), scade: Date.now() + YT_DOPO_MAX_MS };
   ytPreparaGoogle();
+  if (typeof vfilmPrimaDiRegistrare === 'function' &&
+      vfilmPrimaDiRegistrare(testo, () => ytRegistraOra(demo, testo, titolo), opz || {})) return true;
+  return ytRegistraOra(demo, testo, titolo);
+}
+function ytRegistraOra(demo, testo, titolo) {
+  yt.dopo = { titolo: String(titolo || ''), scade: Date.now() + YT_DOPO_MAX_MS };
   // v465: per YouTube il filmato è a risoluzione piena e senza data e luogo
   // (`perYoutube`, in `skyRegPreparaTela` e `skyRegFirma`), e la storia a
   // tutto schermo, perché la tela prende la misura della finestra
   // v467: e sempre con l'audio (voce, musica, canzone, suoni), anche se
   // nelle opzioni delle demo la registrazione dell'audio è spenta
   try { demo.avvia(testo, { registra: true, registraAudio: true, perYoutube: true, schermoIntero: true }); }
-  catch (e) { yt.dopo = null; throw e; }
-  if (!demo.inCorso) yt.dopo = null;
+  catch (e) { yt.dopo = null; if (typeof vfilmRiprendi === 'function') vfilmRiprendi(); throw e; }
+  if (!demo.inCorso) { yt.dopo = null; if (typeof vfilmRiprendi === 'function') vfilmRiprendi(); }
   return !!yt.dopo;
 }
 
 function ytDopoRegistrazione(esito) {
   const d = yt.dopo;
   yt.dopo = null;
+  // le voci del filmato tornano a casa: fuori dalla registrazione parla la
+  // voce di sempre
+  if (typeof vfilmRiprendi === 'function') vfilmRiprendi();
   // Un filmato senza titolo non viene da una demo (`demo.js` glielo mette
   // sempre): è una registrazione fatta a mano, dopo una storia fermata
   // prima che il registratore partisse. Non è quello da pubblicare.

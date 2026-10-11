@@ -93,6 +93,11 @@ const narr = {
   // normalizzato → URL dell'audio (un blob di questo browser). Valgono in
   // ogni lingua: è la voce che chi ha scritto la battuta ha registrato.
   locali: new Map(),
+  // v478, le voci del filmato (`voci-filmato.js`): testo normalizzato → URL
+  // dell'audio generato prima di registrare per YouTube (ElevenLabs o Piper).
+  // La voce del dispositivo non si può registrare: con queste, i pezzi che
+  // sarebbero andati alla sintesi suonano da un file, che entra nella presa.
+  vociFilmato: new Map(),
   // v468, lo scambio di battute: i file delle battute che stanno per venire
   // (`narrPrepara`), url → promessa del blob. Prima ogni scena di una storia
   // scaricava la sua voce solo all'apertura, e fra una battuta e l'altra si
@@ -981,6 +986,16 @@ async function narrDiciPezzo(c, pezzo) {
     if (narrVecchia(c)) return 'interrotta';
     if (c.pausa) return 'pausa';
   }
+  // v478: la voce generata per il filmato vince sulla sintesi (che non si
+  // registra); se il file non suona, si torna alla scala di sempre
+  const filmato = !pezzo.audio && narr.vociFilmato.get(narrNormalizza(pezzo.testo));
+  if (filmato && !narr.guasti.has(filmato)) {
+    c.fase = 'audio';
+    const e = await narrSuonaFile(c, filmato);
+    if (e === 'audio' || e === 'interrotta') return e;
+    if (narrVecchia(c)) return 'interrotta';
+    if (c.pausa) return 'pausa';
+  }
   if (p.volume > 0) {
     c.fase = 'tts';
     const e = await narrEdge(c, pezzo.testo);
@@ -1304,6 +1319,16 @@ const narrazione = {
     const k = narrNormalizza(testo);
     if (!k) return;
     if (url) { narr.locali.set(k, url); narr.guasti.delete(url); } else narr.locali.delete(k);
+  },
+  // v478: le voci generate per il filmato ({ testo: url }, o null per
+  // toglierle tutte). Chi le passa ne tiene gli URL e li libera lui.
+  vociFilmato(voci) {
+    narr.vociFilmato = new Map();
+    for (const [testo, url] of Object.entries(voci || {})) {
+      const k = narrNormalizza(testo);
+      if (k && url) { narr.vociFilmato.set(k, url); narr.guasti.delete(url); }
+    }
+    return narr.vociFilmato.size;
   },
   quantiAudio: lingua => narrQuantiAudio(lingua || narrLingua()),
   guasti: () => Object.fromEntries(narr.guasti),

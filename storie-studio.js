@@ -5066,7 +5066,10 @@
     if (ascoltoMusica) fermaAscoltoMusica();
     try {
       if (radice.StorieCosmiche && radice.StorieCosmiche.chiudiAnteprima) radice.StorieCosmiche.chiudiAnteprima();
-      if (typeof perYoutube === 'string' && typeof radice.ytRegistraEPubblica === 'function') radice.ytRegistraEPubblica(testo, perYoutube);
+      // v478: con le voci ElevenLabs scelte per i personaggi di questa storia
+      const suo = studio.progetto;
+      if (typeof perYoutube === 'string' && typeof radice.ytRegistraEPubblica === 'function')
+        radice.ytRegistraEPubblica(testo, perYoutube, { voceDi: id => studioVoceDi(suo, id) });
       else radice.AstroDemo.avvia(testo);
       esito('');
     } catch (e) { esito(e.message); }

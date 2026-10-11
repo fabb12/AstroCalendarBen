@@ -2995,3 +2995,64 @@ Misurato in Chromium (1100 × 760 e 390 × 844): Andromeda dentro al quadro in
 1,3–1,6 s, mentre parla. Prove: `prova-demo-universo.js` (115, 3 nuove: sul
 codice di prima la camera non ci arriva), `prova-storie.js` (118, 2 nuove; la
 prova dello Studio fallisce sul codice di prima).
+
+### Le voci del filmato: su YouTube si sentono anche le voci di sistema (v478)
+
+«Quando esporto su YouTube una CosmoStoria e vengono usate le voci di
+sistema, nell'esportazione le voci non vengono riprodotte.» Non era un
+errore del registratore: la voce del dispositivo (Web Speech) esce dal
+sistema operativo e non passa dalla pagina, e nessun browser la lascia
+registrare. Nel filmato entrano solo i suoni che la pagina suona da sé (i file
+registrati, le voci dello Studio, il ponte Edge-TTS, la musica). Provato sul
+codice di prima: la voce di sistema parlava, il file aveva solo musica e
+rumori (picco 0,04).
+
+Allora, prima di registrare, le battute che andrebbero alla sintesi diventano
+file (`voci-filmato.js`, prefisso `vfilm`). Chi usa l'app ha scelto l'ordine:
+**ElevenLabs** con la chiave dello Studio, se c'è; se no **Piper**, una voce
+neurale gratuita che gira nel browser.
+
+- **Quali battute** (`vfilmBattute`): quelle di `character_speak` e `narrate`
+  del copione, passate da `narrazione.componi` come farà la narrazione vera;
+  si genera solo il pezzo senza audio (un brano registrato dentro a una frase
+  resta suo). A narrazione spenta nessuna. Se non ce n'è nessuna (una storia
+  cantata, una con le voci registrate) la storia parte subito come prima.
+- **La finestra «Le voci del filmato»** (da `ytRegistraEPubblica`, quindi dalle
+  schede delle CosmoStorie e da «Registra e pubblica» dello Studio): quante
+  battute e quanti caratteri; «Genera con ElevenLabs» coi caratteri che
+  costerebbero (meno quelli già fatti), «Usa la voce gratuita (Piper)» coi MB
+  da scaricare la prima volta, «Registra così». Durante il lavoro una barra e
+  «Ferma»; alla fine «Registra e pubblica», con un tocco nuovo perché lo
+  schermo intero e l'audio vogliono un gesto. Con i crediti finiti a metà,
+  «Le altre con Piper».
+- **ElevenLabs**: la voce scelta nello Studio per il personaggio (della storia
+  che si registra, `opz.voceDi` da `storie-studio.js`, o l'ultima scelta), se
+  no una delle voci dell'account del suo genere, la meno usata
+  (`vfilmScegliVociEleven`); modello e stabilità quelli dello Studio.
+- **Piper** (`vfilmPiperPronto`, `vfilmFonemi`, `vfilmPiperParla`):
+  onnxruntime-web 1.18 e il fonemizzatore `piper_phonemize` (espeak-ng in
+  wasm) da jsdelivr, a un thread solo (GitHub Pages non dà l'isolamento fra
+  origini); le voci `it_IT-paola-medium` e `it_IT-riccardo-x_low`,
+  `en_US-hfc_female-medium` e `en_US-hfc_male-medium` da Hugging Face
+  (rhasspy, poi la copia di diffusionstudio), tenute nella cache
+  `astrocal-piper-v1`, che il service worker lascia fra una versione e
+  l'altra e non raddoppia (passa oltre per Hugging Face, ElevenLabs e quei
+  due pacchetti). Il tono del personaggio (`voce.tono` del profilo, i Hz della
+  sintesi) alza la voce senza cambiarne la velocità: il modello parla più
+  lento (`length_scale` × altezza) e il WAV dichiara una frequenza più alta
+  della stessa misura. Astro Ben e Zaira (+40, +48 Hz) salgono di un terzo.
+- **Le voci fatte restano** in IndexedDB (`astrocal_voci_filmato`, chiave
+  motore | personaggio | lingua | impronta del testo, al più 600): il secondo
+  filmato della stessa storia non le rifà e non spende crediti.
+- **Durante la registrazione** le voci si prestano alla narrazione
+  (`narrazione.vociFilmato`): `narrDiciPezzo` le suona da file prima del ponte
+  Edge-TTS e della sintesi. `ytDopoRegistrazione` (o una storia che non
+  parte) le riprende.
+
+Prove: `prova-voci-filmato.js` (9, nuova): di Piper girano veri il motore e
+i fonemi, il modello no (Hugging Face non si raggiunge dal contenitore: la
+sessione è finta); ElevenLabs finto. La prova vera registra una storia col
+registratore dell'app, con la voce di sistema muta, e trova la voce nel file
+(picco 0,37 contro 0,04 di prima). `prova-youtube.js` (14) aggiornata: la
+storia dello Studio ora passa dalla finestra. **Da guardare fuori dal
+contenitore**: Piper con un modello vero (download e voce) e ElevenLabs vero.

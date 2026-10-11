@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v477';
+const CACHE_NAME = 'astrocal-v478';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -18,6 +18,7 @@ const ASSETS = [
   './demo.js',
   './storie-cosmiche.js',
   './storie-studio.js',
+  './voci-filmato.js',
   './youtube.js',
   './demo-predefiniti.js',
   './demo-libreria.js',
@@ -200,7 +201,9 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        // v478: la cache delle voci di Piper (`voci-filmato.js`) resta fra
+        // una versione e l'altra: è un modello di 60 MB, non un pezzo dell'app
+        keys.filter(k => k !== CACHE_NAME && !k.startsWith('astrocal-piper-')).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -286,6 +289,13 @@ self.addEventListener('fetch', (e) => {
       url.hostname === 'accounts.google.com' ||
       url.hostname === 'www.googleapis.com' ||
       url.hostname === 'oauth2.googleapis.com' ||
+      // Le voci del filmato (voci-filmato.js, v478): ElevenLabs, i modelli
+      // di Piper su Hugging Face (e i server dove rimanda) e il suo motore su
+      // jsdelivr. File grandi che la pagina tiene da sé (`astrocal-piper-v1`):
+      // qui si raddoppierebbero, e un errore deve arrivare com'è
+      url.hostname === 'api.elevenlabs.io' ||
+      url.hostname === 'huggingface.co' || url.hostname.endsWith('.huggingface.co') || url.hostname.endsWith('.hf.co') ||
+      (url.hostname === 'cdn.jsdelivr.net' && /\/npm\/(onnxruntime-web|@diffusionstudio\/piper-wasm)@/.test(url.pathname)) ||
       proxyAdsb(url)) {
     return;
   }
