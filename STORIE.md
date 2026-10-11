@@ -2897,3 +2897,42 @@ titolo del telefono, la stessa battuta cambiata dai due, una scena tolta e
 un'altra ritoccata, l'orologio indietro, un commit nel mezzo, il salvataggio
 automatico, la fusione da sola); sul codice di prima le cinque sui dati
 falliscono.
+
+### Le voci sul repository così come sono nello Studio (v476)
+
+Chi salva una CosmoStoria con le voci impostate, quelle di ElevenLabs e
+quelle proprie (caricate o registrate col microfono), vuole ritrovarle
+uguali sul repository e quindi, dopo il deploy, su ogni dispositivo. La
+strada è una sola per tutte (`caricaVoce`: IndexedDB, file delle voci,
+commit), e il caso semplice andava già: il file arriva byte per byte in
+`audio/narrazione/storie/<personaggio>/<lingua>/<chiave>-<n>.<est>`, e la
+storia (`storie-studio/storie.json`) tiene la voce scelta per personaggio
+(`voci`), quella per scena (`scena.voci`), e per ogni battuta con quale voce
+ElevenLabs e con quali tag è stata generata (`audio.voce`, `audio.tag`).
+Quattro casi però non tornavano (`storie-studio.js` §6b):
+
+- **Una battuta di una CosmoStoria rimasta quella** (`m.parla`, v461) con una
+  voce sua: il copione chiedeva ancora la voce registrata dell'originale
+  (`character_speak { id }`) e il file delle voci saltava la battuta, così
+  l'audio restava solo su questo dispositivo. Adesso la battuta dice
+  l'originale solo finché non ha una voce valida sua (`dettaDallOriginale`,
+  usata dal copione e da `studioVociStoria`); tolta la voce, torna l'originale.
+- **Una voce rifatta in un altro formato** (registrata in webm, poi generata
+  in mp3): sul repository restavano due file per la stessa battuta, e
+  `voci-storie.js` ne teneva uno a caso dando errore. Ora con quella nuova si
+  toglie l'altra (`fileDaScrivere`, `stessaBattuta`).
+- **Una voce tolta con «Togli»**: il file restava sul repository, era ancora
+  nel manifest e dopo il deploy si sentiva. Ora va via con il salvataggio
+  (`vociTolte`), ma solo dove la storia dice che la battuta non ha voce
+  (`audio` vuoto): una voce caricata da un altro dispositivo, che qui non
+  c'è, ha `audio` e resta. Se la cartella non si riesce a leggere, non si
+  toglie niente.
+- **Più di 40 MB di audio in un giro** (tante battute generate insieme): il
+  resto aspettava «il prossimo salvataggio», che con la storia già a posto
+  sul repository non partiva più da solo. Adesso lo stesso giro fa altri
+  commit (al massimo `STUDIO_REPO_COMMIT_MAX`, 12) finché non c'è tutto.
+
+Resta com'era: la lingua della cartella è quella dell'interfaccia quando si
+salva (`p.lingua`), e la chiave di ElevenLabs e il token di GitHub non vanno
+mai sul repository. Prove: `prova-musica-storie.js` (17, 5 nuove; sul codice
+di prima le quattro sui casi sopra falliscono).

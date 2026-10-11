@@ -580,6 +580,13 @@
   // per ElevenLabs e per sapere se la voce generata è ancora quella (v462)
   const testoDetto = m => studioSenzaTag(unaRiga(m && m.testo)).slice(0, 400);
   const testoGrezzo = m => unaRiga(m && m.testo).slice(0, 600);
+  /* La battuta di una CosmoStoria rimasta quella (v461) dice la voce
+   * registrata dell'originale (`m.parla`). v476: finché chi scrive non le dà
+   * una voce sua: una voce caricata, registrata o generata con ElevenLabs su
+   * una battuta non ritoccata suonava solo su questo dispositivo, perché il
+   * copione chiedeva ancora l'originale e il file delle voci la saltava (e
+   * l'audio non andava sul repository). */
+  const dettaDallOriginale = m => !!(m && m.parla && m.parla.chi === m.chi && unaRiga(m.parla.testo) === testoGrezzo(m) && !studioVoceValida(m));
   /* La prima frase di una scena (v465), per il titolo della scena chiusa:
    * con le scene tutte chiuse si leggeva solo «Scena 3 · Sistema Solare · 1
    * momento», e per ritrovare un punto (in «Pallido puntino blu» duplicata,
@@ -854,10 +861,9 @@
           if (a.tipo === 'umore' && a.chi && a.umore) umori.set(a.chi, a.umore);
         }
         // La battuta dell'originale, finché resta quella, con la sua voce
-        // registrata (`id`); cambiata, diventa testo
-        const pa = m.parla;
-        if (parla && pa && pa.chi === m.chi && unaRiga(pa.testo) === unaRiga(m.testo))
-          az.push(`character_speak { target: ${virgolette(m.chi)}, id: ${virgolette(pa.id)} }`);
+        // registrata (`id`); cambiata, o con una voce sua (v476), diventa testo
+        if (parla && dettaDallOriginale(m))
+          az.push(`character_speak { target: ${virgolette(m.chi)}, id: ${virgolette(m.parla.id)} }`);
         else if (parla) az.push(`character_speak { target: ${virgolette(m.chi)}, text: ${virgolette(testoDetto(m))} }`);
         righe.push(`  scene ${vistaM} {`);
         righe.push(cp ? `    duration: ${Math.round(durate[k] * 1000)}ms;` : `    duration: ${durate[k]}s;`);
@@ -1806,7 +1812,7 @@
         const testo = testoDetto(m);
         if (!m.chi || !presenti.includes(m.chi) || !testo) continue;
         // v461: la battuta di una storia pronta rimasta quella ha già la sua voce
-        if (m.parla && m.parla.chi === m.chi && unaRiga(m.parla.testo) === testoGrezzo(m)) continue;
+        if (dettaDallOriginale(m)) continue;
         if (!m.voce) m.voce = prossima++;
         const b = { n: m.voce, chi: m.chi, testo, umore: m.umore || '', scena, durata: Math.round(studioDurata(m) * 1000) };
         // v462: le espressioni dentro la frase vanno anche alla regia delle voci
@@ -2199,7 +2205,25 @@
       const rec = tutte.get(chiaveAudio(f.progetto, b.n));
       if (!rec || !rec.blob || unaRiga(rec.testo) !== unaRiga(b.testo)) continue;
       const est = (STUDIO_ESTENSIONI.exec(rec.nome || '') || [, /wav/.test(rec.tipo) ? 'wav' : /ogg/.test(rec.tipo) ? 'ogg' : /mp4|m4a|aac/.test(rec.tipo) ? 'm4a' : /webm/.test(rec.tipo) ? 'webm' : 'mp3'])[1].toLowerCase();
-      fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, nome: `${f.chiave}-${b.n}.${est}`, blob: rec.blob });
+      fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, base: `${f.chiave}-${b.n}`, nome: `${f.chiave}-${b.n}.${est}`, blob: rec.blob });
+    }
+    return fuori;
+  }
+  /* v476: le battute che la storia dice senza voce (tolta con «Togli»): il
+   * loro audio sul repository va via, se no dopo il deploy gli altri
+   * dispositivi sentivano ancora la voce di prima. Solo dove la storia lo
+   * dice (`audio` vuoto): una voce caricata da un altro dispositivo, che qui
+   * non c'è, ha `audio` e resta. */
+  function vociTolte(foto = studioVociCarica()) {
+    const fuori = [];
+    for (const f of Object.values(foto)) {
+      const p = f && studio.progetti.find(x => x.id === f.progetto && condivisa(x));
+      if (!p) continue;
+      const momenti = new Map(p.scene.flatMap(sc => sc.momenti).filter(m => m.voce > 0).map(m => [m.voce, m]));
+      for (const b of f.battute || []) {
+        const m = momenti.get(b.n);
+        if (m && !m.audio) fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, base: `${f.chiave}-${b.n}` });
+      }
     }
     return fuori;
   }
@@ -2372,6 +2396,7 @@
   const REPO_VALIDO = /^[\w.-]{1,100}\/[\w.-]{1,100}$/;
   const RAMO_VALIDO = /^[\w./-]{1,100}$/;
   const STUDIO_REPO_AUDIO_MAX = 40 * 1024 * 1024;
+  const STUDIO_REPO_COMMIT_MAX = 12;       // commit di fila in un giro (v476)
 
   // Il repository di questo sito: quello scritto in config.js, o quello che
   // dice l'indirizzo di Pages (`<proprietario>.github.io/<repository>/`)
@@ -2738,19 +2763,39 @@
     if (await leggiFile(imp, FILE_CONDIVISE, rif) !== storie) fuori.push({ percorso: FILE_CONDIVISE, testo: storie });
     const voci = studioFileVoci(studioVociCarica());
     if (await leggiFile(imp, PERCORSO_VOCI, rif) !== voci) fuori.push({ percorso: PERCORSO_VOCI, testo: voci });
+    // Le cartelle delle voci sul repository, lette una volta per giro:
+    // nome → SHA, o `null` se non si è potuto leggere (allora non si toglie niente)
     const cartelle = new Map();
-    let peso = 0;
-    for (const v of await vociDaScrivere()) {
-      const dir = 'audio/narrazione/storie/' + v.cartella + '/' + v.lingua;
+    const cartellaVoci = async dir => {
       if (!cartelle.has(dir)) {
         let elenco = null;
-        try { elenco = await elencaCartella(imp, dir, rif); } catch (_) { elenco = null; }
-        cartelle.set(dir, new Map((Array.isArray(elenco) ? elenco : []).map(x => [x.name, x.sha])));
+        try { elenco = await elencaCartella(imp, dir, rif); } catch (_) { elenco = undefined; }
+        cartelle.set(dir, elenco === undefined ? null : new Map((Array.isArray(elenco) ? elenco : []).filter(x => x.type !== 'dir').map(x => [x.name, x.sha])));
       }
+      return cartelle.get(dir);
+    };
+    const dirVoce = v => 'audio/narrazione/storie/' + v.cartella + '/' + v.lingua;
+    const stessaBattuta = (nome, base) => nome.replace(STUDIO_ESTENSIONI, '') === base && STUDIO_ESTENSIONI.test(nome);
+    let peso = 0;
+    const daScrivere = await vociDaScrivere();
+    for (const v of daScrivere) {
+      const dir = dirVoce(v), sul = await cartellaVoci(dir) || new Map();
       const byte = new Uint8Array(await v.blob.arrayBuffer());
-      if (cartelle.get(dir).get(v.nome) === await shaBlob(byte)) continue;
-      if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) break;   // il resto al prossimo salvataggio
-      fuori.push({ percorso: dir + '/' + v.nome, byte });
+      if (sul.get(v.nome) !== await shaBlob(byte)) {
+        // v476: il resto con un altro commit dello stesso giro (sotto)
+        if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) { fuori.resto = true; break; }
+        fuori.push({ percorso: dir + '/' + v.nome, byte });
+      }
+      // v476: la stessa battuta con un'altra estensione (registrata in webm,
+      // poi generata in mp3): due file per una battuta e `voci-storie.js` ne
+      // teneva uno a caso, magari quello vecchio. Resta solo questa.
+      for (const nome of sul.keys()) if (nome !== v.nome && stessaBattuta(nome, v.base)) fuori.push({ percorso: dir + '/' + nome, togli: true });
+    }
+    // (una battuta con l'audio ancora qui, anche se la storia non lo dice, non si tocca)
+    const conAudio = new Set(daScrivere.map(v => dirVoce(v) + '/' + v.base));
+    for (const v of vociTolte()) {
+      const dir = dirVoce(v), sul = conAudio.has(dir + '/' + v.base) ? null : await cartellaVoci(dir);
+      if (sul) for (const nome of sul.keys()) if (stessaBattuta(nome, v.base)) fuori.push({ percorso: dir + '/' + nome, togli: true });
     }
     /* v440: le musiche di sottofondo (§4-ter). Si scrivono quelle caricate
      * qui che sul repository non ci sono uguali, e si tolgono quelle che
@@ -2778,7 +2823,7 @@
       if (!rec || !rec.blob || rec.sha !== v.sha || sulRepo.get(percorso) === v.sha) continue;
       const byte = new Uint8Array(await rec.blob.arrayBuffer());
       if (sulRepo.get(percorso) === await shaBlob(byte)) continue;
-      if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) break;
+      if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) { fuori.resto = true; break; }
       fuori.push({ percorso, byte });
     }
     return fuori;
@@ -2800,6 +2845,10 @@
     if (!studio.radice) studio.progetti = studioCaricaTutti();
     const scrive = spingi && !!imp.token;
     const fusi = new Map();
+    // v476: gli audio oltre i 40 MB di un commit vanno in altri commit dello
+    // stesso giro. Prima aspettavano «il prossimo salvataggio», che con la
+    // storia già a posto sul repository non partiva più da solo.
+    let scritti = 0, commit = 0;
     try {
       for (let prova = 0; prova < 3; prova++) {
         // v475: con il token si legge a un commit preciso, che sarà il
@@ -2822,12 +2871,14 @@
         if (!imp.token) return arrivo + t('studio.repo.senzaToken');
         const storie = studioFileCondivise(studio.progetti, eliminatiCarica());
         const file = await fileDaScrivere(imp, testa, storie);
-        if (!file.length) return arrivo + t('studio.repo.giaAPosto');
+        if (!file.length) return arrivo + (scritti ? t('studio.repo.scritto', { file: scritti, repo: imp.repo }) : t('studio.repo.giaAPosto'));
         const msg = 'Storie dello Studio: ' + (unaRiga(titolo) || 'aggiornamento').slice(0, 72);
         if (await scriviCommit(imp, file, msg, testa)) {
           // Quello che è appena andato sul repository è la nuova base
           basiSalva(basiDa(studioLeggiCondivise(storie).progetti));
-          return arrivo + t('studio.repo.scritto', { file: file.length, repo: imp.repo });
+          scritti += file.length;
+          if (file.resto && ++commit < STUDIO_REPO_COMMIT_MAX) { prova = -1; continue; }
+          return arrivo + t('studio.repo.scritto', { file: scritti, repo: imp.repo });
         }
       }
       return t('studio.repo.errOccupato');
@@ -5725,7 +5776,7 @@
     testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
-    caricaSuono, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag, primaFrase: studioPrimaFrase,
+    caricaSuono, caricaVoce, togliVoce, STUDIO_REPO_AUDIO_MAX, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag, primaFrase: studioPrimaFrase,
     // v471: la regia delle emozioni e «Genera tutte le battute»
     regia: studioRegiaBattuta, frasi: studioFrasi, battuteDa: studioBattuteDa, statoVoce: studioStatoVoce, facciaScelta: studioFacciaScelta,
     STUDIO_REGIA_VOCE, STUDIO_REGIA_MAX,
