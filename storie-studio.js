@@ -924,6 +924,14 @@
       let fine = La + (Lb - La) * liscio(fatto / totale);
       const viaggio = (m.azioni || []).find(a => a.tipo === 'muovi' && studioLCosmo(a.verso) !== null);
       if (viaggio) fine = studioLCosmo(viaggio.verso);
+      // v477: chi parla e vive lontano (Andromeda, Sirio, la Via Lattea)
+      // dev'essere nel quadro: il momento finisce almeno alla sua scala, e
+      // il momento dopo riparte da lì invece di tornare indietro. Che la
+      // camera ci arrivi subito, e non a fine battuta, lo fa `cosmic_scale`
+      else if (m.chi && testoDetto(m)) {
+        const Lchi = studioLCosmo(m.chi);
+        if (Lchi !== null && Lchi > fine) fine = Lchi;
+      }
       const coppia = [prima, fine];
       prima = fine;
       return coppia;

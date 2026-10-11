@@ -2936,3 +2936,62 @@ Resta com'era: la lingua della cartella è quella dell'interfaccia quando si
 salva (`p.lingua`), e la chiave di ElevenLabs e il token di GitHub non vanno
 mai sul repository. Prove: `prova-musica-storie.js` (17, 5 nuove; sul codice
 di prima le quattro sui casi sopra falliscono).
+
+### Zaira, e chi parla lontano nella scala cosmica si vede subito (v477)
+
+**Zaira.** «Aggiungi anche il personaggio di Zaira, bambina di 7 anni, capelli
+ricci biondi, occhi castani, solare, intelligente, dolce e curiosa, con mille
+interessi e altrettante passioni.» Ospite come Astro Ben (`zaira`, `bambino`:
+spalle strette e testa più tonda), ma senza casco perché si vedano i ricci.
+Tre pezzi di figura nuovi in `disegnaPersona`, senza toccare chi c'era:
+
+| Campo | Cosa disegna |
+|---|---|
+| `capelli: 'riccioli'` | la massa a onde fitte fino alle spalle, la frangetta a riccioli e, con `boccoli`, una spirale per riccio che respira coi capelli |
+| `copricapo: 'molletta'` | la stellina gialla fra i ricci, di lato |
+| `veste: 'maglietta'` | la maglietta a girocollo; `stampa: 'sole'` il sole coi raggi sul petto (è solare) |
+
+Le girano attorno tre mondini svelti (il Sole, la Terra e Saturno, `STOR_FISICA`):
+uno per passione. Testi `storie.*.zaira` e `studio.alias.zaira`.
+
+**Il difetto.** Andromeda (o Sirio, la Via Lattea, Sagittario A*) che parla in
+una scena della scala cosmica partita dal Sistema Solare: la camera di
+`cosmic_scale` viaggia dalla scala d'inizio a quella di fine per **tutta** la
+scena, e una storia chiude la scena appena la voce tace. Così a fine battuta
+la camera era ancora a L 3,4 (Andromeda vuole 11,4) e lei restava sul bordo
+con la freccia: si sentiva la voce senza vedere chi parlava. Nello Studio era
+peggio, perché il viaggio della scena si divide fra i momenti e il momento di
+Andromeda ne aveva solo un pezzo.
+
+- **La camera** (`registro.cosmic_scale` in `demo.js`): se chi parla sta più
+  lontano di dove il viaggio è arrivato, la scala esce fino a lui con una
+  molla critica (ω 4,6: in poco più di un secondo, morbida all'inizio e alla
+  fine), e la scala usata è la più grande fra il viaggio e la molla. Chi parla
+  all'inizio della scena si legge dalle azioni (`character_speak` senza
+  `shot_from`), così la camera parte col primo fotogramma e non aspetta la
+  voce; poi `storChiParlaOra`. La scala del luogo (`cosmLuogo(...).L`, quella
+  che usa anche lo Studio) mette chi parla a sei decimi dal centro, con i
+  sottotitoli sotto: quando la camera deve andarlo a prendere si tiene ×1,4
+  più larga (le scene che lo inquadrano già, Betelgeuse e Sirio B in «Che
+  fine fanno le stelle?», restano come sono), e se arrivata lì chi parla è
+  ancora sul bordo (`storCosmoChiParlaFuori`, i pixel che ne restano fuori:
+  certi schermi, il centro della carta che scivola con la scala) si allarga
+  ancora a passi di 0,1 decade, **solo finché ogni passo lo avvicina** (se
+  no il centro gli scivola via con la scala e allargare non serve). In «Il
+  cielo è una macchina del tempo» Alfa Centauri restava nell'angolo in alto
+  per tutta la battuta; ora le si avvicina subito e scende di continuo verso
+  il quadro. Finita la battuta, dopo 1,2 s, torna morbida al viaggio; senza
+  nessuno da inquadrare la camera è il viaggio esatto (la demo «Dalla Terra
+  all'universo» non cambia). Con la camera presa a mano non fa niente.
+- **La scala di un personaggio** (`storCosmoScalaDi` in `storie-cosmiche.js`,
+  `window.storCosmoScalaChiParla(id?)`): quella del suo luogo (`cosmo`,
+  `luogo`), del punto in cui sta viaggiando (`pg.cosmoV`), o del suo corpo
+  (`cosmDove`); niente per l'ospite (sta sullo schermo) e per l'idea.
+- **Lo Studio** (`studioViaggioCosmo`): il momento in cui parla chi vive
+  lontano finisce almeno alla sua scala, e il momento dopo riparte da lì
+  invece di saltare indietro.
+
+Misurato in Chromium (1100 × 760 e 390 × 844): Andromeda dentro al quadro in
+1,3–1,6 s, mentre parla. Prove: `prova-demo-universo.js` (115, 3 nuove: sul
+codice di prima la camera non ci arriva), `prova-storie.js` (118, 2 nuove; la
+prova dello Studio fallisce sul codice di prima).
