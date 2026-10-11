@@ -6786,7 +6786,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "studio.originale.titolo": "From the original story",
     "studio.originale.aiuto": "Camera, dates, music and the other commands the Studio cannot write: they stay as in the original. Remove them with ×.",
     "studio.originale.n": { uno: "{n} original command", altri: "{n} original commands" },
-    "studio.daStoria.pronta": "The copy is in the Studio, ready to edit: lines, faces and actions are below, the camera and the rest stay as in the original. When you are done, save it.",
+    "studio.daStoria.pronta": "The copy is in the Studio: type its name straight away in the title, already selected. Lines, faces and actions are below, the camera and the rest stay as in the original. When you are done, save it.",
     "studio.ufficiale.segno": "CosmoStory",
     "studio.ufficiale.pubblica": "Add to the CosmoStories",
     "studio.ufficiale.pubblicaAiuto": "Saves it and puts it among the ready-made CosmoStories; until then it stays a work in progress, only in the Studio.",

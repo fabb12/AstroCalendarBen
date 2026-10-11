@@ -2129,6 +2129,20 @@ entra nel file delle voci. Prova: ognuna delle cinque storie pronte, portata
 nello Studio e riscritta senza ritocchi, ha le stesse scene, viste, durate e
 azioni (`prova-storie.js`).
 
+**La battuta che aspetta e il nome della copia (v479).** La prima battuta
+di «Einstein e il tempo elastico» comincia dopo il titolo
+(`character_speak { …, shot_from: 0.3 }`): `studioDaCopione` scartava ogni
+battuta con una ripresa, che restava fra i comandi dell'originale; si
+sentiva, ma il momento non la mostrava e non si poteva modificare. Ora una
+battuta con solo `shot_from` entra nel momento come le altre e il suo
+«dopo» sta in `m.dettoDa` (0–1, tenuto da `studioRipulisci`), che
+`studioCopione` rimette come `shot_from`, anche a testo cambiato. Duplicando
+(da una CosmoStoria o col tasto «Duplica» dello Studio) `chiediNomeCopia`
+apre la linguetta «Titolo» e mette il cursore nel campo, col titolo
+proposto tutto selezionato: si scrive subito il nome. Prove:
+`prova-storie.js` (nessuna battuta parlata delle storie pronte resta fra i
+comandi), `prova-demo-pagina.js` (Einstein duplicata nel browser).
+
 **In cantiere e fra le CosmoStorie.** Un progetto ha `ufficiale`: spento, la
 storia è in cantiere e sta solo nell'elenco dello Studio; «Metti fra le
 CosmoStorie» la salva come demo e la mette fra le schede delle storie pronte

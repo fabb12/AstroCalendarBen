@@ -491,6 +491,26 @@ async function prova(nome, fn) {
       await pagina.evaluate(() => { skyAvviso('demo', ''); fermaMusicaSpaziale(); });
     });
 
+    await prova('Duplica e modifica: il nome della copia si scrive subito e la prima battuta di Einstein è nel momento (v479)', async () => {
+      await pagina.evaluate(() => { if (typeof demoMostraScheda === 'function') demoMostraScheda('demo-scheda-storie'); });
+      await pagina.waitForSelector('[data-storia-duplica="storia_einstein"]', { state: 'attached', timeout: 10000 });
+      await pagina.evaluate(() => document.querySelector('[data-storia-duplica="storia_einstein"]').click());
+      await pagina.waitForFunction(() => document.activeElement && document.activeElement.dataset && document.activeElement.dataset.campo === 'titolo', null, { timeout: 5000 });
+      const r = await pagina.evaluate(() => {
+        const campo = document.activeElement;
+        // il primo momento della prima scena, chiuso: chi parla e le sue parole
+        const primo = document.querySelector('.studio-momento');
+        const battute = primo ? [...primo.querySelectorAll('.studio-momento-parole')].map(x => x.textContent.replace(/^«|»$/g, '')) : [];
+        return { titolo: campo.value, da: campo.selectionStart, a: campo.selectionEnd, battute, attesa: astroI18n.t('demo.narr.storia_einstein.1') };
+      });
+      assert.match(r.titolo, /^Copia di /);
+      assert.equal(r.da, 0); assert.equal(r.a, r.titolo.length, 'il titolo proposto è tutto selezionato');
+      assert.ok(r.battute.includes(r.attesa), 'la prima battuta di Astro Ben si vede nel momento: ' + JSON.stringify(r.battute.slice(0, 3)));
+      // si scrive e il nome è quello
+      await pagina.keyboard.type('Il mio Einstein');
+      assert.equal(await pagina.evaluate(() => StudioStorie.progetto.titolo), 'Il mio Einstein');
+    });
+
     assert.deepEqual(errori, [], 'Nessuna eccezione nella pagina');
     console.log('\n✓ ' + passate + ' prove passate');
   } finally {

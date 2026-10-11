@@ -2293,6 +2293,31 @@ prova('la battuta cambiata diventa testo, quella rimasta tiene la voce registrat
   assert.doesNotMatch(St.copione(p).split('scene')[1], /zoom_fov/);
 });
 
+prova('ogni battuta parlata delle storie pronte è un momento da modificare, anche quella che aspetta (v479)', () => {
+  lingua = 'it';
+  // la prima di Einstein comincia dopo il titolo (`shot_from: 0.3`): restava
+  // fra i comandi dell'originale, si sentiva ma il momento non la mostrava
+  const d = predefiniti.find(x => x.chiave === 'storia_einstein');
+  const p = St.daCopione(d.testo, { chiave: d.chiave, cast: d.cast });
+  const m = p.scene[0].momenti[0];
+  assert.equal(m.chi, 'astro_ben');
+  assert.equal(m.parla && m.parla.id, 'demo.narr.storia_einstein.1');
+  assert.equal(m.testo, DIZ.it.messaggi['demo.narr.storia_einstein.1']);
+  assert.equal(m.dettoDa, 0.3);
+  assert.ok(!m.copione.righe.some(r => r.comando === 'character_speak'), 'non resta fra i comandi dell\'originale');
+  assert.match(St.copione(p), /id: 'demo\.narr\.storia_einstein\.1', shot_from: 0\.3 \}/);
+  // cambiata, è testo e aspetta ancora il titolo; e passa dall'archivio
+  m.testo = 'Einstein, è vero?';
+  assert.match(St.copione(p), /text: 'Einstein, è vero\?', shot_from: 0\.3 \}/);
+  assert.equal(St.ripulisci(JSON.parse(JSON.stringify(p))).scene[0].momenti[0].dettoDa, 0.3);
+  // in nessuna storia pronta una battuta parlata resta fuori dai momenti
+  for (const s of predefiniti.filter(x => x.storia)) {
+    const q = St.daCopione(s.testo, { chiave: s.chiave, cast: s.cast });
+    for (const mm of q.scene.flatMap(sc => sc.momenti))
+      assert.ok(!(mm.copione && mm.copione.righe.some(r => r.comando === 'character_speak')), s.chiave + ': battuta rimasta fra i comandi');
+  }
+});
+
 gruppo('Le espressioni dentro la frase per ElevenLabs (v462)');
 
 prova('i tag dentro la frase vanno solo a ElevenLabs: sottotitoli e voce dell\'app non li vedono', () => {
