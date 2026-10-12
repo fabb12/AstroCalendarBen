@@ -6110,7 +6110,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "storie.fisica.mike_brown": "Le girano attorno Eris e la sua luna Disnomia: la dea della discordia, che fece litigare gli astronomi sui pianeti.",
     "studio.alias.mike_brown": "brown, michael brown, michael e. brown, mike brown, mike",
     "storie.nome.astro_ben": "Astro Ben",
-    "storie.personalita.astro_ben": "Il bambino astronauta: curioso, coraggioso, un vulcano di domande. Ha la tuta arancione, il casco sempre in testa e un sogno: andare più lontano di tutti.",
+    "storie.personalita.astro_ben": "Il bambino astronauta: curioso, coraggioso, intelligente e perspicace, un vulcano di domande. Ha la tuta arancione, il casco sempre in testa e un sogno: andare più lontano di tutti.",
     "storie.fisica.astro_ben": "Gli gira attorno la Luna, la prima tappa del suo viaggio: tutti gli astronauti hanno cominciato guardandola da un giardino.",
     "studio.alias.astro_ben": "astro ben, astroben, ben",
     "storie.nome.zaira": "Zaira",

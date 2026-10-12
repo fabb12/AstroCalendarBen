@@ -5973,7 +5973,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "storie.fisica.mike_brown": "Eris and her moon Dysnomia circle him: the goddess of discord, who made astronomers quarrel about planets.",
     "studio.alias.mike_brown": "brown, michael brown, michael e. brown, mike brown, mike",
     "storie.nome.astro_ben": "Astro Ben",
-    "storie.personalita.astro_ben": "The child astronaut: curious, brave, a volcano of questions. He has an orange suit, his helmet always on and one dream: to go further than anyone.",
+    "storie.personalita.astro_ben": "The child astronaut: curious, brave, intelligent and perceptive, a volcano of questions. He has an orange suit, his helmet always on and one dream: to go further than anyone.",
     "storie.fisica.astro_ben": "The Moon circles him, the first stop on his journey: every astronaut started by looking at it from a back garden.",
     "studio.alias.astro_ben": "astro ben, astroben, ben",
     "storie.nome.zaira": "Zaira",
