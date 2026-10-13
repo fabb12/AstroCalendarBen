@@ -13294,6 +13294,16 @@ textarea.yt-campo { resize: vertical; min-height: 5.5rem; }
 .yt-aiuto { color: var(--testo-3); font-size: 0.75rem; }
 .yt-come summary { cursor: pointer; font-size: 0.8rem; color: var(--blu-chiaro); }
 .yt-passi { margin: 6px 0; padding-left: 1.3rem; display: grid; gap: 4px; font-size: 0.8rem; color: var(--testo-2); overflow-wrap: anywhere; }
+/* v482: la finestra «Le voci della storia» (voci-filmato.js §9): chi parla,
+   con la voce scelta da sola, «Ascolta» e «Un'altra voce» */
+.vcast-elenco { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: min(46vh, 360px); overflow-y: auto; }
+.vcast-riga { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 6px; border: 1px solid var(--bordo); border-radius: 10px; }
+.vcast-riga .studio-figurina { flex: 0 0 auto; }
+.vcast-nome { display: grid; min-width: 0; flex: 1 1 auto; }
+.vcast-nome strong { font-size: 0.88rem; }
+.vcast-nome small { color: var(--testo-3); font-size: 0.74rem; overflow-wrap: anywhere; }
+.vcast-tasto { flex: 0 0 auto; padding: 4px 8px; font-size: 0.76rem; }
+@media (max-width: 520px) { .vcast-riga { flex-wrap: wrap; } .vcast-nome { flex-basis: calc(100% - 40px); } }
 .yt-preferenze { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; }
 .yt-preferenze .yt-etichetta { display: grid; gap: 4px; margin: 0; }
 .yt-sottotitolo { margin: 4px 0 0; font-size: 0.82rem; font-weight: 700; color: var(--testo-2); }

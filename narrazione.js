@@ -98,6 +98,9 @@ const narr = {
   // La voce del dispositivo non si può registrare: con queste, i pezzi che
   // sarebbero andati alla sintesi suonano da un file, che entra nella presa.
   vociFilmato: new Map(),
+  // v482: le voci ElevenLabs delle CosmoStorie, fatte col tasto della scheda
+  // (`voci-filmato.js`, §8): suonano sempre, non solo nel filmato
+  vociStorie: new Map(),
   // v468, lo scambio di battute: i file delle battute che stanno per venire
   // (`narrPrepara`), url → promessa del blob. Prima ogni scena di una storia
   // scaricava la sua voce solo all'apertura, e fra una battuta e l'altra si
@@ -988,7 +991,8 @@ async function narrDiciPezzo(c, pezzo) {
   }
   // v478: la voce generata per il filmato vince sulla sintesi (che non si
   // registra); se il file non suona, si torna alla scala di sempre
-  const filmato = !pezzo.audio && narr.vociFilmato.get(narrNormalizza(pezzo.testo));
+  // v482: e così quella fatta per la CosmoStoria col tasto «Voci ElevenLabs»
+  const filmato = !pezzo.audio && (narr.vociFilmato.get(narrNormalizza(pezzo.testo)) || narr.vociStorie.get(narrNormalizza(pezzo.testo)));
   if (filmato && !narr.guasti.has(filmato)) {
     c.fase = 'audio';
     const e = await narrSuonaFile(c, filmato);
@@ -1329,6 +1333,16 @@ const narrazione = {
       if (k && url) { narr.vociFilmato.set(k, url); narr.guasti.delete(url); }
     }
     return narr.vociFilmato.size;
+  },
+  // v482: le voci ElevenLabs delle CosmoStorie ({ testo: url }, o null). Come
+  // per il filmato, gli URL li tiene e li libera chi li passa.
+  vociStorie(voci) {
+    narr.vociStorie = new Map();
+    for (const [testo, url] of Object.entries(voci || {})) {
+      const k = narrNormalizza(testo);
+      if (k && url) { narr.vociStorie.set(k, url); narr.guasti.delete(url); }
+    }
+    return narr.vociStorie.size;
   },
   quantiAudio: lingua => narrQuantiAudio(lingua || narrLingua()),
   guasti: () => Object.fromEntries(narr.guasti),

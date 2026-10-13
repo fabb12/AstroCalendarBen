@@ -99,17 +99,26 @@ function vfilmBattute(testo) {
   if (!demo) return [];
   const S = window.StorieCosmiche;
   const viste = new Map();
+  // v482: la faccia che ognuno ha quando parla (per la regia della voce): quella
+  // di `character_show` o di un `character_expression` all'inizio della scena
+  const facce = new Map();
   for (const scena of demo.scene) for (const a of scena.azioni) {
+    const pp = a.parametri || {};
+    if ((a.comando === 'character_show' || a.comando === 'character_expression') && pp.target && pp.expression &&
+      (a.comando === 'character_show' || !(a.ripresa && a.ripresa.da > 0.1)))
+      facce.set(S && S.canonico ? S.canonico(pp.target) : pp.target, pp.expression);
     if (a.comando !== 'character_speak' && a.comando !== 'narrate') continue;
     const p = a.parametri || {};
     const frase = typeof p.text === 'string' ? p.text
       : p.id && typeof astroI18n === 'object' && astroI18n.esiste && astroI18n.esiste(p.id) ? astroI18n.t(p.id) : '';
     if (!frase) continue;
     const chi = a.comando === 'character_speak' && p.target ? (S && S.canonico ? S.canonico(p.target) : p.target) : '';
-    for (const pezzo of narrazione.componi(p.id || '', frase)) {
+    const pezzi = narrazione.componi(p.id || '', frase);
+    for (const pezzo of pezzi) {
       if (pezzo.audio || !pezzo.testo) continue;
       const k = chi + '|' + pezzo.testo;
-      if (!viste.has(k)) viste.set(k, { chi, testo: pezzo.testo });
+      // `id` solo se il pezzo è la battuta intera (la regia è per battuta)
+      if (!viste.has(k)) viste.set(k, { chi, testo: pezzo.testo, id: pezzi.length === 1 ? p.id || '' : '', faccia: facce.get(chi) || '' });
     }
   }
   return [...viste.values()];
@@ -222,6 +231,8 @@ function vfilmScegliVociEleven(battute, voci, voceDi) {
   for (const id of chi) {
     let v = typeof voceDi === 'function' ? voceDi(id) : null;
     if (!v && S && typeof S.voceDi === 'function' && id) v = S.voceDi(null, id);
+    // v482: la voce scelta da sola col tasto della CosmoStoria (§8)
+    if (!v && id) v = vfilmCastDi(id, vfilmLingua());
     const vid = v && (typeof v === 'string' ? v : v.id);
     if (valida(vid)) { scelte.set(id, vid); usate.set(vid, (usate.get(vid) || 0) + 1); }
   }
@@ -630,6 +641,510 @@ function vfilmRegistraSubito() {
   parti();
 }
 
+// =====================================================================
+// 8. Le voci di una CosmoStoria con un tocco (v482)
+// =====================================================================
+
+/* Chi usa l'app voleva, sulla scheda di una CosmoStoria, **un tasto solo**
+ * che generi con ElevenLabs tutte le voci della storia, scegliendo da sé la
+ * voce giusta per ogni personaggio. Prima bisognava duplicarla nello Studio
+ * e scegliere le voci a mano, personaggio per personaggio.
+ *
+ *   1. **Il casting** (`vfilmCasting`): per ogni personaggio che parla, la voce
+ *      scelta prima (nello Studio, o da questo stesso tasto) se c'è; se no si
+ *      cerca nella libreria pubblica di ElevenLabs (`/v1/shared-voices`)
+ *      nella lingua di chi guarda, del genere e dell'età del personaggio, e
+ *      le voci trovate si danno un voto (`vfilmVotoVoce`, funzione pura) con
+ *      le parole che dicono il suo carattere: quelle scritte qui
+ *      (`VFILM_CARATTERI`: Cooper ha la voce calda e un po' roca, TARS
+ *      asciutta e ironica, Gargantua profondissima) o ricavate dal profilo
+ *      (bambini, anziani, robot, buchi neri) e dalla regia delle voci delle
+ *      storie (`regia-voci.json`, il carattere scritto in italiano). Due
+ *      personaggi della stessa storia non hanno mai la stessa voce. La
+ *      vincitrice si aggiunge all'account (l'API la vuole lì) e si ricorda
+ *      (`astrocal_voci_cast_v1`, per lingua), con le altre candidate: «Un'altra
+ *      voce» passa alla seconda e rifà solo le battute di quel personaggio.
+ *   2. **La regia**: ogni battuta parte col suo testo coi tag di ElevenLabs v3
+ *      (`regia-voci.json`, `conTag` nella lingua giusta) se il testo è ancora
+ *      quello del dizionario; se no col tag della faccia che il personaggio
+ *      ha in scena (gli stessi `ELEVEN_TAG_UMORE` dello Studio). Con un
+ *      modello che non legge i tag, il testo nudo.
+ *   3. **Le voci restano** nello scaffale del filmato (§3), con `sempre`: la
+ *      narrazione le suona ogni volta che la storia gira
+ *      (`narrazione.vociStorie`), e un filmato per YouTube le trova già fatte.
+ *
+ * Costa crediti: la finestra lo dice prima di cominciare (le battute e i
+ * caratteri), e «Ferma» si ferma dopo la battuta in corso. */
+const VFILM_CHIAVE_CAST = 'astrocal_voci_cast_v1';
+const VFILM_REGIA = 'audio/narrazione/storie/regia-voci.json';
+const VFILM_CANDIDATE = 6;
+// Il carattere della voce dei personaggi che lo chiedono: l'età (quella di
+// ElevenLabs: young, middle_aged, old) e le parole da cercare, la prima più
+// importante. Gli altri lo ricavano dal profilo (`vfilmCarattere`).
+const VFILM_CARATTERI = {
+  cooper: { eta: 'middle_aged', parole: ['warm', 'raspy', 'deep', 'calm', 'confident'] },
+  brand: { eta: 'young', parole: ['clear', 'warm', 'confident', 'emotional'] },
+  romilly: { eta: 'middle_aged', parole: ['gentle', 'soft', 'calm', 'british'] },
+  doyle: { eta: 'middle_aged', parole: ['gruff', 'firm', 'deep'] },
+  mann: { eta: 'middle_aged', parole: ['smooth', 'charming', 'calm'] },
+  murph: { eta: 'young', parole: ['emotional', 'warm', 'clear', 'soft'] },
+  tars: { eta: 'middle_aged', parole: ['dry', 'deadpan', 'robotic', 'calm', 'deep'] },
+  case: { eta: 'middle_aged', parole: ['calm', 'neutral', 'flat', 'robotic'] },
+  gargantua: { eta: 'old', parole: ['deep', 'slow', 'mysterious', 'dark', 'resonant'] },
+  miller_planet: { eta: 'middle_aged', parole: ['soft', 'calm', 'mysterious', 'breathy'] },
+  mann_planet: { eta: 'old', parole: ['cold', 'deep', 'slow', 'whisper'] },
+  einstein: { eta: 'old', parole: ['warm', 'playful', 'raspy', 'grandfather'] },
+  astro_ben: { eta: 'young', parole: ['child', 'kid', 'boy', 'cheerful', 'energetic'] },
+  zaira: { eta: 'young', parole: ['child', 'kid', 'girl', 'cheerful', 'bright'] },
+  sagan: { eta: 'middle_aged', parole: ['warm', 'calm', 'storyteller', 'narration'] },
+  hawking: { eta: 'old', parole: ['calm', 'witty', 'slow', 'robotic'] }
+};
+// Le parole del carattere scritto in italiano (regia-voci.json) → quelle da
+// cercare fra le voci di ElevenLabs, che sono descritte in inglese
+const VFILM_PAROLE_IT = [
+  [/profond/, 'deep'], [/cald/, 'warm'], [/roc/, 'raspy'], [/bambin|ragazzin/, 'child'], [/anzian|vecchi|nonn/, 'old'],
+  [/metallic|robot/, 'robotic'], [/chiar|luminos|limpid/, 'bright'], [/dolc|morbid|gentil/, 'soft'], [/misterios/, 'mysterious'],
+  [/ironic|scherzos|giocos/, 'playful'], [/calm|tranquill|lent/, 'calm'], [/svelt|rapid|vivac|energic/, 'energetic'],
+  [/sussurr/, 'whisper'], [/rassicurant|patient/, 'soothing'], [/sognant|ampia/, 'dreamy'], [/teatral|enfatic/, 'theatrical']
+];
+const vfilmRegia = { dati: null, promessa: null };
+const vfilmCercate = new Map();       // la ricerca nella libreria, per non rifarla
+
+function vfilmArchivio() { try { return window.localStorage || null; } catch (_) { return null; } }
+function vfilmCastTutto() {
+  try { const d = JSON.parse((vfilmArchivio() && vfilmArchivio().getItem(VFILM_CHIAVE_CAST)) || '{}'); return d && typeof d === 'object' ? d : {}; }
+  catch (_) { return {}; }
+}
+const vfilmIdValido = id => typeof id === 'string' && /^[A-Za-z0-9]{8,40}$/.test(id);
+// La voce scelta per un personaggio in una lingua: { id, nome, anteprima, genere, candidate }
+function vfilmCastDi(id, lingua) {
+  const v = ((vfilmCastTutto()[lingua] || {})[id]) || null;
+  return v && vfilmIdValido(v.id) ? v : null;
+}
+function vfilmCastSalva(id, lingua, voce) {
+  const tutto = vfilmCastTutto();
+  tutto[lingua] = Object.assign({}, tutto[lingua]);
+  if (voce) tutto[lingua][id] = voce; else delete tutto[lingua][id];
+  try { const a = vfilmArchivio(); if (a) a.setItem(VFILM_CHIAVE_CAST, JSON.stringify(tutto)); } catch (_) { /* resta per questa volta */ }
+}
+
+/* Il carattere di una voce: le righe di `VFILM_CARATTERI`, se no quello che
+ * il profilo dice (bambini, anziani, robot, buchi neri, stelle, il tono
+ * della sintesi), più le parole del carattere scritto nella regia. Funzione
+ * pura del profilo e del testo. */
+function vfilmCarattere(id, profilo, descrizione) {
+  const fisso = VFILM_CARATTERI[id];
+  const p = profilo || {};
+  const f = p.figura || {};
+  let eta = '', parole = [];
+  if (fisso) { eta = fisso.eta || ''; parole = fisso.parole.slice(); }
+  else {
+    if (f.bambino) { eta = 'young'; parole.push('child', 'kid', 'cheerful'); }
+    else if (f.segni && f.segni.rughe) eta = 'old';
+    if (p.famiglia === 'robot') parole.push('robotic', 'calm');
+    if (p.famiglia === 'buco') { eta = eta || 'old'; parole.push('deep', 'slow', 'mysterious'); }
+    if (p.famiglia === 'stella') parole.push('warm', 'bright');
+    if (p.famiglia === 'galassia') parole.push('dreamy', 'soft');
+    const hz = parseFloat(p.voce && p.voce.tono) || 0;
+    if (hz <= -12) parole.push('deep');
+    if (hz >= 30 && !f.bambino) parole.push('young');
+  }
+  const d = String(descrizione || '').toLowerCase();
+  for (const [re, parola] of VFILM_PAROLE_IT) if (re.test(d) && !parole.includes(parola)) parole.push(parola);
+  if (!parole.length) parole.push('warm', 'friendly');
+  return { genere: p.genere === 'f' ? 'f' : 'm', eta, parole: parole.slice(0, 6) };
+}
+/* Il voto di una voce della libreria per un carattere (funzione pura): l'età
+ * giusta, le parole trovate nella sua descrizione (la prima vale di più),
+ * l'uso da racconto o da personaggio, la lingua, e un poco quanto è usata. */
+function vfilmVotoVoce(v, carattere, lingua) {
+  if (!v) return -Infinity;
+  const et = v.labels && typeof v.labels === 'object' ? Object.values(v.labels).join(' ') : '';
+  const testo = [v.name, v.description, v.descriptive, v.accent, v.use_case, v.category, et].filter(Boolean).join(' ').toLowerCase();
+  let voto = 0;
+  const eta = String(v.age || (v.labels && v.labels.age) || '').toLowerCase().replace(/\s+/g, '_');
+  if (carattere.eta && eta === carattere.eta) voto += 4;
+  else if (carattere.eta && eta && ((carattere.eta === 'old') !== (eta === 'old'))) voto -= 1.5;
+  carattere.parole.forEach((parola, i) => { if (testo.includes(parola)) voto += i === 0 ? 3 : 2; });
+  if (/narrat|character|animation|audiobook|storytell|video_?game/.test(testo)) voto += 2;
+  const lingue = [v.language].concat((v.verified_languages || []).map(x => x && x.language));
+  if (lingue.includes(lingua)) voto += 1.5;
+  const genere = String(v.gender || (v.labels && v.labels.gender) || '').toLowerCase();
+  if (genere && genere !== (carattere.genere === 'f' ? 'female' : 'male')) voto -= 10;
+  voto += Math.min(2, Math.log10(1 + (Number(v.cloned_by_count) || 0)) / 2);
+  return voto;
+}
+// La regia scritta delle voci (una volta sola; senza rete, niente)
+async function vfilmLeggiRegia() {
+  if (vfilmRegia.dati) return vfilmRegia.dati;
+  if (!vfilmRegia.promessa) vfilmRegia.promessa = fetch(VFILM_REGIA).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  vfilmRegia.dati = (await vfilmRegia.promessa) || { personaggi: {}, battute: {} };
+  return vfilmRegia.dati;
+}
+// La cartella (e la chiave della regia) di un personaggio: il nome italiano
+const vfilmCartella = nome => String(nome || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+function vfilmNomeItaliano(id) {
+  const S = window.StorieCosmiche;
+  const p = S && S.profilo ? S.profilo(id) : null;
+  const diz = window.ASTRO_DIZIONARI && window.ASTRO_DIZIONARI.it && window.ASTRO_DIZIONARI.it.messaggi;
+  return (p && p.nome && diz && diz[p.nome]) || (S && S.nome ? S.nome(id) : id);
+}
+/* Il testo che parte per una battuta: quello coi tag della regia, se è
+ * ancora la stessa battuta; se no col tag della faccia. Coi modelli che non
+ * leggono i tag, il testo nudo. Funzione pura (la regia si passa). */
+function vfilmTestoConRegia(b, lingua, regia, modello) {
+  if (modello && modello !== 'eleven_v3') return b.testo;
+  const r = b.id && regia && regia.battute && regia.battute[b.id];
+  const conTag = r && r.conTag && r.conTag[lingua];
+  const nudo = x => String(x || '').replace(/\[[^\]]*\]\s*/g, '').replace(/\s+/g, ' ').trim();
+  if (conTag && nudo(conTag) === nudo(b.testo)) return conTag;
+  const S = window.StudioStorie;
+  const tabella = (S && S.ELEVEN_TAG_UMORE) || {};
+  const tag = b.faccia && tabella[b.faccia];
+  return tag ? '[' + tag + '] ' + b.testo : b.testo;
+}
+// Una ricerca nella libreria pubblica, tenuta a mente
+async function vfilmCercaLibreria(imp, q) {
+  const k = q.toString();
+  if (vfilmCercate.has(k)) return vfilmCercate.get(k);
+  const r = await vfilmEleven(imp, 'GET', '/v1/shared-voices?' + k);
+  const voci = (r && Array.isArray(r.voices) ? r.voices : []).filter(v => v && vfilmIdValido(v.voice_id));
+  vfilmCercate.set(k, voci);
+  return voci;
+}
+/* Le candidate per un carattere, la migliore prima. La libreria nella lingua
+ * di chi guarda (genere ed età, poi la prima parola, poi solo il genere); se
+ * la libreria non si può usare (il piano, la chiave), le voci dell'account. */
+async function vfilmCandidate(imp, carattere, lingua, gia) {
+  const base = () => { const q = new URLSearchParams({ page_size: '40', language: lingua, gender: carattere.genere === 'f' ? 'female' : 'male' }); return q; };
+  const trovate = new Map();
+  const aggiungi = voci => { for (const v of voci) if (!trovate.has(v.voice_id)) trovate.set(v.voice_id, v); };
+  let libreria = true;
+  try {
+    const q1 = base(); if (carattere.eta) q1.set('age', carattere.eta);
+    aggiungi(await vfilmCercaLibreria(imp, q1));
+    const q2 = base(); q2.set('search', carattere.parole[0]);
+    aggiungi(await vfilmCercaLibreria(imp, q2));
+    if (trovate.size < 5) aggiungi(await vfilmCercaLibreria(imp, base()));
+  } catch (e) {
+    if (/401|chiave|key/i.test(e.message || '') || e.crediti) throw e;
+    libreria = false;
+  }
+  let voci = [...trovate.values()];
+  if (!voci.length || !libreria) {
+    const mie = await vfilmEleven(imp, 'GET', '/v2/voices?page_size=100').catch(() => null);
+    voci = voci.concat((mie && Array.isArray(mie.voices) ? mie.voices : []).filter(v => v && vfilmIdValido(v.voice_id)));
+  }
+  return voci
+    .map(v => ({ v, voto: vfilmVotoVoce(v, carattere, lingua) - (gia.has(v.voice_id) ? 100 : 0) }))
+    .sort((a, b) => b.voto - a.voto)
+    .slice(0, VFILM_CANDIDATE)
+    .map(({ v }) => ({
+      id: v.voice_id, nome: String(v.name || '').slice(0, 80), proprietario: typeof v.public_owner_id === 'string' ? v.public_owner_id : '',
+      anteprima: String(v.preview_url || ''), genere: carattere.genere,
+      descrizione: String(v.description || v.descriptive || '').slice(0, 120)
+    }));
+}
+/* Una voce della libreria va messa nell'account perché l'API la faccia
+ * parlare. Già presente, o rifiutata (il piano): si prova con l'ID com'è. */
+async function vfilmAggiungiVoce(imp, c) {
+  if (!c.proprietario) return c.id;
+  try {
+    const r = await vfilmEleven(imp, 'POST', `/v1/voices/add/${encodeURIComponent(c.proprietario)}/${encodeURIComponent(c.id)}`, { new_name: c.nome || c.id });
+    return r && vfilmIdValido(r.voice_id) ? r.voice_id : c.id;
+  } catch (e) { return c.id; }
+}
+/* Il casting di una storia: per ogni personaggio che parla, la voce. Quella
+ * già scelta (Studio, o questo tasto) resta; le altre si cercano, senza
+ * ripetere una voce già data a un altro personaggio della storia. */
+async function vfilmCasting(lavoro, aggiorna) {
+  const imp = vfilmElevenImpostazioni();
+  if (!imp) throw new Error(vfilmT('err.senzaChiave'));
+  const regia = await vfilmLeggiRegia();
+  const S = window.StorieCosmiche, St = window.StudioStorie;
+  const chi = [...new Set(lavoro.battute.map(b => b.chi).filter(Boolean))];
+  const gia = new Set();
+  const cast = new Map();
+  for (const id of chi) {
+    const studio = St && typeof St.voceDi === 'function' ? St.voceDi(null, id) : null;
+    const mia = vfilmCastDi(id, lavoro.lingua);
+    // (lo Studio conosce anche le voci di questo tasto: se è la stessa, è del cast)
+    const v = studio && vfilmIdValido(studio.id) && !(mia && mia.id === studio.id) ? Object.assign({ fonte: 'studio' }, studio)
+      : mia ? Object.assign({ fonte: 'cast' }, mia) : null;
+    if (v) { cast.set(id, v); gia.add(v.id); }
+  }
+  let i = 0;
+  for (const id of chi) {
+    if (lavoro.fermato) break;
+    aggiorna({ fase: 'cast', i: i++, totale: chi.length, chi: vfilmProfilo(id).nome });
+    if (cast.has(id)) continue;
+    const profilo = S && S.profilo ? S.profilo(id) : null;
+    const descr = regia && regia.personaggi ? regia.personaggi[vfilmCartella(vfilmNomeItaliano(id))] : '';
+    const carattere = vfilmCarattere(id, profilo, descr);
+    const candidate = await vfilmCandidate(imp, carattere, lavoro.lingua, gia);
+    if (!candidate.length) continue;
+    const scelta = candidate[0];
+    const voce = { id: await vfilmAggiungiVoce(imp, scelta), nome: scelta.nome, anteprima: scelta.anteprima, genere: scelta.genere,
+      libreria: scelta.id, candidate: candidate.map(c => ({ id: c.id, nome: c.nome, proprietario: c.proprietario, anteprima: c.anteprima, descrizione: c.descrizione })) };
+    vfilmCastSalva(id, lavoro.lingua, voce);
+    cast.set(id, Object.assign({ fonte: 'cast' }, voce));
+    gia.add(voce.id);
+  }
+  lavoro.cast = cast;
+  return cast;
+}
+// «Un'altra voce»: la candidata dopo, che nessun altro della storia ha già
+async function vfilmAltraVoce(lavoro, id) {
+  const imp = vfilmElevenImpostazioni();
+  if (!imp) throw new Error(vfilmT('err.senzaChiave'));
+  const ora = lavoro.cast.get(id) || vfilmCastDi(id, lavoro.lingua);
+  let candidate = (ora && ora.candidate) || [];
+  if (!candidate.length) {
+    const S = window.StorieCosmiche;
+    candidate = await vfilmCandidate(imp, vfilmCarattere(id, S && S.profilo ? S.profilo(id) : null, ''), lavoro.lingua, new Set());
+  }
+  const altri = new Set([...lavoro.cast.entries()].filter(([k]) => k !== id).map(([, v]) => v.id));
+  const da = Math.max(-1, candidate.findIndex(c => c.id === (ora && (ora.libreria || ora.id))));
+  let scelta = null;
+  for (let k = 1; k < candidate.length && !scelta; k++) { const c = candidate[(da + k) % candidate.length]; if (!altri.has(c.id)) scelta = c; }
+  // le candidate di prima sono tutte già prese: si cerca di nuovo, senza quelle
+  if (!scelta) {
+    const S = window.StorieCosmiche;
+    const usate = new Set([...altri, ora && (ora.libreria || ora.id)]);
+    candidate = await vfilmCandidate(imp, vfilmCarattere(id, S && S.profilo ? S.profilo(id) : null, ''), lavoro.lingua, usate);
+    scelta = candidate.find(c => !usate.has(c.id)) || null;
+  }
+  if (!scelta) return null;
+  const voce = { id: await vfilmAggiungiVoce(imp, scelta), nome: scelta.nome, anteprima: scelta.anteprima, genere: vfilmProfilo(id).genere,
+    libreria: scelta.id, candidate };
+  vfilmCastSalva(id, lavoro.lingua, voce);
+  lavoro.cast.set(id, Object.assign({ fonte: 'cast' }, voce));
+  return voce;
+}
+/* Genera le battute della storia con le voci del casting. Quelle già fatte
+ * con la stessa voce e lo stesso testo non si rifanno (e non costano). */
+async function vfilmGeneraStoria(lavoro, aggiorna, soloChi) {
+  const imp = vfilmElevenImpostazioni();
+  if (!imp) throw new Error(vfilmT('err.senzaChiave'));
+  const regia = await vfilmLeggiRegia();
+  const battute = lavoro.battute.filter(b => !soloChi || b.chi === soloChi);
+  const errori = [];
+  let fatte = 0, spesi = 0;
+  for (let i = 0; i < battute.length; i++) {
+    if (lavoro.fermato) break;
+    const b = battute[i];
+    const voce = lavoro.cast.get(b.chi);
+    aggiorna({ fase: 'genera', i, totale: battute.length, chi: vfilmProfilo(b.chi).nome });
+    if (!voce) { errori.push({ battuta: b, messaggio: vfilmT('err.senzaVoci') }); continue; }
+    const inviato = vfilmTestoConRegia(b, lavoro.lingua, regia, imp.modello);
+    const k = vfilmChiave('eleven', b, lavoro.lingua);
+    try {
+      let rec = await vfilmLeggi(k);
+      if (!rec || !rec.blob || rec.voce !== voce.id || (rec.inviato && rec.inviato !== inviato)) {
+        const blob = await vfilmElevenParla(imp, voce.id, inviato);
+        if (!blob || !blob.size) throw new Error(vfilmT('err.vuota'));
+        rec = { blob, voce: voce.id, testo: b.testo, motore: 'eleven', inviato };
+        spesi += inviato.length;
+      }
+      await vfilmScrivi(k, Object.assign({}, rec, { sempre: true, storia: lavoro.chiave, lingua: lavoro.lingua }));
+      lavoro.voci.set(b.testo, rec.blob);
+      fatte++;
+    } catch (e) {
+      errori.push({ battuta: b, messaggio: e && e.message || String(e) });
+      if (e.crediti || /401|chiave|key/i.test(e.message || '')) break;
+    }
+  }
+  await vfilmCaricaVociStorie();
+  return { fatte, errori, spesi };
+}
+// Le voci delle CosmoStorie nella lingua di adesso, prestate alla narrazione
+const vfilmUrlStorie = [];
+async function vfilmCaricaVociStorie() {
+  if (typeof narrazione !== 'object' || typeof narrazione.vociStorie !== 'function') return 0;
+  const lingua = vfilmLingua(), mappa = {};
+  const rec = [];
+  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { if (x.value && x.value.sempre && x.value.lingua === lingua && x.value.blob) rec.push(x.value); x.continue(); } }; }).catch(() => null);
+  for (const u of vfilmUrlStorie.splice(0)) { try { URL.revokeObjectURL(u); } catch (_) { /* niente */ } }
+  for (const r of rec) { const u = URL.createObjectURL(r.blob); vfilmUrlStorie.push(u); mappa[r.testo] = u; }
+  return narrazione.vociStorie(mappa);
+}
+// «Togli queste voci»: la storia torna alle voci di prima
+async function vfilmTogliVociStoria(chiave) {
+  const via = [];
+  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { if (x.value && x.value.sempre && x.value.storia === chiave) via.push(x.key); x.continue(); } }; }).catch(() => null);
+  if (via.length) await vfilmDb(st => { for (const k of via) st.delete(k); }, 'readwrite').catch(() => null);
+  await vfilmCaricaVociStorie();
+  return via.length;
+}
+// Quante battute di una storia hanno già la loro voce «sempre»
+async function vfilmVociDellaStoria(chiave, lingua) {
+  let n = 0;
+  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { if (x.value && x.value.sempre && x.value.storia === chiave && x.value.lingua === lingua) n++; x.continue(); } }; }).catch(() => null);
+  return n;
+}
+
+// =====================================================================
+// 9. La finestra «Le voci della storia»
+// =====================================================================
+
+const vcast = { finestra: null, ascolto: null };
+/* Il tasto della scheda: apre la finestra e parte subito (il casting non
+ * costa crediti, le battute sì, e la finestra dice quante e quanti
+ * caratteri). Senza la chiave dice dove metterla. */
+function vfilmVociStoria(st, opz = {}) {
+  if (typeof document === 'undefined' || !st || !st.testo) return false;
+  vfilmChiudiStoria();
+  let battute = [];
+  try { battute = vfilmBattute(st.testo); } catch (_) { battute = []; }
+  const f = vcast.finestra = {
+    st, stato: vfilmElevenImpostazioni() ? 'cast' : 'chiave', errore: '', esito: null, avanzamento: null,
+    lavoro: { chiave: st.chiave, battute, lingua: vfilmLingua(), voci: new Map(), cast: new Map(), fermato: false }
+  };
+  vfilmDisegnaStoria();
+  if (f.stato === 'cast' && opz.parti !== false) vfilmAvviaStoria();
+  return true;
+}
+async function vfilmAvviaStoria(soloChi) {
+  const f = vcast.finestra;
+  if (!f) return;
+  f.lavoro.fermato = false; f.errore = ''; f.esito = null;
+  const aggiorna = a => { if (vcast.finestra === f) { f.avanzamento = a; vfilmAggiornaBarraStoria(); } };
+  try {
+    if (!soloChi) {
+      f.stato = 'cast'; vfilmDisegnaStoria();
+      await vfilmCasting(f.lavoro, aggiorna);
+      if (vcast.finestra !== f) return;
+    }
+    f.stato = 'genera'; vfilmDisegnaStoria();
+    f.esito = await vfilmGeneraStoria(f.lavoro, aggiorna, soloChi);
+  } catch (e) { f.errore = e && e.message || String(e); }
+  if (vcast.finestra !== f) return;
+  f.stato = 'pronta';
+  vfilmDisegnaStoria();
+}
+function vfilmChiudiStoria() {
+  const f = vcast.finestra;
+  if (!f) return;
+  f.lavoro.fermato = true;
+  if (vcast.ascolto) { try { vcast.ascolto.pause(); } catch (_) { /* niente */ } vcast.ascolto = null; }
+  if (f.el) f.el.remove();
+  document.removeEventListener('keydown', vfilmTastiStoria, true);
+  vcast.finestra = null;
+}
+function vfilmTastiStoria(e) {
+  const f = vcast.finestra;
+  if (e.key === 'Escape' && f && f.stato !== 'genera' && f.stato !== 'cast') { e.preventDefault(); vfilmChiudiStoria(); }
+}
+function vfilmAggiornaBarraStoria() {
+  const f = vcast.finestra;
+  if (!f || !f.el) return;
+  const a = f.avanzamento || {};
+  const barra = f.el.querySelector('.yt-barra'), testo = f.el.querySelector('.yt-barra-testo');
+  if (!barra || !testo) return;
+  barra.value = a.totale ? Math.round(a.i / a.totale * 100) : 0;
+  testo.textContent = vfilmT(a.fase === 'cast' ? 'storia.scelgo' : 'genero', { n: (a.i || 0) + 1, di: a.totale || 0, chi: a.chi || '' });
+}
+function vfilmDisegnaStoria() {
+  const f = vcast.finestra;
+  if (!f) return;
+  const S = window.StorieCosmiche;
+  const battute = f.lavoro.battute, caratteri = vfilmCaratteri(battute);
+  const corpo = vfilmEl('div', { class: 'yt-corpo' });
+  const titolo = f.st.titolo || (typeof astroI18n === 'object' ? astroI18n.t('demo.builtin.' + f.st.chiave + '.title') : f.st.chiave);
+  corpo.append(vfilmEl('p', { class: 'yt-file' }, titolo));
+  if (f.stato === 'chiave') {
+    corpo.append(vfilmEl('p', { class: 'yt-messaggio' }, vfilmT('storia.senzaChiave')));
+    corpo.append(vfilmEl('div', { class: 'yt-tasti' },
+      vfilmEl('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { vcast: 'chiave' }, onclick: () => {
+        vfilmChiudiStoria();
+        const St = window.StudioStorie;
+        if (St && typeof St.apriImpostazioni === 'function') St.apriImpostazioni('el');
+      } }, vfilmT('storia.apriChiave')),
+      vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'annulla' }, onclick: vfilmChiudiStoria }, vfilmT('annulla'))));
+  } else {
+    if (!battute.length) corpo.append(vfilmEl('p', { class: 'yt-messaggio' }, vfilmT('storia.nessuna')));
+    else corpo.append(vfilmEl('p', { class: 'yt-messaggio' }, vfilmT('storia.spiega', { n: battute.length, caratteri })));
+    // chi parla, con la sua voce
+    const chi = [...new Set(battute.map(b => b.chi).filter(Boolean))];
+    const elenco = vfilmEl('ul', { class: 'vcast-elenco' });
+    for (const id of chi) {
+      const v = f.lavoro.cast.get(id);
+      const sue = battute.filter(b => b.chi === id).length;
+      const riga = vfilmEl('li', { class: 'vcast-riga', dataset: { vcastChi: id } });
+      if (S && typeof S.figurina === 'function') { const img = S.figurina(id, 30); if (img) riga.append(img); }
+      riga.append(vfilmEl('span', { class: 'vcast-nome' }, vfilmEl('strong', {}, vfilmProfilo(id).nome),
+        vfilmEl('small', {}, v ? vfilmT(v.fonte === 'studio' ? 'storia.voceStudio' : 'storia.voce', { voce: v.nome || v.id, n: sue }) : vfilmT('storia.daScegliere', { n: sue }))));
+      if (v && v.anteprima) riga.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo vcast-tasto', dataset: { vcast: 'ascolta' }, onclick: () => {
+        if (vcast.ascolto) { try { vcast.ascolto.pause(); } catch (_) { /* niente */ } }
+        try { vcast.ascolto = new Audio(v.anteprima); vcast.ascolto.play().catch(() => null); } catch (_) { /* niente */ }
+      } }, vfilmT('storia.ascolta')));
+      if (v && f.stato === 'pronta' && v.fonte !== 'studio') riga.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo vcast-tasto', dataset: { vcast: 'altra' }, onclick: async () => {
+        f.stato = 'genera'; f.errore = ''; vfilmDisegnaStoria();
+        try { if (!await vfilmAltraVoce(f.lavoro, id)) f.errore = vfilmT('storia.nessunaAltra'); }
+        catch (e) { f.errore = e.message; }
+        if (vcast.finestra !== f) return;
+        if (f.errore) { f.stato = 'pronta'; vfilmDisegnaStoria(); return; }
+        vfilmAvviaStoria(id);
+      } }, vfilmT('storia.altra')));
+      elenco.append(riga);
+    }
+    corpo.append(elenco);
+    if (f.stato === 'cast' || f.stato === 'genera') {
+      corpo.append(vfilmEl('div', { class: 'yt-avanzamento' },
+        vfilmEl('progress', { class: 'yt-barra', max: '100', value: '0', 'aria-label': vfilmT('avanzamento') }),
+        vfilmEl('span', { class: 'yt-barra-testo', 'aria-live': 'polite' }, '')));
+      corpo.append(vfilmEl('div', { class: 'yt-tasti' }, vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'ferma' },
+        onclick: () => { f.lavoro.fermato = true; } }, vfilmT('ferma'))));
+    } else {
+      const e = f.esito || { fatte: 0, errori: [], spesi: 0 };
+      const mancano = Math.max(0, battute.length - e.fatte);
+      if (f.esito) corpo.append(vfilmEl('p', { class: 'yt-messaggio' + (mancano ? '' : ' ok'), role: 'status' },
+        mancano ? vfilmT('storia.parziale', { pronte: e.fatte, mancano }) : vfilmT('storia.pronte', { n: e.fatte, caratteri: e.spesi })));
+      const errore = f.errore || (e.errori.length ? e.errori[0].messaggio : '');
+      if (errore) corpo.append(vfilmEl('p', { class: 'yt-messaggio errore vfilm-errore' }, errore));
+      const tasti = vfilmEl('div', { class: 'yt-tasti' });
+      if (e.fatte && window.AstroDemo && typeof AstroDemo.avvia === 'function')
+        tasti.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo tasto-primario', dataset: { vcast: 'guarda' }, onclick: () => {
+          const testo = f.st.testo; vfilmChiudiStoria();
+          if (typeof narrazione === 'object' && narrazione.sbloccaContesto) { try { narrazione.sbloccaContesto(); } catch (_) { /* niente */ } }
+          try { AstroDemo.avvia(testo); } catch (_) { /* la scheda dirà */ }
+        } }, vfilmT('storia.guarda')));
+      if (mancano || f.errore) tasti.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'riprova' }, onclick: () => vfilmAvviaStoria() }, vfilmT('riprova')));
+      tasti.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'togli' }, onclick: async () => {
+        await vfilmTogliVociStoria(f.st.chiave); f.esito = null; f.errore = ''; f.lavoro.voci.clear();
+        if (vcast.finestra === f) { f.stato = 'pronta'; vfilmDisegnaStoria(); const m = f.el && f.el.querySelector('.yt-file'); if (m) m.textContent = vfilmT('storia.tolte'); }
+      } }, vfilmT('storia.togli')));
+      tasti.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'chiudi' }, onclick: vfilmChiudiStoria }, vfilmT('storia.chiudi')));
+      corpo.append(tasti);
+    }
+  }
+  const occupata = f.stato === 'genera' || f.stato === 'cast';
+  const finestra = vfilmEl('div', { class: 'yt-finestra vfilm-finestra vcast-finestra' },
+    vfilmEl('div', { class: 'yt-testa' },
+      vfilmEl('h2', { id: 'vcast-titolo' }, vfilmT('storia.titolo')),
+      vfilmEl('button', { type: 'button', class: 'yt-x', 'aria-label': vfilmT('annulla'), title: vfilmT('annulla'), disabled: occupata, onclick: vfilmChiudiStoria },
+        vfilmEl('span', { 'aria-hidden': 'true' }, '×'))),
+    corpo);
+  if (!f.el) {
+    f.el = vfilmEl('div', { class: 'yt-velo', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'vcast-titolo', id: 'vcast-finestra' });
+    f.el.addEventListener('mousedown', e => { if (e.target === f.el && f.stato !== 'genera' && f.stato !== 'cast') vfilmChiudiStoria(); });
+    document.body.append(f.el);
+    document.addEventListener('keydown', vfilmTastiStoria, true);
+  }
+  f.el.replaceChildren(finestra);
+  if (occupata) vfilmAggiornaBarraStoria();
+  const primo = f.el.querySelector(occupata ? '[data-vcast="ferma"]' : '[data-vcast="guarda"], [data-vcast="chiave"], [data-vcast="chiudi"]');
+  if (primo) primo.focus();
+}
+// All'avvio e al cambio di lingua le voci delle CosmoStorie tornano in narrazione
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  const carica = () => { vfilmCaricaVociStorie().catch(() => null); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(carica, 400));
+  else setTimeout(carica, 400);
+  if (typeof astroI18n === 'object' && astroI18n && typeof astroI18n.alCambio === 'function') astroI18n.alCambio(carica);
+}
+
 if (typeof window !== 'undefined') {
   window.vfilmPrimaDiRegistrare = vfilmPrimaDiRegistrare;
   window.vfilmRiprendi = vfilmRiprendi;
@@ -637,6 +1152,12 @@ if (typeof window !== 'undefined') {
     battute: vfilmBattute, scegliVociEleven: vfilmScegliVociEleven, tono: vfilmTono, wav: vfilmWav, pezzi: vfilmPezzi,
     genera: vfilmGenera, presta: vfilmPresta, riprendi: vfilmRiprendi, chiave: vfilmChiave, piperPronto: vfilmPiperPronto,
     piperParla: vfilmPiperParla, fonemi: vfilmFonemi, modelloPiper: vfilmModelloPiper, mbPiper: vfilmMbPiper,
-    stato: vfilm, VFILM_PIPER_VOCI, VFILM_MODELLI, VFILM_ORT, VFILM_FONEMI, VFILM_DB
+    stato: vfilm, VFILM_PIPER_VOCI, VFILM_MODELLI, VFILM_ORT, VFILM_FONEMI, VFILM_DB,
+    // v482: le voci di una CosmoStoria con un tocco (§8–9)
+    vociStoria: vfilmVociStoria, casting: vfilmCasting, carattere: vfilmCarattere, votoVoce: vfilmVotoVoce, testoConRegia: vfilmTestoConRegia,
+    altraVoce: vfilmAltraVoce, generaStoria: vfilmGeneraStoria, caricaVociStorie: vfilmCaricaVociStorie, togliVociStoria: vfilmTogliVociStoria,
+    vociDellaStoria: vfilmVociDellaStoria, castDi: vfilmCastDi, cartella: vfilmCartella, chiudiStoria: vfilmChiudiStoria, statoStoria: vcast,
+    VFILM_CARATTERI, VFILM_CHIAVE_CAST
   };
+  window.vfilmVociStoria = vfilmVociStoria;
 }

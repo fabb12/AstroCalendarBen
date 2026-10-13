@@ -399,7 +399,14 @@
     // Non hanno un astro sotto: accompagnano la storia da un posto dello
     // schermo (`ospite`, §7), in ogni vista.
     persona:  { pelle: '#eaa676', iride: '#5b3a1e', sottotitolo: '#fecaca', guance: '#f87171', genere: 'm', sagoma: 'sagan',
-      scala: 0.8, voce: { ritmo: '-4%', tono: '-6Hz' }, espressione: 'happy', personalita: 'persona' }
+      scala: 0.8, voce: { ritmo: '-4%', tono: '-6Hz' }, espressione: 'happy', personalita: 'persona' },
+    // v482, «Interstellar»: le navicelle, ospiti senza volto con l'equipaggio
+    // ai finestrini (`character_show { inside }`, §7), e i robot del film,
+    // lastre di metallo col volto sul piccolo schermo
+    nave:     { pelle: '#d6d3d1', iride: '#334155', sottotitolo: '#e2e8f0', guance: '#cbd5e1', genere: 'f', sagoma: 'ranger',
+      scala: 0.8, voce: { ritmo: '0%', tono: '0Hz' }, espressione: 'neutral', personalita: 'nave' },
+    robot:    { pelle: '#1e293b', iride: '#7dd3fc', sottotitolo: '#cbd5e1', guance: '#38bdf8', genere: 'm', sagoma: 'tars',
+      scala: 0.8, voce: { ritmo: '-4%', tono: '-12Hz' }, espressione: 'neutral', personalita: 'robot' }
   };
 
   /* I personaggi con un carattere loro. Ogni campo è facoltativo e vince su
@@ -739,10 +746,68 @@
       figura: { capelli: 'riccioli', chioma: '#e9b949', copricapo: 'molletta', veste: 'maglietta', stampa: 'sole',
         colori: ['#2dd4bf', '#0f766e', '#facc15'], bambino: true, segni: {} },
       scala: 0.8, occhi: { r: 0.3, distanza: 0.38, alto: -0.04 }, irideVera: true, nasoProprio: true,
-      voce: { ritmo: '8%', tono: '48Hz' }, espressione: 'happy', personalita: 'zaira' }
+      voce: { ritmo: '8%', tono: '48Hz' }, espressione: 'happy', personalita: 'zaira' },
+    /* v482, «Interstellar» (2014): l'equipaggio della missione Lazarus, il
+     * dottor Mann, Murph adulta (si vede nei messaggi da casa) e i due robot,
+     * TARS e CASE. Sono ospiti come chi racconta il cielo, nelle tute
+     * chiare della NASA del film e senza casco, perché ai finestrini delle
+     * navicelle si devono vedere le facce (`character_show { inside }`). */
+    cooper: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.cooper', ospite: true, alias: ['Cooper', 'Joseph Cooper'],
+      pelle: '#e9b48c', iride: '#5b7a9a', sottotitolo: '#fde68a', guance: '#e8957a', peli: '#5b3d22',
+      figura: { capelli: 'corti', chioma: '#6b4a2b', veste: 'tuta', colori: ['#e7e5e4', '#a8a29e', '#f8fafc'], bandiera: 'us', segni: { zampe: true, pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-6%', tono: '-10Hz' }, espressione: 'determined', personalita: 'cooper' },
+    brand: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.brand', ospite: true, alias: ['Brand', 'Amelia Brand', 'Amelia'],
+      pelle: '#f4d0b5', iride: '#4b6b8a', sottotitolo: '#bae6fd', guance: '#f4a08a', labbra: '#c2556b',
+      figura: { capelli: 'corti_lei', chioma: '#7a5230', veste: 'tuta', colori: ['#e7e5e4', '#a8a29e', '#f8fafc'], bandiera: 'us', segni: {} },
+      scala: 0.8, occhi: { r: 0.25, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '0%', tono: '16Hz' }, espressione: 'determined', personalita: 'brand' },
+    romilly: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.romilly', ospite: true, alias: ['Romilly'],
+      pelle: '#8d5b3e', iride: '#2b1b10', sottotitolo: '#c4b5fd', guance: '#b8664a', peli: '#1f140c', barba: 'pizzetto',
+      figura: { capelli: 'corti', chioma: '#1f140c', veste: 'tuta', colori: ['#e7e5e4', '#a8a29e', '#f8fafc'], bandiera: 'us', segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-2%', tono: '-4Hz' }, espressione: 'worried', personalita: 'romilly' },
+    doyle: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.doyle', ospite: true, alias: ['Doyle'],
+      pelle: '#f0c4a0', iride: '#3b5b7a', sottotitolo: '#a7f3d0', guance: '#f4a08a', peli: '#8a6a45', baffi: 'folti',
+      figura: { capelli: 'corti', chioma: '#8a6a45', veste: 'tuta', colori: ['#e7e5e4', '#a8a29e', '#f8fafc'], bandiera: 'us', segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '2%', tono: '-6Hz' }, espressione: 'skeptical', personalita: 'doyle' },
+    mann: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.mann', ospite: true, alias: ['Mann', 'Dottor Mann', 'Dr. Mann'],
+      pelle: '#efc19d', iride: '#6b8aa8', sottotitolo: '#e0f2fe', guance: '#f4a08a', peli: '#a08a70',
+      figura: { capelli: 'ciuffo', chioma: '#a08a70', veste: 'tuta', colori: ['#d6d3d1', '#78716c', '#f8fafc'], bandiera: 'us', segni: { rughe: true, zampe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-8Hz' }, espressione: 'happy', personalita: 'mann' },
+    murph: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.murph', ospite: true, alias: ['Murph', 'Murphy', 'Murphy Cooper'],
+      pelle: '#f6d2b6', iride: '#5b7a6a', sottotitolo: '#fdba74', guance: '#f59e8b', labbra: '#c2556b',
+      figura: { capelli: 'lunghi', chioma: '#a8532a', veste: 'maglione', colori: ['#6b7f5a', '#4b5a3f', '#f8fafc'], segni: { lentiggini: true } },
+      scala: 0.8, occhi: { r: 0.25, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '2%', tono: '18Hz' }, espressione: 'sad', personalita: 'murph' },
+    tars: { famiglia: 'robot', genere: 'm', nome: 'storie.nome.tars', ospite: true, alias: ['TARS', 'Tars'],
+      metallo: '#9ca3af', iride: '#7dd3fc', sottotitolo: '#cbd5e1', occhi: { r: 0.25, distanza: 0.42, alto: -0.1 },
+      voce: { ritmo: '-2%', tono: '-12Hz' }, espressione: 'playful', personalita: 'tars' },
+    case: { famiglia: 'robot', genere: 'm', nome: 'storie.nome.case', ospite: true, alias: ['CASE', 'Case'],
+      metallo: '#a8a29e', iride: '#fcd34d', sottotitolo: '#fde68a', guance: '#fbbf24', occhi: { r: 0.25, distanza: 0.42, alto: -0.1 },
+      voce: { ritmo: '-6%', tono: '-6Hz' }, espressione: 'neutral', personalita: 'case' },
+    // le navicelle: l'Endurance (l'anello di dodici moduli che gira per fare
+    // la gravità), il Ranger (la navetta che scende sui pianeti) e il Lander
+    endurance: { famiglia: 'nave', sagoma: 'endurance', nome: 'storie.nome.endurance', ospite: true, senzaVolto: true, alias: ['Endurance'],
+      pelle: '#d6d3d1', personalita: 'endurance' },
+    ranger: { famiglia: 'nave', sagoma: 'ranger', nome: 'storie.nome.ranger', ospite: true, senzaVolto: true, alias: ['Ranger'],
+      pelle: '#e7e5e4', personalita: 'ranger' },
+    lander: { famiglia: 'nave', sagoma: 'lander', nome: 'storie.nome.lander', ospite: true, senzaVolto: true, alias: ['Lander'],
+      pelle: '#d4d4d8', personalita: 'lander' },
+    // i due pianeti attorno a Gargantua: idee come lui (nella scala cosmica)
+    miller_planet: { famiglia: 'pianeta', genere: 'f', nome: 'storie.nome.miller_planet', cosmo: 'idea', alias: ['Pianeta di Miller', "Miller's planet"],
+      pelle: '#8fa7ba', iride: '#1e3a5f', sottotitolo: '#bae6fd', guance: '#93c5fd', labbra: '#64748b', decoro: 'onde',
+      voce: { ritmo: '-4%', tono: '6Hz' }, espressione: 'mysterious', personalita: 'miller_planet' },
+    mann_planet: { famiglia: 'pianeta', genere: 'm', nome: 'storie.nome.mann_planet', cosmo: 'idea', alias: ['Pianeta di Mann', "Mann's planet"],
+      pelle: '#e2e8f0', iride: '#475569', sottotitolo: '#e0f2fe', guance: '#bae6fd', peli: '#f8fafc', baffi: 'spioventi', decoro: 'ghiaccio',
+      voce: { ritmo: '-8%', tono: '-6Hz' }, espressione: 'sleepy', personalita: 'mann_planet' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
-    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona'];
+    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona', 'tars', 'endurance', 'ranger', 'lander'];
+  // v482: le navicelle non hanno volto; parlano (se parlano) dai finestrini
+  const STOR_NAVI = ['endurance', 'ranger', 'lander'];
   /* Le vesti (v414, `character_become`): un personaggio diventa per un po'
    * un'altra cosa, col suo volto. Il Sole, fra cinque miliardi di anni, si
    * gonfierà in una gigante rossa e poi resterà una nana bianca: la storia
@@ -803,7 +868,9 @@
     sonda:     { superficie: 'metallo', atmosfera: null, passo: 0.9 },
     galassia:  { superficie: 'stelle', atmosfera: null, avatar: 'aura', passo: 0.6 },
     buco:      { superficie: 'orizzonte', atmosfera: null, avatar: 'aura', passo: 0.7 },
-    persona:   { superficie: 'pelle', atmosfera: null, passo: 1 }
+    persona:   { superficie: 'pelle', atmosfera: null, passo: 1 },
+    nave:      { superficie: 'metallo', atmosfera: null, passo: 1 },
+    robot:     { superficie: 'metallo', atmosfera: null, passo: 0.9 }
   };
   const STOR_FISICA = {
     Sun:     { superficie: 'plasma', atmosfera: { colore: '#fb923c', spessore: 0.2, densita: 0.6 }, prominenze: true, avatar: 'corona',
@@ -920,7 +987,31 @@
     zaira:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.35, tratto: 'zaira',
       lune: [{ nome: 'Sun', colore: '#fde047', r: 0.055, d: 1.3, periodo: 5200, piatto: 0.3, giro: 0.12 },
         { nome: 'Earth', colore: '#60a5fa', r: 0.05, d: 1.44, periodo: 7000, piatto: 0.3, giro: -0.1 },
-        { nome: 'Saturn', colore: '#fbbf77', r: 0.045, d: 1.56, periodo: 9000, piatto: 0.3, giro: 0.06 }] }
+        { nome: 'Saturn', colore: '#fbbf77', r: 0.045, d: 1.56, periodo: 9000, piatto: 0.3, giro: 0.06 }] },
+    // v482, «Interstellar»: a Cooper e a Murph gira attorno l'orologio che lui
+    // le lasciò partendo (la lancetta che porterà il messaggio dal buco nero);
+    // a Brand il pianeta di Edmunds, dove la porta il cuore; a Romilly un
+    // buchino nero (lo studia per anni, da solo, sull'Endurance); a Doyle il
+    // pianeta d'acqua di Miller, a Mann il suo pianeta di ghiaccio
+    cooper:       { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'cooper',
+      lune: [{ colore: '#fbbf24', r: 0.05, d: 1.36, periodo: 7000, piatto: 0.3, giro: -0.12 }] },
+    brand:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'brand',
+      lune: [{ colore: '#86efac', r: 0.06, d: 1.4, periodo: 10000, piatto: 0.3, giro: 0.1 }] },
+    romilly:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'romilly',
+      lune: [{ colore: '#a78bfa', r: 0.05, d: 1.36, periodo: 8000, piatto: 0.3, giro: 0.12 }] },
+    doyle:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'doyle',
+      lune: [{ colore: '#8fa7ba', r: 0.06, d: 1.4, periodo: 9000, piatto: 0.3, giro: -0.1 }] },
+    mann:         { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.9, tratto: 'mann',
+      lune: [{ colore: '#e2e8f0', r: 0.06, d: 1.4, periodo: 12000, piatto: 0.3, giro: 0.1 }] },
+    murph:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'murph',
+      lune: [{ colore: '#fbbf24', r: 0.05, d: 1.36, periodo: 7000, piatto: 0.3, giro: 0.12 }] },
+    tars:         { superficie: 'metallo', atmosfera: null, passo: 0.9, tratto: 'tars' },
+    case:         { superficie: 'metallo', atmosfera: null, passo: 0.85, tratto: 'case' },
+    endurance:    { superficie: 'metallo', atmosfera: null, passo: 1, tratto: 'endurance' },
+    ranger:       { superficie: 'metallo', atmosfera: null, passo: 1, tratto: 'ranger' },
+    lander:       { superficie: 'metallo', atmosfera: null, passo: 1, tratto: 'lander' },
+    miller_planet: { superficie: 'oceani', atmosfera: { colore: '#94a3b8', spessore: 0.12, densita: 0.55 }, passo: 0.8, tratto: 'miller_planet' },
+    mann_planet:  { superficie: 'ghiaccio', atmosfera: { colore: '#e0f2fe', spessore: 0.1, densita: 0.45 }, passo: 0.7, tratto: 'mann_planet' }
   };
   /* Come la fisica risponde a un'emozione: quanto si gonfiano le tempeste
    * e le prominenze, come cambia l'atmosfera (`k` lo spessore, `tinta` il
@@ -1003,8 +1094,20 @@
     explosion: 2400, shockwave: 1500, flash: 700, sparkles: 2200, fireworks: 2800, smoke: 3200,
     hearts: 2600, lightning: 1200, shooting_star: 1800, glow: 3000, confetti: 2800,
     // v469: il telo dello spazio-tempo che sprofonda attorno a una massa
-    spacetime: 4000
+    spacetime: 4000,
+    // v482, «Interstellar»: gli sfondi da cinema (`STOR_SFONDI`, sotto ai
+    // personaggi) e i disegni che spiegano la fisica del film
+    // (le storie scrivono quanto durano: di serie quattro secondi, come il telo)
+    starfield: 4000, wormhole: 4000, wormhole_tunnel: 4000, gargantua_view: 4000, miller_ocean: 4000,
+    tidal_wave: 4000, mann_ice: 4000, fold: 4000, time_warp: 4000, orbit_path: 4000
   };
+  // Gli effetti che sono uno sfondo: si disegnano **prima** dei personaggi
+  // (gli altri effetti stanno sopra), coprono la vista e possono durare
+  // quanto una scena lunga
+  const STOR_SFONDI = ['starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice'];
+  const STOR_SFONDO_MAX_S = 60;
+  // quelli che coprono tutta la vista (il wormhole e l'onda lasciano vedere sotto)
+  const STOR_SFONDI_PIENI = ['starfield', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'mann_ice'];
   const STOR_POSTI_EFFETTO = ['center', 'left', 'right', 'top', 'bottom'];
   const STOR_CRESCITA_MS = 700;     // quanto ci mette un astro a crescere per portare il volto
   const STOR_RITORNO_MS = 750;      // e a tornare com'era quando la storia lo lascia
@@ -1644,7 +1747,20 @@
     }
     // L'ospite (v450) sta in un posto dello schermo; se la scena dopo lo
     // chiede altrove ci scivola, non salta
-    if (profilo.ospite) pg.postoOspite = opz.posto || pg.postoOspite || 'left';
+    if (profilo.ospite) {
+      pg.postoOspite = opz.posto || pg.postoOspite || 'left';
+      // v482: a bordo di una navicella (ai suoi finestrini), la misura, quanto
+      // ci mette a scivolare al posto nuovo e, per le navi, il verso e il giro.
+      // Una scena che non li dice li rimette di serie: si scende dalla nave,
+      // si torna alla misura di sempre (scivolando)
+      pg.aBordo = opz.dentro ? storCanonico(opz.dentro) : null;
+      pg.scalaOspite = Number.isFinite(opz.scalaOspite) ? opz.scalaOspite : 1;
+      pg.tauOspite = Number.isFinite(opz.scivola) ? Math.max(60, opz.scivola * 1000 / 3) : null;
+      if (STOR_NAVI.includes(profilo.sagoma)) {
+        pg.giroVel = Number.isFinite(opz.gira) ? opz.gira : profilo.sagoma === 'endurance' ? 24 : 0;
+        pg.versoNave = opz.verso || pg.versoNave || 'right';
+      }
+    }
     return pg;
   }
   function storEspressione(target, nome) {
@@ -3425,6 +3541,119 @@
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - Math.cos(a) * R * 3, hy - Math.sin(a) * R * 3); ctx.stroke();
       ctx.fillStyle = '#fffbe6'; stellaPiena(ctx, hx, hy, R * 0.28, 5, t / 300, 0.45);
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.05); ctx.stroke();
+    } else if (tipo === 'fold') {
+      // v482: il foglio di Romilly. Due punti lontani su un foglio (la Terra,
+      // azzurra, e la galassia dall'altra parte, dorata): la strada lunga va
+      // da uno all'altro; piegando il foglio i due punti si toccano, e la
+      // matita lo buca: il wormhole è la scorciatoia attraverso la piega
+      const W = R * 8, Hf = R * 4.4, y0 = y - Hf / 2;
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.06));
+      const piega = liscio((s - 0.3) / 0.28), c = Math.cos(piega * Math.PI), alza = Math.sin(piega * Math.PI) * Hf * 0.12;
+      const ax = x - W * 0.36, bx = x + W * 0.36;
+      const mappa = u => x + (u - x) * c;
+      const foglio = (destra, retro) => {
+        ctx.beginPath();
+        if (!destra) { ctx.rect(x - W / 2, y0, W / 2, Hf); }
+        else { ctx.moveTo(x, y0); ctx.lineTo(mappa(x + W / 2), y0 - alza); ctx.lineTo(mappa(x + W / 2), y0 + Hf + alza); ctx.lineTo(x, y0 + Hf); ctx.closePath(); }
+        ctx.fillStyle = retro ? '#e9dcc0' : '#fdf6e3'; ctx.fill();
+        ctx.save(); ctx.clip();
+        ctx.strokeStyle = 'rgba(120, 113, 108, 0.25)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let k = 0; k <= 8; k++) { const u = destra ? mappa(x + W / 2 * k / 8) : x - W / 2 + W / 2 * k / 8; ctx.moveTo(u, y0 - alza); ctx.lineTo(u, y0 + Hf + alza); }
+        for (let k = 0; k <= 6; k++) { ctx.moveTo(destra ? x : x - W / 2, y0 + Hf * k / 6); ctx.lineTo(destra ? mappa(x + W / 2) : x, y0 + Hf * k / 6); }
+        ctx.stroke(); ctx.restore();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.2, R * 0.05); ctx.stroke();
+      };
+      const punto = (px, colore) => { ctx.fillStyle = colore; ctx.beginPath(); ctx.arc(px, y, R * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.06); ctx.stroke(); };
+      const strada = (xa, xb) => { ctx.strokeStyle = '#ef4444'; ctx.lineWidth = Math.max(1.2, R * 0.07); ctx.setLineDash([R * 0.25, R * 0.18]); ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke(); ctx.setLineDash([]); };
+      const sopra = c < 0;
+      if (!sopra) { foglio(false); strada(ax, x); punto(ax, '#60a5fa'); foglio(true); strada(x, mappa(bx)); punto(mappa(bx), '#fbbf24'); }
+      else { foglio(false); strada(ax, x); punto(ax, '#60a5fa'); foglio(true, true); punto(mappa(bx), '#fbbf24'); }
+      // la navicella che fa la strada lunga, piano
+      if (s > 0.06 && s < 0.3) {
+        const u = (s - 0.06) / 0.24, nx = mix(ax, bx, u * 0.45);
+        ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(nx, y - R * 0.35, R * 0.14, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.stroke();
+      }
+      // la matita che buca il foglio piegato, e la luce del buco
+      if (s > 0.6) {
+        const q = liscio((s - 0.6) / 0.2), punta = y - Hf * 1.2 + q * Hf * 1.2;
+        if (s > 0.78) {
+          const b = Math.min(1, (s - 0.78) / 0.1);
+          const g = ctx.createRadialGradient(ax, y, 0, ax, y, R * 1.4);
+          g.addColorStop(0, `rgba(255, 251, 235, ${0.9 * b})`); g.addColorStop(1, 'rgba(147, 197, 253, 0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, y, R * 1.4, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.save(); ctx.translate(ax, punta);
+        ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-R * 0.2, -R * 0.55); ctx.lineTo(R * 0.2, -R * 0.55); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-R * 0.07, -R * 0.2); ctx.lineTo(R * 0.07, -R * 0.2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#facc15'; ctx.fillRect(-R * 0.2, -R * 3.3, R * 0.4, R * 2.75);
+        ctx.fillStyle = '#f472b6'; ctx.fillRect(-R * 0.2, -R * 3.7, R * 0.4, R * 0.4);
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.05);
+        ctx.strokeRect(-R * 0.2, -R * 3.7, R * 0.4, R * 3.15);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-R * 0.2, -R * 0.55); ctx.moveTo(0, 0); ctx.lineTo(R * 0.2, -R * 0.55); ctx.stroke();
+        ctx.restore();
+      }
+    } else if (tipo === 'time_warp') {
+      // v482: il tempo che scappa (il pianeta di Miller): un orologio con le
+      // lancette che corrono sempre più svelte, e i fogli del calendario che
+      // volano via a decine
+      const Rc = R * 1.6, giri = s * s * 24;
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.08, (1 - s) / 0.1));
+      const d2 = { s: ef.seme };
+      for (let i = 0; i < 30; i++) {
+        const nasce = dado(d2) * 0.8, q = (s - nasce) / 0.25;
+        if (q <= 0 || q >= 1) continue;
+        const a = dado(d2) * Math.PI * 2, dist = Rc * (1 + q * 2.6), px = x + Math.cos(a) * dist, py = y + Math.sin(a) * dist * 0.8 - q * R;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(a + q * 5); ctx.globalAlpha *= 1 - q;
+        ctx.fillStyle = '#f8fafc'; ctx.fillRect(-R * 0.22, -R * 0.28, R * 0.44, R * 0.56);
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(-R * 0.22, -R * 0.28, R * 0.44, R * 0.12);
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.strokeRect(-R * 0.22, -R * 0.28, R * 0.44, R * 0.56);
+        ctx.restore();
+      }
+      for (let k = 0; k < 3; k++) {
+        const q = (s * 3 + k / 3) % 1;
+        ctx.strokeStyle = rgba(colore || '#fde68a', 0.5 * (1 - q)); ctx.lineWidth = Math.max(1, R * 0.06);
+        ctx.beginPath(); ctx.arc(x, y, Rc * (1 + q * 1.4), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.fillStyle = '#fef3c7'; ctx.beginPath(); ctx.arc(x, y, Rc, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(3, R * 0.2); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.6, R * 0.1); ctx.stroke();
+      ctx.lineWidth = Math.max(1, R * 0.06);
+      ctx.beginPath();
+      for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; ctx.moveTo(x + Math.cos(a) * Rc * 0.8, y + Math.sin(a) * Rc * 0.8); ctx.lineTo(x + Math.cos(a) * Rc * 0.92, y + Math.sin(a) * Rc * 0.92); }
+      ctx.stroke();
+      const lancetta = (a, lung, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(a) * lung, y - Math.cos(a) * lung); ctx.stroke(); };
+      lancetta(giri * Math.PI * 2 / 12, Rc * 0.5, Math.max(2, R * 0.14), INCHIOSTRO);
+      lancetta(giri * Math.PI * 2, Rc * 0.78, Math.max(1.4, R * 0.08), '#c2410c');
+      ctx.fillStyle = INCHIOSTRO; ctx.beginPath(); ctx.arc(x, y, Math.max(2, R * 0.1), 0, Math.PI * 2); ctx.fill();
+    } else if (tipo === 'orbit_path') {
+      // v482: la fionda gravitazionale attorno a Gargantua. La traiettoria (un
+      // ramo d'iperbole) passa rasente al buco e ne esce più veloce; nel punto
+      // più vicino una piccola parte si stacca e cade dentro (Cooper e TARS
+      // lasciano andare il peso perché l'Endurance ce la faccia)
+      // misurata sullo schermo (Gargantua, idea, ha un raggio d'un pixel): il
+      // punto più vicino sfiora l'ombra disegnata da `gargantua_view`
+      const Ro = Math.max(R, Math.min(L, H) * 0.12 * ef.scala);
+      const e = 1.35, pp = Ro * 2.4, fmax = Math.acos(-1 / e) * 0.9, rot = Math.PI * 0.8;
+      const punto = f => { const rr = pp / (1 + e * Math.cos(f)); return [x + rr * Math.cos(f + rot), y + rr * Math.sin(f + rot) * 0.8]; };
+      const u = liscio(Math.min(1, s / 0.85));
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.08));
+      ctx.strokeStyle = rgba(colore || '#93c5fd', 0.45); ctx.lineWidth = Math.max(1.2, R * 0.06); ctx.setLineDash([R * 0.2, R * 0.16]);
+      ctx.beginPath(); for (let i = 0; i <= 60; i++) { const [px, py] = punto(-fmax + 2 * fmax * i / 60); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = colore || '#e0f2fe'; ctx.lineWidth = Math.max(1.6, R * 0.09);
+      ctx.beginPath(); const fin = -fmax + 2 * fmax * u;
+      for (let i = 0; i <= 60; i++) { const f = -fmax + (fin + fmax) * i / 60, [px, py] = punto(f); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.stroke();
+      const [nx, ny] = punto(fin);
+      ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(nx, ny, Math.max(2.5, R * 0.18), 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2; ctx.stroke();
+      if (u > 0.5) {
+        const q = Math.min(1, (u - 0.5) / 0.45), [qx, qy] = punto(0), a = Math.atan2(qy - y, qx - x) + q * 2.2, dd = Math.hypot(qx - x, qy - y) * (1 - q * 0.85);
+        ctx.fillStyle = '#fbbf24'; ctx.globalAlpha *= 1 - q * 0.7;
+        ctx.beginPath(); ctx.arc(x + Math.cos(a) * dd, y + Math.sin(a) * dd * 0.8, Math.max(2, R * 0.12 * (1 - q * 0.6)), 0, Math.PI * 2); ctx.fill();
+        if (q < 0.25) { ctx.fillStyle = '#fffbeb'; stellaPiena(ctx, qx, qy, R * 0.5 * (1 - q * 4), 6, 0, 0.4); }
+      }
     } else if (tipo === 'confetti') {
       for (let k = 0; k < 26; k++) {
         const px0 = x + (dado(d) - 0.5) * R * 4, ritardo = dado(d) * 0.3, giro = dado(d) * 6;
@@ -3489,6 +3718,288 @@
     ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, rb * 0.25); ctx.stroke();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.beginPath(); ctx.arc(bx - rb * 0.35, by - rb * 0.35, rb * 0.3, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
+  }
+
+  /* v482, «Interstellar»: gli sfondi da cinema. Coprono la vista (che resta
+   * sotto: Saturno vero dietro al wormhole) e stanno sotto ai personaggi, con
+   * una loro camera lenta che spinge in avanti per tutta la durata: chi
+   * guarda deve sentire quanto è grande lo spazio e quanto è piccola la nave.
+   * Le stelle si dipingono una volta su una tela fuori schermo (`storTelaStelle`)
+   * e si riusano; il resto sono poche stesure e pennini. Col movimento
+   * ridotto niente corse: la camera e le onde stanno ferme. */
+  const storTeleStelle = new Map();
+  function storTelaStelle(L, H, tipo) {
+    const k = tipo + '|' + Math.round(L) + 'x' + Math.round(H);
+    if (storTeleStelle.has(k)) return storTeleStelle.get(k);
+    if (typeof document === 'undefined') return null;
+    let tela = null;
+    try {
+      tela = document.createElement('canvas');
+      tela.width = Math.max(2, Math.round(L)); tela.height = Math.max(2, Math.round(H));
+      const g = tela.getContext('2d');
+      const d = { s: seme(k) || 7 };
+      const altrove = tipo === 'altrove';
+      // la polvere della galassia: una fascia che attraversa in diagonale
+      const fascia = g.createLinearGradient(0, H * 0.2, L, H * 0.8);
+      fascia.addColorStop(0, 'rgba(0,0,0,0)'); fascia.addColorStop(0.45, altrove ? 'rgba(244, 114, 182, 0.12)' : 'rgba(147, 197, 253, 0.08)');
+      fascia.addColorStop(0.55, altrove ? 'rgba(251, 191, 36, 0.14)' : 'rgba(253, 230, 138, 0.07)'); fascia.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = fascia; g.fillRect(0, 0, L, H);
+      const n = Math.round(L * H / (altrove ? 900 : 1400));
+      for (let i = 0; i < n; i++) {
+        const x = dado(d) * L, y = dado(d) * H, r = Math.pow(dado(d), 3) * 1.6 + 0.3;
+        const tinte = altrove ? ['#fde68a', '#fbcfe8', '#ffffff', '#c4b5fd'] : ['#ffffff', '#dbeafe', '#fef3c7', '#e0e7ff'];
+        g.globalAlpha = 0.35 + dado(d) * 0.65; g.fillStyle = tinte[Math.floor(dado(d) * tinte.length)];
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      }
+      // una galassia lontana a spirale (dall'altra parte del wormhole)
+      if (altrove) {
+        g.globalAlpha = 1;
+        const cx = L * 0.42, cy = H * 0.46, rr = Math.min(L, H) * 0.22;
+        const nucleo = g.createRadialGradient(cx, cy, 0, cx, cy, rr * 0.5);
+        nucleo.addColorStop(0, 'rgba(255, 247, 214, 0.95)'); nucleo.addColorStop(1, 'rgba(251, 191, 36, 0)');
+        g.fillStyle = nucleo; g.beginPath(); g.arc(cx, cy, rr * 0.5, 0, Math.PI * 2); g.fill();
+        for (let b = 0; b < 2; b++) for (let i = 0; i < 260; i++) {
+          const u = i / 260, a = b * Math.PI + u * Math.PI * 2.6, dd = rr * (0.12 + u * 0.95);
+          g.globalAlpha = 0.5 * (1 - u); g.fillStyle = u < 0.4 ? '#fde68a' : '#c4b5fd';
+          g.beginPath(); g.arc(cx + Math.cos(a) * dd + (dado(d) - 0.5) * rr * 0.08, cy + Math.sin(a) * dd * 0.55 + (dado(d) - 0.5) * rr * 0.06, 0.6 + dado(d) * 1.4, 0, Math.PI * 2); g.fill();
+        }
+      }
+      g.globalAlpha = 1;
+    } catch (_) { tela = null; }
+    if (storTeleStelle.size > 6) storTeleStelle.clear();
+    storTeleStelle.set(k, tela);
+    return tela;
+  }
+  // Il cielo profondo: nero-blu, le stelle, una camera che avanza piano
+  function sfondoStelle(ctx, L, H, s, t, alfa, ridotto, tipo) {
+    ctx.save();
+    ctx.globalAlpha *= alfa;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, tipo === 'altrove' ? '#0c0618' : '#02030a'); g.addColorStop(1, tipo === 'altrove' ? '#1a0f2e' : '#0a1024');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, L, H);
+    const tela = storTelaStelle(L, H, tipo || 'stelle');
+    if (tela) {
+      const k = ridotto ? 1.02 : 1.02 + 0.06 * s;
+      ctx.translate(L / 2, H / 2); ctx.scale(k, k); ctx.translate(-L / 2, -H / 2);
+      ctx.drawImage(tela, 0, 0, L, H);
+    }
+    ctx.restore();
+    // qualche stella che brilla davvero
+    if (!ridotto) {
+      const d = { s: 99 };
+      ctx.save();
+      for (let i = 0; i < 9; i++) {
+        const x = dado(d) * L, y = dado(d) * H, f = dado(d) * 6;
+        const a = Math.max(0, Math.sin(t / 700 + f)) * alfa;
+        if (a < 0.05) continue;
+        ctx.globalAlpha = a; ctx.fillStyle = '#ffffff';
+        stellaPiena(ctx, x, y, 2.6, 4, 0, 0.25);
+      }
+      ctx.restore();
+    }
+  }
+  // Gargantua (anche in lontananza): l'ombra nera, l'anello di fotoni, il
+  // disco dorato visto di taglio davanti e, piegato dalla gravità, sopra e
+  // sotto al buco (l'immagine di Kip Thorne per il film). `luce` lo attenua.
+  function disegnaGargantua(ctx, x, y, Rb, t, luce, ridotto) {
+    ctx.save();
+    ctx.globalAlpha *= luce;
+    const alone = ctx.createRadialGradient(x, y, Rb * 0.9, x, y, Rb * 4);
+    alone.addColorStop(0, 'rgba(253, 230, 138, 0.35)'); alone.addColorStop(0.4, 'rgba(251, 146, 60, 0.12)'); alone.addColorStop(1, 'rgba(251, 146, 60, 0)');
+    ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, Rb * 4, 0, Math.PI * 2); ctx.fill();
+    const scia = ridotto ? 0 : -t / 26;
+    const fascia = (rx, ry, da, a, larghezza, dietro) => {
+      const g = ctx.createLinearGradient(x - rx, y, x + rx, y);
+      g.addColorStop(0, '#fffbeb'); g.addColorStop(0.35, '#fde68a'); g.addColorStop(0.7, '#f59e0b'); g.addColorStop(1, dietro ? '#b45309' : '#c2410c');
+      ctx.lineCap = 'butt';
+      ctx.strokeStyle = 'rgba(28, 18, 54, 0.35)'; ctx.lineWidth = larghezza + 3;
+      ctx.beginPath(); ctx.ellipse(x, y, rx, ry, -0.05, da, a); ctx.stroke();
+      ctx.strokeStyle = g; ctx.lineWidth = larghezza;
+      ctx.beginPath(); ctx.ellipse(x, y, rx, ry, -0.05, da, a); ctx.stroke();
+      // i grumi di gas che corrono
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'; ctx.lineWidth = Math.max(1, larghezza * 0.25);
+      ctx.setLineDash([Rb * 0.25, Rb * 0.4]); ctx.lineDashOffset = scia;
+      ctx.beginPath(); ctx.ellipse(x, y, rx, ry, -0.05, da, a); ctx.stroke(); ctx.setLineDash([]);
+    };
+    // dietro: la metà lontana del disco e la sua immagine piegata sopra al buco
+    fascia(Rb * 3.3, Rb * 0.34, Math.PI, Math.PI * 2, Rb * 0.26, true);
+    fascia(Rb * 1.42, Rb * 1.3, Math.PI * 1.04, Math.PI * 1.96, Rb * 0.26, true);
+    fascia(Rb * 1.2, Rb * 1.12, Math.PI * 0.08, Math.PI * 0.92, Rb * 0.1, true);
+    // l'ombra, e l'anello sottile di luce che le gira attorno
+    ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(x, y, Rb, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 251, 235, 0.9)'; ctx.lineWidth = Math.max(1, Rb * 0.035);
+    ctx.beginPath(); ctx.arc(x, y, Rb * 1.04, 0, Math.PI * 2); ctx.stroke();
+    // davanti: la metà vicina del disco, che passa davanti all'ombra
+    fascia(Rb * 3.3, Rb * 0.34, 0, Math.PI, Rb * 0.3, false);
+    ctx.restore();
+  }
+  function storDisegnaSfondo(ctx, ef, x, y, r, t, L, H, ridotto) {
+    const s = (t - ef.inizio) / ef.durata;
+    if (!(s >= 0) || s > 1) return;
+    // entra e se ne va in dissolvenza
+    const alfa = Math.min(1, s * ef.durata / 700) * Math.min(1, (1 - s) * ef.durata / 500);
+    if (!(alfa > 0.01)) return;
+    const lato = Math.min(L, H), k = Math.max(0.2, ef.scala || 1);
+    const avanti = ridotto ? 0 : liscio(s);
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const tipo = ef.tipo;
+    if (tipo === 'starfield') {
+      sfondoStelle(ctx, L, H, s, t, alfa, ridotto);
+    } else if (tipo === 'wormhole') {
+      // La sfera vicino a Saturno: un buco in tre dimensioni è una palla, e
+      // dentro si vede il cielo di un'altra galassia, piegato come in uno
+      // specchio curvo; attorno le stelle si stirano in archi (lente)
+      const cresce = ridotto ? 1 : liscio(Math.min(1, (t - ef.inizio) / 3500));
+      const Rw = lato * 0.2 * k * (0.15 + 0.85 * cresce) * (1 + 0.08 * avanti);
+      ctx.globalAlpha = alfa;
+      const lente = ctx.createRadialGradient(x, y, Rw * 0.95, x, y, Rw * 1.9);
+      lente.addColorStop(0, 'rgba(2, 3, 10, 0.85)'); lente.addColorStop(0.35, 'rgba(30, 27, 75, 0.35)'); lente.addColorStop(1, 'rgba(2, 3, 10, 0)');
+      ctx.fillStyle = lente; ctx.beginPath(); ctx.arc(x, y, Rw * 1.9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(224, 231, 255, 0.5)'; ctx.lineWidth = Math.max(1, Rw * 0.012);
+      const d = { s: ef.seme };
+      for (let i = 0; i < 18; i++) {
+        const rr = Rw * (1.08 + dado(d) * 0.7), a0 = dado(d) * Math.PI * 2 + (ridotto ? 0 : t / 9000), lung = 0.2 + dado(d) * 0.5;
+        ctx.globalAlpha = alfa * (0.25 + 0.5 * (1 - (rr - Rw) / (Rw * 0.8)));
+        ctx.beginPath(); ctx.arc(x, y, rr, a0, a0 + lung); ctx.stroke();
+      }
+      ctx.globalAlpha = alfa;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(x, y, Rw, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = '#0c0618'; ctx.fillRect(x - Rw, y - Rw, Rw * 2, Rw * 2);
+      const altrove = storTelaStelle(L, H, 'altrove');
+      if (altrove) {
+        ctx.translate(x, y); ctx.rotate(ridotto ? 0 : t / 14000);
+        // due passate: il cielo intero rimpicciolito e, al centro, ingrandito
+        // (l'occhio di pesce della sfera)
+        ctx.globalAlpha = alfa * 0.85; ctx.drawImage(altrove, -Rw * 1.15, -Rw * 1.15 * H / L, Rw * 2.3, Rw * 2.3 * H / L);
+        ctx.globalAlpha = alfa * 0.6; ctx.drawImage(altrove, -Rw * 1.9, -Rw * 1.9 * H / L, Rw * 3.8, Rw * 3.8 * H / L);
+      }
+      ctx.restore();
+      ctx.save();
+      // il bordo della sfera: scuro, poi l'anello di Einstein e il riflesso
+      const bordo = ctx.createRadialGradient(x, y, Rw * 0.55, x, y, Rw);
+      bordo.addColorStop(0, 'rgba(0,0,0,0)'); bordo.addColorStop(0.8, 'rgba(15, 10, 40, 0.45)'); bordo.addColorStop(1, 'rgba(2, 3, 10, 0.9)');
+      ctx.globalAlpha = alfa; ctx.fillStyle = bordo; ctx.beginPath(); ctx.arc(x, y, Rw, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(253, 230, 138, 0.85)'; ctx.lineWidth = Math.max(1.2, Rw * 0.025);
+      ctx.beginPath(); ctx.arc(x, y, Rw * 0.97, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'; ctx.lineWidth = Math.max(1.5, Rw * 0.05);
+      ctx.beginPath(); ctx.arc(x, y, Rw * 0.82, -Math.PI * 0.85, -Math.PI * 0.6); ctx.stroke();
+      ctx.restore();
+    } else if (tipo === 'wormhole_tunnel') {
+      // Dentro al wormhole: anelli di luce che vengono incontro e strisce di
+      // stelle che corrono via dal centro; alla fine il bianco dell'uscita
+      const cx = L / 2 + (ridotto ? 0 : Math.sin(t / 1300) * L * 0.03), cy = H * 0.46 + (ridotto ? 0 : Math.cos(t / 1700) * H * 0.03);
+      ctx.globalAlpha = alfa;
+      const fondo = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.hypot(L, H) * 0.6);
+      fondo.addColorStop(0, '#fff7d6'); fondo.addColorStop(0.08, '#3b2a6b'); fondo.addColorStop(0.5, '#0b0820'); fondo.addColorStop(1, '#020208');
+      ctx.fillStyle = fondo; ctx.fillRect(0, 0, L, H);
+      const corsa = ridotto ? 0.3 : t / 900;
+      for (let i = 0; i < 14; i++) {
+        const z = ((i / 14) + corsa) % 1, rr = lato * 0.04 / Math.max(0.04, 1 - z);
+        if (rr > Math.hypot(L, H)) continue;
+        ctx.globalAlpha = alfa * Math.min(1, z * 1.5) * 0.55;
+        ctx.strokeStyle = i % 2 ? '#fde68a' : '#93c5fd'; ctx.lineWidth = Math.max(1, rr * 0.03);
+        ctx.beginPath(); ctx.ellipse(cx, cy, rr, rr * 0.82, ridotto ? 0 : t / 3000, 0, Math.PI * 2); ctx.stroke();
+      }
+      const d = { s: ef.seme };
+      for (let i = 0; i < 90; i++) {
+        const a = dado(d) * Math.PI * 2 + (ridotto ? 0 : t / 4000), v = 0.4 + dado(d);
+        const z = ((dado(d)) + corsa * v) % 1, r0 = lato * 0.05 / Math.max(0.05, 1 - z * 0.95), r1 = r0 * (1.08 + 0.3 * z * v);
+        ctx.globalAlpha = alfa * z * 0.9;
+        ctx.strokeStyle = i % 3 ? '#e0f2fe' : '#fde68a'; ctx.lineWidth = Math.max(0.8, z * 2.4);
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.stroke();
+      }
+      if (s > 0.8) { ctx.globalAlpha = alfa * liscio((s - 0.8) / 0.2) * 0.9; ctx.fillStyle = '#fffbeb'; ctx.fillRect(0, 0, L, H); }
+    } else if (tipo === 'gargantua_view') {
+      // Il sistema di Gargantua: il buco nero enorme nel cielo nero
+      sfondoStelle(ctx, L, H, s, t, alfa, ridotto, 'stelle');
+      disegnaGargantua(ctx, x, y, lato * 0.16 * k * (1 + 0.12 * avanti), t, alfa, ridotto);
+    } else if (tipo === 'miller_ocean') {
+      // Il pianeta di Miller: un mare basso fino all'orizzonte sotto un cielo
+      // pesante, e Gargantua enorme e pallido (è vicinissimo)
+      ctx.globalAlpha = alfa;
+      const oriz = H * 0.58;
+      const cielo = ctx.createLinearGradient(0, 0, 0, oriz);
+      cielo.addColorStop(0, '#2b3a4a'); cielo.addColorStop(1, '#a3b6c4');
+      ctx.fillStyle = cielo; ctx.fillRect(0, 0, L, oriz + 1);
+      disegnaGargantua(ctx, L * 0.28, H * 0.2, lato * 0.3 * (1 + 0.05 * avanti), t, alfa * 0.55, ridotto);
+      const mare = ctx.createLinearGradient(0, oriz, 0, H);
+      mare.addColorStop(0, '#8aa0b0'); mare.addColorStop(1, '#2f4656');
+      ctx.globalAlpha = alfa; ctx.fillStyle = mare; ctx.fillRect(0, oriz, L, H - oriz);
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)'; ctx.lineWidth = 1.2;
+      const d = { s: ef.seme };
+      for (let i = 0; i < 40; i++) {
+        const fy = dado(d), py = oriz + Math.pow(fy, 1.6) * (H - oriz), w = 8 + fy * 50, px = (dado(d) * L + (ridotto ? 0 : t * 0.01 * (0.3 + fy))) % (L + w) - w / 2;
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(px + w / 2, py - 1.5 - fy * 3, px + w, py); ctx.stroke();
+      }
+    } else if (tipo === 'tidal_wave') {
+      // L'onda: un muro d'acqua alto come una montagna che si alza
+      // dall'orizzonte e viene avanti; in cima la schiuma
+      // sale in sette secondi, poi resta lì, enorme, e viene avanti piano
+      const da = (t - ef.inizio) / 7000;
+      const oriz = H * 0.58, alta = (ridotto ? 0.6 : liscio(Math.min(1, da))) * H * 0.7 * k;
+      const base = oriz + (ridotto ? 0 : liscio(Math.min(1, da / 3))) * H * 0.12;
+      ctx.globalAlpha = alfa;
+      const g = ctx.createLinearGradient(0, base - alta, 0, base);
+      g.addColorStop(0, '#6d8597'); g.addColorStop(0.3, '#3d5568'); g.addColorStop(1, '#22313d');
+      ctx.fillStyle = g;
+      const cresta = x0 => base - alta * (0.82 + 0.18 * Math.sin(x0 / L * Math.PI * 1.3 + 0.4));
+      ctx.beginPath(); ctx.moveTo(0, base + 2);
+      for (let i = 0; i <= 24; i++) { const px = i / 24 * L; ctx.lineTo(px, cresta(px)); }
+      ctx.lineTo(L, base + 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(28, 18, 54, 0.6)'; ctx.lineWidth = 2.4; ctx.stroke();
+      // la schiuma che corre sulla cresta, e le righe d'acqua sulla parete
+      ctx.strokeStyle = 'rgba(241, 245, 249, 0.85)'; ctx.lineWidth = Math.max(2, lato * 0.012);
+      ctx.setLineDash([lato * 0.03, lato * 0.02]); ctx.lineDashOffset = ridotto ? 0 : -t / 30;
+      ctx.beginPath(); for (let i = 0; i <= 24; i++) { const px = i / 24 * L; i ? ctx.lineTo(px, cresta(px) + 3) : ctx.moveTo(px, cresta(px) + 3); } ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(203, 213, 225, 0.22)'; ctx.lineWidth = 1.4;
+      for (let j = 1; j < 6; j++) {
+        ctx.beginPath();
+        for (let i = 0; i <= 24; i++) { const px = i / 24 * L, py = mix(cresta(px), base, j / 6) + Math.sin(i + t / 600 + j) * 3; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+        ctx.stroke();
+      }
+    } else if (tipo === 'mann_ice') {
+      // Il pianeta di Mann: ghiaccio, e nuvole così fredde da essere gelate
+      // in aria; cade una neve fine
+      ctx.globalAlpha = alfa;
+      const oriz = H * 0.62;
+      const cielo = ctx.createLinearGradient(0, 0, 0, oriz);
+      cielo.addColorStop(0, '#94a3b8'); cielo.addColorStop(1, '#e2e8f0');
+      ctx.fillStyle = cielo; ctx.fillRect(0, 0, L, oriz + 1);
+      const suolo = ctx.createLinearGradient(0, oriz, 0, H);
+      suolo.addColorStop(0, '#f1f5f9'); suolo.addColorStop(1, '#cbd5e1');
+      ctx.fillStyle = suolo; ctx.fillRect(0, oriz, L, H - oriz);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)'; ctx.lineWidth = 1.3;
+      const d = { s: ef.seme };
+      ctx.beginPath();
+      for (let i = 0; i < 12; i++) {
+        let px = dado(d) * L, py = oriz + dado(d) * (H - oriz);
+        ctx.moveTo(px, py);
+        for (let j = 0; j < 4; j++) { px += (dado(d) - 0.5) * lato * 0.12; py += (dado(d) - 0.3) * lato * 0.03; ctx.lineTo(px, py); }
+      }
+      ctx.stroke();
+      // le nuvole gelate: blocchi tondeggianti col pennino, l'ombra azzurra sotto
+      const deriva = ridotto ? 0 : t * 0.004;
+      for (let i = 0; i < 6; i++) {
+        const cx = ((dado(d) * 1.4 - 0.2) * L + deriva * (0.5 + i * 0.1)) % (L * 1.3) - L * 0.1, cy = H * (0.12 + dado(d) * 0.38), w = lato * (0.14 + dado(d) * 0.16);
+        const nuvola = () => {
+          ctx.beginPath();
+          for (let j = 0; j < 5; j++) { const bx = cx + (j - 2) * w * 0.32, by = cy - Math.abs(Math.sin(j * 1.7 + i)) * w * 0.18, br = w * (0.22 + 0.08 * Math.sin(j + i)); ctx.moveTo(bx + br, by); ctx.arc(bx, by, br, 0, Math.PI * 2); }
+          ctx.rect(cx - w * 0.75, cy - w * 0.02, w * 1.5, w * 0.16);
+        };
+        ctx.strokeStyle = 'rgba(28, 18, 54, 0.45)'; ctx.lineWidth = 3; nuvola(); ctx.stroke();
+        ctx.fillStyle = '#f8fafc'; nuvola(); ctx.fill();
+        ctx.fillStyle = 'rgba(147, 197, 253, 0.35)'; ctx.fillRect(cx - w * 0.75, cy + w * 0.06, w * 1.5, w * 0.08);
+      }
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      for (let i = 0; i < 70; i++) {
+        const px = (dado(d) * L + (ridotto ? 0 : Math.sin(t / 900 + i) * 6)) % L, py = (dado(d) * H + (ridotto ? 0 : t * 0.02 * (0.5 + dado(d)))) % H;
+        ctx.beginPath(); ctx.arc(px, py, 0.8 + dado(d) * 1.3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   // nel posto dello schermo chiesto. `null` se l'astro non c'è.
@@ -3559,7 +4070,18 @@
     // v450: Carl Sagan, la testa-pianeta sopra al busto
     sagan:         { volto: [0, -0.18, 0.6], ingombro: 1.45 },
     // v469: chi racconta il cielo, vestito con la sua `figura`
-    persona:       { volto: [0, -0.18, 0.6], ingombro: 1.45 }
+    persona:       { volto: [0, -0.18, 0.6], ingombro: 1.45 },
+    // v482, «Interstellar»: TARS (il volto sullo schermo in cima alle
+    // lastre) e le navicelle, senza volto ma coi finestrini dell'equipaggio
+    // (`finestre`: [dx, dy, raggio] in raggi del corpo, col muso a destra) e
+    // più grandi di una persona (`ospiteK`)
+    tars:          { volto: [0, -0.42, 0.56], ingombro: 1.45 },
+    ranger:        { volto: [0, 0, 0.6], ingombro: 1.75, ospiteK: 1.25,
+      finestre: [[0.62, -0.13, 0.2], [0.12, -0.11, 0.2], [-0.38, -0.09, 0.2], [-0.88, -0.07, 0.19]] },
+    lander:        { volto: [0, 0, 0.6], ingombro: 1.6, ospiteK: 1.15,
+      finestre: [[0.5, -0.16, 0.21], [0, -0.16, 0.21], [-0.5, -0.16, 0.21]] },
+    endurance:     { volto: [0, 0, 0.6], ingombro: 1.95, ospiteK: 1.55,
+      finestre: [[-0.3, 0.02, 0.16], [0, 0.02, 0.16], [0.3, 0.02, 0.16]] }
   };
   // Dove sta il volto su un corpo di raggio R centrato in (x, y)
   function storVoltoNelCorpo(sagoma, x, y, R) {
@@ -3786,6 +4308,38 @@
         ctx.fillStyle = rgba('#8b3a3a', 0.7);
         ctx.beginPath(); ctx.ellipse(x - R * 0.5, y - R * 0.7, R * 0.2, R * 0.12, -0.5, 0, Math.PI * 2); ctx.fill();
         break;
+      case 'onde':
+        // v482, il pianeta di Miller: tutto oceano basso, rigato dalle onde
+        // che la marea di Gargantua solleva alte come montagne
+        ctx.strokeStyle = rgba(schiarisci(pelle, 0.55), 0.75); ctx.lineWidth = Math.max(0.9, R * 0.045); ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (const dy of [-0.72, -0.5, 0.52, 0.74]) {
+          const w = Math.sqrt(Math.max(0, 1 - dy * dy)) * 0.95;
+          for (let i = 0; i <= 12; i++) {
+            const u = i / 12, px = x + (u * 2 - 1) * w * R, py = y + dy * R + Math.sin(u * Math.PI * 4) * R * 0.04;
+            if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+          }
+        }
+        ctx.stroke();
+        // la cresta dell'onda gigante, sul bordo
+        ctx.fillStyle = rgba(scurisci(pelle, 0.35), 0.6);
+        ctx.beginPath(); ctx.ellipse(x + R * 0.7, y + R * 0.1, R * 0.12, R * 0.5, 0.15, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'ghiaccio': {
+        // v482, il pianeta di Mann: ghiaccio fino all'orizzonte e nuvole
+        // gelate; le crepe azzurre e le chiazze più bianche
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        for (const [dx, dy, rx, ry] of [[-0.6, -0.55, 0.3, 0.14], [0.55, -0.62, 0.26, 0.12], [-0.7, 0.55, 0.22, 0.12], [0.62, 0.6, 0.28, 0.13]]) {
+          ctx.beginPath(); ctx.ellipse(x + dx * R, y + dy * R, rx * R, ry * R, 0.2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.strokeStyle = rgba('#7dd3fc', 0.75); ctx.lineWidth = Math.max(0.7, R * 0.025);
+        ctx.beginPath();
+        for (const crepa of [[[-0.9, 0.1], [-0.62, 0.22], [-0.5, 0.05], [-0.3, 0.3]], [[0.88, -0.2], [0.66, -0.05], [0.72, 0.22], [0.45, 0.35]], [[-0.2, -0.9], [-0.05, -0.7], [0.15, -0.78]]]) {
+          crepa.forEach(([dx, dy], i) => i ? ctx.lineTo(x + dx * R, y + dy * R) : ctx.moveTo(x + dx * R, y + dy * R));
+        }
+        ctx.stroke();
+        break;
+      }
       case 'crateri':
         // tutt'attorno al volto, come nella Luna dei cartoni: più fitti sul bordo
         crateri(ctx, x, y, R, pelle, [[-0.78, -0.3, 0.12], [-0.86, 0.12, 0.08], [-0.7, 0.42, 0.13], [-0.42, 0.78, 0.1],
@@ -3793,6 +4347,199 @@
           [0.38, -0.8, 0.08], [-0.3, -0.84, 0.07], [-0.55, -0.64, 0.05], [0.6, 0.62, 0.05], [-0.88, -0.08, 0.04]]);
         break;
     }
+  }
+
+  /* v482, «Interstellar». TARS e CASE: quattro lastre di metallo affiancate
+   * (nel film si aprono e camminano), e in cima il piccolo schermo dove qui
+   * vive il volto. Quando parlano le lastre si muovono appena, a turno, come
+   * se pensassero. Il colore del metallo è `metallo`, lo schermo è la pelle. */
+  function disegnaTars(ctx, x, y, R, profilo, t) {
+    const metallo = profilo.metallo || '#9ca3af';
+    const re = profilo.reazione || {};
+    const energia = Number.isFinite(re.energia) ? re.energia : 0;
+    const w = R * 0.3, gap = R * 0.035, alto = y - R * 1.08, basso = y + R * 1.5;
+    for (let k = 0; k < 4; k++) {
+      const sx = x - 2 * w - 1.5 * gap + k * (w + gap);
+      const dy = Math.sin(t / 190 + k * 1.3) * R * 0.045 * energia + Math.sin(t / 1300 + k) * R * 0.008;
+      parte(ctx, () => rettangolo(ctx, sx, alto + dy, w, basso - alto, R * 0.03), k % 2 ? metallo : schiarisci(metallo, 0.12), R, {
+        luce: 0.05, pennino: 0.03,
+        dentro: () => {
+          ctx.strokeStyle = rgba(scurisci(metallo, 0.45), 0.6); ctx.lineWidth = Math.max(0.6, R * 0.014);
+          ctx.beginPath();
+          for (const f of [0.52, 0.66, 0.9]) { ctx.moveTo(sx, alto + dy + (basso - alto) * f); ctx.lineTo(sx + w, alto + dy + (basso - alto) * f); }
+          ctx.stroke();
+          ctx.fillStyle = rgba(scurisci(metallo, 0.5), 0.8);
+          for (const f of [0.58, 0.95]) { ctx.beginPath(); ctx.arc(sx + w / 2, alto + dy + (basso - alto) * f, Math.max(0.7, R * 0.022), 0, Math.PI * 2); ctx.fill(); }
+        }
+      });
+    }
+    // lo schermo, con le righe e un bagliore del colore degli occhi
+    parte(ctx, () => rettangolo(ctx, x - R * 0.6, y - R * 1.0, R * 1.2, R * 1.16, R * 0.08), profilo.pelle, R, {
+      luce: 0.02, pennino: 0.035, buio: 0.1,
+      dentro: () => {
+        const g = ctx.createRadialGradient(x, y - R * 0.42, R * 0.05, x, y - R * 0.42, R * 0.75);
+        g.addColorStop(0, rgba(profilo.iride || '#7dd3fc', 0.22)); g.addColorStop(1, rgba(profilo.iride || '#7dd3fc', 0));
+        ctx.fillStyle = g; ctx.fillRect(x - R * 0.6, y - R * 1.0, R * 1.2, R * 1.16);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; ctx.lineWidth = Math.max(0.5, R * 0.01);
+        ctx.beginPath(); for (let k = 0; k < 19; k++) { const yy = y - R * 0.97 + k * R * 0.06; ctx.moveTo(x - R * 0.58, yy); ctx.lineTo(x + R * 0.58, yy); } ctx.stroke();
+      }
+    });
+  }
+
+  // La cabina dietro a un finestrino: buia, con la luce calda dei quadri dei comandi
+  function disegnaCabina(ctx, fin, alfa) {
+    ctx.save();
+    ctx.globalAlpha *= alfa;
+    const g = ctx.createRadialGradient(fin.x - fin.r * 0.3, fin.y + fin.r * 0.4, fin.r * 0.1, fin.x, fin.y, fin.r * 1.1);
+    g.addColorStop(0, '#4a3b26'); g.addColorStop(0.6, '#1a1a24'); g.addColorStop(1, '#07080f');
+    ctx.fillStyle = g; ctx.fillRect(fin.x - fin.r, fin.y - fin.r, fin.r * 2, fin.r * 2);
+    ctx.restore();
+  }
+  // Il vetro davanti: un velo azzurro, il riflesso, l'anello di metallo coi bulloni
+  function disegnaVetro(ctx, fin, alfa, t) {
+    const { x, y, r } = fin;
+    ctx.save();
+    ctx.globalAlpha *= alfa;
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.1)'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'; ctx.lineWidth = Math.max(1, r * 0.09); ctx.lineCap = 'round';
+    const luccica = 0.06 * Math.sin(t / 2100);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.78, -Math.PI * (0.88 + luccica), -Math.PI * (0.62 + luccica)); ctx.stroke();
+    ctx.strokeStyle = ALONE; ctx.lineWidth = r * 0.22 + 2.6; ctx.beginPath(); ctx.arc(x, y, r * 1.08, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = r * 0.22 + 1.2; ctx.stroke();
+    ctx.strokeStyle = '#a8a29e'; ctx.lineWidth = r * 0.16; ctx.stroke();
+    ctx.fillStyle = INCHIOSTRO;
+    if (r > 7) for (let k = 0; k < 6; k++) {
+      const a = k * Math.PI / 3 + 0.3;
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * 1.08, y + Math.sin(a) * r * 1.08, Math.max(0.6, r * 0.04), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  /* Le navicelle (v482): il Ranger (la navetta dal muso a punta, di lato),
+   * il Lander (più tozzo, con le gambe) e l'Endurance (l'anello di dodici
+   * moduli inclinato verso di noi, che gira attorno al mozzo). Si disegnano
+   * col muso a destra e si girano per `versoNave`; il Ranger e il Lander, se
+   * `giroNave`, ruotano tutti interi; i finestrini sono quelli di
+   * `STOR_CORPI` e l'equipaggio ci si affaccia (`storOspiti`). I motori si
+   * accendono quando la nave corre (`spintaNave`). */
+  function disegnaNave(ctx, x, y, R, profilo, t) {
+    const sagoma = profilo.sagoma, pelle = profilo.pelle || '#d6d3d1';
+    const verso = profilo.versoNave === 'left' ? -1 : 1;
+    const spinta = Math.max(0, Math.min(1, profilo.spintaNave || 0));
+    ctx.save();
+    ctx.translate(x, y);
+    if (sagoma !== 'endurance') ctx.rotate(profilo.giroNave || 0);
+    ctx.scale(verso, 1);
+    const fiamma = (fx, fy, larga, lunga, giu) => {
+      const tremolio = 0.85 + 0.15 * Math.sin(t / 45 + fx) + 0.08 * Math.sin(t / 17 + fy);
+      const L = lunga * tremolio;
+      const g = giu ? ctx.createLinearGradient(fx, fy, fx, fy + L) : ctx.createLinearGradient(fx, fy, fx - L, fy);
+      g.addColorStop(0, 'rgba(240, 249, 255, 0.95)'); g.addColorStop(0.35, 'rgba(125, 211, 252, 0.75)'); g.addColorStop(1, 'rgba(59, 130, 246, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      if (giu) { ctx.moveTo(fx - larga, fy); ctx.quadraticCurveTo(fx, fy + L * 1.2, fx + larga, fy); }
+      else { ctx.moveTo(fx, fy - larga); ctx.quadraticCurveTo(fx - L * 1.2, fy, fx, fy + larga); }
+      ctx.closePath(); ctx.fill();
+    };
+    const finestrini = () => {
+      for (const f of (STOR_CORPI[sagoma].finestre || [])) {
+        const fin = { x: f[0] * R, y: f[1] * R, r: f[2] * R };
+        disegnaCabina(ctx, fin, 1); disegnaVetro(ctx, fin, 1, t);
+      }
+    };
+    if (sagoma === 'ranger') {
+      const lunga = R * (0.18 + 1.1 * spinta);
+      fiamma(-R * 1.58, -R * 0.12, R * 0.1, lunga, false);
+      fiamma(-R * 1.58, R * 0.16, R * 0.1, lunga, false);
+      // la deriva in alto e l'ala a delta sotto, dietro allo scafo
+      parte(ctx, () => { ctx.beginPath(); ctx.moveTo(-R * 1.4, -R * 0.3); ctx.lineTo(-R * 0.85, -R * 0.3); ctx.lineTo(-R * 1.25, -R * 0.78); ctx.lineTo(-R * 1.52, -R * 0.74); ctx.closePath(); },
+        scurisci(pelle, 0.12), R, { luce: 0.05, pennino: 0.03 });
+      parte(ctx, () => { ctx.beginPath(); ctx.moveTo(-R * 1.2, R * 0.22); ctx.lineTo(R * 0.35, R * 0.22); ctx.lineTo(-R * 0.55, R * 0.66); ctx.lineTo(-R * 1.42, R * 0.62); ctx.closePath(); },
+        scurisci(pelle, 0.2), R, { luce: 0.05, pennino: 0.03 });
+      // lo scafo: muso a punta, il ventre scuro dello scudo termico
+      const scafo = () => {
+        ctx.beginPath(); ctx.moveTo(R * 1.72, R * 0.06);
+        ctx.bezierCurveTo(R * 1.45, -R * 0.2, R * 1.05, -R * 0.4, R * 0.6, -R * 0.42);
+        ctx.lineTo(-R * 1.5, -R * 0.4); ctx.quadraticCurveTo(-R * 1.62, -R * 0.38, -R * 1.62, -R * 0.26);
+        ctx.lineTo(-R * 1.62, R * 0.28); ctx.quadraticCurveTo(-R * 1.6, R * 0.36, -R * 1.48, R * 0.36);
+        ctx.lineTo(R * 0.9, R * 0.34); ctx.bezierCurveTo(R * 1.3, R * 0.32, R * 1.6, R * 0.2, R * 1.72, R * 0.06); ctx.closePath();
+      };
+      parte(ctx, scafo, pelle, R, {
+        luce: 0.08, pennino: 0.035,
+        dentro: () => {
+          ctx.fillStyle = '#3f3a36'; ctx.fillRect(-R * 1.7, R * 0.16, R * 3.5, R * 0.3);
+          ctx.fillStyle = '#c2410c'; ctx.fillRect(-R * 1.6, -R * 0.33, R * 2.2, R * 0.05);
+          ctx.strokeStyle = rgba(INCHIOSTRO, 0.3); ctx.lineWidth = Math.max(0.6, R * 0.014);
+          ctx.beginPath(); for (const k of [-1.15, -0.63, -0.13, 0.37, 0.88]) { ctx.moveTo(k * R, -R * 0.42); ctx.lineTo(k * R, R * 0.16); } ctx.stroke();
+        }
+      });
+      // il parabrezza sul muso
+      parte(ctx, () => { ctx.beginPath(); ctx.moveTo(R * 1.08, -R * 0.31); ctx.quadraticCurveTo(R * 1.38, -R * 0.24, R * 1.56, -R * 0.06); ctx.lineTo(R * 1.18, -R * 0.06); ctx.closePath(); },
+        '#1e293b', R, { luce: 0.03, pennino: 0.03 });
+      finestrini();
+    } else if (sagoma === 'lander') {
+      // le gambe, i razzi sotto, il corpo tozzo con le alette
+      for (const lato of [-1, 1]) {
+        asta(ctx, lato * R * 0.8, R * 0.38, lato * R * 1.15, R * 0.86, Math.max(1.2, R * 0.05), '#a8a29e');
+        parte(ctx, () => rettangolo(ctx, lato * R * 1.15 - R * 0.16, R * 0.84, R * 0.32, R * 0.07, R * 0.03), '#78716c', R, { luce: 0.03, pennino: 0.03 });
+      }
+      for (const k of [-0.55, 0, 0.55]) fiamma(k * R, R * 0.46, R * 0.09, R * (0.12 + 0.8 * spinta), true);
+      parte(ctx, () => { ctx.beginPath(); ctx.moveTo(-R * 1.3, -R * 0.1); ctx.lineTo(-R * 1.6, R * 0.3); ctx.lineTo(-R * 1.1, R * 0.3); ctx.closePath(); }, scurisci(pelle, 0.15), R, { luce: 0.04, pennino: 0.03 });
+      parte(ctx, () => {
+        ctx.beginPath(); ctx.moveTo(-R * 1.32, -R * 0.42); ctx.lineTo(R * 0.95, -R * 0.46); ctx.quadraticCurveTo(R * 1.38, -R * 0.38, R * 1.42, R * 0.02);
+        ctx.lineTo(R * 1.25, R * 0.42); ctx.lineTo(-R * 1.32, R * 0.42); ctx.closePath();
+      }, pelle, R, {
+        luce: 0.08, pennino: 0.035,
+        dentro: () => {
+          ctx.fillStyle = '#44403c'; ctx.fillRect(-R * 1.4, R * 0.24, R * 2.9, R * 0.2);
+          ctx.strokeStyle = rgba(INCHIOSTRO, 0.3); ctx.lineWidth = Math.max(0.6, R * 0.014);
+          ctx.beginPath(); for (const k of [-0.9, -0.25, 0.25, 0.8]) { ctx.moveTo(k * R, -R * 0.46); ctx.lineTo(k * R, R * 0.24); } ctx.stroke();
+        }
+      });
+      finestrini();
+    } else {
+      // L'Endurance: l'anello di dodici moduli, inclinato verso di noi, che
+      // gira attorno al mozzo; prima la metà di dietro, poi i raggi e il
+      // mozzo, poi i moduli davanti. Quando gira all'impazzata (l'attracco
+      // del film, 68 giri al minuto) lascia una scia.
+      const rx = R * 1.75, ry = R * 0.62, g0 = profilo.giroNave || 0;
+      const furia = Math.min(1, Math.abs(profilo.giroVel || 0) / 300);
+      ctx.lineCap = 'round';
+      for (const [w, c] of [[R * 0.16 + 2.6, ALONE], [R * 0.16, INCHIOSTRO], [R * 0.1, '#a8a29e']]) {
+        ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (furia > 0.05) {
+        ctx.strokeStyle = `rgba(226, 232, 240, ${0.35 * furia})`; ctx.lineWidth = R * 0.32;
+        ctx.setLineDash([R * 0.5, R * 0.3]); ctx.lineDashOffset = -t / 3;
+        ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      }
+      const moduli = [];
+      for (let k = 0; k < 12; k++) {
+        const a = g0 + k * Math.PI / 6;
+        moduli.push({ k, a, mx: Math.cos(a) * rx, my: Math.sin(a) * ry, davanti: Math.sin(a) > 0 });
+      }
+      const modulo = q => {
+        const prof = 0.82 + 0.18 * Math.sin(q.a), giro = Math.atan2(ry * Math.cos(q.a), -rx * Math.sin(q.a));
+        const w = R * 0.44 * prof, h = R * 0.26 * prof;
+        ctx.save(); ctx.translate(q.mx, q.my); ctx.rotate(giro);
+        parte(ctx, () => rettangolo(ctx, -w / 2, -h / 2, w, h, h * 0.25), q.k % 3 === 0 ? schiarisci(pelle, 0.15) : pelle, R, {
+          luce: 0.04, pennino: 0.03,
+          dentro: () => { ctx.fillStyle = q.k % 3 === 0 ? '#3b5fc0' : '#57534e'; ctx.fillRect(-w / 2, -h * 0.12, w, h * 0.24); }
+        });
+        ctx.restore();
+      };
+      for (const q of moduli) if (!q.davanti) modulo(q);
+      for (const q of moduli) if (q.k % 3 === 0) asta(ctx, 0, 0, q.mx * 0.92, q.my * 0.92, Math.max(1.2, R * 0.04), '#a8a29e');
+      // il mozzo, col portello d'attracco e l'antenna
+      asta(ctx, 0, -R * 0.3, 0, -R * 0.62, Math.max(1, R * 0.03));
+      parte(ctx, () => { ctx.beginPath(); ctx.arc(0, -R * 0.64, R * 0.05, 0, Math.PI * 2); }, '#e5e7eb', R);
+      parte(ctx, () => rettangolo(ctx, -R * 0.56, -R * 0.28, R * 1.12, R * 0.6, R * 0.2), schiarisci(pelle, 0.08), R, {
+        luce: 0.06, pennino: 0.035,
+        dentro: () => { ctx.fillStyle = '#c2410c'; ctx.fillRect(-R * 0.56, R * 0.2, R * 1.12, R * 0.05); }
+      });
+      finestrini();
+      for (const q of moduli) if (q.davanti) modulo(q);
+    }
+    ctx.restore();
   }
 
   // Il corpo intero di un personaggio, centrato in (x, y), di raggio R
@@ -4237,6 +4984,10 @@
       disegnaSagan(ctx, x, y, R, profilo, t);
     } else if (sagoma === 'persona') {
       disegnaPersona(ctx, x, y, R, profilo, t);
+    } else if (sagoma === 'tars') {
+      disegnaTars(ctx, x, y, R, profilo, t);
+    } else if (STOR_NAVI.includes(sagoma)) {
+      disegnaNave(ctx, x, y, R, profilo, t);
     } else if (sagoma === 'hubble') {
       // i due pannelli lunghi ai lati, il tubo argentato, il coperchio aperto
       for (const lato of [-1, 1]) {
@@ -4978,6 +5729,9 @@
   function storPosa(pg, R, t, desDa, apertura, parla, ridotto, corpoSiMuove) {
     const posa = { dx: 0, dy: 0, giro: 0, sx: 1, sy: 1 };
     if (ridotto) return posa;
+    // v482: una navicella non fa «pop» né respira: l'equipaggio ai finestrini
+    // deve restare dentro al vetro (galleggia in `storOspiti`, con tutti)
+    if (pg.profilo && pg.profilo.senzaVolto) return posa;
     const e = pg.espr || {};
     const u = Math.max(0, Math.min(1, desDa / STOR_COMPARSA_MS));
     // fuori-indietro: 0 → oltre 1 → 1
@@ -5103,7 +5857,9 @@
       pg.punto = null;
       if (!c || pg.nascosto || c.nascosto) continue;
       if (!(Number.isFinite(c.px) && Number.isFinite(c.py))) continue;
-      if (c.px < 0 || c.py < 0 || c.px > L || c.py > H) continue;            // fuori schermo
+      // fuori schermo; un ospite (una navicella che entra) si vede già col muso
+      const bordo = c.ospite ? (c.costumeR || 40) * 2.4 : 0;
+      if (c.px < -bordo || c.py < -bordo || c.px > L + bordo || c.py > H + bordo) continue;
       if (!(c.r >= STOR_ASTRO_MIN_PX)) continue;                             // troppo piccolo per indicarlo
       const p = storVesteProfilo(pg);
       const Rdisco = c.r * p.scala;
@@ -5125,7 +5881,8 @@
       const corpo3d = in3d && addosso && pg.misura !== 'real' && (STOR_SAGOME_FORMA.includes(p.sagoma) || !!pg.veste);
       piano.push({ pg, c, addosso, Rdisco, corpo3d });
       // l'ospite (v450) ha il suo posto: chi deve mettersi accanto lo evita
-      if (c.ospite) presi.push({ id: pg.id, x: c.px, y: c.py, R: (c.costumeR || 40) * 1.3 });
+      // (v482: l'equipaggio sta dentro alla sua nave, e una nave ingombra di più)
+      if (c.ospite && !c.aBordo) presi.push({ id: pg.id, x: c.px, y: c.py, R: (c.costumeR || 40) * (STOR_NAVI.includes(p.sagoma) ? ingombroDi(p.sagoma) : 1.3) });
       if (corpo3d) {
         const Rc = Math.max(c.r, STOR_VOLTO_3D_PX * (pg.prosp || 1) / STOR_CORPI[p.sagoma].volto[2]);
         presi.push({ id: pg.id, x: c.px, y: c.py, R: Rc * ingombroDi(p) });
@@ -5136,8 +5893,24 @@
     // contrario (prima l'ordine era quello d'entrata in scena, e il volto di
     // Saturno dietro a Giove gli finiva sopra)
     if (in3d) piano.sort((u, v) => (u.c.vicinanza || 0) - (v.c.vicinanza || 0));
+    // v482: l'equipaggio dopo la sua nave, dentro ai finestrini
+    piano.sort((u, v) => (u.c.aBordo ? 1 : 0) - (v.c.aBordo ? 1 : 0));
     // Un disco grafico non deve coprire l'astro di un altro personaggio
     for (const { pg, c } of piano) presi.push({ id: pg.id, astro: true, x: c.px, y: c.py, R: Math.max(8, c.r) });
+    // v482: gli sfondi da cinema (il wormhole, Gargantua, l'oceano di Miller…)
+    // stanno sotto a tutti i personaggi
+    // (uno sfondo pieno e già entrato copre quelli di prima: non si disegnano)
+    const sfondi = stor.effetti.filter(ef => STOR_SFONDI.includes(ef.tipo) && stor.orologio >= ef.inizio && stor.orologio - ef.inizio <= ef.durata);
+    let primo = 0;
+    sfondi.forEach((ef, i) => {
+      const dentro = stor.orologio - ef.inizio, resta = ef.durata - dentro;
+      if (STOR_SFONDI_PIENI.includes(ef.tipo) && dentro > 750 && resta > 550 && (ef.tipo !== 'gargantua_view' || !ef.target || perId.has(ef.target))) primo = i;
+    });
+    for (const ef of sfondi.slice(primo)) {
+      const posto = storPostoEffetto(ef, perId, L, H);
+      ef.ultimoPosto = null;
+      if (posto) storDisegnaSfondo(ctx, ef, posto.x, posto.y, posto.r, stor.orologio, L, H, ridotto);
+    }
     const Rbadge = Math.max(STOR_DISCO_MIN_PX, Math.min(STOR_DISCO_MAX_PX, Math.min(L, H) * 0.075));
     const m = Object.assign({ su: STOR_MARGINE_PX, giu: STOR_MARGINE_PX, lati: STOR_MARGINE_PX }, margini || {});
     for (const posa of piano) {
@@ -5354,7 +6127,7 @@
             : sole && Number.isFinite(sole.px) && Math.hypot(sole.px - c.px, sole.py - c.py) > 1 ? Math.atan2(c.py - sole.py, c.px - sole.px) : NaN;
           pc = Object.assign({}, p, { codaVerso: verso });
         }
-        pc = Object.assign({}, pc, { reazione: pg.reazione });
+        pc = Object.assign({}, pc, { reazione: pg.reazione, giroNave: pg.giroNave || 0, spintaNave: pg.spintaNave || 0, versoNave: pg.versoNave, giroVel: pg.giroVel || 0 });
         // Nella 3D le lune e gli anelli veri li disegna l'app
         const opzFis = { ridotto, tempoLune: pg.tempoLune || 0, lune: !posto.in3d, anelli: !posto.in3d };
         const tutto = g => {
@@ -5364,17 +6137,26 @@
           disegnaCorpo(g, cx, cy, R, pc, t);
           storDisegnaFisica(g, 'davanti', cx, cy, R, fis, pg.reazione, t, opzFis);
           g.restore();
-          storDisegnaVolto(g, geom, p, alfa, t);
+          if (!p.senzaVolto) storDisegnaVolto(g, geom, p, alfa, t);
           g.save(); g.globalAlpha *= alfa;
           storDisegnaFisica(g, 'primo', cx, cy, R, fis, pg.reazione, t, opzFis);
           g.restore();
           g.restore();
         };
-        if (posto.in3d) conLuce(ctx, cx + att.dx, cy + att.dy, R * 2.2, c.luce, tutto);
-        else tutto(ctx);
-        ctx.save(); trasforma(ctx);
-        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
-        ctx.restore();
+        // v482: chi è a bordo si vede soltanto dentro al suo finestrino, con
+        // la cabina illuminata dietro e il vetro davanti
+        const fin = c.finestra;
+        if (!fin || fin.r >= 3.5) {
+          if (fin) { ctx.save(); ctx.beginPath(); ctx.arc(fin.x, fin.y, fin.r, 0, Math.PI * 2); ctx.clip(); disegnaCabina(ctx, fin, alfa); }
+          if (posto.in3d) conLuce(ctx, cx + att.dx, cy + att.dy, R * 2.2, c.luce, tutto);
+          else tutto(ctx);
+          if (fin) { ctx.restore(); disegnaVetro(ctx, fin, alfa, t); }
+        }
+        if (!p.senzaVolto && !fin) {
+          ctx.save(); trasforma(ctx);
+          storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
+          ctx.restore();
+        }
       } else {
         // Sull'astro: ritagliato sul suo disco e illuminato dal suo Sole.
         // Nel planetario no: lì un salto porta il volto fuori dall'astro,
@@ -5423,6 +6205,7 @@
       const t = stor.orologio;
       stor.effetti = stor.effetti.filter(ef => t - ef.inizio <= ef.durata);
       for (const ef of stor.effetti) {
+        if (STOR_SFONDI.includes(ef.tipo)) continue;
         const posto = storPostoEffetto(ef, perId, L, H);
         // La regia (§7-ter) va a guardare il botto dove è stato disegnato
         ef.ultimoPosto = posto ? { x: posto.x, y: posto.y, r: posto.r, vista } : null;
@@ -5954,29 +6737,80 @@
    * scala cosmica, col suo corpo intero e senza filo, e ci scivola quando la
    * scena lo chiede altrove. Il posto è nel disegno, sotto alla lente: la
    * regia gli va vicino come a tutti gli altri quando canta. */
-  const STOR_POSTI_OSPITE = { left: [0.19, 0.5], right: [0.81, 0.5], center: [0.5, 0.47], top: [0.5, 0.32], bottom: [0.5, 0.62] };
+  const STOR_POSTI_OSPITE = { left: [0.19, 0.5], right: [0.81, 0.5], center: [0.5, 0.47], top: [0.5, 0.32], bottom: [0.5, 0.62],
+    // v482
+    top_left: [0.24, 0.3], top_right: [0.76, 0.3], bottom_left: [0.24, 0.66], bottom_right: [0.76, 0.66],
+    off_left: [-0.4, 0.5], off_right: [1.4, 0.5] };
   const STOR_TAU_OSPITE = 700;
+  /* v482, «Interstellar»: più posti (gli angoli, e fuori dallo schermo a
+   * sinistra e a destra, da dove una navicella entra o verso dove esce), la
+   * misura (`scale`, che scivola come il posto: una nave che si allontana
+   * rimpicciolisce piano davanti a Gargantua), il tempo dello scivolare
+   * (`glide`), il giro delle navi (`spin`, in gradi al secondo: l'anello
+   * dell'Endurance gira sempre un poco, per fare la gravità) e l'equipaggio
+   * **dentro** a una nave: chi ha `inside` non sta al suo posto ma a un
+   * finestrino, uno per uno nell'ordine in cui sono comparsi, con la testa
+   * dentro al vetro (`finestra`, che il disegno usa per ritagliarlo). */
   function storOspiti(L, H, m) {
     const fuori = [];
     const mm = Object.assign({ su: STOR_MARGINE_PX, giu: STOR_MARGINE_PX, lati: STOR_MARGINE_PX }, m || {});
+    const ora = stor.orologio;
+    const base = Math.max(30, Math.min(92, Math.min(L, H) * 0.105));
+    const navi = new Map(), aBordo = [];
     for (const pg of stor.personaggi.values()) {
       if (!pg.profilo.ospite) continue;
-      const R = Math.max(30, Math.min(92, Math.min(L, H) * 0.105));
-      const [fx, fy] = STOR_POSTI_OSPITE[pg.postoOspite] || STOR_POSTI_OSPITE.left;
-      // dentro ai margini con tutto il busto (la testa sale di 1,3 raggi,
-      // la giacca scende di 1,35)
-      const x = Math.max(mm.lati + R * 1.3, Math.min(L - mm.lati - R * 1.3, L * fx));
-      const y = Math.max(mm.su + R * 1.4, Math.min(H - mm.giu - R * 1.4, H * fy));
-      const ora = stor.orologio;
       const dt = Math.max(0, Math.min(200, ora - (pg.ospiteOra || ora)));
       pg.ospiteOra = ora;
+      const nave = pg.aBordo ? stor.personaggi.get(pg.aBordo) : null;
+      if (nave && !nave.nascosto && STOR_NAVI.includes(nave.profilo.sagoma)) { aBordo.push(pg); continue; }
+      const corpo = STOR_CORPI[pg.profilo.sagoma] || {};
+      const k = stor.ridotto || !pg.ospiteXY ? 1 : 1 - Math.exp(-dt / (pg.tauOspite || STOR_TAU_OSPITE));
+      const voluta = pg.scalaOspite || 1;
+      pg.scalaVista = pg.ospiteXY && Number.isFinite(pg.scalaVista) ? mix(pg.scalaVista, voluta, k) : voluta;
+      const R = base * (corpo.ospiteK || 1) * pg.scalaVista;
+      const [fx, fy] = STOR_POSTI_OSPITE[pg.postoOspite] || STOR_POSTI_OSPITE.left;
+      // dentro ai margini con tutto il busto (la testa sale di 1,3 raggi,
+      // la giacca scende di 1,35); fuori dallo schermo, dove si chiede
+      const via = /^off_/.test(pg.postoOspite || '');
+      const x = via ? L * fx : Math.max(mm.lati + R * 1.3, Math.min(L - mm.lati - R * 1.3, L * fx));
+      const y = via ? H * fy : Math.max(mm.su + R * 1.4, Math.min(H - mm.giu - R * 1.4, H * fy));
       if (!pg.ospiteXY || stor.ridotto) pg.ospiteXY = { x, y };
-      else {
-        const k = 1 - Math.exp(-dt / STOR_TAU_OSPITE);
-        pg.ospiteXY.x = mix(pg.ospiteXY.x, x, k); pg.ospiteXY.y = mix(pg.ospiteXY.y, y, k);
+      else { pg.ospiteXY.x = mix(pg.ospiteXY.x, x, k); pg.ospiteXY.y = mix(pg.ospiteXY.y, y, k); }
+      let px = pg.ospiteXY.x, py = pg.ospiteXY.y;
+      if (STOR_NAVI.includes(pg.profilo.sagoma)) {
+        // la nave galleggia piano (e l'equipaggio con lei), e gira se deve
+        if (!stor.ridotto) {
+          py += Math.sin(ora / 1500 + (pg.fase || 0)) * R * 0.03;
+          pg.giroNave = ((pg.giroNave || 0) + (pg.giroVel || 0) * dt / 1000 * Math.PI / 180) % (Math.PI * 2);
+        }
+        // quanto corre: i motori si accendono quando scivola
+        const corsa = Math.hypot(x - pg.ospiteXY.x, y - pg.ospiteXY.y) / Math.max(1, R);
+        pg.spintaNave = mix(pg.spintaNave || 0, Math.min(1, corsa * 0.8), 0.08);
       }
+      const voce = { id: pg.id, px, py, r: 1, costumeR: R, ospite: true, idea: true, vicinanza: Infinity };
       // `vicinanza` infinita: nella 3D si disegna per ultimo, davanti a tutti
-      fuori.push({ id: pg.id, px: pg.ospiteXY.x, py: pg.ospiteXY.y, r: 1, costumeR: R, ospite: true, idea: true, vicinanza: Infinity });
+      fuori.push(voce);
+      if (STOR_NAVI.includes(pg.profilo.sagoma)) navi.set(pg.id, { voce, pg, R, corpo, preso: 0 });
+    }
+    // L'equipaggio, ai finestrini della sua nave
+    for (const pg of aBordo) {
+      const n = navi.get(pg.aBordo);
+      const f = n && n.corpo.finestre && n.corpo.finestre[n.preso++];
+      if (!f) continue;
+      const verso = n.pg.versoNave === 'left' ? -1 : 1;
+      // l'anello dell'Endurance gira attorno al mozzo fermo; le navette,
+      // quando girano, girano tutte intere
+      const giro = n.pg.profilo.sagoma === 'endurance' ? 0 : n.pg.giroNave || 0;
+      const ox = f[0] * verso * n.R, oy = f[1] * n.R, cg = Math.cos(giro), sg = Math.sin(giro);
+      const wx = n.voce.px + ox * cg - oy * sg, wy = n.voce.py + ox * sg + oy * cg, w = f[2] * n.R;
+      const v = (STOR_CORPI[pg.profilo.sagoma] || STOR_CORPI.persona).volto;
+      // il volto riempie il vetro: i capelli e le orecchie restano fuori
+      const Rc = w * 0.86 / v[2];
+      const x = wx - v[0] * Rc, y = wy - v[1] * Rc;
+      pg.ospiteXY = { x, y };
+      pg.scalaVista = n.pg.scalaVista;
+      fuori.push({ id: pg.id, px: x, py: y, r: 1, costumeR: Rc, ospite: true, idea: true, vicinanza: Infinity,
+        aBordo: n.pg.id, finestra: { x: wx, y: wy, r: w } });
     }
     return fuori;
   }
@@ -6133,7 +6967,10 @@
       if (!pg.scarto) pg.scarto = { x: 0, y: 0 };
       if (c && c.ospite && !pg.nascosto) {
         // l'ospite: non si sposta, non ha profondità, ingombra col busto
-        attori.push({ pg, z: NaN, rad: (c.costumeR || 40) * 1.25, fermo: true, ospite: true, x: c.px, y: c.py });
+        // (v482: una nave col suo scafo; chi è a bordo sta dentro alla nave)
+        if (c.aBordo) continue;
+        const nave = STOR_NAVI.includes(pg.profilo.sagoma);
+        attori.push({ pg, z: NaN, rad: (c.costumeR || 40) * (nave ? ingombroDi(pg.profilo.sagoma) : 1.25), fermo: true, ospite: true, x: c.px, y: c.py });
         continue;
       }
       if (!c || pg.nascosto || pg.misura === 'real' || !Number.isFinite(c.px)) {
@@ -7342,7 +8179,9 @@
    * nelle storie» spenta, in pausa, fuori da una demo, e senza Web Audio. */
   const STOR_SUONI = ['explosion', 'shockwave', 'flash', 'sparkles', 'fireworks', 'smoke', 'hearts', 'lightning',
     'shooting_star', 'glow', 'confetti', 'boing', 'whoosh', 'pop', 'zap', 'magic', 'inflate', 'suck', 'wobble',
-    'spin', 'tada', 'ding', 'drumroll', 'rumble', 'spacetime'];
+    'spin', 'tada', 'ding', 'drumroll', 'rumble', 'spacetime',
+    // v482, «Interstellar»
+    'starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice', 'fold', 'time_warp', 'orbit_path'];
   // Il rumore che fa ogni gesto, quando la storia non ne sceglie un altro
   const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
   const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
@@ -7434,6 +8273,8 @@
     const t0 = o.t0, durata = o.durata;
     const src = a.createBufferSource();
     src.buffer = rumoreBianco(a);
+    // v482: un soffio più lungo dei due secondi di rumore gira in tondo
+    if (o.ciclo) src.loop = true;
     const f = a.createBiquadFilter();
     f.type = o.filtro || 'lowpass';
     f.Q.value = o.q || 0.8;
@@ -7555,7 +8396,42 @@
     spacetime(a, u, t, d, v) {
       tono(a, u, { t0: t, durata: 2.4, f0: 196, f1: 49, picco: 0.28 * v, attacco: 0.45 });
       [392, 587, 784].forEach((f, k) => tono(a, u, { t0: t + k * 0.12, durata: 2.0, f0: f, f1: f * 0.94, picco: 0.035 * v, attacco: 0.5 }));
-    }
+    },
+    // v482, «Interstellar»: il wormhole che si apre (un accordo d'organo che
+    // sale piano, l'eco del film), il viaggio dentro, il ronzio grave di
+    // Gargantua, la risacca di Miller e l'onda, il vento di ghiaccio di Mann,
+    // il fruscio del foglio, il ticchettio che accelera, la fionda
+    starfield(a, u, t, d, v) { [1568, 2093, 2637].forEach((f, k) => tono(a, u, { t0: t + k * 0.4, durata: 1.8, f0: f, picco: 0.025 * v, attacco: 0.5 })); },
+    wormhole(a, u, t, d, v) {
+      [131, 196, 262, 330].forEach((f, k) => tono(a, u, { t0: t + k * 0.25, durata: 2.8, tipo: 'triangle', f0: f, picco: 0.05 * v, attacco: 1.1, taglio: 1400 }));
+      soffio(a, u, { t0: t, durata: 3, filtro: 'bandpass', f0: 300, f1: 1800, q: 2, picco: 0.08 * v, attacco: 1.2, ciclo: true });
+    },
+    wormhole_tunnel(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.6, filtro: 'bandpass', f0: 200, fm: 3000, f1: 600, q: 1.1, picco: 0.3 * v, attacco: 0.6, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.6, f0: 55, f1: 110, picco: 0.25 * v, attacco: 0.8 });
+    },
+    gargantua_view(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 3.5, f0: 41, picco: 0.3 * v, attacco: 1.2, vibrato: [0.3, 2] });
+      [165, 247].forEach(f => tono(a, u, { t0: t + 0.4, durata: 3.2, tipo: 'triangle', f0: f, picco: 0.035 * v, attacco: 1.4, taglio: 900 }));
+    },
+    miller_ocean(a, u, t, d, v) { for (let i = 0; i < 3; i++) soffio(a, u, { t0: t + i * 1.1, durata: 1.6, f0: 700, f1: 250, picco: 0.18 * v, attacco: 0.6, da: i * 0.3 }); },
+    tidal_wave(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.6, f0: 160, f1: 900, picco: 0.55 * v, attacco: 2.2, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.6, f0: 36, f1: 52, picco: 0.4 * v, attacco: 2.2 });
+    },
+    mann_ice(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3, filtro: 'bandpass', f0: 1800, f1: 900, q: 3, picco: 0.12 * v, attacco: 0.8, ciclo: true });
+      [2093, 2637, 3136].forEach((f, k) => tono(a, u, { t0: t + 0.5 + k * 0.35, durata: 1.2, f0: f, picco: 0.04 * v }));
+    },
+    // il foglio che compare: un fruscio (la matita la fa sentire la storia, con `sound`)
+    fold(a, u, t, d, v) {
+      for (let i = 0; i < 6; i++) soffio(a, u, { t0: t + 0.1 + i * 0.09, durata: 0.12, filtro: 'highpass', f0: 2500, picco: 0.12 * v, da: dado(d) });
+    },
+    time_warp(a, u, t, d, v) {
+      let q = t;
+      for (let i = 0; i < 40; i++) { soffio(a, u, { t0: q, durata: 0.02, filtro: 'bandpass', f0: 3000, q: 4, picco: 0.14 * v, da: dado(d) }); q += Math.max(0.025, 0.16 * (1 - i / 40)); }
+    },
+    orbit_path(a, u, t, d, v) { soffio(a, u, { t0: t + 0.5, durata: 3, filtro: 'bandpass', f0: 200, fm: 1600, f1: 300, q: 1.4, picco: 0.3 * v, attacco: 1.2, ciclo: true }); }
   };
   function suoniAccesi() {
     const d = radice.AstroDemo;
@@ -7654,7 +8530,10 @@
     ospiteFermo: '{nome} accompagna la storia da un posto dello schermo: non viaggia',
     cantoVuoto: '{comando} vuole un id o un testo',
     cantoLungo: 'Testo troppo lungo (al massimo {max} caratteri)',
-    cantoChi: 'Chi canta con with deve comparire in questa scena: {nome}'
+    cantoChi: 'Chi canta con with deve comparire in questa scena: {nome}',
+    dentroNave: 'inside vuole una navicella (endurance, ranger, lander), non {nome}; ci sale un ospite',
+    soloOspite: '{nome} non è un ospite: scale e glide valgono per chi sta in un posto dello schermo',
+    soloNave: '{nome} non è una navicella: spin e facing valgono per le navi'
   };
   function errore(chiave, dati = {}) {
     const k = 'demo.err.' + chiave;
@@ -7701,11 +8580,23 @@
   const COMANDI = {
     character_show: {
       verifica(p, scena) {
-        campi(p, ['target', 'expression', 'look', 'size', 'sound', 'at']);
+        campi(p, ['target', 'expression', 'look', 'size', 'sound', 'at', 'inside', 'scale', 'glide', 'spin', 'facing']);
         const id = bersaglio(p);
         sceltaSuono(p);
         // v450: `at` è il posto dello schermo di un ospite (Carl Sagan)
         scelta(p.at, 'at', Object.keys(STOR_POSTI_OSPITE));
+        // v482: dentro a una navicella, la misura e lo scivolare di un ospite,
+        // il giro e il verso di una nave
+        const ospite = !!(STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].ospite);
+        const nave = !!(STOR_PERSONAGGI[id] && STOR_NAVI.includes(STOR_PERSONAGGI[id].sagoma));
+        if (p.inside !== undefined) {
+          const n = typeof p.inside === 'string' ? storCanonico(p.inside) : '';
+          richiedi(ospite && !nave && STOR_PERSONAGGI[n] && STOR_NAVI.includes(STOR_PERSONAGGI[n].sagoma), 'dentroNave', { nome: String(p.inside) });
+        }
+        if (p.scale !== undefined || p.glide !== undefined) richiedi(ospite, 'soloOspite', { nome: storNome(id) });
+        if (p.spin !== undefined || p.facing !== undefined) richiedi(nave, 'soloNave', { nome: storNome(id) });
+        numeroIn(p.scale, 'scale', 0.15, 3); numeroIn(p.glide, 'glide', 0.2, 30); numeroIn(p.spin, 'spin', -720, 720);
+        scelta(p.facing, 'facing', ['left', 'right']);
         // la Via Lattea, Andromeda, Sirio: la carta sa dove stanno, il cielo
         // di casa e la vista 3D no
         if (scena && STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo) richiedi(scenaCosmica(scena), 'soloCosmo', { nome: storNome(id) });
@@ -7719,7 +8610,8 @@
         // una storia non si mescolano con quello di prova.
         if (stor.anteprima) storChiudiAnteprima();
         const nuovo = !stor.personaggi.has(storCanonico(p.target));
-        const pg = storMostra(p.target, { espressione: p.expression, guarda: guardaVerso(p.look), misura: p.size, posto: p.at });
+        const pg = storMostra(p.target, { espressione: p.expression, guarda: guardaVerso(p.look), misura: p.size, posto: p.at,
+          dentro: p.inside, scalaOspite: p.scale, scivola: p.glide, gira: p.spin, verso: p.facing });
         // Chi entra in scena per la prima volta fa «pop»
         const rumore = suonoScelto(p, nuovo ? 'pop' : null);
         if (rumore) storSuona(rumore, { seme: pg.id });
@@ -7952,7 +8844,9 @@
           if (scena && STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].cosmo) richiedi(scenaCosmica(scena), 'soloCosmo', { nome: storNome(id) });
         }
         scelta(p.at, 'at', STOR_POSTI_EFFETTO);
-        numeroIn(p.size, 'size', 0.2, 5); numeroIn(p.duration, 'duration', 0.3, 20);
+        numeroIn(p.size, 'size', 0.2, 5);
+        // v482: uno sfondo può tenere una scena lunga
+        numeroIn(p.duration, 'duration', 0.3, STOR_SFONDI.includes(p.type) ? STOR_SFONDO_MAX_S : 20);
         richiedi(p.color === undefined || (typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color)), 'coloreNonValido', { nome: String(p.color) });
         if (scena) richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
       },
@@ -8709,6 +9603,16 @@
         yt.title = t('storie.youtubeAiuto');
         azioni.append(yt);
       }
+      // v482: tutte le voci della storia con ElevenLabs, con un tasto solo (la
+      // voce giusta per ogni personaggio la sceglie `voci-filmato.js`, §8)
+      if (typeof radice.vfilmVociStoria === 'function') {
+        const voci = document.createElement('button');
+        voci.type = 'button'; voci.className = 'tasto-cielo tasto-voci-eleven';
+        voci.dataset.storiaVoci = st.chiave;
+        voci.textContent = t('storie.vociEleven');
+        voci.title = t('storie.vociElevenAiuto');
+        azioni.append(voci);
+      }
       let segno = null;
       // v461: una storia dello Studio messa qui si riapre nello Studio, ed è
       // segnata come fatta da chi usa l'app
@@ -8798,6 +9702,15 @@
         catch (err) { const esito = document.getElementById('demo-esito'); if (esito) esito.textContent = err.message; }
         return;
       }
+      // v482: «Voci ElevenLabs»: il casting e tutte le battute, con un tocco
+      const voci = e.target.closest('[data-storia-voci]');
+      if (voci) {
+        const st = storieDisponibili().find(x => x.chiave === voci.dataset.storiaVoci);
+        if (!st || typeof radice.vfilmVociStoria !== 'function') return;
+        storChiudiAnteprima();
+        radice.vfilmVociStoria(Object.assign({}, st, { titolo: st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave }));
+        return;
+      }
       // La trama intera o i personaggi di una storia: una linguetta per scheda
       const lc = e.target.closest('[data-storia-apri]');
       if (lc) {
@@ -8881,6 +9794,8 @@
     STOR_VOLTO_MIN_PX, STOR_PERCORSI, STOR_LATI, STOR_LUOGHI, STOR_ANIMAZIONI, STOR_EFFETTI, STOR_POSTI_EFFETTO,
     canonico: storCanonico, famigliaDi: storFamigliaDi, noto: storOggettoNoto, profilo: storProfilo,
     nome: storNome, personalita: storPersonalita,
+    // v482: la figurina di un personaggio (la finestra delle voci), gli sfondi e le navi
+    figurina: (id, px) => storFigurina(id, px), STOR_SFONDI, STOR_NAVI, STOR_SFONDO_MAX_S, ospitiDi: storOspiti,
     ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale, boccaBersaglio: storBoccaBersaglio,
     tempoDelCarattere: storTempoDelCarattere,
     geometria: storGeometria, posa: storPosa, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,

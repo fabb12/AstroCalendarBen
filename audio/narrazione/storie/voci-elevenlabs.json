@@ -86,6 +86,46 @@
     "stephen-hawking": {
       "nome": "Stephen Hawking",
       "voce": ""
+    },
+    "cooper": {
+      "nome": "Cooper",
+      "voce": ""
+    },
+    "amelia-brand": {
+      "nome": "Amelia Brand",
+      "voce": ""
+    },
+    "romilly": {
+      "nome": "Romilly",
+      "voce": ""
+    },
+    "doyle": {
+      "nome": "Doyle",
+      "voce": ""
+    },
+    "dottor-mann": {
+      "nome": "Dottor Mann",
+      "voce": ""
+    },
+    "murph": {
+      "nome": "Murph",
+      "voce": ""
+    },
+    "tars": {
+      "nome": "TARS",
+      "voce": ""
+    },
+    "case": {
+      "nome": "CASE",
+      "voce": ""
+    },
+    "pianeta-di-miller": {
+      "nome": "Pianeta di Miller",
+      "voce": ""
+    },
+    "pianeta-di-mann": {
+      "nome": "Pianeta di Mann",
+      "voce": ""
     }
   }
 }
