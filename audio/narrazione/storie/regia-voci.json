@@ -1689,6 +1689,111 @@
         "it": "[thoughtful] E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. [nervous] Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora.",
         "en": "[thoughtful] And the planet doesn't stay still: as it races along its orbit it rocks back and forth, and those humps of water slide across it. [nervous] For anyone down there, a wave as tall as a mountain comes along about once an hour."
       }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.1": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!"
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.2": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. [curious] Ecco cos'è un wormhole: una scorciatoia."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.6": {
+      "emozione": "entusiasta",
+      "come": "",
+      "conTag": {
+        "it": "[excited] Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!"
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.3": {
+      "emozione": "meravigliato",
+      "come": "",
+      "conTag": {
+        "it": "[in awe] Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.7": {
+      "emozione": "scettico",
+      "come": "",
+      "conTag": {
+        "it": "[skeptical] Così vicino? [thoughtful] E perché il pianeta non ci cade dentro?"
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.4": {
+      "emozione": "malinconico",
+      "come": "",
+      "conTag": {
+        "it": "[wistfully] Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. [panicked] Tornate presto."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.14": {
+      "emozione": "misterioso",
+      "come": "",
+      "conTag": {
+        "it": "[mysteriously] Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.8": {
+      "emozione": "in panico",
+      "come": "",
+      "conTag": {
+        "it": "[panicked] Brand, lascia stare! Torna al Ranger, corri!"
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.9": {
+      "emozione": "deciso",
+      "come": "",
+      "conTag": {
+        "it": "[determined] Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!"
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.5": {
+      "emozione": "triste",
+      "come": "",
+      "conTag": {
+        "it": "[sad] Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.15": {
+      "emozione": "misterioso",
+      "come": "",
+      "conTag": {
+        "it": "[mysteriously] Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. [sleepy] Il dottor Mann dorme da anni… [mysteriously] e nasconde un segreto."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.11": {
+      "emozione": "sollevato",
+      "come": "",
+      "conTag": {
+        "it": "[relieved] Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.12": {
+      "emozione": "da bullo",
+      "come": "",
+      "conTag": {
+        "it": "[mischievously] Il mio pianeta non può ospitare nessuno, Cooper. [nervous] Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.13": {
+      "emozione": "entusiasta",
+      "come": "",
+      "conTag": {
+        "it": "[excited] Si apre… si apre! [proud] Ce l'ho fatta!"
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.10": {
+      "emozione": "preoccupato",
+      "come": "",
+      "conTag": {
+        "it": "[nervous] L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile."
+      }
     }
   }
 }

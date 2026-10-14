@@ -811,6 +811,70 @@
       it: { file: 'storie/cooper/it/storia_interstellar-47.mp3', impronta: '724f5881', firma: '176f8f849a' }
     },
 
+    'demo.narr.storia_interstellar2.1': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-1.mp3', impronta: '69533375', firma: 'c4db676e7d' }
+    },
+
+    'demo.narr.storia_interstellar2.2': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-2.mp3', impronta: '7c82d3cc', firma: 'ab9f1bdde4' }
+    },
+
+    'demo.narr.storia_interstellar2.4': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-4.mp3', impronta: '8e3240ce', firma: 'ef633eb019' }
+    },
+
+    'demo.narr.storia_interstellar2.9': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-9.mp3', impronta: '6b1cbeb4', firma: 'd2195d8dbf' }
+    },
+
+    'demo.narr.storia_interstellar2.12': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-12.mp3', impronta: '6beb5087', firma: '1811e986d4' }
+    },
+
+    'demo.narr.storia_interstellar2.14': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-14.mp3', impronta: '8a74c59b', firma: 'd5295abca9' }
+    },
+
+    'demo.narr.storia_interstellar2.16': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-16.mp3', impronta: 'a7e65a2b', firma: '3553cafa07' }
+    },
+
+    'demo.narr.storia_interstellar2.18': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-18.mp3', impronta: 'a4db28be', firma: '97e00e849b' }
+    },
+
+    'demo.narr.storia_interstellar2.21': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-21.mp3', impronta: 'e87f7754', firma: '89d8e7f76e' }
+    },
+
+    'demo.narr.storia_interstellar2.22': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-22.mp3', impronta: 'bd36aa0e', firma: '785d34065a' }
+    },
+
+    'demo.narr.storia_interstellar2.24': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-24.mp3', impronta: '4a85bf00', firma: '09f0aa6c77' }
+    },
+
+    'demo.narr.storia_interstellar2.30': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-30.mp3', impronta: '7bc38c89', firma: 'cd394efa21' }
+    },
+
+    'demo.narr.storia_interstellar2.31': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-31.mp3', impronta: '5df0e761', firma: '2e8a10ebd0' }
+    },
+
+    'demo.narr.storia_interstellar2.33': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-33.mp3', impronta: '8bfc69f3', firma: '5cf5dfd1e3' }
+    },
+
+    'demo.narr.storia_interstellar2.36': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-36.mp3', impronta: 'a3796cd0', firma: '0acb8c644a' }
+    },
+
+    'demo.narr.storia_interstellar2.38': {
+      it: { file: 'storie/cooper/it/storia_interstellar2-38.mp3', impronta: '429265e4', firma: '47af13e35e' }
+    },
+
     // Romilly — storie/romilly/
     'demo.narr.storia_interstellar.2': {
       it: { file: 'storie/romilly/it/storia_interstellar-2.mp3', impronta: '7b7034bf', firma: '4656f24467' }
@@ -826,6 +890,26 @@
 
     'demo.narr.storia_interstellar.25': {
       it: { file: 'storie/romilly/it/storia_interstellar-25.mp3', impronta: '68409eef', firma: '1d8c773493' }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.1': {
+      it: { file: 'storie/romilly/it/studio_interstellar_1_oltre_gargantua-1.mp3', impronta: '7b7034bf', firma: 'e3eaa0755d', testo: "Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!" }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.2': {
+      it: { file: 'storie/romilly/it/studio_interstellar_1_oltre_gargantua-2.mp3', impronta: 'bd46ab41', firma: '40009d6b4f', testo: "Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. Ecco cos'è un wormhole: una scorciatoia." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.3': {
+      it: { file: 'storie/romilly/it/studio_interstellar_1_oltre_gargantua-3.mp3', impronta: '873e2cfd', firma: '004962f05c', testo: "Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.4': {
+      it: { file: 'storie/romilly/it/studio_interstellar_1_oltre_gargantua-4.mp3', impronta: '3ebf2c65', firma: 'ce1ebaf96e', testo: "Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. Tornate presto." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.5': {
+      it: { file: 'storie/romilly/it/studio_interstellar_1_oltre_gargantua-5.mp3', impronta: '68409eef', firma: 'ef0f5ebb53', testo: "Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato." }
     },
 
     // Amelia Brand — storie/amelia-brand/
@@ -865,6 +949,10 @@
       it: { file: 'storie/amelia-brand/it/storia_interstellar-45.mp3', impronta: 'fca4228c', firma: '89bc6072a1' }
     },
 
+    'demo.narr.storia_interstellar2.42': {
+      it: { file: 'storie/amelia-brand/it/storia_interstellar2-42.mp3', impronta: 'a67fd0ca', firma: '7b08243f5f' }
+    },
+
     // TARS — storie/tars/
     'demo.narr.storia_interstellar.5': {
       it: { file: 'storie/tars/it/storia_interstellar-5.mp3', impronta: 'eddd2d91', firma: '060c289f52' }
@@ -882,6 +970,46 @@
       it: { file: 'storie/tars/it/storia_interstellar-44.mp3', impronta: '04829db5', firma: '7a52e040b0' }
     },
 
+    'demo.narr.storia_interstellar2.3': {
+      it: { file: 'storie/tars/it/storia_interstellar2-3.mp3', impronta: 'befb4740', firma: '243c9bb9dd' }
+    },
+
+    'demo.narr.storia_interstellar2.5': {
+      it: { file: 'storie/tars/it/storia_interstellar2-5.mp3', impronta: '84c498c7', firma: '90e7ab81f5' }
+    },
+
+    'demo.narr.storia_interstellar2.17': {
+      it: { file: 'storie/tars/it/storia_interstellar2-17.mp3', impronta: '2fee89cb', firma: '6074f9bfda' }
+    },
+
+    'demo.narr.storia_interstellar2.19': {
+      it: { file: 'storie/tars/it/storia_interstellar2-19.mp3', impronta: '3f179f28', firma: '5d0a713e70' }
+    },
+
+    'demo.narr.storia_interstellar2.20': {
+      it: { file: 'storie/tars/it/storia_interstellar2-20.mp3', impronta: '9b02e4d9', firma: '6c4bf727fb' }
+    },
+
+    'demo.narr.storia_interstellar2.23': {
+      it: { file: 'storie/tars/it/storia_interstellar2-23.mp3', impronta: '5b9cb193', firma: '4de0c4aabf' }
+    },
+
+    'demo.narr.storia_interstellar2.32': {
+      it: { file: 'storie/tars/it/storia_interstellar2-32.mp3', impronta: '16794fc8', firma: '3cae2dab64' }
+    },
+
+    'demo.narr.storia_interstellar2.34': {
+      it: { file: 'storie/tars/it/storia_interstellar2-34.mp3', impronta: 'b29922c0', firma: 'a3a6b71a93' }
+    },
+
+    'demo.narr.storia_interstellar2.35': {
+      it: { file: 'storie/tars/it/storia_interstellar2-35.mp3', impronta: '886ee3f7', firma: '288257b6c0' }
+    },
+
+    'demo.narr.storia_interstellar2.41': {
+      it: { file: 'storie/tars/it/storia_interstellar2-41.mp3', impronta: '0fee1ca9', firma: '59e8aaace5' }
+    },
+
     // Doyle — storie/doyle/
     'demo.narr.storia_interstellar.8': {
       it: { file: 'storie/doyle/it/storia_interstellar-8.mp3', impronta: '406f0d1d', firma: '1c4bbaa957' }
@@ -891,9 +1019,25 @@
       it: { file: 'storie/doyle/it/storia_interstellar-22.mp3', impronta: '208d630f', firma: '2e3cdef6cc' }
     },
 
+    'studio.studio_interstellar_1_oltre_gargantua.6': {
+      it: { file: 'storie/doyle/it/studio_interstellar_1_oltre_gargantua-6.mp3', impronta: '406f0d1d', firma: '9c76c62f3c', testo: "Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!" }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.7': {
+      it: { file: 'storie/doyle/it/studio_interstellar_1_oltre_gargantua-7.mp3', impronta: '1f75f243', firma: '7f91218a73', testo: "Così vicino? E perché il pianeta non ci cade dentro?" }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.8': {
+      it: { file: 'storie/doyle/it/studio_interstellar_1_oltre_gargantua-8.mp3', impronta: '208d630f', firma: '3f28d8d1c0', testo: "Brand, lascia stare! Torna al Ranger, corri!" }
+    },
+
     // Pianeta di Miller — storie/pianeta-di-miller/
     'demo.narr.storia_interstellar.17': {
       it: { file: 'storie/pianeta-di-miller/it/storia_interstellar-17.mp3', impronta: '486c5e18', firma: 'a1f9cc8353' }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.14': {
+      it: { file: 'storie/pianeta-di-miller/it/studio_interstellar_1_oltre_gargantua-14.mp3', impronta: '486c5e18', firma: '84e0de8435', testo: "Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne." }
     },
 
     // CASE — storie/case/
@@ -905,14 +1049,42 @@
       it: { file: 'storie/case/it/storia_interstellar-36.mp3', impronta: 'e6ebb76e', firma: '49e1b6829b' }
     },
 
+    'studio.studio_interstellar_1_oltre_gargantua.9': {
+      it: { file: 'storie/case/it/studio_interstellar_1_oltre_gargantua-9.mp3', impronta: 'eae828aa', firma: '5744676f8c', testo: "Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!" }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.10': {
+      it: { file: 'storie/case/it/studio_interstellar_1_oltre_gargantua-10.mp3', impronta: 'e6ebb76e', firma: '0392982438', testo: "L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile." }
+    },
+
     // Murph — storie/murph/
     'demo.narr.storia_interstellar.27': {
       it: { file: 'storie/murph/it/storia_interstellar-27.mp3', impronta: '664fb937', firma: 'f1f7f508ec' }
     },
 
+    'demo.narr.storia_interstellar2.25': {
+      it: { file: 'storie/murph/it/storia_interstellar2-25.mp3', impronta: '1007c60d', firma: '3186f2a853' }
+    },
+
+    'demo.narr.storia_interstellar2.26': {
+      it: { file: 'storie/murph/it/storia_interstellar2-26.mp3', impronta: '03be1f01', firma: 'bc38e5c85c' }
+    },
+
+    'demo.narr.storia_interstellar2.27': {
+      it: { file: 'storie/murph/it/storia_interstellar2-27.mp3', impronta: '50769ee6', firma: '9bc82d0dde' }
+    },
+
+    'demo.narr.storia_interstellar2.28': {
+      it: { file: 'storie/murph/it/storia_interstellar2-28.mp3', impronta: '144e4c06', firma: '2e4fe37dff' }
+    },
+
     // Pianeta di Mann — storie/pianeta-di-mann/
     'demo.narr.storia_interstellar.31': {
       it: { file: 'storie/pianeta-di-mann/it/storia_interstellar-31.mp3', impronta: 'bb3bd17c', firma: '5950327b06' }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.15': {
+      it: { file: 'storie/pianeta-di-mann/it/studio_interstellar_1_oltre_gargantua-15.mp3', impronta: 'bb3bd17c', firma: 'db47ce3033', testo: "Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. Il dottor Mann dorme da anni… e nasconde un segreto." }
     },
 
     // Dottor Mann — storie/dottor-mann/
@@ -926,6 +1098,69 @@
 
     'demo.narr.storia_interstellar.35': {
       it: { file: 'storie/dottor-mann/it/storia_interstellar-35.mp3', impronta: '6149c9ed', firma: '57bf0e3029' }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.11': {
+      it: { file: 'storie/dottor-mann/it/studio_interstellar_1_oltre_gargantua-11.mp3', impronta: 'be0cabb1', firma: '5dfdd5a6dc', testo: "Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.12': {
+      it: { file: 'storie/dottor-mann/it/studio_interstellar_1_oltre_gargantua-12.mp3', impronta: 'f96072eb', firma: 'c0bfb75857', testo: "Il mio pianeta non può ospitare nessuno, Cooper. Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.13': {
+      it: { file: 'storie/dottor-mann/it/studio_interstellar_1_oltre_gargantua-13.mp3', impronta: '6149c9ed', firma: '0ab5f4d244', testo: "Si apre… si apre! Ce l'ho fatta!" }
+    },
+
+    // Loro — storie/loro/
+    'demo.narr.storia_interstellar2.6': {
+      it: { file: 'storie/loro/it/storia_interstellar2-6.mp3', impronta: '9394efa4', firma: '79232a1942' }
+    },
+
+    'demo.narr.storia_interstellar2.7': {
+      it: { file: 'storie/loro/it/storia_interstellar2-7.mp3', impronta: 'ca952048', firma: 'b509033f45' }
+    },
+
+    'demo.narr.storia_interstellar2.8': {
+      it: { file: 'storie/loro/it/storia_interstellar2-8.mp3', impronta: '35332a6d', firma: 'fa5d978ba9' }
+    },
+
+    'demo.narr.storia_interstellar2.10': {
+      it: { file: 'storie/loro/it/storia_interstellar2-10.mp3', impronta: '85f23f70', firma: 'c4ee8411ef' }
+    },
+
+    'demo.narr.storia_interstellar2.11': {
+      it: { file: 'storie/loro/it/storia_interstellar2-11.mp3', impronta: '9ad5cc90', firma: '962986acc2' }
+    },
+
+    'demo.narr.storia_interstellar2.13': {
+      it: { file: 'storie/loro/it/storia_interstellar2-13.mp3', impronta: '71c3f2a0', firma: '0ed3522be9' }
+    },
+
+    'demo.narr.storia_interstellar2.29': {
+      it: { file: 'storie/loro/it/storia_interstellar2-29.mp3', impronta: 'cf541dbc', firma: '3c9cb9fdac' }
+    },
+
+    'demo.narr.storia_interstellar2.43': {
+      it: { file: 'storie/loro/it/storia_interstellar2-43.mp3', impronta: 'fd226e86', firma: 'c93b4c9add' }
+    },
+
+    // Murph bambina — storie/murph-bambina/
+    'demo.narr.storia_interstellar2.15': {
+      it: { file: 'storie/murph-bambina/it/storia_interstellar2-15.mp3', impronta: 'db4afb9f', firma: '8ffe7682ec' }
+    },
+
+    // Murph anziana — storie/murph-anziana/
+    'demo.narr.storia_interstellar2.37': {
+      it: { file: 'storie/murph-anziana/it/storia_interstellar2-37.mp3', impronta: '91c7f32e', firma: '7ba2b05b2f' }
+    },
+
+    'demo.narr.storia_interstellar2.39': {
+      it: { file: 'storie/murph-anziana/it/storia_interstellar2-39.mp3', impronta: '45436bea', firma: 'b3d8e60fc7' }
+    },
+
+    'demo.narr.storia_interstellar2.40': {
+      it: { file: 'storie/murph-anziana/it/storia_interstellar2-40.mp3', impronta: '89257cb9', firma: 'f5d507db6a' }
     },
 
     // hubble — storie/hubble/
@@ -945,7 +1180,7 @@
 
     // Sedna — storie/sedna/
     'studio.studio_cosa_e_la_gravita.24': {
-      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-24.mp3', impronta: 'fd80a4be', firma: '064d2342c6', testo: "Ehm, scusa Terra, hai finito?" }
+      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-24.mp3', impronta: 'fd80a4be', firma: '0275efb5cf', testo: "Ehm, scusa Terra, hai finito?" }
     },
 
     // ── FINE STORIE COSMICHE ──
