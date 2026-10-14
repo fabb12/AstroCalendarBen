@@ -297,9 +297,52 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.locator('[data-fai="elMusica"][data-dove="storia"]').click();
       await pagina.waitForSelector('[data-fai="elUsa"][data-dove="storia"]');
       const mu = richieste.filter(x => x.via === '/v1/music').pop();
-      assert.deepEqual(mu.corpo, { prompt: 'arpa e archi, dolce', music_length_ms: 30000 });
+      assert.deepEqual(mu.corpo, { prompt: 'arpa e archi, dolce Dura 30 secondi e si chiude con un finale morbido proprio alla fine.', music_length_ms: 30000 });
       await pagina.locator('[data-fai="elUsa"][data-dove="storia"]').click();
       await pagina.waitForFunction(() => StudioStorie.progetto.musica && StudioStorie.progetto.musica.tipo === 'file');
+    });
+
+    // v489: senza secondi la musica dura quanto il filmato (le scene in cui
+    // suona, più un respiro), e la riga lo dice
+    prova('la musica generata senza secondi dura quanto il filmato', async () => {
+      const attesi = await pagina.evaluate(() => StudioStorie.secondiMusica(StudioStorie.progetto, 'storia'));
+      const totale = await pagina.evaluate(() => StudioStorie.durataTotale(StudioStorie.progetto));
+      assert.ok(attesi >= 10 && attesi === Math.round(totale + 2), `attesi ${attesi}, filmato ${totale}`);
+      const secondi = pagina.locator('input[data-el-musica="storia"][data-el-campo="secondi"]');
+      await secondi.fill('');
+      await pagina.waitForFunction(n => [...document.querySelectorAll('.studio-musica .studio-voce-stato')].some(e => e.textContent.includes(`Durerà ${n} s, quanto il filmato`)), attesi);
+      assert.equal(await secondi.getAttribute('placeholder'), String(attesi));
+      const prima = richieste.filter(x => x.via === '/v1/music').length;
+      await pagina.locator('[data-fai="elMusica"][data-dove="storia"]').first().click();
+      await pagina.waitForSelector('[data-fai="elUsa"][data-dove="storia"]');
+      const mu = richieste.filter(x => x.via === '/v1/music');
+      assert.equal(mu.length, prima + 1);
+      assert.equal(mu.pop().corpo.music_length_ms, attesi * 1000);
+    });
+
+    prova('una musica più lunga di 5 minuti si compone a parti, e gli MP3 si cuciono', async () => {
+      const secondi = pagina.locator('input[data-el-musica="storia"][data-el-campo="secondi"]');
+      await secondi.fill('700');
+      const prima = richieste.filter(x => x.via === '/v1/music').length;
+      await pagina.locator('[data-fai="elMusica"][data-dove="storia"]').first().click();
+      for (let i = 0; i < 300 && (richieste.filter(x => x.via === '/v1/music').length < prima + 3 || await pagina.evaluate(() => !!document.querySelector('.studio-musica [aria-busy="true"]'))); i++)
+        await new Promise(fatto => setTimeout(fatto, 100));
+      const mu = richieste.filter(x => x.via === '/v1/music').slice(prima);
+      assert.deepEqual(mu.map(x => x.corpo.music_length_ms), [233000, 233000, 234000]);
+      assert.match(mu[0].corpo.prompt, /Parte 1 di 3: comincia piano/);
+      assert.match(mu[1].corpo.prompt, /Parte 2 di 3: continua senza stacchi/);
+      assert.match(mu[2].corpo.prompt, /Parte 3 di 3: .*Dura 234 secondi/);
+      // la cucitura: via l'ID3 e il quadro Xing di ogni parte, i quadri restano
+      const cucito = await pagina.evaluate(async () => {
+        const quadro = (riempi, xing) => { const q = new Uint8Array(417).fill(riempi); q.set([0xff, 0xfb, 0x90, 0x00]); if (xing) q.set([88, 105, 110, 103], 36); return q; };
+        const id3 = new Uint8Array([73, 68, 51, 4, 0, 0, 0, 0, 0, 5, 1, 2, 3, 4, 5]);
+        const parte = r => new Blob([id3, quadro(0, true), quadro(r), quadro(r)], { type: 'audio/mpeg' });
+        const b = await StudioStorie.cuciMp3([parte(1), parte(2)]);
+        const x = new Uint8Array(await b.arrayBuffer());
+        return { lungo: x.length, primi: [x[0], x[1], x[4]], meta: x[417 * 2 + 4] };
+      });
+      assert.deepEqual(cucito, { lungo: 417 * 4, primi: [0xff, 0xfb, 1], meta: 2 });
+      await secondi.fill('');
     });
 
     // v445: dove sta una battuta di un personaggio

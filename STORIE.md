@@ -1573,8 +1573,21 @@ Lo Studio parla con le API di ElevenLabs direttamente dal browser (§6c di
   (`storSuonaFile`, suona dal blob locale finché il file non è pubblicato,
   tace con gli effetti sonori spenti, si ferma con lo Stop).
 - **La musica**: sotto la musica della storia e di ogni scena, una
-  descrizione e i secondi (10–300) e «Genera» (`/v1/music`); «Usa questa» la
-  passa a `caricaMusica`.
+  descrizione e i secondi e «Genera» (`/v1/music`); «Usa questa» la
+  passa a `caricaMusica`. Dalla v489 i secondi vuoti (di serie) vogliono
+  dire **quanto il filmato**: `studioSecondiMusica` somma `studioDurata` dei
+  momenti delle scene in cui quella musica suona (per la storia, quelle in
+  `musicaModo: 'storia'`: una musica lasciata riprende da dove era) più
+  `STUDIO_MUSICA_RESPIRO` (2 s), così il filmato finisce prima che la
+  musica ricominci il ciclo. Oltre `STUDIO_MUSICA_PEZZO` (300 s, il massimo
+  di una chiamata) la musica si chiede a parti uguali, ognuna con una frase
+  di regia (apertura, seguito senza stacchi, finale morbido a N secondi),
+  e gli MP3 si cuciono (`cuciMp3`: via l'ID3 e il quadro Xing/Info di ogni
+  parte, a 128 kbit/s costanti il browser misura la durata dalla
+  lunghezza); tetto `STUDIO_MUSICA_LUNGA` (1200 s, sotto i 20 MB di
+  `STUDIO_MUSICA_MAX`). Senza chiave la riga invita a metterla; con un file
+  che dura 5 s più o meno del filmato, sotto la musica un avviso
+  (`studio.musica.piuCorta`/`piuLunga`).
 
 Un lavoro alla volta (`lavoro`): il tasto dice «Genero…» e gli altri
 aspettano. Gli errori (chiave, crediti, piano che non permette le voci della
