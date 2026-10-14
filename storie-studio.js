@@ -380,7 +380,12 @@
             // v445: la voce ElevenLabs con cui è stato generato (per dire quando è da rifare)
             STUDIO_VOCE_ID.test(m.audio.voce || '') ? { voce: m.audio.voce } : {},
             // v449: i tag d'intonazione con cui è stato generato
-            typeof m.audio.tag === 'string' && m.audio.tag.length <= 160 ? { tag: m.audio.tag } : {}) : null,
+            typeof m.audio.tag === 'string' && m.audio.tag.length <= 160 ? { tag: m.audio.tag } : {},
+            // v483: quale file è la voce (SHA del blob git) e la sua estensione,
+            // perché un dispositivo con una voce vecchia non la rimetta sopra
+            // quella nuova e gli altri sappiano quale file scaricare
+            /^[0-9a-f]{40}$/.test(m.audio.sha || '') ? { sha: m.audio.sha } : {},
+            /^(mp3|wav|ogg|oga|opus|m4a|aac|webm)$/.test(m.audio.est || '') ? { est: m.audio.est } : {}) : null,
         azioni: (Array.isArray(m && m.azioni) ? m.azioni : []).slice(0, 30)
           .filter(a => a && STUDIO_TIPI.includes(a.tipo))
           .map(a => studioNuovaAzione(a.tipo, {
@@ -2082,27 +2087,79 @@
   }
   // `sincronizza`: falso quando chi chiama manda tutto insieme alla fine
   // (le battute generate a raffica con ElevenLabs, §6c). Vero se la voce è entrata.
-  async function caricaVoce(dove, file, { sincronizza = true, voce = '', tag } = {}) {
-    const p = studio.progetto, m = leggi(dove);
-    if (!m || !file) return false;
-    if (file.size > STUDIO_AUDIO_MAX) { esito(t('studio.voce.troppoGrande')); return false; }
-    if (!/^audio\//.test(file.type || '') && !STUDIO_ESTENSIONI.test(file.name || '')) { esito(t('studio.voce.nonAudio')); return false; }
+  // L'estensione di un audio: dal nome, se no dal tipo
+  const estDi = (nome, tipo) => (STUDIO_ESTENSIONI.exec(nome || '') || [, /wav/.test(tipo) ? 'wav' : /ogg/.test(tipo) ? 'ogg' : /mp4|m4a|aac/.test(tipo) ? 'm4a' : /webm/.test(tipo) ? 'webm' : 'mp3'])[1].toLowerCase();
+  /* La voce di una battuta `m` di `p`, messa da parte e fatta suonare: la
+   * strada comune del file caricato, del microfono, di ElevenLabs nello
+   * Studio e (v483) delle voci fatte dalla scheda di una CosmoStoria.
+   * Restituisce un errore (la chiave del messaggio) o `''`. v483: l'impronta
+   * del file (SHA del blob git) va nella storia, `m.audio.sha`: è lei a dire
+   * quale file è la voce di quella battuta su tutti i dispositivi. */
+  async function mettiVoce(p, m, file, { voce = '', tag } = {}) {
+    if (file.size > STUDIO_AUDIO_MAX) return 'studio.voce.troppoGrande';
+    if (!/^audio\//.test(file.type || '') && !STUDIO_ESTENSIONI.test(file.name || '')) return 'studio.voce.nonAudio';
     const testo = testoDetto(m);
-    if (!m.chi || !testo) { esito(t('studio.voce.primaIlTesto')); return false; }
+    if (!m.chi || !testo) return 'studio.voce.primaIlTesto';
     const durata = await misuraDurata(file);
-    if (!durata) { esito(t('studio.voce.nonAudio')); return false; }
+    if (!durata) return 'studio.voce.nonAudio';
+    let sha = '';
+    try { sha = await shaBlob(new Uint8Array(await file.arrayBuffer())); } catch (_) { sha = ''; }
     if (!m.voce) {
       const usati = p.scene.flatMap(sc => sc.momenti.map(x => x.voce || 0));
       m.voce = Math.max(p.voceProssima || 1, ...usati.map(n => n + 1));
       p.voceProssima = m.voce + 1;
     }
     const k = chiaveAudio(p.id, m.voce);
-    try { await dbVoci(st => st.put({ blob: file, nome: file.name || '', tipo: file.type || '', durata, testo }, k), 'audio'); }
-    catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return false; }
+    try { await dbVoci(st => st.put({ blob: file, nome: file.name || '', tipo: file.type || '', durata, testo, sha }, k), 'audio'); }
+    catch (e) { const x = new Error(e && e.message || String(e)); x.db = true; throw x; }
     registraVoce(k, testo, URL.createObjectURL(file));
-    m.audio = { durata, impronta: studioImpronta(testoGrezzo(m)), nome: String(file.name || '').slice(0, 80) };
+    m.audio = { durata, impronta: studioImpronta(testoGrezzo(m)), nome: String(file.name || '').slice(0, 80), est: estDi(file.name, file.type || '') };
+    if (sha) m.audio.sha = sha;
     if (STUDIO_VOCE_ID.test(voce || '')) m.audio.voce = voce;
     if (typeof tag === 'string') m.audio.tag = tag.slice(0, 160);
+    return '';
+  }
+  /* v483: le voci fatte dalla scheda di una storia dello Studio messa fra le
+   * CosmoStorie («Voci ElevenLabs», `voci-filmato.js` §8) entrano nelle sue
+   * battute come quelle generate nello Studio: restano con la storia, e con
+   * un token partono sul repository nello stesso giro. Prima restavano nello
+   * scaffale del filmato di questo browser, e gli altri dispositivi non le
+   * sentivano mai. `voci`: [{ chi, testo, blob, voce }]. */
+  async function studioVociDallaScheda(chiaveDemo, voci) {
+    if (!studio.radice && !studio.progetti.length) studio.progetti = studioCaricaTutti();
+    let p = studio.progetti.find(x => x.demoChiave && x.demoChiave === chiaveDemo);
+    if (!p) return { messe: 0, scritto: '' };
+    if (studio.progetto && studio.progetto.id === p.id) p = studio.progetto;
+    const canonico = id => (S().canonico ? S().canonico(id) : id) || id;
+    let messe = 0;
+    for (const v of voci || []) {
+      if (!v || !v.blob || !v.testo) continue;
+      const m = p.scene.flatMap(sc => sc.momenti).find(x => x.chi && canonico(x.chi) === canonico(v.chi) && unaRiga(testoDetto(x)) === unaRiga(v.testo));
+      if (!m) continue;
+      const tipo = v.blob.type || 'audio/mpeg';
+      const nomeFile = 'elevenlabs.' + estDi('', tipo);
+      const file = typeof File === 'function' ? new File([v.blob], nomeFile, { type: tipo }) : Object.assign(v.blob, { name: nomeFile });
+      try { if (!await mettiVoce(p, m, file, { voce: v.voce || '' })) messe++; } catch (_) { /* quella battuta resta com'era */ }
+    }
+    if (!messe) return { messe, scritto: '' };
+    p.aggiornato = studioPiuNuovo(p.aggiornato);
+    studioSalvaTutti(studio.progetti);
+    if (studio.radice) disegna();
+    if (!condivisa(p) || !studioRepoImpostazioni().token) return { messe, scritto: '' };
+    const foto = studioVociCarica();
+    rifaiDemo([p], foto);
+    studioVociSalva(foto);
+    studioSalvaTutti(studio.progetti);
+    return { messe, scritto: await studioSincronizza({ spingi: true, titolo: p.titolo }) };
+  }
+  async function caricaVoce(dove, file, { sincronizza = true, voce = '', tag } = {}) {
+    const p = studio.progetto, m = leggi(dove);
+    if (!m || !file) return false;
+    let errore;
+    try { errore = await mettiVoce(p, m, file, { voce, tag }); }
+    catch (e) { esito(t('studio.voci.errore', { errore: e && e.message || String(e) })); return false; }
+    if (errore) { esito(t(errore)); return false; }
+    const durata = m.audio.durata;
     salvaPresto();
     disegna();
     const caricata = t('studio.voce.caricata', { secondi: secondiDi(durata), durata: studioDurata(m) });
@@ -2247,17 +2304,52 @@
   }
   // Le voci da mettere nel progetto: solo delle storie del file, e solo
   // se il testo della battuta è ancora quello per cui sono state caricate
+  /* v483: `atteso` è il file che la storia dice (`m.audio.sha`). Un
+   * dispositivo con la voce di prima di una battuta (rifatta poi su un
+   * altro) la rimandava sul repository a ogni giro, perché per lui bastava
+   * che il testo fosse lo stesso: la voce nuova spariva, sostituita da
+   * quella vecchia. Adesso parte solo la voce che la storia dice; le altre
+   * restano qui finché non arriva quella giusta (`studioScaricaVoci`). */
   async function vociDaScrivere() {
     const foto = studioVociCarica();
     const tutte = new Map((await tutteLeVoci()).map(x => [x.chiave, x.rec]));
     const fuori = [];
-    for (const f of Object.values(foto)) for (const b of f.battute || []) {
-      const rec = tutte.get(chiaveAudio(f.progetto, b.n));
-      if (!rec || !rec.blob || unaRiga(rec.testo) !== unaRiga(b.testo)) continue;
-      const est = (STUDIO_ESTENSIONI.exec(rec.nome || '') || [, /wav/.test(rec.tipo) ? 'wav' : /ogg/.test(rec.tipo) ? 'ogg' : /mp4|m4a|aac/.test(rec.tipo) ? 'm4a' : /webm/.test(rec.tipo) ? 'webm' : 'mp3'])[1].toLowerCase();
-      fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, base: `${f.chiave}-${b.n}`, nome: `${f.chiave}-${b.n}.${est}`, blob: rec.blob });
+    for (const f of Object.values(foto)) {
+      const p = f && studio.progetti.find(x => x.id === f.progetto);
+      const momenti = new Map(p ? p.scene.flatMap(sc => sc.momenti).filter(m => m.voce > 0).map(m => [m.voce, m]) : []);
+      for (const b of f.battute || []) {
+        const rec = tutte.get(chiaveAudio(f.progetto, b.n));
+        if (!rec || !rec.blob || unaRiga(rec.testo) !== unaRiga(b.testo)) continue;
+        const m = momenti.get(b.n);
+        const est = estDi(rec.nome, rec.tipo || '');
+        fuori.push({ cartella: cartellaPersonaggio(b.chi), lingua: f.lingua, base: `${f.chiave}-${b.n}`, nome: `${f.chiave}-${b.n}.${est}`, blob: rec.blob,
+          sha: typeof rec.sha === 'string' ? rec.sha : '', atteso: m && m.audio && m.audio.sha || '' });
+      }
     }
     return fuori;
+  }
+  /* v483: le voci delle storie salvate fatte prima che la storia ricordasse
+   * il file (`m.audio` senza `sha`): quella di qui diventa quella della
+   * storia, come prima (si mandava la voce di qui). Si fa solo quando si
+   * scrive, così da quel giro in poi ogni dispositivo sa qual è. */
+  async function timbraVoci() {
+    const tutte = new Map((await tutteLeVoci()).map(x => [x.chiave, x.rec]));
+    let n = 0;
+    for (const p of studio.progetti) {
+      if (!condivisa(p)) continue;
+      for (const sc of p.scene) for (const m of sc.momenti) {
+        if (!m.voce || !m.audio || m.audio.sha) continue;
+        const rec = tutte.get(chiaveAudio(p.id, m.voce));
+        if (!rec || !rec.blob || unaRiga(rec.testo) !== unaRiga(testoDetto(m))) continue;
+        let sha = typeof rec.sha === 'string' ? rec.sha : '';
+        if (!sha) { try { sha = await shaBlob(new Uint8Array(await rec.blob.arrayBuffer())); } catch (_) { continue; } }
+        m.audio.sha = sha;
+        if (!m.audio.est) m.audio.est = estDi(rec.nome, rec.tipo || '');
+        n++;
+      }
+    }
+    if (n) studioSalvaTutti(studio.progetti);
+    return n;
   }
   /* v476: le battute che la storia dice senza voce (tolta con «Togli»): il
    * loro audio sul repository va via, se no dopo il deploy gli altri
@@ -2465,13 +2557,19 @@
       ramo: RAMO_VALIDO.test(salvate.ramo || '') ? salvate.ramo : 'main',
       token: typeof salvate.token === 'string' ? salvate.token.trim() : '',
       // v475: il salvataggio automatico ogni cinque minuti, acceso di serie
-      auto: salvate.auto !== false
+      auto: salvate.auto !== false,
+      // v483: com'è andata la prova del token, e l'ultimo giro
+      verifica: salvate.verifica && typeof salvate.verifica === 'object' ? salvate.verifica : null,
+      ultimo: salvate.ultimo && typeof salvate.ultimo === 'object' ? salvate.ultimo : null
     };
   }
   function studioRepoSalvaImpostazioni(imp) {
     const a = archivio();
-    try { if (a) a.setItem(CHIAVE_REPO, JSON.stringify({ repo: imp.repo, ramo: imp.ramo, token: imp.token || '', auto: imp.auto !== false })); return true; }
-    catch (_) { return false; }
+    try {
+      if (a) a.setItem(CHIAVE_REPO, JSON.stringify({ repo: imp.repo, ramo: imp.ramo, token: imp.token || '', auto: imp.auto !== false,
+        verifica: imp.verifica || null, ultimo: imp.ultimo || null }));
+      return true;
+    } catch (_) { return false; }
   }
   function eliminatiCarica() {
     try {
@@ -2713,8 +2811,15 @@
     if (!r.ok) {
       let dett = '';
       try { dett = (await r.json()).message || ''; } catch (_) { /* senza spiegazione */ }
-      const e = new Error((r.status === 401 ? t('studio.repo.errToken') : r.status === 403 ? t('studio.repo.errPermesso') : '') || ('GitHub ' + r.status + (dett ? ': ' + dett : '')));
+      // v483: i 403 erano tutti «manca il permesso», anche quando erano
+      // finite le richieste dell'ora; e un ramo protetto diceva solo «422»
+      const limite = (r.status === 403 || r.status === 429) && (/rate limit/i.test(dett) || (r.headers && r.headers.get && r.headers.get('x-ratelimit-remaining') === '0'));
+      const e = new Error((r.status === 401 ? t('studio.repo.errToken')
+        : limite ? t('studio.repo.errLimite')
+        : r.status === 403 ? t('studio.repo.errPermesso')
+        : /rule|protected/i.test(dett) ? t('studio.repo.errProtetto', { ramo: imp.ramo }) : '') || ('GitHub ' + r.status + (dett ? ': ' + dett : '')));
       e.stato = r.status;
+      e.dettaglio = dett;
       throw e;
     }
     return accetta === 'application/vnd.github.raw+json' ? r.text() : r.json();
@@ -2725,8 +2830,34 @@
   // La punta del ramo, adesso
   async function testaDelRamo(imp) {
     const ref = await gh(imp, 'GET', '/git/ref/heads/' + percorsoUrl(imp.ramo));
-    if (!ref) throw new Error(t('studio.repo.errRamo', { ramo: imp.ramo }));
+    // v483: un token fine-grained che non vede il repository riceve 404 come
+    // un ramo che non c'è: chi lo leggeva cercava il ramo, non il token
+    if (!ref) throw new Error(imp.token ? t('studio.repo.errNonVisto', { repo: imp.repo, ramo: imp.ramo }) : t('studio.repo.errRamo', { ramo: imp.ramo }));
     return ref.object.sha;
+  }
+
+  /* v483: la prova del token, quando lo si scrive. Prima si salvava e
+   * basta: un token senza il permesso di scrittura, scaduto, o che non vede
+   * questo repository (nei fine-grained si sceglie) se ne accorgeva solo il
+   * primo salvataggio, con un messaggio a metà, e chi guardava sul telefono
+   * non trovava niente. Tre domande: il repository si vede? il ramo c'è?
+   * posso scrivere? L'ultima crea un blob di una riga, che non entra in nessun
+   * commit (GitHub lo butta da sé): è la sola prova vera della scrittura,
+   * perché `permissions` di un token fine-grained dice i diritti della
+   * persona, non quelli del token. */
+  async function studioVerificaToken(imp) {
+    if (!imp.token) return { ok: false, messaggio: t('studio.repo.verifica.senza') };
+    try {
+      const repo = await gh(imp, 'GET', '');
+      if (!repo) return { ok: false, messaggio: t('studio.repo.verifica.nonVisto', { repo: imp.repo }) };
+      const ramo = await gh(imp, 'GET', '/git/ref/heads/' + percorsoUrl(imp.ramo));
+      if (!ramo) return { ok: false, messaggio: t('studio.repo.errRamo', { ramo: imp.ramo }) };
+      try { await gh(imp, 'POST', '/git/blobs', { content: 'AstroCalendario: prova del token\n', encoding: 'utf-8' }); }
+      catch (e) { if (e.stato === 403 || e.stato === 404) return { ok: false, messaggio: t('studio.repo.verifica.soloLettura', { repo: imp.repo }) }; throw e; }
+      return { ok: true, messaggio: t('studio.repo.verifica.ok', { repo: imp.repo, ramo: imp.ramo }) };
+    } catch (e) {
+      return { ok: false, messaggio: e && e.message || String(e) };
+    }
   }
 
   // Il repository, letto: dall'API (fresca), e se non risponde (limite di
@@ -2802,8 +2933,14 @@
     const nuovo = await gh(imp, 'POST', '/git/trees', { base_tree: base.tree.sha, tree: albero });
     const commit = await gh(imp, 'POST', '/git/commits', { message: messaggio, tree: nuovo.sha, parents: [padre] });
     try { await gh(imp, 'PATCH', '/git/refs/heads/' + percorsoUrl(imp.ramo), { sha: commit.sha, force: false }); }
-    catch (e) { if (e.stato === 422 || e.stato === 409) return false; throw e; }
-    return true;
+    catch (e) {
+      // il ramo è andato avanti: si rilegge e si riprova. v483: un 422 per
+      // un'altra ragione (un ramo protetto) non si riprova tre volte per
+      // poi dire «il repository cambiava»: si dice perché
+      if (e.stato === 409 || (e.stato === 422 && !/rule|protected/i.test(e.dettaglio || ''))) return false;
+      throw e;
+    }
+    return commit.sha;
   }
 
   // I file da scrivere: solo quelli che sul repository (al commit `rif`)
@@ -2828,10 +2965,15 @@
     const stessaBattuta = (nome, base) => nome.replace(STUDIO_ESTENSIONI, '') === base && STUDIO_ESTENSIONI.test(nome);
     let peso = 0;
     const daScrivere = await vociDaScrivere();
+    const vecchie = [];
     for (const v of daScrivere) {
       const dir = dirVoce(v), sul = await cartellaVoci(dir) || new Map();
       const byte = new Uint8Array(await v.blob.arrayBuffer());
-      if (sul.get(v.nome) !== await shaBlob(byte)) {
+      const sha = v.sha || await shaBlob(byte);
+      // v483: la storia dice un'altra voce (rifatta su un altro dispositivo):
+      // quella di qui è vecchia, non si manda e non si toglie niente
+      if (v.atteso && v.atteso !== sha) { vecchie.push(v); continue; }
+      if (sul.get(v.nome) !== sha) {
         // v476: il resto con un altro commit dello stesso giro (sotto)
         if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) { fuori.resto = true; break; }
         fuori.push({ percorso: dir + '/' + v.nome, byte });
@@ -2846,6 +2988,43 @@
     for (const v of vociTolte()) {
       const dir = dirVoce(v), sul = conAudio.has(dir + '/' + v.base) ? null : await cartellaVoci(dir);
       if (sul) for (const nome of sul.keys()) if (stessaBattuta(nome, v.base)) fuori.push({ percorso: dir + '/' + nome, togli: true });
+    }
+    fuori.vecchie = vecchie;
+    /* v483: le voci fatte dalla scheda di una CosmoStoria («Voci ElevenLabs»,
+     * `voci-filmato.js` §8) restavano solo in questo browser: dagli altri
+     * dispositivi la storia parlava ancora con la voce di sistema. Adesso
+     * partono con lo stesso giro, nella cartella del personaggio e col nome
+     * del copione (`storia_interstellar-12.mp3`): `voci-storie.js` le mette
+     * nel manifest e dopo la pubblicazione suonano dappertutto. Partono una
+     * volta sola, appena fatte: una voce già mandata non torna sopra una
+     * rifatta poi su un altro dispositivo. */
+    const VF = radice.VociFilmato;
+    fuori.cosmo = [];
+    fuori.cosmoTolte = [];
+    if (VF && typeof VF.vociPerRepository === 'function') {
+      for (const v of await VF.vociPerRepository()) {
+        const m = /^demo\.narr\.([a-z][\w]*)\.(\d+)$/.exec(v.id || '');
+        if (!m || !v.blob || !/^(it|en)$/.test(v.lingua)) continue;
+        const dir = 'audio/narrazione/storie/' + cartellaPersonaggio(v.chi) + '/' + v.lingua, sul = await cartellaVoci(dir);
+        if (!sul) continue;                  // la cartella non si legge: al prossimo giro
+        const est = estDi('', v.blob.type || 'audio/mpeg'), base = m[1] + '-' + m[2], nome = base + '.' + est;
+        const byte = new Uint8Array(await v.blob.arrayBuffer());
+        const sha = await shaBlob(byte);
+        if (sul.get(nome) !== sha) {
+          if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) { fuori.resto = true; break; }
+          fuori.push({ percorso: dir + '/' + nome, byte });
+        }
+        for (const altro of sul.keys()) if (altro !== nome && stessaBattuta(altro, base)) fuori.push({ percorso: dir + '/' + altro, togli: true });
+        fuori.cosmo.push({ chiave: v.chiave, percorso: dir + '/' + nome, sha });
+      }
+      // «Togli queste voci»: via anche dal repository, ma solo il file
+      // mandato da qui (uno rifatto poi da un altro dispositivo resta)
+      for (const v of typeof VF.tolteDalRepository === 'function' ? VF.tolteDalRepository() : []) {
+        const i = v.percorso.lastIndexOf('/'), sul = await cartellaVoci(v.percorso.slice(0, i));
+        if (!sul) continue;
+        if (sul.get(v.percorso.slice(i + 1)) === v.sha) fuori.push({ percorso: v.percorso, togli: true });
+        fuori.cosmoTolte.push(v.percorso);
+      }
     }
     /* v440: le musiche di sottofondo (§4-ter). Si scrivono quelle caricate
      * qui che sul repository non ci sono uguali, e si tolgono quelle che
@@ -2884,9 +3063,34 @@
    * arriva durante un giro aspetta la fine e ne fa uno suo. */
   let giroInCorso = Promise.resolve();
   function studioSincronizza({ spingi = false, titolo = '' } = {}) {
-    const giro = giroInCorso.then(() => sincronizzaOra(spingi, titolo));
+    const giro = giroInCorso.then(() => giroCompleto(spingi, titolo));
     giroInCorso = giro.catch(() => null);
     return giro;
+  }
+  /* v483: dopo il giro, le voci che le storie dicono e che qui mancano (o
+   * sono quelle di prima) si scaricano dal repository: chi apriva sul
+   * telefono la storia salvata dal computer non le sentiva finché il sito
+   * non era ripubblicato (e il service worker non le aveva prese). E com'è
+   * andata si ricorda, per dirlo in «Impostazioni → Sincronizza». */
+  async function giroCompleto(spingi, titolo) {
+    const r = await sincronizzaOra(spingi, titolo);
+    if (typeof r === 'string') return r;
+    let testo = r.testo;
+    if (r.ok) {
+      let n = 0;
+      try { n = await studioScaricaVoci(studioRepoImpostazioni(), r.rif); } catch (_) { n = 0; }
+      if (n) testo = (testo ? testo + ' ' : '') + t('studio.repo.vociArrivate', { n });
+    }
+    const imp = studioRepoImpostazioni();
+    if (spingi || !r.ok || r.arrivo) {
+      imp.ultimo = { quando: Date.now(), ok: r.ok, testo: unaRiga(testo).slice(0, 400), commit: r.commit || '' };
+      studioRepoSalvaImpostazioni(imp);
+      if (studio.radice && studio.impAperto && studio.impScheda === 'repo') {
+        const el = studio.radice.querySelector('#studio-repo-ultimo');
+        if (el) el.replaceWith(rigaUltimoGiro(imp));
+      }
+    }
+    return testo;
   }
   async function sincronizzaOra(spingi, titolo) {
     if (typeof fetch !== 'function') return '';
@@ -2898,7 +3102,8 @@
     // v476: gli audio oltre i 40 MB di un commit vanno in altri commit dello
     // stesso giro. Prima aspettavano «il prossimo salvataggio», che con la
     // storia già a posto sul repository non partiva più da solo.
-    let scritti = 0, commit = 0;
+    let scritti = 0, commit = 0, ultimoCommit = '';
+    const fatto = (testo, rif, arrivo) => ({ testo, ok: true, rif, arrivo: !!arrivo, commit: ultimoCommit });
     try {
       for (let prova = 0; prova < 3; prova++) {
         // v475: con il token si legge a un commit preciso, che sarà il
@@ -2917,24 +3122,94 @@
         for (const f of u.fusi) fusi.set(f.id, f);
         basiSalva(basiDa(remoto.progetti, basiCarica()));
         const arrivo = (u.arrivati.length || u.tolti.length ? t('studio.repo.arrivate', { n: u.arrivati.length, tolte: u.tolti.length }) + ' ' : '') + fraseFusi([...fusi.values()]);
-        if (!spingi) return arrivo;
-        if (!imp.token) return arrivo + t('studio.repo.senzaToken');
+        if (!spingi) return fatto(arrivo, testa, arrivo);
+        if (!imp.token) return fatto(arrivo + t('studio.repo.senzaToken'), testa, true);
+        // v483: le voci di prima che la storia non sapeva di avere
+        await timbraVoci();
         const storie = studioFileCondivise(studio.progetti, eliminatiCarica());
         const file = await fileDaScrivere(imp, testa, storie);
-        if (!file.length) return arrivo + (scritti ? t('studio.repo.scritto', { file: scritti, repo: imp.repo }) : t('studio.repo.giaAPosto'));
+        const VF = radice.VociFilmato;
+        const segnaCosmo = async () => {
+          if (!VF) return;
+          if (file.cosmo.length && typeof VF.segnaSulRepository === 'function') await VF.segnaSulRepository(file.cosmo);
+          if (file.cosmoTolte.length && typeof VF.dimenticaTolte === 'function') VF.dimenticaTolte(file.cosmoTolte);
+        };
+        if (!file.length) {
+          await segnaCosmo();
+          return fatto(arrivo + (scritti ? t('studio.repo.scritto', { file: scritti, repo: imp.repo }) : t('studio.repo.giaAPosto')), testa, true);
+        }
         const msg = 'Storie dello Studio: ' + (unaRiga(titolo) || 'aggiornamento').slice(0, 72);
-        if (await scriviCommit(imp, file, msg, testa)) {
+        const nuovo = await scriviCommit(imp, file, msg, testa);
+        if (nuovo) {
+          ultimoCommit = typeof nuovo === 'string' ? nuovo : '';
           // Quello che è appena andato sul repository è la nuova base
           basiSalva(basiDa(studioLeggiCondivise(storie).progetti));
+          await segnaCosmo();
           scritti += file.length;
           if (file.resto && ++commit < STUDIO_REPO_COMMIT_MAX) { prova = -1; continue; }
-          return arrivo + t('studio.repo.scritto', { file: scritti, repo: imp.repo });
+          return fatto(arrivo + t('studio.repo.scritto', { file: scritti, repo: imp.repo }), ultimoCommit || testa, true);
         }
       }
-      return t('studio.repo.errOccupato');
+      return { testo: t('studio.repo.errOccupato'), ok: false };
     } catch (e) {
-      return t('studio.repo.errore', { errore: e && e.message || String(e) });
+      return { testo: t('studio.repo.errore', { errore: e && e.message || String(e) }), ok: false };
     }
+  }
+
+  // Il tipo di un audio dalla sua estensione
+  const tipoDiEst = est => ({ mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/mp4', webm: 'audio/webm' })[est] || 'audio/mpeg';
+  // I byte di un file del repository: dall'API col token (fresca), se no
+  // dal file grezzo; `null` se non si trova
+  async function scaricaAudio(imp, percorso, rif) {
+    const prove = [];
+    if (imp.token) prove.push(() => fetch('https://api.github.com/repos/' + imp.repo + '/contents/' + percorsoUrl(percorso) + '?ref=' + encodeURIComponent(rif || imp.ramo), {
+      headers: { Accept: 'application/vnd.github.raw+json', 'X-GitHub-Api-Version': '2022-11-28', Authorization: 'Bearer ' + imp.token }, cache: 'no-store' }));
+    prove.push(() => fetch('https://raw.githubusercontent.com/' + imp.repo + '/' + percorsoUrl(rif || imp.ramo) + '/' + percorsoUrl(percorso) + (rif ? '' : '?t=' + Date.now()), { cache: 'no-store' }));
+    for (const prova of prove) {
+      try { const r = await prova(); if (r && r.ok) return new Uint8Array(await r.arrayBuffer()); } catch (_) { /* la prossima strada */ }
+    }
+    return null;
+  }
+  /* Le voci delle storie salvate che la storia dice (`m.audio.sha`) e che
+   * qui non ci sono, o ci sono in una versione di prima: si prendono dal
+   * repository, si controllano (lo SHA deve tornare) e suonano subito. Una
+   * voce di qui che la storia non dice più smette di suonare: al suo posto,
+   * finché non arriva, quella pubblicata. Al massimo 40 file e 40 MB a giro. */
+  async function studioScaricaVoci(imp, rif) {
+    if (typeof indexedDB === 'undefined') return 0;
+    const tutte = new Map((await tutteLeVoci()).map(x => [x.chiave, x.rec]));
+    const foto = studioVociCarica();
+    let n = 0, peso = 0;
+    for (const f of Object.values(foto)) {
+      const p = f && studio.progetti.find(x => x.id === f.progetto && condivisa(x));
+      if (!p) continue;
+      const momenti = new Map(p.scene.flatMap(sc => sc.momenti).filter(m => m.voce > 0).map(m => [m.voce, m]));
+      for (const b of f.battute || []) {
+        const m = momenti.get(b.n);
+        if (!m || !m.audio || !m.audio.sha || !studioVoceValida(m)) continue;
+        const k = chiaveAudio(p.id, b.n), rec = tutte.get(k);
+        if (rec && rec.blob) {
+          let sha = typeof rec.sha === 'string' ? rec.sha : '';
+          if (!sha) { try { sha = await shaBlob(new Uint8Array(await rec.blob.arrayBuffer())); } catch (_) { sha = ''; } }
+          if (sha === m.audio.sha) continue;
+        }
+        if (n >= 40 || peso > STUDIO_REPO_AUDIO_MAX) return n;
+        const est = m.audio.est || estDi(m.audio.nome, '');
+        const nome = f.chiave + '-' + b.n + '.' + est;
+        const byte = await scaricaAudio(imp, 'audio/narrazione/storie/' + cartellaPersonaggio(b.chi) + '/' + f.lingua + '/' + nome, rif);
+        if (!byte || await shaBlob(byte) !== m.audio.sha) {
+          if (rec && rec.blob) { registraVoce(k, '', ''); await dbVoci(st => st.delete(k), 'audio').catch(() => null); }
+          continue;
+        }
+        const blob = new Blob([byte], { type: tipoDiEst(est) });
+        const testo = testoDetto(m);
+        try { await dbVoci(st => st.put({ blob, nome, tipo: blob.type, durata: m.audio.durata, testo, sha: m.audio.sha }, k), 'audio'); }
+        catch (_) { continue; }
+        registraVoce(k, testo, URL.createObjectURL(blob));
+        n++; peso += byte.length;
+      }
+    }
+    return n;
   }
   // Le storie fuse in un giro, dette a chi guarda
   function fraseFusi(fusi) {
@@ -2964,7 +3239,11 @@
       if (i >= 0) studio.progetti[i] = studio.progetto;
     }
     const daMandare = imp.token ? studioDaMandare(studio.progetti, basiCarica()) : [];
-    if (soloSeCambiate && !daMandare.length) return '';
+    // v483: e le voci fatte dalla scheda di una CosmoStoria non ancora mandate
+    const VF = radice.VociFilmato;
+    let cosmo = 0;
+    if (imp.token && VF && typeof VF.vociInAttesa === 'function') { try { cosmo = await VF.vociInAttesa(); } catch (_) { cosmo = 0; } }
+    if (soloSeCambiate && !daMandare.length && !cosmo) return '';
     autoUltimo = Date.now();
     if (daMandare.length) {
       const foto = studioVociCarica();
@@ -2973,8 +3252,8 @@
       studioSalvaTutti(studio.progetti);
       aggiornaCosmoStorie();
     }
-    const titolo = daMandare.length === 1 ? daMandare[0].titolo : 'salvataggio automatico';
-    const msg = await studioSincronizza({ spingi: daMandare.length > 0, titolo });
+    const titolo = daMandare.length === 1 ? daMandare[0].titolo : cosmo && !daMandare.length ? 'voci delle CosmoStorie' : 'salvataggio automatico';
+    const msg = await studioSincronizza({ spingi: daMandare.length > 0 || cosmo > 0, titolo });
     if (msg && msg.trim() !== t('studio.repo.giaAPosto') && studio.radice) {
       const ora = new Date().toLocaleTimeString(linguaStudio() === 'en' ? 'en-GB' : 'it-IT', { hour: '2-digit', minute: '2-digit' });
       esito(t('studio.repo.auto', { ora }) + ' ' + msg);
@@ -4738,6 +5017,18 @@
     return pezzi.join(' · ');
   }
 
+  // v483: l'ultimo giro col repository, in una riga
+  function rigaUltimoGiro(imp) {
+    const u = imp && imp.ultimo;
+    if (!u || !u.quando) return h('p', { id: 'studio-repo-ultimo', class: 'demo-opzioni-nota', hidden: true });
+    let quando = '';
+    try {
+      quando = new Date(u.quando).toLocaleString(linguaStudio() === 'en' ? 'en-GB' : 'it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch (_) { quando = ''; }
+    return h('p', { id: 'studio-repo-ultimo', class: 'demo-opzioni-nota studio-repo-ultimo' + (u.ok ? ' ok' : ' errore'), role: 'status' },
+      t(u.ok ? 'studio.repo.ultimoOk' : 'studio.repo.ultimoErrore', { quando, testo: u.testo || '' }) +
+      (u.commit ? ' ' + t('studio.repo.ultimoCommit', { commit: String(u.commit).slice(0, 7) }) : ''));
+  }
   // Le impostazioni del repository (§6b): dove, quale ramo, il token
   function pannelloRepo() {
     const imp = studioRepoImpostazioni();
@@ -4790,7 +5081,7 @@
     const scheda = STUDIO_SCHEDE_IMP.includes(studio.impScheda) ? studio.impScheda : 'storia';
     const stato = {
       storia: unaRiga(p.titolo) || t('studio.senzaTitolo'),
-      repo: repo.token ? t('studio.imp.repoScrive') : t('studio.imp.repoLegge'),
+      repo: repo.token && !(repo.verifica && repo.verifica.ok === false) ? t('studio.imp.repoScrive') : t('studio.imp.repoLegge'),
       el: el.chiave ? t('studio.imp.elCollegato') : t('studio.imp.elDaCollegare'),
       yt: ytPronto() && radice.ytImpostazioni().collegato ? t('studio.imp.elCollegato') : t('studio.imp.elDaCollegare')
     };
@@ -4812,9 +5103,12 @@
           voceImp(h('button', { type: 'button', class: 'tasto-cielo studio-pericolo', dataset: { fai: 'elimina' } }, t('studio.elimina')), t('studio.imp.eliminaAiuto'))));
     } else if (scheda === 'repo') {
       corpo.append(
-        h('p', { class: 'studio-imp-stato' + (repo.token ? ' ok' : '') }, repo.token
-          ? t('studio.imp.repoStatoScrive', { repo: repo.repo, ramo: repo.ramo })
+        h('p', { class: 'studio-imp-stato' + (repo.token && !(repo.verifica && repo.verifica.ok === false) ? ' ok' : '') }, repo.token
+          ? (repo.verifica && repo.verifica.ok === false ? repo.verifica.testo : t('studio.imp.repoStatoScrive', { repo: repo.repo, ramo: repo.ramo }))
           : t('studio.imp.repoStatoLegge', { repo: repo.repo, ramo: repo.ramo })),
+        // v483: com'è andato l'ultimo giro, perché chi non vede la storia
+        // sull'altro dispositivo sappia da dove cominciare
+        rigaUltimoGiro(repo),
         voceImp(h('button', { type: 'button', class: 'tasto-cielo studio-imp-principale', dataset: { fai: 'sincronizza' } }, t('studio.repo.sincronizza')),
           repo.token ? t('studio.imp.sincronizzaAiuto') : t('studio.imp.sincronizzaSoloLegge')),
         // v475: il salvataggio automatico ogni cinque minuti (§6b)
@@ -5353,11 +5647,30 @@
         const imp = { repo: val('studio-repo-nome'), ramo: val('studio-repo-ramo') || 'main', token: nomeOp === 'repoDimentica' ? '' : val('studio-repo-token'),
           auto: studioRepoImpostazioni().auto };
         if (!REPO_VALIDO.test(imp.repo) || !RAMO_VALIDO.test(imp.ramo)) { esito(t('studio.repo.errNome')); return; }
+        // v483: un token incollato con lo spazio o l'«a capo» del telefono
+        imp.token = imp.token.replace(/\s+/g, '');
+        imp.verifica = null;
         if (!studioRepoSalvaImpostazioni(imp)) { esito(t('studio.repo.errore', { errore: 'localStorage' })); return; }
         disegna();
         if (nomeOp === 'repoDimentica') { esito(t('studio.repo.dimenticato')); return; }
-        esito(t('studio.repo.inCorso'));
-        studioSincronizza({ spingi: !!imp.token, titolo: '' }).then(msg => esito(msg || t('studio.repo.giaAPosto')));
+        // v483: prima la prova del token (si vede il repository? posso
+        // scrivere?), poi, se va, il giro che manda tutto quello che c'è
+        esito(imp.token ? t('studio.repo.verifica.inCorso') : t('studio.repo.inCorso'));
+        (async () => {
+          if (imp.token) {
+            const v = await studioVerificaToken(imp);
+            const ora = studioRepoImpostazioni();
+            ora.verifica = { quando: Date.now(), ok: v.ok, testo: v.messaggio };
+            studioRepoSalvaImpostazioni(ora);
+            disegna();
+            if (!v.ok) { esito(v.messaggio); return; }
+            esito(v.messaggio + ' ' + t('studio.repo.inCorso'));
+            const msg = await studioSincronizza({ spingi: true, titolo: '' });
+            esito(v.messaggio + ' ' + (msg || t('studio.repo.giaAPosto')));
+            return;
+          }
+          esito(await studioSincronizza({ spingi: false, titolo: '' }) || t('studio.repo.giaAPosto'));
+        })();
         return;
       }
       case 'repoAuto': {
@@ -5853,7 +6166,10 @@
     testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
-    caricaSuono, caricaVoce, togliVoce, STUDIO_REPO_AUDIO_MAX, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag, primaFrase: studioPrimaFrase,
+    caricaSuono, caricaVoce, togliVoce, STUDIO_REPO_AUDIO_MAX,
+    // v483: le voci fatte dalla scheda, la prova del token, le voci scaricate
+    vociDallaScheda: studioVociDallaScheda, verificaToken: studioVerificaToken, scaricaVoci: studioScaricaVoci,
+    repoImpostazioni: studioRepoImpostazioni, ELEVEN_TAG_UMORE, CHIAVE_ELEVEN, STUDIO_TAG_FRASE, senzaTag: studioSenzaTag, primaFrase: studioPrimaFrase,
     // v471: la regia delle emozioni e «Genera tutte le battute»
     regia: studioRegiaBattuta, frasi: studioFrasi, battuteDa: studioBattuteDa, statoVoce: studioStatoVoce, facciaScelta: studioFacciaScelta,
     STUDIO_REGIA_VOCE, STUDIO_REGIA_MAX,

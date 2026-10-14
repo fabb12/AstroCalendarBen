@@ -930,6 +930,7 @@ async function vfilmGeneraStoria(lavoro, aggiorna, soloChi) {
   const regia = await vfilmLeggiRegia();
   const battute = lavoro.battute.filter(b => !soloChi || b.chi === soloChi);
   const errori = [];
+  lavoro.fatte = [];
   let fatte = 0, spesi = 0;
   for (let i = 0; i < battute.length; i++) {
     if (lavoro.fermato) break;
@@ -947,7 +948,10 @@ async function vfilmGeneraStoria(lavoro, aggiorna, soloChi) {
         rec = { blob, voce: voce.id, testo: b.testo, motore: 'eleven', inviato };
         spesi += inviato.length;
       }
-      await vfilmScrivi(k, Object.assign({}, rec, { sempre: true, storia: lavoro.chiave, lingua: lavoro.lingua }));
+      // v483: con la battuta (`id`, `chi`) la voce sa dove andare sul
+      // repository; una voce rifatta (un blob nuovo) è di nuovo da mandare
+      await vfilmScrivi(k, Object.assign({}, rec, { sempre: true, storia: lavoro.chiave, lingua: lavoro.lingua, id: b.id || '', chi: b.chi || '' }));
+      lavoro.fatte.push({ chi: b.chi, testo: b.testo, blob: rec.blob, voce: voce.id });
       lavoro.voci.set(b.testo, rec.blob);
       fatte++;
     } catch (e) {
@@ -969,10 +973,69 @@ async function vfilmCaricaVociStorie() {
   for (const r of rec) { const u = URL.createObjectURL(r.blob); vfilmUrlStorie.push(u); mappa[r.testo] = u; }
   return narrazione.vociStorie(mappa);
 }
+/* v483: le voci delle CosmoStorie sul repository. Prima restavano solo in
+ * questo browser, e dagli altri dispositivi la storia parlava con la voce di
+ * sistema. Lo Studio le manda col suo giro (`storie-studio.js` §6b): qui si
+ * dice quali sono da mandare (fatte, con una battuta del copione, non ancora
+ * mandate), si segnano quelle mandate e si ricordano quelle tolte, perché
+ * vadano via anche dal repository. */
+const VFILM_CHIAVE_TOLTE = 'astrocal_voci_cosmo_tolte_v1';
+async function vfilmTutteSempre() {
+  const fuori = [];
+  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { if (x.value && x.value.sempre) fuori.push({ chiave: x.key, rec: x.value }); x.continue(); } }; }).catch(() => null);
+  return fuori;
+}
+const vfilmPerRepo = rec => !!(rec && rec.blob && rec.sempre && /^demo\.narr\.[a-z][\w]*\.\d+$/.test(rec.id || '') && rec.chi && !rec.suRepo);
+async function vfilmVociPerRepository() {
+  return (await vfilmTutteSempre()).filter(x => vfilmPerRepo(x.rec))
+    .map(x => ({ chiave: x.chiave, id: x.rec.id, chi: x.rec.chi, lingua: x.rec.lingua, blob: x.rec.blob, storia: x.rec.storia }));
+}
+async function vfilmVociInAttesa() { return (await vfilmTutteSempre()).filter(x => vfilmPerRepo(x.rec)).length + vfilmTolte().length; }
+/* Dopo «Voci ElevenLabs»: le voci partono subito verso il repository, se
+ * c'è il token. Una storia dello Studio le prende fra le sue battute (e le
+ * manda col suo giro); una CosmoStoria pronta le manda nelle cartelle dei
+ * personaggi. Senza token restano qui, e la finestra lo dice. */
+async function vfilmSalvaSulRepository(lavoro, st) {
+  const St = window.StudioStorie;
+  if (!St || typeof St.sincronizza !== 'function') return { stato: 'senza' };
+  const imp = typeof St.repoImpostazioni === 'function' ? St.repoImpostazioni() : null;
+  // (le storie dello Studio messe fra le CosmoStorie hanno il loro progetto)
+  if (st && st.progetto) {
+    if (typeof St.vociDallaScheda !== 'function') return { stato: 'senza' };
+    const r = await St.vociDallaScheda(st.chiave, lavoro.fatte || []);
+    if (!imp || !imp.token) return { stato: 'senzaToken' };
+    return { stato: 'fatto', testo: r.scritto || '' };
+  }
+  if (!imp || !imp.token) return { stato: 'senzaToken' };
+  const titolo = typeof astroI18n === 'object' && astroI18n.esiste && astroI18n.esiste('demo.builtin.' + lavoro.chiave + '.title')
+    ? astroI18n.t('demo.builtin.' + lavoro.chiave + '.title') : lavoro.chiave;
+  return { stato: 'fatto', testo: await St.sincronizza({ spingi: true, titolo: 'voci di ' + titolo }), pronta: true };
+}
+// `fatte`: [{ chiave, percorso, sha }], appena scritte (o già uguali) sul repository
+async function vfilmSegnaSulRepository(fatte) {
+  for (const f of fatte || []) {
+    const rec = await vfilmLeggi(f.chiave);
+    if (!rec || !rec.blob) continue;
+    await vfilmDb(st => st.put(Object.assign({}, rec, { suRepo: { percorso: f.percorso, sha: f.sha } }), f.chiave), 'readwrite').catch(() => null);
+  }
+}
+function vfilmTolte() {
+  try { const d = JSON.parse((vfilmArchivio() && vfilmArchivio().getItem(VFILM_CHIAVE_TOLTE)) || '[]'); return Array.isArray(d) ? d.filter(x => x && typeof x.percorso === 'string' && /^[0-9a-f]{40}$/.test(x.sha || '')) : []; }
+  catch (_) { return []; }
+}
+function vfilmSalvaTolte(elenco) {
+  try { const a = vfilmArchivio(); if (a) a.setItem(VFILM_CHIAVE_TOLTE, JSON.stringify(elenco.slice(-500))); } catch (_) { /* al prossimo «Togli» */ }
+}
+function vfilmDimenticaTolte(percorsi) {
+  const via = new Set(percorsi || []);
+  vfilmSalvaTolte(vfilmTolte().filter(x => !via.has(x.percorso)));
+}
 // «Togli queste voci»: la storia torna alle voci di prima
 async function vfilmTogliVociStoria(chiave) {
   const via = [];
-  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { if (x.value && x.value.sempre && x.value.storia === chiave) via.push(x.key); x.continue(); } }; }).catch(() => null);
+  const tolte = vfilmTolte();
+  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { if (x.value && x.value.sempre && x.value.storia === chiave) { via.push(x.key); if (x.value.suRepo) tolte.push(x.value.suRepo); } x.continue(); } }; }).catch(() => null);
+  vfilmSalvaTolte(tolte);
   if (via.length) await vfilmDb(st => { for (const k of via) st.delete(k); }, 'readwrite').catch(() => null);
   await vfilmCaricaVociStorie();
   return via.length;
@@ -1021,7 +1084,27 @@ async function vfilmAvviaStoria(soloChi) {
   } catch (e) { f.errore = e && e.message || String(e); }
   if (vcast.finestra !== f) return;
   f.stato = 'pronta';
+  // v483: e subito sul repository, perché si sentano dagli altri dispositivi
+  f.repo = f.lavoro.fatte && f.lavoro.fatte.length ? { stato: 'invio' } : f.repo || null;
   vfilmDisegnaStoria();
+  if (!f.repo || f.repo.stato !== 'invio') return;
+  try { f.repo = await vfilmSalvaSulRepository(f.lavoro, f.st); }
+  catch (e) { f.repo = { stato: 'fatto', testo: e && e.message || String(e) }; }
+  if (vcast.finestra === f && f.stato === 'pronta') vfilmDisegnaStoria();
+}
+// La riga del repository sotto l'esito, con il tasto per collegarlo
+function vfilmRigaRepo(f) {
+  const r = f.repo;
+  if (!r || r.stato === 'senza') return null;
+  if (r.stato === 'invio') return vfilmEl('p', { class: 'yt-messaggio vcast-repo', role: 'status' }, vfilmT('storia.repoInCorso'));
+  if (r.stato === 'senzaToken') return vfilmEl('div', { class: 'vcast-repo' },
+    vfilmEl('p', { class: 'yt-messaggio', role: 'status' }, vfilmT('storia.repoSenzaToken')),
+    vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'collega' }, onclick: () => {
+      vfilmChiudiStoria();
+      const St = window.StudioStorie;
+      if (St && typeof St.apriImpostazioni === 'function') St.apriImpostazioni('repo');
+    } }, vfilmT('storia.repoCollega')));
+  return vfilmEl('p', { class: 'yt-messaggio vcast-repo', role: 'status' }, (r.testo || '') + (r.pronta ? ' ' + vfilmT('storia.repoDopo') : ''));
 }
 function vfilmChiudiStoria() {
   const f = vcast.finestra;
@@ -1101,6 +1184,8 @@ function vfilmDisegnaStoria() {
       const mancano = Math.max(0, battute.length - e.fatte);
       if (f.esito) corpo.append(vfilmEl('p', { class: 'yt-messaggio' + (mancano ? '' : ' ok'), role: 'status' },
         mancano ? vfilmT('storia.parziale', { pronte: e.fatte, mancano }) : vfilmT('storia.pronte', { n: e.fatte, caratteri: e.spesi })));
+      const rigaRepo = vfilmRigaRepo(f);
+      if (rigaRepo) corpo.append(rigaRepo);
       const errore = f.errore || (e.errori.length ? e.errori[0].messaggio : '');
       if (errore) corpo.append(vfilmEl('p', { class: 'yt-messaggio errore vfilm-errore' }, errore));
       const tasti = vfilmEl('div', { class: 'yt-tasti' });
@@ -1112,7 +1197,10 @@ function vfilmDisegnaStoria() {
         } }, vfilmT('storia.guarda')));
       if (mancano || f.errore) tasti.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'riprova' }, onclick: () => vfilmAvviaStoria() }, vfilmT('riprova')));
       tasti.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'togli' }, onclick: async () => {
-        await vfilmTogliVociStoria(f.st.chiave); f.esito = null; f.errore = ''; f.lavoro.voci.clear();
+        await vfilmTogliVociStoria(f.st.chiave); f.esito = null; f.errore = ''; f.repo = null; f.lavoro.voci.clear();
+        // v483: e via anche dal repository, se erano andate là
+        const St = window.StudioStorie;
+        if (St && typeof St.repoImpostazioni === 'function' && St.repoImpostazioni().token && vfilmTolte().length) St.sincronizza({ spingi: true, titolo: 'voci tolte' }).catch(() => null);
         if (vcast.finestra === f) { f.stato = 'pronta'; vfilmDisegnaStoria(); const m = f.el && f.el.querySelector('.yt-file'); if (m) m.textContent = vfilmT('storia.tolte'); }
       } }, vfilmT('storia.togli')));
       tasti.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo', dataset: { vcast: 'chiudi' }, onclick: vfilmChiudiStoria }, vfilmT('storia.chiudi')));
@@ -1153,6 +1241,9 @@ if (typeof window !== 'undefined') {
     genera: vfilmGenera, presta: vfilmPresta, riprendi: vfilmRiprendi, chiave: vfilmChiave, piperPronto: vfilmPiperPronto,
     piperParla: vfilmPiperParla, fonemi: vfilmFonemi, modelloPiper: vfilmModelloPiper, mbPiper: vfilmMbPiper,
     stato: vfilm, VFILM_PIPER_VOCI, VFILM_MODELLI, VFILM_ORT, VFILM_FONEMI, VFILM_DB,
+    // v483: le voci delle CosmoStorie sul repository
+    vociPerRepository: vfilmVociPerRepository, vociInAttesa: vfilmVociInAttesa, segnaSulRepository: vfilmSegnaSulRepository,
+    tolteDalRepository: vfilmTolte, dimenticaTolte: vfilmDimenticaTolte, salvaSulRepository: vfilmSalvaSulRepository, VFILM_CHIAVE_TOLTE,
     // v482: le voci di una CosmoStoria con un tocco (§8–9)
     vociStoria: vfilmVociStoria, casting: vfilmCasting, carattere: vfilmCarattere, votoVoce: vfilmVotoVoce, testoConRegia: vfilmTestoConRegia,
     altraVoce: vfilmAltraVoce, generaStoria: vfilmGeneraStoria, caricaVociStorie: vfilmCaricaVociStorie, togliVociStoria: vfilmTogliVociStoria,

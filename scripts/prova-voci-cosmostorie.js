@@ -17,6 +17,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const path = require('node:path');
 const http = require('node:http');
 let pw;
@@ -74,6 +75,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
 (async () => {
   let browser, passate = 0, fallite = 0;
   const eleven = { tts: [], aggiunte: [], ricerche: 0 };
+  const GH = { repo: 'prova/astro', token: 'segreto', testa: 'c0', n: 0, commit: 0, file: new Map(), blob: new Map(), albero: [] };
   try {
     await new Promise(r => server.listen(0, '127.0.0.1', r));
     const origine = 'http://127.0.0.1:' + server.address().port;
@@ -90,6 +92,38 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       if (url.includes('astronomy.browser.min.js')) return r.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(path.join(radice, 'node_modules/astronomy-engine/astronomy.browser.min.js')) });
       if (url.includes('satellite.min.js')) return r.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(path.join(pacchetto('satellite.js'), 'dist/satellite.min.js')) });
       const u = new URL(url);
+      // v483: un GitHub finto, quanto basta per un commit con le voci
+      if (u.hostname === 'api.github.com' && u.pathname.startsWith('/repos/' + GH.repo)) {
+        if (req.method() === 'OPTIONS') return r.fulfill({ status: 204, headers: Object.assign({}, cors, { 'access-control-allow-methods': 'GET,POST,PATCH,OPTIONS' }) });
+        const json = (o, status = 200) => r.fulfill({ status, headers: cors, contentType: 'application/json', body: JSON.stringify(o) });
+        const via = decodeURIComponent(u.pathname.slice(('/repos/' + GH.repo).length));
+        const corpo = req.postData() ? JSON.parse(req.postData()) : null;
+        if (req.method() !== 'GET' && (req.headers().authorization || '') !== 'Bearer ' + GH.token) return json({ message: 'Bad credentials' }, 401);
+        if (req.method() === 'GET' && via === '') return json({ full_name: GH.repo });
+        if (req.method() === 'GET' && via === '/git/ref/heads/main') return json({ object: { sha: GH.testa } });
+        if (req.method() === 'GET' && via.startsWith('/git/commits/')) return json({ tree: { sha: 't-' + via.slice(13) } });
+        if (req.method() === 'GET' && via.startsWith('/contents/')) {
+          const dove = via.slice('/contents/'.length);
+          if (GH.file.has(dove)) return r.fulfill({ status: 200, headers: cors, body: GH.file.get(dove).buf });
+          const figli = [...GH.file].filter(([p]) => p.startsWith(dove + '/') && !p.slice(dove.length + 1).includes('/'))
+            .map(([p, x]) => ({ type: 'file', name: p.slice(dove.length + 1), path: p, sha: x.sha }));
+          return figli.length ? json(figli) : json({ message: 'Not Found' }, 404);
+        }
+        if (req.method() === 'POST' && via === '/git/blobs') {
+          const buf = Buffer.from(corpo.content, corpo.encoding === 'base64' ? 'base64' : 'utf8');
+          const sha = crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob ' + buf.length + '\0'), buf])).digest('hex');
+          GH.blob.set(sha, buf);
+          return json({ sha }, 201);
+        }
+        if (req.method() === 'POST' && via === '/git/trees') { GH.albero = corpo.tree; return json({ sha: 'albero' }, 201); }
+        if (req.method() === 'POST' && via === '/git/commits') return json({ sha: 'c' + (++GH.n) }, 201);
+        if (req.method() === 'PATCH' && via === '/git/refs/heads/main') {
+          for (const v of GH.albero) { if (v.sha === null) GH.file.delete(v.path); else GH.file.set(v.path, { sha: v.sha, buf: GH.blob.get(v.sha) }); }
+          GH.testa = corpo.sha; GH.commit++;
+          return json({ object: { sha: corpo.sha } });
+        }
+        return json({ message: 'Not Found' }, 404);
+      }
       if (u.hostname === 'api.elevenlabs.io') {
         if (req.method() === 'OPTIONS') return r.fulfill({ status: 204, headers: cors });
         const json = (o, status = 200) => r.fulfill({ status, headers: cors, contentType: 'application/json', body: JSON.stringify(o) });
@@ -180,6 +214,12 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       const prima = eleven.tts.find(r => /Due anni di viaggio/.test(r.testo));
       assert.equal(prima.testo, '[in awe] Due anni di viaggio, ed eccolo: Saturno. [whispers] E lì, accanto agli anelli, c\'è una porta che nessun essere umano ha mai attraversato.');
       assert.ok(eleven.tts.every(r => /^\[/.test(r.testo)), 'tutte con i tag');
+      // v483: senza token restano qui, e la finestra lo dice
+      await pagina.waitForSelector('#vcast-finestra [data-vcast="collega"]');
+      assert.match(await pagina.locator('#vcast-finestra .vcast-repo').textContent(), /restano su questo dispositivo/);
+      const perRepo = await pagina.evaluate(() => VociFilmato.vociPerRepository());
+      assert.equal(perRepo.length, battute.filter(b => /^demo\.narr\.storia_interstellar\.\d+$/.test(b.id)).length, 'ogni battuta sa dove andare');
+      assert.ok(perRepo.every(x => x.chi && x.lingua === 'it'));
     });
 
     prova('la narrazione le suona sempre, anche fuori dal filmato', async () => {
@@ -202,6 +242,30 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.match(await pagina.locator('#vcast-finestra').textContent(), /\(0 caratteri spesi adesso\)/);
     });
 
+    // v483: col token le voci partono subito, una volta sola, nelle cartelle dei personaggi
+    const repoFinito = () => pagina.waitForFunction(() => { const x = document.querySelector('#vcast-finestra .vcast-repo'); return x && !/Salvo le voci/.test(x.textContent); }, null, { timeout: 120000 });
+    prova('col token le voci vanno sul repository, nella cartella di ogni personaggio, e gli altri dispositivi le sentono', async () => {
+      await pagina.click('#vcast-finestra [data-vcast="chiudi"]');
+      await pagina.evaluate(g => localStorage.setItem('astrocal_storie_repo_v1', JSON.stringify({ repo: g.repo, ramo: 'main', token: g.token })), GH);
+      eleven.tts.length = 0;
+      await tasto();
+      await pagina.waitForSelector('#vcast-finestra [data-vcast="guarda"]', { timeout: 120000 });
+      await repoFinito();
+      const testo = await pagina.locator('#vcast-finestra .vcast-repo').textContent();
+      assert.match(testo, /Salvata nel repository prova\/astro/, testo);
+      assert.match(testo, /ripubblicato/);
+      assert.equal(eleven.tts.length, 0, 'nessun credito speso per mandarle');
+      const conId = battute.filter(b => /^demo\.narr\.storia_interstellar\.\d+$/.test(b.id));
+      const voci = [...GH.file.keys()].filter(p => /storia_interstellar-\d+\.wav$/.test(p));
+      assert.equal(voci.length, conId.length, 'una voce per battuta: ' + voci.length);
+      const cooper = conId.find(b => b.chi === 'cooper');
+      assert.ok(GH.file.has('audio/narrazione/storie/cooper/it/' + cooper.id.replace(/^demo\.narr\./, '').replace(/\.(\d+)$/, '-$1') + '.wav'), 'Cooper nella sua cartella');
+      assert.equal(await pagina.evaluate(() => VociFilmato.vociInAttesa()), 0, 'segnate come mandate');
+      const commit = GH.commit;
+      await pagina.evaluate(() => StudioStorie.sincronizza({ spingi: true }));
+      assert.equal(GH.commit, commit, 'non ripartono');
+    });
+
     prova('«Un\'altra voce» cambia voce a un personaggio e rifà solo le sue battute', async () => {
       eleven.tts.length = 0;
       const sue = battute.filter(b => b.chi === 'doyle').length;
@@ -213,6 +277,7 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       const altri = Object.entries(cast).filter(([k]) => k !== 'doyle').map(([, x]) => x.id);
       assert.ok(!altri.includes(cast.doyle.id), 'non ruba la voce di un altro');
       assert.ok(eleven.tts.every(r => r.voce === cast.doyle.id));
+      await repoFinito();
     });
 
     prova('«Togli queste voci»: la storia torna alla voce di prima', async () => {
@@ -221,6 +286,9 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.equal(await pagina.evaluate(() => VociFilmato.vociDellaStoria('storia_interstellar', 'it')), 0);
       const esito = await pagina.evaluate(async testo => { window.__sintesi = []; await narrazione.parla({ canale: 'prova', testo }); return window.__sintesi.length; }, battute[0].testo);
       assert.equal(esito, 1, 'di nuovo la sintesi');
+      // v483: e via anche dal repository
+      await pagina.waitForFunction(() => !JSON.parse(localStorage.getItem('astrocal_voci_cosmo_tolte_v1') || '[]').length, null, { timeout: 60000 });
+      assert.deepEqual([...GH.file.keys()].filter(p => /storia_interstellar-/.test(p)), [], 'le voci tolte restavano sul repository');
       await pagina.click('#vcast-finestra [data-vcast="chiudi"]');
     });
 
