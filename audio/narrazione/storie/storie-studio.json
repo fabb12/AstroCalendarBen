@@ -299,6 +299,328 @@
       "battute": []
     },
     {
+      "chiave": "studio_einstein_e_il_tempo_elastico_2",
+      "titolo": "Einstein e il tempo elastico",
+      "lingua": "it",
+      "battute": [
+        {
+          "n": 27,
+          "chi": "astro_ben",
+          "testo": "Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?",
+          "umore": "excited",
+          "scena": 1,
+          "durata": 27000
+        },
+        {
+          "n": 1,
+          "chi": "einstein",
+          "testo": "È vero, Ben. E non è magia: è geometria. Ma per capirla dobbiamo cambiare idea su due cose che credi immobili: lo spazio e il tempo.",
+          "umore": "playful",
+          "scena": 2,
+          "durata": 14000,
+          "conTag": "[playfully] È vero, Ben. E non è magia: è geometria. [determined] Ma per capirla dobbiamo cambiare idea su due cose che credi immobili: lo spazio e il tempo."
+        },
+        {
+          "n": 2,
+          "chi": "einstein",
+          "testo": "Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo.",
+          "umore": "thinking",
+          "scena": 3,
+          "durata": 18000,
+          "conTag": "[thoughtful] Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo."
+        },
+        {
+          "n": 3,
+          "chi": "einstein",
+          "testo": "Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità.",
+          "umore": "happy",
+          "scena": 4,
+          "durata": 19000,
+          "conTag": "[happy] Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità."
+        },
+        {
+          "n": 29,
+          "chi": "astro_ben",
+          "testo": "Allora la Terra va dritta… ma su una strada curva!",
+          "umore": "excited",
+          "scena": 5,
+          "durata": 7000
+        },
+        {
+          "n": 4,
+          "chi": "einstein",
+          "testo": "Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi.",
+          "umore": "laughing",
+          "scena": 6,
+          "durata": 16000,
+          "conTag": "[laughs] Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi."
+        },
+        {
+          "n": 5,
+          "chi": "einstein",
+          "testo": "La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero.",
+          "umore": "proud",
+          "scena": 7,
+          "durata": 20000,
+          "conTag": "[proud] La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero."
+        },
+        {
+          "n": 21,
+          "chi": "Mercury",
+          "testo": "Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.",
+          "umore": "relieved",
+          "scena": 8,
+          "durata": 13000,
+          "conTag": "[relieved] Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto."
+        },
+        {
+          "n": 6,
+          "chi": "einstein",
+          "testo": "Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato.",
+          "umore": "determined",
+          "scena": 9,
+          "durata": 17000,
+          "conTag": "[determined] Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato."
+        },
+        {
+          "n": 20,
+          "chi": "Sun",
+          "testo": "Io piego la luce delle stelle? Che potere!",
+          "umore": "excited",
+          "scena": 10,
+          "durata": 7000,
+          "conTag": "[excited] Io piego la luce delle stelle? Che potere!"
+        },
+        {
+          "n": 7,
+          "chi": "einstein",
+          "testo": "E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano.",
+          "umore": "mysterious",
+          "scena": 11,
+          "durata": 14000,
+          "conTag": "[mysteriously] E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano."
+        },
+        {
+          "n": 30,
+          "chi": "astro_ben",
+          "testo": "Anche qui, sulla Terra?",
+          "umore": "curious",
+          "scena": 12,
+          "durata": 5000
+        },
+        {
+          "n": 8,
+          "chi": "einstein",
+          "testo": "Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…",
+          "umore": "playful",
+          "scena": 13,
+          "durata": 17000,
+          "conTag": "[playfully] Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…"
+        },
+        {
+          "n": 31,
+          "chi": "astro_ben",
+          "testo": "Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.",
+          "umore": "excited",
+          "scena": 14,
+          "durata": 11000
+        },
+        {
+          "n": 9,
+          "chi": "einstein",
+          "testo": "Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno.",
+          "umore": "proud",
+          "scena": 15,
+          "durata": 17000,
+          "conTag": "[proud] Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno."
+        },
+        {
+          "n": 32,
+          "chi": "astro_ben",
+          "testo": "E Samantha Cristoforetti, lassù sulla Stazione Spaziale?",
+          "umore": "curious",
+          "scena": 16,
+          "durata": 8000
+        },
+        {
+          "n": 22,
+          "chi": "cristoforetti",
+          "testo": "Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!",
+          "umore": "playful",
+          "scena": 17,
+          "durata": 15000,
+          "conTag": "[playfully] Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!"
+        },
+        {
+          "n": 33,
+          "chi": "astro_ben",
+          "testo": "Un centesimo! Non basta neanche per saltare un compleanno…",
+          "umore": "laughing",
+          "scena": 18,
+          "durata": 8000
+        },
+        {
+          "n": 10,
+          "chi": "einstein",
+          "testo": "E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia.",
+          "umore": "mysterious",
+          "scena": 19,
+          "durata": 18000,
+          "conTag": "[mysteriously] E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia."
+        },
+        {
+          "n": 23,
+          "chi": "sgr_a",
+          "testo": "Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio.",
+          "umore": "happy",
+          "scena": 20,
+          "durata": 13000,
+          "conTag": "[happy] Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio."
+        },
+        {
+          "n": 11,
+          "chi": "einstein",
+          "testo": "Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce.",
+          "umore": "thinking",
+          "scena": 21,
+          "durata": 16000,
+          "conTag": "[thoughtful] Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce."
+        },
+        {
+          "n": 34,
+          "chi": "astro_ben",
+          "testo": "E il tempo, lì vicino?",
+          "umore": "curious",
+          "scena": 22,
+          "durata": 5000
+        },
+        {
+          "n": 12,
+          "chi": "einstein",
+          "testo": "Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato.",
+          "umore": "mysterious",
+          "scena": 23,
+          "durata": 19000,
+          "conTag": "[mysteriously] Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato."
+        },
+        {
+          "n": 13,
+          "chi": "einstein",
+          "testo": "Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità.",
+          "umore": "excited",
+          "scena": 24,
+          "durata": 20000,
+          "conTag": "[excited] Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità."
+        },
+        {
+          "n": 25,
+          "chi": "gargantua",
+          "testo": "Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce.",
+          "umore": "playful",
+          "scena": 25,
+          "durata": 11000,
+          "conTag": "[playfully] Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce."
+        },
+        {
+          "n": 14,
+          "chi": "einstein",
+          "testo": "Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui.",
+          "umore": "wistful",
+          "scena": 26,
+          "durata": 17000,
+          "conTag": "[wistfully] Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui."
+        },
+        {
+          "n": 35,
+          "chi": "astro_ben",
+          "testo": "Allora il tempo… è elastico!",
+          "umore": "wonder",
+          "scena": 27,
+          "durata": 6000
+        },
+        {
+          "n": 15,
+          "chi": "einstein",
+          "testo": "Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!",
+          "umore": "laughing",
+          "scena": 28,
+          "durata": 22000,
+          "conTag": "[laughs] Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!"
+        },
+        {
+          "n": 16,
+          "chi": "einstein",
+          "testo": "E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria.",
+          "umore": "proud",
+          "scena": 29,
+          "durata": 18000,
+          "conTag": "[proud] E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria."
+        },
+        {
+          "n": 24,
+          "chi": "sgr_a",
+          "testo": "E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?",
+          "umore": "proud",
+          "scena": 30,
+          "durata": 10000,
+          "conTag": "[proud] E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?"
+        },
+        {
+          "n": 26,
+          "chi": "hawking",
+          "testo": "Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano.",
+          "umore": "playful",
+          "scena": 31,
+          "durata": 16000,
+          "conTag": "[playfully] Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. [whispers] Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano."
+        },
+        {
+          "n": 17,
+          "chi": "einstein",
+          "testo": "Stephen, tu riesci sempre a rendere il mio universo ancora più strano!",
+          "umore": "laughing",
+          "scena": 32,
+          "durata": 9000,
+          "conTag": "[laughs] Stephen, tu riesci sempre a rendere il mio universo ancora più strano!"
+        },
+        {
+          "n": 28,
+          "chi": "astro_ben",
+          "testo": "Allora stanotte, guardando le stelle, guardo una stoffa che si piega!",
+          "umore": "excited",
+          "scena": 33,
+          "durata": 9000,
+          "conTag": "[excited] Allora stanotte, guardando le stelle, guardo una stoffa che si piega!"
+        },
+        {
+          "n": 18,
+          "chi": "einstein",
+          "testo": "Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.",
+          "umore": "tender",
+          "scena": 34,
+          "durata": 9000,
+          "conTag": "[tenderly] Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande."
+        },
+        {
+          "n": 36,
+          "chi": "astro_ben",
+          "testo": "Professore… quanto tempo è passato?",
+          "umore": "curious",
+          "scena": 35,
+          "durata": 6000
+        },
+        {
+          "n": 19,
+          "chi": "einstein",
+          "testo": "Dipende… da dove lo guardi!",
+          "umore": "laughing",
+          "scena": 36,
+          "durata": 8000,
+          "conTag": "[laughs] Dipende… da dove lo guardi!"
+        }
+      ]
+    },
+    {
       "chiave": "studio_interstellar_1_oltre_gargantua",
       "titolo": "Interstellar 1: oltre Gargantua",
       "lingua": "it",
