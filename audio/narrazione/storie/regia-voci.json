@@ -1878,6 +1878,13 @@
       "conTag": {
         "it": "[nervous] E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora."
       }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.28": {
+      "emozione": "speranzoso",
+      "come": "",
+      "conTag": {
+        "it": "[hopeful] Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo."
+      }
     }
   }
 }

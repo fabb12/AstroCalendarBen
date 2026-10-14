@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **134/238** in italiano · **0/177** in inglese.
+Pronte: **135/239** in italiano · **0/177** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -42,7 +42,7 @@ Pronte: **134/238** in italiano · **0/177** in inglese.
 | Doyle | `storie/doyle/` | 6 | 5/6 | 0/3 |
 | Pianeta di Miller | `storie/pianeta-di-miller/` | 2 | 2/2 | 0/1 |
 | CASE | `storie/case/` | 4 | 4/4 | 0/2 |
-| Murph | `storie/murph/` | 6 | 5/6 | 0/6 |
+| Murph | `storie/murph/` | 7 | 6/7 | 0/6 |
 | Pianeta di Mann | `storie/pianeta-di-mann/` | 2 | 1/2 | 0/1 |
 | Dottor Mann | `storie/dottor-mann/` | 6 | 6/6 | 0/3 |
 | Loro | `storie/loro/` | 8 | 8/8 | 0/8 |
@@ -1845,6 +1845,10 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
   - **Emozione:** commossa — con meraviglia, poi la voce rotta dalla gioia
   - **Testo:** Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. Ce l'abbiamo fatta, papà. L'umanità parte!
   - **Da incollare su ElevenLabs v3:** `[in awe] Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. [crying] Ce l'abbiamo fatta, papà. [happy] L'umanità parte!`
+- `studio_interstellar_1_oltre_gargantua-28.mp3` — pronta · 8 s · Studio: Interstellar 1: oltre Gargantua, scena 48 (al massimo 13 s)
+  - **Emozione:** speranzoso — 
+  - **Testo:** Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo.
+  - **Da incollare su ElevenLabs v3:** `[hopeful] Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo.`
 
 ### Inglese — `storie/murph/en/`
 

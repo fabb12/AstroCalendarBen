@@ -1186,6 +1186,10 @@
       it: { file: 'storie/murph/it/storia_interstellar2-28.mp3', impronta: '144e4c06', firma: '2e4fe37dff' }
     },
 
+    'studio.studio_interstellar_1_oltre_gargantua.28': {
+      it: { file: 'storie/murph/it/studio_interstellar_1_oltre_gargantua-28.mp3', impronta: '65dfdc7f', firma: '76bfb033f9', testo: "Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo." }
+    },
+
     // Pianeta di Mann — storie/pianeta-di-mann/
     'demo.narr.storia_interstellar.31': {
       it: { file: 'storie/pianeta-di-mann/it/storia_interstellar-31.mp3', impronta: 'bb3bd17c', firma: '5950327b06' }
