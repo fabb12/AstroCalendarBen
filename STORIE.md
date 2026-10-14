@@ -1596,6 +1596,55 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### La musica che arriva alle CosmoStorie, le musiche generate che restano, personaggi e facce per categorie (v496)
+
+«Quando inserisco un sottofondo musicale, generato o già esistente, non
+viene applicato alle CosmoStorie.» La scheda di una storia dello Studio fra
+le CosmoStorie (anche una storia pronta aperta con «Modifica», che ne prende
+il posto) fa partire il copione **salvato come demo** (`studioUfficiali`,
+`d.testo`), e scegliere una traccia, caricarne o generarne una, toglierla o
+cambiarne il volume cambiava solo il progetto: la demo restava quella di
+prima finché non si premeva «Aggiorna fra le CosmoStorie». Ora
+`musicaNelleCosmoStorie(p)` (da `sceltaMusica`, `caricaMusica`,
+`togliMusica` e dal cursore del volume), per una storia già fra le
+CosmoStorie, riscrive la demo 400 ms dopo l'ultimo cambio e rifà le schede.
+Il file va sul repository come prima, gli altri dispositivi rifanno la demo
+dal progetto (`rifaiDemo`).
+
+**Le musiche generate restano.** Una musica di ElevenLabs viveva come
+proposta e poi nella storia che la usava: sostituita o tolta era persa. Ora
+`generaMusica` la mette subito nella **raccolta** (`conservaGenerata`), in
+un archivio IndexedDB a parte (`astrocal-studio-musiche`, scaffale
+`musiche`: lo scaffale `audio` delle voci ha chiavi `|musica|` che il giro
+sul repository e la pulizia leggono come tracce *delle storie*), con un nome
+dalle prime parole della descrizione, la descrizione, la durata e lo SHA
+(la stessa musica non entra due volte; al più `STUDIO_GENERATE_MAX`, 40, le
+più vecchie se ne vanno). Nel menu della musica della storia e di ogni scena
+compaiono come «Generata: …» (`gen:<id>`), e sceglierne una la carica come un
+file (`usaGenerata` → `caricaMusica`); sotto alla musica della storia,
+«Musiche generate (n)» le elenca con «Ascolta» e ×. Le musiche
+`musica-elevenlabs.mp3` già nelle storie di questo dispositivo ci entrano al
+primo avvio (`riprendiGenerate`). La raccolta sta solo in questo browser.
+
+**Personaggi e facce per categorie.** «Chi racconta» teneva quasi quaranta
+persone; ora il passo 2 ha `STUDIO_GRUPPI_CAST`: chi racconta (Astro Ben,
+Zaira, Sagan), i sapienti antichi, astronomi e scienziati, astronauti e
+pionieri del volo, il Sole e i pianeti, lune e mondi piccoli, stazioni e
+sonde, l'universo, e **Interstellar** (equipaggio, Murph, Loro, TARS e CASE,
+navicelle, Gargantua e i suoi pianeti). L'elenco è
+`STUDIO_CAST_PER_GRUPPO`; un personaggio nuovo non elencato va dove dice la
+sua famiglia (`studioGruppoCast`). Le 32 espressioni stanno in quattro
+famiglie (`STUDIO_FAMIGLIE_FACCE`: allegre, calme e pensose, stupore e
+paura, tristi e arrabbiate; una nuova non elencata va fra le calme,
+`studioFacceInFamiglie`), una riga ciascuna nel pannello delle facce e in
+`<optgroup>` nel menu dell'azione «umore» (`selettore` accetta
+`{ gruppo, opzioni }`).
+
+Prove: `prova-musica-cosmostorie.js` (3, nuova: la traccia scelta arriva alla
+scheda e alla demo salvata; la musica generata resta, una volta sola, si
+sceglie e suona nella CosmoStoria, e c'è ancora dopo il ricaricamento; ogni
+personaggio e ogni espressione in una categoria, nella pagina comprese).
+
 ### Il volume degli effetti sonori (v495)
 
 In Impostazioni delle demo, sotto «CosmoStorie: effetti sonori», un cursore

@@ -2432,6 +2432,7 @@
     if (di.sid) di.tiene.musicaModo = 'propria';
     registraMusica(k, studioPercorsoMusica(p.id, di.sid, mu), URL.createObjectURL(file));
     salvaPresto();
+    musicaNelleCosmoStorie(p);
     disegna();
     const caricata = t('studio.musica.caricata', { nome: mu.nome || est, secondi: secondiDi(durata) });
     esito(caricata);
@@ -2450,7 +2451,138 @@
     dbVoci(st => st.delete(k), 'audio').catch(() => null);
     di.tiene.musica = null;
     if (di.sid) di.tiene.musicaModo = 'storia';
+    musicaNelleCosmoStorie(p);
   }
+  /* v496: la musica di una storia che è già fra le CosmoStorie. La scheda
+   * fa partire il copione **salvato come demo** (`studioUfficiali`), e
+   * scegliere, caricare, generare o togliere la musica cambiava solo il
+   * progetto: chi l'aveva messa guardava la storia dalla sua scheda e non
+   * la sentiva, finché non premeva «Aggiorna fra le CosmoStorie». Ora la
+   * demo si riscrive da sola poco dopo ogni cambio di musica (una sola
+   * volta anche se il cursore del volume scorre), e le schede si rifanno.
+   * Il file va sul repository come prima (`caricaMusica`), e gli altri
+   * dispositivi rifanno la demo dal progetto (`rifaiDemo`). */
+  const musicheDaRiscrivere = new Map();
+  function musicaNelleCosmoStorie(p) {
+    if (!p || !p.ufficiale) return;
+    clearTimeout(musicheDaRiscrivere.get(p.id));
+    musicheDaRiscrivere.set(p.id, setTimeout(() => {
+      musicheDaRiscrivere.delete(p.id);
+      const lib = radice.AstroDemo && radice.AstroDemo.libreria;
+      if (!lib || !p.ufficiale) return;
+      try {
+        const testo = studioCopione(p);
+        let chiave = p.demoChiave;
+        try { chiave = lib.salva(testo, chiave || undefined); }
+        catch (e) { if (chiave) chiave = lib.salva(testo); else throw e; }   // la demo era stata cancellata
+        p.demoChiave = chiave;
+        if (typeof radice.demoPaginaRicarica === 'function') radice.demoPaginaRicarica(chiave);
+      } catch (_) { return; }   // resta la demo di prima: «Aggiorna» dirà perché
+      const i = studio.progetti.findIndex(x => x.id === p.id);
+      if (i >= 0) { studio.progetti[i] = p; studioSalvaTutti(studio.progetti); }
+      aggiornaCosmoStorie();
+    }, 400));
+  }
+  /* v496: le musiche generate restano. Una musica fatta con ElevenLabs
+   * viveva solo come proposta e poi nella storia o nella scena che la usava:
+   * rigenerata, sostituita o tolta, era persa, e per metterla in un'altra
+   * storia andava pagata di nuovo. Ora ogni musica generata entra nella
+   * raccolta (un archivio IndexedDB a parte, `astrocal-studio-musiche`, che
+   * il giro sul repository e la pulizia delle voci non toccano: le chiavi
+   * `|musica|` dello scaffale delle voci sono le tracce *delle storie*),
+   * col suo nome e la descrizione da cui è nata; nel menu della musica della
+   * storia e di ogni scena compare come «Generata: …», e sceglierla la mette
+   * lì come un file caricato. Le musiche generate prima, che stanno ancora
+   * in qualche storia, ci entrano al primo avvio (`riprendiGenerate`). */
+  const DB_MUSICHE = 'astrocal-studio-musiche';
+  const STUDIO_GENERATE_MAX = 40;
+  let generateAperte = false;             // l'elenco aperto resta aperto fra un ridisegno e l'altro
+  let musicheGenerate = [];               // { id, nome, descrizione, durata, sha, quando }, la più nuova in cima
+  function dbMusiche(fai2) {
+    return new Promise((si, no) => {
+      if (typeof indexedDB === 'undefined') { no(new Error('indexedDB')); return; }
+      let r;
+      try { r = indexedDB.open(DB_MUSICHE, 1); } catch (e) { no(e); return; }
+      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('musiche')) r.result.createObjectStore('musiche'); };
+      r.onerror = () => no(r.error || new Error('indexedDB'));
+      r.onsuccess = () => {
+        const db = r.result;
+        let tx, q;
+        try { tx = db.transaction('musiche', 'readwrite'); q = fai2(tx.objectStore('musiche')); }
+        catch (e) { db.close(); no(e); return; }
+        tx.oncomplete = () => { db.close(); si(q && q.result); };
+        tx.onerror = () => { db.close(); no(tx.error || new Error('indexedDB')); };
+      };
+    });
+  }
+  function tutteLeGenerate() {
+    const trovate = [];
+    return dbMusiche(st => {
+      const c = st.openCursor();
+      c.onsuccess = () => { const x = c.result; if (x) { trovate.push(Object.assign({ id: x.key }, x.value)); x.continue(); } };
+      return null;
+    }).then(() => trovate, () => []);
+  }
+  const senzaBlob = r => ({ id: r.id, nome: String(r.nome || '').slice(0, 80), descrizione: String(r.descrizione || '').slice(0, 400),
+    durata: Number(r.durata) || 0, sha: String(r.sha || ''), quando: Number(r.quando) || 0 });
+  async function caricaGenerate() {
+    musicheGenerate = (await tutteLeGenerate()).filter(r => r.blob).map(senzaBlob).sort((a, b) => b.quando - a.quando);
+    return musicheGenerate;
+  }
+  // Il nome di una musica generata: le prime parole della descrizione
+  function nomeGenerata(descrizione) {
+    const parole = unaRiga(descrizione).replace(/[^\p{L}\p{N}' -]/gu, ' ').split(/\s+/).filter(Boolean);
+    return (parole.slice(0, 6).join(' ') || t('studio.musica.generataSenzaNome')).slice(0, 60);
+  }
+  async function conservaGenerata(file, descrizione, opz = {}) {
+    try {
+      const sha = opz.sha || await improntaFile(file);
+      await caricaGenerate();
+      if (musicheGenerate.some(g => g.sha === sha)) return null;
+      const durata = opz.durata || await misuraDurata(file);
+      const rec = { blob: file, nome: opz.nome || nomeGenerata(descrizione), descrizione: unaRiga(descrizione).slice(0, 400), durata, sha, quando: opz.quando || Date.now() };
+      const id = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      await dbMusiche(st => st.put(rec, id));
+      // Le più vecchie oltre il tetto se ne vanno (sono MP3 da qualche MB)
+      const tutte = (await caricaGenerate()).slice(STUDIO_GENERATE_MAX);
+      for (const g of tutte) await dbMusiche(st => st.delete(g.id)).catch(() => null);
+      if (tutte.length) await caricaGenerate();
+      return id;
+    } catch (_) { return null; }
+  }
+  async function eliminaGenerata(id) {
+    try { await dbMusiche(st => st.delete(id)); } catch (_) { /* resta */ }
+    await caricaGenerate();
+    disegna();
+  }
+  // Una musica generata scelta dal menu: prende la strada di un file caricato
+  async function usaGenerata(dove, id) {
+    let rec = null;
+    try { rec = await dbMusiche(st => st.get(id)); } catch (_) { rec = null; }
+    if (!rec || !rec.blob) { esito(t('studio.musica.generataPersa')); await caricaGenerate(); disegna(); return; }
+    const nomeFile = (String(rec.nome || 'musica').replace(/[^\w -]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'musica') + '.mp3';
+    const file = typeof File === 'function' ? new File([rec.blob], nomeFile, { type: rec.blob.type || 'audio/mpeg' }) : Object.assign(rec.blob, { name: nomeFile });
+    await caricaMusica(dove, file);
+  }
+  // Le musiche di ElevenLabs già nelle storie di questo dispositivo, fatte
+  // prima che ci fosse la raccolta: ci entrano, una volta sola (lo SHA)
+  async function riprendiGenerate() {
+    const nomi = new Map();
+    for (const p of studio.progetti) {
+      const metti = (mu, sid) => { if (mu && mu.tipo === 'file' && /^musica-elevenlabs\.mp3$/.test(mu.nome)) nomi.set(chiaveMusica(p.id, sid), p.titolo); };
+      metti(p.musica, '');
+      for (const sc of p.scene) metti(sc.musica, sc.id);
+    }
+    if (!nomi.size) return;
+    let nuove = 0;
+    for (const { chiave, rec } of await tutteLeVoci()) {
+      if (!nomi.has(chiave) || !rec || !rec.blob) continue;
+      const titolo = unaRiga(nomi.get(chiave));
+      if (await conservaGenerata(rec.blob, titolo, { sha: rec.sha, durata: rec.durata, nome: (titolo || t('studio.musica.generataSenzaNome')).slice(0, 60), quando: 1 })) nuove++;
+    }
+    if (nuove) disegna();
+  }
+
   // Ascoltare la traccia scelta nello Studio, senza guardare la storia
   let ascoltoMusica = null;
   function fermaAscoltoMusica() {
@@ -4034,7 +4166,9 @@
     });
     if (!file) return;
     mettiProposta(k, file);
-    notifica(k, t('studio.el.propostaPronta'));
+    // v496: e resta fra le musiche generate, da scegliere anche dopo
+    const tenuta = await conservaGenerata(file, r.testo);
+    notifica(k, t('studio.el.propostaPronta') + (tenuta ? ' ' + t('studio.musica.generataTenuta') : ''));
     disegna();
     suonaAnteprima(proposte.get(k).url, 0.6);
   }
@@ -4150,7 +4284,14 @@
   }
   function selettore(campo, valore, opzioni, extra = {}) {
     const s = h('select', Object.assign({ dataset: { campo } }, extra));
-    for (const [v, testo] of opzioni) s.append(new Option(testo, v));
+    for (const o of opzioni) {
+      if (Array.isArray(o)) { s.append(new Option(o[1], o[0])); continue; }
+      // v496: un gruppo di opzioni, `{ gruppo, opzioni }`
+      const g = document.createElement('optgroup');
+      g.label = o.gruppo;
+      for (const [v, testo] of o.opzioni) g.append(new Option(testo, v));
+      s.append(g);
+    }
     s.value = valore === undefined || valore === null ? '' : valore;
     return s;
   }
@@ -4240,7 +4381,9 @@
     if (conNessuno) o.unshift(['', t('studio.nessuno')]);
     return o;
   }
-  const opzioniUmori = conVuoto => (conVuoto ? [['', '—']] : []).concat(Object.keys(S().STOR_ESPRESSIONI || {}).map(k => [k, t('storie.espressione.' + k) || k]));
+  // v496: le espressioni nel menu, in gruppi (`selettore` li fa `<optgroup>`)
+  const opzioniUmori = conVuoto => (conVuoto ? [['', '—']] : []).concat(studioFacceInFamiglie()
+    .map(([fam, elenco]) => ({ gruppo: t('studio.ui.facce.' + fam), opzioni: elenco.map(k => [k, t('storie.espressione.' + k) || k]) })));
   const opzioniQuando = () => STUDIO_QUANDO.map(q => [q, t('studio.quando.' + q)]);
   // Un bottone che si accende e si spegne (una scelta fra tante)
   const scelta = (acceso, attr, ...figli) => h('button', Object.assign({ type: 'button', 'aria-pressed': String(!!acceso) }, attr), ...figli);
@@ -4314,6 +4457,51 @@
     return h('button', Object.assign({ type: 'button', class: 'studio-linguetta', 'aria-expanded': String(!!acceso), dataset: dati }, extra || {}),
       h('span', { class: 'studio-linguetta-nome' }, testo), stato ? h('small', {}, h('span', { class: 'studio-linguetta-stato' }, stato)) : null);
   }
+  /* v496: i personaggi da scegliere in categorie. «Chi racconta» teneva
+   * tutte le persone insieme — quasi quaranta, dai filosofi greci agli
+   * astronauti all'equipaggio di «Interstellar» — e chi cercava Galileo
+   * scorreva una lista lunga. Ora le persone stanno per epoca e mestiere, e
+   * i personaggi di una storia-film (persone, robot, navicelle, pianeti) in
+   * una categoria loro. Un personaggio nuovo che non è in elenco va dove
+   * dice la sua famiglia. */
+  const STUDIO_GRUPPI_CAST = ['narratori', 'antichi', 'scienziati', 'astronauti', 'pianeti', 'lune', 'macchine', 'universo', 'interstellar'];
+  const STUDIO_CAST_PER_GRUPPO = {
+    narratori: ['astro_ben', 'zaira', 'sagan'],
+    antichi: ['pythagoras', 'plato', 'aristotle', 'eratosthenes', 'archimedes', 'ptolemy'],
+    scienziati: ['copernicus', 'galileo', 'huygens', 'newton', 'herschel', 'schiaparelli', 'lowell', 'einstein', 'tombaugh', 'hawking', 'mike_brown'],
+    astronauti: ['gagarin', 'tereskova', 'von_braun', 'armstrong', 'aldrin', 'stafford', 'ride', 'malerba', 'cristoforetti', 'parmitano'],
+    interstellar: ['cooper', 'brand', 'romilly', 'doyle', 'mann', 'murph', 'murph_bambina', 'murph_anziana', 'loro',
+      'tars', 'case', 'endurance', 'ranger', 'lander', 'gargantua', 'miller_planet', 'mann_planet']
+  };
+  function studioGruppoCast(id) {
+    for (const [g, ids] of Object.entries(STUDIO_CAST_PER_GRUPPO)) if (ids.includes(id)) return g;
+    const f = S().profilo ? S().profilo(id).famiglia : 'pianeta';
+    if (f === 'persona' || f === 'presenza') return 'narratori';
+    if (soloCosmo(id)) return 'universo';
+    if (['stazione', 'sonda', 'nave', 'robot'].includes(f)) return 'macchine';
+    if (f === 'luna' || f === 'nano') return 'lune';
+    return 'pianeti';
+  }
+  /* v496: le espressioni in famiglie. Sono trentadue volti di fila, e la
+   * faccia giusta si cercava passandoli tutti: ora stanno in quattro gruppi
+   * per come ci si sente (allegre, calme e pensose, stupore e paura, tristi
+   * e arrabbiate), nel pannello delle facce e nel menu dell'azione «umore».
+   * Un'espressione nuova che non è in elenco va fra le calme. */
+  const STUDIO_FAMIGLIE_FACCE = {
+    allegre: ['happy', 'laughing', 'excited', 'playful', 'love', 'tender', 'proud', 'relieved', 'hopeful', 'impressed', 'determined'],
+    calme: ['neutral', 'thinking', 'curious', 'wonder', 'wistful', 'mysterious', 'skeptical', 'sleepy', 'bored'],
+    stupore: ['surprised', 'confused', 'worried', 'scared', 'panicked', 'embarrassed'],
+    tristi: ['sad', 'disappointed', 'frustrated', 'annoyed', 'angry', 'bully']
+  };
+  function studioFacceInFamiglie() {
+    const tutte = Object.keys(S().STOR_ESPRESSIONI || {});
+    const fuori = Object.entries(STUDIO_FAMIGLIE_FACCE).map(([f, el]) => [f, el.filter(e => tutte.includes(e))]);
+    const messe = new Set(fuori.flatMap(([, el]) => el));
+    const calme = fuori.find(([f]) => f === 'calme')[1];
+    for (const e of tutte) if (!messe.has(e)) calme.push(e);
+    return fuori.filter(([, el]) => el.length);
+  }
+
   function nomeFaccia(id, e) {
     const lei = id && S().profilo && S().profilo(id).genere === 'f';
     return (lei && t('storie.espressioneLei.' + e)) || t('storie.espressione.' + e) || e;
@@ -4388,12 +4576,18 @@
       // v449: la faccia è anche l'intonazione della voce generata
       if (studioElevenImpostazioni().chiave) pannello.append(h('p', { class: 'demo-opzioni-nota' }, t('studio.el.facciaTono')));
       // Le facce: un volto per espressione, del personaggio che parla
-      const facce = h('div', { class: 'studio-facce', role: 'group', 'aria-label': t('storie.espressioneEtichetta') });
-      for (const e of Object.keys(S().STOR_ESPRESSIONI || {})) {
-        // «Sorpresa» per la Luna, «Sorpreso» per Marte
-        const nomeE = nomeFaccia(m.chi, e);
-        facce.append(scelta(umore === e && !!m.umore, { class: 'studio-faccia', dataset: { fai: 'umore', dove: base, valore: e }, title: nomeE, 'aria-label': nomeE },
-          figurina(m.chi, e, 34), h('span', {}, nomeE)));
+      const facce = h('div', { class: 'studio-facce studio-facce-famiglie', role: 'group', 'aria-label': t('storie.espressioneEtichetta') });
+      // v496: in famiglie, una riga ciascuna
+      for (const [fam, elenco] of studioFacceInFamiglie()) {
+        const riga = h('div', { class: 'studio-famiglia', role: 'group', 'aria-label': t('studio.ui.facce.' + fam) },
+          h('span', { class: 'studio-famiglia-nome' }, t('studio.ui.facce.' + fam)));
+        for (const e of elenco) {
+          // «Sorpresa» per la Luna, «Sorpreso» per Marte
+          const nomeE = nomeFaccia(m.chi, e);
+          riga.append(scelta(umore === e && !!m.umore, { class: 'studio-faccia', dataset: { fai: 'umore', dove: base, valore: e }, title: nomeE, 'aria-label': nomeE },
+            figurina(m.chi, e, 34), h('span', {}, nomeE)));
+        }
+        facce.append(riga);
       }
       facce.append(h('button', { type: 'button', class: 'studio-idea', dataset: { fai: 'umoreDalTesto', dove: base }, title: t('studio.umoreDalTesto') }, t('studio.ui.dalTesto')));
       pannello.append(facce);
@@ -4937,7 +5131,13 @@
       ? [['storia', p.musica ? t('studio.musica.dellaStoria') : t('studio.musica.dellaStoriaNessuna')], ['silenzio', t('studio.musica.silenzio')]]
       : [['', t('studio.musica.nessuna')]];
     for (const tr of tracce) opzioni.push(['cat:' + tr.id, t('studio.musica.traccia', { nome: String(tr.nome || tr.id).replace(/_/g, ' ') })]);
-    if (di.mu && di.mu.tipo === 'file') opzioni.push(['file', t('studio.musica.file', { nome: di.mu.nome || di.mu.est })]);
+    // v496: le musiche generate con ElevenLabs, tenute nella raccolta
+    for (const g of musicheGenerate) if (!(di.mu && di.mu.tipo === 'file' && di.mu.sha === g.sha))
+      opzioni.push(['gen:' + g.id, t('studio.musica.generata', { nome: g.nome, secondi: secondiDi(g.durata) })]);
+    if (di.mu && di.mu.tipo === 'file') {
+      const g = musicheGenerate.find(x => x.sha === di.mu.sha);
+      opzioni.push(['file', g ? t('studio.musica.generata', { nome: g.nome, secondi: secondiDi(g.durata) }) : t('studio.musica.file', { nome: di.mu.nome || di.mu.est })]);
+    }
     let valore = '';
     if (scena && sc.musicaModo !== 'propria') valore = sc.musicaModo;
     else if (di.mu) valore = di.mu.tipo === 'file' ? 'file' : 'cat:' + di.mu.id;
@@ -4967,6 +5167,21 @@
     }
     // v444: o generata con ElevenLabs da una descrizione (non per una scena in silenzio)
     if (!scena || sc.musicaModo !== 'silenzio') { const el = disegnaMusicaEleven(dove); if (el) riga.append(el); }
+    // v496: la raccolta delle musiche generate, sotto la musica della storia:
+    // ascoltarle e toglierle (sceglierle sta nel menu, qui e in ogni scena)
+    if (!scena && musicheGenerate.length) {
+      const elenco = h('ul', { class: 'studio-generate' });
+      for (const g of musicheGenerate) {
+        elenco.append(h('li', {},
+          h('span', { class: 'studio-generate-nome', title: g.descrizione }, g.nome, h('small', {}, ' · ' + secondiDi(g.durata) + ' s')),
+          h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'ascoltaGenerata', valore: g.id } }, t('studio.voce.ascolta')),
+          h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'eliminaGenerata', valore: g.id },
+            'aria-label': t('studio.musica.eliminaGenerata', { nome: g.nome }), title: t('studio.musica.eliminaGenerata', { nome: g.nome }) }, '×')));
+      }
+      riga.append(h('details', { class: 'studio-generate-box', open: generateAperte, ontoggle: e => { generateAperte = e.target.open; } },
+        h('summary', {}, t('studio.musica.generate', { n: musicheGenerate.length })),
+        h('p', { class: 'demo-opzioni-nota' }, t('studio.musica.generateAiuto')), elenco));
+    }
     return riga;
   }
   const sceneAperte = new Set();
@@ -5332,12 +5547,9 @@
     // la × per toglierlo; sotto una linguetta per famiglia (coi volti
     // scelti e quanti sono) e una per le voci ElevenLabs. Prima erano
     // quaranta schede aperte in quattro gruppi, e le voci sotto a tutte.
-    const gruppi = { narratori: [], pianeti: [], lune: [], macchine: [], universo: [] };
-    // (v482: le navicelle e i robot di «Interstellar» stanno con le macchine)
-    for (const id of Object.keys(S().STOR_PERSONAGGI || {})) {
-      const f = S().profilo ? S().profilo(id).famiglia : 'pianeta';
-      (f === 'persona' || f === 'presenza' ? gruppi.narratori : soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' || f === 'nave' || f === 'robot' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
-    }
+    const gruppi = {};
+    for (const g of STUDIO_GRUPPI_CAST) gruppi[g] = [];
+    for (const id of Object.keys(S().STOR_PERSONAGGI || {})) gruppi[studioGruppoCast(id)].push(id);
     const nella = h('div', { class: 'studio-chips studio-nel-cast', role: 'group', 'aria-label': t('studio.ui.nellaStoria') },
       h('span', { class: 'studio-etichetta' }, t('studio.ui.nellaStoria')));
     for (const id of p.cast) {
@@ -5861,6 +6073,11 @@
       }
       case 'elSuono': generaSuono(dove); return;
       case 'elMusica': generaMusica(dove); return;
+      // v496: la raccolta delle musiche generate
+      case 'ascoltaGenerata':
+        dbMusiche(st => st.get(el.dataset.valore)).then(rec => { if (rec && rec.blob) suonaAnteprima(URL.createObjectURL(rec.blob), 0.6); }).catch(() => null);
+        return;
+      case 'eliminaGenerata': eliminaGenerata(el.dataset.valore); return;
       case 'elAscoltaProposta': { const x = proposte.get(dove); if (x) suonaAnteprima(x.url, dove.startsWith('musica|') ? 0.6 : undefined); return; }
       case 'elUsa': usaProposta(el.dataset.valore, dove); return;
       case 'elScarta': togliProposta(dove); disegna(); return;
@@ -6100,12 +6317,15 @@
       di.tiene.musicaModo = valore;
     }
     else if (valore === 'file') { if (di.sid) di.tiene.musicaModo = 'propria'; }
+    // v496: una musica generata prima, dalla raccolta
+    else if (valore.startsWith('gen:')) { usaGenerata(dove, valore.slice(4)); return; }
     else if (valore.startsWith('cat:')) {
       if (di.mu && di.mu.tipo === 'file') togliMusica(dove);
       di.tiene.musica = { tipo: 'catalogo', id: valore.slice(4), volume };
       if (di.sid) di.tiene.musicaModo = 'propria';
     } else if (!valore && !di.sid) togliMusica(dove);
     salvaPresto();
+    musicaNelleCosmoStorie(studio.progetto);
     disegna();
   }
 
@@ -6215,7 +6435,7 @@
         if (di && di.mu) {
           di.mu.volume = Math.max(0.05, Math.min(1, (Number(el.value) || 35) / 100));
           if (ascoltoMusica && ascoltoMusica.dove === el.dataset.musicaVolume) ascoltoMusica.audio.volume = di.mu.volume;
-          salvaPresto(); aggiornaVivi();
+          salvaPresto(); aggiornaVivi(); musicaNelleCosmoStorie(studio.progetto);
         }
         return;
       }
@@ -6318,6 +6538,8 @@
     // le storie dello Studio messe fra le CosmoStorie (v461)
     aggiornaCosmoStorie();
     studioRiprendiVoci().catch(() => null);
+    // v496: le musiche generate, per i menu della musica
+    caricaGenerate().then(() => { disegna(); return riprendiGenerate(); }).catch(() => null);
     // Le storie salvate dagli altri dispositivi (§6b), in silenzio se non
     // arriva niente: senza rete resta quello che c'è qui
     studioSincronizza({ spingi: false }).then(msg => { aggiornaCosmoStorie(); if (msg && !studio.esito) esito(msg); }).catch(() => null);
@@ -6350,6 +6572,9 @@
     // v440: la musica di sottofondo (§4-ter)
     musicaSrc: studioMusicaSrc, percorsoMusica: studioPercorsoMusica, musicheVolute: studioMusicheVolute, pulisciMusica: studioPulisciMusica,
     caricaMusica, togliMusica, sceltaMusica, riprendiVoci: studioRiprendiVoci, STUDIO_MUSICA_CARTELLA,
+    // v496: la raccolta delle musiche generate, i gruppi del cast e delle facce
+    conservaGenerata, caricaGenerate, usaGenerata, get musicheGenerate() { return musicheGenerate.slice(); },
+    gruppoCast: studioGruppoCast, facceInFamiglie: studioFacceInFamiglie, STUDIO_GRUPPI_CAST,
     // v444: ElevenLabs (§6c) e i suoni da file
     testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
