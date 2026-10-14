@@ -35,6 +35,8 @@ const server = http.createServer((req, res) => {
       await pagina.evaluate(nome => mostraVista(nome), nome);
       await pagina.reload({ waitUntil: 'domcontentloaded' });
       await pagina.waitForFunction(nome => vistaAttuale === nome, nome);
+      await pagina.locator('#splash-planetario').waitFor({ state: 'hidden', timeout: 10000 });
+      if (nome === 'demo') await pagina.locator('#demo-scheda-storie').click();
       assert.equal(await pagina.evaluate(() => localStorage.getItem('astrocal_ultima_vista_v1')), nome);
     }
     await pagina.evaluate(() => { mostraVista('demo'); demoMostraScheda('demo-scheda-storie'); });
