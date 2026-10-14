@@ -6055,8 +6055,16 @@
               "umore": "worried",
               "tono": [],
               "durata": 20,
-              "voce": 0,
-              "audio": null,
+              "voce": 27,
+              "audio": {
+                "durata": 15440,
+                "impronta": "b2551992",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "227bbffe7a53ec033381152a9bacd117d35f89eb",
+                "voce": "f8NAZK1ciwrVujah7clz",
+                "tag": "[nervous]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -8901,8 +8909,8 @@
       ],
       "demoChiave": "utente-mv8i6umu-v39gc0dl27e",
       "voceChiave": "studio_interstellar_1_oltre_gargantua",
-      "voceProssima": 27,
-      "aggiornato": 1792009254563,
+      "voceProssima": 28,
+      "aggiornato": 1792009322966,
       "lingua": "it",
       "musica": {
         "tipo": "file",

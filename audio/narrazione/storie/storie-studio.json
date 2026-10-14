@@ -412,6 +412,14 @@
           "conTag": "[determined] Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro."
         },
         {
+          "n": 27,
+          "chi": "cooper",
+          "testo": "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora.",
+          "umore": "worried",
+          "scena": 19,
+          "durata": 20000
+        },
+        {
           "n": 21,
           "chi": "brand",
           "testo": "L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.",
