@@ -1035,8 +1035,24 @@ function vfilmFraseIn(id, lingua) {
   if (typeof m === 'string') return m;
   return lingua === vfilmLingua() && typeof astroI18n === 'object' && astroI18n.esiste && astroI18n.esiste(id) ? astroI18n.t(id) : '';
 }
+/* v488: e le voci con una battuta che nel frattempo ha cambiato numero.
+ * «Interstellar 1» ha avuto otto battute nuove in mezzo, e le battute si
+ * numerano in ordine di scena: la 5 di prima è diventata la 8. Una voce
+ * fatta su un altro dispositivo e non ancora mandata ricorda il numero
+ * vecchio, e andrebbe sul file della battuta che adesso ha quel numero, con
+ * un testo diverso (e `voci-storie.js` la darebbe per registrata su quello).
+ * Se al suo numero il dizionario dice un'altra frase, il numero si ritrova
+ * dal testo come per le voci senza battuta; se nessuna battuta ha più quel
+ * testo, la voce resta qui e suona (la narrazione la riconosce dal testo),
+ * ma non va sul repository. */
+function vfilmNumeroCambiato(rec, impronta) {
+  if (!rec || !rec.id || !rec.testo || !/^demo\.narr\.[a-z][\w]*\.\d+$/.test(rec.id)) return false;
+  const frase = vfilmFraseIn(rec.id, rec.lingua || vfilmLingua());
+  return !!frase && impronta(frase) !== impronta(rec.testo);
+}
 async function vfilmRiparaVecchie(tutte) {
-  const da = tutte.filter(x => x.rec && x.rec.blob && !x.rec.suRepo && !x.rec.senzaPosto && (!x.rec.id || !x.rec.chi));
+  const improntaSola = t => typeof narrazione === 'object' && narrazione.impronta ? narrazione.impronta(t) : String(t || '').replace(/\s+/g, ' ').trim();
+  const da = tutte.filter(x => x.rec && x.rec.blob && !x.rec.suRepo && !x.rec.senzaPosto && (!x.rec.id || !x.rec.chi || vfilmNumeroCambiato(x.rec, improntaSola)));
   if (!da.length) return tutte;
   const { indice, impronta } = vfilmIndicePronte();
   if (!indice.size) return tutte;           // la libreria non c'è ancora: al prossimo giro
@@ -1044,10 +1060,11 @@ async function vfilmRiparaVecchie(tutte) {
   for (const x of da) {
     const parti = String(x.chiave).split('|');
     const chi = x.rec.chi || (parti[1] && parti[1] !== '-' ? parti[1] : '');
-    const id = x.rec.id || (chi ? indice.get([x.rec.lingua, chi, impronta(x.rec.testo)].join('|')) : '');
+    const vecchio = vfilmNumeroCambiato(x.rec, impronta);
+    const id = (!vecchio && x.rec.id) || (chi ? indice.get([x.rec.lingua, chi, impronta(x.rec.testo)].join('|')) : '');
     // senza una battuta pronta con quel testo non c'è un posto: si ricorda,
     // per non cercarlo a ogni giro (la voce resta e suona qui come prima)
-    x.rec = id && chi ? Object.assign({}, x.rec, { id, chi, riparata: true }) : Object.assign({}, x.rec, { senzaPosto: true });
+    x.rec = id && chi ? Object.assign({}, x.rec, { id, chi, riparata: true }) : Object.assign({}, x.rec, vecchio ? { id: '' } : {}, { senzaPosto: true });
     nuovi.push(x);
   }
   await vfilmDb(st => { for (const x of nuovi) st.put(x.rec, x.chiave); }, 'readwrite').catch(() => null);

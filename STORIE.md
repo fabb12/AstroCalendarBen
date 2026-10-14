@@ -3177,18 +3177,18 @@ Ognuno ha il suo rumore (`STOR_SUONI`; i soffi più lunghi di due secondi
 girano in tondo, `ciclo`) e il suo nome nello Studio (`storie.effetto.*`,
 `studio.suono.nome.*`).
 
-**La storia** (`storia_interstellar`, 43 scene, una battuta ciascuna, ~9
+**La storia** (`storia_interstellar`, 51 scene (43 fino alla v487), una battuta ciascuna, ~9
 minuti col tetto delle scene; con la voce sintetica molto meno):
 
 | Scene | Cosa |
 |---|---|
-| 1–8 | l'Endurance arriva a Saturno (inquadratura larga, piccola davanti agli anelli); la sfera del wormhole («un buco nello spazio è una palla»); il foglio piegato di Romilly; TARS e la sincerità al novanta per cento, «l'umorismo al settantacinque»; dentro al wormhole, la «stretta di mano» |
-| 9–14 | Gargantua (cento milioni di Soli, il volto nell'ombra); il tempo che rallenta vicino a una massa: un'ora sul pianeta di Miller, sette anni sulla Terra; Romilly resta sull'Endurance; il Ranger scende; il pianeta di Miller e le sue maree |
-| 15–21 | sull'acqua: i rottami della dottoressa Miller, l'onda, Doyle che non ce la fa, CASE che salva Brand; di nuovo su: «ventitré anni, quattro mesi e otto giorni», e perché |
-| 22–25 | i messaggi da casa: Murph adulta e l'orologio; Edmunds o Mann |
-| 26–30 | il pianeta di ghiaccio, il dottor Mann che si sveglia, la bugia, il Lander rubato e l'aggancio forzato |
-| 31–34 | l'Endurance che gira a 68 giri al minuto, «impossibile» — «no: necessario», l'attracco (due ballerini che si tengono per mano) |
-| 35–43 | la fionda attorno a Gargantua (51 anni), Newton e il distacco di Cooper e TARS, Brand, l'orizzonte degli eventi (visto da fuori ci si ferma, per chi cade il tempo scorre; un buco nero così grande non stira come uno spaghetto), «Murph, sto arrivando», e Murph che lo sente |
+| 1–11 | l'Endurance arriva a Saturno (inquadratura larga, piccola davanti agli anelli); la sfera del wormhole («un buco nello spazio è una palla»); il foglio piegato di Romilly, poi rifatto piano in 3D (piatto, piega, tunnel: v488); TARS e la sincerità al novanta per cento, «l'umorismo al settantacinque»; dentro al wormhole, la «stretta di mano» |
+| 12–22 | Gargantua (cento milioni di Soli, il volto nell'ombra); il tempo che rallenta vicino a una massa: un'ora sul pianeta di Miller, sette anni sulla Terra; Romilly resta sull'Endurance; il Ranger scende; la lente di Gargantua, perché Miller non ci cade dentro (il mulinello dello spazio); il pianeta di Miller, le sue maree e il dondolio (v488) |
+| 23–29 | sull'acqua: i rottami della dottoressa Miller, l'onda, Doyle che non ce la fa, CASE che salva Brand; di nuovo su: «ventitré anni, quattro mesi e otto giorni», e perché |
+| 30–33 | i messaggi da casa: Murph adulta e l'orologio; Edmunds o Mann |
+| 34–38 | il pianeta di ghiaccio, il dottor Mann che si sveglia, la bugia, il Lander rubato e l'aggancio forzato |
+| 39–42 | l'Endurance che gira a 68 giri al minuto, «impossibile» — «no: necessario», l'attracco (due ballerini che si tengono per mano) |
+| 43–51 | la fionda attorno a Gargantua (51 anni), Newton e il distacco di Cooper e TARS, Brand, l'orizzonte degli eventi (visto da fuori ci si ferma, per chi cade il tempo scorre; un buco nero così grande non stira come uno spaghetto), «Murph, sto arrivando», e Murph che lo sente |
 
 I conti sono quelli del film e della sua fisica (*The Science of
 Interstellar*, Kip Thorne): Gargantua cento milioni di masse solari, un'ora su
@@ -3497,3 +3497,83 @@ sul codice di prima le voci da mandare erano 0), `prova-musica-storie.js`
 cartella di Cooper → `voci-storie.js` lo mette nel manifest → la narrazione lo
 suona con l'id della storia pronta e col solo testo (una copia).
 
+
+### Il foglio di Romilly in 3D, le maree di Miller e più scienza in «Interstellar 1» (v488)
+
+«Migliora la prima parte di Interstellar, quando spiega il wormhole con il
+foglio: fai il foglio in 3D, mostralo meglio e più chiaro per far capire cos'è
+un wormhole. Poi sul pianeta di Miller spiega perché ci sono maree così alte,
+con l'orbita del pianeta intorno al buco nero. Spiega meglio gli aspetti
+scientifici dei vari punti.» E poi: «modifica quello con le voci vere».
+
+**Il foglio in 3D** (`storDisegnaFoglio`, l'effetto `fold`). Il foglio piatto
+che si ripiegava di lato non si capiva. Adesso è una superficie vera (una
+griglia di 30 × 8 facce, ordinate per profondità a ogni fotogramma, il dritto
+chiaro e il rovescio più scuro) vista un po' dall'alto, in prospettiva, da una
+camera che le gira attorno piano seguendo l'orologio della storia. La piega
+conserva le lunghezze: il foglio si arrotola attorno a un cilindro, dritto fino
+alla piega, poi l'arco, poi il tratto di sopra, finché la galassia (dorata)
+sta proprio sopra la Terra (azzurra). La strada rossa e i due punti sono
+posati sul foglio, alla loro profondità; il tunnel è una pila di anelli
+orizzontali con le due bocche larghe e la gola stretta (il disegno dei libri
+di relatività), col foglio di sopra che si fa trasparente. Quando è piegato
+la camera gli si avvicina (è largo la metà). Le tappe (`effect { stage }`,
+`STOR_TAPPE`): `flat` (lo spazio piatto, la navicella che si trascina sulla
+strada lunga senza arrivare), `bend` (la piega, e la linea verde corta fra i
+due punti), `tunnel` (la matita, il tunnel, la navicella che ci passa in un
+attimo); senza `stage` tutto di fila, in proporzione alla durata. La tappa
+nuova prende il posto di quella di prima senza dissolvenza (`ef.continua`), e
+tutte e due sono lavagne (`STOR_LAVAGNE`): sfumano a fine scena. Per questo
+possono durare fino a 60 s.
+
+**Le maree** (`storDisegnaMaree`, l'effetto nuovo `tidal_orbit`, col suo
+rumore): Gargantua, l'orbita stretta del pianeta di Miller, il pianeta (la
+roccia dentro, l'oceano attorno) che si allunga come un uovo lungo la
+direzione del buco nero, e le tre frecce della gravità in tre corsie
+parallele: lunga dal lato vicino, media dal centro, corta dal lato lontano —
+è la loro differenza a stirare il pianeta e ad ammucchiare l'acqua in due
+gobbe. In basso, per confronto, la Terra con la Luna, allungata appena. Le
+tappe: `stretch` (le frecce, l'uovo che si allunga) e `rock` (il pianeta
+dondola avanti e indietro e le gobbe gli scorrono sopra; dove sta la navetta,
+ferma sull'acqua, arriva l'onda).
+
+**Le battute nuove** sono otto, e la storia passa da 43 a 51 scene. Le
+battute si **rinumerano in ordine di scena** (`prova-demo.js` vuole che la
+scena *n* dica `demo.narr.storia_interstellar.n`: è così che il copione,
+lo Studio e le voci ritrovano la battuta): insieme al numero si sono spostati
+il testo nei due dizionari, la regia, le righe del manifest e i 42 audio già
+registrati (`storie/<personaggio>/it/storia_interstellar-<n>.mp3`), e i
+`parla` della copia dello Studio. Ogni voce resta sul suo testo, con la sua
+impronta: `voci-storie.js --controlla` non ne segna nessuna «da rifare».
+
+| Battuta | Era | Chi | Cosa |
+|---|---|---|---|
+| 5 | nuova | Cooper | «fammelo vedere piano, passo per passo»: dopo il foglio veloce della 4, il foglio torna piatto |
+| 6 | nuova | Romilly | la strada dritta, migliaia di anni anche alla velocità della luce; Einstein: lo spazio-tempo si curva, la piega mette i due punti uno sopra l'altro |
+| 7 | nuova | Romilly | il tunnel fra le pieghe è il wormhole; le bocche in tre dimensioni sono sfere |
+| 14 | nuova | Romilly | dopo Gargantua (13): l'anello sopra e sotto l'ombra è la luce del disco dietro, piegata dalla gravità: Gargantua è una lente |
+| 16 | nuova | Doyle | dopo «un'ora, sette anni» (15): «e perché il pianeta non ci cade dentro?» |
+| 17 | nuova | Brand | Gargantua gira quasi alla velocità della luce e trascina lo spazio come un mulinello: l'orbita stretta resta stabile, e Miller ci corre a quasi metà della velocità della luce |
+| 21 | nuova | Brand | dopo il pianeta di Miller (20): la marea, il lato vicino tirato più forte, l'uovo, le due gobbe; la Luna alza il mare di un metro, Gargantua di più di un chilometro |
+| 22 | nuova | Cooper | il pianeta dondola sull'orbita e le gobbe gli scorrono sopra: un'onda alta come una montagna circa ogni ora |
+
+Le vecchie: 1–4 restano, 5–10 diventano 8–13, la 11 la 15, 12–14 diventano
+18–20, 15–43 diventano 23–51.
+
+Cartelli nuovi `foglio`, `piega`, `tunnel`, `maree`; la regia dei tag per le
+otto battute in `regia-voci.json`. I conti sono quelli di Kip Thorne (*The
+Science of Interstellar*): le onde di Miller alte circa 1,2 km, una più o meno
+ogni ora, dal dondolio del pianeta (non dalla marea che resterebbe ferma, col
+pianeta che mostra sempre la stessa faccia); Gargantua quasi al massimo della
+rotazione, e l'orbita di Miller a circa metà della velocità della luce.
+
+**La copia con le voci vere** («CosmoStorie - Interstellar: oltre Gargantua
+(Voci reali)», in `storie-studio/storie.json`): gli stessi otto momenti
+inseriti al loro posto, scritti dalle stesse scene col motore delle demo
+(comandi tenuti dall'originale, `m.copione.righe`, e `parla` con l'id della
+battuta, rinumerata come sopra), e il foglio della battuta 4 spostato come nella storia pronta.
+Nessun altro momento è cambiato: le voci vere restano, `aggiornato` è più
+recente e gli altri dispositivi la prendono col giro dello Studio. Le otto
+voci nuove mancano: le fa il tasto «Voci ElevenLabs» della scheda, che genera
+solo quelle (le altre sono già sul repository). La copia rifatta dal suo
+progetto si valida nel browser (51 scene).

@@ -28,6 +28,15 @@ const server = http.createServer((req, res) => {
   const file = path.resolve(radice, '.' + (req.url.split('?')[0] === '/' ? '/index.html' : req.url.split('?')[0]));
   if (!file.startsWith(radice + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end(); return; }
   res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.json') ? 'application/json' : 'text/html');
+  // v488: dalla v487 «Interstellar 1» ha le voci vere sul repository (le
+  // ha fatte chi usa l'app), e le battute registrate non vanno più a
+  // ElevenLabs: TARS non aveva più niente da dire, Cooper solo le due
+  // battute nuove. Le prove sono sul tasto, non su quelle voci: la pagina
+  // le riceve senza, come la storia era quando le prove sono nate.
+  if (file === path.join(radice, 'audio/narrazione/manifest.js')) {
+    res.end(fs.readFileSync(file, 'utf8').replace(/\n    'demo\.narr\.storia_interstellar\.\d+': \{\n(?:      .*\n)+?    \},\n/g, '\n'));
+    return;
+  }
   res.end(fs.readFileSync(file));
 });
 function chromiumVero() {
@@ -336,6 +345,46 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.evaluate(() => StudioStorie.sincronizza({ spingi: true }));
       assert.equal(GH.file.get(nome(cooper[2]) + '.mp3').sha, shaAltrove, '«Togli» lascia la voce dell\'altro dispositivo');
       assert.ok(!GH.file.has(nome(cooper[0]) + '.wav'), '«Togli» toglie quella mandata da qui');
+    });
+
+    /* v488: «Interstellar 1» ha otto battute nuove in mezzo, e le battute si
+     * numerano in ordine di scena: la 5 di prima è la 8. Una voce fatta su un
+     * altro dispositivo e non ancora mandata ricorda il numero vecchio: non
+     * deve finire sul file della battuta che adesso ha quel numero. */
+    prova('una voce col numero di prima della rinumerazione va sulla battuta del suo testo, non su quella del numero', async () => {
+      const cooper = battute.filter(b => b.chi === 'cooper' && /^demo\.narr\.storia_interstellar\.\d+$/.test(b.id)).slice(3, 6);
+      assert.equal(cooper.length, 3);
+      const nome = b => 'audio/narrazione/storie/cooper/it/' + b.id.replace(/^demo\.narr\./, '').replace(/\.(\d+)$/, '-$1');
+      for (const b of cooper) for (const est of ['.mp3', '.wav']) GH.file.delete(nome(b) + est);
+      await pagina.evaluate(async ({ cooper, wav }) => {
+        const blob = new Blob([new Uint8Array(wav)], { type: 'audio/wav' });
+        await new Promise((ok, ko) => {
+          const r = indexedDB.open(VociFilmato.VFILM_DB, 1);
+          r.onupgradeneeded = () => r.result.createObjectStore('voci');
+          r.onerror = () => ko(r.error);
+          r.onsuccess = () => {
+            const tr = r.result.transaction('voci', 'readwrite'), st = tr.objectStore('voci');
+            const rec = (testo, id) => ({ blob, voce: 'UomoCaldoRoco01', testo, motore: 'eleven', inviato: testo, quando: Date.now(),
+              sempre: true, storia: 'storia_interstellar', lingua: 'it', id, chi: 'cooper' });
+            // il testo della prima col numero della seconda (il numero di prima)
+            st.put(rec(cooper[0].testo, cooper[1].id), VociFilmato.chiave('eleven', cooper[0], 'it'));
+            // un testo che nessuna battuta dice più, col numero della terza
+            const via = Object.assign({}, cooper[2], { testo: 'Una frase che non c\'è più.' });
+            st.put(rec(via.testo, cooper[2].id), VociFilmato.chiave('eleven', via, 'it'));
+            tr.oncomplete = () => { r.result.close(); ok(); };
+            tr.onerror = () => ko(tr.error);
+          };
+        });
+      }, { cooper, wav: [...wavTono(0.3, 330)] });
+      assert.equal(await pagina.evaluate(() => VociFilmato.vociInAttesa()), 1, 'parte solo quella che ha ancora una battuta');
+      await pagina.evaluate(() => StudioStorie.sincronizza({ spingi: true }));
+      assert.ok(GH.file.has(nome(cooper[0]) + '.wav'), 'la voce va sulla battuta del suo testo');
+      assert.ok(!GH.file.has(nome(cooper[1]) + '.wav'), 'e non su quella che adesso ha il suo numero di prima');
+      assert.ok(!GH.file.has(nome(cooper[2]) + '.wav'), 'quella senza più battuta resta qui');
+      assert.equal(await pagina.evaluate(() => VociFilmato.vociInAttesa()), 0);
+      const esito = await pagina.evaluate(async testo => { await VociFilmato.caricaVociStorie(); window.__sintesi = []; await narrazione.parla({ canale: 'prova', testo }); return window.__sintesi.length; }, 'Una frase che non c\'è più.');
+      assert.equal(esito, 0, 'e suona ancora, dal testo');
+      await pagina.evaluate(() => VociFilmato.togliVociStoria('storia_interstellar'));
     });
 
     prova('il voto e il carattere (funzioni pure)', async () => {
