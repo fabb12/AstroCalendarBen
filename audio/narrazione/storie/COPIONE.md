@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **108/226** in italiano · **0/177** in inglese.
+Pronte: **119/237** in italiano · **0/177** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -37,7 +37,7 @@ Pronte: **108/226** in italiano · **0/177** in inglese.
 | Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
 | Cooper | `storie/cooper/` | 30 | 29/30 | 0/30 |
 | Romilly | `storie/romilly/` | 10 | 9/10 | 0/5 |
-| Amelia Brand | `storie/amelia-brand/` | 12 | 9/12 | 0/12 |
+| Amelia Brand | `storie/amelia-brand/` | 23 | 20/23 | 0/12 |
 | TARS | `storie/tars/` | 14 | 11/14 | 0/14 |
 | Doyle | `storie/doyle/` | 6 | 5/6 | 0/3 |
 | Pianeta di Miller | `storie/pianeta-di-miller/` | 2 | 2/2 | 0/1 |
@@ -1481,6 +1481,50 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** speranzosa — all'alba, con meraviglia e un sorriso
   - **Testo:** Qui c'è aria, c'è acqua, c'è luce. Edmunds aveva ragione: questa sarà la nuova casa. E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.
   - **Da incollare su ElevenLabs v3:** `[in awe] Qui c'è aria, c'è acqua, c'è luce. [hopeful] Edmunds aveva ragione: questa sarà la nuova casa. [softly] E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.`
+- `studio_interstellar_1_oltre_gargantua-16.mp3` — pronta · 13,3 s · Studio: Interstellar 1: oltre Gargantua, scena 3 (al massimo 17 s)
+  - **Emozione:** deciso — 
+  - **Testo:** Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.
+  - **Da incollare su ElevenLabs v3:** `[determined] Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.`
+- `studio_interstellar_1_oltre_gargantua-17.mp3` — pronta · 10,7 s · Studio: Interstellar 1: oltre Gargantua, scena 7 (al massimo 14 s)
+  - **Emozione:** meravigliato — 
+  - **Testo:** Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.
+  - **Da incollare su ElevenLabs v3:** `[in awe] Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.`
+- `studio_interstellar_1_oltre_gargantua-18.mp3` — pronta · 13,3 s · Studio: Interstellar 1: oltre Gargantua, scena 12 (al massimo 16 s)
+  - **Emozione:** deciso — 
+  - **Testo:** Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.
+  - **Da incollare su ElevenLabs v3:** `[determined] Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.`
+- `studio_interstellar_1_oltre_gargantua-19.mp3` — pronta · 20,2 s · Studio: Interstellar 1: oltre Gargantua, scena 14 (al massimo 21 s)
+  - **Emozione:** felice — 
+  - **Testo:** Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce.
+  - **Da incollare su ElevenLabs v3:** `[happy] Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce.`
+- `studio_interstellar_1_oltre_gargantua-20.mp3` — pronta · 23,2 s · Studio: Interstellar 1: oltre Gargantua, scena 18 (al massimo 25 s)
+  - **Emozione:** deciso — 
+  - **Testo:** Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro.
+  - **Da incollare su ElevenLabs v3:** `[determined] Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro.`
+- `studio_interstellar_1_oltre_gargantua-21.mp3` — pronta · 12,4 s · Studio: Interstellar 1: oltre Gargantua, scena 20 (al massimo 14 s)
+  - **Emozione:** triste — 
+  - **Testo:** L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.
+  - **Da incollare su ElevenLabs v3:** `[sad] L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.`
+- `studio_interstellar_1_oltre_gargantua-22.mp3` — pronta · 16,5 s · Studio: Interstellar 1: oltre Gargantua, scena 26 (al massimo 20 s)
+  - **Emozione:** triste — 
+  - **Testo:** Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni.
+  - **Da incollare su ElevenLabs v3:** `[sad] Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni.`
+- `studio_interstellar_1_oltre_gargantua-23.mp3` — pronta · 10,6 s · Studio: Interstellar 1: oltre Gargantua, scena 29 (al massimo 14 s)
+  - **Emozione:** speranzoso — 
+  - **Testo:** Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds.
+  - **Da incollare su ElevenLabs v3:** `[hopeful] Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds.`
+- `studio_interstellar_1_oltre_gargantua-24.mp3` — pronta · 3,5 s · Studio: Interstellar 1: oltre Gargantua, scena 39 (al massimo 7 s)
+  - **Emozione:** sollevato — 
+  - **Testo:** Ce l'hai fatta, Cooper! Credevo che fosse finita.
+  - **Da incollare su ElevenLabs v3:** `[relieved] Ce l'hai fatta, Cooper! Credevo che fosse finita.`
+- `studio_interstellar_1_oltre_gargantua-25.mp3` — pronta · 2,8 s · Studio: Interstellar 1: oltre Gargantua, scena 43 (al massimo 6 s)
+  - **Emozione:** in panico — 
+  - **Testo:** Cooper, no! Non lasciarmi sola!
+  - **Da incollare su ElevenLabs v3:** `[panicked] Cooper, no! Non lasciarmi sola!`
+- `studio_interstellar_1_oltre_gargantua-26.mp3` — pronta · 9,5 s · Studio: Interstellar 1: oltre Gargantua, scena 45 (al massimo 13 s)
+  - **Emozione:** triste — 
+  - **Testo:** L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.
+  - **Da incollare su ElevenLabs v3:** `[sad] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.`
 
 ### Inglese — `storie/amelia-brand/en/`
 

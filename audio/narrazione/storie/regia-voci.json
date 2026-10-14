@@ -1794,6 +1794,83 @@
       "conTag": {
         "it": "[nervous] L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile."
       }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.16": {
+      "emozione": "deciso",
+      "come": "",
+      "conTag": {
+        "it": "[determined] Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.17": {
+      "emozione": "meravigliato",
+      "come": "",
+      "conTag": {
+        "it": "[in awe] Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.18": {
+      "emozione": "deciso",
+      "come": "",
+      "conTag": {
+        "it": "[determined] Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.19": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.20": {
+      "emozione": "deciso",
+      "come": "",
+      "conTag": {
+        "it": "[determined] Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.21": {
+      "emozione": "triste",
+      "come": "",
+      "conTag": {
+        "it": "[sad] L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.22": {
+      "emozione": "triste",
+      "come": "",
+      "conTag": {
+        "it": "[sad] Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.23": {
+      "emozione": "speranzoso",
+      "come": "",
+      "conTag": {
+        "it": "[hopeful] Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.24": {
+      "emozione": "sollevato",
+      "come": "",
+      "conTag": {
+        "it": "[relieved] Ce l'hai fatta, Cooper! Credevo che fosse finita."
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.25": {
+      "emozione": "in panico",
+      "come": "",
+      "conTag": {
+        "it": "[panicked] Cooper, no! Non lasciarmi sola!"
+      }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.26": {
+      "emozione": "triste",
+      "come": "",
+      "conTag": {
+        "it": "[sad] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds."
+      }
     }
   }
 }

@@ -953,6 +953,50 @@
       it: { file: 'storie/amelia-brand/it/storia_interstellar2-42.mp3', impronta: 'a67fd0ca', firma: '7b08243f5f' }
     },
 
+    'studio.studio_interstellar_1_oltre_gargantua.16': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-16.mp3', impronta: 'ae5e8dcc', firma: 'fc78e532a6', testo: "Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.17': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-17.mp3', impronta: '3c8d5245', firma: 'be38afc682', testo: "Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.18': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-18.mp3', impronta: 'b04d4568', firma: '29c359c864', testo: "Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.19': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-19.mp3', impronta: '5a8bfcd3', firma: '79c2718fc9', testo: "Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.20': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-20.mp3', impronta: 'ff500137', firma: 'dad9162e0e', testo: "Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.21': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-21.mp3', impronta: '1665cc11', firma: '2706fa2119', testo: "L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.22': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-22.mp3', impronta: '60fcbff0', firma: 'eb0fadf366', testo: "Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.23': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-23.mp3', impronta: '0351a0fa', firma: 'c3d28899f3', testo: "Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.24': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-24.mp3', impronta: '1e72b05c', firma: 'd3212a4f5c', testo: "Ce l'hai fatta, Cooper! Credevo che fosse finita." }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.25': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-25.mp3', impronta: 'b12c2219', firma: '7fc9bd5bb1', testo: "Cooper, no! Non lasciarmi sola!" }
+    },
+
+    'studio.studio_interstellar_1_oltre_gargantua.26': {
+      it: { file: 'storie/amelia-brand/it/studio_interstellar_1_oltre_gargantua-26.mp3', impronta: 'fca4228c', firma: 'b8e729c0f9', testo: "L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds." }
+    },
+
     // TARS — storie/tars/
     'demo.narr.storia_interstellar.5': {
       it: { file: 'storie/tars/it/storia_interstellar-5.mp3', impronta: 'eddd2d91', firma: '060c289f52' }
