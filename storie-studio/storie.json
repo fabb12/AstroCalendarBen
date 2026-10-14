@@ -338,7 +338,7 @@
       "titolo": "Copia di Copia di Interstellar: oltre Gargantua",
       "scopo": "libera",
       "obiettivo": "La missione del film «Interstellar» (2014), dal wormhole vicino a Saturno ai due pianeti attorno al buco nero Gargantua, fino al tuffo di Cooper e TARS oltre l'orizzonte. Navicelle con l'equipaggio ai finestrini, onde alte come montagne, nuvole di ghiaccio, un attracco a 68 giri al minuto. E la fisi",
-      "ufficiale": false,
+      "ufficiale": true,
       "origine": "utente-mv7ncz5n-u0gm2fm94sm",
       "sostituisce": "",
       "cast": [
@@ -4191,7 +4191,7 @@
       "demoChiave": "utente-mv7nrafs-oteflht19g",
       "voceChiave": "studio_copia_di_copia_di_interstellar",
       "voceProssima": 1,
-      "aggiornato": 1791980629962,
+      "aggiornato": 1791980790937,
       "lingua": "it",
       "musica": null,
       "voci": {},
