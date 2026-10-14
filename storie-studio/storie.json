@@ -334,6 +334,4502 @@
     },
     {
       "v": 1,
+      "id": "pjw6u8ey",
+      "titolo": "Interstellar 1: oltre Gargantua",
+      "scopo": "libera",
+      "obiettivo": "La missione del film «Interstellar» (2014), dal wormhole vicino a Saturno ai due pianeti attorno al buco nero Gargantua, fino al tuffo di Cooper e TARS oltre l'orizzonte. Navicelle con l'equipaggio ai finestrini, onde alte come montagne, nuvole di ghiaccio, un attracco a 68 giri al minuto. E la fisi",
+      "ufficiale": true,
+      "origine": "storia_interstellar",
+      "sostituisce": "storia_interstellar",
+      "cast": [
+        "cooper",
+        "brand",
+        "romilly",
+        "doyle",
+        "tars",
+        "case",
+        "mann",
+        "murph",
+        "endurance",
+        "ranger",
+        "lander",
+        "gargantua",
+        "miller_planet",
+        "mann_planet"
+      ],
+      "scene": [
+        {
+          "id": "ssk01dgc",
+          "ambiente": "pianeta",
+          "fuoco": "Saturn",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "endurance",
+            "cooper",
+            "brand",
+            "romilly",
+            "tars",
+            "doyle"
+          ],
+          "momenti": [
+            {
+              "id": "m24oe8g5",
+              "chi": "cooper",
+              "testo": "Due anni di viaggio, ed eccolo: Saturno. E lì, accanto agli anelli, c'è una porta che nessun essere umano ha mai attraversato.",
+              "umore": "wonder",
+              "tono": [],
+              "durata": 16,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 12,
+                      "orbit_from": 20,
+                      "elev_from": 10,
+                      "elev_to": 16,
+                      "zoom_from": 0.8,
+                      "zoom_to": 0.95
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "story_music",
+                    "parametri": {
+                      "src": "musica/Zenith_of_the_Quiet_Night.mp3",
+                      "volume": 0.3
+                    }
+                  },
+                  {
+                    "comando": "story_title",
+                    "parametri": {
+                      "id": "storie.titolo.interstellar"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.35
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "off_left",
+                      "scale": 0.4
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "bottom_left",
+                      "scale": 0.6,
+                      "glide": 12
+                    },
+                    "ripresa": {
+                      "da": 0.05,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "wonder",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "wonder",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "curious",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.1",
+                "chi": "cooper",
+                "testo": "Due anni di viaggio, ed eccolo: Saturno. E lì, accanto agli anelli, c'è una porta che nessun essere umano ha mai attraversato."
+              },
+              "dettoDa": 0.38
+            },
+            {
+              "id": "mt5bhseh",
+              "chi": "romilly",
+              "testo": "[surprised] Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 12,
+              "voce": 1,
+              "audio": {
+                "durata": 8880,
+                "impronta": "dacfca5a",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "acca097bb04a4fb3ee9b1ee51de3e3aee76a53d9",
+                "voce": "D0eqc2XJw10dwQSjPCqY",
+                "tag": "[surprised]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 6,
+                      "orbit_from": 32,
+                      "elev_from": 16,
+                      "elev_to": 17,
+                      "zoom_from": 0.95,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "wormhole",
+                      "at": "right",
+                      "duration": 60
+                    },
+                    "ripresa": {
+                      "da": 0.05,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "left",
+                      "scale": 0.75,
+                      "glide": 4
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "surprised",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "wonder",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "surprised",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.2",
+                "chi": "romilly",
+                "testo": "Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!"
+              },
+              "dettoDa": 0.15
+            },
+            {
+              "id": "mhip70g1",
+              "chi": "brand",
+              "testo": "Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 17,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 8,
+                      "orbit_from": 18,
+                      "elev_from": 16,
+                      "elev_to": 18,
+                      "zoom_from": 0.85,
+                      "zoom_to": 0.95
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.wormhole"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "left",
+                      "scale": 0.75
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "curious",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "determined",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "impressed",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.3",
+                "chi": "brand",
+                "testo": "Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo."
+              }
+            },
+            {
+              "id": "mw1ve0jt",
+              "chi": "romilly",
+              "testo": "[happy] Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. [curious] Ecco cos'è un wormhole: una scorciatoia.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 23,
+              "voce": 2,
+              "audio": {
+                "durata": 17360,
+                "impronta": "782a8f4d",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "7082a869acde8e875becfa473213f44c8abfc029",
+                "voce": "D0eqc2XJw10dwQSjPCqY",
+                "tag": "[happy]"
+              },
+              "azioni": [
+                {
+                  "id": "aweq7qj5",
+                  "tipo": "umore",
+                  "chi": "romilly",
+                  "quando": "meta",
+                  "umore": "excited",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.36,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                },
+                {
+                  "id": "aw6ac0xq",
+                  "tipo": "suono",
+                  "chi": "",
+                  "quando": "meta",
+                  "fonte": "sintesi",
+                  "suono": "magic",
+                  "volume": 1,
+                  "file": null,
+                  "richiesta": "",
+                  "secondi": 0,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.49,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                },
+                {
+                  "id": "auq4n0lz",
+                  "tipo": "umore",
+                  "chi": "cooper",
+                  "quando": "meta",
+                  "umore": "impressed",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.54,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                },
+                {
+                  "id": "a8915i4f",
+                  "tipo": "umore",
+                  "chi": "romilly",
+                  "quando": "fine",
+                  "umore": "proud",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.62,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 7,
+                      "orbit_from": 26,
+                      "elev_from": 18,
+                      "elev_to": 20,
+                      "zoom_from": 0.95,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "happy",
+                      "at": "top_left",
+                      "scale": 0.8,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "curious",
+                      "at": "bottom_left",
+                      "scale": 0.75,
+                      "look": "romilly"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "fold",
+                      "at": "right",
+                      "size": 0.8,
+                      "duration": 23
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.4",
+                "chi": "romilly",
+                "testo": "Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. Ecco cos'è un wormhole: una scorciatoia."
+              }
+            },
+            {
+              "id": "mi3o1xqg",
+              "chi": "tars",
+              "testo": "Prima di entrare vi ricordo che la mia sincerità è al novanta per cento. Quindi, sinceramente: non ho la minima idea di cosa ci sia dall'altra parte.",
+              "umore": "playful",
+              "tono": [],
+              "durata": 15,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 6,
+                      "orbit_from": 32,
+                      "elev_from": 20,
+                      "elev_to": 20,
+                      "zoom_from": 1,
+                      "zoom_to": 1.05
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "playful",
+                      "at": "right",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "skeptical",
+                      "at": "left",
+                      "look": "tars"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.5",
+                "chi": "tars",
+                "testo": "Prima di entrare vi ricordo che la mia sincerità è al novanta per cento. Quindi, sinceramente: non ho la minima idea di cosa ci sia dall'altra parte."
+              }
+            },
+            {
+              "id": "m0pvstqm",
+              "chi": "cooper",
+              "testo": "TARS, abbassa l'umorismo al settantacinque per cento. Tutti ai posti: entriamo!",
+              "umore": "determined",
+              "tono": [],
+              "durata": 9,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 8,
+                      "orbit_from": 38,
+                      "elev_from": 20,
+                      "elev_to": 18,
+                      "zoom_from": 1.05,
+                      "zoom_to": 1.25
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "wormhole",
+                      "at": "right",
+                      "size": 1.6,
+                      "duration": 30
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "left",
+                      "scale": 0.75
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "right",
+                      "scale": 0.3,
+                      "glide": 7
+                    },
+                    "ripresa": {
+                      "da": 0.35,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "worried",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "playful",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.6",
+                "chi": "cooper",
+                "testo": "TARS, abbassa l'umorismo al settantacinque per cento. Tutti ai posti: entriamo!"
+              }
+            },
+            {
+              "id": "me2fuuo0",
+              "chi": "brand",
+              "testo": "Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.",
+              "umore": "wonder",
+              "tono": [],
+              "durata": 14,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 18,
+                      "elev_to": 18,
+                      "zoom_from": 1.25,
+                      "zoom_to": 1.3
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "wormhole_tunnel",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "off_left",
+                      "scale": 0.4
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "center",
+                      "scale": 0.9,
+                      "glide": 3
+                    },
+                    "ripresa": {
+                      "da": 0.02,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "wonder",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "scared",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "scared",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.7",
+                "chi": "brand",
+                "testo": "Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano."
+              },
+              "dettoDa": 0.12
+            },
+            {
+              "id": "mcmigogq",
+              "chi": "doyle",
+              "testo": "[excited] Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!",
+              "umore": "excited",
+              "tono": [],
+              "durata": 11,
+              "voce": 6,
+              "audio": {
+                "durata": 6160,
+                "impronta": "821a034d",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b167efe4d15d7be3d74bd61c251ed7409a5e2124",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[excited]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 18,
+                      "elev_to": 18,
+                      "zoom_from": 1.3,
+                      "zoom_to": 1.35
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "center",
+                      "scale": 0.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "excited",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "tender",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "wonder",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.8",
+                "chi": "doyle",
+                "testo": "Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!"
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sts6ulk1",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "gargantua",
+            "endurance",
+            "cooper",
+            "brand",
+            "romilly",
+            "doyle",
+            "ranger",
+            "case",
+            "miller_planet"
+          ],
+          "momenti": [
+            {
+              "id": "msoyhszj",
+              "chi": "cooper",
+              "testo": "Eccolo. Gargantua. Un buco nero cento milioni di volte più pesante del Sole, che gira su se stesso quasi alla velocità della luce.",
+              "umore": "wonder",
+              "tono": [],
+              "durata": 14,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a469ic5l",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "flash",
+                  "dove": "center",
+                  "grandezza": 1,
+                  "colore": "#fffbeb",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 6,
+                      "elev_from": 60,
+                      "elev_to": 61
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.3,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.gargantua"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "bottom_left",
+                      "scale": 0.35
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "wonder",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "wonder",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "surprised",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.9",
+                "chi": "cooper",
+                "testo": "Eccolo. Gargantua. Un buco nero cento milioni di volte più pesante del Sole, che gira su se stesso quasi alla velocità della luce."
+              },
+              "dettoDa": 0.2
+            },
+            {
+              "id": "mycxaiez",
+              "chi": "gargantua",
+              "testo": "Benvenuti, piccoli umani. Non sono un mostro: sono un pozzo nello spazio-tempo. Chi mi passa vicino scivola nella mia curva… e il suo tempo rallenta.",
+              "umore": "mysterious",
+              "tono": [],
+              "durata": 15,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 61,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.4,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious",
+                      "look": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "bottom_left",
+                      "scale": 0.4,
+                      "glide": 8
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "worried",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "curious",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "gargantua",
+                      "size": 1.4,
+                      "color": "#fde68a",
+                      "duration": 14
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.10",
+                "chi": "gargantua",
+                "testo": "Benvenuti, piccoli umani. Non sono un mostro: sono un pozzo nello spazio-tempo. Chi mi passa vicino scivola nella mia curva… e il suo tempo rallenta."
+              }
+            },
+            {
+              "id": "m5ntgg8o",
+              "chi": "romilly",
+              "testo": "[in awe] Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca.",
+              "umore": "wonder",
+              "tono": [],
+              "durata": 18,
+              "voce": 3,
+              "audio": {
+                "durata": 16720,
+                "impronta": "be4f5923",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "20e7d29b541da19f654c1a46c411bfbe285c6b5a",
+                "voce": "D0eqc2XJw10dwQSjPCqY",
+                "tag": "[in awe]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.5,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "proud"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "wonder",
+                      "at": "left",
+                      "look": "gargantua"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "gargantua",
+                      "color": "#fde68a",
+                      "duration": 8
+                    },
+                    "ripresa": {
+                      "da": 0.3,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.11",
+                "chi": "romilly",
+                "testo": "Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca."
+              }
+            },
+            {
+              "id": "mi64tnjr",
+              "chi": "brand",
+              "testo": "Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 16,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 63
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.miller"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "determined",
+                      "at": "left",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "worried",
+                      "at": "right",
+                      "scale": 0.85,
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "time_warp",
+                      "at": "center",
+                      "size": 1.1,
+                      "duration": 9
+                    },
+                    "ripresa": {
+                      "da": 0.4,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.12",
+                "chi": "brand",
+                "testo": "Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra."
+              }
+            },
+            {
+              "id": "mq5ay3m9",
+              "chi": "doyle",
+              "testo": "[skeptical] Così vicino? [thoughtful] E perché il pianeta non ci cade dentro?",
+              "umore": "skeptical",
+              "tono": [],
+              "durata": 8,
+              "voce": 7,
+              "audio": {
+                "durata": 3840,
+                "impronta": "d4332d6b",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "16215bbc7ff972c1f301c3d80f264a4ba8ed5d01",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[skeptical]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "skeptical",
+                      "at": "left",
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "thinking",
+                      "at": "right",
+                      "scale": 0.85,
+                      "look": "doyle"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.13",
+                "chi": "doyle",
+                "testo": "Così vicino? E perché il pianeta non ci cade dentro?"
+              }
+            },
+            {
+              "id": "mnnkqjn8",
+              "chi": "brand",
+              "testo": "Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 17,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "curious",
+                      "at": "left",
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "happy",
+                      "at": "right",
+                      "scale": 0.85,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "at": "right",
+                      "size": 1.5,
+                      "color": "#fde68a",
+                      "duration": 14
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.14",
+                "chi": "brand",
+                "testo": "Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce."
+              }
+            },
+            {
+              "id": "mw8exbuq",
+              "chi": "romilly",
+              "testo": "[wistfully] Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. [panicked] Tornate presto.",
+              "umore": "wistful",
+              "tono": [],
+              "durata": 12,
+              "voce": 4,
+              "audio": {
+                "durata": 12000,
+                "impronta": "ba565a5f",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "7325d62d8dc1c07669c375982ada3793838e5f46",
+                "voce": "D0eqc2XJw10dwQSjPCqY",
+                "tag": "[wistfully]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 63,
+                      "elev_to": 63
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "wistful",
+                      "at": "left",
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "tender",
+                      "at": "right",
+                      "scale": 0.85,
+                      "look": "romilly"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.15",
+                "chi": "romilly",
+                "testo": "Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. Tornate presto."
+              }
+            },
+            {
+              "id": "m4t6khpb",
+              "chi": "cooper",
+              "testo": "Allora niente errori: scendiamo, prendiamo i dati della dottoressa Miller e torniamo su. Ogni minuto laggiù è più di un mese quassù.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 63,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 0.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "off_left",
+                      "scale": 0.6
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "right",
+                      "scale": 0.9,
+                      "glide": 9
+                    },
+                    "ripresa": {
+                      "da": 0.02,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "determined",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "happy",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "case",
+                      "expression": "neutral",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.16",
+                "chi": "cooper",
+                "testo": "Allora niente errori: scendiamo, prendiamo i dati della dottoressa Miller e torniamo su. Ogni minuto laggiù è più di un mese quassù."
+              },
+              "dettoDa": 0.1
+            },
+            {
+              "id": "mvpmz1ej",
+              "chi": "miller_planet",
+              "testo": "[mysteriously] Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne.",
+              "umore": "mysterious",
+              "tono": [],
+              "durata": 16,
+              "voce": 14,
+              "audio": {
+                "durata": 12800,
+                "impronta": "f2dba065",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "9188dddf61fd660ff057bd8843f18b6cb442ee3c",
+                "voce": "exATa44ZUcsstQSIV2RM",
+                "tag": "[mysteriously]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 1.3,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "miller_planet",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "miller_planet",
+                      "color": "#93c5fd",
+                      "duration": 6
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.17",
+                "chi": "miller_planet",
+                "testo": "Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne."
+              }
+            },
+            {
+              "id": "m15igv6q",
+              "chi": "brand",
+              "testo": "Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 25,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.maree"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "determined",
+                      "at": "left",
+                      "scale": 0.8,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "tidal_orbit",
+                      "stage": "stretch",
+                      "at": "center",
+                      "size": 1,
+                      "duration": 40
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.18",
+                "chi": "brand",
+                "testo": "Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro."
+              }
+            },
+            {
+              "id": "mrqt3h9z",
+              "chi": "cooper",
+              "testo": "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora.",
+              "umore": "worried",
+              "tono": [],
+              "durata": 20,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "worried",
+                      "at": "left",
+                      "scale": 0.8,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "tidal_orbit",
+                      "stage": "rock",
+                      "at": "center",
+                      "size": 1,
+                      "duration": 40
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.19",
+                "chi": "cooper",
+                "testo": "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sshcwz6f",
+          "ambiente": "pianeta",
+          "fuoco": "Saturn",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "ranger",
+            "case",
+            "brand",
+            "doyle",
+            "cooper"
+          ],
+          "momenti": [
+            {
+              "id": "mz8ch797",
+              "chi": "brand",
+              "testo": "L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.",
+              "umore": "sad",
+              "tono": [],
+              "durata": 14,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "miller_ocean",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_right",
+                      "scale": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "case",
+                      "expression": "neutral",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "sad",
+                      "at": "left",
+                      "scale": 0.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "worried",
+                      "at": "center",
+                      "scale": 0.8,
+                      "look": "brand"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.20",
+                "chi": "brand",
+                "testo": "L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa."
+              }
+            },
+            {
+              "id": "m8tcsem2",
+              "chi": "cooper",
+              "testo": "Brand… quelle non sono montagne. Sono onde!",
+              "umore": "scared",
+              "tono": [],
+              "durata": 8,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "miller_ocean",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "tidal_wave",
+                      "duration": 40
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_right",
+                      "scale": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "scared",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "case",
+                      "expression": "neutral",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "surprised",
+                      "at": "left",
+                      "scale": 0.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "scared",
+                      "at": "center",
+                      "scale": 0.8
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.21",
+                "chi": "cooper",
+                "testo": "Brand… quelle non sono montagne. Sono onde!"
+              }
+            },
+            {
+              "id": "mdrwf7hu",
+              "chi": "doyle",
+              "testo": "[panicked] Brand, lascia stare! Torna al Ranger, corri!",
+              "umore": "panicked",
+              "tono": [],
+              "durata": 8,
+              "voce": 8,
+              "audio": {
+                "durata": 2640,
+                "impronta": "309b6dcc",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "a6f8787c80c7f7b32d88dc9fe240a37c464f4f20",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[panicked]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "miller_ocean",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_right",
+                      "scale": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "panicked",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "scared",
+                      "at": "left",
+                      "scale": 0.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "panicked",
+                      "at": "center",
+                      "scale": 0.8,
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "character_animate",
+                    "parametri": {
+                      "target": "doyle",
+                      "animation": "shake",
+                      "times": 3,
+                      "strength": 0.6
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.22",
+                "chi": "doyle",
+                "testo": "Brand, lascia stare! Torna al Ranger, corri!"
+              }
+            },
+            {
+              "id": "mal2he7s",
+              "chi": "case",
+              "testo": "[determined] Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!",
+              "umore": "determined",
+              "tono": [],
+              "durata": 9,
+              "voce": 9,
+              "audio": {
+                "durata": 4640,
+                "impronta": "3556f65d",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "eb000622c4ba2293d7debe7996e1ebe1b837dcad",
+                "voce": "2noihuQpglcWf1H9jf7J",
+                "tag": "[determined]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "miller_ocean",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_right",
+                      "scale": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "top_right",
+                      "scale": 0.6,
+                      "glide": 5
+                    },
+                    "ripresa": {
+                      "da": 0.45,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "case",
+                      "expression": "determined",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "scared",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.23",
+                "chi": "case",
+                "testo": "Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!"
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s3vcnw4s",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "cooper",
+            "romilly",
+            "brand",
+            "murph",
+            "mann_planet"
+          ],
+          "momenti": [
+            {
+              "id": "mkvgltc3",
+              "chi": "cooper",
+              "testo": "Romilly… quanto tempo siamo stati via?",
+              "umore": "worried",
+              "tono": [],
+              "durata": 7,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "worried",
+                      "at": "left",
+                      "look": "romilly"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "wistful",
+                      "at": "right",
+                      "look": "cooper"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.24",
+                "chi": "cooper",
+                "testo": "Romilly… quanto tempo siamo stati via?"
+              }
+            },
+            {
+              "id": "m2czlmf6",
+              "chi": "romilly",
+              "testo": "[sad] Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato.",
+              "umore": "sad",
+              "tono": [],
+              "durata": 9,
+              "voce": 5,
+              "audio": {
+                "durata": 7040,
+                "impronta": "fd8235f5",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c55108b844e640991509d5408c9b3a62f78eab9e",
+                "voce": "D0eqc2XJw10dwQSjPCqY",
+                "tag": "[sad]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.ventitre"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "surprised",
+                      "at": "left",
+                      "look": "romilly"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "sad",
+                      "at": "right",
+                      "look": "cooper"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "time_warp",
+                      "at": "center",
+                      "size": 1.2,
+                      "duration": 8
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.25",
+                "chi": "romilly",
+                "testo": "Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato."
+              }
+            },
+            {
+              "id": "mnczjtlb",
+              "chi": "brand",
+              "testo": "Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni.",
+              "umore": "sad",
+              "tono": [],
+              "durata": 20,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "sad",
+                      "at": "left",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "sad",
+                      "at": "right",
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "at": "center",
+                      "size": 1.6,
+                      "color": "#fde68a",
+                      "duration": 14
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.26",
+                "chi": "brand",
+                "testo": "Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni."
+              }
+            },
+            {
+              "id": "mo3m5juv",
+              "chi": "murph",
+              "testo": "Ciao papà. Oggi compio gli anni che avevi tu quando sei partito. Mi avevi promesso che saresti tornato… forse è ora che smetta di aspettarti.",
+              "umore": "sad",
+              "tono": [],
+              "durata": 16,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "angw4ri4",
+                  "tipo": "umore",
+                  "chi": "cooper",
+                  "quando": "meta",
+                  "umore": "wistful",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.6,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 3,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "murph",
+                      "expression": "sad",
+                      "at": "right",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "sad",
+                      "at": "left",
+                      "look": "murph"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.27",
+                "chi": "murph",
+                "testo": "Ciao papà. Oggi compio gli anni che avevi tu quando sei partito. Mi avevi promesso che saresti tornato… forse è ora che smetta di aspettarti."
+              }
+            },
+            {
+              "id": "mgkxugdy",
+              "chi": "cooper",
+              "testo": "Murph… Ti ho lasciato il mio orologio, per confrontarli quando sarei tornato. Il mio tempo è rimasto indietro, ma io non ti ho mai lasciata.",
+              "umore": "tender",
+              "tono": [],
+              "durata": 14,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 3,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "murph",
+                      "expression": "wistful",
+                      "at": "right"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "tender",
+                      "at": "left",
+                      "look": "murph"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.28",
+                "chi": "cooper",
+                "testo": "Murph… Ti ho lasciato il mio orologio, per confrontarli quando sarei tornato. Il mio tempo è rimasto indietro, ma io non ti ho mai lasciata."
+              }
+            },
+            {
+              "id": "ms5e969v",
+              "chi": "brand",
+              "testo": "Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds.",
+              "umore": "hopeful",
+              "tono": [],
+              "durata": 14,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "hopeful",
+                      "at": "left",
+                      "look": "cooper"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "thinking",
+                      "at": "right",
+                      "look": "brand"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.29",
+                "chi": "brand",
+                "testo": "Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds."
+              }
+            },
+            {
+              "id": "mix01usy",
+              "chi": "cooper",
+              "testo": "I dati dicono Mann, Brand. Andiamo da Mann.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 7,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "disappointed",
+                      "at": "left",
+                      "look": "cooper"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "at": "right",
+                      "look": "brand"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.30",
+                "chi": "cooper",
+                "testo": "I dati dicono Mann, Brand. Andiamo da Mann."
+              }
+            },
+            {
+              "id": "mj7lb08k",
+              "chi": "mann_planet",
+              "testo": "[mysteriously] Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. [sleepy] Il dottor Mann dorme da anni… [mysteriously] e nasconde un segreto.",
+              "umore": "mysterious",
+              "tono": [],
+              "durata": 16,
+              "voce": 15,
+              "audio": {
+                "durata": 13280,
+                "impronta": "7302c526",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "60ccc762e6aed7f061ef79cef26881cd93816e89",
+                "voce": "QJuw4ca3tXJbekduZUpZ",
+                "tag": "[mysteriously]"
+              },
+              "azioni": [
+                {
+                  "id": "au794gur",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "meta",
+                  "effetto": "smoke",
+                  "dove": "mann_planet",
+                  "grandezza": 1,
+                  "colore": "#e0f2fe",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.3,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 1.2,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "mann_planet",
+                      "expression": "mysterious"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.31",
+                "chi": "mann_planet",
+                "testo": "Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. Il dottor Mann dorme da anni… e nasconde un segreto."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s3xdiypf",
+          "ambiente": "pianeta",
+          "fuoco": "Saturn",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "lander",
+            "mann",
+            "cooper",
+            "tars"
+          ],
+          "momenti": [
+            {
+              "id": "mtoc3sgj",
+              "chi": "mann",
+              "testo": "[relieved] Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui.",
+              "umore": "relieved",
+              "tono": [],
+              "durata": 11,
+              "voce": 11,
+              "audio": {
+                "durata": 7520,
+                "impronta": "42ef2b3f",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c60fc7b1239b3cd821c3915086d1e44d6b0d7a1a",
+                "voce": "VmkgMjrk2aUePsTZ907X",
+                "tag": "[relieved]"
+              },
+              "azioni": [
+                {
+                  "id": "a5r9wj9h",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "sparkles",
+                  "dove": "mann",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.1,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "mann_ice",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "lander",
+                      "at": "bottom_left",
+                      "scale": 0.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "mann",
+                      "expression": "relieved",
+                      "at": "center",
+                      "look": "cooper"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "happy",
+                      "at": "right",
+                      "scale": 0.9,
+                      "look": "mann"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.32",
+                "chi": "mann",
+                "testo": "Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui."
+              }
+            },
+            {
+              "id": "m6o3konc",
+              "chi": "mann",
+              "testo": "[mischievously] Il mio pianeta non può ospitare nessuno, Cooper. [nervous] Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io.",
+              "umore": "bully",
+              "tono": [],
+              "durata": 16,
+              "voce": 12,
+              "audio": {
+                "durata": 14240,
+                "impronta": "4ecc2faf",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "fe128ee7f58c42f7e1e2b23f8f745570aa8470dd",
+                "voce": "VmkgMjrk2aUePsTZ907X",
+                "tag": "[mischievously]"
+              },
+              "azioni": [
+                {
+                  "id": "a0ek9m8z",
+                  "tipo": "umore",
+                  "chi": "mann",
+                  "quando": "fine",
+                  "umore": "sad",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.65,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "mann_ice",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "lander",
+                      "at": "bottom_left",
+                      "scale": 0.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "mann",
+                      "expression": "bully",
+                      "at": "center",
+                      "look": "cooper"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "scared",
+                      "at": "right",
+                      "scale": 0.9,
+                      "look": "mann"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.33",
+                "chi": "mann",
+                "testo": "Il mio pianeta non può ospitare nessuno, Cooper. Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io."
+              }
+            },
+            {
+              "id": "mpk5ok2r",
+              "chi": "tars",
+              "testo": "Cattive notizie: il dottor Mann ha preso il Lander e vola verso l'Endurance. Ho spento l'aggancio automatico: se prova a forzarlo, sarà un disastro.",
+              "umore": "worried",
+              "tono": [],
+              "durata": 14,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "mann_ice",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "lander",
+                      "at": "bottom_left",
+                      "scale": 0.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "lander",
+                      "at": "top_left",
+                      "scale": 0.6,
+                      "glide": 4
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "mann",
+                      "expression": "determined",
+                      "inside": "lander"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "worried",
+                      "at": "right",
+                      "look": "viewer"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.34",
+                "chi": "tars",
+                "testo": "Cattive notizie: il dottor Mann ha preso il Lander e vola verso l'Endurance. Ho spento l'aggancio automatico: se prova a forzarlo, sarà un disastro."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sl5dw34m",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "endurance",
+            "lander",
+            "mann",
+            "ranger",
+            "case",
+            "cooper",
+            "brand",
+            "tars",
+            "gargantua"
+          ],
+          "momenti": [
+            {
+              "id": "mij6l8i5",
+              "chi": "mann",
+              "testo": "[excited] Si apre… si apre! [proud] Ce l'ho fatta!",
+              "umore": "excited",
+              "tono": [],
+              "durata": 9,
+              "voce": 13,
+              "audio": {
+                "durata": 3200,
+                "impronta": "d9ffe0c1",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "d6deef30f238e71313adc3de9060b0314be6a7e5",
+                "voce": "VmkgMjrk2aUePsTZ907X",
+                "tag": "[excited]"
+              },
+              "azioni": [
+                {
+                  "id": "ae4x4pgu",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "fine",
+                  "effetto": "explosion",
+                  "dove": "center",
+                  "grandezza": 2.6,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.82,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                },
+                {
+                  "id": "asmn5j2v",
+                  "tipo": "suono",
+                  "chi": "",
+                  "quando": "fine",
+                  "fonte": "file",
+                  "suono": "tada",
+                  "volume": 1.6,
+                  "file": {
+                    "nome": "esplosione_navicella.wav",
+                    "est": "wav",
+                    "sha": "3240c778ade34f8c11c5a611cc5574959f461f4c",
+                    "durata": 5500
+                  },
+                  "richiesta": "",
+                  "secondi": 0
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 0.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "center",
+                      "scale": 0.85
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "lander",
+                      "at": "off_right",
+                      "scale": 0.6
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "lander",
+                      "at": "right",
+                      "scale": 0.6,
+                      "glide": 4
+                    },
+                    "ripresa": {
+                      "da": 0.02,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "mann",
+                      "expression": "excited",
+                      "inside": "lander"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.35",
+                "chi": "mann",
+                "testo": "Si apre… si apre! Ce l'ho fatta!"
+              }
+            },
+            {
+              "id": "mw1j55n3",
+              "chi": "case",
+              "testo": "[nervous] L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile.",
+              "umore": "worried",
+              "tono": [],
+              "durata": 11,
+              "voce": 10,
+              "audio": {
+                "durata": 8320,
+                "impronta": "5b2f849a",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "60ada1995501df3d09998ae49767247da173e319",
+                "voce": "2noihuQpglcWf1H9jf7J",
+                "tag": "[nervous]"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 0.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "smoke",
+                      "at": "center",
+                      "size": 2,
+                      "duration": 5
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "center",
+                      "scale": 0.85,
+                      "spin": 408
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_left",
+                      "scale": 0.7,
+                      "glide": 3
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "case",
+                      "expression": "worried",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "scared",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.36",
+                "chi": "case",
+                "testo": "L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile."
+              }
+            },
+            {
+              "id": "mz39hwj0",
+              "chi": "cooper",
+              "testo": "No, CASE. È necessario. Giriamo anche noi, alla stessa velocità!",
+              "umore": "determined",
+              "tono": [],
+              "durata": 10,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 0.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "center",
+                      "scale": 0.85,
+                      "spin": 408
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_left",
+                      "scale": 0.7
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "center",
+                      "scale": 0.55,
+                      "glide": 6,
+                      "spin": 408
+                    },
+                    "ripresa": {
+                      "da": 0.35,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "case",
+                      "expression": "surprised",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "scared",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.37",
+                "chi": "cooper",
+                "testo": "No, CASE. È necessario. Giriamo anche noi, alla stessa velocità!"
+              }
+            },
+            {
+              "id": "m1zgpj5t",
+              "chi": "tars",
+              "testo": "Agganciati! Girando insieme, il Ranger e l'Endurance stavano fermi l'uno rispetto all'altra, come due ballerini che si tengono per mano. Poi abbiamo frenato insieme.",
+              "umore": "proud",
+              "tono": [],
+              "durata": 14,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "aaecz425",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "sparkles",
+                  "dove": "endurance",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.05,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 0.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.attracco"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "left",
+                      "scale": 0.75,
+                      "spin": 24,
+                      "glide": 3
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "proud",
+                      "at": "right",
+                      "look": "viewer"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.38",
+                "chi": "tars",
+                "testo": "Agganciati! Girando insieme, il Ranger e l'Endurance stavano fermi l'uno rispetto all'altra, come due ballerini che si tengono per mano. Poi abbiamo frenato insieme."
+              }
+            },
+            {
+              "id": "m0sj312w",
+              "chi": "brand",
+              "testo": "Ce l'hai fatta, Cooper! Credevo che fosse finita.",
+              "umore": "relieved",
+              "tono": [],
+              "durata": 7,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "left",
+                      "size": 0.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "center",
+                      "scale": 0.9,
+                      "glide": 3
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "relieved",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "happy",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "happy",
+                      "inside": "endurance"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.39",
+                "chi": "brand",
+                "testo": "Ce l'hai fatta, Cooper! Credevo che fosse finita."
+              }
+            },
+            {
+              "id": "mhjvo64b",
+              "chi": "cooper",
+              "testo": "Il carburante non basta per Edmunds. Ma Gargantua può farci da fionda: gli passiamo rasenti, la sua gravità ci curva e ci lancia via più veloci.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 15,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 64,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.3,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.fionda"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "at": "left",
+                      "look": "gargantua"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "orbit_path",
+                      "target": "gargantua",
+                      "size": 1.6,
+                      "duration": 14
+                    },
+                    "ripresa": {
+                      "da": 0.08,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.40",
+                "chi": "cooper",
+                "testo": "Il carburante non basta per Edmunds. Ma Gargantua può farci da fionda: gli passiamo rasenti, la sua gravità ci curva e ci lancia via più veloci."
+              }
+            },
+            {
+              "id": "mupxv30u",
+              "chi": "cooper",
+              "testo": "Così vicino a Gargantua il tempo rallenta di nuovo: questa manovra ci costerà cinquantun anni sulla Terra. È il prezzo per arrivare.",
+              "umore": "wistful",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.3,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 65,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "wistful",
+                      "at": "left",
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "worried",
+                      "at": "right",
+                      "scale": 0.85,
+                      "look": "cooper"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "time_warp",
+                      "at": "center",
+                      "size": 0.9,
+                      "duration": 8
+                    },
+                    "ripresa": {
+                      "da": 0.2,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.41",
+                "chi": "cooper",
+                "testo": "Così vicino a Gargantua il tempo rallenta di nuovo: questa manovra ci costerà cinquantun anni sulla Terra. È il prezzo per arrivare."
+              }
+            },
+            {
+              "id": "m0c6hi4g",
+              "chi": "cooper",
+              "testo": "Newton lo diceva: per andare avanti bisogna lasciare indietro qualcosa. TARS e io ci stacchiamo nel punto più vicino: senza il nostro peso, l'Endurance ce la farà.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 15,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.3,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 65,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "bottom_left",
+                      "scale": 0.55
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "worried",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "top_left",
+                      "scale": 0.45
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "determined",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "tender",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.42",
+                "chi": "cooper",
+                "testo": "Newton lo diceva: per andare avanti bisogna lasciare indietro qualcosa. TARS e io ci stacchiamo nel punto più vicino: senza il nostro peso, l'Endurance ce la farà."
+              }
+            },
+            {
+              "id": "mnqn3nqw",
+              "chi": "brand",
+              "testo": "Cooper, no! Non lasciarmi sola!",
+              "umore": "panicked",
+              "tono": [],
+              "durata": 6,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.3,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 65,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "bottom_left",
+                      "scale": 0.55
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "panicked",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "top_left",
+                      "scale": 0.45
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "tender",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "tender",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.43",
+                "chi": "brand",
+                "testo": "Cooper, no! Non lasciarmi sola!"
+              }
+            },
+            {
+              "id": "m59yysht",
+              "chi": "tars",
+              "testo": "È stato un onore volare con voi. Livello di sincerità: cento per cento.",
+              "umore": "tender",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 65,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.4,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "tender"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "bottom_left",
+                      "scale": 0.55
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "endurance",
+                      "at": "off_left",
+                      "scale": 0.4,
+                      "glide": 14
+                    },
+                    "ripresa": {
+                      "da": 0.4,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "sad",
+                      "inside": "endurance"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "top_left",
+                      "scale": 0.45
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "top_right",
+                      "scale": 0.2,
+                      "glide": 12
+                    },
+                    "ripresa": {
+                      "da": 0.15,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "tender",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "tender",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.44",
+                "chi": "tars",
+                "testo": "È stato un onore volare con voi. Livello di sincerità: cento per cento."
+              }
+            },
+            {
+              "id": "mitobkw5",
+              "chi": "brand",
+              "testo": "L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.",
+              "umore": "sad",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "awqdjyem",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "meta",
+                  "effetto": "hearts",
+                  "dove": "brand",
+                  "grandezza": 1,
+                  "colore": "#fde68a",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.5,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.4,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 65,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "tender"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "sad",
+                      "at": "left",
+                      "look": "gargantua"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.45",
+                "chi": "brand",
+                "testo": "L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds."
+              }
+            },
+            {
+              "id": "mhnhcjz5",
+              "chi": "gargantua",
+              "testo": "Ora entri nel mio orizzonte, Cooper. Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto.",
+              "umore": "mysterious",
+              "tono": [],
+              "durata": 23,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 65,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.orizzonte"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious",
+                      "look": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_left",
+                      "scale": 0.35,
+                      "spin": 12
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "wonder",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "neutral",
+                      "inside": "ranger"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.46",
+                "chi": "gargantua",
+                "testo": "Ora entri nel mio orizzonte, Cooper. Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto."
+              }
+            },
+            {
+              "id": "mqa24m5c",
+              "chi": "cooper",
+              "testo": "TARS… stiamo cadendo nella luce. Murph… sto arrivando.",
+              "umore": "wonder",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "awt7a445",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "fine",
+                  "effetto": "flash",
+                  "dove": "center",
+                  "grandezza": 1,
+                  "colore": "#fffbeb",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.88,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.9,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 65,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "tender"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "bottom_left",
+                      "scale": 0.35,
+                      "spin": 12
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "ranger",
+                      "at": "center",
+                      "scale": 0.15,
+                      "spin": 30,
+                      "glide": 9
+                    },
+                    "ripresa": {
+                      "da": 0.2,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "wonder",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "tars",
+                      "expression": "happy",
+                      "inside": "ranger"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "gargantua",
+                      "color": "#fde68a",
+                      "duration": 10
+                    },
+                    "ripresa": {
+                      "da": 0.3,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.47",
+                "chi": "cooper",
+                "testo": "TARS… stiamo cadendo nella luce. Murph… sto arrivando."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sy91xfah",
+          "ambiente": "pianeta",
+          "fuoco": "Saturn",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "murph"
+          ],
+          "momenti": [
+            {
+              "id": "mwo7kpwz",
+              "chi": "murph",
+              "testo": "Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo.",
+              "umore": "hopeful",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "aqve98l4",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "sparkles",
+                  "dove": "murph",
+                  "grandezza": 1,
+                  "colore": "#fbbf24",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.2,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "awin3jf0",
+                  "tipo": "umore",
+                  "chi": "murph",
+                  "quando": "fine",
+                  "umore": "surprised",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.7,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "elev_from": 10,
+                      "elev_to": 10,
+                      "zoom_from": 1,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "murph_room",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.fine"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "murph",
+                      "expression": "hopeful",
+                      "at": "right",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "books_fall",
+                      "at": "left",
+                      "size": 1,
+                      "duration": 5.5
+                    },
+                    "ripresa": {
+                      "da": 0.55,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.48",
+                "chi": "murph",
+                "testo": "Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        }
+      ],
+      "demoChiave": "utente-mv8i6umu-v39gc0dl27e",
+      "voceChiave": "studio_interstellar_1_oltre_gargantua",
+      "voceProssima": 16,
+      "aggiornato": 1792007309664,
+      "lingua": "it",
+      "musica": null,
+      "voci": {
+        "romilly": {
+          "id": "D0eqc2XJw10dwQSjPCqY",
+          "nome": "Dade M - Formal & Helpful Customer Care",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/ed9b05e6324c457685490352e9a1ec90/voices/D0eqc2XJw10dwQSjPCqY/Z9pTEiY7l8Gqq3jOJAKr.mp3",
+          "genere": "m"
+        },
+        "doyle": {
+          "id": "aQ9s2C5T9TIPvAFtHWuA",
+          "nome": "Enea - Warm & Smooth Italian Narrator",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/567700fc161547fe98c11a8e1162432a/voices/aQ9s2C5T9TIPvAFtHWuA/xsVZK0j5XPQtLbnBzVbt.mp3",
+          "genere": "m"
+        },
+        "case": {
+          "id": "2noihuQpglcWf1H9jf7J",
+          "nome": "Kallari - Social Media",
+          "anteprima": "https://api.us.elevenlabs.io/v1/voices/2noihuQpglcWf1H9jf7J/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJhOThjMDkzOTRmYjU0NWY4OWNjOTJlNDNkODkyNDcwMSIsImZpbGVuYW1lIjoiNGFkNTIzNzItZjBjMi00MWMxLTgyMGItMDU5ZTZmNGEyOTg4Lm1wMyIsInRpbWVzdGFtcCI6MTc5MjAwNDQwMDAwMDAwMH0%3D",
+          "genere": "m"
+        },
+        "mann": {
+          "id": "VmkgMjrk2aUePsTZ907X",
+          "nome": "Roberto Tobia - Gentle",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/2722e4699648415aa40653b053f13ce0/voices/VmkgMjrk2aUePsTZ907X/490413e6-50f8-4c11-851b-89b2a70840d3.mp3",
+          "genere": "m"
+        },
+        "miller_planet": {
+          "id": "exATa44ZUcsstQSIV2RM",
+          "nome": "Stella - Expressive & Dynamic Character",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/313555e6488046d5bb52335614916a55/voices/exATa44ZUcsstQSIV2RM/lwUMpMTI9r1LDrhFy9Su.mp3",
+          "genere": "f"
+        },
+        "mann_planet": {
+          "id": "QJuw4ca3tXJbekduZUpZ",
+          "nome": "Nicola - Reflective",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/e45e1b286714440099b2f6144252d203/voices/QJuw4ca3tXJbekduZUpZ/896b5f48-82be-4c38-81df-8e5658baa419.mp3",
+          "genere": "m"
+        }
+      },
+      "domanda": {
+        "attiva": false,
+        "modo": "auto",
+        "tipo": "auto",
+        "testo": "",
+        "a": "",
+        "b": "",
+        "chi": ""
+      }
+    },
+    {
+      "v": 1,
       "id": "pp9ffc58",
       "titolo": "Cosa è la gravità?",
       "scopo": "libera",
@@ -1518,7 +6014,9 @@
                 "impronta": "267258c8",
                 "nome": "elevenlabs.mp3",
                 "voce": "lFHyHlRLX5EFGKJ9tJ2M",
-                "tag": "[shouts]"
+                "tag": "[shouts]",
+                "sha": "ce40ffae9ab0c2733aef865481ee3a0364356731",
+                "est": "mp3"
               },
               "azioni": [],
               "copione": null,

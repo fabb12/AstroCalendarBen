@@ -291,6 +291,148 @@
           "durata": 7000
         }
       ]
+    },
+    {
+      "chiave": "studio_interstellar_1_oltre_gargantua",
+      "titolo": "Interstellar 1: oltre Gargantua",
+      "lingua": "it",
+      "battute": [
+        {
+          "n": 1,
+          "chi": "romilly",
+          "testo": "Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!",
+          "umore": "surprised",
+          "scena": 2,
+          "durata": 12000,
+          "conTag": "[surprised] Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!"
+        },
+        {
+          "n": 2,
+          "chi": "romilly",
+          "testo": "Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. Ecco cos'è un wormhole: una scorciatoia.",
+          "umore": "happy",
+          "scena": 4,
+          "durata": 23000,
+          "conTag": "[happy] Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. [curious] Ecco cos'è un wormhole: una scorciatoia."
+        },
+        {
+          "n": 6,
+          "chi": "doyle",
+          "testo": "Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!",
+          "umore": "excited",
+          "scena": 8,
+          "durata": 11000,
+          "conTag": "[excited] Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!"
+        },
+        {
+          "n": 3,
+          "chi": "romilly",
+          "testo": "Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca.",
+          "umore": "wonder",
+          "scena": 11,
+          "durata": 18000,
+          "conTag": "[in awe] Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca."
+        },
+        {
+          "n": 7,
+          "chi": "doyle",
+          "testo": "Così vicino? E perché il pianeta non ci cade dentro?",
+          "umore": "skeptical",
+          "scena": 13,
+          "durata": 8000,
+          "conTag": "[skeptical] Così vicino? [thoughtful] E perché il pianeta non ci cade dentro?"
+        },
+        {
+          "n": 4,
+          "chi": "romilly",
+          "testo": "Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. Tornate presto.",
+          "umore": "wistful",
+          "scena": 15,
+          "durata": 13000,
+          "conTag": "[wistfully] Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. [panicked] Tornate presto."
+        },
+        {
+          "n": 14,
+          "chi": "miller_planet",
+          "testo": "Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne.",
+          "umore": "mysterious",
+          "scena": 17,
+          "durata": 16000,
+          "conTag": "[mysteriously] Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne."
+        },
+        {
+          "n": 8,
+          "chi": "doyle",
+          "testo": "Brand, lascia stare! Torna al Ranger, corri!",
+          "umore": "panicked",
+          "scena": 22,
+          "durata": 8000,
+          "conTag": "[panicked] Brand, lascia stare! Torna al Ranger, corri!"
+        },
+        {
+          "n": 9,
+          "chi": "case",
+          "testo": "Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!",
+          "umore": "determined",
+          "scena": 23,
+          "durata": 9000,
+          "conTag": "[determined] Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!"
+        },
+        {
+          "n": 5,
+          "chi": "romilly",
+          "testo": "Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato.",
+          "umore": "sad",
+          "scena": 25,
+          "durata": 9000,
+          "conTag": "[sad] Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato."
+        },
+        {
+          "n": 15,
+          "chi": "mann_planet",
+          "testo": "Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. Il dottor Mann dorme da anni… e nasconde un segreto.",
+          "umore": "mysterious",
+          "scena": 31,
+          "durata": 16000,
+          "conTag": "[mysteriously] Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. [sleepy] Il dottor Mann dorme da anni… [mysteriously] e nasconde un segreto."
+        },
+        {
+          "n": 11,
+          "chi": "mann",
+          "testo": "Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui.",
+          "umore": "relieved",
+          "scena": 32,
+          "durata": 11000,
+          "conTag": "[relieved] Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui."
+        },
+        {
+          "n": 12,
+          "chi": "mann",
+          "testo": "Il mio pianeta non può ospitare nessuno, Cooper. Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io.",
+          "umore": "bully",
+          "scena": 33,
+          "durata": 16000,
+          "conTag": "[mischievously] Il mio pianeta non può ospitare nessuno, Cooper. [nervous] Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io."
+        },
+        {
+          "n": 13,
+          "chi": "mann",
+          "testo": "Si apre… si apre! Ce l'ho fatta!",
+          "umore": "excited",
+          "scena": 35,
+          "durata": 9000,
+          "conTag": "[excited] Si apre… si apre! [proud] Ce l'ho fatta!"
+        },
+        {
+          "n": 10,
+          "chi": "case",
+          "testo": "L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile.",
+          "umore": "worried",
+          "scena": 36,
+          "durata": 11000,
+          "conTag": "[nervous] L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile."
+        }
+      ]
     }
   ]
 }
