@@ -1596,6 +1596,43 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### I rumori di bordo di «Interstellar» (v492)
+
+Nelle due parti di «Interstellar» le navicelle scivolavano, si
+agganciavano, si staccavano ed esplodevano in silenzio: suonava solo il
+rumore di ogni effetto visivo, una volta, quando compare (il wormhole,
+l'onda, l'esplosione). Ora tredici rumori nuovi in `STOR_SUONI` e
+`RICETTE`, sintetizzati come gli altri (sotto i 4 s, mai sopra 1 di
+volume): `engine` (i motori), `thrusters` (i getti di manovra), `docking`
+(l'aggancio), `detach` (lo sgancio), `alarm` (l'allarme di bordo),
+`decompression` (l'aria che scappa), `metal_groan` (la lamiera che geme),
+`turbulence` (gli scossoni), `splash` (l'acqua), `ice_crack` (il ghiaccio o
+la visiera che si incrina), `radio` (i messaggi), `spin_up` e `spin_down`
+(la rotazione che sale e scende). I nomi nello Studio stanno in
+`studio.suono.nome.*`.
+
+Le storie li chiedono con `sound { type, shot_from }` prima della battuta:
+**Parte 1** — l'Endurance che arriva a Saturno e quella che entra nel
+wormhole (motori), il viaggio dentro (scossoni e lamiere), l'uscita, il
+Ranger che si stacca e scende su Miller, l'acqua, l'onda con l'allarme, il
+decollo dalla cresta, la radio dei messaggi da casa, il risveglio di Mann
+(l'aria della capsula, il ghiaccio), la visiera di Cooper incrinata, il
+Lander che riparte, l'aggancio forzato (getti, aggancio, allarme,
+l'esplosione che c'era già, l'aria che scappa), l'Endurance che gira
+all'impazzata, il Ranger che prende il giro e l'aggancio che lo rallenta,
+la fionda, lo sgancio di Cooper e TARS, l'orizzonte e la luce di Gargantua.
+**Parte 2** — la caduta (scossoni, lamiere, allarme, l'espulsione), l'arrivo
+nel tesseratto, il decollo dalla Terra, il tesseratto che si richiude, il
+wormhole, la navetta che ripesca Cooper (motori e radio), la ripartenza
+verso Brand. Le scene, i tempi delle voci vere e le battute non cambiano.
+
+Prove: `prova-storie.js` (120: ogni ricetta suona, si spegne in tempo e non
+satura), `prova-demo.js`, `prova-voci-cosmostorie.js` (10),
+`prova-storie-repo.js` (19), `prova-i18n.js`, `controlla-i18n.js --patto`
+(342). Resi in Chromium con un `OfflineAudioContext` (nessuno muto, picco
+più alto 0,63) e ascoltati nel motore sulle scene dell'aggancio forzato,
+del wormhole e della caduta della Parte 2.
+
 ### Il suono caricato che non si sentiva (v491)
 
 Chi caricava un suono nello Studio e lo metteva a **metà** o alla **fine**
