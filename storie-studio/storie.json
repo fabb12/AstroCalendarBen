@@ -583,12 +583,20 @@
             {
               "id": "mhip70g1",
               "chi": "brand",
-              "testo": "Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.",
+              "testo": "[determined] Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.",
               "umore": "determined",
               "tono": [],
               "durata": 17,
-              "voce": 0,
-              "audio": null,
+              "voce": 16,
+              "audio": {
+                "durata": 13280,
+                "impronta": "76d87a73",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "3804f5e10b2eb3e2e049e1e97509dd3e78c11c9a",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[determined]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -980,12 +988,20 @@
             {
               "id": "me2fuuo0",
               "chi": "brand",
-              "testo": "Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.",
+              "testo": "[in awe] Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.",
               "umore": "wonder",
               "tono": [],
               "durata": 14,
-              "voce": 0,
-              "audio": null,
+              "voce": 17,
+              "audio": {
+                "durata": 10640,
+                "impronta": "55d19e4f",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b555d40c4b6197edf1a93a8d0f9e6cd50a03a89d",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[in awe]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -1457,12 +1473,20 @@
             {
               "id": "mi64tnjr",
               "chi": "brand",
-              "testo": "Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.",
+              "testo": "[determined] Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.",
               "umore": "determined",
               "tono": [],
               "durata": 16,
-              "voce": 0,
-              "audio": null,
+              "voce": 18,
+              "audio": {
+                "durata": 13280,
+                "impronta": "7057d7ad",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ed78384556cb3843b02e73c4a655a89533382af0",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[determined]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -1602,12 +1626,20 @@
             {
               "id": "mnnkqjn8",
               "chi": "brand",
-              "testo": "Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce.",
+              "testo": "[happy] Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce.",
               "umore": "happy",
               "tono": [],
               "durata": 17,
-              "voce": 0,
-              "audio": null,
+              "voce": 19,
+              "audio": {
+                "durata": 20160,
+                "impronta": "4db6553f",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "bc6278d126e39562c64e7f6f75d998292b14764e",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[happy]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -1916,12 +1948,20 @@
             {
               "id": "m15igv6q",
               "chi": "brand",
-              "testo": "Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro.",
+              "testo": "[determined] Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro.",
               "umore": "determined",
               "tono": [],
               "durata": 25,
-              "voce": 0,
-              "audio": null,
+              "voce": 20,
+              "audio": {
+                "durata": 23120,
+                "impronta": "f6f2a9ca",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "cd6cadd9fc8170719cdb770a8e4a67412ce0702b",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[determined]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -2077,12 +2117,20 @@
             {
               "id": "mz8ch797",
               "chi": "brand",
-              "testo": "L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.",
+              "testo": "[sad] L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.",
               "umore": "sad",
               "tono": [],
               "durata": 14,
-              "voce": 0,
-              "audio": null,
+              "voce": 21,
+              "audio": {
+                "durata": 12400,
+                "impronta": "62e2dc77",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ef3481254d535e80e175551c8a12407cea8f3739",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[sad]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -2616,12 +2664,20 @@
             {
               "id": "mnczjtlb",
               "chi": "brand",
-              "testo": "Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni.",
+              "testo": "[sad] Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni.",
               "umore": "sad",
               "tono": [],
               "durata": 20,
-              "voce": 0,
-              "audio": null,
+              "voce": 22,
+              "audio": {
+                "durata": 16480,
+                "impronta": "9ec5903e",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "2fe50548c45a8a9d780c7bf480598ffb4fc6cda6",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[sad]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -2835,12 +2891,20 @@
             {
               "id": "ms5e969v",
               "chi": "brand",
-              "testo": "Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds.",
+              "testo": "[hopeful] Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds.",
               "umore": "hopeful",
               "tono": [],
               "durata": 14,
-              "voce": 0,
-              "audio": null,
+              "voce": 23,
+              "audio": {
+                "durata": 10560,
+                "impronta": "90af5491",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "55788443f8354a0059a9729e9796063edb92126e",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[hopeful]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -3803,12 +3867,20 @@
             {
               "id": "m0sj312w",
               "chi": "brand",
-              "testo": "Ce l'hai fatta, Cooper! Credevo che fosse finita.",
+              "testo": "[relieved] Ce l'hai fatta, Cooper! Credevo che fosse finita.",
               "umore": "relieved",
               "tono": [],
               "durata": 7,
-              "voce": 0,
-              "audio": null,
+              "voce": 24,
+              "audio": {
+                "durata": 3440,
+                "impronta": "979894b6",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "97673d9327b96cf01b6fd034f70a7623f3306318",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[relieved]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -4129,12 +4201,20 @@
             {
               "id": "mnqn3nqw",
               "chi": "brand",
-              "testo": "Cooper, no! Non lasciarmi sola!",
+              "testo": "[panicked] Cooper, no! Non lasciarmi sola!",
               "umore": "panicked",
               "tono": [],
               "durata": 6,
-              "voce": 0,
-              "audio": null,
+              "voce": 25,
+              "audio": {
+                "durata": 2800,
+                "impronta": "366bb3d4",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "020af695d4363df8c005d49802a8520c6d19ad6c",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[panicked]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -4335,12 +4415,20 @@
             {
               "id": "mitobkw5",
               "chi": "brand",
-              "testo": "L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.",
+              "testo": "[sad] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.",
               "umore": "sad",
               "tono": [],
               "durata": 13,
-              "voce": 0,
-              "audio": null,
+              "voce": 26,
+              "audio": {
+                "durata": 9440,
+                "impronta": "ba71e636",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "cf862893ed76a1169931462cb9fc1c62faaede28",
+                "voce": "uV2Bhcm1HwmAqPqkbjfl",
+                "tag": "[sad]"
+              },
               "azioni": [
                 {
                   "id": "awqdjyem",
@@ -4776,8 +4864,8 @@
       ],
       "demoChiave": "utente-mv8i6umu-v39gc0dl27e",
       "voceChiave": "studio_interstellar_1_oltre_gargantua",
-      "voceProssima": 16,
-      "aggiornato": 1792007309664,
+      "voceProssima": 27,
+      "aggiornato": 1792007434506,
       "lingua": "it",
       "musica": null,
       "voci": {

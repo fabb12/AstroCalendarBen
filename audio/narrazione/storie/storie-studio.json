@@ -307,6 +307,15 @@
           "conTag": "[surprised] Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!"
         },
         {
+          "n": 16,
+          "chi": "brand",
+          "testo": "Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.",
+          "umore": "determined",
+          "scena": 3,
+          "durata": 17000,
+          "conTag": "[determined] Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo."
+        },
+        {
           "n": 2,
           "chi": "romilly",
           "testo": "Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. Ecco cos'è un wormhole: una scorciatoia.",
@@ -314,6 +323,15 @@
           "scena": 4,
           "durata": 23000,
           "conTag": "[happy] Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. [curious] Ecco cos'è un wormhole: una scorciatoia."
+        },
+        {
+          "n": 17,
+          "chi": "brand",
+          "testo": "Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.",
+          "umore": "wonder",
+          "scena": 7,
+          "durata": 14000,
+          "conTag": "[in awe] Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano."
         },
         {
           "n": 6,
@@ -334,6 +352,15 @@
           "conTag": "[in awe] Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca."
         },
         {
+          "n": 18,
+          "chi": "brand",
+          "testo": "Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.",
+          "umore": "determined",
+          "scena": 12,
+          "durata": 16000,
+          "conTag": "[determined] Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra."
+        },
+        {
           "n": 7,
           "chi": "doyle",
           "testo": "Così vicino? E perché il pianeta non ci cade dentro?",
@@ -341,6 +368,15 @@
           "scena": 13,
           "durata": 8000,
           "conTag": "[skeptical] Così vicino? [thoughtful] E perché il pianeta non ci cade dentro?"
+        },
+        {
+          "n": 19,
+          "chi": "brand",
+          "testo": "Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce.",
+          "umore": "happy",
+          "scena": 14,
+          "durata": 21000,
+          "conTag": "[happy] Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce."
         },
         {
           "n": 4,
@@ -359,6 +395,24 @@
           "scena": 17,
           "durata": 16000,
           "conTag": "[mysteriously] Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne."
+        },
+        {
+          "n": 20,
+          "chi": "brand",
+          "testo": "Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro.",
+          "umore": "determined",
+          "scena": 18,
+          "durata": 25000,
+          "conTag": "[determined] Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro."
+        },
+        {
+          "n": 21,
+          "chi": "brand",
+          "testo": "L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.",
+          "umore": "sad",
+          "scena": 20,
+          "durata": 14000,
+          "conTag": "[sad] L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa."
         },
         {
           "n": 8,
@@ -386,6 +440,24 @@
           "scena": 25,
           "durata": 9000,
           "conTag": "[sad] Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato."
+        },
+        {
+          "n": 22,
+          "chi": "brand",
+          "testo": "Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni.",
+          "umore": "sad",
+          "scena": 26,
+          "durata": 20000,
+          "conTag": "[sad] Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni."
+        },
+        {
+          "n": 23,
+          "chi": "brand",
+          "testo": "Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds.",
+          "umore": "hopeful",
+          "scena": 29,
+          "durata": 14000,
+          "conTag": "[hopeful] Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds."
         },
         {
           "n": 15,
@@ -431,6 +503,33 @@
           "scena": 36,
           "durata": 11000,
           "conTag": "[nervous] L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile."
+        },
+        {
+          "n": 24,
+          "chi": "brand",
+          "testo": "Ce l'hai fatta, Cooper! Credevo che fosse finita.",
+          "umore": "relieved",
+          "scena": 39,
+          "durata": 7000,
+          "conTag": "[relieved] Ce l'hai fatta, Cooper! Credevo che fosse finita."
+        },
+        {
+          "n": 25,
+          "chi": "brand",
+          "testo": "Cooper, no! Non lasciarmi sola!",
+          "umore": "panicked",
+          "scena": 43,
+          "durata": 6000,
+          "conTag": "[panicked] Cooper, no! Non lasciarmi sola!"
+        },
+        {
+          "n": 26,
+          "chi": "brand",
+          "testo": "L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.",
+          "umore": "sad",
+          "scena": 45,
+          "durata": 13000,
+          "conTag": "[sad] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds."
         }
       ]
     }
