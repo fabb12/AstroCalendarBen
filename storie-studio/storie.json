@@ -4343,9 +4343,16 @@
       "demoChiave": "utente-mv8j3cuk-s9jgr9uamrl",
       "voceChiave": "studio_interstellar_2_il_tesseratto",
       "voceProssima": 1,
-      "aggiornato": 1792007661267,
+      "aggiornato": 1792010946917,
       "lingua": "it",
-      "musica": null,
+      "musica": {
+        "tipo": "file",
+        "nome": "musica-elevenlabs.mp3",
+        "est": "mp3",
+        "sha": "5c00fa3f625695885d4dcb81e60b04492d2d0e91",
+        "durata": 643056,
+        "volume": 0.35
+      },
       "voci": {},
       "domanda": {
         "attiva": false,
@@ -6060,10 +6067,10 @@
                 "durata": 15440,
                 "impronta": "b2551992",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "227bbffe7a53ec033381152a9bacd117d35f89eb",
                 "voce": "f8NAZK1ciwrVujah7clz",
-                "tag": "[nervous]"
+                "tag": "[nervous]",
+                "sha": "227bbffe7a53ec033381152a9bacd117d35f89eb",
+                "est": "mp3"
               },
               "azioni": [],
               "copione": {
@@ -8792,10 +8799,10 @@
                 "durata": 8000,
                 "impronta": "65dfdc7f",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "79324420c947279ee4558120b7fe7f671832427a",
                 "voce": "fuVibWsnIUtzBVjB2PCa",
-                "tag": "[hopeful]"
+                "tag": "[hopeful]",
+                "sha": "79324420c947279ee4558120b7fe7f671832427a",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -8918,7 +8925,7 @@
       "demoChiave": "utente-mv8i6umu-v39gc0dl27e",
       "voceChiave": "studio_interstellar_1_oltre_gargantua",
       "voceProssima": 29,
-      "aggiornato": 1792009399462,
+      "aggiornato": 1792009408793,
       "lingua": "it",
       "musica": {
         "tipo": "file",
