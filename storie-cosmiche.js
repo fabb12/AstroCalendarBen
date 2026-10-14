@@ -9309,7 +9309,22 @@
     const n = radice.narrazione;
     if (n && typeof n.audioDelRacconto === 'function') { try { n.audioDelRacconto(el); } catch (_) { /* resta fuori */ } }
   }
+  /* v494: quanto forti escono i rumori, e quanto sotto a una voce. Prima
+   * 0,6 e 0,38: misurati, i rumori stavano una ventina di dB sotto le voci
+   * vere delle storie (−19 dB di media) e chi guardava «Interstellar» sul
+   * telefono non li sentiva affatto. Il compressore in fondo tiene i botti. */
+  const STOR_RUMORI_VOLUME = 0.95, STOR_RUMORI_SOTTO_VOCE = 0.7;
+  /* v494: su iPhone l'interruttore del silenzioso zittisce Web Audio ma non
+   * gli elementi audio: la voce e la musica si sentivano, i rumori no. La
+   * sessione «playback» (Safari 16.4+) li fa suonare come la voce. */
+  function storSessioneAudio() {
+    try {
+      const n = radice.navigator;
+      if (n && n.audioSession && n.audioSession.type !== 'playback') n.audioSession.type = 'playback';
+    } catch (_) { /* browser senza sessione audio */ }
+  }
   function storContestoAudio() {
+    storSessioneAudio();
     const AC = radice.AudioContext || radice.webkitAudioContext;
     const n = typeof narr !== 'undefined' ? narr : null;   // narrazione.js
     let a = (n && n.audioContesto) || suono.contesto;
@@ -9321,7 +9336,7 @@
     if (a.state === 'suspended' && a.resume) Promise.resolve(a.resume()).catch(() => {});
     if (suono.contesto !== a) {
       suono.contesto = a; suono.rumore = null;
-      const g = a.createGain(); g.gain.value = 0.6;
+      const g = a.createGain(); g.gain.value = STOR_RUMORI_VOLUME;
       let fine = g;
       // Un compressore in fondo: tre botti di fila non devono gracchiare
       if (typeof a.createDynamicsCompressor === 'function') {
@@ -9613,80 +9628,80 @@
     // chiede con `sound` nel punto giusto della scena.
     // Il rombo dei motori di una navicella che parte o scivola
     engine(a, u, t, d, v) {
-      soffio(a, u, { t0: t, durata: 3.4, f0: 180, fm: 420, f1: 160, q: 0.9, picco: 0.45 * v, attacco: 0.7, ciclo: true });
-      tono(a, u, { t0: t, durata: 3.4, tipo: 'sawtooth', f0: 46, f1: 52, picco: 0.16 * v, attacco: 0.7, taglio: 220, vibrato: [9, 1.5] });
-      tono(a, u, { t0: t, durata: 3.4, f0: 92, f1: 104, picco: 0.08 * v, attacco: 0.8 });
+      soffio(a, u, { t0: t, durata: 3.4, f0: 180, fm: 420, f1: 160, q: 0.9, picco: 0.9 * v, attacco: 0.7, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.4, tipo: 'sawtooth', f0: 46, f1: 52, picco: 0.4 * v, attacco: 0.7, taglio: 220, vibrato: [9, 1.5] });
+      tono(a, u, { t0: t, durata: 3.4, f0: 92, f1: 104, picco: 0.2 * v, attacco: 0.8 });
     },
     // I getti di manovra: quattro sbuffi brevi
     thrusters(a, u, t, d, v) {
-      [0, 0.45, 0.75, 1.3].forEach(q => soffio(a, u, { t0: t + q, durata: 0.28, filtro: 'highpass', f0: 1800, f1: 1200, picco: 0.28 * v, attacco: 0.01, da: dado(d) }));
+      [0, 0.45, 0.75, 1.3].forEach(q => soffio(a, u, { t0: t + q, durata: 0.28, filtro: 'highpass', f0: 1800, f1: 1200, picco: 0.7 * v, attacco: 0.01, da: dado(d) }));
     },
     // L'aggancio: il colpo sulla lamiera che risuona, gli scatti dei ganci, lo sfiato
     docking(a, u, t, d, v) {
-      tono(a, u, { t0: t, durata: 0.9, tipo: 'triangle', f0: 180, f1: 120, picco: 0.45 * v, attacco: 0.003, taglio: 1600 });
-      tono(a, u, { t0: t, durata: 1.4, f0: 523, f1: 510, picco: 0.08 * v, attacco: 0.003, vibrato: [6, 4] });
-      soffio(a, u, { t0: t, durata: 0.15, f0: 1500, f1: 300, picco: 0.4 * v, attacco: 0.002 });
-      [0.55, 0.7, 0.85].forEach(q => soffio(a, u, { t0: t + q, durata: 0.05, filtro: 'bandpass', f0: 3200, q: 4, picco: 0.25 * v, attacco: 0.002, da: dado(d) }));
-      soffio(a, u, { t0: t + 1.1, durata: 1.4, filtro: 'highpass', f0: 3500, f1: 5000, picco: 0.14 * v, attacco: 0.05 });
+      tono(a, u, { t0: t, durata: 0.9, tipo: 'triangle', f0: 180, f1: 120, picco: 0.9 * v, attacco: 0.003, taglio: 1600 });
+      tono(a, u, { t0: t, durata: 1.4, f0: 523, f1: 510, picco: 0.2 * v, attacco: 0.003, vibrato: [6, 4] });
+      soffio(a, u, { t0: t, durata: 0.15, f0: 1500, f1: 300, picco: 0.9 * v, attacco: 0.002 });
+      [0.55, 0.7, 0.85].forEach(q => soffio(a, u, { t0: t + q, durata: 0.05, filtro: 'bandpass', f0: 3200, q: 4, picco: 0.625 * v, attacco: 0.002, da: dado(d) }));
+      soffio(a, u, { t0: t + 1.1, durata: 1.4, filtro: 'highpass', f0: 3500, f1: 5000, picco: 0.35 * v, attacco: 0.05 });
     },
     // Lo sgancio: lo scatto, lo sfiato e la spinta che si allontana
     detach(a, u, t, d, v) {
-      soffio(a, u, { t0: t, durata: 0.06, filtro: 'bandpass', f0: 2800, q: 3, picco: 0.3 * v, attacco: 0.002 });
-      tono(a, u, { t0: t, durata: 0.5, tipo: 'triangle', f0: 150, f1: 90, picco: 0.3 * v, attacco: 0.003, taglio: 1200 });
-      soffio(a, u, { t0: t + 0.1, durata: 0.9, filtro: 'highpass', f0: 4000, f1: 2500, picco: 0.2 * v, attacco: 0.02 });
-      soffio(a, u, { t0: t + 0.5, durata: 1.8, filtro: 'bandpass', f0: 500, fm: 1400, f1: 300, q: 1.2, picco: 0.25 * v, attacco: 0.3 });
+      soffio(a, u, { t0: t, durata: 0.06, filtro: 'bandpass', f0: 2800, q: 3, picco: 0.75 * v, attacco: 0.002 });
+      tono(a, u, { t0: t, durata: 0.5, tipo: 'triangle', f0: 150, f1: 90, picco: 0.75 * v, attacco: 0.003, taglio: 1200 });
+      soffio(a, u, { t0: t + 0.1, durata: 0.9, filtro: 'highpass', f0: 4000, f1: 2500, picco: 0.5 * v, attacco: 0.02 });
+      soffio(a, u, { t0: t + 0.5, durata: 1.8, filtro: 'bandpass', f0: 500, fm: 1400, f1: 300, q: 1.2, picco: 0.625 * v, attacco: 0.3 });
     },
     // L'allarme di bordo: due note che si alternano
     alarm(a, u, t, d, v) {
-      for (let i = 0; i < 6; i++) tono(a, u, { t0: t + i * 0.42, durata: 0.32, tipo: 'square', f0: i % 2 ? 660 : 880, picco: 0.12 * v, attacco: 0.01, taglio: 2500 });
+      for (let i = 0; i < 6; i++) tono(a, u, { t0: t + i * 0.42, durata: 0.32, tipo: 'square', f0: i % 2 ? 660 : 880, picco: 0.3 * v, attacco: 0.01, taglio: 2500 });
     },
     // L'aria che scappa: un portello saltato, un casco incrinato, il sonno che si apre
     decompression(a, u, t, d, v) {
-      soffio(a, u, { t0: t, durata: 3.2, filtro: 'highpass', f0: 1200, f1: 4000, picco: 0.4 * v, attacco: 0.02, ciclo: true });
-      soffio(a, u, { t0: t, durata: 1.2, f0: 900, f1: 120, picco: 0.3 * v, attacco: 0.004 });
-      tono(a, u, { t0: t + 0.3, durata: 2.6, tipo: 'sawtooth', f0: 90, f1: 60, picco: 0.07 * v, attacco: 0.4, taglio: 400, vibrato: [3, 6] });
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'highpass', f0: 1200, f1: 4000, picco: 0.9 * v, attacco: 0.02, ciclo: true });
+      soffio(a, u, { t0: t, durata: 1.2, f0: 900, f1: 120, picco: 0.75 * v, attacco: 0.004 });
+      tono(a, u, { t0: t + 0.3, durata: 2.6, tipo: 'sawtooth', f0: 90, f1: 60, picco: 0.175 * v, attacco: 0.4, taglio: 400, vibrato: [3, 6] });
     },
     // La lamiera che geme sotto lo sforzo, con qualche schiocco
     metal_groan(a, u, t, d, v) {
-      tono(a, u, { t0: t, durata: 2.6, tipo: 'sawtooth', f0: 70, f1: 55, picco: 0.18 * v, attacco: 0.5, taglio: 600, vibrato: [2.3, 9] });
-      tono(a, u, { t0: t + 0.4, durata: 2.0, tipo: 'triangle', f0: 310, f1: 270, picco: 0.05 * v, attacco: 0.4, vibrato: [4, 12] });
-      for (let i = 0; i < 4; i++) soffio(a, u, { t0: t + 0.3 + dado(d) * 2.2, durata: 0.06, filtro: 'bandpass', f0: 1200 + dado(d) * 1500, q: 3, picco: 0.12 * v, da: dado(d) });
+      tono(a, u, { t0: t, durata: 2.6, tipo: 'sawtooth', f0: 70, f1: 55, picco: 0.45 * v, attacco: 0.5, taglio: 600, vibrato: [2.3, 9] });
+      tono(a, u, { t0: t + 0.4, durata: 2.0, tipo: 'triangle', f0: 310, f1: 270, picco: 0.125 * v, attacco: 0.4, vibrato: [4, 12] });
+      for (let i = 0; i < 4; i++) soffio(a, u, { t0: t + 0.3 + dado(d) * 2.2, durata: 0.06, filtro: 'bandpass', f0: 1200 + dado(d) * 1500, q: 3, picco: 0.3 * v, da: dado(d) });
     },
     // Gli scossoni: un rombo che trema e la carcassa che sbatte
     turbulence(a, u, t, d, v) {
-      soffio(a, u, { t0: t, durata: 3.4, f0: 260, fm: 520, f1: 200, picco: 0.38 * v, attacco: 0.4, ciclo: true });
-      tono(a, u, { t0: t, durata: 3.4, f0: 38, f1: 44, picco: 0.25 * v, attacco: 0.4, vibrato: [7, 5] });
-      for (let i = 0; i < 10; i++) soffio(a, u, { t0: t + 0.2 + i * 0.3 + dado(d) * 0.12, durata: 0.07, f0: 900, f1: 200, picco: 0.16 * v, attacco: 0.003, da: dado(d) });
+      soffio(a, u, { t0: t, durata: 3.4, f0: 260, fm: 520, f1: 200, picco: 0.9 * v, attacco: 0.4, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.4, f0: 38, f1: 44, picco: 0.625 * v, attacco: 0.4, vibrato: [7, 5] });
+      for (let i = 0; i < 10; i++) soffio(a, u, { t0: t + 0.2 + i * 0.3 + dado(d) * 0.12, durata: 0.07, f0: 900, f1: 200, picco: 0.4 * v, attacco: 0.003, da: dado(d) });
     },
     // L'acqua: un tonfo, lo spruzzo e le gocce
     splash(a, u, t, d, v) {
-      soffio(a, u, { t0: t, durata: 1.4, filtro: 'bandpass', f0: 2500, f1: 500, q: 0.8, picco: 0.42 * v, attacco: 0.01 });
-      tono(a, u, { t0: t, durata: 0.5, f0: 110, f1: 50, picco: 0.25 * v, attacco: 0.005 });
-      for (let i = 0; i < 8; i++) tono(a, u, { t0: t + 0.3 + dado(d) * 1.3, durata: 0.08, f0: 900 + dado(d) * 900, f1: 1600 + dado(d) * 800, picco: 0.05 * v });
+      soffio(a, u, { t0: t, durata: 1.4, filtro: 'bandpass', f0: 2500, f1: 500, q: 0.8, picco: 0.9 * v, attacco: 0.01 });
+      tono(a, u, { t0: t, durata: 0.5, f0: 110, f1: 50, picco: 0.625 * v, attacco: 0.005 });
+      for (let i = 0; i < 8; i++) tono(a, u, { t0: t + 0.3 + dado(d) * 1.3, durata: 0.08, f0: 900 + dado(d) * 900, f1: 1600 + dado(d) * 800, picco: 0.125 * v });
     },
     // Il ghiaccio (o una visiera) che si incrina, e il tonfo che lo segue
     ice_crack(a, u, t, d, v) {
       [0, 0.35, 0.5, 1.1].forEach((q, k) => {
-        soffio(a, u, { t0: t + q, durata: 0.09, filtro: 'highpass', f0: 2500, picco: (0.35 - k * 0.05) * v, attacco: 0.002, da: dado(d) });
-        tono(a, u, { t0: t + q, durata: 0.3, tipo: 'triangle', f0: 1900 - k * 250, f1: 900, picco: 0.07 * v, attacco: 0.002 });
+        soffio(a, u, { t0: t + q, durata: 0.09, filtro: 'highpass', f0: 2500, picco: (0.8 - k * 0.1) * v, attacco: 0.002, da: dado(d) });
+        tono(a, u, { t0: t + q, durata: 0.3, tipo: 'triangle', f0: 1900 - k * 250, f1: 900, picco: 0.175 * v, attacco: 0.002 });
       });
-      tono(a, u, { t0: t + 1.1, durata: 1.4, f0: 70, f1: 45, picco: 0.2 * v, attacco: 0.02 });
+      tono(a, u, { t0: t + 1.1, durata: 1.4, f0: 70, f1: 45, picco: 0.5 * v, attacco: 0.02 });
     },
     // La radio di bordo: due bip, poi il fruscio col suo crepitio
     radio(a, u, t, d, v) {
-      tono(a, u, { t0: t, durata: 0.18, f0: 1320, picco: 0.12 * v, attacco: 0.005 });
-      tono(a, u, { t0: t + 0.22, durata: 0.18, f0: 1760, picco: 0.12 * v, attacco: 0.005 });
-      soffio(a, u, { t0: t + 0.4, durata: 2.2, filtro: 'bandpass', f0: 1800, f1: 1400, q: 1.5, picco: 0.12 * v, attacco: 0.05, ciclo: true });
-      for (let i = 0; i < 10; i++) soffio(a, u, { t0: t + 0.45 + dado(d) * 2, durata: 0.02, filtro: 'highpass', f0: 3000, picco: 0.12 * v, da: dado(d) });
+      tono(a, u, { t0: t, durata: 0.18, f0: 1320, picco: 0.48 * v, attacco: 0.005 });
+      tono(a, u, { t0: t + 0.22, durata: 0.18, f0: 1760, picco: 0.48 * v, attacco: 0.005 });
+      soffio(a, u, { t0: t + 0.4, durata: 2.2, filtro: 'bandpass', f0: 1800, f1: 1400, q: 1.5, picco: 0.48 * v, attacco: 0.05, ciclo: true });
+      for (let i = 0; i < 10; i++) soffio(a, u, { t0: t + 0.45 + dado(d) * 2, durata: 0.02, filtro: 'highpass', f0: 3000, picco: 0.48 * v, da: dado(d) });
     },
     // Girare sempre più forte (il Ranger che prende il giro dell'Endurance), e rallentare
     spin_up(a, u, t, d, v) {
-      tono(a, u, { t0: t, durata: 3.2, tipo: 'sawtooth', f0: 60, f1: 240, picco: 0.09 * v, attacco: 0.8, taglio: 900 });
-      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 300, f1: 1500, q: 2, picco: 0.25 * v, attacco: 0.8, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.2, tipo: 'sawtooth', f0: 60, f1: 240, picco: 0.36 * v, attacco: 0.8, taglio: 900 });
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 300, f1: 1500, q: 2, picco: 0.9 * v, attacco: 0.8, ciclo: true });
     },
     spin_down(a, u, t, d, v) {
-      tono(a, u, { t0: t, durata: 3.2, tipo: 'sawtooth', f0: 240, f1: 55, picco: 0.09 * v, attacco: 0.15, taglio: 900 });
-      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 1500, f1: 280, q: 2, picco: 0.25 * v, attacco: 0.15, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.2, tipo: 'sawtooth', f0: 240, f1: 55, picco: 0.36 * v, attacco: 0.15, taglio: 900 });
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 1500, f1: 280, q: 2, picco: 0.9 * v, attacco: 0.15, ciclo: true });
     }
   };
   function suoniAccesi() {
@@ -9713,7 +9728,7 @@
     // Sotto la voce di un personaggio i rumori si abbassano
     if (!opz.contesto) {
       const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
-      try { uscita.gain.setTargetAtTime(voce && voce.parla ? 0.38 : 0.6, a.currentTime, 0.05); } catch (_) { /* niente */ }
+      try { uscita.gain.setTargetAtTime(voce && voce.parla ? STOR_RUMORI_SOTTO_VOCE : STOR_RUMORI_VOLUME, a.currentTime, 0.05); } catch (_) { /* niente */ }
     }
     const v = Math.max(0, Math.min(2, opz.volume === undefined ? 1 : Number(opz.volume) || 0));
     if (!(v > 0)) return false;
