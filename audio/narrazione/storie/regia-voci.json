@@ -1600,6 +1600,55 @@
         "it": "[mysteriously] Gli esseri umani hanno attraversato lo spazio e il tempo, guidati dall'amore e dalla gravità. [softly] Un giorno, ve lo promettiamo… diventerete noi.",
         "en": "[mysteriously] Human beings crossed space and time, guided by love and by gravity. [softly] One day, we promise you… you will become us."
       }
+    },
+    "studio.studio_che_cos_e_un_buco_nero.1": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Che cos’è un buco nero? Andiamo a chiederlo al più grande della Galassia!"
+      }
+    },
+    "studio.studio_che_cos_e_un_buco_nero.2": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Ciao! Sono Sagittario A*, il buco nero della Via Lattea. Peso come quattro milioni di Soli, e da me nemmeno la luce esce."
+      }
+    },
+    "studio.studio_che_cos_e_un_buco_nero.3": {
+      "emozione": "entusiasta",
+      "come": "",
+      "conTag": {
+        "it": "[excited] Voglio provarci anch’io! Guardate: sono un buco nero!"
+      }
+    },
+    "studio.studio_che_cos_e_un_buco_nero.4": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] Ah ah! Tu sei troppo leggero per diventarlo davvero. E comunque la Terra continuerebbe a girarti attorno, tranquilla."
+      }
+    },
+    "studio.studio_che_cos_e_un_buco_nero.5": {
+      "emozione": "entusiasta",
+      "come": "",
+      "conTag": {
+        "it": "[excited] E io sono il contrario: un buco bianco! Da me le cose possono solo uscire."
+      }
+    },
+    "studio.studio_che_cos_e_un_buco_nero.6": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Un buco bianco? Ma tu esisti davvero?"
+      }
+    },
+    "studio.studio_che_cos_e_un_buco_nero.7": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Le equazioni di Einstein dicono che potrei. Ma nessuno mi ha mai visto: il buco bianco, per ora, è soltanto un’idea!"
+      }
     }
   }
 }

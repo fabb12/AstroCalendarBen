@@ -11,13 +11,13 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **14/199** in italiano · **0/172** in inglese.
+Pronte: **14/206** in italiano · **0/172** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
 | Luna | `storie/luna/` | 14 | 5/14 | 0/11 |
 | Terra | `storie/terra/` | 14 | 4/14 | 0/4 |
-| Sole | `storie/sole/` | 13 | 1/13 | 0/10 |
+| Sole | `storie/sole/` | 15 | 1/15 | 0/10 |
 | Saturno | `storie/saturno/` | 3 | 0/3 | 0/2 |
 | Giove | `storie/giove/` | 2 | 0/2 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 0/1 | 0/1 |
@@ -27,8 +27,8 @@ Pronte: **14/199** in italiano · **0/172** in inglese.
 | Betelgeuse | `storie/betelgeuse/` | 7 | 0/7 | 0/7 |
 | Supernova del Granchio | `storie/supernova-del-granchio/` | 3 | 0/3 | 0/3 |
 | Sirio B | `storie/sirio-b/` | 2 | 0/2 | 0/2 |
-| Sagittario A* | `storie/sagittario-a/` | 6 | 0/6 | 0/6 |
-| Buco bianco | `storie/buco-bianco/` | 2 | 0/2 | 0/2 |
+| Sagittario A* | `storie/sagittario-a/` | 9 | 0/9 | 0/6 |
+| Buco bianco | `storie/buco-bianco/` | 4 | 0/4 | 0/2 |
 | Astro Ben | `storie/astro-ben/` | 10 | 0/10 | 0/10 |
 | Albert Einstein | `storie/albert-einstein/` | 19 | 0/19 | 0/19 |
 | Mercurio | `storie/mercurio/` | 1 | 0/1 | 0/1 |
@@ -297,6 +297,14 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** stupito — meraviglia vanitosa
   - **Testo:** Io piego la luce delle stelle? Che potere!
   - **Da incollare su ElevenLabs v3:** `[in awe] Io piego la luce delle stelle? Che potere!`
+- `studio_che_cos_e_un_buco_nero-1.mp3` — manca · Studio: Che cos’è un buco nero?, scena 1 (al massimo 9 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Che cos’è un buco nero? Andiamo a chiederlo al più grande della Galassia!
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Che cos’è un buco nero? Andiamo a chiederlo al più grande della Galassia!`
+- `studio_che_cos_e_un_buco_nero-3.mp3` — manca · Studio: Che cos’è un buco nero?, scena 3 (al massimo 7 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Voglio provarci anch’io! Guardate: sono un buco nero!
+  - **Da incollare su ElevenLabs v3:** `[excited] Voglio provarci anch’io! Guardate: sono un buco nero!`
 - `studio_cosa_e_la_gravita-33.mp3` — manca · Studio: Cosa è la gravità?, scena 10 (al massimo 7 s)
   - **Emozione:** ride — 
   - **Testo:** Tranquilla Terra! Ti spiego io cos'è la gravità!
@@ -665,6 +673,18 @@ Cartella: `audio/narrazione/storie/sagittario-a/<lingua>/` · nel codice `sgr_a`
   - **Emozione:** vanitoso — compiaciuto, quasi in posa
   - **Testo:** E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?
   - **Da incollare su ElevenLabs v3:** `[proud] E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?`
+- `studio_che_cos_e_un_buco_nero-2.mp3` — manca · Studio: Che cos’è un buco nero?, scena 2 (al massimo 14 s)
+  - **Emozione:** felice — 
+  - **Testo:** Ciao! Sono Sagittario A*, il buco nero della Via Lattea. Peso come quattro milioni di Soli, e da me nemmeno la luce esce.
+  - **Da incollare su ElevenLabs v3:** `[happy] Ciao! Sono Sagittario A*, il buco nero della Via Lattea. Peso come quattro milioni di Soli, e da me nemmeno la luce esce.`
+- `studio_che_cos_e_un_buco_nero-4.mp3` — manca · Studio: Che cos’è un buco nero?, scena 4 (al massimo 13 s)
+  - **Emozione:** ride — 
+  - **Testo:** Ah ah! Tu sei troppo leggero per diventarlo davvero. E comunque la Terra continuerebbe a girarti attorno, tranquilla.
+  - **Da incollare su ElevenLabs v3:** `[laughs] Ah ah! Tu sei troppo leggero per diventarlo davvero. E comunque la Terra continuerebbe a girarti attorno, tranquilla.`
+- `studio_che_cos_e_un_buco_nero-6.mp3` — manca · Studio: Che cos’è un buco nero?, scena 6 (al massimo 6 s)
+  - **Emozione:** sorpreso — 
+  - **Testo:** Un buco bianco? Ma tu esisti davvero?
+  - **Da incollare su ElevenLabs v3:** `[surprised] Un buco bianco? Ma tu esisti davvero?`
 
 ### Inglese — `storie/sagittario-a/en/`
 
@@ -709,6 +729,14 @@ Cartella: `audio/narrazione/storie/buco-bianco/<lingua>/` · nel codice `white_h
   - **Emozione:** birichina — confida un segreto ridendo; l'ultima frase sussurrata
   - **Testo:** Le equazioni di Einstein dicono che potrei esistere. Ma nessuno mi ha mai visto: per ora sono soltanto un’idea!
   - **Da incollare su ElevenLabs v3:** `[playfully] Le equazioni di Einstein dicono che potrei esistere. [laughs] Ma nessuno mi ha mai visto: [whispers] per ora sono soltanto un’idea!`
+- `studio_che_cos_e_un_buco_nero-5.mp3` — manca · Studio: Che cos’è un buco nero?, scena 5 (al massimo 9 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** E io sono il contrario: un buco bianco! Da me le cose possono solo uscire.
+  - **Da incollare su ElevenLabs v3:** `[excited] E io sono il contrario: un buco bianco! Da me le cose possono solo uscire.`
+- `studio_che_cos_e_un_buco_nero-7.mp3` — manca · Studio: Che cos’è un buco nero?, scena 7 (al massimo 13 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Le equazioni di Einstein dicono che potrei. Ma nessuno mi ha mai visto: il buco bianco, per ora, è soltanto un’idea!
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Le equazioni di Einstein dicono che potrei. Ma nessuno mi ha mai visto: il buco bianco, per ora, è soltanto un’idea!`
 
 ### Inglese — `storie/buco-bianco/en/`
 
