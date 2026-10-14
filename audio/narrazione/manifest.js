@@ -935,6 +935,10 @@
       it: { file: 'storie/cooper/it/storia_interstellar2-38.mp3', impronta: '429265e4', firma: '47af13e35e' }
     },
 
+    'studio.studio_interstellar_1_oltre_gargantua.27': {
+      it: { file: 'storie/cooper/it/studio_interstellar_1_oltre_gargantua-27.mp3', impronta: 'b2551992', firma: '339244f2db', testo: "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora." }
+    },
+
     // Romilly — storie/romilly/
     'demo.narr.storia_interstellar.2': {
       it: { file: 'storie/romilly/it/storia_interstellar-2.mp3', impronta: '7b7034bf', firma: '4656f24467' }

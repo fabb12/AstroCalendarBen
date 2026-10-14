@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **133/237** in italiano · **0/177** in inglese.
+Pronte: **134/238** in italiano · **0/177** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -35,7 +35,7 @@ Pronte: **133/237** in italiano · **0/177** in inglese.
 | Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
 | Gargantua | `storie/gargantua/` | 3 | 2/3 | 0/3 |
 | Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
-| Cooper | `storie/cooper/` | 30 | 29/30 | 0/30 |
+| Cooper | `storie/cooper/` | 31 | 30/31 | 0/30 |
 | Romilly | `storie/romilly/` | 10 | 9/10 | 0/5 |
 | Amelia Brand | `storie/amelia-brand/` | 23 | 20/23 | 0/12 |
 | TARS | `storie/tars/` | 14 | 11/14 | 0/14 |
@@ -1229,6 +1229,10 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** orgoglioso — con orgoglio e tenerezza
   - **Testo:** Sei stata tu, Murph. Hai salvato tutti… con un vecchio orologio.
   - **Da incollare su ElevenLabs v3:** `[proudly] Sei stata tu, Murph. [tenderly] Hai salvato tutti… con un vecchio orologio.`
+- `studio_interstellar_1_oltre_gargantua-27.mp3` — pronta · 15,5 s · Studio: Interstellar 1: oltre Gargantua, scena 19 (al massimo 20 s)
+  - **Emozione:** preoccupato — 
+  - **Testo:** E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora.
+  - **Da incollare su ElevenLabs v3:** `[nervous] E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora.`
 
 ### Inglese — `storie/cooper/en/`
 

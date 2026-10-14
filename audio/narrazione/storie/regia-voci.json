@@ -1871,6 +1871,13 @@
       "conTag": {
         "it": "[sad] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds."
       }
+    },
+    "studio.studio_interstellar_1_oltre_gargantua.27": {
+      "emozione": "preoccupato",
+      "come": "",
+      "conTag": {
+        "it": "[nervous] E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora."
+      }
     }
   }
 }
