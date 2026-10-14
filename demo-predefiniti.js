@@ -2292,6 +2292,9 @@
   // parte o scivola, i getti di manovra, l'aggancio e lo sgancio, gli
   // scossoni nel wormhole e verso Gargantua, l'allarme, l'aria che scappa,
   // l'acqua di Miller, il ghiaccio di Mann, la radio dei messaggi da casa.
+  // I tempi stanno sulla voce vera di ogni battuta (le sue pause): un
+  // rumore scritto dopo la fine della voce partirebbe stretto con gli altri
+  // gesti, perché la storia chiude la scena poco dopo la voce.
   scene solar_system_3d {
     // L'Endurance arriva a Saturno: piccola, in fondo, davanti agli anelli
     duration: 16s;
@@ -2305,6 +2308,7 @@
     action: character_show { target: 'brand', expression: 'wonder', inside: 'endurance' };
     action: character_show { target: 'romilly', expression: 'curious', inside: 'endurance' };
     action: sound { type: 'engine', shot_from: 0.06 };
+    action: sound { type: 'engine', volume: 0.7, shot_from: 0.3 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.1', shot_from: 0.38 };
   }
   scene solar_system_3d {
@@ -2317,7 +2321,7 @@
     action: character_show { target: 'cooper', expression: 'surprised', inside: 'endurance' };
     action: character_show { target: 'brand', expression: 'wonder', inside: 'endurance' };
     action: character_show { target: 'romilly', expression: 'surprised', inside: 'endurance' };
-    action: sound { type: 'thrusters', shot_from: 0.3 };
+    action: sound { type: 'thrusters', shot_from: 0.28 };
     action: character_speak { target: 'romilly', id: 'demo.narr.storia_interstellar.2', shot_from: 0.15 };
   }
   scene solar_system_3d {
@@ -2368,7 +2372,7 @@
     action: character_show { target: 'brand', expression: 'worried', inside: 'endurance' };
     action: character_show { target: 'tars', expression: 'playful', inside: 'endurance' };
     action: sound { type: 'engine', shot_from: 0.36 };
-    action: sound { type: 'turbulence', shot_from: 0.75 };
+    action: sound { type: 'turbulence', shot_from: 0.76 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.6' };
   }
   scene solar_system_3d {
@@ -2381,9 +2385,9 @@
     action: character_show { target: 'brand', expression: 'wonder', inside: 'endurance' };
     action: character_show { target: 'cooper', expression: 'scared', inside: 'endurance' };
     action: character_show { target: 'romilly', expression: 'scared', inside: 'endurance' };
-    action: sound { type: 'turbulence', shot_from: 0.08 };
-    action: sound { type: 'metal_groan', shot_from: 0.45 };
-    action: sound { type: 'turbulence', shot_from: 0.75 };
+    action: sound { type: 'turbulence', shot_from: 0.07 };
+    action: sound { type: 'metal_groan', shot_from: 0.3 };
+    action: sound { type: 'spacetime', volume: 0.8, shot_from: 0.7 };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.7', shot_from: 0.12 };
   }
   scene solar_system_3d {
@@ -2485,7 +2489,7 @@
     action: character_show { target: 'case', expression: 'neutral', inside: 'ranger' };
     action: sound { type: 'detach' };
     action: sound { type: 'engine', shot_from: 0.08 };
-    action: sound { type: 'turbulence', shot_from: 0.6 };
+    action: sound { type: 'turbulence', shot_from: 0.54 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.16', shot_from: 0.1 };
   }
   scene solar_system_3d {
@@ -2527,7 +2531,8 @@
     action: character_show { target: 'case', expression: 'neutral', inside: 'ranger' };
     action: character_show { target: 'brand', expression: 'sad', at: left, scale: 0.9 };
     action: character_show { target: 'doyle', expression: 'worried', at: center, scale: 0.8, look: 'brand' };
-    action: sound { type: 'splash', volume: 0.7, shot_from: 0.1 };
+    action: sound { type: 'splash', volume: 0.7, shot_from: 0.04 };
+    action: sound { type: 'splash', volume: 0.5, shot_from: 0.21 };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.20' };
   }
   scene solar_system_3d {
@@ -2542,7 +2547,8 @@
     action: character_show { target: 'case', expression: 'neutral', inside: 'ranger' };
     action: character_show { target: 'brand', expression: 'surprised', at: left, scale: 0.9 };
     action: character_show { target: 'doyle', expression: 'scared', at: center, scale: 0.8 };
-    action: sound { type: 'alarm', shot_from: 0.3 };
+    action: sound { type: 'alarm', shot_from: 0.38 };
+    action: sound { type: 'rumble', shot_from: 0.5 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.21' };
   }
   scene solar_system_3d {
@@ -2556,7 +2562,7 @@
     action: character_show { target: 'doyle', expression: 'panicked', at: center, scale: 0.8, look: 'brand' };
     action: character_animate { target: 'doyle', animation: shake, times: 3, strength: 0.6 };
     action: sound { type: 'alarm' };
-    action: sound { type: 'rumble', shot_from: 0.5 };
+    action: sound { type: 'rumble', shot_from: 0.25 };
     action: character_speak { target: 'doyle', id: 'demo.narr.storia_interstellar.22' };
   }
   scene solar_system_3d {
@@ -2569,9 +2575,9 @@
     action: character_show { target: 'cooper', expression: 'determined', inside: 'ranger' };
     action: character_show { target: 'case', expression: 'determined', inside: 'ranger' };
     action: character_show { target: 'brand', expression: 'scared', inside: 'ranger' };
-    action: sound { type: 'thrusters', shot_from: 0.1 };
-    action: sound { type: 'engine', shot_from: 0.42 };
-    action: sound { type: 'turbulence', shot_from: 0.55 };
+    action: sound { type: 'thrusters', shot_from: 0.22 };
+    action: sound { type: 'engine', shot_from: 0.44 };
+    action: sound { type: 'turbulence', shot_from: 0.56 };
     action: character_speak { target: 'case', id: 'demo.narr.storia_interstellar.23' };
   }
   scene solar_system_3d {
@@ -2659,7 +2665,6 @@
     action: character_show { target: 'cooper', expression: 'happy', at: right, scale: 0.9, look: 'mann' };
     action: effect { type: sparkles, target: 'mann', shot_from: 0.1 };
     action: sound { type: 'decompression', volume: 0.5 };
-    action: sound { type: 'ice_crack', volume: 0.6, shot_from: 0.6 };
     action: character_speak { target: 'mann', id: 'demo.narr.storia_interstellar.32' };
   }
   scene solar_system_3d {
@@ -2671,8 +2676,8 @@
     action: character_show { target: 'mann', expression: 'bully', at: center, look: 'cooper' };
     action: character_show { target: 'cooper', expression: 'scared', at: right, scale: 0.9, look: 'mann' };
     action: character_expression { target: 'mann', expression: 'sad', shot_from: 0.65 };
-    action: sound { type: 'ice_crack', shot_from: 0.5 };
-    action: sound { type: 'decompression', shot_from: 0.56 };
+    action: sound { type: 'ice_crack', shot_from: 0.88 };
+    action: sound { type: 'decompression', shot_from: 0.9 };
     action: character_speak { target: 'mann', id: 'demo.narr.storia_interstellar.33' };
   }
   scene solar_system_3d {
@@ -2685,7 +2690,7 @@
     action: character_show { target: 'mann', expression: 'determined', inside: 'lander' };
     action: character_show { target: 'tars', expression: 'worried', at: right, look: 'viewer' };
     action: sound { type: 'thrusters', shot_from: 0.05 };
-    action: sound { type: 'engine', shot_from: 0.12 };
+    action: sound { type: 'engine', shot_from: 0.11 };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar.34' };
   }
   scene solar_system_3d {
@@ -2699,9 +2704,9 @@
     action: character_show { target: 'lander', at: right, scale: 0.6, glide: 4, shot_from: 0.02 };
     action: character_show { target: 'mann', expression: 'excited', inside: 'lander' };
     action: effect { type: explosion, at: center, size: 2.6, shot_from: 0.82 };
-    action: sound { type: 'thrusters', shot_from: 0.1 };
-    action: sound { type: 'docking', shot_from: 0.55 };
-    action: sound { type: 'alarm', shot_from: 0.66 };
+    action: sound { type: 'thrusters', shot_from: 0.03 };
+    action: sound { type: 'docking', shot_from: 0.24 };
+    action: sound { type: 'alarm', shot_from: 0.28 };
     action: sound { type: 'decompression', shot_from: 0.86 };
     action: character_speak { target: 'mann', id: 'demo.narr.storia_interstellar.35' };
   }
@@ -2718,8 +2723,8 @@
     action: character_show { target: 'cooper', expression: 'determined', inside: 'ranger' };
     action: character_show { target: 'brand', expression: 'scared', inside: 'ranger' };
     action: sound { type: 'metal_groan' };
-    action: sound { type: 'alarm', shot_from: 0.1 };
     action: sound { type: 'engine', shot_from: 0.05 };
+    action: sound { type: 'alarm', shot_from: 0.1 };
     action: character_speak { target: 'case', id: 'demo.narr.storia_interstellar.36' };
   }
   scene solar_system_3d {
@@ -2748,7 +2753,7 @@
     action: character_show { target: 'tars', expression: 'proud', at: right, look: 'viewer' };
     action: effect { type: sparkles, target: 'endurance', shot_from: 0.05 };
     action: sound { type: 'docking' };
-    action: sound { type: 'spin_down', shot_from: 0.12 };
+    action: sound { type: 'spin_down', shot_from: 0.85 };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar.38' };
   }
   scene solar_system_3d {
@@ -2771,7 +2776,7 @@
     action: character_show { target: 'gargantua', expression: 'mysterious' };
     action: character_show { target: 'cooper', expression: 'determined', at: left, look: 'gargantua' };
     action: effect { type: orbit_path, target: 'gargantua', size: 1.6, duration: 14, shot_from: 0.08 };
-    action: sound { type: 'engine', shot_from: 0.15 };
+    action: sound { type: 'engine', shot_from: 0.33 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.40' };
   }
   scene solar_system_3d {
@@ -2864,8 +2869,8 @@
     action: character_show { target: 'tars', expression: 'happy', inside: 'ranger' };
     action: effect { type: glow, target: 'gargantua', color: '#fde68a', duration: 10, shot_from: 0.3 };
     action: effect { type: flash, at: center, color: '#fffbeb', shot_from: 0.88 };
-    action: sound { type: 'turbulence', shot_from: 0.25 };
-    action: sound { type: 'metal_groan', shot_from: 0.55 };
+    action: sound { type: 'turbulence', shot_from: 0.12 };
+    action: sound { type: 'metal_groan', shot_from: 0.3 };
     action: sound { type: 'rumble', shot_from: 0.85 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.47' };
   }
@@ -2924,7 +2929,7 @@
     action: sound { type: 'turbulence' };
     action: sound { type: 'metal_groan', shot_from: 0.25 };
     action: sound { type: 'alarm', shot_from: 0.3 };
-    action: sound { type: 'detach', shot_from: 0.5 };
+    action: sound { type: 'detach', shot_from: 0.59 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.1', shot_from: 0.36 };
   }
   scene solar_system_3d {
@@ -3227,7 +3232,7 @@
     action: character_show { target: 'cooper', expression: 'relieved', at: bottom_left, scale: 0.75, look: 'loro' };
     action: effect { type: hypercube, at: center, size: 1.2, duration: 11, shot_from: 0.1 };
     action: effect { type: flash, at: center, color: '#fffbeb', shot_from: 0.9 };
-    action: sound { type: 'suck', shot_from: 0.85 };
+    action: sound { type: 'suck', volume: 0.8, shot_from: 0.42 };
     action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.29' };
   }
   scene solar_system_3d {
@@ -3254,7 +3259,7 @@
     action: character_show { target: 'ranger', at: right, scale: 0.6, glide: 10, shot_from: 0.2 };
     action: character_expression { target: 'cooper', expression: 'hopeful', shot_from: 0.6 };
     action: sound { type: 'engine', shot_from: 0.2 };
-    action: sound { type: 'radio', shot_from: 0.65 };
+    action: sound { type: 'radio', shot_from: 0.6 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.31', shot_from: 0.15 };
   }
   scene solar_system_3d {

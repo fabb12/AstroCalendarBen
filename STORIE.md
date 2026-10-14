@@ -1596,6 +1596,30 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### I rumori di «Interstellar» sulla voce vera (v493)
+
+Nella v492 i rumori stavano a frazioni della durata scritta delle scene. Ma
+una storia chiude la scena poco dopo la voce (`stringi`), e molte battute
+vere di «Interstellar 1» sono più corte della scena: nell'aggancio forzato
+di Mann la voce dura 3,6 s su 9, e aggancio, allarme, esplosione e aria che
+scappa partivano tutti insieme nel mezzo secondo dopo «Ce l'ho fatta!».
+Ora ogni rumore ha un tempo in secondi scelto sulla voce vera della battuta
+(durata e pause misurate con `ffprobe` e `silencedetect` sugli MP3 del
+repository) e il quando nel copione è quel tempo diviso per la durata
+scritta. Così: il colpo dell'aggancio e l'allarme nella pausa dopo «si
+apre!», l'esplosione dopo «Ce l'ho fatta!»; la visiera di Cooper che si
+incrina dopo «la tua nave la prendo io»; l'allarme su «Sono onde!»; il
+motore su «decolliamo dalla cresta dell'onda»; la stretta di mano nel
+wormhole (`spacetime`) su «come se qualcuno ci stringesse la mano»; il
+freno (`spin_down`) su «Poi abbiamo frenato insieme»; il lampo e il rombo
+dopo «Murph… sto arrivando». Nella Parte 2, senza voci vere, i tempi stanno
+sulla lettura stimata: l'espulsione dopo «TARS, mi espello», il tesseratto
+che si richiude su «si richiude…».
+
+Misurato nel motore con le voci vere (Chromium, gli MP3 serviti come
+`audio/mpeg`): per esempio l'aggancio forzato fa getti a 0,3 s, aggancio a
+2,2 s, allarme a 2,5 s, esplosione a 4,3 s, scena chiusa a 4,8 s.
+
 ### I rumori di bordo di «Interstellar» (v492)
 
 Nelle due parti di «Interstellar» le navicelle scivolavano, si
