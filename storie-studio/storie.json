@@ -4343,15 +4343,12 @@
       "demoChiave": "utente-mv8j3cuk-s9jgr9uamrl",
       "voceChiave": "studio_interstellar_2_il_tesseratto",
       "voceProssima": 1,
-      "aggiornato": 1792010967425,
+      "aggiornato": 1792011128322,
       "lingua": "it",
       "musica": {
-        "tipo": "file",
-        "nome": "musica-elevenlabs.mp3",
-        "est": "mp3",
-        "sha": "5c00fa3f625695885d4dcb81e60b04492d2d0e91",
-        "durata": 643056,
-        "volume": 0.2
+        "tipo": "catalogo",
+        "id": "Giapeto1",
+        "volume": 0.3
       },
       "voci": {},
       "domanda": {
