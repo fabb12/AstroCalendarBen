@@ -711,6 +711,34 @@
       it: { file: 'storie/luna/it/storia_luna-8.mp3', impronta: '0f693c1b', firma: '1d5082a5f8' }
     },
 
+    'demo.narr.storia_tempo.1': {
+      it: { file: 'storie/luna/it/storia_tempo-1.mp3', impronta: '5e1b76e5', firma: 'c5094eb1bc' }
+    },
+
+    'demo.narr.storia_tempo.2': {
+      it: { file: 'storie/luna/it/storia_tempo-2.mp3', impronta: 'f510bdaf', firma: '556afc6ad1' }
+    },
+
+    'demo.narr.storia_tempo.3': {
+      it: { file: 'storie/luna/it/storia_tempo-3.mp3', impronta: '634a0e25', firma: 'ce53557760' }
+    },
+
+    'demo.narr.storia_tempo.10': {
+      it: { file: 'storie/luna/it/storia_tempo-10.mp3', impronta: '1316def9', firma: '9f5a29ea0e' }
+    },
+
+    'demo.narr.storia_tempo.12': {
+      it: { file: 'storie/luna/it/storia_tempo-12.mp3', impronta: '2a9f9456', firma: '34663ad10e' }
+    },
+
+    'demo.narr.storia_tempo.13': {
+      it: { file: 'storie/luna/it/storia_tempo-13.mp3', impronta: '93db6605', firma: 'db7d3b4b4c' }
+    },
+
+    'demo.narr.storia_tempo.14': {
+      it: { file: 'storie/luna/it/storia_tempo-14.mp3', impronta: 'ded5c5d2', firma: '8c5501185c' }
+    },
+
     'studio.studio_cosa_e_la_gravita.2': {
       it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-2.mp3', impronta: 'be7e5c66', firma: 'd7f88ec9ee', testo: "Ciao Terra, mi chiedevo, perché orbito intorno a te?" }
     },
@@ -747,6 +775,38 @@
     // Sole — storie/sole/
     'demo.narr.storia_luna.6': {
       it: { file: 'storie/sole/it/storia_luna-6.mp3', impronta: '1c864e11', firma: 'a395b7f118' }
+    },
+
+    'demo.narr.storia_tempo.4': {
+      it: { file: 'storie/sole/it/storia_tempo-4.mp3', impronta: 'ae31a3b8', firma: 'a7a05b240a' }
+    },
+
+    'demo.narr.storia_tempo.5': {
+      it: { file: 'storie/sole/it/storia_tempo-5.mp3', impronta: '65f5d4da', firma: '9e9f61db10' }
+    },
+
+    // Voyager 1 — storie/voyager-1/
+    'demo.narr.storia_tempo.6': {
+      it: { file: 'storie/voyager-1/it/storia_tempo-6.mp3', impronta: '8d2b23a1', firma: '5c91d3773b' }
+    },
+
+    // Alfa Centauri — storie/alfa-centauri/
+    'demo.narr.storia_tempo.7': {
+      it: { file: 'storie/alfa-centauri/it/storia_tempo-7.mp3', impronta: 'f2afd751', firma: '0e43ee2b23' }
+    },
+
+    // Via Lattea — storie/via-lattea/
+    'demo.narr.storia_tempo.8': {
+      it: { file: 'storie/via-lattea/it/storia_tempo-8.mp3', impronta: 'bfe6916b', firma: 'a53cfbe34c' }
+    },
+
+    'demo.narr.storia_tempo.11': {
+      it: { file: 'storie/via-lattea/it/storia_tempo-11.mp3', impronta: '8b96db3c', firma: '82f788bbe7' }
+    },
+
+    // Andromeda — storie/andromeda/
+    'demo.narr.storia_tempo.9': {
+      it: { file: 'storie/andromeda/it/storia_tempo-9.mp3', impronta: 'e1d6183a', firma: '634955c1bd' }
     },
 
     // Gargantua — storie/gargantua/

@@ -11,19 +11,19 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **119/237** in italiano · **0/177** in inglese.
+Pronte: **133/237** in italiano · **0/177** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Luna | `storie/luna/` | 14 | 5/14 | 0/11 |
+| Luna | `storie/luna/` | 14 | 12/14 | 0/11 |
 | Terra | `storie/terra/` | 14 | 4/14 | 0/4 |
-| Sole | `storie/sole/` | 15 | 1/15 | 0/10 |
+| Sole | `storie/sole/` | 15 | 3/15 | 0/10 |
 | Saturno | `storie/saturno/` | 3 | 0/3 | 0/2 |
 | Giove | `storie/giove/` | 2 | 0/2 | 0/1 |
-| Voyager 1 | `storie/voyager-1/` | 1 | 0/1 | 0/1 |
-| Alfa Centauri | `storie/alfa-centauri/` | 2 | 0/2 | 0/1 |
-| Via Lattea | `storie/via-lattea/` | 2 | 0/2 | 0/2 |
-| Andromeda | `storie/andromeda/` | 1 | 0/1 | 0/1 |
+| Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
+| Alfa Centauri | `storie/alfa-centauri/` | 2 | 1/2 | 0/1 |
+| Via Lattea | `storie/via-lattea/` | 2 | 2/2 | 0/2 |
+| Andromeda | `storie/andromeda/` | 1 | 1/1 | 0/1 |
 | Betelgeuse | `storie/betelgeuse/` | 7 | 0/7 | 0/7 |
 | Supernova del Granchio | `storie/supernova-del-granchio/` | 3 | 0/3 | 0/3 |
 | Sirio B | `storie/sirio-b/` | 2 | 0/2 | 0/2 |
@@ -77,31 +77,31 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Emozione:** felice — sollievo e gioia, quasi saltella; l'ultima frase trionfante
   - **Testo:** Allora ho capito! Non ho perso niente. Sono sempre intera, anche quando sembro una fettina!
   - **Da incollare su ElevenLabs v3:** `[excited] Allora ho capito! [relieved] Non ho perso niente. [joyful] Sono sempre intera, anche quando sembro una fettina!`
-- `storia_tempo-1.mp3` — manca · Il cielo è una macchina del tempo, scena 1 (al massimo 9 s)
+- `storia_tempo-1.mp3` — pronta · 6,8 s · Il cielo è una macchina del tempo, scena 1 (al massimo 9 s)
   - **Emozione:** misteriosa — comincia sussurrando come un segreto, poi la domanda curiosa
   - **Testo:** Psst, tu che mi guardi! Lo sai che non mi vedi come sono adesso, ma come ero un attimo fa?
   - **Da incollare su ElevenLabs v3:** `[whispers] Psst, tu che mi guardi! [curious] Lo sai che non mi vedi come sono adesso, ma come ero un attimo fa?`
-- `storia_tempo-2.mp3` — manca · Il cielo è una macchina del tempo, scena 2 (al massimo 12 s)
+- `storia_tempo-2.mp3` — pronta · 9,8 s · Il cielo è una macchina del tempo, scena 2 (al massimo 12 s)
   - **Emozione:** entusiasta — veloce ed emozionata sulla velocità della luce, rallenta su «più di un secondo»
   - **Testo:** La luce corre a trecentomila chilometri al secondo, ma io sono lontana: per arrivare ai tuoi occhi le serve più di un secondo.
   - **Da incollare su ElevenLabs v3:** `[excited] La luce corre a trecentomila chilometri al secondo, [thoughtful] ma io sono lontana: per arrivare ai tuoi occhi le serve più di un secondo.`
-- `storia_tempo-3.mp3` — manca · Il cielo è una macchina del tempo, scena 3 (al massimo 8 s)
+- `storia_tempo-3.mp3` — pronta · 5,1 s · Il cielo è una macchina del tempo, scena 3 (al massimo 8 s)
   - **Emozione:** allegra — invito all'avventura, prende per mano chi ascolta
   - **Testo:** Vieni con me! Saliamo, e andiamo a vedere quanto è vecchia la luce delle altre stelle.
   - **Da incollare su ElevenLabs v3:** `[cheerfully] Vieni con me! [excited] Saliamo, e andiamo a vedere quanto è vecchia la luce delle altre stelle.`
-- `storia_tempo-10.mp3` — manca · Il cielo è una macchina del tempo, scena 10 (al massimo 12 s)
+- `storia_tempo-10.mp3` — pronta · 7,8 s · Il cielo è una macchina del tempo, scena 10 (al massimo 12 s)
   - **Emozione:** entusiasta — l'illuminazione di chi ha capito, poi una domanda piena di curiosità
   - **Testo:** Ho capito il trucco! Più guardi lontano, più guardi indietro nel tempo. Ma allora qual è la luce più antica di tutte?
   - **Da incollare su ElevenLabs v3:** `[excited] Ho capito il trucco! Più guardi lontano, più guardi indietro nel tempo. [curious] Ma allora qual è la luce più antica di tutte?`
-- `storia_tempo-12.mp3` — manca · Il cielo è una macchina del tempo, scena 12 (al massimo 12 s)
+- `storia_tempo-12.mp3` — pronta · 7,2 s · Il cielo è una macchina del tempo, scena 12 (al massimo 12 s)
   - **Emozione:** allegra — ride, energica, come all'inizio di una corsa
   - **Testo:** E adesso torniamo a casa: tutta la strada fatta dalla luce, noi la rifacciamo in un attimo!
   - **Da incollare su ElevenLabs v3:** `[laughs] E adesso torniamo a casa: [excited] tutta la strada fatta dalla luce, noi la rifacciamo in un attimo!`
-- `storia_tempo-13.mp3` — manca · Il cielo è una macchina del tempo, scena 13 (al massimo 6 s)
+- `storia_tempo-13.mp3` — pronta · 2,3 s · Il cielo è una macchina del tempo, scena 13 (al massimo 6 s)
   - **Emozione:** contenta — breve e felice, come all'atterraggio di un aereo
   - **Testo:** Eccoci, stiamo atterrando!
   - **Da incollare su ElevenLabs v3:** `[happy] Eccoci, stiamo atterrando!`
-- `storia_tempo-14.mp3` — manca · Il cielo è una macchina del tempo, scena 14 (al massimo 13 s)
+- `storia_tempo-14.mp3` — pronta · 12,6 s · Il cielo è una macchina del tempo, scena 14 (al massimo 13 s)
   - **Emozione:** tenera — la morale: lenta, calda, con meraviglia sull'ultima frase
   - **Testo:** Quindi stasera, quando guardi il cielo, non guardi solo lontano: guardi nel passato. Il cielo è una vera macchina del tempo!
   - **Da incollare su ElevenLabs v3:** `[softly] Quindi stasera, quando guardi il cielo, non guardi solo lontano: guardi nel passato. [warmly] Il cielo è una vera macchina del tempo!`
@@ -265,11 +265,11 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** bonaria — il nonno che mette pace fra i due: caldo, divertito, lento sui numeri
   - **Testo:** Siete bravissimi tutti e due. Giove fa un giro intorno a me in dodici anni; Saturno, che sta più lontano, in quasi trenta.
   - **Da incollare su ElevenLabs v3:** `[warmly] Siete bravissimi tutti e due. [calm] Giove fa un giro intorno a me in dodici anni; Saturno, che sta più lontano, in quasi trenta.`
-- `storia_tempo-4.mp3` — manca · Il cielo è una macchina del tempo, scena 4 (al massimo 13 s)
+- `storia_tempo-4.mp3` — pronta · 7,6 s · Il cielo è una macchina del tempo, scena 4 (al massimo 13 s)
   - **Emozione:** cordiale — il nonno che saluta contento, scandisce «otto minuti e venti secondi»
   - **Testo:** Ciao, sono il Sole! La mia luce, per arrivare fino a voi, viaggia otto minuti e venti secondi.
   - **Da incollare su ElevenLabs v3:** `[warmly] Ciao, sono il Sole! [calm] La mia luce, per arrivare fino a voi, viaggia otto minuti e venti secondi.`
-- `storia_tempo-5.mp3` — manca · Il cielo è una macchina del tempo, scena 5 (al massimo 12 s)
+- `storia_tempo-5.mp3` — pronta · 10,4 s · Il cielo è una macchina del tempo, scena 5 (al massimo 12 s)
   - **Emozione:** scherzosa — finge di fare paura, poi ride e rassicura con generosità
   - **Testo:** Quindi, se io mi spegnessi adesso, ve ne accorgereste soltanto fra otto minuti. Ma tranquilli: ho ancora miliardi di anni di luce da regalarvi!
   - **Da incollare su ElevenLabs v3:** `[mischievously] Quindi, se io mi spegnessi adesso, ve ne accorgereste soltanto fra otto minuti. [laughs] Ma tranquilli: ho ancora miliardi di anni di luce da regalarvi!`
@@ -425,7 +425,7 @@ Cartella: `audio/narrazione/storie/voyager-1/<lingua>/` · nel codice `voyager1`
 
 ### Italiano — `storie/voyager-1/it/`
 
-- `storia_tempo-6.mp3` — manca · Il cielo è una macchina del tempo, scena 6 (al massimo 14 s)
+- `storia_tempo-6.mp3` — pronta · 10,8 s · Il cielo è una macchina del tempo, scena 6 (al massimo 14 s)
   - **Emozione:** emozionata — voce che arriva da lontanissimo, fiera; «quasi un giorno intero» con stupore
   - **Testo:** E io sono la Voyager 1, la cosa più lontana mai costruita da voi. Un vostro messaggio ci mette quasi un giorno intero a raggiungermi.
   - **Da incollare su ElevenLabs v3:** `[proudly] E io sono la Voyager 1, la cosa più lontana mai costruita da voi. [amazed] Un vostro messaggio ci mette quasi un giorno intero a raggiungermi.`
@@ -445,7 +445,7 @@ Cartella: `audio/narrazione/storie/alfa-centauri/<lingua>/` · nel codice `alpha
 
 ### Italiano — `storie/alfa-centauri/it/`
 
-- `storia_tempo-7.mp3` — manca · Il cielo è una macchina del tempo, scena 7 (al massimo 14 s)
+- `storia_tempo-7.mp3` — pronta · 9,2 s · Il cielo è una macchina del tempo, scena 7 (al massimo 14 s)
   - **Emozione:** serena — gentile, da vicina di casa, tranquilla
   - **Testo:** Io sono Alfa Centauri: siamo tre stelle, le più vicine al Sole. La luce che vedi di noi è partita più di quattro anni fa.
   - **Da incollare su ElevenLabs v3:** `[friendly] Io sono Alfa Centauri: siamo tre stelle, le più vicine al Sole. [calm] La luce che vedi di noi è partita più di quattro anni fa.`
@@ -469,11 +469,11 @@ Cartella: `audio/narrazione/storie/via-lattea/<lingua>/` · nel codice `milky_wa
 
 ### Italiano — `storie/via-lattea/it/`
 
-- `storia_tempo-8.mp3` — manca · Il cielo è una macchina del tempo, scena 8 (al massimo 16 s)
+- `storia_tempo-8.mp3` — pronta · 14,2 s · Il cielo è una macchina del tempo, scena 8 (al massimo 16 s)
   - **Emozione:** pensosa — saggia e lenta, come chi ricorda; sorride sui mammut
   - **Testo:** Io sono la Via Lattea, la vostra galassia. La luce del mio centro è partita ventiseimila anni fa, quando sulla Terra camminavano ancora i mammut.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Io sono la Via Lattea, la vostra galassia. [slowly] La luce del mio centro è partita ventiseimila anni fa, [softly laughs] quando sulla Terra camminavano ancora i mammut.`
-- `storia_tempo-11.mp3` — manca · Il cielo è una macchina del tempo, scena 11 (al massimo 15 s)
+- `storia_tempo-11.mp3` — pronta · 12 s · Il cielo è una macchina del tempo, scena 11 (al massimo 15 s)
   - **Emozione:** meravigliata — solenne, con reverenza, lento sui numeri enormi
   - **Testo:** È partita tredici miliardi e ottocento milioni di anni fa, quando l’universo era appena nato. Più indietro di così, nessuno può guardare.
   - **Da incollare su ElevenLabs v3:** `[in awe] È partita tredici miliardi e ottocento milioni di anni fa, quando l’universo era appena nato. [softly] Più indietro di così, nessuno può guardare.`
@@ -497,7 +497,7 @@ Cartella: `audio/narrazione/storie/andromeda/<lingua>/` · nel codice `andromeda
 
 ### Italiano — `storie/andromeda/it/`
 
-- `storia_tempo-9.mp3` — manca · Il cielo è una macchina del tempo, scena 9 (al massimo 15 s)
+- `storia_tempo-9.mp3` — pronta · 12 s · Il cielo è una macchina del tempo, scena 9 (al massimo 15 s)
   - **Emozione:** affettuosa — morbida, quasi una ninna nanna, un filo di mistero sul finale
   - **Testo:** E io sono Andromeda, la vostra vicina. La mia luce ha viaggiato due milioni e mezzo di anni: è partita quando voi esseri umani non c’eravate ancora.
   - **Da incollare su ElevenLabs v3:** `[tenderly] E io sono Andromeda, la vostra vicina. [dreamy] La mia luce ha viaggiato due milioni e mezzo di anni: [mysteriously] è partita quando voi esseri umani non c’eravate ancora.`
