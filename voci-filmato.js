@@ -162,7 +162,8 @@ async function vfilmScrivi(k, rec) {
   const tutte = await vfilmDb(st => st.getAllKeys()).catch(() => []);
   if (!Array.isArray(tutte) || tutte.length <= VFILM_MAX) return;
   const vecchie = [];
-  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { vecchie.push([x.key, x.value && x.value.quando || 0]); x.continue(); } }; }).catch(() => null);
+  // (v487: per ultime le voci delle CosmoStorie, che la storia suona sempre)
+  await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { vecchie.push([x.key, (x.value && x.value.quando || 0) + (x.value && x.value.sempre ? 1e13 : 0)]); x.continue(); } }; }).catch(() => null);
   vecchie.sort((a, b) => a[1] - b[1]);
   const via = vecchie.slice(0, vecchie.length - VFILM_MAX).map(x => x[0]);
   if (via.length) await vfilmDb(st => { for (const k of via) st.delete(k); }, 'readwrite').catch(() => null);
@@ -988,12 +989,74 @@ const VFILM_CHIAVE_TOLTE = 'astrocal_voci_cosmo_tolte_v1';
 async function vfilmTutteSempre() {
   const fuori = [];
   await vfilmDb(st => { const c = st.openCursor(); c.onsuccess = () => { const x = c.result; if (x) { if (x.value && x.value.sempre) fuori.push({ chiave: x.key, rec: x.value }); x.continue(); } }; }).catch(() => null);
-  return fuori;
+  return vfilmRiparaVecchie(fuori);
+}
+/* v487: le voci fatte prima della v483 ritrovano la loro battuta. Chi usa
+ * l'app aveva fatto con «Voci ElevenLabs», sullo smartphone, le voci di
+ * «Interstellar 1» e salvato la storia: sul PC parlava la voce di sistema, e
+ * sul repository non c'era nessun audio. Quelle voci erano della v482, che
+ * nel record non scriveva la battuta (`id`, `chi`): per `vfilmPerRepo` non
+ * avevano un posto, e restavano in quel browser per sempre. La battuta si
+ * ritrova: chi la dice sta nella chiave del record (`eleven|cooper|it|…`), e
+ * l'`id` è quello della battuta di una CosmoStoria pronta con lo stesso
+ * testo, detto dallo stesso personaggio, nella lingua del record (anche se
+ * la voce era stata fatta dalla scheda di una copia dello Studio: il testo è
+ * lo stesso, e la narrazione la riconosce dal testo dappertutto). Una voce
+ * riparata è `riparata`: va sul repository solo se lì quella battuta non ha
+ * già una voce, magari rifatta da un altro dispositivo (`storie-studio.js`). */
+function vfilmIndicePronte() {
+  const indice = new Map();
+  const lib = window.AstroDemo && AstroDemo.libreria;
+  let pronte = [];
+  try { pronte = lib ? lib.elenco().filter(d => d.storia && !/^utente-/.test(d.chiave || '')) : []; } catch (_) { pronte = []; }
+  const S = window.StorieCosmiche;
+  const impronta = t => typeof narrazione === 'object' && narrazione.impronta ? narrazione.impronta(t) : String(t || '').replace(/\s+/g, ' ').trim();
+  const lingue = typeof astroI18n === 'object' && typeof astroI18n.lingueDisponibili === 'function' ? astroI18n.lingueDisponibili() : [vfilmLingua()];
+  for (const d of pronte) {
+    let demo = null;
+    try { demo = window.AstroDemoMotore && AstroDemoMotore.analizza ? AstroDemoMotore.analizza(d.testo) : null; } catch (_) { demo = null; }
+    if (!demo) continue;
+    for (const scena of demo.scene) for (const a of scena.azioni) {
+      const p = a.parametri || {};
+      if (a.comando !== 'character_speak' || !p.target || !/^demo\.narr\.[a-z][\w]*\.\d+$/.test(p.id || '')) continue;
+      const chi = S && S.canonico ? S.canonico(p.target) : p.target;
+      for (const l of lingue) {
+        const frase = vfilmFraseIn(p.id, l);
+        if (frase) indice.set([l, chi, impronta(frase)].join('|'), p.id);
+      }
+    }
+  }
+  return { indice, impronta };
+}
+// Una frase del dizionario in una lingua (anche diversa da quella di adesso)
+function vfilmFraseIn(id, lingua) {
+  const diz = window.ASTRO_DIZIONARI && window.ASTRO_DIZIONARI[lingua];
+  const m = diz && diz.messaggi && diz.messaggi[id];
+  if (typeof m === 'string') return m;
+  return lingua === vfilmLingua() && typeof astroI18n === 'object' && astroI18n.esiste && astroI18n.esiste(id) ? astroI18n.t(id) : '';
+}
+async function vfilmRiparaVecchie(tutte) {
+  const da = tutte.filter(x => x.rec && x.rec.blob && !x.rec.suRepo && !x.rec.senzaPosto && (!x.rec.id || !x.rec.chi));
+  if (!da.length) return tutte;
+  const { indice, impronta } = vfilmIndicePronte();
+  if (!indice.size) return tutte;           // la libreria non c'è ancora: al prossimo giro
+  const nuovi = [];
+  for (const x of da) {
+    const parti = String(x.chiave).split('|');
+    const chi = x.rec.chi || (parti[1] && parti[1] !== '-' ? parti[1] : '');
+    const id = x.rec.id || (chi ? indice.get([x.rec.lingua, chi, impronta(x.rec.testo)].join('|')) : '');
+    // senza una battuta pronta con quel testo non c'è un posto: si ricorda,
+    // per non cercarlo a ogni giro (la voce resta e suona qui come prima)
+    x.rec = id && chi ? Object.assign({}, x.rec, { id, chi, riparata: true }) : Object.assign({}, x.rec, { senzaPosto: true });
+    nuovi.push(x);
+  }
+  await vfilmDb(st => { for (const x of nuovi) st.put(x.rec, x.chiave); }, 'readwrite').catch(() => null);
+  return tutte;
 }
 const vfilmPerRepo = rec => !!(rec && rec.blob && rec.sempre && /^demo\.narr\.[a-z][\w]*\.\d+$/.test(rec.id || '') && rec.chi && !rec.suRepo);
 async function vfilmVociPerRepository() {
   return (await vfilmTutteSempre()).filter(x => vfilmPerRepo(x.rec))
-    .map(x => ({ chiave: x.chiave, id: x.rec.id, chi: x.rec.chi, lingua: x.rec.lingua, blob: x.rec.blob, storia: x.rec.storia }));
+    .map(x => ({ chiave: x.chiave, id: x.rec.id, chi: x.rec.chi, lingua: x.rec.lingua, blob: x.rec.blob, storia: x.rec.storia, riparata: !!x.rec.riparata }));
 }
 async function vfilmVociInAttesa() { return (await vfilmTutteSempre()).filter(x => vfilmPerRepo(x.rec)).length + vfilmTolte().length; }
 /* Dopo «Voci ElevenLabs»: le voci partono subito verso il repository, se

@@ -292,6 +292,52 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.click('#vcast-finestra [data-vcast="chiudi"]');
     });
 
+    /* v487: chi usa l'app aveva fatto le voci di «Interstellar 1» sullo
+     * smartphone e salvato: sul PC la storia parlava con la voce di sistema.
+     * Sul repository non era arrivato nessun audio. Le voci erano state fatte
+     * con la v482, che nel record non scriveva la battuta (`id`, `chi`): il
+     * giro della v483 le scartava tutte, per sempre. Qui tre voci così (una
+     * fatta dalla scheda di una copia dello Studio, con la sua chiave), e una
+     * battuta che sul repository ha già una voce, rifatta altrove. */
+    prova('le voci fatte prima della v483 (senza la battuta nel record) partono anche loro, e non vanno sopra a una rifatta altrove', async () => {
+      const cooper = battute.filter(b => b.chi === 'cooper' && /^demo\.narr\.storia_interstellar\.\d+$/.test(b.id)).slice(0, 3);
+      assert.equal(cooper.length, 3);
+      const nome = b => 'audio/narrazione/storie/cooper/it/' + b.id.replace(/^demo\.narr\./, '').replace(/\.(\d+)$/, '-$1');
+      const altrove = Buffer.from('voce rifatta su un altro dispositivo');
+      const shaAltrove = crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob ' + altrove.length + '\0'), altrove])).digest('hex');
+      GH.file.set(nome(cooper[2]) + '.mp3', { sha: shaAltrove, buf: altrove });
+      await pagina.evaluate(async ({ cooper, wav }) => {
+        const blob = new Blob([new Uint8Array(wav)], { type: 'audio/wav' });
+        await new Promise((ok, ko) => {
+          const r = indexedDB.open(VociFilmato.VFILM_DB, 1);
+          r.onupgradeneeded = () => r.result.createObjectStore('voci');
+          r.onerror = () => ko(r.error);
+          r.onsuccess = () => {
+            const tr = r.result.transaction('voci', 'readwrite'), st = tr.objectStore('voci');
+            cooper.forEach((b, i) => st.put({ blob, voce: 'UomoCaldoRoco01', testo: b.testo, motore: 'eleven', inviato: b.testo, quando: Date.now(),
+              sempre: true, storia: i === 1 ? 'utente-copia-di-interstellar' : 'storia_interstellar', lingua: 'it' }, VociFilmato.chiave('eleven', b, 'it')));
+            tr.oncomplete = () => { r.result.close(); ok(); };
+            tr.onerror = () => ko(tr.error);
+          };
+        });
+      }, { cooper, wav: [...wavTono(0.3, 440)] });
+      assert.equal(await pagina.evaluate(() => VociFilmato.vociInAttesa()), 3, 'tutte e tre da mandare: prima restavano qui per sempre');
+      await pagina.evaluate(() => StudioStorie.sincronizza({ spingi: true }));
+      assert.ok(GH.file.has(nome(cooper[0]) + '.wav'), 'la voce della CosmoStoria è nella cartella di Cooper');
+      assert.ok(GH.file.has(nome(cooper[1]) + '.wav'), 'anche quella fatta dalla scheda della copia (stesso testo)');
+      assert.equal(GH.file.get(nome(cooper[2]) + '.mp3').sha, shaAltrove, 'la voce rifatta altrove resta');
+      assert.ok(!GH.file.has(nome(cooper[2]) + '.wav'));
+      assert.equal(await pagina.evaluate(() => VociFilmato.vociInAttesa()), 0, 'e non ripartono');
+      const commit = GH.commit;
+      await pagina.evaluate(() => StudioStorie.sincronizza({ spingi: true }));
+      assert.equal(GH.commit, commit);
+      // la storia le suona ancora qui, e «Togli» non toglie dal repository quella di un altro
+      await pagina.evaluate(() => VociFilmato.togliVociStoria('storia_interstellar'));
+      await pagina.evaluate(() => StudioStorie.sincronizza({ spingi: true }));
+      assert.equal(GH.file.get(nome(cooper[2]) + '.mp3').sha, shaAltrove, '«Togli» lascia la voce dell\'altro dispositivo');
+      assert.ok(!GH.file.has(nome(cooper[0]) + '.wav'), '«Togli» toglie quella mandata da qui');
+    });
+
     prova('il voto e il carattere (funzioni pure)', async () => {
       const r = await pagina.evaluate(() => {
         const V = VociFilmato;
