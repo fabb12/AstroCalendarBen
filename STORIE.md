@@ -83,14 +83,14 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 
 | Campo | Cosa | Di serie |
 |---|---|---|
-| `famiglia` | `stella`, `pianeta`, `luna`, `nano`, `asteroide`, `cometa`, `stazione`, `sonda`, `galassia`, `buco`, `persona` (v450) | dedotta dall'oggetto |
+| `famiglia` | `stella`, `pianeta`, `luna`, `nano`, `asteroide`, `cometa`, `stazione`, `sonda`, `galassia`, `buco`, `persona` (v450), `nave` e `robot` (v482) | dedotta dall'oggetto |
 | `nome` | chiave del dizionario del nome | il nome che l'app gli dà già (`corpo.<id>`, `SOL_LUNE`, …) |
 | `pelle` | colore del disco grafico e delle palpebre | il colore dell'app per quell'oggetto |
 | `iride` | colore degli occhi | della famiglia |
 | `sottotitolo` | colore del nome nel sottotitolo (su fondo scuro: va chiaro) | della famiglia |
 | `guance` | colore del rossore | della famiglia |
 | `genere` | `f` o `m`: i tratti di lei o di lui (§Lei e lui) | della famiglia |
-| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble`, `galassia`, `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco`, `sagan` (v450), `persona` (v469) | della famiglia |
+| `sagoma` | il corpo disegnato (§I corpi): `stella`, `pianeta`, `luna`, `anelli`, `asteroide`, `cometa`, `voyager`, `iss`, `tiangong`, `hubble`, `galassia`, `gigante_rossa`, `nana_bianca`, `supernova`, `buco_nero`, `buco_bianco`, `sagan` (v450), `persona` (v469), `tars`, `endurance`, `ranger`, `lander` (v482) | della famiglia |
 | `cosmo` | il luogo della scala cosmica in cui vive, e **solo** lì (`idea`: in nessun posto, v414) | — |
 | `luogo` | il suo luogo nella scala cosmica, per chi vive anche altrove (v414: Betelgeuse) | — |
 | `decoro` | il disegno sul corpo di un pianeta: `bande`, `macchia`, `continenti`, `calotta`, `nubi`, `crateri` | — (le lune: crateri) |
@@ -107,6 +107,8 @@ Callisto: { famiglia: 'luna', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '
 | `ospite` | non è un astro: sta in un posto dello schermo in ogni vista e non viaggia (v450, Carl Sagan: §Le storie cantate) | — |
 | `figura` | il corpo di chi racconta il cielo, con la sagoma `persona` (v469: capelli, copricapo, veste, barba lunga, casco, sedia: §Chi racconta il cielo) | — |
 | `occhiali` | `quadrati` o `tondi` (v469, Hawking) | — |
+| `senzaVolto` | una navicella (v482): niente volto, l'equipaggio ai finestrini (§«Interstellar») | — |
+| `metallo` | il colore delle lastre di un robot (v482, TARS e CASE) | — |
 
 La personalità va scritta in `storie.personalita.<…>` nei due dizionari (la
 legge la pagina Demo). Un oggetto che l'app conosce e che nessuna riga nomina
@@ -601,7 +603,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 
 | Azione | Parametri |
 |---|---|
-| `character_show` | `target`, `expression?`, `look?` (`viewer` o un oggetto), `size?` (`auto`, `disk`, `badge`, `real`), `at?` (v450, il posto di un ospite: `left`, `right`, `center`, `top`, `bottom`) |
+| `character_show` | `target`, `expression?`, `look?` (`viewer` o un oggetto), `size?` (`auto`, `disk`, `badge`, `real`), `at?` (v450, il posto di un ospite: `left`, `right`, `center`, `top`, `bottom`; dalla v482 anche `top_left`, `top_right`, `bottom_left`, `bottom_right`, `off_left`, `off_right`); dalla v482 per gli ospiti `inside?` (una navicella: si affaccia a un suo finestrino), `scale?` (0,15–3), `glide?` (secondi per scivolare al posto nuovo, 0,2–30), e per le navicelle `spin?` (gradi al secondo, −720–720) e `facing?` (`left`, `right`): §«Interstellar» |
 | `character_expression` | `target`, `expression` |
 | `character_look_at` | `target`, `object` (`viewer`/`camera` o un oggetto) |
 | `character_blink` | `target` |
@@ -612,7 +614,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_animate` | `target`, `animation` (`jump`, `bounce`, `shake`, `nod`, `spin`, `pulse`, `dance`, `wobble`), `times?` (1–20), `strength?` (0,2–3) |
 | `character_scale` | `target`, `scale` (0,2–6) |
 | `character_become` (v414) | `target`, `shape` (`red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`) |
-| `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20) |
+| `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`, `spacetime` dalla v469; dalla v482 gli sfondi `starfield`, `wormhole`, `wormhole_tunnel`, `gargantua_view`, `miller_ocean`, `tidal_wave`, `mann_ice` e i disegni `fold`, `time_warp`, `orbit_path`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20; uno sfondo fino a 60) |
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`, dalla v452 `rhythm`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
@@ -3080,3 +3082,187 @@ registratore dell'app, con la voce di sistema muta, e trova la voce nel file
 (picco 0,37 contro 0,04 di prima). `prova-youtube.js` (14) aggiornata: la
 storia dello Studio ora passa dalla finestra. **Da guardare fuori dal
 contenitore**: Piper con un modello vero (download e voce) e ElevenLabs vero.
+
+### «Interstellar: oltre Gargantua», le navicelle con l'equipaggio, gli sfondi da cinema e le voci con un tocco (v482)
+
+«Aggiungi una CosmoStoria che riprende le vicende del film *Interstellar*, da
+quando entrano nel wormhole a quando trovano i due pianeti e poi entrano in
+Gargantua. Aggiungi tutti i personaggi nuovi necessari, e anche le navicelle
+con dentro i personaggi. Una storia avvincente che spieghi bene la fisica del
+film, con riprese da cinema che mostrino l'immensità dello spazio e
+l'emozione dei personaggi; e permetti di generare tutte le voci con
+ElevenLabs con un tasto solo, scegliendo da sole le voci giuste per ogni
+personaggio.»
+
+**I personaggi** (`STOR_PERSONAGGI`, `STOR_FISICA`, testi `storie.nome.*`,
+`storie.personalita.*`, `storie.fisica.*`, `studio.alias.*`):
+
+| Chi | Com'è fatto | Gli gira attorno |
+|---|---|---|
+| `cooper` | il pilota: capelli castani corti, occhi grigio-azzurri, la tuta chiara della NASA, senza casco | l'orologio lasciato a Murph |
+| `brand` | Amelia Brand: castana, la tuta chiara | il pianeta di Edmunds |
+| `romilly` | il fisico, pelle scura, pizzetto | un buchino nero (ventitré anni a studiare Gargantua) |
+| `doyle` | castano chiaro, coi baffi | il pianeta di Miller |
+| `mann` | il ciuffo brizzolato, le rughe | il suo pianeta di ghiaccio |
+| `murph` | Murph adulta: capelli rossi lunghi, lentiggini, maglione verde | l'orologio del papà |
+| `tars`, `case` | famiglia nuova `robot`, sagoma `tars`: quattro lastre di metallo (`metallo`) che si muovono a turno quando parlano, e il volto sullo schermo in cima (la pelle è lo schermo) | — |
+| `endurance`, `ranger`, `lander` | famiglia nuova `nave`, sagome omonime, `senzaVolto` (§sotto) | — |
+| `miller_planet`, `mann_planet` | pianeti `cosmo: 'idea'` come Gargantua, coi decori nuovi `onde` e `ghiaccio` | — |
+
+Le barbe ispide di Cooper e Doyle si sono tolte dopo la prima visione: ai
+finestrini, a quella misura, sembravano un muso.
+
+**Le navicelle con l'equipaggio** (§6-quater, `disegnaNave`; §7,
+`storOspiti`). Una nave è un ospite senza volto (`senzaVolto`: niente occhi,
+bocca e segno da fumetto, niente «pop» e niente respiro in `storPosa`, così
+l'equipaggio resta dentro al vetro). L'Endurance è l'anello di dodici moduli
+inclinato verso chi guarda, che gira attorno al mozzo (di serie 24°/s: è così
+che fa la gravità), con la scia quando gira all'impazzata; il Ranger è la
+navetta di lato col muso a punta, la deriva, l'ala a delta e il ventre scuro;
+il Lander è tozzo, con le gambe e i razzi sotto. I motori si accendono quando
+la nave scivola (`spintaNave`). I finestrini sono in `STOR_CORPI[…].finestre`
+(Ranger quattro, Lander e Endurance tre) e, vuoti, mostrano la cabina buia
+col vetro (`disegnaCabina`, `disegnaVetro`).
+
+Chi ha `character_show { inside: 'ranger' }` non sta al suo posto: sta al
+finestrino libero della nave, nell'ordine in cui i personaggi sono comparsi.
+`storOspiti` gli dà la `finestra` ({ x, y, r }) e una misura tale che il
+volto riempia il vetro (0,86 del raggio del finestrino); il disegno lo
+ritaglia lì dentro, con la cabina dietro e il vetro davanti. È il personaggio
+intero, quindi parla, cambia faccia, guarda chi parla e la regia ci va in
+primo piano come su tutti gli altri. Se la nave non c'è (non mostrata in
+quella scena) torna un ospite come gli altri: per questo una nave che
+«scivola più tardi» (`shot_from`) va mostrata anche all'inizio della scena,
+al posto da cui parte. Le navette che girano (`spin`) girano intere, coi
+finestrini; l'Endurance gira solo l'anello.
+
+`scale` (la misura di un ospite) e `glide` (in quanti secondi scivola al posto
+nuovo) danno le riprese lunghe: l'Endurance che entra da fuori schermo
+(`off_left`) e attraversa il quadro in dodici secondi davanti a Saturno, il
+Ranger che rimpicciolisce fino a un puntino scendendo verso Gargantua. Una
+scena che non li dice li rimette di serie (1, e lo scivolare di sempre).
+
+**Gli sfondi da cinema** (`STOR_SFONDI`, `storDisegnaSfondo`): effetti che si
+disegnano **sotto** ai personaggi (gli altri stanno sopra) e possono durare
+una scena lunga (`duration` fino a 60 s). Hanno una loro camera lenta che
+spinge in avanti per tutta la durata; col movimento ridotto stanno fermi.
+
+| Sfondo | Cosa |
+|---|---|
+| `starfield` | il cielo profondo: le stelle dipinte una volta su una tela fuori schermo (`storTelaStelle`) e qualcuna che brilla davvero |
+| `wormhole` | la sfera accanto agli anelli, trasparente sulla vista vera: dentro le stelle e la spirale di un'altra galassia (la stessa tela, in due passate, a occhio di pesce), attorno le stelle stirate in archi, sul bordo l'anello di Einstein; si apre in 3,5 s |
+| `wormhole_tunnel` | dentro: anelli di luce che vengono incontro e strisce di stelle che corrono via |
+| `gargantua_view` | Gargantua (`disegnaGargantua`): l'ombra nera, l'anello di fotoni, il disco dorato di taglio davanti e, piegato dalla gravità, sopra e sotto all'ombra, come nell'immagine di Kip Thorne; sul `target: 'gargantua'` il suo volto sta nell'ombra |
+| `miller_ocean` | il mare basso fino all'orizzonte, il cielo pesante e Gargantua enorme e pallido |
+| `tidal_wave` | il muro d'acqua che si alza dall'orizzonte in sette secondi, con la schiuma che corre sulla cresta |
+| `mann_ice` | il ghiaccio con le crepe azzurre, le nuvole gelate e la neve fine |
+
+Uno sfondo pieno già entrato copre quelli creati prima, che non si
+disegnano più (`STOR_SFONDI_PIENI`): una scena può rimettere lo sfondo della
+scena prima senza costare il doppio, e la storia lo fa sempre, così chi salta
+a una scena dalla barra del tempo lo ritrova.
+
+**La fisica che si vede** (effetti sopra ai personaggi):
+
+- `fold`, il foglio di Romilly: due punti lontani, la strada lunga
+  tratteggiata, il foglio che si piega finché i due punti si toccano e la
+  matita che lo buca (il suono lo dà la storia con `sound`, al momento giusto);
+- `time_warp`, il tempo che scappa: l'orologio con le lancette che corrono
+  sempre più svelte e i fogli del calendario che volano via;
+- `orbit_path`, la fionda: un ramo d'iperbole che sfiora l'ombra di
+  Gargantua e ne esce più veloce, e nel punto più vicino un pezzo che si
+  stacca e cade dentro (Cooper e TARS, la terza legge di Newton).
+
+Ognuno ha il suo rumore (`STOR_SUONI`; i soffi più lunghi di due secondi
+girano in tondo, `ciclo`) e il suo nome nello Studio (`storie.effetto.*`,
+`studio.suono.nome.*`).
+
+**La storia** (`storia_interstellar`, 43 scene, una battuta ciascuna, ~9
+minuti col tetto delle scene; con la voce sintetica molto meno):
+
+| Scene | Cosa |
+|---|---|
+| 1–8 | l'Endurance arriva a Saturno (inquadratura larga, piccola davanti agli anelli); la sfera del wormhole («un buco nello spazio è una palla»); il foglio piegato di Romilly; TARS e la sincerità al novanta per cento, «l'umorismo al settantacinque»; dentro al wormhole, la «stretta di mano» |
+| 9–14 | Gargantua (cento milioni di Soli, il volto nell'ombra); il tempo che rallenta vicino a una massa: un'ora sul pianeta di Miller, sette anni sulla Terra; Romilly resta sull'Endurance; il Ranger scende; il pianeta di Miller e le sue maree |
+| 15–21 | sull'acqua: i rottami della dottoressa Miller, l'onda, Doyle che non ce la fa, CASE che salva Brand; di nuovo su: «ventitré anni, quattro mesi e otto giorni», e perché |
+| 22–25 | i messaggi da casa: Murph adulta e l'orologio; Edmunds o Mann |
+| 26–30 | il pianeta di ghiaccio, il dottor Mann che si sveglia, la bugia, il Lander rubato e l'aggancio forzato |
+| 31–34 | l'Endurance che gira a 68 giri al minuto, «impossibile» — «no: necessario», l'attracco (due ballerini che si tengono per mano) |
+| 35–43 | la fionda attorno a Gargantua (51 anni), Newton e il distacco di Cooper e TARS, Brand, l'orizzonte degli eventi (visto da fuori ci si ferma, per chi cade il tempo scorre; un buco nero così grande non stira come uno spaghetto), «Murph, sto arrivando», e Murph che lo sente |
+
+I conti sono quelli del film e della sua fisica (*The Science of
+Interstellar*, Kip Thorne): Gargantua cento milioni di masse solari, un'ora su
+Miller per sette anni, 23 anni 4 mesi e 8 giorni, 68 giri al minuto, i 51 anni
+della fionda; le maree all'orizzonte di un buco nero crescono come
+1/M², quindi per uno così grande sono dolci. Nelle scene dei pianeti e dei
+voli la regia è larga (`story_camera { mode: wide }`): si deve vedere quanto
+è piccola la nave; nelle altre va in primo piano su chi parla, anche ai
+finestrini.
+
+`regia-voci.json` ha il carattere delle dieci voci nuove e la regia di tutte
+le 43 battute coi tag di ElevenLabs v3 in italiano e in inglese;
+`voci-elevenlabs.json` le righe vuote; le cartelle dei personaggi hanno i loro
+`.gitkeep` (`node scripts/voci-storie.js`).
+
+**Le voci con un tocco** (`voci-filmato.js` §8–9, prefisso `vfilm`). Ogni
+scheda delle CosmoStorie ha il tasto **Voci ElevenLabs**
+(`data-storia-voci`, `vfilmVociStoria`). Senza la chiave la finestra «Le voci
+della storia» dice dove metterla e porta alle Impostazioni dello Studio
+(`StudioStorie.apriImpostazioni('el')`, esportata apposta). Con la chiave
+parte subito e fa tutto da sola:
+
+1. **il casting** (`vfilmCasting`): per ogni personaggio che parla, la voce
+   scelta prima (nello Studio, o da questo tasto) se c'è; se no la cerca
+   nella libreria pubblica (`/v1/shared-voices`) nella lingua di chi guarda,
+   del genere e dell'età del personaggio, poi con la sua prima parola, poi
+   con il solo genere (senza libreria, fra le voci dell'account). Ogni voce
+   trovata ha un voto (`vfilmVotoVoce`, funzione pura): l'età giusta, le
+   parole del carattere trovate nella sua descrizione (la prima vale di più),
+   l'uso da racconto o da personaggio, la lingua, un poco quanto è usata; il
+   genere sbagliato la esclude. Il carattere (`vfilmCarattere`) viene da
+   `VFILM_CARATTERI` (Cooper caldo e roco, TARS asciutto e impassibile,
+   Gargantua profondissimo, e anche Einstein, Astro Ben, Zaira, Sagan,
+   Hawking), se no dal profilo (bambini, anziani, robot, buchi neri, stelle,
+   il tono della sintesi) e dal carattere scritto in `regia-voci.json`
+   (le parole italiane tradotte in quelle inglesi delle descrizioni,
+   `VFILM_PAROLE_IT`). Due personaggi della stessa storia non hanno mai la
+   stessa voce. La vincitrice si aggiunge all'account (`/v1/voices/add/…`) e
+   si ricorda per lingua in `astrocal_voci_cast_v1` (fuori dal backup, come
+   le voci dello Studio), con le altre candidate;
+2. **le battute** (`vfilmGeneraStoria`): col testo coi tag di
+   `regia-voci.json` se la battuta è ancora quella del dizionario, se no col
+   tag della faccia che il personaggio ha in scena (`vfilmBattute` ora dice
+   anche l'`id` e la `faccia`; `vfilmTestoConRegia`); coi modelli che non
+   leggono i tag, il testo nudo. Quelle già fatte con la stessa voce e lo
+   stesso testo non si rifanno e non costano;
+3. **restano** nello scaffale del filmato (`astrocal_voci_filmato`) con
+   `sempre`, la storia e la lingua: all'avvio, al cambio di lingua e dopo ogni
+   generazione `vfilmCaricaVociStorie` le presta alla narrazione
+   (`narrazione.vociStorie`, uno strato nuovo accanto a `vociFilmato` in
+   `narrDiciPezzo`), che le suona ogni volta che la storia gira. Un filmato per
+   YouTube le trova già fatte.
+
+Nella finestra, una riga per personaggio con la figurina, la voce, «Ascolta»
+(l'anteprima di ElevenLabs, gratis) e **Un'altra voce** (`vfilmAltraVoce`: la
+candidata dopo che nessun altro personaggio usa, cercando di nuovo se sono
+tutte prese; rifà solo le battute di quel personaggio); in fondo **Guarda la
+storia**, **Togli queste voci** (`vfilmTogliVociStoria`) e «Chiudi». Le voci
+scelte valgono anche nello Studio, dopo quelle scelte a mano
+(`studioVoceDi` → `vociDelCast`). Testi in `vfilm.storia.*` e
+`storie.vociEleven*`.
+
+Prove: `prova-storie.js` (120: la storia si valida, una battuta per scena,
+gli effetti nuovi si disegnano e se ne vanno, i rumori stanno sotto i quattro
+secondi, ogni sagoma ha il volto dentro), `prova-voci-cosmostorie.js` (7,
+nuova: il tasto senza chiave; con un ElevenLabs finto e una piccola libreria
+il casting giusto, mai due voci uguali, la regia dei tag, la narrazione che
+suona le voci, la seconda volta gratis, «Un'altra voce», «Togli queste voci»,
+il voto e il carattere), `prova-elevenlabs-studio.js` (17),
+`prova-voci-filmato.js`, `prova-storie-repo.js` (19),
+`prova-musica-storie.js` (17), `prova-demo.js`, `prova-demo-pagina.js` (23),
+`prova-youtube.js` (14), `prova-i18n.js`, `controlla-i18n.js --patto` (342);
+`prova-lingua.js` (i 15 ms della riscrittura), `prova-demo-regia.js` e
+`prova-storie-browser.js` falliscono uguali sul codice di prima. Guardata
+intera in Chromium (`STORIA=storia_interstellar node scripts/giro-storia.js`,
+nessun errore) e scena per scena. **Da guardare fuori dal contenitore**:
+ElevenLabs vero (la libreria, l'aggiunta delle voci all'account, i tag v3).

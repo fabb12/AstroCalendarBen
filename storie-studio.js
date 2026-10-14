@@ -3111,6 +3111,15 @@
     const a = archivio();
     try { if (a) a.setItem(CHIAVE_ELEVEN, JSON.stringify(imp)); return !!a; } catch (_) { return false; }
   }
+  /* v482: la voce scelta da sola dal tasto «Voci ElevenLabs» di una
+   * CosmoStoria (`voci-filmato.js`, §8), nella lingua di adesso: vale anche
+   * qui, dopo quelle scelte a mano. */
+  function vociDelCast(id) {
+    let tutto = {};
+    try { tutto = JSON.parse((archivio() && archivio().getItem('astrocal_voci_cast_v1')) || '{}') || {}; } catch (_) { tutto = {}; }
+    const l = String(haI18n() && typeof radice.astroI18n.lingua === 'function' ? radice.astroI18n.lingua() : 'it').toLowerCase().split('-')[0];
+    return studioPulisciVoce((tutto[l] || {})[id]);
+  }
   // Le voci scelte per l'ultima storia, di serie per le nuove
   function vociDiSerie() {
     try { return studioPulisciVoci(JSON.parse((archivio() && archivio().getItem(CHIAVE_VOCI_PG)) || '{}')); } catch (_) { return {}; }
@@ -3118,7 +3127,7 @@
   /* La voce di un personaggio in una scena (v445): quella cambiata solo per
    * la scena, se c'è, se no quella della storia, se no quella di serie. */
   function studioVoceDi(progetto, id, scena) {
-    return (scena && scena.voci && scena.voci[id]) || (progetto && progetto.voci && progetto.voci[id]) || vociDiSerie()[id] || null;
+    return (scena && scena.voci && scena.voci[id]) || (progetto && progetto.voci && progetto.voci[id]) || vociDiSerie()[id] || vociDelCast(id) || null;
   }
   // La scena di un campo `scene.<i>…`
   const scenaDi = dove => studio.progetto.scene[Number(String(dove).split('.')[1])] || null;
@@ -4912,9 +4921,10 @@
     // scelti e quanti sono) e una per le voci ElevenLabs. Prima erano
     // quaranta schede aperte in quattro gruppi, e le voci sotto a tutte.
     const gruppi = { narratori: [], pianeti: [], lune: [], macchine: [], universo: [] };
+    // (v482: le navicelle e i robot di «Interstellar» stanno con le macchine)
     for (const id of Object.keys(S().STOR_PERSONAGGI || {})) {
       const f = S().profilo ? S().profilo(id).famiglia : 'pianeta';
-      (f === 'persona' ? gruppi.narratori : soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
+      (f === 'persona' ? gruppi.narratori : soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' || f === 'nave' || f === 'robot' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
     }
     const nella = h('div', { class: 'studio-chips studio-nel-cast', role: 'group', 'aria-label': t('studio.ui.nellaStoria') },
       h('span', { class: 'studio-etichetta' }, t('studio.ui.nellaStoria')));
@@ -5848,6 +5858,9 @@
     regia: studioRegiaBattuta, frasi: studioFrasi, battuteDa: studioBattuteDa, statoVoce: studioStatoVoce, facciaScelta: studioFacciaScelta,
     STUDIO_REGIA_VOCE, STUDIO_REGIA_MAX,
     ufficiali: studioUfficiali, apriProgetto: studioApriProgetto, apriDaStoria: studioApriDaStoria,
+    // v482: le impostazioni (la chiave di ElevenLabs) aperte da fuori, dalla
+    // finestra delle voci di una CosmoStoria
+    apriImpostazioni: scheda => { apriImpostazioni(scheda); const r = studio.radice; if (r && r.scrollIntoView) { try { r.scrollIntoView({ block: 'start' }); } catch (_) { /* niente */ } } },
     apri: p => { studio.progetto = p; if (!studio.progetti.some(x => x.id === p.id)) studio.progetti.unshift(p); },
     get progetto() { return studio.progetto; }, ridisegna: () => disegna()
   };

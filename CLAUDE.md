@@ -61,7 +61,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `storie-cosmiche.js` | Le Storie cosmiche: volti degli astri in stile «fiaba d'inchiostro», astri che crescono e viaggiano nella 3D, effetti speciali (`stor`). Vedi `STORIE.md`. |
 | `storie-studio.js` | Lo Studio delle storie e le due linguette della pagina Demo (`studio`). Vedi `STORIE.md`. |
 | `musica/` | Tracce di sottofondo (`catalogo.js`) e, in `canzoni/`, le canzoni che una CosmoStoria segue (`story_music { sync: on }`; fuori dal catalogo e fuori da `audio/storie-musica/`, che lo Studio ripulisce). |
-| `voci-filmato.js` | Le voci del filmato: prima di registrare per YouTube, le battute che andrebbero alla voce di sistema (che non si registra) diventano audio con ElevenLabs o Piper (`vfilm`). |
+| `voci-filmato.js` | Le voci del filmato: prima di registrare per YouTube, le battute che andrebbero alla voce di sistema (che non si registra) diventano audio con ElevenLabs o Piper; e il tasto «Voci ElevenLabs» delle CosmoStorie, che sceglie da solo la voce di ogni personaggio e genera tutte le battute (`vfilm`). |
 | `youtube.js` | Collegare il canale YouTube e pubblicarci i filmati (`yt`). |
 | `config.js` | URL dei ponti ADS-B/Edge-TTS, `YOUTUBE_CLIENT_ID` e `ASTROCAL_BUILD`. |
 | `worker-adsb.js` | Proxy ADS-B (Deno Deploy), non fa parte della PWA. Vedi `ADSB-PROXY.md`. |
@@ -196,6 +196,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | guida | `prova-guida.js` |
 | YouTube (collegamento, pubblicazione, «Registra e pubblica») | `prova-youtube.js` |
 | voci del filmato (ElevenLabs e Piper prima di registrare) | `prova-voci-filmato.js` (vuole anche `onnxruntime-web@1.18.0 @diffusionstudio/piper-wasm@1.0.0`) |
+| voci di una CosmoStoria con un tocco (casting automatico ElevenLabs) | `prova-voci-cosmostorie.js` |
 
 Perché ognuna esiste e le sue trappole (rotte di Playwright, `<script>` unici
 di `verifica.html` che si portano via le sezioni dopo un errore, copie di
