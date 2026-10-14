@@ -1767,6 +1767,7 @@
     const dt = stor.ultimoTic ? Math.min(100, Math.max(0, ora - stor.ultimoTic)) : 0;
     stor.ultimoTic = ora;
     if (!demoInPausa()) stor.orologio += dt;
+    if (suono.file.size) storSuoniFileInPausa(demoInPausa());
     stor.ridotto = movimentoRidotto();
     // Una demo finita (anche male) non lascia personaggi sul cielo: è la rete
     // sotto alle chiusure delle azioni, che di regola bastano da sole.
@@ -9297,7 +9298,7 @@
   const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
   const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
   const STOR_SUONO_VESTE = { red_giant: 'inflate', white_dwarf: 'magic', supernova: 'explosion', black_hole: 'suck', self: 'magic' };
-  const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet(), file: new Set() };
+  const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet(), file: new Map() };
 
   // v467: la musica e i suoni da file entrano nel filmato registrato, nella
   // stessa traccia della voce (`narrazione.audioDelRacconto`)
@@ -9643,20 +9644,55 @@
    * la musica di sottofondo: un file non ancora pubblicato suona lo stesso
    * su questo dispositivo, dal blob che lo Studio ha registrato
    * (`storMusicaLocale`, la stessa tabella dei percorsi). Tace con gli
-   * effetti sonori spenti, come i rumori sintetizzati. */
+   * effetti sonori spenti, come i rumori sintetizzati.
+   *
+   * v491: restituisce la promessa della sua fine (o null se tace), che il
+   * motore aspetta come una voce (`attende` del comando `sound`). Chi
+   * caricava un suono a metà o alla fine di un momento non lo sentiva: la
+   * voce finiva prima del punto scritto, il motore stringeva la scena e il
+   * suono partiva all'ultimo istante; con «Prova la scena» (sempre l'ultima
+   * scena) la fine della storia lo spegneva dopo 50 ms. Ora la scena salta
+   * al suono appena la voce tace e resta aperta finché il suono non finisce
+   * (al più `STOR_SUONO_FILE_MAX`). */
+  const STOR_SUONO_FILE_MAX = 30000;
   function storSuonaFile(src, volume) {
-    if (typeof Audio === 'undefined' || !suoniAccesi()) return false;
+    if (typeof Audio === 'undefined' || !suoniAccesi()) return null;
     const a = new Audio(musica.locali.get(senzaVersione(src)) || src);
     a.volume = Math.max(0, Math.min(1, (volume === undefined ? 1 : Number(volume) || 0) * 0.8));
-    suono.file.add(a);
+    let chiudi = null, timer = 0;
+    const fine = new Promise(r => { chiudi = r; });
+    // finito, guasto, bloccato dal browser o zittito: la scena non aspetta oltre
+    const via = () => {
+      if (!chiudi) return;
+      if (timer) clearTimeout(timer);
+      suono.file.delete(a);
+      const c = chiudi; chiudi = null; c('suono');
+    };
+    suono.file.set(a, via);
     audioNelFilmato(a);
-    a.addEventListener('ended', () => suono.file.delete(a));
-    a.play().catch(() => suono.file.delete(a));
-    return true;
+    a.addEventListener('ended', via);
+    a.addEventListener('error', via);
+    if (typeof setTimeout === 'function') timer = setTimeout(via, STOR_SUONO_FILE_MAX);
+    try { Promise.resolve(a.play()).catch(via); } catch (_) { via(); }
+    return fine;
   }
   function storZittisciFile() {
-    for (const a of suono.file) { try { a.pause(); a.removeAttribute('src'); a.load(); } catch (_) { /* già fermo */ } }
+    for (const [a, via] of [...suono.file]) {
+      try { a.pause(); a.removeAttribute('src'); a.load(); } catch (_) { /* già fermo */ }
+      via();
+    }
     suono.file.clear();
+  }
+  // v491: la pausa della demo ferma anche i suoni da file, e la ripresa li
+  // fa ripartire da dove erano (la scena li aspetta: senza, il suono finiva
+  // durante la pausa e la scena chiudeva appena ripresa)
+  function storSuoniFileInPausa(pausa) {
+    for (const a of suono.file.keys()) {
+      try {
+        if (pausa && !a.paused) { a.pause(); a.inPausa = true; }
+        else if (!pausa && a.inPausa) { a.inPausa = false; Promise.resolve(a.play()).catch(() => null); }
+      } catch (_) { /* niente */ }
+    }
   }
   // Uno Stop o la fine della storia zittiscono anche i rumori in corso
   function storZittisci() {
@@ -10083,7 +10119,14 @@
         }
         numeroIn(p.volume, 'volume', 0, 2);
       },
-      crea(p) { if (p.src !== undefined) storSuonaFile(p.src, p.volume); else storSuona(p.type, { volume: p.volume }); return {}; }
+      // v491: un suono da file è una «battuta» di suono: la scena lo
+      // aspetta e, finita la voce, ci salta (`attende` in demo-motore.js)
+      attende(p) { return p.src !== undefined && suoniAccesi(); },
+      crea(p) {
+        if (p.src === undefined) { storSuona(p.type, { volume: p.volume }); return {}; }
+        const fine = storSuonaFile(p.src, p.volume);
+        return fine ? { fineNarrazione: fine } : {};
+      }
     }
   });
   function sceltaSuono(p) { return scelta(p.sound, 'sound', ['auto', 'off'].concat(STOR_SUONI)); }

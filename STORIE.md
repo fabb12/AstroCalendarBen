@@ -1596,6 +1596,35 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### Il suono caricato che non si sentiva (v491)
+
+Chi caricava un suono nello Studio e lo metteva a **metà** o alla **fine**
+di un momento non lo sentiva. Il momento dura quanto la voce più un respiro,
+ma la voce (soprattutto quella di sistema) finisce spesso prima del punto
+scritto: il motore stringeva la scena (`stringi`, v468) e il suono, come un
+gesto, partiva nell'ultimo mezzo secondo; con «Prova la scena», che è sempre
+l'ultima scena, la fine della storia lo spegneva (`storZittisciFile`) dopo
+una cinquantina di millesimi. Misurato in Chromium: suono di 1,5 s a metà di
+una scena di 8 s, partito a 4,05 s e zittito a 4,1 s.
+
+Ora un suono **da file** (`sound { src }`) è per il motore una battuta di
+suono: il comando dice `attende(p)` (vero con un `src` e gli effetti sonori
+accesi) e `storSuonaFile` restituisce la promessa della sua fine, che la
+scena aspetta come una voce (`fineNarrazione`, risolta con `'suono'`, che
+in `seguiVoce` conta come detta). Finita la voce, l'orologio delle riprese
+salta al suono come alla battuta seguente; la scena resta aperta finché il
+suono non finisce (al più `STOR_SUONO_FILE_MAX`, 30 s; un file guasto, il
+browser che lo blocca o lo Stop la liberano subito) e poi chiude come dopo
+una voce. Quando la voce è più lunga, il suono parte al suo punto come prima.
+La pausa della demo ferma anche i suoni da file e la ripresa li fa ripartire
+(`storSuoniFileInPausa`, da `storTic`). I rumori sintetizzati
+(`sound { type }`) restano gesti: le storie pronte non cambiano tempi.
+
+Prove: `prova-demo.js` (il suono che parte dopo la voce e trattiene la
+scena; il rumore sintetizzato che non la trattiene), `prova-musica-storie.js`
+(22: la promessa, `attende`, lo Stop). Le due nuove falliscono sul codice di
+prima.
+
 ### La voce per scena e la scelta che si apre sul posto (v445)
 
 «Scegli la voce» sembrava non fare niente: dalla battuta il pannello si

@@ -246,11 +246,14 @@ for (const d of predefiniti) {
     const gesti = [];
     reg.gesto = { crea: () => { const g = { nato: t, u: [] }; gesti.push(g); return { aggiorna: u => g.u.push([t, u]) }; } };
     reg.story_question = { crea: () => ({}) };
+    // v491: un suono da file che la scena aspetta come una voce
+    const suoni = [];
+    reg.sound = { attende: p => p.src !== undefined, crea: q => { if (q.src === undefined) return {}; let fine; const p = new Promise(r => { fine = r; }); suoni.push({ nato: t, fine: () => fine('suono') }); return { fineNarrazione: p }; } };
     let t = 0; const coda = new Map(); let id = 0;
     const m = new Motore(reg, { ora: () => t, richiedi: f => { coda.set(++id, f); return id; }, annulla: k => coda.delete(k) });
     const avanti = async ms => { t += ms; const l = [...coda.values()]; coda.clear(); l.forEach(f => f()); await null; await null; };
     m.avvia(testoDemo, contesto);
-    return { m, voci, gesti, avanti, ora: () => t, cambio: async () => { for (let k = 0; k < 120; k++) { if (m.indice > 0) return t; await avanti(100); if (k === 29) voci.shift()(); } return t; } };
+    return { m, voci, gesti, suoni, avanti, ora: () => t, cambio: async () => { for (let k = 0; k < 120; k++) { if (m.indice > 0) return t; await avanti(100); if (k === 29) voci.shift()(); } return t; } };
   };
   const due = 'define_demo s { scene a { duration: 10s; action: character_speak {}; } scene b { duration: 5s; action: gesto {}; }}';
   const stretta = { stringiVoce: { coda: 40, minimo: 1000, gesto: { min: 350, max: 600 } } };
@@ -318,6 +321,25 @@ for (const d of predefiniti) {
     g.voci.shift()();
     for (let k = 0; k < 6; k++) await g.avanti(100);
     ok(g.m.indice === 1, 'Finita anche la seconda, la scena chiude (' + g.m.indice + ')');
+    g.m.ferma();
+    // v491: un suono da file scritto a metà, con la voce già finita, parte
+    // subito dopo di lei (non stretto all'ultimo istante) e la scena lo
+    // aspetta: prima la fine della storia lo spegneva appena partito
+    g = giro(stretta, "define_demo s { scene a { duration: 10s; action: character_speak {}; action: sound { src: 'audio/x.mp3', shot_from: 0.75 }; } scene b { duration: 5s; action: gesto {}; }}");
+    for (let k = 0; k < 30; k++) await g.avanti(100);
+    g.voci.shift()();
+    for (let k = 0; k < 3; k++) await g.avanti(100);
+    ok(g.suoni.length === 1 && g.suoni[0].nato <= 3200, 'Il suono scritto a 7,5 s parte appena la voce tace (' + (g.suoni[0] && g.suoni[0].nato) + ')');
+    for (let k = 0; k < 20; k++) await g.avanti(100);
+    ok(g.m.indice === 0, 'La scena aspetta la fine del suono');
+    g.suoni[0].fine();
+    for (let k = 0; k < 6; k++) await g.avanti(100);
+    ok(g.m.indice === 1, 'Finito il suono, la scena chiude (' + g.ora() + ')');
+    g.m.ferma();
+    // un suono sintetizzato (senza src) resta un gesto come prima
+    g = giro(stretta, "define_demo s { scene a { duration: 10s; action: character_speak {}; action: sound { type: 'tada', shot_from: 0.75 }; } scene b { duration: 5s; action: gesto {}; }}");
+    quando = await g.cambio();
+    ok(quando >= 3000 && quando <= 3800, 'Un rumore sintetizzato non trattiene la scena (' + quando + ')');
     g.m.ferma();
     console.log('Demo: discorso affiatato, ' + verifiche + ' verifiche');
   })().catch(e => { console.error(e); process.exitCode = 1; });
