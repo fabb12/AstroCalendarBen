@@ -376,6 +376,17 @@
   const musica = $('opz-musica-eclissi'), musicaTraccia = $('opz-musica-traccia');
   const cameraStorie = $('opz-camera-storie'), suoniStorie = $('opz-suoni-storie'), scritteStorie = $('opz-scritte-storie'),
     orbiteStorie = $('opz-orbite-storie');
+  // v495: il volume degli effetti sonori, da 0 a 200%
+  const volumeSuoni = $('opz-volume-suoni'), volumeSuoniValore = $('opz-volume-suoni-valore');
+  function disegnaVolumeSuoni() {
+    if (!volumeSuoni) return;
+    const v = AstroDemo.opzioni.volumeEffetti === undefined ? 1 : AstroDemo.opzioni.volumeEffetti;
+    volumeSuoni.value = String(Math.round(v * 100));
+    volumeSuoni.disabled = AstroDemo.opzioni.effettiSonori === false;
+    const riga = volumeSuoni.closest('.demo-figlia');
+    if (riga) riga.classList.toggle('spenta', volumeSuoni.disabled);
+    if (volumeSuoniValore) volumeSuoniValore.textContent = Math.round(v * 100) + '%';
+  }
   const personali = $('livelli-personali'), griglia = $('livelli');
   const TRACCIA_MUSICA_PREDEFINITA = 'Encelado1';
 
@@ -419,6 +430,7 @@
     if (musica) musica.checked = o.musicaDemo !== false;
     if (cameraStorie) cameraStorie.checked = o.cameraStorie !== false;
     if (suoniStorie) suoniStorie.checked = o.effettiSonori !== false;
+    disegnaVolumeSuoni();
     if (scritteStorie) scritteStorie.checked = o.scritteStorie === true;
     if (orbiteStorie) orbiteStorie.checked = o.orbiteStorie === true;
     popolaTracceMusica();
@@ -462,7 +474,14 @@
     disegnaDipendenze();
   });
   if (cameraStorie) cameraStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ cameraStorie: cameraStorie.checked }));
-  if (suoniStorie) suoniStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ effettiSonori: suoniStorie.checked }));
+  if (suoniStorie) suoniStorie.addEventListener('change', () => { AstroDemo.impostaOpzioni({ effettiSonori: suoniStorie.checked }); disegnaVolumeSuoni(); });
+  if (volumeSuoni) volumeSuoni.addEventListener('input', () => {
+    AstroDemo.impostaOpzioni({ volumeEffetti: Number(volumeSuoni.value) / 100 });
+    disegnaVolumeSuoni();
+    // un assaggio del volume scelto, senza aspettare una storia
+    const S = window.StorieCosmiche;
+    if (S && typeof S.suona === 'function') S.suona('pop', { forza: true });
+  });
   if (scritteStorie) scritteStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ scritteStorie: scritteStorie.checked }));
   if (orbiteStorie) orbiteStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ orbiteStorie: orbiteStorie.checked }));
   if (musicaTraccia) musicaTraccia.addEventListener('change', () => {

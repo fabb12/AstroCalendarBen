@@ -1596,6 +1596,18 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### Il volume degli effetti sonori (v495)
+
+In Impostazioni delle demo, sotto «CosmoStorie: effetti sonori», un cursore
+«Volume degli effetti sonori» da 0 a 200% (di serie 100%). Sta nelle
+opzioni delle demo (`volumeEffetti`, 0–2, `volumeEffettiValido` in
+`demo.js`), si spegne con gli effetti e, mosso, fa sentire un «pop» al
+volume scelto. Moltiplica l'uscita dei rumori sintetizzati
+(`storVolumeEffetti` in `storSuona`, anche sotto la voce) e il volume dei
+suoni da file (`storSuonaFile`, che però come elemento audio si ferma al
+massimo del browser). Verificato in Chromium: 150% porta l'uscita a 1,425,
+0% la azzera.
+
 ### I rumori che non si sentivano (v494)
 
 «Ma perché non sento gli effetti sonori?»: misurati, i rumori stavano una

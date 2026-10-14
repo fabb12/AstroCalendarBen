@@ -204,6 +204,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "demo.opzioneMusicaEclissiAiuto": "Scegli la traccia da usare per tutte le demo, sia predefinite sia create da te. Durante la demo viene riprodotta al 30%; la musica di sottofondo in corso si ferma e alla fine torna esattamente com'era.",
     "demo.opzioneCameraStorie": "CosmoStorie: la camera va vicino a chi parla",
     "demo.opzioneSuoniStorie": "CosmoStorie: effetti sonori",
+    "demo.opzioneVolumeSuoni": "Volume degli effetti sonori",
     "demo.opzioneStorieAiuto": "Quando un personaggio parla la camera gli si avvicina e ne inquadra gli occhi; quando scoppia qualcosa va a guardarlo e il quadro trema. Esplosioni, fulmini, salti e viaggi hanno il loro rumore. Col movimento ridotto la camera si muove più piano e senza scosse. Di serie nomi, etichette e orbite sono nascosti: si vedono solo i personaggi.",
     "demo.opzioneScritteStorie": "CosmoStorie: mostra nomi ed etichette",
     "demo.opzioneOrbiteStorie": "CosmoStorie: mostra le orbite",

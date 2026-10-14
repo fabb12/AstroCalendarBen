@@ -9314,6 +9314,12 @@
    * vere delle storie (−19 dB di media) e chi guardava «Interstellar» sul
    * telefono non li sentiva affatto. Il compressore in fondo tiene i botti. */
   const STOR_RUMORI_VOLUME = 0.95, STOR_RUMORI_SOTTO_VOCE = 0.7;
+  // v495: il cursore «Volume degli effetti sonori» (0–2, 1 di serie)
+  function storVolumeEffetti() {
+    const o = radice.AstroDemo && radice.AstroDemo.opzioni;
+    const v = o ? Number(o.volumeEffetti) : NaN;
+    return Number.isFinite(v) ? Math.max(0, Math.min(2, v)) : 1;
+  }
   /* v494: su iPhone l'interruttore del silenzioso zittisce Web Audio ma non
    * gli elementi audio: la voce e la musica si sentivano, i rumori no. La
    * sessione «playback» (Safari 16.4+) li fa suonare come la voce. */
@@ -9728,7 +9734,7 @@
     // Sotto la voce di un personaggio i rumori si abbassano
     if (!opz.contesto) {
       const voce = radice.narrazione && typeof radice.narrazione.voce === 'function' ? radice.narrazione.voce() : null;
-      try { uscita.gain.setTargetAtTime(voce && voce.parla ? STOR_RUMORI_SOTTO_VOCE : STOR_RUMORI_VOLUME, a.currentTime, 0.05); } catch (_) { /* niente */ }
+      try { uscita.gain.setTargetAtTime((voce && voce.parla ? STOR_RUMORI_SOTTO_VOCE : STOR_RUMORI_VOLUME) * storVolumeEffetti(), a.currentTime, 0.05); } catch (_) { /* niente */ }
     }
     const v = Math.max(0, Math.min(2, opz.volume === undefined ? 1 : Number(opz.volume) || 0));
     if (!(v > 0)) return false;
@@ -9757,7 +9763,7 @@
   function storSuonaFile(src, volume) {
     if (typeof Audio === 'undefined' || !suoniAccesi()) return null;
     const a = new Audio(musica.locali.get(senzaVersione(src)) || src);
-    a.volume = Math.max(0, Math.min(1, (volume === undefined ? 1 : Number(volume) || 0) * 0.8));
+    a.volume = Math.max(0, Math.min(1, (volume === undefined ? 1 : Number(volume) || 0) * 0.8 * storVolumeEffetti()));
     let chiudi = null, timer = 0;
     const fine = new Promise(r => { chiudi = r; });
     // finito, guasto, bloccato dal browser o zittito: la scena non aspetta oltre

@@ -1860,6 +1860,10 @@
     const n = Number(v);
     return Number.isFinite(n) && n >= DURATA_COMANDI_MIN && n <= DURATA_COMANDI_MAX ? n : DURATA_COMANDI_SEC;
   }
+  function volumeEffettiValido(v) {
+    const n = Number(v);
+    return v !== null && v !== undefined && v !== '' && Number.isFinite(n) ? Math.max(0, Math.min(2, n)) : 1;
+  }
   function leggiOpzioni() {
     try {
       const o = JSON.parse(localStorage.getItem(CHIAVE_OPZIONI) || 'null');
@@ -1886,6 +1890,8 @@
         // rumori dei botti. Accese di serie, come la musica.
         cameraStorie: o.cameraStorie !== false,
         effettiSonori: o.effettiSonori !== false,
+        // v495: quanto forti gli effetti sonori, da 0 a 2 (1 di serie)
+        volumeEffetti: volumeEffettiValido(o.volumeEffetti),
         // Le scritte nelle Storie cosmiche (v423): i nomi degli astri, le
         // etichette e le didascalie delle viste. Spente di serie: una storia
         // per bambini si guarda con le facce, e i nomi accanto ai personaggi
@@ -1898,7 +1904,7 @@
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: true, registra: false, vistaPulita: true, registraAudio: true,
       musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null, durataComandiSec: DURATA_COMANDI_SEC,
-      cameraStorie: true, effettiSonori: true, scritteStorie: false, orbiteStorie: false };
+      cameraStorie: true, effettiSonori: true, volumeEffetti: 1, scritteStorie: false, orbiteStorie: false };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
@@ -1915,6 +1921,8 @@
     delete aggiornate.musicaEclissiTraccia;
     if (Object.prototype.hasOwnProperty.call(aggiornate, 'durataComandiSec'))
       aggiornate.durataComandiSec = durataComandiValida(aggiornate.durataComandiSec);
+    if (Object.prototype.hasOwnProperty.call(aggiornate, 'volumeEffetti'))
+      aggiornate.volumeEffetti = volumeEffettiValido(aggiornate.volumeEffetti);
     opzioni = Object.assign({}, opzioni, aggiornate);
     try { localStorage.setItem(CHIAVE_OPZIONI, JSON.stringify(opzioni)); } catch (_) { /* niente storage */ }
     return opzioni;
