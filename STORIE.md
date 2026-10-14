@@ -3452,3 +3452,48 @@ rumori sotto i quattro secondi, la sagoma `presenza` ha il volto dentro),
 Chromium (`STORIA=storia_interstellar2 node scripts/giro-storia.js`, nessun
 errore) e scena per scena. Le voci registrate delle due parti non ci sono
 ancora (sintesi, o il tasto «Voci ElevenLabs»).
+
+### Le voci di «Interstellar 1» fatte sullo smartphone, che il PC non sentiva (v487)
+
+«Nella CosmoStoria Interstellar 1 ho impostato sullo smartphone le voci con
+ElevenLabs e poi ho salvato la storia per vederla da un altro dispositivo;
+dal PC vedo la storia, ma non con le voci di ElevenLabs.» Sul repository non
+era arrivato **nessun audio**: i commit «Storie dello Studio:» di quel giorno
+hanno solo `storie.json` (le copie di Interstellar senza voci né audio). Le
+date dicono perché: la copia è del 14 ottobre alle 05:15 UTC, fra la v482
+(04:48, il tasto «Voci ElevenLabs») e la v483 (08:16, le voci della scheda
+sul repository). Le voci erano state fatte con la v482, che nel record dello
+scaffale non scriveva la battuta (`id`, `chi`): per il giro della v483
+(`vfilmPerRepo`) non avevano un posto, e restavano in quel browser per
+sempre. Lo smartphone le suonava (la narrazione le riconosce dal testo, in
+ogni storia), il PC no.
+
+Ora le voci di prima ritrovano la loro battuta (`vfilmRiparaVecchie`, da
+`vfilmTutteSempre`): chi la dice sta nella chiave del record
+(`eleven|cooper|it|…`), l'`id` è quello della battuta di una CosmoStoria
+pronta con lo stesso testo, dello stesso personaggio, nella lingua del record
+(`vfilmIndicePronte`, coi dizionari di tutte le lingue); vale anche per le
+voci fatte dalla scheda di una copia dello Studio, che ha lo stesso testo. Una
+voce che un posto non ce l'ha si segna `senzaPosto` e resta qui come prima.
+Le riparate (`riparata`) partono col giro successivo (anche quello
+automatico ogni cinque minuti, che le conta in `vociInAttesa`), nella
+cartella del personaggio col nome del copione; ma se la battuta sul
+repository ha già una voce, magari rifatta da un altro dispositivo, resta
+quella: la riparata si segna fatta con lo sha vuoto, e «Togli queste voci» non
+toglie la voce dell'altro. Dopo la pubblicazione (GitHub Actions rifà il
+manifest) la voce suona sul PC nella storia pronta e nelle copie dello Studio
+con lo stesso testo. Lo scaffale, quando è pieno, butta per ultime le voci
+delle CosmoStorie.
+
+Sullo smartphone basta aprire l'app aggiornata con il token di GitHub che
+scrive e premere «Sincronizza ora» (Studio → Impostazioni → Sincronizza), o
+aspettare il salvataggio automatico se è acceso.
+
+Prove: `prova-voci-cosmostorie.js` (9, 1 nuova: tre voci «della v482», una
+fatta dalla scheda di una copia, una battuta con la voce già rifatta altrove;
+sul codice di prima le voci da mandare erano 0), `prova-musica-storie.js`
+(21), `prova-storie-repo.js` (19), `prova-elevenlabs-studio.js` (17),
+`prova-voci-filmato.js`, `prova-storie.js` (120); a mano: un file nella
+cartella di Cooper → `voci-storie.js` lo mette nel manifest → la narrazione lo
+suona con l'id della storia pronta e col solo testo (una copia).
+

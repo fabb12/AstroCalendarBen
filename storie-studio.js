@@ -3014,6 +3014,13 @@
         const est = estDi('', v.blob.type || 'audio/mpeg'), base = m[1] + '-' + m[2], nome = base + '.' + est;
         const byte = new Uint8Array(await v.blob.arrayBuffer());
         const sha = await shaBlob(byte);
+        // v487: una voce di prima della v483, che ha appena ritrovato la sua
+        // battuta (`VociFilmato`, `vfilmRiparaVecchie`), è vecchia: se la
+        // battuta sul repository ha già una voce (rifatta altrove) resta
+        // quella, e questa si segna come fatta senza un file suo (sha vuoto:
+        // «Togli» non toglierà la voce dell'altro dispositivo)
+        const gia = [...sul.keys()].find(n => stessaBattuta(n, base));
+        if (v.riparata && gia && sul.get(gia) !== sha) { fuori.cosmo.push({ chiave: v.chiave, percorso: dir + '/' + gia, sha: '' }); continue; }
         if (sul.get(nome) !== sha) {
           if ((peso += byte.length) > STUDIO_REPO_AUDIO_MAX) { fuori.resto = true; break; }
           fuori.push({ percorso: dir + '/' + nome, byte });
