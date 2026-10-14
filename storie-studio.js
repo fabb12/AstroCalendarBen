@@ -3939,24 +3939,98 @@
     disegna();
     suonaAnteprima(proposte.get(k).url);
   }
-  // La musica di sottofondo da una descrizione e una durata (da 10 s a 5 minuti)
-  const richiesteMusica = new Map();      // chiave della proposta → { testo, secondi }
+  /* La musica di sottofondo da una descrizione (v444), lunga quanto il
+   * filmato (v489). Prima la durata era a mano, 60 s di serie: chi faceva
+   * una storia di quattro minuti si trovava la stessa musica ricominciare
+   * quattro volte, con lo stacco a metà di una battuta. Ora, se chi scrive
+   * non mette i secondi, la musica dura quanto le scene in cui suona
+   * (`studioSecondiMusica`, la stessa stima del filmato, `studioDurata`) più
+   * un respiro, così il filmato finisce prima che la musica ricominci.
+   * ElevenLabs ne compone al massimo 5 minuti per volta: una storia più
+   * lunga ne chiede più parti, una dopo l'altra, ognuna detta come seguito
+   * della precedente, e i file MP3 si cuciono in uno (`cuciMp3`). */
+  const STUDIO_MUSICA_PEZZO = 300;        // secondi, il massimo di una chiamata
+  const STUDIO_MUSICA_LUNGA = 1200;       // secondi, il massimo di una musica (20 MB a 128 kbit/s)
+  const STUDIO_MUSICA_RESPIRO = 2;        // secondi dopo l'ultima battuta
+  // Quanto suona la musica di `dove`: la storia (le scene che la usano: una
+  // musica lasciata per un'altra riprende da dove era) o una scena sola
+  function studioSecondiMusica(progetto, dove) {
+    const durataScena = sc => sc.momenti.reduce((m, x) => m + studioDurata(x), 0);
+    let s = 0;
+    if (dove === 'storia') { for (const sc of progetto.scene) if ((sc.musicaModo || 'storia') === 'storia') s += durataScena(sc); }
+    else {
+      const i = Number(String(dove).split('.')[1]);
+      const sc = progetto.scene[i];
+      if (sc) s = durataScena(sc);
+    }
+    return s > 0 ? Math.round(s + STUDIO_MUSICA_RESPIRO) : 0;
+  }
+  const richiesteMusica = new Map();      // chiave della proposta → { testo, secondi } (0: quanto il filmato)
   function richiestaMusica(k) {
     if (!richiesteMusica.has(k)) {
       const p = studio.progetto;
       const tema = unaRiga(p.titolo) || unaRiga(p.obiettivo);
-      richiesteMusica.set(k, { testo: t('studio.el.musicaDiSerie', { tema: tema || t('studio.el.musicaTema') }), secondi: 60 });
+      richiesteMusica.set(k, { testo: t('studio.el.musicaDiSerie', { tema: tema || t('studio.el.musicaTema') }), secondi: 0 });
     }
     return richiesteMusica.get(k);
+  }
+  // I secondi da comporre: quelli scritti, o quanto il filmato
+  function secondiDaComporre(dove, r) {
+    const s = Number(r.secondi) > 0 ? Number(r.secondi) : studioSecondiMusica(studio.progetto, dove) || 60;
+    return Math.max(10, Math.min(STUDIO_MUSICA_LUNGA, Math.round(s)));
+  }
+  /* Le parti di una musica lunga, cucite: un MP3 è una fila di quadri che
+   * stanno in piedi da soli, e due file a 128 kbit/s uno dopo l'altro
+   * suonano come uno. Si tolgono l'etichetta ID3 in testa e il quadro
+   * «Xing»/«Info» (che direbbe al browser la durata della sola prima parte):
+   * a bitrate costante il browser la misura dalla lunghezza del file. */
+  function quadriMp3(byte) {
+    let i = 0;
+    if (byte.length > 10 && byte[0] === 0x49 && byte[1] === 0x44 && byte[2] === 0x33)
+      i = 10 + ((byte[6] & 0x7f) << 21 | (byte[7] & 0x7f) << 14 | (byte[8] & 0x7f) << 7 | (byte[9] & 0x7f)) + (byte[5] & 0x10 ? 10 : 0);
+    while (i + 4 < byte.length && !(byte[i] === 0xff && (byte[i + 1] & 0xe0) === 0xe0)) i++;
+    if (i + 4 >= byte.length) return null;
+    // Il primo quadro: se dice «Xing» o «Info», è un'intestazione e non suona
+    const BITRATE = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+    const FREQ = [44100, 48000, 32000];
+    const mpeg1 = (byte[i + 1] & 0x18) === 0x18, b = byte[i + 2] >> 4, f = (byte[i + 2] >> 2) & 3, pad = (byte[i + 2] >> 1) & 1;
+    if (mpeg1 && BITRATE[b] && FREQ[f]) {
+      const lungo = Math.floor(144000 * BITRATE[b] / FREQ[f]) + pad;
+      const testa = String.fromCharCode(...byte.subarray(i + 4, Math.min(byte.length, i + 60)));
+      if (/Xing|Info/.test(testa) && i + lungo < byte.length) i += lungo;
+    }
+    return byte.subarray(i);
+  }
+  async function cuciMp3(blobs) {
+    if (blobs.length === 1) return blobs[0];
+    const parti = [];
+    for (const b of blobs) {
+      const q = quadriMp3(new Uint8Array(await b.arrayBuffer()));
+      if (!q) return blobs[0];              // non è un MP3: resta la prima parte, che va in ciclo
+      parti.push(q);
+    }
+    return new Blob(parti, { type: 'audio/mpeg' });
   }
   async function generaMusica(dove) {
     const k = chiaveMusicaEl(dove);
     const r = richiestaMusica(k);
     if (!unaRiga(r.testo)) { notifica(k, t('studio.el.primaLaDescrizione'), true); disegna(); return; }
     const file = await lavoro(k, async () => {
-      notifica(k, t('studio.el.generoMusica'));
-      const ms = Math.round(Math.max(10, Math.min(300, Number(r.secondi) || 60)) * 1000);
-      return fileDa(await eleven('POST', `/v1/music?output_format=${ELEVEN_FORMATO}`, { prompt: unaRiga(r.testo), music_length_ms: ms }, { audio: true }), 'musica-elevenlabs.mp3');
+      const totale = secondiDaComporre(dove, r);
+      const n = Math.ceil(totale / STUDIO_MUSICA_PEZZO);
+      const blobs = [];
+      for (let i = 0; i < n; i++) {
+        const secondi = i < n - 1 ? Math.floor(totale / n) : totale - Math.floor(totale / n) * (n - 1);
+        notifica(k, n > 1 ? t('studio.el.generoMusicaParte', { i: i + 1, n }) : t('studio.el.generoMusica'));
+        disegna();
+        // Come deve suonare questa parte: l'attacco, il seguito, il finale
+        const come = [unaRiga(r.testo)];
+        if (n > 1) come.push(t(i === 0 ? 'studio.el.musicaPrimaParte' : 'studio.el.musicaSeguito', { i: i + 1, n }));
+        if (i === n - 1) come.push(t('studio.el.musicaFinale', { secondi }));
+        const prompt = come.join(' ').slice(0, 1800);
+        blobs.push(await eleven('POST', `/v1/music?output_format=${ELEVEN_FORMATO}`, { prompt, music_length_ms: Math.max(10, secondi) * 1000 }, { audio: true }));
+      }
+      return fileDa(await cuciMp3(blobs), 'musica-elevenlabs.mp3');
     });
     if (!file) return;
     mettiProposta(k, file);
@@ -4637,21 +4711,34 @@
     riga.append(h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'apriAzione', dove: '' } }, t('studio.ui.fatto')));
     return riga;
   }
-  // La musica generata: descrizione, durata, «Genera» e la proposta
+  // La musica generata: descrizione, durata, «Genera» e la proposta. Senza
+  // la chiave, la riga dice dove metterla (v489: prima non si vedeva affatto,
+  // e chi non l'aveva ancora messa non sapeva che si poteva)
   function disegnaMusicaEleven(dove) {
-    if (!studioElevenImpostazioni().chiave) return null;
+    if (!studioElevenImpostazioni().chiave) return h('small', { class: 'demo-opzioni-nota studio-el-riga' }, t('studio.el.musicaSenzaChiave'));
     const k = chiaveMusicaEl(dove);
     const r = richiestaMusica(k);
+    const filmato = studioSecondiMusica(studio.progetto, dove);
     const riga = h('div', { class: 'studio-el-riga' },
       h('span', { class: 'studio-etichetta' }, t('studio.el.conEleven')),
       h('input', { type: 'text', maxlength: '400', value: r.testo, class: 'studio-el-richiesta', dataset: { elMusica: dove, elCampo: 'testo' },
         placeholder: t('studio.el.musicaAiuto'), 'aria-label': t('studio.el.musicaDescrizione') }),
-      h('label', { class: 'studio-secondi' }, h('span', {}, t('studio.el.secondi')),
-        h('input', { type: 'number', min: '10', max: '300', step: '5', value: String(r.secondi), dataset: { elMusica: dove, elCampo: 'secondi' } })),
+      h('label', { class: 'studio-secondi', title: t('studio.el.secondiAiuto') }, h('span', {}, t('studio.el.secondi')),
+        h('input', { type: 'number', min: '10', max: String(STUDIO_MUSICA_LUNGA), step: '5', value: r.secondi > 0 ? String(r.secondi) : '',
+          placeholder: filmato ? String(Math.min(STUDIO_MUSICA_LUNGA, filmato)) : t('studio.auto'), dataset: { elMusica: dove, elCampo: 'secondi' } })),
       tastoLavoro(k, { fai: 'elMusica', dove }, t('studio.el.genera')));
+    if (filmato) riga.append(h('small', { class: 'studio-voce-stato', dataset: { elNotaMusica: dove } }, notaDurataMusica(dove, r)));
     const pr = rigaProposta(k, 'musica', dove, 'elMusica');
     if (pr) riga.append(pr);
     return riga;
+  }
+  // Quanto durerà la musica da comporre, detto accanto ai secondi (si
+  // aggiorna mentre si scrive, senza ridisegnare il campo)
+  function notaDurataMusica(dove, r) {
+    const filmato = studioSecondiMusica(studio.progetto, dove);
+    if (r.secondi > 0) return t('studio.el.musicaFilmatoDura', { secondi: filmato });
+    const s = Math.min(STUDIO_MUSICA_LUNGA, filmato);
+    return t(s > STUDIO_MUSICA_PEZZO ? 'studio.el.musicaComeFilmatoParti' : 'studio.el.musicaComeFilmato', { secondi: s, parti: Math.ceil(s / STUDIO_MUSICA_PEZZO) });
   }
   // Il pannello della chiave (Impostazioni → ElevenLabs)
   function pannelloEleven() {
@@ -4869,7 +4956,14 @@
         h('label', { class: 'storie-campo studio-musica-volume' }, h('span', {}, t('studio.musica.volume')),
           h('input', { type: 'range', min: '5', max: '100', step: '5', value: String(Math.round(di.mu.volume * 100)), dataset: { musicaVolume: dove } })),
         h('button', { type: 'button', class: 'tasto-cielo studio-mini-testo', dataset: { fai: 'togliMusica', dove } }, t('studio.musica.togli')));
-      if (di.mu.tipo === 'file' && di.mu.durata) riga.append(h('small', { class: 'studio-voce-stato' }, t('studio.musica.durata', { secondi: secondiDi(di.mu.durata) })));
+      if (di.mu.tipo === 'file' && di.mu.durata) {
+        riga.append(h('small', { class: 'studio-voce-stato' }, t('studio.musica.durata', { secondi: secondiDi(di.mu.durata) })));
+        // v489: la musica e il filmato non durano uguale (la storia è
+        // cambiata dopo, o il file era di un'altra lunghezza): lo si dice
+        const filmato = studioSecondiMusica(p, dove), musica = di.mu.durata / 1000;
+        if (filmato && Math.abs(musica - filmato) > 5)
+          riga.append(h('small', { class: 'studio-voce-stato' }, t(musica < filmato ? 'studio.musica.piuCorta' : 'studio.musica.piuLunga', { filmato, musica: secondiDi(di.mu.durata) })));
+      }
     }
     // v444: o generata con ElevenLabs da una descrizione (non per una scena in silenzio)
     if (!scena || sc.musicaModo !== 'silenzio') { const el = disegnaMusicaEleven(dove); if (el) riga.append(el); }
@@ -6047,7 +6141,12 @@
       // v444: la descrizione e la durata della musica da generare
       if (el.dataset && el.dataset.elMusica) {
         const x = richiestaMusica(chiaveMusicaEl(el.dataset.elMusica));
-        if (el.dataset.elCampo === 'secondi') x.secondi = Math.max(10, Math.min(300, Number(el.value) || 60)); else x.testo = el.value.slice(0, 400);
+        // v489: vuoto è «quanto il filmato»
+        if (el.dataset.elCampo === 'secondi') {
+          x.secondi = Number(el.value) > 0 ? Math.max(10, Math.min(STUDIO_MUSICA_LUNGA, Number(el.value))) : 0;
+          const nota = el.closest('.studio-el-riga') && el.closest('.studio-el-riga').querySelector('[data-el-nota-musica]');
+          if (nota) nota.textContent = notaDurataMusica(el.dataset.elMusica, x);
+        } else x.testo = el.value.slice(0, 400);
         return;
       }
       if (!el.dataset || !el.dataset.campo || el.tagName === 'SELECT') return;
@@ -6238,7 +6337,7 @@
   const api = {
     STUDIO_SCOPI, STUDIO_AMBIENTI, STUDIO_TIPI, CHIAVE,
     nuovoProgetto: studioNuovoProgetto, nuovaScena: studioNuovaScena, nuovoMomento: studioNuovoMomento, nuovaAzione: studioNuovaAzione,
-    daModello: studioDaModello, copione: studioCopione, daCopione: studioDaCopione, rigaDsl: studioRigaDsl, durata: studioDurata, durataTotale: studioDurataTotale,
+    daModello: studioDaModello, copione: studioCopione, daCopione: studioDaCopione, rigaDsl: studioRigaDsl, durata: studioDurata, durataTotale: studioDurataTotale, secondiMusica: studioSecondiMusica, cuciMp3,
     umoreDalTesto: studioUmoreDalTesto, ideeAzioni: studioIdeeAzioni, ambientePer: studioAmbientePer,
     prossimoMomento: studioProssimoMomento, inserisciScena: studioInserisciScena, inserisciMomento: studioInserisciMomento, capisci: studioCapisci, applica: studioApplica, consigli: studioConsigli,
     descriviAzione: studioDescriviAzione, ripulisci: studioRipulisci, presenti: studioPresenti,
