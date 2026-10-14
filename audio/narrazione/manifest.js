@@ -749,6 +749,147 @@
       it: { file: 'storie/sole/it/storia_luna-6.mp3', impronta: '1c864e11', firma: 'a395b7f118' }
     },
 
+    'studio.studio_einstein_e_il_tempo_elastico_2.20': {
+      it: { file: 'storie/sole/it/studio_einstein_e_il_tempo_elastico_2-20.mp3', impronta: 'bbbcee27', firma: '030329b9a4', testo: "Io piego la luce delle stelle? Che potere!" }
+    },
+
+    // Sagittario A* — storie/sagittario-a/
+    'studio.studio_einstein_e_il_tempo_elastico_2.23': {
+      it: { file: 'storie/sagittario-a/it/studio_einstein_e_il_tempo_elastico_2-23.mp3', impronta: 'e0613da3', firma: 'c16346c4f8', testo: "Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.24': {
+      it: { file: 'storie/sagittario-a/it/studio_einstein_e_il_tempo_elastico_2-24.mp3', impronta: '63726096', firma: '427f9628f5', testo: "E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?" }
+    },
+
+    // Astro Ben — storie/astro-ben/
+    'studio.studio_einstein_e_il_tempo_elastico_2.27': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-27.webm', impronta: '60ca612b', firma: 'e991ab60f2', testo: "Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.29': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-29.webm', impronta: '7e2d966d', firma: '403d80dd6f', testo: "Allora la Terra va dritta… ma su una strada curva!" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.30': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-30.webm', impronta: 'f7bfa9ef', firma: '9778144874', testo: "Anche qui, sulla Terra?" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.31': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-31.webm', impronta: '4584f3e0', firma: '83411fd765', testo: "Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.32': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-32.webm', impronta: '19f7c21c', firma: '5fb7125681', testo: "E Samantha Cristoforetti, lassù sulla Stazione Spaziale?" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.33': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-33.webm', impronta: '2b37ee66', firma: 'a669dfd218', testo: "Un centesimo! Non basta neanche per saltare un compleanno…" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.34': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-34.webm', impronta: '155149f1', firma: '9a648ad3f4', testo: "E il tempo, lì vicino?" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.35': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-35.webm', impronta: '0183020b', firma: 'b4044dc96f', testo: "Allora il tempo… è elastico!" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.28': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-28.webm', impronta: '0c5e309d', firma: '93ee607ed9', testo: "Allora stanotte, guardando le stelle, guardo una stoffa che si piega!" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.36': {
+      it: { file: 'storie/astro-ben/it/studio_einstein_e_il_tempo_elastico_2-36.webm', impronta: 'df87847a', firma: 'fc1b5b1977', testo: "Professore… quanto tempo è passato?" }
+    },
+
+    // Albert Einstein — storie/albert-einstein/
+    'studio.studio_einstein_e_il_tempo_elastico_2.1': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-1.mp3', impronta: '8d802f42', firma: '4a3509ce92', testo: "È vero, Ben. E non è magia: è geometria. Ma per capirla dobbiamo cambiare idea su due cose che credi immobili: lo spazio e il tempo." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.2': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-2.mp3', impronta: '02d548a9', firma: '7254fb62ec', testo: "Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.3': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-3.mp3', impronta: '7ea6c035', firma: 'c2b7acef16', testo: "Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.4': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-4.mp3', impronta: '3a0e08b1', firma: '3d21039a25', testo: "Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.5': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-5.mp3', impronta: '2a00aa88', firma: '33e91313ff', testo: "La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.6': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-6.mp3', impronta: '632dcb38', firma: 'ea8927a53c', testo: "Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.7': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-7.mp3', impronta: '58332d75', firma: '4ba9843b62', testo: "E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.8': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-8.mp3', impronta: '0988a149', firma: 'e94f05f476', testo: "Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.9': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-9.mp3', impronta: 'e04c12e8', firma: 'de3197413f', testo: "Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.10': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-10.mp3', impronta: '8b3745f8', firma: '461e969607', testo: "E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.11': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-11.mp3', impronta: '01d34b78', firma: '9761001b34', testo: "Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.12': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-12.mp3', impronta: 'ac88c2cc', firma: '5b197f8afc', testo: "Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.13': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-13.mp3', impronta: '580cb4a6', firma: '3513121592', testo: "Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.14': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-14.mp3', impronta: 'bbb89dab', firma: '1814d300ac', testo: "Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.15': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-15.mp3', impronta: '79b8c454', firma: '1c54e86bb0', testo: "Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.16': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-16.mp3', impronta: '11105c1a', firma: '69194888b9', testo: "E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.17': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-17.mp3', impronta: 'f1a251d1', firma: '868de9f612', testo: "Stephen, tu riesci sempre a rendere il mio universo ancora più strano!" }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.18': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-18.mp3', impronta: '15ecd40a', firma: '36c5b737b5', testo: "Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande." }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.19': {
+      it: { file: 'storie/albert-einstein/it/studio_einstein_e_il_tempo_elastico_2-19.mp3', impronta: '6a2ea03d', firma: '59c4a8ece3', testo: "Dipende… da dove lo guardi!" }
+    },
+
+    // Mercurio — storie/mercurio/
+    'studio.studio_einstein_e_il_tempo_elastico_2.21': {
+      it: { file: 'storie/mercurio/it/studio_einstein_e_il_tempo_elastico_2-21.mp3', impronta: '0e9b0351', firma: '66a22555f1', testo: "Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto." }
+    },
+
+    // Samantha Cristoforetti — storie/samantha-cristoforetti/
+    'studio.studio_einstein_e_il_tempo_elastico_2.22': {
+      it: { file: 'storie/samantha-cristoforetti/it/studio_einstein_e_il_tempo_elastico_2-22.mp3', impronta: '967f6acf', firma: '4e76f0bb84', testo: "Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!" }
+    },
+
     // Gargantua — storie/gargantua/
     'demo.narr.storia_interstellar.10': {
       it: { file: 'storie/gargantua/it/storia_interstellar-10.mp3', impronta: '4eac0c39', firma: '83bcfeecf0' }
@@ -756,6 +897,10 @@
 
     'demo.narr.storia_interstellar.46': {
       it: { file: 'storie/gargantua/it/storia_interstellar-46.mp3', impronta: '39913ce6', firma: '3d28281165' }
+    },
+
+    'studio.studio_einstein_e_il_tempo_elastico_2.25': {
+      it: { file: 'storie/gargantua/it/studio_einstein_e_il_tempo_elastico_2-25.mp3', impronta: '7d6720bc', firma: 'fddc621120', testo: "Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce." }
     },
 
     // Cooper — storie/cooper/

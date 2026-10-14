@@ -11,13 +11,13 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **119/237** in italiano · **0/177** in inglese.
+Pronte: **154/273** in italiano · **0/177** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
 | Luna | `storie/luna/` | 14 | 5/14 | 0/11 |
 | Terra | `storie/terra/` | 14 | 4/14 | 0/4 |
-| Sole | `storie/sole/` | 15 | 1/15 | 0/10 |
+| Sole | `storie/sole/` | 16 | 2/16 | 0/10 |
 | Saturno | `storie/saturno/` | 3 | 0/3 | 0/2 |
 | Giove | `storie/giove/` | 2 | 0/2 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 0/1 | 0/1 |
@@ -27,14 +27,14 @@ Pronte: **119/237** in italiano · **0/177** in inglese.
 | Betelgeuse | `storie/betelgeuse/` | 7 | 0/7 | 0/7 |
 | Supernova del Granchio | `storie/supernova-del-granchio/` | 3 | 0/3 | 0/3 |
 | Sirio B | `storie/sirio-b/` | 2 | 0/2 | 0/2 |
-| Sagittario A* | `storie/sagittario-a/` | 9 | 0/9 | 0/6 |
+| Sagittario A* | `storie/sagittario-a/` | 11 | 2/11 | 0/6 |
 | Buco bianco | `storie/buco-bianco/` | 4 | 0/4 | 0/2 |
-| Astro Ben | `storie/astro-ben/` | 10 | 0/10 | 0/10 |
-| Albert Einstein | `storie/albert-einstein/` | 19 | 0/19 | 0/19 |
-| Mercurio | `storie/mercurio/` | 1 | 0/1 | 0/1 |
-| Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
-| Gargantua | `storie/gargantua/` | 3 | 2/3 | 0/3 |
-| Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
+| Astro Ben | `storie/astro-ben/` | 20 | 10/20 | 0/10 |
+| Albert Einstein | `storie/albert-einstein/` | 38 | 19/38 | 0/19 |
+| Mercurio | `storie/mercurio/` | 2 | 1/2 | 0/1 |
+| Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 2 | 1/2 | 0/1 |
+| Gargantua | `storie/gargantua/` | 4 | 3/4 | 0/3 |
+| Stephen Hawking | `storie/stephen-hawking/` | 2 | 0/2 | 0/1 |
 | Cooper | `storie/cooper/` | 30 | 29/30 | 0/30 |
 | Romilly | `storie/romilly/` | 10 | 9/10 | 0/5 |
 | Amelia Brand | `storie/amelia-brand/` | 23 | 20/23 | 0/12 |
@@ -317,6 +317,10 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** tranquillo — 
   - **Testo:** So chi è! è la mia amica proxima centauri!
   - **Da incollare su ElevenLabs v3:** `So chi è! è la mia amica proxima centauri!`
+- `studio_einstein_e_il_tempo_elastico_2-20.mp3` — pronta · 3,4 s · Studio: Einstein e il tempo elastico, scena 10 (al massimo 7 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Io piego la luce delle stelle? Che potere!
+  - **Da incollare su ElevenLabs v3:** `[excited] Io piego la luce delle stelle? Che potere!`
 
 ### Inglese — `storie/sole/en/`
 
@@ -685,6 +689,14 @@ Cartella: `audio/narrazione/storie/sagittario-a/<lingua>/` · nel codice `sgr_a`
   - **Emozione:** sorpreso — 
   - **Testo:** Un buco bianco? Ma tu esisti davvero?
   - **Da incollare su ElevenLabs v3:** `[surprised] Un buco bianco? Ma tu esisti davvero?`
+- `studio_einstein_e_il_tempo_elastico_2-23.mp3` — pronta · 9,9 s · Studio: Einstein e il tempo elastico, scena 20 (al massimo 13 s)
+  - **Emozione:** felice — 
+  - **Testo:** Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio.
+  - **Da incollare su ElevenLabs v3:** `[happy] Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio.`
+- `studio_einstein_e_il_tempo_elastico_2-24.mp3` — pronta · 7,9 s · Studio: Einstein e il tempo elastico, scena 30 (al massimo 10 s)
+  - **Emozione:** orgoglioso — 
+  - **Testo:** E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?
+  - **Da incollare su ElevenLabs v3:** `[proud] E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?`
 
 ### Inglese — `storie/sagittario-a/en/`
 
@@ -795,6 +807,46 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
   - **Da incollare su ElevenLabs v3:** `[excited] Allora stanotte, guardando le stelle, guardo una stoffa che si piega!`
 - `storia_einstein-35.mp3` — manca · Einstein e il tempo elastico, scena 35 (al massimo 6 s)
   - **Emozione:** curioso — domanda furba
+  - **Testo:** Professore… quanto tempo è passato?
+  - **Da incollare su ElevenLabs v3:** `[curious] Professore… quanto tempo è passato?`
+- `studio_einstein_e_il_tempo_elastico_2-27.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 1 (al massimo 27 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?
+  - **Da incollare su ElevenLabs v3:** `[excited] Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?`
+- `studio_einstein_e_il_tempo_elastico_2-29.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 5 (al massimo 7 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Allora la Terra va dritta… ma su una strada curva!
+  - **Da incollare su ElevenLabs v3:** `[excited] Allora la Terra va dritta… ma su una strada curva!`
+- `studio_einstein_e_il_tempo_elastico_2-30.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 12 (al massimo 5 s)
+  - **Emozione:** curioso — 
+  - **Testo:** Anche qui, sulla Terra?
+  - **Da incollare su ElevenLabs v3:** `[curious] Anche qui, sulla Terra?`
+- `studio_einstein_e_il_tempo_elastico_2-31.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 14 (al massimo 11 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.
+  - **Da incollare su ElevenLabs v3:** `[excited] Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.`
+- `studio_einstein_e_il_tempo_elastico_2-32.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 16 (al massimo 8 s)
+  - **Emozione:** curioso — 
+  - **Testo:** E Samantha Cristoforetti, lassù sulla Stazione Spaziale?
+  - **Da incollare su ElevenLabs v3:** `[curious] E Samantha Cristoforetti, lassù sulla Stazione Spaziale?`
+- `studio_einstein_e_il_tempo_elastico_2-33.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 18 (al massimo 8 s)
+  - **Emozione:** ride — 
+  - **Testo:** Un centesimo! Non basta neanche per saltare un compleanno…
+  - **Da incollare su ElevenLabs v3:** `[laughs] Un centesimo! Non basta neanche per saltare un compleanno…`
+- `studio_einstein_e_il_tempo_elastico_2-34.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 22 (al massimo 5 s)
+  - **Emozione:** curioso — 
+  - **Testo:** E il tempo, lì vicino?
+  - **Da incollare su ElevenLabs v3:** `[curious] E il tempo, lì vicino?`
+- `studio_einstein_e_il_tempo_elastico_2-35.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 27 (al massimo 6 s)
+  - **Emozione:** meravigliato — 
+  - **Testo:** Allora il tempo… è elastico!
+  - **Da incollare su ElevenLabs v3:** `[in awe] Allora il tempo… è elastico!`
+- `studio_einstein_e_il_tempo_elastico_2-28.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 33 (al massimo 9 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Allora stanotte, guardando le stelle, guardo una stoffa che si piega!
+  - **Da incollare su ElevenLabs v3:** `[excited] Allora stanotte, guardando le stelle, guardo una stoffa che si piega!`
+- `studio_einstein_e_il_tempo_elastico_2-36.mp3` — pronta · Studio: Einstein e il tempo elastico, scena 35 (al massimo 6 s)
+  - **Emozione:** curioso — 
   - **Testo:** Professore… quanto tempo è passato?
   - **Da incollare su ElevenLabs v3:** `[curious] Professore… quanto tempo è passato?`
 
@@ -925,6 +977,82 @@ Cartella: `audio/narrazione/storie/albert-einstein/<lingua>/` · nel codice `ein
   - **Emozione:** divertito — pausa sui puntini, poi la battuta finale ridendo
   - **Testo:** Dipende… da dove lo guardi!
   - **Da incollare su ElevenLabs v3:** `[laughs] Dipende… da dove lo guardi!`
+- `studio_einstein_e_il_tempo_elastico_2-1.mp3` — pronta · 10 s · Studio: Einstein e il tempo elastico, scena 2 (al massimo 14 s)
+  - **Emozione:** giocherellone — 
+  - **Testo:** È vero, Ben. E non è magia: è geometria. Ma per capirla dobbiamo cambiare idea su due cose che credi immobili: lo spazio e il tempo.
+  - **Da incollare su ElevenLabs v3:** `[playfully] È vero, Ben. E non è magia: è geometria. [determined] Ma per capirla dobbiamo cambiare idea su due cose che credi immobili: lo spazio e il tempo.`
+- `studio_einstein_e_il_tempo_elastico_2-2.mp3` — pronta · 15,2 s · Studio: Einstein e il tempo elastico, scena 3 (al massimo 18 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo.`
+- `studio_einstein_e_il_tempo_elastico_2-3.mp3` — pronta · 14,4 s · Studio: Einstein e il tempo elastico, scena 4 (al massimo 19 s)
+  - **Emozione:** felice — 
+  - **Testo:** Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità.
+  - **Da incollare su ElevenLabs v3:** `[happy] Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità.`
+- `studio_einstein_e_il_tempo_elastico_2-4.mp3` — pronta · 12,5 s · Studio: Einstein e il tempo elastico, scena 6 (al massimo 16 s)
+  - **Emozione:** ride — 
+  - **Testo:** Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi.
+  - **Da incollare su ElevenLabs v3:** `[laughs] Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi.`
+- `studio_einstein_e_il_tempo_elastico_2-5.mp3` — pronta · 13,5 s · Studio: Einstein e il tempo elastico, scena 7 (al massimo 20 s)
+  - **Emozione:** orgoglioso — 
+  - **Testo:** La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero.
+  - **Da incollare su ElevenLabs v3:** `[proud] La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero.`
+- `studio_einstein_e_il_tempo_elastico_2-6.mp3` — pronta · 14,4 s · Studio: Einstein e il tempo elastico, scena 9 (al massimo 17 s)
+  - **Emozione:** deciso — 
+  - **Testo:** Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato.
+  - **Da incollare su ElevenLabs v3:** `[determined] Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato.`
+- `studio_einstein_e_il_tempo_elastico_2-7.mp3` — pronta · 11,2 s · Studio: Einstein e il tempo elastico, scena 11 (al massimo 14 s)
+  - **Emozione:** misterioso — 
+  - **Testo:** E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano.`
+- `studio_einstein_e_il_tempo_elastico_2-8.mp3` — pronta · 9,6 s · Studio: Einstein e il tempo elastico, scena 13 (al massimo 17 s)
+  - **Emozione:** giocherellone — 
+  - **Testo:** Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…
+  - **Da incollare su ElevenLabs v3:** `[playfully] Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…`
+- `studio_einstein_e_il_tempo_elastico_2-9.mp3` — pronta · 10,4 s · Studio: Einstein e il tempo elastico, scena 15 (al massimo 17 s)
+  - **Emozione:** orgoglioso — 
+  - **Testo:** Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno.
+  - **Da incollare su ElevenLabs v3:** `[proud] Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno.`
+- `studio_einstein_e_il_tempo_elastico_2-10.mp3` — pronta · 15,6 s · Studio: Einstein e il tempo elastico, scena 19 (al massimo 18 s)
+  - **Emozione:** misterioso — 
+  - **Testo:** E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia.`
+- `studio_einstein_e_il_tempo_elastico_2-11.mp3` — pronta · 10,7 s · Studio: Einstein e il tempo elastico, scena 21 (al massimo 16 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce.`
+- `studio_einstein_e_il_tempo_elastico_2-12.mp3` — pronta · 16,9 s · Studio: Einstein e il tempo elastico, scena 23 (al massimo 19 s)
+  - **Emozione:** misterioso — 
+  - **Testo:** Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato.`
+- `studio_einstein_e_il_tempo_elastico_2-13.mp3` — pronta · 16,9 s · Studio: Einstein e il tempo elastico, scena 24 (al massimo 20 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità.
+  - **Da incollare su ElevenLabs v3:** `[excited] Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità.`
+- `studio_einstein_e_il_tempo_elastico_2-14.mp3` — pronta · 12,1 s · Studio: Einstein e il tempo elastico, scena 26 (al massimo 17 s)
+  - **Emozione:** malinconico — 
+  - **Testo:** Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui.
+  - **Da incollare su ElevenLabs v3:** `[wistfully] Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui.`
+- `studio_einstein_e_il_tempo_elastico_2-15.mp3` — pronta · 18,6 s · Studio: Einstein e il tempo elastico, scena 28 (al massimo 22 s)
+  - **Emozione:** ride — 
+  - **Testo:** Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!
+  - **Da incollare su ElevenLabs v3:** `[laughs] Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!`
+- `studio_einstein_e_il_tempo_elastico_2-16.mp3` — pronta · 14 s · Studio: Einstein e il tempo elastico, scena 29 (al massimo 18 s)
+  - **Emozione:** orgoglioso — 
+  - **Testo:** E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria.
+  - **Da incollare su ElevenLabs v3:** `[proud] E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria.`
+- `studio_einstein_e_il_tempo_elastico_2-17.mp3` — pronta · 6,4 s · Studio: Einstein e il tempo elastico, scena 32 (al massimo 9 s)
+  - **Emozione:** ride — 
+  - **Testo:** Stephen, tu riesci sempre a rendere il mio universo ancora più strano!
+  - **Da incollare su ElevenLabs v3:** `[laughs] Stephen, tu riesci sempre a rendere il mio universo ancora più strano!`
+- `studio_einstein_e_il_tempo_elastico_2-18.mp3` — pronta · 6,9 s · Studio: Einstein e il tempo elastico, scena 34 (al massimo 9 s)
+  - **Emozione:** intenerito — 
+  - **Testo:** Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.`
+- `studio_einstein_e_il_tempo_elastico_2-19.mp3` — pronta · 4,4 s · Studio: Einstein e il tempo elastico, scena 36 (al massimo 8 s)
+  - **Emozione:** ride — 
+  - **Testo:** Dipende… da dove lo guardi!
+  - **Da incollare su ElevenLabs v3:** `[laughs] Dipende… da dove lo guardi!`
 
 ### Inglese — `storie/albert-einstein/en/`
 
@@ -1017,6 +1145,10 @@ Cartella: `audio/narrazione/storie/mercurio/<lingua>/` · nel codice `Mercury` �
   - **Emozione:** sollevato — sbuffa di sollievo e ride
   - **Testo:** Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.
   - **Da incollare su ElevenLabs v3:** `[relieved] Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.`
+- `studio_einstein_e_il_tempo_elastico_2-21.mp3` — pronta · 8 s · Studio: Einstein e il tempo elastico, scena 8 (al massimo 13 s)
+  - **Emozione:** sollevato — 
+  - **Testo:** Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.
+  - **Da incollare su ElevenLabs v3:** `[relieved] Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.`
 
 ### Inglese — `storie/mercurio/en/`
 
@@ -1035,6 +1167,10 @@ Cartella: `audio/narrazione/storie/samantha-cristoforetti/<lingua>/` · nel codi
 
 - `storia_einstein-17.mp3` — manca · Einstein e il tempo elastico, scena 17 (al massimo 15 s)
   - **Emozione:** ironica — divertita, complice; «quasi un centesimo» con finta solennità
+  - **Testo:** Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!
+  - **Da incollare su ElevenLabs v3:** `[playfully] Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!`
+- `studio_einstein_e_il_tempo_elastico_2-22.mp3` — pronta · 13,5 s · Studio: Einstein e il tempo elastico, scena 17 (al massimo 15 s)
+  - **Emozione:** giocherellone — 
   - **Testo:** Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!
   - **Da incollare su ElevenLabs v3:** `[playfully] Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!`
 
@@ -1065,6 +1201,10 @@ Cartella: `audio/narrazione/storie/gargantua/<lingua>/` · nel codice `gargantua
   - **Emozione:** solenne — profondissimo e lento, poi rassicurante
   - **Testo:** Ora entri nel mio orizzonte, Cooper. Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Ora entri nel mio orizzonte, Cooper. [slowly] Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. [warmly] E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto.`
+- `studio_einstein_e_il_tempo_elastico_2-25.mp3` — pronta · 8,4 s · Studio: Einstein e il tempo elastico, scena 25 (al massimo 11 s)
+  - **Emozione:** giocherellone — 
+  - **Testo:** Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce.
+  - **Da incollare su ElevenLabs v3:** `[playfully] Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce.`
 
 ### Inglese — `storie/gargantua/en/`
 
@@ -1093,6 +1233,10 @@ Cartella: `audio/narrazione/storie/stephen-hawking/<lingua>/` · nel codice `haw
   - **Emozione:** ironico — calmo, ogni parola pesata
   - **Testo:** Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano.
   - **Da incollare su ElevenLabs v3:** `[playfully] Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano.`
+- `studio_einstein_e_il_tempo_elastico_2-26.mp3` — manca · Studio: Einstein e il tempo elastico, scena 31 (al massimo 16 s)
+  - **Emozione:** giocherellone — 
+  - **Testo:** Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano.
+  - **Da incollare su ElevenLabs v3:** `[playfully] Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. [whispers] Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano.`
 
 ### Inglese — `storie/stephen-hawking/en/`
 
