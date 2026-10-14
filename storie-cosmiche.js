@@ -4610,19 +4610,40 @@
    *           relatività); il foglio di sopra si fa trasparente e la
    *           navicella ci passa dentro, in un attimo.
    *
-   * Senza `stage` fa tutto di fila. Le facce si ordinano per profondità a
-   * ogni fotogramma (sono poche centinaia), il dritto chiaro e il rovescio
-   * più scuro. La camera segue l'orologio della storia, non l'effetto: tre
-   * scene di fila, con tre fogli, non saltano. */
+   * Senza `stage` fa tutto di fila, coi tempi della battuta 4 di
+   * «Interstellar 1» (v490: il foglio si mostra una volta sola, lì). Le facce
+   * si ordinano per profondità a ogni fotogramma (sono poche centinaia), il
+   * dritto chiaro e il rovescio più scuro. La camera segue l'orologio della
+   * storia, non l'effetto: più scene di fila, con più fogli, non saltano.
+   *
+   * v490, il disegno rifatto dopo «fai meglio il disegno del foglio e
+   * matita». A metà piega il foglio dritto in piedi usciva dal riquadro: ora
+   * l'inquadratura si adatta da sola al foglio (e alla matita che arriva).
+   * La Terra e la galassia restavano tagliate a metà dalle facce davanti:
+   * ora sono dischi posati sul foglio, in prospettiva, disegnati sopra la
+   * loro faccia. La matita era una striscia gialla piatta: ora è una matita
+   * vera in 3D (il corpo a sei facce in luce e in ombra, il legno temperato,
+   * la mina, la ghiera, la gomma), che scende con la sua ombra, buca il
+   * foglio di sopra e poi quello di sotto lasciando due fori, e mentre il
+   * tunnel nasce dai fori si sfila verso l'alto. */
   function storDisegnaFoglio(ctx, ef, x, y, s, t, L, H, ridotto) {
     const lato = Math.min(L, H), W = lato * 0.95 * ef.scala, D = W * 0.42, r = W * 0.085;
     const tt = t - ef.inizio, fase = ef.fase || '';
     const xf = -Math.PI * r / 2, sA = -0.36 * W, sB = 0.36 * W;
-    let piega, matita = 0, tunnel = 0;
+    let piega, matita = 0, tunnel = 0, tPieno, velo = 0;
     if (fase === 'flat') piega = 0;
     else if (fase === 'bend') piega = liscio((tt - 700) / 4200);
-    else if (fase === 'tunnel') { piega = 1; matita = Math.min(1, Math.max(0, (tt - 400) / 1800)); tunnel = liscio((tt - 2000) / 2200); }
-    else { piega = liscio((s - 0.22) / 0.3); matita = Math.min(1, Math.max(0, (s - 0.55) / 0.12)); tunnel = liscio((s - 0.66) / 0.14); }
+    else if (fase === 'tunnel') { piega = 1; matita = Math.min(1, Math.max(0, (tt - 400) / 1800)); tunnel = liscio((tt - 2000) / 2200); tPieno = 4200; }
+    else {
+      // la battuta 4 (17,5 s; la scena è scritta di 23 s ma chiude con la
+      // voce): «ma se pieghi lo spazio» a 8 s, «e lo buchi con una matita» a
+      // 10 s, «i due punti si toccano» a 12,5 s; il tunnel è fatto a 14 s, e
+      // la navicella lo attraversa su «una scorciatoia», prima che la scena chiuda
+      piega = liscio((s - 0.35) / 0.1);
+      matita = Math.min(1, Math.max(0, (s - 0.445) / 0.09));
+      tunnel = liscio((s - 0.535) / 0.07);
+      tPieno = ef.durata * 0.61;
+    }
     // (v486: e sfuma quando la sua scena finisce, `STOR_LAVAGNE`)
     const alfa = Math.max(0, Math.min(ef.continua ? 1 : tt / 500, (ef.durata - tt) / 400, 1)) * (ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1);
     if (!(alfa > 0.01)) return;
@@ -4642,31 +4663,43 @@
     const el = mix(0.52, 0.3, tunnel) + (ridotto ? 0 : Math.sin(t / 9000) * 0.05);
     const cy = Math.cos(yaw), sy = Math.sin(yaw), ce = Math.cos(el), se = Math.sin(el);
     const F = lato * 1.7;
-    // piegato è largo la metà: la camera gli si avvicina, e il tunnel si vede
-    const vicino = 1 + 0.55 * piega + 0.2 * tunnel;
-    const proietta = (X, Y, Z) => {
+    const grezzo = (X, Y, Z) => {
       X -= cxs; Z -= czs;
       const x1 = X * cy - Y * sy, y1 = X * sy + Y * cy;
-      const su = Z * ce + y1 * se, prof = y1 * ce - Z * se, k = vicino * F / Math.max(F * 0.3, F + prof);
-      return [x + x1 * k, y - su * k, prof, k];
+      const su = Z * ce + y1 * se, prof = y1 * ce - Z * se, k = F / Math.max(F * 0.3, F + prof);
+      return [x1 * k, -su * k, prof, k];
     };
     const punto3 = (sv, v) => { const [X, Z] = piano(sv); return [X, v, Z]; };
-    const cose = [];
     // le facce del foglio
     const NS = 30, NV = 8;
-    const vert = [];
+    const crudi = [];
     for (let i = 0; i <= NS; i++) {
       const sv = -W / 2 + W * i / NS, riga = [];
-      for (let j = 0; j <= NV; j++) riga.push(proietta(...punto3(sv, -D / 2 + D * j / NV)));
-      vert.push(riga);
+      for (let j = 0; j <= NV; j++) riga.push(grezzo(...punto3(sv, -D / 2 + D * j / NV)));
+      crudi.push(riga);
     }
+    // l'inquadratura: il foglio (e lo spazio per la matita che arriva dall'alto)
+    // sta sempre dentro al riquadro, e piegato gli si va vicino
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    const allarga = q => { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); };
+    for (const riga of crudi) { allarga(riga[0]); allarga(riga[NV]); }
+    for (const q of crudi[0]) allarga(q);
+    for (const q of crudi[NS]) allarga(q);
+    const A3 = punto3(sA, 0), B3 = punto3(sB, 0);
+    if (piega > 0) allarga(grezzo(A3[0], 0, mix(0, r * 3.6, piega)));
+    const zoom = Math.min(W * 1.02 / Math.max(1, x1 - x0), W * 0.66 / Math.max(1, y1 - y0), 1.75);
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    const schermo = q => [x + (q[0] - mx) * zoom, y + (q[1] - my) * zoom, q[2], q[3] * zoom];
+    const proietta = (X, Y, Z) => schermo(grezzo(X, Y, Z));
+    const vert = crudi.map(riga => riga.map(schermo));
+    const cose = [];
     for (let i = 0; i < NS; i++) for (let j = 0; j < NV; j++) {
       const a = vert[i][j], b = vert[i + 1][j], c = vert[i + 1][j + 1], d = vert[i][j + 1];
       const area = (b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]);
       const sm = -W / 2 + W * (i + 0.5) / NS;
       cose.push({ prof: (a[2] + b[2] + c[2] + d[2]) / 4, disegna: () => {
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath();
-        ctx.globalAlpha = alfa * (sopra(sm) ? 1 - 0.55 * tunnel : 1);
+        ctx.globalAlpha = alfa * (sopra(sm) ? 1 - 0.55 * velo : 1);
         ctx.fillStyle = area < 0 ? '#fdf6e3' : '#e2d3b0'; ctx.fill();
         ctx.strokeStyle = 'rgba(120, 113, 108, 0.35)'; ctx.lineWidth = 1; ctx.stroke();
       } });
@@ -4677,45 +4710,169 @@
       for (const j of [0, NV]) { ctx.beginPath(); vert.forEach((riga, i) => (i ? ctx.lineTo(riga[j][0], riga[j][1]) : ctx.moveTo(riga[j][0], riga[j][1]))); ctx.stroke(); }
       for (const i of [0, NS]) { ctx.beginPath(); vert[i].forEach((q, j) => (j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke(); }
     };
+    // Ciò che è posato sul foglio passa sopra alla sua faccia (e a quelle
+    // accanto, che stanno sullo stesso piano), non sopra al foglio dell'altra piega
+    const sulFoglio = Math.max(W / NS, D / NV) * 0.6;
     // la strada lunga, a pezzi, ognuno alla sua profondità (sotto il foglio di sopra)
     const passi = 40;
     for (let k = 0; k < passi; k++) {
       const s0 = mix(sA, sB, k / passi), s1 = mix(sA, sB, (k + 1) / passi);
       if (k % 2) continue;
       const p0 = proietta(...punto3(s0, 0)), p1 = proietta(...punto3(s1, 0));
-      cose.push({ prof: (p0[2] + p1[2]) / 2 - 0.5, disegna: () => {
-        ctx.globalAlpha = alfa * (sopra(s0) ? 1 - 0.5 * tunnel : 1) * (1 - 0.6 * tunnel);
+      cose.push({ prof: (p0[2] + p1[2]) / 2 - sulFoglio, disegna: () => {
+        ctx.globalAlpha = alfa * (sopra(s0) ? 1 - 0.5 * velo : 1) * (1 - 0.6 * tunnel);
         ctx.strokeStyle = '#ef4444'; ctx.lineWidth = Math.max(1.5, r * 0.12 * p0[3]); ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
       } });
     }
-    // la Terra e la galassia, posate sul foglio
-    const astro = (sv, galassia) => {
-      const q = proietta(...punto3(sv, 0)), rr = r * 0.42 * q[3];
-      cose.push({ prof: q[2] - 1, disegna: () => {
-        ctx.globalAlpha = alfa;
-        if (galassia) {
-          const g = ctx.createRadialGradient(q[0], q[1], 0, q[0], q[1], rr * 1.5);
-          g.addColorStop(0, '#fffbeb'); g.addColorStop(0.4, '#fbbf24'); g.addColorStop(1, 'rgba(251, 191, 36, 0)');
-          ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(q[0], q[1], rr * 1.5, rr * 0.8, -0.3, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = Math.max(1, rr * 0.12);
-          for (const b of [0, Math.PI]) { ctx.beginPath(); for (let k = 0; k <= 16; k++) { const a = b + k / 16 * Math.PI * 1.3 + t / 1800, d = rr * (0.2 + k / 16 * 1.1); const px = q[0] + Math.cos(a) * d, py = q[1] + Math.sin(a) * d * 0.55; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
-        } else {
-          ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(q[0], q[1], rr, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.arc(q[0] - rr * 0.3, q[1] - rr * 0.2, rr * 0.35, 0, Math.PI * 2); ctx.arc(q[0] + rr * 0.35, q[1] + rr * 0.25, rr * 0.25, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, rr * 0.12); ctx.beginPath(); ctx.arc(q[0], q[1], rr, 0, Math.PI * 2); ctx.stroke();
-        }
-      } });
-      return q;
+    // un disco posato sul foglio, in prospettiva: i punti del cerchio stanno sul foglio
+    const disco = (sv, rr, n = 20, v0 = 0) => {
+      const pts = [];
+      for (let a = 0; a < n; a++) { const an = a / n * Math.PI * 2; pts.push(proietta(...punto3(sv + Math.cos(an) * rr, v0 + Math.sin(an) * rr))); }
+      return pts;
     };
-    const qa = astro(sA, false), qb = astro(sB, true);
-    // il tunnel: anelli orizzontali dalla bocca sulla Terra a quella sotto la galassia
-    const A3 = punto3(sA, 0), B3 = punto3(sB, 0);
+    const traccia = pts => { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); };
+    const vicinoDi = pts => Math.min(...pts.map(q => q[2])) - sulFoglio;
+    // la Terra e la galassia
+    const qa = proietta(...A3), qb = proietta(...B3);
+    const terra = disco(sA, r * 0.46);
+    cose.push({ prof: vicinoDi(terra), disegna: () => {
+      ctx.globalAlpha = alfa;
+      traccia(terra);
+      const g = ctx.createRadialGradient(qa[0] - r * 0.15 * qa[3], qa[1] - r * 0.12 * qa[3], 0, qa[0], qa[1], r * 0.55 * qa[3]);
+      g.addColorStop(0, '#93c5fd'); g.addColorStop(0.55, '#3b82f6'); g.addColorStop(1, '#1d4ed8');
+      ctx.fillStyle = g; ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = '#4ade80';
+      for (const [ds, dv, rc] of [[-0.16, -0.12, 0.17], [0.14, 0.1, 0.13], [0.05, -0.22, 0.08]]) { traccia(disco(sA + ds * r, rc * r, 10, dv * r)); ctx.fill(); }
+      ctx.restore();
+      traccia(terra); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, r * 0.05 * qa[3]); ctx.stroke();
+    } });
+    const galassia = disco(sB, r * 0.62);
+    cose.push({ prof: vicinoDi(galassia), disegna: () => {
+      ctx.globalAlpha = alfa;
+      traccia(galassia);
+      const g = ctx.createRadialGradient(qb[0], qb[1], 0, qb[0], qb[1], r * 0.7 * qb[3]);
+      g.addColorStop(0, 'rgba(255, 251, 235, 0.95)'); g.addColorStop(0.35, 'rgba(251, 191, 36, 0.75)'); g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = g; ctx.fill();
+      // i due bracci a spirale, disegnati sul foglio
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = Math.max(1, r * 0.06 * qb[3]); ctx.lineCap = 'round';
+      for (const b of [0, Math.PI]) {
+        ctx.beginPath();
+        for (let k = 0; k <= 18; k++) {
+          const a = b + k / 18 * Math.PI * 1.4 + (ridotto ? 0 : t / 2400), d = r * (0.08 + k / 18 * 0.5);
+          const q = proietta(...punto3(sB + Math.cos(a) * d, Math.sin(a) * d));
+          k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+        }
+        ctx.stroke();
+      }
+    } });
+    // la matita: dove sta la punta (scende dall'alto, buca il foglio di
+    // sopra e poi quello di sotto; mentre nasce il tunnel si sfila)
+    const zSotto = A3[2], zSopra = B3[2];
+    const scende = liscio(matita), sfila = liscio((tunnel - 0.15) / 0.6);
+    const zPunta = mix(mix(zSopra + r * 1.2, zSotto - r * 0.4, scende), zSopra + r * 2, sfila);
+    const vistaMatita = matita > 0 && sfila < 1 ? Math.min(1, matita * 6) * (1 - sfila) : 0;
+    // appena la matita buca il foglio di sopra, il foglio si fa velo: si vede
+    // la punta che attraversa lo spazio fra le pieghe e arriva alla Terra
+    velo = Math.max(tunnel, 0.85 * liscio((zSopra - zPunta) / (r * 0.5)));
+    // i fori: si aprono al passaggio della punta e si allargano nelle bocche del tunnel
+    const Rm = r * 0.17;
+    const foro = (sv, passata) => {
+      if (!(passata > 0)) return;
+      const rr = mix(Rm * 1.35, r * 1.1, tunnel) * Math.min(1, passata);
+      const pts = disco(sv, rr, 16);
+      // sopra alla Terra e alla galassia, che sono più larghe
+      cose.push({ prof: vicinoDi(disco(sv, r * 0.7, 12)) - 0.5, disegna: () => {
+        ctx.globalAlpha = alfa * (1 - tunnel * 0.85);
+        traccia(pts); ctx.fillStyle = '#0b1026'; ctx.fill();
+        // l'orlo strappato della carta
+        ctx.strokeStyle = '#a8916a'; ctx.lineWidth = Math.max(1, r * 0.04 * pts[0][3]);
+        ctx.beginPath();
+        pts.forEach((q, i) => { const c = proietta(...punto3(sv, 0)), f = 1.12 + (i % 2) * 0.12; const px = c[0] + (q[0] - c[0]) * f, py = c[1] + (q[1] - c[1]) * f; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+        ctx.closePath(); ctx.stroke();
+      } });
+    };
+    if (matita > 0) {
+      foro(sB, (zSopra - zPunta) / (r * 0.3));
+      foro(sA, (zSotto - zPunta) / (r * 0.3));
+    }
+    // l'ombra della matita che arriva, sul foglio di sopra
+    if (vistaMatita > 0 && zPunta > zSopra) {
+      const h = (zPunta - zSopra) / (r * 2), om = disco(sB + r * 0.25 * h, Rm * (1.4 + h * 1.2), 14);
+      cose.push({ prof: vicinoDi(om) - 0.3, disegna: () => {
+        ctx.globalAlpha = alfa * vistaMatita * 0.35 * Math.max(0, 1 - h * 0.6);
+        traccia(om); ctx.fillStyle = '#1c1236'; ctx.fill();
+      } });
+    }
+    // il corpo della matita: tronchi a sei facce, a pezzi, ognuno alla sua
+    // profondità, così il foglio copre la parte che l'ha già attraversato
+    if (vistaMatita > 0) {
+      const Lm = r * 2.8, mx3 = A3[0];
+      const luce = [-0.55, -0.45, 0.7];
+      const tinta = (hex, k) => {
+        const n = parseInt(hex.slice(1), 16), f = c => Math.round(Math.min(255, c * k));
+        return 'rgb(' + f(n >> 16) + ', ' + f((n >> 8) & 255) + ', ' + f(n & 255) + ')';
+      };
+      // [da, a, raggio da, raggio a, colore] lungo l'asse, dalla punta
+      const parti = [
+        [0, 0.07, 0, 0.3, '#334155'],
+        [0.07, 0.24, 0.3, 1, '#f1c27d'],
+        [0.24, 0.84, 1, 1, '#facc15'],
+        [0.84, 0.93, 1.04, 1.04, '#cbd5e1'],
+        [0.93, 1, 1, 1, '#f472b6']
+      ];
+      const pezzi = [];
+      for (const [da, a, r0, r1, col] of parti) {
+        const n = a - da > 0.3 ? 6 : 1;
+        for (let k = 0; k < n; k++) {
+          const u0 = da + (a - da) * k / n, u1 = da + (a - da) * (k + 1) / n;
+          pezzi.push([u0, u1, mix(r0, r1, k / n), mix(r0, r1, (k + 1) / n), col, k === n - 1 && a === 1]);
+        }
+      }
+      for (const [u0, u1, r0, r1, col, cima] of pezzi) {
+        const z0 = zPunta + Lm * u0, z1 = zPunta + Lm * u1, centro = proietta(mx3, 0, (z0 + z1) / 2);
+        cose.push({ prof: centro[2] - 0.2, disegna: () => {
+          ctx.globalAlpha = alfa * vistaMatita;
+          const facce = [];
+          for (let i = 0; i < 6; i++) {
+            const a0 = i / 6 * Math.PI * 2 + 0.3, a1 = (i + 1) / 6 * Math.PI * 2 + 0.3, am = (a0 + a1) / 2;
+            const q = [proietta(mx3 + Math.cos(a0) * Rm * r0, Math.sin(a0) * Rm * r0, z0), proietta(mx3 + Math.cos(a1) * Rm * r0, Math.sin(a1) * Rm * r0, z0),
+              proietta(mx3 + Math.cos(a1) * Rm * r1, Math.sin(a1) * Rm * r1, z1), proietta(mx3 + Math.cos(a0) * Rm * r1, Math.sin(a0) * Rm * r1, z1)];
+            const lum = 0.62 + 0.45 * Math.max(0, Math.cos(am) * luce[0] + Math.sin(am) * luce[1]);
+            facce.push({ q, prof: (q[0][2] + q[1][2] + q[2][2] + q[3][2]) / 4, lum });
+          }
+          facce.sort((p, q) => q.prof - p.prof);
+          for (const f of facce) {
+            ctx.beginPath(); f.q.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+            ctx.fillStyle = tinta(col, f.lum); ctx.fill();
+            ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 0.8; ctx.stroke();
+          }
+          // le righe della ghiera, e la cima della gomma vista dall'alto
+          if (col === '#cbd5e1') {
+            ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1;
+            for (const u of [0.35, 0.65]) {
+              const zz = mix(z0, z1, u); ctx.beginPath();
+              for (let i = 0; i <= 12; i++) { const an = i / 12 * Math.PI * 2; const p = proietta(mx3 + Math.cos(an) * Rm * 1.05, Math.sin(an) * Rm * 1.05, zz); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+              ctx.stroke();
+            }
+          }
+          if (cima) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) { const an = i / 6 * Math.PI * 2 + 0.3; const p = proietta(mx3 + Math.cos(an) * Rm, Math.sin(an) * Rm, z1); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+            ctx.closePath(); ctx.fillStyle = '#f9a8d4'; ctx.fill();
+          }
+        } });
+      }
+    }
+    // il tunnel: anelli orizzontali dalla bocca sulla Terra a quella sotto la
+    // galassia, e le linee che li cuciono (il disegno a imbuto dei libri)
     if (tunnel > 0.01) {
-      const N = 12;
+      const N = 12, M = 10, anelli = [];
       for (let k = 0; k <= N; k++) {
         const u = k / N, cX = mix(A3[0], B3[0], u), cZ = mix(A3[2], B3[2], u);
         const rho = r * (0.32 + 0.9 * Math.pow(2 * Math.abs(u - 0.5), 2)) * Math.min(1, tunnel * 1.3);
+        anelli.push({ cX, cZ, rho });
         const pts = [];
         for (let a = 0; a <= 24; a++) { const an = a / 24 * Math.PI * 2; pts.push(proietta(cX + Math.cos(an) * rho, Math.sin(an) * rho, cZ)); }
         const pc = proietta(cX, 0, cZ);
@@ -4726,6 +4883,15 @@
           ctx.strokeStyle = k % 2 ? '#a5b4fc' : '#7dd3fc'; ctx.lineWidth = Math.max(1.2, r * 0.07 * pc[3]); ctx.stroke();
         } });
       }
+      for (let k = 0; k < N; k++) for (let m = 0; m < M; m++) {
+        const an = m / M * Math.PI * 2, p = anelli[k], q = anelli[k + 1];
+        const a = proietta(p.cX + Math.cos(an) * p.rho, Math.sin(an) * p.rho, p.cZ), b = proietta(q.cX + Math.cos(an) * q.rho, Math.sin(an) * q.rho, q.cZ);
+        cose.push({ prof: (a[2] + b[2]) / 2 - 2, disegna: () => {
+          ctx.globalAlpha = alfa * tunnel * 0.5;
+          ctx.strokeStyle = '#c7d2fe'; ctx.lineWidth = Math.max(1, r * 0.035 * a[3]);
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        } });
+      }
     }
     cose.sort((a, b) => b.prof - a.prof);
     ctx.save();
@@ -4734,7 +4900,7 @@
     bordo();
     // la strada corta, quando le due pieghe sono una sopra l'altra
     if (piega > 0.85 && tunnel < 0.5) {
-      ctx.globalAlpha = alfa * Math.min(1, (piega - 0.85) / 0.15) * (1 - tunnel * 2);
+      ctx.globalAlpha = alfa * Math.min(1, (piega - 0.85) / 0.15) * (1 - tunnel * 2) * (1 - Math.min(1, matita * 3));
       ctx.strokeStyle = '#22c55e'; ctx.lineWidth = Math.max(2, lato * 0.006); ctx.setLineDash([6, 5]);
       ctx.beginPath(); ctx.moveTo(qa[0], qa[1]); ctx.lineTo(qb[0], qb[1]); ctx.stroke(); ctx.setLineDash([]);
     }
@@ -4751,22 +4917,11 @@
       const q = proietta(...punto3(mix(sA, sB, u), 0)); q[1] -= r * 0.3 * q[3];
       navicella(q, q[3]);
     } else if (tunnel > 0.98) {
-      const u = ridotto ? 0.5 : ((tt - 4200) % 3200) / 3200;
+      const u = ridotto ? 0.5 : ((tt - tPieno) % 3200) / 3200;
       if (u >= 0 && u <= 1) {
         const q = proietta(mix(A3[0], B3[0], u), 0, mix(A3[2] + r * 0.2, B3[2] - r * 0.2, u));
         navicella(q, q[3]);
       }
-    }
-    // la matita che scende e buca le due pieghe
-    if (matita > 0 && tunnel < 1) {
-      const zTop = B3[2] + r * 3.2, zPunta = mix(zTop, A3[2] - r * 0.3, liscio(matita));
-      const p0 = proietta(A3[0], 0, zPunta), p1 = proietta(A3[0], 0, zPunta + r * 2.6);
-      ctx.globalAlpha = alfa * (1 - tunnel);
-      ctx.lineCap = 'butt';
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = r * 0.42 * p0[3] + 2; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
-      ctx.strokeStyle = '#facc15'; ctx.lineWidth = r * 0.42 * p0[3]; ctx.beginPath(); ctx.moveTo(p0[0] + (p1[0] - p0[0]) * 0.18, p0[1] + (p1[1] - p0[1]) * 0.18); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
-      ctx.strokeStyle = '#fde68a'; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p0[0] + (p1[0] - p0[0]) * 0.18, p0[1] + (p1[1] - p0[1]) * 0.18); ctx.stroke();
-      ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.arc(p0[0], p0[1], Math.max(1.5, r * 0.08 * p0[3]), 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }

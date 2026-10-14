@@ -945,7 +945,7 @@
         "en": "[playfully] Look at this sheet of paper. Earth is here, our destination is there: the straight road would take thousands of years. [mischievously] But if you fold space… and push a pencil through it… the two points touch. [excited] That's what a wormhole is: a shortcut."
       }
     },
-    "demo.narr.storia_interstellar.8": {
+    "demo.narr.storia_interstellar.5": {
       "emozione": "impassibile",
       "come": "secco, pausa comica prima della battuta finale",
       "conTag": {
@@ -953,7 +953,7 @@
         "en": "[deadpan] Before we go in, let me remind you my honesty setting is at ninety percent. [pause] So, honestly: I have no idea what's on the other side."
       }
     },
-    "demo.narr.storia_interstellar.9": {
+    "demo.narr.storia_interstellar.6": {
       "emozione": "deciso",
       "come": "prima una risatina, poi il comando",
       "conTag": {
@@ -961,7 +961,7 @@
         "en": "[laughs] TARS, bring humor down to seventy-five percent. [determined] Everybody strap in: we're going through!"
       }
     },
-    "demo.narr.storia_interstellar.10": {
+    "demo.narr.storia_interstellar.7": {
       "emozione": "rapita",
       "come": "sussurrato, quasi un sogno",
       "conTag": {
@@ -969,7 +969,7 @@
         "en": "[in awe] Spacetime is bending all around us… [whispers] I feel something. It's as if someone were shaking our hand."
       }
     },
-    "demo.narr.storia_interstellar.11": {
+    "demo.narr.storia_interstellar.8": {
       "emozione": "eccitato",
       "come": "di corsa, ridendo",
       "conTag": {
@@ -977,7 +977,7 @@
         "en": "[excited] Look at the stars, they're racing away! [laughs] We're crossing half the universe in a few minutes!"
       }
     },
-    "demo.narr.storia_interstellar.12": {
+    "demo.narr.storia_interstellar.9": {
       "emozione": "ammirato",
       "come": "lento, con rispetto; il nome detto piano",
       "conTag": {
@@ -985,7 +985,7 @@
         "en": "[in awe] There it is. [whispers] Gargantua. [in awe] A black hole a hundred million times heavier than the Sun, spinning at almost the speed of light."
       }
     },
-    "demo.narr.storia_interstellar.13": {
+    "demo.narr.storia_interstellar.10": {
       "emozione": "misterioso",
       "come": "profondissimo, lento, ironia nascosta",
       "conTag": {
@@ -993,7 +993,7 @@
         "en": "[mysteriously] Welcome, little humans. [calmly] I am not a monster: I am a well in spacetime. [mysteriously] Whoever passes close to me slides into my curve… [whispers] and their time slows down."
       }
     },
-    "demo.narr.storia_interstellar.15": {
+    "demo.narr.storia_interstellar.12": {
       "emozione": "seria",
       "come": "chiara, scandisce «sette anni»",
       "conTag": {
@@ -1001,7 +1001,7 @@
         "en": "[thoughtful] The closer you are to a big mass, the slower time flows. [serious] Miller's planet orbits very tightly around Gargantua: down there every hour is worth seven years on Earth."
       }
     },
-    "demo.narr.storia_interstellar.18": {
+    "demo.narr.storia_interstellar.15": {
       "emozione": "malinconico",
       "come": "a voce bassa, coraggioso",
       "conTag": {
@@ -1009,7 +1009,7 @@
         "en": "[sighs] Seven years for every hour… [wistfully] I'll stay on the Endurance, far from Gargantua. I'll study the black hole and wait for you. [tenderly] Come back soon."
       }
     },
-    "demo.narr.storia_interstellar.19": {
+    "demo.narr.storia_interstellar.16": {
       "emozione": "deciso",
       "come": "pratico, veloce, da pilota",
       "conTag": {
@@ -1017,7 +1017,7 @@
         "en": "[determined] Then no mistakes: we go down, get Doctor Miller's data and come back up. [serious] Every minute down there is more than a month up here."
       }
     },
-    "demo.narr.storia_interstellar.20": {
+    "demo.narr.storia_interstellar.17": {
       "emozione": "misteriosa",
       "come": "lenta, cullante, poi minacciosa sulle onde",
       "conTag": {
@@ -1025,7 +1025,7 @@
         "en": "[mysteriously] I am Miller's planet. [softly] I am all water, as shallow as a puddle… [ominous] but Gargantua pulls on me so hard that my seas rise into waves as tall as mountains."
       }
     },
-    "demo.narr.storia_interstellar.23": {
+    "demo.narr.storia_interstellar.20": {
       "emozione": "triste",
       "come": "il fiato corto, poi la delusione",
       "conTag": {
@@ -1033,7 +1033,7 @@
         "en": "[nervous] The water is up to our ankles… [sad] Doctor Miller's signal came from here, but it's only wreckage. [whispers] For her, down here, it happened only a few hours ago."
       }
     },
-    "demo.narr.storia_interstellar.24": {
+    "demo.narr.storia_interstellar.21": {
       "emozione": "spaventato",
       "come": "si accorge lentamente, poi grida",
       "conTag": {
@@ -1041,7 +1041,7 @@
         "en": "[nervous] Brand… those aren't mountains. [shouts] They're waves!"
       }
     },
-    "demo.narr.storia_interstellar.25": {
+    "demo.narr.storia_interstellar.22": {
       "emozione": "in panico",
       "come": "gridato, senza fiato",
       "conTag": {
@@ -1049,7 +1049,7 @@
         "en": "[panicked] Brand, leave it! [shouts] Get back to the Ranger, run!"
       }
     },
-    "demo.narr.storia_interstellar.26": {
+    "demo.narr.storia_interstellar.23": {
       "emozione": "deciso",
       "come": "calmo e fermo anche nel caos",
       "conTag": {
@@ -1057,7 +1057,7 @@
         "en": "[determined] I've got you, Brand. [shouts] Hold on tight: we're taking off from the crest of the wave!"
       }
     },
-    "demo.narr.storia_interstellar.27": {
+    "demo.narr.storia_interstellar.24": {
       "emozione": "preoccupato",
       "come": "esitante, ha paura della risposta",
       "conTag": {
@@ -1065,7 +1065,7 @@
         "en": "[hesitant] Romilly… [nervous] how long were we gone?"
       }
     },
-    "demo.narr.storia_interstellar.28": {
+    "demo.narr.storia_interstellar.25": {
       "emozione": "triste",
       "come": "stanco, ogni numero pesa",
       "conTag": {
@@ -1073,7 +1073,7 @@
         "en": "[sad] Twenty-three years, four months and eight days. [sighs] I studied Gargantua… and I waited for you."
       }
     },
-    "demo.narr.storia_interstellar.29": {
+    "demo.narr.storia_interstellar.26": {
       "emozione": "addolorata",
       "come": "piano, la voce che trema, poi la spiegazione lucida",
       "conTag": {
@@ -1081,7 +1081,7 @@
         "en": "[sad] Doyle stayed down there, with the waves. [thoughtful] And we were there just over three hours: but near Gargantua time is as slow as honey. [wistfully] Three hours for us, twenty-three years for the rest of the universe."
       }
     },
-    "demo.narr.storia_interstellar.30": {
+    "demo.narr.storia_interstellar.27": {
       "emozione": "commossa",
       "come": "trattiene le lacrime; l'ultima frase quasi spezzata",
       "conTag": {
@@ -1089,7 +1089,7 @@
         "en": "[tenderly] Hi Dad. Today I'm as old as you were when you left. [crying] You promised you'd come back… [whispers] maybe it's time I stopped waiting for you."
       }
     },
-    "demo.narr.storia_interstellar.31": {
+    "demo.narr.storia_interstellar.28": {
       "emozione": "commosso",
       "come": "in lacrime, tenero",
       "conTag": {
@@ -1097,7 +1097,7 @@
         "en": "[crying] Murph… [tenderly] I left you my watch, so we could compare them when I came back. [whispers] My time fell behind, but I never left you."
       }
     },
-    "demo.narr.storia_interstellar.32": {
+    "demo.narr.storia_interstellar.29": {
       "emozione": "speranzosa",
       "come": "razionale, poi il cuore",
       "conTag": {
@@ -1105,7 +1105,7 @@
         "en": "[thoughtful] We've got fuel for one planet only: Edmunds or Mann. [hopeful] Mann's signal is the best one… [softly] but something inside me says Edmunds."
       }
     },
-    "demo.narr.storia_interstellar.33": {
+    "demo.narr.storia_interstellar.30": {
       "emozione": "deciso",
       "come": "fermo, dispiaciuto",
       "conTag": {
@@ -1113,7 +1113,7 @@
         "en": "[serious] The data says Mann, Brand. [determined] We go to Mann."
       }
     },
-    "demo.narr.storia_interstellar.34": {
+    "demo.narr.storia_interstellar.31": {
       "emozione": "gelido",
       "come": "lento, freddo, sussurra il segreto",
       "conTag": {
@@ -1121,7 +1121,7 @@
         "en": "[slowly] I am Mann's planet. It's so cold here that even the clouds are made of ice, hanging still in the sky. [mysteriously] Doctor Mann has been sleeping for years… [whispers] and he's hiding a secret."
       }
     },
-    "demo.narr.storia_interstellar.35": {
+    "demo.narr.storia_interstellar.32": {
       "emozione": "sollevato",
       "come": "quasi piange di gioia",
       "conTag": {
@@ -1129,7 +1129,7 @@
         "en": "[crying] I never thought I'd see a human face again! [relieved] Thank you… thank you for coming all this way."
       }
     },
-    "demo.narr.storia_interstellar.36": {
+    "demo.narr.storia_interstellar.33": {
       "emozione": "cupo",
       "come": "freddo, poi la paura, poi minaccioso",
       "conTag": {
@@ -1137,7 +1137,7 @@
         "en": "[coldly] My planet can't host anyone, Cooper. [ashamed] I sent false data: I was afraid of dying here, alone. [menacing] Forgive me… but now I'm taking your ship."
       }
     },
-    "demo.narr.storia_interstellar.37": {
+    "demo.narr.storia_interstellar.34": {
       "emozione": "preoccupato",
       "come": "asciutto, ma con urgenza",
       "conTag": {
@@ -1145,7 +1145,7 @@
         "en": "[deadpan] Bad news: Doctor Mann has taken the Lander and is flying to the Endurance. [serious] I switched off automatic docking: if he tries to force it, it'll be a disaster."
       }
     },
-    "demo.narr.storia_interstellar.38": {
+    "demo.narr.storia_interstellar.35": {
       "emozione": "esaltato",
       "come": "ansimante, trionfante, ignaro",
       "conTag": {
@@ -1153,7 +1153,7 @@
         "en": "[breathless] It's opening… it's opening! [excited] I made it!"
       }
     },
-    "demo.narr.storia_interstellar.39": {
+    "demo.narr.storia_interstellar.36": {
       "emozione": "allarmato",
       "come": "calmo ma urgente",
       "conTag": {
@@ -1161,7 +1161,7 @@
         "en": "[nervous] The Endurance has lost a piece and it's spinning: sixty-eight turns a minute. [serious] Docking is impossible."
       }
     },
-    "demo.narr.storia_interstellar.40": {
+    "demo.narr.storia_interstellar.37": {
       "emozione": "determinato",
       "come": "a denti stretti, la battuta più importante",
       "conTag": {
@@ -1169,7 +1169,7 @@
         "en": "[determined] No, CASE. [serious] It's necessary. [shouts] We spin too, at the same speed!"
       }
     },
-    "demo.narr.storia_interstellar.41": {
+    "demo.narr.storia_interstellar.38": {
       "emozione": "fiero",
       "come": "sollievo asciutto, poi spiega con gusto",
       "conTag": {
@@ -1177,7 +1177,7 @@
         "en": "[relieved] Docked! [proud] Spinning together, the Ranger and the Endurance were still with respect to each other, like two dancers holding hands. [calmly] Then we slowed down together."
       }
     },
-    "demo.narr.storia_interstellar.42": {
+    "demo.narr.storia_interstellar.39": {
       "emozione": "sollevata",
       "come": "ride e piange insieme",
       "conTag": {
@@ -1185,7 +1185,7 @@
         "en": "[laughs] You did it, Cooper! [relieved] I thought it was over."
       }
     },
-    "demo.narr.storia_interstellar.43": {
+    "demo.narr.storia_interstellar.40": {
       "emozione": "concentrato",
       "come": "spiega il piano, con fiducia",
       "conTag": {
@@ -1193,7 +1193,7 @@
         "en": "[thoughtful] There isn't enough fuel for Edmunds. [determined] But Gargantua can be our slingshot: we skim past it, its gravity bends our path and flings us away faster."
       }
     },
-    "demo.narr.storia_interstellar.44": {
+    "demo.narr.storia_interstellar.41": {
       "emozione": "malinconico",
       "come": "pesa il prezzo, voce bassa",
       "conTag": {
@@ -1201,7 +1201,7 @@
         "en": "[sighs] This close to Gargantua time slows down again: this manoeuvre will cost us fifty-one years on Earth. [wistfully] It's the price of getting there."
       }
     },
-    "demo.narr.storia_interstellar.45": {
+    "demo.narr.storia_interstellar.42": {
       "emozione": "risoluto",
       "come": "calmo, ha già deciso",
       "conTag": {
@@ -1209,7 +1209,7 @@
         "en": "[calmly] Newton said it: to go forward you have to leave something behind. [determined] TARS and I will detach at the closest point: [tenderly] without our weight, the Endurance will make it."
       }
     },
-    "demo.narr.storia_interstellar.46": {
+    "demo.narr.storia_interstellar.43": {
       "emozione": "disperata",
       "come": "grida, poi la voce si spezza",
       "conTag": {
@@ -1217,7 +1217,7 @@
         "en": "[shouts] Cooper, no! [crying] Don't leave me alone!"
       }
     },
-    "demo.narr.storia_interstellar.47": {
+    "demo.narr.storia_interstellar.44": {
       "emozione": "tenero",
       "come": "per una volta senza ironia",
       "conTag": {
@@ -1225,7 +1225,7 @@
         "en": "[tenderly] It's been an honour flying with you. [warmly] Honesty setting: one hundred percent."
       }
     },
-    "demo.narr.storia_interstellar.48": {
+    "demo.narr.storia_interstellar.45": {
       "emozione": "commossa",
       "come": "tra le lacrime, poi coraggiosa",
       "conTag": {
@@ -1233,7 +1233,7 @@
         "en": "[crying] Love is the one thing we can feel across time and space. [determined] Go, Cooper… I'll take the mission all the way to Edmunds."
       }
     },
-    "demo.narr.storia_interstellar.49": {
+    "demo.narr.storia_interstellar.46": {
       "emozione": "solenne",
       "come": "profondissimo e lento, poi rassicurante",
       "conTag": {
@@ -1241,7 +1241,7 @@
         "en": "[mysteriously] Now you're entering my horizon, Cooper. [slowly] Anyone watching from far away will see you slow down and stop forever; for you, though, time flows as always. [warmly] And don't be afraid: I'm so big that my tides are gentle here, I won't stretch you like spaghetti."
       }
     },
-    "demo.narr.storia_interstellar.50": {
+    "demo.narr.storia_interstellar.47": {
       "emozione": "rapito",
       "come": "sussurrato, in pace",
       "conTag": {
@@ -1249,7 +1249,7 @@
         "en": "[in awe] TARS… we're falling into the light. [whispers] Murph… I'm coming."
       }
     },
-    "demo.narr.storia_interstellar.51": {
+    "demo.narr.storia_interstellar.48": {
       "emozione": "speranzosa",
       "come": "piano, con un sorriso tra le lacrime; poi un brivido di mistero",
       "conTag": {
@@ -1650,31 +1650,7 @@
         "it": "[thoughtful] Le equazioni di Einstein dicono che potrei. Ma nessuno mi ha mai visto: il buco bianco, per ora, è soltanto un’idea!"
       }
     },
-    "demo.narr.storia_interstellar.5": {
-      "emozione": "giocoso",
-      "come": "sorride, poi curioso davvero",
-      "conTag": {
-        "it": "[playfully] Aspetta, Romilly: è andato tutto troppo veloce. [curious] Fammelo vedere piano, passo per passo.",
-        "en": "[playfully] Hang on, Romilly: that was all too fast. [curious] Show me slowly, step by step."
-      }
-    },
-    "demo.narr.storia_interstellar.6": {
-      "emozione": "entusiasta",
-      "come": "spiega piano, poi la sorpresa della piega",
-      "conTag": {
-        "it": "[thoughtful] Il foglio è lo spazio. Andando dritti, anche alla velocità della luce, ci vorrebbero migliaia di anni. [excited] Ma Einstein ha scoperto che lo spazio-tempo si può curvare, come un foglio di gomma: se lo pieghi così, i due punti lontanissimi finiscono uno sopra l'altro. [in awe] Adesso sono vicinissimi!",
-        "en": "[thoughtful] The sheet is space. Going straight, even at the speed of light, it would take thousands of years. [excited] But Einstein discovered that spacetime can bend, like a rubber sheet: if you fold it like this, the two faraway points end up one above the other. [in awe] Now they're really close!"
-      }
-    },
-    "demo.narr.storia_interstellar.7": {
-      "emozione": "fiero",
-      "come": "svela il trucco, poi indica la sfera fuori",
-      "conTag": {
-        "it": "[mischievously] Adesso basta un tunnel che unisca le due pieghe: si entra da una bocca e si esce dall'altra. [excited] Questo è un wormhole. [in awe] E siccome il nostro spazio ha tre dimensioni, le bocche non sono buchi piatti: sono sfere, come quella là fuori.",
-        "en": "[mischievously] Now all we need is a tunnel joining the two folds: you go in one mouth and come out of the other. [excited] That's a wormhole. [in awe] And since our space has three dimensions, the mouths aren't flat holes: they're spheres, like the one out there."
-      }
-    },
-    "demo.narr.storia_interstellar.14": {
+    "demo.narr.storia_interstellar.11": {
       "emozione": "meravigliato",
       "come": "indica, poi spiega con calma",
       "conTag": {
@@ -1682,7 +1658,7 @@
         "en": "[in awe] See the ring of light going over and under the black hole? [thoughtful] It isn't a second disk: it's light from the part of the disk behind Gargantua, bent by gravity all the way to our eyes. Gargantua is a gigantic lens."
       }
     },
-    "demo.narr.storia_interstellar.16": {
+    "demo.narr.storia_interstellar.13": {
       "emozione": "scettico",
       "come": "diffidente, poi la domanda vera",
       "conTag": {
@@ -1690,7 +1666,7 @@
         "en": "[skeptical] That close? [curious] So why doesn't the planet fall in?"
       }
     },
-    "demo.narr.storia_interstellar.17": {
+    "demo.narr.storia_interstellar.14": {
       "emozione": "sicura",
       "come": "chiara, con un sorriso",
       "conTag": {
@@ -1698,7 +1674,7 @@
         "en": "[calmly] Because Gargantua spins at almost the speed of light, and drags space around with it like a whirlpool in water. [warmly] Thanks to that whirl, even such a tight orbit stays stable; and the planet races along it at almost half the speed of light."
       }
     },
-    "demo.narr.storia_interstellar.21": {
+    "demo.narr.storia_interstellar.18": {
       "emozione": "seria",
       "come": "spiega a passi, stupita sul chilometro",
       "conTag": {
@@ -1706,7 +1682,7 @@
         "en": "[serious] That's why those waves. [thoughtful] Gargantua pulls the near side of the planet much harder than the far side: the planet stretches like an egg, and its ocean piles up into two gigantic humps. [in awe] It's the tide: on Earth the Moon raises the sea by a metre, here Gargantua raises it by more than a kilometre."
       }
     },
-    "demo.narr.storia_interstellar.22": {
+    "demo.narr.storia_interstellar.19": {
       "emozione": "preoccupato",
       "come": "ragiona, poi la paura",
       "conTag": {
