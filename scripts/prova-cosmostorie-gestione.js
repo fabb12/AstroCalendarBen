@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Rinominare, modificare ed eliminare le CosmoStorie, e le storie in
- * cantiere nello Studio (v484), nella pagina vera, in un Chromium senza rete.
+ * cantiere nello Studio (v486), nella pagina vera, in un Chromium senza rete.
  *
  *   npm install --no-save playwright-core astronomy-engine satellite.js@5.0.0
  *   node scripts/prova-cosmostorie-gestione.js

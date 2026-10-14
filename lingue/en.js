@@ -6108,7 +6108,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "studio.suono.nome.fold": "Paper and pencil",
     "studio.suono.nome.time_warp": "Fast ticking",
     "studio.suono.nome.orbit_path": "Slingshot",
-    // v484: «Interstellar · Part 2: the tesseract», young and elderly Murph, Them, the new backdrops and drawings
+    // v486: «Interstellar · Part 2: the tesseract», young and elderly Murph, Them, the new backdrops and drawings
     "demo.builtin.storia_interstellar2.title": "CosmoStories · Interstellar 2: the tesseract",
     "demo.builtin.storia_interstellar2.description": "The second part of «Interstellar»: Cooper falls into Gargantua and finds himself in the tesseract, the endless library built by «Them», the five-dimensional beings. From behind Murph's bookshelf he becomes her «ghost», sends her the equations of quantum gravity in Morse code through the second hand of his watch, and Murph uses them to get humanity off the Earth. We find out who They are (it's us, in the future) and how they see time: a place you can walk through. Then the return near Saturn, Cooper Station spinning to make gravity, and the embrace with elderly Murph.",
     "storie.titolo.interstellar2": "Interstellar · Part 2: the tesseract",
@@ -6208,7 +6208,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "studio.suono.nome.dust_binary": "Falling sand",
     "studio.suono.nome.equations": "Equation solved",
     "studio.suono.nome.morse_watch": "Morse beeps",
-    // v484: renaming, editing and deleting CosmoStories and drafts
+    // v486: renaming, editing and deleting CosmoStories and drafts
     "storie.modifica": "Edit",
     "storie.modificaAiuto": "Opens the story in the Studio to change it: your version takes its place among the CosmoStories (and you can always go back to the original)",
     "storie.rinomina": "Rename",

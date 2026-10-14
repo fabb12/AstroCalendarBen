@@ -12768,7 +12768,7 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 .storia-scheda > .demo-azioni .storia-avvia { flex: 1 1 10rem; }
 .storia-scheda { grid-template-rows: auto auto auto auto auto 1fr; }
 .storia-cast[hidden] { display: none; }
-/* v484: il nome nuovo di una CosmoStoria (dentro la scheda), le storie
+/* v486: il nome nuovo di una CosmoStoria (dentro la scheda), le storie
    nascoste e quelle in cantiere nello Studio, sotto alle schede */
 .storia-rinomina { display: grid; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--bordo); }
 .storia-rinomina input, .storia-rinomina textarea { width: 100%; min-width: 0; box-sizing: border-box; }

@@ -614,7 +614,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_animate` | `target`, `animation` (`jump`, `bounce`, `shake`, `nod`, `spin`, `pulse`, `dance`, `wobble`), `times?` (1–20), `strength?` (0,2–3) |
 | `character_scale` | `target`, `scale` (0,2–6) |
 | `character_become` (v414) | `target`, `shape` (`red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`) |
-| `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`, `spacetime` dalla v469; dalla v482 gli sfondi `starfield`, `wormhole`, `wormhole_tunnel`, `gargantua_view`, `miller_ocean`, `tidal_wave`, `mann_ice` e i disegni `fold`, `time_warp`, `orbit_path`; dalla v484 gli sfondi `tesseract`, `murph_room`, `liftoff`, `cooper_station`, `bedside`, `edmunds_planet` e i disegni `hypercube`, `dimensions`, `time_strip`, `books_fall`, `dust_binary`, `equations`, `morse_watch`, che con `fold`, `time_warp` e `orbit_path` sfumano a fine scena), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20; uno sfondo fino a 60) |
+| `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`, `spacetime` dalla v469; dalla v482 gli sfondi `starfield`, `wormhole`, `wormhole_tunnel`, `gargantua_view`, `miller_ocean`, `tidal_wave`, `mann_ice` e i disegni `fold`, `time_warp`, `orbit_path`; dalla v486 gli sfondi `tesseract`, `murph_room`, `liftoff`, `cooper_station`, `bedside`, `edmunds_planet` e i disegni `hypercube`, `dimensions`, `time_strip`, `books_fall`, `dust_binary`, `equations`, `morse_watch`, che con `fold`, `time_warp` e `orbit_path` sfumano a fine scena), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20; uno sfondo fino a 60) |
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`, dalla v452 `rhythm`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
@@ -3329,7 +3329,7 @@ repository), `prova-storie-repo.js` (19), `prova-storie.js` (120),
 GitHub vero non si è provato dal contenitore (GitHub finto); la linguetta
 Sincronizza guardata in Chromium con un token buono e uno di sola lettura.
 
-### «Interstellar · Parte 2: il tesseratto», «Loro» a cinque dimensioni, e le CosmoStorie da rinominare, modificare ed eliminare (v484)
+### «Interstellar · Parte 2: il tesseratto», «Loro» a cinque dimensioni, e le CosmoStorie da rinominare, modificare ed eliminare (v486)
 
 «Vorrei aggiungere la parte 2 della CosmoStoria di *Interstellar*: come
 Cooper interagisce con Murph tramite il tesseratto, come riesce a mandarle

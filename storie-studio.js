@@ -219,7 +219,7 @@
       // v461: `ufficiale` la mette fra le CosmoStorie (le altre sono in
       // cantiere, solo nello Studio); `origine` la storia pronta da cui viene
       ufficiale: false, origine: '',
-      // v484: la CosmoStoria pronta di cui questa è la versione di chi usa
+      // v486: la CosmoStoria pronta di cui questa è la versione di chi usa
       // l'app («Modifica» sulla sua scheda): fra le CosmoStorie sta al suo posto
       sostituisce: '',
       cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
@@ -4133,7 +4133,7 @@
       aggiornaCantiere();
     }, 250);
   }
-  /* v484: l'elenco delle storie in cantiere sotto alle CosmoStorie segue lo
+  /* v486: l'elenco delle storie in cantiere sotto alle CosmoStorie segue lo
    * Studio (una storia nuova, un titolo cambiato), ma si rifà solo se è
    * cambiato e se lì nessuno sta scrivendo un nome nuovo. */
   let cantiereVisto = '';
@@ -5878,7 +5878,7 @@
     }).filter(x => x.testo);
   }
   /* Eliminare una storia dello Studio: dal bottone «Elimina» delle
-   * Impostazioni e, dalla v484, dalle schede della pagina CosmoStorie (le
+   * Impostazioni e, dalla v486, dalle schede della pagina CosmoStorie (le
    * storie messe fra le CosmoStorie e quelle in cantiere). Se ne va il
    * progetto con le sue voci; resta una lapide perché dagli altri
    * dispositivi non torni, e il giro sul repository la toglie anche di là.
@@ -5903,7 +5903,7 @@
   }
   /* Il nome e la descrizione di una storia dello Studio, cambiati dalla sua
    * scheda fra le CosmoStorie o dall'elenco delle storie in cantiere
-   * (v484): come scriverli nella linguetta «Titolo», ma senza aprirla. Una
+   * (v486): come scriverli nella linguetta «Titolo», ma senza aprirla. Una
    * storia già fra le CosmoStorie si risalva come demo, perché la scheda e
    * gli altri dispositivi vedano il nome nuovo. */
   function studioRinomina(id, titolo, descrizione) {
@@ -5925,14 +5925,14 @@
     const p = studio.progetti.find(x => x.id === id);
     return eliminaProgetto(p);
   }
-  // Le storie in cantiere, per l'elenco della pagina CosmoStorie (v484)
+  // Le storie in cantiere, per l'elenco della pagina CosmoStorie (v486)
   function studioInCantiere() {
     return studio.progetti.filter(p => !p.ufficiale).map(p => ({
       id: p.id, titolo: unaRiga(p.titolo) || t('studio.senzaTitolo'), descrizione: unaRiga(p.obiettivo),
       scene: p.scene.length, cast: p.cast.slice(), aggiornato: p.aggiornato || 0, sostituisce: p.sostituisce || ''
     })).sort((a, b) => b.aggiornato - a.aggiornato);
   }
-  /* «Modifica» su una CosmoStoria pronta (v484). Prima si poteva solo
+  /* «Modifica» su una CosmoStoria pronta (v486). Prima si poteva solo
    * duplicarla («Duplica e modifica»), e la copia restava in cantiere
    * accanto all'originale, col nome «Copia di…». Ora la si modifica: lo
    * Studio la apre col suo nome, già fra le CosmoStorie, e fra le schede
@@ -6256,7 +6256,7 @@
     regia: studioRegiaBattuta, frasi: studioFrasi, battuteDa: studioBattuteDa, statoVoce: studioStatoVoce, facciaScelta: studioFacciaScelta,
     STUDIO_REGIA_VOCE, STUDIO_REGIA_MAX,
     ufficiali: studioUfficiali, apriProgetto: studioApriProgetto, apriDaStoria: studioApriDaStoria,
-    // v484: dalla pagina CosmoStorie, rinominare, eliminare, modificare una
+    // v486: dalla pagina CosmoStorie, rinominare, eliminare, modificare una
     // storia pronta, e l'elenco di quelle in cantiere
     rinomina: studioRinomina, elimina: studioElimina, inCantiere: studioInCantiere, modificaStoria: studioModificaStoria,
     // v482: le impostazioni (la chiave di ElevenLabs) aperte da fuori, dalla

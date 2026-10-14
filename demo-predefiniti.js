@@ -2274,7 +2274,7 @@
       storia: true,
       cast: 'cooper,brand,romilly,doyle,tars,case,mann,murph,endurance,ranger,lander,gargantua,miller_planet,mann_planet',
       testo: `define_demo 'storia_interstellar' {
-  // «Interstellar · Parte 1: oltre Gargantua» (v482; dalla v484 è la prima
+  // «Interstellar · Parte 1: oltre Gargantua» (v482; dalla v486 è la prima
   // parte, e finisce nella stanza di Murph, dove comincia la Parte 2). La missione Lazarus del film di
   // Christopher Nolan (2014), dal wormhole vicino a Saturno ai due pianeti
   // attorno a Gargantua, fino alla caduta di Cooper e TARS nel buco nero. Le
@@ -2765,7 +2765,7 @@
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.42' };
   }
   scene solar_system_3d {
-    // v484: il finale porta alla Parte 2. Murph è tornata nella sua vecchia
+    // v486: il finale porta alla Parte 2. Murph è tornata nella sua vecchia
     // stanza, quella dietro la libreria: il suo «fantasma» si sta per
     // rifare vivo, ed è da lì che il tesseratto comincia
     duration: 13s;
@@ -2786,7 +2786,7 @@
       storia: true,
       cast: 'cooper,tars,loro,murph_bambina,murph,murph_anziana,brand,case,ranger,endurance,gargantua',
       testo: `define_demo 'storia_interstellar2' {
-  // «Interstellar · Parte 2: il tesseratto» (v484). Riprende dove finisce la
+  // «Interstellar · Parte 2: il tesseratto» (v486). Riprende dove finisce la
   // Parte 1: Cooper e TARS cadono in Gargantua. Dentro c'è il tesseratto, la
   // biblioteca senza fine costruita da «Loro», gli esseri a cinque
   // dimensioni, per cui il tempo è un posto (time_strip, dimensions,

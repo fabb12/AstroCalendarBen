@@ -940,6 +940,7 @@ function inizializzaNavigazione() {
 
 // Avvio al caricamento della pagina
 window.addEventListener('DOMContentLoaded', () => {
+  const vistaDaRipristinare = leggiUltimaVista();
   // Le schede di Visualizzazione sono navigazione HTML, non dipendono dal
   // canvas: rendiamole operative prima degli inizializzatori del planetario.
   // In questo modo un errore (o un browser senza una delle API usate dal
@@ -968,9 +969,9 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaImpostazioni();
   inizializzaPosizioneUI();
   inizializzaStasera();
-  // Il planetario è la porta d'ingresso dell'app su ogni dispositivo; un
-  // link condiviso può subito dopo scegliere una vista o una scheda diversa.
-  mostraVista('cielo');
+  // Torna alla pagina lasciata aperta. I link condivisi mantengono la
+  // precedenza e possono scegliere subito dopo una destinazione diversa.
+  mostraVista(vistaDaRipristinare);
   // Un link condiviso (?evento=…) porta direttamente sulla scheda giusta
   gestisciLinkCondiviso();
   // E, appena la prima schermata è disegnata, si cerca da soli dove siamo:
@@ -7578,13 +7579,32 @@ const VISTE = [
 ];
 
 // Mostra una sola vista alla volta e aggiorna lo stile dei pulsanti
+const CHIAVE_ULTIMA_VISTA = 'astrocal_ultima_vista_v1';
+
+function leggiUltimaVista() {
+  try {
+    const nome = localStorage.getItem(CHIAVE_ULTIMA_VISTA);
+    if (VISTE.some(v => v.nome === nome)) return nome;
+  } catch (_) { /* Memoria non disponibile: resta la pagina di serie. */ }
+  return 'cielo';
+}
+
 function mostraVista(nome, opzioni = {}) {
+  if (!VISTE.some(v => v.nome === nome)) return;
   const vistaPrima = vistaAttuale;
   const attivo = "voce-menu attiva";
   const inattivo = "voce-menu";
   // Serve a chi ridisegna dopo un cambio di schermo: sa cosa c'è davanti
   vistaAttuale = nome;
+  // Le viste attraversate da una demo sono anteprime temporanee, non una
+  // scelta di navigazione: ricaricando si torna alla pagina di partenza.
+  if (!(typeof AstroDemo === 'object' && AstroDemo.inCorso)) {
+    try { localStorage.setItem(CHIAVE_ULTIMA_VISTA, nome); } catch (_) { /* Memoria non disponibile. */ }
+  }
   document.body.classList.toggle('vista-planetario-attiva', nome === 'cielo');
+  // Il catalogo del cielo chiude lo splash solo se il planetario si apre.
+  // Ripristinando un'altra pagina non lo carichiamo: togli il velo subito.
+  if (nome !== 'cielo') splashPlanetarioNascondi(true);
 
   // Una vista costruita in un'altra lingua si ridisegna adesso, non prima:
   // al cambio lingua si segna il debito e lo si paga qui, quando quella vista
@@ -29278,11 +29298,15 @@ function skyCaricamentoNascondi() {
   splashPlanetarioNascondi();
 }
 
-// Lo splash appartiene solo all'apertura diretta del planetario (PWA o link
-// con ?vista=cielo). Due fotogrammi lasciano dipingere il cielo prima della
-// dissolvenza, così sotto non compare mai una superficie ancora vuota.
-function splashPlanetarioNascondi() {
+// Sul planetario due fotogrammi precedono la dissolvenza. Le altre pagine
+// non dipendono dal catalogo del cielo e tolgono immediatamente lo splash.
+function splashPlanetarioNascondi(immediato = false) {
   const splash = document.getElementById('splash-planetario');
+  if (immediato) {
+    document.documentElement.classList.remove('avvio-planetario');
+    if (splash) splash.remove();
+    return;
+  }
   if (!splash || !document.documentElement.classList.contains('avvio-planetario')) return;
   requestAnimationFrame(() => requestAnimationFrame(() => {
     splash.classList.add('in-uscita');
@@ -47257,7 +47281,7 @@ function esportaBackup() {
     // salvarla nel Diario, quindi dal Diario l'albo non si ricostruisce —
     // perderlo vuol dire perdere le serate, non una memoria di comodo.
     missioneAlbo: localStorage.getItem('astrocalendario_missione_albo'),
-    // v484: i nomi dati alle CosmoStorie pronte e quelle tolte dalla
+    // v486: i nomi dati alle CosmoStorie pronte e quelle tolte dalla
     // pagina: scelte fatte a mano, come il cielo di casa
     cosmoStorie: localStorage.getItem('astrocal_cosmostorie_v1')
   };

@@ -407,7 +407,7 @@
       scala: 0.8, voce: { ritmo: '0%', tono: '0Hz' }, espressione: 'neutral', personalita: 'nave' },
     robot:    { pelle: '#1e293b', iride: '#7dd3fc', sottotitolo: '#cbd5e1', guance: '#38bdf8', genere: 'm', sagoma: 'tars',
       scala: 0.8, voce: { ritmo: '-4%', tono: '-12Hz' }, espressione: 'neutral', personalita: 'robot' },
-    // v484: chi vive in cinque dimensioni (Loro, nel tesseratto): una figura
+    // v486: chi vive in cinque dimensioni (Loro, nel tesseratto): una figura
     // di luce con le sue copie nel tempo (`disegnaPresenza`, §6-quater)
     presenza: { pelle: '#ede9fe', iride: '#7c3aed', sottotitolo: '#ddd6fe', guance: '#c4b5fd', labbra: '#8b5cf6', genere: 'f', sagoma: 'presenza',
       luce: '#fde68a', scala: 0.8, voce: { ritmo: '-10%', tono: '-2Hz' }, espressione: 'mysterious', personalita: 'presenza' }
@@ -807,7 +807,7 @@
     mann_planet: { famiglia: 'pianeta', genere: 'm', nome: 'storie.nome.mann_planet', cosmo: 'idea', alias: ['Pianeta di Mann', "Mann's planet"],
       pelle: '#e2e8f0', iride: '#475569', sottotitolo: '#e0f2fe', guance: '#bae6fd', peli: '#f8fafc', baffi: 'spioventi', decoro: 'ghiaccio',
       voce: { ritmo: '-8%', tono: '-6Hz' }, espressione: 'sleepy', personalita: 'mann_planet' },
-    /* v484, «Interstellar · Parte 2: il tesseratto»: Murph bambina (la sera
+    /* v486, «Interstellar · Parte 2: il tesseratto»: Murph bambina (la sera
      * in cui il papà parte, dieci anni, i capelli castano-rossi e le
      * lentiggini, la maglietta da ragazzina), Murph anziana (i capelli
      * bianchi lunghi, le rughe: è lei che Cooper ritrova sulla Stazione
@@ -1039,7 +1039,7 @@
     ranger:       { superficie: 'metallo', atmosfera: null, passo: 1, tratto: 'ranger' },
     lander:       { superficie: 'metallo', atmosfera: null, passo: 1, tratto: 'lander' },
     miller_planet: { superficie: 'oceani', atmosfera: { colore: '#94a3b8', spessore: 0.12, densita: 0.55 }, passo: 0.8, tratto: 'miller_planet' },
-    // v484: a Murph bambina e a Murph anziana gira attorno lo stesso
+    // v486: a Murph bambina e a Murph anziana gira attorno lo stesso
     // orologio (quello che le porterà le equazioni); a Loro il piccolo cubo
     // dorato del tesseratto, in un'orbita lenta lenta
     murph_bambina: { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.25, tratto: 'murph_bambina',
@@ -1137,7 +1137,7 @@
     // (le storie scrivono quanto durano: di serie quattro secondi, come il telo)
     starfield: 4000, wormhole: 4000, wormhole_tunnel: 4000, gargantua_view: 4000, miller_ocean: 4000,
     tidal_wave: 4000, mann_ice: 4000, fold: 4000, time_warp: 4000, orbit_path: 4000,
-    // v484, «Interstellar · Parte 2»: il tesseratto, la stanza di Murph, il
+    // v486, «Interstellar · Parte 2»: il tesseratto, la stanza di Murph, il
     // decollo delle stazioni, la Stazione Cooper, la stanza di Murph anziana
     // e il pianeta di Edmunds (sfondi); e i disegni della fisica: il cubo a
     // quattro dimensioni, le dimensioni una per una, la pellicola del tempo,
@@ -1156,7 +1156,7 @@
   const STOR_SFONDI_PIENI = ['starfield', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'mann_ice',
     'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet'];
   const STOR_POSTI_EFFETTO = ['center', 'left', 'right', 'top', 'bottom'];
-  /* v484: i disegni che spiegano la fisica di una battuta (il foglio
+  /* v486: i disegni che spiegano la fisica di una battuta (il foglio
    * piegato, l'orologio che corre, la fionda, il tesseratto, le dimensioni,
    * la pellicola del tempo, i libri, la polvere, le equazioni, l'orologio in
    * Morse) se ne vanno con la loro scena. Una storia stringe la scena appena
@@ -3416,14 +3416,14 @@
     ctx.closePath();
   }
   const COLORI_FESTA = ['#ff5d8f', '#ffd23f', '#3bceac', '#5aa9ff', '#c084fc', '#ff8c42'];
-  // v484: i simboli della fisica che girano nell'effetto `equations` (la
+  // v486: i simboli della fisica che girano nell'effetto `equations` (la
   // gravità quantistica): sono segni matematici, uguali in tutte le lingue
   const STOR_GLIFI = ['∫', 'ħ', 'ψ', 'Σ', '∞', 'π', '∇', '∂', 'λ', 'Ω', 'Δ', 'φ', 'G', 'c²', '√', '⊗'];
 
   function storDisegnaEffetto(ctx, ef, x, y, r, t, L, H, ridotto) {
     const s = (t - ef.inizio) / ef.durata;
     if (!(s >= 0) || s > 1) return;
-    // v484: chi esce con la sua scena sfuma (`STOR_LAVAGNE`)
+    // v486: chi esce con la sua scena sfuma (`STOR_LAVAGNE`)
     const velo = ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1;
     if (!(velo > 0)) return;
     const R = Math.max(14, r || 0) * ef.scala;
@@ -3719,7 +3719,7 @@
         if (q < 0.25) { ctx.fillStyle = '#fffbeb'; stellaPiena(ctx, qx, qy, R * 0.5 * (1 - q * 4), 6, 0, 0.4); }
       }
     } else if (tipo === 'hypercube') {
-      // v484: il tesseratto vero, un cubo a quattro dimensioni. I suoi sedici
+      // v486: il tesseratto vero, un cubo a quattro dimensioni. I suoi sedici
       // vertici girano in due piani alla volta (quello di x e della quarta
       // direzione, w, e quello di y e z): l'ombra che ne arriva nel nostro
       // spazio è un cubo dentro un cubo che si rivolta come un guanto, il
@@ -3753,7 +3753,7 @@
       }
       for (const p of pv) { ctx.fillStyle = '#fffbeb'; ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.5, R * 0.08), 0, Math.PI * 2); ctx.fill(); }
     } else if (tipo === 'dimensions') {
-      // v484: le dimensioni, una alla volta: un punto, che strisciando fa una
+      // v486: le dimensioni, una alla volta: un punto, che strisciando fa una
       // linea, che strisciando di lato fa un quadrato, poi un cubo, poi il
       // tesseratto (il cubo dentro al cubo); ogni passo una direzione in più.
       // Alla fine attorno all'ultimo gira l'anello del tempo: per Loro anche
@@ -3805,7 +3805,7 @@
         ctx.fillStyle = '#fffbeb'; stellaPiena(ctx, px, py, R * 0.22 * q, 4, a, 0.35);
       }
     } else if (tipo === 'time_strip') {
-      // v484: il tempo visto da Loro, una pellicola. Ogni fotogramma è un
+      // v486: il tempo visto da Loro, una pellicola. Ogni fotogramma è un
       // istante della stanza di Murph (la finestra, e lei che cresce, da
       // bambina a grande) e stanno tutti lì, uno accanto all'altro; un
       // cursore di luce ci passeggia avanti e indietro, perché in cinque
@@ -3840,7 +3840,7 @@
       ctx.fillStyle = '#fffbeb'; stellaPiena(ctx, px, py, R * 0.3, 5, t / 500, 0.45);
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.stroke();
     } else if (tipo === 'books_fall') {
-      // v484: i libri che cadono dallo scaffale di Murph: li spinge Cooper,
+      // v486: i libri che cadono dallo scaffale di Murph: li spinge Cooper,
       // dal tesseratto, con la gravità. Cadono a gruppi, lunghi e corti,
       // come i punti e le linee del Morse (R-E-S-T-A: «resta»)
       const W = R * 7.5, y0 = y, n = 15, bw = W / n;
@@ -3879,7 +3879,7 @@
         ctx.beginPath(); ctx.ellipse(px, pav, R * (0.4 + u * 0.8), R * (0.12 + u * 0.2), 0, 0, Math.PI * 2); ctx.fill();
       }
     } else if (tipo === 'dust_binary') {
-      // v484: la polvere che cade a righe sul pavimento. Non è un caso: è la
+      // v486: la polvere che cade a righe sul pavimento. Non è un caso: è la
       // gravità che Cooper muove dal tesseratto, e le righe larghe e strette
       // sono un codice binario (uno e zero): le coordinate della NASA
       const W = R * 8.5, n = 12, bit = [1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0], w0 = W / n;
@@ -3914,7 +3914,7 @@
         else { ctx.beginPath(); ctx.ellipse(cx, cy, R * 0.14, R * 0.22, 0, 0, Math.PI * 2); ctx.lineWidth = Math.max(1.5, R * 0.07); ctx.strokeStyle = '#fde68a'; ctx.stroke(); }
       }
     } else if (tipo === 'equations') {
-      // v484: la gravità quantistica. I simboli della relatività e della
+      // v486: la gravità quantistica. I simboli della relatività e della
       // meccanica quantistica (gli integrali, la costante di Planck, la
       // funzione d'onda, l'infinito…) girano in tondo sempre più stretti
       // finché si fondono in un punto — l'equazione finita — che si accende
@@ -3941,7 +3941,7 @@
         ctx.stroke();
       }
     } else if (tipo === 'morse_watch') {
-      // v484: l'orologio che Cooper lasciò a Murph. Dal tesseratto lui muove
+      // v486: l'orologio che Cooper lasciò a Murph. Dal tesseratto lui muove
       // con la gravità la lancetta dei secondi: scatti corti e lunghi, punti
       // e linee del codice Morse, e così le passa i dati della singolarità.
       // Dalla punta della lancetta escono i punti e le linee, verso destra.
@@ -4332,7 +4332,7 @@
         ctx.beginPath(); ctx.arc(px, py, 0.8 + dado(d) * 1.3, 0, Math.PI * 2); ctx.fill();
       }
     } else if (tipo === 'tesseract') {
-      // v484, «Interstellar · Parte 2»: dentro al tesseratto. Il film lo
+      // v486, «Interstellar · Parte 2»: dentro al tesseratto. Il film lo
       // mostra come una biblioteca senza fine: la stanza di Murph ripetuta
       // in tutte le direzioni, ogni copia un istante diverso, e fra l'una e
       // l'altra i fili dorati del tempo (le «linee d'universo» di ogni
@@ -4394,7 +4394,7 @@
         }
       }
     } else if (tipo === 'murph_room') {
-      // v484: la stanza di Murph vista da dietro la libreria, come dal
+      // v486: la stanza di Murph vista da dietro la libreria, come dal
       // tesseratto: davanti le coste dei libri al contrario e le assi degli
       // scaffali, in mezzo il varco da cui si vede la camera — la parete, la
       // finestra con la luce polverosa del tramonto, il letto, il pavimento a
@@ -4462,7 +4462,7 @@
       ver.addColorStop(0, 'rgba(0,0,0,0.35)'); ver.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = ver; ctx.fillRect(L - largo * 1.6, 0, largo * 0.6, H);
     } else if (tipo === 'liftoff') {
-      // v484: la Terra di Murph, al tramonto, con la polvere nell'aria e i
+      // v486: la Terra di Murph, al tramonto, con la polvere nell'aria e i
       // campi di granturco fino all'orizzonte; poi le stazioni-cilindro, con
       // dentro milioni di persone, si staccano dal suolo una dopo l'altra
       // e salgono dritte (la gravità controllata grazie alle equazioni)
@@ -4507,7 +4507,7 @@
           } });
       }
     } else if (tipo === 'cooper_station') {
-      // v484: dentro alla Stazione Cooper, il cilindro che gira attorno a
+      // v486: dentro alla Stazione Cooper, il cilindro che gira attorno a
       // Saturno: guardando lungo l'asse la terra fa il giro tutto attorno —
       // i campi, il fiume, le case, anche sopra la testa, coi tetti rivolti
       // verso il centro (girando, la stazione spinge tutto verso il bordo:
@@ -4551,7 +4551,7 @@
       ctx.beginPath(); ctx.ellipse(cx + rf * 0.15, cy + rf * 0.1, rf * 0.72, rf * 0.18, -0.3, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     } else if (tipo === 'bedside') {
-      // v484: la stanza dove Murph, anziana, aspetta il papà: la luce calda
+      // v486: la stanza dove Murph, anziana, aspetta il papà: la luce calda
       // della lampada, il letto con la coperta lilla e, nella finestra
       // grande, lo spazio con Saturno e i suoi anelli (la Stazione Cooper
       // gli gira attorno)
@@ -4591,7 +4591,7 @@
       lampada.addColorStop(0, `rgba(253, 230, 138, ${0.45 + (ridotto ? 0 : 0.04 * Math.sin(t / 1300))})`); lampada.addColorStop(1, 'rgba(253, 230, 138, 0)');
       ctx.fillStyle = lampada; ctx.fillRect(0, 0, L, H);
     } else if (tipo === 'edmunds_planet') {
-      // v484: il pianeta di Edmunds, quello giusto, dove Brand è arrivata
+      // v486: il pianeta di Edmunds, quello giusto, dove Brand è arrivata
       // da sola: il cielo che dal blu della notte schiarisce all'alba, un
       // sole lontano che sorge, le montagne rosse, il campo con la cupola
       // accesa e la bandierina. È il finale: c'è aria, c'è luce.
@@ -4716,7 +4716,7 @@
       finestre: [[0.5, -0.16, 0.21], [0, -0.16, 0.21], [-0.5, -0.16, 0.21]] },
     endurance:     { volto: [0, 0, 0.6], ingombro: 1.95, ospiteK: 1.55,
       finestre: [[-0.3, 0.02, 0.16], [0, 0.02, 0.16], [0.3, 0.02, 0.16]] },
-    // v484: Loro, la figura di luce del tesseratto (il volto sulla testa,
+    // v486: Loro, la figura di luce del tesseratto (il volto sulla testa,
     // come per una persona; le copie nel tempo escono di lato)
     presenza:      { volto: [0, -0.18, 0.6], ingombro: 1.6 }
   };
@@ -5023,7 +5023,7 @@
     });
   }
 
-  /* Loro (v484), chi vive in cinque dimensioni. Nel film non si vedono mai:
+  /* Loro (v486), chi vive in cinque dimensioni. Nel film non si vedono mai:
    * si sentono, piegano lo spazio, costruiscono il tesseratto. Qui sono una
    * figura di luce — la testa tonda e le spalle, come una persona, ma senza
    * vestiti né capelli — e dietro, in diagonale, le sue copie sempre più
@@ -8894,7 +8894,7 @@
     'spin', 'tada', 'ding', 'drumroll', 'rumble', 'spacetime',
     // v482, «Interstellar»
     'starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice', 'fold', 'time_warp', 'orbit_path',
-    // v484, «Interstellar · Parte 2»
+    // v486, «Interstellar · Parte 2»
     'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet',
     'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
   // Il rumore che fa ogni gesto, quando la storia non ne sceglie un altro
@@ -9147,7 +9147,7 @@
       for (let i = 0; i < 40; i++) { soffio(a, u, { t0: q, durata: 0.02, filtro: 'bandpass', f0: 3000, q: 4, picco: 0.14 * v, da: dado(d) }); q += Math.max(0.025, 0.16 * (1 - i / 40)); }
     },
     orbit_path(a, u, t, d, v) { soffio(a, u, { t0: t + 0.5, durata: 3, filtro: 'bandpass', f0: 200, fm: 1600, f1: 300, q: 1.4, picco: 0.3 * v, attacco: 1.2, ciclo: true }); },
-    // v484, «Interstellar · Parte 2»: il coro d'organo del tesseratto, la
+    // v486, «Interstellar · Parte 2»: il coro d'organo del tesseratto, la
     // stanza quieta col vento di polvere fuori, il rombo del decollo, l'aria
     // della Stazione Cooper con le campanelle, il bip dell'ospedale, l'alba
     // di Edmunds; l'arpeggio del cubo a quattro dimensioni, i cinque gradini
@@ -9630,7 +9630,7 @@
         // Il botto si sente: il rumore dello stesso nome, o quello scelto
         const rumore = suonoScelto(p, p.type);
         if (rumore) storSuona(rumore, { seme: p.type + (p.target || ''), volume: ef ? Math.min(1.4, 0.75 + 0.25 * ef.scala) : 1 });
-        // v484: un disegno che spiega una battuta se ne va con la sua scena
+        // v486: un disegno che spiega una battuta se ne va con la sua scena
         if (ef && STOR_LAVAGNE.includes(ef.tipo)) return { chiudi() { if (!ef.via) ef.via = stor.orologio; } };
         return {};
       }
@@ -10278,7 +10278,7 @@
    * durata, personaggi con la loro personalità, «Guarda la storia» e
    * «Duplica e modifica». Sotto, l'anteprima di un personaggio e l'esempio
    * del DSL. Tutto si riscrive al cambio lingua. */
-  /* v484: le CosmoStorie pronte si possono rinominare, modificare ed
+  /* v486: le CosmoStorie pronte si possono rinominare, modificare ed
    * eliminare. Sono scritte nel codice (`demo-predefiniti.js`), quindi
    * «eliminare» vuol dire toglierle da questa pagina (si rimettono da
    * «CosmoStorie nascoste»), e il nome nuovo vale solo qui: tutti e due
@@ -10315,7 +10315,7 @@
     const st = radice.StudioStorie;
     let ufficiali = [];
     try { ufficiali = st && typeof st.ufficiali === 'function' ? st.ufficiali() : []; } catch (_) { ufficiali = []; }
-    // v484: una versione dello Studio sta al posto della sua storia pronta;
+    // v486: una versione dello Studio sta al posto della sua storia pronta;
     // le pronte nascoste non ci sono, quelle rinominate col nome nuovo
     const mie = storCosmoMie();
     const alPosto = new Map();
@@ -10444,14 +10444,14 @@
         segno = document.createElement('span');
         segno.className = 'storia-durata storia-tua';
         segno.textContent = t(st.sostituisce ? 'storie.modificata' : 'storie.dalloStudio');
-        // v484: la tua versione di una storia pronta può tornare l'originale
+        // v486: la tua versione di una storia pronta può tornare l'originale
         if (st.sostituisce) azioni.append(tasto(t('storie.ripristina'), t('storie.ripristinaAiuto'), { storiaRipristina: st.progetto }));
       } else if (radice.StudioStorie && typeof radice.StudioStorie.modificaStoria === 'function') {
-        // v484: una storia pronta si modifica nello Studio (la tua versione
+        // v486: una storia pronta si modifica nello Studio (la tua versione
         // ne prende il posto); «Duplica e modifica» resta per farne un'altra
         azioni.append(tasto(t('storie.modifica'), t('storie.modificaAiuto'), { storiaModifica: st.chiave }));
       }
-      // v484: rinominare ed eliminare, per tutte le schede
+      // v486: rinominare ed eliminare, per tutte le schede
       azioni.append(
         tasto(t('storie.rinomina'), t('storie.rinominaAiuto'), { storiaRinomina: st.chiave }),
         tasto(t('storie.elimina'), t(st.progetto ? 'storie.eliminaAiutoStudio' : 'storie.eliminaAiuto'), { storiaElimina: st.chiave }, 'studio-pericolo'));
@@ -10511,7 +10511,7 @@
       espr.value = prima;
     }
   }
-  /* Il modulo per il nome nuovo (v484): dentro alla scheda, sotto ai
+  /* Il modulo per il nome nuovo (v486): dentro alla scheda, sotto ai
    * tasti, col titolo e la descrizione di adesso già scritti. Per una storia
    * pronta rinominata c'è anche «Nome originale». */
   function storModuloNome(scheda, st, cantiere) {
@@ -10626,7 +10626,7 @@
       sez.append(h, aiuto, lista); box.append(sez);
     }
   }
-  // I tasti della gestione (v484): `true` se il clic era loro
+  // I tasti della gestione (v486): `true` se il clic era loro
   function storClicGestione(e) {
     const ss = radice.StudioStorie;
     const conferma = testo => !radice.confirm || radice.confirm(testo);
@@ -10706,7 +10706,7 @@
     storRiempiPagina();
     if (haI18n() && typeof radice.astroI18n.alCambio === 'function') radice.astroI18n.alCambio(storRiempiPagina);
     sezione.addEventListener('click', e => {
-      // v484: rinominare, modificare, eliminare, rimettere, e le storie in cantiere
+      // v486: rinominare, modificare, eliminare, rimettere, e le storie in cantiere
       if (storClicGestione(e)) return;
       // v461: una storia dello Studio messa fra le CosmoStorie torna nello Studio
       const nelloStudio = e.target.closest('[data-storia-studio]');

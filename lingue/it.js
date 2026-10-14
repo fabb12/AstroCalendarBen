@@ -6245,7 +6245,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "studio.suono.nome.fold": "Foglio e matita",
     "studio.suono.nome.time_warp": "Ticchettio veloce",
     "studio.suono.nome.orbit_path": "Fionda",
-    // v484: «Interstellar · Parte 2: il tesseratto», Murph bambina e anziana, Loro, gli sfondi e i disegni nuovi
+    // v486: «Interstellar · Parte 2: il tesseratto», Murph bambina e anziana, Loro, gli sfondi e i disegni nuovi
     "demo.builtin.storia_interstellar2.title": "CosmoStorie · Interstellar 2: il tesseratto",
     "demo.builtin.storia_interstellar2.description": "La seconda parte di «Interstellar»: Cooper cade dentro Gargantua e si ritrova nel tesseratto, la biblioteca senza fine costruita da «Loro», gli esseri a cinque dimensioni. Da dietro la libreria di Murph diventa il suo «fantasma», le manda in Morse le equazioni della gravità quantistica nella lancetta dell'orologio, e Murph le usa per far partire l'umanità dalla Terra. Si scopre chi sono Loro (siamo noi, nel futuro) e come vedono il tempo: un posto in cui camminare. Poi il ritorno vicino a Saturno, la Stazione Cooper che gira per fare la gravità, e l'abbraccio con Murph anziana.",
     "storie.titolo.interstellar2": "Interstellar · Parte 2: il tesseratto",
@@ -6345,7 +6345,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "studio.suono.nome.dust_binary": "Sabbia che cade",
     "studio.suono.nome.equations": "Equazione risolta",
     "studio.suono.nome.morse_watch": "Bip in Morse",
-    // v484: rinominare, modificare ed eliminare le CosmoStorie e le storie in cantiere
+    // v486: rinominare, modificare ed eliminare le CosmoStorie e le storie in cantiere
     "storie.modifica": "Modifica",
     "storie.modificaAiuto": "Apre la storia nello Studio per cambiarla: la tua versione prende il suo posto fra le CosmoStorie (e puoi sempre tornare all'originale)",
     "storie.rinomina": "Rinomina",
