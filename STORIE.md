@@ -3190,7 +3190,7 @@ Ognuno ha il suo rumore (`STOR_SUONI`; i soffi più lunghi di due secondi
 girano in tondo, `ciclo`) e il suo nome nello Studio (`storie.effetto.*`,
 `studio.suono.nome.*`).
 
-**La storia** (`storia_interstellar`, 51 scene (43 fino alla v487), una battuta ciascuna, ~9
+**La storia** (`storia_interstellar`, 48 scene (43 fino alla v487, 51 nella v488–v489), una battuta ciascuna, ~9
 minuti col tetto delle scene; con la voce sintetica molto meno):
 
 | Scene | Cosa |
@@ -3590,3 +3590,65 @@ recente e gli altri dispositivi la prendono col giro dello Studio. Le otto
 voci nuove mancano: le fa il tasto «Voci ElevenLabs» della scheda, che genera
 solo quelle (le altre sono già sul repository). La copia rifatta dal suo
 progetto si valida nel browser (51 scene).
+
+
+### «Interstellar 1» una sola, e il foglio di Romilly una volta sola, disegnato meglio (v490)
+
+«Cosmo storie tieni solo una versione con le voci vere di cosmo storia parte 1
+Interstellar e mostra solo una volta la questione del worm hole foglio e
+matita. Fai meglio il disegno del foglio e matita.»
+
+**Una versione sola.** Fra le CosmoStorie c'erano due «Interstellar 1»: la
+storia pronta (`storia_interstellar`) e la copia dello Studio
+«CosmoStorie - Interstellar: oltre Gargantua (Voci reali)» (`puf472ni`). Le
+voci vere sono le stesse per tutte e due: i file
+`storie/<personaggio>/it/storia_interstellar-<n>.mp3` del manifest, che la
+narrazione suona nella storia pronta (e nelle copie solo dal testo). Resta la
+storia pronta, che è quella a cui le voci appartengono e che si corregge in un
+posto solo; la copia è tolta da `storie-studio/storie.json` con la sua lapide
+in `eliminati` (più recente del suo `aggiornato`), così sparisce anche dai
+dispositivi che ce l'hanno al prossimo giro dello Studio (`studioUnisci`), e
+dalle battute dello Studio in `storie/storie-studio.json` (non ne aveva).
+
+**Il foglio una volta sola.** Nella v488 il foglio si mostrava due volte: di
+fila nella scena della battuta 4 (Romilly, con la voce vera), poi di nuovo
+«piano, passo per passo» in tre scene (battute 5–7, Cooper e Romilly, senza
+voce vera). Le tre scene sono tolte, coi cartelli `foglio`, `piega`,
+`tunnel`; la scena della battuta 4 dura 23 s e il foglio va coi tempi della
+voce (17,5 s, le pause trovate con `silencedetect`): piatto fino a «ma se
+pieghi lo spazio» (8 s), la piega fino a 10,3 s, la matita su «e lo buchi con
+una matita» (10,2–12,3 s), il tunnel su «i due punti si toccano» (fatto a
+14 s), e la navicella che lo attraversa su «una scorciatoia» (14–17 s). La
+scena è scritta di 23 s, ma in una storia chiude 40 ms dopo la voce
+(`stringiVoce`): il disegno deve finire prima dei 17,5 s della battuta. Romilly passa a `excited` e a `proud`,
+Cooper a `impressed` quando la matita buca. Le tappe (`stage`) restano per lo
+Studio.
+
+Le battute si rinumerano di nuovo (la 8 diventa la 5, … la 51 la 48), con i
+due dizionari, la regia, il manifest (impronte e firme uguali: «Manifest già
+a posto») e i 38 audio dalla 8 in su spostati con `git mv`; la storia passa a
+48 scene. `voci-storie.js --controlla`: nessuna voce da rifare.
+
+**Il disegno** (`storDisegnaFoglio`):
+- l'inquadratura si adatta al foglio a ogni fotogramma (il riquadro dei
+  vertici del bordo, e lo spazio sopra per la matita): a metà piega il foglio
+  in piedi usciva in alto, piegato restava piccolo;
+- la Terra e la galassia sono dischi **posati sul foglio**, in prospettiva
+  (`disco`: i punti del cerchio stanno sul foglio), con la profondità della
+  loro faccia meno mezza cella (`sulFoglio`): prima le facce davanti le
+  tagliavano a metà. La galassia ha i bracci disegnati sul foglio;
+- la **matita** è in 3D: tronchi a sei facce in luce e in ombra (la mina, il
+  legno temperato, il corpo giallo, la ghiera con le righe, la gomma con la
+  cima), a pezzi ognuno alla sua profondità, così il foglio copre la parte che
+  l'ha già attraversato. Scende con la sua ombra sul foglio di sopra, lo buca
+  (un foro con l'orlo strappato), e il foglio di sopra si fa velo (`velo`)
+  perché si veda la punta attraversare lo spazio fra le pieghe e bucare la
+  Terra; mentre il tunnel nasce dai due fori si sfila verso l'alto;
+- il tunnel ha, oltre agli anelli, le linee che li cuciono (l'imbuto dei
+  libri di relatività).
+
+Prove: `prova-demo.js`, `prova-storie.js` (120), `prova-voci-cosmostorie.js`
+(10), `prova-storie-repo.js` (19), `prova-musica-storie.js` (21),
+`prova-cosmostorie-gestione.js` (8), `prova-i18n.js`, `controlla-i18n.js
+--patto` (342), `voci-storie.js --controlla`. Il disegno guardato in Chromium
+a tutte le tappe, da solo e nella scena.
