@@ -7602,6 +7602,9 @@ function mostraVista(nome, opzioni = {}) {
     try { localStorage.setItem(CHIAVE_ULTIMA_VISTA, nome); } catch (_) { /* Memoria non disponibile. */ }
   }
   document.body.classList.toggle('vista-planetario-attiva', nome === 'cielo');
+  // Il catalogo del cielo chiude lo splash solo se il planetario si apre.
+  // Ripristinando un'altra pagina non lo carichiamo: togli il velo subito.
+  if (nome !== 'cielo') splashPlanetarioNascondi(true);
 
   // Una vista costruita in un'altra lingua si ridisegna adesso, non prima:
   // al cambio lingua si segna il debito e lo si paga qui, quando quella vista
@@ -29295,11 +29298,15 @@ function skyCaricamentoNascondi() {
   splashPlanetarioNascondi();
 }
 
-// Lo splash appartiene solo all'apertura diretta del planetario (PWA o link
-// con ?vista=cielo). Due fotogrammi lasciano dipingere il cielo prima della
-// dissolvenza, così sotto non compare mai una superficie ancora vuota.
-function splashPlanetarioNascondi() {
+// Sul planetario due fotogrammi precedono la dissolvenza. Le altre pagine
+// non dipendono dal catalogo del cielo e tolgono immediatamente lo splash.
+function splashPlanetarioNascondi(immediato = false) {
   const splash = document.getElementById('splash-planetario');
+  if (immediato) {
+    document.documentElement.classList.remove('avvio-planetario');
+    if (splash) splash.remove();
+    return;
+  }
   if (!splash || !document.documentElement.classList.contains('avvio-planetario')) return;
   requestAnimationFrame(() => requestAnimationFrame(() => {
     splash.classList.add('in-uscita');
