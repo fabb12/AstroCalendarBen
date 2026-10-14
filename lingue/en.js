@@ -195,6 +195,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "demo.opzioneMusicaEclissiAiuto": "Choose the track used by every demo, both built-in and ones you create. During the demo it plays at 30%; any background music already playing stops and afterwards comes back exactly as it was.",
     "demo.opzioneCameraStorie": "CosmoStories: the camera moves close to whoever is speaking",
     "demo.opzioneSuoniStorie": "CosmoStories: sound effects",
+    "demo.opzioneVolumeSuoni": "Sound effects volume",
     "demo.opzioneStorieAiuto": "When a character speaks the camera moves in and frames their eyes; when something blows up it goes to look and the picture shakes. Explosions, lightning, jumps and journeys have their own sounds. With reduced motion the camera moves more slowly and without shaking. By default names, labels and orbits are hidden: only the characters are shown.",
     "demo.opzioneScritteStorie": "CosmoStories: show names and labels",
     "demo.opzioneOrbiteStorie": "CosmoStories: show orbits",
