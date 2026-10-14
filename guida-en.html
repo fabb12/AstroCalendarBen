@@ -1480,7 +1480,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
     (never the same one for two of them), generates all the lines with their emotion, and from then on the
     story speaks with those voices. Before starting it tells you how many lines and characters it will cost;
     then you can listen to each voice, ask for “Another voice” (only that character's lines are redone) or
-    remove them all. Next to Carl Sagan, the storytellers of the sky now include Pythagoras, Plato,
+    remove them all. If the Studio (Settings → Sync) has a GitHub token that can write, the voices also go
+    straight to the repository, into each character's folder: on your other devices they play as soon as the
+    site is republished (a few minutes). Without a token they stay on this device, and the window says so.
+    Next to Carl Sagan, the storytellers of the sky now include Pythagoras, Plato,
     Aristotle, Eratosthenes, Archimedes, Ptolemy, Copernicus, Galileo, Huygens, Schiaparelli, Einstein, Hawking,
     Neil Armstrong, Luca Parmitano, Samantha Cristoforetti and Astro Ben: you will find them in the Studio,
     under “Storytellers”, each with their own discovery circling them (Galileo's four moons, the Sun going
@@ -1547,7 +1550,10 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       file, import, duplicate, the script, the voice file and, at the bottom, delete), <b>Sync</b> (where the
       repository stands, “Sync now”, “Save by itself every 5 minutes” and the token: before writing, the changes
       from the other devices are fetched and merged with yours, scene by scene and line by line, and where both
-      changed the same thing the most recent one stays), <b>ElevenLabs</b> (the key, the model and the credits) and
+      changed the same thing the most recent one stays; “Save and sync” checks the token right away and says
+      what is missing if it can't see the repository or can't write; below the status you see how the last
+      round went. The lines' voices travel with the story: a device that still has the old voice doesn't put it
+      back over one redone elsewhere, and downloads the new one, which plays straight away), <b>ElevenLabs</b> (the key, the model and the credits) and
       <b>YouTube</b> (the connected channel and “Record and publish on YouTube”, which is also at the bottom of
       the Studio: see <a href="#youtube">Publishing on YouTube</a>).
       With ElevenLabs the line is generated with the right <b>intonation</b>: the emotion is the face the

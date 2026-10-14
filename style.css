@@ -12922,6 +12922,9 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 .studio-imp-pericolo { margin-top: 8px; padding-top: 10px; border-top: 1px dashed rgba(252, 165, 165, 0.35); }
 .studio-imp-stato { margin: 0; padding: 8px 10px; border-radius: 10px; font-size: 0.82rem; background: rgba(251, 191, 36, 0.1); color: #fde68a; overflow-wrap: anywhere; }
 .studio-imp-stato.ok { background: rgba(52, 211, 153, 0.1); color: #a7f3d0; }
+/* v483: l'ultimo giro col repository: rosso chiaro se non è riuscito */
+.studio-repo-ultimo { margin: 6px 0 0; overflow-wrap: anywhere; }
+.studio-repo-ultimo.errore { color: #fca5a5; }
 @media (max-width: 767px) {
   .studio-imp-voce > .tasto-cielo { flex: 1 1 100%; }
 }

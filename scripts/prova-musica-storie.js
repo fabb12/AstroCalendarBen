@@ -13,7 +13,9 @@
  * trova, e una traccia sostituita che toglie dal repository quella vecchia.
  * v476: le voci delle battute (personali ed ElevenLabs) sul repository così
  * come sono nello Studio: rifatte, tolte, sulle battute di una CosmoStoria,
- * e oltre i 40 MB di un commit. */
+ * e oltre i 40 MB di un commit. v483: una voce di prima non torna sopra una
+ * rifatta altrove, l'altro dispositivo scarica quella giusta, le voci fatte
+ * dalla scheda di una CosmoStoria vanno sul repository, e la prova del token. */
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -42,8 +44,13 @@ const gh = {
 }
 const risposta = (status, corpo, testo) => ({
   status, ok: status >= 200 && status < 300,
-  json: async () => corpo, text: async () => testo !== undefined ? testo : JSON.stringify(corpo)
+  json: async () => corpo, text: async () => testo !== undefined ? String(testo) : JSON.stringify(corpo),
+  // v483: i byte di un audio scaricato dal repository
+  arrayBuffer: async () => { const b = Buffer.isBuffer(testo) ? testo : Buffer.from(testo !== undefined ? String(testo) : JSON.stringify(corpo)); return b.buffer.slice(b.byteOffset, b.byteOffset + b.length); }
 });
+// v483: un token che legge soltanto, e uno che non vede il repository
+const TOKEN_LETTURA = 'sola-lettura', TOKEN_CIECO = 'cieco';
+const scaricati = [];
 async function fetchFinto(url, op = {}) {
   const u = new URL(url);
   const metodo = op.method || 'GET';
@@ -53,14 +60,18 @@ async function fetchFinto(url, op = {}) {
   assert.ok(u.pathname.startsWith(base), u.pathname);
   const via = decodeURIComponent(u.pathname.slice(base.length));
   const corpo = op.body ? JSON.parse(op.body) : null;
+  if (intest.Authorization === 'Bearer ' + TOKEN_CIECO) return risposta(404, { message: 'Not Found' });
+  if (metodo !== 'GET' && intest.Authorization === 'Bearer ' + TOKEN_LETTURA) return risposta(403, { message: 'Resource not accessible by personal access token' });
   if (metodo !== 'GET' && intest.Authorization !== 'Bearer ' + TOKEN) return risposta(401, { message: 'Bad credentials' });
+  if (metodo === 'GET' && via === '') return risposta(200, { full_name: REPO, permissions: { push: true } });
   if (metodo === 'GET' && via.startsWith('/contents/')) {
     const dove = via.slice('/contents/'.length);
     const tutto = gh.tutto();
     if (tutto.has(dove)) {
       const sha = tutto.get(dove);
+      if (intest.Accept === 'application/vnd.github.raw+json' && /\.(mp3|webm|ogg|m4a|wav)$/.test(dove)) scaricati.push(dove);
       return intest.Accept === 'application/vnd.github.raw+json'
-        ? risposta(200, null, gh.oggetti.get(sha).contenuto.toString('utf8'))
+        ? risposta(200, null, /\.json$/.test(dove) ? gh.oggetti.get(sha).contenuto.toString('utf8') : gh.oggetti.get(sha).contenuto)
         : risposta(200, { type: 'file', name: path.basename(dove), path: dove, sha });
     }
     const figli = new Map();
@@ -190,7 +201,9 @@ function dispositivo(token) {
     progetti: () => JSON.parse(localStorage.getItem(St.CHIAVE) || '[]'),
     salva(p) {
       p.demoChiave = ctx.AstroDemo.libreria.salva(St.copione(p), p.demoChiave || undefined);
-      p.aggiornato = ++orologio;
+      // v483: mai all'indietro, come nell'app (`studioPiuNuovo`): le voci
+      // caricate col dispositivo spostano l'ora più avanti dell'orologio finto
+      p.aggiornato = Math.max(++orologio, (p.aggiornato || 0) + 1);
       const tutti = this.progetti().filter(x => x.id !== p.id);
       localStorage.setItem(St.CHIAVE, JSON.stringify([p, ...tutti]));
       return St.sincronizza({ spingi: true, titolo: p.titolo });
@@ -601,6 +614,115 @@ prova('v476: oltre i 40 MB di un commit, le voci vanno tutte nello stesso giro (
   }
   assert.ok(gh.scritture - prima >= 2, 'in più commit');
   assert.match(await A.St.sincronizza({ spingi: true }), /già aggiornato/);
+});
+
+// --- v483: chi ha la voce giusta, le voci delle CosmoStorie, il token ---------
+// «Se genero le voci su un dispositivo e salvo, dagli altri devo poterle
+// sentire; e non devo sovrascrivere una versione più nuova.» Tre buchi:
+// un dispositivo con la voce di prima la rimandava sopra quella rifatta
+// altrove (bastava che il testo fosse lo stesso); l'altro dispositivo non
+// la sentiva finché il sito non era ripubblicato; e le voci fatte dalla
+// scheda di una CosmoStoria non andavano mai sul repository.
+
+prova('v483: la storia ricorda quale file è la voce (SHA e estensione), e lo tiene riletta', async () => {
+  const p = corrente(), m0 = p.scene[0].momenti[0];
+  assert.match(m0.audio.sha, /^[0-9a-f]{40}$/);
+  assert.equal(m0.audio.est, 'mp3');
+  assert.equal(m0.audio.sha, shaGit(gh.file(audioDi(chiaveDi(p), m0.voce)[0])), 'lo SHA della storia è quello del file sul repository');
+  const r = A.St.ripulisci(JSON.parse(JSON.stringify(p)));
+  assert.equal(r.scene[0].momenti[0].audio.sha, m0.audio.sha);
+  const rotto = JSON.parse(JSON.stringify(p));
+  rotto.scene[0].momenti[0].audio.sha = 'zz'; rotto.scene[0].momenti[0].audio.est = 'exe';
+  const rr = A.St.ripulisci(rotto).scene[0].momenti[0].audio;
+  assert.equal(rr.sha, undefined); assert.equal(rr.est, undefined);
+});
+
+prova('v483: una voce rifatta su B non viene sovrascritta da quella vecchia di A, e A la scarica', async () => {
+  const p = corrente(), chiave = chiaveDi(p), n = p.scene[0].momenti[0].voce;
+  const percorso = audioDi(chiave, n)[0];
+  const diA = gh.file(percorso).toString();
+  // B prende la storia e rifà la voce della prima battuta
+  await B.St.sincronizza();
+  const suB = B.St.ripulisci(B.progetti().find(x => x.id === p.id));
+  B.St.apri(suB);
+  const diB = 'ID3 la voce rifatta su B, più nuova '.repeat(30);
+  assert.equal(await B.St.caricaVoce('scene.0.momenti.0', fileVoce(diB, 'voce.mp3', 'audio/mpeg'), { voce: VOCE_EL }), true);
+  assert.equal(gh.file(percorso).toString(), diB, 'B ha mandato la sua voce');
+  // A, che ha ancora la voce di prima nel browser, salva una modifica sua
+  const a = corrente();
+  a.obiettivo = 'Un ritocco fatto su A';
+  scaricati.length = 0;
+  const msg = await A.salva(a);
+  assert.equal(gh.file(percorso).toString(), diB, 'la voce vecchia di A era tornata sopra quella nuova di B');
+  assert.notEqual(diA, diB);
+  assert.equal(storieSulRepo().find(x => x.id === p.id).obiettivo, 'Un ritocco fatto su A', 'la modifica di A è arrivata');
+  assert.equal(storieSulRepo().find(x => x.id === p.id).scene[0].momenti[0].audio.sha, shaGit(Buffer.from(diB)));
+  assert.match(msg, /Scaricate 1 voci/, 'A scarica la voce di B e la suona subito: ' + msg);
+  assert.deepEqual(scaricati, [percorso]);
+  // e al giro dopo non scarica né manda più niente
+  scaricati.length = 0;
+  assert.match(await A.St.sincronizza({ spingi: true }), /già aggiornato/);
+  assert.deepEqual(scaricati, []);
+});
+
+prova('v483: le voci fatte dalla scheda di una CosmoStoria vanno nella cartella del personaggio, una volta sola', async () => {
+  const voce = Buffer.from('ID3 Cooper con la voce di ElevenLabs '.repeat(30));
+  const segnate = [];
+  let attesa = [{ chiave: 'eleven|cooper|it|abc', id: 'demo.narr.storia_interstellar.1', chi: 'cooper', lingua: 'it', blob: new Blob([voce], { type: 'audio/mpeg' }) },
+    // una battuta senza id (un pezzo di frase) non si sa dove metterla: resta qui
+    { chiave: 'eleven|cooper|it|def', id: '', chi: 'cooper', lingua: 'it', blob: new Blob([voce], { type: 'audio/mpeg' }) }];
+  let tolte = [];
+  A.ctx.VociFilmato = {
+    vociPerRepository: async () => attesa,
+    vociInAttesa: async () => attesa.length + tolte.length,
+    segnaSulRepository: async fatte => { segnate.push(...fatte); attesa = []; },
+    tolteDalRepository: () => tolte,
+    dimenticaTolte: percorsi => { tolte = tolte.filter(x => !percorsi.includes(x.percorso)); }
+  };
+  const percorso = 'audio/narrazione/storie/cooper/it/storia_interstellar-1.mp3';
+  const prima = gh.scritture;
+  // il salvataggio automatico parte anche solo per loro
+  const msg = await A.St.autoSalva();
+  assert.equal(gh.scritture, prima + 1, 'nessun commit: ' + msg);
+  assert.ok(gh.file(percorso) && gh.file(percorso).equals(voce), 'la voce non è sul repository');
+  assert.deepEqual(segnate.map(x => x.percorso), [percorso]);
+  assert.equal(segnate[0].sha, shaGit(voce));
+  assert.equal([...gh.tutto().keys()].filter(k => /storia_interstellar/.test(k)).length, 1);
+  // segnata, non riparte (anche se intanto un altro dispositivo l'ha rifatta)
+  const altra = Buffer.from('ID3 rifatta su un altro dispositivo '.repeat(30));
+  assert.equal(await A.St.autoSalva({ soloSeCambiate: true }), '', 'senza niente da mandare non fa giri');
+  // «Togli queste voci»: via dal repository solo se è ancora quella mandata da qui
+  tolte = [{ percorso, sha: shaGit(altra) }];
+  await A.St.sincronizza({ spingi: true });
+  assert.ok(gh.file(percorso), 'ha tolto una voce rifatta da un altro dispositivo');
+  assert.deepEqual(tolte, [], 'la richiesta resta in sospeso per sempre');
+  tolte = [{ percorso, sha: shaGit(voce) }];
+  await A.St.sincronizza({ spingi: true });
+  assert.equal(gh.file(percorso), null, 'la voce tolta è ancora sul repository');
+  delete A.ctx.VociFilmato;
+});
+
+prova('v483: la prova del token dice cosa non va (non vede il repository, legge soltanto, scaduto) e quando va', async () => {
+  const imp = t => ({ repo: REPO, ramo: RAMO, token: t });
+  assert.match((await A.St.verificaToken(imp(TOKEN))).messaggio, /Token a posto: posso scrivere su prova\/astro/);
+  assert.equal((await A.St.verificaToken(imp(TOKEN))).ok, true);
+  const lettura = await A.St.verificaToken(imp(TOKEN_LETTURA));
+  assert.equal(lettura.ok, false); assert.match(lettura.messaggio, /Read and write/);
+  const cieco = await A.St.verificaToken(imp(TOKEN_CIECO));
+  assert.equal(cieco.ok, false); assert.match(cieco.messaggio, /Repository access/);
+  const sbagliato = await A.St.verificaToken(imp('scaduto'));
+  assert.equal(sbagliato.ok, false); assert.match(sbagliato.messaggio, /non è valido o è scaduto/);
+  assert.equal((await A.St.verificaToken(imp(TOKEN))).ok, true);
+  // un token che non vede il repository, al salvataggio, non parla di rami
+  const C = dispositivo(TOKEN_CIECO);
+  const p = C.St.daModello('fasi'); p.titolo = 'Da C';
+  const msg = await C.salva(p);
+  assert.match(msg, /il token non vede prova\/astro/, msg);
+  assert.doesNotMatch(msg, /il ramo main non c'è$/);
+  // e l'ultimo giro si ricorda, per dirlo nelle Impostazioni
+  const u = C.St.repoImpostazioni().ultimo;
+  assert.equal(u.ok, false); assert.match(u.testo, /non vede/);
+  assert.equal(A.St.repoImpostazioni().ultimo.ok, true);
 });
 
 (async () => {

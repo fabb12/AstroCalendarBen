@@ -3266,3 +3266,65 @@ il voto e il carattere), `prova-elevenlabs-studio.js` (17),
 intera in Chromium (`STORIA=storia_interstellar node scripts/giro-storia.js`,
 nessun errore) e scena per scena. **Da guardare fuori dal contenitore**:
 ElevenLabs vero (la libreria, l'aggiunta delle voci all'account, i tag v3).
+
+### Il salvataggio su GitHub che arriva davvero sugli altri dispositivi (v483)
+
+«Quando metto il token la scrittura non funziona: la versione che voglio
+salvare non si allinea con quello che c'è su git, e dagli altri dispositivi
+non vedo niente. Se genero le voci con ElevenLabs su un dispositivo e salvo,
+devono finire tutte nelle loro cartelle, e da un altro dispositivo devo
+poterle sentire; senza sovrascrivere una versione più nuova.» Dal registro
+di `main`: dall'arrivo della v475 nessun commit «Storie dello Studio:».
+Quattro buchi, tre riprodotti in `scripts/prova-musica-storie.js` sul codice
+di prima:
+
+1. **Le voci della scheda di una CosmoStoria non partivano mai.** Il tasto
+   «Voci ElevenLabs» (v482) le teneva solo nello scaffale del filmato di
+   questo browser: salvare non mandava niente, e gli altri dispositivi
+   sentivano la voce di sistema. Adesso ogni voce ricorda la sua battuta
+   (`id`, `chi` nel record) e lo Studio la manda col suo giro
+   (`fileDaScrivere`, `VociFilmato.vociPerRepository`) in
+   `audio/narrazione/storie/<personaggio>/<lingua>/<storia>-<n>.<est>`, il nome
+   che `voci-storie.js` mette nel manifest: dopo la pubblicazione suona
+   dappertutto. Parte una volta sola, appena fatta (`suRepo` nel record),
+   così una voce già mandata non torna sopra una rifatta altrove; «Togli
+   queste voci» la toglie anche dal repository, ma solo se lì c'è ancora
+   quella mandata da qui (`astrocal_voci_cosmo_tolte_v1`, per SHA). Una storia
+   dello Studio messa fra le CosmoStorie le prende invece fra le sue battute
+   (`studioVociDallaScheda`, la stessa `mettiVoce` di «Carica» e di
+   «Genera»). La finestra dice com'è andata, o che senza token restano qui
+   («Collega GitHub»). Anche il salvataggio automatico parte per loro.
+2. **Una voce vecchia tornava sopra quella nuova.** Bastava che il testo
+   della battuta fosse lo stesso: un dispositivo con la voce di prima nel
+   browser la rimandava a ogni giro, sopra quella rifatta su un altro. Ora la
+   storia dice quale file è la voce (`m.audio.sha`, SHA del blob git, e
+   `m.audio.est`), e parte solo la voce che la storia dice (`vociDaScrivere`,
+   `atteso`). Le voci di prima, senza SHA, prendono quello di qui alla prima
+   scrittura (`timbraVoci`), come si faceva già.
+3. **Gli altri dispositivi aspettavano la ripubblicazione** (e il service
+   worker) per sentire le voci delle storie dello Studio. Adesso, dopo ogni
+   giro, le voci che la storia dice e che lì mancano (o sono vecchie) si
+   scaricano dal repository al commit letto, si controllano con lo SHA e
+   suonano subito (`studioScaricaVoci`, «Scaricate n voci…»).
+4. **Il token non si provava.** Un token senza «Contents: Read and write»,
+   o che non vede il repository (nei fine-grained lo si sceglie), lo
+   scopriva solo il primo salvataggio, e con frasi a metà: il 404 di un token
+   cieco diceva «il ramo main non c'è», un ramo protetto «il repository
+   cambiava, riprova». Ora «Salva e sincronizza» toglie spazi e «a capo»
+   incollati, prova il token (`studioVerificaToken`: il repository, il ramo,
+   e un blob di una riga che non entra in nessun commit, la sola prova vera della scrittura) e dice cosa manca;
+   la linguetta dice «solo lettura» se non può scrivere, e sotto lo stato c'è
+   l'ultimo giro col suo commit (`ultimo` in `astrocal_storie_repo_v1`,
+   `rigaUltimoGiro`). I 403 per le richieste finite, i rami protetti e i
+   token che non vedono il repository hanno il loro messaggio.
+
+Prove: `prova-musica-storie.js` (21, 4 nuove; sul codice di prima falliscono
+tutte e quattro, e «la voce vecchia di A era tornata sopra quella nuova di
+B»), `prova-voci-cosmostorie.js` (8: senza token la finestra lo dice, col
+token le voci vanno nelle cartelle una volta sola, «Togli» le toglie dal
+repository), `prova-storie-repo.js` (19), `prova-storie.js` (120),
+`prova-elevenlabs-studio.js` (17), `prova-voci-filmato.js` (9),
+`prova-youtube.js` (14), `prova-demo-pagina.js` (23), `prova-guida.js`,
+`prova-i18n.js`, `prova-lingua.js`, `controlla-i18n.js --patto` (342). Il
+GitHub vero non si è provato dal contenitore (GitHub finto); la linguetta
+Sincronizza guardata in Chromium con un token buono e uno di sola lettura.
