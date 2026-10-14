@@ -544,6 +544,14 @@
           "scena": 45,
           "durata": 13000,
           "conTag": "[sad] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds."
+        },
+        {
+          "n": 28,
+          "chi": "murph",
+          "testo": "Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo.",
+          "umore": "hopeful",
+          "scena": 48,
+          "durata": 13000
         }
       ]
     },

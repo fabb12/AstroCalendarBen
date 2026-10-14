@@ -8787,8 +8787,16 @@
               "umore": "hopeful",
               "tono": [],
               "durata": 13,
-              "voce": 0,
-              "audio": null,
+              "voce": 28,
+              "audio": {
+                "durata": 8000,
+                "impronta": "65dfdc7f",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "79324420c947279ee4558120b7fe7f671832427a",
+                "voce": "fuVibWsnIUtzBVjB2PCa",
+                "tag": "[hopeful]"
+              },
               "azioni": [
                 {
                   "id": "aqve98l4",
@@ -8909,8 +8917,8 @@
       ],
       "demoChiave": "utente-mv8i6umu-v39gc0dl27e",
       "voceChiave": "studio_interstellar_1_oltre_gargantua",
-      "voceProssima": 28,
-      "aggiornato": 1792009322966,
+      "voceProssima": 29,
+      "aggiornato": 1792009399462,
       "lingua": "it",
       "musica": {
         "tipo": "file",
