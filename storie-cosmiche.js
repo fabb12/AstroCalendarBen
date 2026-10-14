@@ -1144,8 +1144,12 @@
     // i libri che cadono in Morse, la polvere in binario, le equazioni della
     // gravità quantistica e l'orologio che parla in Morse
     tesseract: 4000, murph_room: 4000, liftoff: 4000, cooper_station: 4000, bedside: 4000, edmunds_planet: 4000,
-    hypercube: 4000, dimensions: 4000, time_strip: 4000, books_fall: 4000, dust_binary: 4000, equations: 4000, morse_watch: 4000
+    hypercube: 4000, dimensions: 4000, time_strip: 4000, books_fall: 4000, dust_binary: 4000, equations: 4000, morse_watch: 4000,
+    // v488: le maree di Miller (l'orbita, le frecce della gravità, le gobbe)
+    tidal_orbit: 4000
   };
+  // v488: i disegni a tappe (`effect { stage }`): una scena per tappa
+  const STOR_TAPPE = { fold: ['flat', 'bend', 'tunnel'], tidal_orbit: ['stretch', 'rock'] };
   // Gli effetti che sono uno sfondo: si disegnano **prima** dei personaggi
   // (gli altri effetti stanno sopra), coprono la vista e possono durare
   // quanto una scena lunga
@@ -1165,7 +1169,7 @@
    * pellicola del tempo copriva l'orologio della scena seguente. A fine scena
    * sfumano in mezzo secondo (`via`); i botti e le scintille no: un botto in
    * coda a una scena non si taglia a metà. */
-  const STOR_LAVAGNE = ['fold', 'time_warp', 'orbit_path', 'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
+  const STOR_LAVAGNE = ['fold', 'tidal_orbit', 'time_warp', 'orbit_path', 'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
   const STOR_VIA_MS = 550;
   const STOR_CRESCITA_MS = 700;     // quanto ci mette un astro a crescere per portare il volto
   const STOR_RITORNO_MS = 750;      // e a tornare com'era quando la storia lo lascia
@@ -3606,57 +3610,10 @@
       ctx.fillStyle = '#fffbe6'; stellaPiena(ctx, hx, hy, R * 0.28, 5, t / 300, 0.45);
       ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.05); ctx.stroke();
     } else if (tipo === 'fold') {
-      // v482: il foglio di Romilly. Due punti lontani su un foglio (la Terra,
-      // azzurra, e la galassia dall'altra parte, dorata): la strada lunga va
-      // da uno all'altro; piegando il foglio i due punti si toccano, e la
-      // matita lo buca: il wormhole è la scorciatoia attraverso la piega
-      const W = R * 8, Hf = R * 4.4, y0 = y - Hf / 2;
-      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.06)) * velo;
-      const piega = liscio((s - 0.3) / 0.28), c = Math.cos(piega * Math.PI), alza = Math.sin(piega * Math.PI) * Hf * 0.12;
-      const ax = x - W * 0.36, bx = x + W * 0.36;
-      const mappa = u => x + (u - x) * c;
-      const foglio = (destra, retro) => {
-        ctx.beginPath();
-        if (!destra) { ctx.rect(x - W / 2, y0, W / 2, Hf); }
-        else { ctx.moveTo(x, y0); ctx.lineTo(mappa(x + W / 2), y0 - alza); ctx.lineTo(mappa(x + W / 2), y0 + Hf + alza); ctx.lineTo(x, y0 + Hf); ctx.closePath(); }
-        ctx.fillStyle = retro ? '#e9dcc0' : '#fdf6e3'; ctx.fill();
-        ctx.save(); ctx.clip();
-        ctx.strokeStyle = 'rgba(120, 113, 108, 0.25)'; ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let k = 0; k <= 8; k++) { const u = destra ? mappa(x + W / 2 * k / 8) : x - W / 2 + W / 2 * k / 8; ctx.moveTo(u, y0 - alza); ctx.lineTo(u, y0 + Hf + alza); }
-        for (let k = 0; k <= 6; k++) { ctx.moveTo(destra ? x : x - W / 2, y0 + Hf * k / 6); ctx.lineTo(destra ? mappa(x + W / 2) : x, y0 + Hf * k / 6); }
-        ctx.stroke(); ctx.restore();
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.2, R * 0.05); ctx.stroke();
-      };
-      const punto = (px, colore) => { ctx.fillStyle = colore; ctx.beginPath(); ctx.arc(px, y, R * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.06); ctx.stroke(); };
-      const strada = (xa, xb) => { ctx.strokeStyle = '#ef4444'; ctx.lineWidth = Math.max(1.2, R * 0.07); ctx.setLineDash([R * 0.25, R * 0.18]); ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke(); ctx.setLineDash([]); };
-      const sopra = c < 0;
-      if (!sopra) { foglio(false); strada(ax, x); punto(ax, '#60a5fa'); foglio(true); strada(x, mappa(bx)); punto(mappa(bx), '#fbbf24'); }
-      else { foglio(false); strada(ax, x); punto(ax, '#60a5fa'); foglio(true, true); punto(mappa(bx), '#fbbf24'); }
-      // la navicella che fa la strada lunga, piano
-      if (s > 0.06 && s < 0.3) {
-        const u = (s - 0.06) / 0.24, nx = mix(ax, bx, u * 0.45);
-        ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(nx, y - R * 0.35, R * 0.14, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.stroke();
-      }
-      // la matita che buca il foglio piegato, e la luce del buco
-      if (s > 0.6) {
-        const q = liscio((s - 0.6) / 0.2), punta = y - Hf * 1.2 + q * Hf * 1.2;
-        if (s > 0.78) {
-          const b = Math.min(1, (s - 0.78) / 0.1);
-          const g = ctx.createRadialGradient(ax, y, 0, ax, y, R * 1.4);
-          g.addColorStop(0, `rgba(255, 251, 235, ${0.9 * b})`); g.addColorStop(1, 'rgba(147, 197, 253, 0)');
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, y, R * 1.4, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.save(); ctx.translate(ax, punta);
-        ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-R * 0.2, -R * 0.55); ctx.lineTo(R * 0.2, -R * 0.55); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-R * 0.07, -R * 0.2); ctx.lineTo(R * 0.07, -R * 0.2); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#facc15'; ctx.fillRect(-R * 0.2, -R * 3.3, R * 0.4, R * 2.75);
-        ctx.fillStyle = '#f472b6'; ctx.fillRect(-R * 0.2, -R * 3.7, R * 0.4, R * 0.4);
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.05);
-        ctx.strokeRect(-R * 0.2, -R * 3.7, R * 0.4, R * 3.15);
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-R * 0.2, -R * 0.55); ctx.moveTo(0, 0); ctx.lineTo(R * 0.2, -R * 0.55); ctx.stroke();
-        ctx.restore();
-      }
+      // v488: il foglio è in 3D (`storDisegnaFoglio`), a tappe
+      storDisegnaFoglio(ctx, ef, x, y, s, t, L, H, ridotto);
+    } else if (tipo === 'tidal_orbit') {
+      storDisegnaMaree(ctx, ef, x, y, s, t, L, H, ridotto);
     } else if (tipo === 'time_warp') {
       // v482: il tempo che scappa (il pianeta di Miller): un orologio con le
       // lancette che corrono sempre più svelte, e i fogli del calendario che
@@ -4636,6 +4593,280 @@
     ctx.restore();
   }
 
+  /* v488, il foglio di Romilly in 3D. Chi ha guardato la storia voleva
+   * capire meglio cos'è un wormhole: il foglio piatto che si ripiegava di
+   * lato non si capiva. Adesso il foglio è una superficie vera, vista un po'
+   * dall'alto da una camera che le gira attorno piano, con la prospettiva:
+   *
+   *   flat    lo spazio piatto: la Terra (azzurra) e la galassia lontana
+   *           (dorata), la strada lunga tratteggiata e una navicella che ci
+   *           si trascina sopra senza arrivare mai;
+   *   bend    lo spazio-tempo si curva: il foglio si arrotola attorno a un
+   *           cilindro (senza allungarsi: ogni punto conserva la sua
+   *           distanza lungo il foglio) finché la galassia sta proprio sopra
+   *           la Terra, e una linea verde corta dice «adesso è vicina»;
+   *   tunnel  la matita buca le due pieghe e nasce il tunnel, con le due
+   *           bocche larghe e la gola stretta (il disegno dei libri di
+   *           relatività); il foglio di sopra si fa trasparente e la
+   *           navicella ci passa dentro, in un attimo.
+   *
+   * Senza `stage` fa tutto di fila. Le facce si ordinano per profondità a
+   * ogni fotogramma (sono poche centinaia), il dritto chiaro e il rovescio
+   * più scuro. La camera segue l'orologio della storia, non l'effetto: tre
+   * scene di fila, con tre fogli, non saltano. */
+  function storDisegnaFoglio(ctx, ef, x, y, s, t, L, H, ridotto) {
+    const lato = Math.min(L, H), W = lato * 0.95 * ef.scala, D = W * 0.42, r = W * 0.085;
+    const tt = t - ef.inizio, fase = ef.fase || '';
+    const xf = -Math.PI * r / 2, sA = -0.36 * W, sB = 0.36 * W;
+    let piega, matita = 0, tunnel = 0;
+    if (fase === 'flat') piega = 0;
+    else if (fase === 'bend') piega = liscio((tt - 700) / 4200);
+    else if (fase === 'tunnel') { piega = 1; matita = Math.min(1, Math.max(0, (tt - 400) / 1800)); tunnel = liscio((tt - 2000) / 2200); }
+    else { piega = liscio((s - 0.22) / 0.3); matita = Math.min(1, Math.max(0, (s - 0.55) / 0.12)); tunnel = liscio((s - 0.66) / 0.14); }
+    // (v486: e sfuma quando la sua scena finisce, `STOR_LAVAGNE`)
+    const alfa = Math.max(0, Math.min(ef.continua ? 1 : tt / 500, (ef.durata - tt) / 400, 1)) * (ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1);
+    if (!(alfa > 0.01)) return;
+    const phi = piega * Math.PI;
+    // il foglio arrotolato: piatto fino a xf, poi l'arco, poi dritto
+    const piano = sv => {
+      if (sv <= xf) return [sv, 0];
+      const arco = r * phi;
+      if (sv <= xf + arco && phi > 0) { const a = (sv - xf) / r; return [xf + r * Math.sin(a), r * (1 - Math.cos(a))]; }
+      const ex = xf + r * Math.sin(phi), ez = r * (1 - Math.cos(phi)), d = sv - xf - arco;
+      return [ex + d * Math.cos(phi), ez + d * Math.sin(phi)];
+    };
+    const sopra = sv => phi > 0.5 && sv > xf + r * phi;
+    const cxs = mix(0, (-W / 2 + xf + r) / 2, piega), czs = r * piega;
+    // la camera: gira piano attorno, e scende un po' quando c'è il tunnel
+    const yaw = ridotto ? -0.35 : -0.35 + Math.sin(t / 7000) * 0.22;
+    const el = mix(0.52, 0.3, tunnel) + (ridotto ? 0 : Math.sin(t / 9000) * 0.05);
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), ce = Math.cos(el), se = Math.sin(el);
+    const F = lato * 1.7;
+    // piegato è largo la metà: la camera gli si avvicina, e il tunnel si vede
+    const vicino = 1 + 0.55 * piega + 0.2 * tunnel;
+    const proietta = (X, Y, Z) => {
+      X -= cxs; Z -= czs;
+      const x1 = X * cy - Y * sy, y1 = X * sy + Y * cy;
+      const su = Z * ce + y1 * se, prof = y1 * ce - Z * se, k = vicino * F / Math.max(F * 0.3, F + prof);
+      return [x + x1 * k, y - su * k, prof, k];
+    };
+    const punto3 = (sv, v) => { const [X, Z] = piano(sv); return [X, v, Z]; };
+    const cose = [];
+    // le facce del foglio
+    const NS = 30, NV = 8;
+    const vert = [];
+    for (let i = 0; i <= NS; i++) {
+      const sv = -W / 2 + W * i / NS, riga = [];
+      for (let j = 0; j <= NV; j++) riga.push(proietta(...punto3(sv, -D / 2 + D * j / NV)));
+      vert.push(riga);
+    }
+    for (let i = 0; i < NS; i++) for (let j = 0; j < NV; j++) {
+      const a = vert[i][j], b = vert[i + 1][j], c = vert[i + 1][j + 1], d = vert[i][j + 1];
+      const area = (b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]);
+      const sm = -W / 2 + W * (i + 0.5) / NS;
+      cose.push({ prof: (a[2] + b[2] + c[2] + d[2]) / 4, disegna: () => {
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath();
+        ctx.globalAlpha = alfa * (sopra(sm) ? 1 - 0.55 * tunnel : 1);
+        ctx.fillStyle = area < 0 ? '#fdf6e3' : '#e2d3b0'; ctx.fill();
+        ctx.strokeStyle = 'rgba(120, 113, 108, 0.35)'; ctx.lineWidth = 1; ctx.stroke();
+      } });
+    }
+    // il bordo d'inchiostro del foglio
+    const bordo = () => {
+      ctx.globalAlpha = alfa; ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.4, lato * 0.004);
+      for (const j of [0, NV]) { ctx.beginPath(); vert.forEach((riga, i) => (i ? ctx.lineTo(riga[j][0], riga[j][1]) : ctx.moveTo(riga[j][0], riga[j][1]))); ctx.stroke(); }
+      for (const i of [0, NS]) { ctx.beginPath(); vert[i].forEach((q, j) => (j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke(); }
+    };
+    // la strada lunga, a pezzi, ognuno alla sua profondità (sotto il foglio di sopra)
+    const passi = 40;
+    for (let k = 0; k < passi; k++) {
+      const s0 = mix(sA, sB, k / passi), s1 = mix(sA, sB, (k + 1) / passi);
+      if (k % 2) continue;
+      const p0 = proietta(...punto3(s0, 0)), p1 = proietta(...punto3(s1, 0));
+      cose.push({ prof: (p0[2] + p1[2]) / 2 - 0.5, disegna: () => {
+        ctx.globalAlpha = alfa * (sopra(s0) ? 1 - 0.5 * tunnel : 1) * (1 - 0.6 * tunnel);
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = Math.max(1.5, r * 0.12 * p0[3]); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+      } });
+    }
+    // la Terra e la galassia, posate sul foglio
+    const astro = (sv, galassia) => {
+      const q = proietta(...punto3(sv, 0)), rr = r * 0.42 * q[3];
+      cose.push({ prof: q[2] - 1, disegna: () => {
+        ctx.globalAlpha = alfa;
+        if (galassia) {
+          const g = ctx.createRadialGradient(q[0], q[1], 0, q[0], q[1], rr * 1.5);
+          g.addColorStop(0, '#fffbeb'); g.addColorStop(0.4, '#fbbf24'); g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(q[0], q[1], rr * 1.5, rr * 0.8, -0.3, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = Math.max(1, rr * 0.12);
+          for (const b of [0, Math.PI]) { ctx.beginPath(); for (let k = 0; k <= 16; k++) { const a = b + k / 16 * Math.PI * 1.3 + t / 1800, d = rr * (0.2 + k / 16 * 1.1); const px = q[0] + Math.cos(a) * d, py = q[1] + Math.sin(a) * d * 0.55; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
+        } else {
+          ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(q[0], q[1], rr, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.arc(q[0] - rr * 0.3, q[1] - rr * 0.2, rr * 0.35, 0, Math.PI * 2); ctx.arc(q[0] + rr * 0.35, q[1] + rr * 0.25, rr * 0.25, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, rr * 0.12); ctx.beginPath(); ctx.arc(q[0], q[1], rr, 0, Math.PI * 2); ctx.stroke();
+        }
+      } });
+      return q;
+    };
+    const qa = astro(sA, false), qb = astro(sB, true);
+    // il tunnel: anelli orizzontali dalla bocca sulla Terra a quella sotto la galassia
+    const A3 = punto3(sA, 0), B3 = punto3(sB, 0);
+    if (tunnel > 0.01) {
+      const N = 12;
+      for (let k = 0; k <= N; k++) {
+        const u = k / N, cX = mix(A3[0], B3[0], u), cZ = mix(A3[2], B3[2], u);
+        const rho = r * (0.32 + 0.9 * Math.pow(2 * Math.abs(u - 0.5), 2)) * Math.min(1, tunnel * 1.3);
+        const pts = [];
+        for (let a = 0; a <= 24; a++) { const an = a / 24 * Math.PI * 2; pts.push(proietta(cX + Math.cos(an) * rho, Math.sin(an) * rho, cZ)); }
+        const pc = proietta(cX, 0, cZ);
+        cose.push({ prof: pc[2] - 2, disegna: () => {
+          ctx.globalAlpha = alfa * tunnel * (k === 0 || k === N ? 0.95 : 0.7);
+          ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath();
+          if (k === 0 || k === N) { ctx.fillStyle = 'rgba(30, 27, 75, 0.75)'; ctx.fill(); }
+          ctx.strokeStyle = k % 2 ? '#a5b4fc' : '#7dd3fc'; ctx.lineWidth = Math.max(1.2, r * 0.07 * pc[3]); ctx.stroke();
+        } });
+      }
+    }
+    cose.sort((a, b) => b.prof - a.prof);
+    ctx.save();
+    ctx.lineJoin = 'round';
+    for (const c of cose) c.disegna();
+    bordo();
+    // la strada corta, quando le due pieghe sono una sopra l'altra
+    if (piega > 0.85 && tunnel < 0.5) {
+      ctx.globalAlpha = alfa * Math.min(1, (piega - 0.85) / 0.15) * (1 - tunnel * 2);
+      ctx.strokeStyle = '#22c55e'; ctx.lineWidth = Math.max(2, lato * 0.006); ctx.setLineDash([6, 5]);
+      ctx.beginPath(); ctx.moveTo(qa[0], qa[1]); ctx.lineTo(qb[0], qb[1]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // la navicella: sul foglio piatto si trascina; nel tunnel ci vola dentro
+    const navicella = (q, k) => {
+      ctx.globalAlpha = alfa; ctx.fillStyle = '#f8fafc'; ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(q[0], q[1], r * 0.22 * k, r * 0.12 * k, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      const g = ctx.createRadialGradient(q[0], q[1], 0, q[0], q[1], r * 0.6 * k);
+      g.addColorStop(0, 'rgba(147, 197, 253, 0.6)'); g.addColorStop(1, 'rgba(147, 197, 253, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q[0], q[1], r * 0.6 * k, 0, Math.PI * 2); ctx.fill();
+    };
+    if (piega < 0.05) {
+      const u = ridotto ? 0.2 : (tt % 9000) / 9000 * 0.45;
+      const q = proietta(...punto3(mix(sA, sB, u), 0)); q[1] -= r * 0.3 * q[3];
+      navicella(q, q[3]);
+    } else if (tunnel > 0.98) {
+      const u = ridotto ? 0.5 : ((tt - 4200) % 3200) / 3200;
+      if (u >= 0 && u <= 1) {
+        const q = proietta(mix(A3[0], B3[0], u), 0, mix(A3[2] + r * 0.2, B3[2] - r * 0.2, u));
+        navicella(q, q[3]);
+      }
+    }
+    // la matita che scende e buca le due pieghe
+    if (matita > 0 && tunnel < 1) {
+      const zTop = B3[2] + r * 3.2, zPunta = mix(zTop, A3[2] - r * 0.3, liscio(matita));
+      const p0 = proietta(A3[0], 0, zPunta), p1 = proietta(A3[0], 0, zPunta + r * 2.6);
+      ctx.globalAlpha = alfa * (1 - tunnel);
+      ctx.lineCap = 'butt';
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = r * 0.42 * p0[3] + 2; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = r * 0.42 * p0[3]; ctx.beginPath(); ctx.moveTo(p0[0] + (p1[0] - p0[0]) * 0.18, p0[1] + (p1[1] - p0[1]) * 0.18); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+      ctx.strokeStyle = '#fde68a'; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p0[0] + (p1[0] - p0[0]) * 0.18, p0[1] + (p1[1] - p0[1]) * 0.18); ctx.stroke();
+      ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.arc(p0[0], p0[1], Math.max(1.5, r * 0.08 * p0[3]), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /* v488, perché le onde di Miller sono alte come montagne: la marea.
+   * Gargantua a sinistra, l'orbita stretta del pianeta, il pianeta (roccia
+   * dentro, oceano attorno) e le tre frecce della gravità — lunga sul lato
+   * vicino, media al centro, corta sul lato lontano: è la differenza fra le
+   * tre a stirare il pianeta come un uovo e ad ammucchiare l'acqua in due
+   * gobbe. In basso, per confronto, la Terra con la Luna: la stessa cosa, un
+   * filo appena. Le tappe: `stretch` (le frecce e l'uovo che si allunga),
+   * `rock` (il pianeta dondola avanti e indietro e le gobbe gli scorrono
+   * sopra: dove c'è la navetta arriva l'onda). */
+  function storDisegnaMaree(ctx, ef, x, y, s, t, L, H, ridotto) {
+    const lato = Math.min(L, H), S = lato * 0.46 * ef.scala;
+    const tt = t - ef.inizio, fase = ef.fase || '';
+    // (v486: e sfuma quando la sua scena finisce, `STOR_LAVAGNE`)
+    const alfa = Math.max(0, Math.min(ef.continua ? 1 : tt / 500, (ef.durata - tt) / 400, 1)) * (ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1);
+    if (!(alfa > 0.01)) return;
+    const allunga = fase === 'rock' ? 1 : liscio((fase === 'stretch' ? tt / 3500 : s / 0.3));
+    const dondola = fase === 'rock' ? liscio(tt / 1500) : fase === 'stretch' ? 0 : liscio((s - 0.5) / 0.15);
+    ctx.save();
+    ctx.globalAlpha = alfa; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const gx = x - S * 0.62, gy = y - S * 0.05, gr = S * 0.15;
+    // Gargantua: l'ombra e il disco di taglio
+    const alone = ctx.createRadialGradient(gx, gy, gr * 0.9, gx, gy, gr * 3);
+    alone.addColorStop(0, 'rgba(253, 230, 138, 0.35)'); alone.addColorStop(1, 'rgba(253, 230, 138, 0)');
+    ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(gx, gy, gr * 3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = gr * 0.22; ctx.beginPath(); ctx.ellipse(gx, gy, gr * 2.2, gr * 0.3, -0.05, Math.PI, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(gx, gy, gr, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fffbeb'; ctx.lineWidth = Math.max(1, gr * 0.06); ctx.stroke();
+    ctx.strokeStyle = '#fde68a'; ctx.lineWidth = gr * 0.24; ctx.beginPath(); ctx.ellipse(gx, gy, gr * 2.2, gr * 0.3, -0.05, 0, Math.PI); ctx.stroke();
+    // l'orbita stretta, e il pianeta che ci corre sopra
+    const ro = S * 0.95, piatto = 0.42;
+    ctx.strokeStyle = 'rgba(147, 197, 253, 0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.ellipse(gx, gy, ro, ro * piatto, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    const th = ridotto ? 0.15 : 0.15 + Math.sin(t / 5200) * 0.35;
+    const px = gx + Math.cos(th) * ro, py = gy + Math.sin(th) * ro * piatto, rp = S * 0.17;
+    const verso = Math.atan2(gy - py, gx - px);
+    // il pianeta dondola (librazione): le gobbe si spostano avanti e indietro
+    const dond = ridotto ? 0 : Math.sin(t / 520) * 0.55 * dondola;
+    const asse = verso + dond;
+    // l'oceano stirato in due gobbe lungo l'asse verso Gargantua
+    const kx = 1 + 0.42 * allunga, ky = 1 - 0.1 * allunga;
+    ctx.save(); ctx.translate(px, py); ctx.rotate(asse);
+    ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.ellipse(0, 0, rp * kx, rp * ky, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.2, rp * 0.05); ctx.stroke();
+    // la schiuma sulle due creste
+    ctx.strokeStyle = 'rgba(241, 245, 249, 0.9)'; ctx.lineWidth = Math.max(1.5, rp * 0.08);
+    for (const lato2 of [-1, 1]) { ctx.beginPath(); ctx.ellipse(0, 0, rp * kx, rp * ky, 0, lato2 > 0 ? -0.35 : Math.PI - 0.35, lato2 > 0 ? 0.35 : Math.PI + 0.35); ctx.stroke(); }
+    ctx.restore();
+    // la roccia dentro, che non si allunga
+    ctx.fillStyle = '#78716c'; ctx.beginPath(); ctx.arc(px, py, rp * 0.72, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, rp * 0.04); ctx.stroke();
+    // la navetta posata sull'acqua, ferma: la gobba le passa sopra
+    if (dondola > 0.05) {
+      const an = verso + 0.5, nx = px + Math.cos(an) * rp * 0.98, ny = py + Math.sin(an) * rp * 0.98;
+      const vicino = Math.max(0, 1 - Math.abs(Math.atan2(Math.sin(asse - an), Math.cos(asse - an))) / 0.4);
+      ctx.globalAlpha = alfa * dondola;
+      ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.ellipse(nx, ny, rp * 0.16, rp * 0.08, an + Math.PI / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.stroke();
+      if (vicino > 0) { ctx.strokeStyle = `rgba(255, 255, 255, ${vicino})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(nx, ny, rp * (0.25 + 0.2 * vicino), 0, Math.PI * 2); ctx.stroke(); }
+      ctx.globalAlpha = alfa;
+    }
+    // le tre frecce della gravità: lato vicino, centro, lato lontano
+    const freccia = (fx, fy, lung, colore) => {
+      const ex = fx + Math.cos(verso) * lung, ey = fy + Math.sin(verso) * lung;
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(3, S * 0.022) + 2;
+      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = colore; ctx.lineWidth = Math.max(3, S * 0.022);
+      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(ex, ey); ctx.stroke();
+      const pt = S * 0.045;
+      ctx.fillStyle = colore; ctx.beginPath();
+      ctx.moveTo(ex + Math.cos(verso) * pt, ey + Math.sin(verso) * pt);
+      ctx.lineTo(ex + Math.cos(verso + 2.4) * pt, ey + Math.sin(verso + 2.4) * pt);
+      ctx.lineTo(ex + Math.cos(verso - 2.4) * pt, ey + Math.sin(verso - 2.4) * pt); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.stroke();
+    };
+    const fa = ctx.globalAlpha;
+    ctx.globalAlpha = fa * Math.min(1, allunga * 1.5) * (1 - 0.5 * dondola);
+    const ux = Math.cos(verso), uy = Math.sin(verso), lf = S * 0.32;
+    const pulsa = ridotto ? 1 : 1 + 0.05 * Math.sin(t / 300);
+    // tre corsie parallele, perché le frecce non si coprano: la più lunga
+    // parte dal lato vicino, la più corta da quello lontano
+    const nx = -uy, ny = ux, corsia = rp * 0.62;
+    freccia(px + ux * rp * 1.05 - nx * corsia, py + uy * rp * 1.05 - ny * corsia, lf * 1.45 * pulsa, '#ef4444');
+    freccia(px, py, lf * 0.95 * pulsa, '#f59e0b');
+    freccia(px - ux * rp * 1.05 + nx * corsia, py - uy * rp * 1.05 + ny * corsia, lf * 0.6 * pulsa, '#facc15');
+    ctx.globalAlpha = fa;
+    // per confronto: la Terra e la Luna, un filo appena
+    const tx = x + S * 0.78, ty = y + S * 0.52, tr = S * 0.09;
+    ctx.globalAlpha = fa * 0.9;
+    ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.ellipse(tx, ty, tr * (1 + 0.06 * allunga), tr, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.arc(tx - tr * 0.2, ty - tr * 0.1, tr * 0.45, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(tx, ty, tr * (1 + 0.06 * allunga), tr, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(tx + tr * 3.2, ty, tr * 0.32, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(226, 232, 240, 0.5)'; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(tx + tr * 1.2, ty); ctx.lineTo(tx + tr * 2.8, ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   // nel posto dello schermo chiesto. `null` se l'astro non c'è.
   function storPostoEffetto(ef, perId, L, H) {
     if (ef.target) {
@@ -4655,6 +4886,14 @@
       scala: Math.max(0.2, Math.min(5, Number(opz.scala) || 1)), colore: opz.colore || null,
       seme: seme(tipo + ':' + (opz.target || '') + ':' + stor.effetti.length + ':' + Math.round(stor.orologio)) || 1
     };
+    // v488: le tappe di un disegno che spiega (il foglio, le maree). La tappa
+    // nuova prende il posto di quella di prima senza dissolvenza: tre scene
+    // di fila sono un disegno solo che va avanti
+    if (STOR_TAPPE[tipo]) {
+      ef.fase = STOR_TAPPE[tipo].includes(opz.fase) ? opz.fase : '';
+      const prima = stor.effetti.filter(x => x.tipo === tipo);
+      if (prima.length) { ef.continua = true; stor.effetti = stor.effetti.filter(x => x.tipo !== tipo); }
+    }
     stor.effetti.push(ef);
     // I botti fanno tremare il quadro (la lente della regia, §7-ter)
     const scossa = STOR_REGIA.scosse[tipo];
@@ -8896,7 +9135,9 @@
     'starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice', 'fold', 'time_warp', 'orbit_path',
     // v486, «Interstellar · Parte 2»
     'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet',
-    'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
+    'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch',
+    // v488
+    'tidal_orbit'];
   // Il rumore che fa ogni gesto, quando la storia non ne sceglie un altro
   const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
   const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
@@ -9201,6 +9442,11 @@
     morse_watch(a, u, t, d, v) {
       let q = t;
       for (const c of '.-..-.--.-..') { const dur = c === '-' ? 0.21 : 0.07; tono(a, u, { t0: q, durata: dur, f0: 1175, picco: 0.08 * v, attacco: 0.004 }); q += dur + 0.07; }
+    },
+    // v488: le maree: un'onda lunga e grave che sale e scende
+    tidal_orbit(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.2, f0: 300, fm: 900, f1: 260, picco: 0.2 * v, attacco: 1.1, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.2, f0: 62, f1: 48, picco: 0.18 * v, attacco: 1, vibrato: [0.6, 4] });
     }
   };
   function suoniAccesi() {
@@ -9603,7 +9849,9 @@
     },
     effect: {
       verifica(p, scena) {
-        campi(p, ['type', 'target', 'at', 'size', 'color', 'duration', 'sound']);
+        campi(p, ['type', 'target', 'at', 'size', 'color', 'duration', 'sound', 'stage']);
+        // v488: la tappa di un disegno che spiega (il foglio, le maree)
+        if (p.stage !== undefined) scelta(p.stage, 'stage', STOR_TAPPE[p.type] || []);
         sceltaSuono(p);
         richiedi(p.type !== undefined, 'valoreIgnoto', { campo: 'type', nome: '', elenco: Object.keys(STOR_EFFETTI).join(', ') });
         scelta(p.type, 'type', Object.keys(STOR_EFFETTI));
@@ -9616,7 +9864,8 @@
         scelta(p.at, 'at', STOR_POSTI_EFFETTO);
         numeroIn(p.size, 'size', 0.2, 5);
         // v482: uno sfondo può tenere una scena lunga
-        numeroIn(p.duration, 'duration', 0.3, STOR_SFONDI.includes(p.type) ? STOR_SFONDO_MAX_S : 20);
+        // (v488: anche un disegno a tappe, che comunque si chiude con la sua scena)
+        numeroIn(p.duration, 'duration', 0.3, STOR_SFONDI.includes(p.type) || STOR_TAPPE[p.type] ? STOR_SFONDO_MAX_S : 20);
         richiedi(p.color === undefined || (typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color)), 'coloreNonValido', { nome: String(p.color) });
         if (scena) richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
       },
@@ -9626,7 +9875,7 @@
         // della storia li tolgono tutti (`storSgombra`).
         if (stor.anteprima) storChiudiAnteprima();
         const ef = storEffetto(p.type, { target: p.target, dove: p.at, scala: p.size, colore: p.color,
-          durata: p.duration ? p.duration * 1000 : undefined });
+          durata: p.duration ? p.duration * 1000 : undefined, fase: p.stage });
         // Il botto si sente: il rumore dello stesso nome, o quello scelto
         const rumore = suonoScelto(p, p.type);
         if (rumore) storSuona(rumore, { seme: p.type + (p.target || ''), volume: ef ? Math.min(1.4, 0.75 + 0.25 * ef.scala) : 1 });

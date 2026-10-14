@@ -2290,8 +2290,9 @@
                     "comando": "effect",
                     "parametri": {
                       "type": "fold",
-                      "at": "center",
-                      "duration": 16
+                      "at": "right",
+                      "size": 0.8,
+                      "duration": 19
                     },
                     "ripresa": {
                       "da": 0.03,
@@ -2304,6 +2305,247 @@
                 "id": "demo.narr.storia_interstellar.4",
                 "chi": "romilly",
                 "testo": "Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. Ecco cos'è un wormhole: una scorciatoia."
+              }
+            },
+            {
+              "id": "m54qbfjn",
+              "chi": "cooper",
+              "testo": "Aspetta, Romilly: è andato tutto troppo veloce. Fammelo vedere piano, passo per passo.",
+              "umore": "playful",
+              "tono": [],
+              "durata": 9,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "orbit_from": 30,
+                      "elev_from": 18,
+                      "elev_to": 19,
+                      "zoom_from": 0.95,
+                      "zoom_to": 0.98
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.foglio"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "happy",
+                      "at": "top_left",
+                      "scale": 0.75,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "playful",
+                      "at": "bottom_left",
+                      "scale": 0.7,
+                      "look": "romilly"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "fold",
+                      "stage": "flat",
+                      "at": "right",
+                      "size": 0.8,
+                      "duration": 40
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.5",
+                "chi": "cooper",
+                "testo": "Aspetta, Romilly: è andato tutto troppo veloce. Fammelo vedere piano, passo per passo."
+              }
+            },
+            {
+              "id": "mpixwscd",
+              "chi": "romilly",
+              "testo": "Il foglio è lo spazio. Andando dritti, anche alla velocità della luce, ci vorrebbero migliaia di anni. Ma Einstein ha scoperto che lo spazio-tempo si può curvare, come un foglio di gomma: se lo pieghi così, i due punti lontanissimi finiscono uno sopra l'altro. Adesso sono vicinissimi!",
+              "umore": "excited",
+              "tono": [],
+              "durata": 23,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "orbit_from": 30,
+                      "elev_from": 18,
+                      "elev_to": 19,
+                      "zoom_from": 0.95,
+                      "zoom_to": 0.98
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.piega"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "excited",
+                      "at": "top_left",
+                      "scale": 0.75,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "surprised",
+                      "at": "bottom_left",
+                      "scale": 0.7,
+                      "look": "romilly"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "fold",
+                      "stage": "bend",
+                      "at": "right",
+                      "size": 0.8,
+                      "duration": 40
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.6",
+                "chi": "romilly",
+                "testo": "Il foglio è lo spazio. Andando dritti, anche alla velocità della luce, ci vorrebbero migliaia di anni. Ma Einstein ha scoperto che lo spazio-tempo si può curvare, come un foglio di gomma: se lo pieghi così, i due punti lontanissimi finiscono uno sopra l'altro. Adesso sono vicinissimi!"
+              }
+            },
+            {
+              "id": "m9x12nd3",
+              "chi": "romilly",
+              "testo": "Adesso basta un tunnel che unisca le due pieghe: si entra da una bocca e si esce dall'altra. Questo è un wormhole. E siccome il nostro spazio ha tre dimensioni, le bocche non sono buchi piatti: sono sfere, come quella là fuori.",
+              "umore": "proud",
+              "tono": [],
+              "durata": 22,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Saturn",
+                      "close_up": "show",
+                      "orbit": 4,
+                      "orbit_from": 30,
+                      "elev_from": 18,
+                      "elev_to": 19,
+                      "zoom_from": 0.95,
+                      "zoom_to": 0.98
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.tunnel"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "proud",
+                      "at": "top_left",
+                      "scale": 0.75,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "impressed",
+                      "at": "bottom_left",
+                      "scale": 0.7,
+                      "look": "romilly"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "fold",
+                      "stage": "tunnel",
+                      "at": "right",
+                      "size": 0.8,
+                      "duration": 40
+                    }
+                  },
+                  {
+                    "comando": "sound",
+                    "parametri": {
+                      "type": "magic"
+                    },
+                    "ripresa": {
+                      "da": 0.12,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.7",
+                "chi": "romilly",
+                "testo": "Adesso basta un tunnel che unisca le due pieghe: si entra da una bocca e si esce dall'altra. Questo è un wormhole. E siccome il nostro spazio ha tre dimensioni, le bocche non sono buchi piatti: sono sfere, come quella là fuori."
               }
             },
             {
@@ -2354,7 +2596,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.5",
+                "id": "demo.narr.storia_interstellar.8",
                 "chi": "tars",
                 "testo": "Prima di entrare vi ricordo che la mia sincerità è al novanta per cento. Quindi, sinceramente: non ho la minima idea di cosa ci sia dall'altra parte."
               }
@@ -2449,7 +2691,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.6",
+                "id": "demo.narr.storia_interstellar.9",
                 "chi": "cooper",
                 "testo": "TARS, abbassa l'umorismo al settantacinque per cento. Tutti ai posti: entriamo!"
               }
@@ -2535,7 +2777,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.7",
+                "id": "demo.narr.storia_interstellar.10",
                 "chi": "brand",
                 "testo": "Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano."
               },
@@ -2602,7 +2844,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.8",
+                "id": "demo.narr.storia_interstellar.11",
                 "chi": "doyle",
                 "testo": "Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!"
               }
@@ -2747,7 +2989,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.9",
+                "id": "demo.narr.storia_interstellar.12",
                 "chi": "cooper",
                 "testo": "Eccolo. Gargantua. Un buco nero cento milioni di volte più pesante del Sole, che gira su se stesso quasi alla velocità della luce."
               },
@@ -2835,9 +3077,84 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.10",
+                "id": "demo.narr.storia_interstellar.13",
                 "chi": "gargantua",
                 "testo": "Benvenuti, piccoli umani. Non sono un mostro: sono un pozzo nello spazio-tempo. Chi mi passa vicino scivola nella mia curva… e il suo tempo rallenta."
+              }
+            },
+            {
+              "id": "mgxrhtg1",
+              "chi": "romilly",
+              "testo": "Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca.",
+              "umore": "wonder",
+              "tono": [],
+              "durata": 18,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "target": "gargantua",
+                      "size": 1.5,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "proud"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "romilly",
+                      "expression": "wonder",
+                      "at": "left",
+                      "look": "gargantua"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "gargantua",
+                      "color": "#fde68a",
+                      "duration": 8
+                    },
+                    "ripresa": {
+                      "da": 0.3,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.14",
+                "chi": "romilly",
+                "testo": "Vedete l'anello di luce che passa sopra e sotto il buco nero? Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca."
               }
             },
             {
@@ -2913,9 +3230,141 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.11",
+                "id": "demo.narr.storia_interstellar.15",
                 "chi": "brand",
                 "testo": "Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra."
+              }
+            },
+            {
+              "id": "mwsh9ibt",
+              "chi": "doyle",
+              "testo": "Così vicino? E perché il pianeta non ci cade dentro?",
+              "umore": "skeptical",
+              "tono": [],
+              "durata": 8,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "skeptical",
+                      "at": "left",
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "thinking",
+                      "at": "right",
+                      "scale": 0.85,
+                      "look": "doyle"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.16",
+                "chi": "doyle",
+                "testo": "Così vicino? E perché il pianeta non ci cade dentro?"
+              }
+            },
+            {
+              "id": "msx91ar7",
+              "chi": "brand",
+              "testo": "Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 17,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "gargantua_view",
+                      "at": "right",
+                      "size": 1.1,
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "doyle",
+                      "expression": "curious",
+                      "at": "left",
+                      "look": "brand"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "happy",
+                      "at": "right",
+                      "scale": 0.85,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "at": "right",
+                      "size": 1.5,
+                      "color": "#fde68a",
+                      "duration": 14
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.17",
+                "chi": "brand",
+                "testo": "Perché Gargantua gira su se stesso quasi alla velocità della luce, e trascina lo spazio attorno a sé come un mulinello nell'acqua. Grazie a quel vortice, anche un'orbita così stretta resta stabile; e il pianeta ci corre sopra a quasi metà della velocità della luce."
               }
             },
             {
@@ -2972,7 +3421,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.12",
+                "id": "demo.narr.storia_interstellar.18",
                 "chi": "romilly",
                 "testo": "Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. Tornate presto."
               }
@@ -3071,7 +3520,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.13",
+                "id": "demo.narr.storia_interstellar.19",
                 "chi": "cooper",
                 "testo": "Allora niente errori: scendiamo, prendiamo i dati della dottoressa Miller e torniamo su. Ogni minuto laggiù è più di un mese quassù."
               },
@@ -3138,9 +3587,143 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.14",
+                "id": "demo.narr.storia_interstellar.20",
                 "chi": "miller_planet",
                 "testo": "Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne."
+              }
+            },
+            {
+              "id": "mg99gd2i",
+              "chi": "brand",
+              "testo": "Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 25,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_interstellar.maree"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "brand",
+                      "expression": "determined",
+                      "at": "left",
+                      "scale": 0.8,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "tidal_orbit",
+                      "stage": "stretch",
+                      "at": "center",
+                      "size": 1,
+                      "duration": 40
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.21",
+                "chi": "brand",
+                "testo": "Ecco perché quelle onde. Gargantua tira il lato del pianeta più vicino molto più forte del lato lontano: il pianeta si allunga come un uovo, e il suo oceano si ammucchia in due gobbe gigantesche. È la marea: sulla Terra la Luna alza il mare di un metro, qui Gargantua lo alza di più di un chilometro."
+              }
+            },
+            {
+              "id": "ml66ciyh",
+              "chi": "cooper",
+              "testo": "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora.",
+              "umore": "worried",
+              "tono": [],
+              "durata": 20,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 62,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "starfield",
+                      "duration": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cooper",
+                      "expression": "worried",
+                      "at": "left",
+                      "scale": 0.8,
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "tidal_orbit",
+                      "stage": "rock",
+                      "at": "center",
+                      "size": 1,
+                      "duration": 40
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_interstellar.22",
+                "chi": "cooper",
+                "testo": "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora."
               }
             }
           ],
@@ -3241,7 +3824,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.15",
+                "id": "demo.narr.storia_interstellar.23",
                 "chi": "brand",
                 "testo": "L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa."
               }
@@ -3341,7 +3924,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.16",
+                "id": "demo.narr.storia_interstellar.24",
                 "chi": "cooper",
                 "testo": "Brand… quelle non sono montagne. Sono onde!"
               }
@@ -3432,7 +4015,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.17",
+                "id": "demo.narr.storia_interstellar.25",
                 "chi": "doyle",
                 "testo": "Brand, lascia stare! Torna al Ranger, corri!"
               }
@@ -3518,7 +4101,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.18",
+                "id": "demo.narr.storia_interstellar.26",
                 "chi": "case",
                 "testo": "Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!"
               }
@@ -3603,7 +4186,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.19",
+                "id": "demo.narr.storia_interstellar.27",
                 "chi": "cooper",
                 "testo": "Romilly… quanto tempo siamo stati via?"
               }
@@ -3680,7 +4263,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.20",
+                "id": "demo.narr.storia_interstellar.28",
                 "chi": "romilly",
                 "testo": "Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato."
               }
@@ -3752,7 +4335,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.21",
+                "id": "demo.narr.storia_interstellar.29",
                 "chi": "brand",
                 "testo": "Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni."
               }
@@ -3838,7 +4421,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.22",
+                "id": "demo.narr.storia_interstellar.30",
                 "chi": "murph",
                 "testo": "Ciao papà. Oggi compio gli anni che avevi tu quando sei partito. Mi avevi promesso che saresti tornato… forse è ora che smetta di aspettarti."
               }
@@ -3899,7 +4482,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.23",
+                "id": "demo.narr.storia_interstellar.31",
                 "chi": "cooper",
                 "testo": "Murph… Ti ho lasciato il mio orologio, per confrontarli quando sarei tornato. Il mio tempo è rimasto indietro, ma io non ti ho mai lasciata."
               }
@@ -3955,7 +4538,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.24",
+                "id": "demo.narr.storia_interstellar.32",
                 "chi": "brand",
                 "testo": "Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds."
               }
@@ -4011,7 +4594,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.25",
+                "id": "demo.narr.storia_interstellar.33",
                 "chi": "cooper",
                 "testo": "I dati dicono Mann, Brand. Andiamo da Mann."
               }
@@ -4087,7 +4670,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.26",
+                "id": "demo.narr.storia_interstellar.34",
                 "chi": "mann_planet",
                 "testo": "Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. Il dottor Mann dorme da anni… e nasconde un segreto."
               }
@@ -4204,7 +4787,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.27",
+                "id": "demo.narr.storia_interstellar.35",
                 "chi": "mann",
                 "testo": "Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui."
               }
@@ -4302,7 +4885,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.28",
+                "id": "demo.narr.storia_interstellar.36",
                 "chi": "mann",
                 "testo": "Il mio pianeta non può ospitare nessuno, Cooper. Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io."
               }
@@ -4387,7 +4970,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.29",
+                "id": "demo.narr.storia_interstellar.37",
                 "chi": "tars",
                 "testo": "Cattive notizie: il dottor Mann ha preso il Lander e vola verso l'Endurance. Ho spento l'aggancio automatico: se prova a forzarlo, sarà un disastro."
               }
@@ -4525,7 +5108,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.30",
+                "id": "demo.narr.storia_interstellar.38",
                 "chi": "mann",
                 "testo": "Si apre… si apre! Ce l'ho fatta!"
               }
@@ -4622,7 +5205,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.31",
+                "id": "demo.narr.storia_interstellar.39",
                 "chi": "case",
                 "testo": "L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile."
               }
@@ -4723,7 +5306,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.32",
+                "id": "demo.narr.storia_interstellar.40",
                 "chi": "cooper",
                 "testo": "No, CASE. È necessario. Giriamo anche noi, alla stessa velocità!"
               }
@@ -4811,7 +5394,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.33",
+                "id": "demo.narr.storia_interstellar.41",
                 "chi": "tars",
                 "testo": "Agganciati! Girando insieme, il Ranger e l'Endurance stavano fermi l'uno rispetto all'altra, come due ballerini che si tengono per mano. Poi abbiamo frenato insieme."
               }
@@ -4884,7 +5467,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.34",
+                "id": "demo.narr.storia_interstellar.42",
                 "chi": "brand",
                 "testo": "Ce l'hai fatta, Cooper! Credevo che fosse finita."
               }
@@ -4965,7 +5548,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.35",
+                "id": "demo.narr.storia_interstellar.43",
                 "chi": "cooper",
                 "testo": "Il carburante non basta per Edmunds. Ma Gargantua può farci da fionda: gli passiamo rasenti, la sua gravità ci curva e ci lancia via più veloci."
               }
@@ -5044,7 +5627,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.36",
+                "id": "demo.narr.storia_interstellar.44",
                 "chi": "cooper",
                 "testo": "Così vicino a Gargantua il tempo rallenta di nuovo: questa manovra ci costerà cinquantun anni sulla Terra. È il prezzo per arrivare."
               }
@@ -5137,7 +5720,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.37",
+                "id": "demo.narr.storia_interstellar.45",
                 "chi": "cooper",
                 "testo": "Newton lo diceva: per andare avanti bisogna lasciare indietro qualcosa. TARS e io ci stacchiamo nel punto più vicino: senza il nostro peso, l'Endurance ce la farà."
               }
@@ -5224,7 +5807,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.38",
+                "id": "demo.narr.storia_interstellar.46",
                 "chi": "brand",
                 "testo": "Cooper, no! Non lasciarmi sola!"
               }
@@ -5343,7 +5926,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.39",
+                "id": "demo.narr.storia_interstellar.47",
                 "chi": "tars",
                 "testo": "È stato un onore volare con voi. Livello di sincerità: cento per cento."
               }
@@ -5428,7 +6011,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.40",
+                "id": "demo.narr.storia_interstellar.48",
                 "chi": "brand",
                 "testo": "L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds."
               }
@@ -5507,7 +6090,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.41",
+                "id": "demo.narr.storia_interstellar.49",
                 "chi": "gargantua",
                 "testo": "Ora entri nel mio orizzonte, Cooper. Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto."
               }
@@ -5635,7 +6218,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.42",
+                "id": "demo.narr.storia_interstellar.50",
                 "chi": "cooper",
                 "testo": "TARS… stiamo cadendo nella luce. Murph… sto arrivando."
               }
@@ -5717,7 +6300,7 @@
                 ]
               },
               "parla": {
-                "id": "demo.narr.storia_interstellar.43",
+                "id": "demo.narr.storia_interstellar.51",
                 "chi": "murph",
                 "testo": "Papà… lo sento. Da qualche parte, oltre il tempo, tu sei ancora qui con me."
               }
@@ -5731,7 +6314,7 @@
       "demoChiave": "utente-mv7ncz5n-u0gm2fm94sm",
       "voceChiave": "studio_copia_di_interstellar_oltre_ga",
       "voceProssima": 1,
-      "aggiornato": 1791985389643,
+      "aggiornato": 1791989250682,
       "lingua": "it",
       "musica": null,
       "voci": {},
