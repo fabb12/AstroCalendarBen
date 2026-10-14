@@ -2274,7 +2274,8 @@
       storia: true,
       cast: 'cooper,brand,romilly,doyle,tars,case,mann,murph,endurance,ranger,lander,gargantua,miller_planet,mann_planet',
       testo: `define_demo 'storia_interstellar' {
-  // «Interstellar: oltre Gargantua» (v482). La missione Lazarus del film di
+  // «Interstellar · Parte 1: oltre Gargantua» (v482; dalla v486 è la prima
+  // parte, e finisce nella stanza di Murph, dove comincia la Parte 2). La missione Lazarus del film di
   // Christopher Nolan (2014), dal wormhole vicino a Saturno ai due pianeti
   // attorno a Gargantua, fino alla caduta di Cooper e TARS nel buco nero. Le
   // navicelle (l'Endurance, il Ranger, il Lander) portano l'equipaggio ai
@@ -2764,16 +2765,507 @@
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.42' };
   }
   scene solar_system_3d {
-    duration: 10s;
-    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 4, elev_from: 65, elev_to: 65 };
+    // v486: il finale porta alla Parte 2. Murph è tornata nella sua vecchia
+    // stanza, quella dietro la libreria: il suo «fantasma» si sta per
+    // rifare vivo, ed è da lì che il tesseratto comincia
+    duration: 13s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
-    action: effect { type: starfield, duration: 60 };
+    action: effect { type: murph_room, duration: 60 };
     action: date_card { label: 'demo.cartello.storia_interstellar.fine' };
-    action: character_show { target: 'murph', expression: 'hopeful', at: center, look: 'viewer' };
+    action: character_show { target: 'murph', expression: 'hopeful', at: right, look: 'viewer' };
     action: effect { type: sparkles, target: 'murph', color: '#fbbf24', shot_from: 0.2 };
+    action: effect { type: books_fall, at: left, size: 1, duration: 5.5, shot_from: 0.55 };
+    action: character_expression { target: 'murph', expression: 'surprised', shot_from: 0.7 };
     action: character_speak { target: 'murph', id: 'demo.narr.storia_interstellar.43' };
   }
 }`
+    },
+    {
+      chiave: 'storia_interstellar2',
+      storia: true,
+      cast: 'cooper,tars,loro,murph_bambina,murph,murph_anziana,brand,case,ranger,endurance,gargantua',
+      testo: `define_demo 'storia_interstellar2' {
+  // «Interstellar · Parte 2: il tesseratto» (v486). Riprende dove finisce la
+  // Parte 1: Cooper e TARS cadono in Gargantua. Dentro c'è il tesseratto, la
+  // biblioteca senza fine costruita da «Loro», gli esseri a cinque
+  // dimensioni, per cui il tempo è un posto (time_strip, dimensions,
+  // hypercube); Cooper è il «fantasma» di Murph (books_fall, dust_binary),
+  // TARS ha i dati della singolarità, la gravità quantistica (equations), e
+  // Cooper li manda a Murph grande nella lancetta dell'orologio, in Morse
+  // (morse_watch). Murph risolve l'equazione e l'umanità lascia la Terra
+  // (liftoff). Loro sono gli esseri umani del futuro; la mano nel wormhole
+  // della Parte 1 era quella di Cooper. Cooper torna, viene ripescato vicino
+  // a Saturno, si sveglia sulla Stazione Cooper (cooper_station: il cilindro
+  // che gira e fa la gravità), ritrova Murph anziana (bedside) e riparte
+  // verso Brand, sul pianeta di Edmunds (edmunds_planet).
+  scene solar_system_3d {
+    // Dove finiva la Parte 1: il Ranger, piccolissimo, dentro la luce di Gargantua
+    duration: 14s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 4, elev_from: 65, elev_to: 65 };
+    action: story_camera { mode: wide };
+    action: story_music { src: 'musica/Observing_the_Zenith.mp3', volume: 0.3 };
+    action: story_title { id: 'storie.titolo.interstellar2', shot_to: 0.35 };
+    action: effect { type: gargantua_view, target: 'gargantua', size: 1.9, duration: 60 };
+    action: character_show { target: 'gargantua', expression: 'mysterious', look: 'ranger' };
+    action: character_show { target: 'ranger', at: center, scale: 0.3, spin: 40 };
+    action: character_show { target: 'ranger', at: center, scale: 0.15, spin: 90, glide: 7, shot_from: 0.4 };
+    action: character_show { target: 'cooper', expression: 'panicked', inside: 'ranger' };
+    action: character_show { target: 'tars', expression: 'worried', inside: 'ranger' };
+    action: effect { type: shockwave, target: 'ranger', shot_from: 0.55 };
+    action: effect { type: flash, at: center, color: '#fffbeb', shot_from: 0.9 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.1', shot_from: 0.36 };
+  }
+  scene solar_system_3d {
+    // Il tesseratto: la biblioteca senza fine
+    duration: 16s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 65, elev_to: 66 };
+    action: story_camera { mode: wide };
+    action: effect { type: tesseract, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.tesseratto' };
+    action: character_show { target: 'cooper', expression: 'scared', at: top, scale: 0.5 };
+    action: character_show { target: 'cooper', expression: 'scared', at: center, scale: 0.85, glide: 6, shot_from: 0.1 };
+    action: character_expression { target: 'cooper', expression: 'wonder', shot_from: 0.35 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.2', shot_from: 0.2 };
+  }
+  scene solar_system_3d {
+    duration: 13s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 66, elev_to: 66 };
+    action: character_show { target: 'cooper', expression: 'surprised', at: left, look: 'tars' };
+    action: character_show { target: 'tars', expression: 'happy', at: off_right };
+    action: character_show { target: 'tars', expression: 'happy', at: right, glide: 3, shot_from: 0.02 };
+    action: character_animate { target: 'tars', animation: wobble, times: 2, shot_from: 0.35 };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.3', shot_from: 0.12 };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 66, elev_to: 66 };
+    action: character_show { target: 'cooper', expression: 'curious', at: left, look: 'tars' };
+    action: character_show { target: 'tars', expression: 'thinking', at: right, look: 'cooper' };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.4' };
+  }
+  scene solar_system_3d {
+    // Che cos'è un tesseratto: un cubo dentro un cubo
+    duration: 19s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 66, elev_to: 67 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'tars', expression: 'proud', at: right, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'curious', at: bottom_left, scale: 0.75, look: 'tars' };
+    action: effect { type: hypercube, at: center, size: 1.6, duration: 17, shot_from: 0.05 };
+    action: character_expression { target: 'cooper', expression: 'impressed', shot_from: 0.75 };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.5' };
+  }
+  scene solar_system_3d {
+    // Loro: la figura di luce, con le sue copie nel tempo
+    duration: 15s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 67, elev_to: 67 };
+    action: effect { type: flash, at: top, color: '#ede9fe', shot_from: 0.0 };
+    action: character_show { target: 'loro', expression: 'tender', at: top, scale: 1.1 };
+    action: character_show { target: 'cooper', expression: 'scared', at: bottom_left, scale: 0.8, look: 'loro' };
+    action: effect { type: sparkles, target: 'loro', color: '#fde68a', shot_from: 0.05 };
+    action: character_expression { target: 'cooper', expression: 'wonder', shot_from: 0.5 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.6', shot_from: 0.1 };
+  }
+  scene solar_system_3d {
+    // Le dimensioni, una per una: punto, linea, quadrato, cubo, tesseratto… e il tempo
+    duration: 21s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 67, elev_to: 67 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'loro', expression: 'mysterious', at: top_right, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'curious', at: bottom_left, scale: 0.7, look: 'loro' };
+    action: effect { type: dimensions, at: center, size: 1.5, duration: 19, shot_from: 0.04 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.7' };
+  }
+  scene solar_system_3d {
+    // Il tempo per Loro: una pellicola, ogni istante accanto agli altri
+    duration: 21s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 67, elev_to: 68 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'loro', expression: 'tender', at: top, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'wonder', at: bottom_right, scale: 0.7, look: 'loro' };
+    action: effect { type: time_strip, at: center, size: 1.1, duration: 19, shot_from: 0.05 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.8' };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 68, elev_to: 68 };
+    action: character_show { target: 'cooper', expression: 'hopeful', at: left, look: 'loro' };
+    action: character_show { target: 'loro', expression: 'mysterious', at: right, look: 'cooper' };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.9' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 68, elev_to: 68 };
+    action: character_show { target: 'cooper', expression: 'thinking', at: left, look: 'loro' };
+    action: character_show { target: 'loro', expression: 'tender', at: right, look: 'cooper' };
+    action: effect { type: hearts, target: 'cooper', color: '#fde68a', shot_from: 0.7 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.10' };
+  }
+  scene solar_system_3d {
+    // La gravità attraversa le dimensioni, anche il tempo
+    duration: 15s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 68, elev_to: 68 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'loro', expression: 'mysterious', at: top_right, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'curious', at: left, scale: 0.8, look: 'loro' };
+    action: effect { type: spacetime, at: center, size: 1.4, color: '#fde68a', duration: 13, shot_from: 0.08 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.11' };
+  }
+  scene solar_system_3d {
+    duration: 12s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 68, elev_to: 68 };
+    action: story_camera { mode: speaker };
+    action: character_show { target: 'cooper', expression: 'thinking', at: left, look: 'viewer' };
+    action: character_show { target: 'loro', expression: 'mysterious', at: right, look: 'cooper' };
+    action: character_expression { target: 'cooper', expression: 'surprised', shot_from: 0.55 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.12' };
+  }
+  scene solar_system_3d {
+    // Loro sono gli esseri umani del futuro
+    duration: 18s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 68, elev_to: 69 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.loro' };
+    action: character_show { target: 'loro', expression: 'proud', at: center, scale: 1.2, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'impressed', at: bottom_left, scale: 0.7, look: 'loro' };
+    action: effect { type: glow, target: 'loro', color: '#fde68a', duration: 8, shot_from: 0.1 };
+    action: effect { type: sparkles, target: 'loro', color: '#c4b5fd', shot_from: 0.6 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.13' };
+  }
+  scene solar_system_3d {
+    // Dietro la libreria: la sera della partenza
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: effect { type: murph_room, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.stanza' };
+    action: character_show { target: 'murph_bambina', expression: 'annoyed', at: right, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'panicked', at: left, scale: 0.9, look: 'murph_bambina' };
+    action: character_animate { target: 'cooper', animation: shake, times: 3, strength: 0.6, shot_from: 0.6 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.14' };
+  }
+  scene solar_system_3d {
+    // I libri cadono: lunghi e corti, è Morse
+    duration: 17s;
+    action: effect { type: murph_room, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'murph_bambina', expression: 'surprised', at: right, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'determined', at: top_left, scale: 0.6 };
+    action: effect { type: books_fall, at: left, size: 1.3, duration: 15, shot_from: 0.0 };
+    action: character_expression { target: 'murph_bambina', expression: 'excited', shot_from: 0.6 };
+    action: character_speak { target: 'murph_bambina', id: 'demo.narr.storia_interstellar2.15', shot_from: 0.3 };
+  }
+  scene solar_system_3d {
+    duration: 14s;
+    action: effect { type: murph_room, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: speaker };
+    action: character_show { target: 'cooper', expression: 'sad', at: left, look: 'murph_bambina' };
+    action: character_show { target: 'murph_bambina', expression: 'sad', at: right, scale: 0.85 };
+    action: character_expression { target: 'cooper', expression: 'wistful', shot_from: 0.55 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.16' };
+  }
+  scene solar_system_3d {
+    // La polvere sul pavimento: righe larghe e strette
+    duration: 14s;
+    action: effect { type: murph_room, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'tars', expression: 'curious', at: top_right, scale: 0.7, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'curious', at: top_left, scale: 0.7, look: 'tars' };
+    action: effect { type: dust_binary, at: bottom, size: 1.4, duration: 13, shot_from: 0.05 };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.17' };
+  }
+  scene solar_system_3d {
+    duration: 17s;
+    action: effect { type: murph_room, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.cerchio' };
+    action: character_show { target: 'cooper', expression: 'surprised', at: top_left, scale: 0.75, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'proud', at: top_right, scale: 0.7, look: 'cooper' };
+    action: effect { type: dust_binary, at: bottom, size: 1.4, duration: 16 };
+    action: character_expression { target: 'cooper', expression: 'impressed', shot_from: 0.45 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.18' };
+  }
+  scene solar_system_3d {
+    // I dati della singolarità
+    duration: 14s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 69, elev_to: 69 };
+    action: character_show { target: 'tars', expression: 'proud', at: right, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'surprised', at: left, look: 'tars' };
+    action: effect { type: glow, target: 'tars', color: '#7dd3fc', duration: 6, shot_from: 0.2 };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.19' };
+  }
+  scene solar_system_3d {
+    // La gravità quantistica: Einstein e i quanti si incontrano in un buco nero
+    duration: 22s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 69, elev_to: 70 };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.gravita' };
+    action: character_show { target: 'tars', expression: 'thinking', at: right, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'curious', at: bottom_left, scale: 0.7, look: 'tars' };
+    action: effect { type: equations, at: center, size: 1.3, duration: 20, shot_from: 0.03 };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.20' };
+  }
+  scene solar_system_3d {
+    duration: 15s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 70, elev_to: 70 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'cooper', expression: 'worried', at: top_left, scale: 0.8, look: 'viewer' };
+    action: character_expression { target: 'cooper', expression: 'determined', shot_from: 0.45 };
+    action: effect { type: time_strip, at: center, size: 1, duration: 9, shot_from: 0.4 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.21' };
+  }
+  scene solar_system_3d {
+    // Il messaggio nella lancetta dei secondi
+    duration: 17s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 70, elev_to: 70 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.lancetta' };
+    action: character_show { target: 'cooper', expression: 'excited', at: left, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'curious', at: right, scale: 0.85, look: 'cooper' };
+    action: effect { type: morse_watch, at: center, size: 1.3, duration: 13, shot_from: 0.2 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.22' };
+  }
+  scene solar_system_3d {
+    duration: 11s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 70, elev_to: 70 };
+    action: character_show { target: 'tars', expression: 'skeptical', at: right, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'determined', at: left, look: 'tars' };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.23' };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: effect { type: tesseract, duration: 60 };
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 70, elev_to: 70 };
+    action: story_camera { mode: speaker };
+    action: character_show { target: 'cooper', expression: 'tender', at: left, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'tender', at: right, look: 'cooper' };
+    action: effect { type: hearts, target: 'cooper', color: '#fde68a', shot_from: 0.5 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.24' };
+  }
+  scene solar_system_3d {
+    // Sulla Terra, tanti anni dopo: Murph grande torna nella sua stanza
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: effect { type: murph_room, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.terra' };
+    action: character_show { target: 'murph', expression: 'wistful', at: right, look: 'viewer' };
+    action: character_expression { target: 'murph', expression: 'curious', shot_from: 0.6 };
+    action: character_speak { target: 'murph', id: 'demo.narr.storia_interstellar2.25' };
+  }
+  scene solar_system_3d {
+    // L'orologio: la lancetta scatta in Morse
+    duration: 17s;
+    action: effect { type: murph_room, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'murph', expression: 'surprised', at: right, look: 'viewer' };
+    action: effect { type: morse_watch, at: left, size: 1.2, duration: 16, shot_from: 0.0 };
+    action: character_expression { target: 'murph', expression: 'excited', shot_from: 0.55 };
+    action: character_speak { target: 'murph', id: 'demo.narr.storia_interstellar2.26', shot_from: 0.12 };
+  }
+  scene solar_system_3d {
+    // Eureka: l'equazione è finita
+    duration: 13s;
+    action: effect { type: murph_room, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'murph', expression: 'excited', at: right, look: 'viewer' };
+    action: effect { type: equations, at: left, size: 1.1, duration: 11, shot_from: 0.0 };
+    action: effect { type: fireworks, at: top, shot_from: 0.75 };
+    action: character_animate { target: 'murph', animation: jump, times: 2, shot_from: 0.8 };
+    action: character_speak { target: 'murph', id: 'demo.narr.storia_interstellar2.27' };
+  }
+  scene solar_system_3d {
+    // L'umanità lascia la Terra
+    duration: 19s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: liftoff, duration: 19 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.decollo' };
+    action: character_show { target: 'murph', expression: 'hopeful', at: bottom_left, scale: 0.75, look: 'viewer' };
+    action: character_expression { target: 'murph', expression: 'proud', shot_from: 0.6 };
+    action: character_speak { target: 'murph', id: 'demo.narr.storia_interstellar2.28', shot_from: 0.18 };
+  }
+  scene solar_system_3d {
+    // Il cerchio è chiuso: il tesseratto si richiude
+    duration: 13s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 70, elev_to: 70 };
+    action: effect { type: tesseract, duration: 13 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'loro', expression: 'happy', at: top, scale: 0.9, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'relieved', at: bottom_left, scale: 0.75, look: 'loro' };
+    action: effect { type: hypercube, at: center, size: 1.2, duration: 11, shot_from: 0.1 };
+    action: effect { type: flash, at: center, color: '#fffbeb', shot_from: 0.9 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.29' };
+  }
+  scene solar_system_3d {
+    // Nel wormhole: la mano che strinse quella di Brand, all'inizio, era la sua
+    duration: 14s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 18, elev_to: 18, zoom_from: 1.25, zoom_to: 1.3 };
+    action: effect { type: wormhole_tunnel, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.mano' };
+    action: character_show { target: 'cooper', expression: 'wonder', at: left, scale: 0.8, look: 'endurance' };
+    action: character_show { target: 'endurance', at: right, scale: 0.55 };
+    action: character_show { target: 'brand', expression: 'wonder', inside: 'endurance' };
+    action: character_expression { target: 'cooper', expression: 'tender', shot_from: 0.5 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.30', shot_from: 0.1 };
+  }
+  scene solar_system_3d {
+    // Vicino a Saturno: Cooper alla deriva, e una navetta che arriva
+    duration: 15s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 10, orbit_from: 20, elev_from: 12, elev_to: 16, zoom_from: 0.8, zoom_to: 0.95 };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.saturno' };
+    action: character_show { target: 'cooper', expression: 'sleepy', at: bottom_left, scale: 0.4 };
+    action: character_show { target: 'ranger', at: off_right, scale: 0.4 };
+    action: character_show { target: 'ranger', at: right, scale: 0.6, glide: 10, shot_from: 0.2 };
+    action: character_expression { target: 'cooper', expression: 'hopeful', shot_from: 0.6 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.31', shot_from: 0.15 };
+  }
+  scene solar_system_3d {
+    // La Stazione Cooper: il cilindro che gira attorno a Saturno
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: effect { type: cooper_station, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.stazione' };
+    action: character_show { target: 'cooper', expression: 'sleepy', at: left, look: 'tars' };
+    action: character_show { target: 'tars', expression: 'playful', at: right, look: 'cooper' };
+    action: character_expression { target: 'cooper', expression: 'surprised', shot_from: 0.8 };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.32' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: effect { type: cooper_station, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: character_show { target: 'cooper', expression: 'surprised', at: left, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'happy', at: right, look: 'cooper' };
+    action: effect { type: time_warp, at: center, size: 0.9, duration: 7, shot_from: 0.15 };
+    action: character_expression { target: 'cooper', expression: 'tender', shot_from: 0.65 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.33' };
+  }
+  scene solar_system_3d {
+    // La gravità della stazione: girando, spinge verso il bordo
+    duration: 16s;
+    action: effect { type: cooper_station, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 0.75, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'wonder', at: bottom_left, scale: 0.7, look: 'tars' };
+    action: character_look_at { target: 'cooper', object: 'viewer', shot_from: 0.3 };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.34' };
+  }
+  scene solar_system_3d {
+    duration: 12s;
+    action: effect { type: cooper_station, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: speaker };
+    action: character_show { target: 'tars', expression: 'tender', at: right, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'worried', at: left, look: 'tars' };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.35' };
+  }
+  scene solar_system_3d {
+    // Murph, anziana, e il suo papà che non è invecchiato
+    duration: 10s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: effect { type: bedside, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.murph' };
+    action: character_show { target: 'murph_anziana', expression: 'tender', at: right, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'wistful', at: left, look: 'murph_anziana' };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.36', shot_from: 0.2 };
+  }
+  scene solar_system_3d {
+    duration: 11s;
+    action: effect { type: bedside, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: speaker };
+    action: character_show { target: 'murph_anziana', expression: 'happy', at: right, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'tender', at: left, look: 'murph_anziana' };
+    action: effect { type: sparkles, target: 'murph_anziana', color: '#fde68a', shot_from: 0.3 };
+    action: character_speak { target: 'murph_anziana', id: 'demo.narr.storia_interstellar2.37' };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: effect { type: bedside, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: character_show { target: 'cooper', expression: 'proud', at: left, look: 'murph_anziana' };
+    action: character_show { target: 'murph_anziana', expression: 'tender', at: right, look: 'cooper' };
+    action: effect { type: hearts, target: 'cooper', color: '#fbcfe8', shot_from: 0.4 };
+    action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.38' };
+  }
+  scene solar_system_3d {
+    duration: 10s;
+    action: effect { type: bedside, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: speaker };
+    action: character_show { target: 'murph_anziana', expression: 'proud', at: right, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'tender', at: left, look: 'murph_anziana' };
+    action: character_speak { target: 'murph_anziana', id: 'demo.narr.storia_interstellar2.39' };
+  }
+  scene solar_system_3d {
+    duration: 19s;
+    action: effect { type: bedside, duration: 60 };
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: speaker };
+    action: character_show { target: 'murph_anziana', expression: 'tender', at: right, look: 'cooper' };
+    action: character_show { target: 'cooper', expression: 'sad', at: left, look: 'murph_anziana' };
+    action: character_expression { target: 'murph_anziana', expression: 'hopeful', shot_from: 0.55 };
+    action: character_expression { target: 'cooper', expression: 'determined', shot_from: 0.85 };
+    action: character_speak { target: 'murph_anziana', id: 'demo.narr.storia_interstellar2.40' };
+  }
+  scene solar_system_3d {
+    // Si riparte: il Ranger verso il wormhole, vicino agli anelli
+    duration: 15s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 10, orbit_from: 30, elev_from: 16, elev_to: 18, zoom_from: 0.9, zoom_to: 1.05 };
+    action: story_camera { mode: wide };
+    action: effect { type: wormhole, at: right, size: 1.4, duration: 60, shot_from: 0.05 };
+    action: character_show { target: 'ranger', at: off_left, scale: 0.7 };
+    action: character_show { target: 'ranger', at: right, scale: 0.25, glide: 12, shot_from: 0.05 };
+    action: character_show { target: 'cooper', expression: 'determined', inside: 'ranger' };
+    action: character_show { target: 'tars', expression: 'playful', inside: 'ranger' };
+    action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.41', shot_from: 0.12 };
+  }
+  scene solar_system_3d {
+    // Il pianeta di Edmunds: Brand, all'alba, e CASE
+    duration: 17s;
+    action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: edmunds_planet, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.edmunds' };
+    action: character_show { target: 'brand', expression: 'hopeful', at: center, look: 'viewer' };
+    action: character_show { target: 'case', expression: 'neutral', at: bottom_right, scale: 0.7, look: 'brand' };
+    action: character_expression { target: 'brand', expression: 'tender', shot_from: 0.7 };
+    action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar2.42', shot_from: 0.1 };
+  }
+  scene solar_system_3d {
+    // La fine: Loro, e la promessa
+    duration: 15s;
+    action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 4, elev_from: 65, elev_to: 66 };
+    action: story_camera { mode: wide };
+    action: effect { type: starfield, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_interstellar2.fine' };
+    action: character_show { target: 'loro', expression: 'tender', at: center, look: 'viewer' };
+    action: effect { type: glow, target: 'loro', color: '#fde68a', duration: 10, shot_from: 0.1 };
+    action: effect { type: sparkles, target: 'loro', color: '#fbbf24', shot_from: 0.75 };
+    action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.43' };
+  }
+}`
+
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

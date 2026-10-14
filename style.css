@@ -12768,6 +12768,19 @@ body.demo-in-corso .cosm-aiuto { display: none; }
 .storia-scheda > .demo-azioni .storia-avvia { flex: 1 1 10rem; }
 .storia-scheda { grid-template-rows: auto auto auto auto auto 1fr; }
 .storia-cast[hidden] { display: none; }
+/* v486: il nome nuovo di una CosmoStoria (dentro la scheda), le storie
+   nascoste e quelle in cantiere nello Studio, sotto alle schede */
+.storia-rinomina { display: grid; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--bordo); }
+.storia-rinomina input, .storia-rinomina textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.storia-rinomina textarea { resize: vertical; min-height: 4.2rem; }
+.storie-gestione { display: grid; gap: 10px; min-width: 0; }
+.storie-gestione .demo-opzioni-nota, .storia-rinomina .demo-opzioni-nota { margin: 0; }
+.storie-gestione:empty { display: none; }
+.storie-gestione-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.storie-nascoste .storie-gestione-lista li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; color: #cbd5e1; font-size: 0.88rem; }
+.storie-cantiere-lista { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.storia-scheda.storia-cantiere { grid-template-rows: none; border-style: dashed; }
+.storia-scheda .demo-azioni .studio-pericolo { margin-left: auto; }
 .storie-anteprima { display: grid; gap: 8px; }
 .storie-sottotitolo { margin: 6px 0 0; color: #fff; font-size: 0.95rem; font-weight: 700; }
 .storie-anteprima-comandi { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }

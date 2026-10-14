@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **14/156** in italiano · **0/129** in inglese.
+Pronte: **14/199** in italiano · **0/172** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -35,16 +35,19 @@ Pronte: **14/156** in italiano · **0/129** in inglese.
 | Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
 | Gargantua | `storie/gargantua/` | 3 | 0/3 | 0/3 |
 | Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
-| Cooper | `storie/cooper/` | 13 | 0/13 | 0/13 |
+| Cooper | `storie/cooper/` | 29 | 0/29 | 0/29 |
 | Romilly | `storie/romilly/` | 4 | 0/4 | 0/4 |
-| Amelia Brand | `storie/amelia-brand/` | 9 | 0/9 | 0/9 |
-| TARS | `storie/tars/` | 4 | 0/4 | 0/4 |
+| Amelia Brand | `storie/amelia-brand/` | 10 | 0/10 | 0/10 |
+| TARS | `storie/tars/` | 14 | 0/14 | 0/14 |
 | Doyle | `storie/doyle/` | 2 | 0/2 | 0/2 |
 | Pianeta di Miller | `storie/pianeta-di-miller/` | 1 | 0/1 | 0/1 |
 | CASE | `storie/case/` | 2 | 0/2 | 0/2 |
-| Murph | `storie/murph/` | 2 | 0/2 | 0/2 |
+| Murph | `storie/murph/` | 6 | 0/6 | 0/6 |
 | Pianeta di Mann | `storie/pianeta-di-mann/` | 1 | 0/1 | 0/1 |
 | Dottor Mann | `storie/dottor-mann/` | 3 | 0/3 | 0/3 |
+| Loro | `storie/loro/` | 8 | 0/8 | 0/8 |
+| Murph bambina | `storie/murph-bambina/` | 1 | 0/1 | 0/1 |
+| Murph anziana | `storie/murph-anziana/` | 3 | 0/3 | 0/3 |
 | hubble | `storie/hubble/` | 1 | 1/1 | 0/0 |
 | iss | `storie/iss/` | 1 | 1/1 | 0/0 |
 | css | `storie/css/` | 1 | 1/1 | 0/0 |
@@ -1026,11 +1029,11 @@ Cartella: `audio/narrazione/storie/gargantua/<lingua>/` · nel codice `gargantua
   - **Emozione:** misterioso — profondissimo, con un sorriso nella voce
   - **Testo:** Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce.`
-- `storia_interstellar-10.mp3` — manca · Interstellar: oltre Gargantua, scena 10 (al massimo 15 s)
+- `storia_interstellar-10.mp3` — manca · Interstellar 1: oltre Gargantua, scena 10 (al massimo 15 s)
   - **Emozione:** misterioso — profondissimo, lento, ironia nascosta
   - **Testo:** Benvenuti, piccoli umani. Non sono un mostro: sono un pozzo nello spazio-tempo. Chi mi passa vicino scivola nella mia curva… e il suo tempo rallenta.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Benvenuti, piccoli umani. [calmly] Non sono un mostro: sono un pozzo nello spazio-tempo. [mysteriously] Chi mi passa vicino scivola nella mia curva… [whispers] e il suo tempo rallenta.`
-- `storia_interstellar-41.mp3` — manca · Interstellar: oltre Gargantua, scena 41 (al massimo 23 s)
+- `storia_interstellar-41.mp3` — manca · Interstellar 1: oltre Gargantua, scena 41 (al massimo 23 s)
   - **Emozione:** solenne — profondissimo e lento, poi rassicurante
   - **Testo:** Ora entri nel mio orizzonte, Cooper. Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Ora entri nel mio orizzonte, Cooper. [slowly] Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. [warmly] E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto.`
@@ -1041,11 +1044,11 @@ Cartella: `audio/narrazione/storie/gargantua/<lingua>/` · nel codice `gargantua
   - **Emozione:** misterioso — profondissimo, con un sorriso nella voce
   - **Testo:** I'm make-believe… but made with real equations. And I spin at almost the speed of light.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] I'm make-believe… but made with real equations. And I spin at almost the speed of light.`
-- `storia_interstellar-10.mp3` — manca · Interstellar: oltre Gargantua, scena 10 (al massimo 15 s)
+- `storia_interstellar-10.mp3` — manca · Interstellar 1: oltre Gargantua, scena 10 (al massimo 15 s)
   - **Emozione:** misterioso — profondissimo, lento, ironia nascosta
   - **Testo:** Welcome, little humans. I am not a monster: I am a well in spacetime. Whoever passes close to me slides into my curve… and their time slows down.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Welcome, little humans. [calmly] I am not a monster: I am a well in spacetime. [mysteriously] Whoever passes close to me slides into my curve… [whispers] and their time slows down.`
-- `storia_interstellar-41.mp3` — manca · Interstellar: oltre Gargantua, scena 41 (al massimo 23 s)
+- `storia_interstellar-41.mp3` — manca · Interstellar 1: oltre Gargantua, scena 41 (al massimo 23 s)
   - **Emozione:** solenne — profondissimo e lento, poi rassicurante
   - **Testo:** Now you're entering my horizon, Cooper. Anyone watching from far away will see you slow down and stop forever; for you, though, time flows as always. And don't be afraid: I'm so big that my tides are gentle here, I won't stretch you like spaghetti.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Now you're entering my horizon, Cooper. [slowly] Anyone watching from far away will see you slow down and stop forever; for you, though, time flows as always. [warmly] And don't be afraid: I'm so big that my tides are gentle here, I won't stretch you like spaghetti.`
@@ -1078,113 +1081,241 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
 
 ### Italiano — `storie/cooper/it/`
 
-- `storia_interstellar-1.mp3` — manca · Interstellar: oltre Gargantua, scena 1 (al massimo 16 s)
+- `storia_interstellar-1.mp3` — manca · Interstellar 1: oltre Gargantua, scena 1 (al massimo 16 s)
   - **Emozione:** meravigliato — sottovoce, con stupore; si ferma su «Saturno»
   - **Testo:** Due anni di viaggio, ed eccolo: Saturno. E lì, accanto agli anelli, c'è una porta che nessun essere umano ha mai attraversato.
   - **Da incollare su ElevenLabs v3:** `[in awe] Due anni di viaggio, ed eccolo: Saturno. [whispers] E lì, accanto agli anelli, c'è una porta che nessun essere umano ha mai attraversato.`
-- `storia_interstellar-6.mp3` — manca · Interstellar: oltre Gargantua, scena 6 (al massimo 9 s)
+- `storia_interstellar-6.mp3` — manca · Interstellar 1: oltre Gargantua, scena 6 (al massimo 9 s)
   - **Emozione:** deciso — prima una risatina, poi il comando
   - **Testo:** TARS, abbassa l'umorismo al settantacinque per cento. Tutti ai posti: entriamo!
   - **Da incollare su ElevenLabs v3:** `[laughs] TARS, abbassa l'umorismo al settantacinque per cento. [determined] Tutti ai posti: entriamo!`
-- `storia_interstellar-9.mp3` — manca · Interstellar: oltre Gargantua, scena 9 (al massimo 14 s)
+- `storia_interstellar-9.mp3` — manca · Interstellar 1: oltre Gargantua, scena 9 (al massimo 14 s)
   - **Emozione:** ammirato — lento, con rispetto; il nome detto piano
   - **Testo:** Eccolo. Gargantua. Un buco nero cento milioni di volte più pesante del Sole, che gira su se stesso quasi alla velocità della luce.
   - **Da incollare su ElevenLabs v3:** `[in awe] Eccolo. [whispers] Gargantua. [in awe] Un buco nero cento milioni di volte più pesante del Sole, che gira su se stesso quasi alla velocità della luce.`
-- `storia_interstellar-13.mp3` — manca · Interstellar: oltre Gargantua, scena 13 (al massimo 13 s)
+- `storia_interstellar-13.mp3` — manca · Interstellar 1: oltre Gargantua, scena 13 (al massimo 13 s)
   - **Emozione:** deciso — pratico, veloce, da pilota
   - **Testo:** Allora niente errori: scendiamo, prendiamo i dati della dottoressa Miller e torniamo su. Ogni minuto laggiù è più di un mese quassù.
   - **Da incollare su ElevenLabs v3:** `[determined] Allora niente errori: scendiamo, prendiamo i dati della dottoressa Miller e torniamo su. [serious] Ogni minuto laggiù è più di un mese quassù.`
-- `storia_interstellar-16.mp3` — manca · Interstellar: oltre Gargantua, scena 16 (al massimo 8 s)
+- `storia_interstellar-16.mp3` — manca · Interstellar 1: oltre Gargantua, scena 16 (al massimo 8 s)
   - **Emozione:** spaventato — si accorge lentamente, poi grida
   - **Testo:** Brand… quelle non sono montagne. Sono onde!
   - **Da incollare su ElevenLabs v3:** `[nervous] Brand… quelle non sono montagne. [shouts] Sono onde!`
-- `storia_interstellar-19.mp3` — manca · Interstellar: oltre Gargantua, scena 19 (al massimo 7 s)
+- `storia_interstellar-19.mp3` — manca · Interstellar 1: oltre Gargantua, scena 19 (al massimo 7 s)
   - **Emozione:** preoccupato — esitante, ha paura della risposta
   - **Testo:** Romilly… quanto tempo siamo stati via?
   - **Da incollare su ElevenLabs v3:** `[hesitant] Romilly… [nervous] quanto tempo siamo stati via?`
-- `storia_interstellar-23.mp3` — manca · Interstellar: oltre Gargantua, scena 23 (al massimo 14 s)
+- `storia_interstellar-23.mp3` — manca · Interstellar 1: oltre Gargantua, scena 23 (al massimo 14 s)
   - **Emozione:** commosso — in lacrime, tenero
   - **Testo:** Murph… Ti ho lasciato il mio orologio, per confrontarli quando sarei tornato. Il mio tempo è rimasto indietro, ma io non ti ho mai lasciata.
   - **Da incollare su ElevenLabs v3:** `[crying] Murph… [tenderly] Ti ho lasciato il mio orologio, per confrontarli quando sarei tornato. [whispers] Il mio tempo è rimasto indietro, ma io non ti ho mai lasciata.`
-- `storia_interstellar-25.mp3` — manca · Interstellar: oltre Gargantua, scena 25 (al massimo 7 s)
+- `storia_interstellar-25.mp3` — manca · Interstellar 1: oltre Gargantua, scena 25 (al massimo 7 s)
   - **Emozione:** deciso — fermo, dispiaciuto
   - **Testo:** I dati dicono Mann, Brand. Andiamo da Mann.
   - **Da incollare su ElevenLabs v3:** `[serious] I dati dicono Mann, Brand. [determined] Andiamo da Mann.`
-- `storia_interstellar-32.mp3` — manca · Interstellar: oltre Gargantua, scena 32 (al massimo 10 s)
+- `storia_interstellar-32.mp3` — manca · Interstellar 1: oltre Gargantua, scena 32 (al massimo 10 s)
   - **Emozione:** determinato — a denti stretti, la battuta più importante
   - **Testo:** No, CASE. È necessario. Giriamo anche noi, alla stessa velocità!
   - **Da incollare su ElevenLabs v3:** `[determined] No, CASE. [serious] È necessario. [shouts] Giriamo anche noi, alla stessa velocità!`
-- `storia_interstellar-35.mp3` — manca · Interstellar: oltre Gargantua, scena 35 (al massimo 15 s)
+- `storia_interstellar-35.mp3` — manca · Interstellar 1: oltre Gargantua, scena 35 (al massimo 15 s)
   - **Emozione:** concentrato — spiega il piano, con fiducia
   - **Testo:** Il carburante non basta per Edmunds. Ma Gargantua può farci da fionda: gli passiamo rasenti, la sua gravità ci curva e ci lancia via più veloci.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Il carburante non basta per Edmunds. [determined] Ma Gargantua può farci da fionda: gli passiamo rasenti, la sua gravità ci curva e ci lancia via più veloci.`
-- `storia_interstellar-36.mp3` — manca · Interstellar: oltre Gargantua, scena 36 (al massimo 13 s)
+- `storia_interstellar-36.mp3` — manca · Interstellar 1: oltre Gargantua, scena 36 (al massimo 13 s)
   - **Emozione:** malinconico — pesa il prezzo, voce bassa
   - **Testo:** Così vicino a Gargantua il tempo rallenta di nuovo: questa manovra ci costerà cinquantun anni sulla Terra. È il prezzo per arrivare.
   - **Da incollare su ElevenLabs v3:** `[sighs] Così vicino a Gargantua il tempo rallenta di nuovo: questa manovra ci costerà cinquantun anni sulla Terra. [wistfully] È il prezzo per arrivare.`
-- `storia_interstellar-37.mp3` — manca · Interstellar: oltre Gargantua, scena 37 (al massimo 15 s)
+- `storia_interstellar-37.mp3` — manca · Interstellar 1: oltre Gargantua, scena 37 (al massimo 15 s)
   - **Emozione:** risoluto — calmo, ha già deciso
   - **Testo:** Newton lo diceva: per andare avanti bisogna lasciare indietro qualcosa. TARS e io ci stacchiamo nel punto più vicino: senza il nostro peso, l'Endurance ce la farà.
   - **Da incollare su ElevenLabs v3:** `[calmly] Newton lo diceva: per andare avanti bisogna lasciare indietro qualcosa. [determined] TARS e io ci stacchiamo nel punto più vicino: [tenderly] senza il nostro peso, l'Endurance ce la farà.`
-- `storia_interstellar-42.mp3` — manca · Interstellar: oltre Gargantua, scena 42 (al massimo 13 s)
+- `storia_interstellar-42.mp3` — manca · Interstellar 1: oltre Gargantua, scena 42 (al massimo 13 s)
   - **Emozione:** rapito — sussurrato, in pace
   - **Testo:** TARS… stiamo cadendo nella luce. Murph… sto arrivando.
   - **Da incollare su ElevenLabs v3:** `[in awe] TARS… stiamo cadendo nella luce. [whispers] Murph… sto arrivando.`
+- `storia_interstellar2-1.mp3` — manca · Interstellar 2: il tesseratto, scena 1 (al massimo 14 s)
+  - **Emozione:** in panico — urlato sopra il rumore, poi deciso e quasi ironico sull'ultima frase
+  - **Testo:** Il Ranger va in pezzi! TARS, mi espello. Se dall'altra parte c'è qualcosa… ci vediamo di là.
+  - **Da incollare su ElevenLabs v3:** `[panicked] Il Ranger va in pezzi! [shouting] TARS, mi espello. [determined] Se dall'altra parte c'è qualcosa… ci vediamo di là.`
+- `storia_interstellar2-2.mp3` — manca · Interstellar 2: il tesseratto, scena 2 (al massimo 16 s)
+  - **Emozione:** stupito — sottovoce, rapito, la voce che si apre sull'ultima scoperta
+  - **Testo:** Dove sono? Sembra una biblioteca infinita: scaffali, stanze, corridoi… e ogni stanza è la camera di Murph, in un momento diverso!
+  - **Da incollare su ElevenLabs v3:** `[in awe] Dove sono? [whispers] Sembra una biblioteca infinita: scaffali, stanze, corridoi… [excited] e ogni stanza è la camera di Murph, in un momento diverso!`
+- `storia_interstellar2-4.mp3` — manca · Interstellar 2: il tesseratto, scena 4 (al massimo 10 s)
+  - **Emozione:** curioso — teso e curioso, abbassa la voce sulla domanda
+  - **Testo:** Qualcuno? Allora sono Loro: quelli che hanno messo il wormhole vicino a Saturno. Ma chi sono, TARS?
+  - **Da incollare su ElevenLabs v3:** `[curious] Qualcuno? [thoughtful] Allora sono Loro: quelli che hanno messo il wormhole vicino a Saturno. Ma chi sono, TARS?`
+- `storia_interstellar2-9.mp3` — manca · Interstellar 2: il tesseratto, scena 9 (al massimo 10 s)
+  - **Emozione:** speranzoso — di getto, speranzoso, poi confuso sulla domanda
+  - **Testo:** Allora potete tornare indietro e salvare la Terra voi! Perché avete bisogno di me?
+  - **Da incollare su ElevenLabs v3:** `[excited] Allora potete tornare indietro e salvare la Terra voi! [curious] Perché avete bisogno di me?`
+- `storia_interstellar2-12.mp3` — manca · Interstellar 2: il tesseratto, scena 12 (al massimo 12 s)
+  - **Emozione:** folgorato — pensa ad alta voce, poi la scoperta gli toglie il fiato
+  - **Testo:** Aspetta… chi costruirebbe un ponte per gli esseri umani, se non degli esseri umani? Voi non siete alieni. Voi siete… noi!
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Aspetta… [surprised] chi costruirebbe un ponte per gli esseri umani, se non degli esseri umani? [gasps] Voi non siete alieni. Voi siete… noi!`
+- `storia_interstellar2-14.mp3` — manca · Interstellar 2: il tesseratto, scena 14 (al massimo 16 s)
+  - **Emozione:** disperato — affannato, poi grida contro un vetro che lei non sente
+  - **Testo:** È la sera in cui sono partito. Murph è arrabbiata con me, e io, di là, sto per andarmene. Murph! Fermami! Non lasciarmi partire!
+  - **Da incollare su ElevenLabs v3:** `[sad] È la sera in cui sono partito. [nervous] Murph è arrabbiata con me, e io, di là, sto per andarmene. [shouting] Murph! [crying] Fermami! Non lasciarmi partire!`
+- `storia_interstellar2-16.mp3` — manca · Interstellar 2: il tesseratto, scena 16 (al massimo 14 s)
+  - **Emozione:** commosso — la voce che si spezza, poi la decisione
+  - **Testo:** Sono io il fantasma. Sono sempre stato io! Ma il me di quella sera deve partire: se resta, nessuno salverà la Terra.
+  - **Da incollare su ElevenLabs v3:** `[in awe] Sono io il fantasma. [crying] Sono sempre stato io! [sad] Ma il me di quella sera deve partire: se resta, nessuno salverà la Terra.`
+- `storia_interstellar2-18.mp3` — manca · Interstellar 2: il tesseratto, scena 18 (al massimo 17 s)
+  - **Emozione:** illuminato — l'eccitazione di chi capisce un enigma
+  - **Testo:** Righe larghe e strette: uno e zero, codice binario! Le coordinate della NASA le ho mandate io, da qui, con la gravità. Ecco perché le abbiamo trovate. Il cerchio si chiude.
+  - **Da incollare su ElevenLabs v3:** `[excited] Righe larghe e strette: uno e zero, codice binario! [in awe] Le coordinate della NASA le ho mandate io, da qui, con la gravità. [thoughtful] Ecco perché le abbiamo trovate. [determined] Il cerchio si chiude.`
+- `storia_interstellar2-21.mp3` — manca · Interstellar 2: il tesseratto, scena 21 (al massimo 15 s)
+  - **Emozione:** deciso — preoccupato, poi l'idea che lo accende
+  - **Testo:** Murph deve averli. Ma è ancora una bambina… No, aspetta: qui il tempo è un posto. Posso andare a quando sarà grande!
+  - **Da incollare su ElevenLabs v3:** `[nervous] Murph deve averli. [thoughtful] Ma è ancora una bambina… [excited] No, aspetta: qui il tempo è un posto. Posso andare a quando sarà grande!`
+- `storia_interstellar2-22.mp3` — manca · Interstellar 2: il tesseratto, scena 22 (al massimo 17 s)
+  - **Emozione:** entusiasta — di getto, l'idea gli corre più veloce delle parole
+  - **Testo:** L'orologio! Le ho lasciato il mio orologio, e lei lo tiene sempre con sé. TARS, traduci i dati in codice Morse: li metto nella lancetta dei secondi.
+  - **Da incollare su ElevenLabs v3:** `[excited] L'orologio! [warmly] Le ho lasciato il mio orologio, e lei lo tiene sempre con sé. [determined] TARS, traduci i dati in codice Morse: li metto nella lancetta dei secondi.`
+- `storia_interstellar2-24.mp3` — manca · Interstellar 2: il tesseratto, scena 24 (al massimo 10 s)
+  - **Emozione:** tenero — piano, con un nodo in gola e tanta fiducia
+  - **Testo:** Funzionerà. Murph tornerà a prenderlo. Tornerà qui, perché è mia figlia.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] Funzionerà. [determined] Murph tornerà a prenderlo. [softly] Tornerà qui, perché è mia figlia.`
+- `storia_interstellar2-30.mp3` — manca · Interstellar 2: il tesseratto, scena 30 (al massimo 14 s)
+  - **Emozione:** stupito — un sussurro, la voce che si scioglie nella scoperta
+  - **Testo:** Brand… sei tu! La mano che vi ha stretto nel wormhole, all'inizio del viaggio… ero io.
+  - **Da incollare su ElevenLabs v3:** `[in awe] Brand… [whispers] sei tu! La mano che vi ha stretto nel wormhole, all'inizio del viaggio… ero io.`
+- `storia_interstellar2-31.mp3` — manca · Interstellar 2: il tesseratto, scena 31 (al massimo 15 s)
+  - **Emozione:** stordito — lento, debole, appena sveglio
+  - **Testo:** Saturno… gli anelli… Sono tornato da dove ero partito. E c'è una navetta che viene verso di me…
+  - **Da incollare su ElevenLabs v3:** `[sleepy] Saturno… [softly] gli anelli… [curious] Sono tornato da dove ero partito. E c'è una navetta che viene verso di me…`
+- `storia_interstellar2-33.mp3` — manca · Interstellar 2: il tesseratto, scena 33 (al massimo 16 s)
+  - **Emozione:** sbalordito — incredulo, poi la commozione sul nome
+  - **Testo:** Centoventiquattro?! Per me sono passati pochi anni: è il tempo elastico di Gargantua. E questa stazione… si chiama Stazione Cooper. Porta il nome di mia figlia!
+  - **Da incollare su ElevenLabs v3:** `[surprised] Centoventiquattro?! [thoughtful] Per me sono passati pochi anni: è il tempo elastico di Gargantua. [in awe] E questa stazione… [crying] si chiama Stazione Cooper. Porta il nome di mia figlia!`
+- `storia_interstellar2-36.mp3` — manca · Interstellar 2: il tesseratto, scena 36 (al massimo 10 s)
+  - **Emozione:** commosso — un filo di voce
+  - **Testo:** Murph… sono io. Sono tornato.
+  - **Da incollare su ElevenLabs v3:** `[whispers] Murph… [crying] sono io. Sono tornato.`
+- `storia_interstellar2-38.mp3` — manca · Interstellar 2: il tesseratto, scena 38 (al massimo 10 s)
+  - **Emozione:** orgoglioso — con orgoglio e tenerezza
+  - **Testo:** Sei stata tu, Murph. Hai salvato tutti… con un vecchio orologio.
+  - **Da incollare su ElevenLabs v3:** `[proudly] Sei stata tu, Murph. [tenderly] Hai salvato tutti… con un vecchio orologio.`
 
 ### Inglese — `storie/cooper/en/`
 
-- `storia_interstellar-1.mp3` — manca · Interstellar: oltre Gargantua, scena 1 (al massimo 16 s)
+- `storia_interstellar-1.mp3` — manca · Interstellar 1: oltre Gargantua, scena 1 (al massimo 16 s)
   - **Emozione:** meravigliato — sottovoce, con stupore; si ferma su «Saturno»
   - **Testo:** Two years of travel, and there it is: Saturn. And there, next to the rings, is a door no human being has ever gone through.
   - **Da incollare su ElevenLabs v3:** `[in awe] Two years of travel, and there it is: Saturn. [whispers] And there, next to the rings, is a door no human being has ever gone through.`
-- `storia_interstellar-6.mp3` — manca · Interstellar: oltre Gargantua, scena 6 (al massimo 9 s)
+- `storia_interstellar-6.mp3` — manca · Interstellar 1: oltre Gargantua, scena 6 (al massimo 9 s)
   - **Emozione:** deciso — prima una risatina, poi il comando
   - **Testo:** TARS, bring humor down to seventy-five percent. Everybody strap in: we're going through!
   - **Da incollare su ElevenLabs v3:** `[laughs] TARS, bring humor down to seventy-five percent. [determined] Everybody strap in: we're going through!`
-- `storia_interstellar-9.mp3` — manca · Interstellar: oltre Gargantua, scena 9 (al massimo 14 s)
+- `storia_interstellar-9.mp3` — manca · Interstellar 1: oltre Gargantua, scena 9 (al massimo 14 s)
   - **Emozione:** ammirato — lento, con rispetto; il nome detto piano
   - **Testo:** There it is. Gargantua. A black hole a hundred million times heavier than the Sun, spinning at almost the speed of light.
   - **Da incollare su ElevenLabs v3:** `[in awe] There it is. [whispers] Gargantua. [in awe] A black hole a hundred million times heavier than the Sun, spinning at almost the speed of light.`
-- `storia_interstellar-13.mp3` — manca · Interstellar: oltre Gargantua, scena 13 (al massimo 13 s)
+- `storia_interstellar-13.mp3` — manca · Interstellar 1: oltre Gargantua, scena 13 (al massimo 13 s)
   - **Emozione:** deciso — pratico, veloce, da pilota
   - **Testo:** Then no mistakes: we go down, get Doctor Miller's data and come back up. Every minute down there is more than a month up here.
   - **Da incollare su ElevenLabs v3:** `[determined] Then no mistakes: we go down, get Doctor Miller's data and come back up. [serious] Every minute down there is more than a month up here.`
-- `storia_interstellar-16.mp3` — manca · Interstellar: oltre Gargantua, scena 16 (al massimo 8 s)
+- `storia_interstellar-16.mp3` — manca · Interstellar 1: oltre Gargantua, scena 16 (al massimo 8 s)
   - **Emozione:** spaventato — si accorge lentamente, poi grida
   - **Testo:** Brand… those aren't mountains. They're waves!
   - **Da incollare su ElevenLabs v3:** `[nervous] Brand… those aren't mountains. [shouts] They're waves!`
-- `storia_interstellar-19.mp3` — manca · Interstellar: oltre Gargantua, scena 19 (al massimo 7 s)
+- `storia_interstellar-19.mp3` — manca · Interstellar 1: oltre Gargantua, scena 19 (al massimo 7 s)
   - **Emozione:** preoccupato — esitante, ha paura della risposta
   - **Testo:** Romilly… how long were we gone?
   - **Da incollare su ElevenLabs v3:** `[hesitant] Romilly… [nervous] how long were we gone?`
-- `storia_interstellar-23.mp3` — manca · Interstellar: oltre Gargantua, scena 23 (al massimo 14 s)
+- `storia_interstellar-23.mp3` — manca · Interstellar 1: oltre Gargantua, scena 23 (al massimo 14 s)
   - **Emozione:** commosso — in lacrime, tenero
   - **Testo:** Murph… I left you my watch, so we could compare them when I came back. My time fell behind, but I never left you.
   - **Da incollare su ElevenLabs v3:** `[crying] Murph… [tenderly] I left you my watch, so we could compare them when I came back. [whispers] My time fell behind, but I never left you.`
-- `storia_interstellar-25.mp3` — manca · Interstellar: oltre Gargantua, scena 25 (al massimo 7 s)
+- `storia_interstellar-25.mp3` — manca · Interstellar 1: oltre Gargantua, scena 25 (al massimo 7 s)
   - **Emozione:** deciso — fermo, dispiaciuto
   - **Testo:** The data says Mann, Brand. We go to Mann.
   - **Da incollare su ElevenLabs v3:** `[serious] The data says Mann, Brand. [determined] We go to Mann.`
-- `storia_interstellar-32.mp3` — manca · Interstellar: oltre Gargantua, scena 32 (al massimo 10 s)
+- `storia_interstellar-32.mp3` — manca · Interstellar 1: oltre Gargantua, scena 32 (al massimo 10 s)
   - **Emozione:** determinato — a denti stretti, la battuta più importante
   - **Testo:** No, CASE. It's necessary. We spin too, at the same speed!
   - **Da incollare su ElevenLabs v3:** `[determined] No, CASE. [serious] It's necessary. [shouts] We spin too, at the same speed!`
-- `storia_interstellar-35.mp3` — manca · Interstellar: oltre Gargantua, scena 35 (al massimo 15 s)
+- `storia_interstellar-35.mp3` — manca · Interstellar 1: oltre Gargantua, scena 35 (al massimo 15 s)
   - **Emozione:** concentrato — spiega il piano, con fiducia
   - **Testo:** There isn't enough fuel for Edmunds. But Gargantua can be our slingshot: we skim past it, its gravity bends our path and flings us away faster.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] There isn't enough fuel for Edmunds. [determined] But Gargantua can be our slingshot: we skim past it, its gravity bends our path and flings us away faster.`
-- `storia_interstellar-36.mp3` — manca · Interstellar: oltre Gargantua, scena 36 (al massimo 13 s)
+- `storia_interstellar-36.mp3` — manca · Interstellar 1: oltre Gargantua, scena 36 (al massimo 13 s)
   - **Emozione:** malinconico — pesa il prezzo, voce bassa
   - **Testo:** This close to Gargantua time slows down again: this manoeuvre will cost us fifty-one years on Earth. It's the price of getting there.
   - **Da incollare su ElevenLabs v3:** `[sighs] This close to Gargantua time slows down again: this manoeuvre will cost us fifty-one years on Earth. [wistfully] It's the price of getting there.`
-- `storia_interstellar-37.mp3` — manca · Interstellar: oltre Gargantua, scena 37 (al massimo 15 s)
+- `storia_interstellar-37.mp3` — manca · Interstellar 1: oltre Gargantua, scena 37 (al massimo 15 s)
   - **Emozione:** risoluto — calmo, ha già deciso
   - **Testo:** Newton said it: to go forward you have to leave something behind. TARS and I will detach at the closest point: without our weight, the Endurance will make it.
   - **Da incollare su ElevenLabs v3:** `[calmly] Newton said it: to go forward you have to leave something behind. [determined] TARS and I will detach at the closest point: [tenderly] without our weight, the Endurance will make it.`
-- `storia_interstellar-42.mp3` — manca · Interstellar: oltre Gargantua, scena 42 (al massimo 13 s)
+- `storia_interstellar-42.mp3` — manca · Interstellar 1: oltre Gargantua, scena 42 (al massimo 13 s)
   - **Emozione:** rapito — sussurrato, in pace
   - **Testo:** TARS… we're falling into the light. Murph… I'm coming.
   - **Da incollare su ElevenLabs v3:** `[in awe] TARS… we're falling into the light. [whispers] Murph… I'm coming.`
+- `storia_interstellar2-1.mp3` — manca · Interstellar 2: il tesseratto, scena 1 (al massimo 14 s)
+  - **Emozione:** in panico — urlato sopra il rumore, poi deciso e quasi ironico sull'ultima frase
+  - **Testo:** The Ranger is falling apart! TARS, I'm ejecting. If there's something on the other side… I'll see you there.
+  - **Da incollare su ElevenLabs v3:** `[panicked] The Ranger is falling apart! [shouting] TARS, I'm ejecting. [determined] If there's something on the other side… I'll see you there.`
+- `storia_interstellar2-2.mp3` — manca · Interstellar 2: il tesseratto, scena 2 (al massimo 16 s)
+  - **Emozione:** stupito — sottovoce, rapito, la voce che si apre sull'ultima scoperta
+  - **Testo:** Where am I? It looks like an endless library: shelves, rooms, corridors… and every room is Murph's bedroom, at a different moment!
+  - **Da incollare su ElevenLabs v3:** `[in awe] Where am I? [whispers] It looks like an endless library: shelves, rooms, corridors… [excited] and every room is Murph's bedroom, at a different moment!`
+- `storia_interstellar2-4.mp3` — manca · Interstellar 2: il tesseratto, scena 4 (al massimo 10 s)
+  - **Emozione:** curioso — teso e curioso, abbassa la voce sulla domanda
+  - **Testo:** Someone? Then it's Them: the ones who put the wormhole near Saturn. But who are they, TARS?
+  - **Da incollare su ElevenLabs v3:** `[curious] Someone? [thoughtful] Then it's Them: the ones who put the wormhole near Saturn. But who are they, TARS?`
+- `storia_interstellar2-9.mp3` — manca · Interstellar 2: il tesseratto, scena 9 (al massimo 10 s)
+  - **Emozione:** speranzoso — di getto, speranzoso, poi confuso sulla domanda
+  - **Testo:** Then you can go back and save the Earth yourselves! Why do you need me?
+  - **Da incollare su ElevenLabs v3:** `[excited] Then you can go back and save the Earth yourselves! [curious] Why do you need me?`
+- `storia_interstellar2-12.mp3` — manca · Interstellar 2: il tesseratto, scena 12 (al massimo 12 s)
+  - **Emozione:** folgorato — pensa ad alta voce, poi la scoperta gli toglie il fiato
+  - **Testo:** Wait… who would build a bridge for human beings, if not human beings? You're not aliens. You are… us!
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Wait… [surprised] who would build a bridge for human beings, if not human beings? [gasps] You're not aliens. You are… us!`
+- `storia_interstellar2-14.mp3` — manca · Interstellar 2: il tesseratto, scena 14 (al massimo 16 s)
+  - **Emozione:** disperato — affannato, poi grida contro un vetro che lei non sente
+  - **Testo:** It's the night I left. Murph is angry with me, and I, over there, am about to go. Murph! Stop me! Don't let me leave!
+  - **Da incollare su ElevenLabs v3:** `[sad] It's the night I left. [nervous] Murph is angry with me, and I, over there, am about to go. [shouting] Murph! [crying] Stop me! Don't let me leave!`
+- `storia_interstellar2-16.mp3` — manca · Interstellar 2: il tesseratto, scena 16 (al massimo 14 s)
+  - **Emozione:** commosso — la voce che si spezza, poi la decisione
+  - **Testo:** I'm the ghost. It was always me! But the me from that night has to leave: if he stays, nobody will save the Earth.
+  - **Da incollare su ElevenLabs v3:** `[in awe] I'm the ghost. [crying] It was always me! [sad] But the me from that night has to leave: if he stays, nobody will save the Earth.`
+- `storia_interstellar2-18.mp3` — manca · Interstellar 2: il tesseratto, scena 18 (al massimo 17 s)
+  - **Emozione:** illuminato — l'eccitazione di chi capisce un enigma
+  - **Testo:** Wide and narrow lines: ones and zeros, binary code! I sent NASA's coordinates myself, from here, with gravity. That's why we found them. The circle closes.
+  - **Da incollare su ElevenLabs v3:** `[excited] Wide and narrow lines: ones and zeros, binary code! [in awe] I sent NASA's coordinates myself, from here, with gravity. [thoughtful] That's why we found them. [determined] The circle closes.`
+- `storia_interstellar2-21.mp3` — manca · Interstellar 2: il tesseratto, scena 21 (al massimo 15 s)
+  - **Emozione:** deciso — preoccupato, poi l'idea che lo accende
+  - **Testo:** Murph has to get them. But she's still a little girl… No, wait: here time is a place. I can go to when she's grown up!
+  - **Da incollare su ElevenLabs v3:** `[nervous] Murph has to get them. [thoughtful] But she's still a little girl… [excited] No, wait: here time is a place. I can go to when she's grown up!`
+- `storia_interstellar2-22.mp3` — manca · Interstellar 2: il tesseratto, scena 22 (al massimo 17 s)
+  - **Emozione:** entusiasta — di getto, l'idea gli corre più veloce delle parole
+  - **Testo:** The watch! I left her my watch, and she always keeps it with her. TARS, translate the data into Morse code: I'll put it in the second hand.
+  - **Da incollare su ElevenLabs v3:** `[excited] The watch! [warmly] I left her my watch, and she always keeps it with her. [determined] TARS, translate the data into Morse code: I'll put it in the second hand.`
+- `storia_interstellar2-24.mp3` — manca · Interstellar 2: il tesseratto, scena 24 (al massimo 10 s)
+  - **Emozione:** tenero — piano, con un nodo in gola e tanta fiducia
+  - **Testo:** It'll work. Murph will come back for it. She'll come back here, because she's my daughter.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] It'll work. [determined] Murph will come back for it. [softly] She'll come back here, because she's my daughter.`
+- `storia_interstellar2-30.mp3` — manca · Interstellar 2: il tesseratto, scena 30 (al massimo 14 s)
+  - **Emozione:** stupito — un sussurro, la voce che si scioglie nella scoperta
+  - **Testo:** Brand… it's you! The hand that touched you in the wormhole, at the start of the journey… it was me.
+  - **Da incollare su ElevenLabs v3:** `[in awe] Brand… [whispers] it's you! The hand that touched you in the wormhole, at the start of the journey… it was me.`
+- `storia_interstellar2-31.mp3` — manca · Interstellar 2: il tesseratto, scena 31 (al massimo 15 s)
+  - **Emozione:** stordito — lento, debole, appena sveglio
+  - **Testo:** Saturn… the rings… I'm back where I started. And there's a shuttle coming toward me…
+  - **Da incollare su ElevenLabs v3:** `[sleepy] Saturn… [softly] the rings… [curious] I'm back where I started. And there's a shuttle coming toward me…`
+- `storia_interstellar2-33.mp3` — manca · Interstellar 2: il tesseratto, scena 33 (al massimo 16 s)
+  - **Emozione:** sbalordito — incredulo, poi la commozione sul nome
+  - **Testo:** One hundred and twenty-four?! For me only a few years have passed: it's Gargantua's elastic time. And this station… it's called Cooper Station. It's named after my daughter!
+  - **Da incollare su ElevenLabs v3:** `[surprised] One hundred and twenty-four?! [thoughtful] For me only a few years have passed: it's Gargantua's elastic time. [in awe] And this station… [crying] it's called Cooper Station. It's named after my daughter!`
+- `storia_interstellar2-36.mp3` — manca · Interstellar 2: il tesseratto, scena 36 (al massimo 10 s)
+  - **Emozione:** commosso — un filo di voce
+  - **Testo:** Murph… it's me. I'm back.
+  - **Da incollare su ElevenLabs v3:** `[whispers] Murph… [crying] it's me. I'm back.`
+- `storia_interstellar2-38.mp3` — manca · Interstellar 2: il tesseratto, scena 38 (al massimo 10 s)
+  - **Emozione:** orgoglioso — con orgoglio e tenerezza
+  - **Testo:** It was you, Murph. You saved everyone… with an old watch.
+  - **Da incollare su ElevenLabs v3:** `[proudly] It was you, Murph. [tenderly] You saved everyone… with an old watch.`
 
 ## Romilly
 
@@ -1194,38 +1325,38 @@ Cartella: `audio/narrazione/storie/romilly/<lingua>/` · nel codice `romilly` ·
 
 ### Italiano — `storie/romilly/it/`
 
-- `storia_interstellar-2.mp3` — manca · Interstellar: oltre Gargantua, scena 2 (al massimo 12 s)
+- `storia_interstellar-2.mp3` — manca · Interstellar 1: oltre Gargantua, scena 2 (al massimo 12 s)
   - **Emozione:** sorpreso — esplode di meraviglia, la voce sale
   - **Testo:** Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!
   - **Da incollare su ElevenLabs v3:** `[gasps] Guardate! Non è un buco piatto nel cielo… [excited] è una sfera! E dentro si vedono le stelle di un'altra galassia!`
-- `storia_interstellar-4.mp3` — manca · Interstellar: oltre Gargantua, scena 4 (al massimo 21 s)
+- `storia_interstellar-4.mp3` — manca · Interstellar 1: oltre Gargantua, scena 4 (al massimo 21 s)
   - **Emozione:** entusiasta — come un insegnante che svela il trucco; pausa prima della matita
   - **Testo:** Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. Ecco cos'è un wormhole: una scorciatoia.
   - **Da incollare su ElevenLabs v3:** `[playfully] Guardate questo foglio. Qui c'è la Terra, là la nostra meta: la strada dritta durerebbe migliaia di anni. [mischievously] Ma se pieghi lo spazio… e lo buchi con una matita… i due punti si toccano. [excited] Ecco cos'è un wormhole: una scorciatoia.`
-- `storia_interstellar-12.mp3` — manca · Interstellar: oltre Gargantua, scena 12 (al massimo 12 s)
+- `storia_interstellar-12.mp3` — manca · Interstellar 1: oltre Gargantua, scena 12 (al massimo 12 s)
   - **Emozione:** malinconico — a voce bassa, coraggioso
   - **Testo:** Sette anni per ogni ora… Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. Tornate presto.
   - **Da incollare su ElevenLabs v3:** `[sighs] Sette anni per ogni ora… [wistfully] Io resto sull'Endurance, lontano da Gargantua. Studierò il buco nero e vi aspetterò. [tenderly] Tornate presto.`
-- `storia_interstellar-20.mp3` — manca · Interstellar: oltre Gargantua, scena 20 (al massimo 9 s)
+- `storia_interstellar-20.mp3` — manca · Interstellar 1: oltre Gargantua, scena 20 (al massimo 9 s)
   - **Emozione:** triste — stanco, ogni numero pesa
   - **Testo:** Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato.
   - **Da incollare su ElevenLabs v3:** `[sad] Ventitré anni, quattro mesi e otto giorni. [sighs] Ho studiato Gargantua… e vi ho aspettato.`
 
 ### Inglese — `storie/romilly/en/`
 
-- `storia_interstellar-2.mp3` — manca · Interstellar: oltre Gargantua, scena 2 (al massimo 12 s)
+- `storia_interstellar-2.mp3` — manca · Interstellar 1: oltre Gargantua, scena 2 (al massimo 12 s)
   - **Emozione:** sorpreso — esplode di meraviglia, la voce sale
   - **Testo:** Look! It isn't a flat hole in the sky… it's a sphere! And inside you can see the stars of another galaxy!
   - **Da incollare su ElevenLabs v3:** `[gasps] Look! It isn't a flat hole in the sky… [excited] it's a sphere! And inside you can see the stars of another galaxy!`
-- `storia_interstellar-4.mp3` — manca · Interstellar: oltre Gargantua, scena 4 (al massimo 21 s)
+- `storia_interstellar-4.mp3` — manca · Interstellar 1: oltre Gargantua, scena 4 (al massimo 21 s)
   - **Emozione:** entusiasta — come un insegnante che svela il trucco; pausa prima della matita
   - **Testo:** Look at this sheet of paper. Earth is here, our destination is there: the straight road would take thousands of years. But if you fold space… and push a pencil through it… the two points touch. That's what a wormhole is: a shortcut.
   - **Da incollare su ElevenLabs v3:** `[playfully] Look at this sheet of paper. Earth is here, our destination is there: the straight road would take thousands of years. [mischievously] But if you fold space… and push a pencil through it… the two points touch. [excited] That's what a wormhole is: a shortcut.`
-- `storia_interstellar-12.mp3` — manca · Interstellar: oltre Gargantua, scena 12 (al massimo 12 s)
+- `storia_interstellar-12.mp3` — manca · Interstellar 1: oltre Gargantua, scena 12 (al massimo 12 s)
   - **Emozione:** malinconico — a voce bassa, coraggioso
   - **Testo:** Seven years for every hour… I'll stay on the Endurance, far from Gargantua. I'll study the black hole and wait for you. Come back soon.
   - **Da incollare su ElevenLabs v3:** `[sighs] Seven years for every hour… [wistfully] I'll stay on the Endurance, far from Gargantua. I'll study the black hole and wait for you. [tenderly] Come back soon.`
-- `storia_interstellar-20.mp3` — manca · Interstellar: oltre Gargantua, scena 20 (al massimo 9 s)
+- `storia_interstellar-20.mp3` — manca · Interstellar 1: oltre Gargantua, scena 20 (al massimo 9 s)
   - **Emozione:** triste — stanco, ogni numero pesa
   - **Testo:** Twenty-three years, four months and eight days. I studied Gargantua… and I waited for you.
   - **Da incollare su ElevenLabs v3:** `[sad] Twenty-three years, four months and eight days. [sighs] I studied Gargantua… and I waited for you.`
@@ -1238,81 +1369,89 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
 
 ### Italiano — `storie/amelia-brand/it/`
 
-- `storia_interstellar-3.mp3` — manca · Interstellar: oltre Gargantua, scena 3 (al massimo 17 s)
+- `storia_interstellar-3.mp3` — manca · Interstellar 1: oltre Gargantua, scena 3 (al massimo 17 s)
   - **Emozione:** sicura — sorride appena, spiega con chiarezza
   - **Testo:** Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.
   - **Da incollare su ElevenLabs v3:** `[warmly] Certo che è una sfera, Romilly. [thoughtful] Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. [in awe] Quella luce arriva dall'altra parte dell'universo.`
-- `storia_interstellar-7.mp3` — manca · Interstellar: oltre Gargantua, scena 7 (al massimo 14 s)
+- `storia_interstellar-7.mp3` — manca · Interstellar 1: oltre Gargantua, scena 7 (al massimo 14 s)
   - **Emozione:** rapita — sussurrato, quasi un sogno
   - **Testo:** Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.
   - **Da incollare su ElevenLabs v3:** `[in awe] Lo spazio-tempo si piega tutto attorno a noi… [whispers] Sento qualcosa. È come se qualcuno ci stringesse la mano.`
-- `storia_interstellar-11.mp3` — manca · Interstellar: oltre Gargantua, scena 11 (al massimo 16 s)
+- `storia_interstellar-11.mp3` — manca · Interstellar 1: oltre Gargantua, scena 11 (al massimo 16 s)
   - **Emozione:** seria — chiara, scandisce «sette anni»
   - **Testo:** Più sei vicino a una grande massa, più il tempo scorre piano. Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Più sei vicino a una grande massa, più il tempo scorre piano. [serious] Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.`
-- `storia_interstellar-15.mp3` — manca · Interstellar: oltre Gargantua, scena 15 (al massimo 14 s)
+- `storia_interstellar-15.mp3` — manca · Interstellar 1: oltre Gargantua, scena 15 (al massimo 14 s)
   - **Emozione:** triste — il fiato corto, poi la delusione
   - **Testo:** L'acqua arriva alle caviglie… Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. Per lei, quaggiù, era successo appena qualche ora fa.
   - **Da incollare su ElevenLabs v3:** `[nervous] L'acqua arriva alle caviglie… [sad] Il segnale della dottoressa Miller veniva da qui, ma sono solo rottami. [whispers] Per lei, quaggiù, era successo appena qualche ora fa.`
-- `storia_interstellar-21.mp3` — manca · Interstellar: oltre Gargantua, scena 21 (al massimo 20 s)
+- `storia_interstellar-21.mp3` — manca · Interstellar 1: oltre Gargantua, scena 21 (al massimo 20 s)
   - **Emozione:** addolorata — piano, la voce che trema, poi la spiegazione lucida
   - **Testo:** Doyle è rimasto laggiù, con le onde. E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. Per noi tre ore, per il resto dell'universo ventitré anni.
   - **Da incollare su ElevenLabs v3:** `[sad] Doyle è rimasto laggiù, con le onde. [thoughtful] E noi ci siamo stati poco più di tre ore: ma vicino a Gargantua il tempo è lento come il miele. [wistfully] Per noi tre ore, per il resto dell'universo ventitré anni.`
-- `storia_interstellar-24.mp3` — manca · Interstellar: oltre Gargantua, scena 24 (al massimo 14 s)
+- `storia_interstellar-24.mp3` — manca · Interstellar 1: oltre Gargantua, scena 24 (al massimo 14 s)
   - **Emozione:** speranzosa — razionale, poi il cuore
   - **Testo:** Ci resta carburante per un pianeta solo: Edmunds o Mann. Il segnale di Mann è il più bello… ma qualcosa dentro di me dice Edmunds.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Ci resta carburante per un pianeta solo: Edmunds o Mann. [hopeful] Il segnale di Mann è il più bello… [softly] ma qualcosa dentro di me dice Edmunds.`
-- `storia_interstellar-34.mp3` — manca · Interstellar: oltre Gargantua, scena 34 (al massimo 7 s)
+- `storia_interstellar-34.mp3` — manca · Interstellar 1: oltre Gargantua, scena 34 (al massimo 7 s)
   - **Emozione:** sollevata — ride e piange insieme
   - **Testo:** Ce l'hai fatta, Cooper! Credevo che fosse finita.
   - **Da incollare su ElevenLabs v3:** `[laughs] Ce l'hai fatta, Cooper! [relieved] Credevo che fosse finita.`
-- `storia_interstellar-38.mp3` — manca · Interstellar: oltre Gargantua, scena 38 (al massimo 6 s)
+- `storia_interstellar-38.mp3` — manca · Interstellar 1: oltre Gargantua, scena 38 (al massimo 6 s)
   - **Emozione:** disperata — grida, poi la voce si spezza
   - **Testo:** Cooper, no! Non lasciarmi sola!
   - **Da incollare su ElevenLabs v3:** `[shouts] Cooper, no! [crying] Non lasciarmi sola!`
-- `storia_interstellar-40.mp3` — manca · Interstellar: oltre Gargantua, scena 40 (al massimo 13 s)
+- `storia_interstellar-40.mp3` — manca · Interstellar 1: oltre Gargantua, scena 40 (al massimo 13 s)
   - **Emozione:** commossa — tra le lacrime, poi coraggiosa
   - **Testo:** L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.
   - **Da incollare su ElevenLabs v3:** `[crying] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. [determined] Vai, Cooper… io porto la missione fino a Edmunds.`
+- `storia_interstellar2-42.mp3` — manca · Interstellar 2: il tesseratto, scena 42 (al massimo 17 s)
+  - **Emozione:** speranzosa — all'alba, con meraviglia e un sorriso
+  - **Testo:** Qui c'è aria, c'è acqua, c'è luce. Edmunds aveva ragione: questa sarà la nuova casa. E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.
+  - **Da incollare su ElevenLabs v3:** `[in awe] Qui c'è aria, c'è acqua, c'è luce. [hopeful] Edmunds aveva ragione: questa sarà la nuova casa. [softly] E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.`
 
 ### Inglese — `storie/amelia-brand/en/`
 
-- `storia_interstellar-3.mp3` — manca · Interstellar: oltre Gargantua, scena 3 (al massimo 17 s)
+- `storia_interstellar-3.mp3` — manca · Interstellar 1: oltre Gargantua, scena 3 (al massimo 17 s)
   - **Emozione:** sicura — sorride appena, spiega con chiarezza
   - **Testo:** Of course it's a sphere, Romilly. A hole in a sheet of paper is a circle; a hole in space, which has three dimensions, is a ball. That light comes from the other side of the universe.
   - **Da incollare su ElevenLabs v3:** `[warmly] Of course it's a sphere, Romilly. [thoughtful] A hole in a sheet of paper is a circle; a hole in space, which has three dimensions, is a ball. [in awe] That light comes from the other side of the universe.`
-- `storia_interstellar-7.mp3` — manca · Interstellar: oltre Gargantua, scena 7 (al massimo 14 s)
+- `storia_interstellar-7.mp3` — manca · Interstellar 1: oltre Gargantua, scena 7 (al massimo 14 s)
   - **Emozione:** rapita — sussurrato, quasi un sogno
   - **Testo:** Spacetime is bending all around us… I feel something. It's as if someone were shaking our hand.
   - **Da incollare su ElevenLabs v3:** `[in awe] Spacetime is bending all around us… [whispers] I feel something. It's as if someone were shaking our hand.`
-- `storia_interstellar-11.mp3` — manca · Interstellar: oltre Gargantua, scena 11 (al massimo 16 s)
+- `storia_interstellar-11.mp3` — manca · Interstellar 1: oltre Gargantua, scena 11 (al massimo 16 s)
   - **Emozione:** seria — chiara, scandisce «sette anni»
   - **Testo:** The closer you are to a big mass, the slower time flows. Miller's planet orbits very tightly around Gargantua: down there every hour is worth seven years on Earth.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] The closer you are to a big mass, the slower time flows. [serious] Miller's planet orbits very tightly around Gargantua: down there every hour is worth seven years on Earth.`
-- `storia_interstellar-15.mp3` — manca · Interstellar: oltre Gargantua, scena 15 (al massimo 14 s)
+- `storia_interstellar-15.mp3` — manca · Interstellar 1: oltre Gargantua, scena 15 (al massimo 14 s)
   - **Emozione:** triste — il fiato corto, poi la delusione
   - **Testo:** The water is up to our ankles… Doctor Miller's signal came from here, but it's only wreckage. For her, down here, it happened only a few hours ago.
   - **Da incollare su ElevenLabs v3:** `[nervous] The water is up to our ankles… [sad] Doctor Miller's signal came from here, but it's only wreckage. [whispers] For her, down here, it happened only a few hours ago.`
-- `storia_interstellar-21.mp3` — manca · Interstellar: oltre Gargantua, scena 21 (al massimo 20 s)
+- `storia_interstellar-21.mp3` — manca · Interstellar 1: oltre Gargantua, scena 21 (al massimo 20 s)
   - **Emozione:** addolorata — piano, la voce che trema, poi la spiegazione lucida
   - **Testo:** Doyle stayed down there, with the waves. And we were there just over three hours: but near Gargantua time is as slow as honey. Three hours for us, twenty-three years for the rest of the universe.
   - **Da incollare su ElevenLabs v3:** `[sad] Doyle stayed down there, with the waves. [thoughtful] And we were there just over three hours: but near Gargantua time is as slow as honey. [wistfully] Three hours for us, twenty-three years for the rest of the universe.`
-- `storia_interstellar-24.mp3` — manca · Interstellar: oltre Gargantua, scena 24 (al massimo 14 s)
+- `storia_interstellar-24.mp3` — manca · Interstellar 1: oltre Gargantua, scena 24 (al massimo 14 s)
   - **Emozione:** speranzosa — razionale, poi il cuore
   - **Testo:** We've got fuel for one planet only: Edmunds or Mann. Mann's signal is the best one… but something inside me says Edmunds.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] We've got fuel for one planet only: Edmunds or Mann. [hopeful] Mann's signal is the best one… [softly] but something inside me says Edmunds.`
-- `storia_interstellar-34.mp3` — manca · Interstellar: oltre Gargantua, scena 34 (al massimo 7 s)
+- `storia_interstellar-34.mp3` — manca · Interstellar 1: oltre Gargantua, scena 34 (al massimo 7 s)
   - **Emozione:** sollevata — ride e piange insieme
   - **Testo:** You did it, Cooper! I thought it was over.
   - **Da incollare su ElevenLabs v3:** `[laughs] You did it, Cooper! [relieved] I thought it was over.`
-- `storia_interstellar-38.mp3` — manca · Interstellar: oltre Gargantua, scena 38 (al massimo 6 s)
+- `storia_interstellar-38.mp3` — manca · Interstellar 1: oltre Gargantua, scena 38 (al massimo 6 s)
   - **Emozione:** disperata — grida, poi la voce si spezza
   - **Testo:** Cooper, no! Don't leave me alone!
   - **Da incollare su ElevenLabs v3:** `[shouts] Cooper, no! [crying] Don't leave me alone!`
-- `storia_interstellar-40.mp3` — manca · Interstellar: oltre Gargantua, scena 40 (al massimo 13 s)
+- `storia_interstellar-40.mp3` — manca · Interstellar 1: oltre Gargantua, scena 40 (al massimo 13 s)
   - **Emozione:** commossa — tra le lacrime, poi coraggiosa
   - **Testo:** Love is the one thing we can feel across time and space. Go, Cooper… I'll take the mission all the way to Edmunds.
   - **Da incollare su ElevenLabs v3:** `[crying] Love is the one thing we can feel across time and space. [determined] Go, Cooper… I'll take the mission all the way to Edmunds.`
+- `storia_interstellar2-42.mp3` — manca · Interstellar 2: il tesseratto, scena 42 (al massimo 17 s)
+  - **Emozione:** speranzosa — all'alba, con meraviglia e un sorriso
+  - **Testo:** There's air here, there's water, there's light. Edmunds was right: this will be our new home. And I have a feeling that someone, from very far away, is coming to me.
+  - **Da incollare su ElevenLabs v3:** `[in awe] There's air here, there's water, there's light. [hopeful] Edmunds was right: this will be our new home. [softly] And I have a feeling that someone, from very far away, is coming to me.`
 
 ## TARS
 
@@ -1322,41 +1461,121 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
 
 ### Italiano — `storie/tars/it/`
 
-- `storia_interstellar-5.mp3` — manca · Interstellar: oltre Gargantua, scena 5 (al massimo 15 s)
+- `storia_interstellar-5.mp3` — manca · Interstellar 1: oltre Gargantua, scena 5 (al massimo 15 s)
   - **Emozione:** impassibile — secco, pausa comica prima della battuta finale
   - **Testo:** Prima di entrare vi ricordo che la mia sincerità è al novanta per cento. Quindi, sinceramente: non ho la minima idea di cosa ci sia dall'altra parte.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Prima di entrare vi ricordo che la mia sincerità è al novanta per cento. [pause] Quindi, sinceramente: non ho la minima idea di cosa ci sia dall'altra parte.`
-- `storia_interstellar-29.mp3` — manca · Interstellar: oltre Gargantua, scena 29 (al massimo 14 s)
+- `storia_interstellar-29.mp3` — manca · Interstellar 1: oltre Gargantua, scena 29 (al massimo 14 s)
   - **Emozione:** preoccupato — asciutto, ma con urgenza
   - **Testo:** Cattive notizie: il dottor Mann ha preso il Lander e vola verso l'Endurance. Ho spento l'aggancio automatico: se prova a forzarlo, sarà un disastro.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Cattive notizie: il dottor Mann ha preso il Lander e vola verso l'Endurance. [serious] Ho spento l'aggancio automatico: se prova a forzarlo, sarà un disastro.`
-- `storia_interstellar-33.mp3` — manca · Interstellar: oltre Gargantua, scena 33 (al massimo 14 s)
+- `storia_interstellar-33.mp3` — manca · Interstellar 1: oltre Gargantua, scena 33 (al massimo 14 s)
   - **Emozione:** fiero — sollievo asciutto, poi spiega con gusto
   - **Testo:** Agganciati! Girando insieme, il Ranger e l'Endurance stavano fermi l'uno rispetto all'altra, come due ballerini che si tengono per mano. Poi abbiamo frenato insieme.
   - **Da incollare su ElevenLabs v3:** `[relieved] Agganciati! [proud] Girando insieme, il Ranger e l'Endurance stavano fermi l'uno rispetto all'altra, come due ballerini che si tengono per mano. [calmly] Poi abbiamo frenato insieme.`
-- `storia_interstellar-39.mp3` — manca · Interstellar: oltre Gargantua, scena 39 (al massimo 13 s)
+- `storia_interstellar-39.mp3` — manca · Interstellar 1: oltre Gargantua, scena 39 (al massimo 13 s)
   - **Emozione:** tenero — per una volta senza ironia
   - **Testo:** È stato un onore volare con voi. Livello di sincerità: cento per cento.
   - **Da incollare su ElevenLabs v3:** `[tenderly] È stato un onore volare con voi. [warmly] Livello di sincerità: cento per cento.`
+- `storia_interstellar2-3.mp3` — manca · Interstellar 2: il tesseratto, scena 3 (al massimo 13 s)
+  - **Emozione:** sollevato — asciutto e calmo come sempre, con un filo di sollievo
+  - **Testo:** Cooper, mi ricevi? Sono vivo anch'io, da qualche parte qui intorno. Qualcuno ci ha raccolti nel buio e ci ha portati in questo posto.
+  - **Da incollare su ElevenLabs v3:** `[calm] Cooper, mi ricevi? [relieved] Sono vivo anch'io, da qualche parte qui intorno. [curious] Qualcuno ci ha raccolti nel buio e ci ha portati in questo posto.`
+- `storia_interstellar2-5.mp3` — manca · Interstellar 2: il tesseratto, scena 5 (al massimo 19 s)
+  - **Emozione:** didattico — chiaro, paziente, come chi spiega con un disegno
+  - **Testo:** Non lo so ancora. Ma so che cos'è questo posto: un tesseratto, un cubo con una dimensione in più. Come l'ombra di un cubo su un foglio è un quadrato dentro un quadrato, la sua ombra nel nostro spazio è un cubo dentro un cubo.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Non lo so ancora. [calm] Ma so che cos'è questo posto: un tesseratto, un cubo con una dimensione in più. [warmly] Come l'ombra di un cubo su un foglio è un quadrato dentro un quadrato, la sua ombra nel nostro spazio è un cubo dentro un cubo.`
+- `storia_interstellar2-17.mp3` — manca · Interstellar 2: il tesseratto, scena 17 (al massimo 14 s)
+  - **Emozione:** curioso — asciutto, quasi divertito
+  - **Testo:** Cooper, ti ricordi la polvere sul pavimento? Le righe larghe e strette che vi hanno portati alla base segreta della NASA?
+  - **Da incollare su ElevenLabs v3:** `[curious] Cooper, ti ricordi la polvere sul pavimento? [thoughtful] Le righe larghe e strette che vi hanno portati alla base segreta della NASA?`
+- `storia_interstellar2-19.mp3` — manca · Interstellar 2: il tesseratto, scena 19 (al massimo 14 s)
+  - **Emozione:** fiero — fiero, con l'umorismo secco di sempre
+  - **Testo:** E adesso la notizia buona: dentro Gargantua ho misurato la singolarità. Ho i dati quantistici, quelli che il professor Brand ha cercato per tutta la vita.
+  - **Da incollare su ElevenLabs v3:** `[proudly] E adesso la notizia buona: dentro Gargantua ho misurato la singolarità. [calm] Ho i dati quantistici, quelli che il professor Brand ha cercato per tutta la vita.`
+- `storia_interstellar2-20.mp3` — manca · Interstellar 2: il tesseratto, scena 20 (al massimo 22 s)
+  - **Emozione:** didattico — chiaro e paziente, come un buon insegnante
+  - **Testo:** Per far volare intere città bisogna capire la gravità fino in fondo. La relatività di Einstein spiega le cose enormi, la meccanica quantistica quelle piccolissime, ma insieme non vanno d'accordo. Si incontrano in un posto solo: nel cuore di un buco nero.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Per far volare intere città bisogna capire la gravità fino in fondo. [calm] La relatività di Einstein spiega le cose enormi, la meccanica quantistica quelle piccolissime, ma insieme non vanno d'accordo. [mysteriously] Si incontrano in un posto solo: nel cuore di un buco nero.`
+- `storia_interstellar2-23.mp3` — manca · Interstellar 2: il tesseratto, scena 23 (al massimo 11 s)
+  - **Emozione:** scettico — impassibile, poi la battuta secca
+  - **Testo:** Tutti i dati di un buco nero nella lancetta di un orologio? Livello di sincerità: novanta per cento… potrebbe non funzionare.
+  - **Da incollare su ElevenLabs v3:** `[skeptical] Tutti i dati di un buco nero nella lancetta di un orologio? [deadpan] Livello di sincerità: novanta per cento… potrebbe non funzionare.`
+- `storia_interstellar2-32.mp3` — manca · Interstellar 2: il tesseratto, scena 32 (al massimo 16 s)
+  - **Emozione:** ironico — allegro e asciutto, la pausa comica prima del numero
+  - **Testo:** Buongiorno, Cooper. Ci hanno ripescati vicino a Saturno, tutti e due. Siamo su una stazione spaziale. E tieniti forte: hai centoventiquattro anni.
+  - **Da incollare su ElevenLabs v3:** `[cheerfully] Buongiorno, Cooper. [calm] Ci hanno ripescati vicino a Saturno, tutti e due. [deadpan] Siamo su una stazione spaziale. [mischievously] E tieniti forte: hai centoventiquattro anni.`
+- `storia_interstellar2-34.mp3` — manca · Interstellar 2: il tesseratto, scena 34 (al massimo 16 s)
+  - **Emozione:** didattico — divertito e chiaro
+  - **Testo:** Guarda in su: le case sono anche sopra la nostra testa. La stazione è un enorme cilindro che gira, come l'Endurance: girando spinge tutto verso il bordo, e così si cammina come sulla Terra.
+  - **Da incollare su ElevenLabs v3:** `[cheerfully] Guarda in su: le case sono anche sopra la nostra testa. [calm] La stazione è un enorme cilindro che gira, come l'Endurance: girando spinge tutto verso il bordo, e così si cammina come sulla Terra.`
+- `storia_interstellar2-35.mp3` — manca · Interstellar 2: il tesseratto, scena 35 (al massimo 12 s)
+  - **Emozione:** tenero — piano, con delicatezza
+  - **Testo:** C'è una persona che ti aspetta da tantissimo tempo, Cooper. Ormai è molto anziana… e vuole vederti.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] C'è una persona che ti aspetta da tantissimo tempo, Cooper. [softly] Ormai è molto anziana… e vuole vederti.`
+- `storia_interstellar2-41.mp3` — manca · Interstellar 2: il tesseratto, scena 41 (al massimo 15 s)
+  - **Emozione:** contento — il robot di sempre, contento di ripartire
+  - **Testo:** Livello di sincerità: cento per cento. Livello di umorismo: di nuovo al settantacinque. Destinazione: il pianeta di Edmunds.
+  - **Da incollare su ElevenLabs v3:** `[proudly] Livello di sincerità: cento per cento. [mischievously] Livello di umorismo: di nuovo al settantacinque. [determined] Destinazione: il pianeta di Edmunds.`
 
 ### Inglese — `storie/tars/en/`
 
-- `storia_interstellar-5.mp3` — manca · Interstellar: oltre Gargantua, scena 5 (al massimo 15 s)
+- `storia_interstellar-5.mp3` — manca · Interstellar 1: oltre Gargantua, scena 5 (al massimo 15 s)
   - **Emozione:** impassibile — secco, pausa comica prima della battuta finale
   - **Testo:** Before we go in, let me remind you my honesty setting is at ninety percent. So, honestly: I have no idea what's on the other side.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Before we go in, let me remind you my honesty setting is at ninety percent. [pause] So, honestly: I have no idea what's on the other side.`
-- `storia_interstellar-29.mp3` — manca · Interstellar: oltre Gargantua, scena 29 (al massimo 14 s)
+- `storia_interstellar-29.mp3` — manca · Interstellar 1: oltre Gargantua, scena 29 (al massimo 14 s)
   - **Emozione:** preoccupato — asciutto, ma con urgenza
   - **Testo:** Bad news: Doctor Mann has taken the Lander and is flying to the Endurance. I switched off automatic docking: if he tries to force it, it'll be a disaster.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Bad news: Doctor Mann has taken the Lander and is flying to the Endurance. [serious] I switched off automatic docking: if he tries to force it, it'll be a disaster.`
-- `storia_interstellar-33.mp3` — manca · Interstellar: oltre Gargantua, scena 33 (al massimo 14 s)
+- `storia_interstellar-33.mp3` — manca · Interstellar 1: oltre Gargantua, scena 33 (al massimo 14 s)
   - **Emozione:** fiero — sollievo asciutto, poi spiega con gusto
   - **Testo:** Docked! Spinning together, the Ranger and the Endurance were still with respect to each other, like two dancers holding hands. Then we slowed down together.
   - **Da incollare su ElevenLabs v3:** `[relieved] Docked! [proud] Spinning together, the Ranger and the Endurance were still with respect to each other, like two dancers holding hands. [calmly] Then we slowed down together.`
-- `storia_interstellar-39.mp3` — manca · Interstellar: oltre Gargantua, scena 39 (al massimo 13 s)
+- `storia_interstellar-39.mp3` — manca · Interstellar 1: oltre Gargantua, scena 39 (al massimo 13 s)
   - **Emozione:** tenero — per una volta senza ironia
   - **Testo:** It's been an honour flying with you. Honesty setting: one hundred percent.
   - **Da incollare su ElevenLabs v3:** `[tenderly] It's been an honour flying with you. [warmly] Honesty setting: one hundred percent.`
+- `storia_interstellar2-3.mp3` — manca · Interstellar 2: il tesseratto, scena 3 (al massimo 13 s)
+  - **Emozione:** sollevato — asciutto e calmo come sempre, con un filo di sollievo
+  - **Testo:** Cooper, do you read me? I'm alive too, somewhere around here. Someone caught us in the dark and brought us to this place.
+  - **Da incollare su ElevenLabs v3:** `[calm] Cooper, do you read me? [relieved] I'm alive too, somewhere around here. [curious] Someone caught us in the dark and brought us to this place.`
+- `storia_interstellar2-5.mp3` — manca · Interstellar 2: il tesseratto, scena 5 (al massimo 19 s)
+  - **Emozione:** didattico — chiaro, paziente, come chi spiega con un disegno
+  - **Testo:** I don't know yet. But I know what this place is: a tesseract, a cube with one extra dimension. Just as a cube's shadow on a sheet of paper is a square inside a square, its shadow in our space is a cube inside a cube.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] I don't know yet. [calm] But I know what this place is: a tesseract, a cube with one extra dimension. [warmly] Just as a cube's shadow on a sheet of paper is a square inside a square, its shadow in our space is a cube inside a cube.`
+- `storia_interstellar2-17.mp3` — manca · Interstellar 2: il tesseratto, scena 17 (al massimo 14 s)
+  - **Emozione:** curioso — asciutto, quasi divertito
+  - **Testo:** Cooper, do you remember the dust on the floor? The wide and narrow lines that led you to NASA's secret base?
+  - **Da incollare su ElevenLabs v3:** `[curious] Cooper, do you remember the dust on the floor? [thoughtful] The wide and narrow lines that led you to NASA's secret base?`
+- `storia_interstellar2-19.mp3` — manca · Interstellar 2: il tesseratto, scena 19 (al massimo 14 s)
+  - **Emozione:** fiero — fiero, con l'umorismo secco di sempre
+  - **Testo:** And now the good news: inside Gargantua I measured the singularity. I have the quantum data, the data Professor Brand searched for his whole life.
+  - **Da incollare su ElevenLabs v3:** `[proudly] And now the good news: inside Gargantua I measured the singularity. [calm] I have the quantum data, the data Professor Brand searched for his whole life.`
+- `storia_interstellar2-20.mp3` — manca · Interstellar 2: il tesseratto, scena 20 (al massimo 22 s)
+  - **Emozione:** didattico — chiaro e paziente, come un buon insegnante
+  - **Testo:** To make whole cities fly you have to understand gravity all the way down. Einstein's relativity explains the huge things, quantum mechanics the tiny ones, but together they don't get along. They meet in one place only: the heart of a black hole.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] To make whole cities fly you have to understand gravity all the way down. [calm] Einstein's relativity explains the huge things, quantum mechanics the tiny ones, but together they don't get along. [mysteriously] They meet in one place only: the heart of a black hole.`
+- `storia_interstellar2-23.mp3` — manca · Interstellar 2: il tesseratto, scena 23 (al massimo 11 s)
+  - **Emozione:** scettico — impassibile, poi la battuta secca
+  - **Testo:** All the data of a black hole in the second hand of a watch? Honesty level: ninety percent… it might not work.
+  - **Da incollare su ElevenLabs v3:** `[skeptical] All the data of a black hole in the second hand of a watch? [deadpan] Honesty level: ninety percent… it might not work.`
+- `storia_interstellar2-32.mp3` — manca · Interstellar 2: il tesseratto, scena 32 (al massimo 16 s)
+  - **Emozione:** ironico — allegro e asciutto, la pausa comica prima del numero
+  - **Testo:** Good morning, Cooper. They fished us out near Saturn, both of us. We're on a space station. And brace yourself: you're one hundred and twenty-four years old.
+  - **Da incollare su ElevenLabs v3:** `[cheerfully] Good morning, Cooper. [calm] They fished us out near Saturn, both of us. [deadpan] We're on a space station. [mischievously] And brace yourself: you're one hundred and twenty-four years old.`
+- `storia_interstellar2-34.mp3` — manca · Interstellar 2: il tesseratto, scena 34 (al massimo 16 s)
+  - **Emozione:** didattico — divertito e chiaro
+  - **Testo:** Look up: there are houses above our heads too. The station is a huge spinning cylinder, like the Endurance: spinning pushes everything toward the rim, and so you can walk just like on Earth.
+  - **Da incollare su ElevenLabs v3:** `[cheerfully] Look up: there are houses above our heads too. [calm] The station is a huge spinning cylinder, like the Endurance: spinning pushes everything toward the rim, and so you can walk just like on Earth.`
+- `storia_interstellar2-35.mp3` — manca · Interstellar 2: il tesseratto, scena 35 (al massimo 12 s)
+  - **Emozione:** tenero — piano, con delicatezza
+  - **Testo:** There's someone who has been waiting for you for a very long time, Cooper. She's very old now… and she wants to see you.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] There's someone who has been waiting for you for a very long time, Cooper. [softly] She's very old now… and she wants to see you.`
+- `storia_interstellar2-41.mp3` — manca · Interstellar 2: il tesseratto, scena 41 (al massimo 15 s)
+  - **Emozione:** contento — il robot di sempre, contento di ripartire
+  - **Testo:** Honesty level: one hundred percent. Humor level: back to seventy-five. Destination: Edmunds' planet.
+  - **Da incollare su ElevenLabs v3:** `[proudly] Honesty level: one hundred percent. [mischievously] Humor level: back to seventy-five. [determined] Destination: Edmunds' planet.`
 
 ## Doyle
 
@@ -1366,22 +1585,22 @@ Cartella: `audio/narrazione/storie/doyle/<lingua>/` · nel codice `doyle` · in 
 
 ### Italiano — `storie/doyle/it/`
 
-- `storia_interstellar-8.mp3` — manca · Interstellar: oltre Gargantua, scena 8 (al massimo 11 s)
+- `storia_interstellar-8.mp3` — manca · Interstellar 1: oltre Gargantua, scena 8 (al massimo 11 s)
   - **Emozione:** eccitato — di corsa, ridendo
   - **Testo:** Guardate le stelle, corrono via! Stiamo attraversando mezzo universo in pochi minuti!
   - **Da incollare su ElevenLabs v3:** `[excited] Guardate le stelle, corrono via! [laughs] Stiamo attraversando mezzo universo in pochi minuti!`
-- `storia_interstellar-17.mp3` — manca · Interstellar: oltre Gargantua, scena 17 (al massimo 8 s)
+- `storia_interstellar-17.mp3` — manca · Interstellar 1: oltre Gargantua, scena 17 (al massimo 8 s)
   - **Emozione:** in panico — gridato, senza fiato
   - **Testo:** Brand, lascia stare! Torna al Ranger, corri!
   - **Da incollare su ElevenLabs v3:** `[panicked] Brand, lascia stare! [shouts] Torna al Ranger, corri!`
 
 ### Inglese — `storie/doyle/en/`
 
-- `storia_interstellar-8.mp3` — manca · Interstellar: oltre Gargantua, scena 8 (al massimo 11 s)
+- `storia_interstellar-8.mp3` — manca · Interstellar 1: oltre Gargantua, scena 8 (al massimo 11 s)
   - **Emozione:** eccitato — di corsa, ridendo
   - **Testo:** Look at the stars, they're racing away! We're crossing half the universe in a few minutes!
   - **Da incollare su ElevenLabs v3:** `[excited] Look at the stars, they're racing away! [laughs] We're crossing half the universe in a few minutes!`
-- `storia_interstellar-17.mp3` — manca · Interstellar: oltre Gargantua, scena 17 (al massimo 8 s)
+- `storia_interstellar-17.mp3` — manca · Interstellar 1: oltre Gargantua, scena 17 (al massimo 8 s)
   - **Emozione:** in panico — gridato, senza fiato
   - **Testo:** Brand, leave it! Get back to the Ranger, run!
   - **Da incollare su ElevenLabs v3:** `[panicked] Brand, leave it! [shouts] Get back to the Ranger, run!`
@@ -1394,14 +1613,14 @@ Cartella: `audio/narrazione/storie/pianeta-di-miller/<lingua>/` · nel codice `m
 
 ### Italiano — `storie/pianeta-di-miller/it/`
 
-- `storia_interstellar-14.mp3` — manca · Interstellar: oltre Gargantua, scena 14 (al massimo 16 s)
+- `storia_interstellar-14.mp3` — manca · Interstellar 1: oltre Gargantua, scena 14 (al massimo 16 s)
   - **Emozione:** misteriosa — lenta, cullante, poi minacciosa sulle onde
   - **Testo:** Io sono il pianeta di Miller. Sono tutto acqua, bassa come una pozzanghera… ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Io sono il pianeta di Miller. [softly] Sono tutto acqua, bassa come una pozzanghera… [ominous] ma Gargantua mi tira così forte che i miei mari si alzano in onde alte come montagne.`
 
 ### Inglese — `storie/pianeta-di-miller/en/`
 
-- `storia_interstellar-14.mp3` — manca · Interstellar: oltre Gargantua, scena 14 (al massimo 16 s)
+- `storia_interstellar-14.mp3` — manca · Interstellar 1: oltre Gargantua, scena 14 (al massimo 16 s)
   - **Emozione:** misteriosa — lenta, cullante, poi minacciosa sulle onde
   - **Testo:** I am Miller's planet. I am all water, as shallow as a puddle… but Gargantua pulls on me so hard that my seas rise into waves as tall as mountains.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] I am Miller's planet. [softly] I am all water, as shallow as a puddle… [ominous] but Gargantua pulls on me so hard that my seas rise into waves as tall as mountains.`
@@ -1414,22 +1633,22 @@ Cartella: `audio/narrazione/storie/case/<lingua>/` · nel codice `case` · in in
 
 ### Italiano — `storie/case/it/`
 
-- `storia_interstellar-18.mp3` — manca · Interstellar: oltre Gargantua, scena 18 (al massimo 9 s)
+- `storia_interstellar-18.mp3` — manca · Interstellar 1: oltre Gargantua, scena 18 (al massimo 9 s)
   - **Emozione:** deciso — calmo e fermo anche nel caos
   - **Testo:** Ti tengo, Brand. Tenetevi forte: decolliamo dalla cresta dell'onda!
   - **Da incollare su ElevenLabs v3:** `[determined] Ti tengo, Brand. [shouts] Tenetevi forte: decolliamo dalla cresta dell'onda!`
-- `storia_interstellar-31.mp3` — manca · Interstellar: oltre Gargantua, scena 31 (al massimo 11 s)
+- `storia_interstellar-31.mp3` — manca · Interstellar 1: oltre Gargantua, scena 31 (al massimo 11 s)
   - **Emozione:** allarmato — calmo ma urgente
   - **Testo:** L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. Attraccare è impossibile.
   - **Da incollare su ElevenLabs v3:** `[nervous] L'Endurance ha perso un pezzo e gira su se stessa: sessantotto giri al minuto. [serious] Attraccare è impossibile.`
 
 ### Inglese — `storie/case/en/`
 
-- `storia_interstellar-18.mp3` — manca · Interstellar: oltre Gargantua, scena 18 (al massimo 9 s)
+- `storia_interstellar-18.mp3` — manca · Interstellar 1: oltre Gargantua, scena 18 (al massimo 9 s)
   - **Emozione:** deciso — calmo e fermo anche nel caos
   - **Testo:** I've got you, Brand. Hold on tight: we're taking off from the crest of the wave!
   - **Da incollare su ElevenLabs v3:** `[determined] I've got you, Brand. [shouts] Hold on tight: we're taking off from the crest of the wave!`
-- `storia_interstellar-31.mp3` — manca · Interstellar: oltre Gargantua, scena 31 (al massimo 11 s)
+- `storia_interstellar-31.mp3` — manca · Interstellar 1: oltre Gargantua, scena 31 (al massimo 11 s)
   - **Emozione:** allarmato — calmo ma urgente
   - **Testo:** The Endurance has lost a piece and it's spinning: sixty-eight turns a minute. Docking is impossible.
   - **Da incollare su ElevenLabs v3:** `[nervous] The Endurance has lost a piece and it's spinning: sixty-eight turns a minute. [serious] Docking is impossible.`
@@ -1442,25 +1661,57 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
 
 ### Italiano — `storie/murph/it/`
 
-- `storia_interstellar-22.mp3` — manca · Interstellar: oltre Gargantua, scena 22 (al massimo 16 s)
+- `storia_interstellar-22.mp3` — manca · Interstellar 1: oltre Gargantua, scena 22 (al massimo 16 s)
   - **Emozione:** commossa — trattiene le lacrime; l'ultima frase quasi spezzata
   - **Testo:** Ciao papà. Oggi compio gli anni che avevi tu quando sei partito. Mi avevi promesso che saresti tornato… forse è ora che smetta di aspettarti.
   - **Da incollare su ElevenLabs v3:** `[tenderly] Ciao papà. Oggi compio gli anni che avevi tu quando sei partito. [crying] Mi avevi promesso che saresti tornato… [whispers] forse è ora che smetta di aspettarti.`
-- `storia_interstellar-43.mp3` — manca · Interstellar: oltre Gargantua, scena 43 (al massimo 10 s)
-  - **Emozione:** speranzosa — piano, con un sorriso tra le lacrime
-  - **Testo:** Papà… lo sento. Da qualche parte, oltre il tempo, tu sei ancora qui con me.
-  - **Da incollare su ElevenLabs v3:** `[softly] Papà… lo sento. [hopeful] Da qualche parte, oltre il tempo, tu sei ancora qui con me.`
+- `storia_interstellar-43.mp3` — manca · Interstellar 1: oltre Gargantua, scena 43 (al massimo 13 s)
+  - **Emozione:** speranzosa — piano, con un sorriso tra le lacrime; poi un brivido di mistero
+  - **Testo:** Papà… lo sento. Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo.
+  - **Da incollare su ElevenLabs v3:** `[softly] Papà… [hopeful] lo sento. [mysteriously] Sono tornata nella mia vecchia stanza, e il mio fantasma, dietro la libreria… si è svegliato di nuovo.`
+- `storia_interstellar2-25.mp3` — manca · Interstellar 2: il tesseratto, scena 25 (al massimo 16 s)
+  - **Emozione:** malinconica — piano, assorta, nei ricordi
+  - **Testo:** Sono tornata nella mia vecchia stanza. Il mio fantasma… papà diceva che i fantasmi non esistono. E allora chi c'era, qui, dietro la libreria?
+  - **Da incollare su ElevenLabs v3:** `[wistfully] Sono tornata nella mia vecchia stanza. [softly] Il mio fantasma… [curious] papà diceva che i fantasmi non esistono. E allora chi c'era, qui, dietro la libreria?`
+- `storia_interstellar2-26.mp3` — manca · Interstellar 2: il tesseratto, scena 26 (al massimo 17 s)
+  - **Emozione:** folgorata — dallo stupore all'emozione, fino alle lacrime di gioia
+  - **Testo:** L'orologio di papà… la lancetta si muove a scatti: lungo, corto, corto, lungo. È Morse! Sono dati! Il fantasma eri tu, papà. Sei sempre stato tu!
+  - **Da incollare su ElevenLabs v3:** `[surprised] L'orologio di papà… [excited] la lancetta si muove a scatti: lungo, corto, corto, lungo. [gasps] È Morse! Sono dati! [crying] Il fantasma eri tu, papà. [happy] Sei sempre stato tu!`
+- `storia_interstellar2-27.mp3` — manca · Interstellar 2: il tesseratto, scena 27 (al massimo 13 s)
+  - **Emozione:** euforica — accelera, poi esplode di gioia
+  - **Testo:** Ecco cosa mancava all'equazione del professor Brand! Con questi dati la gravità si può controllare. Eureka! Eurekaaa!
+  - **Da incollare su ElevenLabs v3:** `[excited] Ecco cosa mancava all'equazione del professor Brand! [determined] Con questi dati la gravità si può controllare. [laughs] Eureka! [shouting] Eurekaaa!`
+- `storia_interstellar2-28.mp3` — manca · Interstellar 2: il tesseratto, scena 28 (al massimo 19 s)
+  - **Emozione:** commossa — con meraviglia, poi la voce rotta dalla gioia
+  - **Testo:** Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. Ce l'abbiamo fatta, papà. L'umanità parte!
+  - **Da incollare su ElevenLabs v3:** `[in awe] Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. [crying] Ce l'abbiamo fatta, papà. [happy] L'umanità parte!`
 
 ### Inglese — `storie/murph/en/`
 
-- `storia_interstellar-22.mp3` — manca · Interstellar: oltre Gargantua, scena 22 (al massimo 16 s)
+- `storia_interstellar-22.mp3` — manca · Interstellar 1: oltre Gargantua, scena 22 (al massimo 16 s)
   - **Emozione:** commossa — trattiene le lacrime; l'ultima frase quasi spezzata
   - **Testo:** Hi Dad. Today I'm as old as you were when you left. You promised you'd come back… maybe it's time I stopped waiting for you.
   - **Da incollare su ElevenLabs v3:** `[tenderly] Hi Dad. Today I'm as old as you were when you left. [crying] You promised you'd come back… [whispers] maybe it's time I stopped waiting for you.`
-- `storia_interstellar-43.mp3` — manca · Interstellar: oltre Gargantua, scena 43 (al massimo 10 s)
-  - **Emozione:** speranzosa — piano, con un sorriso tra le lacrime
-  - **Testo:** Dad… I can feel it. Somewhere, beyond time, you're still here with me.
-  - **Da incollare su ElevenLabs v3:** `[softly] Dad… I can feel it. [hopeful] Somewhere, beyond time, you're still here with me.`
+- `storia_interstellar-43.mp3` — manca · Interstellar 1: oltre Gargantua, scena 43 (al massimo 13 s)
+  - **Emozione:** speranzosa — piano, con un sorriso tra le lacrime; poi un brivido di mistero
+  - **Testo:** Dad… I can feel it. I came back to my old room, and my ghost, behind the bookshelf… has woken up again.
+  - **Da incollare su ElevenLabs v3:** `[softly] Dad… [hopeful] I can feel it. I came back to my old room, and my ghost, behind the bookshelf… has woken up again.`
+- `storia_interstellar2-25.mp3` — manca · Interstellar 2: il tesseratto, scena 25 (al massimo 16 s)
+  - **Emozione:** malinconica — piano, assorta, nei ricordi
+  - **Testo:** I came back to my old room. My ghost… Dad used to say ghosts don't exist. So who was here, behind the bookshelf?
+  - **Da incollare su ElevenLabs v3:** `[wistfully] I came back to my old room. [softly] My ghost… [curious] Dad used to say ghosts don't exist. So who was here, behind the bookshelf?`
+- `storia_interstellar2-26.mp3` — manca · Interstellar 2: il tesseratto, scena 26 (al massimo 17 s)
+  - **Emozione:** folgorata — dallo stupore all'emozione, fino alle lacrime di gioia
+  - **Testo:** Dad's watch… the second hand moves in jumps: long, short, short, long. It's Morse! It's data! The ghost was you, Dad. It was always you!
+  - **Da incollare su ElevenLabs v3:** `[surprised] Dad's watch… [excited] the second hand moves in jumps: long, short, short, long. [gasps] It's Morse! It's data! [crying] The ghost was you, Dad. [happy] It was always you!`
+- `storia_interstellar2-27.mp3` — manca · Interstellar 2: il tesseratto, scena 27 (al massimo 13 s)
+  - **Emozione:** euforica — accelera, poi esplode di gioia
+  - **Testo:** That's what was missing from Professor Brand's equation! With this data, gravity can be controlled. Eureka! Eurekaaa!
+  - **Da incollare su ElevenLabs v3:** `[excited] That's what was missing from Professor Brand's equation! [determined] With this data, gravity can be controlled. [laughs] Eureka! [shouting] Eurekaaa!`
+- `storia_interstellar2-28.mp3` — manca · Interstellar 2: il tesseratto, scena 28 (al massimo 19 s)
+  - **Emozione:** commossa — con meraviglia, poi la voce rotta dalla gioia
+  - **Testo:** Look: the stations are lifting off the Earth, one after another, with millions of people inside. We did it, Dad. Humanity is leaving!
+  - **Da incollare su ElevenLabs v3:** `[in awe] Look: the stations are lifting off the Earth, one after another, with millions of people inside. [crying] We did it, Dad. [happy] Humanity is leaving!`
 
 ## Pianeta di Mann
 
@@ -1470,14 +1721,14 @@ Cartella: `audio/narrazione/storie/pianeta-di-mann/<lingua>/` · nel codice `man
 
 ### Italiano — `storie/pianeta-di-mann/it/`
 
-- `storia_interstellar-26.mp3` — manca · Interstellar: oltre Gargantua, scena 26 (al massimo 16 s)
+- `storia_interstellar-26.mp3` — manca · Interstellar 1: oltre Gargantua, scena 26 (al massimo 16 s)
   - **Emozione:** gelido — lento, freddo, sussurra il segreto
   - **Testo:** Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. Il dottor Mann dorme da anni… e nasconde un segreto.
   - **Da incollare su ElevenLabs v3:** `[slowly] Io sono il pianeta di Mann. Qui fa così freddo che perfino le nuvole sono di ghiaccio, ferme nel cielo. [mysteriously] Il dottor Mann dorme da anni… [whispers] e nasconde un segreto.`
 
 ### Inglese — `storie/pianeta-di-mann/en/`
 
-- `storia_interstellar-26.mp3` — manca · Interstellar: oltre Gargantua, scena 26 (al massimo 16 s)
+- `storia_interstellar-26.mp3` — manca · Interstellar 1: oltre Gargantua, scena 26 (al massimo 16 s)
   - **Emozione:** gelido — lento, freddo, sussurra il segreto
   - **Testo:** I am Mann's planet. It's so cold here that even the clouds are made of ice, hanging still in the sky. Doctor Mann has been sleeping for years… and he's hiding a secret.
   - **Da incollare su ElevenLabs v3:** `[slowly] I am Mann's planet. It's so cold here that even the clouds are made of ice, hanging still in the sky. [mysteriously] Doctor Mann has been sleeping for years… [whispers] and he's hiding a secret.`
@@ -1490,33 +1741,165 @@ Cartella: `audio/narrazione/storie/dottor-mann/<lingua>/` · nel codice `mann` �
 
 ### Italiano — `storie/dottor-mann/it/`
 
-- `storia_interstellar-27.mp3` — manca · Interstellar: oltre Gargantua, scena 27 (al massimo 11 s)
+- `storia_interstellar-27.mp3` — manca · Interstellar 1: oltre Gargantua, scena 27 (al massimo 11 s)
   - **Emozione:** sollevato — quasi piange di gioia
   - **Testo:** Non credevo che avrei mai più rivisto un volto umano! Grazie… grazie di essere venuti fin qui.
   - **Da incollare su ElevenLabs v3:** `[crying] Non credevo che avrei mai più rivisto un volto umano! [relieved] Grazie… grazie di essere venuti fin qui.`
-- `storia_interstellar-28.mp3` — manca · Interstellar: oltre Gargantua, scena 28 (al massimo 16 s)
+- `storia_interstellar-28.mp3` — manca · Interstellar 1: oltre Gargantua, scena 28 (al massimo 16 s)
   - **Emozione:** cupo — freddo, poi la paura, poi minaccioso
   - **Testo:** Il mio pianeta non può ospitare nessuno, Cooper. Ho mandato dati falsi: avevo paura di morire qui, da solo. Perdonami… ma adesso la tua nave la prendo io.
   - **Da incollare su ElevenLabs v3:** `[coldly] Il mio pianeta non può ospitare nessuno, Cooper. [ashamed] Ho mandato dati falsi: avevo paura di morire qui, da solo. [menacing] Perdonami… ma adesso la tua nave la prendo io.`
-- `storia_interstellar-30.mp3` — manca · Interstellar: oltre Gargantua, scena 30 (al massimo 9 s)
+- `storia_interstellar-30.mp3` — manca · Interstellar 1: oltre Gargantua, scena 30 (al massimo 9 s)
   - **Emozione:** esaltato — ansimante, trionfante, ignaro
   - **Testo:** Si apre… si apre! Ce l'ho fatta!
   - **Da incollare su ElevenLabs v3:** `[breathless] Si apre… si apre! [excited] Ce l'ho fatta!`
 
 ### Inglese — `storie/dottor-mann/en/`
 
-- `storia_interstellar-27.mp3` — manca · Interstellar: oltre Gargantua, scena 27 (al massimo 11 s)
+- `storia_interstellar-27.mp3` — manca · Interstellar 1: oltre Gargantua, scena 27 (al massimo 11 s)
   - **Emozione:** sollevato — quasi piange di gioia
   - **Testo:** I never thought I'd see a human face again! Thank you… thank you for coming all this way.
   - **Da incollare su ElevenLabs v3:** `[crying] I never thought I'd see a human face again! [relieved] Thank you… thank you for coming all this way.`
-- `storia_interstellar-28.mp3` — manca · Interstellar: oltre Gargantua, scena 28 (al massimo 16 s)
+- `storia_interstellar-28.mp3` — manca · Interstellar 1: oltre Gargantua, scena 28 (al massimo 16 s)
   - **Emozione:** cupo — freddo, poi la paura, poi minaccioso
   - **Testo:** My planet can't host anyone, Cooper. I sent false data: I was afraid of dying here, alone. Forgive me… but now I'm taking your ship.
   - **Da incollare su ElevenLabs v3:** `[coldly] My planet can't host anyone, Cooper. [ashamed] I sent false data: I was afraid of dying here, alone. [menacing] Forgive me… but now I'm taking your ship.`
-- `storia_interstellar-30.mp3` — manca · Interstellar: oltre Gargantua, scena 30 (al massimo 9 s)
+- `storia_interstellar-30.mp3` — manca · Interstellar 1: oltre Gargantua, scena 30 (al massimo 9 s)
   - **Emozione:** esaltato — ansimante, trionfante, ignaro
   - **Testo:** It's opening… it's opening! I made it!
   - **Da incollare su ElevenLabs v3:** `[breathless] It's opening… it's opening! [excited] I made it!`
+
+## Loro
+
+Cartella: `audio/narrazione/storie/loro/<lingua>/` · nel codice `loro` · in inglese Them
+
+**La voce:** Lei (sono tanti, una voce sola). Gli esseri a cinque dimensioni, gli umani del futuro: voce calma, ampia, eterea e rassicurante, come da molto lontano; mai minacciosa.
+
+### Italiano — `storie/loro/it/`
+
+- `storia_interstellar2-6.mp3` — manca · Interstellar 2: il tesseratto, scena 6 (al massimo 15 s)
+  - **Emozione:** misterioso — una voce ampia e lontana, calma, rassicurante
+  - **Testo:** Non avere paura, Cooper. Siamo noi che ti abbiamo portato qui. Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.
+  - **Da incollare su ElevenLabs v3:** `[softly] Non avere paura, Cooper. [mysteriously] Siamo noi che ti abbiamo portato qui. [warmly] Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.`
+- `storia_interstellar2-7.mp3` — manca · Interstellar 2: il tesseratto, scena 7 (al massimo 21 s)
+  - **Emozione:** meravigliato — lento, con una pausa prima della rivelazione
+  - **Testo:** Guarda: un punto che scivola fa una linea, una linea fa un quadrato, un quadrato fa un cubo, un cubo fa un tesseratto. Ogni volta una direzione in più. E la nostra direzione in più… è il tempo.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] Guarda: un punto che scivola fa una linea, una linea fa un quadrato, un quadrato fa un cubo, un cubo fa un tesseratto. Ogni volta una direzione in più. [calm] E la nostra direzione in più… [slowly] è il tempo.`
+- `storia_interstellar2-8.mp3` — manca · Interstellar 2: il tesseratto, scena 8 (al massimo 21 s)
+  - **Emozione:** sognante — lento e sognante, quasi una ninna nanna
+  - **Testo:** Per te il tempo è un fiume che ti porta solo in avanti. Per noi è un paesaggio: ogni istante sta lì, accanto agli altri, come i fotogrammi di una pellicola. Possiamo camminarci avanti e indietro, come tu cammini in un corridoio.
+  - **Da incollare su ElevenLabs v3:** `[softly] Per te il tempo è un fiume che ti porta solo in avanti. [dreamy] Per noi è un paesaggio: ogni istante sta lì, accanto agli altri, come i fotogrammi di una pellicola. [warmly] Possiamo camminarci avanti e indietro, come tu cammini in un corridoio.`
+- `storia_interstellar2-10.mp3` — manca · Interstellar 2: il tesseratto, scena 10 (al massimo 16 s)
+  - **Emozione:** tenero — dolce, lento, con affetto
+  - **Testo:** Per noi il tempo è troppo grande: non sappiamo trovare un istante preciso del vostro passato. Ma tu sì. Tu hai un legame con Murph, e quel legame ti guiderà al momento giusto.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] Per noi il tempo è troppo grande: non sappiamo trovare un istante preciso del vostro passato. [warmly] Ma tu sì. [softly] Tu hai un legame con Murph, e quel legame ti guiderà al momento giusto.`
+- `storia_interstellar2-11.mp3` — manca · Interstellar 2: il tesseratto, scena 11 (al massimo 15 s)
+  - **Emozione:** solenne — piano, come un segreto importante
+  - **Testo:** E c'è una sola cosa che attraversa tutte le dimensioni, perfino il tempo: la gravità. Con la gravità potrai toccare il suo mondo.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] E c'è una sola cosa che attraversa tutte le dimensioni, perfino il tempo: la gravità. [softly] Con la gravità potrai toccare il suo mondo.`
+- `storia_interstellar2-13.mp3` — manca · Interstellar 2: il tesseratto, scena 13 (al massimo 18 s)
+  - **Emozione:** fiero — caldo, fiero e commosso
+  - **Testo:** Sì, Cooper. Siamo gli esseri umani di un futuro lontanissimo, che hanno imparato a vivere oltre il tempo. Il wormhole, il tesseratto: li abbiamo preparati noi, perché voi possiate salvarvi… e un giorno diventare noi.
+  - **Da incollare su ElevenLabs v3:** `[proudly] Sì, Cooper. [warmly] Siamo gli esseri umani di un futuro lontanissimo, che hanno imparato a vivere oltre il tempo. [tenderly] Il wormhole, il tesseratto: li abbiamo preparati noi, perché voi possiate salvarvi… e un giorno diventare noi.`
+- `storia_interstellar2-29.mp3` — manca · Interstellar 2: il tesseratto, scena 29 (al massimo 13 s)
+  - **Emozione:** dolce — calmo, sereno, come un saluto
+  - **Testo:** Il messaggio è arrivato, Cooper. Il cerchio è chiuso. Ora il tesseratto si richiude… e ti riportiamo indietro.
+  - **Da incollare su ElevenLabs v3:** `[warmly] Il messaggio è arrivato, Cooper. [softly] Il cerchio è chiuso. [tenderly] Ora il tesseratto si richiude… e ti riportiamo indietro.`
+- `storia_interstellar2-43.mp3` — manca · Interstellar 2: il tesseratto, scena 43 (al massimo 15 s)
+  - **Emozione:** solenne — lento, ampio, una promessa
+  - **Testo:** Gli esseri umani hanno attraversato lo spazio e il tempo, guidati dall'amore e dalla gravità. Un giorno, ve lo promettiamo… diventerete noi.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] Gli esseri umani hanno attraversato lo spazio e il tempo, guidati dall'amore e dalla gravità. [softly] Un giorno, ve lo promettiamo… diventerete noi.`
+
+### Inglese — `storie/loro/en/`
+
+- `storia_interstellar2-6.mp3` — manca · Interstellar 2: il tesseratto, scena 6 (al massimo 15 s)
+  - **Emozione:** misterioso — una voce ampia e lontana, calma, rassicurante
+  - **Testo:** Don't be afraid, Cooper. We are the ones who brought you here. We live in five dimensions, and we folded this space for you.
+  - **Da incollare su ElevenLabs v3:** `[softly] Don't be afraid, Cooper. [mysteriously] We are the ones who brought you here. [warmly] We live in five dimensions, and we folded this space for you.`
+- `storia_interstellar2-7.mp3` — manca · Interstellar 2: il tesseratto, scena 7 (al massimo 21 s)
+  - **Emozione:** meravigliato — lento, con una pausa prima della rivelazione
+  - **Testo:** Look: a point that slides makes a line, a line makes a square, a square makes a cube, a cube makes a tesseract. Each time, one more direction. And our extra direction… is time.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] Look: a point that slides makes a line, a line makes a square, a square makes a cube, a cube makes a tesseract. Each time, one more direction. [calm] And our extra direction… [slowly] is time.`
+- `storia_interstellar2-8.mp3` — manca · Interstellar 2: il tesseratto, scena 8 (al massimo 21 s)
+  - **Emozione:** sognante — lento e sognante, quasi una ninna nanna
+  - **Testo:** For you, time is a river that only carries you forward. For us it is a landscape: every moment stays there, next to the others, like the frames of a film. We can walk back and forth through it, the way you walk down a corridor.
+  - **Da incollare su ElevenLabs v3:** `[softly] For you, time is a river that only carries you forward. [dreamy] For us it is a landscape: every moment stays there, next to the others, like the frames of a film. [warmly] We can walk back and forth through it, the way you walk down a corridor.`
+- `storia_interstellar2-10.mp3` — manca · Interstellar 2: il tesseratto, scena 10 (al massimo 16 s)
+  - **Emozione:** tenero — dolce, lento, con affetto
+  - **Testo:** For us, time is too vast: we cannot find one precise moment of your past. But you can. You have a bond with Murph, and that bond will guide you to the right moment.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] For us, time is too vast: we cannot find one precise moment of your past. [warmly] But you can. [softly] You have a bond with Murph, and that bond will guide you to the right moment.`
+- `storia_interstellar2-11.mp3` — manca · Interstellar 2: il tesseratto, scena 11 (al massimo 15 s)
+  - **Emozione:** solenne — piano, come un segreto importante
+  - **Testo:** And there is only one thing that crosses every dimension, even time: gravity. With gravity you will be able to touch her world.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] And there is only one thing that crosses every dimension, even time: gravity. [softly] With gravity you will be able to touch her world.`
+- `storia_interstellar2-13.mp3` — manca · Interstellar 2: il tesseratto, scena 13 (al massimo 18 s)
+  - **Emozione:** fiero — caldo, fiero e commosso
+  - **Testo:** Yes, Cooper. We are the human beings of a very distant future, who learned to live beyond time. The wormhole, the tesseract: we prepared them, so that you could save yourselves… and one day become us.
+  - **Da incollare su ElevenLabs v3:** `[proudly] Yes, Cooper. [warmly] We are the human beings of a very distant future, who learned to live beyond time. [tenderly] The wormhole, the tesseract: we prepared them, so that you could save yourselves… and one day become us.`
+- `storia_interstellar2-29.mp3` — manca · Interstellar 2: il tesseratto, scena 29 (al massimo 13 s)
+  - **Emozione:** dolce — calmo, sereno, come un saluto
+  - **Testo:** The message has arrived, Cooper. The circle is closed. Now the tesseract folds back up… and we'll take you back.
+  - **Da incollare su ElevenLabs v3:** `[warmly] The message has arrived, Cooper. [softly] The circle is closed. [tenderly] Now the tesseract folds back up… and we'll take you back.`
+- `storia_interstellar2-43.mp3` — manca · Interstellar 2: il tesseratto, scena 43 (al massimo 15 s)
+  - **Emozione:** solenne — lento, ampio, una promessa
+  - **Testo:** Human beings crossed space and time, guided by love and by gravity. One day, we promise you… you will become us.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] Human beings crossed space and time, guided by love and by gravity. [softly] One day, we promise you… you will become us.`
+
+## Murph bambina
+
+Cartella: `audio/narrazione/storie/murph-bambina/<lingua>/` · nel codice `murph_bambina` · in inglese Young Murph
+
+**La voce:** Lei. Murph a dieci anni: voce di bambina sveglia e testarda, svelta, arrabbiata col papà che parte; si illumina quando capisce un enigma.
+
+### Italiano — `storie/murph-bambina/it/`
+
+- `storia_interstellar2-15.mp3` — manca · Interstellar 2: il tesseratto, scena 15 (al massimo 17 s)
+  - **Emozione:** emozionata — una bambina sveglia: prima spaventata, poi felice di aver capito
+  - **Testo:** Papà! Il fantasma ha fatto cadere di nuovo i libri! Sono caduti a gruppi, lunghi e corti: è Morse! Dice… R, E, S, T, A. Resta!
+  - **Da incollare su ElevenLabs v3:** `[excited] Papà! [curious] Il fantasma ha fatto cadere di nuovo i libri! [excited] Sono caduti a gruppi, lunghi e corti: è Morse! [happy] Dice… R, E, S, T, A. Resta!`
+
+### Inglese — `storie/murph-bambina/en/`
+
+- `storia_interstellar2-15.mp3` — manca · Interstellar 2: il tesseratto, scena 15 (al massimo 17 s)
+  - **Emozione:** emozionata — una bambina sveglia: prima spaventata, poi felice di aver capito
+  - **Testo:** Dad! The ghost knocked the books down again! They fell in groups, long and short: it's Morse! It says… S, T, A, Y. Stay!
+  - **Da incollare su ElevenLabs v3:** `[excited] Dad! [curious] The ghost knocked the books down again! [excited] They fell in groups, long and short: it's Morse! [happy] It says… S, T, A, Y. Stay!`
+
+## Murph anziana
+
+Cartella: `audio/narrazione/storie/murph-anziana/<lingua>/` · nel codice `murph_anziana` · in inglese Elderly Murph
+
+**La voce:** Lei. Murph molto anziana: voce dolce, calda e un po' fragile, lenta e serena; piange di gioia ma resta ferma.
+
+### Italiano — `storie/murph-anziana/it/`
+
+- `storia_interstellar2-37.mp3` — manca · Interstellar 2: il tesseratto, scena 37 (al massimo 11 s)
+  - **Emozione:** commossa — una voce anziana, dolce, felice fra le lacrime
+  - **Testo:** Lo sapevo. Nessuno mi credeva, ma io lo sapevo: il mio papà sarebbe tornato.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] Lo sapevo. [crying] Nessuno mi credeva, ma io lo sapevo: il mio papà sarebbe tornato.`
+- `storia_interstellar2-39.mp3` — manca · Interstellar 2: il tesseratto, scena 39 (al massimo 10 s)
+  - **Emozione:** serena — con un sorriso
+  - **Testo:** Perché il mio fantasma mi aveva detto come fare. Il mio fantasma eri tu.
+  - **Da incollare su ElevenLabs v3:** `[warmly] Perché il mio fantasma mi aveva detto come fare. [tenderly] Il mio fantasma eri tu.`
+- `storia_interstellar2-40.mp3` — manca · Interstellar 2: il tesseratto, scena 40 (al massimo 19 s)
+  - **Emozione:** saggia — dolce e ferma, una madre che lascia andare
+  - **Testo:** Ma adesso non restare qui per me, papà. Ho i miei figli, i miei nipoti: non sono sola. Brand è là fuori, oltre il wormhole, sul pianeta di Edmunds. Da sola, in una galassia lontana. Vai da lei.
+  - **Da incollare su ElevenLabs v3:** `[softly] Ma adesso non restare qui per me, papà. [warmly] Ho i miei figli, i miei nipoti: non sono sola. [determined] Brand è là fuori, oltre il wormhole, sul pianeta di Edmunds. [wistfully] Da sola, in una galassia lontana. [tenderly] Vai da lei.`
+
+### Inglese — `storie/murph-anziana/en/`
+
+- `storia_interstellar2-37.mp3` — manca · Interstellar 2: il tesseratto, scena 37 (al massimo 11 s)
+  - **Emozione:** commossa — una voce anziana, dolce, felice fra le lacrime
+  - **Testo:** I knew it. Nobody believed me, but I knew it: my dad would come back.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] I knew it. [crying] Nobody believed me, but I knew it: my dad would come back.`
+- `storia_interstellar2-39.mp3` — manca · Interstellar 2: il tesseratto, scena 39 (al massimo 10 s)
+  - **Emozione:** serena — con un sorriso
+  - **Testo:** Because my ghost had told me how. My ghost was you.
+  - **Da incollare su ElevenLabs v3:** `[warmly] Because my ghost had told me how. [tenderly] My ghost was you.`
+- `storia_interstellar2-40.mp3` — manca · Interstellar 2: il tesseratto, scena 40 (al massimo 19 s)
+  - **Emozione:** saggia — dolce e ferma, una madre che lascia andare
+  - **Testo:** But now don't stay here for me, Dad. I have my children, my grandchildren: I'm not alone. Brand is out there, beyond the wormhole, on Edmunds' planet. Alone, in a faraway galaxy. Go to her.
+  - **Da incollare su ElevenLabs v3:** `[softly] But now don't stay here for me, Dad. [warmly] I have my children, my grandchildren: I'm not alone. [determined] Brand is out there, beyond the wormhole, on Edmunds' planet. [wistfully] Alone, in a faraway galaxy. [tenderly] Go to her.`
 
 ## hubble
 
