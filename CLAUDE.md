@@ -197,6 +197,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | YouTube (collegamento, pubblicazione, «Registra e pubblica») | `prova-youtube.js` |
 | voci del filmato (ElevenLabs e Piper prima di registrare) | `prova-voci-filmato.js` (vuole anche `onnxruntime-web@1.18.0 @diffusionstudio/piper-wasm@1.0.0`) |
 | voci di una CosmoStoria con un tocco (casting automatico ElevenLabs) | `prova-voci-cosmostorie.js` |
+| rinominare, modificare, eliminare le CosmoStorie e le storie in cantiere | `prova-cosmostorie-gestione.js` |
 
 Perché ognuna esiste e le sue trappole (rotte di Playwright, `<script>` unici
 di `verifica.html` che si portano via le sezioni dopo un errore, copie di

@@ -614,7 +614,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_animate` | `target`, `animation` (`jump`, `bounce`, `shake`, `nod`, `spin`, `pulse`, `dance`, `wobble`), `times?` (1–20), `strength?` (0,2–3) |
 | `character_scale` | `target`, `scale` (0,2–6) |
 | `character_become` (v414) | `target`, `shape` (`red_giant`, `white_dwarf`, `supernova`, `black_hole`, `self`) |
-| `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`, `spacetime` dalla v469; dalla v482 gli sfondi `starfield`, `wormhole`, `wormhole_tunnel`, `gargantua_view`, `miller_ocean`, `tidal_wave`, `mann_ice` e i disegni `fold`, `time_warp`, `orbit_path`), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20; uno sfondo fino a 60) |
+| `effect` | `type` (`explosion`, `shockwave`, `flash`, `sparkles`, `fireworks`, `smoke`, `hearts`, `lightning`, `shooting_star`, `glow`, `confetti`, `spacetime` dalla v469; dalla v482 gli sfondi `starfield`, `wormhole`, `wormhole_tunnel`, `gargantua_view`, `miller_ocean`, `tidal_wave`, `mann_ice` e i disegni `fold`, `time_warp`, `orbit_path`; dalla v484 gli sfondi `tesseract`, `murph_room`, `liftoff`, `cooper_station`, `bedside`, `edmunds_planet` e i disegni `hypercube`, `dimensions`, `time_strip`, `books_fall`, `dust_binary`, `equations`, `morse_watch`, che con `fold`, `time_warp` e `orbit_path` sfumano a fine scena), `target?` (un oggetto) o `at?` (`center`, `left`, `right`, `top`, `bottom`), `size?` (0,2–5), `color?` (`'#rrggbb'`), `duration?` (secondi, 0,3–20; uno sfondo fino a 60) |
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`, dalla v452 `rhythm`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
@@ -3328,3 +3328,127 @@ repository), `prova-storie-repo.js` (19), `prova-storie.js` (120),
 `prova-i18n.js`, `prova-lingua.js`, `controlla-i18n.js --patto` (342). Il
 GitHub vero non si è provato dal contenitore (GitHub finto); la linguetta
 Sincronizza guardata in Chromium con un token buono e uno di sola lettura.
+
+### «Interstellar · Parte 2: il tesseratto», «Loro» a cinque dimensioni, e le CosmoStorie da rinominare, modificare ed eliminare (v484)
+
+«Vorrei aggiungere la parte 2 della CosmoStoria di *Interstellar*: come
+Cooper interagisce con Murph tramite il tesseratto, come riesce a mandarle
+le formule della gravità quantistica e come alla fine riescono a usarle per
+salvare l'umanità; spiegando anche chi sono "loro", esseri a cinque
+dimensioni, e come viene rappresentato il tempo per loro (che in realtà
+siamo noi del futuro). Fai vedere che poi Cooper torna, viene ritrovato
+vicino a Saturno e rincontra la figlia anziana. Deve essere spettacolare e
+coinvolgente. Permetti di modificare le CosmoStorie già esistenti, come il
+nome e altre modifiche, e di cancellare le CosmoStorie e le storie in
+cantiere. Allinea anche la parte 1 perché finisca allineata con la parte 2.»
+
+**La storia** (`storia_interstellar2`, 43 scene, una battuta ciascuna, 641 s
+col tetto delle scene; con la voce sintetica ~6 minuti, guardata intera in
+Chromium in 355 s):
+
+| Scene | Cosa |
+|---|---|
+| 1–5 | dove finiva la Parte 1: il Ranger va in pezzi nella luce di Gargantua, Cooper si espelle; il tesseratto, la biblioteca senza fine dove ogni stanza è la camera di Murph in un altro istante; TARS è vivo; che cos'è un tesseratto (`hypercube`: l'ombra di un cubo su un foglio è un quadrato dentro un quadrato, quella di un tesseratto è un cubo dentro un cubo) |
+| 6–13 | **Loro** (`loro`): le dimensioni una per una (`dimensions`: punto, linea, quadrato, cubo, tesseratto, e il tempo); il tempo come un paesaggio, i fotogrammi di una pellicola in cui si cammina (`time_strip`); non trovano un istante del passato, ma il legame fra Cooper e Murph sì; solo la gravità attraversa le dimensioni (`spacetime`); «voi siete… noi!»: gli esseri umani del futuro |
+| 14–18 | dietro la libreria, la sera della partenza: Cooper grida a sé stesso di restare; i libri che cadono in Morse (`books_fall`, «R-E-S-T-A»); «sono io il fantasma»; la polvere in righe larghe e strette, il binario delle coordinate della NASA (`dust_binary`): il cerchio si chiude |
+| 19–24 | i dati della singolarità; la gravità quantistica (`equations`: la relatività per le cose enormi, i quanti per le piccolissime, si incontrano solo nel cuore di un buco nero); qui il tempo è un posto, si va a quando Murph sarà grande; l'orologio e la lancetta dei secondi in Morse (`morse_watch`); TARS scettico al novanta per cento |
+| 25–28 | sulla Terra, tanti anni dopo: Murph grande nella sua stanza, l'orologio che scatta in Morse, «il fantasma eri tu», «Eureka!», le stazioni che lasciano la Terra (`liftoff`) |
+| 29–31 | il tesseratto si richiude; nel wormhole la mano che strinse quella di Brand all'inizio della Parte 1 (scena 7: «è come se qualcuno ci stringesse la mano») era la sua; vicino a Saturno, alla deriva, una navetta che arriva |
+| 32–35 | la Stazione Cooper (`cooper_station`): il cilindro che gira e fa la gravità come l'Endurance, le case anche sopra la testa; Cooper ha 124 anni; la stazione porta il nome di Murph |
+| 36–43 | la stanza vicino a Saturno (`bedside`): Murph anziana, «lo sapevo», «il mio fantasma eri tu», «vai da lei»; il Ranger riparte verso il wormhole; Brand e CASE all'alba sul pianeta di Edmunds (`edmunds_planet`); Loro: «un giorno… diventerete noi» |
+
+**I personaggi nuovi**: `murph_bambina` (dieci anni, `bambino`, capelli
+castano-rossi, lentiggini, maglietta azzurra), `murph_anziana` (i capelli
+bianchi lunghi, rughe e zampe di gallina, il maglione lilla), e `loro`, della
+famiglia nuova `presenza` con la sagoma omonima (`disegnaPresenza`): una
+figura di luce senza vestiti né capelli col volto sulla testa, dietro in
+diagonale le sue copie sempre più tenui che respirano avanti e indietro (gli
+altri suoi istanti, per lei tutti lì), attorno un cubo dentro un cubo appena
+accennato. A tutte e due le Murph gira attorno lo stesso orologio; a Loro il
+cubetto dorato del tesseratto. Nello Studio Loro sta con «Chi racconta».
+`VFILM_CARATTERI` e `regia-voci.json` hanno le loro voci (Loro: calma,
+ampia, eterea), e la regia di tutte le 43 battute coi tag v3 in italiano e in
+inglese; `voci-elevenlabs.json` le righe vuote, le cartelle i `.gitkeep`.
+
+**Gli sfondi** (sotto ai personaggi, tutti pieni): `tesseract` (piani di
+celle verso un punto di fuga luminoso, i fili dorati del tempo con le gocce
+di luce, le celle accese con gli scaffali; un piano intero è un tracciato
+solo, i lontani si spengono nel bagliore), `murph_room` (la camera vista da
+dietro la libreria: le coste dei libri e le assi ai lati, la finestra al
+tramonto polveroso, il raggio di sole con la polvere, il letto),
+`liftoff` (il tramonto sui campi, tre stazioni-cilindro che si staccano una
+dopo l'altra con la fiamma e la scia), `cooper_station` (il cilindro visto
+lungo l'asse: campi, fiume e case tutto attorno coi tetti verso il centro, la
+foschia, in fondo la finestra con Saturno; gira piano), `bedside` (la stanza
+con la lampada, il letto e la finestra grande con Saturno e gli anelli),
+`edmunds_planet` (l'alba con un sole lontano, le montagne rosse, la cupola e
+la bandierina). **I disegni** (sopra): `hypercube` (sedici vertici che
+girano nei piani x–w e y–z, proiettati 4D→3D→2D, gli spigoli dal viola al
+dorato con la quarta coordinata), `dimensions`, `time_strip`, `books_fall`,
+`dust_binary`, `equations` (i simboli girano e si stringono in un punto che
+si accende: segni matematici, uguali in tutte le lingue, `STOR_GLIFI`) e
+`morse_watch` (il cinturino, la cassa, la lancetta dei secondi che scatta
+per punti e linee, e i punti e le linee che volano via). Ognuno ha il suo
+rumore e i nomi in `storie.effetto.*` e `studio.suono.nome.*`.
+
+**I disegni che spiegano se ne vanno con la loro scena** (`STOR_LAVAGNE`:
+`fold`, `time_warp`, `orbit_path` e i sette nuovi). Una storia stringe la
+scena appena la voce tace (v458, v468), e un effetto lungo restava sopra la
+battuta seguente: guardando la Parte 2 la pellicola del tempo copriva
+l'orologio della scena dopo, e la stella delle equazioni il decollo. Ora il
+comando `effect` di questi tipi, a fine scena, segna `via` e il disegno
+sfuma in `STOR_VIA_MS` (550 ms); i botti e le scintille restano come prima.
+
+**La Parte 1 finisce dove comincia la Parte 2.** Il titolo è «Interstellar
+· Parte 1: oltre Gargantua» (scheda: «Interstellar 1»), la descrizione dice
+che continua; l'ultima scena è nella stanza di Murph (`murph_room`, qualche
+libro che cade) e Murph dice che il suo fantasma, dietro la libreria, si è
+svegliato di nuovo; il cartello: «Fine della Parte 1 · continua in "Il
+tesseratto"». La Parte 2 si apre sulla stessa inquadratura con cui la Parte 1
+si chiude (il Ranger piccolissimo nella luce di Gargantua).
+
+**Rinominare, modificare ed eliminare** (storie-cosmiche.js §9-bis,
+`storRiempiGestione`, `storClicGestione`; storie-studio.js
+`studioRinomina`, `studioElimina`/`eliminaProgetto`, `studioInCantiere`,
+`studioModificaStoria`). Su ogni scheda delle CosmoStorie:
+
+- **Rinomina** apre dentro alla scheda titolo e descrizione. Per una storia
+  pronta il nome nuovo vale solo qui (`astrocal_cosmostorie_v1.nomi`, nel
+  backup) e «Nome originale» lo toglie; per una storia dello Studio cambia il
+  progetto e, se è fra le CosmoStorie, la demo salvata (e il repository).
+- **Modifica** (storie pronte) apre nello Studio una versione tua col nome
+  della storia, già fra le CosmoStorie (`sostituisce: <chiave>` nel
+  progetto, che va anche sul repository): fra le schede **prende il posto**
+  dell'originale, segnata «Modificata da te», con «Torna all'originale».
+  Una seconda «Modifica» riapre la stessa versione. «Duplica e modifica»
+  resta per farne una copia in più.
+- **Elimina**: una storia pronta è scritta nel codice, quindi si toglie dalla
+  pagina (`nascoste`, nel backup) e torna da «CosmoStorie nascoste» sotto
+  alle schede, al suo posto; una storia dello Studio si elimina davvero (lo
+  stesso «Elimina» delle Impostazioni, con la lapide per gli altri
+  dispositivi); una versione modificata se ne va e l'originale finisce fra le
+  nascoste (eliminata è eliminata).
+
+Sotto alle schede **In cantiere nello Studio** elenca le storie non ancora
+messe fra le CosmoStorie, con «Apri nello Studio», «Rinomina» ed «Elimina».
+L'elenco segue lo Studio (`aggiornaCantiere` dopo ogni salvataggio, solo se
+qualcosa è cambiato e se lì nessuno sta scrivendo un nome).
+
+Prove: `prova-cosmostorie-gestione.js` (8, nuova: i tasti su ogni scheda,
+rinomina e nome originale col ricaricamento, elimina e rimetti al suo posto
+anche dopo il ricaricamento, modifica al posto dell'originale e torna
+all'originale, elimina una versione modificata, le storie in cantiere,
+una storia dello Studio rinominata ed eliminata dalla sua scheda, i tasti in
+inglese), `prova-storie.js` (120: la Parte 2 si valida, una battuta per scena,
+torna uguale dallo Studio, gli effetti nuovi si disegnano e se ne vanno, i
+rumori sotto i quattro secondi, la sagoma `presenza` ha il volto dentro),
+`prova-storie-repo.js` (19), `prova-musica-storie.js` (21),
+`prova-elevenlabs-studio.js` (17), `prova-voci-cosmostorie.js` (8),
+`prova-demo.js`, `prova-demo-pagina.js` (23), `prova-youtube.js` (14),
+`prova-stazioni-storie.js`, `prova-guida.js`, `prova-i18n.js`,
+`prova-lingua.js`, `controlla-i18n.js --patto` (342), `voci-storie.js
+--controlla`; `prova-storie-browser.js` (`.narrazione-chi`) e
+`prova-voci-studio.js` (2) falliscono uguali a prima. Guardata intera in
+Chromium (`STORIA=storia_interstellar2 node scripts/giro-storia.js`, nessun
+errore) e scena per scena. Le voci registrate delle due parti non ci sono
+ancora (sintesi, o il tasto «Voci ElevenLabs»).

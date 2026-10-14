@@ -688,6 +688,11 @@ const VFILM_CARATTERI = {
   doyle: { eta: 'middle_aged', parole: ['gruff', 'firm', 'deep'] },
   mann: { eta: 'middle_aged', parole: ['smooth', 'charming', 'calm'] },
   murph: { eta: 'young', parole: ['emotional', 'warm', 'clear', 'soft'] },
+  // v484, «Interstellar · Parte 2»: Murph bambina e anziana, e Loro (una
+  // voce calma e ampia, che viene da lontano)
+  murph_bambina: { eta: 'young', parole: ['child', 'kid', 'girl', 'bright', 'energetic'] },
+  murph_anziana: { eta: 'old', parole: ['warm', 'soft', 'gentle', 'grandmother', 'calm'] },
+  loro: { eta: 'middle_aged', parole: ['ethereal', 'calm', 'soothing', 'dreamy', 'mysterious'] },
   tars: { eta: 'middle_aged', parole: ['dry', 'deadpan', 'robotic', 'calm', 'deep'] },
   case: { eta: 'middle_aged', parole: ['calm', 'neutral', 'flat', 'robotic'] },
   gargantua: { eta: 'old', parole: ['deep', 'slow', 'mysterious', 'dark', 'resonant'] },

@@ -47256,7 +47256,10 @@ function esportaBackup() {
     // che non si possa rifare: una missione si conclude anche senza
     // salvarla nel Diario, quindi dal Diario l'albo non si ricostruisce —
     // perderlo vuol dire perdere le serate, non una memoria di comodo.
-    missioneAlbo: localStorage.getItem('astrocalendario_missione_albo')
+    missioneAlbo: localStorage.getItem('astrocalendario_missione_albo'),
+    // v484: i nomi dati alle CosmoStorie pronte e quelle tolte dalla
+    // pagina: scelte fatte a mano, come il cielo di casa
+    cosmoStorie: localStorage.getItem('astrocal_cosmostorie_v1')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -47318,7 +47321,8 @@ async function importaBackup(file) {
      ['cime', 'astrocalendario_cime'],
      ['acque', 'astrocalendario_acque'],
      ['raggiOrizzonte', 'astrocalendario_raggi_orizzonte'],
-     ['missioneAlbo', 'astrocalendario_missione_albo']].forEach(([campo, chiave]) => {
+     ['missioneAlbo', 'astrocalendario_missione_albo'],
+     ['cosmoStorie', 'astrocal_cosmostorie_v1']].forEach(([campo, chiave]) => {
       if (!dati[campo]) return;
       try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
     });

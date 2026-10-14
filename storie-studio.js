@@ -219,6 +219,9 @@
       // v461: `ufficiale` la mette fra le CosmoStorie (le altre sono in
       // cantiere, solo nello Studio); `origine` la storia pronta da cui viene
       ufficiale: false, origine: '',
+      // v484: la CosmoStoria pronta di cui questa è la versione di chi usa
+      // l'app («Modifica» sulla sua scheda): fra le CosmoStorie sta al suo posto
+      sostituisce: '',
       cast: ['Moon', 'Earth'], scene: [studioNuovaScena({ ambiente: 'terra_luna' })], demoChiave: null,
       voceChiave: null, voceProssima: 1, aggiornato: 0, lingua: '',
       // v440: la musica di sottofondo di tutta la storia (§4-ter)
@@ -342,6 +345,7 @@
       titolo: testo(p.titolo, 120), scopo: tra(p.scopo, Object.keys(STUDIO_SCOPI), 'libera'),
       obiettivo: testo(p.obiettivo, 300), cast: ids(p.cast),
       ufficiale: p.ufficiale === true, origine: typeof p.origine === 'string' && /^[\w-]{1,60}$/.test(p.origine) ? p.origine : '',
+      sostituisce: typeof p.sostituisce === 'string' && /^[\w-]{1,60}$/.test(p.sostituisce) ? p.sostituisce : '',
       demoChiave: typeof p.demoChiave === 'string' && p.demoChiave.startsWith('utente-') ? p.demoChiave : null,
       voceChiave: typeof p.voceChiave === 'string' && STUDIO_VOCE_CHIAVE.test(p.voceChiave) ? p.voceChiave : null,
       voceProssima: Math.floor(numero(p.voceProssima, 1, 100000, 1)),
@@ -4126,7 +4130,20 @@
       const i = studio.progetti.findIndex(p => p.id === studio.progetto.id);
       if (i >= 0) studio.progetti[i] = studio.progetto; else studio.progetti.unshift(studio.progetto);
       studioSalvaTutti(studio.progetti);
+      aggiornaCantiere();
     }, 250);
+  }
+  /* v484: l'elenco delle storie in cantiere sotto alle CosmoStorie segue lo
+   * Studio (una storia nuova, un titolo cambiato), ma si rifà solo se è
+   * cambiato e se lì nessuno sta scrivendo un nome nuovo. */
+  let cantiereVisto = '';
+  function aggiornaCantiere() {
+    const s = radice.StorieCosmiche;
+    if (!s || typeof s.riempiGestione !== 'function' || typeof document === 'undefined') return;
+    const ora = JSON.stringify(studioInCantiere().map(c => [c.id, c.titolo, c.scene, c.cast.slice(0, 5)]));
+    if (ora === cantiereVisto || document.querySelector('#storie-gestione .storia-rinomina')) return;
+    cantiereVisto = ora;
+    try { s.riempiGestione(); } catch (_) { /* resta com'era */ }
   }
 
   // Un campo è un percorso nel progetto: `scene.0.momenti.2.testo`
@@ -5172,7 +5189,7 @@
         h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'salvaDemo' } }, t('studio.salvaDemo')),
         tastoUfficiale(p),
         impostazioni),
-      p.ufficiale ? h('p', { class: 'demo-opzioni-nota' }, t('studio.ufficiale.nota')) : null,
+      p.ufficiale ? h('p', { class: 'demo-opzioni-nota' }, t(p.sostituisce ? 'studio.sostituisce.nota' : 'studio.ufficiale.nota')) : null,
       h('p', { id: 'studio-esito', class: 'demo-opzioni-nota', role: 'status', 'aria-live': 'polite' }, studio.esito),
       studio.impAperto ? pannelloImpostazioni(p) : null,
       h('pre', { id: 'studio-copione', class: 'storie-codice', tabindex: '0', hidden: !studio.copioneAperto })));
@@ -5218,7 +5235,7 @@
     // (v482: le navicelle e i robot di «Interstellar» stanno con le macchine)
     for (const id of Object.keys(S().STOR_PERSONAGGI || {})) {
       const f = S().profilo ? S().profilo(id).famiglia : 'pianeta';
-      (f === 'persona' ? gruppi.narratori : soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' || f === 'nave' || f === 'robot' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
+      (f === 'persona' || f === 'presenza' ? gruppi.narratori : soloCosmo(id) ? gruppi.universo : f === 'stazione' || f === 'sonda' || f === 'nave' || f === 'robot' ? gruppi.macchine : f === 'luna' || f === 'nano' ? gruppi.lune : gruppi.pianeti).push(id);
     }
     const nella = h('div', { class: 'studio-chips studio-nel-cast', role: 'group', 'aria-label': t('studio.ui.nellaStoria') },
       h('span', { class: 'studio-etichetta' }, t('studio.ui.nellaStoria')));
@@ -5459,20 +5476,7 @@
       case 'domandaTogli': Object.assign(p.domanda, { testo: '', a: '', b: '' }); salvaPresto(); disegna(); return;
       case 'duplica': { const c = copia(p); c.id = nuovoId('p'); c.ufficiale = false; c.titolo = t('studio.copiaDi', { titolo: p.titolo || t('studio.senzaTitolo') }); c.demoChiave = null; c.voceChiave = null; copiaVoci(p.id, c.id); apri(c); chiediNomeCopia(c); return; }
       case 'elimina':
-        if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) {
-          studio.progetti = studio.progetti.filter(x => x.id !== p.id);
-          studioSalvaTutti(studio.progetti);
-          if (p.ufficiale) aggiornaCosmoStorie();
-          // Una lapide, perché dagli altri dispositivi non torni (§6b)
-          if (condivisa(p)) { const e = eliminatiCarica(); e[p.id] = Math.max(Date.now(), (p.aggiornato || 0) + 1); eliminatiSalva(e); }
-          apri(studio.progetti[0] || studioNuovoProgetto());
-          cancellaVoci(p.id);
-          // Le sue battute escono dal file delle voci (se la cartella è
-          // collegata) e la storia dal repository
-          aggiornaVoci({ tolta: p.id, chiedi: false })
-            .then(msg => condivisa(p) ? studioSincronizza({ spingi: true, titolo: p.titolo }).then(r2 => (msg ? msg + ' ' : '') + r2) : msg)
-            .then(msg => { if (msg || p.demoChiave) esito(msg || t('studio.voci.ricorda')); });
-        }
+        if (!radice.confirm || radice.confirm(t('studio.confermaElimina'))) eliminaProgetto(p);
         return;
       case 'fileVoci':
         // Le storie salvate prima del file delle voci entrano la prima volta
@@ -5870,8 +5874,86 @@
       let testo = d ? d.testo : '';
       if (!testo) { try { testo = studioCopione(p); } catch (_) { testo = ''; } }
       return { chiave: p.demoChiave || p.id, progetto: p.id, titolo: unaRiga(p.titolo) || t('studio.senzaTitolo'),
-        descrizione: unaRiga(p.obiettivo), cast: p.cast.join(','), testo, storia: true };
+        descrizione: unaRiga(p.obiettivo), cast: p.cast.join(','), testo, storia: true, sostituisce: p.sostituisce || '' };
     }).filter(x => x.testo);
+  }
+  /* Eliminare una storia dello Studio: dal bottone «Elimina» delle
+   * Impostazioni e, dalla v484, dalle schede della pagina CosmoStorie (le
+   * storie messe fra le CosmoStorie e quelle in cantiere). Se ne va il
+   * progetto con le sue voci; resta una lapide perché dagli altri
+   * dispositivi non torni, e il giro sul repository la toglie anche di là.
+   * La demo già salvata in «le mie demo» resta, come prima. */
+  function eliminaProgetto(p) {
+    if (!p) return false;
+    const aperto = studio.progetto && studio.progetto.id === p.id;
+    studio.progetti = studio.progetti.filter(x => x.id !== p.id);
+    studioSalvaTutti(studio.progetti);
+    if (p.ufficiale) aggiornaCosmoStorie();
+    // Una lapide, perché dagli altri dispositivi non torni (§6b)
+    if (condivisa(p)) { const e = eliminatiCarica(); e[p.id] = Math.max(Date.now(), (p.aggiornato || 0) + 1); eliminatiSalva(e); }
+    if (aperto || !studio.progetto) apri(studio.progetti[0] || studioNuovoProgetto()); else disegna();
+    cancellaVoci(p.id);
+    // Le sue battute escono dal file delle voci (se la cartella è
+    // collegata) e la storia dal repository
+    aggiornaVoci({ tolta: p.id, chiedi: false })
+      .then(msg => condivisa(p) ? studioSincronizza({ spingi: true, titolo: p.titolo }).then(r2 => (msg ? msg + ' ' : '') + r2) : msg)
+      .then(msg => { if (msg || p.demoChiave) esito(msg || t('studio.voci.ricorda')); })
+      .catch(() => { /* il giro riproverà */ });
+    return true;
+  }
+  /* Il nome e la descrizione di una storia dello Studio, cambiati dalla sua
+   * scheda fra le CosmoStorie o dall'elenco delle storie in cantiere
+   * (v484): come scriverli nella linguetta «Titolo», ma senza aprirla. Una
+   * storia già fra le CosmoStorie si risalva come demo, perché la scheda e
+   * gli altri dispositivi vedano il nome nuovo. */
+  function studioRinomina(id, titolo, descrizione) {
+    // (anche la storia appena aperta, che entra nell'elenco al primo salvataggio)
+    const p = studio.progetti.find(x => x.id === id) || (studio.progetto && studio.progetto.id === id ? studio.progetto : null);
+    const nuovo = unaRiga(titolo).slice(0, 120);
+    if (!p || !nuovo) return false;
+    if (!studio.progetti.includes(p)) studio.progetti.unshift(p);
+    p.titolo = nuovo;
+    if (typeof descrizione === 'string') p.obiettivo = descrizione.replace(/\s+/g, ' ').trim().slice(0, 300);
+    p.aggiornato = studioPiuNuovo(p.aggiornato);
+    studioSalvaTutti(studio.progetti);
+    if (p.ufficiale || p.demoChiave) salvaDemo(p, t('studio.rinominata', { titolo: nuovo }));
+    if (studio.progetto && studio.progetto.id === p.id) disegna();
+    aggiornaCosmoStorie();
+    return true;
+  }
+  function studioElimina(id) {
+    const p = studio.progetti.find(x => x.id === id);
+    return eliminaProgetto(p);
+  }
+  // Le storie in cantiere, per l'elenco della pagina CosmoStorie (v484)
+  function studioInCantiere() {
+    return studio.progetti.filter(p => !p.ufficiale).map(p => ({
+      id: p.id, titolo: unaRiga(p.titolo) || t('studio.senzaTitolo'), descrizione: unaRiga(p.obiettivo),
+      scene: p.scene.length, cast: p.cast.slice(), aggiornato: p.aggiornato || 0, sostituisce: p.sostituisce || ''
+    })).sort((a, b) => b.aggiornato - a.aggiornato);
+  }
+  /* «Modifica» su una CosmoStoria pronta (v484). Prima si poteva solo
+   * duplicarla («Duplica e modifica»), e la copia restava in cantiere
+   * accanto all'originale, col nome «Copia di…». Ora la si modifica: lo
+   * Studio la apre col suo nome, già fra le CosmoStorie, e fra le schede
+   * prende il posto dell'originale (`sostituisce`); si cambia quello che si
+   * vuole, e «Salva» la aggiorna. Rimetterla in cantiere, o eliminarla,
+   * riporta l'originale. Se una versione c'è già, si riapre quella. */
+  function studioModificaStoria(st) {
+    if (!st || typeof st.testo !== 'string' || !/^[\w-]{1,60}$/.test(String(st.chiave || ''))) return false;
+    const gia = studio.progetti.find(x => x.sostituisce === st.chiave);
+    if (gia) { apri(gia); esito(t('studio.sostituisce.giaTua')); mostraNelloStudio(); return true; }
+    const p = studioDaCopione(st.testo, { chiave: st.chiave, cast: st.cast, titolo: st.titolo, obiettivo: st.descrizione });
+    p.titolo = (p.titolo.replace(/^Cosmo\w{0,12}\s*·\s*/, '') || p.titolo).slice(0, 120);
+    p.sostituisce = st.chiave;
+    p.ufficiale = true;
+    if (p.scene[0]) sceneAperte.add(p.id + '|' + p.scene[0].id);
+    apri(p);
+    if (!salvaDemo(p, t('studio.sostituisce.pronta', { titolo: p.titolo }))) p.ufficiale = false;
+    salvaPresto();
+    aggiornaCosmoStorie();
+    mostraNelloStudio();
+    return true;
   }
   // Apre nello Studio un progetto, e lo porta in vista
   function mostraNelloStudio() {
@@ -6174,6 +6256,9 @@
     regia: studioRegiaBattuta, frasi: studioFrasi, battuteDa: studioBattuteDa, statoVoce: studioStatoVoce, facciaScelta: studioFacciaScelta,
     STUDIO_REGIA_VOCE, STUDIO_REGIA_MAX,
     ufficiali: studioUfficiali, apriProgetto: studioApriProgetto, apriDaStoria: studioApriDaStoria,
+    // v484: dalla pagina CosmoStorie, rinominare, eliminare, modificare una
+    // storia pronta, e l'elenco di quelle in cantiere
+    rinomina: studioRinomina, elimina: studioElimina, inCantiere: studioInCantiere, modificaStoria: studioModificaStoria,
     // v482: le impostazioni (la chiave di ElevenLabs) aperte da fuori, dalla
     // finestra delle voci di una CosmoStoria
     apriImpostazioni: scheda => { apriImpostazioni(scheda); const r = studio.radice; if (r && r.scrollIntoView) { try { r.scrollIntoView({ block: 'start' }); } catch (_) { /* niente */ } } },

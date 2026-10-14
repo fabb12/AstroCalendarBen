@@ -406,7 +406,11 @@
     nave:     { pelle: '#d6d3d1', iride: '#334155', sottotitolo: '#e2e8f0', guance: '#cbd5e1', genere: 'f', sagoma: 'ranger',
       scala: 0.8, voce: { ritmo: '0%', tono: '0Hz' }, espressione: 'neutral', personalita: 'nave' },
     robot:    { pelle: '#1e293b', iride: '#7dd3fc', sottotitolo: '#cbd5e1', guance: '#38bdf8', genere: 'm', sagoma: 'tars',
-      scala: 0.8, voce: { ritmo: '-4%', tono: '-12Hz' }, espressione: 'neutral', personalita: 'robot' }
+      scala: 0.8, voce: { ritmo: '-4%', tono: '-12Hz' }, espressione: 'neutral', personalita: 'robot' },
+    // v484: chi vive in cinque dimensioni (Loro, nel tesseratto): una figura
+    // di luce con le sue copie nel tempo (`disegnaPresenza`, §6-quater)
+    presenza: { pelle: '#ede9fe', iride: '#7c3aed', sottotitolo: '#ddd6fe', guance: '#c4b5fd', labbra: '#8b5cf6', genere: 'f', sagoma: 'presenza',
+      luce: '#fde68a', scala: 0.8, voce: { ritmo: '-10%', tono: '-2Hz' }, espressione: 'mysterious', personalita: 'presenza' }
   };
 
   /* I personaggi con un carattere loro. Ogni campo è facoltativo e vince su
@@ -802,10 +806,34 @@
       voce: { ritmo: '-4%', tono: '6Hz' }, espressione: 'mysterious', personalita: 'miller_planet' },
     mann_planet: { famiglia: 'pianeta', genere: 'm', nome: 'storie.nome.mann_planet', cosmo: 'idea', alias: ['Pianeta di Mann', "Mann's planet"],
       pelle: '#e2e8f0', iride: '#475569', sottotitolo: '#e0f2fe', guance: '#bae6fd', peli: '#f8fafc', baffi: 'spioventi', decoro: 'ghiaccio',
-      voce: { ritmo: '-8%', tono: '-6Hz' }, espressione: 'sleepy', personalita: 'mann_planet' }
+      voce: { ritmo: '-8%', tono: '-6Hz' }, espressione: 'sleepy', personalita: 'mann_planet' },
+    /* v484, «Interstellar · Parte 2: il tesseratto»: Murph bambina (la sera
+     * in cui il papà parte, dieci anni, i capelli castano-rossi e le
+     * lentiggini, la maglietta da ragazzina), Murph anziana (i capelli
+     * bianchi lunghi, le rughe: è lei che Cooper ritrova sulla Stazione
+     * Cooper) e «Loro», gli esseri a cinque dimensioni, che alla fine sono
+     * gli esseri umani del futuro. Loro non hanno un corpo come il nostro: la
+     * sagoma `presenza` è una figura di luce con dietro le sue copie, i suoi
+     * altri istanti, in fila come i fotogrammi di una pellicola (per chi vive
+     * in cinque dimensioni il tempo è un posto in cui si sta tutti insieme). */
+    murph_bambina: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.murph_bambina', ospite: true,
+      alias: ['Murph bambina', 'Little Murph', 'Young Murph', 'Murph da piccola'],
+      pelle: '#f6d2b6', iride: '#5b7a6a', sottotitolo: '#fdba74', guance: '#f59e8b', labbra: '#d9707e', peli: '#8a4a26',
+      figura: { capelli: 'lunghi', chioma: '#8a4a26', veste: 'maglietta', colori: ['#7c9cbf', '#4b6a8f', '#f8fafc'], bambino: true, segni: { lentiggini: true } },
+      scala: 0.8, occhi: { r: 0.3, distanza: 0.38, alto: -0.04 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '8%', tono: '44Hz' }, espressione: 'annoyed', personalita: 'murph_bambina' },
+    murph_anziana: { famiglia: 'persona', genere: 'f', sagoma: 'persona', nome: 'storie.nome.murph_anziana', ospite: true,
+      alias: ['Murph anziana', 'Old Murph', 'Elderly Murph', 'Murph vecchia'],
+      pelle: '#f1cfb8', iride: '#5b7a6a', sottotitolo: '#fdba74', guance: '#eaa08e', labbra: '#b86070', peli: '#e5e7eb',
+      figura: { capelli: 'lunghi', chioma: '#e7e5e4', veste: 'maglione', colori: ['#b9a7cf', '#8d7ba6', '#f8fafc'], segni: { rughe: true, zampe: true, pieghe: true } },
+      scala: 0.8, occhi: { r: 0.24, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-8%', tono: '4Hz' }, espressione: 'tender', personalita: 'murph_anziana' },
+    loro: { famiglia: 'presenza', genere: 'f', nome: 'storie.nome.loro', ospite: true,
+      alias: ['Loro', 'They', 'Them', 'Esseri a cinque dimensioni', 'Five-dimensional beings', 'Pentadimensionali'],
+      voce: { ritmo: '-10%', tono: '-2Hz' }, espressione: 'mysterious', personalita: 'loro' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
-    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona', 'tars', 'endurance', 'ranger', 'lander'];
+    'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona', 'tars', 'endurance', 'ranger', 'lander', 'presenza'];
   // v482: le navicelle non hanno volto; parlano (se parlano) dai finestrini
   const STOR_NAVI = ['endurance', 'ranger', 'lander'];
   /* Le vesti (v414, `character_become`): un personaggio diventa per un po'
@@ -1011,6 +1039,15 @@
     ranger:       { superficie: 'metallo', atmosfera: null, passo: 1, tratto: 'ranger' },
     lander:       { superficie: 'metallo', atmosfera: null, passo: 1, tratto: 'lander' },
     miller_planet: { superficie: 'oceani', atmosfera: { colore: '#94a3b8', spessore: 0.12, densita: 0.55 }, passo: 0.8, tratto: 'miller_planet' },
+    // v484: a Murph bambina e a Murph anziana gira attorno lo stesso
+    // orologio (quello che le porterà le equazioni); a Loro il piccolo cubo
+    // dorato del tesseratto, in un'orbita lenta lenta
+    murph_bambina: { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.25, tratto: 'murph_bambina',
+      lune: [{ colore: '#fbbf24', r: 0.05, d: 1.36, periodo: 7000, piatto: 0.3, giro: 0.12 }] },
+    murph_anziana: { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.8, tratto: 'murph_anziana',
+      lune: [{ colore: '#fbbf24', r: 0.05, d: 1.36, periodo: 9000, piatto: 0.3, giro: 0.12 }] },
+    loro:         { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.7, tratto: 'loro',
+      lune: [{ colore: '#fde68a', r: 0.05, d: 1.45, periodo: 14000, piatto: 0.3, giro: -0.1 }] },
     mann_planet:  { superficie: 'ghiaccio', atmosfera: { colore: '#e0f2fe', spessore: 0.1, densita: 0.45 }, passo: 0.7, tratto: 'mann_planet' }
   };
   /* Come la fisica risponde a un'emozione: quanto si gonfiano le tempeste
@@ -1099,16 +1136,37 @@
     // personaggi) e i disegni che spiegano la fisica del film
     // (le storie scrivono quanto durano: di serie quattro secondi, come il telo)
     starfield: 4000, wormhole: 4000, wormhole_tunnel: 4000, gargantua_view: 4000, miller_ocean: 4000,
-    tidal_wave: 4000, mann_ice: 4000, fold: 4000, time_warp: 4000, orbit_path: 4000
+    tidal_wave: 4000, mann_ice: 4000, fold: 4000, time_warp: 4000, orbit_path: 4000,
+    // v484, «Interstellar · Parte 2»: il tesseratto, la stanza di Murph, il
+    // decollo delle stazioni, la Stazione Cooper, la stanza di Murph anziana
+    // e il pianeta di Edmunds (sfondi); e i disegni della fisica: il cubo a
+    // quattro dimensioni, le dimensioni una per una, la pellicola del tempo,
+    // i libri che cadono in Morse, la polvere in binario, le equazioni della
+    // gravità quantistica e l'orologio che parla in Morse
+    tesseract: 4000, murph_room: 4000, liftoff: 4000, cooper_station: 4000, bedside: 4000, edmunds_planet: 4000,
+    hypercube: 4000, dimensions: 4000, time_strip: 4000, books_fall: 4000, dust_binary: 4000, equations: 4000, morse_watch: 4000
   };
   // Gli effetti che sono uno sfondo: si disegnano **prima** dei personaggi
   // (gli altri effetti stanno sopra), coprono la vista e possono durare
   // quanto una scena lunga
-  const STOR_SFONDI = ['starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice'];
+  const STOR_SFONDI = ['starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice',
+    'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet'];
   const STOR_SFONDO_MAX_S = 60;
   // quelli che coprono tutta la vista (il wormhole e l'onda lasciano vedere sotto)
-  const STOR_SFONDI_PIENI = ['starfield', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'mann_ice'];
+  const STOR_SFONDI_PIENI = ['starfield', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'mann_ice',
+    'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet'];
   const STOR_POSTI_EFFETTO = ['center', 'left', 'right', 'top', 'bottom'];
+  /* v484: i disegni che spiegano la fisica di una battuta (il foglio
+   * piegato, l'orologio che corre, la fionda, il tesseratto, le dimensioni,
+   * la pellicola del tempo, i libri, la polvere, le equazioni, l'orologio in
+   * Morse) se ne vanno con la loro scena. Una storia stringe la scena appena
+   * la voce tace (v458, v468), e prima restavano lì nella scena dopo,
+   * sopra a un'altra battuta: guardando la Parte 2 di «Interstellar» la
+   * pellicola del tempo copriva l'orologio della scena seguente. A fine scena
+   * sfumano in mezzo secondo (`via`); i botti e le scintille no: un botto in
+   * coda a una scena non si taglia a metà. */
+  const STOR_LAVAGNE = ['fold', 'time_warp', 'orbit_path', 'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
+  const STOR_VIA_MS = 550;
   const STOR_CRESCITA_MS = 700;     // quanto ci mette un astro a crescere per portare il volto
   const STOR_RITORNO_MS = 750;      // e a tornare com'era quando la storia lo lascia
   const STOR_VOLTO_3D_PX = STOR_VOLTO_MIN_PX * 1.25; // il raggio di volto che la 3D garantisce
@@ -3358,10 +3416,16 @@
     ctx.closePath();
   }
   const COLORI_FESTA = ['#ff5d8f', '#ffd23f', '#3bceac', '#5aa9ff', '#c084fc', '#ff8c42'];
+  // v484: i simboli della fisica che girano nell'effetto `equations` (la
+  // gravità quantistica): sono segni matematici, uguali in tutte le lingue
+  const STOR_GLIFI = ['∫', 'ħ', 'ψ', 'Σ', '∞', 'π', '∇', '∂', 'λ', 'Ω', 'Δ', 'φ', 'G', 'c²', '√', '⊗'];
 
   function storDisegnaEffetto(ctx, ef, x, y, r, t, L, H, ridotto) {
     const s = (t - ef.inizio) / ef.durata;
     if (!(s >= 0) || s > 1) return;
+    // v484: chi esce con la sua scena sfuma (`STOR_LAVAGNE`)
+    const velo = ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1;
+    if (!(velo > 0)) return;
     const R = Math.max(14, r || 0) * ef.scala;
     const d = { s: ef.seme };
     const colore = ef.colore;
@@ -3547,7 +3611,7 @@
       // da uno all'altro; piegando il foglio i due punti si toccano, e la
       // matita lo buca: il wormhole è la scorciatoia attraverso la piega
       const W = R * 8, Hf = R * 4.4, y0 = y - Hf / 2;
-      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.06));
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.06)) * velo;
       const piega = liscio((s - 0.3) / 0.28), c = Math.cos(piega * Math.PI), alza = Math.sin(piega * Math.PI) * Hf * 0.12;
       const ax = x - W * 0.36, bx = x + W * 0.36;
       const mappa = u => x + (u - x) * c;
@@ -3598,7 +3662,7 @@
       // lancette che corrono sempre più svelte, e i fogli del calendario che
       // volano via a decine
       const Rc = R * 1.6, giri = s * s * 24;
-      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.08, (1 - s) / 0.1));
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.08, (1 - s) / 0.1)) * velo;
       const d2 = { s: ef.seme };
       for (let i = 0; i < 30; i++) {
         const nasce = dado(d2) * 0.8, q = (s - nasce) / 0.25;
@@ -3637,7 +3701,7 @@
       const e = 1.35, pp = Ro * 2.4, fmax = Math.acos(-1 / e) * 0.9, rot = Math.PI * 0.8;
       const punto = f => { const rr = pp / (1 + e * Math.cos(f)); return [x + rr * Math.cos(f + rot), y + rr * Math.sin(f + rot) * 0.8]; };
       const u = liscio(Math.min(1, s / 0.85));
-      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.08));
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.08)) * velo;
       ctx.strokeStyle = rgba(colore || '#93c5fd', 0.45); ctx.lineWidth = Math.max(1.2, R * 0.06); ctx.setLineDash([R * 0.2, R * 0.16]);
       ctx.beginPath(); for (let i = 0; i <= 60; i++) { const [px, py] = punto(-fmax + 2 * fmax * i / 60); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
       ctx.setLineDash([]);
@@ -3653,6 +3717,275 @@
         ctx.fillStyle = '#fbbf24'; ctx.globalAlpha *= 1 - q * 0.7;
         ctx.beginPath(); ctx.arc(x + Math.cos(a) * dd, y + Math.sin(a) * dd * 0.8, Math.max(2, R * 0.12 * (1 - q * 0.6)), 0, Math.PI * 2); ctx.fill();
         if (q < 0.25) { ctx.fillStyle = '#fffbeb'; stellaPiena(ctx, qx, qy, R * 0.5 * (1 - q * 4), 6, 0, 0.4); }
+      }
+    } else if (tipo === 'hypercube') {
+      // v484: il tesseratto vero, un cubo a quattro dimensioni. I suoi sedici
+      // vertici girano in due piani alla volta (quello di x e della quarta
+      // direzione, w, e quello di y e z): l'ombra che ne arriva nel nostro
+      // spazio è un cubo dentro un cubo che si rivolta come un guanto, il
+      // cubo piccolo che diventa grande e quello grande che diventa piccolo.
+      // Come l'ombra di un cubo su un foglio è un quadrato dentro un quadrato.
+      const Rc = R * 2.4 * liscio(Math.min(1, s / 0.12));
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.08)) * velo;
+      const a1 = t / 1900, a2 = t / 3100, c1 = Math.cos(a1), s1 = Math.sin(a1), c2 = Math.cos(a2), s2 = Math.sin(a2);
+      const pv = [];
+      for (let i = 0; i < 16; i++) {
+        const p0 = [i & 1 ? 1 : -1, i & 2 ? 1 : -1, i & 4 ? 1 : -1, i & 8 ? 1 : -1];
+        const X = p0[0] * c1 - p0[3] * s1, W = p0[0] * s1 + p0[3] * c1;
+        const Y = p0[1] * c2 - p0[2] * s2, Z = p0[1] * s2 + p0[2] * c2;
+        const k4 = 1 / (2.6 - W * 0.9);
+        const X3 = X * k4, Y3 = Y * k4, Z3 = Z * k4;
+        // un po' di traverso, per vedere la profondità
+        const Xr = X3 * 0.86 - Z3 * 0.5, Zr = X3 * 0.5 + Z3 * 0.86;
+        const k3 = 1 / (2.4 - Zr * 0.7);
+        pv.push({ x: x + Xr * k3 * Rc * 1.6, y: y + (Y3 * 0.92 + Zr * 0.12) * k3 * Rc * 1.6, w: W, z: Zr });
+      }
+      const spigoli = [];
+      for (let i = 0; i < 16; i++) for (let b = 0; b < 4; b++) { const j = i ^ (1 << b); if (j > i) spigoli.push([i, j]); }
+      spigoli.sort((a, b) => (pv[a[0]].z + pv[a[1]].z) - (pv[b[0]].z + pv[b[1]].z));
+      for (const [i, j] of spigoli) {
+        const p = pv[i], q = pv[j], w = (p.w + q.w) / 2, z = (p.z + q.z) / 2;
+        ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.12);
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        ctx.strokeStyle = mescolaColori('#a78bfa', colore || '#fbbf24', (w + 1) / 2);
+        ctx.lineWidth = Math.max(1.2, R * (0.06 + 0.03 * z));
+        ctx.stroke();
+      }
+      for (const p of pv) { ctx.fillStyle = '#fffbeb'; ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.5, R * 0.08), 0, Math.PI * 2); ctx.fill(); }
+    } else if (tipo === 'dimensions') {
+      // v484: le dimensioni, una alla volta: un punto, che strisciando fa una
+      // linea, che strisciando di lato fa un quadrato, poi un cubo, poi il
+      // tesseratto (il cubo dentro al cubo); ogni passo una direzione in più.
+      // Alla fine attorno all'ultimo gira l'anello del tempo: per Loro anche
+      // il tempo è una direzione in cui si può andare
+      const passo = R * 2.6, x0 = x - passo * 2;
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.05, (1 - s) / 0.08)) * velo;
+      const colori = ['#fde68a', '#fcd34d', '#fbbf24', '#f59e0b', '#a78bfa'];
+      for (let k = 0; k < 5; k++) {
+        const u = liscio((s - k * 0.15) / 0.12);
+        if (u <= 0) continue;
+        const cx = x0 + k * passo, cy = y, q = R * 0.75 * u;
+        const ultimo = s < (k + 1) * 0.15 || k === 4;
+        if (ultimo) {
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.5);
+          g.addColorStop(0, rgba(colori[k], 0.35)); g.addColorStop(1, rgba(colori[k], 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+        const tratto = (path) => { path(); ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(3, R * 0.16); ctx.stroke(); ctx.strokeStyle = colori[k]; ctx.lineWidth = Math.max(1.4, R * 0.08); ctx.stroke(); };
+        const quadro = (ox, oy, h) => { ctx.moveTo(ox - h, oy - h); ctx.lineTo(ox + h, oy - h); ctx.lineTo(ox + h, oy + h); ctx.lineTo(ox - h, oy + h); ctx.closePath(); };
+        if (k === 0) { ctx.fillStyle = colori[0]; ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, R * 0.16), 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.stroke(); }
+        else if (k === 1) tratto(() => { ctx.beginPath(); ctx.moveTo(cx - q, cy); ctx.lineTo(cx + q, cy); });
+        else if (k === 2) tratto(() => { ctx.beginPath(); quadro(cx, cy, q * 0.8); });
+        else if (k === 3) tratto(() => {
+          const h = q * 0.62, o = q * 0.38;
+          ctx.beginPath(); quadro(cx - o / 2, cy + o / 2, h); quadro(cx + o / 2, cy - o / 2, h);
+          for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.moveTo(cx - o / 2 + sx * h, cy + o / 2 + sy * h); ctx.lineTo(cx + o / 2 + sx * h, cy - o / 2 + sy * h); }
+        });
+        else tratto(() => {
+          const h1 = q * 0.85, h2 = q * 0.4, a = t / 2600;
+          const giro = (h, aa) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [cx + (sx * Math.cos(aa) - sy * Math.sin(aa)) * h, cy + (sx * Math.sin(aa) + sy * Math.cos(aa)) * h * 0.85]);
+          const A = giro(h1, a * 0.4), B = giro(h2, -a);
+          ctx.beginPath();
+          for (const P of [A, B]) { ctx.moveTo(...P[0]); for (let i = 1; i <= 4; i++) ctx.lineTo(...P[i % 4]); }
+          for (let i = 0; i < 4; i++) { ctx.moveTo(...A[i]); ctx.lineTo(...B[i]); }
+        });
+        // la freccia verso il passo dopo
+        if (k < 4 && s > (k + 1) * 0.15) {
+          const ax = cx + passo * 0.5, ay = cy;
+          ctx.strokeStyle = rgba('#fff8eb', 0.85); ctx.lineWidth = Math.max(1.2, R * 0.06);
+          ctx.beginPath(); ctx.moveTo(ax - R * 0.22, ay - R * 0.2); ctx.lineTo(ax + R * 0.06, ay); ctx.lineTo(ax - R * 0.22, ay + R * 0.2); ctx.stroke();
+        }
+      }
+      if (s > 0.78) {
+        const q = liscio((s - 0.78) / 0.12), cx = x0 + 4 * passo;
+        ctx.strokeStyle = rgba('#c4b5fd', 0.85 * q); ctx.lineWidth = Math.max(1.2, R * 0.07);
+        ctx.setLineDash([R * 0.18, R * 0.14]); ctx.lineDashOffset = -t / 40;
+        ctx.beginPath(); ctx.ellipse(cx, y, R * 1.45, R * 0.6, -0.2, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        const a = t / 600, px = cx + Math.cos(a) * R * 1.45, py = y + Math.sin(a) * R * 0.6;
+        ctx.fillStyle = '#fffbeb'; stellaPiena(ctx, px, py, R * 0.22 * q, 4, a, 0.35);
+      }
+    } else if (tipo === 'time_strip') {
+      // v484: il tempo visto da Loro, una pellicola. Ogni fotogramma è un
+      // istante della stanza di Murph (la finestra, e lei che cresce, da
+      // bambina a grande) e stanno tutti lì, uno accanto all'altro; un
+      // cursore di luce ci passeggia avanti e indietro, perché in cinque
+      // dimensioni si va dove si vuole, come in un corridoio
+      const n = 9, fw = R * 1.5, fh = R * 1.15, gap = R * 0.18, largo = n * fw + (n - 1) * gap;
+      const x0 = x - largo / 2, entra = liscio(Math.min(1, s / 0.25));
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.05, (1 - s) / 0.08)) * velo;
+      const cursore = 0.5 + 0.48 * Math.sin(t / 1500) * Math.cos(t / 3700);
+      for (let i = 0; i < n; i++) {
+        if (i / n > entra + 0.05) continue;
+        const u = i / (n - 1), cx = x0 + i * (fw + gap) + fw / 2, cy = y + Math.sin(u * Math.PI) * -R * 0.35;
+        const vicino = Math.max(0, 1 - Math.abs(u - cursore) * 5);
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(1 + vicino * 0.18, 1 + vicino * 0.18);
+        // la pellicola con i fori
+        ctx.fillStyle = '#18120c'; ctx.fillRect(-fw / 2 - gap / 2, -fh / 2 - R * 0.28, fw + gap, fh + R * 0.56);
+        ctx.fillStyle = '#d6c7a8';
+        for (const yy of [-fh / 2 - R * 0.17, fh / 2 + R * 0.1]) for (let k = 0; k < 3; k++) ctx.fillRect(-fw / 2 + k * fw / 3 + fw * 0.08, yy, fw * 0.14, R * 0.08);
+        // il fotogramma: la stanza in quell'istante
+        ctx.fillStyle = mescolaColori('#8a5a36', '#c98f5a', vicino); ctx.fillRect(-fw / 2, -fh / 2, fw, fh);
+        ctx.fillStyle = '#f6b26b'; ctx.fillRect(fw * 0.12, -fh * 0.36, fw * 0.26, fh * 0.32);
+        ctx.fillStyle = '#4a2e1a'; ctx.fillRect(-fw / 2, fh * 0.28, fw, fh * 0.22);
+        // Murph: più alta fotogramma dopo fotogramma
+        const alta = fh * (0.28 + u * 0.32), mx = -fw * 0.16, my = fh * 0.3;
+        ctx.fillStyle = '#7c9cbf'; ctx.fillRect(mx - fw * 0.07, my - alta * 0.62, fw * 0.14, alta * 0.62);
+        ctx.fillStyle = '#f6d2b6'; ctx.beginPath(); ctx.arc(mx, my - alta * 0.62 - fw * 0.08, fw * 0.08, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = u > 0.85 ? '#e7e5e4' : '#8a4a26'; ctx.beginPath(); ctx.arc(mx, my - alta * 0.62 - fw * 0.11, fw * 0.085, Math.PI, Math.PI * 2); ctx.fill();
+        if (vicino > 0.05) { ctx.strokeStyle = rgba('#fde68a', vicino); ctx.lineWidth = Math.max(1.5, R * 0.08); ctx.strokeRect(-fw / 2, -fh / 2, fw, fh); }
+        ctx.restore();
+      }
+      // il cursore: una stellina che scorre sopra la pellicola
+      const px = x0 + cursore * (largo - fw) + fw / 2, py = y - fh / 2 - R * 0.75 + Math.sin(cursore * Math.PI) * -R * 0.35;
+      ctx.fillStyle = '#fffbeb'; stellaPiena(ctx, px, py, R * 0.3, 5, t / 500, 0.45);
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1; ctx.stroke();
+    } else if (tipo === 'books_fall') {
+      // v484: i libri che cadono dallo scaffale di Murph: li spinge Cooper,
+      // dal tesseratto, con la gravità. Cadono a gruppi, lunghi e corti,
+      // come i punti e le linee del Morse (R-E-S-T-A: «resta»)
+      const W = R * 7.5, y0 = y, n = 15, bw = W / n;
+      const cadono = [1, 2, 4, 6, 7, 8, 10, 12, 13];
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.05, (1 - s) / 0.08)) * velo;
+      const pav = y0 + R * 2.4;
+      ctx.strokeStyle = rgba('#3d2716', 0.9); ctx.lineWidth = Math.max(3, R * 0.2);
+      ctx.beginPath(); ctx.moveTo(x - W / 2 - R * 0.3, y0); ctx.lineTo(x + W / 2 + R * 0.3, y0); ctx.stroke();
+      const dl = { s: ef.seme };
+      for (let i = 0; i < n; i++) {
+        const h = R * (1.1 + dado(dl) * 0.6), col = ['#7f1d1d', '#1e3a8a', '#3f6212', '#78350f', '#581c87', '#0f766e'][Math.floor(dado(dl) * 6)];
+        const bx = x - W / 2 + i * bw + bw * 0.06, w = bw * 0.88;
+        const j = cadono.indexOf(i), quando = j < 0 ? 2 : 0.12 + j * 0.075;
+        const u = Math.max(0, (s - quando) / 0.12);
+        ctx.save();
+        if (u <= 0) ctx.translate(bx + w / 2, y0);
+        else if (u < 1) {
+          // si inclina in avanti e cade, con la gravità: giù sempre più svelto
+          const giro = Math.min(1, u * 2) * Math.PI / 2, giu = Math.max(0, u - 0.4) / 0.6;
+          ctx.translate(bx + w / 2 + giu * R * 0.6, y0 + giu * giu * (pav - y0));
+          ctx.rotate(giro);
+        } else {
+          const rimb = Math.max(0, Math.sin(Math.min(1, (u - 1) / 0.4) * Math.PI)) * R * 0.15 * Math.max(0, 1 - (u - 1));
+          ctx.translate(bx + w / 2 + R * 0.6, pav - rimb); ctx.rotate(Math.PI / 2);
+        }
+        parte(ctx, () => rettangolo(ctx, -w / 2, -h, w, h, w * 0.12), col, R, { luce: 0.04, pennino: 0.03,
+          dentro: () => { ctx.fillStyle = 'rgba(253, 230, 138, 0.7)'; ctx.fillRect(-w / 2, -h * 0.8, w, h * 0.05); ctx.fillRect(-w / 2, -h * 0.25, w, h * 0.05); } });
+        ctx.restore();
+      }
+      // la polvere che si alza dove toccano terra
+      for (let j = 0; j < cadono.length; j++) {
+        const u = (s - (0.12 + j * 0.075)) / 0.12 - 1;
+        if (u < 0 || u > 1) continue;
+        const px = x - W / 2 + cadono[j] * bw + bw / 2 + R * 0.6;
+        ctx.fillStyle = rgba('#e7d3b0', 0.5 * (1 - u));
+        ctx.beginPath(); ctx.ellipse(px, pav, R * (0.4 + u * 0.8), R * (0.12 + u * 0.2), 0, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (tipo === 'dust_binary') {
+      // v484: la polvere che cade a righe sul pavimento. Non è un caso: è la
+      // gravità che Cooper muove dal tesseratto, e le righe larghe e strette
+      // sono un codice binario (uno e zero): le coordinate della NASA
+      const W = R * 8.5, n = 12, bit = [1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0], w0 = W / n;
+      const alto = y - R * 4.2, pav = y + R * 0.6;
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.05, (1 - s) / 0.08)) * velo;
+      const pieno = liscio(Math.min(1, s / 0.75));
+      const d2 = { s: ef.seme };
+      for (let i = 0; i < n; i++) {
+        const cx = x - W / 2 + i * w0 + w0 / 2, larga = bit[i] ? w0 * 0.7 : w0 * 0.24;
+        // la colonna di luce in cui cade la polvere, e la riga sul pavimento
+        // (un rettangolo steso, in prospettiva), che si fa piena piano
+        const colonna = ctx.createLinearGradient(0, alto, 0, pav);
+        colonna.addColorStop(0, 'rgba(253, 230, 138, 0)'); colonna.addColorStop(1, rgba('#fde68a', 0.16 * Math.min(1, s / 0.1)));
+        ctx.fillStyle = colonna; ctx.fillRect(cx - larga / 2, alto, larga, pav - alto);
+        ctx.fillStyle = rgba('#e7d3b0', 0.9 * pieno);
+        ctx.beginPath(); ctx.moveTo(cx - larga / 2 - R * 0.1, pav + R * 0.2); ctx.lineTo(cx + larga / 2 - R * 0.1, pav + R * 0.2);
+        ctx.lineTo(cx + larga / 2 + R * 0.06, pav - R * 0.16); ctx.lineTo(cx - larga / 2 + R * 0.06, pav - R * 0.16); ctx.closePath(); ctx.fill();
+        // i granelli che cadono dritti, solo dentro alla riga
+        for (let k = 0; k < (bit[i] ? 16 : 6); k++) {
+          const fase = (dado(d2) + t / 2200 * (0.7 + dado(d2) * 0.5)) % 1, px = cx + (dado(d2) - 0.5) * larga;
+          if (s > 0.92) continue;
+          ctx.fillStyle = rgba('#f5e6c8', 0.75 * Math.sin(Math.PI * fase));
+          ctx.beginPath(); ctx.arc(px, alto + fase * fase * (pav - alto), Math.max(0.7, R * 0.05), 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      // in fondo, accesi uno alla volta, gli uno e gli zero (tondi e stecche)
+      for (let i = 0; i < n; i++) {
+        if (s < 0.4 + i * 0.035) continue;
+        const cx = x - W / 2 + i * w0 + w0 / 2, cy = pav + R * 0.6;
+        ctx.fillStyle = '#fde68a'; ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1;
+        if (bit[i]) { rettangolo(ctx, cx - R * 0.06, cy - R * 0.22, R * 0.12, R * 0.44, R * 0.04); ctx.fill(); ctx.stroke(); }
+        else { ctx.beginPath(); ctx.ellipse(cx, cy, R * 0.14, R * 0.22, 0, 0, Math.PI * 2); ctx.lineWidth = Math.max(1.5, R * 0.07); ctx.strokeStyle = '#fde68a'; ctx.stroke(); }
+      }
+    } else if (tipo === 'equations') {
+      // v484: la gravità quantistica. I simboli della relatività e della
+      // meccanica quantistica (gli integrali, la costante di Planck, la
+      // funzione d'onda, l'infinito…) girano in tondo sempre più stretti
+      // finché si fondono in un punto — l'equazione finita — che si accende
+      const n = STOR_GLIFI.length * 2, stretta = 1 - liscio(Math.min(1, s / 0.72));
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.05, (1 - s) / 0.08)) * velo;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (let i = 0; i < n; i++) {
+        const g = STOR_GLIFI[i % STOR_GLIFI.length], fase = i / n * Math.PI * 2 + (dado(d) - 0.5) * 0.4;
+        const rr = R * (1.2 + (i % 3) * 0.7) * (0.08 + 0.92 * stretta) * (1 + dado(d) * 0.3);
+        const a = fase + t / (1400 + (i % 4) * 500) * (i % 2 ? 1 : -1), fs = Math.max(9, R * (0.55 + (i % 3) * 0.18)) * (0.4 + 0.6 * stretta + 0.15);
+        const px = x + Math.cos(a) * rr * 1.25, py = y + Math.sin(a) * rr * 0.8;
+        ctx.font = `700 ${Math.round(fs)}px Georgia, serif`;
+        ctx.lineWidth = Math.max(2, fs * 0.16); ctx.strokeStyle = ALONE; ctx.strokeText(g, px, py);
+        ctx.fillStyle = i % 2 ? (colore || '#fde68a') : '#c4b5fd'; ctx.fillText(g, px, py);
+      }
+      if (s > 0.62) {
+        const q = liscio((s - 0.62) / 0.2);
+        const lampo = ctx.createRadialGradient(x, y, 0, x, y, R * (1 + q * 3));
+        lampo.addColorStop(0, `rgba(255, 251, 235, ${0.95 * q})`); lampo.addColorStop(0.3, `rgba(253, 230, 138, ${0.5 * q})`); lampo.addColorStop(1, 'rgba(253, 230, 138, 0)');
+        ctx.fillStyle = lampo; ctx.beginPath(); ctx.arc(x, y, R * (1 + q * 3), 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = rgba('#fde68a', 0.8 * q); ctx.lineWidth = Math.max(1.2, R * 0.06);
+        ctx.beginPath();
+        for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6 + t / 3000; ctx.moveTo(x + Math.cos(a) * R * 0.6, y + Math.sin(a) * R * 0.6); ctx.lineTo(x + Math.cos(a) * R * (1.2 + q * 2.2), y + Math.sin(a) * R * (1.2 + q * 2.2)); }
+        ctx.stroke();
+      }
+    } else if (tipo === 'morse_watch') {
+      // v484: l'orologio che Cooper lasciò a Murph. Dal tesseratto lui muove
+      // con la gravità la lancetta dei secondi: scatti corti e lunghi, punti
+      // e linee del codice Morse, e così le passa i dati della singolarità.
+      // Dalla punta della lancetta escono i punti e le linee, verso destra.
+      const Rw = R * 1.5;
+      ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.08)) * velo;
+      const unita = 230, segni = '.-..-.--.-...-..--.-.-..---.-', trascorso = Math.max(0, t - ef.inizio);
+      let tempoSegni = 0;
+      const lungo = segni.length;
+      const posti = [];
+      for (let i = 0; i < lungo; i++) { posti.push(tempoSegni); tempoSegni += (segni[i] === '-' ? 3 : 1) * unita + unita; }
+      const giroSegni = trascorso % tempoSegni;
+      let attivo = -1;
+      for (let i = 0; i < lungo; i++) if (giroSegni >= posti[i] && giroSegni < posti[i] + (segni[i] === '-' ? 3 : 1) * unita) attivo = i;
+      // il cinturino di cuoio
+      for (const v of [-1, 1]) parte(ctx, () => rettangolo(ctx, x - Rw * 0.48, v < 0 ? y - Rw * 2.1 : y + Rw * 0.7, Rw * 0.96, Rw * 1.4, Rw * 0.15), '#7c4a24', R, { luce: 0.05, pennino: 0.03 });
+      // la cassa e il quadrante
+      parte(ctx, () => { ctx.beginPath(); ctx.arc(x, y, Rw, 0, Math.PI * 2); }, '#d4a94a', R, { luce: 0.08, pennino: 0.04 });
+      parte(ctx, () => { ctx.beginPath(); ctx.arc(x, y, Rw * 0.84, 0, Math.PI * 2); }, '#fdf6e3', R, { luce: 0.03, pennino: 0.025 });
+      if (attivo >= 0) {
+        const g = ctx.createRadialGradient(x, y, Rw * 0.2, x, y, Rw * 1.6);
+        g.addColorStop(0, 'rgba(253, 230, 138, 0)'); g.addColorStop(0.6, 'rgba(253, 230, 138, 0.25)'); g.addColorStop(1, 'rgba(253, 230, 138, 0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, Rw * 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1, R * 0.05);
+      ctx.beginPath();
+      for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; ctx.moveTo(x + Math.cos(a) * Rw * 0.66, y + Math.sin(a) * Rw * 0.66); ctx.lineTo(x + Math.cos(a) * Rw * 0.76, y + Math.sin(a) * Rw * 0.76); }
+      ctx.stroke();
+      const lancetta = (a, lung, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(a) * lung, y - Math.cos(a) * lung); ctx.stroke(); };
+      lancetta(-Math.PI / 3, Rw * 0.42, Math.max(2, R * 0.12), INCHIOSTRO);
+      lancetta(Math.PI / 3, Rw * 0.62, Math.max(1.6, R * 0.09), INCHIOSTRO);
+      // la lancetta dei secondi: ferma, poi scatta e trema finché dura il segno
+      const scatti = posti.filter((p, i) => p <= giroSegni).length;
+      const aSec = scatti * Math.PI / 30 + (attivo >= 0 ? Math.sin(t / 22) * 0.06 : 0);
+      lancetta(aSec, Rw * 0.74, Math.max(1, R * 0.05), '#dc2626');
+      ctx.fillStyle = INCHIOSTRO; ctx.beginPath(); ctx.arc(x, y, Math.max(2, R * 0.09), 0, Math.PI * 2); ctx.fill();
+      // i punti e le linee che volano via verso destra
+      for (let i = 0; i < lungo; i++) {
+        const eta = (giroSegni - posti[i]) / 1800;
+        if (eta <= 0 || eta >= 1) continue;
+        const px = x + Rw * 1.15 + eta * R * 5.5, py = y - Rw * 0.3 + Math.sin(eta * 5 + i) * R * 0.35;
+        ctx.globalAlpha = Math.max(0, Math.min(1, s / 0.06, (1 - s) / 0.08)) * velo * (1 - eta);
+        ctx.fillStyle = '#fde68a'; ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1;
+        if (segni[i] === '-') { rettangolo(ctx, px - R * 0.3, py - R * 0.09, R * 0.6, R * 0.18, R * 0.09); ctx.fill(); ctx.stroke(); }
+        else { ctx.beginPath(); ctx.arc(px, py, R * 0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
       }
     } else if (tipo === 'confetti') {
       for (let k = 0; k < 26; k++) {
@@ -3998,6 +4331,307 @@
         const px = (dado(d) * L + (ridotto ? 0 : Math.sin(t / 900 + i) * 6)) % L, py = (dado(d) * H + (ridotto ? 0 : t * 0.02 * (0.5 + dado(d)))) % H;
         ctx.beginPath(); ctx.arc(px, py, 0.8 + dado(d) * 1.3, 0, Math.PI * 2); ctx.fill();
       }
+    } else if (tipo === 'tesseract') {
+      // v484, «Interstellar · Parte 2»: dentro al tesseratto. Il film lo
+      // mostra come una biblioteca senza fine: la stanza di Murph ripetuta
+      // in tutte le direzioni, ogni copia un istante diverso, e fra l'una e
+      // l'altra i fili dorati del tempo (le «linee d'universo» di ogni
+      // cosa, stirate lungo la dimensione in più). Qui: piani di celle che
+      // si allontanano verso un punto di fuga luminoso, i fili che ci
+      // corrono dentro con le gocce di luce che scorrono, e la camera che
+      // scivola piano in avanti. Un piano intero è un tracciato solo.
+      ctx.globalAlpha = alfa;
+      const vx = L / 2 + (ridotto ? 0 : Math.sin(t / 5200) * L * 0.04), vy = H * 0.46 + (ridotto ? 0 : Math.cos(t / 6100) * H * 0.03);
+      const fondo = ctx.createRadialGradient(vx, vy, 0, vx, vy, Math.hypot(L, H) * 0.7);
+      fondo.addColorStop(0, '#fff3c4'); fondo.addColorStop(0.05, '#5a4420'); fondo.addColorStop(0.32, '#1c1532'); fondo.addColorStop(1, '#05040c');
+      ctx.fillStyle = fondo; ctx.fillRect(0, 0, L, H);
+      const periodo = 7000, corsa = ridotto ? 0.3 : (t % periodo) / periodo, giro = ridotto ? 0 : Math.floor(t / periodo);
+      const cella = lato * 0.46 * k;
+      // i fili del tempo: dal punto di fuga verso i bordi, lungo le righe della griglia
+      ctx.strokeStyle = rgba('#fbbf24', 0.2); ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let gx = -3; gx <= 3; gx++) for (let gy = -2; gy <= 2; gy++) {
+        const ex = vx + (gx + 0.5) * cella * 4.4, ey = vy + (gy + 0.5) * cella * 3.6;
+        ctx.moveTo(vx + (ex - vx) * 0.02, vy + (ey - vy) * 0.02); ctx.lineTo(ex, ey);
+      }
+      ctx.stroke();
+      // i piani di celle, dal fondo verso chi guarda
+      for (let i = 9; i >= 0; i--) {
+        const z = Math.max(0.2, i + 1 - corsa), q = 1 / z;
+        // i piani lontani si spengono nel bagliore del fondo (fitti com'erano
+        // facevano un groviglio attorno al punto di fuga)
+        const a = Math.min(1, Math.pow(Math.max(0, (10 - z) / 6), 1.6)) * Math.min(1, z / 0.7);
+        if (a <= 0.02) continue;
+        const chi = i + giro;
+        ctx.beginPath();
+        const accese = [];
+        for (let gx = -3; gx <= 3; gx++) for (let gy = -2; gy <= 2; gy++) {
+          const w = cella * q, h = w * 0.8, cx = vx + gx * w * 1.1, cy = vy + gy * h * 1.12;
+          if (cx + w < 0 || cx - w > L || cy + h < 0 || cy - h > H) continue;
+          ctx.rect(cx - w / 2, cy - h / 2, w, h);
+          if (((gx + 3) * 7 + (gy + 2) * 13 + chi * 5) % 6 === 0) accese.push([cx, cy, w, h]);
+        }
+        ctx.strokeStyle = rgba('#fcd34d', 0.32 * a); ctx.lineWidth = Math.max(0.6, 2.2 * q); ctx.stroke();
+        // le celle accese: la stanza di Murph in un altro istante, con gli scaffali
+        for (const [cx, cy, w, h] of accese) {
+          ctx.fillStyle = rgba('#f59e0b', 0.13 * a); ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+          ctx.strokeStyle = rgba('#fde68a', 0.4 * a); ctx.lineWidth = Math.max(0.5, 1.4 * q);
+          ctx.beginPath();
+          for (const f of [0.28, 0.52, 0.76]) { ctx.moveTo(cx - w * 0.42, cy - h / 2 + h * f); ctx.lineTo(cx + w * 0.42, cy - h / 2 + h * f); }
+          ctx.stroke();
+        }
+      }
+      // le gocce di luce che corrono lungo i fili, verso chi guarda
+      if (!ridotto) {
+        const d = { s: ef.seme };
+        for (let i = 0; i < 26; i++) {
+          const gx = Math.floor(dado(d) * 7) - 3, gy = Math.floor(dado(d) * 5) - 2, v = 0.5 + dado(d);
+          const u = (dado(d) + t / 5000 * v) % 1, uu = u * u;
+          const px = vx + (gx + 0.5) * cella * 4.4 * uu, py = vy + (gy + 0.5) * cella * 3.6 * uu;
+          ctx.globalAlpha = alfa * Math.sin(Math.PI * u) * 0.9;
+          ctx.fillStyle = i % 3 ? '#fde68a' : '#ffffff';
+          ctx.beginPath(); ctx.arc(px, py, 0.8 + uu * 3, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    } else if (tipo === 'murph_room') {
+      // v484: la stanza di Murph vista da dietro la libreria, come dal
+      // tesseratto: davanti le coste dei libri al contrario e le assi degli
+      // scaffali, in mezzo il varco da cui si vede la camera — la parete, la
+      // finestra con la luce polverosa del tramonto, il letto, il pavimento a
+      // listoni — e la polvere che galleggia nel raggio di sole
+      ctx.globalAlpha = alfa;
+      const muro = ctx.createLinearGradient(0, 0, 0, H);
+      muro.addColorStop(0, '#4a3020'); muro.addColorStop(0.7, '#7a5236'); muro.addColorStop(1, '#5a3a24');
+      ctx.fillStyle = muro; ctx.fillRect(0, 0, L, H);
+      // la finestra con la luce arancione della polvere
+      const fx = L * 0.56, fy = H * 0.14, fw = L * 0.22, fh = H * 0.34;
+      const cielo = ctx.createLinearGradient(0, fy, 0, fy + fh);
+      cielo.addColorStop(0, '#f6b26b'); cielo.addColorStop(1, '#c97b3d');
+      ctx.fillStyle = cielo; ctx.fillRect(fx, fy, fw, fh);
+      ctx.fillStyle = 'rgba(120, 72, 36, 0.55)'; ctx.fillRect(fx, fy + fh * 0.72, fw, fh * 0.28);
+      ctx.strokeStyle = '#3a2416'; ctx.lineWidth = Math.max(2, lato * 0.012);
+      ctx.strokeRect(fx, fy, fw, fh);
+      ctx.beginPath(); ctx.moveTo(fx + fw / 2, fy); ctx.lineTo(fx + fw / 2, fy + fh); ctx.moveTo(fx, fy + fh / 2); ctx.lineTo(fx + fw, fy + fh / 2); ctx.stroke();
+      // il raggio di sole che entra di traverso fino al pavimento
+      const raggio = ctx.createLinearGradient(fx, fy, fx - L * 0.2, H);
+      raggio.addColorStop(0, 'rgba(253, 230, 138, 0.22)'); raggio.addColorStop(1, 'rgba(253, 230, 138, 0.04)');
+      ctx.fillStyle = raggio;
+      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx + fw, fy); ctx.lineTo(fx + fw - L * 0.24, H); ctx.lineTo(fx - L * 0.3, H); ctx.closePath(); ctx.fill();
+      // il pavimento a listoni e il letto, a sinistra
+      const pav = H * 0.72;
+      ctx.fillStyle = '#5b3b22'; ctx.fillRect(0, pav, L, H - pav);
+      ctx.strokeStyle = 'rgba(28, 18, 10, 0.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); for (let i = 1; i < 6; i++) { const yy = pav + (H - pav) * Math.pow(i / 6, 1.3); ctx.moveTo(0, yy); ctx.lineTo(L, yy); } ctx.stroke();
+      ctx.fillStyle = '#8b6b4a'; ctx.fillRect(L * 0.2, pav - H * 0.13, L * 0.26, H * 0.13);
+      ctx.fillStyle = '#d9c7a8'; ctx.fillRect(L * 0.21, pav - H * 0.15, L * 0.25, H * 0.05);
+      ctx.fillStyle = '#7c9cbf'; ctx.fillRect(L * 0.27, pav - H * 0.12, L * 0.19, H * 0.08);
+      // la polvere che galleggia nella luce
+      const d = { s: ef.seme };
+      ctx.fillStyle = 'rgba(255, 237, 200, 0.75)';
+      for (let i = 0; i < 46; i++) {
+        const px = fx - L * 0.25 + dado(d) * fw * 1.6 + (ridotto ? 0 : Math.sin(t / 1700 + i) * 8), py = (fy + dado(d) * (H - fy) + (ridotto ? 0 : t * 0.006 * (0.4 + dado(d)))) % H;
+        ctx.globalAlpha = alfa * (0.25 + 0.5 * dado(d));
+        ctx.beginPath(); ctx.arc(px, py, 0.6 + dado(d) * 1.2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = alfa;
+      // davanti, la libreria vista da dietro: assi scure e coste dei libri ai lati
+      const legno = '#2a1a10', ombra = 'rgba(10, 6, 4, 0.55)';
+      const libri = (x0, x1, y0, y1) => {
+        const dl = { s: seme('libri' + Math.round(x0) + Math.round(y0)) || 3 };
+        let px = x0;
+        while (px < x1) {
+          const w = lato * (0.018 + dado(dl) * 0.024), h = (y1 - y0) * (0.72 + dado(dl) * 0.26);
+          const col = ['#5b2a1e', '#2f3b52', '#4a4a24', '#5a3a1a', '#3b2a44', '#6b4a2a'][Math.floor(dado(dl) * 6)];
+          ctx.fillStyle = col; ctx.fillRect(px, y1 - h, Math.min(w, x1 - px), h);
+          ctx.fillStyle = ombra; ctx.fillRect(px + Math.min(w, x1 - px) - 1.5, y1 - h, 1.5, h);
+          px += w + 1;
+        }
+      };
+      const largo = L * 0.15, asse = Math.max(6, H * 0.035);
+      for (const [x0, x1] of [[0, largo], [L - largo, L]]) {
+        ctx.fillStyle = legno; ctx.fillRect(x0, 0, x1 - x0, H);
+        for (const [y0, y1] of [[asse, H * 0.33], [H * 0.33 + asse, H * 0.66], [H * 0.66 + asse, H - asse]]) libri(x0 + 3, x1 - 3, y0, y1);
+        ctx.fillStyle = '#3d2716';
+        for (const yy of [0, H * 0.33, H * 0.66, H - asse]) ctx.fillRect(x0, yy, x1 - x0, asse);
+      }
+      ctx.fillStyle = legno; ctx.fillRect(0, 0, L, asse * 1.4); ctx.fillRect(0, H - asse * 1.4, L, asse * 1.4);
+      const vel = ctx.createLinearGradient(0, 0, largo * 1.6, 0);
+      vel.addColorStop(0, 'rgba(0,0,0,0.35)'); vel.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = vel; ctx.fillRect(largo, 0, largo * 0.6, H);
+      const ver = ctx.createLinearGradient(L, 0, L - largo * 1.6, 0);
+      ver.addColorStop(0, 'rgba(0,0,0,0.35)'); ver.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = ver; ctx.fillRect(L - largo * 1.6, 0, largo * 0.6, H);
+    } else if (tipo === 'liftoff') {
+      // v484: la Terra di Murph, al tramonto, con la polvere nell'aria e i
+      // campi di granturco fino all'orizzonte; poi le stazioni-cilindro, con
+      // dentro milioni di persone, si staccano dal suolo una dopo l'altra
+      // e salgono dritte (la gravità controllata grazie alle equazioni)
+      ctx.globalAlpha = alfa;
+      const oriz = H * 0.66;
+      const cielo = ctx.createLinearGradient(0, 0, 0, oriz);
+      cielo.addColorStop(0, '#2b2140'); cielo.addColorStop(0.55, '#a85d4a'); cielo.addColorStop(1, '#efa06a');
+      ctx.fillStyle = cielo; ctx.fillRect(0, 0, L, oriz + 1);
+      const sole = ctx.createRadialGradient(L * 0.22, oriz - H * 0.04, 0, L * 0.22, oriz - H * 0.04, lato * 0.22);
+      sole.addColorStop(0, 'rgba(255, 237, 190, 0.95)'); sole.addColorStop(0.18, 'rgba(253, 186, 116, 0.6)'); sole.addColorStop(1, 'rgba(253, 186, 116, 0)');
+      ctx.fillStyle = sole; ctx.fillRect(0, 0, L, oriz);
+      const campo = ctx.createLinearGradient(0, oriz, 0, H);
+      campo.addColorStop(0, '#8a6a32'); campo.addColorStop(1, '#3b2a12');
+      ctx.fillStyle = campo; ctx.fillRect(0, oriz, L, H - oriz);
+      ctx.strokeStyle = 'rgba(40, 26, 10, 0.5)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); for (let i = -12; i <= 12; i++) { ctx.moveTo(L / 2 + i * L * 0.012, oriz); ctx.lineTo(L / 2 + i * L * 0.16, H); } ctx.stroke();
+      const torri = [[0.3, 0.06, 0.085], [0.62, 0.24, 0.11], [0.84, 0.42, 0.07]];
+      for (const [fx, inizia, w0] of torri) {
+        const w = lato * w0 * k, h = w * 2.4, u = ridotto ? 0.4 : liscio((s - inizia) / 0.55);
+        const cx = L * fx, base = oriz + h * 0.06 - u * (oriz + h * 1.2);
+        // la scia di polvere e di fumo, dal suolo fino alla stazione
+        if (u > 0) {
+          const scia = ctx.createLinearGradient(0, base, 0, oriz + h * 0.1);
+          scia.addColorStop(0, 'rgba(226, 232, 240, 0.55)'); scia.addColorStop(1, 'rgba(203, 170, 140, 0.15)');
+          ctx.fillStyle = scia;
+          ctx.beginPath(); ctx.moveTo(cx - w * 0.3, base); ctx.lineTo(cx + w * 0.3, base);
+          ctx.lineTo(cx + w * (0.9 + u), oriz + h * 0.1); ctx.lineTo(cx - w * (0.9 + u), oriz + h * 0.1); ctx.closePath(); ctx.fill();
+          const fiamma = ctx.createRadialGradient(cx, base, 0, cx, base, w * 0.9);
+          fiamma.addColorStop(0, 'rgba(255, 251, 235, 0.95)'); fiamma.addColorStop(0.4, 'rgba(251, 191, 36, 0.7)'); fiamma.addColorStop(1, 'rgba(249, 115, 22, 0)');
+          ctx.fillStyle = fiamma; ctx.beginPath(); ctx.arc(cx, base, w * 0.9, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.fillStyle = 'rgba(203, 170, 140, 0.4)';
+          ctx.beginPath(); ctx.ellipse(cx, oriz + h * 0.04, w * 0.9, w * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        // il cilindro: grigio chiaro, le fasce e le file di finestre accese
+        parte(ctx, () => rettangolo(ctx, cx - w / 2, base - h, w, h, w * 0.18), '#cbd5e1', lato * 0.08, { luce: 0.04, pennino: 0.025,
+          dentro: () => {
+            ctx.fillStyle = 'rgba(71, 85, 105, 0.5)';
+            for (const f of [0.18, 0.5, 0.82]) ctx.fillRect(cx - w / 2, base - h + h * f, w, h * 0.04);
+            ctx.fillStyle = 'rgba(253, 224, 71, 0.85)';
+            for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) ctx.fillRect(cx - w * 0.36 + c * w * 0.2, base - h + h * (0.24 + r * 0.1), w * 0.08, h * 0.03);
+          } });
+      }
+    } else if (tipo === 'cooper_station') {
+      // v484: dentro alla Stazione Cooper, il cilindro che gira attorno a
+      // Saturno: guardando lungo l'asse la terra fa il giro tutto attorno —
+      // i campi, il fiume, le case, anche sopra la testa, coi tetti rivolti
+      // verso il centro (girando, la stazione spinge tutto verso il bordo:
+      // è la gravità finta dell'Endurance, in grande). In fondo, il tappo
+      // del cilindro con la finestra da cui si vede Saturno.
+      ctx.globalAlpha = alfa;
+      const cx = L / 2, cy = H * 0.47, Rv = Math.hypot(L, H) * 0.62 * (1 + 0.06 * avanti);
+      const rot = ridotto ? 0 : t / 26000;
+      ctx.fillStyle = '#dbeafe'; ctx.fillRect(0, 0, L, H);
+      const colori = ['#65a30d', '#a3a33a', '#4d7c0f', '#ca8a04', '#84cc16', '#a8a29e'];
+      const ds = { s: 77 };
+      const N = 18, B = 7;
+      for (let j = 0; j < N; j++) {
+        const a0 = rot + j * Math.PI * 2 / N, a1 = a0 + Math.PI * 2 / N;
+        const fiume = j % 6 === 2;
+        for (let b = 0; b < B; b++) {
+          const r1 = Rv / (1 + b * 0.9), r2 = Rv / (1 + (b + 1) * 0.9);
+          ctx.fillStyle = fiume ? (b % 2 ? '#38bdf8' : '#0ea5e9') : colori[Math.floor(dado(ds) * colori.length)];
+          ctx.beginPath(); ctx.arc(cx, cy, r1, a0, a1); ctx.arc(cx, cy, r2, a1, a0, true); ctx.closePath(); ctx.fill();
+        }
+      }
+      // le case, coi tetti verso il centro (anche quelle «a testa in giù»)
+      const dc = { s: 91 };
+      for (let i = 0; i < 46; i++) {
+        const a = rot + dado(dc) * Math.PI * 2, b = dado(dc) * (B - 1.5), r = Rv / (1 + b * 0.9), q = lato * 0.05 / (1 + b * 0.9);
+        ctx.save(); ctx.translate(cx + Math.cos(a) * r * 0.97, cy + Math.sin(a) * r * 0.97); ctx.rotate(a + Math.PI / 2);
+        ctx.fillStyle = '#f8fafc'; ctx.fillRect(-q / 2, -q * 0.7, q, q * 0.7);
+        ctx.fillStyle = '#b45309'; ctx.beginPath(); ctx.moveTo(-q * 0.62, -q * 0.7); ctx.lineTo(0, -q * 1.15); ctx.lineTo(q * 0.62, -q * 0.7); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      // la foschia dell'aria, che sale verso il fondo, e il tappo luminoso
+      const foschia = ctx.createRadialGradient(cx, cy, 0, cx, cy, Rv * 0.5);
+      foschia.addColorStop(0, 'rgba(239, 246, 255, 0.95)'); foschia.addColorStop(0.35, 'rgba(219, 234, 254, 0.6)'); foschia.addColorStop(1, 'rgba(219, 234, 254, 0)');
+      ctx.fillStyle = foschia; ctx.beginPath(); ctx.arc(cx, cy, Rv * 0.5, 0, Math.PI * 2); ctx.fill();
+      const rf = Rv / (1 + B * 0.9) * 0.9;
+      ctx.fillStyle = '#0b1026'; ctx.beginPath(); ctx.arc(cx, cy, rf, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = Math.max(1.5, rf * 0.08); ctx.stroke();
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, rf, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = '#e9c58a'; ctx.beginPath(); ctx.arc(cx + rf * 0.15, cy + rf * 0.1, rf * 0.38, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(233, 197, 138, 0.85)'; ctx.lineWidth = Math.max(1, rf * 0.06);
+      ctx.beginPath(); ctx.ellipse(cx + rf * 0.15, cy + rf * 0.1, rf * 0.72, rf * 0.18, -0.3, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    } else if (tipo === 'bedside') {
+      // v484: la stanza dove Murph, anziana, aspetta il papà: la luce calda
+      // della lampada, il letto con la coperta lilla e, nella finestra
+      // grande, lo spazio con Saturno e i suoi anelli (la Stazione Cooper
+      // gli gira attorno)
+      ctx.globalAlpha = alfa;
+      const muro = ctx.createLinearGradient(0, 0, 0, H);
+      muro.addColorStop(0, '#efe3d0'); muro.addColorStop(1, '#cdb79a');
+      ctx.fillStyle = muro; ctx.fillRect(0, 0, L, H);
+      const wx = L * 0.06, wy = H * 0.08, ww = L * 0.56, wh = H * 0.52;
+      ctx.save(); rettangolo(ctx, wx, wy, ww, wh, lato * 0.04); ctx.clip();
+      ctx.fillStyle = '#04060f'; ctx.fillRect(wx, wy, ww, wh);
+      const stelle = storTelaStelle(L, H, 'stelle');
+      if (stelle) { ctx.globalAlpha = alfa * 0.9; ctx.drawImage(stelle, 0, 0, L, H); ctx.globalAlpha = alfa; }
+      const sx = wx + ww * (0.62 + 0.04 * avanti), sy = wy + wh * 0.52, sr = lato * 0.1;
+      ctx.strokeStyle = 'rgba(233, 197, 138, 0.55)'; ctx.lineWidth = Math.max(2, sr * 0.1);
+      ctx.beginPath(); ctx.ellipse(sx, sy, sr * 2.1, sr * 0.5, -0.32, Math.PI, Math.PI * 2); ctx.stroke();
+      const pianeta = ctx.createRadialGradient(sx - sr * 0.4, sy - sr * 0.4, sr * 0.1, sx, sy, sr);
+      pianeta.addColorStop(0, '#fbe3b4'); pianeta.addColorStop(1, '#b8894f');
+      ctx.fillStyle = pianeta; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(233, 197, 138, 0.9)';
+      ctx.beginPath(); ctx.ellipse(sx, sy, sr * 2.1, sr * 0.5, -0.32, 0, Math.PI); ctx.stroke();
+      ctx.restore();
+      rettangolo(ctx, wx, wy, ww, wh, lato * 0.04);
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = Math.max(3, lato * 0.016); ctx.stroke();
+      // la luce della finestra sul pavimento, e il pavimento
+      const pav = H * 0.74;
+      ctx.fillStyle = '#b89c7a'; ctx.fillRect(0, pav, L, H - pav);
+      ctx.fillStyle = 'rgba(191, 219, 254, 0.18)';
+      ctx.beginPath(); ctx.moveTo(wx, pav); ctx.lineTo(wx + ww, pav); ctx.lineTo(wx + ww * 1.2, H); ctx.lineTo(wx - ww * 0.1, H); ctx.closePath(); ctx.fill();
+      // il letto, a destra: la testiera, il cuscino, la coperta
+      const bx = L * 0.62, by = pav - H * 0.1, bw = L * 0.36;
+      ctx.fillStyle = '#8b6b4a'; ctx.fillRect(bx + bw - L * 0.02, by - H * 0.2, L * 0.02, H * 0.3);
+      ctx.fillStyle = '#f8fafc'; ctx.fillRect(bx, by, bw, H * 0.08);
+      ctx.fillStyle = '#c4b5fd'; ctx.fillRect(bx, by + H * 0.02, bw * 0.78, H * 0.09);
+      ctx.fillStyle = '#6b5b45'; ctx.fillRect(bx + L * 0.01, by + H * 0.1, L * 0.012, pav - by - H * 0.1 + 2); ctx.fillRect(bx + bw - L * 0.02, by + H * 0.1, L * 0.012, pav - by - H * 0.1 + 2);
+      // la lampada calda, che respira appena
+      const lampada = ctx.createRadialGradient(L * 0.95, H * 0.36, 0, L * 0.95, H * 0.36, lato * 0.5);
+      lampada.addColorStop(0, `rgba(253, 230, 138, ${0.45 + (ridotto ? 0 : 0.04 * Math.sin(t / 1300))})`); lampada.addColorStop(1, 'rgba(253, 230, 138, 0)');
+      ctx.fillStyle = lampada; ctx.fillRect(0, 0, L, H);
+    } else if (tipo === 'edmunds_planet') {
+      // v484: il pianeta di Edmunds, quello giusto, dove Brand è arrivata
+      // da sola: il cielo che dal blu della notte schiarisce all'alba, un
+      // sole lontano che sorge, le montagne rosse, il campo con la cupola
+      // accesa e la bandierina. È il finale: c'è aria, c'è luce.
+      ctx.globalAlpha = alfa;
+      const oriz = H * 0.62;
+      const cielo = ctx.createLinearGradient(0, 0, 0, oriz);
+      cielo.addColorStop(0, '#0b1a3a'); cielo.addColorStop(0.6, '#6b5b95'); cielo.addColorStop(1, '#f7c59f');
+      ctx.fillStyle = cielo; ctx.fillRect(0, 0, L, oriz + 1);
+      const stelle = storTelaStelle(L, H, 'stelle');
+      if (stelle) { ctx.globalAlpha = alfa * 0.5; ctx.drawImage(stelle, 0, 0, L, oriz * 0.5, 0, 0, L, oriz * 0.5); ctx.globalAlpha = alfa; }
+      const sy = oriz - (ridotto ? 0.04 : 0.02 + 0.06 * liscio(s)) * H, sx = L * 0.7;
+      const alba = ctx.createRadialGradient(sx, sy, 0, sx, sy, lato * 0.45);
+      alba.addColorStop(0, 'rgba(255, 251, 235, 1)'); alba.addColorStop(0.06, 'rgba(254, 240, 138, 0.9)'); alba.addColorStop(0.3, 'rgba(251, 146, 60, 0.3)'); alba.addColorStop(1, 'rgba(251, 146, 60, 0)');
+      ctx.fillStyle = alba; ctx.fillRect(0, 0, L, oriz);
+      const cresta = (base, alta, semeC, col) => {
+        const dm = { s: semeC };
+        ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, oriz + 2);
+        for (let i = 0; i <= 16; i++) ctx.lineTo(i / 16 * L, base - dado(dm) * alta);
+        ctx.lineTo(L, oriz + 2); ctx.closePath(); ctx.fill();
+      };
+      cresta(oriz, H * 0.12, 5, '#6d4a6b');
+      cresta(oriz + 1, H * 0.06, 9, '#8a4b3a');
+      const suolo = ctx.createLinearGradient(0, oriz, 0, H);
+      suolo.addColorStop(0, '#b0643f'); suolo.addColorStop(1, '#4a2618');
+      ctx.fillStyle = suolo; ctx.fillRect(0, oriz, L, H - oriz);
+      const dr = { s: 13 };
+      for (let i = 0; i < 14; i++) {
+        const fy = dado(dr), px = dado(dr) * L, py = oriz + Math.pow(fy, 1.4) * (H - oriz), rr = lato * (0.006 + fy * 0.03);
+        ctx.fillStyle = 'rgba(60, 30, 18, 0.6)'; ctx.beginPath(); ctx.ellipse(px, py, rr * 1.6, rr * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      // il campo di Brand: la cupola accesa e la bandierina
+      const cx = L * 0.2, cy = oriz + H * 0.08, cr = lato * 0.07;
+      ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(cx, cy, cr, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = '#fde68a'; ctx.fillRect(cx - cr * 0.2, cy - cr * 0.5, cr * 0.4, cr * 0.5);
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx + cr * 1.5, cy); ctx.lineTo(cx + cr * 1.5, cy - cr * 1.6); ctx.stroke();
+      const sv = ridotto ? 0 : Math.sin(t / 500) * cr * 0.05;
+      for (let k = 0; k < 5; k++) { ctx.fillStyle = k % 2 ? '#f8fafc' : '#dc2626'; ctx.fillRect(cx + cr * 1.5, cy - cr * 1.6 + k * cr * 0.1 + sv, cr * 0.75, cr * 0.1); }
+      ctx.fillStyle = '#1e3a8a'; ctx.fillRect(cx + cr * 1.5, cy - cr * 1.6 + sv, cr * 0.32, cr * 0.25);
     }
     ctx.restore();
   }
@@ -4081,7 +4715,10 @@
     lander:        { volto: [0, 0, 0.6], ingombro: 1.6, ospiteK: 1.15,
       finestre: [[0.5, -0.16, 0.21], [0, -0.16, 0.21], [-0.5, -0.16, 0.21]] },
     endurance:     { volto: [0, 0, 0.6], ingombro: 1.95, ospiteK: 1.55,
-      finestre: [[-0.3, 0.02, 0.16], [0, 0.02, 0.16], [0.3, 0.02, 0.16]] }
+      finestre: [[-0.3, 0.02, 0.16], [0, 0.02, 0.16], [0.3, 0.02, 0.16]] },
+    // v484: Loro, la figura di luce del tesseratto (il volto sulla testa,
+    // come per una persona; le copie nel tempo escono di lato)
+    presenza:      { volto: [0, -0.18, 0.6], ingombro: 1.6 }
   };
   // Dove sta il volto su un corpo di raggio R centrato in (x, y)
   function storVoltoNelCorpo(sagoma, x, y, R) {
@@ -4384,6 +5021,79 @@
         ctx.beginPath(); for (let k = 0; k < 19; k++) { const yy = y - R * 0.97 + k * R * 0.06; ctx.moveTo(x - R * 0.58, yy); ctx.lineTo(x + R * 0.58, yy); } ctx.stroke();
       }
     });
+  }
+
+  /* Loro (v484), chi vive in cinque dimensioni. Nel film non si vedono mai:
+   * si sentono, piegano lo spazio, costruiscono il tesseratto. Qui sono una
+   * figura di luce — la testa tonda e le spalle, come una persona, ma senza
+   * vestiti né capelli — e dietro, in diagonale, le sue copie sempre più
+   * tenui: gli altri istanti della sua vita, che per lei stanno lì tutti
+   * insieme, uno accanto all'altro, come i fotogrammi di una pellicola. Le
+   * copie respirano avanti e indietro: Loro nel tempo ci camminano. Attorno,
+   * un cubo dentro un cubo appena accennato, il tesseratto che hanno fatto. */
+  function disegnaPresenza(ctx, x, y, R, profilo, t) {
+    const luce = profilo.luce || '#fde68a', pelle = profilo.pelle || '#ede9fe';
+    const hy = y - R * 0.18, hr = R * 0.6;
+    const sagoma = (cx, cy) => {
+      ctx.beginPath();
+      ctx.moveTo(cx - R * 1.05, cy + R * 1.25);
+      ctx.bezierCurveTo(cx - R * 1.1, cy + R * 0.75, cx - R * 0.8, cy + R * 0.5, cx - R * 0.3, cy + R * 0.44);
+      ctx.lineTo(cx + R * 0.3, cy + R * 0.44);
+      ctx.bezierCurveTo(cx + R * 0.8, cy + R * 0.5, cx + R * 1.1, cy + R * 0.75, cx + R * 1.05, cy + R * 1.25);
+      ctx.quadraticCurveTo(cx, cy + R * 1.38, cx - R * 1.05, cy + R * 1.25);
+      ctx.closePath();
+      ctx.moveTo(cx + hr, cy - R * 0.18); ctx.arc(cx, cy - R * 0.18, hr, 0, Math.PI * 2);
+    };
+    ctx.save();
+    // il bagliore attorno, che pulsa piano
+    const pulsa = 1 + 0.06 * Math.sin(t / 900);
+    const alone = ctx.createRadialGradient(x, y, R * 0.2, x, y, R * 2.2 * pulsa);
+    alone.addColorStop(0, rgba(luce, 0.35)); alone.addColorStop(0.5, rgba('#a78bfa', 0.14)); alone.addColorStop(1, rgba('#a78bfa', 0));
+    ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, R * 2.2 * pulsa, 0, Math.PI * 2); ctx.fill();
+    // il tesseratto accennato: un cubo dentro un cubo, che gira adagio
+    const giro = t / 5200;
+    const cubo = (k, a) => {
+      const pts = [];
+      for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const rx = cx * Math.cos(a) - cy * Math.sin(a), ry = cx * Math.sin(a) + cy * Math.cos(a);
+        pts.push([x + rx * R * k, y - R * 0.1 + ry * R * k * 0.8]);
+      }
+      return pts;
+    };
+    const fuori = cubo(1.5, giro), dentro = cubo(0.8, -giro * 1.3);
+    ctx.strokeStyle = rgba(luce, 0.28); ctx.lineWidth = Math.max(0.8, R * 0.02);
+    ctx.beginPath();
+    for (const q of [fuori, dentro]) { ctx.moveTo(...q[0]); for (let i = 1; i <= 4; i++) ctx.lineTo(...q[i % 4]); }
+    for (let i = 0; i < 4; i++) { ctx.moveTo(...fuori[i]); ctx.lineTo(...dentro[i]); }
+    ctx.stroke();
+    // le copie nel tempo, dietro: dalla più lontana alla più vicina
+    for (let k = 4; k >= 1; k--) {
+      const passo = R * (0.34 + 0.06 * Math.sin(t / 1400 + k));
+      ctx.globalAlpha = 0.34 * (5 - k) / 4;
+      ctx.fillStyle = k % 2 ? '#c4b5fd' : luce;
+      sagoma(x - passo * k, y - passo * k * 0.32); ctx.fill('evenodd');
+    }
+    ctx.globalAlpha = 1;
+    // la figura di adesso: luce piena, col contorno d'inchiostro leggero
+    const g = ctx.createLinearGradient(x, y - R, x, y + R * 1.4);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, pelle); g.addColorStop(1, rgba('#a78bfa', 0.75));
+    ctx.beginPath(); sagoma(x, y);
+    ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07); ctx.stroke();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = rgba('#5b21b6', 0.7); ctx.lineWidth = Math.max(1, R * 0.035); ctx.stroke();
+    // i fili di luce che salgono dal petto (le linee del tempo)
+    ctx.strokeStyle = rgba(luce, 0.55); ctx.lineWidth = Math.max(0.7, R * 0.018);
+    ctx.beginPath();
+    for (let k = -2; k <= 2; k++) {
+      const ox = x + k * R * 0.22, onda = Math.sin(t / 700 + k) * R * 0.06;
+      ctx.moveTo(ox, y + R * 1.2); ctx.quadraticCurveTo(ox + onda, y + R * 0.8, ox + k * R * 0.05, y + R * 0.5);
+    }
+    ctx.stroke();
+    // la testa, appena più chiara: è lì che sta il volto
+    const tg = ctx.createRadialGradient(x - hr * 0.3, hy - hr * 0.35, hr * 0.1, x, hy, hr);
+    tg.addColorStop(0, '#ffffff'); tg.addColorStop(1, pelle);
+    ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(x, hy, hr * 0.98, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
   // La cabina dietro a un finestrino: buia, con la luce calda dei quadri dei comandi
@@ -4986,6 +5696,8 @@
       disegnaPersona(ctx, x, y, R, profilo, t);
     } else if (sagoma === 'tars') {
       disegnaTars(ctx, x, y, R, profilo, t);
+    } else if (sagoma === 'presenza') {
+      disegnaPresenza(ctx, x, y, R, profilo, t);
     } else if (STOR_NAVI.includes(sagoma)) {
       disegnaNave(ctx, x, y, R, profilo, t);
     } else if (sagoma === 'hubble') {
@@ -6203,7 +6915,7 @@
     // Gli effetti speciali, sopra ai volti; quelli finiti se ne vanno
     if (stor.effetti.length) {
       const t = stor.orologio;
-      stor.effetti = stor.effetti.filter(ef => t - ef.inizio <= ef.durata);
+      stor.effetti = stor.effetti.filter(ef => t - ef.inizio <= ef.durata && !(ef.via && t - ef.via > STOR_VIA_MS));
       for (const ef of stor.effetti) {
         if (STOR_SFONDI.includes(ef.tipo)) continue;
         const posto = storPostoEffetto(ef, perId, L, H);
@@ -8181,7 +8893,10 @@
     'shooting_star', 'glow', 'confetti', 'boing', 'whoosh', 'pop', 'zap', 'magic', 'inflate', 'suck', 'wobble',
     'spin', 'tada', 'ding', 'drumroll', 'rumble', 'spacetime',
     // v482, «Interstellar»
-    'starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice', 'fold', 'time_warp', 'orbit_path'];
+    'starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice', 'fold', 'time_warp', 'orbit_path',
+    // v484, «Interstellar · Parte 2»
+    'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet',
+    'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
   // Il rumore che fa ogni gesto, quando la storia non ne sceglie un altro
   const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
   const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
@@ -8431,7 +9146,62 @@
       let q = t;
       for (let i = 0; i < 40; i++) { soffio(a, u, { t0: q, durata: 0.02, filtro: 'bandpass', f0: 3000, q: 4, picco: 0.14 * v, da: dado(d) }); q += Math.max(0.025, 0.16 * (1 - i / 40)); }
     },
-    orbit_path(a, u, t, d, v) { soffio(a, u, { t0: t + 0.5, durata: 3, filtro: 'bandpass', f0: 200, fm: 1600, f1: 300, q: 1.4, picco: 0.3 * v, attacco: 1.2, ciclo: true }); }
+    orbit_path(a, u, t, d, v) { soffio(a, u, { t0: t + 0.5, durata: 3, filtro: 'bandpass', f0: 200, fm: 1600, f1: 300, q: 1.4, picco: 0.3 * v, attacco: 1.2, ciclo: true }); },
+    // v484, «Interstellar · Parte 2»: il coro d'organo del tesseratto, la
+    // stanza quieta col vento di polvere fuori, il rombo del decollo, l'aria
+    // della Stazione Cooper con le campanelle, il bip dell'ospedale, l'alba
+    // di Edmunds; l'arpeggio del cubo a quattro dimensioni, i cinque gradini
+    // delle dimensioni, il proiettore della pellicola, i tonfi dei libri, la
+    // sabbia, la magia delle equazioni e i bip del Morse
+    tesseract(a, u, t, d, v) {
+      [65, 98, 131, 196].forEach((f, k) => tono(a, u, { t0: t + k * 0.25, durata: 2.8, tipo: 'triangle', f0: f, picco: 0.05 * v, attacco: 1.1, taglio: 1200 }));
+      [1568, 2349].forEach((f, k) => tono(a, u, { t0: t + 0.6 + k * 0.4, durata: 1.8, f0: f, picco: 0.02 * v, attacco: 0.7, vibrato: [5, 6] }));
+    },
+    murph_room(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 500, f1: 300, q: 0.7, picco: 0.07 * v, attacco: 1, ciclo: true });
+      tono(a, u, { t0: t, durata: 3, tipo: 'triangle', f0: 220, picco: 0.025 * v, attacco: 1.2, taglio: 700 });
+    },
+    liftoff(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.6, f0: 90, f1: 420, picco: 0.5 * v, attacco: 1.6, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.6, f0: 34, f1: 58, picco: 0.35 * v, attacco: 1.6 });
+    },
+    cooper_station(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3, filtro: 'highpass', f0: 3000, picco: 0.03 * v, attacco: 1, ciclo: true });
+      [1047, 1319, 1568].forEach((f, k) => tono(a, u, { t0: t + 0.4 + k * 0.45, durata: 1.4, f0: f, picco: 0.05 * v }));
+    },
+    bedside(a, u, t, d, v) {
+      for (let i = 0; i < 3; i++) tono(a, u, { t0: t + 0.3 + i * 1.1, durata: 0.14, f0: 988, picco: 0.07 * v });
+      tono(a, u, { t0: t, durata: 3.4, tipo: 'triangle', f0: 262, picco: 0.025 * v, attacco: 1.4, taglio: 800 });
+    },
+    edmunds_planet(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 400, fm: 1200, f1: 500, q: 1.2, picco: 0.08 * v, attacco: 1, ciclo: true });
+      [262, 330, 392, 523].forEach((f, k) => tono(a, u, { t0: t + 0.3 + k * 0.35, durata: 2.4, tipo: 'triangle', f0: f, picco: 0.045 * v, attacco: 0.8, taglio: 1800 }));
+    },
+    hypercube(a, u, t, d, v) {
+      [523, 659, 784, 1047, 1319].forEach((f, k) => tono(a, u, { t0: t + k * 0.16, durata: 1.6, tipo: 'triangle', f0: f, picco: 0.06 * v }));
+      soffio(a, u, { t0: t, durata: 2.4, filtro: 'bandpass', f0: 2000, fm: 5000, f1: 2500, q: 3, picco: 0.05 * v, attacco: 0.5 });
+    },
+    dimensions(a, u, t, d, v) { [262, 330, 392, 523, 659].forEach((f, k) => tono(a, u, { t0: t + k * 0.55, durata: 0.5, f0: f, picco: 0.12 * v })); },
+    time_strip(a, u, t, d, v) {
+      for (let i = 0; i < 36; i++) soffio(a, u, { t0: t + i * 0.09, durata: 0.03, filtro: 'bandpass', f0: 1800, q: 3, picco: 0.08 * v, da: dado(d) });
+      tono(a, u, { t0: t, durata: 3.2, f0: 120, picco: 0.04 * v, attacco: 0.4 });
+    },
+    books_fall(a, u, t, d, v) {
+      for (let i = 0; i < 6; i++) {
+        const q = t + 0.5 + i * 0.42;
+        soffio(a, u, { t0: q, durata: 0.18, f0: 600, f1: 150, picco: 0.35 * v, attacco: 0.004, da: dado(d) });
+        tono(a, u, { t0: q, durata: 0.2, f0: 140, f1: 60, picco: 0.22 * v, attacco: 0.004 });
+      }
+    },
+    dust_binary(a, u, t, d, v) { soffio(a, u, { t0: t, durata: 3.2, filtro: 'highpass', f0: 4000, f1: 2500, picco: 0.08 * v, attacco: 1, ciclo: true }); },
+    equations(a, u, t, d, v) {
+      [523, 784, 1047, 1568, 2093].forEach((f, k) => tono(a, u, { t0: t + k * 0.2, durata: 1.2, f0: f, picco: 0.06 * v, vibrato: [7, 8] }));
+      [262, 330, 392].forEach(f => tono(a, u, { t0: t + 1.6, durata: 2, tipo: 'triangle', f0: f, picco: 0.08 * v, attacco: 0.1 }));
+    },
+    morse_watch(a, u, t, d, v) {
+      let q = t;
+      for (const c of '.-..-.--.-..') { const dur = c === '-' ? 0.21 : 0.07; tono(a, u, { t0: q, durata: dur, f0: 1175, picco: 0.08 * v, attacco: 0.004 }); q += dur + 0.07; }
+    }
   };
   function suoniAccesi() {
     const d = radice.AstroDemo;
@@ -8860,6 +9630,8 @@
         // Il botto si sente: il rumore dello stesso nome, o quello scelto
         const rumore = suonoScelto(p, p.type);
         if (rumore) storSuona(rumore, { seme: p.type + (p.target || ''), volume: ef ? Math.min(1.4, 0.75 + 0.25 * ef.scala) : 1 });
+        // v484: un disegno che spiega una battuta se ne va con la sua scena
+        if (ef && STOR_LAVAGNE.includes(ef.tipo)) return { chiudi() { if (!ef.via) ef.via = stor.orologio; } };
         return {};
       }
     }
@@ -9506,17 +10278,60 @@
    * durata, personaggi con la loro personalità, «Guarda la storia» e
    * «Duplica e modifica». Sotto, l'anteprima di un personaggio e l'esempio
    * del DSL. Tutto si riscrive al cambio lingua. */
-  function storieDisponibili() {
+  /* v484: le CosmoStorie pronte si possono rinominare, modificare ed
+   * eliminare. Sono scritte nel codice (`demo-predefiniti.js`), quindi
+   * «eliminare» vuol dire toglierle da questa pagina (si rimettono da
+   * «CosmoStorie nascoste»), e il nome nuovo vale solo qui: tutti e due
+   * stanno in `astrocal_cosmostorie_v1` ({ nomi: { chiave: { titolo,
+   * descrizione } }, nascoste: { chiave: quando } }), che va nel backup.
+   * «Modifica» invece apre nello Studio una versione tua che fra le schede
+   * prende il posto dell'originale (`sostituisce`, storie-studio.js). */
+  const STOR_CHIAVE_MIE = 'astrocal_cosmostorie_v1';
+  function storArchivio() { try { return radice.localStorage || null; } catch (_) { return null; } }
+  function storCosmoMie() {
+    let d = null;
+    try { const a = storArchivio(); d = a ? JSON.parse(a.getItem(STOR_CHIAVE_MIE) || 'null') : null; } catch (_) { d = null; }
+    const nomi = {}, nascoste = {};
+    const chiave = k => /^[\w-]{1,60}$/.test(k);
+    if (d && d.nomi && typeof d.nomi === 'object') for (const [k, v] of Object.entries(d.nomi)) {
+      if (!chiave(k) || !v || typeof v !== 'object') continue;
+      const titolo = String(v.titolo || '').replace(/\s+/g, ' ').trim().slice(0, 120), descrizione = String(v.descrizione || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+      if (titolo || descrizione) nomi[k] = { titolo, descrizione };
+    }
+    if (d && d.nascoste && typeof d.nascoste === 'object') for (const [k, v] of Object.entries(d.nascoste)) if (chiave(k) && Number(v) > 0) nascoste[k] = Number(v);
+    return { nomi, nascoste };
+  }
+  function storCosmoSalva(m) {
+    try { const a = storArchivio(); if (a) a.setItem(STOR_CHIAVE_MIE, JSON.stringify(m)); return !!a; } catch (_) { return false; }
+  }
+  function storStoriePronte() {
     const d = radice.AstroDemo;
-    let pronte = [];
-    try { pronte = d && d.libreria ? d.libreria.elenco().filter(x => x.storia) : []; } catch (_) { pronte = []; }
+    try { return d && d.libreria ? d.libreria.elenco().filter(x => x.storia && !x.progetto) : []; } catch (_) { return []; }
+  }
+  function storieDisponibili() {
+    const pronte = storStoriePronte();
     // v461: e quelle dello Studio che chi scrive ha messo fra le CosmoStorie
     // (le altre restano in cantiere, nello Studio)
     const st = radice.StudioStorie;
     let ufficiali = [];
     try { ufficiali = st && typeof st.ufficiali === 'function' ? st.ufficiali() : []; } catch (_) { ufficiali = []; }
-    return pronte.concat(ufficiali);
+    // v484: una versione dello Studio sta al posto della sua storia pronta;
+    // le pronte nascoste non ci sono, quelle rinominate col nome nuovo
+    const mie = storCosmoMie();
+    const alPosto = new Map();
+    for (const u of ufficiali) if (u.sostituisce && !alPosto.has(u.sostituisce)) alPosto.set(u.sostituisce, u);
+    const fuori = [];
+    for (const d of pronte) {
+      if (alPosto.has(d.chiave)) { fuori.push(alPosto.get(d.chiave)); continue; }
+      if (mie.nascoste[d.chiave]) continue;
+      const nome = mie.nomi[d.chiave];
+      fuori.push(nome ? Object.assign({}, d, { titolo: nome.titolo || undefined, descrizioneMia: nome.descrizione || '', rinominata: true }) : d);
+    }
+    for (const u of ufficiali) if (!fuori.includes(u)) fuori.push(u);
+    return fuori;
   }
+  const titoloDi = st => st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave;
+  const descrizioneDi = st => st.progetto ? st.descrizione || '' : st.descrizioneMia || t('demo.builtin.' + st.chiave + '.description');
   function durataDi(testo) {
     try { return Math.round(radice.AstroDemoMotore.analizza(testo).scene.reduce((n, sc) => n + sc.durata, 0) / 1000); }
     catch (_) { return 0; }
@@ -9550,14 +10365,14 @@
       scheda.className = 'storia-scheda';
       const titolo = document.createElement('h4');
       titolo.className = 'storia-titolo';
-      titolo.textContent = st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave;
+      titolo.textContent = titoloDi(st);
       const durata = document.createElement('span');
       durata.className = 'storia-durata';
       durata.textContent = t('storie.durata', { n: durataDi(st.testo) });
       const descr = document.createElement('p');
       descr.className = 'storia-descrizione corta';
       descr.id = 'storia-trama-' + st.chiave;
-      descr.textContent = st.progetto ? st.descrizione || '' : t('demo.builtin.' + st.chiave + '.description');
+      descr.textContent = descrizioneDi(st);
       const ids = String(st.cast || '').split(',').map(x => x.trim()).filter(Boolean);
       // v447: i volti in fila, come nello Studio; i caratteri e i perché
       // stanno dietro a una linguetta, chiusa di serie: prima ogni scheda
@@ -9614,17 +10429,36 @@
         azioni.append(voci);
       }
       let segno = null;
+      const tasto = (testo, aiuto, dati, classe) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'tasto-cielo' + (classe ? ' ' + classe : '');
+        Object.assign(b.dataset, dati);
+        b.textContent = testo;
+        if (aiuto) b.title = aiuto;
+        return b;
+      };
       // v461: una storia dello Studio messa qui si riapre nello Studio, ed è
       // segnata come fatta da chi usa l'app
       if (st.progetto) {
-        const modifica = document.createElement('button');
-        modifica.type = 'button'; modifica.className = 'tasto-cielo';
-        modifica.dataset.storiaStudio = st.progetto;
-        modifica.textContent = t('storie.modificaStudio');
-        azioni.append(modifica);
+        azioni.append(tasto(t('storie.modificaStudio'), '', { storiaStudio: st.progetto }));
         segno = document.createElement('span');
         segno.className = 'storia-durata storia-tua';
-        segno.textContent = t('storie.dalloStudio');
+        segno.textContent = t(st.sostituisce ? 'storie.modificata' : 'storie.dalloStudio');
+        // v484: la tua versione di una storia pronta può tornare l'originale
+        if (st.sostituisce) azioni.append(tasto(t('storie.ripristina'), t('storie.ripristinaAiuto'), { storiaRipristina: st.progetto }));
+      } else if (radice.StudioStorie && typeof radice.StudioStorie.modificaStoria === 'function') {
+        // v484: una storia pronta si modifica nello Studio (la tua versione
+        // ne prende il posto); «Duplica e modifica» resta per farne un'altra
+        azioni.append(tasto(t('storie.modifica'), t('storie.modificaAiuto'), { storiaModifica: st.chiave }));
+      }
+      // v484: rinominare ed eliminare, per tutte le schede
+      azioni.append(
+        tasto(t('storie.rinomina'), t('storie.rinominaAiuto'), { storiaRinomina: st.chiave }),
+        tasto(t('storie.elimina'), t(st.progetto ? 'storie.eliminaAiutoStudio' : 'storie.eliminaAiuto'), { storiaElimina: st.chiave }, 'studio-pericolo'));
+      if (st.rinominata && !segno) {
+        segno = document.createElement('span');
+        segno.className = 'storia-durata storia-tua';
+        segno.textContent = t('storie.rinominataSegno');
       }
       const testa = document.createElement('div');
       testa.className = 'storia-testa';
@@ -9649,11 +10483,13 @@
       linguette.append(
         linguetta('trama', descr.id, t('storie.trama'), t('storie.tramaTutta')),
         linguetta('cast', cast.id, t('storie.personaggi', { n: ids.length }), ids.map(id => storNome(storProfilo(id))).join(', ')));
+      scheda.dataset.storia = st.chiave;
       scheda.append(testa, volti, descr, linguette, cast, azioni);
       elenco.append(scheda);
     }
+    storRiempiGestione();
     const codice = document.getElementById('storie-codice');
-    const esempio = storieDisponibili().find(x => x.chiave === 'storia_giganti');
+    const esempio = storStoriePronte().find(x => x.chiave === 'storia_giganti');
     if (codice && esempio) codice.textContent = esempio.testo;
     const scelta = document.getElementById('storie-personaggio');
     const espr = document.getElementById('storie-espressione');
@@ -9675,6 +10511,194 @@
       espr.value = prima;
     }
   }
+  /* Il modulo per il nome nuovo (v484): dentro alla scheda, sotto ai
+   * tasti, col titolo e la descrizione di adesso già scritti. Per una storia
+   * pronta rinominata c'è anche «Nome originale». */
+  function storModuloNome(scheda, st, cantiere) {
+    if (!scheda) return;
+    const prima = scheda.querySelector('.storia-rinomina');
+    if (prima) { prima.remove(); return; }
+    const modulo = document.createElement('form');
+    modulo.className = 'storia-rinomina';
+    const campo = (etichetta, el) => { const l = document.createElement('label'); l.className = 'storie-campo'; const sp = document.createElement('span'); sp.textContent = etichetta; l.append(sp, el); return l; };
+    const titolo = document.createElement('input');
+    titolo.type = 'text'; titolo.maxLength = 120; titolo.required = true; titolo.name = 'titolo';
+    titolo.value = cantiere ? cantiere.titolo : String(titoloDi(st)).replace(/^Cosmo\w{0,12}\s*·\s*/, '');
+    const descr = document.createElement('textarea');
+    descr.rows = 3; descr.maxLength = 600; descr.name = 'descrizione';
+    descr.value = cantiere ? cantiere.descrizione : descrizioneDi(st);
+    const tasti = document.createElement('div');
+    tasti.className = 'demo-azioni';
+    const salva = document.createElement('button'); salva.type = 'submit'; salva.className = 'tasto-cielo'; salva.textContent = t('storie.salvaNome');
+    const annulla = document.createElement('button'); annulla.type = 'button'; annulla.className = 'tasto-cielo'; annulla.dataset.storiaAnnulla = ''; annulla.textContent = t('storie.annulla');
+    tasti.append(salva, annulla);
+    if (st && !st.progetto && st.rinominata) {
+      const orig = document.createElement('button'); orig.type = 'button'; orig.className = 'tasto-cielo'; orig.dataset.storiaNomeOriginale = st.chiave; orig.textContent = t('storie.nomeOriginale');
+      tasti.append(orig);
+    }
+    modulo.append(campo(t('storie.campoTitolo'), titolo), campo(t('storie.campoDescrizione'), descr), tasti);
+    modulo.addEventListener('submit', e => {
+      e.preventDefault();
+      const nuovo = titolo.value.replace(/\s+/g, ' ').trim();
+      if (!nuovo) { titolo.focus(); return; }
+      const testo = descr.value.replace(/\s+/g, ' ').trim();
+      const ss = radice.StudioStorie;
+      const id = cantiere ? cantiere.id : st.progetto;
+      if (id) { if (ss && typeof ss.rinomina === 'function') ss.rinomina(id, nuovo, testo); }
+      else {
+        const m = storCosmoMie();
+        const origTitolo = String(t('demo.builtin.' + st.chiave + '.title')).replace(/^Cosmo\w{0,12}\s*·\s*/, '');
+        const origDescr = t('demo.builtin.' + st.chiave + '.description');
+        const voce = { titolo: nuovo === origTitolo ? '' : nuovo, descrizione: testo === origDescr ? '' : testo };
+        if (voce.titolo || voce.descrizione) m.nomi[st.chiave] = voce; else delete m.nomi[st.chiave];
+        storCosmoSalva(m);
+      }
+      storRiempiPagina();
+      storEsitoGestione(t('storie.esito.rinominata', { titolo: nuovo }));
+    });
+    scheda.append(modulo);
+    try { titolo.focus({ preventScroll: true }); titolo.select(); } catch (_) { /* vecchi browser */ }
+  }
+  function storEsitoGestione(msg) {
+    const el = document.getElementById('storie-gestione-esito');
+    if (el) el.textContent = msg || '';
+  }
+  // Sotto alle schede: le CosmoStorie nascoste (da rimettere) e le storie
+  // in cantiere nello Studio (da aprire, rinominare, eliminare)
+  function storRiempiGestione() {
+    const box = document.getElementById('storie-gestione');
+    if (!box) return;
+    const esito = document.getElementById('storie-gestione-esito');
+    const restaEsito = esito ? esito.textContent : '';
+    // l'elenco delle nascoste resta aperto se lo era (lo Studio rifà
+    // questa parte quando cambia una storia in cantiere)
+    const vecchia = box.querySelector('.storie-nascoste');
+    const aperta = !!(vecchia && vecchia.open);
+    box.textContent = '';
+    const nota = document.createElement('p');
+    nota.id = 'storie-gestione-esito'; nota.className = 'demo-opzioni-nota'; nota.setAttribute('role', 'status'); nota.setAttribute('aria-live', 'polite');
+    nota.textContent = restaEsito;
+    box.append(nota);
+    const mie = storCosmoMie();
+    const nascoste = storStoriePronte().filter(d => mie.nascoste[d.chiave]);
+    if (nascoste.length) {
+      const sez = document.createElement('details');
+      sez.className = 'demo-avanzate storie-nascoste';
+      sez.open = aperta;
+      const som = document.createElement('summary'); som.textContent = t('storie.nascoste.titolo', { n: nascoste.length });
+      const lista = document.createElement('ul'); lista.className = 'storie-gestione-lista';
+      for (const d of nascoste) {
+        const li = document.createElement('li');
+        const nome = document.createElement('span'); nome.textContent = (mie.nomi[d.chiave] && mie.nomi[d.chiave].titolo) || t('demo.builtin.' + d.chiave + '.title');
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'tasto-cielo'; b.dataset.storiaRimetti = d.chiave; b.textContent = t('storie.nascoste.rimetti');
+        li.append(nome, b); lista.append(li);
+      }
+      const tutte = document.createElement('button'); tutte.type = 'button'; tutte.className = 'tasto-cielo'; tutte.dataset.storiaRimetti = '*'; tutte.textContent = t('storie.nascoste.tutte');
+      const corpo = document.createElement('div'); corpo.className = 'demo-avanzate-corpo'; corpo.append(lista);
+      if (nascoste.length > 1) corpo.append(tutte);
+      sez.append(som, corpo); box.append(sez);
+    }
+    const ss = radice.StudioStorie;
+    let cantiere = [];
+    try { cantiere = ss && typeof ss.inCantiere === 'function' ? ss.inCantiere() : []; } catch (_) { cantiere = []; }
+    if (cantiere.length) {
+      const sez = document.createElement('section');
+      sez.className = 'storie-cantiere';
+      const h = document.createElement('h4'); h.className = 'storie-sottotitolo'; h.textContent = t('storie.cantiere.titolo', { n: cantiere.length });
+      const aiuto = document.createElement('p'); aiuto.className = 'demo-opzioni-nota'; aiuto.textContent = t('storie.cantiere.aiuto');
+      const lista = document.createElement('ul'); lista.className = 'storie-gestione-lista storie-cantiere-lista';
+      for (const c of cantiere) {
+        const li = document.createElement('li');
+        li.className = 'storia-scheda storia-cantiere'; li.dataset.cantiere = c.id;
+        const testa = document.createElement('div'); testa.className = 'storia-testa';
+        const nome = document.createElement('strong'); nome.className = 'storia-titolo'; nome.textContent = c.titolo;
+        const quante = document.createElement('span'); quante.className = 'storia-durata'; quante.textContent = t(c.scene === 1 ? 'storie.cantiere.scena' : 'storie.cantiere.scene', { n: c.scene });
+        testa.append(nome, quante);
+        const volti = document.createElement('div'); volti.className = 'storia-volti'; volti.setAttribute('aria-hidden', 'true');
+        for (const id of c.cast.slice(0, 5)) volti.append(storFigurina(id, 28));
+        const azioni = document.createElement('div'); azioni.className = 'demo-azioni';
+        const tasto = (testo, dati, classe) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'tasto-cielo' + (classe ? ' ' + classe : ''); Object.assign(b.dataset, dati); b.textContent = testo; return b; };
+        azioni.append(tasto(t('storie.cantiere.apri'), { storiaStudio: c.id }), tasto(t('storie.rinomina'), { cantiereRinomina: c.id }),
+          tasto(t('storie.elimina'), { cantiereElimina: c.id }, 'studio-pericolo'));
+        li.append(testa, volti, azioni);
+        lista.append(li);
+      }
+      sez.append(h, aiuto, lista); box.append(sez);
+    }
+  }
+  // I tasti della gestione (v484): `true` se il clic era loro
+  function storClicGestione(e) {
+    const ss = radice.StudioStorie;
+    const conferma = testo => !radice.confirm || radice.confirm(testo);
+    const b = e.target.closest('[data-storia-rinomina], [data-storia-elimina], [data-storia-modifica], [data-storia-ripristina], [data-storia-rimetti], [data-storia-annulla], [data-storia-nome-originale], [data-cantiere-rinomina], [data-cantiere-elimina]');
+    if (!b) return false;
+    const ds = b.dataset;
+    const trova = k => storieDisponibili().find(x => x.chiave === k);
+    if (ds.storiaAnnulla !== undefined) { const m = b.closest('.storia-rinomina'); if (m) m.remove(); return true; }
+    if (ds.storiaNomeOriginale) {
+      const m = storCosmoMie(); delete m.nomi[ds.storiaNomeOriginale]; storCosmoSalva(m);
+      storRiempiPagina(); storEsitoGestione(t('storie.esito.ripristinata', { titolo: t('demo.builtin.' + ds.storiaNomeOriginale + '.title') }));
+      return true;
+    }
+    if (ds.storiaRinomina) { const st = trova(ds.storiaRinomina); if (st) storModuloNome(b.closest('.storia-scheda'), st); return true; }
+    if (ds.cantiereRinomina) {
+      const c = ss && typeof ss.inCantiere === 'function' ? ss.inCantiere().find(x => x.id === ds.cantiereRinomina) : null;
+      if (c) storModuloNome(b.closest('.storia-scheda'), null, c);
+      return true;
+    }
+    if (ds.storiaModifica) {
+      const st = trova(ds.storiaModifica);
+      if (!st || !ss || typeof ss.modificaStoria !== 'function') return true;
+      storChiudiAnteprima();
+      try { ss.modificaStoria(Object.assign({}, st, { titolo: titoloDi(st), descrizione: descrizioneDi(st) })); }
+      catch (err) { storEsitoGestione(err.message); }
+      return true;
+    }
+    if (ds.storiaRipristina) {
+      const st = storieDisponibili().find(x => x.progetto === ds.storiaRipristina);
+      if (!st || !ss || typeof ss.elimina !== 'function') return true;
+      if (!conferma(t('storie.confermaRipristina', { titolo: titoloDi(st) }))) return true;
+      ss.elimina(st.progetto);
+      // l'originale torna anche se era stata nascosta
+      const m = storCosmoMie(); delete m.nascoste[st.sostituisce]; storCosmoSalva(m);
+      storRiempiPagina(); storEsitoGestione(t('storie.esito.ripristinata', { titolo: titoloDi(st) }));
+      return true;
+    }
+    if (ds.storiaElimina) {
+      const st = trova(ds.storiaElimina);
+      if (!st) return true;
+      const titolo = titoloDi(st);
+      if (st.progetto) {
+        if (!conferma(t(st.sostituisce ? 'storie.confermaEliminaModificata' : 'storie.confermaEliminaStudio', { titolo }))) return true;
+        if (ss && typeof ss.elimina === 'function') ss.elimina(st.progetto);
+        // la tua versione se ne va e l'originale resta nascosta: eliminata è eliminata
+        if (st.sostituisce) { const m = storCosmoMie(); m.nascoste[st.sostituisce] = Date.now(); storCosmoSalva(m); }
+        storRiempiPagina(); storEsitoGestione(t(st.sostituisce ? 'storie.esito.nascosta' : 'storie.esito.eliminata', { titolo }));
+      } else {
+        if (!conferma(t('storie.confermaElimina', { titolo }))) return true;
+        const m = storCosmoMie(); m.nascoste[st.chiave] = Date.now(); storCosmoSalva(m);
+        storRiempiPagina(); storEsitoGestione(t('storie.esito.nascosta', { titolo }));
+      }
+      return true;
+    }
+    if (ds.storiaRimetti) {
+      const m = storCosmoMie();
+      const quali = ds.storiaRimetti === '*' ? Object.keys(m.nascoste) : [ds.storiaRimetti];
+      for (const k of quali) delete m.nascoste[k];
+      storCosmoSalva(m);
+      storRiempiPagina();
+      storEsitoGestione(quali.length === 1 ? t('storie.esito.rimessa', { titolo: (m.nomi[quali[0]] && m.nomi[quali[0]].titolo) || t('demo.builtin.' + quali[0] + '.title') }) : t('storie.esito.rimesse', { n: quali.length }));
+      return true;
+    }
+    if (ds.cantiereElimina) {
+      const c = ss && typeof ss.inCantiere === 'function' ? ss.inCantiere().find(x => x.id === ds.cantiereElimina) : null;
+      if (!c || !conferma(t('storie.confermaEliminaStudio', { titolo: c.titolo }))) return true;
+      ss.elimina(c.id);
+      storRiempiPagina(); storEsitoGestione(t('storie.esito.eliminata', { titolo: c.titolo }));
+      return true;
+    }
+    return false;
+  }
   function storCollegaPagina() {
     if (typeof document === 'undefined') return;
     const sezione = document.getElementById('storie-sezione');
@@ -9682,6 +10706,8 @@
     storRiempiPagina();
     if (haI18n() && typeof radice.astroI18n.alCambio === 'function') radice.astroI18n.alCambio(storRiempiPagina);
     sezione.addEventListener('click', e => {
+      // v484: rinominare, modificare, eliminare, rimettere, e le storie in cantiere
+      if (storClicGestione(e)) return;
       // v461: una storia dello Studio messa fra le CosmoStorie torna nello Studio
       const nelloStudio = e.target.closest('[data-storia-studio]');
       if (nelloStudio) {
@@ -9698,7 +10724,7 @@
         const st = storieDisponibili().find(x => x.chiave === suYoutube.dataset.storiaYoutube);
         if (!st || typeof radice.ytRegistraEPubblica !== 'function') return;
         storChiudiAnteprima();
-        try { radice.ytRegistraEPubblica(st.testo, st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave); }
+        try { radice.ytRegistraEPubblica(st.testo, titoloDi(st)); }
         catch (err) { const esito = document.getElementById('demo-esito'); if (esito) esito.textContent = err.message; }
         return;
       }
@@ -9708,7 +10734,7 @@
         const st = storieDisponibili().find(x => x.chiave === voci.dataset.storiaVoci);
         if (!st || typeof radice.vfilmVociStoria !== 'function') return;
         storChiudiAnteprima();
-        radice.vfilmVociStoria(Object.assign({}, st, { titolo: st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave }));
+        radice.vfilmVociStoria(Object.assign({}, st, { titolo: titoloDi(st) }));
         return;
       }
       // La trama intera o i personaggi di una storia: una linguetta per scheda
@@ -9734,8 +10760,8 @@
         // (le battute, le facce, le azioni, la camera, la musica), pronta
         // da modificare e salvare. Prima portava al copione DSL.
         storChiudiAnteprima();
-        const titoloSt = st.titolo || t('demo.builtin.' + st.chiave + '.title') || st.chiave;
-        const descrSt = st.progetto ? st.descrizione : t('demo.builtin.' + st.chiave + '.description');
+        const titoloSt = titoloDi(st);
+        const descrSt = descrizioneDi(st);
         try { radice.StudioStorie.apriDaStoria(Object.assign({}, st, { titolo: titoloSt, descrizione: descrSt })); }
         catch (err) { const esito = document.getElementById('demo-esito'); if (esito) esito.textContent = err.message; }
       } else if (duplica && st) {
@@ -9810,7 +10836,7 @@
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce, ritratto: storRitratto,
     voltoNelCorpo: storVoltoNelCorpo, aperturaOcchio: storAperturaOcchio, STOR_SAGOME, STOR_CORPI,
     STOR_VESTI, vesteProfilo: storVesteProfilo, scalaDi: storScalaDi, disegnaCorpo, disegnaVolto: storDisegnaVolto, disegnaSegno: storDisegnaSegno,
-    riempiPagina: storRiempiPagina, storie: storieDisponibili,
+    riempiPagina: storRiempiPagina, storie: storieDisponibili, riempiGestione: storRiempiGestione,
     STOR_FISICA, STOR_FISICA_FAMIGLIE, STOR_FISICA_EMOZIONI, STOR_TIPI_DOMANDA,
     fisica: storFisica, reazioneFisica: storReazioneFisica, postiLune: storPostiLune, tratto: storTratto,
     disegnaFisica: storDisegnaFisica, lunaReagisce: storLunaReagisce, padreDi: storPadreDi,
