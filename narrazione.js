@@ -584,6 +584,9 @@ function narrSbloccaContesto() {
   const AudioCtx = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
   if (!AudioCtx) return false;
   try {
+    // v494: su iPhone col silenzioso inserito Web Audio taceva (i rumori
+    // delle storie), la voce no: la sessione «playback» li tratta uguali
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (_) { /* niente */ }
     if (!narr.audioContesto) narr.audioContesto = new AudioCtx();
     if (narr.audioContesto.state === 'suspended' && narr.audioContesto.resume)
       Promise.resolve(narr.audioContesto.resume()).catch(() => {});
@@ -601,6 +604,7 @@ function narrPreparaAnalisi() {
   const AudioCtx = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
   if (!AudioCtx) return false;
   try {
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (_) { /* niente */ }
     if (!narr.audioContesto) narr.audioContesto = new AudioCtx();
     if (narr.audioContesto.state === 'suspended' && narr.audioContesto.resume)
       Promise.resolve(narr.audioContesto.resume()).then(() => narrCollegaAnalisi(), () => {});

@@ -1596,6 +1596,28 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### I rumori che non si sentivano (v494)
+
+«Ma perché non sento gli effetti sonori?»: misurati, i rumori stavano una
+ventina di dB sotto le voci vere delle storie. Le voci hanno −19 dB di
+media; il motore della navicella usciva a −31 dB e, mentre un personaggio
+parla (cioè quasi sempre), l'uscita dei rumori scendeva da 0,6 a 0,38: su
+un telefono, sotto la voce e la musica, sparivano. Ora l'uscita è
+`STOR_RUMORI_VOLUME` (0,95) e sotto la voce `STOR_RUMORI_SOTTO_VOCE` (0,7);
+i tredici rumori di bordo sono 2,5 volte più forti (radio e rotazioni 4
+volte), con picchi fino a 1,3 che il compressore in fondo tiene. Sotto la
+voce restano circa 7 dB più bassi di lei: si sentono senza coprirla.
+
+Su iPhone c'era un secondo motivo: l'interruttore del silenzioso zittisce
+Web Audio (i rumori) ma non gli elementi audio (voce e musica). La sessione
+audio si mette su `playback` (`navigator.audioSession`, Safari 16.4+) quando
+nasce il contesto dei rumori (`storSessioneAudio`) e quando lo sblocca la
+narrazione (`narrSbloccaContesto`, `narrPreparaAnalisi`).
+
+Verificato in Chromium: la storia avviata dal tasto della scheda ha il
+contesto in marcia e i rumori partono. Non provato dal contenitore: un
+iPhone vero.
+
 ### I rumori di «Interstellar» sulla voce vera (v493)
 
 Nella v492 i rumori stavano a frazioni della durata scritta delle scene. Ma
