@@ -1596,6 +1596,72 @@ dell'esito. Prove: `node scripts/prova-elevenlabs-studio.js` (nel browser,
 con un ElevenLabs finto), `node scripts/prova-musica-storie.js` (il comando
 `sound` con `src`, l'azione Suono sul repository, le funzioni pure).
 
+### I rumori di bordo di «Interstellar» (v492)
+
+Nelle due parti di «Interstellar» le navicelle scivolavano, si
+agganciavano, si staccavano ed esplodevano in silenzio: suonava solo il
+rumore di ogni effetto visivo, una volta, quando compare (il wormhole,
+l'onda, l'esplosione). Ora tredici rumori nuovi in `STOR_SUONI` e
+`RICETTE`, sintetizzati come gli altri (sotto i 4 s, mai sopra 1 di
+volume): `engine` (i motori), `thrusters` (i getti di manovra), `docking`
+(l'aggancio), `detach` (lo sgancio), `alarm` (l'allarme di bordo),
+`decompression` (l'aria che scappa), `metal_groan` (la lamiera che geme),
+`turbulence` (gli scossoni), `splash` (l'acqua), `ice_crack` (il ghiaccio o
+la visiera che si incrina), `radio` (i messaggi), `spin_up` e `spin_down`
+(la rotazione che sale e scende). I nomi nello Studio stanno in
+`studio.suono.nome.*`.
+
+Le storie li chiedono con `sound { type, shot_from }` prima della battuta:
+**Parte 1** — l'Endurance che arriva a Saturno e quella che entra nel
+wormhole (motori), il viaggio dentro (scossoni e lamiere), l'uscita, il
+Ranger che si stacca e scende su Miller, l'acqua, l'onda con l'allarme, il
+decollo dalla cresta, la radio dei messaggi da casa, il risveglio di Mann
+(l'aria della capsula, il ghiaccio), la visiera di Cooper incrinata, il
+Lander che riparte, l'aggancio forzato (getti, aggancio, allarme,
+l'esplosione che c'era già, l'aria che scappa), l'Endurance che gira
+all'impazzata, il Ranger che prende il giro e l'aggancio che lo rallenta,
+la fionda, lo sgancio di Cooper e TARS, l'orizzonte e la luce di Gargantua.
+**Parte 2** — la caduta (scossoni, lamiere, allarme, l'espulsione), l'arrivo
+nel tesseratto, il decollo dalla Terra, il tesseratto che si richiude, il
+wormhole, la navetta che ripesca Cooper (motori e radio), la ripartenza
+verso Brand. Le scene, i tempi delle voci vere e le battute non cambiano.
+
+Prove: `prova-storie.js` (120: ogni ricetta suona, si spegne in tempo e non
+satura), `prova-demo.js`, `prova-voci-cosmostorie.js` (10),
+`prova-storie-repo.js` (19), `prova-i18n.js`, `controlla-i18n.js --patto`
+(342). Resi in Chromium con un `OfflineAudioContext` (nessuno muto, picco
+più alto 0,63) e ascoltati nel motore sulle scene dell'aggancio forzato,
+del wormhole e della caduta della Parte 2.
+
+### Il suono caricato che non si sentiva (v491)
+
+Chi caricava un suono nello Studio e lo metteva a **metà** o alla **fine**
+di un momento non lo sentiva. Il momento dura quanto la voce più un respiro,
+ma la voce (soprattutto quella di sistema) finisce spesso prima del punto
+scritto: il motore stringeva la scena (`stringi`, v468) e il suono, come un
+gesto, partiva nell'ultimo mezzo secondo; con «Prova la scena», che è sempre
+l'ultima scena, la fine della storia lo spegneva (`storZittisciFile`) dopo
+una cinquantina di millesimi. Misurato in Chromium: suono di 1,5 s a metà di
+una scena di 8 s, partito a 4,05 s e zittito a 4,1 s.
+
+Ora un suono **da file** (`sound { src }`) è per il motore una battuta di
+suono: il comando dice `attende(p)` (vero con un `src` e gli effetti sonori
+accesi) e `storSuonaFile` restituisce la promessa della sua fine, che la
+scena aspetta come una voce (`fineNarrazione`, risolta con `'suono'`, che
+in `seguiVoce` conta come detta). Finita la voce, l'orologio delle riprese
+salta al suono come alla battuta seguente; la scena resta aperta finché il
+suono non finisce (al più `STOR_SUONO_FILE_MAX`, 30 s; un file guasto, il
+browser che lo blocca o lo Stop la liberano subito) e poi chiude come dopo
+una voce. Quando la voce è più lunga, il suono parte al suo punto come prima.
+La pausa della demo ferma anche i suoni da file e la ripresa li fa ripartire
+(`storSuoniFileInPausa`, da `storTic`). I rumori sintetizzati
+(`sound { type }`) restano gesti: le storie pronte non cambiano tempi.
+
+Prove: `prova-demo.js` (il suono che parte dopo la voce e trattiene la
+scena; il rumore sintetizzato che non la trattiene), `prova-musica-storie.js`
+(22: la promessa, `attende`, lo Stop). Le due nuove falliscono sul codice di
+prima.
+
 ### La voce per scena e la scelta che si apre sul posto (v445)
 
 «Scegli la voce» sembrava non fare niente: dalla battuta il pannello si

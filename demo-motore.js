@@ -262,7 +262,8 @@
         if (this.tokenScena !== token) return;
         if (--this.vociAperte > 0) return;
         this.narrazioneFinita = true;
-        const detta = esito.status === 'fulfilled' && ['audio', 'tts', 'testo'].includes(esito.value);
+        // v491: anche un suono da file finito (`sound { src }`) chiude la scena
+        const detta = esito.status === 'fulfilled' && ['audio', 'tts', 'testo', 'suono'].includes(esito.value);
         const stringi = this.contesto && this.contesto.stringiVoce;
         if (stringi && detta && !this.attesaFineNarrazione) this.stringi(stringi);
         // Se la durata minima era già terminata, non c'è più un RAF attivo:
@@ -288,7 +289,7 @@
       const qui = this.trascorso + (this.stato === 'attivo' ? Math.max(0, this.ora() - this.ultimo) : 0);
       const coda = Number(s.coda) || 0;
       const attese = (this.riprese || []).filter(r => !r.esecutore);
-      const voci = attese.filter(r => Motore.VOCI.includes(r.azione.comando));
+      const voci = attese.filter(r => Motore.VOCI.includes(r.azione.comando) || this.attende(r.azione));
       if (voci.length) {
         const prossima = Math.min(...voci.map(r => r.azione.ripresa.da * durata));
         this.salto = Math.max(this.salto, prossima - qui - coda);
@@ -314,6 +315,14 @@
       // i gesti arrivano al loro stato finale nei primi sette decimi della
       // finestra, e nel resto si vedono fermi
       if (attese.length) this.anticipo = { da: qui, r0: qui + this.salto, lungo: Math.max(1, (fine - qui) * 0.7) };
+    }
+    // Un'azione che la scena aspetta come una voce (v491): i comandi che lo
+    // dicono con `attende(parametri)`, come il suono da file. Prima un suono
+    // scritto dopo la fine della voce finiva stretto con i gesti all'ultimo
+    // istante della scena, e la fine della storia lo spegneva.
+    attende(azione) {
+      const c = this.registro[azione.comando];
+      try { return !!(c && typeof c.attende === 'function' && c.attende(azione.parametri)); } catch (_) { return false; }
     }
     // L'orologio delle riprese (v468), come progresso della scena: quello
     // della scena più il salto alla battuta seguente, e dopo l'ultima voce

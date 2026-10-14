@@ -167,7 +167,8 @@ class AudioFinto {
   pause() { this.paused = true; }
   removeAttribute() { this._src = ''; }
   load() {}
-  addEventListener() {}
+  addEventListener(ev, f) { (this._ascolta = this._ascolta || {})[ev] = (this._ascolta[ev] || []).concat(f); }
+  emetti(ev) { for (const f of (this._ascolta && this._ascolta[ev]) || []) f(); }
 }
 
 // --- I dispositivi ------------------------------------------------------------
@@ -380,8 +381,27 @@ prova('il suono da file suona dal blob locale durante la storia, e lo Stop lo fe
   const n = suonati.length;
   S.comandi.sound.crea({ src: 'audio/storie-musica/p9/suono-a1.mp3' });
   assert.equal(suonati.length, n, 'con gli effetti sonori spenti tace');
+  assert.equal(S.comandi.sound.attende({ src: 'audio/storie-musica/p9/suono-a1.mp3' }), false, 'spenti, la scena non lo aspetta');
   d.opzioni = {}; d.inCorso = false;
   S.zittisci();
+});
+
+prova('v491: la scena aspetta il suono da file fino alla sua fine, e lo Stop la libera', async () => {
+  const S = A.Sc, d = A.ctx.AstroDemo;
+  d.inCorso = true; d.opzioni = {};
+  assert.equal(S.comandi.sound.attende({ src: 'audio/storie-musica/p9/suono-a1.mp3' }), true);
+  assert.equal(S.comandi.sound.attende({ type: 'tada' }), false, 'un rumore sintetizzato resta un gesto');
+  const prima = S.comandi.sound.crea({ src: 'audio/storie-musica/p9/suono-a1.mp3' });
+  assert.ok(prima.fineNarrazione && typeof prima.fineNarrazione.then === 'function');
+  let finita = '';
+  prima.fineNarrazione.then(v => { finita = v; });
+  await new Promise(r => setTimeout(r, 5));
+  assert.equal(finita, '', 'mentre suona la scena aspetta');
+  // lo Stop (o la fine della storia) chiude anche la promessa
+  S.zittisci();
+  await new Promise(r => setTimeout(r, 5));
+  assert.equal(finita, 'suono');
+  d.inCorso = false;
 });
 
 prova('l\'azione Suono: copione, riletta, nel commit e via dal repository quando si toglie', async () => {

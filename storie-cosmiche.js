@@ -1767,6 +1767,7 @@
     const dt = stor.ultimoTic ? Math.min(100, Math.max(0, ora - stor.ultimoTic)) : 0;
     stor.ultimoTic = ora;
     if (!demoInPausa()) stor.orologio += dt;
+    if (suono.file.size) storSuoniFileInPausa(demoInPausa());
     stor.ridotto = movimentoRidotto();
     // Una demo finita (anche male) non lascia personaggi sul cielo: è la rete
     // sotto alle chiusure delle azioni, che di regola bastano da sole.
@@ -9292,12 +9293,15 @@
     'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet',
     'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch',
     // v488
-    'tidal_orbit'];
+    'tidal_orbit',
+    // v492: i rumori di bordo di «Interstellar»
+    'engine', 'thrusters', 'docking', 'detach', 'alarm', 'decompression', 'metal_groan', 'turbulence', 'splash', 'ice_crack',
+    'radio', 'spin_up', 'spin_down'];
   // Il rumore che fa ogni gesto, quando la storia non ne sceglie un altro
   const STOR_SUONO_ANIMAZIONE = { jump: 'boing', bounce: 'boing', shake: 'wobble', nod: null, spin: 'spin', pulse: 'pop', dance: 'tada', wobble: 'wobble' };
   const STOR_SUONO_PERCORSO = { arc: 'whoosh', straight: 'whoosh', hop: 'boing', loop: 'whoosh', spiral: 'spin', zigzag: 'whoosh', teleport: 'zap' };
   const STOR_SUONO_VESTE = { red_giant: 'inflate', white_dwarf: 'magic', supernova: 'explosion', black_hole: 'suck', self: 'magic' };
-  const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet(), file: new Set() };
+  const suono = { uscita: null, contesto: null, rumore: null, attivi: new Set(), ultimi: new Map(), prese: new WeakSet(), file: new Map() };
 
   // v467: la musica e i suoni da file entrano nel filmato registrato, nella
   // stessa traccia della voce (`narrazione.audioDelRacconto`)
@@ -9602,6 +9606,87 @@
     tidal_orbit(a, u, t, d, v) {
       soffio(a, u, { t0: t, durata: 3.2, f0: 300, fm: 900, f1: 260, picco: 0.2 * v, attacco: 1.1, ciclo: true });
       tono(a, u, { t0: t, durata: 3.2, f0: 62, f1: 48, picco: 0.18 * v, attacco: 1, vibrato: [0.6, 4] });
+    },
+    // v492, i rumori di bordo di «Interstellar»: chi guardava le due parti
+    // vedeva le navicelle scivolare, agganciarsi, staccarsi ed esplodere in
+    // silenzio. Non sono effetti visivi (nessuno ha un disegno): la storia li
+    // chiede con `sound` nel punto giusto della scena.
+    // Il rombo dei motori di una navicella che parte o scivola
+    engine(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.4, f0: 180, fm: 420, f1: 160, q: 0.9, picco: 0.45 * v, attacco: 0.7, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.4, tipo: 'sawtooth', f0: 46, f1: 52, picco: 0.16 * v, attacco: 0.7, taglio: 220, vibrato: [9, 1.5] });
+      tono(a, u, { t0: t, durata: 3.4, f0: 92, f1: 104, picco: 0.08 * v, attacco: 0.8 });
+    },
+    // I getti di manovra: quattro sbuffi brevi
+    thrusters(a, u, t, d, v) {
+      [0, 0.45, 0.75, 1.3].forEach(q => soffio(a, u, { t0: t + q, durata: 0.28, filtro: 'highpass', f0: 1800, f1: 1200, picco: 0.28 * v, attacco: 0.01, da: dado(d) }));
+    },
+    // L'aggancio: il colpo sulla lamiera che risuona, gli scatti dei ganci, lo sfiato
+    docking(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 0.9, tipo: 'triangle', f0: 180, f1: 120, picco: 0.45 * v, attacco: 0.003, taglio: 1600 });
+      tono(a, u, { t0: t, durata: 1.4, f0: 523, f1: 510, picco: 0.08 * v, attacco: 0.003, vibrato: [6, 4] });
+      soffio(a, u, { t0: t, durata: 0.15, f0: 1500, f1: 300, picco: 0.4 * v, attacco: 0.002 });
+      [0.55, 0.7, 0.85].forEach(q => soffio(a, u, { t0: t + q, durata: 0.05, filtro: 'bandpass', f0: 3200, q: 4, picco: 0.25 * v, attacco: 0.002, da: dado(d) }));
+      soffio(a, u, { t0: t + 1.1, durata: 1.4, filtro: 'highpass', f0: 3500, f1: 5000, picco: 0.14 * v, attacco: 0.05 });
+    },
+    // Lo sgancio: lo scatto, lo sfiato e la spinta che si allontana
+    detach(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 0.06, filtro: 'bandpass', f0: 2800, q: 3, picco: 0.3 * v, attacco: 0.002 });
+      tono(a, u, { t0: t, durata: 0.5, tipo: 'triangle', f0: 150, f1: 90, picco: 0.3 * v, attacco: 0.003, taglio: 1200 });
+      soffio(a, u, { t0: t + 0.1, durata: 0.9, filtro: 'highpass', f0: 4000, f1: 2500, picco: 0.2 * v, attacco: 0.02 });
+      soffio(a, u, { t0: t + 0.5, durata: 1.8, filtro: 'bandpass', f0: 500, fm: 1400, f1: 300, q: 1.2, picco: 0.25 * v, attacco: 0.3 });
+    },
+    // L'allarme di bordo: due note che si alternano
+    alarm(a, u, t, d, v) {
+      for (let i = 0; i < 6; i++) tono(a, u, { t0: t + i * 0.42, durata: 0.32, tipo: 'square', f0: i % 2 ? 660 : 880, picco: 0.12 * v, attacco: 0.01, taglio: 2500 });
+    },
+    // L'aria che scappa: un portello saltato, un casco incrinato, il sonno che si apre
+    decompression(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'highpass', f0: 1200, f1: 4000, picco: 0.4 * v, attacco: 0.02, ciclo: true });
+      soffio(a, u, { t0: t, durata: 1.2, f0: 900, f1: 120, picco: 0.3 * v, attacco: 0.004 });
+      tono(a, u, { t0: t + 0.3, durata: 2.6, tipo: 'sawtooth', f0: 90, f1: 60, picco: 0.07 * v, attacco: 0.4, taglio: 400, vibrato: [3, 6] });
+    },
+    // La lamiera che geme sotto lo sforzo, con qualche schiocco
+    metal_groan(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 2.6, tipo: 'sawtooth', f0: 70, f1: 55, picco: 0.18 * v, attacco: 0.5, taglio: 600, vibrato: [2.3, 9] });
+      tono(a, u, { t0: t + 0.4, durata: 2.0, tipo: 'triangle', f0: 310, f1: 270, picco: 0.05 * v, attacco: 0.4, vibrato: [4, 12] });
+      for (let i = 0; i < 4; i++) soffio(a, u, { t0: t + 0.3 + dado(d) * 2.2, durata: 0.06, filtro: 'bandpass', f0: 1200 + dado(d) * 1500, q: 3, picco: 0.12 * v, da: dado(d) });
+    },
+    // Gli scossoni: un rombo che trema e la carcassa che sbatte
+    turbulence(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.4, f0: 260, fm: 520, f1: 200, picco: 0.38 * v, attacco: 0.4, ciclo: true });
+      tono(a, u, { t0: t, durata: 3.4, f0: 38, f1: 44, picco: 0.25 * v, attacco: 0.4, vibrato: [7, 5] });
+      for (let i = 0; i < 10; i++) soffio(a, u, { t0: t + 0.2 + i * 0.3 + dado(d) * 0.12, durata: 0.07, f0: 900, f1: 200, picco: 0.16 * v, attacco: 0.003, da: dado(d) });
+    },
+    // L'acqua: un tonfo, lo spruzzo e le gocce
+    splash(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 1.4, filtro: 'bandpass', f0: 2500, f1: 500, q: 0.8, picco: 0.42 * v, attacco: 0.01 });
+      tono(a, u, { t0: t, durata: 0.5, f0: 110, f1: 50, picco: 0.25 * v, attacco: 0.005 });
+      for (let i = 0; i < 8; i++) tono(a, u, { t0: t + 0.3 + dado(d) * 1.3, durata: 0.08, f0: 900 + dado(d) * 900, f1: 1600 + dado(d) * 800, picco: 0.05 * v });
+    },
+    // Il ghiaccio (o una visiera) che si incrina, e il tonfo che lo segue
+    ice_crack(a, u, t, d, v) {
+      [0, 0.35, 0.5, 1.1].forEach((q, k) => {
+        soffio(a, u, { t0: t + q, durata: 0.09, filtro: 'highpass', f0: 2500, picco: (0.35 - k * 0.05) * v, attacco: 0.002, da: dado(d) });
+        tono(a, u, { t0: t + q, durata: 0.3, tipo: 'triangle', f0: 1900 - k * 250, f1: 900, picco: 0.07 * v, attacco: 0.002 });
+      });
+      tono(a, u, { t0: t + 1.1, durata: 1.4, f0: 70, f1: 45, picco: 0.2 * v, attacco: 0.02 });
+    },
+    // La radio di bordo: due bip, poi il fruscio col suo crepitio
+    radio(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 0.18, f0: 1320, picco: 0.12 * v, attacco: 0.005 });
+      tono(a, u, { t0: t + 0.22, durata: 0.18, f0: 1760, picco: 0.12 * v, attacco: 0.005 });
+      soffio(a, u, { t0: t + 0.4, durata: 2.2, filtro: 'bandpass', f0: 1800, f1: 1400, q: 1.5, picco: 0.12 * v, attacco: 0.05, ciclo: true });
+      for (let i = 0; i < 10; i++) soffio(a, u, { t0: t + 0.45 + dado(d) * 2, durata: 0.02, filtro: 'highpass', f0: 3000, picco: 0.12 * v, da: dado(d) });
+    },
+    // Girare sempre più forte (il Ranger che prende il giro dell'Endurance), e rallentare
+    spin_up(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 3.2, tipo: 'sawtooth', f0: 60, f1: 240, picco: 0.09 * v, attacco: 0.8, taglio: 900 });
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 300, f1: 1500, q: 2, picco: 0.25 * v, attacco: 0.8, ciclo: true });
+    },
+    spin_down(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 3.2, tipo: 'sawtooth', f0: 240, f1: 55, picco: 0.09 * v, attacco: 0.15, taglio: 900 });
+      soffio(a, u, { t0: t, durata: 3.2, filtro: 'bandpass', f0: 1500, f1: 280, q: 2, picco: 0.25 * v, attacco: 0.15, ciclo: true });
     }
   };
   function suoniAccesi() {
@@ -9643,20 +9728,55 @@
    * la musica di sottofondo: un file non ancora pubblicato suona lo stesso
    * su questo dispositivo, dal blob che lo Studio ha registrato
    * (`storMusicaLocale`, la stessa tabella dei percorsi). Tace con gli
-   * effetti sonori spenti, come i rumori sintetizzati. */
+   * effetti sonori spenti, come i rumori sintetizzati.
+   *
+   * v491: restituisce la promessa della sua fine (o null se tace), che il
+   * motore aspetta come una voce (`attende` del comando `sound`). Chi
+   * caricava un suono a metà o alla fine di un momento non lo sentiva: la
+   * voce finiva prima del punto scritto, il motore stringeva la scena e il
+   * suono partiva all'ultimo istante; con «Prova la scena» (sempre l'ultima
+   * scena) la fine della storia lo spegneva dopo 50 ms. Ora la scena salta
+   * al suono appena la voce tace e resta aperta finché il suono non finisce
+   * (al più `STOR_SUONO_FILE_MAX`). */
+  const STOR_SUONO_FILE_MAX = 30000;
   function storSuonaFile(src, volume) {
-    if (typeof Audio === 'undefined' || !suoniAccesi()) return false;
+    if (typeof Audio === 'undefined' || !suoniAccesi()) return null;
     const a = new Audio(musica.locali.get(senzaVersione(src)) || src);
     a.volume = Math.max(0, Math.min(1, (volume === undefined ? 1 : Number(volume) || 0) * 0.8));
-    suono.file.add(a);
+    let chiudi = null, timer = 0;
+    const fine = new Promise(r => { chiudi = r; });
+    // finito, guasto, bloccato dal browser o zittito: la scena non aspetta oltre
+    const via = () => {
+      if (!chiudi) return;
+      if (timer) clearTimeout(timer);
+      suono.file.delete(a);
+      const c = chiudi; chiudi = null; c('suono');
+    };
+    suono.file.set(a, via);
     audioNelFilmato(a);
-    a.addEventListener('ended', () => suono.file.delete(a));
-    a.play().catch(() => suono.file.delete(a));
-    return true;
+    a.addEventListener('ended', via);
+    a.addEventListener('error', via);
+    if (typeof setTimeout === 'function') timer = setTimeout(via, STOR_SUONO_FILE_MAX);
+    try { Promise.resolve(a.play()).catch(via); } catch (_) { via(); }
+    return fine;
   }
   function storZittisciFile() {
-    for (const a of suono.file) { try { a.pause(); a.removeAttribute('src'); a.load(); } catch (_) { /* già fermo */ } }
+    for (const [a, via] of [...suono.file]) {
+      try { a.pause(); a.removeAttribute('src'); a.load(); } catch (_) { /* già fermo */ }
+      via();
+    }
     suono.file.clear();
+  }
+  // v491: la pausa della demo ferma anche i suoni da file, e la ripresa li
+  // fa ripartire da dove erano (la scena li aspetta: senza, il suono finiva
+  // durante la pausa e la scena chiudeva appena ripresa)
+  function storSuoniFileInPausa(pausa) {
+    for (const a of suono.file.keys()) {
+      try {
+        if (pausa && !a.paused) { a.pause(); a.inPausa = true; }
+        else if (!pausa && a.inPausa) { a.inPausa = false; Promise.resolve(a.play()).catch(() => null); }
+      } catch (_) { /* niente */ }
+    }
   }
   // Uno Stop o la fine della storia zittiscono anche i rumori in corso
   function storZittisci() {
@@ -10083,7 +10203,14 @@
         }
         numeroIn(p.volume, 'volume', 0, 2);
       },
-      crea(p) { if (p.src !== undefined) storSuonaFile(p.src, p.volume); else storSuona(p.type, { volume: p.volume }); return {}; }
+      // v491: un suono da file è una «battuta» di suono: la scena lo
+      // aspetta e, finita la voce, ci salta (`attende` in demo-motore.js)
+      attende(p) { return p.src !== undefined && suoniAccesi(); },
+      crea(p) {
+        if (p.src === undefined) { storSuona(p.type, { volume: p.volume }); return {}; }
+        const fine = storSuonaFile(p.src, p.volume);
+        return fine ? { fineNarrazione: fine } : {};
+      }
     }
   });
   function sceltaSuono(p) { return scelta(p.sound, 'sound', ['auto', 'off'].concat(STOR_SUONI)); }
