@@ -3,6 +3,81 @@
   "v": 1,
   "storie": [
     {
+      "chiave": "studio_che_cos_e_un_buco_nero",
+      "titolo": "Che cos’è un buco nero?",
+      "lingua": "it",
+      "battute": [
+        {
+          "n": 1,
+          "chi": "Sun",
+          "testo": "Che cos’è un buco nero? Andiamo a chiederlo al più grande della Galassia!",
+          "umore": "thinking",
+          "scena": 1,
+          "durata": 9000
+        },
+        {
+          "n": 2,
+          "chi": "sgr_a",
+          "testo": "Ciao! Sono Sagittario A*, il buco nero della Via Lattea. Peso come quattro milioni di Soli, e da me nemmeno la luce esce.",
+          "umore": "happy",
+          "scena": 2,
+          "durata": 14000
+        },
+        {
+          "n": 3,
+          "chi": "Sun",
+          "testo": "Voglio provarci anch’io! Guardate: sono un buco nero!",
+          "umore": "excited",
+          "scena": 3,
+          "durata": 7000
+        },
+        {
+          "n": 4,
+          "chi": "sgr_a",
+          "testo": "Ah ah! Tu sei troppo leggero per diventarlo davvero. E comunque la Terra continuerebbe a girarti attorno, tranquilla.",
+          "umore": "laughing",
+          "scena": 4,
+          "durata": 13000
+        },
+        {
+          "n": 5,
+          "chi": "white_hole",
+          "testo": "E io sono il contrario: un buco bianco! Da me le cose possono solo uscire.",
+          "umore": "excited",
+          "scena": 5,
+          "durata": 9000
+        },
+        {
+          "n": 6,
+          "chi": "sgr_a",
+          "testo": "Un buco bianco? Ma tu esisti davvero?",
+          "umore": "surprised",
+          "scena": 6,
+          "durata": 6000
+        },
+        {
+          "n": 7,
+          "chi": "white_hole",
+          "testo": "Le equazioni di Einstein dicono che potrei. Ma nessuno mi ha mai visto: il buco bianco, per ora, è soltanto un’idea!",
+          "umore": "thinking",
+          "scena": 7,
+          "durata": 13000
+        }
+      ]
+    },
+    {
+      "chiave": "studio_copia_di_copia_di_interstellar",
+      "titolo": "Copia di Copia di Interstellar: oltre Gargantua",
+      "lingua": "it",
+      "battute": []
+    },
+    {
+      "chiave": "studio_copia_di_interstellar_oltre_ga",
+      "titolo": "Copia di Interstellar: oltre Gargantua",
+      "lingua": "it",
+      "battute": []
+    },
+    {
       "chiave": "studio_cosa_e_la_gravita",
       "titolo": "Cosa è la gravità?",
       "lingua": "it",
