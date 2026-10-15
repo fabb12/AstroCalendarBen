@@ -40714,7 +40714,18 @@ function solImpostaZoom(z, opzioni = {}) {
   const valore = Math.max(pavimento, Math.min(tetto, z));
   sol.zoomVoluto = valore;
   if (!opzioni.morbido) sol.zoom = valore;
-  solAggiornaTasti();
+  // v507: la regia delle storie e delle demo chiama questa funzione a ogni
+  // fotogramma, e i tasti non dipendono dallo zoom: ripassarli tutti
+  // (`querySelectorAll` su tutta la pagina, sei volte) era un quinto del
+  // tempo di un fotogramma su un telefono. Si ripassano solo se è cambiato
+  // qualcosa di quello che segnano
+  if (solAggiornaTasti.firma !== solFirmaTasti()) solAggiornaTasti();
+}
+
+// Quello che i tasti della 3D segnano, in una riga: se non cambia, non
+// c'è niente da ripassare
+function solFirmaTasti() {
+  return [solQuadroAttuale(), sol.distanzeVere, sol.misureVere, sol.mondiAccesi, sol.sondeAccese, sol.vicino].join('|');
 }
 
 // Quale dei tre tondi è acceso. Il banco Terra e Luna si riconosce da sé
@@ -40750,6 +40761,7 @@ function solAggiornaTasti() {
     b.disabled = sol.vicino;
     b.classList.toggle('spento-fuori-scena', sol.vicino);
   });
+  solAggiornaTasti.firma = solFirmaTasti();
 }
 
 // --- Il pannellino delle due manopole di secondo piano ---------------------

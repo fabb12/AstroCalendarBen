@@ -4240,3 +4240,62 @@ quelli di prima. Le «Interstellar» originali restano a inchiostro. Prove:
 `prova-storie.js` (125; la prova delle «dentro la scienza» controlla anche
 lo stile), le due storie guardate intere in Chromium (nessun errore).
 
+### Lo stile di Kurzgesagt leggero, anche sui telefoni (v507)
+
+«Sistema meglio la nuova grafica delle CosmoStorie: è troppo pesante da
+renderizzare sui dispositivi mobili. Rendila più leggera mantenendo se
+possibile le sue caratteristiche.»
+
+Misurato in Chromium con la finestra di un telefono (390 × 780, densità 2)
+e la CPU rallentata quattro volte: le scene di «Apollo 13 · Dentro la
+scienza» andavano a **4,9 fotogrammi al secondo**. Le cause:
+
+- **le ombre sfocate.** Ogni pezzo dei personaggi (`parteKurz`) aveva tre
+  ombre della tela (`shadowBlur`): quella portata e le due interne, fatte
+  con l'ombra di un rettangolo grande quanto la tela col buco della forma;
+  in più gli oggetti delle spiegazioni (`kzSollevato`) e gli astri a disco.
+  Da 28 a 98 disegni sfocati per fotogramma: sulla tela accelerata dei
+  telefoni ognuno è un passaggio a parte (una tela di appoggio e la
+  sfocatura), ed è il conto che li metteva in ginocchio;
+- **i tasti della 3D ripassati a ogni fotogramma.** La regia chiama
+  `solImpostaZoom` a ogni fotogramma e quella chiamava `solAggiornaTasti`,
+  sei `querySelectorAll` su tutta la pagina: un quinto del tempo del
+  fotogramma, in tutte le storie nella vista 3D.
+
+Ora:
+
+- le ombre sono **a strati** (storie-cosmiche.js §6, `ombraInterna`,
+  `ombraPortata`): la forma stessa, spostata, ripetuta due o tre volte con
+  un velo leggero (`veloStrato`: insieme fanno il buio di prima). Dentro la
+  forma ogni strato è la falce che la forma spostata non copre, più larga a
+  ogni strato, come la sfocatura attorno all'ombra; fuori, l'ombra portata
+  è la forma spostata due volte. Gli spostamenti restano in pixel dello
+  schermo, come `shadowOffset` (`spostamentoDisegno`, anche con la tela
+  ruotata), così il volume è quello di prima su ogni schermo. Le matrici si
+  fanno coi numeri (`matriceTela`, `inversa`, `rettangoloTela`), senza
+  oggetti nuovi a ogni pezzo;
+- `kzSollevato` tiene l'ombra della tela ma **netta** (`shadowBlur` a zero
+  costa quanto ridisegnare l'oggetto), un po' più chiara;
+- `solImpostaZoom` ripassa i tasti solo se è cambiato quello che segnano
+  (`solFirmaTasti`, in app.js; `solAggiornaTasti` ricorda l'ultima firma);
+- **la rete di sicurezza**: nello stile di Kurzgesagt `storTic` misura il
+  passo dei fotogrammi (media mobile); se per più di due secondi resta sotto
+  i 22 al secondo, `stor.leggero` si accende e resta acceso per la sessione
+  (tornare indietro farebbe dondolare la scena fra i due disegni): un solo
+  strato d'ombra, niente ombre portate degli oggetti, sei luci sfocate del
+  fondo invece di quattordici, gli sbuffi senza gradiente. Le storie a
+  inchiostro non misurano niente. `StorieCosmiche.leggero(v)` lo imposta per
+  le prove (e toglie la scelta automatica), `leggero('auto')` la rimette.
+
+Dopo: 6,7 fotogrammi al secondo col disegno pieno e 7,0 col leggero nella
+stessa prova (in Chromium senza GPU, dove la sfocatura costa poco: sui
+telefoni il guadagno delle ombre è molto più grande); i disegni sfocati per
+fotogramma da 28–98 a 0–1 (resta l'alone del titolo delle spiegazioni). Il
+disegno è lo stesso: confrontate le schermate di prima e di dopo delle
+scene di «Apollo 13» e delle due «Interstellar · Dentro la scienza».
+
+Prove: `prova-storie.js` (126, 1 nuova: nessuna sfocatura nei personaggi,
+negli astri a disco e in Loro, il volume a strati c'è, il leggero ne fa
+meno, la scelta automatica a 11 fotogrammi al secondo sì e a 60 no, le
+storie a inchiostro mai), `prova-demo.js`.
+

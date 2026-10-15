@@ -1894,6 +1894,57 @@ prova('lo stile di Kurzgesagt (v504): story_style lo accende, niente pennino d\'
   globalThis.AstroDemo.inCorso = true;
   S.sgombra();
 });
+prova('lo stile di Kurzgesagt leggero (v507): ombre a strati senza sfocature, e più leggero ancora se i fotogrammi sono lenti', () => {
+  // Fino alla v506 ogni pezzo dei personaggi aveva tre ombre sfocate
+  // (`shadowBlur`): su un telefono le scene di «Apollo 13» andavano a 5
+  // fotogrammi al secondo. Ora nessuna sfocatura, e il volume a strati resta
+  const disegna = (leggero) => {
+    S.sgombra();
+    S.leggero(leggero);
+    motore.avvia(demo(sc('planetarium_view', 'story_style { look: kurzgesagt }', "character_show { target: 'lovell', expression: 'happy' }",
+      "character_show { target: 'Mars' }", "character_show { target: 'loro' }")), { ripristina() {} });
+    passo(10);
+    const sfocature = [], riempimenti = [], ombreNette = [];
+    const { ctx } = telaFinta();
+    const spia = new Proxy(ctx, {
+      set(o, k, v) { if (k === 'shadowBlur' && v > 0) sfocature.push(v); o[k] = v; return true; },
+      get(o, k) {
+        if (k === 'fill') return (...a) => { riempimenti.push(a[0] || ''); if (o.shadowOffsetY && !o.shadowBlur) ombreNette.push(1); };
+        const v = o[k]; return typeof v === 'function' ? v.bind(o) : v;
+      }
+    });
+    for (let k = 0; k < 3; k++) { avanza(16); S.disegnaPersonaggi(spia, 'cielo', [corpo('lovell', 250, 300, 3), corpo('Mars', 450, 300, 60), corpo('loro', 620, 300, 3)], 800, 600); }
+    motore.ferma && motore.ferma();
+    return { sfocature, riempimenti, strati: riempimenti.filter(x => x === 'evenodd').length };
+  };
+  const piena = disegna(false);
+  assert.equal(piena.sfocature.length, 0, 'nessuna sfocatura: ' + piena.sfocature.slice(0, 5).join(', '));
+  assert.ok(piena.strati > 30, 'il volume a strati (le falci d\'ombra e di luce): ' + piena.strati);
+  const leggera = disegna(true);
+  assert.equal(leggera.sfocature.length, 0, 'leggero: nessuna sfocatura');
+  assert.ok(leggera.strati > 10 && leggera.strati < piena.strati * 0.7, 'leggero: meno strati (' + leggera.strati + ' contro ' + piena.strati + ')');
+  assert.ok(leggera.riempimenti.length < piena.riempimenti.length, 'leggero: meno riempimenti');
+  // la scelta automatica: fotogrammi lenti per più di due secondi
+  S.sgombra();
+  S.leggero('auto');
+  motore.avvia(demo(sc('planetarium_view', 'story_style { look: kurzgesagt }', "character_show { target: 'lovell' }")), { ripristina() {} });
+  passo(10);
+  for (let k = 0; k < 20; k++) { avanza(16); S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
+  assert.equal(S.leggero(), false, 'a 60 fotogrammi al secondo resta pieno');
+  for (let k = 0; k < 40; k++) { avanza(90); S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
+  assert.equal(S.leggero(), true, 'a 11 fotogrammi al secondo si alleggerisce');
+  motore.ferma && motore.ferma();
+  // le storie a inchiostro non misurano niente
+  S.sgombra();
+  S.leggero('auto');
+  motore.avvia(demo(sc('planetarium_view', "character_show { target: 'lovell' }")), { ripristina() {} });
+  passo(10);
+  for (let k = 0; k < 40; k++) { avanza(90); S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
+  assert.equal(S.leggero(), false, 'l\'inchiostro non si alleggerisce');
+  motore.ferma && motore.ferma();
+  S.leggero(false);
+  S.sgombra();
+});
 prova('le scene del film di «Apollo 13» (v504): si disegnano a tutto schermo, a ogni istante, anche ferme', () => {
   for (const tipo of S.STOR_SCENE_APOLLO) {
     S.sgombra();
