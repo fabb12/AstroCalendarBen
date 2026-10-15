@@ -1172,7 +1172,6 @@ window.ASTRO_DIZIONARI['en'] = {
     'sky.eventi.cieloDi': 'Sky on {data}: {evento}{dove}.',
 
     // --- The guide arrow (searched constellations, places and objects) -
-    'sky.guida.ruota': 'turn {gradi}°',
     'sky.guida.sotto': 'below the horizon',
     'sky.guida.girati': '{nome} is towards {direzione}, {altezza}° up: turn that way and follow the arrow. If you would rather move the map with your finger, switch off “Follow the phone”.',
 
