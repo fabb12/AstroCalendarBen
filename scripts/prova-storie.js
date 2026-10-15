@@ -1809,7 +1809,8 @@ prova('science_card (v497): la scheda «La scienza in breve», validata, letta c
   passo(10);
   assert.equal(motore.indice, 0, 'in pausa resta');
   globalThis.AstroDemo.stato = 'attivo';
-  for (let i = 0; i < 40 && motore.indice === 0; i++) { avanza(400); await aspetta(130); passo(10); }
+  // fino al tetto del tempo per leggere (`STOR_SCIENZA.max`), con margine
+  for (let i = 0; i < S.STOR_SCIENZA.max / 400 + 20 && motore.indice === 0; i++) { avanza(400); await aspetta(130); passo(10); }
   assert.equal(motore.indice, 1, 'letta, la storia va avanti');
   assert.ok(S.scienza && S.scienza.via !== null, 'e la scheda sfuma');
   for (let i = 0; i < 6; i++) { S.stato.orologio += 200; S.sovrimpressioni(telaFinta().ctx, 800, 600, 0); }

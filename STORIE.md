@@ -3884,36 +3884,36 @@ Terra polverosa, il tesseratto, il sole.
 **Le schede scelte** (una per scena, nella scena in cui la battuta parla di
 quel fenomeno; nessuna battuta, voce o tempo scritto è cambiato):
 
-| Parte | Scena | Domanda |
+| Parte | Scena | Domanda (v498) |
 |---|---|---|
-| 1 | 1 | Come si viaggia per due anni fino a Saturno? (il sonno criogenico, e che è ancora fantascienza) |
-| 1 | 3 | Perché il wormhole è una sfera e non un buco piatto? |
-| 1 | 7 | Che cosa sente Brand dentro il wormhole? (la risposta nella Parte 2) |
-| 1 | 10 | Perché Gargantua non risucchia subito l'Endurance? |
-| 1 | 11 | Perché Gargantua ha quell'aspetto? |
-| 1 | 12 | Perché un'ora su Miller vale sette anni sulla Terra? |
-| 1 | 14 | Che cosa vuol dire che Gargantua gira «quasi al massimo»? |
-| 1 | 16 | Perché Cooper e Brand non si accorgono che il loro tempo rallenta? |
-| 1 | 17 | Come ricevono luce e calore i pianeti attorno a Gargantua? |
-| 1 | 20 | Perché la dottoressa Miller è morta, se il suo segnale diceva «tutto bene»? |
-| 1 | 26 | Perché Romilly è invecchiato di 23 anni e Cooper no? |
-| 1 | 28 | Perché Cooper riceve tanti anni di videomessaggi tutti insieme? |
-| 1 | 31 | Possono esistere nuvole di ghiaccio ferme nel cielo? (quelle dure come rocce sono fantascienza) |
-| 1 | 32 | Perché sul pianeta di Mann bisogna tenere il casco? (l'ammoniaca) |
-| 1 | 36 | Perché aprire il portello fa esplodere tutto? (e perché l'Endurance gira) |
-| 1 | 38 | Come fa Cooper ad agganciare una nave che gira a 68 giri al minuto? |
-| 1 | 40 | Come si usa Gargantua per arrivare al pianeta di Edmunds? |
-| 1 | 46 | Perché Cooper non viene stirato entrando in Gargantua? |
-| 2 | 2 | Perché Cooper vede tante stanze di Murph, tutte uguali? |
-| 2 | 15 | Perché i libri cadono dalla libreria di Murph? |
-| 2 | 16 | Come può Cooper essere il fantasma di Murph nel passato? |
-| 2 | 18 | Come fa la polvere a dare le coordinate della NASA? |
-| 2 | 19 | Quali dati raccoglie TARS dentro il buco nero, e perché contano? |
-| 2 | 22 | Perché Cooper manda il messaggio proprio con l'orologio? |
-| 2 | 25 | Perché la Terra sta diventando inabitabile? |
-| 2 | 28 | Perché il professor Brand doveva risolvere l'equazione della gravità? |
-| 2 | 29 | Se Cooper manda i messaggi dal futuro, chi ha cominciato tutto? |
-| 2 | 34 | Come fa la Stazione Cooper ad avere la gravità? (come l'Endurance) |
+| 1 | 1 | Due anni di viaggio: come si fa a non annoiarsi? |
+| 1 | 3 | Un buco nello spazio… a forma di palla?! |
+| 1 | 7 | Chi ha appena dato la mano a Brand? |
+| 1 | 10 | Ma Gargantua non è un enorme aspirapolvere? |
+| 1 | 11 | Perché Gargantua sembra una ciambella con l'occhio nero? |
+| 1 | 12 | Un'ora su Miller, sette anni sulla Terra: è uno scherzo? |
+| 1 | 14 | Gargantua gira «quasi al massimo»: c'è un limite di velocità? |
+| 1 | 16 | Cooper e Brand si accorgono che il loro tempo rallenta? |
+| 1 | 17 | Niente Sole: chi accende la luce attorno a Gargantua? |
+| 1 | 20 | Il segnale di Miller diceva «tutto bene»… e allora? |
+| 1 | 26 | Perché Romilly ha 23 anni in più e Cooper no? |
+| 1 | 28 | Perché Cooper riceve 23 anni di messaggi tutti insieme? |
+| 1 | 31 | Nuvole di ghiaccio sospese in cielo: si può? |
+| 1 | 32 | Sul pianeta di Mann: perché non togliersi il casco? |
+| 1 | 36 | Perché aprire il portello fa saltare tutto? |
+| 1 | 38 | Come si aggancia una nave che gira a 68 giri al minuto? |
+| 1 | 40 | Come si usa un buco nero per prendere la rincorsa? |
+| 1 | 46 | Cadere in un buco nero: si diventa spaghetti? |
+| 2 | 2 | Tante stanze di Murph tutte uguali: è un labirinto di specchi? |
+| 2 | 15 | Chi butta giù i libri dalla libreria di Murph? |
+| 2 | 16 | Come fa Cooper a fare il fantasma nel passato? |
+| 2 | 18 | Come fa la polvere a dare un indirizzo segreto? |
+| 2 | 19 | Cosa misura TARS dentro il buco nero, e a che serve? |
+| 2 | 22 | Perché proprio l'orologio, e non un messaggino? |
+| 2 | 25 | Che cosa non va sulla Terra di Murph? |
+| 2 | 28 | Perché serviva proprio l'equazione del professor Brand? |
+| 2 | 29 | Se i messaggi arrivano dal futuro, chi ha cominciato? |
+| 2 | 34 | Come fa la Stazione Cooper ad avere la gravità? |
 
 Delle trenta domande dell'elenco restano fuori quelle che una scena già
 spiega da sola o che le storie non mostrano: le onde di Miller (le battute 18
@@ -3932,4 +3932,26 @@ nelle due lingue, una per scena, domanda ≤ 90 caratteri e tre punti ≤ 120),
 --controlla`; `prova-voci-cosmostorie.js` cade in 2 prove uguali sul codice
 di prima. Guardate in Chromium tutte le 28 scene con la scheda
 (`giro-storia.js`), in italiano e in inglese, anche a 390 px.
+
+### Le schede più leggere, con un po' d'ironia (v498)
+
+«Devono essere divertenti e anche con un po' di ironia, i dialoghi non troppo
+pesanti e pedanti.» Le 28 schede della v497 erano giuste ma sembravano il
+libro di scuola. Riscritte nei due dizionari (stesse chiavi, stesse scene,
+stessi disegnini) con la domanda come la direbbe un bambino curioso («Ma
+Gargantua non è un enorme aspirapolvere?», «Cadere in un buco nero: si
+diventa spaghetti?») e paragoni di casa: i bastoncini di pesce in freezer per
+il sonno criogenico, la ciambella con l'occhio nero per Gargantua, l'autovelox
+cosmico per la rotazione, i sette compleanni per l'ora su Miller, il mais e i
+pop-corn per la piaga, la centrifuga con le case per la Stazione Cooper. La
+scienza resta la stessa e resta onesta (il sonno criogenico e le nuvole di
+roccia sono ancora fantascienza: lo dicono, con una battuta). Ogni scheda ha
+al più una battuta, di solito nell'ultimo punto, così la spiegazione arriva
+prima della risata. Le battute dei personaggi non sono cambiate: in «Interstellar
+1» hanno le voci vere registrate.
+
+Prove: `prova-storie.js` (122: le domande stanno sotto i 90 caratteri e i
+punti sotto i 120 anche nella versione nuova), `prova-i18n.js`,
+`controlla-i18n.js --patto` (342). Guardate in Chromium, al computer e a
+390 px, le schede coi punti più lunghi.
 
