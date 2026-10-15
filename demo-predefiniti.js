@@ -2309,6 +2309,7 @@
     action: character_show { target: 'romilly', expression: 'curious', inside: 'endurance' };
     action: sound { type: 'engine', shot_from: 0.06 };
     action: sound { type: 'engine', volume: 0.7, shot_from: 0.3 };
+    action: science_card { card: 'storie.scienza.interstellar.sonno', icon: sleep, at: right, shot_from: 0.36 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.1', shot_from: 0.38 };
   }
   scene solar_system_3d {
@@ -2332,6 +2333,7 @@
     action: character_show { target: 'cooper', expression: 'curious', inside: 'endurance' };
     action: character_show { target: 'brand', expression: 'determined', inside: 'endurance' };
     action: character_show { target: 'romilly', expression: 'impressed', inside: 'endurance' };
+    action: science_card { card: 'storie.scienza.interstellar.sfera', icon: sphere, at: right };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.3' };
   }
   scene solar_system_3d {
@@ -2388,6 +2390,7 @@
     action: sound { type: 'turbulence', shot_from: 0.07 };
     action: sound { type: 'metal_groan', shot_from: 0.3 };
     action: sound { type: 'spacetime', volume: 0.8, shot_from: 0.7 };
+    action: science_card { card: 'storie.scienza.interstellar.mano', icon: ripple, at: right };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.7', shot_from: 0.12 };
   }
   scene solar_system_3d {
@@ -2424,6 +2427,7 @@
     action: character_show { target: 'cooper', expression: 'worried', inside: 'endurance' };
     action: character_show { target: 'brand', expression: 'curious', inside: 'endurance' };
     action: effect { type: spacetime, target: 'gargantua', size: 1.4, color: '#fde68a', duration: 14, shot_from: 0.1 };
+    action: science_card { card: 'storie.scienza.interstellar.risucchio', icon: orbit, at: left };
     action: character_speak { target: 'gargantua', id: 'demo.narr.storia_interstellar.10' };
   }
   scene solar_system_3d {
@@ -2435,6 +2439,7 @@
     action: character_show { target: 'gargantua', expression: 'proud' };
     action: character_show { target: 'romilly', expression: 'wonder', at: left, look: 'gargantua' };
     action: effect { type: glow, target: 'gargantua', color: '#fde68a', duration: 8, shot_from: 0.3 };
+    action: science_card { card: 'storie.scienza.interstellar.aspetto', icon: black_hole, at: left };
     action: character_speak { target: 'romilly', id: 'demo.narr.storia_interstellar.11' };
   }
   scene solar_system_3d {
@@ -2446,6 +2451,7 @@
     action: character_show { target: 'brand', expression: 'determined', at: left, look: 'viewer' };
     action: character_show { target: 'romilly', expression: 'worried', at: right, scale: 0.85, look: 'brand' };
     action: effect { type: time_warp, at: center, size: 1.1, duration: 9, shot_from: 0.4 };
+    action: science_card { card: 'storie.scienza.interstellar.tempo', icon: clock, at: right };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.12' };
   }
   scene solar_system_3d {
@@ -2465,6 +2471,7 @@
     action: character_show { target: 'doyle', expression: 'curious', at: left, look: 'brand' };
     action: character_show { target: 'brand', expression: 'happy', at: right, scale: 0.85, look: 'viewer' };
     action: effect { type: spacetime, at: right, size: 1.5, color: '#fde68a', duration: 14, shot_from: 0.1 };
+    action: science_card { card: 'storie.scienza.interstellar.rotazione', icon: spin, at: left };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.14' };
   }
   scene solar_system_3d {
@@ -2490,6 +2497,7 @@
     action: sound { type: 'detach' };
     action: sound { type: 'engine', shot_from: 0.08 };
     action: sound { type: 'turbulence', shot_from: 0.54 };
+    action: science_card { card: 'storie.scienza.interstellar.sentire', icon: clock, at: left };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.16', shot_from: 0.1 };
   }
   scene solar_system_3d {
@@ -2499,6 +2507,7 @@
     action: effect { type: gargantua_view, at: left, size: 1.3, duration: 60 };
     action: character_show { target: 'miller_planet', expression: 'mysterious' };
     action: effect { type: glow, target: 'miller_planet', color: '#93c5fd', duration: 6, shot_from: 0.1 };
+    action: science_card { card: 'storie.scienza.interstellar.luce', icon: sun, at: left };
     action: character_speak { target: 'miller_planet', id: 'demo.narr.storia_interstellar.17' };
   }
   scene solar_system_3d {
@@ -2533,6 +2542,7 @@
     action: character_show { target: 'doyle', expression: 'worried', at: center, scale: 0.8, look: 'brand' };
     action: sound { type: 'splash', volume: 0.7, shot_from: 0.04 };
     action: sound { type: 'splash', volume: 0.5, shot_from: 0.21 };
+    action: science_card { card: 'storie.scienza.interstellar.miller', icon: messages, at: right };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.20' };
   }
   scene solar_system_3d {
@@ -2606,6 +2616,7 @@
     action: character_show { target: 'brand', expression: 'sad', at: left, look: 'viewer' };
     action: character_show { target: 'cooper', expression: 'sad', at: right, look: 'brand' };
     action: effect { type: spacetime, at: center, size: 1.6, color: '#fde68a', duration: 14, shot_from: 0.1 };
+    action: science_card { card: 'storie.scienza.interstellar.romilly', icon: orbit, at: right };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar.26' };
   }
   scene solar_system_3d {
@@ -2627,6 +2638,7 @@
     action: story_camera { mode: speaker };
     action: character_show { target: 'murph', expression: 'wistful', at: right };
     action: character_show { target: 'cooper', expression: 'tender', at: left, look: 'murph' };
+    action: science_card { card: 'storie.scienza.interstellar.messaggi', icon: messages, at: right };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.28' };
   }
   scene solar_system_3d {
@@ -2653,6 +2665,7 @@
     action: effect { type: gargantua_view, at: left, size: 1.2, duration: 60 };
     action: character_show { target: 'mann_planet', expression: 'mysterious' };
     action: effect { type: smoke, target: 'mann_planet', color: '#e0f2fe', shot_from: 0.3 };
+    action: science_card { card: 'storie.scienza.interstellar.ghiaccio', icon: ice, at: left };
     action: character_speak { target: 'mann_planet', id: 'demo.narr.storia_interstellar.31' };
   }
   scene solar_system_3d {
@@ -2665,6 +2678,7 @@
     action: character_show { target: 'cooper', expression: 'happy', at: right, scale: 0.9, look: 'mann' };
     action: effect { type: sparkles, target: 'mann', shot_from: 0.1 };
     action: sound { type: 'decompression', volume: 0.5 };
+    action: science_card { card: 'storie.scienza.interstellar.aria', icon: air, at: left };
     action: character_speak { target: 'mann', id: 'demo.narr.storia_interstellar.32' };
   }
   scene solar_system_3d {
@@ -2725,6 +2739,7 @@
     action: sound { type: 'metal_groan' };
     action: sound { type: 'engine', shot_from: 0.05 };
     action: sound { type: 'alarm', shot_from: 0.1 };
+    action: science_card { card: 'storie.scienza.interstellar.portello', icon: hatch, at: right };
     action: character_speak { target: 'case', id: 'demo.narr.storia_interstellar.36' };
   }
   scene solar_system_3d {
@@ -2754,6 +2769,7 @@
     action: effect { type: sparkles, target: 'endurance', shot_from: 0.05 };
     action: sound { type: 'docking' };
     action: sound { type: 'spin_down', shot_from: 0.85 };
+    action: science_card { card: 'storie.scienza.interstellar.aggancio', icon: docking, at: left };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar.38' };
   }
   scene solar_system_3d {
@@ -2777,6 +2793,7 @@
     action: character_show { target: 'cooper', expression: 'determined', at: left, look: 'gargantua' };
     action: effect { type: orbit_path, target: 'gargantua', size: 1.6, duration: 14, shot_from: 0.08 };
     action: sound { type: 'engine', shot_from: 0.33 };
+    action: science_card { card: 'storie.scienza.interstellar.fionda', icon: slingshot, at: left };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar.40' };
   }
   scene solar_system_3d {
@@ -2854,6 +2871,7 @@
     action: character_show { target: 'cooper', expression: 'wonder', inside: 'ranger' };
     action: character_show { target: 'tars', expression: 'neutral', inside: 'ranger' };
     action: sound { type: 'metal_groan', volume: 0.6, shot_from: 0.15 };
+    action: science_card { card: 'storie.scienza.interstellar.spaghetti', icon: tides, at: left };
     action: character_speak { target: 'gargantua', id: 'demo.narr.storia_interstellar.46' };
   }
   scene solar_system_3d {
@@ -2943,6 +2961,7 @@
     action: character_show { target: 'cooper', expression: 'scared', at: center, scale: 0.85, glide: 6, shot_from: 0.1 };
     action: character_expression { target: 'cooper', expression: 'wonder', shot_from: 0.35 };
     action: sound { type: 'whoosh', shot_from: 0.1 };
+    action: science_card { card: 'storie.scienza.interstellar2.stanze', icon: tesseract, at: right };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.2', shot_from: 0.2 };
   }
   scene solar_system_3d {
@@ -3080,6 +3099,7 @@
     action: character_show { target: 'cooper', expression: 'determined', at: top_left, scale: 0.6 };
     action: effect { type: books_fall, at: left, size: 1.3, duration: 15, shot_from: 0.0 };
     action: character_expression { target: 'murph_bambina', expression: 'excited', shot_from: 0.6 };
+    action: science_card { card: 'storie.scienza.interstellar2.libri', icon: books, at: right };
     action: character_speak { target: 'murph_bambina', id: 'demo.narr.storia_interstellar2.15', shot_from: 0.3 };
   }
   scene solar_system_3d {
@@ -3090,6 +3110,7 @@
     action: character_show { target: 'cooper', expression: 'sad', at: left, look: 'murph_bambina' };
     action: character_show { target: 'murph_bambina', expression: 'sad', at: right, scale: 0.85 };
     action: character_expression { target: 'cooper', expression: 'wistful', shot_from: 0.55 };
+    action: science_card { card: 'storie.scienza.interstellar2.fantasma', icon: ripple, at: right };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.16' };
   }
   scene solar_system_3d {
@@ -3112,6 +3133,7 @@
     action: character_show { target: 'tars', expression: 'proud', at: top_right, scale: 0.7, look: 'cooper' };
     action: effect { type: dust_binary, at: bottom, size: 1.4, duration: 16 };
     action: character_expression { target: 'cooper', expression: 'impressed', shot_from: 0.45 };
+    action: science_card { card: 'storie.scienza.interstellar2.polvere', icon: binary, at: center };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.18' };
   }
   scene solar_system_3d {
@@ -3122,6 +3144,7 @@
     action: character_show { target: 'tars', expression: 'proud', at: right, look: 'cooper' };
     action: character_show { target: 'cooper', expression: 'surprised', at: left, look: 'tars' };
     action: effect { type: glow, target: 'tars', color: '#7dd3fc', duration: 6, shot_from: 0.2 };
+    action: science_card { card: 'storie.scienza.interstellar2.dati', icon: black_hole, at: right };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.19' };
   }
   scene solar_system_3d {
@@ -3155,6 +3178,7 @@
     action: character_show { target: 'cooper', expression: 'excited', at: left, look: 'viewer' };
     action: character_show { target: 'tars', expression: 'curious', at: right, scale: 0.85, look: 'cooper' };
     action: effect { type: morse_watch, at: center, size: 1.3, duration: 13, shot_from: 0.2 };
+    action: science_card { card: 'storie.scienza.interstellar2.orologio', icon: watch, at: right };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2.22' };
   }
   scene solar_system_3d {
@@ -3183,6 +3207,7 @@
     action: date_card { label: 'demo.cartello.storia_interstellar2.terra' };
     action: character_show { target: 'murph', expression: 'wistful', at: right, look: 'viewer' };
     action: character_expression { target: 'murph', expression: 'curious', shot_from: 0.6 };
+    action: science_card { card: 'storie.scienza.interstellar2.terra', icon: earth, at: left };
     action: character_speak { target: 'murph', id: 'demo.narr.storia_interstellar2.25' };
   }
   scene solar_system_3d {
@@ -3220,6 +3245,7 @@
     action: sound { type: 'rumble', shot_from: 0.25 };
     action: sound { type: 'engine', shot_from: 0.5 };
     action: sound { type: 'rumble', shot_from: 0.75 };
+    action: science_card { card: 'storie.scienza.interstellar2.equazione', icon: atom, at: right };
     action: character_speak { target: 'murph', id: 'demo.narr.storia_interstellar2.28', shot_from: 0.18 };
   }
   scene solar_system_3d {
@@ -3233,6 +3259,7 @@
     action: effect { type: hypercube, at: center, size: 1.2, duration: 11, shot_from: 0.1 };
     action: effect { type: flash, at: center, color: '#fffbeb', shot_from: 0.9 };
     action: sound { type: 'suck', volume: 0.8, shot_from: 0.42 };
+    action: science_card { card: 'storie.scienza.interstellar2.cerchio', icon: loop, at: right };
     action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2.29' };
   }
   scene solar_system_3d {
@@ -3292,6 +3319,7 @@
     action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 0.75, look: 'viewer' };
     action: character_show { target: 'cooper', expression: 'wonder', at: bottom_left, scale: 0.7, look: 'tars' };
     action: character_look_at { target: 'cooper', object: 'viewer', shot_from: 0.3 };
+    action: science_card { card: 'storie.scienza.interstellar2.stazione', icon: station, at: right };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2.34' };
   }
   scene solar_system_3d {

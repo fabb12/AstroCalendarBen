@@ -1899,12 +1899,15 @@
         scritteStorie: o.scritteStorie === true,
         // Le orbite di chi è in scena (v435): nascoste di serie, solo un
         // `true` le mostra (`demoOrbiteStorie` in app.js)
-        orbiteStorie: o.orbiteStorie === true
+        orbiteStorie: o.orbiteStorie === true,
+        // v497: le schede «La scienza in breve» (`science_card`), accese di
+        // serie: solo un `false` le spegne
+        schedeScienza: o.schedeScienza !== false
       };
     } catch (_) { /* salvataggio illeggibile: si riparte dai valori di serie */ }
     return { schermoIntero: true, registra: false, vistaPulita: true, registraAudio: true,
       musicaDemo: true, musicaDemoTraccia: 'Encelado1', livelli: null, durataComandiSec: DURATA_COMANDI_SEC,
-      cameraStorie: true, effettiSonori: true, volumeEffetti: 1, scritteStorie: false, orbiteStorie: false };
+      cameraStorie: true, effettiSonori: true, volumeEffetti: 1, scritteStorie: false, orbiteStorie: false, schedeScienza: true };
   }
   let opzioni = leggiOpzioni();
   function impostaOpzioni(nuove) {
