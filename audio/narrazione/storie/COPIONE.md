@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **135/277** in italiano · **0/215** in inglese.
+Pronte: **144/277** in italiano · **0/215** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -35,16 +35,16 @@ Pronte: **135/277** in italiano · **0/215** in inglese.
 | Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
 | Gargantua | `storie/gargantua/` | 3 | 2/3 | 0/3 |
 | Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
-| Cooper | `storie/cooper/` | 41 | 30/41 | 0/40 |
-| Romilly | `storie/romilly/` | 14 | 9/14 | 0/9 |
-| Amelia Brand | `storie/amelia-brand/` | 28 | 20/28 | 0/17 |
+| Cooper | `storie/cooper/` | 41 | 33/41 | 0/40 |
+| Romilly | `storie/romilly/` | 14 | 11/14 | 0/9 |
+| Amelia Brand | `storie/amelia-brand/` | 28 | 23/28 | 0/17 |
 | TARS | `storie/tars/` | 22 | 11/22 | 0/22 |
 | Doyle | `storie/doyle/` | 6 | 5/6 | 0/3 |
 | Pianeta di Miller | `storie/pianeta-di-miller/` | 2 | 2/2 | 0/1 |
 | CASE | `storie/case/` | 4 | 4/4 | 0/2 |
 | Murph | `storie/murph/` | 10 | 6/10 | 0/9 |
 | Pianeta di Mann | `storie/pianeta-di-mann/` | 2 | 1/2 | 0/1 |
-| Dottor Mann | `storie/dottor-mann/` | 7 | 6/7 | 0/4 |
+| Dottor Mann | `storie/dottor-mann/` | 7 | 7/7 | 0/4 |
 | Loro | `storie/loro/` | 13 | 8/13 | 0/13 |
 | Murph bambina | `storie/murph-bambina/` | 1 | 1/1 | 0/1 |
 | Murph anziana | `storie/murph-anziana/` | 5 | 2/5 | 0/5 |
@@ -1229,11 +1229,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** orgoglioso — con orgoglio e tenerezza
   - **Testo:** Sei stata tu, Murph. Hai salvato tutti… con un vecchio orologio.
   - **Da incollare su ElevenLabs v3:** `[proudly] Sei stata tu, Murph. [tenderly] Hai salvato tutti… con un vecchio orologio.`
-- `storia_interstellar_scienza-1.mp3` — manca · Interstellar 1: dentro la scienza, scena 1 (al massimo 16 s)
+- `storia_interstellar_scienza-1.mp3` — pronta · 12 s · Interstellar 1: dentro la scienza, scena 1 (al massimo 16 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Due anni di viaggio, e finalmente Saturno. Accanto agli anelli c'è una porta verso un'altra galassia. Ma come si attraversa mezzo universo… in un pomeriggio?
   - **Da incollare su ElevenLabs v3:** `[in awe] Due anni di viaggio, e finalmente Saturno. Accanto agli anelli c'è una porta verso un'altra galassia. Ma come si attraversa mezzo universo… in un pomeriggio?`
-- `storia_interstellar_scienza-5.mp3` — manca · Interstellar 1: dentro la scienza, scena 5 (al massimo 14 s)
+- `storia_interstellar_scienza-5.mp3` — pronta · 9,6 s · Interstellar 1: dentro la scienza, scena 5 (al massimo 14 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Eccolo. Gargantua. Un buco nero così grande che il nostro Sole, accanto, sarebbe un granello di polvere.
   - **Da incollare su ElevenLabs v3:** `[in awe] Eccolo. Gargantua. Un buco nero così grande che il nostro Sole, accanto, sarebbe un granello di polvere.`
@@ -1241,11 +1241,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** shouting — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Brand… quelle non sono montagne. Sono onde!
   - **Da incollare su ElevenLabs v3:** `[shouting] Brand… quelle non sono montagne. Sono onde!`
-- `storia_interstellar_scienza-15.mp3` — manca · Interstellar 1: dentro la scienza, scena 15 (al massimo 16 s)
+- `storia_interstellar_scienza-15.mp3` — pronta · 13,8 s · Interstellar 1: dentro la scienza, scena 15 (al massimo 16 s)
   - **Emozione:** determined — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** L'Endurance gira come una trottola: sessantotto giri al minuto. Agganciarla sembra impossibile… a meno di girare con lei. Alla stessa velocità, per noi è ferma. Come due ballerini che si tengono per mano.
   - **Da incollare su ElevenLabs v3:** `[determined] L'Endurance gira come una trottola: sessantotto giri al minuto. Agganciarla sembra impossibile… a meno di girare con lei. Alla stessa velocità, per noi è ferma. Come due ballerini che si tengono per mano.`
-- `storia_interstellar_scienza-16.mp3` — manca · Interstellar 1: dentro la scienza, scena 16 (al massimo 16 s)
+- `storia_interstellar_scienza-16.mp3` — **troppo lunga** · 17,1 s · Interstellar 1: dentro la scienza, scena 16 (al massimo 16 s)
   - **Emozione:** confident — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Il carburante non basta. Allora usiamo Gargantua come una fionda: gli passiamo rasenti e la sua gravità ci lancia via. E per una spinta in più lasciamo indietro un pezzo: azione e reazione, parola di Newton. Il prezzo? Cinquantun anni sulla Terra.
   - **Da incollare su ElevenLabs v3:** `[confident] Il carburante non basta. Allora usiamo Gargantua come una fionda: gli passiamo rasenti e la sua gravità ci lancia via. E per una spinta in più lasciamo indietro un pezzo: azione e reazione, parola di Newton. Il prezzo? Cinquantun anni sulla Terra.`
@@ -1465,19 +1465,19 @@ Cartella: `audio/narrazione/storie/romilly/<lingua>/` · nel codice `romilly` ·
   - **Emozione:** triste — stanco, ogni numero pesa
   - **Testo:** Ventitré anni, quattro mesi e otto giorni. Ho studiato Gargantua… e vi ho aspettato.
   - **Da incollare su ElevenLabs v3:** `[sad] Ventitré anni, quattro mesi e otto giorni. [sighs] Ho studiato Gargantua… e vi ho aspettato.`
-- `storia_interstellar_scienza-2.mp3` — manca · Interstellar 1: dentro la scienza, scena 2 (al massimo 16 s)
+- `storia_interstellar_scienza-2.mp3` — **troppo lunga** · 16,4 s · Interstellar 1: dentro la scienza, scena 2 (al massimo 16 s)
   - **Emozione:** excited — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Ecco il trucco. Andare dritti fino a un'altra galassia vorrebbe dire migliaia di anni, anche alla velocità della luce. Ma se pieghi lo spazio come un foglio, i due punti si avvicinano. Un tunnel li unisce: il wormhole. Migliaia di anni diventano minuti.
   - **Da incollare su ElevenLabs v3:** `[excited] Ecco il trucco. Andare dritti fino a un'altra galassia vorrebbe dire migliaia di anni, anche alla velocità della luce. Ma se pieghi lo spazio come un foglio, i due punti si avvicinano. Un tunnel li unisce: il wormhole. Migliaia di anni diventano minuti.`
-- `storia_interstellar_scienza-7.mp3` — manca · Interstellar 1: dentro la scienza, scena 7 (al massimo 16 s)
+- `storia_interstellar_scienza-7.mp3` — **troppo lunga** · 17,3 s · Interstellar 1: dentro la scienza, scena 7 (al massimo 16 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** E quell'arco che passa sopra e sotto? Non è un secondo disco. È la luce del disco che sta dietro: la gravità la piega oltre l'ombra e la spedisce verso di noi. Stiamo letteralmente guardando dietro l'angolo.
   - **Da incollare su ElevenLabs v3:** `[in awe] E quell'arco che passa sopra e sotto? Non è un secondo disco. È la luce del disco che sta dietro: la gravità la piega oltre l'ombra e la spedisce verso di noi. Stiamo letteralmente guardando dietro l'angolo.`
-- `storia_interstellar_scienza-10.mp3` — manca · Interstellar 1: dentro la scienza, scena 10 (al massimo 16 s)
+- `storia_interstellar_scienza-10.mp3` — pronta · 12,3 s · Interstellar 1: dentro la scienza, scena 10 (al massimo 16 s)
   - **Emozione:** excited — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Così vicino, perché Miller non ci cade dentro? Perché Gargantua gira quasi alla velocità della luce, e si trascina dietro lo spazio come un mulinello. Il pianeta cavalca il vortice senza cadere.
   - **Da incollare su ElevenLabs v3:** `[excited] Così vicino, perché Miller non ci cade dentro? Perché Gargantua gira quasi alla velocità della luce, e si trascina dietro lo spazio come un mulinello. Il pianeta cavalca il vortice senza cadere.`
-- `storia_interstellar_scienza-13.mp3` — manca · Interstellar 1: dentro la scienza, scena 13 (al massimo 16 s)
+- `storia_interstellar_scienza-13.mp3` — pronta · 13,9 s · Interstellar 1: dentro la scienza, scena 13 (al massimo 16 s)
   - **Emozione:** sad — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Voi siete stati laggiù tre ore. Per me, quassù, sono passati ventitré anni. Nessuno ha viaggiato nel tempo: lo abbiamo solo vissuto a velocità diverse.
   - **Da incollare su ElevenLabs v3:** `[sad] Voi siete stati laggiù tre ore. Per me, quassù, sono passati ventitré anni. Nessuno ha viaggiato nel tempo: lo abbiamo solo vissuto a velocità diverse.`
@@ -1597,23 +1597,23 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** speranzosa — all'alba, con meraviglia e un sorriso
   - **Testo:** Qui c'è aria, c'è acqua, c'è luce. Edmunds aveva ragione: questa sarà la nuova casa. E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.
   - **Da incollare su ElevenLabs v3:** `[in awe] Qui c'è aria, c'è acqua, c'è luce. [hopeful] Edmunds aveva ragione: questa sarà la nuova casa. [softly] E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.`
-- `storia_interstellar_scienza-3.mp3` — manca · Interstellar 1: dentro la scienza, scena 3 (al massimo 16 s)
+- `storia_interstellar_scienza-3.mp3` — **troppo lunga** · 20 s · Interstellar 1: dentro la scienza, scena 3 (al massimo 16 s)
   - **Emozione:** curious — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** E perché è una palla? Immagina un mondo piatto: lì un buco è un cerchio. Ma noi viviamo in tre dimensioni, e un buco in tre dimensioni è… una sfera. Da qualunque lato la guardi, dentro c'è l'altra galassia.
   - **Da incollare su ElevenLabs v3:** `[curious] E perché è una palla? Immagina un mondo piatto: lì un buco è un cerchio. Ma noi viviamo in tre dimensioni, e un buco in tre dimensioni è… una sfera. Da qualunque lato la guardi, dentro c'è l'altra galassia.`
-- `storia_interstellar_scienza-4.mp3` — manca · Interstellar 1: dentro la scienza, scena 4 (al massimo 14 s)
+- `storia_interstellar_scienza-4.mp3` — pronta · 10,4 s · Interstellar 1: dentro la scienza, scena 4 (al massimo 14 s)
   - **Emozione:** whispers — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Siamo dentro. Lo spazio-tempo si piega tutto attorno a noi… e sento qualcosa. È come se qualcuno mi stringesse la mano.
   - **Da incollare su ElevenLabs v3:** `[whispers] Siamo dentro. Lo spazio-tempo si piega tutto attorno a noi… e sento qualcosa. È come se qualcuno mi stringesse la mano.`
-- `storia_interstellar_scienza-8.mp3` — manca · Interstellar 1: dentro la scienza, scena 8 (al massimo 16 s)
+- `storia_interstellar_scienza-8.mp3` — **troppo lunga** · 17,2 s · Interstellar 1: dentro la scienza, scena 8 (al massimo 16 s)
   - **Emozione:** thoughtful — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Tutto questo succede perché la massa piega lo spazio-tempo, come una palla da bowling su un telo elastico. I pianeti non sono legati a una corda: rotolano lungo la curva. E la luce? Anche lei.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Tutto questo succede perché la massa piega lo spazio-tempo, come una palla da bowling su un telo elastico. I pianeti non sono legati a una corda: rotolano lungo la curva. E la luce? Anche lei.`
-- `storia_interstellar_scienza-9.mp3` — manca · Interstellar 1: dentro la scienza, scena 9 (al massimo 16 s)
+- `storia_interstellar_scienza-9.mp3` — pronta · 14,2 s · Interstellar 1: dentro la scienza, scena 9 (al massimo 16 s)
   - **Emozione:** serious — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Ed ecco la parte che fa paura: dove lo spazio è più curvo, anche il tempo rallenta. Il pianeta di Miller sta in fondo al pozzo. Un'ora laggiù… sette anni sulla Terra.
   - **Da incollare su ElevenLabs v3:** `[serious] Ed ecco la parte che fa paura: dove lo spazio è più curvo, anche il tempo rallenta. Il pianeta di Miller sta in fondo al pozzo. Un'ora laggiù… sette anni sulla Terra.`
-- `storia_interstellar_scienza-18.mp3` — manca · Interstellar 1: dentro la scienza, scena 18 (al massimo 16 s)
+- `storia_interstellar_scienza-18.mp3` — pronta · 15,2 s · Interstellar 1: dentro la scienza, scena 18 (al massimo 16 s)
   - **Emozione:** softly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Da qui vediamo Cooper rallentare, arrossire… e fermarsi sul bordo, per sempre. Per lui, invece, gli orologi vanno come sempre. Due verità diverse, ed entrambe vere.
   - **Da incollare su ElevenLabs v3:** `[softly] Da qui vediamo Cooper rallentare, arrossire… e fermarsi sul bordo, per sempre. Per lui, invece, gli orologi vanno come sempre. Due verità diverse, ed entrambe vere.`
@@ -1797,15 +1797,15 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
   - **Emozione:** contento — il robot di sempre, contento di ripartire
   - **Testo:** Livello di sincerità: cento per cento. Livello di umorismo: di nuovo al settantacinque. Destinazione: il pianeta di Edmunds.
   - **Da incollare su ElevenLabs v3:** `[proudly] Livello di sincerità: cento per cento. [mischievously] Livello di umorismo: di nuovo al settantacinque. [determined] Destinazione: il pianeta di Edmunds.`
-- `storia_interstellar_scienza-6.mp3` — manca · Interstellar 1: dentro la scienza, scena 6 (al massimo 16 s)
+- `storia_interstellar_scienza-6.mp3` — **troppo lunga** · 19,6 s · Interstellar 1: dentro la scienza, scena 6 (al massimo 16 s)
   - **Emozione:** confident — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Anatomia di un mostro. Il cerchio nero è l'orizzonte degli eventi: da lì non esce niente, nemmeno la luce. Attorno, un anello sottilissimo di luce intrappolata. Il disco? Gas a milioni di gradi che corre a velocità folli. Peso totale: cento milioni di Soli.
   - **Da incollare su ElevenLabs v3:** `[confident] Anatomia di un mostro. Il cerchio nero è l'orizzonte degli eventi: da lì non esce niente, nemmeno la luce. Attorno, un anello sottilissimo di luce intrappolata. Il disco? Gas a milioni di gradi che corre a velocità folli. Peso totale: cento milioni di Soli.`
-- `storia_interstellar_scienza-12.mp3` — manca · Interstellar 1: dentro la scienza, scena 12 (al massimo 16 s)
+- `storia_interstellar_scienza-12.mp3` — **troppo lunga** · 18,9 s · Interstellar 1: dentro la scienza, scena 12 (al massimo 16 s)
   - **Emozione:** deadpan — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Colpa delle maree. Gargantua tira il lato vicino del pianeta molto più di quello lontano, e l'oceano si ammucchia in due gobbe gigantesche. Risultato: onde di oltre un chilometro. Un grattacielo, al confronto, è un castello di sabbia.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Colpa delle maree. Gargantua tira il lato vicino del pianeta molto più di quello lontano, e l'oceano si ammucchia in due gobbe gigantesche. Risultato: onde di oltre un chilometro. Un grattacielo, al confronto, è un castello di sabbia.`
-- `storia_interstellar_scienza-17.mp3` — manca · Interstellar 1: dentro la scienza, scena 17 (al massimo 16 s)
+- `storia_interstellar_scienza-17.mp3` — **troppo lunga** · 18,9 s · Interstellar 1: dentro la scienza, scena 17 (al massimo 16 s)
   - **Emozione:** deadpan — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Cadere in un buco nero piccolo? Pessima idea: ti tira i piedi molto più della testa, e diventi uno spaghetto. Ma Gargantua è così enorme che, al suo orizzonte, la differenza è minima. Si entra tutti interi. Livello di consolazione: discreto.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Cadere in un buco nero piccolo? Pessima idea: ti tira i piedi molto più della testa, e diventi uno spaghetto. Ma Gargantua è così enorme che, al suo orizzonte, la differenza è minima. Si entra tutti interi. Livello di consolazione: discreto.`
@@ -2161,7 +2161,7 @@ Cartella: `audio/narrazione/storie/dottor-mann/<lingua>/` · nel codice `mann` �
   - **Emozione:** esaltato — ansimante, trionfante, ignaro
   - **Testo:** Si apre… si apre! Ce l'ho fatta!
   - **Da incollare su ElevenLabs v3:** `[breathless] Si apre… si apre! [excited] Ce l'ho fatta!`
-- `storia_interstellar_scienza-14.mp3` — manca · Interstellar 1: dentro la scienza, scena 14 (al massimo 16 s)
+- `storia_interstellar_scienza-14.mp3` — pronta · 12,2 s · Interstellar 1: dentro la scienza, scena 14 (al massimo 16 s)
   - **Emozione:** nervous — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Il mio pianeta non può ospitare nessuno. Ho mandato dati falsi: avevo paura di morire qui, da solo. E adesso la tua nave… la prendo io.
   - **Da incollare su ElevenLabs v3:** `[nervous] Il mio pianeta non può ospitare nessuno. Ho mandato dati falsi: avevo paura di morire qui, da solo. E adesso la tua nave… la prendo io.`

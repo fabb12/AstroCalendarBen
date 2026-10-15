@@ -935,6 +935,22 @@
       it: { file: 'storie/cooper/it/storia_interstellar2-38.mp3', impronta: '429265e4', firma: '47af13e35e' }
     },
 
+    'demo.narr.storia_interstellar_scienza.1': {
+      it: { file: 'storie/cooper/it/storia_interstellar_scienza-1.mp3', impronta: '17ac4e81', firma: 'bc591d3289' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.5': {
+      it: { file: 'storie/cooper/it/storia_interstellar_scienza-5.mp3', impronta: '514d6515', firma: '01f4058e50' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.15': {
+      it: { file: 'storie/cooper/it/storia_interstellar_scienza-15.mp3', impronta: '3dafc002', firma: '62268dbe69' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.16': {
+      it: { file: 'storie/cooper/it/storia_interstellar_scienza-16.mp3', impronta: 'c2df3a32', firma: '656020b761' }
+    },
+
     'studio.studio_interstellar_1_oltre_gargantua.27': {
       it: { file: 'storie/cooper/it/studio_interstellar_1_oltre_gargantua-27.mp3', impronta: 'b2551992', firma: '339244f2db', testo: "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora." }
     },
@@ -954,6 +970,22 @@
 
     'demo.narr.storia_interstellar.25': {
       it: { file: 'storie/romilly/it/storia_interstellar-25.mp3', impronta: '68409eef', firma: '1d8c773493' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.2': {
+      it: { file: 'storie/romilly/it/storia_interstellar_scienza-2.mp3', impronta: '11fae840', firma: '43b8bb8c23' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.7': {
+      it: { file: 'storie/romilly/it/storia_interstellar_scienza-7.mp3', impronta: '55840c9d', firma: 'd4b6f14304' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.10': {
+      it: { file: 'storie/romilly/it/storia_interstellar_scienza-10.mp3', impronta: '1b2c04bd', firma: '2a1657dcb3' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.13': {
+      it: { file: 'storie/romilly/it/storia_interstellar_scienza-13.mp3', impronta: '45a91e06', firma: 'dd1cd706ee' }
     },
 
     'studio.studio_interstellar_1_oltre_gargantua.1': {
@@ -1015,6 +1047,26 @@
 
     'demo.narr.storia_interstellar2.42': {
       it: { file: 'storie/amelia-brand/it/storia_interstellar2-42.mp3', impronta: 'a67fd0ca', firma: '7b08243f5f' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.3': {
+      it: { file: 'storie/amelia-brand/it/storia_interstellar_scienza-3.mp3', impronta: '06a3fede', firma: '17452f6873' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.4': {
+      it: { file: 'storie/amelia-brand/it/storia_interstellar_scienza-4.mp3', impronta: '0ae9da17', firma: 'dfebf9ae35' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.8': {
+      it: { file: 'storie/amelia-brand/it/storia_interstellar_scienza-8.mp3', impronta: 'fcc08c9f', firma: 'f8fee7bff9' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.9': {
+      it: { file: 'storie/amelia-brand/it/storia_interstellar_scienza-9.mp3', impronta: '2aa28c17', firma: '04e4783736' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.18': {
+      it: { file: 'storie/amelia-brand/it/storia_interstellar_scienza-18.mp3', impronta: '85471a6a', firma: '46ee6cd733' }
     },
 
     'studio.studio_interstellar_1_oltre_gargantua.16': {
@@ -1118,6 +1170,18 @@
       it: { file: 'storie/tars/it/storia_interstellar2-41.mp3', impronta: '0fee1ca9', firma: '59e8aaace5' }
     },
 
+    'demo.narr.storia_interstellar_scienza.6': {
+      it: { file: 'storie/tars/it/storia_interstellar_scienza-6.mp3', impronta: '8b637e7e', firma: 'd615f748fb' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.12': {
+      it: { file: 'storie/tars/it/storia_interstellar_scienza-12.mp3', impronta: '49f99817', firma: '129c585492' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.17': {
+      it: { file: 'storie/tars/it/storia_interstellar_scienza-17.mp3', impronta: '15a8eeb2', firma: '1a02e55089' }
+    },
+
     // Doyle — storie/doyle/
     'demo.narr.storia_interstellar.8': {
       it: { file: 'storie/doyle/it/storia_interstellar-8.mp3', impronta: '406f0d1d', firma: '1c4bbaa957' }
@@ -1210,6 +1274,10 @@
 
     'demo.narr.storia_interstellar.35': {
       it: { file: 'storie/dottor-mann/it/storia_interstellar-35.mp3', impronta: '6149c9ed', firma: '57bf0e3029' }
+    },
+
+    'demo.narr.storia_interstellar_scienza.14': {
+      it: { file: 'storie/dottor-mann/it/storia_interstellar_scienza-14.mp3', impronta: '159329e5', firma: '7d7133ec7e' }
     },
 
     'studio.studio_interstellar_1_oltre_gargantua.11': {
