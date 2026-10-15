@@ -1767,6 +1767,56 @@ prova('story_question: il cartello della domanda, validato, che se ne va con la 
   motore.ferma && motore.ferma();
   S.sgombra();
 });
+prova('le versioni corte di «Interstellar» (v500): più brevi, con le animazioni che spiegano, e le altre battute uguali alle originali', () => {
+  const NUOVE = ['sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
+  const usate = new Set();
+  for (const [orig, corta] of [['storia_interstellar', 'storia_interstellar_scienza'], ['storia_interstellar2', 'storia_interstellar2_scienza']]) {
+    const o = predefiniti.find(x => x.chiave === orig), c = predefiniti.find(x => x.chiave === corta);
+    assert.ok(c && c.storia, corta + ' è una CosmoStoria');
+    assert.equal(c.cast, o.cast, corta + ': lo stesso cast');
+    assert.ok(!/science_card/.test(c.testo + o.testo), 'niente schede');
+    const so = analizza(o.testo).scene, scorta = analizza(c.testo).scene;
+    assert.ok(scorta.length >= 18 && scorta.length <= 24 && scorta.length < so.length * 0.55, corta + ': corta, ' + scorta.length + ' scene');
+    // una battuta è quella dell'originale, parola per parola (così la
+    // narrazione ritrova dal testo le voci vere registrate), oppure è stata
+    // riscritta, e allora la sua scena ha un'animazione nuova che la spiega
+    for (const l of ['it', 'en']) {
+      const testi = so.map(s => DIZ[l].messaggi[s.azioni.find(a => a.comando === 'character_speak').parametri.id]);
+      let dove = -1, riscritte = 0;
+      scorta.forEach((s, i) => {
+        const id = s.azioni.find(a => a.comando === 'character_speak').parametri.id;
+        const anim = s.azioni.filter(a => a.comando === 'effect' && NUOVE.includes(a.parametri.type));
+        anim.forEach(a => usate.add(a.parametri.type));
+        assert.equal(typeof DIZ[l].messaggi[id], 'string', id + ' (' + l + ')');
+        const k = testi.indexOf(DIZ[l].messaggi[id], dove + 1);
+        if (k > dove) { dove = k; return; }
+        riscritte++;
+        assert.equal(anim.length, 1, `${corta} scena ${i + 1} (${l}): battuta riscritta, con la sua animazione`);
+      });
+      assert.ok(riscritte >= 2 && riscritte <= 8, corta + ': battute riscritte ' + riscritte);
+    }
+    assert.ok(/story_title \{ id: 'storie\.titolo\.interstellar2?_scienza'/.test(c.testo), corta + ': il suo titolo');
+  }
+  assert.deepEqual([...usate].sort(), NUOVE.slice().sort(), 'tutte le animazioni nuove in scena');
+});
+prova('le animazioni che spiegano «Interstellar» (v500): si disegnano, girano e sfumano a fine scena', () => {
+  const NUOVE = ['sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
+  for (const tipo of NUOVE) {
+    S.sgombra();
+    motore.avvia(demo(sc('planetarium_view', "character_show { target: 'Jupiter' }", `effect { type: ${tipo}, at: center, duration: 12 }`)), { ripristina() {} });
+    passo(10);
+    let disegni = 0;
+    for (const ms of [100, 1500, 3000, 6000, 10500]) {
+      S.stato.orologio = S.stato.effetti[0] ? S.stato.effetti[0].inizio + ms : S.stato.orologio;
+      const { ctx, chiamate } = telaFinta();
+      S.disegnaPersonaggi(ctx, 'cielo', [corpo('Jupiter', 200, 300, 3)], 800, 600);
+      disegni = Math.max(disegni, chiamate.length);
+    }
+    assert.ok(disegni > 60, tipo + ' disegna: ' + disegni);
+    motore.ferma && motore.ferma();
+  }
+  S.sgombra();
+});
 prova('lo Studio: la domanda finale nasce dagli eventi, e solo quando è adatta', () => {
   // v432: la domanda è facoltativa, spenta di serie
   assert.equal(St.domandaFinale(St.daModello('buchi')), null, 'di serie la storia finisce senza domanda');

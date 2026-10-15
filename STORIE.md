@@ -618,6 +618,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `story_camera` (v416) | `mode` (`auto`, `wide`, `close`, dalla v431 `speaker`, `orbit`, dalla v452 `rhythm`), `target?` (con `close`, un personaggio in scena; con `orbit`, facoltativo), `zoom?` (1–4, il tetto del primo piano), `speed?` (v431, con `orbit`: gradi al secondo, −90–90, di serie 14) |
 | `sound` (v416) | `type` (uno dei rumori di `STOR_SUONI`), `volume?` (0–2) |
 | `story_question` (v430) | `text`, `a?`, `b?`, `kind?` (`who_is_right`, `probe`, `trust`, `explore`, `choice`, `prediction`, `next_star`), `from?` (chi la pone): §La domanda al pubblico |
+| `science_card` (v497) | `card` (la radice dei testi nei dizionari: `<card>.domanda`, `<card>.1`…`<card>.4`), `icon?` (uno di `STOR_ICONE_SCIENZA`), `at?` (`left`, `right`, `center`; di serie `right`): §Le schede «La scienza in breve» |
 | `story_music` (v440) | `src` (un file audio del sito, `audio/…` o `musica/…`, con un `?v=` facoltativo, oppure `off`), `volume?` (0–1, di serie 0,35): §La musica di sottofondo; dalla v450 `sync?` (`on`), `at?` (−30–3600), `loop?` (`off`), `bpm?` (30–240), `beat?`, `kick?` (0–3): §Le storie cantate; dalla v458 `sounds?` (`off`: con la canzone agganciata tacciono gli effetti sonori) |
 | `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri), `words?` (v451: i tempi di ogni parola, `'0.00-0.21 0.21-0.35 - …'` in frazioni della ripresa), `voice?` (v452: l'intensità della voce, una cifra 0–9 ogni 40 ms della ripresa): il verso dura la sua ripresa |
 | `story_photo` (v451) | `photo` (`pale_blue_dot`): la fotografia vera accanto alla scena, per la ripresa dell'azione |
@@ -3825,3 +3826,221 @@ Prove: `prova-demo.js`, `prova-storie.js` (120), `prova-voci-cosmostorie.js`
 `prova-cosmostorie-gestione.js` (8), `prova-i18n.js`, `controlla-i18n.js
 --patto` (342), `voci-storie.js --controlla`. Il disegno guardato in Chromium
 a tutte le tappe, da solo e nella scena.
+
+
+### Le schede «La scienza in breve» in «Interstellar» (v497)
+
+«Vorrei migliorare i video di Interstellar inserendo punti per spiegare meglio
+gli aspetti scientifici, per spiegare meglio ai bambini le parti difficili.»
+Seguiva un elenco di trenta domande, dalla Terra che diventa inabitabile alla
+Stazione Cooper: «scegli i punti più adatti da inserire nei video già presenti,
+senza stravolgerli; con una bella grafica chiara e intuitiva».
+
+**Perché una scheda e non una battuta.** Le battute di «Interstellar 1» hanno
+le voci vere registrate, e una battuta in più vuol dire rinumerare dizionari,
+regia, manifest e audio (v488, v490) e rifare voci. La spiegazione allora si
+**legge**: l'azione nuova `science_card` (storie-cosmiche.js §8, disegno in
+§7-ter accanto al titolo) mette in un angolo in alto un foglio color panna
+con la fascia azzurra «La scienza in breve», il disegnino nel suo tondo, la
+domanda che farebbe un bambino e, sotto, **un punto alla volta**, ognuno col
+suo pallino numerato, che si danno il cambio scivolando (prima esce il vecchio,
+poi entra il nuovo: due frasi sovrapposte anche per un attimo non si leggono).
+In fondo una barra a tacche, una per punto, si riempie col tempo per leggere.
+È disegnata sulla tela, fuori dalla lente della regia
+(`storDisegnaSovrimpressioni`), quindi c'è anche nel filmato per YouTube.
+
+La prima versione aveva i tre punti uno sotto l'altro: alta quasi metà
+schermo, nell'angolo copriva il volto di chi stava da quel lato (Romilly
+mentre Brand spiega il tempo di Miller, Cooper mentre Brand spiega i 23 anni).
+Guardate tutte le 28 scene in Chromium, la scheda compatta lascia i volti
+liberi; dove nell'angolo destro c'era un volto (Gargantua che parla, i
+pianeti di Miller e di Mann, il buco nero della fionda e dell'orizzonte) la
+scheda sta a sinistra, e dove i personaggi stanno in tutti e due gli angoli
+alti (la polvere in binario) sta al centro. Sul telefono prende tutta la
+larghezza; in una schermata bassa il carattere si stringe.
+
+**Il tempo per leggere.** La scheda è una «battuta» che la scena aspetta
+(`attende`, come il suono da file della v491, e `fineNarrazione`): il tempo
+cresce con le parole (`STOR_SCIENZA`: 1,8 s più 0,27 s a parola, fra 7 e
+17 s), conta da quando la scheda compare ed è fermo in pausa (lo conta un
+suo `setTimeout`, non i fotogrammi). Se la voce dura di più non cambia niente;
+se è corta la scena resta aperta qualche secondo con la musica sotto, poi
+chiude come sempre (`stringi`). I punti restano in proporzione alle loro
+parole, il primo anche a quelle della domanda (`storPuntoScienza`).
+
+**Si spengono** nella pagina Demo: «CosmoStorie: le schede «La scienza in
+breve»» (opzione `schedeScienza`, accesa di serie; spenta, `science_card` non
+fa niente e la scena non aspetta).
+
+**I testi** stanno nei dizionari, sotto `storie.scienza.` (`card` è la radice:
+non `id`, che per il copione, lo Studio e le voci è sempre una battuta da
+dire). Ventiquattro disegnini (`STOR_ICONE_SCIENZA`, `storIconaScienza`):
+la capsula del sonno, la sfera, lo spazio che si increspa, il buco nero, il
+mulinello, l'orbita, l'orologio, l'onda, i messaggi, il fiocco di neve, il
+casco nel gas, il portello, l'aggancio, la fionda, le maree, i libri, le righe
+di polvere, l'atomo, l'orologio da polso, la stazione, l'anello del tempo, la
+Terra polverosa, il tesseratto, il sole.
+
+**Le schede scelte** (una per scena, nella scena in cui la battuta parla di
+quel fenomeno; nessuna battuta, voce o tempo scritto è cambiato):
+
+| Parte | Scena | Domanda (v498) |
+|---|---|---|
+| 1 | 1 | Due anni di viaggio: come si fa a non annoiarsi? |
+| 1 | 3 | Un buco nello spazio… a forma di palla?! |
+| 1 | 7 | Chi ha appena dato la mano a Brand? |
+| 1 | 10 | Ma Gargantua non è un enorme aspirapolvere? |
+| 1 | 11 | Perché Gargantua sembra una ciambella con l'occhio nero? |
+| 1 | 12 | Un'ora su Miller, sette anni sulla Terra: è uno scherzo? |
+| 1 | 14 | Gargantua gira «quasi al massimo»: c'è un limite di velocità? |
+| 1 | 16 | Cooper e Brand si accorgono che il loro tempo rallenta? |
+| 1 | 17 | Niente Sole: chi accende la luce attorno a Gargantua? |
+| 1 | 20 | Il segnale di Miller diceva «tutto bene»… e allora? |
+| 1 | 26 | Perché Romilly ha 23 anni in più e Cooper no? |
+| 1 | 28 | Perché Cooper riceve 23 anni di messaggi tutti insieme? |
+| 1 | 31 | Nuvole di ghiaccio sospese in cielo: si può? |
+| 1 | 32 | Sul pianeta di Mann: perché non togliersi il casco? |
+| 1 | 36 | Perché aprire il portello fa saltare tutto? |
+| 1 | 38 | Come si aggancia una nave che gira a 68 giri al minuto? |
+| 1 | 40 | Come si usa un buco nero per prendere la rincorsa? |
+| 1 | 46 | Cadere in un buco nero: si diventa spaghetti? |
+| 2 | 2 | Tante stanze di Murph tutte uguali: è un labirinto di specchi? |
+| 2 | 15 | Chi butta giù i libri dalla libreria di Murph? |
+| 2 | 16 | Come fa Cooper a fare il fantasma nel passato? |
+| 2 | 18 | Come fa la polvere a dare un indirizzo segreto? |
+| 2 | 19 | Cosa misura TARS dentro il buco nero, e a che serve? |
+| 2 | 22 | Perché proprio l'orologio, e non un messaggino? |
+| 2 | 25 | Che cosa non va sulla Terra di Murph? |
+| 2 | 28 | Perché serviva proprio l'equazione del professor Brand? |
+| 2 | 29 | Se i messaggi arrivano dal futuro, chi ha cominciato? |
+| 2 | 34 | Come fa la Stazione Cooper ad avere la gravità? |
+
+Delle trenta domande dell'elenco restano fuori quelle che una scena già
+spiega da sola o che le storie non mostrano: le onde di Miller (le battute 18
+e 19 col disegno delle maree), la mano di Brand vista dalla Parte 2 (è la
+Parte 1, scena 7), il professor Brand e l'equazione nella Parte 1 (è nella
+Parte 2), la rotazione dell'Endurance per la gravità (detta con la Stazione
+Cooper).
+
+Prove: `prova-storie.js` (122, 2 nuove: il comando validato, il disegno, un
+punto alla volta, la scena che aspetta e non aspetta in pausa, la scheda che
+sfuma, spenta nelle opzioni, ogni disegnino; le 28 schede di «Interstellar»
+nelle due lingue, una per scena, domanda ≤ 90 caratteri e tre punti ≤ 120),
+`prova-demo.js`, `prova-storie-repo.js` (19), `prova-musica-storie.js` (22),
+`prova-cosmostorie-gestione.js` (8), `prova-musica-cosmostorie.js` (3),
+`prova-i18n.js`, `controlla-i18n.js --patto` (342), `voci-storie.js
+--controlla`; `prova-voci-cosmostorie.js` cade in 2 prove uguali sul codice
+di prima. Guardate in Chromium tutte le 28 scene con la scheda
+(`giro-storia.js`), in italiano e in inglese, anche a 390 px.
+
+### Le schede più leggere, con un po' d'ironia (v498)
+
+«Devono essere divertenti e anche con un po' di ironia, i dialoghi non troppo
+pesanti e pedanti.» Le 28 schede della v497 erano giuste ma sembravano il
+libro di scuola. Riscritte nei due dizionari (stesse chiavi, stesse scene,
+stessi disegnini) con la domanda come la direbbe un bambino curioso («Ma
+Gargantua non è un enorme aspirapolvere?», «Cadere in un buco nero: si
+diventa spaghetti?») e paragoni di casa: i bastoncini di pesce in freezer per
+il sonno criogenico, la ciambella con l'occhio nero per Gargantua, l'autovelox
+cosmico per la rotazione, i sette compleanni per l'ora su Miller, il mais e i
+pop-corn per la piaga, la centrifuga con le case per la Stazione Cooper. La
+scienza resta la stessa e resta onesta (il sonno criogenico e le nuvole di
+roccia sono ancora fantascienza: lo dicono, con una battuta). Ogni scheda ha
+al più una battuta, di solito nell'ultimo punto, così la spiegazione arriva
+prima della risata. Le battute dei personaggi non sono cambiate: in «Interstellar
+1» hanno le voci vere registrate.
+
+Prove: `prova-storie.js` (122: le domande stanno sotto i 90 caratteri e i
+punti sotto i 120 anche nella versione nuova), `prova-i18n.js`,
+`controlla-i18n.js --patto` (342). Guardate in Chromium, al computer e a
+390 px, le schede coi punti più lunghi.
+
+### Le originali come prima, e due «Interstellar» corte con la scienza (v499)
+
+«Distingui questa versione con altre due CosmoStorie mantenendo quelle
+originali; non farle troppo lunghe, tieni i concetti principali del film,
+quelli più interessanti e curiosi.»
+
+**Le originali** (`storia_interstellar`, `storia_interstellar2`) tornano
+identiche alla v496: senza schede (il copione è byte per byte quello di
+prima).
+
+**Le due versioni corte** sono CosmoStorie nuove, subito dopo le originali:
+`storia_interstellar_scienza` («Interstellar 1: la scienza in breve», 22
+scene delle 48) e `storia_interstellar2_scienza` («Interstellar 2: la scienza
+in breve», 21 delle 43). Le scene sono quelle dell'originale, uguali (stessi
+sfondi, navicelle, rumori, camera), scelte fra le più curiose; le schede
+stanno lì (14 nella Parte 1, 10 nella Parte 2: `science_card`, testi
+`storie.scienza.*` della v498, i lati guardati in Chromium nella v497).
+
+| Parte | Scene dell'originale tenute |
+|---|---|
+| 1 | 1–4 (Saturno, la sfera, il foglio di Romilly), 7 (la mano), 9, 11, 12 (Gargantua, la ciambella, un'ora = sette anni), 17, 18 (il pianeta di Miller e le maree), 20, 21 (i rottami, «sono onde!»), 26 (i 23 anni), 28 (i messaggi), 33 (la bugia di Mann), 36–38 (il portello, «necessario», l'attracco), 40, 42 (la fionda, Newton), 46 (l'orizzonte), 48 (la stanza di Murph) |
+| 2 | 1, 2 (la caduta, il tesseratto), 5, 6, 8 (che cos'è un tesseratto, Loro, il tempo come un paesaggio), 12 («voi siete noi»), 15, 16, 18 (i libri, il fantasma, la polvere), 19 (i dati di TARS), 25–28 (Murph grande, l'orologio, «Eureka», il decollo), 29, 30 (il cerchio, la mano nel wormhole), 32, 34 (124 anni, la Stazione Cooper), 37, 40 (Murph anziana: «lo sapevo», «vai da lei»), 43 (Loro) |
+
+**Le battute** hanno chiavi proprie (`demo.narr.storia_interstellar_scienza.<n>`:
+la scena *n* dice la battuta *n*, lo vuole `prova-demo.js`) ma **lo stesso
+testo** dell'originale, copiato nei due dizionari, e la stessa regia in
+`regia-voci.json`. La narrazione cerca le voci registrate anche dal testo
+(`narrComponi`, i brani del manifest): così le 22 battute della Parte 1 corta
+suonano con le voci vere di `storie/<personaggio>/it/storia_interstellar-<n>.mp3`,
+senza un file in più (verificato nel browser: 22 su 22). Il copione
+(`COPIONE.md`) le elenca come battute senza file: non serve registrarle, a
+meno che un giorno il testo cambi.
+
+Prove: `prova-storie.js` (123, 1 nuova: corte, stesso cast, ogni battuta è
+una battuta dell'originale, nell'ordine, nelle due lingue, col proprio
+titolo; e le schede solo nelle corte, le originali senza), `prova-demo.js`,
+`prova-i18n.js`, `controlla-i18n.js --patto` (342), `voci-storie.js
+--controlla`; le prove nel browser delle CosmoStorie qui sotto in
+`current-task.md`. Guardate intere in Chromium (`giro-storia.js`).
+
+### Niente schede: le animazioni che spiegano, nelle «Interstellar» compatte (v500)
+
+«Non deve essere con le schede: deve mostrare meglio le animazioni per
+spiegare meglio i concetti. Non considerare che sia solo per bambini: un
+linguaggio e una grafica accattivanti sia per i bambini sia per gli adulti.»
+
+**Le schede sono tolte del tutto** (v497–v499): il comando `science_card`,
+il disegno, l'opzione della pagina Demo, i testi `storie.scienza.*` e le loro
+prove. Le originali restano quelle della v496.
+
+**Le versioni compatte** si chiamano ora «Interstellar 1: dentro la scienza»
+(`storia_interstellar_scienza`, 23 scene delle 48: in più la scena 14, il
+mulinello) e «Interstellar 2: dentro la scienza» (`storia_interstellar2_scienza`,
+21 delle 43). Dove c'è un'idea difficile, **un'animazione la mostra
+succedere** (§6-ter, `storDisegnaScienzaAnim`, otto effetti nuovi, lavagne
+che sfumano a fine scena, ognuno col suo rumore discreto):
+
+| Effetto | Scena | Cosa si vede |
+|---|---|---|
+| `sphere_hole` | P1, il wormhole (orig. 3) | il foglio con un buco a cerchio, il quadrato delle due dimensioni; la freccia; la sfera con dentro un'altra galassia, meridiani che girano, l'anello di Einstein, il cubo delle tre dimensioni |
+| `light_bend` | P1, la lente (orig. 11) | Gargantua di lato; la strada dritta del disco dietro chiusa dall'ombra (la croce rossa); i fotoni che scavalcano l'ombra sopra e sotto fino all'occhio; nel nuvoletto, cosa vede l'occhio |
+| `time_clocks` | P1, un'ora = sette anni (orig. 12) | l'orologio di Miller sul fondo del pozzo di gravità, la lancetta che fa un giro; quello della Terra che corre, e sette calendari che compaiono uno dopo l'altro |
+| `frame_drag` | P1, perché Miller non cade (orig. 14) | lo spazio-tempo a imbuto coi raggi torti dal buco nero che ruota, le scintille trascinate, il pianeta che corre col mulinello |
+| `spin_match` | P1, l'attracco (orig. 38) | l'anello dell'Endurance che gira, il Ranger al centro: rosso finché il muso e il portello non combaciano, i getti che lo fanno girare, verde quando girano insieme, poi frenano insieme |
+| `tidal_stretch` | P1, l'orizzonte (orig. 46) | due finestre: l'astronauta stirato da un buco nero piccolo (freccia ai piedi lunga, alla testa corta) e quello intero sull'orizzonte quasi piatto di uno gigante |
+| `time_loop` | P2, il cerchio (orig. 29) | quattro tappe su un anello (la polvere, la partenza, Gargantua, il tesseratto), una luce che ci corre sopra per sempre, il punto di domanda al centro |
+| `spin_gravity` | P2, la Stazione Cooper (orig. 34) | la ruota che gira con case e abitanti sul bordo, la spinta verde del pavimento, la palla lasciata dal mozzo che vola dritta finché il pavimento non le viene incontro |
+
+In quelle scene lo sfondo diventa il cielo stellato pulito (`starfield`) e la
+camera resta larga, perché il disegno si legga; i personaggi stanno ai lati.
+Restano anche le animazioni che c'erano già (il foglio di Romilly, le maree,
+la fionda, il tesseratto, le dimensioni, la pellicola del tempo, i libri,
+la polvere, le equazioni, l'orologio in Morse).
+
+**Le battute di quelle otto scene sono riscritte** per chi guarda di ogni età:
+frasi che accompagnano il disegno («Stiamo letteralmente guardando dietro
+l'angolo», «Sette compleanni persi», «Gravità fatta in casa», TARS con la
+modestia al settanta per cento), con la regia ElevenLabs nuova in
+`regia-voci.json`. Le altre hanno lo stesso testo delle originali e suonano
+con le voci vere (Parte 1); le sei riscritte della Parte 1 vanno con la voce
+di sistema finché non si generano col tasto «Voci ElevenLabs» della scheda.
+
+Prove: `prova-storie.js` (122: le versioni compatte corte, senza schede, ogni
+battuta uguale all'originale o riscritta in una scena con un'animazione nuova,
+tutte e otto in scena; le animazioni si disegnano a più istanti),
+`prova-demo.js`, `prova-i18n.js`, `controlla-i18n.js --patto`,
+`voci-storie.js --controlla`. Guardate una per una in Chromium (un copione di
+prova con le otto in fila) e le due storie intere (`giro-storia.js`).
+
