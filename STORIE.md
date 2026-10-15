@@ -623,6 +623,7 @@ action: character_hide { target: 'Saturn', shot_from: 0.9 };
 | `character_sing` (v450) | `target`, `with?` (gli altri che cantano, separati da virgole), `id` **oppure** `text` (al più 240 caratteri), `words?` (v451: i tempi di ogni parola, `'0.00-0.21 0.21-0.35 - …'` in frazioni della ripresa), `voice?` (v452: l'intensità della voce, una cifra 0–9 ogni 40 ms della ripresa): il verso dura la sua ripresa |
 | `story_photo` (v451) | `photo` (`pale_blue_dot`): la fotografia vera accanto alla scena, per la ripresa dell'azione |
 | `story_title` (v450) | `id` o `text`, `sub_id?` o `subtitle?`: il titolo grande al centro, per la sua ripresa |
+| `story_style` (v504) | `look` (`kurzgesagt` o `ink`): lo stile del disegno da quella scena alla fine della storia: §«Apollo 13 · Dentro la scienza» e lo stile di Kurzgesagt |
 
 Dalla v416 `character_show`, `character_move`, `character_return`,
 `character_animate`, `character_become` ed `effect` accettano anche
@@ -4117,4 +4118,101 @@ spiegazione si disegna a sei istanti, con titolo ed etichette), `prova-demo.js`,
 `prova-i18n.js`, `controlla-i18n.js --patto`, `voci-storie.js --controlla`;
 guardate tutte e 21 in Chromium (un copione di prova con le 21 in fila) e le
 due storie intere (`giro-storia.js`, nessun errore).
+
+### «Apollo 13 · Dentro la scienza» e lo stile di Kurzgesagt (v504)
+
+«Fai una nuova CosmoStoria simile a quella di Interstellar dentro la scienza:
+un video che spiega in modo approfondito gli aspetti scientifici seguendo il
+filo della trama del film, ma col centro sulle spiegazioni. Questa volta il
+film Apollo 13 (1995). E usa una grafica più simile a Kurzgesagt — solo per
+questa storia» (con un fotogramma di Kurzgesagt come modello: fondo blu notte
+e viola, neon, figure tonde senza contorno, aloni che brillano).
+
+**Lo stile** è un'azione nuova, `story_style { look: kurzgesagt }`, nella prima
+scena: vale fino alla fine della storia (`stor.stile`, che `storSgombra` e
+`storTic` rimettono a `ink` quando la demo finisce). Le forme restano quelle di
+sempre; cambia come si dipingono (storie-cosmiche.js §6):
+
+- `parte` passa a `parteKurz`: niente pennino né alone color panna, una
+  stesura piatta con l'ombra fredda che tira al viola e una lama di luce sul
+  bordo in alto a sinistra; `asta` è un bastoncino del suo colore;
+- la testa (`testaKurz`) è liscia, senza naso né contorno;
+- il volto (`kurzVolto`, chiamato da `storDisegnaVolto` con la stessa
+  geometria e lo stesso giro): due ovali scuri col riflesso, che guardano,
+  si chiudono e battono le palpebre; le sopracciglia a bastoncino; la bocca a
+  riga che parlando si apre in un ovale con la lingua; le guance sfumate;
+- il pennino e l'alone dei segni da fumetto (`INCHIOSTRO`, `ALONE`, ora `let`)
+  diventano indaco tenue e trasparente per tutto il fotogramma
+  (`storTintePennino`);
+- il fondo delle spiegazioni (`kzFondo`) è più profondo e ha le luci sfocate
+  che galleggiano, turchesi, lilla, corallo.
+
+**La storia** `storia_apollo13_scienza` (19 scene): sei scene del film a tutto
+schermo e senza titolo (`STOR_SCENE_APOLLO`, disegnate da
+`storDisegnaSpiega` come le spiegazioni: `apollo_launch`, `apollo_explosion`,
+`apollo_control`, `apollo_cabin`, `apollo_jettison`, `apollo_splashdown`) e
+tredici spiegazioni (`STOR_SPIEGA_APOLLO`, §6-ter-ter, con gli aiutanti
+`kzSaturnV`, `kzApollo`, `kzCapsula`, `kzFiamma`, `kzMolecola`,
+`kzManometro`, `kzTermometro`, `kzSbuffi`, `kzTerra`, `kzLuna`):
+
+| Effetto | Cosa succede |
+|---|---|
+| `explain_saturn_v` | il razzo che entra, la quota di 110 m accanto a una persona minuscola, gli stadi, le tonnellate che contano, il fuoco, i due stadi vuoti che si staccano |
+| `explain_pogo` | il serbatoio, il carburante che fa da molla, il motore che rimbalza sempre di più, il grafico che passa la soglia, la croce; i cinque motori dal basso, gli altri quattro che bruciano 34 s in più |
+| `explain_free_return` | l'otto che si disegna attorno alla Terra e alla Luna, la navetta sopra, le frecce della gravità della Luna; «Apollo 13 l'aveva lasciata» |
+| `explain_oxygen_tank` | il serbatoio tagliato: l'ossigeno freddo, i 65 volt, il termometro vero a 540 °C e quello di terra fermo a 27, l'isolante che si crepa, la ventola, la scintilla, il fuoco, lo scoppio coi pezzi |
+| `explain_fuel_cell` | idrogeno e ossigeno che entrano, gli elettroni che accendono la lampadina, l'acqua che esce; poi la croce sul tubo dell'ossigeno e tutto si spegne |
+| `explain_lifeboat` | l'Odyssey squarciato con l'Aquarius davanti, le due barre (2 × 45 ore contro 3 × 90), «Spegnere tutto!» |
+| `explain_co2` | il respiro che fa CO₂, il manometro che sale, il quadrato che rimbalza sul buco tondo, la «cassetta della posta» col nastro, la chimica, l'ago che scende |
+| `explain_cold` | il calore che scappa come luce, il termometro da 21 a 3 °C, i due lati (al Sole e all'ombra), la rotazione «barbecue» |
+| `explain_far_side` | le onde radio dritte e l'ombra radio dietro la Luna, la navetta che ci gira dietro, 25 minuti di silenzio, il contatore fino a 400 171 km |
+| `explain_manual_burn` | il finestrino col mirino, la Terra che scappa e torna, il terminatore sulla riga, i 14 secondi del motore |
+| `explain_power_up` | la batteria che cala, i blocchi degli apparecchi che si incastrano sotto al limite, l'Aquarius che ricarica l'Odyssey |
+| `explain_corridor` | la Terra e l'atmosfera, la strada troppo piatta che rimbalza, quella troppo ripida che brucia, quella giusta (6,5° ± 1°) |
+| `explain_heat_shield` | la capsula a 40 000 km/h, l'aria che si ammassa e diventa plasma (non è attrito), 2 700 °C, i pezzetti dello scudo che portano via il calore, la radio che rimbalza: sei minuti di silenzio |
+
+I numeri sono quelli della missione (NASA, rapporto della commissione
+Cortright, 1970), scritti nel commento in testa al §6-ter-ter. Il film mette
+«Houston, abbiamo un problema» in bocca a Lovell; qui la dice Swigert, come
+davvero, al passato. «Il fallimento non è un'opzione» è del film, e Kranz lo
+dice «come dice il film». Mattingly fu lasciato a terra per il rischio della
+rosolia («German measles»), non del morbillo.
+
+Personaggi nuovi (`persona`, fra gli «astronauti» dello Studio, col loro
+carattere della voce in `VFILM_CARATTERI` e nella regia): `lovell`, `haise`,
+`swigert` (le tute bianche), `kranz` (il gilet bianco), `mattingly` (la tuta
+blu). Tutte le battute sono nuove, con la regia per ElevenLabs in
+`regia-voci.json`; le voci si fanno col tasto «Voci ElevenLabs» della scheda.
+
+Prove: `prova-storie.js` (125: la storia, ogni spiegazione e ogni scena una
+volta, chi parla piccolo in un angolo nelle spiegazioni, le battute, i
+personaggi e le scritte nelle due lingue; `story_style` validato, senza il
+pennino d'inchiostro, che finisce con la storia; le scene del film disegnate
+a sei istanti), `prova-demo.js`, `prova-i18n.js`, `controlla-i18n.js
+--patto`, `voci-storie.js --controlla`; guardata intera in Chromium
+(`giro-storia.js`, nessun errore).
+
+### Il disegno simil 3D, con le ombre (v505)
+
+«Fai una grafica simil 3D, mettendo le ombre.» Sempre solo nello stile di
+Kurzgesagt (`story_style`, quindi in «Apollo 13 · Dentro la scienza»):
+
+- ogni pezzo dei personaggi (`parteKurz`) getta un'ombra morbida su quello
+  che ha sotto e sul fondo, e ha il suo volume: un'ombra interna sfumata che
+  sale dal basso a destra e una luce sfumata in alto a sinistra
+  (`ombraInterna`: l'ombra della tela di un rettangolo grande quanto la
+  tela, col buco della forma, ritagliato dalla forma; `rettangoloTela`);
+- `kzSollevato` dà l'ombra portata agli oggetti delle spiegazioni: il
+  Saturn V e la navicella sono cilindri sfumati (la luce da un lato, il buio
+  che gira dall'altro), la capsula, le molecole tonde, il termometro, il
+  manometro, la batteria e i blocchi, la cella, il serbatoio, il finestrino
+  col bordo incavato, l'omino;
+- `kzPalla` sfuma verso il bordo come una sfera (Terra, Luna, Sole);
+- nelle scene del film: le consolle di Houston in rilievo e lo schermo
+  incavato, i tasti incavati nella cabina, le nuvole di vapore e gli sbuffi
+  tondi (chiari sopra, in ombra sotto), l'ombra del razzo sul piazzale, le
+  cupole dei paracadute e l'ombra della capsula sull'acqua.
+
+Le storie a inchiostro non cambiano. Prove: `prova-storie.js` (125),
+guardata in Chromium (`giro-storia.js`, nessun errore).
 

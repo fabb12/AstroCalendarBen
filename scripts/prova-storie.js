@@ -1768,7 +1768,8 @@ prova('story_question: il cartello della domanda, validato, che se ne va con la 
   S.sgombra();
 });
 prova('le «Interstellar · dentro la scienza» (v501): le spiegazioni a tutto schermo fra le scene del film', () => {
-  const SPIEGA = Object.keys(S.STOR_EFFETTI).filter(k => /^explain_/.test(k));
+  // v504: quelle di «Apollo 13» hanno la loro prova
+  const SPIEGA = Object.keys(S.STOR_EFFETTI).filter(k => /^explain_/.test(k) && !S.STOR_SPIEGA_APOLLO.includes(k));
   assert.equal(SPIEGA.length, 21, 'ventuno spiegazioni');
   const usate = [];
   for (const [orig, nuova] of [['storia_interstellar', 'storia_interstellar_scienza'], ['storia_interstellar2', 'storia_interstellar2_scienza']]) {
@@ -1825,6 +1826,87 @@ prova('le spiegazioni a tutto schermo (v501): si disegnano a ogni battuta, con t
     }
     assert.ok(massimo > 150, tipo + ' disegna: ' + massimo);
     assert.ok(scritte >= 3, tipo + ' ha titolo ed etichette: ' + scritte);
+    motore.ferma && motore.ferma();
+  }
+  S.sgombra();
+});
+prova('«Apollo 13 · dentro la scienza» (v504): tredici spiegazioni, sei scene del film, lo stile di Kurzgesagt', () => {
+  assert.equal(S.STOR_SPIEGA_APOLLO.length, 13, 'tredici spiegazioni');
+  assert.equal(S.STOR_SCENE_APOLLO.length, 6, 'sei scene del film');
+  const c = predefiniti.find(x => x.chiave === 'storia_apollo13_scienza');
+  assert.ok(c && c.storia, 'è una CosmoStoria');
+  const scene = analizza(c.testo).scene;
+  assert.equal(scene.length, 19);
+  assert.ok(scene[0].azioni.some(a => a.comando === 'story_style' && a.parametri.look === 'kurzgesagt'), 'lo stile nella prima scena');
+  assert.ok(/story_title \{ id: 'storie\.titolo\.apollo13_scienza'/.test(c.testo), 'il suo titolo');
+  const spiegazioni = [], sfondi = [];
+  scene.forEach((sc, i) => {
+    const e = sc.azioni.filter(a => a.comando === 'effect' && /^explain_/.test(a.parametri.type));
+    sc.azioni.filter(a => a.comando === 'effect' && /^apollo_/.test(a.parametri.type)).forEach(a => sfondi.push(a.parametri.type));
+    assert.equal(sc.azioni.filter(a => a.comando === 'character_speak').length, 1, 'scena ' + (i + 1) + ': una battuta');
+    if (!e.length) return;
+    assert.equal(e.length, 1, 'scena ' + (i + 1) + ': una spiegazione sola');
+    spiegazioni.push(e[0].parametri.type);
+    assert.ok(sc.azioni.some(a => a.comando === 'story_camera' && a.parametri.mode === 'wide'), 'scena ' + (i + 1) + ': camera larga');
+    const chi = sc.azioni.find(a => a.comando === 'character_speak').parametri.target;
+    const show = sc.azioni.find(a => a.comando === 'character_show' && a.parametri.target === chi);
+    assert.ok(show && show.parametri.scale <= 0.6 && /^bottom_/.test(show.parametri.at), 'scena ' + (i + 1) + ': chi parla sta piccolo in un angolo');
+  });
+  assert.deepEqual(spiegazioni.slice().sort(), S.STOR_SPIEGA_APOLLO.slice().sort(), 'ogni spiegazione una volta');
+  assert.deepEqual(sfondi.slice().sort(), S.STOR_SCENE_APOLLO.slice().sort(), 'ogni scena del film una volta');
+  for (const l of ['it', 'en']) for (const sc of scene) {
+    const id = sc.azioni.find(a => a.comando === 'character_speak').parametri.id;
+    assert.equal(typeof DIZ[l].messaggi[id], 'string', id + ' (' + l + ')');
+  }
+  for (const id of ['lovell', 'haise', 'swigert', 'kranz', 'mattingly']) for (const l of ['it', 'en'])
+    for (const k of ['storie.nome.', 'storie.personalita.', 'storie.fisica.', 'studio.alias.']) assert.equal(typeof DIZ[l].messaggi[k + id], 'string', k + id + ' (' + l + ')');
+  // le scritte passate per variabile (le barre, i blocchi) sono anche loro nei dizionari
+  const sorgente = fs.readFileSync(path.join(RADICE, 'storie-cosmiche.js'), 'utf8');
+  const chiavi = new Set();
+  for (const m of sorgente.matchAll(/'((?:scialuppa|accendi)\.[a-z_]+)'/g)) chiavi.add(m[1]);
+  assert.ok(chiavi.size >= 8, 'scritte: ' + chiavi.size);
+  for (const k of chiavi) for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi['storie.spiega.' + k], 'string', 'storie.spiega.' + k + ' (' + l + ')');
+});
+prova('lo stile di Kurzgesagt (v504): story_style lo accende, niente pennino d\'inchiostro, e finisce con la storia', () => {
+  assert.throws(() => motore.prepara(demo(sc('planetarium_view', "story_style { look: acquerello }"))), /look/);
+  assert.throws(() => motore.prepara(demo(sc('planetarium_view', 'story_style { }'))), /look/);
+  const tratti = stile => {
+    S.sgombra();
+    motore.avvia(demo(sc('planetarium_view', `story_style { look: ${stile} }`, "character_show { target: 'lovell', expression: 'happy' }")), { ripristina() {} });
+    passo(10);
+    assert.equal(S.stile(), stile === 'kurzgesagt' ? 'kurz' : 'ink');
+    const colori = [];
+    const { ctx } = telaFinta();
+    const spia = new Proxy(ctx, { set(o, k, v) { if (k === 'strokeStyle') colori.push(v); o[k] = v; return true; }, get(o, k) { const v = o[k]; return typeof v === 'function' ? v.bind(o) : v; } });
+    for (let k = 0; k < 5; k++) { avanza(16); S.disegnaPersonaggi(spia, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
+    motore.ferma && motore.ferma();
+    return colori;
+  };
+  assert.ok(tratti('ink').includes('#1c1236'), 'la fiaba d\'inchiostro ha il pennino');
+  const kurz = tratti('kurzgesagt');
+  assert.ok(kurz.length > 0 && !kurz.includes('#1c1236'), 'Kurzgesagt no');
+  // finita la storia si torna all'inchiostro
+  globalThis.AstroDemo.inCorso = false;
+  S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [], 800, 600);
+  assert.equal(S.stile(), 'ink');
+  globalThis.AstroDemo.inCorso = true;
+  S.sgombra();
+});
+prova('le scene del film di «Apollo 13» (v504): si disegnano a tutto schermo, a ogni istante, anche ferme', () => {
+  for (const tipo of S.STOR_SCENE_APOLLO) {
+    S.sgombra();
+    motore.avvia(demo(sc('planetarium_view', "story_style { look: kurzgesagt }", "character_show { target: 'lovell' }", `effect { type: ${tipo}, duration: 30 }`)), { ripristina() {} });
+    passo(10);
+    const ef = S.stato.effetti.find(e => e.tipo === tipo);
+    assert.ok(ef, tipo + ' creato');
+    let massimo = 0;
+    for (const ms of [200, 1500, 3500, 6000, 9000, 14000]) {
+      S.stato.orologio = ef.inizio + ms;
+      const { ctx, chiamate } = telaFinta();
+      S.disegnaPersonaggi(ctx, 'cielo', [corpo('lovell', 200, 300, 3)], 800, 600);
+      massimo = Math.max(massimo, chiamate.length);
+    }
+    assert.ok(massimo > 150, tipo + ' disegna: ' + massimo);
     motore.ferma && motore.ferma();
   }
   S.sgombra();

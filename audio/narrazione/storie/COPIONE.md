@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **154/277** in italiano · **0/215** in inglese.
+Pronte: **154/296** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -48,6 +48,11 @@ Pronte: **154/277** in italiano · **0/215** in inglese.
 | Loro | `storie/loro/` | 13 | 11/13 | 0/13 |
 | Murph bambina | `storie/murph-bambina/` | 1 | 1/1 | 0/1 |
 | Murph anziana | `storie/murph-anziana/` | 5 | 2/5 | 0/5 |
+| Jim Lovell | `storie/jim-lovell/` | 6 | 0/6 | 0/6 |
+| Fred Haise | `storie/fred-haise/` | 4 | 0/4 | 0/4 |
+| Jack Swigert | `storie/jack-swigert/` | 4 | 0/4 | 0/4 |
+| Gene Kranz | `storie/gene-kranz/` | 4 | 0/4 | 0/4 |
+| Ken Mattingly | `storie/ken-mattingly/` | 1 | 0/1 | 0/1 |
 | hubble | `storie/hubble/` | 1 | 1/1 | 0/0 |
 | iss | `storie/iss/` | 1 | 1/1 | 0/0 |
 | css | `storie/css/` | 1 | 1/1 | 0/0 |
@@ -2384,6 +2389,218 @@ Cartella: `audio/narrazione/storie/murph-anziana/<lingua>/` · nel codice `murph
   - **Emozione:** warmly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** But don't stay here for me now, Dad. I have my children, my grandchildren: I'm not alone. Brand is out there, beyond the wormhole, on Edmunds' planet. Alone, in a distant galaxy. Go to her.
   - **Da incollare su ElevenLabs v3:** `[warmly] But don't stay here for me now, Dad. I have my children, my grandchildren: I'm not alone. Brand is out there, beyond the wormhole, on Edmunds' planet. Alone, in a distant galaxy. Go to her.`
+
+## Jim Lovell
+
+Cartella: `audio/narrazione/storie/jim-lovell/<lingua>/` · nel codice `lovell` · in inglese Jim Lovell
+
+**La voce:** Lui. Il comandante, sui quarant'anni: voce calda, calma e sicura, americana; ironico anche nei guai, la voce si scalda di meraviglia quando parla della Luna.
+
+### Italiano — `storie/jim-lovell/it/`
+
+- `storia_apollo13_scienza-1.mp3` — manca · Apollo 13: dentro la scienza, scena 1 (al massimo 16 s)
+  - **Emozione:** fiero — tono da apertura di documentario: calmo, caldo, con un sorriso sullo «Spoiler»
+  - **Testo:** 11 aprile 1970, ore 13 e 13. Tre uomini in cima al razzo più grande mai costruito, diretti verso la Luna. Apollo 13 doveva essere una missione quasi di routine. Spoiler: non lo sarà. Ma proprio per questo è la missione da cui si impara di più.
+  - **Da incollare su ElevenLabs v3:** `[proud] 11 aprile 1970, ore 13 e 13. Tre uomini in cima al razzo più grande mai costruito, diretti verso la Luna. Apollo 13 doveva essere una missione quasi di routine. Spoiler: non lo sarà. Ma proprio per questo è la missione da cui si impara di più.`
+- `storia_apollo13_scienza-4.mp3` — manca · Apollo 13: dentro la scienza, scena 4 (al massimo 16 s)
+  - **Emozione:** pensoso — spiega con calma, come un segreto del mestiere; serio sull'ultima frase
+  - **Testo:** Per andare sulla Luna c'è una strada furba: la traiettoria di ritorno libero. Disegna un otto: parti, giri dietro la Luna, e la sua gravità ti rilancia verso casa senza accendere niente. È una cintura di sicurezza. Noi però l'avevamo lasciata, per puntare a Fra Mauro. E questo, fra poco, conterà.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Per andare sulla Luna c'è una strada furba: la traiettoria di ritorno libero. Disegna un otto: parti, giri dietro la Luna, e la sua gravità ti rilancia verso casa senza accendere niente. È una cintura di sicurezza. Noi però l'avevamo lasciata, per puntare a Fra Mauro. E questo, fra poco, conterà.`
+- `storia_apollo13_scienza-13.mp3` — manca · Apollo 13: dentro la scienza, scena 13 (al massimo 16 s)
+  - **Emozione:** meravigliato — sottovoce dietro la Luna, poi meraviglia e orgoglio sul record
+  - **Testo:** Poi giriamo dietro la Luna. Le onde radio vanno dritte, e la Luna fa da muro: per venticinque minuti siamo soli, senza una voce da casa. E battiamo un record per caso: a quattrocentomila centosettantuno chilometri dalla Terra. Nessun essere umano era mai stato così lontano, e il record resterà nostro per più di cinquant'anni.
+  - **Da incollare su ElevenLabs v3:** `[in awe] Poi giriamo dietro la Luna. Le onde radio vanno dritte, e la Luna fa da muro: per venticinque minuti siamo soli, senza una voce da casa. E battiamo un record per caso: a quattrocentomila centosettantuno chilometri dalla Terra. Nessun essere umano era mai stato così lontano, e il record resterà nostro per più di cinquant'anni.`
+- `storia_apollo13_scienza-14.mp3` — manca · Apollo 13: dentro la scienza, scena 14 (al massimo 16 s)
+  - **Emozione:** deciso — concentrato, preciso, come chi tiene il mirino; sollevato alla fine
+  - **Testo:** Per tornare serve una correzione col motore, ma il computer di guida è spento per risparmiare corrente. Allora si fa a mano. Il trucco: guardare la Terra dal finestrino e tenere la linea fra il giorno e la notte, il terminatore, ferma sulla croce del mirino. Se la linea resta dritta, il razzo spinge nella direzione giusta. Quattordici secondi, e siamo di nuovo in rotta.
+  - **Da incollare su ElevenLabs v3:** `[focused] Per tornare serve una correzione col motore, ma il computer di guida è spento per risparmiare corrente. Allora si fa a mano. Il trucco: guardare la Terra dal finestrino e tenere la linea fra il giorno e la notte, il terminatore, ferma sulla croce del mirino. Se la linea resta dritta, il razzo spinge nella direzione giusta. Quattordici secondi, e siamo di nuovo in rotta.`
+- `storia_apollo13_scienza-16.mp3` — manca · Apollo 13: dentro la scienza, scena 16 (al massimo 12 s)
+  - **Emozione:** sorpreso — stupore e un brivido: lento, quasi sussurrato su «tutto annerito»
+  - **Testo:** Prima del rientro sganciamo il modulo di servizio. E finalmente lo vediamo: manca un intero pannello. Dentro, tutto annerito. È lì che è scoppiato il serbatoio, a pochi metri dallo scudo termico che ora deve salvarci.
+  - **Da incollare su ElevenLabs v3:** `[surprised] Prima del rientro sganciamo il modulo di servizio. E finalmente lo vediamo: manca un intero pannello. Dentro, tutto annerito. È lì che è scoppiato il serbatoio, a pochi metri dallo scudo termico che ora deve salvarci.`
+- `storia_apollo13_scienza-19.mp3` — manca · Apollo 13: dentro la scienza, scena 19 (al massimo 15 s)
+  - **Emozione:** sollevato — finale: caldo, commosso, sereno, con orgoglio
+  - **Testo:** 17 aprile 1970, Oceano Pacifico. Tre paracadute, tre uomini vivi. Non abbiamo toccato la Luna, ma abbiamo dimostrato che cosa sanno fare la scienza e una squadra quando tutto va storto. Lo chiamano un fallimento di successo. Per me è la missione più bella di tutte.
+  - **Da incollare su ElevenLabs v3:** `[relieved] 17 aprile 1970, Oceano Pacifico. Tre paracadute, tre uomini vivi. Non abbiamo toccato la Luna, ma abbiamo dimostrato che cosa sanno fare la scienza e una squadra quando tutto va storto. Lo chiamano un fallimento di successo. Per me è la missione più bella di tutte.`
+
+### Inglese — `storie/jim-lovell/en/`
+
+- `storia_apollo13_scienza-1.mp3` — manca · Apollo 13: dentro la scienza, scena 1 (al massimo 16 s)
+  - **Emozione:** fiero — tono da apertura di documentario: calmo, caldo, con un sorriso sullo «Spoiler»
+  - **Testo:** April 11, 1970, 1:13 in the afternoon. Three men on top of the biggest rocket ever built, headed for the Moon. Apollo 13 was supposed to be almost routine. Spoiler: it won't be. But that's exactly why it's the mission we learn the most from.
+  - **Da incollare su ElevenLabs v3:** `[proud] April 11, 1970, 1:13 in the afternoon. Three men on top of the biggest rocket ever built, headed for the Moon. Apollo 13 was supposed to be almost routine. Spoiler: it won't be. But that's exactly why it's the mission we learn the most from.`
+- `storia_apollo13_scienza-4.mp3` — manca · Apollo 13: dentro la scienza, scena 4 (al massimo 16 s)
+  - **Emozione:** pensoso — spiega con calma, come un segreto del mestiere; serio sull'ultima frase
+  - **Testo:** There's a clever road to the Moon: the free-return trajectory. It draws a figure eight: you leave, swing behind the Moon, and its gravity flings you back home without firing anything. It's a seat belt. But we had left it, to aim for Fra Mauro. And that, very soon, will matter.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] There's a clever road to the Moon: the free-return trajectory. It draws a figure eight: you leave, swing behind the Moon, and its gravity flings you back home without firing anything. It's a seat belt. But we had left it, to aim for Fra Mauro. And that, very soon, will matter.`
+- `storia_apollo13_scienza-13.mp3` — manca · Apollo 13: dentro la scienza, scena 13 (al massimo 16 s)
+  - **Emozione:** meravigliato — sottovoce dietro la Luna, poi meraviglia e orgoglio sul record
+  - **Testo:** Then we swing behind the Moon. Radio waves travel in straight lines, and the Moon is a wall: for twenty-five minutes we're alone, without a single voice from home. And we break a record by accident: four hundred thousand one hundred and seventy-one kilometres from Earth. No human had ever been that far, and the record will stay ours for more than fifty years.
+  - **Da incollare su ElevenLabs v3:** `[in awe] Then we swing behind the Moon. Radio waves travel in straight lines, and the Moon is a wall: for twenty-five minutes we're alone, without a single voice from home. And we break a record by accident: four hundred thousand one hundred and seventy-one kilometres from Earth. No human had ever been that far, and the record will stay ours for more than fifty years.`
+- `storia_apollo13_scienza-14.mp3` — manca · Apollo 13: dentro la scienza, scena 14 (al massimo 16 s)
+  - **Emozione:** deciso — concentrato, preciso, come chi tiene il mirino; sollevato alla fine
+  - **Testo:** To get home we need an engine correction, but the guidance computer is off to save power. So we do it by hand. The trick: look at the Earth through the window and keep the line between day and night, the terminator, steady on the crosshair. If the line stays straight, the rocket pushes in the right direction. Fourteen seconds, and we're back on course.
+  - **Da incollare su ElevenLabs v3:** `[focused] To get home we need an engine correction, but the guidance computer is off to save power. So we do it by hand. The trick: look at the Earth through the window and keep the line between day and night, the terminator, steady on the crosshair. If the line stays straight, the rocket pushes in the right direction. Fourteen seconds, and we're back on course.`
+- `storia_apollo13_scienza-16.mp3` — manca · Apollo 13: dentro la scienza, scena 16 (al massimo 12 s)
+  - **Emozione:** sorpreso — stupore e un brivido: lento, quasi sussurrato su «tutto annerito»
+  - **Testo:** Before re-entry we cast off the service module. And at last we see it: an entire panel is missing. Inside, everything is blackened. That's where the tank blew up, a few metres from the heat shield that now has to save us.
+  - **Da incollare su ElevenLabs v3:** `[surprised] Before re-entry we cast off the service module. And at last we see it: an entire panel is missing. Inside, everything is blackened. That's where the tank blew up, a few metres from the heat shield that now has to save us.`
+- `storia_apollo13_scienza-19.mp3` — manca · Apollo 13: dentro la scienza, scena 19 (al massimo 15 s)
+  - **Emozione:** sollevato — finale: caldo, commosso, sereno, con orgoglio
+  - **Testo:** April 17, 1970, Pacific Ocean. Three parachutes, three men alive. We never touched the Moon, but we showed what science and a team can do when everything goes wrong. They call it a successful failure. To me it's the finest mission of them all.
+  - **Da incollare su ElevenLabs v3:** `[relieved] April 17, 1970, Pacific Ocean. Three parachutes, three men alive. We never touched the Moon, but we showed what science and a team can do when everything goes wrong. They call it a successful failure. To me it's the finest mission of them all.`
+
+## Fred Haise
+
+Cartella: `audio/narrazione/storie/fred-haise/<lingua>/` · nel codice `haise` · in inglese Fred Haise
+
+**La voce:** Lui. Il pilota del modulo lunare: voce cordiale e allegra, del Sud degli Stati Uniti, pratica; quando ha freddo e febbre diventa stanca ma non si lamenta.
+
+### Italiano — `storie/fred-haise/it/`
+
+- `storia_apollo13_scienza-2.mp3` — manca · Apollo 13: dentro la scienza, scena 2 (al massimo 16 s)
+  - **Emozione:** entusiasta — ritmo da divulgazione: vivace, chiaro, con entusiasmo
+  - **Testo:** Il Saturn V: alto centodieci metri, come un palazzo di trentasei piani, e pesante quasi tremila tonnellate. Quasi tutto è carburante: ogni secondo il primo stadio ne brucia tredici tonnellate. Il trucco? Quando uno stadio è vuoto, lo si butta via. Meno peso da portare, più velocità.
+  - **Da incollare su ElevenLabs v3:** `[excited] Il Saturn V: alto centodieci metri, come un palazzo di trentasei piani, e pesante quasi tremila tonnellate. Quasi tutto è carburante: ogni secondo il primo stadio ne brucia tredici tonnellate. Il trucco? Quando uno stadio è vuoto, lo si butta via. Meno peso da portare, più velocità.`
+- `storia_apollo13_scienza-7.mp3` — manca · Apollo 13: dentro la scienza, scena 7 (al massimo 16 s)
+  - **Emozione:** preoccupato — spiega chiaro, la voce si abbassa sull'ultima frase
+  - **Testo:** Perché è così grave? Perché la navicella fa la sua elettricità con le celle a combustibile. Idrogeno più ossigeno: ne escono corrente… e acqua, quella che beviamo. Senza ossigeno, niente corrente e niente acqua. L'Odyssey, la nostra casa, comincia a spegnersi.
+  - **Da incollare su ElevenLabs v3:** `[concerned] Perché è così grave? Perché la navicella fa la sua elettricità con le celle a combustibile. Idrogeno più ossigeno: ne escono corrente… e acqua, quella che beviamo. Senza ossigeno, niente corrente e niente acqua. L'Odyssey, la nostra casa, comincia a spegnersi.`
+- `storia_apollo13_scienza-11.mp3` — manca · Apollo 13: dentro la scienza, scena 11 (al massimo 11 s)
+  - **Emozione:** stanco — voce stanca e infreddolita, piano, con un mezzo sorriso amaro
+  - **Testo:** Intanto fa freddo. Tre gradi. Le pareti si coprono di gocce, il fiato fa le nuvolette, e io mi becco pure la febbre. Dormire qui è quasi impossibile.
+  - **Da incollare su ElevenLabs v3:** `[tired] Intanto fa freddo. Tre gradi. Le pareti si coprono di gocce, il fiato fa le nuvolette, e io mi becco pure la febbre. Dormire qui è quasi impossibile.`
+- `storia_apollo13_scienza-12.mp3` — manca · Apollo 13: dentro la scienza, scena 12 (al massimo 16 s)
+  - **Emozione:** curioso — ritmo da divulgazione: vivace, chiaro, un sorriso su «barbecue»
+  - **Testo:** Ma perché fa così freddo? Sulla Terra il caldo lo porta via l'aria. Nello spazio l'aria non c'è: il calore se ne va solo come luce invisibile, l'infrarosso. A scaldarci erano gli apparecchi accesi; spenti quelli, la cabina scende a tre gradi. E al Sole la navicella scotterebbe, all'ombra gelerebbe: per questo gira piano su sé stessa, come uno spiedo. La chiamano rotazione barbecue.
+  - **Da incollare su ElevenLabs v3:** `[curious] Ma perché fa così freddo? Sulla Terra il caldo lo porta via l'aria. Nello spazio l'aria non c'è: il calore se ne va solo come luce invisibile, l'infrarosso. A scaldarci erano gli apparecchi accesi; spenti quelli, la cabina scende a tre gradi. E al Sole la navicella scotterebbe, all'ombra gelerebbe: per questo gira piano su sé stessa, come uno spiedo. La chiamano rotazione barbecue.`
+
+### Inglese — `storie/fred-haise/en/`
+
+- `storia_apollo13_scienza-2.mp3` — manca · Apollo 13: dentro la scienza, scena 2 (al massimo 16 s)
+  - **Emozione:** entusiasta — ritmo da divulgazione: vivace, chiaro, con entusiasmo
+  - **Testo:** The Saturn V: a hundred and ten metres tall, like a thirty-six-storey building, and almost three thousand tonnes. Nearly all of it is fuel: every second the first stage burns thirteen tonnes of it. The trick? When a stage is empty, you throw it away. Less weight to carry, more speed.
+  - **Da incollare su ElevenLabs v3:** `[excited] The Saturn V: a hundred and ten metres tall, like a thirty-six-storey building, and almost three thousand tonnes. Nearly all of it is fuel: every second the first stage burns thirteen tonnes of it. The trick? When a stage is empty, you throw it away. Less weight to carry, more speed.`
+- `storia_apollo13_scienza-7.mp3` — manca · Apollo 13: dentro la scienza, scena 7 (al massimo 16 s)
+  - **Emozione:** preoccupato — spiega chiaro, la voce si abbassa sull'ultima frase
+  - **Testo:** Why is it so bad? Because the spacecraft makes its electricity with fuel cells. Hydrogen plus oxygen: out come current… and water, the water we drink. No oxygen, no current and no water. Odyssey, our home, starts to shut down.
+  - **Da incollare su ElevenLabs v3:** `[concerned] Why is it so bad? Because the spacecraft makes its electricity with fuel cells. Hydrogen plus oxygen: out come current… and water, the water we drink. No oxygen, no current and no water. Odyssey, our home, starts to shut down.`
+- `storia_apollo13_scienza-11.mp3` — manca · Apollo 13: dentro la scienza, scena 11 (al massimo 11 s)
+  - **Emozione:** stanco — voce stanca e infreddolita, piano, con un mezzo sorriso amaro
+  - **Testo:** Meanwhile it's cold. Three degrees. The walls are covered in droplets, our breath makes little clouds, and I've even caught a fever. Sleeping in here is almost impossible.
+  - **Da incollare su ElevenLabs v3:** `[tired] Meanwhile it's cold. Three degrees. The walls are covered in droplets, our breath makes little clouds, and I've even caught a fever. Sleeping in here is almost impossible.`
+- `storia_apollo13_scienza-12.mp3` — manca · Apollo 13: dentro la scienza, scena 12 (al massimo 16 s)
+  - **Emozione:** curioso — ritmo da divulgazione: vivace, chiaro, un sorriso su «barbecue»
+  - **Testo:** But why is it so cold? On Earth, the air carries heat away. In space there's no air: heat leaves only as invisible light, infrared. What kept us warm was the equipment that was switched on; with that off, the cabin drops to three degrees. And in the Sun the spacecraft would scorch, in the shade it would freeze: that's why it slowly turns on itself, like a spit. They call it the barbecue roll.
+  - **Da incollare su ElevenLabs v3:** `[curious] But why is it so cold? On Earth, the air carries heat away. In space there's no air: heat leaves only as invisible light, infrared. What kept us warm was the equipment that was switched on; with that off, the cabin drops to three degrees. And in the Sun the spacecraft would scorch, in the shade it would freeze: that's why it slowly turns on itself, like a spit. They call it the barbecue roll.`
+
+## Jack Swigert
+
+Cartella: `audio/narrazione/storie/jack-swigert/<lingua>/` · nel codice `swigert` · in inglese Jack Swigert
+
+**La voce:** Lui. Il pilota del modulo di comando, il più giovane: voce chiara ed energica, un filo nervosa; spiega con entusiasmo, come chi ha appena capito una cosa bellissima.
+
+### Italiano — `storie/jack-swigert/it/`
+
+- `storia_apollo13_scienza-3.mp3` — manca · Apollo 13: dentro la scienza, scena 3 (al massimo 16 s)
+  - **Emozione:** preoccupato — racconta un pericolo: svelto, un filo teso, poi sollevato su «si va avanti»
+  - **Testo:** Primo guaio, cinque minuti e mezzo dopo il decollo. Il motore centrale del secondo stadio comincia a tremare: è l'effetto pogo. Il motore spinge, il carburante nel tubo si schiaccia come una molla, la spinta cambia, e tutto rimbalza sempre più forte. Un sensore lo spegne con due minuti di anticipo. Gli altri quattro bruciano un po' più a lungo, e si va avanti.
+  - **Da incollare su ElevenLabs v3:** `[nervously] Primo guaio, cinque minuti e mezzo dopo il decollo. Il motore centrale del secondo stadio comincia a tremare: è l'effetto pogo. Il motore spinge, il carburante nel tubo si schiaccia come una molla, la spinta cambia, e tutto rimbalza sempre più forte. Un sensore lo spegne con due minuti di anticipo. Gli altri quattro bruciano un po' più a lungo, e si va avanti.`
+- `storia_apollo13_scienza-5.mp3` — manca · Apollo 13: dentro la scienza, scena 5 (al massimo 14 s)
+  - **Emozione:** teso — la frase famosa detta piano e incredula, poi racconta di fretta, con paura trattenuta
+  - **Testo:** Ok, Houston… abbiamo avuto un problema. Un botto, un sobbalzo, gli allarmi. Dal finestrino esce una nube bianca: è il nostro ossigeno, che scappa nello spazio. E siamo a più di trecentomila chilometri da casa.
+  - **Da incollare su ElevenLabs v3:** `[tense] Ok, Houston… abbiamo avuto un problema. Un botto, un sobbalzo, gli allarmi. Dal finestrino esce una nube bianca: è il nostro ossigeno, che scappa nello spazio. E siamo a più di trecentomila chilometri da casa.`
+- `storia_apollo13_scienza-10.mp3` — manca · Apollo 13: dentro la scienza, scena 10 (al massimo 16 s)
+  - **Emozione:** curioso — un problema e la sua soluzione furba: vivace, quasi divertito sul nastro adesivo
+  - **Testo:** Nuovo problema: l'aria. Ogni respiro aggiunge anidride carbonica, e i filtri dell'Aquarius sono quasi saturi. Ci sono i filtri di ricambio dell'Odyssey… ma sono quadrati, e il buco è tondo. A Houston inventano un adattatore con quello che c'è a bordo: sacchetti, cartoncino, tubi e nastro adesivo. Lo costruiamo, e l'ago scende.
+  - **Da incollare su ElevenLabs v3:** `[curious] Nuovo problema: l'aria. Ogni respiro aggiunge anidride carbonica, e i filtri dell'Aquarius sono quasi saturi. Ci sono i filtri di ricambio dell'Odyssey… ma sono quadrati, e il buco è tondo. A Houston inventano un adattatore con quello che c'è a bordo: sacchetti, cartoncino, tubi e nastro adesivo. Lo costruiamo, e l'ago scende.`
+- `storia_apollo13_scienza-18.mp3` — manca · Apollo 13: dentro la scienza, scena 18 (al massimo 16 s)
+  - **Emozione:** entusiasta — ritmo da divulgazione: vivace, con slancio; poi la voce si fa sospesa sul silenzio
+  - **Testo:** Arriviamo a quasi quarantamila chilometri orari. Davanti allo scudo l'aria non fa in tempo a spostarsi: si comprime, e comprimendosi si scalda fino a diventare plasma, a circa duemilasettecento gradi. Non è l'attrito! Lo scudo si consuma apposta, e ogni pezzetto che vola via si porta dietro il calore. Ma il plasma blocca la radio: a Houston, sei minuti di silenzio.
+  - **Da incollare su ElevenLabs v3:** `[excited] Arriviamo a quasi quarantamila chilometri orari. Davanti allo scudo l'aria non fa in tempo a spostarsi: si comprime, e comprimendosi si scalda fino a diventare plasma, a circa duemilasettecento gradi. Non è l'attrito! Lo scudo si consuma apposta, e ogni pezzetto che vola via si porta dietro il calore. Ma il plasma blocca la radio: a Houston, sei minuti di silenzio.`
+
+### Inglese — `storie/jack-swigert/en/`
+
+- `storia_apollo13_scienza-3.mp3` — manca · Apollo 13: dentro la scienza, scena 3 (al massimo 16 s)
+  - **Emozione:** preoccupato — racconta un pericolo: svelto, un filo teso, poi sollevato su «si va avanti»
+  - **Testo:** First hiccup, five and a half minutes after liftoff. The centre engine of the second stage starts to shake: it's the pogo effect. The engine pushes, the fuel in the pipe squashes like a spring, the thrust changes, and everything bounces harder and harder. A sensor shuts it down two minutes early. The other four burn a little longer, and on we go.
+  - **Da incollare su ElevenLabs v3:** `[nervously] First hiccup, five and a half minutes after liftoff. The centre engine of the second stage starts to shake: it's the pogo effect. The engine pushes, the fuel in the pipe squashes like a spring, the thrust changes, and everything bounces harder and harder. A sensor shuts it down two minutes early. The other four burn a little longer, and on we go.`
+- `storia_apollo13_scienza-5.mp3` — manca · Apollo 13: dentro la scienza, scena 5 (al massimo 14 s)
+  - **Emozione:** teso — la frase famosa detta piano e incredula, poi racconta di fretta, con paura trattenuta
+  - **Testo:** Okay, Houston… we've had a problem. A bang, a jolt, the alarms. A white cloud is pouring out of the window: it's our oxygen, escaping into space. And we're more than three hundred thousand kilometres from home.
+  - **Da incollare su ElevenLabs v3:** `[tense] Okay, Houston… we've had a problem. A bang, a jolt, the alarms. A white cloud is pouring out of the window: it's our oxygen, escaping into space. And we're more than three hundred thousand kilometres from home.`
+- `storia_apollo13_scienza-10.mp3` — manca · Apollo 13: dentro la scienza, scena 10 (al massimo 16 s)
+  - **Emozione:** curioso — un problema e la sua soluzione furba: vivace, quasi divertito sul nastro adesivo
+  - **Testo:** New problem: the air. Every breath adds carbon dioxide, and Aquarius's filters are almost full. There are Odyssey's spare filters… but they're square, and the hole is round. In Houston they invent an adapter out of what's on board: bags, cardboard, hoses and duct tape. We build it, and the needle drops.
+  - **Da incollare su ElevenLabs v3:** `[curious] New problem: the air. Every breath adds carbon dioxide, and Aquarius's filters are almost full. There are Odyssey's spare filters… but they're square, and the hole is round. In Houston they invent an adapter out of what's on board: bags, cardboard, hoses and duct tape. We build it, and the needle drops.`
+- `storia_apollo13_scienza-18.mp3` — manca · Apollo 13: dentro la scienza, scena 18 (al massimo 16 s)
+  - **Emozione:** entusiasta — ritmo da divulgazione: vivace, con slancio; poi la voce si fa sospesa sul silenzio
+  - **Testo:** We arrive at almost forty thousand kilometres an hour. In front of the shield the air has no time to get out of the way: it gets compressed, and as it's compressed it heats up until it becomes plasma, at about two thousand seven hundred degrees. It's not friction! The shield wears away on purpose, and every bit that flies off takes heat with it. But the plasma blocks the radio: in Houston, six minutes of silence.
+  - **Da incollare su ElevenLabs v3:** `[excited] We arrive at almost forty thousand kilometres an hour. In front of the shield the air has no time to get out of the way: it gets compressed, and as it's compressed it heats up until it becomes plasma, at about two thousand seven hundred degrees. It's not friction! The shield wears away on purpose, and every bit that flies off takes heat with it. But the plasma blocks the radio: in Houston, six minutes of silence.`
+
+## Gene Kranz
+
+Cartella: `audio/narrazione/storie/gene-kranz/<lingua>/` · nel codice `kranz` · in inglese Gene Kranz
+
+**La voce:** Lui. Il direttore di volo: voce ferma, autorevole, scandita, da chi comanda una squadra; mai urlata, sempre decisa.
+
+### Italiano — `storie/gene-kranz/it/`
+
+- `storia_apollo13_scienza-6.mp3` — manca · Apollo 13: dentro la scienza, scena 6 (al massimo 16 s)
+  - **Emozione:** deciso — ritmo da indagine: preciso, scandito, una pausa prima dello scoppio
+  - **Testo:** Che cosa era successo? Colpa di un serbatoio d'ossigeno. I suoi interruttori erano fatti per ventotto volt, ma poche settimane prima del lancio, a terra, ci misero sessantacinque volt. Si incollarono, e il riscaldatore arrivò a circa cinquecentoquaranta gradi. Nessuno se ne accorse: il termometro arrivava solo a ventisette. L'isolante dei fili si rovinò. In volo, le ventole si accendono, una scintilla nell'ossigeno puro… e il serbatoio scoppia.
+  - **Da incollare su ElevenLabs v3:** `[serious] Che cosa era successo? Colpa di un serbatoio d'ossigeno. I suoi interruttori erano fatti per ventotto volt, ma poche settimane prima del lancio, a terra, ci misero sessantacinque volt. Si incollarono, e il riscaldatore arrivò a circa cinquecentoquaranta gradi. Nessuno se ne accorse: il termometro arrivava solo a ventisette. L'isolante dei fili si rovinò. In volo, le ventole si accendono, una scintilla nell'ossigeno puro… e il serbatoio scoppia.`
+- `storia_apollo13_scienza-8.mp3` — manca · Apollo 13: dentro la scienza, scena 8 (al massimo 12 s)
+  - **Emozione:** deciso — da capo che parla alla squadra: fermo, lento, senza alzare la voce
+  - **Testo:** Qui a Houston nessuno sa ancora come riportarli a casa. Ma abbiamo una regola: si lavora sui fatti, un problema alla volta, senza tirare a indovinare. E, come dice il film, il fallimento non è un'opzione.
+  - **Da incollare su ElevenLabs v3:** `[firmly] Qui a Houston nessuno sa ancora come riportarli a casa. Ma abbiamo una regola: si lavora sui fatti, un problema alla volta, senza tirare a indovinare. E, come dice il film, il fallimento non è un'opzione.`
+- `storia_apollo13_scienza-9.mp3` — manca · Apollo 13: dentro la scienza, scena 9 (al massimo 16 s)
+  - **Emozione:** pensoso — l'idea che salva: si accende sulla scialuppa, poi pratico e svelto
+  - **Testo:** L'idea che li salva: usare il modulo lunare come scialuppa. L'Aquarius era fatto per tenere in vita due persone per circa quarantacinque ore. Ora deve tenerne tre per quasi novanta. Allora si spegne tutto ciò che non serve, e l'Odyssey si addormenta: le sue batterie servono intatte per il rientro.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] L'idea che li salva: usare il modulo lunare come scialuppa. L'Aquarius era fatto per tenere in vita due persone per circa quarantacinque ore. Ora deve tenerne tre per quasi novanta. Allora si spegne tutto ciò che non serve, e l'Odyssey si addormenta: le sue batterie servono intatte per il rientro.`
+- `storia_apollo13_scienza-17.mp3` — manca · Apollo 13: dentro la scienza, scena 17 (al massimo 16 s)
+  - **Emozione:** serio — spiega una manovra difficile: chiaro, scandito, con tensione
+  - **Testo:** Il rientro è un tiro di precisione. Bisogna entrare nell'aria con un angolo di circa sei gradi e mezzo, uno in più o in meno. Troppo piatto: la capsula rimbalza sull'atmosfera come un sasso sull'acqua, e si perde nello spazio. Troppo ripido: troppo calore e una frenata che schiaccia. Il corridoio è largo appena due gradi.
+  - **Da incollare su ElevenLabs v3:** `[serious] Il rientro è un tiro di precisione. Bisogna entrare nell'aria con un angolo di circa sei gradi e mezzo, uno in più o in meno. Troppo piatto: la capsula rimbalza sull'atmosfera come un sasso sull'acqua, e si perde nello spazio. Troppo ripido: troppo calore e una frenata che schiaccia. Il corridoio è largo appena due gradi.`
+
+### Inglese — `storie/gene-kranz/en/`
+
+- `storia_apollo13_scienza-6.mp3` — manca · Apollo 13: dentro la scienza, scena 6 (al massimo 16 s)
+  - **Emozione:** deciso — ritmo da indagine: preciso, scandito, una pausa prima dello scoppio
+  - **Testo:** What had happened? Blame an oxygen tank. Its switches were built for twenty-eight volts, but a few weeks before launch, on the ground, they got sixty-five. They welded shut, and the heater reached about five hundred and forty degrees. Nobody noticed: the thermometer only went up to twenty-seven. The insulation on the wires got cooked. In flight, the fans switch on, a spark in pure oxygen… and the tank blows up.
+  - **Da incollare su ElevenLabs v3:** `[serious] What had happened? Blame an oxygen tank. Its switches were built for twenty-eight volts, but a few weeks before launch, on the ground, they got sixty-five. They welded shut, and the heater reached about five hundred and forty degrees. Nobody noticed: the thermometer only went up to twenty-seven. The insulation on the wires got cooked. In flight, the fans switch on, a spark in pure oxygen… and the tank blows up.`
+- `storia_apollo13_scienza-8.mp3` — manca · Apollo 13: dentro la scienza, scena 8 (al massimo 12 s)
+  - **Emozione:** deciso — da capo che parla alla squadra: fermo, lento, senza alzare la voce
+  - **Testo:** Here in Houston nobody knows yet how to bring them home. But we have a rule: we work the facts, one problem at a time, no guessing. And, as the film says, failure is not an option.
+  - **Da incollare su ElevenLabs v3:** `[firmly] Here in Houston nobody knows yet how to bring them home. But we have a rule: we work the facts, one problem at a time, no guessing. And, as the film says, failure is not an option.`
+- `storia_apollo13_scienza-9.mp3` — manca · Apollo 13: dentro la scienza, scena 9 (al massimo 16 s)
+  - **Emozione:** pensoso — l'idea che salva: si accende sulla scialuppa, poi pratico e svelto
+  - **Testo:** The idea that saves them: use the lunar module as a lifeboat. Aquarius was built to keep two people alive for about forty-five hours. Now it has to keep three alive for almost ninety. So everything that isn't needed gets switched off, and Odyssey goes to sleep: its batteries must stay untouched for re-entry.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] The idea that saves them: use the lunar module as a lifeboat. Aquarius was built to keep two people alive for about forty-five hours. Now it has to keep three alive for almost ninety. So everything that isn't needed gets switched off, and Odyssey goes to sleep: its batteries must stay untouched for re-entry.`
+- `storia_apollo13_scienza-17.mp3` — manca · Apollo 13: dentro la scienza, scena 17 (al massimo 16 s)
+  - **Emozione:** serio — spiega una manovra difficile: chiaro, scandito, con tensione
+  - **Testo:** Re-entry is a precision shot. You have to enter the air at an angle of about six and a half degrees, give or take one. Too shallow: the capsule skips off the atmosphere like a stone on water, and is lost in space. Too steep: too much heat and a crushing deceleration. The corridor is barely two degrees wide.
+  - **Da incollare su ElevenLabs v3:** `[serious] Re-entry is a precision shot. You have to enter the air at an angle of about six and a half degrees, give or take one. Too shallow: the capsule skips off the atmosphere like a stone on water, and is lost in space. Too steep: too much heat and a crushing deceleration. The corridor is barely two degrees wide.`
+
+## Ken Mattingly
+
+Cartella: `audio/narrazione/storie/ken-mattingly/<lingua>/` · nel codice `mattingly` · in inglese Ken Mattingly
+
+**La voce:** Lui. L'astronauta rimasto a terra: voce calma e riflessiva, precisa come un ingegnere; un po' di amarezza all'inizio, poi orgoglio.
+
+### Italiano — `storie/ken-mattingly/it/`
+
+- `storia_apollo13_scienza-15.mp3` — manca · Apollo 13: dentro la scienza, scena 15 (al massimo 16 s)
+  - **Emozione:** deciso — un filo d'amarezza all'inizio, poi tecnico e orgoglioso
+  - **Testo:** Io dovevo essere lassù, ma mi hanno lasciato a terra per paura della rosolia. Così sono finito nel simulatore. Il problema: riaccendere l'Odyssey con pochissima corrente. Ogni apparecchio costa ampere, e se sfori resti al buio per sempre. Abbiamo provato e riprovato l'ordine giusto, come un incastro. E l'Aquarius ha perfino ricaricato le batterie dell'Odyssey.
+  - **Da incollare su ElevenLabs v3:** `[determined] Io dovevo essere lassù, ma mi hanno lasciato a terra per paura della rosolia. Così sono finito nel simulatore. Il problema: riaccendere l'Odyssey con pochissima corrente. Ogni apparecchio costa ampere, e se sfori resti al buio per sempre. Abbiamo provato e riprovato l'ordine giusto, come un incastro. E l'Aquarius ha perfino ricaricato le batterie dell'Odyssey.`
+
+### Inglese — `storie/ken-mattingly/en/`
+
+- `storia_apollo13_scienza-15.mp3` — manca · Apollo 13: dentro la scienza, scena 15 (al massimo 16 s)
+  - **Emozione:** deciso — un filo d'amarezza all'inizio, poi tecnico e orgoglioso
+  - **Testo:** I was supposed to be up there, but they kept me on the ground for fear of German measles. So I ended up in the simulator. The problem: power Odyssey back up with almost no current. Every device costs amps, and if you go over, you stay in the dark for good. We tried the right order again and again, like a puzzle. And Aquarius even recharged Odyssey's batteries.
+  - **Da incollare su ElevenLabs v3:** `[determined] I was supposed to be up there, but they kept me on the ground for fear of German measles. So I ended up in the simulator. The problem: power Odyssey back up with almost no current. Every device costs amps, and if you go over, you stay in the dark for good. We tried the right order again and again, like a puzzle. And Aquarius even recharged Odyssey's batteries.`
 
 ## hubble
 

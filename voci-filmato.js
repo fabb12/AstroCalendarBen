@@ -698,6 +698,14 @@ const VFILM_CARATTERI = {
   case: { eta: 'middle_aged', parole: ['calm', 'neutral', 'flat', 'robotic'] },
   gargantua: { eta: 'old', parole: ['deep', 'slow', 'mysterious', 'dark', 'resonant'] },
   miller_planet: { eta: 'middle_aged', parole: ['soft', 'calm', 'mysterious', 'breathy'] },
+  // v504, «Apollo 13»: il comandante calmo, il pilota allegro, quello
+  // nervoso e brillante, il direttore di volo tutto d'un pezzo, l'ingegnere
+  // del simulatore
+  lovell: { eta: 'middle_aged', parole: ['calm', 'warm', 'confident', 'deep', 'american'] },
+  haise: { eta: 'middle_aged', parole: ['friendly', 'warm', 'cheerful', 'american'] },
+  swigert: { eta: 'young', parole: ['energetic', 'clear', 'expressive', 'american'] },
+  kranz: { eta: 'middle_aged', parole: ['authoritative', 'firm', 'deep', 'commanding'] },
+  mattingly: { eta: 'middle_aged', parole: ['calm', 'thoughtful', 'clear', 'american'] },
   mann_planet: { eta: 'old', parole: ['cold', 'deep', 'slow', 'whisper'] },
   einstein: { eta: 'old', parole: ['warm', 'playful', 'raspy', 'grandfather'] },
   astro_ben: { eta: 'young', parole: ['child', 'kid', 'boy', 'cheerful', 'energetic'] },
