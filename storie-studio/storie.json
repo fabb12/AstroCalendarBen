@@ -334,6 +334,2978 @@
     },
     {
       "v": 1,
+      "id": "p6gbbfz3",
+      "titolo": "Copia di Einstein e il tempo elastico",
+      "scopo": "libera",
+      "obiettivo": "Una storia per bambini sullo spazio-tempo. Astro Ben ha visto «Interstellar» e chiede ad Albert Einstein se è vero che un'ora può valere sette anni. Einstein glielo spiega col telo elastico che si incurva attorno al Sole: Mercurio, la luce piegata nell'eclissi del 1919, il tempo che rallenta (anche ",
+      "ufficiale": false,
+      "origine": "storia_einstein",
+      "sostituisce": "",
+      "cast": [
+        "einstein",
+        "astro_ben",
+        "Sun",
+        "Earth",
+        "Mercury",
+        "iss",
+        "cristoforetti",
+        "sgr_a",
+        "gargantua",
+        "hawking"
+      ],
+      "scene": [
+        {
+          "id": "sgp1vl9d",
+          "ambiente": "cielo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "einstein",
+            "astro_ben"
+          ],
+          "momenti": [
+            {
+              "id": "mrebl5ze",
+              "chi": "astro_ben",
+              "testo": "Professor Einstein  ",
+              "umore": "",
+              "tono": [],
+              "durata": 0,
+              "voce": 21,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a9u197dh",
+                  "tipo": "guarda",
+                  "chi": "astro_ben",
+                  "quando": "tutto",
+                  "oggetto": "einstein",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
+                },
+                {
+                  "id": "auua8pfb",
+                  "tipo": "guarda",
+                  "chi": "einstein",
+                  "quando": "inizio",
+                  "oggetto": "astro_ben",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
+                }
+              ],
+              "copione": null,
+              "parla": null
+            },
+            {
+              "id": "ma9ag95z",
+              "chi": "einstein",
+              "testo": "[thoughtful] Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo.",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 18,
+              "voce": 2,
+              "audio": {
+                "durata": 16320,
+                "impronta": "fb6a44fb",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[thoughtful]",
+                "sha": "c548cd503ec8302f59e599731e5fa7936c1012b6",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "transition",
+                "righe": [
+                  {
+                    "comando": "zoom_view",
+                    "parametri": {
+                      "type": "geometric",
+                      "final_target": "solar_system_3d"
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.relativita"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "thinking",
+                      "at": "left"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "surprised",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.3",
+                "chi": "einstein",
+                "testo": "Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "so0jvl81",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "einstein",
+            "astro_ben",
+            "Sun",
+            "Earth",
+            "Mercury"
+          ],
+          "momenti": [
+            {
+              "id": "mzgxr2mr",
+              "chi": "einstein",
+              "testo": "[happy] Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 19,
+              "voce": 3,
+              "audio": {
+                "durata": 18720,
+                "impronta": "68080759",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[happy]",
+                "sha": "c189e9c1203c2b5098803f63d7f1a5d2c6d36539",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "ajrpxgg1",
+                  "tipo": "umore",
+                  "chi": "astro_ben",
+                  "quando": "meta",
+                  "umore": "wonder",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.6,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth",
+                      "orbit": 40,
+                      "elev_from": 34,
+                      "elev_to": 48,
+                      "zoom_from": 1.6,
+                      "zoom_to": 2.1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "happy",
+                      "at": "left",
+                      "look": "Sun"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "curious",
+                      "at": "right",
+                      "look": "Sun"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "happy",
+                      "look": "Sun"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "Sun",
+                      "duration": 18
+                    },
+                    "ripresa": {
+                      "da": 0.12,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.4",
+                "chi": "einstein",
+                "testo": "Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità."
+              }
+            },
+            {
+              "id": "m62fklxy",
+              "chi": "astro_ben",
+              "testo": "Allora la Terra va dritta… ma su una strada curva!",
+              "umore": "excited",
+              "tono": [],
+              "durata": 7,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "ayzt4ai6",
+                  "tipo": "anima",
+                  "chi": "astro_ben",
+                  "quando": "tutto",
+                  "animazione": "bounce",
+                  "volte": 2,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "tutto"
+                  }
+                },
+                {
+                  "id": "akftvul9",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "sparkles",
+                  "dove": "Earth",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.1,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth",
+                      "orbit": 10,
+                      "orbit_from": 40,
+                      "elev_from": 48,
+                      "elev_to": 46,
+                      "zoom_from": 2.1,
+                      "zoom_to": 2.15
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "happy",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "excited",
+                      "at": "right"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "laughing",
+                      "look": "Sun"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.5",
+                "chi": "astro_ben",
+                "testo": "Allora la Terra va dritta… ma su una strada curva!"
+              }
+            },
+            {
+              "id": "mcqffy2k",
+              "chi": "einstein",
+              "testo": "[laughs] Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi.",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 16,
+              "voce": 4,
+              "audio": {
+                "durata": 12320,
+                "impronta": "7710d0c1",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[laughs]",
+                "sha": "65d00518d88c9b9573d9ed7414dd6d0a6621b40e",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "al7hamfq",
+                  "tipo": "umore",
+                  "chi": "einstein",
+                  "quando": "meta",
+                  "umore": "proud",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.35,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth",
+                      "orbit": 20,
+                      "orbit_from": 50,
+                      "elev_from": 46,
+                      "elev_to": 40,
+                      "zoom_from": 2.15,
+                      "zoom_to": 2.2
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "laughing",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "happy",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "happy",
+                      "look": "Sun"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.6",
+                "chi": "einstein",
+                "testo": "Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi."
+              }
+            },
+            {
+              "id": "mxf0i41z",
+              "chi": "einstein",
+              "testo": "[proud] La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero.",
+              "umore": "proud",
+              "tono": [],
+              "durata": 20,
+              "voce": 5,
+              "audio": {
+                "durata": 16800,
+                "impronta": "5dd2e1d0",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[proud]",
+                "sha": "7314c2b1c2fe7603b8fc9bde1b4558b91b1963ea",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Mercury",
+                      "orbit": 60,
+                      "elev_from": 30,
+                      "elev_to": 55,
+                      "zoom_from": 1.4,
+                      "zoom_to": 2
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.mercurio"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "proud",
+                      "at": "left",
+                      "look": "Mercury"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Mercury",
+                      "expression": "surprised",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "thinking",
+                      "look": "Mercury"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "Sun",
+                      "size": 0.8,
+                      "duration": 16
+                    },
+                    "ripresa": {
+                      "da": 0.3,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.7",
+                "chi": "einstein",
+                "testo": "La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero."
+              }
+            },
+            {
+              "id": "m4mmvt11",
+              "chi": "Mercury",
+              "testo": "Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.",
+              "umore": "relieved",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "aa9t18sg",
+                  "tipo": "anima",
+                  "chi": "Mercury",
+                  "quando": "tutto",
+                  "animazione": "dance",
+                  "volte": 2,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.2,
+                    "a": 1,
+                    "quando": "tutto"
+                  }
+                },
+                {
+                  "id": "a0gbww4y",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "confetti",
+                  "dove": "Mercury",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.15,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Mercury",
+                      "orbit": 25,
+                      "orbit_from": 60,
+                      "elev_from": 55,
+                      "elev_to": 50,
+                      "zoom_from": 2,
+                      "zoom_to": 2.2
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "laughing",
+                      "at": "left",
+                      "look": "Mercury"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Mercury",
+                      "expression": "relieved"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy",
+                      "look": "Mercury"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.8",
+                "chi": "Mercury",
+                "testo": "Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto."
+              }
+            },
+            {
+              "id": "mdavbc80",
+              "chi": "einstein",
+              "testo": "[determined] Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato.",
+              "umore": "determined",
+              "tono": [],
+              "durata": 17,
+              "voce": 6,
+              "audio": {
+                "durata": 14720,
+                "impronta": "3b027709",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[determined]",
+                "sha": "b22d0cdd0cf215f21b1f76ee15b73a07c76a3304",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "asum39t8",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "meta",
+                  "effetto": "shooting_star",
+                  "dove": "right",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.4,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth",
+                      "orbit": 30,
+                      "elev_from": 20,
+                      "elev_to": 14,
+                      "zoom_from": 2.4,
+                      "zoom_to": 3
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.eclissi"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "determined",
+                      "at": "left",
+                      "look": "Sun"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "Sun",
+                      "duration": 10
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.9",
+                "chi": "einstein",
+                "testo": "Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato."
+              }
+            },
+            {
+              "id": "m8ygschi",
+              "chi": "Sun",
+              "testo": "Io piego la luce delle stelle? Che potere!",
+              "umore": "excited",
+              "tono": [],
+              "durata": 7,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "aucst86d",
+                  "tipo": "anima",
+                  "chi": "Sun",
+                  "quando": "tutto",
+                  "animazione": "pulse",
+                  "volte": 2,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.1,
+                    "a": 1,
+                    "quando": "tutto"
+                  }
+                },
+                {
+                  "id": "a2wyd8uq",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "sparkles",
+                  "dove": "Sun",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.1,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth",
+                      "orbit": 15,
+                      "orbit_from": 30,
+                      "elev_from": 14,
+                      "elev_to": 12,
+                      "zoom_from": 3,
+                      "zoom_to": 3.2
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "happy",
+                      "at": "left",
+                      "look": "Sun"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "excited"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.10",
+                "chi": "Sun",
+                "testo": "Io piego la luce delle stelle? Che potere!"
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s9w1i9g0",
+          "ambiente": "pianeta",
+          "fuoco": "Earth",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "einstein",
+            "astro_ben",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m0w2qt8n",
+              "chi": "einstein",
+              "testo": "[mysteriously] E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano.",
+              "umore": "mysterious",
+              "tono": [],
+              "durata": 14,
+              "voce": 7,
+              "audio": {
+                "durata": 12560,
+                "impronta": "e78c7ad4",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[mysteriously]",
+                "sha": "4250d39e27212e71e26abf3e664cafb6503f77af",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "sun_az": 70,
+                      "orbit": -25,
+                      "elev_from": 20,
+                      "elev_to": 12,
+                      "zoom_from": 1.2,
+                      "zoom_to": 1.7
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "mysterious",
+                      "at": "left",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "surprised",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.11",
+                "chi": "einstein",
+                "testo": "E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano."
+              }
+            },
+            {
+              "id": "mj2owscs",
+              "chi": "astro_ben",
+              "testo": "Anche qui, sulla Terra?",
+              "umore": "curious",
+              "tono": [],
+              "durata": 5,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "sun_az": 70,
+                      "orbit": -15,
+                      "orbit_from": -25,
+                      "elev_from": 12,
+                      "elev_to": 10,
+                      "zoom_from": 1.7,
+                      "zoom_to": 1.8
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "mysterious",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "curious",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "curious"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.12",
+                "chi": "astro_ben",
+                "testo": "Anche qui, sulla Terra?"
+              }
+            },
+            {
+              "id": "moqxvyls",
+              "chi": "einstein",
+              "testo": "[playfully] Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…",
+              "umore": "playful",
+              "tono": [],
+              "durata": 17,
+              "voce": 8,
+              "audio": {
+                "durata": 12320,
+                "impronta": "20d8c9f9",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[playfully]",
+                "sha": "e2264c9844c36c2fad8a8f53c8b6ccc726c4faa2",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "ai4j66ne",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "sparkles",
+                  "dove": "einstein",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.1,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "a7okb028",
+                  "tipo": "umore",
+                  "chi": "astro_ben",
+                  "quando": "fine",
+                  "umore": "curious",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.8,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "sun_az": 70,
+                      "orbit": -20,
+                      "orbit_from": -40,
+                      "elev_from": 10,
+                      "elev_to": 16,
+                      "zoom_from": 1.8,
+                      "zoom_to": 2.1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "playful",
+                      "at": "left",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "thinking",
+                      "at": "right"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.13",
+                "chi": "einstein",
+                "testo": "Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…"
+              }
+            },
+            {
+              "id": "m1s51lo1",
+              "chi": "astro_ben",
+              "testo": "Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.",
+              "umore": "excited",
+              "tono": [],
+              "durata": 11,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "sun_az": 70,
+                      "orbit": 20,
+                      "orbit_from": -8,
+                      "elev_from": 16,
+                      "elev_to": 22,
+                      "zoom_from": 2.1,
+                      "zoom_to": 1.9
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "impressed",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "excited",
+                      "at": "right"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "Earth",
+                      "size": 0.6,
+                      "color": "#93c5fd",
+                      "duration": 12
+                    },
+                    "ripresa": {
+                      "da": 0.2,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.14",
+                "chi": "astro_ben",
+                "testo": "Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più."
+              }
+            },
+            {
+              "id": "mtt7h090",
+              "chi": "einstein",
+              "testo": "[proud] Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno.",
+              "umore": "proud",
+              "tono": [],
+              "durata": 17,
+              "voce": 9,
+              "audio": {
+                "durata": 13120,
+                "impronta": "b0a12e30",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[proud]",
+                "sha": "a15c5e2ced8ac5891a1e5c5faeeb3fff33375bbe",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "sun_az": 70,
+                      "orbit": 20,
+                      "orbit_from": 12,
+                      "elev_from": 22,
+                      "elev_to": 26,
+                      "zoom_from": 1.9,
+                      "zoom_to": 1.6
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.gps"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "proud",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "impressed",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.15",
+                "chi": "einstein",
+                "testo": "Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s7aqftls",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "astro_ben",
+            "cristoforetti",
+            "iss"
+          ],
+          "momenti": [
+            {
+              "id": "mbye1ahf",
+              "chi": "astro_ben",
+              "testo": "E Samantha Cristoforetti, lassù sulla Stazione Spaziale?",
+              "umore": "curious",
+              "tono": [],
+              "durata": 8,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "ISS",
+                      "orbit": 25,
+                      "elev_from": 15,
+                      "elev_to": 22,
+                      "zoom_from": 0.8,
+                      "zoom_to": 0.95
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "curious",
+                      "at": "left",
+                      "look": "cristoforetti"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cristoforetti",
+                      "expression": "happy",
+                      "at": "right",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.16",
+                "chi": "astro_ben",
+                "testo": "E Samantha Cristoforetti, lassù sulla Stazione Spaziale?"
+              }
+            },
+            {
+              "id": "mnceyjcq",
+              "chi": "cristoforetti",
+              "testo": "Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!",
+              "umore": "playful",
+              "tono": [],
+              "durata": 15,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "aggk6pbm",
+                  "tipo": "anima",
+                  "chi": "iss",
+                  "quando": "meta",
+                  "animazione": "spin",
+                  "volte": 1,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.3,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "ISS",
+                      "orbit": 30,
+                      "orbit_from": 25,
+                      "elev_from": 22,
+                      "elev_to": 32,
+                      "zoom_from": 0.95,
+                      "zoom_to": 1.1
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "surprised",
+                      "at": "left",
+                      "look": "cristoforetti"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cristoforetti",
+                      "expression": "playful",
+                      "at": "right",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "excited"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.17",
+                "chi": "cristoforetti",
+                "testo": "Quassù corriamo a ventottomila chilometri all'ora, e chi corre invecchia più piano. Nelle mie due missioni ho guadagnato quasi un centesimo di secondo!"
+              }
+            },
+            {
+              "id": "mueh2x8a",
+              "chi": "astro_ben",
+              "testo": "Un centesimo! Non basta neanche per saltare un compleanno…",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 8,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "ISS",
+                      "orbit": 25,
+                      "orbit_from": 55,
+                      "elev_from": 32,
+                      "elev_to": 40,
+                      "zoom_from": 1.1,
+                      "zoom_to": 1.2
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "laughing",
+                      "at": "left"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "cristoforetti",
+                      "expression": "laughing",
+                      "at": "right",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "laughing"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.18",
+                "chi": "astro_ben",
+                "testo": "Un centesimo! Non basta neanche per saltare un compleanno…"
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sxq0o4qq",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "einstein",
+            "astro_ben",
+            "sgr_a",
+            "gargantua",
+            "hawking"
+          ],
+          "momenti": [
+            {
+              "id": "mhotwjj4",
+              "chi": "einstein",
+              "testo": "[mysteriously] E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia.",
+              "umore": "mysterious",
+              "tono": [],
+              "durata": 18,
+              "voce": 10,
+              "audio": {
+                "durata": 16720,
+                "impronta": "b901dd61",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[mysteriously]",
+                "sha": "4c9fb53faf83bff6dedb06c7fba9e9ba6fde36ec",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "aem2t3ou",
+                  "tipo": "umore",
+                  "chi": "astro_ben",
+                  "quando": "fine",
+                  "umore": "excited",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.7,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "arrival",
+                      "to": "milky_way",
+                      "orbit": 25,
+                      "elev_from": 40,
+                      "elev_to": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "mysterious",
+                      "at": "left"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "scared",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.19",
+                "chi": "einstein",
+                "testo": "E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia."
+              }
+            },
+            {
+              "id": "mqcohcfj",
+              "chi": "sgr_a",
+              "testo": "Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 13,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 12,
+                      "elev_from": 60,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.buco"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "wonder",
+                      "at": "left",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "surprised",
+                      "at": "right",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "sgr_a",
+                      "size": 1.6,
+                      "color": "#c4b5fd",
+                      "duration": 20
+                    },
+                    "ripresa": {
+                      "da": 0.05,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.20",
+                "chi": "sgr_a",
+                "testo": "Benvenuti! Sono Sagittario A*: quattro milioni di volte la massa del Sole, in uno spazio più piccolo dell'orbita di Mercurio."
+              }
+            },
+            {
+              "id": "m8055tt2",
+              "chi": "einstein",
+              "testo": "[thoughtful] Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce.",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 16,
+              "voce": 11,
+              "audio": {
+                "durata": 14000,
+                "impronta": "b9d09632",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[thoughtful]",
+                "sha": "042144cac4baf391a1c2c44556f77fcf1e66c1fd",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 8,
+                      "elev_from": 64,
+                      "elev_to": 66
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "thinking",
+                      "at": "left",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "worried",
+                      "at": "right",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "sgr_a",
+                      "color": "#fb923c",
+                      "duration": 6
+                    },
+                    "ripresa": {
+                      "da": 0.3,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.21",
+                "chi": "einstein",
+                "testo": "Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce."
+              }
+            },
+            {
+              "id": "mrhhc2jx",
+              "chi": "astro_ben",
+              "testo": "E il tempo, lì vicino?",
+              "umore": "curious",
+              "tono": [],
+              "durata": 5,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 5,
+                      "elev_from": 66,
+                      "elev_to": 67
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "mysterious",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "curious",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "thinking"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.22",
+                "chi": "astro_ben",
+                "testo": "E il tempo, lì vicino?"
+              }
+            },
+            {
+              "id": "mqsqc4lr",
+              "chi": "einstein",
+              "testo": "[mysteriously] Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato.",
+              "umore": "mysterious",
+              "tono": [],
+              "durata": 19,
+              "voce": 12,
+              "audio": {
+                "durata": 17760,
+                "impronta": "cd3ffba7",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[mysteriously]",
+                "sha": "1470195cfd7ba8cfd440adfe0da910f967373920",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 8,
+                      "elev_from": 67,
+                      "elev_to": 68
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "mysterious",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "scared",
+                      "at": "right",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "sgr_a",
+                      "size": 1.8,
+                      "color": "#c4b5fd",
+                      "duration": 14
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  },
+                  {
+                    "comando": "character_animate",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "animation": "shake",
+                      "times": 2,
+                      "strength": 0.6
+                    },
+                    "ripresa": {
+                      "da": 0.6,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.23",
+                "chi": "einstein",
+                "testo": "Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato."
+              }
+            },
+            {
+              "id": "mdqqi1d3",
+              "chi": "einstein",
+              "testo": "[excited] Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità.",
+              "umore": "excited",
+              "tono": [],
+              "durata": 20,
+              "voce": 13,
+              "audio": {
+                "durata": 15040,
+                "impronta": "3523f796",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[excited]",
+                "sha": "eb57c0f8e45f2fd7bdef9dd177f0bdb6c0e3b3bb",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "au42aw2r",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "flash",
+                  "dove": "gargantua",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.03,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 8,
+                      "elev_from": 68,
+                      "elev_to": 68
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.interstellar"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "excited",
+                      "at": "left",
+                      "look": "gargantua"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "gargantua",
+                      "color": "#fde68a",
+                      "duration": 10
+                    },
+                    "ripresa": {
+                      "da": 0.1,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.24",
+                "chi": "einstein",
+                "testo": "Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità."
+              }
+            },
+            {
+              "id": "ms4ibbw2",
+              "chi": "gargantua",
+              "testo": "Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce.",
+              "umore": "playful",
+              "tono": [],
+              "durata": 11,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a6xvjza0",
+                  "tipo": "anima",
+                  "chi": "gargantua",
+                  "quando": "fine",
+                  "animazione": "spin",
+                  "volte": 2,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.4,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 5,
+                      "elev_from": 68,
+                      "elev_to": 67
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "impressed",
+                      "at": "left",
+                      "look": "gargantua"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "playful",
+                      "look": "einstein"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.25",
+                "chi": "gargantua",
+                "testo": "Sono finto… ma fatto con equazioni vere. E giro su me stesso quasi alla velocità della luce."
+              }
+            },
+            {
+              "id": "m35xnmsb",
+              "chi": "einstein",
+              "testo": "[wistfully] Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui.",
+              "umore": "wistful",
+              "tono": [],
+              "durata": 17,
+              "voce": 14,
+              "audio": {
+                "durata": 13840,
+                "impronta": "929e5276",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[wistfully]",
+                "sha": "c0428ccd181b48efd6b04bb91abb38dd2996b1d7",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 6,
+                      "elev_from": 67,
+                      "elev_to": 66
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "wistful",
+                      "at": "left",
+                      "look": "gargantua"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "sad",
+                      "at": "bottom",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "gargantua",
+                      "size": 1.4,
+                      "color": "#fde68a",
+                      "duration": 20
+                    },
+                    "ripresa": {
+                      "da": 0.05,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.26",
+                "chi": "einstein",
+                "testo": "Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui."
+              }
+            },
+            {
+              "id": "mrn2s85n",
+              "chi": "astro_ben",
+              "testo": "Allora il tempo… è elastico!",
+              "umore": "wonder",
+              "tono": [],
+              "durata": 6,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 4,
+                      "elev_from": 66,
+                      "elev_to": 66
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "tender",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "wonder",
+                      "at": "bottom"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "mysterious"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.27",
+                "chi": "astro_ben",
+                "testo": "Allora il tempo… è elastico!"
+              }
+            },
+            {
+              "id": "m4tsokv0",
+              "chi": "einstein",
+              "testo": "[laughs] Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 22,
+              "voce": 15,
+              "audio": {
+                "durata": 19040,
+                "impronta": "c8757664",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[laughs]",
+                "sha": "86861dfca7f7219c52c114aada6884e2cce5edb5",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "au386832",
+                  "tipo": "umore",
+                  "chi": "einstein",
+                  "quando": "meta",
+                  "umore": "playful",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.6,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 6,
+                      "elev_from": 66,
+                      "elev_to": 64
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "laughing",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "laughing",
+                      "at": "bottom"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "gargantua",
+                      "expression": "playful"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.28",
+                "chi": "einstein",
+                "testo": "Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!"
+              }
+            },
+            {
+              "id": "m3bwlxap",
+              "chi": "einstein",
+              "testo": "[proud] E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria.",
+              "umore": "proud",
+              "tono": [],
+              "durata": 18,
+              "voce": 16,
+              "audio": {
+                "durata": 14800,
+                "impronta": "729275e2",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[proud]",
+                "sha": "2daa6f3bbed4f4ad75fdd76aed2d4e47bad42ece",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "a490u1tj",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "meta",
+                  "effetto": "shockwave",
+                  "dove": "sgr_a",
+                  "grandezza": 2,
+                  "colore": "#c4b5fd",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.25,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                },
+                {
+                  "id": "arvxlgs4",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "meta",
+                  "effetto": "shockwave",
+                  "dove": "sgr_a",
+                  "grandezza": 2.6,
+                  "colore": "#a5b4fc",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.4,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 10,
+                      "elev_from": 64,
+                      "elev_to": 61
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.ligo"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "proud",
+                      "at": "left",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "impressed",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.29",
+                "chi": "einstein",
+                "testo": "E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria."
+              }
+            },
+            {
+              "id": "mccx9psx",
+              "chi": "sgr_a",
+              "testo": "E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?",
+              "umore": "proud",
+              "tono": [],
+              "durata": 10,
+              "voce": 0,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "ajetr8eq",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "flash",
+                  "dove": "center",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.1,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 6,
+                      "elev_from": 61,
+                      "elev_to": 60
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "happy",
+                      "at": "left",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "laughing",
+                      "at": "right",
+                      "look": "sgr_a"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "proud"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.30",
+                "chi": "sgr_a",
+                "testo": "E nel 2022 il telescopio Event Horizon ha fotografato anche me. Sono venuto bene, no?"
+              }
+            },
+            {
+              "id": "mg9wi0f0",
+              "chi": "hawking",
+              "testo": "Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano.",
+              "umore": "playful",
+              "tono": [],
+              "durata": 16,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 8,
+                      "elev_from": 60,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "surprised",
+                      "at": "left",
+                      "look": "hawking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "hawking",
+                      "expression": "playful",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "surprised",
+                      "look": "hawking"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "glow",
+                      "target": "sgr_a",
+                      "color": "#a78bfa",
+                      "duration": 8
+                    },
+                    "ripresa": {
+                      "da": 0.4,
+                      "a": 1
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.31",
+                "chi": "hawking",
+                "testo": "Posso aggiungere una cosa, Albert? I buchi neri non sono del tutto neri. Per un effetto quantistico emettono un debolissimo calore, e piano piano evaporano."
+              }
+            },
+            {
+              "id": "m3wm38ts",
+              "chi": "einstein",
+              "testo": "[laughs] Stephen, tu riesci sempre a rendere il mio universo ancora più strano!",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 9,
+              "voce": 17,
+              "audio": {
+                "durata": 6240,
+                "impronta": "e249d7c1",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[laughs]",
+                "sha": "f2773e053fde7b329b50d2f254eef16412e602e9",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "milky_way",
+                      "orbit": 5,
+                      "elev_from": 62,
+                      "elev_to": 63
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "laughing",
+                      "at": "left",
+                      "look": "hawking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "hawking",
+                      "expression": "happy",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.32",
+                "chi": "einstein",
+                "testo": "Stephen, tu riesci sempre a rendere il mio universo ancora più strano!"
+              }
+            },
+            {
+              "id": "mk6vpe8z",
+              "chi": "astro_ben",
+              "testo": "Allora stanotte, guardando le stelle, guardo una stoffa che si piega!",
+              "umore": "excited",
+              "tono": [],
+              "durata": 9,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": "milky_way",
+                      "to": "landing",
+                      "ease": "smooth",
+                      "orbit": -40,
+                      "elev_from": 63,
+                      "elev_to": 90
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "happy",
+                      "at": "left"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "excited",
+                      "at": "right"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.33",
+                "chi": "astro_ben",
+                "testo": "Allora stanotte, guardando le stelle, guardo una stoffa che si piega!"
+              }
+            },
+            {
+              "id": "m1o6nl62",
+              "chi": "einstein",
+              "testo": "[tenderly] Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.",
+              "umore": "tender",
+              "tono": [],
+              "durata": 9,
+              "voce": 18,
+              "audio": {
+                "durata": 7280,
+                "impronta": "1a23ede3",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[tenderly]",
+                "sha": "da7e6daf454451618c23a6ef195c124bb4fab4d7",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": {
+                "vista": "transition",
+                "righe": [
+                  {
+                    "comando": "zoom_view",
+                    "parametri": {
+                      "type": "geometric",
+                      "final_target": "planetarium_view"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "tender",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "happy",
+                      "at": "right"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.34",
+                "chi": "einstein",
+                "testo": "Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande."
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s0q9b66u",
+          "ambiente": "cielo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "einstein",
+            "astro_ben"
+          ],
+          "momenti": [
+            {
+              "id": "msp77b0d",
+              "chi": "astro_ben",
+              "testo": "Professore… quanto tempo è passato?",
+              "umore": "curious",
+              "tono": [],
+              "durata": 6,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "planetarium_view",
+                "righe": [
+                  {
+                    "comando": "set_date",
+                    "parametri": {
+                      "iso": "2026-10-16T18:45:00Z"
+                    }
+                  },
+                  {
+                    "comando": "point_view",
+                    "parametri": {
+                      "az": 218,
+                      "alt": 16
+                    }
+                  },
+                  {
+                    "comando": "zoom_fov",
+                    "parametri": {
+                      "from": 60,
+                      "to": 48
+                    }
+                  },
+                  {
+                    "comando": "date_card",
+                    "parametri": {
+                      "label": "demo.cartello.storia_einstein.casa",
+                      "time": "show",
+                      "place": "show"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "playful",
+                      "at": "left",
+                      "look": "astro_ben"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "curious",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.35",
+                "chi": "astro_ben",
+                "testo": "Professore… quanto tempo è passato?"
+              }
+            },
+            {
+              "id": "mrssmeca",
+              "chi": "einstein",
+              "testo": "[laughs] Dipende… da dove lo guardi!",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 8,
+              "voce": 19,
+              "audio": {
+                "durata": 2480,
+                "impronta": "f08c3e4d",
+                "nome": "elevenlabs.mp3",
+                "voce": "cZnszeg34SZlRe30AcrQ",
+                "tag": "[laughs]",
+                "sha": "dbd2f7cfd66bf036ead4996206002cc96b34a251",
+                "est": "mp3"
+              },
+              "azioni": [
+                {
+                  "id": "a6s3s8wz",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "fireworks",
+                  "dove": "center",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0.2,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "abmtox7f",
+                  "tipo": "anima",
+                  "chi": "astro_ben",
+                  "quando": "meta",
+                  "animazione": "jump",
+                  "volte": 2,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.3,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "planetarium_view",
+                "righe": [
+                  {
+                    "comando": "set_fov",
+                    "parametri": {
+                      "degrees": 48
+                    }
+                  },
+                  {
+                    "comando": "point_view",
+                    "parametri": {
+                      "az": 218,
+                      "alt": 16
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "einstein",
+                      "expression": "laughing",
+                      "at": "left",
+                      "look": "viewer"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "astro_ben",
+                      "expression": "laughing",
+                      "at": "right",
+                      "look": "einstein"
+                    }
+                  }
+                ]
+              },
+              "parla": {
+                "id": "demo.narr.storia_einstein.36",
+                "chi": "einstein",
+                "testo": "Dipende… da dove lo guardi!"
+              }
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        }
+      ],
+      "demoChiave": "utente-mv3lk4xs-4d6g76q6sjh",
+      "voceChiave": "studio_copia_di_einstein_e_il_tempo_e",
+      "voceProssima": 22,
+      "aggiornato": 1791711520109,
+      "lingua": "it",
+      "musica": null,
+      "voci": {
+        "einstein": {
+          "id": "cZnszeg34SZlRe30AcrQ",
+          "nome": "Jorgos",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/ee7bb8da9a9b4e18b643d76173fac5a3/voices/cZnszeg34SZlRe30AcrQ/f2439a17-38fc-4acb-ad05-8dac6d470140.mp3",
+          "genere": "m"
+        }
+      },
+      "domanda": {
+        "attiva": false,
+        "modo": "auto",
+        "tipo": "auto",
+        "testo": "",
+        "a": "",
+        "b": "",
+        "chi": ""
+      }
+    },
+    {
+      "v": 1,
       "id": "pd2e6o8k",
       "titolo": "Interstellar 2: il tesseratto",
       "scopo": "libera",
@@ -4350,6 +7322,72 @@
         "id": "Giapeto1",
         "volume": 0.3
       },
+      "voci": {},
+      "domanda": {
+        "attiva": false,
+        "modo": "auto",
+        "tipo": "auto",
+        "testo": "",
+        "a": "",
+        "b": "",
+        "chi": ""
+      }
+    },
+    {
+      "v": 1,
+      "id": "phtfhp4n",
+      "titolo": "",
+      "scopo": "libera",
+      "obiettivo": "",
+      "ufficiale": false,
+      "origine": "",
+      "sostituisce": "",
+      "cast": [
+        "Moon",
+        "Earth"
+      ],
+      "scene": [
+        {
+          "id": "skuoeo2z",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [],
+          "momenti": [
+            {
+              "id": "ml0xpn2v",
+              "chi": "",
+              "testo": "",
+              "umore": "",
+              "tono": [],
+              "durata": 0,
+              "voce": 0,
+              "audio": null,
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        }
+      ],
+      "demoChiave": "utente-mva0i0aa-ipewb8sd1x",
+      "voceChiave": "studio_storia",
+      "voceProssima": 1,
+      "aggiornato": 1792097364531,
+      "lingua": "it",
+      "musica": null,
       "voci": {},
       "domanda": {
         "attiva": false,
@@ -9025,15 +12063,19 @@
             {
               "id": "m9dicy5w",
               "chi": "Moon",
-              "testo": "Ciao Terra, mi chiedevo, perché orbito intorno a te?",
+              "testo": "[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?",
               "umore": "thinking",
               "tono": [],
               "durata": 0,
               "voce": 2,
               "audio": {
-                "durata": 4441,
-                "impronta": "be7e5c66",
-                "nome": "ElevenLabs_2026-10-06T19_19_44_Carlotta - Fairy Princess_pvc_sp110_s3_sb14_v4.mp"
+                "durata": 4000,
+                "impronta": "af269488",
+                "nome": "elevenlabs.mp3",
+                "voce": "zFA34HbdHBvF8WhlSusK",
+                "tag": "[thoughtful]",
+                "sha": "baed4cfd762fdcdb8ed6916db6ba0eb0f3b5c25b",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -9086,9 +12128,11 @@
               "durata": 0,
               "voce": 4,
               "audio": {
-                "durata": 2273,
+                "durata": 2220,
                 "impronta": "b1ad1131",
-                "nome": "ElevenLabs_2026-10-06T19_31_18_Nora - Bright Italian Female Narrator_pvc_sp108_s"
+                "nome": "registrazione.webm",
+                "sha": "5ac1bc761e7bc00453553a5f634660c7ea9ccdc2",
+                "est": "webm"
               },
               "azioni": [
                 {
@@ -9161,9 +12205,11 @@
               "durata": 0,
               "voce": 5,
               "audio": {
-                "durata": 3971,
+                "durata": 2340,
                 "impronta": "d98309bb",
-                "nome": "ElevenLabs_2026-10-06T19_33_25_Nora - Bright Italian Female Narrator_pvc_sp108_s"
+                "nome": "registrazione.webm",
+                "sha": "f690f3b4541feafe354ea3ed8f2c139b4633b59d",
+                "est": "webm"
               },
               "azioni": [
                 {
@@ -9192,15 +12238,19 @@
             {
               "id": "mstnigz1",
               "chi": "Moon",
-              "testo": "Smettila !!!",
+              "testo": "[annoyed] Smettila !!!",
               "umore": "annoyed",
               "tono": [],
               "durata": 0,
               "voce": 1,
               "audio": {
-                "durata": 1411,
-                "impronta": "64994de1",
-                "nome": "ElevenLabs_2026-10-06T19_22_30_Carlotta - Fairy Princess_pvc_sp110_s3_sb14_v4.mp"
+                "durata": 2080,
+                "impronta": "93f1ff89",
+                "nome": "elevenlabs.mp3",
+                "voce": "zFA34HbdHBvF8WhlSusK",
+                "tag": "[annoyed]",
+                "sha": "1bdc46817ef1209aa06d11022f74506905caaed8",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -9253,15 +12303,19 @@
             {
               "id": "m3hkq11f",
               "chi": "hubble",
-              "testo": "esatto, perchè ci trattieni?",
+              "testo": "[thoughtful] esatto, perchè ci trattieni?",
               "umore": "thinking",
               "tono": [],
               "durata": 0,
               "voce": 7,
               "audio": {
-                "durata": 2769,
-                "impronta": "808b37ae",
-                "nome": "ElevenLabs_2026-10-06T19_37_26_Fabio - Reliable, Calm_pvc_sp104_s40_sb75_v4.mp3"
+                "durata": 2080,
+                "impronta": "2826a704",
+                "nome": "elevenlabs.mp3",
+                "voce": "D0eqc2XJw10dwQSjPCqY",
+                "tag": "[thoughtful]",
+                "sha": "f18eab44dab25d2510364e4dc549eecf1fa135dc",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -9333,15 +12387,19 @@
             {
               "id": "m8jbnp15",
               "chi": "iss",
-              "testo": "ci dobbiamo ribellare!",
+              "testo": "[angry] ci dobbiamo ribellare!",
               "umore": "angry",
               "tono": [],
               "durata": 0,
               "voce": 8,
               "audio": {
-                "durata": 1881,
-                "impronta": "3973dac1",
-                "nome": "ElevenLabs_2026-10-06T19_41_43_Cinzia_pvc_sp115_s50_sb100_v4.mp3"
+                "durata": 2000,
+                "impronta": "53ef607e",
+                "nome": "elevenlabs.mp3",
+                "voce": "5KsfJZZkpAGViUPUBgEY",
+                "tag": "[angry]",
+                "sha": "935b6bf61bdb98d64803dd1ff7b2b9efc5f6e321",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -9412,15 +12470,19 @@
             {
               "id": "mgeo6h74",
               "chi": "css",
-              "testo": "giusto!",
+              "testo": "[angry] giusto!",
               "umore": "angry",
               "tono": [],
               "durata": 0,
               "voce": 9,
               "audio": {
-                "durata": 993,
-                "impronta": "a0f96b63",
-                "nome": "ElevenLabs_2026-10-06T19_43_03_Sami - Rich, Urgent and Serious_pvc_sp111_s40_sb4"
+                "durata": 1280,
+                "impronta": "f942207a",
+                "nome": "elevenlabs.mp3",
+                "voce": "rBvFGN2xzwk9odGDuw0q",
+                "tag": "[angry]",
+                "sha": "3c22804cc6700287650660afd4aff4a7047f1b49",
+                "est": "mp3"
               },
               "azioni": [],
               "copione": null,
@@ -9456,12 +12518,20 @@
             {
               "id": "mky8mksy",
               "chi": "Moon",
-              "testo": "Vogliamo essere indipendenti!",
+              "testo": "[angry] Vogliamo essere indipendenti!",
               "umore": "angry",
               "tono": [],
               "durata": 0,
               "voce": 32,
-              "audio": null,
+              "audio": {
+                "durata": 2640,
+                "impronta": "7cb8e121",
+                "nome": "elevenlabs.mp3",
+                "voce": "zFA34HbdHBvF8WhlSusK",
+                "tag": "[angry]",
+                "sha": "49b1e980c9c071cb65fa84db04dabc2714d3f793",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -9496,15 +12566,17 @@
             {
               "id": "mn24t2j6",
               "chi": "Earth",
-              "testo": "oh no! adesso cosa faccio?",
+              "testo": "[nervous] [gasps] oh no! adesso cosa faccio?",
               "umore": "worried",
               "tono": [],
               "durata": 0,
               "voce": 6,
               "audio": {
-                "durata": 2769,
-                "impronta": "bb51ba43",
-                "nome": "ElevenLabs_2026-10-06T19_34_21_Nora - Bright Italian Female Narrator_pvc_sp108_s"
+                "durata": 3780,
+                "impronta": "64ac92a5",
+                "nome": "registrazione.webm",
+                "sha": "a8a1ee55ae98e6ef92e90e059a9595bee353d1d5",
+                "est": "webm"
               },
               "azioni": [
                 {
@@ -9578,12 +12650,20 @@
             {
               "id": "mkzwkqf4",
               "chi": "Sun",
-              "testo": "Tranquilla Terra! Ti spiego io cos'è la gravità!",
+              "testo": "[laughs] Tranquilla Terra! [curious] Ti spiego io cos'è la gravità!",
               "umore": "laughing",
               "tono": [],
               "durata": 0,
               "voce": 33,
-              "audio": null,
+              "audio": {
+                "durata": 4800,
+                "impronta": "f59e2e34",
+                "nome": "elevenlabs.mp3",
+                "voce": "Y6XCBcFGDDiQgSVPjXt1",
+                "tag": "[laughs]",
+                "sha": "e170ed18237db58a7b13d81b6ce5a7ed24b7b9c2",
+                "est": "mp3"
+              },
               "azioni": [
                 {
                   "id": "a165zrp9",
@@ -9662,7 +12742,61 @@
               "tono": [],
               "durata": 0,
               "voce": 12,
-              "audio": null,
+              "audio": {
+                "durata": 4800,
+                "impronta": "6ff6a954",
+                "nome": "elevenlabs.mp3",
+                "voce": "Y6XCBcFGDDiQgSVPjXt1",
+                "tag": "",
+                "sha": "c949d3b76ee2d619726a7ae6a64dd3a70bf5c7b1",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s14vzpps",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "me81rene",
+              "chi": "Earth",
+              "testo": "Continuo a non capire.",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 0,
+              "voce": 41,
+              "audio": {
+                "durata": 2340,
+                "impronta": "08f01c36",
+                "nome": "registrazione.webm",
+                "sha": "e5f76027bcf282af80c11331254b9e7ba18954c0",
+                "est": "webm"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -9674,7 +12808,7 @@
         },
         {
           "id": "s829qn5g",
-          "ambiente": "pianeta",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -9698,7 +12832,15 @@
               "tono": [],
               "durata": 0,
               "voce": 14,
-              "audio": null,
+              "audio": {
+                "durata": 4640,
+                "impronta": "3892a546",
+                "nome": "elevenlabs.mp3",
+                "voce": "6HCIm4JAL5AF0sSi7qZd",
+                "tag": "",
+                "sha": "14a02fe6a638c2fd0b78a2f6ce730397476867bc",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -9710,7 +12852,7 @@
         },
         {
           "id": "sjqfsvxn",
-          "ambiente": "pianeta",
+          "ambiente": "terra_luna",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -9735,7 +12877,13 @@
               "tono": [],
               "durata": 0,
               "voce": 15,
-              "audio": null,
+              "audio": {
+                "durata": 3000,
+                "impronta": "bf7d1b25",
+                "nome": "registrazione.webm",
+                "sha": "0f9908d86d5205863300ad5936cd8b5e3d28c550",
+                "est": "webm"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -9767,12 +12915,156 @@
             {
               "id": "mxx3tjfj",
               "chi": "Jupiter",
-              "testo": " Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
+              "testo": "Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
               "umore": "neutral",
               "tono": [],
               "durata": 0,
               "voce": 16,
-              "audio": null,
+              "audio": {
+                "durata": 11920,
+                "impronta": "680c857d",
+                "nome": "elevenlabs.mp3",
+                "voce": "6HCIm4JAL5AF0sSi7qZd",
+                "tag": "",
+                "sha": "e244096b3db163a926eb09fa528794ac8364db65",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sez265al",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Jupiter",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mvl4g91o",
+              "chi": "Earth",
+              "testo": "Cos' è la massa, cos' è un peso e che cosa è un volume?",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 0,
+              "voce": 42,
+              "audio": {
+                "durata": 4020,
+                "impronta": "7e6f63c4",
+                "nome": "registrazione.webm",
+                "sha": "82df8d0d7125734ff95ec4a5947afff48cbffeb2",
+                "est": "webm"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "snqu0o7l",
+          "ambiente": "pianeta",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Jupiter",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mp0yp221",
+              "chi": "Jupiter",
+              "testo": "Calma Terra, una domanda alla volta.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 0,
+              "voce": 43,
+              "audio": {
+                "durata": 2240,
+                "impronta": "d845e531",
+                "nome": "elevenlabs.mp3",
+                "voce": "6HCIm4JAL5AF0sSi7qZd",
+                "tag": "",
+                "sha": "b06b5476d848d528365cdf68420c409b30df517e",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "smskayrv",
+          "ambiente": "pianeta",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Jupiter",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m9vmh2ep",
+              "chi": "Jupiter",
+              "testo": "[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 0,
+              "voce": 44,
+              "audio": {
+                "durata": 4560,
+                "impronta": "eb7ad42f",
+                "nome": "elevenlabs.mp3",
+                "voce": "6HCIm4JAL5AF0sSi7qZd",
+                "tag": "[thoughtful]",
+                "sha": "37b3ed4968f091964bae24abc8ddbfcb41e83f12",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -9810,7 +13102,15 @@
               "tono": [],
               "durata": 0,
               "voce": 19,
-              "audio": null,
+              "audio": {
+                "durata": 2320,
+                "impronta": "05533362",
+                "nome": "elevenlabs.mp3",
+                "voce": "mT0eqrjKfAPl6gQBlfBa",
+                "tag": "",
+                "sha": "895696f750338d3fa7538418a7a977d4eeaa1bc6",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -9848,7 +13148,13 @@
               "tono": [],
               "durata": 0,
               "voce": 20,
-              "audio": null,
+              "audio": {
+                "durata": 3240,
+                "impronta": "d8b5d073",
+                "nome": "registrazione.webm",
+                "sha": "136738d656ced2ccb600316a4d75536d51f3cfc9",
+                "est": "webm"
+              },
               "azioni": [
                 {
                   "id": "al0ykbog",
@@ -9956,12 +13262,20 @@
             {
               "id": "mtrxxpv2",
               "chi": "Sedna",
-              "testo": "Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.",
+              "testo": "[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.",
               "umore": "happy",
               "tono": [],
               "durata": 0,
               "voce": 34,
-              "audio": null,
+              "audio": {
+                "durata": 14480,
+                "impronta": "a119ae0c",
+                "nome": "elevenlabs.mp3",
+                "voce": "mT0eqrjKfAPl6gQBlfBa",
+                "tag": "[happy]",
+                "sha": "ccd2614d01a12b3c9f8d510d7a5f408968e803a8",
+                "est": "mp3"
+              },
               "azioni": [
                 {
                   "id": "amft9dto",
@@ -10018,7 +13332,13 @@
               "tono": [],
               "durata": 0,
               "voce": 22,
-              "audio": null,
+              "audio": {
+                "durata": 13620,
+                "impronta": "1ed77ddb",
+                "nome": "registrazione.webm",
+                "sha": "9dca124f3f08c87128764c2177b374454f605ad0",
+                "est": "webm"
+              },
               "azioni": [
                 {
                   "id": "amfyo2o8",
@@ -10105,12 +13425,7 @@
             "Sedna",
             "Earth",
             "Sun",
-            "Saturn",
-            "iss",
-            "css",
-            "hubble",
-            "Moon",
-            "alpha_centauri"
+            "Saturn"
           ],
           "momenti": [
             {
@@ -10121,7 +13436,13 @@
               "tono": [],
               "durata": 0,
               "voce": 23,
-              "audio": null,
+              "audio": {
+                "durata": 10740,
+                "impronta": "cdb959e2",
+                "nome": "registrazione.webm",
+                "sha": "4925da3e7bba2dc1133daa40b86f96d0ec52f2a8",
+                "est": "webm"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -10162,10 +13483,10 @@
               "durata": 0,
               "voce": 24,
               "audio": {
-                "durata": 4000,
+                "durata": 3760,
                 "impronta": "267258c8",
                 "nome": "elevenlabs.mp3",
-                "voce": "lFHyHlRLX5EFGKJ9tJ2M",
+                "voce": "mT0eqrjKfAPl6gQBlfBa",
                 "tag": "[shouts]",
                 "sha": "ce40ffae9ab0c2733aef865481ee3a0364356731",
                 "est": "mp3"
@@ -10207,7 +13528,13 @@
               "tono": [],
               "durata": 0,
               "voce": 25,
-              "audio": null,
+              "audio": {
+                "durata": 2760,
+                "impronta": "eeea7c5a",
+                "nome": "registrazione.webm",
+                "sha": "9df7b26e2360430e4b8ce93b3e09e44b726c10bf",
+                "est": "webm"
+              },
               "azioni": [
                 {
                   "id": "a88yq948",
@@ -10284,7 +13611,15 @@
               "tono": [],
               "durata": 0,
               "voce": 26,
-              "audio": null,
+              "audio": {
+                "durata": 13520,
+                "impronta": "4fa9f2d5",
+                "nome": "elevenlabs.mp3",
+                "voce": "mT0eqrjKfAPl6gQBlfBa",
+                "tag": "",
+                "sha": "a87e6472cb4325043735f7e66a3393e662143f7b",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -10322,7 +13657,13 @@
               "tono": [],
               "durata": 0,
               "voce": 27,
-              "audio": null,
+              "audio": {
+                "durata": 7740,
+                "impronta": "4419d2cf",
+                "nome": "registrazione.webm",
+                "sha": "36e59d7d3cab724d66da2819deb7c10934138f39",
+                "est": "webm"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -10361,7 +13702,15 @@
               "tono": [],
               "durata": 0,
               "voce": 28,
-              "audio": null,
+              "audio": {
+                "durata": 12080,
+                "impronta": "50b500fe",
+                "nome": "elevenlabs.mp3",
+                "voce": "BrADZHWW7Di4Z7YPNjmK",
+                "tag": "",
+                "sha": "cde32e39751d15296f0d2055300316417b3bbbb7",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -10399,7 +13748,13 @@
               "tono": [],
               "durata": 0,
               "voce": 29,
-              "audio": null,
+              "audio": {
+                "durata": 4380,
+                "impronta": "a61f18ae",
+                "nome": "registrazione.webm",
+                "sha": "69540073fb4557dde4ef6c6f266c05ad5e01d2e9",
+                "est": "webm"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -10432,12 +13787,20 @@
             {
               "id": "mbrl7swl",
               "chi": "Sedna",
-              "testo": "è vero! Chi è?",
+              "testo": "[thoughtful] è vero! Chi è?",
               "umore": "thinking",
               "tono": [],
               "durata": 0,
               "voce": 30,
-              "audio": null,
+              "audio": {
+                "durata": 3040,
+                "impronta": "a199c813",
+                "nome": "elevenlabs.mp3",
+                "voce": "mT0eqrjKfAPl6gQBlfBa",
+                "tag": "[thoughtful]",
+                "sha": "1f01fa7239e642e12b14887bdd7f2f03de16729d",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -10472,12 +13835,358 @@
             {
               "id": "mo41dzg3",
               "chi": "Sun",
-              "testo": "So chi è! è la mia amica proxima centauri!",
+              "testo": "[impressed] So chi è! è la mia amica alfa centauri!",
               "umore": "impressed",
               "tono": [],
               "durata": 0,
               "voce": 31,
-              "audio": null,
+              "audio": {
+                "durata": 3520,
+                "impronta": "31596377",
+                "nome": "elevenlabs.mp3",
+                "voce": "Y6XCBcFGDDiQgSVPjXt1",
+                "tag": "[impressed]",
+                "sha": "3338b6adb7a080fc97a6edb86330f3249c00740c",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sy1a32ji",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun",
+            "Saturn",
+            "alpha_centauri"
+          ],
+          "momenti": [
+            {
+              "id": "ma5ohn1y",
+              "chi": "alpha_centauri",
+              "testo": "Ti ricordi di me allora sole, eh?",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 0,
+              "voce": 35,
+              "audio": {
+                "durata": 1840,
+                "impronta": "d736e3b7",
+                "nome": "elevenlabs.mp3",
+                "voce": "BrADZHWW7Di4Z7YPNjmK",
+                "tag": "",
+                "sha": "5a9dffeb97d2c4da35dad127aa73b4750b33c7e9",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sddl1zvm",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "mnvuk7fe",
+              "chi": "Sun",
+              "testo": "[happy] Come potrei mai dimenticarti?",
+              "umore": "happy",
+              "tono": [],
+              "durata": 0,
+              "voce": 36,
+              "audio": {
+                "durata": 1920,
+                "impronta": "fa63492f",
+                "nome": "elevenlabs.mp3",
+                "voce": "Y6XCBcFGDDiQgSVPjXt1",
+                "tag": "[happy]",
+                "sha": "9d1ba255483bdeb21cbc5c1151fc075aafb00e18",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s8xdi8bh",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun",
+            "sgr_a"
+          ],
+          "momenti": [
+            {
+              "id": "mysiuav5",
+              "chi": "sgr_a",
+              "testo": "Pure io attiro oggetti Terra!",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 0,
+              "voce": 37,
+              "audio": {
+                "durata": 1920,
+                "impronta": "9aa3ea34",
+                "nome": "elevenlabs.mp3",
+                "voce": "NhSwpQTiLcQmj7lxcflr",
+                "tag": "",
+                "sha": "9f8f4fa921acee6ca261dfe10f5f4bf35094eaf1",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sq35lbbf",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun",
+            "sgr_a"
+          ],
+          "momenti": [
+            {
+              "id": "mou9wvtr",
+              "chi": "Earth",
+              "testo": "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 0,
+              "voce": 38,
+              "audio": {
+                "durata": 4200,
+                "impronta": "237c9ef7",
+                "nome": "registrazione.webm",
+                "sha": "6275bc605ee5e55b7474cef7f1e0cf67702161f7",
+                "est": "webm"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s0ufqizz",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun",
+            "sgr_a"
+          ],
+          "momenti": [
+            {
+              "id": "m0o2wzan",
+              "chi": "sgr_a",
+              "testo": "[happy] Sono sagittarius A! Il buco nero al centro della via lattea!",
+              "umore": "happy",
+              "tono": [],
+              "durata": 0,
+              "voce": 39,
+              "audio": {
+                "durata": 3760,
+                "impronta": "5f172462",
+                "nome": "elevenlabs.mp3",
+                "voce": "NhSwpQTiLcQmj7lxcflr",
+                "tag": "[happy]",
+                "sha": "a669eefe5fc2d32853e8bc303343187f1f8ea040",
+                "est": "mp3"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s1h4bvi7",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun",
+            "sgr_a"
+          ],
+          "momenti": [
+            {
+              "id": "mqp6lcve",
+              "chi": "Earth",
+              "testo": "Cos' è un buco nero?",
+              "umore": "curious",
+              "tono": [],
+              "durata": 0,
+              "voce": 40,
+              "audio": {
+                "durata": 2461,
+                "impronta": "4b5d0e18",
+                "nome": "registrazione.webm",
+                "sha": "d753f3d247f2b5004e1f9b8c11849dbf02e6a4f9",
+                "est": "webm"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sj0kdldw",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun",
+            "sgr_a"
+          ],
+          "momenti": [
+            {
+              "id": "mmg7k6t1",
+              "chi": "sgr_a",
+              "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.\n",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 0,
+              "voce": 45,
+              "audio": {
+                "durata": 6960,
+                "impronta": "8a865775",
+                "nome": "elevenlabs.mp3",
+                "voce": "NhSwpQTiLcQmj7lxcflr",
+                "tag": "",
+                "sha": "9b5cffa9c2fc04320d3be5d71a7fcf722c872825",
+                "est": "mp3"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -10490,10 +14199,14 @@
       ],
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
-      "voceProssima": 35,
-      "aggiornato": 1791573952872,
+      "voceProssima": 46,
+      "aggiornato": 1792097412453,
       "lingua": "it",
-      "musica": null,
+      "musica": {
+        "tipo": "catalogo",
+        "id": "Encelado1",
+        "volume": 0.15
+      },
       "voci": {
         "Moon": {
           "id": "zFA34HbdHBvF8WhlSusK",
@@ -10501,10 +14214,58 @@
           "anteprima": "https://api.us.elevenlabs.io/v1/voices/zFA34HbdHBvF8WhlSusK/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiIzMTM1NTVlNjQ4ODA0NmQ1YmI1MjMzNTYxNDkxNmE1NSIsImZpbGVuYW1lIjoiaTBlWHVad2hnS0hQMGJiTUV3dUUubXAzIiwidGltZXN0YW1wIjoxNzkxNTQzNjAwMDAwMDAwfQ%3D%3D",
           "genere": "f"
         },
+        "Sun": {
+          "id": "Y6XCBcFGDDiQgSVPjXt1",
+          "nome": "Fabio - Reliable, Calm",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/05b8613328cc422dbedc067931447037/voices/Y6XCBcFGDDiQgSVPjXt1/1d4cc921-369a-4c0f-b9ae-d4a7fe40e47c.mp3",
+          "genere": "m"
+        },
+        "Saturn": {
+          "id": "6HCIm4JAL5AF0sSi7qZd",
+          "nome": "Raf - Casual Narrator",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/2329bb8123524605a3028ecb933bfca8/voices/6HCIm4JAL5AF0sSi7qZd/fd2880de-8c89-44e3-8c2d-360c3ac09947.mp3",
+          "genere": "m"
+        },
         "Sedna": {
-          "id": "lFHyHlRLX5EFGKJ9tJ2M",
-          "nome": "Valeria",
-          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1f29ce2d4b704bfb831fc541b60c7a3f/voices/lFHyHlRLX5EFGKJ9tJ2M/c4e162dc-e9e4-4922-8acc-3845d79f39cd.mp3",
+          "id": "mT0eqrjKfAPl6gQBlfBa",
+          "nome": "Chiara - Professional and Versatile",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/7f74b37c88214f03ae8f92e85340bfea/voices/mT0eqrjKfAPl6gQBlfBa/aZ2vYsJJAPI7sUnPqg39.mp3",
+          "genere": "f"
+        },
+        "Jupiter": {
+          "id": "6HCIm4JAL5AF0sSi7qZd",
+          "nome": "Raf - Casual Narrator",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/2329bb8123524605a3028ecb933bfca8/voices/6HCIm4JAL5AF0sSi7qZd/fd2880de-8c89-44e3-8c2d-360c3ac09947.mp3",
+          "genere": "m"
+        },
+        "iss": {
+          "id": "5KsfJZZkpAGViUPUBgEY",
+          "nome": "Maryam N",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/e3f8b3d2837e483da12bd38304096508/voices/5KsfJZZkpAGViUPUBgEY/dbf4eff4-1fb0-4fd7-bc66-60dcd91d8757.mp3",
+          "genere": "f"
+        },
+        "css": {
+          "id": "rBvFGN2xzwk9odGDuw0q",
+          "nome": "Mia",
+          "anteprima": "https://api.us.elevenlabs.io/v1/voices/rBvFGN2xzwk9odGDuw0q/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiIyN2ExYjFhNDQzOTQ0YzQ4OTMzMTNhMTU5MmJmNzYxYiIsImZpbGVuYW1lIjoiMzJhMTkzNTQtZGFjZC00MDYyLWFiMDYtM2NiMDMzYmQ4YjM3Lm1wMyIsInRpbWVzdGFtcCI6MTc5MTY1NTIwMDAwMDAwMH0%3D",
+          "genere": "f"
+        },
+        "hubble": {
+          "id": "D0eqc2XJw10dwQSjPCqY",
+          "nome": "Dade M - Formal & Helpful Customer Care",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/ed9b05e6324c457685490352e9a1ec90/voices/D0eqc2XJw10dwQSjPCqY/Z9pTEiY7l8Gqq3jOJAKr.mp3",
+          "genere": "m"
+        },
+        "sgr_a": {
+          "id": "NhSwpQTiLcQmj7lxcflr",
+          "nome": "Riccardo Granillo - e-learning",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/95bd825623744a25a503c6047aa86abf/voices/NhSwpQTiLcQmj7lxcflr/GSMDa4Pj0hRtWidSsfTx.mp3",
+          "genere": "m"
+        },
+        "alpha_centauri": {
+          "id": "BrADZHWW7Di4Z7YPNjmK",
+          "nome": "Roberta",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/786104f7dc33422e85f22561d9754ceb/voices/BrADZHWW7Di4Z7YPNjmK/4b3cfce7-fa4a-4a08-b951-762f31b32e93.mp3",
           "genere": "f"
         }
       },
