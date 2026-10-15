@@ -1171,6 +1171,11 @@ window.ASTRO_DIZIONARI['en'] = {
     'sky.eventi.sottoOrizzonte': ' (at that time it is still below the horizon)',
     'sky.eventi.cieloDi': 'Sky on {data}: {evento}{dove}.',
 
+    // --- The guide arrow (searched constellations, places and objects) -
+    'sky.guida.ruota': 'turn {gradi}°',
+    'sky.guida.sotto': 'below the horizon',
+    'sky.guida.girati': '{nome} is towards {direzione}, {altezza}° up: turn that way and follow the arrow. If you would rather move the map with your finger, switch off “Follow the phone”.',
+
     // --- La cornice delle schede dell'agenda ---------------------------
     'agenda.tuttiInArrivo': 'You are reading every upcoming event. Pick a month to see that one instead, including in the past.',
     'agenda.simula': 'Simulate',
@@ -4113,6 +4118,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'cost.notaConDisegno': 'The lines are the official figure, the light stroke is the artwork: the same curves the planetarium lays over the real sky.',
     'cost.notaSenzaDisegno': 'For this figure the planetarium draws the official lines. There is no artwork: these are the figures nobody, not even the people who invented them, ever really managed to see.',
     'cost.servePosizione': 'To say where to look I need your position: open it from the Time and place panel.',
+    'cost.laCostellazione': 'The constellation',
     'cost.cercaIlBuio': '{nome}: you are at {meta}. Look for the darkness, not the stars — the figure is the dark patch in the middle of the Milky Way.',
     'cost.scegliDallElenco': 'Choose a constellation from the list: you will find the figure, the artwork, who named it and whether it can be seen from your home.',
 

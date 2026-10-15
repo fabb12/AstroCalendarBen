@@ -1200,6 +1200,11 @@ window.ASTRO_DIZIONARI['it'] = {
     'sky.eventi.sottoOrizzonte': ' (in quel momento è ancora sotto l\'orizzonte)',
     'sky.eventi.cieloDi': 'Cielo di {data}: {evento}{dove}.',
 
+    // --- La freccia guida (costellazioni, luoghi e astri cercati) ------
+    'sky.guida.ruota': 'ruota di {gradi}°',
+    'sky.guida.sotto': 'sotto l\'orizzonte',
+    'sky.guida.girati': '{nome} sta verso {direzione}, a {altezza}° di altezza: girati da quella parte e segui la freccia. Se preferisci muovere la mappa col dito, spegni “Segui il telefono”.',
+
     // --- La cornice delle schede dell'agenda ---------------------------
     'agenda.tuttiInArrivo': 'Stai leggendo tutti gli eventi in arrivo. Scegli un mese per vedere quello, anche nel passato.',
     'agenda.simula': 'Simula',
@@ -4250,6 +4255,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'cost.notaConDisegno': 'Le linee sono la figura ufficiale, il tratto chiaro è il disegno: le stesse curve che il planetario appoggia sul cielo vero.',
     'cost.notaSenzaDisegno': 'Di questa figura il planetario disegna le linee ufficiali. La sagoma non c\'è: sono le figure che nessuno, nemmeno chi le ha inventate, è mai riuscito a vedere davvero.',
     'cost.servePosizione': 'Per dire dove guardare mi serve la tua posizione: aprila dal pannello Tempo e luogo.',
+    'cost.laCostellazione': 'La costellazione',
     'cost.cercaIlBuio': '{nome}: sei a {meta}. Cerca il buio, non le stelle — la figura è la macchia scura in mezzo alla Via Lattea.',
     'cost.scegliDallElenco': 'Scegli una costellazione dall\'elenco: trovi la figura, il disegno, chi le ha dato il nome e se da casa tua si vede.',
 

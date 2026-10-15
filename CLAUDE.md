@@ -182,6 +182,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | lingue | `prova-i18n.js`, `prova-lingua.js`, `controlla-i18n.js` |
 | giro degli astri / corpi minori a scaglioni | `prova-scaglioni.js` |
 | fumetto dell'oggetto | `prova-fumetto.js` |
+| freccia guida (astri, costellazioni, luoghi cercati) | `prova-freccia-guida.js` |
 | registrazione / galleria | `prova-registrazione.js`, `prova-galleria.js` |
 | abitati | `prova-abitati.js` |
 | rilievo a campo stretto | `prova-rilievo-zoom.js` |
