@@ -102,7 +102,7 @@ const server = http.createServer((req, res) => {
         const p = skyProietta(skyVettore(g.az, g.alt), base, focale);
         const v = skyVettore(g.az, g.alt);
         const sep = Math.acos(Math.max(-1, Math.min(1, skyDot(v, base.f)))) * SKY_R2D;
-        const q = skyPuntoGuida(skyAngoloGuida(p, v, base, sep), sky.larghezza, sky.altezza, 41);
+        const q = skyPuntoGuida(skyAngoloGuida(p, v, base, sep), sky.larghezza, sky.altezza, 30);
         const fasce = skyFasceCielo();
         return { orizzontale: Math.abs(q.s) < 1e-6, fasce, tipo: sky.guida ? sky.guida.tipo : 'astro', nome: g.nome, avviso,
                  x: q.x, y: q.y, L: sky.larghezza, H: sky.altezza, fov: sky.fov,
@@ -126,6 +126,18 @@ const server = http.createServer((req, res) => {
         await pagina.screenshot({ path: path.join(ISTANTANEE, `${schermo.width}-${caso.nome}.png`) });
       }
       ok(`${caso.nome}: la freccia è dipinta`, png.length > 1500, `${png.length} byte`);
+
+      // Girandosi verso il bersaglio compare il segno d'arrivo
+      const arrivo = await pagina.evaluate(async () => {
+        const g = sky.guida ? skyPosizioneGuida() : skyVoceDiId(sky.target);
+        sky.manuale.az = g.az; sky.manuale.alt = Math.max(5, Math.min(60, g.alt));
+        await new Promise(f => setTimeout(f, 900));
+        const a = sky.guidaAggancio;
+        const p = skyProietta(skyVettore(g.az, g.alt), sky.ultimaBase, sky.ultimaFocale);
+        return { dentro: !!(a && a.dentro), px: p.px, py: p.py, rett: sky.canvas.getBoundingClientRect().toJSON() };
+      });
+      ok(`${caso.nome}: arrivato, il segno d'arrivo si accende`, arrivo.dentro);
+      if (ISTANTANEE) await pagina.screenshot({ path: path.join(ISTANTANEE, `${schermo.width}-${caso.nome}-trovato.png`) });
     }
 
     // Toccare un astro spegne la freccia della costellazione: due frecce
@@ -140,8 +152,8 @@ const server = http.createServer((req, res) => {
 
     // In inglese il cartellino non resta in italiano
     const inglese = await pagina.evaluate(() =>
-      astroI18n.imposta ? (astroI18n.imposta('en'), astroI18n.t('sky.guida.ruota', { gradi: 40 })) : 'turn 40°');
-    ok('il cartellino si traduce', inglese === 'turn 40°', inglese);
+      astroI18n.imposta ? (astroI18n.imposta('en'), astroI18n.t('sky.guida.sotto')) : 'below the horizon');
+    ok('la scritta si traduce', inglese === 'below the horizon', inglese);
 
     ok('nessun errore nella pagina', errori.length === 0, errori.slice(0, 3).join(' | '));
     await contesto.close();

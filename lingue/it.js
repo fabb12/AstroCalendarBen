@@ -1201,7 +1201,6 @@ window.ASTRO_DIZIONARI['it'] = {
     'sky.eventi.cieloDi': 'Cielo di {data}: {evento}{dove}.',
 
     // --- La freccia guida (costellazioni, luoghi e astri cercati) ------
-    'sky.guida.ruota': 'ruota di {gradi}°',
     'sky.guida.sotto': 'sotto l\'orizzonte',
     'sky.guida.girati': '{nome} sta verso {direzione}, a {altezza}° di altezza: girati da quella parte e segui la freccia. Se preferisci muovere la mappa col dito, spegni “Segui il telefono”.',
 

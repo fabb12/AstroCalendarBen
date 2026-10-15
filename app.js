@@ -8586,6 +8586,9 @@ const sky = {
   // dell'elenco: una costellazione o un luogo sulla Terra (§7.4, «La freccia
   // guida»). { tipo: 'costellazione'|'luogo', nome, az, alt, ra?, dec? }
   guida: null,
+  // Quando il bersaglio della freccia è entrato nello schermo, per animare
+  // il segno d'arrivo: { chiave, dentro, dal }
+  guidaAggancio: null,
   // Oggetto rimasto sotto il mirino e avanzamento dell'apertura automatica
   // della sua scheda. La verifica gira a intervalli, non a ogni fotogramma.
   modalitaHover: true,
@@ -23103,15 +23106,9 @@ function skyDisegnaAstro(ctx, base, focale, o) {
     ctx.fillText(etichettaAstro, x, p.py);
   }
 
-  // Cerchio di conferma sull'astro cercato
-  if (o.id === sky.target) {
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.arc(p.px, p.py, (anelli ? r * 2.3 : r) + 12, 0, Math.PI * 2);
-    ctx.strokeStyle = '#60a5fa';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
+  // Il cerchio di conferma sull'astro cercato non c'è più: lo sostituiscono
+  // gli angoli di mirino di `skyDisegnaArrivoGuida`, uguali per astri,
+  // costellazioni e luoghi (due segni sullo stesso puntino erano troppi).
   ctx.restore();
 }
 
@@ -23215,9 +23212,14 @@ function skyAngoloGuida(p, v, base, separazione) {
   return giro >= 0 ? 0 : Math.PI;
 }
 
-// Freccia che guida verso il bersaglio quando è fuori dallo schermo; quando
-// è dentro, per i bersagli che non sono astri, un anello che lo conferma
-// (gli astri il loro cerchio ce l'hanno già, in `skyDisegnaAstro`).
+// Freccia che guida verso il bersaglio quando è fuori dallo schermo, e il
+// segno che dice «eccolo» quando ci entra.
+//
+// La prima versione (v502) era un tondo di vetro con alone, lancetta, onda
+// pulsante e cartellino: bella da vicino, ma sul cielo vero erano quattro
+// cose da leggere per dirne una sola, «di qua». Adesso è una punta piena
+// con il contorno scuro e una riga di testo, nome e gradi; il lavoro di
+// farsi notare lo fa il segno d'arrivo, che è il momento in cui serve.
 function skyDisegnaGuida(ctx, base, focale, o, tipo = 'astro') {
   const L = sky.larghezza, H = sky.altezza;
   const colore = SKY_GUIDA_COLORI[tipo] || SKY_GUIDA_COLORI.astro;
@@ -23225,152 +23227,168 @@ function skyDisegnaGuida(ctx, base, focale, o, tipo = 'astro') {
   const p = skyProietta(v, base, focale);
   const bordo = 26;
   const inVista = p.davanti && p.px > bordo && p.px < L - bordo && p.py > bordo && p.py < H - bordo;
-  const t = performance.now() / 1000;
+  const ora = performance.now();
+
+  // Quando è entrato nello schermo: il segno d'arrivo si anima da lì.
+  // La chiave cambia con il bersaglio, così una nuova ricerca riparte da capo
+  // anche se il nuovo bersaglio era già in vista.
+  const chiave = tipo + ':' + (o.id || o.sigla || o.nome || '');
+  let aggancio = sky.guidaAggancio;
+  if (!aggancio || aggancio.chiave !== chiave) {
+    aggancio = sky.guidaAggancio = { chiave, dentro: false, dal: 0 };
+  }
+  if (inVista && !aggancio.dentro) { aggancio.dentro = true; aggancio.dal = ora; }
+  else if (!inVista && aggancio.dentro) aggancio.dentro = false;
 
   if (inVista) {
-    if (tipo !== 'astro') skyDisegnaAnelloGuida(ctx, p.px, p.py, colore, t);
+    skyDisegnaArrivoGuida(ctx, p, o, tipo, colore, focale, (ora - aggancio.dal) / 1000);
     return;
   }
 
   const separazione = Math.acos(Math.max(-1, Math.min(1, skyDot(v, base.f)))) * SKY_R2D;
   const angolo = skyAngoloGuida(p, v, base, separazione);
-  const R = 19;
-  const q = skyPuntoGuida(angolo, L, H, R + 22);
-  // Un respiro lento verso il bordo: la freccia si nota con la coda
-  // dell'occhio, ma non salta — un tremolio veloce stanca in pochi secondi
-  const spinta = Math.sin(t * 3.2) * 2;
+  const q = skyPuntoGuida(angolo, L, H, 30);
+  // Un respiro lento verso il bordo: si nota con la coda dell'occhio, ma
+  // non salta — un tremolio veloce stanca in pochi secondi
+  const spinta = Math.sin(ora / 1000 * 3) * 3;
   const x = q.x + q.c * spinta, y = q.y + q.s * spinta;
 
   ctx.save();
-  // L'onda che si allarga attorno al tondo: è lei a dire «di qua» anche
-  // quando lo sguardo è sul centro dello schermo
-  const fase = (t % 1.8) / 1.8;
-  ctx.globalAlpha = 0.55 * (1 - fase);
-  ctx.strokeStyle = colore;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(x, y, R + 3 + fase * 16, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-
-  // Il tondo di vetro scuro: si legge su un cielo diurno come sul terreno
-  ctx.shadowColor = colore;
-  ctx.shadowBlur = 16;
-  const fondo = ctx.createRadialGradient(x - R * 0.35, y - R * 0.35, 2, x, y, R);
-  fondo.addColorStop(0, 'rgba(51, 65, 85, 0.94)');
-  fondo.addColorStop(1, 'rgba(15, 23, 42, 0.94)');
-  ctx.fillStyle = fondo;
-  ctx.beginPath();
-  ctx.arc(x, y, R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = colore;
-  ctx.lineWidth = 1.6;
-  ctx.stroke();
-
-  // La lancetta sul bordo del tondo, dalla parte del bersaglio: come su una
-  // bussola, dice la direzione anche a chi non guarda la punta
-  ctx.lineCap = 'round';
-  ctx.lineWidth = 3.5;
-  ctx.beginPath();
-  ctx.arc(x, y, R + 5, angolo - 0.55, angolo + 0.55);
-  ctx.stroke();
-
-  // La punta: una freccia da navigatore, con la tacca dietro
   ctx.translate(x, y);
   ctx.rotate(angolo);
-  const punta = ctx.createLinearGradient(-8, 0, 11, 0);
-  punta.addColorStop(0, colore);
-  punta.addColorStop(1, '#ffffff');
-  ctx.fillStyle = punta;
   ctx.lineJoin = 'round';
   ctx.beginPath();
-  ctx.moveTo(11, 0);
-  ctx.lineTo(-7, 8.5);
-  ctx.lineTo(-2.5, 0);
-  ctx.lineTo(-7, -8.5);
+  ctx.moveTo(15, 0);
+  ctx.lineTo(-9, 11);
+  ctx.lineTo(-4, 0);
+  ctx.lineTo(-9, -11);
   ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  skyDisegnaCartellinoGuida(ctx, x, y, R + 12, q, o, separazione, colore);
-}
-
-// Il nome e quanto girarsi, in una pillola appoggiata al tondo dalla parte
-// dello schermo (mai verso il bordo, dove finirebbe tagliata). Il margine
-// dipende da quanto è lunga la scritta: con un margine fisso «sotto
-// l'orizzonte» finiva mezzo fuori dallo schermo.
-function skyDisegnaCartellinoGuida(ctx, x, y, distanza, q, o, separazione, colore) {
-  const L = sky.larghezza, H = sky.altezza;
-  const nome = String(o.nome || '');
-  const sotto = typeof o.alt === 'number' && o.alt < 0;
-  const riga2 = astroI18n.t('sky.guida.ruota', { gradi: Math.round(separazione) }) +
-    (sotto ? ' · ' + astroI18n.t('sky.guida.sotto') : '');
-
-  ctx.save();
-  ctx.font = '600 13px system-ui, sans-serif';
-  const l1 = ctx.measureText(nome).width;
-  ctx.font = '500 11px system-ui, sans-serif';
-  const l2 = ctx.measureText(riga2).width;
-  const largo = Math.min(L - 16, Math.max(l1, l2) + 30), alto = 38;
-  // Il centro della pillola, spinto verso l'interno quanto basta perché il
-  // suo ingombro in quella direzione non tocchi il tondo
-  const ingombro = Math.abs(q.c) * largo / 2 + Math.abs(q.s) * alto / 2;
-  let cx = x - q.c * (distanza + ingombro);
-  let cy = y - q.s * (distanza + ingombro);
-  const r = q.riquadro;
-  cx = Math.max(8 + largo / 2, Math.min(L - 8 - largo / 2, cx));
-  cy = Math.max(r.alto - 20 + alto / 2, Math.min(r.basso + 20 - alto / 2, cy));
-  const x0 = cx - largo / 2, y0 = cy - alto / 2;
-
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 2;
-  skyPillola(ctx, x0, y0, largo, alto, 12, 'rgba(15, 23, 42, 0.86)');
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
-  ctx.strokeStyle = colore;
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 1;
+  // Il contorno scuro prima del colore: regge sul cielo di giorno, sul
+  // terreno e sulla Via Lattea senza bisogno di un fondo
+  ctx.strokeStyle = 'rgba(2, 6, 16, 0.75)';
+  ctx.lineWidth = 4;
   ctx.stroke();
-  ctx.globalAlpha = 1;
-
-  // Il pallino del colore: lo stesso della freccia, perché si capisca di
-  // chi è questa scritta anche quando le due stanno lontane in un angolo
   ctx.fillStyle = colore;
-  ctx.beginPath();
-  ctx.arc(x0 + 13, y0 + 13, 3.5, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 
-  ctx.textAlign = 'left';
+  skyDisegnaScrittaGuida(ctx, x, y, q, o, separazione, colore);
+}
+
+// Nome e gradi in una riga, dalla parte dello schermo (mai verso il bordo,
+// dove finirebbe tagliata). Niente pillola: il contorno scuro basta.
+function skyDisegnaScrittaGuida(ctx, x, y, q, o, separazione, colore) {
+  const L = sky.larghezza;
+  const nome = String(o.nome || '');
+  const gradi = ` ${Math.round(separazione)}°`;
+  const sotto = typeof o.alt === 'number' && o.alt < 0
+    ? ' · ' + astroI18n.t('sky.guida.sotto') : '';
+
+  ctx.save();
   ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
   ctx.font = '600 13px system-ui, sans-serif';
+  const lNome = ctx.measureText(nome).width;
+  ctx.font = '500 12px system-ui, sans-serif';
+  const lResto = ctx.measureText(gradi + sotto).width;
+  const largo = lNome + lResto;
+  // Spinta verso l'interno quanto basta perché l'ingombro della scritta in
+  // quella direzione non tocchi la punta
+  const ingombro = Math.abs(q.c) * largo / 2 + Math.abs(q.s) * 8;
+  const r = q.riquadro;
+  let cx = x - q.c * (20 + ingombro);
+  let cy = y - q.s * (20 + ingombro);
+  cx = Math.max(8 + largo / 2, Math.min(L - 8 - largo / 2, cx));
+  cy = Math.max(r.alto - 16, Math.min(r.basso + 16, cy));
+  const x0 = cx - largo / 2;
+
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = 'rgba(2, 6, 16, 0.8)';
+  ctx.font = '600 13px system-ui, sans-serif';
+  ctx.strokeText(nome, x0, cy);
   ctx.fillStyle = '#f8fafc';
-  ctx.fillText(nome, x0 + 22, y0 + 13, largo - 30);
-  ctx.font = '500 11px system-ui, sans-serif';
-  ctx.fillStyle = sotto ? '#cbd5e1' : colore;
-  ctx.fillText(riga2, x0 + 22, y0 + 27, largo - 30);
+  ctx.fillText(nome, x0, cy);
+  ctx.font = '500 12px system-ui, sans-serif';
+  ctx.strokeText(gradi + sotto, x0 + lNome, cy);
+  ctx.fillStyle = colore;
+  ctx.fillText(gradi, x0 + lNome, cy);
+  if (sotto) {
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(sotto, x0 + lNome + ctx.measureText(gradi).width, cy);
+  }
   ctx.restore();
 }
 
-// Il segno sul bersaglio quando è arrivato sullo schermo: due archi che
-// girano piano, come un mirino che ha agganciato. Una costellazione o un
-// luogo non hanno un disco da cerchiare, e senza questo segno non si sa
-// quando smettere di girarsi.
-function skyDisegnaAnelloGuida(ctx, x, y, colore, t) {
+// «Eccolo»: quattro angoli di mirino che si chiudono sul bersaglio appena
+// entra nello schermo, con un lampo che si allarga, e poi restano lì,
+// fermi e respiranti. Era la metà che mancava: la freccia spariva quando
+// il bersaglio entrava in vista, e per una costellazione o una città — che
+// non hanno un disco da cerchiare — non restava niente a dire dove fosse.
+function skyDisegnaArrivoGuida(ctx, p, o, tipo, colore, focale, secondi) {
+  // Quanto è grande quello che si cerchia: per un astro il suo disco (la
+  // Luna ingrandita non deve finire dentro agli angoli), per una figura
+  // un po' di più, perché è un'area e non un punto
+  let misura = tipo === 'costellazione' ? 46 : 26;
+  if (tipo === 'astro') {
+    try { misura = Math.max(24, Math.min(140, skyRaggio(o, focale, skyScalaLocale(p.d)) + 16)); }
+    catch (e) { /* resta la misura di un punto */ }
+  }
+  const t = Math.max(0, secondi);
+  // La chiusura: dal triplo alla misura giusta in mezzo secondo, con
+  // un'uscita morbida; poi un respiro di due pixel
+  const chiusura = Math.min(1, t / 0.5);
+  const morbida = 1 - Math.pow(1 - chiusura, 3);
+  const lato = misura * (1 + 2 * (1 - morbida)) + (chiusura >= 1 ? Math.sin(t * 2.5) * 2 : 0);
+  const braccio = Math.max(8, lato * 0.42);
+
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(t * 0.8);
+  ctx.translate(p.px, p.py);
   ctx.lineCap = 'round';
-  for (const [tinta, spessore] of [['rgba(2, 6, 16, 0.55)', 4.5], [colore, 2]]) {
-    ctx.strokeStyle = tinta;
-    ctx.lineWidth = spessore;
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.arc(0, 0, 22, i * 2.094 + 0.25, i * 2.094 + 1.6);
-      ctx.stroke();
+  ctx.lineJoin = 'round';
+
+  // Il lampo dell'aggancio: un anello che si allarga e svanisce, una volta
+  if (t < 0.9) {
+    const f = t / 0.9;
+    ctx.globalAlpha = 0.7 * (1 - f);
+    ctx.strokeStyle = colore;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, misura + f * 50, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  const angoli = () => {
+    ctx.beginPath();
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      ctx.moveTo(sx * lato, sy * (lato - braccio));
+      ctx.lineTo(sx * lato, sy * lato);
+      ctx.lineTo(sx * (lato - braccio), sy * lato);
     }
+    ctx.stroke();
+  };
+  ctx.globalAlpha = Math.min(1, 0.3 + morbida);
+  ctx.strokeStyle = 'rgba(2, 6, 16, 0.7)';
+  ctx.lineWidth = 6.5;
+  angoli();
+  ctx.strokeStyle = colore;
+  ctx.lineWidth = 3;
+  angoli();
+
+  // Il nome sopra agli angoli, per chi non è un astro: l'astro il suo nome
+  // ce l'ha già accanto, una figura o una città spesso no (o lontano).
+  // Sopra e non sotto: in fondo allo schermo del telefono stanno gli avvisi
+  // e la barra del tempo, e il nome finiva coperto proprio lì.
+  if (tipo !== 'astro' && o.nome) {
+    ctx.font = '700 14px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(2, 6, 16, 0.85)';
+    ctx.strokeText(o.nome, 0, -lato - 7);
+    ctx.fillStyle = colore;
+    ctx.fillText(o.nome, 0, -lato - 7);
   }
   ctx.restore();
 }
