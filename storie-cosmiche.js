@@ -1803,6 +1803,10 @@
     anteprima: null,           // l'anteprima della pagina Demo, se è aperta
     ridotto: false,
     stile: 'ink',              // v504: 'ink' (la fiaba d'inchiostro) o 'kurz' (Kurzgesagt, `story_style`)
+    // v507: il disegno di Kurzgesagt alleggerito (un solo strato d'ombra,
+    // niente ombre portate degli oggetti, metà delle luci sfocate), deciso da
+    // `storTic` quando i fotogrammi restano lenti; vale per tutta la sessione
+    leggero: false, passoMedio: 0, passiKurz: 0, tempoKurz: 0,
     // La vista 3D (§5-bis): dove ogni astro sarebbe davvero e dove la
     // storia lo ha messo, nelle unità della scena; i ritorni di chi è uscito
     // di scena spostato o ingrandito; gli effetti speciali in corso (§6-ter).
@@ -1835,6 +1839,15 @@
     if (!demoInPausa()) stor.orologio += dt;
     if (suono.file.size) storSuoniFileInPausa(demoInPausa());
     stor.ridotto = movimentoRidotto();
+    // v507: il passo dei fotogrammi nello stile di Kurzgesagt. Se per un paio
+    // di secondi resta sotto i 22 al secondo (un telefono che non ce la fa),
+    // il disegno si alleggerisce e resta leggero: tornare indietro farebbe
+    // dondolare la scena fra i due disegni
+    if (stor.stile === 'kurz' && !stor.leggero && dt > 0 && !stor.anteprima) {
+      stor.passoMedio = stor.passiKurz ? stor.passoMedio * 0.9 + dt * 0.1 : dt;
+      stor.passiKurz++; stor.tempoKurz += dt;
+      if (stor.tempoKurz > 2000 && stor.passiKurz >= 20 && stor.passoMedio > 45) stor.leggero = true;
+    }
     // Una demo finita (anche male) non lascia personaggi sul cielo: è la rete
     // sotto alle chiusure delle azioni, che di regola bastano da sole.
     const d = radice.AstroDemo;
@@ -5162,7 +5175,9 @@
     if (stor.stile === 'kurz') {
       const b = { s: 4141 };
       const tinte = [KZ.ciano, KZ.lilla, KZ.rosa, KZ.turchese, KZ.giallo];
-      for (let i = 0; i < 14; i++) {
+      // v507: sui telefoni lenti la metà
+      const quante = stor.leggero ? 6 : 14;
+      for (let i = 0; i < quante; i++) {
         const r = c.U * (0.03 + dado(b) * 0.09);
         const x = (dado(b) * L + c.t / (90 + i * 13)) % (L + r * 2) - r, y = dado(b) * H + Math.sin(c.t / 3000 + i) * r * 0.4;
         const g2 = ctx.createRadialGradient(x, y, 0, x, y, r);
@@ -6433,7 +6448,7 @@
       const rr = r * (0.03 + fase * 0.1) * (0.6 + dado(d) * 0.8);
       const px = x + Math.cos(a) * dist, py = y + Math.sin(a) * dist;
       // v505: ogni sbuffo è una pallina di nuvola, chiara sopra e in ombra sotto
-      if (stor.stile === 'kurz' && rr > 2) {
+      if (stor.stile === 'kurz' && rr > 2 && !stor.leggero) {
         const g = ctx.createRadialGradient(px - rr * 0.3, py - rr * 0.4, rr * 0.1, px, py, rr);
         g.addColorStop(0, rgba(schiarisci(col, 0.5), 0.5 * (1 - fase))); g.addColorStop(0.6, rgba(col, 0.4 * (1 - fase))); g.addColorStop(1, rgba(mescolaColori(col, '#3a2a7a', 0.45), 0.4 * (1 - fase)));
         ctx.fillStyle = g;
@@ -7422,33 +7437,105 @@
    * ombra morbida su quello che ha sotto (il braccio sul busto, la testa sul
    * colletto, il personaggio sul fondo) e ha il suo volume, un'ombra interna
    * sfumata verso il basso a destra e una luce sfumata in alto a sinistra,
-   * come le figure dei cartoni in 3D. Le ombre interne si fanno con l'ombra
-   * della tela (`shadowBlur`) di un rettangolo grande quanto la tela col
-   * buco della forma, tagliato dalla forma stessa: resta solo l'ombra che
-   * entra dal bordo. */
-  function rettangoloTela(ctx) {
-    const W = (ctx.canvas && ctx.canvas.width) || 4000, H = (ctx.canvas && ctx.canvas.height) || 4000;
+   * come le figure dei cartoni in 3D.
+   *
+   * v507, «è troppo pesante, sui telefoni non renderizza»: fino alla v506
+   * ogni ombra era un'ombra della tela (`shadowBlur`), e quelle interne
+   * l'ombra di un rettangolo grande quanto la tela col buco della forma.
+   * Ogni sfocatura è un passaggio a parte sulla tela, e un astronauta ha una
+   * ventina di pezzi con tre ombre ciascuno: su un telefono di fascia media
+   * le scene di «Apollo 13» andavano a 5 fotogrammi al secondo. Ora le ombre
+   * sono **a strati**: la forma stessa, spostata, ripetuta due o tre volte
+   * con un velo leggero (`ombraInterna`, `ombraPortata`). Dove gli strati si
+   * sommano il buio è pieno, ai bordi sfuma: lo stesso volume, senza nessuna
+   * sfocatura. Gli spostamenti restano in pixel dello schermo, come quelli
+   * di `shadowOffset`, così il disegno è quello di prima anche sugli schermi
+   * densi. E se il telefono resta lento lo stesso (`stor.leggero`, deciso da
+   * `storTic` sul passo dei fotogrammi) gli strati diventano uno solo. */
+  // La matrice della tela come sei numeri (senza oggetti nuovi a ogni pezzo:
+  // un astronauta ne chiederebbe un centinaio per fotogramma) e la sua inversa
+  function matriceTela(ctx) {
     let m = null;
-    try { m = typeof ctx.getTransform === 'function' ? ctx.getTransform().inverse() : null; } catch (_) { m = null; }
-    if (!m || typeof m.transformPoint !== 'function') { ctx.rect(-1e5, -1e5, 2e5, 2e5); return; }
-    const p = [[-300, -300], [W + 300, -300], [W + 300, H + 300], [-300, H + 300]].map(([x, y]) => m.transformPoint({ x, y }));
-    ctx.moveTo(p[0].x, p[0].y); for (let i = 1; i < 4; i++) ctx.lineTo(p[i].x, p[i].y); ctx.closePath();
+    try { m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null; } catch (_) { m = null; }
+    return m ? [m.a, m.b, m.c, m.d, m.e, m.f] : null;
   }
+  function inversa(m) {
+    if (!m) return null;
+    const [a, b, c, d, e, f] = m, det = a * d - b * c;
+    if (!(Math.abs(det) > 1e-12)) return null;
+    return [d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det];
+  }
+  // Un rettangolo che copre tutta la tela (e un po' oltre), nelle coordinate
+  // del disegno: `inv` è l'inversa della matrice della tela
+  function rettangoloTela(ctx, inv) {
+    const W = (ctx.canvas && ctx.canvas.width) || 4000, H = (ctx.canvas && ctx.canvas.height) || 4000;
+    if (!inv) { ctx.rect(-1e5, -1e5, 2e5, 2e5); return; }
+    const [a, b, c, d, e, f] = inv;
+    const x0 = -300, y0 = -300, x1 = W + 300, y1 = H + 300;
+    ctx.moveTo(a * x0 + c * y0 + e, b * x0 + d * y0 + f);
+    ctx.lineTo(a * x1 + c * y0 + e, b * x1 + d * y0 + f);
+    ctx.lineTo(a * x1 + c * y1 + e, b * x1 + d * y1 + f);
+    ctx.lineTo(a * x0 + c * y1 + e, b * x0 + d * y1 + f);
+    ctx.closePath();
+  }
+  // Lo spostamento (dx, dy) in pixel dello schermo riportato nelle coordinate
+  // del disegno, anche se è ruotato: `inv` è l'inversa della matrice
+  function spostamentoDisegno(inv, dx, dy) {
+    if (!inv) return [dx, dy];
+    return [inv[0] * dx + inv[2] * dy, inv[1] * dx + inv[3] * dy];
+  }
+  // Il velo di ogni strato perché `n` strati sovrapposti facciano il buio `a`
+  const veloStrato = (a, n) => n <= 1 ? a : 1 - Math.pow(1 - Math.max(0, Math.min(0.999, a)), 1 / n);
+  const alfaColore = colore => { const m = /,\s*([\d.]+)\s*\)\s*$/.exec(colore); return m ? Number(m[1]) : 1; };
+  const coloreSenzaAlfa = colore => colore.replace(/^rgba\(([^,]+),([^,]+),([^,]+),[^)]*\)$/, 'rgb($1,$2,$3)');
+  // Quanti strati: tre per le ombre larghe, due per le medie, uno per le
+  // piccolissime (in pixel dello schermo) e per i telefoni che non ce la fanno
+  const stratiPer = sfuma => stor.leggero ? 1 : sfuma >= 6 ? 3 : sfuma >= 2 ? 2 : 1;
   // Dentro a una forma già ritagliata: l'ombra (o la luce) che entra dal
-  // bordo opposto a (dx, dy), larga `sfuma` pixel
+  // bordo opposto a (dx, dy), larga `sfuma` pixel. Ogni strato è la parte
+  // della forma che la forma spostata non copre: una falce sul bordo, più
+  // larga a ogni strato, come la sfocatura attorno all'ombra
   function ombraInterna(ctx, traccia, colore, sfuma, dx, dy) {
+    const lungo = Math.hypot(dx, dy);
+    if (!(lungo > 0)) return;
+    const inv = inversa(matriceTela(ctx));
+    const n = stratiPer(sfuma);
+    const [ux, uy] = spostamentoDisegno(inv, dx, dy);
     ctx.save();
-    ctx.shadowColor = colore; ctx.shadowBlur = Math.max(1, sfuma); ctx.shadowOffsetX = dx; ctx.shadowOffsetY = dy;
-    traccia(); rettangoloTela(ctx);
-    ctx.fillStyle = '#000'; ctx.fill('evenodd');
+    ctx.fillStyle = coloreSenzaAlfa(colore);
+    ctx.globalAlpha *= veloStrato(alfaColore(colore), n);
+    for (let k = 1; k <= n; k++) {
+      const passo = n === 1 ? 1 : Math.max(0.15, (lungo + sfuma * 0.45 * (2 * (k - 1) / (n - 1) - 1)) / lungo);
+      ctx.save(); ctx.translate(ux * passo, uy * passo); traccia(); ctx.restore();
+      rettangoloTela(ctx, inv);
+      ctx.fill('evenodd');
+    }
+    ctx.restore();
+  }
+  // L'ombra portata a strati di una forma (prima di stenderla): la forma
+  // spostata, due volte, col velo leggero
+  function ombraPortata(ctx, traccia, colore, sfuma, dx, dy) {
+    const [ux, uy] = spostamentoDisegno(inversa(matriceTela(ctx)), dx, dy);
+    const n = Math.min(2, stratiPer(sfuma));
+    ctx.save();
+    ctx.fillStyle = coloreSenzaAlfa(colore);
+    ctx.globalAlpha *= veloStrato(alfaColore(colore), n);
+    for (let k = 1; k <= n; k++) {
+      const passo = n === 1 ? 1.2 : 0.85 + 0.75 * (k - 1);
+      ctx.save(); ctx.translate(ux * passo, uy * passo); traccia(); ctx.restore();
+      ctx.fill();
+    }
     ctx.restore();
   }
   // L'ombra che un oggetto getta sotto di sé (in pixel della tela, `px` la
-  // sua misura): solo nello stile di Kurzgesagt
+  // sua misura): solo nello stile di Kurzgesagt. `fn` disegna quello che
+  // vuole, coi suoi colori: qui resta l'ombra della tela, ma netta (senza
+  // `shadowBlur` costa quanto ridisegnare l'oggetto) e un po' più chiara
+  // perché il bordo duro non pesi
   function kzSollevato(ctx, px, fn) {
-    if (stor.stile !== 'kurz') { fn(); return; }
+    if (stor.stile !== 'kurz' || stor.leggero) { fn(); return; }
     ctx.save();
-    ctx.shadowColor = 'rgba(6, 3, 28, 0.5)'; ctx.shadowBlur = Math.max(2, px * 0.07);
+    ctx.shadowColor = 'rgba(6, 3, 28, 0.34)'; ctx.shadowBlur = 0;
     ctx.shadowOffsetX = px * 0.025; ctx.shadowOffsetY = px * 0.05;
     fn();
     ctx.restore();
@@ -7456,11 +7543,8 @@
   function parteKurz(ctx, traccia, colore, R, opz = {}) {
     const scuro = mescolaColori(colore, KURZ.ombra, opz.buio === undefined ? 0.45 : Math.min(0.85, opz.buio * 1.5));
     // l'ombra che il pezzo getta su quello che ha sotto
-    ctx.save();
-    ctx.shadowColor = 'rgba(10, 5, 36, 0.42)'; ctx.shadowBlur = Math.max(2, R * 0.12);
-    ctx.shadowOffsetX = R * 0.035; ctx.shadowOffsetY = R * 0.06;
+    ombraPortata(ctx, traccia, 'rgba(10, 5, 36, 0.42)', Math.max(2, R * 0.12), R * 0.035, R * 0.06);
     traccia(); ctx.fillStyle = colore; ctx.fill();
-    ctx.restore();
     ctx.save(); traccia(); ctx.clip();
     if (opz.dentro) opz.dentro();
     // il volume: l'ombra fredda che sale dal basso a destra, la luce in alto a sinistra
@@ -13862,6 +13946,13 @@
     figurina: (id, px) => storFigurina(id, px), STOR_SFONDI, STOR_NAVI, STOR_SFONDO_MAX_S, ospitiDi: storOspiti,
     // v504: «Apollo 13 · Dentro la scienza» e lo stile di Kurzgesagt
     STOR_SPIEGA_APOLLO, STOR_SCENE_APOLLO, STOR_STILI, stile: () => stor.stile,
+    // v507: il disegno leggero; impostarlo (le prove) toglie la scelta
+    // automatica per il resto della sessione, «auto» la rimette da capo
+    leggero: v => {
+      if (v === 'auto') Object.assign(stor, { leggero: false, passoMedio: 0, passiKurz: 0, tempoKurz: 0 });
+      else if (v !== undefined) { stor.leggero = !!v; stor.tempoKurz = -Infinity; }
+      return stor.leggero;
+    },
     ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale, boccaBersaglio: storBoccaBersaglio,
     tempoDelCarattere: storTempoDelCarattere,
     geometria: storGeometria, posa: storPosa, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,
