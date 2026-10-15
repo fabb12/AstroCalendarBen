@@ -4044,3 +4044,77 @@ tutte e otto in scena; le animazioni si disegnano a più istanti),
 `voci-storie.js --controlla`. Guardate una per una in Chromium (un copione di
 prova con le otto in fila) e le due storie intere (`giro-storia.js`).
 
+### «Dentro la scienza» come un cartone di divulgazione: le spiegazioni a tutto schermo (v501)
+
+«Così non va bene, cambia poco rispetto all'originale: aggiungi più animazioni
+fatte bene, il foglio per esempio non si vede; più dinamico, più veloce, più
+entusiasmo. Fallo simile al canale di scienza Kurzgesagt: lo scopo è spiegare
+bene i concetti scientifici delle scene più importanti e difficili. Rifai le
+due CosmoStorie "dentro la scienza". Le voci le genero con ElevenLabs dopo.»
+
+**Le otto animazioni della v500 sono tolte** (stavano in un angolo, sopra la
+scena: piccole). Al loro posto ci sono **21 spiegazioni a tutto schermo**
+(`explain_*`, `STOR_SPIEGA`; storie-cosmiche.js §6-ter-bis,
+`storDisegnaSpiega` e `STOR_SPIEGA_DISEGNI`). Sono sfondi pieni (stanno sotto
+ai personaggi e coprono la vista), ognuno un piccolo filmato di una decina di
+secondi in tre o quattro battute: un titolo in alto con la riga gialla che si
+allunga, gli oggetti che entrano «a molla» (`kzMolla`), le etichette bianche
+col loro filo (`kzEtichetta`), i numeri che contano (`kzNumero`, con le cifre
+della lingua), la camera che entra con una spinta e poi respira. Finita la
+sequenza, l'ultima battuta resta viva e gira in tondo finché parla il
+personaggio; col movimento ridotto si vede subito, ferma. Tinte piatte da
+cartone di divulgazione (`KZ`): blu notte, corallo, giallo, turchese, ciano,
+lilla; pianeti come dischi con la mezzaluna d'ombra (`kzPalla`), Gargantua
+piatto (`kzBucoNero`), la griglia dello spazio-tempo coi pozzi delle masse
+(`kzPiano`, `kzGriglia`), orologi, astronauti, navette, galassie.
+
+Le scritte sono nei dizionari (`storie.spiega.*`, anche quelle coi numeri,
+`{n}`); la parola in Morse si legge dal dizionario (`storie.spiega.morse.parola`:
+«RESTA», «STAY») e il codice si calcola da lì. Lo spazio delle spiegazioni è
+quello libero fra il titolo e i sottotitoli; sullo schermo largo è al 60%
+della larghezza, e `at: right`/`left` lo sposta dalla parte opposta a chi
+parla (piccolo, `scale: 0.5`, in un angolo in basso).
+
+| Effetto | Cosa succede |
+|---|---|
+| `explain_shortcut` | il nastro dello spazio con la Terra e un'altra galassia; un puntino di luce che non arriva mai, gli anni che contano; il nastro si piega a U; nasce il tunnel; la navetta lo attraversa in un lampo, «Pochi minuti!» |
+| `explain_sphere` | il mondo piatto coi suoi abitanti e il buco a cerchio; poi la sfera con dentro l'altra galassia e la navetta che le gira attorno (dentro, la vista cambia) |
+| `explain_curvature` | la griglia che sprofonda sotto la massa, il pianeta che ci rotola attorno, la luce che si piega |
+| `explain_gargantua` | Gargantua che cresce; orizzonte, anello di fotoni, disco, disco piegato in su; il Sole minuscolo e il contatore fino a cento milioni di Soli |
+| `explain_lensing` | la luce del disco dietro: la strada dritta sbarrata, le due curve sopra e sotto coi fotoni, l'occhio e cosa vede |
+| `explain_time` | il pozzo con Miller in fondo e la Terra sul bordo; l'orologio di Miller fa un giro (i minuti contano) mentre quello di casa corre e gli anni arrivano a sette, coi fogli del calendario che volano |
+| `explain_spin` | senza rotazione il pianeta cade a spirale (rosso); poi lo spazio gira come un mulinello e l'orbita tiene (verde) |
+| `explain_tides` | le tre frecce, il pianeta a uovo, le gobbe d'acqua; poi l'onda di 1,2 km che si alza accanto a un grattacielo di 300 m |
+| `explain_twins` | due linee del tempo: quella di Romilly corre fino a 23 anni, quella di Cooper è un puntino, ingrandito da una lente: 3 ore |
+| `explain_docking` | l'anello che gira visto da fuori e, accanto, dal finestrino del Ranger: quando girano insieme l'anello si ferma |
+| `explain_slingshot` | la navetta sull'iperbole attorno al buco nero, il pezzo che si stacca nel punto più vicino, la freccia della velocità che si allunga, 51 anni |
+| `explain_spaghetti` | due finestre: l'astronauta che si allunga vicino a un buco nero piccolo, quello intero sull'orizzonte di Gargantua |
+| `explain_horizon` | la navetta che cade: da fuori rallenta, arrossisce e si ferma sul bordo, e il suo orologio si ferma; il suo orologio per lui corre |
+| `explain_dimensions` | punto, linea, quadrato, cubo, tesseratto che gira; 0D–4D; «Per Loro: + il tempo» |
+| `explain_timescape` | i fotogrammi della stanza di Murph in fila verso il futuro, il filo d'oro e chi ci cammina avanti e indietro |
+| `explain_gravity_leak` | tre fogli: la luce scivola sul nostro e non ne esce, la gravità si allarga in anelli che li attraversano tutti |
+| `explain_morse` | le lettere della parola, i punti e le linee, e per ogni segno un libro che cade sulla mensola (basso, alto) |
+| `explain_binary` | le righe di polvere larghe e strette, gli 1 e gli 0 sopra, i numeri, la puntina della base della NASA |
+| `explain_quantum` | il grande (galassia e pianeti) e il piccolissimo (l'atomo che trema) che si uniscono nel cuore di un buco nero |
+| `explain_loop` | le coordinate, la partenza, Gargantua, il tesseratto su un anello, la luce che ci corre sopra, il punto di domanda |
+| `explain_station` | il cilindro che gira con case e abitanti, la spinta del pavimento, la palla che va dritta, «e tu lo senti come peso» |
+
+**Le due storie rifatte** (`storia_interstellar_scienza`,
+`storia_interstellar2_scienza`, 19 scene ciascuna, ~3 minuti e mezzo con la
+voce di prova): le scene del film più forti (Saturno, il tunnel, Gargantua,
+«sono onde!», Mann, la stanza di Murph; il tesseratto, Loro, «voi siete noi»,
+l'orologio, «Eureka», il decollo, la Stazione Cooper, Murph anziana) prese
+dalle originali, e fra una e l'altra le spiegazioni: 13 nella Parte 1, 8 nella
+Parte 2. Tutte le battute sono nuove, scritte come una narrazione di
+divulgazione (frasi corte, un'idea per frase, un pizzico d'ironia di TARS),
+con la regia per ElevenLabs in `regia-voci.json`; le voci si fanno col tasto
+«Voci ElevenLabs» della scheda. Le originali restano quelle della v496.
+
+Prove: `prova-storie.js` (122: le due storie, ogni spiegazione una volta, in
+scene con la camera larga e chi parla piccolo in un angolo, almeno quattro
+scene su dieci che spiegano, le battute e le scritte nelle due lingue; ogni
+spiegazione si disegna a sei istanti, con titolo ed etichette), `prova-demo.js`,
+`prova-i18n.js`, `controlla-i18n.js --patto`, `voci-storie.js --controlla`;
+guardate tutte e 21 in Chromium (un copione di prova con le 21 in fila) e le
+due storie intere (`giro-storia.js`, nessun errore).
+
