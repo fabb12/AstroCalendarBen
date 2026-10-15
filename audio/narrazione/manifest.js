@@ -740,11 +740,15 @@
     },
 
     'studio.studio_cosa_e_la_gravita.2': {
-      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-2.mp3', impronta: 'be7e5c66', firma: 'd7f88ec9ee', testo: "Ciao Terra, mi chiedevo, perché orbito intorno a te?" }
+      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-2.mp3', impronta: 'be7e5c66', firma: '8d4b5ed010', testo: "Ciao Terra, mi chiedevo, perché orbito intorno a te?" }
     },
 
     'studio.studio_cosa_e_la_gravita.1': {
-      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-1.mp3', impronta: '64994de1', firma: '313954399e', testo: "Smettila!!!" }
+      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-1.mp3', impronta: '607f47f9', firma: '18449cec37', testo: "Smettila!!!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.32': {
+      it: { file: 'storie/luna/it/studio_cosa_e_la_gravita-32.mp3', impronta: '5b57486c', firma: '3a4df0c6ee', testo: "Vogliamo essere indipendenti!" }
     },
 
     // Terra — storie/terra/
@@ -761,15 +765,59 @@
     },
 
     'studio.studio_cosa_e_la_gravita.4': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-4.mp3', impronta: 'b1ad1131', firma: '3275b71661', testo: "Sei solo una luna!!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-4.webm', impronta: '47345a07', firma: '6de86ca5fb', testo: "Sei solo una luna!!" }
     },
 
     'studio.studio_cosa_e_la_gravita.5': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-5.mp3', impronta: 'd98309bb', firma: 'c7187f3542', testo: "ah ah ah!!!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-5.webm', impronta: '9b60ebf7', firma: '4d686bbabb', testo: "ah ah ah!!!" }
     },
 
     'studio.studio_cosa_e_la_gravita.6': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-6.mp3', impronta: 'bb51ba43', firma: '9c9b19f77f', testo: "oh no! adesso cosa faccio?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-6.webm', impronta: 'bb51ba43', firma: 'bff5734840', testo: "oh no! adesso cosa faccio?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.41': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-41.webm', impronta: '08f01c36', firma: '2441bbc613', testo: "Continuo a non capire." }
+    },
+
+    'studio.studio_cosa_e_la_gravita.15': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-15.webm', impronta: 'bf7d1b25', firma: '1df36108ab', testo: "Potresti spiegarti meglio?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.42': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-42.webm', impronta: '7e6f63c4', firma: '2babf50819', testo: "Cos' è la massa, cos' è un peso e che cosa è un volume?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.20': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-20.webm', impronta: 'd8b5d073', firma: 'e286d384e3', testo: "Oh! Che spavento! Chi ha parlato?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.22': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-22.webm', impronta: '1ed77ddb', firma: 'c26e177c7d', testo: "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.23': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-23.webm', impronta: 'cdb959e2', firma: 'd6e84a817e', testo: "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.25': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-25.webm', impronta: 'eeea7c5a', firma: '10486d915b', testo: "Oh! Scusa! Continua." }
+    },
+
+    'studio.studio_cosa_e_la_gravita.27': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-27.webm', impronta: '4419d2cf', firma: '5537e6817d', testo: "Wow! Non sapevo che la scienza potesse essere così bella." }
+    },
+
+    'studio.studio_cosa_e_la_gravita.29': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-29.webm', impronta: 'a61f18ae', firma: '3791a4ae80', testo: "Cosa? Di nuovo? Chi ha parlato?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.38': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-38.webm', impronta: '237c9ef7', firma: 'b65577c602', testo: "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.40': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-40.webm', impronta: '4b5d0e18', firma: 'c5930fec76', testo: "Cos' è un buco nero?" }
     },
 
     // Sole — storie/sole/
@@ -785,6 +833,40 @@
       it: { file: 'storie/sole/it/storia_tempo-5.mp3', impronta: '65f5d4da', firma: '9e9f61db10' }
     },
 
+    'studio.studio_cosa_e_la_gravita.33': {
+      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-33.mp3', impronta: 'dac15648', firma: 'ada23f173f', testo: "Tranquilla Terra! Ti spiego io cos'è la gravità!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.12': {
+      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-12.mp3', impronta: '6ff6a954', firma: 'f28d119ea7', testo: "La gravità è una forza attrattiva che tiene uno o più astri stabili." }
+    },
+
+    'studio.studio_cosa_e_la_gravita.31': {
+      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-31.mp3', impronta: '1e12eab9', firma: 'fe1e1e13c0', testo: "So chi è! è la mia amica alfa centauri!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.36': {
+      it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-36.mp3', impronta: '846d1493', firma: '07cd895c01', testo: "Come potrei mai dimenticarti?" }
+    },
+
+    // Saturno — storie/saturno/
+    'studio.studio_cosa_e_la_gravita.14': {
+      it: { file: 'storie/saturno/it/studio_cosa_e_la_gravita-14.mp3', impronta: '3892a546', firma: 'a8e34903c4', testo: "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole." }
+    },
+
+    // Giove — storie/giove/
+    'studio.studio_cosa_e_la_gravita.16': {
+      it: { file: 'storie/giove/it/studio_cosa_e_la_gravita-16.mp3', impronta: '6a3b1ce9', firma: 'c971e7a7fe', testo: "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.43': {
+      it: { file: 'storie/giove/it/studio_cosa_e_la_gravita-43.mp3', impronta: 'd845e531', firma: 'd83427ec96', testo: "Calma Terra, una domanda alla volta." }
+    },
+
+    'studio.studio_cosa_e_la_gravita.44': {
+      it: { file: 'storie/giove/it/studio_cosa_e_la_gravita-44.mp3', impronta: '5c7a30dd', firma: 'eaf4e9fd83', testo: "La massa è la quantità di materia che compone un corpo, il peso è" }
+    },
+
     // Voyager 1 — storie/voyager-1/
     'demo.narr.storia_tempo.6': {
       it: { file: 'storie/voyager-1/it/storia_tempo-6.mp3', impronta: '8d2b23a1', firma: '5c91d3773b' }
@@ -793,6 +875,14 @@
     // Alfa Centauri — storie/alfa-centauri/
     'demo.narr.storia_tempo.7': {
       it: { file: 'storie/alfa-centauri/it/storia_tempo-7.mp3', impronta: 'f2afd751', firma: '0e43ee2b23' }
+    },
+
+    'studio.studio_cosa_e_la_gravita.28': {
+      it: { file: 'storie/alfa-centauri/it/studio_cosa_e_la_gravita-28.mp3', impronta: '50b500fe', firma: 'e088cf8aa6', testo: "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare." }
+    },
+
+    'studio.studio_cosa_e_la_gravita.35': {
+      it: { file: 'storie/alfa-centauri/it/studio_cosa_e_la_gravita-35.mp3', impronta: 'd736e3b7', firma: '2d86c936d3', testo: "Ti ricordi di me allora sole, eh?" }
     },
 
     // Via Lattea — storie/via-lattea/
@@ -807,6 +897,92 @@
     // Andromeda — storie/andromeda/
     'demo.narr.storia_tempo.9': {
       it: { file: 'storie/andromeda/it/storia_tempo-9.mp3', impronta: 'e1d6183a', firma: '634955c1bd' }
+    },
+
+    // Sagittario A* — storie/sagittario-a/
+    'studio.studio_cosa_e_la_gravita.37': {
+      it: { file: 'storie/sagittario-a/it/studio_cosa_e_la_gravita-37.mp3', impronta: '9aa3ea34', firma: '2844495539', testo: "Pure io attiro oggetti Terra!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.39': {
+      it: { file: 'storie/sagittario-a/it/studio_cosa_e_la_gravita-39.mp3', impronta: '53f19786', firma: '0df2a92f93', testo: "Sono sagittarius A! Il buco nero al centro della via lattea!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.45': {
+      it: { file: 'storie/sagittario-a/it/studio_cosa_e_la_gravita-45.mp3', impronta: '8a865775', firma: 'de3019e344', testo: "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi." }
+    },
+
+    // Albert Einstein — storie/albert-einstein/
+    'studio.studio_copia_di_einstein_e_il_tempo_e.2': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-2.mp3', impronta: '02d548a9', firma: '42d6dd2adb', testo: "Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.3': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-3.mp3', impronta: '7ea6c035', firma: 'ac07ed796d', testo: "Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.4': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-4.mp3', impronta: '3a0e08b1', firma: '8e605d53b0', testo: "Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.5': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-5.mp3', impronta: '2a00aa88', firma: 'bf909a7171', testo: "La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.6': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-6.mp3', impronta: '632dcb38', firma: 'ada4945a6b', testo: "Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.7': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-7.mp3', impronta: '58332d75', firma: 'c95ce6938d', testo: "E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.8': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-8.mp3', impronta: '0988a149', firma: '8e5909f1cc', testo: "Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…" }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.9': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-9.mp3', impronta: 'e04c12e8', firma: '27cf939c77', testo: "Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.10': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-10.mp3', impronta: '8b3745f8', firma: '23809088c8', testo: "E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.11': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-11.mp3', impronta: '01d34b78', firma: '362c3db8fd', testo: "Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.12': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-12.mp3', impronta: 'ac88c2cc', firma: 'e5ff65cd50', testo: "Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.13': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-13.mp3', impronta: '580cb4a6', firma: 'cd7bc1bac1', testo: "Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.14': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-14.mp3', impronta: 'bbb89dab', firma: '9ef1d565c7', testo: "Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.15': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-15.mp3', impronta: '79b8c454', firma: '031c07c8ae', testo: "Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!" }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.16': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-16.mp3', impronta: '11105c1a', firma: 'a9701784c4', testo: "E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.17': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-17.mp3', impronta: 'f1a251d1', firma: '16178a4fe3', testo: "Stephen, tu riesci sempre a rendere il mio universo ancora più strano!" }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.18': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-18.mp3', impronta: '15ecd40a', firma: '082c9ff2f0', testo: "Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande." }
+    },
+
+    'studio.studio_copia_di_einstein_e_il_tempo_e.19': {
+      it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-19.mp3', impronta: '6a2ea03d', firma: '381f0ce27d', testo: "Dipende… da dove lo guardi!" }
     },
 
     // Gargantua — storie/gargantua/
@@ -1383,24 +1559,121 @@
       it: { file: 'storie/murph-anziana/it/storia_interstellar2-40.mp3', impronta: '89257cb9', firma: 'f5d507db6a' }
     },
 
+    // Jim Lovell — storie/jim-lovell/
+    'demo.narr.storia_apollo13_scienza.1': {
+      it: { file: 'storie/jim-lovell/it/storia_apollo13_scienza-1.mp3', impronta: '27c832a5', firma: '2f9db03bc7' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.4': {
+      it: { file: 'storie/jim-lovell/it/storia_apollo13_scienza-4.mp3', impronta: '709cd10c', firma: 'ddf29c9111' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.13': {
+      it: { file: 'storie/jim-lovell/it/storia_apollo13_scienza-13.mp3', impronta: '480ede4d', firma: 'da0b2d59f9' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.14': {
+      it: { file: 'storie/jim-lovell/it/storia_apollo13_scienza-14.mp3', impronta: '387e0406', firma: '6f79435a1f' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.16': {
+      it: { file: 'storie/jim-lovell/it/storia_apollo13_scienza-16.mp3', impronta: '642ec488', firma: 'c2dae3e499' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.19': {
+      it: { file: 'storie/jim-lovell/it/storia_apollo13_scienza-19.mp3', impronta: '2f7f84f3', firma: '03d208e569' }
+    },
+
+    // Fred Haise — storie/fred-haise/
+    'demo.narr.storia_apollo13_scienza.2': {
+      it: { file: 'storie/fred-haise/it/storia_apollo13_scienza-2.mp3', impronta: '6e05fa33', firma: 'e32297b34f' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.7': {
+      it: { file: 'storie/fred-haise/it/storia_apollo13_scienza-7.mp3', impronta: 'bae1bfbd', firma: '5c356a13f6' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.11': {
+      it: { file: 'storie/fred-haise/it/storia_apollo13_scienza-11.mp3', impronta: '0da0a173', firma: 'c660c2abd0' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.12': {
+      it: { file: 'storie/fred-haise/it/storia_apollo13_scienza-12.mp3', impronta: '00e2cfc7', firma: '042e6e1d85' }
+    },
+
+    // Jack Swigert — storie/jack-swigert/
+    'demo.narr.storia_apollo13_scienza.3': {
+      it: { file: 'storie/jack-swigert/it/storia_apollo13_scienza-3.mp3', impronta: 'f1227e1e', firma: 'a756f34480' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.5': {
+      it: { file: 'storie/jack-swigert/it/storia_apollo13_scienza-5.mp3', impronta: '61b780e7', firma: 'cd4408369c' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.10': {
+      it: { file: 'storie/jack-swigert/it/storia_apollo13_scienza-10.mp3', impronta: 'c7b32c30', firma: '01403a48ed' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.18': {
+      it: { file: 'storie/jack-swigert/it/storia_apollo13_scienza-18.mp3', impronta: 'ae8dde8b', firma: 'f0bb87eb1f' }
+    },
+
+    // Gene Kranz — storie/gene-kranz/
+    'demo.narr.storia_apollo13_scienza.6': {
+      it: { file: 'storie/gene-kranz/it/storia_apollo13_scienza-6.mp3', impronta: '2696ef64', firma: '3691dfc16c' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.8': {
+      it: { file: 'storie/gene-kranz/it/storia_apollo13_scienza-8.mp3', impronta: '81057bd1', firma: 'bf35a7e60d' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.9': {
+      it: { file: 'storie/gene-kranz/it/storia_apollo13_scienza-9.mp3', impronta: 'ee268854', firma: 'e0eed7583d' }
+    },
+
+    'demo.narr.storia_apollo13_scienza.17': {
+      it: { file: 'storie/gene-kranz/it/storia_apollo13_scienza-17.mp3', impronta: '84b4e38b', firma: 'abfd437a6c' }
+    },
+
+    // Ken Mattingly — storie/ken-mattingly/
+    'demo.narr.storia_apollo13_scienza.15': {
+      it: { file: 'storie/ken-mattingly/it/storia_apollo13_scienza-15.mp3', impronta: 'ad4e899e', firma: '5b2ce43e65' }
+    },
+
     // hubble — storie/hubble/
     'studio.studio_cosa_e_la_gravita.7': {
-      it: { file: 'storie/hubble/it/studio_cosa_e_la_gravita-7.mp3', impronta: '808b37ae', firma: '4b36217b39', testo: "esatto, perchè ci trattieni?" }
+      it: { file: 'storie/hubble/it/studio_cosa_e_la_gravita-7.mp3', impronta: '808b37ae', firma: '8b1cb097ac', testo: "esatto, perchè ci trattieni?" }
     },
 
     // iss — storie/iss/
     'studio.studio_cosa_e_la_gravita.8': {
-      it: { file: 'storie/iss/it/studio_cosa_e_la_gravita-8.mp3', impronta: '3973dac1', firma: '88d874f638', testo: "ci dobbiamo ribellare!" }
+      it: { file: 'storie/iss/it/studio_cosa_e_la_gravita-8.mp3', impronta: '3973dac1', firma: '411b46d77b', testo: "ci dobbiamo ribellare!" }
     },
 
     // css — storie/css/
     'studio.studio_cosa_e_la_gravita.9': {
-      it: { file: 'storie/tiangong/it/studio_cosa_e_la_gravita-9.mp3', impronta: 'a0f96b63', firma: '385e1ec2fd', testo: "giusto!" }
+      it: { file: 'storie/tiangong/it/studio_cosa_e_la_gravita-9.mp3', impronta: 'a0f96b63', firma: 'f990a63c4f', testo: "giusto!" }
     },
 
     // Sedna — storie/sedna/
+    'studio.studio_cosa_e_la_gravita.19': {
+      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-19.mp3', impronta: '05533362', firma: '7429605674', testo: "Ciao Terra, Giove ha ragione!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.34': {
+      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-34.mp3', impronta: '7697f280', firma: 'b123b2b1c9', testo: "Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa." }
+    },
+
     'studio.studio_cosa_e_la_gravita.24': {
       it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-24.mp3', impronta: 'fd80a4be', firma: '0275efb5cf', testo: "Ehm, scusa Terra, hai finito?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita.26': {
+      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-26.mp3', impronta: '4fa9f2d5', firma: '7929466c97', testo: "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\"." }
+    },
+
+    'studio.studio_cosa_e_la_gravita.30': {
+      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-30.mp3', impronta: '3e44cee9', firma: '109df6e0a4', testo: "è vero! Chi è?" }
     },
 
     // ── FINE STORIE COSMICHE ──

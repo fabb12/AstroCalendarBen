@@ -494,7 +494,7 @@
       "emozione": "preoccupato",
       "come": "",
       "conTag": {
-        "it": "[nervous] oh no! adesso cosa faccio?"
+        "it": "[nervous] [gasps] oh no! adesso cosa faccio?"
       }
     },
     "studio.studio_cosa_e_la_gravita.12": {
@@ -522,7 +522,7 @@
       "emozione": "tranquillo",
       "come": "",
       "conTag": {
-        "it": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
+        "it": "Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
       }
     },
     "studio.studio_cosa_e_la_gravita.19": {
@@ -603,10 +603,10 @@
       }
     },
     "studio.studio_cosa_e_la_gravita.31": {
-      "emozione": "tranquillo",
+      "emozione": "colpito",
       "come": "",
       "conTag": {
-        "it": "So chi è! è la mia amica proxima centauri!"
+        "it": "[impressed] So chi è! è la mia amica alfa centauri!"
       }
     },
     "studio.studio_cosa_e_la_gravita.32": {
@@ -620,7 +620,7 @@
       "emozione": "ride",
       "come": "",
       "conTag": {
-        "it": "[laughs] Tranquilla Terra! Ti spiego io cos'è la gravità!"
+        "it": "[laughs] Tranquilla Terra! [curious] Ti spiego io cos'è la gravità!"
       }
     },
     "studio.studio_cosa_e_la_gravita.34": {
@@ -2345,6 +2345,216 @@
       "conTag": {
         "it": "[relieved] 17 aprile 1970, Oceano Pacifico. Tre paracadute, tre uomini vivi. Non abbiamo toccato la Luna, ma abbiamo dimostrato che cosa sanno fare la scienza e una squadra quando tutto va storto. Lo chiamano un fallimento di successo. Per me è la missione più bella di tutte.",
         "en": "[relieved] April 17, 1970, Pacific Ocean. Three parachutes, three men alive. We never touched the Moon, but we showed what science and a team can do when everything goes wrong. They call it a successful failure. To me it's the finest mission of them all."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.21": {
+      "emozione": "",
+      "come": "",
+      "conTag": {
+        "it": "Professor Einstein"
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.2": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.3": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.4": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.5": {
+      "emozione": "orgoglioso",
+      "come": "",
+      "conTag": {
+        "it": "[proud] La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.6": {
+      "emozione": "deciso",
+      "come": "",
+      "conTag": {
+        "it": "[determined] Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.7": {
+      "emozione": "misterioso",
+      "come": "",
+      "conTag": {
+        "it": "[mysteriously] E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.8": {
+      "emozione": "giocherellone",
+      "come": "",
+      "conTag": {
+        "it": "[playfully] Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…"
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.9": {
+      "emozione": "orgoglioso",
+      "come": "",
+      "conTag": {
+        "it": "[proud] Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.10": {
+      "emozione": "misterioso",
+      "come": "",
+      "conTag": {
+        "it": "[mysteriously] E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.11": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.12": {
+      "emozione": "misterioso",
+      "come": "",
+      "conTag": {
+        "it": "[mysteriously] Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.13": {
+      "emozione": "entusiasta",
+      "come": "",
+      "conTag": {
+        "it": "[excited] Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.14": {
+      "emozione": "malinconico",
+      "come": "",
+      "conTag": {
+        "it": "[wistfully] Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.15": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!"
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.16": {
+      "emozione": "orgoglioso",
+      "come": "",
+      "conTag": {
+        "it": "[proud] E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.17": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] Stephen, tu riesci sempre a rendere il mio universo ancora più strano!"
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.18": {
+      "emozione": "intenerito",
+      "come": "",
+      "conTag": {
+        "it": "[tenderly] Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande."
+      }
+    },
+    "studio.studio_copia_di_einstein_e_il_tempo_e.19": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] Dipende… da dove lo guardi!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.41": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Continuo a non capire."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.42": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.43": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Calma Terra, una domanda alla volta."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.44": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.35": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ti ricordi di me allora sole, eh?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.36": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Come potrei mai dimenticarti?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.37": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Pure io attiro oggetti Terra!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.38": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.39": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Sono sagittarius A! Il buco nero al centro della via lattea!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.40": {
+      "emozione": "curioso",
+      "come": "",
+      "conTag": {
+        "it": "[curious] Cos' è un buco nero?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita.45": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi."
       }
     }
   }

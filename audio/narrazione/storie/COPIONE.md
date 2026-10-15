@@ -11,26 +11,26 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **154/296** in italiano · **0/234** in inglese.
+Pronte: **205/326** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Luna | `storie/luna/` | 14 | 12/14 | 0/11 |
-| Terra | `storie/terra/` | 14 | 4/14 | 0/4 |
-| Sole | `storie/sole/` | 15 | 3/15 | 0/10 |
-| Saturno | `storie/saturno/` | 3 | 0/3 | 0/2 |
-| Giove | `storie/giove/` | 2 | 0/2 | 0/1 |
+| Luna | `storie/luna/` | 14 | 14/14 | 0/11 |
+| Terra | `storie/terra/` | 18 | 17/18 | 0/4 |
+| Sole | `storie/sole/` | 16 | 7/16 | 0/10 |
+| Saturno | `storie/saturno/` | 3 | 1/3 | 0/2 |
+| Giove | `storie/giove/` | 4 | 3/4 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
-| Alfa Centauri | `storie/alfa-centauri/` | 2 | 1/2 | 0/1 |
+| Alfa Centauri | `storie/alfa-centauri/` | 3 | 3/3 | 0/1 |
 | Via Lattea | `storie/via-lattea/` | 2 | 2/2 | 0/2 |
 | Andromeda | `storie/andromeda/` | 1 | 1/1 | 0/1 |
 | Betelgeuse | `storie/betelgeuse/` | 7 | 0/7 | 0/7 |
 | Supernova del Granchio | `storie/supernova-del-granchio/` | 3 | 0/3 | 0/3 |
 | Sirio B | `storie/sirio-b/` | 2 | 0/2 | 0/2 |
-| Sagittario A* | `storie/sagittario-a/` | 9 | 0/9 | 0/6 |
+| Sagittario A* | `storie/sagittario-a/` | 12 | 3/12 | 0/6 |
 | Buco bianco | `storie/buco-bianco/` | 4 | 0/4 | 0/2 |
-| Astro Ben | `storie/astro-ben/` | 10 | 0/10 | 0/10 |
-| Albert Einstein | `storie/albert-einstein/` | 19 | 0/19 | 0/19 |
+| Astro Ben | `storie/astro-ben/` | 11 | 0/11 | 0/10 |
+| Albert Einstein | `storie/albert-einstein/` | 37 | 18/37 | 0/19 |
 | Mercurio | `storie/mercurio/` | 1 | 0/1 | 0/1 |
 | Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
 | Gargantua | `storie/gargantua/` | 3 | 2/3 | 0/3 |
@@ -49,14 +49,14 @@ Pronte: **154/296** in italiano · **0/234** in inglese.
 | Murph bambina | `storie/murph-bambina/` | 1 | 1/1 | 0/1 |
 | Murph anziana | `storie/murph-anziana/` | 5 | 2/5 | 0/5 |
 | Jim Lovell | `storie/jim-lovell/` | 6 | 0/6 | 0/6 |
-| Fred Haise | `storie/fred-haise/` | 4 | 0/4 | 0/4 |
+| Fred Haise | `storie/fred-haise/` | 4 | 1/4 | 0/4 |
 | Jack Swigert | `storie/jack-swigert/` | 4 | 0/4 | 0/4 |
 | Gene Kranz | `storie/gene-kranz/` | 4 | 0/4 | 0/4 |
 | Ken Mattingly | `storie/ken-mattingly/` | 1 | 0/1 | 0/1 |
 | hubble | `storie/hubble/` | 1 | 1/1 | 0/0 |
 | iss | `storie/iss/` | 1 | 1/1 | 0/0 |
 | css | `storie/css/` | 1 | 1/1 | 0/0 |
-| Sedna | `storie/sedna/` | 5 | 1/5 | 0/0 |
+| Sedna | `storie/sedna/` | 5 | 5/5 | 0/0 |
 
 ## Luna
 
@@ -110,15 +110,15 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Emozione:** tenera — la morale: lenta, calda, con meraviglia sull'ultima frase
   - **Testo:** Quindi stasera, quando guardi il cielo, non guardi solo lontano: guardi nel passato. Il cielo è una vera macchina del tempo!
   - **Da incollare su ElevenLabs v3:** `[softly] Quindi stasera, quando guardi il cielo, non guardi solo lontano: guardi nel passato. [warmly] Il cielo è una vera macchina del tempo!`
-- `studio_cosa_e_la_gravita-2.mp3` — pronta · 4,4 s · Studio: Cosa è la gravità?, scena 1 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-2.mp3` — pronta · 4 s · Studio: Cosa è la gravità?, scena 1 (al massimo 5 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Ciao Terra, mi chiedevo, perché orbito intorno a te?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?`
-- `studio_cosa_e_la_gravita-1.mp3` — **da rifare** (il testo è cambiato) · 1,4 s · Studio: Cosa è la gravità?, scena 4 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-1.mp3` — pronta · 2,1 s · Studio: Cosa è la gravità?, scena 4 (al massimo 3 s)
   - **Emozione:** infastidito — 
   - **Testo:** Smettila!!!
   - **Da incollare su ElevenLabs v3:** `[annoyed] Smettila !!!`
-- `studio_cosa_e_la_gravita-32.mp3` — manca · Studio: Cosa è la gravità?, scena 8 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-32.mp3` — pronta · 2,7 s · Studio: Cosa è la gravità?, scena 8 (al massimo 4 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** Vogliamo essere indipendenti!
   - **Da incollare su ElevenLabs v3:** `[angry] Vogliamo essere indipendenti!`
@@ -194,46 +194,62 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** incoraggiante — vivace, coraggiosa, contagia il Sole di entusiasmo
   - **Testo:** Non lo so, Sole! Chiediamolo alle stelle più vecchie di te. Ce n’è una rossa che ci sta aspettando.
   - **Da incollare su ElevenLabs v3:** `[encouragingly] Non lo so, Sole! [excited] Chiediamolo alle stelle più vecchie di te. Ce n’è una rossa che ci sta aspettando.`
-- `studio_cosa_e_la_gravita-4.mp3` — **da rifare** (il testo è cambiato) · 2,3 s · Studio: Cosa è la gravità?, scena 2 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-4.mp3` — pronta · Studio: Cosa è la gravità?, scena 2 (al massimo 3 s)
   - **Emozione:** da bullo — 
   - **Testo:** Sei solo una luna!!
   - **Da incollare su ElevenLabs v3:** `[mischievously] Sei solo una luna !!`
-- `studio_cosa_e_la_gravita-5.mp3` — **da rifare** (il testo è cambiato) · 4 s · Studio: Cosa è la gravità?, scena 3 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-5.mp3` — pronta · Studio: Cosa è la gravità?, scena 3 (al massimo 3 s)
   - **Emozione:** ride — 
   - **Testo:** ah ah ah!!!
   - **Da incollare su ElevenLabs v3:** `[laughs] ah ah ah !!!`
-- `studio_cosa_e_la_gravita-6.mp3` — pronta · 2,8 s · Studio: Cosa è la gravità?, scena 9 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-6.mp3` — pronta · Studio: Cosa è la gravità?, scena 9 (al massimo 5 s)
   - **Emozione:** preoccupato — 
   - **Testo:** oh no! adesso cosa faccio?
-  - **Da incollare su ElevenLabs v3:** `[nervous] oh no! adesso cosa faccio?`
-- `studio_cosa_e_la_gravita-15.mp3` — manca · Studio: Cosa è la gravità?, scena 13 (al massimo 4 s)
+  - **Da incollare su ElevenLabs v3:** `[nervous] [gasps] oh no! adesso cosa faccio?`
+- `studio_cosa_e_la_gravita-41.mp3` — pronta · Studio: Cosa è la gravità?, scena 12 (al massimo 3 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Continuo a non capire.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Continuo a non capire.`
+- `studio_cosa_e_la_gravita-15.mp3` — pronta · Studio: Cosa è la gravità?, scena 14 (al massimo 4 s)
   - **Emozione:** assonnato — 
   - **Testo:** Potresti spiegarti meglio?
   - **Da incollare su ElevenLabs v3:** `[sleepy] Potresti spiegarti meglio?`
-- `studio_cosa_e_la_gravita-20.mp3` — manca · Studio: Cosa è la gravità?, scena 16 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-42.mp3` — pronta · Studio: Cosa è la gravità?, scena 16 (al massimo 5 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Cos' è la massa, cos' è un peso e che cosa è un volume?
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?`
+- `studio_cosa_e_la_gravita-20.mp3` — pronta · Studio: Cosa è la gravità?, scena 20 (al massimo 4 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Che spavento! Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Che spavento! Chi ha parlato?`
-- `studio_cosa_e_la_gravita-22.mp3` — manca · Studio: Cosa è la gravità?, scena 18 (al massimo 16 s)
+- `studio_cosa_e_la_gravita-22.mp3` — pronta · Studio: Cosa è la gravità?, scena 22 (al massimo 15 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!`
-- `studio_cosa_e_la_gravita-23.mp3` — manca · Studio: Cosa è la gravità?, scena 19 (al massimo 12 s)
+- `studio_cosa_e_la_gravita-23.mp3` — pronta · Studio: Cosa è la gravità?, scena 23 (al massimo 12 s)
   - **Emozione:** infastidito — 
   - **Testo:** Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e
   - **Da incollare su ElevenLabs v3:** `[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e`
-- `studio_cosa_e_la_gravita-25.mp3` — manca · Studio: Cosa è la gravità?, scena 21 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-25.mp3` — pronta · Studio: Cosa è la gravità?, scena 25 (al massimo 4 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Scusa! Continua.
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Scusa! Continua.`
-- `studio_cosa_e_la_gravita-27.mp3` — manca · Studio: Cosa è la gravità?, scena 23 (al massimo 7 s)
+- `studio_cosa_e_la_gravita-27.mp3` — pronta · Studio: Cosa è la gravità?, scena 27 (al massimo 9 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Wow! Non sapevo che la scienza potesse essere così bella.
   - **Da incollare su ElevenLabs v3:** `Wow! Non sapevo che la scienza potesse essere così bella.`
-- `studio_cosa_e_la_gravita-29.mp3` — manca · Studio: Cosa è la gravità?, scena 25 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-29.mp3` — pronta · Studio: Cosa è la gravità?, scena 29 (al massimo 5 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Cosa? Di nuovo? Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Cosa? Di nuovo? Chi ha parlato?`
+- `studio_cosa_e_la_gravita-38.mp3` — pronta · Studio: Cosa è la gravità?, scena 35 (al massimo 5 s)
+  - **Emozione:** sorpreso — 
+  - **Testo:** Oh! Questa è una giornata piena di sorprese. Chi ha parlato?
+  - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?`
+- `studio_cosa_e_la_gravita-40.mp3` — pronta · Studio: Cosa è la gravità?, scena 37 (al massimo 4 s)
+  - **Emozione:** curioso — 
+  - **Testo:** Cos' è un buco nero?
+  - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
 
 ### Inglese — `storie/terra/en/`
 
@@ -310,18 +326,22 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** entusiasta — 
   - **Testo:** Voglio provarci anch’io! Guardate: sono un buco nero!
   - **Da incollare su ElevenLabs v3:** `[excited] Voglio provarci anch’io! Guardate: sono un buco nero!`
-- `studio_cosa_e_la_gravita-33.mp3` — manca · Studio: Cosa è la gravità?, scena 10 (al massimo 7 s)
+- `studio_cosa_e_la_gravita-33.mp3` — pronta · 4,8 s · Studio: Cosa è la gravità?, scena 10 (al massimo 6 s)
   - **Emozione:** ride — 
   - **Testo:** Tranquilla Terra! Ti spiego io cos'è la gravità!
-  - **Da incollare su ElevenLabs v3:** `[laughs] Tranquilla Terra! Ti spiego io cos'è la gravità!`
-- `studio_cosa_e_la_gravita-12.mp3` — manca · Studio: Cosa è la gravità?, scena 11 (al massimo 8 s)
+  - **Da incollare su ElevenLabs v3:** `[laughs] Tranquilla Terra! [curious] Ti spiego io cos'è la gravità!`
+- `studio_cosa_e_la_gravita-12.mp3` — pronta · 4,8 s · Studio: Cosa è la gravità?, scena 11 (al massimo 6 s)
   - **Emozione:** tranquillo — 
   - **Testo:** La gravità è una forza attrattiva che tiene uno o più astri stabili.
   - **Da incollare su ElevenLabs v3:** `La gravità è una forza attrattiva che tiene uno o più astri stabili.`
-- `studio_cosa_e_la_gravita-31.mp3` — manca · Studio: Cosa è la gravità?, scena 27 (al massimo 7 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** So chi è! è la mia amica proxima centauri!
-  - **Da incollare su ElevenLabs v3:** `So chi è! è la mia amica proxima centauri!`
+- `studio_cosa_e_la_gravita-31.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 31 (al massimo 5 s)
+  - **Emozione:** colpito — 
+  - **Testo:** So chi è! è la mia amica alfa centauri!
+  - **Da incollare su ElevenLabs v3:** `[impressed] So chi è! è la mia amica alfa centauri!`
+- `studio_cosa_e_la_gravita-36.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 33 (al massimo 3 s)
+  - **Emozione:** felice — 
+  - **Testo:** Come potrei mai dimenticarti?
+  - **Da incollare su ElevenLabs v3:** `[happy] Come potrei mai dimenticarti?`
 
 ### Inglese — `storie/sole/en/`
 
@@ -382,7 +402,7 @@ Cartella: `audio/narrazione/storie/saturno/<lingua>/` · nel codice `Saturn` · 
   - **Emozione:** divertita — guarda Giove correre ridendo, poi si allunga pigro e soddisfatto su «lunghissima»
   - **Testo:** Guardate quanto corre Giove! Io sono più lento, ma la mia strada è lunghissima.
   - **Da incollare su ElevenLabs v3:** `[amused] Guardate quanto corre Giove! [relaxed] Io sono più lento, ma la mia strada è lunghissima.`
-- `studio_cosa_e_la_gravita-14.mp3` — manca · Studio: Cosa è la gravità?, scena 12 (al massimo 9 s)
+- `studio_cosa_e_la_gravita-14.mp3` — pronta · 4,7 s · Studio: Cosa è la gravità?, scena 13 (al massimo 6 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.
   - **Da incollare su ElevenLabs v3:** `Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.`
@@ -410,10 +430,18 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
   - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
   - **Testo:** E io sono Giove, il più grande di tutti: dentro di me ci starebbero più di mille Terre!
   - **Da incollare su ElevenLabs v3:** `[boastfully] E io sono Giove, il più grande di tutti: [laughs] dentro di me ci starebbero più di mille Terre!`
-- `studio_cosa_e_la_gravita-16.mp3` — manca · Studio: Cosa è la gravità?, scena 14 (al massimo 18 s)
+- `studio_cosa_e_la_gravita-16.mp3` — pronta · 12 s · Studio: Cosa è la gravità?, scena 15 (al massimo 13 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume
-  - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
+  - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
+- `studio_cosa_e_la_gravita-43.mp3` — pronta · 2,3 s · Studio: Cosa è la gravità?, scena 17 (al massimo 3 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Calma Terra, una domanda alla volta.
+  - **Da incollare su ElevenLabs v3:** `Calma Terra, una domanda alla volta.`
+- `studio_cosa_e_la_gravita-44.mp3` — pronta · 4,6 s · Studio: Cosa è la gravità?, scena 18 (al massimo 6 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è`
 
 ### Inglese — `storie/giove/en/`
 
@@ -454,10 +482,14 @@ Cartella: `audio/narrazione/storie/alfa-centauri/<lingua>/` · nel codice `alpha
   - **Emozione:** serena — gentile, da vicina di casa, tranquilla
   - **Testo:** Io sono Alfa Centauri: siamo tre stelle, le più vicine al Sole. La luce che vedi di noi è partita più di quattro anni fa.
   - **Da incollare su ElevenLabs v3:** `[friendly] Io sono Alfa Centauri: siamo tre stelle, le più vicine al Sole. [calm] La luce che vedi di noi è partita più di quattro anni fa.`
-- `studio_cosa_e_la_gravita-28.mp3` — manca · Studio: Cosa è la gravità?, scena 24 (al massimo 16 s)
+- `studio_cosa_e_la_gravita-28.mp3` — pronta · 12,1 s · Studio: Cosa è la gravità?, scena 28 (al massimo 13 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.
   - **Da incollare su ElevenLabs v3:** `Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.`
+- `studio_cosa_e_la_gravita-35.mp3` — pronta · 1,9 s · Studio: Cosa è la gravità?, scena 32 (al massimo 3 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ti ricordi di me allora sole, eh?
+  - **Da incollare su ElevenLabs v3:** `Ti ricordi di me allora sole, eh?`
 
 ### Inglese — `storie/alfa-centauri/en/`
 
@@ -690,6 +722,18 @@ Cartella: `audio/narrazione/storie/sagittario-a/<lingua>/` · nel codice `sgr_a`
   - **Emozione:** sorpreso — 
   - **Testo:** Un buco bianco? Ma tu esisti davvero?
   - **Da incollare su ElevenLabs v3:** `[surprised] Un buco bianco? Ma tu esisti davvero?`
+- `studio_cosa_e_la_gravita-37.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 34 (al massimo 3 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Pure io attiro oggetti Terra!
+  - **Da incollare su ElevenLabs v3:** `Pure io attiro oggetti Terra!`
+- `studio_cosa_e_la_gravita-39.mp3` — pronta · 3,8 s · Studio: Cosa è la gravità?, scena 36 (al massimo 5 s)
+  - **Emozione:** felice — 
+  - **Testo:** Sono sagittarius A! Il buco nero al centro della via lattea!
+  - **Da incollare su ElevenLabs v3:** `[happy] Sono sagittarius A! Il buco nero al centro della via lattea!`
+- `studio_cosa_e_la_gravita-45.mp3` — pronta · 7 s · Studio: Cosa è la gravità?, scena 38 (al massimo 8 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.
+  - **Da incollare su ElevenLabs v3:** `Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.`
 
 ### Inglese — `storie/sagittario-a/en/`
 
@@ -802,6 +846,9 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
   - **Emozione:** curioso — domanda furba
   - **Testo:** Professore… quanto tempo è passato?
   - **Da incollare su ElevenLabs v3:** `[curious] Professore… quanto tempo è passato?`
+- `studio_copia_di_einstein_e_il_tempo_e-21.mp3` — manca · Studio: Copia di Einstein e il tempo elastico, scena 1 (al massimo 4 s)
+  - **Testo:** Professor Einstein
+  - **Da incollare su ElevenLabs v3:** `Professor Einstein`
 
 ### Inglese — `storie/astro-ben/en/`
 
@@ -928,6 +975,78 @@ Cartella: `audio/narrazione/storie/albert-einstein/<lingua>/` · nel codice `ein
   - **Da incollare su ElevenLabs v3:** `[tenderly] Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.`
 - `storia_einstein-36.mp3` — manca · Einstein e il tempo elastico, scena 36 (al massimo 8 s)
   - **Emozione:** divertito — pausa sui puntini, poi la battuta finale ridendo
+  - **Testo:** Dipende… da dove lo guardi!
+  - **Da incollare su ElevenLabs v3:** `[laughs] Dipende… da dove lo guardi!`
+- `studio_copia_di_einstein_e_il_tempo_e-2.mp3` — pronta · 16,4 s · Studio: Copia di Einstein e il tempo elastico, scena 2 (al massimo 18 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Newton pensava che lo spazio fosse un palcoscenico fermo e il tempo un orologio uguale per tutti. Nel 1915 ho capito che sono una cosa sola, intrecciata come una stoffa: lo spazio-tempo.`
+- `studio_copia_di_einstein_e_il_tempo_e-3.mp3` — pronta · 18,8 s · Studio: Copia di Einstein e il tempo elastico, scena 3 (al massimo 20 s)
+  - **Emozione:** felice — 
+  - **Testo:** Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità.
+  - **Da incollare su ElevenLabs v3:** `[happy] Immagina un telo elastico ben tirato. Ci appoggi una palla pesante, il Sole, e il telo sprofonda. Una biglia che passa lì vicino non la tira nessuna corda: rotola lungo la curva. Questa è la gravità.`
+- `studio_copia_di_einstein_e_il_tempo_e-4.mp3` — pronta · 12,4 s · Studio: Copia di Einstein e il tempo elastico, scena 5 (al massimo 16 s)
+  - **Emozione:** ride — 
+  - **Testo:** Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi.
+  - **Da incollare su ElevenLabs v3:** `[laughs] Bravissimo! Il mio amico John Wheeler lo diceva così: la materia dice allo spazio-tempo come curvarsi, e lo spazio-tempo dice alla materia come muoversi.`
+- `studio_copia_di_einstein_e_il_tempo_e-5.mp3` — pronta · 16,8 s · Studio: Copia di Einstein e il tempo elastico, scena 6 (al massimo 20 s)
+  - **Emozione:** orgoglioso — 
+  - **Testo:** La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero.
+  - **Da incollare su ElevenLabs v3:** `[proud] La prima prova me la diede Mercurio, il più vicino al Sole. La sua orbita ruota un pochino, quarantatré secondi d'arco ogni secolo più di quanto diceva Newton. Le mie equazioni davano proprio quel numero.`
+- `studio_copia_di_einstein_e_il_tempo_e-6.mp3` — pronta · 14,8 s · Studio: Copia di Einstein e il tempo elastico, scena 8 (al massimo 17 s)
+  - **Emozione:** deciso — 
+  - **Testo:** Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato.
+  - **Da incollare su ElevenLabs v3:** `[determined] Anche la luce segue la curva. Nel 1919, durante un'eclissi totale, Arthur Eddington fotografò le stelle accanto al Sole: erano spostate proprio di quanto avevo calcolato.`
+- `studio_copia_di_einstein_e_il_tempo_e-7.mp3` — pronta · 12,6 s · Studio: Copia di Einstein e il tempo elastico, scena 10 (al massimo 14 s)
+  - **Emozione:** misterioso — 
+  - **Testo:** E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] E ora la parte più strana. La curva non piega solo lo spazio: rallenta anche il tempo. Più la gravità è forte, più gli orologi vanno piano.`
+- `studio_copia_di_einstein_e_il_tempo_e-8.mp3` — pronta · 12,4 s · Studio: Copia di Einstein e il tempo elastico, scena 12 (al massimo 17 s)
+  - **Emozione:** giocherellone — 
+  - **Testo:** Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…
+  - **Da incollare su ElevenLabs v3:** `[playfully] Anche qui. Allora la domanda te la faccio io, e la faccio anche a chi ci guarda: invecchia più piano chi abita in montagna, o chi abita al mare? Pensaci…`
+- `studio_copia_di_einstein_e_il_tempo_e-9.mp3` — pronta · 13,2 s · Studio: Copia di Einstein e il tempo elastico, scena 14 (al massimo 17 s)
+  - **Emozione:** orgoglioso — 
+  - **Testo:** Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno.
+  - **Da incollare su ElevenLabs v3:** `[proud] Esatto! Pochissimo, ma è così. I satelliti GPS lo devono correggere ogni giorno: senza la relatività, il navigatore sbaglierebbe di una decina di chilometri al giorno.`
+- `studio_copia_di_einstein_e_il_tempo_e-10.mp3` — pronta · 16,8 s · Studio: Copia di Einstein e il tempo elastico, scena 18 (al massimo 18 s)
+  - **Emozione:** misterioso — 
+  - **Testo:** E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] E se una massa enorme si schiacciasse in un punto piccolissimo? Il telo sprofonderebbe in un pozzo senza fondo: un buco nero. Andiamo a trovarne uno vero, al centro della nostra Galassia.`
+- `studio_copia_di_einstein_e_il_tempo_e-11.mp3` — pronta · 14 s · Studio: Copia di Einstein e il tempo elastico, scena 20 (al massimo 16 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Il suo confine si chiama orizzonte degli eventi. Da lì, per tornare indietro, bisognerebbe andare più veloci della luce. E niente può farlo: nemmeno la luce.`
+- `studio_copia_di_einstein_e_il_tempo_e-12.mp3` — pronta · 17,8 s · Studio: Copia di Einstein e il tempo elastico, scena 22 (al massimo 19 s)
+  - **Emozione:** misterioso — 
+  - **Testo:** Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato.
+  - **Da incollare su ElevenLabs v3:** `[mysteriously] Visto da lontano, quasi si ferma. Se tu ci cadessi dentro, per te sembrerebbe tutto normale. Io, da fuori, ti vedrei rallentare, diventare sempre più rosso, e fermarti sul bordo, come congelato.`
+- `studio_copia_di_einstein_e_il_tempo_e-13.mp3` — pronta · 15,1 s · Studio: Copia di Einstein e il tempo elastico, scena 23 (al massimo 20 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità.
+  - **Da incollare su ElevenLabs v3:** `[excited] Ed ecco il buco nero di Interstellar: Gargantua. Per il film il fisico Kip Thorne ha calcolato come la luce gli gira attorno. Quell'anello che passa sopra e sotto l'ombra è il disco di gas, piegato dalla gravità.`
+- `studio_copia_di_einstein_e_il_tempo_e-14.mp3` — pronta · 13,9 s · Studio: Copia di Einstein e il tempo elastico, scena 25 (al massimo 17 s)
+  - **Emozione:** malinconico — 
+  - **Testo:** Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui.
+  - **Da incollare su ElevenLabs v3:** `[wistfully] Il pianeta di Miller gli gira così vicino che un'ora laggiù sono sette anni sulla Terra. Per questo Cooper, tornando a casa, trova sua figlia Murph più vecchia di lui.`
+- `studio_copia_di_einstein_e_il_tempo_e-15.mp3` — pronta · 19,1 s · Studio: Copia di Einstein e il tempo elastico, scena 27 (al massimo 22 s)
+  - **Emozione:** ride — 
+  - **Testo:** Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!
+  - **Da incollare su ElevenLabs v3:** `[laughs] Esatto. Nella realtà servirebbe un buco nero gigantesco, che gira quasi alla velocità della luce, e un pianeta proprio sul bordo della sua curva. Possibile, in teoria… ma con onde alte come montagne, io lì non ci andrei in vacanza!`
+- `studio_copia_di_einstein_e_il_tempo_e-16.mp3` — pronta · 14,8 s · Studio: Copia di Einstein e il tempo elastico, scena 28 (al massimo 18 s)
+  - **Emozione:** orgoglioso — 
+  - **Testo:** E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria.
+  - **Da incollare su ElevenLabs v3:** `[proud] E non sono solo idee. Nel 2015 gli strumenti LIGO hanno sentito tremare lo spazio-tempo: due buchi neri che si scontravano, a più di un miliardo di anni luce. Cent'anni dopo la mia teoria.`
+- `studio_copia_di_einstein_e_il_tempo_e-17.mp3` — pronta · 6,3 s · Studio: Copia di Einstein e il tempo elastico, scena 31 (al massimo 9 s)
+  - **Emozione:** ride — 
+  - **Testo:** Stephen, tu riesci sempre a rendere il mio universo ancora più strano!
+  - **Da incollare su ElevenLabs v3:** `[laughs] Stephen, tu riesci sempre a rendere il mio universo ancora più strano!`
+- `studio_copia_di_einstein_e_il_tempo_e-18.mp3` — pronta · 7,3 s · Studio: Copia di Einstein e il tempo elastico, scena 33 (al massimo 9 s)
+  - **Emozione:** intenerito — 
+  - **Testo:** Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.
+  - **Da incollare su ElevenLabs v3:** `[tenderly] Proprio così. E ricorda, Ben: l'importante è non smettere mai di farsi domande.`
+- `studio_copia_di_einstein_e_il_tempo_e-19.mp3` — pronta · 2,5 s · Studio: Copia di Einstein e il tempo elastico, scena 35 (al massimo 8 s)
+  - **Emozione:** ride — 
   - **Testo:** Dipende… da dove lo guardi!
   - **Da incollare su ElevenLabs v3:** `[laughs] Dipende… da dove lo guardi!`
 
@@ -2398,27 +2517,27 @@ Cartella: `audio/narrazione/storie/jim-lovell/<lingua>/` · nel codice `lovell` 
 
 ### Italiano — `storie/jim-lovell/it/`
 
-- `storia_apollo13_scienza-1.mp3` — manca · Apollo 13: dentro la scienza, scena 1 (al massimo 16 s)
+- `storia_apollo13_scienza-1.mp3` — **troppo lunga** · 20,3 s · Apollo 13: dentro la scienza, scena 1 (al massimo 16 s)
   - **Emozione:** fiero — tono da apertura di documentario: calmo, caldo, con un sorriso sullo «Spoiler»
   - **Testo:** 11 aprile 1970, ore 13 e 13. Tre uomini in cima al razzo più grande mai costruito, diretti verso la Luna. Apollo 13 doveva essere una missione quasi di routine. Spoiler: non lo sarà. Ma proprio per questo è la missione da cui si impara di più.
   - **Da incollare su ElevenLabs v3:** `[proud] 11 aprile 1970, ore 13 e 13. Tre uomini in cima al razzo più grande mai costruito, diretti verso la Luna. Apollo 13 doveva essere una missione quasi di routine. Spoiler: non lo sarà. Ma proprio per questo è la missione da cui si impara di più.`
-- `storia_apollo13_scienza-4.mp3` — manca · Apollo 13: dentro la scienza, scena 4 (al massimo 16 s)
+- `storia_apollo13_scienza-4.mp3` — **troppo lunga** · 23,6 s · Apollo 13: dentro la scienza, scena 4 (al massimo 16 s)
   - **Emozione:** pensoso — spiega con calma, come un segreto del mestiere; serio sull'ultima frase
   - **Testo:** Per andare sulla Luna c'è una strada furba: la traiettoria di ritorno libero. Disegna un otto: parti, giri dietro la Luna, e la sua gravità ti rilancia verso casa senza accendere niente. È una cintura di sicurezza. Noi però l'avevamo lasciata, per puntare a Fra Mauro. E questo, fra poco, conterà.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Per andare sulla Luna c'è una strada furba: la traiettoria di ritorno libero. Disegna un otto: parti, giri dietro la Luna, e la sua gravità ti rilancia verso casa senza accendere niente. È una cintura di sicurezza. Noi però l'avevamo lasciata, per puntare a Fra Mauro. E questo, fra poco, conterà.`
-- `storia_apollo13_scienza-13.mp3` — manca · Apollo 13: dentro la scienza, scena 13 (al massimo 16 s)
+- `storia_apollo13_scienza-13.mp3` — **troppo lunga** · 26 s · Apollo 13: dentro la scienza, scena 13 (al massimo 16 s)
   - **Emozione:** meravigliato — sottovoce dietro la Luna, poi meraviglia e orgoglio sul record
   - **Testo:** Poi giriamo dietro la Luna. Le onde radio vanno dritte, e la Luna fa da muro: per venticinque minuti siamo soli, senza una voce da casa. E battiamo un record per caso: a quattrocentomila centosettantuno chilometri dalla Terra. Nessun essere umano era mai stato così lontano, e il record resterà nostro per più di cinquant'anni.
   - **Da incollare su ElevenLabs v3:** `[in awe] Poi giriamo dietro la Luna. Le onde radio vanno dritte, e la Luna fa da muro: per venticinque minuti siamo soli, senza una voce da casa. E battiamo un record per caso: a quattrocentomila centosettantuno chilometri dalla Terra. Nessun essere umano era mai stato così lontano, e il record resterà nostro per più di cinquant'anni.`
-- `storia_apollo13_scienza-14.mp3` — manca · Apollo 13: dentro la scienza, scena 14 (al massimo 16 s)
+- `storia_apollo13_scienza-14.mp3` — **troppo lunga** · 27,1 s · Apollo 13: dentro la scienza, scena 14 (al massimo 16 s)
   - **Emozione:** deciso — concentrato, preciso, come chi tiene il mirino; sollevato alla fine
   - **Testo:** Per tornare serve una correzione col motore, ma il computer di guida è spento per risparmiare corrente. Allora si fa a mano. Il trucco: guardare la Terra dal finestrino e tenere la linea fra il giorno e la notte, il terminatore, ferma sulla croce del mirino. Se la linea resta dritta, il razzo spinge nella direzione giusta. Quattordici secondi, e siamo di nuovo in rotta.
   - **Da incollare su ElevenLabs v3:** `[focused] Per tornare serve una correzione col motore, ma il computer di guida è spento per risparmiare corrente. Allora si fa a mano. Il trucco: guardare la Terra dal finestrino e tenere la linea fra il giorno e la notte, il terminatore, ferma sulla croce del mirino. Se la linea resta dritta, il razzo spinge nella direzione giusta. Quattordici secondi, e siamo di nuovo in rotta.`
-- `storia_apollo13_scienza-16.mp3` — manca · Apollo 13: dentro la scienza, scena 16 (al massimo 12 s)
+- `storia_apollo13_scienza-16.mp3` — **troppo lunga** · 16 s · Apollo 13: dentro la scienza, scena 16 (al massimo 12 s)
   - **Emozione:** sorpreso — stupore e un brivido: lento, quasi sussurrato su «tutto annerito»
   - **Testo:** Prima del rientro sganciamo il modulo di servizio. E finalmente lo vediamo: manca un intero pannello. Dentro, tutto annerito. È lì che è scoppiato il serbatoio, a pochi metri dallo scudo termico che ora deve salvarci.
   - **Da incollare su ElevenLabs v3:** `[surprised] Prima del rientro sganciamo il modulo di servizio. E finalmente lo vediamo: manca un intero pannello. Dentro, tutto annerito. È lì che è scoppiato il serbatoio, a pochi metri dallo scudo termico che ora deve salvarci.`
-- `storia_apollo13_scienza-19.mp3` — manca · Apollo 13: dentro la scienza, scena 19 (al massimo 15 s)
+- `storia_apollo13_scienza-19.mp3` — **troppo lunga** · 21,6 s · Apollo 13: dentro la scienza, scena 19 (al massimo 15 s)
   - **Emozione:** sollevato — finale: caldo, commosso, sereno, con orgoglio
   - **Testo:** 17 aprile 1970, Oceano Pacifico. Tre paracadute, tre uomini vivi. Non abbiamo toccato la Luna, ma abbiamo dimostrato che cosa sanno fare la scienza e una squadra quando tutto va storto. Lo chiamano un fallimento di successo. Per me è la missione più bella di tutte.
   - **Da incollare su ElevenLabs v3:** `[relieved] 17 aprile 1970, Oceano Pacifico. Tre paracadute, tre uomini vivi. Non abbiamo toccato la Luna, ma abbiamo dimostrato che cosa sanno fare la scienza e una squadra quando tutto va storto. Lo chiamano un fallimento di successo. Per me è la missione più bella di tutte.`
@@ -2458,19 +2577,19 @@ Cartella: `audio/narrazione/storie/fred-haise/<lingua>/` · nel codice `haise` �
 
 ### Italiano — `storie/fred-haise/it/`
 
-- `storia_apollo13_scienza-2.mp3` — manca · Apollo 13: dentro la scienza, scena 2 (al massimo 16 s)
+- `storia_apollo13_scienza-2.mp3` — **troppo lunga** · 22,6 s · Apollo 13: dentro la scienza, scena 2 (al massimo 16 s)
   - **Emozione:** entusiasta — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Il Saturn V: alto centodieci metri, come un palazzo di trentasei piani, e pesante quasi tremila tonnellate. Quasi tutto è carburante: ogni secondo il primo stadio ne brucia tredici tonnellate. Il trucco? Quando uno stadio è vuoto, lo si butta via. Meno peso da portare, più velocità.
   - **Da incollare su ElevenLabs v3:** `[excited] Il Saturn V: alto centodieci metri, come un palazzo di trentasei piani, e pesante quasi tremila tonnellate. Quasi tutto è carburante: ogni secondo il primo stadio ne brucia tredici tonnellate. Il trucco? Quando uno stadio è vuoto, lo si butta via. Meno peso da portare, più velocità.`
-- `storia_apollo13_scienza-7.mp3` — manca · Apollo 13: dentro la scienza, scena 7 (al massimo 16 s)
+- `storia_apollo13_scienza-7.mp3` — **troppo lunga** · 19,2 s · Apollo 13: dentro la scienza, scena 7 (al massimo 16 s)
   - **Emozione:** preoccupato — spiega chiaro, la voce si abbassa sull'ultima frase
   - **Testo:** Perché è così grave? Perché la navicella fa la sua elettricità con le celle a combustibile. Idrogeno più ossigeno: ne escono corrente… e acqua, quella che beviamo. Senza ossigeno, niente corrente e niente acqua. L'Odyssey, la nostra casa, comincia a spegnersi.
   - **Da incollare su ElevenLabs v3:** `[concerned] Perché è così grave? Perché la navicella fa la sua elettricità con le celle a combustibile. Idrogeno più ossigeno: ne escono corrente… e acqua, quella che beviamo. Senza ossigeno, niente corrente e niente acqua. L'Odyssey, la nostra casa, comincia a spegnersi.`
-- `storia_apollo13_scienza-11.mp3` — manca · Apollo 13: dentro la scienza, scena 11 (al massimo 11 s)
+- `storia_apollo13_scienza-11.mp3` — pronta · 10,9 s · Apollo 13: dentro la scienza, scena 11 (al massimo 11 s)
   - **Emozione:** stanco — voce stanca e infreddolita, piano, con un mezzo sorriso amaro
   - **Testo:** Intanto fa freddo. Tre gradi. Le pareti si coprono di gocce, il fiato fa le nuvolette, e io mi becco pure la febbre. Dormire qui è quasi impossibile.
   - **Da incollare su ElevenLabs v3:** `[tired] Intanto fa freddo. Tre gradi. Le pareti si coprono di gocce, il fiato fa le nuvolette, e io mi becco pure la febbre. Dormire qui è quasi impossibile.`
-- `storia_apollo13_scienza-12.mp3` — manca · Apollo 13: dentro la scienza, scena 12 (al massimo 16 s)
+- `storia_apollo13_scienza-12.mp3` — **troppo lunga** · 26,8 s · Apollo 13: dentro la scienza, scena 12 (al massimo 16 s)
   - **Emozione:** curioso — ritmo da divulgazione: vivace, chiaro, un sorriso su «barbecue»
   - **Testo:** Ma perché fa così freddo? Sulla Terra il caldo lo porta via l'aria. Nello spazio l'aria non c'è: il calore se ne va solo come luce invisibile, l'infrarosso. A scaldarci erano gli apparecchi accesi; spenti quelli, la cabina scende a tre gradi. E al Sole la navicella scotterebbe, all'ombra gelerebbe: per questo gira piano su sé stessa, come uno spiedo. La chiamano rotazione barbecue.
   - **Da incollare su ElevenLabs v3:** `[curious] Ma perché fa così freddo? Sulla Terra il caldo lo porta via l'aria. Nello spazio l'aria non c'è: il calore se ne va solo come luce invisibile, l'infrarosso. A scaldarci erano gli apparecchi accesi; spenti quelli, la cabina scende a tre gradi. E al Sole la navicella scotterebbe, all'ombra gelerebbe: per questo gira piano su sé stessa, come uno spiedo. La chiamano rotazione barbecue.`
@@ -2502,19 +2621,19 @@ Cartella: `audio/narrazione/storie/jack-swigert/<lingua>/` · nel codice `swiger
 
 ### Italiano — `storie/jack-swigert/it/`
 
-- `storia_apollo13_scienza-3.mp3` — manca · Apollo 13: dentro la scienza, scena 3 (al massimo 16 s)
+- `storia_apollo13_scienza-3.mp3` — **troppo lunga** · 25,5 s · Apollo 13: dentro la scienza, scena 3 (al massimo 16 s)
   - **Emozione:** preoccupato — racconta un pericolo: svelto, un filo teso, poi sollevato su «si va avanti»
   - **Testo:** Primo guaio, cinque minuti e mezzo dopo il decollo. Il motore centrale del secondo stadio comincia a tremare: è l'effetto pogo. Il motore spinge, il carburante nel tubo si schiaccia come una molla, la spinta cambia, e tutto rimbalza sempre più forte. Un sensore lo spegne con due minuti di anticipo. Gli altri quattro bruciano un po' più a lungo, e si va avanti.
   - **Da incollare su ElevenLabs v3:** `[nervously] Primo guaio, cinque minuti e mezzo dopo il decollo. Il motore centrale del secondo stadio comincia a tremare: è l'effetto pogo. Il motore spinge, il carburante nel tubo si schiaccia come una molla, la spinta cambia, e tutto rimbalza sempre più forte. Un sensore lo spegne con due minuti di anticipo. Gli altri quattro bruciano un po' più a lungo, e si va avanti.`
-- `storia_apollo13_scienza-5.mp3` — manca · Apollo 13: dentro la scienza, scena 5 (al massimo 14 s)
+- `storia_apollo13_scienza-5.mp3` — **troppo lunga** · 14,8 s · Apollo 13: dentro la scienza, scena 5 (al massimo 14 s)
   - **Emozione:** teso — la frase famosa detta piano e incredula, poi racconta di fretta, con paura trattenuta
   - **Testo:** Ok, Houston… abbiamo avuto un problema. Un botto, un sobbalzo, gli allarmi. Dal finestrino esce una nube bianca: è il nostro ossigeno, che scappa nello spazio. E siamo a più di trecentomila chilometri da casa.
   - **Da incollare su ElevenLabs v3:** `[tense] Ok, Houston… abbiamo avuto un problema. Un botto, un sobbalzo, gli allarmi. Dal finestrino esce una nube bianca: è il nostro ossigeno, che scappa nello spazio. E siamo a più di trecentomila chilometri da casa.`
-- `storia_apollo13_scienza-10.mp3` — manca · Apollo 13: dentro la scienza, scena 10 (al massimo 16 s)
+- `storia_apollo13_scienza-10.mp3` — **troppo lunga** · 24,3 s · Apollo 13: dentro la scienza, scena 10 (al massimo 16 s)
   - **Emozione:** curioso — un problema e la sua soluzione furba: vivace, quasi divertito sul nastro adesivo
   - **Testo:** Nuovo problema: l'aria. Ogni respiro aggiunge anidride carbonica, e i filtri dell'Aquarius sono quasi saturi. Ci sono i filtri di ricambio dell'Odyssey… ma sono quadrati, e il buco è tondo. A Houston inventano un adattatore con quello che c'è a bordo: sacchetti, cartoncino, tubi e nastro adesivo. Lo costruiamo, e l'ago scende.
   - **Da incollare su ElevenLabs v3:** `[curious] Nuovo problema: l'aria. Ogni respiro aggiunge anidride carbonica, e i filtri dell'Aquarius sono quasi saturi. Ci sono i filtri di ricambio dell'Odyssey… ma sono quadrati, e il buco è tondo. A Houston inventano un adattatore con quello che c'è a bordo: sacchetti, cartoncino, tubi e nastro adesivo. Lo costruiamo, e l'ago scende.`
-- `storia_apollo13_scienza-18.mp3` — manca · Apollo 13: dentro la scienza, scena 18 (al massimo 16 s)
+- `storia_apollo13_scienza-18.mp3` — **troppo lunga** · 26 s · Apollo 13: dentro la scienza, scena 18 (al massimo 16 s)
   - **Emozione:** entusiasta — ritmo da divulgazione: vivace, con slancio; poi la voce si fa sospesa sul silenzio
   - **Testo:** Arriviamo a quasi quarantamila chilometri orari. Davanti allo scudo l'aria non fa in tempo a spostarsi: si comprime, e comprimendosi si scalda fino a diventare plasma, a circa duemilasettecento gradi. Non è l'attrito! Lo scudo si consuma apposta, e ogni pezzetto che vola via si porta dietro il calore. Ma il plasma blocca la radio: a Houston, sei minuti di silenzio.
   - **Da incollare su ElevenLabs v3:** `[excited] Arriviamo a quasi quarantamila chilometri orari. Davanti allo scudo l'aria non fa in tempo a spostarsi: si comprime, e comprimendosi si scalda fino a diventare plasma, a circa duemilasettecento gradi. Non è l'attrito! Lo scudo si consuma apposta, e ogni pezzetto che vola via si porta dietro il calore. Ma il plasma blocca la radio: a Houston, sei minuti di silenzio.`
@@ -2546,19 +2665,19 @@ Cartella: `audio/narrazione/storie/gene-kranz/<lingua>/` · nel codice `kranz` �
 
 ### Italiano — `storie/gene-kranz/it/`
 
-- `storia_apollo13_scienza-6.mp3` — manca · Apollo 13: dentro la scienza, scena 6 (al massimo 16 s)
+- `storia_apollo13_scienza-6.mp3` — **troppo lunga** · 34,4 s · Apollo 13: dentro la scienza, scena 6 (al massimo 16 s)
   - **Emozione:** deciso — ritmo da indagine: preciso, scandito, una pausa prima dello scoppio
   - **Testo:** Che cosa era successo? Colpa di un serbatoio d'ossigeno. I suoi interruttori erano fatti per ventotto volt, ma poche settimane prima del lancio, a terra, ci misero sessantacinque volt. Si incollarono, e il riscaldatore arrivò a circa cinquecentoquaranta gradi. Nessuno se ne accorse: il termometro arrivava solo a ventisette. L'isolante dei fili si rovinò. In volo, le ventole si accendono, una scintilla nell'ossigeno puro… e il serbatoio scoppia.
   - **Da incollare su ElevenLabs v3:** `[serious] Che cosa era successo? Colpa di un serbatoio d'ossigeno. I suoi interruttori erano fatti per ventotto volt, ma poche settimane prima del lancio, a terra, ci misero sessantacinque volt. Si incollarono, e il riscaldatore arrivò a circa cinquecentoquaranta gradi. Nessuno se ne accorse: il termometro arrivava solo a ventisette. L'isolante dei fili si rovinò. In volo, le ventole si accendono, una scintilla nell'ossigeno puro… e il serbatoio scoppia.`
-- `storia_apollo13_scienza-8.mp3` — manca · Apollo 13: dentro la scienza, scena 8 (al massimo 12 s)
+- `storia_apollo13_scienza-8.mp3` — **troppo lunga** · 13,3 s · Apollo 13: dentro la scienza, scena 8 (al massimo 12 s)
   - **Emozione:** deciso — da capo che parla alla squadra: fermo, lento, senza alzare la voce
   - **Testo:** Qui a Houston nessuno sa ancora come riportarli a casa. Ma abbiamo una regola: si lavora sui fatti, un problema alla volta, senza tirare a indovinare. E, come dice il film, il fallimento non è un'opzione.
   - **Da incollare su ElevenLabs v3:** `[firmly] Qui a Houston nessuno sa ancora come riportarli a casa. Ma abbiamo una regola: si lavora sui fatti, un problema alla volta, senza tirare a indovinare. E, come dice il film, il fallimento non è un'opzione.`
-- `storia_apollo13_scienza-9.mp3` — manca · Apollo 13: dentro la scienza, scena 9 (al massimo 16 s)
+- `storia_apollo13_scienza-9.mp3` — **troppo lunga** · 20,2 s · Apollo 13: dentro la scienza, scena 9 (al massimo 16 s)
   - **Emozione:** pensoso — l'idea che salva: si accende sulla scialuppa, poi pratico e svelto
   - **Testo:** L'idea che li salva: usare il modulo lunare come scialuppa. L'Aquarius era fatto per tenere in vita due persone per circa quarantacinque ore. Ora deve tenerne tre per quasi novanta. Allora si spegne tutto ciò che non serve, e l'Odyssey si addormenta: le sue batterie servono intatte per il rientro.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] L'idea che li salva: usare il modulo lunare come scialuppa. L'Aquarius era fatto per tenere in vita due persone per circa quarantacinque ore. Ora deve tenerne tre per quasi novanta. Allora si spegne tutto ciò che non serve, e l'Odyssey si addormenta: le sue batterie servono intatte per il rientro.`
-- `storia_apollo13_scienza-17.mp3` — manca · Apollo 13: dentro la scienza, scena 17 (al massimo 16 s)
+- `storia_apollo13_scienza-17.mp3` — **troppo lunga** · 21,6 s · Apollo 13: dentro la scienza, scena 17 (al massimo 16 s)
   - **Emozione:** serio — spiega una manovra difficile: chiaro, scandito, con tensione
   - **Testo:** Il rientro è un tiro di precisione. Bisogna entrare nell'aria con un angolo di circa sei gradi e mezzo, uno in più o in meno. Troppo piatto: la capsula rimbalza sull'atmosfera come un sasso sull'acqua, e si perde nello spazio. Troppo ripido: troppo calore e una frenata che schiaccia. Il corridoio è largo appena due gradi.
   - **Da incollare su ElevenLabs v3:** `[serious] Il rientro è un tiro di precisione. Bisogna entrare nell'aria con un angolo di circa sei gradi e mezzo, uno in più o in meno. Troppo piatto: la capsula rimbalza sull'atmosfera come un sasso sull'acqua, e si perde nello spazio. Troppo ripido: troppo calore e una frenata che schiaccia. Il corridoio è largo appena due gradi.`
@@ -2590,7 +2709,7 @@ Cartella: `audio/narrazione/storie/ken-mattingly/<lingua>/` · nel codice `matti
 
 ### Italiano — `storie/ken-mattingly/it/`
 
-- `storia_apollo13_scienza-15.mp3` — manca · Apollo 13: dentro la scienza, scena 15 (al massimo 16 s)
+- `storia_apollo13_scienza-15.mp3` — **troppo lunga** · 25,2 s · Apollo 13: dentro la scienza, scena 15 (al massimo 16 s)
   - **Emozione:** deciso — un filo d'amarezza all'inizio, poi tecnico e orgoglioso
   - **Testo:** Io dovevo essere lassù, ma mi hanno lasciato a terra per paura della rosolia. Così sono finito nel simulatore. Il problema: riaccendere l'Odyssey con pochissima corrente. Ogni apparecchio costa ampere, e se sfori resti al buio per sempre. Abbiamo provato e riprovato l'ordine giusto, come un incastro. E l'Aquarius ha perfino ricaricato le batterie dell'Odyssey.
   - **Da incollare su ElevenLabs v3:** `[determined] Io dovevo essere lassù, ma mi hanno lasciato a terra per paura della rosolia. Così sono finito nel simulatore. Il problema: riaccendere l'Odyssey con pochissima corrente. Ogni apparecchio costa ampere, e se sfori resti al buio per sempre. Abbiamo provato e riprovato l'ordine giusto, come un incastro. E l'Aquarius ha perfino ricaricato le batterie dell'Odyssey.`
@@ -2608,7 +2727,7 @@ Cartella: `audio/narrazione/storie/hubble/<lingua>/` · nel codice `hubble` · i
 
 ### Italiano — `storie/hubble/it/`
 
-- `studio_cosa_e_la_gravita-7.mp3` — pronta · 2,8 s · Studio: Cosa è la gravità?, scena 5 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-7.mp3` — pronta · 2,1 s · Studio: Cosa è la gravità?, scena 5 (al massimo 3 s)
   - **Emozione:** pensieroso — 
   - **Testo:** esatto, perchè ci trattieni?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] esatto, perchè ci trattieni?`
@@ -2619,7 +2738,7 @@ Cartella: `audio/narrazione/storie/iss/<lingua>/` · nel codice `iss` · in ingl
 
 ### Italiano — `storie/iss/it/`
 
-- `studio_cosa_e_la_gravita-8.mp3` — pronta · 1,9 s · Studio: Cosa è la gravità?, scena 6 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-8.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 6 (al massimo 3 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** ci dobbiamo ribellare!
   - **Da incollare su ElevenLabs v3:** `[angry] ci dobbiamo ribellare!`
@@ -2630,7 +2749,7 @@ Cartella: `audio/narrazione/storie/css/<lingua>/` · nel codice `css` · in ingl
 
 ### Italiano — `storie/css/it/`
 
-- `studio_cosa_e_la_gravita-9.mp3` — pronta · 1 s · Studio: Cosa è la gravità?, scena 7 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-9.mp3` — pronta · 1,3 s · Studio: Cosa è la gravità?, scena 7 (al massimo 3 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** giusto!
   - **Da incollare su ElevenLabs v3:** `[angry] giusto!`
@@ -2641,23 +2760,23 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
 
 ### Italiano — `storie/sedna/it/`
 
-- `studio_cosa_e_la_gravita-19.mp3` — manca · Studio: Cosa è la gravità?, scena 15 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-19.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 19 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ciao Terra, Giove ha ragione!
   - **Da incollare su ElevenLabs v3:** `Ciao Terra, Giove ha ragione!`
-- `studio_cosa_e_la_gravita-34.mp3` — manca · Studio: Cosa è la gravità?, scena 17 (al massimo 21 s)
+- `studio_cosa_e_la_gravita-34.mp3` — pronta · 14,5 s · Studio: Cosa è la gravità?, scena 21 (al massimo 16 s)
   - **Emozione:** felice — 
   - **Testo:** Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.
   - **Da incollare su ElevenLabs v3:** `[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.`
-- `studio_cosa_e_la_gravita-24.mp3` — pronta · 3 s · Studio: Cosa è la gravità?, scena 20 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-24.mp3` — pronta · 3 s · Studio: Cosa è la gravità?, scena 24 (al massimo 5 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ehm, scusa Terra, hai finito?
   - **Da incollare su ElevenLabs v3:** `[shouts] Ehm, scusa Terra, hai finito? [frustrated]`
-- `studio_cosa_e_la_gravita-26.mp3` — manca · Studio: Cosa è la gravità?, scena 22 (al massimo 20 s)
+- `studio_cosa_e_la_gravita-26.mp3` — pronta · 13,6 s · Studio: Cosa è la gravità?, scena 26 (al massimo 15 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".
   - **Da incollare su ElevenLabs v3:** `Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".`
-- `studio_cosa_e_la_gravita-30.mp3` — manca · Studio: Cosa è la gravità?, scena 26 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-30.mp3` — pronta · 3,1 s · Studio: Cosa è la gravità?, scena 30 (al massimo 4 s)
   - **Emozione:** pensieroso — 
   - **Testo:** è vero! Chi è?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] è vero! Chi è?`
