@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **144/277** in italiano · **0/215** in inglese.
+Pronte: **154/277** in italiano · **0/215** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -35,17 +35,17 @@ Pronte: **144/277** in italiano · **0/215** in inglese.
 | Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
 | Gargantua | `storie/gargantua/` | 3 | 2/3 | 0/3 |
 | Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
-| Cooper | `storie/cooper/` | 41 | 33/41 | 0/40 |
+| Cooper | `storie/cooper/` | 41 | 36/41 | 0/40 |
 | Romilly | `storie/romilly/` | 14 | 11/14 | 0/9 |
 | Amelia Brand | `storie/amelia-brand/` | 28 | 23/28 | 0/17 |
-| TARS | `storie/tars/` | 22 | 11/22 | 0/22 |
+| TARS | `storie/tars/` | 22 | 15/22 | 0/22 |
 | Doyle | `storie/doyle/` | 6 | 5/6 | 0/3 |
 | Pianeta di Miller | `storie/pianeta-di-miller/` | 2 | 2/2 | 0/1 |
 | CASE | `storie/case/` | 4 | 4/4 | 0/2 |
 | Murph | `storie/murph/` | 10 | 6/10 | 0/9 |
 | Pianeta di Mann | `storie/pianeta-di-mann/` | 2 | 1/2 | 0/1 |
 | Dottor Mann | `storie/dottor-mann/` | 7 | 7/7 | 0/4 |
-| Loro | `storie/loro/` | 13 | 8/13 | 0/13 |
+| Loro | `storie/loro/` | 13 | 11/13 | 0/13 |
 | Murph bambina | `storie/murph-bambina/` | 1 | 1/1 | 0/1 |
 | Murph anziana | `storie/murph-anziana/` | 5 | 2/5 | 0/5 |
 | hubble | `storie/hubble/` | 1 | 1/1 | 0/0 |
@@ -1253,7 +1253,7 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** shouting — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Il Ranger va in pezzi! TARS, mi espello. Se dall'altra parte c'è qualcosa… ci vediamo di là.
   - **Da incollare su ElevenLabs v3:** `[shouting] Il Ranger va in pezzi! TARS, mi espello. Se dall'altra parte c'è qualcosa… ci vediamo di là.`
-- `storia_interstellar2_scienza-2.mp3` — manca · Interstellar 2: dentro la scienza, scena 2 (al massimo 16 s)
+- `storia_interstellar2_scienza-2.mp3` — pronta · 7,6 s · Interstellar 2: dentro la scienza, scena 2 (al massimo 16 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Dove sono? Una biblioteca infinita… e ogni stanza è la camera di Murph, in un momento diverso!
   - **Da incollare su ElevenLabs v3:** `[in awe] Dove sono? Una biblioteca infinita… e ogni stanza è la camera di Murph, in un momento diverso!`
@@ -1261,11 +1261,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** excited — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Aspetta… chi costruirebbe un ponte per gli esseri umani, se non degli esseri umani? Voi non siete alieni. Voi siete… noi!
   - **Da incollare su ElevenLabs v3:** `[excited] Aspetta… chi costruirebbe un ponte per gli esseri umani, se non degli esseri umani? Voi non siete alieni. Voi siete… noi!`
-- `storia_interstellar2_scienza-8.mp3` — manca · Interstellar 2: dentro la scienza, scena 8 (al massimo 16 s)
+- `storia_interstellar2_scienza-8.mp3` — pronta · 13,3 s · Interstellar 2: dentro la scienza, scena 8 (al massimo 16 s)
   - **Emozione:** excited — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** I libri! Non era un fantasma: ero io, da qui, con la gravità. Libro basso, punto. Libro alto, linea. Stavo dicendo a me stesso una parola sola: resta.
   - **Da incollare su ElevenLabs v3:** `[excited] I libri! Non era un fantasma: ero io, da qui, con la gravità. Libro basso, punto. Libro alto, linea. Stavo dicendo a me stesso una parola sola: resta.`
-- `storia_interstellar2_scienza-11.mp3` — manca · Interstellar 2: dentro la scienza, scena 11 (al massimo 17 s)
+- `storia_interstellar2_scienza-11.mp3` — pronta · 9,6 s · Interstellar 2: dentro la scienza, scena 11 (al massimo 17 s)
   - **Emozione:** determined — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** L'orologio! Murph lo tiene sempre con sé. TARS, traduci i dati in codice Morse: li metto nella lancetta dei secondi.
   - **Da incollare su ElevenLabs v3:** `[determined] L'orologio! Murph lo tiene sempre con sé. TARS, traduci i dati in codice Morse: li metto nella lancetta dei secondi.`
@@ -1809,15 +1809,15 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
   - **Emozione:** deadpan — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Cadere in un buco nero piccolo? Pessima idea: ti tira i piedi molto più della testa, e diventi uno spaghetto. Ma Gargantua è così enorme che, al suo orizzonte, la differenza è minima. Si entra tutti interi. Livello di consolazione: discreto.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Cadere in un buco nero piccolo? Pessima idea: ti tira i piedi molto più della testa, e diventi uno spaghetto. Ma Gargantua è così enorme che, al suo orizzonte, la differenza è minima. Si entra tutti interi. Livello di consolazione: discreto.`
-- `storia_interstellar2_scienza-3.mp3` — manca · Interstellar 2: dentro la scienza, scena 3 (al massimo 16 s)
+- `storia_interstellar2_scienza-3.mp3` — pronta · 13,6 s · Interstellar 2: dentro la scienza, scena 3 (al massimo 16 s)
   - **Emozione:** confident — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Facciamo ordine. Un punto che scivola fa una linea. Una linea, un quadrato. Un quadrato, un cubo. E un cubo, spinto in una direzione che non vediamo, fa un tesseratto. Ci siamo dentro.
   - **Da incollare su ElevenLabs v3:** `[confident] Facciamo ordine. Un punto che scivola fa una linea. Una linea, un quadrato. Un quadrato, un cubo. E un cubo, spinto in una direzione che non vediamo, fa un tesseratto. Ci siamo dentro.`
-- `storia_interstellar2_scienza-9.mp3` — manca · Interstellar 2: dentro la scienza, scena 9 (al massimo 16 s)
+- `storia_interstellar2_scienza-9.mp3` — pronta · 14,3 s · Interstellar 2: dentro la scienza, scena 9 (al massimo 16 s)
   - **Emozione:** confident — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** E la polvere sul pavimento? Righe larghe e strette: uno e zero, codice binario. Tradotte, sono le coordinate della base segreta della NASA. Le hai mandate tu, Cooper. Da qui.
   - **Da incollare su ElevenLabs v3:** `[confident] E la polvere sul pavimento? Righe larghe e strette: uno e zero, codice binario. Tradotte, sono le coordinate della base segreta della NASA. Le hai mandate tu, Cooper. Da qui.`
-- `storia_interstellar2_scienza-10.mp3` — manca · Interstellar 2: dentro la scienza, scena 10 (al massimo 16 s)
+- `storia_interstellar2_scienza-10.mp3` — pronta · 15,7 s · Interstellar 2: dentro la scienza, scena 10 (al massimo 16 s)
   - **Emozione:** excited — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Ora la notizia buona. La relatività spiega le cose enormi, la meccanica quantistica quelle piccolissime, ma insieme litigano. Si mettono d'accordo in un solo posto: nel cuore di un buco nero. E io ci ho appena preso le misure.
   - **Da incollare su ElevenLabs v3:** `[excited] Ora la notizia buona. La relatività spiega le cose enormi, la meccanica quantistica quelle piccolissime, ma insieme litigano. Si mettono d'accordo in un solo posto: nel cuore di un buco nero. E io ci ho appena preso le misure.`
@@ -1825,7 +1825,7 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
   - **Emozione:** cheerful — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Buongiorno, Cooper. Ci hanno ripescati vicino a Saturno, tutti e due. Siamo su una stazione spaziale. E tieniti forte: hai centoventiquattro anni.
   - **Da incollare su ElevenLabs v3:** `[cheerful] Buongiorno, Cooper. Ci hanno ripescati vicino a Saturno, tutti e due. Siamo su una stazione spaziale. E tieniti forte: hai centoventiquattro anni.`
-- `storia_interstellar2_scienza-16.mp3` — manca · Interstellar 2: dentro la scienza, scena 16 (al massimo 16 s)
+- `storia_interstellar2_scienza-16.mp3` — pronta · 16 s · Interstellar 2: dentro la scienza, scena 16 (al massimo 16 s)
   - **Emozione:** deadpan — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Guarda in su: case anche sopra la testa. La stazione è un cilindro gigante che gira: il pavimento ti spinge continuamente verso il centro, e il tuo corpo lo sente come peso. Gravità fatta in casa.
   - **Da incollare su ElevenLabs v3:** `[deadpan] Guarda in su: case anche sopra la testa. La stazione è un cilindro gigante che gira: il pavimento ti spinge continuamente verso il centro, e il tuo corpo lo sente come peso. Gravità fatta in casa.`
@@ -2241,15 +2241,15 @@ Cartella: `audio/narrazione/storie/loro/<lingua>/` · nel codice `loro` · in in
   - **Emozione:** calmly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Non avere paura, Cooper. Siamo noi che ti abbiamo portato qui. Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.
   - **Da incollare su ElevenLabs v3:** `[calmly] Non avere paura, Cooper. Siamo noi che ti abbiamo portato qui. Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.`
-- `storia_interstellar2_scienza-5.mp3` — manca · Interstellar 2: dentro la scienza, scena 5 (al massimo 16 s)
+- `storia_interstellar2_scienza-5.mp3` — pronta · 13,2 s · Interstellar 2: dentro la scienza, scena 5 (al massimo 16 s)
   - **Emozione:** calmly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Per te il tempo è un fiume che scorre in una sola direzione. Per noi è un paesaggio: ogni istante sta lì, accanto agli altri, come i fotogrammi di un film. Ci si cammina avanti e indietro.
   - **Da incollare su ElevenLabs v3:** `[calmly] Per te il tempo è un fiume che scorre in una sola direzione. Per noi è un paesaggio: ogni istante sta lì, accanto agli altri, come i fotogrammi di un film. Ci si cammina avanti e indietro.`
-- `storia_interstellar2_scienza-6.mp3` — manca · Interstellar 2: dentro la scienza, scena 6 (al massimo 16 s)
+- `storia_interstellar2_scienza-6.mp3` — pronta · 14,4 s · Interstellar 2: dentro la scienza, scena 6 (al massimo 16 s)
   - **Emozione:** softly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** La luce resta chiusa nel vostro spazio, come un'ombra su un muro. La gravità no: attraversa tutte le dimensioni, perfino il tempo. Con la gravità, Cooper, potrai toccare il mondo di Murph.
   - **Da incollare su ElevenLabs v3:** `[softly] La luce resta chiusa nel vostro spazio, come un'ombra su un muro. La gravità no: attraversa tutte le dimensioni, perfino il tempo. Con la gravità, Cooper, potrai toccare il mondo di Murph.`
-- `storia_interstellar2_scienza-14.mp3` — manca · Interstellar 2: dentro la scienza, scena 14 (al massimo 16 s)
+- `storia_interstellar2_scienza-14.mp3` — pronta · 13,2 s · Interstellar 2: dentro la scienza, scena 14 (al massimo 16 s)
   - **Emozione:** calmly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Il cerchio si chiude. Le coordinate ti hanno fatto partire; partendo sei arrivato qui, a mandarle. Chi ha cominciato? Nessuno. È un anello senza inizio, come l'uovo e la gallina.
   - **Da incollare su ElevenLabs v3:** `[calmly] Il cerchio si chiude. Le coordinate ti hanno fatto partire; partendo sei arrivato qui, a mandarle. Chi ha cominciato? Nessuno. È un anello senza inizio, come l'uovo e la gallina.`

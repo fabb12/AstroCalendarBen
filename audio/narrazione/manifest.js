@@ -951,6 +951,18 @@
       it: { file: 'storie/cooper/it/storia_interstellar_scienza-16.mp3', impronta: 'c2df3a32', firma: '656020b761' }
     },
 
+    'demo.narr.storia_interstellar2_scienza.2': {
+      it: { file: 'storie/cooper/it/storia_interstellar2_scienza-2.mp3', impronta: 'ff7737c3', firma: '83f6d12c01' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.8': {
+      it: { file: 'storie/cooper/it/storia_interstellar2_scienza-8.mp3', impronta: 'b4e639a7', firma: 'd4ad965cad' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.11': {
+      it: { file: 'storie/cooper/it/storia_interstellar2_scienza-11.mp3', impronta: '9f3b1fa9', firma: '5df78114a7' }
+    },
+
     'studio.studio_interstellar_1_oltre_gargantua.27': {
       it: { file: 'storie/cooper/it/studio_interstellar_1_oltre_gargantua-27.mp3', impronta: 'b2551992', firma: '339244f2db', testo: "E il pianeta non sta fermo: mentre corre sull'orbita dondola avanti e indietro, e quelle gobbe d'acqua gli scivolano sopra. Per chi è laggiù, arriva un'onda alta come una montagna, più o meno ogni ora." }
     },
@@ -1182,6 +1194,22 @@
       it: { file: 'storie/tars/it/storia_interstellar_scienza-17.mp3', impronta: '15a8eeb2', firma: '1a02e55089' }
     },
 
+    'demo.narr.storia_interstellar2_scienza.3': {
+      it: { file: 'storie/tars/it/storia_interstellar2_scienza-3.mp3', impronta: '21a96051', firma: '51c75cad86' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.9': {
+      it: { file: 'storie/tars/it/storia_interstellar2_scienza-9.mp3', impronta: '3a50bb4a', firma: '1159d641c4' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.10': {
+      it: { file: 'storie/tars/it/storia_interstellar2_scienza-10.mp3', impronta: 'ae292978', firma: 'a6d57a1153' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.16': {
+      it: { file: 'storie/tars/it/storia_interstellar2_scienza-16.mp3', impronta: '2fcae669', firma: 'c19c3a172e' }
+    },
+
     // Doyle — storie/doyle/
     'demo.narr.storia_interstellar.8': {
       it: { file: 'storie/doyle/it/storia_interstellar-8.mp3', impronta: '406f0d1d', firma: '1c4bbaa957' }
@@ -1323,6 +1351,18 @@
 
     'demo.narr.storia_interstellar2.43': {
       it: { file: 'storie/loro/it/storia_interstellar2-43.mp3', impronta: 'fd226e86', firma: 'c93b4c9add' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.5': {
+      it: { file: 'storie/loro/it/storia_interstellar2_scienza-5.mp3', impronta: 'cf66a6aa', firma: 'b0515c806b' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.6': {
+      it: { file: 'storie/loro/it/storia_interstellar2_scienza-6.mp3', impronta: '35479cd2', firma: '47ae55f1eb' }
+    },
+
+    'demo.narr.storia_interstellar2_scienza.14': {
+      it: { file: 'storie/loro/it/storia_interstellar2_scienza-14.mp3', impronta: 'faca45f3', firma: '9f524bc36f' }
     },
 
     // Murph bambina — storie/murph-bambina/
