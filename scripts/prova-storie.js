@@ -352,6 +352,49 @@ prova('cambiando lingua a metà battuta il personaggio non perde la parola', asy
   delete globalThis.narrazione.stato;
   voce.segnale = { parla: false };
 });
+prova('il nome di chi parla (v508): accanto alla testa a ogni battuta, qualche secondo, poi sparisce', () => {
+  scena({ Earth: {}, Moon: {} });
+  voce.risolutori.length = 0;
+  const corpi = [corpo('Earth', 200, 300, 80), corpo('Moon', 600, 300, 60)];
+  // il tempo della storia avanza a passi di un fotogramma (al più 100 ms)
+  const fotogrammi = ms => { for (let t = 0; t < ms; t += 50) { avanza(50); S.disegnaPersonaggi(telaFinta().ctx, 'prova', corpi, 800, 600); } };
+  const scritte = () => {
+    const testi = [];
+    const { ctx } = telaFinta();
+    const spia = new Proxy(ctx, { get(o, k) { if (k === 'fillText') return (t, x, y) => testi.push({ t, x, y }); const v = o[k]; return typeof v === 'function' ? v.bind(o) : v; } });
+    S.sovrimpressioni(spia, 800, 600);
+    return testi;
+  };
+  const terra = S.nome('Earth'), luna = S.nome('Moon');
+  assert.equal(scritte().length, 0, 'nessuno parla, nessun nome');
+  S.parla('Earth', { testo: 'Uno' });
+  fotogrammi(400);
+  let n = scritte();
+  assert.equal(n.length, 1, 'il nome di chi parla: ' + JSON.stringify(n));
+  assert.equal(n[0].t, terra);
+  assert.ok(Math.abs(n[0].x - 200) < 90 && n[0].y < 300 - 80, 'sopra la sua testa: ' + JSON.stringify(n[0]));
+  fotogrammi(2400);
+  assert.equal(scritte().length, 1, 'resta qualche secondo');
+  fotogrammi(1500);
+  assert.equal(scritte().length, 0, 'poi sparisce, anche se parla ancora');
+  // la battuta dopo dello stesso personaggio: niente lampeggio
+  S.parla('Earth', { testo: 'Due' });
+  fotogrammi(300);
+  assert.equal(scritte().length, 0, 'stesso personaggio subito dopo: il nome non torna');
+  // tocca a un altro: il suo nome, vicino a lui
+  S.parla('Moon', { testo: 'Tre' });
+  fotogrammi(300);
+  n = scritte();
+  assert.equal(n.length, 1);
+  assert.equal(n[0].t, luna);
+  assert.ok(Math.abs(n[0].x - 600) < 90, 'vicino alla Luna: ' + n[0].x);
+  // e se la Terra riprende la parola, il suo nome torna
+  S.parla('Earth', { testo: 'Quattro' });
+  fotogrammi(300);
+  assert.ok(scritte().some(x => x.t === terra), 'la Terra di nuovo');
+  voce.risolutori.forEach(ok => ok('testo'));
+  S.sgombra();
+});
 prova('il sottotitolo identifica il personaggio senza forzare la visualizzazione', () => {
   voce.richieste.length = 0;
   S.parla('Saturn', { testo: 'Ciao' });

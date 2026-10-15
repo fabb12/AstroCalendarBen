@@ -1807,6 +1807,8 @@
     // niente ombre portate degli oggetti, metà delle luci sfocate), deciso da
     // `storTic` quando i fotogrammi restano lenti; vale per tutta la sessione
     leggero: false, passoMedio: 0, passiKurz: 0, tempoKurz: 0,
+    // v508: l'ultima battuta vista e chi l'ha detta, per il nome di chi parla
+    nomeBattuta: null, nomeUltimo: null,
     // La vista 3D (§5-bis): dove ogni astro sarebbe davvero e dove la
     // storia lo ha messo, nelle unità della scena; i ritorni di chi è uscito
     // di scena spostato o ingrandito; gli effetti speciali in corso (§6-ter).
@@ -1958,6 +1960,7 @@
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
     stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
     stor.canti = []; stor.titolo = null; stor.canzone = null; stor.stile = 'ink';
+    stor.nomeBattuta = null; stor.nomeUltimo = null;
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
     Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel, ritmoScelta: null });
     storZittisci();
@@ -9495,6 +9498,12 @@
     // della fila è quello che gli altri guardano
     const canto = storCantoOra();
     const parlante = canto ? canto.chi[0] : chiOra && voce && voce.personaggio === chiOra ? chiOra : null;
+    // v508: il nome accanto a chi prende la parola (non nelle canzoni: il
+    // karaoke li scrive già sopra al verso)
+    if (vista !== 'anteprima') storSegnaNomeParlante(canto ? null : chiOra);
+    // i volti si disegnano dentro alla lente della regia, se è aperta: il
+    // nome, che sta fuori, deve saperlo per ritrovarli sullo schermo
+    stor.lenteAperta = !!(stor.regia && stor.regia.aperta);
     const ritmi = storDisegnaPersonaggi.ritmi || (storDisegnaPersonaggi.ritmi = new Map());
     const presi = [];
     const dt = Math.max(0, stor.orologio - (stor.ultimoOrologio || stor.orologio));
@@ -11546,8 +11555,83 @@
     return (radice.document && radice.document.body && radice.getComputedStyle
       ? radice.getComputedStyle(radice.document.body).fontFamily : '') || 'sans-serif';
   }
+  /* Il nome di chi parla (v508). «Quando qualcuno parla metti sempre il nome
+   * di chi parla vicino, tienilo per qualche secondo e poi deve scomparire.»
+   * Il sottotitolo il nome lo dice, ma in basso: chi guarda una scena con
+   * tre astronauti non sapeva quale dei tre stesse parlando. Ora, a ogni
+   * battuta, sopra la testa di chi parla compare un cartellino col suo nome
+   * (e il pallino del colore dei suoi sottotitoli): entra salendo appena,
+   * resta tre secondi, se ne va. Se la battuta dopo è dello stesso
+   * personaggio il nome non torna subito (sarebbe un lampeggio a ogni
+   * frase): torna se è sparito da più di otto secondi. Corre sull'orologio
+   * della storia, quindi in pausa resta dov'è. È disegnato fuori dalla lente
+   * della regia (`storDisegnaSovrimpressioni`, chiamata da tutte le viste):
+   * con la camera vicina il cartellino resta della sua misura. */
+  const STOR_NOME_PARLANTE = { entra: 250, resta: 3000, esce: 700, ancora: 8000 };
+  function storSegnaNomeParlante(id) {
+    if (!id) return;
+    const battuta = id + ':' + (stor.parlante && stor.parlante.target === id ? stor.parlante.token : '');
+    if (battuta === stor.nomeBattuta) return;
+    stor.nomeBattuta = battuta;
+    const pg = stor.personaggi.get(id);
+    if (!pg) return;
+    const N = STOR_NOME_PARLANTE;
+    const ultimo = stor.nomeUltimo;
+    stor.nomeUltimo = id;
+    if (ultimo === id && Number.isFinite(pg.nomeDa) && stor.orologio - pg.nomeDa < N.entra + N.resta + N.esce + N.ancora) return;
+    pg.nomeDa = stor.orologio;
+  }
+  // Quanto si vede il cartellino `da` ms dopo che è comparso (0 = sparito)
+  function storAlfaNomeParlante(eta) {
+    const N = STOR_NOME_PARLANTE;
+    if (!(eta >= 0) || eta > N.entra + N.resta + N.esce) return 0;
+    return eta < N.entra ? eta / N.entra : eta < N.entra + N.resta ? 1 : 1 - (eta - N.entra - N.resta) / N.esce;
+  }
+  function storDisegnaNomiParlanti(ctx, L, H) {
+    const ora = stor.orologio;
+    let carattere = null;
+    for (const d of stor.ultimiDisegnati) {
+      const pg = stor.personaggi.get(d.id);
+      if (!pg || pg.nascosto || !Number.isFinite(pg.nomeDa)) continue;
+      const eta = ora - pg.nomeDa;
+      const alfa = storAlfaNomeParlante(eta);
+      if (!(alfa > 0.01)) continue;
+      const nome = storNome(pg.profilo);
+      if (!nome || !Number.isFinite(d.x) || !Number.isFinite(d.y)) continue;
+      // dove si vede la testa, con la lente di adesso
+      const lente = stor.lenteAperta && Number.isFinite(stor.regia.k);
+      const k = lente ? stor.regia.k : 1;
+      const p = lente ? storLenteSchermo(d.x, d.y) : { x: d.x, y: d.y };
+      const r = Math.max(6, (d.R || 20) * Math.abs(d.scala || 1) * k);
+      if (carattere === null) carattere = caratterePagina();
+      const fs = Math.max(13, Math.min(18, L * 0.016));
+      ctx.save();
+      ctx.font = `700 ${fs}px ${carattere}`;
+      const pallino = fs * 0.32;
+      const w = Math.min(L - 16, larghezzaTesto(ctx, nome, fs) + fs * 1.5 + pallino * 2.4), h = fs * 1.8;
+      // sopra la testa; se non c'è posto (il bordo in alto, il cartello del
+      // luogo) sotto. Il cartellino sale appena mentre entra
+      const sale = stor.ridotto ? 0 : (1 - Math.min(1, eta / STOR_NOME_PARLANTE.entra)) * fs * 0.5;
+      let y = p.y - r * 1.3 - h / 2 + sale;
+      if (y - h / 2 < 56) y = p.y + r * 1.3 + h / 2 + sale;
+      y = Math.max(h / 2 + 8, Math.min(H - h / 2 - 8, y));
+      const x = Math.max(w / 2 + 8, Math.min(L - w / 2 - 8, p.x));
+      ctx.globalAlpha *= alfa;
+      rettangolo(ctx, x - w / 2, y - h / 2, w, h, h / 2);
+      ctx.fillStyle = 'rgba(12, 10, 32, 0.72)'; ctx.fill();
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255, 248, 235, 0.28)'; ctx.stroke();
+      const colore = (storVesteProfilo(pg) || pg.profilo).sottotitolo || pg.profilo.sottotitolo || '#e2e8f0';
+      const xp = x - w / 2 + fs * 0.7 + pallino;
+      ctx.fillStyle = colore; ctx.beginPath(); ctx.arc(xp, y, pallino, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 248, 235, 0.96)';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(nome, xp + pallino * 1.4 + fs * 0.25, y + 0.5, w - fs * 1.2 - pallino * 2.4);
+      ctx.restore();
+    }
+  }
   function storDisegnaSovrimpressioni(ctx, L, H, giu) {
     const ora = stor.orologio;
+    storDisegnaNomiParlanti(ctx, L, H);
     // il verso: quello in corso, o l'ultimo finito da poco
     let c = storCantoOra(), alfa = 1;
     if (!c) {

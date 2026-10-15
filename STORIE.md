@@ -4299,3 +4299,33 @@ negli astri a disco e in Loro, il volume a strati c'è, il leggero ne fa
 meno, la scelta automatica a 11 fotogrammi al secondo sì e a 60 no, le
 storie a inchiostro mai), `prova-demo.js`.
 
+### Il nome di chi parla, accanto a lui (v508)
+
+«Quando qualcuno parla metti sempre il nome di chi parla vicino, tienilo
+per qualche secondo e poi deve scomparire.» Il sottotitolo il nome lo dice,
+ma in basso: in una scena con tre astronauti non si capiva quale dei tre
+stesse parlando.
+
+A ogni battuta, sopra la testa di chi parla compare un cartellino col suo
+nome e il pallino del colore dei suoi sottotitoli (`storDisegnaNomiParlanti`,
+storie-cosmiche.js accanto al cartello del luogo, `STOR_NOME_PARLANTE`):
+entra salendo appena (250 ms), resta tre secondi, se ne va in 700 ms. Se
+non c'è posto sopra (il bordo in alto) va sotto. La battuta si riconosce dal
+gettone di `storParla` (`storSegnaNomeParlante`, chiamata da
+`storDisegnaPersonaggi`); se la voce si è rotta, da chi la narrazione dice
+che ha la parola. Due battute di fila dello stesso personaggio non fanno
+lampeggiare il nome: torna solo se è sparito da più di otto secondi. Non
+nelle canzoni (il karaoke scrive già i nomi sopra al verso) né
+nell'anteprima della pagina Demo. Corre sull'orologio della storia (in pausa
+resta), è disegnato fuori dalla lente della regia, quindi con la camera
+vicina resta della sua misura (`stor.lenteAperta` dice se i volti erano
+dentro alla lente, per ritrovarli sullo schermo), e finisce anche nel
+filmato. C'è in tutte le CosmoStorie e anche con le scritte spente, come il
+cartello del luogo.
+
+Prove: `prova-storie.js` (127, 1 nuova: il nome compare sopra chi parla,
+resta, sparisce anche se parla ancora, non torna per la battuta dopo dello
+stesso personaggio, torna quando la parola passa a un altro e ritorna),
+`prova-demo.js`; guardato in Chromium nelle storie a inchiostro (planetario
+e 3D) e in «Apollo 13 · Dentro la scienza».
+
