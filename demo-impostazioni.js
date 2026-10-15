@@ -375,7 +375,7 @@
   const registra = $('opz-registra'), audio = $('opz-registra-audio');
   const musica = $('opz-musica-eclissi'), musicaTraccia = $('opz-musica-traccia');
   const cameraStorie = $('opz-camera-storie'), suoniStorie = $('opz-suoni-storie'), scritteStorie = $('opz-scritte-storie'),
-    orbiteStorie = $('opz-orbite-storie'), scienzaStorie = $('opz-scienza-storie');
+    orbiteStorie = $('opz-orbite-storie');
   // v495: il volume degli effetti sonori, da 0 a 200%
   const volumeSuoni = $('opz-volume-suoni'), volumeSuoniValore = $('opz-volume-suoni-valore');
   function disegnaVolumeSuoni() {
@@ -433,7 +433,6 @@
     disegnaVolumeSuoni();
     if (scritteStorie) scritteStorie.checked = o.scritteStorie === true;
     if (orbiteStorie) orbiteStorie.checked = o.orbiteStorie === true;
-    if (scienzaStorie) scienzaStorie.checked = o.schedeScienza !== false;
     popolaTracceMusica();
     personali.checked = !!o.livelli;
     const livelli = AstroDemo.livelli();
@@ -485,7 +484,6 @@
   });
   if (scritteStorie) scritteStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ scritteStorie: scritteStorie.checked }));
   if (orbiteStorie) orbiteStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ orbiteStorie: orbiteStorie.checked }));
-  if (scienzaStorie) scienzaStorie.addEventListener('change', () => AstroDemo.impostaOpzioni({ schedeScienza: scienzaStorie.checked }));
   if (musicaTraccia) musicaTraccia.addEventListener('change', () => {
     AstroDemo.impostaOpzioni({ musicaDemoTraccia: musicaTraccia.value });
   });

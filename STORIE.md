@@ -3995,3 +3995,52 @@ titolo; e le schede solo nelle corte, le originali senza), `prova-demo.js`,
 --controlla`; le prove nel browser delle CosmoStorie qui sotto in
 `current-task.md`. Guardate intere in Chromium (`giro-storia.js`).
 
+### Niente schede: le animazioni che spiegano, nelle «Interstellar» compatte (v500)
+
+«Non deve essere con le schede: deve mostrare meglio le animazioni per
+spiegare meglio i concetti. Non considerare che sia solo per bambini: un
+linguaggio e una grafica accattivanti sia per i bambini sia per gli adulti.»
+
+**Le schede sono tolte del tutto** (v497–v499): il comando `science_card`,
+il disegno, l'opzione della pagina Demo, i testi `storie.scienza.*` e le loro
+prove. Le originali restano quelle della v496.
+
+**Le versioni compatte** si chiamano ora «Interstellar 1: dentro la scienza»
+(`storia_interstellar_scienza`, 23 scene delle 48: in più la scena 14, il
+mulinello) e «Interstellar 2: dentro la scienza» (`storia_interstellar2_scienza`,
+21 delle 43). Dove c'è un'idea difficile, **un'animazione la mostra
+succedere** (§6-ter, `storDisegnaScienzaAnim`, otto effetti nuovi, lavagne
+che sfumano a fine scena, ognuno col suo rumore discreto):
+
+| Effetto | Scena | Cosa si vede |
+|---|---|---|
+| `sphere_hole` | P1, il wormhole (orig. 3) | il foglio con un buco a cerchio, il quadrato delle due dimensioni; la freccia; la sfera con dentro un'altra galassia, meridiani che girano, l'anello di Einstein, il cubo delle tre dimensioni |
+| `light_bend` | P1, la lente (orig. 11) | Gargantua di lato; la strada dritta del disco dietro chiusa dall'ombra (la croce rossa); i fotoni che scavalcano l'ombra sopra e sotto fino all'occhio; nel nuvoletto, cosa vede l'occhio |
+| `time_clocks` | P1, un'ora = sette anni (orig. 12) | l'orologio di Miller sul fondo del pozzo di gravità, la lancetta che fa un giro; quello della Terra che corre, e sette calendari che compaiono uno dopo l'altro |
+| `frame_drag` | P1, perché Miller non cade (orig. 14) | lo spazio-tempo a imbuto coi raggi torti dal buco nero che ruota, le scintille trascinate, il pianeta che corre col mulinello |
+| `spin_match` | P1, l'attracco (orig. 38) | l'anello dell'Endurance che gira, il Ranger al centro: rosso finché il muso e il portello non combaciano, i getti che lo fanno girare, verde quando girano insieme, poi frenano insieme |
+| `tidal_stretch` | P1, l'orizzonte (orig. 46) | due finestre: l'astronauta stirato da un buco nero piccolo (freccia ai piedi lunga, alla testa corta) e quello intero sull'orizzonte quasi piatto di uno gigante |
+| `time_loop` | P2, il cerchio (orig. 29) | quattro tappe su un anello (la polvere, la partenza, Gargantua, il tesseratto), una luce che ci corre sopra per sempre, il punto di domanda al centro |
+| `spin_gravity` | P2, la Stazione Cooper (orig. 34) | la ruota che gira con case e abitanti sul bordo, la spinta verde del pavimento, la palla lasciata dal mozzo che vola dritta finché il pavimento non le viene incontro |
+
+In quelle scene lo sfondo diventa il cielo stellato pulito (`starfield`) e la
+camera resta larga, perché il disegno si legga; i personaggi stanno ai lati.
+Restano anche le animazioni che c'erano già (il foglio di Romilly, le maree,
+la fionda, il tesseratto, le dimensioni, la pellicola del tempo, i libri,
+la polvere, le equazioni, l'orologio in Morse).
+
+**Le battute di quelle otto scene sono riscritte** per chi guarda di ogni età:
+frasi che accompagnano il disegno («Stiamo letteralmente guardando dietro
+l'angolo», «Sette compleanni persi», «Gravità fatta in casa», TARS con la
+modestia al settanta per cento), con la regia ElevenLabs nuova in
+`regia-voci.json`. Le altre hanno lo stesso testo delle originali e suonano
+con le voci vere (Parte 1); le sei riscritte della Parte 1 vanno con la voce
+di sistema finché non si generano col tasto «Voci ElevenLabs» della scheda.
+
+Prove: `prova-storie.js` (122: le versioni compatte corte, senza schede, ogni
+battuta uguale all'originale o riscritta in una scena con un'animazione nuova,
+tutte e otto in scena; le animazioni si disegnano a più istanti),
+`prova-demo.js`, `prova-i18n.js`, `controlla-i18n.js --patto`,
+`voci-storie.js --controlla`. Guardate una per una in Chromium (un copione di
+prova con le otto in fila) e le due storie intere (`giro-storia.js`).
+

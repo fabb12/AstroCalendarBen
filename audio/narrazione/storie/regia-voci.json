@@ -1903,11 +1903,11 @@
       }
     },
     "demo.narr.storia_interstellar_scienza.3": {
-      "emozione": "sicura",
-      "come": "sorride appena, spiega con chiarezza",
+      "emozione": "paziente",
+      "come": "chiara, con un sorriso",
       "conTag": {
-        "it": "[warmly] Certo che è una sfera, Romilly. [thoughtful] Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. [in awe] Quella luce arriva dall'altra parte dell'universo.",
-        "en": "[warmly] Of course it's a sphere, Romilly. [thoughtful] A hole in a sheet of paper is a circle; a hole in space, which has three dimensions, is a ball. [in awe] That light comes from the other side of the universe."
+        "it": "[patiently] Pensateci così: un buco in un foglio è un cerchio, perché il foglio ha due dimensioni. [warmly] Lo spazio ne ha tre, e il suo buco è una sfera. [in awe] Da qualunque lato la guardi, dentro c'è un'altra galassia.",
+        "en": "[patiently] Think of it like this: a hole in a sheet of paper is a circle, because paper has two dimensions. [warmly] Space has three, so its hole is a sphere. [in awe] Whichever side you look from, there's another galaxy inside."
       }
     },
     "demo.narr.storia_interstellar_scienza.4": {
@@ -1936,21 +1936,29 @@
     },
     "demo.narr.storia_interstellar_scienza.7": {
       "emozione": "meravigliato",
-      "come": "indica, poi spiega con calma",
+      "come": "incantato, poi complice",
       "conTag": {
-        "it": "[in awe] Vedete l'anello di luce che passa sopra e sotto il buco nero? [thoughtful] Non è un secondo disco: è la luce del disco che sta dietro a Gargantua, piegata dalla gravità fino ai nostri occhi. Gargantua è una lente gigantesca.",
-        "en": "[in awe] See the ring of light going over and under the black hole? [thoughtful] It isn't a second disk: it's light from the part of the disk behind Gargantua, bent by gravity all the way to our eyes. Gargantua is a gigantic lens."
+        "it": "[in awe] Vedete l'anello che passa sopra e sotto l'ombra? Non è un secondo disco. [excited] È la luce del disco che sta dietro Gargantua: la gravità la piega e la porta fino a noi. [whispers] Stiamo letteralmente guardando dietro l'angolo.",
+        "en": "[in awe] See the ring passing above and below the shadow? It isn't a second disc. [excited] It's light from the part of the disc behind Gargantua: gravity bends it and brings it round to us. [whispers] We are literally looking around the corner."
       }
     },
     "demo.narr.storia_interstellar_scienza.8": {
-      "emozione": "seria",
-      "come": "chiara, scandisce «sette anni»",
+      "emozione": "grave",
+      "come": "seria, poi amara sull'ultima frase",
       "conTag": {
-        "it": "[thoughtful] Più sei vicino a una grande massa, più il tempo scorre piano. [serious] Il pianeta di Miller gira strettissimo attorno a Gargantua: laggiù ogni ora vale sette anni sulla Terra.",
-        "en": "[thoughtful] The closer you are to a big mass, the slower time flows. [serious] Miller's planet orbits very tightly around Gargantua: down there every hour is worth seven years on Earth."
+        "it": "[serious] Ecco la parte che fa paura. Più la gravità è forte, più il tempo rallenta. [slowly] Laggiù, su Miller, la lancetta fa un giro solo, un'ora… e sulla Terra passano sette anni. [sad] Sette compleanni persi.",
+        "en": "[serious] Here's the scary part. The stronger gravity is, the slower time runs. [slowly] Down on Miller, the minute hand goes round once, one hour… and seven years pass on Earth. [sad] Seven missed birthdays."
       }
     },
     "demo.narr.storia_interstellar_scienza.9": {
+      "emozione": "entusiasta",
+      "come": "spiega con gusto",
+      "conTag": {
+        "it": "[curious] E perché Miller non ci cade dentro? [excited] Perché Gargantua gira su se stesso quasi alla velocità della luce, e si trascina dietro lo spazio, come un mulinello nell'acqua. [confident] Il pianeta ci gira sopra, a metà della velocità della luce, senza cadere.",
+        "en": "[curious] And why doesn't Miller fall in? [excited] Because Gargantua spins at almost the speed of light, dragging space round with it like a whirlpool in water. [confident] The planet rides that whirlpool at half the speed of light, without falling."
+      }
+    },
+    "demo.narr.storia_interstellar_scienza.10": {
       "emozione": "misteriosa",
       "come": "lenta, cullante, poi minacciosa sulle onde",
       "conTag": {
@@ -1958,7 +1966,7 @@
         "en": "[mysteriously] I am Miller's planet. [softly] I am all water, as shallow as a puddle… [ominous] but Gargantua pulls on me so hard that my seas rise into waves as tall as mountains."
       }
     },
-    "demo.narr.storia_interstellar_scienza.10": {
+    "demo.narr.storia_interstellar_scienza.11": {
       "emozione": "seria",
       "come": "spiega a passi, stupita sul chilometro",
       "conTag": {
@@ -1966,7 +1974,7 @@
         "en": "[serious] That's why those waves. [thoughtful] Gargantua pulls the near side of the planet much harder than the far side: the planet stretches like an egg, and its ocean piles up into two gigantic humps. [in awe] It's the tide: on Earth the Moon raises the sea by a metre, here Gargantua raises it by more than a kilometre."
       }
     },
-    "demo.narr.storia_interstellar_scienza.11": {
+    "demo.narr.storia_interstellar_scienza.12": {
       "emozione": "triste",
       "come": "il fiato corto, poi la delusione",
       "conTag": {
@@ -1974,7 +1982,7 @@
         "en": "[nervous] The water is up to our ankles… [sad] Doctor Miller's signal came from here, but it's only wreckage. [whispers] For her, down here, it happened only a few hours ago."
       }
     },
-    "demo.narr.storia_interstellar_scienza.12": {
+    "demo.narr.storia_interstellar_scienza.13": {
       "emozione": "spaventato",
       "come": "si accorge lentamente, poi grida",
       "conTag": {
@@ -1982,7 +1990,7 @@
         "en": "[nervous] Brand… those aren't mountains. [shouts] They're waves!"
       }
     },
-    "demo.narr.storia_interstellar_scienza.13": {
+    "demo.narr.storia_interstellar_scienza.14": {
       "emozione": "addolorata",
       "come": "piano, la voce che trema, poi la spiegazione lucida",
       "conTag": {
@@ -1990,7 +1998,7 @@
         "en": "[sad] Doyle stayed down there, with the waves. [thoughtful] And we were there just over three hours: but near Gargantua time is as slow as honey. [wistfully] Three hours for us, twenty-three years for the rest of the universe."
       }
     },
-    "demo.narr.storia_interstellar_scienza.14": {
+    "demo.narr.storia_interstellar_scienza.15": {
       "emozione": "commosso",
       "come": "in lacrime, tenero",
       "conTag": {
@@ -1998,7 +2006,7 @@
         "en": "[crying] Murph… [tenderly] I left you my watch, so we could compare them when I came back. [whispers] My time fell behind, but I never left you."
       }
     },
-    "demo.narr.storia_interstellar_scienza.15": {
+    "demo.narr.storia_interstellar_scienza.16": {
       "emozione": "cupo",
       "come": "freddo, poi la paura, poi minaccioso",
       "conTag": {
@@ -2006,7 +2014,7 @@
         "en": "[coldly] My planet can't host anyone, Cooper. [ashamed] I sent false data: I was afraid of dying here, alone. [menacing] Forgive me… but now I'm taking your ship."
       }
     },
-    "demo.narr.storia_interstellar_scienza.16": {
+    "demo.narr.storia_interstellar_scienza.17": {
       "emozione": "allarmato",
       "come": "calmo ma urgente",
       "conTag": {
@@ -2014,7 +2022,7 @@
         "en": "[nervous] The Endurance has lost a piece and it's spinning: sixty-eight turns a minute. [serious] Docking is impossible."
       }
     },
-    "demo.narr.storia_interstellar_scienza.17": {
+    "demo.narr.storia_interstellar_scienza.18": {
       "emozione": "determinato",
       "come": "a denti stretti, la battuta più importante",
       "conTag": {
@@ -2022,15 +2030,15 @@
         "en": "[determined] No, CASE. [serious] It's necessary. [shouts] We spin too, at the same speed!"
       }
     },
-    "demo.narr.storia_interstellar_scienza.18": {
+    "demo.narr.storia_interstellar_scienza.19": {
       "emozione": "fiero",
-      "come": "sollievo asciutto, poi spiega con gusto",
+      "come": "asciutto, con la battuta finale impassibile",
       "conTag": {
-        "it": "[relieved] Agganciati! [proud] Girando insieme, il Ranger e l'Endurance stavano fermi l'uno rispetto all'altra, come due ballerini che si tengono per mano. [calmly] Poi abbiamo frenato insieme.",
-        "en": "[relieved] Docked! [proud] Spinning together, the Ranger and the Endurance were still with respect to each other, like two dancers holding hands. [calmly] Then we slowed down together."
+        "it": "[relieved] Agganciati. [proud] Il trucco era girare alla stessa velocità: così, l'uno rispetto all'altra, eravamo perfettamente fermi. Come due ballerini che si tengono per mano. [calmly] Poi abbiamo frenato insieme. [deadpan] Livello di modestia: settanta per cento.",
+        "en": "[relieved] Docked. [proud] The trick was to spin at the same speed: that way, relative to each other, we were perfectly still. Like two dancers holding hands. [calmly] Then we slowed down together. [deadpan] Modesty setting: seventy percent."
       }
     },
-    "demo.narr.storia_interstellar_scienza.19": {
+    "demo.narr.storia_interstellar_scienza.20": {
       "emozione": "concentrato",
       "come": "spiega il piano, con fiducia",
       "conTag": {
@@ -2038,7 +2046,7 @@
         "en": "[thoughtful] There isn't enough fuel for Edmunds. [determined] But Gargantua can be our slingshot: we skim past it, its gravity bends our path and flings us away faster."
       }
     },
-    "demo.narr.storia_interstellar_scienza.20": {
+    "demo.narr.storia_interstellar_scienza.21": {
       "emozione": "risoluto",
       "come": "calmo, ha già deciso",
       "conTag": {
@@ -2046,15 +2054,15 @@
         "en": "[calmly] Newton said it: to go forward you have to leave something behind. [determined] TARS and I will detach at the closest point: [tenderly] without our weight, the Endurance will make it."
       }
     },
-    "demo.narr.storia_interstellar_scienza.21": {
-      "emozione": "solenne",
-      "come": "profondissimo e lento, poi rassicurante",
+    "demo.narr.storia_interstellar_scienza.22": {
+      "emozione": "misterioso",
+      "come": "profondo e lento, quasi gentile",
       "conTag": {
-        "it": "[mysteriously] Ora entri nel mio orizzonte, Cooper. [slowly] Chi guarda da lontano ti vedrà rallentare e fermarti per sempre; per te, invece, il tempo scorre come sempre. [warmly] E non avere paura: sono così grande che qui le mie maree sono dolci, non ti stirerò come uno spaghetto.",
-        "en": "[mysteriously] Now you're entering my horizon, Cooper. [slowly] Anyone watching from far away will see you slow down and stop forever; for you, though, time flows as always. [warmly] And don't be afraid: I'm so big that my tides are gentle here, I won't stretch you like spaghetti."
+        "it": "[deep voice] Ora attraversi il mio orizzonte, Cooper. [slowly] Un buco nero piccolo ti tirerebbe i piedi molto più della testa, e ti stirerebbe come uno spaghetto. [reassuring] Ma io sono gigantesco: qui la differenza è minima. Entri tutto intero… [whispers] e da fuori, ti vedranno fermarti per sempre.",
+        "en": "[deep voice] Now you cross my horizon, Cooper. [slowly] A small black hole would pull your feet far harder than your head and stretch you like spaghetti. [reassuring] But I am gigantic: here the difference is tiny. You go in whole… [whispers] and from outside, they'll see you freeze forever."
       }
     },
-    "demo.narr.storia_interstellar_scienza.22": {
+    "demo.narr.storia_interstellar_scienza.23": {
       "emozione": "speranzosa",
       "come": "piano, con un sorriso tra le lacrime; poi un brivido di mistero",
       "conTag": {
@@ -2175,11 +2183,11 @@
       }
     },
     "demo.narr.storia_interstellar2_scienza.15": {
-      "emozione": "dolce",
-      "come": "calmo, sereno, come un saluto",
+      "emozione": "sereno",
+      "come": "calmo e ampio",
       "conTag": {
-        "it": "[warmly] Il messaggio è arrivato, Cooper. [softly] Il cerchio è chiuso. [tenderly] Ora il tesseratto si richiude… e ti riportiamo indietro.",
-        "en": "[warmly] The message has arrived, Cooper. [softly] The circle is closed. [tenderly] Now the tesseract folds back up… and we'll take you back."
+        "it": "[calmly] Il messaggio è arrivato, Cooper. Le coordinate ti hanno fatto partire; partendo sei arrivato qui, a mandarle. [softly] È un anello senza inizio. Ora il tesseratto si richiude… e ti riportiamo indietro.",
+        "en": "[calmly] The message has arrived, Cooper. The coordinates made you leave; by leaving, you got here to send them. [softly] It's a loop with no beginning. Now the tesseract is closing… and we're taking you back."
       }
     },
     "demo.narr.storia_interstellar2_scienza.16": {
@@ -2199,11 +2207,11 @@
       }
     },
     "demo.narr.storia_interstellar2_scienza.18": {
-      "emozione": "didattico",
-      "come": "divertito e chiaro",
+      "emozione": "fiero",
+      "come": "didattico, impassibile sull'ultima",
       "conTag": {
-        "it": "[cheerfully] Guarda in su: le case sono anche sopra la nostra testa. [calm] La stazione è un enorme cilindro che gira, come l'Endurance: girando spinge tutto verso il bordo, e così si cammina come sulla Terra.",
-        "en": "[cheerfully] Look up: there are houses above our heads too. [calm] The station is a huge spinning cylinder, like the Endurance: spinning pushes everything toward the rim, and so you can walk just like on Earth."
+        "it": "[proud] Guarda in su: ci sono case anche sopra la nostra testa. La stazione è un cilindro gigante che gira: il pavimento ti spinge continuamente verso il centro, e il tuo corpo lo sente come peso. [deadpan] Gravità fatta in casa.",
+        "en": "[proud] Look up: there are houses above our heads too. The station is a giant spinning cylinder: the floor keeps pushing you towards the centre, and your body feels it as weight. [deadpan] Home-made gravity."
       }
     },
     "demo.narr.storia_interstellar2_scienza.19": {

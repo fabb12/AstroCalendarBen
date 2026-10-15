@@ -1767,128 +1767,55 @@ prova('story_question: il cartello della domanda, validato, che se ne va con la 
   motore.ferma && motore.ferma();
   S.sgombra();
 });
-prova('science_card (v497): la scheda «La scienza in breve», validata, letta con calma, che si spegne', async () => {
-  S.sgombra();
-  for (const [testo, errore] of [
-    [sc('planetarium_view', "science_card { icon: clock }"), /Scheda della scienza sconosciuta/],
-    [sc('planetarium_view', "science_card { card: 'storie.scienza.nessuna' }"), /Scheda della scienza sconosciuta/],
-    [sc('planetarium_view', "science_card { card: 'storie.scienza.interstellar.tempo', icon: pizza }"), /icon sconosciuto/],
-    [sc('planetarium_view', "science_card { card: 'storie.scienza.interstellar.tempo', at: bottom }"), /at sconosciuto/],
-    [sc('planetarium_view', "science_card { card: 'storie.scienza.interstellar.tempo', id: 'x' }"), /Parametro sconosciuto/]
-  ]) assert.throws(() => motore.prepara(demo(testo)), errore);
-  const aspetta = ms => new Promise(ok => setTimeout(ok, ms));
-  const due = demo(sc('planetarium_view', "science_card { card: 'storie.scienza.interstellar.tempo', icon: clock, at: left }"),
-    sc('planetarium_view', "character_show { target: 'Jupiter' }"));
-  motore.avvia(due, { ripristina() {} });
-  passo(10);
-  const s = S.scienza;
-  assert.match(s.domanda, /sette anni/);
-  assert.equal(s.punti.length, 3);
-  assert.equal(s.lato, 'left'); assert.equal(s.icona, 'clock');
-  assert.ok(s.lettura >= S.STOR_SCIENZA.min && s.lettura <= S.STOR_SCIENZA.max, 'il tempo per leggere: ' + s.lettura);
-  // si disegna sulla tela (quindi anche nel filmato): il nome, la domanda, i punti
-  S.stato.orologio += 5000;
-  const { ctx, chiamate } = telaFinta();
-  S.sovrimpressioni(ctx, 800, 600, 0);
-  assert.ok(chiamate.filter(c => c === 'fillText').length >= 1 + 1 + 1 + 1, 'nome, domanda, numero e punto');
-  // un punto alla volta, in proporzione alle parole (la domanda va col primo)
-  assert.equal(S.puntoScienza(S.stato.scienza).k, 0, 'all\'inizio il primo punto');
-  const tacche = S.puntoScienza(S.stato.scienza).tacche;
-  assert.equal(tacche.length, 3); assert.ok(tacche[0].a - tacche[0].da > tacche[1].a - tacche[1].da, 'il primo dura di più');
-  assert.ok(Math.abs(tacche[2].a - 1) < 1e-9, 'le tacche arrivano in fondo');
-  const letto = S.stato.scienza.letto;
-  S.stato.scienza.letto = S.stato.scienza.lettura * 0.99;
-  assert.equal(S.puntoScienza(S.stato.scienza).k, 2, 'alla fine l\'ultimo');
-  S.stato.scienza.letto = letto;
-  // la scena dura 2 s, ma la scheda la tiene aperta finché non si è letta
-  passo(2100); passo(10);
-  assert.equal(motore.indice, 0, 'la storia aspetta chi legge');
-  // in pausa il tempo per leggere non passa
-  globalThis.AstroDemo.stato = 'pausa';
-  avanza(20000); await aspetta(300);
-  passo(10);
-  assert.equal(motore.indice, 0, 'in pausa resta');
-  globalThis.AstroDemo.stato = 'attivo';
-  // fino al tetto del tempo per leggere (`STOR_SCIENZA.max`), con margine
-  for (let i = 0; i < S.STOR_SCIENZA.max / 400 + 20 && motore.indice === 0; i++) { avanza(400); await aspetta(130); passo(10); }
-  assert.equal(motore.indice, 1, 'letta, la storia va avanti');
-  assert.ok(S.scienza && S.scienza.via !== null, 'e la scheda sfuma');
-  for (let i = 0; i < 6; i++) { S.stato.orologio += 200; S.sovrimpressioni(telaFinta().ctx, 800, 600, 0); }
-  assert.equal(S.scienza, null, 'poi se ne va');
-  motore.ferma && motore.ferma();
-  S.sgombra();
-  // spente nelle opzioni: niente scheda, e la scena non aspetta
-  globalThis.AstroDemo.opzioni = { schedeScienza: false };
-  motore.avvia(due, { ripristina() {} });
-  passo(10);
-  assert.equal(S.scienza, null, 'spenta: nessuna scheda');
-  passo(2100); passo(10);
-  assert.equal(motore.indice, 1, 'e la scena va come prima');
-  motore.ferma && motore.ferma();
-  delete globalThis.AstroDemo.opzioni;
-  S.sgombra();
-  // ogni disegnino si disegna, fermo e in moto
-  for (const icona of S.STOR_ICONE_SCIENZA) for (const t of [0, 3333]) {
-    const { ctx: c, chiamate: ch } = telaFinta();
-    S.iconaScienza(c, icona, 40, t);
-    assert.ok(ch.length > 2, icona + ' disegna qualcosa');
-  }
-  // il telefono: tutta la larghezza, carattere stretto se la schermata è bassa
-  motore.avvia(due, { ripristina() {} }); passo(10);
-  S.sovrimpressioni(telaFinta(360, 640).ctx, 360, 640, 0);
-  S.sovrimpressioni(telaFinta(900, 300).ctx, 900, 300, 0);
-  motore.ferma && motore.ferma();
-  S.sgombra();
-});
-prova('le schede della scienza di «Interstellar»: solo nelle versioni corte, nelle due lingue, corte, nelle scene giuste', () => {
-  const schede = [];
-  // v499: le originali restano com'erano, senza schede
-  for (const k of ['storia_interstellar', 'storia_interstellar2'])
-    assert.ok(!/science_card/.test(predefiniti.find(x => x.chiave === k).testo), k + ': l\'originale non ha schede');
-  for (const d of predefiniti.filter(x => /^storia_interstellar2?_scienza$/.test(x.chiave))) {
-    analizza(d.testo).scene.forEach((s, i) => {
-      for (const a of s.azioni) if (a.comando === 'science_card') {
-        schede.push(a.parametri.card);
-        // la scheda sta in una scena che ha la sua battuta: spiega quello che si dice
-        assert.ok(s.azioni.some(x => x.comando === 'character_speak'), a.parametri.card + ': una scena con la battuta');
-        assert.equal(s.azioni.filter(x => x.comando === 'science_card').length, 1, d.chiave + ' scena ' + (i + 1) + ': una scheda sola');
-      }
-    });
-  }
-  assert.equal(schede.length, 24, 'quattordici nella Parte 1 corta, dieci nella Parte 2 corta');
-  assert.equal(new Set(schede).size, schede.length, 'nessuna ripetuta');
-  for (const l of ['it', 'en']) {
-    lingua = l;
-    for (const id of schede) {
-      const testi = S.testiScienza(id);
-      assert.ok(testi.domanda && testi.domanda.length <= 90, `${id} (${l}): domanda corta: ${testi.domanda}`);
-      assert.equal(testi.punti.length, 3, `${id} (${l}): tre punti`);
-      for (const p of testi.punti) assert.ok(p.length <= 120, `${id} (${l}): punto corto: ${p}`);
-    }
-  }
-  lingua = 'it';
-});
-prova('le versioni corte di «Interstellar» (v499): più brevi, con le stesse battute delle originali, parola per parola', () => {
+prova('le versioni corte di «Interstellar» (v500): più brevi, con le animazioni che spiegano, e le altre battute uguali alle originali', () => {
+  const NUOVE = ['sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
+  const usate = new Set();
   for (const [orig, corta] of [['storia_interstellar', 'storia_interstellar_scienza'], ['storia_interstellar2', 'storia_interstellar2_scienza']]) {
     const o = predefiniti.find(x => x.chiave === orig), c = predefiniti.find(x => x.chiave === corta);
     assert.ok(c && c.storia, corta + ' è una CosmoStoria');
     assert.equal(c.cast, o.cast, corta + ': lo stesso cast');
+    assert.ok(!/science_card/.test(c.testo + o.testo), 'niente schede');
     const so = analizza(o.testo).scene, scorta = analizza(c.testo).scene;
     assert.ok(scorta.length >= 18 && scorta.length <= 24 && scorta.length < so.length * 0.55, corta + ': corta, ' + scorta.length + ' scene');
-    // ogni battuta dice lo stesso testo di una battuta dell'originale (così
-    // la narrazione ritrova dal testo le voci vere registrate), in ordine
+    // una battuta è quella dell'originale, parola per parola (così la
+    // narrazione ritrova dal testo le voci vere registrate), oppure è stata
+    // riscritta, e allora la sua scena ha un'animazione nuova che la spiega
     for (const l of ['it', 'en']) {
       const testi = so.map(s => DIZ[l].messaggi[s.azioni.find(a => a.comando === 'character_speak').parametri.id]);
-      let dove = -1;
+      let dove = -1, riscritte = 0;
       scorta.forEach((s, i) => {
         const id = s.azioni.find(a => a.comando === 'character_speak').parametri.id;
+        const anim = s.azioni.filter(a => a.comando === 'effect' && NUOVE.includes(a.parametri.type));
+        anim.forEach(a => usate.add(a.parametri.type));
+        assert.equal(typeof DIZ[l].messaggi[id], 'string', id + ' (' + l + ')');
         const k = testi.indexOf(DIZ[l].messaggi[id], dove + 1);
-        assert.ok(k > dove, `${corta} scena ${i + 1} (${l}): una battuta dell'originale, dopo la precedente`);
-        dove = k;
+        if (k > dove) { dove = k; return; }
+        riscritte++;
+        assert.equal(anim.length, 1, `${corta} scena ${i + 1} (${l}): battuta riscritta, con la sua animazione`);
       });
+      assert.ok(riscritte >= 2 && riscritte <= 8, corta + ': battute riscritte ' + riscritte);
     }
     assert.ok(/story_title \{ id: 'storie\.titolo\.interstellar2?_scienza'/.test(c.testo), corta + ': il suo titolo');
   }
+  assert.deepEqual([...usate].sort(), NUOVE.slice().sort(), 'tutte le animazioni nuove in scena');
+});
+prova('le animazioni che spiegano «Interstellar» (v500): si disegnano, girano e sfumano a fine scena', () => {
+  const NUOVE = ['sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
+  for (const tipo of NUOVE) {
+    S.sgombra();
+    motore.avvia(demo(sc('planetarium_view', "character_show { target: 'Jupiter' }", `effect { type: ${tipo}, at: center, duration: 12 }`)), { ripristina() {} });
+    passo(10);
+    let disegni = 0;
+    for (const ms of [100, 1500, 3000, 6000, 10500]) {
+      S.stato.orologio = S.stato.effetti[0] ? S.stato.effetti[0].inizio + ms : S.stato.orologio;
+      const { ctx, chiamate } = telaFinta();
+      S.disegnaPersonaggi(ctx, 'cielo', [corpo('Jupiter', 200, 300, 3)], 800, 600);
+      disegni = Math.max(disegni, chiamate.length);
+    }
+    assert.ok(disegni > 60, tipo + ' disegna: ' + disegni);
+    motore.ferma && motore.ferma();
+  }
+  S.sgombra();
 });
 prova('lo Studio: la domanda finale nasce dagli eventi, e solo quando è adatta', () => {
   // v432: la domanda è facoltativa, spenta di serie

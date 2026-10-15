@@ -1146,7 +1146,11 @@
     tesseract: 4000, murph_room: 4000, liftoff: 4000, cooper_station: 4000, bedside: 4000, edmunds_planet: 4000,
     hypercube: 4000, dimensions: 4000, time_strip: 4000, books_fall: 4000, dust_binary: 4000, equations: 4000, morse_watch: 4000,
     // v488: le maree di Miller (l'orbita, le frecce della gravità, le gobbe)
-    tidal_orbit: 4000
+    tidal_orbit: 4000,
+    // v500: le animazioni che spiegano le «Interstellar» corte (§6-ter,
+    // `storDisegnaScienzaAnim`)
+    sphere_hole: 4000, light_bend: 4000, time_clocks: 4000, frame_drag: 4000,
+    tidal_stretch: 4000, spin_gravity: 4000, spin_match: 4000, time_loop: 4000
   };
   // v488: i disegni a tappe (`effect { stage }`): una scena per tappa
   const STOR_TAPPE = { fold: ['flat', 'bend', 'tunnel'], tidal_orbit: ['stretch', 'rock'] };
@@ -1169,7 +1173,10 @@
    * pellicola del tempo copriva l'orologio della scena seguente. A fine scena
    * sfumano in mezzo secondo (`via`); i botti e le scintille no: un botto in
    * coda a una scena non si taglia a metà. */
-  const STOR_LAVAGNE = ['fold', 'tidal_orbit', 'time_warp', 'orbit_path', 'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
+  const STOR_LAVAGNE = ['fold', 'tidal_orbit', 'time_warp', 'orbit_path', 'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch',
+    'sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
+  // v500: quelli che si disegnano in `storDisegnaScienzaAnim`
+  const STOR_ANIM_SCIENZA = ['sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
   const STOR_VIA_MS = 550;
   const STOR_CRESCITA_MS = 700;     // quanto ci mette un astro a crescere per portare il volto
   const STOR_RITORNO_MS = 750;      // e a tornare com'era quando la storia lo lascia
@@ -1746,7 +1753,6 @@
     ritorni: new Map(),        // id → { delta, k, da }
     effetti: [],
     domanda: null,             // il cartello della domanda al pubblico (v430, story_question)
-    scienza: null,             // la scheda «La scienza in breve» (v497, science_card)
     // v450, le storie cantate: i versi in corso (`character_sing`), il titolo
     // grande (`story_title`) e la canzone a cui la storia va a tempo
     // (`story_music { sync: on }`: dove era la canzone a che punto della demo,
@@ -1875,7 +1881,7 @@
   function storSgombra() {
     for (const p of stor.personaggi.values()) storRitorno(p);
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
-    stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null; stor.scienza = null;
+    stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
     stor.canti = []; stor.titolo = null; stor.canzone = null;
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
     Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel, ritmoScelta: null });
@@ -3616,6 +3622,8 @@
       storDisegnaFoglio(ctx, ef, x, y, s, t, L, H, ridotto);
     } else if (tipo === 'tidal_orbit') {
       storDisegnaMaree(ctx, ef, x, y, s, t, L, H, ridotto);
+    } else if (STOR_ANIM_SCIENZA.includes(tipo)) {
+      storDisegnaScienzaAnim(ctx, ef, x, y, t, L, H);
     } else if (tipo === 'time_warp') {
       // v482: il tempo che scappa (il pianeta di Miller): un orologio con le
       // lancette che corrono sempre più svelte, e i fogli del calendario che
@@ -5021,6 +5029,555 @@
     ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(tx, ty, tr * (1 + 0.06 * allunga), tr, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(tx + tr * 3.2, ty, tr * 0.32, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = 'rgba(226, 232, 240, 0.5)'; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(tx + tr * 1.2, ty); ctx.lineTo(tx + tr * 2.8, ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  /* v500, le animazioni che spiegano «Interstellar» (le versioni corte,
+   * `storia_interstellar_scienza` e `storia_interstellar2_scienza`). Chi le
+   * aveva chieste voleva meno parole scritte e più cose che si vedono
+   * succedere: «deve mostrare meglio le animazioni per spiegare i concetti,
+   * per bambini e per adulti». Ogni disegno mette in scena un'idea sola,
+   * con un prima e un dopo, e gira in tondo finché la battuta parla:
+   *
+   *   sphere_hole   il buco in un foglio (un cerchio) e il buco nello spazio
+   *                 (una sfera con dentro un'altra galassia)
+   *   light_bend    la luce del disco dietro Gargantua che scavalca l'ombra,
+   *                 sopra e sotto, e cosa vede l'occhio
+   *   time_clocks   l'orologio di Miller sul fondo del pozzo e quello della
+   *                 Terra: un giro della lancetta lì, sette calendari qui
+   *   frame_drag    lo spazio-tempo che gira come un mulinello attorno al
+   *                 buco nero che ruota, e il pianeta trascinato
+   *   tidal_stretch un buco nero piccolo che stira, uno gigante che no
+   *   spin_gravity  la ruota che gira: chi ci sta dentro è spinto sul
+   *                 pavimento, la palla lasciata va dritta e il pavimento
+   *                 le viene incontro
+   *   spin_match    il Ranger che gira come l'Endurance: rosso finché non
+   *                 sono allineati, verde quando girano insieme
+   *   time_loop     l'anello del tempo: la polvere, la partenza, Gargantua,
+   *                 il tesseratto, e di nuovo la polvere
+   *
+   * Niente parole sulla tela (le dice il personaggio), solo cifre e segni.
+   * Sono lavagne (`STOR_LAVAGNE`): sfumano a fine scena. Tutte si disegnano
+   * attorno al posto dell'effetto, grandi quanto il lato corto dello
+   * schermo per `size`. Col movimento ridotto la storia mostra il bagliore di
+   * sempre (`storDisegnaEffetto`). */
+  function storAlfaLavagna(ef, t) {
+    const tt = t - ef.inizio;
+    return Math.max(0, Math.min(tt / 500, (ef.durata - tt) / 400, 1)) * (ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1);
+  }
+  // Una freccia d'inchiostro col colore dentro, da (x1, y1) a (x2, y2)
+  function storFrecciaScienza(ctx, x1, y1, x2, y2, colore, w) {
+    const a = Math.atan2(y2 - y1, x2 - x1), pt = w * 2.6;
+    const ex = x2 - Math.cos(a) * pt * 0.6, ey = y2 - Math.sin(a) * pt * 0.6;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = w + 2;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.strokeStyle = colore; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.fillStyle = colore; ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 + Math.cos(a + 2.6) * pt, y2 + Math.sin(a + 2.6) * pt);
+    ctx.lineTo(x2 + Math.cos(a - 2.6) * pt, y2 + Math.sin(a - 2.6) * pt);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+  // Il buco nero piccolo dei disegni: l'ombra, l'anello di luce, il disco
+  function storBucoNeroScienza(ctx, x, y, r, inclina) {
+    const alone = ctx.createRadialGradient(x, y, r * 0.9, x, y, r * 3);
+    alone.addColorStop(0, 'rgba(253, 230, 138, 0.4)'); alone.addColorStop(1, 'rgba(253, 230, 138, 0)');
+    ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, r * 3, 0, Math.PI * 2); ctx.fill();
+    const k = inclina === undefined ? 0.28 : inclina;
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = r * 0.3;
+    ctx.beginPath(); ctx.ellipse(x, y, r * 2.3, r * 2.3 * k, 0, Math.PI, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fffbeb'; ctx.lineWidth = Math.max(1, r * 0.08); ctx.stroke();
+    ctx.strokeStyle = '#fde68a'; ctx.lineWidth = r * 0.32;
+    ctx.beginPath(); ctx.ellipse(x, y, r * 2.3, r * 2.3 * k, 0, 0, Math.PI); ctx.stroke();
+  }
+  // Una galassia a spirale (dentro al buco del foglio e alla sfera)
+  function storGalassiaScienza(ctx, x, y, r, giro) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(254, 243, 199, 0.95)'); g.addColorStop(0.25, 'rgba(251, 191, 36, 0.45)'); g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(253, 224, 71, 0.75)'; ctx.lineWidth = Math.max(1, r * 0.08);
+    for (let b = 0; b < 2; b++) {
+      ctx.beginPath();
+      for (let i = 0; i <= 26; i++) {
+        const a = giro + b * Math.PI + i * 0.2, d = r * (0.08 + i * 0.034);
+        const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * 0.62;
+        if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+    }
+  }
+  function storStelleScienza(ctx, x, y, r, seme0, n) {
+    const d = { s: seme0 || 7 };
+    ctx.fillStyle = '#f8fafc';
+    for (let i = 0; i < (n || 30); i++) {
+      const a = dado(d) * Math.PI * 2, q = Math.sqrt(dado(d)) * r;
+      ctx.globalAlpha *= 1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * q, y + Math.sin(a) * q, Math.max(0.6, r * 0.012 * (1 + dado(d) * 2)), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function storDisegnaScienzaAnim(ctx, ef, x, y, t, L, H) {
+    const alfa = storAlfaLavagna(ef, t);
+    if (!(alfa > 0.01)) return;
+    const S = Math.min(L, H) * 0.46 * ef.scala, tt = t - ef.inizio, sec = tt / 1000;
+    const w = Math.max(2.5, S * 0.018);
+    ctx.save();
+    ctx.globalAlpha = alfa; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const tipo = ef.tipo;
+    if (tipo === 'sphere_hole') {
+      // a sinistra il foglio (due dimensioni) col suo buco: un cerchio
+      const fx = x - S * 0.62, fy = y + S * 0.05, fw = S * 0.5, fh = S * 0.22, sk = S * 0.16;
+      const apri = liscio(tt / 1400);
+      const angoli = [[fx - fw + sk, fy - fh], [fx + fw + sk, fy - fh], [fx + fw - sk, fy + fh], [fx - fw - sk, fy + fh]];
+      ctx.fillStyle = 'rgba(224, 231, 255, 0.92)';
+      ctx.beginPath(); angoli.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)'; ctx.lineWidth = 1;
+      for (let i = 1; i < 8; i++) {
+        const u = i / 8;
+        ctx.beginPath(); ctx.moveTo(angoli[0][0] + (angoli[1][0] - angoli[0][0]) * u, angoli[0][1]); ctx.lineTo(angoli[3][0] + (angoli[2][0] - angoli[3][0]) * u, angoli[3][1]); ctx.stroke();
+      }
+      for (let i = 1; i < 4; i++) {
+        const u = i / 4, ya = fy - fh + 2 * fh * u, xa = fx - fw + sk - 2 * sk * u;
+        ctx.beginPath(); ctx.moveTo(xa, ya); ctx.lineTo(xa + 2 * fw, ya); ctx.stroke();
+      }
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2;
+      ctx.beginPath(); angoli.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.stroke();
+      const hr = S * 0.15 * apri;
+      if (hr > 1) {
+        ctx.save();
+        ctx.beginPath(); ctx.ellipse(fx, fy, hr * 1.35, hr * 0.62, 0, 0, Math.PI * 2); ctx.clip();
+        ctx.fillStyle = '#0b1030'; ctx.fillRect(fx - hr * 2, fy - hr, hr * 4, hr * 2);
+        storStelleScienza(ctx, fx, fy, hr * 1.3, 11, 14);
+        storGalassiaScienza(ctx, fx, fy, hr * 0.9, sec * 0.6);
+        ctx.restore();
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = Math.max(1.5, S * 0.012);
+        ctx.beginPath(); ctx.ellipse(fx, fy, hr * 1.35, hr * 0.62, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      // il segno delle due dimensioni: un quadrato
+      const q = S * 0.07;
+      ctx.strokeStyle = '#c7d2fe'; ctx.lineWidth = 2.2;
+      ctx.strokeRect(fx - q / 2, fy - fh - S * 0.2 - q / 2, q, q);
+      // la freccia: si passa a tre dimensioni
+      const pas = liscio((tt - 1600) / 900);
+      if (pas > 0.01) {
+        ctx.globalAlpha = alfa * pas;
+        const ax0 = fx + fw * 0.7, ax1 = x + S * 0.12;
+        const pulsa = 1 + 0.08 * Math.sin(sec * 4);
+        storFrecciaScienza(ctx, ax0, fy, ax0 + (ax1 - ax0) * pas, fy, '#fbbf24', w * pulsa);
+        ctx.globalAlpha = alfa;
+      }
+      // a destra la sfera: il buco nello spazio, con dentro l'altra galassia
+      const sf = liscio((tt - 2300) / 1100);
+      if (sf > 0.01) {
+        const cx = x + S * 0.55, cy = y, cr = S * 0.36 * (0.6 + 0.4 * sf);
+        ctx.globalAlpha = alfa * sf;
+        const g = ctx.createRadialGradient(cx - cr * 0.3, cy - cr * 0.3, cr * 0.1, cx, cy, cr);
+        g.addColorStop(0, '#1e3a8a'); g.addColorStop(0.8, '#0b1030'); g.addColorStop(1, '#020617');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.clip();
+        storStelleScienza(ctx, cx, cy, cr, 23, 40);
+        storGalassiaScienza(ctx, cx + cr * 0.12, cy - cr * 0.05, cr * 0.6, sec * 0.5);
+        // meridiani e paralleli che girano: è una palla, non un disco
+        ctx.strokeStyle = 'rgba(147, 197, 253, 0.35)'; ctx.lineWidth = 1;
+        for (let i = 0; i < 6; i++) {
+          const a = (sec * 0.4 + i / 6 * Math.PI) % Math.PI;
+          ctx.beginPath(); ctx.ellipse(cx, cy, Math.abs(Math.cos(a)) * cr, cr, 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        for (const k of [-0.6, -0.3, 0, 0.3, 0.6]) {
+          ctx.beginPath(); ctx.ellipse(cx, cy + k * cr, cr * Math.sqrt(1 - k * k), cr * 0.12 * Math.sqrt(1 - k * k), 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+        // l'anello di Einstein sul bordo, e un riflesso
+        ctx.strokeStyle = 'rgba(253, 230, 138, 0.9)'; ctx.lineWidth = Math.max(2, cr * 0.05);
+        ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.beginPath(); ctx.ellipse(cx - cr * 0.4, cy - cr * 0.45, cr * 0.22, cr * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();
+        // il segno delle tre dimensioni: un cubo
+        const c = S * 0.055, ox = cx, oy = cy - cr - S * 0.12;
+        ctx.strokeStyle = '#c7d2fe'; ctx.lineWidth = 2.2;
+        ctx.strokeRect(ox - c, oy - c * 0.6, c * 1.4, c * 1.4);
+        ctx.strokeRect(ox - c * 0.55, oy - c * 1.05, c * 1.4, c * 1.4);
+        for (const [a1, b1] of [[0, 0], [1.4, 0], [0, 1.4], [1.4, 1.4]]) {
+          ctx.beginPath(); ctx.moveTo(ox - c + a1 * c, oy - c * 0.6 + b1 * c); ctx.lineTo(ox - c * 0.55 + a1 * c, oy - c * 1.05 + b1 * c); ctx.stroke();
+        }
+      }
+    } else if (tipo === 'light_bend') {
+      // Gargantua di lato: l'ombra, il disco di taglio. La luce del disco
+      // che sta dietro scavalca l'ombra sopra e sotto, e arriva all'occhio
+      const r = S * 0.16, ex = x + S * 0.95, ey = y, px = x - S * 0.62, py = y;
+      storBucoNeroScienza(ctx, x, y, r, 0.12);
+      // la strada dritta è chiusa: l'ombra la ferma
+      ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(248, 113, 113, 0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x - r, y); ctx.stroke(); ctx.setLineDash([]);
+      const xx = x - r * 1.5, xr = r * 0.32;
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(xx - xr, y - S * 0.16 - xr); ctx.lineTo(xx + xr, y - S * 0.16 + xr); ctx.moveTo(xx + xr, y - S * 0.16 - xr); ctx.lineTo(xx - xr, y - S * 0.16 + xr); ctx.stroke();
+      // il punto del disco dietro, che brilla
+      const g = ctx.createRadialGradient(px, py, 0, px, py, S * 0.09);
+      g.addColorStop(0, '#fffbeb'); g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, S * 0.09, 0, Math.PI * 2); ctx.fill();
+      // le due strade curve, sopra e sotto
+      const strade = [[x - S * 0.05, y - S * 0.78], [x - S * 0.05, y + S * 0.78]];
+      const punto = (c, u) => [(1 - u) * (1 - u) * px + 2 * (1 - u) * u * c[0] + u * u * ex, (1 - u) * (1 - u) * py + 2 * (1 - u) * u * c[1] + u * u * ey];
+      const mostra = liscio(tt / 1200);
+      for (const c of strade) {
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)'; ctx.lineWidth = Math.max(2, S * 0.012);
+        ctx.beginPath();
+        for (let i = 0; i <= 40 * mostra; i++) { const [a, b] = punto(c, i / 40); if (i) ctx.lineTo(a, b); else ctx.moveTo(a, b); }
+        ctx.stroke();
+        // i fotoni che corrono, con la scia
+        for (let k = 0; k < 4; k++) {
+          const u = ((sec * 0.42 + k / 4) % 1);
+          if (u > mostra) continue;
+          for (let j = 0; j < 6; j++) {
+            const [a, b] = punto(c, Math.max(0, u - j * 0.012));
+            ctx.globalAlpha = alfa * (1 - j / 6);
+            ctx.fillStyle = j ? '#fde68a' : '#ffffff';
+            ctx.beginPath(); ctx.arc(a, b, Math.max(1.5, S * 0.016) * (1 - j / 8), 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.globalAlpha = alfa;
+        }
+      }
+      // l'occhio di chi guarda
+      const er = S * 0.07;
+      ctx.fillStyle = '#f8fafc'; ctx.beginPath();
+      ctx.moveTo(ex + er * 1.4, ey); ctx.quadraticCurveTo(ex + er * 0.2, ey - er * 1.1, ex - er, ey);
+      ctx.quadraticCurveTo(ex + er * 0.2, ey + er * 1.1, ex + er * 1.4, ey); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(ex + er * 0.05, ey, er * 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = INCHIOSTRO; ctx.beginPath(); ctx.arc(ex + er * 0.05, ey, er * 0.2, 0, Math.PI * 2); ctx.fill();
+      // e cosa vede: l'ombra con l'anello sopra e sotto (il nuvoletto)
+      const vede = liscio((tt - 1800) / 900);
+      if (vede > 0.01) {
+        const bx = ex - S * 0.02, by = ey - S * 0.5, br = S * 0.2;
+        ctx.globalAlpha = alfa * vede;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 248, 235, 0.85)'; ctx.lineWidth = 2; ctx.stroke();
+        for (const [dx, dy, rr] of [[-0.25, 1.15, 0.09], [-0.12, 1.35, 0.055]]) { ctx.beginPath(); ctx.arc(bx + dx * br, by + dy * br, rr * br * 2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'; ctx.fill(); ctx.stroke(); }
+        const gr = br * 0.24;
+        ctx.save(); ctx.beginPath(); ctx.arc(bx, by, br - 2, 0, Math.PI * 2); ctx.clip();
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = gr * 0.45;
+        ctx.beginPath(); ctx.ellipse(bx, by - gr * 0.15, gr * 1.55, gr * 1.35, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(bx, by + gr * 0.15, gr * 1.45, gr * 1.15, 0, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();
+        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(bx, by, gr, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fde68a'; ctx.lineWidth = gr * 0.4;
+        ctx.beginPath(); ctx.ellipse(bx, by, gr * 2.6, gr * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(bx, by, gr * 0.98, Math.PI, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    } else if (tipo === 'time_clocks') {
+      // un giro della lancetta di Miller (un'ora) = sette calendari della
+      // Terra (sette anni). Il ciclo dura `giro` secondi e ricomincia.
+      const giro = 9;
+      const u = (sec % giro) / giro;
+      const orologio = (cx, cy, cr, angoloM, angoloH, cornice, sfocato) => {
+        ctx.fillStyle = '#fff8eb'; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = cornice; ctx.lineWidth = cr * 0.12; ctx.stroke();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, cr * 1.06, 0, Math.PI * 2); ctx.stroke();
+        for (let i = 0; i < 12; i++) {
+          const a = i * Math.PI / 6;
+          ctx.lineWidth = i % 3 ? 1.2 : 2.4;
+          ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * cr * 0.78, cy + Math.sin(a) * cr * 0.78); ctx.lineTo(cx + Math.cos(a) * cr * 0.9, cy + Math.sin(a) * cr * 0.9); ctx.stroke();
+        }
+        if (sfocato) {
+          // le lancette corrono così veloci che lasciano un ventaglio
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 0.75);
+          g.addColorStop(0, 'rgba(28, 18, 54, 0.25)'); g.addColorStop(1, 'rgba(28, 18, 54, 0.05)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, cr * 0.72, angoloM - 1.6, angoloM); ctx.closePath(); ctx.fill();
+        }
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = cr * 0.07;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angoloH) * cr * 0.45, cy + Math.sin(angoloH) * cr * 0.45); ctx.stroke();
+        ctx.strokeStyle = '#dc2626'; ctx.lineWidth = cr * 0.045;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angoloM) * cr * 0.72, cy + Math.sin(angoloM) * cr * 0.72); ctx.stroke();
+        ctx.fillStyle = INCHIOSTRO; ctx.beginPath(); ctx.arc(cx, cy, cr * 0.06, 0, Math.PI * 2); ctx.fill();
+      };
+      // Miller: sul fondo di un pozzo di gravità, la lancetta lenta
+      const mx = x - S * 0.55, my = y - S * 0.02, cr = S * 0.22;
+      ctx.strokeStyle = 'rgba(147, 197, 253, 0.5)'; ctx.lineWidth = 1.2;
+      for (let i = 1; i <= 6; i++) {
+        const rr = cr * (0.6 + i * 0.32), dy = cr * 1.5 - cr * 1.1 / i;
+        ctx.beginPath(); ctx.ellipse(mx, my + dy + cr * 0.4, rr, rr * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      for (let i = 0; i < 10; i++) {
+        const a = i / 10 * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * cr * 0.9, my + cr * 1.25 + Math.sin(a) * cr * 0.2); ctx.lineTo(mx + Math.cos(a) * cr * 2.5, my + cr * 1.9 + Math.sin(a) * cr * 0.55); ctx.stroke();
+      }
+      storBucoNeroScienza(ctx, mx, my + cr * 2.05, cr * 0.22, 0.25);
+      orologio(mx, my, cr, -Math.PI / 2 + u * Math.PI * 2, -Math.PI / 2 + u * Math.PI / 6, '#7c3aed', false);
+      // l'arco di un'ora che si riempie attorno
+      ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = cr * 0.1;
+      ctx.beginPath(); ctx.arc(mx, my, cr * 1.28, -Math.PI / 2, -Math.PI / 2 + u * Math.PI * 2); ctx.stroke();
+      // la Terra: le lancette corrono, i calendari volano
+      const tx = x + S * 0.55, ty = y - S * 0.12;
+      orologio(tx, ty, cr, -Math.PI / 2 + sec * 40, -Math.PI / 2 + sec * 3.3, '#2563eb', true);
+      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(tx + cr * 0.95, ty - cr * 0.95, cr * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.arc(tx + cr * 0.88, ty - cr * 1.02, cr * 0.13, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(tx + cr * 0.95, ty - cr * 0.95, cr * 0.3, 0, Math.PI * 2); ctx.stroke();
+      // sette calendari, uno per anno
+      const n = Math.min(7, Math.floor(u * 7.6));
+      const cw = cr * 0.36, ch = cr * 0.44, gap = cr * 0.1, x0 = tx - (7 * cw + 6 * gap) / 2, y0 = ty + cr * 1.45;
+      for (let i = 0; i < 7; i++) {
+        const cx = x0 + i * (cw + gap);
+        const nuovo = i === n - 1 ? liscio((u * 7.6 - i) * 2) : 1;
+        if (i < n) {
+          ctx.save(); ctx.translate(cx + cw / 2, y0 + ch / 2); ctx.scale(nuovo, nuovo);
+          ctx.fillStyle = '#f8fafc'; ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
+          ctx.fillStyle = '#ef4444'; ctx.fillRect(-cw / 2, -ch / 2, cw, ch * 0.28);
+          ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2; ctx.strokeRect(-cw / 2, -ch / 2, cw, ch);
+          ctx.fillStyle = INCHIOSTRO; ctx.font = `800 ${ch * 0.5}px ${caratterePagina()}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(String(i + 1), 0, ch * 0.13);
+          ctx.restore();
+        } else {
+          ctx.strokeStyle = 'rgba(248, 250, 252, 0.3)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+          ctx.strokeRect(cx, y0, cw, ch); ctx.setLineDash([]);
+        }
+      }
+    } else if (tipo === 'frame_drag') {
+      // lo spazio-tempo a imbuto, coi raggi torti dal buco nero che gira:
+      // più vicino, più girano (il mulinello), e il pianeta va con loro
+      const r0 = S * 0.12, rmax = S * 1.05, piatto = 0.38, giro = sec * 0.9;
+      const prof = rr => S * 0.5 * Math.pow(r0 / rr, 0.9);
+      const torsione = rr => 2.6 * Math.pow(r0 / rr, 1.3);
+      const punto = (rr, a) => [x + Math.cos(a) * rr, y + Math.sin(a) * rr * piatto + prof(rr) - S * 0.15];
+      ctx.lineWidth = 1.2;
+      for (let i = 1; i <= 9; i++) {
+        const rr = r0 * Math.pow(rmax / r0, i / 9);
+        ctx.strokeStyle = `rgba(147, 197, 253, ${0.25 + 0.35 * (1 - i / 9)})`;
+        ctx.beginPath();
+        for (let k = 0; k <= 60; k++) { const [a, b] = punto(rr, k / 60 * Math.PI * 2); if (k) ctx.lineTo(a, b); else ctx.moveTo(a, b); }
+        ctx.stroke();
+      }
+      for (let j = 0; j < 18; j++) {
+        const a0 = j / 18 * Math.PI * 2;
+        ctx.strokeStyle = 'rgba(165, 180, 252, 0.55)';
+        ctx.beginPath();
+        for (let k = 0; k <= 30; k++) {
+          const rr = r0 * Math.pow(rmax / r0, k / 30);
+          const [a, b] = punto(rr, a0 + torsione(rr) + giro * Math.pow(r0 / rr, 1.1));
+          if (k) ctx.lineTo(a, b); else ctx.moveTo(a, b);
+        }
+        ctx.stroke();
+      }
+      // le scintille che vengono trascinate nel vortice
+      const d = { s: 5 };
+      for (let i = 0; i < 26; i++) {
+        const rr = r0 * Math.pow(rmax / r0, 0.15 + dado(d) * 0.8);
+        const a = dado(d) * Math.PI * 2 + giro * 1.6 * Math.pow(r0 / rr, 1.1) * 3;
+        const [a1, b1] = punto(rr, a);
+        ctx.fillStyle = 'rgba(253, 230, 138, 0.85)'; ctx.beginPath(); ctx.arc(a1, b1, Math.max(1.2, S * 0.008), 0, Math.PI * 2); ctx.fill();
+      }
+      const [hx, hy] = punto(r0, 0);
+      storBucoNeroScienza(ctx, x, hy, r0 * 0.75, 0.3);
+      // la freccia che dice da che parte gira
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = w; ctx.beginPath();
+      ctx.ellipse(x, hy, r0 * 2.1, r0 * 2.1 * piatto, 0, 0.3, 2.4); ctx.stroke();
+      const fa = 2.4, fx = x + Math.cos(fa) * r0 * 2.1, fy = hy + Math.sin(fa) * r0 * 2.1 * piatto;
+      storFrecciaScienza(ctx, fx + 1, fy - 0.5, fx - 2, fy - 1.5, '#fbbf24', w);
+      // il pianeta di Miller, vicinissimo, che corre col mulinello
+      const rp = r0 * 3.2, ap = giro * 1.4;
+      const [px, py] = punto(rp, ap + torsione(rp));
+      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(px, py, S * 0.05, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(px - S * 0.015, py - S * 0.015, S * 0.015, 0, Math.PI * 2); ctx.fill();
+    } else if (tipo === 'tidal_stretch') {
+      // due astronauti: a sinistra vicino a un buco nero piccolo (stirato
+      // come uno spaghetto), a destra sull'orizzonte di uno gigante (intero)
+      const omino = (cx, cy, k, sc) => {
+        // `k` quanto è stirato (1: niente), `sc` la misura
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(sc / k, sc * k);
+        ctx.fillStyle = '#f1f5f9'; ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.6 / sc;
+        rettangolo(ctx, -0.32, -0.25, 0.64, 0.75, 0.2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -0.5, 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#1e3a8a'; ctx.beginPath(); ctx.ellipse(0, -0.5, 0.2, 0.14, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f1f5f9';
+        for (const sx of [-1, 1]) { rettangolo(ctx, sx * 0.3 - 0.09, -0.15, 0.18, 0.5, 0.08); ctx.fill(); ctx.stroke(); rettangolo(ctx, sx * 0.15 - 0.1, 0.45, 0.2, 0.5, 0.08); ctx.fill(); ctx.stroke(); }
+        ctx.restore();
+      };
+      const ciclo = (sec % 7) / 7, k = 1 + 1.6 * liscio((ciclo - 0.1) / 0.55);
+      // due finestre arrotondate, una per buco nero
+      const lx = x - S * 0.52, hb = y + S * 0.62, fw = S * 0.48, fh = S * 0.86;
+      for (const cx of [lx, x + S * 0.52]) {
+        ctx.fillStyle = '#0b1226'; rettangolo(ctx, cx - fw, y - fh, fw * 2, fh * 2, S * 0.08); ctx.fill();
+        ctx.strokeStyle = 'rgba(248, 250, 252, 0.45)'; ctx.lineWidth = 2; ctx.stroke();
+      }
+      ctx.save(); rettangolo(ctx, lx - fw, y - fh, fw * 2, fh * 2, S * 0.08); ctx.clip();
+      storBucoNeroScienza(ctx, lx, hb, S * 0.09, 0.25);
+      const sc = S * 0.32;
+      omino(lx, y - S * 0.05 + (k - 1) * sc * 0.08, k, sc);
+      const piedi = y - S * 0.05 + sc * 0.95 * k * 0.95, testa = y - S * 0.05 - sc * 0.8 * k * 0.9;
+      storFrecciaScienza(ctx, lx + sc * 0.55, piedi - sc * 0.45, lx + sc * 0.55, Math.min(piedi + S * 0.12, y + fh - S * 0.05), '#ef4444', w);
+      storFrecciaScienza(ctx, lx + sc * 0.55, testa, lx + sc * 0.55, testa + S * 0.06, '#facc15', w);
+      ctx.restore();
+      // la finestra di destra: l'orizzonte di un buco nero enorme è quasi piatto
+      const rx = x + S * 0.52, R0 = S * 3;
+      ctx.save(); rettangolo(ctx, rx - fw, y - fh, fw * 2, fh * 2, S * 0.08); ctx.clip();
+      const alone = ctx.createRadialGradient(rx, hb + R0 - S * 0.12, R0 * 0.98, rx, hb + R0 - S * 0.12, R0 * 1.1);
+      alone.addColorStop(0, 'rgba(253, 230, 138, 0.6)'); alone.addColorStop(1, 'rgba(253, 230, 138, 0)');
+      ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(rx, hb + R0 - S * 0.12, R0 * 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(rx, hb + R0 - S * 0.12, R0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+      const galleggia = Math.sin(sec * 1.5) * S * 0.02;
+      omino(rx, y + galleggia, 1, sc);
+      storFrecciaScienza(ctx, rx + sc * 0.55, y + sc * 0.6 + galleggia, rx + sc * 0.55, y + sc * 0.6 + S * 0.09 + galleggia, '#ef4444', w);
+      storFrecciaScienza(ctx, rx + sc * 0.55, y - sc * 0.75 + galleggia, rx + sc * 0.55, y - sc * 0.75 + S * 0.085 + galleggia, '#facc15', w);
+    } else if (tipo === 'spin_gravity') {
+      // la ruota che gira (la Stazione Cooper, l'Endurance). Gli abitanti
+      // stanno sul bordo con la testa verso il centro; la palla lasciata
+      // andare vola dritta e il pavimento, girando, le viene incontro
+      const R = S * 0.62, om = 0.55, a0 = sec * om;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'; ctx.beginPath(); ctx.arc(x, y, R * 1.12, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = R * 0.14; ctx.beginPath(); ctx.arc(x, y, R * 1.05, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#4ade80'; ctx.lineWidth = R * 0.05; ctx.beginPath(); ctx.arc(x, y, R * 0.96, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R * 1.12, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, R * 0.93, 0, Math.PI * 2); ctx.stroke();
+      // i raggi della ruota e il mozzo
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) { const a = a0 + i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * 0.12, y + Math.sin(a) * R * 0.12); ctx.lineTo(x + Math.cos(a) * R * 0.93, y + Math.sin(a) * R * 0.93); ctx.stroke(); }
+      ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(x, y, R * 0.12, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
+      // le case e gli abitanti sul pavimento, che girano con la ruota
+      for (let i = 0; i < 8; i++) {
+        const a = a0 + i * Math.PI / 4;
+        ctx.save(); ctx.translate(x + Math.cos(a) * R * 0.93, y + Math.sin(a) * R * 0.93); ctx.rotate(a + Math.PI / 2);
+        if (i % 2) {
+          ctx.fillStyle = '#fde68a'; ctx.fillRect(-R * 0.06, 0, R * 0.12, R * 0.1);
+          ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.moveTo(-R * 0.08, R * 0.1); ctx.lineTo(0, R * 0.17); ctx.lineTo(R * 0.08, R * 0.1); ctx.closePath(); ctx.fill();
+        } else {
+          ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, R * 0.1); ctx.moveTo(-R * 0.03, 0); ctx.lineTo(0, R * 0.05); ctx.lineTo(R * 0.03, 0); ctx.stroke();
+          ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(0, R * 0.13, R * 0.03, 0, Math.PI * 2); ctx.fill();
+          // la spinta del pavimento, verso il centro (verde)
+          if (i === 0) storFrecciaScienza(ctx, R * 0.08, -R * 0.02, R * 0.08, R * 0.2, '#22c55e', w * 0.8);
+        }
+        ctx.restore();
+      }
+      // la palla: lasciata andare dal mozzo ogni quattro secondi, va dritta
+      const ciclo = 4, q = (sec % ciclo) / ciclo, nascita = sec - q * ciclo;
+      const aP = nascita * om + Math.PI * 0.25, v = R * 0.93;
+      const sx = x + Math.cos(aP) * R * 0.3, sy = y + Math.sin(aP) * R * 0.3;
+      const vx = -Math.sin(aP), vy = Math.cos(aP);
+      const lung = Math.sqrt(0.93 * 0.93 - 0.3 * 0.3) * R;
+      const fq = Math.min(1, q / 0.75), bx = sx + vx * lung * fq, by = sy + vy * lung * fq;
+      ctx.setLineDash([5, 6]); ctx.strokeStyle = 'rgba(251, 191, 36, 0.7)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + vx * lung, sy + vy * lung); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(bx, by, R * 0.045, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
+      if (q > 0.75) { ctx.strokeStyle = `rgba(253, 224, 71, ${1 - (q - 0.75) / 0.25})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, R * (0.06 + (q - 0.75) * 0.5), 0, Math.PI * 2); ctx.stroke(); }
+      // il verso in cui gira
+      ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(x, y, R * 1.28, -0.9, -0.1); ctx.stroke();
+      storFrecciaScienza(ctx, x + Math.cos(-0.15) * R * 1.28, y + Math.sin(-0.15) * R * 1.28, x + Math.cos(-0.05) * R * 1.28, y + Math.sin(-0.05) * R * 1.28, '#60a5fa', w);
+    } else if (tipo === 'spin_match') {
+      // l'Endurance (l'anello) gira; il Ranger al centro prima è fermo
+      // (rosso: il portello e il muso non combaciano), poi accelera e gira
+      // con lei (verde: fermi l'uno rispetto all'altra), poi frenano insieme
+      const ciclo = 11, u = (sec % ciclo);
+      const omE = u < 8 ? 2.2 : 2.2 * Math.max(0, 1 - (u - 8) / 2.2);
+      // l'angolo dell'anello: integrato a pezzi (velocità costante, poi freno)
+      const angE = u < 8 ? u * 2.2 : 8 * 2.2 + 2.2 * (u - 8) - 2.2 * (u - 8) * (u - 8) / 4.4;
+      const spinR = u < 2.5 ? 0 : u < 5 ? liscio((u - 2.5) / 2.5) : 1;
+      // il Ranger: angolo che insegue quello dell'anello
+      const angR = u < 2.5 ? 0.6 : u < 5 ? 0.6 + (angE - 0.6) * liscio((u - 2.5) / 2.5) : angE;
+      const R = S * 0.48;
+      // l'anello: dodici moduli, con la scia quando gira
+      for (let i = 0; i < 12; i++) {
+        const a = angE + i * Math.PI / 6;
+        ctx.save(); ctx.translate(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.rotate(a);
+        ctx.fillStyle = i % 3 ? '#e2e8f0' : '#93c5fd'; rettangolo(ctx, -R * 0.09, -R * 0.13, R * 0.18, R * 0.26, R * 0.04); ctx.fill();
+        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * 0.22, y + Math.sin(a) * R * 0.22); ctx.lineTo(x + Math.cos(a) * R * 0.86, y + Math.sin(a) * R * 0.86); ctx.stroke();
+      }
+      if (omE > 0.3) {
+        ctx.strokeStyle = `rgba(226, 232, 240, ${0.12 * omE})`; ctx.lineWidth = R * 0.24;
+        ctx.beginPath(); ctx.arc(x, y, R, angE - 0.5, angE); ctx.stroke();
+      }
+      // il portello del mozzo (giallo), che gira con l'anello
+      ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(x, y, R * 0.22, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
+      const porta = [x + Math.cos(angE) * R * 0.22, y + Math.sin(angE) * R * 0.22];
+      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(porta[0], porta[1], R * 0.05, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // il Ranger visto dall'alto, sopra al mozzo
+      const scarto = Math.abs(Math.atan2(Math.sin(angE - angR), Math.cos(angE - angR)));
+      const allineati = scarto < 0.08 && spinR > 0.98;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(angR);
+      ctx.fillStyle = '#f8fafc'; ctx.beginPath();
+      ctx.moveTo(R * 0.34, 0); ctx.lineTo(-R * 0.16, -R * 0.15); ctx.lineTo(-R * 0.1, 0); ctx.lineTo(-R * 0.16, R * 0.15); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#1e3a8a'; ctx.beginPath(); ctx.arc(R * 0.12, 0, R * 0.04, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // il segno: rosso finché non combaciano, verde quando girano insieme
+      ctx.strokeStyle = allineati ? '#22c55e' : '#ef4444'; ctx.lineWidth = w * 1.2;
+      ctx.beginPath(); ctx.arc(x, y, R * 0.3, Math.min(angR, angE), Math.max(angR, angE) + (allineati ? Math.PI * 2 : 0)); ctx.stroke();
+      if (allineati) {
+        const pulsa = 0.5 + 0.5 * Math.sin(sec * 6);
+        ctx.strokeStyle = `rgba(34, 197, 94, ${0.4 + 0.4 * pulsa})`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x, y, R * 1.25, 0, Math.PI * 2); ctx.stroke();
+      }
+      // i getti di manovra mentre il Ranger accelera
+      if (u >= 2.5 && u < 5) {
+        for (const sgn of [-1, 1]) {
+          const a = angR + Math.PI + sgn * 0.5, jx = x + Math.cos(a) * R * 0.2, jy = y + Math.sin(a) * R * 0.2;
+          const g = ctx.createRadialGradient(jx, jy, 0, jx, jy, R * 0.12);
+          g.addColorStop(0, 'rgba(255, 237, 213, 0.95)'); g.addColorStop(1, 'rgba(251, 146, 60, 0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(jx, jy, R * 0.12, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    } else if (tipo === 'time_loop') {
+      // l'anello del tempo: quattro tappe su un cerchio, e una luce che ci
+      // corre sopra per sempre. Nessuna è la prima.
+      const R = S * 0.62, giro = sec * 0.55;
+      ctx.strokeStyle = 'rgba(253, 230, 138, 0.35)'; ctx.lineWidth = R * 0.06;
+      ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 2 + 0.55;
+        storFrecciaScienza(ctx, x + Math.cos(a - 0.2) * R, y + Math.sin(a - 0.2) * R, x + Math.cos(a) * R, y + Math.sin(a) * R, '#fbbf24', w);
+      }
+      const testa = (giro % (Math.PI * 2));
+      for (let j = 0; j < 14; j++) {
+        const a = -Math.PI / 2 + testa - j * 0.06;
+        ctx.globalAlpha = alfa * (1 - j / 14);
+        ctx.fillStyle = j ? '#fde68a' : '#ffffff';
+        ctx.beginPath(); ctx.arc(x + Math.cos(a) * R, y + Math.sin(a) * R, R * 0.05 * (1 - j / 20), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = alfa;
+      const tappe = [
+        (cx, cy, r) => { // la polvere sul pavimento, a righe
+          ctx.fillStyle = '#d6b88a'; let px = cx - r * 0.6;
+          for (const l of [1, 0, 1, 1, 0]) { const ww = l ? r * 0.2 : r * 0.07; ctx.fillRect(px, cy - r * 0.5, ww, r); px += ww + r * 0.08; }
+        },
+        (cx, cy, r) => { // la partenza: il razzo con la fiamma
+          ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.moveTo(cx, cy - r * 0.7); ctx.lineTo(cx + r * 0.22, cy + r * 0.25); ctx.lineTo(cx - r * 0.22, cy + r * 0.25); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.fillStyle = '#fb923c'; ctx.beginPath(); ctx.moveTo(cx - r * 0.14, cy + r * 0.28); ctx.lineTo(cx, cy + r * (0.6 + 0.1 * Math.sin(sec * 12))); ctx.lineTo(cx + r * 0.14, cy + r * 0.28); ctx.closePath(); ctx.fill();
+        },
+        (cx, cy, r) => storBucoNeroScienza(ctx, cx, cy, r * 0.28, 0.3),
+        (cx, cy, r) => { // il tesseratto: un cubo dentro un cubo
+          const k = 0.5 + 0.05 * Math.sin(sec * 2), f = r * 0.55, d2 = f * k;
+          ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 1.8;
+          ctx.strokeRect(cx - f, cy - f, 2 * f, 2 * f); ctx.strokeRect(cx - d2, cy - d2, 2 * d2, 2 * d2);
+          ctx.strokeStyle = '#fbbf24';
+          for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.beginPath(); ctx.moveTo(cx + sx * f, cy + sy * f); ctx.lineTo(cx + sx * d2, cy + sy * d2); ctx.stroke(); }
+        }
+      ];
+      tappe.forEach((disegna, i) => {
+        const a = -Math.PI / 2 + i * Math.PI / 2;
+        const cx = x + Math.cos(a) * R, cy = y + Math.sin(a) * R, r = S * 0.16;
+        const dist = Math.abs(Math.atan2(Math.sin(testa - i * Math.PI / 2), Math.cos(testa - i * Math.PI / 2)));
+        const acceso = Math.max(0, 1 - dist / 0.6);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = acceso > 0 ? `rgba(253, 224, 71, ${0.5 + 0.5 * acceso})` : 'rgba(248, 250, 252, 0.5)'; ctx.lineWidth = 2 + 3 * acceso; ctx.stroke();
+        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r - 2, 0, Math.PI * 2); ctx.clip();
+        disegna(cx, cy, r * (1 + 0.1 * acceso));
+        ctx.restore();
+      });
+      // al centro, il punto di domanda che nessuno sa sciogliere
+      ctx.font = `900 ${S * 0.3}px ${caratterePagina()}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = `rgba(253, 230, 138, ${0.35 + 0.2 * Math.sin(sec * 2)})`;
+      ctx.fillText('?', x, y + S * 0.02);
+    }
     ctx.restore();
   }
 
@@ -9007,7 +9564,6 @@
       if (ultimo && ora - ultimo.fine < STOR_KARAOKE.resta) { c = ultimo; alfa = 1 - (ora - ultimo.fine) / STOR_KARAOKE.resta; }
     }
     if (c && c.testo) storDisegnaKaraoke(ctx, c, L, H, giu || 0, alfa * Math.min(1, (ora - c.da) / STOR_KARAOKE.entra));
-    if (stor.scienza) storDisegnaScienza(ctx, L, H);
     if (stor.titolo) storDisegnaTitolo(ctx, stor.titolo, L, H);
   }
   /* Quanto del fondo della tela non si vede (v454). Sul telefono il verso
@@ -9158,487 +9714,6 @@
     ctx.restore();
   }
 
-  /* La scheda «La scienza in breve» (v497, `science_card`), disegnata. Un
-   * foglio color panna col bordo d'inchiostro, come gli adesivi della
-   * domanda al pubblico ma chiaro, perché si legga anche sopra al disco
-   * dorato di Gargantua: in cima la fascia azzurra col nome della scheda,
-   * poi il disegnino nel suo tondo accanto alla domanda, sotto **un punto
-   * alla volta**, col suo pallino numerato di un colore. La prima scheda
-   * aveva i tre punti uno sotto l'altro ed era alta quasi metà schermo: in
-   * un angolo copriva il volto di chi stava da quel lato (Romilly mentre
-   * Brand spiega il tempo di Miller). Ora la domanda resta e i punti si
-   * danno il cambio, scivolando, come le pagine di un libro; in fondo una
-   * barra a tacche, una per punto, si riempie mentre passa il tempo per
-   * leggerlo: chi guarda sa a che punto è e che la storia aspetta. Ogni punto
-   * resta in proporzione alle sue parole (il primo anche a quelle della
-   * domanda), e il tempo è quello della scheda (`s.letto`), fermo in pausa.
-   * Sta in alto, nell'angolo chiesto o al centro; sul telefono prende tutta
-   * la larghezza. Se in una schermata bassa non ci sta, il carattere si
-   * stringe. Col movimento ridotto i punti cambiano senza scivolare e il
-   * disegnino sta fermo. */
-  const STOR_COLORI_PUNTI = [['#fbbf24', '#78350f'], ['#38bdf8', '#0c4a6e'], ['#f472b6', '#831843'], ['#4ade80', '#14532d']];
-  const STOR_SCIENZA_CAMBIO = 640;
-  function storMisuraScienza(ctx, s, w, fsQ, font) {
-    const fsP = fsQ * 0.86, pad = fsQ * 0.8, rI = fsQ * 1.45, hT = fsQ * 1.6;
-    const largoQ = w - pad * 2 - rI * 2 - fsQ * 0.7;
-    ctx.font = `800 ${fsQ}px ${font}`;
-    const righeQ = storRigheTesto(ctx, s.domanda, largoQ, 3, fsQ);
-    const rP = fsP * 0.7, largoP = w - pad * 2 - rP * 2 - fsP * 0.7;
-    ctx.font = `600 ${fsP}px ${font}`;
-    const righeP = s.punti.map(p => storRigheTesto(ctx, p, largoP, 3, fsP));
-    const altoQ = Math.max(rI * 2, righeQ.length * fsQ * 1.18);
-    const passoP = fsP * 1.26;
-    // lo spazio del punto è quello del punto più lungo: la scheda non salta
-    const altoP = Math.max(rP * 2, ...righeP.map(r => r.length * passoP));
-    const h = hT + pad * 0.7 + altoQ + pad * 0.8 + altoP + pad * 1.45;
-    return { fsP, pad, rI, hT, righeQ, rP, righeP, altoQ, passoP, altoP, h };
-  }
-  // A che punto della scheda si è: le tacche di tempo, in proporzione alle
-  // parole (la domanda va col primo punto)
-  function storPuntoScienza(s) {
-    const parole = x => String(x).split(/\s+/).filter(Boolean).length;
-    const pesi = s.punti.map((p, i) => parole(p) + (i ? 0 : parole(s.domanda)));
-    const tot = pesi.reduce((a, b) => a + b, 0) || 1;
-    const u = Math.max(0, Math.min(1, s.letto / s.lettura));
-    let da = 0;
-    const tacche = pesi.map(p => { const t = { da, a: da + p / tot }; da = t.a; return t; });
-    let k = tacche.findIndex(t => u < t.a);
-    if (k < 0) k = tacche.length - 1;
-    return { k, u, tacche };
-  }
-  function storDisegnaScienza(ctx, L, H) {
-    const s = stor.scienza;
-    if (!ctx || !s || !(L > 0 && H > 0)) return;
-    const C = STOR_SCIENZA, ora = stor.orologio, ridotto = stor.ridotto;
-    if (s.via !== null && ora - s.via > C.esce) { if (stor.scienza === s) stor.scienza = null; return; }
-    const eta = ora - s.da;
-    const uIn = ridotto ? 1 : Math.max(0, Math.min(1, eta / C.entra));
-    const uOut = s.via === null ? 1 : Math.max(0, 1 - (ora - s.via) / C.esce);
-    const c1 = 1.7, v = uIn - 1;
-    const pop = uIn >= 1 ? 1 : Math.max(0.05, 1 + (c1 + 1) * v * v * v + c1 * v * v);
-    const alfa = Math.min(1, uIn * 2.2) * uOut;
-    if (!(alfa > 0.01)) return;
-    const font = caratterePagina();
-    const stretto = L < 700;
-    const w = stretto ? L - 24 : Math.max(330, Math.min(480, L * 0.36));
-    let fsQ = Math.max(15, Math.min(22, stretto ? L * 0.042 : L * 0.0175));
-    ctx.save();
-    let m = storMisuraScienza(ctx, s, w, fsQ, font);
-    const tetto = H * (stretto ? 0.36 : 0.42);
-    if (m.h > tetto) { fsQ = Math.max(11, fsQ * Math.max(0.6, tetto / m.h)); m = storMisuraScienza(ctx, s, w, fsQ, font); }
-    const { fsP, pad, rI, hT, righeQ, rP, righeP, altoQ, passoP, altoP, h } = m;
-    const lato = stretto ? 'center' : s.lato;
-    const x = stretto ? 12 : lato === 'left' ? 16 : lato === 'center' ? (L - w) / 2 : L - 16 - w;
-    const y = stretto ? Math.min(96, H * 0.12) : Math.max(12, H * 0.02);
-    ctx.globalAlpha = alfa;
-    // il «pop» parte dal bordo dello schermo più vicino
-    const ox = lato === 'left' ? x : lato === 'center' ? x + w / 2 : x + w;
-    ctx.translate(ox, y); ctx.scale(pop, pop); ctx.translate(-ox, -y);
-    if (!ridotto) ctx.translate(0, Math.sin(ora / 2100) * 1.2);
-    const raggio = fsQ * 0.85;
-    // l'ombra piatta e il foglio
-    ctx.fillStyle = 'rgba(8, 4, 20, 0.45)';
-    rettangolo(ctx, x + 4, y + 5, w, h, raggio); ctx.fill();
-    const carta = ctx.createLinearGradient(0, y, 0, y + h);
-    carta.addColorStop(0, '#fffbf2'); carta.addColorStop(1, '#fdf0d8');
-    ctx.fillStyle = carta;
-    rettangolo(ctx, x, y, w, h, raggio); ctx.fill();
-    // la fascia in cima, azzurra, col nome della scheda e qualche stellina
-    ctx.save();
-    rettangolo(ctx, x, y, w, h, raggio); ctx.clip();
-    const fascia = ctx.createLinearGradient(x, 0, x + w, 0);
-    fascia.addColorStop(0, '#2563eb'); fascia.addColorStop(1, '#7c3aed');
-    ctx.fillStyle = fascia; ctx.fillRect(x, y, w, hT);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-    for (let i = 0; i < 7; i++) {
-      const sx = x + w * (0.45 + ((i * 0.137) % 0.52)), sy = y + hT * (0.22 + ((i * 0.31) % 0.6));
-      const sr = fsQ * (0.06 + (i % 3) * 0.035) * (ridotto ? 1 : 0.75 + 0.25 * Math.sin(ora / 400 + i * 1.7));
-      ctx.beginPath(); ctx.arc(sx, sy, Math.max(0.6, sr), 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.restore();
-    rettangolo(ctx, x, y, w, h, raggio);
-    ctx.lineWidth = 2.6; ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y + hT); ctx.lineTo(x + w, y + hT);
-    ctx.lineWidth = 1.6; ctx.stroke();
-    ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.lineJoin = 'round';
-    // la lampadina accesa prima del nome
-    const lx = x + pad + fsQ * 0.3, ly = y + hT / 2;
-    ctx.fillStyle = '#fde68a';
-    ctx.beginPath(); ctx.arc(lx, ly - fsQ * 0.08, fsQ * 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillRect(lx - fsQ * 0.14, ly + fsQ * 0.14, fsQ * 0.28, fsQ * 0.18);
-    ctx.font = `800 ${fsQ * 0.68}px ${font}`;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText((t(STOR_SCIENZA_RADICE + 'titolo') || '').toLocaleUpperCase(), lx + fsQ * 0.62, ly + 0.5, w - pad * 2 - fsQ);
-    // il disegnino nel suo tondo, e la domanda accanto
-    const yQ = y + hT + pad * 0.7;
-    const ix = x + pad + rI, iy = yQ + altoQ / 2;
-    ctx.beginPath(); ctx.arc(ix, iy, rI, 0, Math.PI * 2);
-    const tondo = ctx.createRadialGradient(ix - rI * 0.3, iy - rI * 0.35, rI * 0.1, ix, iy, rI);
-    tondo.addColorStop(0, '#24325f'); tondo.addColorStop(1, '#0b1030');
-    ctx.fillStyle = tondo; ctx.fill();
-    ctx.lineWidth = 2.2; ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-    ctx.save();
-    ctx.beginPath(); ctx.arc(ix, iy, rI - 1.2, 0, Math.PI * 2); ctx.clip();
-    ctx.translate(ix, iy);
-    storIconaScienza(ctx, s.icona, rI * 0.92, ridotto ? 0 : ora);
-    ctx.restore();
-    ctx.font = `800 ${fsQ}px ${font}`;
-    ctx.fillStyle = INCHIOSTRO;
-    const xQ = ix + rI + fsQ * 0.7;
-    const y0Q = yQ + (altoQ - righeQ.length * fsQ * 1.18) / 2 + fsQ * 0.59;
-    righeQ.forEach((r, i) => ctx.fillText(r, xQ, y0Q + i * fsQ * 1.18));
-    // il punto di adesso; quello di prima, appena cambiato, scivola via
-    const yP = yQ + altoQ + pad * 0.8;
-    ctx.beginPath(); ctx.moveTo(x + pad, yP - pad * 0.4); ctx.lineTo(x + w - pad, yP - pad * 0.4);
-    ctx.setLineDash([fsQ * 0.25, fsQ * 0.25]); ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(28, 18, 54, 0.3)'; ctx.stroke();
-    ctx.setLineDash([]);
-    const qui = storPuntoScienza(s);
-    if (s.punto !== qui.k) { s.prima = s.punto === undefined ? null : s.punto; s.punto = qui.k; s.cambio = ora; }
-    const uC = ridotto || s.prima === null ? 1 : Math.max(0, Math.min(1, (ora - s.cambio) / STOR_SCIENZA_CAMBIO));
-    const morbido = uC * uC * (3 - 2 * uC);
-    // il primo punto arriva dopo che si è vista la domanda
-    const uPrimo = ridotto ? 1 : Math.max(0, Math.min(1, (eta - C.primo) / 380));
-    ctx.save();
-    ctx.beginPath(); ctx.rect(x + 2, yP - pad * 0.25, w - 4, altoP + pad * 0.5); ctx.clip();
-    const punto = (i, a, dx) => {
-      if (!(a > 0.01) || i === null || !righeP[i]) return;
-      const righe = righeP[i];
-      ctx.save();
-      ctx.globalAlpha = alfa * a;
-      ctx.translate(dx, 0);
-      const [chiaro, scuro] = STOR_COLORI_PUNTI[i % STOR_COLORI_PUNTI.length];
-      const yC = yP + (altoP - righe.length * passoP) / 2;
-      const px = x + pad + rP, py = yP + altoP / 2;
-      ctx.beginPath(); ctx.arc(px, py, rP, 0, Math.PI * 2);
-      ctx.fillStyle = chiaro; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-      ctx.font = `900 ${fsP * 0.85}px ${font}`;
-      ctx.textAlign = 'center'; ctx.fillStyle = scuro;
-      ctx.fillText(String(i + 1), px, py + fsP * 0.04);
-      ctx.textAlign = 'left';
-      ctx.font = `600 ${fsP}px ${font}`;
-      ctx.fillStyle = '#2a2346';
-      righe.forEach((r, k) => ctx.fillText(r, px + rP + fsP * 0.7, yC + passoP * (k + 0.5)));
-      ctx.restore();
-    };
-    // prima se ne va il vecchio, poi arriva il nuovo: due frasi una sopra
-    // all'altra, anche per un attimo, non si leggono
-    const corsa = w * 0.3;
-    const fuori = Math.min(1, morbido * 2), dentro = Math.max(0, morbido * 2 - 1);
-    if (uC < 1 && fuori < 1) punto(s.prima, 1 - fuori, -corsa * fuori * fuori);
-    const arriva = 1 - dentro;
-    punto(qui.k, dentro * uPrimo, corsa * arriva * arriva + (1 - uPrimo) * fsP * 1.4);
-    ctx.restore();
-    // le tacche del tempo per leggere, una per punto
-    const by = y + h - pad * 0.62, gap = fsQ * 0.35;
-    const bw = (w - pad * 2 - gap * (qui.tacche.length - 1)) / qui.tacche.length;
-    ctx.lineCap = 'round'; ctx.lineWidth = Math.max(3, fsQ * 0.22);
-    qui.tacche.forEach((tc, i) => {
-      const bx = x + pad + i * (bw + gap);
-      ctx.strokeStyle = 'rgba(28, 18, 54, 0.12)';
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.stroke();
-      const f = Math.max(0, Math.min(1, (qui.u - tc.da) / Math.max(1e-6, tc.a - tc.da)));
-      if (f > 0.003) {
-        ctx.strokeStyle = STOR_COLORI_PUNTI[i % STOR_COLORI_PUNTI.length][0];
-        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw * f, by); ctx.stroke();
-      }
-    });
-    ctx.restore();
-  }
-  // Una punta di freccia in (x, y) che guarda verso `ang`
-  function puntaFreccia(ctx, x, y, ang, s) {
-    ctx.beginPath();
-    ctx.moveTo(x + Math.cos(ang) * s, y + Math.sin(ang) * s);
-    ctx.lineTo(x + Math.cos(ang + 2.5) * s, y + Math.sin(ang + 2.5) * s);
-    ctx.lineTo(x + Math.cos(ang - 2.5) * s, y + Math.sin(ang - 2.5) * s);
-    ctx.closePath(); ctx.fill();
-  }
-  /* I disegnini delle schede, centrati in (0, 0) dentro un tondo di raggio
-   * `r`, su fondo blu notte. Linee chiare e pochi colori: devono dire la
-   * cosa a colpo d'occhio anche a 50 pixel. `t` è l'orologio della storia
-   * (0 col movimento ridotto: tutto fermo). */
-  function storIconaScienza(ctx, nome, r, t) {
-    const lw = Math.max(1.4, r * 0.08);
-    const chiaro = '#e0f2fe', oro = '#fbbf24', azzurro = '#60a5fa';
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = lw;
-    ctx.strokeStyle = chiaro; ctx.fillStyle = chiaro;
-    const giro = t / 1000;
-    const cerchio = (cx, cy, rr) => { ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); };
-    if (nome === 'sphere') {
-      // la palla di vetro con dentro un'altra galassia
-      const g = ctx.createRadialGradient(-r * 0.2, -r * 0.25, r * 0.05, 0, 0, r * 0.62);
-      g.addColorStop(0, '#bfdbfe'); g.addColorStop(0.6, '#3b82f6'); g.addColorStop(1, '#1e1b4b');
-      cerchio(0, 0, r * 0.62); ctx.fillStyle = g; ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = oro; ctx.lineWidth = lw * 0.8;
-      for (let k = 0; k < 2; k++) {
-        ctx.beginPath();
-        for (let i = 0; i <= 20; i++) {
-          const a = giro * 0.8 + k * Math.PI + i * 0.2, d = r * 0.04 + i * r * 0.018;
-          if (i) ctx.lineTo(Math.cos(a) * d, Math.sin(a) * d * 0.7); else ctx.moveTo(Math.cos(a) * d, Math.sin(a) * d * 0.7);
-        }
-        ctx.stroke();
-      }
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.beginPath(); ctx.ellipse(-r * 0.25, -r * 0.3, r * 0.14, r * 0.07, -0.6, 0, Math.PI * 2); ctx.fill();
-    } else if (nome === 'ripple') {
-      // lo spazio che si increspa: cerchi che si allargano
-      for (let k = 0; k < 3; k++) {
-        const f = ((k / 3) + giro * 0.45) % 1;
-        ctx.globalAlpha = 1 - f; ctx.strokeStyle = azzurro;
-        cerchio(0, 0, r * (0.12 + f * 0.7)); ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      cerchio(0, 0, r * 0.12); ctx.fillStyle = oro; ctx.fill();
-    } else if (nome === 'black_hole' || nome === 'sun') {
-      if (nome === 'sun') {
-        ctx.strokeStyle = oro;
-        for (let i = 0; i < 10; i++) {
-          const a = i * Math.PI / 5 + giro * 0.3;
-          ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.45, Math.sin(a) * r * 0.45); ctx.lineTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72); ctx.stroke();
-        }
-        cerchio(0, 0, r * 0.36); ctx.fillStyle = '#fde047'; ctx.fill();
-        return;
-      }
-      // l'ombra nera, il disco dorato di taglio e la luce piegata sopra
-      const disco = ctx.createLinearGradient(-r * 0.85, 0, r * 0.85, 0);
-      disco.addColorStop(0, 'rgba(251, 191, 36, 0.2)'); disco.addColorStop(0.5, '#fde68a'); disco.addColorStop(1, 'rgba(251, 191, 36, 0.2)');
-      ctx.strokeStyle = disco; ctx.lineWidth = r * 0.16;
-      ctx.beginPath(); ctx.ellipse(0, -r * 0.02, r * 0.4, r * 0.36, 0, Math.PI, 0); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 0.82, r * 0.17, 0, 0, Math.PI * 2); ctx.stroke();
-      cerchio(0, 0, r * 0.32); ctx.fillStyle = '#000'; ctx.fill();
-      ctx.strokeStyle = '#fef3c7'; ctx.lineWidth = lw * 0.6; ctx.stroke();
-      ctx.strokeStyle = disco; ctx.lineWidth = r * 0.16;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 0.82, r * 0.17, 0, 0, Math.PI); ctx.stroke();
-    } else if (nome === 'spin' || nome === 'orbit') {
-      // il buco nero che gira e trascina lo spazio come un mulinello
-      cerchio(0, 0, r * 0.2); ctx.fillStyle = '#000'; ctx.fill(); ctx.strokeStyle = oro; ctx.lineWidth = lw * 0.7; ctx.stroke();
-      if (nome === 'orbit') {
-        ctx.strokeStyle = 'rgba(224, 242, 254, 0.6)'; ctx.setLineDash([lw, lw * 1.4]);
-        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.66, r * 0.4, -0.3, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-        const a = giro * 1.6;
-        const px = Math.cos(a) * r * 0.66, py = Math.sin(a) * r * 0.4;
-        const ex = px * Math.cos(-0.3) - py * Math.sin(-0.3), ey = px * Math.sin(-0.3) + py * Math.cos(-0.3);
-        cerchio(ex, ey, r * 0.13); ctx.fillStyle = azzurro; ctx.fill();
-        return;
-      }
-      ctx.strokeStyle = azzurro; ctx.fillStyle = azzurro;
-      for (let k = 0; k < 3; k++) {
-        const a0 = giro * 2 + k * Math.PI * 2 / 3;
-        ctx.beginPath();
-        let ux = 0, uy = 0, ua = 0;
-        for (let i = 0; i <= 14; i++) {
-          const a = a0 + i * 0.13, d = r * (0.3 + i * 0.03);
-          ux = Math.cos(a) * d; uy = Math.sin(a) * d; ua = a + Math.PI / 2 + 0.25;
-          if (i) ctx.lineTo(ux, uy); else ctx.moveTo(ux, uy);
-        }
-        ctx.stroke();
-        puntaFreccia(ctx, ux, uy, ua, lw * 2.1);
-      }
-    } else if (nome === 'clock' || nome === 'watch') {
-      if (nome === 'watch') {
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(-r * 0.22, -r * 0.85, r * 0.44, r * 1.7);
-      }
-      const R = nome === 'watch' ? r * 0.46 : r * 0.62;
-      cerchio(0, 0, R); ctx.fillStyle = '#fff8eb'; ctx.fill(); ctx.strokeStyle = oro; ctx.lineWidth = lw * 1.2; ctx.stroke();
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = lw * 0.6;
-      for (let i = 0; i < 12; i++) {
-        const a = i * Math.PI / 6;
-        ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * 0.78, Math.sin(a) * R * 0.78); ctx.lineTo(Math.cos(a) * R * 0.9, Math.sin(a) * R * 0.9); ctx.stroke();
-      }
-      // nell'orologio di Murph la lancetta va a scatti; in quello del tempo che scappa corre
-      const am = nome === 'watch' ? Math.floor(giro * 2) * Math.PI / 15 - Math.PI / 2 : giro * 5 - Math.PI / 2;
-      const ah = nome === 'watch' ? -Math.PI / 2 + 1.1 : giro * 0.45 - Math.PI / 2;
-      ctx.lineWidth = lw * 1.1;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(ah) * R * 0.45, Math.sin(ah) * R * 0.45); ctx.stroke();
-      ctx.strokeStyle = nome === 'watch' ? '#dc2626' : INCHIOSTRO; ctx.lineWidth = lw * 0.7;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(am) * R * 0.72, Math.sin(am) * R * 0.72); ctx.stroke();
-    } else if (nome === 'wave') {
-      // il muro d'acqua, con la navetta piccolissima davanti
-      const su = Math.sin(giro * 1.4) * r * 0.05;
-      ctx.beginPath(); ctx.moveTo(-r, r * 0.45);
-      ctx.bezierCurveTo(-r * 0.4, r * 0.4, -r * 0.2, -r * 0.6 + su, r * 0.2, -r * 0.55 + su);
-      ctx.bezierCurveTo(r * 0.5, -r * 0.5 + su, r * 0.55, -r * 0.2, r * 0.35, -r * 0.15);
-      ctx.bezierCurveTo(r * 0.6, 0, r * 0.7, r * 0.3, r, r * 0.35);
-      ctx.lineTo(r, r); ctx.lineTo(-r, r); ctx.closePath();
-      const acqua = ctx.createLinearGradient(0, -r * 0.6, 0, r);
-      acqua.addColorStop(0, '#7dd3fc'); acqua.addColorStop(1, '#1d4ed8');
-      ctx.fillStyle = acqua; ctx.fill(); ctx.strokeStyle = chiaro; ctx.stroke();
-      ctx.fillStyle = '#f8fafc'; ctx.fillRect(-r * 0.62, r * 0.32, r * 0.16, r * 0.08);
-    } else if (nome === 'messages') {
-      // i videomessaggi da casa, uno sopra l'altro
-      for (let k = 2; k >= 0; k--) {
-        const dx = -r * 0.5 + k * r * 0.14, dy = -r * 0.42 + k * r * 0.12;
-        rettangolo(ctx, dx, dy, r * 0.82, r * 0.6, r * 0.08);
-        ctx.fillStyle = k ? '#334155' : '#1e40af'; ctx.fill(); ctx.strokeStyle = chiaro; ctx.lineWidth = lw * 0.8; ctx.stroke();
-      }
-      ctx.fillStyle = '#fef3c7';
-      ctx.beginPath(); ctx.moveTo(-r * 0.18, -r * 0.24); ctx.lineTo(r * 0.12, -r * 0.12); ctx.lineTo(-r * 0.18, 0); ctx.closePath(); ctx.fill();
-    } else if (nome === 'ice') {
-      ctx.strokeStyle = '#bae6fd';
-      for (let i = 0; i < 6; i++) {
-        ctx.save(); ctx.rotate(i * Math.PI / 3 + giro * 0.15);
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.7);
-        ctx.moveTo(0, -r * 0.42); ctx.lineTo(-r * 0.16, -r * 0.56); ctx.moveTo(0, -r * 0.42); ctx.lineTo(r * 0.16, -r * 0.56);
-        ctx.stroke(); ctx.restore();
-      }
-    } else if (nome === 'air') {
-      // il casco: fuori il gas velenoso, verde
-      ctx.fillStyle = 'rgba(132, 204, 22, 0.5)';
-      for (let i = 0; i < 6; i++) {
-        const a = i * 1.05 + giro * 0.5;
-        cerchio(Math.cos(a) * r * 0.7, Math.sin(a) * r * 0.7, r * (0.13 + 0.04 * Math.sin(giro * 2 + i))); ctx.fill();
-      }
-      cerchio(0, 0, r * 0.5); ctx.fillStyle = '#f8fafc'; ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(0, -r * 0.02, r * 0.36, r * 0.26, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#1e3a8a'; ctx.fill();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-      ctx.beginPath(); ctx.ellipse(-r * 0.14, -r * 0.1, r * 0.1, r * 0.05, -0.5, 0, Math.PI * 2); ctx.fill();
-    } else if (nome === 'hatch') {
-      // il portello che salta: l'aria che scappa in raggi
-      ctx.strokeStyle = '#fb923c';
-      for (let i = 0; i < 8; i++) {
-        const a = i * Math.PI / 4 + 0.3, f = 0.55 + 0.12 * Math.sin(giro * 6 + i);
-        ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5); ctx.lineTo(Math.cos(a) * r * (f + 0.3), Math.sin(a) * r * (f + 0.3)); ctx.stroke();
-      }
-      cerchio(0, 0, r * 0.42); ctx.fillStyle = '#94a3b8'; ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-      ctx.save(); ctx.rotate(giro * 1.5);
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = lw * 0.9;
-      cerchio(0, 0, r * 0.22); ctx.stroke();
-      for (let i = 0; i < 4; i++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.3); ctx.stroke(); }
-      ctx.restore();
-    } else if (nome === 'docking') {
-      // due giostre che girano insieme: ferme l'una rispetto all'altra
-      ctx.save(); ctx.rotate(giro * 1.3);
-      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = lw * 1.4;
-      cerchio(0, 0, r * 0.5); ctx.stroke();
-      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; cerchio(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5, r * 0.08); ctx.fillStyle = '#cbd5e1'; ctx.fill(); }
-      cerchio(0, 0, r * 0.18); ctx.fillStyle = oro; ctx.fill();
-      ctx.restore();
-      ctx.strokeStyle = azzurro; ctx.fillStyle = azzurro;
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.78, -0.4, 1.2); ctx.stroke();
-      puntaFreccia(ctx, Math.cos(1.2) * r * 0.78, Math.sin(1.2) * r * 0.78, 1.2 + Math.PI / 2, lw * 2.2);
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.78, Math.PI - 0.4, Math.PI + 1.2); ctx.stroke();
-      puntaFreccia(ctx, Math.cos(Math.PI + 1.2) * r * 0.78, Math.sin(Math.PI + 1.2) * r * 0.78, Math.PI + 1.2 + Math.PI / 2, lw * 2.2);
-    } else if (nome === 'slingshot') {
-      // la fionda: una curva che sfiora il buco nero e ne esce più veloce
-      cerchio(-r * 0.1, r * 0.15, r * 0.24); ctx.fillStyle = '#000'; ctx.fill(); ctx.strokeStyle = oro; ctx.lineWidth = lw * 0.7; ctx.stroke();
-      ctx.strokeStyle = azzurro; ctx.fillStyle = azzurro; ctx.lineWidth = lw;
-      ctx.beginPath(); ctx.moveTo(-r * 0.85, -r * 0.6); ctx.quadraticCurveTo(r * 0.55, -r * 0.35, r * 0.15, r * 0.55);
-      ctx.stroke();
-      puntaFreccia(ctx, r * 0.15, r * 0.55, 1.95, lw * 2.4);
-      const f = (giro * 0.5) % 1;
-      const bx = (1 - f) * (1 - f) * -r * 0.85 + 2 * (1 - f) * f * r * 0.55 + f * f * r * 0.15;
-      const by = (1 - f) * (1 - f) * -r * 0.6 + 2 * (1 - f) * f * -r * 0.35 + f * f * r * 0.55;
-      cerchio(bx, by, r * 0.08); ctx.fillStyle = '#f8fafc'; ctx.fill();
-    } else if (nome === 'tides') {
-      // il buco nero a sinistra, il pianeta a uovo, le frecce lunga e corta
-      cerchio(-r * 0.62, 0, r * 0.2); ctx.fillStyle = '#000'; ctx.fill(); ctx.strokeStyle = oro; ctx.lineWidth = lw * 0.7; ctx.stroke();
-      const k = 1 + 0.06 * Math.sin(giro * 2);
-      ctx.beginPath(); ctx.ellipse(r * 0.3, 0, r * 0.42 * k, r * 0.28, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#2563eb'; ctx.fill(); ctx.strokeStyle = chiaro; ctx.lineWidth = lw * 0.8; ctx.stroke();
-      ctx.strokeStyle = oro; ctx.fillStyle = oro;
-      for (const [x0, lungo] of [[-0.05, 0.3], [0.3, 0.2], [0.65, 0.1]]) {
-        ctx.beginPath(); ctx.moveTo(r * x0, -r * 0.48); ctx.lineTo(r * (x0 - lungo), -r * 0.48); ctx.stroke();
-        puntaFreccia(ctx, r * (x0 - lungo), -r * 0.48, Math.PI, lw * 1.8);
-      }
-    } else if (nome === 'books') {
-      const colori = ['#dc2626', '#16a34a', '#2563eb', '#ca8a04'];
-      for (let i = 0; i < 4; i++) {
-        const cade = i === 2 ? (giro * 0.8) % 1 : 0;
-        ctx.save();
-        ctx.translate(-r * 0.45 + i * r * 0.3, r * 0.45 + (i === 2 ? cade * r * 0.2 : 0));
-        ctx.rotate(i === 2 ? -0.2 - cade * 1.2 : (i - 1.5) * 0.04);
-        ctx.fillStyle = colori[i]; ctx.fillRect(-r * 0.11, -r * 0.78, r * 0.22, r * 0.78);
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = lw * 0.6; ctx.strokeRect(-r * 0.11, -r * 0.78, r * 0.22, r * 0.78);
-        ctx.restore();
-      }
-    } else if (nome === 'binary') {
-      // la polvere sul pavimento: righe larghe e strette
-      const larghe = [1, 0, 1, 1, 0, 1];
-      ctx.fillStyle = '#d6b88a';
-      let x = -r * 0.75;
-      for (const l of larghe) {
-        const w = l ? r * 0.18 : r * 0.06;
-        ctx.fillRect(x, -r * 0.55, w, r * 1.1);
-        x += w + r * 0.07;
-      }
-      ctx.fillStyle = 'rgba(214, 184, 138, 0.55)';
-      for (let i = 0; i < 14; i++) cerchio(-r * 0.7 + ((i * 0.37) % 1.4) * r, -r * 0.6 + ((giro * 0.3 + i * 0.13) % 1.2) * r, r * 0.025), ctx.fill();
-    } else if (nome === 'atom') {
-      ctx.strokeStyle = azzurro;
-      for (let k = 0; k < 3; k++) {
-        ctx.save(); ctx.rotate(k * Math.PI / 3);
-        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.7, r * 0.24, 0, 0, Math.PI * 2); ctx.stroke();
-        const a = giro * 2.2 + k * 2;
-        cerchio(Math.cos(a) * r * 0.7, Math.sin(a) * r * 0.24, r * 0.07); ctx.fillStyle = '#f8fafc'; ctx.fill();
-        ctx.restore();
-      }
-      cerchio(0, 0, r * 0.14); ctx.fillStyle = oro; ctx.fill();
-    } else if (nome === 'station') {
-      // il cilindro che gira, con le case dentro
-      ctx.save(); ctx.rotate(-0.35);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(-r * 0.6, -r * 0.3, r * 1.2, r * 0.6);
-      ctx.strokeStyle = chiaro; ctx.lineWidth = lw * 0.8; ctx.strokeRect(-r * 0.6, -r * 0.3, r * 1.2, r * 0.6);
-      ctx.beginPath(); ctx.ellipse(-r * 0.6, 0, r * 0.12, r * 0.3, 0, 0, Math.PI * 2); ctx.fillStyle = '#64748b'; ctx.fill(); ctx.stroke();
-      const f = (giro * 0.4) % 1;
-      ctx.fillStyle = '#86efac';
-      for (let i = 0; i < 4; i++) {
-        const xx = -r * 0.45 + ((i * 0.27 + f) % 1) * r * 1.0;
-        ctx.fillRect(xx, r * 0.16, r * 0.1, r * 0.1);
-        ctx.fillRect(xx + r * 0.05, -r * 0.26, r * 0.1, r * 0.1);
-      }
-      ctx.restore();
-      ctx.strokeStyle = oro; ctx.fillStyle = oro;
-      ctx.beginPath(); ctx.ellipse(r * 0.52, -r * 0.2, r * 0.18, r * 0.42, -0.35, -1.2, 2.2); ctx.stroke();
-      puntaFreccia(ctx, r * 0.52 + Math.cos(2.2) * r * 0.18, -r * 0.2 + Math.sin(2.2) * r * 0.42, 2.2 + Math.PI / 2, lw * 2);
-    } else if (nome === 'loop') {
-      // il cerchio del tempo: due frecce che si inseguono
-      ctx.save(); ctx.rotate(giro * 0.8);
-      ctx.strokeStyle = oro; ctx.fillStyle = oro; ctx.lineWidth = lw * 1.3;
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0.25, Math.PI - 0.25); ctx.stroke();
-      puntaFreccia(ctx, Math.cos(Math.PI - 0.25) * r * 0.55, Math.sin(Math.PI - 0.25) * r * 0.55, Math.PI - 0.25 + Math.PI / 2, lw * 2.4);
-      ctx.strokeStyle = azzurro; ctx.fillStyle = azzurro;
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.55, Math.PI + 0.25, -0.25); ctx.stroke();
-      puntaFreccia(ctx, Math.cos(-0.25) * r * 0.55, Math.sin(-0.25) * r * 0.55, -0.25 + Math.PI / 2, lw * 2.4);
-      ctx.restore();
-      cerchio(0, 0, r * 0.14); ctx.fillStyle = '#f8fafc'; ctx.fill();
-    } else if (nome === 'earth') {
-      // la Terra con la polvere che la soffoca
-      cerchio(0, 0, r * 0.6); ctx.fillStyle = '#2563eb'; ctx.fill();
-      ctx.fillStyle = '#65a30d';
-      ctx.beginPath(); ctx.ellipse(-r * 0.15, -r * 0.15, r * 0.25, r * 0.16, 0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(r * 0.25, r * 0.2, r * 0.18, r * 0.12, -0.3, 0, Math.PI * 2); ctx.fill();
-      ctx.save(); cerchio(0, 0, r * 0.6); ctx.clip();
-      ctx.fillStyle = 'rgba(180, 130, 70, 0.6)'; ctx.fillRect(-r, r * 0.05, r * 2, r);
-      ctx.restore();
-      ctx.strokeStyle = '#d6b88a'; ctx.lineWidth = lw * 0.8;
-      for (let i = 0; i < 3; i++) {
-        const dx = ((giro * 0.4 + i * 0.33) % 1) * r * 0.5;
-        ctx.beginPath(); ctx.moveTo(-r * 0.95 + dx, r * (0.35 + i * 0.16)); ctx.lineTo(-r * 0.55 + dx, r * (0.35 + i * 0.16)); ctx.stroke();
-      }
-    } else if (nome === 'sleep') {
-      // la capsula del sonno, col ghiaccio sul vetro
-      rettangolo(ctx, -r * 0.75, -r * 0.3, r * 1.5, r * 0.6, r * 0.3);
-      ctx.fillStyle = '#334155'; ctx.fill(); ctx.strokeStyle = chiaro; ctx.stroke();
-      rettangolo(ctx, -r * 0.55, -r * 0.18, r * 1.1, r * 0.36, r * 0.18);
-      ctx.fillStyle = 'rgba(186, 230, 253, 0.85)'; ctx.fill();
-      ctx.fillStyle = '#fde68a';
-      cerchio(-r * 0.3, 0, r * 0.1); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      for (let i = 0; i < 5; i++) cerchio(-r * 0.4 + i * r * 0.2, -r * 0.55 + ((giro * 0.25 + i * 0.21) % 1) * r * 0.25, r * 0.035), ctx.fill();
-    } else if (nome === 'tesseract') {
-      // un cubo dentro un cubo, che respira
-      const k = 0.5 + 0.06 * Math.sin(giro * 1.5);
-      const quadro = s => [[-s, -s], [s, -s], [s, s], [-s, s]];
-      const fuori = quadro(r * 0.62), dentro = quadro(r * 0.62 * k);
-      ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = lw * 0.9;
-      for (const q of [fuori, dentro]) { ctx.beginPath(); q.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.stroke(); }
-      ctx.strokeStyle = oro;
-      for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(fuori[i][0], fuori[i][1]); ctx.lineTo(dentro[i][0], dentro[i][1]); ctx.stroke(); }
-    }
-  }
-
   /* Il cartello della domanda al pubblico (v430, `story_question`). Sta in
    * alto, sotto al cartello «Sei qui», nello stesso adesivo: la domanda a
    * capo su al più tre righe, poi le due scelte A e B (se ci sono) in due
@@ -9777,6 +9852,8 @@
     'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch',
     // v488
     'tidal_orbit',
+    // v500: le animazioni delle «Interstellar» corte
+    'sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop',
     // v492: i rumori di bordo di «Interstellar»
     'engine', 'thrusters', 'docking', 'detach', 'alarm', 'decompression', 'metal_groan', 'turbulence', 'splash', 'ice_crack',
     'radio', 'spin_up', 'spin_down'];
@@ -10111,6 +10188,34 @@
       soffio(a, u, { t0: t, durata: 3.2, f0: 300, fm: 900, f1: 260, picco: 0.2 * v, attacco: 1.1, ciclo: true });
       tono(a, u, { t0: t, durata: 3.2, f0: 62, f1: 48, picco: 0.18 * v, attacco: 1, vibrato: [0.6, 4] });
     },
+    // v500: i rumori delle animazioni che spiegano. Discreti: stanno sotto
+    // a una battuta che spiega, non sopra
+    sphere_hole(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 1.6, f0: 220, f1: 440, picco: 0.07 * v, attacco: 0.4, vibrato: [3, 5] });
+      soffio(a, u, { t0: t + 1.6, durata: 1.6, filtro: 'bandpass', f0: 900, f1: 1800, q: 3, picco: 0.08 * v, attacco: 0.5 });
+    },
+    light_bend(a, u, t, d, v) {
+      [880, 1175, 1568].forEach((f, k) => tono(a, u, { t0: t + k * 0.35, durata: 1.4, f0: f, f1: f * 0.98, picco: 0.045 * v, vibrato: [5, 6] }));
+    },
+    time_clocks(a, u, t, d, v) {
+      for (let k = 0; k < 10; k++) tono(a, u, { t0: t + k * 0.32, durata: 0.05, f0: k % 2 ? 1900 : 2400, picco: 0.07 * v, attacco: 0.003 });
+    },
+    frame_drag(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.4, filtro: 'bandpass', f0: 380, fm: 900, f1: 300, q: 2, picco: 0.22 * v, attacco: 1, ciclo: true });
+    },
+    tidal_stretch(a, u, t, d, v) {
+      tono(a, u, { t0: t + 0.6, durata: 2.2, f0: 180, f1: 70, tipo: 'triangle', picco: 0.09 * v, attacco: 0.3 });
+    },
+    spin_gravity(a, u, t, d, v) {
+      soffio(a, u, { t0: t, durata: 3.2, f0: 160, fm: 320, f1: 160, picco: 0.14 * v, attacco: 0.8, ciclo: true });
+    },
+    spin_match(a, u, t, d, v) {
+      tono(a, u, { t0: t, durata: 2.4, f0: 140, f1: 420, tipo: 'sawtooth', picco: 0.04 * v, attacco: 0.5 });
+      tono(a, u, { t0: t + 2.6, durata: 0.5, f0: 880, picco: 0.07 * v, attacco: 0.01 });
+    },
+    time_loop(a, u, t, d, v) {
+      [392, 494, 587, 784].forEach((f, k) => tono(a, u, { t0: t + k * 0.45, durata: 0.9, f0: f, picco: 0.05 * v, vibrato: [4, 5] }));
+    },
     // v492, i rumori di bordo di «Interstellar»: chi guardava le due parti
     // vedeva le navicelle scivolare, agganciarsi, staccarsi ed esplodere in
     // silenzio. Non sono effetti visivi (nessuno ha un disegno): la storia li
@@ -10319,7 +10424,6 @@
     narraLunga: 'Testo di narrazione troppo lungo (al massimo 400 caratteri)',
     narraId: 'Narrazione sconosciuta: {id}',
     domandaVuota: 'story_question vuole il testo della domanda (text)',
-    scienzaId: 'Scheda della scienza sconosciuta: {id} (servono {id}.domanda e {id}.1 nei dizionari)',
     domandaLunga: '{campo} è troppo lungo (al massimo {max} caratteri)',
     musicaSrc: 'story_music vuole in src un file audio del sito (audio/… o musica/…) oppure off, non {nome}',
     suonoSrc: 'sound vuole in src un file audio del sito (audio/… o musica/…), non {nome}',
@@ -10751,98 +10855,6 @@
         stor.domanda = d;
         storSuona('ding', { seme: 'domanda' });
         return { chiudi() { if (stor.domanda === d) stor.domanda = null; } };
-      }
-    }
-  });
-
-  /* La scheda «La scienza in breve» (v497, `science_card`). «Vorrei
-   * migliorare i video di Interstellar inserendo punti per spiegare meglio
-   * ai bambini le parti difficili»: le battute di «Interstellar» hanno le
-   * voci vere registrate, e una battuta in più vorrebbe dire rinumerare
-   * tutto e rifare le voci (v488, v490). La spiegazione allora si legge: un
-   * foglio color panna in un angolo, con la domanda che un bambino farebbe
-   * («Perché un'ora su Miller vale sette anni?»), un disegnino e due o tre
-   * punti corti che compaiono uno alla volta. È disegnata sulla tela, fuori
-   * dalla lente della regia, quindi finisce anche nel filmato per YouTube.
-   *
-   * I testi stanno nei dizionari: `card` è la radice (non `id`, che per
-   * il copione, lo Studio e le voci è sempre una battuta da dire), `<id>.domanda` la
-   * domanda e `<id>.1`, `<id>.2`, … i punti (fino a quattro). `icon` sceglie
-   * il disegnino (`STOR_ICONE_SCIENZA`), `at` dove sta in alto (`left`,
-   * `right` o `center`; a destra di serie: quasi sempre chi parla sta al
-   * centro o a sinistra).
-   *
-   * Leggere vuole tempo: la scheda è una «battuta» che la scena aspetta
-   * (`attende`, come il suono da file della v491). Il tempo cresce con le
-   * parole (`STOR_SCIENZA.parola`), fra un minimo e un massimo, e conta
-   * dall'istante in cui la scheda compare, fermo quando la demo è in pausa:
-   * se la voce dura di più non allunga niente, se la voce è corta la scena
-   * resta aperta qualche secondo con la musica sotto. Chi non le vuole le
-   * spegne nelle opzioni della pagina Demo (`schedeScienza`), e allora la
-   * scena va come prima. */
-  const STOR_ICONE_SCIENZA = ['sphere', 'ripple', 'black_hole', 'spin', 'orbit', 'clock', 'wave', 'messages', 'ice',
-    'air', 'hatch', 'docking', 'slingshot', 'tides', 'books', 'binary', 'atom', 'watch', 'station', 'loop', 'earth',
-    'sleep', 'tesseract', 'sun'];
-  // Le schede di serie stanno tutte sotto questa radice dei dizionari
-  // (`storie.scienza.interstellar.tempo.domanda`, …), e il nome della scheda
-  // in cima è `storie.scienza.titolo`
-  const STOR_SCIENZA_RADICE = 'storie.scienza.';
-  const STOR_SCIENZA = { entra: 520, esce: 520, primo: 700, parola: 270, base: 1800, min: 7000, max: 17000, punti: 4 };
-  function schedeScienzaAccese() {
-    const d = radice.AstroDemo;
-    return !(d && d.opzioni && d.opzioni.schedeScienza === false);
-  }
-  function testiScienza(id) {
-    const punti = [];
-    for (let i = 1; i <= STOR_SCIENZA.punti; i++) {
-      const p = t(id + '.' + i);
-      if (!p) break;
-      punti.push(p);
-    }
-    return { domanda: t(id + '.domanda'), punti };
-  }
-  // Quanto si legge, in ms: le parole della domanda e dei punti
-  function letturaScienza(testi) {
-    const parole = [testi.domanda].concat(testi.punti).join(' ').split(/\s+/).filter(Boolean).length;
-    return Math.max(STOR_SCIENZA.min, Math.min(STOR_SCIENZA.max, STOR_SCIENZA.base + parole * STOR_SCIENZA.parola));
-  }
-  Object.assign(COMANDI, {
-    science_card: {
-      verifica(p) {
-        campi(p, ['card', 'icon', 'at']);
-        richiedi(typeof p.card === 'string' && /^[\w.-]+$/.test(p.card) &&
-          (!haI18n() || (radice.astroI18n.esiste(p.card + '.domanda') && radice.astroI18n.esiste(p.card + '.1'))),
-          'scienzaId', { id: String(p.card) });
-        scelta(p.icon, 'icon', STOR_ICONE_SCIENZA);
-        scelta(p.at, 'at', ['left', 'right', 'center']);
-      },
-      attende() { return schedeScienzaAccese(); },
-      crea(p) {
-        if (!schedeScienzaAccese()) return {};
-        if (stor.anteprima) storChiudiAnteprima();
-        const testi = testiScienza(p.card);
-        if (!testi.domanda) return {};
-        const s = { id: p.card, domanda: testi.domanda, punti: testi.punti, icona: p.icon || 'atom', lato: p.at || 'right',
-          da: stor.orologio, letto: 0, lettura: letturaScienza(testi), via: null };
-        stor.scienza = s;
-        storSuona('ding', { seme: 'scienza' });
-        // Il tempo di lettura conta da sé, fermo in pausa: non dipende dai
-        // fotogrammi (nelle prove Node nessuno disegna)
-        const fine = new Promise(ok => {
-          let prima = adesso();
-          const passo = () => {
-            const ora = adesso();
-            if (!demoInPausa()) s.letto += Math.min(500, ora - prima);
-            prima = ora;
-            if (stor.scienza !== s || s.via !== null || s.letto >= s.lettura) { ok('testo'); return; }
-            setTimeout(passo, 120);
-          };
-          setTimeout(passo, 120);
-        });
-        return {
-          fineNarrazione: fine,
-          chiudi() { if (stor.scienza === s && s.via === null) s.via = stor.orologio; }
-        };
       }
     }
   });
@@ -11988,10 +12000,7 @@
     voceDelCanto: storVoceDelCanto, regiaRitmo: storRegiaRitmo, trovaPuntino: storTrovaPuntino,
     tempoCanzone: storTempoCanzone, ospiti: storOspiti, sovrimpressioni: storDisegnaSovrimpressioni, STOR_POSTI_OSPITE,
     get canto() { const c = storCantoOra(); return c ? { chi: c.chi.slice(), testo: c.testo, u: c.u } : null; },
-    get titolo() { return stor.titolo ? Object.assign({}, stor.titolo) : null; },
-    // v497: le schede «La scienza in breve»
-    get scienza() { return stor.scienza ? Object.assign({}, stor.scienza, { punti: stor.scienza.punti.slice() }) : null; },
-    disegnaScienza: storDisegnaScienza, puntoScienza: storPuntoScienza, iconaScienza: storIconaScienza, letturaScienza, testiScienza, STOR_ICONE_SCIENZA, STOR_SCIENZA
+    get titolo() { return stor.titolo ? Object.assign({}, stor.titolo) : null; }
   };
   radice.storRicevuta = storRicevuta;
   radice.storMusicaFerma = storMusicaFerma;
