@@ -2047,6 +2047,8 @@
     richiedi(!sol.aperto && !sky.reg.attiva && !sky.reg.preparazione &&
       !(typeof missRicercaAttiva === 'function' && missRicercaAttiva()), t('occupato'));
     richiedi(typeof Astronomy !== 'undefined' && sky.observer, t('attendi'));
+    // Per le statistiche dell'utente (`accessi.js`): solo una demo che parte
+    if (typeof accessiTraccia === 'function') accessiTraccia('demo');
     ultimoScript = testo;
     const precedente = Object.fromEntries(chiavi.map(k => [k, sky[k]]));
     const manuale = { ...sky.manuale }, vistaPrima = vistaAttuale;

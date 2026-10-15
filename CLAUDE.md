@@ -63,7 +63,9 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `musica/` | Tracce di sottofondo (`catalogo.js`) e, in `canzoni/`, le canzoni che una CosmoStoria segue (`story_music { sync: on }`; fuori dal catalogo e fuori da `audio/storie-musica/`, che lo Studio ripulisce). |
 | `voci-filmato.js` | Le voci del filmato: prima di registrare per YouTube, le battute che andrebbero alla voce di sistema (che non si registra) diventano audio con ElevenLabs o Piper; e il tasto «Voci ElevenLabs» delle CosmoStorie, che sceglie da solo la voce di ogni personaggio e genera tutte le battute (`vfilm`). |
 | `youtube.js` | Collegare il canale YouTube e pubblicarci i filmati (`yt`). |
-| `config.js` | URL dei ponti ADS-B/Edge-TTS, `YOUTUBE_CLIENT_ID` e `ASTROCAL_BUILD`. |
+| `accessi.js` | Controllo degli accessi: porta d'ingresso, sessione, funzioni per utente, statistiche d'uso, «Gestisci utenti» (`acc`). Spento di serie. Vedi `ACCESSI.md`. |
+| `worker-accessi.js` | Server degli accessi (Deno Deploy + Deno KV), non fa parte della PWA. Vedi `ACCESSI.md`. |
+| `config.js` | URL dei ponti ADS-B/Edge-TTS, `YOUTUBE_CLIENT_ID`, il parametro `ACCESSI_ATTIVO` con `ACCESSI_URL`, e `ASTROCAL_BUILD`. |
 | `worker-adsb.js` | Proxy ADS-B (Deno Deploy), non fa parte della PWA. Vedi `ADSB-PROXY.md`. |
 | `dati-*.js` | Cataloghi caricati su richiesta (non in `index.html` né in `ASSETS`). |
 | `guida.html`, `guida-en.html` | La guida all'uso (stessi `id` nelle due lingue). |
@@ -77,7 +79,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 `catalogo.js` → `costellazioni.js` → `curiosita.js` → `via-lattea.js` →
 `scala-cosmica.js` → `corpi-minori.js` → `pianifica.js` → `terreno.js` →
 `rilievo.js` → `meteo-astro.js` → `aurora-polare.js` → `config.js` →
-`aerei.js` → `transiti.js` → `visione.js` → `inseguimento.js` →
+`accessi.js` → `aerei.js` → `transiti.js` → `visione.js` → `inseguimento.js` →
 `eventi-extra.js` → `missione-cielo.js` → `ui-nuova.js` → `didattica.js` →
 demo (motore, intro, libreria, predefiniti, `demo.js`) → `storie-cosmiche.js`
 → `demo-impostazioni.js` → `storie-studio.js` → `voci-filmato.js` →
@@ -100,7 +102,8 @@ Servizi tutti senza chiave e tutti con un ripiego: Open-Meteo (meteo, quote,
 geocoding), Open-Elevation/OpenTopoData (quote di riserva), tessere Terrarium
 su S3 (rilievo), quattro istanze Overpass (paesi, vette, acque), CelesTrak
 (TLE), NOAA (Kp), geolocalizzazione da IP, BigDataCloud/Nominatim (nome del
-luogo), ADS-B (proxy proprio, poi ponti pubblici). L'unico con un permesso
+luogo), ADS-B (proxy proprio, poi ponti pubblici). Il server degli accessi
+(`worker-accessi.js`, solo se `ACCESSI_ATTIVO`) è del progetto. L'unico con un permesso
 dell'utente è YouTube (accesso di Google, `youtube.js`), solo a richiesta.
 Per le voci del filmato (`voci-filmato.js`, solo a richiesta): ElevenLabs con
 la chiave dello Studio, o Piper (motore da jsdelivr, modelli da Hugging Face,
@@ -200,6 +203,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | voci di una CosmoStoria con un tocco (casting automatico ElevenLabs) | `prova-voci-cosmostorie.js` |
 | rinominare, modificare, eliminare le CosmoStorie e le storie in cantiere | `prova-cosmostorie-gestione.js` |
 | musica dello Studio nelle CosmoStorie, musiche generate, categorie di personaggi e facce | `prova-musica-cosmostorie.js` |
+| controllo degli accessi (porta, sessione, funzioni per utente, statistiche, «Gestisci utenti», server) | `prova-accessi.js` (`--server` per il solo server) |
 
 Perché ognuna esiste e le sue trappole (rotte di Playwright, `<script>` unici
 di `verifica.html` che si portano via le sezioni dopo un errore, copie di
@@ -213,4 +217,4 @@ MAPPA-DETTAGLIATA §11, «Rigenerare i cataloghi»).
 Per un sintomo o una funzionalità precisa, `grep` in MAPPA-DETTAGLIATA §12 (la
 tabella «Dove guardare per…»), poi nei documenti dei moduli: `STORIE.md`,
 `DEMO.md`, `NARRAZIONE.md`, `I18N.md`, `MISSIONE-CIELO.md`, `ADSB-PROXY.md`,
-`EDGE-TTS.md`.
+`EDGE-TTS.md`, `ACCESSI.md`.

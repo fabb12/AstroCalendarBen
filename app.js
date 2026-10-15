@@ -6382,6 +6382,7 @@ function inizializzaFormAggiungi() {
 
   // Apre il modale vuoto: nuovo evento con data/ora di adesso
   const apriNuovo = () => {
+    if (typeof accessiUsa === 'function' && !accessiUsa('eventi')) return;
     eventoInModifica = null;
     form.reset();
     if (titoloModale) titoloModale.textContent = 'Nuovo evento';
@@ -7590,12 +7591,17 @@ function leggiUltimaVista() {
 }
 
 function mostraVista(nome, opzioni = {}) {
+  // Controllo degli accessi (`accessi.js`, v504): una vista che l'utente non
+  // ha diventa la prima che ha. Spento, la funzione restituisce il nome com'è.
+  if (typeof accessiFiltraVista === 'function') nome = accessiFiltraVista(nome);
   if (!VISTE.some(v => v.nome === nome)) return;
   const vistaPrima = vistaAttuale;
   const attivo = "voce-menu attiva";
   const inattivo = "voce-menu";
   // Serve a chi ridisegna dopo un cambio di schermo: sa cosa c'è davanti
   vistaAttuale = nome;
+  // Il tempo passato in ogni vista, per le statistiche dell'utente
+  if (typeof accessiVistaAperta === 'function') accessiVistaAperta(nome);
   // Le viste attraversate da una demo sono anteprime temporanee, non una
   // scelta di navigazione: ricaricando si torna alla pagina di partenza.
   if (!(typeof AstroDemo === 'object' && AstroDemo.inCorso)) {
@@ -42665,6 +42671,7 @@ function solAtterraPasso(u) {
 window.apriSistemaSolare = (opzioni = {}) => {
   const modale = document.getElementById('modale-sistema');
   if (!modale) return;
+  if (typeof accessiUsa === 'function' && !accessiUsa('sistema3d')) return;
   sol.canvas = document.getElementById('sol-canvas');
   if (!sol.canvas) return;
 

@@ -4373,6 +4373,8 @@ function missAggiornaScheda() {
 function missApriPannello() {
   const modale = document.getElementById('modale-missione');
   if (!modale) return;
+  // Controllo degli accessi (`accessi.js`): solo per chi ha Missione Cielo
+  if (typeof accessiUsa === 'function' && !accessiUsa('missione')) return;
 
   miss.fuocoPrima = document.activeElement;
   miss.aperto = true;

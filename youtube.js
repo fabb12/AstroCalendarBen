@@ -671,6 +671,8 @@ function ytFermaAnteprimeSotto() {
 // guasto la finestra lo dice e non lo pubblica.
 function ytApriPubblica(video) {
   if (!video || !video.blob || typeof document === 'undefined') return false;
+  // Controllo degli accessi (`accessi.js`): solo per chi ha YouTube
+  if (typeof accessiUsa === 'function' && !accessiUsa('youtube')) return false;
   if (yt.finestra) ytChiudiFinestra(true);
   const turno = yt.controllo = { ritorno: document.activeElement };
   ytPreparaGoogle();

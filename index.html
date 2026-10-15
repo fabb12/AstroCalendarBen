@@ -2900,6 +2900,19 @@
     </div>
   </div>
 
+  <!-- MODALE: GESTISCI UTENTI (accessi.js, v504) — solo amministratori.
+       Elenco, scheda di un utente con le sue funzioni, statistiche d'uso:
+       il corpo lo disegna `accDisegnaAdmin`. -->
+  <div id="modale-accessi" class="velo-modale hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto acc-velo-admin">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl acc-pannello-admin" data-misura="grande" role="dialog" aria-modal="true" aria-labelledby="acc-admin-titolo">
+      <div class="testata-modale flex justify-between items-center p-5 border-b border-slate-700">
+        <h2 id="acc-admin-titolo" class="text-2xl font-bold text-white" data-i18n="acc.gestisciUtenti">Gestisci utenti</h2>
+        <button id="btn-chiudi-accessi" class="tasto-chiudi" title="Chiudi la finestra" aria-label="Chiudi la finestra" data-i18n-title="ui.chiudi-la-finestra" data-i18n-aria-label="ui.chiudi-la-finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div id="acc-admin-corpo" class="corpo-modale acc-admin-corpo"></div>
+    </div>
+  </div>
+
   <!-- MODALE: IMPOSTAZIONI, BACKUP E CALENDARIO -->
   <div id="modale-impostazioni" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
     <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="impostazioni">
@@ -3044,6 +3057,15 @@
        </div>
 
        <div id="imp-tab-dati" class="impostazioni-pannello spazio-verticale-largo hidden" role="tabpanel" aria-labelledby="imp-tab-btn-dati" data-imp-pannello="dati">
+
+        <!-- v504: il proprio account, solo col controllo degli accessi
+             acceso. Il contenuto lo disegna accessi.js (`accDisegnaAccount`):
+             chi sei, le tue funzioni, cambia password, esci e, per gli
+             amministratori, «Gestisci utenti». -->
+        <section id="imp-account" class="space-y-2 hidden" aria-labelledby="imp-account-titolo">
+          <h3 id="imp-account-titolo" class="font-bold text-white" data-i18n="acc.ilTuoAccount">Il tuo account</h3>
+          <div id="imp-account-corpo"></div>
+        </section>
 
         <section class="space-y-2 border-t border-slate-700 pt-4">
           <h3 class="font-bold text-white" data-i18n="ui.porta-gli-eventi-nel-tuo-calendario">Porta gli eventi nel tuo calendario</h3>
@@ -3335,6 +3357,11 @@
   <script src="meteo-astro.js"></script>
   <script src="aurora-polare.js"></script>
   <script src="config.js"></script>
+  <!-- Il controllo degli accessi (v504): subito dopo `config.js`, che porta
+       il parametro `ACCESSI_ATTIVO`. Spento non fa niente; acceso mette la
+       porta d'ingresso davanti all'app prima che la pagina finisca di
+       leggersi. Vedi ACCESSI.md. -->
+  <script src="accessi.js"></script>
   <script src="aerei.js"></script>
   <!-- I transiti: chi passa davanti a chi. Va dopo `aerei.js` perché ne
        legge le rotte, e dopo `app.js` perché ne legge il cielo. -->

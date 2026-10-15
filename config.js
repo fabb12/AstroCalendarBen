@@ -45,13 +45,24 @@ window.INS_ORT_URL = window.INS_ORT_URL || '';
 // Impostazioni (Dati → Account YouTube). Come crearlo: `guida.html#youtube`.
 window.YOUTUBE_CLIENT_ID = window.YOUTUBE_CLIENT_ID || '';
 
+// Il controllo degli accessi (v504, `accessi.js`, ACCESSI.md). **Il
+// parametro che lo accende e lo spegne** è `ACCESSI_ATTIVO`: `false` (di
+// serie) e l'app è aperta a tutti, come sempre; `true` e davanti all'app c'è
+// la porta d'ingresso, con nome e password controllati dal server
+// `worker-accessi.js` all'indirizzo `ACCESSI_URL` (senza `/api/accessi` e
+// senza `/` finale). Il deploy li scrive dalle variabili di repository dallo
+// stesso nome. Acceso senza indirizzo, l'app resta chiusa e lo dice: un
+// controllo che si spegne da solo quando manca un pezzo non è un controllo.
+window.ACCESSI_ATTIVO = window.ACCESSI_ATTIVO === true || window.ACCESSI_ATTIVO === 'true';
+window.ACCESSI_URL = window.ACCESSI_URL || '';
+
 // Informazioni della copia locale. `version` e `builtAt` vanno aggiornati
 // insieme a CACHE_NAME in sw.js a ogni modifica. Durante il deploy GitHub
 // Actions li sostituisce con versione della cache, numero della build, commit
 // e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v503',
+  version: 'v504',
   build: '',
   commit: '',
-  builtAt: '2026-10-15T10:03:30.000Z'
+  builtAt: '2026-10-15T11:55:28.000Z'
 });

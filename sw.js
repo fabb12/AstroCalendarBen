@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v503';
+const CACHE_NAME = 'astrocal-v504';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -47,6 +47,7 @@ const ASSETS = [
   './visione.js',
   './inseguimento.js',
   './config.js',
+  './accessi.js',
   './eventi-extra.js',
   './missione-cielo.js',
   './ui-nuova.js',
@@ -246,6 +247,15 @@ function proxyAdsb(url) {
     (url.pathname === '/api/adsb' || url.pathname === '/api/fonti' || url.pathname === '/api/diagnostica');
 }
 
+// Il server del controllo degli accessi (`worker-accessi.js`, v504): come il
+// proxy degli aerei, un indirizzo che sceglie chi installa il sito e che si
+// riconosce dal percorso. Sessioni, permessi e statistiche non si mettono mai
+// in cache, e un suo 401 deve arrivare com'è: è quello che fa uscire un
+// utente spento.
+function serverAccessi(url) {
+  return url.origin !== self.location.origin && url.pathname.indexOf('/api/accessi/') === 0;
+}
+
 function daConservare(url) {
   return HOST_DA_CONSERVARE.some(h => url.hostname === h || url.hostname.endsWith('.' + h));
 }
@@ -296,7 +306,7 @@ self.addEventListener('fetch', (e) => {
       url.hostname === 'api.elevenlabs.io' ||
       url.hostname === 'huggingface.co' || url.hostname.endsWith('.huggingface.co') || url.hostname.endsWith('.hf.co') ||
       (url.hostname === 'cdn.jsdelivr.net' && /\/npm\/(onnxruntime-web|@diffusionstudio\/piper-wasm)@/.test(url.pathname)) ||
-      proxyAdsb(url)) {
+      proxyAdsb(url) || serverAccessi(url)) {
     return;
   }
 

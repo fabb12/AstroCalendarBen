@@ -151,6 +151,8 @@ const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.j
   'youtube.js',
   // v478: le voci del filmato, prima di registrare per YouTube
   'voci-filmato.js',
+  // v504: il controllo degli accessi (la porta, l'account, «Gestisci utenti»)
+  'accessi.js',
   // Le Storie cosmiche: la sezione della pagina Demo, le personalità e i
   // messaggi d'errore dei comandi dei personaggi; lo Studio che le crea.
   'storie-cosmiche.js', 'storie-studio.js'];

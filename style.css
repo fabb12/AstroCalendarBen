@@ -13338,3 +13338,178 @@ textarea.yt-campo { resize: vertical; min-height: 5.5rem; }
 .studio-generate li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
 .studio-generate-nome { flex: 1 1 10rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-generate-nome small { color: var(--testo-2, #94a3b8); }
+
+/* ------------------------------------------------ CONTROLLO DEGLI ACCESSI */
+/* v504, accessi.js. La porta d'ingresso sta sopra a tutto — anche allo
+   splash del planetario e ai veli delle demo (10001) — ed è opaca: dietro
+   c'è l'app che si prepara, e non deve vedersi. */
+.acc-porta {
+  position: fixed; inset: 0; z-index: 20000;
+  display: flex; align-items: center; justify-content: center; overflow-y: auto;
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background:
+    radial-gradient(1px 1px at 18% 22%, rgba(255, 255, 255, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 72% 14%, rgba(255, 255, 255, 0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 84% 68%, rgba(255, 255, 255, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 32% 78%, rgba(255, 255, 255, 0.45), transparent 60%),
+    radial-gradient(ellipse at 50% 120%, rgba(76, 141, 255, 0.22), transparent 60%),
+    radial-gradient(ellipse at 10% -10%, rgba(139, 92, 246, 0.18), transparent 55%),
+    var(--spazio);
+}
+.acc-porta.hidden { display: none; }
+html.acc-chiuso, html.acc-chiuso body { overflow: hidden; }
+.acc-porta-scheda {
+  width: 100%; max-width: 24rem; margin: auto 0; display: grid; gap: 8px;
+  padding: 28px 24px 22px; border-radius: var(--raggio-xl);
+  background: var(--superficie-piena); border: 1px solid var(--bordo-forte);
+  box-shadow: var(--ombra-3), var(--luce-interna);
+}
+.acc-porta-marchio { color: var(--blu-chiaro); justify-self: center; display: inline-flex; }
+.acc-porta-sovratitolo { margin: 4px 0 0; text-align: center; font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--testo-3); }
+.acc-porta-titolo { margin: 0; text-align: center; font-family: var(--titolo); font-size: 1.6rem; font-weight: 700; color: var(--testo); }
+.acc-porta-testo { margin: 0 0 8px; text-align: center; font-size: 0.88rem; color: var(--testo-2); }
+.acc-porta-scheda.acc-senza-server .acc-campo,
+.acc-porta-scheda.acc-senza-server .acc-entra,
+.acc-porta-scheda.acc-senza-server .acc-mostra { opacity: 0.45; pointer-events: none; }
+.acc-campo-password { position: relative; display: flex; }
+.acc-campo-password .acc-campo { padding-right: 5.2rem; }
+.acc-mostra {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  padding: 4px 10px; border-radius: 999px; font: inherit; font-size: 0.78rem; cursor: pointer;
+  color: var(--blu-chiaro); background: transparent; border: 1px solid var(--bordo);
+}
+.acc-mostra:hover { border-color: var(--bordo-forte); }
+.acc-porta-messaggio { margin: 2px 0 0; padding: 8px 10px; border-radius: var(--raggio-s); font-size: 0.85rem; color: #fecaca; background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.35); }
+.acc-porta-messaggio.hidden { display: none; }
+.acc-entra {
+  margin-top: 8px; min-height: 46px; border-radius: 999px; border: 0; cursor: pointer;
+  font: inherit; font-weight: 650; font-size: 0.98rem; color: #fff;
+  background: var(--blu); box-shadow: var(--alone-blu);
+  transition: background-color var(--transizione), transform var(--transizione);
+}
+.acc-entra:hover { background: var(--blu-scuro); }
+.acc-entra:active { transform: translateY(1px); }
+.acc-entra:disabled { opacity: 0.6; cursor: progress; }
+.acc-porta-esci { min-height: 40px; border-radius: 999px; font: inherit; cursor: pointer; color: var(--testo); background: var(--superficie-alta); border: 1px solid var(--bordo); }
+.acc-porta-esci.hidden { display: none; }
+.acc-porta-nota { margin: 6px 0 0; text-align: center; font-size: 0.76rem; color: var(--testo-3); }
+
+/* I campi, uguali nella porta, nell'account e in «Gestisci utenti» */
+.acc-etichetta { margin-top: 4px; font-size: 0.8rem; font-weight: 600; color: var(--testo-2); }
+.acc-campo {
+  width: 100%; min-width: 0; min-height: 42px; padding: 8px 12px; font: inherit; font-size: 0.95rem;
+  color: var(--testo); background: var(--incassato); border: 1px solid var(--bordo-forte); border-radius: var(--raggio-s);
+}
+textarea.acc-campo { min-height: 3.6rem; resize: vertical; }
+.acc-campo:focus-visible, .acc-mostra:focus-visible, .acc-entra:focus-visible { outline: 2px solid var(--blu-chiaro); outline-offset: 2px; }
+.acc-campo:disabled { opacity: 0.6; }
+.acc-aiuto { color: var(--testo-3); font-size: 0.74rem; }
+.acc-nota { margin: 0; font-size: 0.8rem; color: var(--testo-3); }
+.acc-messaggio { margin: 0; font-size: 0.86rem; color: var(--testo-2); }
+.acc-messaggio:empty { display: none; }
+.acc-messaggio.ok { color: #bbf7d0; }
+.acc-messaggio.errore { color: #fecaca; }
+.acc-tasti { display: flex; flex-wrap: wrap; gap: 8px; }
+.acc-tasto-piccolo { min-height: 34px; padding: 5px 11px; font-size: 0.8rem; }
+.acc-tasto-rosso { color: #fecaca; border-color: rgba(248, 113, 113, 0.45); }
+.acc-tasto-rosso:hover { background: rgba(248, 113, 113, 0.16); border-color: rgba(248, 113, 113, 0.8); }
+.acc-spunta { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--testo); min-height: 32px; }
+.acc-spunta input { accent-color: var(--blu); width: 18px; height: 18px; flex: 0 0 auto; }
+
+/* Il proprio account */
+.acc-account { display: grid; gap: 10px; }
+.acc-chi { display: flex; align-items: center; gap: 12px; margin: 0; }
+.acc-chi > span:last-child { display: grid; }
+.acc-chi small { color: var(--testo-3); font-size: 0.78rem; }
+.acc-avatar {
+  width: 40px; height: 40px; border-radius: 999px; flex: 0 0 auto; display: grid; place-items: center;
+  font-family: var(--titolo); font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--blu), var(--viola)); box-shadow: var(--alone-viola);
+}
+.acc-cambia summary { cursor: pointer; font-size: 0.85rem; color: var(--blu-chiaro); }
+.acc-modulo-piccolo { display: grid; gap: 6px; max-width: 22rem; margin-top: 8px; }
+.acc-modulo-piccolo .tasto-cielo { justify-self: start; margin-top: 4px; }
+
+/* Gestisci utenti: sopra alle Impostazioni, da cui si apre */
+.acc-velo-admin { z-index: 60; }
+.acc-admin-corpo { display: grid; gap: 14px; padding: 18px 20px 22px; min-width: 0; }
+.acc-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.acc-etichetta-riga { display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--testo-2); }
+.acc-periodo { width: auto; min-height: 38px; padding: 6px 10px; font-size: 0.85rem; }
+.acc-titolo { margin: 0; font-family: var(--titolo); font-size: 1.15rem; font-weight: 700; color: var(--testo); }
+.acc-titolo small { font-family: var(--sans); font-size: 0.8rem; font-weight: 400; color: var(--testo-3); }
+.acc-tabella-box { overflow-x: auto; border: 1px solid var(--bordo); border-radius: var(--raggio-m); }
+.acc-tabella { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.acc-tabella th, .acc-tabella td { padding: 10px 12px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--bordo); }
+.acc-tabella thead th { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--testo-3); background: var(--incassato); }
+.acc-tabella tbody tr:last-child > * { border-bottom: 0; }
+.acc-tabella tbody tr:hover { background: rgba(76, 141, 255, 0.05); }
+.acc-tabella tbody th { display: table-cell; font-weight: 400; }
+.acc-tabella tbody th strong, .acc-tabella tbody th small { display: block; }
+.acc-tabella tbody th small { color: var(--testo-3); font-size: 0.76rem; }
+.acc-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.acc-azioni-riga { white-space: nowrap; text-align: right; }
+.acc-azioni-riga .tasto-cielo + .tasto-cielo { margin-left: 6px; }
+.acc-spento { opacity: 0.6; }
+.acc-ruolo { display: inline-block; margin: 1px 4px 1px 0; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; border: 1px solid var(--bordo-forte); color: var(--testo-2); }
+.acc-ruolo-admin { color: var(--viola-chiaro); border-color: rgba(139, 92, 246, 0.5); background: var(--viola-velo); }
+.acc-ruolo-spento { color: #fecaca; border-color: rgba(248, 113, 113, 0.45); }
+
+.acc-modulo { display: grid; gap: 14px; }
+.acc-campi { display: grid; gap: 4px; max-width: 30rem; }
+.acc-funzioni { margin: 0; padding: 12px 14px; border: 1px solid var(--bordo); border-radius: var(--raggio-m); display: grid; gap: 8px; min-width: 0; }
+.acc-funzioni legend { padding: 0 6px; font-size: 0.82rem; font-weight: 600; color: var(--testo-2); }
+.acc-funzioni-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 2px 14px; }
+.acc-funzioni.acc-tutte .acc-funzioni-griglia { opacity: 0.45; pointer-events: none; }
+.acc-funzioni:disabled { opacity: 0.6; }
+.acc-pericolo { padding-top: 12px; border-top: 1px solid var(--bordo); }
+
+/* Le statistiche di un utente */
+.acc-statistiche { display: grid; gap: 16px; min-width: 0; }
+.acc-cifre { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 10px; margin: 0; }
+.acc-cifre > div { padding: 10px 12px; border-radius: var(--raggio-m); background: var(--incassato); border: 1px solid var(--bordo); }
+.acc-cifre dt { font-size: 0.72rem; color: var(--testo-3); }
+.acc-cifre dd { margin: 2px 0 0; font-size: 1.05rem; font-weight: 650; color: var(--testo); font-variant-numeric: tabular-nums; }
+.acc-blocco { display: grid; gap: 8px; min-width: 0; }
+.acc-blocco h4 { margin: 0; font-size: 0.82rem; font-weight: 650; color: var(--testo-2); }
+.acc-due { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 16px; }
+.acc-barre { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.acc-barre li { display: grid; grid-template-columns: minmax(6rem, 11rem) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 0.84rem; }
+.acc-barra-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--testo); }
+.acc-barra-binario { height: 8px; border-radius: 999px; background: var(--incassato); overflow: hidden; }
+.acc-barra-piena { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blu), var(--viola)); }
+.acc-barra-valore { color: var(--testo-2); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 0.8rem; }
+.acc-giorni { display: flex; align-items: flex-end; gap: 2px; height: 72px; padding: 6px; border-radius: var(--raggio-m); background: var(--incassato); border: 1px solid var(--bordo); }
+.acc-giorno { flex: 1 1 0; min-width: 2px; border-radius: 2px 2px 0 0; background: var(--bordo-forte); }
+.acc-giorno.attivo { background: var(--blu); }
+.acc-ore { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 2px; }
+.acc-ora { height: 18px; border-radius: 3px; background: var(--viola-chiaro); }
+.acc-sessioni { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; font-size: 0.84rem; }
+.acc-sessioni small { color: var(--testo-3); }
+
+/* L'avviso di una funzione non abilitata */
+.acc-avviso {
+  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 20001;
+  max-width: min(92vw, 28rem); padding: 10px 16px; border-radius: var(--raggio-m);
+  font-size: 0.88rem; color: var(--testo); background: var(--superficie-piena); border: 1px solid var(--bordo-forte);
+  box-shadow: var(--ombra-3); transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+  transition: opacity var(--transizione), transform var(--transizione);
+}
+.acc-avviso.visibile { opacity: 1; transform: translate(-50%, 0); }
+
+/* Sotto il tablet la tabella diventa una pila di schede: una riga, un utente */
+@media (max-width: 767px) {
+  .acc-admin-corpo { padding: 14px 14px 20px; }
+  .acc-tabella-box { border: 0; overflow: visible; }
+  .acc-tabella thead { display: none; }
+  .acc-tabella, .acc-tabella tbody, .acc-tabella tr { display: block; width: 100%; }
+  .acc-tabella tr { margin-bottom: 10px; padding: 10px 12px; border: 1px solid var(--bordo); border-radius: var(--raggio-m); background: var(--incassato); }
+  .acc-tabella th, .acc-tabella td { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border: 0; }
+  .acc-tabella tbody th { display: block; margin-bottom: 4px; }
+  .acc-tabella td[data-etichetta]::before { content: attr(data-etichetta); color: var(--testo-3); font-size: 0.78rem; }
+  .acc-azioni-riga { justify-content: flex-start !important; padding-top: 8px !important; }
+  .acc-barre li { grid-template-columns: minmax(5rem, 8rem) minmax(0, 1fr) auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acc-avviso, .acc-entra { transition: none; }
+}

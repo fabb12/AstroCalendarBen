@@ -63,6 +63,8 @@ jobs:
           ADSB_PROXY_URL: ${{ vars.ADSB_PROXY_URL }}
           EDGE_TTS_API_URL: ${{ vars.EDGE_TTS_API_URL }}
           YOUTUBE_CLIENT_ID: ${{ vars.YOUTUBE_CLIENT_ID }}
+          ACCESSI_ATTIVO: ${{ vars.ACCESSI_ATTIVO }}
+          ACCESSI_URL: ${{ vars.ACCESSI_URL }}
         # L'app non ha build: i file sorgente *sono* il sito. Si copiano da una
         # parte solo per lasciar fuori quello che online non serve — la storia
         # di git, i workflow, la mappa del progetto e lo script che rigenera i
@@ -77,6 +79,8 @@ jobs:
             --exclude '_sito' \
             --exclude 'scripts' \
             --exclude 'worker-adsb.js' \
+            --exclude 'worker-accessi.js' \
+            --exclude 'ACCESSI.md' \
             --exclude 'wrangler.toml' \
             --exclude 'ADSB-PROXY.md' \
             --exclude 'EDGE-TTS.md' \
@@ -97,6 +101,16 @@ jobs:
           fi
           case "$ADSB_PROXY_URL" in ''|https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
           case "$EDGE_TTS_API_URL" in ''|https://*) ;; *) echo "::error::EDGE_TTS_API_URL deve iniziare con https://"; exit 1;; esac
+          # Il controllo degli accessi (accessi.js, ACCESSI.md): un solo
+          # parametro, ACCESSI_ATTIVO. Acceso senza l'indirizzo del server
+          # l'app resterebbe chiusa per tutti: meglio fermarsi qui.
+          case "$ACCESSI_ATTIVO" in true|TRUE|True|1|si|sì) ACCESSI_ATTIVO=true;; *) ACCESSI_ATTIVO=false;; esac
+          case "$ACCESSI_URL" in ''|https://*) ;; *) echo "::error::ACCESSI_URL deve iniziare con https://"; exit 1;; esac
+          if [ "$ACCESSI_ATTIVO" = true ] && [ -z "$ACCESSI_URL" ]; then
+            echo "::error::ACCESSI_ATTIVO è acceso ma manca ACCESSI_URL: configura il server degli accessi (ACCESSI.md) o spegni il controllo."
+            exit 1
+          fi
+          echo "Controllo degli accessi: $ACCESSI_ATTIVO"
           if [ -z "$EDGE_TTS_API_URL" ]; then
             echo "::warning::Manca EDGE_TTS_API_URL: Missione Cielo userà la voce del dispositivo"
           fi
@@ -118,6 +132,8 @@ jobs:
             printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)"
             printf "window.EDGE_TTS_API_URL = %s;\n" "$(printf %s "$EDGE_TTS_API_URL" | jq -Rs .)"
             printf "window.YOUTUBE_CLIENT_ID = %s;\n" "$(printf %s "$YOUTUBE_CLIENT_ID" | jq -Rs .)"
+            printf "window.ACCESSI_ATTIVO = %s;\n" "$ACCESSI_ATTIVO"
+            printf "window.ACCESSI_URL = %s;\n" "$(printf %s "${ACCESSI_URL%/}" | jq -Rs .)"
             printf "window.ASTROCAL_BUILD = Object.freeze({ version: %s, build: %s, commit: %s, builtAt: %s });\n" \
               "$(printf %s "$CACHE_VERSION" | jq -Rs .)" \
               "$(printf %s "$GITHUB_RUN_NUMBER" | jq -Rs .)" \
