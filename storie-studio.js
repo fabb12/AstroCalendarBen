@@ -4469,7 +4469,9 @@
     narratori: ['astro_ben', 'zaira', 'sagan'],
     antichi: ['pythagoras', 'plato', 'aristotle', 'eratosthenes', 'archimedes', 'ptolemy'],
     scienziati: ['copernicus', 'galileo', 'huygens', 'newton', 'herschel', 'schiaparelli', 'lowell', 'einstein', 'tombaugh', 'hawking', 'mike_brown'],
-    astronauti: ['gagarin', 'tereskova', 'von_braun', 'armstrong', 'aldrin', 'stafford', 'ride', 'malerba', 'cristoforetti', 'parmitano'],
+    astronauti: ['gagarin', 'tereskova', 'von_braun', 'armstrong', 'aldrin', 'stafford', 'ride', 'malerba', 'cristoforetti', 'parmitano',
+      // v504, «Apollo 13»
+      'lovell', 'haise', 'swigert', 'kranz', 'mattingly'],
     interstellar: ['cooper', 'brand', 'romilly', 'doyle', 'mann', 'murph', 'murph_bambina', 'murph_anziana', 'loro',
       'tars', 'case', 'endurance', 'ranger', 'lander', 'gargantua', 'miller_planet', 'mann_planet']
   };

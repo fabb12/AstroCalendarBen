@@ -3820,6 +3820,205 @@
   }
 
 }`
+    },
+    {
+      chiave: 'storia_apollo13_scienza',
+      storia: true,
+      cast: 'lovell,haise,swigert,kranz,mattingly',
+      testo: `define_demo 'storia_apollo13_scienza' {
+  // «Apollo 13 · Dentro la scienza» (v504): il film del 1995 come filo, la
+  // scienza come centro, e il disegno di Kurzgesagt (story_style, solo
+  // per questa storia): personaggi senza pennino, volti a ovali, tinte
+  // sature e luci sfocate. Sei scene del film a tutto schermo (apollo_*) e,
+  // fra una e l'altra, tredici spiegazioni (explain_*, §6-ter-ter di
+  // storie-cosmiche.js): il Saturn V, il pogo, la traiettoria a otto, il
+  // serbatoio che scoppia, le celle a combustibile, la scialuppa, la CO₂,
+  // il freddo, la faccia nascosta della Luna, la correzione a mano, la
+  // riaccensione, il corridoio di rientro, lo scudo termico. Battute nuove:
+  // le voci si fanno col tasto «Voci ElevenLabs» della scheda.
+  scene solar_system_3d {
+    // Il decollo: 11 aprile 1970, ore 13:13
+    duration: 16s;
+    action: story_style { look: kurzgesagt };
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: story_music { src: 'musica/Observing_the_Zenith.mp3', volume: 0.3 };
+    action: effect { type: apollo_launch, duration: 60 };
+    action: story_title { id: 'storie.titolo.apollo13_scienza', shot_to: 0.35 };
+    action: date_card { label: 'demo.cartello.storia_apollo13_scienza.lancio' };
+    action: character_show { target: 'lovell', expression: 'proud', at: bottom_right, scale: 0.6, look: 'viewer' };
+    action: sound { type: 'engine', shot_from: 0.04 };
+    action: sound { type: 'rumble', shot_from: 0.12 };
+    action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.1', shot_from: 0.3 };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_saturn_v, at: right, duration: 60 };
+    action: character_show { target: 'haise', expression: 'excited', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.2' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_pogo, at: left, duration: 60 };
+    action: character_show { target: 'swigert', expression: 'worried', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'swigert', id: 'demo.narr.storia_apollo13_scienza.3' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_free_return, at: right, duration: 60 };
+    action: character_show { target: 'lovell', expression: 'thinking', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.4' };
+  }
+  scene solar_system_3d {
+    // 55 ore e 54 minuti: lo scoppio
+    duration: 14s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: apollo_explosion, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_apollo13_scienza.problema' };
+    action: character_show { target: 'swigert', expression: 'scared', at: bottom_left, scale: 0.75, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'worried', at: bottom_right, scale: 0.75, look: 'swigert' };
+    action: sound { type: 'explosion', shot_from: 0.06 };
+    action: sound { type: 'alarm', shot_from: 0.12 };
+    action: sound { type: 'decompression', shot_from: 0.2 };
+    action: character_expression { target: 'lovell', expression: 'determined', shot_from: 0.7 };
+    action: character_speak { target: 'swigert', id: 'demo.narr.storia_apollo13_scienza.5', shot_from: 0.1 };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_oxygen_tank, at: right, duration: 60 };
+    action: character_show { target: 'kranz', expression: 'determined', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.6' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_fuel_cell, at: left, duration: 60 };
+    action: character_show { target: 'haise', expression: 'worried', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.7' };
+  }
+  scene solar_system_3d {
+    // Houston: il controllo missione
+    duration: 12s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: apollo_control, duration: 60 };
+    action: character_show { target: 'kranz', expression: 'determined', at: center, scale: 0.9, look: 'viewer' };
+    action: character_show { target: 'mattingly', expression: 'thinking', at: left, scale: 0.75, look: 'kranz' };
+    action: sound { type: 'radio', shot_from: 0.05 };
+    action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.8' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_lifeboat, at: right, duration: 60 };
+    action: character_show { target: 'kranz', expression: 'thinking', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.9' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_co2, at: left, duration: 60 };
+    action: character_show { target: 'swigert', expression: 'curious', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'swigert', id: 'demo.narr.storia_apollo13_scienza.10' };
+  }
+  scene solar_system_3d {
+    // Dentro l'Aquarius: tre gradi
+    duration: 11s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: apollo_cabin, duration: 60 };
+    action: character_show { target: 'haise', expression: 'sad', at: center, scale: 0.85, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'tender', at: left, scale: 0.75, look: 'haise' };
+    action: character_show { target: 'swigert', expression: 'sleepy', at: right, scale: 0.75, look: 'haise' };
+    action: sound { type: 'ice_crack', shot_from: 0.3 };
+    action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.11' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_cold, at: right, duration: 60 };
+    action: character_show { target: 'haise', expression: 'curious', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.12' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_far_side, at: left, duration: 60 };
+    action: character_show { target: 'lovell', expression: 'wonder', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.13' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_manual_burn, at: right, duration: 60 };
+    action: character_show { target: 'lovell', expression: 'determined', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.14' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_power_up, at: left, duration: 60 };
+    action: character_show { target: 'mattingly', expression: 'determined', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'mattingly', id: 'demo.narr.storia_apollo13_scienza.15' };
+  }
+  scene solar_system_3d {
+    // Il modulo di servizio se ne va: manca un pannello
+    duration: 12s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: apollo_jettison, duration: 60 };
+    action: character_show { target: 'lovell', expression: 'surprised', at: bottom_right, scale: 0.75, look: 'viewer' };
+    action: sound { type: 'detach', shot_from: 0.05 };
+    action: character_expression { target: 'lovell', expression: 'worried', shot_from: 0.6 };
+    action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.16', shot_from: 0.1 };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_corridor, at: right, duration: 60 };
+    action: character_show { target: 'kranz', expression: 'worried', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.17' };
+  }
+  scene solar_system_3d {
+    duration: 16s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: explain_heat_shield, at: left, duration: 60 };
+    action: character_show { target: 'swigert', expression: 'excited', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'swigert', id: 'demo.narr.storia_apollo13_scienza.18' };
+  }
+  scene solar_system_3d {
+    // 17 aprile 1970: l'ammaraggio
+    duration: 15s;
+    action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
+    action: story_camera { mode: wide };
+    action: effect { type: apollo_splashdown, duration: 60 };
+    action: date_card { label: 'demo.cartello.storia_apollo13_scienza.ammaraggio' };
+    action: character_show { target: 'lovell', expression: 'relieved', at: bottom_left, scale: 0.7, look: 'viewer' };
+    action: character_show { target: 'haise', expression: 'happy', at: bottom_right, scale: 0.65, look: 'lovell' };
+    action: character_show { target: 'swigert', expression: 'laughing', at: right, scale: 0.6, look: 'lovell' };
+    action: sound { type: 'splash', shot_from: 0.42 };
+    action: effect { type: confetti, at: top, shot_from: 0.5 };
+    action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.19', shot_from: 0.15 };
+  }
+}`
     }
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = predefiniti;

@@ -830,7 +830,37 @@
       voce: { ritmo: '-8%', tono: '4Hz' }, espressione: 'tender', personalita: 'murph_anziana' },
     loro: { famiglia: 'presenza', genere: 'f', nome: 'storie.nome.loro', ospite: true,
       alias: ['Loro', 'They', 'Them', 'Esseri a cinque dimensioni', 'Five-dimensional beings', 'Pentadimensionali'],
-      voce: { ritmo: '-10%', tono: '-2Hz' }, espressione: 'mysterious', personalita: 'loro' }
+      voce: { ritmo: '-10%', tono: '-2Hz' }, espressione: 'mysterious', personalita: 'loro' },
+    /* v504, «Apollo 13» (1995): l'equipaggio — Jim Lovell, il comandante,
+     * Fred Haise e Jack Swigert, nelle tute bianche dell'Apollo —, Gene
+     * Kranz, il direttore di volo col suo gilet bianco e i capelli a
+     * spazzola, e Ken Mattingly, rimasto a terra per il morbillo e finito nel
+     * simulatore a inventare la riaccensione, nella tuta blu da volo. */
+    lovell: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.lovell', ospite: true, alias: ['Lovell', 'Jim Lovell', 'James Lovell'],
+      pelle: '#efc19d', iride: '#4b6b8a', sottotitolo: '#fde68a', guance: '#f4a08a', peli: '#6b4a2b',
+      figura: { capelli: 'corti', chioma: '#6b4a2b', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'us', pannello: true, segni: { zampe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-4%', tono: '-8Hz' }, espressione: 'determined', personalita: 'lovell' },
+    haise: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.haise', ospite: true, alias: ['Haise', 'Fred Haise'],
+      pelle: '#e9b48c', iride: '#3f2a17', sottotitolo: '#a7f3d0', guance: '#e8957a', peli: '#2b1b10',
+      figura: { capelli: 'corti', chioma: '#2b1b10', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'us', segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '2%', tono: '-4Hz' }, espressione: 'happy', personalita: 'haise' },
+    swigert: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.swigert', ospite: true, alias: ['Swigert', 'Jack Swigert', 'John Swigert'],
+      pelle: '#f2c4a0', iride: '#3b5b7a', sottotitolo: '#bae6fd', guance: '#f4a08a', peli: '#a47a4a',
+      figura: { capelli: 'ciuffo', chioma: '#a47a4a', veste: 'tuta', colori: ['#f1f5f9', '#cbd5e1', '#f8fafc'], bandiera: 'us', segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '4%', tono: '-2Hz' }, espressione: 'worried', personalita: 'swigert' },
+    kranz: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.kranz', ospite: true, alias: ['Kranz', 'Gene Kranz', 'Eugene Kranz'],
+      pelle: '#f0c4a0', iride: '#4b5563', sottotitolo: '#fca5a5', guance: '#f4a08a', peli: '#3b2a1a',
+      figura: { capelli: 'corti', chioma: '#3b2a1a', veste: 'abito', cravatta: 'lunga', colori: ['#f8fafc', '#e2e8f0', '#1e293b'], segni: { pieghe: true } },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '-2%', tono: '-10Hz' }, espressione: 'determined', personalita: 'kranz' },
+    mattingly: { famiglia: 'persona', genere: 'm', sagoma: 'persona', nome: 'storie.nome.mattingly', ospite: true, alias: ['Mattingly', 'Ken Mattingly', 'Thomas Mattingly'],
+      pelle: '#f2c4a0', iride: '#3b5b7a', sottotitolo: '#c4b5fd', guance: '#f4a08a', peli: '#5b3a1e',
+      figura: { capelli: 'corti', chioma: '#5b3a1e', veste: 'tuta', colori: ['#1d4ed8', '#1e3a8a', '#f8fafc'], bandiera: 'us', segni: {} },
+      scala: 0.8, occhi: { r: 0.235, distanza: 0.38, alto: -0.06 }, irideVera: true, nasoProprio: true,
+      voce: { ritmo: '0%', tono: '-6Hz' }, espressione: 'thinking', personalita: 'mattingly' }
   };
   const STOR_SAGOME = ['stella', 'pianeta', 'luna', 'anelli', 'asteroide', 'cometa', 'voyager', 'iss', 'tiangong', 'hubble', 'galassia',
     'gigante_rossa', 'nana_bianca', 'supernova', 'buco_nero', 'buco_bianco', 'sagan', 'persona', 'tars', 'endurance', 'ranger', 'lander', 'presenza'];
@@ -1048,6 +1078,19 @@
       lune: [{ colore: '#fbbf24', r: 0.05, d: 1.36, periodo: 9000, piatto: 0.3, giro: 0.12 }] },
     loro:         { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.7, tratto: 'loro',
       lune: [{ colore: '#fde68a', r: 0.05, d: 1.45, periodo: 14000, piatto: 0.3, giro: -0.1 }] },
+    // v504, «Apollo 13»: all'equipaggio gira attorno la Luna che non hanno
+    // toccato; a Kranz la Terra a cui li ha riportati; a Mattingly una
+    // lucina gialla, l'ampere da risparmiare
+    lovell:       { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'lovell',
+      lune: [{ colore: '#c9cbd9', r: 0.055, d: 1.38, periodo: 9000, piatto: 0.3, giro: 0.1 }] },
+    haise:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'haise',
+      lune: [{ colore: '#c9cbd9', r: 0.05, d: 1.36, periodo: 8000, piatto: 0.3, giro: -0.1 }] },
+    swigert:      { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.1, tratto: 'swigert',
+      lune: [{ colore: '#c9cbd9', r: 0.05, d: 1.36, periodo: 7000, piatto: 0.3, giro: 0.12 }] },
+    kranz:        { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 0.95, tratto: 'kranz',
+      lune: [{ colore: '#3b82f6', r: 0.06, d: 1.4, periodo: 11000, piatto: 0.3, giro: -0.08 }] },
+    mattingly:    { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1, tratto: 'mattingly',
+      lune: [{ colore: '#ffcc3d', r: 0.045, d: 1.34, periodo: 6000, piatto: 0.3, giro: 0.1 }] },
     mann_planet:  { superficie: 'ghiaccio', atmosfera: { colore: '#e0f2fe', spessore: 0.1, densita: 0.45 }, passo: 0.7, tratto: 'mann_planet' }
   };
   /* Come la fisica risponde a un'emozione: quanto si gonfiano le tempeste
@@ -1164,12 +1207,23 @@
     'explain_spin', 'explain_tides', 'explain_twins', 'explain_docking', 'explain_slingshot', 'explain_spaghetti', 'explain_horizon',
     // Parte 2
     'explain_dimensions', 'explain_timescape', 'explain_gravity_leak', 'explain_morse', 'explain_binary', 'explain_quantum',
-    'explain_loop', 'explain_station'];
-  for (const k of STOR_SPIEGA) STOR_EFFETTI[k] = 4000;
-  STOR_SFONDI.push(...STOR_SPIEGA);
+    'explain_loop', 'explain_station',
+    // v504, «Apollo 13 · Dentro la scienza» (§6-ter-ter)
+    'explain_saturn_v', 'explain_pogo', 'explain_free_return', 'explain_oxygen_tank', 'explain_fuel_cell', 'explain_lifeboat',
+    'explain_co2', 'explain_cold', 'explain_far_side', 'explain_manual_burn', 'explain_power_up', 'explain_corridor', 'explain_heat_shield'];
+  // v504: quelle di «Apollo 13» (le prove le separano da quelle di «Interstellar»)
+  const STOR_SPIEGA_APOLLO = STOR_SPIEGA.filter(k => STOR_SPIEGA.indexOf(k) >= STOR_SPIEGA.indexOf('explain_saturn_v'));
+  /* v504: le scene del film di «Apollo 13», disegnate come le spiegazioni
+   * (stesse tinte, stessa camera viva) ma senza titolo e a tutto schermo:
+   * il decollo, lo scoppio, il controllo missione, la cabina gelata
+   * dell'Aquarius, il modulo di servizio che si allontana squarciato,
+   * l'ammaraggio */
+  const STOR_SCENE_APOLLO = ['apollo_launch', 'apollo_explosion', 'apollo_control', 'apollo_cabin', 'apollo_jettison', 'apollo_splashdown'];
+  for (const k of STOR_SPIEGA.concat(STOR_SCENE_APOLLO)) STOR_EFFETTI[k] = 4000;
+  STOR_SFONDI.push(...STOR_SPIEGA, ...STOR_SCENE_APOLLO);
   // quelli che coprono tutta la vista (il wormhole e l'onda lasciano vedere sotto)
   const STOR_SFONDI_PIENI = ['starfield', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'mann_ice',
-    'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet', ...STOR_SPIEGA];
+    'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet', ...STOR_SPIEGA, ...STOR_SCENE_APOLLO];
   const STOR_POSTI_EFFETTO = ['center', 'left', 'right', 'top', 'bottom'];
   /* v486: i disegni che spiegano la fisica di una battuta (il foglio
    * piegato, l'orologio che corre, la fionda, il tesseratto, le dimensioni,
@@ -1748,6 +1802,7 @@
     cosmoFuori: new Map(),     // v477: chi è fuori dal quadro della carta, e di quanti pixel
     anteprima: null,           // l'anteprima della pagina Demo, se è aperta
     ridotto: false,
+    stile: 'ink',              // v504: 'ink' (la fiaba d'inchiostro) o 'kurz' (Kurzgesagt, `story_style`)
     // La vista 3D (§5-bis): dove ogni astro sarebbe davvero e dove la
     // storia lo ha messo, nelle unità della scena; i ritorni di chi è uscito
     // di scena spostato o ingrandito; gli effetti speciali in corso (§6-ter).
@@ -1784,6 +1839,9 @@
     // sotto alle chiusure delle azioni, che di regola bastano da sole.
     const d = radice.AstroDemo;
     if ((stor.personaggi.size || stor.effetti.length) && d && !d.inCorso && !stor.anteprima) storSgombra();
+    // lo stile di una storia (v504) finisce con lei
+    if (stor.stile !== 'ink' && d && !d.inCorso && !stor.anteprima) stor.stile = 'ink';
+    storTintePennino();
     return dt;
   }
 
@@ -1886,7 +1944,7 @@
     for (const p of stor.personaggi.values()) storRitorno(p);
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
     stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
-    stor.canti = []; stor.titolo = null; stor.canzone = null;
+    stor.canti = []; stor.titolo = null; stor.canzone = null; stor.stile = 'ink';
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
     Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel, ritmoScelta: null });
     storZittisci();
@@ -2546,11 +2604,21 @@
    * d'ombra, le guance con le tre lineette, un neo. Il corpo ha perso il
    * retino a puntini (faceva rumore accanto agli occhi): un'ombra a falce dal
    * bordo appena sfumato, i crateri piatti, il bordo panna fra due fili. */
-  const INCHIOSTRO = '#1c1236';
-  const ALONE = 'rgba(255, 248, 235, 0.62)';
+  // v504: sono `let` perché lo stile di Kurzgesagt (`story_style`) li
+  // cambia per tutto il fotogramma (`storTintePennino`, da `storTic`): il
+  // pennino si fa indaco tenue e l'alone color panna sparisce
+  const INCHIOSTRO_FIABA = '#1c1236', ALONE_FIABA = 'rgba(255, 248, 235, 0.62)', ALONE_TENUE_FIABA = 'rgba(255, 248, 235, 0.34)';
+  let INCHIOSTRO = INCHIOSTRO_FIABA;
+  let ALONE = ALONE_FIABA;
   // Il velo più leggero dei tratti del volto (v417): l'alone pieno attorno
   // agli occhi grandi faceva di nuovo gli occhiali
-  const ALONE_TENUE = 'rgba(255, 248, 235, 0.34)';
+  let ALONE_TENUE = ALONE_TENUE_FIABA;
+  function storTintePennino() {
+    const kurz = stor.stile === 'kurz';
+    INCHIOSTRO = kurz ? '#2e2466' : INCHIOSTRO_FIABA;
+    ALONE = kurz ? 'rgba(255, 248, 235, 0)' : ALONE_FIABA;
+    ALONE_TENUE = kurz ? 'rgba(255, 248, 235, 0)' : ALONE_TENUE_FIABA;
+  }
 
   function rgba(hex, a) {
     const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
@@ -3172,6 +3240,8 @@
       fn();
       ctx.restore();
     };
+    // v504: lo stile di Kurzgesagt ha il suo volto (§6)
+    if (stor.stile === 'kurz') { kurzVolto(ctx, geom, profilo, posa); ctx.restore(); return; }
     // La rabbia: la fronte si fa rossa, dall'alto
     if (geom.rosso > 0.05) posa(cx, cy - R * 0.25, () => {
       const g = ctx.createLinearGradient(cx, cy - R, cx, cy + R * 0.1);
@@ -4146,7 +4216,7 @@
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const tipo = ef.tipo;
-    if (STOR_SPIEGA.includes(tipo)) {
+    if (STOR_SPIEGA.includes(tipo) || STOR_SCENE_APOLLO.includes(tipo)) {
       storDisegnaSpiega(ctx, ef, t, L, H, ridotto, alfa);
     } else if (tipo === 'starfield') {
       sfondoStelle(ctx, L, H, s, t, alfa, ridotto);
@@ -5086,6 +5156,20 @@
       const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * luce;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = a0;
+    }
+    // v504, lo stile di Kurzgesagt: le luci sfocate che galleggiano (il
+    // «bokeh» dei loro fondali), turchesi, lilla e corallo
+    if (stor.stile === 'kurz') {
+      const b = { s: 4141 };
+      const tinte = [KZ.ciano, KZ.lilla, KZ.rosa, KZ.turchese, KZ.giallo];
+      for (let i = 0; i < 14; i++) {
+        const r = c.U * (0.03 + dado(b) * 0.09);
+        const x = (dado(b) * L + c.t / (90 + i * 13)) % (L + r * 2) - r, y = dado(b) * H + Math.sin(c.t / 3000 + i) * r * 0.4;
+        const g2 = ctx.createRadialGradient(x, y, 0, x, y, r);
+        const col = tinte[i % tinte.length];
+        g2.addColorStop(0, rgba(col, 0.16)); g2.addColorStop(0.6, rgba(col, 0.08)); g2.addColorStop(1, rgba(col, 0));
+        ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
     }
     const v = ctx.createRadialGradient(L / 2, H * 0.45, Math.min(L, H) * 0.3, L / 2, H * 0.45, Math.hypot(L, H) * 0.65);
     v.addColorStop(0, 'rgba(0, 0, 0, 0)'); v.addColorStop(1, 'rgba(3, 4, 18, 0.55)');
@@ -6107,6 +6191,1024 @@
       kzEtichetta(c, 'stazione.peso', cx + U * 0.3, cy + U * 0.16, f(5, 5.5), { colore: KZ.corallo, grande: true });
     }
   };
+  // ===================================================================
+  // 6-ter-ter. «Apollo 13 · Dentro la scienza» (v504)
+  // ===================================================================
+
+  /* «Fai una nuova CosmoStoria simile a quella di Interstellar dentro la
+   * scienza, questa volta sul film Apollo 13 (1995): il filo è la trama del
+   * film, ma il centro sono le spiegazioni scientifiche. E usa una grafica
+   * più simile a Kurzgesagt, solo per questa storia.» Qui stanno le tredici
+   * spiegazioni (`explain_saturn_v` … `explain_heat_shield`) e le sei scene
+   * del film (`apollo_*`, a tutto schermo, senza titolo), con gli aiutanti
+   * per i loro oggetti: il Saturn V a stadi che si staccano, la navicella
+   * Odyssey con l'Aquarius attaccato davanti, la capsula, il fuoco, la
+   * Terra, la Luna. Tinte di Kurzgesagt: blu notte e viola, ciano, corallo,
+   * giallo, e gli aloni che fanno brillare ciò che è caldo o acceso.
+   *
+   * I numeri sono quelli della missione (NASA, rapporto della commissione
+   * Cortright, 1970): 110 m e 2 900 t del Saturn V; il motore centrale del
+   * secondo stadio spento 132 s prima per il «pogo», gli altri quattro 34 s
+   * in più; lo scoppio a 55 h 54 min; i termostati da 28 V sotto 65 V a
+   * terra, il riscaldatore a circa 540 °C con un termometro che arrivava a
+   * 27 °C; il modulo lunare fatto per due persone e 45 ore, usato da tre per
+   * quasi 90; la cabina a 3 °C; il record di 400 171 km dalla Terra, 254 km
+   * sopra la faccia nascosta della Luna, 25 minuti senza radio; la
+   * correzione a mano di 14 s col terminatore della Terra nel mirino; il
+   * corridoio di rientro di 6,5° ± 1°, 11 km/s, circa 2 700 °C sullo scudo e
+   * sei minuti di silenzio radio, il più lungo dell'Apollo. */
+  function kzAlone(ctx, x, y, r, col, a = 0.5) {
+    if (!(r > 0.5)) return;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgba(col, a)); g.addColorStop(1, rgba(col, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  const kzTerra = (ctx, x, y, r) => kzPalla(ctx, x, y, r, '#3b82f6', { macchie: '#59d98e', alone: '#69e0ff' });
+  function kzLuna(ctx, x, y, r) {
+    kzPalla(ctx, x, y, r, '#c9cbd9', { alone: '#e5e7ff' });
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = 'rgba(80, 76, 120, 0.35)';
+    for (const [dx, dy, rr] of [[-0.3, -0.25, 0.18], [0.25, 0.1, 0.13], [-0.1, 0.4, 0.1], [0.4, -0.35, 0.08]]) {
+      ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, rr * r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // Il fuoco di un motore che punta verso `ang` (di serie in giù), largo w,
+  // lungo len: tre lingue una dentro l'altra, che tremano
+  function kzFiamma(ctx, x, y, w, len, t, ang = Math.PI / 2) {
+    if (!(len > 1)) return;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang - Math.PI / 2);
+    kzAlone(ctx, 0, len * 0.35, len * 0.9, '#ff8f3d', 0.45);
+    for (const [k, col] of [[1, '#ff5c6c'], [0.78, '#ff8f3d'], [0.55, '#ffcc3d'], [0.28, '#fff6d8']]) {
+      const l = len * k * (0.9 + 0.1 * Math.sin(t / 45 + k * 7)), ww = w * (0.6 + 0.4 * k);
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(-ww, 0); ctx.quadraticCurveTo(-ww * 0.9, l * 0.5, 0, l); ctx.quadraticCurveTo(ww * 0.9, l * 0.5, ww, 0); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  /* Il Saturn V in piedi, la base in (x, y), alto h. `opz.stadi[i]` sposta
+   * lo stadio i (0 il primo, 1 il secondo, 2 il terzo, 3 la navicella in
+   * cima) di `dx`, `dy`, lo gira di `giro` e lo sfuma con `alfa`. */
+  function kzSaturnV(ctx, x, y, h, opz = {}) {
+    const w = h * 0.075, st = opz.stadi || [];
+    const pezzo = (i, fn) => {
+      const o = st[i] || {};
+      if (o.alfa === 0) return;
+      ctx.save();
+      ctx.globalAlpha *= o.alfa === undefined ? 1 : o.alfa;
+      const py = y - h * [0.17, 0.47, 0.69, 0.9][i];
+      ctx.translate(x + (o.dx || 0), py + (o.dy || 0)); ctx.rotate(o.giro || 0); ctx.translate(-x, -py);
+      fn();
+      ctx.restore();
+    };
+    const corpo = (y0, y1, w0, w1, col) => {
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
+      // l'ombra fredda a destra e la lama di luce a sinistra
+      ctx.fillStyle = 'rgba(36, 26, 82, 0.3)'; ctx.beginPath();
+      ctx.moveTo(x + w0 * 0.4, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x + w1 * 0.4, y - h * y1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath();
+      ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x - w0 * 0.8, y - h * y0); ctx.lineTo(x - w1 * 0.8, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
+    };
+    const fascia = (y0, y1, w0) => { ctx.fillStyle = '#1b1d33'; ctx.fillRect(x - w0, y - h * y1, w0 * 2, h * (y1 - y0)); };
+    pezzo(0, () => {
+      ctx.fillStyle = '#3a3f5c';
+      for (const k of [-0.62, 0, 0.62]) { ctx.beginPath(); ctx.moveTo(x + k * w - w * 0.2, y); ctx.lineTo(x + k * w + w * 0.2, y); ctx.lineTo(x + k * w + w * 0.3, y + h * 0.03); ctx.lineTo(x + k * w - w * 0.3, y + h * 0.03); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = '#e8ecf5';
+      for (const l of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + l * w, y - h * 0.07); ctx.lineTo(x + l * w * 1.75, y + h * 0.005); ctx.lineTo(x + l * w, y); ctx.closePath(); ctx.fill(); }
+      corpo(0, 0.34, w, w, '#f4f6ff');
+      fascia(0.03, 0.055, w); fascia(0.3, 0.32, w);
+      ctx.fillStyle = '#1b1d33'; ctx.fillRect(x - w, y - h * 0.23, w * 0.95, h * 0.08); ctx.fillRect(x + w * 0.05, y - h * 0.15, w * 0.95, h * 0.08);
+    });
+    pezzo(1, () => { corpo(0.34, 0.6, w, w, '#f4f6ff'); fascia(0.34, 0.37, w); fascia(0.56, 0.575, w); });
+    pezzo(2, () => { corpo(0.6, 0.645, w, w * 0.68, '#f4f6ff'); corpo(0.645, 0.78, w * 0.68, w * 0.68, '#f4f6ff'); fascia(0.7, 0.72, w * 0.68); });
+    pezzo(3, () => {
+      corpo(0.78, 0.795, w * 0.68, w * 0.68, '#9aa3bd');
+      corpo(0.795, 0.865, w * 0.68, w * 0.5, '#d6dcea');
+      corpo(0.865, 0.905, w * 0.5, w * 0.5, '#e8ecf5');
+      corpo(0.905, 0.95, w * 0.5, w * 0.1, '#cfd6e6');
+      ctx.strokeStyle = '#ff5c6c'; ctx.lineWidth = Math.max(1, w * 0.12);
+      ctx.beginPath(); ctx.moveTo(x, y - h * 0.95); ctx.lineTo(x, y - h * 1.0); ctx.stroke();
+      ctx.fillStyle = '#ff5c6c'; ctx.beginPath(); ctx.moveTo(x - w * 0.12, y - h * 0.985); ctx.lineTo(x + w * 0.12, y - h * 0.985); ctx.lineTo(x, y - h * 1.015); ctx.closePath(); ctx.fill();
+    });
+  }
+  /* La navicella di Apollo 13 di lato, che punta verso `ang`, lunga s: il
+   * modulo di servizio col suo ugello, la capsula Odyssey a cono e, davanti,
+   * agganciato al naso, il modulo lunare Aquarius (la parte d'oro di sotto,
+   * la cabina grigia di sopra). `opz.lm` (di serie sì), `opz.squarcio` (0…1:
+   * il pannello che manca, coi bordi bruciati), `opz.sm` (di serie sì: il
+   * modulo di servizio) e `opz.cm` (la capsula), `opz.luce` (0…1: i
+   * finestrini accesi). */
+  function kzApollo(ctx, x, y, s, ang, opz = {}) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang || 0); ctx.scale(s, s);
+    const piatto = (traccia, col) => {
+      traccia(); ctx.fillStyle = col; ctx.fill();
+      ctx.save(); traccia(); ctx.clip();
+      ctx.fillStyle = 'rgba(36, 26, 82, 0.32)'; ctx.fillRect(-1, 0.02, 2, 1);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fillRect(-1, -1, 2, 0.97);
+      ctx.restore();
+    };
+    if (opz.sm !== false) {
+      // l'ugello del motore principale
+      piatto(() => { ctx.beginPath(); ctx.moveTo(-0.4, -0.035); ctx.lineTo(-0.52, -0.075); ctx.lineTo(-0.52, 0.075); ctx.lineTo(-0.4, 0.035); ctx.closePath(); }, '#4a4f6e');
+      piatto(() => rettangolo(ctx, -0.41, -0.09, 0.46, 0.18, 0.01), '#dde3ee');
+      ctx.fillStyle = 'rgba(27, 29, 51, 0.25)';
+      for (const k of [-0.3, -0.18, -0.06]) ctx.fillRect(k, -0.09, 0.005, 0.18);
+      // i radiatori: le strisce chiare
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'; ctx.fillRect(-0.36, -0.085, 0.3, 0.012);
+      const sq = Math.max(0, Math.min(1, opz.squarcio || 0));
+      if (sq > 0.01) {
+        // il pannello 4 che non c'è più: dentro, i serbatoi e i cavi anneriti
+        const buco = [[-0.27, -0.088], [-0.24, -0.07], [-0.21, -0.088], [-0.18, -0.06], [-0.15, -0.075], [-0.14, -0.03], [-0.16, 0.0],
+          [-0.135, 0.035], [-0.165, 0.06], [-0.19, 0.045], [-0.22, 0.07], [-0.25, 0.04], [-0.275, 0.05], [-0.26, 0.0], [-0.285, -0.04]];
+        const traccia = () => { ctx.beginPath(); buco.forEach(([bx, by], i) => { const px = -0.21 + (bx + 0.21) * sq, py = -0.01 + (by + 0.01) * sq; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.closePath(); };
+        // l'orlo bruciato, poi il buio dentro, un serbatoio e un filo rovente
+        traccia(); ctx.strokeStyle = 'rgba(60, 35, 30, 0.55)'; ctx.lineWidth = 0.02; ctx.stroke();
+        traccia(); ctx.fillStyle = '#1b1430'; ctx.fill();
+        ctx.save(); traccia(); ctx.clip();
+        ctx.fillStyle = '#4a3f66'; ctx.beginPath(); ctx.arc(-0.2, -0.02, 0.03, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ff8f3d'; ctx.lineWidth = 0.006; ctx.beginPath(); ctx.moveTo(-0.26, 0.03); ctx.quadraticCurveTo(-0.2, 0.0, -0.15, 0.04); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    if (opz.cm !== false) {
+      // lo scudo termico (il fondo della capsula) e il cono
+      piatto(() => { ctx.beginPath(); ctx.moveTo(0.05, -0.095); ctx.lineTo(0.2, -0.022); ctx.lineTo(0.2, 0.022); ctx.lineTo(0.05, 0.095); ctx.closePath(); }, '#e8ecf5');
+      ctx.fillStyle = '#8a6a4a'; ctx.fillRect(0.04, -0.095, 0.014, 0.19);
+      const luce = opz.luce === undefined ? 1 : opz.luce;
+      ctx.fillStyle = luce > 0.05 ? mescolaColori('#26408b', '#ffcc3d', luce * 0.7) : '#26408b';
+      ctx.beginPath(); ctx.arc(0.11, -0.025, 0.014, 0, Math.PI * 2); ctx.fill();
+      if (luce > 0.05) kzAlone(ctx, 0.11, -0.025, 0.05, '#ffcc3d', 0.4 * luce);
+    }
+    if (opz.lm !== false) {
+      // il tunnel d'aggancio, la cabina di salita e il modulo di discesa d'oro
+      ctx.fillStyle = '#9aa3bd'; ctx.fillRect(0.2, -0.018, 0.04, 0.036);
+      piatto(() => { ctx.beginPath(); ctx.moveTo(0.24, -0.06); ctx.lineTo(0.3, -0.075); ctx.lineTo(0.34, -0.05); ctx.lineTo(0.34, 0.06); ctx.lineTo(0.24, 0.07); ctx.closePath(); }, '#c8ccd8');
+      ctx.fillStyle = '#26408b'; ctx.beginPath(); ctx.moveTo(0.26, -0.04); ctx.lineTo(0.29, -0.05); ctx.lineTo(0.29, -0.02); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#c8ccd8'; ctx.lineWidth = 0.008; ctx.beginPath(); ctx.moveTo(0.3, -0.075); ctx.lineTo(0.3, -0.11); ctx.stroke();
+      ctx.fillStyle = '#e5e7ff'; ctx.beginPath(); ctx.arc(0.3, -0.115, 0.012, 0, Math.PI * 2); ctx.fill();
+      piatto(() => { ctx.beginPath(); ctx.moveTo(0.34, -0.09); ctx.lineTo(0.46, -0.09); ctx.lineTo(0.48, -0.06); ctx.lineTo(0.48, 0.06); ctx.lineTo(0.46, 0.09); ctx.lineTo(0.34, 0.09); ctx.closePath(); }, '#e8b84a');
+      ctx.strokeStyle = 'rgba(120, 80, 20, 0.45)'; ctx.lineWidth = 0.006;
+      ctx.beginPath(); ctx.moveTo(0.37, -0.09); ctx.lineTo(0.39, 0.09); ctx.moveTo(0.42, -0.09); ctx.lineTo(0.43, 0.09); ctx.stroke();
+      // le gambe ripiegate
+      ctx.strokeStyle = '#9aa3bd'; ctx.lineWidth = 0.01;
+      ctx.beginPath(); ctx.moveTo(0.36, -0.09); ctx.lineTo(0.47, -0.12); ctx.moveTo(0.36, 0.09); ctx.lineTo(0.47, 0.12); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // La capsula da sola, per il rientro: lo scudo verso `ang` (dove va)
+  function kzCapsula(ctx, x, y, r, ang) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.moveTo(r * 0.3, -r); ctx.lineTo(-r * 0.9, -r * 0.22); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(r * 0.3, r); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(36, 26, 82, 0.3)'; ctx.beginPath(); ctx.moveTo(r * 0.3, 0); ctx.lineTo(r * 0.3, r); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(-r * 0.9, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#7a5236'; ctx.beginPath(); ctx.ellipse(r * 0.34, 0, r * 0.16, r * 1.02, 0, -Math.PI / 2, Math.PI / 2); ctx.fill();
+    ctx.fillStyle = '#26408b'; ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.3, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // Una molecola: palline unite (`atomi`: [dx, dy, r, colore])
+  function kzMolecola(ctx, x, y, s, atomi) {
+    for (const [dx, dy, r, col] of atomi) {
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'; ctx.beginPath(); ctx.arc(x + (dx - r * 0.3) * s, y + (dy - r * 0.35) * s, r * 0.35 * s, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const MOL = {
+    h2: [[-0.45, 0, 0.5, '#f4f6ff'], [0.45, 0, 0.5, '#f4f6ff']],
+    o2: [[-0.55, 0, 0.65, '#ff5c6c'], [0.55, 0, 0.65, '#ff5c6c']],
+    h2o: [[0, 0, 0.65, '#ff5c6c'], [-0.6, 0.45, 0.42, '#f4f6ff'], [0.6, 0.45, 0.42, '#f4f6ff']],
+    co2: [[0, 0, 0.6, '#3a3f5c'], [-0.95, 0, 0.55, '#ff5c6c'], [0.95, 0, 0.55, '#ff5c6c']]
+  };
+  // Un indicatore a lancetta (mezzo quadrante), da 0 a 1, con la zona rossa
+  function kzManometro(ctx, x, y, r, u, rosso = 0.8) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; ctx.beginPath(); ctx.arc(x + r * 0.05, y + r * 0.06, r * 1.08, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = KZ.corallo; ctx.lineWidth = r * 0.14; ctx.beginPath(); ctx.arc(x, y, r * 0.82, Math.PI + Math.PI * rosso, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = KZ.verde; ctx.beginPath(); ctx.arc(x, y, r * 0.82, Math.PI, Math.PI + Math.PI * rosso * 0.6); ctx.stroke();
+    const a = Math.PI + Math.PI * Math.max(0, Math.min(1, u));
+    ctx.strokeStyle = KZ.scuro; ctx.lineWidth = r * 0.07; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r * 0.75, y + Math.sin(a) * r * 0.75); ctx.stroke();
+    ctx.fillStyle = KZ.scuro; ctx.beginPath(); ctx.arc(x, y, r * 0.1, 0, Math.PI * 2); ctx.fill();
+  }
+  // Un termometro: il bulbo, il tubo, il rosso che sale fino a `u` (0…1)
+  function kzTermometro(ctx, x, y, h, u, col = KZ.corallo) {
+    const w = h * 0.12;
+    ctx.fillStyle = KZ.bianco; rettangolo(ctx, x - w / 2, y - h, w, h, w / 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, w * 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, w * 0.65, 0, Math.PI * 2); ctx.fill();
+    const hh = (h - w) * Math.max(0.03, Math.min(1, u));
+    rettangolo(ctx, x - w * 0.22, y - hh, w * 0.44, hh, w * 0.22); ctx.fill();
+  }
+  // Un fiocco di gas che si allarga (lo sfiato dell'ossigeno, il fumo)
+  function kzSbuffi(ctx, x, y, r, n, t, semeN, col, verso = 0, apertura = Math.PI * 2) {
+    const d = { s: semeN };
+    for (let i = 0; i < n; i++) {
+      const fase = ((t / 1000) * (0.25 + dado(d) * 0.3) + dado(d)) % 1;
+      const a = verso + (dado(d) - 0.5) * apertura, dist = r * (0.1 + fase * 1.1);
+      const rr = r * (0.03 + fase * 0.1) * (0.6 + dado(d) * 0.8);
+      ctx.fillStyle = rgba(col, 0.4 * (1 - fase));
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * dist, y + Math.sin(a) * dist, rr, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  Object.assign(STOR_SPIEGA_DISEGNI, {
+    // ---- Il Saturn V: il razzo più potente mai volato --------------------
+    explain_saturn_v(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'saturno.titolo', f(0, 0.6));
+      const h = U * 0.62, x = cx - U * 0.2, base = cy + U * 0.3;
+      const entra = kzMolla(f(0.2, 1.1));
+      // la salita: dal secondo cinque le stelle corrono giù (il razzo sale)
+      const vola = f(4.6, 5.4);
+      if (vola > 0) {
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.35)'; ctx.lineWidth = Math.max(1, U * 0.003);
+        const d = { s: 77 };
+        for (let i = 0; i < 26; i++) {
+          const sx = cx - U * 0.6 + dado(d) * U * 1.2, sy = ((dado(d) * 1.4 + c.t / 900 * (0.5 + dado(d))) % 1.4) * U - U * 0.2 + cy - U * 0.5;
+          ctx.globalAlpha *= vola; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy - U * 0.06); ctx.stroke(); ctx.globalAlpha /= vola;
+        }
+      }
+      const sep1 = f(6.4, 8.4), sep2 = f(8.6, 10.6);
+      const stadi = [
+        { dx: -U * 0.08 * sep1, dy: U * 0.5 * sep1 * sep1, giro: -0.6 * sep1, alfa: 1 - f(7.6, 8.4) },
+        { dx: U * 0.08 * sep2, dy: U * 0.5 * sep2 * sep2, giro: 0.6 * sep2, alfa: 1 - f(9.8, 10.6) }
+      ];
+      ctx.save(); ctx.translate(x, base); ctx.scale(entra, entra); ctx.translate(-x, -base);
+      // il fuoco sotto allo stadio più basso ancora attaccato
+      const fuoco = f(4.4, 5);
+      if (fuoco > 0) {
+        const yF = sep2 > 0.05 ? base - h * 0.6 : sep1 > 0.05 ? base - h * 0.34 : base + h * 0.03;
+        kzFiamma(ctx, x, yF, h * 0.05, h * 0.3 * fuoco, t);
+      }
+      kzSaturnV(ctx, x, base, h, { stadi });
+      ctx.restore();
+      // l'altezza: la quota con le frecce, e accanto un uomo minuscolo
+      const q = f(1.2, 2);
+      if (q > 0) {
+        const xq = x - U * 0.15;
+        ctx.strokeStyle = KZ.giallo; ctx.lineWidth = Math.max(1.5, U * 0.004);
+        ctx.beginPath(); ctx.moveTo(xq, base); ctx.lineTo(xq, base - h * q); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(xq - U * 0.015, base); ctx.lineTo(xq + U * 0.015, base); ctx.moveTo(xq - U * 0.015, base - h * q); ctx.lineTo(xq + U * 0.015, base - h * q); ctx.stroke();
+        kzOmino(ctx, x + U * 0.13, base - U * 0.006, U * 0.012, KZ.giallo);
+        kzEtichetta(c, 'saturno.altezza', xq - U * 0.02, base - h * 0.55, f(1.6, 2.1), { colore: KZ.giallo, grande: true });
+        kzEtichetta(c, 'saturno.uomo', x + U * 0.3, base + U * 0.05, f(2, 2.5) * (1 - f(4.4, 4.8)), { a: [x + U * 0.13, base - U * 0.012] });
+      }
+      kzEtichetta(c, 'saturno.stadio_uno', x + U * 0.36, base - h * 0.17, f(2.6, 3.1) * (1 - sep1), { a: [x + h * 0.08, base - h * 0.17] });
+      kzEtichetta(c, 'saturno.stadio_due', x + U * 0.36, base - h * 0.47, f(3, 3.5) * (1 - sep2), { a: [x + h * 0.08, base - h * 0.47] });
+      kzEtichetta(c, 'saturno.navicella', x + U * 0.36, base - h * 0.88, f(3.4, 3.9), { a: [x + h * 0.04, base - h * 0.88], colore: KZ.ciano });
+      // la massa che conta, poi il carburante bruciato ogni secondo
+      const m = f(3.8, 4.8);
+      kzEtichetta(c, 'saturno.massa', x + U * 0.4, base - h * 0.68, f(3.8, 4.2) * (1 - f(5.2, 5.6)), { dati: { n: kzNumero(Math.round(2900 * m)) }, colore: KZ.corallo, grande: true });
+      kzEtichetta(c, 'saturno.carburante', x + U * 0.4, base - h * 0.68, f(5.6, 6), { dati: { n: kzNumero(Math.round(13 * f(5.6, 6.4))) }, colore: KZ.arancio, grande: true });
+      kzEtichetta(c, 'saturno.stacca', x + U * 0.36, base - h * 0.17, f(6.8, 7.3), { colore: KZ.verde });
+    },
+    // ---- Il pogo: il motore centrale che tremava -----------------------
+    explain_pogo(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'pogo.titolo', f(0, 0.6));
+      // a sinistra: il serbatoio, la molla del carburante, il motore che rimbalza
+      const x0 = cx - U * 0.3, y0 = cy - U * 0.2;
+      const cresce = Math.min(1, f(1.2, 4.2) * 1.15), spento = tt > 4.6;
+      const amp = spento ? U * 0.035 * Math.max(0, 1 - (tt - 4.6) * 1.5) : U * 0.04 * cresce;
+      const sb = Math.sin(t / 70) * amp;
+      ctx.fillStyle = '#d6dcea'; rettangolo(ctx, x0 - U * 0.1, y0 - U * 0.12, U * 0.2, U * 0.2, U * 0.04); ctx.fill();
+      ctx.fillStyle = KZ.ciano; rettangolo(ctx, x0 - U * 0.085, y0 - U * 0.02, U * 0.17, U * 0.085, U * 0.03); ctx.fill();
+      // la molla (il carburante nel tubo: si comprime e si allunga)
+      const mTop = y0 + U * 0.08, mBot = cy + U * 0.12 + sb;
+      ctx.strokeStyle = KZ.giallo; ctx.lineWidth = Math.max(1.5, U * 0.007); ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(x0, mTop);
+      for (let i = 1; i <= 10; i++) ctx.lineTo(x0 + (i % 2 ? 1 : -1) * U * 0.04, kzMix(mTop, mBot, i / 10.5));
+      ctx.lineTo(x0, mBot); ctx.stroke();
+      // il motore: la campana col fuoco che pulsa con la molla
+      ctx.fillStyle = '#4a4f6e'; ctx.beginPath(); ctx.moveTo(x0 - U * 0.035, mBot); ctx.lineTo(x0 + U * 0.035, mBot); ctx.lineTo(x0 + U * 0.07, mBot + U * 0.1); ctx.lineTo(x0 - U * 0.07, mBot + U * 0.1); ctx.closePath(); ctx.fill();
+      if (!spento) kzFiamma(ctx, x0, mBot + U * 0.1, U * 0.06, U * (0.12 + 0.06 * Math.sin(t / 70) * cresce), t);
+      else {
+        ctx.strokeStyle = KZ.corallo; ctx.lineWidth = U * 0.014; ctx.lineCap = 'round';
+        const k = kzMolla(f(4.6, 5.1)), r = U * 0.05 * k, yc = mBot + U * 0.05;
+        ctx.beginPath(); ctx.moveTo(x0 - r, yc - r); ctx.lineTo(x0 + r, yc + r); ctx.moveTo(x0 + r, yc - r); ctx.lineTo(x0 - r, yc + r); ctx.stroke();
+      }
+      kzEtichetta(c, 'pogo.molla', x0 + U * 0.18, cy, f(0.8, 1.3), { a: [x0 + U * 0.04, cy] });
+      // a destra: il grafico dello scuotimento che cresce, e la soglia
+      const gx = cx + U * 0.05, gw = U * 0.45, gy = cy - U * 0.02, gh = U * 0.14;
+      ctx.strokeStyle = 'rgba(244, 246, 255, 0.3)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + gw, gy); ctx.stroke();
+      ctx.setLineDash([U * 0.01, U * 0.008]); ctx.strokeStyle = KZ.corallo;
+      ctx.beginPath(); ctx.moveTo(gx, gy - gh * 0.85); ctx.lineTo(gx + gw, gy - gh * 0.85); ctx.stroke(); ctx.setLineDash([]);
+      kzEtichetta(c, 'pogo.soglia', gx + gw * 0.82, gy - gh * 1.15, f(1.5, 2), { colore: KZ.corallo });
+      const fin = Math.min(1, Math.max(0, (tt - 1) / 3.6));
+      ctx.strokeStyle = KZ.ciano; ctx.lineWidth = Math.max(1.5, U * 0.005); ctx.beginPath();
+      for (let i = 0; i <= 120 * fin; i++) {
+        const u = i / 120, a = u < 0.95 ? Math.pow(u, 2) : Math.pow(0.95, 2) * Math.max(0, 1 - (u - 0.95) * 20);
+        const yy = gy - Math.sin(u * 60) * gh * 0.95 * a;
+        if (i) ctx.lineTo(gx + u * gw, yy); else ctx.moveTo(gx + u * gw, yy);
+      }
+      ctx.stroke();
+      kzEtichetta(c, 'pogo.spento', gx + gw * 0.5, gy + U * 0.1, f(4.6, 5.1), { colore: KZ.corallo, grande: true });
+      // sotto: i cinque motori visti dal basso; gli altri quattro bruciano di più
+      const bx = cx + U * 0.28, by = cy + U * 0.28, br = U * 0.035, k5 = kzMolla(f(5.6, 6.3));
+      if (k5 > 0.01) {
+        for (const [dx, dy] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          const centro = !dx && !dy;
+          const px = bx + dx * br * 2.4 * k5, py = by + dy * br * 2.4 * k5;
+          if (!centro) kzAlone(ctx, px, py, br * (2.2 + 0.4 * Math.sin(t / 60 + dx * 3 + dy)), '#ff8f3d', 0.7);
+          ctx.fillStyle = centro ? '#2a2f48' : '#4a4f6e'; ctx.beginPath(); ctx.arc(px, py, br * k5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = centro ? '#141a3a' : '#ffcc3d'; ctx.beginPath(); ctx.arc(px, py, br * 0.6 * k5, 0, Math.PI * 2); ctx.fill();
+        }
+        kzEtichetta(c, 'pogo.compensa', bx - U * 0.3, by, f(6.2, 6.7), { colore: KZ.verde, a: [bx - br * 3.5, by] });
+      }
+    },
+    // ---- La traiettoria a otto: tornare a casa senza motore -------------
+    explain_free_return(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'otto.titolo', f(0, 0.6));
+      const A = U * 0.46, xE = cx - A * 0.62, xM = cx + A * 0.86, y = cy + U * 0.04;
+      // la lemniscata, stretta dal lato della Luna (il passaggio ravvicinato)
+      const punto = th => {
+        const s = Math.sin(th), co = Math.cos(th), d = 1 + s * s;
+        let px = A * co / d, py = A * s * co / d;
+        if (px > 0) { px *= 0.95; py *= 0.55; } else { py *= 1.1; }
+        return [cx + px, y + py];
+      };
+      kzTerra(ctx, xE, y, U * 0.07);
+      kzLuna(ctx, xM, y, U * 0.035);
+      kzEtichetta(c, 'otto.terra', xE, y + U * 0.13, f(0.4, 0.9));
+      kzEtichetta(c, 'otto.luna', xM, y + U * 0.09, f(0.6, 1.1));
+      // il percorso che si disegna, e la navicella sopra
+      const giro = f(1.2, 6.2);
+      const th0 = Math.PI * 1.02, th1 = th0 + Math.PI * 1.96 * giro;
+      ctx.strokeStyle = KZ.giallo; ctx.lineWidth = Math.max(1.5, U * 0.006); ctx.lineCap = 'round';
+      ctx.setLineDash([U * 0.012, U * 0.01]); ctx.lineDashOffset = -c.t / 60;
+      ctx.beginPath();
+      for (let i = 0; i <= 160; i++) { const [px, py] = punto(kzMix(th0, th1, i / 160)); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.stroke(); ctx.setLineDash([]);
+      if (giro > 0.01) {
+        const [nx, ny] = punto(th1), [qx, qy] = punto(th1 + 0.01);
+        kzNave(ctx, nx, ny, U * 0.022, Math.atan2(qy - ny, qx - nx), KZ.bianco);
+      }
+      // la gravità della Luna che curva la strada: tre frecce verso di lei
+      const fr = f(3, 3.6) * (1 - f(5.8, 6.2));
+      if (fr > 0) for (const a of [-0.8, 0, 0.8]) {
+        const sx = xM + Math.cos(Math.PI + a) * U * 0.14, sy = y + Math.sin(Math.PI + a) * U * 0.14;
+        ctx.globalAlpha *= fr; kzFreccia(ctx, sx, sy, kzMix(sx, xM, 0.55), kzMix(sy, y, 0.55), KZ.lilla, U * 0.006, fr); ctx.globalAlpha /= fr;
+      }
+      kzEtichetta(c, 'otto.gravita', xM - U * 0.05, y - U * 0.17, f(3.2, 3.7));
+      kzEtichetta(c, 'otto.senza_motore', cx, cy + U * 0.3, f(6, 6.5), { colore: KZ.verde, grande: true });
+      // e Apollo 13 l'aveva lasciata, per andare a Fra Mauro
+      kzEtichetta(c, 'otto.lasciata', cx, cy - U * 0.27, f(7.2, 7.7), { colore: KZ.corallo });
+      kzLampo(ctx, cx, y, U * 0.1, ((tt - 7.2) % 3) / 0.6);
+    },
+    // ---- Il serbatoio numero 2: come scoppia un serbatoio d'ossigeno ----
+    explain_oxygen_tank(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'serbatoio.titolo', f(0, 0.6));
+      const x = cx - U * 0.12, y = cy + U * 0.03, R = U * 0.2;
+      const scoppio = f(7.4, 7.7), frammenti = f(7.4, 9.4);
+      // il serbatoio tagliato a metà: l'ossigeno freddo, il tubo del
+      // riscaldatore coi suoi fili, le pale del ventilatore
+      if (scoppio < 1) {
+        ctx.save(); ctx.globalAlpha *= 1 - scoppio;
+        kzAlone(ctx, x, y, R * 1.5, tt > 6.4 ? '#ff8f3d' : '#69e0ff', 0.25 + 0.3 * f(6.4, 7.3));
+        ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#141a3a'; ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.clip();
+        const g = ctx.createLinearGradient(0, y - R, 0, y + R);
+        g.addColorStop(0, 'rgba(105, 224, 255, 0.35)'); g.addColorStop(1, 'rgba(105, 224, 255, 0.85)');
+        ctx.fillStyle = g; ctx.fillRect(x - R, y - R * 0.3 + Math.sin(t / 900) * R * 0.03, R * 2, R * 2);
+        // le bollicine fredde
+        const d = { s: 5 };
+        ctx.fillStyle = 'rgba(244, 246, 255, 0.6)';
+        for (let i = 0; i < 12; i++) { const bx = x - R * 0.8 + dado(d) * R * 1.6, by = y + R * 0.9 - ((dado(d) + c.t / 4000) % 1) * R * 1.2; ctx.beginPath(); ctx.arc(bx, by, R * 0.02, 0, Math.PI * 2); ctx.fill(); }
+        // il fuoco dentro, alla fine
+        const fuoco = f(6.4, 7.3);
+        if (fuoco > 0) { ctx.globalAlpha *= fuoco; kzFiamma(ctx, x + R * 0.1, y + R * 0.5, R * 0.25, R * 0.9, t, -Math.PI / 2); ctx.globalAlpha /= fuoco; }
+        ctx.restore();
+        ctx.fillStyle = '#9aa3bd'; rettangolo(ctx, x - R * 0.05, y - R * 0.95, R * 0.1, R * 1.75, R * 0.04); ctx.fill();
+        // i fili, con l'isolante (il teflon) che si crepa dal secondo 4
+        const crepe = f(4, 4.8);
+        ctx.strokeStyle = '#ffcc3d'; ctx.lineWidth = R * 0.03;
+        ctx.beginPath(); ctx.moveTo(x + R * 0.08, y - R * 0.9); ctx.quadraticCurveTo(x + R * 0.35, y - R * 0.3, x + R * 0.12, y + R * 0.45); ctx.stroke();
+        if (crepe > 0) {
+          ctx.strokeStyle = KZ.scuro; ctx.lineWidth = R * 0.035;
+          for (const q of [0.25, 0.45, 0.62]) {
+            const px = kzMix(x + R * 0.08, x + R * 0.12, q) + R * 0.2 * Math.sin(q * Math.PI), py = kzMix(y - R * 0.9, y + R * 0.45, q);
+            ctx.globalAlpha *= crepe; ctx.beginPath(); ctx.moveTo(px - R * 0.03, py - R * 0.02); ctx.lineTo(px + R * 0.03, py + R * 0.02); ctx.stroke(); ctx.globalAlpha /= crepe;
+          }
+        }
+        // il ventilatore: gira dal secondo 5,6, e c'è la scintilla
+        const gira = tt > 5.6 ? (c.t - 5600) / 60 : 0;
+        ctx.fillStyle = KZ.bianco;
+        for (let k = 0; k < 3; k++) {
+          const a = gira + k * Math.PI * 2 / 3;
+          ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * R * 0.14, y + R * 0.6 + Math.sin(a) * R * 0.05, R * 0.13, R * 0.035, a, 0, Math.PI * 2); ctx.fill();
+        }
+        if (tt > 5.9 && tt < 6.8) kzLampo(ctx, x + R * 0.14, y + R * 0.38, R * 0.5, (tt - 5.9) / 0.9);
+        ctx.restore();
+      }
+      // a terra, nel 1970: 65 volt su interruttori da 28
+      const lab = f(1.2, 1.7) * (1 - f(5.2, 5.6));
+      kzEtichetta(c, 'serbatoio.freddo', x, y - R * 1.3, f(0.6, 1.1) * (1 - f(1.2, 1.5)), { colore: KZ.ciano });
+      kzEtichetta(c, 'serbatoio.volt', cx + U * 0.3, cy - U * 0.22, lab, { colore: KZ.corallo, grande: true });
+      // il termometro del riscaldatore: il vero arriva a 540, quello di terra si ferma a 27
+      const tx = cx + U * 0.24, ty = cy + U * 0.16;
+      const sale = f(2, 3.6), vis = f(1.8, 2.2) * (1 - f(5.2, 5.6));
+      if (vis > 0) {
+        ctx.save(); ctx.globalAlpha *= vis;
+        kzTermometro(ctx, tx, ty, U * 0.26, 0.05 + 0.95 * sale, KZ.corallo);
+        kzTermometro(ctx, tx + U * 0.12, ty, U * 0.26, 0.05 + 0.04 * Math.min(1, sale * 3), KZ.ciano);
+        ctx.restore();
+        kzEtichetta(c, 'serbatoio.vero', tx - U * 0.02, ty - U * 0.3, f(2.4, 2.9) * vis, { dati: { n: kzNumero(Math.round(20 + 520 * sale)) }, colore: KZ.corallo });
+        kzEtichetta(c, 'serbatoio.scala', tx + U * 0.15, ty + U * 0.06, f(3.4, 3.9) * vis, { colore: KZ.ciano });
+      }
+      kzEtichetta(c, 'serbatoio.teflon', cx + U * 0.3, cy - U * 0.05, f(4.2, 4.7) * (1 - f(7.3, 7.6)), { a: [x + R * 0.3, y - R * 0.1] });
+      kzEtichetta(c, 'serbatoio.ventole', cx + U * 0.3, cy + U * 0.12, f(5.6, 6.1) * (1 - f(7.3, 7.6)), { colore: KZ.giallo, a: [x + R * 0.2, y + R * 0.6] });
+      // lo scoppio: i pezzi volano, il pannello se ne va
+      if (frammenti > 0) {
+        kzLampo(ctx, x, y, R * 3, scoppio * 0.6 + frammenti * 0.4);
+        const d = { s: 9 };
+        for (let i = 0; i < 14; i++) {
+          const a = dado(d) * Math.PI * 2, v = R * (0.8 + dado(d) * 2.2), g0 = dado(d) * 6;
+          ctx.save(); ctx.translate(x + Math.cos(a) * v * frammenti, y + Math.sin(a) * v * frammenti); ctx.rotate(g0 + frammenti * 4);
+          ctx.fillStyle = i % 3 ? '#d6dcea' : '#ff8f3d'; ctx.beginPath(); ctx.moveTo(0, -R * 0.08); ctx.lineTo(R * 0.07, R * 0.05); ctx.lineTo(-R * 0.06, R * 0.04); ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
+        kzSbuffi(ctx, x, y, R * 2.2, 30, c.t, 31, '#e5e7ff');
+        kzEtichetta(c, 'serbatoio.scoppio', cx + U * 0.12, cy + U * 0.3, f(7.6, 8.1), { colore: KZ.corallo, grande: true });
+      }
+    },
+    // ---- Le celle a combustibile: idrogeno + ossigeno = luce e acqua ----
+    explain_fuel_cell(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'cella.titolo', f(0, 0.6));
+      const bx = cx, by = cy - U * 0.02, bw = U * 0.22, bh = U * 0.2;
+      const taglio = tt > 6.2;
+      const ferma = taglio ? 1 - f(6.2, 7.2) : 1;
+      // i due serbatoi e i tubi
+      const tH = [cx - U * 0.42, by - U * 0.1], tO = [cx - U * 0.42, by + U * 0.12];
+      for (const [[tx, ty], col] of [[tH, '#69e0ff'], [tO, '#ff5c6c']]) {
+        ctx.strokeStyle = '#4a4f6e'; ctx.lineWidth = U * 0.02; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(bx - bw / 2, ty * 0.5 + by * 0.5); ctx.stroke();
+        kzPalla(ctx, tx, ty, U * 0.06, col);
+      }
+      kzEtichetta(c, 'cella.idrogeno', tH[0], tH[1] - U * 0.1, f(0.5, 1));
+      kzEtichetta(c, 'cella.ossigeno', tO[0], tO[1] + U * 0.1, f(0.7, 1.2));
+      // la cella: la scatola che si accende
+      kzAlone(ctx, bx, by, bw * 1.2, '#ffcc3d', 0.25 * ferma * f(1.5, 2.5));
+      ctx.fillStyle = '#2b3f99'; rettangolo(ctx, bx - bw / 2, by - bh / 2, bw, bh, U * 0.02); ctx.fill();
+      ctx.fillStyle = '#1d2f7a'; rettangolo(ctx, bx - bw / 2 + U * 0.012, by - bh / 2 + U * 0.012, bw - U * 0.024, bh - U * 0.024, U * 0.015); ctx.fill();
+      kzEtichetta(c, 'cella.cella', bx, by - bh / 2 - U * 0.04, f(0.9, 1.4), { colore: KZ.lilla });
+      // le molecole che entrano lungo i tubi (finché c'è ossigeno)
+      const giro = (c.t / 1600) % 1;
+      for (let i = 0; i < 3; i++) {
+        const q = (giro + i / 3) % 1;
+        const [hx, hy] = [kzMix(tH[0], bx - bw * 0.3, q), kzMix(tH[1], by - bh * 0.15, q)];
+        const [ox, oy] = [kzMix(tO[0], bx - bw * 0.3, q), kzMix(tO[1], by + bh * 0.15, q)];
+        ctx.save(); ctx.globalAlpha *= ferma * f(1, 1.5);
+        kzMolecola(ctx, hx, hy, U * 0.018, MOL.h2);
+        if (!taglio) kzMolecola(ctx, ox, oy, U * 0.018, MOL.o2);
+        ctx.restore();
+      }
+      // l'acqua che esce sotto, a gocce
+      const acqua = f(2.6, 3.2) * ferma;
+      if (acqua > 0) {
+        const q = (c.t / 1400) % 1;
+        ctx.save(); ctx.globalAlpha *= acqua;
+        kzMolecola(ctx, bx + bw * 0.1, by + bh / 2 + q * U * 0.16, U * 0.018, MOL.h2o);
+        ctx.fillStyle = KZ.ciano; ctx.beginPath(); ctx.ellipse(bx + bw * 0.1, by + bh / 2 + U * 0.22, U * 0.07, U * 0.02, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      kzEtichetta(c, 'cella.acqua', bx + U * 0.28, by + bh / 2 + U * 0.2, f(2.8, 3.3), { colore: KZ.ciano, a: [bx + bw * 0.1 + U * 0.07, by + bh / 2 + U * 0.22] });
+      // gli elettroni fanno il giro del filo e accendono la lampadina
+      const lx = cx + U * 0.36, ly = by - U * 0.12;
+      const corrente = f(1.8, 2.4) * ferma;
+      ctx.strokeStyle = '#9aa3bd'; ctx.lineWidth = U * 0.008;
+      ctx.beginPath(); ctx.moveTo(bx + bw / 2, by - bh * 0.25); ctx.lineTo(lx, by - bh * 0.25); ctx.lineTo(lx, ly + U * 0.05); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx + bw / 2, by + bh * 0.25); ctx.lineTo(lx + U * 0.06, by + bh * 0.25); ctx.lineTo(lx + U * 0.06, ly); ctx.lineTo(lx + U * 0.03, ly); ctx.stroke();
+      if (corrente > 0.01) for (let i = 0; i < 6; i++) {
+        const q = ((c.t / 900) + i / 6) % 1, d0 = lx - (bx + bw / 2);
+        const px = q < 0.7 ? bx + bw / 2 + d0 * q / 0.7 : lx, py = q < 0.7 ? by - bh * 0.25 : kzMix(by - bh * 0.25, ly + U * 0.05, (q - 0.7) / 0.3);
+        ctx.fillStyle = rgba('#ffcc3d', corrente); ctx.beginPath(); ctx.arc(px, py, U * 0.008, 0, Math.PI * 2); ctx.fill();
+      }
+      kzAlone(ctx, lx, ly - U * 0.01, U * 0.12, '#ffcc3d', 0.6 * corrente);
+      ctx.fillStyle = corrente > 0.3 ? '#fff2b0' : '#4a4f6e'; ctx.beginPath(); ctx.arc(lx, ly - U * 0.01, U * 0.035, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#9aa3bd'; ctx.fillRect(lx - U * 0.015, ly + U * 0.02, U * 0.03, U * 0.03);
+      kzEtichetta(c, 'cella.elettricita', lx, ly - U * 0.1, f(2, 2.5), { colore: KZ.giallo });
+      // senza ossigeno: la croce sul tubo, e tutto si spegne
+      if (taglio) {
+        const k = kzMolla(f(6.2, 6.7)), mx = kzMix(tO[0], bx - bw / 2, 0.5), my = kzMix(tO[1], by, 0.5), r = U * 0.04 * k;
+        ctx.strokeStyle = KZ.corallo; ctx.lineWidth = U * 0.014; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(mx - r, my - r); ctx.lineTo(mx + r, my + r); ctx.moveTo(mx + r, my - r); ctx.lineTo(mx - r, my + r); ctx.stroke();
+        kzEtichetta(c, 'cella.senza', cx, cy + U * 0.33, f(6.6, 7.1), { colore: KZ.corallo, grande: true });
+      }
+    },
+    // ---- La scialuppa: l'Aquarius che salva tre persone ----------------
+    explain_lifeboat(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'scialuppa.titolo', f(0, 0.6));
+      const sx = cx, sy = cy - U * 0.1, s = U * 0.85 * kzMolla(f(0.2, 1));
+      const spenta = f(5.4, 6.4);
+      kzApollo(ctx, sx, sy, s, 0, { squarcio: 1, luce: 1 - spenta });
+      kzAlone(ctx, sx + s * 0.4, sy, s * 0.15, '#ffcc3d', 0.35 * f(1.4, 2));
+      kzEtichetta(c, 'scialuppa.odyssey', sx + s * 0.02, sy - s * 0.2, f(0.9, 1.4) * (1 - f(5, 5.3)), { a: [sx + s * 0.12, sy - s * 0.06] });
+      kzEtichetta(c, 'scialuppa.aquarius', sx + s * 0.4, sy + s * 0.2, f(1.3, 1.8), { a: [sx + s * 0.4, sy + s * 0.08], colore: KZ.giallo });
+      kzEtichetta(c, 'scialuppa.servizio', sx - s * 0.2, sy + s * 0.2, f(1.7, 2.2), { a: [sx - s * 0.2, sy + s * 0.08], colore: KZ.corallo });
+      // il progetto e il bisogno: due barre, persone per ore
+      const by = cy + U * 0.2, x0 = cx - U * 0.42, wTot = U * 0.84;
+      const barra = (y, u, col, testo, dati, da) => {
+        ctx.fillStyle = 'rgba(244, 246, 255, 0.12)'; rettangolo(ctx, x0, y - U * 0.022, wTot, U * 0.044, U * 0.022); ctx.fill();
+        ctx.fillStyle = col; rettangolo(ctx, x0, y - U * 0.022, Math.max(U * 0.044, wTot * u), U * 0.044, U * 0.022); ctx.fill();
+        kzEtichetta(c, testo, x0 + Math.max(U * 0.1, wTot * u) - U * 0.05, y - U * 0.055, f(da, da + 0.5), { dati, colore: col });
+      };
+      const p1 = f(2.4, 3.2), p2 = f(3.4, 4.6);
+      if (p1 > 0) barra(by, (2 * 45) / (3 * 90) * p1, KZ.verde, 'scialuppa.progetto', { n: kzNumero(Math.round(45 * p1)) }, 2.4);
+      if (p2 > 0) barra(by + U * 0.11, p2, KZ.corallo, 'scialuppa.bisogno', { n: kzNumero(Math.round(90 * p2)) }, 3.4);
+      kzEtichetta(c, 'scialuppa.spegni', sx + s * 0.02, sy - s * 0.2, f(5.4, 5.9), { colore: KZ.ciano, grande: true });
+    },
+    // ---- L'anidride carbonica: un quadrato in un buco rotondo -----------
+    explain_co2(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'anidride.titolo', f(0, 0.6));
+      // il misuratore che sale, poi scende col filtro nuovo
+      const sale = f(0.6, 4), scende = f(7.4, 9);
+      kzManometro(ctx, cx + U * 0.34, cy - U * 0.08, U * 0.1, 0.25 + 0.65 * sale - 0.7 * scende, 0.75);
+      kzEtichetta(c, 'anidride.misura', cx + U * 0.34, cy + U * 0.0, f(0.8, 1.3), { colore: KZ.corallo });
+      // il respiro: molecole di CO₂ che escono dalla bocca di un omino
+      const ox = cx - U * 0.4, oy = cy + U * 0.02;
+      kzOmino(ctx, ox, oy, U * 0.16, KZ.bianco);
+      for (let i = 0; i < 4; i++) {
+        const q = ((c.t / 2200) + i / 4) % 1;
+        ctx.globalAlpha *= 1 - q * 0.6;
+        kzMolecola(ctx, ox + U * 0.06 + q * U * 0.2, oy - U * 0.06 - q * U * 0.08 + Math.sin(q * 6 + i) * U * 0.01, U * 0.013, MOL.co2);
+        ctx.globalAlpha /= 1 - q * 0.6;
+      }
+      kzEtichetta(c, 'anidride.respiro', ox, oy - U * 0.15, f(0.4, 0.9));
+      // il buco rotondo del modulo lunare, e la cartuccia quadrata che non entra
+      const hx = cx - U * 0.02, hy = cy + U * 0.02, hr = U * 0.07;
+      ctx.fillStyle = '#9aa3bd'; ctx.beginPath(); ctx.arc(hx, hy, hr * 1.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#141a3a'; ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2); ctx.fill();
+      kzEtichetta(c, 'anidride.tondo', hx + U * 0.06, hy + hr * 2.3, f(1.6, 2.1), { colore: KZ.giallo });
+      const prova = f(2.4, 3.4), rimbalzo = tt > 3.4 && tt < 5.4 ? Math.abs(Math.sin((tt - 3.4) * 6)) * Math.max(0, 1 - (tt - 3.4) / 2) : 0;
+      const montato = f(5.4, 7);
+      const qs = U * 0.16, qx = kzMix(hx, hx, prova), qy = kzMix(cy - U * 0.3, hy - hr * 1.3 - qs / 2 + hr * 0.2, prova) - rimbalzo * U * 0.06;
+      if (montato < 1) {
+        ctx.save(); ctx.globalAlpha *= 1 - montato;
+        ctx.fillStyle = '#e8ecf5'; rettangolo(ctx, qx - qs / 2, qy - qs / 2, qs, qs, U * 0.01); ctx.fill();
+        ctx.fillStyle = 'rgba(36, 26, 82, 0.25)'; ctx.fillRect(qx, qy - qs / 2, qs / 2, qs);
+        ctx.restore();
+        kzEtichetta(c, 'anidride.quadrato', qx + U * 0.2, qy, f(2.4, 2.9) * (1 - montato), { a: [qx + qs / 2, qy] });
+      }
+      // la «cassetta della posta»: il quadrato, il sacchetto, il nastro, il tubo
+      if (montato > 0) {
+        const k = kzMolla(montato), mx = hx, my = hy - U * 0.2;
+        ctx.save(); ctx.globalAlpha *= Math.min(1, montato * 2);
+        ctx.strokeStyle = '#9aa3bd'; ctx.lineWidth = U * 0.03 * k;
+        ctx.beginPath(); ctx.moveTo(hx, hy - hr); ctx.quadraticCurveTo(hx - U * 0.08, hy - U * 0.12, mx, my + qs * 0.4); ctx.stroke();
+        ctx.fillStyle = 'rgba(244, 246, 255, 0.45)'; ctx.beginPath(); ctx.ellipse(mx, my, qs * 0.75 * k, qs * 0.55 * k, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e8ecf5'; rettangolo(ctx, mx - qs / 2 * k, my - qs / 2 * k, qs * k, qs * k, U * 0.01); ctx.fill();
+        ctx.fillStyle = '#b0b7cc';
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(-0.3); ctx.fillRect(-qs * 0.7 * k, -U * 0.015, qs * 1.4 * k, U * 0.03); ctx.restore();
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(0.4); ctx.fillRect(-qs * 0.7 * k, -U * 0.015, qs * 1.4 * k, U * 0.03); ctx.restore();
+        ctx.restore();
+        kzEtichetta(c, 'anidride.nastro', mx + U * 0.22, my - U * 0.05, f(6.2, 6.7), { colore: KZ.verde, a: [mx + qs * 0.4, my] });
+        kzEtichetta(c, 'anidride.chimica', cx, cy + U * 0.3, f(7.2, 7.7), { colore: KZ.lilla });
+      }
+    },
+    // ---- Il freddo: nello spazio il calore se ne va solo per irraggiamento
+    explain_cold(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'freddo.titolo', f(0, 0.6));
+      // la navicella che gira piano: un lato al Sole, l'altro al buio
+      const nx = cx + U * 0.05, ny = cy + U * 0.02, s = U * 0.55;
+      const giro = f(5, 6) > 0 ? (c.t - 5000) / 3000 : 0;
+      kzAlone(ctx, cx - U * 0.6, ny, U * 0.4, '#ffcc3d', 0.5);
+      kzPalla(ctx, cx - U * 0.52, ny, U * 0.05, KZ.giallo, { alone: KZ.giallo });
+      kzEtichetta(c, 'freddo.sole', cx - U * 0.48, ny + U * 0.12, f(0.4, 0.9), { colore: KZ.giallo });
+      // le frecce del calore che scappano come luce (irraggiamento)
+      const irr = f(1.2, 1.8) * (1 - f(4.6, 5));
+      if (irr > 0) for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + 0.3, q = ((c.t / 1500) + i * 0.13) % 1;
+        const r0 = s * 0.25, r1 = s * (0.3 + 0.25 * q);
+        ctx.save(); ctx.globalAlpha *= irr * (1 - q);
+        kzFreccia(ctx, nx + Math.cos(a) * r0, ny + Math.sin(a) * r0, nx + Math.cos(a) * r1, ny + Math.sin(a) * r1, KZ.arancio, U * 0.006);
+        ctx.restore();
+      }
+      // i colori del caldo e del freddo sui due lati
+      const caldo = f(5.2, 6);
+      if (caldo > 0) {
+        const lato = Math.cos(giro);
+        kzAlone(ctx, nx - s * 0.18 * lato, ny, s * 0.18, '#ff8f3d', 0.5 * caldo);
+        kzAlone(ctx, nx + s * 0.18 * lato, ny, s * 0.18, '#69e0ff', 0.5 * caldo);
+      }
+      kzApollo(ctx, nx, ny, s, giro, { squarcio: 1, luce: 0 });
+      kzEtichetta(c, 'freddo.vuoto', cx + U * 0.3, cy - U * 0.25, f(1.4, 1.9) * (1 - f(4.6, 5)), { colore: KZ.arancio });
+      // il termometro: da 21 a 3 gradi, quando si spegne l'elettronica
+      const cala = f(2.6, 4.6);
+      kzTermometro(ctx, cx + U * 0.42, cy + U * 0.22, U * 0.3, 0.75 - 0.6 * cala, cala > 0.5 ? KZ.ciano : KZ.corallo);
+      kzEtichetta(c, 'freddo.gradi', cx + U * 0.42, cy - U * 0.15, f(2.6, 3.1), { dati: { n: kzNumero(Math.round(21 - 18 * cala)) }, colore: cala > 0.5 ? KZ.ciano : KZ.corallo, grande: true });
+      kzEtichetta(c, 'freddo.spenta', cx - U * 0.05, cy + U * 0.32, f(2.4, 2.9) * (1 - f(4.8, 5.2)));
+      kzEtichetta(c, 'freddo.lati', cx + U * 0.3, cy - U * 0.25, f(5.2, 5.7), { colore: KZ.lilla });
+      kzEtichetta(c, 'freddo.barbecue', cx - U * 0.05, cy + U * 0.32, f(6, 6.5), { colore: KZ.giallo, grande: true });
+    },
+    // ---- La faccia nascosta: i più lontani di sempre --------------------
+    explain_far_side(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'nascosta.titolo', f(0, 0.6));
+      const xE = cx - U * 0.42, xM = cx + U * 0.22, y = cy + U * 0.02, rM = U * 0.11;
+      kzTerra(ctx, xE, y, U * 0.06);
+      // le onde radio: archi che partono dalla Terra e vanno dritti
+      for (let i = 0; i < 6; i++) {
+        const q = ((c.t / 1800) + i / 6) % 1, r = U * 0.08 + q * U * 0.75;
+        ctx.strokeStyle = rgba('#69e0ff', 0.6 * (1 - q)); ctx.lineWidth = U * 0.006;
+        ctx.save(); ctx.beginPath(); ctx.rect(xE, y - U, Math.max(0, Math.min(r, xM - xE)), U * 2);
+        // dietro la Luna le onde non arrivano: l'ombra radio
+        ctx.clip();
+        ctx.beginPath(); ctx.arc(xE, y, r, -0.35, 0.35); ctx.stroke(); ctx.restore();
+        if (r > xM - xE) {
+          ctx.save(); ctx.beginPath(); ctx.rect(xM, y - U, U, U * 2); ctx.moveTo(xM, y - rM); ctx.lineTo(xM + U, y - rM * 1.3); ctx.lineTo(xM + U, y + rM * 1.3); ctx.lineTo(xM, y + rM); ctx.closePath(); ctx.clip('evenodd');
+          ctx.beginPath(); ctx.arc(xE, y, r, -0.35, 0.35); ctx.stroke(); ctx.restore();
+        }
+      }
+      const ombra = ctx.createLinearGradient(xM, 0, xM + U * 0.5, 0);
+      ombra.addColorStop(0, 'rgba(3, 4, 18, 0.55)'); ombra.addColorStop(1, 'rgba(3, 4, 18, 0)');
+      ctx.fillStyle = ombra; ctx.beginPath(); ctx.moveTo(xM, y - rM); ctx.lineTo(xM + U * 0.5, y - rM * 1.3); ctx.lineTo(xM + U * 0.5, y + rM * 1.3); ctx.lineTo(xM, y + rM); ctx.closePath(); ctx.fill();
+      kzLuna(ctx, xM, y, rM);
+      kzEtichetta(c, 'nascosta.ombra', xM + U * 0.3, y - U * 0.16, f(2.4, 2.9) * (1 - f(3.5, 3.8)), { colore: KZ.ciano, a: [xM + U * 0.24, y - rM * 0.2] });
+      // la navicella gira dietro alla Luna (in senso antiorario, dal basso)
+      const g = f(1, 6.4), a = Math.PI * 0.75 - g * Math.PI * 1.5, ro = rM * 1.35;
+      const nx = xM + Math.cos(a) * ro, ny = y + Math.sin(a) * ro;
+      kzApollo(ctx, nx, ny, U * 0.14, a - Math.PI / 2, { squarcio: 1, luce: 0.3 });
+      kzEtichetta(c, 'nascosta.sopra', xM, y - rM * 1.9, f(3, 3.5), { colore: KZ.lilla });
+      // il silenzio: 25 minuti senza radio, e il record di distanza
+      kzEtichetta(c, 'nascosta.silenzio', xM + U * 0.2, y - U * 0.25, f(3.6, 4.1) * (1 - f(6.4, 6.8)), { colore: KZ.corallo });
+      const km = f(4.4, 6.4);
+      kzEtichetta(c, 'nascosta.record', cx - U * 0.1, cy + U * 0.3, f(4.4, 4.9), { dati: { n: kzNumero(Math.round(384400 + 15771 * km)) }, colore: KZ.giallo, grande: true });
+    },
+    // ---- La correzione a mano: la Terra nel mirino ----------------------
+    explain_manual_burn(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'mano.titolo', f(0, 0.6));
+      const wx = cx - U * 0.1, wy = cy + U * 0.02, wr = U * 0.24;
+      // il finestrino: la cornice, il vetro buio
+      ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3); ctx.fill();
+      ctx.fillStyle = '#05061a'; rettangolo(ctx, wx - wr, wy - wr, wr * 2, wr * 2, wr * 0.22); ctx.fill();
+      ctx.save(); rettangolo(ctx, wx - wr, wy - wr, wr * 2, wr * 2, wr * 0.22); ctx.clip();
+      // la Terra che deriva e che Lovell riporta in mezzo; la linea del
+      // giorno e della notte (il terminatore) deve restare sulla riga
+      const deriva = tt < 2 ? 0 : Math.sin((tt - 2) * 1.3) * Math.max(0, 1 - (tt - 2) / 5.5);
+      const ex = wx + deriva * wr * 0.35, ey = wy + deriva * wr * 0.15, er = wr * 0.62, inc = deriva * 0.5;
+      kzTerra(ctx, ex, ey, er);
+      ctx.save(); ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI * 2); ctx.clip();
+      ctx.translate(ex, ey); ctx.rotate(inc);
+      ctx.fillStyle = 'rgba(5, 6, 26, 0.75)'; ctx.fillRect(-er * 1.2, 0, er * 2.4, er * 1.2);
+      ctx.restore();
+      ctx.restore();
+      // il mirino
+      ctx.strokeStyle = KZ.giallo; ctx.lineWidth = Math.max(1.5, U * 0.004);
+      ctx.beginPath(); ctx.moveTo(wx - wr * 0.9, wy); ctx.lineTo(wx + wr * 0.9, wy); ctx.moveTo(wx, wy - wr * 0.9); ctx.lineTo(wx, wy + wr * 0.9); ctx.stroke();
+      ctx.beginPath(); ctx.arc(wx, wy, wr * 0.15, 0, Math.PI * 2); ctx.stroke();
+      kzEtichetta(c, 'mano.computer', cx + U * 0.32, cy - U * 0.22, f(0.6, 1.1), { colore: KZ.corallo });
+      kzEtichetta(c, 'mano.terminatore', cx + U * 0.32, cy - U * 0.08, f(1.6, 2.1), { a: [ex + er * 0.7, ey + er * 0.25 * inc], colore: KZ.ciano });
+      // le frecce della mano: su, giù, gira (quando la Terra scappa)
+      const corregge = tt > 2 && tt < 7.5 ? Math.abs(deriva) : 0;
+      if (corregge > 0.05) {
+        const verso = deriva > 0 ? -1 : 1;
+        kzFreccia(ctx, wx + wr * 1.35, wy, wx + wr * 1.35 + verso * U * 0.08, wy, KZ.verde, U * 0.01, Math.min(1, corregge * 3));
+      }
+      kzEtichetta(c, 'mano.mira', cx + U * 0.32, cy + U * 0.06, f(2.6, 3.1), { colore: KZ.verde });
+      // il motore: quattordici secondi, contati
+      const acceso = f(5.4, 5.6) * (1 - f(8.4, 8.6));
+      const sec = Math.min(14, Math.max(0, (tt - 5.4) * (14 / 3)));
+      kzEtichetta(c, 'mano.secondi', cx + U * 0.32, cy + U * 0.22, f(5.4, 5.9), { dati: { n: kzNumero(Math.round(sec)) }, colore: acceso > 0.5 ? KZ.arancio : KZ.giallo, grande: true });
+      if (acceso > 0.01) kzAlone(ctx, wx, wy + wr * 1.4, wr, '#ff8f3d', 0.45 * acceso);
+    },
+    // ---- La riaccensione: ogni ampere contato ----------------------------
+    explain_power_up(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'accendi.titolo', f(0, 0.6));
+      // la batteria: una colonna che si svuota man mano che si accende tutto
+      const bx = cx - U * 0.36, by = cy + U * 0.22, bw = U * 0.14, bh = U * 0.4;
+      const pezzi = [
+        { chiave: 'accendi.computer', col: KZ.ciano, a: 0.22, da: 1.6 },
+        { chiave: 'accendi.radio', col: KZ.verde, a: 0.14, da: 2.6 },
+        { chiave: 'accendi.guida', col: KZ.lilla, a: 0.26, da: 3.6 },
+        { chiave: 'accendi.scaldini', col: KZ.arancio, a: 0.18, da: 4.6 }
+      ];
+      let usato = 0;
+      for (const p of pezzi) usato += p.a * f(p.da, p.da + 0.6);
+      const ricarica = f(6.4, 7.6);
+      const resta = Math.max(0.06, 1 - usato * 0.9 + ricarica * 0.25);
+      ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, bx - bw / 2 - U * 0.012, by - bh - U * 0.012, bw + U * 0.024, bh + U * 0.024, U * 0.02); ctx.fill();
+      ctx.fillStyle = '#9aa3bd'; ctx.fillRect(bx - bw * 0.2, by - bh - U * 0.04, bw * 0.4, U * 0.03);
+      ctx.fillStyle = resta < 0.25 ? KZ.corallo : KZ.verde; rettangolo(ctx, bx - bw / 2, by - bh * resta, bw, bh * resta, U * 0.012); ctx.fill();
+      kzEtichetta(c, 'accendi.batteria', bx, by + U * 0.07, f(0.6, 1.1));
+      // gli apparecchi che si accendono uno alla volta, in fila: i blocchi
+      // che riempiono il budget, come in un gioco a incastro
+      const gx = cx - U * 0.12, gy = cy + U * 0.22, gw = U * 0.24, gh = U * 0.4;
+      ctx.strokeStyle = 'rgba(244, 246, 255, 0.4)'; ctx.lineWidth = U * 0.004; ctx.setLineDash([U * 0.01, U * 0.008]);
+      ctx.strokeRect(gx, gy - gh, gw, gh); ctx.setLineDash([]);
+      kzEtichetta(c, 'accendi.limite', gx + gw / 2, gy - gh - U * 0.04, f(1, 1.5), { colore: KZ.corallo });
+      let quota = gy;
+      for (const p of pezzi) {
+        const k = f(p.da, p.da + 0.6);
+        if (k <= 0) continue;
+        const h = gh * p.a * 1.05, yy = kzMix(gy - gh - U * 0.2, quota - h, kzMolla(k));
+        ctx.fillStyle = p.col; rettangolo(ctx, gx + U * 0.008, yy, gw - U * 0.016, h - U * 0.006, U * 0.012); ctx.fill();
+        kzAlone(ctx, gx + gw / 2, yy + h / 2, gw * 0.6, p.col, 0.2 * k);
+        kzEtichetta(c, p.chiave, gx + gw + U * 0.17, yy + h / 2, f(p.da + 0.2, p.da + 0.7), { colore: p.col });
+        quota -= h;
+      }
+      // l'Aquarius che ricarica l'Odyssey: la corrente all'indietro
+      if (ricarica > 0) {
+        const ax = cx + U * 0.36, ay = cy - U * 0.2;
+        kzApollo(ctx, ax, ay, U * 0.34, Math.PI, { squarcio: 0, sm: false, luce: ricarica });
+        for (let i = 0; i < 4; i++) {
+          const q = ((c.t / 800) + i / 4) % 1;
+          ctx.fillStyle = rgba('#ffcc3d', ricarica * (1 - q)); ctx.beginPath(); ctx.arc(kzMix(ax - U * 0.1, ax + U * 0.02, q), ay, U * 0.01, 0, Math.PI * 2); ctx.fill();
+        }
+        kzEtichetta(c, 'accendi.ricarica', ax - U * 0.05, ay + U * 0.1, f(6.6, 7.1), { colore: KZ.giallo });
+      }
+    },
+    // ---- Il corridoio di rientro: né troppo piatto né troppo ripido -----
+    explain_corridor(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'corridoio.titolo', f(0, 0.6));
+      // la Terra: un grande arco in basso, e l'atmosfera sopra
+      const Rt = U * 1.6, tx = cx, ty = cy + U * 0.32 + Rt;
+      const atmo = ctx.createRadialGradient(tx, ty, Rt, tx, ty, Rt + U * 0.12);
+      atmo.addColorStop(0, 'rgba(105, 224, 255, 0.55)'); atmo.addColorStop(1, 'rgba(105, 224, 255, 0)');
+      ctx.fillStyle = atmo; ctx.beginPath(); ctx.arc(tx, ty, Rt + U * 0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(tx, ty, Rt, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#59d98e'; ctx.beginPath(); ctx.ellipse(tx - U * 0.2, ty - Rt + U * 0.04, U * 0.18, U * 0.03, 0, 0, Math.PI * 2); ctx.fill();
+      kzEtichetta(c, 'corridoio.aria', cx + U * 0.38, cy + U * 0.2, f(0.6, 1.1), { colore: KZ.ciano });
+      // tre strade dall'alto a sinistra: piatta (rimbalza), giusta, ripida
+      const sx = cx - U * 0.48, sy = cy - U * 0.22;
+      const strada = (da, col, tipo) => {
+        const u = f(da, da + 1.6);
+        if (u <= 0) return null;
+        ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, U * 0.006); ctx.lineCap = 'round'; ctx.setLineDash([U * 0.012, U * 0.01]);
+        ctx.beginPath();
+        let ult = [sx, sy];
+        for (let i = 0; i <= 60 * u; i++) {
+          const q = i / 60;
+          let x = sx + q * U * 0.9, y;
+          if (tipo === 'piatta') y = sy + Math.sin(Math.min(1, q * 1.3) * Math.PI) * U * 0.43 - Math.max(0, q - 0.77) * U * 0.5;
+          else if (tipo === 'ripida') { x = sx + q * U * 0.42; y = sy + q * U * 0.55; }
+          else y = sy + (1 - Math.pow(1 - q, 1.6)) * U * 0.5;
+          if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+          ult = [x, y];
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+        return ult;
+      };
+      const p1 = strada(1.2, KZ.lilla, 'piatta');
+      if (p1) kzEtichetta(c, 'corridoio.piatta', cx + U * 0.3, cy - U * 0.27, f(2.4, 2.9), { colore: KZ.lilla });
+      const p2 = strada(3, KZ.corallo, 'ripida');
+      if (p2) { kzLampo(ctx, p2[0], p2[1], U * 0.1, (tt - 4.4) / 0.8); kzEtichetta(c, 'corridoio.ripida', p2[0] - U * 0.12, p2[1] + U * 0.04, f(4.4, 4.9), { colore: KZ.corallo }); }
+      const p3 = strada(5, KZ.verde, 'giusta');
+      if (p3) {
+        kzCapsula(ctx, p3[0], p3[1], U * 0.022, 0.6);
+        kzEtichetta(c, 'corridoio.giusta', cx + U * 0.1, cy + U * 0.06, f(6.4, 6.9), { colore: KZ.verde, grande: true });
+      }
+      kzEtichetta(c, 'corridoio.stretto', cx - U * 0.2, cy + U * 0.26, f(7.2, 7.7), { colore: KZ.giallo });
+    },
+    // ---- Lo scudo termico e il silenzio radio ----------------------------
+    explain_heat_shield(c) {
+      const { ctx, U, cx, cy, tt, f, t } = c;
+      kzTitolo(c, 'scudo.titolo', f(0, 0.6));
+      const x = cx - U * 0.05, y = cy + U * 0.02, r = U * 0.11, ang = Math.PI * 0.82;
+      const fuoco = f(2, 3.4);
+      // l'aria davanti: le molecole che si ammassano (non è l'attrito)
+      const d = { s: 13 };
+      for (let i = 0; i < 70; i++) {
+        const a = ang + (dado(d) - 0.5) * 2.2, dist = r * (1.15 + dado(d) * 2.6);
+        const vel = ((c.t / 600) + dado(d)) % 1;
+        const comp = Math.max(0.35, 1 - vel * 0.65 * f(1, 2));
+        const px = x + Math.cos(a) * dist * comp, py = y + Math.sin(a) * dist * comp;
+        ctx.fillStyle = mescolaColori('#69e0ff', '#ff8f3d', fuoco * (1 - comp * 0.6));
+        ctx.beginPath(); ctx.arc(px, py, U * 0.006, 0, Math.PI * 2); ctx.fill();
+      }
+      kzEtichetta(c, 'scudo.aria', x + Math.cos(ang) * r * 2.6, y + Math.sin(ang) * r * 2.6 - U * 0.08, f(1, 1.5) * (1 - f(3.4, 3.8)), { colore: KZ.ciano });
+      // il plasma: la bolla di fuoco davanti allo scudo, la scia dietro
+      if (fuoco > 0) {
+        kzAlone(ctx, x + Math.cos(ang) * r * 0.6, y + Math.sin(ang) * r * 0.6, r * 3.2 * fuoco, '#ff8f3d', 0.7);
+        kzAlone(ctx, x + Math.cos(ang) * r * 0.9, y + Math.sin(ang) * r * 0.9, r * 1.6 * fuoco, '#fff6d8', 0.8);
+        kzFiamma(ctx, x - Math.cos(ang) * r * 0.8, y - Math.sin(ang) * r * 0.8, r * 0.8 * fuoco, r * 2.6 * fuoco, t, ang + Math.PI);
+      }
+      kzCapsula(ctx, x, y, r, ang);
+      // i pezzetti dello scudo che si consumano e se ne vanno
+      const abl = f(3.6, 4.2);
+      if (abl > 0) for (let i = 0; i < 8; i++) {
+        const q = ((c.t / 700) + i / 8) % 1, a = ang + Math.PI + (i % 2 ? 0.6 : -0.6) * (0.5 + q);
+        ctx.fillStyle = rgba('#7a5236', abl * (1 - q)); ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * r * 0.4 + Math.cos(a) * r * 3 * q, y + Math.sin(ang) * r * 0.4 + Math.sin(a) * r * 3 * q, U * 0.008, 0, Math.PI * 2); ctx.fill();
+      }
+      kzEtichetta(c, 'scudo.velocita', cx + U * 0.38, cy - U * 0.27, f(0.5, 1), { dati: { n: kzNumero(Math.round(40000 * f(0.5, 1.6))) }, colore: KZ.giallo, grande: true });
+      kzEtichetta(c, 'scudo.compressa', cx + U * 0.36, cy - U * 0.15, f(2.2, 2.7), { colore: KZ.arancio });
+      kzEtichetta(c, 'scudo.gradi', cx + U * 0.38, cy - U * 0.03, f(3, 3.5), { dati: { n: kzNumero(Math.round(2700 * f(3, 4))) }, colore: KZ.corallo, grande: true });
+      kzEtichetta(c, 'scudo.consuma', cx - U * 0.3, cy + U * 0.26, f(3.8, 4.3), { a: [x + Math.cos(ang) * r * 0.4, y + Math.sin(ang) * r * 0.4] });
+      // la radio che rimbalza sul plasma: sei minuti di silenzio
+      const radio = f(5.4, 6);
+      if (radio > 0) {
+        for (let i = 0; i < 4; i++) {
+          const q = ((c.t / 1200) + i / 4) % 1, rr = r * 3.6 * (1 - q) + r * 1.6;
+          ctx.strokeStyle = rgba('#69e0ff', radio * 0.7 * q); ctx.lineWidth = U * 0.005;
+          ctx.beginPath(); ctx.arc(x, y, rr, -Math.PI * 0.5, Math.PI * 0.2); ctx.stroke();
+        }
+        ctx.strokeStyle = KZ.corallo; ctx.lineWidth = U * 0.008;
+        ctx.beginPath(); ctx.arc(x, y, r * 1.6, -Math.PI * 0.5, Math.PI * 0.2); ctx.stroke();
+        const minuti = Math.min(6, Math.max(0, (tt - 6) * 2));
+        kzEtichetta(c, 'scudo.silenzio', cx + U * 0.12, cy + U * 0.32, f(5.8, 6.3), { dati: { n: kzNumero(Math.round(minuti)) }, colore: KZ.lilla, grande: true });
+      }
+    },
+
+    // ==== Le scene del film (a tutto schermo, senza titolo) ==============
+    // Il decollo: la torre, il Saturn V che si alza nel fumo
+    apollo_launch(c) {
+      const { ctx, L, H, U, tt, t } = c;
+      const cielo = ctx.createLinearGradient(0, 0, 0, H);
+      cielo.addColorStop(0, '#1d2f7a'); cielo.addColorStop(0.6, '#6a3f9e'); cielo.addColorStop(1, '#ff8f6c');
+      ctx.fillStyle = cielo; ctx.fillRect(0, 0, L, H);
+      kzAlone(ctx, L * 0.8, H * 0.82, U * 0.5, '#ffcc3d', 0.45);
+      const terra = H * 0.86;
+      ctx.fillStyle = '#2a1b5e'; ctx.fillRect(0, terra, L, H - terra);
+      ctx.fillStyle = '#3d2a7a'; ctx.beginPath(); ctx.moveTo(0, terra); ctx.quadraticCurveTo(L * 0.3, terra - H * 0.04, L * 0.55, terra); ctx.lineTo(0, terra); ctx.fill();
+      const sale = Math.max(0, tt - 2.2), dy = sale * sale * H * 0.02;
+      const h = Math.min(H * 0.55, U * 0.55), x = L * 0.5, base = terra - H * 0.06 - dy;
+      // la torre di lancio, ferma
+      ctx.fillStyle = '#c2410c'; const tw = h * 0.07;
+      ctx.fillRect(x - h * 0.17, terra - h * 1.05, tw, h * 1.05);
+      ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = Math.max(1, tw * 0.15);
+      for (let k = 0; k < 14; k++) { const yy = terra - h * 1.05 * k / 14; ctx.beginPath(); ctx.moveTo(x - h * 0.17, yy); ctx.lineTo(x - h * 0.17 + tw, yy - h * 0.07); ctx.stroke(); }
+      for (const q of [0.3, 0.55, 0.8]) { ctx.fillStyle = '#9a3412'; ctx.fillRect(x - h * 0.17 + tw, terra - h * q, h * (0.17 - 0.08) - tw * 0.2, h * 0.012); }
+      // il fuoco e il fumo
+      const accende = Math.min(1, tt / 1.2);
+      kzFiamma(ctx, x, base + h * 0.03, h * 0.07, h * (0.25 + 0.15 * accende), t);
+      kzSbuffi(ctx, x, terra, U * 0.45 * accende, 30, c.t, 17, '#f4e6ff', Math.PI * 1.06, Math.PI * 0.2);
+      kzSbuffi(ctx, x, terra, U * 0.45 * accende, 30, c.t, 23, '#ffd6b0', -Math.PI * 0.06, Math.PI * 0.2);
+      kzSaturnV(ctx, x, base, h);
+      // le nuvole di vapore ai piedi, davanti
+      ctx.fillStyle = 'rgba(244, 236, 255, 0.85)';
+      for (let i = 0; i < 9; i++) { const px = x + (i - 4) * U * 0.07, r = U * (0.04 + 0.012 * Math.sin(i * 2.3 + c.t / 700)); ctx.beginPath(); ctx.arc(px, terra + r * 0.4, r * (1 + accende * 0.3), 0, Math.PI * 2); ctx.fill(); }
+    },
+    // Lo scoppio: la navicella, il lampo, la nube d'ossigeno che si sparge
+    apollo_explosion(c) {
+      const { ctx, L, H, U, tt, t } = c;
+      kzTerra(ctx, L * 0.82, H * 0.24, U * 0.05);
+      const x = L * 0.47, y = H * 0.4, s = U * 0.62;
+      const scuote = tt > 1 && tt < 3.5 ? Math.sin(c.t / 30) * U * 0.006 * (3.5 - tt) : 0;
+      const giro = Math.sin(c.t / 2600) * 0.06 + (tt > 1 ? -0.04 * Math.min(1, tt - 1) : 0);
+      // la nube d'ossigeno che esce dal fianco e brilla al Sole
+      if (tt > 1) {
+        const sx = x - s * 0.18, sy = y + s * 0.05;
+        kzSbuffi(ctx, sx, sy, U * 0.5, 50, c.t, 41, '#e5f2ff', Math.PI * 0.55, 1.4);
+        const d = { s: 3 };
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 40; i++) {
+          const q = ((c.t / 2600) + dado(d)) % 1, a = Math.PI * 0.55 + (dado(d) - 0.5) * 1.8, rr = U * 0.75 * q;
+          ctx.save(); ctx.globalAlpha *= 1 - q; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr, U * 0.003, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+      }
+      kzApollo(ctx, x + scuote, y, s, giro, { squarcio: tt > 1 ? 1 : 0, luce: 1 });
+      if (tt > 0.9 && tt < 2.4) {
+        const u = (tt - 0.9) / 1.5;
+        kzAlone(ctx, x - s * 0.18, y + s * 0.03, U * 0.5 * (0.4 + u), '#fff6d8', 0.9 * (1 - u));
+        kzAlone(ctx, x - s * 0.18, y + s * 0.03, U * 0.3, '#ff8f3d', 0.7 * (1 - u));
+      }
+      // il pannello che vola via girando
+      if (tt > 1) {
+        const q = Math.min(1, (tt - 1) / 5);
+        ctx.save(); ctx.translate(x - s * 0.18 + q * U * 0.35, y + s * 0.08 + q * U * 0.55); ctx.rotate(q * 9);
+        ctx.fillStyle = '#dde3ee'; ctx.fillRect(-U * 0.06, -U * 0.025, U * 0.12, U * 0.05);
+        ctx.fillStyle = 'rgba(36, 26, 82, 0.3)'; ctx.fillRect(-U * 0.06, 0, U * 0.12, U * 0.025);
+        ctx.restore();
+      }
+    },
+    // Il controllo missione: le file di consolle, lo schermo grande
+    apollo_control(c) {
+      const { ctx, L, H, U, t } = c;
+      const muro = ctx.createLinearGradient(0, 0, 0, H);
+      muro.addColorStop(0, '#141a3a'); muro.addColorStop(1, '#2a1b5e');
+      ctx.fillStyle = muro; ctx.fillRect(0, 0, L, H);
+      // lo schermo grande: la Terra, la Luna e la strada della navicella
+      const sw = L * 0.7, sh = H * 0.32, sx = (L - sw) / 2, sy = H * 0.08;
+      kzAlone(ctx, L / 2, sy + sh / 2, sw * 0.6, '#59d98e', 0.18);
+      ctx.fillStyle = '#0b2a2a'; rettangolo(ctx, sx, sy, sw, sh, U * 0.01); ctx.fill();
+      ctx.strokeStyle = 'rgba(89, 217, 142, 0.25)'; ctx.lineWidth = 1;
+      for (let i = 1; i < 12; i++) { ctx.beginPath(); ctx.moveTo(sx + sw * i / 12, sy); ctx.lineTo(sx + sw * i / 12, sy + sh); ctx.stroke(); }
+      for (let i = 1; i < 5; i++) { ctx.beginPath(); ctx.moveTo(sx, sy + sh * i / 5); ctx.lineTo(sx + sw, sy + sh * i / 5); ctx.stroke(); }
+      ctx.strokeStyle = '#59d98e'; ctx.lineWidth = Math.max(1.5, U * 0.004); ctx.beginPath();
+      for (let i = 0; i <= 80; i++) { const u = i / 80, px = sx + sw * (0.1 + 0.8 * u), py = sy + sh * (0.5 - 0.35 * Math.sin(u * Math.PI) * Math.cos(u * Math.PI * 0.5)); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.stroke();
+      ctx.fillStyle = '#59d98e'; ctx.beginPath(); ctx.arc(sx + sw * 0.1, sy + sh * 0.5, sh * 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx + sw * 0.9, sy + sh * 0.5, sh * 0.045, 0, Math.PI * 2); ctx.fill();
+      const q = (c.t / 6000) % 1, px = sx + sw * (0.1 + 0.8 * q), py = sy + sh * (0.5 - 0.35 * Math.sin(q * Math.PI) * Math.cos(q * Math.PI * 0.5));
+      kzAlone(ctx, px, py, sh * 0.1, '#ffcc3d', 0.8 * (0.6 + 0.4 * Math.sin(c.t / 200)));
+      // tre file di consolle, con le lucine e gli schermi verdi
+      for (let fila = 0; fila < 3; fila++) {
+        const fy = H * (0.58 + fila * 0.14), fw = L * (0.8 + fila * 0.12), fx = (L - fw) / 2, fh = H * 0.1;
+        ctx.fillStyle = mescolaColori('#3d4470', '#1d2244', fila * 0.2); rettangolo(ctx, fx, fy, fw, fh, U * 0.01); ctx.fill();
+        const n = 6 + fila * 2;
+        for (let k = 0; k < n; k++) {
+          const mx = fx + fw * (k + 0.5) / n, mw = fw / n * 0.6;
+          ctx.fillStyle = '#0b2a2a'; ctx.fillRect(mx - mw / 2, fy - fh * 0.55, mw, fh * 0.55);
+          ctx.fillStyle = rgba('#59d98e', 0.5 + 0.3 * Math.sin(c.t / 400 + k + fila));
+          for (let r = 0; r < 3; r++) ctx.fillRect(mx - mw * 0.4, fy - fh * (0.48 - r * 0.15), mw * (0.3 + 0.5 * ((k * 7 + r * 3 + fila) % 5) / 5), fh * 0.05);
+          for (let r = 0; r < 4; r++) {
+            ctx.save(); ctx.globalAlpha *= Math.sin(c.t / 300 + k * 2 + r) > -0.3 ? 1 : 0.3;
+            ctx.fillStyle = [KZ.corallo, KZ.giallo, KZ.verde, KZ.ciano][(k + r + fila) % 4];
+            ctx.beginPath(); ctx.arc(mx - mw * 0.3 + r * mw * 0.2, fy + fh * 0.3, Math.max(1, U * 0.004), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+          }
+          // le teste di chi lavora, tonde come nei cartoni
+          if ((k + fila) % 2) { ctx.fillStyle = '#141a3a'; ctx.beginPath(); ctx.arc(mx, fy + fh * 0.95, fh * 0.32, 0, Math.PI * 2); ctx.fill(); }
+        }
+      }
+    },
+    // La cabina dell'Aquarius: buia, gelata, il fiato che si vede
+    apollo_cabin(c) {
+      const { ctx, L, H, U, t } = c;
+      const muro = ctx.createLinearGradient(0, 0, L, H);
+      muro.addColorStop(0, '#1d2f5a'); muro.addColorStop(1, '#141a3a');
+      ctx.fillStyle = muro; ctx.fillRect(0, 0, L, H);
+      // i due finestrini a triangolo, con la Terra in uno
+      for (const [k, terra] of [[-1, true], [1, false]]) {
+        const fx = L / 2 + k * L * 0.2, fy = H * 0.3, fr = Math.min(L, H) * 0.2;
+        ctx.fillStyle = '#4a4f6e'; ctx.beginPath(); ctx.moveTo(fx - fr * 1.1, fy - fr * 0.8); ctx.lineTo(fx + fr * 1.1, fy - fr * 0.8); ctx.lineTo(fx + k * fr * 0.9, fy + fr); ctx.closePath(); ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.moveTo(fx - fr * 0.95, fy - fr * 0.7); ctx.lineTo(fx + fr * 0.95, fy - fr * 0.7); ctx.lineTo(fx + k * fr * 0.8, fy + fr * 0.85); ctx.closePath(); ctx.clip();
+        ctx.fillStyle = '#05061a'; ctx.fillRect(fx - fr * 1.2, fy - fr, fr * 2.4, fr * 2);
+        const d = { s: 100 + k };
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 18; i++) { ctx.beginPath(); ctx.arc(fx - fr + dado(d) * fr * 2, fy - fr * 0.7 + dado(d) * fr * 1.6, 1, 0, Math.PI * 2); ctx.fill(); }
+        if (terra) kzTerra(ctx, fx + fr * 0.2, fy - fr * 0.1, fr * 0.22);
+        // la brina agli angoli del vetro
+        const brina = ctx.createRadialGradient(fx, fy, fr * 0.3, fx, fy, fr * 1.1);
+        brina.addColorStop(0, 'rgba(220, 240, 255, 0)'); brina.addColorStop(1, 'rgba(220, 240, 255, 0.5)');
+        ctx.fillStyle = brina; ctx.fillRect(fx - fr * 1.2, fy - fr, fr * 2.4, fr * 2);
+        ctx.restore();
+      }
+      // i pannelli spenti, con una lucina sola
+      ctx.fillStyle = '#2b3360'; rettangolo(ctx, L * 0.08, H * 0.6, L * 0.84, H * 0.36, U * 0.02); ctx.fill();
+      for (let i = 0; i < 16; i++) {
+        const px = L * 0.12 + (i % 8) * L * 0.1, py = H * 0.66 + Math.floor(i / 8) * H * 0.12;
+        ctx.fillStyle = '#1d2244'; rettangolo(ctx, px, py, L * 0.08, H * 0.08, U * 0.008); ctx.fill();
+      }
+      kzAlone(ctx, L * 0.7, H * 0.7, U * 0.06, '#ff5c6c', 0.6 * (0.5 + 0.5 * Math.sin(c.t / 500)));
+      ctx.fillStyle = '#ff5c6c'; ctx.beginPath(); ctx.arc(L * 0.7, H * 0.7, U * 0.008, 0, Math.PI * 2); ctx.fill();
+      // i cristalli di ghiaccio sulle pareti, e il velo freddo
+      const d = { s: 61 };
+      ctx.strokeStyle = 'rgba(220, 240, 255, 0.55)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(220, 240, 255, 0.3)';
+      for (let i = 0; i < 14; i++) {
+        const px = dado(d) * L, py = dado(d) * H, r = U * (0.005 + dado(d) * 0.008);
+        ctx.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; ctx.moveTo(px - Math.cos(a) * r, py - Math.sin(a) * r); ctx.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r); } ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(150, 200, 255, 0.08)'; ctx.fillRect(0, 0, L, H);
+    },
+    // Il modulo di servizio che si allontana: manca un intero pannello
+    apollo_jettison(c) {
+      const { ctx, L, H, U, tt, t } = c;
+      kzTerra(ctx, L * 0.15, H * 0.2, U * 0.12);
+      const via = Math.min(1, tt / 9);
+      // il modulo di servizio, solo, che si allontana girando piano
+      const smx = L * 0.62 + via * L * 0.1, smy = H * 0.4 + via * H * 0.05, ss = U * 0.75 * (1 - via * 0.35);
+      kzApollo(ctx, smx, smy, ss, 0.15 + via * 0.5, { lm: false, cm: false, squarcio: 1 });
+      // davanti, l'Odyssey con l'Aquarius, che si allontanano dall'altra parte
+      kzApollo(ctx, L * 0.22 - via * L * 0.05, H * 0.66, U * 0.5, -0.1, { sm: false, luce: 1 });
+      kzSbuffi(ctx, smx - ss * 0.2, smy, U * 0.25, 18, c.t, 71, '#e5f2ff', Math.PI * 0.5, 1.2);
+    },
+    // L'ammaraggio: tre paracadute, il Pacifico, il sole
+    apollo_splashdown(c) {
+      const { ctx, L, H, U, tt, t } = c;
+      const cielo = ctx.createLinearGradient(0, 0, 0, H);
+      cielo.addColorStop(0, '#2ec4f0'); cielo.addColorStop(0.65, '#b5ecff'); cielo.addColorStop(0.66, '#1d6fb8'); cielo.addColorStop(1, '#0d3f7a');
+      ctx.fillStyle = cielo; ctx.fillRect(0, 0, L, H);
+      kzAlone(ctx, L * 0.82, H * 0.18, U * 0.35, '#fff6d8', 0.7);
+      ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(L * 0.82, H * 0.18, U * 0.05, 0, Math.PI * 2); ctx.fill();
+      // le nuvole piatte
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      for (const [px, py, r] of [[0.15, 0.2, 0.05], [0.22, 0.22, 0.04], [0.55, 0.12, 0.035], [0.6, 0.14, 0.03]]) { ctx.beginPath(); ctx.arc((px * L + c.t / 200) % (L + 100) - 50, py * H, r * U * 2, 0, Math.PI * 2); ctx.fill(); }
+      // la nave all'orizzonte
+      ctx.fillStyle = '#2a3a5a'; ctx.beginPath(); ctx.moveTo(L * 0.1, H * 0.66); ctx.lineTo(L * 0.26, H * 0.66); ctx.lineTo(L * 0.24, H * 0.68); ctx.lineTo(L * 0.12, H * 0.68); ctx.closePath(); ctx.fill();
+      ctx.fillRect(L * 0.18, H * 0.635, L * 0.03, H * 0.025);
+      // le onde
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'; ctx.lineWidth = Math.max(1, U * 0.004);
+      for (let i = 0; i < 8; i++) { const yy = H * (0.7 + i * 0.04); ctx.beginPath(); for (let k = 0; k <= 30; k++) { const xx = k / 30 * L; ctx.lineTo(xx, yy + Math.sin(k * 1.3 + c.t / 700 + i) * U * 0.004); } ctx.stroke(); }
+      // la capsula che scende coi tre paracadute, poi tocca l'acqua
+      const scende = Math.min(1, tt / 6), cx = L * 0.5, cy = kzMix(H * 0.35, H * 0.74, scende);
+      const toccato = tt > 6;
+      if (!toccato) {
+        for (const [k, col] of [[-1, '#ff8f3d'], [0, '#f4f6ff'], [1, '#ff8f3d']]) {
+          const px = cx + k * U * 0.12, py = cy - U * 0.32 + Math.abs(k) * U * 0.03, pr = U * 0.1;
+          ctx.strokeStyle = 'rgba(40, 40, 60, 0.6)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(px - pr, py); ctx.lineTo(cx, cy - U * 0.03); ctx.moveTo(px + pr, py); ctx.lineTo(cx, cy - U * 0.03); ctx.stroke();
+          ctx.fillStyle = col; ctx.beginPath(); ctx.arc(px, py, pr, Math.PI, 0); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = k ? '#f4f6ff' : '#ff8f3d';
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, pr, Math.PI * 1.4, Math.PI * 1.6); ctx.closePath(); ctx.fill();
+        }
+      } else {
+        const u = Math.min(1, (tt - 6) / 1.4);
+        for (let k = 0; k < 3; k++) { ctx.strokeStyle = rgba('#ffffff', 0.8 * (1 - u)); ctx.lineWidth = U * 0.004; ctx.beginPath(); ctx.ellipse(cx, cy + U * 0.03, U * (0.05 + u * 0.15 + k * 0.03), U * (0.012 + u * 0.03 + k * 0.008), 0, 0, Math.PI * 2); ctx.stroke(); }
+      }
+      kzCapsula(ctx, cx, cy, U * 0.04, Math.PI / 2 + (toccato ? Math.sin(c.t / 700) * 0.1 : 0));
+    }
+  });
+
   function storDisegnaSpiega(ctx, ef, t, L, H, ridotto, alfa) {
     const disegna = STOR_SPIEGA_DISEGNI[ef.tipo];
     if (!disegna) return;
@@ -6115,13 +7217,15 @@
     // l'area libera: sotto al titolo, sopra ai sottotitoli
     const alto = H * 0.15, basso = H * 0.84;
     // sullo schermo largo i due lati restano a chi parla, piccolo in un angolo
-    const U = Math.min(L * (L > H ? 0.6 : 0.95), (basso - alto) * 1.55);
+    // (v504: le scene di «Apollo 13» invece sono a tutto schermo)
+    const scena = STOR_SCENE_APOLLO.includes(ef.tipo);
+    const U = scena ? Math.min(L, H * 1.5) : Math.min(L * (L > H ? 0.6 : 0.95), (basso - alto) * 1.55);
     // `at: right` o `left` sposta il disegno dalla parte opposta a chi parla
-    const sposta = L > H ? ({ right: 0.1, left: -0.1 }[ef.dove] || 0) * L : 0;
-    const c = { ctx, L, H, U, cx: L / 2 + sposta, cy: (alto + basso) / 2 - H * 0.01, tt, t: ridotto ? 0 : t - ef.inizio, f: (a, b) => liscio((tt - a) / (b - a)) };
+    const sposta = !scena && L > H ? ({ right: 0.1, left: -0.1 }[ef.dove] || 0) * L : 0;
+    const c = { ctx, L, H, U, cx: L / 2 + sposta, cy: scena ? H / 2 : (alto + basso) / 2 - H * 0.01, tt, t: ridotto ? 0 : t - ef.inizio, f: (a, b) => liscio((tt - a) / (b - a)) };
     ctx.save();
     ctx.globalAlpha = alfa;
-    kzFondo(c);
+    if (stor.stile === 'kurz') kzFondo(c, '#0a0a2e', '#2b0d52'); else kzFondo(c);
     // la camera viva dei cartoni: entra con una spinta e poi respira
     const k = (ridotto ? 1 : 0.94 + 0.06 * kzMolla(Math.min(1, tt / 0.7))) * (ridotto ? 1 : 1 + 0.015 * Math.sin(c.t / 2300));
     ctx.translate(c.cx, c.cy); ctx.scale(k, k); ctx.translate(-c.cx, -c.cy);
@@ -6236,7 +7340,131 @@
 
   /* Una parte del corpo: la stesura scura, quella chiara spostata verso la
    * luce (in alto a sinistra) e il pennino attorno, con l'alone sotto. */
+  /* v504, lo stile «Kurzgesagt» (`story_style { look: kurzgesagt }`).
+   * Chi usa l'app ha chiesto, per la storia di «Apollo 13», un disegno più
+   * simile al canale di divulgazione Kurzgesagt — e solo per quella storia.
+   * Le forme restano le stesse (il corpo, la testa, la navicella): cambia
+   * come si dipingono. Niente pennino d'inchiostro né alone color panna;
+   * ogni pezzo è una stesura piatta e satura con l'ombra fredda, che tira al
+   * viola come nei cartoni di Kurzgesagt, e una lama di luce sul bordo in
+   * alto a sinistra (la «luce di contorno»). I volti sono quelli loro: due
+   * ovali scuri col riflesso, le sopracciglia a bastoncino, la bocca a riga
+   * che si apre in un ovale; niente naso. Lo stile vale finché la storia è in
+   * corso (`stor.stile`, rimesso a «ink» da `storSgombra` e da `storTic`). */
+  const KURZ = { ombra: '#241a52', luce: '#fff4e0', occhio: '#1a1238', bocca: '#3a1030', lingua: '#ff7a8a', guance: '#ff8fa3' };
+  function parteKurz(ctx, traccia, colore, R, opz = {}) {
+    // l'ombra fredda: il colore spinto verso il viola notte
+    traccia(); ctx.fillStyle = mescolaColori(colore, KURZ.ombra, opz.buio === undefined ? 0.38 : Math.min(0.8, opz.buio * 1.3)); ctx.fill();
+    ctx.save(); traccia(); ctx.clip();
+    const lu = R * (opz.luce || 0.12);
+    ctx.save(); ctx.translate(-lu * 0.7, -lu * 0.8); traccia(); ctx.fillStyle = colore; ctx.fill(); ctx.restore();
+    if (opz.dentro) opz.dentro();
+    // la lama di luce: quello che resta della forma tolta la sua copia
+    // spostata in basso a destra
+    const d = Math.max(1, R * 0.035);
+    ctx.save(); ctx.translate(d, d * 1.1); traccia(); ctx.restore();
+    ctx.rect(-1e5, -1e5, 2e5, 2e5);
+    ctx.fillStyle = rgba(schiarisci(colore, 0.55), 0.55); ctx.fill('evenodd');
+    ctx.restore();
+  }
+  // La testa dei cartoni di Kurzgesagt: tonda, liscia, la luce di contorno
+  // e le guance; niente naso, niente contorno
+  function testaKurz(ctx, hx, hy, hw, hh, R, pelle, opz = {}) {
+    const testa = () => tracciaTesta(ctx, hx, hy, hw, hh);
+    parteKurz(ctx, testa, pelle, R, { luce: 0.1, buio: 0.22 });
+    ctx.save(); testa(); ctx.clip();
+    ctx.strokeStyle = rgba(scurisci(pelle, 0.35), 0.35); ctx.lineWidth = Math.max(0.8, R * 0.02); ctx.lineCap = 'round';
+    if (opz.rughe) {
+      ctx.beginPath();
+      for (const k of [0, 1]) { const yy = hy - hh * (0.52 + k * 0.1), ll = hw * (0.34 - k * 0.06); ctx.moveTo(hx - ll, yy); ctx.quadraticCurveTo(hx, yy - hh * 0.04, hx + ll, yy); }
+      ctx.stroke();
+    }
+    if (opz.lentiggini) {
+      ctx.fillStyle = rgba(scurisci(pelle, 0.3), 0.45);
+      const st = { s: 29 };
+      for (let k = 0; k < 10; k++) {
+        const lato = k % 2 ? 1 : -1, px = hx + lato * hw * (0.25 + 0.3 * dado(st)), py = hy + hh * (0.05 + 0.18 * dado(st));
+        ctx.beginPath(); ctx.arc(px, py, Math.max(0.6, R * 0.016), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  // Il volto di Kurzgesagt sulla geometria di sempre (`storGeometria`): gli
+  // occhi si aprono e si chiudono, guardano, battono le palpebre; la bocca
+  // parla con la voce. `posa` è quella di `storDisegnaVolto` (il giro).
+  function kurzVolto(ctx, geom, profilo, posa) {
+    const R = geom.R;
+    // le guance: due tondi rosa sfumati
+    for (const g of geom.guance) posa(g.x, g.y, () => {
+      const r = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, g.rx * 0.9);
+      r.addColorStop(0, rgba(KURZ.guance, Math.min(0.55, g.alfa * 0.8))); r.addColorStop(1, rgba(KURZ.guance, 0));
+      ctx.fillStyle = r; ctx.beginPath(); ctx.ellipse(g.x, g.y + g.ry * 0.2, g.rx * 0.9, g.ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    for (const occ of geom.occhi) posa(occ.cx, occ.cy, () => {
+      const alto = occ.bordoGiu - occ.bordoSu;
+      const ex = occ.cx + (occ.iride.x - occ.cx) * 0.55, ey = (occ.bordoSu + occ.bordoGiu) / 2 + (occ.iride.y - occ.cy) * 0.25;
+      const w = occ.rx * 0.36 * (geom.stelle ? 1.15 : 1);
+      ctx.lineCap = 'round';
+      if (!occ.apertura || alto < occ.ry * 0.3) {
+        // chiuso: un archetto (all'insù se ride)
+        ctx.strokeStyle = KURZ.occhio; ctx.lineWidth = Math.max(1.4, occ.rx * 0.2);
+        ctx.beginPath();
+        if (occ.felici) ctx.arc(occ.cx, occ.cy + occ.ry * 0.25, w * 1.2, Math.PI * 1.15, Math.PI * 1.85);
+        else ctx.arc(occ.cx, occ.cy - occ.ry * 0.15, w * 1.2, Math.PI * 0.15, Math.PI * 0.85);
+        ctx.stroke();
+        return;
+      }
+      const h = Math.max(w * 0.5, Math.min(occ.ry * 0.62, alto * 0.45));
+      ctx.fillStyle = KURZ.occhio;
+      ctx.beginPath(); ctx.ellipse(ex, ey, w, h, 0, 0, Math.PI * 2); ctx.fill();
+      // la palpebra arrabbiata o triste taglia l'ovale di sbieco
+      if (Math.abs(occ.inclina) > 0.8) {
+        ctx.save(); ctx.beginPath(); ctx.ellipse(ex, ey, w * 1.05, h * 1.05, 0, 0, Math.PI * 2); ctx.clip();
+        ctx.fillStyle = profilo.pelle || '#f2c4a0';
+        const k = Math.max(-1, Math.min(1, occ.inclina)) * -occ.lato;
+        ctx.beginPath(); ctx.moveTo(ex - w * 1.2, ey - h * 1.2 + k * h * 0.7); ctx.lineTo(ex + w * 1.2, ey - h * 1.2 - k * h * 0.7);
+        ctx.lineTo(ex + w * 1.2, ey - h * 1.6); ctx.lineTo(ex - w * 1.2, ey - h * 1.6); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(ex + w * 0.3, ey - h * 0.38, Math.max(0.7, w * 0.36), 0, Math.PI * 2); ctx.fill();
+      if (geom.lucidi > 0.5) { ctx.beginPath(); ctx.arc(ex - w * 0.3, ey + h * 0.35, Math.max(0.5, w * 0.18), 0, Math.PI * 2); ctx.fill(); }
+    });
+    // le sopracciglia: bastoncini tondi, corti, nel colore dei capelli
+    const colCigli = scurisci(profilo.peli || (profilo.figura && profilo.figura.chioma) || '#3b2a1a', 0.25);
+    for (const c of geom.cigli) posa((c.x1 + c.x2) / 2, (c.y1 + c.y2) / 2, () => {
+      const mx = (c.x1 + c.x2) / 2, my = (c.y1 + c.y2) / 2, k = 0.62;
+      ctx.strokeStyle = colCigli; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.3, R * 0.055);
+      ctx.beginPath(); ctx.moveTo(mix(mx, c.x1, k), mix(my, c.y1, k));
+      ctx.quadraticCurveTo(mix(mx, c.qx, k), mix(my, c.qy, k), mix(mx, c.x2, k), mix(my, c.y2, k)); ctx.stroke();
+    });
+    const b = geom.bocca;
+    posa(b.x, b.y, () => {
+      ctx.save();
+      if (b.storta) { ctx.translate(b.x, b.y); ctx.rotate(-b.storta * 0.3); ctx.translate(-b.x, -b.y); }
+      const w = b.larg * 0.62;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (b.aper < Math.max(1, b.larg * 0.1)) {
+        ctx.strokeStyle = KURZ.bocca; ctx.lineWidth = Math.max(1.3, b.larg * 0.13);
+        ctx.beginPath(); ctx.moveTo(b.x - w, b.y - b.curva * w * 0.25); ctx.quadraticCurveTo(b.x, b.y + b.curva * w * 0.55, b.x + w, b.y - b.curva * w * 0.25); ctx.stroke();
+      } else {
+        const h = Math.min(b.aper, b.larg * 1.1), su = b.y - h * 0.25 - b.curva * w * 0.15;
+        const bocca = () => {
+          ctx.beginPath(); ctx.moveTo(b.x - w, su);
+          ctx.quadraticCurveTo(b.x, su + b.curva * w * 0.2 - h * 0.1, b.x + w, su);
+          ctx.quadraticCurveTo(b.x + w * 0.9, su + h * 1.5, b.x, su + h * 1.25);
+          ctx.quadraticCurveTo(b.x - w * 0.9, su + h * 1.5, b.x - w, su); ctx.closePath();
+        };
+        bocca(); ctx.fillStyle = KURZ.bocca; ctx.fill();
+        ctx.save(); bocca(); ctx.clip();
+        ctx.fillStyle = KURZ.lingua; ctx.beginPath(); ctx.ellipse(b.x, su + h * 1.3, w * 0.6, h * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    });
+  }
   function parte(ctx, traccia, colore, R, opz = {}) {
+    if (stor.stile === 'kurz') { parteKurz(ctx, traccia, colore, R, opz); return; }
     traccia();
     ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07); ctx.stroke();
     ctx.fillStyle = scurisci(colore, opz.buio === undefined ? 0.28 : opz.buio); ctx.fill();
@@ -6258,6 +7486,11 @@
   // Un tratto d'inchiostro con l'alone (i bracci, i tralicci)
   function asta(ctx, x1, y1, x2, y2, w, colore) {
     ctx.lineCap = 'round';
+    if (stor.stile === 'kurz') {
+      ctx.strokeStyle = colore || KURZ.ombra; ctx.lineWidth = w * (colore ? 0.8 : 0.6);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      return;
+    }
     ctx.strokeStyle = ALONE; ctx.lineWidth = w + 2.6;
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = w;
@@ -7252,6 +8485,7 @@
     }
   }
   function testaDaCartone(ctx, hx, hy, hw, hh, R, pelle, opz = {}) {
+    if (stor.stile === 'kurz') { testaKurz(ctx, hx, hy, hw, hh, R, pelle, opz); return; }
     const testa = () => tracciaTesta(ctx, hx, hy, hw, hh);
     ctx.save(); ctx.translate(R * 0.04, R * 0.05); testa(); ctx.fillStyle = 'rgba(12, 6, 30, 0.4)'; ctx.fill(); ctx.restore();
     testa(); ctx.strokeStyle = '#fff6e6'; ctx.lineWidth = Math.max(2, R * 0.06); ctx.stroke();
@@ -10400,8 +11634,8 @@
     'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch',
     // v488
     'tidal_orbit',
-    // v501: le spiegazioni a tutto schermo
-    ...STOR_SPIEGA,
+    // v501: le spiegazioni a tutto schermo (v504: anche le scene di «Apollo 13»)
+    ...STOR_SPIEGA, ...STOR_SCENE_APOLLO,
     // v492: i rumori di bordo di «Interstellar»
     'engine', 'thrusters', 'docking', 'detach', 'alarm', 'decompression', 'metal_groan', 'turbulence', 'splash', 'ice_crack',
     'radio', 'spin_up', 'spin_down'];
@@ -10738,7 +11972,7 @@
     },
     // v501: le spiegazioni a tutto schermo entrano con un soffio e un
     // accordo leggero, sotto alla voce che spiega
-    ...Object.fromEntries(STOR_SPIEGA.map(k => [k, (a, u, t, d, v) => {
+    ...Object.fromEntries(STOR_SPIEGA.concat(STOR_SCENE_APOLLO).map(k => [k, (a, u, t, d, v) => {
       soffio(a, u, { t0: t, durata: 0.9, filtro: 'bandpass', f0: 500, f1: 2200, q: 1.5, picco: 0.1 * v, attacco: 0.35 });
       [523, 659, 784].forEach((fr, i) => tono(a, u, { t0: t + 0.5 + i * 0.09, durata: 1.4, f0: fr, picco: 0.035 * v, attacco: 0.05 }));
     }])),
@@ -11302,6 +12536,8 @@
   // `orbit` gira attorno a un personaggio (o a chi parla), a `speed` gradi
   // al secondo (negativo: nell'altro verso)
   const STOR_MODI_REGIA = ['auto', 'wide', 'close', 'speaker', 'orbit', 'rhythm'];
+  // v504: gli stili del disegno (`story_style`)
+  const STOR_STILI = ['ink', 'kurzgesagt'];
   Object.assign(COMANDI, {
     story_camera: {
       verifica(p, scena) {
@@ -11788,6 +13024,17 @@
           chiudi() { via(); stor.canti = stor.canti.filter(x => x === c || x.attivo || stor.orologio - x.fine < 2000); }
         };
       }
+    },
+    /* Lo stile del disegno (v504): `story_style { look: kurzgesagt | ink }`.
+     * Vale da quella scena fino alla fine della storia (o al prossimo
+     * `story_style`): la storia di «Apollo 13» lo mette nella prima scena. */
+    story_style: {
+      verifica(p) {
+        campi(p, ['look']);
+        richiedi(p.look !== undefined, 'valoreIgnoto', { campo: 'look', nome: '', elenco: STOR_STILI.join(', ') });
+        scelta(p.look, 'look', STOR_STILI);
+      },
+      crea(p) { stor.stile = p.look === 'kurzgesagt' ? 'kurz' : 'ink'; return {}; }
     },
     // Il titolo grande (v450): `story_title { id | text, sub_id | subtitle }`
     story_title: {
@@ -12488,6 +13735,8 @@
     nome: storNome, personalita: storPersonalita,
     // v482: la figurina di un personaggio (la finestra delle voci), gli sfondi e le navi
     figurina: (id, px) => storFigurina(id, px), STOR_SFONDI, STOR_NAVI, STOR_SFONDO_MAX_S, ospitiDi: storOspiti,
+    // v504: «Apollo 13 · Dentro la scienza» e lo stile di Kurzgesagt
+    STOR_SPIEGA_APOLLO, STOR_SCENE_APOLLO, STOR_STILI, stile: () => stor.stile,
     ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale, boccaBersaglio: storBoccaBersaglio,
     tempoDelCarattere: storTempoDelCarattere,
     geometria: storGeometria, posa: storPosa, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,
