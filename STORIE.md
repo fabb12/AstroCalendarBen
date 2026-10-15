@@ -3955,3 +3955,43 @@ punti sotto i 120 anche nella versione nuova), `prova-i18n.js`,
 `controlla-i18n.js --patto` (342). Guardate in Chromium, al computer e a
 390 px, le schede coi punti più lunghi.
 
+### Le originali come prima, e due «Interstellar» corte con la scienza (v499)
+
+«Distingui questa versione con altre due CosmoStorie mantenendo quelle
+originali; non farle troppo lunghe, tieni i concetti principali del film,
+quelli più interessanti e curiosi.»
+
+**Le originali** (`storia_interstellar`, `storia_interstellar2`) tornano
+identiche alla v496: senza schede (il copione è byte per byte quello di
+prima).
+
+**Le due versioni corte** sono CosmoStorie nuove, subito dopo le originali:
+`storia_interstellar_scienza` («Interstellar 1: la scienza in breve», 22
+scene delle 48) e `storia_interstellar2_scienza` («Interstellar 2: la scienza
+in breve», 21 delle 43). Le scene sono quelle dell'originale, uguali (stessi
+sfondi, navicelle, rumori, camera), scelte fra le più curiose; le schede
+stanno lì (14 nella Parte 1, 10 nella Parte 2: `science_card`, testi
+`storie.scienza.*` della v498, i lati guardati in Chromium nella v497).
+
+| Parte | Scene dell'originale tenute |
+|---|---|
+| 1 | 1–4 (Saturno, la sfera, il foglio di Romilly), 7 (la mano), 9, 11, 12 (Gargantua, la ciambella, un'ora = sette anni), 17, 18 (il pianeta di Miller e le maree), 20, 21 (i rottami, «sono onde!»), 26 (i 23 anni), 28 (i messaggi), 33 (la bugia di Mann), 36–38 (il portello, «necessario», l'attracco), 40, 42 (la fionda, Newton), 46 (l'orizzonte), 48 (la stanza di Murph) |
+| 2 | 1, 2 (la caduta, il tesseratto), 5, 6, 8 (che cos'è un tesseratto, Loro, il tempo come un paesaggio), 12 («voi siete noi»), 15, 16, 18 (i libri, il fantasma, la polvere), 19 (i dati di TARS), 25–28 (Murph grande, l'orologio, «Eureka», il decollo), 29, 30 (il cerchio, la mano nel wormhole), 32, 34 (124 anni, la Stazione Cooper), 37, 40 (Murph anziana: «lo sapevo», «vai da lei»), 43 (Loro) |
+
+**Le battute** hanno chiavi proprie (`demo.narr.storia_interstellar_scienza.<n>`:
+la scena *n* dice la battuta *n*, lo vuole `prova-demo.js`) ma **lo stesso
+testo** dell'originale, copiato nei due dizionari, e la stessa regia in
+`regia-voci.json`. La narrazione cerca le voci registrate anche dal testo
+(`narrComponi`, i brani del manifest): così le 22 battute della Parte 1 corta
+suonano con le voci vere di `storie/<personaggio>/it/storia_interstellar-<n>.mp3`,
+senza un file in più (verificato nel browser: 22 su 22). Il copione
+(`COPIONE.md`) le elenca come battute senza file: non serve registrarle, a
+meno che un giorno il testo cambi.
+
+Prove: `prova-storie.js` (123, 1 nuova: corte, stesso cast, ogni battuta è
+una battuta dell'originale, nell'ordine, nelle due lingue, col proprio
+titolo; e le schede solo nelle corte, le originali senza), `prova-demo.js`,
+`prova-i18n.js`, `controlla-i18n.js --patto` (342), `voci-storie.js
+--controlla`; le prove nel browser delle CosmoStorie qui sotto in
+`current-task.md`. Guardate intere in Chromium (`giro-storia.js`).
+

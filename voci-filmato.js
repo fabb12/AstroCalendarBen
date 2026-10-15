@@ -1022,7 +1022,11 @@ function vfilmIndicePronte() {
       const chi = S && S.canonico ? S.canonico(p.target) : p.target;
       for (const l of lingue) {
         const frase = vfilmFraseIn(p.id, l);
-        if (frase) indice.set([l, chi, impronta(frase)].join('|'), p.id);
+        // v499: una frase detta in due storie pronte (le «Interstellar»
+        // corte ripetono parola per parola le battute delle originali) resta
+        // della prima, l'originale, a cui appartengono le voci sul repository
+        const chiave = [l, chi, impronta(frase)].join('|');
+        if (frase && !indice.has(chiave)) indice.set(chiave, p.id);
       }
     }
   }

@@ -1840,9 +1840,12 @@ prova('science_card (v497): la scheda «La scienza in breve», validata, letta c
   motore.ferma && motore.ferma();
   S.sgombra();
 });
-prova('le schede della scienza di «Interstellar»: tutte nelle due lingue, corte, nelle scene giuste', () => {
+prova('le schede della scienza di «Interstellar»: solo nelle versioni corte, nelle due lingue, corte, nelle scene giuste', () => {
   const schede = [];
-  for (const d of predefiniti.filter(x => /^storia_interstellar/.test(x.chiave))) {
+  // v499: le originali restano com'erano, senza schede
+  for (const k of ['storia_interstellar', 'storia_interstellar2'])
+    assert.ok(!/science_card/.test(predefiniti.find(x => x.chiave === k).testo), k + ': l\'originale non ha schede');
+  for (const d of predefiniti.filter(x => /^storia_interstellar2?_scienza$/.test(x.chiave))) {
     analizza(d.testo).scene.forEach((s, i) => {
       for (const a of s.azioni) if (a.comando === 'science_card') {
         schede.push(a.parametri.card);
@@ -1852,7 +1855,7 @@ prova('le schede della scienza di «Interstellar»: tutte nelle due lingue, cort
       }
     });
   }
-  assert.equal(schede.length, 28, 'diciotto nella Parte 1, dieci nella Parte 2');
+  assert.equal(schede.length, 24, 'quattordici nella Parte 1 corta, dieci nella Parte 2 corta');
   assert.equal(new Set(schede).size, schede.length, 'nessuna ripetuta');
   for (const l of ['it', 'en']) {
     lingua = l;
@@ -1864,6 +1867,28 @@ prova('le schede della scienza di «Interstellar»: tutte nelle due lingue, cort
     }
   }
   lingua = 'it';
+});
+prova('le versioni corte di «Interstellar» (v499): più brevi, con le stesse battute delle originali, parola per parola', () => {
+  for (const [orig, corta] of [['storia_interstellar', 'storia_interstellar_scienza'], ['storia_interstellar2', 'storia_interstellar2_scienza']]) {
+    const o = predefiniti.find(x => x.chiave === orig), c = predefiniti.find(x => x.chiave === corta);
+    assert.ok(c && c.storia, corta + ' è una CosmoStoria');
+    assert.equal(c.cast, o.cast, corta + ': lo stesso cast');
+    const so = analizza(o.testo).scene, scorta = analizza(c.testo).scene;
+    assert.ok(scorta.length >= 18 && scorta.length <= 24 && scorta.length < so.length * 0.55, corta + ': corta, ' + scorta.length + ' scene');
+    // ogni battuta dice lo stesso testo di una battuta dell'originale (così
+    // la narrazione ritrova dal testo le voci vere registrate), in ordine
+    for (const l of ['it', 'en']) {
+      const testi = so.map(s => DIZ[l].messaggi[s.azioni.find(a => a.comando === 'character_speak').parametri.id]);
+      let dove = -1;
+      scorta.forEach((s, i) => {
+        const id = s.azioni.find(a => a.comando === 'character_speak').parametri.id;
+        const k = testi.indexOf(DIZ[l].messaggi[id], dove + 1);
+        assert.ok(k > dove, `${corta} scena ${i + 1} (${l}): una battuta dell'originale, dopo la precedente`);
+        dove = k;
+      });
+    }
+    assert.ok(/story_title \{ id: 'storie\.titolo\.interstellar2?_scienza'/.test(c.testo), corta + ': il suo titolo');
+  }
 });
 prova('lo Studio: la domanda finale nasce dagli eventi, e solo quando è adatta', () => {
   // v432: la domanda è facoltativa, spenta di serie
