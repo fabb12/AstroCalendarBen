@@ -4191,3 +4191,28 @@ pennino d'inchiostro, che finisce con la storia; le scene del film disegnate
 a sei istanti), `prova-demo.js`, `prova-i18n.js`, `controlla-i18n.js
 --patto`, `voci-storie.js --controlla`; guardata intera in Chromium
 (`giro-storia.js`, nessun errore).
+
+### Il disegno simil 3D, con le ombre (v505)
+
+«Fai una grafica simil 3D, mettendo le ombre.» Sempre solo nello stile di
+Kurzgesagt (`story_style`, quindi in «Apollo 13 · Dentro la scienza»):
+
+- ogni pezzo dei personaggi (`parteKurz`) getta un'ombra morbida su quello
+  che ha sotto e sul fondo, e ha il suo volume: un'ombra interna sfumata che
+  sale dal basso a destra e una luce sfumata in alto a sinistra
+  (`ombraInterna`: l'ombra della tela di un rettangolo grande quanto la
+  tela, col buco della forma, ritagliato dalla forma; `rettangoloTela`);
+- `kzSollevato` dà l'ombra portata agli oggetti delle spiegazioni: il
+  Saturn V e la navicella sono cilindri sfumati (la luce da un lato, il buio
+  che gira dall'altro), la capsula, le molecole tonde, il termometro, il
+  manometro, la batteria e i blocchi, la cella, il serbatoio, il finestrino
+  col bordo incavato, l'omino;
+- `kzPalla` sfuma verso il bordo come una sfera (Terra, Luna, Sole);
+- nelle scene del film: le consolle di Houston in rilievo e lo schermo
+  incavato, i tasti incavati nella cabina, le nuvole di vapore e gli sbuffi
+  tondi (chiari sopra, in ombra sotto), l'ombra del razzo sul piazzale, le
+  cupole dei paracadute e l'ombra della capsula sull'acqua.
+
+Le storie a inchiostro non cambiano. Prove: `prova-storie.js` (125),
+guardata in Chromium (`giro-storia.js`, nessun errore).
+

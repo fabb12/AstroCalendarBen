@@ -5192,6 +5192,12 @@
     }
     ctx.fillStyle = 'rgba(10, 10, 40, 0.28)';
     ctx.beginPath(); ctx.arc(x + r * 0.45, y + r * 0.45, r * 1.05, 0, Math.PI * 2); ctx.fill();
+    // v505: la palla tonda davvero, la luce che sfuma verso il bordo in ombra
+    if (stor.stile === 'kurz') {
+      const v = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r * 1.02);
+      v.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); v.addColorStop(0.45, 'rgba(255, 255, 255, 0)'); v.addColorStop(1, 'rgba(8, 6, 36, 0.5)');
+      ctx.fillStyle = v; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
     ctx.restore();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     ctx.beginPath(); ctx.ellipse(x - r * 0.38, y - r * 0.42, r * 0.28, r * 0.15, -0.7, 0, Math.PI * 2); ctx.fill();
@@ -5331,6 +5337,11 @@
   }
   // L'astronauta piatto, alto `h`; `stira` lo allunga (e lo assottiglia)
   function kzOmino(ctx, x, y, h, colore, stira = 1) {
+    if (stor.stile === 'kurz' && !kzOmino.dentro) {
+      kzOmino.dentro = true;
+      try { kzSollevato(ctx, h, () => kzOmino(ctx, x, y, h, colore, stira)); } finally { kzOmino.dentro = false; }
+      return;
+    }
     ctx.save(); ctx.translate(x, y); ctx.scale(h / stira, h * stira);
     ctx.fillStyle = colore || KZ.bianco;
     rettangolo(ctx, -0.22, -0.18, 0.44, 0.5, 0.14); ctx.fill();
@@ -6261,16 +6272,23 @@
       fn();
       ctx.restore();
     };
+    // v505: ogni pezzo è un cilindro (la luce a sinistra, il buio che gira a
+    // destra) e getta la sua ombra sul fondo
     const corpo = (y0, y1, w0, w1, col) => {
-      ctx.fillStyle = col; ctx.beginPath();
-      ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
-      // l'ombra fredda a destra e la lama di luce a sinistra
-      ctx.fillStyle = 'rgba(36, 26, 82, 0.3)'; ctx.beginPath();
-      ctx.moveTo(x + w0 * 0.4, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x + w1 * 0.4, y - h * y1); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath();
-      ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x - w0 * 0.8, y - h * y0); ctx.lineTo(x - w1 * 0.8, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
+      const wm = Math.max(w0, w1);
+      const g = ctx.createLinearGradient(x - wm, 0, x + wm, 0);
+      g.addColorStop(0, mescolaColori(col, '#2a1b5e', 0.25)); g.addColorStop(0.28, schiarisci(col, 0.5));
+      g.addColorStop(0.6, col); g.addColorStop(1, mescolaColori(col, '#241a52', 0.55));
+      kzSollevato(ctx, h * 0.3, () => {
+        ctx.fillStyle = g; ctx.beginPath();
+        ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
+      });
     };
-    const fascia = (y0, y1, w0) => { ctx.fillStyle = '#1b1d33'; ctx.fillRect(x - w0, y - h * y1, w0 * 2, h * (y1 - y0)); };
+    const fascia = (y0, y1, w0) => {
+      const g = ctx.createLinearGradient(x - w0, 0, x + w0, 0);
+      g.addColorStop(0, '#0e0f20'); g.addColorStop(0.28, '#3a3d5c'); g.addColorStop(1, '#0a0a18');
+      ctx.fillStyle = g; ctx.fillRect(x - w0, y - h * y1, w0 * 2, h * (y1 - y0));
+    };
     pezzo(0, () => {
       ctx.fillStyle = '#3a3f5c';
       for (const k of [-0.62, 0, 0.62]) { ctx.beginPath(); ctx.moveTo(x + k * w - w * 0.2, y); ctx.lineTo(x + k * w + w * 0.2, y); ctx.lineTo(x + k * w + w * 0.3, y + h * 0.03); ctx.lineTo(x + k * w - w * 0.3, y + h * 0.03); ctx.closePath(); ctx.fill(); }
@@ -6278,7 +6296,8 @@
       for (const l of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + l * w, y - h * 0.07); ctx.lineTo(x + l * w * 1.75, y + h * 0.005); ctx.lineTo(x + l * w, y); ctx.closePath(); ctx.fill(); }
       corpo(0, 0.34, w, w, '#f4f6ff');
       fascia(0.03, 0.055, w); fascia(0.3, 0.32, w);
-      ctx.fillStyle = '#1b1d33'; ctx.fillRect(x - w, y - h * 0.23, w * 0.95, h * 0.08); ctx.fillRect(x + w * 0.05, y - h * 0.15, w * 0.95, h * 0.08);
+      ctx.fillStyle = 'rgba(14, 15, 32, 0.85)'; ctx.fillRect(x - w, y - h * 0.23, w * 0.95, h * 0.08);
+      ctx.fillStyle = 'rgba(10, 10, 24, 0.95)'; ctx.fillRect(x + w * 0.05, y - h * 0.15, w * 0.95, h * 0.08);
     });
     pezzo(1, () => { corpo(0.34, 0.6, w, w, '#f4f6ff'); fascia(0.34, 0.37, w); fascia(0.56, 0.575, w); });
     pezzo(2, () => { corpo(0.6, 0.645, w, w * 0.68, '#f4f6ff'); corpo(0.645, 0.78, w * 0.68, w * 0.68, '#f4f6ff'); fascia(0.7, 0.72, w * 0.68); });
@@ -6301,12 +6320,13 @@
    * finestrini accesi). */
   function kzApollo(ctx, x, y, s, ang, opz = {}) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang || 0); ctx.scale(s, s);
+    // v505: ogni pezzo è tondo (la luce in alto, l'ombra che gira sotto) e
+    // getta la sua ombra su quello accanto e sul fondo
     const piatto = (traccia, col) => {
-      traccia(); ctx.fillStyle = col; ctx.fill();
-      ctx.save(); traccia(); ctx.clip();
-      ctx.fillStyle = 'rgba(36, 26, 82, 0.32)'; ctx.fillRect(-1, 0.02, 2, 1);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fillRect(-1, -1, 2, 0.97);
-      ctx.restore();
+      const g = ctx.createLinearGradient(0, -0.1, 0, 0.1);
+      g.addColorStop(0, mescolaColori(col, '#2a1b5e', 0.2)); g.addColorStop(0.25, schiarisci(col, 0.55));
+      g.addColorStop(0.55, col); g.addColorStop(1, mescolaColori(col, '#241a52', 0.6));
+      kzSollevato(ctx, s * 0.25, () => { traccia(); ctx.fillStyle = g; ctx.fill(); });
     };
     if (opz.sm !== false) {
       // l'ugello del motore principale
@@ -6359,7 +6379,9 @@
   // La capsula da sola, per il rientro: lo scudo verso `ang` (dove va)
   function kzCapsula(ctx, x, y, r, ang) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-    ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.moveTo(r * 0.3, -r); ctx.lineTo(-r * 0.9, -r * 0.22); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(r * 0.3, r); ctx.closePath(); ctx.fill();
+    const g = ctx.createLinearGradient(0, -r, 0, r);
+    g.addColorStop(0, '#9aa3bd'); g.addColorStop(0.3, '#f4f6ff'); g.addColorStop(0.65, '#d6dcea'); g.addColorStop(1, '#5b5f86');
+    kzSollevato(ctx, r * 3, () => { ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(r * 0.3, -r); ctx.lineTo(-r * 0.9, -r * 0.22); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(r * 0.3, r); ctx.closePath(); ctx.fill(); });
     ctx.fillStyle = 'rgba(36, 26, 82, 0.3)'; ctx.beginPath(); ctx.moveTo(r * 0.3, 0); ctx.lineTo(r * 0.3, r); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(-r * 0.9, 0); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#7a5236'; ctx.beginPath(); ctx.ellipse(r * 0.34, 0, r * 0.16, r * 1.02, 0, -Math.PI / 2, Math.PI / 2); ctx.fill();
     ctx.fillStyle = '#26408b'; ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.3, r * 0.1, 0, Math.PI * 2); ctx.fill();
@@ -6368,8 +6390,10 @@
   // Una molecola: palline unite (`atomi`: [dx, dy, r, colore])
   function kzMolecola(ctx, x, y, s, atomi) {
     for (const [dx, dy, r, col] of atomi) {
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'; ctx.beginPath(); ctx.arc(x + (dx - r * 0.3) * s, y + (dy - r * 0.35) * s, r * 0.35 * s, 0, Math.PI * 2); ctx.fill();
+      const ax = x + dx * s, ay = y + dy * s, ar = r * s;
+      const g = ctx.createRadialGradient(ax - ar * 0.35, ay - ar * 0.4, ar * 0.05, ax, ay, ar);
+      g.addColorStop(0, schiarisci(col, 0.6)); g.addColorStop(0.5, col); g.addColorStop(1, mescolaColori(col, '#241a52', 0.55));
+      kzSollevato(ctx, ar * 2, () => { ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.fill(); });
     }
   }
   const MOL = {
@@ -6381,7 +6405,7 @@
   // Un indicatore a lancetta (mezzo quadrante), da 0 a 1, con la zona rossa
   function kzManometro(ctx, x, y, r, u, rosso = 0.8) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; ctx.beginPath(); ctx.arc(x + r * 0.05, y + r * 0.06, r * 1.08, Math.PI, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+    kzSollevato(ctx, r * 2, () => { ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.closePath(); ctx.fill(); });
     ctx.strokeStyle = KZ.corallo; ctx.lineWidth = r * 0.14; ctx.beginPath(); ctx.arc(x, y, r * 0.82, Math.PI + Math.PI * rosso, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = KZ.verde; ctx.beginPath(); ctx.arc(x, y, r * 0.82, Math.PI, Math.PI + Math.PI * rosso * 0.6); ctx.stroke();
     const a = Math.PI + Math.PI * Math.max(0, Math.min(1, u));
@@ -6392,8 +6416,10 @@
   // Un termometro: il bulbo, il tubo, il rosso che sale fino a `u` (0…1)
   function kzTermometro(ctx, x, y, h, u, col = KZ.corallo) {
     const w = h * 0.12;
-    ctx.fillStyle = KZ.bianco; rettangolo(ctx, x - w / 2, y - h, w, h, w / 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y, w * 0.9, 0, Math.PI * 2); ctx.fill();
+    kzSollevato(ctx, h * 0.5, () => {
+      ctx.fillStyle = KZ.bianco; rettangolo(ctx, x - w / 2, y - h, w, h, w / 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, w * 0.9, 0, Math.PI * 2); ctx.fill();
+    });
     ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, w * 0.65, 0, Math.PI * 2); ctx.fill();
     const hh = (h - w) * Math.max(0.03, Math.min(1, u));
     rettangolo(ctx, x - w * 0.22, y - hh, w * 0.44, hh, w * 0.22); ctx.fill();
@@ -6405,8 +6431,14 @@
       const fase = ((t / 1000) * (0.25 + dado(d) * 0.3) + dado(d)) % 1;
       const a = verso + (dado(d) - 0.5) * apertura, dist = r * (0.1 + fase * 1.1);
       const rr = r * (0.03 + fase * 0.1) * (0.6 + dado(d) * 0.8);
-      ctx.fillStyle = rgba(col, 0.4 * (1 - fase));
-      ctx.beginPath(); ctx.arc(x + Math.cos(a) * dist, y + Math.sin(a) * dist, rr, 0, Math.PI * 2); ctx.fill();
+      const px = x + Math.cos(a) * dist, py = y + Math.sin(a) * dist;
+      // v505: ogni sbuffo è una pallina di nuvola, chiara sopra e in ombra sotto
+      if (stor.stile === 'kurz' && rr > 2) {
+        const g = ctx.createRadialGradient(px - rr * 0.3, py - rr * 0.4, rr * 0.1, px, py, rr);
+        g.addColorStop(0, rgba(schiarisci(col, 0.5), 0.5 * (1 - fase))); g.addColorStop(0.6, rgba(col, 0.4 * (1 - fase))); g.addColorStop(1, rgba(mescolaColori(col, '#3a2a7a', 0.45), 0.4 * (1 - fase)));
+        ctx.fillStyle = g;
+      } else ctx.fillStyle = rgba(col, 0.4 * (1 - fase));
+      ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -6567,7 +6599,8 @@
       if (scoppio < 1) {
         ctx.save(); ctx.globalAlpha *= 1 - scoppio;
         kzAlone(ctx, x, y, R * 1.5, tt > 6.4 ? '#ff8f3d' : '#69e0ff', 0.25 + 0.3 * f(6.4, 7.3));
-        ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+        kzSollevato(ctx, R * 2, () => { ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill(); });
+        kzPalla(ctx, x, y, R, '#d6dcea');
         ctx.fillStyle = '#141a3a'; ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.fill();
         ctx.save(); ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.clip();
         const g = ctx.createLinearGradient(0, y - R, 0, y + R);
@@ -6651,7 +6684,7 @@
       kzEtichetta(c, 'cella.ossigeno', tO[0], tO[1] + U * 0.1, f(0.7, 1.2));
       // la cella: la scatola che si accende
       kzAlone(ctx, bx, by, bw * 1.2, '#ffcc3d', 0.25 * ferma * f(1.5, 2.5));
-      ctx.fillStyle = '#2b3f99'; rettangolo(ctx, bx - bw / 2, by - bh / 2, bw, bh, U * 0.02); ctx.fill();
+      kzSollevato(ctx, bw, () => { ctx.fillStyle = '#2b3f99'; rettangolo(ctx, bx - bw / 2, by - bh / 2, bw, bh, U * 0.02); ctx.fill(); });
       ctx.fillStyle = '#1d2f7a'; rettangolo(ctx, bx - bw / 2 + U * 0.012, by - bh / 2 + U * 0.012, bw - U * 0.024, bh - U * 0.024, U * 0.015); ctx.fill();
       kzEtichetta(c, 'cella.cella', bx, by - bh / 2 - U * 0.04, f(0.9, 1.4), { colore: KZ.lilla });
       // le molecole che entrano lungo i tubi (finché c'è ossigeno)
@@ -6846,7 +6879,11 @@
       kzTitolo(c, 'mano.titolo', f(0, 0.6));
       const wx = cx - U * 0.1, wy = cy + U * 0.02, wr = U * 0.24;
       // il finestrino: la cornice, il vetro buio
-      ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3); ctx.fill();
+      kzSollevato(ctx, wr * 2, () => { ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3); ctx.fill(); });
+      ctx.save(); rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3); ctx.clip();
+      ombraInterna(ctx, () => rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3), 'rgba(10, 6, 36, 0.8)', wr * 0.2, -wr * 0.06, -wr * 0.08);
+      ombraInterna(ctx, () => rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3), 'rgba(200, 205, 240, 0.6)', wr * 0.08, wr * 0.03, wr * 0.04);
+      ctx.restore();
       ctx.fillStyle = '#05061a'; rettangolo(ctx, wx - wr, wy - wr, wr * 2, wr * 2, wr * 0.22); ctx.fill();
       ctx.save(); rettangolo(ctx, wx - wr, wy - wr, wr * 2, wr * 2, wr * 0.22); ctx.clip();
       // la Terra che deriva e che Lovell riporta in mezzo; la linea del
@@ -6894,7 +6931,7 @@
       for (const p of pezzi) usato += p.a * f(p.da, p.da + 0.6);
       const ricarica = f(6.4, 7.6);
       const resta = Math.max(0.06, 1 - usato * 0.9 + ricarica * 0.25);
-      ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, bx - bw / 2 - U * 0.012, by - bh - U * 0.012, bw + U * 0.024, bh + U * 0.024, U * 0.02); ctx.fill();
+      kzSollevato(ctx, bw * 1.5, () => { ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, bx - bw / 2 - U * 0.012, by - bh - U * 0.012, bw + U * 0.024, bh + U * 0.024, U * 0.02); ctx.fill(); });
       ctx.fillStyle = '#9aa3bd'; ctx.fillRect(bx - bw * 0.2, by - bh - U * 0.04, bw * 0.4, U * 0.03);
       ctx.fillStyle = resta < 0.25 ? KZ.corallo : KZ.verde; rettangolo(ctx, bx - bw / 2, by - bh * resta, bw, bh * resta, U * 0.012); ctx.fill();
       kzEtichetta(c, 'accendi.batteria', bx, by + U * 0.07, f(0.6, 1.1));
@@ -6909,7 +6946,9 @@
         const k = f(p.da, p.da + 0.6);
         if (k <= 0) continue;
         const h = gh * p.a * 1.05, yy = kzMix(gy - gh - U * 0.2, quota - h, kzMolla(k));
-        ctx.fillStyle = p.col; rettangolo(ctx, gx + U * 0.008, yy, gw - U * 0.016, h - U * 0.006, U * 0.012); ctx.fill();
+        const gb = ctx.createLinearGradient(gx, 0, gx + gw, 0);
+        gb.addColorStop(0, schiarisci(p.col, 0.35)); gb.addColorStop(0.5, p.col); gb.addColorStop(1, mescolaColori(p.col, '#241a52', 0.45));
+        kzSollevato(ctx, gw * 0.8, () => { ctx.fillStyle = gb; rettangolo(ctx, gx + U * 0.008, yy, gw - U * 0.016, h - U * 0.006, U * 0.012); ctx.fill(); });
         kzAlone(ctx, gx + gw / 2, yy + h / 2, gw * 0.6, p.col, 0.2 * k);
         kzEtichetta(c, p.chiave, gx + gw + U * 0.17, yy + h / 2, f(p.da + 0.2, p.da + 0.7), { colore: p.col });
         quota -= h;
@@ -7039,13 +7078,20 @@
       for (const q of [0.3, 0.55, 0.8]) { ctx.fillStyle = '#9a3412'; ctx.fillRect(x - h * 0.17 + tw, terra - h * q, h * (0.17 - 0.08) - tw * 0.2, h * 0.012); }
       // il fuoco e il fumo
       const accende = Math.min(1, tt / 1.2);
+      ctx.fillStyle = 'rgba(12, 6, 36, 0.4)';
+      ctx.beginPath(); ctx.moveTo(x - h * 0.06, terra); ctx.lineTo(x + h * 0.06, terra); ctx.lineTo(x - h * 0.55, H); ctx.lineTo(x - h * 0.9, H); ctx.closePath(); ctx.fill();
       kzFiamma(ctx, x, base + h * 0.03, h * 0.07, h * (0.25 + 0.15 * accende), t);
       kzSbuffi(ctx, x, terra, U * 0.45 * accende, 30, c.t, 17, '#f4e6ff', Math.PI * 1.06, Math.PI * 0.2);
       kzSbuffi(ctx, x, terra, U * 0.45 * accende, 30, c.t, 23, '#ffd6b0', -Math.PI * 0.06, Math.PI * 0.2);
       kzSaturnV(ctx, x, base, h);
       // le nuvole di vapore ai piedi, davanti
-      ctx.fillStyle = 'rgba(244, 236, 255, 0.85)';
-      for (let i = 0; i < 9; i++) { const px = x + (i - 4) * U * 0.07, r = U * (0.04 + 0.012 * Math.sin(i * 2.3 + c.t / 700)); ctx.beginPath(); ctx.arc(px, terra + r * 0.4, r * (1 + accende * 0.3), 0, Math.PI * 2); ctx.fill(); }
+      for (let i = 0; i < 9; i++) {
+        const px = x + (i - 4) * U * 0.07, r = U * (0.04 + 0.012 * Math.sin(i * 2.3 + c.t / 700)) * (1 + accende * 0.3), py = terra + r * 0.3;
+        // v505: le nuvole di vapore tonde, la luce del fuoco sopra e l'ombra sotto
+        const g = ctx.createRadialGradient(px - r * 0.3, py - r * 0.45, r * 0.1, px, py, r);
+        g.addColorStop(0, '#fff8ee'); g.addColorStop(0.55, 'rgba(236, 226, 252, 0.95)'); g.addColorStop(1, 'rgba(150, 130, 200, 0.95)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+      }
     },
     // Lo scoppio: la navicella, il lampo, la nube d'ossigeno che si sparge
     apollo_explosion(c) {
@@ -7089,7 +7135,10 @@
       // lo schermo grande: la Terra, la Luna e la strada della navicella
       const sw = L * 0.7, sh = H * 0.32, sx = (L - sw) / 2, sy = H * 0.08;
       kzAlone(ctx, L / 2, sy + sh / 2, sw * 0.6, '#59d98e', 0.18);
-      ctx.fillStyle = '#0b2a2a'; rettangolo(ctx, sx, sy, sw, sh, U * 0.01); ctx.fill();
+      kzSollevato(ctx, sh, () => { ctx.fillStyle = '#0b2a2a'; rettangolo(ctx, sx, sy, sw, sh, U * 0.01); ctx.fill(); });
+      ctx.save(); rettangolo(ctx, sx, sy, sw, sh, U * 0.01); ctx.clip();
+      ombraInterna(ctx, () => rettangolo(ctx, sx, sy, sw, sh, U * 0.01), 'rgba(0, 0, 0, 0.8)', sh * 0.15, -sh * 0.03, -sh * 0.05);
+      ctx.restore();
       ctx.strokeStyle = 'rgba(89, 217, 142, 0.25)'; ctx.lineWidth = 1;
       for (let i = 1; i < 12; i++) { ctx.beginPath(); ctx.moveTo(sx + sw * i / 12, sy); ctx.lineTo(sx + sw * i / 12, sy + sh); ctx.stroke(); }
       for (let i = 1; i < 5; i++) { ctx.beginPath(); ctx.moveTo(sx, sy + sh * i / 5); ctx.lineTo(sx + sw, sy + sh * i / 5); ctx.stroke(); }
@@ -7103,7 +7152,9 @@
       // tre file di consolle, con le lucine e gli schermi verdi
       for (let fila = 0; fila < 3; fila++) {
         const fy = H * (0.58 + fila * 0.14), fw = L * (0.8 + fila * 0.12), fx = (L - fw) / 2, fh = H * 0.1;
-        ctx.fillStyle = mescolaColori('#3d4470', '#1d2244', fila * 0.2); rettangolo(ctx, fx, fy, fw, fh, U * 0.01); ctx.fill();
+        const gc = ctx.createLinearGradient(0, fy, 0, fy + fh);
+        gc.addColorStop(0, mescolaColori('#5a6296', '#1d2244', fila * 0.2)); gc.addColorStop(0.35, mescolaColori('#3d4470', '#1d2244', fila * 0.2)); gc.addColorStop(1, '#151933');
+        kzSollevato(ctx, fh * 2.5, () => { ctx.fillStyle = gc; rettangolo(ctx, fx, fy, fw, fh, U * 0.01); ctx.fill(); });
         const n = 6 + fila * 2;
         for (let k = 0; k < n; k++) {
           const mx = fx + fw * (k + 0.5) / n, mw = fw / n * 0.6;
@@ -7116,7 +7167,7 @@
             ctx.beginPath(); ctx.arc(mx - mw * 0.3 + r * mw * 0.2, fy + fh * 0.3, Math.max(1, U * 0.004), 0, Math.PI * 2); ctx.fill(); ctx.restore();
           }
           // le teste di chi lavora, tonde come nei cartoni
-          if ((k + fila) % 2) { ctx.fillStyle = '#141a3a'; ctx.beginPath(); ctx.arc(mx, fy + fh * 0.95, fh * 0.32, 0, Math.PI * 2); ctx.fill(); }
+          if ((k + fila) % 2) kzSollevato(ctx, fh, () => kzPalla(ctx, mx, fy + fh * 0.95, fh * 0.32, '#2b3160'));
         }
       }
     },
@@ -7143,10 +7194,13 @@
         ctx.restore();
       }
       // i pannelli spenti, con una lucina sola
-      ctx.fillStyle = '#2b3360'; rettangolo(ctx, L * 0.08, H * 0.6, L * 0.84, H * 0.36, U * 0.02); ctx.fill();
+      kzSollevato(ctx, H * 0.3, () => { ctx.fillStyle = '#2b3360'; rettangolo(ctx, L * 0.08, H * 0.6, L * 0.84, H * 0.36, U * 0.02); ctx.fill(); });
       for (let i = 0; i < 16; i++) {
         const px = L * 0.12 + (i % 8) * L * 0.1, py = H * 0.66 + Math.floor(i / 8) * H * 0.12;
         ctx.fillStyle = '#1d2244'; rettangolo(ctx, px, py, L * 0.08, H * 0.08, U * 0.008); ctx.fill();
+        ctx.save(); rettangolo(ctx, px, py, L * 0.08, H * 0.08, U * 0.008); ctx.clip();
+        ombraInterna(ctx, () => rettangolo(ctx, px, py, L * 0.08, H * 0.08, U * 0.008), 'rgba(0, 0, 0, 0.7)', H * 0.02, H * 0.006, H * 0.01);
+        ctx.restore();
       }
       kzAlone(ctx, L * 0.7, H * 0.7, U * 0.06, '#ff5c6c', 0.6 * (0.5 + 0.5 * Math.sin(c.t / 500)));
       ctx.fillStyle = '#ff5c6c'; ctx.beginPath(); ctx.arc(L * 0.7, H * 0.7, U * 0.008, 0, Math.PI * 2); ctx.fill();
@@ -7181,8 +7235,13 @@
       kzAlone(ctx, L * 0.82, H * 0.18, U * 0.35, '#fff6d8', 0.7);
       ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(L * 0.82, H * 0.18, U * 0.05, 0, Math.PI * 2); ctx.fill();
       // le nuvole piatte
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      for (const [px, py, r] of [[0.15, 0.2, 0.05], [0.22, 0.22, 0.04], [0.55, 0.12, 0.035], [0.6, 0.14, 0.03]]) { ctx.beginPath(); ctx.arc((px * L + c.t / 200) % (L + 100) - 50, py * H, r * U * 2, 0, Math.PI * 2); ctx.fill(); }
+      // v505: le nuvole tonde, bianche al sole e grigio-azzurre sotto
+      for (const [px, py, r] of [[0.15, 0.2, 0.05], [0.22, 0.22, 0.04], [0.55, 0.12, 0.035], [0.6, 0.14, 0.03]]) {
+        const nx = (px * L + c.t / 200) % (L + 100) - 50, ny = py * H, nr = r * U * 2;
+        const g = ctx.createRadialGradient(nx - nr * 0.3, ny - nr * 0.45, nr * 0.1, nx, ny, nr);
+        g.addColorStop(0, '#ffffff'); g.addColorStop(0.6, 'rgba(244, 250, 255, 0.95)'); g.addColorStop(1, 'rgba(170, 200, 230, 0.95)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(nx, ny, nr, 0, Math.PI * 2); ctx.fill();
+      }
       // la nave all'orizzonte
       ctx.fillStyle = '#2a3a5a'; ctx.beginPath(); ctx.moveTo(L * 0.1, H * 0.66); ctx.lineTo(L * 0.26, H * 0.66); ctx.lineTo(L * 0.24, H * 0.68); ctx.lineTo(L * 0.12, H * 0.68); ctx.closePath(); ctx.fill();
       ctx.fillRect(L * 0.18, H * 0.635, L * 0.03, H * 0.025);
@@ -7198,6 +7257,9 @@
           ctx.strokeStyle = 'rgba(40, 40, 60, 0.6)'; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(px - pr, py); ctx.lineTo(cx, cy - U * 0.03); ctx.moveTo(px + pr, py); ctx.lineTo(cx, cy - U * 0.03); ctx.stroke();
           ctx.fillStyle = col; ctx.beginPath(); ctx.arc(px, py, pr, Math.PI, 0); ctx.closePath(); ctx.fill();
+          const cupola = ctx.createRadialGradient(px - pr * 0.4, py - pr * 0.6, pr * 0.05, px, py, pr * 1.05);
+          cupola.addColorStop(0, 'rgba(255, 255, 255, 0.45)'); cupola.addColorStop(0.5, 'rgba(255, 255, 255, 0)'); cupola.addColorStop(1, 'rgba(30, 20, 70, 0.35)');
+          ctx.fillStyle = cupola; ctx.beginPath(); ctx.arc(px, py, pr, Math.PI, 0); ctx.closePath(); ctx.fill();
           ctx.fillStyle = k ? '#f4f6ff' : '#ff8f3d';
           ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, pr, Math.PI * 1.4, Math.PI * 1.6); ctx.closePath(); ctx.fill();
         }
@@ -7205,6 +7267,10 @@
         const u = Math.min(1, (tt - 6) / 1.4);
         for (let k = 0; k < 3; k++) { ctx.strokeStyle = rgba('#ffffff', 0.8 * (1 - u)); ctx.lineWidth = U * 0.004; ctx.beginPath(); ctx.ellipse(cx, cy + U * 0.03, U * (0.05 + u * 0.15 + k * 0.03), U * (0.012 + u * 0.03 + k * 0.008), 0, 0, Math.PI * 2); ctx.stroke(); }
       }
+      // l'ombra sull'acqua: piccola e sfumata da lontano, netta quando tocca
+      const vicino = Math.min(1, scende * 1.1);
+      ctx.fillStyle = rgba('#05203f', 0.15 + 0.35 * vicino);
+      ctx.beginPath(); ctx.ellipse(cx + U * 0.03 * (1 - vicino), H * 0.76, U * (0.08 - 0.03 * vicino), U * (0.014 - 0.004 * vicino), 0, 0, Math.PI * 2); ctx.fill();
       kzCapsula(ctx, cx, cy, U * 0.04, Math.PI / 2 + (toccato ? Math.sin(c.t / 700) * 0.1 : 0));
     }
   });
@@ -7352,19 +7418,54 @@
    * che si apre in un ovale; niente naso. Lo stile vale finché la storia è in
    * corso (`stor.stile`, rimesso a «ink» da `storSgombra` e da `storTic`). */
   const KURZ = { ombra: '#241a52', luce: '#fff4e0', occhio: '#1a1238', bocca: '#3a1030', lingua: '#ff7a8a', guance: '#ff8fa3' };
+  /* v505, «fai una grafica simil 3D, con le ombre»: ogni pezzo getta la sua
+   * ombra morbida su quello che ha sotto (il braccio sul busto, la testa sul
+   * colletto, il personaggio sul fondo) e ha il suo volume, un'ombra interna
+   * sfumata verso il basso a destra e una luce sfumata in alto a sinistra,
+   * come le figure dei cartoni in 3D. Le ombre interne si fanno con l'ombra
+   * della tela (`shadowBlur`) di un rettangolo grande quanto la tela col
+   * buco della forma, tagliato dalla forma stessa: resta solo l'ombra che
+   * entra dal bordo. */
+  function rettangoloTela(ctx) {
+    const W = (ctx.canvas && ctx.canvas.width) || 4000, H = (ctx.canvas && ctx.canvas.height) || 4000;
+    let m = null;
+    try { m = typeof ctx.getTransform === 'function' ? ctx.getTransform().inverse() : null; } catch (_) { m = null; }
+    if (!m || typeof m.transformPoint !== 'function') { ctx.rect(-1e5, -1e5, 2e5, 2e5); return; }
+    const p = [[-300, -300], [W + 300, -300], [W + 300, H + 300], [-300, H + 300]].map(([x, y]) => m.transformPoint({ x, y }));
+    ctx.moveTo(p[0].x, p[0].y); for (let i = 1; i < 4; i++) ctx.lineTo(p[i].x, p[i].y); ctx.closePath();
+  }
+  // Dentro a una forma già ritagliata: l'ombra (o la luce) che entra dal
+  // bordo opposto a (dx, dy), larga `sfuma` pixel
+  function ombraInterna(ctx, traccia, colore, sfuma, dx, dy) {
+    ctx.save();
+    ctx.shadowColor = colore; ctx.shadowBlur = Math.max(1, sfuma); ctx.shadowOffsetX = dx; ctx.shadowOffsetY = dy;
+    traccia(); rettangoloTela(ctx);
+    ctx.fillStyle = '#000'; ctx.fill('evenodd');
+    ctx.restore();
+  }
+  // L'ombra che un oggetto getta sotto di sé (in pixel della tela, `px` la
+  // sua misura): solo nello stile di Kurzgesagt
+  function kzSollevato(ctx, px, fn) {
+    if (stor.stile !== 'kurz') { fn(); return; }
+    ctx.save();
+    ctx.shadowColor = 'rgba(6, 3, 28, 0.5)'; ctx.shadowBlur = Math.max(2, px * 0.07);
+    ctx.shadowOffsetX = px * 0.025; ctx.shadowOffsetY = px * 0.05;
+    fn();
+    ctx.restore();
+  }
   function parteKurz(ctx, traccia, colore, R, opz = {}) {
-    // l'ombra fredda: il colore spinto verso il viola notte
-    traccia(); ctx.fillStyle = mescolaColori(colore, KURZ.ombra, opz.buio === undefined ? 0.38 : Math.min(0.8, opz.buio * 1.3)); ctx.fill();
+    const scuro = mescolaColori(colore, KURZ.ombra, opz.buio === undefined ? 0.45 : Math.min(0.85, opz.buio * 1.5));
+    // l'ombra che il pezzo getta su quello che ha sotto
+    ctx.save();
+    ctx.shadowColor = 'rgba(10, 5, 36, 0.42)'; ctx.shadowBlur = Math.max(2, R * 0.12);
+    ctx.shadowOffsetX = R * 0.035; ctx.shadowOffsetY = R * 0.06;
+    traccia(); ctx.fillStyle = colore; ctx.fill();
+    ctx.restore();
     ctx.save(); traccia(); ctx.clip();
-    const lu = R * (opz.luce || 0.12);
-    ctx.save(); ctx.translate(-lu * 0.7, -lu * 0.8); traccia(); ctx.fillStyle = colore; ctx.fill(); ctx.restore();
     if (opz.dentro) opz.dentro();
-    // la lama di luce: quello che resta della forma tolta la sua copia
-    // spostata in basso a destra
-    const d = Math.max(1, R * 0.035);
-    ctx.save(); ctx.translate(d, d * 1.1); traccia(); ctx.restore();
-    ctx.rect(-1e5, -1e5, 2e5, 2e5);
-    ctx.fillStyle = rgba(schiarisci(colore, 0.55), 0.55); ctx.fill('evenodd');
+    // il volume: l'ombra fredda che sale dal basso a destra, la luce in alto a sinistra
+    ombraInterna(ctx, traccia, rgba(scuro, 0.95), R * 0.24, -R * 0.1, -R * 0.12);
+    ombraInterna(ctx, traccia, rgba(schiarisci(colore, 0.65), 0.75), R * 0.1, R * 0.045, R * 0.055);
     ctx.restore();
   }
   // La testa dei cartoni di Kurzgesagt: tonda, liscia, la luce di contorno
