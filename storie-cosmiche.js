@@ -1146,11 +1146,7 @@
     tesseract: 4000, murph_room: 4000, liftoff: 4000, cooper_station: 4000, bedside: 4000, edmunds_planet: 4000,
     hypercube: 4000, dimensions: 4000, time_strip: 4000, books_fall: 4000, dust_binary: 4000, equations: 4000, morse_watch: 4000,
     // v488: le maree di Miller (l'orbita, le frecce della gravità, le gobbe)
-    tidal_orbit: 4000,
-    // v500: le animazioni che spiegano le «Interstellar» corte (§6-ter,
-    // `storDisegnaScienzaAnim`)
-    sphere_hole: 4000, light_bend: 4000, time_clocks: 4000, frame_drag: 4000,
-    tidal_stretch: 4000, spin_gravity: 4000, spin_match: 4000, time_loop: 4000
+    tidal_orbit: 4000
   };
   // v488: i disegni a tappe (`effect { stage }`): una scena per tappa
   const STOR_TAPPE = { fold: ['flat', 'bend', 'tunnel'], tidal_orbit: ['stretch', 'rock'] };
@@ -1160,9 +1156,20 @@
   const STOR_SFONDI = ['starfield', 'wormhole', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'tidal_wave', 'mann_ice',
     'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet'];
   const STOR_SFONDO_MAX_S = 60;
+  /* v501: le spiegazioni a tutto schermo delle «Interstellar · dentro la
+   * scienza» (§6-ter-bis): sfondi pieni, sotto ai personaggi */
+  const STOR_SPIEGA = [
+    // Parte 1
+    'explain_shortcut', 'explain_sphere', 'explain_curvature', 'explain_gargantua', 'explain_lensing', 'explain_time',
+    'explain_spin', 'explain_tides', 'explain_twins', 'explain_docking', 'explain_slingshot', 'explain_spaghetti', 'explain_horizon',
+    // Parte 2
+    'explain_dimensions', 'explain_timescape', 'explain_gravity_leak', 'explain_morse', 'explain_binary', 'explain_quantum',
+    'explain_loop', 'explain_station'];
+  for (const k of STOR_SPIEGA) STOR_EFFETTI[k] = 4000;
+  STOR_SFONDI.push(...STOR_SPIEGA);
   // quelli che coprono tutta la vista (il wormhole e l'onda lasciano vedere sotto)
   const STOR_SFONDI_PIENI = ['starfield', 'wormhole_tunnel', 'gargantua_view', 'miller_ocean', 'mann_ice',
-    'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet'];
+    'tesseract', 'murph_room', 'liftoff', 'cooper_station', 'bedside', 'edmunds_planet', ...STOR_SPIEGA];
   const STOR_POSTI_EFFETTO = ['center', 'left', 'right', 'top', 'bottom'];
   /* v486: i disegni che spiegano la fisica di una battuta (il foglio
    * piegato, l'orologio che corre, la fionda, il tesseratto, le dimensioni,
@@ -1173,10 +1180,7 @@
    * pellicola del tempo copriva l'orologio della scena seguente. A fine scena
    * sfumano in mezzo secondo (`via`); i botti e le scintille no: un botto in
    * coda a una scena non si taglia a metà. */
-  const STOR_LAVAGNE = ['fold', 'tidal_orbit', 'time_warp', 'orbit_path', 'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch',
-    'sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
-  // v500: quelli che si disegnano in `storDisegnaScienzaAnim`
-  const STOR_ANIM_SCIENZA = ['sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop'];
+  const STOR_LAVAGNE = ['fold', 'tidal_orbit', 'time_warp', 'orbit_path', 'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch'];
   const STOR_VIA_MS = 550;
   const STOR_CRESCITA_MS = 700;     // quanto ci mette un astro a crescere per portare il volto
   const STOR_RITORNO_MS = 750;      // e a tornare com'era quando la storia lo lascia
@@ -3622,8 +3626,6 @@
       storDisegnaFoglio(ctx, ef, x, y, s, t, L, H, ridotto);
     } else if (tipo === 'tidal_orbit') {
       storDisegnaMaree(ctx, ef, x, y, s, t, L, H, ridotto);
-    } else if (STOR_ANIM_SCIENZA.includes(tipo)) {
-      storDisegnaScienzaAnim(ctx, ef, x, y, t, L, H);
     } else if (tipo === 'time_warp') {
       // v482: il tempo che scappa (il pianeta di Miller): un orologio con le
       // lancette che corrono sempre più svelte, e i fogli del calendario che
@@ -4144,7 +4146,9 @@
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const tipo = ef.tipo;
-    if (tipo === 'starfield') {
+    if (STOR_SPIEGA.includes(tipo)) {
+      storDisegnaSpiega(ctx, ef, t, L, H, ridotto, alfa);
+    } else if (tipo === 'starfield') {
       sfondoStelle(ctx, L, H, s, t, alfa, ridotto);
     } else if (tipo === 'wormhole') {
       // La sfera vicino a Saturno: un buco in tre dimensioni è una palla, e
@@ -5032,552 +5036,1096 @@
     ctx.restore();
   }
 
-  /* v500, le animazioni che spiegano «Interstellar» (le versioni corte,
-   * `storia_interstellar_scienza` e `storia_interstellar2_scienza`). Chi le
-   * aveva chieste voleva meno parole scritte e più cose che si vedono
-   * succedere: «deve mostrare meglio le animazioni per spiegare i concetti,
-   * per bambini e per adulti». Ogni disegno mette in scena un'idea sola,
-   * con un prima e un dopo, e gira in tondo finché la battuta parla:
+  // ===================================================================
+  // 6-ter-bis. Le spiegazioni a tutto schermo (v501)
+  // ===================================================================
+
+  /* «Fallo simile al canale di scienza Kurzgesagt: animazioni fatte bene,
+   * dinamiche, veloci, per spiegare i concetti delle scene più importanti e
+   * difficili». Sono sfondi pieni (`STOR_SFONDI_PIENI`: coprono la vista e
+   * stanno sotto ai personaggi, che in queste scene sono piccoli in un
+   * angolo): ognuno è un piccolo filmato di dieci secondi a tinte piatte,
+   * con un titolo in alto, le etichette che compaiono col loro filo, i
+   * numeri che contano, e un'idea sola che succede davanti agli occhi in
+   * tre o quattro battute (prima, il cambiamento, il risultato). Finito il
+   * filmato l'ultima battuta resta viva e gira in tondo finché parla il
+   * personaggio. Le scritte sono dei dizionari (`storie.spiega.*`), anche
+   * quelle con i numeri (`{n}`), così cambiano con la lingua. Col movimento
+   * ridotto si vede subito l'ultima battuta, ferma.
    *
-   *   sphere_hole   il buco in un foglio (un cerchio) e il buco nello spazio
-   *                 (una sfera con dentro un'altra galassia)
-   *   light_bend    la luce del disco dietro Gargantua che scavalca l'ombra,
-   *                 sopra e sotto, e cosa vede l'occhio
-   *   time_clocks   l'orologio di Miller sul fondo del pozzo e quello della
-   *                 Terra: un giro della lancetta lì, sette calendari qui
-   *   frame_drag    lo spazio-tempo che gira come un mulinello attorno al
-   *                 buco nero che ruota, e il pianeta trascinato
-   *   tidal_stretch un buco nero piccolo che stira, uno gigante che no
-   *   spin_gravity  la ruota che gira: chi ci sta dentro è spinto sul
-   *                 pavimento, la palla lasciata va dritta e il pavimento
-   *                 le viene incontro
-   *   spin_match    il Ranger che gira come l'Endurance: rosso finché non
-   *                 sono allineati, verde quando girano insieme
-   *   time_loop     l'anello del tempo: la polvere, la partenza, Gargantua,
-   *                 il tesseratto, e di nuovo la polvere
-   *
-   * Niente parole sulla tela (le dice il personaggio), solo cifre e segni.
-   * Sono lavagne (`STOR_LAVAGNE`): sfumano a fine scena. Tutte si disegnano
-   * attorno al posto dell'effetto, grandi quanto il lato corto dello
-   * schermo per `size`. Col movimento ridotto la storia mostra il bagliore di
-   * sempre (`storDisegnaEffetto`). */
-  function storAlfaLavagna(ef, t) {
-    const tt = t - ef.inizio;
-    return Math.max(0, Math.min(tt / 500, (ef.durata - tt) / 400, 1)) * (ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1);
+   * La palette è quella dei cartoni di divulgazione: un blu notte profondo,
+   * il corallo, il giallo, il turchese, il ciano, il lilla, e i corpi
+   * celesti come dischi piatti con una mezzaluna d'ombra e un riflesso. */
+  const KZ = {
+    notte: '#0d1440', viola: '#2a1b5e', blu: '#1d2f7a', corallo: '#ff5c6c', giallo: '#ffcc3d', arancio: '#ff8f3d',
+    turchese: '#2ec4b6', ciano: '#69e0ff', lilla: '#b388ff', bianco: '#f4f6ff', scuro: '#141a3a', verde: '#59d98e', rosa: '#ff7eb6'
+  };
+  const kzMix = (a, b, u) => a + (b - a) * u;
+  // L'uscita «a molla» di un'etichetta o di un oggetto che compare
+  const kzMolla = u => { if (u <= 0) return 0; if (u >= 1) return 1; const c = 1.7, v = u - 1; return 1 + (c + 1) * v * v * v + c * v * v; };
+  function kzLingua() {
+    const i = radice.astroI18n;
+    try { return i && typeof i.lingua === 'function' ? i.lingua() : 'it'; } catch (_) { return 'it'; }
   }
-  // Una freccia d'inchiostro col colore dentro, da (x1, y1) a (x2, y2)
-  function storFrecciaScienza(ctx, x1, y1, x2, y2, colore, w) {
-    const a = Math.atan2(y2 - y1, x2 - x1), pt = w * 2.6;
-    const ex = x2 - Math.cos(a) * pt * 0.6, ey = y2 - Math.sin(a) * pt * 0.6;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = w + 2;
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
-    ctx.strokeStyle = colore; ctx.lineWidth = w;
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+  function kzNumero(n, cifre) {
+    try { return Number(n).toLocaleString(kzLingua(), { maximumFractionDigits: cifre || 0, minimumFractionDigits: cifre || 0 }); }
+    catch (_) { return String(Math.round(n)); }
+  }
+  const kzTesto = (chiave, dati) => t('storie.spiega.' + chiave, dati) || '';
+  // Lo sfondo: il gradiente, le stelle che brillano piano, la vignettatura
+  function kzFondo(c, alto, basso) {
+    const { ctx, L, H } = c;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, alto || KZ.notte); g.addColorStop(1, basso || KZ.viola);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, L, H);
+    const d = { s: 913 };
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 90; i++) {
+      const x = dado(d) * L, y = dado(d) * H, r = (0.5 + dado(d) * 1.3) * Math.max(1, c.U / 700);
+      const luce = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(c.t / (600 + i * 7) + i));
+      const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * luce;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = a0;
+    }
+    const v = ctx.createRadialGradient(L / 2, H * 0.45, Math.min(L, H) * 0.3, L / 2, H * 0.45, Math.hypot(L, H) * 0.65);
+    v.addColorStop(0, 'rgba(0, 0, 0, 0)'); v.addColorStop(1, 'rgba(3, 4, 18, 0.55)');
+    ctx.fillStyle = v; ctx.fillRect(0, 0, L, H);
+  }
+  // Un corpo celeste a tinta piatta: il disco, la mezzaluna d'ombra, il riflesso
+  function kzPalla(ctx, x, y, r, colore, opz = {}) {
+    if (!(r > 0.5)) return;
+    if (opz.alone) {
+      const g = ctx.createRadialGradient(x, y, r * 0.8, x, y, r * 2.4);
+      g.addColorStop(0, rgba(opz.alone, 0.45)); g.addColorStop(1, rgba(opz.alone, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = colore; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
+    if (opz.macchie) {
+      ctx.fillStyle = opz.macchie;
+      ctx.beginPath(); ctx.ellipse(x - r * 0.25, y - r * 0.15, r * 0.4, r * 0.28, 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x + r * 0.35, y + r * 0.3, r * 0.3, r * 0.2, -0.3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(10, 10, 40, 0.28)';
+    ctx.beginPath(); ctx.arc(x + r * 0.45, y + r * 0.45, r * 1.05, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.beginPath(); ctx.ellipse(x - r * 0.38, y - r * 0.42, r * 0.28, r * 0.15, -0.7, 0, Math.PI * 2); ctx.fill();
+  }
+  // Il titolo in alto: l'idea della spiegazione, in poche parole
+  function kzTitolo(c, chiave, u, dati) {
+    if (!(u > 0.01)) return;
+    const { ctx, L, H, U } = c;
+    const testo = kzTesto(chiave, dati);
+    if (!testo) return;
+    const fs = Math.max(16, Math.min(34, U * 0.042));
+    ctx.save();
+    ctx.globalAlpha *= Math.min(1, u * 1.5);
+    ctx.font = `800 ${fs}px ${caratterePagina()}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const y = H * 0.085 + (1 - kzMolla(u)) * -fs;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'; ctx.shadowBlur = fs * 0.4;
+    ctx.fillStyle = KZ.bianco;
+    ctx.fillText(testo, c.cx, y, L - 24);
+    ctx.shadowBlur = 0;
+    // la riga colorata sotto, che si allunga
+    const w = Math.min(L - 40, larghezzaTesto(ctx, testo, fs)) * Math.min(1, u * 1.2);
+    ctx.strokeStyle = KZ.giallo; ctx.lineWidth = Math.max(2, fs * 0.12); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(c.cx - w / 2, y + fs * 0.75); ctx.lineTo(c.cx + w / 2, y + fs * 0.75); ctx.stroke();
+    ctx.restore();
+  }
+  // Un'etichetta: la pillola bianca col testo, e il filo fino a quello che indica
+  function kzEtichetta(c, chiave, x, y, u, opz = {}) {
+    if (!(u > 0.01)) return;
+    const { ctx, L, U } = c;
+    const testo = opz.testo !== undefined ? opz.testo : kzTesto(chiave, opz.dati);
+    if (!testo) return;
+    const fs = Math.max(12, Math.min(24, U * 0.029)) * (opz.grande ? 1.3 : 1);
+    ctx.save();
+    ctx.font = `${opz.grande ? 900 : 750} ${fs}px ${caratterePagina()}`;
+    const tw = larghezzaTesto(ctx, testo, fs);
+    const w = tw + fs * 1.3, h = fs * 1.75;
+    const px = Math.max(8 + w / 2, Math.min(L - 8 - w / 2, x));
+    const k = kzMolla(u);
+    if (opz.a) {
+      ctx.globalAlpha *= Math.min(1, u * 2);
+      ctx.strokeStyle = 'rgba(244, 246, 255, 0.85)'; ctx.lineWidth = Math.max(1.5, fs * 0.09);
+      const ex = kzMix(px, opz.a[0], Math.min(1, u * 1.3)), ey = kzMix(y, opz.a[1], Math.min(1, u * 1.3));
+      ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(ex, ey, fs * 0.22, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.translate(px, y); ctx.scale(k, k);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; rettangolo(ctx, -w / 2 + 2, -h / 2 + 3, w, h, h / 2); ctx.fill();
+    ctx.fillStyle = opz.colore || KZ.bianco; rettangolo(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fill();
+    ctx.fillStyle = opz.colore ? '#ffffff' : KZ.scuro; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(testo, 0, fs * 0.04);
+    ctx.restore();
+  }
+  // Una freccia piatta che cresce da (x1, y1) verso (x2, y2) per `u`
+  function kzFreccia(ctx, x1, y1, x2, y2, colore, w, u = 1) {
+    if (!(u > 0.01)) return;
+    const x = kzMix(x1, x2, u), y = kzMix(y1, y2, u);
+    const a = Math.atan2(y - y1, x - x1), pt = w * 2.4;
+    if (Math.hypot(x - x1, y - y1) < pt * 0.5) return;
+    ctx.strokeStyle = colore; ctx.lineWidth = w; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x - Math.cos(a) * pt * 0.7, y - Math.sin(a) * pt * 0.7); ctx.stroke();
     ctx.fillStyle = colore; ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 + Math.cos(a + 2.6) * pt, y2 + Math.sin(a + 2.6) * pt);
-    ctx.lineTo(x2 + Math.cos(a - 2.6) * pt, y2 + Math.sin(a - 2.6) * pt);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a + 2.55) * pt, y + Math.sin(a + 2.55) * pt);
+    ctx.lineTo(x + Math.cos(a - 2.55) * pt, y + Math.sin(a - 2.55) * pt); ctx.closePath(); ctx.fill();
   }
-  // Il buco nero piccolo dei disegni: l'ombra, l'anello di luce, il disco
-  function storBucoNeroScienza(ctx, x, y, r, inclina) {
-    const alone = ctx.createRadialGradient(x, y, r * 0.9, x, y, r * 3);
-    alone.addColorStop(0, 'rgba(253, 230, 138, 0.4)'); alone.addColorStop(1, 'rgba(253, 230, 138, 0)');
-    ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, r * 3, 0, Math.PI * 2); ctx.fill();
-    const k = inclina === undefined ? 0.28 : inclina;
-    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = r * 0.3;
-    ctx.beginPath(); ctx.ellipse(x, y, r * 2.3, r * 2.3 * k, 0, Math.PI, Math.PI * 2); ctx.stroke();
+  // Un orologio piatto: il quadrante, la ghiera colorata, le lancette
+  function kzOrologio(ctx, x, y, r, angM, angH, colore, sfoca) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; ctx.beginPath(); ctx.arc(x + r * 0.06, y + r * 0.08, r * 1.12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = colore; ctx.beginPath(); ctx.arc(x, y, r * 1.12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = KZ.scuro; ctx.lineCap = 'round';
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6; ctx.lineWidth = i % 3 ? r * 0.04 : r * 0.08;
+      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * 0.78, y + Math.sin(a) * r * 0.78); ctx.lineTo(x + Math.cos(a) * r * 0.9, y + Math.sin(a) * r * 0.9); ctx.stroke();
+    }
+    if (sfoca) {
+      ctx.fillStyle = rgba(colore, 0.25); ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r * 0.75, angM - 1.8, angM); ctx.closePath(); ctx.fill();
+    }
+    ctx.lineWidth = r * 0.1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(angH) * r * 0.45, y + Math.sin(angH) * r * 0.45); ctx.stroke();
+    ctx.strokeStyle = KZ.corallo; ctx.lineWidth = r * 0.06;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(angM) * r * 0.74, y + Math.sin(angM) * r * 0.74); ctx.stroke();
+    ctx.fillStyle = KZ.scuro; ctx.beginPath(); ctx.arc(x, y, r * 0.08, 0, Math.PI * 2); ctx.fill();
+  }
+  // Gargantua a tinte piatte: il disco dietro, l'immagine piegata sopra,
+  // l'ombra, l'anello di fotoni, il disco davanti; i grumi di gas corrono
+  function kzBucoNero(ctx, x, y, r, t, opz = {}) {
+    const k = opz.piatto === undefined ? 0.2 : opz.piatto;
+    const g = ctx.createRadialGradient(x, y, r, x, y, r * 4.2);
+    g.addColorStop(0, 'rgba(255, 190, 90, 0.45)'); g.addColorStop(1, 'rgba(255, 140, 60, 0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 4.2, 0, Math.PI * 2); ctx.fill();
+    const fascia = (rx, ry, da, a, w, colore) => {
+      ctx.strokeStyle = colore; ctx.lineWidth = w; ctx.lineCap = 'butt';
+      ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, da, a); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'; ctx.lineWidth = w * 0.25;
+      ctx.setLineDash([r * 0.3, r * 0.45]); ctx.lineDashOffset = -t / 22;
+      ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, da, a); ctx.stroke(); ctx.setLineDash([]);
+    };
+    if (opz.disco !== false) fascia(r * 3.2, r * 3.2 * k, Math.PI, Math.PI * 2, r * 0.32, '#f59e0b');
+    if (opz.lente !== false && opz.disco !== false) {
+      fascia(r * 1.45, r * 1.3, Math.PI * 1.03, Math.PI * 1.97, r * 0.3, '#ffb347');
+      fascia(r * 1.22, r * 1.12, Math.PI * 0.1, Math.PI * 0.9, r * 0.12, '#ffb347');
+    }
     ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#fffbeb'; ctx.lineWidth = Math.max(1, r * 0.08); ctx.stroke();
-    ctx.strokeStyle = '#fde68a'; ctx.lineWidth = r * 0.32;
-    ctx.beginPath(); ctx.ellipse(x, y, r * 2.3, r * 2.3 * k, 0, 0, Math.PI); ctx.stroke();
+    ctx.strokeStyle = '#fff7e0'; ctx.lineWidth = Math.max(1.2, r * 0.05);
+    ctx.beginPath(); ctx.arc(x, y, r * 1.05, 0, Math.PI * 2); ctx.stroke();
+    if (opz.disco !== false) fascia(r * 3.2, r * 3.2 * k, 0, Math.PI, r * 0.36, '#ffcc3d');
   }
-  // Una galassia a spirale (dentro al buco del foglio e alla sfera)
-  function storGalassiaScienza(ctx, x, y, r, giro) {
+  /* La griglia dello spazio-tempo vista un po' dall'alto, coi pozzi delle
+   * masse. Un punto del piano è (u, v), da -1 a 1 (v = -1 lontano); la
+   * profondità sotto al piano somma i pozzi. Restituisce la proiezione,
+   * così chi disegna ci posa sopra pianeti e raggi. */
+  function kzPiano(c, cx, cy, W, D, pozzi) {
+    const prof = (u, v) => {
+      let z = 0;
+      for (const p of pozzi) z += p.m / (Math.hypot(u - p.u, (v - p.v) * 1.15) + (p.r || 0.09));
+      return z;
+    };
+    const proietta = (u, v, sopra) => {
+      const k = 0.72 + 0.28 * (v + 1) / 2;
+      return [cx + u * W * k, cy + v * D * k + (sopra ? 0 : prof(u, v)) * D * k];
+    };
+    return { prof, proietta };
+  }
+  function kzGriglia(c, piano, colore, n) {
+    const { ctx } = c;
+    ctx.strokeStyle = colore || 'rgba(105, 224, 255, 0.5)'; ctx.lineWidth = Math.max(1, c.U / 700);
+    const N = n || 16;
+    for (let i = 0; i <= N; i++) {
+      const v = -1 + 2 * i / N;
+      ctx.beginPath();
+      for (let k = 0; k <= 48; k++) { const [x, y] = piano.proietta(-1 + 2 * k / 48, v); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.stroke();
+      const u = -1 + 2 * i / N;
+      ctx.beginPath();
+      for (let k = 0; k <= 48; k++) { const [x, y] = piano.proietta(u, -1 + 2 * k / 48); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.stroke();
+    }
+  }
+  // L'astronauta piatto, alto `h`; `stira` lo allunga (e lo assottiglia)
+  function kzOmino(ctx, x, y, h, colore, stira = 1) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(h / stira, h * stira);
+    ctx.fillStyle = colore || KZ.bianco;
+    rettangolo(ctx, -0.22, -0.18, 0.44, 0.5, 0.14); ctx.fill();
+    rettangolo(ctx, -0.2, 0.3, 0.16, 0.42, 0.07); ctx.fill(); rettangolo(ctx, 0.04, 0.3, 0.16, 0.42, 0.07); ctx.fill();
+    rettangolo(ctx, -0.34, -0.12, 0.12, 0.38, 0.06); ctx.fill(); rettangolo(ctx, 0.22, -0.12, 0.12, 0.38, 0.06); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -0.38, 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#26408b'; ctx.beginPath(); ctx.ellipse(0.02, -0.38, 0.15, 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; ctx.beginPath(); ctx.ellipse(-0.04, -0.42, 0.05, 0.025, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // Una navetta piatta che punta verso `ang`
+  function kzNave(ctx, x, y, r, ang, colore) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = colore || KZ.bianco;
+    ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(-r * 0.7, -r * 0.6); ctx.lineTo(-r * 0.4, 0); ctx.lineTo(-r * 0.7, r * 0.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#26408b'; ctx.beginPath(); ctx.arc(r * 0.25, 0, r * 0.18, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // Una galassia a spirale piatta (dentro al wormhole)
+  function kzGalassia(ctx, x, y, r, giro) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, 'rgba(254, 243, 199, 0.95)'); g.addColorStop(0.25, 'rgba(251, 191, 36, 0.45)'); g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    g.addColorStop(0, '#fff6d8'); g.addColorStop(0.25, 'rgba(255, 204, 61, 0.6)'); g.addColorStop(1, 'rgba(179, 136, 255, 0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(253, 224, 71, 0.75)'; ctx.lineWidth = Math.max(1, r * 0.08);
+    ctx.strokeStyle = 'rgba(255, 220, 120, 0.85)'; ctx.lineWidth = Math.max(1.2, r * 0.07); ctx.lineCap = 'round';
     for (let b = 0; b < 2; b++) {
       ctx.beginPath();
-      for (let i = 0; i <= 26; i++) {
-        const a = giro + b * Math.PI + i * 0.2, d = r * (0.08 + i * 0.034);
-        const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * 0.62;
+      for (let i = 0; i <= 28; i++) {
+        const a = giro + b * Math.PI + i * 0.2, d = r * (0.06 + i * 0.032);
+        const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * 0.6;
         if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
       }
       ctx.stroke();
     }
   }
-  function storStelleScienza(ctx, x, y, r, seme0, n) {
-    const d = { s: seme0 || 7 };
-    ctx.fillStyle = '#f8fafc';
-    for (let i = 0; i < (n || 30); i++) {
-      const a = dado(d) * Math.PI * 2, q = Math.sqrt(dado(d)) * r;
-      ctx.globalAlpha *= 1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * q, y + Math.sin(a) * q, Math.max(0.6, r * 0.012 * (1 + dado(d) * 2)), 0, Math.PI * 2); ctx.fill();
-    }
+  // Il bagliore di un passaggio veloce
+  function kzLampo(ctx, x, y, r, u) {
+    if (!(u > 0 && u < 1)) return;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgba('#ffffff', 0.9 * (1 - u))); g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * (0.5 + u), 0, Math.PI * 2); ctx.fill();
   }
 
-  function storDisegnaScienzaAnim(ctx, ef, x, y, t, L, H) {
-    const alfa = storAlfaLavagna(ef, t);
-    if (!(alfa > 0.01)) return;
-    const S = Math.min(L, H) * 0.46 * ef.scala, tt = t - ef.inizio, sec = tt / 1000;
-    const w = Math.max(2.5, S * 0.018);
-    ctx.save();
-    ctx.globalAlpha = alfa; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const tipo = ef.tipo;
-    if (tipo === 'sphere_hole') {
-      // a sinistra il foglio (due dimensioni) col suo buco: un cerchio
-      const fx = x - S * 0.62, fy = y + S * 0.05, fw = S * 0.5, fh = S * 0.22, sk = S * 0.16;
-      const apri = liscio(tt / 1400);
-      const angoli = [[fx - fw + sk, fy - fh], [fx + fw + sk, fy - fh], [fx + fw - sk, fy + fh], [fx - fw - sk, fy + fh]];
-      ctx.fillStyle = 'rgba(224, 231, 255, 0.92)';
-      ctx.beginPath(); angoli.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)'; ctx.lineWidth = 1;
-      for (let i = 1; i < 8; i++) {
-        const u = i / 8;
-        ctx.beginPath(); ctx.moveTo(angoli[0][0] + (angoli[1][0] - angoli[0][0]) * u, angoli[0][1]); ctx.lineTo(angoli[3][0] + (angoli[2][0] - angoli[3][0]) * u, angoli[3][1]); ctx.stroke();
+  const STOR_SPIEGA_DISEGNI = {
+    // ---- Il wormhole è una scorciatoia: lo spazio si piega -------------
+    explain_shortcut(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'scorciatoia.titolo', f(0, 0.6));
+      const Lt = U * 1.45, cc = U * 0.34, a = (Lt - cc) / 2;
+      const b = f(3.2, 5.4), th = Math.PI * b, rr = th > 1e-3 ? cc / th : Infinity, rp = cc / Math.PI;
+      const xs = kzMix(cx - Lt / 2, cx - a / 2 - rp * 0.4, b), y0 = kzMix(cy + U * 0.02, cy + U * 0.02 + rp, b);
+      const punto = d => {
+        if (d <= a || !isFinite(rr)) return { x: xs + d, y: y0, ang: 0 };
+        if (d <= a + cc) { const ph = (d - a) / cc * th; return { x: xs + a + rr * Math.sin(ph), y: y0 - rr + rr * Math.cos(ph), ang: -ph }; }
+        const e = d - a - cc, ex = xs + a + rr * Math.sin(th), ey = y0 - rr + rr * Math.cos(th);
+        return { x: ex + e * Math.cos(th), y: ey - e * Math.sin(th), ang: -th };
+      };
+      // il nastro dello spazio, col suo spessore e le tacche della griglia
+      const larg = U * 0.035;
+      for (const [w, col] of [[larg * 1.3, 'rgba(0, 0, 0, 0.3)'], [larg, KZ.turchese]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath();
+        for (let i = 0; i <= 120; i++) { const p = punto(Lt * i / 120); if (i) ctx.lineTo(p.x, p.y + (col === KZ.turchese ? 0 : larg * 0.25)); else ctx.moveTo(p.x, p.y); }
+        ctx.stroke();
       }
-      for (let i = 1; i < 4; i++) {
-        const u = i / 4, ya = fy - fh + 2 * fh * u, xa = fx - fw + sk - 2 * sk * u;
-        ctx.beginPath(); ctx.moveTo(xa, ya); ctx.lineTo(xa + 2 * fw, ya); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'; ctx.lineWidth = Math.max(1, U / 600);
+      for (let i = 1; i < 30; i++) {
+        const p = punto(Lt * i / 30), nx = Math.sin(p.ang), ny = Math.cos(p.ang);
+        ctx.beginPath(); ctx.moveTo(p.x - nx * larg * 0.4, p.y - ny * larg * 0.4); ctx.lineTo(p.x + nx * larg * 0.4, p.y + ny * larg * 0.4); ctx.stroke();
       }
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2;
-      ctx.beginPath(); angoli.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.stroke();
-      const hr = S * 0.15 * apri;
-      if (hr > 1) {
+      // la Terra e l'altra galassia, posate sul nastro (dalla parte di sopra)
+      const dT = Lt * 0.06, dG = Lt - Lt * 0.06;
+      const pT = punto(dT), pG = punto(dG);
+      const sopra = (p, h) => ({ x: p.x + Math.sin(p.ang) * -h, y: p.y - Math.cos(p.ang) * h });
+      const T0 = sopra(pT, U * 0.065), G0 = sopra(pG, U * 0.065);
+      kzPalla(ctx, T0.x, T0.y, U * 0.045, '#3b82f6', { macchie: KZ.verde, alone: '#69e0ff' });
+      kzGalassia(ctx, G0.x, G0.y, U * 0.07, c.t / 1500);
+      kzEtichetta(c, 'scorciatoia.terra', T0.x - U * 0.03, T0.y + (b > 0.5 ? U * 0.13 : -U * 0.09), f(0.5, 1.1));
+      kzEtichetta(c, 'scorciatoia.galassia', G0.x + U * 0.03, G0.y + (b > 0.5 ? -U * 0.11 : -U * 0.1), f(0.8, 1.4));
+      // prima: la strada lunga, a passo di luce; gli anni contano
+      const lenta = f(1.2, 3.2), via = 1 - f(3.2, 3.8);
+      if (lenta > 0 && via > 0) {
+        ctx.globalAlpha *= via;
+        const p = sopra(punto(dT + Lt * 0.18 * lenta), U * 0.02);
+        kzPalla(ctx, p.x, p.y, U * 0.012, KZ.giallo, { alone: KZ.giallo });
+        kzEtichetta(c, 'scorciatoia.anni', p.x, p.y - U * 0.07, f(1.3, 1.8), { dati: { n: kzNumero(Math.round(lenta * 100) * 1000) }, colore: KZ.corallo });
+        ctx.globalAlpha /= via;
+      }
+      kzEtichetta(c, 'scorciatoia.piega', cx + U * 0.36, cy - U * 0.14, f(3.4, 3.9) * (1 - f(7.6, 8)));
+      // il tunnel fra le due pieghe
+      const tun = f(5.6, 7);
+      if (tun > 0.01) {
+        const xT = (T0.x + G0.x) / 2, yA = pT.y - larg * 0.5, yB = pG.y + larg * 0.5;
+        const h = (yA - yB) * tun, mw = U * 0.1, gola = U * 0.035;
         ctx.save();
-        ctx.beginPath(); ctx.ellipse(fx, fy, hr * 1.35, hr * 0.62, 0, 0, Math.PI * 2); ctx.clip();
-        ctx.fillStyle = '#0b1030'; ctx.fillRect(fx - hr * 2, fy - hr, hr * 4, hr * 2);
-        storStelleScienza(ctx, fx, fy, hr * 1.3, 11, 14);
-        storGalassiaScienza(ctx, fx, fy, hr * 0.9, sec * 0.6);
+        const gg = ctx.createLinearGradient(0, yA, 0, yA - h);
+        gg.addColorStop(0, 'rgba(105, 224, 255, 0.85)'); gg.addColorStop(0.5, 'rgba(179, 136, 255, 0.9)'); gg.addColorStop(1, 'rgba(255, 126, 182, 0.85)');
+        ctx.fillStyle = gg; ctx.beginPath();
+        const N = 24;
+        for (let i = 0; i <= N; i++) { const q = i / N, w = gola + (mw - gola) * Math.pow(Math.abs(q - 0.5) * 2, 2); const yy = yA - h * q; if (i) ctx.lineTo(xT + w, yy); else ctx.moveTo(xT + w, yy); }
+        for (let i = N; i >= 0; i--) { const q = i / N, w = gola + (mw - gola) * Math.pow(Math.abs(q - 0.5) * 2, 2); ctx.lineTo(xT - w, yA - h * q); }
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1.5;
+        for (let k = 0; k < 5; k++) {
+          const q = (k / 5 + c.t / 2400) % 1; if (q * h > h) continue;
+          const w = gola + (mw - gola) * Math.pow(Math.abs(q - 0.5) * 2, 2);
+          ctx.beginPath(); ctx.ellipse(xT, yA - h * q, w, w * 0.25, 0, 0, Math.PI * 2); ctx.stroke();
+        }
         ctx.restore();
-        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = Math.max(1.5, S * 0.012);
-        ctx.beginPath(); ctx.ellipse(fx, fy, hr * 1.35, hr * 0.62, 0, 0, Math.PI * 2); ctx.stroke();
+        kzEtichetta(c, 'scorciatoia.wormhole', xT - U * 0.3, (yA + yB) / 2, f(6.4, 6.9), { a: [xT - mw * 0.6, (yA + yB) / 2], colore: KZ.lilla });
+        // dopo: la navetta lo attraversa in un attimo, e di nuovo, e di nuovo
+        if (tt > 7.4) {
+          const q = ((tt - 7.4) % 1.8) / 1.8, sale = liscio(q / 0.45);
+          const ny = kzMix(T0.y, G0.y, sale);
+          if (q < 0.5) { kzNave(ctx, xT, ny, U * 0.022, -Math.PI / 2, KZ.giallo); ctx.strokeStyle = 'rgba(255, 204, 61, 0.5)'; ctx.lineWidth = U * 0.01; ctx.beginPath(); ctx.moveTo(xT, ny); ctx.lineTo(xT, Math.min(T0.y, ny + U * 0.12)); ctx.stroke(); }
+          kzLampo(ctx, xT, G0.y, U * 0.12, (q - 0.45) / 0.3);
+          kzEtichetta(c, 'scorciatoia.minuti', cx + U * 0.36, cy + U * 0.2, f(7.6, 8.1), { colore: KZ.verde });
+        }
       }
-      // il segno delle due dimensioni: un quadrato
-      const q = S * 0.07;
-      ctx.strokeStyle = '#c7d2fe'; ctx.lineWidth = 2.2;
-      ctx.strokeRect(fx - q / 2, fy - fh - S * 0.2 - q / 2, q, q);
-      // la freccia: si passa a tre dimensioni
-      const pas = liscio((tt - 1600) / 900);
-      if (pas > 0.01) {
-        ctx.globalAlpha = alfa * pas;
-        const ax0 = fx + fw * 0.7, ax1 = x + S * 0.12;
-        const pulsa = 1 + 0.08 * Math.sin(sec * 4);
-        storFrecciaScienza(ctx, ax0, fy, ax0 + (ax1 - ax0) * pas, fy, '#fbbf24', w * pulsa);
-        ctx.globalAlpha = alfa;
+    },
+    // ---- Un buco in 3D è una sfera --------------------------------------
+    explain_sphere(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'sfera.titolo', f(0, 0.6));
+      // prima: il mondo piatto, con il suo buco a cerchio
+      const via = f(3.6, 5);
+      const pk = kzMix(1, 0.55, via), px = kzMix(cx, cx - U * 0.34, via), py = kzMix(cy + U * 0.05, cy + U * 0.12, via);
+      ctx.save(); ctx.translate(px, py); ctx.scale(pk, pk);
+      const W = U * 0.42, D = U * 0.16, sk = U * 0.12;
+      ctx.fillStyle = '#2b3f99'; ctx.beginPath(); ctx.moveTo(-W + sk, -D); ctx.lineTo(W + sk, -D); ctx.lineTo(W - sk, D); ctx.lineTo(-W - sk, D); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(105, 224, 255, 0.35)'; ctx.lineWidth = 1;
+      for (let i = 1; i < 10; i++) { const u = -1 + 2 * i / 10; ctx.beginPath(); ctx.moveTo(u * W + sk, -D); ctx.lineTo(u * W - sk, D); ctx.stroke(); }
+      for (let i = 1; i < 4; i++) { const v = -1 + 2 * i / 4; ctx.beginPath(); ctx.moveTo(-W - sk * v, v * D); ctx.lineTo(W - sk * v, v * D); ctx.stroke(); }
+      const hr = U * 0.09 * kzMolla(f(0.6, 1.4));
+      if (hr > 1) {
+        ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, hr * 1.4, hr * 0.55, 0, 0, Math.PI * 2); ctx.clip();
+        ctx.fillStyle = '#05061a'; ctx.fillRect(-hr * 2, -hr, hr * 4, hr * 2);
+        kzGalassia(ctx, 0, 0, hr * 0.9, c.t / 1400);
+        ctx.restore();
+        ctx.strokeStyle = KZ.giallo; ctx.lineWidth = U * 0.006; ctx.beginPath(); ctx.ellipse(0, 0, hr * 1.4, hr * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
       }
-      // a destra la sfera: il buco nello spazio, con dentro l'altra galassia
-      const sf = liscio((tt - 2300) / 1100);
+      // gli abitanti piatti che ci girano attorno
+      for (let i = 0; i < 3; i++) {
+        const a = c.t / 1600 + i * 2.1, ex = Math.cos(a) * U * 0.25, ey = Math.sin(a) * U * 0.09;
+        ctx.fillStyle = [KZ.corallo, KZ.giallo, KZ.verde][i];
+        ctx.beginPath(); ctx.moveTo(ex + U * 0.018, ey); ctx.lineTo(ex - U * 0.012, ey - U * 0.009); ctx.lineTo(ex - U * 0.012, ey + U * 0.009); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+      kzEtichetta(c, 'sfera.piano', px, py - U * 0.17 * pk - U * 0.02, f(1.2, 1.7));
+      // dopo: lo spazio vero ha tre dimensioni, e il suo buco è una palla
+      const sf = kzMolla(f(4.2, 5.4));
       if (sf > 0.01) {
-        const cx = x + S * 0.55, cy = y, cr = S * 0.36 * (0.6 + 0.4 * sf);
-        ctx.globalAlpha = alfa * sf;
-        const g = ctx.createRadialGradient(cx - cr * 0.3, cy - cr * 0.3, cr * 0.1, cx, cy, cr);
-        g.addColorStop(0, '#1e3a8a'); g.addColorStop(0.8, '#0b1030'); g.addColorStop(1, '#020617');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill();
-        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.clip();
-        storStelleScienza(ctx, cx, cy, cr, 23, 40);
-        storGalassiaScienza(ctx, cx + cr * 0.12, cy - cr * 0.05, cr * 0.6, sec * 0.5);
-        // meridiani e paralleli che girano: è una palla, non un disco
-        ctx.strokeStyle = 'rgba(147, 197, 253, 0.35)'; ctx.lineWidth = 1;
-        for (let i = 0; i < 6; i++) {
-          const a = (sec * 0.4 + i / 6 * Math.PI) % Math.PI;
-          ctx.beginPath(); ctx.ellipse(cx, cy, Math.abs(Math.cos(a)) * cr, cr, 0, 0, Math.PI * 2); ctx.stroke();
-        }
-        for (const k of [-0.6, -0.3, 0, 0.3, 0.6]) {
-          ctx.beginPath(); ctx.ellipse(cx, cy + k * cr, cr * Math.sqrt(1 - k * k), cr * 0.12 * Math.sqrt(1 - k * k), 0, 0, Math.PI * 2); ctx.stroke();
-        }
+        const sx = cx + U * 0.16, sy = cy + U * 0.02, sr = U * 0.2 * sf;
+        // le stelle attorno stirate in archi dalla lente
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.5)'; ctx.lineWidth = Math.max(1, U / 600);
+        const d = { s: 41 };
+        for (let i = 0; i < 16; i++) { const r = sr * (1.1 + dado(d) * 0.6), a0 = dado(d) * 6.28 + c.t / 8000; ctx.beginPath(); ctx.arc(sx, sy, r, a0, a0 + 0.3 + dado(d) * 0.4); ctx.stroke(); }
+        const g = ctx.createRadialGradient(sx - sr * 0.3, sy - sr * 0.3, sr * 0.1, sx, sy, sr);
+        g.addColorStop(0, '#2b3f99'); g.addColorStop(1, '#05061a');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.clip();
+        // da dove la guardi cambia la vista dentro (la navetta gira attorno)
+        const giro = tt > 6.2 ? (tt - 6.2) * 0.9 : 0;
+        const ox = Math.sin(giro) * sr * 0.25, oy = Math.cos(giro * 0.7) * sr * 0.08;
+        const ds = { s: 77 }; ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 40; i++) { const a = dado(ds) * 6.28, q = Math.sqrt(dado(ds)) * sr * 1.2; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * q + ox, sy + Math.sin(a) * q + oy, Math.max(0.7, U / 900), 0, Math.PI * 2); ctx.fill(); }
+        kzGalassia(ctx, sx + ox * 1.6, sy + oy, sr * 0.55, c.t / 1400);
+        ctx.strokeStyle = 'rgba(105, 224, 255, 0.25)'; ctx.lineWidth = 1;
+        for (let i = 0; i < 6; i++) { const a = (c.t / 3000 + i / 6 * Math.PI) % Math.PI; ctx.beginPath(); ctx.ellipse(sx, sy, Math.abs(Math.cos(a)) * sr, sr, 0, 0, Math.PI * 2); ctx.stroke(); }
         ctx.restore();
-        // l'anello di Einstein sul bordo, e un riflesso
-        ctx.strokeStyle = 'rgba(253, 230, 138, 0.9)'; ctx.lineWidth = Math.max(2, cr * 0.05);
-        ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.beginPath(); ctx.ellipse(cx - cr * 0.4, cy - cr * 0.45, cr * 0.22, cr * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();
-        // il segno delle tre dimensioni: un cubo
-        const c = S * 0.055, ox = cx, oy = cy - cr - S * 0.12;
-        ctx.strokeStyle = '#c7d2fe'; ctx.lineWidth = 2.2;
-        ctx.strokeRect(ox - c, oy - c * 0.6, c * 1.4, c * 1.4);
-        ctx.strokeRect(ox - c * 0.55, oy - c * 1.05, c * 1.4, c * 1.4);
-        for (const [a1, b1] of [[0, 0], [1.4, 0], [0, 1.4], [1.4, 1.4]]) {
-          ctx.beginPath(); ctx.moveTo(ox - c + a1 * c, oy - c * 0.6 + b1 * c); ctx.lineTo(ox - c * 0.55 + a1 * c, oy - c * 1.05 + b1 * c); ctx.stroke();
+        ctx.strokeStyle = KZ.giallo; ctx.lineWidth = Math.max(2, sr * 0.045); ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; ctx.beginPath(); ctx.ellipse(sx - sr * 0.4, sy - sr * 0.45, sr * 0.22, sr * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();
+        kzEtichetta(c, 'sfera.spazio', sx, sy - sr - U * 0.06, f(4.8, 5.3), { colore: KZ.lilla });
+        if (tt > 6.2) {
+          const a = (tt - 6.2) * 0.9, nx = sx + Math.cos(a) * sr * 1.45, ny = sy + Math.sin(a) * sr * 0.5;
+          const davanti = Math.sin(a) > 0;
+          if (davanti) kzNave(ctx, nx, ny, U * 0.02, a + Math.PI / 2, KZ.bianco);
+          kzEtichetta(c, 'sfera.lati', sx, sy + sr + U * 0.07, f(6.4, 6.9));
         }
       }
-    } else if (tipo === 'light_bend') {
-      // Gargantua di lato: l'ombra, il disco di taglio. La luce del disco
-      // che sta dietro scavalca l'ombra sopra e sotto, e arriva all'occhio
-      const r = S * 0.16, ex = x + S * 0.95, ey = y, px = x - S * 0.62, py = y;
-      storBucoNeroScienza(ctx, x, y, r, 0.12);
-      // la strada dritta è chiusa: l'ombra la ferma
-      ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(248, 113, 113, 0.8)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x - r, y); ctx.stroke(); ctx.setLineDash([]);
-      const xx = x - r * 1.5, xr = r * 0.32;
-      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(xx - xr, y - S * 0.16 - xr); ctx.lineTo(xx + xr, y - S * 0.16 + xr); ctx.moveTo(xx + xr, y - S * 0.16 - xr); ctx.lineTo(xx - xr, y - S * 0.16 + xr); ctx.stroke();
-      // il punto del disco dietro, che brilla
-      const g = ctx.createRadialGradient(px, py, 0, px, py, S * 0.09);
-      g.addColorStop(0, '#fffbeb'); g.addColorStop(1, 'rgba(251, 191, 36, 0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, S * 0.09, 0, Math.PI * 2); ctx.fill();
-      // le due strade curve, sopra e sotto
-      const strade = [[x - S * 0.05, y - S * 0.78], [x - S * 0.05, y + S * 0.78]];
-      const punto = (c, u) => [(1 - u) * (1 - u) * px + 2 * (1 - u) * u * c[0] + u * u * ex, (1 - u) * (1 - u) * py + 2 * (1 - u) * u * c[1] + u * u * ey];
-      const mostra = liscio(tt / 1200);
-      for (const c of strade) {
-        ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)'; ctx.lineWidth = Math.max(2, S * 0.012);
-        ctx.beginPath();
-        for (let i = 0; i <= 40 * mostra; i++) { const [a, b] = punto(c, i / 40); if (i) ctx.lineTo(a, b); else ctx.moveTo(a, b); }
+    },
+    // ---- La massa curva lo spazio-tempo ---------------------------------
+    explain_curvature(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'curvatura.titolo', f(0, 0.6));
+      const m = 0.02 + 0.09 * kzMolla(f(0.5, 2.2));
+      const piano = kzPiano(c, cx, cy + U * 0.08, U * 0.62, U * 0.24, [{ u: 0, v: 0, m }]);
+      kzGriglia(c, piano, 'rgba(105, 224, 255, 0.45)', 18);
+      const [sx, sy] = piano.proietta(0, 0);
+      kzPalla(ctx, sx, sy - U * 0.03, U * (0.02 + 0.25 * m), KZ.giallo, { alone: KZ.arancio });
+      kzEtichetta(c, 'curvatura.massa', sx + U * 0.3, sy - U * 0.2, f(1.4, 1.9), { a: [sx + U * 0.05, sy - U * 0.05] });
+      // il pianeta che rotola lungo la curva: è un'orbita
+      if (tt > 3) {
+        const a = (tt - 3) * 1.6, pu = Math.cos(a) * 0.42, pv = Math.sin(a) * 0.42;
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.35)'; ctx.lineWidth = U * 0.004; ctx.beginPath();
+        for (let k = 0; k <= 30; k++) { const b = a - k * 0.06; const [x, y] = piano.proietta(Math.cos(b) * 0.42, Math.sin(b) * 0.42); if (k) ctx.lineTo(x, y - U * 0.012); else ctx.moveTo(x, y - U * 0.012); }
         ctx.stroke();
-        // i fotoni che corrono, con la scia
-        for (let k = 0; k < 4; k++) {
-          const u = ((sec * 0.42 + k / 4) % 1);
-          if (u > mostra) continue;
-          for (let j = 0; j < 6; j++) {
-            const [a, b] = punto(c, Math.max(0, u - j * 0.012));
-            ctx.globalAlpha = alfa * (1 - j / 6);
-            ctx.fillStyle = j ? '#fde68a' : '#ffffff';
-            ctx.beginPath(); ctx.arc(a, b, Math.max(1.5, S * 0.016) * (1 - j / 8), 0, Math.PI * 2); ctx.fill();
-          }
-          ctx.globalAlpha = alfa;
+        const [px, py] = piano.proietta(pu, pv);
+        kzPalla(ctx, px, py - U * 0.015, U * 0.022, '#3b82f6', { macchie: KZ.verde });
+        kzEtichetta(c, 'curvatura.orbita', cx - U * 0.36, cy - U * 0.16, f(3.3, 3.8), { a: [px, py - U * 0.02] });
+      }
+      // la luce che passa vicino si piega anche lei
+      if (tt > 6) {
+        const q = ((tt - 6) % 2.2) / 2.2;
+        ctx.strokeStyle = 'rgba(255, 204, 61, 0.6)'; ctx.lineWidth = U * 0.006; ctx.beginPath();
+        let ultimo = null;
+        for (let k = 0; k <= 40; k++) {
+          const s = k / 40, u = -1 + 2 * s, v = -0.55 + 0.35 * Math.exp(-u * u * 6);
+          const [x, y] = piano.proietta(u, v); if (k) ctx.lineTo(x, y - U * 0.01); else ctx.moveTo(x, y - U * 0.01);
+          if (s <= q) ultimo = [x, y - U * 0.01];
+        }
+        ctx.stroke();
+        if (ultimo) kzPalla(ctx, ultimo[0], ultimo[1], U * 0.01, '#fffbe6', { alone: KZ.giallo });
+        kzEtichetta(c, 'curvatura.luce', cx + U * 0.34, cy - U * 0.05, f(6.2, 6.7), { colore: KZ.arancio });
+      }
+    },
+    // ---- Com'è fatto Gargantua ------------------------------------------
+    explain_gargantua(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'gargantua.titolo', f(0, 0.6));
+      const zoom = 0.85 + 0.15 * liscio(tt / 9);
+      const r = U * 0.1 * zoom, x = cx, y = cy + U * 0.02;
+      kzBucoNero(ctx, x, y, r * kzMolla(f(0.1, 0.9)), c.t);
+      kzEtichetta(c, 'gargantua.orizzonte', x - U * 0.36, y - U * 0.2, f(0.9, 1.4), { a: [x - r * 0.3, y - r * 0.2] });
+      kzEtichetta(c, 'gargantua.fotoni', x + U * 0.36, y - U * 0.24, f(2.2, 2.7), { a: [x + r * 0.74, y - r * 0.74] });
+      kzEtichetta(c, 'gargantua.disco', x + U * 0.38, y + U * 0.17, f(3.5, 4), { a: [x + r * 2.6, y + r * 0.35] });
+      kzEtichetta(c, 'gargantua.lente', x - U * 0.4, y - U * 0.02, f(4.8, 5.3), { a: [x - r * 1.1, y - r * 1.1] });
+      // e quanto pesa: cento milioni di Soli
+      if (tt > 6.2) {
+        const sx = x - U * 0.4, sy = y + U * 0.2;
+        kzPalla(ctx, sx, sy, Math.max(2, U * 0.008), KZ.giallo, { alone: KZ.arancio });
+        kzEtichetta(c, 'gargantua.sole', sx + U * 0.09, sy + U * 0.035, f(6.2, 6.6));
+        const conta = Math.round(Math.pow(10, 8 * liscio((tt - 6.6) / 2)));
+        kzEtichetta(c, 'gargantua.massa', cx, y + U * 0.26, f(6.6, 7.1), { dati: { n: kzNumero(conta) }, colore: KZ.corallo, grande: true });
+      }
+    },
+    // ---- La lente: la luce che scavalca l'ombra -------------------------
+    explain_lensing(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'lente.titolo', f(0, 0.6));
+      const r = U * 0.08, bx = cx - U * 0.04, by = cy + U * 0.03, px = bx - U * 0.38, ex = bx + U * 0.42;
+      kzBucoNero(ctx, bx, by, r, c.t, { piatto: 0.08, lente: false });
+      const g = ctx.createRadialGradient(px, by, 0, px, by, U * 0.06);
+      g.addColorStop(0, '#fffbe6'); g.addColorStop(1, 'rgba(255, 204, 61, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, by, U * 0.06, 0, Math.PI * 2); ctx.fill();
+      kzEtichetta(c, 'lente.dietro', px, by + U * 0.1, f(0.6, 1.1), { a: [px, by + U * 0.02] });
+      // la strada dritta: chiusa
+      const dritta = f(1.2, 2);
+      ctx.setLineDash([U * 0.012, U * 0.012]); ctx.strokeStyle = 'rgba(255, 92, 108, 0.85)'; ctx.lineWidth = U * 0.005;
+      ctx.beginPath(); ctx.moveTo(px, by); ctx.lineTo(kzMix(px, bx - r, dritta), by); ctx.stroke(); ctx.setLineDash([]);
+      if (dritta >= 1) {
+        const xx = bx - r * 1.5, yy = by - U * 0.05, xr = U * 0.018 * kzMolla(f(2, 2.4));
+        ctx.strokeStyle = KZ.corallo; ctx.lineWidth = U * 0.008;
+        ctx.beginPath(); ctx.moveTo(xx - xr, yy - xr); ctx.lineTo(xx + xr, yy + xr); ctx.moveTo(xx + xr, yy - xr); ctx.lineTo(xx - xr, yy + xr); ctx.stroke();
+      }
+      // le due strade curve
+      const curve = f(2.6, 4);
+      const strade = [[bx, by - U * 0.36], [bx, by + U * 0.36]];
+      const punto = (cc, u) => [(1 - u) * (1 - u) * px + 2 * (1 - u) * u * cc[0] + u * u * ex, (1 - u) * (1 - u) * by + 2 * (1 - u) * u * cc[1] + u * u * by];
+      for (const cc of strade) {
+        ctx.strokeStyle = 'rgba(255, 204, 61, 0.6)'; ctx.lineWidth = U * 0.006; ctx.beginPath();
+        for (let i = 0; i <= 40 * curve; i++) { const [a, b] = punto(cc, i / 40); if (i) ctx.lineTo(a, b); else ctx.moveTo(a, b); }
+        ctx.stroke();
+        if (curve >= 1) for (let k = 0; k < 3; k++) {
+          const u = (c.t / 1800 + k / 3) % 1; const [a, b] = punto(cc, u);
+          kzPalla(ctx, a, b, U * 0.008, '#fffbe6', { alone: KZ.giallo });
         }
       }
-      // l'occhio di chi guarda
-      const er = S * 0.07;
-      ctx.fillStyle = '#f8fafc'; ctx.beginPath();
-      ctx.moveTo(ex + er * 1.4, ey); ctx.quadraticCurveTo(ex + er * 0.2, ey - er * 1.1, ex - er, ey);
-      ctx.quadraticCurveTo(ex + er * 0.2, ey + er * 1.1, ex + er * 1.4, ey); ctx.fill();
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(ex + er * 0.05, ey, er * 0.45, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = INCHIOSTRO; ctx.beginPath(); ctx.arc(ex + er * 0.05, ey, er * 0.2, 0, Math.PI * 2); ctx.fill();
-      // e cosa vede: l'ombra con l'anello sopra e sotto (il nuvoletto)
-      const vede = liscio((tt - 1800) / 900);
+      kzEtichetta(c, 'lente.piega', bx, by - U * 0.25, f(3.2, 3.7), { colore: KZ.arancio });
+      // l'occhio, e quello che vede
+      ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.ellipse(ex + U * 0.02, by, U * 0.035, U * 0.02, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(ex + U * 0.02, by, U * 0.013, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = KZ.scuro; ctx.beginPath(); ctx.arc(ex + U * 0.02, by, U * 0.006, 0, Math.PI * 2); ctx.fill();
+      const vede = kzMolla(f(4.6, 5.4));
       if (vede > 0.01) {
-        const bx = ex - S * 0.02, by = ey - S * 0.5, br = S * 0.2;
-        ctx.globalAlpha = alfa * vede;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 248, 235, 0.85)'; ctx.lineWidth = 2; ctx.stroke();
-        for (const [dx, dy, rr] of [[-0.25, 1.15, 0.09], [-0.12, 1.35, 0.055]]) { ctx.beginPath(); ctx.arc(bx + dx * br, by + dy * br, rr * br * 2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'; ctx.fill(); ctx.stroke(); }
-        const gr = br * 0.24;
-        ctx.save(); ctx.beginPath(); ctx.arc(bx, by, br - 2, 0, Math.PI * 2); ctx.clip();
-        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = gr * 0.45;
-        ctx.beginPath(); ctx.ellipse(bx, by - gr * 0.15, gr * 1.55, gr * 1.35, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-        ctx.beginPath(); ctx.ellipse(bx, by + gr * 0.15, gr * 1.45, gr * 1.15, 0, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(bx, by, gr, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#fde68a'; ctx.lineWidth = gr * 0.4;
-        ctx.beginPath(); ctx.ellipse(bx, by, gr * 2.6, gr * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(bx, by, gr * 0.98, Math.PI, Math.PI * 2); ctx.fill();
+        const vx = ex - U * 0.02, vy = by - U * 0.24, vr = U * 0.11 * vede;
+        ctx.fillStyle = 'rgba(5, 6, 26, 0.95)'; ctx.beginPath(); ctx.arc(vx, vy, vr, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = KZ.bianco; ctx.lineWidth = U * 0.004; ctx.stroke();
+        ctx.save(); ctx.beginPath(); ctx.arc(vx, vy, vr * 0.96, 0, Math.PI * 2); ctx.clip();
+        kzBucoNero(ctx, vx, vy, vr * 0.22, c.t);
         ctx.restore();
+        kzEtichetta(c, 'lente.occhio', vx, vy - vr - U * 0.04, f(5.2, 5.7), { colore: KZ.lilla });
       }
-    } else if (tipo === 'time_clocks') {
-      // un giro della lancetta di Miller (un'ora) = sette calendari della
-      // Terra (sette anni). Il ciclo dura `giro` secondi e ricomincia.
-      const giro = 9;
-      const u = (sec % giro) / giro;
-      const orologio = (cx, cy, cr, angoloM, angoloH, cornice, sfocato) => {
-        ctx.fillStyle = '#fff8eb'; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = cornice; ctx.lineWidth = cr * 0.12; ctx.stroke();
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, cr * 1.06, 0, Math.PI * 2); ctx.stroke();
+    },
+    // ---- Più gravità, meno tempo: un'ora su Miller, sette anni a casa ----
+    explain_time(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'tempo.titolo', f(0, 0.6));
+      const piano = kzPiano(c, cx, cy + U * 0.14, U * 0.6, U * 0.16, [{ u: -0.25, v: 0.1, m: 0.18 * kzMolla(f(0.2, 1.4)), r: 0.12 }]);
+      kzGriglia(c, piano, 'rgba(105, 224, 255, 0.4)', 16);
+      const [hx, hy] = piano.proietta(-0.25, 0.1);
+      kzBucoNero(ctx, hx, hy - U * 0.02, U * 0.035, c.t, { lente: false });
+      const [mx, my] = piano.proietta(-0.06, 0.1), [tx, ty] = piano.proietta(0.82, -0.2);
+      kzPalla(ctx, mx, my - U * 0.02, U * 0.022, '#3b82f6');
+      kzPalla(ctx, tx, ty - U * 0.02, U * 0.024, '#3b82f6', { macchie: KZ.verde });
+      kzEtichetta(c, 'tempo.miller', mx, my + U * 0.06, f(0.8, 1.3));
+      kzEtichetta(c, 'tempo.terra', tx, ty + U * 0.06, f(1, 1.5));
+      // gli orologi: quello di Miller fa un giro in nove secondi, quello di casa corre
+      const giro = 9, u = tt > 1.6 ? ((tt - 1.6) % giro) / giro : 0, cr = U * 0.07;
+      const oMx = mx, oMy = cy - U * 0.15, oTx = tx, oTy = cy - U * 0.18;
+      const k1 = kzMolla(f(1.2, 1.8));
+      if (k1 > 0.01) {
+        kzOrologio(ctx, oMx, oMy, cr * k1, -Math.PI / 2 + u * Math.PI * 2, -Math.PI / 2 + u * Math.PI / 6, KZ.lilla, false);
+        ctx.strokeStyle = KZ.lilla; ctx.lineWidth = cr * 0.16; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(oMx, oMy, cr * 1.4, -Math.PI / 2, -Math.PI / 2 + u * Math.PI * 2); ctx.stroke();
+        kzOrologio(ctx, oTx, oTy, cr * k1, -Math.PI / 2 + c.t / 40, -Math.PI / 2 + c.t / 480, '#3b82f6', true);
+        kzEtichetta(c, 'tempo.ora', oMx, oMy + cr * 1.9, f(1.8, 2.3), { dati: { n: kzNumero(u * 60) }, colore: KZ.lilla });
+        kzEtichetta(c, 'tempo.anni', oTx, oTy + cr * 1.9, f(1.8, 2.3), { dati: { n: kzNumero(u * 7, 1) }, colore: '#3b82f6', grande: true });
+      }
+      // i fogli del calendario che volano via dall'orologio di casa
+      if (tt > 2) {
+        const d = { s: 5 };
         for (let i = 0; i < 12; i++) {
-          const a = i * Math.PI / 6;
-          ctx.lineWidth = i % 3 ? 1.2 : 2.4;
-          ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * cr * 0.78, cy + Math.sin(a) * cr * 0.78); ctx.lineTo(cx + Math.cos(a) * cr * 0.9, cy + Math.sin(a) * cr * 0.9); ctx.stroke();
-        }
-        if (sfocato) {
-          // le lancette corrono così veloci che lasciano un ventaglio
-          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 0.75);
-          g.addColorStop(0, 'rgba(28, 18, 54, 0.25)'); g.addColorStop(1, 'rgba(28, 18, 54, 0.05)');
-          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, cr * 0.72, angoloM - 1.6, angoloM); ctx.closePath(); ctx.fill();
-        }
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = cr * 0.07;
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angoloH) * cr * 0.45, cy + Math.sin(angoloH) * cr * 0.45); ctx.stroke();
-        ctx.strokeStyle = '#dc2626'; ctx.lineWidth = cr * 0.045;
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angoloM) * cr * 0.72, cy + Math.sin(angoloM) * cr * 0.72); ctx.stroke();
-        ctx.fillStyle = INCHIOSTRO; ctx.beginPath(); ctx.arc(cx, cy, cr * 0.06, 0, Math.PI * 2); ctx.fill();
-      };
-      // Miller: sul fondo di un pozzo di gravità, la lancetta lenta
-      const mx = x - S * 0.55, my = y - S * 0.02, cr = S * 0.22;
-      ctx.strokeStyle = 'rgba(147, 197, 253, 0.5)'; ctx.lineWidth = 1.2;
-      for (let i = 1; i <= 6; i++) {
-        const rr = cr * (0.6 + i * 0.32), dy = cr * 1.5 - cr * 1.1 / i;
-        ctx.beginPath(); ctx.ellipse(mx, my + dy + cr * 0.4, rr, rr * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
-      }
-      for (let i = 0; i < 10; i++) {
-        const a = i / 10 * Math.PI * 2;
-        ctx.beginPath(); ctx.moveTo(mx + Math.cos(a) * cr * 0.9, my + cr * 1.25 + Math.sin(a) * cr * 0.2); ctx.lineTo(mx + Math.cos(a) * cr * 2.5, my + cr * 1.9 + Math.sin(a) * cr * 0.55); ctx.stroke();
-      }
-      storBucoNeroScienza(ctx, mx, my + cr * 2.05, cr * 0.22, 0.25);
-      orologio(mx, my, cr, -Math.PI / 2 + u * Math.PI * 2, -Math.PI / 2 + u * Math.PI / 6, '#7c3aed', false);
-      // l'arco di un'ora che si riempie attorno
-      ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = cr * 0.1;
-      ctx.beginPath(); ctx.arc(mx, my, cr * 1.28, -Math.PI / 2, -Math.PI / 2 + u * Math.PI * 2); ctx.stroke();
-      // la Terra: le lancette corrono, i calendari volano
-      const tx = x + S * 0.55, ty = y - S * 0.12;
-      orologio(tx, ty, cr, -Math.PI / 2 + sec * 40, -Math.PI / 2 + sec * 3.3, '#2563eb', true);
-      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(tx + cr * 0.95, ty - cr * 0.95, cr * 0.3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.arc(tx + cr * 0.88, ty - cr * 1.02, cr * 0.13, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(tx + cr * 0.95, ty - cr * 0.95, cr * 0.3, 0, Math.PI * 2); ctx.stroke();
-      // sette calendari, uno per anno
-      const n = Math.min(7, Math.floor(u * 7.6));
-      const cw = cr * 0.36, ch = cr * 0.44, gap = cr * 0.1, x0 = tx - (7 * cw + 6 * gap) / 2, y0 = ty + cr * 1.45;
-      for (let i = 0; i < 7; i++) {
-        const cx = x0 + i * (cw + gap);
-        const nuovo = i === n - 1 ? liscio((u * 7.6 - i) * 2) : 1;
-        if (i < n) {
-          ctx.save(); ctx.translate(cx + cw / 2, y0 + ch / 2); ctx.scale(nuovo, nuovo);
-          ctx.fillStyle = '#f8fafc'; ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
-          ctx.fillStyle = '#ef4444'; ctx.fillRect(-cw / 2, -ch / 2, cw, ch * 0.28);
-          ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.2; ctx.strokeRect(-cw / 2, -ch / 2, cw, ch);
-          ctx.fillStyle = INCHIOSTRO; ctx.font = `800 ${ch * 0.5}px ${caratterePagina()}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(String(i + 1), 0, ch * 0.13);
+          const nasce = dado(d), q = ((c.t / 1000 + nasce * 3) % 3) / 3, a = -0.9 - dado(d) * 1.2;
+          const x = oTx + Math.cos(a) * cr * (1.3 + q * 3), y = oTy + Math.sin(a) * cr * (1.3 + q * 2.5);
+          ctx.save(); ctx.translate(x, y); ctx.rotate(q * 6 + i); ctx.globalAlpha *= 1 - q;
+          ctx.fillStyle = KZ.bianco; ctx.fillRect(-U * 0.01, -U * 0.012, U * 0.02, U * 0.024);
+          ctx.fillStyle = KZ.corallo; ctx.fillRect(-U * 0.01, -U * 0.012, U * 0.02, U * 0.006);
           ctx.restore();
-        } else {
-          ctx.strokeStyle = 'rgba(248, 250, 252, 0.3)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
-          ctx.strokeRect(cx, y0, cw, ch); ctx.setLineDash([]);
         }
       }
-    } else if (tipo === 'frame_drag') {
-      // lo spazio-tempo a imbuto, coi raggi torti dal buco nero che gira:
-      // più vicino, più girano (il mulinello), e il pianeta va con loro
-      const r0 = S * 0.12, rmax = S * 1.05, piatto = 0.38, giro = sec * 0.9;
-      const prof = rr => S * 0.5 * Math.pow(r0 / rr, 0.9);
-      const torsione = rr => 2.6 * Math.pow(r0 / rr, 1.3);
-      const punto = (rr, a) => [x + Math.cos(a) * rr, y + Math.sin(a) * rr * piatto + prof(rr) - S * 0.15];
-      ctx.lineWidth = 1.2;
-      for (let i = 1; i <= 9; i++) {
-        const rr = r0 * Math.pow(rmax / r0, i / 9);
-        ctx.strokeStyle = `rgba(147, 197, 253, ${0.25 + 0.35 * (1 - i / 9)})`;
-        ctx.beginPath();
-        for (let k = 0; k <= 60; k++) { const [a, b] = punto(rr, k / 60 * Math.PI * 2); if (k) ctx.lineTo(a, b); else ctx.moveTo(a, b); }
-        ctx.stroke();
+    },
+    // ---- Perché Miller non cade: il mulinello --------------------------
+    explain_spin(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'rotazione.titolo', f(0, 0.6));
+      const ox = cx, oy = cy + U * 0.06, R = U * 0.46, piatto = 0.4, r0 = U * 0.05;
+      const torce = 0.4 + 3.2 * f(3.4, 5);
+      const giro = c.t / 1000 * (0.3 + 1.2 * f(3.4, 5));
+      ctx.lineWidth = Math.max(1, U / 700);
+      for (let i = 1; i <= 8; i++) {
+        const rr = r0 * Math.pow(R / r0, i / 8);
+        ctx.strokeStyle = `rgba(105, 224, 255, ${0.2 + 0.35 * (1 - i / 8)})`;
+        ctx.beginPath(); ctx.ellipse(ox, oy, rr, rr * piatto, 0, 0, Math.PI * 2); ctx.stroke();
       }
-      for (let j = 0; j < 18; j++) {
-        const a0 = j / 18 * Math.PI * 2;
-        ctx.strokeStyle = 'rgba(165, 180, 252, 0.55)';
-        ctx.beginPath();
+      for (let j = 0; j < 20; j++) {
+        ctx.strokeStyle = 'rgba(179, 136, 255, 0.55)'; ctx.beginPath();
         for (let k = 0; k <= 30; k++) {
-          const rr = r0 * Math.pow(rmax / r0, k / 30);
-          const [a, b] = punto(rr, a0 + torsione(rr) + giro * Math.pow(r0 / rr, 1.1));
-          if (k) ctx.lineTo(a, b); else ctx.moveTo(a, b);
+          const rr = r0 * Math.pow(R / r0, k / 30), a = j / 20 * Math.PI * 2 + torce * Math.pow(r0 / rr, 1.1) + giro * Math.pow(r0 / rr, 1.2);
+          const x = ox + Math.cos(a) * rr, y = oy + Math.sin(a) * rr * piatto;
+          if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
         }
         ctx.stroke();
       }
-      // le scintille che vengono trascinate nel vortice
-      const d = { s: 5 };
-      for (let i = 0; i < 26; i++) {
-        const rr = r0 * Math.pow(rmax / r0, 0.15 + dado(d) * 0.8);
-        const a = dado(d) * Math.PI * 2 + giro * 1.6 * Math.pow(r0 / rr, 1.1) * 3;
-        const [a1, b1] = punto(rr, a);
-        ctx.fillStyle = 'rgba(253, 230, 138, 0.85)'; ctx.beginPath(); ctx.arc(a1, b1, Math.max(1.2, S * 0.008), 0, Math.PI * 2); ctx.fill();
+      kzBucoNero(ctx, ox, oy, r0, c.t, { lente: false, piatto: 0.35 });
+      // senza rotazione, un'orbita così stretta cadrebbe dentro
+      const senza = f(0.8, 3.2), viaS = 1 - f(3.3, 3.9);
+      if (senza > 0 && viaS > 0) {
+        ctx.globalAlpha *= viaS;
+        ctx.setLineDash([U * 0.01, U * 0.01]); ctx.strokeStyle = 'rgba(255, 92, 108, 0.8)'; ctx.lineWidth = U * 0.004; ctx.beginPath();
+        for (let k = 0; k <= 60 * senza; k++) { const q = k / 60, a = q * 9, rr = R * 0.45 * (1 - q * 0.85); const x = ox + Math.cos(a) * rr, y = oy + Math.sin(a) * rr * piatto; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.stroke(); ctx.setLineDash([]);
+        const a = senza * 9, rr = R * 0.45 * (1 - senza * 0.85);
+        kzPalla(ctx, ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * piatto, U * 0.018, KZ.corallo);
+        kzEtichetta(c, 'rotazione.senza', ox - U * 0.34, oy - U * 0.24, f(1, 1.5), { colore: KZ.corallo });
+        ctx.globalAlpha /= viaS;
       }
-      const [hx, hy] = punto(r0, 0);
-      storBucoNeroScienza(ctx, x, hy, r0 * 0.75, 0.3);
-      // la freccia che dice da che parte gira
-      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = w; ctx.beginPath();
-      ctx.ellipse(x, hy, r0 * 2.1, r0 * 2.1 * piatto, 0, 0.3, 2.4); ctx.stroke();
-      const fa = 2.4, fx = x + Math.cos(fa) * r0 * 2.1, fy = hy + Math.sin(fa) * r0 * 2.1 * piatto;
-      storFrecciaScienza(ctx, fx + 1, fy - 0.5, fx - 2, fy - 1.5, '#fbbf24', w);
-      // il pianeta di Miller, vicinissimo, che corre col mulinello
-      const rp = r0 * 3.2, ap = giro * 1.4;
-      const [px, py] = punto(rp, ap + torsione(rp));
-      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(px, py, S * 0.05, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(px - S * 0.015, py - S * 0.015, S * 0.015, 0, Math.PI * 2); ctx.fill();
-    } else if (tipo === 'tidal_stretch') {
-      // due astronauti: a sinistra vicino a un buco nero piccolo (stirato
-      // come uno spaghetto), a destra sull'orizzonte di uno gigante (intero)
-      const omino = (cx, cy, k, sc) => {
-        // `k` quanto è stirato (1: niente), `sc` la misura
-        ctx.save(); ctx.translate(cx, cy); ctx.scale(sc / k, sc * k);
-        ctx.fillStyle = '#f1f5f9'; ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.6 / sc;
-        rettangolo(ctx, -0.32, -0.25, 0.64, 0.75, 0.2); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, -0.5, 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#1e3a8a'; ctx.beginPath(); ctx.ellipse(0, -0.5, 0.2, 0.14, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#f1f5f9';
-        for (const sx of [-1, 1]) { rettangolo(ctx, sx * 0.3 - 0.09, -0.15, 0.18, 0.5, 0.08); ctx.fill(); ctx.stroke(); rettangolo(ctx, sx * 0.15 - 0.1, 0.45, 0.2, 0.5, 0.08); ctx.fill(); ctx.stroke(); }
-        ctx.restore();
+      // con la rotazione, il pianeta corre col mulinello e non cade
+      if (tt > 4) {
+        const a = (tt - 4) * 2.2, rr = R * 0.45, x = ox + Math.cos(a) * rr, y = oy + Math.sin(a) * rr * piatto;
+        ctx.strokeStyle = 'rgba(89, 217, 142, 0.6)'; ctx.lineWidth = U * 0.005; ctx.beginPath(); ctx.ellipse(ox, oy, rr, rr * piatto, 0, a - 1.4, a); ctx.stroke();
+        kzPalla(ctx, x, y, U * 0.022, '#3b82f6', { alone: KZ.ciano });
+        kzEtichetta(c, 'rotazione.con', ox + U * 0.32, oy - U * 0.26, f(4.4, 4.9), { colore: KZ.verde });
+        kzEtichetta(c, 'rotazione.velocita', ox, oy + U * 0.26, f(6, 6.5));
+      }
+    },
+    // ---- Le maree: onde di un chilometro --------------------------------
+    explain_tides(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'maree.titolo', f(0, 0.6));
+      const bx = cx - U * 0.46, by = cy + U * 0.02;
+      kzBucoNero(ctx, bx, by, U * 0.045, c.t, { lente: false });
+      const px = cx - U * 0.2, pr = U * 0.08, st = f(1.6, 3.2);
+      // le tre frecce: il lato vicino è tirato di più
+      const frecce = [[px - pr, U * 0.17, KZ.corallo], [px, U * 0.11, KZ.arancio], [px + pr, U * 0.06, KZ.giallo]];
+      frecce.forEach(([x0, l, col], i) => kzFreccia(ctx, x0, by - pr * 1.6 + i * 0, x0 - l, by - pr * 1.6, col, U * 0.012, f(0.6 + i * 0.25, 1.2 + i * 0.25)));
+      kzEtichetta(c, 'maree.vicino', px - pr - U * 0.08, by - pr * 2.3, f(1, 1.5), { colore: KZ.corallo });
+      // il pianeta si allunga, e l'oceano si ammucchia in due gobbe
+      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.ellipse(px, by, pr * (1 + 0.45 * st), pr * (1 - 0.1 * st), 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(px + sx * pr * (1 + 0.4 * st), by, pr * 0.12 * st, pr * 0.3 * st, 0, 0, Math.PI * 2); ctx.fill(); }
+      kzPalla(ctx, px, by, pr * 0.72, '#8a7a6a');
+      kzEtichetta(c, 'maree.gobbe', px, by + pr * 1.8, f(2.6, 3.1));
+      // e quanto è alta l'onda: più di tre grattacieli uno sull'altro
+      if (tt > 4) {
+        const gx0 = cx + U * 0.05, gx1 = cx + U * 0.5, gy = cy + U * 0.22, metro = U * 0.2 / 1200;
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.6)'; ctx.lineWidth = U * 0.003; ctx.beginPath(); ctx.moveTo(gx0, gy); ctx.lineTo(gx1, gy); ctx.stroke();
+        const gh = 300 * metro * kzMolla(f(4, 4.6));
+        ctx.fillStyle = '#9aa7c7'; ctx.fillRect(gx0 + U * 0.04, gy - gh, U * 0.022, gh);
+        ctx.fillStyle = KZ.giallo; for (let i = 1; i < 6; i++) ctx.fillRect(gx0 + U * 0.045, gy - gh * i / 6, U * 0.004, U * 0.004);
+        kzEtichetta(c, 'maree.grattacielo', gx0 + U * 0.05, gy + U * 0.045, f(4.4, 4.9));
+        const oh = 1200 * metro * liscio(f(5, 6.6)), ox = gx0 + U * 0.28;
+        ctx.fillStyle = '#2f80ed'; ctx.beginPath(); ctx.moveTo(ox - U * 0.18, gy);
+        ctx.bezierCurveTo(ox - U * 0.12, gy, ox - U * 0.06, gy - oh * 0.95, ox, gy - oh);
+        ctx.bezierCurveTo(ox + U * 0.06, gy - oh * 0.98, ox + U * 0.09, gy - oh * 0.7, ox + U * 0.06, gy - oh * 0.6);
+        ctx.bezierCurveTo(ox + U * 0.12, gy - oh * 0.4, ox + U * 0.15, gy, ox + U * 0.2, gy); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'; ctx.lineWidth = U * 0.008; ctx.beginPath();
+        ctx.moveTo(ox - U * 0.04, gy - oh * 0.97); ctx.quadraticCurveTo(ox + U * 0.04, gy - oh * 1.03, ox + U * 0.07, gy - oh * 0.65); ctx.stroke();
+        if (oh > U * 0.02) {
+          const lx = ox + U * 0.13;
+          kzFreccia(ctx, lx, gy, lx, gy - oh, KZ.bianco, U * 0.005, 1);
+          kzEtichetta(c, 'maree.onda', lx + U * 0.07, gy - oh * 0.6, f(6, 6.5), { colore: KZ.corallo, grande: true });
+        }
+      }
+    },
+    // ---- 23 anni contro 3 ore -------------------------------------------
+    explain_twins(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'gemelli.titolo', f(0, 0.6));
+      const x0 = cx - U * 0.36, x1 = cx + U * 0.42, ya = cy - U * 0.1, yb = cy + U * 0.14;
+      const avatar = (x, y, pelle, capelli) => {
+        kzPalla(ctx, x, y, U * 0.04, pelle);
+        ctx.fillStyle = capelli; ctx.beginPath(); ctx.arc(x, y - U * 0.012, U * 0.04, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
       };
-      const ciclo = (sec % 7) / 7, k = 1 + 1.6 * liscio((ciclo - 0.1) / 0.55);
-      // due finestre arrotondate, una per buco nero
-      const lx = x - S * 0.52, hb = y + S * 0.62, fw = S * 0.48, fh = S * 0.86;
-      for (const cx of [lx, x + S * 0.52]) {
-        ctx.fillStyle = '#0b1226'; rettangolo(ctx, cx - fw, y - fh, fw * 2, fh * 2, S * 0.08); ctx.fill();
-        ctx.strokeStyle = 'rgba(248, 250, 252, 0.45)'; ctx.lineWidth = 2; ctx.stroke();
+      avatar(x0 - U * 0.07, ya, '#8d5a3b', '#2b1a10');
+      avatar(x0 - U * 0.07, yb, '#f1c27d', '#6b4423');
+      kzEtichetta(c, 'gemelli.romilly', x0 + U * 0.1, ya - U * 0.07, f(0.4, 0.9));
+      kzEtichetta(c, 'gemelli.cooper', x0 + U * 0.1, yb - U * 0.07, f(0.6, 1.1));
+      const cresce = liscio(f(1.2, 5.2)), anni = 23 * cresce;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(244, 246, 255, 0.15)'; ctx.lineWidth = U * 0.03;
+      for (const y of [ya, yb]) { ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); }
+      ctx.strokeStyle = KZ.corallo; ctx.beginPath(); ctx.moveTo(x0, ya); ctx.lineTo(kzMix(x0, x1, cresce), ya); ctx.stroke();
+      ctx.fillStyle = KZ.bianco; ctx.font = `700 ${Math.max(10, U * 0.02)}px ${caratterePagina()}`; ctx.textAlign = 'center';
+      for (let a = 5; a <= anni; a += 5) { const x = kzMix(x0, x1, a / 23); ctx.fillText(kzNumero(a), x, ya + U * 0.045); }
+      kzEtichetta(c, 'gemelli.anni', kzMix(x0, x1, cresce), ya + U * 0.1, f(1.4, 1.9), { dati: { n: kzNumero(anni, 0) }, colore: KZ.corallo, grande: true });
+      // tre ore su ventitré anni: un puntino. Lo ingrandisce una lente
+      ctx.strokeStyle = KZ.ciano; ctx.lineWidth = U * 0.03; ctx.beginPath(); ctx.moveTo(x0, yb); ctx.lineTo(x0 + 1, yb); ctx.stroke();
+      const lente = kzMolla(f(5.4, 6.2));
+      if (lente > 0.01) {
+        const lx = x0 + U * 0.22, ly = yb + U * 0.02, lr = U * 0.08 * lente;
+        ctx.strokeStyle = KZ.bianco; ctx.lineWidth = U * 0.008; ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(lx - lr * 0.7, ly + lr * 0.7); ctx.lineTo(lx - lr * 1.4, ly + lr * 1.4); ctx.stroke();
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.4)'; ctx.lineWidth = U * 0.003; ctx.beginPath(); ctx.moveTo(x0, yb); ctx.lineTo(lx - lr, ly); ctx.stroke();
+        ctx.strokeStyle = KZ.ciano; ctx.lineWidth = U * 0.025; ctx.beginPath(); ctx.moveTo(lx - lr * 0.6, ly); ctx.lineTo(lx + lr * 0.3, ly); ctx.stroke();
+        kzEtichetta(c, 'gemelli.ore', lx + U * 0.2, ly, f(5.8, 6.3), { colore: KZ.ciano, grande: true });
       }
-      ctx.save(); rettangolo(ctx, lx - fw, y - fh, fw * 2, fh * 2, S * 0.08); ctx.clip();
-      storBucoNeroScienza(ctx, lx, hb, S * 0.09, 0.25);
-      const sc = S * 0.32;
-      omino(lx, y - S * 0.05 + (k - 1) * sc * 0.08, k, sc);
-      const piedi = y - S * 0.05 + sc * 0.95 * k * 0.95, testa = y - S * 0.05 - sc * 0.8 * k * 0.9;
-      storFrecciaScienza(ctx, lx + sc * 0.55, piedi - sc * 0.45, lx + sc * 0.55, Math.min(piedi + S * 0.12, y + fh - S * 0.05), '#ef4444', w);
-      storFrecciaScienza(ctx, lx + sc * 0.55, testa, lx + sc * 0.55, testa + S * 0.06, '#facc15', w);
-      ctx.restore();
-      // la finestra di destra: l'orizzonte di un buco nero enorme è quasi piatto
-      const rx = x + S * 0.52, R0 = S * 3;
-      ctx.save(); rettangolo(ctx, rx - fw, y - fh, fw * 2, fh * 2, S * 0.08); ctx.clip();
-      const alone = ctx.createRadialGradient(rx, hb + R0 - S * 0.12, R0 * 0.98, rx, hb + R0 - S * 0.12, R0 * 1.1);
-      alone.addColorStop(0, 'rgba(253, 230, 138, 0.6)'); alone.addColorStop(1, 'rgba(253, 230, 138, 0)');
-      ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(rx, hb + R0 - S * 0.12, R0 * 1.1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(rx, hb + R0 - S * 0.12, R0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.restore();
-      const galleggia = Math.sin(sec * 1.5) * S * 0.02;
-      omino(rx, y + galleggia, 1, sc);
-      storFrecciaScienza(ctx, rx + sc * 0.55, y + sc * 0.6 + galleggia, rx + sc * 0.55, y + sc * 0.6 + S * 0.09 + galleggia, '#ef4444', w);
-      storFrecciaScienza(ctx, rx + sc * 0.55, y - sc * 0.75 + galleggia, rx + sc * 0.55, y - sc * 0.75 + S * 0.085 + galleggia, '#facc15', w);
-    } else if (tipo === 'spin_gravity') {
-      // la ruota che gira (la Stazione Cooper, l'Endurance). Gli abitanti
-      // stanno sul bordo con la testa verso il centro; la palla lasciata
-      // andare vola dritta e il pavimento, girando, le viene incontro
-      const R = S * 0.62, om = 0.55, a0 = sec * om;
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'; ctx.beginPath(); ctx.arc(x, y, R * 1.12, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = R * 0.14; ctx.beginPath(); ctx.arc(x, y, R * 1.05, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = '#4ade80'; ctx.lineWidth = R * 0.05; ctx.beginPath(); ctx.arc(x, y, R * 0.96, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R * 1.12, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(x, y, R * 0.93, 0, Math.PI * 2); ctx.stroke();
-      // i raggi della ruota e il mozzo
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)'; ctx.lineWidth = 2;
-      for (let i = 0; i < 4; i++) { const a = a0 + i * Math.PI / 2; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * 0.12, y + Math.sin(a) * R * 0.12); ctx.lineTo(x + Math.cos(a) * R * 0.93, y + Math.sin(a) * R * 0.93); ctx.stroke(); }
-      ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(x, y, R * 0.12, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-      // le case e gli abitanti sul pavimento, che girano con la ruota
-      for (let i = 0; i < 8; i++) {
-        const a = a0 + i * Math.PI / 4;
-        ctx.save(); ctx.translate(x + Math.cos(a) * R * 0.93, y + Math.sin(a) * R * 0.93); ctx.rotate(a + Math.PI / 2);
-        if (i % 2) {
-          ctx.fillStyle = '#fde68a'; ctx.fillRect(-R * 0.06, 0, R * 0.12, R * 0.1);
-          ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.moveTo(-R * 0.08, R * 0.1); ctx.lineTo(0, R * 0.17); ctx.lineTo(R * 0.08, R * 0.1); ctx.closePath(); ctx.fill();
-        } else {
-          ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 2.2;
-          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, R * 0.1); ctx.moveTo(-R * 0.03, 0); ctx.lineTo(0, R * 0.05); ctx.lineTo(R * 0.03, 0); ctx.stroke();
-          ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(0, R * 0.13, R * 0.03, 0, Math.PI * 2); ctx.fill();
-          // la spinta del pavimento, verso il centro (verde)
-          if (i === 0) storFrecciaScienza(ctx, R * 0.08, -R * 0.02, R * 0.08, R * 0.2, '#22c55e', w * 0.8);
+    },
+    // ---- L'attracco: girare insieme è stare fermi -----------------------
+    explain_docking(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'aggancio.titolo', f(0, 0.6));
+      const ciclo = 11, u = tt % ciclo;
+      const om = 2.4;
+      const angE = u < 8 ? u * om : 8 * om + om * (u - 8) - om * (u - 8) * (u - 8) / 4.4;
+      const insegue = u < 2.4 ? 0 : u < 5 ? liscio((u - 2.4) / 2.6) : 1;
+      const angR = 0.5 + (angE - 0.5) * insegue;
+      const anello = (x, y, R, ang, nave) => {
+        for (let i = 0; i < 12; i++) {
+          const a = ang + i * Math.PI / 6;
+          ctx.strokeStyle = 'rgba(154, 167, 199, 0.6)'; ctx.lineWidth = U * 0.004;
+          ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * 0.25, y + Math.sin(a) * R * 0.25); ctx.lineTo(x + Math.cos(a) * R * 0.85, y + Math.sin(a) * R * 0.85); ctx.stroke();
+          ctx.save(); ctx.translate(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.rotate(a);
+          ctx.fillStyle = i % 3 ? '#dfe5f5' : KZ.ciano; rettangolo(ctx, -R * 0.09, -R * 0.13, R * 0.18, R * 0.26, R * 0.05); ctx.fill();
+          ctx.restore();
         }
-        ctx.restore();
+        ctx.fillStyle = '#c3cbe0'; ctx.beginPath(); ctx.arc(x, y, R * 0.24, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = KZ.giallo; ctx.beginPath(); ctx.arc(x + Math.cos(ang) * R * 0.24, y + Math.sin(ang) * R * 0.24, R * 0.05, 0, Math.PI * 2); ctx.fill();
+        if (nave !== null) kzNave(ctx, x, y, R * 0.3, nave, KZ.bianco);
+      };
+      const allineati = insegue >= 1 && u < 8;
+      // a sinistra: da fuori. L'anello gira, il Ranger lo insegue
+      const Lx = cx - U * 0.25, Rr = U * 0.16;
+      anello(Lx, cy + U * 0.03, Rr, angE, angR);
+      if (u >= 2.4 && u < 5) for (const sg of [-1, 1]) {
+        const a = angR + Math.PI + sg * 0.6, jx = Lx + Math.cos(a) * Rr * 0.26, jy = cy + U * 0.03 + Math.sin(a) * Rr * 0.26;
+        const g = ctx.createRadialGradient(jx, jy, 0, jx, jy, Rr * 0.16);
+        g.addColorStop(0, 'rgba(255, 237, 213, 0.95)'); g.addColorStop(1, 'rgba(255, 143, 61, 0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(jx, jy, Rr * 0.16, 0, Math.PI * 2); ctx.fill();
       }
-      // la palla: lasciata andare dal mozzo ogni quattro secondi, va dritta
-      const ciclo = 4, q = (sec % ciclo) / ciclo, nascita = sec - q * ciclo;
-      const aP = nascita * om + Math.PI * 0.25, v = R * 0.93;
-      const sx = x + Math.cos(aP) * R * 0.3, sy = y + Math.sin(aP) * R * 0.3;
-      const vx = -Math.sin(aP), vy = Math.cos(aP);
-      const lung = Math.sqrt(0.93 * 0.93 - 0.3 * 0.3) * R;
-      const fq = Math.min(1, q / 0.75), bx = sx + vx * lung * fq, by = sy + vy * lung * fq;
-      ctx.setLineDash([5, 6]); ctx.strokeStyle = 'rgba(251, 191, 36, 0.7)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + vx * lung, sy + vy * lung); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(bx, by, R * 0.045, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
-      if (q > 0.75) { ctx.strokeStyle = `rgba(253, 224, 71, ${1 - (q - 0.75) / 0.25})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, R * (0.06 + (q - 0.75) * 0.5), 0, Math.PI * 2); ctx.stroke(); }
-      // il verso in cui gira
-      ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(x, y, R * 1.28, -0.9, -0.1); ctx.stroke();
-      storFrecciaScienza(ctx, x + Math.cos(-0.15) * R * 1.28, y + Math.sin(-0.15) * R * 1.28, x + Math.cos(-0.05) * R * 1.28, y + Math.sin(-0.05) * R * 1.28, '#60a5fa', w);
-    } else if (tipo === 'spin_match') {
-      // l'Endurance (l'anello) gira; il Ranger al centro prima è fermo
-      // (rosso: il portello e il muso non combaciano), poi accelera e gira
-      // con lei (verde: fermi l'uno rispetto all'altra), poi frenano insieme
-      const ciclo = 11, u = (sec % ciclo);
-      const omE = u < 8 ? 2.2 : 2.2 * Math.max(0, 1 - (u - 8) / 2.2);
-      // l'angolo dell'anello: integrato a pezzi (velocità costante, poi freno)
-      const angE = u < 8 ? u * 2.2 : 8 * 2.2 + 2.2 * (u - 8) - 2.2 * (u - 8) * (u - 8) / 4.4;
-      const spinR = u < 2.5 ? 0 : u < 5 ? liscio((u - 2.5) / 2.5) : 1;
-      // il Ranger: angolo che insegue quello dell'anello
-      const angR = u < 2.5 ? 0.6 : u < 5 ? 0.6 + (angE - 0.6) * liscio((u - 2.5) / 2.5) : angE;
-      const R = S * 0.48;
-      // l'anello: dodici moduli, con la scia quando gira
-      for (let i = 0; i < 12; i++) {
-        const a = angE + i * Math.PI / 6;
-        ctx.save(); ctx.translate(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.rotate(a);
-        ctx.fillStyle = i % 3 ? '#e2e8f0' : '#93c5fd'; rettangolo(ctx, -R * 0.09, -R * 0.13, R * 0.18, R * 0.26, R * 0.04); ctx.fill();
-        ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.restore();
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * 0.22, y + Math.sin(a) * R * 0.22); ctx.lineTo(x + Math.cos(a) * R * 0.86, y + Math.sin(a) * R * 0.86); ctx.stroke();
-      }
-      if (omE > 0.3) {
-        ctx.strokeStyle = `rgba(226, 232, 240, ${0.12 * omE})`; ctx.lineWidth = R * 0.24;
-        ctx.beginPath(); ctx.arc(x, y, R, angE - 0.5, angE); ctx.stroke();
-      }
-      // il portello del mozzo (giallo), che gira con l'anello
-      ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(x, y, R * 0.22, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INCHIOSTRO; ctx.stroke();
-      const porta = [x + Math.cos(angE) * R * 0.22, y + Math.sin(angE) * R * 0.22];
-      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(porta[0], porta[1], R * 0.05, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      // il Ranger visto dall'alto, sopra al mozzo
-      const scarto = Math.abs(Math.atan2(Math.sin(angE - angR), Math.cos(angE - angR)));
-      const allineati = scarto < 0.08 && spinR > 0.98;
-      ctx.save(); ctx.translate(x, y); ctx.rotate(angR);
-      ctx.fillStyle = '#f8fafc'; ctx.beginPath();
-      ctx.moveTo(R * 0.34, 0); ctx.lineTo(-R * 0.16, -R * 0.15); ctx.lineTo(-R * 0.1, 0); ctx.lineTo(-R * 0.16, R * 0.15); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#1e3a8a'; ctx.beginPath(); ctx.arc(R * 0.12, 0, R * 0.04, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = allineati ? KZ.verde : KZ.corallo; ctx.lineWidth = U * 0.01; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(Lx, cy + U * 0.03, Rr * 1.3, 0, Math.PI * 2); ctx.stroke();
+      kzEtichetta(c, 'aggancio.fuori', Lx, cy - U * 0.24, f(0.4, 0.9));
+      kzEtichetta(c, 'aggancio.giri', Lx, cy + U * 0.3, f(0.8, 1.3) * (u < 8 ? 1 : 0.4), { colore: KZ.corallo });
+      // a destra: dal finestrino del Ranger. Quando girano insieme, l'anello è fermo
+      const Dx = cx + U * 0.26;
+      ctx.save(); ctx.beginPath(); ctx.arc(Dx, cy + U * 0.03, Rr * 1.25, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = 'rgba(5, 6, 26, 0.6)'; ctx.fillRect(Dx - Rr * 1.3, cy - Rr * 1.3, Rr * 2.6, Rr * 2.8);
+      anello(Dx, cy + U * 0.03, Rr, angE - angR, null);
       ctx.restore();
-      // il segno: rosso finché non combaciano, verde quando girano insieme
-      ctx.strokeStyle = allineati ? '#22c55e' : '#ef4444'; ctx.lineWidth = w * 1.2;
-      ctx.beginPath(); ctx.arc(x, y, R * 0.3, Math.min(angR, angE), Math.max(angR, angE) + (allineati ? Math.PI * 2 : 0)); ctx.stroke();
-      if (allineati) {
-        const pulsa = 0.5 + 0.5 * Math.sin(sec * 6);
-        ctx.strokeStyle = `rgba(34, 197, 94, ${0.4 + 0.4 * pulsa})`; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(x, y, R * 1.25, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = KZ.bianco; ctx.lineWidth = U * 0.012; ctx.beginPath(); ctx.arc(Dx, cy + U * 0.03, Rr * 1.25, 0, Math.PI * 2); ctx.stroke();
+      kzEtichetta(c, 'aggancio.dentro', Dx, cy - U * 0.24, f(1.2, 1.7));
+      kzEtichetta(c, allineati ? 'aggancio.fermi' : 'aggancio.gira', Dx, cy + U * 0.3, f(1.6, 2.1), { colore: allineati ? KZ.verde : KZ.corallo });
+    },
+    // ---- La fionda gravitazionale, e Newton -----------------------------
+    explain_slingshot(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'fionda.titolo', f(0, 0.6));
+      const bx = cx + U * 0.04, by = cy + U * 0.04, r = U * 0.06;
+      kzBucoNero(ctx, bx, by, r, c.t);
+      // la strada: un ramo d'iperbole attorno al buco nero
+      const e = 1.7, p = U * 0.2, rot = -0.5;
+      const pos = th => { const rr = p / (1 + e * Math.cos(th)); return [bx + Math.cos(th + rot) * rr, by + Math.sin(th + rot) * rr]; };
+      const lim = Math.acos(-1 / e) - 0.12;
+      ctx.setLineDash([U * 0.01, U * 0.012]); ctx.strokeStyle = 'rgba(244, 246, 255, 0.45)'; ctx.lineWidth = U * 0.004; ctx.beginPath();
+      for (let i = 0; i <= 80; i++) { const [x, y] = pos(-lim + 2 * lim * i / 80); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.stroke(); ctx.setLineDash([]);
+      const ciclo = 6, q = (tt % ciclo) / ciclo;
+      const s = q < 0.5 ? 0.5 * Math.pow(q / 0.5, 0.6) : 0.5 + 0.5 * Math.pow((q - 0.5) / 0.5, 1.6);
+      const th = -lim + 2 * lim * s, [nx, ny] = pos(th), [ax, ay] = pos(th + 0.02);
+      const ang = Math.atan2(ay - ny, ax - nx);
+      const veloce = q > 0.5 ? 1.7 : 1;
+      kzFreccia(ctx, nx, ny, nx + Math.cos(ang) * U * 0.07 * veloce, ny + Math.sin(ang) * U * 0.07 * veloce, q > 0.5 ? KZ.verde : KZ.ciano, U * 0.008, 1);
+      kzNave(ctx, nx, ny, U * 0.022, ang, KZ.bianco);
+      // nel punto più vicino un pezzo si stacca e cade: azione e reazione
+      if (q > 0.5) {
+        const k = (q - 0.5) / 0.5, [px, py] = pos(0);
+        const dx = kzMix(px, bx, k * 0.9), dy = kzMix(py, by, k * 0.9);
+        ctx.globalAlpha *= 1 - k * 0.8; kzNave(ctx, dx, dy, U * 0.015 * (1 - k * 0.6), Math.atan2(by - py, bx - px), KZ.corallo); ctx.globalAlpha /= 1 - k * 0.8;
+        kzLampo(ctx, px, py, U * 0.08, k * 3);
       }
-      // i getti di manovra mentre il Ranger accelera
-      if (u >= 2.5 && u < 5) {
-        for (const sgn of [-1, 1]) {
-          const a = angR + Math.PI + sgn * 0.5, jx = x + Math.cos(a) * R * 0.2, jy = y + Math.sin(a) * R * 0.2;
-          const g = ctx.createRadialGradient(jx, jy, 0, jx, jy, R * 0.12);
-          g.addColorStop(0, 'rgba(255, 237, 213, 0.95)'); g.addColorStop(1, 'rgba(251, 146, 60, 0)');
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(jx, jy, R * 0.12, 0, Math.PI * 2); ctx.fill();
+      const [px, py] = pos(0);
+      kzEtichetta(c, 'fionda.vicino', px + U * 0.2, py + U * 0.05, f(1.2, 1.7), { a: [px, py] });
+      kzEtichetta(c, 'fionda.newton', cx - U * 0.34, cy + U * 0.22, f(3, 3.5), { colore: KZ.corallo });
+      kzEtichetta(c, 'fionda.veloce', cx + U * 0.36, cy - U * 0.2, f(3.6, 4.1), { colore: KZ.verde });
+      const anni = 51 * liscio(f(5, 7.5));
+      kzEtichetta(c, 'fionda.prezzo', cx - U * 0.3, cy - U * 0.2, f(5, 5.5), { dati: { n: kzNumero(anni) }, colore: KZ.lilla, grande: true });
+    },
+    // ---- Spaghetti o no: piccolo contro gigante -------------------------
+    explain_spaghetti(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'spaghetti.titolo', f(0, 0.6));
+      const fw = U * 0.22, fh = U * 0.3;
+      const finestra = (x, col) => { ctx.fillStyle = '#0a1030'; rettangolo(ctx, x - fw, cy - fh, fw * 2, fh * 2, U * 0.03); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = U * 0.006; ctx.stroke(); };
+      const lx = cx - U * 0.25, rx = cx + U * 0.25;
+      finestra(lx, KZ.corallo); finestra(rx, KZ.verde);
+      const stira = 1 + 1.8 * liscio(f(1.5, 4)), oh = U * 0.13;
+      ctx.save(); rettangolo(ctx, lx - fw, cy - fh, fw * 2, fh * 2, U * 0.03); ctx.clip();
+      kzBucoNero(ctx, lx, cy + fh * 0.78, U * 0.03, c.t, { lente: false, piatto: 0.25 });
+      kzOmino(ctx, lx, cy - U * 0.02 + (stira - 1) * oh * 0.08, oh, KZ.bianco, stira);
+      const piedi = cy - U * 0.02 + oh * 0.72 * stira, testa = cy - U * 0.02 - oh * 0.6 * stira;
+      kzFreccia(ctx, lx + U * 0.07, piedi - U * 0.05, lx + U * 0.07, Math.min(piedi + U * 0.06, cy + fh - U * 0.03), KZ.corallo, U * 0.01, f(0.8, 1.4));
+      kzFreccia(ctx, lx + U * 0.07, testa, lx + U * 0.07, testa + U * 0.03, KZ.giallo, U * 0.01, f(0.8, 1.4));
+      ctx.restore();
+      ctx.save(); rettangolo(ctx, rx - fw, cy - fh, fw * 2, fh * 2, U * 0.03); ctx.clip();
+      const R0 = U * 1.6;
+      const g = ctx.createRadialGradient(rx, cy + fh * 0.75 + R0, R0 * 0.98, rx, cy + fh * 0.75 + R0, R0 * 1.12);
+      g.addColorStop(0, 'rgba(255, 190, 90, 0.7)'); g.addColorStop(1, 'rgba(255, 190, 90, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(rx, cy + fh * 0.75 + R0, R0 * 1.12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(rx, cy + fh * 0.75 + R0, R0, 0, Math.PI * 2); ctx.fill();
+      const gal = Math.sin(c.t / 700) * U * 0.006;
+      kzOmino(ctx, rx, cy - U * 0.02 + gal, oh, KZ.bianco, 1);
+      kzFreccia(ctx, rx + U * 0.07, cy + U * 0.06 + gal, rx + U * 0.07, cy + U * 0.09 + gal, KZ.corallo, U * 0.01, f(1.2, 1.8));
+      kzFreccia(ctx, rx + U * 0.07, cy - U * 0.1 + gal, rx + U * 0.07, cy - U * 0.072 + gal, KZ.giallo, U * 0.01, f(1.2, 1.8));
+      ctx.restore();
+      kzEtichetta(c, 'spaghetti.piccolo', lx, cy - fh - U * 0.04, f(0.3, 0.8), { colore: KZ.corallo });
+      kzEtichetta(c, 'spaghetti.grande', rx, cy - fh - U * 0.04, f(0.6, 1.1), { colore: KZ.verde });
+      kzEtichetta(c, 'spaghetti.forte', lx, cy + fh + U * 0.05, f(3.5, 4));
+      kzEtichetta(c, 'spaghetti.debole', rx, cy + fh + U * 0.05, f(4.5, 5));
+    },
+    // ---- L'orizzonte: da fuori ti fermi, per te il tempo scorre ---------
+    explain_horizon(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'orizzonte.titolo', f(0, 0.6));
+      const bx = cx + U * 0.3, by = cy + U * 0.06, r = U * 0.17;
+      kzBucoNero(ctx, bx, by, r, c.t, { disco: false });
+      kzEtichetta(c, 'orizzonte.linea', bx, by + r + U * 0.06, f(0.4, 0.9), { a: [bx - r * 0.7, by + r * 0.7] });
+      // chi guarda da lontano, a sinistra
+      const ox = cx - U * 0.44;
+      ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.ellipse(ox, by, U * 0.035, U * 0.02, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(ox, by, U * 0.012, 0, Math.PI * 2); ctx.fill();
+      // Cooper che cade: da fuori rallenta, arrossisce e si ferma sul bordo
+      const ciclo = 10, q = (tt % ciclo) / ciclo;
+      const avvicina = 1 - Math.exp(-q * 4.5);
+      const x0 = cx - U * 0.28, xH = bx - r * 1.05, nx = kzMix(x0, xH, avvicina);
+      const rosso = avvicina;
+      ctx.globalAlpha *= 1 - 0.4 * rosso;
+      kzNave(ctx, nx, by, U * 0.032, 0, `rgb(${255}, ${Math.round(255 - 160 * rosso)}, ${Math.round(255 - 200 * rosso)})`);
+      ctx.globalAlpha /= 1 - 0.4 * rosso;
+      // il suo orologio visto da fuori: le lancette rallentano fino a fermarsi
+      const lento = 1 - avvicina, angF = -Math.PI / 2 + (1 - Math.exp(-q * 4.5)) / 4.5 * 30 + 0 * lento;
+      kzOrologio(ctx, cx - U * 0.34, cy - U * 0.17, U * 0.055, angF, angF / 12, KZ.corallo, false);
+      kzEtichetta(c, 'orizzonte.fuori', cx - U * 0.34, cy - U * 0.07, f(1.2, 1.7), { colore: KZ.corallo });
+      // e il suo orologio per lui: va come sempre
+      kzOrologio(ctx, cx + U * 0.02, cy - U * 0.17, U * 0.055, -Math.PI / 2 + c.t / 160, -Math.PI / 2 + c.t / 1920, KZ.verde, false);
+      kzEtichetta(c, 'orizzonte.cooper', cx + U * 0.02, cy - U * 0.07, f(2.4, 2.9), { colore: KZ.verde });
+    },
+    // ================= Parte 2 ===========================================
+    // ---- Le dimensioni, una dopo l'altra --------------------------------
+    explain_dimensions(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'dimensioni.titolo', f(0, 0.6));
+      const s = U * 0.13, x = cx, y = cy + U * 0.02;
+      const fasi = [f(0.3, 0.8), f(1.3, 2.3), f(2.8, 3.8), f(4.3, 5.3), f(5.8, 6.8)];
+      const n = fasi.filter(v => v > 0).length - 1;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const col = [KZ.giallo, KZ.corallo, KZ.turchese, KZ.ciano, KZ.lilla][Math.max(0, n)];
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = U * 0.008;
+      const giro = c.t / 2600;
+      // il punto
+      if (n === 0) { const k = kzMolla(fasi[0]); ctx.beginPath(); ctx.arc(x, y, U * 0.02 * k, 0, Math.PI * 2); ctx.fill(); }
+      // la linea che si allunga
+      if (n === 1) { const l = s * fasi[1]; ctx.beginPath(); ctx.moveTo(x - l, y); ctx.lineTo(x + l, y); ctx.stroke(); for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(x + sx * l, y, U * 0.012, 0, Math.PI * 2); ctx.fill(); } }
+      // il quadrato
+      if (n === 2) { const h = s * fasi[2]; ctx.fillStyle = rgba(KZ.turchese, 0.25); ctx.fillRect(x - s, y - h, 2 * s, 2 * h); ctx.strokeRect(x - s, y - h, 2 * s, 2 * h); }
+      // il cubo e il tesseratto, in proiezione che gira
+      if (n >= 3) {
+        const quattro = n === 4 ? fasi[4] : 0;
+        const V = [];
+        for (let i = 0; i < 16; i++) V.push([(i & 1) ? 1 : -1, (i & 2) ? 1 : -1, (i & 4) ? 1 : -1, (i & 8) ? 1 : -1]);
+        const P = V.map(([a, b, cc, d]) => {
+          const zz = n === 3 ? cc * fasi[3] : cc;
+          let w = d * quattro;
+          const cw = Math.cos(giro * 1.3), sw = Math.sin(giro * 1.3);
+          const a2 = a * cw - w * sw; w = a * sw + w * cw;
+          const cz = Math.cos(giro), sz = Math.sin(giro);
+          const b2 = b * cz - zz * sz, z2 = b * sz + zz * cz;
+          const k4 = 1 / (2.6 - w * 0.6), k3 = 1 / (3 - z2 * 0.7);
+          return [x + a2 * k4 * k3 * s * 4.2, y + b2 * k4 * k3 * s * 4.2, w];
+        });
+        for (let i = 0; i < 16; i++) for (let j = i + 1; j < 16; j++) {
+          const diff = i ^ j; if (diff & (diff - 1)) continue;
+          if (n === 3 && (diff === 8 || (i & 8))) continue;
+          ctx.strokeStyle = diff === 8 ? KZ.lilla : col; ctx.globalAlpha *= diff === 8 ? Math.max(0.1, quattro) : 1;
+          ctx.beginPath(); ctx.moveTo(P[i][0], P[i][1]); ctx.lineTo(P[j][0], P[j][1]); ctx.stroke();
+          ctx.globalAlpha /= diff === 8 ? Math.max(0.1, quattro) : 1;
         }
       }
-    } else if (tipo === 'time_loop') {
-      // l'anello del tempo: quattro tappe su un cerchio, e una luce che ci
-      // corre sopra per sempre. Nessuna è la prima.
-      const R = S * 0.62, giro = sec * 0.55;
-      ctx.strokeStyle = 'rgba(253, 230, 138, 0.35)'; ctx.lineWidth = R * 0.06;
-      ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
-      for (let i = 0; i < 4; i++) {
-        const a = -Math.PI / 2 + i * Math.PI / 2 + 0.55;
-        storFrecciaScienza(ctx, x + Math.cos(a - 0.2) * R, y + Math.sin(a - 0.2) * R, x + Math.cos(a) * R, y + Math.sin(a) * R, '#fbbf24', w);
+      // il nome della dimensione, grande
+      const nomi = ['0D', '1D', '2D', '3D', '4D'];
+      if (n >= 0) kzEtichetta(c, null, x, y + U * 0.27, 1, { testo: nomi[n], colore: col, grande: true });
+      // la fila dei passi già fatti, in basso a sinistra
+      for (let i = 0; i < n; i++) kzEtichetta(c, null, cx - U * 0.42 + i * U * 0.07, cy - U * 0.2, 1, { testo: nomi[i] });
+      kzEtichetta(c, 'dimensioni.tempo', cx + U * 0.32, cy - U * 0.2, f(7.4, 7.9), { colore: KZ.lilla });
+    },
+    // ---- Il tempo come un paesaggio -------------------------------------
+    explain_timescape(c) {
+      const { ctx, U, L, cx, cy, tt, f } = c;
+      kzTitolo(c, 'paesaggio.titolo', f(0, 0.6));
+      const vx = cx, vy = cy - U * 0.06, avanti = (c.t / 2600) % 1;
+      // i fotogrammi della stanza di Murph, uno dietro l'altro verso il fondo
+      for (let k = 9; k >= 0; k--) {
+        const z = k + 1 - avanti, sc = 1 / (0.6 + z * 0.3);
+        const w = U * 0.3 * sc, h = U * 0.19 * sc;
+        const x = vx - U * 0.3 + (z - 1) * U * 0.075 - w / 2, y = vy + U * 0.16 - (z - 1) * U * 0.045 - h / 2;
+        const a = Math.max(0, Math.min(1, (10 - z) / 3)) * Math.min(1, z * 1.2) * (k ? 0.92 : 1);
+        if (!(a > 0.02)) continue;
+        ctx.globalAlpha *= a;
+        const tinta = (k * 37 + Math.floor(c.t / 2600) * 37) % 360;
+        ctx.fillStyle = `hsl(${30 + tinta % 40}, 45%, ${30 + (k % 3) * 6}%)`; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = `hsl(${40 + tinta % 30}, 90%, ${60 + (k % 4) * 6}%)`; ctx.fillRect(x + w * 0.6, y + h * 0.15, w * 0.25, h * 0.35);
+        ctx.fillStyle = '#5a3a28'; ctx.fillRect(x + w * 0.06, y + h * 0.1, w * 0.18, h * 0.8);
+        for (let b = 0; b < 4; b++) { ctx.fillStyle = [KZ.corallo, KZ.turchese, KZ.giallo, KZ.lilla][(b + k) % 4]; ctx.fillRect(x + w * (0.08 + b * 0.035), y + h * 0.18, w * 0.025, h * 0.22); }
+        ctx.fillStyle = '#9fb4e8'; ctx.fillRect(x + w * 0.3, y + h * 0.65, w * 0.3, h * 0.2);
+        ctx.strokeStyle = KZ.giallo; ctx.lineWidth = Math.max(1, U * 0.004 * sc); ctx.strokeRect(x, y, w, h);
+        ctx.globalAlpha /= a;
       }
-      const testa = (giro % (Math.PI * 2));
-      for (let j = 0; j < 14; j++) {
-        const a = -Math.PI / 2 + testa - j * 0.06;
-        ctx.globalAlpha = alfa * (1 - j / 14);
-        ctx.fillStyle = j ? '#fde68a' : '#ffffff';
-        ctx.beginPath(); ctx.arc(x + Math.cos(a) * R, y + Math.sin(a) * R, R * 0.05 * (1 - j / 20), 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.globalAlpha = alfa;
-      const tappe = [
-        (cx, cy, r) => { // la polvere sul pavimento, a righe
-          ctx.fillStyle = '#d6b88a'; let px = cx - r * 0.6;
-          for (const l of [1, 0, 1, 1, 0]) { const ww = l ? r * 0.2 : r * 0.07; ctx.fillRect(px, cy - r * 0.5, ww, r); px += ww + r * 0.08; }
-        },
-        (cx, cy, r) => { // la partenza: il razzo con la fiamma
-          ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.moveTo(cx, cy - r * 0.7); ctx.lineTo(cx + r * 0.22, cy + r * 0.25); ctx.lineTo(cx - r * 0.22, cy + r * 0.25); ctx.closePath(); ctx.fill();
-          ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.5; ctx.stroke();
-          ctx.fillStyle = '#fb923c'; ctx.beginPath(); ctx.moveTo(cx - r * 0.14, cy + r * 0.28); ctx.lineTo(cx, cy + r * (0.6 + 0.1 * Math.sin(sec * 12))); ctx.lineTo(cx + r * 0.14, cy + r * 0.28); ctx.closePath(); ctx.fill();
-        },
-        (cx, cy, r) => storBucoNeroScienza(ctx, cx, cy, r * 0.28, 0.3),
-        (cx, cy, r) => { // il tesseratto: un cubo dentro un cubo
-          const k = 0.5 + 0.05 * Math.sin(sec * 2), f = r * 0.55, d2 = f * k;
-          ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 1.8;
-          ctx.strokeRect(cx - f, cy - f, 2 * f, 2 * f); ctx.strokeRect(cx - d2, cy - d2, 2 * d2, 2 * d2);
-          ctx.strokeStyle = '#fbbf24';
-          for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.beginPath(); ctx.moveTo(cx + sx * f, cy + sy * f); ctx.lineTo(cx + sx * d2, cy + sy * d2); ctx.stroke(); }
-        }
-      ];
-      tappe.forEach((disegna, i) => {
-        const a = -Math.PI / 2 + i * Math.PI / 2;
-        const cx = x + Math.cos(a) * R, cy = y + Math.sin(a) * R, r = S * 0.16;
-        const dist = Math.abs(Math.atan2(Math.sin(testa - i * Math.PI / 2), Math.cos(testa - i * Math.PI / 2)));
-        const acceso = Math.max(0, 1 - dist / 0.6);
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = acceso > 0 ? `rgba(253, 224, 71, ${0.5 + 0.5 * acceso})` : 'rgba(248, 250, 252, 0.5)'; ctx.lineWidth = 2 + 3 * acceso; ctx.stroke();
-        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r - 2, 0, Math.PI * 2); ctx.clip();
-        disegna(cx, cy, r * (1 + 0.1 * acceso));
-        ctx.restore();
+      // il filo d'oro del tempo, e chi ci cammina sopra
+      ctx.strokeStyle = 'rgba(255, 204, 61, 0.7)'; ctx.lineWidth = U * 0.008;
+      const fx = z => vx - U * 0.3 + (z - 1) * U * 0.075, fy = z => vy + U * 0.16 - (z - 1) * U * 0.045 + U * 0.14 / (0.6 + z * 0.3);
+      ctx.beginPath(); for (let z = 0.6; z <= 10; z += 0.2) { if (z === 0.6) ctx.moveTo(fx(z), fy(z)); else ctx.lineTo(fx(z), fy(z)); } ctx.stroke();
+      // chi cammina avanti e indietro sul filo: per Loro il tempo è una strada
+      const zc = 2.2 + 1.6 * Math.sin(c.t / 1500);
+      kzPalla(ctx, fx(zc), fy(zc) - U * 0.02, U * 0.025 / (0.6 + zc * 0.3) * 1.6, '#fff6d8', { alone: KZ.lilla });
+      kzEtichetta(c, 'paesaggio.passato', cx - U * 0.42, cy + U * 0.3, f(1, 1.5));
+      kzEtichetta(c, 'paesaggio.futuro', cx + U * 0.42, cy - U * 0.22, f(1.6, 2.1));
+      kzEtichetta(c, 'paesaggio.istante', cx + U * 0.3, cy + U * 0.18, f(3, 3.5), { colore: KZ.lilla });
+    },
+    // ---- Solo la gravità attraversa le dimensioni -----------------------
+    explain_gravity_leak(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'gravita.titolo', f(0, 0.6));
+      const W = U * 0.4, D = U * 0.09, sk = U * 0.12;
+      const fogli = [cy - U * 0.16, cy + U * 0.03, cy + U * 0.22];
+      fogli.forEach((y, i) => {
+        const a = kzMolla(f(0.3 + i * 0.3, 0.9 + i * 0.3));
+        if (a <= 0.01) return;
+        ctx.globalAlpha *= Math.min(1, a);
+        ctx.fillStyle = i === 1 ? 'rgba(46, 196, 182, 0.45)' : 'rgba(179, 136, 255, 0.22)';
+        ctx.beginPath(); ctx.moveTo(cx - W + sk, y - D); ctx.lineTo(cx + W + sk, y - D); ctx.lineTo(cx + W - sk, y + D); ctx.lineTo(cx - W - sk, y + D); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = i === 1 ? KZ.turchese : 'rgba(179, 136, 255, 0.6)'; ctx.lineWidth = U * 0.003; ctx.stroke();
+        ctx.globalAlpha /= Math.min(1, a);
       });
-      // al centro, il punto di domanda che nessuno sa sciogliere
-      ctx.font = `900 ${S * 0.3}px ${caratterePagina()}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = `rgba(253, 230, 138, ${0.35 + 0.2 * Math.sin(sec * 2)})`;
-      ctx.fillText('?', x, y + S * 0.02);
+      const mx = cx - U * 0.05, my = fogli[1];
+      kzPalla(ctx, mx, my - U * 0.02, U * 0.03, KZ.giallo, { alone: KZ.arancio });
+      kzEtichetta(c, 'gravita.noi', cx - U * 0.42, fogli[1] - U * 0.07, f(1.2, 1.7), { colore: KZ.turchese });
+      // la luce scivola sul nostro foglio e non ne esce
+      if (tt > 2) {
+        const q = ((tt - 2) % 2) / 2, lx = cx - W + 2 * W * q;
+        ctx.strokeStyle = 'rgba(255, 204, 61, 0.7)'; ctx.lineWidth = U * 0.006; ctx.beginPath(); ctx.moveTo(cx - W, my + D * 0.4); ctx.lineTo(lx, my + D * 0.4); ctx.stroke();
+        kzPalla(ctx, lx, my + D * 0.4, U * 0.009, '#fffbe6', { alone: KZ.giallo });
+        kzEtichetta(c, 'gravita.luce', cx + U * 0.34, my + U * 0.09, f(2.2, 2.7), { colore: KZ.arancio });
+      }
+      // la gravità invece si allarga in anelli che passano da un foglio all'altro
+      if (tt > 4) {
+        for (let k = 0; k < 3; k++) {
+          const q = ((tt - 4) / 1.6 + k / 3) % 1;
+          ctx.strokeStyle = `rgba(255, 126, 182, ${0.8 * (1 - q)})`; ctx.lineWidth = U * 0.005;
+          for (const y of fogli) { ctx.beginPath(); ctx.ellipse(mx, y, U * 0.25 * q, D * 0.8 * q, 0, 0, Math.PI * 2); ctx.stroke(); }
+        }
+        ctx.setLineDash([U * 0.008, U * 0.01]); ctx.strokeStyle = 'rgba(255, 126, 182, 0.7)'; ctx.lineWidth = U * 0.004;
+        ctx.beginPath(); ctx.moveTo(mx, fogli[0] - U * 0.04); ctx.lineTo(mx, fogli[2] + U * 0.04); ctx.stroke(); ctx.setLineDash([]);
+        kzEtichetta(c, 'gravita.passa', cx + U * 0.3, fogli[0] - U * 0.06, f(4.4, 4.9), { colore: KZ.rosa });
+      }
+    },
+    // ---- Il codice Morse dei libri --------------------------------------
+    explain_morse(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'morse.titolo', f(0, 0.6));
+      const MORSE = { A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--', N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..' };
+      const parola = (kzTesto('morse.parola') || 'STAY').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 7);
+      const lettere = [...parola];
+      const tot = lettere.reduce((n, l) => n + (MORSE[l] || '').length, 0);
+      const passo = 0.4, avanti = Math.max(0, (tt - 0.8) / passo);
+      const lw = U * 0.12, x0 = cx - (lettere.length - 1) * lw / 2;
+      // la mensola, e i libri che cadono uno per segno
+      const sy = cy + U * 0.2, bw = Math.min(U * 0.03, U * 0.8 / Math.max(1, tot + lettere.length));
+      ctx.fillStyle = '#7a4a2a'; ctx.fillRect(cx - U * 0.45, sy, U * 0.9, U * 0.02);
+      let k = 0, bx = cx - (tot + lettere.length - 1) * bw * 1.25 / 2;
+      lettere.forEach((l, i) => {
+        const codice = MORSE[l] || '';
+        const lx = x0 + i * lw;
+        const accesa = avanti >= k;
+        ctx.globalAlpha *= accesa ? 1 : 0.3;
+        kzEtichetta(c, null, lx, cy - U * 0.14, 1, { testo: l, colore: accesa ? KZ.giallo : undefined, grande: true });
+        ctx.globalAlpha /= accesa ? 1 : 0.3;
+        [...codice].forEach((seg, j) => {
+          const qui = avanti - k, sx = lx + (j - (codice.length - 1) / 2) * U * 0.028;
+          if (qui > 0) {
+            ctx.fillStyle = KZ.bianco;
+            if (seg === '.') { ctx.beginPath(); ctx.arc(sx, cy - U * 0.05, U * 0.008, 0, Math.PI * 2); ctx.fill(); }
+            else ctx.fillRect(sx - U * 0.012, cy - U * 0.055, U * 0.024, U * 0.01);
+            // il libro: basso per il punto, alto per la linea
+            const h = seg === '.' ? U * 0.08 : U * 0.15, cade = Math.min(1, qui * 2);
+            const yy = sy - h - (1 - cade) * U * 0.2;
+            ctx.fillStyle = [KZ.corallo, KZ.turchese, KZ.giallo, KZ.lilla, KZ.verde][k % 5];
+            ctx.save(); ctx.translate(bx + bw / 2, yy + h); ctx.rotate((1 - cade) * 0.6);
+            ctx.fillRect(-bw / 2, -h, bw, h); ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fillRect(-bw / 2, -h * 0.8, bw, h * 0.06);
+            ctx.restore();
+          }
+          bx += bw * 1.25; k++;
+        });
+        bx += bw * 1.25;
+      });
+      kzEtichetta(c, 'morse.punto', cx - U * 0.36, cy + U * 0.3, f(1.6, 2.1));
+      kzEtichetta(c, 'morse.linea', cx + U * 0.32, cy + U * 0.3, f(2.2, 2.7));
+      if (avanti > tot) kzEtichetta(c, null, cx, cy + U * 0.06, f(0.8 + (tot + 0.5) * passo, 0.8 + (tot + 1.5) * passo), { testo: parola + '!', colore: KZ.corallo, grande: true });
+    },
+    // ---- La polvere in binario ------------------------------------------
+    explain_binary(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'binario.titolo', f(0, 0.6));
+      const numeri = [38, 104], bit = numeri.map(n => n.toString(2).padStart(7, '0'));
+      const tutti = bit.join(''), N = tutti.length, sw = U * 0.05, x0 = cx - (N - 1) * sw / 2 - U * 0.05, y = cy + U * 0.1;
+      // il pavimento e le righe di polvere, larghe (1) e strette (0)
+      ctx.fillStyle = '#5a3a28'; ctx.beginPath(); ctx.moveTo(cx - U * 0.5, y - U * 0.06); ctx.lineTo(cx + U * 0.5, y - U * 0.06); ctx.lineTo(cx + U * 0.56, y + U * 0.12); ctx.lineTo(cx - U * 0.56, y + U * 0.12); ctx.closePath(); ctx.fill();
+      [...tutti].forEach((b, i) => {
+        const a = f(0.4 + i * 0.12, 0.7 + i * 0.12); if (a <= 0) return;
+        const x = x0 + i * sw + (i >= 7 ? U * 0.1 : 0), w = b === '1' ? sw * 0.6 : sw * 0.2;
+        ctx.fillStyle = `rgba(232, 206, 160, ${0.9 * a})`; ctx.fillRect(x - w / 2, y - U * 0.05, w, U * 0.16 * a);
+        const n = f(2.6 + i * 0.06, 2.9 + i * 0.06);
+        if (n > 0) kzEtichetta(c, null, x, y - U * 0.11, n, { testo: b, colore: b === '1' ? KZ.giallo : undefined });
+      });
+      kzEtichetta(c, 'binario.larga', cx - U * 0.36, y + U * 0.18, f(1.4, 1.9));
+      // i bit diventano numeri, e i numeri un posto sulla mappa
+      const num = f(4.4, 5);
+      if (num > 0) {
+        numeri.forEach((n, i) => kzEtichetta(c, null, cx - U * 0.2 + i * U * 0.4, cy - U * 0.14, num, { testo: kzNumero(n) + '°', colore: KZ.corallo, grande: true }));
+      }
+      const pin = kzMolla(f(5.6, 6.4));
+      if (pin > 0.01) {
+        const px = cx, py = cy - U * 0.15 - (1 - pin) * U * 0.1;
+        ctx.fillStyle = KZ.corallo; ctx.beginPath(); ctx.arc(px, py - U * 0.03, U * 0.025, Math.PI, 0); ctx.lineTo(px, py + U * 0.02); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(px, py - U * 0.03, U * 0.01, 0, Math.PI * 2); ctx.fill();
+        kzEtichetta(c, 'binario.nasa', px, py + U * 0.08, f(6, 6.5), { colore: KZ.turchese });
+      }
+    },
+    // ---- La gravità quantistica: il grande e il piccolissimo ------------
+    explain_quantum(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'quanti.titolo', f(0, 0.6));
+      const unisce = liscio(f(4.5, 6));
+      const lx = kzMix(cx - U * 0.27, cx - U * 0.06, unisce), rx = kzMix(cx + U * 0.27, cx + U * 0.06, unisce), y = cy + U * 0.03, R = U * 0.17 * (1 - 0.5 * unisce);
+      ctx.globalAlpha *= 1 - unisce * 0.85;
+      // il grande: galassia e pianeti in orbita
+      ctx.fillStyle = 'rgba(29, 47, 122, 0.6)'; ctx.beginPath(); ctx.arc(lx, y, R, 0, Math.PI * 2); ctx.fill();
+      kzGalassia(ctx, lx, y, R * 0.5, c.t / 2000);
+      for (let i = 0; i < 3; i++) { const a = c.t / (900 + i * 400) + i * 2, rr = R * (0.55 + i * 0.13); kzPalla(ctx, lx + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.5, R * 0.06, [KZ.ciano, KZ.corallo, KZ.verde][i]); }
+      // il piccolissimo: un atomo, con la nuvola che trema
+      ctx.fillStyle = 'rgba(42, 27, 94, 0.6)'; ctx.beginPath(); ctx.arc(rx, y, R, 0, Math.PI * 2); ctx.fill();
+      const d = { s: Math.floor(c.t / 80) };
+      ctx.fillStyle = 'rgba(105, 224, 255, 0.7)';
+      for (let i = 0; i < 60; i++) { const a = dado(d) * 6.28, q = Math.sqrt(dado(d)) * R * 0.75; ctx.beginPath(); ctx.arc(rx + Math.cos(a) * q, y + Math.sin(a) * q, Math.max(1, R * 0.015), 0, Math.PI * 2); ctx.fill(); }
+      kzPalla(ctx, rx + (dado(d) - 0.5) * R * 0.04, y, R * 0.12, KZ.corallo);
+      ctx.globalAlpha /= 1 - unisce * 0.85;
+      kzEtichetta(c, 'quanti.grande', cx - U * 0.27, y - U * 0.23, f(0.8, 1.3) * (1 - unisce), { colore: KZ.turchese });
+      kzEtichetta(c, 'quanti.piccolo', cx + U * 0.27, y - U * 0.23, f(1.8, 2.3) * (1 - unisce), { colore: KZ.lilla });
+      kzEtichetta(c, 'quanti.litigio', cx, y + U * 0.25, f(3, 3.5) * (1 - unisce), { colore: KZ.corallo });
+      // si incontrano in un posto solo: il cuore del buco nero
+      if (unisce > 0.01) {
+        kzBucoNero(ctx, cx, y, U * 0.09 * unisce, c.t);
+        const pulsa = 0.6 + 0.4 * Math.sin(c.t / 200);
+        const g = ctx.createRadialGradient(cx, y, 0, cx, y, U * 0.03);
+        g.addColorStop(0, rgba('#ffffff', pulsa)); g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, y, U * 0.03, 0, Math.PI * 2); ctx.fill();
+        kzEtichetta(c, 'quanti.singolarita', cx, y + U * 0.24, f(6, 6.5), { colore: KZ.giallo, grande: true });
+      }
+    },
+    // ---- L'anello del tempo ---------------------------------------------
+    explain_loop(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'anello.titolo', f(0, 0.6));
+      const R = U * 0.24, y = cy + U * 0.03, giro = c.t / 1000 * 0.9;
+      ctx.strokeStyle = 'rgba(255, 204, 61, 0.35)'; ctx.lineWidth = U * 0.02; ctx.beginPath(); ctx.arc(cx, y, R, 0, Math.PI * 2 * f(0.2, 1.4)); ctx.stroke();
+      const testa = giro % (Math.PI * 2);
+      for (let j = 0; j < 18; j++) {
+        const a = -Math.PI / 2 + testa - j * 0.05;
+        ctx.globalAlpha *= 1 - j / 18;
+        kzPalla(ctx, cx + Math.cos(a) * R, y + Math.sin(a) * R, U * 0.012 * (1 - j / 25), j ? KZ.giallo : '#ffffff');
+        ctx.globalAlpha /= 1 - j / 18;
+      }
+      const tappe = ['anello.coordinate', 'anello.partenza', 'anello.gargantua', 'anello.tesseratto'];
+      const disegni = [
+        (x, yy, r) => { ctx.fillStyle = '#e8cea0'; let px = x - r * 0.6; for (const l of [1, 0, 1, 1, 0]) { const w = l ? r * 0.22 : r * 0.08; ctx.fillRect(px, yy - r * 0.5, w, r); px += w + r * 0.1; } },
+        (x, yy, r) => { kzNave(ctx, x, yy + r * 0.1, r * 0.6, -Math.PI / 2, KZ.bianco); ctx.fillStyle = KZ.arancio; ctx.beginPath(); ctx.moveTo(x - r * 0.15, yy + r * 0.45); ctx.lineTo(x, yy + r * (0.8 + 0.1 * Math.sin(c.t / 60))); ctx.lineTo(x + r * 0.15, yy + r * 0.45); ctx.closePath(); ctx.fill(); },
+        (x, yy, r) => kzBucoNero(ctx, x, yy, r * 0.28, c.t, { lente: false }),
+        (x, yy, r) => { const k = 0.5 + 0.05 * Math.sin(c.t / 400), a = r * 0.55, b = a * k; ctx.strokeStyle = KZ.lilla; ctx.lineWidth = U * 0.004; ctx.strokeRect(x - a, yy - a, 2 * a, 2 * a); ctx.strokeRect(x - b, yy - b, 2 * b, 2 * b); for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.beginPath(); ctx.moveTo(x + sx * a, yy + sy * a); ctx.lineTo(x + sx * b, yy + sy * b); ctx.stroke(); } }
+      ];
+      tappe.forEach((ch, i) => {
+        const a = -Math.PI / 2 + i * Math.PI / 2, x = cx + Math.cos(a) * R, yy = y + Math.sin(a) * R, r = U * 0.065;
+        const k = kzMolla(f(0.6 + i * 0.4, 1.1 + i * 0.4)); if (k <= 0.01) return;
+        const dist = Math.abs(Math.atan2(Math.sin(testa - i * Math.PI / 2), Math.cos(testa - i * Math.PI / 2))), acceso = Math.max(0, 1 - dist / 0.6);
+        ctx.fillStyle = '#0a1030'; ctx.beginPath(); ctx.arc(x, yy, r * k, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = acceso > 0 ? KZ.giallo : 'rgba(244, 246, 255, 0.5)'; ctx.lineWidth = U * (0.004 + 0.006 * acceso); ctx.stroke();
+        ctx.save(); ctx.beginPath(); ctx.arc(x, yy, r * k * 0.95, 0, Math.PI * 2); ctx.clip(); disegni[i](x, yy, r * k); ctx.restore();
+        const ex = x + (i % 2 ? Math.cos(a) * U * 0.2 : U * 0.2), ey = yy + (i % 2 ? 0 : (i ? U * 0.02 : -U * 0.02));
+        kzEtichetta(c, ch, ex, ey, f(0.8 + i * 0.4, 1.3 + i * 0.4), acceso > 0.3 ? { colore: KZ.arancio } : {});
+      });
+      ctx.font = `900 ${U * 0.12}px ${caratterePagina()}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = rgba(KZ.giallo, 0.35 + 0.2 * Math.sin(c.t / 500)); ctx.fillText('?', cx, y + U * 0.01);
+      kzEtichetta(c, 'anello.inizio', cx - U * 0.36, cy + U * 0.3, f(4.6, 5.1), { colore: KZ.corallo });
+    },
+    // ---- La stazione che gira -------------------------------------------
+    explain_station(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'stazione.titolo', f(0, 0.6));
+      const x = cx - U * 0.12, y = cy + U * 0.04, R = U * 0.24, om = 0.5, a0 = c.t / 1000 * om;
+      ctx.fillStyle = '#0a1030'; ctx.beginPath(); ctx.arc(x, y, R * 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#9aa7c7'; ctx.lineWidth = R * 0.12; ctx.beginPath(); ctx.arc(x, y, R * 1.04, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = KZ.verde; ctx.lineWidth = R * 0.05; ctx.beginPath(); ctx.arc(x, y, R * 0.96, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 4; i++) { const a = a0 + i * Math.PI / 2; ctx.strokeStyle = 'rgba(154, 167, 199, 0.5)'; ctx.lineWidth = U * 0.004; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * R * 0.93, y + Math.sin(a) * R * 0.93); ctx.stroke(); }
+      kzPalla(ctx, x, y, R * 0.1, '#c3cbe0');
+      for (let i = 0; i < 10; i++) {
+        const a = a0 + i * Math.PI / 5;
+        ctx.save(); ctx.translate(x + Math.cos(a) * R * 0.93, y + Math.sin(a) * R * 0.93); ctx.rotate(a + Math.PI / 2);
+        if (i % 2) { ctx.fillStyle = KZ.giallo; ctx.fillRect(-R * 0.05, 0, R * 0.1, R * 0.09); ctx.fillStyle = KZ.corallo; ctx.beginPath(); ctx.moveTo(-R * 0.07, R * 0.09); ctx.lineTo(0, R * 0.15); ctx.lineTo(R * 0.07, R * 0.09); ctx.closePath(); ctx.fill(); }
+        else { kzOmino(ctx, 0, R * 0.09, R * 0.16, KZ.bianco, 1); if (i === 0) kzFreccia(ctx, R * 0.12, -R * 0.02, R * 0.12, R * 0.22, KZ.verde, U * 0.008, f(2, 2.6)); }
+        ctx.restore();
+      }
+      // la palla lasciata dal mozzo vola dritta, e il pavimento le viene incontro
+      const ciclo = 4, q = (c.t / 1000 % ciclo) / ciclo, nato = c.t / 1000 - q * ciclo;
+      const aP = nato * om + Math.PI * 0.2, sx = x + Math.cos(aP) * R * 0.3, sy = y + Math.sin(aP) * R * 0.3;
+      const vx = -Math.sin(aP), vy = Math.cos(aP), lung = Math.sqrt(0.93 * 0.93 - 0.09) * R, fq = Math.min(1, q / 0.75);
+      ctx.setLineDash([U * 0.008, U * 0.01]); ctx.strokeStyle = 'rgba(255, 204, 61, 0.7)'; ctx.lineWidth = U * 0.004;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + vx * lung, sy + vy * lung); ctx.stroke(); ctx.setLineDash([]);
+      kzPalla(ctx, sx + vx * lung * fq, sy + vy * lung * fq, R * 0.045, KZ.giallo);
+      kzEtichetta(c, 'stazione.gira', x, y + R * 1.35, f(0.6, 1.1));
+      kzEtichetta(c, 'stazione.spinta', cx + U * 0.3, cy - U * 0.12, f(2.2, 2.7), { colore: KZ.verde });
+      kzEtichetta(c, 'stazione.palla', cx + U * 0.3, cy + U * 0.02, f(3.6, 4.1), { colore: KZ.arancio });
+      kzEtichetta(c, 'stazione.peso', cx + U * 0.3, cy + U * 0.16, f(5, 5.5), { colore: KZ.corallo, grande: true });
     }
+  };
+  function storDisegnaSpiega(ctx, ef, t, L, H, ridotto, alfa) {
+    const disegna = STOR_SPIEGA_DISEGNI[ef.tipo];
+    if (!disegna) return;
+    // col movimento ridotto si vede subito l'ultima battuta, ferma
+    const tt = ridotto ? 30 : Math.max(0, (t - ef.inizio) / 1000);
+    // l'area libera: sotto al titolo, sopra ai sottotitoli
+    const alto = H * 0.15, basso = H * 0.84;
+    // sullo schermo largo i due lati restano a chi parla, piccolo in un angolo
+    const U = Math.min(L * (L > H ? 0.6 : 0.95), (basso - alto) * 1.55);
+    // `at: right` o `left` sposta il disegno dalla parte opposta a chi parla
+    const sposta = L > H ? ({ right: 0.1, left: -0.1 }[ef.dove] || 0) * L : 0;
+    const c = { ctx, L, H, U, cx: L / 2 + sposta, cy: (alto + basso) / 2 - H * 0.01, tt, t: ridotto ? 0 : t - ef.inizio, f: (a, b) => liscio((tt - a) / (b - a)) };
+    ctx.save();
+    ctx.globalAlpha = alfa;
+    kzFondo(c);
+    // la camera viva dei cartoni: entra con una spinta e poi respira
+    const k = (ridotto ? 1 : 0.94 + 0.06 * kzMolla(Math.min(1, tt / 0.7))) * (ridotto ? 1 : 1 + 0.015 * Math.sin(c.t / 2300));
+    ctx.translate(c.cx, c.cy); ctx.scale(k, k); ctx.translate(-c.cx, -c.cy);
+    try { disegna(c); } catch (_) { /* un disegno guasto non ferma la storia */ }
     ctx.restore();
   }
 
@@ -9852,8 +10400,8 @@
     'hypercube', 'dimensions', 'time_strip', 'books_fall', 'dust_binary', 'equations', 'morse_watch',
     // v488
     'tidal_orbit',
-    // v500: le animazioni delle «Interstellar» corte
-    'sphere_hole', 'light_bend', 'time_clocks', 'frame_drag', 'tidal_stretch', 'spin_gravity', 'spin_match', 'time_loop',
+    // v501: le spiegazioni a tutto schermo
+    ...STOR_SPIEGA,
     // v492: i rumori di bordo di «Interstellar»
     'engine', 'thrusters', 'docking', 'detach', 'alarm', 'decompression', 'metal_groan', 'turbulence', 'splash', 'ice_crack',
     'radio', 'spin_up', 'spin_down'];
@@ -10188,34 +10736,12 @@
       soffio(a, u, { t0: t, durata: 3.2, f0: 300, fm: 900, f1: 260, picco: 0.2 * v, attacco: 1.1, ciclo: true });
       tono(a, u, { t0: t, durata: 3.2, f0: 62, f1: 48, picco: 0.18 * v, attacco: 1, vibrato: [0.6, 4] });
     },
-    // v500: i rumori delle animazioni che spiegano. Discreti: stanno sotto
-    // a una battuta che spiega, non sopra
-    sphere_hole(a, u, t, d, v) {
-      tono(a, u, { t0: t, durata: 1.6, f0: 220, f1: 440, picco: 0.07 * v, attacco: 0.4, vibrato: [3, 5] });
-      soffio(a, u, { t0: t + 1.6, durata: 1.6, filtro: 'bandpass', f0: 900, f1: 1800, q: 3, picco: 0.08 * v, attacco: 0.5 });
-    },
-    light_bend(a, u, t, d, v) {
-      [880, 1175, 1568].forEach((f, k) => tono(a, u, { t0: t + k * 0.35, durata: 1.4, f0: f, f1: f * 0.98, picco: 0.045 * v, vibrato: [5, 6] }));
-    },
-    time_clocks(a, u, t, d, v) {
-      for (let k = 0; k < 10; k++) tono(a, u, { t0: t + k * 0.32, durata: 0.05, f0: k % 2 ? 1900 : 2400, picco: 0.07 * v, attacco: 0.003 });
-    },
-    frame_drag(a, u, t, d, v) {
-      soffio(a, u, { t0: t, durata: 3.4, filtro: 'bandpass', f0: 380, fm: 900, f1: 300, q: 2, picco: 0.22 * v, attacco: 1, ciclo: true });
-    },
-    tidal_stretch(a, u, t, d, v) {
-      tono(a, u, { t0: t + 0.6, durata: 2.2, f0: 180, f1: 70, tipo: 'triangle', picco: 0.09 * v, attacco: 0.3 });
-    },
-    spin_gravity(a, u, t, d, v) {
-      soffio(a, u, { t0: t, durata: 3.2, f0: 160, fm: 320, f1: 160, picco: 0.14 * v, attacco: 0.8, ciclo: true });
-    },
-    spin_match(a, u, t, d, v) {
-      tono(a, u, { t0: t, durata: 2.4, f0: 140, f1: 420, tipo: 'sawtooth', picco: 0.04 * v, attacco: 0.5 });
-      tono(a, u, { t0: t + 2.6, durata: 0.5, f0: 880, picco: 0.07 * v, attacco: 0.01 });
-    },
-    time_loop(a, u, t, d, v) {
-      [392, 494, 587, 784].forEach((f, k) => tono(a, u, { t0: t + k * 0.45, durata: 0.9, f0: f, picco: 0.05 * v, vibrato: [4, 5] }));
-    },
+    // v501: le spiegazioni a tutto schermo entrano con un soffio e un
+    // accordo leggero, sotto alla voce che spiega
+    ...Object.fromEntries(STOR_SPIEGA.map(k => [k, (a, u, t, d, v) => {
+      soffio(a, u, { t0: t, durata: 0.9, filtro: 'bandpass', f0: 500, f1: 2200, q: 1.5, picco: 0.1 * v, attacco: 0.35 });
+      [523, 659, 784].forEach((fr, i) => tono(a, u, { t0: t + 0.5 + i * 0.09, durata: 1.4, f0: fr, picco: 0.035 * v, attacco: 0.05 }));
+    }])),
     // v492, i rumori di bordo di «Interstellar»: chi guardava le due parti
     // vedeva le navicelle scivolare, agganciarsi, staccarsi ed esplodere in
     // silenzio. Non sono effetti visivi (nessuno ha un disegno): la storia li
