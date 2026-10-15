@@ -53,7 +53,8 @@ window.YOUTUBE_CLIENT_ID = window.YOUTUBE_CLIENT_ID || '';
 // senza `/` finale). Il deploy li scrive dalle variabili di repository dallo
 // stesso nome. Acceso senza indirizzo, l'app resta chiusa e lo dice: un
 // controllo che si spegne da solo quando manca un pezzo non è un controllo.
-window.ACCESSI_ATTIVO = window.ACCESSI_ATTIVO === true || window.ACCESSI_ATTIVO === 'true';
+// DISATTIVATO di serie: scrivere `true` per accenderlo.
+window.ACCESSI_ATTIVO = false;
 window.ACCESSI_URL = window.ACCESSI_URL || '';
 
 // Informazioni della copia locale. `version` e `builtAt` vanno aggiornati
@@ -61,8 +62,8 @@ window.ACCESSI_URL = window.ACCESSI_URL || '';
 // Actions li sostituisce con versione della cache, numero della build, commit
 // e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v504',
+  version: 'v505',
   build: '',
   commit: '',
-  builtAt: '2026-10-15T11:55:28.000Z'
+  builtAt: '2026-10-15T13:45:49.000Z'
 });
