@@ -1779,6 +1779,8 @@ prova('le «Interstellar · dentro la scienza» (v501): le spiegazioni a tutto s
     const scene = analizza(c.testo).scene;
     assert.ok(scene.length >= 15 && scene.length <= 22, nuova + ': ' + scene.length + ' scene');
     assert.ok(/story_title \{ id: 'storie\.titolo\.interstellar2?_scienza'/.test(c.testo), nuova + ': il suo titolo');
+    // v506: anche loro nello stile di Kurzgesagt, dalla prima scena
+    assert.ok(scene[0].azioni.some(a => a.comando === 'story_style' && a.parametri.look === 'kurzgesagt'), nuova + ': lo stile di Kurzgesagt');
     let spiegazioni = 0;
     scene.forEach((sc, i) => {
       const e = sc.azioni.filter(a => a.comando === 'effect' && /^explain_/.test(a.parametri.type));

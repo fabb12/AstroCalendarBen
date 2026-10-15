@@ -7657,6 +7657,20 @@
    * taglio sul bordo. */
   function disegnaDisco(ctx, x, y, R, pelle, decora) {
     const forma = () => { ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); };
+    // v506: nello stile di Kurzgesagt l'astro è una palla vera, senza il
+    // bordo panna né il pennino: getta l'ombra, sfuma verso il buio
+    if (stor.stile === 'kurz') {
+      kzSollevato(ctx, R * 2, () => { forma(); ctx.fillStyle = pelle; ctx.fill(); });
+      ctx.save(); forma(); ctx.clip();
+      if (decora) decora();
+      const v = ctx.createRadialGradient(x - R * 0.35, y - R * 0.4, R * 0.05, x, y, R * 1.02);
+      v.addColorStop(0, 'rgba(255, 255, 255, 0.35)'); v.addColorStop(0.45, 'rgba(255, 255, 255, 0)'); v.addColorStop(1, 'rgba(8, 6, 36, 0.4)');
+      ctx.fillStyle = v; ctx.fillRect(x - R, y - R, R * 2, R * 2);
+      ombraInterna(ctx, forma, rgba(mescolaColori(pelle, KURZ.ombra, 0.5), 0.9), R * 0.3, -R * 0.12, -R * 0.14);
+      ombraInterna(ctx, forma, rgba(schiarisci(pelle, 0.6), 0.6), R * 0.1, R * 0.04, R * 0.05);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.translate(R * 0.06, R * 0.08);
     forma(); ctx.fillStyle = 'rgba(12, 6, 30, 0.4)'; ctx.fill();
@@ -7912,10 +7926,19 @@
     // la figura di adesso: luce piena, col contorno d'inchiostro leggero
     const g = ctx.createLinearGradient(x, y - R, x, y + R * 1.4);
     g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, pelle); g.addColorStop(1, rgba('#a78bfa', 0.75));
-    ctx.beginPath(); sagoma(x, y);
-    ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07); ctx.stroke();
-    ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = rgba('#5b21b6', 0.7); ctx.lineWidth = Math.max(1, R * 0.035); ctx.stroke();
+    if (stor.stile === 'kurz') {
+      // v506: nello stile di Kurzgesagt niente contorno, ma l'ombra sotto e
+      // l'ombra fredda che sale dal basso: la luce ha un volume
+      kzSollevato(ctx, R * 2, () => { ctx.beginPath(); sagoma(x, y); ctx.fillStyle = g; ctx.fill(); });
+      const v = ctx.createLinearGradient(x - R, 0, x + R * 1.1, 0);
+      v.addColorStop(0, 'rgba(255, 255, 255, 0.25)'); v.addColorStop(0.5, 'rgba(255, 255, 255, 0)'); v.addColorStop(1, 'rgba(60, 30, 140, 0.35)');
+      ctx.beginPath(); sagoma(x, y); ctx.fillStyle = v; ctx.fill();
+    } else {
+      ctx.beginPath(); sagoma(x, y);
+      ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07); ctx.stroke();
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = rgba('#5b21b6', 0.7); ctx.lineWidth = Math.max(1, R * 0.035); ctx.stroke();
+    }
     // i fili di luce che salgono dal petto (le linee del tempo)
     ctx.strokeStyle = rgba(luce, 0.55); ctx.lineWidth = Math.max(0.7, R * 0.018);
     ctx.beginPath();
@@ -7926,7 +7949,8 @@
     ctx.stroke();
     // la testa, appena più chiara: è lì che sta il volto
     const tg = ctx.createRadialGradient(x - hr * 0.3, hy - hr * 0.35, hr * 0.1, x, hy, hr);
-    tg.addColorStop(0, '#ffffff'); tg.addColorStop(1, pelle);
+    tg.addColorStop(0, '#ffffff'); tg.addColorStop(stor.stile === 'kurz' ? 0.6 : 1, pelle);
+    if (stor.stile === 'kurz') tg.addColorStop(1, mescolaColori(pelle, '#7c5cd6', 0.45));
     ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(x, hy, hr * 0.98, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }

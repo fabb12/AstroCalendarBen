@@ -4216,3 +4216,27 @@ Kurzgesagt (`story_style`, quindi in «Apollo 13 · Dentro la scienza»):
 Le storie a inchiostro non cambiano. Prove: `prova-storie.js` (125),
 guardata in Chromium (`giro-storia.js`, nessun errore).
 
+### Lo stile di Kurzgesagt anche nelle «Interstellar · Dentro la scienza» (v506)
+
+«Applica lo stesso stile grafico anche agli altri personaggi e alle
+CosmoStorie Interstellar dentro la scienza.» Le due storie
+(`storia_interstellar_scienza`, `storia_interstellar2_scienza`) hanno
+`story_style { look: kurzgesagt }` nella prima scena: l'equipaggio, Mann,
+Murph, TARS e CASE, le navicelle (i moduli dell'Endurance, il Ranger, il
+Lander) si dipingono con `parteKurz`, con volume e ombre. Per gli altri
+personaggi che non passano da `parte`:
+
+- gli astri a disco (`disegnaDisco`: i pianeti di Miller e di Mann, le lune,
+  i pianeti) sono palle vere, senza il bordo panna né il pennino, con
+  l'ombra portata e il volume sfumato;
+- Loro (`disegnaPresenza`) perde il contorno viola e prende l'ombra sotto e
+  l'ombra fredda di lato;
+- il buco nero (Gargantua) usa il pennino e l'alone dello stile
+  (`storTintePennino`: indaco tenue, niente panna).
+
+Gli sfondi da cinema di «Interstellar» (wormhole, Gargantua, i mari di
+Miller, i ghiacci di Mann, il tesseratto, la stanza di Murph) restano
+quelli di prima. Le «Interstellar» originali restano a inchiostro. Prove:
+`prova-storie.js` (125; la prova delle «dentro la scienza» controlla anche
+lo stile), le due storie guardate intere in Chromium (nessun errore).
+

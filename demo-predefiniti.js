@@ -3412,6 +3412,7 @@
   scene solar_system_3d {
     // L'Endurance arriva a Saturno: piccola, in fondo, davanti agli anelli
     duration: 16s;
+    action: story_style { look: kurzgesagt };
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 12, orbit_from: 20, elev_from: 10, elev_to: 16, zoom_from: 0.8, zoom_to: 0.95 };
     action: story_camera { mode: wide };
     action: story_music { src: 'musica/Zenith_of_the_Quiet_Night.mp3', volume: 0.3 };
@@ -3620,6 +3621,7 @@
   scene solar_system_3d {
     // Dove finiva la Parte 1: il Ranger, piccolissimo, dentro la luce di Gargantua
     duration: 14s;
+    action: story_style { look: kurzgesagt };
     action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 4, elev_from: 65, elev_to: 65 };
     action: story_camera { mode: wide };
     action: story_music { src: 'musica/Observing_the_Zenith.mp3', volume: 0.3 };
