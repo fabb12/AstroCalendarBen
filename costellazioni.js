@@ -2903,17 +2903,27 @@ window.costMostraInCielo = function (sigla) {
   } catch (e) { /* si tenta con l'ora che c'è */ }
 
   if (quando !== adesso) costPortaOrologio(quando);
-  costGuardaVerso(centro, quando);
+  costGuardaVerso(centro, quando, sigla);
 };
 
-function costGuardaVerso(centro, quando) {
+function costGuardaVerso(centro, quando, sigla) {
   if (!sky.observer || typeof Astronomy === 'undefined') return;
   try {
     const t = Astronomy.MakeTime(quando || skyAdesso());
     const oggi = skyJ2000AllaData(centro.ra, centro.dec, t);
     const h = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
+    const voce = sigla ? costElencoVoci().find(v => v.sigla === sigla) : null;
+    const nome = voce ? voce.nome : costT('laCostellazione');
+    // La freccia viola: con «Segui il telefono» la mappa non si gira, e la
+    // direzione della figura restava detta solo nell'avviso (che sparisce).
+    // Si ricalcola dalle coordinate, perché la figura gira col cielo.
+    if (sigla && typeof skyImpostaTarget === 'function' && sky.target) skyImpostaTarget(sky.target);
+    if (sigla && typeof skyImpostaGuida === 'function') {
+      skyImpostaGuida({ tipo: 'costellazione', nome, sigla, ra: centro.ra, dec: centro.dec,
+        az: h.azimuth, alt: h.altitude });
+    }
     if (typeof skyCentraSu === 'function') {
-      skyCentraSu({ az: h.azimuth, alt: h.altitude, nome: 'la costellazione' });
+      skyCentraSu({ az: h.azimuth, alt: h.altitude, nome });
     }
     // Un campo da binocolo largo: una costellazione intera ci sta dentro,
     // e i disegni a questo campo sono al massimo della loro opacità
@@ -2937,7 +2947,7 @@ window.costPortami = function (sigla) {
     skyImpostaLuogoVista(meta.lat, meta.lon, meta.nome);
   }
   if (meglio) costPortaOrologio(meglio.quando);
-  costGuardaVerso(centro, meglio ? meglio.quando : adesso);
+  costGuardaVerso(centro, meglio ? meglio.quando : adesso, sigla);
 
   if (typeof skyAvviso === 'function') {
     const voce = costElencoVoci().find(v => v.sigla === sigla);

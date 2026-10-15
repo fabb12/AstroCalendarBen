@@ -8582,6 +8582,10 @@ const sky = {
   // `skyGranaScorrimento`).
   grana: null,
   target: null,          // id dell'astro da cercare
+  // Il bersaglio della freccia quando quello che si è cercato non è un astro
+  // dell'elenco: una costellazione o un luogo sulla Terra (§7.4, «La freccia
+  // guida»). { tipo: 'costellazione'|'luogo', nome, az, alt, ra?, dec? }
+  guida: null,
   // Oggetto rimasto sotto il mirino e avanzamento dell'apertura automatica
   // della sua scheda. La verifica gira a intervalli, non a ogni fotogramma.
   modalitaHover: true,
@@ -23111,46 +23115,263 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   ctx.restore();
 }
 
-// Freccia che guida verso l'astro cercato quando è fuori dallo schermo
-function skyDisegnaGuida(ctx, base, focale, o) {
+// ---------------------------------------------------------------------
+// La freccia guida
+//   Dice da che parte è finito quello che si è cercato, quando è fuori dallo
+//   schermo. Prima valeva solo per gli astri dell'elenco (`sky.target`): chi
+//   cercava una costellazione, una città o una montagna con «Segui il
+//   telefono» acceso si sentiva dire «segui la freccia» e una freccia non
+//   c'era — la mappa non si può girare da qui, e quindi la direzione era
+//   rimasta solo nell'avviso, che dopo pochi secondi se ne va. Adesso quei
+//   bersagli stanno in `sky.guida` e prendono la stessa freccia; il colore
+//   dice di che cosa si tratta (azzurro un astro, viola una costellazione,
+//   verde un luogo sulla Terra — il giallo resta del mirino).
+// ---------------------------------------------------------------------
+const SKY_GUIDA_COLORI = {
+  astro: '#60a5fa',
+  costellazione: '#c4b5fd',
+  luogo: '#34d399'
+};
+
+// Una costellazione cercata, o un luogo sulla Terra: diventa il bersaglio
+// della freccia al posto dell'astro scelto (i due si escludono, come nel
+// gesto di chi cerca: «adesso voglio quello»).
+function skyImpostaGuida(g) {
+  sky.guida = g ? Object.assign({}, g, { calcolatoA: null }) : null;
+}
+
+// Dove sta adesso il bersaglio della freccia. Una costellazione gira col
+// cielo, quindi si ricalcola dalle sue coordinate (una volta al secondo di
+// orologio del planetario: di più non si vedrebbe). Un luogo invece sta
+// fermo sulla Terra, ma la sua direzione dipende da dove si osserva: dopo un
+// «Vai qua» l'osservatore *è* quel luogo, e la freccia non ha più niente da
+// indicare.
+function skyPosizioneGuida() {
+  const g = sky.guida;
+  if (!g) return null;
+  if (g.tipo === 'luogo' && typeof g.lat === 'number') {
+    const da = skyLuogoDelCielo();
+    if (da) {
+      if (skyDistanzaGeograficaKm(da, g) < 0.5) { sky.guida = null; return null; }
+      g.az = skyAzimutGeografico(da, g);
+    }
+  } else if (typeof g.ra === 'number' && sky.observer && typeof Astronomy !== 'undefined') {
+    const secondo = Math.floor(skyAdesso().getTime() / 1000);
+    if (g.calcolatoA !== secondo) {
+      try {
+        const t = Astronomy.MakeTime(skyAdesso());
+        const oggi = skyJ2000AllaData(g.ra, g.dec, t);
+        const h = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
+        g.az = h.azimuth;
+        g.alt = h.altitude;
+        g.calcolatoA = secondo;
+      } catch (e) { /* resta l'ultima posizione buona */ }
+    }
+  }
+  return typeof g.az === 'number' && typeof g.alt === 'number' ? g : null;
+}
+
+// Dove la freccia può stare: il riquadro meno le due fasce che il cielo ha
+// già occupato (i comandi e la bussola in cima, la barra del tempo in fondo,
+// `skyFasceCielo`). Con l'ellisse di prima, sul telefono, una freccia verso
+// l'alto finiva proprio sotto alla fila dei comandi e non si vedeva.
+function skyRiquadroGuida(L, H, margine) {
+  const fasce = skyFasceCielo();
+  let alto = Math.max(margine, fasce.alta + margine - 14);
+  let basso = Math.min(H - margine, H - fasce.bassa - margine + 6);
+  // Telefono girato: fra le due fasce restano pochi pixel, e allora cede la
+  // fascia di sopra, come per il fumetto
+  if (basso - alto < 40) { alto = Math.max(margine, basso - 40); }
+  if (basso < alto) basso = alto;
+  return { sinistra: margine, destra: Math.max(margine, L - margine), alto, basso };
+}
+
+// Il punto sul bordo da cui la freccia indica: un raggio dal centro del
+// riquadro buono, fermato dal suo contorno. Non più un'ellisse: in verticale
+// l'ellisse metteva la freccia a metà strada fra bordo e centro proprio
+// nelle diagonali, dove sta quasi sempre.
+function skyPuntoGuida(angolo, L, H, margine) {
+  const r = skyRiquadroGuida(L, H, margine);
+  const c = Math.cos(angolo), s = Math.sin(angolo);
+  const ox = (r.sinistra + r.destra) / 2, oy = (r.alto + r.basso) / 2;
+  const mx = Math.max(1, (r.destra - r.sinistra) / 2), my = Math.max(1, (r.basso - r.alto) / 2);
+  const k = Math.min(Math.abs(c) > 1e-6 ? mx / Math.abs(c) : Infinity,
+    Math.abs(s) > 1e-6 ? my / Math.abs(s) : Infinity);
+  return { x: ox + c * k, y: oy + s * k, c, s, riquadro: r };
+}
+
+// Da che parte girarsi. Di norma è la via più corta sulla sfera, cioè la
+// direzione del bersaglio nel piano dello sguardo. Ma quando il bersaglio
+// sta alle spalle la via più corta passa spesso dallo zenit: la freccia
+// indicava in alto, e chi tiene in mano un telefono non si piega
+// all'indietro — si gira su se stesso. Con più di 90° di azimut da
+// recuperare si indica quindi il verso del giro, a destra o a sinistra;
+// non vicino allo zenit, dove l'azimut non vuol dire più niente.
+function skyAngoloGuida(p, v, base, separazione) {
+  const f = base.f;
+  const giro = ((Math.atan2(v[0], v[1]) - Math.atan2(f[0], f[1])) * SKY_R2D + 540) % 360 - 180;
+  const vicinoZenit = v[2] > 0.94 || f[2] > 0.94;   // sopra i 70° di altezza
+  if (separazione <= 60 || Math.abs(giro) <= 90 || vicinoZenit) return Math.atan2(-p.y, p.x);
+  return giro >= 0 ? 0 : Math.PI;
+}
+
+// Freccia che guida verso il bersaglio quando è fuori dallo schermo; quando
+// è dentro, per i bersagli che non sono astri, un anello che lo conferma
+// (gli astri il loro cerchio ce l'hanno già, in `skyDisegnaAstro`).
+function skyDisegnaGuida(ctx, base, focale, o, tipo = 'astro') {
   const L = sky.larghezza, H = sky.altezza;
+  const colore = SKY_GUIDA_COLORI[tipo] || SKY_GUIDA_COLORI.astro;
   const v = skyVettore(o.az, o.alt);
   const p = skyProietta(v, base, focale);
   const bordo = 26;
   const inVista = p.davanti && p.px > bordo && p.px < L - bordo && p.py > bordo && p.py < H - bordo;
-  if (inVista) return;
+  const t = performance.now() / 1000;
 
-  // Direzione verso cui girarsi, nel piano tangente allo sguardo
-  const angolo = Math.atan2(-p.y, p.x);
+  if (inVista) {
+    if (tipo !== 'astro') skyDisegnaAnelloGuida(ctx, p.px, p.py, colore, t);
+    return;
+  }
+
   const separazione = Math.acos(Math.max(-1, Math.min(1, skyDot(v, base.f)))) * SKY_R2D;
-
-  const raggioX = L / 2 - 44, raggioY = H / 2 - 44;
-  const x = L / 2 + Math.cos(angolo) * raggioX;
-  const y = H / 2 + Math.sin(angolo) * raggioY;
+  const angolo = skyAngoloGuida(p, v, base, separazione);
+  const R = 19;
+  const q = skyPuntoGuida(angolo, L, H, R + 22);
+  // Un respiro lento verso il bordo: la freccia si nota con la coda
+  // dell'occhio, ma non salta — un tremolio veloce stanca in pochi secondi
+  const spinta = Math.sin(t * 3.2) * 2;
+  const x = q.x + q.c * spinta, y = q.y + q.s * spinta;
 
   ctx.save();
+  // L'onda che si allarga attorno al tondo: è lei a dire «di qua» anche
+  // quando lo sguardo è sul centro dello schermo
+  const fase = (t % 1.8) / 1.8;
+  ctx.globalAlpha = 0.55 * (1 - fase);
+  ctx.strokeStyle = colore;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, R + 3 + fase * 16, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Il tondo di vetro scuro: si legge su un cielo diurno come sul terreno
+  ctx.shadowColor = colore;
+  ctx.shadowBlur = 16;
+  const fondo = ctx.createRadialGradient(x - R * 0.35, y - R * 0.35, 2, x, y, R);
+  fondo.addColorStop(0, 'rgba(51, 65, 85, 0.94)');
+  fondo.addColorStop(1, 'rgba(15, 23, 42, 0.94)');
+  ctx.fillStyle = fondo;
+  ctx.beginPath();
+  ctx.arc(x, y, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = colore;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  // La lancetta sul bordo del tondo, dalla parte del bersaglio: come su una
+  // bussola, dice la direzione anche a chi non guarda la punta
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.arc(x, y, R + 5, angolo - 0.55, angolo + 0.55);
+  ctx.stroke();
+
+  // La punta: una freccia da navigatore, con la tacca dietro
   ctx.translate(x, y);
   ctx.rotate(angolo);
+  const punta = ctx.createLinearGradient(-8, 0, 11, 0);
+  punta.addColorStop(0, colore);
+  punta.addColorStop(1, '#ffffff');
+  ctx.fillStyle = punta;
+  ctx.lineJoin = 'round';
   ctx.beginPath();
-  ctx.moveTo(16, 0);
-  ctx.lineTo(-10, 9);
-  ctx.lineTo(-10, -9);
+  ctx.moveTo(11, 0);
+  ctx.lineTo(-7, 8.5);
+  ctx.lineTo(-2.5, 0);
+  ctx.lineTo(-7, -8.5);
   ctx.closePath();
-  ctx.fillStyle = '#60a5fa';
   ctx.fill();
   ctx.restore();
 
+  skyDisegnaCartellinoGuida(ctx, x, y, R + 12, q, o, separazione, colore);
+}
+
+// Il nome e quanto girarsi, in una pillola appoggiata al tondo dalla parte
+// dello schermo (mai verso il bordo, dove finirebbe tagliata). Il margine
+// dipende da quanto è lunga la scritta: con un margine fisso «sotto
+// l'orizzonte» finiva mezzo fuori dallo schermo.
+function skyDisegnaCartellinoGuida(ctx, x, y, distanza, q, o, separazione, colore) {
+  const L = sky.larghezza, H = sky.altezza;
+  const nome = String(o.nome || '');
+  const sotto = typeof o.alt === 'number' && o.alt < 0;
+  const riga2 = astroI18n.t('sky.guida.ruota', { gradi: Math.round(separazione) }) +
+    (sotto ? ' · ' + astroI18n.t('sky.guida.sotto') : '');
+
   ctx.save();
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.fillStyle = '#bfdbfe';
-  ctx.textAlign = 'center';
+  ctx.font = '600 13px system-ui, sans-serif';
+  const l1 = ctx.measureText(nome).width;
+  ctx.font = '500 11px system-ui, sans-serif';
+  const l2 = ctx.measureText(riga2).width;
+  const largo = Math.min(L - 16, Math.max(l1, l2) + 30), alto = 38;
+  // Il centro della pillola, spinto verso l'interno quanto basta perché il
+  // suo ingombro in quella direzione non tocchi il tondo
+  const ingombro = Math.abs(q.c) * largo / 2 + Math.abs(q.s) * alto / 2;
+  let cx = x - q.c * (distanza + ingombro);
+  let cy = y - q.s * (distanza + ingombro);
+  const r = q.riquadro;
+  cx = Math.max(8 + largo / 2, Math.min(L - 8 - largo / 2, cx));
+  cy = Math.max(r.alto - 20 + alto / 2, Math.min(r.basso + 20 - alto / 2, cy));
+  const x0 = cx - largo / 2, y0 = cy - alto / 2;
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 2;
+  skyPillola(ctx, x0, y0, largo, alto, 12, 'rgba(15, 23, 42, 0.86)');
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = colore;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Il pallino del colore: lo stesso della freccia, perché si capisca di
+  // chi è questa scritta anche quando le due stanno lontane in un angolo
+  ctx.fillStyle = colore;
+  ctx.beginPath();
+  ctx.arc(x0 + 13, y0 + 13, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const etichetta = `${o.nome} · ${Math.round(separazione)}°` + (o.alt < 0 ? ' (sotto l\'orizzonte)' : '');
-  // Il margine da tenere dipende da quanto è lunga la scritta: con un
-  // margine fisso "(sotto l'orizzonte)" finiva mezzo fuori dallo schermo
-  const meta = ctx.measureText(etichetta).width / 2 + 10;
-  const dy = y < H / 2 ? 26 : -26;
-  ctx.fillText(etichetta, Math.max(meta, Math.min(L - meta, x)), y + dy);
+  ctx.font = '600 13px system-ui, sans-serif';
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillText(nome, x0 + 22, y0 + 13, largo - 30);
+  ctx.font = '500 11px system-ui, sans-serif';
+  ctx.fillStyle = sotto ? '#cbd5e1' : colore;
+  ctx.fillText(riga2, x0 + 22, y0 + 27, largo - 30);
+  ctx.restore();
+}
+
+// Il segno sul bersaglio quando è arrivato sullo schermo: due archi che
+// girano piano, come un mirino che ha agganciato. Una costellazione o un
+// luogo non hanno un disco da cerchiare, e senza questo segno non si sa
+// quando smettere di girarsi.
+function skyDisegnaAnelloGuida(ctx, x, y, colore, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t * 0.8);
+  ctx.lineCap = 'round';
+  for (const [tinta, spessore] of [['rgba(2, 6, 16, 0.55)', 4.5], [colore, 2]]) {
+    ctx.strokeStyle = tinta;
+    ctx.lineWidth = spessore;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(0, 0, 22, i * 2.094 + 0.25, i * 2.094 + 1.6);
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 
@@ -23459,6 +23680,13 @@ function skyDisegna() {
   const bersaglio = daDisegnare.find(o => o.id === sky.target) ||
     (sky.target ? skyVoceDiId(sky.target) : null);
   if (bersaglio && typeof bersaglio.az === 'number') skyDisegnaGuida(ctx, base, focale, bersaglio);
+  // Una costellazione o un luogo cercati (`sky.guida`): stessa freccia, col
+  // loro colore. In una demo no: la camera la governa il racconto, e una
+  // freccia rimasta da una ricerca di prima indicherebbe altrove.
+  else if (sky.guida && !(window.AstroDemo && window.AstroDemo.silenzioso)) {
+    const g = skyPosizioneGuida();
+    if (g) skyDisegnaGuida(ctx, base, focale, g, g.tipo);
+  }
 
   // Cerchio attorno all'oggetto di cui è aperta la scheda, quando non è un
   // astro dell'elenco (una galassia, una stella di una figura): senza questo
@@ -25916,12 +26144,20 @@ function skyScegliLuogoDaRicerca(luogo) {
   // A quota zero la targhetta indica la direzione geografica anche per un
   // luogo lontano, fuori dalla porzione di rilievo che abbiamo scaricato.
   const punto = { ...luogo, az, alt: 0, km };
-  sky.target = null;
+  if (sky.target) skyImpostaTarget(sky.target);
+  // La freccia verde lo tiene indicato anche dopo che l'avviso se ne va:
+  // col telefono che punta la mappa non si gira da sola, e quella direzione
+  // era rimasta scritta solo in un avviso di dieci secondi.
+  skyImpostaGuida({ tipo: 'luogo', nome: luogo.nome, lat: luogo.lat, lon: luogo.lon, az, alt: 0 });
   skyCentraSu(punto);
   skyMostraVaiQua(punto, sky.larghezza / 2, sky.altezza / 2);
   const quota = luogo.quota !== null ? ` · quota ${Math.round(luogo.quota)} m` : '';
-  skyAvviso('luogo-cercato', `${luogo.nome} è verso ${skyNomeDirezione(az)} (${Math.round(az)}°), ` +
-    `a ${luogoDistanzaTesto(km)}${quota}. La mappa guarda ora in quella direzione.`, 10000);
+  // Col telefono la mappa non si è girata: l'avviso giusto è quello di
+  // `skyCentraSu` («girati da quella parte»), non «la mappa guarda ora».
+  if (!skyUsaSensori()) {
+    skyAvviso('luogo-cercato', `${luogo.nome} è verso ${skyNomeDirezione(az)} (${Math.round(az)}°), ` +
+      `a ${luogoDistanzaTesto(km)}${quota}. La mappa guarda ora in quella direzione.`, 10000);
+  }
   const campo = document.getElementById('skymap-astri-cerca');
   if (campo) campo.blur();
   skyMostraGruppo('');
@@ -26070,6 +26306,9 @@ function skyImpostaTarget(id, opzioni = {}) {
   }
   const spegni = sky.target === id && !opzioni.mantieni;
   sky.target = spegni ? null : id;
+  // Un astro scelto prende il posto della costellazione o del luogo cercati:
+  // due frecce insieme non dicono più da che parte girarsi
+  sky.guida = null;
   sky.cacheOrari = { chiave: null, valore: null };
 
   if (spegni) {
@@ -28492,9 +28731,11 @@ function skyCentraSu(o, opzioni = {}) {
   if (skyUsaSensori()) {
     // Il telefono sta puntando: la mappa non si può spostare da qui, ma si
     // può dire da che parte girarsi (e come sganciare la vista, se preferisce)
-    skyAvviso('centratura', `${o.nome} sta verso ${skyNomeDirezione(o.az)}, a ${Math.round(o.alt)}° di altezza: ` +
-      'girati da quella parte e segui la freccia azzurra. Se preferisci muovere la mappa col dito, ' +
-      'spegni “Segui il telefono”.', 9000);
+    // La freccia c'è davvero per tutti i bersagli (vedi «La freccia guida»),
+    // ma non è più sempre azzurra: l'avviso dice solo «la freccia».
+    skyAvviso('centratura', astroI18n.t('sky.guida.girati', {
+      nome: o.nome, direzione: skyNomeDirezione(o.az), altezza: Math.round(o.alt)
+    }), 9000);
     return;
   }
 
@@ -29539,6 +29780,7 @@ function skyInizializzaGesti() {
       // acceso con guida e traccia dell'orbita. Spegnerlo tramite la stessa
       // funzione usata dall'elenco aggiorna anche pillole e dati collegati.
       if (sky.target) skyImpostaTarget(sky.target);
+      sky.guida = null;
       skyChiudiDettaglio();
       return;
     }
