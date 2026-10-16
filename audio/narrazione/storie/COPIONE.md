@@ -11,12 +11,12 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **222/367** in italiano · **0/234** in inglese.
+Pronte: **221/367** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
 | Luna | `storie/luna/` | 17 | 14/17 | 0/11 |
-| Terra | `storie/terra/` | 33 | 32/33 | 0/4 |
+| Terra | `storie/terra/` | 33 | 31/33 | 0/4 |
 | Sole | `storie/sole/` | 21 | 8/21 | 0/10 |
 | Saturno | `storie/saturno/` | 4 | 1/4 | 0/2 |
 | Giove | `storie/giove/` | 7 | 3/7 | 0/1 |
@@ -263,10 +263,10 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
-- `studio_cosa_e_la_gravita_2-2.mp3` — pronta · 3,1 s · Studio: Cosa è la gravità?, scena 2 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-2.mp3` — **troppo lunga** · 3,1 s · Studio: Cosa è la gravità?, scena 2 (al massimo 2 s)
   - **Emozione:** da bullo — 
   - **Testo:** Sei solo una luna!!
-  - **Da incollare su ElevenLabs v3:** `[mischievously] Sei solo una luna!!`
+  - **Da incollare su ElevenLabs v3:** `[sarcastic] Sei solo una luna!! [chuckles] [giggles] [skeptical]`
 - `studio_cosa_e_la_gravita_2-3.mp3` — pronta · 3,1 s · Studio: Cosa è la gravità?, scena 3 (al massimo 4 s)
   - **Emozione:** ride — 
   - **Testo:** ah ah ah!!!
