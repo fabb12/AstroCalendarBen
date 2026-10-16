@@ -12205,7 +12205,7 @@
       "titolo": "Cosa è la gravità?",
       "scopo": "libera",
       "obiettivo": "capire l'importanza della gravità tra gli astri.",
-      "ufficiale": false,
+      "ufficiale": true,
       "origine": "",
       "sostituisce": "",
       "cast": [
@@ -14381,7 +14381,7 @@
       "demoChiave": "utente-mux38l7v-er8axq5pzbj",
       "voceChiave": "studio_cosa_e_la_gravita",
       "voceProssima": 46,
-      "aggiornato": 1792097412453,
+      "aggiornato": 1792175575842,
       "lingua": "it",
       "musica": {
         "tipo": "catalogo",
