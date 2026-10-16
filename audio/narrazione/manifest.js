@@ -820,6 +820,62 @@
       it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-40.webm', impronta: '4b5d0e18', firma: 'c5930fec76', testo: "Cos' è un buco nero?" }
     },
 
+    'studio.studio_cosa_e_la_gravita_2.2': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-2.mp3', impronta: '47345a07', firma: '1719967ed2', testo: "Sei solo una luna!!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.3': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-3.mp3', impronta: '9b60ebf7', firma: '449bcc100c', testo: "ah ah ah!!!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.9': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-9.mp3', impronta: 'bb51ba43', firma: '6164cbdcee', testo: "oh no! adesso cosa faccio?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.12': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-12.mp3', impronta: '08f01c36', firma: '91e918044b', testo: "Continuo a non capire." }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.14': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-14.mp3', impronta: 'bf7d1b25', firma: 'f05b641241', testo: "Potresti spiegarti meglio?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.16': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-16.mp3', impronta: '7e6f63c4', firma: '0a1f50251c', testo: "Cos' è la massa, cos' è un peso e che cosa è un volume?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.20': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-20.mp3', impronta: 'd8b5d073', firma: '7f5a1dede8', testo: "Oh! Che spavento! Chi ha parlato?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.22': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-22.mp3', impronta: '1ed77ddb', firma: '8854fb9e81', testo: "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.23': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-23.mp3', impronta: 'cdb959e2', firma: '49472a2dee', testo: "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.25': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-25.mp3', impronta: 'eeea7c5a', firma: '6a1d8a9d62', testo: "Oh! Scusa! Continua." }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.27': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-27.mp3', impronta: '4419d2cf', firma: '69422fb791', testo: "Wow! Non sapevo che la scienza potesse essere così bella." }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.29': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-29.mp3', impronta: 'a61f18ae', firma: 'dd721633b5', testo: "Cosa? Di nuovo? Chi ha parlato?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.35': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-35.mp3', impronta: '237c9ef7', firma: 'fb5132e7d2', testo: "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?" }
+    },
+
+    'studio.studio_cosa_e_la_gravita_2.37': {
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-37.mp3', impronta: '4b5d0e18', firma: '799d9f3d9a', testo: "Cos' è un buco nero?" }
+    },
+
     'studio.studio_la_rivoluzione_di_ganimede_e_f.2': {
       it: { file: 'storie/terra/it/studio_la_rivoluzione_di_ganimede_e_f-2.mp3', impronta: 'f2b776ba', firma: '3aef71aa60', testo: "E ci risiamo." }
     },

@@ -2638,7 +2638,7 @@
       "emozione": "preoccupato",
       "come": "",
       "conTag": {
-        "it": "[nervous] oh no! adesso cosa faccio?"
+        "it": "[nervous] [gasps] oh no! adesso cosa faccio?"
       }
     },
     "studio.studio_cosa_e_la_gravita_2.10": {
@@ -2715,7 +2715,7 @@
       "emozione": "sorpreso",
       "come": "",
       "conTag": {
-        "it": "[surprised] Oh! Che spavento! Chi ha parlato?"
+        "it": "[surprised] [gasps] Oh! Che spavento! Chi ha parlato?"
       }
     },
     "studio.studio_cosa_e_la_gravita_2.21": {
