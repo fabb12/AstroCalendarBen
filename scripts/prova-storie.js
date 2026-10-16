@@ -757,6 +757,48 @@ prova('il palco della 3D (v439): chi trema non fa tremare il vicino, e il vicino
   S.sgombra();
   delete globalThis.sol;
 });
+prova('il palco della 3D (v508): una luna personaggio non trema accanto al suo pianeta che si muove', () => {
+  // La 3D mette la Luna attorno alla Terra **come è mostrata**: col tremito,
+  // il dondolio di chi parla e il passo di lato del palco. Con la Luna
+  // personaggio anche lei, palco e Luna si rincorrevano a ogni fotogramma
+  S.sgombra();
+  globalThis.sol = SOL_FINTO();
+  scena({ Earth: {}, Moon: {} });
+  const terra = S.stato.personaggi.get('Earth');
+  const T = { x: 0.6, y: 0.2, z: 0 };
+  const giro = () => {
+    const rT = S.raggio3D('Earth', 3);
+    const st = S.scena3D('Earth', T, rT);
+    // come solScenaLuna: la Luna a due raggi (da fermo) dalla Terra mostrata
+    const passo = (S.raggioFermo3D('Earth', rT) * 2 + 8) / globalThis.sol.scala;
+    const vl = { x: st.x + 0.6 * passo, y: st.y + 0.8 * passo, z: st.z };
+    const rL = S.raggio3D('Moon', 2);
+    const sl = S.scena3D('Moon', vl, rL);
+    return [{ id: 'Earth', rDisegno: rT, scena: st, schermo: proietta(st) }, { id: 'Moon', rDisegno: rL, scena: sl, schermo: proietta(sl) }];
+  };
+  for (let k = 0; k < 150; k++) { avanza(16); S.disegnaSistema(telaFinta().ctx, { corpi: giro(), sole: null }); }
+  terra.animazioni = [{ tipo: 'shake', u: 0, volte: 12, forza: 1 }];
+  const posti = [];
+  for (let k = 0; k < 250; k++) {
+    avanza(16);
+    terra.animazioni[0].u = Math.min(0.999, k / 250);
+    const corpi = giro();
+    S.disegnaSistema(telaFinta().ctx, { corpi, sole: null });
+    if (k >= 60) posti.push(corpi[1].schermo);
+  }
+  let salti = 0;
+  for (let i = 1; i < posti.length; i++) salti += Math.hypot(posti[i].px - posti[i - 1].px, posti[i].py - posti[i - 1].py);
+  assert.ok(salti < 3, 'la Luna non trema con la Terra: si è mossa di ' + salti.toFixed(2) + ' px in tutto');
+  // il raggio da fermo toglie il gonfiarsi del momento
+  terra.kOscilla = 1.2;
+  assert.ok(Math.abs(S.raggioFermo3D('Earth', 36) - 30) < 1e-9, 'raggio da fermo');
+  assert.equal(S.raggioFermo3D('Jupiter', 36), 36, 'chi non è in scena resta com\'è');
+  terra.animazioni = [];
+  S.sgombra();
+  // i ritorni a casa finiscono, così la prova dopo trova le lune al loro posto
+  avanza(5000); S.scena3D('Earth', T, 3); S.scena3D('Moon', T, 2);
+  delete globalThis.sol;
+});
 prova('le occlusioni della 3D: chi sta dietro si disegna prima e il disco di chi gli passa davanti gli taglia il volto', () => {
   S.sgombra();
   globalThis.sol = SOL_FINTO();
@@ -1779,8 +1821,6 @@ prova('le «Interstellar · dentro la scienza» (v501): le spiegazioni a tutto s
     const scene = analizza(c.testo).scene;
     assert.ok(scene.length >= 15 && scene.length <= 22, nuova + ': ' + scene.length + ' scene');
     assert.ok(/story_title \{ id: 'storie\.titolo\.interstellar2?_scienza'/.test(c.testo), nuova + ': il suo titolo');
-    // v506: anche loro nello stile di Kurzgesagt, dalla prima scena
-    assert.ok(scene[0].azioni.some(a => a.comando === 'story_style' && a.parametri.look === 'kurzgesagt'), nuova + ': lo stile di Kurzgesagt');
     let spiegazioni = 0;
     scene.forEach((sc, i) => {
       const e = sc.azioni.filter(a => a.comando === 'effect' && /^explain_/.test(a.parametri.type));
@@ -1892,57 +1932,6 @@ prova('lo stile di Kurzgesagt (v504): story_style lo accende, niente pennino d\'
   S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [], 800, 600);
   assert.equal(S.stile(), 'ink');
   globalThis.AstroDemo.inCorso = true;
-  S.sgombra();
-});
-prova('lo stile di Kurzgesagt leggero (v507): ombre a strati senza sfocature, e più leggero ancora se i fotogrammi sono lenti', () => {
-  // Fino alla v506 ogni pezzo dei personaggi aveva tre ombre sfocate
-  // (`shadowBlur`): su un telefono le scene di «Apollo 13» andavano a 5
-  // fotogrammi al secondo. Ora nessuna sfocatura, e il volume a strati resta
-  const disegna = (leggero) => {
-    S.sgombra();
-    S.leggero(leggero);
-    motore.avvia(demo(sc('planetarium_view', 'story_style { look: kurzgesagt }', "character_show { target: 'lovell', expression: 'happy' }",
-      "character_show { target: 'Mars' }", "character_show { target: 'loro' }")), { ripristina() {} });
-    passo(10);
-    const sfocature = [], riempimenti = [], ombreNette = [];
-    const { ctx } = telaFinta();
-    const spia = new Proxy(ctx, {
-      set(o, k, v) { if (k === 'shadowBlur' && v > 0) sfocature.push(v); o[k] = v; return true; },
-      get(o, k) {
-        if (k === 'fill') return (...a) => { riempimenti.push(a[0] || ''); if (o.shadowOffsetY && !o.shadowBlur) ombreNette.push(1); };
-        const v = o[k]; return typeof v === 'function' ? v.bind(o) : v;
-      }
-    });
-    for (let k = 0; k < 3; k++) { avanza(16); S.disegnaPersonaggi(spia, 'cielo', [corpo('lovell', 250, 300, 3), corpo('Mars', 450, 300, 60), corpo('loro', 620, 300, 3)], 800, 600); }
-    motore.ferma && motore.ferma();
-    return { sfocature, riempimenti, strati: riempimenti.filter(x => x === 'evenodd').length };
-  };
-  const piena = disegna(false);
-  assert.equal(piena.sfocature.length, 0, 'nessuna sfocatura: ' + piena.sfocature.slice(0, 5).join(', '));
-  assert.ok(piena.strati > 30, 'il volume a strati (le falci d\'ombra e di luce): ' + piena.strati);
-  const leggera = disegna(true);
-  assert.equal(leggera.sfocature.length, 0, 'leggero: nessuna sfocatura');
-  assert.ok(leggera.strati > 10 && leggera.strati < piena.strati * 0.7, 'leggero: meno strati (' + leggera.strati + ' contro ' + piena.strati + ')');
-  assert.ok(leggera.riempimenti.length < piena.riempimenti.length, 'leggero: meno riempimenti');
-  // la scelta automatica: fotogrammi lenti per più di due secondi
-  S.sgombra();
-  S.leggero('auto');
-  motore.avvia(demo(sc('planetarium_view', 'story_style { look: kurzgesagt }', "character_show { target: 'lovell' }")), { ripristina() {} });
-  passo(10);
-  for (let k = 0; k < 20; k++) { avanza(16); S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
-  assert.equal(S.leggero(), false, 'a 60 fotogrammi al secondo resta pieno');
-  for (let k = 0; k < 40; k++) { avanza(90); S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
-  assert.equal(S.leggero(), true, 'a 11 fotogrammi al secondo si alleggerisce');
-  motore.ferma && motore.ferma();
-  // le storie a inchiostro non misurano niente
-  S.sgombra();
-  S.leggero('auto');
-  motore.avvia(demo(sc('planetarium_view', "character_show { target: 'lovell' }")), { ripristina() {} });
-  passo(10);
-  for (let k = 0; k < 40; k++) { avanza(90); S.disegnaPersonaggi(telaFinta().ctx, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
-  assert.equal(S.leggero(), false, 'l\'inchiostro non si alleggerisce');
-  motore.ferma && motore.ferma();
-  S.leggero(false);
   S.sgombra();
 });
 prova('le scene del film di «Apollo 13» (v504): si disegnano a tutto schermo, a ogni istante, anche ferme', () => {

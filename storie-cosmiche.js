@@ -1803,10 +1803,6 @@
     anteprima: null,           // l'anteprima della pagina Demo, se è aperta
     ridotto: false,
     stile: 'ink',              // v504: 'ink' (la fiaba d'inchiostro) o 'kurz' (Kurzgesagt, `story_style`)
-    // v507: il disegno di Kurzgesagt alleggerito (un solo strato d'ombra,
-    // niente ombre portate degli oggetti, metà delle luci sfocate), deciso da
-    // `storTic` quando i fotogrammi restano lenti; vale per tutta la sessione
-    leggero: false, passoMedio: 0, passiKurz: 0, tempoKurz: 0,
     // La vista 3D (§5-bis): dove ogni astro sarebbe davvero e dove la
     // storia lo ha messo, nelle unità della scena; i ritorni di chi è uscito
     // di scena spostato o ingrandito; gli effetti speciali in corso (§6-ter).
@@ -1839,15 +1835,6 @@
     if (!demoInPausa()) stor.orologio += dt;
     if (suono.file.size) storSuoniFileInPausa(demoInPausa());
     stor.ridotto = movimentoRidotto();
-    // v507: il passo dei fotogrammi nello stile di Kurzgesagt. Se per un paio
-    // di secondi resta sotto i 22 al secondo (un telefono che non ce la fa),
-    // il disegno si alleggerisce e resta leggero: tornare indietro farebbe
-    // dondolare la scena fra i due disegni
-    if (stor.stile === 'kurz' && !stor.leggero && dt > 0 && !stor.anteprima) {
-      stor.passoMedio = stor.passiKurz ? stor.passoMedio * 0.9 + dt * 0.1 : dt;
-      stor.passiKurz++; stor.tempoKurz += dt;
-      if (stor.tempoKurz > 2000 && stor.passiKurz >= 20 && stor.passoMedio > 45) stor.leggero = true;
-    }
     // Una demo finita (anche male) non lascia personaggi sul cielo: è la rete
     // sotto alle chiusure delle azioni, che di regola bastano da sole.
     const d = radice.AstroDemo;
@@ -2369,7 +2356,11 @@
       const ox = (s.cx || L / 2) + (s.panX || 0), oy = (s.cy || H / 2) + (s.panY || 0);
       return v3.piu(dalloSchermo(assi, L * fx - ox, H * fy - oy), v3.per(assi.w, v3.punto(vera, assi.w)));
     }
-    const b = stor.mosse.get(moto.verso) || stor.vere.get(moto.verso);
+    // v508: accanto a un personaggio, accanto a dove **sta** (senza il suo
+    // dondolio e il passo di lato del palco): se no chi arriva lo spinge, il
+    // palco lo sposta, la meta si sposta con lui, e i due si rincorrono
+    const qb = stor.personaggi.get(moto.verso), mb = stor.mosse.get(moto.verso);
+    const b = qb && qb.fermo3D && mb ? { scena: qb.fermo3D.fermo, r: mb.r } : mb || stor.vere.get(moto.verso);
     if (!b) return null;
     const rMio = Math.max(pg.rMostrato || 0, r || 0, 2);
     const passo = ((b.r || 2) + rMio) * 1.3 * (moto.distanza || 1) + 8;
@@ -2449,8 +2440,21 @@
     if ((!stor.personaggi.size && !stor.ritorni.size) || !vera) return vera;
     const s = storBanco3D();
     const cid = storCanonico(id);
-    stor.vere.set(cid, { scena: vera, r: r || 0 });
     const pg = stor.personaggi.get(cid);
+    // v508, «se ci sono i pianeti troppo vicini tremano in modo innaturale».
+    // La 3D mette una luna attorno al suo pianeta **come è mostrato**: con
+    // il dondolio di quando parla e col passo di lato del palco. Se la luna
+    // è un personaggio anche lei, il palco la spinge via dal pianeta, il
+    // pianeta si sposta, la luna gli va dietro e torna a spingerlo: Terra e
+    // Luna, una che parla e l'altra accanto, si rincorrevano a ogni
+    // fotogramma (misurato in Chromium: la Luna cambiava verso 40 volte in
+    // 56 fotogrammi). Una luna personaggio segue il viaggio del suo pianeta,
+    // non il suo dondolio né il suo passo di lato: quelli sono del pianeta.
+    if (pg) {
+      const padre = storPadreDi(cid), pp = padre && stor.personaggi.get(padre);
+      if (pp && pp.fermo3D && pp.fermo3D.delta) vera = v3.meno(vera, pp.fermo3D.delta);
+    }
+    stor.vere.set(cid, { scena: vera, r: r || 0 });
     if (!pg) {
       const rt = stor.ritorni.get(cid);
       if (!rt) return storLunaReagisce(cid, vera, s);
@@ -2501,7 +2505,7 @@
     // Se il punto mostrato è proprio `base`, lo si copia: il perno deve poter
     // riconoscere la risposta di questo fotogramma da quella di un altro
     if (P === base) P = { x: base.x, y: base.y, z: base.z };
-    pg.fermo3D = { mostrato: P, fermo: base };
+    pg.fermo3D = { mostrato: P, fermo: base, delta: v3.meno(P, base) };
     return P;
   }
 
@@ -2519,6 +2523,15 @@
    * deve essere. `mostrato` è il punto che `storScena3D` ha dato in questo
    * fotogramma: se il corpo non è più quello (un'altra vista, un altro
    * giro), si torna al punto dell'app. */
+  /* Il raggio da fermo (v508): quello mostrato senza il gonfiarsi del
+   * momento (`pg.kOscilla`, una sillaba, un battito). La 3D ci misura la
+   * distanza delle lune dal loro pianeta: col raggio mostrato, la Terra che
+   * parla allontanava e avvicinava la Luna a ogni sillaba, e la Luna
+   * tremava di due pixel accanto a lei. */
+  function storRaggioFermo3D(id, r) {
+    const pg = stor.personaggi.size ? stor.personaggi.get(storCanonico(id)) : null;
+    return pg && pg.kOscilla > 0 && r > 0 ? r / pg.kOscilla : r;
+  }
   function storPuntoFermo3D(id, mostrato) {
     const pg = stor.personaggi.get(storCanonico(id));
     const f = pg && pg.fermo3D;
@@ -5175,9 +5188,7 @@
     if (stor.stile === 'kurz') {
       const b = { s: 4141 };
       const tinte = [KZ.ciano, KZ.lilla, KZ.rosa, KZ.turchese, KZ.giallo];
-      // v507: sui telefoni lenti la metà
-      const quante = stor.leggero ? 6 : 14;
-      for (let i = 0; i < quante; i++) {
+      for (let i = 0; i < 14; i++) {
         const r = c.U * (0.03 + dado(b) * 0.09);
         const x = (dado(b) * L + c.t / (90 + i * 13)) % (L + r * 2) - r, y = dado(b) * H + Math.sin(c.t / 3000 + i) * r * 0.4;
         const g2 = ctx.createRadialGradient(x, y, 0, x, y, r);
@@ -5207,12 +5218,6 @@
     }
     ctx.fillStyle = 'rgba(10, 10, 40, 0.28)';
     ctx.beginPath(); ctx.arc(x + r * 0.45, y + r * 0.45, r * 1.05, 0, Math.PI * 2); ctx.fill();
-    // v505: la palla tonda davvero, la luce che sfuma verso il bordo in ombra
-    if (stor.stile === 'kurz') {
-      const v = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r * 1.02);
-      v.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); v.addColorStop(0.45, 'rgba(255, 255, 255, 0)'); v.addColorStop(1, 'rgba(8, 6, 36, 0.5)');
-      ctx.fillStyle = v; ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    }
     ctx.restore();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     ctx.beginPath(); ctx.ellipse(x - r * 0.38, y - r * 0.42, r * 0.28, r * 0.15, -0.7, 0, Math.PI * 2); ctx.fill();
@@ -5352,11 +5357,6 @@
   }
   // L'astronauta piatto, alto `h`; `stira` lo allunga (e lo assottiglia)
   function kzOmino(ctx, x, y, h, colore, stira = 1) {
-    if (stor.stile === 'kurz' && !kzOmino.dentro) {
-      kzOmino.dentro = true;
-      try { kzSollevato(ctx, h, () => kzOmino(ctx, x, y, h, colore, stira)); } finally { kzOmino.dentro = false; }
-      return;
-    }
     ctx.save(); ctx.translate(x, y); ctx.scale(h / stira, h * stira);
     ctx.fillStyle = colore || KZ.bianco;
     rettangolo(ctx, -0.22, -0.18, 0.44, 0.5, 0.14); ctx.fill();
@@ -6287,23 +6287,16 @@
       fn();
       ctx.restore();
     };
-    // v505: ogni pezzo è un cilindro (la luce a sinistra, il buio che gira a
-    // destra) e getta la sua ombra sul fondo
     const corpo = (y0, y1, w0, w1, col) => {
-      const wm = Math.max(w0, w1);
-      const g = ctx.createLinearGradient(x - wm, 0, x + wm, 0);
-      g.addColorStop(0, mescolaColori(col, '#2a1b5e', 0.25)); g.addColorStop(0.28, schiarisci(col, 0.5));
-      g.addColorStop(0.6, col); g.addColorStop(1, mescolaColori(col, '#241a52', 0.55));
-      kzSollevato(ctx, h * 0.3, () => {
-        ctx.fillStyle = g; ctx.beginPath();
-        ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
-      });
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
+      // l'ombra fredda a destra e la lama di luce a sinistra
+      ctx.fillStyle = 'rgba(36, 26, 82, 0.3)'; ctx.beginPath();
+      ctx.moveTo(x + w0 * 0.4, y - h * y0); ctx.lineTo(x + w0, y - h * y0); ctx.lineTo(x + w1, y - h * y1); ctx.lineTo(x + w1 * 0.4, y - h * y1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath();
+      ctx.moveTo(x - w0, y - h * y0); ctx.lineTo(x - w0 * 0.8, y - h * y0); ctx.lineTo(x - w1 * 0.8, y - h * y1); ctx.lineTo(x - w1, y - h * y1); ctx.closePath(); ctx.fill();
     };
-    const fascia = (y0, y1, w0) => {
-      const g = ctx.createLinearGradient(x - w0, 0, x + w0, 0);
-      g.addColorStop(0, '#0e0f20'); g.addColorStop(0.28, '#3a3d5c'); g.addColorStop(1, '#0a0a18');
-      ctx.fillStyle = g; ctx.fillRect(x - w0, y - h * y1, w0 * 2, h * (y1 - y0));
-    };
+    const fascia = (y0, y1, w0) => { ctx.fillStyle = '#1b1d33'; ctx.fillRect(x - w0, y - h * y1, w0 * 2, h * (y1 - y0)); };
     pezzo(0, () => {
       ctx.fillStyle = '#3a3f5c';
       for (const k of [-0.62, 0, 0.62]) { ctx.beginPath(); ctx.moveTo(x + k * w - w * 0.2, y); ctx.lineTo(x + k * w + w * 0.2, y); ctx.lineTo(x + k * w + w * 0.3, y + h * 0.03); ctx.lineTo(x + k * w - w * 0.3, y + h * 0.03); ctx.closePath(); ctx.fill(); }
@@ -6311,8 +6304,7 @@
       for (const l of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + l * w, y - h * 0.07); ctx.lineTo(x + l * w * 1.75, y + h * 0.005); ctx.lineTo(x + l * w, y); ctx.closePath(); ctx.fill(); }
       corpo(0, 0.34, w, w, '#f4f6ff');
       fascia(0.03, 0.055, w); fascia(0.3, 0.32, w);
-      ctx.fillStyle = 'rgba(14, 15, 32, 0.85)'; ctx.fillRect(x - w, y - h * 0.23, w * 0.95, h * 0.08);
-      ctx.fillStyle = 'rgba(10, 10, 24, 0.95)'; ctx.fillRect(x + w * 0.05, y - h * 0.15, w * 0.95, h * 0.08);
+      ctx.fillStyle = '#1b1d33'; ctx.fillRect(x - w, y - h * 0.23, w * 0.95, h * 0.08); ctx.fillRect(x + w * 0.05, y - h * 0.15, w * 0.95, h * 0.08);
     });
     pezzo(1, () => { corpo(0.34, 0.6, w, w, '#f4f6ff'); fascia(0.34, 0.37, w); fascia(0.56, 0.575, w); });
     pezzo(2, () => { corpo(0.6, 0.645, w, w * 0.68, '#f4f6ff'); corpo(0.645, 0.78, w * 0.68, w * 0.68, '#f4f6ff'); fascia(0.7, 0.72, w * 0.68); });
@@ -6335,13 +6327,12 @@
    * finestrini accesi). */
   function kzApollo(ctx, x, y, s, ang, opz = {}) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang || 0); ctx.scale(s, s);
-    // v505: ogni pezzo è tondo (la luce in alto, l'ombra che gira sotto) e
-    // getta la sua ombra su quello accanto e sul fondo
     const piatto = (traccia, col) => {
-      const g = ctx.createLinearGradient(0, -0.1, 0, 0.1);
-      g.addColorStop(0, mescolaColori(col, '#2a1b5e', 0.2)); g.addColorStop(0.25, schiarisci(col, 0.55));
-      g.addColorStop(0.55, col); g.addColorStop(1, mescolaColori(col, '#241a52', 0.6));
-      kzSollevato(ctx, s * 0.25, () => { traccia(); ctx.fillStyle = g; ctx.fill(); });
+      traccia(); ctx.fillStyle = col; ctx.fill();
+      ctx.save(); traccia(); ctx.clip();
+      ctx.fillStyle = 'rgba(36, 26, 82, 0.32)'; ctx.fillRect(-1, 0.02, 2, 1);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fillRect(-1, -1, 2, 0.97);
+      ctx.restore();
     };
     if (opz.sm !== false) {
       // l'ugello del motore principale
@@ -6394,9 +6385,7 @@
   // La capsula da sola, per il rientro: lo scudo verso `ang` (dove va)
   function kzCapsula(ctx, x, y, r, ang) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-    const g = ctx.createLinearGradient(0, -r, 0, r);
-    g.addColorStop(0, '#9aa3bd'); g.addColorStop(0.3, '#f4f6ff'); g.addColorStop(0.65, '#d6dcea'); g.addColorStop(1, '#5b5f86');
-    kzSollevato(ctx, r * 3, () => { ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(r * 0.3, -r); ctx.lineTo(-r * 0.9, -r * 0.22); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(r * 0.3, r); ctx.closePath(); ctx.fill(); });
+    ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.moveTo(r * 0.3, -r); ctx.lineTo(-r * 0.9, -r * 0.22); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(r * 0.3, r); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(36, 26, 82, 0.3)'; ctx.beginPath(); ctx.moveTo(r * 0.3, 0); ctx.lineTo(r * 0.3, r); ctx.lineTo(-r * 0.9, r * 0.22); ctx.lineTo(-r * 0.9, 0); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#7a5236'; ctx.beginPath(); ctx.ellipse(r * 0.34, 0, r * 0.16, r * 1.02, 0, -Math.PI / 2, Math.PI / 2); ctx.fill();
     ctx.fillStyle = '#26408b'; ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.3, r * 0.1, 0, Math.PI * 2); ctx.fill();
@@ -6405,10 +6394,8 @@
   // Una molecola: palline unite (`atomi`: [dx, dy, r, colore])
   function kzMolecola(ctx, x, y, s, atomi) {
     for (const [dx, dy, r, col] of atomi) {
-      const ax = x + dx * s, ay = y + dy * s, ar = r * s;
-      const g = ctx.createRadialGradient(ax - ar * 0.35, ay - ar * 0.4, ar * 0.05, ax, ay, ar);
-      g.addColorStop(0, schiarisci(col, 0.6)); g.addColorStop(0.5, col); g.addColorStop(1, mescolaColori(col, '#241a52', 0.55));
-      kzSollevato(ctx, ar * 2, () => { ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.fill(); });
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'; ctx.beginPath(); ctx.arc(x + (dx - r * 0.3) * s, y + (dy - r * 0.35) * s, r * 0.35 * s, 0, Math.PI * 2); ctx.fill();
     }
   }
   const MOL = {
@@ -6420,7 +6407,7 @@
   // Un indicatore a lancetta (mezzo quadrante), da 0 a 1, con la zona rossa
   function kzManometro(ctx, x, y, r, u, rosso = 0.8) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; ctx.beginPath(); ctx.arc(x + r * 0.05, y + r * 0.06, r * 1.08, Math.PI, 0); ctx.closePath(); ctx.fill();
-    kzSollevato(ctx, r * 2, () => { ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.closePath(); ctx.fill(); });
+    ctx.fillStyle = KZ.bianco; ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = KZ.corallo; ctx.lineWidth = r * 0.14; ctx.beginPath(); ctx.arc(x, y, r * 0.82, Math.PI + Math.PI * rosso, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = KZ.verde; ctx.beginPath(); ctx.arc(x, y, r * 0.82, Math.PI, Math.PI + Math.PI * rosso * 0.6); ctx.stroke();
     const a = Math.PI + Math.PI * Math.max(0, Math.min(1, u));
@@ -6431,10 +6418,8 @@
   // Un termometro: il bulbo, il tubo, il rosso che sale fino a `u` (0…1)
   function kzTermometro(ctx, x, y, h, u, col = KZ.corallo) {
     const w = h * 0.12;
-    kzSollevato(ctx, h * 0.5, () => {
-      ctx.fillStyle = KZ.bianco; rettangolo(ctx, x - w / 2, y - h, w, h, w / 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x, y, w * 0.9, 0, Math.PI * 2); ctx.fill();
-    });
+    ctx.fillStyle = KZ.bianco; rettangolo(ctx, x - w / 2, y - h, w, h, w / 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, w * 0.9, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, w * 0.65, 0, Math.PI * 2); ctx.fill();
     const hh = (h - w) * Math.max(0.03, Math.min(1, u));
     rettangolo(ctx, x - w * 0.22, y - hh, w * 0.44, hh, w * 0.22); ctx.fill();
@@ -6446,14 +6431,8 @@
       const fase = ((t / 1000) * (0.25 + dado(d) * 0.3) + dado(d)) % 1;
       const a = verso + (dado(d) - 0.5) * apertura, dist = r * (0.1 + fase * 1.1);
       const rr = r * (0.03 + fase * 0.1) * (0.6 + dado(d) * 0.8);
-      const px = x + Math.cos(a) * dist, py = y + Math.sin(a) * dist;
-      // v505: ogni sbuffo è una pallina di nuvola, chiara sopra e in ombra sotto
-      if (stor.stile === 'kurz' && rr > 2 && !stor.leggero) {
-        const g = ctx.createRadialGradient(px - rr * 0.3, py - rr * 0.4, rr * 0.1, px, py, rr);
-        g.addColorStop(0, rgba(schiarisci(col, 0.5), 0.5 * (1 - fase))); g.addColorStop(0.6, rgba(col, 0.4 * (1 - fase))); g.addColorStop(1, rgba(mescolaColori(col, '#3a2a7a', 0.45), 0.4 * (1 - fase)));
-        ctx.fillStyle = g;
-      } else ctx.fillStyle = rgba(col, 0.4 * (1 - fase));
-      ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = rgba(col, 0.4 * (1 - fase));
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * dist, y + Math.sin(a) * dist, rr, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -6614,8 +6593,7 @@
       if (scoppio < 1) {
         ctx.save(); ctx.globalAlpha *= 1 - scoppio;
         kzAlone(ctx, x, y, R * 1.5, tt > 6.4 ? '#ff8f3d' : '#69e0ff', 0.25 + 0.3 * f(6.4, 7.3));
-        kzSollevato(ctx, R * 2, () => { ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill(); });
-        kzPalla(ctx, x, y, R, '#d6dcea');
+        ctx.fillStyle = '#d6dcea'; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#141a3a'; ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.fill();
         ctx.save(); ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.clip();
         const g = ctx.createLinearGradient(0, y - R, 0, y + R);
@@ -6699,7 +6677,7 @@
       kzEtichetta(c, 'cella.ossigeno', tO[0], tO[1] + U * 0.1, f(0.7, 1.2));
       // la cella: la scatola che si accende
       kzAlone(ctx, bx, by, bw * 1.2, '#ffcc3d', 0.25 * ferma * f(1.5, 2.5));
-      kzSollevato(ctx, bw, () => { ctx.fillStyle = '#2b3f99'; rettangolo(ctx, bx - bw / 2, by - bh / 2, bw, bh, U * 0.02); ctx.fill(); });
+      ctx.fillStyle = '#2b3f99'; rettangolo(ctx, bx - bw / 2, by - bh / 2, bw, bh, U * 0.02); ctx.fill();
       ctx.fillStyle = '#1d2f7a'; rettangolo(ctx, bx - bw / 2 + U * 0.012, by - bh / 2 + U * 0.012, bw - U * 0.024, bh - U * 0.024, U * 0.015); ctx.fill();
       kzEtichetta(c, 'cella.cella', bx, by - bh / 2 - U * 0.04, f(0.9, 1.4), { colore: KZ.lilla });
       // le molecole che entrano lungo i tubi (finché c'è ossigeno)
@@ -6894,11 +6872,7 @@
       kzTitolo(c, 'mano.titolo', f(0, 0.6));
       const wx = cx - U * 0.1, wy = cy + U * 0.02, wr = U * 0.24;
       // il finestrino: la cornice, il vetro buio
-      kzSollevato(ctx, wr * 2, () => { ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3); ctx.fill(); });
-      ctx.save(); rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3); ctx.clip();
-      ombraInterna(ctx, () => rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3), 'rgba(10, 6, 36, 0.8)', wr * 0.2, -wr * 0.06, -wr * 0.08);
-      ombraInterna(ctx, () => rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3), 'rgba(200, 205, 240, 0.6)', wr * 0.08, wr * 0.03, wr * 0.04);
-      ctx.restore();
+      ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, wx - wr * 1.12, wy - wr * 1.12, wr * 2.24, wr * 2.24, wr * 0.3); ctx.fill();
       ctx.fillStyle = '#05061a'; rettangolo(ctx, wx - wr, wy - wr, wr * 2, wr * 2, wr * 0.22); ctx.fill();
       ctx.save(); rettangolo(ctx, wx - wr, wy - wr, wr * 2, wr * 2, wr * 0.22); ctx.clip();
       // la Terra che deriva e che Lovell riporta in mezzo; la linea del
@@ -6946,7 +6920,7 @@
       for (const p of pezzi) usato += p.a * f(p.da, p.da + 0.6);
       const ricarica = f(6.4, 7.6);
       const resta = Math.max(0.06, 1 - usato * 0.9 + ricarica * 0.25);
-      kzSollevato(ctx, bw * 1.5, () => { ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, bx - bw / 2 - U * 0.012, by - bh - U * 0.012, bw + U * 0.024, bh + U * 0.024, U * 0.02); ctx.fill(); });
+      ctx.fillStyle = '#4a4f6e'; rettangolo(ctx, bx - bw / 2 - U * 0.012, by - bh - U * 0.012, bw + U * 0.024, bh + U * 0.024, U * 0.02); ctx.fill();
       ctx.fillStyle = '#9aa3bd'; ctx.fillRect(bx - bw * 0.2, by - bh - U * 0.04, bw * 0.4, U * 0.03);
       ctx.fillStyle = resta < 0.25 ? KZ.corallo : KZ.verde; rettangolo(ctx, bx - bw / 2, by - bh * resta, bw, bh * resta, U * 0.012); ctx.fill();
       kzEtichetta(c, 'accendi.batteria', bx, by + U * 0.07, f(0.6, 1.1));
@@ -6961,9 +6935,7 @@
         const k = f(p.da, p.da + 0.6);
         if (k <= 0) continue;
         const h = gh * p.a * 1.05, yy = kzMix(gy - gh - U * 0.2, quota - h, kzMolla(k));
-        const gb = ctx.createLinearGradient(gx, 0, gx + gw, 0);
-        gb.addColorStop(0, schiarisci(p.col, 0.35)); gb.addColorStop(0.5, p.col); gb.addColorStop(1, mescolaColori(p.col, '#241a52', 0.45));
-        kzSollevato(ctx, gw * 0.8, () => { ctx.fillStyle = gb; rettangolo(ctx, gx + U * 0.008, yy, gw - U * 0.016, h - U * 0.006, U * 0.012); ctx.fill(); });
+        ctx.fillStyle = p.col; rettangolo(ctx, gx + U * 0.008, yy, gw - U * 0.016, h - U * 0.006, U * 0.012); ctx.fill();
         kzAlone(ctx, gx + gw / 2, yy + h / 2, gw * 0.6, p.col, 0.2 * k);
         kzEtichetta(c, p.chiave, gx + gw + U * 0.17, yy + h / 2, f(p.da + 0.2, p.da + 0.7), { colore: p.col });
         quota -= h;
@@ -7093,20 +7065,13 @@
       for (const q of [0.3, 0.55, 0.8]) { ctx.fillStyle = '#9a3412'; ctx.fillRect(x - h * 0.17 + tw, terra - h * q, h * (0.17 - 0.08) - tw * 0.2, h * 0.012); }
       // il fuoco e il fumo
       const accende = Math.min(1, tt / 1.2);
-      ctx.fillStyle = 'rgba(12, 6, 36, 0.4)';
-      ctx.beginPath(); ctx.moveTo(x - h * 0.06, terra); ctx.lineTo(x + h * 0.06, terra); ctx.lineTo(x - h * 0.55, H); ctx.lineTo(x - h * 0.9, H); ctx.closePath(); ctx.fill();
       kzFiamma(ctx, x, base + h * 0.03, h * 0.07, h * (0.25 + 0.15 * accende), t);
       kzSbuffi(ctx, x, terra, U * 0.45 * accende, 30, c.t, 17, '#f4e6ff', Math.PI * 1.06, Math.PI * 0.2);
       kzSbuffi(ctx, x, terra, U * 0.45 * accende, 30, c.t, 23, '#ffd6b0', -Math.PI * 0.06, Math.PI * 0.2);
       kzSaturnV(ctx, x, base, h);
       // le nuvole di vapore ai piedi, davanti
-      for (let i = 0; i < 9; i++) {
-        const px = x + (i - 4) * U * 0.07, r = U * (0.04 + 0.012 * Math.sin(i * 2.3 + c.t / 700)) * (1 + accende * 0.3), py = terra + r * 0.3;
-        // v505: le nuvole di vapore tonde, la luce del fuoco sopra e l'ombra sotto
-        const g = ctx.createRadialGradient(px - r * 0.3, py - r * 0.45, r * 0.1, px, py, r);
-        g.addColorStop(0, '#fff8ee'); g.addColorStop(0.55, 'rgba(236, 226, 252, 0.95)'); g.addColorStop(1, 'rgba(150, 130, 200, 0.95)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
-      }
+      ctx.fillStyle = 'rgba(244, 236, 255, 0.85)';
+      for (let i = 0; i < 9; i++) { const px = x + (i - 4) * U * 0.07, r = U * (0.04 + 0.012 * Math.sin(i * 2.3 + c.t / 700)); ctx.beginPath(); ctx.arc(px, terra + r * 0.4, r * (1 + accende * 0.3), 0, Math.PI * 2); ctx.fill(); }
     },
     // Lo scoppio: la navicella, il lampo, la nube d'ossigeno che si sparge
     apollo_explosion(c) {
@@ -7150,10 +7115,7 @@
       // lo schermo grande: la Terra, la Luna e la strada della navicella
       const sw = L * 0.7, sh = H * 0.32, sx = (L - sw) / 2, sy = H * 0.08;
       kzAlone(ctx, L / 2, sy + sh / 2, sw * 0.6, '#59d98e', 0.18);
-      kzSollevato(ctx, sh, () => { ctx.fillStyle = '#0b2a2a'; rettangolo(ctx, sx, sy, sw, sh, U * 0.01); ctx.fill(); });
-      ctx.save(); rettangolo(ctx, sx, sy, sw, sh, U * 0.01); ctx.clip();
-      ombraInterna(ctx, () => rettangolo(ctx, sx, sy, sw, sh, U * 0.01), 'rgba(0, 0, 0, 0.8)', sh * 0.15, -sh * 0.03, -sh * 0.05);
-      ctx.restore();
+      ctx.fillStyle = '#0b2a2a'; rettangolo(ctx, sx, sy, sw, sh, U * 0.01); ctx.fill();
       ctx.strokeStyle = 'rgba(89, 217, 142, 0.25)'; ctx.lineWidth = 1;
       for (let i = 1; i < 12; i++) { ctx.beginPath(); ctx.moveTo(sx + sw * i / 12, sy); ctx.lineTo(sx + sw * i / 12, sy + sh); ctx.stroke(); }
       for (let i = 1; i < 5; i++) { ctx.beginPath(); ctx.moveTo(sx, sy + sh * i / 5); ctx.lineTo(sx + sw, sy + sh * i / 5); ctx.stroke(); }
@@ -7167,9 +7129,7 @@
       // tre file di consolle, con le lucine e gli schermi verdi
       for (let fila = 0; fila < 3; fila++) {
         const fy = H * (0.58 + fila * 0.14), fw = L * (0.8 + fila * 0.12), fx = (L - fw) / 2, fh = H * 0.1;
-        const gc = ctx.createLinearGradient(0, fy, 0, fy + fh);
-        gc.addColorStop(0, mescolaColori('#5a6296', '#1d2244', fila * 0.2)); gc.addColorStop(0.35, mescolaColori('#3d4470', '#1d2244', fila * 0.2)); gc.addColorStop(1, '#151933');
-        kzSollevato(ctx, fh * 2.5, () => { ctx.fillStyle = gc; rettangolo(ctx, fx, fy, fw, fh, U * 0.01); ctx.fill(); });
+        ctx.fillStyle = mescolaColori('#3d4470', '#1d2244', fila * 0.2); rettangolo(ctx, fx, fy, fw, fh, U * 0.01); ctx.fill();
         const n = 6 + fila * 2;
         for (let k = 0; k < n; k++) {
           const mx = fx + fw * (k + 0.5) / n, mw = fw / n * 0.6;
@@ -7182,7 +7142,7 @@
             ctx.beginPath(); ctx.arc(mx - mw * 0.3 + r * mw * 0.2, fy + fh * 0.3, Math.max(1, U * 0.004), 0, Math.PI * 2); ctx.fill(); ctx.restore();
           }
           // le teste di chi lavora, tonde come nei cartoni
-          if ((k + fila) % 2) kzSollevato(ctx, fh, () => kzPalla(ctx, mx, fy + fh * 0.95, fh * 0.32, '#2b3160'));
+          if ((k + fila) % 2) { ctx.fillStyle = '#141a3a'; ctx.beginPath(); ctx.arc(mx, fy + fh * 0.95, fh * 0.32, 0, Math.PI * 2); ctx.fill(); }
         }
       }
     },
@@ -7209,13 +7169,10 @@
         ctx.restore();
       }
       // i pannelli spenti, con una lucina sola
-      kzSollevato(ctx, H * 0.3, () => { ctx.fillStyle = '#2b3360'; rettangolo(ctx, L * 0.08, H * 0.6, L * 0.84, H * 0.36, U * 0.02); ctx.fill(); });
+      ctx.fillStyle = '#2b3360'; rettangolo(ctx, L * 0.08, H * 0.6, L * 0.84, H * 0.36, U * 0.02); ctx.fill();
       for (let i = 0; i < 16; i++) {
         const px = L * 0.12 + (i % 8) * L * 0.1, py = H * 0.66 + Math.floor(i / 8) * H * 0.12;
         ctx.fillStyle = '#1d2244'; rettangolo(ctx, px, py, L * 0.08, H * 0.08, U * 0.008); ctx.fill();
-        ctx.save(); rettangolo(ctx, px, py, L * 0.08, H * 0.08, U * 0.008); ctx.clip();
-        ombraInterna(ctx, () => rettangolo(ctx, px, py, L * 0.08, H * 0.08, U * 0.008), 'rgba(0, 0, 0, 0.7)', H * 0.02, H * 0.006, H * 0.01);
-        ctx.restore();
       }
       kzAlone(ctx, L * 0.7, H * 0.7, U * 0.06, '#ff5c6c', 0.6 * (0.5 + 0.5 * Math.sin(c.t / 500)));
       ctx.fillStyle = '#ff5c6c'; ctx.beginPath(); ctx.arc(L * 0.7, H * 0.7, U * 0.008, 0, Math.PI * 2); ctx.fill();
@@ -7250,13 +7207,8 @@
       kzAlone(ctx, L * 0.82, H * 0.18, U * 0.35, '#fff6d8', 0.7);
       ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(L * 0.82, H * 0.18, U * 0.05, 0, Math.PI * 2); ctx.fill();
       // le nuvole piatte
-      // v505: le nuvole tonde, bianche al sole e grigio-azzurre sotto
-      for (const [px, py, r] of [[0.15, 0.2, 0.05], [0.22, 0.22, 0.04], [0.55, 0.12, 0.035], [0.6, 0.14, 0.03]]) {
-        const nx = (px * L + c.t / 200) % (L + 100) - 50, ny = py * H, nr = r * U * 2;
-        const g = ctx.createRadialGradient(nx - nr * 0.3, ny - nr * 0.45, nr * 0.1, nx, ny, nr);
-        g.addColorStop(0, '#ffffff'); g.addColorStop(0.6, 'rgba(244, 250, 255, 0.95)'); g.addColorStop(1, 'rgba(170, 200, 230, 0.95)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(nx, ny, nr, 0, Math.PI * 2); ctx.fill();
-      }
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      for (const [px, py, r] of [[0.15, 0.2, 0.05], [0.22, 0.22, 0.04], [0.55, 0.12, 0.035], [0.6, 0.14, 0.03]]) { ctx.beginPath(); ctx.arc((px * L + c.t / 200) % (L + 100) - 50, py * H, r * U * 2, 0, Math.PI * 2); ctx.fill(); }
       // la nave all'orizzonte
       ctx.fillStyle = '#2a3a5a'; ctx.beginPath(); ctx.moveTo(L * 0.1, H * 0.66); ctx.lineTo(L * 0.26, H * 0.66); ctx.lineTo(L * 0.24, H * 0.68); ctx.lineTo(L * 0.12, H * 0.68); ctx.closePath(); ctx.fill();
       ctx.fillRect(L * 0.18, H * 0.635, L * 0.03, H * 0.025);
@@ -7272,9 +7224,6 @@
           ctx.strokeStyle = 'rgba(40, 40, 60, 0.6)'; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(px - pr, py); ctx.lineTo(cx, cy - U * 0.03); ctx.moveTo(px + pr, py); ctx.lineTo(cx, cy - U * 0.03); ctx.stroke();
           ctx.fillStyle = col; ctx.beginPath(); ctx.arc(px, py, pr, Math.PI, 0); ctx.closePath(); ctx.fill();
-          const cupola = ctx.createRadialGradient(px - pr * 0.4, py - pr * 0.6, pr * 0.05, px, py, pr * 1.05);
-          cupola.addColorStop(0, 'rgba(255, 255, 255, 0.45)'); cupola.addColorStop(0.5, 'rgba(255, 255, 255, 0)'); cupola.addColorStop(1, 'rgba(30, 20, 70, 0.35)');
-          ctx.fillStyle = cupola; ctx.beginPath(); ctx.arc(px, py, pr, Math.PI, 0); ctx.closePath(); ctx.fill();
           ctx.fillStyle = k ? '#f4f6ff' : '#ff8f3d';
           ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, pr, Math.PI * 1.4, Math.PI * 1.6); ctx.closePath(); ctx.fill();
         }
@@ -7282,10 +7231,6 @@
         const u = Math.min(1, (tt - 6) / 1.4);
         for (let k = 0; k < 3; k++) { ctx.strokeStyle = rgba('#ffffff', 0.8 * (1 - u)); ctx.lineWidth = U * 0.004; ctx.beginPath(); ctx.ellipse(cx, cy + U * 0.03, U * (0.05 + u * 0.15 + k * 0.03), U * (0.012 + u * 0.03 + k * 0.008), 0, 0, Math.PI * 2); ctx.stroke(); }
       }
-      // l'ombra sull'acqua: piccola e sfumata da lontano, netta quando tocca
-      const vicino = Math.min(1, scende * 1.1);
-      ctx.fillStyle = rgba('#05203f', 0.15 + 0.35 * vicino);
-      ctx.beginPath(); ctx.ellipse(cx + U * 0.03 * (1 - vicino), H * 0.76, U * (0.08 - 0.03 * vicino), U * (0.014 - 0.004 * vicino), 0, 0, Math.PI * 2); ctx.fill();
       kzCapsula(ctx, cx, cy, U * 0.04, Math.PI / 2 + (toccato ? Math.sin(c.t / 700) * 0.1 : 0));
     }
   });
@@ -7433,123 +7378,19 @@
    * che si apre in un ovale; niente naso. Lo stile vale finché la storia è in
    * corso (`stor.stile`, rimesso a «ink» da `storSgombra` e da `storTic`). */
   const KURZ = { ombra: '#241a52', luce: '#fff4e0', occhio: '#1a1238', bocca: '#3a1030', lingua: '#ff7a8a', guance: '#ff8fa3' };
-  /* v505, «fai una grafica simil 3D, con le ombre»: ogni pezzo getta la sua
-   * ombra morbida su quello che ha sotto (il braccio sul busto, la testa sul
-   * colletto, il personaggio sul fondo) e ha il suo volume, un'ombra interna
-   * sfumata verso il basso a destra e una luce sfumata in alto a sinistra,
-   * come le figure dei cartoni in 3D.
-   *
-   * v507, «è troppo pesante, sui telefoni non renderizza»: fino alla v506
-   * ogni ombra era un'ombra della tela (`shadowBlur`), e quelle interne
-   * l'ombra di un rettangolo grande quanto la tela col buco della forma.
-   * Ogni sfocatura è un passaggio a parte sulla tela, e un astronauta ha una
-   * ventina di pezzi con tre ombre ciascuno: su un telefono di fascia media
-   * le scene di «Apollo 13» andavano a 5 fotogrammi al secondo. Ora le ombre
-   * sono **a strati**: la forma stessa, spostata, ripetuta due o tre volte
-   * con un velo leggero (`ombraInterna`, `ombraPortata`). Dove gli strati si
-   * sommano il buio è pieno, ai bordi sfuma: lo stesso volume, senza nessuna
-   * sfocatura. Gli spostamenti restano in pixel dello schermo, come quelli
-   * di `shadowOffset`, così il disegno è quello di prima anche sugli schermi
-   * densi. E se il telefono resta lento lo stesso (`stor.leggero`, deciso da
-   * `storTic` sul passo dei fotogrammi) gli strati diventano uno solo. */
-  // La matrice della tela come sei numeri (senza oggetti nuovi a ogni pezzo:
-  // un astronauta ne chiederebbe un centinaio per fotogramma) e la sua inversa
-  function matriceTela(ctx) {
-    let m = null;
-    try { m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null; } catch (_) { m = null; }
-    return m ? [m.a, m.b, m.c, m.d, m.e, m.f] : null;
-  }
-  function inversa(m) {
-    if (!m) return null;
-    const [a, b, c, d, e, f] = m, det = a * d - b * c;
-    if (!(Math.abs(det) > 1e-12)) return null;
-    return [d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det];
-  }
-  // Un rettangolo che copre tutta la tela (e un po' oltre), nelle coordinate
-  // del disegno: `inv` è l'inversa della matrice della tela
-  function rettangoloTela(ctx, inv) {
-    const W = (ctx.canvas && ctx.canvas.width) || 4000, H = (ctx.canvas && ctx.canvas.height) || 4000;
-    if (!inv) { ctx.rect(-1e5, -1e5, 2e5, 2e5); return; }
-    const [a, b, c, d, e, f] = inv;
-    const x0 = -300, y0 = -300, x1 = W + 300, y1 = H + 300;
-    ctx.moveTo(a * x0 + c * y0 + e, b * x0 + d * y0 + f);
-    ctx.lineTo(a * x1 + c * y0 + e, b * x1 + d * y0 + f);
-    ctx.lineTo(a * x1 + c * y1 + e, b * x1 + d * y1 + f);
-    ctx.lineTo(a * x0 + c * y1 + e, b * x0 + d * y1 + f);
-    ctx.closePath();
-  }
-  // Lo spostamento (dx, dy) in pixel dello schermo riportato nelle coordinate
-  // del disegno, anche se è ruotato: `inv` è l'inversa della matrice
-  function spostamentoDisegno(inv, dx, dy) {
-    if (!inv) return [dx, dy];
-    return [inv[0] * dx + inv[2] * dy, inv[1] * dx + inv[3] * dy];
-  }
-  // Il velo di ogni strato perché `n` strati sovrapposti facciano il buio `a`
-  const veloStrato = (a, n) => n <= 1 ? a : 1 - Math.pow(1 - Math.max(0, Math.min(0.999, a)), 1 / n);
-  const alfaColore = colore => { const m = /,\s*([\d.]+)\s*\)\s*$/.exec(colore); return m ? Number(m[1]) : 1; };
-  const coloreSenzaAlfa = colore => colore.replace(/^rgba\(([^,]+),([^,]+),([^,]+),[^)]*\)$/, 'rgb($1,$2,$3)');
-  // Quanti strati: tre per le ombre larghe, due per le medie, uno per le
-  // piccolissime (in pixel dello schermo) e per i telefoni che non ce la fanno
-  const stratiPer = sfuma => stor.leggero ? 1 : sfuma >= 6 ? 3 : sfuma >= 2 ? 2 : 1;
-  // Dentro a una forma già ritagliata: l'ombra (o la luce) che entra dal
-  // bordo opposto a (dx, dy), larga `sfuma` pixel. Ogni strato è la parte
-  // della forma che la forma spostata non copre: una falce sul bordo, più
-  // larga a ogni strato, come la sfocatura attorno all'ombra
-  function ombraInterna(ctx, traccia, colore, sfuma, dx, dy) {
-    const lungo = Math.hypot(dx, dy);
-    if (!(lungo > 0)) return;
-    const inv = inversa(matriceTela(ctx));
-    const n = stratiPer(sfuma);
-    const [ux, uy] = spostamentoDisegno(inv, dx, dy);
-    ctx.save();
-    ctx.fillStyle = coloreSenzaAlfa(colore);
-    ctx.globalAlpha *= veloStrato(alfaColore(colore), n);
-    for (let k = 1; k <= n; k++) {
-      const passo = n === 1 ? 1 : Math.max(0.15, (lungo + sfuma * 0.45 * (2 * (k - 1) / (n - 1) - 1)) / lungo);
-      ctx.save(); ctx.translate(ux * passo, uy * passo); traccia(); ctx.restore();
-      rettangoloTela(ctx, inv);
-      ctx.fill('evenodd');
-    }
-    ctx.restore();
-  }
-  // L'ombra portata a strati di una forma (prima di stenderla): la forma
-  // spostata, due volte, col velo leggero
-  function ombraPortata(ctx, traccia, colore, sfuma, dx, dy) {
-    const [ux, uy] = spostamentoDisegno(inversa(matriceTela(ctx)), dx, dy);
-    const n = Math.min(2, stratiPer(sfuma));
-    ctx.save();
-    ctx.fillStyle = coloreSenzaAlfa(colore);
-    ctx.globalAlpha *= veloStrato(alfaColore(colore), n);
-    for (let k = 1; k <= n; k++) {
-      const passo = n === 1 ? 1.2 : 0.85 + 0.75 * (k - 1);
-      ctx.save(); ctx.translate(ux * passo, uy * passo); traccia(); ctx.restore();
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-  // L'ombra che un oggetto getta sotto di sé (in pixel della tela, `px` la
-  // sua misura): solo nello stile di Kurzgesagt. `fn` disegna quello che
-  // vuole, coi suoi colori: qui resta l'ombra della tela, ma netta (senza
-  // `shadowBlur` costa quanto ridisegnare l'oggetto) e un po' più chiara
-  // perché il bordo duro non pesi
-  function kzSollevato(ctx, px, fn) {
-    if (stor.stile !== 'kurz' || stor.leggero) { fn(); return; }
-    ctx.save();
-    ctx.shadowColor = 'rgba(6, 3, 28, 0.34)'; ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = px * 0.025; ctx.shadowOffsetY = px * 0.05;
-    fn();
-    ctx.restore();
-  }
   function parteKurz(ctx, traccia, colore, R, opz = {}) {
-    const scuro = mescolaColori(colore, KURZ.ombra, opz.buio === undefined ? 0.45 : Math.min(0.85, opz.buio * 1.5));
-    // l'ombra che il pezzo getta su quello che ha sotto
-    ombraPortata(ctx, traccia, 'rgba(10, 5, 36, 0.42)', Math.max(2, R * 0.12), R * 0.035, R * 0.06);
-    traccia(); ctx.fillStyle = colore; ctx.fill();
+    // l'ombra fredda: il colore spinto verso il viola notte
+    traccia(); ctx.fillStyle = mescolaColori(colore, KURZ.ombra, opz.buio === undefined ? 0.38 : Math.min(0.8, opz.buio * 1.3)); ctx.fill();
     ctx.save(); traccia(); ctx.clip();
+    const lu = R * (opz.luce || 0.12);
+    ctx.save(); ctx.translate(-lu * 0.7, -lu * 0.8); traccia(); ctx.fillStyle = colore; ctx.fill(); ctx.restore();
     if (opz.dentro) opz.dentro();
-    // il volume: l'ombra fredda che sale dal basso a destra, la luce in alto a sinistra
-    ombraInterna(ctx, traccia, rgba(scuro, 0.95), R * 0.24, -R * 0.1, -R * 0.12);
-    ombraInterna(ctx, traccia, rgba(schiarisci(colore, 0.65), 0.75), R * 0.1, R * 0.045, R * 0.055);
+    // la lama di luce: quello che resta della forma tolta la sua copia
+    // spostata in basso a destra
+    const d = Math.max(1, R * 0.035);
+    ctx.save(); ctx.translate(d, d * 1.1); traccia(); ctx.restore();
+    ctx.rect(-1e5, -1e5, 2e5, 2e5);
+    ctx.fillStyle = rgba(schiarisci(colore, 0.55), 0.55); ctx.fill('evenodd');
     ctx.restore();
   }
   // La testa dei cartoni di Kurzgesagt: tonda, liscia, la luce di contorno
@@ -7741,20 +7582,6 @@
    * taglio sul bordo. */
   function disegnaDisco(ctx, x, y, R, pelle, decora) {
     const forma = () => { ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); };
-    // v506: nello stile di Kurzgesagt l'astro è una palla vera, senza il
-    // bordo panna né il pennino: getta l'ombra, sfuma verso il buio
-    if (stor.stile === 'kurz') {
-      kzSollevato(ctx, R * 2, () => { forma(); ctx.fillStyle = pelle; ctx.fill(); });
-      ctx.save(); forma(); ctx.clip();
-      if (decora) decora();
-      const v = ctx.createRadialGradient(x - R * 0.35, y - R * 0.4, R * 0.05, x, y, R * 1.02);
-      v.addColorStop(0, 'rgba(255, 255, 255, 0.35)'); v.addColorStop(0.45, 'rgba(255, 255, 255, 0)'); v.addColorStop(1, 'rgba(8, 6, 36, 0.4)');
-      ctx.fillStyle = v; ctx.fillRect(x - R, y - R, R * 2, R * 2);
-      ombraInterna(ctx, forma, rgba(mescolaColori(pelle, KURZ.ombra, 0.5), 0.9), R * 0.3, -R * 0.12, -R * 0.14);
-      ombraInterna(ctx, forma, rgba(schiarisci(pelle, 0.6), 0.6), R * 0.1, R * 0.04, R * 0.05);
-      ctx.restore();
-      return;
-    }
     ctx.save();
     ctx.translate(R * 0.06, R * 0.08);
     forma(); ctx.fillStyle = 'rgba(12, 6, 30, 0.4)'; ctx.fill();
@@ -8010,19 +7837,10 @@
     // la figura di adesso: luce piena, col contorno d'inchiostro leggero
     const g = ctx.createLinearGradient(x, y - R, x, y + R * 1.4);
     g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, pelle); g.addColorStop(1, rgba('#a78bfa', 0.75));
-    if (stor.stile === 'kurz') {
-      // v506: nello stile di Kurzgesagt niente contorno, ma l'ombra sotto e
-      // l'ombra fredda che sale dal basso: la luce ha un volume
-      kzSollevato(ctx, R * 2, () => { ctx.beginPath(); sagoma(x, y); ctx.fillStyle = g; ctx.fill(); });
-      const v = ctx.createLinearGradient(x - R, 0, x + R * 1.1, 0);
-      v.addColorStop(0, 'rgba(255, 255, 255, 0.25)'); v.addColorStop(0.5, 'rgba(255, 255, 255, 0)'); v.addColorStop(1, 'rgba(60, 30, 140, 0.35)');
-      ctx.beginPath(); sagoma(x, y); ctx.fillStyle = v; ctx.fill();
-    } else {
-      ctx.beginPath(); sagoma(x, y);
-      ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07); ctx.stroke();
-      ctx.fillStyle = g; ctx.fill();
-      ctx.strokeStyle = rgba('#5b21b6', 0.7); ctx.lineWidth = Math.max(1, R * 0.035); ctx.stroke();
-    }
+    ctx.beginPath(); sagoma(x, y);
+    ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07); ctx.stroke();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = rgba('#5b21b6', 0.7); ctx.lineWidth = Math.max(1, R * 0.035); ctx.stroke();
     // i fili di luce che salgono dal petto (le linee del tempo)
     ctx.strokeStyle = rgba(luce, 0.55); ctx.lineWidth = Math.max(0.7, R * 0.018);
     ctx.beginPath();
@@ -8033,8 +7851,7 @@
     ctx.stroke();
     // la testa, appena più chiara: è lì che sta il volto
     const tg = ctx.createRadialGradient(x - hr * 0.3, hy - hr * 0.35, hr * 0.1, x, hy, hr);
-    tg.addColorStop(0, '#ffffff'); tg.addColorStop(stor.stile === 'kurz' ? 0.6 : 1, pelle);
-    if (stor.stile === 'kurz') tg.addColorStop(1, mescolaColori(pelle, '#7c5cd6', 0.45));
+    tg.addColorStop(0, '#ffffff'); tg.addColorStop(1, pelle);
     ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(x, hy, hr * 0.98, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
@@ -13946,13 +13763,6 @@
     figurina: (id, px) => storFigurina(id, px), STOR_SFONDI, STOR_NAVI, STOR_SFONDO_MAX_S, ospitiDi: storOspiti,
     // v504: «Apollo 13 · Dentro la scienza» e lo stile di Kurzgesagt
     STOR_SPIEGA_APOLLO, STOR_SCENE_APOLLO, STOR_STILI, stile: () => stor.stile,
-    // v507: il disegno leggero; impostarlo (le prove) toglie la scelta
-    // automatica per il resto della sessione, «auto» la rimette da capo
-    leggero: v => {
-      if (v === 'auto') Object.assign(stor, { leggero: false, passoMedio: 0, passiKurz: 0, tempoKurz: 0 });
-      else if (v !== undefined) { stor.leggero = !!v; stor.tempoKurz = -Infinity; }
-      return stor.leggero;
-    },
     ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale, boccaBersaglio: storBoccaBersaglio,
     tempoDelCarattere: storTempoDelCarattere,
     geometria: storGeometria, posa: storPosa, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,
@@ -13962,7 +13772,7 @@
     disegnaPersonaggi: storDisegnaPersonaggi, disegnaCielo: storDisegnaCielo, disegnaSistema: storDisegnaSistema,
     comandi: COMANDI, registraComandi,
     disegnaCosmo: storDisegnaCosmo, puntoCosmo: storPuntoCosmo, cosmoScalaDi: storCosmoScalaDi, scarto2D: storScarto2D, STOR_LUOGHI_COSMO,
-    scena3D: storScena3D, puntoFermo3D: storPuntoFermo3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,
+    scena3D: storScena3D, puntoFermo3D: storPuntoFermo3D, raggioFermo3D: storRaggioFermo3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,
     animazioneAl: storAnimazioneAl, effetto: storEffetto, disegnaEffetto: storDisegnaEffetto,
     anteprima: storAnteprima, chiudiAnteprima: storChiudiAnteprima, provaVoce: storProvaVoce, ritratto: storRitratto,
     voltoNelCorpo: storVoltoNelCorpo, aperturaOcchio: storAperturaOcchio, STOR_SAGOME, STOR_CORPI,
@@ -13999,6 +13809,7 @@
   radice.storDisegnaSistema = storDisegnaSistema;
   radice.storScena3D = storScena3D;
   radice.storPuntoFermo3D = storPuntoFermo3D;
+  radice.storRaggioFermo3D = storRaggioFermo3D;
   radice.storDisegnaCosmo = storDisegnaCosmo;
   // v477: la scala che inquadra chi parla adesso (o un personaggio dato),
   // per la camera di `cosmic_scale` (demo.js)

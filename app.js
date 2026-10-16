@@ -35078,7 +35078,9 @@ function solPassoLunaDi(l, pianeta) {
   const d = Math.hypot(l.off.x, l.off.y, l.off.z) || 1;
   const vero = d / SOL_RIF_UA;
   if (sol.distanzeVere) return vero;
-  const leggibile = (pianeta.rDisegno || 8) * solStaccoLunaDi(l, pianeta) /
+  // il raggio da fermo, come per la Luna (solStaccoLuna)
+  const rp = typeof storRaggioFermo3D === 'function' ? storRaggioFermo3D(pianeta.id, pianeta.rDisegno || 8) : (pianeta.rDisegno || 8);
+  const leggibile = rp * solStaccoLunaDi(l, pianeta) /
     Math.max(1e-6, sol.scala);
   return sol.perno === l.id ? Math.max(vero, leggibile) : leggibile;
 }
@@ -36153,7 +36155,10 @@ function solStaccoLuna(terra) {
     // con lo zoom e rende visibile l'avvicinamento della telecamera.
     return sol.luna.distanzaUa / SOL_RIF_UA;
   }
-  const r = (terra && terra.rDisegno) || SOL_RAGGIO_LUNA;
+  // il raggio della Terra da fermo: se è un personaggio che parla si gonfia
+  // a ogni sillaba, e la Luna le tremava accanto (storie-cosmiche.js, v508)
+  let r = (terra && terra.rDisegno) || SOL_RAGGIO_LUNA;
+  if (terra && typeof storRaggioFermo3D === 'function') r = storRaggioFermo3D('Earth', r);
   return (r * 2 + 8) / Math.max(1e-6, sol.scala);
 }
 
