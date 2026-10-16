@@ -2577,6 +2577,272 @@
       "conTag": {
         "it": "[bored] Sono solamente una luna! [thoughtful] Perché devo venire."
       }
+    },
+    "studio.studio_cosa_e_la_gravita_2.1": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.2": {
+      "emozione": "da bullo",
+      "come": "",
+      "conTag": {
+        "it": "[mischievously] Sei solo una luna!!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.3": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] ah ah ah!!!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.4": {
+      "emozione": "infastidito",
+      "come": "",
+      "conTag": {
+        "it": "[annoyed] Smettila!!!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.5": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] esatto, perchè ci trattieni?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.6": {
+      "emozione": "arrabbiato",
+      "come": "",
+      "conTag": {
+        "it": "[angry] ci dobbiamo ribellare!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.7": {
+      "emozione": "arrabbiato",
+      "come": "",
+      "conTag": {
+        "it": "[angry] giusto!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.8": {
+      "emozione": "arrabbiato",
+      "come": "",
+      "conTag": {
+        "it": "[angry] Vogliamo essere indipendenti!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.9": {
+      "emozione": "preoccupato",
+      "come": "",
+      "conTag": {
+        "it": "[nervous] oh no! adesso cosa faccio?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.10": {
+      "emozione": "ride",
+      "come": "",
+      "conTag": {
+        "it": "[laughs] Tranquilla Terra! Ti spiego io cos'è la gravità!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.11": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "La gravità è una forza attrattiva che tiene uno o più astri stabili."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.12": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Continuo a non capire."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.13": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.14": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Potresti spiegarti meglio?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.15": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.16": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.17": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Calma Terra, una domanda alla volta."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.18": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.19": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ciao Terra, Giove ha ragione!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.20": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Oh! Che spavento! Chi ha parlato?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.21": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.22": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.23": {
+      "emozione": "infastidito",
+      "come": "",
+      "conTag": {
+        "it": "[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.24": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ehm, scusa Terra, hai finito?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.25": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Oh! Scusa! Continua."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.26": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\"."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.27": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Wow! Non sapevo che la scienza potesse essere così bella."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.28": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.29": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Cosa? Di nuovo? Chi ha parlato?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.30": {
+      "emozione": "pensieroso",
+      "come": "",
+      "conTag": {
+        "it": "[thoughtful] è vero! Chi è?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.31": {
+      "emozione": "colpito",
+      "come": "",
+      "conTag": {
+        "it": "[impressed] So chi è! è la mia amica alfa centauri!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.32": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ti ricordi di me allora sole, eh?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.33": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Come potrei mai dimenticarti?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.34": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Pure io attiro oggetti Terra!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.35": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.36": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Sono sagittarius A! Il buco nero al centro della via lattea!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.37": {
+      "emozione": "curioso",
+      "come": "",
+      "conTag": {
+        "it": "[curious] Cos' è un buco nero?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.38": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi."
+      }
     }
   }
 }
