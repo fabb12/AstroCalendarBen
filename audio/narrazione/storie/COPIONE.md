@@ -11,13 +11,13 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **205/326** in italiano · **0/234** in inglese.
+Pronte: **208/329** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
 | Luna | `storie/luna/` | 14 | 14/14 | 0/11 |
-| Terra | `storie/terra/` | 18 | 17/18 | 0/4 |
-| Sole | `storie/sole/` | 16 | 7/16 | 0/10 |
+| Terra | `storie/terra/` | 19 | 18/19 | 0/4 |
+| Sole | `storie/sole/` | 17 | 8/17 | 0/10 |
 | Saturno | `storie/saturno/` | 3 | 1/3 | 0/2 |
 | Giove | `storie/giove/` | 4 | 3/4 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
@@ -57,6 +57,7 @@ Pronte: **205/326** in italiano · **0/234** in inglese.
 | iss | `storie/iss/` | 1 | 1/1 | 0/0 |
 | css | `storie/css/` | 1 | 1/1 | 0/0 |
 | Sedna | `storie/sedna/` | 5 | 5/5 | 0/0 |
+| Ganimede | `storie/ganimede/` | 1 | 1/1 | 0/0 |
 
 ## Luna
 
@@ -250,6 +251,10 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
+- `studio_la_rivoluzione_di_ganimede_e_f-2.mp3` — pronta · 1,7 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 2 (al massimo 3 s)
+  - **Emozione:** annoiato — 
+  - **Testo:** E ci risiamo.
+  - **Da incollare su ElevenLabs v3:** `[bored] E ci risiamo.`
 
 ### Inglese — `storie/terra/en/`
 
@@ -342,6 +347,10 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** felice — 
   - **Testo:** Come potrei mai dimenticarti?
   - **Da incollare su ElevenLabs v3:** `[happy] Come potrei mai dimenticarti?`
+- `studio_la_rivoluzione_di_ganimede_e_f-1.mp3` — pronta · 3,6 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 1 (al massimo 5 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!
+  - **Da incollare su ElevenLabs v3:** `Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!`
 
 ### Inglese — `storie/sole/en/`
 
@@ -2780,4 +2789,15 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
   - **Emozione:** pensieroso — 
   - **Testo:** è vero! Chi è?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] è vero! Chi è?`
+
+## Ganimede
+
+Cartella: `audio/narrazione/storie/ganimede/<lingua>/` · nel codice `Ganymede` · in inglese Ganymede
+
+### Italiano — `storie/ganimede/it/`
+
+- `studio_la_rivoluzione_di_ganimede_e_f-3.mp3` — pronta · 3,4 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 3 (al massimo 4 s)
+  - **Emozione:** annoiato — 
+  - **Testo:** Sono solamente una luna! Perché devo venire.
+  - **Da incollare su ElevenLabs v3:** `[bored] Sono solamente una luna! [thoughtful] Perché devo venire.`
 

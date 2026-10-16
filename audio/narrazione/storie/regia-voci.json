@@ -2556,6 +2556,27 @@
       "conTag": {
         "it": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi."
       }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.1": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.2": {
+      "emozione": "annoiato",
+      "come": "",
+      "conTag": {
+        "it": "[bored] E ci risiamo."
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.3": {
+      "emozione": "annoiato",
+      "come": "",
+      "conTag": {
+        "it": "[bored] Sono solamente una luna! [thoughtful] Perché devo venire."
+      }
     }
   }
 }

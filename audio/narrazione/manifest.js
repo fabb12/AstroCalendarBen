@@ -820,6 +820,10 @@
       it: { file: 'storie/terra/it/studio_cosa_e_la_gravita-40.webm', impronta: '4b5d0e18', firma: 'c5930fec76', testo: "Cos' è un buco nero?" }
     },
 
+    'studio.studio_la_rivoluzione_di_ganimede_e_f.2': {
+      it: { file: 'storie/terra/it/studio_la_rivoluzione_di_ganimede_e_f-2.mp3', impronta: 'f2b776ba', firma: '3aef71aa60', testo: "E ci risiamo." }
+    },
+
     // Sole — storie/sole/
     'demo.narr.storia_luna.6': {
       it: { file: 'storie/sole/it/storia_luna-6.mp3', impronta: '1c864e11', firma: 'a395b7f118' }
@@ -847,6 +851,10 @@
 
     'studio.studio_cosa_e_la_gravita.36': {
       it: { file: 'storie/sole/it/studio_cosa_e_la_gravita-36.mp3', impronta: '846d1493', firma: '07cd895c01', testo: "Come potrei mai dimenticarti?" }
+    },
+
+    'studio.studio_la_rivoluzione_di_ganimede_e_f.1': {
+      it: { file: 'storie/sole/it/studio_la_rivoluzione_di_ganimede_e_f-1.mp3', impronta: '79547e04', firma: '0d2b4e7193', testo: "Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!" }
     },
 
     // Saturno — storie/saturno/
@@ -1674,6 +1682,11 @@
 
     'studio.studio_cosa_e_la_gravita.30': {
       it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-30.mp3', impronta: '3e44cee9', firma: '109df6e0a4', testo: "è vero! Chi è?" }
+    },
+
+    // Ganimede — storie/ganimede/
+    'studio.studio_la_rivoluzione_di_ganimede_e_f.3': {
+      it: { file: 'storie/ganimede/it/studio_la_rivoluzione_di_ganimede_e_f-3.mp3', impronta: 'e0c61f77', firma: '0b1a300208', testo: "Sono solamente una luna! Perché devo venire." }
     },
 
     // ── FINE STORIE COSMICHE ──
