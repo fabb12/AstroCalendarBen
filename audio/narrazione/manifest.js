@@ -1740,6 +1740,10 @@
       it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita-30.mp3', impronta: '3e44cee9', firma: '109df6e0a4', testo: "è vero! Chi è?" }
     },
 
+    'studio.studio_cosa_e_la_gravita_2.21': {
+      it: { file: 'storie/sedna/it/studio_cosa_e_la_gravita_2-21.mp3', impronta: '7697f280', firma: 'e032ca1943', testo: "Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa." }
+    },
+
     // Ganimede — storie/ganimede/
     'studio.studio_la_rivoluzione_di_ganimede_e_f.3': {
       it: { file: 'storie/ganimede/it/studio_la_rivoluzione_di_ganimede_e_f-3.mp3', impronta: 'e0c61f77', firma: '0b1a300208', testo: "Sono solamente una luna! Perché devo venire." }

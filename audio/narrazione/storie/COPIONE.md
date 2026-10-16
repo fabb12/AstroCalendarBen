@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **222/367** in italiano · **0/234** in inglese.
+Pronte: **223/367** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -56,7 +56,7 @@ Pronte: **222/367** in italiano · **0/234** in inglese.
 | hubble | `storie/hubble/` | 2 | 1/2 | 0/0 |
 | iss | `storie/iss/` | 2 | 1/2 | 0/0 |
 | css | `storie/css/` | 2 | 1/2 | 0/0 |
-| Sedna | `storie/sedna/` | 10 | 5/10 | 0/0 |
+| Sedna | `storie/sedna/` | 10 | 6/10 | 0/0 |
 | Ganimede | `storie/ganimede/` | 1 | 1/1 | 0/0 |
 
 ## Luna
@@ -2925,7 +2925,7 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
   - **Emozione:** tranquillo — 
   - **Testo:** Ciao Terra, Giove ha ragione!
   - **Da incollare su ElevenLabs v3:** `Ciao Terra, Giove ha ragione!`
-- `studio_cosa_e_la_gravita_2-21.mp3` — manca · Studio: Cosa è la gravità?, scena 21 (al massimo 16 s)
+- `studio_cosa_e_la_gravita_2-21.mp3` — pronta · 13,8 s · Studio: Cosa è la gravità?, scena 21 (al massimo 16 s)
   - **Emozione:** felice — 
   - **Testo:** Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.
   - **Da incollare su ElevenLabs v3:** `[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.`
