@@ -4299,3 +4299,73 @@ negli astri a disco e in Loro, il volume a strati c'è, il leggero ne fa
 meno, la scelta automatica a 11 fotogrammi al secondo sì e a 60 no, le
 storie a inchiostro mai), `prova-demo.js`.
 
+
+### Lo stile di prima, e la Luna che tremava accanto alla Terra (v508)
+
+«Nelle due CosmoStorie di Interstellar e in quella dell'Apollo 13 ritorna
+lo stile grafico precedente.» Tolte le tre versioni qui sopra (v505, v506,
+v507): `storie-cosmiche.js`, `demo-predefiniti.js` e `prova-storie.js` sono
+tornati a quelli della v504. Vuol dire:
+
+- le due «Interstellar · Dentro la scienza» sono di nuovo a inchiostro, con
+  le spiegazioni a tutto schermo della v501 (niente `story_style` nella
+  prima scena);
+- «Apollo 13 · Dentro la scienza» resta nello stile di Kurzgesagt, ma
+  quello piatto della v504: niente ombre portate né volume sfumato
+  (`ombraInterna`, `ombraPortata`, `kzSollevato` e la misura del passo dei
+  fotogrammi, `stor.leggero`, non ci sono più); i pezzi hanno la lama di
+  luce e l'ombra fredda piatte di prima. Il disegno piatto non usa
+  sfocature, quindi la rete di sicurezza della v507 non serve.
+
+Resta della v507 solo `solFirmaTasti` in app.js (i tasti della 3D non si
+ripassano a ogni fotogramma), che vale per tutte le storie.
+
+**I pianeti vicini che tremavano.** «Se ci sono i pianeti troppo vicini
+tremano in modo innaturale.» Riprodotto in Chromium con la Terra che parla
+e la Luna personaggio accanto: la Luna cambiava verso 40 volte in 56
+fotogrammi, la Terra con lei. Due cause, tutte e due fuori dal palco della
+v439:
+
+- la 3D mette la Luna (e ogni luna, `solScenaLunaPianeta`) attorno al suo
+  pianeta **come è mostrato**, cioè col dondolio di chi parla e col passo di
+  lato del palco (`pg.scarto`). Con la luna personaggio anche lei, il palco
+  la spingeva via dal pianeta, il pianeta si spostava, la luna gli andava
+  dietro e tornava a spingerlo: un anello che non si fermava mai. Ora
+  `storScena3D` toglie al punto di una luna personaggio quello che il suo
+  pianeta personaggio ha in più del suo posto da fermo
+  (`pg.fermo3D.delta`): la luna segue il viaggio del pianeta
+  (`character_move`), non il suo dondolio né il suo passo di lato. Le lune
+  che non sono personaggi seguono il pianeta come prima;
+- la distanza della Luna dalla Terra (`solStaccoLuna`, e per le altre lune
+  `solPassoLunaDi`) si faceva col raggio **disegnato** del pianeta, che a
+  ogni sillaba si gonfia (`pg.kOscilla`): la Terra che parlava allontanava
+  e avvicinava la Luna di due pixel, sei volte al secondo. Ora la 3D chiede
+  il raggio da fermo (`storRaggioFermo3D`).
+
+E lo stesso anello per chi viaggia «accanto a» un personaggio
+(`character_move { to: 'Earth' }`): la meta era il pianeta come è
+mostrato, spinto dal palco proprio da chi arrivava. `storDestinazione` ora
+usa il posto da fermo del bersaglio (`fermo3D.fermo`).
+
+Dopo: nella stessa scena la Luna non cambia verso nemmeno una volta (0 in
+59 fotogrammi), e la Terra si muove solo col suo dondolio di quando parla.
+
+Prove: `prova-storie.js` (126: la nuova — una Luna personaggio accanto a
+una Terra che trema si muove di meno di 3 px in tutto, 745 px senza la
+correzione — e il raggio da fermo), `prova-demo.js`, `prova-sistema3d.js`.
+
+### La targa di chi parla (v509)
+
+«Quando qualcuno parla mostra subito il nome di chi parla sopra il soggetto,
+e poi fallo scomparire dopo qualche secondo.» A ogni battuta nuova (un
+`character_speak` nuovo, o un altro personaggio che prende la parola, anche
+in un canto) sopra alla testa di chi parla compare il suo nome
+(`storDisegnaTarga`, chiamata da `storDisegnaSovrimpressioni`): una pillola
+scura col pallino del colore del personaggio, che entra in 160 ms, resta
+2,6 s e svanisce in 0,7 s (`STOR_TARGA`), anche se la battuta continua.
+Sta fuori dalla lente della regia (ha sempre la stessa misura) e segue il
+personaggio dove la lente lo porta (`storLenteSchermo`); sopra al bordo
+dell'astro quando il volto è addosso, sotto se in cima non c'è posto. Va
+con l'orologio della storia: in pausa aspetta. Prova in `prova-storie.js`
+(v508: subito, sopra alla testa, via dopo qualche secondo, di nuovo alla
+battuta dopo sopra al nuovo che parla); guardata in Chromium.

@@ -278,18 +278,81 @@ const COSM_PER_ID = new Map(COSM_STRUTTURE.map(s => [s.id, s]));
 // I punti di riferimento con un nome: non sono strutture, sono i paletti
 // che fanno capire dove si è
 const COSM_SEGNI = [
-  { id: 'alfaCen', v: cosmDaGal(315.73, -0.68, 4.37 * COSM_AL), colore: '#fde68a', minL: 5.4, maxL: 8.2, stella: true },
-  { id: 'sirio', v: cosmDaGal(227.23, -8.89, 8.6 * COSM_AL), colore: '#bfdbfe', minL: 5.7, maxL: 8.0, stella: true },
-  { id: 'gliese445', v: cosmDaRaDec(176.92, 78.69, 17.1 * COSM_AL), colore: '#fca5a5', minL: 5.9, maxL: 8.0, stella: true },
-  { id: 'ross248', v: cosmDaRaDec(355.48, 44.17, 10.3 * COSM_AL), colore: '#fca5a5', minL: 5.8, maxL: 8.0, stella: true },
-  { id: 'orione', v: cosmDaRaDec(83.82, -5.39, 1344 * COSM_AL), colore: '#f9a8d4', minL: 7.6, maxL: 9.4 },
-  { id: 'centro', v: COSM_CENTRO_GAL, colore: '#fde68a', minL: 8.6, maxL: 10.6 },
-  { id: 'gnm', v: cosmDaRaDec(80.89, -69.76, 160000 * COSM_AL), colore: '#c4b5fd', minL: 9.6, maxL: 11.5, galassia: 7000 * COSM_AL },
-  { id: 'pnm', v: cosmDaRaDec(13.19, -72.83, 200000 * COSM_AL), colore: '#c4b5fd', minL: 9.6, maxL: 11.3, galassia: 3500 * COSM_AL },
-  { id: 'm31', v: COSM_M31, colore: '#e9d5ff', minL: 10.6, maxL: 12.6, galassia: 76000 * COSM_AL, inclina: 0.42, gira: 38 },
-  { id: 'm33', v: cosmDaRaDec(23.46, 30.66, 2.73 * COSM_MAL), colore: '#ddd6fe', minL: 10.8, maxL: 12.2, galassia: 30000 * COSM_AL, inclina: 0.7, gira: -20 },
-  { id: 'ammassoVergine', v: COSM_VERGINE, colore: '#fde68a', minL: 12.0, maxL: 13.9 },
-  { id: 'grandeAttrattore', v: COSM_GRANDE_ATTRATTORE, colore: '#fbbf24', minL: 12.8, maxL: 14.4 }
+  { id: 'alfaCen', v: cosmDaGal(315.73, -0.68, 4.37 * COSM_AL), colore: '#fde68a', minL: 5.4, maxL: 8.2, stella: true, lum: 0.85, cura: true },
+  { id: 'sirio', v: cosmDaGal(227.23, -8.89, 8.6 * COSM_AL), colore: '#bfdbfe', minL: 5.7, maxL: 8.0, stella: true, lum: 1, cura: true },
+  { id: 'gliese445', v: cosmDaRaDec(176.92, 78.69, 17.1 * COSM_AL), colore: '#fca5a5', minL: 5.9, maxL: 7.4, stella: true, lum: 0.2, cura: true },
+  { id: 'ross248', v: cosmDaRaDec(355.48, 44.17, 10.3 * COSM_AL), colore: '#fca5a5', minL: 5.8, maxL: 7.4, stella: true, lum: 0.2, cura: true },
+  { id: 'orione', v: cosmDaRaDec(83.82, -5.39, 1344 * COSM_AL), colore: '#f9a8d4', minL: 7.6, maxL: 9.4, tipo: 'nebulosa', misura: 12 * COSM_AL, cura: true },
+  { id: 'centro', v: COSM_CENTRO_GAL, colore: '#fde68a', minL: 8.6, maxL: 10.6, cura: true },
+  { id: 'gnm', v: cosmDaRaDec(80.89, -69.76, 160000 * COSM_AL), colore: '#c4b5fd', minL: 9.6, maxL: 11.5, galassia: 7000 * COSM_AL, cura: true },
+  { id: 'pnm', v: cosmDaRaDec(13.19, -72.83, 200000 * COSM_AL), colore: '#c4b5fd', minL: 9.6, maxL: 11.3, galassia: 3500 * COSM_AL, cura: true },
+  { id: 'm31', v: COSM_M31, colore: '#e9d5ff', minL: 10.6, maxL: 12.6, galassia: 76000 * COSM_AL, inclina: 0.42, gira: 38, cura: true },
+  { id: 'm33', v: cosmDaRaDec(23.46, 30.66, 2.73 * COSM_MAL), colore: '#ddd6fe', minL: 10.8, maxL: 12.2, galassia: 30000 * COSM_AL, inclina: 0.7, gira: -20, cura: true },
+  { id: 'ammassoVergine', v: COSM_VERGINE, colore: '#fde68a', minL: 12.0, maxL: 13.9, tipo: 'gruppo', misura: 4 * COSM_MAL },
+  { id: 'grandeAttrattore', v: COSM_GRANDE_ATTRATTORE, colore: '#fbbf24', minL: 12.8, maxL: 14.4, tipo: 'gruppo', misura: 6 * COSM_MAL },
+  /* v508, «migliora la grafica della scala cosmica, falla più completa, per
+   * tutte le sezioni»: a ogni tappa i suoi paletti, alla posizione vera
+   * (ascensione retta e declinazione J2000, distanze pubblicate). Le stelle
+   * che si nominano guardando il cielo: le vicine (la nube locale), le
+   * brillanti della Bolla Locale, le supergiganti e le nebulose del braccio
+   * di Orione e dei bracci accanto, gli ammassi globulari dell'alone, le
+   * galassie nane del Gruppo Locale, i gruppi vicini della Vergine, gli
+   * ammassi di Laniakea, i lontanissimi. `tipo` dice come si disegna,
+   * `lum` quanto è vistosa (0…1), `misura` il raggio vero (in UA) di
+   * nebulose, ammassi e galassie, `cura` i nomi che c'erano già prima e che
+   * si scrivono per primi, sempre.
+   * I nomi non si accavallano (`cosmDisegnaSegni`): chi non trova posto
+   * resta un segno senza scritta. */
+  // Le stelle vicine, dentro la nube locale
+  { id: 'barnard', v: cosmDaRaDec(269.452, 4.693, 5.96 * COSM_AL), colore: '#fca5a5', minL: 5.5, maxL: 7.1, stella: true, lum: 0.25 },
+  { id: 'wolf359', v: cosmDaRaDec(164.120, 7.015, 7.86 * COSM_AL), colore: '#fca5a5', minL: 5.6, maxL: 7.1, stella: true, lum: 0.2 },
+  { id: 'epsEridani', v: cosmDaRaDec(53.233, -9.458, 10.5 * COSM_AL), colore: '#fed7aa', minL: 5.7, maxL: 7.2, stella: true, lum: 0.45 },
+  { id: 'procione', v: cosmDaRaDec(114.825, 5.225, 11.46 * COSM_AL), colore: '#fef3c7', minL: 5.7, maxL: 7.3, stella: true, lum: 0.8 },
+  { id: 'tauCeti', v: cosmDaRaDec(26.017, -15.937, 11.9 * COSM_AL), colore: '#fef3c7', minL: 5.8, maxL: 7.3, stella: true, lum: 0.45 },
+  { id: 'altair', v: cosmDaRaDec(297.696, 8.868, 16.7 * COSM_AL), colore: '#e0f2fe', minL: 5.9, maxL: 7.5, stella: true, lum: 0.8 },
+  { id: 'vega', v: cosmDaRaDec(279.235, 38.784, 25.0 * COSM_AL), colore: '#bfdbfe', minL: 6.0, maxL: 7.7, stella: true, lum: 0.9 },
+  { id: 'fomalhaut', v: cosmDaRaDec(344.413, -29.622, 25.1 * COSM_AL), colore: '#e0f2fe', minL: 6.0, maxL: 7.6, stella: true, lum: 0.7 },
+  // Le brillanti e gli ammassi della Bolla Locale
+  { id: 'arturo', v: cosmDaRaDec(213.915, 19.182, 36.7 * COSM_AL), colore: '#fdba74', minL: 6.2, maxL: 7.9, stella: true, lum: 0.9 },
+  { id: 'aldebaran', v: cosmDaRaDec(68.980, 16.509, 65.3 * COSM_AL), colore: '#fdba74', minL: 6.5, maxL: 8.1, stella: true, lum: 0.85 },
+  { id: 'iadi', v: cosmDaRaDec(66.75, 15.87, 153 * COSM_AL), colore: '#fde68a', minL: 6.9, maxL: 8.4, tipo: 'ammasso', misura: 8 * COSM_AL, lum: 0.6 },
+  { id: 'polare', v: cosmDaRaDec(37.95, 89.264, 433 * COSM_AL), colore: '#fef3c7', minL: 7.2, maxL: 8.7, stella: true, lum: 0.75 },
+  { id: 'pleiadi', v: cosmDaRaDec(56.75, 24.117, 444 * COSM_AL), colore: '#bfdbfe', minL: 7.2, maxL: 8.8, tipo: 'ammasso', misura: 9 * COSM_AL, lum: 0.9 },
+  { id: 'betelgeuse', v: cosmDaRaDec(88.793, 7.407, 548 * COSM_AL), colore: '#fb923c', minL: 7.3, maxL: 9.0, stella: true, lum: 1 },
+  { id: 'antares', v: cosmDaRaDec(247.352, -26.432, 550 * COSM_AL), colore: '#f87171', minL: 7.3, maxL: 9.0, stella: true, lum: 0.95 },
+  { id: 'rigel', v: cosmDaRaDec(78.634, -8.202, 860 * COSM_AL), colore: '#bfdbfe', minL: 7.5, maxL: 9.1, stella: true, lum: 1 },
+  // Il braccio di Orione e i bracci accanto
+  { id: 'deneb', v: cosmDaRaDec(310.358, 45.280, 2600 * COSM_AL), colore: '#e0f2fe', minL: 8.0, maxL: 9.3, stella: true, lum: 1 },
+  { id: 'nordAmerica', v: cosmDaRaDec(314.75, 44.33, 2590 * COSM_AL), colore: '#fda4af', minL: 8.1, maxL: 9.3, tipo: 'nebulosa', misura: 50 * COSM_AL },
+  { id: 'laguna', v: cosmDaRaDec(270.92, -24.38, 4100 * COSM_AL), colore: '#f9a8d4', minL: 8.2, maxL: 9.4, tipo: 'nebulosa', misura: 55 * COSM_AL },
+  { id: 'aquila', v: cosmDaRaDec(274.70, -13.80, 5700 * COSM_AL), colore: '#fbcfe8', minL: 8.3, maxL: 9.4, tipo: 'nebulosa', misura: 35 * COSM_AL },
+  { id: 'granchio', v: cosmDaRaDec(83.633, 22.015, 6500 * COSM_AL), colore: '#a5f3fc', minL: 8.3, maxL: 9.4, tipo: 'nebulosa', misura: 6 * COSM_AL },
+  { id: 'carena', v: cosmDaRaDec(161.265, -59.867, 8500 * COSM_AL), colore: '#fda4af', minL: 8.4, maxL: 9.5, tipo: 'nebulosa', misura: 150 * COSM_AL },
+  // Gli ammassi globulari dell'alone
+  { id: 'omegaCen', v: cosmDaRaDec(201.697, -47.480, 17090 * COSM_AL), colore: '#fef3c7', minL: 9.0, maxL: 10.7, tipo: 'globulare', misura: 86 * COSM_AL, lum: 0.9 },
+  { id: 'm13', v: cosmDaRaDec(250.423, 36.461, 22200 * COSM_AL), colore: '#fef3c7', minL: 9.1, maxL: 10.7, tipo: 'globulare', misura: 84 * COSM_AL, lum: 0.7 },
+  // Le galassie nane del Gruppo Locale
+  { id: 'nanaSagittario', v: cosmDaRaDec(283.83, -30.55, 70000 * COSM_AL), colore: '#ddd6fe', minL: 9.8, maxL: 11.2, tipo: 'nana', misura: 5000 * COSM_AL },
+  { id: 'leo1', v: cosmDaRaDec(152.12, 12.31, 820000 * COSM_AL), colore: '#ddd6fe', minL: 10.9, maxL: 12.3, tipo: 'nana', misura: 1000 * COSM_AL },
+  { id: 'ngc6822', v: cosmDaRaDec(296.24, -14.80, 1.6 * COSM_MAL), colore: '#ddd6fe', minL: 10.9, maxL: 12.3, tipo: 'nana', misura: 3500 * COSM_AL },
+  { id: 'ic1613', v: cosmDaRaDec(16.20, 2.12, 2.4 * COSM_MAL), colore: '#ddd6fe', minL: 11.0, maxL: 12.3, tipo: 'nana', misura: 5000 * COSM_AL },
+  { id: 'wlm', v: cosmDaRaDec(0.49, -15.46, 3.0 * COSM_MAL), colore: '#ddd6fe', minL: 11.0, maxL: 12.3, tipo: 'nana', misura: 4000 * COSM_AL },
+  // I gruppi vicini, nel Superammasso della Vergine
+  { id: 'scultore', v: cosmDaRaDec(11.888, -25.288, 11.4 * COSM_MAL), colore: '#e9d5ff', minL: 11.9, maxL: 13.4, tipo: 'gruppo', misura: 2 * COSM_MAL },
+  { id: 'm81', v: cosmDaRaDec(148.888, 69.065, 11.7 * COSM_MAL), colore: '#e9d5ff', minL: 11.9, maxL: 13.4, tipo: 'gruppo', misura: 1.5 * COSM_MAL },
+  { id: 'centauroA', v: cosmDaRaDec(201.365, -43.019, 12 * COSM_MAL), colore: '#e9d5ff', minL: 11.9, maxL: 13.4, tipo: 'gruppo', misura: 1.5 * COSM_MAL },
+  { id: 'leone', v: cosmDaRaDec(161.69, 11.82, 35 * COSM_MAL), colore: '#e9d5ff', minL: 12.1, maxL: 13.6, tipo: 'gruppo', misura: 2 * COSM_MAL },
+  { id: 'fornace', v: cosmDaRaDec(54.62, -35.45, 62 * COSM_MAL), colore: '#fde68a', minL: 12.3, maxL: 13.8, tipo: 'gruppo', misura: 3 * COSM_MAL },
+  // Gli ammassi di Laniakea e quelli appena fuori
+  { id: 'idra', v: cosmDaRaDec(159.18, -27.53, 160 * COSM_MAL), colore: '#fde68a', minL: 12.9, maxL: 14.4, tipo: 'gruppo', misura: 5 * COSM_MAL },
+  { id: 'centauro', v: cosmDaRaDec(192.20, -41.31, 170 * COSM_MAL), colore: '#fde68a', minL: 12.9, maxL: 14.4, tipo: 'gruppo', misura: 5 * COSM_MAL },
+  { id: 'perseoPesci', v: cosmDaRaDec(49.95, 41.51, 240 * COSM_MAL), colore: '#fcd34d', minL: 13.0, maxL: 14.5, tipo: 'gruppo', misura: 6 * COSM_MAL },
+  { id: 'chioma', v: cosmDaRaDec(194.95, 27.98, 320 * COSM_MAL), colore: '#fcd34d', minL: 13.0, maxL: 14.6, tipo: 'gruppo', misura: 8 * COSM_MAL },
+  { id: 'shapley', v: cosmDaRaDec(201.98, -31.50, 650 * COSM_MAL), colore: '#fbbf24', minL: 13.2, maxL: 14.8, tipo: 'gruppo', misura: 30 * COSM_MAL, lum: 1 },
+  // I lontanissimi: la distanza è quella di oggi (comovente), come il bordo
+  { id: 'q3c273', v: cosmDaRaDec(187.278, 2.052, 2.2 * COSM_GAL), colore: '#bae6fd', minL: 13.8, maxL: 15.3, tipo: 'quasar', lum: 0.9 },
+  { id: 'gnz11', v: cosmDaRaDec(189.106, 62.242, 32 * COSM_GAL), colore: '#c4b5fd', minL: 14.9, maxL: 16.2, tipo: 'quasar', lum: 0.6 },
+  { id: 'jadesZ14', v: cosmDaRaDec(53.083, -27.856, 33.8 * COSM_GAL), colore: '#f0abfc', minL: 14.9, maxL: 16.2, tipo: 'quasar', lum: 0.6 }
 ];
 
 // Le tappe del viaggio delle due sonde: le passate hanno la data vera, le
@@ -1043,11 +1106,43 @@ function cosmSpriteRagnatela() {
   return c;
 }
 
+/* v508: il fondo cosmico a microonde come lo mostrano le mappe di Planck,
+ * a macchie calde e fredde: un anello sul bordo dell'universo osservabile,
+ * fatto di migliaia di chiazze sfumate, arancio e giallo le più calde, blu
+ * le più fredde. Le chiazze sono illustrative (come la ragnatela): la loro
+ * misura tipica, un grado di cielo, è quella vera. */
+function cosmSpriteFondo() {
+  if (cosm.sprite.fondo !== undefined) return cosm.sprite.fondo;
+  const N = 1024, c = cosmTela(N);
+  cosm.sprite.fondo = c;
+  if (!c) return null;
+  const g = c.getContext('2d');
+  const d = cosmDado(61);
+  const R = N / 2;
+  const tinte = ['rgba(59,130,246,', 'rgba(96,165,250,', 'rgba(251,191,36,', 'rgba(249,115,22,', 'rgba(239,68,68,', 'rgba(253,224,71,'];
+  for (let i = 0; i < 2600; i++) {
+    const a = d() * Math.PI * 2, q = R * (0.885 + Math.pow(d(), 0.7) * 0.11);
+    const x = R + Math.cos(a) * q, y = R + Math.sin(a) * q, r = 3 + d() * 9;
+    const t = tinte[Math.floor(d() * tinte.length)];
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, t + '0.42)'); gr.addColorStop(1, t + '0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  // il bordo interno sfumato: lì la luce più antica comincia
+  g.globalCompositeOperation = 'destination-in';
+  const m = g.createRadialGradient(R, R, R * 0.86, R, R, R);
+  m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(0.25, 'rgba(0,0,0,1)'); m.addColorStop(0.92, 'rgba(0,0,0,1)'); m.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = m; g.fillRect(0, 0, N, N);
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
 // I materiali si preparano prima che servano, quando il browser è libero:
 // la Via Lattea e la ragnatela costano qualche decina di millisecondi l'una,
 // e pagarle a metà di uno zoom vorrebbe dire un fotogramma perso proprio lì
 function cosmPreparaMateriali() {
-  const lavori = [cosmSpriteViaLattea, cosmSpriteGalassia, cosmSpriteRagnatela,
+  const lavori = [cosmSpriteViaLattea, cosmSpriteGalassia, cosmSpriteRagnatela, cosmSpriteFondo,
     () => cosmNuvola('oort'), () => cosmNuvola('laniakea'), () => cosmNuvola('vergine'), () => cosmNuvola('nane'),
     () => cosmNuvola('kuiper'), () => cosmNuvola('asteroidi')];
   const quando = typeof requestIdleCallback === 'function' ? f => requestIdleCallback(f, { timeout: 600 }) : f => setTimeout(f, 30);
@@ -1385,6 +1480,11 @@ function cosmDisegnaCorpo(ctx, cam, corpo, pos, rVero, assi, quando, minimo) {
   cosmPercorsoCerchio(ctx, q.x, q.y, rp * 3.4); ctx.fill();
   ctx.fillStyle = corpo.colore;
   cosmPercorsoCerchio(ctx, q.x, q.y, rp); ctx.fill();
+  // v508: Saturno si riconosce dall'anello anche quando è un granello
+  if (corpo.id === 'Saturn') {
+    ctx.strokeStyle = 'rgba(253,230,138,0.75)'; ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.ellipse(q.x, q.y, rp * 2.4, rp * 0.85, -0.35, 0, Math.PI * 2); ctx.stroke();
+  }
   return { q, r: rp };
 }
 // L'aria di taglio, attorno a un pianeta con l'atmosfera
@@ -1797,8 +1897,54 @@ function cosmDisegnaGalassia(ctx, cam) {
   cosmDisegnaSpritePiano(ctx, cam, cosmSpriteViaLattea(), COSM_CENTRO_GAL, raggio,
     [cosmVettore(0, -1, 0), cosmVettore(-1, 0, 0)], Math.min(1, alfa * 1.1));
   const c = cam.p(COSM_CENTRO_GAL);
+  cosmDisegnaBracciNomi(ctx, cam, alfa * cosmLiscia(140, 260, rpx));
   if (rpx > 40) cosmNomeStruttura(ctx, cam, 'viaLattea', c.x, c.y - rpx * 1.04, alfa, 0);
   return alfa;
+}
+
+/* v508: i nomi dei quattro bracci, scritti sulla loro spirale (la stessa
+ * dello sprite: raggio alla longitudine del Sole e passo di dodici gradi),
+ * la barra al centro e l'orbita del Sole attorno al centro, ventiseimila anni
+ * luce, un giro ogni 230 milioni di anni. Nelle CosmoStorie l'orbita tace,
+ * come quelle dei pianeti. */
+const COSM_BRACCI_NOMI = [
+  { chiave: 'braccio.scudo', psi: 1.25 }, { chiave: 'braccio.sagittario', psi: -0.75 },
+  { chiave: 'braccio.perseo', psi: 0.55 }, { chiave: 'braccio.esterno', psi: -0.5 }
+];
+function cosmPuntoBraccio(raggio, psi) {
+  const r = raggio * Math.exp(COSM_PASSO_BRACCI * (psi - Math.PI)) * COSM_AL;
+  return cosmVettore(COSM_CENTRO_GAL.x + r * Math.cos(psi), r * Math.sin(psi), 0);
+}
+function cosmDisegnaBracciNomi(ctx, cam, alfa) {
+  if (alfa < 0.03) return;
+  const cinema = typeof demoStoriaCinema === 'function' && demoStoriaCinema();
+  if (!cinema) {
+    ctx.save();
+    ctx.globalAlpha = alfa * 0.5;
+    ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 1; ctx.setLineDash([3, 6]);
+    ctx.beginPath();
+    for (let i = 0; i <= 120; i++) {
+      const a = i / 120 * Math.PI * 2;
+      const q = cam.p(cosmVettore(COSM_CENTRO_GAL.x - 26000 * COSM_AL * Math.cos(a), 26000 * COSM_AL * Math.sin(a), 0));
+      if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+    const sole = cam.p(cosmVettore(0, 0, 0)), centro = cam.p(COSM_CENTRO_GAL);
+    const dx = sole.x - centro.x, dy = sole.y - centro.y, l = Math.hypot(dx, dy) || 1;
+    ctx.globalAlpha = alfa * 0.85;
+    cosmScrittaAlPosto(ctx, cam, cosmT('cosmo.etichetta.orbitaSole'), sole.x + dx / l * 22, sole.y + dy / l * 22 + 12, '#fde68a', 10.5);
+  }
+  ctx.globalAlpha = alfa * 0.9;
+  COSM_BRACCI_NOMI.forEach((b, i) => {
+    const q = cam.p(cosmPuntoBraccio(COSM_BRACCI[i].raggio, Math.PI + b.psi));
+    if (!cosmSulloSchermo(q, cam, -30)) return;
+    cosmScrittaAlPosto(ctx, cam, cosmT('cosmo.etichetta.' + b.chiave), q.x, q.y, '#c7d2fe', 11, 'center', 600);
+  });
+  const centro = cam.p(COSM_CENTRO_GAL);
+  const rb = 13000 * COSM_AL * cam.s;
+  if (rb > 40) cosmScrittaAlPosto(ctx, cam, cosmT('cosmo.etichetta.barra'), centro.x, centro.y + rb * 0.45 + 16, '#fed7aa', 10.5);
+  ctx.globalAlpha = 1;
 }
 
 // Il braccio di Orione: una striscia larga tremilacinquecento anni luce e
@@ -1922,6 +2068,64 @@ function cosmDisegnaKuiper(ctx, cam) {
   return alfa;
 }
 
+/* v508: i pianeti nani alla loro posizione vera e con la loro orbita, gli
+ * stessi della vista 3D (`SOL_MONDI`, Plutone da Astronomy Engine e gli altri
+ * da Keplero): Cerere nella fascia degli asteroidi, Plutone, Haumea,
+ * Makemake, Quaoar e Orco fra i sassi di Kuiper, Eris e Gonggong nel disco
+ * diffuso, Sedna che si spinge fino a novecento unità astronomiche e da lì
+ * mostra quanto è vuota la strada verso la nube di Oort. Le posizioni si
+ * rifanno una volta al giorno di carta. */
+function cosmNani() {
+  if (typeof SOL_MONDI === 'undefined' || typeof solPosizioneMondo !== 'function') return [];
+  const ms = Number.isFinite(cosm.msFotogramma) ? cosm.msFotogramma : cosmIstante();
+  const giorno = Math.floor(ms / 86400000);
+  if (cosm.nani && cosm.nani.giorno === giorno) return cosm.nani.elenco;
+  const elenco = [];
+  let t = null;
+  try { t = typeof Astronomy !== 'undefined' ? Astronomy.MakeTime(new Date(ms)) : null; } catch (e) { t = null; }
+  SOL_MONDI.filter(m => m.famiglia === 'nano').forEach(m => {
+    try {
+      const v = solPosizioneMondo(m, t, new Date(ms));
+      if (v && Number.isFinite(v.x)) elenco.push({ m, pos: v, gal: cosmEclAGal(v), a: Math.hypot(v.x, v.y, v.z) });
+    } catch (e) { /* niente */ }
+  });
+  let orbite = [];
+  try {
+    if (typeof solCalcolaOrbiteMondi === 'function') solCalcolaOrbiteMondi(new Date(ms));
+    orbite = (sol.orbiteMondi && sol.orbiteMondi.tracce || []).map(o => ({ id: o.id, punti: o.punti.map(v => cosmEclAGal(v)) }));
+  } catch (e) { orbite = []; }
+  cosm.nani = { giorno, elenco, orbite };
+  return elenco;
+}
+function cosmDisegnaNani(ctx, cam) {
+  const elenco = cosmNani();
+  if (!elenco.length) return;
+  const cinema = typeof demoStoriaCinema === 'function' && demoStoriaCinema();
+  elenco.forEach(n => {
+    const rpx = n.a * cam.s;
+    const alfa = cosmVisibilita(rpx, cam.lato, 10, 40);
+    if (alfa < 0.03) return;
+    const orbita = !cinema && cosm.nani.orbite.find(o => o.id === n.m.id);
+    if (orbita) {
+      ctx.save();
+      ctx.globalAlpha = alfa * 0.32;
+      ctx.strokeStyle = n.m.colore; ctx.lineWidth = 0.9; ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      orbita.punti.forEach((v, i) => { const q = cam.p(v); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); });
+      ctx.stroke();
+      ctx.restore();
+    }
+    const q = cam.p(n.gal);
+    if (!cosmSulloSchermo(q, cam, 20)) return;
+    ctx.globalAlpha = alfa;
+    cosmAloneSegno(ctx, q.x, q.y, 6, n.m.colore, 0.9);
+    ctx.fillStyle = n.m.colore;
+    cosmPercorsoCerchio(ctx, q.x, q.y, 1.9); ctx.fill();
+    if (rpx > 80) cosmScrittaAlPosto(ctx, cam, cosmNomeCorpo(n.m.id), q.x + 6, q.y - 8, n.m.colore, 10.5, 'left', 600);
+    ctx.globalAlpha = 1;
+  });
+}
+
 function cosmDisegnaGruppoLocale(ctx, cam) {
   const s = COSM_PER_ID.get('gruppoLocale');
   const rpx = s.r * cam.s;
@@ -2020,6 +2224,15 @@ function cosmDisegnaUniverso(ctx, cam) {
     g.addColorStop(1, 'rgba(239,68,68,0)');
     ctx.fillStyle = g;
     cosmPercorsoCerchio(ctx, c.x, c.y, rpx * 1.04); ctx.fill();
+    // le macchie calde e fredde, finché l'anello è abbastanza piccolo da
+    // stenderlo intero senza costare un fotogramma
+    const fondo = rpx < 2600 ? cosmSpriteFondo() : null;
+    if (fondo) {
+      ctx.save();
+      ctx.globalAlpha = alfa * 0.9;
+      ctx.drawImage(fondo, c.x - rpx * 1.04, c.y - rpx * 1.04, rpx * 2.08, rpx * 2.08);
+      ctx.restore();
+    }
     ctx.strokeStyle = `rgba(253,186,116,${0.8 * alfa})`; ctx.lineWidth = 1.6;
     cosmPercorsoCerchio(ctx, c.x, c.y, rpx); ctx.stroke();
     if (rpx > 60) {
@@ -2032,39 +2245,211 @@ function cosmDisegnaUniverso(ctx, cam) {
   return alfa;
 }
 
-// I segni con un nome: stelle vicine, nebulose, galassie
+// I segni con un nome: stelle vicine, nebulose, galassie.
+/* v508: ognuno disegnato per quello che è (`tipo`): una stella ha il suo
+ * alone e i quattro raggi, più lunghi per le brillanti; un ammasso aperto è
+ * un mucchietto di stelline; una nebulosa una nube colorata con il cuore
+ * acceso, grande quanto è davvero quando lo è abbastanza; un globulare una
+ * palla fitta; una galassia nana una macchia irregolare; un gruppo di
+ * galassie un pugno di ellissi attorno a un bagliore; un quasar un punto
+ * azzurro coi raggi lunghi. Prima i segni, poi i nomi: chi non trova posto
+ * libero (un altro nome, o il bordo) resta senza scritta, e i nomi con
+ * `cura` (quelli che c'erano da prima) si scrivono per primi. */
+function cosmAloneSegno(ctx, x, y, r, colore, alfa) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, cosmRgba(colore, 0.55 * alfa));
+  g.addColorStop(0.35, cosmRgba(colore, 0.18 * alfa));
+  g.addColorStop(1, cosmRgba(colore, 0));
+  ctx.fillStyle = g;
+  cosmPercorsoCerchio(ctx, x, y, r); ctx.fill();
+}
+// '#rrggbb' → 'rgba(r,g,b,a)'
+function cosmRgba(colore, a) {
+  const m = /^#([0-9a-f]{6})$/i.exec(colore || '');
+  if (!m) return colore;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`;
+}
+function cosmRaggiStella(ctx, x, y, lungo, colore, alfa, larghezza) {
+  ctx.strokeStyle = cosmRgba(colore, 0.8 * alfa); ctx.lineWidth = larghezza || 0.8;
+  ctx.beginPath();
+  ctx.moveTo(x - lungo, y); ctx.lineTo(x + lungo, y); ctx.moveTo(x, y - lungo); ctx.lineTo(x, y + lungo);
+  ctx.stroke();
+}
+// Il disegno di un segno; restituisce quanto è grande (per mettere il nome sotto)
+function cosmDisegnaUnSegno(ctx, cam, sg, p) {
+  const lum = sg.lum == null ? 0.5 : sg.lum;
+  const tipo = sg.galassia ? 'galassia' : sg.tipo || (sg.stella ? 'stella' : 'punto');
+  const d = cosmDado(cosmSemeDi(sg.id));
+  if (tipo === 'galassia') {
+    // Come la Via Lattea, una galassia del gruppo resta un segno leggibile
+    // anche quando la sua misura vera è di pochi pixel
+    const rpx = Math.max(sg.galassia * cam.s, sg.galassia > 50000 * COSM_AL ? 9 : 6);
+    if (rpx > 2.5) {
+      cosmAloneSegno(ctx, p.x, p.y, rpx * 1.5, sg.colore, 0.5);
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate((sg.gira || 0) * COSM_D2R); ctx.scale(1, sg.inclina || 0.75);
+      const sp = cosmSpriteGalassia();
+      if (sp) ctx.drawImage(sp, -rpx, -rpx, rpx * 2, rpx * 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = sg.colore; cosmPercorsoCerchio(ctx, p.x, p.y, 2.4); ctx.fill();
+    }
+    return Math.min(30, sg.galassia * cam.s * 0.6);
+  }
+  if (tipo === 'stella') {
+    const nucleo = 1.5 + lum * 1.5;
+    cosmAloneSegno(ctx, p.x, p.y, 5 + lum * 9, sg.colore, 1);
+    cosmRaggiStella(ctx, p.x, p.y, 4 + lum * 8, sg.colore, 0.75, 0.7);
+    ctx.fillStyle = '#ffffff';
+    cosmPercorsoCerchio(ctx, p.x, p.y, nucleo * 0.6); ctx.fill();
+    ctx.fillStyle = sg.colore;
+    ctx.globalAlpha *= 0.85;
+    cosmPercorsoCerchio(ctx, p.x, p.y, nucleo); ctx.fill();
+    ctx.globalAlpha /= 0.85;
+    return 2;
+  }
+  if (tipo === 'ammasso') {
+    // Le sette sorelle: il mucchietto si sorteggia sempre uguale
+    const r = Math.max(5, Math.min(40, (sg.misura || 0) * cam.s));
+    cosmAloneSegno(ctx, p.x, p.y, r * 1.8, sg.colore, 0.8);
+    for (let i = 0; i < 9; i++) {
+      const a = d() * Math.PI * 2, q = Math.sqrt(d()) * r, rr = 0.7 + d() * 1.1 * (0.6 + lum);
+      ctx.fillStyle = i < 2 ? '#ffffff' : sg.colore;
+      cosmPercorsoCerchio(ctx, p.x + Math.cos(a) * q, p.y + Math.sin(a) * q, rr); ctx.fill();
+    }
+    return r * 0.6;
+  }
+  if (tipo === 'nebulosa') {
+    // Tre sbuffi colorati, uno più acceso al centro dove le stelle giovani
+    // fanno brillare il gas
+    const r = Math.max(7, Math.min(120, (sg.misura || 0) * cam.s * 1.3));
+    for (let i = 0; i < 3; i++) {
+      const a = d() * Math.PI * 2, q = r * (i ? 0.35 : 0), rr = r * (i ? 0.75 : 1);
+      cosmAloneSegno(ctx, p.x + Math.cos(a) * q, p.y + Math.sin(a) * q, rr, sg.colore, i ? 0.55 : 0.8);
+    }
+    cosmAloneSegno(ctx, p.x, p.y, Math.max(3, r * 0.28), '#fff1f2', 0.9);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    cosmPercorsoCerchio(ctx, p.x, p.y, 1.1); ctx.fill();
+    return r * 0.5;
+  }
+  if (tipo === 'globulare') {
+    const r = Math.max(4, Math.min(30, (sg.misura || 0) * cam.s * 2));
+    cosmAloneSegno(ctx, p.x, p.y, r * 1.6, sg.colore, 1);
+    for (let i = 0; i < 14; i++) {
+      const a = d() * Math.PI * 2, q = Math.abs(cosmGauss(d)) * r * 0.35;
+      ctx.fillStyle = cosmRgba(sg.colore, 0.85);
+      cosmPercorsoCerchio(ctx, p.x + Math.cos(a) * q, p.y + Math.sin(a) * q, 0.7); ctx.fill();
+    }
+    return r * 0.5;
+  }
+  if (tipo === 'nana') {
+    // Una macchia senza forma, fatta di due veli storti
+    const r = Math.max(4, Math.min(50, (sg.misura || 0) * cam.s));
+    for (let i = 0; i < 2; i++) {
+      ctx.save();
+      ctx.translate(p.x + (d() - 0.5) * r * 0.5, p.y + (d() - 0.5) * r * 0.5);
+      ctx.rotate(d() * Math.PI); ctx.scale(1, 0.55 + d() * 0.3);
+      cosmAloneSegno(ctx, 0, 0, r * 1.4, sg.colore, 0.7);
+      ctx.restore();
+    }
+    ctx.fillStyle = cosmRgba(sg.colore, 0.9);
+    cosmPercorsoCerchio(ctx, p.x, p.y, 1.3); ctx.fill();
+    return r * 0.4;
+  }
+  if (tipo === 'gruppo') {
+    // Un gruppo (o un ammasso) di galassie: le più grandi come ellissine
+    // inclinate, attorno al bagliore del gas caldo
+    const r = Math.max(6, Math.min(70, (sg.misura || 0) * cam.s));
+    cosmAloneSegno(ctx, p.x, p.y, r * (1.6 + lum), sg.colore, 0.75);
+    const n = 6 + Math.round(lum * 6);
+    for (let i = 0; i < n; i++) {
+      const a = d() * Math.PI * 2, q = Math.abs(cosmGauss(d)) * r * 0.45;
+      const x = p.x + Math.cos(a) * q, y = p.y + Math.sin(a) * q, rr = 0.8 + d() * 1.6;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(d() * Math.PI); ctx.scale(1, 0.45 + d() * 0.4);
+      ctx.fillStyle = i ? cosmRgba(sg.colore, 0.85) : '#fff7ed';
+      cosmPercorsoCerchio(ctx, 0, 0, i ? rr : rr * 1.6); ctx.fill();
+      ctx.restore();
+    }
+    return r * 0.5;
+  }
+  if (tipo === 'quasar') {
+    cosmAloneSegno(ctx, p.x, p.y, 10 + lum * 8, sg.colore, 1);
+    cosmRaggiStella(ctx, p.x, p.y, 9 + lum * 10, sg.colore, 0.7, 0.6);
+    ctx.fillStyle = '#ffffff';
+    cosmPercorsoCerchio(ctx, p.x, p.y, 1.6); ctx.fill();
+    return 3;
+  }
+  // il segno di sempre: un punto con l'alone
+  cosmAloneSegno(ctx, p.x, p.y, 10, sg.colore, 0.8);
+  ctx.fillStyle = sg.colore;
+  cosmPercorsoCerchio(ctx, p.x, p.y, 3.2); ctx.fill();
+  return 2;
+}
+// Un rettangolo di scritta che non tocca gli altri nomi del fotogramma, né il
+// bordo, né la fascia in fondo della riga della scala (o quella in cima,
+// durante una demo)
+function cosmPostoLibero(cam, r) {
+  const presi = cosm.nomiPresi || [];
+  const su = cosm.regia ? (cosm.rigaY || 26) + 30 : 40;
+  const giu = cam.H - (cosm.fondoPx || 120) - (cosm.regia ? 20 : 48);
+  // in cima al centro ci sono il piano, il metro e il nome della tappa
+  const letture = !cosm.regia && r.y0 < 108 && r.x1 > cam.W / 2 - 150 && r.x0 < cam.W / 2 + 150;
+  return r.x0 > 4 && r.x1 < cam.W - 4 && r.y0 > su && r.y1 < giu && !letture &&
+    !presi.some(q => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0);
+}
+// Una scritta dove c'è posto: la registra fra i nomi del fotogramma, e dice
+// se l'ha scritta
+function cosmScrittaAlPosto(ctx, cam, testo, x, y, colore, misura, allinea, peso) {
+  ctx.font = cosmCarattere(misura, peso);
+  const w = ctx.measureText(testo).width + 6, h = misura + 3;
+  const x0 = allinea === 'left' ? x - 3 : allinea === 'right' ? x - w + 3 : x - w / 2;
+  const r = { x0, x1: x0 + w, y0: y - h / 2, y1: y + h / 2 };
+  if (!cosmPostoLibero(cam, r)) return false;
+  (cosm.nomiPresi || (cosm.nomiPresi = [])).push(r);
+  cosmScritta(ctx, testo, x, y, colore, misura, allinea, peso);
+  return true;
+}
+function cosmSemeDi(testo) {
+  let h = 2166136261;
+  for (let i = 0; i < testo.length; i++) { h ^= testo.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
 function cosmDisegnaSegni(ctx, cam) {
   cosm.schermo.segni = [];
+  const nomi = [];
   COSM_SEGNI.forEach(sg => {
     const alfa = Math.min(cosmLiscia(sg.minL, sg.minL + 0.4, cam.L), 1 - cosmLiscia(sg.maxL - 0.4, sg.maxL, cam.L));
     if (alfa < 0.03) return;
     const p = cam.p(sg.v);
     if (p.x < -50 || p.y < -50 || p.x > cam.W + 50 || p.y > cam.H + 50) return;
     ctx.globalAlpha = alfa;
-    if (sg.galassia) {
-      // Come la Via Lattea, una galassia del gruppo resta un segno leggibile
-      // anche quando la sua misura vera è di pochi pixel
-      const rpx = Math.max(sg.galassia * cam.s, sg.galassia > 50000 * COSM_AL ? 9 : 6);
-      if (rpx > 2.5) {
-        ctx.save();
-        ctx.translate(p.x, p.y); ctx.rotate((sg.gira || 0) * COSM_D2R); ctx.scale(1, sg.inclina || 0.75);
-        const sp = cosmSpriteGalassia();
-        if (sp) ctx.drawImage(sp, -rpx, -rpx, rpx * 2, rpx * 2);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = sg.colore; cosmPercorsoCerchio(ctx, p.x, p.y, 2.4); ctx.fill();
-      }
-    } else {
-      ctx.fillStyle = sg.colore;
-      cosmPercorsoCerchio(ctx, p.x, p.y, sg.stella ? 2.6 : 3.2); ctx.fill();
-      if (sg.stella) {
-        ctx.strokeStyle = sg.colore; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.moveTo(p.x - 6, p.y); ctx.lineTo(p.x + 6, p.y); ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x, p.y + 6); ctx.stroke();
-      }
-    }
-    cosmScritta(ctx, cosmT(`cosmo.etichetta.${sg.id}`), p.x, p.y + 14 + (sg.galassia ? Math.min(30, sg.galassia * cam.s * 0.6) : 0), sg.colore, 11);
+    const sotto = cosmDisegnaUnSegno(ctx, cam, sg, p);
     ctx.globalAlpha = 1;
+    nomi.push({ sg, p, alfa, sotto });
     cosm.schermo.segni.push({ id: sg.id, x: p.x, y: p.y });
+  });
+  // I nomi: prima quelli di sempre, poi i nuovi, ognuno dove c'è posto
+  const presi = cosm.nomiPresi || (cosm.nomiPresi = []);
+  const libero = r => cosmPostoLibero(cam, r);
+  nomi.sort((a, b) => (b.sg.cura ? 1 : 0) - (a.sg.cura ? 1 : 0));
+  nomi.forEach(({ sg, p, alfa, sotto }) => {
+    const testo = cosmT(`cosmo.etichetta.${sg.id}`);
+    ctx.font = cosmCarattere(11, 500);
+    const w = ctx.measureText(testo).width + 6, h = 14;
+    const posti = [[p.x, p.y + 14 + sotto, 'center'], [p.x, p.y - 12 - sotto, 'center'],
+      [p.x + 10 + sotto, p.y, 'left'], [p.x - 10 - sotto, p.y, 'right']];
+    const rettangolo = ([x, y, allinea]) => {
+      const x0 = allinea === 'center' ? x - w / 2 : allinea === 'left' ? x - 3 : x - w + 3;
+      return { x0, x1: x0 + w, y0: y - h / 2, y1: y + h / 2 };
+    };
+    // chi ha `cura` si scrive comunque (sotto, come prima della v508)
+    const scelto = posti.find(q => libero(rettangolo(q))) || (sg.cura ? posti[0] : null);
+    if (!scelto) return;
+    presi.push(rettangolo(scelto));
+    ctx.globalAlpha = alfa;
+    cosmScritta(ctx, testo, scelto[0], scelto[1], sg.colore, 11, scelto[2]);
+    ctx.globalAlpha = 1;
   });
 }
 
@@ -2104,6 +2489,8 @@ function cosmDisegnaSole(ctx, cam) {
     // c'è Alfa Centauri col suo nome
     ctx.beginPath(); ctx.moveTo(p.x - 6, p.y - 6); ctx.lineTo(p.x - 20, p.y - 20); ctx.stroke();
     cosmScritta(ctx, cosmT('cosmo.etichetta.seiQui'), p.x - 22, p.y - 26, '#fde68a', 11, 'right', 650);
+    // v508: gli altri nomi gli lasciano il posto
+    (cosm.nomiPresi || (cosm.nomiPresi = [])).push({ x0: p.x - 80, x1: p.x + 8, y0: p.y - 34, y1: p.y + 8 });
   }
 }
 
@@ -2233,6 +2620,7 @@ function cosmDisegna(ctx) {
   const cam = cosmCamera(cosm.L, sol.L, sol.H);
   cosm.cam = cam;
   cosmMisuraFondo();
+  cosm.nomiPresi = [];
   // Dal più grande al più piccolo: chi sta sopra è quello che si è venuti
   // a vedere
   cosmDisegnaUniverso(ctx, cam);
@@ -2245,6 +2633,7 @@ function cosmDisegna(ctx) {
   cosmDisegnaOort(ctx, cam);
   cosmDisegnaEliosfera(ctx, cam);
   cosmDisegnaKuiper(ctx, cam);
+  cosmDisegnaNani(ctx, cam);
   cosmDisegnaSole(ctx, cam);
   cosmDisegnaSistemaVicino(ctx, cam);
   cosmDisegnaSegni(ctx, cam);
@@ -2890,8 +3279,8 @@ function cosmDirezioneFuori() {
 /* Luoghi delle storie che sulla carta non hanno un paletto disegnato (v414):
  * Betelgeuse, la supergigante rossa nella spalla di Orione (548 anni luce,
  * Joyce e altri 2020), e la nebulosa del Granchio, quello che resta della
- * supernova del 1054 (circa 6500 anni luce). Un paletto in più fra i segni
- * della carta affollerebbe il quadro di chi non sta guardando una storia. */
+ * supernova del 1054 (circa 6500 anni luce). Dalla v508 sono anche fra i
+ * segni della carta (`COSM_SEGNI`), allo stesso punto. */
 const COSM_LUOGHI_STORIE = {
   betelgeuse: cosmDaRaDec(88.793, 7.407, 548 * COSM_AL),
   crab_nebula: cosmDaRaDec(83.633, 22.015, 6500 * COSM_AL)
