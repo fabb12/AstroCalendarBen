@@ -3624,12 +3624,20 @@
             {
               "id": "m0vob2ud",
               "chi": "Earth",
-              "testo": "Sei solo una luna!!",
+              "testo": "[mischievously] Sei solo una luna!!",
               "umore": "bully",
               "tono": [],
               "durata": 3,
               "voce": 2,
-              "audio": null,
+              "audio": {
+                "durata": 3040,
+                "impronta": "0da90667",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "03c5d443a08dabb7ebcfaf726e88865cca5fa43d",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[mischievously]"
+              },
               "azioni": [
                 {
                   "id": "a0jjelbz",
@@ -3736,12 +3744,20 @@
             {
               "id": "mp9ouvmw",
               "chi": "Earth",
-              "testo": "ah ah ah!!!",
+              "testo": "[laughs] ah ah ah!!!",
               "umore": "laughing",
               "tono": [],
               "durata": 3,
               "voce": 3,
-              "audio": null,
+              "audio": {
+                "durata": 3040,
+                "impronta": "ebc9e047",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "84679c7be4033ddca0e642dbf1543d570c627fe1",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[laughs]"
+              },
               "azioni": [
                 {
                   "id": "azi3z79l",
@@ -4253,12 +4269,20 @@
             {
               "id": "m07dkgry",
               "chi": "Earth",
-              "testo": "oh no! adesso cosa faccio?",
+              "testo": "[nervous] [gasps] oh no! adesso cosa faccio?",
               "umore": "worried",
               "tono": [],
               "durata": 5,
               "voce": 9,
-              "audio": null,
+              "audio": {
+                "durata": 2400,
+                "impronta": "64ac92a5",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b4cbc539362d1d6267a66f50b4df48b5395cf20e",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[nervous] [gasps]"
+              },
               "azioni": [
                 {
                   "id": "a3kgw4il",
@@ -4583,12 +4607,20 @@
             {
               "id": "mv3x2nqa",
               "chi": "Earth",
-              "testo": "Continuo a non capire.",
+              "testo": "[thoughtful] Continuo a non capire.",
               "umore": "thinking",
               "tono": [],
               "durata": 3,
               "voce": 12,
-              "audio": null,
+              "audio": {
+                "durata": 1600,
+                "impronta": "cf8886f0",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "e43c36325fcd31c284c042420f9da30ff66a9540",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[thoughtful]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -4729,12 +4761,20 @@
             {
               "id": "moqpr212",
               "chi": "Earth",
-              "testo": "Potresti spiegarti meglio?",
+              "testo": "[thoughtful] Potresti spiegarti meglio?",
               "umore": "thinking",
               "tono": [],
               "durata": 4,
               "voce": 14,
-              "audio": null,
+              "audio": {
+                "durata": 1600,
+                "impronta": "1e13254f",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "6a32d1a140d9328548e98abda25d33bba24668c0",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[thoughtful]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -4863,12 +4903,20 @@
             {
               "id": "mix8zkiw",
               "chi": "Earth",
-              "testo": "Cos' è la massa, cos' è un peso e che cosa è un volume?",
+              "testo": "[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?",
               "umore": "thinking",
               "tono": [],
               "durata": 5,
               "voce": 16,
-              "audio": null,
+              "audio": {
+                "durata": 3680,
+                "impronta": "6ab3c3e2",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "3410739bd1b8599d05602ff58562e322c5cd1376",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[thoughtful]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -5114,12 +5162,20 @@
             {
               "id": "mr16as5w",
               "chi": "Earth",
-              "testo": "Oh! Che spavento! Chi ha parlato?",
+              "testo": "[surprised] [gasps] Oh! Che spavento! Chi ha parlato?",
               "umore": "surprised",
               "tono": [],
               "durata": 4,
               "voce": 20,
-              "audio": null,
+              "audio": {
+                "durata": 3120,
+                "impronta": "c08b624c",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "eba803e7c0bffb93638f1c0c6f12f0478dcf6763",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[surprised] [gasps]"
+              },
               "azioni": [
                 {
                   "id": "aqek6iib",
@@ -5328,12 +5384,20 @@
             {
               "id": "mlztnfh4",
               "chi": "Earth",
-              "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
+              "testo": "[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
               "umore": "surprised",
               "tono": [],
               "durata": 15,
               "voce": 22,
-              "audio": null,
+              "audio": {
+                "durata": 11120,
+                "impronta": "327acfa8",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "aeb9f1920d9517de21c51848c6bbffa10f32b2e3",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[surprised]"
+              },
               "azioni": [
                 {
                   "id": "apyafhkz",
@@ -5448,12 +5512,20 @@
             {
               "id": "mlq54ama",
               "chi": "Earth",
-              "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
+              "testo": "[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
               "umore": "annoyed",
               "tono": [],
               "durata": 12,
               "voce": 23,
-              "audio": null,
+              "audio": {
+                "durata": 8240,
+                "impronta": "3a4bd1fa",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "bd33726b52c6c494a573437415a2053d8254a709",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[annoyed]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -5555,12 +5627,20 @@
             {
               "id": "meig41n5",
               "chi": "Earth",
-              "testo": "Oh! Scusa! Continua.",
+              "testo": "[surprised] Oh! Scusa! Continua.",
               "umore": "surprised",
               "tono": [],
               "durata": 4,
               "voce": 25,
-              "audio": null,
+              "audio": {
+                "durata": 1920,
+                "impronta": "2560bdf5",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "22ec34eb3e575a0d25a18626f1cc5b0488d3220d",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[surprised]"
+              },
               "azioni": [
                 {
                   "id": "a90p1vca",
@@ -5707,7 +5787,15 @@
               "tono": [],
               "durata": 9,
               "voce": 27,
-              "audio": null,
+              "audio": {
+                "durata": 3520,
+                "impronta": "4419d2cf",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ffdc3e2ad950b336b9fd3a591d718d00207b27e6",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -5860,12 +5948,20 @@
             {
               "id": "mw39amuy",
               "chi": "Earth",
-              "testo": "Cosa? Di nuovo? Chi ha parlato?",
+              "testo": "[surprised] Cosa? Di nuovo? Chi ha parlato?",
               "umore": "surprised",
               "tono": [],
               "durata": 5,
               "voce": 29,
-              "audio": null,
+              "audio": {
+                "durata": 2720,
+                "impronta": "f308db7b",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "4915198e3ac638c665330e49ef235d5244efaf45",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[surprised]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -6309,12 +6405,20 @@
             {
               "id": "mccjpqlg",
               "chi": "Earth",
-              "testo": "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
+              "testo": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
               "umore": "surprised",
               "tono": [],
               "durata": 5,
               "voce": 35,
-              "audio": null,
+              "audio": {
+                "durata": 3840,
+                "impronta": "02b58d3c",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "6d8def8ca4c50cd32379c560a2bf1b35575dd25b",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[surprised]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -6447,12 +6551,20 @@
             {
               "id": "mkoxhoun",
               "chi": "Earth",
-              "testo": "Cos' è un buco nero?",
+              "testo": "[curious] Cos' è un buco nero?",
               "umore": "curious",
               "tono": [],
               "durata": 4,
               "voce": 37,
-              "audio": null,
+              "audio": {
+                "durata": 1520,
+                "impronta": "9e5ea398",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "9ee30ccf3c186107946c80e387081eb28292652f",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[curious]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -6591,7 +6703,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 39,
-      "aggiornato": 1792175598424,
+      "aggiornato": 1792175683618,
       "lingua": "it",
       "musica": null,
       "voci": {},

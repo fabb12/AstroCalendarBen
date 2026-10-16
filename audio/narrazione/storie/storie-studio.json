@@ -590,7 +590,8 @@
           "testo": "Sei solo una luna!!",
           "umore": "bully",
           "scena": 2,
-          "durata": 3000
+          "durata": 4000,
+          "conTag": "[mischievously] Sei solo una luna!!"
         },
         {
           "n": 3,
@@ -598,7 +599,8 @@
           "testo": "ah ah ah!!!",
           "umore": "laughing",
           "scena": 3,
-          "durata": 3000
+          "durata": 4000,
+          "conTag": "[laughs] ah ah ah!!!"
         },
         {
           "n": 4,
@@ -646,7 +648,8 @@
           "testo": "oh no! adesso cosa faccio?",
           "umore": "worried",
           "scena": 9,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "[nervous] [gasps] oh no! adesso cosa faccio?"
         },
         {
           "n": 10,
@@ -670,7 +673,8 @@
           "testo": "Continuo a non capire.",
           "umore": "thinking",
           "scena": 12,
-          "durata": 3000
+          "durata": 3000,
+          "conTag": "[thoughtful] Continuo a non capire."
         },
         {
           "n": 13,
@@ -686,7 +690,8 @@
           "testo": "Potresti spiegarti meglio?",
           "umore": "thinking",
           "scena": 14,
-          "durata": 4000
+          "durata": 4000,
+          "conTag": "[thoughtful] Potresti spiegarti meglio?"
         },
         {
           "n": 15,
@@ -702,7 +707,8 @@
           "testo": "Cos' è la massa, cos' è un peso e che cosa è un volume?",
           "umore": "thinking",
           "scena": 16,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?"
         },
         {
           "n": 17,
@@ -734,7 +740,8 @@
           "testo": "Oh! Che spavento! Chi ha parlato?",
           "umore": "surprised",
           "scena": 20,
-          "durata": 4000
+          "durata": 4000,
+          "conTag": "[surprised] [gasps] Oh! Che spavento! Chi ha parlato?"
         },
         {
           "n": 21,
@@ -750,7 +757,8 @@
           "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
           "umore": "surprised",
           "scena": 22,
-          "durata": 15000
+          "durata": 15000,
+          "conTag": "[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!"
         },
         {
           "n": 23,
@@ -758,7 +766,8 @@
           "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
           "umore": "annoyed",
           "scena": 23,
-          "durata": 12000
+          "durata": 12000,
+          "conTag": "[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e"
         },
         {
           "n": 24,
@@ -774,7 +783,8 @@
           "testo": "Oh! Scusa! Continua.",
           "umore": "surprised",
           "scena": 25,
-          "durata": 4000
+          "durata": 4000,
+          "conTag": "[surprised] Oh! Scusa! Continua."
         },
         {
           "n": 26,
@@ -806,7 +816,8 @@
           "testo": "Cosa? Di nuovo? Chi ha parlato?",
           "umore": "surprised",
           "scena": 29,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "[surprised] Cosa? Di nuovo? Chi ha parlato?"
         },
         {
           "n": 30,
@@ -854,7 +865,8 @@
           "testo": "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
           "umore": "surprised",
           "scena": 35,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
         },
         {
           "n": 36,
@@ -870,7 +882,8 @@
           "testo": "Cos' è un buco nero?",
           "umore": "curious",
           "scena": 37,
-          "durata": 4000
+          "durata": 4000,
+          "conTag": "[curious] Cos' è un buco nero?"
         },
         {
           "n": 38,
