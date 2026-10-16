@@ -841,6 +841,39 @@
       "battute": []
     },
     {
+      "chiave": "studio_la_rivoluzione_di_ganimede_e_f",
+      "titolo": "La rivoluzione di Ganimede e (forse) Titano.",
+      "lingua": "it",
+      "battute": [
+        {
+          "n": 1,
+          "chi": "Sun",
+          "testo": "Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!",
+          "umore": "neutral",
+          "scena": 1,
+          "durata": 5000
+        },
+        {
+          "n": 2,
+          "chi": "Earth",
+          "testo": "E ci risiamo.",
+          "umore": "bored",
+          "scena": 2,
+          "durata": 3000,
+          "conTag": "[bored] E ci risiamo."
+        },
+        {
+          "n": 3,
+          "chi": "Ganymede",
+          "testo": "Sono solamente una luna! Perché devo venire.",
+          "umore": "bored",
+          "scena": 3,
+          "durata": 4000,
+          "conTag": "[bored] Sono solamente una luna! [thoughtful] Perché devo venire."
+        }
+      ]
+    },
+    {
       "chiave": "studio_storia",
       "titolo": "",
       "lingua": "it",

@@ -4,6 +4,187 @@
   "storie": [
     {
       "v": 1,
+      "id": "p0vugcjy",
+      "titolo": "La rivoluzione di Ganimede e (forse) Titano.",
+      "scopo": "libera",
+      "obiettivo": "",
+      "ufficiale": false,
+      "origine": "",
+      "sostituisce": "",
+      "cast": [
+        "Earth",
+        "Ganymede",
+        "Titan",
+        "Jupiter",
+        "Saturn",
+        "Moon",
+        "Sun",
+        "Mercury",
+        "Venus",
+        "Uranus",
+        "Mars",
+        "Neptune"
+      ],
+      "scene": [
+        {
+          "id": "s06wfr0f",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [],
+          "momenti": [
+            {
+              "id": "mz25g5zg",
+              "chi": "Sun",
+              "testo": "Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 0,
+              "voce": 1,
+              "audio": {
+                "durata": 3600,
+                "impronta": "79547e04",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "55d8c4e6f240ad828c259660fe9a5d170b29a55b",
+                "voce": "Y6XCBcFGDDiQgSVPjXt1",
+                "tag": ""
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s1vuwlru",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [],
+          "momenti": [
+            {
+              "id": "mhyans14",
+              "chi": "Earth",
+              "testo": "[bored] E ci risiamo.",
+              "umore": "bored",
+              "tono": [],
+              "durata": 0,
+              "voce": 2,
+              "audio": {
+                "durata": 1680,
+                "impronta": "5a4b46e6",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "f33a92b4f0b2c4aa855554c90a96171091124139",
+                "voce": "LgUbwisMonprbdDRIOUm",
+                "tag": "[bored]"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s76l4uzy",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [],
+          "momenti": [
+            {
+              "id": "m11334jf",
+              "chi": "Ganymede",
+              "testo": "[bored] Sono solamente una luna! [thoughtful] Perché devo venire.",
+              "umore": "bored",
+              "tono": [],
+              "durata": 0,
+              "voce": 3,
+              "audio": {
+                "durata": 3360,
+                "impronta": "2f2182bd",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "0e7dd50f81118ecec7fc4072874f8fdd379d51a7",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[bored]"
+              },
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        }
+      ],
+      "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
+      "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
+      "voceProssima": 4,
+      "aggiornato": 1792173343461,
+      "lingua": "it",
+      "musica": null,
+      "voci": {
+        "Earth": {
+          "id": "LgUbwisMonprbdDRIOUm",
+          "nome": "Victoria - Elegant & Dark Aristocrat",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/313555e6488046d5bb52335614916a55/voices/LgUbwisMonprbdDRIOUm/N7sZfDeWbejfVIVWcKEI.mp3",
+          "genere": "f"
+        },
+        "Ganymede": {
+          "id": "aQ9s2C5T9TIPvAFtHWuA",
+          "nome": "Enea - Warm & Smooth Italian Narrator",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/567700fc161547fe98c11a8e1162432a/voices/aQ9s2C5T9TIPvAFtHWuA/xsVZK0j5XPQtLbnBzVbt.mp3",
+          "genere": "m"
+        }
+      },
+      "domanda": {
+        "attiva": false,
+        "modo": "auto",
+        "tipo": "auto",
+        "testo": "",
+        "a": "",
+        "b": "",
+        "chi": ""
+      }
+    },
+    {
+      "v": 1,
       "id": "p5k0x2dg",
       "titolo": "Che cos’è un buco nero?",
       "scopo": "buchi",
