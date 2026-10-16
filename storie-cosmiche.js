@@ -1943,7 +1943,7 @@
   function storSgombra() {
     for (const p of stor.personaggi.values()) storRitorno(p);
     stor.personaggi.clear(); stor.parlante = null; stor.posti.clear(); stor.ricevute.clear();
-    stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null;
+    stor.ultimiDisegnati = []; stor.effetti = []; stor.domanda = null; stor.targa = null;
     stor.canti = []; stor.titolo = null; stor.canzone = null; stor.stile = 'ink';
     stor.regia.modo = 'auto'; stor.regia.chi = null; stor.regia.zoomMax = null; stor.regia.scosse = []; stor.regia.tieni = null;
     Object.assign(stor.regia, { giro: 0, vGiro: 0, giroOra: NaN, ultimoParlante: null, ultimoGiro: null, rot: 0, vrot: 0, velGiro: STOR_REGIA.giroVel, ritmoScelta: null });
@@ -11372,7 +11372,73 @@
       if (ultimo && ora - ultimo.fine < STOR_KARAOKE.resta) { c = ultimo; alfa = 1 - (ora - ultimo.fine) / STOR_KARAOKE.resta; }
     }
     if (c && c.testo) storDisegnaKaraoke(ctx, c, L, H, giu || 0, alfa * Math.min(1, (ora - c.da) / STOR_KARAOKE.entra));
+    storDisegnaTarga(ctx, L, H);
     if (stor.titolo) storDisegnaTitolo(ctx, stor.titolo, L, H);
+  }
+
+  /* La targa di chi parla (v508). «Quando qualcuno parla mostra subito il
+   * nome di chi parla sopra il soggetto, e poi fallo scomparire dopo
+   * qualche secondo.» A ogni battuta nuova (un `character_speak` nuovo, o un
+   * altro personaggio che prende la parola) sopra alla testa di chi parla
+   * compare il suo nome, in una pillola scura col pallino del suo colore:
+   * entra in un attimo, resta `STOR_TARGA.resta` e se ne va sfumando, anche
+   * se la battuta continua. Sta fuori dalla lente della regia (si disegna
+   * con le sovrimpressioni), quindi ha sempre la stessa misura, e segue il
+   * personaggio dove la lente lo porta (`storLenteSchermo`). L'orologio è
+   * quello della storia: in pausa la targa aspetta. */
+  const STOR_TARGA = { entra: 160, resta: 2600, esce: 700 };
+  function storDisegnaTarga(ctx, L, H) {
+    const ora = stor.orologio;
+    const chi = stor.personaggi.size ? storChiParlaOra() : null;
+    const rif = stor.parlante || null;
+    const tg = stor.targa || (stor.targa = { id: null, rif: null, da: -Infinity });
+    if (chi && (chi !== tg.id || rif !== tg.rif)) Object.assign(tg, { id: chi, rif, da: ora });
+    if (!tg.id) return;
+    const eta = ora - tg.da, T = STOR_TARGA;
+    if (eta > T.entra + T.resta + T.esce) return;
+    const alfa = eta < T.entra ? eta / T.entra : eta < T.entra + T.resta ? 1 : 1 - (eta - T.entra - T.resta) / T.esce;
+    if (!(alfa > 0.01)) return;
+    const d = (stor.ultimiDisegnati || []).find(x => x.id === tg.id && !x.fuori);
+    const pg = stor.personaggi.get(tg.id);
+    if (!d || !pg) return;
+    const nome = storNome(pg.profilo || tg.id);
+    if (!nome) return;
+    const k = stor.regia && stor.regia.k > 0 ? stor.regia.k : 1;
+    const testa = storLenteSchermo(d.x, d.y);
+    const fs = Math.max(14, Math.min(18, Math.min(L, H) * 0.026));
+    const carattere = (radice.document && radice.document.body && radice.getComputedStyle
+      ? radice.getComputedStyle(radice.document.body).fontFamily : '') || 'sans-serif';
+    ctx.save();
+    ctx.font = `700 ${fs}px ${carattere}`;
+    const h = fs * 1.75, punto = fs * 0.32;
+    const misura = typeof ctx.measureText === 'function' ? ctx.measureText(nome) : null;
+    const larga = misura && Number.isFinite(misura.width) ? misura.width : nome.length * fs * 0.55;
+    const w = Math.min(L - 16, larga + fs * 1.4 + punto * 2.4);
+    // sopra alla testa (il corpo disegnato è più alto del disco), dentro la tela
+    // il volto sta dentro all'astro: conta il bordo dell'astro, se è più su
+    const rCorpo = d.addosso && d.astro && d.astro.r > 0 && Math.hypot(d.astro.x - d.x, d.astro.y - d.y) < d.astro.r
+      ? d.astro.r * 1.04 + (d.astro.y - d.y) : 0;
+    const su = Math.max(d.R * (d.corpo ? 1.35 : 1.12), rCorpo) * k + Math.max(10, fs * 0.6) + h * 0.5;
+    const entra = 1 - Math.pow(1 - Math.min(1, eta / T.entra), 3);
+    const x = Math.max(8, Math.min(L - 8 - w, testa.x - w / 2));
+    let y = testa.y - su - h / 2 + (1 - entra) * fs * 0.5;
+    if (y < 8) y = Math.min(H - h - 8, testa.y + su - h / 2);
+    ctx.globalAlpha = alfa;
+    const r = h / 2;
+    ctx.fillStyle = 'rgba(12, 10, 32, 0.72)';
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(x + r, y + h); ctx.arc(x + r, y + r, r, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'; ctx.lineWidth = 1; ctx.stroke();
+    // il pallino col colore del personaggio
+    const p = storVesteProfilo(pg);
+    ctx.fillStyle = (p && (p.iride || p.pelle)) || '#fde68a';
+    ctx.beginPath(); ctx.arc(x + fs * 0.7 + punto, y + r, punto, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(nome, x + fs * 0.7 + punto * 2.4, y + r + fs * 0.04, w - fs * 1.4 - punto * 2.4);
+    ctx.restore();
   }
   /* Quanto del fondo della tela non si vede (v454). Sul telefono il verso
    * stava sul fondo della tela, e il fondo della tela non è il fondo di ciò
@@ -13789,7 +13855,7 @@
       return musica.attiva ? { src: musica.src, volume: musica.volume, suona: !musica.attiva.audio.paused, tempo: musica.attiva.audio.currentTime,
         sync: !!musica.attiva.sync, loop: !!musica.attiva.audio.loop } : null;
     },
-    lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
+    lenteSchermo: storLenteSchermo, cartelloLuogo: storDisegnaCartelloLuogo, targa: storDisegnaTarga, STOR_TARGA, scossa: storScossa, suona: storSuona, zittisci: storZittisci, RICETTE_SUONI: RICETTE,
     get regia() { const r = stor.regia; return { modo: r.modo, chi: r.chi, k: r.k, tx: r.tx, ty: r.ty, motivo: r.motivo, vista: r.vista }; },
     get attivi() { return stor.personaggi.size; },
     get disegnati() { return stor.ultimiDisegnati.map(d => Object.assign({}, d, { geom: undefined })); },

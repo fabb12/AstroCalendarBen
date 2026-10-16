@@ -4353,3 +4353,19 @@ Dopo: nella stessa scena la Luna non cambia verso nemmeno una volta (0 in
 Prove: `prova-storie.js` (126: la nuova — una Luna personaggio accanto a
 una Terra che trema si muove di meno di 3 px in tutto, 745 px senza la
 correzione — e il raggio da fermo), `prova-demo.js`, `prova-sistema3d.js`.
+
+### La targa di chi parla (v509)
+
+«Quando qualcuno parla mostra subito il nome di chi parla sopra il soggetto,
+e poi fallo scomparire dopo qualche secondo.» A ogni battuta nuova (un
+`character_speak` nuovo, o un altro personaggio che prende la parola, anche
+in un canto) sopra alla testa di chi parla compare il suo nome
+(`storDisegnaTarga`, chiamata da `storDisegnaSovrimpressioni`): una pillola
+scura col pallino del colore del personaggio, che entra in 160 ms, resta
+2,6 s e svanisce in 0,7 s (`STOR_TARGA`), anche se la battuta continua.
+Sta fuori dalla lente della regia (ha sempre la stessa misura) e segue il
+personaggio dove la lente lo porta (`storLenteSchermo`); sopra al bordo
+dell'astro quando il volto è addosso, sotto se in cima non c'è posto. Va
+con l'orologio della storia: in pausa aspetta. Prova in `prova-storie.js`
+(v508: subito, sopra alla testa, via dopo qualche secondo, di nuovo alla
+battuta dopo sopra al nuovo che parla); guardata in Chromium.

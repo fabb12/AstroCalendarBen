@@ -757,6 +757,43 @@ prova('il palco della 3D (v439): chi trema non fa tremare il vicino, e il vicino
   S.sgombra();
   delete globalThis.sol;
 });
+prova('la targa di chi parla (v508): il nome sopra di lui subito, e dopo qualche secondo se ne va', () => {
+  scena({ Earth: {}, Moon: {} });
+  const scritte = [];
+  const ctx = new Proxy({ canvas: { width: 800, height: 600 }, globalAlpha: 1 }, {
+    get(o, k) {
+      if (k in o) return o[k];
+      if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => ({ addColorStop() {} });
+      if (k === 'measureText') return t => ({ width: String(t).length * 7 });
+      if (k === 'fillText') return (t, x, y) => scritte.push({ t, x, y, a: o.globalAlpha });
+      return () => undefined;
+    },
+    set(o, k, v) { o[k] = v; return true; }
+  });
+  const giro = () => {
+    scritte.length = 0;
+    avanza(16);
+    S.disegnaPersonaggi(telaFinta().ctx, 'prova', [corpo('Earth', 200, 300, 80), corpo('Moon', 600, 300, 60)], 800, 600);
+    S.targa(ctx, 800, 600);
+    return scritte.find(x => x.t === S.nome('Moon'));
+  };
+  assert.equal(giro(), undefined, 'nessuno parla: niente targa');
+  S.parla('Moon', { id: 'demo.narr.storia_luna.1' });
+  voce.segnale = { parla: true, personaggio: 'Moon', testo: 'ciao', tempo: 0 };
+  let prima = giro();
+  for (let k = 0; k < 12 && (!prima || prima.a < 0.95); k++) prima = giro();
+  assert.ok(prima && prima.a > 0.95, 'il nome compare subito, pieno');
+  assert.ok(prima.y < 300 - 60 && Math.abs(prima.x - 600) < 60, 'sopra alla testa di chi parla: ' + prima.x + ',' + prima.y);
+  for (let k = 0; k < 250; k++) giro();   // quattro secondi, la battuta continua
+  assert.equal(giro(), undefined, 'dopo qualche secondo se ne va, anche se la battuta continua');
+  // un'altra battuta la rimette
+  S.parla('Earth', { id: 'demo.narr.storia_luna.2' });
+  let terra = null;
+  for (let k = 0; k < 12 && !terra; k++) { giro(); terra = scritte.find(x => x.t === S.nome('Earth')); }
+  assert.ok(terra && Math.abs(terra.x - 200) < 80, 'la battuta nuova ha la sua targa, sopra al nuovo che parla');
+  voce.segnale = null;
+  S.sgombra();
+});
 prova('il palco della 3D (v508): una luna personaggio non trema accanto al suo pianeta che si muove', () => {
   // La 3D mette la Luna attorno alla Terra **come è mostrata**: col tremito,
   // il dondolio di chi parla e il passo di lato del palco. Con la Luna
