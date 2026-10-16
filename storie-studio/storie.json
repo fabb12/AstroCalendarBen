@@ -3626,7 +3626,10 @@
               "chi": "Earth",
               "testo": "[mischievously] Sei solo una luna!!",
               "umore": "bully",
-              "tono": [],
+              "tono": [
+                "sarcastic",
+                "shouts"
+              ],
               "durata": 3,
               "voce": 2,
               "audio": {
@@ -6703,7 +6706,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 39,
-      "aggiornato": 1792175683618,
+      "aggiornato": 1792175772006,
       "lingua": "it",
       "musica": null,
       "voci": {},
