@@ -3633,13 +3633,13 @@
               "durata": 2,
               "voce": 2,
               "audio": {
-                "durata": 3040,
-                "impronta": "0da90667",
+                "durata": 3600,
+                "impronta": "4b1dc674",
                 "nome": "elevenlabs.mp3",
                 "est": "mp3",
-                "sha": "03c5d443a08dabb7ebcfaf726e88865cca5fa43d",
+                "sha": "cde3d1afab4696a83a943bb3b565572b71635688",
                 "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[mischievously]"
+                "tag": "[sarcastic]"
               },
               "azioni": [
                 {
@@ -6706,7 +6706,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 39,
-      "aggiornato": 1792176046914,
+      "aggiornato": 1792176085033,
       "lingua": "it",
       "musica": null,
       "voci": {},
