@@ -111,15 +111,15 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Emozione:** tenera — la morale: lenta, calda, con meraviglia sull'ultima frase
   - **Testo:** Quindi stasera, quando guardi il cielo, non guardi solo lontano: guardi nel passato. Il cielo è una vera macchina del tempo!
   - **Da incollare su ElevenLabs v3:** `[softly] Quindi stasera, quando guardi il cielo, non guardi solo lontano: guardi nel passato. [warmly] Il cielo è una vera macchina del tempo!`
-- `studio_cosa_e_la_gravita-2.mp3` — pronta · 4 s · Studio: Cosa è la gravità?, scena 1 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-2.mp3` — pronta · 4 s · Studio: Cosa è la gravità?Voce zaira, scena 1 (al massimo 5 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Ciao Terra, mi chiedevo, perché orbito intorno a te?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?`
-- `studio_cosa_e_la_gravita-1.mp3` — pronta · 2,1 s · Studio: Cosa è la gravità?, scena 4 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-1.mp3` — pronta · 2,1 s · Studio: Cosa è la gravità?Voce zaira, scena 4 (al massimo 3 s)
   - **Emozione:** infastidito — 
   - **Testo:** Smettila!!!
   - **Da incollare su ElevenLabs v3:** `[annoyed] Smettila !!!`
-- `studio_cosa_e_la_gravita-32.mp3` — pronta · 2,7 s · Studio: Cosa è la gravità?, scena 8 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-32.mp3` — pronta · 2,7 s · Studio: Cosa è la gravità?Voce zaira, scena 8 (al massimo 4 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** Vogliamo essere indipendenti!
   - **Da incollare su ElevenLabs v3:** `[angry] Vogliamo essere indipendenti!`
@@ -207,59 +207,59 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** incoraggiante — vivace, coraggiosa, contagia il Sole di entusiasmo
   - **Testo:** Non lo so, Sole! Chiediamolo alle stelle più vecchie di te. Ce n’è una rossa che ci sta aspettando.
   - **Da incollare su ElevenLabs v3:** `[encouragingly] Non lo so, Sole! [excited] Chiediamolo alle stelle più vecchie di te. Ce n’è una rossa che ci sta aspettando.`
-- `studio_cosa_e_la_gravita-4.mp3` — pronta · Studio: Cosa è la gravità?, scena 2 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-4.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 2 (al massimo 3 s)
   - **Emozione:** da bullo — 
   - **Testo:** Sei solo una luna!!
   - **Da incollare su ElevenLabs v3:** `[mischievously] Sei solo una luna !!`
-- `studio_cosa_e_la_gravita-5.mp3` — pronta · Studio: Cosa è la gravità?, scena 3 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-5.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 3 (al massimo 3 s)
   - **Emozione:** ride — 
   - **Testo:** ah ah ah!!!
   - **Da incollare su ElevenLabs v3:** `[laughs] ah ah ah !!!`
-- `studio_cosa_e_la_gravita-6.mp3` — pronta · Studio: Cosa è la gravità?, scena 9 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-6.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 9 (al massimo 5 s)
   - **Emozione:** preoccupato — 
   - **Testo:** oh no! adesso cosa faccio?
   - **Da incollare su ElevenLabs v3:** `[nervous] [gasps] oh no! adesso cosa faccio?`
-- `studio_cosa_e_la_gravita-41.mp3` — pronta · Studio: Cosa è la gravità?, scena 12 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-41.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 12 (al massimo 3 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Continuo a non capire.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Continuo a non capire.`
-- `studio_cosa_e_la_gravita-15.mp3` — pronta · Studio: Cosa è la gravità?, scena 14 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-15.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 14 (al massimo 4 s)
   - **Emozione:** assonnato — 
   - **Testo:** Potresti spiegarti meglio?
   - **Da incollare su ElevenLabs v3:** `[sleepy] Potresti spiegarti meglio?`
-- `studio_cosa_e_la_gravita-42.mp3` — pronta · Studio: Cosa è la gravità?, scena 16 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-42.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 16 (al massimo 5 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Cos' è la massa, cos' è un peso e che cosa è un volume?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?`
-- `studio_cosa_e_la_gravita-20.mp3` — pronta · Studio: Cosa è la gravità?, scena 20 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-20.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 20 (al massimo 4 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Che spavento! Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Che spavento! Chi ha parlato?`
-- `studio_cosa_e_la_gravita-22.mp3` — pronta · Studio: Cosa è la gravità?, scena 22 (al massimo 15 s)
+- `studio_cosa_e_la_gravita-22.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 22 (al massimo 15 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!`
-- `studio_cosa_e_la_gravita-23.mp3` — pronta · Studio: Cosa è la gravità?, scena 23 (al massimo 12 s)
+- `studio_cosa_e_la_gravita-23.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 23 (al massimo 12 s)
   - **Emozione:** infastidito — 
   - **Testo:** Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e
   - **Da incollare su ElevenLabs v3:** `[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e`
-- `studio_cosa_e_la_gravita-25.mp3` — pronta · Studio: Cosa è la gravità?, scena 25 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-25.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 25 (al massimo 4 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Scusa! Continua.
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Scusa! Continua.`
-- `studio_cosa_e_la_gravita-27.mp3` — pronta · Studio: Cosa è la gravità?, scena 27 (al massimo 9 s)
+- `studio_cosa_e_la_gravita-27.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 27 (al massimo 9 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Wow! Non sapevo che la scienza potesse essere così bella.
   - **Da incollare su ElevenLabs v3:** `Wow! Non sapevo che la scienza potesse essere così bella.`
-- `studio_cosa_e_la_gravita-29.mp3` — pronta · Studio: Cosa è la gravità?, scena 29 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-29.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 29 (al massimo 5 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Cosa? Di nuovo? Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Cosa? Di nuovo? Chi ha parlato?`
-- `studio_cosa_e_la_gravita-38.mp3` — pronta · Studio: Cosa è la gravità?, scena 35 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-38.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 35 (al massimo 5 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Questa è una giornata piena di sorprese. Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?`
-- `studio_cosa_e_la_gravita-40.mp3` — pronta · Studio: Cosa è la gravità?, scena 37 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-40.mp3` — pronta · Studio: Cosa è la gravità?Voce zaira, scena 37 (al massimo 4 s)
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
@@ -399,19 +399,19 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** entusiasta — 
   - **Testo:** Voglio provarci anch’io! Guardate: sono un buco nero!
   - **Da incollare su ElevenLabs v3:** `[excited] Voglio provarci anch’io! Guardate: sono un buco nero!`
-- `studio_cosa_e_la_gravita-33.mp3` — pronta · 4,8 s · Studio: Cosa è la gravità?, scena 10 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-33.mp3` — pronta · 4,8 s · Studio: Cosa è la gravità?Voce zaira, scena 10 (al massimo 6 s)
   - **Emozione:** ride — 
   - **Testo:** Tranquilla Terra! Ti spiego io cos'è la gravità!
   - **Da incollare su ElevenLabs v3:** `[laughs] Tranquilla Terra! [curious] Ti spiego io cos'è la gravità!`
-- `studio_cosa_e_la_gravita-12.mp3` — pronta · 4,8 s · Studio: Cosa è la gravità?, scena 11 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-12.mp3` — pronta · 4,8 s · Studio: Cosa è la gravità?Voce zaira, scena 11 (al massimo 6 s)
   - **Emozione:** tranquillo — 
   - **Testo:** La gravità è una forza attrattiva che tiene uno o più astri stabili.
   - **Da incollare su ElevenLabs v3:** `La gravità è una forza attrattiva che tiene uno o più astri stabili.`
-- `studio_cosa_e_la_gravita-31.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 31 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-31.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?Voce zaira, scena 31 (al massimo 5 s)
   - **Emozione:** colpito — 
   - **Testo:** So chi è! è la mia amica alfa centauri!
   - **Da incollare su ElevenLabs v3:** `[impressed] So chi è! è la mia amica alfa centauri!`
-- `studio_cosa_e_la_gravita-36.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 33 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-36.mp3` — pronta · 2 s · Studio: Cosa è la gravità?Voce zaira, scena 33 (al massimo 3 s)
   - **Emozione:** felice — 
   - **Testo:** Come potrei mai dimenticarti?
   - **Da incollare su ElevenLabs v3:** `[happy] Come potrei mai dimenticarti?`
@@ -495,7 +495,7 @@ Cartella: `audio/narrazione/storie/saturno/<lingua>/` · nel codice `Saturn` · 
   - **Emozione:** divertita — guarda Giove correre ridendo, poi si allunga pigro e soddisfatto su «lunghissima»
   - **Testo:** Guardate quanto corre Giove! Io sono più lento, ma la mia strada è lunghissima.
   - **Da incollare su ElevenLabs v3:** `[amused] Guardate quanto corre Giove! [relaxed] Io sono più lento, ma la mia strada è lunghissima.`
-- `studio_cosa_e_la_gravita-14.mp3` — pronta · 4,7 s · Studio: Cosa è la gravità?, scena 13 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-14.mp3` — pronta · 4,7 s · Studio: Cosa è la gravità?Voce zaira, scena 13 (al massimo 6 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.
   - **Da incollare su ElevenLabs v3:** `Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.`
@@ -527,15 +527,15 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
   - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
   - **Testo:** E io sono Giove, il più grande di tutti: dentro di me ci starebbero più di mille Terre!
   - **Da incollare su ElevenLabs v3:** `[boastfully] E io sono Giove, il più grande di tutti: [laughs] dentro di me ci starebbero più di mille Terre!`
-- `studio_cosa_e_la_gravita-16.mp3` — pronta · 12 s · Studio: Cosa è la gravità?, scena 15 (al massimo 13 s)
+- `studio_cosa_e_la_gravita-16.mp3` — pronta · 12 s · Studio: Cosa è la gravità?Voce zaira, scena 15 (al massimo 13 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume
   - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
-- `studio_cosa_e_la_gravita-43.mp3` — pronta · 2,3 s · Studio: Cosa è la gravità?, scena 17 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-43.mp3` — pronta · 2,3 s · Studio: Cosa è la gravità?Voce zaira, scena 17 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Calma Terra, una domanda alla volta.
   - **Da incollare su ElevenLabs v3:** `Calma Terra, una domanda alla volta.`
-- `studio_cosa_e_la_gravita-44.mp3` — pronta · 4,6 s · Studio: Cosa è la gravità?, scena 18 (al massimo 6 s)
+- `studio_cosa_e_la_gravita-44.mp3` — pronta · 4,6 s · Studio: Cosa è la gravità?Voce zaira, scena 18 (al massimo 6 s)
   - **Emozione:** pensieroso — 
   - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è
   - **Da incollare su ElevenLabs v3:** `[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è`
@@ -591,11 +591,11 @@ Cartella: `audio/narrazione/storie/alfa-centauri/<lingua>/` · nel codice `alpha
   - **Emozione:** serena — gentile, da vicina di casa, tranquilla
   - **Testo:** Io sono Alfa Centauri: siamo tre stelle, le più vicine al Sole. La luce che vedi di noi è partita più di quattro anni fa.
   - **Da incollare su ElevenLabs v3:** `[friendly] Io sono Alfa Centauri: siamo tre stelle, le più vicine al Sole. [calm] La luce che vedi di noi è partita più di quattro anni fa.`
-- `studio_cosa_e_la_gravita-28.mp3` — pronta · 12,1 s · Studio: Cosa è la gravità?, scena 28 (al massimo 13 s)
+- `studio_cosa_e_la_gravita-28.mp3` — pronta · 12,1 s · Studio: Cosa è la gravità?Voce zaira, scena 28 (al massimo 13 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.
   - **Da incollare su ElevenLabs v3:** `Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.`
-- `studio_cosa_e_la_gravita-35.mp3` — pronta · 1,9 s · Studio: Cosa è la gravità?, scena 32 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-35.mp3` — pronta · 1,9 s · Studio: Cosa è la gravità?Voce zaira, scena 32 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ti ricordi di me allora sole, eh?
   - **Da incollare su ElevenLabs v3:** `Ti ricordi di me allora sole, eh?`
@@ -839,15 +839,15 @@ Cartella: `audio/narrazione/storie/sagittario-a/<lingua>/` · nel codice `sgr_a`
   - **Emozione:** sorpreso — 
   - **Testo:** Un buco bianco? Ma tu esisti davvero?
   - **Da incollare su ElevenLabs v3:** `[surprised] Un buco bianco? Ma tu esisti davvero?`
-- `studio_cosa_e_la_gravita-37.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 34 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-37.mp3` — pronta · 2 s · Studio: Cosa è la gravità?Voce zaira, scena 34 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Pure io attiro oggetti Terra!
   - **Da incollare su ElevenLabs v3:** `Pure io attiro oggetti Terra!`
-- `studio_cosa_e_la_gravita-39.mp3` — pronta · 3,8 s · Studio: Cosa è la gravità?, scena 36 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-39.mp3` — pronta · 3,8 s · Studio: Cosa è la gravità?Voce zaira, scena 36 (al massimo 5 s)
   - **Emozione:** felice — 
   - **Testo:** Sono sagittarius A! Il buco nero al centro della via lattea!
   - **Da incollare su ElevenLabs v3:** `[happy] Sono sagittarius A! Il buco nero al centro della via lattea!`
-- `studio_cosa_e_la_gravita-45.mp3` — pronta · 7 s · Studio: Cosa è la gravità?, scena 38 (al massimo 8 s)
+- `studio_cosa_e_la_gravita-45.mp3` — pronta · 7 s · Studio: Cosa è la gravità?Voce zaira, scena 38 (al massimo 8 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.
   - **Da incollare su ElevenLabs v3:** `Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.`
@@ -2856,7 +2856,7 @@ Cartella: `audio/narrazione/storie/hubble/<lingua>/` · nel codice `hubble` · i
 
 ### Italiano — `storie/hubble/it/`
 
-- `studio_cosa_e_la_gravita-7.mp3` — pronta · 2,1 s · Studio: Cosa è la gravità?, scena 5 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-7.mp3` — pronta · 2,1 s · Studio: Cosa è la gravità?Voce zaira, scena 5 (al massimo 3 s)
   - **Emozione:** pensieroso — 
   - **Testo:** esatto, perchè ci trattieni?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] esatto, perchè ci trattieni?`
@@ -2871,7 +2871,7 @@ Cartella: `audio/narrazione/storie/iss/<lingua>/` · nel codice `iss` · in ingl
 
 ### Italiano — `storie/iss/it/`
 
-- `studio_cosa_e_la_gravita-8.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 6 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-8.mp3` — pronta · 2 s · Studio: Cosa è la gravità?Voce zaira, scena 6 (al massimo 3 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** ci dobbiamo ribellare!
   - **Da incollare su ElevenLabs v3:** `[angry] ci dobbiamo ribellare!`
@@ -2886,7 +2886,7 @@ Cartella: `audio/narrazione/storie/css/<lingua>/` · nel codice `css` · in ingl
 
 ### Italiano — `storie/css/it/`
 
-- `studio_cosa_e_la_gravita-9.mp3` — pronta · 1,3 s · Studio: Cosa è la gravità?, scena 7 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-9.mp3` — pronta · 1,3 s · Studio: Cosa è la gravità?Voce zaira, scena 7 (al massimo 3 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** giusto!
   - **Da incollare su ElevenLabs v3:** `[angry] giusto!`
@@ -2901,23 +2901,23 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
 
 ### Italiano — `storie/sedna/it/`
 
-- `studio_cosa_e_la_gravita-19.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 19 (al massimo 3 s)
+- `studio_cosa_e_la_gravita-19.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?Voce zaira, scena 19 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ciao Terra, Giove ha ragione!
   - **Da incollare su ElevenLabs v3:** `Ciao Terra, Giove ha ragione!`
-- `studio_cosa_e_la_gravita-34.mp3` — pronta · 14,5 s · Studio: Cosa è la gravità?, scena 21 (al massimo 16 s)
+- `studio_cosa_e_la_gravita-34.mp3` — pronta · 14,5 s · Studio: Cosa è la gravità?Voce zaira, scena 21 (al massimo 16 s)
   - **Emozione:** felice — 
   - **Testo:** Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.
   - **Da incollare su ElevenLabs v3:** `[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.`
-- `studio_cosa_e_la_gravita-24.mp3` — pronta · 3 s · Studio: Cosa è la gravità?, scena 24 (al massimo 5 s)
+- `studio_cosa_e_la_gravita-24.mp3` — pronta · 3 s · Studio: Cosa è la gravità?Voce zaira, scena 24 (al massimo 5 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ehm, scusa Terra, hai finito?
   - **Da incollare su ElevenLabs v3:** `[shouts] Ehm, scusa Terra, hai finito? [frustrated]`
-- `studio_cosa_e_la_gravita-26.mp3` — pronta · 13,6 s · Studio: Cosa è la gravità?, scena 26 (al massimo 15 s)
+- `studio_cosa_e_la_gravita-26.mp3` — pronta · 13,6 s · Studio: Cosa è la gravità?Voce zaira, scena 26 (al massimo 15 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".
   - **Da incollare su ElevenLabs v3:** `Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".`
-- `studio_cosa_e_la_gravita-30.mp3` — pronta · 3,1 s · Studio: Cosa è la gravità?, scena 30 (al massimo 4 s)
+- `studio_cosa_e_la_gravita-30.mp3` — pronta · 3,1 s · Studio: Cosa è la gravità?Voce zaira, scena 30 (al massimo 4 s)
   - **Emozione:** pensieroso — 
   - **Testo:** è vero! Chi è?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] è vero! Chi è?`
