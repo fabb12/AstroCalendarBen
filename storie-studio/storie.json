@@ -5319,7 +5319,15 @@
               "tono": [],
               "durata": 16,
               "voce": 21,
-              "audio": null,
+              "audio": {
+                "durata": 13760,
+                "impronta": "7697f280",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "648796f457fcb12999183910f481f8ec0e5157f5",
+                "voce": "mT0eqrjKfAPl6gQBlfBa",
+                "tag": "[happy]"
+              },
               "azioni": [
                 {
                   "id": "a1krak1u",
@@ -6706,7 +6714,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 39,
-      "aggiornato": 1792176085033,
+      "aggiornato": 1792176297796,
       "lingua": "it",
       "musica": null,
       "voci": {},
