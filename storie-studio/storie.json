@@ -3487,6 +3487,3126 @@
     },
     {
       "v": 1,
+      "id": "p7jc37qd",
+      "titolo": "Cosa è la gravità?",
+      "scopo": "libera",
+      "obiettivo": "capire l'importanza della gravità tra gli astri.",
+      "ufficiale": false,
+      "origine": "utente-mux38l7v-er8axq5pzbj",
+      "sostituisce": "",
+      "cast": [
+        "Moon",
+        "Earth",
+        "Sun",
+        "Saturn",
+        "Jupiter",
+        "Sedna",
+        "iss",
+        "css",
+        "hubble",
+        "sgr_a",
+        "alpha_centauri"
+      ],
+      "scene": [
+        {
+          "id": "sahfufjr",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Moon",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mt7fhbgp",
+              "chi": "Moon",
+              "testo": "Ciao Terra, mi chiedevo, perché orbito intorno a te?",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 5,
+              "voce": 1,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a0xv03zj",
+                  "tipo": "guarda",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "oggetto": "Earth",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "atndvfwy",
+                  "tipo": "occhiolino",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "story_music",
+                    "parametri": {
+                      "src": "musica/Observing_the_Zenith.mp3",
+                      "volume": 0.15
+                    }
+                  },
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 20,
+                      "elev_from": 34,
+                      "elev_to": 39
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "m0vob2ud",
+              "chi": "Earth",
+              "testo": "Sei solo una luna!!",
+              "umore": "bully",
+              "tono": [],
+              "durata": 3,
+              "voce": 2,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a0jjelbz",
+                  "tipo": "guarda",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "oggetto": "Moon",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "a5seedhz",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "bully",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.45,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                },
+                {
+                  "id": "a5waxc38",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "fine",
+                  "umore": "laughing",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.75,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 12,
+                      "orbit_from": 20,
+                      "elev_from": 39,
+                      "elev_to": 42
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "bully"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mp9ouvmw",
+              "chi": "Earth",
+              "testo": "ah ah ah!!!",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 3,
+              "voce": 3,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "azi3z79l",
+                  "tipo": "guarda",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "oggetto": "Moon",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 12,
+                      "orbit_from": 32,
+                      "elev_from": 42,
+                      "elev_to": 45
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "laughing"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mi78k99d",
+              "chi": "Moon",
+              "testo": "Smettila!!!",
+              "umore": "annoyed",
+              "tono": [],
+              "durata": 3,
+              "voce": 4,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a9acwhel",
+                  "tipo": "guarda",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "oggetto": "Earth",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 12,
+                      "orbit_from": 44,
+                      "elev_from": 45,
+                      "elev_to": 48
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "annoyed"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "laughing"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s52yof3h",
+          "ambiente": "pianeta",
+          "fuoco": "Earth",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "hubble",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m2nzkg5g",
+              "chi": "hubble",
+              "testo": "esatto, perchè ci trattieni?",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 3,
+              "voce": 5,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "ac6yk6a4",
+                  "tipo": "guarda",
+                  "chi": "hubble",
+                  "quando": "inizio",
+                  "oggetto": "Earth",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "a45ro4bt",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "thinking",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 12,
+                      "orbit_from": 56,
+                      "elev_from": 48,
+                      "elev_to": 51
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "hubble",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "laughing"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sfczo4eq",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css"
+          ],
+          "momenti": [
+            {
+              "id": "mfd2zmzo",
+              "chi": "iss",
+              "testo": "ci dobbiamo ribellare!",
+              "umore": "angry",
+              "tono": [],
+              "durata": 3,
+              "voce": 6,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a9twnpqx",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "smoke",
+                  "dove": "iss",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "aok9gpmk",
+                  "tipo": "guarda",
+                  "chi": "iss",
+                  "quando": "inizio",
+                  "oggetto": "css",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 12,
+                      "orbit_from": 68,
+                      "elev_from": 51,
+                      "elev_to": 54
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "css",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mmt5zmuu",
+              "chi": "css",
+              "testo": "giusto!",
+              "umore": "angry",
+              "tono": [],
+              "durata": 3,
+              "voce": 7,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 12,
+                      "orbit_from": 80,
+                      "elev_from": 54,
+                      "elev_to": 57
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "css",
+                      "expression": "angry"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "szcaqzvs",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun",
+            "Moon"
+          ],
+          "momenti": [
+            {
+              "id": "myk08ulu",
+              "chi": "Moon",
+              "testo": "Vogliamo essere indipendenti!",
+              "umore": "angry",
+              "tono": [],
+              "durata": 4,
+              "voce": 8,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 16,
+                      "orbit_from": 92,
+                      "elev_from": 57,
+                      "elev_to": 61
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "sleepy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sj6rd5sa",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Sun",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "m07dkgry",
+              "chi": "Earth",
+              "testo": "oh no! adesso cosa faccio?",
+              "umore": "worried",
+              "tono": [],
+              "durata": 5,
+              "voce": 9,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a3kgw4il",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "surprised",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "anvdgse5",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "worried",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.45,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 20,
+                      "orbit_from": 108,
+                      "elev_from": 61,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "css",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "worried"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s9igopnu",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "m2wath2i",
+              "chi": "Sun",
+              "testo": "Tranquilla Terra! Ti spiego io cos'è la gravità!",
+              "umore": "laughing",
+              "tono": [],
+              "durata": 6,
+              "voce": 10,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "aq8dxn7g",
+                  "tipo": "umore",
+                  "chi": "Sun",
+                  "quando": "inizio",
+                  "umore": "laughing",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "aazzvw0t",
+                  "tipo": "umore",
+                  "chi": "Sun",
+                  "quando": "meta",
+                  "umore": "happy",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.45,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 24,
+                      "orbit_from": 128,
+                      "elev_from": 62,
+                      "elev_to": 57
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "sleepy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "worried"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "laughing"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sqr6i8f4",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "iss",
+            "css",
+            "Moon",
+            "Earth",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "mcxyge5f",
+              "chi": "Sun",
+              "testo": "La gravità è una forza attrattiva che tiene uno o più astri stabili.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 6,
+              "voce": 11,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 24,
+                      "orbit_from": 152,
+                      "elev_from": 57,
+                      "elev_to": 52
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "css",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "worried"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mv3x2nqa",
+              "chi": "Earth",
+              "testo": "Continuo a non capire.",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 3,
+              "voce": 12,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 12,
+                      "orbit_from": 176,
+                      "elev_from": 52,
+                      "elev_to": 49
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "css",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s0py68by",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn"
+          ],
+          "momenti": [
+            {
+              "id": "mcgr3h0l",
+              "chi": "Saturn",
+              "testo": "Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 6,
+              "voce": 13,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Saturn",
+                      "orbit": 24,
+                      "orbit_from": 188,
+                      "elev_from": 49,
+                      "elev_to": 44
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s3xckvm1",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "moqpr212",
+              "chi": "Earth",
+              "testo": "Potresti spiegarti meglio?",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 4,
+              "voce": 14,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 16,
+                      "orbit_from": 212,
+                      "elev_from": 44,
+                      "elev_to": 40
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "se2lw6dy",
+          "ambiente": "pianeta",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Jupiter"
+          ],
+          "momenti": [
+            {
+              "id": "mwdt2wxl",
+              "chi": "Jupiter",
+              "testo": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 13,
+              "voce": 15,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Jupiter",
+                      "orbit": 40,
+                      "orbit_from": 228,
+                      "elev_from": 40,
+                      "elev_to": 32,
+                      "close_up": "show"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "seix843b",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Jupiter",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mix8zkiw",
+              "chi": "Earth",
+              "testo": "Cos' è la massa, cos' è un peso e che cosa è un volume?",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 5,
+              "voce": 16,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 20,
+                      "orbit_from": 268,
+                      "elev_from": 32,
+                      "elev_to": 28
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sal9kybb",
+          "ambiente": "pianeta",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Saturn",
+            "Jupiter",
+            "Earth"
+          ],
+          "momenti": [
+            {
+              "id": "mczeemch",
+              "chi": "Jupiter",
+              "testo": "Calma Terra, una domanda alla volta.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 3,
+              "voce": 17,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Jupiter",
+                      "orbit": 12,
+                      "orbit_from": 288,
+                      "elev_from": 28,
+                      "elev_to": 26,
+                      "close_up": "show"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "m7l4g6up",
+              "chi": "Jupiter",
+              "testo": "La massa è la quantità di materia che compone un corpo, il peso è",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 6,
+              "voce": 18,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Jupiter",
+                      "orbit": 24,
+                      "orbit_from": 300,
+                      "elev_from": 26,
+                      "elev_to": 31,
+                      "close_up": "show"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s9wk8aki",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Earth",
+            "Jupiter",
+            "Sedna",
+            "Sun",
+            "Saturn"
+          ],
+          "momenti": [
+            {
+              "id": "ma4bdksj",
+              "chi": "Sedna",
+              "testo": "Ciao Terra, Giove ha ragione!",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 3,
+              "voce": 19,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 12,
+                      "orbit_from": 324,
+                      "elev_from": 31,
+                      "elev_to": 34
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mr16as5w",
+              "chi": "Earth",
+              "testo": "Oh! Che spavento! Chi ha parlato?",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 4,
+              "voce": 20,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "aqek6iib",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "thinking",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.45,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                },
+                {
+                  "id": "a3rvxuj7",
+                  "tipo": "effetto",
+                  "chi": "",
+                  "quando": "inizio",
+                  "effetto": "shockwave",
+                  "dove": "Earth",
+                  "grandezza": 1,
+                  "colore": "",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "atf09uld",
+                  "tipo": "guarda",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "oggetto": "Jupiter",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "asz0gkwa",
+                  "tipo": "anima",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "animazione": "wobble",
+                  "volte": 0,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 0.45,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 16,
+                      "orbit_from": 336,
+                      "elev_from": 34,
+                      "elev_to": 38
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "m52sckfe",
+              "chi": "Sedna",
+              "testo": "Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 16,
+              "voce": 21,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a1krak1u",
+                  "tipo": "anima",
+                  "chi": "Sedna",
+                  "quando": "inizio",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 0.45,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 40,
+                      "orbit_from": 352,
+                      "elev_from": 38,
+                      "elev_to": 46
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mlztnfh4",
+              "chi": "Earth",
+              "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 15,
+              "voce": 22,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "apyafhkz",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "surprised",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "alo1a6co",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "fine",
+                  "umore": "annoyed",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.75,
+                    "a": 1,
+                    "quando": "fine"
+                  }
+                },
+                {
+                  "id": "aza87gp7",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "happy",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 40,
+                      "orbit_from": 32,
+                      "elev_from": 46,
+                      "elev_to": 54
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mlq54ama",
+              "chi": "Earth",
+              "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
+              "umore": "annoyed",
+              "tono": [],
+              "durata": 12,
+              "voce": 23,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth,Saturn",
+                      "orbit": 40,
+                      "orbit_from": 72,
+                      "elev_from": 54,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "annoyed"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mxenujql",
+              "chi": "Sedna",
+              "testo": "Ehm, scusa Terra, hai finito?",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 5,
+              "voce": 24,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter",
+                      "orbit": 20,
+                      "orbit_from": 112,
+                      "elev_from": 62,
+                      "elev_to": 58
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "meig41n5",
+              "chi": "Earth",
+              "testo": "Oh! Scusa! Continua.",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 4,
+              "voce": 25,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a90p1vca",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "inizio",
+                  "umore": "surprised",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0,
+                    "a": 1,
+                    "quando": "inizio"
+                  }
+                },
+                {
+                  "id": "aiewz4on",
+                  "tipo": "umore",
+                  "chi": "Earth",
+                  "quando": "meta",
+                  "umore": "neutral",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": {
+                    "da": 0.45,
+                    "a": 1,
+                    "quando": "meta"
+                  }
+                }
+              ],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 16,
+                      "orbit_from": 132,
+                      "elev_from": 58,
+                      "elev_to": 54
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "m0fi10yz",
+              "chi": "Sedna",
+              "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 15,
+              "voce": 26,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 40,
+                      "orbit_from": 148,
+                      "elev_from": 54,
+                      "elev_to": 46
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mz9mes4v",
+              "chi": "Earth",
+              "testo": "Wow! Non sapevo che la scienza potesse essere così bella.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 9,
+              "voce": 27,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 36,
+                      "orbit_from": 188,
+                      "elev_from": 46,
+                      "elev_to": 38
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s6g4sat0",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Earth",
+            "iss",
+            "alpha_centauri"
+          ],
+          "momenti": [
+            {
+              "id": "m947gplz",
+              "chi": "alpha_centauri",
+              "testo": "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 13,
+              "voce": 28,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": 37,
+                      "to": 3921000000,
+                      "orbit": 14,
+                      "elev_from": 62,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "alpha_centauri",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "szsyd3fd",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun",
+            "Saturn"
+          ],
+          "momenti": [
+            {
+              "id": "mw39amuy",
+              "chi": "Earth",
+              "testo": "Cosa? Di nuovo? Chi ha parlato?",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 5,
+              "voce": 29,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 20,
+                      "orbit_from": 224,
+                      "elev_from": 65,
+                      "elev_to": 61
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mpmegdne",
+              "chi": "Sedna",
+              "testo": "è vero! Chi è?",
+              "umore": "thinking",
+              "tono": [],
+              "durata": 4,
+              "voce": 30,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth",
+                      "orbit": 16,
+                      "orbit_from": 244,
+                      "elev_from": 61,
+                      "elev_to": 57
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mmfdejhs",
+              "chi": "Sun",
+              "testo": "So chi è! è la mia amica alfa centauri!",
+              "umore": "impressed",
+              "tono": [],
+              "durata": 5,
+              "voce": 31,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth,Saturn",
+                      "orbit": 20,
+                      "orbit_from": 260,
+                      "elev_from": 57,
+                      "elev_to": 53
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "impressed"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s9ml0yru",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Sun",
+            "Saturn",
+            "alpha_centauri"
+          ],
+          "momenti": [
+            {
+              "id": "m60wfaon",
+              "chi": "alpha_centauri",
+              "testo": "Ti ricordi di me allora sole, eh?",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 3,
+              "voce": 32,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": 37,
+                      "to": 3921000000,
+                      "orbit": 14,
+                      "elev_from": 62,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "impressed"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "alpha_centauri",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "syfivirh",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun"
+          ],
+          "momenti": [
+            {
+              "id": "m5jk81kk",
+              "chi": "Sun",
+              "testo": "Come potrei mai dimenticarti?",
+              "umore": "happy",
+              "tono": [],
+              "durata": 3,
+              "voce": 33,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Jupiter,Earth,Saturn",
+                      "orbit": 12,
+                      "orbit_from": 280,
+                      "elev_from": 65,
+                      "elev_to": 62
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "s3xrh1h3",
+          "ambiente": "cosmo",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Jupiter",
+            "Sedna",
+            "Earth",
+            "Saturn",
+            "Sun",
+            "sgr_a"
+          ],
+          "momenti": [
+            {
+              "id": "mih67vnh",
+              "chi": "sgr_a",
+              "testo": "Pure io attiro oggetti Terra!",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 3,
+              "voce": 34,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": 37,
+                      "to": 3921000000,
+                      "orbit": 14,
+                      "elev_from": 62,
+                      "elev_to": 65
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mccjpqlg",
+              "chi": "Earth",
+              "testo": "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 5,
+              "voce": 35,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": 37,
+                      "to": 3921000000,
+                      "orbit": 14,
+                      "elev_from": 65,
+                      "elev_to": 68
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "m6y746ux",
+              "chi": "sgr_a",
+              "testo": "Sono sagittarius A! Il buco nero al centro della via lattea!",
+              "umore": "happy",
+              "tono": [],
+              "durata": 5,
+              "voce": 36,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": 37,
+                      "to": 3921000000,
+                      "orbit": 14,
+                      "elev_from": 68,
+                      "elev_to": 71
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "surprised"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mkoxhoun",
+              "chi": "Earth",
+              "testo": "Cos' è un buco nero?",
+              "umore": "curious",
+              "tono": [],
+              "durata": 4,
+              "voce": 37,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": 37,
+                      "to": 3921000000,
+                      "orbit": 14,
+                      "elev_from": 71,
+                      "elev_to": 74
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "curious"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "happy"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            },
+            {
+              "id": "mshd5qjq",
+              "chi": "sgr_a",
+              "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 8,
+              "voce": 38,
+              "audio": null,
+              "azioni": [],
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "cosmic_scale",
+                    "parametri": {
+                      "from": 37,
+                      "to": 3921000000,
+                      "orbit": 14,
+                      "elev_from": 74,
+                      "elev_to": 77
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sedna",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "curious"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Saturn",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Sun",
+                      "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "sgr_a",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        }
+      ],
+      "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
+      "voceChiave": "studio_cosa_e_la_gravita_2",
+      "voceProssima": 39,
+      "aggiornato": 1792175598424,
+      "lingua": "it",
+      "musica": null,
+      "voci": {},
+      "domanda": {
+        "attiva": false,
+        "modo": "auto",
+        "tipo": "auto",
+        "testo": "",
+        "a": "",
+        "b": "",
+        "chi": ""
+      }
+    },
+    {
+      "v": 1,
       "id": "pd2e6o8k",
       "titolo": "Interstellar 2: il tesseratto",
       "scopo": "libera",
