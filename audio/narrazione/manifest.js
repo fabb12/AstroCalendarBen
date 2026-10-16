@@ -821,7 +821,7 @@
     },
 
     'studio.studio_cosa_e_la_gravita_2.2': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-2.mp3', impronta: '47345a07', firma: '1719967ed2', testo: "Sei solo una luna!!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-2.mp3', impronta: '47345a07', firma: 'f4836de226', testo: "Sei solo una luna!!" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.3': {
