@@ -59,7 +59,17 @@
                 "voce": "Y6XCBcFGDDiQgSVPjXt1",
                 "tag": ""
               },
-              "azioni": [],
+              "azioni": [
+                {
+                  "id": "a66rugst",
+                  "tipo": "muovi",
+                  "chi": "Ganymede",
+                  "quando": "inizio",
+                  "verso": "Sun",
+                  "lato": "auto",
+                  "percorso": "straight"
+                }
+              ],
               "copione": null,
               "parla": null
             }
@@ -156,7 +166,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 4,
-      "aggiornato": 1792173343461,
+      "aggiornato": 1792176643841,
       "lingua": "it",
       "musica": null,
       "voci": {
