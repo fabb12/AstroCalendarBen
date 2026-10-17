@@ -27,7 +27,8 @@
         "Hyperion",
         "Phobos",
         "Deimos",
-        "Mimas"
+        "Mimas",
+        "Europa"
       ],
       "scene": [
         {
@@ -174,12 +175,46 @@
           "musicaModo": "storia",
           "musica": null,
           "voci": {}
+        },
+        {
+          "id": "sizgsg7h",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [],
+          "momenti": [
+            {
+              "id": "mlc3cnse",
+              "chi": "Titan",
+              "testo": "Sta zitto Ganimede, ascoltiamo il sole il nostro padrone",
+              "umore": "happy",
+              "tono": [],
+              "durata": 0,
+              "voce": 4,
+              "audio": null,
+              "azioni": [],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
         }
       ],
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
-      "voceProssima": 4,
-      "aggiornato": 1792240128844,
+      "voceProssima": 5,
+      "aggiornato": 1792240445304,
       "lingua": "it",
       "musica": null,
       "voci": {

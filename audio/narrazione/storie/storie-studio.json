@@ -1226,6 +1226,14 @@
           "scena": 3,
           "durata": 4000,
           "conTag": "[bored] Sono solamente una luna! [thoughtful] Perché devo venire."
+        },
+        {
+          "n": 4,
+          "chi": "Titan",
+          "testo": "Sta zitto Ganimede, ascoltiamo il sole il nostro padrone",
+          "umore": "happy",
+          "scena": 4,
+          "durata": 7000
         }
       ]
     },
