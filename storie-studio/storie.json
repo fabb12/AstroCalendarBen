@@ -190,13 +190,17 @@
           "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
-          "presenti": [],
+          "presenti": [
+            "Ganymede",
+            "Jupiter",
+            "Sun"
+          ],
           "momenti": [
             {
               "id": "mlc3cnse",
-              "chi": "Titan",
+              "chi": "Jupiter",
               "testo": "Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
-              "umore": "happy",
+              "umore": "determined",
               "tono": [],
               "durata": 0,
               "voce": 4,
@@ -214,7 +218,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 5,
-      "aggiornato": 1792240588542,
+      "aggiornato": 1792240751626,
       "lingua": "it",
       "musica": null,
       "voci": {
