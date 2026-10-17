@@ -1250,6 +1250,14 @@
           "umore": "curious",
           "scena": 6,
           "durata": 6000
+        },
+        {
+          "n": 7,
+          "chi": "Mercury",
+          "testo": "Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?",
+          "umore": "happy",
+          "scena": 7,
+          "durata": 8000
         }
       ]
     },
