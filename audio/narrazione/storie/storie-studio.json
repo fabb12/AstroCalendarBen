@@ -888,18 +888,18 @@
         {
           "n": 38,
           "chi": "sgr_a",
-          "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi questo video è durato fin troppo",
+          "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.",
           "umore": "neutral",
           "scena": 38,
           "durata": 8000
         },
         {
           "n": 39,
-          "chi": "Jupiter",
-          "testo": "Ricordate: capire l'importanza della gravità tra gli astri.",
+          "chi": "Earth",
+          "testo": "Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?",
           "umore": "neutral",
           "scena": 39,
-          "durata": 8000
+          "durata": 13000
         }
       ]
     },
