@@ -1234,6 +1234,22 @@
           "umore": "determined",
           "scena": 4,
           "durata": 8000
+        },
+        {
+          "n": 5,
+          "chi": "Ganymede",
+          "testo": "uffa!",
+          "umore": "annoyed",
+          "scena": 5,
+          "durata": 4000
+        },
+        {
+          "n": 6,
+          "chi": "Jupiter",
+          "testo": "Aspetta tu chi sei sei un pianeta",
+          "umore": "happy",
+          "scena": 6,
+          "durata": 5000
         }
       ]
     },
