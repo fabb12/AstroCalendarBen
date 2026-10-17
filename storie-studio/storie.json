@@ -6745,12 +6745,8 @@
           "cosmoDa": "milky_way",
           "cosmoA": "earth_moon",
           "presenti": [
-            "Jupiter",
-            "Sedna",
             "Earth",
-            "Saturn",
-            "Sun",
-            "sgr_a"
+            "Moon"
           ],
           "momenti": [
             {
@@ -6860,7 +6856,7 @@
           "camera": "auto",
           "cameraChi": "",
           "cosmoDa": "planets",
-          "cosmoA": "milky_way",
+          "cosmoA": "earth_moon",
           "presenti": [
             "newton",
             "Earth",
@@ -6870,7 +6866,7 @@
             {
               "id": "mujxztdo",
               "chi": "Moon",
-              "testo": "Ehm, sì.",
+              "testo": "Ehm, sì. Sì...",
               "umore": "neutral",
               "tono": [],
               "durata": 0,
@@ -6889,7 +6885,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 43,
-      "aggiornato": 1792230168414,
+      "aggiornato": 1792230360430,
       "lingua": "it",
       "musica": null,
       "voci": {},
