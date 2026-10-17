@@ -16,10 +16,10 @@ Pronte: **223/368** in italiano · **0/234** in inglese.
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
 | Luna | `storie/luna/` | 17 | 14/17 | 0/11 |
-| Terra | `storie/terra/` | 33 | 32/33 | 0/4 |
+| Terra | `storie/terra/` | 34 | 32/34 | 0/4 |
 | Sole | `storie/sole/` | 21 | 8/21 | 0/10 |
 | Saturno | `storie/saturno/` | 4 | 1/4 | 0/2 |
-| Giove | `storie/giove/` | 8 | 3/8 | 0/1 |
+| Giove | `storie/giove/` | 7 | 3/7 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
 | Alfa Centauri | `storie/alfa-centauri/` | 5 | 3/5 | 0/1 |
 | Via Lattea | `storie/via-lattea/` | 2 | 2/2 | 0/2 |
@@ -319,6 +319,10 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
+- `studio_cosa_e_la_gravita_2-39.mp3` — manca · Studio: Cosa è la gravità?, scena 39 (al massimo 13 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?
+  - **Da incollare su ElevenLabs v3:** `Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?`
 - `studio_la_rivoluzione_di_ganimede_e_f-2.mp3` — pronta · 1,7 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 2 (al massimo 3 s)
   - **Emozione:** annoiato — 
   - **Testo:** E ci risiamo.
@@ -551,10 +555,6 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
   - **Emozione:** pensieroso — 
   - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è
   - **Da incollare su ElevenLabs v3:** `[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è`
-- `studio_cosa_e_la_gravita_2-39.mp3` — manca · Studio: Cosa è la gravità?, scena 39 (al massimo 8 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Ricordate: capire l'importanza della gravità tra gli astri.
-  - **Da incollare su ElevenLabs v3:** `Ricordate: capire l'importanza della gravità tra gli astri.`
 
 ### Inglese — `storie/giove/en/`
 
@@ -865,8 +865,8 @@ Cartella: `audio/narrazione/storie/sagittario-a/<lingua>/` · nel codice `sgr_a`
   - **Da incollare su ElevenLabs v3:** `[happy] Sono sagittarius A! Il buco nero al centro della via lattea!`
 - `studio_cosa_e_la_gravita_2-38.mp3` — manca · Studio: Cosa è la gravità?, scena 38 (al massimo 8 s)
   - **Emozione:** tranquillo — 
-  - **Testo:** Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi questo video è durato fin troppo
-  - **Da incollare su ElevenLabs v3:** `Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi questo video è durato fin troppo`
+  - **Testo:** Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.
+  - **Da incollare su ElevenLabs v3:** `Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.`
 
 ### Inglese — `storie/sagittario-a/en/`
 
