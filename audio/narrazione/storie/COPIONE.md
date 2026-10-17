@@ -11,12 +11,12 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **223/368** in italiano · **0/234** in inglese.
+Pronte: **223/371** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Luna | `storie/luna/` | 17 | 14/17 | 0/11 |
-| Terra | `storie/terra/` | 34 | 32/34 | 0/4 |
+| Luna | `storie/luna/` | 18 | 14/18 | 0/11 |
+| Terra | `storie/terra/` | 35 | 32/35 | 0/4 |
 | Sole | `storie/sole/` | 21 | 8/21 | 0/10 |
 | Saturno | `storie/saturno/` | 4 | 1/4 | 0/2 |
 | Giove | `storie/giove/` | 7 | 3/7 | 0/1 |
@@ -57,6 +57,7 @@ Pronte: **223/368** in italiano · **0/234** in inglese.
 | iss | `storie/iss/` | 2 | 1/2 | 0/0 |
 | css | `storie/css/` | 2 | 1/2 | 0/0 |
 | Sedna | `storie/sedna/` | 10 | 6/10 | 0/0 |
+| Isaac Newton | `storie/isaac-newton/` | 1 | 0/1 | 0/0 |
 | Ganimede | `storie/ganimede/` | 1 | 1/1 | 0/0 |
 
 ## Luna
@@ -135,6 +136,10 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Emozione:** arrabbiato — 
   - **Testo:** Vogliamo essere indipendenti!
   - **Da incollare su ElevenLabs v3:** `[angry] Vogliamo essere indipendenti!`
+- `studio_cosa_e_la_gravita_2-42.mp3` — manca · Studio: Cosa è la gravità?, scena 42 (al massimo 4 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ehm, sì.
+  - **Da incollare su ElevenLabs v3:** `Ehm, sì.`
 
 ### Inglese — `storie/luna/en/`
 
@@ -323,6 +328,10 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** tranquillo — 
   - **Testo:** Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?
   - **Da incollare su ElevenLabs v3:** `Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?`
+- `studio_cosa_e_la_gravita_2-41.mp3` — manca · Studio: Cosa è la gravità?, scena 41 (al massimo 4 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Sei d' accordo Luna?
+  - **Da incollare su ElevenLabs v3:** `Sei d' accordo Luna?`
 - `studio_la_rivoluzione_di_ganimede_e_f-2.mp3` — pronta · 1,7 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 2 (al massimo 3 s)
   - **Emozione:** annoiato — 
   - **Testo:** E ci risiamo.
@@ -2945,6 +2954,17 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
   - **Emozione:** pensieroso — 
   - **Testo:** è vero! Chi è?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] è vero! Chi è?`
+
+## Isaac Newton
+
+Cartella: `audio/narrazione/storie/isaac-newton/<lingua>/` · nel codice `newton` · in inglese Isaac Newton
+
+### Italiano — `storie/isaac-newton/it/`
+
+- `studio_cosa_e_la_gravita_2-40.mp3` — manca · Studio: Cosa è la gravità?, scena 40 (al massimo 6 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Sì, le mie leggi dicono proprio così.
+  - **Da incollare su ElevenLabs v3:** `Sì, le mie leggi dicono proprio così.`
 
 ## Ganimede
 

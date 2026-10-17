@@ -2850,6 +2850,27 @@
       "conTag": {
         "it": "Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?"
       }
+    },
+    "studio.studio_cosa_e_la_gravita_2.40": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Sì, le mie leggi dicono proprio così."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.41": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Sei d' accordo Luna?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.42": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "Ehm, sì."
+      }
     }
   }
 }
