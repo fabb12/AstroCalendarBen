@@ -2984,8 +2984,8 @@ Cartella: `audio/narrazione/storie/titano/<lingua>/` · nel codice `Titan` · in
 
 ### Italiano — `storie/titano/it/`
 
-- `studio_la_rivoluzione_di_ganimede_e_f-4.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 4 (al massimo 7 s)
+- `studio_la_rivoluzione_di_ganimede_e_f-4.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 4 (al massimo 8 s)
   - **Emozione:** felice — 
-  - **Testo:** Sta zitto Ganimede, ascoltiamo il sole il nostro padrone
-  - **Da incollare su ElevenLabs v3:** `[happy] Sta zitto Ganimede, ascoltiamo il sole il nostro padrone`
+  - **Testo:** Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.
+  - **Da incollare su ElevenLabs v3:** `[happy] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.`
 
