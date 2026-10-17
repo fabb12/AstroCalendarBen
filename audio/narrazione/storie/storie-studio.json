@@ -900,6 +900,30 @@
           "umore": "neutral",
           "scena": 39,
           "durata": 13000
+        },
+        {
+          "n": 40,
+          "chi": "newton",
+          "testo": "Sì, le mie leggi dicono proprio così.",
+          "umore": "neutral",
+          "scena": 40,
+          "durata": 6000
+        },
+        {
+          "n": 41,
+          "chi": "Earth",
+          "testo": "Sei d' accordo Luna?",
+          "umore": "neutral",
+          "scena": 41,
+          "durata": 4000
+        },
+        {
+          "n": 42,
+          "chi": "Moon",
+          "testo": "Ehm, sì.",
+          "umore": "neutral",
+          "scena": 42,
+          "durata": 4000
         }
       ]
     },
