@@ -195,7 +195,7 @@
             {
               "id": "mlc3cnse",
               "chi": "Titan",
-              "testo": "Sta zitto Ganimede, ascoltiamo il sole il nostro padrone",
+              "testo": "Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
               "umore": "happy",
               "tono": [],
               "durata": 0,
@@ -214,7 +214,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 5,
-      "aggiornato": 1792240445304,
+      "aggiornato": 1792240588542,
       "lingua": "it",
       "musica": null,
       "voci": {

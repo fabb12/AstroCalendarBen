@@ -1230,10 +1230,10 @@
         {
           "n": 4,
           "chi": "Titan",
-          "testo": "Sta zitto Ganimede, ascoltiamo il sole il nostro padrone",
+          "testo": "Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
           "umore": "happy",
           "scena": 4,
-          "durata": 7000
+          "durata": 8000
         }
       ]
     },
