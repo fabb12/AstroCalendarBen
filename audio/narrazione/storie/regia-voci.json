@@ -2871,6 +2871,13 @@
       "conTag": {
         "it": "Ehm, sì. Sì..."
       }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.4": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Sta zitto Ganimede, ascoltiamo il sole il nostro padrone"
+      }
     }
   }
 }
