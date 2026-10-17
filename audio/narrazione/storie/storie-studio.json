@@ -888,9 +888,17 @@
         {
           "n": 38,
           "chi": "sgr_a",
-          "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.",
+          "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi questo video è durato fin troppo",
           "umore": "neutral",
           "scena": 38,
+          "durata": 8000
+        },
+        {
+          "n": 39,
+          "chi": "Jupiter",
+          "testo": "Ricordate: capire l'importanza della gravità tra gli astri.",
+          "umore": "neutral",
+          "scena": 39,
           "durata": 8000
         }
       ]
