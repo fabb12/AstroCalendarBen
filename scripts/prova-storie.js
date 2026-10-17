@@ -21,7 +21,7 @@ let adesso = 1000;
 Object.defineProperty(globalThis, 'performance', { value: { now: () => adesso }, configurable: true, writable: true });
 globalThis.SKY_ASTRI = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune']
   .map(id => ({ id })).concat([1, 2, 3, 4, 5, 6, 7, 8].map(i => ({ id: 'Star' + i, nome: 'Stella ' + i })));
-globalThis.SOL_LUNE = [{ id: 'Phobos', nome: 'Phobos', colore: '#b8a99a' }, { id: 'Io', nome: 'Io', colore: '#fde68a' },
+globalThis.SOL_LUNE = [{ id: 'Phobos', nome: 'Phobos', colore: '#b8a99a' }, { id: 'Rhea', nome: 'Rea', colore: '#dcd7cf' }, { id: 'Io', nome: 'Io', colore: '#fde68a' },
   { id: 'Titan', nome: 'Titano', colore: '#e8b96a' }, { id: 'Triton', nome: 'Tritone', colore: '#dbeafe' }];
 globalThis.SOL_MONDI = [{ id: 'Ceres', nome: 'Cerere', famiglia: 'nano', colore: '#d6d9de', idCielo: 'min:Cerere' },
   { id: 'Vesta', nome: 'Vesta', famiglia: 'asteroide', colore: '#cbd5e1', idCielo: 'min:Vesta' },
@@ -108,10 +108,11 @@ prova('i dieci corpi principali, le lune, comete, asteroidi, stelle, stazioni e 
   }
 });
 prova('un personaggio non dichiarato prende la faccia della sua famiglia, coi colori dell\'app', () => {
-  const p = S.profilo('Phobos');
+  // v510: Fobos ora è un personaggio vero; Rea no
+  const p = S.profilo('Rhea');
   assert.equal(p.famiglia, 'luna');
-  assert.equal(p.pelle, '#b8a99a');
-  assert.equal(S.nome('Phobos'), 'Phobos');
+  assert.equal(p.pelle, '#dcd7cf');
+  assert.equal(S.nome('Rhea'), 'Rea');
 });
 prova('lo stesso oggetto ha un nome solo in tutte le viste', () => {
   assert.equal(S.canonico('sat-iss'), 'iss');
@@ -756,6 +757,54 @@ prova('il palco della 3D (v439): chi trema non fa tremare il vicino, e il vicino
   marte.animazioni = [];
   S.sgombra();
   delete globalThis.sol;
+});
+prova('lo stile «cartone» (v510): pennino spesso e bordo luminoso; le persone delle «Dentro la scienza» a grandezza piena; Fobos, Deimos, Mimante, Iperione', () => {
+  // le persone delle tre storie non sono più rimpicciolite (prima a metà)
+  const persone = ['brand', 'cooper', 'doyle', 'haise', 'kranz', 'lovell', 'mattingly', 'murph', 'romilly', 'swigert', 'tars', 'loro'];
+  for (const k of ['storia_interstellar_scienza', 'storia_interstellar2_scienza', 'storia_apollo13_scienza']) {
+    const c = predefiniti.find(x => x.chiave === k);
+    for (const sc of analizza(c.testo).scene) for (const a of sc.azioni) {
+      if (a.comando !== 'character_show' || !persone.includes(a.parametri.target) || a.parametri.scale === undefined) continue;
+      assert.ok(Number(a.parametri.scale) >= 1, k + ': ' + a.parametri.target + ' a scala ' + a.parametri.scale);
+    }
+  }
+  // il disegno: il pennino del cartone è più spesso, e l'alone è lilla
+  const tratti = stile => {
+    S.sgombra();
+    const spessori = [], colori = new Set();
+    const ctx = new Proxy({ canvas: { width: 800, height: 600 }, globalAlpha: 1 }, {
+      get(o, k) {
+        if (k in o) return o[k];
+        if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => ({ addColorStop() {} });
+        if (k === 'measureText') return () => ({ width: 40 });
+        if (k === 'stroke') return () => { spessori.push(o.lineWidth); colori.add(String(o.strokeStyle)); };
+        return () => undefined;
+      },
+      set(o, k, v) { o[k] = v; return true; }
+    });
+    motore.avvia(demo(sc('planetarium_view', ...(stile ? [`story_style { look: ${stile} }`] : []), "character_show { target: 'lovell' }")), { ripristina() {} });
+    passo(10);
+    for (let k = 0; k < 3; k++) { avanza(16); S.disegnaPersonaggi(ctx, 'cielo', [corpo('lovell', 400, 300, 3)], 800, 600); }
+    motore.ferma && motore.ferma();
+    return { max: Math.max(...spessori), colori };
+  };
+  const ink = tratti(null), cartone = tratti('cartoon');
+  S.sgombra();
+  assert.equal(S.stile(), 'ink', 'finita la storia si torna all\'inchiostro');
+  assert.ok(cartone.max > ink.max * 1.4, 'il bordo del cartone è più largo: ' + cartone.max + ' contro ' + ink.max);
+  assert.ok([...cartone.colori].some(c => /206, 186, 255/.test(c)), 'il bordo luminoso lilla');
+  assert.ok(![...ink.colori].some(c => /206, 186, 255/.test(c)), 'l\'inchiostro resta color panna');
+  // le quattro lune nuove: personaggi veri, coi loro nomi e il loro carattere
+  for (const [id, it] of [['Phobos', 'Fobos'], ['Deimos', 'Deimos'], ['Mimas', 'Mimante'], ['Hyperion', 'Iperione']]) {
+    const p = S.profilo(id);
+    assert.equal(p.famiglia, 'luna', id + ': una luna');
+    assert.ok(S.personalita(id).length > 20, id + ': ha un carattere');
+    assert.equal(DIZ.it.messaggi['corpo.' + id], it, id + ': il nome italiano');
+    assert.ok(DIZ.en.messaggi['storie.personalita.' + id], id + ': il carattere in inglese');
+  }
+  assert.equal(S.profilo('Phobos').sagoma, 'asteroide', 'Fobos è un sasso a patata');
+  assert.equal(S.profilo('Hyperion').sagoma, 'asteroide', 'Iperione è una spugna a patata');
+  S.sgombra();
 });
 prova('la targa di chi parla (v508): il nome sopra di lui subito, e dopo qualche secondo se ne va', () => {
   scena({ Earth: {}, Moon: {} });
@@ -1857,6 +1906,8 @@ prova('le «Interstellar · dentro la scienza» (v501): le spiegazioni a tutto s
     assert.ok(!/explain_|science_card/.test(o.testo), orig + ': l\'originale resta com\'era');
     const scene = analizza(c.testo).scene;
     assert.ok(scene.length >= 15 && scene.length <= 22, nuova + ': ' + scene.length + ' scene');
+    // v510: lo stile «cartone» dalla prima scena
+    assert.ok(scene[0].azioni.some(a => a.comando === 'story_style' && a.parametri.look === 'cartoon'), nuova + ': lo stile cartone');
     assert.ok(/story_title \{ id: 'storie\.titolo\.interstellar2?_scienza'/.test(c.testo), nuova + ': il suo titolo');
     let spiegazioni = 0;
     scene.forEach((sc, i) => {
@@ -1868,7 +1919,7 @@ prova('le «Interstellar · dentro la scienza» (v501): le spiegazioni a tutto s
       assert.ok(sc.azioni.some(a => a.comando === 'story_camera' && a.parametri.mode === 'wide'), nuova + ' scena ' + (i + 1) + ': camera larga');
       const chi = sc.azioni.find(a => a.comando === 'character_speak').parametri.target;
       const show = sc.azioni.find(a => a.comando === 'character_show' && a.parametri.target === chi);
-      assert.ok(show && show.parametri.scale <= 0.6 && /^bottom_/.test(show.parametri.at), nuova + ' scena ' + (i + 1) + ': chi parla sta piccolo in un angolo');
+      assert.ok(show && show.parametri.scale >= 1 && /^bottom_/.test(show.parametri.at), nuova + ' scena ' + (i + 1) + ': chi parla sta in un angolo, grande come nelle altre storie (v510)');
     });
     assert.ok(spiegazioni >= scene.length * 0.4, nuova + ': almeno quattro scene su dieci spiegano (' + spiegazioni + ')');
     for (const l of ['it', 'en']) for (const sc of scene) {
@@ -1916,7 +1967,8 @@ prova('«Apollo 13 · dentro la scienza» (v504): tredici spiegazioni, sei scene
   assert.ok(c && c.storia, 'è una CosmoStoria');
   const scene = analizza(c.testo).scene;
   assert.equal(scene.length, 19);
-  assert.ok(scene[0].azioni.some(a => a.comando === 'story_style' && a.parametri.look === 'kurzgesagt'), 'lo stile nella prima scena');
+  // v510: lo stile «cartone» (era quello di Kurzgesagt)
+  assert.ok(scene[0].azioni.some(a => a.comando === 'story_style' && a.parametri.look === 'cartoon'), 'lo stile nella prima scena');
   assert.ok(/story_title \{ id: 'storie\.titolo\.apollo13_scienza'/.test(c.testo), 'il suo titolo');
   const spiegazioni = [], sfondi = [];
   scene.forEach((sc, i) => {
@@ -1929,7 +1981,7 @@ prova('«Apollo 13 · dentro la scienza» (v504): tredici spiegazioni, sei scene
     assert.ok(sc.azioni.some(a => a.comando === 'story_camera' && a.parametri.mode === 'wide'), 'scena ' + (i + 1) + ': camera larga');
     const chi = sc.azioni.find(a => a.comando === 'character_speak').parametri.target;
     const show = sc.azioni.find(a => a.comando === 'character_show' && a.parametri.target === chi);
-    assert.ok(show && show.parametri.scale <= 0.6 && /^bottom_/.test(show.parametri.at), 'scena ' + (i + 1) + ': chi parla sta piccolo in un angolo');
+    assert.ok(show && show.parametri.scale >= 1 && /^bottom_/.test(show.parametri.at), 'scena ' + (i + 1) + ': chi parla sta in un angolo, grande come nelle altre storie (v510)');
   });
   assert.deepEqual(spiegazioni.slice().sort(), S.STOR_SPIEGA_APOLLO.slice().sort(), 'ogni spiegazione una volta');
   assert.deepEqual(sfondi.slice().sort(), S.STOR_SCENE_APOLLO.slice().sort(), 'ogni scena del film una volta');

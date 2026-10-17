@@ -512,6 +512,19 @@
     Ganymede: { famiglia: 'luna', genere: 'm', pelle: '#d6d3d1', iride: '#57534e', sottotitolo: '#e7e5e4' },
     Callisto: { famiglia: 'luna', genere: 'f', pelle: '#a8a29e', iride: '#44403c', sottotitolo: '#d6d3d1' },
     Titan:    { famiglia: 'luna', genere: 'm', pelle: '#fcd34d', iride: '#b45309', sottotitolo: '#fcd34d' },
+    // v510: quattro lune nuove. Fobos e Deimos, i figli di Marte (in greco
+    // «paura» e «terrore»), sono due sassi a patata, uno fifone e uno che
+    // salta su per niente; Mimante ha il cratere Herschel che lo fa sembrare
+    // la Morte Nera, e se ne vanta; Iperione è una spugna di ghiaccio che
+    // rotola senza un giorno fisso, sempre un po' frastornato
+    Phobos:   { famiglia: 'luna', genere: 'm', sagoma: 'asteroide', pelle: '#a8907a', iride: '#b91c1c', sottotitolo: '#fecaca', guance: '#fca5a5',
+      voce: { ritmo: '12%', tono: '14Hz' }, espressione: 'worried', personalita: 'Phobos' },
+    Deimos:   { famiglia: 'luna', genere: 'm', sagoma: 'asteroide', pelle: '#b8a794', iride: '#7c2d12', sottotitolo: '#fed7aa', guance: '#fdba74',
+      voce: { ritmo: '10%', tono: '20Hz' }, espressione: 'surprised', personalita: 'Deimos' },
+    Mimas:    { famiglia: 'luna', genere: 'm', pelle: '#d7dadd', iride: '#334155', sottotitolo: '#e2e8f0', decoro: 'crateri',
+      voce: { ritmo: '-2%', tono: '-4Hz' }, espressione: 'proud', personalita: 'Mimas' },
+    Hyperion: { famiglia: 'luna', genere: 'm', sagoma: 'asteroide', pelle: '#c9a27a', iride: '#92400e', sottotitolo: '#fde68a', guance: '#fdba74',
+      voce: { ritmo: '6%', tono: '8Hz' }, espressione: 'confused', personalita: 'Hyperion' },
     iss:      { famiglia: 'stazione', genere: 'f', alias: ['sat-iss', 'ISS'], personalita: 'iss' },
     css:      { famiglia: 'stazione', genere: 'f', sagoma: 'tiangong', alias: ['sat-css', 'Tiangong'], pelle: '#f3eded', iride: '#dc2626', sottotitolo: '#fca5a5',
       labbra: '#dc2626' },
@@ -962,6 +975,12 @@
     Io:      { superficie: 'zolfo', atmosfera: null, tempeste: 'vulcani', passo: 1.2 },
     Europa:  { superficie: 'ghiaccio', atmosfera: null },
     Titan:   { superficie: 'metano', atmosfera: { colore: '#f59e0b', spessore: 0.22, densita: 0.9 } },
+    // v510: Fobos trema di paura, Deimos è svelto, Iperione dondola (rotola
+    // a caso), Mimante sta fermo e impettito
+    Phobos:   { superficie: 'crateri', atmosfera: null, passo: 1.4, tremito: 0.12 },
+    Deimos:   { superficie: 'crateri', atmosfera: null, passo: 1.3 },
+    Mimas:    { superficie: 'crateri', atmosfera: null, passo: 0.9 },
+    Hyperion: { superficie: 'crateri', atmosfera: null, passo: 1.15, tremito: 0.06, testa: 0.25 },
     // Carl Sagan (v450): il pallido puntino blu gli gira attorno, piccolo
     // com'era nella fotografia, e quando canta l'aura si accende
     sagan:   { superficie: 'pelle', atmosfera: null, avatar: 'aura', passo: 1.05, tratto: 'sagan',
@@ -2640,10 +2659,13 @@
   // agli occhi grandi faceva di nuovo gli occhiali
   let ALONE_TENUE = ALONE_TENUE_FIABA;
   function storTintePennino() {
-    const kurz = stor.stile === 'kurz';
-    INCHIOSTRO = kurz ? '#2e2466' : INCHIOSTRO_FIABA;
-    ALONE = kurz ? 'rgba(255, 248, 235, 0)' : ALONE_FIABA;
-    ALONE_TENUE = kurz ? 'rgba(255, 248, 235, 0)' : ALONE_TENUE_FIABA;
+    const kurz = stor.stile === 'kurz', cartone = stor.stile === 'cartone';
+    // v510, lo stile «cartone» (`story_style { look: cartoon }`): il pennino
+    // quasi nero e spesso, e al posto dell'alone panna un bordo lilla
+    // luminoso, come il neon attorno alle figure dei cartoni vettoriali
+    INCHIOSTRO = kurz ? '#2e2466' : cartone ? '#120a26' : INCHIOSTRO_FIABA;
+    ALONE = kurz ? 'rgba(255, 248, 235, 0)' : cartone ? 'rgba(206, 186, 255, 0.9)' : ALONE_FIABA;
+    ALONE_TENUE = kurz ? 'rgba(255, 248, 235, 0)' : cartone ? 'rgba(206, 186, 255, 0.4)' : ALONE_TENUE_FIABA;
   }
 
   function rgba(hex, a) {
@@ -7489,8 +7511,34 @@
       ctx.restore();
     });
   }
+  /* v510, lo stile «cartone» (`story_style { look: cartoon }`), su un
+   * disegno di riferimento mandato da chi usa l'app: l'astronauta coi baffi
+   * dei cartoni vettoriali. Ogni pezzo ha il contorno quasi nero e spesso,
+   * fuori dal contorno un bordo lilla luminoso (il neon attorno alla
+   * sagoma), dentro tre toni che sfumano dalla luce in alto a sinistra
+   * all'ombra in basso a destra (non più il taglio netto della fiaba) e
+   * una lama di luce lucida sul bordo illuminato. */
+  function parteCartone(ctx, traccia, colore, R, opz = {}) {
+    ctx.lineJoin = 'round';
+    traccia(); ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(4, R * 0.15); ctx.stroke();
+    traccia(); ctx.fillStyle = scurisci(colore, opz.buio === undefined ? 0.24 : opz.buio * 0.85); ctx.fill();
+    ctx.save(); traccia(); ctx.clip();
+    const lu = R * (opz.luce || 0.12);
+    // il mezzo tono, poi la luce piena: fra i due l'ombra sfuma
+    ctx.save(); ctx.translate(-lu * 0.5, -lu * 0.55); traccia(); ctx.fillStyle = scurisci(colore, 0.1); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(-lu * 1.05, -lu * 1.15); traccia(); ctx.fillStyle = colore; ctx.fill(); ctx.restore();
+    if (opz.dentro) opz.dentro();
+    // la lama lucida: la forma tolta la sua copia spostata in basso a destra
+    const d = Math.max(1, R * 0.045);
+    ctx.save(); ctx.translate(d, d * 1.1); traccia(); ctx.restore();
+    ctx.rect(-1e5, -1e5, 2e5, 2e5);
+    ctx.fillStyle = rgba(schiarisci(colore, 0.6), 0.6); ctx.fill('evenodd');
+    ctx.restore();
+    traccia(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.6, R * Math.max(0.05, (opz.pennino || 0.04) * 1.6)); ctx.stroke();
+  }
   function parte(ctx, traccia, colore, R, opz = {}) {
     if (stor.stile === 'kurz') { parteKurz(ctx, traccia, colore, R, opz); return; }
+    if (stor.stile === 'cartone') { parteCartone(ctx, traccia, colore, R, opz); return; }
     traccia();
     ctx.strokeStyle = ALONE; ctx.lineWidth = Math.max(2.4, R * 0.07); ctx.stroke();
     ctx.fillStyle = scurisci(colore, opz.buio === undefined ? 0.28 : opz.buio); ctx.fill();
@@ -8514,8 +8562,10 @@
     if (stor.stile === 'kurz') { testaKurz(ctx, hx, hy, hw, hh, R, pelle, opz); return; }
     const testa = () => tracciaTesta(ctx, hx, hy, hw, hh);
     ctx.save(); ctx.translate(R * 0.04, R * 0.05); testa(); ctx.fillStyle = 'rgba(12, 6, 30, 0.4)'; ctx.fill(); ctx.restore();
-    testa(); ctx.strokeStyle = '#fff6e6'; ctx.lineWidth = Math.max(2, R * 0.06); ctx.stroke();
-    testa(); ctx.fillStyle = scurisci(pelle, 0.24); ctx.fill();
+    const cartone = stor.stile === 'cartone';
+    testa(); ctx.lineJoin = 'round';
+    ctx.strokeStyle = cartone ? ALONE : '#fff6e6'; ctx.lineWidth = Math.max(cartone ? 4 : 2, R * (cartone ? 0.15 : 0.06)); ctx.stroke();
+    testa(); ctx.fillStyle = scurisci(pelle, cartone ? 0.18 : 0.24); ctx.fill();
     ctx.save(); testa(); ctx.clip();
     const lx = hx - hw * 0.28, ly = hy - hh * 0.26, lr = Math.max(hw, hh) * 1.02;
     const luce = ctx.createRadialGradient(lx, ly, lr * 0.82, lx, ly, lr);
@@ -8575,8 +8625,14 @@
       }
       ctx.fill();
     }
+    // v510: nel cartone il lucido sulla fronte e il pennino spesso
+    if (cartone) {
+      const lucido = ctx.createRadialGradient(hx - hw * 0.35, hy - hh * 0.5, 0, hx - hw * 0.35, hy - hh * 0.5, hw * 0.55);
+      lucido.addColorStop(0, 'rgba(255, 255, 255, 0.35)'); lucido.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = lucido; ctx.beginPath(); ctx.arc(hx - hw * 0.35, hy - hh * 0.5, hw * 0.55, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
-    testa(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(1.4, R * 0.035); ctx.stroke();
+    testa(); ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = Math.max(cartone ? 1.8 : 1.4, R * (cartone ? 0.06 : 0.035)); ctx.stroke();
   }
 
   /* Chi racconta il cielo (v469). Chi usa l'app ha chiesto, dopo Carl Sagan,
@@ -12629,7 +12685,7 @@
   // al secondo (negativo: nell'altro verso)
   const STOR_MODI_REGIA = ['auto', 'wide', 'close', 'speaker', 'orbit', 'rhythm'];
   // v504: gli stili del disegno (`story_style`)
-  const STOR_STILI = ['ink', 'kurzgesagt'];
+  const STOR_STILI = ['ink', 'kurzgesagt', 'cartoon'];
   Object.assign(COMANDI, {
     story_camera: {
       verifica(p, scena) {
@@ -13126,7 +13182,7 @@
         richiedi(p.look !== undefined, 'valoreIgnoto', { campo: 'look', nome: '', elenco: STOR_STILI.join(', ') });
         scelta(p.look, 'look', STOR_STILI);
       },
-      crea(p) { stor.stile = p.look === 'kurzgesagt' ? 'kurz' : 'ink'; return {}; }
+      crea(p) { stor.stile = p.look === 'kurzgesagt' ? 'kurz' : p.look === 'cartoon' ? 'cartone' : 'ink'; return {}; }
     },
     // Il titolo grande (v450): `story_title { id | text, sub_id | subtitle }`
     story_title: {
