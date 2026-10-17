@@ -4369,3 +4369,60 @@ dell'astro quando il volto è addosso, sotto se in cima non c'è posto. Va
 con l'orologio della storia: in pausa aspetta. Prova in `prova-storie.js`
 (v508: subito, sopra alla testa, via dopo qualche secondo, di nuovo alla
 battuta dopo sopra al nuovo che parla); guardata in Chromium.
+
+### Lo stile «cartone», personaggi grandi, e quattro lune nuove (v510)
+
+«Nelle due Interstellar e nell'Apollo 13 Dentro la scienza i personaggi
+sono troppo piccoli: devono essere grandi come gli altri. Cambia lo stile
+dei personaggi, falli così» — con un disegno di riferimento: l'astronauta
+coi baffi dei cartoni vettoriali, contorno nero spesso, bordo luminoso
+viola attorno alla sagoma, colori sfumati e lucidi. «Aggiungi Iperione,
+Fobos, Deimos, Mimante.»
+
+**Grandi come gli altri.** Nelle tre storie le persone (`lovell`, `haise`,
+`swigert`, `kranz`, `mattingly`, `cooper`, `brand`, `romilly`, `doyle`,
+`murph`, `tars`, Loro) erano a `scale` 0,5–0,9 (raggio 33 px contro i 67
+delle altre storie): ora tutte a 1 (54 `character_show` in
+`demo-predefiniti.js`). Restano piccole solo le navicelle lontane. Nelle
+spiegazioni chi parla sta sempre in un angolo in basso, accanto al disegno.
+
+**Lo stile «cartone»** (`story_style { look: cartoon }`, `stor.stile =
+'cartone'`), nella prima scena delle tre storie (Apollo 13 lascia quello di
+Kurzgesagt, che resta disponibile):
+
+- `storTintePennino`: il pennino quasi nero (`#120a26`) e, al posto
+  dell'alone color panna, un bordo lilla luminoso;
+- `parteCartone`: ogni pezzo del corpo ha il bordo luminoso largo fuori dal
+  contorno, tre toni che sfumano dalla luce all'ombra (non il taglio netto
+  della fiaba), la lama lucida sul bordo illuminato e il contorno spesso
+  (circa una volta e mezza quello dell'inchiostro);
+- `testaDaCartone`: il bordo luminoso, un lucido sulla fronte e il
+  contorno spesso.
+
+I volti (occhi, bocca, sopracciglia) sono quelli di sempre. Finita la
+storia si torna all'inchiostro.
+
+**Quattro lune nuove**, personaggi con carattere (`STOR_PERSONAGGI`,
+`STOR_FISICA`, `storie.personalita.*`):
+
+- **Fobos** (`Phobos`), «paura»: un sasso a patata (`sagoma: 'asteroide'`),
+  fifone e un po' tremante; sta scendendo verso Marte;
+- **Deimos**, «terrore»: il fratellino, piccolo e svelto, salta su per niente;
+- **Mimante** (`Mimas`): tondo, coi crateri; il cratere Herschel lo fa
+  sembrare la Morte Nera, e se ne vanta;
+- **Iperione** (`Hyperion`): una spugna di ghiaccio a patata che rotola a
+  caso, sempre un po' frastornata. Non c'era nemmeno nella 3D: aggiunto a
+  `SOL_LUNE` (raggio d'orbita 1.481.009 km, periodo 21,277 giorni, fra
+  Titano e Giapeto), con la sua pelle (`SOL_PELLI_LUNE`), il nome e la
+  descrizione nei dizionari.
+
+Nella pagina dello Studio stanno fra le «lune». Nella 3D una luna che è un
+personaggio si disegna anche quando il suo pianeta è un granello o le lune
+sono spente (`solDisegnaLune`: prima Fobos e Deimos attorno a un Marte di
+pochi pixel non comparivano affatto); le altre lune restano nascoste come
+prima.
+
+Prove: `prova-storie.js` (128: lo stile cartone nelle tre storie, persone
+a grandezza piena, pennino più largo e bordo lilla, le quattro lune);
+guardate in Chromium una spiegazione con Lovell, Fobos e Deimos attorno a
+Marte, Mimante e Iperione attorno a Saturno.

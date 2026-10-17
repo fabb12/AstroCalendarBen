@@ -3412,6 +3412,7 @@
   scene solar_system_3d {
     // L'Endurance arriva a Saturno: piccola, in fondo, davanti agli anelli
     duration: 16s;
+    action: story_style { look: cartoon };
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 12, orbit_from: 20, elev_from: 10, elev_to: 16, zoom_from: 0.8, zoom_to: 0.95 };
     action: story_camera { mode: wide };
     action: story_music { src: 'musica/Zenith_of_the_Quiet_Night.mp3', volume: 0.3 };
@@ -3430,7 +3431,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_shortcut, at: right, duration: 60 };
-    action: character_show { target: 'romilly', expression: 'excited', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'romilly', expression: 'excited', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'romilly', id: 'demo.narr.storia_interstellar_scienza.2' };
   }
   scene solar_system_3d {
@@ -3438,7 +3439,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_sphere, at: right, duration: 60 };
-    action: character_show { target: 'brand', expression: 'happy', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'brand', expression: 'happy', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar_scienza.3' };
   }
   scene solar_system_3d {
@@ -3477,7 +3478,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_gargantua, at: left, duration: 60 };
-    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar_scienza.6' };
   }
   scene solar_system_3d {
@@ -3485,7 +3486,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_lensing, at: right, duration: 60 };
-    action: character_show { target: 'romilly', expression: 'wonder', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'romilly', expression: 'wonder', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'romilly', id: 'demo.narr.storia_interstellar_scienza.7' };
   }
   scene solar_system_3d {
@@ -3493,7 +3494,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_curvature, at: right, duration: 60 };
-    action: character_show { target: 'brand', expression: 'determined', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'brand', expression: 'determined', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar_scienza.8' };
   }
   scene solar_system_3d {
@@ -3501,7 +3502,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_time, at: right, duration: 60 };
-    action: character_show { target: 'brand', expression: 'worried', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'brand', expression: 'worried', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar_scienza.9' };
   }
   scene solar_system_3d {
@@ -3509,7 +3510,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_spin, at: right, duration: 60 };
-    action: character_show { target: 'romilly', expression: 'curious', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'romilly', expression: 'curious', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'romilly', id: 'demo.narr.storia_interstellar_scienza.10' };
   }
   scene solar_system_3d {
@@ -3522,8 +3523,8 @@
     action: character_show { target: 'ranger', at: bottom_right, scale: 1 };
     action: character_show { target: 'cooper', expression: 'scared', inside: 'ranger' };
     action: character_show { target: 'case', expression: 'neutral', inside: 'ranger' };
-    action: character_show { target: 'brand', expression: 'surprised', at: left, scale: 0.9 };
-    action: character_show { target: 'doyle', expression: 'scared', at: center, scale: 0.8 };
+    action: character_show { target: 'brand', expression: 'surprised', at: left, scale: 1 };
+    action: character_show { target: 'doyle', expression: 'scared', at: center, scale: 1 };
     action: sound { type: 'alarm', shot_from: 0.38 };
     action: sound { type: 'rumble', shot_from: 0.5 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar_scienza.11' };
@@ -3533,7 +3534,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_tides, at: left, duration: 60 };
-    action: character_show { target: 'tars', expression: 'neutral', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'neutral', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar_scienza.12' };
   }
   scene solar_system_3d {
@@ -3541,7 +3542,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_twins, at: right, duration: 60 };
-    action: character_show { target: 'romilly', expression: 'sad', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'romilly', expression: 'sad', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'romilly', id: 'demo.narr.storia_interstellar_scienza.13' };
   }
   scene solar_system_3d {
@@ -3551,7 +3552,7 @@
     action: story_camera { mode: speaker };
     action: character_show { target: 'lander', at: bottom_left, scale: 0.9 };
     action: character_show { target: 'mann', expression: 'bully', at: center, look: 'cooper' };
-    action: character_show { target: 'cooper', expression: 'scared', at: right, scale: 0.9, look: 'mann' };
+    action: character_show { target: 'cooper', expression: 'scared', at: right, scale: 1, look: 'mann' };
     action: character_expression { target: 'mann', expression: 'sad', shot_from: 0.65 };
     action: sound { type: 'ice_crack', shot_from: 0.88 };
     action: sound { type: 'decompression', shot_from: 0.9 };
@@ -3562,7 +3563,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_docking, at: right, duration: 60 };
-    action: character_show { target: 'cooper', expression: 'determined', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'determined', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar_scienza.15' };
   }
   scene solar_system_3d {
@@ -3570,7 +3571,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_slingshot, at: right, duration: 60 };
-    action: character_show { target: 'cooper', expression: 'determined', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'determined', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar_scienza.16' };
   }
   scene solar_system_3d {
@@ -3578,7 +3579,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_spaghetti, at: left, duration: 60 };
-    action: character_show { target: 'tars', expression: 'neutral', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'neutral', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar_scienza.17' };
   }
   scene solar_system_3d {
@@ -3586,7 +3587,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_horizon, at: right, duration: 60 };
-    action: character_show { target: 'brand', expression: 'sad', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'brand', expression: 'sad', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'brand', id: 'demo.narr.storia_interstellar_scienza.18' };
   }
   scene solar_system_3d {
@@ -3620,6 +3621,7 @@
   scene solar_system_3d {
     // Dove finiva la Parte 1: il Ranger, piccolissimo, dentro la luce di Gargantua
     duration: 14s;
+    action: story_style { look: cartoon };
     action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 4, elev_from: 65, elev_to: 65 };
     action: story_camera { mode: wide };
     action: story_music { src: 'musica/Observing_the_Zenith.mp3', volume: 0.3 };
@@ -3645,8 +3647,8 @@
     action: story_camera { mode: wide };
     action: effect { type: tesseract, duration: 60 };
     action: date_card { label: 'demo.cartello.storia_interstellar2.tesseratto' };
-    action: character_show { target: 'cooper', expression: 'scared', at: top, scale: 0.5 };
-    action: character_show { target: 'cooper', expression: 'scared', at: center, scale: 0.85, glide: 6, shot_from: 0.1 };
+    action: character_show { target: 'cooper', expression: 'scared', at: top, scale: 1 };
+    action: character_show { target: 'cooper', expression: 'scared', at: center, scale: 1, glide: 6, shot_from: 0.1 };
     action: character_expression { target: 'cooper', expression: 'wonder', shot_from: 0.35 };
     action: sound { type: 'whoosh', shot_from: 0.1 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2_scienza.2', shot_from: 0.2 };
@@ -3656,7 +3658,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_dimensions, at: left, duration: 60 };
-    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2_scienza.3' };
   }
   scene solar_system_3d {
@@ -3666,7 +3668,7 @@
     action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 67, elev_to: 67 };
     action: effect { type: flash, at: top, color: '#ede9fe', shot_from: 0.0 };
     action: character_show { target: 'loro', expression: 'tender', at: top, scale: 1.1 };
-    action: character_show { target: 'cooper', expression: 'scared', at: bottom_left, scale: 0.8, look: 'loro' };
+    action: character_show { target: 'cooper', expression: 'scared', at: bottom_left, scale: 1, look: 'loro' };
     action: effect { type: sparkles, target: 'loro', color: '#fde68a', shot_from: 0.05 };
     action: character_expression { target: 'cooper', expression: 'wonder', shot_from: 0.5 };
     action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2_scienza.4', shot_from: 0.1 };
@@ -3676,7 +3678,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_timescape, at: left, duration: 60 };
-    action: character_show { target: 'loro', expression: 'tender', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'loro', expression: 'tender', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2_scienza.5' };
   }
   scene solar_system_3d {
@@ -3684,7 +3686,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_gravity_leak, at: left, duration: 60 };
-    action: character_show { target: 'loro', expression: 'tender', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'loro', expression: 'tender', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2_scienza.6' };
   }
   scene solar_system_3d {
@@ -3702,7 +3704,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_morse, at: right, duration: 60 };
-    action: character_show { target: 'cooper', expression: 'surprised', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'cooper', expression: 'surprised', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2_scienza.8' };
   }
   scene solar_system_3d {
@@ -3710,7 +3712,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_binary, at: left, duration: 60 };
-    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2_scienza.9' };
   }
   scene solar_system_3d {
@@ -3718,7 +3720,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_quantum, at: left, duration: 60 };
-    action: character_show { target: 'tars', expression: 'excited', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'excited', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2_scienza.10' };
   }
   scene solar_system_3d {
@@ -3728,7 +3730,7 @@
     action: cosmic_scale { from: 'milky_way', to: 'milky_way', orbit: 3, elev_from: 70, elev_to: 70 };
     action: date_card { label: 'demo.cartello.storia_interstellar2.lancetta' };
     action: character_show { target: 'cooper', expression: 'excited', at: left, look: 'viewer' };
-    action: character_show { target: 'tars', expression: 'curious', at: right, scale: 0.85, look: 'cooper' };
+    action: character_show { target: 'tars', expression: 'curious', at: right, scale: 1, look: 'cooper' };
     action: effect { type: morse_watch, at: center, size: 1.3, duration: 13, shot_from: 0.2 };
     action: character_speak { target: 'cooper', id: 'demo.narr.storia_interstellar2_scienza.11' };
   }
@@ -3751,7 +3753,7 @@
     action: story_camera { mode: wide };
     action: effect { type: liftoff, duration: 19 };
     action: date_card { label: 'demo.cartello.storia_interstellar2.decollo' };
-    action: character_show { target: 'murph', expression: 'hopeful', at: bottom_left, scale: 0.75, look: 'viewer' };
+    action: character_show { target: 'murph', expression: 'hopeful', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_expression { target: 'murph', expression: 'proud', shot_from: 0.6 };
     action: sound { type: 'rumble', shot_from: 0.25 };
     action: sound { type: 'engine', shot_from: 0.5 };
@@ -3763,7 +3765,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_loop, at: left, duration: 60 };
-    action: character_show { target: 'loro', expression: 'tender', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'loro', expression: 'tender', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'loro', id: 'demo.narr.storia_interstellar2_scienza.14' };
   }
   scene solar_system_3d {
@@ -3782,7 +3784,7 @@
     action: camera_3d { scene: system, focus: 'Saturn', close_up: show, orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_station, at: left, duration: 60 };
-    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'tars', expression: 'proud', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'tars', id: 'demo.narr.storia_interstellar2_scienza.16' };
   }
   scene solar_system_3d {
@@ -3827,9 +3829,9 @@
       cast: 'lovell,haise,swigert,kranz,mattingly',
       testo: `define_demo 'storia_apollo13_scienza' {
   // «Apollo 13 · Dentro la scienza» (v504): il film del 1995 come filo, la
-  // scienza come centro, e il disegno di Kurzgesagt (story_style, solo
-  // per questa storia): personaggi senza pennino, volti a ovali, tinte
-  // sature e luci sfocate. Sei scene del film a tutto schermo (apollo_*) e,
+  // scienza come centro, e (v510) lo stile «cartone» come le due
+  // «Interstellar · Dentro la scienza» (story_style: pennino spesso, bordo
+  // luminoso, ombre sfumate; era quello di Kurzgesagt). Sei scene del film a tutto schermo (apollo_*) e,
   // fra una e l'altra, tredici spiegazioni (explain_*, §6-ter-ter di
   // storie-cosmiche.js): il Saturn V, il pogo, la traiettoria a otto, il
   // serbatoio che scoppia, le celle a combustibile, la scialuppa, la CO₂,
@@ -3839,14 +3841,14 @@
   scene solar_system_3d {
     // Il decollo: 11 aprile 1970, ore 13:13
     duration: 16s;
-    action: story_style { look: kurzgesagt };
+    action: story_style { look: cartoon };
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: story_music { src: 'musica/Observing_the_Zenith.mp3', volume: 0.3 };
     action: effect { type: apollo_launch, duration: 60 };
     action: story_title { id: 'storie.titolo.apollo13_scienza', shot_to: 0.35 };
     action: date_card { label: 'demo.cartello.storia_apollo13_scienza.lancio' };
-    action: character_show { target: 'lovell', expression: 'proud', at: bottom_right, scale: 0.6, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'proud', at: bottom_right, scale: 1, look: 'viewer' };
     action: sound { type: 'engine', shot_from: 0.04 };
     action: sound { type: 'rumble', shot_from: 0.12 };
     action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.1', shot_from: 0.3 };
@@ -3856,7 +3858,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_saturn_v, at: right, duration: 60 };
-    action: character_show { target: 'haise', expression: 'excited', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'haise', expression: 'excited', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.2' };
   }
   scene solar_system_3d {
@@ -3864,7 +3866,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_pogo, at: left, duration: 60 };
-    action: character_show { target: 'swigert', expression: 'worried', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'swigert', expression: 'worried', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'swigert', id: 'demo.narr.storia_apollo13_scienza.3' };
   }
   scene solar_system_3d {
@@ -3872,7 +3874,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_free_return, at: right, duration: 60 };
-    action: character_show { target: 'lovell', expression: 'thinking', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'thinking', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.4' };
   }
   scene solar_system_3d {
@@ -3882,8 +3884,8 @@
     action: story_camera { mode: wide };
     action: effect { type: apollo_explosion, duration: 60 };
     action: date_card { label: 'demo.cartello.storia_apollo13_scienza.problema' };
-    action: character_show { target: 'swigert', expression: 'scared', at: bottom_left, scale: 0.75, look: 'viewer' };
-    action: character_show { target: 'lovell', expression: 'worried', at: bottom_right, scale: 0.75, look: 'swigert' };
+    action: character_show { target: 'swigert', expression: 'scared', at: bottom_left, scale: 1, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'worried', at: bottom_right, scale: 1, look: 'swigert' };
     action: sound { type: 'explosion', shot_from: 0.06 };
     action: sound { type: 'alarm', shot_from: 0.12 };
     action: sound { type: 'decompression', shot_from: 0.2 };
@@ -3895,7 +3897,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_oxygen_tank, at: right, duration: 60 };
-    action: character_show { target: 'kranz', expression: 'determined', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'kranz', expression: 'determined', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.6' };
   }
   scene solar_system_3d {
@@ -3903,7 +3905,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_fuel_cell, at: left, duration: 60 };
-    action: character_show { target: 'haise', expression: 'worried', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'haise', expression: 'worried', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.7' };
   }
   scene solar_system_3d {
@@ -3912,8 +3914,8 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: apollo_control, duration: 60 };
-    action: character_show { target: 'kranz', expression: 'determined', at: center, scale: 0.9, look: 'viewer' };
-    action: character_show { target: 'mattingly', expression: 'thinking', at: left, scale: 0.75, look: 'kranz' };
+    action: character_show { target: 'kranz', expression: 'determined', at: center, scale: 1, look: 'viewer' };
+    action: character_show { target: 'mattingly', expression: 'thinking', at: left, scale: 1, look: 'kranz' };
     action: sound { type: 'radio', shot_from: 0.05 };
     action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.8' };
   }
@@ -3922,7 +3924,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_lifeboat, at: right, duration: 60 };
-    action: character_show { target: 'kranz', expression: 'thinking', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'kranz', expression: 'thinking', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.9' };
   }
   scene solar_system_3d {
@@ -3930,7 +3932,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_co2, at: left, duration: 60 };
-    action: character_show { target: 'swigert', expression: 'curious', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'swigert', expression: 'curious', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'swigert', id: 'demo.narr.storia_apollo13_scienza.10' };
   }
   scene solar_system_3d {
@@ -3939,9 +3941,9 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: apollo_cabin, duration: 60 };
-    action: character_show { target: 'haise', expression: 'sad', at: center, scale: 0.85, look: 'viewer' };
-    action: character_show { target: 'lovell', expression: 'tender', at: left, scale: 0.75, look: 'haise' };
-    action: character_show { target: 'swigert', expression: 'sleepy', at: right, scale: 0.75, look: 'haise' };
+    action: character_show { target: 'haise', expression: 'sad', at: center, scale: 1, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'tender', at: left, scale: 1, look: 'haise' };
+    action: character_show { target: 'swigert', expression: 'sleepy', at: right, scale: 1, look: 'haise' };
     action: sound { type: 'ice_crack', shot_from: 0.3 };
     action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.11' };
   }
@@ -3950,7 +3952,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_cold, at: right, duration: 60 };
-    action: character_show { target: 'haise', expression: 'curious', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'haise', expression: 'curious', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'haise', id: 'demo.narr.storia_apollo13_scienza.12' };
   }
   scene solar_system_3d {
@@ -3958,7 +3960,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_far_side, at: left, duration: 60 };
-    action: character_show { target: 'lovell', expression: 'wonder', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'wonder', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.13' };
   }
   scene solar_system_3d {
@@ -3966,7 +3968,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_manual_burn, at: right, duration: 60 };
-    action: character_show { target: 'lovell', expression: 'determined', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'determined', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.14' };
   }
   scene solar_system_3d {
@@ -3974,7 +3976,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_power_up, at: left, duration: 60 };
-    action: character_show { target: 'mattingly', expression: 'determined', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'mattingly', expression: 'determined', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'mattingly', id: 'demo.narr.storia_apollo13_scienza.15' };
   }
   scene solar_system_3d {
@@ -3983,7 +3985,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: apollo_jettison, duration: 60 };
-    action: character_show { target: 'lovell', expression: 'surprised', at: bottom_right, scale: 0.75, look: 'viewer' };
+    action: character_show { target: 'lovell', expression: 'surprised', at: bottom_right, scale: 1, look: 'viewer' };
     action: sound { type: 'detach', shot_from: 0.05 };
     action: character_expression { target: 'lovell', expression: 'worried', shot_from: 0.6 };
     action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.16', shot_from: 0.1 };
@@ -3993,7 +3995,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_corridor, at: right, duration: 60 };
-    action: character_show { target: 'kranz', expression: 'worried', at: bottom_left, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'kranz', expression: 'worried', at: bottom_left, scale: 1, look: 'viewer' };
     action: character_speak { target: 'kranz', id: 'demo.narr.storia_apollo13_scienza.17' };
   }
   scene solar_system_3d {
@@ -4001,7 +4003,7 @@
     action: camera_3d { scene: system, focus: 'Earth', orbit: 4, elev_from: 10, elev_to: 10, zoom_from: 1, zoom_to: 1 };
     action: story_camera { mode: wide };
     action: effect { type: explain_heat_shield, at: left, duration: 60 };
-    action: character_show { target: 'swigert', expression: 'excited', at: bottom_right, scale: 0.5, look: 'viewer' };
+    action: character_show { target: 'swigert', expression: 'excited', at: bottom_right, scale: 1, look: 'viewer' };
     action: character_speak { target: 'swigert', id: 'demo.narr.storia_apollo13_scienza.18' };
   }
   scene solar_system_3d {
@@ -4011,9 +4013,9 @@
     action: story_camera { mode: wide };
     action: effect { type: apollo_splashdown, duration: 60 };
     action: date_card { label: 'demo.cartello.storia_apollo13_scienza.ammaraggio' };
-    action: character_show { target: 'lovell', expression: 'relieved', at: bottom_left, scale: 0.7, look: 'viewer' };
-    action: character_show { target: 'haise', expression: 'happy', at: bottom_right, scale: 0.65, look: 'lovell' };
-    action: character_show { target: 'swigert', expression: 'laughing', at: right, scale: 0.6, look: 'lovell' };
+    action: character_show { target: 'lovell', expression: 'relieved', at: bottom_left, scale: 1, look: 'viewer' };
+    action: character_show { target: 'haise', expression: 'happy', at: bottom_right, scale: 1, look: 'lovell' };
+    action: character_show { target: 'swigert', expression: 'laughing', at: right, scale: 1, look: 'lovell' };
     action: sound { type: 'splash', shot_from: 0.42 };
     action: effect { type: confetti, at: top, shot_from: 0.5 };
     action: character_speak { target: 'lovell', id: 'demo.narr.storia_apollo13_scienza.19', shot_from: 0.15 };

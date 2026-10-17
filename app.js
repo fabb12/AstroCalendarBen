@@ -33773,6 +33773,10 @@ const SOL_LUNE = conNomeDaId([
   { id: 'Enceladus', nome: 'Encelado', pianeta: 'Saturn',  colore: '#f1f5f9', km: 504,   raggioKm: 237948,  giorni: 1.370,   fase0: 75,  stacco: 2.05 },
   { id: 'Rhea',      nome: 'Rea',      pianeta: 'Saturn',  colore: '#dcd7cf', km: 1527,  raggioKm: 527108,  giorni: 4.518,   fase0: 200, stacco: 2.45 },
   { id: 'Titan',     nome: 'Titano',   pianeta: 'Saturn',  colore: '#e8b96a', km: 5150,  raggioKm: 1221870, giorni: 15.945,  fase0: 130, stacco: 2.95 },
+  // Iperione (v510, personaggio delle CosmoStorie): una spugna di ghiaccio a
+  // patata, la più grande luna irregolare conosciuta, che rotola senza un
+  // giorno fisso perché Titano la strattona a ogni giro
+  { id: 'Hyperion',  nome: 'Iperione', pianeta: 'Saturn',  colore: '#c9a27a', km: 270,   raggioKm: 1481009, giorni: 21.277,  fase0: 250, stacco: 3.25 },
   // Giapeto è l'unica luna grande che non stia nel piano del suo pianeta:
   // quindici gradi fuori, ed è la ragione per cui una faccia è nera come il
   // carbone e l'altra bianca come la neve — passa la vita a raccogliere
@@ -35119,6 +35123,7 @@ const SOL_PELLI_LUNE = {
   Enceladus: { base: '#e8eef0', chiaro: '#ffffff', scuro: '#7598ad', linee: 22, crateri: 28, tigre: true },
   Rhea:      { base: '#aaa9a6', chiaro: '#d9d8d2', scuro: '#686a6a', crateri: 125, solchi: 14 },
   Titan:     { base: '#c98235', chiaro: '#efbd65', scuro: '#75401f', foschia: true, macchie: 18 },
+  Hyperion:  { base: '#9b7b5a', chiaro: '#d2b08a', scuro: '#46321f', crateri: 170, irregolare: 0.2 },
   Iapetus:   { base: '#bdb7a9', chiaro: '#ded8c9', scuro: '#302d2b', crateri: 105, bicolore: true },
   Miranda:   { base: '#aebcc0', chiaro: '#e0e7e7', scuro: '#65767c', solchi: 48, crateri: 38 },
   Ariel:     { base: '#c5d2d4', chiaro: '#edf3f1', scuro: '#71898d', linee: 26, crateri: 48 },
@@ -37252,8 +37257,13 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
 // finché il pianeta è un puntino, le sue lune non sono un sistema, sono
 // pulviscolo — e a vista larga sarebbero sessanta pallini sparsi sulle orbite.
 function solDisegnaLune(ctx, pianeta, assi, davanti) {
-  if (!sol.luneAccese || !pianeta || !pianeta.schermo || !sol.lune.length) return;
-  if ((pianeta.rDisegno || 0) < SOL_LUNE_MIN_PX) return;
+  if (!pianeta || !pianeta.schermo || !sol.lune.length) return;
+  // Una luna che è un personaggio di una CosmoStoria (v510: Fobos e Deimos
+  // attorno a un Marte di pochi pixel) si disegna comunque, da sola: senza
+  // il suo corpo la storia avrebbe la voce e niente su cui mettere il volto
+  const inStoria = l => l.idPianeta === pianeta.id && typeof storInScena === 'function' && storInScena(l.id);
+  const soloStoria = !sol.luneAccese || (pianeta.rDisegno || 0) < SOL_LUNE_MIN_PX;
+  if (soloStoria && !sol.lune.some(inStoria)) return;
   // E il pianeta dev'essere in quadro. Senza questa riga, avvicinandosi a
   // Giove crescono col suo anche i dischi di Marte, di Urano e di Nettuno —
   // la crescita è una sola per tutti (`solCrescita`) — e si disegnano i
@@ -37263,7 +37273,7 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
   const bordo = (pianeta.rDisegno || 0) * 4 + 80;
   if (pianeta.schermo.px < -bordo || pianeta.schermo.px > sol.L + bordo ||
       pianeta.schermo.py < -bordo || pianeta.schermo.py > sol.H + bordo) return;
-  const mie = sol.lune.filter(l => l.idPianeta === pianeta.id);
+  const mie = sol.lune.filter(l => l.idPianeta === pianeta.id && (!soloStoria || inStoria(l)));
   if (!mie.length) return;
   const dietro = pianeta.schermo.vicinanza;
   const t = pianeta.scena;
