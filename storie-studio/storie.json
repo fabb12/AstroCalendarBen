@@ -254,7 +254,7 @@
         },
         {
           "id": "s4h5alf9",
-          "ambiente": "sistema",
+          "ambiente": "pianeta",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -269,13 +269,14 @@
           "presenti": [
             "Ganymede",
             "Jupiter",
-            "Sun"
+            "Sun",
+            "Mercury"
           ],
           "momenti": [
             {
               "id": "mcaxh3jc",
-              "chi": "Jupiter",
-              "testo": "Aspetta tu chi sei sei un pianeta",
+              "chi": "Ganymede",
+              "testo": "Aspetta, tu chi sei? sei un pianeta?",
               "umore": "happy",
               "tono": [],
               "durata": 0,
@@ -294,7 +295,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 7,
-      "aggiornato": 1792240989655,
+      "aggiornato": 1792241190518,
       "lingua": "it",
       "musica": null,
       "voci": {

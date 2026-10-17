@@ -1245,11 +1245,11 @@
         },
         {
           "n": 6,
-          "chi": "Jupiter",
-          "testo": "Aspetta tu chi sei sei un pianeta",
+          "chi": "Ganymede",
+          "testo": "Aspetta, tu chi sei? sei un pianeta?",
           "umore": "happy",
           "scena": 6,
-          "durata": 5000
+          "durata": 6000
         }
       ]
     },
