@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **223/374** in italiano · **0/234** in inglese.
+Pronte: **223/375** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Pronte: **223/374** in italiano · **0/234** in inglese.
 | Buco bianco | `storie/buco-bianco/` | 4 | 0/4 | 0/2 |
 | Astro Ben | `storie/astro-ben/` | 11 | 0/11 | 0/10 |
 | Albert Einstein | `storie/albert-einstein/` | 37 | 18/37 | 0/19 |
-| Mercurio | `storie/mercurio/` | 1 | 0/1 | 0/1 |
+| Mercurio | `storie/mercurio/` | 2 | 0/2 | 0/1 |
 | Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
 | Gargantua | `storie/gargantua/` | 3 | 2/3 | 0/3 |
 | Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
@@ -1287,6 +1287,10 @@ Cartella: `audio/narrazione/storie/mercurio/<lingua>/` · nel codice `Mercury` �
   - **Emozione:** sollevato — sbuffa di sollievo e ride
   - **Testo:** Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.
   - **Da incollare su ElevenLabs v3:** `[relieved] Finalmente qualcuno che mi capisce! Per anni hanno cercato un pianeta nascosto, Vulcano, per spiegare il mio giro storto.`
+- `studio_la_rivoluzione_di_ganimede_e_f-7.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 7 (al massimo 8 s)
+  - **Emozione:** felice — 
+  - **Testo:** Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?
+  - **Da incollare su ElevenLabs v3:** `[happy] Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?`
 
 ### Inglese — `storie/mercurio/en/`
 
