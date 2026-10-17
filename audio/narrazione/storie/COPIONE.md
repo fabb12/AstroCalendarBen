@@ -138,8 +138,8 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Da incollare su ElevenLabs v3:** `[angry] Vogliamo essere indipendenti!`
 - `studio_cosa_e_la_gravita_2-42.mp3` — manca · Studio: Cosa è la gravità?, scena 42 (al massimo 4 s)
   - **Emozione:** tranquillo — 
-  - **Testo:** Ehm, sì.
-  - **Da incollare su ElevenLabs v3:** `Ehm, sì.`
+  - **Testo:** Ehm, sì. Sì...
+  - **Da incollare su ElevenLabs v3:** `Ehm, sì. Sì...`
 
 ### Inglese — `storie/luna/en/`
 
