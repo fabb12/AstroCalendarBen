@@ -19,7 +19,7 @@ Pronte: **223/374** in italiano · **0/234** in inglese.
 | Terra | `storie/terra/` | 35 | 32/35 | 0/4 |
 | Sole | `storie/sole/` | 21 | 8/21 | 0/10 |
 | Saturno | `storie/saturno/` | 4 | 1/4 | 0/2 |
-| Giove | `storie/giove/` | 9 | 3/9 | 0/1 |
+| Giove | `storie/giove/` | 8 | 3/8 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
 | Alfa Centauri | `storie/alfa-centauri/` | 5 | 3/5 | 0/1 |
 | Via Lattea | `storie/via-lattea/` | 2 | 2/2 | 0/2 |
@@ -58,7 +58,7 @@ Pronte: **223/374** in italiano · **0/234** in inglese.
 | css | `storie/css/` | 2 | 1/2 | 0/0 |
 | Sedna | `storie/sedna/` | 10 | 6/10 | 0/0 |
 | Isaac Newton | `storie/isaac-newton/` | 1 | 0/1 | 0/0 |
-| Ganimede | `storie/ganimede/` | 2 | 1/2 | 0/0 |
+| Ganimede | `storie/ganimede/` | 3 | 1/3 | 0/0 |
 
 ## Luna
 
@@ -568,10 +568,6 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
   - **Emozione:** felice — 
   - **Testo:** Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.
   - **Da incollare su ElevenLabs v3:** `[happy] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.`
-- `studio_la_rivoluzione_di_ganimede_e_f-6.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 6 (al massimo 5 s)
-  - **Emozione:** felice — 
-  - **Testo:** Aspetta tu chi sei sei un pianeta
-  - **Da incollare su ElevenLabs v3:** `[happy] Aspetta tu chi sei sei un pianeta`
 
 ### Inglese — `storie/giove/en/`
 
@@ -2988,4 +2984,8 @@ Cartella: `audio/narrazione/storie/ganimede/<lingua>/` · nel codice `Ganymede` 
   - **Emozione:** infastidito — 
   - **Testo:** uffa!
   - **Da incollare su ElevenLabs v3:** `[annoyed] uffa!`
+- `studio_la_rivoluzione_di_ganimede_e_f-6.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 6 (al massimo 6 s)
+  - **Emozione:** felice — 
+  - **Testo:** Aspetta, tu chi sei? sei un pianeta?
+  - **Da incollare su ElevenLabs v3:** `[happy] Aspetta, tu chi sei? sei un pianeta?`
 
