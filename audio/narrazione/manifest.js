@@ -1749,6 +1749,14 @@
       it: { file: 'storie/ganimede/it/studio_la_rivoluzione_di_ganimede_e_f-3.mp3', impronta: 'e0c61f77', firma: '0b1a300208', testo: "Sono solamente una luna! Perché devo venire." }
     },
 
+    'studio.studio_la_rivoluzione_di_ganimede_e_f.5': {
+      it: { file: 'storie/ganimede/it/studio_la_rivoluzione_di_ganimede_e_f-5.mp3', impronta: '9e419ea2', firma: 'c99192b0f5', testo: "uffa!" }
+    },
+
+    'studio.studio_la_rivoluzione_di_ganimede_e_f.6': {
+      it: { file: 'storie/ganimede/it/studio_la_rivoluzione_di_ganimede_e_f-6.mp3', impronta: '7910ff73', firma: '5e7eeb7b64', testo: "Aspetta, tu chi sei? sei un pianeta?" }
+    },
+
     // ── FINE STORIE COSMICHE ──
   }
 };

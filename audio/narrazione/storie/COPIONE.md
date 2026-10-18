@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **223/375** in italiano · **0/234** in inglese.
+Pronte: **225/375** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -58,7 +58,7 @@ Pronte: **223/375** in italiano · **0/234** in inglese.
 | css | `storie/css/` | 2 | 1/2 | 0/0 |
 | Sedna | `storie/sedna/` | 10 | 6/10 | 0/0 |
 | Isaac Newton | `storie/isaac-newton/` | 1 | 0/1 | 0/0 |
-| Ganimede | `storie/ganimede/` | 3 | 1/3 | 0/0 |
+| Ganimede | `storie/ganimede/` | 3 | 3/3 | 0/0 |
 
 ## Luna
 
@@ -2984,12 +2984,12 @@ Cartella: `audio/narrazione/storie/ganimede/<lingua>/` · nel codice `Ganymede` 
   - **Emozione:** annoiato — 
   - **Testo:** Sono solamente una luna! Perché devo venire.
   - **Da incollare su ElevenLabs v3:** `[bored] Sono solamente una luna! [thoughtful] Perché devo venire.`
-- `studio_la_rivoluzione_di_ganimede_e_f-5.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 5 (al massimo 4 s)
+- `studio_la_rivoluzione_di_ganimede_e_f-5.mp3` — pronta · 1,6 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 5 (al massimo 3 s)
   - **Emozione:** infastidito — 
   - **Testo:** uffa!
   - **Da incollare su ElevenLabs v3:** `[annoyed] uffa!`
-- `studio_la_rivoluzione_di_ganimede_e_f-6.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 6 (al massimo 6 s)
-  - **Emozione:** felice — 
+- `studio_la_rivoluzione_di_ganimede_e_f-6.mp3` — pronta · 3,2 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 6 (al massimo 4 s)
+  - **Emozione:** curioso — 
   - **Testo:** Aspetta, tu chi sei? sei un pianeta?
-  - **Da incollare su ElevenLabs v3:** `[happy] Aspetta, tu chi sei? sei un pianeta?`
+  - **Da incollare su ElevenLabs v3:** `[curious] Aspetta, tu chi sei? sei un pianeta?`
 
