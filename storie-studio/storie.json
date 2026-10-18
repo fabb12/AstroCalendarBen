@@ -717,6 +717,15 @@
                   "chi": "Mercury",
                   "quando": "meta",
                   "umore": "confused"
+                },
+                {
+                  "id": "aukg9guj",
+                  "tipo": "muovi",
+                  "chi": "Ganymede",
+                  "quando": "tutto",
+                  "verso": "Ganymede",
+                  "lato": "auto",
+                  "percorso": "arc"
                 }
               ],
               "copione": null,
@@ -731,7 +740,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 14,
-      "aggiornato": 1792315292351,
+      "aggiornato": 1792315578222,
       "lingua": "it",
       "musica": null,
       "voci": {
