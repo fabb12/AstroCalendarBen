@@ -490,12 +490,20 @@
             {
               "id": "m020l8td",
               "chi": "Mercury",
-              "testo": "ehm, che c'è? Qualcosa non va?",
+              "testo": "[happy] [hesitates] ehm, che c'è? Qualcosa non va?",
               "umore": "happy",
               "tono": [],
               "durata": 0,
               "voce": 9,
-              "audio": null,
+              "audio": {
+                "durata": 2560,
+                "impronta": "88e9ef44",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "fdc5090e295ca1677830bdd9ed8512a513e2c0e4",
+                "voce": "kmhW33fhWZsJVeOyIdMz",
+                "tag": "[happy] [hesitates]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -568,12 +576,20 @@
             {
               "id": "m6jjbzhe",
               "chi": "Mercury",
-              "testo": "direi,  sì, di qualche centinaio di chilometri direi di sì.",
+              "testo": "[happy] direi, sì, di qualche centinaio di chilometri direi di sì.",
               "umore": "happy",
               "tono": [],
               "durata": 0,
               "voce": 11,
-              "audio": null,
+              "audio": {
+                "durata": 3280,
+                "impronta": "88247201",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "04c7d5851cd8753ce400f4666a33edc66d636121",
+                "voce": "kmhW33fhWZsJVeOyIdMz",
+                "tag": "[happy]"
+              },
               "azioni": [
                 {
                   "id": "ahkekf55",
@@ -595,7 +611,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 12,
-      "aggiornato": 1792314683726,
+      "aggiornato": 1792314844682,
       "lingua": "it",
       "musica": null,
       "voci": {

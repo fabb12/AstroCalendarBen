@@ -1277,7 +1277,8 @@
           "testo": "ehm, che c'è? Qualcosa non va?",
           "umore": "happy",
           "scena": 9,
-          "durata": 5000
+          "durata": 4000,
+          "conTag": "[happy] [hesitates] ehm, che c'è? Qualcosa non va?"
         },
         {
           "n": 10,
@@ -1293,7 +1294,8 @@
           "testo": "direi, sì, di qualche centinaio di chilometri direi di sì.",
           "umore": "happy",
           "scena": 11,
-          "durata": 7000
+          "durata": 4000,
+          "conTag": "[happy] direi, sì, di qualche centinaio di chilometri direi di sì."
         }
       ]
     },
