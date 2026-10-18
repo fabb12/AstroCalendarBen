@@ -1302,10 +1302,18 @@
         {
           "n": 12,
           "chi": "Ganymede",
-          "testo": "veramente",
-          "umore": "happy",
+          "testo": "veramente?",
+          "umore": "wonder",
           "scena": 12,
           "durata": 4000
+        },
+        {
+          "n": 13,
+          "chi": "Mercury",
+          "testo": "sì amico te lo de, aspetta, dove vai?",
+          "umore": "neutral",
+          "scena": 13,
+          "durata": 6000
         }
       ]
     },

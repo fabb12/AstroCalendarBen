@@ -658,8 +658,8 @@
             {
               "id": "mimyqndd",
               "chi": "Ganymede",
-              "testo": "veramente",
-              "umore": "happy",
+              "testo": "veramente?",
+              "umore": "wonder",
               "tono": [],
               "durata": 0,
               "voce": 12,
@@ -672,12 +672,66 @@
           "musicaModo": "storia",
           "musica": null,
           "voci": {}
+        },
+        {
+          "id": "sksh4u1b",
+          "ambiente": "sistema",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Ganymede",
+            "Jupiter",
+            "Sun",
+            "Mercury"
+          ],
+          "momenti": [
+            {
+              "id": "mcuht73k",
+              "chi": "Mercury",
+              "testo": "sì amico te lo de,  aspetta, dove vai?",
+              "umore": "neutral",
+              "tono": [],
+              "durata": 0,
+              "voce": 13,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a227jh6w",
+                  "tipo": "umore",
+                  "chi": "Mercury",
+                  "quando": "inizio",
+                  "umore": "neutral"
+                },
+                {
+                  "id": "ady36tp8",
+                  "tipo": "umore",
+                  "chi": "Mercury",
+                  "quando": "meta",
+                  "umore": "confused"
+                }
+              ],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
         }
       ],
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
-      "voceProssima": 13,
-      "aggiornato": 1792315012955,
+      "voceProssima": 14,
+      "aggiornato": 1792315292351,
       "lingua": "it",
       "musica": null,
       "voci": {
