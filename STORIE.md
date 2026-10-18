@@ -4452,3 +4452,41 @@ Prove: `prova-storie.js` (128: lo stile cartone nelle tre storie, persone
 a grandezza piena, pennino più largo e bordo lilla, le quattro lune);
 guardate in Chromium una spiegazione con Lovell, Fobos e Deimos attorno a
 Marte, Mimante e Iperione attorno a Saturno.
+
+
+## Dettare le battute (v512)
+
+Nel momento aperto, accanto alla battuta, **Detta** avvia il riconoscimento
+vocale del browser nella lingua dell’app. Il testo si inserisce al cursore
+(o sostituisce la selezione), conserva le parole già scritte e si può
+correggere a mano. **Ferma dettatura** lascia finire l’ultima frase.
+I risultati provvisori sono soltanto nello stato di ascolto: entrano nella
+battuta solo quelli confermati, senza duplicati e fino ai 600 caratteri.
+Cambiare momento, storia o pagina ferma il microfono e invalida i risultati
+in ritardo. «Registra la voce» conserva un audio: è un comando diverso.
+
+Si usano `SpeechRecognition` o `webkitSpeechRecognition`: supporto,
+permesso del microfono e disponibilità del servizio dipendono dal browser.
+Il servizio può richiedere Internet; non serve una chiave dell’app. Dove
+manca si continua a scrivere o si usa il microfono della tastiera.
+`prova-dettatura-studio.js` usa un riconoscitore simulato nella UI vera,
+con risultati parziali/finali, Stop, errori, limite, selezione, lingua e
+salvataggio. Non misura l’accuratezza del servizio o un microfono fisico.
+
+## Conferma degli aggiornamenti dell’app (v512)
+
+`registraSW` controlla all’avvio, al ritorno sulla pagina e ogni 15 minuti
+visibili (controlli ravvicinati limitati a uno al minuto). Il nuovo service
+worker scarica i file e resta in attesa: **Aggiorna ora** salva la battuta
+pendente, lo attiva con `AGGIORNA_APP` e ricarica una sola volta. **Più tardi**
+o Esc lasciano lavorare con la versione corrente. Non si propone un
+aggiornamento alla prima installazione, né per un errore di rete.
+
+La dettatura, la registrazione della voce e quella del filmato devono
+terminare prima della conferma; un errore di salvataggio non provoca il
+reload. Se aggiorna un’altra scheda, si chiede il consenso anche qui prima
+di ricaricare. Le pagine e i dati sul dispositivo vengono conservati; non
+si cancellano localStorage o IndexedDB. La nuova gestione è attiva dopo
+aver caricato almeno una volta la v512: una vecchia pagina già aperta non
+ha ancora il codice dell’avviso. `prova-aggiornamenti.js` esercita il worker
+vero in due schede con una pagina e un catalogo di file minimi.
