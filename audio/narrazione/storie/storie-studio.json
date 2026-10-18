@@ -1229,7 +1229,7 @@
         },
         {
           "n": 4,
-          "chi": "Ganymede",
+          "chi": "Jupiter",
           "testo": "Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
           "umore": "determined",
           "scena": 4,
@@ -1262,6 +1262,14 @@
           "scena": 7,
           "durata": 5000,
           "conTag": "[happy] Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?"
+        },
+        {
+          "n": 8,
+          "chi": "Ganymede",
+          "testo": "ehmmmmmmmmmmm, sonoooo, aspetta un secondo",
+          "umore": "happy",
+          "scena": 8,
+          "durata": 5000
         }
       ]
     },
