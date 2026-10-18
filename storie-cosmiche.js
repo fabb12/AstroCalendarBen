@@ -9421,7 +9421,9 @@
     // lo copre col suo corpo, il suo volto e la sua fisica, e non il
     // contrario (prima l'ordine era quello d'entrata in scena, e il volto di
     // Saturno dietro a Giove gli finiva sopra)
-    if (in3d) piano.sort((u, v) => (u.c.vicinanza || 0) - (v.c.vicinanza || 0));
+    // (v511) Anche nel planetario, con la fila di `storDisegnaCielo`: la
+    // stazione con un volto davanti alla Luna con un volto
+    if (in3d || vista === 'cielo') piano.sort((u, v) => (u.c.vicinanza || 0) - (v.c.vicinanza || 0));
     // v482: l'equipaggio dopo la sua nave, dentro ai finestrini
     piano.sort((u, v) => (u.c.aBordo ? 1 : 0) - (v.c.aBordo ? 1 : 0));
     // Un disco grafico non deve coprire l'astro di un altro personaggio
@@ -9644,8 +9646,30 @@
       // corpi, e senza questo taglio il volto di chi sta dietro restava
       // sopra al disco di chi gli passa davanti. L'adesivo accanto col filo
       // è un cartellino, non sta nella scena, e non si taglia.
-      const coprenti = in3d && !c.ospite && (!posto || posto.centrato) ? storCoprentiDavanti(corpi, c, pg.id, R) : null;
+      // Nel planetario lo stesso, con la fila di `storDisegnaCielo`: la Luna,
+      // le stazioni e gli aerei che passano davanti a un volto (v511)
+      const nellaScena = (in3d || vista === 'cielo') && !c.ospite && (!posto || posto.centrato);
+      const coprenti = nellaScena ? storCoprentiDavanti(corpi, c, pg.id, R) : null;
       if (coprenti) { ctx.save(); ritagliaFuori(ctx, coprenti, L, H); }
+      // Gli anelli davanti (v511): non sono un disco, e un ritaglio non li
+      // segue (sono tratti larghi e semitrasparenti). Si cancellano dal
+      // volto, sulla sua tela di passaggio, con gli stessi tratti con cui
+      // l'app li ha disegnati: dove l'anello B copre, il volto non c'è più;
+      // dove c'è la Divisione di Cassini, si intravede.
+      const anelliDavanti = in3d && nellaScena ? storAnelliDavanti(corpi, c, pg.id, R) : null;
+      const gommaAnelli = anelliDavanti && typeof globale('solGommaAnelli') === 'function'
+        ? g => { const gomma = globale('solGommaAnelli'); for (const x of anelliDavanti) gomma(g, x.anelli, x.soglia); } : null;
+      // Il segno da fumetto (le scintille, la goccia) sta col volto, e passa
+      // sotto agli anelli come lui
+      const segnoSotto = mezzo => {
+        const segno = g => {
+          g.save(); trasforma(g);
+          storDisegnaSegno(g, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
+          g.restore();
+        };
+        if (gommaAnelli) conLuce(ctx, cx + att.dx, cy + att.dy, mezzo, null, segno, gommaAnelli);
+        else segno(ctx);
+      };
       if (posto) {
         if (!posto.centrato) disegnaSupporto(ctx, posto, p, alfa, t);
         // La coda di una cometa va dalla parte opposta al Sole
@@ -9677,15 +9701,11 @@
         const fin = c.finestra;
         if (!fin || fin.r >= 3.5) {
           if (fin) { ctx.save(); ctx.beginPath(); ctx.arc(fin.x, fin.y, fin.r, 0, Math.PI * 2); ctx.clip(); disegnaCabina(ctx, fin, alfa); }
-          if (posto.in3d) conLuce(ctx, cx + att.dx, cy + att.dy, R * 2.2, c.luce, tutto);
+          if (posto.in3d) conLuce(ctx, cx + att.dx, cy + att.dy, R * 2.2, c.luce, tutto, gommaAnelli);
           else tutto(ctx);
           if (fin) { ctx.restore(); disegnaVetro(ctx, fin, alfa, t); }
         }
-        if (!p.senzaVolto && !fin) {
-          ctx.save(); trasforma(ctx);
-          storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
-          ctx.restore();
-        }
+        if (!p.senzaVolto && !fin) segnoSotto(R * 2.2);
       } else {
         // Sull'astro: ritagliato sul suo disco e illuminato dal suo Sole.
         // Nel planetario no: lì un salto porta il volto fuori dall'astro,
@@ -9714,10 +9734,8 @@
           g.restore();
           g.restore();
         };
-        conLuce(ctx, cx + att.dx, cy + att.dy, Math.max(c.r * 1.1, R * 1.6), in3d ? c.luce : null, volto);
-        ctx.save(); trasforma(ctx);
-        storDisegnaSegno(ctx, geom, pg.segno, t, Math.min(1, (t - pg.segnoDa) / 380) * alfa * segnoVisto, ridotto);
-        ctx.restore();
+        conLuce(ctx, cx + att.dx, cy + att.dy, Math.max(c.r * 1.1, R * 1.6), in3d ? c.luce : null, volto, gommaAnelli);
+        segnoSotto(Math.max(c.r * 1.1, R * 1.6));
       }
       if (coprenti) ctx.restore();
       // Nella scala cosmica, chi è fuori dal quadro ha una freccia verso
@@ -9762,6 +9780,33 @@
     }
     return fuori.length ? fuori : null;
   }
+  /* Gli anelli più vicini alla camera di un personaggio (v511). Della metà
+   * davanti degli anelli di Saturno passa sopra al volto di Saturno quello
+   * che attraversa il globo; a un altro personaggio passa davanti la parte
+   * degli anelli più vicina di lui, che è un semipiano nel riferimento del
+   * pianeta (`solGommaAnelli`): `soglia` è la sua riga. Per chi sta molto
+   * dietro sono davanti tutti e due i lati, per chi sta molto avanti nessuno. */
+  function storAnelliDavanti(corpi, c, id, R) {
+    const mio = storCanonico(id), giro = Math.max(c.r || 0, R || 0) * 2.5;
+    const v = Number.isFinite(c.vicinanza) ? c.vicinanza : 0;
+    const fuori = [];
+    for (const q of corpi) {
+      const a = q.anelli;
+      if (!a || !(a.r > 0)) continue;
+      const largo = a.r * (a.fuori || 2.3);
+      if (Math.hypot(a.px - c.px, a.py - c.py) >= largo + giro) continue;
+      const s = Math.max(0.03, Math.abs(a.apertura)), prof = Math.sqrt(Math.max(0, 1 - s * s));
+      let soglia;
+      if (storCanonico(q.id) === mio) soglia = 0;             // i suoi: la metà davanti
+      else if (!Number.isFinite(q.vicinanza)) continue;
+      else if (prof < 1e-3) soglia = v < q.vicinanza ? -Infinity : Infinity;   // aperti di piatto
+      else soglia = (v - q.vicinanza) * (a.scala || 1) * s / prof;
+      // oltre il bordo degli anelli (più mezzo tratto) non c'è niente davanti
+      if (!(soglia < largo * s + a.r * 0.25)) continue;
+      fuori.push({ anelli: a, soglia });
+    }
+    return fuori.length ? fuori : null;
+  }
   // Toglie dal disegno i dischi di `coprenti`: un ritaglio per disco (tutto
   // lo schermo meno il cerchio, `evenodd`), e i ritagli si intersecano, così
   // due dischi che si sovrappongono restano tolti tutti e due.
@@ -9798,9 +9843,12 @@
    * volto sulla notte di una falce deve restare leggibile. Senza tela di
    * passaggio (le prove Node) si disegna dritto. */
   let telaLuce = null;
-  function conLuce(ctx, x, y, mezzo, luce, disegna) {
+  function conLuce(ctx, x, y, mezzo, luce, disegna, gomma) {
     const buio = luce ? Math.max(0, Math.min(1, luce.buio || 0)) : 0;
-    if (buio < 0.05 || typeof document === 'undefined' || !document.createElement || typeof ctx.getTransform !== 'function') {
+    // `gomma` (v511): quello che sta davanti al volto e non è un disco (gli
+    // anelli), cancellato dal volto sulla tela di passaggio prima di
+    // appoggiarlo. Senza tela (le prove Node) il volto resta intero.
+    if ((buio < 0.05 && !gomma) || typeof document === 'undefined' || !document.createElement || typeof ctx.getTransform !== 'function') {
       disegna(ctx); return;
     }
     const m = ctx.getTransform();
@@ -9818,18 +9866,25 @@
     g.setTransform(m.a, m.b, m.c, m.d, m.e - X0, m.f - Y0);
     g.globalAlpha = ctx.globalAlpha;
     disegna(g);
+    if (gomma) {
+      g.save(); g.globalAlpha = 1; g.globalCompositeOperation = 'destination-out';
+      gomma(g);
+      g.restore();
+    }
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalAlpha = 1;
-    g.globalCompositeOperation = 'source-atop';
-    const cx = (m.a * x + m.c * y + m.e) - X0, cy = (m.b * x + m.d * y + m.f) - Y0, R = mezzo * scala;
-    const ox = luce.x || 0, oy = luce.y || 0;
-    const ombra = g.createLinearGradient(cx + ox * R, cy + oy * R, cx - ox * R, cy - oy * R);
-    const a = 0.5 * buio;
-    ombra.addColorStop(0, 'rgba(10, 6, 28, 0)');
-    ombra.addColorStop(0.45, `rgba(10, 6, 28, ${(a * 0.35).toFixed(3)})`);
-    ombra.addColorStop(1, `rgba(10, 6, 28, ${a.toFixed(3)})`);
-    g.fillStyle = ombra;
-    g.fillRect(0, 0, lato, lato);
+    if (buio >= 0.05) {
+      g.globalCompositeOperation = 'source-atop';
+      const cx = (m.a * x + m.c * y + m.e) - X0, cy = (m.b * x + m.d * y + m.f) - Y0, R = mezzo * scala;
+      const ox = luce.x || 0, oy = luce.y || 0;
+      const ombra = g.createLinearGradient(cx + ox * R, cy + oy * R, cx - ox * R, cy - oy * R);
+      const a = 0.5 * buio;
+      ombra.addColorStop(0, 'rgba(10, 6, 28, 0)');
+      ombra.addColorStop(0.45, `rgba(10, 6, 28, ${(a * 0.35).toFixed(3)})`);
+      ombra.addColorStop(1, `rgba(10, 6, 28, ${a.toFixed(3)})`);
+      g.fillStyle = ombra;
+      g.fillRect(0, 0, lato, lato);
+    }
     g.globalCompositeOperation = 'source-over';
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -10347,6 +10402,16 @@
     if (!stor.personaggi.size && !stor.effetti.length) return;
     stor.ricevute.set(id, { id, px, py, r, az: o && o.az, alt: o && o.alt, tipo: o && o.tipo });
   }
+  /* La fila del planetario (v511): chi sta davanti a chi, nell'ordine in
+   * cui l'app li disegna (`skyDisegna`: gli astri, la Luna, le stazioni,
+   * poi gli aerei). I volti si dipingono dopo tutto il cielo, e una stazione
+   * o un aereo che attraversavano la Luna col volto le passavano **dietro**,
+   * proprio nel transito che l'app annuncia; e la Luna che copriva mezzo
+   * pianeta ne lasciava il volto intero sopra di sé. Con la fila, i dischi
+   * davanti tagliano il volto come nella 3D (`storCoprentiDavanti`). Il
+   * Sole, i pianeti e le stelle stanno tutti a zero: fra loro non si
+   * tagliano, come prima. */
+  const STOR_FILA_CIELO = { luna: 1, satellite: 2, aereo: 3 };
   function storDisegnaCielo(ctx) {
     if (!stor.personaggi.size && !stor.effetti.length) { stor.ricevute.clear(); stor.ultimiDisegnati = []; return []; }
     const sky = globale('sky');
@@ -10364,11 +10429,11 @@
         }
       }
       // La Luna sta davanti a tutto il cielo tranne le stazioni (e gli aerei)
-      if (!nascosto && luna && c.id !== 'Moon' && c.tipo !== 'satellite' && Math.hypot(c.px - luna.px, c.py - luna.py) < luna.r * 0.95)
+      if (!nascosto && luna && c.id !== 'Moon' && c.tipo !== 'satellite' && c.tipo !== 'aereo' && Math.hypot(c.px - luna.px, c.py - luna.py) < luna.r * 0.95)
         nascosto = true;
       // Il Sole coperto da un'eclissi non mostra la faccia: lì c'è la Luna
       if (c.id === 'Sun' && sky && sky.eclisse && sky.eclisse.attiva && sky.eclisse.copertura > 0.55) nascosto = true;
-      corpi.push(Object.assign({}, c, { nascosto }));
+      corpi.push(Object.assign({}, c, { nascosto, vicinanza: STOR_FILA_CIELO[c.tipo] || 0 }));
     }
     stor.ricevute.clear();
     const fasce = margini();
@@ -10419,8 +10484,15 @@
       elenco.push({ id, px, py, r: Math.max(0, r || 0), vicinanza: Number.isFinite(vicinanza) ? vicinanza : 0,
         luce: stor.personaggi.size ? luceDi(id, px, py, punto) : null });
     };
+    const anelliDi = globale('solAnelliSchermo');
     for (const p of (scena && scena.corpi) || []) {
-      if (p && p.schermo) metti(p.id, p.schermo.px, p.schermo.py, p.rDisegno, p.schermo.vicinanza, p.scena);
+      if (!p || !p.schermo) continue;
+      metti(p.id, p.schermo.px, p.schermo.py, p.rDisegno, p.schermo.vicinanza, p.scena);
+      // gli anelli (Saturno): la loro metà davanti passa anche sopra ai volti
+      if (typeof anelliDi === 'function' && elenco.length && elenco[elenco.length - 1].id === p.id) {
+        const an = anelliDi(p);
+        if (an) elenco[elenco.length - 1].anelli = an;
+      }
     }
     if (scena && scena.sole) metti('Sun', scena.sole.px, scena.sole.py, scena.sole.r, scena.sole.vicinanza);
     if (!sol.vicino && sol.lunaSchermo) metti('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r, sol.lunaSchermo.vicinanza,
@@ -13891,7 +13963,7 @@
     sguardoVerso: storSguardoVerso, parametriEspressione,
     mostra: storMostra, espressione: storEspressione, guarda: storGuarda, batti: storBatti,
     nascondi: storNascondi, congeda: storCongeda, sgombra: storSgombra, parla: storParla,
-    disegnaPersonaggi: storDisegnaPersonaggi, disegnaCielo: storDisegnaCielo, disegnaSistema: storDisegnaSistema,
+    disegnaPersonaggi: storDisegnaPersonaggi, disegnaCielo: storDisegnaCielo, disegnaSistema: storDisegnaSistema, anelliDavanti: storAnelliDavanti,
     comandi: COMANDI, registraComandi,
     disegnaCosmo: storDisegnaCosmo, puntoCosmo: storPuntoCosmo, cosmoScalaDi: storCosmoScalaDi, scarto2D: storScarto2D, STOR_LUOGHI_COSMO,
     scena3D: storScena3D, puntoFermo3D: storPuntoFermo3D, raggioFermo3D: storRaggioFermo3D, raggio3D: storRaggio3D, assiSchermo: storAssiSchermo, puntoViaggio: storPuntoViaggio,

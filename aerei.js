@@ -2877,6 +2877,10 @@
         ctx.fillStyle = fascia.colore; ctx.fill();
       }
       ctx.restore();
+      // La ricevuta per i volti delle Storie cosmiche (storie-cosmiche.js):
+      // un aereo davanti alla Luna col volto le passa davanti, non dietro.
+      // Senza personaggi in scena esce alla prima riga.
+      if (typeof storRicevuta === 'function') storRicevuta('aereo:' + a.id, p.px, p.py, 6.5 * misura, { tipo: 'aereo' });
       if (a.allineamenti.length) {
         // L'anello resta fuori dalla scala del simbolo: dice «guarda qui», e
         // un segno che dice «guarda qui» non deve diventare grande insieme

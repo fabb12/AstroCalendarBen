@@ -1148,8 +1148,34 @@ disegnano dal più lontano al più vicino (`vicinanza`), e a ognuno i dischi
 più vicini alla camera che l'app ha disegnato (pianeti, Sole, Luna, lune,
 stazioni: `storCoprentiDavanti`) tagliano via volto, corpo disegnato e
 fisica (`ritagliaFuori`, un ritaglio `evenodd` per disco). L'adesivo accanto
-col filo non si taglia: è un cartellino. Gli anelli veri di Saturno davanti
-non tagliano (solo il disco). Prova in `prova-storie.js`.
+col filo non si taglia: è un cartellino. Prova in `prova-storie.js`.
+
+**Gli anelli e il planetario (v511).** Chi guardava una CosmoStoria ha visto
+la metà davanti degli anelli di Saturno passare **sotto** agli occhi e alla
+bocca di Saturno: il taglio dei dischi non vede gli anelli, che sono tratti
+larghi e semitrasparenti. Ora `storDisegnaSistema` chiede all'app dove sono
+(`solAnelliSchermo`: centro, polo, apertura, scala) e `storAnelliDavanti`
+dice quale parte sta davanti a ogni volto: per Saturno la metà davanti, per
+gli altri (Titano, Mimante dietro agli anelli) il semipiano più vicino della
+loro profondità, perché nel riferimento girato del pianeta la profondità di
+un punto degli anelli dipende solo dalla sua `y` (y·√(1−s²)/s). Quella parte
+si **cancella** dal volto sulla tela di passaggio di `conLuce` con gli stessi
+tratti dell'app (`solGommaAnelli`, `destination-out` con l'opacità di ogni
+anello): sotto l'anello B il volto sparisce, dalla Divisione di Cassini si
+intravede. Anche il segno da fumetto passa di lì. Nelle prove Node, senza
+tela, il volto resta intero.
+
+Lo stesso sbaglio c'era nel planetario: lì i volti non avevano nessun taglio,
+e una stazione o un aereo che attraversavano la Luna col volto le passavano
+dietro (proprio il transito che l'app annuncia), e la Luna che copriva mezzo
+pianeta ne lasciava il volto intero sopra di sé. Ora `storDisegnaCielo` dà a
+ognuno il suo posto nella fila dell'app (`STOR_FILA_CIELO`: Luna 1, stazioni
+2, aerei 3, tutto il resto 0), i volti si disegnano in quell'ordine e i dischi
+davanti li tagliano con `storCoprentiDavanti`, come nella 3D. Gli aerei
+lasciano la ricevuta da `aereiDisegna` (`aerei.js`, `tipo: 'aereo'`) e,
+come le stazioni, non fanno sparire il volto della Luna. Il Sole, i pianeti e
+le stelle stanno tutti a zero e fra loro non si tagliano. Prove in
+`prova-storie.js` (v511).
 
 **Chi trema non fa tremare il vicino (v439).** Il preoccupato fa `shake` (lo
 Studio lo aggiunge di serie): il corpo va di qua e di là di un quarto di
