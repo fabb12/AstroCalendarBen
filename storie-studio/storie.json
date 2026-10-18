@@ -344,7 +344,15 @@
               "tono": [],
               "durata": 0,
               "voce": 7,
-              "audio": null,
+              "audio": {
+                "durata": 4320,
+                "impronta": "d18bdd04",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "5bec8b6500a4544755cd0d0317ccfe012cac168b",
+                "voce": "kmhW33fhWZsJVeOyIdMz",
+                "tag": "[happy]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -358,7 +366,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 8,
-      "aggiornato": 1792312875572,
+      "aggiornato": 1792312880645,
       "lingua": "it",
       "musica": null,
       "voci": {

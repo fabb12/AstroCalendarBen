@@ -1260,7 +1260,8 @@
           "testo": "Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?",
           "umore": "happy",
           "scena": 7,
-          "durata": 8000
+          "durata": 5000,
+          "conTag": "[happy] Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?"
         }
       ]
     },
