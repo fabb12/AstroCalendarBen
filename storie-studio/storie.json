@@ -270,7 +270,7 @@
         },
         {
           "id": "s4h5alf9",
-          "ambiente": "pianeta",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -317,7 +317,7 @@
         },
         {
           "id": "s92iix7o",
-          "ambiente": "pianeta",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -366,7 +366,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 8,
-      "aggiornato": 1792312880645,
+      "aggiornato": 1792312939345,
       "lingua": "it",
       "musica": null,
       "voci": {
