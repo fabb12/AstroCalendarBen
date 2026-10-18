@@ -1207,7 +1207,7 @@
           "testo": "Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!",
           "umore": "neutral",
           "scena": 1,
-          "durata": 5000
+          "durata": 4000
         },
         {
           "n": 2,
@@ -1233,7 +1233,8 @@
           "testo": "Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
           "umore": "determined",
           "scena": 4,
-          "durata": 8000
+          "durata": 6000,
+          "conTag": "[determined] [whispers] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone."
         },
         {
           "n": 5,

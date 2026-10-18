@@ -56,13 +56,13 @@
               "durata": 0,
               "voce": 1,
               "audio": {
-                "durata": 3600,
+                "durata": 3280,
                 "impronta": "79547e04",
                 "nome": "elevenlabs.mp3",
-                "voce": "Y6XCBcFGDDiQgSVPjXt1",
-                "tag": "",
-                "sha": "55d8c4e6f240ad828c259660fe9a5d170b29a55b",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "0adbfc90a9f0c58805a1e6e47f40d811620cb780",
+                "voce": "VMlYiRq9P0SwdJ2jooK2",
+                "tag": ""
               },
               "azioni": [
                 {
@@ -199,12 +199,20 @@
             {
               "id": "mlc3cnse",
               "chi": "Jupiter",
-              "testo": "Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
+              "testo": "[determined] [whispers] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
               "umore": "determined",
               "tono": [],
               "durata": 0,
               "voce": 4,
-              "audio": null,
+              "audio": {
+                "durata": 5120,
+                "impronta": "479afcde",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "feb732383a3fb3c85c6b494eba5911a125657f90",
+                "voce": "VmkgMjrk2aUePsTZ907X",
+                "tag": "[determined] [whispers]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -331,7 +339,7 @@
             {
               "id": "mn82gmjc",
               "chi": "Mercury",
-              "testo": "Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?",
+              "testo": "[happy] Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?",
               "umore": "happy",
               "tono": [],
               "durata": 0,
@@ -350,7 +358,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 8,
-      "aggiornato": 1792312840866,
+      "aggiornato": 1792312875572,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -364,6 +372,18 @@
           "id": "aQ9s2C5T9TIPvAFtHWuA",
           "nome": "Enea - Warm & Smooth Italian Narrator",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/567700fc161547fe98c11a8e1162432a/voices/aQ9s2C5T9TIPvAFtHWuA/xsVZK0j5XPQtLbnBzVbt.mp3",
+          "genere": "m"
+        },
+        "Jupiter": {
+          "id": "VmkgMjrk2aUePsTZ907X",
+          "nome": "Roberto Tobia - Gentle",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/2722e4699648415aa40653b053f13ce0/voices/VmkgMjrk2aUePsTZ907X/490413e6-50f8-4c11-851b-89b2a70840d3.mp3",
+          "genere": "m"
+        },
+        "Mercury": {
+          "id": "kmhW33fhWZsJVeOyIdMz",
+          "nome": "Gabriele M. - Reel & Social",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/36cb4d8ba5db4211b7f12b76f49fad18/voices/kmhW33fhWZsJVeOyIdMz/d4b09052-0be5-48fa-9652-7c3883e700b9.mp3",
           "genere": "m"
         }
       },
