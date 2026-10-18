@@ -45,7 +45,23 @@
           "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
-          "presenti": [],
+          "presenti": [
+            "Earth",
+            "Titan",
+            "Jupiter",
+            "Sun",
+            "Mercury",
+            "Venus",
+            "Uranus",
+            "Mars",
+            "Neptune",
+            "Hyperion",
+            "Phobos",
+            "Deimos",
+            "Mimas",
+            "Europa",
+            "Saturn"
+          ],
           "momenti": [
             {
               "id": "mz25g5zg",
@@ -366,7 +382,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 8,
-      "aggiornato": 1792313025617,
+      "aggiornato": 1792313218647,
       "lingua": "it",
       "musica": null,
       "voci": {
