@@ -47,7 +47,6 @@
           "cosmoA": "milky_way",
           "presenti": [
             "Earth",
-            "Titan",
             "Jupiter",
             "Sun",
             "Mercury",
@@ -55,11 +54,6 @@
             "Uranus",
             "Mars",
             "Neptune",
-            "Hyperion",
-            "Phobos",
-            "Deimos",
-            "Mimas",
-            "Europa",
             "Saturn"
           ],
           "momenti": [
@@ -164,7 +158,12 @@
           "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
-          "presenti": [],
+          "presenti": [
+            "Ganymede",
+            "Jupiter",
+            "Sun",
+            "Earth"
+          ],
           "momenti": [
             {
               "id": "m11334jf",
@@ -202,19 +201,26 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
-          "camera": "auto",
+          "camera": "giro",
           "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
             "Ganymede",
             "Jupiter",
-            "Sun"
+            "Sun",
+            "Earth",
+            "Mercury",
+            "Venus",
+            "Uranus",
+            "Mars",
+            "Neptune",
+            "Saturn"
           ],
           "momenti": [
             {
               "id": "mlc3cnse",
-              "chi": "Jupiter",
+              "chi": "Ganymede",
               "testo": "[determined] [whispers] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.",
               "umore": "determined",
               "tono": [],
@@ -229,7 +235,15 @@
                 "voce": "VmkgMjrk2aUePsTZ907X",
                 "tag": "[determined] [whispers]"
               },
-              "azioni": [],
+              "azioni": [
+                {
+                  "id": "aiccxjsk",
+                  "tipo": "umore",
+                  "chi": "Ganymede",
+                  "quando": "inizio",
+                  "umore": "annoyed"
+                }
+              ],
               "copione": null,
               "parla": null
             }
@@ -382,7 +396,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 8,
-      "aggiornato": 1792313218647,
+      "aggiornato": 1792313518147,
       "lingua": "it",
       "musica": null,
       "voci": {
