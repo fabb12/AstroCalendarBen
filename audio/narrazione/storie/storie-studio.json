@@ -1282,10 +1282,18 @@
         {
           "n": 10,
           "chi": "Ganymede",
-          "testo": "ma io sono",
-          "umore": "happy",
+          "testo": "ma io sono più grande di te?",
+          "umore": "curious",
           "scena": 10,
-          "durata": 4000
+          "durata": 5000
+        },
+        {
+          "n": 11,
+          "chi": "Mercury",
+          "testo": "direi, sì, di qualche centinaio di chilometri direi di sì.",
+          "umore": "happy",
+          "scena": 11,
+          "durata": 7000
         }
       ]
     },
