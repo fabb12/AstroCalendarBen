@@ -1269,7 +1269,8 @@
           "testo": "ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo",
           "umore": "embarrassed",
           "scena": 8,
-          "durata": 6000
+          "durata": 6000,
+          "conTag": "[embarrassed] ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo"
         },
         {
           "n": 9,
@@ -1286,7 +1287,8 @@
           "testo": "ma io sono più grande di te?",
           "umore": "curious",
           "scena": 10,
-          "durata": 5000
+          "durata": 3000,
+          "conTag": "[curious] ma io sono più grande di te?"
         },
         {
           "n": 11,

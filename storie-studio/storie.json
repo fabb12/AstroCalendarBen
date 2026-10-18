@@ -436,12 +436,20 @@
             {
               "id": "mtidqg6z",
               "chi": "Ganymede",
-              "testo": " ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo",
+              "testo": "[embarrassed] ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo",
               "umore": "embarrassed",
               "tono": [],
               "durata": 0,
               "voce": 8,
-              "audio": null,
+              "audio": {
+                "durata": 4800,
+                "impronta": "815c48d0",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "8ed7979c5083e5700083f6c52e2638de4f0d7990",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[embarrassed]"
+              },
               "azioni": [
                 {
                   "id": "acry1klj",
@@ -537,12 +545,20 @@
             {
               "id": "mwp1l7q5",
               "chi": "Ganymede",
-              "testo": "ma io sono più grande di te?",
+              "testo": "[curious] ma io sono più grande di te?",
               "umore": "curious",
               "tono": [],
               "durata": 0,
               "voce": 10,
-              "audio": null,
+              "audio": {
+                "durata": 1840,
+                "impronta": "3bff6cdc",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "346d0e918ca3767af81a73b3dcb4c7b26e1cea82",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[curious]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -611,7 +627,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 12,
-      "aggiornato": 1792314844682,
+      "aggiornato": 1792314850267,
       "lingua": "it",
       "musica": null,
       "voci": {
