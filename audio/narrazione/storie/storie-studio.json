@@ -1278,6 +1278,14 @@
           "umore": "happy",
           "scena": 9,
           "durata": 5000
+        },
+        {
+          "n": 10,
+          "chi": "Ganymede",
+          "testo": "ma io sono",
+          "umore": "happy",
+          "scena": 10,
+          "durata": 4000
         }
       ]
     },
