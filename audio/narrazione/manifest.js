@@ -1053,6 +1053,11 @@
       it: { file: 'storie/albert-einstein/it/studio_copia_di_einstein_e_il_tempo_e-19.mp3', impronta: '6a2ea03d', firma: '381f0ce27d', testo: "Dipende… da dove lo guardi!" }
     },
 
+    // Mercurio — storie/mercurio/
+    'studio.studio_la_rivoluzione_di_ganimede_e_f.7': {
+      it: { file: 'storie/mercurio/it/studio_la_rivoluzione_di_ganimede_e_f-7.mp3', impronta: '9c580338', firma: 'f03f7438fa', testo: "Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?" }
+    },
+
     // Gargantua — storie/gargantua/
     'demo.narr.storia_interstellar.10': {
       it: { file: 'storie/gargantua/it/storia_interstellar-10.mp3', impronta: '4eac0c39', firma: '83bcfeecf0' }
