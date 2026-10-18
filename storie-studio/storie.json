@@ -658,12 +658,20 @@
             {
               "id": "mimyqndd",
               "chi": "Ganymede",
-              "testo": "veramente?",
+              "testo": "[in awe] veramente?",
               "umore": "wonder",
               "tono": [],
               "durata": 0,
               "voce": 12,
-              "audio": null,
+              "audio": {
+                "durata": 1600,
+                "impronta": "75be6697",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b060d2a84fcfebdbbe5b9b83a00631ffbb1da4c5",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[in awe]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -722,8 +730,8 @@
                   "id": "aukg9guj",
                   "tipo": "muovi",
                   "chi": "Ganymede",
-                  "quando": "tutto",
-                  "verso": "Ganymede",
+                  "quando": "inizio",
+                  "verso": "right",
                   "lato": "auto",
                   "percorso": "arc"
                 }
@@ -740,7 +748,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 14,
-      "aggiornato": 1792315578222,
+      "aggiornato": 1792315691237,
       "lingua": "it",
       "musica": null,
       "voci": {

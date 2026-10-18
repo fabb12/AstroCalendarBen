@@ -1305,7 +1305,8 @@
           "testo": "veramente?",
           "umore": "wonder",
           "scena": 12,
-          "durata": 4000
+          "durata": 3000,
+          "conTag": "[in awe] veramente?"
         },
         {
           "n": 13,
