@@ -1298,6 +1298,31 @@
           "scena": 11,
           "durata": 4000,
           "conTag": "[happy] direi, sì, di qualche centinaio di chilometri direi di sì."
+        },
+        {
+          "n": 12,
+          "chi": "Ganymede",
+          "testo": "veramente?",
+          "umore": "wonder",
+          "scena": 12,
+          "durata": 3000,
+          "conTag": "[in awe] veramente?"
+        },
+        {
+          "n": 13,
+          "chi": "Mercury",
+          "testo": "sì amico te lo de, aspetta, dove vai?",
+          "umore": "neutral",
+          "scena": 13,
+          "durata": 6000
+        },
+        {
+          "n": 14,
+          "chi": "Ganymede",
+          "testo": "non ci credo, sono più grande di un pianeta del sistema solare, che conquista!",
+          "umore": "happy",
+          "scena": 14,
+          "durata": 9000
         }
       ]
     },

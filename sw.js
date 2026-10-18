@@ -192,8 +192,14 @@ self.addEventListener('install', (e) => {
         ));
         for (const url of audioNarrazione()) await cache.add(url).catch(() => {});
       })
-      .then(() => self.skipWaiting())
   );
+});
+
+// La nuova copia resta in attesa: è la pagina, dopo la conferma della
+// persona, a chiederne l'attivazione. Alla prima installazione non c'è un
+// worker precedente e il browser l'attiva da solo.
+self.addEventListener('message', e => {
+  if (e.data && e.data.tipo === 'AGGIORNA_APP') e.waitUntil(self.skipWaiting());
 });
 
 // Elimina le cache vecchie così i nuovi file sostituiscono quelli obsoleti

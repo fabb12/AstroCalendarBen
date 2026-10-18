@@ -13338,3 +13338,18 @@ textarea.yt-campo { resize: vertical; min-height: 5.5rem; }
 .studio-generate li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
 .studio-generate-nome { flex: 1 1 10rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-generate-nome small { color: var(--testo-2, #94a3b8); }
+
+/* Dettatura delle battute e conferma degli aggiornamenti dell’app. */
+.studio-dettatura { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.studio-dettatura small { flex:1 1 200px; color:var(--testo-2); font-size:.78rem; overflow-wrap:anywhere; }
+.studio-dettatura button[aria-pressed="true"] { background:#7f1d1d; border-color:#fca5a5; }
+.aggiornamento-app { width:min(92vw, 460px); max-height:85vh; overflow:auto; padding:24px; box-sizing:border-box; color:var(--testo, #f1f5f9); background:#131a2b; border:1px solid #475569; border-radius:18px; box-shadow:0 20px 80px #0009; }
+.aggiornamento-app::backdrop { background:rgba(0, 0, 0, .65); }
+.aggiornamento-app h2 { margin:0 0 12px; font-size:1.2rem; font-weight:700; }
+.aggiornamento-app p { margin:12px 0; line-height:1.5; }
+.aggiornamento-app [data-stato] { color:#fde68a; font-size:.88rem; }
+.aggiornamento-azioni { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:20px; }
+.aggiornamento-azioni button { padding:10px 16px; border:1px solid #64748b; border-radius:999px; background:#1e293b; color:#fff; cursor:pointer; }
+.aggiornamento-azioni [data-aggiorna] { background:#4338ca; border-color:#818cf8; }
+.aggiornamento-azioni button:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+.aggiornamento-azioni button:disabled { opacity:.6; cursor:wait; }
