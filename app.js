@@ -36135,6 +36135,61 @@ function solRaggioAnelli(corpo, r) {
   return corpo.id === 'Saturn' && r >= 3 ? r * 1.3 : 0;
 }
 
+// Gli anelli di un corpo come li ha appena disegnati `solDisegnaCorpo`, per
+// i volti delle Storie cosmiche (storie-cosmiche.js). I volti si dipingono
+// dopo tutta la scena, e il taglio dei dischi davanti non bastava: la metà
+// davanti degli anelli di Saturno, che attraversa il globo, restava sotto
+// agli occhi e alla bocca di Saturno (e di Titano, quando passava dietro).
+// Restituisce dove stanno, come sono girati e aperti, e la scala della
+// scena (la profondità è in unità di scena, gli anelli in pixel).
+function solAnelliSchermo(corpo) {
+  if (!corpo || !corpo.schermo) return null;
+  const r = corpo.rDisegno;
+  if (!solRaggioAnelli(corpo, r)) return null;
+  const assi = solAssiVista();
+  const asse = corpo.asse || [0, 0, 1];
+  return {
+    px: corpo.schermo.px, py: corpo.schermo.py, r,
+    polo: solAngoloPolo(asse, assi), apertura: skyDot(asse, assi.verso),
+    scala: sol.scala, fuori: SKY_ANELLI[SKY_ANELLI.length - 1].a
+  };
+}
+
+// La gomma degli anelli: gli stessi tratti di `skyDisegnaAnelli`, ma solo
+// la parte che sta più vicino alla camera di una certa profondità. La
+// profondità di un punto degli anelli, vista da qui, dipende solo dalla sua
+// `y` nel riferimento girato del pianeta (in pixel di profondità vale
+// y·√(1−s²)/s, con s l'apertura): «più vicino di» è un semipiano, `soglia`
+// è la sua riga, contata dal centro verso la metà davanti. Chi la usa ha già
+// messo `destination-out`: ogni anello toglie quanto copre, il B quasi tutto,
+// la Divisione di Cassini quasi niente.
+function solGommaAnelli(ctx, anelli, soglia) {
+  const r = anelli.r, ap = anelli.apertura;
+  const s = Math.max(0.03, Math.abs(ap));
+  const t = Math.max(-r * 3, Math.min(r * 3, soglia));
+  if (t >= r * 3) return;
+  ctx.save();
+  ctx.translate(anelli.px, anelli.py);
+  ctx.rotate(anelli.polo);
+  ctx.beginPath();
+  // la metà davanti è la `y` positiva se l'apertura è positiva (vedi
+  // `skyDisegnaAnelli`), la negativa se no
+  if (ap >= 0) ctx.rect(-r * 3, t, r * 6, r * 3 - t);
+  else ctx.rect(-r * 3, -r * 3, r * 6, r * 3 - t);
+  ctx.clip();
+  const alfa = ctx.globalAlpha;
+  SKY_ANELLI.forEach(a => {
+    const raggio = r * (a.da + a.a) / 2;
+    ctx.globalAlpha = alfa * a.alpha;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = Math.max(0.5, r * (a.a - a.da));
+    ctx.beginPath();
+    ctx.ellipse(0, 0, raggio, raggio * s, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 // Il lato in ombra: il colore del pianeta portato quasi a zero. Non nero
 // pieno, perché un cerchio nero su fondo nero non si legge come un corpo
 // ma come un buco — e un filo del suo colore basta a dire che è lui.

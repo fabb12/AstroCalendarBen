@@ -918,6 +918,61 @@ prova('le occlusioni della 3D: chi sta dietro si disegna prima e il disco di chi
   S.sgombra();
   delete globalThis.sol;
 });
+prova('gli anelli di Saturno davanti a un volto: la metà davanti per Saturno, la parte più vicina per gli altri (v511)', () => {
+  const anelli = { px: 400, py: 300, r: 40, polo: 0.2, apertura: 0.3, scala: 100, fuori: 2.27 };
+  const saturno = { id: 'Saturn', px: 400, py: 300, r: 40, vicinanza: 0, anelli };
+  const suo = S.anelliDavanti([saturno], saturno, 'Saturn', 40);
+  assert.ok(suo && suo.length === 1 && suo[0].soglia === 0, 'sul volto di Saturno passa la metà davanti dei suoi anelli');
+  const titano = v => ({ id: 'Titan', px: 470, py: 310, r: 12, vicinanza: v });
+  const dietro = S.anelliDavanti([saturno], titano(-1), 'Titan', 24);
+  assert.ok(dietro && dietro[0].soglia < 0, 'Titano dietro a Saturno: davanti ha anche parte della metà di dietro');
+  assert.equal(S.anelliDavanti([saturno], titano(2), 'Titan', 24), null, 'Titano molto più avanti: nessun anello gli passa davanti');
+  const lontano = Object.assign(titano(-1), { px: 750 });
+  assert.equal(S.anelliDavanti([saturno], lontano, 'Titan', 24), null, 'lontano sullo schermo, niente');
+  // aperti di piatto non hanno profondità: coprono chi sta dietro, non chi sta davanti
+  const piatti = Object.assign({}, saturno, { anelli: Object.assign({}, anelli, { apertura: 1 }) });
+  assert.equal(S.anelliDavanti([piatti], titano(-1), 'Titan', 24)[0].soglia, -Infinity, 'di piatto, chi sta dietro');
+  assert.equal(S.anelliDavanti([piatti], titano(1), 'Titan', 24), null, 'di piatto, chi sta davanti');
+});
+prova('nel planetario la Luna, le stazioni e gli aerei che passano davanti a un volto lo tagliano (v511)', () => {
+  scena({ Moon: {} });
+  scorri(900);
+  const tagli = [];
+  const ctx = new Proxy({ canvas: { width: 800, height: 600 }, globalAlpha: 1 }, {
+    get(o, k) {
+      if (k in o) return o[k];
+      if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => ({ addColorStop() {} });
+      if (k === 'rect') return (...a) => { if (a[0] === -800 && a[2] === 2400) tagli.push(a); };
+      return () => undefined;
+    },
+    set(o, k, v) { o[k] = v; return true; }
+  });
+  // la ricevuta che lasciano gli astri, la stazione e l'aereo disegnati
+  const ricevute = () => {
+    globalThis.storRicevuta('Moon', 400, 300, 60, { tipo: 'luna' });
+    globalThis.storRicevuta('sat-iss', 420, 300, 4, { tipo: 'satellite' });
+    globalThis.storRicevuta('aereo:abc123', 380, 320, 9, { tipo: 'aereo' });
+  };
+  ricevute();
+  const d = S.disegnaCielo(ctx);
+  assert.ok(d.some(x => x.id === 'Moon'), 'la Luna col volto c\'è: l\'aereo davanti non la nasconde');
+  assert.equal(tagli.length, 2, 'due tagli sul volto della Luna: la stazione e l\'aereo');
+  // Lontani dalla Luna, nessun taglio
+  tagli.length = 0;
+  globalThis.storRicevuta('Moon', 400, 300, 60, { tipo: 'luna' });
+  globalThis.storRicevuta('sat-iss', 750, 50, 4, { tipo: 'satellite' });
+  S.disegnaCielo(ctx);
+  assert.equal(tagli.length, 0, 'chi non passa davanti non taglia');
+  // E la Luna taglia un pianeta che copre a metà (prima il volto restava intero)
+  scena({ Jupiter: {} });
+  scorri(900);
+  tagli.length = 0;
+  globalThis.storRicevuta('Jupiter', 400, 300, 30, { tipo: 'pianeta' });
+  globalThis.storRicevuta('Moon', 455, 300, 40, { tipo: 'luna' });
+  S.disegnaCielo(ctx);
+  assert.equal(tagli.length, 1, 'il disco della Luna taglia il volto di Giove');
+  S.sgombra();
+});
 prova('character_move porta l\'astro accanto alla meta, sullo schermo e nello spazio; character_return lo rimette sull\'orbita', async () => {
   S.sgombra();
   globalThis.sol = SOL_FINTO();
