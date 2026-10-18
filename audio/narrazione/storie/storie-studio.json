@@ -1315,6 +1315,14 @@
           "umore": "neutral",
           "scena": 13,
           "durata": 6000
+        },
+        {
+          "n": 14,
+          "chi": "Ganymede",
+          "testo": "non ci credo, sono più gran.",
+          "umore": "happy",
+          "scena": 14,
+          "durata": 5000
         }
       ]
     },
