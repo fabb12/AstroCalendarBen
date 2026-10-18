@@ -1298,6 +1298,14 @@
           "scena": 11,
           "durata": 4000,
           "conTag": "[happy] direi, sì, di qualche centinaio di chilometri direi di sì."
+        },
+        {
+          "n": 12,
+          "chi": "Ganymede",
+          "testo": "veramente",
+          "umore": "happy",
+          "scena": 12,
+          "durata": 4000
         }
       ]
     },
