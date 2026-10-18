@@ -11,7 +11,7 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **225/375** in italiano · **0/234** in inglese.
+Pronte: **226/375** in italiano · **0/234** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
@@ -19,7 +19,7 @@ Pronte: **225/375** in italiano · **0/234** in inglese.
 | Terra | `storie/terra/` | 35 | 32/35 | 0/4 |
 | Sole | `storie/sole/` | 21 | 8/21 | 0/10 |
 | Saturno | `storie/saturno/` | 4 | 1/4 | 0/2 |
-| Giove | `storie/giove/` | 8 | 3/8 | 0/1 |
+| Giove | `storie/giove/` | 8 | 4/8 | 0/1 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
 | Alfa Centauri | `storie/alfa-centauri/` | 5 | 3/5 | 0/1 |
 | Via Lattea | `storie/via-lattea/` | 2 | 2/2 | 0/2 |
@@ -444,7 +444,7 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** felice — 
   - **Testo:** Come potrei mai dimenticarti?
   - **Da incollare su ElevenLabs v3:** `[happy] Come potrei mai dimenticarti?`
-- `studio_la_rivoluzione_di_ganimede_e_f-1.mp3` — pronta · 3,6 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 1 (al massimo 5 s)
+- `studio_la_rivoluzione_di_ganimede_e_f-1.mp3` — pronta · 3,3 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 1 (al massimo 4 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!
   - **Da incollare su ElevenLabs v3:** `Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!`
@@ -564,10 +564,10 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
   - **Emozione:** pensieroso — 
   - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è
   - **Da incollare su ElevenLabs v3:** `[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è`
-- `studio_la_rivoluzione_di_ganimede_e_f-4.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 4 (al massimo 8 s)
-  - **Emozione:** felice — 
+- `studio_la_rivoluzione_di_ganimede_e_f-4.mp3` — pronta · 5,1 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 4 (al massimo 6 s)
+  - **Emozione:** deciso — 
   - **Testo:** Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.
-  - **Da incollare su ElevenLabs v3:** `[happy] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.`
+  - **Da incollare su ElevenLabs v3:** `[determined] [whispers] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.`
 
 ### Inglese — `storie/giove/en/`
 

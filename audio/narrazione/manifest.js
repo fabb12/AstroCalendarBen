@@ -910,7 +910,7 @@
     },
 
     'studio.studio_la_rivoluzione_di_ganimede_e_f.1': {
-      it: { file: 'storie/sole/it/studio_la_rivoluzione_di_ganimede_e_f-1.mp3', impronta: '79547e04', firma: '0d2b4e7193', testo: "Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!" }
+      it: { file: 'storie/sole/it/studio_la_rivoluzione_di_ganimede_e_f-1.mp3', impronta: '79547e04', firma: '0f47c5a5d8', testo: "Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!" }
     },
 
     // Saturno — storie/saturno/
@@ -929,6 +929,10 @@
 
     'studio.studio_cosa_e_la_gravita.44': {
       it: { file: 'storie/giove/it/studio_cosa_e_la_gravita-44.mp3', impronta: '5c7a30dd', firma: 'eaf4e9fd83', testo: "La massa è la quantità di materia che compone un corpo, il peso è" }
+    },
+
+    'studio.studio_la_rivoluzione_di_ganimede_e_f.4': {
+      it: { file: 'storie/giove/it/studio_la_rivoluzione_di_ganimede_e_f-4.mp3', impronta: 'e20dd020', firma: '1dd2a0bc4f', testo: "Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone." }
     },
 
     // Voyager 1 — storie/voyager-1/
