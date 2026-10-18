@@ -237,12 +237,20 @@
             {
               "id": "muqcrl03",
               "chi": "Ganymede",
-              "testo": "uffa!",
+              "testo": "[annoyed] uffa!",
               "umore": "annoyed",
               "tono": [],
               "durata": 0,
               "voce": 5,
-              "audio": null,
+              "audio": {
+                "durata": 1520,
+                "impronta": "006a5e8a",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c3d2a3d57bd4af29e1ccfdfcb88aa315a3fe2351",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[annoyed]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -276,12 +284,20 @@
             {
               "id": "mcaxh3jc",
               "chi": "Ganymede",
-              "testo": "Aspetta, tu chi sei? sei un pianeta?",
+              "testo": "[curious] Aspetta, tu chi sei? sei un pianeta?",
               "umore": "curious",
               "tono": [],
               "durata": 0,
               "voce": 6,
-              "audio": null,
+              "audio": {
+                "durata": 3200,
+                "impronta": "ad910ff3",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "4ce0e94a36f0c0a9388d360abadb433c976546ab",
+                "voce": "aQ9s2C5T9TIPvAFtHWuA",
+                "tag": "[curious]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -334,7 +350,7 @@
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "voceProssima": 8,
-      "aggiornato": 1792241586446,
+      "aggiornato": 1792312840866,
       "lingua": "it",
       "musica": null,
       "voci": {

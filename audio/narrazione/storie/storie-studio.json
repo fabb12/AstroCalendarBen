@@ -1241,7 +1241,8 @@
           "testo": "uffa!",
           "umore": "annoyed",
           "scena": 5,
-          "durata": 4000
+          "durata": 3000,
+          "conTag": "[annoyed] uffa!"
         },
         {
           "n": 6,
@@ -1249,7 +1250,8 @@
           "testo": "Aspetta, tu chi sei? sei un pianeta?",
           "umore": "curious",
           "scena": 6,
-          "durata": 6000
+          "durata": 4000,
+          "conTag": "[curious] Aspetta, tu chi sei? sei un pianeta?"
         },
         {
           "n": 7,
