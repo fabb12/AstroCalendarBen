@@ -1266,9 +1266,17 @@
         {
           "n": 8,
           "chi": "Ganymede",
-          "testo": "ehmmmmmmmmmmm, sonoooo, aspetta un secondo",
-          "umore": "happy",
+          "testo": "ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo",
+          "umore": "embarrassed",
           "scena": 8,
+          "durata": 6000
+        },
+        {
+          "n": 9,
+          "chi": "Mercury",
+          "testo": "ehm, che c'è? Qualcosa non va?",
+          "umore": "happy",
+          "scena": 9,
           "durata": 5000
         }
       ]
