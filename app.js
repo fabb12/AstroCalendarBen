@@ -36015,7 +36015,19 @@ function solDisegnaPiombo(ctx, corpo) {
 // assi di `solAssiVista()`. Sotto gli otto pixel di raggio la faccia non
 // si dipinge nemmeno — le bande di Giove su dieci pixel non sembrano
 // Giove, sembrano una caramella a righe — e resta il dischetto di prima.
+// Il numero d'ordine di ciò che si disegna nella 3D (v511): i volti delle
+// Storie cosmiche si dipingono dopo tutta la scena, e quello che l'app ha
+// disegnato **dopo** il corpo di un personaggio deve passare anche sopra al
+// suo volto (`storCoprentiDavanti`). La profondità da sola non bastava: le
+// lune di un pianeta si disegnavano nell'ordine della lista, e Io finiva
+// sopra al disco di Ganimede ma sotto al suo volto.
+function solOrdineDisegno() {
+  sol.ordineDisegni = (sol.ordineDisegni || 0) + 1;
+  return sol.ordineDisegni;
+}
+
 function solDisegnaCorpo(ctx, corpo, assi) {
+  corpo.ordineDisegno = solOrdineDisegno();
   const p = corpo.schermo;
   const r = corpo.rDisegno;
   const scelto = sol.scelto === corpo.id;
@@ -36333,7 +36345,7 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   const r = solRaggioLuna();
   // Dove è finita sullo schermo: lo chiede il dito (`solTocco`), che deve
   // poterla scegliere come sceglie un pianeta
-  sol.lunaSchermo = { px: p.px, py: p.py, r, vicinanza: p.vicinanza };
+  sol.lunaSchermo = { px: p.px, py: p.py, r, vicinanza: p.vicinanza, ordine: solOrdineDisegno() };
   const k = assi ? solFrazione(terra, assi) : 1;
   const versoSole = solVersoIlSole(terra);
   const angLuce = assi && versoSole ? solAngoloSchermo(versoSole, assi) : 0;
@@ -37283,7 +37295,7 @@ function solDisegnaSatelliti(ctx, terra, assi, davanti) {
       : SOL_SAT_RAGGIO_PX;
     sol.satSchermo.push({
       id: s.id, nome: s.nome, colore: s.colore,
-      px: p.px, py: p.py, r: rSatellite, vicinanza: p.vicinanza
+      px: p.px, py: p.py, r: rSatellite, vicinanza: p.vicinanza, ordine: solOrdineDisegno()
     });
     ctx.save();
     ctx.fillStyle = s.colore;
@@ -37332,10 +37344,16 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
   if (!mie.length) return;
   const dietro = pianeta.schermo.vicinanza;
   const t = pianeta.scena;
+  // Dalla più lontana alla più vicina (v511): nell'ordine della lista Io si
+  // disegnava sempre sotto a Ganimede e sopra a Callisto, anche quando
+  // stava dall'altra parte. Ognuna con la sua posizione già calcolata.
+  const posti = new Map();
   mie.forEach(l => {
     const centro = solScenaLunaPianeta(l, pianeta);
-    if (!centro) return;
-    const p = solProietta(centro);
+    if (centro) posti.set(l, { centro, p: solProietta(centro) });
+  });
+  mie.filter(l => posti.has(l)).sort((a, b) => posti.get(a).p.vicinanza - posti.get(b).p.vicinanza).forEach(l => {
+    const { p } = posti.get(l);
     // L'anello: lo stesso cerchio su cui la luna gira, disegnato alla stessa
     // distanza a cui la luna è disegnata — due metri diversi vorrebbero dire
     // una luna che non corre sulla sua orbita.
@@ -37375,7 +37393,7 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
     }
     if ((p.vicinanza >= dietro) !== davanti) return;
     const r = solRaggioLunaPianeta(l);
-    sol.luneSchermo.push({ id: l.id, nome: l.nome, colore: l.colore, px: p.px, py: p.py, r, vicinanza: p.vicinanza });
+    sol.luneSchermo.push({ id: l.id, nome: l.nome, colore: l.colore, px: p.px, py: p.py, r, vicinanza: p.vicinanza, ordine: solOrdineDisegno() });
     ctx.save();
     ctx.translate(p.px, p.py);
     const k = solFrazione(pianeta, assi);
@@ -38937,7 +38955,7 @@ function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   const centro = solVicPunto(solPuntoSoleVicino(versoSole, distanzaLuna));
   const x = centro.px, y = centro.py;
   // Dove è finito: lo legge il livello dei volti (storie-cosmiche.js)
-  sol.soleVicinoSchermo = { px: x, py: y, r, vicinanza: centro.vicinanza };
+  sol.soleVicinoSchermo = { px: x, py: y, r, vicinanza: centro.vicinanza, ordine: solOrdineDisegno() };
 
   ctx.save();
   // Un Sole enorme (le misure vere) si disegna solo se il quadro lo vede
@@ -39288,7 +39306,7 @@ function solDisegnaAnelliVicino(ctx, stazioni, dietro, davanti) {
 }
 function solDisegnaSatelliteVicino(ctx, v) {
   const p = v.schermo, r = SOL_SAT_RAGGIO_PX;
-  sol.satSchermo.push({ id: v.s.id, nome: v.s.nome, colore: v.s.colore, px: p.px, py: p.py, r, vicinanza: p.vicinanza });
+  sol.satSchermo.push({ id: v.s.id, nome: v.s.nome, colore: v.s.colore, px: p.px, py: p.py, r, vicinanza: p.vicinanza, ordine: solOrdineDisegno() });
   ctx.save();
   ctx.fillStyle = v.s.colore;
   ctx.beginPath(); ctx.arc(p.px, p.py, r, 0, Math.PI * 2); ctx.fill();
@@ -40004,7 +40022,8 @@ function solDisegnaFotogramma() {
   const ordinati = corpi.slice().sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
   const dietroAlSole = -solRaggioSole() / Math.max(1e-6, sol.scala);
   let soleFatto = false;
-  const soleQui = () => { if (!soleFatto) { soleFatto = true; solDisegnaDiscoSole(ctx); } };
+  let ordineSole = NaN;
+  const soleQui = () => { if (!soleFatto) { soleFatto = true; ordineSole = solOrdineDisegno(); solDisegnaDiscoSole(ctx); } };
   ordinati.forEach(p => {
     if (p.schermo.vicinanza >= dietroAlSole) soleQui();
     if (!cinema) solDisegnaPiombo(ctx, p);
@@ -40098,7 +40117,7 @@ function solDisegnaFotogramma() {
   // I volti delle Storie cosmiche: dopo i corpi e i loro nomi, con la stessa
   // proiezione e la stessa fila della profondità (storie-cosmiche.js).
   if (typeof storDisegnaSistema === 'function')
-    storDisegnaSistema(ctx, { corpi: ordinati, sole: { px: sole.px, py: sole.py, r: rSole, vicinanza: dietroAlSole } });
+    storDisegnaSistema(ctx, { corpi: ordinati, sole: { px: sole.px, py: sole.py, r: rSole, vicinanza: dietroAlSole, ordine: ordineSole } });
   if (typeof storLenteChiudi === 'function') storLenteChiudi(ctx);
   if (cinema) {
     // Il cartello del luogo (v429): lo spettatore sa dove si trova

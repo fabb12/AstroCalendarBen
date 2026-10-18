@@ -915,6 +915,16 @@ prova('le occlusioni della 3D: chi sta dietro si disegna prima e il disco di chi
   corpi[1].schermo.px = 700;
   S.disegnaSistema(ctx, { corpi, sole: null });
   assert.equal(tagli.length, 0, 'chi non si tocca non si taglia');
+  // v511: decide l'ordine in cui l'app li ha disegnati, quando c'è. Marte più
+  // lontano ma disegnato dopo (come Io sopra a Ganimede): sta sopra anche al
+  // volto di Giove, e il volto di Giove non gli passa sopra
+  corpi[1].schermo.px = 440;
+  corpi[0].ordineDisegno = 7; corpi[1].ordineDisegno = 9;
+  corpi[1].schermo.vicinanza = -2;
+  tagli.length = 0;
+  const ordinati = S.disegnaSistema(ctx, { corpi, sole: null });
+  assert.deepEqual(ordinati.map(d => d.id), ['Jupiter', 'Mars'], 'i volti nell\'ordine del disegno');
+  assert.equal(tagli.length, 1, 'il disco disegnato dopo taglia il volto di chi sta sotto');
   S.sgombra();
   delete globalThis.sol;
 });

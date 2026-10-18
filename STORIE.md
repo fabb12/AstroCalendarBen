@@ -1177,6 +1177,18 @@ come le stazioni, non fanno sparire il volto della Luna. Il Sole, i pianeti e
 le stelle stanno tutti a zero e fra loro non si tagliano. Prove in
 `prova-storie.js` (v511).
 
+**Chi è disegnato sopra sta sopra anche al volto (v512).** Nella 3D Io
+compariva sopra al disco di Ganimede e sotto ai suoi occhi. Due cose non
+andavano d'accordo: l'app disegnava le lune di un pianeta nell'ordine della
+lista (Io, Europa, Ganimede, Callisto) e non per profondità, e il taglio dei
+volti decideva con la profondità. Ora `solDisegnaLune` le disegna dalla più
+lontana alla più vicina, e ogni cosa che l'app disegna nella 3D porta il suo
+numero d'ordine (`solOrdineDisegno`: i corpi in `solDisegnaCorpo`, il Sole,
+la Luna, le lune, le stazioni). `storSopra` decide con quel numero: quello
+che l'app ha disegnato dopo il corpo di un personaggio taglia anche il suo
+volto, e i volti si dipingono nello stesso ordine. Dove il numero non c'è (il
+planetario, gli ospiti) decide la profondità, come prima.
+
 **Chi trema non fa tremare il vicino (v439).** Il preoccupato fa `shake` (lo
 Studio lo aggiunge di serie): il corpo va di qua e di là di un quarto di
 raggio, sei volte al secondo. Il palco misurava il posto col tremito dentro e

@@ -9423,7 +9423,8 @@
     // Saturno dietro a Giove gli finiva sopra)
     // (v511) Anche nel planetario, con la fila di `storDisegnaCielo`: la
     // stazione con un volto davanti alla Luna con un volto
-    if (in3d || vista === 'cielo') piano.sort((u, v) => (u.c.vicinanza || 0) - (v.c.vicinanza || 0));
+    if (in3d || vista === 'cielo') piano.sort((u, v) => Number.isFinite(u.c.ordine) && Number.isFinite(v.c.ordine)
+      ? u.c.ordine - v.c.ordine : (u.c.vicinanza || 0) - (v.c.vicinanza || 0));
     // v482: l'equipaggio dopo la sua nave, dentro ai finestrini
     piano.sort((u, v) => (u.c.aBordo ? 1 : 0) - (v.c.aBordo ? 1 : 0));
     // Un disco grafico non deve coprire l'astro di un altro personaggio
@@ -9768,12 +9769,21 @@
    * Sole, Luna, lune, stazioni) più vicini alla camera il cui disco arriva
    * fin dove il personaggio si disegna (fino a 2,5 volte il suo raggio, per
    * l'atmosfera e la corona). Il personaggio stesso non si copre. */
+  /* Chi sta sopra a chi (v511). Nella 3D conta l'ordine in cui l'app ha
+   * disegnato i corpi (`ordine`, da `solOrdineDisegno`): quello che sullo
+   * schermo copre il corpo di un personaggio deve coprirne anche il volto,
+   * se no si vede una luna sopra al disco di Ganimede e sotto ai suoi
+   * occhi. Dove l'ordine non c'è (il planetario, gli ospiti, le prove)
+   * decide la profondità. */
+  function storSopra(q, c) {
+    if (Number.isFinite(q.ordine) && Number.isFinite(c.ordine)) return q.ordine > c.ordine;
+    return Number.isFinite(q.vicinanza) && q.vicinanza > (Number.isFinite(c.vicinanza) ? c.vicinanza : 0);
+  }
   function storCoprentiDavanti(corpi, c, id, R) {
     const mio = storCanonico(id), giro = Math.max(c.r || 0, R || 0) * 2.5;
-    const v = Number.isFinite(c.vicinanza) ? c.vicinanza : 0;
     const fuori = [];
     for (const q of corpi) {
-      if (q === c || !(q.r > 0.5) || !Number.isFinite(q.vicinanza) || q.vicinanza <= v) continue;
+      if (q === c || !(q.r > 0.5) || !Number.isFinite(q.vicinanza) || !storSopra(q, c)) continue;
       if (storCanonico(q.id) === mio) continue;
       if (Math.hypot(q.px - c.px, q.py - c.py) >= q.r + giro) continue;
       fuori.push(q);
@@ -10479,28 +10489,29 @@
       }
       return null;
     };
-    const metti = (id, px, py, r, vicinanza, punto) => {
+    const metti = (id, px, py, r, vicinanza, punto, ordine) => {
       if (!id || !Number.isFinite(px) || !Number.isFinite(py)) return;
       elenco.push({ id, px, py, r: Math.max(0, r || 0), vicinanza: Number.isFinite(vicinanza) ? vicinanza : 0,
+        ordine: Number.isFinite(ordine) ? ordine : undefined,
         luce: stor.personaggi.size ? luceDi(id, px, py, punto) : null });
     };
     const anelliDi = globale('solAnelliSchermo');
     for (const p of (scena && scena.corpi) || []) {
       if (!p || !p.schermo) continue;
-      metti(p.id, p.schermo.px, p.schermo.py, p.rDisegno, p.schermo.vicinanza, p.scena);
+      metti(p.id, p.schermo.px, p.schermo.py, p.rDisegno, p.schermo.vicinanza, p.scena, p.ordineDisegno);
       // gli anelli (Saturno): la loro metà davanti passa anche sopra ai volti
       if (typeof anelliDi === 'function' && elenco.length && elenco[elenco.length - 1].id === p.id) {
         const an = anelliDi(p);
         if (an) elenco[elenco.length - 1].anelli = an;
       }
     }
-    if (scena && scena.sole) metti('Sun', scena.sole.px, scena.sole.py, scena.sole.r, scena.sole.vicinanza);
+    if (scena && scena.sole) metti('Sun', scena.sole.px, scena.sole.py, scena.sole.r, scena.sole.vicinanza, null, scena.sole.ordine);
     if (!sol.vicino && sol.lunaSchermo) metti('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r, sol.lunaSchermo.vicinanza,
-      (stor.mosse.get('Moon') || {}).scena);
-    for (const l of sol.luneSchermo || []) metti(l.id, l.px, l.py, l.r, l.vicinanza, (stor.mosse.get(l.id) || {}).scena);
-    for (const s of sol.satSchermo || []) metti(s.id, s.px, s.py, s.r, s.vicinanza);
+      (stor.mosse.get('Moon') || {}).scena, sol.lunaSchermo.ordine);
+    for (const l of sol.luneSchermo || []) metti(l.id, l.px, l.py, l.r, l.vicinanza, (stor.mosse.get(l.id) || {}).scena, l.ordine);
+    for (const s of sol.satSchermo || []) metti(s.id, s.px, s.py, s.r, s.vicinanza, null, s.ordine);
     for (const c of elenco) {
-      c.nascosto = elenco.some(q => q !== c && q.vicinanza > c.vicinanza && q.r > c.r * 0.6 &&
+      c.nascosto = elenco.some(q => q !== c && storSopra(q, c) && q.r > c.r * 0.6 &&
         Math.hypot(q.px - c.px, q.py - c.py) < q.r - Math.min(c.r, q.r) * 0.25);
     }
     const giu = (sol.altaBarra || 0) + 54;
