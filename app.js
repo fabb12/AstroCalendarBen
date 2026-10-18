@@ -7605,6 +7605,7 @@ function mostraVista(nome, opzioni = {}) {
   // Il catalogo del cielo chiude lo splash solo se il planetario si apre.
   // Ripristinando un'altra pagina non lo carichiamo: togli il velo subito.
   if (nome !== 'cielo') splashPlanetarioNascondi(true);
+  if (nome !== 'demo' && typeof StudioStorie === 'object' && StudioStorie.fermaDettatura) StudioStorie.fermaDettatura();
 
   // Una vista costruita in un'altra lingua si ridisegna adesso, non prima:
   // al cambio lingua si segna il debito e lo si paga qui, quando quella vista
@@ -8157,10 +8158,108 @@ function inizializzaNotifiche() {
 }
 
 function registraSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .catch(err => console.error('Errore SW:', err));
+  if (!('serviceWorker' in navigator)) return;
+  const sw = navigator.serviceWorker;
+  let registrazione = null, vistoController = !!sw.controller;
+  let confermato = false, ricaricato = false, timer = 0, ultimoControllo = 0;
+  let finestra = null, inAttesa = null;
+  const avvisati = new WeakSet();
+  const t = chiave => astroI18n.t('aggiornamenti.' + chiave);
+  const ricarica = () => {
+    if (ricaricato) return;
+    ricaricato = true;
+    clearTimeout(timer);
+    location.reload();
+  };
+  const stato = chiave => {
+    if (finestra) finestra.querySelector('[data-stato]').textContent = t(chiave);
+  };
+  function errore() {
+    confermato = false;
+    clearTimeout(timer);
+    if (!finestra) return;
+    stato('errore');
+    finestra.querySelector('[data-aggiorna]').disabled = false;
+    finestra.querySelector('[data-dopo]').disabled = false;
   }
+  function proponi(worker) {
+    if (!vistoController || (worker && avvisati.has(worker))) return;
+    if (worker) avvisati.add(worker);
+    inAttesa = worker;
+    if (!finestra) {
+      finestra = document.createElement('dialog');
+      finestra.id = 'aggiornamento-app';
+      finestra.className = 'aggiornamento-app';
+      finestra.setAttribute('aria-labelledby', 'aggiornamento-titolo');
+      finestra.setAttribute('aria-describedby', 'aggiornamento-testo');
+      finestra.innerHTML = '<h2 id="aggiornamento-titolo" data-i18n="aggiornamenti.titolo"></h2>' +
+        '<p id="aggiornamento-testo" data-i18n="aggiornamenti.testo"></p>' +
+        '<p data-stato role="status" aria-live="polite"></p>' +
+        '<div class="aggiornamento-azioni"><button type="button" data-dopo autofocus data-i18n="aggiornamenti.dopo"></button>' +
+        '<button type="button" data-aggiorna data-i18n="aggiornamenti.adesso"></button></div>';
+      document.body.append(finestra);
+      finestra.querySelector('[data-dopo]').addEventListener('click', () => finestra.close());
+      finestra.addEventListener('cancel', e => { if (confermato) e.preventDefault(); });
+      finestra.querySelector('[data-aggiorna]').addEventListener('click', () => {
+        if (confermato) return;
+        // Prima del reload: salva anche l'ultima battuta ancora nel debounce.
+        // Il microfono deve essere fermo, per non troncare una registrazione.
+        if (typeof StudioStorie === 'object' && StudioStorie.preparaAggiornamento) {
+          const pronto = StudioStorie.preparaAggiornamento();
+          if (!pronto.ok) { stato(pronto.motivo === 'microfono' ? 'microfono' : 'salvataggio'); return; }
+        }
+        if (typeof sky === 'object' && sky.reg && (sky.reg.attiva || sky.reg.preparazione)) {
+          stato('registrazione'); return;
+        }
+        confermato = true;
+        if (!inAttesa || inAttesa.state === 'activated') { ricarica(); return; }
+        finestra.querySelector('[data-aggiorna]').disabled = true;
+        finestra.querySelector('[data-dopo]').disabled = true;
+        stato('inCorso');
+        timer = setTimeout(errore, 20000);
+        try { inAttesa.postMessage({ tipo: 'AGGIORNA_APP' }); } catch (_) { errore(); }
+      });
+    }
+    astroI18n.applica(finestra);
+    finestra.querySelector('[data-stato]').textContent = '';
+    if (!finestra.open) finestra.showModal();
+  }
+  sw.addEventListener('controllerchange', () => {
+    if (confermato) { ricarica(); return; }
+    // La prima installazione non è un aggiornamento. Se invece un'altra
+    // scheda lo ha attivato, chiedi prima di ricaricare anche questa pagina.
+    if (vistoController) proponi(null);
+    vistoController = true;
+  });
+  function controlla(forza = false) {
+    if (!registrazione || document.visibilityState === 'hidden') return;
+    if (!forza && Date.now() - ultimoControllo < 60000) return;
+    ultimoControllo = Date.now();
+    registrazione.update().catch(() => { /* Senza rete si continua con la copia installata. */ });
+  }
+  sw.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+    if (!reg) return; // Il contesto può disabilitare i service worker.
+    registrazione = reg;
+    const aspetta = () => { if (reg.waiting) proponi(reg.waiting); };
+    const osservati = new WeakSet();
+    aspetta();
+    const sorveglia = nuovo => {
+      if (!nuovo || osservati.has(nuovo)) return;
+      osservati.add(nuovo);
+      nuovo.addEventListener('statechange', () => {
+        if (nuovo.state === 'installed') aspetta();
+        if (nuovo.state === 'redundant' && inAttesa === nuovo && confermato) errore();
+      });
+      if (nuovo.state === 'installed') aspetta();
+    };
+    reg.addEventListener('updatefound', () => sorveglia(reg.installing));
+    sorveglia(reg.installing);
+    window.addEventListener('focus', () => controlla());
+    window.addEventListener('online', () => controlla(true));
+    document.addEventListener('visibilitychange', () => controlla());
+    setInterval(() => controlla(), 15 * 60 * 1000);
+    controlla(true);
+  }).catch(err => console.error('Errore SW:', err));
 }
 
 // =====================================================================

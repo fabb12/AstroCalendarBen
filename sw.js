@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v511';
+const CACHE_NAME = 'astrocal-v512';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -192,8 +192,14 @@ self.addEventListener('install', (e) => {
         ));
         for (const url of audioNarrazione()) await cache.add(url).catch(() => {});
       })
-      .then(() => self.skipWaiting())
   );
+});
+
+// La nuova copia resta in attesa: è la pagina, dopo la conferma della
+// persona, a chiederne l'attivazione. Alla prima installazione non c'è un
+// worker precedente e il browser l'attiva da solo.
+self.addEventListener('message', e => {
+  if (e.data && e.data.tipo === 'AGGIORNA_APP') e.waitUntil(self.skipWaiting());
 });
 
 // Elimina le cache vecchie così i nuovi file sostituiscono quelli obsoleti

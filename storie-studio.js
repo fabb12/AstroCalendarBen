@@ -2189,6 +2189,112 @@
    * dopo `STUDIO_REGISTRA_MAX` secondi si ferma da sola (un momento non
    * dura più di 120 s, e il file resta sotto i 10 MB). Il nome dà
    * l'estensione: Chrome e Firefox registrano in webm, Safari in mp4. */
+  // Dettare scrive la battuta; «Registra la voce» conserva invece un audio.
+  // Il riconoscimento è offerto dal browser, senza chiavi dell'app.
+  let dettatura = null;
+  const riconoscitore = () => radice.SpeechRecognition || radice.webkitSpeechRecognition;
+  function campoDettatura(dove) {
+    return studio.radice && [...studio.radice.querySelectorAll('textarea[data-campo]')].find(el => el.dataset.campo === dove + '.testo');
+  }
+  function statoDettatura(d, chiave, dati) {
+    if (d.stato && d.stato.isConnected) d.stato.textContent = t('studio.dettatura.' + chiave, dati);
+  }
+  function chiudiDettatura(d, annulla) {
+    if (dettatura !== d) return;
+    dettatura = null;
+    clearTimeout(d.timer); clearTimeout(d.attesa);
+    d.rec.onresult = d.rec.onerror = d.rec.onend = null;
+    if (annulla) { try { d.rec.abort(); } catch (_) { /* già fermo */ } }
+    if (d.tasto.isConnected) {
+      d.tasto.textContent = t('studio.dettatura.detta');
+      d.tasto.setAttribute('aria-pressed', 'false');
+    }
+  }
+  function fermaDettatura() {
+    if (!dettatura) return;
+    const d = dettatura;
+    chiudiDettatura(d, true);
+    statoDettatura(d, 'terminata');
+  }
+  function terminaDettatura(d) {
+    if (dettatura !== d) return;
+    // stop lascia arrivare l'ultima frase confermata; abort (nei cambi di
+    // pagina o di momento) scarta invece i risultati che arrivano in ritardo.
+    try { d.rec.stop(); } catch (_) { fermaDettatura(); return; }
+    statoDettatura(d, 'termina');
+    d.attesa = setTimeout(() => fermaDettatura(), 2000);
+  }
+  function dettaBattuta(dove) {
+    if (dettatura && dettatura.dove === dove) { terminaDettatura(dettatura); return; }
+    fermaDettatura();
+    const m = leggi(dove), campo = campoDettatura(dove), Riconoscimento = riconoscitore();
+    if (!m || !m.chi || !campo || !Riconoscimento || registrazione) return;
+    const tasto = [...studio.radice.querySelectorAll('[data-fai="dettaBattuta"]')].find(el => el.dataset.dove === dove);
+    const d = { dove, m, chi: m.chi, progetto: studio.progetto, campo, tasto,
+      stato: campo.parentElement.querySelector('[data-dettatura-stato]'),
+      da: campo.selectionStart, a: campo.selectionEnd, scrive: false, finali: new Set(), ricevuto: false };
+    try { d.rec = new Riconoscimento(); } catch (_) { statoDettatura(d, 'nonDisponibile'); return; }
+    dettatura = d;
+    d.rec.lang = haI18n() && radice.astroI18n.locale ? radice.astroI18n.locale() : 'it-IT';
+    d.rec.continuous = true;
+    d.rec.interimResults = true;
+    d.tasto.textContent = t('studio.dettatura.ferma');
+    d.tasto.setAttribute('aria-pressed', 'true');
+    statoDettatura(d, 'ascolto');
+    d.rec.onresult = e => {
+      if (dettatura !== d) return;
+      if (studio.progetto !== d.progetto || leggi(dove) !== m || m.chi !== d.chi || !campo.isConnected) { fermaDettatura(); return; }
+      let provvisorio = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const risultato = e.results[i], frase = String(risultato[0].transcript || '').trim();
+        if (!risultato.isFinal) { provvisorio += ' ' + frase; continue; }
+        if (d.finali.has(i) || !frase) continue;
+        d.finali.add(i);
+        const prima = campo.value.slice(0, d.da), dopo = campo.value.slice(d.a);
+        const spazio = prima && !/\s$/.test(prima) ? ' ' : '';
+        const coda = dopo && !/^\s/.test(dopo) ? ' ' : '';
+        const massimo = campo.maxLength > 0 ? campo.maxLength : 600;
+        const liberi = massimo - prima.length - dopo.length;
+        const pezzo = (spazio + frase + coda).slice(0, Math.max(0, liberi));
+        campo.value = prima + pezzo + dopo;
+        d.da = d.a = prima.length + pezzo.length;
+        campo.setSelectionRange(d.da, d.da);
+        d.scrive = true;
+        try { campo.dispatchEvent(new Event('input', { bubbles: true })); } finally { d.scrive = false; }
+        d.ricevuto = true;
+        if (campo.value.length >= massimo) {
+          chiudiDettatura(d, true); statoDettatura(d, 'limite', { n: massimo }); return;
+        }
+      }
+      statoDettatura(d, provvisorio.trim() ? 'parziale' : 'ascolto', { testo: provvisorio.trim() });
+    };
+    d.rec.onerror = e => {
+      if (dettatura !== d) return;
+      chiudiDettatura(d, true);
+      const chiave = ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(e.error) ? 'permesso'
+        : e.error === 'network' ? 'rete' : e.error === 'no-speech' ? 'silenzio' : 'errore';
+      statoDettatura(d, chiave);
+    };
+    d.rec.onend = () => {
+      if (dettatura !== d) return;
+      chiudiDettatura(d, false); statoDettatura(d, d.ricevuto ? 'terminata' : 'silenzio');
+    };
+    try { d.rec.start(); d.timer = setTimeout(() => terminaDettatura(d), 90000); }
+    catch (_) { chiudiDettatura(d, true); statoDettatura(d, 'permesso'); }
+  }
+
+  function preparaAggiornamento() {
+    if (registrazione || dettatura) return { ok: false, motivo: 'microfono' };
+    if (!studio.progetto || !studio.daSalvare) return { ok: true };
+    clearTimeout(studio.salvaTimer);
+    studio.salvaTimer = 0;
+    const i = studio.progetti.findIndex(p => p.id === studio.progetto.id);
+    if (i >= 0) studio.progetti[i] = studio.progetto; else studio.progetti.unshift(studio.progetto);
+    const ok = studioSalvaTutti(studio.progetti);
+    if (ok) studio.daSalvare = false;
+    return { ok, motivo: 'salvataggio' };
+  }
+
   const STUDIO_REGISTRA_MAX = 90;
   let registrazione = null;               // { dove, rec, flusso, inizio, timer }
   const puoRegistrare = () => !!(radice.MediaRecorder && radice.navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -2201,6 +2307,7 @@
     if (b) b.textContent = t('studio.voce.ferma', { secondi: Math.floor((Date.now() - registrazione.inizio) / 1000) });
   }
   async function registraDalMicrofono(dove) {
+    fermaDettatura();
     if (registrazione) { const era = registrazione.dove; fermaRegistrazione(); if (era === dove) return; }
     const m = leggi(dove);
     if (!m) return;
@@ -4330,7 +4437,7 @@
 
   const studio = {
     progetti: [], progetto: null, radice: null, capito: null, capitoScena: -1, esito: '', copioneAperto: false,
-    salvaTimer: 0, aperta: null, schedaMomento: '',
+    salvaTimer: 0, daSalvare: false, aperta: null, schedaMomento: '',
     // v462: dove sta il cursore nella battuta, e la famiglia di espressioni aperta
     cursore: null, famigliaTag: '',
     // v449: il pannello delle impostazioni e la sua linguetta aperta
@@ -4346,12 +4453,14 @@
   // anche se l'orologio di questo dispositivo è indietro rispetto a quello
   // che ha scritto la versione di partenza (`studioPiuNuovo`)
   function salvaPresto(tocca = true) {
+    if (tocca) studio.daSalvare = true;
     if (tocca && studio.progetto) studio.progetto.aggiornato = studioPiuNuovo(studio.progetto.aggiornato);
     clearTimeout(studio.salvaTimer);
     studio.salvaTimer = setTimeout(() => {
+      studio.salvaTimer = 0;
       const i = studio.progetti.findIndex(p => p.id === studio.progetto.id);
       if (i >= 0) studio.progetti[i] = studio.progetto; else studio.progetti.unshift(studio.progetto);
-      studioSalvaTutti(studio.progetti);
+      if (studioSalvaTutti(studio.progetti)) studio.daSalvare = false;
       aggiornaCantiere();
     }, 250);
   }
@@ -4552,12 +4661,18 @@
     if (m.chi) {
       const testo = h('textarea', { rows: '2', maxlength: '600', dataset: { campo: base + '.testo' }, placeholder: t('studio.testoAiuto', { nome: nome(m.chi) }), 'aria-label': t('studio.battuta') });
       testo.value = m.testo || '';
+      const puoDettare = !!riconoscitore();
+      const detta = h('div', { class: 'studio-dettatura' },
+        h('button', { type: 'button', class: 'tasto-cielo', dataset: { fai: 'dettaBattuta', dove: base },
+          disabled: !puoDettare || !!registrazione, 'aria-pressed': 'false' }, t('studio.dettatura.detta')),
+        h('small', { 'data-dettatura-stato': '', role: 'status', 'aria-live': 'polite' },
+          t(puoDettare ? 'studio.dettatura.aiuto' : 'studio.dettatura.nonDisponibile')));
       const detto = testoDetto(m);
       const n = detto ? detto.split(' ').length : 0;
       box.append(h('div', { class: 'studio-fumetto' },
         figurina(m.chi, umore, 64, 'studio-chi-grande'),
         h('div', { class: 'studio-nuvola' }, testo,
-          h('span', { class: 'studio-contatore' + (n > STUDIO_PAROLE_BAMBINI ? ' troppo' : '') }, t('studio.parole', { n })))));
+          h('span', { class: 'studio-contatore' + (n > STUDIO_PAROLE_BAMBINI ? ' troppo' : '') }, t('studio.parole', { n })), detta)));
     }
     // Le linguette: una sola aperta alla volta, o nessuna
     const schede = m.chi ? STUDIO_SCHEDE_MOMENTO : STUDIO_SCHEDE_MOMENTO.filter(s => s !== 'faccia');
@@ -5474,6 +5589,7 @@
   }
 
   function disegna() {
+    fermaDettatura();
     const r = studio.radice;
     if (!r || !studio.progetto) return;
     // Conserva le aperture quando una scelta ridisegna i campi; le scene
@@ -5739,6 +5855,7 @@
 
   // `perYoutube` (v464): il titolo con cui la storia, registrata, va su YouTube
   function avvia(testo, perYoutube) {
+    fermaDettatura();
     if (registrazione) fermaRegistrazione();
     // l'ascolto di prova di una musica non si sovrappone alla storia
     if (ascoltoMusica) fermaAscoltoMusica();
@@ -5753,6 +5870,7 @@
     } catch (e) { esito(e.message); }
   }
   function apri(progetto) {
+    fermaDettatura();
     for (const k of [...proposte.keys()]) togliProposta(k);
     studio.elScelta = null; studio.elMsg = null; studio.elBattute = null;
     if (registrazione) fermaRegistrazione();
@@ -6085,6 +6203,7 @@
       case 'elScarta': togliProposta(dove); disegna(); return;
       case 'ascoltaSuono': ascoltaSuono(leggi(dove)); return;
       case 'togliSuono': togliSuono(leggi(dove)); break;
+      case 'dettaBattuta': dettaBattuta(dove); return;
       case 'registraVoce': registraDalMicrofono(dove); return;
       case 'ascoltaMusica': ascoltaMusica(dove); disegna(); return;
       case 'togliMusica': if (ascoltoMusica && ascoltoMusica.dove === dove) fermaAscoltoMusica(); togliMusica(dove); break;
@@ -6332,6 +6451,8 @@
   }
 
   function collega(r) {
+    document.addEventListener('visibilitychange', () => { if (document.hidden) fermaDettatura(); });
+    radice.addEventListener('pagehide', fermaDettatura);
     // v462: dove sta il cursore nella battuta, per mettere l'espressione
     // proprio lì anche dopo aver cliccato altrove
     const ricordaCursore = e => {
@@ -6360,6 +6481,7 @@
     });
     r.addEventListener('input', e => {
       const el = e.target;
+      if (dettatura && el === dettatura.campo && !dettatura.scrive) fermaDettatura();
       // v444: la descrizione e la durata della musica da generare
       if (el.dataset && el.dataset.elMusica) {
         const x = richiestaMusica(chiaveMusicaEl(el.dataset.elMusica));
@@ -6559,6 +6681,7 @@
   // ===================================================================
 
   const api = {
+    preparaAggiornamento, fermaDettatura,
     STUDIO_SCOPI, STUDIO_AMBIENTI, STUDIO_TIPI, CHIAVE,
     nuovoProgetto: studioNuovoProgetto, nuovaScena: studioNuovaScena, nuovoMomento: studioNuovoMomento, nuovaAzione: studioNuovaAzione,
     daModello: studioDaModello, copione: studioCopione, daCopione: studioDaCopione, rigaDsl: studioRigaDsl, durata: studioDurata, durataTotale: studioDurataTotale, secondiMusica: studioSecondiMusica, cuciMp3,
