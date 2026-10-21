@@ -1,6 +1,8 @@
 # Niente in corso
 
-Ultimo lavoro (v512): **Io sopra al disco di Ganimede ma sotto al suo volto.** Le lune di un pianeta ora si disegnano per profondità (`solDisegnaLune`), e il taglio dei volti segue l'ordine in cui l'app ha disegnato i corpi (`solOrdineDisegno`, `storSopra`). `STORIE.md` §«Chi è disegnato sopra…». Prove: `prova-storie.js` (130); guardato in Chromium il giro attorno a Giove con Ganimede ed Europa personaggi.
+Ultimo lavoro (v513): **nelle demo nessun astro sembra selezionato.** La demo usa `sky.target` per farsi seguire un astro dalla camera, e dalla v503 ogni `sky.target` prendeva gli angoli del mirino. Ora con `AstroDemo.inCorso` né freccia né mirino (`skyDisegna`, app.js); il segno resta per le ricerche della persona. MAPPA-DETTAGLIATA §12 «La freccia guida». Prove: `prova-freccia-guida.js` (2 nuove, cadono sul codice di prima), `prova-demo.js`.
+
+Prima (v512): **Io sopra al disco di Ganimede ma sotto al suo volto.** Le lune di un pianeta ora si disegnano per profondità (`solDisegnaLune`), e il taglio dei volti segue l'ordine in cui l'app ha disegnato i corpi (`solOrdineDisegno`, `storSopra`). `STORIE.md` §«Chi è disegnato sopra…». Prove: `prova-storie.js` (130); guardato in Chromium il giro attorno a Giove con Ganimede ed Europa personaggi.
 
 Prima (v511): **chi passa davanti a un volto ci passa davanti.** Nella 3D la metà davanti degli anelli di Saturno stava sotto agli occhi e alla bocca di Saturno (e di Titano o Mimante dietro): ora si cancella dal volto sulla tela di `conLuce` (`solAnelliSchermo`, `solGommaAnelli`, `storAnelliDavanti`). Nel planetario i volti non avevano nessun taglio: stazioni e aerei davanti alla Luna, e la Luna davanti a un pianeta, ora tagliano il volto (`STOR_FILA_CIELO`, ricevuta degli aerei in `aerei.js`). `STORIE.md` §«Gli anelli e il planetario (v511)». Prove: `prova-storie.js` (130, 2 nuove) e le prove nel browser delle storie; guardata in Chromium la rotazione attorno a Saturno.
 

@@ -140,6 +140,28 @@ const server = http.createServer((req, res) => {
       if (ISTANTANEE) await pagina.screenshot({ path: path.join(ISTANTANEE, `${schermo.width}-${caso.nome}-trovato.png`) });
     }
 
+    // In una demo l'astro seguito dalla camera (`sky.target`) non prende gli
+    // angoli del mirino: sembrava «selezionato» senza che nessuno l'avesse
+    // cercato (v513). Fuori dalla demo, lo stesso astro li prende.
+    const demo = await pagina.evaluate(async () => {
+      // Giove è già scelto dal giro di sopra (sceglierlo di nuovo lo toglie)
+      if (sky.target !== 'Jupiter') skyScegliAstroDaElenco('Jupiter');
+      const g = skyVoceDiId(sky.target);
+      sky.animazioneVista = null;
+      sky.manuale.az = g.az; sky.manuale.alt = Math.max(5, Math.min(60, g.alt));
+      await new Promise(f => setTimeout(f, 900));
+      const fuori = !!(sky.guidaAggancio && sky.guidaAggancio.dentro);
+      sky.guidaAggancio = null;
+      const descr = Object.getOwnPropertyDescriptor(window.AstroDemo, 'inCorso');
+      Object.defineProperty(window.AstroDemo, 'inCorso', { get: () => true, configurable: true });
+      await new Promise(f => setTimeout(f, 900));
+      const dentro = !!(sky.guidaAggancio && sky.guidaAggancio.dentro);
+      Object.defineProperty(window.AstroDemo, 'inCorso', descr);
+      return { fuori, dentro };
+    });
+    ok('fuori da una demo l\'astro scelto prende il mirino', demo.fuori);
+    ok('in una demo l\'astro seguito non prende il mirino', !demo.dentro);
+
     // Toccare un astro spegne la freccia della costellazione: due frecce
     // insieme non dicono più da che parte girarsi
     const spento = await pagina.evaluate(() => {

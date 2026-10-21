@@ -23794,13 +23794,18 @@ function skyDisegna() {
   // La freccia che dice da che parte è finito l'astro scelto. Vale anche per
   // una galassia presa dall'elenco: quella non sta fra gli astri disegnati
   // qui, ma un azimut e un'altezza ce li ha come tutti gli altri.
-  const bersaglio = daDisegnare.find(o => o.id === sky.target) ||
-    (sky.target ? skyVoceDiId(sky.target) : null);
+  // In una demo né freccia né mirino: la demo usa `sky.target` per farsi
+  // seguire un astro dalla camera, e gli angoli del mirino (v503) lo facevano
+  // sembrare «selezionato» — il segno d'arrivo è la risposta a una ricerca
+  // della persona, e nella demo la persona non ha cercato niente.
+  const inDemo = !!(window.AstroDemo && window.AstroDemo.inCorso);
+  const bersaglio = inDemo ? null : (daDisegnare.find(o => o.id === sky.target) ||
+    (sky.target ? skyVoceDiId(sky.target) : null));
   if (bersaglio && typeof bersaglio.az === 'number') skyDisegnaGuida(ctx, base, focale, bersaglio);
   // Una costellazione o un luogo cercati (`sky.guida`): stessa freccia, col
   // loro colore. In una demo no: la camera la governa il racconto, e una
   // freccia rimasta da una ricerca di prima indicherebbe altrove.
-  else if (sky.guida && !(window.AstroDemo && window.AstroDemo.silenzioso)) {
+  else if (sky.guida && !inDemo) {
     const g = skyPosizioneGuida();
     if (g) skyDisegnaGuida(ctx, base, focale, g, g.tipo);
   }
