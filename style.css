@@ -8109,6 +8109,20 @@ body .luogo-tasto-mappa.attiva { background: var(--blu); border-color: transpare
   color: #fff;
 }
 .luogo-popup-vai .leaflet-popup-content { margin: 7px; }
+/* Il nome sopra al tasto: dice che cosa si sta per confermare. */
+.luogo-popup-corpo { display: grid; gap: 6px; justify-items: stretch; }
+.luogo-popup-nome {
+  max-width: 200px;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-align: center;
+}
+.luogo-popup-nome:empty { display: none; }
 .luogo-vai-qua {
   min-width: 92px;
   min-height: 42px;
@@ -8292,6 +8306,13 @@ body .luogo-tasto-azione.forte:hover { background: var(--blu-chiaro); }
   left: max(10px, env(safe-area-inset-left));
   z-index: 1200;
   width: min(520px, calc(100% - 20px));
+}
+/* La colonna dei comandi a destra (zoom, tema, tasti della mappa) scende
+   sotto alla barra della ricerca: sul telefono la barra è larga quanto lo
+   schermo, e il tasto «Da Google Maps» finiva proprio sopra al «+». */
+.luogo-guscio:fullscreen .leaflet-top.leaflet-right,
+.luogo-guscio.luogo-schermo-pieno .leaflet-top.leaflet-right {
+  top: calc(max(10px, env(safe-area-inset-top)) + 44px);
 }
 .luogo-guscio:fullscreen .luogo-incolla,
 .luogo-guscio.luogo-schermo-pieno .luogo-incolla {

@@ -10887,7 +10887,10 @@ const luogoMappa = {
   strato: null,    // il tileLayer di adesso
   salvatiSegni: [],// i piccoli segni persistenti dei posti di osservazione
   occhio: null,    // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
-  tocco: null      // partenza dell'ultimo dito sulla mappa
+  popup: null,     // il fumetto «Vai qua», costruito una volta sola
+  popupNome: null, // la riga col nome del punto, dentro al fumetto
+  popupTasto: null,// il tasto «Vai qua» dentro al fumetto
+  popupAperto: 0   // quando si è aperto (un doppio tocco non è una conferma)
 };
 
 function luogoTesto(chiave, ripiego, valori) {
@@ -10934,7 +10937,7 @@ function luogoSalvatiDisegna() {
       scegli.className = 'luogo-salvato-scegli';
       scegli.textContent = p.nome;
       scegli.title = `${p.nome} — ${luogoCoordinateFini(p.lat, p.lon)}`;
-      scegli.addEventListener('click', () => luogoMappaScegli(p.lat, p.lon, { centra: true, zoom: Math.max(luogoMappa.zoomUltimo, LUOGO_ZOOM_PUNTO), nome: p.nome }));
+      scegli.addEventListener('click', () => luogoMappaScegli(p.lat, p.lon, { centra: true, conferma: true, zoom: Math.max(luogoMappa.zoomUltimo, LUOGO_ZOOM_PUNTO), nome: p.nome }));
       const elimina = document.createElement('button');
       elimina.type = 'button';
       elimina.className = 'luogo-salvato-elimina';
@@ -10957,7 +10960,7 @@ function luogoSalvatiDisegna() {
       radius: 5, color: '#fff', weight: 1.5, fillColor: '#2563eb', fillOpacity: 0.95
     }).addTo(luogoMappa.mappa).bindTooltip(p.nome);
     segno.on('click', () => luogoMappaScegli(p.lat, p.lon, {
-      centra: true, zoom: Math.max(luogoMappa.zoomUltimo, LUOGO_ZOOM_PUNTO), nome: p.nome
+      centra: true, conferma: true, zoom: Math.max(luogoMappa.zoomUltimo, LUOGO_ZOOM_PUNTO), nome: p.nome
     }));
     return segno;
   });
@@ -11001,18 +11004,96 @@ function luogoMappaAggiornaDirezione() {
   nodo.setAttribute('title', luogoMappa.segno.options.title);
 }
 
-// Dopo avere indicato il terreno non si cambia osservatore per sbaglio: il
-// pallino giallo offre la conferma proprio nel punto appena scelto.
+// Il fumetto «Vai qua»: la conferma sta attaccata al punto appena scelto,
+// così non si cambia osservatore per sbaglio e non si deve cercare il tasto
+// nel piede della finestra.
+//
+// Il fumetto nasce **una volta sola**, con un elemento vero come contenuto e
+// un ascoltatore che non scade. Prima si rifaceva a ogni tocco con una
+// stringa di HTML e un ascoltatore `{ once: true }` appeso al tasto appena
+// disegnato: ma Leaflet riscrive il contenuto-stringa ogni volta che il
+// fumetto si riapre o si sposta (toccando il segno, trascinandolo), e il
+// tasto nuovo nasceva senza ascoltatore — «Vai qua» c'era e non faceva
+// niente. Con un elemento Leaflet lo riappende com'è, ascoltatore compreso.
+function luogoMappaPopup() {
+  if (luogoMappa.popup) return luogoMappa.popup;
+  const corpo = document.createElement('div');
+  corpo.className = 'luogo-popup-corpo';
+  const nome = document.createElement('span');
+  nome.className = 'luogo-popup-nome';
+  const vai = document.createElement('button');
+  vai.type = 'button';
+  vai.className = 'luogo-vai-qua';
+  vai.textContent = luogoTesto('ui.vai-qua', 'Vai qua');
+  vai.addEventListener('click', (e) => {
+    // Il tocco sul tasto non deve arrivare alla mappa: lì sceglierebbe di
+    // nuovo il punto, proprio sotto al fumetto
+    if (typeof L !== 'undefined') L.DomEvent.stop(e);
+    // Il secondo tocco di un doppio tocco cade dove il fumetto si è appena
+    // aperto: non è una conferma, è lo stesso gesto di prima
+    if (Date.now() - (luogoMappa.popupAperto || 0) < 350) return;
+    luogoMappaUsa();
+  });
+  corpo.append(nome, vai);
+  if (typeof L !== 'undefined') L.DomEvent.disableClickPropagation(corpo);
+  luogoMappa.popupNome = nome;
+  luogoMappa.popupTasto = vai;
+  luogoMappa.popup = L.popup({
+    closeButton: false, className: 'luogo-popup-vai', offset: [0, -10],
+    autoPan: true, maxWidth: 240
+  }).setContent(corpo);
+  return luogoMappa.popup;
+}
+
+// Quanto spazio prendono, sopra alla carta, i comandi che ci stanno appoggiati
+// (i tre fondi in alto a sinistra, la colonna dei tasti a destra e, a schermo
+// intero, il piede in basso). Il fumetto si sposta fuori da lì: se finiva
+// sotto alla fila «Mappa · Rilievo · Satellite», il dito che premeva «Vai
+// qua» premeva invece «Rilievo» — e la mappa cambiava fondo invece di
+// portare il cielo nel punto scelto. Misurato e non scritto a mano, perché
+// quei comandi cambiano posto col pieno schermo.
+function luogoMappaMarginiFumetto() {
+  const mappa = document.getElementById('mappa-luogo');
+  if (!mappa) return { alto: 16, destra: 16, basso: 24, sinistra: 16 };
+  const r = mappa.getBoundingClientRect();
+  const margini = { alto: 16, destra: 16, basso: 28, sinistra: 16 };
+  const visibile = (el) => {
+    if (!el) return null;
+    const q = el.getBoundingClientRect();
+    return q.width > 0 && q.height > 0 && q.bottom > r.top && q.top < r.bottom ? q : null;
+  };
+  const fondi = visibile(document.querySelector('.luogo-sfondi'));
+  if (fondi) margini.alto = Math.max(margini.alto, fondi.bottom - r.top + 10);
+  mappa.querySelectorAll('.leaflet-top.leaflet-right').forEach(el => {
+    const q = visibile(el);
+    if (q) margini.destra = Math.max(margini.destra, r.right - q.left + 10);
+  });
+  const piede = visibile(document.querySelector('.luogo-piede'));
+  if (piede && piede.top < r.bottom && piede.top > r.top) margini.basso = Math.max(margini.basso, r.bottom - piede.top + 10);
+  return margini;
+}
+
 function luogoMappaMostraVaiQua() {
-  if (!luogoMappa.segno) return;
-  luogoMappa.segno.bindPopup(
-    '<button type="button" class="luogo-vai-qua">Vai qua</button>',
-    { closeButton: false, className: 'luogo-popup-vai', offset: [0, -10] }
-  ).openPopup();
-  const popup = luogoMappa.segno.getPopup();
-  const nodo = popup && popup.getElement();
-  const vai = nodo && nodo.querySelector('.luogo-vai-qua');
-  if (vai) vai.addEventListener('click', luogoMappaUsa, { once: true });
+  if (!luogoMappa.segno || !luogoMappa.mappa) return;
+  const popup = luogoMappaPopup();
+  const m = luogoMappaMarginiFumetto();
+  popup.options.autoPanPaddingTopLeft = L.point(m.sinistra, m.alto);
+  popup.options.autoPanPaddingBottomRight = L.point(m.destra, m.basso);
+  luogoMappaAggiornaFumetto();
+  popup.setLatLng(luogoMappa.segno.getLatLng());
+  if (!luogoMappa.mappa.hasLayer(popup)) {
+    luogoMappa.popupAperto = Date.now();
+    popup.openOn(luogoMappa.mappa);
+  } else popup.update();
+}
+
+// Il nome nel fumetto è lo stesso della lettura sotto alla mappa: dice *che
+// cosa* si sta per confermare, prima di confermarlo.
+function luogoMappaAggiornaFumetto() {
+  if (!luogoMappa.popupNome) return;
+  luogoMappa.popupNome.textContent = luogoMappa.scelto ? (luogoNomeDelPunto() || '') : '';
+  // Riscritto qui e non solo alla nascita: la lingua può cambiare dopo
+  if (luogoMappa.popupTasto) luogoMappa.popupTasto.textContent = luogoTesto('ui.vai-qua', 'Vai qua');
 }
 
 // Longitudine riportata fra −180 e +180: Leaflet, con `worldCopyJump`, per un
@@ -11118,47 +11199,30 @@ function luogoMappaCostruisci() {
   aggiungiControlloTemaMappa(luogoMappa.mappa, riquadro);
   luogoMappaConsegnaTasti();
 
-  // Leaflet su alcuni browser trasforma il tocco in un click senza
-  // conservarne pointerType. Lo annotiamo prima, così telefono e PC non
-  // vengono confusi nemmeno sui dispositivi ibridi.
-  riquadro.addEventListener('pointerdown', (e) => {
-    luogoMappa.tocco = e.pointerType || 'mouse';
-  }, { passive: true });
-
+  // Un tocco o un clic sceglie il punto e apre «Vai qua», sul telefono come
+  // sul computer. Prima sul computer serviva il doppio clic e un clic
+  // singolo non faceva niente, mentre il titolo della finestra parlava di
+  // un tocco — due regole per lo stesso gesto, e chi aveva la regola
+  // sbagliata in testa non riusciva a scegliere. Trascinare la carta non è
+  // un clic (Leaflet non lo manda), quindi spostarsi non sposta il punto.
   luogoMappa.mappa.on('click', (e) => {
-    // Toccare la mappa è anche il modo di dire "ho finito di cercare": se
-    // l'elenco dei nomi resta aperto copre proprio la parte che si sta
-    // guardando.
+    // Toccare la mappa con l'elenco dei nomi aperto vuol dire «ho finito di
+    // cercare»: quel tocco chiude l'elenco e basta, non sposta il punto.
+    const elenco = document.getElementById('luogo-cerca-risultati');
+    const aperto = elenco && elenco.children.length > 0;
     luogoMostraRisultati([], null);
-    // Mouse e trackpad scelgono soltanto col doppio clic. Sul telefono un
-    // tocco deve invece rispondere subito: il doppio tocco appartiene allo
-    // zoom e non va requisito per cambiare punto di osservazione.
-    const originale = e.originalEvent;
-    const puntatore = originale && originale.pointerType;
-    const tocco = puntatore === 'touch' || puntatore === 'pen' ||
-      luogoMappa.tocco === 'touch' || luogoMappa.tocco === 'pen' ||
-      (originale && /^touch/.test(originale.type));
-    luogoMappa.tocco = null;
-    if (!tocco) return;
+    if (aperto) return;
     luogoMappaScegli(e.latlng.lat, e.latlng.lng);
     luogoMappaMostraVaiQua();
   });
 
-  // Mouse e trackpad hanno un dblclick affidabile.
-  luogoMappa.mappa.on('dblclick', (e) => {
-    L.DomEvent.preventDefault(e.originalEvent);
-    luogoMappaScegli(e.latlng.lat, e.latlng.lng);
-    luogoMappaMostraVaiQua();
-  });
-
-  // «Vai qua» serve a confermare il punto appena indicato. Se nel frattempo
-  // si trascina o si ingrandisce la carta, quel punto non è più il centro
-  // dell'attenzione: lasciare il fumetto appeso al terreno lo faceva sembrare
-  // ancora la scelta corrente. `dragstart` (invece di `movestart`) evita anche
-  // di chiuderlo durante l'eventuale auto-pan con cui Leaflet lo porta in
-  // vista appena aperto.
-  luogoMappa.mappa.on('dragstart zoomstart', () => {
-    luogoMappa.mappa.closePopup();
+  // Trascinando la carta si sta cercando altrove: il fumetto si chiude, e
+  // si riapre toccando il segno. Con lo zoom invece resta: si ingrandisce
+  // proprio per controllare il punto prima di confermarlo. `dragstart` (e
+  // non `movestart`) per non chiuderlo durante lo spostamento automatico con
+  // cui Leaflet lo porta in vista appena aperto.
+  luogoMappa.mappa.on('dragstart', () => {
+    if (luogoMappa.popup) luogoMappa.mappa.closePopup(luogoMappa.popup);
   });
 
   // Quanto si era stretto se lo ricorda: chi ha appena scelto un prato a
@@ -11267,14 +11331,23 @@ function luogoMappaFaiSegno(punto) {
   luogoMappaAggiornaDirezione();
   // Mentre il dito lo porta in giro la lettura sotto cambia con lui: è quella
   // che dice se si è ancora dentro al paese o già in mezzo al bosco.
+  luogoMappa.segno.on('dragstart', () => {
+    if (luogoMappa.popup) luogoMappa.mappa.closePopup(luogoMappa.popup);
+  });
   luogoMappa.segno.on('drag', () => {
     const ll = luogoMappa.segno.getLatLng();
     luogoMappaScegli(ll.lat, ll.lng, { senzaSegno: true });
   });
+  // Lasciato il segno, la conferma torna lì: chi ha appena aggiustato il
+  // punto col dito vuole andarci, e prima il fumetto restava chiuso.
   luogoMappa.segno.on('dragend', () => {
     const ll = luogoMappa.segno.getLatLng();
     luogoMappaScegli(ll.lat, ll.lng, { senzaSegno: true });
+    luogoMappaMostraVaiQua();
   });
+  // Toccare il segno apre sempre «Vai qua» (non lo chiude: era un
+  // interruttore, e il secondo tocco lo faceva sparire)
+  luogoMappa.segno.on('click', () => luogoMappaMostraVaiQua());
 }
 
 // La riga tratteggiata fra casa e il punto: la distanza scritta sotto dice
@@ -11315,6 +11388,11 @@ function luogoMappaScegli(lat, lon, opz = {}) {
       if (luogoMappa.segno) luogoMappa.segno.setLatLng(punto);
       else luogoMappaFaiSegno(punto);
     }
+    // Un fumetto aperto segue il punto: se resta dov'era, «Vai qua»
+    // confermerebbe un posto che non è più quello scelto
+    if (luogoMappa.popup && luogoMappa.mappa.hasLayer(luogoMappa.popup)) {
+      luogoMappa.popup.setLatLng(punto);
+    }
     luogoMappaFilo(punto);
     if (opz.centra) {
       luogoMappa.mappa.setView(punto, opz.zoom || luogoMappa.mappa.getZoom());
@@ -11328,6 +11406,10 @@ function luogoMappaScegli(lat, lon, opz = {}) {
     if (campoLon) campoLon.value = luogoMappa.scelto.lon.toFixed(4);
   }
   luogoMappaAggiornaLettura();
+  // Un punto arrivato da una ricerca, da un link, da un punto salvato o dal
+  // GPS apre subito «Vai qua»: è lo stesso passo che viene dopo un tocco, e
+  // senza il fumetto restava da indovinare che cosa premere
+  if (opz.conferma && luogoMappa.mappa) luogoMappaMostraVaiQua();
   return true;
 }
 
@@ -11354,6 +11436,7 @@ function luogoMappaAggiornaLettura() {
   // LUOGO_NOME_KM il punto non ha un nome, e lo dice: le coordinate stanno
   // nella riga qui sotto, che è dove `luogoNomeDelPunto()` va a prenderle.
   elNome.textContent = luogoMappa.nome || (haNome ? vicina.nome : 'Punto senza nome');
+  luogoMappaAggiornaFumetto();
   elCoord.textContent = luogoCoordinateFini(s.lat, s.lon);
 
   if (elNota) {
@@ -11399,7 +11482,7 @@ function luogoMappaDalleCaselle() {
     return;
   }
   luogoAvviso('');
-  luogoMappaScegli(lat, lon, { centra: true, zoom: Math.max(
+  luogoMappaScegli(lat, lon, { centra: true, conferma: true, zoom: Math.max(
     luogoMappa.mappa ? luogoMappa.mappa.getZoom() : LUOGO_ZOOM_PUNTO, LUOGO_ZOOM_PUNTO) });
 }
 
@@ -11532,7 +11615,7 @@ function luogoIncollaUsa() {
   }
   luogoAvviso('');
   const zoom = Math.max(luogoMappa.mappa ? luogoMappa.mappa.getZoom() : 0, LUOGO_ZOOM_PUNTO);
-  luogoMappaScegli(punto.lat, punto.lon, { centra: true, zoom, nome: punto.nome });
+  luogoMappaScegli(punto.lat, punto.lon, { centra: true, conferma: true, zoom, nome: punto.nome });
   if (campo) campo.value = '';
 }
 
@@ -11607,7 +11690,7 @@ function luogoMostraRisultati(elenco, nota) {
     btn.addEventListener('click', () => {
       const c = elenco[parseInt(btn.dataset.luogoTrovato, 10)];
       if (!c) return;
-      luogoMappaScegli(c.lat, c.lon, { centra: true, zoom: LUOGO_ZOOM_PUNTO, nome: c.nome });
+      luogoMappaScegli(c.lat, c.lon, { centra: true, conferma: true, zoom: LUOGO_ZOOM_PUNTO, nome: c.nome });
       luogoMostraRisultati([], null);
       const campo = document.getElementById('luogo-cerca');
       // Sul telefono la tastiera copre mezza mappa: appena scelto il posto,
@@ -11750,6 +11833,8 @@ function apriMappaLuogoCielo() {
   // cosa diversa — dice quanto da vicino si sta ragionando, e ricominciare
   // ogni volta dal mappamondo vuol dire rifare ogni volta la stessa strada.
   // Chi il punto l'ha applicato ritrova esattamente dove era rimasto.
+  // Il fumetto della volta prima non vale più: si riparte dal cielo di adesso
+  if (luogoMappa.popup && luogoMappa.mappa) luogoMappa.mappa.closePopup(luogoMappa.popup);
   const l = skyLuogoDelCielo();
   const partenza = l || { lat: 41.9, lon: 12.5 };
   luogoMappaScegli(partenza.lat, partenza.lon, {
@@ -11842,7 +11927,7 @@ async function luogoMappaUsaPosizioneAttuale() {
     const lon = posizione.coords.longitude;
     luogoAvviso('');
     luogoMappaScegli(lat, lon, {
-      centra: true,
+      centra: true, conferma: true,
       zoom: Math.max(luogoMappa.mappa ? luogoMappa.mappa.getZoom() : 0, LUOGO_ZOOM_APERTURA)
     });
   } catch (errore) {
