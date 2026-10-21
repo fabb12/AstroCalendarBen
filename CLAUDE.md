@@ -183,6 +183,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | giro degli astri / corpi minori a scaglioni | `prova-scaglioni.js` |
 | fumetto dell'oggetto | `prova-fumetto.js` |
 | freccia guida (astri, costellazioni, luoghi cercati) | `prova-freccia-guida.js` |
+| mappa «Da dove guardare il cielo» del planetario («Vai qua») | `prova-luogo-mappa.js` (vuole anche `leaflet@1.9.4`) |
 | registrazione / galleria | `prova-registrazione.js`, `prova-galleria.js` |
 | abitati | `prova-abitati.js` |
 | rilievo a campo stretto | `prova-rilievo-zoom.js` |
