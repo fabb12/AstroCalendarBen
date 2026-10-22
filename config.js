@@ -50,8 +50,8 @@ window.YOUTUBE_CLIENT_ID = window.YOUTUBE_CLIENT_ID || '';
 // Actions li sostituisce con versione della cache, numero della build, commit
 // e data UTC effettiva della pubblicazione.
 window.ASTROCAL_BUILD = window.ASTROCAL_BUILD || Object.freeze({
-  version: 'v515',
+  version: 'v516',
   build: '',
   commit: '',
-  builtAt: '2026-10-21T16:01:09.000Z'
+  builtAt: '2026-10-22T09:28:28.000Z'
 });

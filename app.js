@@ -8649,6 +8649,7 @@ const sky = {
   declinazione: 0,       // scarto Nord magnetico → Nord vero, in gradi (Est positivo)
   offsetBussola: 0,      // correzione manuale della bussola, in gradi
   calibrazione: false,   // il trascinamento sta ritoccando la bussola
+  primaDellaRealta: null, // luogo e ora di prima della realtà aumentata (`skyPortaQuiEAdesso`)
   salvaBussola: null,    // timer per salvare la calibrazione a fine trascinamento
   fov: 80,               // campo visivo verticale, in gradi (quello disegnato adesso)
   fovVoluto: 80,         // dove lo zoom sta andando: ci arriva scivolando (vedi 7.4-ter)
@@ -49415,6 +49416,7 @@ async function skyAttivaFotocamera() {
     skyAvviso('camera', '');
     skyAvviso('camera-taratura', '');
     skyAggiornaTastiCamera(false);
+    skyRiportaPrimaDellaRealta();
     return;
   }
 
@@ -49447,6 +49449,9 @@ async function skyAttivaFotocamera() {
     });
     video.srcObject = sky.camera;
     video.classList.remove('hidden');
+    // Prima di disegnare il cielo sopra l'immagine, il cielo deve essere
+    // quello che l'immagine mostra: qui, adesso (vedi `skyQuiEAdesso`).
+    skyPortaQuiEAdesso();
     await video.play().catch(() => {});
     // Il campo scelto a mano si mette da parte: da adesso lo detta l'obiettivo
     // (quello a cui si stava andando, se uno zoom morbido è ancora in viaggio)
@@ -49482,6 +49487,59 @@ async function skyAttivaFotocamera() {
 
 function skySpegniFotocamera() {
   if (sky.camera) skyAttivaFotocamera();
+}
+
+// --- La realtà aumentata è il cielo di qui e di adesso ---
+// Il planetario può guardare da un luogo di visita («Vai qua» sul terreno,
+// una città cercata, «Guarda il cielo da qui») e da un'altra ora. Sulla mappa
+// disegnata va benissimo; sopra l'immagine della fotocamera no, perché la
+// fotocamera inquadra sempre il posto dove si è e il cielo di questo istante.
+// Era il difetto segnalato: si faceva un giro nel paesaggio, si accendeva la
+// realtà aumentata e i nomi dei monti, gli aerei e gli astri finivano tutti
+// fuori posto — calcolati per il punto di arrivo del viaggio, non per chi
+// tiene il telefono. E peggio: il motore di vista (`visione.js`) confrontava
+// quel cielo con quello vero, e la «correzione» che ne ricavava ruotava tutto
+// il riferimento dalla parte sbagliata.
+function skyQuiEAdesso() {
+  return !sky.luogoVista && sky.modalitaTempo === 'reale' && !sky.playbackVerso;
+}
+
+// Accendendo la fotocamera si torna a casa e all'ora vera, e si tiene nota di
+// dove si era: spegnendola si ritrova il paesaggio che si stava guardando.
+function skyPortaQuiEAdesso() {
+  if (skyQuiEAdesso()) { sky.primaDellaRealta = null; return false; }
+  const luogo = sky.luogoVista ? { ...sky.luogoVista } : null;
+  if (sky.playbackVerso) skyFermaPlayback();
+  const istante = sky.modalitaTempo === 'reale' ? null : skyAdesso().getTime();
+  sky.primaDellaRealta = { luogo, istante };
+  if (istante !== null) {
+    sky.ancoraTempoSec = 0;
+    skyImpostaOffsetTempo(0, { reale: true });
+  }
+  if (luogo) {
+    if (typeof skyNascondiMappaSpostamento === 'function') skyNascondiMappaSpostamento();
+    skyTornaAlLuogoDiCasa();
+  }
+  skyRicalcolaOraAttuale();
+  const T = (k) => (typeof astroI18n === 'object' && astroI18n.t) ? astroI18n.t(k) : k;
+  skyAvviso('luogo', T('ar.quiEAdesso'), 7000);
+  return true;
+}
+
+// Il ritorno vale solo se intanto non si è scelto altro: un luogo o un'ora
+// presi a fotocamera accesa sono una decisione nuova, e vincono loro.
+function skyRiportaPrimaDellaRealta() {
+  const prima = sky.primaDellaRealta;
+  sky.primaDellaRealta = null;
+  if (!prima || !skyQuiEAdesso()) return false;
+  if (prima.luogo) {
+    skyImpostaLuogoVista(prima.luogo.lat, prima.luogo.lon, prima.luogo.nome, prima.luogo.fuso);
+  }
+  if (prima.istante !== null) {
+    skyImpostaOffsetTempo((prima.istante - Date.now()) / 1000);
+  }
+  skyRicalcolaOraAttuale();
+  return true;
 }
 
 // Collega i comandi nuovi del planetario (chiamata da inizializzaSkymap)

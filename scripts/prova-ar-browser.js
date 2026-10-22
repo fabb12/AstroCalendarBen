@@ -109,7 +109,9 @@ const server = http.createServer((req, res) => {
       AereiADS_B.aereoCieloOra = (a) => a;
       // Gli astri di adesso non si toccano: se ne aggiunge uno a mano, e lo
       // si rimette ogni volta che il giro degli astri lo toglierebbe.
-      window.__astroFinto = { id: 'Jupiter', tipo: 'pianeta', nome: 'Giove', az: 232, alt: 20, mag: -2.4,
+      // Luminoso come Venere: di giorno l'AR nomina solo i pianeti sotto
+      // −4,2 (`visLimitePianeta`), e con −2,4 la prova cadeva di pomeriggio.
+      window.__astroFinto = { id: 'Jupiter', tipo: 'pianeta', nome: 'Giove', az: 232, alt: 20, mag: -4.6,
         colore: '#fcd34d', disegno: 'pianeta' };
       const metti = () => {
         sky.oggetti = (sky.oggetti || []).filter(o => o.id !== 'Jupiter').concat([window.__astroFinto]);
@@ -297,6 +299,76 @@ const server = http.createServer((req, res) => {
     }));
     ok('«Chiudi» chiude pannello e velo', chiuso.pannello && chiuso.velo);
 
+    ok('nessuna eccezione', errori.length === 0, errori.slice(0, 3).join(' | '));
+    await contesto.close();
+  }
+
+  // --- Dal paesaggio alla realtà aumentata (v516) ----------------------
+  // Si fa un viaggio nel terreno («Vai qua») e si sposta l'ora, poi si
+  // accende la fotocamera: il cielo deve tornare a quello di qui e di
+  // adesso, se no nomi dei monti, aerei e astri sono calcolati per il punto
+  // d'arrivo e cadono tutti fuori posto sull'immagine. Spegnendo la
+  // fotocamera si ritrova il viaggio. Sul codice di prima l'osservatore
+  // restava alla Grigna e l'ora tre ore avanti.
+  {
+    console.log('\n— dal paesaggio alla realtà aumentata —');
+    const contesto = await browser.newContext({
+      serviceWorkers: 'block', viewport: { width: 360, height: 640 }, deviceScaleFactor: 2, hasTouch: true
+    });
+    const pagina = await contesto.newPage();
+    const errori = [];
+    pagina.on('pageerror', e => errori.push('ECCEZIONE: ' + e.message));
+    for (const rotta of ['**cdn.jsdelivr.net**', '**fonts.googleapis.com**'])
+      await pagina.route(rotta, r => r.fulfill({ body: '', contentType: 'text/javascript' }));
+    for (const rotta of ['**open-meteo.com/**', '**noaa.gov/**', '**celestrak.org/**', '**ipapi**',
+                         '**ipwho**', '**geojs**', '**overpass**', '**amazonaws.com/**', '**adsb**',
+                         '**bigdatacloud**', '**nominatim**'])
+      await pagina.route(rotta, r => r.abort());
+    await pagina.route('**/astronomy.browser.min.js', r =>
+      r.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' }));
+    // Una fotocamera finta: una tela che si riprende da sola.
+    await pagina.addInitScript(() => {
+      if (!navigator.mediaDevices) return;
+      navigator.mediaDevices.getUserMedia = async () => {
+        const c = document.createElement('canvas'); c.width = 640; c.height = 480;
+        const g = c.getContext('2d');
+        setInterval(() => { g.fillStyle = '#123'; g.fillRect(0, 0, 640, 480); }, 100);
+        return c.captureStream(10);
+      };
+    });
+    await pagina.goto('http://localhost:8097/index.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await pagina.evaluate(() => {
+      localStorage.setItem('astrocalendario_posizione',
+        JSON.stringify({ lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale' }));
+      localStorage.setItem('astrocal_lingua', 'it');
+    });
+    await pagina.reload({ waitUntil: 'domcontentloaded' });
+    await pagina.evaluate(() => mostraVista('cielo'));
+    await pagina.waitForTimeout(2500);
+    const leggi = () => pagina.evaluate(() => ({
+      vista: sky.luogoVista ? sky.luogoVista.nome : null,
+      reale: sky.modalitaTempo === 'reale',
+      ore: sky.offsetTempoSec / 3600,
+      lat: sky.observer ? sky.observer.latitude : null
+    }));
+    await pagina.evaluate(() => {
+      // La scelta dei sensori non serve qui: la si dà per fatta, e il tasto
+      // «Segui il telefono» resta spento (il computer non ha bussola).
+      sky.sceltaSensori = false;
+      skyUsaLuogoVista(46.0, 9.3, 'Grigna', { mostraSpostamentoTerreno: true });
+      skyImpostaOffsetTempo(3 * 3600);
+    });
+    await pagina.evaluate(() => skyAttivaFotocamera());
+    await pagina.waitForTimeout(800);
+    const acceso = await leggi();
+    ok('accesa la fotocamera, il cielo è quello di casa',
+      acceso.vista === null && Math.abs(acceso.lat - 45.81) < 0.01, JSON.stringify(acceso));
+    ok('e quello di adesso', acceso.reale && acceso.ore === 0, JSON.stringify(acceso));
+    await pagina.evaluate(() => skyAttivaFotocamera());
+    await pagina.waitForTimeout(500);
+    const spento = await leggi();
+    ok('spenta la fotocamera, si ritrova il viaggio',
+      spento.vista === 'Grigna' && !spento.reale && Math.abs(spento.ore - 3) < 0.01, JSON.stringify(spento));
     ok('nessuna eccezione', errori.length === 0, errori.slice(0, 3).join(' | '));
     await contesto.close();
   }

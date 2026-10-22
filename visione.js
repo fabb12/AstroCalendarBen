@@ -2371,6 +2371,19 @@
     if (!stato.attivo || !base || !focale) return;
     ricordaPosa(base, focale);
     if (!stato.acceso) { stato.motivo = 'spento'; return; }
+    // Il cielo calcolato di un altro luogo o di un'altra ora non è quello che
+    // la fotocamera inquadra: confrontarli darebbe una «correzione» che
+    // storce tutto il riferimento (`skyQuiEAdesso`, app.js). Si aspetta.
+    if (typeof skyQuiEAdesso === 'function' && !skyQuiEAdesso()) {
+      if (stato.motivo !== 'altrove') {
+        stato.motivo = 'altrove';
+        stato.agganciato = false;
+        stato.segni = [];
+        stato.scena = null;
+        visAggiornaHud();
+      }
+      return;
+    }
     const ora = performance.now();
     stato.frameDetection = (stato.frameDetection || 0) + 1;
     if (stato.frameDetection < VIS_FRAME_PASSO || ora < stato.prossimoGiro) return;
@@ -2445,6 +2458,7 @@
     if (stato.aereiAgganciati && stato.motivo === 'aerei') {
       return { classe: 'agganciato', testo: T('aerei', { n: stato.aereiAgganciati }) };
     }
+    if (stato.motivo === 'altrove') return { classe: 'cerca', testo: T('altrove') };
     if (stato.motivo === 'movimento') return { classe: 'cerca', testo: T('movimento') };
     if (stato.motivo === 'niente-immagine') return { classe: 'cerca', testo: T('attesa') };
     if (stato.motivo === 'sotto-orizzonte') return { classe: 'cerca', testo: T('sottoOrizzonte') };
