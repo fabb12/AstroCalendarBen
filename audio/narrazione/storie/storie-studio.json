@@ -1323,6 +1323,14 @@
           "umore": "happy",
           "scena": 14,
           "durata": 9000
+        },
+        {
+          "n": 15,
+          "chi": "Ganymede",
+          "testo": "Sono Ganimede sono o o o o o o un pianeta",
+          "umore": "happy",
+          "scena": 15,
+          "durata": 6000
         }
       ]
     },

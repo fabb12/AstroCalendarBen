@@ -69,10 +69,10 @@
                 "durata": 3280,
                 "impronta": "79547e04",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "0adbfc90a9f0c58805a1e6e47f40d811620cb780",
                 "voce": "VMlYiRq9P0SwdJ2jooK2",
-                "tag": ""
+                "tag": "",
+                "sha": "0adbfc90a9f0c58805a1e6e47f40d811620cb780",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -241,10 +241,10 @@
                 "durata": 5120,
                 "impronta": "479afcde",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "feb732383a3fb3c85c6b494eba5911a125657f90",
                 "voce": "VmkgMjrk2aUePsTZ907X",
-                "tag": "[determined] [whispers]"
+                "tag": "[determined] [whispers]",
+                "sha": "feb732383a3fb3c85c6b494eba5911a125657f90",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -252,7 +252,19 @@
                   "tipo": "umore",
                   "chi": "Ganymede",
                   "quando": "tutto",
-                  "umore": "annoyed"
+                  "umore": "annoyed",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
               ],
               "copione": null,
@@ -295,10 +307,10 @@
                 "durata": 1520,
                 "impronta": "006a5e8a",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "c3d2a3d57bd4af29e1ccfdfcb88aa315a3fe2351",
                 "voce": "aQ9s2C5T9TIPvAFtHWuA",
-                "tag": "[annoyed]"
+                "tag": "[annoyed]",
+                "sha": "c3d2a3d57bd4af29e1ccfdfcb88aa315a3fe2351",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -308,7 +320,16 @@
                   "quando": "tutto",
                   "verso": "Mercury",
                   "lato": "front",
-                  "percorso": "straight"
+                  "percorso": "straight",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
               ],
               "copione": null,
@@ -352,10 +373,10 @@
                 "durata": 3200,
                 "impronta": "ad910ff3",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "4ce0e94a36f0c0a9388d360abadb433c976546ab",
                 "voce": "aQ9s2C5T9TIPvAFtHWuA",
-                "tag": "[curious]"
+                "tag": "[curious]",
+                "sha": "4ce0e94a36f0c0a9388d360abadb433c976546ab",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -365,7 +386,16 @@
                   "quando": "tutto",
                   "verso": "Mercury",
                   "lato": "auto",
-                  "percorso": "arc"
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
               ],
               "copione": null,
@@ -409,10 +439,10 @@
                 "durata": 4320,
                 "impronta": "d18bdd04",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "5bec8b6500a4544755cd0d0317ccfe012cac168b",
                 "voce": "kmhW33fhWZsJVeOyIdMz",
-                "tag": "[happy]"
+                "tag": "[happy]",
+                "sha": "5bec8b6500a4544755cd0d0317ccfe012cac168b",
+                "est": "mp3"
               },
               "azioni": [],
               "copione": null,
@@ -456,10 +486,10 @@
                 "durata": 4800,
                 "impronta": "815c48d0",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "8ed7979c5083e5700083f6c52e2638de4f0d7990",
                 "voce": "aQ9s2C5T9TIPvAFtHWuA",
-                "tag": "[embarrassed]"
+                "tag": "[embarrassed]",
+                "sha": "8ed7979c5083e5700083f6c52e2638de4f0d7990",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -467,14 +497,38 @@
                   "tipo": "umore",
                   "chi": "Ganymede",
                   "quando": "inizio",
-                  "umore": "embarrassed"
+                  "umore": "embarrassed",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "ae21dg9b",
                   "tipo": "umore",
                   "chi": "Ganymede",
                   "quando": "meta",
-                  "umore": "thinking"
+                  "umore": "thinking",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
               ],
               "copione": null,
@@ -518,10 +572,10 @@
                 "durata": 2560,
                 "impronta": "88e9ef44",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "fdc5090e295ca1677830bdd9ed8512a513e2c0e4",
                 "voce": "kmhW33fhWZsJVeOyIdMz",
-                "tag": "[happy] [hesitates]"
+                "tag": "[happy] [hesitates]",
+                "sha": "fdc5090e295ca1677830bdd9ed8512a513e2c0e4",
+                "est": "mp3"
               },
               "azioni": [],
               "copione": null,
@@ -565,10 +619,10 @@
                 "durata": 1840,
                 "impronta": "3bff6cdc",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "346d0e918ca3767af81a73b3dcb4c7b26e1cea82",
                 "voce": "aQ9s2C5T9TIPvAFtHWuA",
-                "tag": "[curious]"
+                "tag": "[curious]",
+                "sha": "346d0e918ca3767af81a73b3dcb4c7b26e1cea82",
+                "est": "mp3"
               },
               "azioni": [],
               "copione": null,
@@ -612,10 +666,10 @@
                 "durata": 3280,
                 "impronta": "88247201",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "04c7d5851cd8753ce400f4666a33edc66d636121",
                 "voce": "kmhW33fhWZsJVeOyIdMz",
-                "tag": "[happy]"
+                "tag": "[happy]",
+                "sha": "04c7d5851cd8753ce400f4666a33edc66d636121",
+                "est": "mp3"
               },
               "azioni": [
                 {
@@ -623,7 +677,19 @@
                   "tipo": "guarda",
                   "chi": "Mercury",
                   "quando": "tutto",
-                  "oggetto": "viewer"
+                  "oggetto": "viewer",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
               ],
               "copione": null,
@@ -667,10 +733,10 @@
                 "durata": 1600,
                 "impronta": "75be6697",
                 "nome": "elevenlabs.mp3",
-                "est": "mp3",
-                "sha": "b060d2a84fcfebdbbe5b9b83a00631ffbb1da4c5",
                 "voce": "aQ9s2C5T9TIPvAFtHWuA",
-                "tag": "[in awe]"
+                "tag": "[in awe]",
+                "sha": "b060d2a84fcfebdbbe5b9b83a00631ffbb1da4c5",
+                "est": "mp3"
               },
               "azioni": [],
               "copione": null,
@@ -717,14 +783,38 @@
                   "tipo": "umore",
                   "chi": "Mercury",
                   "quando": "inizio",
-                  "umore": "neutral"
+                  "umore": "neutral",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "ady36tp8",
                   "tipo": "umore",
                   "chi": "Mercury",
                   "quando": "meta",
-                  "umore": "confused"
+                  "umore": "confused",
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 },
                 {
                   "id": "aukg9guj",
@@ -733,7 +823,16 @@
                   "quando": "inizio",
                   "verso": "right",
                   "lato": "auto",
-                  "percorso": "arc"
+                  "percorso": "arc",
+                  "animazione": "jump",
+                  "volte": 0,
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
               ],
               "copione": null,
@@ -778,9 +877,58 @@
                   "chi": "Ganymede",
                   "quando": "inizio",
                   "animazione": "bounce",
-                  "volte": 0
+                  "volte": 0,
+                  "verso": "",
+                  "lato": "auto",
+                  "percorso": "arc",
+                  "scala": 1.6,
+                  "forma": "red_giant",
+                  "effetto": "sparkles",
+                  "dove": "",
+                  "grandezza": 1,
+                  "colore": "",
+                  "esatta": null
                 }
               ],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sxkmrojt",
+          "ambiente": "pianeta",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Ganymede",
+            "Jupiter",
+            "Sun",
+            "Mercury"
+          ],
+          "momenti": [
+            {
+              "id": "my8bcyqd",
+              "chi": "Ganymede",
+              "testo": "Sono Ganimede sono o o o o o o un pianeta",
+              "umore": "happy",
+              "tono": [],
+              "durata": 0,
+              "voce": 15,
+              "audio": null,
+              "azioni": [],
               "copione": null,
               "parla": null
             }
@@ -792,8 +940,8 @@
       ],
       "demoChiave": "utente-mvb9qhzo-jxh26hslfnt",
       "voceChiave": "studio_la_rivoluzione_di_ganimede_e_f",
-      "voceProssima": 15,
-      "aggiornato": 1792316108036,
+      "voceProssima": 16,
+      "aggiornato": 1792646898571,
       "lingua": "it",
       "musica": null,
       "voci": {
