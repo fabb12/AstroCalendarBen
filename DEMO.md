@@ -191,7 +191,17 @@ Sopra ai tondi c'è la **cronologia** (v399): una pista divisa in scene, ognuna
 larga quanto dura, che si riempie col racconto, con «Scena n di N» e il tempo
 fatto sul totale. Toccandola si salta in quel punto (`motore.vaiAScena` con la
 frazione di scena; in pausa si riparte); da tastiera le frecce passano alla
-scena prima o dopo. Si ridisegna solo mentre i comandi sono a schermo, e coi
+scena prima o dopo. **Dalla v515 il pallino si trascina** (mouse o dito,
+`setPointerCapture`, `touch-action: none`): mentre lo si tiene la pista mostra
+il punto d'arrivo (pallino, riempimento, tempo) e il racconto continua dov'era;
+il salto si fa una volta sola, lasciando. Prima c'era solo il `click`. E un
+salto **rimette luogo e data** delle scene saltate (`Motore.allestisci`: i
+comandi con `allestisce: true` — `set_location`, `set_date`, `date_range`,
+`timelapse`, `simulate_aurora` — creati, portati a 1 e chiusi, senza voce né
+camera): saltando dal lancio all'ultima scena della Voyager la scena si apriva
+nel 1977, `point_view { probe }` non trovava la sonda e la demo si fermava con
+un errore (ora `point_view` senza sonda lascia anche lo sguardo dov'è). Prova
+`scripts/prova-demo-cronologia.js` (tutte le demo). Si ridisegna solo mentre i comandi sono a schermo, e coi
 comandi visibili la fascia dei sottotitoli sale sopra al pannello. Il
 tasto Pausa ha le due barre, diventa il triangolo di Riprendi con
 `aria-pressed="true"`: prima l'icona sostituita perdeva la sua misura e non

@@ -236,6 +236,7 @@
   }
 
   registro.timelapse = {
+    allestisce: true,   // il salto di scena lo rifà (`Motore.allestisci`)
     verifica(p) { campi(p, ['start', 'end']); minuti(p.start); minuti(p.end); },
     crea(p) {
       const { inizio, fine } = tempiCivili(p);
@@ -275,6 +276,7 @@
     return d;
   }
   registro.set_date = {
+    allestisce: true,
     verifica(p) { if (p.tonight === undefined) dataISO(p); else { campi(p, ['tonight']); minuti(p.tonight); } },
     crea(p) { istante(+dataDemo(p)); }
   };
@@ -290,6 +292,7 @@
     return { a: +a, b: +b };
   }
   registro.date_range = {
+    allestisce: true,
     verifica: intervalloDate,
     crea(p) {
       const { a, b } = intervalloDate(p);
@@ -299,10 +302,12 @@
     }
   };
   registro.set_location = {
+    allestisce: true,
     verifica: luogoDemo,
     crea(p) { sky.luogoVista = luogoDemo(p); skyAggiornaOsservatore(); }
   };
   registro.simulate_aurora = {
+    allestisce: true,
     verifica(p) { campi(p, ['kp']); richiedi(numero(p.kp, 0, 9), err('kp')); },
     crea(p) {
       richiedi(typeof aurImpostaKpSimulato === 'function', err('auroreAssenti'));
@@ -328,7 +333,9 @@
       let az = p.az, alt = p.alt;
       if (p.probe !== undefined) {
         const s = typeof skySondaInCielo === 'function' ? skySondaInCielo(p.probe) : null;
-        richiedi(s, err('sonde'));
+        // Senza la sonda in cielo (una data prima del lancio) lo sguardo
+        // resta dov'è: un puntamento mancato non vale la fine della demo
+        if (!s) return {};
         az = s.az; alt = Math.max(15, s.alt + (p.alt || 0));
       }
       sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
@@ -2528,6 +2535,7 @@
   let ultimoUsoComandi = 0;
   const usaComandi = () => { ultimoUsoComandi = Date.now(); };
   const trattenuti = () => {
+    if (trascina) return true;   // il pallino in mano
     try { return !!pannello.querySelector(':focus-visible'); } catch (_) { return false; }
   };
   function nascondiComandi() {
@@ -2577,6 +2585,12 @@
   pista.tabIndex = 0;
   cronologia.append(cronoTesta, pista);
   pannello.append(cronologia);
+  // Il pallino che si afferra: sta sopra ai pezzi, al punto del racconto
+  // (o, trascinando, al punto dove si andrà).
+  const pomello = document.createElement('span');
+  pomello.className = 'demo-cronologia-pomello';
+  pomello.setAttribute('aria-hidden', 'true');
+  pista.append(pomello);
   let cronoChiave = '', cronoRaf = null;
   const minSec = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   function durateScene() { return motore.demo ? motore.demo.scene.map(x => x.durata) : []; }
@@ -2586,7 +2600,7 @@
     if (chiave === cronoChiave) return;
     cronoChiave = chiave;
     const tot = durate.reduce((a, b) => a + b, 0) || 1;
-    pista.replaceChildren(...durate.map((d, i) => {
+    pista.replaceChildren(pomello, ...durate.map((d, i) => {
       const pezzo = document.createElement('span');
       pezzo.className = 'demo-cronologia-pezzo';
       pezzo.style.flexGrow = String(d / tot);
@@ -2601,10 +2615,16 @@
     if (!inCorso() || !motore.demo) return;
     costruisciPista();
     const durate = durateScene(), tot = durate.reduce((a, b) => a + b, 0);
-    const i = motore.inIntro ? 0 : Math.min(motore.indice || 0, durate.length - 1);
-    const qui = motore.inIntro ? 0 : Math.min(durate[i], Math.max(0, motore.trascorso || 0));
+    // Trascinando si mostra il punto dove si andrà, non quello del racconto
+    const anteprima = trascina ? scenaDellaFrazione(trascina.f) : null;
+    const i = anteprima ? anteprima.i : motore.inIntro ? 0 : Math.min(motore.indice || 0, durate.length - 1);
+    // `tempoDemo` conta anche il tempo dall'ultimo fotogramma e si ferma a
+    // fine scena mentre la voce finisce di parlare
+    const qui = anteprima ? anteprima.u * durate[i] : motore.inIntro ? 0
+      : Math.min(durate[i], Math.max(0, motore.tempoDemo() - durate.slice(0, i).reduce((a, b) => a + b, 0)));
     const fatto = durate.slice(0, i).reduce((a, b) => a + b, 0) + qui;
-    Array.from(pista.children).forEach((pezzo, k) => {
+    pomello.style.left = (tot ? 100 * fatto / tot : 0).toFixed(3) + '%';
+    pista.querySelectorAll('.demo-cronologia-pezzo').forEach((pezzo, k) => {
       const f = k < i ? 1 : k > i ? 0 : qui / durate[i];
       pezzo.firstChild.style.transform = 'scaleX(' + f.toFixed(4) + ')';
       pezzo.classList.toggle('attuale', k === i);
@@ -2626,21 +2646,71 @@
   // Salta al punto della pista: la frazione del tempo totale diventa una
   // scena e una frazione di scena. In pausa si riparte: chi sceglie un punto
   // vuole vederlo.
-  function saltaA(frazione) {
+  function scenaDellaFrazione(frazione) {
     const durate = durateScene(), tot = durate.reduce((a, b) => a + b, 0);
-    if (!tot) return;
+    if (!tot) return null;
     let resto = Math.max(0, Math.min(0.999, frazione)) * tot, i = 0;
     while (i < durate.length - 1 && resto >= durate[i]) { resto -= durate[i]; i++; }
-    motore.vaiAScena(i, resto / durate[i]);
+    return { i, u: resto / durate[i], fatto: Math.max(0, Math.min(0.999, frazione)) * tot, tot };
+  }
+  function saltaA(frazione) {
+    const punto = scenaDellaFrazione(frazione);
+    if (!punto || !inCorso()) return;
+    motore.vaiAScena(punto.i, punto.u);
     if (motore.stato === 'pausa') motore.riprendi();
     aggiornaCronologia();
   }
-  pista.addEventListener('click', e => {
-    e.stopPropagation();
+  // Il trascinamento del pallino (v515). Fino alla v514 la pista ascoltava
+  // solo il `click`: trascinando non succedeva niente (sul telefono il
+  // browser si prendeva il dito per scorrere, `touch-action: manipulation`),
+  // e lasciando il dito altrove non arrivava nessun clic. Ora il dito o il
+  // mouse vengono catturati (`setPointerCapture`), la pista mostra dove si
+  // andrà (pallino, riempimento e tempo) e il salto si fa **una volta sola**,
+  // quando si lascia: saltare a ogni movimento riaprirebbe decine di scene,
+  // con le loro voci, in un secondo. Durante il trascinamento il racconto
+  // continua dov'era; i comandi non si ritirano.
+  let trascina = null;
+  const frazioneDi = x => {
     const r = pista.getBoundingClientRect();
-    if (r.width > 0) saltaA((e.clientX - r.left) / r.width);
+    return r.width > 0 ? Math.max(0, Math.min(1, (x - r.left) / r.width)) : null;
+  };
+  pista.addEventListener('pointerdown', e => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.stopPropagation(); e.preventDefault();
+    if (!inCorso()) return;
+    const f = frazioneDi(e.clientX);
+    if (f === null) return;
+    trascina = { id: e.pointerId, f };
+    try { pista.setPointerCapture(e.pointerId); } catch (_) { /* senza cattura vale lo stesso */ }
+    pista.classList.add('trascina');
+    try { pista.focus({ preventScroll: true }); } catch (_) { /* niente */ }
     mostraComandi();
+    aggiornaCronologia();
   });
+  pista.addEventListener('pointermove', e => {
+    if (!trascina || e.pointerId !== trascina.id) return;
+    const f = frazioneDi(e.clientX);
+    if (f !== null) trascina.f = f;
+    usaComandi();
+    aggiornaCronologia();
+  });
+  function lasciaPista(e, salta) {
+    if (!trascina || e.pointerId !== trascina.id) return;
+    const f = frazioneDi(e.clientX);
+    const fine = salta && f !== null ? f : trascina.f;
+    trascina = null;
+    pista.classList.remove('trascina');
+    try { if (pista.hasPointerCapture(e.pointerId)) pista.releasePointerCapture(e.pointerId); } catch (_) { /* niente */ }
+    saltaA(fine);
+    mostraComandi();
+  }
+  pista.addEventListener('pointerup', e => { e.stopPropagation(); lasciaPista(e, true); });
+  // Un dito portato via dal browser (una notifica, un gesto di sistema)
+  // salta comunque all'ultimo punto mostrato: è lì che la persona guardava.
+  pista.addEventListener('pointercancel', e => lasciaPista(e, false));
+  pista.addEventListener('lostpointercapture', e => lasciaPista(e, false));
+  // Il clic che segue il `pointerup` non salta una seconda volta.
+  pista.addEventListener('click', e => e.stopPropagation());
   pista.addEventListener('keydown', e => {
     const durate = durateScene();
     if (!durate.length || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;

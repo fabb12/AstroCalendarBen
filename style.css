@@ -12450,9 +12450,19 @@ body .demo-controlli .demo-tasto[aria-pressed="true"] { background:rgba(76,141,2
   font-size:12px; line-height:1.2; font-variant-numeric:tabular-nums; padding:0 2px;
 }
 .demo-cronologia-pista {
-  display:flex; gap:2px; height:14px; align-items:center; cursor:pointer; touch-action:manipulation;
+  position:relative; display:flex; gap:2px; height:22px; align-items:center; cursor:pointer;
+  /* il dito trascina il pallino: il browser non deve prenderselo per scorrere */
+  touch-action:none; user-select:none; -webkit-user-select:none;
   border-radius:7px; outline:none;
 }
+.demo-cronologia-pista.trascina { cursor:grabbing; }
+.demo-cronologia-pista.trascina .demo-cronologia-pezzo { height:9px; }
+.demo-cronologia-pomello {
+  position:absolute; top:50%; left:0; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%;
+  background:#fbbf24; box-shadow:0 0 0 2px rgba(15,23,42,.85); pointer-events:none; z-index:1;
+  transition:transform .12s ease;
+}
+.demo-cronologia-pista.trascina .demo-cronologia-pomello { transform:scale(1.25); }
 .demo-cronologia-pista:focus-visible { outline:2px solid #fff; outline-offset:2px; }
 .demo-cronologia-pezzo {
   flex:1 1 0; min-width:2px; height:6px; border-radius:3px; overflow:hidden;

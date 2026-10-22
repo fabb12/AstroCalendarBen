@@ -485,6 +485,7 @@
         // sopra alla scena in cui si è saltati.
         if (this.inIntro) this.chiudiIntro(false);
         this.esci();
+        this.allestisci(i);
         this.indice = i; this.trascorso = 0; this.ultimo = this.ora();
         this.entra();
         if (u > 0) { this.trascorso = u * this.demo.scene[i].durata; this.aggiorna(u); }
@@ -496,6 +497,29 @@
         // partiva, e il disegno restava fermo per sempre.
         if (this.stato === 'attivo' && this.raf === null) this.programma();
       } catch (e) { this.fallisci(e); }
+    }
+    // Il luogo e la data che le scene prima di `indice` avrebbero lasciato
+    // (v515). Saltando con la barra della demo le scene di mezzo non si
+    // eseguono, e chi arrivava all'ultima scena della Voyager partendo dal
+    // lancio la apriva nel 1977 invece che «stasera»: `point_view { probe }`
+    // non trovava la sonda in cielo e la demo si fermava con un errore. Ora
+    // si rifanno, in ordine e senza voce né camera, solo i comandi che
+    // dichiarano `allestisce` (luogo, data, aurora simulata): creati, portati
+    // a fine scena e chiusi. Vale anche all'indietro, perché la scena dopo
+    // può aver cambiato luogo e data. Un loro guasto non ferma il salto.
+    allestisci(indice) {
+      const scene = this.demo.scene;
+      for (let k = 0; k < indice && k < scene.length; k++) {
+        for (const a of scene[k].azioni) {
+          const comando = this.registro[a.comando];
+          if (!comando || !comando.allestisce) continue;
+          try {
+            const e = comando.crea(a.parametri, this.contesto, scene[k]) || {};
+            if (e.aggiorna) e.aggiorna(1);
+            if (e.chiudi) e.chiudi();
+          } catch (_) { /* la scena d'arrivo rimette il suo */ }
+        }
+      }
     }
     // Il tempo del racconto, in ms dall'inizio della prima scena: le scene
     // già finite più quanto è passato in questa (fermo in pausa, zero
