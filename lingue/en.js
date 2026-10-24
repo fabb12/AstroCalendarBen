@@ -111,6 +111,7 @@ window.ASTRO_DIZIONARI['en'] = {
     "demo.err.archivio": "Invalid demo archive: export a copy of your data before restoring it.",
     "demo.err.solaLettura": "This built-in demo is read-only: duplicate it.",
     "demo.err.nonTrovata": "User demo not found.",
+    "demo.err.spazio": "Browser storage is full: the demo was not saved. Delete some demos or stories you no longer use and try again.",
     "demo.err.parametroSconosciuto": "Unknown parameter: {nome}",
     "demo.err.orario": "Time expected as HH:MM",
     "demo.err.orarioIntervallo": "Time out of range",

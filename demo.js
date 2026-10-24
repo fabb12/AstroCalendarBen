@@ -2869,7 +2869,9 @@
   });
   window.AstroDemo = {
     script, valida, libreria: AstroDemoLibreria.crea({
-      getItem: k => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v)
+      getItem: k => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v),
+      // Spazio finito: si butta una memoria di comodo e si riprova (app.js)
+      libera: k => typeof astroLiberaSpazio === 'function' && astroLiberaSpazio(k)
     }, predefiniti, valida), avvia, pausa: () => motore.pausa(), riprendi: () => motore.riprendi(),
     ferma: () => motore.ferma(), vaiAScena: (i, u) => motore.vaiAScena(i, u), evidenza: id => evidenze.get(id) || 1,
     get stato() { return motore.stato; },
