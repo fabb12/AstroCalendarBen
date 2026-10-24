@@ -5539,7 +5539,15 @@
               "tono": [],
               "durata": 6,
               "voce": 13,
-              "audio": null,
+              "audio": {
+                "durata": 4880,
+                "impronta": "3892a546",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "018a62d036fc7cf3da14b957a7cd1ec3c94e7e56",
+                "voce": "VmkgMjrk2aUePsTZ907X",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7956,7 +7964,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873477348,
+      "aggiornato": 1792873517290,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -8013,6 +8021,12 @@
           "nome": "Vale- Italiana, calm & friendly",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/fd2883086e854b22807b3ea5f6508021/voices/ZPImQHFNyEPRDeECS4MX/f64136e0-1140-4797-9695-c1eacb2e70df.mp3",
           "genere": "f"
+        },
+        "Saturn": {
+          "id": "VmkgMjrk2aUePsTZ907X",
+          "nome": "Roberto Tobia - Gentle",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/2722e4699648415aa40653b053f13ce0/voices/VmkgMjrk2aUePsTZ907X/490413e6-50f8-4c11-851b-89b2a70840d3.mp3",
+          "genere": "m"
         }
       },
       "domanda": {
