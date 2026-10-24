@@ -583,12 +583,19 @@
   // muove soltanto l'occhio.
   // ------------------------------------------------------------------
   const FUOCHI_VICINO = ['Earth', 'Moon', 'Earth-Moon', 'Eclipse Shadow'];
-  const FUOCHI_SISTEMA = ['Sun', 'Earth', 'ISS', 'Voyager 1', 'Voyager 2', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+  /* I pianeti nani (v520). In «Cosa è la gravità?» Sedna parla sei volte, e
+   * a 80 e più UA dal Sole nessuna camera la inquadrava: si sentiva la voce,
+   * e sullo schermo c'erano la Terra e Giove. Ora la camera ci gira attorno
+   * come attorno a un gigante (`sol.perno` sul suo corpo di `sol.mondi`): la
+   * base mette il Sole sul bordo del quadro, e si vede quanto è lontana. */
+  const FUOCHI_NANI = ['Ceres', 'Pluto', 'Orcus', 'Haumea', 'Quaoar', 'Makemake', 'Gonggong', 'Eris', 'Sedna'];
+  const FUOCHI_SISTEMA = ['Sun', 'Earth', 'ISS', 'Voyager 1', 'Voyager 2', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', ...FUOCHI_NANI];
   // Le sonde e i giganti sono i fuochi del racconto delle Voyager: la camera
   // ci gira attorno col perno (`sol.perno`), e da vicino — un flyby, il
   // modellino — lo zoom va molto oltre quello di una vista d'insieme.
   const FUOCHI_LONTANI = { 'Voyager 1': 'voyager1', 'Voyager 2': 'voyager2',
-    Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune' };
+    Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune',
+    ...Object.fromEntries(FUOCHI_NANI.map(id => [id, id])) };
   const PIANETI_GIGANTI = ['Jupiter', 'Saturn', 'Uranus', 'Neptune'];
   // `close_up: show` (v442): lo zoom a cui il pianeta gigante su cui si gira è
   // grosso come la Terra quando ci si entra (`solZoomSullaTerra`). Di serie
@@ -1469,9 +1476,25 @@
     // storie divide il viaggio della camera fra i momenti) all'universo
     if (typeof v === 'number') { richiedi(numero(v, 1e-6, 1e17), err('scalaCosmica')); return Math.log10(v); }
     richiedi(typeof v === 'string' && typeof cosmLDi === 'function', err('scalaCosmica'));
-    const L = cosmLDi(v);
+    let L = cosmLDi(v);
+    // v520: anche un luogo dell'universo (`alpha_centauri`, `galactic_center`),
+    // alla scala a cui lo inquadra lo Studio
+    if (!Number.isFinite(L) && typeof cosmLuogo === 'function') { const l = cosmLuogo(v); L = l ? l.L : NaN; }
     richiedi(Number.isFinite(L), err('scalaCosmica'));
     return L;
+  }
+  /* Il centro della carta su un luogo (v520): `center: 'alpha_centauri'`.
+   * Chi parla da lontano nella scala cosmica stava a sei decimi dal centro,
+   * con la carta centrata sul Sole: in «Cosa è la gravità?» Sagittario A*
+   * finiva sul bordo, dietro agli adesivi dei pianeti. `center_at` lo mette a
+   * sinistra o a destra, per lasciare il resto a una spiegazione. */
+  const COSMO_CENTRO_X = { left: 0.27, center: 0.5, right: 0.73 };
+  function luogoCentro(v) {
+    if (v === undefined || v === 'sun') return null;
+    richiedi(typeof v === 'string' && typeof cosmLuogo === 'function', err('scalaCosmica'));
+    const l = cosmLuogo(v);
+    richiedi(!!l && !!l.v, err('scalaCosmica'));
+    return l;
   }
   function strutturaCosmica(v) {
     richiedi(typeof v === 'string' && typeof cosmStrutture === 'function', err('scalaCosmica'));
@@ -1481,8 +1504,9 @@
   }
   registro.cosmic_scale = {
     verifica(p) {
-      campi(p, ['from', 'to', 'ease', 'focus', 'zoom_start', 'zoom_end', 'center', 'orbit', 'elev_from', 'elev_to']);
-      if (p.center !== undefined) richiedi(p.center === 'sun', err('scalaCosmica'));
+      campi(p, ['from', 'to', 'ease', 'focus', 'zoom_start', 'zoom_end', 'center', 'center_at', 'orbit', 'elev_from', 'elev_to']);
+      if (p.center !== undefined) luogoCentro(p.center);
+      richiedi(p.center_at === undefined || (p.center !== undefined && COSMO_CENTRO_X[p.center_at] !== undefined), err('scalaCosmica'));
       scalaCosmica(p.from === undefined ? 'voyager' : p.from);
       scalaCosmica(p.to === undefined ? (p.from === undefined ? 'voyager' : p.from) : p.to);
       if (p.ease !== undefined) richiedi(COSMO_FACILITA.includes(p.ease), err('andaturaCosmica'));
@@ -1499,6 +1523,10 @@
       const La = scalaCosmica(da), Lb = scalaCosmica(p.to === undefined ? da : p.to);
       const zs = p.zoom_start || 0, ze = p.zoom_end === undefined ? 1 : p.zoom_end;
       const fuoco = p.focus !== undefined ? strutturaCosmica(p.focus).id : null;
+      // il Sole spostato di lato (`center: sun, center_at: left`) è un luogo
+      // anche lui: l'origine della carta
+      const centro = p.center === 'sun' && p.center_at !== undefined ? { v: { x: 0, y: 0, z: 0 } } : luogoCentro(p.center);
+      const centraSu = centro ? { v: centro.v, fx: COSMO_CENTRO_X[p.center_at || 'center'] } : undefined;
       // La camera parte da dove l'ha lasciata la scena di prima, se la scala
       // cosmica era già aperta: due scene di fila sono un volo solo. Con
       // `from: arrival` (v404) la scena prima era la vista 3D addosso alla
@@ -1606,7 +1634,7 @@
         const manuale = !!(c && c.cameraManuale);
         const r = ridotto ? 1 : solVoloRampa(Math.max(0, Math.min(1, u)));
         cosmRegia({ L, anni: 0, baseMs: oggi, evidenza, manuale,
-          pan: manuale ? undefined : { x: 0, y: 0 }, centraSole: !manuale && p.center === 'sun',
+          pan: manuale ? undefined : { x: 0, y: 0 }, centraSole: !manuale && p.center === 'sun' && !centraSu, centraSu: manuale ? undefined : centraSu,
           az: manuale ? undefined : azBase + giro * r, elev: manuale ? undefined : ea + (eb - ea) * r });
       };
       aggiorna(0);

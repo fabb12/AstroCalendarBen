@@ -4480,6 +4480,89 @@ guardate in Chromium una spiegazione con Lovell, Fobos e Deimos attorno a
 Marte, Mimante e Iperione attorno a Saturno.
 
 
+### «Cosa è la gravità?»: chi parla si vede sempre, niente voli nel cosmo, tredici spiegazioni (v520)
+
+«Migliora la CosmoStoria "Cosa è la gravità?" mantenendo la stessa voce e lo
+stesso testo: migliora le animazioni, correggi lo scenario di ogni scena in
+modo da mostrare sempre chi parla; quando passa fra gli scenari della scala
+cosmica non fare l'effetto passaggio, mostra subito chi parla; quando spiega
+la gravità e gli altri concetti introduci animazioni chiare e belle; rendi
+tutto più cinematografico con i movimenti della camera.» La storia è quella
+dello Studio `p7jc37qd` in `storie-studio/storie.json` (49 battute, 44 con la
+voce ElevenLabs). Guardata battuta per battuta in Chromium
+(`scripts/giro-studio.js`), aveva tre difetti:
+
+- **Sedna parlava sei volte e non si vedeva quasi mai.** A 80 e più UA dal
+  Sole nessuna camera la inquadrava: sullo schermo restavano la Terra e
+  Giove (o un pianeta qualsiasi al centro).
+- **Alfa Centauri e Sagittario A\*** arrivavano con un volo lungo la scala
+  cosmica e restavano sul bordo o fuori dal quadro, mentre Terra, Giove,
+  Saturno, Sedna e la ISS si ammucchiavano come adesivi sul punto del Sole.
+- Le battute che cambiavano ambiente nello Studio non cambiavano niente: i
+  momenti tenevano i comandi della storia da cui erano stati duplicati
+  (`m.copione`, v461), che vincono sull'ambiente della scena.
+
+**Il motore** (tre cose nuove, generali):
+
+| Dove | Cosa |
+|---|---|
+| `camera_3d` (demo.js) | `focus` anche sui pianeti nani (`FUOCHI_NANI`: Cerere, Plutone, Orco, Haumea, Quaoar, Makemake, Gonggong, Eris, Sedna), come attorno a un gigante: perno sul corpo di `sol.mondi`, base col Sole sul bordo (si vede quanto è lontana), `zoom_from`/`zoom_to` fino a 30000 |
+| `cosmic_scale` (demo.js, `cosmRegia` in scala-cosmica.js) | `from`/`to` anche un luogo (`alpha_centauri`, `galactic_center`: la scala di `cosmLuogo`); `center` anche un luogo (la carta centrata lì, `centraSu`), e `center_at: left \| right` lo mette a 27% o 73% della larghezza (anche `center: sun`): così una scena della scala cosmica si apre già su chi parla, senza volo |
+| `effect` (storie-cosmiche.js) | `hold` (0,5–30 s): la scena aspetta l'effetto come una voce (`fineNarrazione`, `attende`), perché in una CosmoStoria la scena chiude appena la voce tace e una spiegazione su una battuta di cinque secondi spariva a metà; `until: scene`: l'effetto svanisce con la sua scena (una spiegazione con `duration: 60` restava sotto alle battute dopo, e la camera che stringeva su chi parlava la ingrandiva) |
+
+**Le tredici spiegazioni** (`STOR_SPIEGA_GRAVITA`, §6-ter-quater, scritte
+`storie.spiega.*`), nello stile di quelle di «Interstellar» e con il disegno
+dentro `cx ± 0,45 U`, così con `at: right` chi parla sta libero a sinistra:
+
+| Effetto | Battuta | Cosa succede |
+|---|---|---|
+| `explain_attraction` | il Sole: «la gravità è una forza attrattiva…» | due masse con le frecce uguali; la grande cresce e le frecce si allungano; la piccola si allontana del doppio e la forza scende a un quarto; poi le gira attorno |
+| `explain_orbit` | Saturno: «tenere noi pianeti in orbita» | senza gravità via dritto (il fantasma sulla tangente); la freccia verso il Sole; insieme, il giro; poi due pianeti in più, più svelti quelli vicini |
+| `explain_fabric` | Giove: «immaginati una griglia spaziale…» | il telo piatto, il Sole che ci cade e lo incurva, la Terra con la sua conca e la Luna che ci gira dentro (la domanda con cui comincia la storia), poi la Terra che gira nella conca del Sole |
+| `explain_mass` | Giove: massa, peso, volume | la scatola che si riempie di particelle; lo stesso blocco sulla bilancia della Terra e della Luna (un sesto); palloncino e biglia di ferro in pari sulla bilancia |
+| `explain_two_gravities` | Giove: «la classica di Newton e la moderna di Einstein» | la griglia che si piega e si divide in due: la mela che cade sulla Terra, il telo con la palla che gira |
+| `explain_newton` | Giove: «la legge di gravitazione universale, 1687» | la mela che cade e la Luna che «cade» attorno alla Terra, la formula, «ogni massa attira ogni massa» |
+| `explain_einstein` | Giove: «la relatività generale» | il telo che sprofonda, la luce di una stella che si piega, l'orologio vicino alla massa che va più piano |
+| `explain_compare` | Giove: «entrambe giuste…» | le due schede con le spunte (razzi, orbite / buchi neri, luce, GPS), «operativa» e «più profonda», «Newton è un caso semplice di Einstein» |
+| `explain_sedna` | Sedna: «la mia orbita dura più di 11.000 anni» | a scala vera: Nettuno un cerchietto di 30 UA, l'ellisse di Sedna da 76 a oltre 800 UA, lei che corre vicino al Sole e si trascina lontano (Keplero), gli anni che contano |
+| `explain_stone_age` | la Terra: «l'ultima volta… scheggiavano le pietre» | la linea del tempo da oggi a 11.400 anni fa, la città e, in fondo, chi scheggia la pietra accanto al fuoco; Sedna che passa |
+| `explain_rogue` | Sedna: «saremmo pianeti canaglia» | i fili della gravità fra il Sole e i pianeti; spenta, ognuno va via dritto sulla sua tangente, nel buio, e gela |
+| `explain_star_birth` | Alfa Centauri: «creati da me attraverso una nebulosa» | la nube che la gravità stringe, gira e si appiattisce in un disco, la stella che si accende, i pianeti che nascono dal disco |
+| `explain_galaxy_orbit` | Sagittario A\*: «il buco nero al centro della Via Lattea» | la Galassia a puntini, il buco nero con le stelle che gli sfrecciano attorno, il Sole e il suo giro di 230 milioni di anni |
+
+**La regia nuova** (`m.copione` di ogni momento; testi, voci, facce e azioni
+scritte da chi ha fatto la storia restano quelli, e le voci restano valide
+perché l'impronta del testo non cambia): una camera per battuta, sempre su
+chi parla e dove sta davvero. Terra e Luna nel banco, col giro che continua
+da una battuta all'altra e un'apertura che scende dall'alto; i primi piani nel
+Sistema Solare sul pianeta che parla (`close_up` per Giove e Saturno, la
+Terra col suo zoom, il Sole con Mercurio, Venere e la Terra); Sedna
+inquadrata a casa sua, con un carrello che parte largo (il Sistema Solare
+lontanissimo) e le arriva addosso; Alfa Centauri e Sagittario A\* sulla carta
+già centrata su di loro (Alfa Centauri accanto al Sole, che la riconosce);
+sulla carta solo chi ci vive. Le camere che girano (`story_camera { mode:
+orbit }`) dove chi parla si agita (la risata, «oh no!», «Wow!»). Nelle
+spiegazioni la camera è ferma (`wide`), chi parla scivola a sinistra
+(`character_move { to: left }`, come figurina, `size: badge`: il corpo 3D
+resterebbe sotto allo sfondo della spiegazione) o la carta lo mette a
+sinistra (il Sole, Alfa Centauri, Sagittario A\*), e la spiegazione sta a
+destra. L'ultima battuta della Luna chiude con la camera che si allontana.
+
+`scripts/giro-studio.js` gira una storia dello Studio dal repository (o un
+copione da file, `DSL=`) in Chromium e fotografa ogni battuta, con chi è
+disegnato e dove: è il modo di guardare che chi parla si veda.
+
+Prove: `prova-storie.js` (134, 2 nuove: la regia della storia — una camera
+per battuta, nessun volo nella scala cosmica, Sedna inquadrata, chi spiega da
+una parte, ogni spiegazione della gravità una volta, le voci ancora valide —
+e `hold`), `prova-i18n.js`, `controlla-i18n.js
+--patto`, `prova-demo.js`, `prova-storie-repo.js`; guardata intera in
+Chromium. `prova-demo-universo.js` (Andromeda nel quadro in 3 s invece che in
+uno: il contenitore lento) e `prova-storie-browser.js` (il sottotitolo del
+pilota) cadono uguali sul codice di prima. Non provato: un telefono vero (sullo
+schermo stretto la spiegazione prende tutta la larghezza e chi parla le sta
+sopra, come nelle «Interstellar»).
+
 ## Dettare le battute (v512)
 
 Nel momento aperto, accanto alla battuta, **Detta** avvia il riconoscimento
