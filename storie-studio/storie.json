@@ -6175,7 +6175,7 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
-          "camera": "auto",
+          "camera": "parla",
           "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
@@ -8044,7 +8044,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792874162944,
+      "aggiornato": 1792874341334,
       "lingua": "it",
       "musica": null,
       "voci": {
