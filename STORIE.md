@@ -1594,6 +1594,11 @@ Lo Studio parla con le API di ElevenLabs direttamente dal browser (§6c di
   (`/v1/voices/add/...`) perché l'API la possa usare. La scelta sta nel
   progetto (`voci`, va col repository) e diventa quella di serie per le
   storie nuove (`astrocal_storie_voci_pg_v1`).
+  Dalla v519 «Salva» mette nel progetto **tutte** le voci dell'elenco
+  (`studioFissaVoci`): anche quelle prese di serie o dal tasto «Voci
+  ElevenLabs» (`astrocal_voci_cast_v1`), che prima restavano sul dispositivo;
+  «Un'altra voce» aggiorna le storie che avevano quella di prima
+  (`studioCastCambiato`).
 - **Le battute**: accanto a «Carica la voce» e «Registra» c'è **«Genera»**
   (`generaVoce`): il testo va col tag della faccia del momento
   (`ELEVEN_TAG_UMORE`, gli stessi di `voci-storie.js`; un tag scritto a mano

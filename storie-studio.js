@@ -3701,6 +3701,46 @@
     try { archivio() && archivio().setItem(CHIAVE_VOCI_PG, JSON.stringify(serie)); } catch (_) { /* resta nel progetto */ }
     salvaPresto();
   }
+  /* v519: salvando una storia, l'elenco delle voci che si vede nello Studio
+   * entra tutto nel progetto. Prima ci stavano solo quelle scelte a mano
+   * per questa storia: le voci di serie (scelte per l'ultima storia) e
+   * quelle del tasto «Voci ElevenLabs» (`astrocal_voci_cast_v1`) restavano
+   * su questo dispositivo, e la storia salvata, riaperta altrove o dopo un
+   * cambio di voci di serie, tornava senza voci o con altre. Si fissano solo
+   * i personaggi che non ne hanno una loro; restituisce quante ne ha messe. */
+  function studioFissaVoci(p) {
+    if (!p) return 0;
+    const chi = new Set(p.cast || []);
+    for (const sc of p.scene || []) for (const m of sc.momenti || []) if (m && m.chi) chi.add(m.chi);
+    const voci = Object.assign({}, p.voci);
+    let messe = 0;
+    for (const id of chi) {
+      if (voci[id] || !/^[\w :.-]{1,40}$/.test(id)) continue;
+      const v = vociDiSerie()[id] || vociDelCast(id);
+      if (v) { voci[id] = v; messe++; }
+    }
+    if (messe) p.voci = studioPulisciVoci(voci);
+    return messe;
+  }
+  /* v519: «Un'altra voce» del tasto «Voci ElevenLabs» cambia la voce di un
+   * personaggio: le storie che avevano fissato quella di prima (sopra)
+   * prendono la nuova, se no la storia salvata resterebbe indietro. */
+  function studioCastCambiato(id, prima, dopo) {
+    if (!prima || !STUDIO_VOCE_ID.test(prima.id || '')) return 0;
+    const nuova = dopo ? studioPulisciVoce(dopo) : null;
+    let cambiate = 0;
+    const tutti = new Set(studio.progetti);
+    if (studio.progetto) tutti.add(studio.progetto);
+    for (const p of tutti) {
+      if (!p || !p.voci || !p.voci[id] || p.voci[id].id !== prima.id) continue;
+      p.voci = Object.assign({}, p.voci);
+      if (nuova) p.voci[id] = nuova; else delete p.voci[id];
+      p.aggiornato = studioPiuNuovo(p.aggiornato);
+      cambiate++;
+    }
+    if (cambiate) studioSalvaTutti(studio.progetti);
+    return cambiate;
+  }
   /* La faccia che il personaggio ha **mentre dice** la battuta (v449).
    * Prima a ElevenLabs andava solo la faccia scelta nel momento: una
    * battuta lasciata «di serie», o detta con la faccia rimasta da un
@@ -6282,6 +6322,8 @@
   function salvaDemo(p, ok) {
     try {
       const lib = radice.AstroDemo.libreria;
+      // v519: con la storia si salvano anche tutte le sue voci
+      if (studioFissaVoci(p)) p.aggiornato = studioPiuNuovo(p.aggiornato);
       const testo = studioCopione(p);
       let chiave = p.demoChiave;
       try { chiave = lib.salva(testo, chiave || undefined); }
@@ -6714,6 +6756,8 @@
     // v444: ElevenLabs (§6c) e i suoni da file
     testoPerVoce: studioTestoPerVoce, facciaParlata: studioFacciaParlata, tagVoce: studioTagVoce, firmaTag: studioFirmaTag, tonoCambiato: studioTonoCambiato, STUDIO_TONI,
     voceDaEleven: studioVoceDaEleven, filtraVoci: studioFiltraVoci, voceDi: studioVoceDi, voceDaRifare: studioVoceDaRifare,
+    // v519: le voci salvate con la storia, e il cambio di voce del tasto «Voci ElevenLabs»
+    fissaVoci: studioFissaVoci, castCambiato: studioCastCambiato,
     pulisciVoci: studioPulisciVoci, pulisciSuono: studioPulisciSuono, elevenImpostazioni: studioElevenImpostazioni,
     caricaSuono, caricaVoce, togliVoce, STUDIO_REPO_AUDIO_MAX,
     // v483: le voci fatte dalla scheda, la prova del token, le voci scaricate

@@ -737,9 +737,13 @@ function vfilmCastDi(id, lingua) {
 }
 function vfilmCastSalva(id, lingua, voce) {
   const tutto = vfilmCastTutto();
+  const prima = (tutto[lingua] || {})[id] || null;
   tutto[lingua] = Object.assign({}, tutto[lingua]);
   if (voce) tutto[lingua][id] = voce; else delete tutto[lingua][id];
   try { const a = vfilmArchivio(); if (a) a.setItem(VFILM_CHIAVE_CAST, JSON.stringify(tutto)); } catch (_) { /* resta per questa volta */ }
+  // v519: le storie dello Studio che avevano salvato la voce di prima prendono questa
+  const St = typeof window !== 'undefined' ? window.StudioStorie : null;
+  if (prima && St && typeof St.castCambiato === 'function') { try { St.castCambiato(id, prima, voce); } catch (_) { /* restano com'erano */ } }
 }
 
 /* Il carattere di una voce: le righe di `VFILM_CARATTERI`, se no quello che
