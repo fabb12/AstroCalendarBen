@@ -1247,6 +1247,12 @@
     'explain_co2', 'explain_cold', 'explain_far_side', 'explain_manual_burn', 'explain_power_up', 'explain_corridor', 'explain_heat_shield'];
   // v504: quelle di «Apollo 13» (le prove le separano da quelle di «Interstellar»)
   const STOR_SPIEGA_APOLLO = STOR_SPIEGA.filter(k => STOR_SPIEGA.indexOf(k) >= STOR_SPIEGA.indexOf('explain_saturn_v'));
+  /* v520: quelle di «Cosa è la gravità?» (§6-ter-quater), dopo quelle di
+   * «Apollo 13» e fuori dal suo elenco */
+  const STOR_SPIEGA_GRAVITA = ['explain_attraction', 'explain_orbit', 'explain_fabric', 'explain_mass', 'explain_two_gravities',
+    'explain_newton', 'explain_einstein', 'explain_compare', 'explain_sedna', 'explain_stone_age', 'explain_rogue',
+    'explain_star_birth', 'explain_galaxy_orbit'];
+  STOR_SPIEGA.push(...STOR_SPIEGA_GRAVITA);
   /* v504: le scene del film di «Apollo 13», disegnate come le spiegazioni
    * (stesse tinte, stessa camera viva) ma senza titolo e a tutto schermo:
    * il decollo, lo scoppio, il controllo missione, la cabina gelata
@@ -4272,7 +4278,9 @@
     const s = (t - ef.inizio) / ef.durata;
     if (!(s >= 0) || s > 1) return;
     // entra e se ne va in dissolvenza
-    const alfa = Math.min(1, s * ef.durata / 700) * Math.min(1, (1 - s) * ef.durata / 500);
+    // v520: e svanisce con la sua scena, se lo chiede (`until: scene`)
+    const alfa = Math.min(1, s * ef.durata / 700) * Math.min(1, (1 - s) * ef.durata / 500) *
+      (ef.via ? Math.max(0, 1 - (t - ef.via) / STOR_VIA_MS) : 1);
     if (!(alfa > 0.01)) return;
     const lato = Math.min(L, H), k = Math.max(0.2, ef.scala || 1);
     const avanti = ridotto ? 0 : liscio(s);
@@ -7269,6 +7277,600 @@
         for (let k = 0; k < 3; k++) { ctx.strokeStyle = rgba('#ffffff', 0.8 * (1 - u)); ctx.lineWidth = U * 0.004; ctx.beginPath(); ctx.ellipse(cx, cy + U * 0.03, U * (0.05 + u * 0.15 + k * 0.03), U * (0.012 + u * 0.03 + k * 0.008), 0, 0, Math.PI * 2); ctx.stroke(); }
       }
       kzCapsula(ctx, cx, cy, U * 0.04, Math.PI / 2 + (toccato ? Math.sin(c.t / 700) * 0.1 : 0));
+    }
+  });
+
+  // ===================================================================
+  // 6-ter-quater. «Cosa è la gravità?» (v520)
+  // ===================================================================
+
+  /* «Quando parla di gravità o spiega i vari concetti introduci delle
+   * animazioni chiare e belle, in modo da spiegare meglio i concetti
+   * discussi.» Le tredici spiegazioni della storia dello Studio «Cosa è la
+   * gravità?», una per ogni battuta che spiega: la forza che attira, l'orbita
+   * come caduta senza fine, il telo elastico (con la Luna nella conca della
+   * Terra: la domanda da cui parte la storia), massa, peso e volume, le due
+   * gravità di Newton ed Einstein, l'anno di Sedna, i pianeti canaglia, la
+   * nascita di un sistema solare, il cuore della Via Lattea. Stesse regole
+   * di quelle di «Interstellar» (§6-ter-bis): tinte piatte, il titolo, le
+   * etichette a molla, i numeri dei dizionari, e il disegno sta fra
+   * `cx ± 0,45 U`, così con `at: right` chi parla resta libero a sinistra. */
+  // Un'orbita ellittica tratteggiata o piena
+  function kzOrbita(ctx, x, y, rx, ry, colore, w, tratto) {
+    ctx.strokeStyle = colore; ctx.lineWidth = w;
+    if (tratto) ctx.setLineDash(tratto);
+    ctx.beginPath(); ctx.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, Math.PI * 2); ctx.stroke();
+    if (tratto) ctx.setLineDash([]);
+  }
+  // La scia di un corpo che gira: un arco che sfuma dietro di lui
+  function kzScia(ctx, punto, a, lungo, colore, w) {
+    for (let k = 0; k < 12; k++) {
+      const [x1, y1] = punto(a - lungo * k / 12), [x2, y2] = punto(a - lungo * (k + 1) / 12);
+      ctx.strokeStyle = rgba(colore, 0.55 * (1 - k / 12)); ctx.lineWidth = w; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+  }
+  // Una pallina rossa con la foglia (la mela di Newton)
+  function kzMela(ctx, x, y, r) {
+    kzPalla(ctx, x, y, r, KZ.corallo);
+    ctx.strokeStyle = '#6b3e1f'; ctx.lineWidth = Math.max(1, r * 0.18); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y - r * 0.8); ctx.lineTo(x + r * 0.15, y - r * 1.35); ctx.stroke();
+    ctx.fillStyle = KZ.verde; ctx.beginPath(); ctx.ellipse(x + r * 0.45, y - r * 1.2, r * 0.38, r * 0.18, -0.5, 0, Math.PI * 2); ctx.fill();
+  }
+  // Chi scheggia la pietra, accovacciato: la pelle, i capelli, la tunica
+  // a punte, il braccio che batte; i piedi in (x, y), alto h
+  function kzCavernicolo(ctx, x, y, h, t) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(h, h);
+    ctx.fillStyle = '#7a4a2a';
+    rettangolo(ctx, -0.16, -0.18, 0.12, 0.18, 0.05); ctx.fill(); rettangolo(ctx, 0.04, -0.18, 0.12, 0.18, 0.05); ctx.fill();
+    ctx.fillStyle = '#a0612f'; ctx.beginPath();
+    ctx.moveTo(-0.22, -0.16); ctx.lineTo(-0.16, -0.6); ctx.lineTo(0.16, -0.6); ctx.lineTo(0.22, -0.16);
+    for (let i = 0; i < 5; i++) ctx.lineTo(0.22 - (i + 0.5) * 0.088, i % 2 ? -0.16 : -0.08);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#d9a066'; ctx.beginPath(); ctx.arc(0, -0.74, 0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3b2314'; ctx.beginPath(); ctx.arc(0, -0.79, 0.16, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
+    ctx.fillStyle = KZ.scuro; ctx.beginPath(); ctx.arc(0.06, -0.74, 0.022, 0, Math.PI * 2); ctx.fill();
+    // il braccio che batte la pietra
+    const batte = Math.sin(t / 160) * 0.35;
+    ctx.save(); ctx.translate(0.12, -0.52); ctx.rotate(0.9 + batte);
+    ctx.fillStyle = '#d9a066'; rettangolo(ctx, -0.04, 0, 0.08, 0.32, 0.04); ctx.fill();
+    ctx.fillStyle = '#8b8fa3'; ctx.beginPath(); ctx.arc(0, 0.34, 0.06, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  }
+  // L'anomalia eccentrica di un'orbita (Keplero): quanto è avanti il corpo
+  function kzKeplero(M, e) {
+    let E = M;
+    for (let i = 0; i < 8; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    return E;
+  }
+
+  Object.assign(STOR_SPIEGA_DISEGNI, {
+    // ---- La gravità attira: più massa, più forza; più lontano, meno ----
+    explain_attraction(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'attrazione.titolo', f(0, 0.6));
+      const ax = cx - U * 0.2, ay = cy;
+      const massa = 1 + f(2.6, 3.6), lontano = 1 + f(4.6, 5.6);
+      const giro = f(6.6, 7.8);
+      const rA = U * 0.06 * Math.sqrt(massa) * kzMolla(f(0.2, 0.8));
+      // le onde della gravità che partono dalla massa
+      for (let i = 0; i < 4; i++) {
+        const q = ((c.t / 1000 + i * 0.6) % 2.4) / 2.4;
+        ctx.strokeStyle = rgba(KZ.giallo, 0.28 * (1 - q)); ctx.lineWidth = U * 0.004;
+        ctx.beginPath(); ctx.arc(ax, ay, rA + q * U * 0.32, 0, Math.PI * 2); ctx.stroke();
+      }
+      // il piccolo: prima sulla retta, poi in orbita
+      const dRetta = U * 0.34 * lontano;
+      const a = (tt - 6.6) * 1.3 - Math.PI * 0.05;
+      const ox = ax + Math.cos(a) * U * 0.3, oy = ay + Math.sin(a) * U * 0.15;
+      const bx = kzMix(ax + dRetta, ox, giro), by = kzMix(ay, oy, giro);
+      if (giro > 0.05) kzOrbita(ctx, ax, ay, U * 0.3, U * 0.15, rgba(KZ.bianco, 0.25 * giro), U * 0.003, [U * 0.01, U * 0.012]);
+      kzPalla(ctx, ax, ay, rA, KZ.giallo, { alone: KZ.arancio });
+      const rB = U * 0.03 * kzMolla(f(0.5, 1.1));
+      kzPalla(ctx, bx, by, rB, '#3b82f6', { macchie: KZ.verde });
+      // le due frecce: lunghe quanto la forza (massa / distanza²), uguali
+      const d = Math.hypot(bx - ax, by - ay) || 1, ux = (ax - bx) / d, uy = (ay - by) / d;
+      const forza = massa / Math.pow(d / (U * 0.34), 2);
+      const lung = Math.min(U * 0.2, U * 0.075 * forza) * f(1, 1.6);
+      kzFreccia(ctx, bx + ux * rB * 1.3, by + uy * rB * 1.3, bx + ux * (rB * 1.3 + lung), by + uy * (rB * 1.3 + lung), KZ.corallo, U * 0.011, 1);
+      kzFreccia(ctx, ax - ux * rA * 1.15, ay - uy * rA * 1.15, ax - ux * (rA * 1.15 + lung), ay - uy * (rA * 1.15 + lung), KZ.corallo, U * 0.011, 1);
+      kzEtichetta(c, 'attrazione.tira', cx + U * 0.02, cy - U * 0.2, f(1.2, 1.7) * (1 - giro), { colore: KZ.corallo });
+      kzEtichetta(c, 'attrazione.massa', ax, cy + U * 0.22, f(2.8, 3.3) * (1 - giro));
+      kzEtichetta(c, 'attrazione.distanza', cx + U * 0.22, cy + U * 0.13, f(4.8, 5.3) * (1 - giro));
+      kzEtichetta(c, 'attrazione.stabile', cx, cy + U * 0.3, f(7, 7.5), { colore: KZ.turchese, grande: true });
+    },
+    // ---- L'orbita è una caduta che non finisce mai ----------------------
+    explain_orbit(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'orbita.titolo', f(0, 0.6));
+      const sx = cx - U * 0.06, sy = cy + U * 0.02, k = 0.82;
+      kzPalla(ctx, sx, sy, U * 0.06 * kzMolla(f(0.1, 0.7)), KZ.giallo, { alone: KZ.arancio });
+      const R = U * 0.27;
+      const punto = r => a => [sx + Math.cos(a) * r, sy + Math.sin(a) * r * k];
+      const parte = 4;
+      const a = tt < parte ? -Math.PI / 2 : -Math.PI / 2 + (tt - parte) * 0.9;
+      const [px, py] = punto(R)(a);
+      // senza gravità: la strada dritta (tratteggiata) e il fantasma che se ne va
+      if (tt > 0.6) {
+        const sparisce = 1 - f(parte + 0.5, parte + 1.5);
+        ctx.save(); ctx.globalAlpha *= sparisce;
+        ctx.setLineDash([U * 0.012, U * 0.012]); ctx.strokeStyle = 'rgba(244, 246, 255, 0.55)'; ctx.lineWidth = U * 0.004;
+        ctx.beginPath(); ctx.moveTo(sx, sy - R * k); ctx.lineTo(sx + U * 0.5, sy - R * k); ctx.stroke(); ctx.setLineDash([]);
+        const q = ((tt - 0.6) % 1.8) / 1.8;
+        ctx.globalAlpha *= 0.45 * (1 - q);
+        kzPalla(ctx, sx + q * U * 0.48, sy - R * k, U * 0.025, '#3b82f6');
+        ctx.restore();
+        kzEtichetta(c, 'orbita.dritto', sx + U * 0.32, sy - R * k - U * 0.07, f(0.9, 1.4) * sparisce);
+      }
+      // la gravità tira verso il Sole
+      if (tt > 2) kzFreccia(ctx, px, py, kzMix(px, sx, 0.45), kzMix(py, sy, 0.45), KZ.corallo, U * 0.011, f(2.1, 2.7));
+      kzEtichetta(c, 'orbita.tira', sx + U * 0.2, sy + U * 0.14, f(2.4, 2.9) * (1 - f(parte + 2, parte + 3)), { colore: KZ.corallo });
+      // insieme: la curva, cioè il giro
+      if (tt > parte) {
+        kzOrbita(ctx, sx, sy, R, R * k, 'rgba(244, 246, 255, 0.22)', U * 0.003);
+        kzScia(ctx, punto(R), a, 1.2, KZ.ciano, U * 0.007);
+        const vx = -Math.sin(a), vy = Math.cos(a) * k, n = Math.hypot(vx, vy) || 1;
+        kzFreccia(ctx, px, py, px + vx / n * U * 0.11, py + vy / n * U * 0.11, KZ.verde, U * 0.009, f(parte, parte + 0.5));
+        kzEtichetta(c, 'orbita.curva', cx, cy + U * 0.33, f(parte + 0.6, parte + 1.1), { colore: KZ.turchese, grande: true });
+      }
+      kzPalla(ctx, px, py, U * 0.028 * kzMolla(f(0.3, 0.9)), '#3b82f6', { macchie: KZ.verde });
+      // più vicini al Sole, più veloci (la terza legge di Keplero)
+      const altri = f(parte + 3, parte + 4);
+      if (altri > 0) {
+        for (const [r, col] of [[U * 0.13, KZ.corallo], [U * 0.4, KZ.arancio]]) {
+          const om = 0.9 * Math.pow(R / r, 1.5), b = (tt - parte - 3) * om + r;
+          kzOrbita(ctx, sx, sy, r, r * k, rgba(KZ.bianco, 0.18 * altri), U * 0.003);
+          kzScia(ctx, punto(r), b, 1.1, col, U * 0.006);
+          const [qx, qy] = punto(r)(b);
+          kzPalla(ctx, qx, qy, U * 0.022 * altri, col);
+        }
+        kzEtichetta(c, 'orbita.veloci', sx + U * 0.3, sy + U * 0.2, f(parte + 3.5, parte + 4), { colore: KZ.arancio });
+      }
+    },
+    // ---- Lo spazio è un telo elastico: la Luna nella conca della Terra --
+    explain_fabric(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'telo.titolo', f(0, 0.6));
+      const cade = kzMolla(f(1.5, 2.4)), mSole = 0.075 * f(1.9, 3);
+      const cadeT = kzMolla(f(3.6, 4.4)), mTerra = 0.022 * f(3.9, 4.8);
+      // dalla fine: anche la Terra gira, nella conca del Sole
+      const ag = Math.max(0, tt - 7.6) * 0.45;
+      const su = -0.3, tu = su + Math.cos(ag) * 0.62, tv = Math.sin(ag) * 0.5;
+      const piano = kzPiano(c, cx, cy + U * 0.04, U * 0.46, U * 0.22, [{ u: su, v: 0, m: mSole, r: 0.12 }, { u: tu, v: tv, m: mTerra, r: 0.05 }]);
+      kzGriglia(c, piano, 'rgba(105, 224, 255, 0.45)', 20);
+      kzEtichetta(c, 'telo.piatto', cx, cy - U * 0.24, f(0.5, 1) * (1 - f(1.6, 2)));
+      const [sx, sy] = piano.proietta(su, 0);
+      const rS = U * 0.075;
+      ctx.save(); ctx.globalAlpha *= f(1.3, 1.7);
+      kzPalla(ctx, sx, sy - rS * 0.7 - (1 - cade) * U * 0.18, rS, KZ.giallo, { alone: KZ.arancio });
+      ctx.restore();
+      kzEtichetta(c, 'telo.massa', sx - U * 0.08, cy - U * 0.24, f(2.3, 2.8), { colore: KZ.arancio, a: [sx, sy - rS * 1.5] });
+      const [ex, ey] = piano.proietta(tu, tv);
+      const rT = U * 0.03;
+      ctx.save(); ctx.globalAlpha *= f(3.4, 3.8);
+      kzPalla(ctx, ex, ey - rT * 0.8 - (1 - cadeT) * U * 0.16, rT, '#3b82f6', { macchie: KZ.verde });
+      ctx.restore();
+      // la Luna che rotola attorno alla Terra, nella sua conca
+      if (tt > 5) {
+        const al = (tt - 5) * 2.2, lu = tu + Math.cos(al) * 0.13, lv = tv + Math.sin(al) * 0.13;
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.35)'; ctx.lineWidth = U * 0.003; ctx.beginPath();
+        for (let k = 0; k <= 40; k++) { const b = k / 40 * Math.PI * 2; const [x, y] = piano.proietta(tu + Math.cos(b) * 0.13, tv + Math.sin(b) * 0.13); if (k) ctx.lineTo(x, y - U * 0.008); else ctx.moveTo(x, y - U * 0.008); }
+        ctx.stroke();
+        const [mx, my] = piano.proietta(lu, lv);
+        kzLuna(ctx, mx, my - U * 0.012, U * 0.013 * kzMolla(f(5, 5.4)));
+        kzEtichetta(c, 'telo.luna', ex + U * 0.04, ey + U * 0.13, f(5.4, 5.9) * (1 - f(7.4, 7.8)), { colore: KZ.ciano, a: [mx, my] });
+      }
+      kzEtichetta(c, 'telo.sole', cx, cy + U * 0.32, f(8, 8.5), { colore: KZ.turchese, grande: true });
+    },
+    // ---- Massa, peso e volume ------------------------------------------
+    explain_mass(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'massa.titolo', f(0, 0.6));
+      const col = [cx - U * 0.22, cx + U * 0.07, cx + U * 0.35], base = cy + U * 0.12;
+      // le intestazioni: la colonna di mezzo un poco più su
+      const testa = i => base - U * (i === 1 ? 0.34 : 0.25);
+      // 1. la massa: quanta materia, palline che riempiono la scatola
+      const u1 = f(0.3, 0.9);
+      if (u1 > 0) {
+        const l = U * 0.17, x0 = col[0] - l / 2, y0 = base - l;
+        ctx.save(); ctx.globalAlpha *= u1;
+        ctx.fillStyle = 'rgba(105, 224, 255, 0.12)'; rettangolo(ctx, x0, y0, l, l, U * 0.012); ctx.fill();
+        ctx.strokeStyle = KZ.ciano; ctx.lineWidth = U * 0.005; rettangolo(ctx, x0, y0, l, l, U * 0.012); ctx.stroke();
+        const n = Math.round(36 * f(0.6, 2.4)), d = { s: 77 };
+        for (let i = 0; i < 36; i++) {
+          const x = x0 + l * (0.1 + 0.8 * dado(d)), y = y0 + l * (0.1 + 0.8 * dado(d));
+          if (i >= n) continue;
+          const tr = Math.sin(c.t / 160 + i) * U * 0.002;
+          kzPalla(ctx, x + tr, y, U * 0.011, [KZ.lilla, KZ.ciano, KZ.giallo][i % 3]);
+        }
+        ctx.restore();
+        // sotto alla scatola: sopra, a sinistra, c'è chi parla
+        kzEtichetta(c, 'massa.massa', col[0], base + U * 0.07, u1, { colore: KZ.lilla });
+        kzEtichetta(c, 'massa.ovunque', col[0], base + U * 0.15, f(2.4, 2.9));
+      }
+      // 2. il peso: lo stesso blocco sulla bilancia della Terra e della Luna
+      const u2 = f(4.5, 5.1);
+      if (u2 > 0) {
+        ctx.save(); ctx.globalAlpha *= u2;
+        for (const [dx, g, pianeta] of [[-0.065, 1, 'terra'], [0.065, 1 / 6, 'luna']]) {
+          const x = col[1] + U * dx, w = U * 0.09, y = base - U * 0.02;
+          ctx.fillStyle = '#c3cbe0'; rettangolo(ctx, x - w / 2, y - U * 0.03, w, U * 0.03, U * 0.008); ctx.fill();
+          ctx.fillStyle = KZ.scuro; rettangolo(ctx, x - w * 0.3, y - U * 0.025, w * 0.6, U * 0.018, U * 0.004); ctx.fill();
+          const lettura = g * f(5, 6.2);
+          ctx.fillStyle = pianeta === 'terra' ? KZ.verde : KZ.giallo; ctx.fillRect(x - w * 0.27, y - U * 0.021, w * 0.54 * lettura, U * 0.01);
+          ctx.fillStyle = KZ.lilla; rettangolo(ctx, x - U * 0.02, y - U * 0.07, U * 0.04, U * 0.04, U * 0.006); ctx.fill();
+          // la freccia della gravità: lunga quanto il peso
+          kzFreccia(ctx, x, y - U * 0.075, x, y - U * 0.075 + U * 0.11 * g, KZ.corallo, U * 0.008, f(5, 5.8));
+          if (pianeta === 'terra') kzPalla(ctx, x, y + U * 0.06, U * 0.03, '#3b82f6', { macchie: KZ.verde });
+          else kzLuna(ctx, x, y + U * 0.06, U * 0.022);
+        }
+        ctx.restore();
+        kzEtichetta(c, 'massa.peso', col[1], testa(1), u2, { colore: KZ.corallo });
+        kzEtichetta(c, 'massa.sesto', col[1] + U * 0.04, base + U * 0.25, f(6.4, 6.9));
+      }
+      // 3. il volume: stessa massa (la bilancia sta in pari), spazio diverso
+      const u3 = f(9.5, 10.1);
+      if (u3 > 0) {
+        const x = col[2], y = base - U * 0.06, braccio = U * 0.11;
+        ctx.save(); ctx.globalAlpha *= u3;
+        ctx.strokeStyle = '#c3cbe0'; ctx.lineWidth = U * 0.006; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, y + U * 0.12); ctx.lineTo(x, y); ctx.moveTo(x - braccio, y); ctx.lineTo(x + braccio, y); ctx.stroke();
+        ctx.fillStyle = '#c3cbe0'; ctx.beginPath(); ctx.moveTo(x - U * 0.04, y + U * 0.13); ctx.lineTo(x + U * 0.04, y + U * 0.13); ctx.lineTo(x, y + U * 0.1); ctx.closePath(); ctx.fill();
+        const gonfia = kzMolla(f(10, 10.8));
+        const rP = U * 0.065 * gonfia, rF = U * 0.024 * kzMolla(f(10.3, 10.9));
+        // il palloncino grande e leggero, la biglia di ferro piccola e pesante
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.6)'; ctx.lineWidth = U * 0.002;
+        ctx.beginPath(); ctx.moveTo(x - braccio, y); ctx.lineTo(x - braccio, y - U * 0.02); ctx.stroke();
+        kzPalla(ctx, x - braccio, y - U * 0.02 - rP, rP, KZ.rosa);
+        kzPalla(ctx, x + braccio, y - rF, rF, '#6b7280');
+        ctx.restore();
+        kzEtichetta(c, 'massa.volume', col[2], testa(2), u3, { colore: KZ.turchese });
+        kzEtichetta(c, 'massa.uguale', col[2], base + U * 0.11, f(11, 11.5));
+      }
+    },
+    // ---- Due modi di spiegare la gravità: Newton ed Einstein -----------
+    explain_two_gravities(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'duegravita.titolo', f(0, 0.6));
+      // la griglia che continua a piegarsi, finché non si divide in due
+      const divide = f(3, 4);
+      const lx = cx - U * 0.24 * divide, rx = cx + U * 0.24 * divide;
+      // a destra Einstein: il telo curvo, con la palla che ci gira
+      const piano = kzPiano(c, rx, cy + U * 0.02, U * (0.4 - 0.2 * divide), U * 0.16, [{ u: 0, v: 0, m: 0.03 + 0.05 * f(0.5, 2.5) + 0.01 * Math.sin(c.t / 700) }]);
+      kzGriglia(c, piano, 'rgba(105, 224, 255, 0.45)', 12);
+      const [ox, oy] = piano.proietta(0, 0);
+      kzPalla(ctx, ox, oy - U * 0.03, U * 0.04, KZ.giallo, { alone: KZ.arancio });
+      const a = c.t / 900, [bx, by] = piano.proietta(Math.cos(a) * 0.55, Math.sin(a) * 0.55);
+      kzPalla(ctx, bx, by - U * 0.012, U * 0.016, '#3b82f6');
+      if (divide > 0) {
+        // a sinistra Newton: la mela che cade e la freccia della forza
+        ctx.save(); ctx.globalAlpha *= divide;
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.25)'; ctx.lineWidth = U * 0.003;
+        ctx.beginPath(); ctx.moveTo(cx, cy - U * 0.2); ctx.lineTo(cx, cy + U * 0.22); ctx.stroke();
+        const rT = U * 0.075, terra = cy + U * 0.2 - rT;
+        kzPalla(ctx, lx, cy + U * 0.2, rT, '#3b82f6', { macchie: KZ.verde, alone: KZ.ciano });
+        const q = ((c.t / 1000) % 1.6) / 1.6, my = cy - U * 0.15 + (terra - cy + U * 0.13) * q * q;
+        kzMela(ctx, lx, my, U * 0.022);
+        kzFreccia(ctx, lx + U * 0.07, cy - U * 0.14, lx + U * 0.07, cy + U * 0.02, KZ.corallo, U * 0.01, f(3.6, 4.2));
+        ctx.restore();
+        kzEtichetta(c, 'duegravita.newton', lx, cy - U * 0.27, f(3.8, 4.3), { colore: KZ.corallo });
+        kzEtichetta(c, 'duegravita.classica', lx, cy + U * 0.33, f(4.3, 4.8));
+        kzEtichetta(c, 'duegravita.einstein', rx, cy - U * 0.27, f(5.4, 5.9), { colore: KZ.turchese });
+        kzEtichetta(c, 'duegravita.moderna', rx, cy + U * 0.33, f(5.9, 6.4));
+      }
+    },
+    // ---- Newton, 1687: la mela e la Luna cadono per la stessa ragione ---
+    explain_newton(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'newton.titolo', f(0, 0.6));
+      // la Terra in basso, curva, e l'albero
+      const tx = cx - U * 0.08, ty = cy + U * 0.62, tr = U * 0.5;
+      kzPalla(ctx, tx, ty, tr, '#3b82f6', { macchie: KZ.verde, alone: KZ.ciano });
+      const ax = cx - U * 0.3, terra = ty - Math.sqrt(tr * tr - (ax - tx) * (ax - tx));
+      ctx.fillStyle = '#6b3e1f'; ctx.fillRect(ax - U * 0.012, terra - U * 0.15, U * 0.024, U * 0.16);
+      ctx.fillStyle = '#2f9e5b';
+      for (const [dx, dy, r] of [[0, -0.2, 0.07], [-0.055, -0.16, 0.05], [0.055, -0.16, 0.05]]) { ctx.beginPath(); ctx.arc(ax + dx * U, terra + dy * U, r * U, 0, Math.PI * 2); ctx.fill(); }
+      // la mela cade (e ricade), sempre più veloce
+      const q = ((Math.max(0, tt - 0.6)) % 1.8) / 1.2, cadu = Math.min(1, q);
+      const melaY = terra - U * 0.16 + (U * 0.15) * cadu * cadu;
+      kzMela(ctx, ax + U * 0.03, melaY, U * 0.017);
+      kzFreccia(ctx, ax + U * 0.08, terra - U * 0.2, ax + U * 0.08, terra - U * 0.08, KZ.corallo, U * 0.008, f(0.8, 1.3));
+      kzEtichetta(c, 'newton.mela', ax, terra - U * 0.3, f(0.9, 1.4));
+      // la Luna: va avanti e cade verso la Terra, e così le gira attorno
+      if (tt > 2.2) {
+        const a = -Math.PI / 2 + 0.5 - (tt - 2.2) * 0.025, R = U * 0.92;
+        ctx.strokeStyle = 'rgba(244, 246, 255, 0.25)'; ctx.lineWidth = U * 0.003; ctx.setLineDash([U * 0.01, U * 0.012]);
+        ctx.beginPath(); ctx.arc(tx, ty, R, -Math.PI / 2 - 0.1, -Math.PI / 2 + 0.62); ctx.stroke(); ctx.setLineDash([]);
+        const mx = tx + Math.cos(a) * R, my = ty + Math.sin(a) * R;
+        kzLuna(ctx, mx, my, U * 0.035 * kzMolla(f(2.2, 2.8)));
+        kzFreccia(ctx, mx, my + U * 0.045, mx + (tx - mx) * 0.13, my + U * 0.045 + (ty - my) * 0.13, KZ.corallo, U * 0.008, f(2.6, 3.2));
+        kzEtichetta(c, 'newton.luna', mx + U * 0.02, my - U * 0.08, f(2.8, 3.3), { colore: KZ.ciano });
+      }
+      kzEtichetta(c, 'newton.anno', cx + U * 0.04, cy - U * 0.09, f(5.8, 6.3), { colore: KZ.arancio });
+      kzEtichetta(c, 'newton.formula', cx + U * 0.04, cy + U * 0.0, f(4.2, 4.8), { grande: true, colore: KZ.lilla });
+      kzEtichetta(c, 'newton.tutto', cx + U * 0.04, cy + U * 0.2, f(5, 5.5));
+    },
+    // ---- Einstein, 1915: la massa curva lo spazio e il tempo -----------
+    explain_einstein(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'einstein.titolo', f(0, 0.6));
+      const m = 0.02 + 0.08 * kzMolla(f(0.4, 1.8));
+      const piano = kzPiano(c, cx, cy + U * 0.06, U * 0.44, U * 0.2, [{ u: -0.1, v: 0, m }]);
+      kzGriglia(c, piano, 'rgba(179, 136, 255, 0.5)', 18);
+      const [sx, sy] = piano.proietta(-0.1, 0);
+      kzPalla(ctx, sx, sy - U * 0.04, U * (0.02 + 0.3 * m), KZ.giallo, { alone: KZ.arancio });
+      kzEtichetta(c, 'einstein.curva', sx, cy - U * 0.24, f(1.2, 1.7), { colore: KZ.lilla });
+      // la luce di una stella lontana si piega passando vicino
+      if (tt > 2.4) {
+        const q = ((tt - 2.4) % 2.4) / 2.4;
+        ctx.strokeStyle = 'rgba(255, 204, 61, 0.65)'; ctx.lineWidth = U * 0.005; ctx.beginPath();
+        let fine = null;
+        for (let k = 0; k <= 40; k++) {
+          const s = k / 40, u = -1 + 2 * s, v = -0.62 + 0.4 * Math.exp(-(u + 0.1) * (u + 0.1) * 5);
+          const [x, y] = piano.proietta(u, v); if (k) ctx.lineTo(x, y - U * 0.01); else ctx.moveTo(x, y - U * 0.01);
+          if (s <= q) fine = [x, y - U * 0.01];
+        }
+        ctx.stroke();
+        if (fine) kzPalla(ctx, fine[0], fine[1], U * 0.01, '#fffbe6', { alone: KZ.giallo });
+        kzEtichetta(c, 'einstein.luce', cx + U * 0.28, cy - U * 0.14, f(2.6, 3.1), { colore: KZ.arancio });
+      }
+      // due orologi: vicino alla massa il tempo va più piano
+      if (tt > 4.2) {
+        const r = U * 0.04 * kzMolla(f(4.2, 4.8)), s = (c.t / 1000) * 2.2;
+        const [vx, vy] = piano.proietta(0.18, 0.25), [lx, ly] = piano.proietta(0.85, 0.35);
+        kzOrologio(ctx, vx, vy - U * 0.06, r, s * 0.45 - Math.PI / 2, s * 0.04, KZ.corallo, false);
+        kzOrologio(ctx, lx, ly - U * 0.06, r, s - Math.PI / 2, s * 0.08, KZ.verde, false);
+        kzEtichetta(c, 'einstein.tempo', cx, cy + U * 0.31, f(4.6, 5.1), { grande: true, colore: KZ.turchese });
+      }
+    },
+    // ---- Chi ha ragione? Tutti e due, a modo loro ----------------------
+    explain_compare(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'confronto.titolo', f(0, 0.6));
+      const schede = [
+        { x: cx - U * 0.22, colore: KZ.corallo, nome: 'confronto.newton', dice: 'confronto.operativa', voci: ['confronto.n1', 'confronto.n2', 'confronto.n3'], da: 0.5 },
+        { x: cx + U * 0.22, colore: KZ.turchese, nome: 'confronto.einstein', dice: 'confronto.profonda', voci: ['confronto.e1', 'confronto.e2', 'confronto.e3'], da: 4 }
+      ];
+      const w = U * 0.4, h = U * 0.5, top = cy - U * 0.26;
+      for (const s of schede) {
+        const u = kzMolla(f(s.da, s.da + 0.6));
+        if (!(u > 0.01)) continue;
+        ctx.save(); ctx.translate(s.x, top + h / 2); ctx.scale(u, u); ctx.translate(-s.x, -(top + h / 2));
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; rettangolo(ctx, s.x - w / 2 + 4, top + 6, w, h, U * 0.03); ctx.fill();
+        ctx.fillStyle = 'rgba(20, 26, 58, 0.92)'; rettangolo(ctx, s.x - w / 2, top, w, h, U * 0.03); ctx.fill();
+        ctx.strokeStyle = s.colore; ctx.lineWidth = U * 0.006; rettangolo(ctx, s.x - w / 2, top, w, h, U * 0.03); ctx.stroke();
+        // l'icona: la mela con la freccia, o il telo col pozzo
+        const iy = top + U * 0.11;
+        if (s.nome === 'confronto.newton') {
+          kzMela(ctx, s.x, iy, U * 0.03);
+          kzFreccia(ctx, s.x + U * 0.06, iy - U * 0.03, s.x + U * 0.06, iy + U * 0.05, KZ.corallo, U * 0.007, 1);
+        } else {
+          const piano = kzPiano(c, s.x, iy - U * 0.01, U * 0.13, U * 0.05, [{ u: 0, v: 0, m: 0.07 }]);
+          kzGriglia(c, piano, 'rgba(105, 224, 255, 0.55)', 8);
+          const [ox, oy] = piano.proietta(0, 0);
+          kzPalla(ctx, ox, oy - U * 0.012, U * 0.016, KZ.giallo);
+        }
+        ctx.restore();
+        kzEtichetta(c, s.nome, s.x, top + U * 0.2, f(s.da + 0.3, s.da + 0.8), { colore: s.colore });
+        s.voci.forEach((v, i) => {
+          const u2 = f(s.da + 1 + i * 0.7, s.da + 1.5 + i * 0.7);
+          if (!(u2 > 0.01)) return;
+          const y = top + U * (0.28 + i * 0.065);
+          ctx.save(); ctx.globalAlpha *= Math.min(1, u2 * 1.5);
+          ctx.fillStyle = KZ.verde; ctx.beginPath(); ctx.arc(s.x - w * 0.38, y, U * 0.014, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = KZ.scuro; ctx.lineWidth = U * 0.004; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          ctx.beginPath(); ctx.moveTo(s.x - w * 0.38 - U * 0.007, y); ctx.lineTo(s.x - w * 0.38 - U * 0.001, y + U * 0.006); ctx.lineTo(s.x - w * 0.38 + U * 0.008, y - U * 0.006); ctx.stroke();
+          ctx.restore();
+          kzEtichetta(c, v, s.x + U * 0.02, y, u2);
+        });
+        kzEtichetta(c, s.dice, s.x, top + h + U * 0.04, f(s.da + 3.2, s.da + 3.7), { colore: s.colore });
+      }
+      kzEtichetta(c, 'confronto.tutti', cx, cy + U * 0.33, f(9, 9.6), { grande: true, colore: KZ.giallo });
+    },
+    // ---- L'anno lunghissimo di Sedna ------------------------------------
+    explain_sedna(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'sedna.titolo', f(0, 0.6));
+      // a scala vera: il perielio a 76 UA, l'afelio a circa 937
+      const sx = cx - U * 0.34, sy = cy + U * 0.02, ua = U * 0.76 / 937;
+      const a = 506.5 * ua, e = 0.8496, b = a * Math.sqrt(1 - e * e), ox = sx + a * e;
+      kzPalla(ctx, sx, sy, U * 0.022 * kzMolla(f(0.1, 0.6)), KZ.giallo, { alone: KZ.arancio });
+      // Nettuno: un cerchietto di 30 UA, quasi niente
+      kzOrbita(ctx, sx, sy, 30 * ua, 30 * ua, rgba(KZ.ciano, 0.8 * f(0.8, 1.3)), U * 0.003);
+      kzEtichetta(c, 'sedna.nettuno', sx - U * 0.02, sy + U * 0.11, f(1, 1.5), { a: [sx, sy + 30 * ua] });
+      // l'orbita di Sedna che si disegna
+      const disegnata = f(1.4, 3);
+      if (disegnata > 0) {
+        ctx.strokeStyle = rgba(KZ.rosa, 0.75); ctx.lineWidth = U * 0.004; ctx.setLineDash([U * 0.012, U * 0.01]);
+        ctx.beginPath(); ctx.ellipse(ox, sy, a, b, 0, Math.PI, Math.PI + disegnata * Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      }
+      // Sedna corre vicino al Sole e si trascina lontano (Keplero): un giro in otto secondi
+      if (tt > 3) {
+        const M = Math.PI + ((tt - 3) / 8) * Math.PI * 2, E = kzKeplero(M, e);
+        const px = ox + a * Math.cos(E), py = sy + b * Math.sin(E);
+        kzPalla(ctx, px, py, U * 0.02 * kzMolla(f(3, 3.4)), '#e0a88f', { alone: KZ.rosa });
+        const anni = Math.min(11400, Math.round(((tt - 3) / 8) * 11400));
+        kzEtichetta(c, 'sedna.anni', cx + U * 0.16, cy - U * 0.26, f(3.2, 3.7), { dati: { n: kzNumero(anni) }, grande: true, colore: KZ.rosa });
+      }
+      kzEtichetta(c, 'sedna.lontano', ox + a - U * 0.04, sy + b + U * 0.06, f(4, 4.5), { colore: KZ.arancio, a: [ox + a, sy] });
+      kzEtichetta(c, 'sedna.vicino', sx + 76 * ua + U * 0.06, sy - U * 0.15, f(2.4, 2.9), { a: [sx - 76 * ua, sy] });
+      kzEtichetta(c, 'sedna.noi', sx, sy - U * 0.27, f(5, 5.5));
+    },
+    // ---- L'ultima volta che Sedna è passata di qua: l'età della pietra --
+    explain_stone_age(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'eta.titolo', f(0, 0.6));
+      const y = cy + U * 0.14, x0 = cx - U * 0.4, x1 = cx + U * 0.4;
+      // la linea del tempo che si allunga all'indietro
+      const lungo = f(0.5, 3);
+      ctx.strokeStyle = 'rgba(244, 246, 255, 0.6)'; ctx.lineWidth = U * 0.006; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(kzMix(x1, x0, lungo), y); ctx.stroke();
+      for (let i = 0; i <= 10; i++) {
+        const x = x1 - (x1 - x0) * i / 10;
+        if ((x1 - x) / (x1 - x0) > lungo) break;
+        ctx.beginPath(); ctx.moveTo(x, y - U * 0.012); ctx.lineTo(x, y + U * 0.012); ctx.stroke();
+      }
+      kzEtichetta(c, 'eta.fa', kzMix(x1, x0, lungo), y + U * 0.07, f(0.6, 1), { dati: { n: kzNumero(Math.round(11400 * lungo / 100) * 100) }, colore: KZ.rosa });
+      // oggi: la città
+      const u0 = kzMolla(f(0.2, 0.8));
+      ctx.fillStyle = '#5b6aa8';
+      [[0.05, 0.12], [0.1, 0.2], [0.16, 0.15], [0.21, 0.24], [0.27, 0.1]].forEach(([dx, hh], i) => {
+        const w = U * 0.045, h = U * hh * u0, x = x1 - U * 0.3 + dx * U;
+        ctx.fillRect(x, y - U * 0.02 - h, w, h);
+        ctx.fillStyle = KZ.giallo;
+        for (let k = 1; k < hh * 30 * u0; k += 2) ctx.fillRect(x + w * 0.25, y - U * 0.02 - h + k * U * 0.012, w * 0.15, U * 0.006);
+        ctx.fillStyle = i % 2 ? '#4a5894' : '#5b6aa8';
+      });
+      kzEtichetta(c, 'eta.oggi', x1 - U * 0.16, y - U * 0.31, f(0.6, 1.1));
+      // allora: chi scheggia la pietra, le scintille, il fuoco
+      const u1 = f(3, 3.6);
+      if (u1 > 0) {
+        const px = x0 + U * 0.12, py = y - U * 0.02;
+        ctx.save(); ctx.globalAlpha *= u1;
+        kzCavernicolo(ctx, px, py, U * 0.13, c.t);
+        const colpo = Math.sin(c.t / 160) > 0.6;
+        ctx.fillStyle = '#8b8fa3'; ctx.beginPath(); ctx.ellipse(px + U * 0.06, py - U * 0.035, U * 0.018, U * 0.012, 0, 0, Math.PI * 2); ctx.fill();
+        if (colpo) for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i - 2) * 0.4;
+          kzPalla(ctx, px + U * 0.06 + Math.cos(a) * U * 0.03, py - U * 0.05 + Math.sin(a) * U * 0.03, U * 0.004, KZ.giallo);
+        }
+        const fuoco = f(4.2, 5);
+        ctx.fillStyle = '#6b3e1f'; ctx.fillRect(px + U * 0.1, py - U * 0.012, U * 0.07, U * 0.012);
+        kzFiamma(ctx, px + U * 0.135, py - U * 0.012, U * 0.03, U * 0.09 * fuoco, c.t, -Math.PI / 2);
+        ctx.restore();
+        kzEtichetta(c, 'eta.fuoco', px + U * 0.06, y - U * 0.31, f(4.4, 4.9), { colore: KZ.arancio });
+      }
+      // e Sedna, che passa sopra e torna
+      if (tt > 5.5) {
+        const q = ((tt - 5.5) % 6) / 6, sx = kzMix(x0, x1, q), sy = cy - U * 0.12 - Math.sin(q * Math.PI) * U * 0.08;
+        kzPalla(ctx, sx, sy, U * 0.02, '#e0a88f', { alone: KZ.rosa });
+      }
+    },
+    // ---- Senza la gravità del Sole: i pianeti canaglia -----------------
+    explain_rogue(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      const spegni = 4, spento = f(spegni, spegni + 0.6);
+      // il buio che cresce quando la gravità si spegne
+      ctx.fillStyle = 'rgba(2, 3, 14, ' + (0.45 * f(spegni + 1, spegni + 6)).toFixed(3) + ')';
+      ctx.fillRect(0, 0, c.L, c.H);
+      kzTitolo(c, 'canaglia.titolo', f(0, 0.6));
+      const sx = cx, sy = cy + U * 0.02, k = 0.8;
+      const pianeti = [[0.1, '#c9875a', 0.016], [0.16, KZ.corallo, 0.02], [0.24, '#3b82f6', 0.024], [0.34, KZ.arancio, 0.034]];
+      pianeti.forEach(([r0, col, rr], i) => {
+        const r = U * r0, om = 1.2 * Math.pow(0.16 / r0, 1.5), a0 = i * 1.7;
+        const aSpento = a0 + spegni * om;
+        let px, py;
+        if (tt < spegni) {
+          const a = a0 + tt * om; px = sx + Math.cos(a) * r; py = sy + Math.sin(a) * r * k;
+          kzOrbita(ctx, sx, sy, r, r * k, 'rgba(244, 246, 255, 0.18)', U * 0.003);
+          // il filo della gravità fra il Sole e il pianeta
+          ctx.strokeStyle = rgba(KZ.giallo, 0.35); ctx.lineWidth = U * 0.003;
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(px, py); ctx.stroke();
+        } else {
+          // via dritto, lungo la tangente, frenando solo per restare nel quadro
+          const x0 = sx + Math.cos(aSpento) * r, y0 = sy + Math.sin(aSpento) * r * k;
+          const vx = -Math.sin(aSpento), vy = Math.cos(aSpento) * k, n = Math.hypot(vx, vy) || 1;
+          const s = U * 0.5 * (1 - Math.exp(-(tt - spegni) * om * r / (U * 0.5)));
+          px = x0 + vx / n * s; py = y0 + vy / n * s;
+          ctx.save(); ctx.setLineDash([U * 0.008, U * 0.01]); ctx.strokeStyle = rgba(col, 0.4); ctx.lineWidth = U * 0.003;
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(px, py); ctx.stroke(); ctx.restore();
+        }
+        // il freddo: il colore si spegne verso il blu ghiaccio
+        const gelo = f(spegni + 2, spegni + 6);
+        kzPalla(ctx, px, py, U * rr, col);
+        if (gelo > 0) kzPalla(ctx, px, py, U * rr, rgba('#9cc9ff', 0.75 * gelo));
+      });
+      // il Sole: la sua presa che si spegne (il Sole resta, è la gravità che manca)
+      kzPalla(ctx, sx, sy, U * 0.055, KZ.giallo, { alone: KZ.arancio });
+      ctx.strokeStyle = rgba(spento > 0.5 ? KZ.corallo : KZ.verde, 0.9); ctx.lineWidth = U * 0.006;
+      ctx.beginPath(); ctx.arc(sx, sy, U * 0.075 + Math.sin(c.t / 300) * U * 0.004, 0, Math.PI * 2 * (1 - spento * 0.999)); ctx.stroke();
+      kzEtichetta(c, 'canaglia.accesa', cx, cy - U * 0.27, f(0.8, 1.3) * (1 - spento), { colore: KZ.verde });
+      kzEtichetta(c, 'canaglia.spenta', cx, cy - U * 0.27, spento, { colore: KZ.corallo, grande: true });
+      kzEtichetta(c, 'canaglia.via', cx - U * 0.24, cy + U * 0.25, f(spegni + 1, spegni + 1.5));
+      kzEtichetta(c, 'canaglia.canaglia', cx + U * 0.12, cy + U * 0.33, f(spegni + 3, spegni + 3.5), { colore: KZ.ciano, grande: true });
+    },
+    // ---- Come nasce una stella con i suoi pianeti ----------------------
+    explain_star_birth(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'nascita.titolo', f(0, 0.6));
+      const stringe = f(2.4, 5.2), piatto = f(4.6, 6.6), stella = f(6.4, 7.2), pianeti = f(8.4, 9.6);
+      const d = { s: 2024 };
+      const tinte = [KZ.lilla, KZ.rosa, KZ.ciano, '#c4b5fd'];
+      for (let i = 0; i < 170; i++) {
+        const r0 = U * (0.06 + 0.34 * Math.sqrt(dado(d))), a0 = dado(d) * Math.PI * 2, z = (dado(d) - 0.5) * 2;
+        const rr = r0 * (1 - 0.4 * stringe);
+        // la nube gira piano e, stretta, sempre più svelta (dentro più che fuori)
+        const a = a0 + tt * 0.08 + Math.max(0, tt - 2.4) * 0.5 * stringe * Math.pow(U * 0.2 / Math.max(U * 0.05, rr), 1.5);
+        const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * (1 - 0.72 * piatto) + z * U * 0.03 * (1 - piatto);
+        const dim = U * (0.004 + 0.006 * ((i * 7) % 5) / 5);
+        ctx.fillStyle = rgba(tinte[i % 4], (0.55 + 0.3 * Math.sin(c.t / 500 + i)) * (1 - 0.6 * pianeti) * f(0.1, 0.8));
+        ctx.beginPath(); ctx.arc(x, y, dim, 0, Math.PI * 2); ctx.fill();
+      }
+      // un'etichetta alla volta nello stesso posto: la prima se ne va prima che entri l'altra
+      kzEtichetta(c, 'nascita.nube', cx, cy - U * 0.3, f(0.6, 1.1) * (1 - f(2.1, 2.5)));
+      kzEtichetta(c, 'nascita.stringe', cx, cy - U * 0.3, f(2.7, 3.2) * (1 - f(6.2, 6.6)), { colore: KZ.corallo });
+      // le frecce verso il centro, mentre la nube si stringe
+      if (stringe > 0 && stringe < 1) for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 + 0.3, r1 = U * 0.36, r2 = U * 0.24;
+        kzFreccia(ctx, cx + Math.cos(a) * r1, cy + Math.sin(a) * r1 * 0.8, cx + Math.cos(a) * r2, cy + Math.sin(a) * r2 * 0.8, rgba(KZ.corallo, 0.8), U * 0.007, Math.min(1, stringe * 3) * (1 - stringe));
+      }
+      kzEtichetta(c, 'nascita.disco', cx, cy + U * 0.26, f(5, 5.5) * (1 - f(8, 8.4)));
+      if (stella > 0) {
+        kzLampo(ctx, cx, cy, U * 0.4, f(6.4, 7.4));
+        kzPalla(ctx, cx, cy, U * 0.05 * kzMolla(stella), KZ.giallo, { alone: KZ.arancio });
+        kzEtichetta(c, 'nascita.stella', cx, cy - U * 0.3, f(6.9, 7.4), { colore: KZ.giallo });
+      }
+      if (pianeti > 0) {
+        [[0.12, '#c9875a', 0.014], [0.2, '#3b82f6', 0.02], [0.31, KZ.arancio, 0.03]].forEach(([r, col, rr], i) => {
+          const R = U * r, om = 0.9 * Math.pow(0.2 / r, 1.5), a = i * 2.1 + tt * om;
+          kzOrbita(ctx, cx, cy, R, R * 0.28, rgba(KZ.bianco, 0.2 * pianeti), U * 0.003);
+          kzPalla(ctx, cx + Math.cos(a) * R, cy + Math.sin(a) * R * 0.28, U * rr * kzMolla(f(8.4 + i * 0.3, 9 + i * 0.3)), col);
+        });
+        kzEtichetta(c, 'nascita.pianeti', cx, cy + U * 0.26, f(8.8, 9.3), { colore: KZ.turchese, grande: true });
+      }
+    },
+    // ---- Il cuore della Via Lattea: Sagittario A* ------------------------
+    explain_galaxy_orbit(c) {
+      const { ctx, U, cx, cy, tt, f } = c;
+      kzTitolo(c, 'galassia.titolo', f(0, 0.6));
+      const giro = c.t / 9000, RG = U * 0.42 * kzMolla(f(0.1, 1));
+      kzAlone(ctx, cx, cy, RG * 0.55, '#fff2c4', 0.55);
+      const d = { s: 31 }, tinte = ['#ffffff', KZ.lilla, KZ.ciano, '#ffe9a8'];
+      for (let i = 0; i < 420; i++) {
+        const braccio = i % 2, u = Math.pow(dado(d), 0.8), sparso = (dado(d) - 0.5) * 0.5 * (0.4 + u);
+        const a = giro + braccio * Math.PI + u * 4.2 + sparso, r = RG * (0.08 + 0.92 * u) * (1 + (dado(d) - 0.5) * 0.12);
+        ctx.fillStyle = rgba(tinte[i % 4], 0.5 + 0.4 * dado(d));
+        ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.6, U * (0.002 + 0.004 * dado(d)), 0, Math.PI * 2); ctx.fill();
+      }
+      // il Sole su un braccio, con la sua orbita lunghissima
+      const R = U * 0.27, aS = giro + 2.4;
+      kzOrbita(ctx, cx, cy, R, R * 0.6, rgba(KZ.giallo, 0.4 * f(3, 3.6)), U * 0.003, [U * 0.01, U * 0.01]);
+      if (tt > 3) {
+        const px = cx + Math.cos(aS) * R, py = cy + Math.sin(aS) * R * 0.6;
+        kzPalla(ctx, px, py, U * 0.012, KZ.giallo, { alone: KZ.giallo });
+        kzEtichetta(c, 'galassia.sole', cx - U * 0.08, cy + U * 0.32, f(3.2, 3.7), { dati: { n: kzNumero(230) }, colore: KZ.giallo, a: [px, py] });
+      }
+      // il buco nero al centro, e le stelle che gli sfrecciano attorno
+      const ingr = f(1, 1.8);
+      if (ingr > 0) {
+        ctx.save(); ctx.globalAlpha *= ingr;
+        const buio = ctx.createRadialGradient(cx, cy, 0, cx, cy, U * 0.08);
+        buio.addColorStop(0, 'rgba(5, 6, 20, 0.9)'); buio.addColorStop(0.7, 'rgba(5, 6, 20, 0.6)'); buio.addColorStop(1, 'rgba(5, 6, 20, 0)');
+        ctx.fillStyle = buio; ctx.beginPath(); ctx.arc(cx, cy, U * 0.08, 0, Math.PI * 2); ctx.fill();
+        kzBucoNero(ctx, cx, cy, U * 0.012, c.t, { lente: false, piatto: 0.3 });
+        [[0.035, 0.6, 1.4, KZ.ciano], [0.05, 0.85, 0.9, KZ.bianco], [0.062, 0.4, 0.7, KZ.lilla]].forEach(([a, e, om, col], i) => {
+          const b = a * Math.sqrt(1 - e * e) * U, A = a * U;
+          ctx.save(); ctx.translate(cx, cy); ctx.rotate(i * 2); ctx.translate(-cx, -cy);
+          kzOrbita(ctx, cx + A * e, cy, A, b, rgba(col, 0.35), U * 0.002);
+          const E = kzKeplero(tt * om * 2 + i, e);
+          kzPalla(ctx, cx + A * e + A * Math.cos(E), cy + b * Math.sin(E), U * 0.005, col, { alone: col });
+          ctx.restore();
+        });
+        ctx.restore();
+        kzEtichetta(c, 'galassia.buco', cx, cy - U * 0.3, f(1.6, 2.1), { colore: KZ.arancio, a: [cx, cy - U * 0.02] });
+        kzEtichetta(c, 'galassia.stelle', cx + U * 0.25, cy + U * 0.2, f(2.2, 2.7), { a: [cx + U * 0.03, cy + U * 0.02] });
+      }
     }
   });
 
@@ -12739,7 +13341,11 @@
     },
     effect: {
       verifica(p, scena) {
-        campi(p, ['type', 'target', 'at', 'size', 'color', 'duration', 'sound', 'stage']);
+        campi(p, ['type', 'target', 'at', 'size', 'color', 'duration', 'sound', 'stage', 'hold', 'until']);
+        // v520: quanti secondi la scena aspetta l'effetto, come una voce; e
+        // `until: scene`, l'effetto se ne va con la sua scena
+        numeroIn(p.hold, 'hold', 0.5, 30);
+        scelta(p.until, 'until', ['scene']);
         // v488: la tappa di un disegno che spiega (il foglio, le maree)
         if (p.stage !== undefined) scelta(p.stage, 'stage', STOR_TAPPE[p.type] || []);
         sceltaSuono(p);
@@ -12771,8 +13377,28 @@
         if (rumore) storSuona(rumore, { seme: p.type + (p.target || ''), volume: ef ? Math.min(1.4, 0.75 + 0.25 * ef.scala) : 1 });
         // v486: un disegno che spiega una battuta se ne va con la sua scena
         if (ef && STOR_LAVAGNE.includes(ef.tipo)) return { chiudi() { if (!ef.via) ef.via = stor.orologio; } };
-        return {};
-      }
+        /* v520, `hold`: la scena aspetta l'effetto come aspetta una voce. In
+         * una CosmoStoria la scena chiude appena la voce tace (v458), e in
+         * «Cosa è la gravità?» il Sole spiega la forza che attira in cinque
+         * secondi: la spiegazione a tutto schermo spariva a metà. Si conta
+         * sull'orologio della storia, che in pausa si ferma; uno Stop toglie
+         * l'effetto e la promessa si chiude subito. */
+        /* `until: scene` (v520): una spiegazione a tutto schermo con
+         * `duration: 60` restava sotto alle battute dopo, e la camera che
+         * stringeva su chi parlava la ingrandiva insieme a lui. */
+        const esecutore = {};
+        if (ef && p.until === 'scene') esecutore.chiudi = () => { if (!ef.via) ef.via = stor.orologio; };
+        if (ef && p.hold > 0) esecutore.fineNarrazione = new Promise(ok => {
+          const guarda = () => {
+            if (!stor.effetti.includes(ef) || stor.orologio - ef.inizio >= p.hold * 1000) ok('suono');
+            else setTimeout(guarda, 100);
+          };
+          guarda();
+        });
+        return esecutore;
+      },
+      // v520: un effetto con `hold` è una «battuta» che la scena aspetta
+      attende(p) { return p.hold !== undefined; }
     }
   });
 
@@ -13982,7 +14608,7 @@
     // v482: la figurina di un personaggio (la finestra delle voci), gli sfondi e le navi
     figurina: (id, px) => storFigurina(id, px), STOR_SFONDI, STOR_NAVI, STOR_SFONDO_MAX_S, ospitiDi: storOspiti,
     // v504: «Apollo 13 · Dentro la scienza» e lo stile di Kurzgesagt
-    STOR_SPIEGA_APOLLO, STOR_SCENE_APOLLO, STOR_STILI, stile: () => stor.stile,
+    STOR_SPIEGA_APOLLO, STOR_SPIEGA_GRAVITA, STOR_SCENE_APOLLO, STOR_STILI, stile: () => stor.stile,
     ritmo: storRitmo, formaAlTempo: storFormaAlTempo, boccaDaSegnale: storBoccaDaSegnale, boccaBersaglio: storBoccaBersaglio,
     tempoDelCarattere: storTempoDelCarattere,
     geometria: storGeometria, posa: storPosa, pupillaDentro: storPupillaDentro, chiusuraBattito: storChiusuraBattito,

@@ -173,7 +173,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | Se tocchi… | Lancia |
 |---|---|
 | conti astronomici, catalogo, terreno, rilievo, acqua, Via Lattea, aurora, bussola, AR, transiti, aerei (geometria) | `verifica.html` da un server |
-| Storie cosmiche, Studio delle storie | `node scripts/prova-storie.js`, `node scripts/prova-storie-repo.js` (storie sul repository), `node scripts/prova-musica-storie.js` (musica di sottofondo), `node scripts/prova-storie-browser.js`, `prova-stazioni-storie.js`, `prova-demo-pagina.js` (e `giro-storia.js` per guardare una storia intera) |
+| Storie cosmiche, Studio delle storie | `node scripts/prova-storie.js`, `node scripts/prova-storie-repo.js` (storie sul repository), `node scripts/prova-musica-storie.js` (musica di sottofondo), `node scripts/prova-storie-browser.js`, `prova-stazioni-storie.js`, `prova-demo-pagina.js` (e `giro-storia.js` per guardare una storia intera, `giro-studio.js` per una dello Studio battuta per battuta) |
 | narrazione | `prova-narrazione.js`, `controlla-narrazione.js`, `prova-narrazione-browser.js` |
 | voci dei personaggi delle storie (`audio/narrazione/storie/`), anche quelle dello Studio (`storie-studio.json`) | `node scripts/voci-storie.js` (scrive manifest, copione e regia; `--genera <nome>` con ElevenLabs), `node scripts/prova-voci-studio.js` |
 | ElevenLabs nello Studio (voci dei personaggi, «Genera», suoni e musica) | `node scripts/prova-elevenlabs-studio.js`, `node scripts/prova-musica-storie.js` |

@@ -3251,6 +3251,18 @@ function cosmRegia(stato) {
     const c = cosmCentro(cosm.L);
     cosm.pan = { x: cosm.pan.x - c.x, y: cosm.pan.y - c.y };
   }
+  // Un luogo al centro (v520, `center: 'alpha_centauri'` delle demo), o a
+  // `fx` della larghezza: lo spostamento è quello che porta il suo punto
+  // della carta lì, alla scala e con la camera di adesso
+  if (stato.centraSu && stato.centraSu.v) {
+    const q = cosmRuota(cosmSullaCarta(stato.centraSu.v, cosmPesiPiano(cosm.L)));
+    const a = cosmAncoraRuotata(cosm.L);
+    const W = cosm.cam ? cosm.cam.W : (typeof sol !== 'undefined' ? sol.L : 0) || 0;
+    const H = cosm.cam ? cosm.cam.H : (typeof sol !== 'undefined' ? sol.H : 0) || 0;
+    const s = W > 0 && H > 0 ? cosmLato(W, H) / Math.pow(10, cosm.L) : 0;
+    const fx = Number.isFinite(stato.centraSu.fx) ? stato.centraSu.fx : 0.5;
+    cosm.pan = { x: q.x - a.x - (s > 0 ? (fx - 0.5) * W / s : 0), y: q.y - a.y };
+  }
 }
 
 // =====================================================================

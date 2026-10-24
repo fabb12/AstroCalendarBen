@@ -1962,7 +1962,8 @@ prova('story_question: il cartello della domanda, validato, che se ne va con la 
 });
 prova('le «Interstellar · dentro la scienza» (v501): le spiegazioni a tutto schermo fra le scene del film', () => {
   // v504: quelle di «Apollo 13» hanno la loro prova
-  const SPIEGA = Object.keys(S.STOR_EFFETTI).filter(k => /^explain_/.test(k) && !S.STOR_SPIEGA_APOLLO.includes(k));
+  // v520: e quelle di «Cosa è la gravità?», nella loro
+  const SPIEGA = Object.keys(S.STOR_EFFETTI).filter(k => /^explain_/.test(k) && !S.STOR_SPIEGA_APOLLO.includes(k) && !S.STOR_SPIEGA_GRAVITA.includes(k));
   assert.equal(SPIEGA.length, 21, 'ventuno spiegazioni');
   const usate = [];
   for (const [orig, nuova] of [['storia_interstellar', 'storia_interstellar_scienza'], ['storia_interstellar2', 'storia_interstellar2_scienza']]) {
@@ -2896,6 +2897,76 @@ prova('salvando una storia si salvano tutte le sue voci, anche quelle di serie e
     assert.equal(p.voci.Moon.id, 'altraluna123', '«Un\'altra voce» arriva anche alla storia salvata');
     assert.equal(St.castCambiato('Mars', { id: 'nonlasua1234' }, { id: 'altra1234567' }), 0, 'una voce scelta a mano non si tocca');
   } finally { globalThis.localStorage = prima; }
+});
+
+prova('«Cosa è la gravità?» (v520): la regia nuova mostra sempre chi parla, con le spiegazioni, senza voli nel cosmo', () => {
+  const p = JSON.parse(fs.readFileSync(path.join(RADICE, 'storie-studio/storie.json'), 'utf8')).storie.find(x => x.id === 'p7jc37qd');
+  assert.ok(p, 'la storia è sul repository');
+  const pulito = St.ripulisci(JSON.parse(JSON.stringify(p)));
+  const momenti = pulito.scene.flatMap(sc => sc.momenti);
+  // stessi testi, stesse voci: ogni voce registrata vale ancora per la sua battuta
+  const conVoce = momenti.filter(m => m.audio && m.audio.durata > 0);
+  assert.ok(conVoce.length >= 40, 'voci: ' + conVoce.length);
+  for (const m of conVoce) assert.ok(St.voceValida(m), 'la voce resta quella: ' + m.testo.slice(0, 40));
+  const prep = motore.prepara(St.copione(pulito));
+  const parlate = prep.scene.filter(s => s.azioni.some(a => a.comando === 'character_speak'));
+  assert.equal(parlate.length, momenti.length, 'una scena per battuta');
+  const usate = [];
+  parlate.forEach((s, i) => {
+    const chi = s.azioni.find(a => a.comando === 'character_speak').parametri.target;
+    const camera = s.azioni.find(a => a.comando === 'camera_3d' || a.comando === 'cosmic_scale');
+    assert.ok(camera, 'battuta ' + i + ': ha la sua camera');
+    const spiega = s.azioni.filter(a => a.comando === 'effect' && /^explain_/.test(a.parametri.type));
+    spiega.forEach(a => usate.push(a.parametri.type));
+    // nella scala cosmica nessun volo: la camera è già dove sta chi parla
+    if (camera.comando === 'cosmic_scale') {
+      assert.equal(camera.parametri.from, camera.parametri.to, 'battuta ' + i + ': la scala non viaggia');
+      assert.ok(camera.parametri.center, 'battuta ' + i + ': la carta è centrata');
+      // gli astri del Sistema Solare non stanno ammucchiati sulla carta
+      assert.ok(!s.azioni.some(a => a.comando === 'character_show' && ['Earth', 'Jupiter', 'Saturn', 'Moon', 'Sedna', 'iss'].includes(a.parametri.target)),
+        'battuta ' + i + ': sulla carta solo chi ci vive');
+    }
+    // Sedna parla da dove sta (la camera su di lei) o accanto a una spiegazione
+    if (chi === 'Sedna' && !spiega.length) assert.equal(camera.parametri.focus, 'Sedna', 'battuta ' + i + ': la camera va da Sedna');
+    if (spiega.length) {
+      assert.ok(s.azioni.some(a => a.comando === 'story_camera' && a.parametri.mode === 'wide'), 'battuta ' + i + ': la spiegazione con la camera ferma');
+      // chi spiega sta da una parte: si sposta (un pianeta), o la carta lo mette di lato (il Sole, le stelle)
+      const lato = s.azioni.some(a => a.comando === 'character_move' && a.parametri.target === chi && a.parametri.to === 'left') ||
+        (camera.comando === 'cosmic_scale' && camera.parametri.center_at === 'left');
+      assert.ok(lato, 'battuta ' + i + ': chi spiega fa posto al disegno');
+    }
+  });
+  assert.deepEqual([...new Set(usate)].sort(), S.STOR_SPIEGA_GRAVITA.slice().sort(), 'ogni spiegazione della gravità, una volta');
+  assert.equal(usate.length, S.STOR_SPIEGA_GRAVITA.length);
+  // le scritte delle spiegazioni nuove stanno nei due dizionari
+  for (const k of S.STOR_SPIEGA_GRAVITA) for (const l of ['it', 'en']) {
+    assert.equal(typeof DIZ[l].messaggi['storie.effetto.' + k], 'string', k + ' (' + l + ')');
+    assert.equal(typeof DIZ[l].messaggi['studio.suono.nome.' + k], 'string', k + ' (' + l + ')');
+  }
+  const sorgente = fs.readFileSync(path.join(RADICE, 'storie-cosmiche.js'), 'utf8');
+  const sezione = sorgente.slice(sorgente.indexOf('6-ter-quater.'), sorgente.indexOf('function storDisegnaSpiega('));
+  const chiavi = new Set([...sezione.matchAll(/'((?:attrazione|orbita|telo|massa|duegravita|newton|einstein|confronto|sedna|eta|canaglia|nascita|galassia)\.[a-z0-9]+)'/g)].map(m => m[1]));
+  assert.ok(chiavi.size >= 70, 'scritte: ' + chiavi.size);
+  for (const k of chiavi) for (const l of ['it', 'en']) assert.equal(typeof DIZ[l].messaggi['storie.spiega.' + k], 'string', 'storie.spiega.' + k + ' (' + l + ')');
+});
+prova('`effect { hold }` (v520): la scena aspetta la spiegazione come una voce', async () => {
+  S.sgombra();
+  assert.throws(() => S.comandi.effect.verifica({ type: 'explain_orbit', hold: 40 }), /hold/);
+  assert.ok(S.comandi.effect.attende({ type: 'explain_orbit', hold: 3 }), 'è una «battuta» da aspettare');
+  assert.ok(!S.comandi.effect.attende({ type: 'explain_orbit' }));
+  const es = S.comandi.effect.crea({ type: 'explain_orbit', hold: 2 });
+  assert.ok(es.fineNarrazione && typeof es.fineNarrazione.then === 'function', 'promette la sua fine');
+  let finita = null;
+  es.fineNarrazione.then(v => { finita = v; });
+  const ef = S.stato.effetti.find(e => e.tipo === 'explain_orbit');
+  S.stato.orologio = ef.inizio + 1500;
+  await new Promise(ok => setTimeout(ok, 250));
+  assert.equal(finita, null, 'a un secondo e mezzo la scena aspetta ancora');
+  S.stato.orologio = ef.inizio + 2100;
+  await new Promise(ok => setTimeout(ok, 250));
+  assert.equal(finita, 'suono', 'a due secondi la scena può chiudere');
+  assert.deepEqual(S.comandi.effect.crea({ type: 'sparkles' }), {}, 'senza hold, come prima');
+  S.sgombra();
 });
 
 // =====================================================================

@@ -4404,9 +4404,17 @@
                     "parametri": {
                       "scene": "earth_moon",
                       "focus": "Earth-Moon",
-                      "orbit": 20,
-                      "elev_from": 34,
-                      "elev_to": 39
+                      "orbit": 30,
+                      "elev_from": 20,
+                      "elev_to": 24,
+                      "zoom_from": 0.55,
+                      "zoom_to": 1
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "auto"
                     }
                   },
                   {
@@ -4526,10 +4534,18 @@
                     "parametri": {
                       "scene": "earth_moon",
                       "focus": "Earth-Moon",
-                      "orbit": 12,
-                      "orbit_from": 20,
-                      "elev_from": 39,
-                      "elev_to": 42
+                      "orbit": 13,
+                      "elev_from": 24,
+                      "elev_to": 27,
+                      "orbit_from": 30,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -4600,10 +4616,19 @@
                     "parametri": {
                       "scene": "earth_moon",
                       "focus": "Earth-Moon",
-                      "orbit": 12,
-                      "orbit_from": 32,
-                      "elev_from": 42,
-                      "elev_to": 45
+                      "orbit": 10,
+                      "elev_from": 27,
+                      "elev_to": 29,
+                      "orbit_from": 43,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "orbit",
+                      "target": "Earth"
                     }
                   },
                   {
@@ -4674,10 +4699,18 @@
                     "parametri": {
                       "scene": "earth_moon",
                       "focus": "Earth-Moon",
-                      "orbit": 12,
-                      "orbit_from": 44,
-                      "elev_from": 45,
-                      "elev_to": 48
+                      "orbit": 10,
+                      "elev_from": 29,
+                      "elev_to": 31,
+                      "orbit_from": 53,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -4693,6 +4726,14 @@
                       "target": "Earth",
                       "expression": "laughing"
                     }
+                  },
+                  {
+                    "comando": "character_animate",
+                    "parametri": {
+                      "target": "Moon",
+                      "animation": "shake",
+                      "times": 2
+                    }
                   }
                 ]
               },
@@ -4705,7 +4746,7 @@
         },
         {
           "id": "s52yof3h",
-          "ambiente": "pianeta",
+          "ambiente": "terra_luna",
           "fuoco": "Earth",
           "zoom": "normale",
           "data": "",
@@ -4793,12 +4834,20 @@
                   {
                     "comando": "camera_3d",
                     "parametri": {
-                      "scene": "system",
-                      "focus": "Earth",
-                      "orbit": 12,
-                      "orbit_from": 56,
-                      "elev_from": 48,
-                      "elev_to": 51
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 10,
+                      "elev_from": 31,
+                      "elev_to": 33,
+                      "orbit_from": 63,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -4915,10 +4964,18 @@
                     "parametri": {
                       "scene": "earth_moon",
                       "focus": "Earth-Moon",
-                      "orbit": 12,
-                      "orbit_from": 68,
-                      "elev_from": 51,
-                      "elev_to": 54
+                      "orbit": 10,
+                      "elev_from": 33,
+                      "elev_to": 35,
+                      "orbit_from": 73,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -4932,7 +4989,7 @@
                     "comando": "character_show",
                     "parametri": {
                       "target": "css",
-                      "expression": "happy"
+                      "expression": "angry"
                     }
                   }
                 ]
@@ -4965,10 +5022,18 @@
                     "parametri": {
                       "scene": "earth_moon",
                       "focus": "Earth-Moon",
-                      "orbit": 12,
-                      "orbit_from": 80,
-                      "elev_from": 54,
-                      "elev_to": 57
+                      "orbit": 10,
+                      "elev_from": 35,
+                      "elev_to": 37,
+                      "orbit_from": 83,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -4984,6 +5049,14 @@
                       "target": "css",
                       "expression": "angry"
                     }
+                  },
+                  {
+                    "comando": "character_animate",
+                    "parametri": {
+                      "target": "css",
+                      "animation": "jump",
+                      "times": 1
+                    }
                   }
                 ]
               },
@@ -4996,7 +5069,7 @@
         },
         {
           "id": "szcaqzvs",
-          "ambiente": "sistema",
+          "ambiente": "terra_luna",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -5009,11 +5082,10 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Jupiter",
-            "Sedna",
-            "Earth",
-            "Sun",
-            "Moon"
+            "Moon",
+            "iss",
+            "css",
+            "hubble"
           ],
           "momenti": [
             {
@@ -5040,41 +5112,20 @@
                   {
                     "comando": "camera_3d",
                     "parametri": {
-                      "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 16,
-                      "orbit_from": 92,
-                      "elev_from": 57,
-                      "elev_to": 61
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 13,
+                      "elev_from": 37,
+                      "elev_to": 40,
+                      "orbit_from": 93,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "happy"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "sleepy"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "happy"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -5082,6 +5133,35 @@
                     "parametri": {
                       "target": "Moon",
                       "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "iss",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "css",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "hubble",
+                      "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_animate",
+                    "parametri": {
+                      "target": "Moon",
+                      "animation": "jump",
+                      "times": 2
                     }
                   }
                 ]
@@ -5108,11 +5188,8 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "iss",
-            "css",
-            "Moon",
-            "Sun",
-            "Earth"
+            "Earth",
+            "Moon"
           ],
           "momenti": [
             {
@@ -5188,38 +5265,19 @@
                     "parametri": {
                       "scene": "earth_moon",
                       "focus": "Earth-Moon",
-                      "orbit": 20,
-                      "orbit_from": 108,
-                      "elev_from": 61,
-                      "elev_to": 62
+                      "orbit": 16,
+                      "elev_from": 40,
+                      "elev_to": 36,
+                      "orbit_from": 106,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "iss",
-                      "expression": "angry"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "css",
-                      "expression": "angry"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Moon",
-                      "expression": "angry"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "happy"
+                      "mode": "orbit",
+                      "target": "Earth"
                     }
                   },
                   {
@@ -5227,6 +5285,13 @@
                     "parametri": {
                       "target": "Earth",
                       "expression": "worried"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
                     }
                   }
                 ]
@@ -5253,10 +5318,8 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Jupiter",
-            "Sedna",
-            "Earth",
-            "Sun"
+            "Sun",
+            "Earth"
           ],
           "momenti": [
             {
@@ -5324,32 +5387,19 @@
                     "parametri": {
                       "scene": "system",
                       "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 24,
-                      "orbit_from": 128,
-                      "elev_from": 62,
-                      "elev_to": 57
+                      "orbit": 18,
+                      "elev_from": 36,
+                      "elev_to": 31,
+                      "orbit_from": 122,
+                      "frame": "Mercury,Venus,Earth",
+                      "zoom_from": 0.7,
+                      "zoom_to": 1.05
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "happy"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "sleepy"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "worried"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -5357,6 +5407,13 @@
                     "parametri": {
                       "target": "Sun",
                       "expression": "laughing"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "worried"
                     }
                   }
                 ]
@@ -5378,16 +5435,13 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
-          "camera": "parla",
-          "cameraChi": "Sun",
+          "camera": "auto",
+          "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "iss",
-            "css",
-            "Moon",
-            "Earth",
-            "Sun"
+            "Sun",
+            "Earth"
           ],
           "momenti": [
             {
@@ -5404,42 +5458,31 @@
                 "vista": "solar_system_3d",
                 "righe": [
                   {
-                    "comando": "camera_3d",
+                    "comando": "cosmic_scale",
                     "parametri": {
-                      "scene": "earth_moon",
-                      "focus": "Earth-Moon",
-                      "orbit": 24,
-                      "orbit_from": 152,
-                      "elev_from": 57,
-                      "elev_to": 52
+                      "from": "planets",
+                      "to": "planets",
+                      "center": "sun",
+                      "center_at": "left",
+                      "orbit": 4,
+                      "elev_from": 70,
+                      "elev_to": 72
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "iss",
-                      "expression": "angry"
+                      "mode": "wide"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "effect",
                     "parametri": {
-                      "target": "css",
-                      "expression": "angry"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Moon",
-                      "expression": "angry"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "worried"
+                      "type": "explain_attraction",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene",
+                      "hold": 8.5
                     }
                   },
                   {
@@ -5477,33 +5520,20 @@
                   {
                     "comando": "camera_3d",
                     "parametri": {
-                      "scene": "earth_moon",
-                      "focus": "Earth-Moon",
-                      "orbit": 12,
-                      "orbit_from": 176,
-                      "elev_from": 52,
-                      "elev_to": 49
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 9,
+                      "elev_from": 31,
+                      "elev_to": 29,
+                      "orbit_from": 140,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "iss",
-                      "expression": "angry"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "css",
-                      "expression": "angry"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Moon",
-                      "expression": "angry"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -5511,13 +5541,6 @@
                     "parametri": {
                       "target": "Earth",
                       "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "neutral"
                     }
                   }
                 ]
@@ -5573,18 +5596,47 @@
                     "parametri": {
                       "scene": "system",
                       "focus": "Sun",
-                      "frame": "Saturn",
-                      "orbit": 24,
-                      "orbit_from": 188,
-                      "elev_from": 49,
-                      "elev_to": 44
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_orbit",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene",
+                      "hold": 9
                     }
                   },
                   {
                     "comando": "character_show",
                     "parametri": {
                       "target": "Saturn",
-                      "expression": "neutral"
+                      "expression": "neutral",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Saturn",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
                     }
                   }
                 ]
@@ -5598,7 +5650,7 @@
         },
         {
           "id": "s3xckvm1",
-          "ambiente": "terra_luna",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -5611,7 +5663,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Saturn",
             "Earth"
           ],
           "momenti": [
@@ -5639,19 +5690,20 @@
                   {
                     "comando": "camera_3d",
                     "parametri": {
-                      "scene": "earth_moon",
-                      "focus": "Earth-Moon",
-                      "orbit": 16,
-                      "orbit_from": 212,
-                      "elev_from": 44,
-                      "elev_to": 40
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 12,
+                      "elev_from": 29,
+                      "elev_to": 26,
+                      "orbit_from": 149,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -5672,7 +5724,7 @@
         },
         {
           "id": "se2lw6dy",
-          "ambiente": "pianeta",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -5685,7 +5737,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Saturn",
             "Jupiter"
           ],
           "momenti": [
@@ -5714,26 +5765,47 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Jupiter",
-                      "orbit": 40,
-                      "orbit_from": 228,
-                      "elev_from": 40,
-                      "elev_to": 32,
-                      "close_up": "show"
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_fabric",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
                     }
                   },
                   {
                     "comando": "character_show",
                     "parametri": {
                       "target": "Jupiter",
-                      "expression": "neutral"
+                      "expression": "neutral",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
                     }
                   }
                 ]
@@ -5747,7 +5819,7 @@
         },
         {
           "id": "seix843b",
-          "ambiente": "terra_luna",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -5760,8 +5832,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Saturn",
-            "Jupiter",
             "Earth"
           ],
           "momenti": [
@@ -5789,26 +5859,21 @@
                   {
                     "comando": "camera_3d",
                     "parametri": {
-                      "scene": "earth_moon",
-                      "focus": "Earth-Moon",
-                      "orbit": 20,
-                      "orbit_from": 268,
-                      "elev_from": 32,
-                      "elev_to": 28
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 21,
+                      "elev_from": 26,
+                      "elev_to": 20,
+                      "orbit_from": 161,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Jupiter",
-                      "expression": "neutral"
+                      "mode": "orbit",
+                      "speed": 16
                     }
                   },
                   {
@@ -5816,6 +5881,14 @@
                     "parametri": {
                       "target": "Earth",
                       "expression": "thinking"
+                    }
+                  },
+                  {
+                    "comando": "character_animate",
+                    "parametri": {
+                      "target": "Earth",
+                      "animation": "wobble",
+                      "times": 2
                     }
                   }
                 ]
@@ -5829,7 +5902,7 @@
         },
         {
           "id": "sal9kybb",
-          "ambiente": "pianeta",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -5842,9 +5915,7 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Saturn",
-            "Jupiter",
-            "Earth"
+            "Jupiter"
           ],
           "momenti": [
             {
@@ -5873,18 +5944,19 @@
                     "parametri": {
                       "scene": "system",
                       "focus": "Jupiter",
-                      "orbit": 12,
-                      "orbit_from": 288,
-                      "elev_from": 28,
-                      "elev_to": 26,
-                      "close_up": "show"
+                      "orbit": 9,
+                      "elev_from": 20,
+                      "elev_to": 18,
+                      "orbit_from": 182,
+                      "close_up": "show",
+                      "zoom_from": 0.9,
+                      "zoom_to": 1.1
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -5892,13 +5964,6 @@
                     "parametri": {
                       "target": "Jupiter",
                       "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "thinking"
                     }
                   }
                 ]
@@ -5930,33 +5995,47 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Jupiter",
-                      "orbit": 24,
-                      "orbit_from": 300,
-                      "elev_from": 26,
-                      "elev_to": 31,
-                      "close_up": "show"
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_mass",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
                     }
                   },
                   {
                     "comando": "character_show",
                     "parametri": {
                       "target": "Jupiter",
-                      "expression": "thinking"
+                      "expression": "neutral",
+                      "size": "badge"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "character_move",
                     "parametri": {
-                      "target": "Earth",
-                      "expression": "thinking"
+                      "target": "Jupiter",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
                     }
                   }
                 ]
@@ -5983,8 +6062,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Saturn",
-            "Jupiter",
             "Earth"
           ],
           "momenti": [
@@ -6006,7 +6083,45 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 9,
+                      "elev_from": 18,
+                      "elev_to": 16,
+                      "orbit_from": 191,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_animate",
+                    "parametri": {
+                      "target": "Earth",
+                      "animation": "nod",
+                      "times": 2
+                    }
+                  }
+                ]
+              },
               "parla": null
             }
           ],
@@ -6029,7 +6144,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Saturn",
             "Jupiter",
             "Earth"
           ],
@@ -6052,7 +6166,58 @@
                 "tag": "[hesitates]"
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_two_gravities",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
+                    }
+                  }
+                ]
+              },
               "parla": null
             },
             {
@@ -6073,7 +6238,58 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_newton",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
+                    }
+                  }
+                ]
+              },
               "parla": null
             },
             {
@@ -6094,7 +6310,59 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_einstein",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene",
+                      "hold": 6.5
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
+                    }
+                  }
+                ]
+              },
               "parla": null
             },
             {
@@ -6115,7 +6383,58 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Sun",
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_compare",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
+                    }
+                  }
+                ]
+              },
               "parla": null
             },
             {
@@ -6136,7 +6455,46 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 18,
+                      "elev_from": 16,
+                      "elev_to": 12,
+                      "orbit_from": 200,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "orbit",
+                      "speed": 14
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "spacetime",
+                      "target": "Earth",
+                      "size": 1.4
+                    }
+                  }
+                ]
+              },
               "parla": null
             },
             {
@@ -6157,7 +6515,45 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "system",
+                      "focus": "Jupiter",
+                      "orbit": 9,
+                      "elev_from": 12,
+                      "elev_to": 14,
+                      "orbit_from": 218,
+                      "close_up": "show",
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Jupiter",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "sparkles",
+                      "target": "Jupiter"
+                    }
+                  }
+                ]
+              },
               "parla": null
             }
           ],
@@ -6175,16 +6571,13 @@
           "giorni": 0,
           "cartello": false,
           "cameraViva": true,
-          "camera": "parla",
+          "camera": "auto",
           "cameraChi": "",
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Earth",
-            "Jupiter",
             "Sedna",
-            "Sun",
-            "Saturn"
+            "Earth"
           ],
           "momenti": [
             {
@@ -6212,26 +6605,19 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Earth,Jupiter",
-                      "orbit": 12,
-                      "orbit_from": 324,
-                      "elev_from": 31,
-                      "elev_to": 34
+                      "focus": "Sedna",
+                      "orbit": 6,
+                      "elev_from": 14,
+                      "elev_to": 16,
+                      "orbit_from": 227,
+                      "zoom_from": 0.5,
+                      "zoom_to": 2.6
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Earth",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -6361,12 +6747,19 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Earth,Jupiter",
-                      "orbit": 16,
-                      "orbit_from": 336,
-                      "elev_from": 34,
-                      "elev_to": 38
+                      "focus": "Earth",
+                      "orbit": 12,
+                      "elev_from": 16,
+                      "elev_to": 19,
+                      "orbit_from": 233,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -6374,20 +6767,6 @@
                     "parametri": {
                       "target": "Earth",
                       "expression": "surprised"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "neutral"
                     }
                   }
                 ]
@@ -6444,31 +6823,45 @@
                       "scene": "system",
                       "focus": "Sun",
                       "frame": "Earth,Jupiter",
-                      "orbit": 40,
-                      "orbit_from": 352,
-                      "elev_from": 38,
-                      "elev_to": 46
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Earth",
-                      "expression": "thinking"
+                      "mode": "wide"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "effect",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "type": "explain_sedna",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
                     }
                   },
                   {
                     "comando": "character_show",
                     "parametri": {
                       "target": "Sedna",
-                      "expression": "happy"
+                      "expression": "happy",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Sedna",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
                     }
                   }
                 ]
@@ -6571,32 +6964,46 @@
                     "parametri": {
                       "scene": "system",
                       "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 40,
-                      "orbit_from": 32,
-                      "elev_from": 46,
-                      "elev_to": 54
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "mode": "wide"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "effect",
                     "parametri": {
-                      "target": "Sedna",
-                      "expression": "happy"
+                      "type": "explain_stone_age",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
                     }
                   },
                   {
                     "comando": "character_show",
                     "parametri": {
                       "target": "Earth",
-                      "expression": "surprised"
+                      "expression": "surprised",
+                      "size": "badge"
+                    }
+                  },
+                  {
+                    "comando": "character_move",
+                    "parametri": {
+                      "target": "Earth",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
                     }
                   }
                 ]
@@ -6628,26 +7035,20 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth,Saturn",
-                      "orbit": 40,
-                      "orbit_from": 72,
-                      "elev_from": 54,
-                      "elev_to": 62
+                      "focus": "Earth",
+                      "orbit": 36,
+                      "elev_from": 19,
+                      "elev_to": 26,
+                      "orbit_from": 245,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "happy"
+                      "mode": "orbit",
+                      "speed": 10
                     }
                   },
                   {
@@ -6658,17 +7059,14 @@
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "effect",
                     "parametri": {
-                      "target": "Sun",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
+                      "type": "smoke",
+                      "target": "Earth"
+                    },
+                    "ripresa": {
+                      "da": 0.35,
+                      "a": 1
                     }
                   }
                 ]
@@ -6700,19 +7098,19 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter",
-                      "orbit": 20,
-                      "orbit_from": 112,
-                      "elev_from": 62,
-                      "elev_to": 58
+                      "focus": "Sedna",
+                      "orbit": 15,
+                      "elev_from": 26,
+                      "elev_to": 30,
+                      "orbit_from": 281,
+                      "zoom_from": 2.4,
+                      "zoom_to": 2.8
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -6798,26 +7196,19 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 16,
-                      "orbit_from": 132,
-                      "elev_from": 58,
-                      "elev_to": 54
+                      "focus": "Earth",
+                      "orbit": 12,
+                      "elev_from": 30,
+                      "elev_to": 33,
+                      "orbit_from": 296,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "neutral"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -6857,32 +7248,46 @@
                     "parametri": {
                       "scene": "system",
                       "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 40,
-                      "orbit_from": 148,
-                      "elev_from": 54,
-                      "elev_to": 46
+                      "frame": "Earth,Jupiter",
+                      "orbit": 4,
+                      "elev_from": 24,
+                      "elev_to": 24
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "mode": "wide"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "explain_rogue",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene"
                     }
                   },
                   {
                     "comando": "character_show",
                     "parametri": {
                       "target": "Sedna",
-                      "expression": "neutral"
+                      "expression": "neutral",
+                      "size": "badge"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "character_move",
                     "parametri": {
-                      "target": "Earth",
-                      "expression": "neutral"
+                      "target": "Sedna",
+                      "to": "left",
+                      "path": "arc",
+                      "sound": "off"
+                    },
+                    "ripresa": {
+                      "da": 0,
+                      "a": 0.1
                     }
                   }
                 ]
@@ -6914,26 +7319,20 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 36,
-                      "orbit_from": 188,
-                      "elev_from": 46,
-                      "elev_to": 38
+                      "focus": "Earth",
+                      "orbit": 27,
+                      "elev_from": 33,
+                      "elev_to": 40,
+                      "orbit_from": 308,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "neutral"
+                      "mode": "orbit",
+                      "speed": 16
                     }
                   },
                   {
@@ -6941,6 +7340,13 @@
                     "parametri": {
                       "target": "Earth",
                       "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "sparkles",
+                      "target": "Earth"
                     }
                   }
                 ]
@@ -6967,9 +7373,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Jupiter",
-            "Earth",
-            "iss",
             "alpha_centauri"
           ],
           "momenti": [
@@ -6997,32 +7400,29 @@
                   {
                     "comando": "cosmic_scale",
                     "parametri": {
-                      "from": 37,
-                      "to": 3921000000,
-                      "orbit": 14,
+                      "from": "alpha_centauri",
+                      "to": "alpha_centauri",
+                      "center": "alpha_centauri",
+                      "orbit": 6,
                       "elev_from": 62,
-                      "elev_to": 65
+                      "elev_to": 66,
+                      "center_at": "left"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "mode": "wide"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "effect",
                     "parametri": {
-                      "target": "Earth",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "iss",
-                      "expression": "angry"
+                      "type": "explain_star_birth",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene",
+                      "hold": 10.5
                     }
                   },
                   {
@@ -7056,11 +7456,10 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Jupiter",
-            "Sedna",
             "Earth",
+            "Sedna",
             "Sun",
-            "Saturn"
+            "alpha_centauri"
           ],
           "momenti": [
             {
@@ -7088,26 +7487,19 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 20,
-                      "orbit_from": 224,
-                      "elev_from": 65,
-                      "elev_to": 61
+                      "focus": "Earth",
+                      "orbit": 15,
+                      "elev_from": 40,
+                      "elev_to": 36,
+                      "orbit_from": 335,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "neutral"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7146,19 +7538,19 @@
                     "comando": "camera_3d",
                     "parametri": {
                       "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth",
-                      "orbit": 16,
-                      "orbit_from": 244,
-                      "elev_from": 61,
-                      "elev_to": 57
+                      "focus": "Sedna",
+                      "orbit": 12,
+                      "elev_from": 36,
+                      "elev_to": 33,
+                      "orbit_from": 350,
+                      "zoom_from": 2.4,
+                      "zoom_to": 2.8
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7166,13 +7558,6 @@
                     "parametri": {
                       "target": "Sedna",
                       "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "surprised"
                     }
                   }
                 ]
@@ -7193,36 +7578,20 @@
                 "vista": "solar_system_3d",
                 "righe": [
                   {
-                    "comando": "camera_3d",
+                    "comando": "cosmic_scale",
                     "parametri": {
-                      "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth,Saturn",
-                      "orbit": 20,
-                      "orbit_from": 260,
-                      "elev_from": 57,
-                      "elev_to": 53
+                      "from": "alpha_centauri",
+                      "to": "alpha_centauri",
+                      "center": "alpha_centauri",
+                      "orbit": 6,
+                      "elev_from": 62,
+                      "elev_to": 66
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "surprised"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7235,7 +7604,7 @@
                   {
                     "comando": "character_show",
                     "parametri": {
-                      "target": "Saturn",
+                      "target": "alpha_centauri",
                       "expression": "neutral"
                     }
                   }
@@ -7263,11 +7632,7 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Jupiter",
-            "Sedna",
-            "Earth",
             "Sun",
-            "Saturn",
             "alpha_centauri"
           ],
           "momenti": [
@@ -7295,32 +7660,18 @@
                   {
                     "comando": "cosmic_scale",
                     "parametri": {
-                      "from": 37,
-                      "to": 3921000000,
-                      "orbit": 14,
+                      "from": "alpha_centauri",
+                      "to": "alpha_centauri",
+                      "center": "alpha_centauri",
+                      "orbit": 6,
                       "elev_from": 62,
-                      "elev_to": 65
+                      "elev_to": 66
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "surprised"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7328,13 +7679,6 @@
                     "parametri": {
                       "target": "Sun",
                       "expression": "impressed"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
                     }
                   },
                   {
@@ -7355,7 +7699,7 @@
         },
         {
           "id": "syfivirh",
-          "ambiente": "sistema",
+          "ambiente": "cosmo",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -7368,11 +7712,8 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Jupiter",
-            "Sedna",
-            "Earth",
-            "Saturn",
-            "Sun"
+            "Sun",
+            "alpha_centauri"
           ],
           "momenti": [
             {
@@ -7389,43 +7730,20 @@
                 "vista": "solar_system_3d",
                 "righe": [
                   {
-                    "comando": "camera_3d",
+                    "comando": "cosmic_scale",
                     "parametri": {
-                      "scene": "system",
-                      "focus": "Sun",
-                      "frame": "Jupiter,Earth,Saturn",
-                      "orbit": 12,
-                      "orbit_from": 280,
-                      "elev_from": 65,
-                      "elev_to": 62
+                      "from": "alpha_centauri",
+                      "to": "alpha_centauri",
+                      "center": "alpha_centauri",
+                      "orbit": 6,
+                      "elev_from": 62,
+                      "elev_to": 66
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "surprised"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7433,6 +7751,20 @@
                     "parametri": {
                       "target": "Sun",
                       "expression": "happy"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "alpha_centauri",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "effect",
+                    "parametri": {
+                      "type": "hearts",
+                      "target": "Sun"
                     }
                   }
                 ]
@@ -7446,7 +7778,7 @@
         },
         {
           "id": "s3xrh1h3",
-          "ambiente": "cosmo",
+          "ambiente": "sistema",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -7459,12 +7791,8 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "Jupiter",
-            "Sedna",
-            "Earth",
-            "Saturn",
-            "Sun",
-            "sgr_a"
+            "sgr_a",
+            "Earth"
           ],
           "momenti": [
             {
@@ -7491,46 +7819,18 @@
                   {
                     "comando": "cosmic_scale",
                     "parametri": {
-                      "from": 37,
-                      "to": 3921000000,
-                      "orbit": 14,
+                      "from": "galactic_center",
+                      "to": "galactic_center",
+                      "center": "galactic_center",
+                      "orbit": 6,
                       "elev_from": 62,
-                      "elev_to": 65
+                      "elev_to": 66
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "surprised"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "happy"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7566,27 +7866,22 @@
                 "vista": "solar_system_3d",
                 "righe": [
                   {
-                    "comando": "cosmic_scale",
+                    "comando": "camera_3d",
                     "parametri": {
-                      "from": 37,
-                      "to": 3921000000,
-                      "orbit": 14,
-                      "elev_from": 65,
-                      "elev_to": 68
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 15,
+                      "elev_from": 33,
+                      "elev_to": 29,
+                      "orbit_from": 2,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7594,27 +7889,6 @@
                     "parametri": {
                       "target": "Earth",
                       "expression": "surprised"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "happy"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "sgr_a",
-                      "expression": "neutral"
                     }
                   }
                 ]
@@ -7645,46 +7919,29 @@
                   {
                     "comando": "cosmic_scale",
                     "parametri": {
-                      "from": 37,
-                      "to": 3921000000,
-                      "orbit": 14,
-                      "elev_from": 68,
-                      "elev_to": 71
+                      "from": "galactic_center",
+                      "to": "galactic_center",
+                      "center": "galactic_center",
+                      "orbit": 6,
+                      "elev_from": 62,
+                      "elev_to": 66,
+                      "center_at": "left"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
+                      "mode": "wide"
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "effect",
                     "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "surprised"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "happy"
+                      "type": "explain_galaxy_orbit",
+                      "at": "right",
+                      "duration": 60,
+                      "until": "scene",
+                      "hold": 7
                     }
                   },
                   {
@@ -7720,27 +7977,22 @@
                 "vista": "solar_system_3d",
                 "righe": [
                   {
-                    "comando": "cosmic_scale",
+                    "comando": "camera_3d",
                     "parametri": {
-                      "from": 37,
-                      "to": 3921000000,
-                      "orbit": 14,
-                      "elev_from": 71,
-                      "elev_to": 74
+                      "scene": "system",
+                      "focus": "Earth",
+                      "orbit": 12,
+                      "elev_from": 29,
+                      "elev_to": 26,
+                      "orbit_from": 17,
+                      "zoom_from": 1,
+                      "zoom_to": 1.15
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
+                      "mode": "speaker"
                     }
                   },
                   {
@@ -7748,27 +8000,6 @@
                     "parametri": {
                       "target": "Earth",
                       "expression": "curious"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "happy"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "sgr_a",
-                      "expression": "happy"
                     }
                   }
                 ]
@@ -7799,46 +8030,19 @@
                   {
                     "comando": "cosmic_scale",
                     "parametri": {
-                      "from": 37,
-                      "to": 3921000000,
-                      "orbit": 14,
-                      "elev_from": 74,
-                      "elev_to": 77
+                      "from": "galactic_center",
+                      "to": "galactic_center",
+                      "center": "galactic_center",
+                      "orbit": 6,
+                      "elev_from": 62,
+                      "elev_to": 66
                     }
                   },
                   {
-                    "comando": "character_show",
+                    "comando": "story_camera",
                     "parametri": {
-                      "target": "Jupiter",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sedna",
-                      "expression": "thinking"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Earth",
-                      "expression": "curious"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Saturn",
-                      "expression": "neutral"
-                    }
-                  },
-                  {
-                    "comando": "character_show",
-                    "parametri": {
-                      "target": "Sun",
-                      "expression": "happy"
+                      "mode": "orbit",
+                      "target": "sgr_a"
                     }
                   },
                   {
@@ -7894,7 +8098,44 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 29,
+                      "elev_from": 26,
+                      "elev_to": 19,
+                      "orbit_from": 29,
+                      "zoom_from": 0.8,
+                      "zoom_to": 1.05
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
+                    }
+                  }
+                ]
+              },
               "parla": null
             }
           ],
@@ -7917,9 +8158,9 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "newton",
             "Earth",
-            "Moon"
+            "Moon",
+            "newton"
           ],
           "momenti": [
             {
@@ -7940,7 +8181,54 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 13,
+                      "elev_from": 19,
+                      "elev_to": 16,
+                      "orbit_from": 58,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "newton",
+                      "expression": "neutral",
+                      "at": "left",
+                      "scale": 1,
+                      "look": "Earth"
+                    }
+                  }
+                ]
+              },
               "parla": null
             }
           ],
@@ -7963,7 +8251,6 @@
           "cosmoDa": "planets",
           "cosmoA": "milky_way",
           "presenti": [
-            "newton",
             "Earth",
             "Moon"
           ],
@@ -7986,7 +8273,44 @@
                 "tag": ""
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 10,
+                      "elev_from": 16,
+                      "elev_to": 14,
+                      "orbit_from": 71,
+                      "zoom_from": 1,
+                      "zoom_to": 1.12
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "angry"
+                    }
+                  }
+                ]
+              },
               "parla": null
             }
           ],
@@ -8009,7 +8333,6 @@
           "cosmoDa": "planets",
           "cosmoA": "earth_moon",
           "presenti": [
-            "newton",
             "Earth",
             "Moon"
           ],
@@ -8032,7 +8355,44 @@
                 "tag": "[hesitates]"
               },
               "azioni": [],
-              "copione": null,
+              "copione": {
+                "vista": "solar_system_3d",
+                "righe": [
+                  {
+                    "comando": "camera_3d",
+                    "parametri": {
+                      "scene": "earth_moon",
+                      "focus": "Earth-Moon",
+                      "orbit": 13,
+                      "elev_from": 14,
+                      "elev_to": 12,
+                      "orbit_from": 81,
+                      "zoom_from": 1.15,
+                      "zoom_to": 0.7
+                    }
+                  },
+                  {
+                    "comando": "story_camera",
+                    "parametri": {
+                      "mode": "speaker"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Earth",
+                      "expression": "neutral"
+                    }
+                  },
+                  {
+                    "comando": "character_show",
+                    "parametri": {
+                      "target": "Moon",
+                      "expression": "neutral"
+                    }
+                  }
+                ]
+              },
               "parla": null
             }
           ],
@@ -8044,7 +8404,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792874587971,
+      "aggiornato": 1792877359779,
       "lingua": "it",
       "musica": null,
       "voci": {
