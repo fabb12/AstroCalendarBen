@@ -918,7 +918,7 @@
           "testo": "Pure io attiro oggetti Terra!",
           "umore": "neutral",
           "scena": 41,
-          "durata": 3000
+          "durata": 4000
         },
         {
           "n": 35,
@@ -935,7 +935,8 @@
           "testo": "Sono sagittarius A! Il buco nero al centro della via lattea!",
           "umore": "happy",
           "scena": 43,
-          "durata": 5000
+          "durata": 6000,
+          "conTag": "[happy] Sono sagittarius A! Il buco nero al centro della via lattea!"
         },
         {
           "n": 37,
@@ -952,7 +953,7 @@
           "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.",
           "umore": "neutral",
           "scena": 45,
-          "durata": 8000
+          "durata": 11000
         },
         {
           "n": 39,

@@ -7331,7 +7331,15 @@
               "tono": [],
               "durata": 3,
               "voce": 34,
-              "audio": null,
+              "audio": {
+                "durata": 3040,
+                "impronta": "9aa3ea34",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c83e79443931e33b407df2bf608624fb58e6e9bc",
+                "voce": "XvhFUZxcWhVLTd5ItX8K",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7472,12 +7480,20 @@
             {
               "id": "m6y746ux",
               "chi": "sgr_a",
-              "testo": "Sono sagittarius A! Il buco nero al centro della via lattea!",
+              "testo": "[happy] Sono sagittarius A! Il buco nero al centro della via lattea!",
               "umore": "happy",
               "tono": [],
               "durata": 5,
               "voce": 36,
-              "audio": null,
+              "audio": {
+                "durata": 5120,
+                "impronta": "5f172462",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "032f41265b6f64161be02b6eddd1a4f7324c628c",
+                "voce": "XvhFUZxcWhVLTd5ItX8K",
+                "tag": "[happy]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7623,7 +7639,15 @@
               "tono": [],
               "durata": 8,
               "voce": 38,
-              "audio": null,
+              "audio": {
+                "durata": 9840,
+                "impronta": "f2df8ea3",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "edbba187b0e40e16ec4b5a91de0c0c671e971e5f",
+                "voce": "XvhFUZxcWhVLTd5ItX8K",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7844,7 +7868,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873093128,
+      "aggiornato": 1792873150219,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -7871,6 +7895,12 @@
           "nome": "Stella - Expressive & Dynamic Character",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/313555e6488046d5bb52335614916a55/voices/exATa44ZUcsstQSIV2RM/lwUMpMTI9r1LDrhFy9Su.mp3",
           "genere": "f"
+        },
+        "sgr_a": {
+          "id": "XvhFUZxcWhVLTd5ItX8K",
+          "nome": "Gianky",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/87e8ed810aad4544b0684934b355db4b/voices/XvhFUZxcWhVLTd5ItX8K/039e0927-4e3e-42b3-9c93-2ccf53f16aa9.mp3",
+          "genere": "m"
         }
       },
       "domanda": {
