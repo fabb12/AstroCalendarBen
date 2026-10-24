@@ -735,6 +735,14 @@
           "durata": 4000
         },
         {
+          "n": 44,
+          "chi": "Jupiter",
+          "testo": "Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità è",
+          "umore": "neutral",
+          "scena": 20,
+          "durata": 11000
+        },
+        {
           "n": 19,
           "chi": "Sedna",
           "testo": "Ciao Terra, Giove ha ragione!",
