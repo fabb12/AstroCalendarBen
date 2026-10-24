@@ -635,7 +635,8 @@
           "testo": "giusto!",
           "umore": "angry",
           "scena": 7,
-          "durata": 3000
+          "durata": 3000,
+          "conTag": "[angry] giusto!"
         },
         {
           "n": 8,

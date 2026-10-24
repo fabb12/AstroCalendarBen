@@ -4934,12 +4934,20 @@
             {
               "id": "mmt5zmuu",
               "chi": "css",
-              "testo": "giusto!",
+              "testo": "[angry] giusto!",
               "umore": "angry",
               "tono": [],
               "durata": 3,
               "voce": 7,
-              "audio": null,
+              "audio": {
+                "durata": 1120,
+                "impronta": "f942207a",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ea03721ea73c11bb70b57e29900d069959d7586a",
+                "voce": "yqYUuLveKQAg3xn3wYbI",
+                "tag": "[angry]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7964,7 +7972,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873517290,
+      "aggiornato": 1792873535028,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -8027,6 +8035,12 @@
           "nome": "Roberto Tobia - Gentle",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/2722e4699648415aa40653b053f13ce0/voices/VmkgMjrk2aUePsTZ907X/490413e6-50f8-4c11-851b-89b2a70840d3.mp3",
           "genere": "m"
+        },
+        "css": {
+          "id": "yqYUuLveKQAg3xn3wYbI",
+          "nome": "Alice - Expressive",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/cf1e880f910f41c7a5032878f012fff9/voices/yqYUuLveKQAg3xn3wYbI/06b4e4b1-172a-459d-9c02-5713d697725e.mp3",
+          "genere": "f"
         }
       },
       "domanda": {
