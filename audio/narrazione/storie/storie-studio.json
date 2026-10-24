@@ -624,7 +624,8 @@
           "testo": "ci dobbiamo ribellare!",
           "umore": "angry",
           "scena": 6,
-          "durata": 3000
+          "durata": 3000,
+          "conTag": "[angry] ci dobbiamo ribellare!"
         },
         {
           "n": 7,

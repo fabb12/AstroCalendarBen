@@ -4822,12 +4822,20 @@
             {
               "id": "mfd2zmzo",
               "chi": "iss",
-              "testo": "ci dobbiamo ribellare!",
+              "testo": "[angry] ci dobbiamo ribellare!",
               "umore": "angry",
               "tono": [],
               "durata": 3,
               "voce": 6,
-              "audio": null,
+              "audio": {
+                "durata": 1760,
+                "impronta": "53ef607e",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ec56c1620575d7de490005e0e43e8d10433c6e9b",
+                "voce": "yqYUuLveKQAg3xn3wYbI",
+                "tag": "[angry]"
+              },
               "azioni": [
                 {
                   "id": "a9twnpqx",
@@ -7804,10 +7812,29 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792872638462,
+      "aggiornato": 1792873024513,
       "lingua": "it",
       "musica": null,
-      "voci": {},
+      "voci": {
+        "Jupiter": {
+          "id": "1s5ETcPtsJ9W2cUUQrDb",
+          "nome": "Luca - Warm Italian Narrator",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/9f13afa40dae404eb78466b606fa8602/voices/1s5ETcPtsJ9W2cUUQrDb/Z97B0Mb09EdVOBKVnrTL.mp3",
+          "genere": "m"
+        },
+        "Sun": {
+          "id": "4J1q3WHQLvitp3s2bWyq",
+          "nome": "Dimitri Grassi - Reassuring",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/57562742c8f540168bac59591f0aa046/voices/4J1q3WHQLvitp3s2bWyq/SeMfeBRAYFBZ8socBRiO.mp3",
+          "genere": "m"
+        },
+        "iss": {
+          "id": "yqYUuLveKQAg3xn3wYbI",
+          "nome": "Alice - Expressive",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/cf1e880f910f41c7a5032878f012fff9/voices/yqYUuLveKQAg3xn3wYbI/06b4e4b1-172a-459d-9c02-5713d697725e.mp3",
+          "genere": "f"
+        }
+      },
       "domanda": {
         "attiva": false,
         "modo": "auto",
