@@ -6067,7 +6067,15 @@
               "tono": [],
               "durata": 3,
               "voce": 19,
-              "audio": null,
+              "audio": {
+                "durata": 2400,
+                "impronta": "05533362",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "d58fb2e198ff39cf538b8a0a4ae24e6e64050123",
+                "voce": "exATa44ZUcsstQSIV2RM",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -6261,19 +6269,19 @@
             {
               "id": "m52sckfe",
               "chi": "Sedna",
-              "testo": "Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.",
+              "testo": "[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.",
               "umore": "happy",
               "tono": [],
               "durata": 16,
               "voce": 21,
               "audio": {
-                "durata": 13760,
-                "impronta": "7697f280",
+                "durata": 15760,
+                "impronta": "a119ae0c",
                 "nome": "elevenlabs.mp3",
-                "voce": "mT0eqrjKfAPl6gQBlfBa",
-                "tag": "[happy]",
-                "sha": "648796f457fcb12999183910f481f8ec0e5157f5",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "32f3b8c0dfbe7a112fd1f69580b07436f795d923",
+                "voce": "exATa44ZUcsstQSIV2RM",
+                "tag": "[happy]"
               },
               "azioni": [
                 {
@@ -6542,12 +6550,20 @@
             {
               "id": "mxenujql",
               "chi": "Sedna",
-              "testo": "Ehm, scusa Terra, hai finito?",
+              "testo": "[hesitates] Ehm, scusa Terra, hai finito?",
               "umore": "neutral",
               "tono": [],
               "durata": 5,
               "voce": 24,
-              "audio": null,
+              "audio": {
+                "durata": 2640,
+                "impronta": "9c342134",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "9805ad20c5dcfa089cc97b18040139d50299a92b",
+                "voce": "exATa44ZUcsstQSIV2RM",
+                "tag": "[hesitates]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -6695,7 +6711,15 @@
               "tono": [],
               "durata": 15,
               "voce": 26,
-              "audio": null,
+              "audio": {
+                "durata": 15120,
+                "impronta": "4fa9f2d5",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "2137d3e75706e14e8b9de1e8dcda0a065bcb9c91",
+                "voce": "exATa44ZUcsstQSIV2RM",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -6964,12 +6988,20 @@
             {
               "id": "mpmegdne",
               "chi": "Sedna",
-              "testo": "è vero! Chi è?",
+              "testo": "[thoughtful] è vero! Chi è?",
               "umore": "thinking",
               "tono": [],
               "durata": 4,
               "voce": 30,
-              "audio": null,
+              "audio": {
+                "durata": 2480,
+                "impronta": "a199c813",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "3f17c778b532f429f79e8d3cba4f503e5f861567",
+                "voce": "exATa44ZUcsstQSIV2RM",
+                "tag": "[thoughtful]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7812,7 +7844,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873024513,
+      "aggiornato": 1792873093128,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -7832,6 +7864,12 @@
           "id": "yqYUuLveKQAg3xn3wYbI",
           "nome": "Alice - Expressive",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/cf1e880f910f41c7a5032878f012fff9/voices/yqYUuLveKQAg3xn3wYbI/06b4e4b1-172a-459d-9c02-5713d697725e.mp3",
+          "genere": "f"
+        },
+        "Sedna": {
+          "id": "exATa44ZUcsstQSIV2RM",
+          "nome": "Stella - Expressive & Dynamic Character",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/313555e6488046d5bb52335614916a55/voices/exATa44ZUcsstQSIV2RM/lwUMpMTI9r1LDrhFy9Su.mp3",
           "genere": "f"
         }
       },

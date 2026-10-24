@@ -807,7 +807,8 @@
           "testo": "Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.",
           "umore": "happy",
           "scena": 28,
-          "durata": 16000
+          "durata": 17000,
+          "conTag": "[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa."
         },
         {
           "n": 22,
@@ -833,7 +834,8 @@
           "testo": "Ehm, scusa Terra, hai finito?",
           "umore": "neutral",
           "scena": 31,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "[hesitates] Ehm, scusa Terra, hai finito?"
         },
         {
           "n": 25,
@@ -850,7 +852,7 @@
           "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
           "umore": "neutral",
           "scena": 33,
-          "durata": 15000
+          "durata": 16000
         },
         {
           "n": 27,
@@ -883,7 +885,8 @@
           "testo": "è vero! Chi è?",
           "umore": "thinking",
           "scena": 37,
-          "durata": 4000
+          "durata": 4000,
+          "conTag": "[thoughtful] è vero! Chi è?"
         },
         {
           "n": 31,
