@@ -5692,12 +5692,20 @@
             {
               "id": "mwdt2wxl",
               "chi": "Jupiter",
-              "testo": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
+              "testo": "Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
               "umore": "neutral",
               "tono": [],
               "durata": 13,
               "voce": 15,
-              "audio": null,
+              "audio": {
+                "durata": 12720,
+                "impronta": "680c857d",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "259a9ee74879644eef57fab5efcf0315f2f4c23d",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -5847,7 +5855,15 @@
               "tono": [],
               "durata": 3,
               "voce": 17,
-              "audio": null,
+              "audio": {
+                "durata": 2400,
+                "impronta": "d845e531",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "40cffc570a83506884fc1b32440e4388cb21aae2",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -5897,7 +5913,15 @@
               "tono": [],
               "durata": 6,
               "voce": 18,
-              "audio": null,
+              "audio": {
+                "durata": 23440,
+                "impronta": "bd1a0006",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "2f5fcf3c17570fe4f1c64fb7de193f88c19e1c1d",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -6013,12 +6037,20 @@
             {
               "id": "m974m3zs",
               "chi": "Jupiter",
-              "testo": "Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità può essere divisa in due parti cioè quella Classica cioè quella di Isaac Newton e quella moderna quella di Albert Einstein. se vuoi facciamo un video dove spieghiamo solamente ed esclusivamente queste cose, però adesso lo accenniamo che cosa sono.",
+              "testo": "[hesitates] Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità può essere divisa in due parti cioè quella Classica cioè quella di Isaac Newton e quella moderna quella di Albert Einstein. se vuoi facciamo un video dove spieghiamo solamente ed esclusivamente queste cose, però adesso lo accenniamo che cosa sono.",
               "umore": "neutral",
               "tono": [],
               "durata": 0,
               "voce": 44,
-              "audio": null,
+              "audio": {
+                "durata": 21280,
+                "impronta": "65fb6dd5",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "a7cff7d2045900d01c7634c98137e83b6592c9cd",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": "[hesitates]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -6031,7 +6063,15 @@
               "tono": [],
               "durata": 0,
               "voce": 45,
-              "audio": null,
+              "audio": {
+                "durata": 8560,
+                "impronta": "48aa7be8",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "582ae60cb98a7a76769c0c0eeccde1683fe58635",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": ""
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -6044,7 +6084,15 @@
               "tono": [],
               "durata": 0,
               "voce": 46,
-              "audio": null,
+              "audio": {
+                "durata": 5040,
+                "impronta": "aa1f728e",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "0ca5b0d9340afd1c83969afbcc191766cc9b1216",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": ""
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -6052,12 +6100,20 @@
             {
               "id": "ml30sols",
               "chi": "Jupiter",
-              "testo": " entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. Vabbè comunque per il momento hai capito cos'è la gravità? facciamo un riassunto. cos'è la gravità, Terra?",
+              "testo": "entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. [curious] Vabbè comunque per il momento hai capito cos'è la gravità? facciamo un riassunto. cos'è la gravità, Terra?",
               "umore": "neutral",
               "tono": [],
               "durata": 0,
               "voce": 47,
-              "audio": null,
+              "audio": {
+                "durata": 34240,
+                "impronta": "ac0404f1",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c07eeab6454c1eff675710bbbb975b2c92ebcf00",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": ""
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -6086,12 +6142,20 @@
             {
               "id": "mn4s7q27",
               "chi": "Jupiter",
-              "testo": "Sì! bravissima!",
+              "testo": "Sì! [impressed] bravissima!",
               "umore": "",
               "tono": [],
               "durata": 0,
               "voce": 49,
-              "audio": null,
+              "audio": {
+                "durata": 1680,
+                "impronta": "fb5563eb",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "55fb0185d15d7479c6782af5656442dbe8106ced",
+                "voce": "1s5ETcPtsJ9W2cUUQrDb",
+                "tag": ""
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -7980,7 +8044,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792874040617,
+      "aggiornato": 1792874162944,
       "lingua": "it",
       "musica": null,
       "voci": {

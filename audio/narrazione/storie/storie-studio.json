@@ -705,7 +705,8 @@
           "testo": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume",
           "umore": "neutral",
           "scena": 15,
-          "durata": 13000
+          "durata": 14000,
+          "conTag": "Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
         },
         {
           "n": 16,
@@ -730,7 +731,7 @@
           "testo": "La massa è la quantità di materia che compone un corpo, il peso è la forza di gravità esercitata da un corpo celeste su un oggetto dotato di massa e, infine, il volume è la misura dello spazio tridimensionale occupato da un corpo o racchiuso all'interno di una superficie chiusa. Vabbè comunque ritorniamo alla griglia spaziale di cui ti parlavo prima.",
           "umore": "neutral",
           "scena": 18,
-          "durata": 6000
+          "durata": 25000
         },
         {
           "n": 43,
@@ -746,7 +747,8 @@
           "testo": "Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità può essere divisa in due parti cioè quella Classica cioè quella di Isaac Newton e quella moderna quella di Albert Einstein. se vuoi facciamo un video dove spieghiamo solamente ed esclusivamente queste cose, però adesso lo accenniamo che cosa sono.",
           "umore": "neutral",
           "scena": 20,
-          "durata": 31000
+          "durata": 22000,
+          "conTag": "[hesitates] Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità può essere divisa in due parti cioè quella Classica cioè quella di Isaac Newton e quella moderna quella di Albert Einstein. se vuoi facciamo un video dove spieghiamo solamente ed esclusivamente queste cose, però adesso lo accenniamo che cosa sono."
         },
         {
           "n": 45,
@@ -754,7 +756,7 @@
           "testo": "la teoria classica di Isaac Newton dice che essa è composta dalla sua legge di gravitazione universale che formulò nel 1687",
           "umore": "neutral",
           "scena": 21,
-          "durata": 12000
+          "durata": 10000
         },
         {
           "n": 46,
@@ -762,7 +764,7 @@
           "testo": "D'altro canto quella di Albert Einstein è composta dalla sua scoperta della relatività generale",
           "umore": "neutral",
           "scena": 22,
-          "durata": 10000
+          "durata": 6000
         },
         {
           "n": 47,
@@ -770,8 +772,8 @@
           "testo": "entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. Vabbè com",
           "umore": "neutral",
           "scena": 23,
-          "durata": 34000,
-          "conTag": "entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. Vabbè comunque per il momento hai capito cos'è la gravità? facciamo un riassunto. cos'è la gravità, Terra?"
+          "durata": 35000,
+          "conTag": "entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. [curious] Vabbè comunque per il momento hai capito cos'è la gravità? facciamo un riassunto. cos'è la gravità, Terra?"
         },
         {
           "n": 48,
@@ -787,7 +789,8 @@
           "testo": "Sì! bravissima!",
           "umore": "",
           "scena": 25,
-          "durata": 4000
+          "durata": 3000,
+          "conTag": "Sì! [impressed] bravissima!"
         },
         {
           "n": 19,
