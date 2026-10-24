@@ -2879,6 +2879,25 @@ prova('scala cosmica (v477): chi parla lontano è nel quadro, nello Studio e nel
   assert.ok(Math.log10(scale[0].to) < 11, 'il momento di prima no: ' + scale[0].to);
 });
 
+prova('salvando una storia si salvano tutte le sue voci, anche quelle di serie e del tasto «Voci ElevenLabs» (v519)', () => {
+  const mem = {};
+  const prima = globalThis.localStorage;
+  globalThis.localStorage = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
+  try {
+    mem.astrocal_voci_cast_v1 = JSON.stringify({ it: { Moon: { id: 'lunacast1234', nome: 'Luna' } } });
+    mem.astrocal_storie_voci_pg_v1 = JSON.stringify({ Earth: { id: 'terraserie12', nome: 'Terra' } });
+    const p = St.nuovoProgetto({ cast: ['Moon', 'Earth', 'Mars'], voci: { Mars: { id: 'martemia1234', nome: 'Marte' } } });
+    assert.equal(St.fissaVoci(p), 2);
+    assert.deepEqual(Object.keys(p.voci).sort(), ['Earth', 'Mars', 'Moon']);
+    assert.equal(p.voci.Mars.id, 'martemia1234', 'quella scelta a mano resta');
+    assert.equal(St.ripulisci(JSON.parse(JSON.stringify(p))).voci.Moon.id, 'lunacast1234', 'e si rilegge dal file');
+    St.apri(p);
+    assert.equal(St.castCambiato('Moon', { id: 'lunacast1234' }, { id: 'altraluna123', nome: 'Altra' }), 1);
+    assert.equal(p.voci.Moon.id, 'altraluna123', '«Un\'altra voce» arriva anche alla storia salvata');
+    assert.equal(St.castCambiato('Mars', { id: 'nonlasua1234' }, { id: 'altra1234567' }), 0, 'una voce scelta a mano non si tocca');
+  } finally { globalThis.localStorage = prima; }
+});
+
 // =====================================================================
 (async () => {
   for (const p of prove) {
