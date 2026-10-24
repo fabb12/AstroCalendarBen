@@ -5370,8 +5370,8 @@
         },
         {
           "id": "sqr6i8f4",
-          "ambiente": "terra_luna",
-          "fuoco": "Jupiter",
+          "ambiente": "pianeta",
+          "fuoco": "Earth",
           "zoom": "normale",
           "data": "",
           "ora": "21:00",
@@ -7980,7 +7980,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873589263,
+      "aggiornato": 1792873688751,
       "lingua": "it",
       "musica": null,
       "voci": {
