@@ -4725,12 +4725,20 @@
             {
               "id": "m2nzkg5g",
               "chi": "hubble",
-              "testo": "esatto, perchè ci trattieni?",
+              "testo": "[thoughtful] esatto, perchè ci trattieni?",
               "umore": "thinking",
               "tono": [],
               "durata": 3,
               "voce": 5,
-              "audio": null,
+              "audio": {
+                "durata": 1920,
+                "impronta": "2826a704",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "e32c3f2cfef23340613157cc5f3ee2f7e2b94c9b",
+                "voce": "Y6XCBcFGDDiQgSVPjXt1",
+                "tag": "[thoughtful]"
+              },
               "azioni": [
                 {
                   "id": "ac6yk6a4",
@@ -7972,7 +7980,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873535028,
+      "aggiornato": 1792873572529,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -8041,6 +8049,12 @@
           "nome": "Alice - Expressive",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/cf1e880f910f41c7a5032878f012fff9/voices/yqYUuLveKQAg3xn3wYbI/06b4e4b1-172a-459d-9c02-5713d697725e.mp3",
           "genere": "f"
+        },
+        "hubble": {
+          "id": "Y6XCBcFGDDiQgSVPjXt1",
+          "nome": "Fabio - Reliable, Calm",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/05b8613328cc422dbedc067931447037/voices/Y6XCBcFGDDiQgSVPjXt1/1d4cc921-369a-4c0f-b9ae-d4a7fe40e47c.mp3",
+          "genere": "m"
         }
       },
       "domanda": {

@@ -618,7 +618,8 @@
           "testo": "esatto, perchè ci trattieni?",
           "umore": "thinking",
           "scena": 5,
-          "durata": 3000
+          "durata": 3000,
+          "conTag": "[thoughtful] esatto, perchè ci trattieni?"
         },
         {
           "n": 6,
