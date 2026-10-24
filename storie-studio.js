@@ -137,6 +137,7 @@
     emozioni: ['happy', 'excited', 'cheerfully', 'playfully', 'proud', 'relieved', 'hopeful', 'warmly', 'tenderly', 'in awe',
       'impressed', 'curious', 'thoughtful', 'surprised', 'confused', 'skeptical', 'sarcastic', 'mischievously', 'determined',
       'nervous', 'scared', 'panicked', 'embarrassed', 'disappointed', 'frustrated', 'annoyed', 'angry', 'jealous', 'bored',
+      'uninterested',
       'sad', 'wistfully', 'regretful', 'resigned', 'sleepy', 'dramatically', 'mysteriously'],
     voce: ['whispers', 'softly', 'calmly', 'shouts', 'loudly', 'excitedly', 'seriously', 'firmly', 'deadpan', 'quickly',
       'slowly', 'hesitates', 'stammers', 'breathless', 'sings', 'singsong', 'storytelling', 'announcer'],
@@ -1427,7 +1428,7 @@
     'wonder', 'tender', 'determined', 'skeptical', 'wistful',
     // v462 (vince la parola che viene prima nella frase, e a pari posto la più lunga)
     'panicked', 'scared', 'embarrassed', 'disappointed', 'frustrated', 'bored', 'proud', 'relieved', 'hopeful', 'playful',
-    'curious', 'confused', 'impressed', 'mysterious', 'neutral'];
+    'curious', 'confused', 'impressed', 'mysterious', 'uninterested', 'neutral'];
   /* La faccia giusta per una frase: le parole dell'umore prima, poi la
    * punteggiatura. Non è un'analisi del sentimento, ed è dichiarato: è un
    * suggerimento da accettare o cambiare. */
@@ -1511,7 +1512,8 @@
       disappointed: [['scala', { scala: 0.9 }]],
       frustrated: [['anima', { animazione: 'shake' }], ['effetto', { effetto: 'smoke' }]],
       bored: [['anima', { animazione: 'wobble' }]],
-      mysterious: [['effetto', { effetto: 'smoke' }]]
+      mysterious: [['effetto', { effetto: 'smoke' }]],
+      uninterested: [['scala', { scala: 0.9 }]]
     }[umore] || [];
     for (const [tipo, campi] of perUmore) metti(tipo, Object.assign({ dove: tipo === 'effetto' ? chi : '' }, campi));
     if (altri.length) metti('guarda', { oggetto: altri[0] });
@@ -3624,7 +3626,9 @@
     wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully',
     // v462
     proud: 'proud', relieved: 'relieved', hopeful: 'hopeful', playful: 'playfully', curious: 'curious', confused: 'confused', impressed: 'impressed',
-    scared: 'scared', panicked: 'panicked', embarrassed: 'embarrassed', disappointed: 'disappointed', frustrated: 'frustrated', bored: 'bored', mysterious: 'mysteriously'
+    scared: 'scared', panicked: 'panicked', embarrassed: 'embarrassed', disappointed: 'disappointed', frustrated: 'frustrated', bored: 'bored', mysterious: 'mysteriously',
+    // v517
+    uninterested: 'uninterested'
   };
   function studioElevenImpostazioni() {
     const a = archivio();
@@ -4600,7 +4604,7 @@
    * Un'espressione nuova che non è in elenco va fra le calme. */
   const STUDIO_FAMIGLIE_FACCE = {
     allegre: ['happy', 'laughing', 'excited', 'playful', 'love', 'tender', 'proud', 'relieved', 'hopeful', 'impressed', 'determined'],
-    calme: ['neutral', 'thinking', 'curious', 'wonder', 'wistful', 'mysterious', 'skeptical', 'sleepy', 'bored'],
+    calme: ['neutral', 'thinking', 'curious', 'wonder', 'wistful', 'mysterious', 'skeptical', 'sleepy', 'bored', 'uninterested'],
     stupore: ['surprised', 'confused', 'worried', 'scared', 'panicked', 'embarrassed'],
     tristi: ['sad', 'disappointed', 'frustrated', 'annoyed', 'angry', 'bully']
   };

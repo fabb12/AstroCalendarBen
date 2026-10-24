@@ -329,6 +329,19 @@
       ciglio: { alza: 0.15, inclina: -0.6, curva: 0.3, asimmetria: 0.6 },
       bocca: 'chiusa', curva: 0.55, storta: 0.6, spostaBocca: 0.1, guance: 0.3, sguardo: { x: -0.7, y: 0.05 },
       testa: -0.1
+    },
+    // v517, chiesta da chi usa l'app: il disinteresse. Non è la noia (niente
+    // sonno, niente zzz, la testa non cade) né il fastidio (niente sbuffo,
+    // niente sopracciglia aggrottate): palpebre a metà, un sopracciglio
+    // appena più su dell'altro, la bocca una riga dritta e un poco storta,
+    // l'occhiata tutta di lato e il mento appena su — «e a me che importa?».
+    // Con lo sguardo in alto come prima prova le palpebre coprivano l'iride
+    // e la faccia sembrava la noia: di lato si legge
+    uninterested: {
+      palpebraSu: 0.42, palpebraGiu: 0.22, pupilla: 0.65, inclinaSu: -0.1, arcoGiu: 0,
+      ciglio: { alza: 0.12, inclina: 0.1, curva: -0.05, asimmetria: 0.4 },
+      bocca: 'chiusa', curva: 0, storta: -0.35, spostaBocca: -0.14, guance: 0, sguardo: { x: -1, y: -0.25 },
+      testa: -0.12
     }
   };
   const STOR_ESPRESSIONE_DI_SERIE = 'neutral';
@@ -1157,7 +1170,9 @@
     disappointed: { atmo: { k: 0.9, tinta: '#64748b', mix: 0.25 }, lune: { k: 0.92, giro: 0.5, cala: 0.6 }, anelli: { inclina: -0.2, apri: -0.15 }, avatar: 0.1 },
     frustrated:   { tempesta: 0.6, prominenze: 0.5, atmo: { k: 1.15, tinta: '#f97316', mix: 0.25 }, lune: { giro: 1.4, tremito: 0.6 }, anelli: { apri: -0.2, scuoti: 0.4 }, avatar: 0.55 },
     bored:        { atmo: { k: 0.92, alfa: 0.8 }, lune: { giro: 0.35, cala: 0.4 }, anelli: { inclina: -0.15, apri: -0.25 }, avatar: 0.05 },
-    mysterious:   { atmo: { k: 1.1, tinta: '#7c3aed', mix: 0.35, alfa: 0.9 }, lune: { k: 1.05, giro: 0.7 }, anelli: { inclina: 0.1, brilla: 0.4 }, avatar: 0.5 }
+    mysterious:   { atmo: { k: 1.1, tinta: '#7c3aed', mix: 0.35, alfa: 0.9 }, lune: { k: 1.05, giro: 0.7 }, anelli: { inclina: 0.1, brilla: 0.4 }, avatar: 0.5 },
+    // v517: tutto un poco spento e lento, ma senza calare come nella noia
+    uninterested: { atmo: { k: 0.95, alfa: 0.85 }, lune: { giro: 0.5 }, anelli: { inclina: -0.05, apri: -0.1 }, avatar: 0.05 }
   };
 
   // Le misure del disegno, in pixel CSS.

@@ -2728,6 +2728,25 @@ prova('le facce nuove (v462): ognuna col nome, la fisica, le parole e l\'emozion
   assert.equal(St.umoreDalTesto('Non capisco proprio.'), 'confused');
 });
 
+prova('la faccia disinteressata (v517): nome, fisica, parole, ElevenLabs, famiglia; non è né la noia né il fastidio', () => {
+  const e = S.STOR_ESPRESSIONI.uninterested;
+  assert.ok(e, 'uninterested è un\'espressione');
+  for (const l of ['it', 'en']) for (const k of ['storie.espressione.', 'storie.espressioneLei.', 'studio.parole.umore.', 'studio.el.tag.'])
+    assert.equal(typeof DIZ[l].messaggi[k + 'uninterested'], 'string', k + ' in ' + l);
+  assert.equal(St.ELEVEN_TAG_UMORE.uninterested, 'uninterested');
+  assert.ok(St.STUDIO_TAG_FRASE.emozioni.includes('uninterested'));
+  assert.ok(S.STOR_FISICA_EMOZIONI.uninterested);
+  // né lo zzz della noia né lo sbuffo del fastidio: nessun segno, bocca dritta
+  assert.equal(e.segno, undefined);
+  assert.equal(e.curva, 0);
+  assert.ok(e.sguardo && Math.abs(e.sguardo.x) > 0.8, 'l\'occhiata è di lato');
+  lingua = 'it';
+  assert.equal(St.umoreDalTesto('Chi se ne importa delle stelle.'), 'uninterested');
+  lingua = 'en';
+  assert.equal(St.umoreDalTesto('Who cares about the stars.'), 'uninterested');
+  lingua = 'it';
+});
+
 gruppo('La regia delle emozioni e «Genera tutte le battute» (v471)');
 
 prova('la regia frase per frase: faccia, parole, scena, suoni; il testo detto non cambia', () => {
