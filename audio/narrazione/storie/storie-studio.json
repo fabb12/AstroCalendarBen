@@ -964,7 +964,7 @@
           "testo": "Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?",
           "umore": "neutral",
           "scena": 46,
-          "durata": 13000
+          "durata": 9000
         },
         {
           "n": 40,
@@ -980,7 +980,7 @@
           "testo": "Sei d' accordo Luna?",
           "umore": "neutral",
           "scena": 48,
-          "durata": 4000
+          "durata": 3000
         },
         {
           "n": 42,
