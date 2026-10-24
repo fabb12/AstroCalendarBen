@@ -753,17 +753,25 @@
         {
           "n": 46,
           "chi": "Jupiter",
-          "testo": "D'altro canto quella di Albert Einstein",
+          "testo": "D'altro canto quella di Albert Einstein è composta dalla sua scoperta della relatività generale",
           "umore": "neutral",
           "scena": 22,
-          "durata": 5000
+          "durata": 10000
+        },
+        {
+          "n": 47,
+          "chi": "Jupiter",
+          "testo": "entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale compito pensare di non pensabile sarà veramente semplice Voglio dire se ci troviamo all'inizio del XVII secolo accaduto",
+          "umore": "neutral",
+          "scena": 23,
+          "durata": 29000
         },
         {
           "n": 19,
           "chi": "Sedna",
           "testo": "Ciao Terra, Giove ha ragione!",
           "umore": "neutral",
-          "scena": 23,
+          "scena": 24,
           "durata": 3000
         },
         {
@@ -771,7 +779,7 @@
           "chi": "Earth",
           "testo": "Oh! Che spavento! Chi ha parlato?",
           "umore": "surprised",
-          "scena": 24,
+          "scena": 25,
           "durata": 4000,
           "conTag": "[surprised] [gasps] Oh! Che spavento! Chi ha parlato?"
         },
@@ -780,7 +788,7 @@
           "chi": "Sedna",
           "testo": "Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.",
           "umore": "happy",
-          "scena": 25,
+          "scena": 26,
           "durata": 16000
         },
         {
@@ -788,7 +796,7 @@
           "chi": "Earth",
           "testo": "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!",
           "umore": "surprised",
-          "scena": 26,
+          "scena": 27,
           "durata": 15000,
           "conTag": "[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!"
         },
@@ -797,7 +805,7 @@
           "chi": "Earth",
           "testo": "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e",
           "umore": "annoyed",
-          "scena": 27,
+          "scena": 28,
           "durata": 12000,
           "conTag": "[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e"
         },
@@ -806,7 +814,7 @@
           "chi": "Sedna",
           "testo": "Ehm, scusa Terra, hai finito?",
           "umore": "neutral",
-          "scena": 28,
+          "scena": 29,
           "durata": 5000
         },
         {
@@ -814,7 +822,7 @@
           "chi": "Earth",
           "testo": "Oh! Scusa! Continua.",
           "umore": "surprised",
-          "scena": 29,
+          "scena": 30,
           "durata": 4000,
           "conTag": "[surprised] Oh! Scusa! Continua."
         },
@@ -823,7 +831,7 @@
           "chi": "Sedna",
           "testo": "Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video \"cosa accadrebbe senza il sole\".",
           "umore": "neutral",
-          "scena": 30,
+          "scena": 31,
           "durata": 15000
         },
         {
@@ -831,7 +839,7 @@
           "chi": "Earth",
           "testo": "Wow! Non sapevo che la scienza potesse essere così bella.",
           "umore": "neutral",
-          "scena": 31,
+          "scena": 32,
           "durata": 9000
         },
         {
@@ -839,7 +847,7 @@
           "chi": "alpha_centauri",
           "testo": "Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.",
           "umore": "neutral",
-          "scena": 32,
+          "scena": 33,
           "durata": 13000
         },
         {
@@ -847,7 +855,7 @@
           "chi": "Earth",
           "testo": "Cosa? Di nuovo? Chi ha parlato?",
           "umore": "surprised",
-          "scena": 33,
+          "scena": 34,
           "durata": 5000,
           "conTag": "[surprised] Cosa? Di nuovo? Chi ha parlato?"
         },
@@ -856,7 +864,7 @@
           "chi": "Sedna",
           "testo": "è vero! Chi è?",
           "umore": "thinking",
-          "scena": 34,
+          "scena": 35,
           "durata": 4000
         },
         {
@@ -864,7 +872,7 @@
           "chi": "Sun",
           "testo": "So chi è! è la mia amica alfa centauri!",
           "umore": "impressed",
-          "scena": 35,
+          "scena": 36,
           "durata": 5000
         },
         {
@@ -872,7 +880,7 @@
           "chi": "alpha_centauri",
           "testo": "Ti ricordi di me allora sole, eh?",
           "umore": "neutral",
-          "scena": 36,
+          "scena": 37,
           "durata": 3000
         },
         {
@@ -880,7 +888,7 @@
           "chi": "Sun",
           "testo": "Come potrei mai dimenticarti?",
           "umore": "happy",
-          "scena": 37,
+          "scena": 38,
           "durata": 3000
         },
         {
@@ -888,7 +896,7 @@
           "chi": "sgr_a",
           "testo": "Pure io attiro oggetti Terra!",
           "umore": "neutral",
-          "scena": 38,
+          "scena": 39,
           "durata": 3000
         },
         {
@@ -896,7 +904,7 @@
           "chi": "Earth",
           "testo": "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
           "umore": "surprised",
-          "scena": 39,
+          "scena": 40,
           "durata": 5000,
           "conTag": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
         },
@@ -905,7 +913,7 @@
           "chi": "sgr_a",
           "testo": "Sono sagittarius A! Il buco nero al centro della via lattea!",
           "umore": "happy",
-          "scena": 40,
+          "scena": 41,
           "durata": 5000
         },
         {
@@ -913,7 +921,7 @@
           "chi": "Earth",
           "testo": "Cos' è un buco nero?",
           "umore": "curious",
-          "scena": 41,
+          "scena": 42,
           "durata": 4000,
           "conTag": "[curious] Cos' è un buco nero?"
         },
@@ -922,7 +930,7 @@
           "chi": "sgr_a",
           "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.",
           "umore": "neutral",
-          "scena": 42,
+          "scena": 43,
           "durata": 8000
         },
         {
@@ -930,7 +938,7 @@
           "chi": "Earth",
           "testo": "Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?",
           "umore": "neutral",
-          "scena": 43,
+          "scena": 44,
           "durata": 13000
         },
         {
@@ -938,7 +946,7 @@
           "chi": "newton",
           "testo": "Sì, le mie leggi dicono proprio così.",
           "umore": "neutral",
-          "scena": 44,
+          "scena": 45,
           "durata": 6000
         },
         {
@@ -946,7 +954,7 @@
           "chi": "Earth",
           "testo": "Sei d' accordo Luna?",
           "umore": "neutral",
-          "scena": 45,
+          "scena": 46,
           "durata": 4000
         },
         {
@@ -954,7 +962,7 @@
           "chi": "Moon",
           "testo": "Ehm, sì. Sì...",
           "umore": "neutral",
-          "scena": 46,
+          "scena": 47,
           "durata": 4000
         }
       ]
