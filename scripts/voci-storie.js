@@ -60,7 +60,9 @@ const TAG_UMORE = {
   wonder: 'in awe', tender: 'tenderly', determined: 'determined', skeptical: 'skeptical', wistful: 'wistfully',
   // v462
   proud: 'proud', relieved: 'relieved', hopeful: 'hopeful', playful: 'playfully', curious: 'curious', confused: 'confused', impressed: 'impressed',
-  scared: 'scared', panicked: 'panicked', embarrassed: 'embarrassed', disappointed: 'disappointed', frustrated: 'frustrated', bored: 'bored', mysterious: 'mysteriously'
+  scared: 'scared', panicked: 'panicked', embarrassed: 'embarrassed', disappointed: 'disappointed', frustrated: 'frustrated', bored: 'bored', mysterious: 'mysteriously',
+  // v517
+  uninterested: 'uninterested'
 };
 const INIZIO = '// ── INIZIO STORIE COSMICHE: da qui a FINE lo scrive scripts/voci-storie.js, non toccare ──';
 const FINE = '// ── FINE STORIE COSMICHE ──';

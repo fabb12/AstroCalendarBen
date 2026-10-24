@@ -1673,7 +1673,7 @@ pionieri del volo, il Sole e i pianeti, lune e mondi piccoli, stazioni e
 sonde, l'universo, e **Interstellar** (equipaggio, Murph, Loro, TARS e CASE,
 navicelle, Gargantua e i suoi pianeti). L'elenco è
 `STUDIO_CAST_PER_GRUPPO`; un personaggio nuovo non elencato va dove dice la
-sua famiglia (`studioGruppoCast`). Le 32 espressioni stanno in quattro
+sua famiglia (`studioGruppoCast`). Le espressioni (33 dalla v517) stanno in quattro
 famiglie (`STUDIO_FAMIGLIE_FACCE`: allegre, calme e pensose, stupore e
 paura, tristi e arrabbiate; una nuova non elencata va fra le calme,
 `studioFacceInFamiglie`), una riga ciascuna nel pannello delle facce e in
@@ -2424,6 +2424,15 @@ il suo tag per ElevenLabs (`ELEVEN_TAG_UMORE`, `TAG_UMORE`), le parole che la
 suggeriscono (`studio.parole.umore.*`), le idee d'azione e i nomi al
 maschile e al femminile. Curioso e confuso hanno un segno nuovo, il punto di
 domanda che dondola sopra la testa (`domanda`).
+
+**Disinteressato (`uninterested`, v517).** Chiesta da chi usa l'app. Non è
+la noia (niente zzz, la testa non cade) né il fastidio (niente sbuffo,
+niente sopracciglia aggrottate): palpebre a metà, un sopracciglio appena
+più su dell'altro, la bocca una riga dritta appena storta, l'occhiata tutta
+di lato e il mento un poco su. Nessun segno da fumetto. Tag per
+ElevenLabs `[uninterested]` (anche fra le Emozioni dentro la frase), parole
+«chi se ne importa», «non mi interessa», «indifferente»…; sta fra le facce
+calme. Prova in `prova-storie.js`.
 
 ### «Pallido puntino blu» con le facce nuove (v463)
 
