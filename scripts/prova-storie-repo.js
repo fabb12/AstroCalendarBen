@@ -124,7 +124,7 @@ function dispositivo(token) {
   return {
     ctx, St, localStorage,
     progetti: () => JSON.parse(localStorage.getItem(St.CHIAVE) || '[]'),
-    demo: () => JSON.parse(localStorage.getItem(ctx.AstroDemoLibreria.CHIAVE) || '[]'),
+    demo: () => ctx.AstroDemoLibreria.leggi(localStorage.getItem(ctx.AstroDemoLibreria.CHIAVE)),
     // Come fa «Salva nelle mie demo»: la demo, poi il progetto, poi il giro
     salva(p) {
       p.demoChiave = ctx.AstroDemo.libreria.salva(St.copione(p), p.demoChiave || undefined);

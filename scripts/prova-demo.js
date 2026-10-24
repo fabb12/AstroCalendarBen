@@ -370,4 +370,38 @@ ok(libreria.elenco().length === predefiniti.length, 'Eliminazione persistente');
 memoria.set(CHIAVE, '{corrotto');
 rifiuta(() => libreria.salva(testo), 'Archivio corrotto non sovrascritto');
 ok(memoria.get(CHIAVE) === '{corrotto', 'Archivio corrotto conservato');
+
+// v518: «exceeded the quota» salvando. I copioni si salvano compressi, il
+// formato in chiaro di prima si legge ancora, e se lo spazio manca si butta
+// una memoria di comodo (`storage.libera`) e si riprova.
+{
+  const { comprimi, decomprimi, leggi } = require('../demo-libreria.js');
+  for (const t of ['', 'a', 'àèì€😀\uffff', ...predefiniti.map(d => d.testo)])
+    ok(decomprimi(comprimi(t)) === t, 'Compressione reversibile (' + t.length + ' caratteri)');
+  const tutti = predefiniti.map(d => d.testo).join('\n');
+  ok(comprimi(tutti).length * 4 < tutti.length, 'Un copione compresso è molto più piccolo');
+  const m = new Map([[CHIAVE, JSON.stringify([{ chiave: 'utente-vecchia', testo }])]]);
+  const st = { getItem: k => m.get(k) || null, setItem: (k, v) => m.set(k, v) };
+  const lib = crea(st, [], analizza);
+  ok(lib.elenco()[0].testo === testo, 'Il salvataggio in chiaro di prima si legge');
+  lib.salva(cambiato, 'utente-vecchia');
+  ok(m.get(CHIAVE).startsWith('lz1:') && m.get(CHIAVE).length < cambiato.length, 'Riscritto compresso');
+  ok(leggi(m.get(CHIAVE))[0].testo === cambiato && crea(st, [], analizza).elenco()[0].testo === cambiato, 'Il compresso si rilegge');
+  // Spazio pieno finché non si butta la memoria di comodo
+  const piena = new Map([['cache', 'x'.repeat(5000)]]);
+  let liberate = 0;
+  const stPiena = { getItem: k => piena.get(k) || null,
+    setItem(k, v) { if (piena.has('cache')) { const e = new Error('Setting the value exceeded the quota'); e.name = 'QuotaExceededError'; throw e; } piena.set(k, v); },
+    libera() { if (!piena.has('cache')) return false; piena.delete('cache'); liberate++; return true; } };
+  const libPiena = crea(stPiena, [], analizza);
+  const k = libPiena.salva(testo);
+  ok(liberate === 1 && libPiena.elenco()[0].chiave === k, 'Con lo spazio pieno si libera una memoria di comodo e si salva');
+  const vuota = crea({ getItem: () => null, setItem() { const e = new Error('x'); e.name = 'QuotaExceededError'; throw e; }, libera: () => false }, [], analizza);
+  let msg = '';
+  try { vuota.salva(testo); } catch (e) { msg = e.message; }
+  ok(/Spazio del browser esaurito/.test(msg), 'Senza nulla da liberare, un messaggio chiaro');
+  let altro = '';
+  try { crea({ getItem: () => null, setItem() { throw new TypeError('altro'); }, libera: () => true }, [], analizza).salva(testo); } catch (e) { altro = e.message; }
+  ok(altro === 'altro', 'Un errore che non è di quota non butta niente');
+}
 console.log('Demo e libreria: ' + verifiche + ' verifiche superate');

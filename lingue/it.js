@@ -120,6 +120,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "demo.err.archivio": "Archivio demo non valido: esporta una copia dei dati prima di ripristinarlo.",
     "demo.err.solaLettura": "Demo predefinita di sola lettura: duplicala.",
     "demo.err.nonTrovata": "Demo utente non trovata.",
+    "demo.err.spazio": "Spazio del browser esaurito: la demo non è stata salvata. Elimina qualche demo o storia che non usi più e riprova.",
     "demo.err.parametroSconosciuto": "Parametro sconosciuto: {nome}",
     "demo.err.orario": "Orario atteso HH:MM",
     "demo.err.orarioIntervallo": "Orario fuori intervallo",

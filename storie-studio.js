@@ -1821,7 +1821,14 @@
   function studioSalvaTutti(progetti) {
     const a = archivio();
     if (!a) return false;
-    try { a.setItem(CHIAVE, JSON.stringify(progetti)); return true; } catch (_) { return false; }
+    const valore = JSON.stringify(progetti);
+    // Spazio finito: si butta una memoria di comodo (terreno, meteo…) e si
+    // riprova, come la libreria delle demo (`astroLiberaSpazio`, app.js)
+    for (let giri = 0; giri < 50; giri++) {
+      try { a.setItem(CHIAVE, valore); return true; }
+      catch (_) { if (typeof radice.astroLiberaSpazio !== 'function' || !radice.astroLiberaSpazio(CHIAVE)) return false; }
+    }
+    return false;
   }
 
   /* Il file delle voci (v421). Le battute delle storie scritte qui non stanno

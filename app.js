@@ -10190,6 +10190,36 @@ function nomeLuogoVicino(lat, lon, raggioKm = 60) {
 // =====================================================================
 
 const CHIAVE_NOMI_LUOGO = 'astrocalendario_nomi_luogo';
+
+// Quando `localStorage` è pieno (v518). Il browser concede circa cinque
+// mega a tutta l'app, e chi scrive le storie li riempiva: «Salva» della
+// libreria delle demo finiva con «exceeded the quota» mentre metà dello
+// spazio era tenuto da memorie che si rifanno da sole con una richiesta.
+// Questa butta **una** di quelle memorie (la più grande, fra quelle che non
+// sono la chiave da scrivere) e dice se ha liberato qualcosa: chi deve
+// salvare dati della persona (demo, progetti dello Studio) la chiama e
+// riprova finché serve. Non tocca mai diario, eventi, preferenze, storie:
+// solo cose che tornano da Open-Meteo, OpenStreetMap, CelesTrak.
+function astroLiberaSpazio(daTenere) {
+  const chiavi = [
+    CHIAVE_NOMI_LUOGO, 'astrocal_nuvole_ultima', 'astrocalendario_fusi_orari_v2',
+    'astrocalendario_meteo', 'astrocalendario_meteo_astro', 'astrocalendario_aurora',
+    'astrocalendario_tle_iss', 'astrocalendario_tle_css', 'astrocalendario_tle_hubble',
+    'astrocalendario_quote_salute', 'astrocalendario_adsb_salute',
+    'astrocalendario_acque', 'astrocalendario_cime', 'astrocalendario_citta', 'astrocalendario_terreno'
+  ];
+  let peggiore = null, lunghezza = 0;
+  try {
+    for (const k of chiavi) {
+      if (k === daTenere) continue;
+      const v = localStorage.getItem(k);
+      if (v && v.length > lunghezza) { peggiore = k; lunghezza = v.length; }
+    }
+    if (!peggiore) return false;
+    localStorage.removeItem(peggiore);
+    return true;
+  } catch (_) { return false; }
+}
 // Quanti nomi ci si tiene in memoria. Una serata in movimento ne produce
 // una decina; con questo margine chi va e torna dallo stesso posto non
 // rifà mai la domanda.
