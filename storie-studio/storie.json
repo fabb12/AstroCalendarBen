@@ -6853,7 +6853,15 @@
               "tono": [],
               "durata": 13,
               "voce": 28,
-              "audio": null,
+              "audio": {
+                "durata": 9840,
+                "impronta": "50b500fe",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "fd5b2592f57ed7ba39972067086fb5e0c8503259",
+                "voce": "S3RXi1qdUT4is6DxRHdi",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7143,7 +7151,15 @@
               "tono": [],
               "durata": 3,
               "voce": 32,
-              "audio": null,
+              "audio": {
+                "durata": 1840,
+                "impronta": "d736e3b7",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b12c4d2bac37357e5d9e0ec6aede0dc4c92e1e4d",
+                "voce": "S3RXi1qdUT4is6DxRHdi",
+                "tag": ""
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7868,7 +7884,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873150219,
+      "aggiornato": 1792873265708,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -7901,6 +7917,12 @@
           "nome": "Gianky",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/87e8ed810aad4544b0684934b355db4b/voices/XvhFUZxcWhVLTd5ItX8K/039e0927-4e3e-42b3-9c93-2ccf53f16aa9.mp3",
           "genere": "m"
+        },
+        "alpha_centauri": {
+          "id": "S3RXi1qdUT4is6DxRHdi",
+          "nome": "Francesca - Passionate and spirited",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1da06ea679a54975ad96a2221fe6530d/voices/S3RXi1qdUT4is6DxRHdi/6117c598-73db-4eb9-91c9-51b85d9a13dc.mp3",
+          "genere": "f"
         }
       },
       "domanda": {
