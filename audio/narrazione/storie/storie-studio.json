@@ -582,7 +582,8 @@
           "testo": "Ciao Terra, mi chiedevo, perché orbito intorno a te?",
           "umore": "thinking",
           "scena": 1,
-          "durata": 5000
+          "durata": 5000,
+          "conTag": "[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?"
         },
         {
           "n": 2,
@@ -608,7 +609,8 @@
           "testo": "Smettila!!!",
           "umore": "annoyed",
           "scena": 4,
-          "durata": 3000
+          "durata": 3000,
+          "conTag": "[annoyed] Smettila!!!"
         },
         {
           "n": 5,
@@ -641,7 +643,8 @@
           "testo": "Vogliamo essere indipendenti!",
           "umore": "angry",
           "scena": 8,
-          "durata": 4000
+          "durata": 4000,
+          "conTag": "[angry] Vogliamo essere indipendenti!"
         },
         {
           "n": 9,
@@ -985,7 +988,8 @@
           "testo": "Ehm, sì. Sì...",
           "umore": "neutral",
           "scena": 49,
-          "durata": 4000
+          "durata": 4000,
+          "conTag": "[hesitates] Ehm, sì. Sì..."
         }
       ]
     },

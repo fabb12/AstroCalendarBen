@@ -4328,12 +4328,20 @@
             {
               "id": "mt7fhbgp",
               "chi": "Moon",
-              "testo": "Ciao Terra, mi chiedevo, perché orbito intorno a te?",
+              "testo": "[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?",
               "umore": "thinking",
               "tono": [],
               "durata": 5,
               "voce": 1,
-              "audio": null,
+              "audio": {
+                "durata": 3680,
+                "impronta": "af269488",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "01efbba351abd226b9dbd072254a8cd8520c1d85",
+                "voce": "uC9VI5XrTxXRNlCzGSKR",
+                "tag": "[thoughtful]"
+              },
               "azioni": [
                 {
                   "id": "a0xv03zj",
@@ -4619,12 +4627,20 @@
             {
               "id": "mi78k99d",
               "chi": "Moon",
-              "testo": "Smettila!!!",
+              "testo": "[annoyed] Smettila!!!",
               "umore": "annoyed",
               "tono": [],
               "durata": 3,
               "voce": 4,
-              "audio": null,
+              "audio": {
+                "durata": 2160,
+                "impronta": "64254331",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "25c75c4e423e34b1b542444a6713c6e931beaddf",
+                "voce": "uC9VI5XrTxXRNlCzGSKR",
+                "tag": "[annoyed]"
+              },
               "azioni": [
                 {
                   "id": "a9acwhel",
@@ -4987,12 +5003,20 @@
             {
               "id": "myk08ulu",
               "chi": "Moon",
-              "testo": "Vogliamo essere indipendenti!",
+              "testo": "[angry] Vogliamo essere indipendenti!",
               "umore": "angry",
               "tono": [],
               "durata": 4,
               "voce": 8,
-              "audio": null,
+              "audio": {
+                "durata": 2160,
+                "impronta": "7cb8e121",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "2ba9cd1e9a6fb75a37f00074f9f77780b64a49dc",
+                "voce": "uC9VI5XrTxXRNlCzGSKR",
+                "tag": "[angry]"
+              },
               "azioni": [],
               "copione": {
                 "vista": "solar_system_3d",
@@ -7873,12 +7897,20 @@
             {
               "id": "mujxztdo",
               "chi": "Moon",
-              "testo": "Ehm, sì. Sì...",
+              "testo": "[hesitates] Ehm, sì. Sì...",
               "umore": "neutral",
               "tono": [],
               "durata": 0,
               "voce": 42,
-              "audio": null,
+              "audio": {
+                "durata": 2560,
+                "impronta": "a8391b87",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "bd8097dc1c41306860f7302ee2d56713219bc8b9",
+                "voce": "uC9VI5XrTxXRNlCzGSKR",
+                "tag": "[hesitates]"
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -7892,7 +7924,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873321615,
+      "aggiornato": 1792873403106,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -7937,6 +7969,12 @@
           "nome": "Enea - Warm & Smooth Italian Narrator",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/567700fc161547fe98c11a8e1162432a/voices/aQ9s2C5T9TIPvAFtHWuA/cpOi0KEh35mRReb36kWK.mp3",
           "genere": "m"
+        },
+        "Moon": {
+          "id": "uC9VI5XrTxXRNlCzGSKR",
+          "nome": "Giulia - Animated and Passionate",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1da06ea679a54975ad96a2221fe6530d/voices/uC9VI5XrTxXRNlCzGSKR/7aee21ff-0617-4fcc-944f-a4f9737afde3.mp3",
+          "genere": "f"
         }
       },
       "domanda": {
