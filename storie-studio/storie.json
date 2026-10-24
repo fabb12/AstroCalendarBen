@@ -7859,7 +7859,7 @@
         },
         {
           "id": "sztxupuh",
-          "ambiente": "cosmo",
+          "ambiente": "terra_luna",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -7904,7 +7904,7 @@
         },
         {
           "id": "scds0bld",
-          "ambiente": "cosmo",
+          "ambiente": "terra_luna",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -7950,7 +7950,7 @@
         },
         {
           "id": "s40u81ni",
-          "ambiente": "cosmo",
+          "ambiente": "terra_luna",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -7996,7 +7996,7 @@
         },
         {
           "id": "su0m7c29",
-          "ambiente": "cosmo",
+          "ambiente": "terra_luna",
           "fuoco": "Jupiter",
           "zoom": "normale",
           "data": "",
@@ -8044,7 +8044,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792874341334,
+      "aggiornato": 1792874587971,
       "lingua": "it",
       "musica": null,
       "voci": {
