@@ -4439,13 +4439,13 @@
               "durata": 2,
               "voce": 2,
               "audio": {
-                "durata": 3600,
+                "durata": 3200,
                 "impronta": "4b1dc674",
                 "nome": "elevenlabs.mp3",
-                "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[sarcastic]",
-                "sha": "cde3d1afab4696a83a943bb3b565572b71635688",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "ca0018dc0a2c746b48c42b0f9a15daae010912ca",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": "[sarcastic]"
               },
               "azioni": [
                 {
@@ -4559,13 +4559,13 @@
               "durata": 3,
               "voce": 3,
               "audio": {
-                "durata": 3040,
+                "durata": 2400,
                 "impronta": "ebc9e047",
                 "nome": "elevenlabs.mp3",
-                "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[laughs]",
-                "sha": "84679c7be4033ddca0e642dbf1543d570c627fe1",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "6ca713651225a48258712458f818560d135a32fc",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": "[laughs]"
               },
               "azioni": [
                 {
@@ -5108,13 +5108,13 @@
               "durata": 5,
               "voce": 9,
               "audio": {
-                "durata": 2400,
+                "durata": 3200,
                 "impronta": "64ac92a5",
                 "nome": "elevenlabs.mp3",
-                "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[nervous] [gasps]",
-                "sha": "b4cbc539362d1d6267a66f50b4df48b5395cf20e",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "e7fbffd0d98ee9d7f0a437fe8745c2813c7d775e",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": "[nervous] [gasps]"
               },
               "azioni": [
                 {
@@ -5446,13 +5446,13 @@
               "durata": 3,
               "voce": 12,
               "audio": {
-                "durata": 1600,
+                "durata": 1840,
                 "impronta": "cf8886f0",
                 "nome": "elevenlabs.mp3",
-                "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[thoughtful]",
-                "sha": "e43c36325fcd31c284c042420f9da30ff66a9540",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "dc45341e2d1b345404a1df57fb5465471f17aacd",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": "[thoughtful]"
               },
               "azioni": [],
               "copione": {
@@ -5600,13 +5600,13 @@
               "durata": 4,
               "voce": 14,
               "audio": {
-                "durata": 1600,
+                "durata": 1760,
                 "impronta": "1e13254f",
                 "nome": "elevenlabs.mp3",
-                "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[thoughtful]",
-                "sha": "6a32d1a140d9328548e98abda25d33bba24668c0",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "aaacdd0705c203d1162749f07a94d684cc065743",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": "[thoughtful]"
               },
               "azioni": [],
               "copione": {
@@ -5742,13 +5742,13 @@
               "durata": 5,
               "voce": 16,
               "audio": {
-                "durata": 3680,
+                "durata": 6000,
                 "impronta": "6ab3c3e2",
                 "nome": "elevenlabs.mp3",
-                "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[thoughtful]",
-                "sha": "3410739bd1b8599d05602ff58562e322c5cd1376",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "eaa9889af5f4a36fbd48da0055460c31c08a449f",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": "[thoughtful]"
               },
               "azioni": [],
               "copione": {
@@ -5948,7 +5948,15 @@
               "tono": [],
               "durata": 0,
               "voce": 43,
-              "audio": null,
+              "audio": {
+                "durata": 880,
+                "impronta": "7233748a",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c70b5e7ebd36cd8298c44a5450c94280b53fe5ad",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": ""
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -6038,7 +6046,15 @@
               "tono": [],
               "durata": 0,
               "voce": 48,
-              "audio": null,
+              "audio": {
+                "durata": 5120,
+                "impronta": "f5847361",
+                "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b6f80cc20ce3c216c6ba70074c0a9c7ec71c736e",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": ""
+              },
               "azioni": [],
               "copione": null,
               "parla": null
@@ -6150,13 +6166,13 @@
               "durata": 4,
               "voce": 20,
               "audio": {
-                "durata": 3120,
+                "durata": 2880,
                 "impronta": "c08b624c",
                 "nome": "elevenlabs.mp3",
-                "voce": "LgUbwisMonprbdDRIOUm",
-                "tag": "[surprised] [gasps]",
-                "sha": "eba803e7c0bffb93638f1c0c6f12f0478dcf6763",
-                "est": "mp3"
+                "est": "mp3",
+                "sha": "aeb09abc5d55db434a0793932836942ba9bd307a",
+                "voce": "ZPImQHFNyEPRDeECS4MX",
+                "tag": "[surprised] [gasps]"
               },
               "azioni": [
                 {
@@ -7924,7 +7940,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792873403106,
+      "aggiornato": 1792873457288,
       "lingua": "it",
       "musica": null,
       "voci": {
@@ -7974,6 +7990,12 @@
           "id": "uC9VI5XrTxXRNlCzGSKR",
           "nome": "Giulia - Animated and Passionate",
           "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1da06ea679a54975ad96a2221fe6530d/voices/uC9VI5XrTxXRNlCzGSKR/7aee21ff-0617-4fcc-944f-a4f9737afde3.mp3",
+          "genere": "f"
+        },
+        "Earth": {
+          "id": "ZPImQHFNyEPRDeECS4MX",
+          "nome": "Vale- Italiana, calm & friendly",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/fd2883086e854b22807b3ea5f6508021/voices/ZPImQHFNyEPRDeECS4MX/f64136e0-1140-4797-9695-c1eacb2e70df.mp3",
           "genere": "f"
         }
       },

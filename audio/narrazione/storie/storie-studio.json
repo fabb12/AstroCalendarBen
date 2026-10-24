@@ -591,7 +591,7 @@
           "testo": "Sei solo una luna!!",
           "umore": "bully",
           "scena": 2,
-          "durata": 5000,
+          "durata": 4000,
           "conTag": "[sarcastic] Sei solo una luna!! [chuckles] [giggles] [skeptical]"
         },
         {
@@ -600,7 +600,7 @@
           "testo": "ah ah ah!!!",
           "umore": "laughing",
           "scena": 3,
-          "durata": 4000,
+          "durata": 3000,
           "conTag": "[laughs] ah ah ah!!!"
         },
         {
@@ -711,7 +711,7 @@
           "testo": "Cos' è la massa, cos' è un peso e che cosa è un volume?",
           "umore": "thinking",
           "scena": 16,
-          "durata": 5000,
+          "durata": 7000,
           "conTag": "[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?"
         },
         {
@@ -736,7 +736,7 @@
           "testo": "ok!",
           "umore": "neutral",
           "scena": 19,
-          "durata": 4000
+          "durata": 3000
         },
         {
           "n": 44,
@@ -777,7 +777,7 @@
           "testo": "la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!",
           "umore": "",
           "scena": 24,
-          "durata": 10000
+          "durata": 6000
         },
         {
           "n": 49,
