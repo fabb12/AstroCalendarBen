@@ -71,6 +71,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `style.css`, `tailwind.css` | Pelle; `tailwind.css` è **generato** (`scripts/costruisci-tailwind.js`) e va caricato prima. |
 | `sw.js` | Service worker, `CACHE_NAME`, `ASSETS`. |
 | `.github/workflows/pubblica.yml` | Deploy su GitHub Pages (copia, controlla, pubblica). |
+| `LICENSE`, `LICENZA.md`, `README.md` | GPL v3 (testo ufficiale); le condizioni in italiano, nome/logo/musica esclusi, opere di terzi; presentazione e canale YouTube @astroben2017. |
 
 **Ordine di caricamento** (quello di `index.html`, e conta): dizionari →
 `i18n.js` → manifest e `narrazione.js` → `app.js` → `telescopio.js` →
