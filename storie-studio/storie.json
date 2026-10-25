@@ -4447,13 +4447,13 @@
               "durata": 2,
               "voce": 2,
               "audio": {
-                "durata": 3440,
+                "durata": 2800,
                 "impronta": "4b1dc674",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ba51a8ffae9cbd19e21333f055e6727f8560959c",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[sarcastic]",
-                "sha": "52908b01f195fa7b9517d7d3dc777bef697355e8",
-                "est": "mp3"
+                "tag": "[sarcastic]"
               },
               "azioni": [
                 {
@@ -4575,13 +4575,13 @@
               "durata": 3,
               "voce": 3,
               "audio": {
-                "durata": 2800,
+                "durata": 2400,
                 "impronta": "ebc9e047",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "e6cc8efb18353513006ea54524d2ff7ff9bb83bd",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[laughs]",
-                "sha": "cbaf1a9dc53ad52cb54c1053cbd68362c00ae9e2",
-                "est": "mp3"
+                "tag": "[laughs]"
               },
               "azioni": [
                 {
@@ -5201,13 +5201,13 @@
               "durata": 5,
               "voce": 9,
               "audio": {
-                "durata": 2800,
+                "durata": 2880,
                 "impronta": "64ac92a5",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c613f2432783b0c126a25375379d96b60f5360f0",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[nervous] [gasps]",
-                "sha": "536481d92a12eb45c3ee1dcb7ad142a8213172ef",
-                "est": "mp3"
+                "tag": "[nervous] [gasps]"
               },
               "azioni": [
                 {
@@ -5505,13 +5505,13 @@
               "durata": 3,
               "voce": 12,
               "audio": {
-                "durata": 2320,
+                "durata": 1680,
                 "impronta": "cf8886f0",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "8a75023245730e5620117a3001355b4c7aa92f5e",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[thoughtful]",
-                "sha": "c26d3ba159adaf4bca9a8254bcd0ed8e67c2c0a2",
-                "est": "mp3"
+                "tag": "[thoughtful]"
               },
               "azioni": [],
               "copione": {
@@ -5675,13 +5675,13 @@
               "durata": 4,
               "voce": 14,
               "audio": {
-                "durata": 2720,
+                "durata": 1920,
                 "impronta": "1e13254f",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b02eb154663eeac9f7354cd440f3b093076d9da9",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[thoughtful]",
-                "sha": "934a01841ff7d84601cd524d079e3fa0db0d9412",
-                "est": "mp3"
+                "tag": "[thoughtful]"
               },
               "azioni": [],
               "copione": {
@@ -5844,13 +5844,13 @@
               "durata": 5,
               "voce": 16,
               "audio": {
-                "durata": 6560,
+                "durata": 5520,
                 "impronta": "6ab3c3e2",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ac90d954fd095b4ab8fa6e5ec6ff3703fbbbf25a",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[thoughtful]",
-                "sha": "0b7321943490114df4d6d9dd166531669b8efeb8",
-                "est": "mp3"
+                "tag": "[thoughtful]"
               },
               "azioni": [],
               "copione": {
@@ -6074,13 +6074,13 @@
               "durata": 0,
               "voce": 43,
               "audio": {
-                "durata": 640,
+                "durata": 560,
                 "impronta": "7233748a",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "45f44980b80bd623137c27d9df08f2190efaeeef",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "",
-                "sha": "ffbc153cc6a2cca6700464417189e98f75033221",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -6446,13 +6446,13 @@
               "durata": 0,
               "voce": 48,
               "audio": {
-                "durata": 4960,
+                "durata": 5840,
                 "impronta": "f5847361",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "76035b9e82139befaf000f0e17d9088fc6a82394",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "",
-                "sha": "71a271056167c6c8bc50af4aca758d0f6e4cca9f",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -6640,13 +6640,13 @@
               "durata": 4,
               "voce": 20,
               "audio": {
-                "durata": 2800,
+                "durata": 2960,
                 "impronta": "c08b624c",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "01347b317cfca6070475935a5c2034dc5fde0878",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[surprised] [gasps]",
-                "sha": "93721c8ec7501b3430499a28729f0ab70b2c7b25",
-                "est": "mp3"
+                "tag": "[surprised] [gasps]"
               },
               "azioni": [
                 {
@@ -6877,13 +6877,13 @@
               "durata": 15,
               "voce": 22,
               "audio": {
-                "durata": 12400,
+                "durata": 10640,
                 "impronta": "327acfa8",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "a0698c46af9b45e94943757209228ac984f773dd",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[surprised]",
-                "sha": "7449a98b1014171c94330fce13bd021deb3fb4c0",
-                "est": "mp3"
+                "tag": "[surprised]"
               },
               "azioni": [
                 {
@@ -7019,13 +7019,13 @@
               "durata": 12,
               "voce": 23,
               "audio": {
-                "durata": 8720,
+                "durata": 8560,
                 "impronta": "3a4bd1fa",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "0a921ad06fbe65c583d0f0c5126aa7c9de6fa113",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[annoyed]",
-                "sha": "43ba7947057bc4faedd6dc93f59a31c433faef0d",
-                "est": "mp3"
+                "tag": "[annoyed]"
               },
               "azioni": [],
               "copione": {
@@ -7133,13 +7133,13 @@
               "durata": 4,
               "voce": 25,
               "audio": {
-                "durata": 2480,
+                "durata": 3600,
                 "impronta": "2560bdf5",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "bd3677e0aefd236007504e4b043c525155f74036",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[surprised]",
-                "sha": "3a24129d30edf380cf38e720f6c96637f6ec7ea1",
-                "est": "mp3"
+                "tag": "[surprised]"
               },
               "azioni": [
                 {
@@ -7303,13 +7303,13 @@
               "durata": 9,
               "voce": 27,
               "audio": {
-                "durata": 3520,
+                "durata": 3600,
                 "impronta": "4419d2cf",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "ab5294b9b18a65aa0cc8cf54c930f5b204ebcd54",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "",
-                "sha": "c29e26b5c4355f5e45dac5774eb7f533ef082616",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -7471,13 +7471,13 @@
               "durata": 5,
               "voce": 29,
               "audio": {
-                "durata": 2720,
+                "durata": 3440,
                 "impronta": "f308db7b",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "9256b3cba49724027d4172f45636125e2f116153",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[surprised]",
-                "sha": "b9fbb0c8f22d98167e5803296fcaa40dba4bdeed",
-                "est": "mp3"
+                "tag": "[surprised]"
               },
               "azioni": [],
               "copione": {
@@ -7856,10 +7856,10 @@
                 "durata": 5040,
                 "impronta": "02b58d3c",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "6d2c7739901155e5bcdfaf82c6ac342272b2ebc1",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[surprised]",
-                "sha": "97c0f7d081d6bb6e9464d5c5f4eb35bf2586a944",
-                "est": "mp3"
+                "tag": "[surprised]"
               },
               "azioni": [],
               "copione": {
@@ -7964,13 +7964,13 @@
               "durata": 4,
               "voce": 37,
               "audio": {
-                "durata": 2800,
+                "durata": 2400,
                 "impronta": "9e5ea398",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "dae8cd0e44e3ddc724c55c89cc2c80566654e6f7",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "[curious]",
-                "sha": "a2f6d80883c9a3c2f99a0942920d753289d9cdaf",
-                "est": "mp3"
+                "tag": "[curious]"
               },
               "azioni": [],
               "copione": {
@@ -8089,13 +8089,13 @@
               "durata": 0,
               "voce": 39,
               "audio": {
-                "durata": 8240,
+                "durata": 7760,
                 "impronta": "c37a85c8",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "823c6848ab19a51c788f765522debc615b07db35",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "",
-                "sha": "dee2cb1bbfcfbf4051ed58cedf8bc64f0e61d168",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -8267,10 +8267,10 @@
                 "durata": 1200,
                 "impronta": "537284a3",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "a2d4ad0cc120a4c6030f54b099060692f7493534",
                 "voce": "ZPImQHFNyEPRDeECS4MX",
-                "tag": "",
-                "sha": "a899787b82e0b2c95ddef9d15b0a688f188b1e86",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -8404,7 +8404,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792964670076,
+      "aggiornato": 1792968568878,
       "lingua": "it",
       "musica": null,
       "voci": {
