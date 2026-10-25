@@ -274,7 +274,6 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.informazioni-build-aiuto': 'The version, build and commit precisely identify the update currently running.',
     'ui.licenza-app': 'Licence',
     'ui.licenza-gpl': 'GNU GPL v3 or later',
-    'ui.codice-sorgente': 'Source code',
     'ui.canale-youtube': 'YouTube channel',
     'ui.licenza-aiuto': 'Free software: you may use, study, change and share it under the terms of the licence. The name, logo, music and voices have separate terms.',
     'tempo.adesso': 'now',

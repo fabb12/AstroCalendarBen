@@ -283,7 +283,6 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.informazioni-build-aiuto': 'Versione, build e commit identificano con precisione l\'aggiornamento in esecuzione.',
     'ui.licenza-app': 'Licenza',
     'ui.licenza-gpl': 'GNU GPL v3 o successiva',
-    'ui.codice-sorgente': 'Codice sorgente',
     'ui.canale-youtube': 'Canale YouTube',
     'ui.licenza-aiuto': 'Software libero: puoi usarlo, studiarlo, cambiarlo e ridistribuirlo, alle condizioni della licenza. Nome, logo, musica e voci hanno condizioni a parte.',
     'tempo.adesso': 'adesso',
