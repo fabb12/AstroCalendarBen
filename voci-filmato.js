@@ -123,6 +123,19 @@ function vfilmBattute(testo) {
   }
   return [...viste.values()];
 }
+/* v524: la voce narrante delle demo. Le battute di `narrate` non hanno un
+ * personaggio (`chi` vuoto) e il casting le saltava: dalla pagina Demo una
+ * demo senza personaggi restava muta. Ora hanno un loro posto nel cast, il
+ * narratore, con la sua voce come gli altri. */
+const VFILM_NARRATORE = 'narratore';
+const vfilmChi = b => (b && b.chi) || VFILM_NARRATORE;
+// Il profilo da cui si sceglie la voce: per il narratore, la voce narrante (è lei)
+function vfilmProfiloVoce(id) {
+  if (id === VFILM_NARRATORE) return { genere: 'f' };
+  const S = window.StorieCosmiche;
+  return S && S.profilo ? S.profilo(id) : null;
+}
+const vfilmNomeChi = id => (id === VFILM_NARRATORE ? vfilmT('storia.narratore') : vfilmProfilo(id).nome);
 // Chi è, per la voce: il genere e il tono del profilo (la voce narrante è lei)
 function vfilmProfilo(chi) {
   const S = window.StorieCosmiche;
@@ -711,7 +724,9 @@ const VFILM_CARATTERI = {
   astro_ben: { eta: 'young', parole: ['child', 'kid', 'boy', 'cheerful', 'energetic'] },
   zaira: { eta: 'young', parole: ['child', 'kid', 'girl', 'cheerful', 'bright'] },
   sagan: { eta: 'middle_aged', parole: ['warm', 'calm', 'storyteller', 'narration'] },
-  hawking: { eta: 'old', parole: ['calm', 'witty', 'slow', 'robotic'] }
+  hawking: { eta: 'old', parole: ['calm', 'witty', 'slow', 'robotic'] },
+  // v524: la voce narrante delle demo
+  narratore: { eta: 'middle_aged', parole: ['narration', 'warm', 'storyteller', 'calm', 'clear'] }
 };
 // Le parole del carattere scritto in italiano (regia-voci.json) → quelle da
 // cercare fra le voci di ElevenLabs, che sono descritte in inglese
@@ -881,7 +896,7 @@ async function vfilmCasting(lavoro, aggiorna) {
   if (!imp) throw new Error(vfilmT('err.senzaChiave'));
   const regia = await vfilmLeggiRegia();
   const S = window.StorieCosmiche, St = window.StudioStorie;
-  const chi = [...new Set(lavoro.battute.map(b => b.chi).filter(Boolean))];
+  const chi = [...new Set(lavoro.battute.map(vfilmChi))];
   const gia = new Set();
   const cast = new Map();
   for (const id of chi) {
@@ -895,9 +910,9 @@ async function vfilmCasting(lavoro, aggiorna) {
   let i = 0;
   for (const id of chi) {
     if (lavoro.fermato) break;
-    aggiorna({ fase: 'cast', i: i++, totale: chi.length, chi: vfilmProfilo(id).nome });
+    aggiorna({ fase: 'cast', i: i++, totale: chi.length, chi: vfilmNomeChi(id) });
     if (cast.has(id)) continue;
-    const profilo = S && S.profilo ? S.profilo(id) : null;
+    const profilo = vfilmProfiloVoce(id);
     const descr = regia && regia.personaggi ? regia.personaggi[vfilmCartella(vfilmNomeItaliano(id))] : '';
     const carattere = vfilmCarattere(id, profilo, descr);
     const candidate = await vfilmCandidate(imp, carattere, lavoro.lingua, gia);
@@ -920,7 +935,7 @@ async function vfilmAltraVoce(lavoro, id) {
   let candidate = (ora && ora.candidate) || [];
   if (!candidate.length) {
     const S = window.StorieCosmiche;
-    candidate = await vfilmCandidate(imp, vfilmCarattere(id, S && S.profilo ? S.profilo(id) : null, ''), lavoro.lingua, new Set());
+    candidate = await vfilmCandidate(imp, vfilmCarattere(id, vfilmProfiloVoce(id), ''), lavoro.lingua, new Set());
   }
   const altri = new Set([...lavoro.cast.entries()].filter(([k]) => k !== id).map(([, v]) => v.id));
   const da = Math.max(-1, candidate.findIndex(c => c.id === (ora && (ora.libreria || ora.id))));
@@ -930,11 +945,11 @@ async function vfilmAltraVoce(lavoro, id) {
   if (!scelta) {
     const S = window.StorieCosmiche;
     const usate = new Set([...altri, ora && (ora.libreria || ora.id)]);
-    candidate = await vfilmCandidate(imp, vfilmCarattere(id, S && S.profilo ? S.profilo(id) : null, ''), lavoro.lingua, usate);
+    candidate = await vfilmCandidate(imp, vfilmCarattere(id, vfilmProfiloVoce(id), ''), lavoro.lingua, usate);
     scelta = candidate.find(c => !usate.has(c.id)) || null;
   }
   if (!scelta) return null;
-  const voce = { id: await vfilmAggiungiVoce(imp, scelta), nome: scelta.nome, anteprima: scelta.anteprima, genere: vfilmProfilo(id).genere,
+  const voce = { id: await vfilmAggiungiVoce(imp, scelta), nome: scelta.nome, anteprima: scelta.anteprima, genere: vfilmCarattere(id, vfilmProfiloVoce(id), '').genere,
     libreria: scelta.id, candidate };
   vfilmCastSalva(id, lavoro.lingua, voce);
   lavoro.cast.set(id, Object.assign({ fonte: 'cast' }, voce));
@@ -946,15 +961,15 @@ async function vfilmGeneraStoria(lavoro, aggiorna, soloChi) {
   const imp = vfilmElevenImpostazioni();
   if (!imp) throw new Error(vfilmT('err.senzaChiave'));
   const regia = await vfilmLeggiRegia();
-  const battute = lavoro.battute.filter(b => !soloChi || b.chi === soloChi);
+  const battute = lavoro.battute.filter(b => !soloChi || vfilmChi(b) === soloChi);
   const errori = [];
   lavoro.fatte = [];
   let fatte = 0, spesi = 0;
   for (let i = 0; i < battute.length; i++) {
     if (lavoro.fermato) break;
     const b = battute[i];
-    const voce = lavoro.cast.get(b.chi);
-    aggiorna({ fase: 'genera', i, totale: battute.length, chi: vfilmProfilo(b.chi).nome });
+    const voce = lavoro.cast.get(vfilmChi(b));
+    aggiorna({ fase: 'genera', i, totale: battute.length, chi: vfilmNomeChi(vfilmChi(b)) });
     if (!voce) { errori.push({ battuta: b, messaggio: vfilmT('err.senzaVoci') }); continue; }
     const inviato = vfilmTestoConRegia(b, lavoro.lingua, regia, imp.modello);
     const k = vfilmChiave('eleven', b, lavoro.lingua);
@@ -1250,14 +1265,14 @@ function vfilmDisegnaStoria() {
     if (!battute.length) corpo.append(vfilmEl('p', { class: 'yt-messaggio' }, vfilmT('storia.nessuna')));
     else corpo.append(vfilmEl('p', { class: 'yt-messaggio' }, vfilmT('storia.spiega', { n: battute.length, caratteri })));
     // chi parla, con la sua voce
-    const chi = [...new Set(battute.map(b => b.chi).filter(Boolean))];
+    const chi = [...new Set(battute.map(vfilmChi))];
     const elenco = vfilmEl('ul', { class: 'vcast-elenco' });
     for (const id of chi) {
       const v = f.lavoro.cast.get(id);
-      const sue = battute.filter(b => b.chi === id).length;
+      const sue = battute.filter(b => vfilmChi(b) === id).length;
       const riga = vfilmEl('li', { class: 'vcast-riga', dataset: { vcastChi: id } });
-      if (S && typeof S.figurina === 'function') { const img = S.figurina(id, 30); if (img) riga.append(img); }
-      riga.append(vfilmEl('span', { class: 'vcast-nome' }, vfilmEl('strong', {}, vfilmProfilo(id).nome),
+      if (id !== VFILM_NARRATORE && S && typeof S.figurina === 'function') { const img = S.figurina(id, 30); if (img) riga.append(img); }
+      riga.append(vfilmEl('span', { class: 'vcast-nome' }, vfilmEl('strong', {}, vfilmNomeChi(id)),
         vfilmEl('small', {}, v ? vfilmT(v.fonte === 'studio' ? 'storia.voceStudio' : 'storia.voce', { voce: v.nome || v.id, n: sue }) : vfilmT('storia.daScegliere', { n: sue }))));
       if (v && v.anteprima) riga.append(vfilmEl('button', { type: 'button', class: 'tasto-cielo vcast-tasto', dataset: { vcast: 'ascolta' }, onclick: () => {
         if (vcast.ascolto) { try { vcast.ascolto.pause(); } catch (_) { /* niente */ } }

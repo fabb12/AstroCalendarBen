@@ -529,7 +529,7 @@ gruppo('i comandi del DSL, col motore delle demo');
 
 const registro = Object.create(null);
 for (const [k, c] of Object.entries(S.comandi)) registro[k] = c;
-for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card', 'point_view', 'voyager_journey'])
+for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card', 'point_view', 'voyager_journey', 'page_show', 'didactic_bench', 'show_layers'])
   registro[k] = { crea: () => ({}) };
 // La scala cosmica (demo.js): qui basta che le scale siano quelle che il
 // comando vero accetta, numeri di UA fra un milionesimo e 1e17 o un nome
@@ -569,7 +569,9 @@ prova('validazione: errori localizzati per bersaglio, espressione, sguardo, misu
     [sc('planetarium_view', "character_show { target: 'Moon', look: 'Pandora' }"), /Non so dove guardare/],
     [sc('planetarium_view', "character_show { target: 'Moon', size: 'huge' }"), /size vuole auto, disk o badge/],
     [sc('planetarium_view', "character_speak { target: 'Moon', text: 'ciao' }"), /deve comparire in questa scena/],
-    [sc('didactic_view', "character_show { target: 'Moon' }"), /solo nel planetario e nella vista 3D/],
+    // v524: sulle pagine in HTML (didattica, pagine dell'app, mappa) solo un ospite
+    [sc('didactic_view', "character_show { target: 'Moon' }"), /può comparire solo un ospite/],
+    [sc('app_view', "page_show { page: calendar }", "character_show { target: 'Saturn' }"), /può comparire solo un ospite/],
     [sc('planetarium_view', "character_show { target: 'Moon', color: 'red' }"), /Parametro sconosciuto: color/],
     [sc('planetarium_view', "character_show { target: 'Moon' }", "character_speak { target: 'Moon' }"), /vuole un id o un testo/],
     [sc('planetarium_view', "character_show { target: 'Moon' }", "character_speak { target: 'Moon', id: 'demo.narr.non.esiste' }"), /Narrazione sconosciuta/],
@@ -577,6 +579,10 @@ prova('validazione: errori localizzati per bersaglio, espressione, sguardo, misu
     [sc('planetarium_view', "character_show { target: 'Moon' }", "character_look_at { target: 'Moon' }"), /Non so dove guardare/]
   ];
   for (const [scena, atteso] of casi) assert.throws(() => motore.prepara(demo(scena)), atteso, scena);
+  // v524: un ospite sì, anche sulle pagine in HTML, con un effetto in un posto dello schermo
+  motore.prepara(demo(sc('didactic_view', "character_show { target: 'astro_ben', at: bottom_right, scale: 0.55 }",
+    "character_speak { target: 'astro_ben', text: 'Ciao' }", "effect { type: sparkles, at: top }")));
+  motore.prepara(demo(sc('app_view', "page_show { page: agenda }", "character_show { target: 'einstein' }")));
   lingua = 'en';
   assert.throws(() => motore.prepara(demo(sc('planetarium_view', "character_show { target: 'Pandora' }"))), /Unknown character: Pandora/);
   lingua = 'it';
@@ -1121,7 +1127,8 @@ prova('validazione dei comandi nuovi: vista, valori ammessi, numeri, colori, met
     [sc('solar_system_3d', "character_show { target: 'Mars' }", "character_scale { target: 'Mars', scale: 40 }"), /scale vuole un numero/],
     [sc('solar_system_3d', "effect { type: nuke }"), /type sconosciuto: nuke/],
     [sc('solar_system_3d', "effect { type: smoke, color: 'red' }"), /Colore non valido/],
-    [sc('didactic_view', "effect { type: smoke }"), /solo nel planetario e nella vista 3D/]
+    // v524: sulle pagine in HTML un effetto sta in un posto dello schermo, non su un astro
+    [sc('didactic_view', "effect { type: smoke, target: 'Moon' }"), /senza un astro a cui seguire/]
   ];
   for (const [scena, atteso] of casi) assert.throws(() => motore.prepara(demo(scena)), atteso, scena);
   lingua = 'en';

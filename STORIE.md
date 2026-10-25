@@ -4563,6 +4563,27 @@ pilota) cadono uguali sul codice di prima. Non provato: un telefono vero (sullo
 schermo stretto la spiegazione prende tutta la larghezza e chi parla le sta
 sopra, come nelle «Interstellar»).
 
+### Gli ospiti sulle pagine dell'app (v524)
+
+Una CosmoStoria può ora mostrare le **schermate vere** dell'app: il
+calendario, l'agenda, Stasera, il telescopio (scene `app_view`), i banchi della
+didattica (`didactic_view` con `didactic_bench`) e la mappa dell'ombra
+(`eclipse_map`). Sono pagine in HTML: lì un astro non ha dove mettere il volto,
+ma un **ospite** sì, perché il suo posto è sullo schermo (`storOspiti`). La
+validazione (`vistaPerPersonaggio`, `VISTE_OSPITI`) accetta in queste viste
+solo gli ospiti (`demo.err.personaggioVistaOspite`), gli effetti solo con `at`
+(non su un astro), e la regia senza obiezioni (lì non c'è lente). A
+disegnarli è `storDisegnaOspitiSuTela(ctx, L, H)` (`StorieCosmiche.disegnaOspiti`)
+su una tela trasparente che `demo.js` sovrappone alla pagina
+(`#demo-ospiti-tela`): stesso corpo, stessa bocca che segue la voce, stessi
+effetti; fasce di 76 px in alto (la testata) e 150 in basso (sottotitoli e
+barra delle viste). Su una pagina conviene un ospite più piccolo
+(`scale: 0.55`) in un angolo (`bottom_right`, `bottom_left`), perché copra poco.
+La usa la presentazione dell'app (`presentazione`, `DEMO.md` §«Le pagine vere
+dell'app»). Prove: `prova-storie.js` (le viste ammesse),
+`prova-demo-presentazione.js` (i pixel di Ben sopra al calendario, alla mappa e
+al banco; la tela che se ne va nel planetario e allo Stop).
+
 ## Dettare le battute (v512)
 
 Nel momento aperto, accanto alla battuta, **Detta** avvia il riconoscimento

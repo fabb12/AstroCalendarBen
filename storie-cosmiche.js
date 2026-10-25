@@ -11076,6 +11076,16 @@
     return { su: 64, giu: 96 };
   }
 
+  /* v524: gli ospiti su una tela sovrapposta, per le pagine in HTML. Solo
+   * loro (nessun astro ha una ricevuta qui), fuori dalla lente della regia e
+   * con le fasce di una pagina: in alto l'intestazione, in basso i
+   * sottotitoli della demo e la barra delle viste. */
+  function storDisegnaOspitiSuTela(ctx, L, H) {
+    if (!stor.personaggi.size && !stor.effetti.length) { stor.ultimiDisegnati = []; return []; }
+    const fasce = { su: 76, giu: 150, lati: 24 };
+    return storDisegnaPersonaggi(ctx, 'cielo', storOspiti(L, H, fasce), L, H, fasce);
+  }
+
   /* Vista 3D. `solDisegna` (e `solDisegnaVicino` per il banco Terra e Luna)
    * passano qui i corpi che hanno appena proiettato, con la loro `vicinanza`:
    * chi ha davanti un disco più vicino che lo copre è occultato. */
@@ -13065,9 +13075,22 @@
     return nome;
   }
   const VISTE_PERSONAGGI = ['planetarium_view', 'solar_system_3d', 'transition'];
+  /* v524: le pagine vere dell'app (calendario, agenda, Stasera, telescopio),
+   * i banchi della didattica e la mappa delle eclissi sono HTML, non una tela
+   * del planetario: lì non c'è nessun astro a cui mettere un volto. Ci può
+   * stare solo un **ospite** (Astro Ben, Einstein…), che ha un posto sullo
+   * schermo e non dipende dalla scena: lo disegna una tela sovrapposta
+   * (`storDisegnaOspitiSuTela`, accesa da `demo.js`). */
+  const VISTE_OSPITI = ['app_view', 'didactic_view', 'eclipse_map'];
+  function vistaPerPersonaggio(scena, p) {
+    if (VISTE_PERSONAGGI.includes(scena.vista)) return;
+    richiedi(VISTE_OSPITI.includes(scena.vista), 'personaggioVista');
+    const id = p && typeof p.target === 'string' ? storCanonico(p.target) : null;
+    richiedi(!id || (STOR_PERSONAGGI[id] && STOR_PERSONAGGI[id].ospite), 'personaggioVistaOspite');
+  }
   function inScena(p, scena, comando) {
     if (!scena) return;
-    richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
+    vistaPerPersonaggio(scena, p);
     if (comando === 'character_show') return;
     const id = bersaglio(p);
     const c = scena.azioni.some(a => a.comando === 'character_show' && a.parametri &&
@@ -13363,7 +13386,11 @@
         // (v488: anche un disegno a tappe, che comunque si chiude con la sua scena)
         numeroIn(p.duration, 'duration', 0.3, STOR_SFONDI.includes(p.type) || STOR_TAPPE[p.type] ? STOR_SFONDO_MAX_S : 20);
         richiedi(p.color === undefined || (typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color)), 'coloreNonValido', { nome: String(p.color) });
-        if (scena) richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
+        if (scena) {
+          vistaPerPersonaggio(scena, p);
+          // su una pagina in HTML non c'è nessun astro da seguire: solo un posto
+          if (!VISTE_PERSONAGGI.includes(scena.vista)) richiedi(p.target === undefined, 'personaggioVistaOspite');
+        }
       },
       crea(p) {
         // Un effetto vive il suo tempo anche se la scena finisce prima: un
@@ -13421,7 +13448,7 @@
         if (p.mode === 'close') { richiedi(p.target !== undefined, 'personaggioIgnoto', { nome: '' }); inScena(p, scena); }
         else if (p.mode === 'orbit' && p.target !== undefined) inScena(p, scena);
         else if (p.target !== undefined) bersaglio(p);
-        if (scena) richiedi(VISTE_PERSONAGGI.includes(scena.vista), 'personaggioVista');
+        if (scena) vistaPerPersonaggio(scena, null);
       },
       crea(p) {
         const r = stor.regia;
@@ -14645,7 +14672,7 @@
     canta: storCanta, cantoOra: storCantoOra, puntoDelCanto: storPuntoDelCanto, battito: storBattito,
     tempoNelCanto: storTempoNelCanto, paroleDelCanto: storParoleDelCanto, spintaBattuta, giroVolto: storGiroVolto,
     voceDelCanto: storVoceDelCanto, regiaRitmo: storRegiaRitmo, trovaPuntino: storTrovaPuntino,
-    tempoCanzone: storTempoCanzone, ospiti: storOspiti, sovrimpressioni: storDisegnaSovrimpressioni, STOR_POSTI_OSPITE,
+    tempoCanzone: storTempoCanzone, ospiti: storOspiti, disegnaOspiti: storDisegnaOspitiSuTela, sovrimpressioni: storDisegnaSovrimpressioni, STOR_POSTI_OSPITE,
     get canto() { const c = storCantoOra(); return c ? { chi: c.chi.slice(), testo: c.testo, u: c.u } : null; },
     get titolo() { return stor.titolo ? Object.assign({}, stor.titolo) : null; }
   };
