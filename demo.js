@@ -250,7 +250,18 @@
     err('dataUtc'));
     return new Date(p.iso);
   }
-  function luogoDemo(p) {
+  // `set_location { home: show }` (v522): di nuovo il luogo da cui la demo è
+  // partita, cioè quello dell'app (o la visita in corso). La presentazione
+  // va a Roma, a Luxor e a Helsinki e poi torna «sotto il cielo di casa
+  // tua»: senza, «stasera» restava il cielo di Helsinki. `casa` è il luogo
+  // della partenza; `null` vuol dire il luogo dell'app (`sky.luogoVista`
+  // vuoto), che è anche quello che la fotografia di `avvia` rimette.
+  function luogoDemo(p, casa = null) {
+    if (p.home !== undefined) {
+      campi(p, ['home']);
+      richiedi(p.home === 'show', err('coordinate'));
+      return casa;
+    }
     campi(p, ['lat', 'lon', 'name', 'timezone']);
     richiedi(numero(p.lat, -90, 90) && numero(p.lon, -180, 180), err('coordinate'));
     richiedi(typeof p.name === 'string' && p.name.length > 0 && p.name.length <= 80, err('nomeLuogo'));
@@ -303,8 +314,8 @@
   };
   registro.set_location = {
     allestisce: true,
-    verifica: luogoDemo,
-    crea(p) { sky.luogoVista = luogoDemo(p); skyAggiornaOsservatore(); }
+    verifica: p => { luogoDemo(p); },
+    crea(p) { sky.luogoVista = luogoDemo(p, contesto ? contesto.luogoCasa : null); skyAggiornaOsservatore(); }
   };
   registro.simulate_aurora = {
     allestisce: true,
@@ -1861,10 +1872,11 @@
   function valida(testo) {
     const demo = motore.prepara(testo);
     let quando = skyAdesso(), luogo = skyLuogoDelCielo();
+    const casa = luogo;
     for (const scena of demo.scene) {
       richiedi(VISTE_SCENA.includes(scena.vista), err('scena', { nome: scena.vista }));
       for (const azione of scena.azioni) {
-        if (azione.comando === 'set_location') luogo = luogoDemo(azione.parametri);
+        if (azione.comando === 'set_location') luogo = luogoDemo(azione.parametri, casa) || casa;
         if (azione.comando === 'set_date') quando = dataDemo(azione.parametri, luogo);
         if (azione.comando === 'timelapse') quando = tempiCivili(azione.parametri, quando, luogo).fine;
         if (azione.comando === 'aurora_lesson') richiedi(scena.vista === 'didactic_view', err('soloDidattica'));
@@ -2239,6 +2251,8 @@
         }
       }
     };
+    // Il luogo di casa per `set_location { home: show }`: quello di partenza
+    c.luogoCasa = precedente.luogoVista || null;
     contesto = c;
     // L'intro comune, se è accesa: il velo nero nasce qui, nello stesso turno
     // del clic e prima di chiedere il pieno schermo, così fra la pagina di

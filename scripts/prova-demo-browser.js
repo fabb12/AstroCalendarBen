@@ -57,11 +57,19 @@ const server = http.createServer((req, res) => {
       return { chiave: d.chiave, scene: demo.scene.length, durata: demo.scene.reduce((n, s) => n + s.durata, 0) };
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
-      ['eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss', 'solstizi_equinozi', 'voyager', 'universo',
+      [// La presentazione dell'app (v522) è la prima: la pagina la sceglie di serie
+        'presentazione',
+        'eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss', 'solstizi_equinozi', 'voyager', 'universo',
         // Le Storie cosmiche sono demo predefinite anche loro (storie-cosmiche.js)
-        'storia_luna', 'storia_giganti', 'storia_tempo', 'storia_stelle', 'storia_puntino']);
-    assert.deepEqual(builtins.map(d => d.durata), [180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000, 171000, 278000, 248500]);
+        'storia_luna', 'storia_giganti', 'storia_tempo', 'storia_stelle', 'storia_puntino', 'storia_einstein',
+        'storia_interstellar', 'storia_interstellar2', 'storia_interstellar_scienza', 'storia_interstellar2_scienza', 'storia_apollo13_scienza']);
+    assert.deepEqual(builtins.map(d => d.durata), [176000, 180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000, 171000,
+      278000, 248500, 475000, 649000, 641000, 289000, 295000, 288000]);
+    // Aperta la pagina, la demo proposta è la presentazione
+    assert.equal(await pagina.locator('#demo-elenco').inputValue(), 'presentazione');
     assert.equal(await pagina.locator('#demo-elenco option').count(), builtins.length);
+    // Dalla v472 la pagina si apre sulle CosmoStorie: l'elenco delle demo sta nell'altra linguetta
+    await pagina.locator('#demo-scheda-demo').click();
     for (const d of builtins) {
       await pagina.locator('#demo-elenco').selectOption(d.chiave);
       assert.equal(await pagina.locator('#demo-editor').getAttribute('readonly'), '');
@@ -142,7 +150,8 @@ const server = http.createServer((req, res) => {
     await pagina.locator('#demo-editor').fill(salvato.replace('mia_demo', 'modificata'));
     await pagina.evaluate(() => { window.demoSetItem = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new Error('quota-demo'); }; });
     await pagina.locator('#demo-salva').click();
-    assert.match(await pagina.locator('#demo-esito').innerText(), /quota-demo/);
+    // Dalla v518 lo spazio esaurito ha un messaggio chiaro (`demo.err.spazio`) invece dell'errore grezzo
+    assert.match(await pagina.locator('#demo-esito').innerText(), /quota-demo|Spazio del browser esaurito/);
     await pagina.evaluate(() => { Storage.prototype.setItem = window.demoSetItem; });
     await pagina.locator('#demo-salva').click();
     assert.match(await pagina.locator('#demo-esito').innerText(), /salvato/);

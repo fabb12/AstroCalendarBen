@@ -3,6 +3,173 @@
   'use strict';
   const predefiniti = [
     {
+      // La presentazione dell'app (v522): la prima dell'elenco, quindi quella
+      // che la pagina Demo propone di serie. Chi l'apre per la prima volta
+      // non sa che cosa l'app sappia fare, e un elenco di funzioni non lo
+      // convince: la conduce Astro Ben, la mascotte, con un tono da amico più
+      // grande, e a ogni funzione ne fa vedere una davvero, coi conti veri.
+      // Due funzioni le presentano gli astri stessi (Saturno al telescopio,
+      // la Luna che copre il Sole): sono le CosmoStorie, mostrate facendole.
+      // Le altre viste dell'app (calendario, meteo, telescopio, Missione
+      // Cielo) non sono scene del motore: le dice Ben, col cartello.
+      chiave: 'presentazione',
+      testo: `define_demo 'presentazione' {
+  // Il tour dell'app con Astro Ben. Si parte e si torna sotto il cielo di
+  // stasera, sopra il luogo dell'app; in mezzo, le date sono scritte apposta
+  // perché ci sia sempre qualcosa da vedere: Saturno alto a sud-est da Roma
+  // (20 ottobre 2026, 22:00, 42° d'altezza), la totale del 2 agosto 2027 da
+  // Luxor (totalità da -4,65 a +1,77 minuti dal massimo, 10:06:35 UTC, col
+  // Sole a 82°), l'aurora simulata da Helsinki (Kp 6: l'ovale è a nord,
+  // vedi «Perché Helsinki e non Tromsø» in DEMO.md).
+  // Con dei personaggi in scena la demo è una CosmoStoria, e una scena si
+  // chiude appena tace la sua battuta (il «discorso affiatato», STORIE.md):
+  // zoom, tempo e camere hanno quindi uno shot_to che li fa arrivare
+  // prima della fine della voce, se no il loro ultimo tratto sarebbe uno
+  // scatto al cambio di scena.
+  scene planetarium_view {
+    // Ciao! Il cielo di stasera sopra casa, e il titolo
+    duration: 16s;
+    action: set_date { tonight: '21:30' };
+    action: point_view { az: 160, alt: 38 };
+    action: zoom_fov { from: 120, to: 90, shot_to: 0.6 };
+    action: story_camera { mode: wide };
+    action: story_title { id: 'storie.titolo.presentazione', sub_id: 'storie.titolo.presentazioneSotto', shot_to: 0.32 };
+    action: character_show { target: 'astro_ben', expression: 'excited', at: right, look: 'viewer' };
+    action: character_animate { target: 'astro_ben', animation: jump, times: 2, shot_from: 0.32, shot_to: 0.5 };
+    action: effect { type: confetti, at: top, shot_from: 0.32 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.1', shot_from: 0.3 };
+  }
+  scene planetarium_view {
+    // Il planetario: una notte intera che gira in una scena
+    duration: 16s;
+    action: set_fov { degrees: 90 };
+    action: point_view { az: 160, alt: 38 };
+    action: timelapse { start: 21:30, end: 04:30, shot_to: 0.75 };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.presentazione.planetario', time: show, place: show };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: right, look: 'viewer' };
+    action: character_expression { target: 'astro_ben', expression: 'wonder', shot_from: 0.4 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.2' };
+  }
+  scene planetarium_view {
+    // Saturno al campo di un telescopio: gli anelli, e lui che si presenta
+    duration: 16s;
+    action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
+    action: set_date { iso: '2026-10-20T20:00:00Z' };
+    action: center_target { target: 'Saturn' };
+    action: zoom_fov { from: 30, to: 0.3, shot_to: 0.55 };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.presentazione.saturno', date: show, place: show };
+    action: character_show { target: 'Saturn', expression: 'playful', look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'wonder', at: bottom_left, look: 'Saturn' };
+    action: character_blink { target: 'Saturn', shot_from: 0.55 };
+    action: effect { type: sparkles, target: 'Saturn', shot_from: 0.75 };
+    action: character_speak { target: 'Saturn', id: 'demo.narr.presentazione.3' };
+  }
+  scene planetarium_view {
+    // La Luna che passa davanti al Sole: la totale del 2027 da Luxor
+    duration: 18s;
+    action: set_location { lat: 25.6872, lon: 32.6396, name: 'Luxor', timezone: 'Africa/Cairo' };
+    action: set_date { iso: '2027-08-02T09:59:00Z' };
+    // la totalità comincia a -4,65: a 0,58 della scena, sullo «Spegnete le luci»
+    action: zoom_fov { from: 5, to: 1.4, shot_to: 0.5 };
+    action: event_window { event: solar_eclipse, from: -7.5, to: -3.6, shot_to: 0.8 };
+    action: center_target { target: 'Sun' };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.presentazione.eclissi', date: show, place: show };
+    action: character_show { target: 'Moon', expression: 'playful', look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'surprised', at: bottom_left, look: 'Moon' };
+    action: character_expression { target: 'astro_ben', expression: 'impressed', shot_from: 0.6 };
+    action: effect { type: sparkles, at: center, shot_from: 0.6 };
+    action: character_speak { target: 'Moon', id: 'demo.narr.presentazione.4' };
+  }
+  scene transition {
+    // Il decollo
+    duration: 8s;
+    action: zoom_view { type: geometric, final_target: solar_system_3d, shot_to: 0.85 };
+    action: character_show { target: 'astro_ben', expression: 'excited', at: left, look: 'viewer' };
+    action: character_animate { target: 'astro_ben', animation: shake, times: 3, shot_from: 0.5, sound: 'rumble' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.5', shot_from: 0.15 };
+  }
+  scene solar_system_3d {
+    // La stessa eclissi da fuori: l'ombra della Luna che corre sulla Terra
+    duration: 16s;
+    // la camera guarda il Nord Africa: la strada dell'ombra va dall'Atlantico
+    // all'Arabia, e passa sopra Luxor
+    action: event_window { event: solar_eclipse, from: -50, to: 40, shot_to: 0.75 };
+    action: camera_3d { scene: earth_moon, focus: 'Earth', orbit: 22, orbit_from: 82, elev_from: 34, elev_to: 26, zoom_from: 6, zoom_to: 8.5, shot_to: 0.75 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: top_right, look: 'Earth' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.6' };
+  }
+  scene solar_system_3d {
+    // Il Sistema Solare in 3D: Giove si vanta, e tre anni di orbite
+    duration: 16s;
+    action: date_range { from: '2026-10-20T00:00:00Z', to: '2029-10-19T00:00:00Z', shot_to: 0.75 };
+    action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 30, elev_from: 50, elev_to: 60, shot_to: 0.75 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'Jupiter', expression: 'proud', look: 'viewer' };
+    action: character_show { target: 'Saturn', expression: 'skeptical', look: 'Jupiter' };
+    action: character_animate { target: 'Jupiter', animation: dance, times: 2, shot_from: 0.55 };
+    action: character_expression { target: 'Saturn', expression: 'laughing', shot_from: 0.75 };
+    action: character_speak { target: 'Jupiter', id: 'demo.narr.presentazione.7' };
+  }
+  scene solar_system_3d {
+    // La scala cosmica: dai pianeti all'universo osservabile in un fiato
+    duration: 18s;
+    action: cosmic_scale { from: 'planets', to: 'universe', focus: 'universe', zoom_end: 0.85, orbit: 30, elev_from: 70, elev_to: 80, shot_to: 0.8 };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.presentazione.scala' };
+    action: character_show { target: 'astro_ben', expression: 'wonder', at: bottom_right, look: 'viewer' };
+    action: character_expression { target: 'astro_ben', expression: 'impressed', shot_from: 0.65 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.8' };
+  }
+  scene planetarium_view {
+    // L'aurora: simulata, verso nord, con la notte che scorre
+    duration: 16s;
+    action: set_location { lat: 60.1699, lon: 24.9384, name: 'Helsinki', timezone: 'Europe/Helsinki' };
+    action: set_date { iso: '2027-01-15T20:00:00Z' };
+    action: simulate_aurora { kp: 6 };
+    action: zoom_fov { from: 80, to: 110, shot_to: 0.75 };
+    action: timelapse { start: 22:00, end: 23:30, shot_to: 0.75 };
+    action: point_view { az: 0, alt: 24 };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.presentazione.aurora', place: show };
+    action: character_show { target: 'astro_ben', expression: 'love', at: right, look: 'viewer' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.9' };
+  }
+  scene planetarium_view {
+    // Tutto il resto, a raffica, di nuovo sotto il cielo di casa: il luogo
+    // di partenza (se no «stasera» resterebbe a Helsinki), e l'aurora
+    // simulata spenta (Kp 0), che sennò a Kp 6 si vedrebbe anche da qui
+    duration: 20s;
+    action: set_location { home: show };
+    action: simulate_aurora { kp: 0 };
+    action: set_date { tonight: '22:00' };
+    action: point_view { az: 110, alt: 30 };
+    action: zoom_fov { from: 70, to: 95, shot_to: 0.75 };
+    action: story_camera { mode: wide };
+    action: date_card { label: 'demo.cartello.presentazione.ancora' };
+    action: character_show { target: 'astro_ben', expression: 'excited', at: center, look: 'viewer' };
+    action: character_animate { target: 'astro_ben', animation: bounce, times: 3, shot_from: 0.05, shot_to: 0.3 };
+    action: effect { type: shooting_star, at: top, shot_from: 0.5 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.10' };
+  }
+  scene planetarium_view {
+    // Il congedo: il campo si apre e partono i fuochi d'artificio
+    duration: 16s;
+    action: set_date { tonight: '22:10' };
+    action: point_view { az: 160, alt: 40 };
+    action: zoom_fov { from: 95, to: 125, shot_to: 0.75 };
+    action: story_camera { mode: wide };
+    action: character_show { target: 'astro_ben', expression: 'laughing', at: right, look: 'viewer' };
+    action: character_animate { target: 'astro_ben', animation: dance, times: 2, shot_from: 0.6 };
+    action: effect { type: fireworks, at: top, shot_from: 0.6 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.11' };
+  }
+}`
+    },
+    {
       chiave: 'eclisse_tour',
       testo: `define_demo 'eclisse_tour' {
   // Eclisse totale del 12 agosto 2026 (massimo 17:45:47 UTC), vista da
