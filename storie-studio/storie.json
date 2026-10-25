@@ -4288,7 +4288,7 @@
       "titolo": "Cosa è la gravità?",
       "scopo": "libera",
       "obiettivo": "capire l'importanza della gravità tra gli astri.",
-      "ufficiale": false,
+      "ufficiale": true,
       "origine": "utente-mux38l7v-er8axq5pzbj",
       "sostituisce": "",
       "cast": [
@@ -7804,13 +7804,13 @@
               "durata": 3,
               "voce": 34,
               "audio": {
-                "durata": 3040,
+                "durata": 2080,
                 "impronta": "9aa3ea34",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "167cfbabb9e0363f6f64aeda4133e7212c53f828",
                 "voce": "XvhFUZxcWhVLTd5ItX8K",
-                "tag": "",
-                "sha": "c83e79443931e33b407df2bf608624fb58e6e9bc",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -7904,13 +7904,13 @@
               "durata": 5,
               "voce": 36,
               "audio": {
-                "durata": 5120,
+                "durata": 5040,
                 "impronta": "5f172462",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "c9b379fa3549741cedc173621ec50206862ca241",
                 "voce": "XvhFUZxcWhVLTd5ItX8K",
-                "tag": "[happy]",
-                "sha": "032f41265b6f64161be02b6eddd1a4f7324c628c",
-                "est": "mp3"
+                "tag": "[happy]"
               },
               "azioni": [],
               "copione": {
@@ -8015,13 +8015,13 @@
               "durata": 8,
               "voce": 38,
               "audio": {
-                "durata": 9840,
+                "durata": 11120,
                 "impronta": "f2df8ea3",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "b9c013056ad0457d078e94c8ef0442f6688d7ca1",
                 "voce": "XvhFUZxcWhVLTd5ItX8K",
-                "tag": "",
-                "sha": "edbba187b0e40e16ec4b5a91de0c0c671e971e5f",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -8404,7 +8404,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792963767084,
+      "aggiornato": 1792963860093,
       "lingua": "it",
       "musica": null,
       "voci": {
