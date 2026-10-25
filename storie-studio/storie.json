@@ -7804,13 +7804,13 @@
               "durata": 3,
               "voce": 34,
               "audio": {
-                "durata": 2080,
+                "durata": 2240,
                 "impronta": "9aa3ea34",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "5273af375c671ac376321a2dba6aa4dfc6c96582",
                 "voce": "XvhFUZxcWhVLTd5ItX8K",
-                "tag": "",
-                "sha": "167cfbabb9e0363f6f64aeda4133e7212c53f828",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -7904,13 +7904,13 @@
               "durata": 5,
               "voce": 36,
               "audio": {
-                "durata": 5040,
+                "durata": 4480,
                 "impronta": "5f172462",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "a632d8a46444154a128cbdf78a935ce0eaaff155",
                 "voce": "XvhFUZxcWhVLTd5ItX8K",
-                "tag": "[happy]",
-                "sha": "c9b379fa3549741cedc173621ec50206862ca241",
-                "est": "mp3"
+                "tag": "[happy]"
               },
               "azioni": [],
               "copione": {
@@ -8015,13 +8015,13 @@
               "durata": 8,
               "voce": 38,
               "audio": {
-                "durata": 11120,
+                "durata": 9360,
                 "impronta": "f2df8ea3",
                 "nome": "elevenlabs.mp3",
+                "est": "mp3",
+                "sha": "76b3ef4b0e647522850b042e0cc08ca8fcfa2405",
                 "voce": "XvhFUZxcWhVLTd5ItX8K",
-                "tag": "",
-                "sha": "b9c013056ad0457d078e94c8ef0442f6688d7ca1",
-                "est": "mp3"
+                "tag": ""
               },
               "azioni": [],
               "copione": {
@@ -8404,7 +8404,7 @@
       "demoChiave": "utente-mvbb2tx4-end9vrsptsj",
       "voceChiave": "studio_cosa_e_la_gravita_2",
       "voceProssima": 50,
-      "aggiornato": 1792968662644,
+      "aggiornato": 1792968794539,
       "lingua": "it",
       "musica": null,
       "voci": {
