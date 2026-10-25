@@ -1606,6 +1606,14 @@ Lo Studio parla con le API di ElevenLabs direttamente dal browser (§6c di
   una **proposta** che parte in ascolto: «Ascolta», «Usa questa», «Rifai»,
   «Scarta». «Usa questa» la passa a `caricaVoce`, la stessa strada di un
   file caricato (IndexedDB, narrazione, durata del momento, repository).
+  v525: **si salva l'ultima voce data alla battuta.** Chi registrava una
+  voce, poi generava quella di ElevenLabs (che parte da sola in ascolto) e
+  premeva «Salva» senza «Usa questa», ritrovava la registrata: la proposta
+  restava fuori. Ora «Salva», «Metti fra le CosmoStorie» e «Ritira»
+  (`salvaCome` in `fai`) mettono prima nelle battute le proposte di voce
+  ancora in sospeso (`proposteVoce`, `usaProposteVoce`), e una voce caricata,
+  registrata o generata dopo una proposta la toglie (`mettiVoce`), così una
+  proposta più vecchia non torna sopra.
   «Genera le mancanti» fa tutte le battute del personaggio senza voce valida
   e sincronizza una volta sola alla fine.
 - **I suoni**: un'azione nuova, **Suono** (`suono`), con il quando come le
