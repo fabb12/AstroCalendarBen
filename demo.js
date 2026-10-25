@@ -399,7 +399,9 @@
     // Se la sonda è bassa, lo sguardo resta almeno a 15° perché si veda
     // anche l'orizzonte.
     verifica(p) {
-      campi(p, ['az', 'alt', 'probe']);
+      campi(p, ['az', 'alt', 'probe', 'toward']);
+      // v526: `toward: planes`, si parte da az/alt e si va dove sono gli aerei
+      richiedi(p.toward === undefined || (p.toward === 'planes' && p.probe === undefined), err('direzione'));
       if (p.probe !== undefined) {
         richiedi(SONDE_VOYAGER.includes(p.probe), err('sonde'));
         richiedi(p.az === undefined && (p.alt === undefined || numero(p.alt, -45, 45)), err('direzione'));
@@ -418,10 +420,52 @@
       }
       sky.inseguimento = false; sky.target = null; sky.seguiTelefono = false;
       sky.manuale.az = az; sky.manuale.alt = alt;
+      // v526: «quegli aerei passano davvero», ma con lo sguardo fisso a
+      // ovest gli aerei di quella sera potevano stare tutti a est: la
+      // presentazione ne parlava e lo schermo non ne mostrava nessuno.
+      // Con `toward: planes`, appena il feed risponde, lo sguardo gira
+      // piano in azimut verso il gruppo più folto (l'altezza resta quella
+      // scritta, così l'orizzonte coi monti resta in basso). Senza aerei
+      // resta dov'era.
+      let verso = null, quando = 0, ultimo = 0;
+      const versoAerei = () => {
+        const A = window.AereiADS_B;
+        if (!A || !A.stato || !A.stato.visibile || typeof A.aereoCieloOra !== 'function') return null;
+        const visti = [];
+        for (const a of A.stato.aerei || []) {
+          let q = null;
+          try { q = A.aereoCieloOra(a); } catch (_) { q = null; }
+          if (q && Number.isFinite(q.az) && q.alt > 3 && q.alt < 70) visti.push(q.az);
+        }
+        if (!visti.length) return null;
+        // la finestra che lo schermo abbraccia, più stretta del campo
+        const mezza = Math.max(15, Math.min(45, (sky.fov || 90) * 0.35));
+        const scarto = (x, y) => ((x - y + 540) % 360) - 180;
+        let migliore = null;
+        for (const centro of visti) {
+          const dentro = visti.filter(x => Math.abs(scarto(x, centro)) <= mezza);
+          const medio = (centro + dentro.reduce((m, x) => m + scarto(x, centro), 0) / dentro.length + 360) % 360;
+          if (!migliore || dentro.length > migliore.n) migliore = { az: medio, n: dentro.length };
+        }
+        return migliore.az;
+      };
       // Come il campo: finché la demo tiene la camera, la direzione resta
       // quella del racconto anche se un ridimensionamento la sposta.
       return { aggiorna() {
         if (c && c.cameraManuale) return;
+        if (p.toward === 'planes') {
+          const ora = Date.now();
+          if (ora - quando > 1000) { quando = ora; const v = versoAerei(); if (v !== null) verso = v; }
+          // al massimo 30° al secondo, più piano vicino all'arrivo: un giro
+          // di frusta di centocinquanta gradi non si segue
+          const dt = ultimo ? Math.min(0.1, (ora - ultimo) / 1000) : 0;
+          ultimo = ora;
+          if (verso !== null && dt > 0) {
+            const resta = ((verso - az + 540) % 360) - 180;
+            const passo = Math.min(Math.abs(resta), Math.min(30, Math.abs(resta) * 1.5) * dt);
+            az = (az + Math.sign(resta) * passo + 360) % 360;
+          }
+        }
         sky.manuale.az = az; sky.manuale.alt = alt;
       } };
     }
@@ -2001,10 +2045,32 @@
       const scrittePrima = c.senzaScritte;
       if (p.labels === 'show') c.senzaScritte = false;
       applicaLivelli(scelta);
+      // v526: gli aerei del posto della scena, adesso. Accesi già prima, il
+      // cambio di luogo non ne chiedeva di nuovi (`aereiChiediAdesso`)
+      if (scelta.aerei === true && prima.aerei === true && typeof aereiChiediAdesso === 'function') {
+        try { aereiChiediAdesso(); } catch (_) { /* restano quelli che ci sono */ }
+      }
       return { chiudi() {
         if (p.labels === 'show') c.senzaScritte = scrittePrima;
         if (!c.chiuso) applicaLivelli(tornano);
       } };
+    }
+  };
+
+  /* v526: le orbite nella 3D. In una CosmoStoria le righe della lezione
+   * tacciono, e le orbite si vedono solo con l'opzione «orbite» della
+   * pagina Demo (spenta di serie, v435). La presentazione però fa vedere
+   * l'app com'è, e nella 3D dell'app le orbite ci sono: senza, i pianeti
+   * erano palline sparse nel buio. `which: all` le accende tutte, come
+   * nell'app; `cast` solo quelle di chi è in scena. Per la scena sola. */
+  registro.show_orbits = {
+    verifica(p) {
+      campi(p, ['which']);
+      richiedi(p.which === undefined || p.which === 'all' || p.which === 'cast', err('orbite'));
+    },
+    crea(p, c) {
+      c.orbite = p.which === 'cast' ? 'cast' : 'all';
+      return { chiudi() { c.orbite = null; } };
     }
   };
 
@@ -2117,6 +2183,7 @@
         if (azione.comando === 'earth_axis') richiedi(scena.vista === 'solar_system_3d', err('serve3dAsse'));
         if (azione.comando === 'sun_paths') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
         if (azione.comando === 'show_layers') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
+        if (azione.comando === 'show_orbits') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'page_show') richiedi(scena.vista === 'app_view', err('soloPagina'));
         if (azione.comando === 'didactic_bench') richiedi(scena.vista === 'didactic_view', err('soloBanco'));
         if (azione.comando === 'date_range') quando = new Date(azione.parametri.to);
@@ -2320,6 +2387,29 @@
   // `perUnaVolta` (v464): opzioni che valgono solo per questa corsa, senza
   // toccare quelle salvate. «Registra e pubblica» di YouTube (`youtube.js`)
   // gira la storia registrandola anche a chi la registrazione l'ha spenta.
+  /* v526: i posti dove una scena accenderà il paesaggio (terreno, vette,
+   * paesi) si preparano appena la demo parte (`terrenoPreparaLuogo`,
+   * terreno.js §13): scaricati solo all'inizio della loro scena arrivavano
+   * a scena finita, e la presentazione parlava dei monti di Cortina col
+   * loro nome davanti a un orizzonte liscio. */
+  function preparaPaesaggi(demo) {
+    if (typeof terrenoPreparaLuogo !== 'function') return;
+    let luogo = null;
+    for (const scena of demo.scene) {
+      const livelli = [];
+      for (const a of scena.azioni) {
+        const p = a.parametri || {};
+        if (a.comando === 'set_location') luogo = p.home !== undefined ? null : p;
+        if (a.comando === 'show_layers' && typeof p.on === 'string') livelli.push(...p.on.split(',').map(x => x.trim()));
+      }
+      if (!luogo || !livelli.length) continue;
+      const quali = [];
+      if (livelli.some(l => ['terreno', 'rilievo', 'cime', 'citta', 'acque'].includes(l))) quali.push('terreno');
+      if (livelli.includes('cime')) quali.push('cime');
+      if (livelli.includes('citta')) quali.push('citta');
+      try { if (quali.length) terrenoPreparaLuogo(luogo.lat, luogo.lon, quali, luogo.name || ''); } catch (_) { /* la scena scarica da sé */ }
+    }
+  }
   function avvia(testo = script, perUnaVolta = null) {
     const demo = valida(testo);
     motore.ferma();
@@ -2554,6 +2644,7 @@
         typeof narrazione.sbloccaContesto === 'function') narrazione.sbloccaContesto();
     if (opzioni.musicaDemo !== false && typeof musicaDemoAvvia === 'function')
       c.musica = musicaDemoAvvia(tracciaMusicaDemo(), MUSICA_DEMO.volume);
+    preparaPaesaggi(demo);
     motore.avvia(testo, c);
     // Un errore nella prima scena chiude la demo dentro a `motore.avvia`, e
     // il ripristino ha già spento la musica; se il motore non è partito per
@@ -3179,6 +3270,8 @@
     // Vero mentre gira una CosmoStoria: le viste hanno l'aspetto da cartone
     // (`demoStoriaCinema` in app.js)
     get storia() { return !!(contesto && !contesto.chiuso && contesto.storia); },
+    // v526: le orbite accese da `show_orbits` per la scena ('all', 'cast' o null)
+    get orbite() { return contesto && !contesto.chiuso ? contesto.orbite || null : null; },
     // Vero quando la persona ha preso la camera in mano per questa scena: la
     // regia delle Storie cosmiche le lascia il quadro.
     get cameraManuale() { return !!(contesto && contesto.cameraManuale); },

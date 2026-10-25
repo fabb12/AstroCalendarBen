@@ -56,6 +56,10 @@
 // =====================================================================
 
 const CHIAVE_TERRENO = 'astrocalendario_terreno';
+// v526: i posti che una demo sta preparando (§13)
+const terrenoPreparazioni = new Map();   // «lat,lon» → promessa
+// i profili in preparazione, che `terrenoCarica` aspetta invece di rifarli
+const terrenoProfiliPreparati = [];      // { lat, lon, promessa }
 
 // Centoventi direzioni: una ogni 3°.
 //
@@ -2353,6 +2357,23 @@ function terrenoCarica(forza) {
       }
       return Promise.resolve(true);
     }
+  }
+
+  // v526: lo sta già scaricando la preparazione di una demo (§13): invece
+  // di ripartire da zero, e scaricare due volte le stesse quote, si aspetta
+  // quella e si applica quello che ha salvato. Se non ha salvato niente, il
+  // giro dopo scarica da sé (la preparazione esce dall'elenco prima).
+  const preparato = forza ? null : terrenoProfiloInPreparazione(lat, lon);
+  if (preparato) {
+    terreno.stato = 'in-corso';
+    terreno.motivo = '';
+    terrenoAggiornaPannello();
+    const attesa = preparato.then(() => {
+      if (terreno.promessa === attesa) { terreno.promessa = null; terreno.stato = 'niente'; }
+      return terrenoCarica();
+    });
+    terreno.promessa = attesa;
+    return attesa;
   }
 
   // Una sveglia in giro per un tentativo di prima non serve più: o è per
@@ -7366,4 +7387,82 @@ function acqueAggiornaTasto() {
   tasto.classList.toggle('attiva', acque.acceso);
   tasto.setAttribute('aria-pressed', acque.acceso ? 'true' : 'false');
   tasto.textContent = terrenoEtichettaTasto('ui.laghi-e-fiumi', acque.stato === 'in-corso');
+}
+
+
+// =====================================================================
+// 13. PREPARARE UN ALTRO POSTO PRIMA DI ANDARCI (v526)
+//     La presentazione dell'app porta il cielo a Cortina e dice «ogni
+//     vetta ha il suo nome, e quegli aerei passano davvero»; ma il profilo
+//     del terreno, le vette e i paesi di Cortina si chiedevano solo quando
+//     la scena cominciava, e la scena dura una ventina di secondi: il
+//     terreno passa dal rubinetto delle quote (decine di richieste), le
+//     vette e i paesi da Overpass. Chi guardava sentiva parlare di monti
+//     col loro nome e vedeva un orizzonte liscio e muto.
+//
+//     Qui si scarica quello che serve **prima**, senza toccare il posto
+//     che si sta guardando: si salva negli stessi archivi da cui i moduli
+//     leggono (`terrenoLeggiSalvato`, `cimeLeggiSalvate`,
+//     `cittaLeggiSalvate`), così quando il cielo arriva lì tutto si applica
+//     subito, come per un posto già visitato. Niente rete o un servizio che
+//     dice di no: non succede niente, e la scena scarica da sé come prima.
+//     Le acque restano fuori: il loro salvataggio è la geometria già
+//     tagliata sul posto aperto (`acqueSalva` legge `acque.bande`).
+// =====================================================================
+
+// (`terrenoPreparazioni` e `terrenoProfiliPreparati` stanno in cima al file:
+// `terrenoCarica` li legge, e può partire prima che il file sia letto fin qui)
+
+function terrenoProfiloInPreparazione(lat, lon) {
+  const p = terrenoProfiliPreparati.find(x => terrenoDistanzaKm(lat, lon, x.lat, x.lon) <= TERRENO_RAGGIO_VALIDO_KM);
+  return p ? p.promessa : null;
+}
+
+function terrenoPreparaLuogo(lat, lon, quali = ['terreno', 'cime', 'citta'], nome = '') {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return Promise.resolve(false);
+  const chiave = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  if (terrenoPreparazioni.has(chiave)) return terrenoPreparazioni.get(chiave);
+  const lavori = [];
+  // Il profilo dell'orizzonte: lo costruisce la stessa funzione del posto
+  // aperto, ma lo stato del modulo (profilo, stato, pannello) resta quello
+  // di dove si guarda adesso. `avanzamento` è condiviso con la barra: si
+  // rimette com'era, se no la barra del posto aperto salterebbe avanti e
+  // indietro coi conti di un altro.
+  const salvato = terrenoLeggiSalvato(lat, lon);
+  if (quali.includes('terreno') && (!salvato || terrenoDaCompletare(salvato))) {
+    const avanzamento = terreno.avanzamento;
+    const voce = { lat, lon, promessa: null };
+    voce.promessa = terrenoCostruisci(lat, lon, dati => terrenoSalva(lat, lon, dati), terrenoDaRiprendere(salvato))
+      .then(({ dati }) => { terrenoSalva(lat, lon, dati); return true; })
+      .catch(e => { console.warn('Terreno da preparare non disponibile:', e && e.message ? e.message : e); return false; })
+      .finally(() => {
+        // fuori dall'elenco **prima** che chi aspetta riparta (vedi sopra)
+        const i = terrenoProfiliPreparati.indexOf(voce);
+        if (i >= 0) terrenoProfiliPreparati.splice(i, 1);
+        if (terreno.stato !== 'in-corso') terreno.avanzamento = avanzamento;
+      });
+    terrenoProfiliPreparati.push(voce);
+    lavori.push(voce.promessa);
+  }
+  if (quali.includes('cime') && !cimeLeggiSalvate(lat, lon)) {
+    lavori.push(cimeDaOverpass(lat, lon).then(grezze => {
+      const elenco = cimePrepara(grezze, lat, lon);
+      if (elenco.length) cimeSalva(lat, lon, elenco, 'osm',
+        grezze.daRipiego ? Math.min(CIME_RAGGIO_RIPIEGO_KM, raggioCime()) : raggioCime());
+      return true;
+    }).catch(() => false));
+  }
+  if (quali.includes('citta') && !cittaLeggiSalvate(lat, lon)) {
+    lavori.push(cittaDaOverpass(lat, lon).then(grezze => {
+      const elenco = cittaPrepara(grezze, lat, lon, nome);
+      if (elenco.length) cittaSalva(lat, lon, elenco, 'osm',
+        grezze.daRipiego ? Math.min(CITTA_RAGGIO_RIPIEGO_KM, raggioCitta()) : raggioCitta());
+      return true;
+    }).catch(() => false));
+  }
+  const tutto = Promise.all(lavori).then(esiti => esiti.every(Boolean));
+  terrenoPreparazioni.set(chiave, tutto);
+  // finita (bene o male), una seconda richiesta può riprovare
+  tutto.finally(() => setTimeout(() => terrenoPreparazioni.delete(chiave), 60000));
+  return tutto;
 }

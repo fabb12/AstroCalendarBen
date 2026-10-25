@@ -2130,6 +2130,10 @@
     if (sha) m.audio.sha = sha;
     if (STUDIO_VOCE_ID.test(voce || '')) m.audio.voce = voce;
     if (typeof tag === 'string') m.audio.tag = tag.slice(0, 160);
+    // v525: la voce messa adesso è l'ultima: una proposta di ElevenLabs
+    // rimasta in sospeso su questa battuta è più vecchia, e al «Salva» non
+    // deve tornare sopra (`usaProposteVoce`)
+    togliProposta('voce|' + m.id);
     return '';
   }
   /* v483: le voci fatte dalla scheda di una storia dello Studio messa fra le
@@ -4342,6 +4346,32 @@
     if (ok !== false) togliProposta(k);
     disegna();
   }
+  /* v525: le voci generate e non ancora «usate» di una storia. «Genera» fa
+   * partire la proposta da sola, e chi l'ascoltava la prendeva per la voce
+   * della battuta: registrata una voce, generata quella di ElevenLabs e
+   * premuto «Salva», restava la registrata e la voce ElevenLabs se ne
+   * andava con la proposta. Si salva l'ultima voce data a una battuta: una
+   * proposta ancora lì è più nuova della voce che la battuta ha (una voce
+   * caricata o registrata dopo la toglie, `mettiVoce`), quindi al «Salva»
+   * entra lei. */
+  function proposteVoce(p) {
+    const fuori = [];
+    for (const sc of (p && p.scene) || []) for (const m of sc.momenti) if (proposte.has('voce|' + m.id)) fuori.push(m);
+    return fuori;
+  }
+  async function usaProposteVoce(p) {
+    let messe = 0;
+    for (const m of proposteVoce(p)) {
+      const k = 'voce|' + m.id, pr = proposte.get(k);
+      let errore = '';
+      try { errore = await mettiVoce(p, m, pr.file, { voce: pr.voce, tag: pr.tag }); }
+      catch (e) { errore = e && e.message || String(e); }
+      // una proposta che non entra (la battuta non ha più testo) resta da usare o scartare
+      if (!errore) messe++;
+    }
+    if (messe && ascoltoEl) { try { ascoltoEl.pause(); } catch (_) { /* niente */ } }
+    return messe;
+  }
 
   /* La scelta della voce di un personaggio: un pannello sotto la sua riga,
    * coi filtri (libreria o voci mie, lingua, genere, parole) e l'elenco. */
@@ -6296,24 +6326,40 @@
       // v461: la storia va fra le CosmoStorie (salvata come demo, perché la
       // scheda la faccia partire), o torna in cantiere
       case 'pubblica':
-        p.ufficiale = true;
-        if (!salvaDemo(p, t('studio.ufficiale.pubblicata'))) p.ufficiale = false;
-        aggiornaCosmoStorie();
-        break;
       case 'ritira':
-        p.ufficiale = false;
-        studio.esito = t('studio.ufficiale.ritirata');
-        salvaDemo(p, studio.esito);
-        aggiornaCosmoStorie();
-        break;
       case 'salvaDemo':
-        salvaDemo(p, t(p.ufficiale ? 'studio.ufficiale.aggiornata' : 'studio.salvata'));
-        aggiornaCosmoStorie();
+        if (salvataggioInCorso) return;
+        // v525: prima le voci generate e non ancora usate (`usaProposteVoce`):
+        // la durata dei momenti segue la voce, e il copione deve vederla
+        if (proposteVoce(p).length) {
+          salvataggioInCorso = true;
+          usaProposteVoce(p).finally(() => {
+            salvataggioInCorso = false;
+            salvaCome(nomeOp, p);
+            if (studio.progetto === p) salvaPresto();
+            disegna();
+          });
+          return;
+        }
+        salvaCome(nomeOp, p);
         break;
       default: return;
     }
     salvaPresto();
     disegna();
+  }
+  let salvataggioInCorso = false;
+  // «Metti fra le CosmoStorie», «Ritira» e «Salva nelle mie demo»
+  function salvaCome(nomeOp, p) {
+    if (nomeOp === 'pubblica') {
+      p.ufficiale = true;
+      if (!salvaDemo(p, t('studio.ufficiale.pubblicata'))) p.ufficiale = false;
+    } else if (nomeOp === 'ritira') {
+      p.ufficiale = false;
+      studio.esito = t('studio.ufficiale.ritirata');
+      salvaDemo(p, studio.esito);
+    } else salvaDemo(p, t(p.ufficiale ? 'studio.ufficiale.aggiornata' : 'studio.salvata'));
+    aggiornaCosmoStorie();
   }
 
   /* Salva la storia come demo (nella libreria, nel file delle voci e sul

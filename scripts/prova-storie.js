@@ -529,7 +529,7 @@ gruppo('i comandi del DSL, col motore delle demo');
 
 const registro = Object.create(null);
 for (const [k, c] of Object.entries(S.comandi)) registro[k] = c;
-for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card', 'point_view', 'voyager_journey', 'page_show', 'didactic_bench', 'show_layers'])
+for (const k of ['set_date', 'center_target', 'zoom_fov', 'set_fov', 'camera_3d', 'zoom_view', 'set_location', 'date_range', 'date_card', 'point_view', 'voyager_journey', 'page_show', 'didactic_bench', 'show_layers', 'show_orbits'])
   registro[k] = { crea: () => ({}) };
 // La scala cosmica (demo.js): qui basta che le scale siano quelle che il
 // comando vero accetta, numeri di UA fra un milionesimo e 1e17 o un nome

@@ -531,6 +531,56 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await scena.locator('[data-fai="elChiudiBattute"]').click();
     });
 
+    // v525: «Genera» lascia una proposta da ascoltare, e chi la sentiva partire
+    // la prendeva per la voce della battuta: «Salva» senza «Usa questa» teneva
+    // la voce registrata prima. Si salva l'ultima voce data alla battuta.
+    const nomeVoce = b => pagina.evaluate(b2 => { const x = b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto); return x.audio ? x.audio.nome : ''; }, b);
+    const registraFinta = async b => {
+      await pagina.setInputFiles(`input[data-voce="${b}"]`, { name: 'registrazione.webm', mimeType: 'audio/webm', buffer: wav(2) });
+      await pagina.waitForFunction(b2 => { const x = b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto); return x.audio && x.audio.nome === 'registrazione.webm'; }, b);
+    };
+    // quanti byte ha la voce che la narrazione suonerebbe per la battuta
+    const byteSuonati = b => pagina.evaluate(async b2 => {
+      const x = b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto);
+      const pezzo = narrazione.componi(null, x.testo.replace(/\[[^\]]*\]\s*/g, ''))[0] || {};
+      return pezzo.audio ? (await (await fetch(pezzo.audio)).arrayBuffer()).byteLength : 0;
+    }, b);
+    const salvataNellArchivio = b => pagina.evaluate(b2 => {
+      const p = JSON.parse(localStorage.getItem(StudioStorie.CHIAVE) || '[]').find(x => x.id === StudioStorie.progetto.id);
+      const x = p && b2.split('.').reduce((o, k) => o && o[k], p);
+      return x && x.audio ? x.audio.nome : '';
+    }, b);
+    prova('registrata, poi generata con ElevenLabs e salvata senza «Usa questa»: resta quella di ElevenLabs (v525)', async () => {
+      const b = await battutaDi(pg);
+      await apriScena(b.i);
+      await apriLinguetta(b.base, 'voce');
+      await registraFinta(b.base);
+      assert.equal(await byteSuonati(b.base), wav(2).length, 'suona la registrata');
+      await pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${b.base}"]`).click();
+      await pagina.waitForSelector(`[data-fai="elUsa"][data-dove="${b.base}"]`);
+      await pagina.locator('[data-fai="salvaDemo"]').first().click();
+      await pagina.waitForFunction(b2 => { const x = b2.split('.').reduce((o, k) => o[k], StudioStorie.progetto); return x.audio && x.audio.nome === 'elevenlabs.mp3'; }, b.base);
+      assert.equal(await pagina.locator(`[data-fai="elUsa"][data-dove="${b.base}"]`).count(), 0, 'la proposta è entrata nella battuta');
+      assert.match((await momento(b.base)).audio.voce, /^[A-Za-z0-9]{8,40}$/);
+      await pagina.waitForFunction(() => /salvata|aggiornata/i.test(document.getElementById('studio-esito').textContent));
+      assert.equal(await salvataNellArchivio(b.base), 'elevenlabs.mp3');
+      assert.equal(await byteSuonati(b.base), wav(1.2).length, 'suona quella di ElevenLabs');
+    });
+    prova('generata con ElevenLabs, poi registrata e salvata: resta la registrata (v525)', async () => {
+      const b = await battutaDi(pg);
+      await apriLinguetta(b.base, 'voce');
+      await pagina.locator(`[data-fai="elGeneraVoce"][data-dove="${b.base}"]`).click();
+      await pagina.waitForSelector(`[data-fai="elUsa"][data-dove="${b.base}"]`);
+      await registraFinta(b.base);
+      assert.equal(await pagina.locator(`[data-fai="elUsa"][data-dove="${b.base}"]`).count(), 0, 'la proposta più vecchia se ne va');
+      await pagina.locator('[data-fai="salvaDemo"]').first().click();
+      await pagina.waitForFunction(() => /salvata|aggiornata/i.test(document.getElementById('studio-esito').textContent));
+      await new Promise(fatto => setTimeout(fatto, 300));
+      assert.equal(await nomeVoce(b.base), 'registrazione.webm');
+      assert.equal(await salvataNellArchivio(b.base), 'registrazione.webm');
+      assert.equal(await byteSuonati(b.base), wav(2).length, 'suona la registrata');
+    });
+
     prova('la chiave è andata solo a ElevenLabs, nell\'intestazione', async () => {
       const api = richieste.filter(x => x.via);
       assert.ok(api.length > 5);

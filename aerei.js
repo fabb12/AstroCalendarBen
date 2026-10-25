@@ -2637,6 +2637,23 @@
     aereiImpostaVisibili(accesi);
   }
 
+  // v526: una lettura subito per il cielo che si sta guardando, senza il
+  // messaggio a schermo di «Aggiorna». La chiede una demo che porta il cielo
+  // in un altro posto e accende gli aerei (`show_layers` in demo.js): il
+  // cambio di luogo chiede una lettura solo «se è ora» (`carica(false)`),
+  // e con gli aerei già accesi a casa la presentazione arrivava a Cortina,
+  // diceva «quegli aerei passano davvero» e non ne chiedeva nessuno. Come
+  // per il raggio cambiato, una richiesta in volo non si abortisce: se ne
+  // fa partire un'altra appena finisce.
+  function aereiChiediAdesso() {
+    if (!stato.dati) return false;
+    stato.tentativiFalliti = 0;
+    stato.prossimoTentativo = 0;
+    if (stato.richiesta) stato.ricaricaDopo = true;
+    else carica(true);
+    return true;
+  }
+
   function aereiAggiornaAdesso() {
     if (!stato.dati) aereiImpostaDati(true);
     stato.tentativiFalliti = 0;
@@ -3460,6 +3477,7 @@
   window.aereiFerma = aereiFerma;
   window.aereiDisegna = aereiDisegna;
   window.aereiImpostaAccesi = aereiImpostaAccesi;
+  window.aereiChiediAdesso = aereiChiediAdesso;
   window.aereiAlternaVisibili = aereiAlternaVisibili;
   window.aereiImpostaVisibili = aereiImpostaVisibili;
   window.aereiAlternaDati = aereiAlternaDati;

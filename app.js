@@ -35654,9 +35654,16 @@ function demoStoriaCinema() {
 // l'opzione `orbiteStorie` della pagina Demo, spenta di serie (v435): chi
 // guarda le storie le ha trovate ancora troppo presenti anche sottili, e
 // preferisce il cielo pulito coi soli personaggi.
+// v526: o con `show_orbits` nella scena (demo.js), che le chiede lei
 function demoOrbiteStorie() {
   const d = typeof window !== 'undefined' ? window.AstroDemo : null;
-  return !!(d && d.opzioni && d.opzioni.orbiteStorie === true);
+  return !!(d && ((d.opzioni && d.opzioni.orbiteStorie === true) || d.orbite));
+}
+// v526: `show_orbits { which: all }`: tutte le orbite dei pianeti, come
+// nell'app, anche dentro una CosmoStoria (la presentazione dell'app)
+function demoOrbiteTutte() {
+  const d = typeof window !== 'undefined' ? window.AstroDemo : null;
+  return !!(d && d.orbite === 'all');
 }
 function solTesto(ctx, testo, x, y, colore, misura, allinea) {
   if (demoSenzaScritte()) return;
@@ -40201,6 +40208,9 @@ function solDisegnaFotogramma() {
     // Le scie del Grand Tour (la demo delle Voyager): sopra alle orbite, sotto
     // ai corpi — la sonda passa davanti alla sua strada, non dietro
     if (sol.grandTour) solDisegnaGrandTour(ctx);
+  } else if (demoOrbiteTutte()) {
+    // v526: la scena le chiede tutte, le righe vere dell'app
+    sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
   } else {
     // Nelle storie solo le orbite di chi è in scena, in stile cartone (v432)
     sol.orbite.tracce.filter(t => inStoria(t.id)).forEach(t => solDisegnaOrbitaStoria(ctx, t));
