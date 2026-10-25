@@ -591,7 +591,7 @@
           "testo": "Sei solo una luna!!",
           "umore": "bully",
           "scena": 2,
-          "durata": 4000,
+          "durata": 5000,
           "conTag": "[sarcastic] Sei solo una luna!! [chuckles] [giggles] [skeptical]"
         },
         {
@@ -600,7 +600,7 @@
           "testo": "ah ah ah!!!",
           "umore": "laughing",
           "scena": 3,
-          "durata": 3000,
+          "durata": 4000,
           "conTag": "[laughs] ah ah ah!!!"
         },
         {
@@ -714,7 +714,7 @@
           "testo": "Cos' è la massa, cos' è un peso e che cosa è un volume?",
           "umore": "thinking",
           "scena": 16,
-          "durata": 7000,
+          "durata": 8000,
           "conTag": "[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?"
         },
         {
@@ -921,30 +921,13 @@
           "durata": 3000
         },
         {
-          "n": 34,
-          "chi": "sgr_a",
-          "testo": "Pure io attiro oggetti Terra!",
-          "umore": "neutral",
-          "scena": 41,
-          "durata": 4000
-        },
-        {
           "n": 35,
           "chi": "Earth",
           "testo": "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
           "umore": "surprised",
           "scena": 42,
-          "durata": 5000,
-          "conTag": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
-        },
-        {
-          "n": 36,
-          "chi": "sgr_a",
-          "testo": "Sono sagittarius A! Il buco nero al centro della via lattea!",
-          "umore": "happy",
-          "scena": 43,
           "durata": 6000,
-          "conTag": "[happy] Sono sagittarius A! Il buco nero al centro della via lattea!"
+          "conTag": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
         },
         {
           "n": 37,
@@ -954,14 +937,6 @@
           "scena": 44,
           "durata": 4000,
           "conTag": "[curious] Cos' è un buco nero?"
-        },
-        {
-          "n": 38,
-          "chi": "sgr_a",
-          "testo": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.",
-          "umore": "neutral",
-          "scena": 45,
-          "durata": 11000
         },
         {
           "n": 39,
