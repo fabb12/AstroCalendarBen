@@ -17207,6 +17207,243 @@
     },
     {
       "v": 1,
+      "id": "pmkf1gsx",
+      "titolo": "La Luna ha perso un pezzo?",
+      "scopo": "fasi",
+      "obiettivo": "La Luna è sempre intera: noi ne vediamo solo la parte illuminata dal Sole.",
+      "ufficiale": false,
+      "origine": "",
+      "sostituisce": "",
+      "cast": [
+        "Moon",
+        "Earth",
+        "Sun"
+      ],
+      "scene": [
+        {
+          "id": "sdgzrh0u",
+          "ambiente": "cielo",
+          "fuoco": "Moon",
+          "zoom": "vicino",
+          "data": "2026-12-13",
+          "ora": "18:30",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [
+            "Moon"
+          ],
+          "momenti": [
+            {
+              "id": "mswuceup",
+              "chi": "Moon",
+              "testo": "Oh no! Guardate: mi manca un pezzo! Dov’è finito?",
+              "umore": "worried",
+              "tono": [],
+              "durata": 0,
+              "voce": 1,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "avh102g5",
+                  "tipo": "anima",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "animazione": "shake",
+                  "volte": 0
+                }
+              ],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "sjkc70n5",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "",
+          "ora": "21:00",
+          "giorni": 0,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [],
+          "momenti": [
+            {
+              "id": "mcs28kop",
+              "chi": "Earth",
+              "testo": "Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 0,
+              "voce": 2,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "a0607wi2",
+                  "tipo": "guarda",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "oggetto": "Earth"
+                }
+              ],
+              "copione": null,
+              "parla": null
+            },
+            {
+              "id": "m68a4551",
+              "chi": "Sun",
+              "testo": "Io vi illumino sempre per metà. La metà al buio, da qui, non si vede.",
+              "umore": "happy",
+              "tono": [],
+              "durata": 0,
+              "voce": 3,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "ayzdqi62",
+                  "tipo": "effetto",
+                  "chi": "Sun",
+                  "quando": "inizio",
+                  "effetto": "glow",
+                  "dove": "Sun",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        },
+        {
+          "id": "smp9x8fc",
+          "ambiente": "terra_luna",
+          "fuoco": "Jupiter",
+          "zoom": "normale",
+          "data": "2026-12-13",
+          "ora": "18:30",
+          "giorni": 11,
+          "cartello": false,
+          "cameraViva": true,
+          "camera": "auto",
+          "cameraChi": "",
+          "cosmoDa": "planets",
+          "cosmoA": "milky_way",
+          "presenti": [],
+          "momenti": [
+            {
+              "id": "m4ubs1f6",
+              "chi": "Moon",
+              "testo": "Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?",
+              "umore": "surprised",
+              "tono": [],
+              "durata": 0,
+              "voce": 4,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "ah7zszis",
+                  "tipo": "umore",
+                  "chi": "Moon",
+                  "quando": "fine",
+                  "umore": "happy"
+                }
+              ],
+              "copione": null,
+              "parla": null
+            },
+            {
+              "id": "myzbi8pi",
+              "chi": "Moon",
+              "testo": "Sono sempre intera, anche quando sembro una fettina!",
+              "umore": "excited",
+              "tono": [],
+              "durata": 0,
+              "voce": 5,
+              "audio": null,
+              "azioni": [
+                {
+                  "id": "ab72kj4v",
+                  "tipo": "anima",
+                  "chi": "Moon",
+                  "quando": "inizio",
+                  "animazione": "jump",
+                  "volte": 0
+                },
+                {
+                  "id": "a131hbvn",
+                  "tipo": "effetto",
+                  "chi": "Moon",
+                  "quando": "meta",
+                  "effetto": "sparkles",
+                  "dove": "Moon",
+                  "grandezza": 1,
+                  "colore": ""
+                }
+              ],
+              "copione": null,
+              "parla": null
+            }
+          ],
+          "musicaModo": "storia",
+          "musica": null,
+          "voci": {}
+        }
+      ],
+      "demoChiave": "utente-mvoepa7q-bc7agm5913",
+      "voceChiave": "studio_la_luna_ha_perso_un_pezzo",
+      "voceProssima": 6,
+      "aggiornato": 1792967745033,
+      "lingua": "it",
+      "musica": null,
+      "voci": {
+        "Moon": {
+          "id": "uC9VI5XrTxXRNlCzGSKR",
+          "nome": "Giulia - Animated and Passionate",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1da06ea679a54975ad96a2221fe6530d/voices/uC9VI5XrTxXRNlCzGSKR/7aee21ff-0617-4fcc-944f-a4f9737afde3.mp3",
+          "genere": "f"
+        },
+        "Earth": {
+          "id": "ZPImQHFNyEPRDeECS4MX",
+          "nome": "Vale- Italiana, calm & friendly",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/fd2883086e854b22807b3ea5f6508021/voices/ZPImQHFNyEPRDeECS4MX/f64136e0-1140-4797-9695-c1eacb2e70df.mp3",
+          "genere": "f"
+        },
+        "Sun": {
+          "id": "4J1q3WHQLvitp3s2bWyq",
+          "nome": "Dimitri Grassi - Reassuring",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/57562742c8f540168bac59591f0aa046/voices/4J1q3WHQLvitp3s2bWyq/SeMfeBRAYFBZ8socBRiO.mp3",
+          "genere": "m"
+        }
+      },
+      "domanda": {
+        "attiva": false,
+        "modo": "auto",
+        "tipo": "auto",
+        "testo": "",
+        "a": "",
+        "b": "",
+        "chi": ""
+      }
+    },
+    {
+      "v": 1,
       "id": "pp9ffc58",
       "titolo": "Cosa è la gravità?Voce zaira",
       "scopo": "libera",

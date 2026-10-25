@@ -1243,6 +1243,53 @@
       "battute": []
     },
     {
+      "chiave": "studio_la_luna_ha_perso_un_pezzo",
+      "titolo": "La Luna ha perso un pezzo?",
+      "lingua": "it",
+      "battute": [
+        {
+          "n": 1,
+          "chi": "Moon",
+          "testo": "Oh no! Guardate: mi manca un pezzo! Dov’è finito?",
+          "umore": "worried",
+          "scena": 1,
+          "durata": 8000
+        },
+        {
+          "n": 2,
+          "chi": "Earth",
+          "testo": "Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me.",
+          "umore": "happy",
+          "scena": 2,
+          "durata": 8000
+        },
+        {
+          "n": 3,
+          "chi": "Sun",
+          "testo": "Io vi illumino sempre per metà. La metà al buio, da qui, non si vede.",
+          "umore": "happy",
+          "scena": 3,
+          "durata": 9000
+        },
+        {
+          "n": 4,
+          "chi": "Moon",
+          "testo": "Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?",
+          "umore": "surprised",
+          "scena": 4,
+          "durata": 11000
+        },
+        {
+          "n": 5,
+          "chi": "Moon",
+          "testo": "Sono sempre intera, anche quando sembro una fettina!",
+          "umore": "excited",
+          "scena": 5,
+          "durata": 7000
+        }
+      ]
+    },
+    {
       "chiave": "studio_la_rivoluzione_di_ganimede_e_f",
       "titolo": "La rivoluzione di Ganimede e (forse) Titano.",
       "lingua": "it",
