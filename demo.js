@@ -250,7 +250,7 @@
     err('dataUtc'));
     return new Date(p.iso);
   }
-  // `set_location { home: show }` (v521): di nuovo il luogo da cui la demo è
+  // `set_location { home: show }` (v522): di nuovo il luogo da cui la demo è
   // partita, cioè quello dell'app (o la visita in corso). La presentazione
   // va a Roma, a Luxor e a Helsinki e poi torna «sotto il cielo di casa
   // tua»: senza, «stasera» restava il cielo di Helsinki. `casa` è il luogo

@@ -57,7 +57,7 @@ const server = http.createServer((req, res) => {
       return { chiave: d.chiave, scene: demo.scene.length, durata: demo.scene.reduce((n, s) => n + s.durata, 0) };
     }));
     assert.deepEqual(builtins.map(d => d.chiave),
-      [// La presentazione dell'app (v521) è la prima: la pagina la sceglie di serie
+      [// La presentazione dell'app (v522) è la prima: la pagina la sceglie di serie
         'presentazione',
         'eclisse_tour', 'eclisse_lunare', 'aurora_boreale', 'allineamento_pianeti', 'passaggio_iss', 'solstizi_equinozi', 'voyager', 'universo',
         // Le Storie cosmiche sono demo predefinite anche loro (storie-cosmiche.js)

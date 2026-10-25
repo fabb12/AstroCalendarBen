@@ -3,7 +3,7 @@
   'use strict';
   const predefiniti = [
     {
-      // La presentazione dell'app (v521): la prima dell'elenco, quindi quella
+      // La presentazione dell'app (v522): la prima dell'elenco, quindi quella
       // che la pagina Demo propone di serie. Chi l'apre per la prima volta
       // non sa che cosa l'app sappia fare, e un elenco di funzioni non lo
       // convince: la conduce Astro Ben, la mascotte, con un tono da amico più
