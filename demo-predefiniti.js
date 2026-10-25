@@ -34,9 +34,10 @@
     action: timelapse { start: 21:30, end: 23:30 };
     action: story_camera { mode: wide };
     action: story_title { id: 'storie.titolo.presentazione', sub_id: 'storie.titolo.presentazioneSotto', shot_to: 0.32 };
-    action: character_show { target: 'astro_ben', expression: 'excited', at: right, look: 'viewer' };
-    action: character_animate { target: 'astro_ben', animation: jump, times: 2, shot_from: 0.32, shot_to: 0.5 };
-    action: effect { type: confetti, at: top, shot_from: 0.32 };
+    // v526: un tono più pacato («espressioni meno entusiaste»): facce
+    // serene e curiose al posto di occhi a stella, salti e balli
+    action: character_show { target: 'astro_ben', expression: 'happy', at: right, look: 'viewer' };
+    action: character_animate { target: 'astro_ben', animation: nod, times: 1, shot_from: 0.32, shot_to: 0.45 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.1', shot_from: 0.3 };
   }
   scene planetarium_view {
@@ -45,11 +46,15 @@
     action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
     action: set_date { iso: '2026-10-20T20:00:00Z' };
     action: center_target { target: 'Saturn' };
+    // v526: chi parla non deve finire dietro al terreno (una cresta disegnata
+    // ne nasconde il volto, storDisegnaCielo): al campo del telescopio il
+    // paesaggio non serve, e qui si spegne per la scena
+    action: show_layers { off: 'terreno,rilievo,citta,cime,acque' };
     action: zoom_fov { from: 30, to: 0.3, shot_to: 0.55 };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.saturno', date: show, place: show };
     action: character_show { target: 'Saturn', expression: 'playful', look: 'viewer' };
-    action: character_show { target: 'astro_ben', expression: 'wonder', at: bottom_left, look: 'Saturn' };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_left, look: 'Saturn' };
     action: character_blink { target: 'Saturn', shot_from: 0.55 };
     action: effect { type: sparkles, target: 'Saturn', shot_from: 0.75 };
     action: character_speak { target: 'Saturn', id: 'demo.narr.presentazione.2' };
@@ -62,13 +67,19 @@
     action: set_location { lat: 46.5405, lon: 12.1357, name: "Cortina d'Ampezzo", timezone: 'Europe/Rome' };
     // l'ora vera: gli aerei in diretta si vedono solo adesso, non a un'ora scritta
     action: set_date { now: show };
-    action: point_view { az: 275, alt: 16 };
-    action: set_fov { degrees: 100 };
+    // v526: terreno, vette e paesi di Cortina si scaricano appena la demo
+    // parte (preparaPaesaggi in demo.js), così qui ci sono già; lo sguardo
+    // resta a ovest sulle Tofane e le Cinque Torri finché Ben parla dei monti,
+    // poi, quando arriva agli aerei, gira piano verso di loro (toward:
+    // planes); Ben sta in alto, lontano dall'orizzonte coi nomi
+    action: point_view { az: 275, alt: 16, shot_to: 0.45 };
+    action: point_view { az: 275, alt: 16, toward: planes, shot_from: 0.45 };
+    action: set_fov { degrees: 110 };
     action: show_layers { on: 'terreno,rilievo,cime,citta,acque,aerei,satelliti', labels: show };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.paesaggio', place: show };
-    action: character_show { target: 'astro_ben', expression: 'excited', at: bottom_left, look: 'viewer' };
-    action: character_expression { target: 'astro_ben', expression: 'impressed', shot_from: 0.35 };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: top_right, scale: 0.7, look: 'viewer' };
+    action: character_expression { target: 'astro_ben', expression: 'curious', shot_from: 0.35 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.3' };
   }
   scene app_view {
@@ -83,7 +94,7 @@
     action: page_show { page: calendar, month: '2027-08', filter: eclissi, focus: grid, shot_to: 0.5 };
     action: page_show { page: agenda, month: '2027-08', filter: eclissi, focus: card, shot_from: 0.5 };
     action: character_show { target: 'astro_ben', expression: 'happy', at: bottom_right, scale: 0.55, look: 'viewer' };
-    action: character_expression { target: 'astro_ben', expression: 'excited', shot_from: 0.5 };
+    action: character_expression { target: 'astro_ben', expression: 'curious', shot_from: 0.5 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.4' };
   }
   scene eclipse_map {
@@ -92,7 +103,7 @@
     action: set_location { lat: 25.6872, lon: 32.6396, name: 'Luxor', timezone: 'Africa/Cairo' };
     action: set_date { iso: '2027-08-02T09:30:00Z' };
     action: shadow_map { from: -60, to: 60 };
-    action: character_show { target: 'astro_ben', expression: 'surprised', at: bottom_left, scale: 0.55, look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_left, scale: 0.55, look: 'viewer' };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.5' };
   }
   scene planetarium_view {
@@ -103,11 +114,12 @@
     action: zoom_fov { from: 5, to: 1.4, shot_to: 0.5 };
     action: event_window { event: solar_eclipse, from: -7.5, to: -3.6, shot_to: 0.8 };
     action: center_target { target: 'Sun' };
+    action: show_layers { off: 'terreno,rilievo,citta,cime,acque' };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.eclissi', date: show, place: show };
     action: character_show { target: 'Moon', expression: 'playful', look: 'viewer' };
-    action: character_show { target: 'astro_ben', expression: 'surprised', at: bottom_left, look: 'Moon' };
-    action: character_expression { target: 'astro_ben', expression: 'impressed', shot_from: 0.6 };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_left, look: 'Moon' };
+    action: character_expression { target: 'astro_ben', expression: 'happy', shot_from: 0.6 };
     action: effect { type: sparkles, at: center, shot_from: 0.6 };
     action: character_speak { target: 'Moon', id: 'demo.narr.presentazione.6' };
   }
@@ -115,7 +127,7 @@
     // 7. Il decollo
     duration: 8s;
     action: zoom_view { type: geometric, final_target: solar_system_3d, shot_to: 0.85 };
-    action: character_show { target: 'astro_ben', expression: 'excited', at: left, look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'determined', at: left, look: 'viewer' };
     action: character_animate { target: 'astro_ben', animation: shake, times: 3, shot_from: 0.5, sound: 'rumble' };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.7', shot_from: 0.15 };
   }
@@ -124,6 +136,8 @@
     duration: 16s;
     action: date_range { from: '2026-10-20T00:00:00Z', to: '2029-10-19T00:00:00Z', shot_to: 0.75 };
     action: camera_3d { scene: system, focus: 'Sun', frame: 'Jupiter,Saturn', orbit: 30, elev_from: 50, elev_to: 60, shot_to: 0.75 };
+    // v526: le orbite di tutti i pianeti, come nella 3D dell'app
+    action: show_orbits { which: all };
     action: story_camera { mode: wide };
     action: character_show { target: 'Jupiter', expression: 'proud', look: 'viewer' };
     action: character_show { target: 'Saturn', expression: 'skeptical', look: 'Jupiter' };
@@ -137,8 +151,8 @@
     action: cosmic_scale { from: 'planets', to: 'universe', focus: 'universe', zoom_end: 0.85, orbit: 30, elev_from: 70, elev_to: 80, shot_to: 0.8 };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.scala' };
-    action: character_show { target: 'astro_ben', expression: 'wonder', at: bottom_right, look: 'viewer' };
-    action: character_expression { target: 'astro_ben', expression: 'impressed', shot_from: 0.65 };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_right, look: 'viewer' };
+    action: character_expression { target: 'astro_ben', expression: 'thinking', shot_from: 0.65 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.9' };
   }
   scene didactic_view {
@@ -148,7 +162,7 @@
     action: didactic_bench { lab: retro, play: on, shot_to: 0.5 };
     action: didactic_bench { lab: keplero, play: on, shot_from: 0.5 };
     action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_right, scale: 0.55, look: 'viewer' };
-    action: character_expression { target: 'astro_ben', expression: 'excited', shot_from: 0.5 };
+    action: character_expression { target: 'astro_ben', expression: 'happy', shot_from: 0.5 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.10' };
   }
   scene planetarium_view {
@@ -162,7 +176,7 @@
     action: point_view { az: 0, alt: 24 };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.aurora', place: show };
-    action: character_show { target: 'astro_ben', expression: 'love', at: right, look: 'viewer' };
+    action: character_show { target: 'astro_ben', expression: 'tender', at: right, look: 'viewer' };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.11' };
   }
   scene app_view {
@@ -171,7 +185,7 @@
     action: page_show { page: tonight, focus: mission, shot_to: 0.55 };
     action: page_show { page: telescope, scroll_from: 0, scroll_to: 0.25, shot_from: 0.55 };
     action: character_show { target: 'astro_ben', expression: 'happy', at: bottom_right, scale: 0.55, look: 'viewer' };
-    action: character_expression { target: 'astro_ben', expression: 'excited', shot_from: 0.55 };
+    action: character_expression { target: 'astro_ben', expression: 'curious', shot_from: 0.55 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.12' };
   }
   scene planetarium_view {
@@ -185,10 +199,19 @@
     action: show_layers { on: 'arte,costellazioni,nomi', labels: show };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.ancora' };
-    action: character_show { target: 'astro_ben', expression: 'laughing', at: right, look: 'viewer' };
-    action: character_animate { target: 'astro_ben', animation: dance, times: 2, shot_from: 0.6 };
-    action: effect { type: fireworks, at: top, shot_from: 0.6 };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: right, look: 'viewer' };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.13' };
+  }
+  scene planetarium_view {
+    // 14. Il saluto (v526): «Cieli sereni da Ben», scritto sul cielo di casa
+    // (la battuta parte a scena avviata: una scena si chiude quando la voce
+    // tace, e il saluto scritto deve restare il tempo di leggerlo)
+    duration: 8s;
+    action: story_camera { mode: wide };
+    action: story_title { id: 'storie.titolo.presentazioneFine', sub_id: 'storie.titolo.presentazione' };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: bottom_right, look: 'viewer' };
+    action: character_animate { target: 'astro_ben', animation: nod, times: 1, shot_from: 0.4, shot_to: 0.6 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.14', shot_from: 0.4 };
   }
 }`
     },
