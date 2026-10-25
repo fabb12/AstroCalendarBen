@@ -122,10 +122,18 @@ function carica() {
   const { analizza } = require('../demo-motore.js');
   const predefiniti = require('../demo-predefiniti.js');
 
-  // Le battute, nell'ordine delle storie
+  // Le battute, nell'ordine delle storie. v527: anche delle demo che hanno
+  // personaggi senza essere fra le CosmoStorie (la presentazione dell'app,
+  // `presentazione`). Il tasto «Voci ElevenLabs» della pagina Demo manda le
+  // loro voci nelle cartelle dei personaggi come per una storia, ma qui si
+  // guardavano solo le `storia: true`: `presentazione-3.mp3` non era una
+  // battuta del copione, quindi un errore, e con un errore il giro non
+  // scrive niente. Le voci restavano sul repository senza suonare da
+  // nessuna parte, e il manifest si fermava per tutte le storie.
+  const conPersonaggi = d => d.storia || /\bcharacter_speak\b/.test(d.testo);
   const battute = [];
   const personaggi = new Map();
-  for (const d of predefiniti.filter(x => x.storia)) {
+  for (const d of predefiniti.filter(conPersonaggi)) {
     const scene = analizza(d.testo).scene;
     const dellaStoria = [];
     scene.forEach((s, i) => {
@@ -151,7 +159,7 @@ function carica() {
     dellaStoria.forEach((b, i) => { b.prima = dellaStoria[i - 1] || null; b.dopo = dellaStoria[i + 1] || null; });
   }
   const titoli = {};
-  for (const d of predefiniti.filter(x => x.storia))
+  for (const d of predefiniti.filter(conPersonaggi))
     titoli[d.chiave] = String(dizionari.it.messaggi[`demo.builtin.${d.chiave}.title`] || d.chiave).replace(/^(CosmoStorie|Storie cosmiche) · /, '');
   for (const b of battute) b.lingue = LINGUE;
 
@@ -362,7 +370,20 @@ function esamina({ fresche = new Set() } = {}) {
     const p = personaggi.get(b.chi);
     if (f.cartella !== p.cartella)
       avvisi.push(`${f.file}: la battuta è di ${p.nomi.it}, la cartella giusta è ${CARTELLA}/${p.cartella}/ (suona lo stesso)`);
-    if (voci[id] && voci[id][f.lingua]) { errori.push(`${id} [${f.lingua}]: due file, ${voci[id][f.lingua].file} e ${f.file}`); continue; }
+    if (voci[id] && voci[id][f.lingua]) {
+      // v527: due copie **uguali** della stessa battuta (cambiato chi la dice
+      // nello Studio, il file restava anche nella cartella di prima) non sono
+      // una scelta da fare: si tiene quella nella cartella di chi la dice, e
+      // basta un avviso. Come errore fermava il giro per tutte le storie:
+      // il manifest era fermo da una settimana per una copia di troppo.
+      const gia = voci[id][f.lingua];
+      if (gia.firma === firmaDi(f.buf)) {
+        const giusta = f.cartella === p.cartella ? f.file : gia.file;
+        avvisi.push(`${id} [${f.lingua}]: due copie uguali, ${gia.file} e ${f.file} — si usa ${giusta}, l'altra si può togliere`);
+        if (giusta === f.file) gia.file = f.file;
+      } else errori.push(`${id} [${f.lingua}]: due file, ${gia.file} e ${f.file}`);
+      continue;
+    }
     const testoOra = b.testi[f.lingua];
     if (typeof testoOra !== 'string') { errori.push(`${f.file}: la battuta non ha testo in ${f.lingua}`); continue; }
     if (f.buf.length < 64) { errori.push(`${f.file}: troppo piccolo per essere un audio`); continue; }

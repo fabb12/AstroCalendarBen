@@ -2680,7 +2680,7 @@
       "emozione": "tranquillo",
       "come": "",
       "conTag": {
-        "it": "Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
+        "it": "Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume"
       }
     },
     "studio.studio_cosa_e_la_gravita_2.16": {
@@ -2698,10 +2698,10 @@
       }
     },
     "studio.studio_cosa_e_la_gravita_2.18": {
-      "emozione": "pensieroso",
+      "emozione": "tranquillo",
       "come": "",
       "conTag": {
-        "it": "[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è"
+        "it": "La massa è la quantità di materia che compone un corpo, il peso è la forza di gravità esercitata da un corpo celeste su un oggetto dotato di massa e, infine, il volume è la misura dello spazio tridimensionale occupato da un corpo o racchiuso all'interno di una superficie chiusa. Vabbè comunque ritorniamo alla griglia spaziale di cui ti parlavo prima."
       }
     },
     "studio.studio_cosa_e_la_gravita_2.19": {
@@ -2743,7 +2743,7 @@
       "emozione": "tranquillo",
       "come": "",
       "conTag": {
-        "it": "Ehm, scusa Terra, hai finito?"
+        "it": "[hesitates] Ehm, scusa Terra, hai finito?"
       }
     },
     "studio.studio_cosa_e_la_gravita_2.25": {
@@ -2809,13 +2809,6 @@
         "it": "[happy] Come potrei mai dimenticarti?"
       }
     },
-    "studio.studio_cosa_e_la_gravita_2.34": {
-      "emozione": "tranquillo",
-      "come": "",
-      "conTag": {
-        "it": "Pure io attiro oggetti Terra!"
-      }
-    },
     "studio.studio_cosa_e_la_gravita_2.35": {
       "emozione": "sorpreso",
       "come": "",
@@ -2823,25 +2816,11 @@
         "it": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
       }
     },
-    "studio.studio_cosa_e_la_gravita_2.36": {
-      "emozione": "felice",
-      "come": "",
-      "conTag": {
-        "it": "[happy] Sono sagittarius A! Il buco nero al centro della via lattea!"
-      }
-    },
     "studio.studio_cosa_e_la_gravita_2.37": {
       "emozione": "curioso",
       "come": "",
       "conTag": {
         "it": "[curious] Cos' è un buco nero?"
-      }
-    },
-    "studio.studio_cosa_e_la_gravita_2.38": {
-      "emozione": "tranquillo",
-      "come": "",
-      "conTag": {
-        "it": "Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza."
       }
     },
     "studio.studio_cosa_e_la_gravita_2.39": {
@@ -2869,7 +2848,7 @@
       "emozione": "tranquillo",
       "come": "",
       "conTag": {
-        "it": "Ehm, sì. Sì..."
+        "it": "[hesitates] Ehm, sì. Sì..."
       }
     },
     "studio.studio_la_rivoluzione_di_ganimede_e_f.4": {
@@ -2898,6 +2877,181 @@
       "come": "",
       "conTag": {
         "it": "[happy] Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.43": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "ok!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.44": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "[hesitates] Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità può essere divisa in due parti cioè quella Classica cioè quella di Isaac Newton e quella moderna quella di Albert Einstein. se vuoi facciamo un video dove spieghiamo solamente ed esclusivamente queste cose, però adesso lo accenniamo che cosa sono."
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.45": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "la teoria classica di Isaac Newton dice che essa è composta dalla sua legge di gravitazione universale che formulò nel 1687"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.46": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "D'altro canto quella di Albert Einstein è composta dalla sua scoperta della relatività generale"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.47": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. Vabbè com"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.48": {
+      "emozione": "",
+      "come": "",
+      "conTag": {
+        "it": "la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!"
+      }
+    },
+    "studio.studio_cosa_e_la_gravita_2.49": {
+      "emozione": "",
+      "come": "",
+      "conTag": {
+        "it": "Sì! [impressed] bravissima!"
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo.1": {
+      "emozione": "preoccupato",
+      "come": "",
+      "conTag": {
+        "it": "[nervous] Oh no! Guardate: mi manca un pezzo! Dov’è finito?"
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo.2": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me."
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo.3": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Io vi illumino sempre per metà. La metà al buio, da qui, non si vede."
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo.4": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?"
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo.5": {
+      "emozione": "entusiasta",
+      "come": "",
+      "conTag": {
+        "it": "[excited] Sono sempre intera, anche quando sembro una fettina!"
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo_2.1": {
+      "emozione": "preoccupato",
+      "come": "",
+      "conTag": {
+        "it": "[nervous] Oh no! Guardate: mi manca un pezzo! Dov’è finito?"
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo_2.2": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me."
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo_2.3": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Io vi illumino sempre per metà. La metà al buio, da qui, non si vede."
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo_2.4": {
+      "emozione": "sorpreso",
+      "come": "",
+      "conTag": {
+        "it": "[surprised] Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?"
+      }
+    },
+    "studio.studio_la_luna_ha_perso_un_pezzo_2.5": {
+      "emozione": "entusiasta",
+      "come": "",
+      "conTag": {
+        "it": "[excited] Sono sempre intera, anche quando sembro una fettina!"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.8": {
+      "emozione": "imbarazzato",
+      "come": "",
+      "conTag": {
+        "it": "[embarrassed] ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.9": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] [hesitates] ehm, che c'è? Qualcosa non va?"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.10": {
+      "emozione": "curioso",
+      "come": "",
+      "conTag": {
+        "it": "[curious] ma io sono più grande di te?"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.11": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] direi, sì, di qualche centinaio di chilometri direi di sì."
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.12": {
+      "emozione": "meravigliato",
+      "come": "",
+      "conTag": {
+        "it": "[in awe] veramente?"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.13": {
+      "emozione": "tranquillo",
+      "come": "",
+      "conTag": {
+        "it": "sì amico te lo de, aspetta, dove vai?"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.14": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] non ci credo, sono più grande di un pianeta del sistema solare, che conquista!"
+      }
+    },
+    "studio.studio_la_rivoluzione_di_ganimede_e_f.15": {
+      "emozione": "felice",
+      "come": "",
+      "conTag": {
+        "it": "[happy] Sono Ganimede sono o o o o o o un pianeta"
       }
     }
   }

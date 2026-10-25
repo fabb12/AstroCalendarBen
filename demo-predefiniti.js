@@ -42,7 +42,8 @@
   }
   scene planetarium_view {
     // 2. Saturno a campo da telescopio: gli anelli, e lui che si presenta
-    duration: 16s;
+    // (v527: 18 s, la sua voce ElevenLabs ne dura 16,4)
+    duration: 18s;
     action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
     action: set_date { iso: '2026-10-20T20:00:00Z' };
     action: center_target { target: 'Saturn' };
@@ -124,8 +125,8 @@
     action: character_speak { target: 'Moon', id: 'demo.narr.presentazione.6' };
   }
   scene transition {
-    // 7. Il decollo
-    duration: 8s;
+    // 7. Il decollo (v527: 12 s, la voce ElevenLabs di Ben ne dura 10,5)
+    duration: 12s;
     action: zoom_view { type: geometric, final_target: solar_system_3d, shot_to: 0.85 };
     action: character_show { target: 'astro_ben', expression: 'determined', at: left, look: 'viewer' };
     action: character_animate { target: 'astro_ben', animation: shake, times: 3, shot_from: 0.5, sound: 'rumble' };
@@ -147,7 +148,8 @@
   }
   scene solar_system_3d {
     // 9. La scala cosmica: dai pianeti all'universo osservabile in un fiato
-    duration: 18s;
+    // (v527: 22 s, la voce ElevenLabs di Ben ne dura 20,6)
+    duration: 22s;
     action: cosmic_scale { from: 'planets', to: 'universe', focus: 'universe', zoom_end: 0.85, orbit: 30, elev_from: 70, elev_to: 80, shot_to: 0.8 };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.scala' };
