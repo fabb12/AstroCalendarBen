@@ -12475,6 +12475,12 @@ body .demo-controlli .demo-tasto[aria-pressed="true"] { background:rgba(76,141,2
 }
 /* Coi comandi a schermo la fascia dei sottotitoli sale sopra al pannello,
    che con la cronologia è più alto di prima */
+/* La tela di chi racconta sulle pagine in HTML (v524): trasparente, intera,
+   non prende i tocchi. Sta sotto ai sottotitoli (10001) e ai comandi. */
+.demo-ospiti-tela {
+  position:fixed; left:0; top:0; width:100%; height:100%;
+  pointer-events:none !important; z-index:10000;
+}
 .demo-sottotitoli { transition:bottom .18s ease; }
 .demo-controlli.visibile ~ .demo-sottotitoli { bottom:calc(var(--barra-inferiore, 0px) + 140px); }
 
@@ -13280,6 +13286,12 @@ button.studio-chip[aria-pressed="false"] .studio-figurina { opacity: 0.45; }
 .tasto-youtube { border-color: rgba(248, 113, 113, 0.45); }
 .tasto-youtube:hover { border-color: rgba(248, 113, 113, 0.8); }
 .yt-icona { display: inline-flex; vertical-align: -3px; }
+/* v524: la proposta della presentazione al primo accesso (demo-impostazioni.js) */
+.benvenuto-velo { align-items: center; z-index: 75; }
+.benvenuto-finestra { max-width: 28rem; }
+.benvenuto-testo { margin: 0; line-height: 1.55; }
+.benvenuto-tasti { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.benvenuto-guarda { display: inline-flex; align-items: center; gap: 6px; }
 .yt-velo {
   position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-start; justify-content: center;
   overflow-y: auto; padding: 24px 16px; background: rgba(0, 0, 0, 0.65);

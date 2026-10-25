@@ -138,6 +138,7 @@
     $('elimina').disabled = !selezionata || solaLettura;
     $('avvia').disabled = !selezionata || sporco() || !demo;
     $('condividi').disabled = !selezionata || sporco() || !demo;
+    if ($('voci')) $('voci').disabled = !selezionata || sporco() || !demo;
     $('esporta').disabled = !demo;
     $('duplica').disabled = !demo;
     $('annulla').disabled = !sporco();
@@ -274,6 +275,15 @@
     window.prompt(t('copiaLink'), url);
   }
   $('condividi').addEventListener('click', () => condividiDemo().catch(e => esito(e.message)));
+  // v524: le voci ElevenLabs di questa demo. È la stessa finestra delle
+  // CosmoStorie (`vfilmVociStoria`, voci-filmato.js): sceglie la voce del
+  // narratore e di ogni personaggio, genera tutte le battute e le presta alla
+  // narrazione, che da lì in poi le usa al posto della sintesi.
+  if ($('voci')) $('voci').addEventListener('click', () => {
+    if (!selezionata || sporco()) return;
+    if (typeof window.vfilmVociStoria !== 'function') { esito(t('vociAssenti')); return; }
+    window.vfilmVociStoria({ chiave: selezionata.chiave, testo: selezionata.testo, titolo: nomeDemo(selezionata) });
+  });
 
   function richiestaDaLink() {
     const frammento = window.location.hash.replace(/^#/, '');
@@ -596,4 +606,87 @@
   prova(() => carica());
   prova(disegnaOpzioni);
   avviaDaLink();
+
+  // --- La prima volta: proporre la presentazione (v524) -------------------
+  // Chi apre l'app per la prima volta non sa che cosa sappia fare, e la
+  // presentazione con Astro Ben esiste proprio per quello: la si propone una
+  // volta sola, quando il planetario è pronto, con un tasto per guardarla e
+  // uno per lasciar perdere (si ritrova sempre nella pagina Demo). La scelta
+  // si ricorda in `astrocal_benvenuto_demo_v1`. Non si propone a chi arriva
+  // con un link a una demo, né mentre un racconto gira, né al browser
+  // guidato delle prove (`navigator.webdriver`), dove una finestra in più
+  // coprirebbe i tasti che le prove devono toccare: lì la apre solo chi la
+  // chiede (`demoBenvenuto.proponi({ forza: true })`).
+  const CHIAVE_BENVENUTO = 'astrocal_benvenuto_demo_v1';
+  function benvenutoVisto() {
+    try { return !!localStorage.getItem(CHIAVE_BENVENUTO); } catch (_) { return true; }
+  }
+  function segnaBenvenuto(come) {
+    try { localStorage.setItem(CHIAVE_BENVENUTO, JSON.stringify({ come, quando: new Date().toISOString() })); } catch (_) { /* resta per questa volta */ }
+  }
+  function chiudiBenvenuto() {
+    const v = document.getElementById('benvenuto-demo');
+    if (v) v.remove();
+    document.removeEventListener('keydown', tastiBenvenuto, true);
+  }
+  function tastiBenvenuto(e) {
+    if (e.key !== 'Escape') return;
+    e.preventDefault(); segnaBenvenuto('dopo'); chiudiBenvenuto();
+  }
+  function mostraBenvenuto() {
+    if (document.getElementById('benvenuto-demo')) return true;
+    const presentazione = libreria.elenco().find(d => d.chiave === 'presentazione');
+    if (!presentazione) return false;
+    const nodo = (tag, attributi, ...figli) => {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attributi || {})) n.setAttribute(k, v);
+      n.append(...figli);
+      return n;
+    };
+    const guarda = nodo('button', { type: 'button', class: 'tasto-cielo tasto-primario benvenuto-guarda', 'data-benvenuto': 'guarda' });
+    guarda.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>';
+    guarda.append(nodo('span', {}, t('benvenuto.guarda')));
+    guarda.addEventListener('click', () => {
+      segnaBenvenuto('guardata'); chiudiBenvenuto();
+      if (typeof narrazione === 'object' && narrazione && typeof narrazione.sbloccaContesto === 'function') {
+        try { narrazione.sbloccaContesto(); } catch (_) { /* la voce partirà lo stesso */ }
+      }
+      prova(() => { carica('presentazione'); AstroDemo.avvia(presentazione.testo); });
+    });
+    const dopo = nodo('button', { type: 'button', class: 'tasto-cielo', 'data-benvenuto': 'dopo' }, t('benvenuto.dopo'));
+    dopo.addEventListener('click', () => { segnaBenvenuto('dopo'); chiudiBenvenuto(); });
+    const finestra = nodo('div', { class: 'yt-finestra benvenuto-finestra' },
+      nodo('div', { class: 'yt-testa' }, nodo('h2', { id: 'benvenuto-titolo' }, t('benvenuto.titolo'))),
+      nodo('div', { class: 'yt-corpo' },
+        nodo('p', { class: 'benvenuto-testo' }, t('benvenuto.testo')),
+        nodo('div', { class: 'yt-tasti benvenuto-tasti' }, guarda, dopo),
+        nodo('p', { class: 'yt-file' }, t('benvenuto.dove'))));
+    const velo = nodo('div', { id: 'benvenuto-demo', class: 'yt-velo benvenuto-velo', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'benvenuto-titolo' }, finestra);
+    velo.addEventListener('mousedown', e => { if (e.target === velo) { segnaBenvenuto('dopo'); chiudiBenvenuto(); } });
+    document.body.append(velo);
+    document.addEventListener('keydown', tastiBenvenuto, true);
+    guarda.focus();
+    return true;
+  }
+  function proponiBenvenuto(opzioni = {}) {
+    if (!opzioni.forza) {
+      if (benvenutoVisto()) return false;
+      if (navigator.webdriver) return false;
+      if (/(^|[#&?])demo(-script)?=/.test(window.location.hash + window.location.search)) return false;
+    }
+    let tentativi = 0;
+    const tenta = () => {
+      const pronto = typeof sky !== 'undefined' && sky.observer && Array.isArray(sky.oggetti) && sky.oggetti.length;
+      // niente sopra allo splash del planetario, a un'altra finestra o a una demo in corso
+      const libero = !AstroDemo.inCorso && !document.getElementById('splash-planetario') &&
+        !document.querySelector('.yt-velo:not(#benvenuto-demo)');
+      if (!pronto || !libero) { if (++tentativi <= 120) setTimeout(tenta, 500); return; }
+      mostraBenvenuto();
+    };
+    // un attimo dopo che il cielo è comparso, non sopra allo splash
+    setTimeout(tenta, opzioni.forza ? 0 : 1800);
+    return true;
+  }
+  window.demoBenvenuto = { proponi: proponiBenvenuto, chiudi: chiudiBenvenuto, CHIAVE: CHIAVE_BENVENUTO };
+  proponiBenvenuto();
 })();

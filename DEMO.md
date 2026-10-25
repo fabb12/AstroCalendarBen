@@ -153,6 +153,96 @@ restano disponibili. Fine, Stop, Esc ed errore ripristinano tutto: livelli,
 stato dell'interfaccia, schermo intero, registratore, stream audio, banco
 didattico e camera 3D (anche mondi minori e sonde).
 
+## Le pagine vere dell'app (v524)
+
+«La demo deve mostrare le funzionalità: la mappa delle eclissi, direttamente il
+calendario degli eventi, la parte didattica, il planetario coi nomi dei monti e
+gli aerei; e le CosmoStorie devono mostrare proprio le schermate delle
+funzioni.» Prima una demo sapeva stare solo nel planetario, nella 3D, nel banco
+delle aurore e sulla mappa del cono d'ombra: delle altre pagine poteva soltanto
+parlare. Ora:
+
+- **`app_view`**, una scena su una pagina vera dell'app, con la sua azione
+  obbligatoria **`page_show { page, month, filter, focus, scroll_from, scroll_to }`**:
+  `page` fra `tonight` (Stasera), `calendar`, `agenda`, `diary`, `telescope`;
+  `month` (`'AAAA-MM'`, solo calendario e agenda) passa da `impostaMeseSelezionato`;
+  `filter` è un chip delle categorie (`eclissi`, `luna`, …, o `tutti`) e lo si
+  preme davvero; la pagina scorre dal punto `scroll_from` (frazione, di serie la
+  cima) all'arrivo: `focus` (`grid` la griglia del mese, `card` la prima scheda
+  dell'agenda, `mission` Missione Cielo, `filters` i chip, `top`) oppure
+  `scroll_to`. L'arrivo si rimisura a ogni fotogramma, perché le pagine si
+  allungano mentre arrivano i dati. Il dito o la rotellina prendono la pagina
+  come prendono la camera. Due `page_show` con `shot_to`/`shot_from` fanno due
+  schermate nella stessa scena (il mese, poi l'agenda).
+- **`didactic_bench { lab, play, scroll_from, scroll_to }`** in una
+  `didactic_view`: apre un banco della didattica com'è nella pagina
+  (`retro`, `keplero`, `fionda`, `finestre`, `allineamenti`, `spazio`,
+  `tramonto`), lo mette in marcia (`play: on`, di serie; il tasto
+  `did-…-play` dove c'è) e scorre fin lì. A fine scena il banco torna fermo o
+  in marcia com'era prima di aprirlo (Keplero parte da solo entrando).
+- **`show_layers { on, off, labels: show }`** in una `planetarium_view`: gli
+  interruttori della scheda Visualizzazione (gli stessi `id` di
+  `LIVELLI`: `terreno`, `rilievo`, `cime`, `citta`, `acque`, `aerei`,
+  `satelliti`, `arte`, `costellazioni`, `nomi`…) **per la durata della
+  scena**: alla scena dopo tornano com'erano (un monte acceso a Cortina non
+  resta acceso sul cielo di Helsinki). `labels: show` riaccende le scritte che
+  nelle CosmoStorie sono spente (`scritteStorie`): qui sono la cosa da far vedere.
+- **`set_date { now: show }`**: l'ora vera, in tempo reale
+  (`skyImpostaOffsetTempo(0, { reale: true })`). Gli aerei ADS-B si disegnano
+  solo quando il planetario guarda adesso (`tempoReale` in `aerei.js`): a
+  un'ora scritta sarebbero stime, e l'app li nasconde.
+- **`set_location { home: show }`**: il luogo da cui la demo è partita.
+
+Su queste pagine la **vista pulita** si spegne per la scena
+(`body.demo-pagina-vera`): nasconderebbe proprio i filtri, le linguette e i
+tasti che la scena mostra. Testata, barra delle viste e comandi della pagina
+restano; sottotitoli e comandi della demo stanno sopra.
+
+**Chi racconta sulle pagine in HTML.** Un astro non ha dove mettere il volto su
+un calendario; un **ospite** (Astro Ben, Einstein, …) sì, perché ha un posto
+sullo schermo e basta. `demo.js` accende una tela trasparente a tutta finestra
+(`#demo-ospiti-tela`, `z-index` 10000, sotto ai sottotitoli, che non prende i
+tocchi) nelle scene `app_view`, `didactic_view` ed `eclipse_map` di una
+CosmoStoria, e la ridisegna a ogni fotogramma con
+`StorieCosmiche.disegnaOspiti` (`storDisegnaOspitiSuTela`): stesso disegno,
+stessa bocca che segue la voce. In queste viste la validazione accetta solo
+ospiti (`demo.err.personaggioVistaOspite`), e gli effetti solo con `at`.
+
+Il **filmato** della demo riprende una tela (§«Le opzioni della demo»): come
+per la mappa dell'ombra, durante le scene sulle pagine in HTML continua a
+riprendere il planetario che sta dietro. Per un video con le pagine vere
+serve una registrazione dello schermo.
+
+Una trappola: una scena si **apre prima** che le sue azioni partano. La mappa
+dell'ombra cerca l'eclissi più vicina all'orologio di quel momento, quindi la
+`set_date` dell'eclissi va nella scena **prima** della mappa (nella
+presentazione, quella del calendario): con la data nella scena della mappa si
+apriva l'eclissi del 2026.
+
+## La prima volta: la presentazione proposta (v524)
+
+Al primo accesso, appena il planetario è pronto (e lo splash se n'è andato),
+una finestra propone di guardare la presentazione: **«Guarda la demo»** la
+avvia (dentro al gesto, quindi col pieno schermo e la voce), **«Più tardi»**,
+Esc o un tocco fuori la chiudono. Una volta sola: la scelta sta in
+`astrocal_benvenuto_demo_v1` (`{ come, quando }`, non va nel backup). Non
+compare con un link a una demo (`#demo=`, `?demo=`), durante un racconto,
+sopra a un'altra finestra, né nel browser guidato delle prove
+(`navigator.webdriver`), dove coprirebbe i tasti: lì la apre
+`demoBenvenuto.proponi({ forza: true })`. Codice in fondo a
+`demo-impostazioni.js`.
+
+## Le voci ElevenLabs dalla pagina Demo (v524)
+
+Accanto a «Condividi link» c'è **«Voci ElevenLabs»** (`#demo-voci`): apre per
+la demo scelta la stessa finestra delle CosmoStorie (`vfilmVociStoria`,
+`voci-filmato.js`), che sceglie una voce per ogni personaggio, genera tutte le
+battute che non hanno già un audio registrato e le presta alla narrazione.
+Le battute di `narrate` (le demo senza personaggi) hanno ora il loro posto
+nel cast: il **narratore** (`VFILM_NARRATORE`, voce di donna, «narration, warm,
+storyteller»), prima saltato. La chiave si mette una volta nello Studio delle
+storie (Impostazioni → ElevenLabs). Prova in `scripts/prova-voci-cosmostorie.js`.
+
 ## La narrazione
 
 Ogni scena dei tour predefiniti ha una frase detta a voce e scritta nel
@@ -245,7 +335,7 @@ automaticamente anche per le demo.
 
 | Tour | Scene · durata | Cosa mostra |
 | --- | --- | --- |
-| **Benvenuto! · Il tour dell'app con Astro Ben** (`presentazione`, v522) | 11 · 176 s (tetto; con la voce ~2,5 min) | La presentazione dell'app, **prima dell'elenco** e quindi scelta di serie nella pagina Demo. La conduce Astro Ben con un tono giovane e scherzoso, e ogni funzione detta si vede: il cielo di stasera sopra casa (titolo e coriandoli), una notte che gira (`timelapse` 21:30→04:30), **Saturno** a 0,3° che si presenta da solo (Roma, 20 ottobre 2026, 22:00), la **Luna** che copre il Sole nella totale del 2 agosto 2027 da Luxor (`event_window` da −7,5 a −3,6: la totalità comincia a −4,65), il decollo, la stessa ombra sul Nord Africa dalla 3D (`camera_3d` con `orbit_from: 82`), **Giove** che si vanta mentre passano tre anni (`date_range`), la scala cosmica dai pianeti all'universo in una scena, l'aurora simulata da Helsinki (Kp 6) e due congedi sotto il cielo di casa: il resto dell'app a raffica (cartello) e i fuochi d'artificio. È una CosmoStoria (ha personaggi) ma sta fra le Demo: senza `storia: true`. Le scene si chiudono quando tace la battuta, quindi zoom, tempo e camere hanno uno `shot_to` che li fa arrivare prima. Guardarla: `STORIA=presentazione node scripts/giro-storia.js`. |
+| **Benvenuto! · Il tour dell'app con Astro Ben** (`presentazione`, v522, rifatta nella v524) | 13 · 250 s (tetto; con la voce ~3–4 min) | La presentazione dell'app, **prima dell'elenco** e quindi scelta di serie nella pagina Demo, e proposta al primo accesso (§«La prima volta»). La conduce Astro Ben con un tono giovane e scherzoso e mostra **le schermate vere** di ogni funzione: il cielo di stasera sopra casa; Saturno a 0,3° che si presenta (Roma, 20 ottobre 2026); il planetario a Cortina col rilievo, i nomi dei monti, i paesi e gli aerei in diretta (`show_layers`, `set_date { now }`); il **calendario** di agosto 2027 filtrato sulle eclissi e l'**agenda** con la scheda (`app_view` + `page_show`); la **mappa dell'ombra** di quell'eclissi; la Luna che copre il Sole da Luxor; il decollo; Giove nella 3D con tre anni di orbite; la scala cosmica fino all'universo; i **banchi della didattica** (moto retrogrado e Keplero, `didactic_bench`); l'aurora simulata da Helsinki; **Stasera** con Missione Cielo e il **telescopio**; il congedo a casa (`set_location { home }`) coi disegni delle costellazioni. Sulle pagine in HTML Ben è disegnato su una tela sovrapposta (§«Le pagine vere dell'app»). È una CosmoStoria (ha personaggi) ma sta fra le Demo, senza `storia: true`. Prova: `scripts/prova-demo-presentazione.js`; guardarla: `STORIA=presentazione node scripts/giro-storia.js`. |
 | **Eclisse solare totale 2026** (`eclisse_tour`) | 11 · 180 s | Reykjavík, dentro la fascia di totalità: l'attesa (il campo si stringe da 60° a 1,6° sul Sole); la **mappa del cono d'ombra** a tutto schermo, centrata sull'Islanda, con la penombra che si posa sul pianeta e arriva fino a Reykjavík (−134→−58,5 min dal massimo); il primo contatto e un'ora di falce (fino a +1,8); i grani di Baily e l'anello di diamanti, stringendo a 0,9°; la totalità, col campo che si riapre a 70° su Venere, Giove, Mercurio e Marte; di nuovo la mappa, stavolta **addosso all'ombra piena** che corre dall'Islanda alla costa nord della Spagna (+3,5→+42); volo; Sole, Luna e Terra in fila; la Terra da vicino con l'ombra che scivola oltre il bordo al tramonto (+44→+50); il ritorno a Reykjavík fino all'ultimo contatto (+62) e un congedo a campo largo che dà appuntamento al 2 agosto 2027. |
 | **Eclisse lunare totale 2028** (`eclisse_lunare`) | 10 · 178 s | Sapporo nella notte di Capodanno: l'attesa (il campo si stringe da 55° a 8°), il primo morso (−125→−40 min), l'ultimo spicchio che si spegne e la Luna color rame (fino a +5), poi **dentro la totalità il campo si riapre a 40°** e tornano le stelle; volo; da fuori il cono d'ombra, la Luna che lo attraversa (−110→+130) e la Terra davanti al Sole attorno al massimo (la Terra vista dalla Luna, l'anello dei tramonti); di nuovo in cielo l'uscita dall'ombra (+30→+170) e un congedo a campo largo che dà appuntamento alla totale del 26 giugno 2029. |
 | **Aurora boreale** (`aurora_boreale`) | 11 · 173 s | Il Sole vero, ingrandito dal planetario; poi il banco delle aurore a schermo intero: il vento di tutti i giorni, la nube che attraversa lo spazio, la magnetosfera prima e durante l'urto, la coda che si spezza, l'anello attorno al polo, il **taglio** coi colori alle loro quote (da Reykjavík, Kp 5); infine il cielo di **Helsinki** verso nord con Kp 5 simulato, e un congedo col campo che si allarga. |
@@ -738,8 +828,9 @@ Azioni principali:
   un `id` senza testo deve esistere nel dizionario)
 
 Le scene sono `planetarium_view`, `transition`, `solar_system_3d`,
-`didactic_view` ed `eclipse_map` (la mappa del cono d'ombra dell'eclisse di Sole
-più vicina all'orologio del racconto). `AstroDemo.vaiAScena(i, frazione)` salta a una scena (lo usano
+`didactic_view`, `eclipse_map` (la mappa del cono d'ombra dell'eclisse di Sole
+più vicina all'orologio del racconto) e, dalla v524, `app_view` (le pagine vere:
+§«Le pagine vere dell'app»). `AstroDemo.vaiAScena(i, frazione)` salta a una scena (lo usano
 le prove per non aspettare un minuto a tour).
 
 `set_fov` e `zoom_fov` accettano un campo fra 0,25° (il minimo del planetario, quello dei primi piani sui pianeti) e 160°. Con la vista pulita il mirino giallo non si disegna: la camera la tiene la regia, e nei primi piani starebbe proprio sopra al bersaglio. `frame_objects` calcola il

@@ -387,6 +387,32 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.evaluate(() => VociFilmato.togliVociStoria('storia_interstellar'));
     });
 
+    // v524: dalla pagina Demo, con una demo senza personaggi e senza voci
+    // registrate (la ISS): le battute di
+    // `narrate` hanno il narratore, e il narratore ha la sua voce
+    prova('dalla pagina Demo: «Voci ElevenLabs» dà una voce anche al narratore', async () => {
+      await mettiChiave('chiave-finta');
+      await pagina.evaluate(() => { const x = document.querySelector('#vcast-finestra [data-vcast="chiudi"]'); if (x) x.click(); });
+      eleven.tts.length = 0;
+      const attese = await pagina.evaluate(() => VociFilmato.battute(AstroDemo.libreria.elenco().find(d => d.chiave === 'passaggio_iss').testo));
+      assert.ok(attese.length > 0 && attese.every(b => !b.chi), 'le battute della demo sono del narratore');
+      await pagina.evaluate(() => { mostraVista('demo'); demoMostraScheda('demo-scheda-demo'); });
+      await pagina.selectOption('#demo-elenco', 'passaggio_iss');
+      await pagina.click('#demo-voci');
+      await pagina.waitForSelector('#vcast-finestra [data-vcast="guarda"]', { timeout: 120000 });
+      const riga = pagina.locator('#vcast-finestra [data-vcast-chi="narratore"]');
+      assert.equal(await riga.count(), 1, 'una riga per il narratore');
+      assert.match(await riga.textContent(), /Narratore/);
+      const cast = await pagina.evaluate(() => JSON.parse(localStorage.getItem('astrocal_voci_cast_v1')).it);
+      assert.ok(cast.narratore && /^Donna/.test(cast.narratore.id), 'la voce narrante è di donna: ' + JSON.stringify(cast.narratore));
+      assert.equal(eleven.tts.length, attese.length, 'una richiesta per battuta');
+      assert.ok(eleven.tts.every(r => r.voce === cast.narratore.id), 'tutte con la voce del narratore');
+      const esito = await pagina.evaluate(async testo => { window.__sintesi = []; const e = await narrazione.parla({ canale: 'prova', testo }); return { e, sintesi: window.__sintesi.length }; }, attese[0].testo);
+      assert.equal(esito.e, 'audio', 'e la narrazione la suona al posto della sintesi');
+      await pagina.click('#vcast-finestra [data-vcast="togli"]');
+      await pagina.click('#vcast-finestra [data-vcast="chiudi"]');
+    });
+
     prova('il voto e il carattere (funzioni pure)', async () => {
       const r = await pagina.evaluate(() => {
         const V = VociFilmato;

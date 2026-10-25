@@ -103,8 +103,64 @@
       if (sol.aperto) chiudiSistemaSolare();
       lasciaCielo(c);
       if (vistaAttuale !== 'didattica') mostraVista('didattica');
+    } else if (v === 'app_view') {
+      // Una pagina vera dell'app (v524): quale, lo dice `page_show`, che parte
+      // subito dopo. Qui si lascia solo lo spazio: niente 3D, niente cielo
+      // immersivo, niente banco della didattica a schermo intero.
+      if (typeof didDemo !== 'undefined') didDemo.pieno(false);
+      if (sol.aperto) chiudiSistemaSolare();
+      lasciaCielo(c);
     } else throw new Error(err('vistaSconosciuta', { nome: v }));
     if (c && c.vistaPulita) applicaVistaPulita(c);
+    ospitiPerScena(v, c);
+  }
+
+  // ------------------------------------------------------------------
+  // Chi racconta, sulle pagine in HTML (v524). Il calendario, l'agenda, i
+  // banchi della didattica e la mappa delle eclissi non sono una tela del
+  // planetario, e il volto di un astro non ha dove stare: ma un ospite
+  // (Astro Ben) ha un posto sullo schermo e basta, così una tela sovrapposta,
+  // trasparente e che non prende i tocchi, lo disegna con le stesse funzioni
+  // delle altre viste. Vive solo mentre la scena ha un ospite in scena.
+  // ------------------------------------------------------------------
+  const VISTE_HTML = ['app_view', 'didactic_view', 'eclipse_map'];
+  const ospitiTela = { el: null, ctx: null, raf: 0, c: null };
+  function ospitiCiclo() {
+    const o = ospitiTela;
+    if (!o.c || o.c.chiuso || !o.el) { o.raf = 0; return; }
+    const L = document.documentElement.clientWidth || window.innerWidth, H = window.innerHeight;
+    const k = Math.min(window.devicePixelRatio || 1, 2);
+    if (o.el.width !== Math.round(L * k) || o.el.height !== Math.round(H * k)) {
+      o.el.width = Math.round(L * k); o.el.height = Math.round(H * k);
+    }
+    o.ctx.setTransform(k, 0, 0, k, 0, 0);
+    o.ctx.clearRect(0, 0, L, H);
+    try { StorieCosmiche.disegnaOspiti(o.ctx, L, H); } catch (_) { /* un disegno storto non ferma il racconto */ }
+    o.raf = requestAnimationFrame(ospitiCiclo);
+  }
+  function ospitiSpegni() {
+    const o = ospitiTela;
+    if (o.raf) cancelAnimationFrame(o.raf);
+    o.raf = 0; o.c = null;
+    if (o.el) o.el.remove();
+  }
+  function ospitiPerScena(v, c) {
+    if (!c || !c.storia || !VISTE_HTML.includes(v) || typeof StorieCosmiche !== 'object' ||
+        typeof StorieCosmiche.disegnaOspiti !== 'function') { ospitiSpegni(); return; }
+    const o = ospitiTela;
+    if (!o.el) {
+      o.el = document.createElement('canvas');
+      o.el.id = 'demo-ospiti-tela'; o.el.className = 'demo-ospiti-tela';
+      o.el.setAttribute('aria-hidden', 'true');
+      o.ctx = o.el.getContext('2d');
+    }
+    // sempre sul documento (o sull'elemento a schermo intero, se non è lui):
+    // il riquadro del cielo, che di solito ospita la demo, qui è nascosto
+    const casa = document.fullscreenElement && document.fullscreenElement !== document.documentElement
+      ? document.fullscreenElement : document.body;
+    if (o.el.parentNode !== casa) casa.appendChild(o.el);
+    o.c = c;
+    if (!o.raf) o.raf = requestAnimationFrame(ospitiCiclo);
   }
 
   // ------------------------------------------------------------------
@@ -276,6 +332,10 @@
   // cui è stata scritta: con una data fissa, una scena che dice «stasera»
   // mostrava il cielo e il cartello di un altro giorno.
   function dataDemo(p, luogo = skyLuogoDelCielo()) {
+    // `now: show` (v524): l'ora vera. Gli aerei e i satelliti in diretta si
+    // vedono solo quando il planetario guarda **adesso**: a un'ora scritta
+    // l'app li nasconde, perché mostrerebbe solo stime
+    if (p.now !== undefined) { campi(p, ['now']); richiedi(p.now === 'show', err('oraAdesso')); return new Date(); }
     if (p.tonight === undefined) return dataISO(p);
     campi(p, ['tonight']);
     const m = minuti(p.tonight);
@@ -288,8 +348,15 @@
   }
   registro.set_date = {
     allestisce: true,
-    verifica(p) { if (p.tonight === undefined) dataISO(p); else { campi(p, ['tonight']); minuti(p.tonight); } },
-    crea(p) { istante(+dataDemo(p)); }
+    verifica(p) {
+      if (p.now !== undefined) dataDemo(p);
+      else if (p.tonight === undefined) dataISO(p);
+      else { campi(p, ['tonight']); minuti(p.tonight); }
+    },
+    crea(p) {
+      if (p.now !== undefined) { skyImpostaOffsetTempo(0, { reale: true }); sky.prossimoCalcolo = 0; }
+      else istante(+dataDemo(p));
+    }
   };
   // Un tratto di calendario, da una data all'altra, per tutta la durata della
   // scena: è il modo di far girare la Terra attorno al Sole in venti secondi.
@@ -1781,6 +1848,167 @@
   };
 
   // ------------------------------------------------------------------
+  // Le pagine vere dell'app (v524). La presentazione non deve solo parlare
+  // del calendario, della didattica o del planetario con le sue vette: li
+  // deve far vedere, com'è l'app, con i suoi tasti. Tre azioni:
+  //   - `page_show`      una pagina (Stasera, mese, agenda, diario,
+  //                      telescopio), il mese, il filtro e dove scorrere;
+  //   - `didactic_bench` un banco della didattica, aperto e in marcia;
+  //   - `show_layers`    i livelli del planetario (monti, paesi, aerei…)
+  //                      per la durata della scena.
+  // Tutto ciò che toccano si rimette com'era a fine scena o a fine demo.
+  // ------------------------------------------------------------------
+  const PAGINE_APP = { tonight: 'stasera', calendar: 'calendario', agenda: 'agenda', diary: 'diario', telescope: 'telescopio' };
+  const FUOCHI_PAGINA = ['top', 'grid', 'card', 'mission', 'filters'];
+  const BANCHI_DIDATTICA = ['retro', 'keplero', 'fionda', 'finestre', 'allineamenti', 'spazio', 'tramonto'];
+  // il tasto che mette in marcia l'animazione di un banco, dove c'è
+  const MARCIA_BANCO = { retro: 'did-retro-play', keplero: 'did-kep-play', finestre: 'did-lancio-play' };
+  let pagineToccate = false;
+  // Calendario, agenda e filtri: com'erano prima della demo
+  function fotografaPagine() {
+    return {
+      mese: typeof meseSelezionato !== 'undefined' && meseSelezionato ? { ...meseSelezionato } : null,
+      intervallo: typeof intervalloSelezionato !== 'undefined' && intervalloSelezionato ? { ...intervalloSelezionato } : null,
+      filtro: typeof filtroCategoria === 'string' ? filtroCategoria : 'tutti'
+    };
+  }
+  function ripristinaPagine(f) {
+    if (!pagineToccate || !f) return;
+    pagineToccate = false;
+    try {
+      if (typeof filtroCategoria === 'string' && filtroCategoria !== f.filtro) {
+        const chip = document.querySelector('#filtri-categorie [data-cat="' + f.filtro + '"]');
+        if (chip) chip.click();
+      }
+      if (f.intervallo) impostaIntervalloSelezionato(f.intervallo.inizio, f.intervallo.fine);
+      else if (f.mese) impostaMeseSelezionato(f.mese.anno, f.mese.mese, { subito: true });
+      else {
+        // nessun mese scelto: l'agenda torna sugli eventi in arrivo e la
+        // griglia sul mese di oggi, senza far credere che l'abbia scelto la persona
+        if (fullCalendarInstance) { calendarioInMovimento = true; fullCalendarInstance.today(); calendarioInMovimento = false; }
+        intervalloSelezionato = null;
+        azzeraMeseSelezionato();
+        sincronizzaCalendario();
+      }
+    } catch (_) { /* il calendario non è la demo: non la ferma */ }
+  }
+  // Dove scorrere la pagina: la cima di un elemento, meno l'intestazione
+  function ordinataFuoco(fuoco) {
+    const selettore = { grid: '#calendario-griglia', card: 'article[data-evento-id]', mission: '#missione-scheda', filters: '#filtri-categorie' }[fuoco];
+    const el = selettore && document.querySelector(selettore);
+    if (!el || !el.getClientRects().length) return null;
+    return Math.max(0, el.getBoundingClientRect().top + window.scrollY - 92);
+  }
+  const scorrimentoMax = () => Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  // Il movimento della pagina: dal punto di partenza all'arrivo, morbido.
+  // Si rifà a ogni fotogramma, perché le pagine si allungano mentre
+  // arrivano i dati (le schede dell'agenda, il meteo).
+  function scorriPagina(c, da, verso) {
+    const liscio = k => k * k * (3 - 2 * k);
+    const ridotto = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const posa = u => {
+      if (c.cameraManuale) return;
+      const fine = verso();
+      if (fine === null) return;
+      const y0 = da();
+      window.scrollTo(0, mescola(y0, fine, liscio(Math.max(0, Math.min(1, u)))));
+    };
+    window.scrollTo(0, da());
+    if (ridotto) posa(1);
+    return { aggiorna(u) { posa(ridotto ? 1 : u); } };
+  }
+  registro.page_show = {
+    verifica(p) {
+      campi(p, ['page', 'month', 'filter', 'focus', 'scroll_from', 'scroll_to']);
+      richiedi(typeof p.page === 'string' && Object.prototype.hasOwnProperty.call(PAGINE_APP, p.page),
+        err('pagina', { elenco: Object.keys(PAGINE_APP).join(', ') }));
+      const calendario = p.page === 'calendar' || p.page === 'agenda';
+      if (p.month !== undefined) {
+        const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(p.month));
+        richiedi(calendario && m && +m[1] >= 1600 && +m[1] <= 3000, err('mesePagina'));
+      }
+      if (p.filter !== undefined) richiedi(calendario && typeof p.filter === 'string' &&
+        (p.filter === 'tutti' || (typeof CATEGORIE === 'object' && CATEGORIE[p.filter])), err('filtroPagina'));
+      richiedi(p.focus === undefined || FUOCHI_PAGINA.includes(p.focus), err('fuocoPagina', { elenco: FUOCHI_PAGINA.join(', ') }));
+      richiedi([p.scroll_from, p.scroll_to].every(x => x === undefined || numero(x, 0, 1)), err('scorrimentoPagina'));
+    },
+    crea(p, c) {
+      const nome = PAGINE_APP[p.page];
+      pagineToccate = true;
+      if (vistaAttuale !== nome) mostraVista(nome);
+      if (p.month) {
+        const [anno, mese] = p.month.split('-').map(Number);
+        impostaMeseSelezionato(anno, mese - 1, { subito: true });
+      }
+      if (p.filter && typeof filtroCategoria === 'string' && filtroCategoria !== p.filter) {
+        const chip = document.querySelector('#filtri-categorie [data-cat="' + p.filter + '"]');
+        if (chip) chip.click();
+      }
+      if (nome === 'calendario' && fullCalendarInstance) fullCalendarInstance.updateSize();
+      const arrivo = () => p.focus && p.focus !== 'top' ? ordinataFuoco(p.focus)
+        : p.scroll_to !== undefined ? scorrimentoMax() * p.scroll_to : 0;
+      return scorriPagina(c, () => scorrimentoMax() * (p.scroll_from || 0), arrivo);
+    }
+  };
+  registro.didactic_bench = {
+    verifica(p) {
+      campi(p, ['lab', 'play', 'scroll_from', 'scroll_to']);
+      richiedi(BANCHI_DIDATTICA.includes(p.lab), err('banco', { elenco: BANCHI_DIDATTICA.join(', ') }));
+      richiedi(p.play === undefined || p.play === 'on' || p.play === 'off', err('marciaBanco'));
+      richiedi([p.scroll_from, p.scroll_to].every(x => x === undefined || numero(x, 0, 1)), err('scorrimentoPagina'));
+    },
+    crea(p, c) {
+      // com'era prima che la demo lo aprisse: un banco può mettersi in marcia
+      // da solo entrando (Keplero lo fa), e alla fine della scena deve tornare fermo
+      const marcia = document.getElementById(MARCIA_BANCO[p.lab] || '');
+      const eraInMarcia = !!marcia && marcia.getAttribute('aria-pressed') === 'true';
+      richiedi(typeof didDemo !== 'undefined' && didDemo.apri(p.lab), err('didatticaAssente'));
+      if (marcia && p.play !== 'off' && marcia.getAttribute('aria-pressed') !== 'true') marcia.click();
+      if (marcia && p.play === 'off' && marcia.getAttribute('aria-pressed') === 'true') marcia.click();
+      const el = () => document.getElementById('did-lab-' + p.lab);
+      const cima = () => { const e = el(); return e ? Math.max(0, e.getBoundingClientRect().top + window.scrollY - 70) : 0; };
+      const mossa = scorriPagina(c, () => p.scroll_from !== undefined ? scorrimentoMax() * p.scroll_from : cima(),
+        () => p.scroll_to !== undefined ? scorrimentoMax() * p.scroll_to : cima());
+      return { aggiorna: mossa.aggiorna, chiudi() {
+        if (marcia && (marcia.getAttribute('aria-pressed') === 'true') !== eraInMarcia) marcia.click();
+      } };
+    }
+  };
+  registro.show_layers = {
+    verifica(p) {
+      campi(p, ['on', 'off', 'labels']);
+      const ids = LIVELLI.map(l => l.id);
+      for (const chiave of ['on', 'off']) {
+        if (p[chiave] === undefined) continue;
+        richiedi(typeof p[chiave] === 'string', err('livelli', { elenco: ids.join(', ') }));
+        for (const id of p[chiave].split(',').map(x => x.trim()).filter(Boolean))
+          richiedi(ids.includes(id), err('livelli', { elenco: ids.join(', ') }));
+      }
+      richiedi(p.labels === undefined || p.labels === 'show', err('scritteLivelli'));
+    },
+    crea(p, c) {
+      const elenco = v => (typeof v === 'string' ? v.split(',').map(x => x.trim()).filter(Boolean) : []);
+      const scelta = {};
+      for (const id of elenco(p.on)) scelta[id] = true;
+      for (const id of elenco(p.off)) scelta[id] = false;
+      // com'erano, per rimetterli quando la scena finisce: un livello acceso
+      // per mostrare i monti non deve restare acceso sul cielo di Helsinki
+      const prima = fotografaLivelli();
+      const tornano = {};
+      for (const id of Object.keys(scelta)) tornano[id] = prima[id];
+      // Nelle CosmoStorie le scritte sono spente (`scritteStorie`): qui servono,
+      // sono proprio la cosa da far vedere
+      const scrittePrima = c.senzaScritte;
+      if (p.labels === 'show') c.senzaScritte = false;
+      applicaLivelli(scelta);
+      return { chiudi() {
+        if (p.labels === 'show') c.senzaScritte = scrittePrima;
+        if (!c.chiuso) applicaLivelli(tornano);
+      } };
+    }
+  };
+
+  // ------------------------------------------------------------------
   // La voce del racconto. Non è codice della demo: è la narrazione di
   // tutta l'app (`narrazione.js`), a cui la scena passa un ID stabile — la
   // chiave del dizionario — oppure, in una demo personale, un testo scritto
@@ -1868,13 +2096,14 @@
     // conserviamo anche l'altezza a cui valeva, così eventuali resize durante
     // la demo non riscalano di nuovo il FOV quando si ripristina lo stato.
     'altezzaMisurata'];
-  const VISTE_SCENA = ['planetarium_view', 'transition', 'solar_system_3d', 'didactic_view', 'eclipse_map'];
+  const VISTE_SCENA = ['planetarium_view', 'transition', 'solar_system_3d', 'didactic_view', 'eclipse_map', 'app_view'];
   function valida(testo) {
     const demo = motore.prepara(testo);
     let quando = skyAdesso(), luogo = skyLuogoDelCielo();
     const casa = luogo;
     for (const scena of demo.scene) {
       richiedi(VISTE_SCENA.includes(scena.vista), err('scena', { nome: scena.vista }));
+      if (scena.vista === 'app_view') richiedi(scena.azioni.some(x => x.comando === 'page_show'), err('servePagina'));
       for (const azione of scena.azioni) {
         if (azione.comando === 'set_location') luogo = luogoDemo(azione.parametri, casa) || casa;
         if (azione.comando === 'set_date') quando = dataDemo(azione.parametri, luogo);
@@ -1887,6 +2116,9 @@
         if (azione.comando === 'shadow_map') richiedi(scena.vista === 'eclipse_map', err('serveMappa'));
         if (azione.comando === 'earth_axis') richiedi(scena.vista === 'solar_system_3d', err('serve3dAsse'));
         if (azione.comando === 'sun_paths') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
+        if (azione.comando === 'show_layers') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
+        if (azione.comando === 'page_show') richiedi(scena.vista === 'app_view', err('soloPagina'));
+        if (azione.comando === 'didactic_bench') richiedi(scena.vista === 'didactic_view', err('soloBanco'));
         if (azione.comando === 'date_range') quando = new Date(azione.parametri.to);
       }
     }
@@ -2111,6 +2343,7 @@
       'evidenziaAsse', 'grandTour', 'distanzeVere', 'misureVere'].map(k => [k, sol[k]]));
     const auroraPrima = { acceso: aur.acceso, kpSimulato: aur.kpSimulato };
     const didatticaPrima = typeof didDemo !== 'undefined' ? didDemo.fotografa() : null;
+    const paginePrima = fotografaPagine();
     const livelliPrima = fotografaLivelli();
     const schermoInteroPrima = sky.schermoIntero;
     const regPrima = { durataSec: sky.reg.durataSec, origine: sky.reg.origine };
@@ -2160,6 +2393,16 @@
         // le cedono la camera mentre il racconto e il suo orologio proseguono.
         c.cameraManuale = false;
         if (scena.vista !== 'transition') vista(scena.vista, c);
+        // il volo non passa da `vista()`: la tela sovrapposta di una pagina in
+        // HTML se ne va qui, se no Ben comparirebbe due volte (lì lo disegna la 3D)
+        else ospitiSpegni();
+        // v524: una pagina vera dell'app (calendario, Stasera, un banco della
+        // didattica) si mostra con tutta la sua interfaccia: la vista pulita
+        // nasconderebbe proprio i filtri, le linguette e i tasti che la
+        // scena sta facendo vedere
+        const paginaVera = scena.vista === 'app_view' || scena.azioni.some(a => a.comando === 'didactic_bench');
+        document.body.classList.toggle('demo-vista-pulita', !!c.vistaPulita && !paginaVera);
+        document.body.classList.toggle('demo-pagina-vera', paginaVera);
         // v468, lo scambio di battute: in una CosmoStoria le voci di questa
         // scena e della seguente si scaricano adesso, e la battuta dopo parte
         // senza aspettare la rete (`narrazione.prepara`)
@@ -2196,8 +2439,10 @@
         c.musica = null;
         // E la musica di sottofondo di una storia (v440, `story_music`)
         if (typeof storMusicaFerma === 'function') storMusicaFerma();
-        document.body.classList.remove('demo-in-corso', 'demo-vista-pulita');
+        document.body.classList.remove('demo-in-corso', 'demo-vista-pulita', 'demo-pagina-vera');
         togliVistaPulita();
+        ospitiSpegni();
+        ripristinaPagine(paginePrima);
         const registrava = sky.reg.attiva && sky.reg.sorgente;
         if (registrava) skyRegFerma();
         if (typeof narrazione === 'object' && typeof narrazione.fermaCatturaAudio === 'function')
