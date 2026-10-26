@@ -122,10 +122,16 @@ function carica() {
   const { analizza } = require('../demo-motore.js');
   const predefiniti = require('../demo-predefiniti.js');
 
-  // Le battute, nell'ordine delle storie
+  // Le battute, nell'ordine delle storie. v527: anche le demo predefinite
+  // che non sono fra le CosmoStorie ma fanno parlare i personaggi (la
+  // presentazione con Astro Ben). Le sue voci ElevenLabs, salvate dallo
+  // Studio in `astro-ben/it/presentazione-1.mp3`, finivano fra gli errori
+  // («il nome non è una battuta del copione»): non suonavano, e con
+  // l'errore il manifest non si riscriveva più per nessuna storia.
+  const conBattute = predefiniti.filter(x => x.storia || /\bcharacter_speak\b/.test(x.testo || ''));
   const battute = [];
   const personaggi = new Map();
-  for (const d of predefiniti.filter(x => x.storia)) {
+  for (const d of conBattute) {
     const scene = analizza(d.testo).scene;
     const dellaStoria = [];
     scene.forEach((s, i) => {
@@ -142,7 +148,11 @@ function carica() {
         }
         const testi = {};
         for (const l of LINGUE) testi[l] = dizionari[l].messaggi[id];
-        const b = { id, storia: d.chiave, n: Number(m[2]), scena: i + 1, durata: s.durata, chi, testi,
+        // v527: la voce ha il tempo che resta dopo il suo attacco
+        // (`shot_from`), non la scena intera: il saluto della presentazione
+        // parte al 30% e la sua voce, che stava nella scena, si tagliava
+        const attacco = a.ripresa ? a.ripresa.da : 0;
+        const b = { id, storia: d.chiave, n: Number(m[2]), scena: i + 1, durata: Math.round(s.durata * (1 - attacco)), chi, testi,
           base: `${m[1]}-${m[2]}` };
         battute.push(b); dellaStoria.push(b);
         personaggi.get(chi).battute.push(b);
@@ -151,7 +161,7 @@ function carica() {
     dellaStoria.forEach((b, i) => { b.prima = dellaStoria[i - 1] || null; b.dopo = dellaStoria[i + 1] || null; });
   }
   const titoli = {};
-  for (const d of predefiniti.filter(x => x.storia))
+  for (const d of conBattute)
     titoli[d.chiave] = String(dizionari.it.messaggi[`demo.builtin.${d.chiave}.title`] || d.chiave).replace(/^(CosmoStorie|Storie cosmiche) · /, '');
   for (const b of battute) b.lingue = LINGUE;
 
@@ -338,6 +348,14 @@ function esamina({ fresche = new Set() } = {}) {
   const { battute, personaggi, perId, perBase, erroriStudio } = carica();
   const { testo, manifest } = leggiManifest();
   const errori = erroriStudio.slice(), avvisi = [];
+  /* v527: gli errori di un file solo (un nome che non è una battuta, due
+   * file per la stessa battuta) non fermano più tutto. Prima bastava uno di
+   * loro perché il manifest non si riscrivesse per nessuno: dal 22 ottobre un
+   * doppione di «La rivoluzione di Ganimede» e poi le voci della
+   * presentazione tenevano fuori dal sito ogni voce nuova, di ogni storia.
+   * Adesso quel file si salta, gli altri entrano, e l'errore resta (il giro
+   * finisce in rosso e il log dice quale). */
+  const erroriFile = [];
   const orfane = [];                         // audio di battute dello Studio che non ci sono più
   const prima = testo.indexOf(INIZIO), dopo = testo.indexOf(FINE);
   if (prima < 0 || dopo < prima) errori.push(`${MANIFEST}: mancano i segnalibri «INIZIO/FINE STORIE COSMICHE»`);
@@ -357,15 +375,15 @@ function esamina({ fresche = new Set() } = {}) {
     // Una battuta dello Studio tolta dalla sua storia (o la storia intera):
     // il suo audio non è più di nessuno, e si cancella
     if (!b && m && STUDIO_CHIAVE.test(m[1])) { orfane.push(f.file); continue; }
-    if (!b) { errori.push(`${f.file}: il nome non è una battuta del copione (atteso tipo «storia_luna-1.mp3»)`); continue; }
-    if (!LINGUE.includes(f.lingua)) { errori.push(`${f.file}: «${f.lingua}» non è una lingua (it, en)`); continue; }
+    if (!b) { erroriFile.push(`${f.file}: il nome non è una battuta del copione (atteso tipo «storia_luna-1.mp3»)`); continue; }
+    if (!LINGUE.includes(f.lingua)) { erroriFile.push(`${f.file}: «${f.lingua}» non è una lingua (it, en)`); continue; }
     const p = personaggi.get(b.chi);
     if (f.cartella !== p.cartella)
       avvisi.push(`${f.file}: la battuta è di ${p.nomi.it}, la cartella giusta è ${CARTELLA}/${p.cartella}/ (suona lo stesso)`);
-    if (voci[id] && voci[id][f.lingua]) { errori.push(`${id} [${f.lingua}]: due file, ${voci[id][f.lingua].file} e ${f.file}`); continue; }
+    if (voci[id] && voci[id][f.lingua]) { erroriFile.push(`${id} [${f.lingua}]: due file, ${voci[id][f.lingua].file} e ${f.file}`); continue; }
     const testoOra = b.testi[f.lingua];
-    if (typeof testoOra !== 'string') { errori.push(`${f.file}: la battuta non ha testo in ${f.lingua}`); continue; }
-    if (f.buf.length < 64) { errori.push(`${f.file}: troppo piccolo per essere un audio`); continue; }
+    if (typeof testoOra !== 'string') { erroriFile.push(`${f.file}: la battuta non ha testo in ${f.lingua}`); continue; }
+    if (f.buf.length < 64) { erroriFile.push(`${f.file}: troppo piccolo per essere un audio`); continue; }
     const firma = firmaDi(f.buf);
     const v = vecchie[id] && vecchie[id][f.lingua];
     let impr = impronta(testoOra);
@@ -395,7 +413,7 @@ function esamina({ fresche = new Set() } = {}) {
       const lunga = v.durata != null && v.durata * 1000 > b.durata;
       s[l] = { stato: vecchia ? 'da rifare' : lunga ? 'troppo lunga' : 'pronta', v };
       if (vecchia) avvisi.push(`${v.file}: il testo della battuta è cambiato dopo la registrazione — non suona finché non la rifai`);
-      if (lunga) avvisi.push(`${v.file}: dura ${v.durata.toFixed(1)} s ma la scena ${b.durata / 1000} s — la fine verrebbe tagliata`);
+      if (lunga) avvisi.push(`${v.file}: dura ${v.durata.toFixed(1)} s ma nella scena ha ${b.durata / 1000} s — la fine verrebbe tagliata`);
     }
     stati.set(b.id, s);
   }
@@ -424,7 +442,10 @@ function esamina({ fresche = new Set() } = {}) {
   const bloccoAttuale = prima >= 0 && dopo > prima ? testo.slice(prima, dopo + FINE.length) : '';
   if (carica().cambiaRegia) avvisi.push(`${REGIA}: la regia delle battute dello Studio va aggiornata (lo fa node scripts/voci-storie.js)`);
   for (const f of orfane) avvisi.push(`${f}: la sua battuta non è più in nessuna storia dello Studio — si cancella`);
-  return { errori, avvisi, voci, stati, orfane, bloccoNuovo, bloccoAttuale, testo, prima, dopo,
+  // `bloccanti`: quanti errori impediscono di scrivere (gli altri sono di un file solo)
+  const bloccanti = errori.length;
+  errori.push(...erroriFile);
+  return { errori, bloccanti, avvisi, voci, stati, orfane, bloccoNuovo, bloccoAttuale, testo, prima, dopo,
     copione: scriviCopione(stati) };
 }
 
@@ -544,7 +565,7 @@ function aggiorna({ scrivi, fresche }) {
   const copioneVero = path.join(RADICE, COPIONE);
   const cambiaCopione = !fs.existsSync(copioneVero) || fs.readFileSync(copioneVero, 'utf8') !== e.copione + '\n';
   const { cambiaRegia, testoRegia } = carica();
-  if (scrivi && !e.errori.length) {
+  if (scrivi && !e.bloccanti) {
     if (cambiaRegia) fs.writeFileSync(path.join(RADICE, REGIA), testoRegia);
     // Gli audio delle battute dello Studio che non ci sono più
     for (const f of e.orfane) fs.unlinkSync(path.join(RADICE, 'audio/narrazione', f));
@@ -596,7 +617,8 @@ if (require.main === module) {
       if (e.cambiaRegia) e.errori.push(`${REGIA} non è aggiornata alle storie dello Studio: lancia node scripts/voci-storie.js`);
       if (e.orfane.length) e.errori.push('ci sono audio di battute dello Studio che non esistono più: lancia node scripts/voci-storie.js');
       if (e.cambiaManifest || e.cambiaCopione || e.cambiaRegia || e.orfane.length) console.log('\n  ERRORE   ' + e.errori.slice(-1)[0]);
-    } else if (!e.errori.length) {
+    } else if (!e.bloccanti) {
+      if (e.errori.length) console.log(`\n${e.errori.length} file saltati (vedi gli ERRORE qui sopra): le altre voci sono entrate lo stesso.`);
       console.log(`\n${e.cambiaManifest ? 'Manifest aggiornato' : 'Manifest già a posto'} · ${e.cambiaCopione ? 'copione riscritto' : 'copione già a posto'} (${COPIONE})` +
         `${e.cambiaRegia ? ' · regia dello Studio aggiornata' : ''}${e.orfane.length ? ` · ${e.orfane.length} audio dello Studio cancellati` : ''}.`);
       if (e.cambiaManifest) console.log('Ricorda: CACHE_NAME in sw.js e la versione in config.js, se no chi ha l\'app installata non scarica le voci nuove.');

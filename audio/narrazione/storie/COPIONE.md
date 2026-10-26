@@ -11,33 +11,33 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **227/375** in italiano · **0/234** in inglese.
+Pronte: **266/411** in italiano · **0/248** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Luna | `storie/luna/` | 18 | 14/18 | 0/11 |
-| Terra | `storie/terra/` | 35 | 32/35 | 0/4 |
-| Sole | `storie/sole/` | 21 | 8/21 | 0/10 |
-| Saturno | `storie/saturno/` | 4 | 1/4 | 0/2 |
-| Giove | `storie/giove/` | 8 | 4/8 | 0/1 |
+| Astro Ben | `storie/astro-ben/` | 22 | 9/22 | 0/21 |
+| Saturno | `storie/saturno/` | 5 | 3/5 | 0/3 |
+| Luna | `storie/luna/` | 25 | 19/25 | 0/12 |
+| Giove | `storie/giove/` | 14 | 13/14 | 0/2 |
+| Terra | `storie/terra/` | 39 | 36/39 | 0/4 |
+| Sole | `storie/sole/` | 23 | 8/23 | 0/10 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
-| Alfa Centauri | `storie/alfa-centauri/` | 5 | 3/5 | 0/1 |
+| Alfa Centauri | `storie/alfa-centauri/` | 5 | 5/5 | 0/1 |
 | Via Lattea | `storie/via-lattea/` | 2 | 2/2 | 0/2 |
 | Andromeda | `storie/andromeda/` | 1 | 1/1 | 0/1 |
 | Betelgeuse | `storie/betelgeuse/` | 7 | 0/7 | 0/7 |
 | Supernova del Granchio | `storie/supernova-del-granchio/` | 3 | 0/3 | 0/3 |
 | Sirio B | `storie/sirio-b/` | 2 | 0/2 | 0/2 |
-| Sagittario A* | `storie/sagittario-a/` | 15 | 3/15 | 0/6 |
+| Sagittario A* | `storie/sagittario-a/` | 12 | 3/12 | 0/6 |
 | Buco bianco | `storie/buco-bianco/` | 4 | 0/4 | 0/2 |
-| Astro Ben | `storie/astro-ben/` | 11 | 0/11 | 0/10 |
 | Albert Einstein | `storie/albert-einstein/` | 37 | 18/37 | 0/19 |
-| Mercurio | `storie/mercurio/` | 2 | 1/2 | 0/1 |
+| Mercurio | `storie/mercurio/` | 5 | 3/5 | 0/1 |
 | Samantha Cristoforetti | `storie/samantha-cristoforetti/` | 1 | 0/1 | 0/1 |
 | Gargantua | `storie/gargantua/` | 3 | 2/3 | 0/3 |
 | Stephen Hawking | `storie/stephen-hawking/` | 1 | 0/1 | 0/1 |
-| Cooper | `storie/cooper/` | 41 | 36/41 | 0/40 |
+| Cooper | `storie/cooper/` | 41 | 33/41 | 0/40 |
 | Romilly | `storie/romilly/` | 14 | 11/14 | 0/9 |
-| Amelia Brand | `storie/amelia-brand/` | 28 | 23/28 | 0/17 |
+| Amelia Brand | `storie/amelia-brand/` | 28 | 22/28 | 0/17 |
 | TARS | `storie/tars/` | 22 | 15/22 | 0/22 |
 | Doyle | `storie/doyle/` | 6 | 5/6 | 0/3 |
 | Pianeta di Miller | `storie/pianeta-di-miller/` | 2 | 2/2 | 0/1 |
@@ -46,19 +46,198 @@ Pronte: **227/375** in italiano · **0/234** in inglese.
 | Pianeta di Mann | `storie/pianeta-di-mann/` | 2 | 1/2 | 0/1 |
 | Dottor Mann | `storie/dottor-mann/` | 7 | 7/7 | 0/4 |
 | Loro | `storie/loro/` | 13 | 11/13 | 0/13 |
-| Murph bambina | `storie/murph-bambina/` | 1 | 1/1 | 0/1 |
+| Murph bambina | `storie/murph-bambina/` | 1 | 0/1 | 0/1 |
 | Murph anziana | `storie/murph-anziana/` | 5 | 2/5 | 0/5 |
 | Jim Lovell | `storie/jim-lovell/` | 6 | 0/6 | 0/6 |
 | Fred Haise | `storie/fred-haise/` | 4 | 1/4 | 0/4 |
 | Jack Swigert | `storie/jack-swigert/` | 4 | 0/4 | 0/4 |
 | Gene Kranz | `storie/gene-kranz/` | 4 | 0/4 | 0/4 |
 | Ken Mattingly | `storie/ken-mattingly/` | 1 | 0/1 | 0/1 |
-| hubble | `storie/hubble/` | 2 | 1/2 | 0/0 |
-| iss | `storie/iss/` | 2 | 1/2 | 0/0 |
-| css | `storie/css/` | 2 | 1/2 | 0/0 |
-| Sedna | `storie/sedna/` | 10 | 6/10 | 0/0 |
-| Isaac Newton | `storie/isaac-newton/` | 1 | 0/1 | 0/0 |
-| Ganimede | `storie/ganimede/` | 3 | 3/3 | 0/0 |
+| hubble | `storie/hubble/` | 2 | 2/2 | 0/0 |
+| iss | `storie/iss/` | 2 | 2/2 | 0/0 |
+| css | `storie/css/` | 2 | 2/2 | 0/0 |
+| Sedna | `storie/sedna/` | 10 | 10/10 | 0/0 |
+| Isaac Newton | `storie/isaac-newton/` | 1 | 1/1 | 0/0 |
+| Ganimede | `storie/ganimede/` | 8 | 6/8 | 0/0 |
+
+## Astro Ben
+
+Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben` · in inglese Astro Ben
+
+**La voce:** Lui. Un bambino di otto-nove anni, astronauta in erba: voce acuta, svelta, piena di meraviglia; fa domande a raffica, si spaventa e si entusiasma in un attimo.
+
+### Italiano — `storie/astro-ben/it/`
+
+- `presentazione-1.mp3` — pronta · 14,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 1 (al massimo 17,2 s)
+  - **Testo:** Ciao, sono Astro Ben! Questo è il cielo di stasera, proprio sopra casa tua: sta girando davanti a te, in diretta. In pochi minuti ti faccio vedere cosa sa fare questa app. Casco in testa: si parte!
+- `presentazione-3.mp3` — pronta · 22,8 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 3 (al massimo 28 s)
+  - **Testo:** Ecco il planetario con il paesaggio vero: da Cortina vedi le Dolomiti, e ogni vetta ha il suo nome! Poi i paesi, i laghi, i fiumi. E quegli aerei? Passano davvero, adesso, sopra di te. Più i satelliti e le stazioni spaziali. Lo stesso da casa tua!
+- `presentazione-4.mp3` — pronta · 21,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 4 (al massimo 24 s)
+  - **Testo:** Il calendario degli eventi: eclissi, congiunzioni, piogge di stelle, tutto calcolato per casa tua. Qui ho filtrato le sole eclissi: guarda il due agosto duemilaventisette, una totale! E nell'agenda trovi la scheda completa: cosa succede, dove e come guardarla.
+- `presentazione-5.mp3` — pronta · 13,1 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 5 (al massimo 20 s)
+  - **Testo:** E questa è la mappa dell'ombra! La Luna butta il suo cono d'ombra sulla Terra, e la fascia di totalità attraversa mezzo mondo, fino all'Egitto. Io ci vado a vedere l'eclissi dal vivo!
+- `presentazione-7.mp3` — pronta · 10,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 7 (al massimo 11,8 s)
+  - **Testo:** Adesso lasciamo l'atmosfera e andiamo nello spazio. Tieniti forte: tre, due, uno… decollo!
+- `presentazione-9.mp3` — pronta · 20,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 9 (al massimo 22 s)
+  - **Testo:** Ti senti piccolo? Aspetta. Questa è la scala cosmica, alla misura vera: ogni pochi secondi tutto diventa dieci volte più lontano. Le stelle vicine, la Via Lattea, le galassie… fino al bordo dell'universo. Che vertigine!
+- `presentazione-10.mp3` — pronta · 21,7 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 10 (al massimo 26 s)
+  - **Testo:** E se vuoi capire come funziona il cielo c'è la didattica: banchi di prova con le posizioni vere dei pianeti. Guarda Marte: sembra tornare indietro, ma è la Terra che lo sorpassa! E qui le leggi di Keplero: le orbite sono ellissi, e il Sole sta in un fuoco. Si impara giocando!
+- `presentazione-11.mp3` — pronta · 13,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 11 (al massimo 16 s)
+  - **Testo:** Ti piacciono le luci del nord? L'app legge l'attività del Sole, l'indice Kp, e ti dice se stanotte c'è speranza di aurora. Questa è simulata, ma quella vera vale il viaggio!
+- `presentazione-12.mp3` — pronta · 17,3 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 24 s)
+  - **Testo:** Ogni sera apri Stasera: l'ora del buio, la Luna, le previsioni per astronomi e Missione Cielo, che ti prepara la serata come una caccia al tesoro. Poi c'è il telescopio: ti guida a puntarlo passo passo, con la bussola del telefono.
+- `presentazione-13.mp3` — **da rifare** (il testo è cambiato) · 15,2 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 20 s)
+  - **Testo:** E ancora: il diario delle osservazioni, la guida, le CosmoStorie come questa, e funziona anche senza rete! Adesso tocca a te: esci e alza gli occhi.
+- `presentazione-14.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 4,8 s)
+  - **Testo:** Cieli sereni da Ben!
+- `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 11,9 s)
+  - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa
+  - **Testo:** Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?
+  - **Da incollare su ElevenLabs v3:** `[excited] Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?`
+- `storia_einstein-5.mp3` — manca · Einstein e il tempo elastico, scena 5 (al massimo 7 s)
+  - **Emozione:** folgorato — ha capito: un lampo di gioia
+  - **Testo:** Allora la Terra va dritta… ma su una strada curva!
+  - **Da incollare su ElevenLabs v3:** `[excited] Allora la Terra va dritta… ma su una strada curva!`
+- `storia_einstein-12.mp3` — manca · Einstein e il tempo elastico, scena 12 (al massimo 5 s)
+  - **Emozione:** curioso — domanda veloce, sorpresa
+  - **Testo:** Anche qui, sulla Terra?
+  - **Da incollare su ElevenLabs v3:** `[curious] Anche qui, sulla Terra?`
+- `storia_einstein-14.mp3` — manca · Einstein e il tempo elastico, scena 14 (al massimo 11 s)
+  - **Emozione:** pensoso poi entusiasta — «Mmm» lungo, poi la risposta di getto
+  - **Testo:** Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.`
+- `storia_einstein-16.mp3` — manca · Einstein e il tempo elastico, scena 16 (al massimo 8 s)
+  - **Emozione:** curioso — domanda emozionata
+  - **Testo:** E Samantha Cristoforetti, lassù sulla Stazione Spaziale?
+  - **Da incollare su ElevenLabs v3:** `[curious] E Samantha Cristoforetti, lassù sulla Stazione Spaziale?`
+- `storia_einstein-18.mp3` — manca · Einstein e il tempo elastico, scena 18 (al massimo 8 s)
+  - **Emozione:** divertito — ride della scoperta
+  - **Testo:** Un centesimo! Non basta neanche per saltare un compleanno…
+  - **Da incollare su ElevenLabs v3:** `[laughs] Un centesimo! Non basta neanche per saltare un compleanno…`
+- `storia_einstein-22.mp3` — manca · Einstein e il tempo elastico, scena 22 (al massimo 5 s)
+  - **Emozione:** curioso — domanda piccola, un po' preoccupata
+  - **Testo:** E il tempo, lì vicino?
+  - **Da incollare su ElevenLabs v3:** `[curious] E il tempo, lì vicino?`
+- `storia_einstein-27.mp3` — manca · Einstein e il tempo elastico, scena 27 (al massimo 6 s)
+  - **Emozione:** meravigliato — un sussurro di scoperta
+  - **Testo:** Allora il tempo… è elastico!
+  - **Da incollare su ElevenLabs v3:** `[in awe] Allora il tempo… è elastico!`
+- `storia_einstein-33.mp3` — manca · Einstein e il tempo elastico, scena 33 (al massimo 9 s)
+  - **Emozione:** entusiasta — felice, guarda in su
+  - **Testo:** Allora stanotte, guardando le stelle, guardo una stoffa che si piega!
+  - **Da incollare su ElevenLabs v3:** `[excited] Allora stanotte, guardando le stelle, guardo una stoffa che si piega!`
+- `storia_einstein-35.mp3` — manca · Einstein e il tempo elastico, scena 35 (al massimo 6 s)
+  - **Emozione:** curioso — domanda furba
+  - **Testo:** Professore… quanto tempo è passato?
+  - **Da incollare su ElevenLabs v3:** `[curious] Professore… quanto tempo è passato?`
+- `studio_copia_di_einstein_e_il_tempo_e-21.mp3` — manca · Studio: Copia di Einstein e il tempo elastico, scena 1 (al massimo 4 s)
+  - **Testo:** Professor Einstein
+  - **Da incollare su ElevenLabs v3:** `Professor Einstein`
+
+### Inglese — `storie/astro-ben/en/`
+
+- `presentazione-1.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 1 (al massimo 17,2 s)
+  - **Testo:** Hi, I'm Astro Ben! This is tonight's sky, right above your home, turning in front of you, live. In a few minutes I'll show you what this app can do. Helmet on: let's go!
+- `presentazione-3.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 3 (al massimo 28 s)
+  - **Testo:** Here is the planetarium with the real landscape: from Cortina you see the Dolomites, and every peak has its name! Then towns, lakes, rivers. And those planes? They are really flying over you, right now. Plus satellites and space stations. The same from your home!
+- `presentazione-4.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 4 (al massimo 24 s)
+  - **Testo:** The events calendar: eclipses, conjunctions, meteor showers, all calculated for your home. Here I filtered only the eclipses: look at the second of August 2027, a total one! And in the agenda you find the full card: what happens, where and how to watch it.
+- `presentazione-5.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 5 (al massimo 20 s)
+  - **Testo:** And this is the shadow map! The Moon throws its cone of shadow on the Earth, and the path of totality crosses half the world, all the way to Egypt. I'm going to see the eclipse live!
+- `presentazione-7.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 7 (al massimo 11,8 s)
+  - **Testo:** Now let's leave the atmosphere and head into space. Hold on tight: three, two, one… liftoff!
+- `presentazione-9.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 9 (al massimo 22 s)
+  - **Testo:** Feeling small? Wait for it. This is the cosmic scale, at true size: every few seconds everything gets ten times farther away. The nearby stars, the Milky Way, the galaxies… all the way to the edge of the universe. Dizzy yet?
+- `presentazione-10.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 10 (al massimo 26 s)
+  - **Testo:** And if you want to understand how the sky works there is the learning lab: test benches with the real positions of the planets. Look at Mars: it seems to go backwards, but it is the Earth overtaking it! And here Kepler's laws: orbits are ellipses, and the Sun sits at a focus. Learning by playing!
+- `presentazione-11.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 11 (al massimo 16 s)
+  - **Testo:** Do you like the northern lights? The app reads the Sun's activity, the Kp index, and tells you if there is hope for an aurora tonight. This one is simulated, but the real one is worth the trip!
+- `presentazione-12.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 24 s)
+  - **Testo:** Every evening open Tonight: the hour of darkness, the Moon, the forecast for astronomers, and Sky Mission, which turns your evening into a treasure hunt. Then there is the telescope: it guides you step by step to point it, with your phone's compass.
+- `presentazione-13.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 20 s)
+  - **Testo:** And more: the observation logbook, the guide, CosmoStories like this one, and it works offline too! Now it's your turn: go outside and look up.
+- `presentazione-14.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 4,8 s)
+  - **Testo:** Clear skies from Ben!
+- `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 11,9 s)
+  - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa
+  - **Testo:** Professor Einstein! Last night I watched Interstellar: one hour on that planet was worth seven years on Earth! Is it true, or is it a movie trick?
+  - **Da incollare su ElevenLabs v3:** `[excited] Professor Einstein! Last night I watched Interstellar: one hour on that planet was worth seven years on Earth! Is it true, or is it a movie trick?`
+- `storia_einstein-5.mp3` — manca · Einstein e il tempo elastico, scena 5 (al massimo 7 s)
+  - **Emozione:** folgorato — ha capito: un lampo di gioia
+  - **Testo:** So the Earth goes straight… but along a curved road!
+  - **Da incollare su ElevenLabs v3:** `[excited] So the Earth goes straight… but along a curved road!`
+- `storia_einstein-12.mp3` — manca · Einstein e il tempo elastico, scena 12 (al massimo 5 s)
+  - **Emozione:** curioso — domanda veloce, sorpresa
+  - **Testo:** Even here, on Earth?
+  - **Da incollare su ElevenLabs v3:** `[curious] Even here, on Earth?`
+- `storia_einstein-14.mp3` — manca · Einstein e il tempo elastico, scena 14 (al massimo 11 s)
+  - **Emozione:** pensoso poi entusiasta — «Mmm» lungo, poi la risposta di getto
+  - **Testo:** Hmm… by the sea! It's closer to the centre of the Earth, down in the curve, where gravity pulls harder.
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] Hmm… by the sea! It's closer to the centre of the Earth, down in the curve, where gravity pulls harder.`
+- `storia_einstein-16.mp3` — manca · Einstein e il tempo elastico, scena 16 (al massimo 8 s)
+  - **Emozione:** curioso — domanda emozionata
+  - **Testo:** And Samantha Cristoforetti, up on the Space Station?
+  - **Da incollare su ElevenLabs v3:** `[curious] And Samantha Cristoforetti, up on the Space Station?`
+- `storia_einstein-18.mp3` — manca · Einstein e il tempo elastico, scena 18 (al massimo 8 s)
+  - **Emozione:** divertito — ride della scoperta
+  - **Testo:** A hundredth! That's not even enough to skip a birthday…
+  - **Da incollare su ElevenLabs v3:** `[laughs] A hundredth! That's not even enough to skip a birthday…`
+- `storia_einstein-22.mp3` — manca · Einstein e il tempo elastico, scena 22 (al massimo 5 s)
+  - **Emozione:** curioso — domanda piccola, un po' preoccupata
+  - **Testo:** And time, close to it?
+  - **Da incollare su ElevenLabs v3:** `[curious] And time, close to it?`
+- `storia_einstein-27.mp3` — manca · Einstein e il tempo elastico, scena 27 (al massimo 6 s)
+  - **Emozione:** meravigliato — un sussurro di scoperta
+  - **Testo:** So time… is stretchy!
+  - **Da incollare su ElevenLabs v3:** `[in awe] So time… is stretchy!`
+- `storia_einstein-33.mp3` — manca · Einstein e il tempo elastico, scena 33 (al massimo 9 s)
+  - **Emozione:** entusiasta — felice, guarda in su
+  - **Testo:** So tonight, looking at the stars, I'm looking at a fabric that bends!
+  - **Da incollare su ElevenLabs v3:** `[excited] So tonight, looking at the stars, I'm looking at a fabric that bends!`
+- `storia_einstein-35.mp3` — manca · Einstein e il tempo elastico, scena 35 (al massimo 6 s)
+  - **Emozione:** curioso — domanda furba
+  - **Testo:** Professor… how much time has passed?
+  - **Da incollare su ElevenLabs v3:** `[curious] Professor… how much time has passed?`
+
+## Saturno
+
+Cartella: `audio/narrazione/storie/saturno/<lingua>/` · nel codice `Saturn` · in inglese Saturn
+
+**La voce:** Lui. Elegante e un po' vanitoso dei suoi anelli: voce morbida, rotonda, tranquilla, lenta.
+
+### Italiano — `storie/saturno/it/`
+
+- `presentazione-2.mp3` — pronta · 16,4 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 2 (al massimo 18 s)
+  - **Testo:** Ehi, quassù! Sono Saturno, anelli compresi. Col planetario zoomi fin dentro un telescopio, e l'app ti dice quando sorgo, quanto brillo e dove puntare. Dai, sorridi: foto!
+- `storia_giganti-1.mp3` — manca · Giove e Saturno, scena 1 (al massimo 11 s)
+  - **Emozione:** fiera — si presenta con eleganza, un po' vanitoso degli anelli
+  - **Testo:** Ciao! Sono Saturno, quello con gli anelli. Sono fatti di miliardi di pezzetti di ghiaccio che mi girano attorno.
+  - **Da incollare su ElevenLabs v3:** `[cheerfully] Ciao! Sono Saturno, quello con gli anelli. [proudly] Sono fatti di miliardi di pezzetti di ghiaccio che mi girano attorno.`
+- `storia_giganti-4.mp3` — manca · Giove e Saturno, scena 4 (al massimo 12 s)
+  - **Emozione:** divertita — guarda Giove correre ridendo, poi si allunga pigro e soddisfatto su «lunghissima»
+  - **Testo:** Guardate quanto corre Giove! Io sono più lento, ma la mia strada è lunghissima.
+  - **Da incollare su ElevenLabs v3:** `[amused] Guardate quanto corre Giove! [relaxed] Io sono più lento, ma la mia strada è lunghissima.`
+- `studio_cosa_e_la_gravita-14.mp3` — pronta · 4,7 s · Studio: Cosa è la gravità?Voce zaira, scena 13 (al massimo 6 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.
+  - **Da incollare su ElevenLabs v3:** `Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.`
+- `studio_cosa_e_la_gravita_2-13.mp3` — pronta · 4,9 s · Studio: Cosa è la gravità?, scena 13 (al massimo 6 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.
+  - **Da incollare su ElevenLabs v3:** `Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.`
+
+### Inglese — `storie/saturno/en/`
+
+- `presentazione-2.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 2 (al massimo 18 s)
+  - **Testo:** Hey, up here! I'm Saturn, rings included. The planetarium zooms right into a telescope, and the app tells you when I rise, how bright I am and where to point. Come on, smile: photo!
+- `storia_giganti-1.mp3` — manca · Giove e Saturno, scena 1 (al massimo 11 s)
+  - **Emozione:** fiera — si presenta con eleganza, un po' vanitoso degli anelli
+  - **Testo:** Hello! I’m Saturn, the one with the rings. They’re made of billions of little pieces of ice going around me.
+  - **Da incollare su ElevenLabs v3:** `[cheerfully] Hello! I’m Saturn, the one with the rings. [proudly] They’re made of billions of little pieces of ice going around me.`
+- `storia_giganti-4.mp3` — manca · Giove e Saturno, scena 4 (al massimo 12 s)
+  - **Emozione:** divertita — guarda Giove correre ridendo, poi si allunga pigro e soddisfatto su «lunghissima»
+  - **Testo:** Look how fast Jupiter runs! I’m slower, but my road is very, very long.
+  - **Da incollare su ElevenLabs v3:** `[amused] Look how fast Jupiter runs! [relaxed] I’m slower, but my road is very, very long.`
 
 ## Luna
 
@@ -68,6 +247,8 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
 
 ### Italiano — `storie/luna/it/`
 
+- `presentazione-6.mp3` — pronta · 14 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 6 (al massimo 18 s)
+  - **Testo:** Permesso, passo io! Sono la Luna e il due agosto duemilaventisette copro il Sole per più di sei minuti, proprio qui, a Luxor. L'app te lo dice anni prima, con gli orari giusti. Spegnete le luci!
 - `storia_luna-1.mp3` — pronta · 7,8 s · La Luna ha perso un pezzo?, scena 1 (al massimo 9 s)
   - **Emozione:** spaventata — agitata, quasi in lacrime; la voce sale su «Mi manca un pezzo!» e si fa piccola su «fettina»
   - **Testo:** Oh no, guardate in su! Mi manca un pezzo! Ieri ero più grande, e stasera sono soltanto una fettina.
@@ -124,25 +305,51 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Emozione:** arrabbiato — 
   - **Testo:** Vogliamo essere indipendenti!
   - **Da incollare su ElevenLabs v3:** `[angry] Vogliamo essere indipendenti!`
-- `studio_cosa_e_la_gravita_2-1.mp3` — manca · Studio: Cosa è la gravità?, scena 1 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-1.mp3` — pronta · 3,7 s · Studio: Cosa è la gravità?, scena 1 (al massimo 5 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Ciao Terra, mi chiedevo, perché orbito intorno a te?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Ciao Terra, mi chiedevo, perché orbito intorno a te?`
-- `studio_cosa_e_la_gravita_2-4.mp3` — manca · Studio: Cosa è la gravità?, scena 4 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-4.mp3` — pronta · 2,2 s · Studio: Cosa è la gravità?, scena 4 (al massimo 3 s)
   - **Emozione:** infastidito — 
   - **Testo:** Smettila!!!
   - **Da incollare su ElevenLabs v3:** `[annoyed] Smettila!!!`
-- `studio_cosa_e_la_gravita_2-8.mp3` — manca · Studio: Cosa è la gravità?, scena 8 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-8.mp3` — pronta · 2,2 s · Studio: Cosa è la gravità?, scena 8 (al massimo 4 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** Vogliamo essere indipendenti!
   - **Da incollare su ElevenLabs v3:** `[angry] Vogliamo essere indipendenti!`
-- `studio_cosa_e_la_gravita_2-42.mp3` — manca · Studio: Cosa è la gravità?, scena 42 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-42.mp3` — pronta · 2,6 s · Studio: Cosa è la gravità?, scena 49 (al massimo 4 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ehm, sì. Sì...
-  - **Da incollare su ElevenLabs v3:** `Ehm, sì. Sì...`
+  - **Da incollare su ElevenLabs v3:** `[hesitates] Ehm, sì. Sì...`
+- `studio_la_luna_ha_perso_un_pezzo-1.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 1 (al massimo 8 s)
+  - **Emozione:** preoccupato — 
+  - **Testo:** Oh no! Guardate: mi manca un pezzo! Dov’è finito?
+  - **Da incollare su ElevenLabs v3:** `[nervous] Oh no! Guardate: mi manca un pezzo! Dov’è finito?`
+- `studio_la_luna_ha_perso_un_pezzo-4.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 4 (al massimo 11 s)
+  - **Emozione:** sorpreso — 
+  - **Testo:** Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?
+  - **Da incollare su ElevenLabs v3:** `[surprised] Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?`
+- `studio_la_luna_ha_perso_un_pezzo-5.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 5 (al massimo 7 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Sono sempre intera, anche quando sembro una fettina!
+  - **Da incollare su ElevenLabs v3:** `[excited] Sono sempre intera, anche quando sembro una fettina!`
+- `studio_la_luna_ha_perso_un_pezzo_2-1.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 1 (al massimo 8 s)
+  - **Emozione:** preoccupato — 
+  - **Testo:** Oh no! Guardate: mi manca un pezzo! Dov’è finito?
+  - **Da incollare su ElevenLabs v3:** `[nervous] Oh no! Guardate: mi manca un pezzo! Dov’è finito?`
+- `studio_la_luna_ha_perso_un_pezzo_2-4.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 4 (al massimo 11 s)
+  - **Emozione:** sorpreso — 
+  - **Testo:** Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?
+  - **Da incollare su ElevenLabs v3:** `[surprised] Allora, mentre giro attorno alla Terra, voi vedete un pezzo diverso della mia metà illuminata?`
+- `studio_la_luna_ha_perso_un_pezzo_2-5.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 5 (al massimo 7 s)
+  - **Emozione:** entusiasta — 
+  - **Testo:** Sono sempre intera, anche quando sembro una fettina!
+  - **Da incollare su ElevenLabs v3:** `[excited] Sono sempre intera, anche quando sembro una fettina!`
 
 ### Inglese — `storie/luna/en/`
 
+- `presentazione-6.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 6 (al massimo 18 s)
+  - **Testo:** Excuse me, coming through! I'm the Moon and on the second of August 2027 I cover the Sun for more than six minutes, right here in Luxor. The app tells you years ahead, with the right times. Lights out!
 - `storia_luna-1.mp3` — manca · La Luna ha perso un pezzo?, scena 1 (al massimo 9 s)
   - **Emozione:** spaventata — agitata, quasi in lacrime; la voce sale su «Mi manca un pezzo!» e si fa piccola su «fettina»
   - **Testo:** Oh no, look up! A piece of me is missing! Yesterday I was bigger, and tonight I’m just a little slice.
@@ -187,6 +394,77 @@ Cartella: `audio/narrazione/storie/luna/<lingua>/` · nel codice `Moon` · in in
   - **Emozione:** tenera — la morale: lenta, calda, con meraviglia sull'ultima frase
   - **Testo:** So tonight, when you look at the sky, you are not only looking far away: you are looking into the past. The sky is a real time machine!
   - **Da incollare su ElevenLabs v3:** `[softly] So tonight, when you look at the sky, you are not only looking far away: you are looking into the past. [warmly] The sky is a real time machine!`
+
+## Giove
+
+Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · in inglese Jupiter
+
+**La voce:** Lui. Il gigante orgoglioso e simpatico: voce grossa, rimbombante, allegra, che si vanta ridendo.
+
+### Italiano — `storie/giove/it/`
+
+- `presentazione-8.mp3` — pronta · 11,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 8 (al massimo 16 s)
+  - **Testo:** Ciao, sono Giove, il più grosso del quartiere! Nella vista 3D ci sono pianeti, lune, comete e sonde, tutti al loro posto vero. Tre anni in un attimo: guarda come corro!
+- `storia_giganti-2.mp3` — manca · Giove e Saturno, scena 2 (al massimo 11 s)
+  - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
+  - **Testo:** E io sono Giove, il più grande di tutti: dentro di me ci starebbero più di mille Terre!
+  - **Da incollare su ElevenLabs v3:** `[boastfully] E io sono Giove, il più grande di tutti: [laughs] dentro di me ci starebbero più di mille Terre!`
+- `studio_cosa_e_la_gravita-16.mp3` — pronta · 12 s · Studio: Cosa è la gravità?Voce zaira, scena 15 (al massimo 13 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume
+  - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
+- `studio_cosa_e_la_gravita-43.mp3` — pronta · 2,3 s · Studio: Cosa è la gravità?Voce zaira, scena 17 (al massimo 3 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Calma Terra, una domanda alla volta.
+  - **Da incollare su ElevenLabs v3:** `Calma Terra, una domanda alla volta.`
+- `studio_cosa_e_la_gravita-44.mp3` — pronta · 4,6 s · Studio: Cosa è la gravità?Voce zaira, scena 18 (al massimo 6 s)
+  - **Emozione:** pensieroso — 
+  - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è
+  - **Da incollare su ElevenLabs v3:** `[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è`
+- `studio_cosa_e_la_gravita_2-15.mp3` — pronta · 13 s · Studio: Cosa è la gravità?, scena 15 (al massimo 14 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume
+  - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
+- `studio_cosa_e_la_gravita_2-17.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 17 (al massimo 3 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Calma Terra, una domanda alla volta.
+  - **Da incollare su ElevenLabs v3:** `Calma Terra, una domanda alla volta.`
+- `studio_cosa_e_la_gravita_2-18.mp3` — pronta · 23,7 s · Studio: Cosa è la gravità?, scena 18 (al massimo 25 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è la forza di gravità esercitata da un corpo celeste su un oggetto dotato di massa e, infine, il volume è la misura dello spazio tridimensionale occupato da un corpo o racchiuso all'interno di una superficie chiusa. Vabbè comunque ritorniamo alla griglia spaziale di cui ti parlavo prima.
+  - **Da incollare su ElevenLabs v3:** `La massa è la quantità di materia che compone un corpo, il peso è la forza di gravità esercitata da un corpo celeste su un oggetto dotato di massa e, infine, il volume è la misura dello spazio tridimensionale occupato da un corpo o racchiuso all'interno di una superficie chiusa. Vabbè comunque ritorniamo alla griglia spaziale di cui ti parlavo prima.`
+- `studio_cosa_e_la_gravita_2-44.mp3` — pronta · 19,8 s · Studio: Cosa è la gravità?, scena 20 (al massimo 21 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità può essere divisa in due parti cioè quella Classica cioè quella di Isaac Newton e quella moderna quella di Albert Einstein. se vuoi facciamo un video dove spieghiamo solamente ed esclusivamente queste cose, però adesso lo accenniamo che cosa sono.
+  - **Da incollare su ElevenLabs v3:** `[hesitates] Beh la griglia continua a piegarsi per via dalla gravità la cosa che ti eri domandata per prima. la gravità può essere divisa in due parti cioè quella Classica cioè quella di Isaac Newton e quella moderna quella di Albert Einstein. se vuoi facciamo un video dove spieghiamo solamente ed esclusivamente queste cose, però adesso lo accenniamo che cosa sono.`
+- `studio_cosa_e_la_gravita_2-45.mp3` — pronta · 8,5 s · Studio: Cosa è la gravità?, scena 21 (al massimo 10 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** la teoria classica di Isaac Newton dice che essa è composta dalla sua legge di gravitazione universale che formulò nel 1687
+  - **Da incollare su ElevenLabs v3:** `la teoria classica di Isaac Newton dice che essa è composta dalla sua legge di gravitazione universale che formulò nel 1687`
+- `studio_cosa_e_la_gravita_2-46.mp3` — pronta · 5,6 s · Studio: Cosa è la gravità?, scena 22 (al massimo 7 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** D'altro canto quella di Albert Einstein è composta dalla sua scoperta della relatività generale
+  - **Da incollare su ElevenLabs v3:** `D'altro canto quella di Albert Einstein è composta dalla sua scoperta della relatività generale`
+- `studio_cosa_e_la_gravita_2-47.mp3` — pronta · 32,7 s · Studio: Cosa è la gravità?, scena 23 (al massimo 34 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. Vabbè com
+  - **Da incollare su ElevenLabs v3:** `entrambe possono essere considerate giuste ma sono spiegate in modo differente la visione di Newton a una descrizione operativa ed efficace ma quella di Einstein è una teoria più profonda e fondamentale Inoltre tutta questa spiegazione È pure spiegata nel nostro video su YouTube di Albert Einstein o se vuoi facciamo proprio la differenza delle di che cosa cambia fra queste due equazioni. Vabbè com`
+- `studio_cosa_e_la_gravita_2-49.mp3` — pronta · 1,4 s · Studio: Cosa è la gravità?, scena 25 (al massimo 3 s)
+  - **Testo:** Sì! bravissima!
+  - **Da incollare su ElevenLabs v3:** `Sì! [impressed] bravissima!`
+- `studio_la_rivoluzione_di_ganimede_e_f-4.mp3` — pronta · 5,1 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 4 (al massimo 6 s)
+  - **Emozione:** deciso — 
+  - **Testo:** Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.
+  - **Da incollare su ElevenLabs v3:** `[determined] [whispers] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.`
+
+### Inglese — `storie/giove/en/`
+
+- `presentazione-8.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 8 (al massimo 16 s)
+  - **Testo:** Hi, I'm Jupiter, the biggest in the neighbourhood! The 3D view has planets, moons, comets and probes, all in their real places. Three years in a flash: watch me run!
+- `storia_giganti-2.mp3` — manca · Giove e Saturno, scena 2 (al massimo 11 s)
+  - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
+  - **Testo:** And I’m Jupiter, the biggest of all: more than a thousand Earths would fit inside me!
+  - **Da incollare su ElevenLabs v3:** `[boastfully] And I’m Jupiter, the biggest of all: [laughs] more than a thousand Earths would fit inside me!`
 
 ## Terra
 
@@ -268,70 +546,85 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
-- `studio_cosa_e_la_gravita_2-2.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 2 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-2.mp3` — pronta · 2,8 s · Studio: Cosa è la gravità?, scena 2 (al massimo 4 s)
   - **Emozione:** da bullo — 
   - **Testo:** Sei solo una luna!!
   - **Da incollare su ElevenLabs v3:** `[sarcastic] Sei solo una luna!! [chuckles] [giggles] [skeptical]`
-- `studio_cosa_e_la_gravita_2-3.mp3` — pronta · 3,1 s · Studio: Cosa è la gravità?, scena 3 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-3.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 3 (al massimo 3 s)
   - **Emozione:** ride — 
   - **Testo:** ah ah ah!!!
   - **Da incollare su ElevenLabs v3:** `[laughs] ah ah ah!!!`
-- `studio_cosa_e_la_gravita_2-9.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 9 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-9.mp3` — pronta · 2,9 s · Studio: Cosa è la gravità?, scena 9 (al massimo 5 s)
   - **Emozione:** preoccupato — 
   - **Testo:** oh no! adesso cosa faccio?
   - **Da incollare su ElevenLabs v3:** `[nervous] [gasps] oh no! adesso cosa faccio?`
-- `studio_cosa_e_la_gravita_2-12.mp3` — pronta · 1,6 s · Studio: Cosa è la gravità?, scena 12 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-12.mp3` — pronta · 1,7 s · Studio: Cosa è la gravità?, scena 12 (al massimo 3 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Continuo a non capire.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Continuo a non capire.`
-- `studio_cosa_e_la_gravita_2-14.mp3` — pronta · 1,6 s · Studio: Cosa è la gravità?, scena 14 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-14.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 14 (al massimo 4 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Potresti spiegarti meglio?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Potresti spiegarti meglio?`
-- `studio_cosa_e_la_gravita_2-16.mp3` — pronta · 3,7 s · Studio: Cosa è la gravità?, scena 16 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-16.mp3` — pronta · 5,6 s · Studio: Cosa è la gravità?, scena 16 (al massimo 7 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Cos' è la massa, cos' è un peso e che cosa è un volume?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?`
-- `studio_cosa_e_la_gravita_2-20.mp3` — pronta · 3,2 s · Studio: Cosa è la gravità?, scena 20 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-43.mp3` — pronta · 0,6 s · Studio: Cosa è la gravità?, scena 19 (al massimo 3 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** ok!
+  - **Da incollare su ElevenLabs v3:** `ok!`
+- `studio_cosa_e_la_gravita_2-48.mp3` — pronta · 5,9 s · Studio: Cosa è la gravità?, scena 24 (al massimo 7 s)
+  - **Testo:** la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!
+  - **Da incollare su ElevenLabs v3:** `la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!`
+- `studio_cosa_e_la_gravita_2-20.mp3` — pronta · 3 s · Studio: Cosa è la gravità?, scena 27 (al massimo 4 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Che spavento! Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] [gasps] Oh! Che spavento! Chi ha parlato?`
-- `studio_cosa_e_la_gravita_2-22.mp3` — pronta · 11,2 s · Studio: Cosa è la gravità?, scena 22 (al massimo 15 s)
+- `studio_cosa_e_la_gravita_2-22.mp3` — pronta · 10,7 s · Studio: Cosa è la gravità?, scena 29 (al massimo 15 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!`
-- `studio_cosa_e_la_gravita_2-23.mp3` — pronta · 8,3 s · Studio: Cosa è la gravità?, scena 23 (al massimo 12 s)
+- `studio_cosa_e_la_gravita_2-23.mp3` — pronta · 8,6 s · Studio: Cosa è la gravità?, scena 30 (al massimo 12 s)
   - **Emozione:** infastidito — 
   - **Testo:** Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e
   - **Da incollare su ElevenLabs v3:** `[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e`
-- `studio_cosa_e_la_gravita_2-25.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 25 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-25.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 32 (al massimo 5 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Scusa! Continua.
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Scusa! Continua.`
-- `studio_cosa_e_la_gravita_2-27.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 27 (al massimo 9 s)
+- `studio_cosa_e_la_gravita_2-27.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 34 (al massimo 9 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Wow! Non sapevo che la scienza potesse essere così bella.
   - **Da incollare su ElevenLabs v3:** `Wow! Non sapevo che la scienza potesse essere così bella.`
-- `studio_cosa_e_la_gravita_2-29.mp3` — pronta · 2,8 s · Studio: Cosa è la gravità?, scena 29 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-29.mp3` — pronta · 3,5 s · Studio: Cosa è la gravità?, scena 36 (al massimo 5 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Cosa? Di nuovo? Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Cosa? Di nuovo? Chi ha parlato?`
-- `studio_cosa_e_la_gravita_2-35.mp3` — pronta · 3,9 s · Studio: Cosa è la gravità?, scena 35 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-35.mp3` — pronta · 5,1 s · Studio: Cosa è la gravità?, scena 42 (al massimo 6 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Questa è una giornata piena di sorprese. Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?`
-- `studio_cosa_e_la_gravita_2-37.mp3` — pronta · 1,6 s · Studio: Cosa è la gravità?, scena 37 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-37.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 44 (al massimo 4 s)
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
-- `studio_cosa_e_la_gravita_2-39.mp3` — manca · Studio: Cosa è la gravità?, scena 39 (al massimo 13 s)
+- `studio_cosa_e_la_gravita_2-39.mp3` — pronta · 7,8 s · Studio: Cosa è la gravità?, scena 46 (al massimo 9 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?
   - **Da incollare su ElevenLabs v3:** `Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?`
-- `studio_cosa_e_la_gravita_2-41.mp3` — manca · Studio: Cosa è la gravità?, scena 41 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-41.mp3` — pronta · 1,2 s · Studio: Cosa è la gravità?, scena 48 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Sei d' accordo Luna?
   - **Da incollare su ElevenLabs v3:** `Sei d' accordo Luna?`
+- `studio_la_luna_ha_perso_un_pezzo-2.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 2 (al massimo 8 s)
+  - **Emozione:** felice — 
+  - **Testo:** Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me.
+  - **Da incollare su ElevenLabs v3:** `[happy] Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me.`
+- `studio_la_luna_ha_perso_un_pezzo_2-2.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 2 (al massimo 8 s)
+  - **Emozione:** felice — 
+  - **Testo:** Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me.
+  - **Da incollare su ElevenLabs v3:** `[happy] Tranquilla, Luna! Vieni a guardarti da fuori, insieme a me.`
 - `studio_la_rivoluzione_di_ganimede_e_f-2.mp3` — pronta · 1,7 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 2 (al massimo 3 s)
   - **Emozione:** annoiato — 
   - **Testo:** E ci risiamo.
@@ -436,14 +729,22 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Emozione:** tranquillo — 
   - **Testo:** La gravità è una forza attrattiva che tiene uno o più astri stabili.
   - **Da incollare su ElevenLabs v3:** `La gravità è una forza attrattiva che tiene uno o più astri stabili.`
-- `studio_cosa_e_la_gravita_2-31.mp3` — manca · Studio: Cosa è la gravità?, scena 31 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-31.mp3` — manca · Studio: Cosa è la gravità?, scena 38 (al massimo 5 s)
   - **Emozione:** colpito — 
   - **Testo:** So chi è! è la mia amica alfa centauri!
   - **Da incollare su ElevenLabs v3:** `[impressed] So chi è! è la mia amica alfa centauri!`
-- `studio_cosa_e_la_gravita_2-33.mp3` — manca · Studio: Cosa è la gravità?, scena 33 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-33.mp3` — manca · Studio: Cosa è la gravità?, scena 40 (al massimo 3 s)
   - **Emozione:** felice — 
   - **Testo:** Come potrei mai dimenticarti?
   - **Da incollare su ElevenLabs v3:** `[happy] Come potrei mai dimenticarti?`
+- `studio_la_luna_ha_perso_un_pezzo-3.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 3 (al massimo 9 s)
+  - **Emozione:** felice — 
+  - **Testo:** Io vi illumino sempre per metà. La metà al buio, da qui, non si vede.
+  - **Da incollare su ElevenLabs v3:** `[happy] Io vi illumino sempre per metà. La metà al buio, da qui, non si vede.`
+- `studio_la_luna_ha_perso_un_pezzo_2-3.mp3` — manca · Studio: La Luna ha perso un pezzo?, scena 3 (al massimo 9 s)
+  - **Emozione:** felice — 
+  - **Testo:** Io vi illumino sempre per metà. La metà al buio, da qui, non si vede.
+  - **Da incollare su ElevenLabs v3:** `[happy] Io vi illumino sempre per metà. La metà al buio, da qui, non si vede.`
 - `studio_la_rivoluzione_di_ganimede_e_f-1.mp3` — pronta · 3,3 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 1 (al massimo 4 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ragazzi, tutti qui vicino a me, dobbiamo fare una riunione!
@@ -492,90 +793,6 @@ Cartella: `audio/narrazione/storie/sole/<lingua>/` · nel codice `Sun` · in ing
   - **Testo:** I bend the light of the stars? What power!
   - **Da incollare su ElevenLabs v3:** `[in awe] I bend the light of the stars? What power!`
 
-## Saturno
-
-Cartella: `audio/narrazione/storie/saturno/<lingua>/` · nel codice `Saturn` · in inglese Saturn
-
-**La voce:** Lui. Elegante e un po' vanitoso dei suoi anelli: voce morbida, rotonda, tranquilla, lenta.
-
-### Italiano — `storie/saturno/it/`
-
-- `storia_giganti-1.mp3` — manca · Giove e Saturno, scena 1 (al massimo 11 s)
-  - **Emozione:** fiera — si presenta con eleganza, un po' vanitoso degli anelli
-  - **Testo:** Ciao! Sono Saturno, quello con gli anelli. Sono fatti di miliardi di pezzetti di ghiaccio che mi girano attorno.
-  - **Da incollare su ElevenLabs v3:** `[cheerfully] Ciao! Sono Saturno, quello con gli anelli. [proudly] Sono fatti di miliardi di pezzetti di ghiaccio che mi girano attorno.`
-- `storia_giganti-4.mp3` — manca · Giove e Saturno, scena 4 (al massimo 12 s)
-  - **Emozione:** divertita — guarda Giove correre ridendo, poi si allunga pigro e soddisfatto su «lunghissima»
-  - **Testo:** Guardate quanto corre Giove! Io sono più lento, ma la mia strada è lunghissima.
-  - **Da incollare su ElevenLabs v3:** `[amused] Guardate quanto corre Giove! [relaxed] Io sono più lento, ma la mia strada è lunghissima.`
-- `studio_cosa_e_la_gravita-14.mp3` — pronta · 4,7 s · Studio: Cosa è la gravità?Voce zaira, scena 13 (al massimo 6 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.
-  - **Da incollare su ElevenLabs v3:** `Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.`
-- `studio_cosa_e_la_gravita_2-13.mp3` — manca · Studio: Cosa è la gravità?, scena 13 (al massimo 6 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.
-  - **Da incollare su ElevenLabs v3:** `Ti spiego meglio, serve a tenere noi pianeti in orbita intorno al sole.`
-
-### Inglese — `storie/saturno/en/`
-
-- `storia_giganti-1.mp3` — manca · Giove e Saturno, scena 1 (al massimo 11 s)
-  - **Emozione:** fiera — si presenta con eleganza, un po' vanitoso degli anelli
-  - **Testo:** Hello! I’m Saturn, the one with the rings. They’re made of billions of little pieces of ice going around me.
-  - **Da incollare su ElevenLabs v3:** `[cheerfully] Hello! I’m Saturn, the one with the rings. [proudly] They’re made of billions of little pieces of ice going around me.`
-- `storia_giganti-4.mp3` — manca · Giove e Saturno, scena 4 (al massimo 12 s)
-  - **Emozione:** divertita — guarda Giove correre ridendo, poi si allunga pigro e soddisfatto su «lunghissima»
-  - **Testo:** Look how fast Jupiter runs! I’m slower, but my road is very, very long.
-  - **Da incollare su ElevenLabs v3:** `[amused] Look how fast Jupiter runs! [relaxed] I’m slower, but my road is very, very long.`
-
-## Giove
-
-Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · in inglese Jupiter
-
-**La voce:** Lui. Il gigante orgoglioso e simpatico: voce grossa, rimbombante, allegra, che si vanta ridendo.
-
-### Italiano — `storie/giove/it/`
-
-- `storia_giganti-2.mp3` — manca · Giove e Saturno, scena 2 (al massimo 11 s)
-  - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
-  - **Testo:** E io sono Giove, il più grande di tutti: dentro di me ci starebbero più di mille Terre!
-  - **Da incollare su ElevenLabs v3:** `[boastfully] E io sono Giove, il più grande di tutti: [laughs] dentro di me ci starebbero più di mille Terre!`
-- `studio_cosa_e_la_gravita-16.mp3` — pronta · 12 s · Studio: Cosa è la gravità?Voce zaira, scena 15 (al massimo 13 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume
-  - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. [thoughtful] Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
-- `studio_cosa_e_la_gravita-43.mp3` — pronta · 2,3 s · Studio: Cosa è la gravità?Voce zaira, scena 17 (al massimo 3 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Calma Terra, una domanda alla volta.
-  - **Da incollare su ElevenLabs v3:** `Calma Terra, una domanda alla volta.`
-- `studio_cosa_e_la_gravita-44.mp3` — pronta · 4,6 s · Studio: Cosa è la gravità?Voce zaira, scena 18 (al massimo 6 s)
-  - **Emozione:** pensieroso — 
-  - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è
-  - **Da incollare su ElevenLabs v3:** `[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è`
-- `studio_cosa_e_la_gravita_2-15.mp3` — manca · Studio: Cosa è la gravità?, scena 15 (al massimo 13 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume
-  - **Da incollare su ElevenLabs v3:** `Ok, vado io allora. Immaginati una griglia spaziale, Terra, mettici un astro e guarda: si piega perché quell' oggetto ha una massa, un peso e occupa uno spazio, un volume`
-- `studio_cosa_e_la_gravita_2-17.mp3` — manca · Studio: Cosa è la gravità?, scena 17 (al massimo 3 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Calma Terra, una domanda alla volta.
-  - **Da incollare su ElevenLabs v3:** `Calma Terra, una domanda alla volta.`
-- `studio_cosa_e_la_gravita_2-18.mp3` — manca · Studio: Cosa è la gravità?, scena 18 (al massimo 6 s)
-  - **Emozione:** pensieroso — 
-  - **Testo:** La massa è la quantità di materia che compone un corpo, il peso è
-  - **Da incollare su ElevenLabs v3:** `[thoughtful] La massa è la quantità di materia che compone un corpo, il peso è`
-- `studio_la_rivoluzione_di_ganimede_e_f-4.mp3` — pronta · 5,1 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 4 (al massimo 6 s)
-  - **Emozione:** deciso — 
-  - **Testo:** Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.
-  - **Da incollare su ElevenLabs v3:** `[determined] [whispers] Sta zitto Ganimede, ascoltiamo il sole, è il nostro padrone.`
-
-### Inglese — `storie/giove/en/`
-
-- `storia_giganti-2.mp3` — manca · Giove e Saturno, scena 2 (al massimo 11 s)
-  - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
-  - **Testo:** And I’m Jupiter, the biggest of all: more than a thousand Earths would fit inside me!
-  - **Da incollare su ElevenLabs v3:** `[boastfully] And I’m Jupiter, the biggest of all: [laughs] more than a thousand Earths would fit inside me!`
-
 ## Voyager 1
 
 Cartella: `audio/narrazione/storie/voyager-1/<lingua>/` · nel codice `voyager1` · in inglese Voyager 1
@@ -616,11 +833,11 @@ Cartella: `audio/narrazione/storie/alfa-centauri/<lingua>/` · nel codice `alpha
   - **Emozione:** tranquillo — 
   - **Testo:** Ti ricordi di me allora sole, eh?
   - **Da incollare su ElevenLabs v3:** `Ti ricordi di me allora sole, eh?`
-- `studio_cosa_e_la_gravita_2-28.mp3` — manca · Studio: Cosa è la gravità?, scena 28 (al massimo 13 s)
+- `studio_cosa_e_la_gravita_2-28.mp3` — pronta · 9,9 s · Studio: Cosa è la gravità?, scena 35 (al massimo 13 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.
   - **Da incollare su ElevenLabs v3:** `Pure io sono una stella con dei pianeti che mi orbitano attorno, perché gli attiro con la mia gravità. Sono stati creati da me attraverso una nebulosa stellare.`
-- `studio_cosa_e_la_gravita_2-32.mp3` — manca · Studio: Cosa è la gravità?, scena 32 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-32.mp3` — pronta · 1,9 s · Studio: Cosa è la gravità?, scena 39 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ti ricordi di me allora sole, eh?
   - **Da incollare su ElevenLabs v3:** `Ti ricordi di me allora sole, eh?`
@@ -868,18 +1085,6 @@ Cartella: `audio/narrazione/storie/sagittario-a/<lingua>/` · nel codice `sgr_a`
   - **Emozione:** tranquillo — 
   - **Testo:** Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.
   - **Da incollare su ElevenLabs v3:** `Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi.`
-- `studio_cosa_e_la_gravita_2-34.mp3` — manca · Studio: Cosa è la gravità?, scena 34 (al massimo 3 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Pure io attiro oggetti Terra!
-  - **Da incollare su ElevenLabs v3:** `Pure io attiro oggetti Terra!`
-- `studio_cosa_e_la_gravita_2-36.mp3` — manca · Studio: Cosa è la gravità?, scena 36 (al massimo 5 s)
-  - **Emozione:** felice — 
-  - **Testo:** Sono sagittarius A! Il buco nero al centro della via lattea!
-  - **Da incollare su ElevenLabs v3:** `[happy] Sono sagittarius A! Il buco nero al centro della via lattea!`
-- `studio_cosa_e_la_gravita_2-38.mp3` — manca · Studio: Cosa è la gravità?, scena 38 (al massimo 8 s)
-  - **Emozione:** tranquillo — 
-  - **Testo:** Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.
-  - **Da incollare su ElevenLabs v3:** `Se vuoi sapere cos'è un buco nero, vedi su YouTube, sul nostro canale il video dei buchi neri e dei buchi bianchi, questo video è durato abbastanza.`
 
 ### Inglese — `storie/sagittario-a/en/`
 
@@ -943,101 +1148,6 @@ Cartella: `audio/narrazione/storie/buco-bianco/<lingua>/` · nel codice `white_h
   - **Emozione:** birichina — confida un segreto ridendo; l'ultima frase sussurrata
   - **Testo:** Einstein’s equations say I could exist. But nobody has ever seen me: for now I’m only an idea!
   - **Da incollare su ElevenLabs v3:** `[playfully] Einstein’s equations say I could exist. [laughs] But nobody has ever seen me: [whispers] for now I’m only an idea!`
-
-## Astro Ben
-
-Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben` · in inglese Astro Ben
-
-**La voce:** Lui. Un bambino di otto-nove anni, astronauta in erba: voce acuta, svelta, piena di meraviglia; fa domande a raffica, si spaventa e si entusiasma in un attimo.
-
-### Italiano — `storie/astro-ben/it/`
-
-- `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 17 s)
-  - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa
-  - **Testo:** Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?
-  - **Da incollare su ElevenLabs v3:** `[excited] Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?`
-- `storia_einstein-5.mp3` — manca · Einstein e il tempo elastico, scena 5 (al massimo 7 s)
-  - **Emozione:** folgorato — ha capito: un lampo di gioia
-  - **Testo:** Allora la Terra va dritta… ma su una strada curva!
-  - **Da incollare su ElevenLabs v3:** `[excited] Allora la Terra va dritta… ma su una strada curva!`
-- `storia_einstein-12.mp3` — manca · Einstein e il tempo elastico, scena 12 (al massimo 5 s)
-  - **Emozione:** curioso — domanda veloce, sorpresa
-  - **Testo:** Anche qui, sulla Terra?
-  - **Da incollare su ElevenLabs v3:** `[curious] Anche qui, sulla Terra?`
-- `storia_einstein-14.mp3` — manca · Einstein e il tempo elastico, scena 14 (al massimo 11 s)
-  - **Emozione:** pensoso poi entusiasta — «Mmm» lungo, poi la risposta di getto
-  - **Testo:** Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.
-  - **Da incollare su ElevenLabs v3:** `[thoughtful] Mmm… al mare! È più vicino al centro della Terra, giù nella curva, dove la gravità tira di più.`
-- `storia_einstein-16.mp3` — manca · Einstein e il tempo elastico, scena 16 (al massimo 8 s)
-  - **Emozione:** curioso — domanda emozionata
-  - **Testo:** E Samantha Cristoforetti, lassù sulla Stazione Spaziale?
-  - **Da incollare su ElevenLabs v3:** `[curious] E Samantha Cristoforetti, lassù sulla Stazione Spaziale?`
-- `storia_einstein-18.mp3` — manca · Einstein e il tempo elastico, scena 18 (al massimo 8 s)
-  - **Emozione:** divertito — ride della scoperta
-  - **Testo:** Un centesimo! Non basta neanche per saltare un compleanno…
-  - **Da incollare su ElevenLabs v3:** `[laughs] Un centesimo! Non basta neanche per saltare un compleanno…`
-- `storia_einstein-22.mp3` — manca · Einstein e il tempo elastico, scena 22 (al massimo 5 s)
-  - **Emozione:** curioso — domanda piccola, un po' preoccupata
-  - **Testo:** E il tempo, lì vicino?
-  - **Da incollare su ElevenLabs v3:** `[curious] E il tempo, lì vicino?`
-- `storia_einstein-27.mp3` — manca · Einstein e il tempo elastico, scena 27 (al massimo 6 s)
-  - **Emozione:** meravigliato — un sussurro di scoperta
-  - **Testo:** Allora il tempo… è elastico!
-  - **Da incollare su ElevenLabs v3:** `[in awe] Allora il tempo… è elastico!`
-- `storia_einstein-33.mp3` — manca · Einstein e il tempo elastico, scena 33 (al massimo 9 s)
-  - **Emozione:** entusiasta — felice, guarda in su
-  - **Testo:** Allora stanotte, guardando le stelle, guardo una stoffa che si piega!
-  - **Da incollare su ElevenLabs v3:** `[excited] Allora stanotte, guardando le stelle, guardo una stoffa che si piega!`
-- `storia_einstein-35.mp3` — manca · Einstein e il tempo elastico, scena 35 (al massimo 6 s)
-  - **Emozione:** curioso — domanda furba
-  - **Testo:** Professore… quanto tempo è passato?
-  - **Da incollare su ElevenLabs v3:** `[curious] Professore… quanto tempo è passato?`
-- `studio_copia_di_einstein_e_il_tempo_e-21.mp3` — manca · Studio: Copia di Einstein e il tempo elastico, scena 1 (al massimo 4 s)
-  - **Testo:** Professor Einstein
-  - **Da incollare su ElevenLabs v3:** `Professor Einstein`
-
-### Inglese — `storie/astro-ben/en/`
-
-- `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 17 s)
-  - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa
-  - **Testo:** Professor Einstein! Last night I watched Interstellar: one hour on that planet was worth seven years on Earth! Is it true, or is it a movie trick?
-  - **Da incollare su ElevenLabs v3:** `[excited] Professor Einstein! Last night I watched Interstellar: one hour on that planet was worth seven years on Earth! Is it true, or is it a movie trick?`
-- `storia_einstein-5.mp3` — manca · Einstein e il tempo elastico, scena 5 (al massimo 7 s)
-  - **Emozione:** folgorato — ha capito: un lampo di gioia
-  - **Testo:** So the Earth goes straight… but along a curved road!
-  - **Da incollare su ElevenLabs v3:** `[excited] So the Earth goes straight… but along a curved road!`
-- `storia_einstein-12.mp3` — manca · Einstein e il tempo elastico, scena 12 (al massimo 5 s)
-  - **Emozione:** curioso — domanda veloce, sorpresa
-  - **Testo:** Even here, on Earth?
-  - **Da incollare su ElevenLabs v3:** `[curious] Even here, on Earth?`
-- `storia_einstein-14.mp3` — manca · Einstein e il tempo elastico, scena 14 (al massimo 11 s)
-  - **Emozione:** pensoso poi entusiasta — «Mmm» lungo, poi la risposta di getto
-  - **Testo:** Hmm… by the sea! It's closer to the centre of the Earth, down in the curve, where gravity pulls harder.
-  - **Da incollare su ElevenLabs v3:** `[thoughtful] Hmm… by the sea! It's closer to the centre of the Earth, down in the curve, where gravity pulls harder.`
-- `storia_einstein-16.mp3` — manca · Einstein e il tempo elastico, scena 16 (al massimo 8 s)
-  - **Emozione:** curioso — domanda emozionata
-  - **Testo:** And Samantha Cristoforetti, up on the Space Station?
-  - **Da incollare su ElevenLabs v3:** `[curious] And Samantha Cristoforetti, up on the Space Station?`
-- `storia_einstein-18.mp3` — manca · Einstein e il tempo elastico, scena 18 (al massimo 8 s)
-  - **Emozione:** divertito — ride della scoperta
-  - **Testo:** A hundredth! That's not even enough to skip a birthday…
-  - **Da incollare su ElevenLabs v3:** `[laughs] A hundredth! That's not even enough to skip a birthday…`
-- `storia_einstein-22.mp3` — manca · Einstein e il tempo elastico, scena 22 (al massimo 5 s)
-  - **Emozione:** curioso — domanda piccola, un po' preoccupata
-  - **Testo:** And time, close to it?
-  - **Da incollare su ElevenLabs v3:** `[curious] And time, close to it?`
-- `storia_einstein-27.mp3` — manca · Einstein e il tempo elastico, scena 27 (al massimo 6 s)
-  - **Emozione:** meravigliato — un sussurro di scoperta
-  - **Testo:** So time… is stretchy!
-  - **Da incollare su ElevenLabs v3:** `[in awe] So time… is stretchy!`
-- `storia_einstein-33.mp3` — manca · Einstein e il tempo elastico, scena 33 (al massimo 9 s)
-  - **Emozione:** entusiasta — felice, guarda in su
-  - **Testo:** So tonight, looking at the stars, I'm looking at a fabric that bends!
-  - **Da incollare su ElevenLabs v3:** `[excited] So tonight, looking at the stars, I'm looking at a fabric that bends!`
-- `storia_einstein-35.mp3` — manca · Einstein e il tempo elastico, scena 35 (al massimo 6 s)
-  - **Emozione:** curioso — domanda furba
-  - **Testo:** Professor… how much time has passed?
-  - **Da incollare su ElevenLabs v3:** `[curious] Professor… how much time has passed?`
 
 ## Albert Einstein
 
@@ -1291,6 +1401,18 @@ Cartella: `audio/narrazione/storie/mercurio/<lingua>/` · nel codice `Mercury` �
   - **Emozione:** felice — 
   - **Testo:** Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?
   - **Da incollare su ElevenLabs v3:** `[happy] Sono un pianeta roccioso, sono Mercurio. Invece tu chi sei?`
+- `studio_la_rivoluzione_di_ganimede_e_f-9.mp3` — pronta · 2,6 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 9 (al massimo 4 s)
+  - **Emozione:** felice — 
+  - **Testo:** ehm, che c'è? Qualcosa non va?
+  - **Da incollare su ElevenLabs v3:** `[happy] [hesitates] ehm, che c'è? Qualcosa non va?`
+- `studio_la_rivoluzione_di_ganimede_e_f-11.mp3` — pronta · 3,3 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 11 (al massimo 4 s)
+  - **Emozione:** felice — 
+  - **Testo:** direi, sì, di qualche centinaio di chilometri direi di sì.
+  - **Da incollare su ElevenLabs v3:** `[happy] direi, sì, di qualche centinaio di chilometri direi di sì.`
+- `studio_la_rivoluzione_di_ganimede_e_f-13.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 13 (al massimo 6 s)
+  - **Emozione:** tranquillo — 
+  - **Testo:** sì amico te lo de, aspetta, dove vai?
+  - **Da incollare su ElevenLabs v3:** `sì amico te lo de, aspetta, dove vai?`
 
 ### Inglese — `storie/mercurio/en/`
 
@@ -1383,7 +1505,7 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
 
 ### Italiano — `storie/cooper/it/`
 
-- `storia_interstellar-1.mp3` — pronta · 11,3 s · Interstellar 1: oltre Gargantua, scena 1 (al massimo 16 s)
+- `storia_interstellar-1.mp3` — **troppo lunga** · 11,3 s · Interstellar 1: oltre Gargantua, scena 1 (al massimo 9,9 s)
   - **Emozione:** meravigliato — sottovoce, con stupore; si ferma su «Saturno»
   - **Testo:** Due anni di viaggio, ed eccolo: Saturno. E lì, accanto agli anelli, c'è una porta che nessun essere umano ha mai attraversato.
   - **Da incollare su ElevenLabs v3:** `[in awe] Due anni di viaggio, ed eccolo: Saturno. [whispers] E lì, accanto agli anelli, c'è una porta che nessun essere umano ha mai attraversato.`
@@ -1391,11 +1513,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** deciso — prima una risatina, poi il comando
   - **Testo:** TARS, abbassa l'umorismo al settantacinque per cento. Tutti ai posti: entriamo!
   - **Da incollare su ElevenLabs v3:** `[laughs] TARS, abbassa l'umorismo al settantacinque per cento. [determined] Tutti ai posti: entriamo!`
-- `storia_interstellar-9.mp3` — pronta · 12,2 s · Interstellar 1: oltre Gargantua, scena 9 (al massimo 14 s)
+- `storia_interstellar-9.mp3` — **troppo lunga** · 12,2 s · Interstellar 1: oltre Gargantua, scena 9 (al massimo 11,2 s)
   - **Emozione:** ammirato — lento, con rispetto; il nome detto piano
   - **Testo:** Eccolo. Gargantua. Un buco nero cento milioni di volte più pesante del Sole, che gira su se stesso quasi alla velocità della luce.
   - **Da incollare su ElevenLabs v3:** `[in awe] Eccolo. [whispers] Gargantua. [in awe] Un buco nero cento milioni di volte più pesante del Sole, che gira su se stesso quasi alla velocità della luce.`
-- `storia_interstellar-16.mp3` — pronta · 10 s · Interstellar 1: oltre Gargantua, scena 16 (al massimo 13 s)
+- `storia_interstellar-16.mp3` — pronta · 10 s · Interstellar 1: oltre Gargantua, scena 16 (al massimo 11,7 s)
   - **Emozione:** deciso — pratico, veloce, da pilota
   - **Testo:** Allora niente errori: scendiamo, prendiamo i dati della dottoressa Miller e torniamo su. Ogni minuto laggiù è più di un mese quassù.
   - **Da incollare su ElevenLabs v3:** `[determined] Allora niente errori: scendiamo, prendiamo i dati della dottoressa Miller e torniamo su. [serious] Ogni minuto laggiù è più di un mese quassù.`
@@ -1439,11 +1561,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** rapito — sussurrato, in pace
   - **Testo:** TARS… stiamo cadendo nella luce. Murph… sto arrivando.
   - **Da incollare su ElevenLabs v3:** `[in awe] TARS… stiamo cadendo nella luce. [whispers] Murph… sto arrivando.`
-- `storia_interstellar2-1.mp3` — pronta · 8 s · Interstellar 2: il tesseratto, scena 1 (al massimo 14 s)
+- `storia_interstellar2-1.mp3` — pronta · 8 s · Interstellar 2: il tesseratto, scena 1 (al massimo 9 s)
   - **Emozione:** in panico — urlato sopra il rumore, poi deciso e quasi ironico sull'ultima frase
   - **Testo:** Il Ranger va in pezzi! TARS, mi espello. Se dall'altra parte c'è qualcosa… ci vediamo di là.
   - **Da incollare su ElevenLabs v3:** `[panicked] Il Ranger va in pezzi! [shouting] TARS, mi espello. [determined] Se dall'altra parte c'è qualcosa… ci vediamo di là.`
-- `storia_interstellar2-2.mp3` — pronta · 12 s · Interstellar 2: il tesseratto, scena 2 (al massimo 16 s)
+- `storia_interstellar2-2.mp3` — pronta · 12 s · Interstellar 2: il tesseratto, scena 2 (al massimo 12,8 s)
   - **Emozione:** stupito — sottovoce, rapito, la voce che si apre sull'ultima scoperta
   - **Testo:** Dove sono? Sembra una biblioteca infinita: scaffali, stanze, corridoi… e ogni stanza è la camera di Murph, in un momento diverso!
   - **Da incollare su ElevenLabs v3:** `[in awe] Dove sono? [whispers] Sembra una biblioteca infinita: scaffali, stanze, corridoi… [excited] e ogni stanza è la camera di Murph, in un momento diverso!`
@@ -1483,11 +1605,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** tenero — piano, con un nodo in gola e tanta fiducia
   - **Testo:** Funzionerà. Murph tornerà a prenderlo. Tornerà qui, perché è mia figlia.
   - **Da incollare su ElevenLabs v3:** `[tenderly] Funzionerà. [determined] Murph tornerà a prenderlo. [softly] Tornerà qui, perché è mia figlia.`
-- `storia_interstellar2-30.mp3` — pronta · 7,8 s · Interstellar 2: il tesseratto, scena 30 (al massimo 14 s)
+- `storia_interstellar2-30.mp3` — pronta · 7,8 s · Interstellar 2: il tesseratto, scena 30 (al massimo 12,6 s)
   - **Emozione:** stupito — un sussurro, la voce che si scioglie nella scoperta
   - **Testo:** Brand… sei tu! La mano che vi ha stretto nel wormhole, all'inizio del viaggio… ero io.
   - **Da incollare su ElevenLabs v3:** `[in awe] Brand… [whispers] sei tu! La mano che vi ha stretto nel wormhole, all'inizio del viaggio… ero io.`
-- `storia_interstellar2-31.mp3` — pronta · 8,4 s · Interstellar 2: il tesseratto, scena 31 (al massimo 15 s)
+- `storia_interstellar2-31.mp3` — pronta · 8,4 s · Interstellar 2: il tesseratto, scena 31 (al massimo 12,8 s)
   - **Emozione:** stordito — lento, debole, appena sveglio
   - **Testo:** Saturno… gli anelli… Sono tornato da dove ero partito. E c'è una navetta che viene verso di me…
   - **Da incollare su ElevenLabs v3:** `[sleepy] Saturno… [softly] gli anelli… [curious] Sono tornato da dove ero partito. E c'è una navetta che viene verso di me…`
@@ -1495,7 +1617,7 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** sbalordito — incredulo, poi la commozione sul nome
   - **Testo:** Centoventiquattro?! Per me sono passati pochi anni: è il tempo elastico di Gargantua. E questa stazione… si chiama Stazione Cooper. Porta il nome di mia figlia!
   - **Da incollare su ElevenLabs v3:** `[surprised] Centoventiquattro?! [thoughtful] Per me sono passati pochi anni: è il tempo elastico di Gargantua. [in awe] E questa stazione… [crying] si chiama Stazione Cooper. Porta il nome di mia figlia!`
-- `storia_interstellar2-36.mp3` — pronta · 5,4 s · Interstellar 2: il tesseratto, scena 36 (al massimo 10 s)
+- `storia_interstellar2-36.mp3` — pronta · 5,4 s · Interstellar 2: il tesseratto, scena 36 (al massimo 8 s)
   - **Emozione:** commosso — un filo di voce
   - **Testo:** Murph… sono io. Sono tornato.
   - **Da incollare su ElevenLabs v3:** `[whispers] Murph… [crying] sono io. Sono tornato.`
@@ -1503,11 +1625,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** orgoglioso — con orgoglio e tenerezza
   - **Testo:** Sei stata tu, Murph. Hai salvato tutti… con un vecchio orologio.
   - **Da incollare su ElevenLabs v3:** `[proudly] Sei stata tu, Murph. [tenderly] Hai salvato tutti… con un vecchio orologio.`
-- `storia_interstellar_scienza-1.mp3` — pronta · 12 s · Interstellar 1: dentro la scienza, scena 1 (al massimo 16 s)
+- `storia_interstellar_scienza-1.mp3` — **troppo lunga** · 12 s · Interstellar 1: dentro la scienza, scena 1 (al massimo 9,9 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Due anni di viaggio, e finalmente Saturno. Accanto agli anelli c'è una porta verso un'altra galassia. Ma come si attraversa mezzo universo… in un pomeriggio?
   - **Da incollare su ElevenLabs v3:** `[in awe] Due anni di viaggio, e finalmente Saturno. Accanto agli anelli c'è una porta verso un'altra galassia. Ma come si attraversa mezzo universo… in un pomeriggio?`
-- `storia_interstellar_scienza-5.mp3` — pronta · 9,6 s · Interstellar 1: dentro la scienza, scena 5 (al massimo 14 s)
+- `storia_interstellar_scienza-5.mp3` — pronta · 9,6 s · Interstellar 1: dentro la scienza, scena 5 (al massimo 11,2 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Eccolo. Gargantua. Un buco nero così grande che il nostro Sole, accanto, sarebbe un granello di polvere.
   - **Da incollare su ElevenLabs v3:** `[in awe] Eccolo. Gargantua. Un buco nero così grande che il nostro Sole, accanto, sarebbe un granello di polvere.`
@@ -1523,11 +1645,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** confident — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Il carburante non basta. Allora usiamo Gargantua come una fionda: gli passiamo rasenti e la sua gravità ci lancia via. E per una spinta in più lasciamo indietro un pezzo: azione e reazione, parola di Newton. Il prezzo? Cinquantun anni sulla Terra.
   - **Da incollare su ElevenLabs v3:** `[confident] Il carburante non basta. Allora usiamo Gargantua come una fionda: gli passiamo rasenti e la sua gravità ci lancia via. E per una spinta in più lasciamo indietro un pezzo: azione e reazione, parola di Newton. Il prezzo? Cinquantun anni sulla Terra.`
-- `storia_interstellar2_scienza-1.mp3` — manca · Interstellar 2: dentro la scienza, scena 1 (al massimo 14 s)
+- `storia_interstellar2_scienza-1.mp3` — manca · Interstellar 2: dentro la scienza, scena 1 (al massimo 9 s)
   - **Emozione:** shouting — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Il Ranger va in pezzi! TARS, mi espello. Se dall'altra parte c'è qualcosa… ci vediamo di là.
   - **Da incollare su ElevenLabs v3:** `[shouting] Il Ranger va in pezzi! TARS, mi espello. Se dall'altra parte c'è qualcosa… ci vediamo di là.`
-- `storia_interstellar2_scienza-2.mp3` — pronta · 7,6 s · Interstellar 2: dentro la scienza, scena 2 (al massimo 16 s)
+- `storia_interstellar2_scienza-2.mp3` — pronta · 7,6 s · Interstellar 2: dentro la scienza, scena 2 (al massimo 12,8 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Dove sono? Una biblioteca infinita… e ogni stanza è la camera di Murph, in un momento diverso!
   - **Da incollare su ElevenLabs v3:** `[in awe] Dove sono? Una biblioteca infinita… e ogni stanza è la camera di Murph, in un momento diverso!`
@@ -1550,7 +1672,7 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
 
 ### Inglese — `storie/cooper/en/`
 
-- `storia_interstellar-1.mp3` — manca · Interstellar 1: oltre Gargantua, scena 1 (al massimo 16 s)
+- `storia_interstellar-1.mp3` — manca · Interstellar 1: oltre Gargantua, scena 1 (al massimo 9,9 s)
   - **Emozione:** meravigliato — sottovoce, con stupore; si ferma su «Saturno»
   - **Testo:** Two years of travel, and there it is: Saturn. And there, next to the rings, is a door no human being has ever gone through.
   - **Da incollare su ElevenLabs v3:** `[in awe] Two years of travel, and there it is: Saturn. [whispers] And there, next to the rings, is a door no human being has ever gone through.`
@@ -1558,11 +1680,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** deciso — prima una risatina, poi il comando
   - **Testo:** TARS, bring humor down to seventy-five percent. Everybody strap in: we're going through!
   - **Da incollare su ElevenLabs v3:** `[laughs] TARS, bring humor down to seventy-five percent. [determined] Everybody strap in: we're going through!`
-- `storia_interstellar-9.mp3` — manca · Interstellar 1: oltre Gargantua, scena 9 (al massimo 14 s)
+- `storia_interstellar-9.mp3` — manca · Interstellar 1: oltre Gargantua, scena 9 (al massimo 11,2 s)
   - **Emozione:** ammirato — lento, con rispetto; il nome detto piano
   - **Testo:** There it is. Gargantua. A black hole a hundred million times heavier than the Sun, spinning at almost the speed of light.
   - **Da incollare su ElevenLabs v3:** `[in awe] There it is. [whispers] Gargantua. [in awe] A black hole a hundred million times heavier than the Sun, spinning at almost the speed of light.`
-- `storia_interstellar-16.mp3` — manca · Interstellar 1: oltre Gargantua, scena 16 (al massimo 13 s)
+- `storia_interstellar-16.mp3` — manca · Interstellar 1: oltre Gargantua, scena 16 (al massimo 11,7 s)
   - **Emozione:** deciso — pratico, veloce, da pilota
   - **Testo:** Then no mistakes: we go down, get Doctor Miller's data and come back up. Every minute down there is more than a month up here.
   - **Da incollare su ElevenLabs v3:** `[determined] Then no mistakes: we go down, get Doctor Miller's data and come back up. [serious] Every minute down there is more than a month up here.`
@@ -1606,11 +1728,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** rapito — sussurrato, in pace
   - **Testo:** TARS… we're falling into the light. Murph… I'm coming.
   - **Da incollare su ElevenLabs v3:** `[in awe] TARS… we're falling into the light. [whispers] Murph… I'm coming.`
-- `storia_interstellar2-1.mp3` — manca · Interstellar 2: il tesseratto, scena 1 (al massimo 14 s)
+- `storia_interstellar2-1.mp3` — manca · Interstellar 2: il tesseratto, scena 1 (al massimo 9 s)
   - **Emozione:** in panico — urlato sopra il rumore, poi deciso e quasi ironico sull'ultima frase
   - **Testo:** The Ranger is falling apart! TARS, I'm ejecting. If there's something on the other side… I'll see you there.
   - **Da incollare su ElevenLabs v3:** `[panicked] The Ranger is falling apart! [shouting] TARS, I'm ejecting. [determined] If there's something on the other side… I'll see you there.`
-- `storia_interstellar2-2.mp3` — manca · Interstellar 2: il tesseratto, scena 2 (al massimo 16 s)
+- `storia_interstellar2-2.mp3` — manca · Interstellar 2: il tesseratto, scena 2 (al massimo 12,8 s)
   - **Emozione:** stupito — sottovoce, rapito, la voce che si apre sull'ultima scoperta
   - **Testo:** Where am I? It looks like an endless library: shelves, rooms, corridors… and every room is Murph's bedroom, at a different moment!
   - **Da incollare su ElevenLabs v3:** `[in awe] Where am I? [whispers] It looks like an endless library: shelves, rooms, corridors… [excited] and every room is Murph's bedroom, at a different moment!`
@@ -1650,11 +1772,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** tenero — piano, con un nodo in gola e tanta fiducia
   - **Testo:** It'll work. Murph will come back for it. She'll come back here, because she's my daughter.
   - **Da incollare su ElevenLabs v3:** `[tenderly] It'll work. [determined] Murph will come back for it. [softly] She'll come back here, because she's my daughter.`
-- `storia_interstellar2-30.mp3` — manca · Interstellar 2: il tesseratto, scena 30 (al massimo 14 s)
+- `storia_interstellar2-30.mp3` — manca · Interstellar 2: il tesseratto, scena 30 (al massimo 12,6 s)
   - **Emozione:** stupito — un sussurro, la voce che si scioglie nella scoperta
   - **Testo:** Brand… it's you! The hand that touched you in the wormhole, at the start of the journey… it was me.
   - **Da incollare su ElevenLabs v3:** `[in awe] Brand… [whispers] it's you! The hand that touched you in the wormhole, at the start of the journey… it was me.`
-- `storia_interstellar2-31.mp3` — manca · Interstellar 2: il tesseratto, scena 31 (al massimo 15 s)
+- `storia_interstellar2-31.mp3` — manca · Interstellar 2: il tesseratto, scena 31 (al massimo 12,8 s)
   - **Emozione:** stordito — lento, debole, appena sveglio
   - **Testo:** Saturn… the rings… I'm back where I started. And there's a shuttle coming toward me…
   - **Da incollare su ElevenLabs v3:** `[sleepy] Saturn… [softly] the rings… [curious] I'm back where I started. And there's a shuttle coming toward me…`
@@ -1662,7 +1784,7 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** sbalordito — incredulo, poi la commozione sul nome
   - **Testo:** One hundred and twenty-four?! For me only a few years have passed: it's Gargantua's elastic time. And this station… it's called Cooper Station. It's named after my daughter!
   - **Da incollare su ElevenLabs v3:** `[surprised] One hundred and twenty-four?! [thoughtful] For me only a few years have passed: it's Gargantua's elastic time. [in awe] And this station… [crying] it's called Cooper Station. It's named after my daughter!`
-- `storia_interstellar2-36.mp3` — manca · Interstellar 2: il tesseratto, scena 36 (al massimo 10 s)
+- `storia_interstellar2-36.mp3` — manca · Interstellar 2: il tesseratto, scena 36 (al massimo 8 s)
   - **Emozione:** commosso — un filo di voce
   - **Testo:** Murph… it's me. I'm back.
   - **Da incollare su ElevenLabs v3:** `[whispers] Murph… [crying] it's me. I'm back.`
@@ -1670,11 +1792,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** orgoglioso — con orgoglio e tenerezza
   - **Testo:** It was you, Murph. You saved everyone… with an old watch.
   - **Da incollare su ElevenLabs v3:** `[proudly] It was you, Murph. [tenderly] You saved everyone… with an old watch.`
-- `storia_interstellar_scienza-1.mp3` — manca · Interstellar 1: dentro la scienza, scena 1 (al massimo 16 s)
+- `storia_interstellar_scienza-1.mp3` — manca · Interstellar 1: dentro la scienza, scena 1 (al massimo 9,9 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Two years of travel, and finally Saturn. Next to the rings there's a door to another galaxy. But how do you cross half the universe… in an afternoon?
   - **Da incollare su ElevenLabs v3:** `[in awe] Two years of travel, and finally Saturn. Next to the rings there's a door to another galaxy. But how do you cross half the universe… in an afternoon?`
-- `storia_interstellar_scienza-5.mp3` — manca · Interstellar 1: dentro la scienza, scena 5 (al massimo 14 s)
+- `storia_interstellar_scienza-5.mp3` — manca · Interstellar 1: dentro la scienza, scena 5 (al massimo 11,2 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** There it is. Gargantua. A black hole so big that our Sun, next to it, would be a speck of dust.
   - **Da incollare su ElevenLabs v3:** `[in awe] There it is. Gargantua. A black hole so big that our Sun, next to it, would be a speck of dust.`
@@ -1690,11 +1812,11 @@ Cartella: `audio/narrazione/storie/cooper/<lingua>/` · nel codice `cooper` · i
   - **Emozione:** confident — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** We don't have enough fuel. So we use Gargantua as a slingshot: we graze past it and its gravity flings us away. For an extra push we leave a piece behind: action and reaction, Newton's word. The price? Fifty-one years on Earth.
   - **Da incollare su ElevenLabs v3:** `[confident] We don't have enough fuel. So we use Gargantua as a slingshot: we graze past it and its gravity flings us away. For an extra push we leave a piece behind: action and reaction, Newton's word. The price? Fifty-one years on Earth.`
-- `storia_interstellar2_scienza-1.mp3` — manca · Interstellar 2: dentro la scienza, scena 1 (al massimo 14 s)
+- `storia_interstellar2_scienza-1.mp3` — manca · Interstellar 2: dentro la scienza, scena 1 (al massimo 9 s)
   - **Emozione:** shouting — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** The Ranger is breaking up! TARS, I'm ejecting. If there's something on the other side… see you there.
   - **Da incollare su ElevenLabs v3:** `[shouting] The Ranger is breaking up! TARS, I'm ejecting. If there's something on the other side… see you there.`
-- `storia_interstellar2_scienza-2.mp3` — manca · Interstellar 2: dentro la scienza, scena 2 (al massimo 16 s)
+- `storia_interstellar2_scienza-2.mp3` — manca · Interstellar 2: dentro la scienza, scena 2 (al massimo 12,8 s)
   - **Emozione:** in awe — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Where am I? An endless library… and every room is Murph's bedroom, at a different moment!
   - **Da incollare su ElevenLabs v3:** `[in awe] Where am I? An endless library… and every room is Murph's bedroom, at a different moment!`
@@ -1719,7 +1841,7 @@ Cartella: `audio/narrazione/storie/romilly/<lingua>/` · nel codice `romilly` ·
 
 ### Italiano — `storie/romilly/it/`
 
-- `storia_interstellar-2.mp3` — pronta · 9,5 s · Interstellar 1: oltre Gargantua, scena 2 (al massimo 12 s)
+- `storia_interstellar-2.mp3` — pronta · 9,5 s · Interstellar 1: oltre Gargantua, scena 2 (al massimo 10,2 s)
   - **Emozione:** sorpreso — esplode di meraviglia, la voce sale
   - **Testo:** Guardate! Non è un buco piatto nel cielo… è una sfera! E dentro si vedono le stelle di un'altra galassia!
   - **Da incollare su ElevenLabs v3:** `[gasps] Guardate! Non è un buco piatto nel cielo… [excited] è una sfera! E dentro si vedono le stelle di un'altra galassia!`
@@ -1778,7 +1900,7 @@ Cartella: `audio/narrazione/storie/romilly/<lingua>/` · nel codice `romilly` ·
 
 ### Inglese — `storie/romilly/en/`
 
-- `storia_interstellar-2.mp3` — manca · Interstellar 1: oltre Gargantua, scena 2 (al massimo 12 s)
+- `storia_interstellar-2.mp3` — manca · Interstellar 1: oltre Gargantua, scena 2 (al massimo 10,2 s)
   - **Emozione:** sorpreso — esplode di meraviglia, la voce sale
   - **Testo:** Look! It isn't a flat hole in the sky… it's a sphere! And inside you can see the stars of another galaxy!
   - **Da incollare su ElevenLabs v3:** `[gasps] Look! It isn't a flat hole in the sky… [excited] it's a sphere! And inside you can see the stars of another galaxy!`
@@ -1827,7 +1949,7 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** sicura — sorride appena, spiega con chiarezza
   - **Testo:** Certo che è una sfera, Romilly. Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. Quella luce arriva dall'altra parte dell'universo.
   - **Da incollare su ElevenLabs v3:** `[warmly] Certo che è una sfera, Romilly. [thoughtful] Un buco in un foglio è un cerchio; un buco nello spazio, che ha tre dimensioni, è una palla. [in awe] Quella luce arriva dall'altra parte dell'universo.`
-- `storia_interstellar-7.mp3` — pronta · 10,9 s · Interstellar 1: oltre Gargantua, scena 7 (al massimo 14 s)
+- `storia_interstellar-7.mp3` — pronta · 10,9 s · Interstellar 1: oltre Gargantua, scena 7 (al massimo 12,3 s)
   - **Emozione:** rapita — sussurrato, quasi un sogno
   - **Testo:** Lo spazio-tempo si piega tutto attorno a noi… Sento qualcosa. È come se qualcuno ci stringesse la mano.
   - **Da incollare su ElevenLabs v3:** `[in awe] Lo spazio-tempo si piega tutto attorno a noi… [whispers] Sento qualcosa. È come se qualcuno ci stringesse la mano.`
@@ -1867,7 +1989,7 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** commossa — tra le lacrime, poi coraggiosa
   - **Testo:** L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. Vai, Cooper… io porto la missione fino a Edmunds.
   - **Da incollare su ElevenLabs v3:** `[crying] L'amore è l'unica cosa che riusciamo a sentire attraverso il tempo e lo spazio. [determined] Vai, Cooper… io porto la missione fino a Edmunds.`
-- `storia_interstellar2-42.mp3` — pronta · 16,8 s · Interstellar 2: il tesseratto, scena 42 (al massimo 17 s)
+- `storia_interstellar2-42.mp3` — **troppo lunga** · 16,8 s · Interstellar 2: il tesseratto, scena 42 (al massimo 15,3 s)
   - **Emozione:** speranzosa — all'alba, con meraviglia e un sorriso
   - **Testo:** Qui c'è aria, c'è acqua, c'è luce. Edmunds aveva ragione: questa sarà la nuova casa. E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.
   - **Da incollare su ElevenLabs v3:** `[in awe] Qui c'è aria, c'è acqua, c'è luce. [hopeful] Edmunds aveva ragione: questa sarà la nuova casa. [softly] E ho la sensazione che qualcuno, da molto lontano, stia venendo da me.`
@@ -1875,7 +1997,7 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** curious — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** E perché è una palla? Immagina un mondo piatto: lì un buco è un cerchio. Ma noi viviamo in tre dimensioni, e un buco in tre dimensioni è… una sfera. Da qualunque lato la guardi, dentro c'è l'altra galassia.
   - **Da incollare su ElevenLabs v3:** `[curious] E perché è una palla? Immagina un mondo piatto: lì un buco è un cerchio. Ma noi viviamo in tre dimensioni, e un buco in tre dimensioni è… una sfera. Da qualunque lato la guardi, dentro c'è l'altra galassia.`
-- `storia_interstellar_scienza-4.mp3` — pronta · 10,4 s · Interstellar 1: dentro la scienza, scena 4 (al massimo 14 s)
+- `storia_interstellar_scienza-4.mp3` — pronta · 10,4 s · Interstellar 1: dentro la scienza, scena 4 (al massimo 12,3 s)
   - **Emozione:** whispers — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Siamo dentro. Lo spazio-tempo si piega tutto attorno a noi… e sento qualcosa. È come se qualcuno mi stringesse la mano.
   - **Da incollare su ElevenLabs v3:** `[whispers] Siamo dentro. Lo spazio-tempo si piega tutto attorno a noi… e sento qualcosa. È come se qualcuno mi stringesse la mano.`
@@ -1942,7 +2064,7 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** sicura — sorride appena, spiega con chiarezza
   - **Testo:** Of course it's a sphere, Romilly. A hole in a sheet of paper is a circle; a hole in space, which has three dimensions, is a ball. That light comes from the other side of the universe.
   - **Da incollare su ElevenLabs v3:** `[warmly] Of course it's a sphere, Romilly. [thoughtful] A hole in a sheet of paper is a circle; a hole in space, which has three dimensions, is a ball. [in awe] That light comes from the other side of the universe.`
-- `storia_interstellar-7.mp3` — manca · Interstellar 1: oltre Gargantua, scena 7 (al massimo 14 s)
+- `storia_interstellar-7.mp3` — manca · Interstellar 1: oltre Gargantua, scena 7 (al massimo 12,3 s)
   - **Emozione:** rapita — sussurrato, quasi un sogno
   - **Testo:** Spacetime is bending all around us… I feel something. It's as if someone were shaking our hand.
   - **Da incollare su ElevenLabs v3:** `[in awe] Spacetime is bending all around us… [whispers] I feel something. It's as if someone were shaking our hand.`
@@ -1982,7 +2104,7 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** commossa — tra le lacrime, poi coraggiosa
   - **Testo:** Love is the one thing we can feel across time and space. Go, Cooper… I'll take the mission all the way to Edmunds.
   - **Da incollare su ElevenLabs v3:** `[crying] Love is the one thing we can feel across time and space. [determined] Go, Cooper… I'll take the mission all the way to Edmunds.`
-- `storia_interstellar2-42.mp3` — manca · Interstellar 2: il tesseratto, scena 42 (al massimo 17 s)
+- `storia_interstellar2-42.mp3` — manca · Interstellar 2: il tesseratto, scena 42 (al massimo 15,3 s)
   - **Emozione:** speranzosa — all'alba, con meraviglia e un sorriso
   - **Testo:** There's air here, there's water, there's light. Edmunds was right: this will be our new home. And I have a feeling that someone, from very far away, is coming to me.
   - **Da incollare su ElevenLabs v3:** `[in awe] There's air here, there's water, there's light. [hopeful] Edmunds was right: this will be our new home. [softly] And I have a feeling that someone, from very far away, is coming to me.`
@@ -1990,7 +2112,7 @@ Cartella: `audio/narrazione/storie/amelia-brand/<lingua>/` · nel codice `brand`
   - **Emozione:** curious — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** And why is it a ball? Imagine a flat world: there, a hole is a circle. But we live in three dimensions, and a hole in three dimensions is… a sphere. Whichever side you look from, the other galaxy is inside.
   - **Da incollare su ElevenLabs v3:** `[curious] And why is it a ball? Imagine a flat world: there, a hole is a circle. But we live in three dimensions, and a hole in three dimensions is… a sphere. Whichever side you look from, the other galaxy is inside.`
-- `storia_interstellar_scienza-4.mp3` — manca · Interstellar 1: dentro la scienza, scena 4 (al massimo 14 s)
+- `storia_interstellar_scienza-4.mp3` — manca · Interstellar 1: dentro la scienza, scena 4 (al massimo 12,3 s)
   - **Emozione:** whispers — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** We're inside. Space-time is bending all around us… and I can feel something. It's as if someone were shaking my hand.
   - **Da incollare su ElevenLabs v3:** `[whispers] We're inside. Space-time is bending all around us… and I can feel something. It's as if someone were shaking my hand.`
@@ -2031,7 +2153,7 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
   - **Emozione:** tenero — per una volta senza ironia
   - **Testo:** È stato un onore volare con voi. Livello di sincerità: cento per cento.
   - **Da incollare su ElevenLabs v3:** `[tenderly] È stato un onore volare con voi. [warmly] Livello di sincerità: cento per cento.`
-- `storia_interstellar2-3.mp3` — pronta · 9,6 s · Interstellar 2: il tesseratto, scena 3 (al massimo 13 s)
+- `storia_interstellar2-3.mp3` — pronta · 9,6 s · Interstellar 2: il tesseratto, scena 3 (al massimo 11,4 s)
   - **Emozione:** sollevato — asciutto e calmo come sempre, con un filo di sollievo
   - **Testo:** Cooper, mi ricevi? Sono vivo anch'io, da qualche parte qui intorno. Qualcuno ci ha raccolti nel buio e ci ha portati in questo posto.
   - **Da incollare su ElevenLabs v3:** `[calm] Cooper, mi ricevi? [relieved] Sono vivo anch'io, da qualche parte qui intorno. [curious] Qualcuno ci ha raccolti nel buio e ci ha portati in questo posto.`
@@ -2067,7 +2189,7 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
   - **Emozione:** tenero — piano, con delicatezza
   - **Testo:** C'è una persona che ti aspetta da tantissimo tempo, Cooper. Ormai è molto anziana… e vuole vederti.
   - **Da incollare su ElevenLabs v3:** `[tenderly] C'è una persona che ti aspetta da tantissimo tempo, Cooper. [softly] Ormai è molto anziana… e vuole vederti.`
-- `storia_interstellar2-41.mp3` — pronta · 10,4 s · Interstellar 2: il tesseratto, scena 41 (al massimo 15 s)
+- `storia_interstellar2-41.mp3` — pronta · 10,4 s · Interstellar 2: il tesseratto, scena 41 (al massimo 13,2 s)
   - **Emozione:** contento — il robot di sempre, contento di ripartire
   - **Testo:** Livello di sincerità: cento per cento. Livello di umorismo: di nuovo al settantacinque. Destinazione: il pianeta di Edmunds.
   - **Da incollare su ElevenLabs v3:** `[proudly] Livello di sincerità: cento per cento. [mischievously] Livello di umorismo: di nuovo al settantacinque. [determined] Destinazione: il pianeta di Edmunds.`
@@ -2122,7 +2244,7 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
   - **Emozione:** tenero — per una volta senza ironia
   - **Testo:** It's been an honour flying with you. Honesty setting: one hundred percent.
   - **Da incollare su ElevenLabs v3:** `[tenderly] It's been an honour flying with you. [warmly] Honesty setting: one hundred percent.`
-- `storia_interstellar2-3.mp3` — manca · Interstellar 2: il tesseratto, scena 3 (al massimo 13 s)
+- `storia_interstellar2-3.mp3` — manca · Interstellar 2: il tesseratto, scena 3 (al massimo 11,4 s)
   - **Emozione:** sollevato — asciutto e calmo come sempre, con un filo di sollievo
   - **Testo:** Cooper, do you read me? I'm alive too, somewhere around here. Someone caught us in the dark and brought us to this place.
   - **Da incollare su ElevenLabs v3:** `[calm] Cooper, do you read me? [relieved] I'm alive too, somewhere around here. [curious] Someone caught us in the dark and brought us to this place.`
@@ -2158,7 +2280,7 @@ Cartella: `audio/narrazione/storie/tars/<lingua>/` · nel codice `tars` · in in
   - **Emozione:** tenero — piano, con delicatezza
   - **Testo:** There's someone who has been waiting for you for a very long time, Cooper. She's very old now… and she wants to see you.
   - **Da incollare su ElevenLabs v3:** `[tenderly] There's someone who has been waiting for you for a very long time, Cooper. [softly] She's very old now… and she wants to see you.`
-- `storia_interstellar2-41.mp3` — manca · Interstellar 2: il tesseratto, scena 41 (al massimo 15 s)
+- `storia_interstellar2-41.mp3` — manca · Interstellar 2: il tesseratto, scena 41 (al massimo 13,2 s)
   - **Emozione:** contento — il robot di sempre, contento di ripartire
   - **Testo:** Honesty level: one hundred percent. Humor level: back to seventy-five. Destination: Edmunds' planet.
   - **Da incollare su ElevenLabs v3:** `[proudly] Honesty level: one hundred percent. [mischievously] Humor level: back to seventy-five. [determined] Destination: Edmunds' planet.`
@@ -2323,7 +2445,7 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
   - **Emozione:** malinconica — piano, assorta, nei ricordi
   - **Testo:** Sono tornata nella mia vecchia stanza. Il mio fantasma… papà diceva che i fantasmi non esistono. E allora chi c'era, qui, dietro la libreria?
   - **Da incollare su ElevenLabs v3:** `[wistfully] Sono tornata nella mia vecchia stanza. [softly] Il mio fantasma… [curious] papà diceva che i fantasmi non esistono. E allora chi c'era, qui, dietro la libreria?`
-- `storia_interstellar2-26.mp3` — pronta · 12 s · Interstellar 2: il tesseratto, scena 26 (al massimo 17 s)
+- `storia_interstellar2-26.mp3` — pronta · 12 s · Interstellar 2: il tesseratto, scena 26 (al massimo 15 s)
   - **Emozione:** folgorata — dallo stupore all'emozione, fino alle lacrime di gioia
   - **Testo:** L'orologio di papà… la lancetta si muove a scatti: lungo, corto, corto, lungo. È Morse! Sono dati! Il fantasma eri tu, papà. Sei sempre stato tu!
   - **Da incollare su ElevenLabs v3:** `[surprised] L'orologio di papà… [excited] la lancetta si muove a scatti: lungo, corto, corto, lungo. [gasps] È Morse! Sono dati! [crying] Il fantasma eri tu, papà. [happy] Sei sempre stato tu!`
@@ -2331,7 +2453,7 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
   - **Emozione:** euforica — accelera, poi esplode di gioia
   - **Testo:** Ecco cosa mancava all'equazione del professor Brand! Con questi dati la gravità si può controllare. Eureka! Eurekaaa!
   - **Da incollare su ElevenLabs v3:** `[excited] Ecco cosa mancava all'equazione del professor Brand! [determined] Con questi dati la gravità si può controllare. [laughs] Eureka! [shouting] Eurekaaa!`
-- `storia_interstellar2-28.mp3` — pronta · 11 s · Interstellar 2: il tesseratto, scena 28 (al massimo 19 s)
+- `storia_interstellar2-28.mp3` — pronta · 11 s · Interstellar 2: il tesseratto, scena 28 (al massimo 15,6 s)
   - **Emozione:** commossa — con meraviglia, poi la voce rotta dalla gioia
   - **Testo:** Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. Ce l'abbiamo fatta, papà. L'umanità parte!
   - **Da incollare su ElevenLabs v3:** `[in awe] Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. [crying] Ce l'abbiamo fatta, papà. [happy] L'umanità parte!`
@@ -2343,7 +2465,7 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
   - **Emozione:** excited — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Ecco cosa mancava all'equazione del professor Brand! Con questi dati la gravità si può controllare. Eureka! Eurekaaa!
   - **Da incollare su ElevenLabs v3:** `[excited] Ecco cosa mancava all'equazione del professor Brand! Con questi dati la gravità si può controllare. Eureka! Eurekaaa!`
-- `storia_interstellar2_scienza-13.mp3` — manca · Interstellar 2: dentro la scienza, scena 13 (al massimo 19 s)
+- `storia_interstellar2_scienza-13.mp3` — manca · Interstellar 2: dentro la scienza, scena 13 (al massimo 15,6 s)
   - **Emozione:** happy — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. Ce l'abbiamo fatta, papà. L'umanità parte!
   - **Da incollare su ElevenLabs v3:** `[happy] Guardate: le stazioni si staccano dalla Terra, una dopo l'altra, con dentro milioni di persone. Ce l'abbiamo fatta, papà. L'umanità parte!`
@@ -2366,7 +2488,7 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
   - **Emozione:** malinconica — piano, assorta, nei ricordi
   - **Testo:** I came back to my old room. My ghost… Dad used to say ghosts don't exist. So who was here, behind the bookshelf?
   - **Da incollare su ElevenLabs v3:** `[wistfully] I came back to my old room. [softly] My ghost… [curious] Dad used to say ghosts don't exist. So who was here, behind the bookshelf?`
-- `storia_interstellar2-26.mp3` — manca · Interstellar 2: il tesseratto, scena 26 (al massimo 17 s)
+- `storia_interstellar2-26.mp3` — manca · Interstellar 2: il tesseratto, scena 26 (al massimo 15 s)
   - **Emozione:** folgorata — dallo stupore all'emozione, fino alle lacrime di gioia
   - **Testo:** Dad's watch… the second hand moves in jumps: long, short, short, long. It's Morse! It's data! The ghost was you, Dad. It was always you!
   - **Da incollare su ElevenLabs v3:** `[surprised] Dad's watch… [excited] the second hand moves in jumps: long, short, short, long. [gasps] It's Morse! It's data! [crying] The ghost was you, Dad. [happy] It was always you!`
@@ -2374,7 +2496,7 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
   - **Emozione:** euforica — accelera, poi esplode di gioia
   - **Testo:** That's what was missing from Professor Brand's equation! With this data, gravity can be controlled. Eureka! Eurekaaa!
   - **Da incollare su ElevenLabs v3:** `[excited] That's what was missing from Professor Brand's equation! [determined] With this data, gravity can be controlled. [laughs] Eureka! [shouting] Eurekaaa!`
-- `storia_interstellar2-28.mp3` — manca · Interstellar 2: il tesseratto, scena 28 (al massimo 19 s)
+- `storia_interstellar2-28.mp3` — manca · Interstellar 2: il tesseratto, scena 28 (al massimo 15,6 s)
   - **Emozione:** commossa — con meraviglia, poi la voce rotta dalla gioia
   - **Testo:** Look: the stations are lifting off the Earth, one after another, with millions of people inside. We did it, Dad. Humanity is leaving!
   - **Da incollare su ElevenLabs v3:** `[in awe] Look: the stations are lifting off the Earth, one after another, with millions of people inside. [crying] We did it, Dad. [happy] Humanity is leaving!`
@@ -2386,7 +2508,7 @@ Cartella: `audio/narrazione/storie/murph/<lingua>/` · nel codice `murph` · in 
   - **Emozione:** excited — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** That's what Professor Brand's equation was missing! With this data, gravity can be controlled. Eureka! Eurekaaa!
   - **Da incollare su ElevenLabs v3:** `[excited] That's what Professor Brand's equation was missing! With this data, gravity can be controlled. Eureka! Eurekaaa!`
-- `storia_interstellar2_scienza-13.mp3` — manca · Interstellar 2: dentro la scienza, scena 13 (al massimo 19 s)
+- `storia_interstellar2_scienza-13.mp3` — manca · Interstellar 2: dentro la scienza, scena 13 (al massimo 15,6 s)
   - **Emozione:** happy — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Look: the stations are lifting off the Earth, one after another, with millions of people inside. We did it, Dad. Humanity is leaving!
   - **Da incollare su ElevenLabs v3:** `[happy] Look: the stations are lifting off the Earth, one after another, with millions of people inside. We did it, Dad. Humanity is leaving!`
@@ -2479,7 +2601,7 @@ Cartella: `audio/narrazione/storie/loro/<lingua>/` · nel codice `loro` · in in
 
 ### Italiano — `storie/loro/it/`
 
-- `storia_interstellar2-6.mp3` — pronta · 10,7 s · Interstellar 2: il tesseratto, scena 6 (al massimo 15 s)
+- `storia_interstellar2-6.mp3` — pronta · 10,7 s · Interstellar 2: il tesseratto, scena 6 (al massimo 13,5 s)
   - **Emozione:** misterioso — una voce ampia e lontana, calma, rassicurante
   - **Testo:** Non avere paura, Cooper. Siamo noi che ti abbiamo portato qui. Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.
   - **Da incollare su ElevenLabs v3:** `[softly] Non avere paura, Cooper. [mysteriously] Siamo noi che ti abbiamo portato qui. [warmly] Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.`
@@ -2511,7 +2633,7 @@ Cartella: `audio/narrazione/storie/loro/<lingua>/` · nel codice `loro` · in in
   - **Emozione:** solenne — lento, ampio, una promessa
   - **Testo:** Gli esseri umani hanno attraversato lo spazio e il tempo, guidati dall'amore e dalla gravità. Un giorno, ve lo promettiamo… diventerete noi.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Gli esseri umani hanno attraversato lo spazio e il tempo, guidati dall'amore e dalla gravità. [softly] Un giorno, ve lo promettiamo… diventerete noi.`
-- `storia_interstellar2_scienza-4.mp3` — manca · Interstellar 2: dentro la scienza, scena 4 (al massimo 15 s)
+- `storia_interstellar2_scienza-4.mp3` — manca · Interstellar 2: dentro la scienza, scena 4 (al massimo 13,5 s)
   - **Emozione:** calmly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Non avere paura, Cooper. Siamo noi che ti abbiamo portato qui. Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.
   - **Da incollare su ElevenLabs v3:** `[calmly] Non avere paura, Cooper. Siamo noi che ti abbiamo portato qui. Noi viviamo in cinque dimensioni, e questo spazio l'abbiamo piegato per te.`
@@ -2534,7 +2656,7 @@ Cartella: `audio/narrazione/storie/loro/<lingua>/` · nel codice `loro` · in in
 
 ### Inglese — `storie/loro/en/`
 
-- `storia_interstellar2-6.mp3` — manca · Interstellar 2: il tesseratto, scena 6 (al massimo 15 s)
+- `storia_interstellar2-6.mp3` — manca · Interstellar 2: il tesseratto, scena 6 (al massimo 13,5 s)
   - **Emozione:** misterioso — una voce ampia e lontana, calma, rassicurante
   - **Testo:** Don't be afraid, Cooper. We are the ones who brought you here. We live in five dimensions, and we folded this space for you.
   - **Da incollare su ElevenLabs v3:** `[softly] Don't be afraid, Cooper. [mysteriously] We are the ones who brought you here. [warmly] We live in five dimensions, and we folded this space for you.`
@@ -2566,7 +2688,7 @@ Cartella: `audio/narrazione/storie/loro/<lingua>/` · nel codice `loro` · in in
   - **Emozione:** solenne — lento, ampio, una promessa
   - **Testo:** Human beings crossed space and time, guided by love and by gravity. One day, we promise you… you will become us.
   - **Da incollare su ElevenLabs v3:** `[mysteriously] Human beings crossed space and time, guided by love and by gravity. [softly] One day, we promise you… you will become us.`
-- `storia_interstellar2_scienza-4.mp3` — manca · Interstellar 2: dentro la scienza, scena 4 (al massimo 15 s)
+- `storia_interstellar2_scienza-4.mp3` — manca · Interstellar 2: dentro la scienza, scena 4 (al massimo 13,5 s)
   - **Emozione:** calmly — ritmo da divulgazione: vivace, chiaro, con entusiasmo
   - **Testo:** Don't be afraid, Cooper. We are the ones who brought you here. We live in five dimensions, and we folded this space for you.
   - **Da incollare su ElevenLabs v3:** `[calmly] Don't be afraid, Cooper. We are the ones who brought you here. We live in five dimensions, and we folded this space for you.`
@@ -2595,14 +2717,14 @@ Cartella: `audio/narrazione/storie/murph-bambina/<lingua>/` · nel codice `murph
 
 ### Italiano — `storie/murph-bambina/it/`
 
-- `storia_interstellar2-15.mp3` — pronta · 14,7 s · Interstellar 2: il tesseratto, scena 15 (al massimo 17 s)
+- `storia_interstellar2-15.mp3` — **troppo lunga** · 14,7 s · Interstellar 2: il tesseratto, scena 15 (al massimo 11,9 s)
   - **Emozione:** emozionata — una bambina sveglia: prima spaventata, poi felice di aver capito
   - **Testo:** Papà! Il fantasma ha fatto cadere di nuovo i libri! Sono caduti a gruppi, lunghi e corti: è Morse! Dice… R, E, S, T, A. Resta!
   - **Da incollare su ElevenLabs v3:** `[excited] Papà! [curious] Il fantasma ha fatto cadere di nuovo i libri! [excited] Sono caduti a gruppi, lunghi e corti: è Morse! [happy] Dice… R, E, S, T, A. Resta!`
 
 ### Inglese — `storie/murph-bambina/en/`
 
-- `storia_interstellar2-15.mp3` — manca · Interstellar 2: il tesseratto, scena 15 (al massimo 17 s)
+- `storia_interstellar2-15.mp3` — manca · Interstellar 2: il tesseratto, scena 15 (al massimo 11,9 s)
   - **Emozione:** emozionata — una bambina sveglia: prima spaventata, poi felice di aver capito
   - **Testo:** Dad! The ghost knocked the books down again! They fell in groups, long and short: it's Morse! It says… S, T, A, Y. Stay!
   - **Da incollare su ElevenLabs v3:** `[excited] Dad! [curious] The ghost knocked the books down again! [excited] They fell in groups, long and short: it's Morse! [happy] It says… S, T, A, Y. Stay!`
@@ -2667,7 +2789,7 @@ Cartella: `audio/narrazione/storie/jim-lovell/<lingua>/` · nel codice `lovell` 
 
 ### Italiano — `storie/jim-lovell/it/`
 
-- `storia_apollo13_scienza-1.mp3` — **troppo lunga** · 20,3 s · Apollo 13: dentro la scienza, scena 1 (al massimo 16 s)
+- `storia_apollo13_scienza-1.mp3` — **troppo lunga** · 20,3 s · Apollo 13: dentro la scienza, scena 1 (al massimo 11,2 s)
   - **Emozione:** fiero — tono da apertura di documentario: calmo, caldo, con un sorriso sullo «Spoiler»
   - **Testo:** 11 aprile 1970, ore 13 e 13. Tre uomini in cima al razzo più grande mai costruito, diretti verso la Luna. Apollo 13 doveva essere una missione quasi di routine. Spoiler: non lo sarà. Ma proprio per questo è la missione da cui si impara di più.
   - **Da incollare su ElevenLabs v3:** `[proud] 11 aprile 1970, ore 13 e 13. Tre uomini in cima al razzo più grande mai costruito, diretti verso la Luna. Apollo 13 doveva essere una missione quasi di routine. Spoiler: non lo sarà. Ma proprio per questo è la missione da cui si impara di più.`
@@ -2683,18 +2805,18 @@ Cartella: `audio/narrazione/storie/jim-lovell/<lingua>/` · nel codice `lovell` 
   - **Emozione:** deciso — concentrato, preciso, come chi tiene il mirino; sollevato alla fine
   - **Testo:** Per tornare serve una correzione col motore, ma il computer di guida è spento per risparmiare corrente. Allora si fa a mano. Il trucco: guardare la Terra dal finestrino e tenere la linea fra il giorno e la notte, il terminatore, ferma sulla croce del mirino. Se la linea resta dritta, il razzo spinge nella direzione giusta. Quattordici secondi, e siamo di nuovo in rotta.
   - **Da incollare su ElevenLabs v3:** `[focused] Per tornare serve una correzione col motore, ma il computer di guida è spento per risparmiare corrente. Allora si fa a mano. Il trucco: guardare la Terra dal finestrino e tenere la linea fra il giorno e la notte, il terminatore, ferma sulla croce del mirino. Se la linea resta dritta, il razzo spinge nella direzione giusta. Quattordici secondi, e siamo di nuovo in rotta.`
-- `storia_apollo13_scienza-16.mp3` — **troppo lunga** · 16 s · Apollo 13: dentro la scienza, scena 16 (al massimo 12 s)
+- `storia_apollo13_scienza-16.mp3` — **troppo lunga** · 16 s · Apollo 13: dentro la scienza, scena 16 (al massimo 10,8 s)
   - **Emozione:** sorpreso — stupore e un brivido: lento, quasi sussurrato su «tutto annerito»
   - **Testo:** Prima del rientro sganciamo il modulo di servizio. E finalmente lo vediamo: manca un intero pannello. Dentro, tutto annerito. È lì che è scoppiato il serbatoio, a pochi metri dallo scudo termico che ora deve salvarci.
   - **Da incollare su ElevenLabs v3:** `[surprised] Prima del rientro sganciamo il modulo di servizio. E finalmente lo vediamo: manca un intero pannello. Dentro, tutto annerito. È lì che è scoppiato il serbatoio, a pochi metri dallo scudo termico che ora deve salvarci.`
-- `storia_apollo13_scienza-19.mp3` — **troppo lunga** · 21,6 s · Apollo 13: dentro la scienza, scena 19 (al massimo 15 s)
+- `storia_apollo13_scienza-19.mp3` — **troppo lunga** · 21,6 s · Apollo 13: dentro la scienza, scena 19 (al massimo 12,8 s)
   - **Emozione:** sollevato — finale: caldo, commosso, sereno, con orgoglio
   - **Testo:** 17 aprile 1970, Oceano Pacifico. Tre paracadute, tre uomini vivi. Non abbiamo toccato la Luna, ma abbiamo dimostrato che cosa sanno fare la scienza e una squadra quando tutto va storto. Lo chiamano un fallimento di successo. Per me è la missione più bella di tutte.
   - **Da incollare su ElevenLabs v3:** `[relieved] 17 aprile 1970, Oceano Pacifico. Tre paracadute, tre uomini vivi. Non abbiamo toccato la Luna, ma abbiamo dimostrato che cosa sanno fare la scienza e una squadra quando tutto va storto. Lo chiamano un fallimento di successo. Per me è la missione più bella di tutte.`
 
 ### Inglese — `storie/jim-lovell/en/`
 
-- `storia_apollo13_scienza-1.mp3` — manca · Apollo 13: dentro la scienza, scena 1 (al massimo 16 s)
+- `storia_apollo13_scienza-1.mp3` — manca · Apollo 13: dentro la scienza, scena 1 (al massimo 11,2 s)
   - **Emozione:** fiero — tono da apertura di documentario: calmo, caldo, con un sorriso sullo «Spoiler»
   - **Testo:** April 11, 1970, 1:13 in the afternoon. Three men on top of the biggest rocket ever built, headed for the Moon. Apollo 13 was supposed to be almost routine. Spoiler: it won't be. But that's exactly why it's the mission we learn the most from.
   - **Da incollare su ElevenLabs v3:** `[proud] April 11, 1970, 1:13 in the afternoon. Three men on top of the biggest rocket ever built, headed for the Moon. Apollo 13 was supposed to be almost routine. Spoiler: it won't be. But that's exactly why it's the mission we learn the most from.`
@@ -2710,11 +2832,11 @@ Cartella: `audio/narrazione/storie/jim-lovell/<lingua>/` · nel codice `lovell` 
   - **Emozione:** deciso — concentrato, preciso, come chi tiene il mirino; sollevato alla fine
   - **Testo:** To get home we need an engine correction, but the guidance computer is off to save power. So we do it by hand. The trick: look at the Earth through the window and keep the line between day and night, the terminator, steady on the crosshair. If the line stays straight, the rocket pushes in the right direction. Fourteen seconds, and we're back on course.
   - **Da incollare su ElevenLabs v3:** `[focused] To get home we need an engine correction, but the guidance computer is off to save power. So we do it by hand. The trick: look at the Earth through the window and keep the line between day and night, the terminator, steady on the crosshair. If the line stays straight, the rocket pushes in the right direction. Fourteen seconds, and we're back on course.`
-- `storia_apollo13_scienza-16.mp3` — manca · Apollo 13: dentro la scienza, scena 16 (al massimo 12 s)
+- `storia_apollo13_scienza-16.mp3` — manca · Apollo 13: dentro la scienza, scena 16 (al massimo 10,8 s)
   - **Emozione:** sorpreso — stupore e un brivido: lento, quasi sussurrato su «tutto annerito»
   - **Testo:** Before re-entry we cast off the service module. And at last we see it: an entire panel is missing. Inside, everything is blackened. That's where the tank blew up, a few metres from the heat shield that now has to save us.
   - **Da incollare su ElevenLabs v3:** `[surprised] Before re-entry we cast off the service module. And at last we see it: an entire panel is missing. Inside, everything is blackened. That's where the tank blew up, a few metres from the heat shield that now has to save us.`
-- `storia_apollo13_scienza-19.mp3` — manca · Apollo 13: dentro la scienza, scena 19 (al massimo 15 s)
+- `storia_apollo13_scienza-19.mp3` — manca · Apollo 13: dentro la scienza, scena 19 (al massimo 12,8 s)
   - **Emozione:** sollevato — finale: caldo, commosso, sereno, con orgoglio
   - **Testo:** April 17, 1970, Pacific Ocean. Three parachutes, three men alive. We never touched the Moon, but we showed what science and a team can do when everything goes wrong. They call it a successful failure. To me it's the finest mission of them all.
   - **Da incollare su ElevenLabs v3:** `[relieved] April 17, 1970, Pacific Ocean. Three parachutes, three men alive. We never touched the Moon, but we showed what science and a team can do when everything goes wrong. They call it a successful failure. To me it's the finest mission of them all.`
@@ -2775,7 +2897,7 @@ Cartella: `audio/narrazione/storie/jack-swigert/<lingua>/` · nel codice `swiger
   - **Emozione:** preoccupato — racconta un pericolo: svelto, un filo teso, poi sollevato su «si va avanti»
   - **Testo:** Primo guaio, cinque minuti e mezzo dopo il decollo. Il motore centrale del secondo stadio comincia a tremare: è l'effetto pogo. Il motore spinge, il carburante nel tubo si schiaccia come una molla, la spinta cambia, e tutto rimbalza sempre più forte. Un sensore lo spegne con due minuti di anticipo. Gli altri quattro bruciano un po' più a lungo, e si va avanti.
   - **Da incollare su ElevenLabs v3:** `[nervously] Primo guaio, cinque minuti e mezzo dopo il decollo. Il motore centrale del secondo stadio comincia a tremare: è l'effetto pogo. Il motore spinge, il carburante nel tubo si schiaccia come una molla, la spinta cambia, e tutto rimbalza sempre più forte. Un sensore lo spegne con due minuti di anticipo. Gli altri quattro bruciano un po' più a lungo, e si va avanti.`
-- `storia_apollo13_scienza-5.mp3` — **troppo lunga** · 14,8 s · Apollo 13: dentro la scienza, scena 5 (al massimo 14 s)
+- `storia_apollo13_scienza-5.mp3` — **troppo lunga** · 14,8 s · Apollo 13: dentro la scienza, scena 5 (al massimo 12,6 s)
   - **Emozione:** teso — la frase famosa detta piano e incredula, poi racconta di fretta, con paura trattenuta
   - **Testo:** Ok, Houston… abbiamo avuto un problema. Un botto, un sobbalzo, gli allarmi. Dal finestrino esce una nube bianca: è il nostro ossigeno, che scappa nello spazio. E siamo a più di trecentomila chilometri da casa.
   - **Da incollare su ElevenLabs v3:** `[tense] Ok, Houston… abbiamo avuto un problema. Un botto, un sobbalzo, gli allarmi. Dal finestrino esce una nube bianca: è il nostro ossigeno, che scappa nello spazio. E siamo a più di trecentomila chilometri da casa.`
@@ -2794,7 +2916,7 @@ Cartella: `audio/narrazione/storie/jack-swigert/<lingua>/` · nel codice `swiger
   - **Emozione:** preoccupato — racconta un pericolo: svelto, un filo teso, poi sollevato su «si va avanti»
   - **Testo:** First hiccup, five and a half minutes after liftoff. The centre engine of the second stage starts to shake: it's the pogo effect. The engine pushes, the fuel in the pipe squashes like a spring, the thrust changes, and everything bounces harder and harder. A sensor shuts it down two minutes early. The other four burn a little longer, and on we go.
   - **Da incollare su ElevenLabs v3:** `[nervously] First hiccup, five and a half minutes after liftoff. The centre engine of the second stage starts to shake: it's the pogo effect. The engine pushes, the fuel in the pipe squashes like a spring, the thrust changes, and everything bounces harder and harder. A sensor shuts it down two minutes early. The other four burn a little longer, and on we go.`
-- `storia_apollo13_scienza-5.mp3` — manca · Apollo 13: dentro la scienza, scena 5 (al massimo 14 s)
+- `storia_apollo13_scienza-5.mp3` — manca · Apollo 13: dentro la scienza, scena 5 (al massimo 12,6 s)
   - **Emozione:** teso — la frase famosa detta piano e incredula, poi racconta di fretta, con paura trattenuta
   - **Testo:** Okay, Houston… we've had a problem. A bang, a jolt, the alarms. A white cloud is pouring out of the window: it's our oxygen, escaping into space. And we're more than three hundred thousand kilometres from home.
   - **Da incollare su ElevenLabs v3:** `[tense] Okay, Houston… we've had a problem. A bang, a jolt, the alarms. A white cloud is pouring out of the window: it's our oxygen, escaping into space. And we're more than three hundred thousand kilometres from home.`
@@ -2881,7 +3003,7 @@ Cartella: `audio/narrazione/storie/hubble/<lingua>/` · nel codice `hubble` · i
   - **Emozione:** pensieroso — 
   - **Testo:** esatto, perchè ci trattieni?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] esatto, perchè ci trattieni?`
-- `studio_cosa_e_la_gravita_2-5.mp3` — manca · Studio: Cosa è la gravità?, scena 5 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-5.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 5 (al massimo 3 s)
   - **Emozione:** pensieroso — 
   - **Testo:** esatto, perchè ci trattieni?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] esatto, perchè ci trattieni?`
@@ -2896,7 +3018,7 @@ Cartella: `audio/narrazione/storie/iss/<lingua>/` · nel codice `iss` · in ingl
   - **Emozione:** arrabbiato — 
   - **Testo:** ci dobbiamo ribellare!
   - **Da incollare su ElevenLabs v3:** `[angry] ci dobbiamo ribellare!`
-- `studio_cosa_e_la_gravita_2-6.mp3` — manca · Studio: Cosa è la gravità?, scena 6 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-6.mp3` — pronta · 1,8 s · Studio: Cosa è la gravità?, scena 6 (al massimo 3 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** ci dobbiamo ribellare!
   - **Da incollare su ElevenLabs v3:** `[angry] ci dobbiamo ribellare!`
@@ -2911,7 +3033,7 @@ Cartella: `audio/narrazione/storie/css/<lingua>/` · nel codice `css` · in ingl
   - **Emozione:** arrabbiato — 
   - **Testo:** giusto!
   - **Da incollare su ElevenLabs v3:** `[angry] giusto!`
-- `studio_cosa_e_la_gravita_2-7.mp3` — manca · Studio: Cosa è la gravità?, scena 7 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-7.mp3` — pronta · 1,1 s · Studio: Cosa è la gravità?, scena 7 (al massimo 3 s)
   - **Emozione:** arrabbiato — 
   - **Testo:** giusto!
   - **Da incollare su ElevenLabs v3:** `[angry] giusto!`
@@ -2942,23 +3064,23 @@ Cartella: `audio/narrazione/storie/sedna/<lingua>/` · nel codice `Sedna` · in 
   - **Emozione:** pensieroso — 
   - **Testo:** è vero! Chi è?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] è vero! Chi è?`
-- `studio_cosa_e_la_gravita_2-19.mp3` — manca · Studio: Cosa è la gravità?, scena 19 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-19.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 26 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ciao Terra, Giove ha ragione!
   - **Da incollare su ElevenLabs v3:** `Ciao Terra, Giove ha ragione!`
-- `studio_cosa_e_la_gravita_2-21.mp3` — pronta · 13,8 s · Studio: Cosa è la gravità?, scena 21 (al massimo 16 s)
+- `studio_cosa_e_la_gravita_2-21.mp3` — pronta · 15,8 s · Studio: Cosa è la gravità?, scena 28 (al massimo 17 s)
   - **Emozione:** felice — 
   - **Testo:** Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.
   - **Da incollare su ElevenLabs v3:** `[happy] Sono sedna! un pianeta nano candidato! La mia orbita intorno al sole dura più di 11.000 anni, e comunque, nel punto più lontano dal sole mi trovo ad oltre 800 unità astronomiche dall' eliopausa.`
-- `studio_cosa_e_la_gravita_2-24.mp3` — manca · Studio: Cosa è la gravità?, scena 24 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-24.mp3` — pronta · 2,7 s · Studio: Cosa è la gravità?, scena 31 (al massimo 5 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Ehm, scusa Terra, hai finito?
-  - **Da incollare su ElevenLabs v3:** `Ehm, scusa Terra, hai finito?`
-- `studio_cosa_e_la_gravita_2-26.mp3` — manca · Studio: Cosa è la gravità?, scena 26 (al massimo 15 s)
+  - **Da incollare su ElevenLabs v3:** `[hesitates] Ehm, scusa Terra, hai finito?`
+- `studio_cosa_e_la_gravita_2-26.mp3` — pronta · 15,2 s · Studio: Cosa è la gravità?, scena 33 (al massimo 16 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".
   - **Da incollare su ElevenLabs v3:** `Stavo dicendo, che senza la gravità del sole, non solo io, ma tutti noi saremo pianeti canaglia che vagano nello spazio infinito, a proposito, se vuoi, facciamo un video "cosa accadrebbe senza il sole".`
-- `studio_cosa_e_la_gravita_2-30.mp3` — manca · Studio: Cosa è la gravità?, scena 30 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-30.mp3` — pronta · 2,5 s · Studio: Cosa è la gravità?, scena 37 (al massimo 4 s)
   - **Emozione:** pensieroso — 
   - **Testo:** è vero! Chi è?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] è vero! Chi è?`
@@ -2969,7 +3091,7 @@ Cartella: `audio/narrazione/storie/isaac-newton/<lingua>/` · nel codice `newton
 
 ### Italiano — `storie/isaac-newton/it/`
 
-- `studio_cosa_e_la_gravita_2-40.mp3` — manca · Studio: Cosa è la gravità?, scena 40 (al massimo 6 s)
+- `studio_cosa_e_la_gravita_2-40.mp3` — pronta · 2,6 s · Studio: Cosa è la gravità?, scena 47 (al massimo 4 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Sì, le mie leggi dicono proprio così.
   - **Da incollare su ElevenLabs v3:** `Sì, le mie leggi dicono proprio così.`
@@ -2992,4 +3114,24 @@ Cartella: `audio/narrazione/storie/ganimede/<lingua>/` · nel codice `Ganymede` 
   - **Emozione:** curioso — 
   - **Testo:** Aspetta, tu chi sei? sei un pianeta?
   - **Da incollare su ElevenLabs v3:** `[curious] Aspetta, tu chi sei? sei un pianeta?`
+- `studio_la_rivoluzione_di_ganimede_e_f-8.mp3` — pronta · 4,8 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 8 (al massimo 6 s)
+  - **Emozione:** imbarazzato — 
+  - **Testo:** ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo
+  - **Da incollare su ElevenLabs v3:** `[embarrassed] ehmmmmmmmmmmm, sonoooo, ehi, aspetta un secondo`
+- `studio_la_rivoluzione_di_ganimede_e_f-10.mp3` — pronta · 1,9 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 10 (al massimo 3 s)
+  - **Emozione:** curioso — 
+  - **Testo:** ma io sono più grande di te?
+  - **Da incollare su ElevenLabs v3:** `[curious] ma io sono più grande di te?`
+- `studio_la_rivoluzione_di_ganimede_e_f-12.mp3` — pronta · 1,6 s · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 12 (al massimo 3 s)
+  - **Emozione:** meravigliato — 
+  - **Testo:** veramente?
+  - **Da incollare su ElevenLabs v3:** `[in awe] veramente?`
+- `studio_la_rivoluzione_di_ganimede_e_f-14.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 14 (al massimo 9 s)
+  - **Emozione:** felice — 
+  - **Testo:** non ci credo, sono più grande di un pianeta del sistema solare, che conquista!
+  - **Da incollare su ElevenLabs v3:** `[happy] non ci credo, sono più grande di un pianeta del sistema solare, che conquista!`
+- `studio_la_rivoluzione_di_ganimede_e_f-15.mp3` — manca · Studio: La rivoluzione di Ganimede e (forse) Titano., scena 15 (al massimo 6 s)
+  - **Emozione:** felice — 
+  - **Testo:** Sono Ganimede sono o o o o o o un pianeta
+  - **Da incollare su ElevenLabs v3:** `[happy] Sono Ganimede sono o o o o o o un pianeta`
 

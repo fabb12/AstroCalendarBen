@@ -53,10 +53,11 @@ jobs:
         # (audio/narrazione/storie/<nome>/<lingua>/) non ha lanciato
         # `scripts/voci-storie.js`: lo si lancia qui, così il manifest
         # pubblicato elenca sempre i file che ci sono davvero. Se lo script
-        # trova un errore (un nome di file che non è una battuta) non scrive
-        # niente e si pubblica il manifest del repository, con un avviso.
+        # trova un file sbagliato (un nome che non è una battuta) salta quello
+        # e scrive gli altri (v527); un errore più grave (i dizionari, lo
+        # Studio) non scrive niente e si pubblica il manifest del repository.
         run: |
-          node scripts/voci-storie.js || echo "::warning::scripts/voci-storie.js ha trovato un errore: le voci nuove delle storie non sono nel manifest pubblicato (vedi il log di questo passo)"
+          node scripts/voci-storie.js || echo "::warning::scripts/voci-storie.js ha trovato un errore: qualche voce delle storie non è nel manifest pubblicato (vedi il log di questo passo)"
 
       - name: Prepara la cartella del sito
         env:

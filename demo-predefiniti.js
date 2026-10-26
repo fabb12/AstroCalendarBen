@@ -26,23 +26,26 @@
   // «discorso affiatato», STORIE.md): zoom, tempo e camere hanno quindi uno
   // shot_to che li fa arrivare prima della fine della voce.
   scene planetarium_view {
-    // 1. Ciao! Il cielo di stasera sopra casa, e il titolo
-    duration: 16s;
+    // 1. Ciao! Il cielo di stasera sopra casa, e il titolo. v527: le
+    // durate delle scene 1, 2, 7 e 9 sono cresciute per le voci ElevenLabs
+    // (14,5 s qui, che partono dopo il titolo), che con il tetto di prima si
+    // tagliavano; i tempi dentro la scena restano agli stessi secondi
+    duration: 22s;
     action: set_date { tonight: '21:30' };
     action: point_view { az: 160, alt: 38 };
-    action: zoom_fov { from: 120, to: 90, shot_to: 0.6 };
+    action: zoom_fov { from: 120, to: 90, shot_to: 0.44 };
     action: timelapse { start: 21:30, end: 23:30 };
     action: story_camera { mode: wide };
-    action: story_title { id: 'storie.titolo.presentazione', sub_id: 'storie.titolo.presentazioneSotto', shot_to: 0.32 };
+    action: story_title { id: 'storie.titolo.presentazione', sub_id: 'storie.titolo.presentazioneSotto', shot_to: 0.23 };
     // v526: un tono più pacato («espressioni meno entusiaste»): facce
     // serene e curiose al posto di occhi a stella, salti e balli
     action: character_show { target: 'astro_ben', expression: 'happy', at: right, look: 'viewer' };
-    action: character_animate { target: 'astro_ben', animation: nod, times: 1, shot_from: 0.32, shot_to: 0.45 };
-    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.1', shot_from: 0.3 };
+    action: character_animate { target: 'astro_ben', animation: nod, times: 1, shot_from: 0.23, shot_to: 0.33 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.1', shot_from: 0.22 };
   }
   scene planetarium_view {
     // 2. Saturno a campo da telescopio: gli anelli, e lui che si presenta
-    duration: 16s;
+    duration: 18s;
     action: set_location { lat: 41.9028, lon: 12.4964, name: 'Roma', timezone: 'Europe/Rome' };
     action: set_date { iso: '2026-10-20T20:00:00Z' };
     action: center_target { target: 'Saturn' };
@@ -50,13 +53,13 @@
     // ne nasconde il volto, storDisegnaCielo): al campo del telescopio il
     // paesaggio non serve, e qui si spegne per la scena
     action: show_layers { off: 'terreno,rilievo,citta,cime,acque' };
-    action: zoom_fov { from: 30, to: 0.3, shot_to: 0.55 };
+    action: zoom_fov { from: 30, to: 0.3, shot_to: 0.49 };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.saturno', date: show, place: show };
     action: character_show { target: 'Saturn', expression: 'playful', look: 'viewer' };
     action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_left, look: 'Saturn' };
-    action: character_blink { target: 'Saturn', shot_from: 0.55 };
-    action: effect { type: sparkles, target: 'Saturn', shot_from: 0.75 };
+    action: character_blink { target: 'Saturn', shot_from: 0.49 };
+    action: effect { type: sparkles, target: 'Saturn', shot_from: 0.67 };
     action: character_speak { target: 'Saturn', id: 'demo.narr.presentazione.2' };
   }
   scene planetarium_view {
@@ -125,11 +128,11 @@
   }
   scene transition {
     // 7. Il decollo
-    duration: 8s;
-    action: zoom_view { type: geometric, final_target: solar_system_3d, shot_to: 0.85 };
+    duration: 13s;
+    action: zoom_view { type: geometric, final_target: solar_system_3d, shot_to: 0.7 };
     action: character_show { target: 'astro_ben', expression: 'determined', at: left, look: 'viewer' };
-    action: character_animate { target: 'astro_ben', animation: shake, times: 3, shot_from: 0.5, sound: 'rumble' };
-    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.7', shot_from: 0.15 };
+    action: character_animate { target: 'astro_ben', animation: shake, times: 3, shot_from: 0.31, sound: 'rumble' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.7', shot_from: 0.09 };
   }
   scene solar_system_3d {
     // 8. Il Sistema Solare in 3D: Giove si vanta, e tre anni di orbite
@@ -147,12 +150,12 @@
   }
   scene solar_system_3d {
     // 9. La scala cosmica: dai pianeti all'universo osservabile in un fiato
-    duration: 18s;
-    action: cosmic_scale { from: 'planets', to: 'universe', focus: 'universe', zoom_end: 0.85, orbit: 30, elev_from: 70, elev_to: 80, shot_to: 0.8 };
+    duration: 22s;
+    action: cosmic_scale { from: 'planets', to: 'universe', focus: 'universe', zoom_end: 0.85, orbit: 30, elev_from: 70, elev_to: 80, shot_to: 0.7 };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.scala' };
     action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_right, look: 'viewer' };
-    action: character_expression { target: 'astro_ben', expression: 'thinking', shot_from: 0.65 };
+    action: character_expression { target: 'astro_ben', expression: 'thinking', shot_from: 0.53 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.9' };
   }
   scene didactic_view {

@@ -261,6 +261,22 @@ nel cast: il **narratore** (`VFILM_NARRATORE`, voce di donna, «narration, warm,
 storyteller»), prima saltato. La chiave si mette una volta nello Studio delle
 storie (Impostazioni → ElevenLabs). Prova in `scripts/prova-voci-cosmostorie.js`.
 
+**Sul repository (v527).** Con il token di GitHub dello Studio (Impostazioni
+→ Sincronizza) le voci appena generate partono da sole verso il repository,
+nella cartella del personaggio: per la presentazione
+`audio/narrazione/storie/astro-ben/it/presentazione-1.mp3`, Saturno, Luna e
+Giove nelle loro. Fino alla v526 ci arrivavano ma **non suonavano**:
+`scripts/voci-storie.js` leggeva solo le demo con `storia: true` e la
+presentazione non lo è, quindi i suoi file erano «un nome che non è una
+battuta del copione», un errore che fermava il manifest per tutte le storie.
+Adesso lo script prende ogni demo predefinita con `character_speak`, e dopo
+la pubblicazione (GitHub Actions) le voci suonano su ogni dispositivo. Le
+battute che hanno già la voce sul repository non si rigenerano: la finestra
+chiede a ElevenLabs solo quelle che mancano o il cui testo è cambiato (il
+copione `audio/narrazione/storie/COPIONE.md` le segna «manca» e «da rifare»).
+Le scene 1, 2, 7 e 9 della presentazione sono cresciute di qualche secondo,
+perché le voci ElevenLabs erano più lunghe del tetto e si tagliavano.
+
 ## La narrazione
 
 Ogni scena dei tour predefiniti ha una frase detta a voce e scritta nel
