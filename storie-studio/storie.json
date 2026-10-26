@@ -1296,10 +1296,17 @@
       "demoChiave": "utente-mv2azclj-qcfdr4r4q4g",
       "voceChiave": "studio_che_cos_e_un_buco_nero",
       "voceProssima": 8,
-      "aggiornato": 1792061704868,
+      "aggiornato": 1793028416230,
       "lingua": "it",
       "musica": null,
-      "voci": {},
+      "voci": {
+        "Sun": {
+          "id": "Y6XCBcFGDDiQgSVPjXt1",
+          "nome": "Fabio - Reliable, Calm",
+          "anteprima": "https://storage.googleapis.com/eleven-public-prod/database/workspace/05b8613328cc422dbedc067931447037/voices/Y6XCBcFGDDiQgSVPjXt1/1d4cc921-369a-4c0f-b9ae-d4a7fe40e47c.mp3",
+          "genere": "m"
+        }
+      },
       "domanda": {
         "attiva": false,
         "modo": "auto",
