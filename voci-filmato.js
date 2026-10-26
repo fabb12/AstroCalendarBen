@@ -1035,7 +1035,9 @@ function vfilmIndicePronte() {
   const indice = new Map();
   const lib = window.AstroDemo && AstroDemo.libreria;
   let pronte = [];
-  try { pronte = lib ? lib.elenco().filter(d => d.storia && !/^utente-/.test(d.chiave || '')) : []; } catch (_) { pronte = []; }
+  // v527: anche le demo predefinite con dei personaggi (la presentazione),
+  // come in `scripts/voci-storie.js`
+  try { pronte = lib ? lib.elenco().filter(d => (d.storia || /\bcharacter_speak\b/.test(d.testo || '')) && !/^utente-/.test(d.chiave || '')) : []; } catch (_) { pronte = []; }
   const S = window.StorieCosmiche;
   const impronta = t => typeof narrazione === 'object' && narrazione.impronta ? narrazione.impronta(t) : String(t || '').replace(/\s+/g, ' ').trim();
   const lingue = typeof astroI18n === 'object' && typeof astroI18n.lingueDisponibili === 'function' ? astroI18n.lingueDisponibili() : [vfilmLingua()];

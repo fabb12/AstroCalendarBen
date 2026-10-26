@@ -8,9 +8,10 @@
 # un commit. Lo stesso quando arriva storie-studio.json, il file che lo Studio
 # delle storie scrive con le battute delle storie salvate (v421): le battute
 # nuove entrano in copione, regia e manifest, quelle tolte ne escono, e i loro
-# audio si cancellano (anche questo finisce nel commit). Se un file ha un nome che non è una battuta, si ferma in rosso e
-# il log dice quale: è il posto dove guardare quando una voce caricata non si
-# sente. La pubblicazione (pubblica.yml) lancia lo stesso script per conto
+# audio si cancellano (anche questo finisce nel commit). Se un file ha un
+# nome che non è una battuta, finisce in rosso e il log dice quale (le altre
+# voci entrano lo stesso, v527): è il posto dove guardare quando una voce
+# caricata non si sente. La pubblicazione (pubblica.yml) lancia lo stesso script per conto
 # suo, quindi il sito ha le voci nuove anche prima di questo commit.
 #
 # Il commit fatto da qui non fa ripartire nessun workflow (è la regola del
@@ -41,6 +42,11 @@ jobs:
         with:
           node-version: '22'
       - name: Manifest, copione e regia dalle cartelle e dallo Studio
+        id: voci
+        # v527: un file sbagliato (un nome che non è una battuta, un doppione)
+        # si salta e le altre voci entrano lo stesso: il commit si fa, e il
+        # giro finisce in rosso all'ultimo passo, col file nel log
+        continue-on-error: true
         run: node scripts/voci-storie.js
       - name: Rimetti nel ramo
         run: |
@@ -55,3 +61,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Voci delle storie: manifest, copione e regia dalle cartelle e dallo Studio"
           git push
+      - name: Un file da guardare
+        if: steps.voci.outcome == 'failure'
+        run: |
+          echo "::error::scripts/voci-storie.js ha trovato un errore (vedi il log del primo passo): le voci giuste sono nel manifest, quella sbagliata no."
+          exit 1
