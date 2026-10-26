@@ -11,11 +11,11 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **266/411** in italiano · **0/248** in inglese.
+Pronte: **268/411** in italiano · **0/248** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Astro Ben | `storie/astro-ben/` | 22 | 9/22 | 0/21 |
+| Astro Ben | `storie/astro-ben/` | 22 | 11/22 | 0/21 |
 | Saturno | `storie/saturno/` | 5 | 3/5 | 0/3 |
 | Luna | `storie/luna/` | 25 | 19/25 | 0/12 |
 | Giove | `storie/giove/` | 14 | 13/14 | 0/2 |
@@ -86,9 +86,9 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
   - **Testo:** Ti piacciono le luci del nord? L'app legge l'attività del Sole, l'indice Kp, e ti dice se stanotte c'è speranza di aurora. Questa è simulata, ma quella vera vale il viaggio!
 - `presentazione-12.mp3` — pronta · 17,3 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 24 s)
   - **Testo:** Ogni sera apri Stasera: l'ora del buio, la Luna, le previsioni per astronomi e Missione Cielo, che ti prepara la serata come una caccia al tesoro. Poi c'è il telescopio: ti guida a puntarlo passo passo, con la bussola del telefono.
-- `presentazione-13.mp3` — **da rifare** (il testo è cambiato) · 15,2 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 20 s)
+- `presentazione-13.mp3` — pronta · 13,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 20 s)
   - **Testo:** E ancora: il diario delle osservazioni, la guida, le CosmoStorie come questa, e funziona anche senza rete! Adesso tocca a te: esci e alza gli occhi.
-- `presentazione-14.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 4,8 s)
+- `presentazione-14.mp3` — pronta · 2,9 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 4,8 s)
   - **Testo:** Cieli sereni da Ben!
 - `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 11,9 s)
   - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa

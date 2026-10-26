@@ -732,7 +732,11 @@
     },
 
     'demo.narr.presentazione.13': {
-      it: { file: 'storie/astro-ben/it/presentazione-13.mp3', impronta: '3e207270', firma: 'd735779eaf' }
+      it: { file: 'storie/astro-ben/it/presentazione-13.mp3', impronta: '851e31b3', firma: 'b14ecc81ec' }
+    },
+
+    'demo.narr.presentazione.14': {
+      it: { file: 'storie/astro-ben/it/presentazione-14.mp3', impronta: '2f908814', firma: 'adec8c4581' }
     },
 
     // Saturno — storie/saturno/
