@@ -591,7 +591,7 @@
           "testo": "Sei solo una luna!!",
           "umore": "bully",
           "scena": 2,
-          "durata": 4000,
+          "durata": 7000,
           "conTag": "[sarcastic] Sei solo una luna!! [chuckles] [giggles] [skeptical]"
         },
         {
@@ -600,7 +600,7 @@
           "testo": "ah ah ah!!!",
           "umore": "laughing",
           "scena": 3,
-          "durata": 3000,
+          "durata": 4000,
           "conTag": "[laughs] ah ah ah!!!"
         },
         {
@@ -781,7 +781,7 @@
           "testo": "la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!",
           "umore": "",
           "scena": 24,
-          "durata": 7000
+          "durata": 6000
         },
         {
           "n": 49,
@@ -851,7 +851,7 @@
           "testo": "Oh! Scusa! Continua.",
           "umore": "surprised",
           "scena": 32,
-          "durata": 5000,
+          "durata": 4000,
           "conTag": "[surprised] Oh! Scusa! Continua."
         },
         {
@@ -926,7 +926,7 @@
           "testo": "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?",
           "umore": "surprised",
           "scena": 42,
-          "durata": 6000,
+          "durata": 5000,
           "conTag": "[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?"
         },
         {
