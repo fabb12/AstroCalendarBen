@@ -723,20 +723,12 @@
       it: { file: 'storie/astro-ben/it/presentazione-10.mp3', impronta: '07135ba8', firma: '14e07a7143' }
     },
 
-    'demo.narr.presentazione.11': {
-      it: { file: 'storie/astro-ben/it/presentazione-11.mp3', impronta: 'f9cf815d', firma: 'f143ad87b2' }
-    },
-
-    'demo.narr.presentazione.12': {
-      it: { file: 'storie/astro-ben/it/presentazione-12.mp3', impronta: '3c7b6122', firma: 'ac898b0024' }
-    },
-
     'demo.narr.presentazione.13': {
-      it: { file: 'storie/astro-ben/it/presentazione-13.mp3', impronta: '851e31b3', firma: 'b14ecc81ec' }
+      it: { file: 'storie/astro-ben/it/presentazione-13.mp3', impronta: 'f9cf815d', firma: 'f143ad87b2' }
     },
 
     'demo.narr.presentazione.14': {
-      it: { file: 'storie/astro-ben/it/presentazione-14.mp3', impronta: '2f908814', firma: 'adec8c4581' }
+      it: { file: 'storie/astro-ben/it/presentazione-14.mp3', impronta: '3c7b6122', firma: 'ac898b0024' }
     },
 
     // Saturno — storie/saturno/
@@ -952,75 +944,75 @@
     },
 
     'studio.studio_cosa_e_la_gravita_2.2': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-2.mp3', impronta: '47345a07', firma: '7dcd7b3787', testo: "Sei solo una luna!!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-2.mp3', impronta: '47345a07', firma: '69fb051a8e', testo: "Sei solo una luna!!" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.3': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-3.mp3', impronta: '9b60ebf7', firma: 'e9565c1e8e', testo: "ah ah ah!!!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-3.mp3', impronta: '9b60ebf7', firma: 'ea3972eaae', testo: "ah ah ah!!!" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.9': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-9.mp3', impronta: 'bb51ba43', firma: 'd0d74cc2cf', testo: "oh no! adesso cosa faccio?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-9.mp3', impronta: 'bb51ba43', firma: '30ab606e49', testo: "oh no! adesso cosa faccio?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.12': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-12.mp3', impronta: '08f01c36', firma: 'a70294b9bb', testo: "Continuo a non capire." }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-12.mp3', impronta: '08f01c36', firma: '36fb02b472', testo: "Continuo a non capire." }
     },
 
     'studio.studio_cosa_e_la_gravita_2.14': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-14.mp3', impronta: 'bf7d1b25', firma: 'bac14ea509', testo: "Potresti spiegarti meglio?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-14.mp3', impronta: 'bf7d1b25', firma: '5049762060', testo: "Potresti spiegarti meglio?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.16': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-16.mp3', impronta: '7e6f63c4', firma: '304cfd62b2', testo: "Cos' è la massa, cos' è un peso e che cosa è un volume?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-16.mp3', impronta: '7e6f63c4', firma: '5af2b5e681', testo: "Cos' è la massa, cos' è un peso e che cosa è un volume?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.43': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-43.mp3', impronta: '7233748a', firma: 'ac41f159bb', testo: "ok!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-43.mp3', impronta: '7233748a', firma: 'a01fcd8e6a', testo: "ok!" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.48': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-48.mp3', impronta: 'f5847361', firma: 'ddb07c57c1', testo: "la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-48.mp3', impronta: 'f5847361', firma: '26613fd31a', testo: "la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.20': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-20.mp3', impronta: 'd8b5d073', firma: 'd477242c84', testo: "Oh! Che spavento! Chi ha parlato?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-20.mp3', impronta: 'd8b5d073', firma: 'e90c793831', testo: "Oh! Che spavento! Chi ha parlato?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.22': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-22.mp3', impronta: '1ed77ddb', firma: '450dd4dc68', testo: "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-22.mp3', impronta: '1ed77ddb', firma: 'c5352f45d5', testo: "Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.23': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-23.mp3', impronta: 'cdb959e2', firma: '1cffa3bdf5', testo: "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-23.mp3', impronta: 'cdb959e2', firma: '9a6b9c35d2', testo: "Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei \"umani\" bruciano le mie foreste e ne distruggono la fauna, e" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.25': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-25.mp3', impronta: 'eeea7c5a', firma: '2f383964c0', testo: "Oh! Scusa! Continua." }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-25.mp3', impronta: 'eeea7c5a', firma: '087fec37fe', testo: "Oh! Scusa! Continua." }
     },
 
     'studio.studio_cosa_e_la_gravita_2.27': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-27.mp3', impronta: '4419d2cf', firma: '02d424e39b', testo: "Wow! Non sapevo che la scienza potesse essere così bella." }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-27.mp3', impronta: '4419d2cf', firma: 'fee9c79a76', testo: "Wow! Non sapevo che la scienza potesse essere così bella." }
     },
 
     'studio.studio_cosa_e_la_gravita_2.29': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-29.mp3', impronta: 'a61f18ae', firma: '7344fd8519', testo: "Cosa? Di nuovo? Chi ha parlato?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-29.mp3', impronta: 'a61f18ae', firma: 'df4d87096f', testo: "Cosa? Di nuovo? Chi ha parlato?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.35': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-35.mp3', impronta: '237c9ef7', firma: 'c6e811e05e', testo: "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-35.mp3', impronta: '237c9ef7', firma: '87051c1f77', testo: "Oh! Questa è una giornata piena di sorprese. Chi ha parlato?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.37': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-37.mp3', impronta: '4b5d0e18', firma: '7b06f49ea0', testo: "Cos' è un buco nero?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-37.mp3', impronta: '4b5d0e18', firma: 'f92da5a1aa', testo: "Cos' è un buco nero?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.39': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-39.mp3', impronta: 'c37a85c8', firma: '2ff488bc33', testo: "Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-39.mp3', impronta: 'c37a85c8', firma: '494c5fff85', testo: "Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?" }
     },
 
     'studio.studio_cosa_e_la_gravita_2.41': {
-      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-41.mp3', impronta: '537284a3', firma: 'b697c03f74', testo: "Sei d' accordo Luna?" }
+      it: { file: 'storie/terra/it/studio_cosa_e_la_gravita_2-41.mp3', impronta: '537284a3', firma: '79168c32d0', testo: "Sei d' accordo Luna?" }
     },
 
     'studio.studio_la_rivoluzione_di_ganimede_e_f.2': {

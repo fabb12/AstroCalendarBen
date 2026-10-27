@@ -63,9 +63,11 @@
     action: character_speak { target: 'Saturn', id: 'demo.narr.presentazione.2' };
   }
   scene planetarium_view {
-    // 3. Il paesaggio vero di Cortina: monti con il nome, paesi, laghi e
-    // fiumi; poi gli aerei che passano davvero e le stazioni spaziali. I
-    // livelli si accendono per questa scena e poi si rimettono com'erano.
+    // 3. Il paesaggio vero di Cortina: le Dolomiti, ognuna col suo nome; poi
+    // gli aerei che passano davvero. I livelli si accendono per questa scena
+    // e poi si rimettono com'erano. v528: profilo, vette e paesi di Cortina
+    // viaggiano con l'app (dati-paesaggi-demo.js): scaricati, arrivavano
+    // tardi o mai, e Ben parlava di monti davanti a un orizzonte liscio.
     duration: 28s;
     action: set_location { lat: 46.5405, lon: 12.1357, name: "Cortina d'Ampezzo", timezone: 'Europe/Rome' };
     // l'ora vera: gli aerei in diretta si vedono solo adesso, non a un'ora scritta
@@ -75,9 +77,11 @@
     // resta a ovest sulle Tofane e le Cinque Torri finché Ben parla dei monti,
     // poi, quando arriva agli aerei, gira piano verso di loro (toward:
     // planes); Ben sta in alto, lontano dall'orizzonte coi nomi
-    action: point_view { az: 275, alt: 16, shot_to: 0.45 };
-    action: point_view { az: 275, alt: 16, toward: planes, shot_from: 0.45 };
-    action: set_fov { degrees: 110 };
+    // v528: più bassi e più stretti (era alt 16, campo 110°): le Tofane, a
+    // sei km, salgono a 20° e riempiono il quadro invece di essere una riga
+    action: point_view { az: 268, alt: 9, shot_to: 0.5 };
+    action: point_view { az: 268, alt: 9, toward: planes, shot_from: 0.5 };
+    action: set_fov { degrees: 88 };
     action: show_layers { on: 'terreno,rilievo,cime,citta,acque,aerei,satelliti', labels: show };
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.paesaggio', place: show };
@@ -114,7 +118,9 @@
     duration: 18s;
     action: set_date { iso: '2027-08-02T09:59:00Z' };
     // la totalità comincia a -4,65: a 0,58 della scena, sullo «Spegnete le luci»
-    action: zoom_fov { from: 5, to: 1.4, shot_to: 0.5 };
+    // v528: fino a 2° e non a 1,4°: su un telefono in verticale la Luna
+    // riempiva lo schermo e Ben le finiva sopra
+    action: zoom_fov { from: 5, to: 2, shot_to: 0.5 };
     action: event_window { event: solar_eclipse, from: -7.5, to: -3.6, shot_to: 0.8 };
     action: center_target { target: 'Sun' };
     action: show_layers { off: 'terreno,rilievo,citta,cime,acque' };
@@ -127,8 +133,11 @@
     action: character_speak { target: 'Moon', id: 'demo.narr.presentazione.6' };
   }
   scene transition {
-    // 7. Il decollo
+    // 7. Il decollo. v528: dentro la totalità (la scena prima la lascia a
+    // -3,6 minuti, ma l'orologio tornava all'inizio di quella scena, col Sole
+    // ancora al 97%: il volo partiva da un cielo grigio e vuoto)
     duration: 13s;
+    action: set_date { iso: '2027-08-02T10:04:00Z' };
     action: zoom_view { type: geometric, final_target: solar_system_3d, shot_to: 0.7 };
     action: character_show { target: 'astro_ben', expression: 'determined', at: left, look: 'viewer' };
     action: character_animate { target: 'astro_ben', animation: shake, times: 3, shot_from: 0.31, sound: 'rumble' };
@@ -164,12 +173,32 @@
     duration: 26s;
     action: didactic_bench { lab: retro, play: on, shot_to: 0.5 };
     action: didactic_bench { lab: keplero, play: on, shot_from: 0.5 };
-    action: character_show { target: 'astro_ben', expression: 'curious', at: bottom_right, scale: 0.55, look: 'viewer' };
+    // v528: in alto a destra, accanto al testo: in basso copriva proprio il
+    // cappio di Marte e l'ellisse di cui parla
+    action: character_show { target: 'astro_ben', expression: 'curious', at: top_right, scale: 0.42, look: 'viewer' };
     action: character_expression { target: 'astro_ben', expression: 'happy', shot_from: 0.5 };
     action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.10' };
   }
+  scene didactic_view {
+    // 11. v528: perché c'è l'aurora, col banco delle aurore della didattica.
+    // Il Sole lancia la nube: quarantaquattro ore di viaggio in un fiato
+    duration: 16s;
+    action: aurora_lesson { chapter: vento, from: 3, to: 44, orbit: 20, zoom_from: 1.05, zoom_to: 1.18 };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: top_left, scale: 0.5, look: 'viewer' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.11' };
+  }
+  scene didactic_view {
+    // 12. v528: lo scudo della Terra schiacciato dalla nube, e l'anello
+    // dell'aurora attorno al polo
+    duration: 20s;
+    action: aurora_lesson { chapter: scudo, from: 44.5, to: 50, orbit: 25, zoom_from: 1.2, zoom_to: 2, shot_to: 0.55 };
+    action: aurora_lesson { chapter: anello, from: 48, to: 56, orbit: 90, elev_from: 40, elev_to: 60, zoom_from: 1, zoom_to: 1.2, shot_from: 0.55 };
+    action: character_show { target: 'astro_ben', expression: 'curious', at: top_left, scale: 0.5, look: 'viewer' };
+    action: character_expression { target: 'astro_ben', expression: 'happy', shot_from: 0.55 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.12' };
+  }
   scene planetarium_view {
-    // 11. L'aurora: simulata, verso nord, con la notte che scorre
+    // 13. L'aurora: simulata, verso nord, con la notte che scorre
     duration: 16s;
     action: set_location { lat: 60.1699, lon: 24.9384, name: 'Helsinki', timezone: 'Europe/Helsinki' };
     action: set_date { iso: '2027-01-15T20:00:00Z' };
@@ -180,41 +209,43 @@
     action: story_camera { mode: wide };
     action: date_card { label: 'demo.cartello.presentazione.aurora', place: show };
     action: character_show { target: 'astro_ben', expression: 'tender', at: right, look: 'viewer' };
-    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.11' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.13' };
   }
   scene app_view {
-    // 12. Stasera, con Missione Cielo e il meteo per astronomi; poi il telescopio
+    // 14. Stasera, con Missione Cielo e il meteo per astronomi; poi il
+    // telescopio, sulla linguetta che lo fa puntare (v528: era quella dello
+    // strumento, un modulo da riempire, mentre Ben diceva «ti guida a
+    // puntarlo passo passo»)
     duration: 24s;
     action: page_show { page: tonight, focus: mission, shot_to: 0.55 };
-    action: page_show { page: telescope, scroll_from: 0, scroll_to: 0.25, shot_from: 0.55 };
+    action: page_show { page: telescope, tab: point, shot_from: 0.55 };
     action: character_show { target: 'astro_ben', expression: 'happy', at: bottom_right, scale: 0.55, look: 'viewer' };
     action: character_expression { target: 'astro_ben', expression: 'curious', shot_from: 0.55 };
-    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.12' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.14' };
+  }
+  scene app_view {
+    // 15. v528: il diario, che si vede invece di essere solo nominato
+    duration: 14s;
+    action: page_show { page: diary };
+    action: character_show { target: 'astro_ben', expression: 'happy', at: bottom_right, scale: 0.55, look: 'viewer' };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.15' };
   }
   scene planetarium_view {
-    // 13. Il congedo: di nuovo a casa, con i disegni delle costellazioni, e i fuochi
-    duration: 20s;
+    // 16. Il congedo: di nuovo a casa, coi disegni delle costellazioni, e il
+    // saluto scritto «Cieli sereni da Ben» (v528: una scena sola, la voce
+    // parte quando il titolo è già sul cielo)
+    duration: 14s;
     action: set_location { home: show };
     action: simulate_aurora { kp: 0 };
     action: set_date { tonight: '22:10' };
     action: point_view { az: 160, alt: 40 };
-    action: zoom_fov { from: 95, to: 125, shot_to: 0.75 };
-    action: show_layers { on: 'arte,costellazioni,nomi', labels: show };
+    action: zoom_fov { from: 95, to: 120, shot_to: 0.8 };
+    action: show_layers { on: 'arte,costellazioni', labels: show };
     action: story_camera { mode: wide };
-    action: date_card { label: 'demo.cartello.presentazione.ancora' };
-    action: character_show { target: 'astro_ben', expression: 'happy', at: right, look: 'viewer' };
-    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.13' };
-  }
-  scene planetarium_view {
-    // 14. Il saluto (v526): «Cieli sereni da Ben», scritto sul cielo di casa
-    // (la battuta parte a scena avviata: una scena si chiude quando la voce
-    // tace, e il saluto scritto deve restare il tempo di leggerlo)
-    duration: 8s;
-    action: story_camera { mode: wide };
-    action: story_title { id: 'storie.titolo.presentazioneFine', sub_id: 'storie.titolo.presentazione' };
+    action: story_title { id: 'storie.titolo.presentazioneFine', sub_id: 'storie.titolo.presentazione', shot_from: 0.15 };
     action: character_show { target: 'astro_ben', expression: 'happy', at: bottom_right, look: 'viewer' };
-    action: character_animate { target: 'astro_ben', animation: nod, times: 1, shot_from: 0.4, shot_to: 0.6 };
-    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.14', shot_from: 0.4 };
+    action: character_animate { target: 'astro_ben', animation: nod, times: 1, shot_from: 0.75, shot_to: 0.9 };
+    action: character_speak { target: 'astro_ben', id: 'demo.narr.presentazione.16', shot_from: 0.1 };
   }
 }`
     },

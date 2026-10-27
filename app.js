@@ -21025,6 +21025,15 @@ const SKY_CIME_VELO_STRATO = [1, 0.94, 0.86];
 // il nome non va disegnato: appenderlo alla quota teorica è precisamente ciò
 // che lo farebbe galleggiare nel cielo.
 const SKY_CIME_AGGANCIO_MAX = 1.5;
+// v528: ma solo **verso l'alto**. Un disegno più basso della vetta vera è il
+// rilievo che smussa le punte (tessere e anelli a passo di qualche centinaio
+// di metri): da Cortina la Tofana di Mezzo, 3244 m sulle carte, è dipinta
+// 3° sotto la sua altezza vera, il Cristallo 4°, e i loro nomi sparivano
+// tutti — proprio i monti di cui la presentazione dice «ognuno col suo
+// nome». Che una cresta più vicina se la sia mangiata lo esclude già
+// `cimeVisibili`, con la stessa cresta disegnata: qui il nome si appende
+// alla punta dipinta. Un disegno più **alto** invece è un'altra montagna.
+const SKY_CIME_AGGANCIO_SOTTO = 6;
 const SKY_CIME_AGGANCIO_PROVE = 7;
 
 function skyPuntaDisegnata(c) {
@@ -21052,7 +21061,7 @@ function skyPuntaDisegnata(c) {
   // La quota OSM serve soltanto da guardia d'identità. La posizione da
   // proiettare resta *esattamente* quella del crinale dipinto: tosarla verso
   // `c.alt` lasciava ancora fino a 1,5° di aria fra triangolino e montagna.
-  if (Math.abs(altMigliore - c.alt) > SKY_CIME_AGGANCIO_MAX) return null;
+  if (altMigliore - c.alt > SKY_CIME_AGGANCIO_MAX || c.alt - altMigliore > SKY_CIME_AGGANCIO_SOTTO) return null;
   return { az: azMigliore, alt: altMigliore };
 }
 
