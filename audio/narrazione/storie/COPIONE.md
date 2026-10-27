@@ -11,14 +11,14 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **268/411** in italiano · **0/248** in inglese.
+Pronte: **263/413** in italiano · **0/250** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Astro Ben | `storie/astro-ben/` | 22 | 11/22 | 0/21 |
-| Saturno | `storie/saturno/` | 5 | 3/5 | 0/3 |
+| Astro Ben | `storie/astro-ben/` | 24 | 8/24 | 0/23 |
+| Saturno | `storie/saturno/` | 5 | 2/5 | 0/3 |
 | Luna | `storie/luna/` | 25 | 19/25 | 0/12 |
-| Giove | `storie/giove/` | 14 | 13/14 | 0/2 |
+| Giove | `storie/giove/` | 14 | 12/14 | 0/2 |
 | Terra | `storie/terra/` | 39 | 36/39 | 0/4 |
 | Sole | `storie/sole/` | 23 | 8/23 | 0/10 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
@@ -70,8 +70,8 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
 
 - `presentazione-1.mp3` — pronta · 14,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 1 (al massimo 17,2 s)
   - **Testo:** Ciao, sono Astro Ben! Questo è il cielo di stasera, proprio sopra casa tua: sta girando davanti a te, in diretta. In pochi minuti ti faccio vedere cosa sa fare questa app. Casco in testa: si parte!
-- `presentazione-3.mp3` — pronta · 22,8 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 3 (al massimo 28 s)
-  - **Testo:** Ecco il planetario con il paesaggio vero: da Cortina vedi le Dolomiti, e ogni vetta ha il suo nome! Poi i paesi, i laghi, i fiumi. E quegli aerei? Passano davvero, adesso, sopra di te. Più i satelliti e le stazioni spaziali. Lo stesso da casa tua!
+- `presentazione-3.mp3` — **da rifare** (il testo è cambiato) · 22,8 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 3 (al massimo 28 s)
+  - **Testo:** Ecco il planetario con il paesaggio vero: da Cortina vedi le Dolomiti, le Tofane e le altre vette, ognuna col suo nome! E quegli aerei? Passano davvero, adesso, sopra di te. Lo stesso da casa tua!
 - `presentazione-4.mp3` — pronta · 21,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 4 (al massimo 24 s)
   - **Testo:** Il calendario degli eventi: eclissi, congiunzioni, piogge di stelle, tutto calcolato per casa tua. Qui ho filtrato le sole eclissi: guarda il due agosto duemilaventisette, una totale! E nell'agenda trovi la scheda completa: cosa succede, dove e come guardarla.
 - `presentazione-5.mp3` — pronta · 13,1 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 5 (al massimo 20 s)
@@ -82,14 +82,18 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
   - **Testo:** Ti senti piccolo? Aspetta. Questa è la scala cosmica, alla misura vera: ogni pochi secondi tutto diventa dieci volte più lontano. Le stelle vicine, la Via Lattea, le galassie… fino al bordo dell'universo. Che vertigine!
 - `presentazione-10.mp3` — pronta · 21,7 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 10 (al massimo 26 s)
   - **Testo:** E se vuoi capire come funziona il cielo c'è la didattica: banchi di prova con le posizioni vere dei pianeti. Guarda Marte: sembra tornare indietro, ma è la Terra che lo sorpassa! E qui le leggi di Keplero: le orbite sono ellissi, e il Sole sta in un fuoco. Si impara giocando!
-- `presentazione-11.mp3` — pronta · 13,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 11 (al massimo 16 s)
+- `presentazione-11.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 11 (al massimo 16 s)
+  - **Testo:** Ma da dove vengono le aurore? Dal Sole! Ogni tanto lancia nello spazio una nube di particelle, il vento solare, che in un paio di giorni arriva fino alla Terra.
+- `presentazione-12.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 20 s)
+  - **Testo:** La Terra ha uno scudo magnetico, la magnetosfera. La nube lo schiaccia, le particelle scivolano lungo il campo fino ai poli e accendono l'aria: ecco l'anello dell'aurora!
+- `presentazione-13.mp3` — pronta · 13,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 16 s)
   - **Testo:** Ti piacciono le luci del nord? L'app legge l'attività del Sole, l'indice Kp, e ti dice se stanotte c'è speranza di aurora. Questa è simulata, ma quella vera vale il viaggio!
-- `presentazione-12.mp3` — pronta · 17,3 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 24 s)
+- `presentazione-14.mp3` — pronta · 17,3 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 24 s)
   - **Testo:** Ogni sera apri Stasera: l'ora del buio, la Luna, le previsioni per astronomi e Missione Cielo, che ti prepara la serata come una caccia al tesoro. Poi c'è il telescopio: ti guida a puntarlo passo passo, con la bussola del telefono.
-- `presentazione-13.mp3` — pronta · 13,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 20 s)
-  - **Testo:** E ancora: il diario delle osservazioni, la guida, le CosmoStorie come questa, e funziona anche senza rete! Adesso tocca a te: esci e alza gli occhi.
-- `presentazione-14.mp3` — pronta · 2,9 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 4,8 s)
-  - **Testo:** Cieli sereni da Ben!
+- `presentazione-15.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 15 (al massimo 14 s)
+  - **Testo:** E poi il diario: segni ogni osservazione e conquisti i traguardi, da Prima luce a Nottambulo. E l'app funziona anche senza rete!
+- `presentazione-16.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 16 (al massimo 12,6 s)
+  - **Testo:** Adesso tocca a te: esci e alza gli occhi. Cieli sereni da Ben!
 - `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 11,9 s)
   - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa
   - **Testo:** Professor Einstein! Ieri sera ho visto Interstellar: un'ora su quel pianeta valeva sette anni sulla Terra! È vero, o è un trucco del cinema?
@@ -139,7 +143,7 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
 - `presentazione-1.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 1 (al massimo 17,2 s)
   - **Testo:** Hi, I'm Astro Ben! This is tonight's sky, right above your home, turning in front of you, live. In a few minutes I'll show you what this app can do. Helmet on: let's go!
 - `presentazione-3.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 3 (al massimo 28 s)
-  - **Testo:** Here is the planetarium with the real landscape: from Cortina you see the Dolomites, and every peak has its name! Then towns, lakes, rivers. And those planes? They are really flying over you, right now. Plus satellites and space stations. The same from your home!
+  - **Testo:** Here is the planetarium with the real landscape: from Cortina you see the Dolomites, the Tofane and the other peaks, each with its own name! And those planes? They are really flying over you, right now. The same from your home!
 - `presentazione-4.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 4 (al massimo 24 s)
   - **Testo:** The events calendar: eclipses, conjunctions, meteor showers, all calculated for your home. Here I filtered only the eclipses: look at the second of August 2027, a total one! And in the agenda you find the full card: what happens, where and how to watch it.
 - `presentazione-5.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 5 (al massimo 20 s)
@@ -151,13 +155,17 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
 - `presentazione-10.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 10 (al massimo 26 s)
   - **Testo:** And if you want to understand how the sky works there is the learning lab: test benches with the real positions of the planets. Look at Mars: it seems to go backwards, but it is the Earth overtaking it! And here Kepler's laws: orbits are ellipses, and the Sun sits at a focus. Learning by playing!
 - `presentazione-11.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 11 (al massimo 16 s)
+  - **Testo:** But where do auroras come from? From the Sun! Every now and then it throws a cloud of particles into space, the solar wind, and in a couple of days it reaches the Earth.
+- `presentazione-12.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 20 s)
+  - **Testo:** The Earth has a magnetic shield, the magnetosphere. The cloud squashes it, the particles slide along the field down to the poles and light up the air: here is the aurora's ring!
+- `presentazione-13.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 16 s)
   - **Testo:** Do you like the northern lights? The app reads the Sun's activity, the Kp index, and tells you if there is hope for an aurora tonight. This one is simulated, but the real one is worth the trip!
-- `presentazione-12.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 24 s)
+- `presentazione-14.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 24 s)
   - **Testo:** Every evening open Tonight: the hour of darkness, the Moon, the forecast for astronomers, and Sky Mission, which turns your evening into a treasure hunt. Then there is the telescope: it guides you step by step to point it, with your phone's compass.
-- `presentazione-13.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 20 s)
-  - **Testo:** And more: the observation logbook, the guide, CosmoStories like this one, and it works offline too! Now it's your turn: go outside and look up.
-- `presentazione-14.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 4,8 s)
-  - **Testo:** Clear skies from Ben!
+- `presentazione-15.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 15 (al massimo 14 s)
+  - **Testo:** And then the logbook: you mark every observation and earn the milestones, from First light to Night owl. And the app works offline too!
+- `presentazione-16.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 16 (al massimo 12,6 s)
+  - **Testo:** Now it's your turn: go outside and look up. Clear skies from Ben!
 - `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 11,9 s)
   - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa
   - **Testo:** Professor Einstein! Last night I watched Interstellar: one hour on that planet was worth seven years on Earth! Is it true, or is it a movie trick?
@@ -207,8 +215,8 @@ Cartella: `audio/narrazione/storie/saturno/<lingua>/` · nel codice `Saturn` · 
 
 ### Italiano — `storie/saturno/it/`
 
-- `presentazione-2.mp3` — pronta · 16,4 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 2 (al massimo 18 s)
-  - **Testo:** Ehi, quassù! Sono Saturno, anelli compresi. Col planetario zoomi fin dentro un telescopio, e l'app ti dice quando sorgo, quanto brillo e dove puntare. Dai, sorridi: foto!
+- `presentazione-2.mp3` — **da rifare** (il testo è cambiato) · 16,4 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 2 (al massimo 18 s)
+  - **Testo:** Ehi, quassù! Sono Saturno, anelli compresi. Col planetario zoomi fin dentro un telescopio, e mi vedi proprio come sono stasera. Dai, sorridi: foto!
 - `storia_giganti-1.mp3` — manca · Giove e Saturno, scena 1 (al massimo 11 s)
   - **Emozione:** fiera — si presenta con eleganza, un po' vanitoso degli anelli
   - **Testo:** Ciao! Sono Saturno, quello con gli anelli. Sono fatti di miliardi di pezzetti di ghiaccio che mi girano attorno.
@@ -229,7 +237,7 @@ Cartella: `audio/narrazione/storie/saturno/<lingua>/` · nel codice `Saturn` · 
 ### Inglese — `storie/saturno/en/`
 
 - `presentazione-2.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 2 (al massimo 18 s)
-  - **Testo:** Hey, up here! I'm Saturn, rings included. The planetarium zooms right into a telescope, and the app tells you when I rise, how bright I am and where to point. Come on, smile: photo!
+  - **Testo:** Hey, up here! I'm Saturn, rings included. The planetarium zooms right into a telescope, and you see me just as I am tonight. Come on, smile: photo!
 - `storia_giganti-1.mp3` — manca · Giove e Saturno, scena 1 (al massimo 11 s)
   - **Emozione:** fiera — si presenta con eleganza, un po' vanitoso degli anelli
   - **Testo:** Hello! I’m Saturn, the one with the rings. They’re made of billions of little pieces of ice going around me.
@@ -403,8 +411,8 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
 
 ### Italiano — `storie/giove/it/`
 
-- `presentazione-8.mp3` — pronta · 11,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 8 (al massimo 16 s)
-  - **Testo:** Ciao, sono Giove, il più grosso del quartiere! Nella vista 3D ci sono pianeti, lune, comete e sonde, tutti al loro posto vero. Tre anni in un attimo: guarda come corro!
+- `presentazione-8.mp3` — **da rifare** (il testo è cambiato) · 11,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 8 (al massimo 16 s)
+  - **Testo:** Ciao, sono Giove, il più grosso del quartiere! Nella vista 3D i pianeti girano attorno al Sole al loro posto vero, ognuno sulla sua orbita. Tre anni in un attimo: guarda come corro!
 - `storia_giganti-2.mp3` — manca · Giove e Saturno, scena 2 (al massimo 11 s)
   - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
   - **Testo:** E io sono Giove, il più grande di tutti: dentro di me ci starebbero più di mille Terre!
@@ -460,7 +468,7 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
 ### Inglese — `storie/giove/en/`
 
 - `presentazione-8.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 8 (al massimo 16 s)
-  - **Testo:** Hi, I'm Jupiter, the biggest in the neighbourhood! The 3D view has planets, moons, comets and probes, all in their real places. Three years in a flash: watch me run!
+  - **Testo:** Hi, I'm Jupiter, the biggest in the neighbourhood! In the 3D view the planets go round the Sun in their real places, each on its own orbit. Three years in a flash: watch me run!
 - `storia_giganti-2.mp3` — manca · Giove e Saturno, scena 2 (al massimo 11 s)
   - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
   - **Testo:** And I’m Jupiter, the biggest of all: more than a thousand Earths would fit inside me!
@@ -546,19 +554,19 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
-- `studio_cosa_e_la_gravita_2-2.mp3` — pronta · 2,8 s · Studio: Cosa è la gravità?, scena 2 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-2.mp3` — pronta · 6,1 s · Studio: Cosa è la gravità?, scena 2 (al massimo 7 s)
   - **Emozione:** da bullo — 
   - **Testo:** Sei solo una luna!!
   - **Da incollare su ElevenLabs v3:** `[sarcastic] Sei solo una luna!! [chuckles] [giggles] [skeptical]`
-- `studio_cosa_e_la_gravita_2-3.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 3 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-3.mp3` — pronta · 2,8 s · Studio: Cosa è la gravità?, scena 3 (al massimo 4 s)
   - **Emozione:** ride — 
   - **Testo:** ah ah ah!!!
   - **Da incollare su ElevenLabs v3:** `[laughs] ah ah ah!!!`
-- `studio_cosa_e_la_gravita_2-9.mp3` — pronta · 2,9 s · Studio: Cosa è la gravità?, scena 9 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-9.mp3` — pronta · 3 s · Studio: Cosa è la gravità?, scena 9 (al massimo 5 s)
   - **Emozione:** preoccupato — 
   - **Testo:** oh no! adesso cosa faccio?
   - **Da incollare su ElevenLabs v3:** `[nervous] [gasps] oh no! adesso cosa faccio?`
-- `studio_cosa_e_la_gravita_2-12.mp3` — pronta · 1,7 s · Studio: Cosa è la gravità?, scena 12 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-12.mp3` — pronta · 2,3 s · Studio: Cosa è la gravità?, scena 12 (al massimo 3 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Continuo a non capire.
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Continuo a non capire.`
@@ -566,22 +574,22 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** pensieroso — 
   - **Testo:** Potresti spiegarti meglio?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Potresti spiegarti meglio?`
-- `studio_cosa_e_la_gravita_2-16.mp3` — pronta · 5,6 s · Studio: Cosa è la gravità?, scena 16 (al massimo 7 s)
+- `studio_cosa_e_la_gravita_2-16.mp3` — pronta · 6 s · Studio: Cosa è la gravità?, scena 16 (al massimo 7 s)
   - **Emozione:** pensieroso — 
   - **Testo:** Cos' è la massa, cos' è un peso e che cosa è un volume?
   - **Da incollare su ElevenLabs v3:** `[thoughtful] Cos' è la massa, cos' è un peso e che cosa è un volume?`
-- `studio_cosa_e_la_gravita_2-43.mp3` — pronta · 0,6 s · Studio: Cosa è la gravità?, scena 19 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-43.mp3` — pronta · 1,1 s · Studio: Cosa è la gravità?, scena 19 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** ok!
   - **Da incollare su ElevenLabs v3:** `ok!`
-- `studio_cosa_e_la_gravita_2-48.mp3` — pronta · 5,9 s · Studio: Cosa è la gravità?, scena 24 (al massimo 7 s)
+- `studio_cosa_e_la_gravita_2-48.mp3` — pronta · 5,1 s · Studio: Cosa è la gravità?, scena 24 (al massimo 6 s)
   - **Testo:** la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!
   - **Da incollare su ElevenLabs v3:** `la gravità è il modo in cui la materia e l'energia modellano lo spazio attorno a sé!`
-- `studio_cosa_e_la_gravita_2-20.mp3` — pronta · 3 s · Studio: Cosa è la gravità?, scena 27 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-20.mp3` — pronta · 2,9 s · Studio: Cosa è la gravità?, scena 27 (al massimo 4 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Che spavento! Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] [gasps] Oh! Che spavento! Chi ha parlato?`
-- `studio_cosa_e_la_gravita_2-22.mp3` — pronta · 10,7 s · Studio: Cosa è la gravità?, scena 29 (al massimo 15 s)
+- `studio_cosa_e_la_gravita_2-22.mp3` — pronta · 12 s · Studio: Cosa è la gravità?, scena 29 (al massimo 15 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh capperi! Quindi l'ultima volta che ti trovavi qua, gli uomini, su di me, scheggiavano le mie pietre per creare la cosa che più di tutte odio: il fuoco!`
@@ -589,23 +597,23 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** infastidito — 
   - **Testo:** Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e
   - **Da incollare su ElevenLabs v3:** `[annoyed] Lo so che il mio nucleo è fatto di lava, ma con il fuoco i miei "umani" bruciano le mie foreste e ne distruggono la fauna, e`
-- `studio_cosa_e_la_gravita_2-25.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 32 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-25.mp3` — pronta · 2,7 s · Studio: Cosa è la gravità?, scena 32 (al massimo 4 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Scusa! Continua.
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Scusa! Continua.`
-- `studio_cosa_e_la_gravita_2-27.mp3` — pronta · 3,6 s · Studio: Cosa è la gravità?, scena 34 (al massimo 9 s)
+- `studio_cosa_e_la_gravita_2-27.mp3` — pronta · 3,7 s · Studio: Cosa è la gravità?, scena 34 (al massimo 9 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Wow! Non sapevo che la scienza potesse essere così bella.
   - **Da incollare su ElevenLabs v3:** `Wow! Non sapevo che la scienza potesse essere così bella.`
-- `studio_cosa_e_la_gravita_2-29.mp3` — pronta · 3,5 s · Studio: Cosa è la gravità?, scena 36 (al massimo 5 s)
+- `studio_cosa_e_la_gravita_2-29.mp3` — pronta · 3,2 s · Studio: Cosa è la gravità?, scena 36 (al massimo 5 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Cosa? Di nuovo? Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Cosa? Di nuovo? Chi ha parlato?`
-- `studio_cosa_e_la_gravita_2-35.mp3` — pronta · 5,1 s · Studio: Cosa è la gravità?, scena 42 (al massimo 6 s)
+- `studio_cosa_e_la_gravita_2-35.mp3` — pronta · 4,4 s · Studio: Cosa è la gravità?, scena 42 (al massimo 5 s)
   - **Emozione:** sorpreso — 
   - **Testo:** Oh! Questa è una giornata piena di sorprese. Chi ha parlato?
   - **Da incollare su ElevenLabs v3:** `[surprised] Oh! Questa è una giornata piena di sorprese. Chi ha parlato?`
-- `studio_cosa_e_la_gravita_2-37.mp3` — pronta · 2,4 s · Studio: Cosa è la gravità?, scena 44 (al massimo 4 s)
+- `studio_cosa_e_la_gravita_2-37.mp3` — pronta · 2 s · Studio: Cosa è la gravità?, scena 44 (al massimo 4 s)
   - **Emozione:** curioso — 
   - **Testo:** Cos' è un buco nero?
   - **Da incollare su ElevenLabs v3:** `[curious] Cos' è un buco nero?`
@@ -613,7 +621,7 @@ Cartella: `audio/narrazione/storie/terra/<lingua>/` · nel codice `Earth` · in 
   - **Emozione:** tranquillo — 
   - **Testo:** Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?
   - **Da incollare su ElevenLabs v3:** `Hai visto Luna, lo dicono tutti, non si può cambiare questa cosa dalla gravità, le dicono le leggi dalla fisica, vero Newton?`
-- `studio_cosa_e_la_gravita_2-41.mp3` — pronta · 1,2 s · Studio: Cosa è la gravità?, scena 48 (al massimo 3 s)
+- `studio_cosa_e_la_gravita_2-41.mp3` — pronta · 1,1 s · Studio: Cosa è la gravità?, scena 48 (al massimo 3 s)
   - **Emozione:** tranquillo — 
   - **Testo:** Sei d' accordo Luna?
   - **Da incollare su ElevenLabs v3:** `Sei d' accordo Luna?`

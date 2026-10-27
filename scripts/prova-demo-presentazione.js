@@ -193,7 +193,48 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.equal(k.marcia, 'true');
       await scenaDi(10, 0.1);
       assert.equal(await pagina.evaluate(() => document.getElementById('did-kep-play').getAttribute('aria-pressed')), 'false', 'finita la scena, il banco si ferma');
+      await scenaDi(12, 0.1);
       assert.equal(await pagina.locator('#demo-ospiti-tela').count(), 0, 'nel planetario la tela sovrapposta se ne va');
+    });
+
+    // v528: perché c'è l'aurora, col banco delle aurore (il vento solare,
+    // poi lo scudo magnetico e l'anello), con Ben sopra
+    prova('la lezione delle aurore: il vento solare, poi la magnetosfera e l\'anello, con Ben', async () => {
+      await scenaDi(10, 0.4);
+      const v = await pagina.evaluate(() => ({ vista: vistaAttuale, banco: !document.getElementById('did-lab-aurora').classList.contains('hidden') }));
+      assert.equal(v.vista, 'didattica');
+      assert.ok(v.banco, 'il banco delle aurore è aperto');
+      assert.ok(await pixelBen() > 50, 'Ben sopra al vento solare');
+      await scenaDi(11, 0.8);
+      assert.ok(await pixelBen() > 50, 'e sopra all\'anello');
+    });
+
+    // v528: nel decollo la tela del volo copre la 3D, e Ben, disegnato dalla
+    // 3D, spariva mentre parlava: ora sta sulla tela sovrapposta
+    prova('il decollo: Ben resta sullo schermo sopra al volo, e la 3D non lo ripete', async () => {
+      await scenaDi(6, 0.3);
+      const r = await pagina.evaluate(() => ({ tela: !!document.getElementById('demo-ospiti-tela'), suTela: StorieCosmiche.stato.ospitiSuTela }));
+      assert.ok(r.tela, 'c\'è la tela sovrapposta');
+      assert.equal(r.suTela, true, 'le viste sotto non disegnano gli ospiti');
+      assert.ok(await pixelBen() > 50, 'Ben è disegnato');
+      await scenaDi(7, 0.2);
+      assert.equal(await pagina.evaluate(() => StorieCosmiche.stato.ospitiSuTela), false, 'nella 3D Ben torna a disegnarlo la 3D');
+    });
+
+    // v528: il telescopio sulla linguetta che lo fa puntare, e il diario
+    prova('Stasera, il telescopio sulla linguetta «Punta» (poi com\'era), il diario', async () => {
+      const prima = await pagina.evaluate(() => tel.pannello);
+      await scenaDi(13, 0.8);
+      assert.equal(await pagina.evaluate(() => ({ v: vistaAttuale, p: tel.pannello })).then(x => x.v + '/' + x.p), 'telescopio/punta');
+      await scenaDi(14, 0.3);
+      assert.equal(await pagina.evaluate(() => vistaAttuale), 'diario');
+      assert.equal(await pagina.evaluate(() => tel.pannello), prima, 'la linguetta torna quella di prima');
+      // in pausa chi rientra in scena resta trasparente (l'entrata segue
+      // l'orologio delle storie): un attimo di marcia, poi si conta
+      await pagina.evaluate(() => AstroDemo.riprendi());
+      await pagina.waitForTimeout(900);
+      assert.ok(await pixelBen() > 50, 'Ben sopra al diario');
+      await pagina.evaluate(() => AstroDemo.pausa());
     });
 
     prova('Cortina: livelli accesi, scritte e ora vera per la scena; poi tutto come prima', async () => {
@@ -216,8 +257,33 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       assert.equal(d.senza, true, 'e le scritte di nuovo spente');
     });
 
+    // v528: il paesaggio di Cortina viaggia con l'app (dati-paesaggi-demo.js):
+    // qui Open-Meteo non risponde (la rotta lo interrompe) e il terreno di
+    // casa resta a metà, eppure a Cortina orizzonte e vette ci sono subito
+    prova('Cortina senza rete: il profilo e le vette pronte, coi nomi sul crinale', async () => {
+      await pagina.evaluate(() => { AstroDemo.ferma(); });
+      await pagina.waitForTimeout(400);
+      await pagina.evaluate(t => AstroDemo.avvia(t), testo);
+      await pagina.waitForTimeout(800);
+      await scenaDi(2, 0.2);
+      await pagina.waitForTimeout(800);
+      const r = await pagina.evaluate(() => ({ stato: terreno.stato, misurate: terreno.misurate, alto: Math.max(...terreno.profilo),
+        vette: cimeVisibili().map(c => c.nome), puntate: cimeVisibili().filter(c => skyPuntaDisegnata(c)).length }));
+      assert.equal(r.stato, 'pronto');
+      assert.equal(r.misurate, 120, 'il profilo intero');
+      assert.ok(r.alto > 15, 'le Tofane salgono sopra i 15°: ' + r.alto.toFixed(1));
+      assert.ok(r.vette.includes('Tofana di Mezzo'), 'le vette vere: ' + r.vette.join(', '));
+      assert.ok(r.puntate >= 3, 'e i nomi si appendono al crinale disegnato: ' + r.puntate);
+      // fuori dalla demo l'elenco corto non vale: si riscarica quello intero
+      await pagina.evaluate(() => AstroDemo.ferma());
+      await pagina.waitForTimeout(400);
+      assert.equal(await pagina.evaluate(() => cimeLeggiSalvate(46.5405, 12.1357)), null, 'l\'elenco della demo non resta a chi visita Cortina');
+      await pagina.evaluate(t => AstroDemo.avvia(t), testo);
+      await pagina.waitForTimeout(500);
+    });
+
     prova('il finale torna al cielo di casa; lo Stop rimette pagina, mese, filtro e luogo', async () => {
-      await scenaDi(12, 0.2);
+      await scenaDi(15, 0.2);
       assert.equal(await pagina.evaluate(() => skyLuogoDelCielo().nome), 'Milano', 'set_location { home } riporta a casa');
       await pagina.evaluate(() => AstroDemo.ferma());
       await pagina.waitForTimeout(800);

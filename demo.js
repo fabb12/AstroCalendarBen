@@ -143,9 +143,10 @@
     if (o.raf) cancelAnimationFrame(o.raf);
     o.raf = 0; o.c = null;
     if (o.el) o.el.remove();
+    if (typeof StorieCosmiche === 'object' && StorieCosmiche.stato) StorieCosmiche.stato.ospitiSuTela = false;
   }
   function ospitiPerScena(v, c) {
-    if (!c || !c.storia || !VISTE_HTML.includes(v) || typeof StorieCosmiche !== 'object' ||
+    if (!c || !c.storia || !(VISTE_HTML.includes(v) || v === 'transition') || typeof StorieCosmiche !== 'object' ||
         typeof StorieCosmiche.disegnaOspiti !== 'function') { ospitiSpegni(); return; }
     const o = ospitiTela;
     if (!o.el) {
@@ -160,6 +161,7 @@
       ? document.fullscreenElement : document.body;
     if (o.el.parentNode !== casa) casa.appendChild(o.el);
     o.c = c;
+    if (StorieCosmiche.stato) StorieCosmiche.stato.ospitiSuTela = true;
     if (!o.raf) o.raf = requestAnimationFrame(ospitiCiclo);
   }
 
@@ -1904,6 +1906,8 @@
   // ------------------------------------------------------------------
   const PAGINE_APP = { tonight: 'stasera', calendar: 'calendario', agenda: 'agenda', diary: 'diario', telescope: 'telescopio' };
   const FUOCHI_PAGINA = ['top', 'grid', 'card', 'mission', 'filters'];
+  // v528: la linguetta del telescopio (`tab`), coi nomi del copione
+  const LINGUETTE_TELESCOPIO = { instrument: 'strumento', align: 'allineamento', point: 'punta', night: 'serata', care: 'cura' };
   const BANCHI_DIDATTICA = ['retro', 'keplero', 'fionda', 'finestre', 'allineamenti', 'spazio', 'tramonto'];
   // il tasto che mette in marcia l'animazione di un banco, dove c'è
   const MARCIA_BANCO = { retro: 'did-retro-play', keplero: 'did-kep-play', finestre: 'did-lancio-play' };
@@ -1963,7 +1967,7 @@
   }
   registro.page_show = {
     verifica(p) {
-      campi(p, ['page', 'month', 'filter', 'focus', 'scroll_from', 'scroll_to']);
+      campi(p, ['page', 'month', 'filter', 'focus', 'scroll_from', 'scroll_to', 'tab']);
       richiedi(typeof p.page === 'string' && Object.prototype.hasOwnProperty.call(PAGINE_APP, p.page),
         err('pagina', { elenco: Object.keys(PAGINE_APP).join(', ') }));
       const calendario = p.page === 'calendar' || p.page === 'agenda';
@@ -1975,11 +1979,24 @@
         (p.filter === 'tutti' || (typeof CATEGORIE === 'object' && CATEGORIE[p.filter])), err('filtroPagina'));
       richiedi(p.focus === undefined || FUOCHI_PAGINA.includes(p.focus), err('fuocoPagina', { elenco: FUOCHI_PAGINA.join(', ') }));
       richiedi([p.scroll_from, p.scroll_to].every(x => x === undefined || numero(x, 0, 1)), err('scorrimentoPagina'));
+      richiedi(p.tab === undefined || (p.page === 'telescope' && Object.prototype.hasOwnProperty.call(LINGUETTE_TELESCOPIO, p.tab)),
+        err('linguettaPagina', { elenco: Object.keys(LINGUETTE_TELESCOPIO).join(', ') }));
     },
     crea(p, c) {
       const nome = PAGINE_APP[p.page];
       pagineToccate = true;
       if (vistaAttuale !== nome) mostraVista(nome);
+      // la linguetta del telescopio, e quella di prima alla fine della scena
+      let linguettaPrima = null;
+      if (p.tab && typeof telMostraPannello === 'function' && typeof tel === 'object') {
+        linguettaPrima = tel.pannello;
+        if (tel.pannello !== LINGUETTE_TELESCOPIO[p.tab]) telMostraPannello(LINGUETTE_TELESCOPIO[p.tab]);
+      }
+      const torna = () => {
+        if (linguettaPrima && typeof tel === 'object' && tel.pannello !== linguettaPrima) {
+          try { telMostraPannello(linguettaPrima); } catch (_) { /* il telescopio non è la demo */ }
+        }
+      };
       if (p.month) {
         const [anno, mese] = p.month.split('-').map(Number);
         impostaMeseSelezionato(anno, mese - 1, { subito: true });
@@ -1991,7 +2008,8 @@
       if (nome === 'calendario' && fullCalendarInstance) fullCalendarInstance.updateSize();
       const arrivo = () => p.focus && p.focus !== 'top' ? ordinataFuoco(p.focus)
         : p.scroll_to !== undefined ? scorrimentoMax() * p.scroll_to : 0;
-      return scorriPagina(c, () => scorrimentoMax() * (p.scroll_from || 0), arrivo);
+      const mossa = scorriPagina(c, () => scorrimentoMax() * (p.scroll_from || 0), arrivo);
+      return { aggiorna: mossa.aggiorna, chiudi: torna };
     }
   };
   registro.didactic_bench = {
@@ -2392,9 +2410,29 @@
    * terreno.js §13): scaricati solo all'inizio della loro scena arrivavano
    * a scena finita, e la presentazione parlava dei monti di Cortina col
    * loro nome davanti a un orizzonte liscio. */
+  /* v528: anche scaricati all'avvio, il profilo, le vette e i paesi di
+   * Cortina arrivavano tardi o mai (decine di richieste, e offline niente),
+   * e la presentazione parlava ancora delle Dolomiti davanti a un orizzonte
+   * liscio. Per i posti della presentazione il paesaggio viaggia con l'app,
+   * in `dati-paesaggi-demo.js` (caricato solo qui, la prima volta che serve):
+   * si posa negli archivi del terreno prima di chiedere il resto alla rete. */
+  let paesaggiDemo = null;
+  function caricaPaesaggiDemo() {
+    if (window.DATI_PAESAGGI_DEMO) return Promise.resolve(window.DATI_PAESAGGI_DEMO);
+    if (!paesaggiDemo) paesaggiDemo = new Promise(fatto => {
+      const s = document.createElement('script');
+      s.src = 'dati-paesaggi-demo.js';
+      s.onload = () => fatto(Array.isArray(window.DATI_PAESAGGI_DEMO) ? window.DATI_PAESAGGI_DEMO : []);
+      // senza il file si scarica tutto dalla rete, come prima
+      s.onerror = () => { paesaggiDemo = null; fatto([]); };
+      document.head.appendChild(s);
+    });
+    return paesaggiDemo;
+  }
   function preparaPaesaggi(demo) {
     if (typeof terrenoPreparaLuogo !== 'function') return;
     let luogo = null;
+    const posti = [];
     for (const scena of demo.scene) {
       const livelli = [];
       for (const a of scena.azioni) {
@@ -2407,8 +2445,17 @@
       if (livelli.some(l => ['terreno', 'rilievo', 'cime', 'citta', 'acque'].includes(l))) quali.push('terreno');
       if (livelli.includes('cime')) quali.push('cime');
       if (livelli.includes('citta')) quali.push('citta');
-      try { if (quali.length) terrenoPreparaLuogo(luogo.lat, luogo.lon, quali, luogo.name || ''); } catch (_) { /* la scena scarica da sé */ }
+      if (quali.length) posti.push({ luogo, quali });
     }
+    if (!posti.length) return;
+    caricaPaesaggiDemo().then(pronti => {
+      for (const { luogo, quali } of posti) {
+        const pronto = typeof terrenoPosaPaesaggioDemo === 'function' && pronti.find(p =>
+          typeof terrenoDistanzaKm === 'function' && terrenoDistanzaKm(luogo.lat, luogo.lon, p.lat, p.lon) <= 2);
+        if (pronto) terrenoPosaPaesaggioDemo(pronto);
+        try { terrenoPreparaLuogo(luogo.lat, luogo.lon, quali, luogo.name || ''); } catch (_) { /* la scena scarica da sé */ }
+      }
+    });
   }
   function avvia(testo = script, perUnaVolta = null) {
     const demo = valida(testo);
@@ -2483,9 +2530,12 @@
         // le cedono la camera mentre il racconto e il suo orologio proseguono.
         c.cameraManuale = false;
         if (scena.vista !== 'transition') vista(scena.vista, c);
-        // il volo non passa da `vista()`: la tela sovrapposta di una pagina in
-        // HTML se ne va qui, se no Ben comparirebbe due volte (lì lo disegna la 3D)
-        else ospitiSpegni();
+        // Il volo non passa da `vista()`. v528: e chi racconta il decollo sta
+        // sulla tela sovrapposta, come sulle pagine in HTML: la tela del volo
+        // (`solVoloDisegna`) copre la 3D, e Ben, disegnato dalla 3D sotto di
+        // lei, spariva proprio mentre diceva «lasciamo l'atmosfera». La 3D,
+        // finché la tela c'è, gli ospiti non li disegna (`ospitiSuTela`).
+        else ospitiPerScena('transition', c);
         // v524: una pagina vera dell'app (calendario, Stasera, un banco della
         // didattica) si mostra con tutta la sua interfaccia: la vista pulita
         // nasconderebbe proprio i filtri, le linguette e i tasti che la

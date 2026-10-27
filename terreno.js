@@ -2306,6 +2306,8 @@ function terrenoDaRiprendere(v) {
 // Si chiama ogni volta che il luogo può essere cambiato: all'apertura del
 // planetario, dopo `skyImpostaPosizione` e a ogni cambio del luogo di
 // visita. Se il profilo che c'è vale ancora per dove siamo, non fa niente.
+// Il numero dello scarico che ha diritto a disegnare (v528, vedi sotto).
+let terrenoGiroScarico = 0;
 function terrenoCarica(forza) {
   if (!terreno.acceso) return Promise.resolve(false);
 
@@ -2321,7 +2323,24 @@ function terrenoCarica(forza) {
   // C'è già una richiesta in volo. Se è per questo stesso posto, si aspetta
   // quella; se nel frattempo il luogo è cambiato di nuovo (due città scelte
   // in fretta), la si lascia finire e si riparte dopo — nel `finally`.
-  if (terreno.stato === 'in-corso') return terreno.promessa || Promise.resolve(false);
+  if (terreno.stato === 'in-corso') {
+    // v528: ma se lo scarico in volo è di un altro posto e questo ce
+    // l'abbiamo già salvato, si mostra subito il salvato. Lo scarico di
+    // prima finisce per conto suo (salva quello che ha e basta: vedi
+    // `terrenoGiroScarico`). Era la presentazione: partita a Milano con le
+    // quote di casa che non arrivavano (rete lenta, o nessuna), a Cortina il
+    // profilo pronto restava in coda dietro a quello e l'orizzonte era liscio.
+    const altrove = terreno.provatoLat !== null && terreno.provatoLat !== undefined &&
+      terrenoDistanzaKm(lat, lon, terreno.provatoLat, terreno.provatoLon) > raggioBuono;
+    const salvatoQui = !forza && altrove && terrenoLeggiSalvato(lat, lon);
+    if (!salvatoQui) return terreno.promessa || Promise.resolve(false);
+    terrenoGiroScarico++;
+    terreno.provatoLat = lat;
+    terreno.provatoLon = lon;
+    terreno.arreso = false;
+    terrenoApplica(salvatoQui.lat, salvatoQui.lon, salvatoQui, 'salvato');
+    return Promise.resolve(true);
+  }
 
   // In movimento, due scarichi ravvicinati sono due volte lo stesso
   // paesaggio: si aspetta il tempo minimo e poi si riparte da dove si è
@@ -2425,6 +2444,10 @@ function terrenoCarica(forza) {
   // sapere se questo tentativo ha guadagnato qualcosa o ha girato a vuoto.
   const riprendi = terrenoDaRiprendere(terrenoLeggiSalvato(lat, lon));
   const primaSapeva = riprendi ? riprendi.avute.length : 0;
+  // Superato (v528): nel frattempo si è passati a un posto già salvato, che
+  // è sullo schermo. Quello che arriva da qui si salva e non si disegna.
+  const giro = ++terrenoGiroScarico;
+  const superato = () => giro !== terrenoGiroScarico;
 
   terreno.promessa = terrenoCostruisci(lat, lon,
     // Il giro grosso: si disegna subito, **e si salva subito**. Salvare solo
@@ -2433,6 +2456,7 @@ function terrenoCarica(forza) {
     // che dice di no un giorno sì e uno no il terreno non arrivava mai.
     dati => {
       terrenoSalva(lat, lon, dati);
+      if (superato()) return;
       // Il giro grosso è una direzione su tre: un orizzonte vero, ma più
       // grosso di quello intero. Mostrarlo subito è la cosa giusta quando
       // in mano non c'è niente — meglio l'orizzonte vero a passo largo che
@@ -2447,6 +2471,7 @@ function terrenoCarica(forza) {
     }, riprendi)
     .then(({ dati, guaio }) => {
       terrenoSalva(lat, lon, dati);
+      if (superato()) return true;
       terrenoApplica(lat, lon, dati, 'rete');
       // Andata a metà: il terreno c'è e si disegna, ma qualche direzione è
       // stimata invece che misurata. Vale la pena riprovare più tardi a
@@ -2472,6 +2497,7 @@ function terrenoCarica(forza) {
       // «non sono riuscito» e basta non permette a nessuno di capire se
       // aspettare, riprovare o smettere.
       console.warn('Terreno vero non disponibile:', e);
+      if (superato()) return false;
       terreno.stato = 'fallito';
       // Da adesso in poi le riprese automatiche sono un di più, non
       // un'attesa: chi ha bisogno di sapere se aspettare (i nomi delle
@@ -3965,7 +3991,8 @@ function cittaArchivio() {
 
 function cittaLeggiSalvate(lat, lon) {
   return cittaArchivio().find(v => v && Array.isArray(v.elenco) && typeof v.lat === 'number' &&
-    raggiSalvatoBuono(v, 'citta', CITTA_RAGGIO_KM) &&
+    // v528: l'elenco corto della presentazione vale solo durante una demo
+    (raggiSalvatoBuono(v, 'citta', CITTA_RAGGIO_KM) || paesaggioDemoValido(v)) &&
     terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CITTA_RAGGIO_VALIDO_KM) || null;
 }
 
@@ -4951,7 +4978,8 @@ function cimeArchivio() {
 
 function cimeLeggiSalvate(lat, lon) {
   return cimeArchivio().find(v => v && Array.isArray(v.elenco) && typeof v.lat === 'number' &&
-    raggiSalvatoBuono(v, 'cime', CIME_RAGGIO_KM) &&
+    // v528: l'elenco corto della presentazione vale solo durante una demo
+    (raggiSalvatoBuono(v, 'cime', CIME_RAGGIO_KM) || paesaggioDemoValido(v)) &&
     terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CIME_RAGGIO_VALIDO_KM) || null;
 }
 
@@ -7465,4 +7493,42 @@ function terrenoPreparaLuogo(lat, lon, quali = ['terreno', 'cime', 'citta'], nom
   // finita (bene o male), una seconda richiesta può riprovare
   tutto.finally(() => setTimeout(() => terrenoPreparazioni.delete(chiave), 60000));
   return tutto;
+}
+
+// v528. Il paesaggio già fatto di un posto della presentazione
+// (`dati-paesaggi-demo.js`, generato da scripts/costruisci-paesaggi-demo.js).
+// Anche scaricato prima (`terrenoPreparaLuogo`), quello di Cortina arrivava
+// tardi o mai: decine di richieste di quote e due a Overpass in quaranta
+// secondi, e offline niente. La presentazione mostrava un orizzonte liscio
+// mentre Ben diceva «ogni vetta ha il suo nome».
+//
+// Il profilo è misurato davvero (le quote del rilievo a zoom 12) e si tiene
+// come uno scaricato, ma solo se lì non c'è già il proprio. Vette e paesi
+// sono invece un elenco corto, i nomi principali entro una ventina di km:
+// si salvano col loro raggio vero e la fonte 'demo', e
+// `cimeLeggiSalvate`/`cittaLeggiSalvate` li prendono per buoni solo mentre
+// gira una demo. Fuori, chi guarda Cortina riscarica l'elenco intero
+// da Overpass, che li sostituisce.
+const PAESAGGIO_DEMO_FONTE = 'demo';
+function paesaggioDemoValido(v) {
+  return !!v && v.fonte === PAESAGGIO_DEMO_FONTE && typeof AstroDemo !== 'undefined' && AstroDemo.inCorso;
+}
+function terrenoPosaPaesaggioDemo(p) {
+  if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return false;
+  try {
+    const t = p.terreno;
+    const salvato = terrenoLeggiSalvato(p.lat, p.lon);
+    if (t && Array.isArray(t.creste) && t.creste.length === TERRENO_DIREZIONI &&
+        (!salvato || terrenoDaCompletare(salvato))) terrenoSalva(p.lat, p.lon, t);
+    if (Array.isArray(p.cime) && p.cime.length && !cimeLeggiSalvate(p.lat, p.lon))
+      cimeSalva(p.lat, p.lon, p.cime.map(c => ({ nome: c.n, lat: c.a, lon: c.o, quota: c.q })),
+        PAESAGGIO_DEMO_FONTE, p.raggio || 25);
+    if (Array.isArray(p.citta) && p.citta.length && !cittaLeggiSalvate(p.lat, p.lon))
+      cittaSalva(p.lat, p.lon, p.citta.map(c => ({ nome: c.n, lat: c.a, lon: c.o, abitanti: c.p, specie: c.s })),
+        PAESAGGIO_DEMO_FONTE, p.raggio || 25);
+    return true;
+  } catch (e) {
+    console.warn('Paesaggio della presentazione non applicato:', e && e.message ? e.message : e);
+    return false;
+  }
 }

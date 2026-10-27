@@ -10336,6 +10336,7 @@
         ctx.save(); ctx.globalAlpha *= alfa;
         storDisegnaFisica(ctx, 'dietro', c.px, c.py, c.r, fis, pg.reazione, t, opzFis);
         ctx.restore();
+        if (pg.id === 'Moon' && vista === 'cielo') lunaCinerea(ctx, c.px, c.py, c.r, alfa);
         const volto = g => {
           g.save();
           if (ritaglia) { g.beginPath(); g.arc(c.px, c.py, Math.max(c.r * 1.02, R * 1.05), 0, Math.PI * 2); g.clip(); }
@@ -10459,6 +10460,43 @@
     ctx.strokeStyle = ALONE; ctx.lineWidth = 4; ctx.stroke();
     ctx.fillStyle = profilo.sottotitolo || '#fde68a'; ctx.fill();
     ctx.strokeStyle = INCHIOSTRO; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.restore();
+  }
+
+  /* v528: la Luna davanti al Sole. In un'eclissi il planetario la dipinge
+   * com'è, un disco nero sulla corona, e il suo volto era occhi e guance
+   * sospesi nel buio: nella presentazione la Luna diceva «sono la Luna» e
+   * chi guardava non vedeva nessuna Luna. Sotto al volto si stende la luce
+   * cinerea — la Terra che la illumina di rimbalzo, che nella totalità c'è
+   * davvero — con i suoi mari: abbastanza per riconoscerla, non tanto da
+   * farla sembrare piena. Solo quando il Sole è coperto, cioè quando parla
+   * un disco nero. */
+  function lunaCinerea(ctx, x, y, r, alfa) {
+    const sky = globale('sky');
+    const ecl = sky && sky.eclisse;
+    if (!ecl || !ecl.attiva || !(ecl.copertura > 0.3) || !(r > 4)) return;
+    const forza = Math.min(1, (ecl.copertura - 0.3) / 0.4) * alfa;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, r * 0.995, 0, Math.PI * 2); ctx.clip();
+    ctx.globalAlpha = forza;
+    const fondo = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+    fondo.addColorStop(0, '#8b93a8');
+    fondo.addColorStop(0.7, '#626a80');
+    fondo.addColorStop(1, '#3c4256');
+    ctx.fillStyle = fondo;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    // i mari, come si vedono a occhio nudo (Imbrium, Serenitatis,
+    // Tranquillitatis, Procellarum, Nubium, Crisium), in coordinate del disco
+    ctx.fillStyle = 'rgba(38, 42, 58, 0.55)';
+    for (const [mx, my, mr] of [[-0.22, -0.32, 0.26], [0.12, -0.3, 0.17], [0.28, -0.06, 0.2], [-0.48, 0.02, 0.3],
+      [-0.12, 0.34, 0.18], [0.6, -0.22, 0.1], [0.36, 0.3, 0.12]]) {
+      ctx.beginPath(); ctx.arc(x + mx * r, y + my * r, mr * r, 0, Math.PI * 2); ctx.fill();
+    }
+    // il bordo appena acceso, che la stacca dalla corona
+    ctx.globalAlpha = forza * 0.8;
+    ctx.lineWidth = Math.max(1, r * 0.03);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.beginPath(); ctx.arc(x, y, r * 0.98, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
   }
 
@@ -10962,7 +11000,10 @@
    * **dentro** a una nave: chi ha `inside` non sta al suo posto ma a un
    * finestrino, uno per uno nell'ordine in cui sono comparsi, con la testa
    * dentro al vetro (`finestra`, che il disegno usa per ritagliarlo). */
-  function storOspiti(L, H, m) {
+  function storOspiti(L, H, m, suTela) {
+    // v528: gli ospiti li disegna la tela sovrapposta della demo (le pagine
+    // in HTML, il volo verso la 3D): le viste sotto non li ripetono
+    if (stor.ospitiSuTela && !suTela) return [];
     const fuori = [];
     const mm = Object.assign({ su: STOR_MARGINE_PX, giu: STOR_MARGINE_PX, lati: STOR_MARGINE_PX }, m || {});
     const ora = stor.orologio;
@@ -11083,7 +11124,7 @@
   function storDisegnaOspitiSuTela(ctx, L, H) {
     if (!stor.personaggi.size && !stor.effetti.length) { stor.ultimiDisegnati = []; return []; }
     const fasce = { su: 76, giu: 150, lati: 24 };
-    return storDisegnaPersonaggi(ctx, 'cielo', storOspiti(L, H, fasce), L, H, fasce);
+    return storDisegnaPersonaggi(ctx, 'cielo', storOspiti(L, H, fasce, true), L, H, fasce);
   }
 
   /* Vista 3D. `solDisegna` (e `solDisegnaVicino` per il banco Terra e Luna)
