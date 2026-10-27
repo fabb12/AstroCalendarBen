@@ -6,6 +6,7 @@ guardare e come puntarlo col telescopio. Funziona anche senza rete, senza
 account e senza server: i calcoli avvengono sul dispositivo.
 
 - **Apri l'app**: <https://fabb12.github.io/AstroCalendarBen/>
+- **App per Windows**: [scarica l'installatore](https://github.com/fabb12/AstroCalendarBen/releases/latest/download/AstroCalendario-Setup.exe) — la stessa app come programma, con le chiavi al sicuro e i file nelle tue cartelle ([`DESKTOP.md`](DESKTOP.md))
 - **Canale YouTube**: [@astroben2017](https://www.youtube.com/@astroben2017)
 - **Guida**: [`guida.html`](guida.html) (in inglese [`guida-en.html`](guida-en.html))
 

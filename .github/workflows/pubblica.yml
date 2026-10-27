@@ -68,6 +68,8 @@ jobs:
         # parte solo per lasciar fuori quello che online non serve — la storia
         # di git, i workflow, la mappa del progetto e lo script che rigenera i
         # cataloghi (gira a mano, con node, sul computer di chi sviluppa).
+        # E `desktop/`, il programma per computer: si scarica dalle Release
+        # (workflow desktop.yml), non dal sito.
         # `verifica.html` invece resta: è il banco di prova, e per aprirlo serve
         # proprio un server.
         run: |
@@ -77,6 +79,7 @@ jobs:
             --exclude '.github' \
             --exclude '_sito' \
             --exclude 'scripts' \
+            --exclude 'desktop' \
             --exclude 'worker-adsb.js' \
             --exclude 'wrangler.toml' \
             --exclude 'ADSB-PROXY.md' \

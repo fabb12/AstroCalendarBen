@@ -3076,6 +3076,42 @@
           <div id="imp-youtube-corpo"></div>
         </section>
 
+        <!-- v529: l'app per computer (desktop/, Electron; DESKTOP.md). In un
+             browser su Windows offre l'installatore; dentro il programma dice
+             la versione, dove finiscono i file salvati e quante chiavi tiene la
+             cassaforte. La riempie ui-nuova.js (`costruisciSezioneDesktop`);
+             nascosta su telefoni, tablet e computer che non sono Windows. -->
+        <section id="imp-desktop" class="space-y-2 border-t border-slate-700 pt-4 hidden" aria-labelledby="imp-desktop-titolo">
+          <h3 id="imp-desktop-titolo" class="font-bold text-white" data-i18n="ui.app-per-computer">App per computer</h3>
+          <div id="imp-desktop-web" class="space-y-2 hidden">
+            <p class="text-xs text-slate-500" data-i18n="ui.desktop-aiuto-web">Su Windows l'app si installa come un programma: salva i file nelle cartelle che scegli, chiede una volta sola posizione, fotocamera e microfono, e tiene al sicuro le chiavi di ElevenLabs, GitHub e YouTube anche quando il browser ripulisce i dati del sito.</p>
+            <div class="flex flex-wrap gap-2">
+              <a id="imp-desktop-scarica" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white" href="https://github.com/fabb12/AstroCalendarBen/releases/latest/download/AstroCalendario-Setup.exe" rel="noopener" data-i18n="ui.scarica-per-windows">Scarica per Windows</a>
+              <a id="imp-desktop-versioni" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white" href="https://github.com/fabb12/AstroCalendarBen/releases" target="_blank" rel="noopener" data-i18n="ui.tutte-le-versioni">Tutte le versioni</a>
+            </div>
+          </div>
+          <div id="imp-desktop-app" class="space-y-2 hidden">
+            <p id="imp-desktop-stato" class="text-xs text-slate-400"></p>
+            <dl class="space-y-2 text-sm">
+              <div class="flex items-baseline justify-between gap-4">
+                <dt class="text-slate-400" data-i18n="ui.cartella-dei-file-salvati">Cartella dei file salvati</dt>
+                <dd id="imp-desktop-cartella" class="font-mono text-right text-slate-200">—</dd>
+              </div>
+            </dl>
+            <label class="flex items-center gap-2 text-sm text-slate-300">
+              <input id="imp-desktop-chiedi" type="checkbox">
+              <span data-i18n="ui.chiedi-ogni-volta-dove-salvare">Chiedi ogni volta dove salvare</span>
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <button id="imp-desktop-apri" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white" data-i18n="ui.apri-la-cartella">Apri la cartella</button>
+              <button id="imp-desktop-cambia" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white" data-i18n="ui.cambia-cartella">Cambia cartella</button>
+              <button id="imp-desktop-aggiorna" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white" data-i18n="ui.cerca-aggiornamenti">Cerca aggiornamenti</button>
+            </div>
+            <p id="imp-desktop-chiavi" class="text-xs text-slate-500"></p>
+            <p id="imp-desktop-esito" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+
         <section class="space-y-2 border-t border-slate-700 pt-4" aria-labelledby="imp-build-titolo">
           <h3 id="imp-build-titolo" class="font-bold text-white" data-i18n="ui.informazioni-sull-app">Informazioni sull'app</h3>
           <dl class="space-y-2 text-sm">
@@ -3311,6 +3347,10 @@
        `fetch` di JSON è vietata, e questa applicazione si apre anche con un
        doppio clic. Aggiungere una lingua è aggiungere una riga qui — il
        selettore legge il registro e si allunga da sé. -->
+  <!-- v529: il custode delle chiavi (ElevenLabs, GitHub, YouTube) parte per
+       primo: nell'app per computer rimette quelle che il browser ha perso
+       prima che un modulo le cerchi. Vedi custode-chiavi.js e DESKTOP.md. -->
+  <script src="custode-chiavi.js"></script>
   <script src="lingue/it.js"></script>
   <script src="lingue/en.js"></script>
   <script src="i18n.js"></script>
