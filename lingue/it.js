@@ -5810,7 +5810,7 @@ window.ASTRO_DIZIONARI['it'] = {
     "demo.narr.presentazione.14": "Cieli sereni da Ben!",
     "storie.titolo.presentazione": "AstroCalendario di Ben",
     "storie.titolo.presentazioneFine": "Cieli sereni da Ben",
-    "storie.titolo.presentazioneSotto": "Il cielo, spiegato bene (e con qualche battuta)",
+    "storie.titolo.presentazioneSotto": "Il cielo, spiegato bene",
     "demo.builtin.storia_luna.title": "CosmoStorie · La Luna ha perso un pezzo?",
     "demo.builtin.storia_luna.description": "Una storia per bambini, con gli astri che parlano. Stasera la Luna è una falce sottile e si spaventa: le manca un pezzo? La Terra la porta a guardarsi da fuori, il Sole spiega che illumina sempre metà di lei, e undici giorni d’orbita vera mostrano perché da qui la vediamo cambiare. La sera, le fasi e le distanze sono quelle vere del 13 dicembre 2026, da Roma.",
     "demo.builtin.storia_giganti.title": "CosmoStorie · Giove e Saturno",
