@@ -11,14 +11,14 @@ Istruzioni complete in `audio/narrazione/LEGGIMI.md`.
 Le battute `studio.…` vengono dalle storie dello Studio (`storie/storie-studio.json`, lo scrive lo Studio:
 Altro → File delle voci): se le togli lì, qui spariscono, con la loro regia e i loro audio.
 
-Pronte: **263/413** in italiano · **0/250** in inglese.
+Pronte: **270/413** in italiano · **0/250** in inglese.
 
 | Personaggio | Cartella | Battute | it | en |
 | --- | --- | --- | --- | --- |
-| Astro Ben | `storie/astro-ben/` | 24 | 8/24 | 0/23 |
-| Saturno | `storie/saturno/` | 5 | 2/5 | 0/3 |
+| Astro Ben | `storie/astro-ben/` | 24 | 13/24 | 0/23 |
+| Saturno | `storie/saturno/` | 5 | 3/5 | 0/3 |
 | Luna | `storie/luna/` | 25 | 19/25 | 0/12 |
-| Giove | `storie/giove/` | 14 | 12/14 | 0/2 |
+| Giove | `storie/giove/` | 14 | 13/14 | 0/2 |
 | Terra | `storie/terra/` | 39 | 36/39 | 0/4 |
 | Sole | `storie/sole/` | 23 | 8/23 | 0/10 |
 | Voyager 1 | `storie/voyager-1/` | 1 | 1/1 | 0/1 |
@@ -70,7 +70,7 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
 
 - `presentazione-1.mp3` — pronta · 14,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 1 (al massimo 17,2 s)
   - **Testo:** Ciao, sono Astro Ben! Questo è il cielo di stasera, proprio sopra casa tua: sta girando davanti a te, in diretta. In pochi minuti ti faccio vedere cosa sa fare questa app. Casco in testa: si parte!
-- `presentazione-3.mp3` — **da rifare** (il testo è cambiato) · 22,8 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 3 (al massimo 28 s)
+- `presentazione-3.mp3` — pronta · 16,4 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 3 (al massimo 28 s)
   - **Testo:** Ecco il planetario con il paesaggio vero: da Cortina vedi le Dolomiti, le Tofane e le altre vette, ognuna col suo nome! E quegli aerei? Passano davvero, adesso, sopra di te. Lo stesso da casa tua!
 - `presentazione-4.mp3` — pronta · 21,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 4 (al massimo 24 s)
   - **Testo:** Il calendario degli eventi: eclissi, congiunzioni, piogge di stelle, tutto calcolato per casa tua. Qui ho filtrato le sole eclissi: guarda il due agosto duemilaventisette, una totale! E nell'agenda trovi la scheda completa: cosa succede, dove e come guardarla.
@@ -82,17 +82,17 @@ Cartella: `audio/narrazione/storie/astro-ben/<lingua>/` · nel codice `astro_ben
   - **Testo:** Ti senti piccolo? Aspetta. Questa è la scala cosmica, alla misura vera: ogni pochi secondi tutto diventa dieci volte più lontano. Le stelle vicine, la Via Lattea, le galassie… fino al bordo dell'universo. Che vertigine!
 - `presentazione-10.mp3` — pronta · 21,7 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 10 (al massimo 26 s)
   - **Testo:** E se vuoi capire come funziona il cielo c'è la didattica: banchi di prova con le posizioni vere dei pianeti. Guarda Marte: sembra tornare indietro, ma è la Terra che lo sorpassa! E qui le leggi di Keplero: le orbite sono ellissi, e il Sole sta in un fuoco. Si impara giocando!
-- `presentazione-11.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 11 (al massimo 16 s)
+- `presentazione-11.mp3` — pronta · 12,7 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 11 (al massimo 16 s)
   - **Testo:** Ma da dove vengono le aurore? Dal Sole! Ogni tanto lancia nello spazio una nube di particelle, il vento solare, che in un paio di giorni arriva fino alla Terra.
-- `presentazione-12.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 20 s)
+- `presentazione-12.mp3` — pronta · 13,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 12 (al massimo 20 s)
   - **Testo:** La Terra ha uno scudo magnetico, la magnetosfera. La nube lo schiaccia, le particelle scivolano lungo il campo fino ai poli e accendono l'aria: ecco l'anello dell'aurora!
 - `presentazione-13.mp3` — pronta · 13,6 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 13 (al massimo 16 s)
   - **Testo:** Ti piacciono le luci del nord? L'app legge l'attività del Sole, l'indice Kp, e ti dice se stanotte c'è speranza di aurora. Questa è simulata, ma quella vera vale il viaggio!
 - `presentazione-14.mp3` — pronta · 17,3 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 14 (al massimo 24 s)
   - **Testo:** Ogni sera apri Stasera: l'ora del buio, la Luna, le previsioni per astronomi e Missione Cielo, che ti prepara la serata come una caccia al tesoro. Poi c'è il telescopio: ti guida a puntarlo passo passo, con la bussola del telefono.
-- `presentazione-15.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 15 (al massimo 14 s)
+- `presentazione-15.mp3` — pronta · 10 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 15 (al massimo 14 s)
   - **Testo:** E poi il diario: segni ogni osservazione e conquisti i traguardi, da Prima luce a Nottambulo. E l'app funziona anche senza rete!
-- `presentazione-16.mp3` — manca · Benvenuto! · Il tour dell’app con Astro Ben, scena 16 (al massimo 12,6 s)
+- `presentazione-16.mp3` — pronta · 5,3 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 16 (al massimo 12,6 s)
   - **Testo:** Adesso tocca a te: esci e alza gli occhi. Cieli sereni da Ben!
 - `storia_einstein-1.mp3` — manca · Einstein e il tempo elastico, scena 1 (al massimo 11,9 s)
   - **Emozione:** entusiasta — senza fiato, corre con le parole; la domanda finale sale, sospettosa
@@ -215,7 +215,7 @@ Cartella: `audio/narrazione/storie/saturno/<lingua>/` · nel codice `Saturn` · 
 
 ### Italiano — `storie/saturno/it/`
 
-- `presentazione-2.mp3` — **da rifare** (il testo è cambiato) · 16,4 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 2 (al massimo 18 s)
+- `presentazione-2.mp3` — pronta · 12,7 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 2 (al massimo 18 s)
   - **Testo:** Ehi, quassù! Sono Saturno, anelli compresi. Col planetario zoomi fin dentro un telescopio, e mi vedi proprio come sono stasera. Dai, sorridi: foto!
 - `storia_giganti-1.mp3` — manca · Giove e Saturno, scena 1 (al massimo 11 s)
   - **Emozione:** fiera — si presenta con eleganza, un po' vanitoso degli anelli
@@ -411,7 +411,7 @@ Cartella: `audio/narrazione/storie/giove/<lingua>/` · nel codice `Jupiter` · i
 
 ### Italiano — `storie/giove/it/`
 
-- `presentazione-8.mp3` — **da rifare** (il testo è cambiato) · 11,5 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 8 (al massimo 16 s)
+- `presentazione-8.mp3` — pronta · 15,1 s · Benvenuto! · Il tour dell’app con Astro Ben, scena 8 (al massimo 16 s)
   - **Testo:** Ciao, sono Giove, il più grosso del quartiere! Nella vista 3D i pianeti girano attorno al Sole al loro posto vero, ognuno sulla sua orbita. Tre anni in un attimo: guarda come corro!
 - `storia_giganti-2.mp3` — manca · Giove e Saturno, scena 2 (al massimo 11 s)
   - **Emozione:** orgogliosa — voce grossa che rimbomba, si vanta ridendo; «mille Terre» enorme
