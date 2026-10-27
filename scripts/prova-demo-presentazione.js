@@ -282,6 +282,32 @@ const prova = (nome, fn) => prove.push([nome, fn]);
       await pagina.waitForTimeout(500);
     });
 
+    // v528: a Cortina lo sguardo fa il giro dell'orizzonte, poi va agli aerei
+    // e ne apre il fumetto (che aereo è, quota, velocità), visibile anche con
+    // la vista pulita; finita la scena il fumetto si chiude
+    prova('Cortina: il giro dell\'orizzonte, poi il fumetto di un aereo col suo modello', async () => {
+      const az = [];
+      for (const f of [0.02, 0.12, 0.22, 0.32]) {
+        await scenaDi(2, f);
+        az.push(await pagina.evaluate(() => sky.manuale.az));
+      }
+      const giro = az.slice(1).reduce((t, x, i) => t + ((x - az[i] + 360) % 360), 0);
+      assert.ok(giro > 200, 'lo sguardo gira tutt\'attorno: ' + az.map(x => x.toFixed(0)).join(' → '));
+      await scenaDi(2, 0.6);
+      await pagina.evaluate(() => AstroDemo.riprendi());
+      await pagina.waitForFunction(() => document.getElementById('skymap-fumetto').classList.contains('visibile'), null, { timeout: 15000 });
+      const r = await pagina.evaluate(() => {
+        const f = document.getElementById('skymap-fumetto');
+        return { cat: sky.selezione && sky.selezione.categoria, testo: f.textContent, visibile: getComputedStyle(f).visibility };
+      });
+      await pagina.evaluate(() => AstroDemo.pausa());
+      assert.equal(r.cat, 'aereo');
+      assert.match(r.testo, /A32[01]|E195|B738/, 'il fumetto dice che aereo è: ' + r.testo.slice(0, 80));
+      assert.equal(r.visibile, 'visible', 'la vista pulita non lo nasconde');
+      await scenaDi(3, 0.1);
+      assert.equal(await pagina.evaluate(() => document.getElementById('skymap-fumetto').classList.contains('visibile')), false, 'finita la scena il fumetto si chiude');
+    });
+
     prova('il finale torna al cielo di casa; lo Stop rimette pagina, mese, filtro e luogo', async () => {
       await scenaDi(15, 0.2);
       assert.equal(await pagina.evaluate(() => skyLuogoDelCielo().nome), 'Milano', 'set_location { home } riporta a casa');

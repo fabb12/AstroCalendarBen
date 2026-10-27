@@ -127,6 +127,8 @@ window.ASTRO_DIZIONARI['en'] = {
     "demo.err.kp": "Kp must be between 0 and 9",
     "demo.err.auroreAssenti": "Aurora module not available",
     "demo.err.direzione": "Invalid direction: az between 0 and 360, alt between -90 and 90",
+    "demo.err.giro": "point_view: “turn” is the turn in degrees, between -720 and 720, and does not go with toward or probe",
+    "demo.err.fumettoAerei": "plane_card: “hold” is the seconds for each plane, between 1 and 30",
     "demo.err.fov": "Field of view expected between 0.25 and 160 degrees",
     "demo.err.elenco": "Invalid object list",
     "demo.err.corpiFrame": "2 to 8 supported bodies are required",

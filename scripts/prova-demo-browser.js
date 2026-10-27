@@ -63,7 +63,7 @@ const server = http.createServer((req, res) => {
         // Le Storie cosmiche sono demo predefinite anche loro (storie-cosmiche.js)
         'storia_luna', 'storia_giganti', 'storia_tempo', 'storia_stelle', 'storia_puntino', 'storia_einstein',
         'storia_interstellar', 'storia_interstellar2', 'storia_interstellar_scienza', 'storia_interstellar2_scienza', 'storia_apollo13_scienza']);
-    assert.deepEqual(builtins.map(d => d.durata), [176000, 180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000, 171000,
+    assert.deepEqual(builtins.map(d => d.durata), [311000, 180000, 178000, 173000, 173000, 104000, 292000, 335000, 386000, 85000, 47000, 171000,
       278000, 248500, 475000, 649000, 641000, 289000, 295000, 288000]);
     // Aperta la pagina, la demo proposta è la presentazione
     assert.equal(await pagina.locator('#demo-elenco').inputValue(), 'presentazione');

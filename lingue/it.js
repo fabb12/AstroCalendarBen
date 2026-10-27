@@ -136,6 +136,8 @@ window.ASTRO_DIZIONARI['it'] = {
     "demo.err.kp": "Kp deve essere fra 0 e 9",
     "demo.err.auroreAssenti": "Modulo aurore non disponibile",
     "demo.err.direzione": "Direzione non valida: az fra 0 e 360, alt fra -90 e 90",
+    "demo.err.giro": "point_view: «turn» sono i gradi del giro, fra -720 e 720, e non va con toward né con probe",
+    "demo.err.fumettoAerei": "plane_card: «hold» sono i secondi per ogni aereo, fra 1 e 30",
     "demo.err.fov": "Campo visivo atteso fra 0.25 e 160 gradi",
     "demo.err.elenco": "Elenco oggetti non valido",
     "demo.err.corpiFrame": "Servono da 2 a 8 corpi supportati",
