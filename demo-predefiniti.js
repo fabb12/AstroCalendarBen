@@ -78,9 +78,16 @@
     // poi, quando arriva agli aerei, gira piano verso di loro (toward:
     // planes); Ben sta in alto, lontano dall'orizzonte coi nomi
     // v528: più bassi e più stretti (era alt 16, campo 110°): le Tofane, a
-    // sei km, salgono a 20° e riempiono il quadro invece di essere una riga
-    action: point_view { az: 268, alt: 9, shot_to: 0.5 };
-    action: point_view { az: 268, alt: 9, toward: planes, shot_from: 0.5 };
+    // sei km, salgono a 20° e riempiono il quadro invece di essere una riga.
+    // Mentre Ben parla delle vette lo sguardo fa il giro intero
+    // dell'orizzonte (il paesaggio è vero tutt'attorno, e si vede senza
+    // dirlo); poi va verso gli aerei e ne apre i fumetti, uno alla volta,
+    // con il tipo di aereo, la rotta, la quota e la velocità (plane_card)
+    // (il giro sta tutto dentro alla prima frase, i fumetti partono quando
+    // Ben arriva agli aerei; la scena li aspetta anche a voce finita)
+    action: point_view { az: 268, alt: 9, turn: 360, shot_to: 0.38 };
+    action: point_view { az: 268, alt: 9, toward: planes, shot_from: 0.38 };
+    action: plane_card { hold: 4, count: 2, shot_from: 0.46 };
     action: set_fov { degrees: 88 };
     action: show_layers { on: 'terreno,rilievo,cime,citta,acque,aerei,satelliti', labels: show };
     action: story_camera { mode: wide };

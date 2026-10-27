@@ -401,9 +401,12 @@
     // Se la sonda è bassa, lo sguardo resta almeno a 15° perché si veda
     // anche l'orizzonte.
     verifica(p) {
-      campi(p, ['az', 'alt', 'probe', 'toward']);
+      campi(p, ['az', 'alt', 'probe', 'toward', 'turn']);
       // v526: `toward: planes`, si parte da az/alt e si va dove sono gli aerei
       richiedi(p.toward === undefined || (p.toward === 'planes' && p.probe === undefined), err('direzione'));
+      // v528: `turn`, i gradi di cui lo sguardo gira in azimut nella ripresa
+      // (360: il giro intero dell'orizzonte), da solo
+      richiedi(p.turn === undefined || (numero(p.turn, -720, 720) && p.toward === undefined && p.probe === undefined), err('giro'));
       if (p.probe !== undefined) {
         richiedi(SONDE_VOYAGER.includes(p.probe), err('sonde'));
         richiedi(p.az === undefined && (p.alt === undefined || numero(p.alt, -45, 45)), err('direzione'));
@@ -451,6 +454,18 @@
         }
         return migliore.az;
       };
+      // v528: il giro dell'orizzonte. A Cortina il paesaggio è vero tutt'attorno
+      // (il profilo ha centoventi direzioni, le vette i loro nomi da ogni
+      // parte), e il modo di farlo vedere senza dirlo è girarci dentro:
+      // lento in partenza e in arrivo, così i nomi si leggono anche in moto.
+      if (p.turn !== undefined) {
+        const az0 = az;
+        return { aggiorna(u) {
+          if (c && c.cameraManuale) return;
+          const k = c && c.ridotto ? 0 : rampa(c, u);
+          sky.manuale.az = ((az0 + p.turn * k) % 360 + 360) % 360; sky.manuale.alt = alt;
+        } };
+      }
       // Come il campo: finché la demo tiene la camera, la direzione resta
       // quella del racconto anche se un ridimensionamento la sposta.
       return { aggiorna() {
@@ -2075,6 +2090,94 @@
     }
   };
 
+  /* v528: il fumetto degli aerei. «Quegli aerei passano davvero» si vede
+   * meglio aprendone uno: il fumetto del planetario (quello che si apre
+   * toccando il triangolo) dice che aereo è, da dove viene e dove va, a che
+   * quota e velocità. `plane_card { hold }` lo apre a turno sugli aerei
+   * inquadrati, dal più vicino al centro, `hold` secondi ciascuno (di
+   * serie 4), seguendo l'aereo che si muove. Senza aerei sullo schermo non
+   * apre niente; alla fine chiude il fumetto e rimette la selezione di prima. */
+  registro.plane_card = {
+    verifica(p) {
+      campi(p, ['hold', 'count']);
+      richiedi(p.hold === undefined || numero(p.hold, 1, 30), err('fumettoAerei'));
+      richiedi(p.count === undefined || (Number.isInteger(p.count) && p.count >= 1 && p.count <= 10), err('fumettoAerei'));
+    },
+    // In una CosmoStoria la scena chiude appena la voce tace: i fumetti sono
+    // una «battuta» che la scena aspetta (`attende`, come `effect { hold }`),
+    // `count` aerei per `hold` secondi ciascuno. Senza aerei nel quadro si
+    // aspettano tre secondi e poi si lascia andare.
+    attende() { return true; },
+    crea(p, c) {
+      const selPrima = sky.selezione;
+      const tieni = (p.hold || 4) * 1000;
+      const quanti = p.count || 2;
+      const visti = new Set();
+      let attuale = null, da = 0, guardato = 0, chiuso = false;
+      // il tempo che conta è quello della demo in marcia: in pausa si ferma
+      let trascorso = 0, ultimo = Date.now(), mostrato = 0;
+      const scarto = (x, y) => Math.abs(((x - y + 540) % 360) - 180);
+      // gli aerei nel quadro, dal più vicino al centro dello sguardo
+      const inQuadro = () => {
+        const A = window.AereiADS_B;
+        if (!A || !A.stato || !A.stato.visibile || typeof A.aereoCieloOra !== 'function') return [];
+        const mezzo = Math.max(10, (sky.fov || 90) * 0.32);
+        const fuori = [];
+        for (const a of A.stato.aerei || []) {
+          let q = null;
+          try { q = A.aereoCieloOra(a); } catch (_) { q = null; }
+          if (!q || !Number.isFinite(q.az) || !(q.alt > 1)) continue;
+          const d = Math.hypot(scarto(q.az, sky.manuale.az) * Math.cos(q.alt * Math.PI / 180), q.alt - sky.manuale.alt);
+          if (d <= mezzo) fuori.push({ a, d });
+        }
+        return fuori.sort((x, y) => x.d - y.d).map(x => x.a);
+      };
+      const apri = a => {
+        attuale = a; da = trascorso; visti.add(String(a.id));
+        sky.selezione = { categoria: 'aereo', dati: a };
+        if (typeof skyApriFumetto === 'function') skyApriFumetto();
+      };
+      const passo = () => {
+        const ora = Date.now();
+        if (motore.stato === 'attivo') trascorso += ora - ultimo;
+        ultimo = ora;
+        if (attuale && trascorso - da < tieni) return;
+        if (attuale && trascorso - da >= tieni && !visti.has('fatto:' + attuale.id)) { visti.add('fatto:' + attuale.id); mostrato++; }
+        // al più due volte al secondo: il quadro cambia piano
+        if (ora - guardato < 500) return;
+        guardato = ora;
+        const elenco = inQuadro();
+        if (!elenco.length) return;
+        const nuovo = elenco.find(a => !visti.has(String(a.id))) || elenco[0];
+        if (!attuale || String(nuovo.id) !== String(attuale.id)) apri(nuovo);
+        else da = trascorso;
+      };
+      document.body.classList.add('demo-fumetto-aereo');
+      const fineNarrazione = new Promise(ok => {
+        const guarda = () => {
+          if (chiuso || mostrato >= quanti || (!attuale && trascorso > 3000)) { ok('fumetti'); return; }
+          setTimeout(guarda, 100);
+        };
+        setTimeout(guarda, 100);
+      });
+      // un orologio suo: finita la voce la scena aspetta i fumetti, e
+      // l'aggiornamento delle riprese può fermarsi prima di loro
+      const timer = setInterval(() => { if (!chiuso) passo(); }, 100);
+      return {
+        fineNarrazione,
+        chiudi() {
+          chiuso = true;
+          clearInterval(timer);
+          document.body.classList.remove('demo-fumetto-aereo');
+          if (attuale) {
+            if (typeof skyChiudiFumetto === 'function') skyChiudiFumetto();
+            sky.selezione = selPrima;
+          }
+        }
+      };
+    }
+  };
+
   /* v526: le orbite nella 3D. In una CosmoStoria le righe della lezione
    * tacciono, e le orbite si vedono solo con l'opzione «orbite» della
    * pagina Demo (spenta di serie, v435). La presentazione però fa vedere
@@ -2201,6 +2304,7 @@
         if (azione.comando === 'earth_axis') richiedi(scena.vista === 'solar_system_3d', err('serve3dAsse'));
         if (azione.comando === 'sun_paths') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
         if (azione.comando === 'show_layers') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
+        if (azione.comando === 'plane_card') richiedi(scena.vista === 'planetarium_view', err('serveCielo'));
         if (azione.comando === 'show_orbits') richiedi(scena.vista === 'solar_system_3d', err('serve3d'));
         if (azione.comando === 'page_show') richiedi(scena.vista === 'app_view', err('soloPagina'));
         if (azione.comando === 'didactic_bench') richiedi(scena.vista === 'didactic_view', err('soloBanco'));
