@@ -64,6 +64,8 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `voci-filmato.js` | Le voci del filmato: prima di registrare per YouTube, le battute che andrebbero alla voce di sistema (che non si registra) diventano audio con ElevenLabs o Piper; e il tasto «Voci ElevenLabs» delle CosmoStorie, che sceglie da solo la voce di ogni personaggio e genera tutte le battute (`vfilm`). |
 | `youtube.js` | Collegare il canale YouTube e pubblicarci i filmati (`yt`). |
 | `config.js` | URL dei ponti ADS-B/Edge-TTS, `YOUTUBE_CLIENT_ID` e `ASTROCAL_BUILD`. |
+| `custode-chiavi.js` | Il custode delle chiavi (ElevenLabs, GitHub, YouTube, voci), caricato **prima** di `app.js`: nel programma per computer le rimette dalla cassaforte quando il browser le perde; nel browser chiede la memoria persistente (`astroCustode`). |
+| `desktop/` | L'app per computer (Electron): `main.js`, `server.js` (localhost:47231), `preload.js` (`window.astroDesktop`), `prepara.js`, `costruisci.js`. Non va nel sito; l'installatore lo fa `.github/workflows/desktop.yml` nelle Release `desktop-vN`. Vedi `DESKTOP.md`. |
 | `worker-adsb.js` | Proxy ADS-B (Deno Deploy), non fa parte della PWA. Vedi `ADSB-PROXY.md`. |
 | `dati-*.js` | Cataloghi caricati su richiesta (non in `index.html` né in `ASSETS`). |
 | `guida.html`, `guida-en.html` | La guida all'uso (stessi `id` nelle due lingue). |
@@ -71,9 +73,10 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `style.css`, `tailwind.css` | Pelle; `tailwind.css` è **generato** (`scripts/costruisci-tailwind.js`) e va caricato prima. |
 | `sw.js` | Service worker, `CACHE_NAME`, `ASSETS`. |
 | `.github/workflows/pubblica.yml` | Deploy su GitHub Pages (copia, controlla, pubblica). |
+| `.github/workflows/desktop.yml` | Installatore Windows dell'app per computer, pubblicato nelle Release. |
 | `LICENSE`, `LICENZA.md`, `README.md` | GPL v3 (testo ufficiale); le condizioni in italiano, nome/logo/musica esclusi, opere di terzi; presentazione e canale YouTube @astroben2017. |
 
-**Ordine di caricamento** (quello di `index.html`, e conta): dizionari →
+**Ordine di caricamento** (quello di `index.html`, e conta): `custode-chiavi.js` → dizionari →
 `i18n.js` → manifest e `narrazione.js` → `app.js` → `telescopio.js` →
 `catalogo.js` → `costellazioni.js` → `curiosita.js` → `via-lattea.js` →
 `scala-cosmica.js` → `corpi-minori.js` → `pianifica.js` → `terreno.js` →
@@ -202,6 +205,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | voci di una CosmoStoria con un tocco (casting automatico ElevenLabs) | `prova-voci-cosmostorie.js` |
 | rinominare, modificare, eliminare le CosmoStorie e le storie in cantiere | `prova-cosmostorie-gestione.js` |
 | musica dello Studio nelle CosmoStorie, musiche generate, categorie di personaggi e facce | `prova-musica-cosmostorie.js` |
+| app per computer (`desktop/`), custode delle chiavi, riquadro «App per computer» | `prova-desktop.js` (`--solo-node` senza browser; `--electron` col programma vero, sotto `xvfb-run -a` su Linux; vuole `npm install` in `desktop/`) |
 
 Perché ognuna esiste e le sue trappole (rotte di Playwright, `<script>` unici
 di `verifica.html` che si portano via le sezioni dopo un errore, copie di

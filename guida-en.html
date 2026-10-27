@@ -1161,6 +1161,31 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <div><dt>Language</dt><dd>Italian or English. Instant, reloads nothing.</dd></div>
     </dl>
 
+    <h3 id="computer" style="margin-top:26px">The desktop app (Windows)</h3>
+    <p>On a computer you can use the app in the browser, as on a phone, or <strong>install it as a
+    program</strong>: it is the same app, with the same updates, but it works better with the computer.
+    In a browser on Windows, <b>Settings → Data → Desktop app → Download for Windows</b> downloads
+    <code>AstroCalendario-Setup.exe</code>; open it and follow the setup. The program is not signed: if
+    Windows says “Windows protected your PC”, press “More info” and then “Run anyway”.</p>
+    <dl class="kv">
+      <div><dt>Files</dt><dd>Backups, videos, <code>.ics</code> calendars, postcards and exported stories go to
+      the <b>Documents\AstroCalendario</b> folder, with the Windows “Save as” window to choose where. In the
+      Settings you can change the folder, open it, and turn off the question: then files land there by
+      themselves and a notice tells you where.</dd></div>
+      <div><dt>Keys kept safe</dt><dd>In the browser the ElevenLabs key, the Studio's GitHub token and the
+      YouTube link live in the site data, and are gone when the browser clears it (even “clearing the cache” to
+      see an update takes them away). The program keeps a copy in its <b>vault</b>, encrypted by Windows, and
+      puts them back by itself: no more pasting them again. In the browser the app at least asks not to have the
+      site data evicted.</dd></div>
+      <div><dt>Permissions</dt><dd>Location, camera, microphone and notifications are granted to the app once
+      and for all; to sites opened from links, which open in your usual browser, none.</dd></div>
+      <div><dt>Updates</dt><dd>At startup, once a day, the program checks for a new version and offers to
+      download it; you can also check by hand from <b>File → Check for updates</b> or from the Settings. The new
+      installer updates the program and keeps your log, events, settings and keys.</dd></div>
+      <div><dt>YouTube</dt><dd>The program opens the app from <code>http://localhost:47231</code>: if you use
+      your own OAuth client ID, add that address to the authorised JavaScript origins.</dd></div>
+    </dl>
+
     <h3 id="youtube" style="margin-top:26px">Publishing on YouTube</h3>
     <p>The app's clips — a minute of planetarium, the 3D Solar System, a demo or a recorded CosmoStory — can go
     <strong>straight to your YouTube channel</strong>, without downloading them and uploading them again from a

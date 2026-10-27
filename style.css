@@ -13396,3 +13396,8 @@ textarea.yt-campo { resize: vertical; min-height: 5.5rem; }
 .aggiornamento-azioni [data-aggiorna] { background:#4338ca; border-color:#818cf8; }
 .aggiornamento-azioni button:focus-visible { outline:2px solid #fff; outline-offset:3px; }
 .aggiornamento-azioni button:disabled { opacity:.6; cursor:wait; }
+
+/* v529: la cartella dei file salvati dell'app per computer è un percorso
+   lungo senza spazi (C:\Users\…\Documents\AstroCalendario): va a capo
+   dove serve invece di allargare le Impostazioni. */
+#imp-desktop-cartella { overflow-wrap: anywhere; min-width: 0; }

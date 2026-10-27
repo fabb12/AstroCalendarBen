@@ -1,0 +1,114 @@
+# L'app per computer: costruisce l'installatore per Windows e lo pubblica.
+#
+# Perché esiste. L'app nel browser va bene, ma sul computer di casa il
+# browser le sta stretto: i file salvati finiscono in «Download» a caso, i
+# permessi si richiedono, e soprattutto le chiavi di ElevenLabs, GitHub e
+# YouTube se ne vanno ogni volta che i dati del sito vengono ripuliti. La
+# cartella `desktop/` mette la stessa app in un programma Electron (vedi
+# DESKTOP.md); questo workflow ne fa un installatore `.exe`.
+#
+# Quando gira: a ogni push su `main` che tocca l'app (la versione cambia a
+# ogni modifica, §«Versione obbligatoria» di CLAUDE.md), e a mano col tasto
+# «Run workflow». Il risultato è una Release `desktop-vN` con dentro
+# `AstroCalendario-Setup.exe`; l'ultima è «latest», ed è quella che scarica
+# il tasto delle Impostazioni (`releases/latest/download/…`) e che il
+# programma controlla all'avvio per proporre l'aggiornamento. Si tengono le
+# ultime cinque: ogni installatore pesa più di cento megabyte.
+#
+# L'installatore non è firmato: al primo avvio Windows SmartScreen dice
+# «Windows ha protetto il PC» → «Ulteriori informazioni» → «Esegui comunque».
+
+name: App per computer
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'scripts/**'
+      - '.github/workflows/pubblica.yml'
+      - '.github/workflows/verifica-*.yml'
+      - '.github/workflows/voci-storie.yml'
+      - 'worker-adsb.js'
+      - 'wrangler.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Due merge ravvicinati: vale l'ultimo. Una build a metà non lascia niente
+# di rotto (la Release si scrive solo alla fine).
+concurrency:
+  group: desktop
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      # Git per Windows convertirebbe gli «a capo» in CRLF: i file dell'app
+      # nell'installatore restano byte per byte quelli del sito.
+      - name: Niente conversione degli «a capo»
+        run: git config --global core.autocrlf false
+
+      - name: Prendi il codice
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Le prove del programma (server locale, custode delle chiavi)
+        run: node scripts/prova-desktop.js --solo-node
+
+      - name: Le voci dei personaggi delle storie
+        # Come in pubblica.yml: il manifest elenca i file che ci sono davvero.
+        run: |
+          node scripts/voci-storie.js || echo "::warning::scripts/voci-storie.js ha trovato un errore: qualche voce delle storie non è nel manifest"
+
+      - name: Installa Electron
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Costruisci l'installatore
+        working-directory: desktop
+        env:
+          ADSB_PROXY_URL: ${{ vars.ADSB_PROXY_URL }}
+          EDGE_TTS_API_URL: ${{ vars.EDGE_TTS_API_URL }}
+          YOUTUBE_CLIENT_ID: ${{ vars.YOUTUBE_CLIENT_ID }}
+          # Nessun certificato: niente firma, e niente ricerca di uno.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist -- --win
+
+      - name: Pubblica la Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          N="$(node desktop/prepara.js --versione | cut -d. -f2)"
+          TAG="desktop-v$N"
+          FILE="desktop/dist/AstroCalendario-Setup.exe"
+          [ -s "$FILE" ] || { echo "::error::manca $FILE"; ls -la desktop/dist || true; exit 1; }
+          NOTE="AstroCalendario di Ben v$N per Windows. Scarica AstroCalendario-Setup.exe e aprilo: installa il programma, o aggiorna quello che c'è lasciando al loro posto diario, eventi, impostazioni e chiavi. Il programma non è firmato: se Windows SmartScreen lo ferma, «Ulteriori informazioni» → «Esegui comunque». Commit ${GITHUB_SHA::7}."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber
+            gh release edit "$TAG" --notes "$NOTE" --latest
+          else
+            gh release create "$TAG" "$FILE" --title "App per computer v$N" --notes "$NOTE" --target "$GITHUB_SHA" --latest
+          fi
+          echo "Pubblicata $TAG"
+
+      - name: Tieni solo le ultime cinque
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 100 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | startswith("desktop-v"))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' |
+          while read -r vecchia; do
+            [ -n "$vecchia" ] && gh release delete "$vecchia" --yes --cleanup-tag || true
+          done

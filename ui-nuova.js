@@ -214,6 +214,113 @@ function aggiornaInformazioniBuild() {
   }
 }
 
+// v529: l'app per computer (DESKTOP.md). Tre casi:
+//   - dentro il programma (`window.astroDesktop`, da desktop/preload.js):
+//     versione, cartella dei file salvati, la domanda «dove salvo?», gli
+//     aggiornamenti e quante chiavi custodisce la cassaforte;
+//   - in un browser su Windows: il tasto che scarica l'installatore;
+//   - altrove (telefoni, tablet, Mac, Linux): niente, perché l'installatore
+//     costruito dal workflow è solo per Windows.
+// I tasti si legano una volta (`dataset.legato`); il testo si riscrive a
+// ogni apertura delle Impostazioni e a ogni cambio lingua.
+const DESKTOP_REPO = 'fabb12/AstroCalendarBen';
+
+function desktopSuWindows() {
+  const n = navigator;
+  const piattaforma = (n.userAgentData && n.userAgentData.platform) || n.platform || '';
+  const mobile = (n.userAgentData && n.userAgentData.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(n.userAgent || '');
+  return !mobile && /Win/i.test(piattaforma + ' ' + (n.userAgent || ''));
+}
+
+async function costruisciSezioneDesktop() {
+  const sezione = document.getElementById('imp-desktop');
+  if (!sezione) return;
+  const ponte = window.astroDesktop && window.astroDesktop.desktop ? window.astroDesktop : null;
+  const web = document.getElementById('imp-desktop-web');
+  const app = document.getElementById('imp-desktop-app');
+  const repo = (typeof window.ASTROCAL_DESKTOP_REPO === 'string' && /^[\w.-]+\/[\w.-]+$/.test(window.ASTROCAL_DESKTOP_REPO))
+    ? window.ASTROCAL_DESKTOP_REPO : DESKTOP_REPO;
+
+  if (!ponte) {
+    const mostra = desktopSuWindows();
+    sezione.classList.toggle('hidden', !mostra);
+    if (web) web.classList.toggle('hidden', !mostra);
+    if (app) app.classList.add('hidden');
+    const scarica = document.getElementById('imp-desktop-scarica');
+    const versioni = document.getElementById('imp-desktop-versioni');
+    if (scarica) scarica.href = `https://github.com/${repo}/releases/latest/download/AstroCalendario-Setup.exe`;
+    if (versioni) versioni.href = `https://github.com/${repo}/releases`;
+    return;
+  }
+
+  sezione.classList.remove('hidden');
+  if (web) web.classList.add('hidden');
+  if (app) app.classList.remove('hidden');
+  const esito = document.getElementById('imp-desktop-esito');
+  const dillo = testo => { if (esito) esito.textContent = testo || ''; };
+
+  const scrivi = info => {
+    if (!info) return;
+    const stato = document.getElementById('imp-desktop-stato');
+    if (stato) stato.textContent = astroI18n.t('desktop.stato', { versione: info.versione, electron: info.electron });
+    const cartella = document.getElementById('imp-desktop-cartella');
+    if (cartella) cartella.textContent = info.cartella || '—';
+    const chiedi = document.getElementById('imp-desktop-chiedi');
+    if (chiedi) chiedi.checked = !!info.chiedi;
+    const chiavi = document.getElementById('imp-desktop-chiavi');
+    if (chiavi) {
+      const custode = window.astroCustode;
+      const n = custode ? custode.quante() : 0;
+      const righe = [n
+        ? astroI18n.t('desktop.chiavi', { n }) + ' ' + astroI18n.t(info.cassaforteCifrata ? 'desktop.cifrate' : 'desktop.inChiaro')
+        : astroI18n.t('desktop.nessunaChiave')];
+      const rimesse = custode ? custode.rimesse.length : 0;
+      if (rimesse) righe.push(astroI18n.t('desktop.rimesse', { n: rimesse }));
+      chiavi.textContent = righe.join(' ');
+    }
+  };
+
+  const lega = (id, evento, fn) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.legato) return;
+    el.dataset.legato = '1';
+    el.addEventListener(evento, fn);
+  };
+  lega('imp-desktop-apri', 'click', async () => {
+    try { if (!(await ponte.apriCartella())) dillo(astroI18n.t('desktop.cartellaNonAperta')); }
+    catch (_) { dillo(astroI18n.t('desktop.cartellaNonAperta')); }
+  });
+  lega('imp-desktop-cambia', 'click', async () => {
+    try { scrivi(await ponte.scegliCartella()); } catch (e) { console.warn('cartella:', e); }
+  });
+  lega('imp-desktop-chiedi', 'change', async e => {
+    try { scrivi(await ponte.impostaChiedi(e.target.checked)); } catch (err) { console.warn('chiedi:', err); }
+  });
+  lega('imp-desktop-aggiorna', 'click', async e => {
+    const tasto = e.currentTarget;
+    tasto.disabled = true;
+    dillo(astroI18n.t('desktop.cerco'));
+    try {
+      const r = await ponte.cercaAggiornamenti();
+      if (!r || r.stato === 'errore') dillo(astroI18n.t('desktop.errore', { errore: (r && r.errore) || '?' }));
+      else if (r.stato === 'ultima') dillo(astroI18n.t('desktop.ultima', { versione: r.versione }));
+      else {
+        dillo(astroI18n.t('desktop.nuova', { versione: r.versione }));
+        const scarica = document.createElement('button');
+        scarica.type = 'button';
+        scarica.className = 'ml-2 underline text-blue-400 hover:text-blue-300';
+        scarica.textContent = astroI18n.t('desktop.scaricaNuova', { versione: r.versione });
+        scarica.addEventListener('click', () => ponte.apriAggiornamento(r.url));
+        if (esito) esito.append(scarica);
+      }
+    } catch (err) {
+      dillo(astroI18n.t('desktop.errore', { errore: err && err.message || String(err) }));
+    } finally { tasto.disabled = false; }
+  });
+
+  try { scrivi(await ponte.info()); } catch (e) { console.warn('app per computer:', e); }
+}
+
 function costruisciSceltaCielo() {
   const box = document.getElementById('imp-cielo-scelta');
   const nota = document.getElementById('imp-cielo-nota');
@@ -1046,6 +1153,7 @@ function inizializzaNuoveFunzioni() {
   if (apri) apri.addEventListener('click', () => {
     aggiornaInformazioniBuild();
     aggiornaLinkGuida();
+    costruisciSezioneDesktop();
     costruisciSceltaCielo();
     costruisciRaggiOrizzonte();
     costruisciTolleranzaPlanetario();
@@ -1122,6 +1230,7 @@ function ridisegnaVistaSeVecchia(nome) {
 function ridisegnaTuttoPerLingua() {
   aggiornaInformazioniBuild();
   aggiornaLinkGuida();
+  costruisciSezioneDesktop();
   const passate = [
     // Il planetario: la scheda dell'oggetto, il fumetto, l'elenco, gli eventi
     ['scheda del planetario', () => {

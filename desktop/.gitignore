@@ -1,0 +1,6 @@
+# Generati da `npm run prepara` e `npm run dist`: non vanno nel repository.
+app-web/
+dist/
+risorse/
+node_modules/
+package-lock.json
