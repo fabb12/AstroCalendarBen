@@ -24,6 +24,7 @@ const ASSETS = [
   './demo-libreria.js',
   './demo-impostazioni.js',
   './i18n.js',
+  './custode-chiavi.js',
   './narrazione.js',
   './audio/narrazione/manifest.js',
   './lingue/it.js',

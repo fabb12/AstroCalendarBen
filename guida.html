@@ -1160,6 +1160,32 @@ pre.codice code { background: none; padding: 0; font-size: .82rem; line-height: 
       <div><dt>Lingua</dt><dd>Italiano o inglese. Immediato, non ricarica niente.</dd></div>
     </dl>
 
+    <h3 id="computer" style="margin-top:26px">L'app per computer (Windows)</h3>
+    <p>Sul computer l'app si può usare nel browser, come sul telefono, oppure <strong>installare come un
+    programma</strong>: è la stessa app, con gli stessi aggiornamenti, ma lavora meglio con il computer.
+    In un browser su Windows, <b>Impostazioni → Dati → App per computer → Scarica per Windows</b> scarica
+    <code>AstroCalendario-Setup.exe</code>; aprilo e segui l'installazione. Il programma non è firmato: se
+    Windows dice «Windows ha protetto il PC», premi «Ulteriori informazioni» e poi «Esegui comunque».</p>
+    <dl class="kv">
+      <div><dt>I file</dt><dd>Backup, filmati, calendari <code>.ics</code>, cartoline e storie esportate vanno
+      nella cartella <b>Documenti\AstroCalendario</b>, con la finestra di Windows «Salva con nome» per scegliere
+      dove. Nelle Impostazioni si cambia la cartella, si apre, e si può togliere la domanda: allora i file ci
+      finiscono da soli e un avviso dice dove.</dd></div>
+      <div><dt>Le chiavi al sicuro</dt><dd>Nel browser la chiave di ElevenLabs, il token di GitHub dello Studio e
+      il collegamento di YouTube stanno nei dati del sito, e se ne vanno quando il browser li ripulisce (anche
+      «svuotare la cache» per vedere un aggiornamento li porta via). Il programma ne tiene una copia nella sua
+      <b>cassaforte</b>, cifrata da Windows, e li rimette da solo: non vanno più incollati di nuovo. Nel browser
+      l'app chiede almeno di non far sfrattare i dati del sito.</dd></div>
+      <div><dt>I permessi</dt><dd>Posizione, fotocamera, microfono e notifiche si concedono all'app una volta per
+      tutte; ai siti aperti dai collegamenti, che si aprono nel browser di sempre, nessuno.</dd></div>
+      <div><dt>Gli aggiornamenti</dt><dd>All'avvio, una volta al giorno, il programma guarda se c'è una versione
+      nuova e propone di scaricarla; si controlla anche a mano da <b>File → Cerca aggiornamenti</b> o dalle
+      Impostazioni. Il nuovo installatore aggiorna il programma lasciando al loro posto diario, eventi,
+      impostazioni e chiavi.</dd></div>
+      <div><dt>YouTube</dt><dd>Il programma apre l'app da <code>http://localhost:47231</code>: chi usa un proprio
+      ID client OAuth aggiunga quell'indirizzo fra le origini JavaScript autorizzate.</dd></div>
+    </dl>
+
     <h3 id="youtube" style="margin-top:26px">Pubblicare su YouTube</h3>
     <p>I filmati dell'app — un minuto di planetario, il Sistema Solare in 3D, una demo o una CosmoStoria
     registrata — possono andare <strong>dritti sul tuo canale YouTube</strong>, senza scaricarli e

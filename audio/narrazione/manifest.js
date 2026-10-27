@@ -700,7 +700,7 @@
     },
 
     'demo.narr.presentazione.3': {
-      it: { file: 'storie/astro-ben/it/presentazione-3.mp3', impronta: '3c0f064d', firma: '7db6f80ce8' }
+      it: { file: 'storie/astro-ben/it/presentazione-3.mp3', impronta: '43c4d267', firma: 'e3d08b3945' }
     },
 
     'demo.narr.presentazione.4': {
@@ -723,6 +723,14 @@
       it: { file: 'storie/astro-ben/it/presentazione-10.mp3', impronta: '07135ba8', firma: '14e07a7143' }
     },
 
+    'demo.narr.presentazione.11': {
+      it: { file: 'storie/astro-ben/it/presentazione-11.mp3', impronta: '7ba9c7be', firma: 'aaa87210af' }
+    },
+
+    'demo.narr.presentazione.12': {
+      it: { file: 'storie/astro-ben/it/presentazione-12.mp3', impronta: '0aaeb8db', firma: '530c33a262' }
+    },
+
     'demo.narr.presentazione.13': {
       it: { file: 'storie/astro-ben/it/presentazione-13.mp3', impronta: 'f9cf815d', firma: 'f143ad87b2' }
     },
@@ -731,9 +739,17 @@
       it: { file: 'storie/astro-ben/it/presentazione-14.mp3', impronta: '3c7b6122', firma: 'ac898b0024' }
     },
 
+    'demo.narr.presentazione.15': {
+      it: { file: 'storie/astro-ben/it/presentazione-15.mp3', impronta: 'f5db7ee1', firma: 'c1aab12060' }
+    },
+
+    'demo.narr.presentazione.16': {
+      it: { file: 'storie/astro-ben/it/presentazione-16.mp3', impronta: '2dcf19d4', firma: '6447a9ae78' }
+    },
+
     // Saturno — storie/saturno/
     'demo.narr.presentazione.2': {
-      it: { file: 'storie/saturno/it/presentazione-2.mp3', impronta: '9a07eba8', firma: '9152ba6621' }
+      it: { file: 'storie/saturno/it/presentazione-2.mp3', impronta: '0f8955e3', firma: 'b45d412972' }
     },
 
     'studio.studio_cosa_e_la_gravita.14': {
@@ -823,7 +839,7 @@
 
     // Giove — storie/giove/
     'demo.narr.presentazione.8': {
-      it: { file: 'storie/giove/it/presentazione-8.mp3', impronta: '68a99a17', firma: '9d923e5407' }
+      it: { file: 'storie/giove/it/presentazione-8.mp3', impronta: '4356f10c', firma: '0565e2899a' }
     },
 
     'studio.studio_cosa_e_la_gravita.16': {

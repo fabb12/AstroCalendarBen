@@ -1,0 +1,93 @@
+{
+  "name": "astrocalendario-desktop",
+  "productName": "AstroCalendario di Ben",
+  "version": "1.0.0",
+  "description": "AstroCalendario di Ben, l'app per computer: il sito in una finestra, con i file del computer e le chiavi al sicuro.",
+  "main": "main.js",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "author": "AstroBen",
+  "homepage": "https://fabb12.github.io/AstroCalendarBen/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fabb12/AstroCalendarBen.git"
+  },
+  "scripts": {
+    "prepara": "node prepara.js",
+    "avvia": "node prepara.js && electron .",
+    "start": "electron .",
+    "dist": "node costruisci.js"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.17.0"
+  },
+  "astrocalDesktop": {
+    "repository": "fabb12/AstroCalendarBen",
+    "sito": "https://fabb12.github.io/AstroCalendarBen/"
+  },
+  "build": {
+    "appId": "it.astroben.astrocalendario",
+    "productName": "AstroCalendario di Ben",
+    "copyright": "GNU GPL v3 o successiva",
+    "directories": {
+      "output": "dist",
+      "buildResources": "risorse"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "testi.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "app-web",
+        "to": "app-web"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "risorse/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AstroCalendario",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "AstroCalendario-Setup.${ext}",
+      "multiLanguageInstaller": true,
+      "installerLanguages": [
+        "it_IT",
+        "en_US"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Education",
+      "icon": "risorse/icon.png",
+      "artifactName": "AstroCalendario.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.education",
+      "icon": "risorse/icon.png",
+      "artifactName": "AstroCalendario.${ext}"
+    }
+  }
+}

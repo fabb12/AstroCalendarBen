@@ -2,3 +2,5 @@ node_modules
 package.json
 package-lock.json
 work/
+# La versione per computer ha il suo package.json (desktop/), e quello va tenuto.
+!desktop/package.json
