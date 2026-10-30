@@ -1287,7 +1287,11 @@ function cosmNomeStruttura(ctx, cam, id, x, y, alfa, sopra) {
   const W = cam.W, H = cam.H;
   const nome = cosmT(`cosmo.${id}.nome`), misura = cosmT(`cosmo.${id}.breve`);
   const xx = Math.max(90, Math.min(W - 90, x));
-  const cima = cosm.regia ? (cosm.rigaY || 26) + 30 : 70;
+  // Sotto alle letture in cima (il piano e il metro, 48 px di fascia), che
+  // a loro volta stanno sotto alla barra di ricerca (`cosm.cimaPx`); sullo
+  // schermo stretto le letture stanno in fondo e il tetto resta quello di sempre
+  const stretto = W < 560;
+  const cima = cosm.regia ? (cosm.rigaY || 26) + 30 : stretto ? 70 : (cosm.cimaPx || 22) + 48;
   // Sopra alla riga della scala, che in fondo occupa una fascia sua
   const yy = Math.max(cima, Math.min(H - (cosm.fondoPx || 120) - (cosm.regia ? 26 : 70), y - (sopra || 0)));
   const evid = cosm.evidenza === id || (cosm.scelta && cosm.scelta.id === id);
@@ -2394,7 +2398,8 @@ function cosmPostoLibero(cam, r) {
   const su = cosm.regia ? (cosm.rigaY || 26) + 30 : 40;
   const giu = cam.H - (cosm.fondoPx || 120) - (cosm.regia ? 20 : 48);
   // in cima al centro ci sono il piano, il metro e il nome della tappa
-  const letture = !cosm.regia && r.y0 < 108 && r.x1 > cam.W / 2 - 150 && r.x0 < cam.W / 2 + 150;
+  // (sotto alla barra di ricerca: `cosm.cimaPx`)
+  const letture = !cosm.regia && r.y0 < 86 + (cosm.cimaPx || 22) && r.x1 > cam.W / 2 - 150 && r.x0 < cam.W / 2 + 150;
   return r.x0 > 4 && r.x1 < cam.W - 4 && r.y0 > su && r.y1 < giu && !letture &&
     !presi.some(q => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0);
 }
@@ -2525,7 +2530,7 @@ function cosmDisegnaLetture(ctx, cam) {
   // Su uno schermo stretto in cima ci sono le viste e i comandi: la
   // didascalia e il metro scendono sopra alla riga della scala
   const stretto = !regia && W < 560;
-  const yTop = regia ? (cosm.rigaY || 26) + 36 : stretto ? cam.H - (cosm.fondoPx || 100) - 84 : 22;
+  const yTop = regia ? (cosm.rigaY || 26) + 36 : stretto ? cam.H - (cosm.fondoPx || 100) - 84 : (cosm.cimaPx || 22);
   const xc = regia ? W - 20 - 70 : W / 2;
   ctx.globalAlpha = 0.92;
   cosmScritta(ctx, cosmT(`cosmo.piano.${piano}`), regia ? W - 20 : xc, yTop, 'rgba(203,213,225,0.95)', 11, regia ? 'right' : 'center');
@@ -2691,6 +2696,17 @@ function cosmMisuraFondo() {
     if (r.height && r.bottom > t.top && r.top < t.top + 60) riga = Math.max(riga, r.bottom - t.top + 26);
   }
   cosm.rigaY = riga;
+  // Le letture in cima (il piano e il metro) stanno sotto alla barra di
+  // ricerca, che dalla v531 resta in vista anche qui: con la riga fissa a
+  // 22 px ci finivano dietro. Si conta anche la riga del suo esito («non
+  // trovato»), che compare sotto al campo.
+  let cima = 22;
+  const ricerca = typeof document !== 'undefined' ? document.getElementById('sol-ricerca') : null;
+  if (ricerca && sol.canvas && ricerca.offsetParent) {
+    const t = sol.canvas.getBoundingClientRect(), r = ricerca.getBoundingClientRect();
+    if (r.height && r.top < t.top + 120) cima = Math.max(cima, r.bottom - t.top + 12);
+  }
+  cosm.cimaPx = cima;
 }
 
 // =====================================================================
@@ -3125,6 +3141,8 @@ function cosmEntra(id, opzioni = {}) {
   }
   if (id && id !== 'voyager' && COSM_PER_ID.has(id) && !opzioni.senzaScheda) cosmScegli(id);
   if (typeof solAggiornaTasti === 'function') solAggiornaTasti();
+  // La ricerca resta anche qui (v531): il suo esempio diventa una struttura
+  if (typeof solAggiornaRicerca === 'function') solAggiornaRicerca();
 }
 
 function cosmEsci() {
@@ -3140,6 +3158,7 @@ function cosmEsci() {
   if (guscio) guscio.classList.remove('cosmo-attivo');
   if (cosm.ui) cosm.ui.radice.hidden = true;
   if (typeof solAggiornaTasti === 'function') solAggiornaTasti();
+  if (typeof solAggiornaRicerca === 'function') solAggiornaRicerca();
 }
 
 // Le frecce della tastiera girano la camera come quelle della vista 3D
@@ -3191,8 +3210,8 @@ function cosmReimposta() {
   cosmVolaA(vicina ? Math.log10(vicina.vista) : cosmLDi('voyager'));
 }
 
-// Dal nome scritto nella ricerca della 3D: «Laniakea», «nube di Oort»,
-// «Local Bubble» — in tutte le lingue del dizionario
+// Dal nome scritto nella ricerca della 3D (che si vede anche qui, v531):
+// «Laniakea», «nube di Oort», «Local Bubble» — in tutte le lingue del dizionario
 function cosmCercaTesto(testo) {
   const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
   const q = norm(testo);

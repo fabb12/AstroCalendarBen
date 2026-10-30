@@ -42133,14 +42133,26 @@ function solAggiornaRicerca() {
   if (!elenco) return;
   const voci = solIndiceRicerca();
   elenco.textContent = '';
-  voci.forEach(v => {
+  // I nomi delle strutture della scala cosmica (la nube di Oort, Laniakea…):
+  // la ricerca li trova da sempre, e adesso che si vede anche dentro alla
+  // scala cosmica li suggerisce. In coda, e senza ripetere un nome già detto
+  // (la Terra è un corpo e anche una tappa).
+  const nomi = new Set();
+  const aggiungi = (nome) => {
+    if (!nome || nomi.has(nome)) return;
+    nomi.add(nome);
     const o = document.createElement('option');
-    o.value = v.nome;
+    o.value = nome;
     elenco.appendChild(o);
-  });
+  };
+  voci.forEach(v => aggiungi(v.nome));
+  if (typeof COSM_STRUTTURE !== 'undefined') {
+    COSM_STRUTTURE.forEach(s => aggiungi(astroI18n.t(`cosmo.${s.id}.nome`)));
+  }
   const campo = document.getElementById('sol-cerca');
   if (campo) {
-    const esempio = nomeCorpo('Mars');
+    const nelCosmo = typeof cosmAttivo === 'function' && cosmAttivo();
+    const esempio = nelCosmo ? astroI18n.t('cosmo.oort.nome') : nomeCorpo('Mars');
     campo.placeholder = astroI18n.t('sol.ricerca.esempio', { nome: esempio });
   }
 }
@@ -43791,13 +43803,19 @@ function inizializzaSistemaSolare() {
   if (ricerca && campoRicerca) ricerca.addEventListener('submit', e => {
     e.preventDefault();
     const id = solIdDaRicerca(campoRicerca.value);
+    const nelCosmo = typeof cosmAttivo === 'function' && cosmAttivo();
     // Le strutture oltre i pianeti — l'eliopausa, la nube di Oort, Laniakea —
-    // non sono corpi della scena: le trova la scala cosmica, e ci porta lì
-    if (!id && typeof cosmCercaTesto === 'function' && cosmCercaTesto(campoRicerca.value)) {
+    // non sono corpi della scena: le trova la scala cosmica, e ci porta lì.
+    // Dentro alla scala cosmica si chiede prima a lei: «Terra» lì è la tappa
+    // della Terra, non un salto fuori dalla carta.
+    if ((!id || nelCosmo) && typeof cosmCercaTesto === 'function' && cosmCercaTesto(campoRicerca.value)) {
       if (esitoRicerca) esitoRicerca.textContent = '';
       campoRicerca.blur();
       return;
     }
+    // Un pianeta, una luna, una sonda cercati dalla scala cosmica: si esce
+    // dalla carta e si torna alla scena dei corpi, dove li si sa inquadrare
+    if (id && nelCosmo && typeof cosmEsci === 'function') cosmEsci();
     // Una famiglia spenta non è una ragione per dire «non trovato»: chi cerca
     // Plutone col pannellino dei mondi minori chiuso sta chiedendo di vederlo,
     // e la risposta giusta è accenderlo. Vale anche per le sonde e i

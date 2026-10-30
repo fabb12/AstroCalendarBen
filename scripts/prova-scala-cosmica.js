@@ -216,7 +216,7 @@ async function pagina(browser, origine, L, H) {
       }));
       ok(ingresso.attivo && ingresso.premuto === 'true', 'Il tondo «Scala cosmica» accende il quarto quadro');
       ok(ingresso.tasti === 15, 'La fila: le quindici tappe dalla Terra all\'universo, e niente «Voyager oggi»');
-      ok(ingresso.ricerca === 'none', 'La ricerca dei corpi lascia il posto');
+      ok(ingresso.ricerca !== 'none', 'La ricerca resta in vista anche qui (v531: prima spariva)');
       ok(ingresso.sonde === 2 && ingresso.dentro, 'Si entra sulle Voyager di oggi, tutte e due nel quadro');
       await foto('00-voyager');
 
@@ -367,6 +367,37 @@ async function pagina(browser, origine, L, H) {
       await p.press('#sol-cerca', 'Enter');
       await finito();
       ok(await p.evaluate(() => cosmAttivo() && (cosmStrutturaDellaScala(cosm.L) || {}).id === 'oort'), 'Cercando «nube di Oort» si arriva lì');
+
+      // E la ricerca resta in vista anche dentro alla scala cosmica (v531:
+      // prima il foglio di stile la nascondeva, e da qui non si cercava più
+      // niente). Una struttura ci si va restando nella carta; un pianeta fa
+      // uscire dalla scala e lo inquadra nella scena dei corpi.
+      const ricercaQui = await p.evaluate(() => {
+        const r = document.getElementById('sol-ricerca');
+        const box = r.getBoundingClientRect();
+        const opzioni = Array.from(document.querySelectorAll('#sol-elementi option')).map(o => o.value);
+        return { vista: getComputedStyle(r).display !== 'none' && box.width > 0 && box.height > 0,
+          esempio: document.getElementById('sol-cerca').placeholder, laniakea: opzioni.includes('Laniakea') };
+      });
+      ok(ricercaQui.vista, 'Nella scala cosmica la barra di ricerca si vede');
+      ok(/Oort/.test(ricercaQui.esempio), 'e il suo esempio è una struttura: ' + ricercaQui.esempio);
+      ok(ricercaQui.laniakea, 'I suggerimenti hanno anche le strutture della scala cosmica');
+      await p.fill('#sol-cerca', 'Laniakea');
+      await p.press('#sol-cerca', 'Enter');
+      await finito();
+      ok(await p.evaluate(() => cosmAttivo() && (cosmStrutturaDellaScala(cosm.L) || {}).id === 'laniakea'),
+        'Cercando «Laniakea» dalla scala cosmica ci si arriva restando nella carta');
+      await p.fill('#sol-cerca', 'Marte');
+      await p.press('#sol-cerca', 'Enter');
+      await fotogrammi();
+      ok(await p.evaluate(() => !cosmAttivo() && sol.scelto === 'Mars' &&
+        !document.getElementById('sol-guscio').classList.contains('cosmo-attivo')),
+        'Cercando «Marte» dalla scala cosmica si esce e Marte è scelto nella 3D');
+      ok(await p.evaluate(() => /Marte/.test(document.getElementById('sol-cerca').placeholder)),
+        'Fuori dalla scala l\'esempio torna un pianeta');
+      await p.fill('#sol-cerca', 'nube di Oort');
+      await p.press('#sol-cerca', 'Enter');
+      await finito();
 
       // In inglese
       await p.evaluate(() => astroI18n.impostaLingua('en'));
