@@ -7570,10 +7570,11 @@ body.sol-immersivo { overflow: hidden; }
    Il quarto quadro della vista 3D. La tela è la stessa; sopra ci stanno solo
    due cose: la fila delle scale, appoggiata in fondo sopra la barra del
    tempo, e una scheda sola (la struttura toccata, o le Voyager con la
-   manopola del futuro). La ricerca e la scheda dei corpi lasciano il posto:
-   qui di corpi da cercare non ce ne sono, e due schede appoggiate nello
-   stesso angolo si coprirebbero. */
-.sol-guscio.cosmo-attivo .sol-ricerca,
+   manopola del futuro). La scheda dei corpi lascia il posto: due schede
+   appoggiate nello stesso angolo si coprirebbero. La ricerca invece resta
+   (v531): prima spariva, e dalla scala cosmica non si poteva più chiedere né
+   «Laniakea» né «Marte» — che qui la portano alla struttura, o fuori dalla
+   scala fino al pianeta (`solCercaDaCampo`). */
 .sol-guscio.cosmo-attivo .sol-scheda,
 .sol-guscio.cosmo-attivo .sol-suggerimento { display: none !important; }
 .cosm-interfaccia[hidden] { display: none; }
