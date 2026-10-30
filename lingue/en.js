@@ -315,6 +315,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.licenza-app': 'Licence',
     'ui.licenza-gpl': 'GNU GPL v3 or later',
     'ui.canale-youtube': 'YouTube channel',
+    'ui.contatto-email': 'Contact',
     'ui.licenza-aiuto': 'Free software: you may use, study, change and share it under the terms of the licence. The name, logo, music and voices have separate terms.',
     'tempo.adesso': 'now',
     'tempo.passato': 'past',

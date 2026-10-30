@@ -324,6 +324,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.licenza-app': 'Licenza',
     'ui.licenza-gpl': 'GNU GPL v3 o successiva',
     'ui.canale-youtube': 'Canale YouTube',
+    'ui.contatto-email': 'Contatto',
     'ui.licenza-aiuto': 'Software libero: puoi usarlo, studiarlo, cambiarlo e ridistribuirlo, alle condizioni della licenza. Nome, logo, musica e voci hanno condizioni a parte.',
     'tempo.adesso': 'adesso',
     'tempo.passato': 'passato',

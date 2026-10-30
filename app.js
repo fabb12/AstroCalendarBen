@@ -13698,20 +13698,98 @@ function skyNuvola(ctx, r, colore, alpha, nocciolo) {
 // cosi' le macchie appartengono al globo e non al cartellone rivolto alla
 // camera. E' uno stato solo del pennello, mai uno stato della scena.
 let skyLongitudineCentrale = 0;
+// E la latitudine da cui la si guarda. Nel planetario è zero (la faccia di
+// sempre, vista di fianco); il globo della vista 3D (`skyGloboFacce`) dipinge
+// il corpo anche da sopra e da sotto i poli, perché girandoci attorno con la
+// camera i poli si devono vedere.
+let skyLatitudineCentrale = 0;
+// Vero mentre si dipinge una faccia del globo (`skyGloboFacce`): i pennelli
+// lasciano fuori quello che appartiene al disco e non alla superficie — lo
+// scurimento del bordo, i riflessi tondi, le calotte stese in orizzontale —
+// e usano le versioni sferiche delle bande e delle righe.
+let skyGloboVero = false;
+
+// I tre assi della faccia che si sta dipingendo, nel telaio del corpo
+// (x verso il meridiano zero, y verso est, z verso il nord): destra, alto e
+// la direzione di chi guarda. Si rifanno solo quando cambiano i due angoli.
+let skyAssiFacciaMemo = null;
+function skyAssiFaccia() {
+  const l0 = skyLongitudineCentrale, b0 = skyLatitudineCentrale;
+  const m = skyAssiFacciaMemo;
+  if (m && m.l0 === l0 && m.b0 === b0) return m;
+  const l = l0 * SKY_D2R, b = b0 * SKY_D2R;
+  const cl = Math.cos(l), sl = Math.sin(l), cb = Math.cos(b), sb = Math.sin(b);
+  skyAssiFacciaMemo = {
+    l0, b0,
+    R: [-sl, cl, 0],
+    U: [-sb * cl, -sb * sl, cb],
+    V: [cb * cl, cb * sl, sb]
+  };
+  return skyAssiFacciaMemo;
+}
+
+// Il versore del corpo che punta a (longitudine, latitudine)
+function skyVersoreSfera(lon, lat) {
+  const a = lon * SKY_D2R, b = lat * SKY_D2R;
+  return [Math.cos(b) * Math.cos(a), Math.cos(b) * Math.sin(a), Math.sin(b)];
+}
+
+// Un versore del corpo sul disco dipinto: `x` a destra, `y` in giù, `z`
+// verso chi guarda (positivo sulla faccia visibile)
+function skyProiettaVersore(v) {
+  const f = skyAssiFaccia();
+  const x = v[0] * f.R[0] + v[1] * f.R[1] + v[2] * f.R[2];
+  const y = -(v[0] * f.U[0] + v[1] * f.U[1] + v[2] * f.U[2]);
+  const z = v[0] * f.V[0] + v[1] * f.V[1] + v[2] * f.V[2];
+  return { x, y, z };
+}
 
 function skySuSfera(lon, lat) {
   const a = (lon - skyLongitudineCentrale) * SKY_D2R, b = lat * SKY_D2R;
-  const x = Math.cos(b) * Math.sin(a);
-  const y = -Math.sin(b);
-  const z = Math.cos(b) * Math.cos(a);
+  const ca = Math.cos(a), cb = Math.cos(b), sb = Math.sin(b);
+  const b0 = skyLatitudineCentrale * SKY_D2R;
+  const cb0 = Math.cos(b0), sb0 = Math.sin(b0);
+  const x = cb * Math.sin(a);
+  const y = -(cb0 * sb - sb0 * cb * ca);
+  const z = sb0 * sb + cb0 * cb * ca;
   return { x, y, z, rot: Math.atan2(y, x) };
 }
 
 // Una macchia appoggiata sulla palla: verso il bordo si stringe nella
 // direzione del centro, come succede a tutto ciò che sta su una sfera.
 // Il pennello riceve un contesto già portato lì e già schiacciato.
+//
+// Sul globo (`skyGloboVero`) il contesto è il piano tangente vero: la `x`
+// del pennello va verso est e la `y` verso sud, proiettati. Le macchie
+// allungate (i festoni di Giove, le nuvole della Terra) restano così stese
+// lungo i paralleli a qualunque latitudine e da qualunque punto di vista; il
+// vecchio giro sulla direzione del centro le faceva ruotare su sé stesse
+// mentre la camera girava. E una macchia nascosta il pennello lo chiama lo
+// stesso, con un ritaglio vuoto: molti pennelli pescano dal generatore a caso
+// *dentro* la chiamata, e saltarla solo quando è dall'altra parte darebbe a
+// ciascuna delle sei facce del globo una superficie diversa.
 function skyMacchiaSfera(ctx, lon, lat, raggio, pennello) {
   const p = skySuSfera(lon, lat);
+  if (skyGloboVero) {
+    ctx.save();
+    if (p.z <= 0.06) {
+      ctx.beginPath();
+      ctx.rect(0, 0, 0, 0);
+      ctx.clip();
+      pennello(ctx, raggio, 0);
+      ctx.restore();
+      return;
+    }
+    const a = (lon - skyLongitudineCentrale) * SKY_D2R, b = lat * SKY_D2R;
+    const b0 = skyLatitudineCentrale * SKY_D2R;
+    const sa = Math.sin(a), ca = Math.cos(a), sb = Math.sin(b), cb = Math.cos(b);
+    const sb0 = Math.sin(b0), cb0 = Math.cos(b0);
+    // est = (cos a, −sin b0·sin a), sud = (sin b·sin a, cos b0·cos b + sin b0·sin b·cos a)
+    ctx.transform(ca, -sb0 * sa, sb * sa, cb0 * cb + sb0 * sb * ca, p.x, p.y);
+    pennello(ctx, raggio, p.z);
+    ctx.restore();
+    return;
+  }
   if (p.z <= 0.06) return;        // dall'altra parte, o proprio sul filo
   ctx.save();
   ctx.translate(p.x, p.y);
@@ -13721,11 +13799,168 @@ function skyMacchiaSfera(ctx, lon, lat, raggio, pennello) {
   ctx.restore();
 }
 
+// --- Le regioni sulla sfera (solo per il globo) --------------------------
+// Una banda di Giove, una calotta di Marte, l'emisfero scuro di Giapeto: sono
+// regioni della superficie, e viste da un punto qualunque la loro parte
+// visibile è chiusa da due cose diverse — il loro bordo, dove sta davanti, e
+// il bordo del disco, dove il loro bordo passa dietro. Proiettare il contorno
+// e basta non funziona: guardando da sotto il polo sud, la calotta nord ha il
+// bordo tutto dietro, e i punti schiacciati sull'orlo farebbero il giro
+// intero del disco dipingendolo tutto. Qui il contorno si percorre, quando
+// passa dietro si esce sull'orlo nel punto esatto, e per sapere da che parte
+// girare lungo l'orlo si chiede alla regione se il punto di mezzo è suo
+// (`dentro`). Aggiunge sotto-percorsi al tracciato: chi chiama riempie con
+// 'evenodd', così due regioni una dentro l'altra fanno una banda.
+function skyRegioneSfera(ctx, contorno, dentro) {
+  const f = skyAssiFaccia();
+  const n = contorno.length;
+  const pr = contorno.map(skyProiettaVersore);
+  let primoVisibile = -1;
+  for (let i = 0; i < n; i++) if (pr[i].z > 0) { primoVisibile = i; break; }
+  const orlo = (a) => [Math.cos(a) * f.R[0] - Math.sin(a) * f.U[0],
+    Math.cos(a) * f.R[1] - Math.sin(a) * f.U[1], Math.cos(a) * f.R[2] - Math.sin(a) * f.U[2]];
+  if (primoVisibile < 0) {
+    // Il contorno è tutto dietro: la regione o copre l'intera faccia, o non c'è
+    if (dentro(f.V)) { ctx.moveTo(1, 0); ctx.arc(0, 0, 1, 0, Math.PI * 2); }
+    return;
+  }
+  if (pr.every(p => p.z > 0)) {
+    ctx.moveTo(pr[0].x, pr[0].y);
+    for (let i = 1; i < n; i++) ctx.lineTo(pr[i].x, pr[i].y);
+    ctx.closePath();
+    // Tutto davanti: se la regione contiene il punto dietro, è il fuori
+    if (dentro([-f.V[0], -f.V[1], -f.V[2]])) { ctx.moveTo(1, 0); ctx.arc(0, 0, 1, 0, Math.PI * 2); }
+    return;
+  }
+  const taglio = (p, q) => {
+    const k = p.z / (p.z - q.z);
+    return Math.atan2(p.y + (q.y - p.y) * k, p.x + (q.x - p.x) * k);
+  };
+  let uscita = null;
+  let iniziato = false;
+  for (let s = 0; s <= n; s++) {
+    const i = (primoVisibile + s) % n, j = (primoVisibile + s + 1) % n;
+    const p = pr[i], q = pr[j];
+    if (p.z > 0) {
+      if (!iniziato) { ctx.moveTo(p.x, p.y); iniziato = true; } else ctx.lineTo(p.x, p.y);
+    }
+    if (s === n) break;
+    if (p.z > 0 && q.z <= 0) {
+      uscita = taglio(p, q);
+      ctx.lineTo(Math.cos(uscita), Math.sin(uscita));
+    } else if (p.z <= 0 && q.z > 0 && uscita !== null) {
+      const entrata = taglio(p, q);
+      // I due archi d'orlo fra l'uscita e l'entrata: si prende quello il cui
+      // punto di mezzo sta nella regione
+      const giro = ((entrata - uscita) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      const verso = dentro(orlo(uscita + giro / 2)) ? 1 : -1;
+      const ampiezza = verso > 0 ? giro : Math.PI * 2 - giro;
+      const passi = Math.max(1, Math.ceil(ampiezza / 0.06));
+      for (let k = 1; k <= passi; k++) {
+        const a = uscita + verso * ampiezza * k / passi;
+        ctx.lineTo(Math.cos(a), Math.sin(a));
+      }
+      uscita = null;
+    }
+  }
+  ctx.closePath();
+}
+
+// Un contorno attorno a un centro: `raggio(az)` dice a che distanza (in
+// gradi) sta il bordo nella direzione `az` (in radianti, misurata da `e1`
+// verso `e2`). Restituisce il contorno e la prova di appartenenza.
+function skyContornoAttorno(centro, raggio, passi) {
+  const c = skyVersoreSfera(centro[0], centro[1]);
+  let e1 = Math.abs(c[2]) < 0.9 ? skyCross([0, 0, 1], c) : skyCross([1, 0, 0], c);
+  const l1 = Math.hypot(e1[0], e1[1], e1[2]) || 1;
+  e1 = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
+  const e2 = skyCross(c, e1);
+  const punti = [];
+  const n = passi || 96;
+  for (let i = 0; i < n; i++) {
+    const az = i / n * Math.PI * 2;
+    const r = Math.max(0, Math.min(180, raggio(az))) * SKY_D2R;
+    const ca = Math.cos(az), sa = Math.sin(az), cr = Math.cos(r), sr = Math.sin(r);
+    punti.push([0, 1, 2].map(k => cr * c[k] + sr * (ca * e1[k] + sa * e2[k])));
+  }
+  const dentro = (v) => {
+    const d = Math.max(-1, Math.min(1, v[0] * c[0] + v[1] * c[1] + v[2] * c[2]));
+    const az = Math.atan2(v[0] * e2[0] + v[1] * e2[1] + v[2] * e2[2],
+      v[0] * e1[0] + v[1] * e1[1] + v[2] * e1[2]);
+    return Math.acos(d) * SKY_R2D < raggio(az < 0 ? az + Math.PI * 2 : az);
+  };
+  return { punti, dentro };
+}
+
+// Una calotta morbida: gusci sovrapposti, dal più largo e tenue al più
+// stretto, così l'orlo sfuma invece di finire con un tratto netto. Con tre
+// gusci, guardando Marte dall'alto si contavano tre anelli: ne servono una
+// decina, ognuno così sottile che il gradino resta sotto la vista.
+// `sfuma` è quanta parte del raggio fa da orlo: le calotte polari sfumano
+// fino in fondo; l'emisfero scuro di Giapeto è grande mezzo globo e ha un
+// confine stretto — sfumato su sessanta gradi si leggeva come una pila di
+// strisce.
+const SKY_CALOTTA_GUSCI = 10;
+function skyCalottaSfera(ctx, lon, lat, raggioGradi, colore, alpha, sfuma) {
+  const largo = sfuma == null ? 0.62 : sfuma;
+  ctx.save();
+  ctx.fillStyle = colore;
+  const n = SKY_CALOTTA_GUSCI;
+  // L'opacità di ogni guscio è scelta perché dopo k gusci la somma sia
+  // `alpha · k/n` (sovrapporre `a` su `A` dà A + a·(1 − A))
+  let sotto = 0;
+  for (let k = 1; k <= n; k++) {
+    const q = 1 - largo * (k - 1) / (n - 1);
+    const voluto = alpha * k / n;
+    ctx.globalAlpha = Math.max(0, Math.min(1, (voluto - sotto) / (1 - sotto)));
+    sotto = voluto;
+    const { punti, dentro } = skyContornoAttorno([lon, lat], () => raggioGradi * q, 72);
+    ctx.beginPath();
+    skyRegioneSfera(ctx, punti, dentro);
+    ctx.fill('evenodd');
+  }
+  ctx.restore();
+}
+
+// Un tratto lungo la superficie: parte da (lon, lat) con la direzione `az`
+// (0 = nord, π/2 = est), percorre `lunghezza` gradi e piega di `curva` gradi
+// per grado. Disegna solo i pezzi sulla faccia visibile.
+function skyTrattoSfera(ctx, lon, lat, az, lunghezza, curva) {
+  let p = skyVersoreSfera(lon, lat);
+  const nord = [-Math.sin(lat * SKY_D2R) * Math.cos(lon * SKY_D2R),
+    -Math.sin(lat * SKY_D2R) * Math.sin(lon * SKY_D2R), Math.cos(lat * SKY_D2R)];
+  const est = [-Math.sin(lon * SKY_D2R), Math.cos(lon * SKY_D2R), 0];
+  let t = [0, 1, 2].map(k => Math.cos(az) * nord[k] + Math.sin(az) * est[k]);
+  const passi = Math.max(4, Math.ceil(Math.abs(lunghezza) / 4));
+  const ds = lunghezza / passi * SKY_D2R, dc = (curva || 0) * lunghezza / passi * SKY_D2R;
+  let prima = skyProiettaVersore(p);
+  for (let i = 0; i < passi; i++) {
+    const c = Math.cos(ds), s = Math.sin(ds);
+    const np = [0, 1, 2].map(k => c * p[k] + s * t[k]);
+    let nt = [0, 1, 2].map(k => -s * p[k] + c * t[k]);
+    if (dc) {
+      // la piega: la tangente gira attorno al punto
+      const lato = skyCross(np, nt);
+      nt = [0, 1, 2].map(k => Math.cos(dc) * nt[k] + Math.sin(dc) * lato[k]);
+    }
+    p = np; t = nt;
+    const ora = skyProiettaVersore(p);
+    if (prima.z > 0 && ora.z > 0) {
+      ctx.beginPath();
+      ctx.moveTo(prima.x, prima.y);
+      ctx.lineTo(ora.x, ora.y);
+      ctx.stroke();
+    }
+    prima = ora;
+  }
+}
+
 // Le bande di un gigante gassoso. Sono paralleli, e su una palla vista di
 // fianco un parallelo è una riga dritta: verso i poli le righe si stringono
 // da sé, perché la latitudine entra con un seno. I bordi sono appena
 // ondulati — una banda dal bordo dritto sembra nastro adesivo.
 function skyBandeSfera(ctx, bande) {
+  if (skyGloboVero) { skyBandeGlobo(ctx, bande); return; }
   bande.forEach((b, n) => {
     const y1 = -Math.sin(b.a * SKY_D2R), y2 = -Math.sin(b.b * SKY_D2R);
     const onda = b.onda == null ? 0.014 : b.onda;
@@ -13743,6 +13978,26 @@ function skyBandeSfera(ctx, bande) {
     ctx.fill();
   });
   ctx.globalAlpha = 1;
+}
+
+// Le stesse bande sul globo: ognuna è la regione a nord del suo bordo
+// meridionale meno quella a nord del bordo settentrionale. I bordi ondeggiano
+// con la longitudine (7 e 5 onde al giro, interi perché a ±180° combacino).
+function skyBandeGlobo(ctx, bande) {
+  bande.forEach((b, n) => {
+    const onda = (b.onda == null ? 0.014 : b.onda) * SKY_R2D;
+    const bordo = (lat, k, fase) => skyContornoAttorno([0, 90],
+      (az) => 90 - (lat + Math.sin(-az * k + fase) * onda), 120);
+    ctx.save();
+    ctx.fillStyle = b.c;
+    ctx.globalAlpha = b.alfa == null ? 1 : b.alfa;
+    ctx.beginPath();
+    if (b.b > -90) { const r = bordo(b.b, 5, -n * 1.7); skyRegioneSfera(ctx, r.punti, r.dentro); }
+    else { ctx.moveTo(1, 0); ctx.arc(0, 0, 1, 0, Math.PI * 2); }
+    if (b.a < 90) { const r = bordo(b.a, 7, n); skyRegioneSfera(ctx, r.punti, r.dentro); }
+    ctx.fill('evenodd');
+    ctx.restore();
+  });
 }
 
 // Crateri sparsi su una palla: un orlo chiaro di materiale scavato e un
@@ -13976,6 +14231,9 @@ function skyDipingiLuna(ctx, lato) {
   ctx.globalCompositeOperation = 'lighter';
   SKY_CRATERI_LUNA.forEach(k => {
     if (!k.raggiera) return;
+    // Sul globo le raggiere sono archi di cerchio massimo che partono dal
+    // cratere: si accorciano verso il bordo e passano dietro come la Luna
+    if (skyGloboVero) { skyRaggieraGlobo(ctx, k, caso); return; }
     const p = skySuSfera(k.lon, k.lat);
     if (p.z <= 0.1) return;
     for (let i = 0; i < 26; i++) {
@@ -13999,13 +14257,53 @@ function skyDipingiLuna(ctx, lato) {
   ctx.restore();
 
   // Un filo di scurimento sul bordo: la Luna piena è famosa per essere
-  // piatta, ma l'ultimo orlo scuro le dà la rotondità
-  const g = ctx.createRadialGradient(0, 0, 0.72, 0, 0, 1);
-  g.addColorStop(0, 'rgba(12, 14, 22, 0)');
-  g.addColorStop(1, 'rgba(12, 14, 22, 0.32)');
-  ctx.fillStyle = g;
-  ctx.fillRect(-1, -1, 2, 2);
+  // piatta, ma l'ultimo orlo scuro le dà la rotondità. Sul globo no: il bordo
+  // dipende da dove si guarda, e ce lo mette la vista 3D (`skyRilievoSfera`)
+  if (!skyGloboVero) {
+    const g = ctx.createRadialGradient(0, 0, 0.72, 0, 0, 1);
+    g.addColorStop(0, 'rgba(12, 14, 22, 0)');
+    g.addColorStop(1, 'rgba(12, 14, 22, 0.32)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-1, -1, 2, 2);
+  }
   ctx.restore();
+}
+
+// Le raggiere di un cratere sul globo. Pescano dal generatore lo stesso
+// numero di volte qualunque sia il punto di vista, così le sei facce del
+// globo hanno le stesse righe.
+function skyRaggieraGlobo(ctx, k, caso) {
+  const c = skyVersoreSfera(k.lon, k.lat);
+  const nord = [-Math.sin(k.lat * SKY_D2R) * Math.cos(k.lon * SKY_D2R),
+    -Math.sin(k.lat * SKY_D2R) * Math.sin(k.lon * SKY_D2R), Math.cos(k.lat * SKY_D2R)];
+  const est = [-Math.sin(k.lon * SKY_D2R), Math.cos(k.lon * SKY_D2R), 0];
+  const punto = (az, d) => {
+    const cd = Math.cos(d), sd = Math.sin(d), ca = Math.cos(az), sa = Math.sin(az);
+    return skyProiettaVersore([0, 1, 2].map(i => cd * c[i] + sd * (ca * nord[i] + sa * est[i])));
+  };
+  for (let i = 0; i < 26; i++) {
+    const a = caso() * Math.PI * 2;
+    const dentro = k.r * 2.2;
+    const lungo = dentro + k.raggiera * (0.3 + caso() * 0.8);
+    const largo = 0.012 + caso() * 0.03;
+    const p1 = punto(a, dentro), p2 = punto(a, lungo);
+    if (p1.z <= 0.05) continue;
+    const g = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+    g.addColorStop(0, 'rgba(250, 248, 240, 0.013)');
+    g.addColorStop(0.3, 'rgba(250, 248, 240, 0.010)');
+    g.addColorStop(1, 'rgba(250, 248, 240, 0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = largo;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    const passi = 6;
+    for (let q = 1; q <= passi; q++) {
+      const pq = punto(a, dentro + (lungo - dentro) * q / passi);
+      if (pq.z <= 0) break;
+      ctx.lineTo(pq.x, pq.y);
+    }
+    ctx.stroke();
+  }
 }
 
 // --- Il Sole ----------------------------------------------------------
@@ -14175,7 +14473,7 @@ function skyDipingiVenere(ctx) {
   // quasi liscia, e fingere il contrario sarebbe un falso
   for (let i = 0; i < 22; i++) {
     const lat = caso() * 150 - 75;
-    skyMacchiaSfera(ctx, caso() * 200 - 100, lat, 0.25 + caso() * 0.4, (c, r) => {
+    skyMacchiaSfera(ctx, caso() * (skyGloboVero ? 360 : 200) - (skyGloboVero ? 180 : 100), lat, 0.25 + caso() * 0.4, (c, r) => {
       c.save();
       c.scale(1, 0.32);
       skyNuvola(c, r, caso() > 0.45 ? '#fdf6df' : '#dcc99c', 0.3, 0.05);
@@ -14379,17 +14677,26 @@ function skyDipingiTerra(ctx) {
   ctx.clip();
   // L'oceano non è di un blu solo: verso i tropici è più chiaro, e verso il
   // limbo si fa cupo — che è il modo più corto di far sembrare tonda una palla
-  const g = ctx.createLinearGradient(0, -1, 0, 1);
-  g.addColorStop(0, '#1b3f78');
-  g.addColorStop(0.5, '#2a68b0');
-  g.addColorStop(1, '#1b3f78');
-  ctx.fillStyle = g;
-  ctx.fillRect(-1, -1, 2, 2);
-  const cupola = ctx.createRadialGradient(0, 0, 0.35, 0, 0, 1);
-  cupola.addColorStop(0, 'rgba(10, 30, 66, 0)');
-  cupola.addColorStop(1, 'rgba(8, 24, 56, 0.55)');
-  ctx.fillStyle = cupola;
-  ctx.fillRect(-1, -1, 2, 2);
+  if (skyGloboVero) {
+    // Sul globo: il blu dei tropici e quello più cupo verso i poli, come
+    // regioni della superficie; la cupola scura la mette la vista 3D
+    ctx.fillStyle = '#2a68b0';
+    ctx.fillRect(-1, -1, 2, 2);
+    skyCalottaSfera(ctx, 0, 90, 60, '#1b3f78', 0.9);
+    skyCalottaSfera(ctx, 0, -90, 60, '#1b3f78', 0.9);
+  } else {
+    const g = ctx.createLinearGradient(0, -1, 0, 1);
+    g.addColorStop(0, '#1b3f78');
+    g.addColorStop(0.5, '#2a68b0');
+    g.addColorStop(1, '#1b3f78');
+    ctx.fillStyle = g;
+    ctx.fillRect(-1, -1, 2, 2);
+    const cupola = ctx.createRadialGradient(0, 0, 0.35, 0, 0, 1);
+    cupola.addColorStop(0, 'rgba(10, 30, 66, 0)');
+    cupola.addColorStop(1, 'rgba(8, 24, 56, 0.55)');
+    ctx.fillStyle = cupola;
+    ctx.fillRect(-1, -1, 2, 2);
+  }
   // Le terre sono le **coste vere** (`SKY_MONDO`), le stesse del globo da
   // vicino e del banco del tramonto: prima erano dieci macchie tonde, e
   // bastava che il pallino della Terra crescesse un po' perché si leggessero
@@ -14469,6 +14776,12 @@ function skyDipingiTerra(ctx) {
     ctx.fillStyle = cg;
     ctx.fillRect(-1, Math.min(y, y + spessore), 2, Math.abs(spessore));
   };
+  if (skyGloboVero) {
+    skyCalottaSfera(ctx, 0, 90, 22, '#f8fcff', 0.85);
+    skyCalottaSfera(ctx, 0, -90, 26, '#f8fcff', 0.9);
+    ctx.restore();
+    return;
+  }
   calotta(-1, 0.12, 0.85);
   calotta(1, -0.16, 0.9);
   // Il velo dell'aria: quasi niente al centro, un filo azzurro chiaro sul
@@ -14526,8 +14839,13 @@ function skyDipingiMarte(ctx) {
     ctx.fillStyle = g;
     ctx.fillRect(-1, Math.min(y, y + spessore), 2, Math.abs(spessore));
   };
-  calotta(-1, 0.09, 0.8);
-  calotta(1, -0.14, 0.9);
+  if (skyGloboVero) {
+    skyCalottaSfera(ctx, 0, 90, 17, '#fafcff', 0.8);
+    skyCalottaSfera(ctx, 0, -90, 22, '#fafcff', 0.9);
+  } else {
+    calotta(-1, 0.09, 0.8);
+    calotta(1, -0.14, 0.9);
+  }
   ctx.restore();
 }
 
@@ -14619,7 +14937,7 @@ function skyDipingiUrano(ctx) {
   g.addColorStop(0, '#c3f0f2');
   g.addColorStop(0.7, '#8fd8e0');
   g.addColorStop(1, '#5fb3c4');
-  ctx.fillStyle = g;
+  ctx.fillStyle = skyGloboVero ? '#9cdce3' : g;
   ctx.fillRect(-1, -1, 2, 2);
   skyBandeSfera(ctx, [
     { a: 40, b: 14, c: '#a7e2e8', alfa: 0.35, onda: 0.006 },
@@ -14638,7 +14956,7 @@ function skyDipingiNettuno(ctx) {
   g.addColorStop(0, '#7aa8ec');
   g.addColorStop(0.65, '#4d7fd6');
   g.addColorStop(1, '#2f5bab');
-  ctx.fillStyle = g;
+  ctx.fillStyle = skyGloboVero ? '#5586da' : g;
   ctx.fillRect(-1, -1, 2, 2);
   skyBandeSfera(ctx, [
     { a: 46, b: 20, c: '#6f9de6', alfa: 0.45, onda: 0.008 },
@@ -14677,21 +14995,207 @@ const SKY_FACCE = {
 // pixel di raggio resta il dischetto sfumato di prima, che non costa niente
 // — e che è anche più onesto, perché le bande di Giove disegnate su dieci
 // pixel non sembrano Giove, sembrano una caramella a righe.
-function skyFacciaDi(o, r, longitudine) {
+function skyFacciaDi(o, r) {
   if (r < 8 || !o || !SKY_FACCE[o.id]) return null;
-  const haLongitudine = isFinite(longitudine);
-  // Cinque gradi sono meno di due pixel su un disco di quaranta pixel, ma
-  // evitano di ridipingere una tela (anche da 1024 px) a ogni singolo evento
-  // del dito. La chiave include la faccia: tornando nello stesso punto della
-  // rotazione si ritrova la pelle gia' pronta nella cache LRU di skyPelle.
-  const lon = haLongitudine ? Math.round(longitudine / 5) * 5 : 0;
-  const chiave = 'faccia:' + o.id + (haLongitudine ? ':lon' + lon : '');
-  return skyPelle(chiave, skyLatoTela(r), (ctx, lato) => {
-    const prima = skyLongitudineCentrale;
-    skyLongitudineCentrale = lon;
+  return skyPelle('faccia:' + o.id, skyLatoTela(r), (ctx, lato) => {
+    const prima = [skyLongitudineCentrale, skyLatitudineCentrale, skyGloboVero];
+    skyLongitudineCentrale = 0; skyLatitudineCentrale = 0; skyGloboVero = false;
     try { SKY_FACCE[o.id](ctx, lato); }
-    finally { skyLongitudineCentrale = prima; }
+    finally { [skyLongitudineCentrale, skyLatitudineCentrale, skyGloboVero] = prima; }
   });
+}
+
+// --- Il globo che gira davvero (vista 3D) ------------------------------
+//   Nel planetario un pianeta si guarda sempre dalla Terra, e la faccia
+//   dipinta una volta sola sul disco basta. Nella vista 3D invece la camera
+//   gira attorno al corpo: girandogli attorno si deve vedere **un'altra parte
+//   della superficie**, con la luce del Sole che resta dov'è. La prima cura
+//   (ridipingere la faccia ogni cinque gradi di longitudine) aveva tre
+//   difetti, ed era la segnalazione «la superficie resta ferma, si muove solo
+//   la luce»: girava solo attorno all'asse, quindi salendo sopra un polo la
+//   faccia restava quella dell'equatore; girava nel verso sbagliato (il
+//   meridiano di riferimento era preso sull'eclittica e misurato al
+//   contrario); e la Luna e le lune degli altri pianeti non giravano affatto.
+//   E comunque a scatti di cinque gradi, cioè di decine di pixel da vicino,
+//   con una tela da un decimo di secondo da ridipingere a ogni scatto.
+//
+//   Adesso il corpo si dipinge **una volta** da sei punti di vista, le sei
+//   facce di un cubo (i quattro punti dell'equatore a 0°, 90°, 180°, −90° e i
+//   due poli), con gli stessi pennelli del planetario in modalità globo
+//   (`skyGloboVero`). A ogni inquadratura ogni pixel del disco diventa un
+//   punto della sfera nel telaio del corpo (tre prodotti scalari, gli assi
+//   della camera letti nel telaio), e il colore si legge sulla faccia del
+//   cubo che lo vede più di fronte. Vicino agli spigoli si mescolano le due
+//   o tre facce che lo vedono, pesate da quanto lo vedono, così le cuciture
+//   non si vedono. La rotazione è continua in tutte le direzioni, e lo stesso
+//   conto mette anche il nord dove deve stare sullo schermo.
+const SKY_GLOBO_FACCE = [[0, 0], [90, 0], [180, 0], [-90, 0], [0, 90], [0, -90]]
+  .map(([lon, lat]) => ({ lon, lat }));
+// Oltre i 62° dal centro una faccia non conta più: lì è già schiacciata, e il
+// punto lo vede meglio la faccia accanto (ognuno ne ha una entro 55°)
+const SKY_GLOBO_SOGLIA = Math.cos(62 * SKY_D2R);
+const skyGloboFacceMemo = new Map();
+const skyGloboViste = new Map();
+
+function skyGloboLatoMax() {
+  return quanto(512, 1024, 1024);
+}
+
+// Le sei facce di un corpo, come pixel. Si tengono con un bilancio in pixel
+// come le tele di `skyPelle`, ma mai buttando quella appena dipinta.
+function skyGloboFacce(chiave, lato, pennello) {
+  const k = chiave + '@' + lato;
+  if (skyGloboFacceMemo.has(k)) {
+    const gia = skyGloboFacceMemo.get(k);
+    skyGloboFacceMemo.delete(k);
+    skyGloboFacceMemo.set(k, gia);
+    return gia;
+  }
+  if (typeof document === 'undefined') return null;
+  const prima = [skyLongitudineCentrale, skyLatitudineCentrale, skyGloboVero];
+  let facce = null;
+  try {
+    facce = SKY_GLOBO_FACCE.map(f => {
+      const tela = document.createElement('canvas');
+      tela.width = lato; tela.height = lato;
+      const c = tela.getContext('2d', { willReadFrequently: true });
+      c.translate(lato / 2, lato / 2);
+      c.scale(lato / 2, lato / 2);
+      c.lineWidth = 0.008;
+      skyLongitudineCentrale = f.lon; skyLatitudineCentrale = f.lat; skyGloboVero = true;
+      pennello(c, lato);
+      return c.getImageData(0, 0, lato, lato).data;
+    });
+  } catch (e) {
+    facce = null;
+  } finally {
+    [skyLongitudineCentrale, skyLatitudineCentrale, skyGloboVero] = prima;
+  }
+  if (!facce) return null;
+  const memo = { lato, facce };
+  skyGloboFacceMemo.set(k, memo);
+  let pixel = 0;
+  skyGloboFacceMemo.forEach(m => { pixel += 6 * m.lato * m.lato; });
+  const pixelMax = skyTelePixelMax();
+  while (skyGloboFacceMemo.size > 1 && pixel > pixelMax) {
+    const vecchia = skyGloboFacceMemo.keys().next().value;
+    pixel -= 6 * skyGloboFacceMemo.get(vecchia).lato * skyGloboFacceMemo.get(vecchia).lato;
+    skyGloboFacceMemo.delete(vecchia);
+  }
+  return memo;
+}
+
+// Il disco del corpo visto dalla camera. `R`, `U`, `V` sono la destra,
+// l'alto e la direzione di chi guarda, scritti nel telaio del corpo (x verso
+// il meridiano zero, y verso est, z verso il nord). Torna una tela quadrata
+// col disco inscritto, da stendere su `2r × 2r` come le facce di sempre; la
+// stessa tela si riusa finché la camera e il corpo non si muovono.
+// Mentre la camera gira (o il corpo ruota col tempo che scorre) il disco si
+// ricampiona a ogni fotogramma, e a 1024 px sono quaranta millisecondi su un
+// computer lento: in movimento ci si ferma a 512, che a quella velocità non
+// si distingue, e appena tutto sta fermo per un quinto di secondo si rifà a
+// piena misura. Il ciclo della vista 3D ridisegna comunque a ogni
+// fotogramma, quindi il ritorno alla misura piena arriva da sé.
+const SKY_GLOBO_LATO_MOTO = 512;
+const SKY_GLOBO_FERMO_MS = 220;
+
+function skyGloboVista(chiave, lato, pennello, R, U, V) {
+  const pieno = Math.min(lato, skyGloboLatoMax());
+  const memo = skyGloboFacce(chiave, pieno, pennello);
+  if (!memo) return null;
+  const assi = R.concat(U, V);
+  const posa = assi.map(v => Math.round(v * 4000)).join(',');
+  let vista = skyGloboViste.get(chiave);
+  const ora = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  // In movimento è solo un passo di almeno un quarto di grado: il corpo che
+  // ruota col tempo vero (Giove fa un centesimo di grado al secondo) si
+  // ricampiona a misura piena, se no la nitidezza pulserebbe
+  if (vista && vista.assi && assi.some((v, i) => Math.abs(v - vista.assi[i]) > 0.0045)) vista.moto = ora;
+  const inMoto = vista && ora - (vista.moto || -Infinity) < SKY_GLOBO_FERMO_MS;
+  lato = inMoto ? Math.min(pieno, SKY_GLOBO_LATO_MOTO) : pieno;
+  const firma = lato + ':' + posa;
+  if (vista && vista.firma === firma && vista.facce === memo) return vista.tela;
+  if (!vista || vista.tela.width !== lato) {
+    try {
+      const tela = document.createElement('canvas');
+      tela.width = lato; tela.height = lato;
+      const ctx = tela.getContext('2d');
+      vista = { tela, ctx, img: ctx.createImageData(lato, lato), moto: vista ? vista.moto : undefined };
+      skyGloboViste.set(chiave, vista);
+    } catch (e) { return null; }
+  }
+  skyGloboCampiona(vista.img.data, lato, memo, R, U, V);
+  vista.ctx.putImageData(vista.img, 0, 0);
+  vista.firma = firma;
+  vista.assi = assi;
+  vista.facce = memo;
+  return vista.tela;
+}
+
+// Il conto pixel per pixel. Separato da `skyGloboVista` perché è puro (dati
+// in ingresso, pixel in uscita) e la prova lo può chiamare senza una tela.
+//
+// Va fatto a ogni fotogramma in cui la camera si muove, quindi è scritto per
+// la velocità: la prima versione leggeva quattro pixel per faccia e
+// mescolava sempre, e un disco da 512 costava 36 ms. Ma quasi tutti i punti
+// stanno nel cuore di una faccia sola: per loro si copia il pixel più vicino
+// come un intero di 32 bit, e solo vicino agli spigoli del cubo (dove due o
+// tre facce lo vedono) si mescola canale per canale.
+function skyGloboCampiona(out, lato, memo, R, U, V) {
+  const facce = memo.facce, lf = memo.lato, hf = lf / 2, h = lato / 2;
+  if (!memo.interi) memo.interi = facce.map(d => new Uint32Array(d.buffer, d.byteOffset, d.length >> 2));
+  const interi = memo.interi;
+  const out32 = new Uint32Array(out.buffer, out.byteOffset, out.length >> 2);
+  const S = SKY_GLOBO_SOGLIA, massimo = lf - 1;
+  const R0 = R[0], R1 = R[1], R2 = R[2], U0 = U[0], U1 = U[1], U2 = U[2];
+  const V0 = V[0], V1 = V[1], V2 = V[2];
+  // l'indice del pixel della faccia sotto (px, py), in raggi
+  const indice = (px, py) => {
+    let x = ((px + 1) * hf) | 0, y = ((py + 1) * hf) | 0;
+    if (x < 0) x = 0; else if (x > massimo) x = massimo;
+    if (y < 0) y = 0; else if (y > massimo) y = massimo;
+    return y * lf + x;
+  };
+  const pesi = new Float64Array(6), posti = new Int32Array(6);
+  for (let j = 0; j < lato; j++) {
+    const ny = (j + 0.5) / h - 1;
+    const riga = j * lato;
+    for (let i = 0; i < lato; i++) {
+      const nx = (i + 0.5) / h - 1;
+      const r2 = nx * nx + ny * ny;
+      // l'orlo sfumato su mezzo pixel, come lo farebbe un `arc` della tela
+      const copre = r2 > 0.9 ? (1 - Math.sqrt(r2)) * h + 0.5 : 2;
+      if (copre <= 0) { out32[riga + i] = 0; continue; }
+      const nz = r2 < 1 ? Math.sqrt(1 - r2) : 0;
+      const dx = nx * R0 - ny * U0 + nz * V0;
+      const dy = nx * R1 - ny * U1 + nz * V1;
+      const dz = nx * R2 - ny * U2 + nz * V2;
+      // Le sei facce: centro, destra e alto di ognuna sono assi del telaio,
+      // quindi i prodotti scalari sono componenti col segno
+      let quante = 0, unica = -1, posto = 0;
+      if (dx > S) { pesi[quante] = (dx - S) * (dx - S); posti[quante] = 0; posto = indice(dy, -dz); unica = 0; quante++; }
+      else if (-dx > S) { pesi[quante] = (-dx - S) * (-dx - S); posti[quante] = 2; posto = indice(-dy, -dz); unica = 2; quante++; }
+      if (dy > S) { pesi[quante] = (dy - S) * (dy - S); posti[quante] = 1; posto = indice(-dx, -dz); unica = 1; quante++; }
+      else if (-dy > S) { pesi[quante] = (-dy - S) * (-dy - S); posti[quante] = 3; posto = indice(dx, -dz); unica = 3; quante++; }
+      if (dz > S) { pesi[quante] = (dz - S) * (dz - S); posti[quante] = 4; posto = indice(dy, dx); unica = 4; quante++; }
+      else if (-dz > S) { pesi[quante] = (-dz - S) * (-dz - S); posti[quante] = 5; posto = indice(dy, -dx); unica = 5; quante++; }
+      const o = riga + i;
+      if (quante === 1 && copre >= 1) { out32[o] = interi[unica][posto]; continue; }
+      let ar = 0, ag = 0, ab = 0, aa = 0, aw = 0;
+      for (let q = 0; q < quante; q++) {
+        const f = posti[q], w = pesi[q];
+        const k = (f === 0 ? indice(dy, -dz) : f === 2 ? indice(-dy, -dz) : f === 1 ? indice(-dx, -dz)
+          : f === 3 ? indice(dx, -dz) : f === 4 ? indice(dy, dx) : indice(dy, -dx)) * 4;
+        const d = facce[f];
+        ar += d[k] * w; ag += d[k + 1] * w; ab += d[k + 2] * w; aa += d[k + 3] * w; aw += w;
+      }
+      const k = aw > 0 ? 1 / aw : 0, b = o * 4;
+      out[b] = ar * k;
+      out[b + 1] = ag * k;
+      out[b + 2] = ab * k;
+      out[b + 3] = aa * k * (copre < 1 ? copre : 1);
+    }
+  }
 }
 
 // --- Il cielo profondo -------------------------------------------------
@@ -34201,7 +34705,7 @@ const sol = {
   // L'anello dell'orbita lunare nella scena grande (§7.7), e dove sono finiti
   // sullo schermo la Luna e i due corpi del banco delle eclissi: li scrive chi
   // li disegna, li legge il dito (`solTocco`)
-  orbitaLunaGrande: null, lunaSchermo: null, vicCorpi: null, soleVicinoSchermo: null,
+  orbitaLunaGrande: null, lunaSchermo: null, vicCorpi: null, soleVicinoSchermo: null, asseLuna: null,
   // Anche i nomi sono parte sensibile del corpo a cui appartengono. Le loro
   // scatole cambiano a ogni fotogramma insieme alla camera, perciò vengono
   // ricostruite dal disegno e lette dal medesimo hit test dei pallini.
@@ -34391,26 +34895,30 @@ function solAngoloPolo(asse, assi) {
   return Math.atan2(skyDot(asse, assi.destra), skyDot(asse, assi.alto));
 }
 
-// La longitudine del meridiano che sta davanti alla telecamera. Le facce
-// dipinte nascono centrate sul meridiano zero; se le copiassimo tali e quali
-// sul disco, girando attorno a Giove continueremmo a vedere sempre la Grande
-// Macchia Rossa nello stesso posto: la texture sarebbe un cartellone che gira
-// insieme alla camera. Qui costruiamo invece due assi nell'equatore del corpo
-// e vi proiettiamo la direzione dell'osservatore. `rotazione` e' l'angolo di
-// rotazione fisico fornito da Astronomy Engine, quindi anche cambiando data il
-// pianeta gira, mentre muovere la camera mostra semplicemente un altro
-// meridiano della medesima superficie.
-function solLongitudineVista(corpo, assi) {
-  const polo = corpo && corpo.asse;
-  if (!polo || !assi) return 0;
-  const riferimento = Math.abs(polo[2]) < 0.92 ? [0, 0, 1] : [0, 1, 0];
-  let est = skyCross(riferimento, polo);
-  const de = Math.hypot(est[0], est[1], est[2]) || 1;
-  est = est.map(v => v / de);
-  const zero = skyCross(polo, est);
-  const vista = assi.verso;
-  const geometrica = Math.atan2(skyDot(vista, est), skyDot(vista, zero)) * SKY_R2D;
-  return geometrica - (Number.isFinite(polo.rotazione) ? polo.rotazione : 0);
+// Il telaio di un corpo — il nord, il meridiano zero e l'est, come versori
+// eclittici — da quello che `solAsse` ha lasciato sull'asse. Senza il
+// meridiano (un asse costruito a mano) se ne sceglie uno qualunque: la
+// superficie gira lo stesso nel verso giusto, solo non dal meridiano vero.
+function solTelaioDaAsse(asse) {
+  if (!asse || asse.length !== 3) return null;
+  const nord = solVersore(asse);
+  let primo = asse.primo;
+  if (!primo) {
+    const rif = Math.abs(nord[2]) < 0.92 ? [0, 0, 1] : [0, 1, 0];
+    primo = solVersore(solCroce(solCroce(nord, rif), nord));
+  }
+  return { nord, primo, est: solVersore(solCroce(nord, primo)) };
+}
+
+// La faccia di un corpo vista da questa camera (§7.3.2, «Il globo che gira
+// davvero»): gli assi della camera si riscrivono nel telaio del corpo e il
+// globo fa il resto. `chiave` distingue le memorie, `pennello` è quello del
+// planetario.
+function solFacciaGlobo(chiave, pennello, r, telaio, assi) {
+  if (!telaio || !assi || !pennello || typeof skyGloboVista !== 'function') return null;
+  const nel = (v) => [skyDot(v, telaio.primo), skyDot(v, telaio.est), skyDot(v, telaio.nord)];
+  return skyGloboVista(chiave, skyLatoTela(r), pennello,
+    nel(assi.destra), nel(assi.alto), nel(assi.verso));
 }
 
 // La frazione illuminata vista *da questa telecamera*, che non è la Terra:
@@ -34598,6 +35106,16 @@ function solAsse(id, t) {
     const d = Math.hypot(n.x, n.y, n.z) || 1;
     const asse = [n.x / d, n.y / d, n.z / d];
     asse.rotazione = orientamento.spin;
+    // Il meridiano zero, come lo definisce l'IAU: si parte dal nodo
+    // ascendente dell'equatore del corpo sull'equatore celeste (J2000) e si
+    // gira verso est di `spin` gradi. Prima il nodo si prendeva
+    // sull'eclittica, e la Luna vista dalla Terra non mostrava la sua faccia
+    // nota: adesso la longitudine sotto la Terra è la libration vera (±7°).
+    const pe = Astronomy.Ecliptic(new Astronomy.Vector(0, 0, 1, t)).vec;
+    const nodo = solVersore(solCroce([pe.x, pe.y, pe.z], asse));
+    const avanti = solCroce(asse, nodo);
+    const w = orientamento.spin * SKY_D2R;
+    asse.primo = [0, 1, 2].map(k => Math.cos(w) * nodo[k] + Math.sin(w) * avanti[k]);
     return asse;
   } catch (e) {
     return [0, 0, 1];               // dritto sul piano: meglio che niente
@@ -35369,7 +35887,12 @@ function solDipingiPelleLuna(ctx, id) {
   ctx.save();
   ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.clip();
   ctx.fillStyle = o.base; ctx.fillRect(-1, -1, 2, 2);
-  if (o.bicolore) {
+  if (o.bicolore && skyGloboVero) {
+    // Giapeto sul globo: l'emisfero che guarda avanti lungo l'orbita (−90°,
+    // il lato di chi corre) è scuro come carbone, quello dietro chiaro
+    skyCalottaSfera(ctx, -90, 0, 98, o.scuro, 1, 0.16);
+    skyCalottaSfera(ctx, 90, 0, 55, o.chiaro, 0.5);
+  } else if (o.bicolore) {
     const g = ctx.createLinearGradient(-1, 0, 1, 0);
     g.addColorStop(0, o.scuro); g.addColorStop(0.42, o.scuro);
     g.addColorStop(0.62, o.base); g.addColorStop(1, o.chiaro);
@@ -35391,12 +35914,25 @@ function solDipingiPelleLuna(ctx, id) {
     ctx.strokeStyle = i % 3 === 0 ? o.chiaro : o.scuro;
     ctx.globalAlpha = o.solchi ? 0.28 : 0.42;
     ctx.lineWidth = (o.solchi ? 0.018 : 0.012) + caso() * 0.018;
+    if (skyGloboVero) {
+      // Sul globo la stessa riga è un arco della superficie: parte da una
+      // longitudine sparsa sul giro intero (dal numero della riga, così il
+      // generatore resta quello di sempre) e piega appena
+      skyTrattoSfera(ctx, (i * 137.5) % 360 - 180, Math.asin(Math.max(-1, Math.min(1, -y))) * SKY_R2D,
+        Math.PI / 2 + x * 0.6, 120 + x * 60, x * 0.4);
+      continue;
+    }
     ctx.beginPath(); ctx.moveTo(-1.05, y);
     ctx.bezierCurveTo(-0.35, y + x * 0.35, 0.35, y - x * 0.35, 1.05, y + x * 0.18);
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
-  if (o.tigre) {
+  if (o.tigre && skyGloboVero) {
+    // Le «strisce di tigre» di Encelado stanno attorno al polo sud: quattro
+    // o cinque solchi paralleli lunghi un quarto di giro
+    ctx.strokeStyle = 'rgba(70, 139, 171, .72)'; ctx.lineWidth = 0.025;
+    for (let i = -2; i <= 2; i++) skyTrattoSfera(ctx, -60 + i * 6, -72 - i * 3.5, Math.PI / 2 + 0.35, 95, 0.15);
+  } else if (o.tigre) {
     for (let i = -2; i <= 2; i++) {
       ctx.strokeStyle = 'rgba(70, 139, 171, .72)'; ctx.lineWidth = 0.025;
       ctx.beginPath(); ctx.moveTo(-0.58, 0.55 + i * 0.09); ctx.quadraticCurveTo(0, 0.36 + i * 0.08, 0.62, 0.58 + i * 0.07); ctx.stroke();
@@ -35421,10 +35957,12 @@ function solDipingiPelleLuna(ctx, id) {
     skyMacchiaSfera(ctx, caso() * 320 - 160, caso() * 120 - 60, 0.025 + caso() * 0.05,
       (c, r) => { c.fillStyle = '#431e24'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); });
   }
-  const bordo = ctx.createRadialGradient(0, 0, 0.68, 0, 0, 1);
-  bordo.addColorStop(0, 'rgba(0,0,0,0)');
-  bordo.addColorStop(1, o.foschia ? 'rgba(116,55,16,.16)' : 'rgba(5,8,12,.3)');
-  ctx.fillStyle = bordo; ctx.fillRect(-1, -1, 2, 2);
+  if (!skyGloboVero) {
+    const bordo = ctx.createRadialGradient(0, 0, 0.68, 0, 0, 1);
+    bordo.addColorStop(0, 'rgba(0,0,0,0)');
+    bordo.addColorStop(1, o.foschia ? 'rgba(116,55,16,.16)' : 'rgba(5,8,12,.3)');
+    ctx.fillStyle = bordo; ctx.fillRect(-1, -1, 2, 2);
+  }
   ctx.restore();
 }
 
@@ -36347,8 +36885,15 @@ function solDisegnaCorpo(ctx, corpo, assi) {
     ctx.clip();
     ctx.rotate(-angLuce);
   }
-  const faccia = skyFacciaDi(corpo, r, solLongitudineVista(corpo, assi));
-  if (faccia) {
+  // La superficie vera, vista da dove sta la camera: girando attorno al corpo
+  // se ne vede un'altra parte, mentre la luce (il taglio della fase qui
+  // sopra) resta quella del Sole. Il globo mette già il nord al suo posto.
+  const globo = r >= 8 ? solFacciaGlobo('faccia:' + corpo.id, SKY_FACCE[corpo.id], r,
+    solTelaioDaAsse(corpo.asse), assi) : null;
+  const faccia = globo ? null : skyFacciaDi(corpo, r);
+  if (globo) {
+    ctx.drawImage(globo, -r, -r, r * 2, r * 2);
+  } else if (faccia) {
     ctx.save();
     ctx.rotate(polo);
     ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
@@ -36605,9 +37150,12 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.clip();
   }
-  const faccia = skyFacciaDi({ id: 'Moon' }, r);
-  if (faccia) {
-    const asseLuna = solAsseLuna(new Date(sol.istante || Date.now()));
+  const asseLuna = solAsseLuna(new Date(sol.istante || Date.now()));
+  const globo = r >= 8 ? solFacciaGlobo('faccia:Moon', SKY_FACCE.Moon, r, solTelaioDaAsse(asseLuna), assi) : null;
+  const faccia = globo ? null : skyFacciaDi({ id: 'Moon' }, r);
+  if (globo) {
+    ctx.drawImage(globo, -r, -r, r * 2, r * 2);
+  } else if (faccia) {
     const polo = assi ? solAngoloPolo(asseLuna, assi) : 0;
     ctx.rotate(polo);
     ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
@@ -37642,7 +38190,10 @@ function solDisegnaLune(ctx, pianeta, assi, davanti) {
     if (k < 0.985) {
       ctx.rotate(angLuce); skyPercorsoIlluminato(ctx, r, k); ctx.clip(); ctx.rotate(-angLuce);
     }
-    const faccia = solFacciaLuna(l, r);
+    const globo = SOL_PELLI_LUNE[l.id] && r >= 4
+      ? solFacciaGlobo('luna-sistema:' + l.id, c => solDipingiPelleLuna(c, l.id), r, solTelaioLuna(l, pianeta), assi)
+      : null;
+    const faccia = globo || solFacciaLuna(l, r);
     if (faccia) ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
     else {
       ctx.fillStyle = l.colore; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
@@ -39584,10 +40135,28 @@ function solRighelloVicino(ctx) {
 // mostrare il mare giusto quando ci si avvicina.
 function solAsseLuna(quando) {
   if (typeof Astronomy === 'undefined') return [0, 0, 1];
-  try {
-    const n = Astronomy.Ecliptic(Astronomy.RotationAxis('Moon', Astronomy.MakeTime(quando)).north).vec;
-    return solVersore([n.x, n.y, n.z]);
-  } catch (e) { return [0, 0, 1]; }
+  const ms = quando instanceof Date ? quando.getTime() : Number(quando) || 0;
+  if (sol.asseLuna && sol.asseLuna.ms === ms) return sol.asseLuna.asse;
+  // Con il meridiano zero (`solAsse`): la Luna gira su sé stessa una volta
+  // al mese, e da qui fuori si vede anche la faccia nascosta
+  const asse = solAsse('Moon', Astronomy.MakeTime(new Date(ms)));
+  sol.asseLuna = { ms, asse };
+  return asse;
+}
+
+// Il telaio di una luna degli altri pianeti. Sono tutte in rotazione
+// sincrona: il nord è il polo della loro orbita e il meridiano zero guarda il
+// pianeta, quindi girando attorno a Giove si vede Io mostrargli sempre la
+// stessa faccia — e girando attorno a Io se ne vede anche l'altra.
+function solTelaioLuna(l, pianeta) {
+  if (!l || !l.off || !pianeta) return null;
+  const { u1, u2 } = solPianoLuna(pianeta.asse, l.incl || 0);
+  const nord = solVersore(solCroce(u1, u2));
+  const verso = [-l.off.x, -l.off.y, -l.off.z];
+  const lungo = skyDot(verso, nord);
+  const primo = solVersore([verso[0] - lungo * nord[0], verso[1] - lungo * nord[1], verso[2] - lungo * nord[2]]);
+  if (!isFinite(primo[0])) return null;
+  return { nord, primo, est: solVersore(solCroce(nord, primo)) };
 }
 
 function solDisegnaPiomboVicino(ctx, luna) {

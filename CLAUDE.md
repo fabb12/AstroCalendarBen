@@ -194,6 +194,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | curiosità | `prova-curiosita.js` |
 | transiti, stazioni | `prova-transiti.js`, `prova-stazioni.js` |
 | 3D: mondi minori, sonde, satelliti, ricerca | `prova-sistema3d.js` |
+| 3D: la superficie dei pianeti e delle lune che gira con la camera (globo a sei facce) | `prova-globo3d.js` |
 | volo planetario ↔ 3D, zoom di passaggio | `prova-volo.js`, `prova-passaggio-zoom.js` |
 | scala cosmica | `prova-scala-cosmica.js` |
 | AR: etichette e allineamento a mano | `prova-ar-calibrazione.js`, `prova-ar-browser.js` |
