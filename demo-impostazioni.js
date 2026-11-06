@@ -680,6 +680,9 @@
       // niente sopra allo splash del planetario, a un'altra finestra o a una demo in corso
       const libero = !AstroDemo.inCorso && !document.getElementById('splash-planetario') &&
         !document.querySelector('.yt-velo:not(#benvenuto-demo)');
+      // v532: finché il velo d'accesso (accessi.js) copre l'app si aspetta
+      // senza contare i tentativi: chi crea l'account può metterci minuti
+      if (document.documentElement.classList.contains('accessi-bloccato')) { setTimeout(tenta, 1000); return; }
       if (!pronto || !libero) { if (++tentativi <= 120) setTimeout(tenta, 500); return; }
       mostraBenvenuto();
     };

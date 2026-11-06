@@ -136,6 +136,8 @@
       <button id="btn-installa" class="azione-testata azione-viola hidden" title="Installa l'app sul dispositivo" data-icona="scarica" data-i18n-title="ui.installa-l-app-sul-dispositivo" data-i18n="ui.installa-l-app">Installa l'app</button>
       <button id="btn-notifiche" class="azione-testata" title="Avvisami prima di un evento" data-icona="campana" data-i18n-title="ui.avvisami-prima-di-un-evento" data-i18n="ui.avvisami">Avvisami</button>
       <button id="btn-impostazioni" class="azione-testata" title="Posizione, backup e calendario" data-icona="ingranaggio" data-i18n="ui.impostazioni">Impostazioni</button>
+      <!-- Il tasto dell'account (accessi.js): compare dopo l'accesso -->
+      <button id="btn-account" class="azione-testata hidden" title="Account" data-icona="persona" data-i18n="accessi.account">Account</button>
     </div>
   </header>
 
@@ -3358,6 +3360,8 @@
   <script src="lingue/it.js"></script>
   <script src="lingue/en.js"></script>
   <script src="i18n.js"></script>
+  <!-- Gli account: il velo d'accesso copre la pagina prima che il planetario parta -->
+  <script src="accessi.js"></script>
   <!-- La narrazione: una voce sola per le demo e per Missione Cielo. Il
        manifest degli audio registrati va prima del motore che lo legge. -->
   <script src="audio/narrazione/manifest.js"></script>

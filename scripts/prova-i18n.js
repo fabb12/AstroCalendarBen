@@ -153,7 +153,9 @@ const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.j
   'voci-filmato.js',
   // Le Storie cosmiche: la sezione della pagina Demo, le personalità e i
   // messaggi d'errore dei comandi dei personaggi; lo Studio che le crea.
-  'storie-cosmiche.js', 'storie-studio.js'];
+  'storie-cosmiche.js', 'storie-studio.js',
+  // v532: gli account e il velo d'accesso
+  'accessi.js'];
 
 function leggiFile(elenco) {
   const perFile = new Map();

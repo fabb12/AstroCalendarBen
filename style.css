@@ -13409,3 +13409,44 @@ textarea.yt-campo { resize: vertical; min-height: 5.5rem; }
    lungo senza spazi (C:\Users\…\Documents\AstroCalendario): va a capo
    dove serve invece di allargare le Impostazioni. */
 #imp-desktop-cartella { overflow-wrap: anywhere; min-width: 0; }
+
+/* v532: gli account (accessi.js). Il velo d'accesso è opaco e sta sopra a
+   tutto: finché non si entra, l'app sotto non si vede né si tocca. */
+.accessi-velo {
+  z-index: 2147483000; align-items: center;
+  background: radial-gradient(ellipse at 50% 30%, #101a33 0%, var(--spazio) 70%);
+}
+html.accessi-bloccato body > *:not(#accessi-velo):not(script) { visibility: hidden; }
+html.accessi-bloccato body { overflow: hidden; }
+.accessi-velo-account { z-index: 80; align-items: center; }
+.accessi-finestra { max-width: 24rem; }
+.accessi-testa { padding: 18px 16px 6px; text-align: center; }
+.accessi-testa h2 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+.accessi-sottotitolo { margin: 6px 0 0; color: var(--testo-2); font-size: 0.86rem; line-height: 1.45; }
+.accessi-linguette { display: flex; gap: 4px; margin: 10px 16px 0; padding: 3px; border-radius: 999px; background: var(--incassato); border: 1px solid var(--bordo); }
+.accessi-linguetta {
+  flex: 1 1 0; min-height: 36px; border: 0; border-radius: 999px; background: none;
+  color: var(--testo-2); font-weight: 600; font-size: 0.86rem; cursor: pointer;
+}
+.accessi-linguetta.attiva { background: var(--blu-velo); color: var(--testo); box-shadow: inset 0 0 0 1px rgba(76, 141, 255, 0.4); }
+.accessi-modulo { display: grid; gap: 10px; }
+.accessi-modulo[hidden] { display: none; }
+.accessi-campo { display: grid; gap: 4px; font-size: 0.82rem; color: var(--testo-2); }
+.accessi-input {
+  width: 100%; min-height: 40px; padding: 8px 12px; border-radius: var(--raggio-s);
+  background: var(--incassato); color: var(--testo); border: 1px solid var(--bordo-forte); font-size: 16px;
+}
+.accessi-input:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px var(--blu-velo); }
+.accessi-aiuto { margin: -4px 0 0; color: var(--testo-3); font-size: 0.74rem; line-height: 1.4; }
+.accessi-ricordami { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--testo-2); cursor: pointer; }
+.accessi-errore { margin: 0; padding: 8px 10px; border-radius: var(--raggio-s); background: rgba(248, 113, 113, 0.12); color: #fecaca; font-size: 0.84rem; }
+.accessi-fatto { margin: 0; color: #bbf7d0; font-size: 0.84rem; }
+.accessi-errore[hidden], .accessi-fatto[hidden] { display: none; }
+.accessi-invia { width: 100%; justify-content: center; min-height: 42px; }
+.accessi-invia[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+.accessi-nota { margin: 0; padding: 0 16px 16px; color: var(--testo-3); font-size: 0.72rem; line-height: 1.4; text-align: center; }
+.accessi-chi { margin: 0; font-size: 0.95rem; }
+.accessi-sezione { margin: 8px 0 0; font-size: 0.92rem; font-weight: 700; }
+.accessi-tasti { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.accessi-pericolo { border-color: rgba(248, 113, 113, 0.45); color: #fecaca; }
+.accessi-pericolo:hover { border-color: rgba(248, 113, 113, 0.8); }
