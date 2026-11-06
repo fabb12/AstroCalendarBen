@@ -1,6 +1,6 @@
 // Ogni modifica ai file dell'app richiede una chiave nuova: altrimenti i
 // dispositivi gia' installati continuano a servire la copia precedente.
-const CACHE_NAME = 'astrocal-v532';
+const CACHE_NAME = 'astrocal-v533';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -25,6 +25,7 @@ const ASSETS = [
   './demo-impostazioni.js',
   './i18n.js',
   './accessi.js',
+  './accessi-config.js',
   './custode-chiavi.js',
   './narrazione.js',
   './audio/narrazione/manifest.js',
@@ -92,7 +93,8 @@ const LIBRERIE = [
   'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
-  'https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js'
+  'https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js'
 ];
 
 // Gli audio registrati della narrazione (`audio/narrazione/`). Non stanno in
@@ -290,6 +292,8 @@ self.addEventListener('fetch', (e) => {
       SERVIZI_ADSB.indexOf(url.hostname) !== -1 ||
       // Le storie dello Studio sul repository (storie-studio.js §6b): sempre
       // fresche, e un errore di GitHub resta suo invece di diventare un 504
+      // Gli account (accessi.js, v533): login e profili sempre dal server
+      url.hostname.endsWith('.supabase.co') ||
       url.hostname === 'api.github.com' ||
       url.hostname === 'raw.githubusercontent.com' ||
       // YouTube (youtube.js, v464): l'accesso di Google e le sue API non
