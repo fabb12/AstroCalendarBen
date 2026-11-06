@@ -363,6 +363,21 @@ const DISEGNI = {
   persona: `<circle cx="12" cy="8.2" r="3.8"/>
     <path d="M4.6 20.2c0.9-3.9 3.9-6.1 7.4-6.1s6.5 2.2 7.4 6.1"/>`,
 
+  // gli account (accessi.js, v533): busta, lucchetto, occhio sbarrato,
+  // scudo dell'amministratore, gruppo di persone, orologio dell'attesa
+  posta: `<rect x="3" y="5.5" width="18" height="13" rx="2.2"/>
+    <path d="M3.6 7l8.4 6.2L20.4 7"/>`,
+  lucchetto: `<rect x="4.8" y="10.4" width="14.4" height="10" rx="2.2"/>
+    <path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/>`,
+  occhioChiuso: `<path d="M3 3l18 18M10.6 6.5A9.6 9.6 0 0 1 12 6.4c5.6 0 9.4 5.6 9.4 5.6a17 17 0 0 1-3.1 3.6M6.4 8.1A16.6 16.6 0 0 0 2.6 12s3.8 5.6 9.4 5.6a9 9 0 0 0 4.1-1"/>
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>`,
+  scudo: `<path d="M12 2.8l7.4 2.8v5.6c0 4.6-3.1 8.4-7.4 10-4.3-1.6-7.4-5.4-7.4-10V5.6z"/>
+    <path d="M8.8 12l2.2 2.2 4.2-4.4"/>`,
+  utenti: `<circle cx="9" cy="8.4" r="3.4"/><path d="M2.8 19.6c0.8-3.5 3.3-5.4 6.2-5.4s5.4 1.9 6.2 5.4"/>
+    <path d="M15.6 5.2a3.4 3.4 0 0 1 0 6.4M17.4 14.6c2 0.7 3.4 2.4 3.8 5"/>`,
+  attesa: `<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/>`,
+  esci: `<path d="M14.6 4.4H18a1.6 1.6 0 0 1 1.6 1.6v12a1.6 1.6 0 0 1-1.6 1.6h-3.4M10 16.4L5.6 12 10 7.6M5.6 12h9.4"/>`,
+
   ingranaggio: `<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
     <circle cx="12" cy="12" r="3"/>`,
 
@@ -7595,6 +7610,13 @@ function leggiUltimaVista() {
 
 function mostraVista(nome, opzioni = {}) {
   if (!VISTE.some(v => v.nome === nome)) return;
+  // v533: le sezioni che l'amministratore non ha dato a questo utente non si
+  // aprono (accessi.js); si va alla prima permessa
+  if (typeof accessiVistaPermessa === 'function' && !accessiVistaPermessa(nome)) {
+    const altra = typeof accessiPrimaVistaPermessa === 'function' ? accessiPrimaVistaPermessa() : null;
+    if (!altra || altra === nome) return;
+    nome = altra;
+  }
   const vistaPrima = vistaAttuale;
   const attivo = "voce-menu attiva";
   const inattivo = "voce-menu";

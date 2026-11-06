@@ -1,489 +1,881 @@
-/* Gli accessi: gli account dell'app (`acc`).
- * ==========================================
+/* Gli accessi: gli account dell'app, su Supabase (`acc`).
+ * =======================================================
  *
- * All'apertura l'app chiede di entrare con un account: si può accedere con
- * nome utente e password, oppure crearne uno nuovo. È il giro che si trova in
- * ogni applicazione, e lo si è fatto nello stesso modo:
+ * Il giro è quello di ogni servizio con iscrizione approvata:
  *
- *   - **la password non si conserva mai**: si conserva la sua impronta
- *     PBKDF2-SHA256 (Web Crypto) con un sale casuale per ogni account e
- *     150 000 iterazioni, e al login si rifà il conto e si confronta;
- *   - **la sessione** è un gettone casuale scritto nell'account e accanto a
- *     lui: con «Ricordami» dura 30 giorni (`localStorage`), senza dura finché
- *     resta aperta la scheda (`sessionStorage`), e scade comunque dopo 12 ore;
- *   - **i tentativi sbagliati** si contano: dopo 5 di fila l'account si ferma
- *     per 30 secondi, poi per il doppio, e così via fino a un quarto d'ora;
- *   - il messaggio d'errore del login è lo stesso per un nome che non esiste
- *     e per una password sbagliata, così non dice quali nomi ci sono;
- *   - il primo account creato è l'**amministratore** (`ruolo: 'admin'`): lo si
- *     scrive perché chi verrà dopo possa dare permessi diversi, oggi non
- *     cambia nulla.
+ *   1. chi arriva **crea un account** con nome, email e password;
+ *   2. l'account nasce **in attesa**: si entra, ma si vede solo la pagina
+ *      «la tua iscrizione aspetta l'approvazione»;
+ *   3. l'**amministratore** apre «Gestisci utenti» e approva, rifiuta,
+ *      sospende, elimina, nomina altri amministratori e sceglie, utente per
+ *      utente, quali **sezioni** dell'app vede (Stasera, Calendario,
+ *      Planetario, Telescopio, Didattica, Demo).
  *
- * Il limite va detto chiaro: l'app non ha un server (CLAUDE.md §1), quindi gli
- * account vivono in questo browser, su questo dispositivo. Il controllo tiene
- * fuori chi usa l'app normalmente, non chi apre gli strumenti per
- * sviluppatori. Per account condivisi fra dispositivi servirebbe un servizio
- * di autenticazione vero; le funzioni qui sotto (`registra`, `accedi`,
- * `esci`) sono il punto in cui lo si attaccherebbe.
+ * Perché Supabase. La prima versione (v532) teneva gli account nel browser:
+ * l'amministratore non poteva vedere chi si iscriveva da un altro telefono,
+ * quindi l'approvazione non era possibile. Qui login, password e sessioni
+ * sono di Supabase Auth; stato, ruolo e sezioni stanno nella tabella
+ * `profili`, protetta da regole sul server (`supabase/accessi.sql`): un utente
+ * legge solo il suo profilo e non lo può cambiare, quindi non si approva da
+ * solo. Chi è amministratore lo decide l'email scritta nello script SQL, non
+ * il codice dell'app, che è pubblico.
  *
- * Si carica dopo `i18n.js` e prima di `app.js`: il velo deve coprire la pagina
- * prima che il planetario cominci a disegnarsi. Al browser guidato delle prove
- * (`navigator.webdriver`) il velo non si mostra, come la proposta della
- * presentazione (demo-impostazioni.js): coprirebbe i tasti che le prove
- * toccano. Lì si apre con `astroAccessi.mostra({ forza: true })`.
+ * Cosa resta dalla parte del browser: nascondere le sezioni non permesse è
+ * un controllo dell'interfaccia (l'app non ha dati sul server da proteggere:
+ * calcola tutto qui). È il livello giusto per «chi vede cosa», non per un
+ * segreto.
+ *
+ * Senza rete: la sessione di Supabase vive in `localStorage` e il profilo
+ * dell'ultimo accesso si tiene in `astrocal_profilo_v1`. Se all'avvio il
+ * server non risponde, vale il profilo salvato (solo se approvato, solo per
+ * lo stesso utente): l'app resta una PWA che si apre in un campo buio.
+ *
+ * Caricamento: dopo `i18n.js` e `accessi-config.js`, prima di `app.js`. La
+ * classe `accessi-bloccato` nasconde subito la pagina; il velo si costruisce a
+ * `DOMContentLoaded`, quando `icona()` di `app.js` esiste. Sotto
+ * `navigator.webdriver` (le altre prove) il velo non si mostra: lo si apre
+ * con `astroAccessi.mostra({ forza: true })`. Senza `accessi-config.js`
+ * compilato l'app resta aperta, come prima degli account.
  */
 
 (function () {
   'use strict';
 
-  // ==== 1. Costanti e memoria ================================================
-  const CHIAVE_ACCOUNT = 'astrocal_account_v1';
-  const CHIAVE_SESSIONE = 'astrocal_sessione_v1';
-  const ITERAZIONI = 150000;
-  const DURATA_RICORDAMI = 30 * 24 * 3600 * 1000;
-  const DURATA_SCHEDA = 12 * 3600 * 1000;
-  const TENTATIVI_PRIMA_DEL_BLOCCO = 5;
-  const BLOCCO_BASE = 30 * 1000;
-  const BLOCCO_MASSIMO = 15 * 60 * 1000;
-  const NOME_VALIDO = /^[A-Za-z0-9._-]{3,32}$/;
+  // ==== 1. Costanti =========================================================
+  const CONFIG = window.ASTROCAL_ACCESSI || {};
+  const CONFIGURATO = !!(CONFIG.url && CONFIG.chiave);
+  const CHIAVE_PROFILO = 'astrocal_profilo_v1';
+  const CHIAVE_SESSIONE_SB = 'astrocal-supabase-auth';
   const PASSWORD_MINIMA = 8;
+  const ATTESA_RICONTROLLO = 30000;
+  // Le sezioni dell'app, nell'ordine del menu. `btn` è la voce del menu.
+  const SEZIONI = [
+    { id: 'stasera',    btn: 'btn-vista-stasera' },
+    { id: 'calendario', btn: 'btn-vista-gruppo-calendario' },
+    { id: 'cielo',      btn: 'btn-vista-skymap' },
+    { id: 'telescopio', btn: 'btn-vista-telescopio' },
+    { id: 'didattica',  btn: 'btn-vista-didattica' },
+    { id: 'demo',       btn: 'btn-vista-demo' }
+  ];
+  const VISTA_SEZIONE = { agenda: 'calendario', diario: 'calendario' };
 
-  const acc = { utente: null, ascoltatori: new Set() };
+  // I conti della v532 (account nel browser) non valgono più: si tolgono
+  try { localStorage.removeItem('astrocal_account_v1'); localStorage.removeItem('astrocal_sessione_v1'); sessionStorage.removeItem('astrocal_sessione_v1'); } catch (_) { /* niente */ }
+
+  const acc = {
+    client: null,
+    utente: null,     // l'utente di Supabase Auth
+    profilo: null,    // la riga di `profili`
+    inAttesa: 0,      // per l'amministratore: quanti aspettano
+    ascoltatori: new Set(),
+    timerAttesa: 0
+  };
 
   const t = (chiave, valori) =>
     (typeof astroI18n === 'object' && astroI18n && typeof astroI18n.t === 'function')
       ? astroI18n.t(chiave, valori) : chiave;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ic = (nome, d = 18) => (typeof icona === 'function' ? icona(nome, d) : '');
+  const locale = () => (typeof astroI18n === 'object' && astroI18n.locale && astroI18n.locale()) || undefined;
+  const dataBreve = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }); };
+  const iniziali = p => {
+    const base = (p && (p.nome || p.email) || '?').trim();
+    const parti = base.split(/[\s@._-]+/).filter(Boolean);
+    return ((parti[0] || '?')[0] + (parti[1] ? parti[1][0] : '')).toUpperCase();
+  };
+  const eAdmin = () => !!(acc.profilo && acc.profilo.ruolo === 'admin' && acc.profilo.stato === 'approvato');
 
-  function leggiAccount() {
+  // Se la pagina parte con gli account, la si nasconde subito: il velo
+  // arriva a DOMContentLoaded, ma il planetario non deve lampeggiare prima.
+  const VELO_ATTIVO = CONFIGURATO && (!navigator.webdriver || !!CONFIG.forza);
+  if (VELO_ATTIVO) document.documentElement.classList.add('accessi-bloccato');
+
+  // ==== 2. Il client e il profilo ==========================================
+  function client() {
+    if (acc.client) return acc.client;
+    if (!CONFIGURATO || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
+    acc.client = window.supabase.createClient(CONFIG.url, CONFIG.chiave, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: CHIAVE_SESSIONE_SB }
+    });
+    return acc.client;
+  }
+
+  function profiloSalvato(id) {
     try {
-      const v = JSON.parse(localStorage.getItem(CHIAVE_ACCOUNT) || '[]');
-      return Array.isArray(v) ? v : [];
-    } catch (_) { return []; }
+      const p = JSON.parse(localStorage.getItem(CHIAVE_PROFILO) || 'null');
+      return p && p.id === id ? p : null;
+    } catch (_) { return null; }
   }
-  function scriviAccount(elenco) {
-    localStorage.setItem(CHIAVE_ACCOUNT, JSON.stringify(elenco));
-  }
-  const chiaveNome = nome => String(nome || '').trim().toLowerCase();
-  const trova = (elenco, nome) => elenco.find(a => a.chiave === chiaveNome(nome));
-
-  // ==== 2. Le impronte delle password ========================================
-  const inBase64 = byte => btoa(String.fromCharCode(...new Uint8Array(byte)));
-  const daBase64 = testo => Uint8Array.from(atob(testo), c => c.charCodeAt(0));
-  const casuale = n => crypto.getRandomValues(new Uint8Array(n));
-
-  function cifraturaDisponibile() {
-    return typeof crypto === 'object' && crypto && crypto.subtle && typeof crypto.subtle.importKey === 'function';
+  function salvaProfilo(p) {
+    try { if (p) localStorage.setItem(CHIAVE_PROFILO, JSON.stringify(p)); else localStorage.removeItem(CHIAVE_PROFILO); } catch (_) { /* niente */ }
   }
 
-  async function impronta(password, sale, iterazioni) {
-    const chiave = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-    const bit = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sale, iterations: iterazioni }, chiave, 256);
-    return inBase64(bit);
+  // Legge il profilo dal server; senza rete, quello salvato.
+  async function caricaProfilo() {
+    const c = client();
+    if (!c || !acc.utente) return null;
+    const { data, error } = await c.from('profili').select('*').eq('id', acc.utente.id).maybeSingle();
+    if (error) {
+      const salvato = profiloSalvato(acc.utente.id);
+      if (salvato) return salvato;
+      throw error;
+    }
+    salvaProfilo(data);
+    return data;
   }
 
-  // Confronto a tempo costante: non si esce al primo carattere diverso.
-  function uguali(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
-    let diverso = 0;
-    for (let i = 0; i < a.length; i++) diverso |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diverso === 0;
+  // Traduce gli errori di Supabase nelle frasi dell'app.
+  function chiaveErrore(errore) {
+    const m = String((errore && (errore.message || errore.error_description)) || errore || '').toLowerCase();
+    const codice = errore && errore.code;
+    if (codice === 'invalid_credentials' || m.includes('invalid login')) return 'accessi.err.credenziali';
+    if (codice === 'email_not_confirmed' || m.includes('not confirmed')) return 'accessi.err.non-confermata';
+    if (codice === 'user_already_exists' || m.includes('already registered') || m.includes('already exists')) return 'accessi.err.esiste';
+    if (codice === 'weak_password' || m.includes('password should')) return 'accessi.err.password-debole';
+    if (codice === 'over_request_rate_limit' || codice === 'over_email_send_rate_limit' || m.includes('rate limit') || m.includes('too many')) return 'accessi.err.troppi';
+    if (codice === 'same_password' || m.includes('should be different')) return 'accessi.err.stessa-password';
+    if (m.includes('fetch') || m.includes('network') || m.includes('failed to')) return 'accessi.err.rete';
+    if (m.includes('email') && m.includes('invalid')) return 'accessi.err.email';
+    return 'accessi.err.generico';
   }
 
-  // Un login con un nome che non esiste fa lo stesso conto di uno vero:
-  // dalla durata non si capisce quali nomi ci sono.
-  const SALE_FINTO = casuale(16);
-
-  // ==== 3. Le regole =========================================================
-  function controllaNome(nome) {
-    if (!NOME_VALIDO.test(String(nome || '').trim())) return 'accessi.err.nome';
-    return null;
-  }
-  function controllaPassword(password, nome) {
-    const p = String(password || '');
+  // ==== 3. Le regole dei campi =============================================
+  const EMAIL_VALIDA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  function controllaPassword(p) {
+    p = String(p || '');
     if (p.length < PASSWORD_MINIMA) return 'accessi.err.password-corta';
-    if (!/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) return 'accessi.err.password-debole';
-    if (nome && p.toLowerCase().includes(chiaveNome(nome))) return 'accessi.err.password-nome';
+    if (!/[A-Za-zÀ-ÿ]/.test(p) || !/[0-9]/.test(p)) return 'accessi.err.password-debole';
     return null;
   }
-
-  // ==== 4. Le sessioni =======================================================
-  function leggiSessione() {
-    for (const memoria of [sessionStorage, localStorage]) {
-      try {
-        const s = JSON.parse(memoria.getItem(CHIAVE_SESSIONE) || 'null');
-        if (s && s.chiave && s.gettone) return s;
-      } catch (_) { /* memoria non disponibile */ }
-    }
-    return null;
-  }
-  function cancellaSessione() {
-    for (const memoria of [sessionStorage, localStorage]) {
-      try { memoria.removeItem(CHIAVE_SESSIONE); } catch (_) { /* niente da togliere */ }
-    }
-  }
-  function apriSessione(elenco, account, ricordami) {
-    const gettone = inBase64(casuale(24));
-    const scade = Date.now() + (ricordami ? DURATA_RICORDAMI : DURATA_SCHEDA);
-    account.sessioni = (account.sessioni || []).filter(s => s.scade > Date.now()).slice(-4);
-    account.sessioni.push({ gettone, scade });
-    account.ultimoAccesso = new Date().toISOString();
-    scriviAccount(elenco);
-    cancellaSessione();
-    (ricordami ? localStorage : sessionStorage).setItem(CHIAVE_SESSIONE, JSON.stringify({ chiave: account.chiave, gettone, scade }));
-    impostaUtente(account);
-  }
-  // La sessione vale solo se il suo gettone è ancora scritto nell'account:
-  // cambiando la password o uscendo si tolgono i gettoni e la sessione cade.
-  function riprendiSessione() {
-    const s = leggiSessione();
-    if (!s || !(s.scade > Date.now())) { cancellaSessione(); return false; }
-    const account = trova(leggiAccount(), s.chiave);
-    const valida = account && (account.sessioni || []).some(x => x.scade > Date.now() && uguali(x.gettone, s.gettone));
-    if (!valida) { cancellaSessione(); return false; }
-    impostaUtente(account);
-    return true;
-  }
-  function impostaUtente(account) {
-    acc.utente = account ? { nome: account.nome, ruolo: account.ruolo, creato: account.creato } : null;
-    document.documentElement.classList.toggle('accessi-bloccato', !acc.utente);
-    aggiornaTasto();
-    for (const f of acc.ascoltatori) { try { f(acc.utente); } catch (e) { console.error('[accessi]', e); } }
+  // Da 0 a 4: lunghezza, maiuscole e minuscole, cifre, simboli
+  function forzaPassword(p) {
+    p = String(p || '');
+    if (!p) return 0;
+    let punti = 0;
+    if (p.length >= PASSWORD_MINIMA) punti++;
+    if (p.length >= 12) punti++;
+    if (/[a-z]/.test(p) && /[A-Z]/.test(p)) punti++;
+    if (/[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p)) punti++;
+    else if (/[0-9]/.test(p) && punti < 4) punti += 0.5;
+    return Math.max(1, Math.min(4, Math.floor(punti)));
   }
 
-  // ==== 5. Registrazione, accesso, uscita ===================================
-  async function registra(nome, password, conferma, ricordami) {
-    if (!cifraturaDisponibile()) return { errore: 'accessi.err.cifratura' };
+  // ==== 4. Le azioni dell'utente ===========================================
+  async function registra({ nome, email, password, conferma }) {
+    const c = client();
+    if (!c) return { errore: 'accessi.err.servizio' };
     nome = String(nome || '').trim();
-    const errNome = controllaNome(nome);
-    if (errNome) return { errore: errNome };
-    const errPassword = controllaPassword(password, nome);
-    if (errPassword) return { errore: errPassword };
+    email = String(email || '').trim().toLowerCase();
+    if (nome.length < 2 || nome.length > 60) return { errore: 'accessi.err.nome' };
+    if (!EMAIL_VALIDA.test(email)) return { errore: 'accessi.err.email' };
+    const errP = controllaPassword(password);
+    if (errP) return { errore: errP };
     if (password !== conferma) return { errore: 'accessi.err.conferma' };
-    const elenco = leggiAccount();
-    if (trova(elenco, nome)) return { errore: 'accessi.err.esiste' };
-    const sale = casuale(16);
-    const account = {
-      nome, chiave: chiaveNome(nome),
-      sale: inBase64(sale), iterazioni: ITERAZIONI,
-      impronta: await impronta(password, sale, ITERAZIONI),
-      ruolo: elenco.length ? 'utente' : 'admin',
-      creato: new Date().toISOString(),
-      falliti: 0, bloccatoFino: 0, sessioni: []
-    };
-    elenco.push(account);
-    try { apriSessione(elenco, account, ricordami); }
-    catch (_) { return { errore: 'accessi.err.memoria' }; }
+    const { data, error } = await c.auth.signUp({
+      email, password,
+      options: { data: { nome }, emailRedirectTo: indirizzoRitorno() }
+    });
+    if (error) return { errore: chiaveErrore(error) };
+    // Con la conferma email accesa Supabase non apre la sessione; e se l'email
+    // è già iscritta risponde un utente senza identità (per non dirlo a chi
+    // prova gli indirizzi): lì diciamo comunque di guardare la posta.
+    if (!data.session) return { ok: true, controllaPosta: true };
     return { ok: true };
   }
 
-  async function accedi(nome, password, ricordami) {
-    if (!cifraturaDisponibile()) return { errore: 'accessi.err.cifratura' };
-    const elenco = leggiAccount();
-    const account = trova(elenco, nome);
-    if (account && account.bloccatoFino > Date.now()) {
-      return { errore: 'accessi.err.bloccato', valori: { s: Math.ceil((account.bloccatoFino - Date.now()) / 1000) } };
-    }
-    const sale = account ? daBase64(account.sale) : SALE_FINTO;
-    const calcolata = await impronta(String(password || ''), sale, account ? account.iterazioni : ITERAZIONI);
-    if (!account || !uguali(calcolata, account.impronta)) {
-      if (account) {
-        account.falliti = (account.falliti || 0) + 1;
-        if (account.falliti >= TENTATIVI_PRIMA_DEL_BLOCCO) {
-          const giri = account.falliti - TENTATIVI_PRIMA_DEL_BLOCCO;
-          account.bloccatoFino = Date.now() + Math.min(BLOCCO_MASSIMO, BLOCCO_BASE * 2 ** giri);
-        }
-        try { scriviAccount(elenco); } catch (_) { /* il conto resta per questa volta */ }
-      }
-      return { errore: 'accessi.err.credenziali' };
-    }
-    account.falliti = 0; account.bloccatoFino = 0;
-    try { apriSessione(elenco, account, ricordami); }
-    catch (_) { return { errore: 'accessi.err.memoria' }; }
+  async function accedi({ email, password }) {
+    const c = client();
+    if (!c) return { errore: 'accessi.err.servizio' };
+    email = String(email || '').trim().toLowerCase();
+    if (!EMAIL_VALIDA.test(email)) return { errore: 'accessi.err.email' };
+    if (!password) return { errore: 'accessi.err.credenziali' };
+    const { error } = await c.auth.signInWithPassword({ email, password });
+    if (error) return { errore: chiaveErrore(error) };
     return { ok: true };
   }
 
-  function esci() {
-    const s = leggiSessione();
-    if (s) {
-      const elenco = leggiAccount();
-      const account = trova(elenco, s.chiave);
-      if (account) {
-        account.sessioni = (account.sessioni || []).filter(x => x.gettone !== s.gettone);
-        try { scriviAccount(elenco); } catch (_) { /* la sessione cade comunque */ }
-      }
-    }
-    cancellaSessione();
-    impostaUtente(null);
-    mostraVelo('accedi');
-  }
-
-  async function cambiaPassword(attuale, nuova, conferma) {
-    if (!acc.utente) return { errore: 'accessi.err.credenziali' };
-    const elenco = leggiAccount();
-    const account = trova(elenco, acc.utente.nome);
-    if (!account) return { errore: 'accessi.err.credenziali' };
-    const prima = await impronta(String(attuale || ''), daBase64(account.sale), account.iterazioni);
-    if (!uguali(prima, account.impronta)) return { errore: 'accessi.err.attuale' };
-    const errPassword = controllaPassword(nuova, account.nome);
-    if (errPassword) return { errore: errPassword };
-    if (nuova !== conferma) return { errore: 'accessi.err.conferma' };
-    const sale = casuale(16);
-    account.sale = inBase64(sale);
-    account.iterazioni = ITERAZIONI;
-    account.impronta = await impronta(nuova, sale, ITERAZIONI);
-    // le altre sessioni (altre schede, «Ricordami» di prima) cadono
-    const s = leggiSessione();
-    account.sessioni = (account.sessioni || []).filter(x => s && x.gettone === s.gettone);
-    try { scriviAccount(elenco); } catch (_) { return { errore: 'accessi.err.memoria' }; }
+  async function recupera(email) {
+    const c = client();
+    if (!c) return { errore: 'accessi.err.servizio' };
+    email = String(email || '').trim().toLowerCase();
+    if (!EMAIL_VALIDA.test(email)) return { errore: 'accessi.err.email' };
+    const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: indirizzoRitorno() });
+    if (error) return { errore: chiaveErrore(error) };
     return { ok: true };
   }
 
-  async function eliminaAccount(password) {
-    if (!acc.utente) return { errore: 'accessi.err.credenziali' };
-    const elenco = leggiAccount();
-    const account = trova(elenco, acc.utente.nome);
-    if (!account) return { errore: 'accessi.err.credenziali' };
-    const prova = await impronta(String(password || ''), daBase64(account.sale), account.iterazioni);
-    if (!uguali(prova, account.impronta)) return { errore: 'accessi.err.attuale' };
-    const resto = elenco.filter(a => a !== account);
-    // se se ne va l'amministratore, il ruolo passa al più anziano rimasto
-    if (account.ruolo === 'admin' && resto.length && !resto.some(a => a.ruolo === 'admin')) resto[0].ruolo = 'admin';
-    try { scriviAccount(resto); } catch (_) { return { errore: 'accessi.err.memoria' }; }
-    cancellaSessione();
-    impostaUtente(null);
-    mostraVelo(resto.length ? 'accedi' : 'registra');
+  async function nuovaPassword(password, conferma) {
+    const c = client();
+    if (!c) return { errore: 'accessi.err.servizio' };
+    const errP = controllaPassword(password);
+    if (errP) return { errore: errP };
+    if (password !== conferma) return { errore: 'accessi.err.conferma' };
+    const { error } = await c.auth.updateUser({ password });
+    if (error) return { errore: chiaveErrore(error) };
     return { ok: true };
   }
 
-  // ==== 6. Il velo d'accesso =================================================
-  function nodo(tag, attributi, ...figli) {
-    const n = document.createElement(tag);
-    for (const [k, v] of Object.entries(attributi || {})) {
-      if (v === false || v == null) continue;
-      n.setAttribute(k, v === true ? '' : v);
+  async function esci() {
+    const c = client();
+    clearTimeout(acc.timerAttesa);
+    salvaProfilo(null);
+    if (c) { try { await c.auth.signOut(); } catch (_) { /* la sessione locale cade comunque */ } }
+    acc.utente = null; acc.profilo = null;
+    applica();
+  }
+
+  function indirizzoRitorno() {
+    return location.origin + location.pathname;
+  }
+
+  // ==== 5. Le azioni dell'amministratore ===================================
+  async function elencoUtenti() {
+    const c = client();
+    if (!c || !eAdmin()) return { errore: 'accessi.err.permesso' };
+    const { data, error } = await c.from('profili').select('*').order('creato', { ascending: false });
+    if (error) return { errore: chiaveErrore(error) };
+    acc.inAttesa = (data || []).filter(p => p.stato === 'in_attesa').length;
+    aggiornaTasto();
+    return { ok: true, utenti: data || [] };
+  }
+
+  async function aggiornaUtente(id, cambi) {
+    const c = client();
+    if (!c || !eAdmin()) return { errore: 'accessi.err.permesso' };
+    if (id === acc.profilo.id && (('stato' in cambi && cambi.stato !== 'approvato') || ('ruolo' in cambi && cambi.ruolo !== 'admin'))) {
+      return { errore: 'accessi.err.se-stesso' };
     }
-    n.append(...figli.filter(f => f != null));
-    return n;
+    const riga = Object.assign({}, cambi);
+    if ('stato' in cambi) { riga.deciso_il = new Date().toISOString(); riga.deciso_da = acc.profilo.id; }
+    const { data, error } = await c.from('profili').update(riga).eq('id', id).select().maybeSingle();
+    if (error) return { errore: chiaveErrore(error) };
+    if (!data) return { errore: 'accessi.err.permesso' };
+    return { ok: true, profilo: data };
   }
-  function campo(id, chiaveEtichetta, attributi) {
-    const input = nodo('input', Object.assign({ id, class: 'accessi-input' }, attributi));
-    return nodo('label', { class: 'accessi-campo', for: id },
-      nodo('span', { 'data-i18n': chiaveEtichetta }, t(chiaveEtichetta)), input);
+
+  async function eliminaUtente(id) {
+    const c = client();
+    if (!c || !eAdmin()) return { errore: 'accessi.err.permesso' };
+    if (id === acc.profilo.id) return { errore: 'accessi.err.se-stesso' };
+    const { error } = await c.rpc('elimina_account', { utente: id });
+    if (error) return { errore: chiaveErrore(error) };
+    return { ok: true };
   }
-  function scriviErrore(dove, esito) {
-    dove.textContent = esito && esito.errore ? t(esito.errore, esito.valori) : '';
-    dove.hidden = !dove.textContent;
+
+  // ==== 6. Le sezioni permesse =============================================
+  // Chiamata da `mostraVista` (app.js): una vista che l'utente non può vedere
+  // non si apre. Durante una demo sì: il racconto passa per le pagine vere.
+  function sezioniPermesse() {
+    if (!VELO_ATTIVO || !acc.profilo) return SEZIONI.map(s => s.id);
+    if (eAdmin()) return SEZIONI.map(s => s.id);
+    return Array.isArray(acc.profilo.sezioni) ? acc.profilo.sezioni : [];
   }
-  async function conAttesa(tasto, lavoro) {
-    tasto.disabled = true;
-    tasto.setAttribute('aria-busy', 'true');
-    try { return await lavoro(); }
-    finally { tasto.disabled = false; tasto.removeAttribute('aria-busy'); }
+  function vistaPermessa(nomeVista) {
+    if (!VELO_ATTIVO) return true;
+    if (typeof AstroDemo === 'object' && AstroDemo && AstroDemo.inCorso) return true;
+    const sezione = VISTA_SEZIONE[nomeVista] || nomeVista;
+    return sezioniPermesse().includes(sezione);
   }
+  function primaVistaPermessa() {
+    const permesse = sezioniPermesse();
+    const s = SEZIONI.find(x => permesse.includes(x.id));
+    return s ? s.id : null;
+  }
+  function applicaSezioni() {
+    const permesse = sezioniPermesse();
+    for (const s of SEZIONI) {
+      const b = document.getElementById(s.btn);
+      // non una classe: `mostraVista` riscrive `className` dei tasti del menu
+      if (!b) continue;
+      if (permesse.includes(s.id)) b.style.removeProperty('display');
+      else b.style.setProperty('display', 'none', 'important');
+    }
+    if (typeof vistaAttuale === 'string' && typeof mostraVista === 'function' && !vistaPermessa(vistaAttuale)) {
+      const prima = primaVistaPermessa();
+      if (prima) { try { mostraVista(prima); } catch (e) { console.error('[accessi]', e); } }
+    }
+  }
+  window.accessiVistaPermessa = vistaPermessa;
+  window.accessiPrimaVistaPermessa = primaVistaPermessa;
+
+  // ==== 7. Lo stato decide cosa si vede ====================================
+  // Senza utente → il velo d'accesso. Con un utente non approvato → la pagina
+  // dello stato (in attesa, rifiutato, sospeso). Approvato → l'app.
+  function applica() {
+    clearTimeout(acc.timerAttesa);
+    const p = acc.profilo;
+    if (!VELO_ATTIVO) { aggiornaTasto(); return; }
+    if (!acc.utente) { mostraVelo('accedi'); }
+    else if (!p) { mostraVelo('stato', { stato: 'senza-profilo' }); }
+    else if (p.stato !== 'approvato') {
+      mostraVelo('stato', { stato: p.stato });
+      if (p.stato === 'in_attesa') acc.timerAttesa = setTimeout(ricontrolla, ATTESA_RICONTROLLO);
+    } else if (!eAdmin() && !primaVistaPermessa()) {
+      mostraVelo('stato', { stato: 'nessuna-sezione' });
+    } else {
+      chiudiVelo();
+      document.documentElement.classList.remove('accessi-bloccato');
+      applicaSezioni();
+      if (eAdmin()) elencoUtenti().catch(() => {});
+    }
+    aggiornaTasto();
+    for (const f of acc.ascoltatori) { try { f(statoPubblico()); } catch (e) { console.error('[accessi]', e); } }
+  }
+
+  async function ricontrolla() {
+    try { acc.profilo = await caricaProfilo(); } catch (_) { /* resta com'era */ }
+    applica();
+  }
+
+  async function dopoCambioSessione(sessione) {
+    acc.utente = sessione ? sessione.user : null;
+    if (!acc.utente) { acc.profilo = null; applica(); return; }
+    try { acc.profilo = await caricaProfilo(); }
+    catch (e) { acc.profilo = null; console.warn('[accessi] profilo non letto', e); }
+    applica();
+  }
+
+  function statoPubblico() {
+    if (!acc.utente) return null;
+    const p = acc.profilo || {};
+    return { id: acc.utente.id, email: acc.utente.email, nome: p.nome || '', ruolo: p.ruolo || 'utente', stato: p.stato || null, sezioni: sezioniPermesse() };
+  }
+
+  // ==== 8. Il velo d'accesso ===============================================
+  function campo({ id, etichetta, tipo = 'text', icona: nomeIcona, auto, extra = '' }) {
+    const occhio = tipo === 'password'
+      ? `<button type="button" class="acc-occhio" data-occhio="${id}" aria-label="${esc(t('accessi.mostra-password'))}">${ic('occhio', 18)}</button>` : '';
+    return `<label class="acc-campo" for="${id}">
+      <span class="acc-etichetta">${esc(t(etichetta))}</span>
+      <span class="acc-input-guscio${tipo === 'password' ? ' con-occhio' : ''}">
+        <span class="acc-input-icona">${ic(nomeIcona, 18)}</span>
+        <input id="${id}" name="${id}" type="${tipo}" class="acc-input" autocomplete="${auto}" ${extra}>
+        ${occhio}
+      </span>
+    </label>`;
+  }
+
+  function htmlModuli() {
+    return `
+    <form class="acc-modulo" data-modo="accedi" novalidate>
+      ${campo({ id: 'acc-email', etichetta: 'accessi.email', tipo: 'email', icona: 'posta', auto: 'username', extra: 'inputmode="email" autocapitalize="none" spellcheck="false" required' })}
+      ${campo({ id: 'acc-password', etichetta: 'accessi.password', tipo: 'password', icona: 'lucchetto', auto: 'current-password', extra: 'required' })}
+      <div class="acc-riga-fra"><button type="button" class="acc-link" data-vai="recupera">${esc(t('accessi.dimenticata'))}</button></div>
+      <p class="acc-messaggio" role="alert" hidden></p>
+      <button type="submit" class="acc-primario"><span class="acc-rotella" aria-hidden="true"></span><span>${esc(t('accessi.entra'))}</span></button>
+      <p class="acc-cambio">${esc(t('accessi.nuovo-qui'))} <button type="button" class="acc-link" data-vai="registra">${esc(t('accessi.crea'))}</button></p>
+    </form>
+
+    <form class="acc-modulo" data-modo="registra" novalidate>
+      ${campo({ id: 'acc-nuovo-nome', etichetta: 'accessi.nome', icona: 'persona', auto: 'name', extra: 'maxlength="60" required' })}
+      ${campo({ id: 'acc-nuova-email', etichetta: 'accessi.email', tipo: 'email', icona: 'posta', auto: 'email', extra: 'inputmode="email" autocapitalize="none" spellcheck="false" required' })}
+      ${campo({ id: 'acc-nuova-password', etichetta: 'accessi.password', tipo: 'password', icona: 'lucchetto', auto: 'new-password', extra: 'required' })}
+      <div class="acc-forza" data-forza="0" aria-live="polite"><span></span><span></span><span></span><span></span><em></em></div>
+      ${campo({ id: 'acc-conferma', etichetta: 'accessi.conferma', tipo: 'password', icona: 'lucchetto', auto: 'new-password', extra: 'required' })}
+      <p class="acc-nota-campo">${esc(t('accessi.aiuto-password'))}</p>
+      <p class="acc-messaggio" role="alert" hidden></p>
+      <button type="submit" class="acc-primario"><span class="acc-rotella" aria-hidden="true"></span><span>${esc(t('accessi.crea-invia'))}</span></button>
+      <p class="acc-nota-campo acc-centro">${esc(t('accessi.nota-approvazione'))}</p>
+      <p class="acc-cambio">${esc(t('accessi.hai-account'))} <button type="button" class="acc-link" data-vai="accedi">${esc(t('accessi.accedi'))}</button></p>
+    </form>
+
+    <form class="acc-modulo" data-modo="recupera" novalidate>
+      <p class="acc-testo">${esc(t('accessi.recupera-testo'))}</p>
+      ${campo({ id: 'acc-recupera-email', etichetta: 'accessi.email', tipo: 'email', icona: 'posta', auto: 'email', extra: 'inputmode="email" autocapitalize="none" spellcheck="false" required' })}
+      <p class="acc-messaggio" role="alert" hidden></p>
+      <button type="submit" class="acc-primario"><span class="acc-rotella" aria-hidden="true"></span><span>${esc(t('accessi.recupera-invia'))}</span></button>
+      <p class="acc-cambio"><button type="button" class="acc-link" data-vai="accedi">${esc(t('accessi.torna-accedi'))}</button></p>
+    </form>
+
+    <form class="acc-modulo" data-modo="nuova-password" novalidate>
+      <p class="acc-testo">${esc(t('accessi.nuova-password-testo'))}</p>
+      ${campo({ id: 'acc-np', etichetta: 'accessi.password-nuova', tipo: 'password', icona: 'lucchetto', auto: 'new-password', extra: 'required' })}
+      ${campo({ id: 'acc-np-conferma', etichetta: 'accessi.conferma', tipo: 'password', icona: 'lucchetto', auto: 'new-password', extra: 'required' })}
+      <p class="acc-messaggio" role="alert" hidden></p>
+      <button type="submit" class="acc-primario"><span class="acc-rotella" aria-hidden="true"></span><span>${esc(t('accessi.salva-password'))}</span></button>
+    </form>
+
+    <div class="acc-modulo acc-stato" data-modo="stato"></div>`;
+  }
+
+  const TITOLI = {
+    accedi: ['accessi.titolo-accedi', 'accessi.sottotitolo-accedi'],
+    registra: ['accessi.titolo-registra', 'accessi.sottotitolo-registra'],
+    recupera: ['accessi.titolo-recupera', 'accessi.sottotitolo-recupera'],
+    'nuova-password': ['accessi.titolo-nuova-password', 'accessi.sottotitolo-nuova-password'],
+    stato: ['', '']
+  };
 
   function costruisciVelo() {
-    const vecchio = document.getElementById('accessi-velo');
-    if (vecchio) vecchio.remove();
+    const velo = document.createElement('div');
+    velo.id = 'accessi-velo';
+    velo.className = 'acc-velo';
+    velo.setAttribute('role', 'dialog');
+    velo.setAttribute('aria-modal', 'true');
+    velo.setAttribute('aria-labelledby', 'acc-titolo');
+    velo.innerHTML = `
+      <div class="acc-cornice">
+        <aside class="acc-vetrina" aria-hidden="true">
+          <div class="acc-marchio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><ellipse cx="12" cy="12" rx="10.6" ry="3.6" transform="rotate(-24 12 12)"/></svg>
+            <span>${esc(t('ui.astrocalendario-di-ben'))}</span>
+          </div>
+          <div class="acc-vetrina-testo">
+            <h2>${esc(t('accessi.vetrina-titolo'))}</h2>
+            <p>${esc(t('accessi.vetrina-testo'))}</p>
+            <ul>
+              <li>${ic('stella', 18)}<span>${esc(t('accessi.vetrina-1'))}</span></li>
+              <li>${ic('telescopio', 18)}<span>${esc(t('accessi.vetrina-2'))}</span></li>
+              <li>${ic('scudo', 18)}<span>${esc(t('accessi.vetrina-3'))}</span></li>
+            </ul>
+          </div>
+          <p class="acc-vetrina-piede">© AstroCalendario di Ben</p>
+        </aside>
+        <section class="acc-scheda">
+          <div class="acc-marchio acc-marchio-piccolo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><ellipse cx="12" cy="12" rx="10.6" ry="3.6" transform="rotate(-24 12 12)"/></svg>
+            <span>${esc(t('ui.astrocalendario-di-ben'))}</span>
+          </div>
+          <header class="acc-intestazione">
+            <h1 id="acc-titolo"></h1>
+            <p id="acc-sottotitolo"></p>
+          </header>
+          ${htmlModuli()}
+        </section>
+      </div>`;
 
-    const linguettaAccedi = nodo('button', { type: 'button', role: 'tab', class: 'accessi-linguetta', 'data-modo': 'accedi', 'data-i18n': 'accessi.accedi' }, t('accessi.accedi'));
-    const linguettaRegistra = nodo('button', { type: 'button', role: 'tab', class: 'accessi-linguetta', 'data-modo': 'registra', 'data-i18n': 'accessi.crea' }, t('accessi.crea'));
-
-    // --- Accedi ---
-    const erroreAccedi = nodo('p', { class: 'accessi-errore', role: 'alert', hidden: true });
-    const tastoAccedi = nodo('button', { type: 'submit', class: 'tasto-cielo tasto-primario accessi-invia', 'data-i18n': 'accessi.entra' }, t('accessi.entra'));
-    const moduloAccedi = nodo('form', { class: 'accessi-modulo', 'data-modo': 'accedi', novalidate: true },
-      campo('accessi-nome', 'accessi.nome', { type: 'text', name: 'username', autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', required: true }),
-      campo('accessi-password', 'accessi.password', { type: 'password', name: 'password', autocomplete: 'current-password', required: true }),
-      nodo('label', { class: 'accessi-ricordami' }, nodo('input', { type: 'checkbox', id: 'accessi-ricordami', checked: true }), nodo('span', { 'data-i18n': 'accessi.ricordami' }, t('accessi.ricordami'))),
-      erroreAccedi, tastoAccedi);
-    moduloAccedi.addEventListener('submit', async e => {
-      e.preventDefault();
-      const esito = await conAttesa(tastoAccedi, () => accedi(
-        moduloAccedi.querySelector('#accessi-nome').value,
-        moduloAccedi.querySelector('#accessi-password').value,
-        moduloAccedi.querySelector('#accessi-ricordami').checked));
-      scriviErrore(erroreAccedi, esito);
-      if (esito.ok) chiudiVelo();
-      else moduloAccedi.querySelector('#accessi-password').select();
-    });
-
-    // --- Crea account ---
-    const erroreRegistra = nodo('p', { class: 'accessi-errore', role: 'alert', hidden: true });
-    const tastoRegistra = nodo('button', { type: 'submit', class: 'tasto-cielo tasto-primario accessi-invia', 'data-i18n': 'accessi.crea-invia' }, t('accessi.crea-invia'));
-    const moduloRegistra = nodo('form', { class: 'accessi-modulo', 'data-modo': 'registra', novalidate: true },
-      campo('accessi-nuovo-nome', 'accessi.nome', { type: 'text', name: 'username', autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', required: true, maxlength: 32 }),
-      nodo('p', { class: 'accessi-aiuto', 'data-i18n': 'accessi.aiuto-nome' }, t('accessi.aiuto-nome')),
-      campo('accessi-nuova-password', 'accessi.password', { type: 'password', name: 'new-password', autocomplete: 'new-password', required: true }),
-      nodo('p', { class: 'accessi-aiuto', 'data-i18n': 'accessi.aiuto-password' }, t('accessi.aiuto-password')),
-      campo('accessi-conferma', 'accessi.conferma', { type: 'password', name: 'confirm-password', autocomplete: 'new-password', required: true }),
-      nodo('label', { class: 'accessi-ricordami' }, nodo('input', { type: 'checkbox', id: 'accessi-ricordami-nuovo', checked: true }), nodo('span', { 'data-i18n': 'accessi.ricordami' }, t('accessi.ricordami'))),
-      erroreRegistra, tastoRegistra);
-    moduloRegistra.addEventListener('submit', async e => {
-      e.preventDefault();
-      const esito = await conAttesa(tastoRegistra, () => registra(
-        moduloRegistra.querySelector('#accessi-nuovo-nome').value,
-        moduloRegistra.querySelector('#accessi-nuova-password').value,
-        moduloRegistra.querySelector('#accessi-conferma').value,
-        moduloRegistra.querySelector('#accessi-ricordami-nuovo').checked));
-      scriviErrore(erroreRegistra, esito);
-      if (esito.ok) chiudiVelo();
-    });
-
-    const finestra = nodo('div', { class: 'yt-finestra accessi-finestra' },
-      nodo('div', { class: 'accessi-testa' },
-        nodo('h2', { id: 'accessi-titolo', 'data-i18n': 'ui.astrocalendario-di-ben' }, t('ui.astrocalendario-di-ben')),
-        nodo('p', { class: 'accessi-sottotitolo', id: 'accessi-sottotitolo' })),
-      nodo('div', { class: 'accessi-linguette', role: 'tablist' }, linguettaAccedi, linguettaRegistra),
-      nodo('div', { class: 'yt-corpo' }, moduloAccedi, moduloRegistra),
-      nodo('p', { class: 'accessi-nota', 'data-i18n': 'accessi.nota-locale' }, t('accessi.nota-locale')));
-    const velo = nodo('div', { id: 'accessi-velo', class: 'yt-velo accessi-velo', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'accessi-titolo' }, finestra);
-
-    const scegli = modo => {
-      velo.dataset.modo = modo;
-      for (const l of [linguettaAccedi, linguettaRegistra]) {
-        const attiva = l.dataset.modo === modo;
-        l.classList.toggle('attiva', attiva);
-        l.setAttribute('aria-selected', attiva ? 'true' : 'false');
+    // passaggi fra i moduli
+    velo.addEventListener('click', e => {
+      const vai = e.target.closest('[data-vai]');
+      if (vai) { e.preventDefault(); scegli(velo, vai.dataset.vai); return; }
+      const occhio = e.target.closest('[data-occhio]');
+      if (occhio) {
+        const input = velo.querySelector('#' + occhio.dataset.occhio);
+        const visibile = input.type === 'password';
+        input.type = visibile ? 'text' : 'password';
+        occhio.innerHTML = ic(visibile ? 'occhioChiuso' : 'occhio', 18);
+        occhio.setAttribute('aria-label', t(visibile ? 'accessi.nascondi-password' : 'accessi.mostra-password'));
       }
-      moduloAccedi.hidden = modo !== 'accedi';
-      moduloRegistra.hidden = modo !== 'registra';
-      const sotto = velo.querySelector('#accessi-sottotitolo');
-      const chiave = modo === 'accedi' ? 'accessi.sottotitolo-accedi' : (leggiAccount().length ? 'accessi.sottotitolo-crea' : 'accessi.sottotitolo-primo');
-      sotto.setAttribute('data-i18n', chiave);
-      sotto.textContent = t(chiave);
-      scriviErrore(erroreAccedi, null); scriviErrore(erroreRegistra, null);
-      const primo = (modo === 'accedi' ? moduloAccedi : moduloRegistra).querySelector('input');
-      setTimeout(() => primo && primo.focus(), 0);
+    });
+    // la forza della password mentre la si scrive
+    const np = velo.querySelector('#acc-nuova-password');
+    np.addEventListener('input', () => {
+      const f = forzaPassword(np.value);
+      const barra = velo.querySelector('.acc-forza');
+      barra.dataset.forza = np.value ? f : 0;
+      barra.querySelector('em').textContent = np.value ? t('accessi.forza.' + f) : '';
+    });
+
+    const invia = (modo, lavoro) => {
+      const modulo = velo.querySelector(`form[data-modo="${modo}"]`);
+      modulo.addEventListener('submit', async e => {
+        e.preventDefault();
+        const tasto = modulo.querySelector('.acc-primario');
+        if (tasto.disabled) return;
+        tasto.disabled = true; tasto.classList.add('in-corso');
+        messaggio(modulo, null);
+        let esito;
+        try { esito = await lavoro(modulo); }
+        catch (err) { esito = { errore: chiaveErrore(err) }; }
+        finally { tasto.disabled = false; tasto.classList.remove('in-corso'); }
+        if (esito && esito.errore) messaggio(modulo, t(esito.errore), 'errore');
+        else if (esito && esito.avviso) messaggio(modulo, t(esito.avviso), 'ok');
+      });
     };
-    linguettaAccedi.addEventListener('click', () => scegli('accedi'));
-    linguettaRegistra.addEventListener('click', () => scegli('registra'));
-    velo.scegli = scegli;
-    // Il velo non si chiude con Esc né toccando fuori: è la porta dell'app.
+    const v = (m, id) => m.querySelector('#' + id).value;
+    invia('accedi', m => accedi({ email: v(m, 'acc-email'), password: v(m, 'acc-password') }));
+    invia('registra', async m => {
+      const esito = await registra({ nome: v(m, 'acc-nuovo-nome'), email: v(m, 'acc-nuova-email'), password: v(m, 'acc-nuova-password'), conferma: v(m, 'acc-conferma') });
+      if (esito.ok && esito.controllaPosta) mostraVelo('stato', { stato: 'controlla-posta', email: v(m, 'acc-nuova-email') });
+      return esito;
+    });
+    invia('recupera', async m => {
+      const esito = await recupera(v(m, 'acc-recupera-email'));
+      return esito.ok ? { avviso: 'accessi.recupera-inviata' } : esito;
+    });
+    invia('nuova-password', async m => {
+      const esito = await nuovaPassword(v(m, 'acc-np'), v(m, 'acc-np-conferma'));
+      if (esito.ok) { acc.recupero = false; await dopoCambioSessione((await client().auth.getSession()).data.session); }
+      return esito;
+    });
     return velo;
   }
 
-  function mostraVelo(modo) {
-    if (!document.body) {
-      document.addEventListener('DOMContentLoaded', () => mostraVelo(modo), { once: true });
-      return;
-    }
+  function messaggio(modulo, testo, tipo) {
+    const p = modulo.querySelector('.acc-messaggio');
+    if (!p) return;
+    p.textContent = testo || '';
+    p.hidden = !testo;
+    p.className = 'acc-messaggio' + (tipo ? ' ' + tipo : '');
+  }
+
+  function scegli(velo, modo, dati = {}) {
+    velo.dataset.modo = modo;
+    velo.querySelectorAll('.acc-modulo').forEach(m => { m.hidden = m.dataset.modo !== modo; });
+    velo.querySelectorAll('.acc-messaggio').forEach(p => { p.hidden = true; });
+    const [titolo, sotto] = TITOLI[modo] || TITOLI.accedi;
+    const h = velo.querySelector('#acc-titolo');
+    const s = velo.querySelector('#acc-sottotitolo');
+    h.textContent = titolo ? t(titolo) : '';
+    s.textContent = sotto ? t(sotto) : '';
+    velo.querySelector('.acc-intestazione').hidden = modo === 'stato';
+    // l'email scritta passa da un modulo all'altro
+    const email = ['acc-email', 'acc-nuova-email', 'acc-recupera-email'].map(id => velo.querySelector('#' + id).value).find(Boolean);
+    if (email) ['acc-email', 'acc-nuova-email', 'acc-recupera-email'].forEach(id => { const i = velo.querySelector('#' + id); if (!i.value) i.value = email; });
+    if (modo === 'stato') disegnaStato(velo.querySelector('[data-modo="stato"]'), dati);
+    const primo = velo.querySelector(`.acc-modulo[data-modo="${modo}"] input:not([type=hidden]), .acc-modulo[data-modo="${modo}"] button`);
+    setTimeout(() => { if (primo && !('ontouchstart' in window)) primo.focus(); }, 30);
+  }
+
+  // La pagina dello stato: in attesa, rifiutato, sospeso, controlla la posta
+  function disegnaStato(dove, { stato, email }) {
+    const voci = {
+      in_attesa: { icona: 'attesa', classe: 'attesa', titolo: 'accessi.stato.attesa-titolo', testo: 'accessi.stato.attesa-testo', ricontrolla: true },
+      rifiutato: { icona: 'chiudi', classe: 'no', titolo: 'accessi.stato.rifiutato-titolo', testo: 'accessi.stato.rifiutato-testo' },
+      sospeso: { icona: 'lucchetto', classe: 'no', titolo: 'accessi.stato.sospeso-titolo', testo: 'accessi.stato.sospeso-testo' },
+      'nessuna-sezione': { icona: 'lucchetto', classe: 'attesa', titolo: 'accessi.stato.sezioni-titolo', testo: 'accessi.stato.sezioni-testo', ricontrolla: true },
+      'senza-profilo': { icona: 'attesa', classe: 'attesa', titolo: 'accessi.stato.profilo-titolo', testo: 'accessi.stato.profilo-testo', ricontrolla: true },
+      'controlla-posta': { icona: 'posta', classe: 'ok', titolo: 'accessi.stato.posta-titolo', testo: 'accessi.stato.posta-testo', torna: true }
+    };
+    const v = voci[stato] || voci.in_attesa;
+    const chi = acc.utente ? (acc.profilo && acc.profilo.nome ? acc.profilo.nome + ' · ' : '') + acc.utente.email : (email || '');
+    dove.innerHTML = `
+      <div class="acc-stato-icona ${v.classe}">${ic(v.icona, 30)}</div>
+      <h1 class="acc-stato-titolo" id="acc-titolo-stato">${esc(t(v.titolo))}</h1>
+      <p class="acc-testo acc-centro">${esc(t(v.testo, { email: email || '' }))}</p>
+      ${chi ? `<p class="acc-chi-stato">${ic('persona', 16)}<span>${esc(chi)}</span></p>` : ''}
+      <p class="acc-messaggio" role="status" hidden></p>
+      ${v.ricontrolla ? `<button type="button" class="acc-primario" data-azione="ricontrolla"><span class="acc-rotella" aria-hidden="true"></span><span>${esc(t('accessi.ricontrolla'))}</span></button>` : ''}
+      ${v.torna ? `<button type="button" class="acc-primario" data-vai="accedi"><span>${esc(t('accessi.torna-accedi'))}</span></button>` : ''}
+      ${acc.utente ? `<button type="button" class="acc-secondario" data-azione="esci">${ic('esci', 18)}<span>${esc(t('accessi.esci'))}</span></button>` : ''}`;
+    const r = dove.querySelector('[data-azione="ricontrolla"]');
+    if (r) r.addEventListener('click', async () => {
+      r.disabled = true; r.classList.add('in-corso');
+      const prima = acc.profilo && acc.profilo.stato;
+      await ricontrolla();
+      r.disabled = false; r.classList.remove('in-corso');
+      if (acc.profilo && acc.profilo.stato === prima && document.getElementById('accessi-velo')) {
+        const m = document.querySelector('#accessi-velo [data-modo="stato"] .acc-messaggio');
+        if (m) { m.textContent = t('accessi.ancora-attesa'); m.hidden = false; m.className = 'acc-messaggio'; }
+      }
+    });
+    const e = dove.querySelector('[data-azione="esci"]');
+    if (e) e.addEventListener('click', () => esci());
+  }
+
+  function mostraVelo(modo, dati) {
+    if (!document.body) { document.addEventListener('DOMContentLoaded', () => mostraVelo(modo, dati), { once: true }); return; }
     document.documentElement.classList.add('accessi-bloccato');
-    const velo = costruisciVelo();
-    document.body.append(velo);
-    velo.scegli(modo || (leggiAccount().length ? 'accedi' : 'registra'));
+    chiudiFinestre();
+    let velo = document.getElementById('accessi-velo');
+    if (!velo) { velo = costruisciVelo(); document.body.append(velo); }
+    scegli(velo, modo || 'accedi', dati);
   }
   function chiudiVelo() {
     const velo = document.getElementById('accessi-velo');
     if (velo) velo.remove();
   }
+  function chiudiFinestre() {
+    ['accessi-account', 'accessi-gestione'].forEach(id => { const f = document.getElementById(id); if (f) f.remove(); });
+  }
 
-  // ==== 7. Il tasto Account e la sua finestra ================================
+  // ==== 9. Il tasto Account =================================================
   function aggiornaTasto() {
     const tasto = document.getElementById('btn-account');
     if (!tasto) return;
-    tasto.classList.toggle('hidden', !acc.utente);
-    if (acc.utente) tasto.title = t('accessi.connesso-come', { nome: acc.utente.nome });
+    const visibile = VELO_ATTIVO && !!acc.utente && !!acc.profilo && acc.profilo.stato === 'approvato';
+    tasto.classList.toggle('hidden', !visibile);
+    if (!visibile) return;
+    tasto.title = t('accessi.connesso-come', { nome: acc.profilo.nome || acc.utente.email });
+    let bollo = tasto.querySelector('.acc-bollo');
+    if (eAdmin() && acc.inAttesa > 0) {
+      if (!bollo) { bollo = document.createElement('span'); bollo.className = 'acc-bollo'; tasto.append(bollo); }
+      bollo.textContent = acc.inAttesa > 9 ? '9+' : String(acc.inAttesa);
+      bollo.setAttribute('aria-label', t('accessi.in-attesa-n', { n: acc.inAttesa }));
+    } else if (bollo) bollo.remove();
   }
 
-  function apriFinestraAccount() {
-    if (!acc.utente || document.getElementById('accessi-account')) return;
+  // Una finestra modale dell'app (account, gestione), chiusa da Esc o fuori
+  function finestra(id, classe, html) {
+    chiudiFinestre();
+    const velo = document.createElement('div');
+    velo.id = id;
+    velo.className = 'acc-finestra-velo';
+    velo.setAttribute('role', 'dialog');
+    velo.setAttribute('aria-modal', 'true');
+    velo.innerHTML = `<div class="acc-finestra ${classe}">${html}</div>`;
     const chiudi = () => { velo.remove(); document.removeEventListener('keydown', tasti, true); };
-    const tasti = e => { if (e.key === 'Escape') { e.preventDefault(); chiudi(); } };
+    const tasti = e => { if (e.key === 'Escape' && document.getElementById(id)) { e.preventDefault(); chiudi(); } };
+    velo.addEventListener('mousedown', e => { if (e.target === velo) chiudi(); });
+    velo.addEventListener('click', e => { if (e.target.closest('[data-chiudi]')) chiudi(); });
+    document.addEventListener('keydown', tasti, true);
+    document.body.append(velo);
+    velo.chiudi = chiudi;
+    return velo;
+  }
+  const testaFinestra = (titolo, icona) => `
+    <header class="acc-finestra-testa">
+      <h2>${ic(icona, 20)}<span>${esc(titolo)}</span></h2>
+      <button type="button" class="acc-x" data-chiudi aria-label="${esc(t('ui.chiudi'))}">${ic('chiudi', 18)}</button>
+    </header>`;
 
-    const x = nodo('button', { type: 'button', class: 'yt-x', 'aria-label': t('ui.chiudi'), 'data-i18n-aria-label': 'ui.chiudi' }, '×');
-    x.addEventListener('click', chiudi);
+  function nomeSezione(id) { return t('accessi.sezione.' + id); }
+  function badgeStato(stato) { return `<span class="acc-badge stato-${esc(stato)}">${esc(t('accessi.stato.' + stato))}</span>`; }
 
-    const quando = acc.utente.creato ? new Date(acc.utente.creato) : null;
-    const dataCreato = quando && !isNaN(quando)
-      ? quando.toLocaleDateString((typeof astroI18n === 'object' && astroI18n.locale && astroI18n.locale()) || undefined, { day: 'numeric', month: 'long', year: 'numeric' })
-      : '';
-    const ruolo = t(acc.utente.ruolo === 'admin' ? 'accessi.ruolo-admin' : 'accessi.ruolo-utente');
-
-    // cambio password
-    const errore = nodo('p', { class: 'accessi-errore', role: 'alert', hidden: true });
-    const fatto = nodo('p', { class: 'accessi-fatto', role: 'status', hidden: true });
-    const tastoCambia = nodo('button', { type: 'submit', class: 'tasto-cielo tasto-primario' }, t('accessi.cambia-invia'));
-    const modulo = nodo('form', { class: 'accessi-modulo', novalidate: true },
-      nodo('input', { type: 'text', name: 'username', autocomplete: 'username', value: acc.utente.nome, hidden: true }),
-      campo('accessi-attuale', 'accessi.password-attuale', { type: 'password', autocomplete: 'current-password' }),
-      campo('accessi-cambia-nuova', 'accessi.password-nuova', { type: 'password', autocomplete: 'new-password' }),
-      campo('accessi-cambia-conferma', 'accessi.conferma', { type: 'password', autocomplete: 'new-password' }),
-      errore, fatto, tastoCambia);
+  function apriAccount() {
+    if (!acc.utente || !acc.profilo) return;
+    const p = acc.profilo;
+    const sezioni = eAdmin() ? t('accessi.tutte-sezioni') : sezioniPermesse().map(nomeSezione).join(', ');
+    const velo = finestra('accessi-account', 'acc-finestra-account', `
+      ${testaFinestra(t('accessi.account'), 'persona')}
+      <div class="acc-finestra-corpo">
+        <div class="acc-profilo">
+          <span class="acc-avatar grande">${esc(iniziali(p))}</span>
+          <div>
+            <p class="acc-profilo-nome">${esc(p.nome || p.email)}</p>
+            <p class="acc-profilo-email">${esc(acc.utente.email)}</p>
+            <p class="acc-profilo-ruolo">${eAdmin() ? `<span class="acc-badge ruolo-admin">${ic('scudo', 14)}${esc(t('accessi.ruolo-admin'))}</span>` : `<span class="acc-badge">${esc(t('accessi.ruolo-utente'))}</span>`}</p>
+          </div>
+        </div>
+        <dl class="acc-dettagli">
+          <dt>${esc(t('accessi.iscritto-il'))}</dt><dd>${esc(dataBreve(p.creato))}</dd>
+          <dt>${esc(t('accessi.sezioni'))}</dt><dd>${esc(sezioni)}</dd>
+        </dl>
+        ${eAdmin() ? `<button type="button" class="acc-primario acc-largo" data-azione="gestisci">${ic('utenti', 18)}<span>${esc(t('accessi.gestisci'))}</span>${acc.inAttesa ? `<span class="acc-bollo dentro">${acc.inAttesa}</span>` : ''}</button>` : ''}
+        <details class="acc-espandi">
+          <summary>${ic('lucchetto', 16)}<span>${esc(t('accessi.cambia-password'))}</span></summary>
+          <form class="acc-modulo" data-modo="cambia" novalidate>
+            ${campo({ id: 'acc-cambia-nuova', etichetta: 'accessi.password-nuova', tipo: 'password', icona: 'lucchetto', auto: 'new-password' })}
+            ${campo({ id: 'acc-cambia-conferma', etichetta: 'accessi.conferma', tipo: 'password', icona: 'lucchetto', auto: 'new-password' })}
+            <p class="acc-messaggio" role="alert" hidden></p>
+            <button type="submit" class="acc-primario"><span class="acc-rotella" aria-hidden="true"></span><span>${esc(t('accessi.salva-password'))}</span></button>
+          </form>
+        </details>
+        <button type="button" class="acc-secondario acc-largo" id="accessi-esci">${ic('esci', 18)}<span>${esc(t('accessi.esci'))}</span></button>
+      </div>`);
+    velo.addEventListener('click', e => {
+      const occhio = e.target.closest('[data-occhio]');
+      if (occhio) { const i = velo.querySelector('#' + occhio.dataset.occhio); i.type = i.type === 'password' ? 'text' : 'password'; }
+    });
+    const g = velo.querySelector('[data-azione="gestisci"]');
+    if (g) g.addEventListener('click', () => apriGestione());
+    velo.querySelector('#accessi-esci').addEventListener('click', () => { velo.chiudi(); esci(); });
+    const modulo = velo.querySelector('form[data-modo="cambia"]');
     modulo.addEventListener('submit', async e => {
       e.preventDefault();
-      const esito = await conAttesa(tastoCambia, () => cambiaPassword(
-        modulo.querySelector('#accessi-attuale').value,
-        modulo.querySelector('#accessi-cambia-nuova').value,
-        modulo.querySelector('#accessi-cambia-conferma').value));
-      scriviErrore(errore, esito);
-      fatto.hidden = !esito.ok;
-      fatto.textContent = esito.ok ? t('accessi.password-cambiata') : '';
-      if (esito.ok) modulo.querySelectorAll('input[type=password]').forEach(i => { i.value = ''; });
+      const tasto = modulo.querySelector('.acc-primario');
+      tasto.disabled = true; tasto.classList.add('in-corso');
+      const esito = await nuovaPassword(modulo.querySelector('#acc-cambia-nuova').value, modulo.querySelector('#acc-cambia-conferma').value)
+        .catch(err => ({ errore: chiaveErrore(err) }));
+      tasto.disabled = false; tasto.classList.remove('in-corso');
+      if (esito.ok) { messaggio(modulo, t('accessi.password-cambiata'), 'ok'); modulo.reset(); }
+      else messaggio(modulo, t(esito.errore), 'errore');
     });
-
-    const tastoEsci = nodo('button', { type: 'button', class: 'tasto-cielo', id: 'accessi-esci' }, t('accessi.esci'));
-    tastoEsci.addEventListener('click', () => { chiudi(); esci(); });
-
-    const tastoElimina = nodo('button', { type: 'button', class: 'tasto-cielo accessi-pericolo' }, t('accessi.elimina'));
-    tastoElimina.addEventListener('click', async () => {
-      if (!window.confirm(t('accessi.elimina-conferma', { nome: acc.utente.nome }))) return;
-      const password = window.prompt(t('accessi.elimina-password'));
-      if (password == null) return;
-      const esito = await eliminaAccount(password);
-      if (esito.ok) chiudi(); else scriviErrore(errore, esito);
-    });
-
-    const finestra = nodo('div', { class: 'yt-finestra accessi-finestra' },
-      nodo('div', { class: 'yt-testa' }, nodo('h2', { id: 'accessi-account-titolo' }, t('accessi.account')), x),
-      nodo('div', { class: 'yt-corpo' },
-        nodo('p', { class: 'accessi-chi' }, nodo('strong', {}, acc.utente.nome), ' · ', ruolo),
-        dataCreato ? nodo('p', { class: 'yt-file' }, t('accessi.creato-il', { data: dataCreato })) : null,
-        nodo('h3', { class: 'accessi-sezione' }, t('accessi.cambia-password')),
-        modulo,
-        nodo('div', { class: 'accessi-tasti' }, tastoEsci, tastoElimina)));
-    const velo = nodo('div', { id: 'accessi-account', class: 'yt-velo accessi-velo-account', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'accessi-account-titolo' }, finestra);
-    velo.addEventListener('mousedown', e => { if (e.target === velo) chiudi(); });
-    document.body.append(velo);
-    document.addEventListener('keydown', tasti, true);
-    tastoEsci.focus();
   }
 
-  // ==== 8. Avvio =============================================================
-  function avvia() {
+  // ==== 10. La gestione degli utenti (solo amministratore) =================
+  async function apriGestione() {
+    if (!eAdmin()) return;
+    const stato = { filtro: 'in_attesa', cerca: '', utenti: [], aperto: null };
+    const velo = finestra('accessi-gestione', 'acc-finestra-gestione', `
+      ${testaFinestra(t('accessi.gestisci'), 'utenti')}
+      <div class="acc-gestione-barra">
+        <div class="acc-filtri" role="tablist">
+          ${['in_attesa', 'approvato', 'sospeso', 'rifiutato', 'tutti'].map(f => `<button type="button" role="tab" class="acc-filtro" data-filtro="${f}">${esc(t('accessi.filtro.' + f))}<span class="acc-conta"></span></button>`).join('')}
+        </div>
+        <label class="acc-cerca">${ic('lista', 16)}<input type="search" placeholder="${esc(t('accessi.cerca'))}" aria-label="${esc(t('accessi.cerca'))}"></label>
+      </div>
+      <div class="acc-finestra-corpo acc-elenco" aria-live="polite"><p class="acc-vuoto">${esc(t('accessi.caricamento'))}</p></div>`);
+    const elenco = velo.querySelector('.acc-elenco');
+
+    const ridisegna = () => {
+      for (const b of velo.querySelectorAll('.acc-filtro')) {
+        const f = b.dataset.filtro;
+        b.classList.toggle('attiva', f === stato.filtro);
+        b.setAttribute('aria-selected', f === stato.filtro ? 'true' : 'false');
+        const n = f === 'tutti' ? stato.utenti.length : stato.utenti.filter(u => u.stato === f).length;
+        b.querySelector('.acc-conta').textContent = n ? String(n) : '';
+      }
+      const q = stato.cerca.trim().toLowerCase();
+      const righe = stato.utenti
+        .filter(u => stato.filtro === 'tutti' || u.stato === stato.filtro)
+        .filter(u => !q || (u.nome || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q));
+      if (!righe.length) { elenco.innerHTML = `<p class="acc-vuoto">${esc(t(stato.filtro === 'in_attesa' && !q ? 'accessi.nessuno-attesa' : 'accessi.nessuno'))}</p>`; return; }
+      elenco.innerHTML = righe.map(rigaUtente).join('');
+    };
+
+    const rigaUtente = u => {
+      const io = u.id === acc.profilo.id;
+      const aperto = stato.aperto === u.id;
+      const sezioni = Array.isArray(u.sezioni) ? u.sezioni : [];
+      const azioni = [];
+      if (!io) {
+        if (u.stato !== 'approvato') azioni.push(['approva', 'accessi.azione.approva', 'positivo']);
+        if (u.stato === 'in_attesa') azioni.push(['rifiuta', 'accessi.azione.rifiuta', 'negativo']);
+        if (u.stato === 'approvato') azioni.push(['sospendi', 'accessi.azione.sospendi', '']);
+        azioni.push(u.ruolo === 'admin' ? ['togli-admin', 'accessi.azione.togli-admin', ''] : ['rendi-admin', 'accessi.azione.rendi-admin', '']);
+        azioni.push(['elimina', 'accessi.azione.elimina', 'negativo']);
+      }
+      return `
+      <article class="acc-utente${aperto ? ' aperto' : ''}" data-id="${esc(u.id)}">
+        <button type="button" class="acc-utente-testa" data-azione="apri" aria-expanded="${aperto}">
+          <span class="acc-avatar">${esc(iniziali(u))}</span>
+          <span class="acc-utente-nomi">
+            <span class="acc-utente-nome">${esc(u.nome || '—')}${io ? ` <em>(${esc(t('accessi.tu'))})</em>` : ''}</span>
+            <span class="acc-utente-email">${esc(u.email)}</span>
+          </span>
+          <span class="acc-utente-meta">
+            ${u.ruolo === 'admin' ? `<span class="acc-badge ruolo-admin">${ic('scudo', 13)}${esc(t('accessi.ruolo-admin'))}</span>` : ''}
+            ${badgeStato(u.stato)}
+            <span class="acc-utente-data">${esc(dataBreve(u.creato))}</span>
+          </span>
+        </button>
+        ${u.stato === 'in_attesa' && !io && !aperto ? `
+        <div class="acc-utente-rapide">
+          <button type="button" class="acc-azione positivo" data-azione="approva">${esc(t('accessi.azione.approva'))}</button>
+          <button type="button" class="acc-azione negativo" data-azione="rifiuta">${esc(t('accessi.azione.rifiuta'))}</button>
+        </div>` : ''}
+        ${aperto ? `
+        <div class="acc-utente-dettaglio">
+          <p class="acc-sotto-titolo">${esc(t('accessi.sezioni-visibili'))}</p>
+          ${u.ruolo === 'admin' ? `<p class="acc-nota-campo">${esc(t('accessi.admin-tutte'))}</p>` : `
+          <div class="acc-sezioni">
+            ${SEZIONI.map(s => `<label class="acc-interruttore"><input type="checkbox" data-sezione="${s.id}" ${sezioni.includes(s.id) ? 'checked' : ''}><span class="acc-levetta" aria-hidden="true"></span><span>${esc(nomeSezione(s.id))}</span></label>`).join('')}
+          </div>
+          <div class="acc-sezioni-rapide">
+            <button type="button" class="acc-link" data-azione="tutte">${esc(t('accessi.seleziona-tutte'))}</button>
+            <button type="button" class="acc-link" data-azione="nessuna">${esc(t('accessi.seleziona-nessuna'))}</button>
+          </div>`}
+          ${azioni.length ? `<div class="acc-azioni">${azioni.map(([a, k, c]) => `<button type="button" class="acc-azione ${c}" data-azione="${a}">${esc(t(k))}</button>`).join('')}</div>` : `<p class="acc-nota-campo">${esc(t('accessi.se-stesso'))}</p>`}
+          <p class="acc-messaggio" role="alert" hidden></p>
+        </div>` : ''}
+      </article>`;
+    };
+
+    const carica = async () => {
+      const esito = await elencoUtenti();
+      if (esito.errore) { elenco.innerHTML = `<p class="acc-vuoto errore">${esc(t(esito.errore))}</p>`; return; }
+      stato.utenti = esito.utenti;
+      if (stato.filtro === 'in_attesa' && !stato.utenti.some(u => u.stato === 'in_attesa')) stato.filtro = 'tutti';
+      ridisegna();
+    };
+
+    const cambia = async (riga, id, cambi) => {
+      riga.classList.add('in-corso');
+      const esito = await aggiornaUtente(id, cambi).catch(err => ({ errore: chiaveErrore(err) }));
+      riga.classList.remove('in-corso');
+      if (esito.errore) { const m = riga.querySelector('.acc-messaggio'); if (m) { m.textContent = t(esito.errore); m.hidden = false; m.className = 'acc-messaggio errore'; } else window.alert(t(esito.errore)); return false; }
+      const i = stato.utenti.findIndex(u => u.id === id);
+      if (i >= 0) stato.utenti[i] = esito.profilo;
+      acc.inAttesa = stato.utenti.filter(u => u.stato === 'in_attesa').length;
+      aggiornaTasto();
+      ridisegna();
+      return true;
+    };
+
+    velo.querySelector('.acc-filtri').addEventListener('click', e => {
+      const b = e.target.closest('[data-filtro]');
+      if (!b) return;
+      stato.filtro = b.dataset.filtro; stato.aperto = null; ridisegna();
+    });
+    velo.querySelector('.acc-cerca input').addEventListener('input', e => { stato.cerca = e.target.value; ridisegna(); });
+    elenco.addEventListener('click', async e => {
+      const b = e.target.closest('[data-azione]');
+      const riga = e.target.closest('.acc-utente');
+      if (!b || !riga) return;
+      const id = riga.dataset.id;
+      const u = stato.utenti.find(x => x.id === id);
+      if (!u) return;
+      switch (b.dataset.azione) {
+        case 'apri': stato.aperto = stato.aperto === id ? null : id; ridisegna(); break;
+        case 'approva': await cambia(riga, id, { stato: 'approvato' }); break;
+        case 'rifiuta': await cambia(riga, id, { stato: 'rifiutato' }); break;
+        case 'sospendi': await cambia(riga, id, { stato: 'sospeso' }); break;
+        case 'rendi-admin':
+          if (window.confirm(t('accessi.conferma-admin', { nome: u.nome || u.email }))) await cambia(riga, id, { ruolo: 'admin', stato: 'approvato' });
+          break;
+        case 'togli-admin': await cambia(riga, id, { ruolo: 'utente' }); break;
+        case 'tutte': await cambia(riga, id, { sezioni: SEZIONI.map(s => s.id) }); break;
+        case 'nessuna': await cambia(riga, id, { sezioni: [] }); break;
+        case 'elimina': {
+          if (!window.confirm(t('accessi.conferma-elimina', { nome: u.nome || u.email }))) break;
+          riga.classList.add('in-corso');
+          const esito = await eliminaUtente(id).catch(err => ({ errore: chiaveErrore(err) }));
+          riga.classList.remove('in-corso');
+          if (esito.errore) { window.alert(t(esito.errore)); break; }
+          stato.utenti = stato.utenti.filter(x => x.id !== id);
+          acc.inAttesa = stato.utenti.filter(x => x.stato === 'in_attesa').length;
+          aggiornaTasto(); ridisegna();
+          break;
+        }
+      }
+    });
+    elenco.addEventListener('change', async e => {
+      const casella = e.target.closest('[data-sezione]');
+      const riga = e.target.closest('.acc-utente');
+      if (!casella || !riga) return;
+      const scelte = [...riga.querySelectorAll('[data-sezione]')].filter(c => c.checked).map(c => c.dataset.sezione);
+      await cambia(riga, riga.dataset.id, { sezioni: SEZIONI.map(s => s.id).filter(s => scelte.includes(s)) });
+    });
+    await carica();
+  }
+
+  // ==== 11. Avvio ==========================================================
+  async function avvia() {
     const tasto = document.getElementById('btn-account');
     if (tasto && !tasto.dataset.accessiPronto) {
       tasto.dataset.accessiPronto = '1';
-      tasto.addEventListener('click', apriFinestraAccount);
+      tasto.addEventListener('click', apriAccount);
     }
-    if (riprendiSessione()) return;
-    if (navigator.webdriver) { aggiornaTasto(); return; }
-    mostraVelo();
+    if (!VELO_ATTIVO) { aggiornaTasto(); return; }
+    const c = client();
+    if (!c) {
+      // la libreria non è arrivata (prima apertura senza rete): si prova
+      // con il profilo salvato, altrimenti si dice che il servizio manca
+      mostraVelo('accedi');
+      const v = document.querySelector('#accessi-velo form[data-modo="accedi"]');
+      if (v) messaggio(v, t('accessi.err.servizio'), 'errore');
+      return;
+    }
+    c.auth.onAuthStateChange((evento, sessione) => {
+      if (evento === 'PASSWORD_RECOVERY') { acc.recupero = true; acc.utente = sessione && sessione.user; mostraVelo('nuova-password'); return; }
+      if (acc.recupero) return;
+      if (evento === 'INITIAL_SESSION') return; // ci pensa getSession qui sotto
+      if (evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') { if (sessione) acc.utente = sessione.user; return; }
+      // fuori dal giro del client di Supabase: dentro al suo callback non si
+      // devono fare altre chiamate al client (si aspetterebbero a vicenda)
+      setTimeout(() => dopoCambioSessione(sessione), 0);
+    });
+    let sessione = null;
+    try { sessione = (await c.auth.getSession()).data.session; } catch (_) { /* senza sessione */ }
+    if (acc.recupero) return;
+    await dopoCambioSessione(sessione);
   }
-  if (document.readyState === 'loading') {
-    // gli script stanno in fondo al body: il velo si può già appendere, il
-    // tasto della testata c'è; DOMContentLoaded solo per sicurezza
-    if (document.body) avvia(); else document.addEventListener('DOMContentLoaded', avvia, { once: true });
-  } else avvia();
 
-  // Le frasi del velo seguono la lingua anche se cambiata da sotto
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { avvia(); }, { once: true });
+  else avvia();
+
+  // al cambio lingua si rifà il velo (o la finestra) nella lingua nuova
   if (typeof astroI18n === 'object' && astroI18n && typeof astroI18n.alCambio === 'function') {
     astroI18n.alCambio(() => {
       const velo = document.getElementById('accessi-velo');
-      if (velo && velo.scegli) {
-        const sotto = velo.querySelector('#accessi-sottotitolo');
-        if (sotto) sotto.textContent = t(sotto.getAttribute('data-i18n'));
-      }
+      if (velo) { const modo = velo.dataset.modo; velo.remove(); if (modo === 'stato') applica(); else mostraVelo(modo); }
       aggiornaTasto();
     });
   }
 
   window.astroAccessi = {
-    get utente() { return acc.utente ? Object.assign({}, acc.utente) : null; },
-    autenticato: () => !!acc.utente,
-    registra, accedi, esci, cambiaPassword, eliminaAccount,
-    mostra: (opzioni = {}) => { if (!acc.utente || opzioni.forza) mostraVelo(opzioni.modo); },
-    apriAccount: apriFinestraAccount,
+    get utente() { return statoPubblico(); },
+    autenticato: () => !!(acc.utente && acc.profilo && acc.profilo.stato === 'approvato'),
+    eAdmin,
+    configurato: CONFIGURATO,
+    registra, accedi, esci, recupera, nuovaPassword,
+    elencoUtenti, aggiornaUtente, eliminaUtente,
+    vistaPermessa, sezioniPermesse,
+    mostra: (opzioni = {}) => { if (opzioni.forza || !acc.utente) mostraVelo(opzioni.modo || 'accedi', opzioni); },
+    apriAccount, apriGestione,
     alCambio: f => { acc.ascoltatori.add(f); return () => acc.ascoltatori.delete(f); },
-    CHIAVI: { account: CHIAVE_ACCOUNT, sessione: CHIAVE_SESSIONE }
+    SEZIONI: SEZIONI.map(s => s.id),
+    CHIAVI: { profilo: CHIAVE_PROFILO, sessione: CHIAVE_SESSIONE_SB }
   };
 })();

@@ -3360,7 +3360,10 @@
   <script src="lingue/it.js"></script>
   <script src="lingue/en.js"></script>
   <script src="i18n.js"></script>
-  <!-- Gli account: il velo d'accesso copre la pagina prima che il planetario parta -->
+  <!-- Gli account (Supabase): il velo d'accesso copre la pagina prima che il
+       planetario parta. La libreria arriva dal CDN come le altre. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="accessi-config.js"></script>
   <script src="accessi.js"></script>
   <!-- La narrazione: una voce sola per le demo e per Missione Cielo. Il
        manifest degli audio registrati va prima del motore che lo legge. -->

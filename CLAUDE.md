@@ -64,7 +64,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `voci-filmato.js` | Le voci del filmato: prima di registrare per YouTube, le battute che andrebbero alla voce di sistema (che non si registra) diventano audio con ElevenLabs o Piper; e il tasto «Voci ElevenLabs» delle CosmoStorie, che sceglie da solo la voce di ogni personaggio e genera tutte le battute (`vfilm`). |
 | `youtube.js` | Collegare il canale YouTube e pubblicarci i filmati (`yt`). |
 | `config.js` | URL dei ponti ADS-B/Edge-TTS, `YOUTUBE_CLIENT_ID` e `ASTROCAL_BUILD`. |
-| `accessi.js` | Gli account: velo d'accesso (accedi / crea account), tasto Account in testata, cambio password, uscita (`astroAccessi`). Tutto in questo browser, password come impronta PBKDF2. |
+| `accessi.js`, `accessi-config.js`, `supabase/accessi.sql` | Gli account su Supabase: iscrizione con email, approvazione dell'amministratore, pannello «Gestisci utenti» (approva, rifiuta, sospendi, elimina, ruolo, sezioni visibili per utente), cambio e recupero password (`astroAccessi`). `accessi-config.js` è vuoto nel repository: URL e chiave pubblica li scrive il deploy dalle variabili `SUPABASE_URL` e `SUPABASE_CHIAVE`. Schema e regole del database nello script SQL (non va nel sito). |
 | `custode-chiavi.js` | Il custode delle chiavi (ElevenLabs, GitHub, YouTube, voci), caricato **prima** di `app.js`: nel programma per computer le rimette dalla cassaforte quando il browser le perde; nel browser chiede la memoria persistente (`astroCustode`). |
 | `desktop/` | L'app per computer (Electron): `main.js`, `server.js` (localhost:47231), `preload.js` (`window.astroDesktop`), `prepara.js`, `costruisci.js`. Non va nel sito; l'installatore lo fa `.github/workflows/desktop.yml` nelle Release `desktop-vN`. Vedi `DESKTOP.md`. |
 | `worker-adsb.js` | Proxy ADS-B (Deno Deploy), non fa parte della PWA. Vedi `ADSB-PROXY.md`. |
@@ -78,7 +78,7 @@ cielo*, *si vede da casa mia*, *dove guardo*, *come lo punto col telescopio*.
 | `LICENSE`, `LICENZA.md`, `README.md` | GPL v3 (testo ufficiale); le condizioni in italiano, nome/logo/musica esclusi, opere di terzi; presentazione e canale YouTube @astroben2017. |
 
 **Ordine di caricamento** (quello di `index.html`, e conta): `custode-chiavi.js` → dizionari →
-`i18n.js` → `accessi.js` → manifest e `narrazione.js` → `app.js` → `telescopio.js` →
+`i18n.js` → supabase-js → `accessi-config.js` → `accessi.js` → manifest e `narrazione.js` → `app.js` → `telescopio.js` →
 `catalogo.js` → `costellazioni.js` → `curiosita.js` → `via-lattea.js` →
 `scala-cosmica.js` → `corpi-minori.js` → `pianifica.js` → `terreno.js` →
 `rilievo.js` → `meteo-astro.js` → `aurora-polare.js` → `config.js` →
@@ -97,7 +97,7 @@ Elenco completo in MAPPA-DETTAGLIATA §2.
 ## 3. Librerie (da CDN)
 
 `astronomy-engine@2.1.19` (il cuore), `fullcalendar@6.1.15`, `leaflet@1.9.4`,
-`satellite.js@5.0.0`. Tailwind non c'è più: è compilato in `tailwind.css`.
+`satellite.js@5.0.0`, `@supabase/supabase-js@2.45.4` (gli account). Tailwind non c'è più: è compilato in `tailwind.css`.
 
 ## 4. Rete
 
@@ -105,7 +105,8 @@ Servizi tutti senza chiave e tutti con un ripiego: Open-Meteo (meteo, quote,
 geocoding), Open-Elevation/OpenTopoData (quote di riserva), tessere Terrarium
 su S3 (rilievo), quattro istanze Overpass (paesi, vette, acque), CelesTrak
 (TLE), NOAA (Kp), geolocalizzazione da IP, BigDataCloud/Nominatim (nome del
-luogo), ADS-B (proxy proprio, poi ponti pubblici). L'unico con un permesso
+luogo), ADS-B (proxy proprio, poi ponti pubblici). Gli account passano da Supabase
+(`*.supabase.co`, mai in cache; `accessi.js`). L'unico con un permesso
 dell'utente è YouTube (accesso di Google, `youtube.js`), solo a richiesta.
 Per le voci del filmato (`voci-filmato.js`, solo a richiesta): ElevenLabs con
 la chiave dello Studio, o Piper (motore da jsdelivr, modelli da Hugging Face,
@@ -207,7 +208,7 @@ satellite.js@5.0.0` (Chromium è in `/opt/pw-browsers`). Quale prova lanciare:
 | voci di una CosmoStoria con un tocco (casting automatico ElevenLabs) | `prova-voci-cosmostorie.js` |
 | rinominare, modificare, eliminare le CosmoStorie e le storie in cantiere | `prova-cosmostorie-gestione.js` |
 | musica dello Studio nelle CosmoStorie, musiche generate, categorie di personaggi e facce | `prova-musica-cosmostorie.js` |
-| account e velo d'accesso (`accessi.js`) | `prova-accessi.js` |
+| account, approvazione, pannello admin, sezioni per utente (`accessi.js`) | `prova-accessi.js` (Supabase finto nel browser: non tocca il progetto vero) |
 | app per computer (`desktop/`), custode delle chiavi, riquadro «App per computer» | `prova-desktop.js` (`--solo-node` senza browser; `--electron` col programma vero, sotto `xvfb-run -a` su Linux; vuole `npm install` in `desktop/`) |
 
 Perché ognuna esiste e le sue trappole (rotte di Playwright, `<script>` unici

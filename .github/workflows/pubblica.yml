@@ -64,6 +64,8 @@ jobs:
           ADSB_PROXY_URL: ${{ vars.ADSB_PROXY_URL }}
           EDGE_TTS_API_URL: ${{ vars.EDGE_TTS_API_URL }}
           YOUTUBE_CLIENT_ID: ${{ vars.YOUTUBE_CLIENT_ID }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_CHIAVE: ${{ vars.SUPABASE_CHIAVE }}
         # L'app non ha build: i file sorgente *sono* il sito. Si copiano da una
         # parte solo per lasciar fuori quello che online non serve — la storia
         # di git, i workflow, la mappa del progetto e lo script che rigenera i
@@ -87,6 +89,7 @@ jobs:
             --exclude 'CLAUDE.md' \
             --exclude 'MAPPA-DETTAGLIATA.md' \
             --exclude 'current-task.md' \
+            --exclude 'supabase' \
             --exclude 'Idee_da_implementare.txt'
           # Senza questo file Pages passerebbe tutto per Jekyll, che salta le
           # cartelle e i file che cominciano per underscore. Qui non ce ne sono,
@@ -128,6 +131,18 @@ jobs:
               "$(printf %s "$BUILD_COMMIT" | jq -Rs .)" \
               "$(printf %s "$BUILD_DATE" | jq -Rs .)"
           } > _sito/config.js
+
+          # Gli account (accessi.js, v533): il progetto Supabase e la sua chiave
+          # pubblica arrivano dalle variabili del repository, come i ponti qui
+          # sopra. Senza, l'app si pubblica lo stesso e non chiede l'accesso.
+          case "$SUPABASE_URL" in ''|https://*) ;; *) echo "::error::SUPABASE_URL deve iniziare con https://"; exit 1;; esac
+          case "$SUPABASE_CHIAVE" in sb_secret_*|*service_role*) echo "::error::SUPABASE_CHIAVE è la chiave segreta: serve quella pubblica (sb_publishable_… o anon)"; exit 1;; esac
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_CHIAVE" ]; then
+            echo "::warning::Mancano SUPABASE_URL o SUPABASE_CHIAVE: l'app non chiederà l'accesso"
+          fi
+          printf "window.ASTROCAL_ACCESSI = { url: %s, chiave: %s };\n" \
+            "$(printf %s "$SUPABASE_URL" | jq -Rs .)" \
+            "$(printf %s "$SUPABASE_CHIAVE" | jq -Rs .)" > _sito/accessi-config.js
 
       - name: Controlla che ci sia tutto
         # Una pubblicazione a metà è peggio di una fallita: il service worker
