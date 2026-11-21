@@ -43,7 +43,14 @@
 
   // ==== 1. Costanti =========================================================
   const CONFIG = window.ASTROCAL_ACCESSI || {};
-  const CONFIGURATO = !!(CONFIG.url && CONFIG.chiave);
+  // Interruttore per sospendere gli account senza togliere le variabili del
+  // deploy (v534): il 21 novembre 2026 l'accesso online non riusciva (il
+  // progetto Supabase non rispondeva) e chi apriva l'app restava fuori. Con
+  // `true` l'app si apre per tutti come prima della v532; per riaccendere il
+  // controllo basta rimetterlo a `false`. Le prove (`forza: true`) lo
+  // ignorano, così `prova-accessi.js` continua a provare il giro intero.
+  const ACCESSI_IN_PAUSA = true;
+  const CONFIGURATO = !!(CONFIG.url && CONFIG.chiave) && (!ACCESSI_IN_PAUSA || !!CONFIG.forza);
   const CHIAVE_PROFILO = 'astrocal_profilo_v1';
   const CHIAVE_SESSIONE_SB = 'astrocal-supabase-auth';
   const PASSWORD_MINIMA = 8;
@@ -869,6 +876,7 @@
     autenticato: () => !!(acc.utente && acc.profilo && acc.profilo.stato === 'approvato'),
     eAdmin,
     configurato: CONFIGURATO,
+    inPausa: ACCESSI_IN_PAUSA && !CONFIG.forza,
     registra, accedi, esci, recupera, nuovaPassword,
     elencoUtenti, aggiornaUtente, eliminaUtente,
     vistaPermessa, sezioniPermesse,
